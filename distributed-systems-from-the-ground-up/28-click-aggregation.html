@@ -1,0 +1,700 @@
+<!DOCTYPE HTML>
+<html lang="en" class="light sidebar-visible" dir="ltr">
+    <head>
+        <!-- Book generated using mdBook -->
+        <meta charset="UTF-8">
+        <title>Click Aggregation - Distributed Systems from the Ground Up</title>
+
+
+        <!-- Custom HTML head -->
+
+        <meta name="description" content="System design and low-level design of resilient, fault-tolerant distributed systems, with code in Rust">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <meta name="theme-color" content="#ffffff">
+
+        <link rel="icon" href="favicon-de23e50b.svg">
+        <link rel="shortcut icon" href="favicon-8114d1fc.png">
+        <link rel="stylesheet" href="css/variables-8adf115d.css">
+        <link rel="stylesheet" href="css/general-e96d0476.css">
+        <link rel="stylesheet" href="css/chrome-d279d366.css">
+        <link rel="stylesheet" href="css/print-9e4910d8.css" media="print">
+
+        <!-- Fonts -->
+        <link rel="stylesheet" href="fonts/fonts-9644e21d.css">
+
+        <!-- Highlight.js Stylesheets -->
+        <link rel="stylesheet" id="mdbook-highlight-css" href="highlight-493f70e1.css">
+        <link rel="stylesheet" id="mdbook-tomorrow-night-css" href="tomorrow-night-4c0ae647.css">
+        <link rel="stylesheet" id="mdbook-ayu-highlight-css" href="ayu-highlight-3fdfc3ac.css">
+
+        <!-- Custom theme stylesheets -->
+        <link rel="stylesheet" href="theme/custom-8a495b63.css">
+
+
+        <!-- Provide site root and default themes to javascript -->
+        <script>
+            const path_to_root = "";
+            const default_light_theme = "light";
+            const default_dark_theme = "navy";
+            window.path_to_searchindex_js = "searchindex-fe51950f.js";
+        </script>
+        <!-- Start loading toc.js asap -->
+        <script src="toc-cc887274.js"></script>
+    </head>
+    <body>
+    <div id="mdbook-help-container">
+        <div id="mdbook-help-popup">
+            <h2 class="mdbook-help-title">Keyboard shortcuts</h2>
+            <div>
+                <p>Press <kbd>←</kbd> or <kbd>→</kbd> to navigate between chapters</p>
+                <p>Press <kbd>S</kbd> or <kbd>/</kbd> to search in the book</p>
+                <p>Press <kbd>?</kbd> to show this help</p>
+                <p>Press <kbd>Esc</kbd> to hide this help</p>
+            </div>
+        </div>
+    </div>
+    <div id="mdbook-body-container">
+        <!-- Work around some values being stored in localStorage wrapped in quotes -->
+        <script>
+            try {
+                let theme = localStorage.getItem('mdbook-theme');
+                let sidebar = localStorage.getItem('mdbook-sidebar');
+
+                if (theme.startsWith('"') && theme.endsWith('"')) {
+                    localStorage.setItem('mdbook-theme', theme.slice(1, theme.length - 1));
+                }
+
+                if (sidebar.startsWith('"') && sidebar.endsWith('"')) {
+                    localStorage.setItem('mdbook-sidebar', sidebar.slice(1, sidebar.length - 1));
+                }
+            } catch (e) { }
+        </script>
+
+        <!-- Set the theme before any content is loaded, prevents flash -->
+        <script>
+            const default_theme = window.matchMedia("(prefers-color-scheme: dark)").matches ? default_dark_theme : default_light_theme;
+            let theme;
+            try { theme = localStorage.getItem('mdbook-theme'); } catch(e) { }
+            if (theme === null || theme === undefined) { theme = default_theme; }
+            const html = document.documentElement;
+            html.classList.remove('light')
+            html.classList.add(theme);
+            html.classList.add("js");
+        </script>
+
+        <input type="checkbox" id="mdbook-sidebar-toggle-anchor" class="hidden">
+
+        <!-- Hide / unhide sidebar before it is displayed -->
+        <script>
+            let sidebar = null;
+            const sidebar_toggle = document.getElementById("mdbook-sidebar-toggle-anchor");
+            if (document.body.clientWidth >= 1080) {
+                try { sidebar = localStorage.getItem('mdbook-sidebar'); } catch(e) { }
+                sidebar = sidebar || 'visible';
+            } else {
+                sidebar = 'hidden';
+                sidebar_toggle.checked = false;
+            }
+            if (sidebar === 'visible') {
+                sidebar_toggle.checked = true;
+            } else {
+                html.classList.remove('sidebar-visible');
+            }
+        </script>
+
+        <nav id="mdbook-sidebar" class="sidebar" aria-label="Table of contents">
+            <!-- populated by js -->
+            <mdbook-sidebar-scrollbox class="sidebar-scrollbox"></mdbook-sidebar-scrollbox>
+            <noscript>
+                <iframe class="sidebar-iframe-outer" src="toc.html"></iframe>
+            </noscript>
+            <div id="mdbook-sidebar-resize-handle" class="sidebar-resize-handle">
+                <div class="sidebar-resize-indicator"></div>
+            </div>
+        </nav>
+
+        <div id="mdbook-page-wrapper" class="page-wrapper">
+
+            <div class="page">
+                <div id="mdbook-menu-bar-hover-placeholder"></div>
+                <div id="mdbook-menu-bar" class="menu-bar sticky">
+                    <div class="left-buttons">
+                        <label id="mdbook-sidebar-toggle" class="icon-button" for="mdbook-sidebar-toggle-anchor" title="Toggle Table of Contents" aria-label="Toggle Table of Contents" aria-controls="mdbook-sidebar">
+                            <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M0 96C0 78.3 14.3 64 32 64H416c17.7 0 32 14.3 32 32s-14.3 32-32 32H32C14.3 128 0 113.7 0 96zM0 256c0-17.7 14.3-32 32-32H416c17.7 0 32 14.3 32 32s-14.3 32-32 32H32c-17.7 0-32-14.3-32-32zM448 416c0 17.7-14.3 32-32 32H32c-17.7 0-32-14.3-32-32s14.3-32 32-32H416c17.7 0 32 14.3 32 32z"/></svg></span>
+                        </label>
+                        <button id="mdbook-theme-toggle" class="icon-button" type="button" title="Change theme" aria-label="Change theme" aria-haspopup="true" aria-expanded="false" aria-controls="mdbook-theme-list">
+                            <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 576 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M371.3 367.1c27.3-3.9 51.9-19.4 67.2-42.9L600.2 74.1c12.6-19.5 9.4-45.3-7.6-61.2S549.7-4.4 531.1 9.6L294.4 187.2c-24 18-38.2 46.1-38.4 76.1L371.3 367.1zm-19.6 25.4l-116-104.4C175.9 290.3 128 339.6 128 400c0 3.9 .2 7.8 .6 11.6c1.8 17.5-10.2 36.4-27.8 36.4H96c-17.7 0-32 14.3-32 32s14.3 32 32 32H240c61.9 0 112-50.1 112-112c0-2.5-.1-5-.2-7.5z"/></svg></span>
+                        </button>
+                        <ul id="mdbook-theme-list" class="theme-popup" aria-label="Themes" role="menu">
+                            <li role="none"><button role="menuitem" class="theme" id="mdbook-theme-default_theme">Auto</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="mdbook-theme-light">Light</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="mdbook-theme-rust">Rust</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="mdbook-theme-coal">Coal</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="mdbook-theme-navy">Navy</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="mdbook-theme-ayu">Ayu</button></li>
+                        </ul>
+                        <button id="mdbook-search-toggle" class="icon-button" type="button" title="Search (`/`)" aria-label="Toggle Searchbar" aria-expanded="false" aria-keyshortcuts="/ s" aria-controls="mdbook-searchbar">
+                            <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M416 208c0 45.9-14.9 88.3-40 122.7L502.6 457.4c12.5 12.5 12.5 32.8 0 45.3s-32.8 12.5-45.3 0L330.7 376c-34.4 25.2-76.8 40-122.7 40C93.1 416 0 322.9 0 208S93.1 0 208 0S416 93.1 416 208zM208 352c79.5 0 144-64.5 144-144s-64.5-144-144-144S64 128.5 64 208s64.5 144 144 144z"/></svg></span>
+                        </button>
+                    </div>
+
+                    <h1 class="menu-title">Distributed Systems from the Ground Up</h1>
+
+                    <div class="right-buttons">
+                        <a href="print.html" title="Print this book" aria-label="Print this book">
+                            <span class=fa-svg id="print-button"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M128 0C92.7 0 64 28.7 64 64v96h64V64H354.7L384 93.3V160h64V93.3c0-17-6.7-33.3-18.7-45.3L400 18.7C388 6.7 371.7 0 354.7 0H128zM384 352v32 64H128V384 368 352H384zm64 32h32c17.7 0 32-14.3 32-32V256c0-35.3-28.7-64-64-64H64c-35.3 0-64 28.7-64 64v96c0 17.7 14.3 32 32 32H64v64c0 35.3 28.7 64 64 64H384c35.3 0 64-28.7 64-64V384zm-16-88c-13.3 0-24-10.7-24-24s10.7-24 24-24s24 10.7 24 24s-10.7 24-24 24z"/></svg></span>
+                        </a>
+                        <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/tree/prep-v2/distributed-systems-from-the-ground-up" title="Git repository" aria-label="Git repository">
+                            <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 496 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M165.9 397.4c0 2-2.3 3.6-5.2 3.6-3.3.3-5.6-1.3-5.6-3.6 0-2 2.3-3.6 5.2-3.6 3-.3 5.6 1.3 5.6 3.6zm-31.1-4.5c-.7 2 1.3 4.3 4.3 4.9 2.6 1 5.6 0 6.2-2s-1.3-4.3-4.3-5.2c-2.6-.7-5.5.3-6.2 2.3zm44.2-1.7c-2.9.7-4.9 2.6-4.6 4.9.3 2 2.9 3.3 5.9 2.6 2.9-.7 4.9-2.6 4.6-4.6-.3-1.9-3-3.2-5.9-2.9zM244.8 8C106.1 8 0 113.3 0 252c0 110.9 69.8 205.8 169.5 239.2 12.8 2.3 17.3-5.6 17.3-12.1 0-6.2-.3-40.4-.3-61.4 0 0-70 15-84.7-29.8 0 0-11.4-29.1-27.8-36.6 0 0-22.9-15.7 1.6-15.4 0 0 24.9 2 38.6 25.8 21.9 38.6 58.6 27.5 72.9 20.9 2.3-16 8.8-27.1 16-33.7-55.9-6.2-112.3-14.3-112.3-110.5 0-27.5 7.6-41.3 23.6-58.9-2.6-6.5-11.1-33.3 2.6-67.9 20.9-6.5 69 27 69 27 20-5.6 41.5-8.5 62.8-8.5s42.8 2.9 62.8 8.5c0 0 48.1-33.6 69-27 13.7 34.7 5.2 61.4 2.6 67.9 16 17.7 25.8 31.5 25.8 58.9 0 96.5-58.9 104.2-114.8 110.5 9.2 7.9 17 22.9 17 46.4 0 33.7-.3 75.4-.3 83.6 0 6.5 4.6 14.4 17.3 12.1C428.2 457.8 496 362.9 496 252 496 113.3 383.5 8 244.8 8zM97.2 352.9c-1.3 1-1 3.3.7 5.2 1.6 1.6 3.9 2.3 5.2 1 1.3-1 1-3.3-.7-5.2-1.6-1.6-3.9-2.3-5.2-1zm-10.8-8.1c-.7 1.3.3 2.9 2.3 3.9 1.6 1 3.6.7 4.3-.7.7-1.3-.3-2.9-2.3-3.9-2-.6-3.6-.3-4.3.7zm32.4 35.6c-1.6 1.3-1 4.3 1.3 6.2 2.3 2.3 5.2 2.6 6.5 1 1.3-1.3.7-4.3-1.3-6.2-2.2-2.3-5.2-2.6-6.5-1zm-11.4-14.7c-1.6 1-1.6 3.6 0 5.9 1.6 2.3 4.3 3.3 5.6 2.3 1.6-1.3 1.6-3.9 0-6.2-1.4-2.3-4-3.3-5.6-2z"/></svg></span>
+                        </a>
+                        <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/edit/prep-v2/distributed-systems-from-the-ground-up/src/28-click-aggregation.md" title="Suggest an edit" aria-label="Suggest an edit" rel="edit">
+                            <span class=fa-svg id="git-edit-button"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M421.7 220.3l-11.3 11.3-22.6 22.6-205 205c-6.6 6.6-14.8 11.5-23.8 14.1L30.8 511c-8.4 2.5-17.5 .2-23.7-6.1S-1.5 489.7 1 481.2L38.7 353.1c2.6-9 7.5-17.2 14.1-23.8l205-205 22.6-22.6 11.3-11.3 33.9 33.9 62.1 62.1 33.9 33.9zM96 353.9l-9.3 9.3c-.9 .9-1.6 2.1-2 3.4l-25.3 86 86-25.3c1.3-.4 2.5-1.1 3.4-2l9.3-9.3H112c-8.8 0-16-7.2-16-16V353.9zM453.3 19.3l39.4 39.4c25 25 25 65.5 0 90.5l-14.5 14.5-22.6 22.6-11.3 11.3-33.9-33.9-62.1-62.1L314.3 67.7l11.3-11.3 22.6-22.6 14.5-14.5c25-25 65.5-25 90.5 0z"/></svg></span>
+                        </a>
+
+                    </div>
+                </div>
+
+                <div id="mdbook-search-wrapper" class="hidden">
+                    <form id="mdbook-searchbar-outer" class="searchbar-outer">
+                        <div class="search-wrapper">
+                            <input type="search" id="mdbook-searchbar" name="searchbar" placeholder="Search this book ..." aria-controls="mdbook-searchresults-outer" aria-describedby="searchresults-header">
+                            <div class="spinner-wrapper">
+                                <span class=fa-svg id="fa-spin"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M304 48c0-26.5-21.5-48-48-48s-48 21.5-48 48s21.5 48 48 48s48-21.5 48-48zm0 416c0-26.5-21.5-48-48-48s-48 21.5-48 48s21.5 48 48 48s48-21.5 48-48zM48 304c26.5 0 48-21.5 48-48s-21.5-48-48-48s-48 21.5-48 48s21.5 48 48 48zm464-48c0-26.5-21.5-48-48-48s-48 21.5-48 48s21.5 48 48 48s48-21.5 48-48zM142.9 437c18.7-18.7 18.7-49.1 0-67.9s-49.1-18.7-67.9 0s-18.7 49.1 0 67.9s49.1 18.7 67.9 0zm0-294.2c18.7-18.7 18.7-49.1 0-67.9S93.7 56.2 75 75s-18.7 49.1 0 67.9s49.1 18.7 67.9 0zM369.1 437c18.7 18.7 49.1 18.7 67.9 0s18.7-49.1 0-67.9s-49.1-18.7-67.9 0s-18.7 49.1 0 67.9z"/></svg></span>
+                            </div>
+                        </div>
+                    </form>
+                    <div id="mdbook-searchresults-outer" class="searchresults-outer hidden">
+                        <div id="mdbook-searchresults-header" class="searchresults-header"></div>
+                        <ul id="mdbook-searchresults">
+                        </ul>
+                    </div>
+                </div>
+
+                <!-- Apply ARIA attributes after the sidebar and the sidebar toggle button are added to the DOM -->
+                <script>
+                    document.getElementById('mdbook-sidebar-toggle').setAttribute('aria-expanded', sidebar === 'visible');
+                    document.getElementById('mdbook-sidebar').setAttribute('aria-hidden', sidebar !== 'visible');
+                    Array.from(document.querySelectorAll('#mdbook-sidebar a')).forEach(function(link) {
+                        link.setAttribute('tabIndex', sidebar === 'visible' ? 0 : -1);
+                    });
+                </script>
+
+                <div id="mdbook-content" class="content">
+                    <main>
+                        <img class="plate" src="art/ch28.svg?v=a4f03ad7" alt="A hare stands beside a sign that reads: happened at 7, arrived at 13, counted at 7.">
+<h1 id="click-aggregation-system-design"><a class="header" href="#click-aggregation-system-design">Click Aggregation: System Design</a></h1>
+<p>An advertiser pays for each click on an advertisement, and wishes to know, minute by
+minute, how many clicks there have been. A system that answers this question takes
+in a stream of events, each recording that somebody clicked on something at some
+moment, and turns it continuously into counts: 412 clicks on advertisement 7 between
+10:00 and 10:01, 398 in the minute after. The counts feed dashboards that people
+watch, budgets that stop an advertisement when its money is spent, and, at the end
+of the month, invoices.</p>
+<p>Counting sounds like the easiest task a computer could be given, and for events that
+arrived promptly, once each and in order, it would be. The events of a real system
+do none of those things. A click is recorded on a phone that may be in a tunnel, and
+reaches the service seconds or hours after it happened. Events that were sent in 1
+order arrive in another. A browser that received no acknowledgement sends the same
+click again. And the machines that do the counting fail in the middle of their work,
+after they have counted some events and before they have recorded that they did so.
+Since money changes hands on the strength of the totals, a count that is 2% too high
+is an advertiser overcharged, and one that is 2% too low is revenue lost.</p>
+<p>A system that computes results continuously from an unending stream of events is
+said to do <em>stream processing</em>, and the counting of clicks is its standard example.
+The ideas of this chapter apply equally to counting page views, summing sales,
+detecting fraud and computing the metrics of chapter 24.</p>
+<div class="covers">
+<p>This chapter covers</p>
+<ul>
+<li>counting once a day, and why that is too slow</li>
+<li>the 2 times of every event: when it happened, and when it arrived</li>
+<li>windows, and which window an event belongs to</li>
+<li>watermarks, which decide when a window is finished</li>
+<li>events that arrive after their window has been closed</li>
+<li>counting each click once, although it is delivered more than once</li>
+<li>recovering from a failure without counting anything twice</li>
+<li>keeping every raw event, so that the counts can be made again</li>
+<li>a key that receives far more events than the others</li>
+</ul>
+</div>
+
+<h2 id="counting-once-a-day"><a class="header" href="#counting-once-a-day">Counting once a day</a></h2>
+<p>The oldest way of producing such counts makes no attempt at continuity. Every click
+is appended to a file, and once a day a job reads the day’s file from beginning to
+end, counts the clicks for each advertisement, and writes the totals. This is <em>batch
+processing</em>, and it has virtues that should not be underrated. It is simple. It sees
+all the data at once, so that late and disordered events present no difficulty
+provided they arrived before the job ran. And if the job is found to contain a
+defect, it is corrected and run again on the same file.</p>
+<p>Its failing is delay. The count for a click made just after midnight is available
+some 24 hours later. An advertiser cannot see during the day how a campaign is
+performing, and a budget of 1000 that was exhausted by 9 in the morning goes on
+being spent until the following night.</p>
+<p>Stream processing aims to produce the same counts within seconds, by processing each
+event as it arrives. Nearly everything that makes it difficult comes from having
+given up the 2 comforts of the batch job, namely that all the data was present
+before the work began, and that the whole job could be run again.</p>
+<h2 id="the-2-times-of-an-event"><a class="header" href="#the-2-times-of-an-event">The 2 times of an event</a></h2>
+<p>Every event has 2 times associated with it, and to confuse them is the most common
+single error in the processing of streams.</p>
+<p>The <em>event time</em> is the moment at which the thing happened: the instant at which the
+visitor’s finger touched the advertisement, as recorded by the visitor’s device. The
+<em>processing time</em> is the moment at which the event reaches the system that counts
+it. The 2 differ by the time the event spent in transit, which is usually a fraction
+of a second and occasionally very much more. A phone without a connection holds its
+events until the connection returns. A collector that is restarted delivers a
+backlog when it comes back.</p>
+<p>The question an advertiser is asking concerns event time. “How many clicks between
+10:00 and 10:01” means clicks that were made in that minute, wherever they have been
+since. A system that counts by processing time answers a different question, how
+many clicks happened to reach the counter in that minute, and its answers are wrong
+whenever anything is delayed. Should the collectors be down for 5 minutes and then
+deliver everything together, counting by processing time shows 5 minutes with no
+clicks followed by 1 minute with 6 times the usual number, and an advertiser whose
+campaign ended at 10:03 is charged for clicks made before the end and delivered
+after it.</p>
+<h2 id="windows"><a class="header" href="#windows">Windows</a></h2>
+<p>A stream has no end, and a count is of a finite set. The stream is therefore divided
+into <em>windows</em>, finite spans of time, and a count is produced for each. The simplest
+kind, the <em>tumbling window</em>, divides time into consecutive intervals of equal length
+that do not overlap: 10:00 to 10:01, 10:01 to 10:02, and so on. Each event belongs
+to exactly 1 window, the one that contains its event time.</p>
+<p>Other shapes serve other questions. A <em>sliding window</em> covers a fixed span and
+advances by a smaller step, as in “the clicks of the last 5 minutes, recomputed
+every minute”, so that each event belongs to several windows. A <em>session window</em>
+groups the events of 1 user that follow one another closely, and ends when the user
+has been inactive for some time. This chapter uses tumbling windows, which are
+sufficient to exhibit every difficulty.</p>
+<p>To assign an event to its window by event time is easy: the window is determined by
+the timestamp. The hard question is a different one. Since events arrive late and
+out of order, the system needs to know when it has received all the events of a
+window, so that it may declare the count final and publish it. At 10:01:00 by the
+clock, the window from 10:00 to 10:01 is over, in the sense that no more clicks will
+be made in it. But clicks that were made in it may still be on their way.</p>
+<h2 id="watermarks"><a class="header" href="#watermarks">Watermarks</a></h2>
+<p>There is no certain answer to that question, since an event can in principle be
+delayed without limit. The system has to make a judgement, and the device by which
+the judgement is expressed is the <em>watermark</em>.</p>
+<p>A watermark is a statement by the system about its own progress through event time:
+“I believe I have now received every event that happened before time T”. It is an
+estimate, derived from the events that have been seen. A simple and common rule
+takes the largest event time observed so far and subtracts a fixed allowance for
+lateness. If the newest event seen happened at 10:01:09 and the allowance is 5
+seconds, the watermark stands at 10:01:04, and the system proceeds on the
+assumption that nothing earlier than that is still to come.</p>
+<p>A window is declared finished when the watermark passes its end. Until then it is
+kept open, and events that belong to it are added to its count although they arrive
+after the clock has moved past it.</p>
+<figure class="steps" data-prefix="figures/steps-click-watermark" data-count="6" data-version="6aec362f">
+<img src="figures/steps-click-watermark-01.svg?v=6aec362f" alt="Windows, late clicks and a watermark, step 1 of 6. Clicks are counted in windows of 10 seconds, by the time at which they happened. 6 clicks of the first window have arrived. The watermark is the newest event time, 9, minus 5: the counter still expects clicks from after 4 s.">
+<figcaption><b>Figure 28.1</b> Clicks arrive late, out of order and twice, and a watermark decides when each window is finished. Use Next and Back to move through the 6 steps.</figcaption>
+</figure>
+<p>In these steps the windows are 10 seconds long and the allowance is 5 seconds. A
+click that happened at 7 seconds and arrived at 13 is counted in the first window,
+where it belongs, since the watermark had not yet passed the end of that window.
+When events from 19 seconds appear, the watermark reaches 14, and the first window
+is closed with a count of 7.</p>
+<p>The simulation for this chapter runs the same stream through 2 counters. Counting by
+arrival time gives 7, 5, 1 and 1 for 4 windows, which is wrong in every window, and
+its first figure is right in size only by coincidence, since it includes a duplicate
+and omits 2 late clicks. Counting by event time with a watermark gives 7 and 4 for
+the first 2 windows, against a truth of 8 and 4.</p>
+<p>The size of the allowance is the central parameter of the design, and it expresses a
+compromise that cannot be avoided. A generous allowance waits longer, catches more
+of the late events, and delays every result by as much. A small allowance publishes
+promptly and misses more. Results cannot be both immediate and complete, since
+completeness is only known in retrospect, and the choice of where to stand between
+the 2 depends on what the counts are used for.</p>
+<h2 id="events-that-are-later-still"><a class="header" href="#events-that-are-later-still">Events that are later still</a></h2>
+<p>Whatever the allowance, some events will arrive after their window has been
+declared finished. In the steps above, a click made at 2 seconds arrives a minute
+late, long after the first window was closed with a count of 7. The true count for
+that window was 8.</p>
+<p>There are 3 things that can be done with such an event. It can be discarded, which
+is simple and makes the published counts slightly too low for ever. It can be used
+to revise the count, with the window’s result published a second time as 8, which
+requires everything downstream to be able to accept a correction to a figure it has
+already received. Or it can be set aside in a separate stream of late events, to be
+taken into account by a later and more leisurely process.</p>
+<p>For data on which invoices are based, discarding is unacceptable, and the usual
+design distinguishes 2 grades of result. The counts published within seconds are
+labelled provisional. They drive the dashboards and the budgets, where promptness
+matters more than the last fraction of a percent. A final count for each window is
+computed later, when even very late events have had time to arrive, and it is the
+final counts that are billed. The system states openly which of its figures are of
+which grade, and does not present an estimate as though it were settled.</p>
+<h2 id="counting-each-click-once"><a class="header" href="#counting-each-click-once">Counting each click once</a></h2>
+<p>The message queue that carries the clicks delivers at least once, as chapter 11
+explained, and the devices that send them retry when no acknowledgement comes. The
+same click may therefore reach the counter 2 or 3 times, and a counter that counted
+every delivery would overcharge the advertiser by the rate of retries.</p>
+<p>The remedy is the one that has served throughout this book. Every click is given a
+unique identifier at its origin, by the visitor’s device, and the counter keeps a
+record of the identifiers it has counted, declining to count any that it has seen
+before. In the steps above, the second delivery of click 3 is recognised and
+ignored.</p>
+<p>The set of identifiers seen cannot be allowed to grow for ever, and here the
+watermark gives a second service. An identifier needs to be remembered only for as
+long as a duplicate of it could still arrive and be counted, which is as long as its
+window remains open. When a window is closed, the identifiers that belong to it can
+be discarded, since any later duplicate will be classed as a late event and dealt
+with by that path.</p>
+<h2 id="recovering-without-counting-twice"><a class="header" href="#recovering-without-counting-twice">Recovering without counting twice</a></h2>
+<p>The processor holds state in its memory: the partial counts of the windows that are
+open, the identifiers it has seen, and the position it has reached in the log of
+clicks. When it fails, a replacement has to continue, and the manner in which it
+continues determines whether the counts are right.</p>
+<p>If the replacement started with empty state from the present position in the log,
+the partial counts of the open windows would be lost, and those windows would be
+published too low. If it started with empty state from an earlier position, it would
+count again events whose windows had already been published. The difficulty is that
+of chapter 11, the gap between doing work and recording that it was done, with the
+addition that the work now accumulates in memory over the life of a window.</p>
+<p>The solution is to save the state and the position together. At regular intervals
+the processor writes a <em>checkpoint</em>, which consists of its entire state and the
+position in the log up to which that state reflects the input. The essential
+property is that the 2 are saved as a unit, so that the state corresponds exactly to
+the position. On recovery, the replacement loads the latest checkpoint and resumes
+reading from the recorded position. Every event before that position is reflected in
+the restored state and is not read again, and every event after it is absent from
+the restored state and is read. Each event affects the state exactly once.</p>
+<p>There remains the output. Between the last checkpoint and the failure, the processor
+may have published the results of some windows, and after recovery it will compute
+and publish those windows again. The results must therefore be written in such a way
+that writing them twice is harmless. A count is stored under a key formed from the
+advertisement and the start of the window, and writing the same count under the same
+key a second time merely replaces a value with an equal one. This is an idempotent
+write, and it completes the chain. With a log that can be read again from any
+position, a checkpoint that pairs state with position, and output that may safely be
+repeated, each click contributes to the published totals exactly once, although
+individual steps along the way may be performed more than once. This is the
+“effectively once” of chapter 11, extended to a computation that keeps state.</p>
+<h2 id="keeping-the-raw-events"><a class="header" href="#keeping-the-raw-events">Keeping the raw events</a></h2>
+<p>However carefully the stream processor is built, the time will come when its results
+are found to be wrong. A defect in the code will have miscounted for a week, or a
+definition will change, as when clicks from automated programs, hitherto counted,
+are to be excluded. The counts must then be made again, and that is possible only if
+the original events still exist.</p>
+<p>Every click is therefore retained in its raw form, in the log for some days and in
+an archive in the object store of chapter 16 for much longer. The archive is the
+authority, and every count is derived from it. A corrected version of the computation
+can be run over the archived events to produce corrected counts, which replace the
+old ones under the same keys.</p>
+<p>This arrangement also provides the final counts mentioned earlier. A batch job run
+each night over the complete events of the previous day sees every late arrival,
+needs no watermark, and produces figures that are definitive. The stream gives the
+prompt, provisional answer, and the batch job gives the slow, exact one. Many
+systems run both for this reason, and the chief burden of doing so is that the same
+logic has to be maintained in 2 places and kept in agreement. Where the stream
+processor can itself reread old events from the log, the reprocessing can be done by
+running the same code over the retained log from an earlier position, and the second
+implementation is avoided.</p>
+<h2 id="a-key-with-too-many-events"><a class="header" href="#a-key-with-too-many-events">A key with too many events</a></h2>
+<p>For the sake of throughput, the stream is divided among several processors, each
+handling the events of some of the advertisements. The division is made by hashing
+the identifier of the advertisement, as chapter 11 divided messages by key, so that
+all the clicks on 1 advertisement go to the same processor and can be counted
+together.</p>
+<p>Advertisements are very unequal. A single campaign shown during a major sporting
+event may receive more clicks than all the others together, and every one of them is
+directed to the same processor, which falls behind while its neighbours are idle.
+This is the <em>hot key</em> of chapters 9 and 11 in yet another setting.</p>
+<p>The usual remedy divides the work into 2 stages. In the first, the events of the
+busy advertisement are spread across several processors, by adding a small random
+number to the key, and each processor counts its share for each window. In the
+second, a single processor adds the partial counts together. The second stage
+receives 1 small message from each first-stage processor for each window, in place
+of every event, and is easily able to keep up. Since addition gives the same result
+in whatever grouping it is performed, the total is unaffected.</p>
+<h2 id="use-cases"><a class="header" href="#use-cases">Use cases</a></h2>
+<p>A visitor’s click is recorded. An advertiser sees the counts, and is billed on the
+final ones.</p>
+<figure>
+<img src="figures/click-use-cases.svg?v=b8a69dfb" alt="A use case diagram of the click counter. Visitor: a click is recorded (POST /v1/clicks). Advertiser: see clicks per minute (GET /v1/ads/{id}/counts?from=&amp;to=), receive the invoice (from the final counts).">
+<figcaption><b>Figure 28.2</b> The actors and what each of them does.</figcaption>
+</figure>
+<h2 id="functional-requirements"><a class="header" href="#functional-requirements">Functional requirements</a></h2>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th>No.</th><th>Functional requirement</th></tr>
+</thead>
+<tbody>
+<tr><td>0</td><td>Every click on an advertisement is recorded, with the time at which it happened.</td></tr>
+<tr><td>1</td><td>The number of clicks on each advertisement in each minute is available within 30 seconds of the end of that minute.</td></tr>
+<tr><td>2</td><td>Clicks are counted in the minute in which they happened, whenever they arrive.</td></tr>
+<tr><td>3</td><td>A click that is delivered more than once is counted once.</td></tr>
+<tr><td>4</td><td>Final counts for each day are produced, which include clicks that arrived late.</td></tr>
+<tr><td>5</td><td>Counts can be computed again from the recorded clicks.</td></tr>
+</tbody>
+</table>
+</div>
+<h2 id="non-functional-requirements"><a class="header" href="#non-functional-requirements">Non-functional requirements</a></h2>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th>No.</th><th>Property</th><th>Non-functional requirement</th></tr>
+</thead>
+<tbody>
+<tr><td>0</td><td>Accuracy</td><td>Final counts are exact. Provisional counts are within 1% of the final ones.</td></tr>
+<tr><td>1</td><td>Freshness</td><td>Provisional counts appear within 30 seconds.</td></tr>
+<tr><td>2</td><td>Durability</td><td>A click that was accepted is not lost.</td></tr>
+<tr><td>3</td><td>Consistency</td><td>Eventual for provisional counts, which may be revised. Final counts do not change.</td></tr>
+<tr><td>4</td><td>Scale</td><td>1 billion clicks per day, with peaks of 100000 per second.</td></tr>
+<tr><td>5</td><td>Availability</td><td>99.9% for accepting clicks, which matters more than availability for reading counts.</td></tr>
+</tbody>
+</table>
+</div>
+<p>The last requirement reflects an asymmetry that is typical of systems of this kind.
+A dashboard that is unavailable for a minute is an inconvenience, and its figures
+are there when it returns. A click that is not accepted is lost for good, since the
+visitor will not make it again. The collectors that accept clicks are therefore kept
+as simple as possible, doing nothing beyond appending each click to a durable log,
+so that they remain available whatever is happening to the more elaborate machinery
+downstream.</p>
+<h2 id="core-entities"><a class="header" href="#core-entities">Core entities</a></h2>
+<figure>
+<img src="figures/click-entities.svg?v=ad25fbca" alt="The core entities. Click has the fields id u64, ad u64, happened time, arrived time. Window count has the fields ad u64, window start time, count u32, final yes|no. A Click carries the time it happened on the visitor&#39;s device. A Window count is final once no more clicks are expected.">
+<figcaption><b>Figure 28.3</b> The core entities and their fields.</figcaption>
+</figure>
+<h2 id="capacity-estimate"><a class="header" href="#capacity-estimate">Capacity estimate</a></h2>
+<div class="estimate">
+<img class="builder" src="art/crab-builder.svg" alt="A crab in a hard hat, in tears.">
+<p><strong>Arithmetic ahead.</strong> 1 billion clicks a day of 200 bytes each are 200 GB of raw events a day, while the counts for a million advertisements are a few gigabytes.</p>
+<p><a class="skip" href="#high-level-design">Skip to the high-level design</a></p>
+<details>
+<summary>Show the calculation</summary>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th>Quantity</th><th>Calculation</th><th>Result</th></tr>
+</thead>
+<tbody>
+<tr><td>Clicks per second, on average</td><td>1 billion ÷ 86400</td><td>about 11600</td></tr>
+<tr><td>Raw events per day</td><td>1 billion × 200 bytes</td><td>200 GB</td></tr>
+<tr><td>Raw events per year, in the archive</td><td>200 GB × 365</td><td>73 TB</td></tr>
+<tr><td>Count rows per day</td><td>1 million advertisements × 1440 minutes, of which 10% have any clicks</td><td>144 million</td></tr>
+<tr><td>Size of the counts per day</td><td>144 million × 24 bytes</td><td>about 3.5 GB</td></tr>
+<tr><td>State of the processors</td><td>identifiers of clicks in open windows: 100000 per second × 90 s × 8 bytes</td><td>about 72 MB</td></tr>
+</tbody>
+</table>
+</div>
+</details>
+</div>
+
+<h2 id="the-api"><a class="header" href="#the-api">The API</a></h2>
+<p>A click is reported by the visitor’s browser, with an identifier that the browser
+generates and the time at which the click was made. An advertiser reads counts for a
+range of time.</p>
+<p><strong>Report a click</strong></p>
+<pre><code class="language-http">POST /v1/clicks HTTP/1.1
+Host: clicks.example
+Content-Type: application/json
+
+{ "id": "c-7f3a91", "ad": 7, "happened": "2026-10-14T10:00:07Z" }
+</code></pre>
+<pre><code class="language-http">HTTP/1.1 202 Accepted
+</code></pre>
+<p>The status is <code>202</code>, since the click has been stored and has not yet been counted.
+The identifier allows a repeated report to be recognised.</p>
+<p><strong>Read the counts of an advertisement</strong></p>
+<pre><code class="language-http">GET /v1/ads/7/counts?from=2026-10-14T10:00:00Z&amp;to=2026-10-14T10:03:00Z HTTP/1.1
+Host: clicks.example
+</code></pre>
+<pre><code class="language-http">HTTP/1.1 200 OK
+Content-Type: application/json
+
+{
+  "ad": 7,
+  "window_seconds": 60,
+  "counts": [
+    { "start": "2026-10-14T10:00:00Z", "count": 412, "final": true },
+    { "start": "2026-10-14T10:01:00Z", "count": 398, "final": false },
+    { "start": "2026-10-14T10:02:00Z", "count": 87, "final": false }
+  ]
+}
+</code></pre>
+<p>Every count states whether it is final. A caller that draws a graph may use them
+all, and a caller that computes an invoice uses only those marked as final.</p>
+<h2 id="high-level-design"><a class="header" href="#high-level-design">High-level design</a></h2>
+<figure class="wide">
+<img src="figures/click-design.svg?v=79399384" alt="Counting clicks in windows. The components are Visitors, Collectors, Click log, Stream processor, Archive, Count store. Step 1: A visitor&#39;s browser reports a click. Step 2: The collector appends it to the log. Step 3: The processor counts clicks in windows by event time. Step 4: The log is also kept, so that counts can be made again. Step 5: Finished windows are written to the count store.">
+<figcaption><b>Figure 28.4</b> The components and the path of a click. The steps are numbered.</figcaption>
+</figure>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th>Component</th><th>Role</th><th>State it holds</th><th>When 1 instance fails</th></tr>
+</thead>
+<tbody>
+<tr><td>Collector</td><td>accepts clicks and appends them to the log</td><td>none</td><td>another collector accepts</td></tr>
+<tr><td>Click log</td><td>holds every click, in partitions by advertisement</td><td>the log, replicated, as in chapter 11</td><td>a follower is elected</td></tr>
+<tr><td>Stream processor</td><td>assigns clicks to windows, removes repeats, and counts</td><td>open windows, identifiers seen, and its position, saved in checkpoints</td><td>a replacement resumes from the latest checkpoint</td></tr>
+<tr><td>Count store</td><td>holds the count for each advertisement and window</td><td>the counts, replicated</td><td>a follower is elected</td></tr>
+<tr><td>Archive</td><td>keeps every raw click</td><td>the clicks, in an object store</td><td>as in chapter 16</td></tr>
+</tbody>
+</table>
+</div>
+<h3 id="one-click-step-by-step"><a class="header" href="#one-click-step-by-step">One click, step by step</a></h3>
+<p>The steps follow the arrows of figure 28.4.</p>
+<ol>
+<li>A visitor clicks, and the browser reports the click with an identifier and the time.</li>
+<li>A collector appends the click to the log, in the partition chosen by the advertisement, and answers <code>202</code>.</li>
+<li>The stream processor reads the click from the log. If it has seen the identifier, it does nothing. Otherwise it adds 1 to the open window that contains the click’s event time, and moves the watermark forward if the click is the newest it has seen.</li>
+<li>The log is also copied to the archive, from which counts can later be made again.</li>
+<li>When the watermark passes the end of a window, the processor writes that window’s count to the count store, under a key formed from the advertisement and the start of the window.</li>
+</ol>
+<h2 id="mistakes-to-avoid"><a class="header" href="#mistakes-to-avoid">Mistakes to avoid</a></h2>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th>Mistake</th><th>What goes wrong</th><th>What to do</th></tr>
+</thead>
+<tbody>
+<tr><td>Counting by the time of arrival</td><td>Delayed clicks are counted in the wrong minute, and an outage produces an empty stretch followed by a spike.</td><td>Count by the time at which the click happened.</td></tr>
+<tr><td>Closing a window when the clock passes its end</td><td>Every click still in transit is missed.</td><td>Close a window when the watermark passes its end.</td></tr>
+<tr><td>Discarding late clicks silently</td><td>Billed counts are always slightly too low.</td><td>Record late clicks, and include them in the final counts.</td></tr>
+<tr><td>Presenting provisional counts as final</td><td>A figure that has already been billed changes afterwards.</td><td>Mark every count as provisional or final.</td></tr>
+<tr><td>Counting every delivery</td><td>Retries and redeliveries inflate the counts.</td><td>Give every click an identifier, and count each identifier once.</td></tr>
+<tr><td>Remembering every identifier for ever</td><td>Memory grows without limit.</td><td>Forget the identifiers of a window when it closes.</td></tr>
+<tr><td>Saving state and position separately</td><td>After a failure, clicks are counted twice or not at all.</td><td>Save them together, in a checkpoint.</td></tr>
+<tr><td>Writing results by adding to a stored count</td><td>A result written twice after a recovery is added twice.</td><td>Write the count of a window under its own key, replacing whatever is there.</td></tr>
+<tr><td>Keeping only the counts</td><td>A defect or a change of definition cannot be corrected.</td><td>Keep every raw click.</td></tr>
+<tr><td>Trusting the timestamp of the visitor’s device entirely</td><td>A device with a wrong clock places its clicks in the wrong day.</td><td>Record the time of arrival too, and reject event times that are impossibly far from it.</td></tr>
+<tr><td>Sending all the clicks of a busy advertisement to 1 processor</td><td>That processor falls behind while the others are idle.</td><td>Count in 2 stages, spreading the busy key in the first.</td></tr>
+<tr><td>Doing work in the collector</td><td>Clicks are lost when the downstream machinery is slow.</td><td>Let the collector append to the log and nothing else.</td></tr>
+</tbody>
+</table>
+</div>
+<h2 id="failures"><a class="header" href="#failures">Failures</a></h2>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th>Failure</th><th>What users see</th><th>How the system recovers</th></tr>
+</thead>
+<tbody>
+<tr><td>A stream processor fails</td><td>counts stop advancing for some seconds</td><td>a replacement loads the latest checkpoint and resumes from its position</td></tr>
+<tr><td>The collectors are unreachable for a time</td><td>no new counts, then counts for the missed minutes</td><td>browsers retry, and the clicks are counted in the minutes in which they happened</td></tr>
+<tr><td>A click arrives after its window was closed</td><td>the provisional count is slightly low</td><td>the final count includes it</td></tr>
+<tr><td>A click is delivered twice</td><td>nothing</td><td>its identifier is recognised</td></tr>
+<tr><td>A window’s result is written twice</td><td>nothing</td><td>the second write replaces the first with the same value</td></tr>
+<tr><td>The counts are found to be wrong</td><td>corrected figures</td><td>the computation is run again over the archive</td></tr>
+</tbody>
+</table>
+</div>
+<h2 id="trade-offs"><a class="header" href="#trade-offs">Trade-offs</a></h2>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th>Decision</th><th>What it gains</th><th>What it costs</th></tr>
+</thead>
+<tbody>
+<tr><td>Counting by event time</td><td>counts that answer the question asked</td><td>windows have to be kept open, and a watermark maintained</td></tr>
+<tr><td>A larger allowance for lateness</td><td>more complete provisional counts</td><td>every result is published later</td></tr>
+<tr><td>Provisional and final counts</td><td>prompt figures and exact invoices</td><td>2 grades of result that callers must distinguish</td></tr>
+<tr><td>Checkpoints</td><td>recovery with each click counted once</td><td>periodic pauses to save state, and reprocessing since the last checkpoint</td></tr>
+<tr><td>Keeping raw events</td><td>counts can always be made again</td><td>73 TB a year of storage</td></tr>
+<tr><td>A stream and a nightly batch</td><td>speed and exactness together</td><td>the same logic in 2 places</td></tr>
+</tbody>
+</table>
+</div>
+<h2 id="the-simulation"><a class="header" href="#the-simulation">The simulation</a></h2>
+<div class="simulation">
+<p><strong>Simulation in the repository.</strong> The program <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/distributed-systems-from-the-ground-up/code/clicksim/src/main.rs"><code>code/clicksim</code></a> simulates this design. To run it, clone the repository and type <code>cargo run --release -p clicksim</code> in the <code>code</code> directory.</p>
+</div>
+
+<h2 id="terms-introduced-in-this-chapter"><a class="header" href="#terms-introduced-in-this-chapter">Terms introduced in this chapter</a></h2>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th>Term</th><th>Meaning</th></tr>
+</thead>
+<tbody>
+<tr><td>Stream processing</td><td>computing results continuously from an unending sequence of events</td></tr>
+<tr><td>Batch processing</td><td>computing results from a complete, finite set of data</td></tr>
+<tr><td>Event time</td><td>the time at which an event happened</td></tr>
+<tr><td>Processing time</td><td>the time at which an event reaches the system that processes it</td></tr>
+<tr><td>Window</td><td>a finite span of time over which events are aggregated</td></tr>
+<tr><td>Tumbling window</td><td>1 of a series of consecutive windows of equal length that do not overlap</td></tr>
+<tr><td>Sliding window</td><td>a window of fixed length that advances by a smaller step</td></tr>
+<tr><td>Session window</td><td>the events of 1 user that follow one another closely</td></tr>
+<tr><td>Watermark</td><td>the system’s estimate of the event time before which everything has arrived</td></tr>
+<tr><td>Allowed lateness</td><td>how long the system waits for older events</td></tr>
+<tr><td>Late event</td><td>an event that arrives after its window was declared finished</td></tr>
+<tr><td>Provisional, final</td><td>a count that may still be revised, and one that will not</td></tr>
+<tr><td>Checkpoint</td><td>the state of a processor saved together with its position in the input</td></tr>
+<tr><td>Reprocessing</td><td>computing results again from the original events</td></tr>
+</tbody>
+</table>
+</div>
+<div class="summary">
+<h2 id="summary"><a class="header" href="#summary">Summary</a></h2>
+<ul>
+<li>Counting events once a day is simple and exact, and its results come a day late.</li>
+<li>Every event has the time it happened and the time it arrived, and counts must go by the first.</li>
+<li>A stream is divided into windows, and the hard question is when a window has received all its events.</li>
+<li>A watermark estimates how far the system has progressed through event time, and a window is finished when the watermark passes its end.</li>
+<li>Events later than that are recorded and included in final counts, which are distinguished from the provisional ones published at once.</li>
+<li>Every click carries an identifier, and is counted once however often it is delivered.</li>
+<li>A checkpoint saves the processor’s state together with its position in the log, and results are written under keys that make a repeated write harmless.</li>
+<li>The raw events are kept, so that every count can be computed again.</li>
+</ul>
+</div>
+
+
+                    </main>
+
+                    <nav class="nav-wrapper" aria-label="Page navigation">
+                        <!-- Mobile navigation buttons -->
+                            <a rel="prev" href="27-stock-exchange.html" class="mobile-nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                                <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M41.4 233.4c-12.5 12.5-12.5 32.8 0 45.3l160 160c12.5 12.5 32.8 12.5 45.3 0s12.5-32.8 0-45.3L109.3 256 246.6 118.6c12.5-12.5 12.5-32.8 0-45.3s-32.8-12.5-45.3 0l-160 160z"/></svg></span>
+                            </a>
+
+
+                        <div style="clear: both"></div>
+                    </nav>
+                </div>
+            </div>
+
+            <nav class="nav-wide-wrapper" aria-label="Page navigation">
+                    <a rel="prev" href="27-stock-exchange.html" class="nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                        <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M41.4 233.4c-12.5 12.5-12.5 32.8 0 45.3l160 160c12.5 12.5 32.8 12.5 45.3 0s12.5-32.8 0-45.3L109.3 256 246.6 118.6c12.5-12.5 12.5-32.8 0-45.3s-32.8-12.5-45.3 0l-160 160z"/></svg></span>
+                    </a>
+
+            </nav>
+
+        </div>
+
+        <template id=fa-eye><span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 576 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M288 32c-80.8 0-145.5 36.8-192.6 80.6C48.6 156 17.3 208 2.5 243.7c-3.3 7.9-3.3 16.7 0 24.6C17.3 304 48.6 356 95.4 399.4C142.5 443.2 207.2 480 288 480s145.5-36.8 192.6-80.6c46.8-43.5 78.1-95.4 93-131.1c3.3-7.9 3.3-16.7 0-24.6c-14.9-35.7-46.2-87.7-93-131.1C433.5 68.8 368.8 32 288 32zM432 256c0 79.5-64.5 144-144 144s-144-64.5-144-144s64.5-144 144-144s144 64.5 144 144zM288 192c0 35.3-28.7 64-64 64c-11.5 0-22.3-3-31.6-8.4c-.2 2.8-.4 5.5-.4 8.4c0 53 43 96 96 96s96-43 96-96s-43-96-96-96c-2.8 0-5.6 .1-8.4 .4c5.3 9.3 8.4 20.1 8.4 31.6z"/></svg></span></template>
+        <template id=fa-eye-slash><span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M38.8 5.1C28.4-3.1 13.3-1.2 5.1 9.2S-1.2 34.7 9.2 42.9l592 464c10.4 8.2 25.5 6.3 33.7-4.1s6.3-25.5-4.1-33.7L525.6 386.7c39.6-40.6 66.4-86.1 79.9-118.4c3.3-7.9 3.3-16.7 0-24.6c-14.9-35.7-46.2-87.7-93-131.1C465.5 68.8 400.8 32 320 32c-68.2 0-125 26.3-169.3 60.8L38.8 5.1zM223.1 149.5C248.6 126.2 282.7 112 320 112c79.5 0 144 64.5 144 144c0 24.9-6.3 48.3-17.4 68.7L408 294.5c5.2-11.8 8-24.8 8-38.5c0-53-43-96-96-96c-2.8 0-5.6 .1-8.4 .4c5.3 9.3 8.4 20.1 8.4 31.6c0 10.2-2.4 19.8-6.6 28.3l-90.3-70.8zm223.1 298L373 389.9c-16.4 6.5-34.3 10.1-53 10.1c-79.5 0-144-64.5-144-144c0-6.9 .5-13.6 1.4-20.2L83.1 161.5C60.3 191.2 44 220.8 34.5 243.7c-3.3 7.9-3.3 16.7 0 24.6c14.9 35.7 46.2 87.7 93 131.1C174.5 443.2 239.2 480 320 480c47.8 0 89.9-12.9 126.2-32.5z"/></svg></span></template>
+        <template id=fa-copy><span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M502.6 70.63l-61.25-61.25C435.4 3.371 427.2 0 418.7 0H255.1c-35.35 0-64 28.66-64 64l.0195 256C192 355.4 220.7 384 256 384h192c35.2 0 64-28.8 64-64V93.25C512 84.77 508.6 76.63 502.6 70.63zM464 320c0 8.836-7.164 16-16 16H255.1c-8.838 0-16-7.164-16-16L239.1 64.13c0-8.836 7.164-16 16-16h128L384 96c0 17.67 14.33 32 32 32h47.1V320zM272 448c0 8.836-7.164 16-16 16H63.1c-8.838 0-16-7.164-16-16L47.98 192.1c0-8.836 7.164-16 16-16H160V128H63.99c-35.35 0-64 28.65-64 64l.0098 256C.002 483.3 28.66 512 64 512h192c35.2 0 64-28.8 64-64v-32h-47.1L272 448z"/></svg></span></template>
+        <template id=fa-play><span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 384 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M73 39c-14.8-9.1-33.4-9.4-48.5-.9S0 62.6 0 80V432c0 17.4 9.4 33.4 24.5 41.9s33.7 8.1 48.5-.9L361 297c14.3-8.7 23-24.2 23-41s-8.7-32.2-23-41L73 39z"/></svg></span></template>
+        <template id=fa-clock-rotate-left><span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M75 75L41 41C25.9 25.9 0 36.6 0 57.9V168c0 13.3 10.7 24 24 24H134.1c21.4 0 32.1-25.9 17-41l-30.8-30.8C155 85.5 203 64 256 64c106 0 192 86 192 192s-86 192-192 192c-40.8 0-78.6-12.7-109.7-34.4c-14.5-10.1-34.4-6.6-44.6 7.9s-6.6 34.4 7.9 44.6C151.2 495 201.7 512 256 512c141.4 0 256-114.6 256-256S397.4 0 256 0C185.3 0 121.3 28.7 75 75zm181 53c-13.3 0-24 10.7-24 24V256c0 6.4 2.5 12.5 7 17l72 72c9.4 9.4 24.6 9.4 33.9 0s9.4-24.6 0-33.9l-65-65V152c0-13.3-10.7-24-24-24z"/></svg></span></template>
+
+
+
+        <script>
+            window.playground_copyable = true;
+        </script>
+
+
+        <script src="elasticlunr-ef4e11c1.min.js"></script>
+        <script src="mark-09e88c2c.min.js"></script>
+        <script src="searcher-09f2665d.js"></script>
+
+        <script src="clipboard-1626706a.min.js"></script>
+        <script src="highlight-abc7f01d.js"></script>
+        <script src="book-609e4cb8.js"></script>
+
+        <!-- Custom JS scripts -->
+        <script src="theme/figures-47b15f7f.js"></script>
+        <script src="theme/proto-326509cd.js"></script>
+        <script src="theme/code-67e9caaf.js"></script>
+        <script src="theme/tables-9fb295e8.js"></script>
+        <script src="theme/steps-77f22afb.js"></script>
+
+
+
+    </div>
+    </body>
+</html>

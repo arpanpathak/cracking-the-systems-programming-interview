@@ -1,0 +1,88 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="18 14 444 502" width="444" height="502" role="img" aria-label="3 time axes on which a message for a phone reaches the server at 1.3 seconds. When the phone asks every second, it receives the message at 2.0 seconds, and 3 other requests come back empty. When the phone asks and the server holds the request until there is an answer, the phone receives the message at 1.3 seconds and asks again. With 1 connection that stays open, the phone receives the message at 1.3 seconds and no requests are made.">
+  <style>
+    text { font-family: Inter, "Segoe UI", "Helvetica Neue", Helvetica, Arial, sans-serif; fill: #1B2430; }
+    .title { font-size: 18px; font-weight: 650; }
+    .lede { font-size: 12.5px; fill: #5D6B7A; }
+    .name { font-size: 14px; font-weight: 650; }
+    .sub { font-size: 12px; fill: #5D6B7A; }
+    .note { font-size: 12px; fill: #5D6B7A; }
+    .tab { font-size: 11.5px; font-weight: 650; letter-spacing: 0.04em; fill: #5D6B7A; }
+    .mono { font-family: "JetBrains Mono", "SF Mono", Menlo, Consolas, monospace; font-size: 12px; }
+    .dim { fill: #8794A3; }
+    .strong { font-weight: 700; }
+    .trap { fill: #CF4526; font-weight: 700; }
+    .pill { font-size: 11px; font-weight: 600; }
+    .wire { fill: none; stroke: #3F5873; stroke-width: 2.4; stroke-linecap: butt; stroke-linejoin: round; }
+    .wire.danger { stroke: #CF4526; stroke-dasharray: 6 5; }
+    .wire.idle { stroke: #7F8EA0; stroke-dasharray: 2 5; }
+  </style>
+  <defs>
+    <filter id="lift" x="-10%" y="-10%" width="120%" height="135%">
+      <feDropShadow dx="0" dy="2" stdDeviation="3" flood-color="#1B2430" flood-opacity="0.13"/>
+    </filter>
+    <linearGradient id="thor-body" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#C6CCD5"/><stop offset="1" stop-color="#979EA9"/>
+    </linearGradient>
+    <linearGradient id="switch-body" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#3B4656"/><stop offset="1" stop-color="#232B37"/>
+    </linearGradient>
+    <marker id="head" viewBox="0 0 12 10" refX="8" refY="5" markerUnits="userSpaceOnUse" markerWidth="16" markerHeight="13.3" orient="auto">
+      <path d="M0,0.4 L12,5 L0,9.6 L2.8,5 Z" fill="#3F5873"/>
+    </marker>
+    <marker id="head-danger" viewBox="0 0 12 10" refX="8" refY="5" markerUnits="userSpaceOnUse" markerWidth="16" markerHeight="13.3" orient="auto">
+      <path d="M0,0.4 L12,5 L0,9.6 L2.8,5 Z" fill="#CF4526"/>
+    </marker>
+    <marker id="head-idle" viewBox="0 0 12 10" refX="8" refY="5" markerUnits="userSpaceOnUse" markerWidth="16" markerHeight="13.3" orient="auto">
+      <path d="M0,0.4 L12,5 L0,9.6 L2.8,5 Z" fill="#7F8EA0"/>
+    </marker>
+  </defs>
+  <rect width="480" height="522" rx="14" fill="#FBFAF6"/>
+  <text x="32.0" y="42.0" class="title" text-anchor="start" xml:space="preserve">3 ways for a phone to receive</text>
+  <text x="32.0" y="63.0" class="lede" text-anchor="start" xml:space="preserve">A message arrives at the server at 1.3 s.</text>
+  <text x="40.0" y="100.0" class="tab" text-anchor="start" xml:space="preserve">ASKING EVERY SECOND</text>
+  <line x1="40" y1="160" x2="440" y2="160" stroke="#5D6B7A" stroke-width="1.6"/>
+  <line x1="48.0" y1="155" x2="48.0" y2="165" stroke="#5D6B7A" stroke-width="1.6"/>
+  <text x="48.0" y="181.0" class="mono dim" text-anchor="middle" xml:space="preserve">0.0 s</text>
+  <line x1="176.0" y1="155" x2="176.0" y2="165" stroke="#5D6B7A" stroke-width="1.6"/>
+  <text x="176.0" y="181.0" class="mono dim" text-anchor="middle" xml:space="preserve">1.0 s</text>
+  <line x1="304.0" y1="155" x2="304.0" y2="165" stroke="#5D6B7A" stroke-width="1.6"/>
+  <text x="304.0" y="181.0" class="mono dim" text-anchor="middle" xml:space="preserve">2.0 s</text>
+  <line x1="432.0" y1="155" x2="432.0" y2="165" stroke="#5D6B7A" stroke-width="1.6"/>
+  <text x="432.0" y="181.0" class="mono dim" text-anchor="middle" xml:space="preserve">3.0 s</text>
+  <circle cx="48.0" cy="146" r="5" fill="#B7791F" stroke="#FFFFFF" stroke-width="1.2"/>
+  <circle cx="176.0" cy="146" r="5" fill="#B7791F" stroke="#FFFFFF" stroke-width="1.2"/>
+  <circle cx="304.0" cy="146" r="5" fill="#2E8B3D" stroke="#FFFFFF" stroke-width="1.2"/>
+  <circle cx="432.0" cy="146" r="5" fill="#B7791F" stroke="#FFFFFF" stroke-width="1.2"/>
+  <line x1="214.4" y1="120" x2="214.4" y2="166" stroke="#CF4526" stroke-width="1.6" stroke-dasharray="4 4"/>
+  <text x="40.0" y="218.0" class="tab" text-anchor="start" xml:space="preserve">ASKING, AND WAITING FOR THE ANSWER</text>
+  <rect x="48.0" y="258" width="166.4" height="12" rx="6" fill="#FBF1DC" stroke="#B7791F" stroke-width="1.2"/>
+  <rect x="214.4" y="258" width="217.6" height="12" rx="6" fill="#FBF1DC" stroke="#B7791F" stroke-width="1.2"/>
+  <line x1="40" y1="278" x2="440" y2="278" stroke="#5D6B7A" stroke-width="1.6"/>
+  <line x1="48.0" y1="273" x2="48.0" y2="283" stroke="#5D6B7A" stroke-width="1.6"/>
+  <text x="48.0" y="299.0" class="mono dim" text-anchor="middle" xml:space="preserve">0.0 s</text>
+  <line x1="176.0" y1="273" x2="176.0" y2="283" stroke="#5D6B7A" stroke-width="1.6"/>
+  <text x="176.0" y="299.0" class="mono dim" text-anchor="middle" xml:space="preserve">1.0 s</text>
+  <line x1="304.0" y1="273" x2="304.0" y2="283" stroke="#5D6B7A" stroke-width="1.6"/>
+  <text x="304.0" y="299.0" class="mono dim" text-anchor="middle" xml:space="preserve">2.0 s</text>
+  <line x1="432.0" y1="273" x2="432.0" y2="283" stroke="#5D6B7A" stroke-width="1.6"/>
+  <text x="432.0" y="299.0" class="mono dim" text-anchor="middle" xml:space="preserve">3.0 s</text>
+  <circle cx="214.4" cy="264" r="5" fill="#2E8B3D" stroke="#FFFFFF" stroke-width="1.2"/>
+  <line x1="214.4" y1="238" x2="214.4" y2="284" stroke="#CF4526" stroke-width="1.6" stroke-dasharray="4 4"/>
+  <text x="40.0" y="336.0" class="tab" text-anchor="start" xml:space="preserve">1 CONNECTION THAT STAYS OPEN</text>
+  <rect x="48.0" y="376" width="384.0" height="12" rx="6" fill="#FBF1DC" stroke="#B7791F" stroke-width="1.2"/>
+  <line x1="40" y1="396" x2="440" y2="396" stroke="#5D6B7A" stroke-width="1.6"/>
+  <line x1="48.0" y1="391" x2="48.0" y2="401" stroke="#5D6B7A" stroke-width="1.6"/>
+  <text x="48.0" y="417.0" class="mono dim" text-anchor="middle" xml:space="preserve">0.0 s</text>
+  <line x1="176.0" y1="391" x2="176.0" y2="401" stroke="#5D6B7A" stroke-width="1.6"/>
+  <text x="176.0" y="417.0" class="mono dim" text-anchor="middle" xml:space="preserve">1.0 s</text>
+  <line x1="304.0" y1="391" x2="304.0" y2="401" stroke="#5D6B7A" stroke-width="1.6"/>
+  <text x="304.0" y="417.0" class="mono dim" text-anchor="middle" xml:space="preserve">2.0 s</text>
+  <line x1="432.0" y1="391" x2="432.0" y2="401" stroke="#5D6B7A" stroke-width="1.6"/>
+  <text x="432.0" y="417.0" class="mono dim" text-anchor="middle" xml:space="preserve">3.0 s</text>
+  <circle cx="214.4" cy="382" r="5" fill="#2E8B3D" stroke="#FFFFFF" stroke-width="1.2"/>
+  <line x1="214.4" y1="356" x2="214.4" y2="402" stroke="#CF4526" stroke-width="1.6" stroke-dasharray="4 4"/>
+  <text x="32.0" y="450.0" class="sub" text-anchor="start" xml:space="preserve">The dashed line is the moment a message for this phone reaches</text>
+  <text x="32.0" y="467.0" class="sub" text-anchor="start" xml:space="preserve">the server, at 1.3 s. A green dot is the moment the phone receives</text>
+  <text x="32.0" y="484.0" class="sub" text-anchor="start" xml:space="preserve">it. An amber dot is a request that came back empty, and an amber</text>
+  <text x="32.0" y="501.0" class="sub" text-anchor="start" xml:space="preserve">bar is a request or connection that is being held open.</text>
+</svg>

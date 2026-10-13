@@ -1,0 +1,3289 @@
+<!DOCTYPE HTML>
+<html lang="en" class="light sidebar-visible" dir="ltr">
+    <head>
+        <!-- Book generated using mdBook -->
+        <meta charset="UTF-8">
+        <title>Key-Value Store: Storage Node (Low-Level Design) - Distributed Systems from the Ground Up</title>
+
+
+        <!-- Custom HTML head -->
+
+        <meta name="description" content="System design and low-level design of resilient, fault-tolerant distributed systems, with code in Rust">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <meta name="theme-color" content="#ffffff">
+
+        <link rel="icon" href="favicon-de23e50b.svg">
+        <link rel="shortcut icon" href="favicon-8114d1fc.png">
+        <link rel="stylesheet" href="css/variables-8adf115d.css">
+        <link rel="stylesheet" href="css/general-e96d0476.css">
+        <link rel="stylesheet" href="css/chrome-d279d366.css">
+        <link rel="stylesheet" href="css/print-9e4910d8.css" media="print">
+
+        <!-- Fonts -->
+        <link rel="stylesheet" href="fonts/fonts-9644e21d.css">
+
+        <!-- Highlight.js Stylesheets -->
+        <link rel="stylesheet" id="mdbook-highlight-css" href="highlight-493f70e1.css">
+        <link rel="stylesheet" id="mdbook-tomorrow-night-css" href="tomorrow-night-4c0ae647.css">
+        <link rel="stylesheet" id="mdbook-ayu-highlight-css" href="ayu-highlight-3fdfc3ac.css">
+
+        <!-- Custom theme stylesheets -->
+        <link rel="stylesheet" href="theme/custom-8a495b63.css">
+
+
+        <!-- Provide site root and default themes to javascript -->
+        <script>
+            const path_to_root = "";
+            const default_light_theme = "light";
+            const default_dark_theme = "navy";
+            window.path_to_searchindex_js = "searchindex-fe51950f.js";
+        </script>
+        <!-- Start loading toc.js asap -->
+        <script src="toc-cc887274.js"></script>
+    </head>
+    <body>
+    <div id="mdbook-help-container">
+        <div id="mdbook-help-popup">
+            <h2 class="mdbook-help-title">Keyboard shortcuts</h2>
+            <div>
+                <p>Press <kbd>←</kbd> or <kbd>→</kbd> to navigate between chapters</p>
+                <p>Press <kbd>S</kbd> or <kbd>/</kbd> to search in the book</p>
+                <p>Press <kbd>?</kbd> to show this help</p>
+                <p>Press <kbd>Esc</kbd> to hide this help</p>
+            </div>
+        </div>
+    </div>
+    <div id="mdbook-body-container">
+        <!-- Work around some values being stored in localStorage wrapped in quotes -->
+        <script>
+            try {
+                let theme = localStorage.getItem('mdbook-theme');
+                let sidebar = localStorage.getItem('mdbook-sidebar');
+
+                if (theme.startsWith('"') && theme.endsWith('"')) {
+                    localStorage.setItem('mdbook-theme', theme.slice(1, theme.length - 1));
+                }
+
+                if (sidebar.startsWith('"') && sidebar.endsWith('"')) {
+                    localStorage.setItem('mdbook-sidebar', sidebar.slice(1, sidebar.length - 1));
+                }
+            } catch (e) { }
+        </script>
+
+        <!-- Set the theme before any content is loaded, prevents flash -->
+        <script>
+            const default_theme = window.matchMedia("(prefers-color-scheme: dark)").matches ? default_dark_theme : default_light_theme;
+            let theme;
+            try { theme = localStorage.getItem('mdbook-theme'); } catch(e) { }
+            if (theme === null || theme === undefined) { theme = default_theme; }
+            const html = document.documentElement;
+            html.classList.remove('light')
+            html.classList.add(theme);
+            html.classList.add("js");
+        </script>
+
+        <input type="checkbox" id="mdbook-sidebar-toggle-anchor" class="hidden">
+
+        <!-- Hide / unhide sidebar before it is displayed -->
+        <script>
+            let sidebar = null;
+            const sidebar_toggle = document.getElementById("mdbook-sidebar-toggle-anchor");
+            if (document.body.clientWidth >= 1080) {
+                try { sidebar = localStorage.getItem('mdbook-sidebar'); } catch(e) { }
+                sidebar = sidebar || 'visible';
+            } else {
+                sidebar = 'hidden';
+                sidebar_toggle.checked = false;
+            }
+            if (sidebar === 'visible') {
+                sidebar_toggle.checked = true;
+            } else {
+                html.classList.remove('sidebar-visible');
+            }
+        </script>
+
+        <nav id="mdbook-sidebar" class="sidebar" aria-label="Table of contents">
+            <!-- populated by js -->
+            <mdbook-sidebar-scrollbox class="sidebar-scrollbox"></mdbook-sidebar-scrollbox>
+            <noscript>
+                <iframe class="sidebar-iframe-outer" src="toc.html"></iframe>
+            </noscript>
+            <div id="mdbook-sidebar-resize-handle" class="sidebar-resize-handle">
+                <div class="sidebar-resize-indicator"></div>
+            </div>
+        </nav>
+
+        <div id="mdbook-page-wrapper" class="page-wrapper">
+
+            <div class="page">
+                <div id="mdbook-menu-bar-hover-placeholder"></div>
+                <div id="mdbook-menu-bar" class="menu-bar sticky">
+                    <div class="left-buttons">
+                        <label id="mdbook-sidebar-toggle" class="icon-button" for="mdbook-sidebar-toggle-anchor" title="Toggle Table of Contents" aria-label="Toggle Table of Contents" aria-controls="mdbook-sidebar">
+                            <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M0 96C0 78.3 14.3 64 32 64H416c17.7 0 32 14.3 32 32s-14.3 32-32 32H32C14.3 128 0 113.7 0 96zM0 256c0-17.7 14.3-32 32-32H416c17.7 0 32 14.3 32 32s-14.3 32-32 32H32c-17.7 0-32-14.3-32-32zM448 416c0 17.7-14.3 32-32 32H32c-17.7 0-32-14.3-32-32s14.3-32 32-32H416c17.7 0 32 14.3 32 32z"/></svg></span>
+                        </label>
+                        <button id="mdbook-theme-toggle" class="icon-button" type="button" title="Change theme" aria-label="Change theme" aria-haspopup="true" aria-expanded="false" aria-controls="mdbook-theme-list">
+                            <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 576 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M371.3 367.1c27.3-3.9 51.9-19.4 67.2-42.9L600.2 74.1c12.6-19.5 9.4-45.3-7.6-61.2S549.7-4.4 531.1 9.6L294.4 187.2c-24 18-38.2 46.1-38.4 76.1L371.3 367.1zm-19.6 25.4l-116-104.4C175.9 290.3 128 339.6 128 400c0 3.9 .2 7.8 .6 11.6c1.8 17.5-10.2 36.4-27.8 36.4H96c-17.7 0-32 14.3-32 32s14.3 32 32 32H240c61.9 0 112-50.1 112-112c0-2.5-.1-5-.2-7.5z"/></svg></span>
+                        </button>
+                        <ul id="mdbook-theme-list" class="theme-popup" aria-label="Themes" role="menu">
+                            <li role="none"><button role="menuitem" class="theme" id="mdbook-theme-default_theme">Auto</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="mdbook-theme-light">Light</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="mdbook-theme-rust">Rust</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="mdbook-theme-coal">Coal</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="mdbook-theme-navy">Navy</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="mdbook-theme-ayu">Ayu</button></li>
+                        </ul>
+                        <button id="mdbook-search-toggle" class="icon-button" type="button" title="Search (`/`)" aria-label="Toggle Searchbar" aria-expanded="false" aria-keyshortcuts="/ s" aria-controls="mdbook-searchbar">
+                            <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M416 208c0 45.9-14.9 88.3-40 122.7L502.6 457.4c12.5 12.5 12.5 32.8 0 45.3s-32.8 12.5-45.3 0L330.7 376c-34.4 25.2-76.8 40-122.7 40C93.1 416 0 322.9 0 208S93.1 0 208 0S416 93.1 416 208zM208 352c79.5 0 144-64.5 144-144s-64.5-144-144-144S64 128.5 64 208s64.5 144 144 144z"/></svg></span>
+                        </button>
+                    </div>
+
+                    <h1 class="menu-title">Distributed Systems from the Ground Up</h1>
+
+                    <div class="right-buttons">
+                        <a href="print.html" title="Print this book" aria-label="Print this book">
+                            <span class=fa-svg id="print-button"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M128 0C92.7 0 64 28.7 64 64v96h64V64H354.7L384 93.3V160h64V93.3c0-17-6.7-33.3-18.7-45.3L400 18.7C388 6.7 371.7 0 354.7 0H128zM384 352v32 64H128V384 368 352H384zm64 32h32c17.7 0 32-14.3 32-32V256c0-35.3-28.7-64-64-64H64c-35.3 0-64 28.7-64 64v96c0 17.7 14.3 32 32 32H64v64c0 35.3 28.7 64 64 64H384c35.3 0 64-28.7 64-64V384zm-16-88c-13.3 0-24-10.7-24-24s10.7-24 24-24s24 10.7 24 24s-10.7 24-24 24z"/></svg></span>
+                        </a>
+                        <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/tree/prep-v2/distributed-systems-from-the-ground-up" title="Git repository" aria-label="Git repository">
+                            <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 496 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M165.9 397.4c0 2-2.3 3.6-5.2 3.6-3.3.3-5.6-1.3-5.6-3.6 0-2 2.3-3.6 5.2-3.6 3-.3 5.6 1.3 5.6 3.6zm-31.1-4.5c-.7 2 1.3 4.3 4.3 4.9 2.6 1 5.6 0 6.2-2s-1.3-4.3-4.3-5.2c-2.6-.7-5.5.3-6.2 2.3zm44.2-1.7c-2.9.7-4.9 2.6-4.6 4.9.3 2 2.9 3.3 5.9 2.6 2.9-.7 4.9-2.6 4.6-4.6-.3-1.9-3-3.2-5.9-2.9zM244.8 8C106.1 8 0 113.3 0 252c0 110.9 69.8 205.8 169.5 239.2 12.8 2.3 17.3-5.6 17.3-12.1 0-6.2-.3-40.4-.3-61.4 0 0-70 15-84.7-29.8 0 0-11.4-29.1-27.8-36.6 0 0-22.9-15.7 1.6-15.4 0 0 24.9 2 38.6 25.8 21.9 38.6 58.6 27.5 72.9 20.9 2.3-16 8.8-27.1 16-33.7-55.9-6.2-112.3-14.3-112.3-110.5 0-27.5 7.6-41.3 23.6-58.9-2.6-6.5-11.1-33.3 2.6-67.9 20.9-6.5 69 27 69 27 20-5.6 41.5-8.5 62.8-8.5s42.8 2.9 62.8 8.5c0 0 48.1-33.6 69-27 13.7 34.7 5.2 61.4 2.6 67.9 16 17.7 25.8 31.5 25.8 58.9 0 96.5-58.9 104.2-114.8 110.5 9.2 7.9 17 22.9 17 46.4 0 33.7-.3 75.4-.3 83.6 0 6.5 4.6 14.4 17.3 12.1C428.2 457.8 496 362.9 496 252 496 113.3 383.5 8 244.8 8zM97.2 352.9c-1.3 1-1 3.3.7 5.2 1.6 1.6 3.9 2.3 5.2 1 1.3-1 1-3.3-.7-5.2-1.6-1.6-3.9-2.3-5.2-1zm-10.8-8.1c-.7 1.3.3 2.9 2.3 3.9 1.6 1 3.6.7 4.3-.7.7-1.3-.3-2.9-2.3-3.9-2-.6-3.6-.3-4.3.7zm32.4 35.6c-1.6 1.3-1 4.3 1.3 6.2 2.3 2.3 5.2 2.6 6.5 1 1.3-1.3.7-4.3-1.3-6.2-2.2-2.3-5.2-2.6-6.5-1zm-11.4-14.7c-1.6 1-1.6 3.6 0 5.9 1.6 2.3 4.3 3.3 5.6 2.3 1.6-1.3 1.6-3.9 0-6.2-1.4-2.3-4-3.3-5.6-2z"/></svg></span>
+                        </a>
+                        <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/edit/prep-v2/distributed-systems-from-the-ground-up/src/02-key-value-store-storage-node.md" title="Suggest an edit" aria-label="Suggest an edit" rel="edit">
+                            <span class=fa-svg id="git-edit-button"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M421.7 220.3l-11.3 11.3-22.6 22.6-205 205c-6.6 6.6-14.8 11.5-23.8 14.1L30.8 511c-8.4 2.5-17.5 .2-23.7-6.1S-1.5 489.7 1 481.2L38.7 353.1c2.6-9 7.5-17.2 14.1-23.8l205-205 22.6-22.6 11.3-11.3 33.9 33.9 62.1 62.1 33.9 33.9zM96 353.9l-9.3 9.3c-.9 .9-1.6 2.1-2 3.4l-25.3 86 86-25.3c1.3-.4 2.5-1.1 3.4-2l9.3-9.3H112c-8.8 0-16-7.2-16-16V353.9zM453.3 19.3l39.4 39.4c25 25 25 65.5 0 90.5l-14.5 14.5-22.6 22.6-11.3 11.3-33.9-33.9-62.1-62.1L314.3 67.7l11.3-11.3 22.6-22.6 14.5-14.5c25-25 65.5-25 90.5 0z"/></svg></span>
+                        </a>
+
+                    </div>
+                </div>
+
+                <div id="mdbook-search-wrapper" class="hidden">
+                    <form id="mdbook-searchbar-outer" class="searchbar-outer">
+                        <div class="search-wrapper">
+                            <input type="search" id="mdbook-searchbar" name="searchbar" placeholder="Search this book ..." aria-controls="mdbook-searchresults-outer" aria-describedby="searchresults-header">
+                            <div class="spinner-wrapper">
+                                <span class=fa-svg id="fa-spin"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M304 48c0-26.5-21.5-48-48-48s-48 21.5-48 48s21.5 48 48 48s48-21.5 48-48zm0 416c0-26.5-21.5-48-48-48s-48 21.5-48 48s21.5 48 48 48s48-21.5 48-48zM48 304c26.5 0 48-21.5 48-48s-21.5-48-48-48s-48 21.5-48 48s21.5 48 48 48zm464-48c0-26.5-21.5-48-48-48s-48 21.5-48 48s21.5 48 48 48s48-21.5 48-48zM142.9 437c18.7-18.7 18.7-49.1 0-67.9s-49.1-18.7-67.9 0s-18.7 49.1 0 67.9s49.1 18.7 67.9 0zm0-294.2c18.7-18.7 18.7-49.1 0-67.9S93.7 56.2 75 75s-18.7 49.1 0 67.9s49.1 18.7 67.9 0zM369.1 437c18.7 18.7 49.1 18.7 67.9 0s18.7-49.1 0-67.9s-49.1-18.7-67.9 0s-18.7 49.1 0 67.9z"/></svg></span>
+                            </div>
+                        </div>
+                    </form>
+                    <div id="mdbook-searchresults-outer" class="searchresults-outer hidden">
+                        <div id="mdbook-searchresults-header" class="searchresults-header"></div>
+                        <ul id="mdbook-searchresults">
+                        </ul>
+                    </div>
+                </div>
+
+                <!-- Apply ARIA attributes after the sidebar and the sidebar toggle button are added to the DOM -->
+                <script>
+                    document.getElementById('mdbook-sidebar-toggle').setAttribute('aria-expanded', sidebar === 'visible');
+                    document.getElementById('mdbook-sidebar').setAttribute('aria-hidden', sidebar !== 'visible');
+                    Array.from(document.querySelectorAll('#mdbook-sidebar a')).forEach(function(link) {
+                        link.setAttribute('tabIndex', sidebar === 'visible' ? 0 : -1);
+                    });
+                </script>
+
+                <div id="mdbook-content" class="content">
+                    <main>
+                        <img class="plate" src="art/ch02.svg?v=ce3188d3" alt="Ledger, a tortoise, writes each change in a long ledger before saying yes. Lightning strikes beside it and a crab jumps in shock, and the ledger still holds every line that was written: put user-1, put user-2, delete user-2.">
+<h1 id="key-value-store-storage-node-low-level-design"><a class="header" href="#key-value-store-storage-node-low-level-design">Key-Value Store: Storage Node (Low-Level Design)</a></h1>
+<p>The design of <a href="01-key-value-store-system-design.html">chapter 1</a> distributes a key-value
+store over 24 machines, keeps every key on 3 of them, and reasons at length about what
+happens when machines fail. All of that reasoning rests on a single assumption about
+each individual machine, which chapter 1 stated in its closing section and did not
+justify: that a write which a node has acknowledged will still be there after the node
+has crashed and been restarted. If 1 node can quietly lose a write it has confirmed,
+then a write “stored on 2 of 3 nodes” may be stored on 1, and nothing built on top of
+that count can be trusted.</p>
+<p>This chapter builds the component that makes the assumption true. A <em>storage node</em> is
+the program that holds the entries of the store on 1 machine, and its whole difficulty
+is concentrated in the few milliseconds during which a write is in progress and the
+machine may lose power. We begin by examining what a crash can do to a write at each
+stage, which leads to the technique of writing every change to a log before doing
+anything else. We then define the format of the log on disk, write the code that
+recovers from a damaged log, and build on top of it the store and the HTTP API of
+chapter 1. The chapter ends by trying, in 3 different ways, to make the node lose
+data: by damaging its log at every possible byte, by killing it under load, and by
+killing it under load from another machine.</p>
+<div class="covers">
+<p>This chapter covers</p>
+<ul>
+<li>what a crash does to a write at each stage</li>
+<li>write-ahead logging, and why the log is written before memory is changed</li>
+<li>a format for records, with a length and a checksum</li>
+<li>recovery: reading a log, and cutting off a damaged end</li>
+<li>the system calls <code>write</code> and <code>fsync</code>, and what each of them costs</li>
+<li>what to do when the disk reports an error</li>
+<li>a store with entries, versions and conditional writes</li>
+<li>an HTTP server that provides the API of chapter 1</li>
+<li>a simulation that damages a log at every byte</li>
+<li>a test that kills the server under load, on 1 machine and on 2</li>
+</ul>
+</div>
+
+<h2 id="storing-data-durably"><a class="header" href="#storing-data-durably">Storing data durably</a></h2>
+<p>A storage node keeps its entries in memory, so that a read requires no access to the
+disk. Memory is lost when the process stops, and so the node must keep the data on
+disk as well, in a form from which the contents of memory can be reconstructed.</p>
+<p>The first design that comes to mind keeps a file which mirrors the contents of memory
+and, on every write, overwrites the affected part of that file. In the presence of
+crashes this is unsafe, and the reason is worth seeing concretely. Suppose that a
+value of 1 KB is being replaced by another of the same size, and that the power fails
+when half of the new bytes have reached the disk. The file now contains the first
+half of the new value followed by the second half of the old. The entry is corrupt,
+its former value can no longer be recovered, and, worst of all, nothing in the file
+indicates that anything is wrong.</p>
+<p>The fault in this design is that an update in place destroys the old state before the
+new state is complete, so that there is a moment at which neither exists. The standard
+remedy is to give up updating in place altogether. The node appends a description of
+each change to the end of a file and modifies the file in no other way. A file used in
+this manner is called a <em>log</em>. Because every change is entered in the log before it is
+applied to any other structure, the technique is known as <em>write-ahead logging</em>, and
+the file as a <em>write-ahead log</em>.</p>
+<p>With a file that is only ever appended to, a crash during a write can affect nothing
+but the record that was being appended. All the earlier records are intact, since
+nothing ever writes to that part of the file again.</p>
+<figure>
+<img src="figures/node-inside.svg?v=fc67b1c5" alt="The inside of a storage node. The HTTP handler reads the key, the headers and the body, and calls the store, which checks the condition on the version. A write goes first to the log on disk, which holds every change in order and survives a crash, and second to the map in memory, which goes from key to entry, is sorted by key, and is rebuilt at start. A read uses map only.">
+<figcaption><b>Figure 2.1</b> The components of a storage node, and the order of the steps of a write.</figcaption>
+</figure>
+<p>The node maintains 4 <em>invariants</em>, conditions that hold at every moment, whatever
+requests arrive and wherever a crash occurs.</p>
+<ol>
+<li>Every change is in the log, and confirmed by the disk, before its client receives a response.</li>
+<li>Every change is in the log before it is applied to the map in memory.</li>
+<li>The map is equal to the result of applying all the records of the log in order.</li>
+<li>The log is modified only by appending. The bytes of a confirmed record are never written again.</li>
+</ol>
+<p>Each invariant purchases something specific. The first is durability itself. The
+second and third together ensure that the map contains nothing that is absent from the
+log, so that the loss of the map loses no data. And the fourth confines the damage
+that a crash can do to the end of the file, where recovery knows to look for it.</p>
+<h2 id="crashes-during-a-write"><a class="header" href="#crashes-during-a-write">Crashes during a write</a></h2>
+<p>Given this ordering of steps, the outcome of a crash can be worked out for each stage
+of a write.</p>
+<figure>
+<img src="figures/crash-points.svg?v=254c7a72" alt="The 4 moments at which a node can crash during a write. Before the record is written: nothing is on disk, the client gets no answer, and after restart the write did not happen. In the middle of the record: part of a record is on disk, the client gets no answer, and after restart the part is cut off. After fsync but before the answer: the whole record is on disk, the client gets no answer, and after restart the write happened. After the answer: the whole Record is on disk, client got 201 or 204, and write happened.">
+<figcaption><b>Figure 2.2</b> The 4 stages at which a crash can occur, and the state that is found after a restart.</figcaption>
+</figure>
+<p>The third case requires comment. The record has been stored durably, and the node
+crashes before it has sent its response. After the restart the write is present,
+although its client was never told that it had succeeded. This does not violate the
+guarantee of durability, which covers acknowledged writes and is silent about writes
+whose outcome was never reported. From the client’s point of view the outcome of such
+a write is unknown, which is the lost response that chapter 1 discussed under
+retries. The client resolves the uncertainty by sending the request again, and can do
+so safely because <code>PUT</code> is idempotent. This case is produced deliberately, by a test,
+in the section on killing the server.</p>
+<h2 id="the-format-of-a-record"><a class="header" href="#the-format-of-a-record">The format of a record</a></h2>
+<p>When a log is read back, the reader has to determine where each record ends, since
+records differ in length. It must also be able to recognise a record that is
+incomplete or damaged, since the end of the file may contain the partial output of a
+write that a crash interrupted.</p>
+<p>Both needs are met by beginning every record with a <em>frame</em> of 8 bytes, which holds
+the length of the data that follows and a checksum of it. The checksum is a <em>CRC-32</em>,
+a value of 32 bits computed from the data in such a way that any change to the data
+will almost certainly change the value. When a record is read, the checksum is
+computed afresh and compared with the one that was stored.</p>
+<figure>
+<img src="figures/record-layout.svg?v=c4fa56a5" alt="The 28 bytes of the first record of the log. The frame is 8 bytes: the length, 14 00 00 00, which says that the payload is 20 bytes, and the checksum, 8d d3 da 1d, the CRC-32 of those 20 bytes. The payload is the sequence 1 as 8 bytes, the kind 01 for a put, the key length 6 as 2 bytes, the 6 bytes of the key user-1, and the value ada as the Rest of payload.">
+<figcaption><b>Figure 2.3</b> The layout of the first record of a log.</figcaption>
+</figure>
+<p>The following are the first bytes of a log after the 2 writes to <code>user-1</code> shown in
+chapter 1.</p>
+<pre><code class="language-console">$ xxd data/kv.log | head -4
+00000000: 1400 0000 8dd3 da1d 0100 0000 0000 0000  ................
+00000010: 0106 0075 7365 722d 3161 6461 1d00 0000  ...user-1ada....
+00000020: cefd 7d53 0200 0000 0000 0000 0106 0075  ..}S...........u
+00000030: 7365 722d 3161 6461 206c 6f76 656c 6163  ser-1ada lovelac
+</code></pre>
+<p>The first 4 bytes, <code>1400 0000</code>, encode the length 20 in <em>little-endian</em> order, in
+which the least significant byte of a number comes first. The 4 bytes of the checksum
+follow. Within the payload, the sequence number 1 occupies the first 8 bytes, and is
+followed by the kind, <code>01</code>, and the length of the key, <code>0600</code>. The key and the value
+can be read in the right-hand column. At byte 28, which is <code>0x1c</code>, the second record
+begins with the length <code>1d00 0000</code>, or 29.</p>
+<p class="listing"><img class="mascot" src="art/crab-happy.svg" alt=""><b>Listing 2.1</b> The imports of <code>kv/src/record.rs</code>. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/distributed-systems-from-the-ground-up/code/kv/src/record.rs">kv/src/record.rs</a></p>
+
+<pre><code class="language-rust">use crc32fast::hash;</code></pre>
+<p class="listing"><img class="mascot" src="art/crab-happy.svg" alt=""><b>Listing 2.2</b> The types for a change, a record, and the result of decoding. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/distributed-systems-from-the-ground-up/code/kv/src/record.rs">kv/src/record.rs</a></p>
+
+<pre><code class="language-rust">/// A change to the store.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum Change {
+    Put { key: String, value: Vec&lt;u8&gt; },
+    Delete { key: String },
+}
+
+/// A change with its position in the log. Sequence numbers start at 1 and
+/// grow by 1 with each record.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct Record {
+    pub sequence: u64,
+    pub change: Change,
+}
+
+/// The result of reading one record from the front of a slice of bytes.
+#[derive(Debug, PartialEq, Eq)]
+pub enum Decoded {
+    /// A whole record, and the number of bytes it occupies.
+    Record { record: Record, length: usize },
+    /// The bytes end before the record does.
+    Incomplete,
+    /// The checksum does not match the payload, or the payload is malformed.
+    Corrupt,
+}
+
+/// The bytes of a frame: the length and the checksum.
+pub const FRAME: usize = 8;
+
+/// The largest payload a record may have: a key, a value of 1 MiB, and the
+/// fixed fields.
+pub const MAX_PAYLOAD: usize = (1 &lt;&lt; 20) + 1024;
+
+const PUT: u8 = 1;
+const DELETE: u8 = 2;</code></pre>
+<p><code>Decoded</code> has 3 variants because a reader must tell 3 situations apart: a complete
+record, data that ends before the record is complete, and data that is complete and
+invalid. The distinction between the last 2 is of no consequence to recovery, which
+treats them alike, and is valuable when a log is being examined after a fault, since
+the one indicates an interrupted write and the other a damaged disk.</p>
+<p class="listing"><img class="mascot" src="art/crab-happy.svg" alt=""><b>Listing 2.3</b> Encoding a record. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/distributed-systems-from-the-ground-up/code/kv/src/record.rs">kv/src/record.rs</a></p>
+
+<pre><code class="language-rust">impl Record {
+    /// Returns the record as the bytes that are appended to the log.
+    pub fn encode(&amp;self) -&gt; Vec&lt;u8&gt; {
+        let (kind, key, value) = match &amp;self.change {
+            Change::Put { key, value } =&gt; (PUT, key, value.as_slice()),
+            Change::Delete { key } =&gt; (DELETE, key, &amp;[][..]),
+        };
+
+        let mut payload = Vec::with_capacity(11 + key.len() + value.len());
+        payload.extend_from_slice(&amp;self.sequence.to_le_bytes());
+        payload.push(kind);
+        payload.extend_from_slice(&amp;(key.len() as u16).to_le_bytes());
+        payload.extend_from_slice(key.as_bytes());
+        payload.extend_from_slice(value);
+
+        let mut bytes = Vec::with_capacity(FRAME + payload.len());
+        bytes.extend_from_slice(&amp;(payload.len() as u32).to_le_bytes());
+        bytes.extend_from_slice(&amp;hash(&amp;payload).to_le_bytes());
+        bytes.extend_from_slice(&amp;payload);
+
+        bytes
+    }
+}</code></pre>
+<p>Decoding carries out the same steps in order and returns the variant that corresponds
+to the first step that fails.</p>
+<p class="listing"><img class="mascot" src="art/crab-happy.svg" alt=""><b>Listing 2.4</b> Decoding a record. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/distributed-systems-from-the-ground-up/code/kv/src/record.rs">kv/src/record.rs</a></p>
+
+<pre><code class="language-rust">impl Record {
+    /// Reads the record at the front of `bytes`.
+    pub fn decode(bytes: &amp;[u8]) -&gt; Decoded {
+        let Some((length, rest)) = bytes.split_first_chunk::&lt;4&gt;() else {
+            return Decoded::Incomplete;
+        };
+        let Some((checksum, rest)) = rest.split_first_chunk::&lt;4&gt;() else {
+            return Decoded::Incomplete;
+        };
+
+        let length = u32::from_le_bytes(*length) as usize;
+
+        if length &gt; MAX_PAYLOAD {
+            return Decoded::Corrupt;
+        }
+
+        let Some(payload) = rest.get(..length) else {
+            return Decoded::Incomplete;
+        };
+
+        if hash(payload) != u32::from_le_bytes(*checksum) {
+            return Decoded::Corrupt;
+        }
+
+        match parse(payload) {
+            Some(record) =&gt; Decoded::Record {
+                record,
+                length: FRAME + length,
+            },
+            None =&gt; Decoded::Corrupt,
+        }
+    }
+}
+
+/// Splits a payload into its fields. It returns `None` for a payload that is
+/// too short for its fields or has an unknown kind.
+fn parse(payload: &amp;[u8]) -&gt; Option&lt;Record&gt; {
+    let (sequence, rest) = payload.split_first_chunk::&lt;8&gt;()?;
+    let (&amp;kind, rest) = rest.split_first()?;
+    let (key_length, rest) = rest.split_first_chunk::&lt;2&gt;()?;
+    let (key, value) = rest.split_at_checked(u16::from_le_bytes(*key_length) as usize)?;
+    let key = String::from_utf8(key.to_vec()).ok()?;
+
+    let change = match (kind, value) {
+        (PUT, value) =&gt; Change::Put {
+            key,
+            value: value.to_vec(),
+        },
+        (DELETE, []) =&gt; Change::Delete { key },
+        (_unknown, _value) =&gt; return None,
+    };
+
+    Some(Record {
+        sequence: u64::from_le_bytes(*sequence),
+        change,
+    })
+}</code></pre>
+<p><code>split_first_chunk</code> returns the first bytes of a slice as an array of fixed size,
+together with the remainder, or <code>None</code> if the slice is too short. Every field is
+extracted by this means. A payload shorter than its fields therefore yields <code>None</code>,
+and at no point does the code use a value read from the disk as an index without
+first having validated it. A decoder of data from disk must be written on the
+assumption that the data may be anything at all, since after a fault it may be.</p>
+<h2 id="what-a-durable-write-costs"><a class="header" href="#what-a-durable-write-costs">What a durable write costs</a></h2>
+<p>Invariant 1 requires that the disk has confirmed every record. Writing to a file does
+not, by itself, satisfy this requirement, and the difference between the 2 is the most
+consequential fact about storage that a programmer has to know.</p>
+<p>The system call <code>write</code> copies data into a buffer belonging to the kernel and
+returns. At some later time, the kernel transfers the buffer to the disk. With the
+call <code>fsync</code>, a program instructs the kernel to transfer all the buffered data of a
+file at once, and the call does not return until the disk has reported success. In
+Rust, <code>File::sync_data</code> makes this call.</p>
+<figure>
+<img src="figures/survives.svg?v=66f2d30b" alt="What survives 2 kinds of failure. When the process is killed, the map in the process is lost, bytes given to write are kept, and bytes after fsync are kept. When the power fails, the map is lost, bytes given to write are lost, and bytes after fsync are kept. After write the bytes are in the kernel&#39;s memory, and the kernel outlives the process, So only a power failure shows difference.">
+<figcaption><b>Figure 2.4</b> The data that is lost in each kind of failure.</figcaption>
+</figure>
+<p>The program <code>synccost</code> appends 500 records to a log, first without <code>fsync</code> and then
+with an <code>fsync</code> after every record.</p>
+<p class="listing"><img class="mascot" src="art/crab-happy.svg" alt=""><b>Listing 2.5</b> The imports of <code>synccost/src/main.rs</code>. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/distributed-systems-from-the-ground-up/code/synccost/src/main.rs">synccost/src/main.rs</a></p>
+
+<pre><code class="language-rust">use std::env;
+use std::error::Error;
+use std::fs;
+use std::path::Path;
+use std::time::{Duration, Instant};
+
+use kv::{Change, Log};</code></pre>
+<p class="listing"><img class="mascot" src="art/crab-happy.svg" alt=""><b>Listing 2.6</b> Measuring the cost of an append with and without <code>fsync</code>. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/distributed-systems-from-the-ground-up/code/synccost/src/main.rs">synccost/src/main.rs</a></p>
+
+<pre><code class="language-rust">const RECORDS: u32 = 500;
+
+/// Appends `RECORDS` records of 100 bytes and returns the time it took.
+fn measure(directory: &amp;Path, sync: bool) -&gt; Result&lt;Duration, Box&lt;dyn Error&gt;&gt; {
+    let mut log = Log::open(directory, sync)?.0;
+    let started = Instant::now();
+
+    for number in 0..RECORDS {
+        log.append(Change::Put {
+            key: format!("key-{number:06}"),
+            value: vec![b'v'; 100],
+        })?;
+    }
+
+    Ok(started.elapsed())
+}
+
+fn main() -&gt; Result&lt;(), Box&lt;dyn Error&gt;&gt; {
+    let root = env::args()
+        .nth(1)
+        .ok_or("usage: synccost &lt;directory&gt;")?;
+
+    for (name, sync) in [("without fsync", false), ("with fsync", true)] {
+        let directory = Path::new(&amp;root).join(name.replace(' ', "-"));
+        let elapsed = measure(&amp;directory, sync)?;
+        let each = elapsed.as_secs_f64() * 1000.0 / f64::from(RECORDS);
+
+        println!(
+            "{name:13}: {RECORDS} records in {:8.1} ms, {each:.3} ms per record, {:6.0} records per second",
+            elapsed.as_secs_f64() * 1000.0,
+            1000.0 / each
+        );
+
+        fs::remove_dir_all(&amp;directory)?;
+    }
+
+    Ok(())
+}</code></pre>
+<pre><code class="language-console">$ cargo run --release -p synccost -- /var/tmp/synccost
+without fsync: 500 records in      1.4 ms, 0.003 ms per record, 366991 records per second
+with fsync   : 500 records in   2697.5 ms, 5.395 ms per record,    185 records per second
+</code></pre>
+<figure>
+<img src="figures/sync-cost.svg?v=0bf92cb7" alt="The cost of fsync on an NVMe disk. Appending 1 record takes 0.003 ms with write only and 5.395 ms with write followed by fsync. That is 366991 records per second against 185. write copies the bytes into the kernel&#39;s memory and returns, and fsync waits until the disk reports that the bytes are stored.">
+<figcaption><b>Figure 2.5</b> The 2 measurements, drawn to scale.</figcaption>
+</figure>
+<p>On an NVMe disk, a durable append took 5.4 ms, about 1900 times as long as an append
+that merely copies data into the kernel’s buffer. This is the figure from which
+chapter 1 derived its 185 records per second. Because the cost is so high, storage
+systems commonly make the behaviour configurable, and <code>kvd</code> has an option <code>--no-sync</code>
+under which the node responds after <code>write</code> alone. In that mode the node keeps every
+acknowledged write if its process crashes, and may lose the most recent writes if the
+machine loses power. Whether that is an acceptable bargain depends on the data, and it
+is a decision that ought to be made knowingly, since the default behaviour of a great
+many programs makes it silently.</p>
+<h2 id="design-overview"><a class="header" href="#design-overview">Design overview</a></h2>
+<div class="lld">
+<p>Low-level design: the storage node</p>
+<p><strong>Crates</strong></p>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th>Crate</th><th>Kind</th><th>Contents</th></tr>
+</thead>
+<tbody>
+<tr><td><code>kv</code></td><td>library</td><td><code>record</code> (the format of a record), <code>log</code> (the log file), <code>store</code> (the map and the conditions on writes)</td></tr>
+<tr><td><code>kvd</code></td><td>library and program</td><td><code>api</code> (errors and conditional headers, shared with later chapters) and the HTTP server</td></tr>
+<tr><td><code>kvctl</code></td><td>program</td><td>a client that generates load and verifies acknowledged writes</td></tr>
+<tr><td><code>crashsim</code></td><td>program</td><td>a simulation that damages a log at every position</td></tr>
+<tr><td><code>synccost</code></td><td>program</td><td>the measurement of <code>fsync</code></td></tr>
+</tbody>
+</table>
+</div>
+<p><strong>Types</strong></p>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th>Type</th><th>Fields</th><th>Purpose</th></tr>
+</thead>
+<tbody>
+<tr><td><code>Change</code></td><td><code>Put { key, value }</code> or <code>Delete { key }</code></td><td>the modification that a write requests</td></tr>
+<tr><td><code>Record</code></td><td><code>sequence</code>, <code>change</code></td><td>a change and its position in the log</td></tr>
+<tr><td><code>Log</code></td><td><code>file</code>, <code>sync</code>, <code>next</code>, <code>failed</code></td><td>appends records and reads them back</td></tr>
+<tr><td><code>Entry</code></td><td><code>value</code>, <code>version</code></td><td>the current state of a key</td></tr>
+<tr><td><code>Condition</code></td><td><code>Always</code>, <code>Absent</code>, <code>Version(n)</code></td><td>the state of the key that a write requires</td></tr>
+<tr><td><code>Store</code></td><td><code>entries: BTreeMap&lt;String, Entry&gt;</code>, <code>log</code></td><td>applies changes and answers reads</td></tr>
+</tbody>
+</table>
+</div>
+<p><strong>Operations</strong></p>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th>Operation</th><th>Steps</th><th>Cost</th></tr>
+</thead>
+<tbody>
+<tr><td><code>Store::put</code></td><td>check the condition, <code>Log::append</code>, apply to the map</td><td>1 <code>fsync</code></td></tr>
+<tr><td><code>Store::delete</code></td><td>check that the key exists, check the condition, <code>Log::append</code>, apply</td><td>1 <code>fsync</code></td></tr>
+<tr><td><code>Store::get</code></td><td>look the key up in the map</td><td>O(log n), with no access to the disk</td></tr>
+<tr><td><code>Store::list</code></td><td>iterate over the map from a starting key</td><td>O(log n + size of the page), with no access to the disk</td></tr>
+<tr><td><code>Store::open</code></td><td><code>Log::open</code>, then apply every record</td><td>proportional to the size of the log</td></tr>
+</tbody>
+</table>
+</div>
+<p><strong>Failure policy</strong></p>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th>Event</th><th>Response</th></tr>
+</thead>
+<tbody>
+<tr><td>The log ends with an incomplete or damaged record</td><td>The file is cut off after the last valid record.</td></tr>
+<tr><td>A write to the log fails</td><td>The node returns <code>503</code> and rejects every later write until it is restarted.</td></tr>
+</tbody>
+</table>
+</div>
+</div>
+
+<p>The manifest of the workspace declares the edition of Rust, the minimum version of
+the compiler, and the dependencies that its crates share.</p>
+<p class="listing"><img class="mascot" src="art/crab-cute.svg" alt=""><b>Listing 2.7</b> The complete <code>Cargo.toml</code>. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/distributed-systems-from-the-ground-up/code/Cargo.toml">Cargo.toml</a></p>
+
+<pre><code class="language-toml">[workspace]
+resolver = "3"
+members = ["kv", "kvd", "kvctl", "crashsim", "synccost", "ring", "ringsim", "repl", "replsim", "kvnode", "raft", "raftsim", "kvraft", "probe", "kvrouter", "kvgroup", "kvbench",
+    "ratelimit", "idgen", "shortener", "cachesim", "queuesim", "locksim", "jobsim", "notifysim", "feedsim", "objectsim",
+    "streamsim", "chatsim", "paysim", "bookingsim", "nearbysim", "typeahead",
+    "crawlsim", "metricsim", "syncsim", "editsim", "matchsim", "clicksim",
+]
+
+[workspace.package]
+edition = "2024"
+rust-version = "1.99"
+license = "MIT"
+publish = false
+
+[workspace.dependencies]
+kv = { path = "kv" }
+ring = { path = "ring" }
+repl = { path = "repl" }
+raft = { path = "raft" }
+kvd = { path = "kvd" }
+axum = "0.8"
+clap = { version = "4", features = ["derive"] }
+crc32fast = "1"
+parking_lot = "0.12"
+reqwest = { version = "0.13", default-features = false, features = ["json"] }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+thiserror = "2"
+prost = "0.14"
+tokio = { version = "1", features = ["macros", "net", "rt-multi-thread", "sync", "time"] }
+tonic = "0.14"
+tonic-prost = "0.14"
+tonic-prost-build = "0.14"
+ureq = "3"
+xxhash-rust = { version = "0.8", features = ["xxh3"] }
+</code></pre>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th>Dependency</th><th>Purpose</th></tr>
+</thead>
+<tbody>
+<tr><td><code>axum</code>, <code>tokio</code></td><td>the HTTP server and the asynchronous runtime</td></tr>
+<tr><td><code>clap</code></td><td>parsing the options of the command line</td></tr>
+<tr><td><code>crc32fast</code></td><td>the checksum of a record</td></tr>
+<tr><td><code>parking_lot</code></td><td>a mutex whose <code>lock</code> method returns the guard directly</td></tr>
+<tr><td><code>serde</code></td><td>JSON encoding of the list response and of error bodies</td></tr>
+<tr><td><code>thiserror</code></td><td>deriving <code>Display</code> and <code>From</code> for the store’s error type</td></tr>
+<tr><td><code>ureq</code></td><td>the HTTP client used by <code>kvctl</code></td></tr>
+<tr><td><code>xxhash-rust</code></td><td>the hash function of the ring described in chapter 1</td></tr>
+</tbody>
+</table>
+</div>
+<h2 id="the-log"><a class="header" href="#the-log">The log</a></h2>
+<p><code>Log</code> owns the log file. It offers 2 operations: opening, which includes recovery, and
+appending a record.</p>
+<p class="listing"><img class="mascot" src="art/crab-happy.svg" alt=""><b>Listing 2.8</b> The imports of <code>kv/src/log.rs</code>. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/distributed-systems-from-the-ground-up/code/kv/src/log.rs">kv/src/log.rs</a></p>
+
+<pre><code class="language-rust">use std::fs::{self, File, OpenOptions};
+use std::io::{self, Read, Write};
+use std::path::Path;
+
+use crate::record::{Change, Decoded, Record};</code></pre>
+<p class="listing"><img class="mascot" src="art/crab-happy.svg" alt=""><b>Listing 2.9</b> The log, and the result of opening it. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/distributed-systems-from-the-ground-up/code/kv/src/log.rs">kv/src/log.rs</a></p>
+
+<pre><code class="language-rust">/// The name of the log inside the data directory.
+pub const FILE_NAME: &amp;str = "kv.log";
+
+/// An open log, positioned at its end.
+pub struct Log {
+    file: File,
+    /// Whether `append` waits for the disk before it returns.
+    sync: bool,
+    /// The sequence number of the next record.
+    next: u64,
+    /// Set by a failed write. A failed log accepts no more records.
+    failed: bool,
+}
+
+/// What `Log::open` found in the file.
+pub struct Recovery {
+    /// The complete records, in the order they were written.
+    pub records: Vec&lt;Record&gt;,
+    /// The bytes after the last complete record, which were removed.
+    pub discarded: u64,
+}</code></pre>
+<h3 id="recovery"><a class="header" href="#recovery">Recovery</a></h3>
+<p>Opening a log reads the entire file and decodes records from the beginning until one
+fails to decode. Since <code>Record::decode</code> already distinguishes every possible outcome,
+the loop is short. Recovery treats an incomplete record and a corrupt one alike: in
+either case the record before it becomes the last record of the log.</p>
+<p class="listing"><img class="mascot" src="art/crab-happy.svg" alt=""><b>Listing 2.10</b> Decoding records until one is incomplete or corrupt. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/distributed-systems-from-the-ground-up/code/kv/src/log.rs">kv/src/log.rs</a></p>
+
+<pre><code class="language-rust">/// Reads records from the front of `bytes` until one is incomplete or
+/// corrupt. It returns the records and the number of bytes they occupy.
+fn scan(bytes: &amp;[u8]) -&gt; (Vec&lt;Record&gt;, usize) {
+    let mut records = Vec::new();
+    let mut valid = 0;
+
+    while let Decoded::Record { record, length } = Record::decode(&amp;bytes[valid..]) {
+        records.push(record);
+        valid += length;
+    }
+
+    (records, valid)
+}</code></pre>
+<figure>
+<img src="figures/recovery-scan.svg?v=debdc2db" alt="Recovery of a log of 63 bytes after a crash. Record 1 occupies bytes 0 to 27 and record 2 bytes 28 to 57, and 5 bytes of a third record follow. The scan reads a frame at 0 that says 20 bytes and whose checksum matches: record 1. At 28 the frame says 22 bytes and the checksum matches: record 2. At 58 only 5 bytes are left and a frame needs 8, so the record is incomplete and the scan stops. The file is cut to 58 bytes, and the next record will have sequence 3.">
+<figcaption><b>Figure 2.6</b> The recovery of a log that was cut off in the middle of its third record.</figcaption>
+</figure>
+<p class="listing"><img class="mascot" src="art/crab-happy.svg" alt=""><b>Listing 2.11</b> Opening the log and cutting off a damaged end. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/distributed-systems-from-the-ground-up/code/kv/src/log.rs">kv/src/log.rs</a></p>
+
+<pre><code class="language-rust">impl Log {
+    /// Opens the log in `directory`, creating both if they do not exist.
+    /// Anything after the last complete record is cut off.
+    pub fn open(directory: &amp;Path, sync: bool) -&gt; io::Result&lt;(Log, Recovery)&gt; {
+        fs::create_dir_all(directory)?;
+
+        let mut file = OpenOptions::new()
+            .read(true)
+            .append(true)
+            .create(true)
+            .open(directory.join(FILE_NAME))?;
+        let mut bytes = Vec::new();
+        file.read_to_end(&amp;mut bytes)?;
+
+        let (records, valid) = scan(&amp;bytes);
+        let discarded = (bytes.len() - valid) as u64;
+
+        if discarded &gt; 0 {
+            file.set_len(valid as u64)?;
+        }
+
+        if sync {
+            // The file's length is part of the file. Its name is part of the directory.
+            file.sync_all()?;
+            File::open(directory)?.sync_all()?;
+        }
+
+        let next = records
+            .last()
+            .map_or(1, |record| record.sequence + 1);
+
+        Ok((
+            Log {
+                file,
+                sync,
+                next,
+                failed: false,
+            },
+            Recovery { records, discarded },
+        ))
+    }
+}</code></pre>
+<p>The call to <code>set_len</code> removes the damaged end of the file before any new record is
+appended, and the correctness of the whole log depends on this step. If the damaged
+bytes were left where they are, the next record would be written after them, a later
+recovery would stop at the damage, and the new record would be lost although the node
+had acknowledged it. A recovery procedure that reads correctly and fails to repair
+has merely postponed the loss.</p>
+<p>Both calls to <code>sync_all</code> are necessary, one to make the new length of the file
+durable and the other for its directory. Synchronising a file makes its contents
+durable, but the existence of the file is recorded in the directory that contains it,
+and that is a separate object. A newly created file whose directory has not been
+synchronised may be absent after a power failure, contents and all. The log therefore
+synchronises its directory when it is opened.</p>
+<h3 id="appending"><a class="header" href="#appending">Appending</a></h3>
+<p class="listing"><img class="mascot" src="art/crab-happy.svg" alt=""><b>Listing 2.12</b> Appending a record. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/distributed-systems-from-the-ground-up/code/kv/src/log.rs">kv/src/log.rs</a></p>
+
+<pre><code class="language-rust">impl Log {
+    /// Appends a change and returns the record that holds it. When the log
+    /// was opened with `sync`, the record is on the disk when this returns.
+    pub fn append(&amp;mut self, change: Change) -&gt; io::Result&lt;Record&gt; {
+        if self.failed {
+            return Err(io::Error::other(
+                "the log failed on an earlier write and is closed",
+            ));
+        }
+
+        let record = Record {
+            sequence: self.next,
+            change,
+        };
+
+        if let Err(error) = self.write(&amp;record.encode()) {
+            self.failed = true;
+
+            return Err(error);
+        }
+
+        self.next += 1;
+
+        Ok(record)
+    }
+
+    fn write(&amp;mut self, bytes: &amp;[u8]) -&gt; io::Result&lt;()&gt; {
+        self.file.write_all(bytes)?;
+
+        if self.sync {
+            self.file.sync_data()?;
+        }
+
+        Ok(())
+    }
+
+    /// The sequence number of the last record, or 0 for an empty log.
+    pub fn last_sequence(&amp;self) -&gt; u64 {
+        self.next - 1
+    }
+}</code></pre>
+<p>The field <code>failed</code> implements a policy known as <em>fail-stop</em>, under which a component
+that meets an error it cannot handle safely ceases to operate. If <code>write_all</code> or
+<code>sync_data</code> returns an error, the state of the file is unknown: the record may be
+absent, partly written, or complete. A log that went on accepting records could append
+a valid record after a damaged one, where recovery would never reach it.</p>
+<p>It might be thought that the node could call <code>fsync</code> again. This is unsafe as
+well, and for a reason that has surprised the authors of several well-known
+databases. After a failed <code>fsync</code>, the kernel may already have discarded the data it
+was unable to write, and a second call may then report success although nothing has
+reached the disk. A success after a failure therefore proves nothing. The log
+accordingly rejects all further appends. From that moment its node answers <code>503</code> to
+writes, continues to serve reads from memory, and has to be restarted or replaced by
+an operator. In the design of chapter 1, the followers of all the affected shards
+elect new leaders at this point, and the fault of 1 disk is absorbed by the cluster.</p>
+<h2 id="the-store"><a class="header" href="#the-store">The store</a></h2>
+<p><code>Store</code> contains the map and the log, and every modification of either passes through
+it.</p>
+<p class="listing"><img class="mascot" src="art/crab-happy.svg" alt=""><b>Listing 2.13</b> The imports of <code>kv/src/store.rs</code>. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/distributed-systems-from-the-ground-up/code/kv/src/store.rs">kv/src/store.rs</a></p>
+
+<pre><code class="language-rust">use std::collections::BTreeMap;
+use std::io;
+use std::ops::Bound;
+use std::path::Path;
+
+use thiserror::Error;
+
+use crate::log::Log;
+use crate::record::{Change, Record};</code></pre>
+<p class="listing"><img class="mascot" src="art/crab-happy.svg" alt=""><b>Listing 2.14</b> Opening the store by applying the records of the log. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/distributed-systems-from-the-ground-up/code/kv/src/store.rs">kv/src/store.rs</a></p>
+
+<pre><code class="language-rust">impl Store {
+    /// Opens the store in `directory` and applies every record of its log.
+    /// It returns the store, the number of records applied, and the number
+    /// of bytes that were cut from the end of the log.
+    pub fn open(directory: &amp;Path, sync: bool) -&gt; io::Result&lt;(Store, usize, u64)&gt; {
+        let (log, recovery) = Log::open(directory, sync)?;
+        let applied = recovery.records.len();
+        let mut entries = BTreeMap::new();
+
+        for record in recovery.records {
+            apply(&amp;mut entries, record);
+        }
+
+        Ok((Store { entries, log }, applied, recovery.discarded))
+    }
+}
+
+/// Makes the change of one record in the map. Recovery and the write path
+/// both go through this function, so they cannot disagree.
+pub fn apply(entries: &amp;mut BTreeMap&lt;String, Entry&gt;, record: Record) {
+    match record.change {
+        Change::Put { key, value } =&gt; {
+            entries.insert(
+                key,
+                Entry {
+                    value,
+                    version: record.sequence,
+                },
+            );
+        }
+        Change::Delete { key } =&gt; {
+            entries.remove(&amp;key);
+        }
+    }
+}</code></pre>
+<p>Recovery and the path of a write share a single function, <code>apply</code>, for modifying the
+map. Invariant 3 is a consequence of this arrangement. What a record does to the map
+is defined in exactly 1 place, which is used both when a record is first written and
+whenever a log is read back, so that the 2 cannot come to differ.</p>
+<p class="listing"><img class="mascot" src="art/crab-happy.svg" alt=""><b>Listing 2.15</b> Conditional writes: check, append, apply. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/distributed-systems-from-the-ground-up/code/kv/src/store.rs">kv/src/store.rs</a></p>
+
+<pre><code class="language-rust">impl Store {
+    /// Sets the value of a key. The change is in the log before it is in
+    /// the map.
+    pub fn put(
+        &amp;mut self,
+        key: String,
+        value: Vec&lt;u8&gt;,
+        condition: Condition,
+    ) -&gt; Result&lt;Written, StoreError&gt; {
+        let current = self.version(&amp;key);
+        check(condition, current)?;
+
+        let record = self
+            .log
+            .append(Change::Put { key, value })?;
+        let version = record.sequence;
+        apply(&amp;mut self.entries, record);
+
+        Ok(Written {
+            version,
+            created: current.is_none(),
+        })
+    }
+
+    /// Removes a key.
+    pub fn delete(&amp;mut self, key: &amp;str, condition: Condition) -&gt; Result&lt;(), StoreError&gt; {
+        let current = self.version(key);
+
+        if current.is_none() {
+            return Err(StoreError::NotFound);
+        }
+
+        check(condition, current)?;
+
+        let record = self.log.append(Change::Delete {
+            key: key.to_owned(),
+        })?;
+        apply(&amp;mut self.entries, record);
+
+        Ok(())
+    }
+
+    fn version(&amp;self, key: &amp;str) -&gt; Option&lt;u64&gt; {
+        self.entries
+            .get(key)
+            .map(|entry| entry.version)
+    }
+}
+
+pub fn check(condition: Condition, current: Option&lt;u64&gt;) -&gt; Result&lt;(), StoreError&gt; {
+    let holds = match condition {
+        Condition::Always =&gt; true,
+        Condition::Absent =&gt; current.is_none(),
+        Condition::Version(version) =&gt; current == Some(version),
+    };
+
+    holds
+        .then_some(())
+        .ok_or(StoreError::ConditionFailed { current })
+}</code></pre>
+<p><code>put</code> and <code>delete</code> perform the same 3 steps in the same order. The condition is
+evaluated first, against the map, so that a write which is refused produces no
+record. <code>append</code> then returns when the record is durable, or returns an error, in
+which case the <code>?</code> operator leaves the function before <code>apply</code> is reached. The map is
+modified last. The order of these steps is the order of the invariants, and the code
+has been arranged so that it cannot be otherwise.</p>
+<div class="crab crab-happy">
+<p>The version of an entry is the sequence number of its record. The store keeps no separate counter of versions that could come to disagree with the log after a crash.</p>
+</div>
+
+<p>Reads use the map alone.</p>
+<p class="listing"><img class="mascot" src="art/crab-happy.svg" alt=""><b>Listing 2.16</b> Reading a key, and listing a page of keys. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/distributed-systems-from-the-ground-up/code/kv/src/store.rs">kv/src/store.rs</a></p>
+
+<pre><code class="language-rust">impl Store {
+    pub fn get(&amp;self, key: &amp;str) -&gt; Option&lt;&amp;Entry&gt; {
+        self.entries.get(key)
+    }
+
+    /// Returns up to `limit` keys that start with `prefix` and sort after
+    /// `after`, in order, and whether more keys follow them.
+    pub fn list(&amp;self, prefix: &amp;str, after: Option&lt;&amp;str&gt;, limit: usize) -&gt; (Vec&lt;Summary&gt;, bool) {
+        page(&amp;self.entries, prefix, after, limit)
+    }
+
+    pub fn len(&amp;self) -&gt; usize {
+        self.entries.len()
+    }
+
+    pub fn is_empty(&amp;self) -&gt; bool {
+        self.entries.is_empty()
+    }
+
+    /// The sequence number of the last record in the log.
+    pub fn last_sequence(&amp;self) -&gt; u64 {
+        self.log.last_sequence()
+    }
+}
+
+/// One page of a listing over a map of entries.
+pub fn page(
+    entries: &amp;BTreeMap&lt;String, Entry&gt;,
+    prefix: &amp;str,
+    after: Option&lt;&amp;str&gt;,
+    limit: usize,
+) -&gt; (Vec&lt;Summary&gt;, bool) {
+    let start = match after {
+        Some(key) =&gt; Bound::Excluded(key),
+        None =&gt; Bound::Included(prefix),
+    };
+
+    let mut matching = entries
+        .range::&lt;str, _&gt;((start, Bound::Unbounded))
+        .take_while(|entry| entry.0.starts_with(prefix))
+        .map(|(key, entry)| Summary {
+            key: key.clone(),
+            version: entry.version,
+            size: entry.value.len(),
+        });
+
+    let page: Vec&lt;Summary&gt; = matching
+        .by_ref()
+        .take(limit)
+        .collect();
+    let more = matching.next().is_some();
+
+    (page, more)
+}</code></pre>
+<p>A <code>BTreeMap</code> keeps its keys in sorted order, so that a listing is an iteration from
+some starting position, which is implemented in a function named <code>page</code>. Its call to
+<code>range</code> begins at the prefix or immediately after the cursor, and <code>take_while</code> ends
+the iteration at the first key that lacks the prefix. By looking for 1 item beyond the
+page, <code>page</code> learns whether a further page exists without having to count the
+remaining keys.</p>
+<h2 id="the-http-server"><a class="header" href="#the-http-server">The HTTP server</a></h2>
+<p><code>kvd</code> presents the store through the API of chapter 1.</p>
+<p class="listing"><img class="mascot" src="art/crab-happy.svg" alt=""><b>Listing 2.17</b> The imports of <code>kvd/src/main.rs</code>. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/distributed-systems-from-the-ground-up/code/kvd/src/main.rs">kvd/src/main.rs</a></p>
+
+<pre><code class="language-rust">use std::error::Error;
+use std::net::SocketAddr;
+use std::path::PathBuf;
+use std::sync::Arc;
+
+use axum::body::Bytes;
+use axum::extract::{DefaultBodyLimit, Path, Query, State};
+use axum::http::header::{CONTENT_TYPE, ETAG, IF_NONE_MATCH};
+use axum::http::{HeaderMap, StatusCode};
+use axum::response::{IntoResponse, Response};
+use axum::routing::get;
+use axum::{Json, Router};
+use clap::Parser;
+use kv::{Condition, Store, StoreError, Summary};
+use kvd::api::{ApiError, MAX_VALUE, etag, valid_key, version_header, write_condition};
+use parking_lot::Mutex;
+use serde::{Deserialize, Serialize};
+use tokio::net::TcpListener;
+use tokio::task;</code></pre>
+<p class="listing"><img class="mascot" src="art/crab-happy.svg" alt=""><b>Listing 2.18</b> The options of the command line, and the shared state. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/distributed-systems-from-the-ground-up/code/kvd/src/main.rs">kvd/src/main.rs</a></p>
+
+<pre><code class="language-rust">#[derive(Parser)]
+struct Options {
+    /// The address to accept connections on.
+    #[arg(long, default_value = "127.0.0.1:7001")]
+    listen: SocketAddr,
+
+    /// The directory that holds the log.
+    #[arg(long, default_value = "data")]
+    data: PathBuf,
+
+    /// Respond to a write without waiting for the disk.
+    #[arg(long)]
+    no_sync: bool,
+}
+
+/// The store, shared by every request.
+type Shared = Arc&lt;Mutex&lt;Store&gt;&gt;;</code></pre>
+<h3 id="errors"><a class="header" href="#errors">Errors</a></h3>
+<p>Each kind of failure of a request is a variant of <code>ApiError</code>, in the module
+<code>kvd::api</code>, and a single function converts a variant into a status code and a response
+body in the format of RFC 9457. Handlers return <code>Result&lt;_, ApiError&gt;</code> and use <code>?</code>. The
+conversion from <code>StoreError</code> is the 1 place that maps a failed condition to <code>412</code> and a
+failure of the log to <code>503</code>.</p>
+<p class="listing"><img class="mascot" src="art/crab-happy.svg" alt=""><b>Listing 2.19</b> The imports of <code>kvd/src/api.rs</code>. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/distributed-systems-from-the-ground-up/code/kvd/src/api.rs">kvd/src/api.rs</a></p>
+
+<pre><code class="language-rust">use axum::Json;
+use axum::http::header::{CONTENT_TYPE, IF_MATCH, IF_NONE_MATCH};
+use axum::http::{HeaderMap, HeaderName, StatusCode};
+use axum::response::{IntoResponse, Response};
+use kv::{Condition, StoreError};
+use serde::Serialize;</code></pre>
+<p class="listing"><img class="mascot" src="art/crab-happy.svg" alt=""><b>Listing 2.20</b> The errors of the API and their responses. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/distributed-systems-from-the-ground-up/code/kvd/src/api.rs">kvd/src/api.rs</a></p>
+
+<pre><code class="language-rust">/// The ways a request can fail. Each one is a status code and a sentence.
+pub enum ApiError {
+    InvalidKey,
+    InvalidHeader(HeaderName),
+    NotFound,
+    ConditionFailed(Option&lt;u64&gt;),
+    Unavailable(String),
+    /// The request reached a node that does not serve it. The text names the reason.
+    Misdirected(String),
+    /// The shard has no leader at the moment. Nothing was changed.
+    NoLeader,
+}
+
+/// The body of an error response, in the format of RFC 9457.
+#[derive(Serialize)]
+struct Problem {
+    #[serde(rename = "type")]
+    kind: &amp;'static str,
+    title: &amp;'static str,
+    status: u16,
+    #[serde(skip_serializing_if = "String::is_empty")]
+    detail: String,
+}
+
+impl IntoResponse for ApiError {
+    fn into_response(self) -&gt; Response {
+        let (status, kind, title, detail) = match self {
+            ApiError::InvalidKey =&gt; (
+                StatusCode::BAD_REQUEST,
+                "/problems/invalid-key",
+                "The key is not valid",
+                format!("a key is 1 to {MAX_KEY} characters from A-Z, a-z, 0-9, '.', '_' and '-'"),
+            ),
+            ApiError::InvalidHeader(name) =&gt; (
+                StatusCode::BAD_REQUEST,
+                "/problems/invalid-header",
+                "A request header is not valid",
+                format!("{name} must be a version in double quotes, or * where that is allowed"),
+            ),
+            ApiError::NotFound =&gt; (
+                StatusCode::NOT_FOUND,
+                "/problems/key-not-found",
+                "The key does not exist",
+                String::new(),
+            ),
+            ApiError::ConditionFailed(current) =&gt; (
+                StatusCode::PRECONDITION_FAILED,
+                "/problems/condition-failed",
+                "The condition on the key's version does not hold",
+                current.map_or("the key does not exist".into(), |version| {
+                    format!("the key is at version {version}")
+                }),
+            ),
+            ApiError::Misdirected(detail) =&gt; (
+                StatusCode::MISDIRECTED_REQUEST,
+                "/problems/not-leader",
+                "This node is not the leader",
+                detail,
+            ),
+            ApiError::NoLeader =&gt; (
+                StatusCode::SERVICE_UNAVAILABLE,
+                "/problems/no-leader",
+                "The shard has no leader at the moment",
+                String::new(),
+            ),
+            ApiError::Unavailable(detail) =&gt; (
+                StatusCode::SERVICE_UNAVAILABLE,
+                "/problems/store-unavailable",
+                "The node cannot serve the request",
+                detail,
+            ),
+        };
+
+        let problem = Problem {
+            kind,
+            title,
+            status: status.as_u16(),
+            detail,
+        };
+
+        (
+            status,
+            [(CONTENT_TYPE, "application/problem+json")],
+            Json(problem),
+        )
+            .into_response()
+    }
+}
+
+impl From&lt;StoreError&gt; for ApiError {
+    fn from(error: StoreError) -&gt; Self {
+        match error {
+            StoreError::NotFound =&gt; ApiError::NotFound,
+            StoreError::ConditionFailed { current } =&gt; ApiError::ConditionFailed(current),
+            StoreError::Log(error) =&gt; ApiError::Unavailable(error.to_string()),
+        }
+    }
+}</code></pre>
+<h3 id="conditions"><a class="header" href="#conditions">Conditions</a></h3>
+<p class="listing"><img class="mascot" src="art/crab-happy.svg" alt=""><b>Listing 2.21</b> Parsing the <code>If-Match</code> and <code>If-None-Match</code> headers. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/distributed-systems-from-the-ground-up/code/kvd/src/api.rs">kvd/src/api.rs</a></p>
+
+<pre><code class="language-rust">/// A version as it appears in `ETag`, `If-Match` and `If-None-Match`.
+pub fn etag(version: u64) -&gt; String {
+    format!("\"{version}\"")
+}
+
+pub fn valid_key(key: &amp;str) -&gt; Result&lt;(), ApiError&gt; {
+    let allowed = |c: char| c.is_ascii_alphanumeric() || matches!(c, '.' | '_' | '-');
+
+    let valid = (1..=MAX_KEY).contains(&amp;key.len()) &amp;&amp; key.chars().all(allowed);
+
+    valid
+        .then_some(())
+        .ok_or(ApiError::InvalidKey)
+}
+
+/// Reads a header that holds a quoted version or `*`.
+pub fn version_header(
+    headers: &amp;HeaderMap,
+    name: HeaderName,
+) -&gt; Result&lt;Option&lt;Condition&gt;, ApiError&gt; {
+    let Some(value) = headers.get(&amp;name) else {
+        return Ok(None);
+    };
+
+    let Ok(text) = value.to_str() else {
+        return Err(ApiError::InvalidHeader(name));
+    };
+
+    if text == "*" {
+        return Ok(Some(Condition::Absent));
+    }
+
+    let version = text
+        .strip_prefix("\"")
+        .and_then(|rest| rest.strip_suffix("\""))
+        .and_then(|digits| digits.parse().ok());
+
+    version
+        .map(Condition::Version)
+        .map(Some)
+        .ok_or(ApiError::InvalidHeader(name))
+}
+
+/// The condition a write carries: `If-Match: "7"` requires version 7, and
+/// `If-None-Match: *` requires that the key does not exist.
+pub fn write_condition(headers: &amp;HeaderMap) -&gt; Result&lt;Condition, ApiError&gt; {
+    match (
+        version_header(headers, IF_MATCH)?,
+        version_header(headers, IF_NONE_MATCH)?,
+    ) {
+        (Some(Condition::Version(version)), None) =&gt; Ok(Condition::Version(version)),
+        (None, Some(Condition::Absent)) =&gt; Ok(Condition::Absent),
+        (None, None) =&gt; Ok(Condition::Always),
+        (Some(..), ..) =&gt; Err(ApiError::InvalidHeader(IF_MATCH)),
+        (None, Some(..)) =&gt; Err(ApiError::InvalidHeader(IF_NONE_MATCH)),
+    }
+}</code></pre>
+<p><code>write_condition</code> accepts the combinations of headers that are meaningful for a write
+and answers <code>400</code> to all others, such as <code>If-Match: *</code>. The server thus rejects a
+condition that it cannot interpret. The alternative, to ignore it, would mean
+performing an unconditional write on behalf of a client that had asked for a
+conditional one, which is exactly the lost update that the condition was sent to
+prevent.</p>
+<h3 id="blocking-calls-in-an-asynchronous-server"><a class="header" href="#blocking-calls-in-an-asynchronous-server">Blocking calls in an asynchronous server</a></h3>
+<p>The server uses an asynchronous runtime, in which a small pool of threads serves all
+the connections and switches among them whenever one has to wait for the network. To
+block such a thread, as an <code>fsync</code> of 5 ms does, would delay every connection that the
+thread serves. <code>spawn_blocking</code> runs a closure on a separate pool of threads intended
+for operations that block, and the handler awaits the result without occupying a
+thread of the runtime.</p>
+<p class="listing"><img class="mascot" src="art/crab-happy.svg" alt=""><b>Listing 2.22</b> Running a write on a thread that is permitted to block. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/distributed-systems-from-the-ground-up/code/kvd/src/main.rs">kvd/src/main.rs</a></p>
+
+<pre><code class="language-rust">/// Runs a write on a thread that may block. A write waits for the disk, and
+/// a thread that waits must not be one of the threads that serve requests.
+async fn write&lt;T, F&gt;(store: Shared, work: F) -&gt; Result&lt;T, ApiError&gt;
+where
+    F: FnOnce(&amp;mut Store) -&gt; Result&lt;T, StoreError&gt; + Send + 'static,
+    T: Send + 'static,
+{
+    let result = task::spawn_blocking(move || work(&amp;mut store.lock()))
+        .await
+        .map_err(|error| ApiError::Unavailable(error.to_string()))?;
+
+    Ok(result?)
+}</code></pre>
+<p class="listing"><img class="mascot" src="art/crab-happy.svg" alt=""><b>Listing 2.23</b> The handlers for <code>PUT</code> and <code>DELETE</code>. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/distributed-systems-from-the-ground-up/code/kvd/src/main.rs">kvd/src/main.rs</a></p>
+
+<pre><code class="language-rust">async fn put_key(
+    State(store): State&lt;Shared&gt;,
+    Path(key): Path&lt;String&gt;,
+    headers: HeaderMap,
+    body: Bytes,
+) -&gt; Result&lt;Response, ApiError&gt; {
+    valid_key(&amp;key)?;
+    let condition = write_condition(&amp;headers)?;
+
+    let written = write(store, move |store| store.put(key, body.to_vec(), condition)).await?;
+    let status = if written.created {
+        StatusCode::CREATED
+    } else {
+        StatusCode::NO_CONTENT
+    };
+
+    Ok((status, [(ETAG, etag(written.version))]).into_response())
+}
+
+async fn delete_key(
+    State(store): State&lt;Shared&gt;,
+    Path(key): Path&lt;String&gt;,
+    headers: HeaderMap,
+) -&gt; Result&lt;StatusCode, ApiError&gt; {
+    valid_key(&amp;key)?;
+    let condition = write_condition(&amp;headers)?;
+
+    write(store, move |store| store.delete(&amp;key, condition)).await?;
+
+    Ok(StatusCode::NO_CONTENT)
+}</code></pre>
+<p><code>PUT</code> answers <code>201 Created</code> when it creates a key and <code>204 No Content</code> when it
+replaces a value. Both responses carry the new version in the <code>ETag</code> header.</p>
+<h3 id="reads"><a class="header" href="#reads">Reads</a></h3>
+<p class="listing"><img class="mascot" src="art/crab-happy.svg" alt=""><b>Listing 2.24</b> The handler for <code>GET</code> on a single key. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/distributed-systems-from-the-ground-up/code/kvd/src/main.rs">kvd/src/main.rs</a></p>
+
+<pre><code class="language-rust">async fn get_key(
+    State(store): State&lt;Shared&gt;,
+    Path(key): Path&lt;String&gt;,
+    headers: HeaderMap,
+) -&gt; Result&lt;Response, ApiError&gt; {
+    valid_key(&amp;key)?;
+    let cached = version_header(&amp;headers, IF_NONE_MATCH)?;
+    let entry = store
+        .lock()
+        .get(&amp;key)
+        .cloned()
+        .ok_or(ApiError::NotFound)?;
+    let tag = [(ETAG, etag(entry.version))];
+
+    if cached == Some(Condition::Version(entry.version)) {
+        return Ok((StatusCode::NOT_MODIFIED, tag).into_response());
+    }
+
+    Ok((
+        tag,
+        [(CONTENT_TYPE, "application/octet-stream")],
+        entry.value,
+    )
+        .into_response())
+}</code></pre>
+<p>A read holds the lock of the store only while an entry is being copied, and performs
+no access to the disk. It can therefore run directly on a thread of the runtime.</p>
+<p class="listing"><img class="mascot" src="art/crab-happy.svg" alt=""><b>Listing 2.25</b> The handlers for listing keys and for the health check. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/distributed-systems-from-the-ground-up/code/kvd/src/main.rs">kvd/src/main.rs</a></p>
+
+<pre><code class="language-rust">#[derive(Deserialize)]
+struct ListQuery {
+    #[serde(default)]
+    prefix: String,
+    after: Option&lt;String&gt;,
+    limit: Option&lt;usize&gt;,
+}
+
+#[derive(Serialize)]
+struct Item {
+    key: String,
+    version: u64,
+    size: usize,
+}
+
+#[derive(Serialize)]
+struct Page {
+    keys: Vec&lt;Item&gt;,
+    /// The value of `after` that returns the next page, when there is one.
+    next_after: Option&lt;String&gt;,
+}
+
+async fn list_keys(State(store): State&lt;Shared&gt;, Query(query): Query&lt;ListQuery&gt;) -&gt; Json&lt;Page&gt; {
+    let limit = query
+        .limit
+        .unwrap_or(100)
+        .clamp(1, 1000);
+    let (page, more) = store
+        .lock()
+        .list(&amp;query.prefix, query.after.as_deref(), limit);
+    let next_after = page
+        .last()
+        .filter(|_last| more)
+        .map(|last| last.key.clone());
+    let keys = page
+        .into_iter()
+        .map(|Summary { key, version, size }| Item { key, version, size })
+        .collect();
+
+    Json(Page { keys, next_after })
+}
+
+#[derive(Serialize)]
+struct Health {
+    status: &amp;'static str,
+    keys: usize,
+    last_sequence: u64,
+}
+
+async fn health(State(store): State&lt;Shared&gt;) -&gt; Json&lt;Health&gt; {
+    let store = store.lock();
+
+    Json(Health {
+        status: "ok",
+        keys: store.len(),
+        last_sequence: store.last_sequence(),
+    })
+}</code></pre>
+<p class="listing"><img class="mascot" src="art/crab-happy.svg" alt=""><b>Listing 2.26</b> Opening the store and starting the server. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/distributed-systems-from-the-ground-up/code/kvd/src/main.rs">kvd/src/main.rs</a></p>
+
+<pre><code class="language-rust">#[tokio::main]
+async fn main() -&gt; Result&lt;(), Box&lt;dyn Error&gt;&gt; {
+    let options = Options::parse();
+    let (store, applied, discarded) = Store::open(&amp;options.data, !options.no_sync)?;
+
+    println!(
+        "recovered {} keys from {applied} records, cut {discarded} bytes from the end of the log",
+        store.len()
+    );
+
+    let routes = Router::new()
+        .route("/v1/keys", get(list_keys))
+        .route(
+            "/v1/keys/{key}",
+            get(get_key)
+                .put(put_key)
+                .delete(delete_key),
+        )
+        .route("/healthz", get(health))
+        .layer(DefaultBodyLimit::max(MAX_VALUE))
+        .with_state(Arc::new(Mutex::new(store)));
+
+    let listener = TcpListener::bind(options.listen).await?;
+    println!("listening on {}", listener.local_addr()?);
+
+    axum::serve(listener, routes).await?;
+
+    Ok(())
+}</code></pre>
+<h2 id="running-the-node"><a class="header" href="#running-the-node">Running the node</a></h2>
+<pre><code class="language-console">$ cd code
+$ cargo build --release
+$ ./target/release/kvd --listen 127.0.0.1:7001 --data /var/tmp/kvd
+recovered 0 keys from 0 records, cut 0 bytes from the end of the log
+listening on 127.0.0.1:7001
+</code></pre>
+<p>All the responses shown in chapter 1 came from this program. A further 3 complete the
+set: a key containing a character outside the permitted set, a method that a resource
+does not support, and a health check.</p>
+<pre><code class="language-console">$ curl -i -X PUT 'http://127.0.0.1:7001/v1/keys/bad%20key' --data-binary 'x'
+HTTP/1.1 400 Bad Request
+content-type: application/problem+json
+content-length: 153
+
+{"type":"/problems/invalid-key","title":"The key is not valid","status":400,"detail":"a key is 1 to 256 characters from A-Z, a-z, 0-9, '.', '_' and '-'"}
+</code></pre>
+<pre><code class="language-console">$ curl -i -X POST http://127.0.0.1:7001/v1/keys/user-1 --data-binary 'x'
+HTTP/1.1 405 Method Not Allowed
+allow: GET,HEAD,PUT,DELETE
+content-length: 0
+</code></pre>
+<p>Both the <code>405</code> and its <code>allow</code> header are produced by <code>axum</code>, whose router knows
+which methods are registered for each path.</p>
+<pre><code class="language-console">$ curl -i http://127.0.0.1:7001/healthz
+HTTP/1.1 200 OK
+content-type: application/json
+content-length: 42
+
+{"status":"ok","keys":2,"last_sequence":5}
+</code></pre>
+<h2 id="simulating-crashes"><a class="header" href="#simulating-crashes">Simulating crashes</a></h2>
+<p>The log is intended to recover exactly its complete records, wherever a crash occurs.
+A claim of this kind is not established by a few examples, and <code>crashsim</code> verifies it
+exhaustively, for a log of 5 records, by damaging copies of the log in every possible
+position.</p>
+<p class="listing"><img class="mascot" src="art/crab-happy.svg" alt=""><b>Listing 2.27</b> The imports of <code>crashsim/src/main.rs</code>. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/distributed-systems-from-the-ground-up/code/crashsim/src/main.rs">crashsim/src/main.rs</a></p>
+
+<pre><code class="language-rust">use std::env;
+use std::error::Error;
+use std::fs;
+use std::path::Path;
+use std::process;
+
+use kv::log::FILE_NAME;
+use kv::{Change, Log, Record};</code></pre>
+<p class="listing"><img class="mascot" src="art/crab-happy.svg" alt=""><b>Listing 2.28</b> Building the test log. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/distributed-systems-from-the-ground-up/code/crashsim/src/main.rs">crashsim/src/main.rs</a></p>
+
+<pre><code class="language-rust">/// The changes of the test log.
+fn changes() -&gt; Vec&lt;Change&gt; {
+    let put = |key: &amp;str, value: &amp;str| Change::Put {
+        key: key.into(),
+        value: value.into(),
+    };
+
+    vec![
+        put("user-1", "ada"),
+        put("user-2", "grace"),
+        put("user-1", "ada lovelace"),
+        Change::Delete {
+            key: "user-2".into(),
+        },
+        put("user-3", "barbara"),
+    ]
+}
+
+/// Writes the changes to a log in `directory`. It returns the bytes of the
+/// log and the offset at which each record ends.
+fn build(directory: &amp;Path) -&gt; Result&lt;(Vec&lt;u8&gt;, Vec&lt;usize&gt;), Box&lt;dyn Error&gt;&gt; {
+    let mut log = Log::open(directory, false)?.0;
+    let mut ends = Vec::new();
+
+    for change in changes() {
+        let record = log.append(change)?;
+        ends.push(ends.last().copied().unwrap_or(0) + record.encode().len());
+    }
+
+    Ok((fs::read(directory.join(FILE_NAME))?, ends))
+}</code></pre>
+<p class="listing"><img class="mascot" src="art/crab-happy.svg" alt=""><b>Listing 2.29</b> Opening a damaged copy, and the expected result of recovery. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/distributed-systems-from-the-ground-up/code/crashsim/src/main.rs">crashsim/src/main.rs</a></p>
+
+<pre><code class="language-rust">/// Replaces the log in `directory` with `bytes` and opens it.
+fn recover(directory: &amp;Path, bytes: &amp;[u8]) -&gt; Result&lt;Vec&lt;Record&gt;, Box&lt;dyn Error&gt;&gt; {
+    fs::write(directory.join(FILE_NAME), bytes)?;
+    let recovery = Log::open(directory, false)?.1;
+
+    Ok(recovery.records)
+}
+
+/// Whether `records` are exactly the first `count` changes, in order.
+fn is_prefix(records: &amp;[Record], count: usize) -&gt; bool {
+    let expected = changes();
+
+    records.len() == count
+        &amp;&amp; records
+            .iter()
+            .zip(&amp;expected)
+            .enumerate()
+            .all(|(index, (record, change))| {
+                record.sequence == index as u64 + 1 &amp;&amp; &amp;record.change == change
+            })
+}</code></pre>
+<p>A crash during a write leaves a file that is shorter than was intended. <code>cuts</code> creates
+every such file, 1 for each possible length, and checks the result of recovering each.</p>
+<p class="listing"><img class="mascot" src="art/crab-happy.svg" alt=""><b>Listing 2.30</b> Cutting the log short at every byte. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/distributed-systems-from-the-ground-up/code/crashsim/src/main.rs">crashsim/src/main.rs</a></p>
+
+<pre><code class="language-rust">/// Cuts the log at every length and checks that recovery returns the records
+/// that end at or before the cut.
+fn cuts(directory: &amp;Path, log: &amp;[u8], ends: &amp;[usize]) -&gt; Result&lt;(), Box&lt;dyn Error&gt;&gt; {
+    for length in 0..=log.len() {
+        let complete = ends
+            .iter()
+            .filter(|&amp;&amp;end| end &lt;= length)
+            .count();
+        let records = recover(directory, &amp;log[..length])?;
+
+        if !is_prefix(&amp;records, complete) {
+            return Err(format!(
+                "cut at {length}: expected {complete} records, recovered {}",
+                records.len()
+            )
+            .into());
+        }
+    }
+
+    println!(
+        "cut at every length from 0 to {}: each recovery returned the complete records",
+        log.len()
+    );
+
+    let mut first = 0;
+
+    for (count, &amp;end) in ends.iter().enumerate() {
+        println!("  lengths {first:3} to {:3}: {count} records", end - 1);
+        first = end;
+    }
+
+    println!("  length  {first:3}       : {} records", ends.len());
+
+    Ok(())
+}</code></pre>
+<p>Storage devices are also capable of returning data that differs from what was
+written. <code>flips</code> inverts 1 bit in each byte of the log, in a separate run for every
+byte. With a bit inverted, the affected record fails its checksum, and recovery is
+expected to return all the records before it.</p>
+<p class="listing"><img class="mascot" src="art/crab-happy.svg" alt=""><b>Listing 2.31</b> Inverting 1 bit in every byte. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/distributed-systems-from-the-ground-up/code/crashsim/src/main.rs">crashsim/src/main.rs</a></p>
+
+<pre><code class="language-rust">/// Flips 1 bit in each byte in turn and checks that recovery returns the
+/// records before the damaged one.
+fn flips(directory: &amp;Path, log: &amp;[u8], ends: &amp;[usize]) -&gt; Result&lt;(), Box&lt;dyn Error&gt;&gt; {
+    for position in 0..log.len() {
+        let mut damaged = log.to_vec();
+        damaged[position] ^= 0x10;
+
+        let before = ends
+            .iter()
+            .filter(|&amp;&amp;end| end &lt;= position)
+            .count();
+        let records = recover(directory, &amp;damaged)?;
+
+        if !is_prefix(&amp;records, before) {
+            return Err(format!(
+                "flip at {position}: expected {before} records, recovered {}",
+                records.len()
+            )
+            .into());
+        }
+    }
+
+    println!(
+        "1 bit flipped in each of {} bytes: each recovery returned the records before the damage",
+        log.len()
+    );
+
+    Ok(())
+}</code></pre>
+<p class="listing"><img class="mascot" src="art/crab-happy.svg" alt=""><b>Listing 2.32</b> Running the simulation. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/distributed-systems-from-the-ground-up/code/crashsim/src/main.rs">crashsim/src/main.rs</a></p>
+
+<pre><code class="language-rust">fn run(directory: &amp;Path) -&gt; Result&lt;(), Box&lt;dyn Error&gt;&gt; {
+    let (log, ends) = build(directory)?;
+    let boundaries: Vec&lt;String&gt; = ends
+        .iter()
+        .map(usize::to_string)
+        .collect();
+
+    println!(
+        "a log of {} records and {} bytes, with records ending at {}",
+        ends.len(),
+        log.len(),
+        boundaries.join(", ")
+    );
+
+    cuts(directory, &amp;log, &amp;ends)?;
+    flips(directory, &amp;log, &amp;ends)?;
+
+    let records = recover(directory, &amp;log[..ends[1] + 5])?;
+    let mut reopened = Log::open(directory, false)?.0;
+    let next = reopened.append(Change::Delete {
+        key: "user-1".into(),
+    })?;
+
+    println!(
+        "after a cut at {}: {} records recovered, and the next record has sequence {}",
+        ends[1] + 5,
+        records.len(),
+        next.sequence
+    );
+
+    Ok(())
+}
+
+fn main() -&gt; Result&lt;(), Box&lt;dyn Error&gt;&gt; {
+    let directory = env::temp_dir().join(format!("crashsim-{}", process::id()));
+    let result = run(&amp;directory);
+
+    fs::remove_dir_all(&amp;directory)?;
+
+    result
+}</code></pre>
+<pre><code class="language-console">$ cargo run -p crashsim
+a log of 5 records and 152 bytes, with records ending at 28, 58, 95, 120, 152
+cut at every length from 0 to 152: each recovery returned the complete records
+  lengths   0 to  27: 0 records
+  lengths  28 to  57: 1 records
+  lengths  58 to  94: 2 records
+  lengths  95 to 119: 3 records
+  lengths 120 to 151: 4 records
+  length  152       : 5 records
+1 bit flipped in each of 152 bytes: each recovery returned the records before the damage
+after a cut at 63: 2 records recovered, and the next record has sequence 3
+</code></pre>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th>Output</th><th>What it shows</th></tr>
+</thead>
+<tbody>
+<tr><td>lengths 28 to 57: 1 record</td><td>A record is recovered only if every one of its bytes is present. With 29 of the 30 bytes of record 2 on disk, record 2 is not recovered.</td></tr>
+<tr><td>each recovery returned complete records</td><td>No cut causes recovery to return a partial record, a wrong record, or records out of order.</td></tr>
+<tr><td>1 bit flipped in each of 152 bytes</td><td>Corruption at any position in a record, the length field included, is detected, and the preceding records are returned.</td></tr>
+<tr><td>after a cut at 63, the next record has sequence 3</td><td>The damaged end was removed, and the log continues after the last valid record with no gap in its sequence numbers.</td></tr>
+</tbody>
+</table>
+</div>
+<p>The test with inverted bits also discloses a limitation. When a bit is inverted in
+record 2, recovery stops there and discards records 3 to 5, although they are intact.
+For damage at the end of the file, which is what an interrupted write produces, this
+behaviour is correct. Damage in the middle of the file is a different matter: it
+means that the disk has lost data which was acknowledged, and a single node has no
+means of repairing such a loss. In the design of chapter 1, the record is recovered
+from the other replicas, and this is the first of several points at which a
+limitation of 1 node is the reason for something in the larger design.</p>
+<h2 id="killing-the-server-under-load"><a class="header" href="#killing-the-server-under-load">Killing the server under load</a></h2>
+<p>The simulation exercises the log in isolation. The next test covers a complete node:
+the HTTP server, the store, the log and the disk. The command <code>kvctl load</code> writes keys
+in sequence and records each key in a local file once the server has answered with
+success.</p>
+<p class="listing"><img class="mascot" src="art/crab-happy.svg" alt=""><b>Listing 2.33</b> The imports of <code>kvctl/src/main.rs</code>. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/distributed-systems-from-the-ground-up/code/kvctl/src/main.rs">kvctl/src/main.rs</a></p>
+
+<pre><code class="language-rust">use std::error::Error;
+use std::fs::{self, File};
+use std::io::{BufWriter, Write};
+use std::path::PathBuf;
+
+use clap::{Parser, Subcommand};
+use ureq::Agent;</code></pre>
+<p class="listing"><img class="mascot" src="art/crab-happy.svg" alt=""><b>Listing 2.34</b> Writing keys, and recording each acknowledged key. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/distributed-systems-from-the-ground-up/code/kvctl/src/main.rs">kvctl/src/main.rs</a></p>
+
+<pre><code class="language-rust">/// Writes `count` keys. A key is recorded in `acked` only after the server
+/// has answered with a success status.
+fn load(agent: &amp;Agent, server: &amp;str, count: u32, acked: &amp;PathBuf) -&gt; Result&lt;(), Box&lt;dyn Error&gt;&gt; {
+    let mut file = BufWriter::new(File::create(acked)?);
+    let mut written = 0;
+
+    for number in 1..=count {
+        let key = format!("key-{number:06}");
+
+        if let Err(error) = agent
+            .put(format!("{server}/v1/keys/{key}"))
+            .send(format!("value of {key}"))
+        {
+            println!("write {number} failed: {error}");
+
+            break;
+        }
+
+        writeln!(file, "{key}")?;
+        written += 1;
+    }
+
+    file.flush()?;
+    println!("{written} writes acknowledged");
+
+    Ok(())
+}</code></pre>
+<p class="listing"><img class="mascot" src="art/crab-happy.svg" alt=""><b>Listing 2.35</b> Reading back every acknowledged key. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/distributed-systems-from-the-ground-up/code/kvctl/src/main.rs">kvctl/src/main.rs</a></p>
+
+<pre><code class="language-rust">/// Reads every acknowledged key and compares the value with the one that
+/// was written.
+fn verify(agent: &amp;Agent, server: &amp;str, acked: &amp;PathBuf) -&gt; Result&lt;(), Box&lt;dyn Error&gt;&gt; {
+    let keys = fs::read_to_string(acked)?;
+    let (mut found, mut missing) = (0, 0);
+
+    for key in keys.lines() {
+        let value = match agent
+            .get(format!("{server}/v1/keys/{key}"))
+            .call()
+        {
+            Ok(mut response) =&gt; response
+                .body_mut()
+                .read_to_string()?,
+            Err(ureq::Error::StatusCode(404)) =&gt; String::new(),
+            Err(error) =&gt; return Err(error.into()),
+        };
+
+        if value == format!("value of {key}") {
+            found += 1;
+        } else {
+            missing += 1;
+        }
+    }
+
+    println!(
+        "{} acknowledged, {found} found, {missing} missing",
+        found + missing
+    );
+
+    Ok(())
+}</code></pre>
+<p>While the load is running, the server is terminated with signal 9, <code>SIGKILL</code>, which
+stops a process at once and allows it to complete nothing that is in progress.</p>
+<pre><code class="language-console">$ ./target/release/kvd --data /var/tmp/kvd &amp;
+recovered 0 keys from 0 records, cut 0 bytes from the end of the log
+listening on 127.0.0.1:7001
+$ ./target/release/kvctl load --server http://127.0.0.1:7001 --count 5000 --acked acked.txt &amp;
+$ sleep 3; pkill -9 -x kvd
+write 495 failed: io: Peer disconnected
+494 writes acknowledged
+$ ./target/release/kvd --data /var/tmp/kvd &amp;
+recovered 495 keys from 495 records, cut 0 bytes from the end of the log
+listening on 127.0.0.1:7001
+$ ./target/release/kvctl verify --server http://127.0.0.1:7001 --acked acked.txt
+494 acknowledged, 494 found, 0 missing
+</code></pre>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th>Output</th><th>What it shows</th></tr>
+</thead>
+<tbody>
+<tr><td>494 writes acknowledged, 494 found, 0 missing</td><td>Every acknowledged write was recovered after the process was killed.</td></tr>
+<tr><td>recovered 495 keys</td><td>The log contains 1 more write than the client had recorded.</td></tr>
+<tr><td>cut 0 bytes</td><td>The process was not in the middle of appending a record when it was killed.</td></tr>
+</tbody>
+</table>
+</div>
+<p>Write 495 is an instance of the third case in figure 2.2. Its record was
+stored durably, and the process was killed before any response was sent. From the
+client’s side the write failed, although the store contains it, and a client that
+needs a definite outcome sends its <code>PUT</code> again.</p>
+<h3 id="the-limits-of-this-test"><a class="header" href="#the-limits-of-this-test">The limits of this test</a></h3>
+<p>The same test, run with <code>--no-sync</code>, also recovers every acknowledged write.</p>
+<pre><code class="language-console">$ ./target/release/kvd --data /var/tmp/kvd --no-sync &amp;
+$ ./target/release/kvctl load --server http://127.0.0.1:7001 --count 200000 --acked acked.txt &amp;
+$ sleep 1.5; pkill -9 -x kvd
+write 8595 failed: io: Connection reset by peer (os error 104)
+8594 writes acknowledged
+$ ./target/release/kvd --data /var/tmp/kvd --no-sync &amp;
+recovered 8594 keys from 8594 records, cut 0 bytes from the end of the log
+$ ./target/release/kvctl verify --server http://127.0.0.1:7001 --acked acked.txt
+8594 acknowledged, 8594 found, 0 missing
+</code></pre>
+<p>It would be a serious error to conclude from this that <code>fsync</code> is unnecessary. When a
+process is killed, its own memory is lost, but the data it had passed to <code>write</code> is
+in the kernel’s buffers. The kernel continues to run, and writes that data to the disk
+shortly afterwards. Only a failure that stops the kernel, such as a loss of power,
+loses data that was written without <code>fsync</code>. A test that kills a process therefore
+succeeds with and without <code>fsync</code>, and provides no evidence whatever about durability
+under a loss of power. Many systems have been declared durable on the strength of
+exactly this test.</p>
+<h2 id="running-the-test-on-2-machines"><a class="header" href="#running-the-test-on-2-machines">Running the test on 2 machines</a></h2>
+<p>The server and the client are separate programs that communicate over HTTP, and can
+therefore run on different machines without any change. In the following session, the
+server runs on a machine named <code>node-b</code> at the address 10.0.0.2, and the client on
+<code>node-a</code>. A binary can be copied between machines of the same architecture and
+operating system, and is otherwise built on each.</p>
+<figure>
+<img src="figures/two-machines.svg?v=073ee750" alt="The test on 2 machines. On node-a, kvctl load sends PUT requests and writes each acknowledged key to acked.txt. On node-b, kvd listens on port 7001 and writes kv.log. kvctl writes keys and notes each one the server answered. After 3 seconds kvd is killed with signal 9. kvd is started again and reads its log. kvctl reads every noted key, and 1107 of 1107 are there.">
+<figcaption><b>Figure 2.7</b> The client and the server on separate machines.</figcaption>
+</figure>
+<pre><code class="language-console">node-a$ scp target/release/kvd node-b:/tmp/kvd
+node-b$ /tmp/kvd --listen 0.0.0.0:7001 --data /tmp/kvd-data &amp;
+recovered 0 keys from 0 records, cut 0 bytes from the end of the log
+listening on 0.0.0.0:7001
+
+node-a$ ./target/release/kvctl load --server http://10.0.0.2:7001 --count 5000 --acked acked.txt &amp;
+node-b$ pkill -9 -x kvd
+write 1108 failed: io: Connection reset by peer (os error 104)
+1107 writes acknowledged
+
+node-b$ /tmp/kvd --listen 0.0.0.0:7001 --data /tmp/kvd-data &amp;
+recovered 1107 keys from 1107 records, cut 0 bytes from the end of the log
+node-a$ ./target/release/kvctl verify --server http://10.0.0.2:7001 --acked acked.txt
+1107 acknowledged, 1107 found, 0 missing
+node-a$ curl http://10.0.0.2:7001/healthz
+{"status":"ok","keys":1107,"last_sequence":1107}
+</code></pre>
+<p>The client’s file of acknowledged keys is held on a machine that no fault affected,
+and is on that account an independent record of what the server acknowledged. Tests
+of faults follow this structure quite generally. A component outside the system under
+test records what was acknowledged, a fault is injected, and the record is compared
+with the state of the system after it has recovered. Chapters 3 and 4 test replication
+and elections in the same way.</p>
+<p>The test can be run in several configurations.</p>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th>Configuration</th><th>Server</th><th>Client</th></tr>
+</thead>
+<tbody>
+<tr><td>1 machine</td><td><code>kvd --listen 127.0.0.1:7001</code></td><td><code>kvctl ... --server http://127.0.0.1:7001</code></td></tr>
+<tr><td>2 machines on a local network</td><td><code>kvd --listen 0.0.0.0:7001</code> on machine B</td><td><code>kvctl ... --server http://&lt;address of B&gt;:7001</code> on machine A</td></tr>
+<tr><td>2 cloud instances</td><td>as above, with port 7001 permitted between the instances</td><td>as above, using the private address of the server</td></tr>
+</tbody>
+</table>
+</div>
+<h2 id="the-limits-of-a-single-node"><a class="header" href="#the-limits-of-a-single-node">The limits of a single node</a></h2>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th>Limitation</th><th>Consequence</th><th>What chapter 1 provides against it</th></tr>
+</thead>
+<tbody>
+<tr><td>The log is on a single disk.</td><td>The loss of the disk loses all the data.</td><td>3 replicas of every shard</td></tr>
+<tr><td>The node is a single process.</td><td>Every request fails while the process is not running.</td><td>the election of a new leader</td></tr>
+<tr><td>Every write performs its own <code>fsync</code>.</td><td>The node stores 185 records per second on the disk measured.</td><td>group commit, and the distribution of writes over 24 nodes</td></tr>
+<tr><td>The log grows without limit.</td><td>The time to restart and the disk space used increase continually.</td><td>periodic snapshots of the map, after which older records are deleted</td></tr>
+<tr><td>All entries are held in memory.</td><td>The data cannot exceed the memory of 1 machine.</td><td>sharding</td></tr>
+</tbody>
+</table>
+</div>
+<p>Within these limits, the node retains every acknowledged write when its process is
+killed, when its log is cut short at any byte, and when a bit is corrupted in its last
+record. That is the assumption on which chapter 1 was built, and chapter 3 now builds
+replication upon it.</p>
+<h2 id="the-complete-programs"><a class="header" href="#the-complete-programs">The complete programs</a></h2>
+<p class="listing"><img class="mascot" src="art/crab-cute.svg" alt=""><b>Listing 2.36</b> The complete <code>kv/src/lib.rs</code>. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/distributed-systems-from-the-ground-up/code/kv/src/lib.rs">kv/src/lib.rs</a></p>
+
+<pre><code class="language-rust">//! A key-value store for one node that keeps every acknowledged write across
+//! a crash. A write is appended to a log on disk before it is applied in
+//! memory, and the log is read back when the store is opened.
+
+pub mod log;
+pub mod record;
+pub mod store;
+
+pub use log::{Log, Recovery};
+pub use record::{Change, Decoded, Record};
+pub use store::{Condition, Entry, Store, StoreError, Summary, Write, Written, apply, check, page};</code></pre>
+<p class="listing"><img class="mascot" src="art/crab-cute.svg" alt=""><b>Listing 2.37</b> The complete <code>kv/src/record.rs</code>. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/distributed-systems-from-the-ground-up/code/kv/src/record.rs">kv/src/record.rs</a></p>
+
+<pre><code class="language-rust">//! The format of one record of the log.
+//!
+//! A record is a frame of 8 bytes followed by a payload:
+//!
+//! ```text
+//! length: u32 | checksum: u32 | sequence: u64 | kind: u8 | key length: u16 | key | value
+//! ```
+//!
+//! `length` counts the bytes of the payload and `checksum` is the CRC-32 of
+//! the payload. All integers are little-endian.
+
+use crc32fast::hash;
+
+/// A change to the store.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum Change {
+    Put { key: String, value: Vec&lt;u8&gt; },
+    Delete { key: String },
+}
+
+/// A change with its position in the log. Sequence numbers start at 1 and
+/// grow by 1 with each record.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct Record {
+    pub sequence: u64,
+    pub change: Change,
+}
+
+/// The result of reading one record from the front of a slice of bytes.
+#[derive(Debug, PartialEq, Eq)]
+pub enum Decoded {
+    /// A whole record, and the number of bytes it occupies.
+    Record { record: Record, length: usize },
+    /// The bytes end before the record does.
+    Incomplete,
+    /// The checksum does not match the payload, or the payload is malformed.
+    Corrupt,
+}
+
+/// The bytes of a frame: the length and the checksum.
+pub const FRAME: usize = 8;
+
+/// The largest payload a record may have: a key, a value of 1 MiB, and the
+/// fixed fields.
+pub const MAX_PAYLOAD: usize = (1 &lt;&lt; 20) + 1024;
+
+const PUT: u8 = 1;
+const DELETE: u8 = 2;
+
+impl Record {
+    /// Returns the record as the bytes that are appended to the log.
+    pub fn encode(&amp;self) -&gt; Vec&lt;u8&gt; {
+        let (kind, key, value) = match &amp;self.change {
+            Change::Put { key, value } =&gt; (PUT, key, value.as_slice()),
+            Change::Delete { key } =&gt; (DELETE, key, &amp;[][..]),
+        };
+
+        let mut payload = Vec::with_capacity(11 + key.len() + value.len());
+        payload.extend_from_slice(&amp;self.sequence.to_le_bytes());
+        payload.push(kind);
+        payload.extend_from_slice(&amp;(key.len() as u16).to_le_bytes());
+        payload.extend_from_slice(key.as_bytes());
+        payload.extend_from_slice(value);
+
+        let mut bytes = Vec::with_capacity(FRAME + payload.len());
+        bytes.extend_from_slice(&amp;(payload.len() as u32).to_le_bytes());
+        bytes.extend_from_slice(&amp;hash(&amp;payload).to_le_bytes());
+        bytes.extend_from_slice(&amp;payload);
+
+        bytes
+    }
+}
+
+impl Record {
+    /// Reads the record at the front of `bytes`.
+    pub fn decode(bytes: &amp;[u8]) -&gt; Decoded {
+        let Some((length, rest)) = bytes.split_first_chunk::&lt;4&gt;() else {
+            return Decoded::Incomplete;
+        };
+        let Some((checksum, rest)) = rest.split_first_chunk::&lt;4&gt;() else {
+            return Decoded::Incomplete;
+        };
+
+        let length = u32::from_le_bytes(*length) as usize;
+
+        if length &gt; MAX_PAYLOAD {
+            return Decoded::Corrupt;
+        }
+
+        let Some(payload) = rest.get(..length) else {
+            return Decoded::Incomplete;
+        };
+
+        if hash(payload) != u32::from_le_bytes(*checksum) {
+            return Decoded::Corrupt;
+        }
+
+        match parse(payload) {
+            Some(record) =&gt; Decoded::Record {
+                record,
+                length: FRAME + length,
+            },
+            None =&gt; Decoded::Corrupt,
+        }
+    }
+}
+
+/// Splits a payload into its fields. It returns `None` for a payload that is
+/// too short for its fields or has an unknown kind.
+fn parse(payload: &amp;[u8]) -&gt; Option&lt;Record&gt; {
+    let (sequence, rest) = payload.split_first_chunk::&lt;8&gt;()?;
+    let (&amp;kind, rest) = rest.split_first()?;
+    let (key_length, rest) = rest.split_first_chunk::&lt;2&gt;()?;
+    let (key, value) = rest.split_at_checked(u16::from_le_bytes(*key_length) as usize)?;
+    let key = String::from_utf8(key.to_vec()).ok()?;
+
+    let change = match (kind, value) {
+        (PUT, value) =&gt; Change::Put {
+            key,
+            value: value.to_vec(),
+        },
+        (DELETE, []) =&gt; Change::Delete { key },
+        (_unknown, _value) =&gt; return None,
+    };
+
+    Some(Record {
+        sequence: u64::from_le_bytes(*sequence),
+        change,
+    })
+}</code></pre>
+<p class="listing"><img class="mascot" src="art/crab-cute.svg" alt=""><b>Listing 2.38</b> The complete <code>kv/src/log.rs</code>. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/distributed-systems-from-the-ground-up/code/kv/src/log.rs">kv/src/log.rs</a></p>
+
+<pre><code class="language-rust">//! The write-ahead log: a file that only grows, to which every change is
+//! appended before it is applied.
+
+use std::fs::{self, File, OpenOptions};
+use std::io::{self, Read, Write};
+use std::path::Path;
+
+use crate::record::{Change, Decoded, Record};
+
+/// The name of the log inside the data directory.
+pub const FILE_NAME: &amp;str = "kv.log";
+
+/// An open log, positioned at its end.
+pub struct Log {
+    file: File,
+    /// Whether `append` waits for the disk before it returns.
+    sync: bool,
+    /// The sequence number of the next record.
+    next: u64,
+    /// Set by a failed write. A failed log accepts no more records.
+    failed: bool,
+}
+
+/// What `Log::open` found in the file.
+pub struct Recovery {
+    /// The complete records, in the order they were written.
+    pub records: Vec&lt;Record&gt;,
+    /// The bytes after the last complete record, which were removed.
+    pub discarded: u64,
+}
+
+/// Reads records from the front of `bytes` until one is incomplete or
+/// corrupt. It returns the records and the number of bytes they occupy.
+fn scan(bytes: &amp;[u8]) -&gt; (Vec&lt;Record&gt;, usize) {
+    let mut records = Vec::new();
+    let mut valid = 0;
+
+    while let Decoded::Record { record, length } = Record::decode(&amp;bytes[valid..]) {
+        records.push(record);
+        valid += length;
+    }
+
+    (records, valid)
+}
+
+impl Log {
+    /// Opens the log in `directory`, creating both if they do not exist.
+    /// Anything after the last complete record is cut off.
+    pub fn open(directory: &amp;Path, sync: bool) -&gt; io::Result&lt;(Log, Recovery)&gt; {
+        fs::create_dir_all(directory)?;
+
+        let mut file = OpenOptions::new()
+            .read(true)
+            .append(true)
+            .create(true)
+            .open(directory.join(FILE_NAME))?;
+        let mut bytes = Vec::new();
+        file.read_to_end(&amp;mut bytes)?;
+
+        let (records, valid) = scan(&amp;bytes);
+        let discarded = (bytes.len() - valid) as u64;
+
+        if discarded &gt; 0 {
+            file.set_len(valid as u64)?;
+        }
+
+        if sync {
+            // The file's length is part of the file. Its name is part of the directory.
+            file.sync_all()?;
+            File::open(directory)?.sync_all()?;
+        }
+
+        let next = records
+            .last()
+            .map_or(1, |record| record.sequence + 1);
+
+        Ok((
+            Log {
+                file,
+                sync,
+                next,
+                failed: false,
+            },
+            Recovery { records, discarded },
+        ))
+    }
+}
+
+impl Log {
+    /// Appends a change and returns the record that holds it. When the log
+    /// was opened with `sync`, the record is on the disk when this returns.
+    pub fn append(&amp;mut self, change: Change) -&gt; io::Result&lt;Record&gt; {
+        if self.failed {
+            return Err(io::Error::other(
+                "the log failed on an earlier write and is closed",
+            ));
+        }
+
+        let record = Record {
+            sequence: self.next,
+            change,
+        };
+
+        if let Err(error) = self.write(&amp;record.encode()) {
+            self.failed = true;
+
+            return Err(error);
+        }
+
+        self.next += 1;
+
+        Ok(record)
+    }
+
+    fn write(&amp;mut self, bytes: &amp;[u8]) -&gt; io::Result&lt;()&gt; {
+        self.file.write_all(bytes)?;
+
+        if self.sync {
+            self.file.sync_data()?;
+        }
+
+        Ok(())
+    }
+
+    /// The sequence number of the last record, or 0 for an empty log.
+    pub fn last_sequence(&amp;self) -&gt; u64 {
+        self.next - 1
+    }
+}
+
+impl Log {
+    /// Appends records that another node numbered, in one write and with one
+    /// wait for the disk. The first record must follow the last record of
+    /// this log.
+    pub fn append_records(&amp;mut self, records: &amp;[Record]) -&gt; io::Result&lt;()&gt; {
+        if self.failed {
+            return Err(io::Error::other(
+                "the log failed on an earlier write and is closed",
+            ));
+        }
+
+        let misplaced = (self.next..)
+            .zip(records)
+            .find(|(expected, record)| record.sequence != *expected);
+
+        if let Some((expected, record)) = misplaced {
+            return Err(io::Error::other(format!(
+                "record {} cannot follow record {}",
+                record.sequence,
+                expected - 1
+            )));
+        }
+
+        let bytes: Vec&lt;u8&gt; = records
+            .iter()
+            .flat_map(Record::encode)
+            .collect();
+
+        if let Err(error) = self.write(&amp;bytes) {
+            self.failed = true;
+
+            return Err(error);
+        }
+
+        self.next += records.len() as u64;
+
+        Ok(())
+    }
+}
+
+impl Log {
+    /// Removes the records after record `keep`, which ends at byte `length`
+    /// of the file. A follower uses this to discard records that were never
+    /// committed and that differ from the leader's.
+    pub fn truncate(&amp;mut self, keep: u64, length: u64) -&gt; io::Result&lt;()&gt; {
+        self.file.set_len(length)?;
+
+        if self.sync {
+            self.file.sync_all()?;
+        }
+
+        self.next = keep + 1;
+
+        Ok(())
+    }
+}</code></pre>
+<p class="listing"><img class="mascot" src="art/crab-cute.svg" alt=""><b>Listing 2.39</b> The complete <code>kv/src/store.rs</code>. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/distributed-systems-from-the-ground-up/code/kv/src/store.rs">kv/src/store.rs</a></p>
+
+<pre><code class="language-rust">//! The store: the current value of every key in memory, and the log that
+//! rebuilds it.
+
+use std::collections::BTreeMap;
+use std::io;
+use std::ops::Bound;
+use std::path::Path;
+
+use thiserror::Error;
+
+use crate::log::Log;
+use crate::record::{Change, Record};
+
+/// The value of a key and the sequence number of the record that wrote it.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct Entry {
+    pub value: Vec&lt;u8&gt;,
+    pub version: u64,
+}
+
+/// What a write requires of the key's current state.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum Condition {
+    /// The write is unconditional.
+    Always,
+    /// The key must not exist.
+    Absent,
+    /// The key must exist at this version.
+    Version(u64),
+}
+
+/// The result of a `put`.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct Written {
+    pub version: u64,
+    /// Whether the key did not exist before.
+    pub created: bool,
+}
+
+/// One line of a listing.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct Summary {
+    pub key: String,
+    pub version: u64,
+    pub size: usize,
+}
+
+#[derive(Debug, Error)]
+pub enum StoreError {
+    #[error("the key does not exist")]
+    NotFound,
+    #[error("the condition on the key's version does not hold")]
+    ConditionFailed { current: Option&lt;u64&gt; },
+    #[error("the log could not be written: {0}")]
+    Log(#[from] io::Error),
+}
+
+pub struct Store {
+    entries: BTreeMap&lt;String, Entry&gt;,
+    log: Log,
+}
+
+impl Store {
+    /// Opens the store in `directory` and applies every record of its log.
+    /// It returns the store, the number of records applied, and the number
+    /// of bytes that were cut from the end of the log.
+    pub fn open(directory: &amp;Path, sync: bool) -&gt; io::Result&lt;(Store, usize, u64)&gt; {
+        let (log, recovery) = Log::open(directory, sync)?;
+        let applied = recovery.records.len();
+        let mut entries = BTreeMap::new();
+
+        for record in recovery.records {
+            apply(&amp;mut entries, record);
+        }
+
+        Ok((Store { entries, log }, applied, recovery.discarded))
+    }
+}
+
+/// Makes the change of one record in the map. Recovery and the write path
+/// both go through this function, so they cannot disagree.
+pub fn apply(entries: &amp;mut BTreeMap&lt;String, Entry&gt;, record: Record) {
+    match record.change {
+        Change::Put { key, value } =&gt; {
+            entries.insert(
+                key,
+                Entry {
+                    value,
+                    version: record.sequence,
+                },
+            );
+        }
+        Change::Delete { key } =&gt; {
+            entries.remove(&amp;key);
+        }
+    }
+}
+
+impl Store {
+    /// Sets the value of a key. The change is in the log before it is in
+    /// the map.
+    pub fn put(
+        &amp;mut self,
+        key: String,
+        value: Vec&lt;u8&gt;,
+        condition: Condition,
+    ) -&gt; Result&lt;Written, StoreError&gt; {
+        let current = self.version(&amp;key);
+        check(condition, current)?;
+
+        let record = self
+            .log
+            .append(Change::Put { key, value })?;
+        let version = record.sequence;
+        apply(&amp;mut self.entries, record);
+
+        Ok(Written {
+            version,
+            created: current.is_none(),
+        })
+    }
+
+    /// Removes a key.
+    pub fn delete(&amp;mut self, key: &amp;str, condition: Condition) -&gt; Result&lt;(), StoreError&gt; {
+        let current = self.version(key);
+
+        if current.is_none() {
+            return Err(StoreError::NotFound);
+        }
+
+        check(condition, current)?;
+
+        let record = self.log.append(Change::Delete {
+            key: key.to_owned(),
+        })?;
+        apply(&amp;mut self.entries, record);
+
+        Ok(())
+    }
+
+    fn version(&amp;self, key: &amp;str) -&gt; Option&lt;u64&gt; {
+        self.entries
+            .get(key)
+            .map(|entry| entry.version)
+    }
+}
+
+pub fn check(condition: Condition, current: Option&lt;u64&gt;) -&gt; Result&lt;(), StoreError&gt; {
+    let holds = match condition {
+        Condition::Always =&gt; true,
+        Condition::Absent =&gt; current.is_none(),
+        Condition::Version(version) =&gt; current == Some(version),
+    };
+
+    holds
+        .then_some(())
+        .ok_or(StoreError::ConditionFailed { current })
+}
+
+/// One write of a batch: the change, and the condition it carries.
+pub struct Write {
+    pub change: Change,
+    pub condition: Condition,
+}
+
+impl Store {
+    /// Performs several writes with a single wait for the disk. Each write
+    /// is checked as if the writes before it in the batch had already
+    /// happened. The result of each is returned in the same order.
+    pub fn commit(&amp;mut self, writes: Vec&lt;Write&gt;) -&gt; Vec&lt;Result&lt;Written, StoreError&gt;&gt; {
+        // The versions that keys will have once the accepted writes of this
+        // batch are applied. `None` is a key that a write of the batch deletes.
+        let mut pending: BTreeMap&lt;String, Option&lt;u64&gt;&gt; = BTreeMap::new();
+        let mut records = Vec::new();
+        let mut results = Vec::new();
+        let first = self.log.last_sequence() + 1;
+
+        for write in writes {
+            let key = match &amp;write.change {
+                Change::Put { key, .. } | Change::Delete { key } =&gt; key.clone(),
+            };
+            let current = match pending.get(&amp;key) {
+                Some(version) =&gt; *version,
+                None =&gt; self.version(&amp;key),
+            };
+            let deletes = matches!(write.change, Change::Delete { .. });
+
+            let checked = if deletes &amp;&amp; current.is_none() {
+                Err(StoreError::NotFound)
+            } else {
+                check(write.condition, current)
+            };
+
+            if let Err(error) = checked {
+                results.push(Err(error));
+
+                continue;
+            }
+
+            let sequence = first + records.len() as u64;
+            let version = if deletes { None } else { Some(sequence) };
+
+            pending.insert(key, version);
+            results.push(Ok(Written {
+                version: sequence,
+                created: current.is_none(),
+            }));
+            records.push(Record {
+                sequence,
+                change: write.change,
+            });
+        }
+
+        // One write and one wait for the disk, for the whole batch.
+        if let Err(error) = self.log.append_records(&amp;records) {
+            let failure = error.to_string();
+
+            return results
+                .into_iter()
+                .map(|result| result.and(Err(StoreError::Log(io::Error::other(failure.clone())))))
+                .collect();
+        }
+
+        for record in records {
+            apply(&amp;mut self.entries, record);
+        }
+
+        results
+    }
+}
+
+impl Store {
+    pub fn get(&amp;self, key: &amp;str) -&gt; Option&lt;&amp;Entry&gt; {
+        self.entries.get(key)
+    }
+
+    /// Returns up to `limit` keys that start with `prefix` and sort after
+    /// `after`, in order, and whether more keys follow them.
+    pub fn list(&amp;self, prefix: &amp;str, after: Option&lt;&amp;str&gt;, limit: usize) -&gt; (Vec&lt;Summary&gt;, bool) {
+        page(&amp;self.entries, prefix, after, limit)
+    }
+
+    pub fn len(&amp;self) -&gt; usize {
+        self.entries.len()
+    }
+
+    pub fn is_empty(&amp;self) -&gt; bool {
+        self.entries.is_empty()
+    }
+
+    /// The sequence number of the last record in the log.
+    pub fn last_sequence(&amp;self) -&gt; u64 {
+        self.log.last_sequence()
+    }
+}
+
+/// One page of a listing over a map of entries.
+pub fn page(
+    entries: &amp;BTreeMap&lt;String, Entry&gt;,
+    prefix: &amp;str,
+    after: Option&lt;&amp;str&gt;,
+    limit: usize,
+) -&gt; (Vec&lt;Summary&gt;, bool) {
+    let start = match after {
+        Some(key) =&gt; Bound::Excluded(key),
+        None =&gt; Bound::Included(prefix),
+    };
+
+    let mut matching = entries
+        .range::&lt;str, _&gt;((start, Bound::Unbounded))
+        .take_while(|entry| entry.0.starts_with(prefix))
+        .map(|(key, entry)| Summary {
+            key: key.clone(),
+            version: entry.version,
+            size: entry.value.len(),
+        });
+
+    let page: Vec&lt;Summary&gt; = matching
+        .by_ref()
+        .take(limit)
+        .collect();
+    let more = matching.next().is_some();
+
+    (page, more)
+}</code></pre>
+<p class="listing"><img class="mascot" src="art/crab-cute.svg" alt=""><b>Listing 2.40</b> The complete <code>kvd/src/lib.rs</code>. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/distributed-systems-from-the-ground-up/code/kvd/src/lib.rs">kvd/src/lib.rs</a></p>
+
+<pre><code class="language-rust">//! The HTTP API of a storage node.
+
+pub mod api;</code></pre>
+<p class="listing"><img class="mascot" src="art/crab-cute.svg" alt=""><b>Listing 2.41</b> The complete <code>kvd/src/api.rs</code>. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/distributed-systems-from-the-ground-up/code/kvd/src/api.rs">kvd/src/api.rs</a></p>
+
+<pre><code class="language-rust">//! The parts of the HTTP API that do not depend on how a node stores its
+//! data: the errors and their responses, and the reading of keys and
+//! conditional headers.
+
+use axum::Json;
+use axum::http::header::{CONTENT_TYPE, IF_MATCH, IF_NONE_MATCH};
+use axum::http::{HeaderMap, HeaderName, StatusCode};
+use axum::response::{IntoResponse, Response};
+use kv::{Condition, StoreError};
+use serde::Serialize;
+
+/// The largest value a key may hold.
+pub const MAX_VALUE: usize = 1 &lt;&lt; 20;
+
+pub const MAX_KEY: usize = 256;
+
+/// The ways a request can fail. Each one is a status code and a sentence.
+pub enum ApiError {
+    InvalidKey,
+    InvalidHeader(HeaderName),
+    NotFound,
+    ConditionFailed(Option&lt;u64&gt;),
+    Unavailable(String),
+    /// The request reached a node that does not serve it. The text names the reason.
+    Misdirected(String),
+    /// The shard has no leader at the moment. Nothing was changed.
+    NoLeader,
+}
+
+/// The body of an error response, in the format of RFC 9457.
+#[derive(Serialize)]
+struct Problem {
+    #[serde(rename = "type")]
+    kind: &amp;'static str,
+    title: &amp;'static str,
+    status: u16,
+    #[serde(skip_serializing_if = "String::is_empty")]
+    detail: String,
+}
+
+impl IntoResponse for ApiError {
+    fn into_response(self) -&gt; Response {
+        let (status, kind, title, detail) = match self {
+            ApiError::InvalidKey =&gt; (
+                StatusCode::BAD_REQUEST,
+                "/problems/invalid-key",
+                "The key is not valid",
+                format!("a key is 1 to {MAX_KEY} characters from A-Z, a-z, 0-9, '.', '_' and '-'"),
+            ),
+            ApiError::InvalidHeader(name) =&gt; (
+                StatusCode::BAD_REQUEST,
+                "/problems/invalid-header",
+                "A request header is not valid",
+                format!("{name} must be a version in double quotes, or * where that is allowed"),
+            ),
+            ApiError::NotFound =&gt; (
+                StatusCode::NOT_FOUND,
+                "/problems/key-not-found",
+                "The key does not exist",
+                String::new(),
+            ),
+            ApiError::ConditionFailed(current) =&gt; (
+                StatusCode::PRECONDITION_FAILED,
+                "/problems/condition-failed",
+                "The condition on the key's version does not hold",
+                current.map_or("the key does not exist".into(), |version| {
+                    format!("the key is at version {version}")
+                }),
+            ),
+            ApiError::Misdirected(detail) =&gt; (
+                StatusCode::MISDIRECTED_REQUEST,
+                "/problems/not-leader",
+                "This node is not the leader",
+                detail,
+            ),
+            ApiError::NoLeader =&gt; (
+                StatusCode::SERVICE_UNAVAILABLE,
+                "/problems/no-leader",
+                "The shard has no leader at the moment",
+                String::new(),
+            ),
+            ApiError::Unavailable(detail) =&gt; (
+                StatusCode::SERVICE_UNAVAILABLE,
+                "/problems/store-unavailable",
+                "The node cannot serve the request",
+                detail,
+            ),
+        };
+
+        let problem = Problem {
+            kind,
+            title,
+            status: status.as_u16(),
+            detail,
+        };
+
+        (
+            status,
+            [(CONTENT_TYPE, "application/problem+json")],
+            Json(problem),
+        )
+            .into_response()
+    }
+}
+
+impl From&lt;StoreError&gt; for ApiError {
+    fn from(error: StoreError) -&gt; Self {
+        match error {
+            StoreError::NotFound =&gt; ApiError::NotFound,
+            StoreError::ConditionFailed { current } =&gt; ApiError::ConditionFailed(current),
+            StoreError::Log(error) =&gt; ApiError::Unavailable(error.to_string()),
+        }
+    }
+}
+
+/// A version as it appears in `ETag`, `If-Match` and `If-None-Match`.
+pub fn etag(version: u64) -&gt; String {
+    format!("\"{version}\"")
+}
+
+pub fn valid_key(key: &amp;str) -&gt; Result&lt;(), ApiError&gt; {
+    let allowed = |c: char| c.is_ascii_alphanumeric() || matches!(c, '.' | '_' | '-');
+
+    let valid = (1..=MAX_KEY).contains(&amp;key.len()) &amp;&amp; key.chars().all(allowed);
+
+    valid
+        .then_some(())
+        .ok_or(ApiError::InvalidKey)
+}
+
+/// Reads a header that holds a quoted version or `*`.
+pub fn version_header(
+    headers: &amp;HeaderMap,
+    name: HeaderName,
+) -&gt; Result&lt;Option&lt;Condition&gt;, ApiError&gt; {
+    let Some(value) = headers.get(&amp;name) else {
+        return Ok(None);
+    };
+
+    let Ok(text) = value.to_str() else {
+        return Err(ApiError::InvalidHeader(name));
+    };
+
+    if text == "*" {
+        return Ok(Some(Condition::Absent));
+    }
+
+    let version = text
+        .strip_prefix("\"")
+        .and_then(|rest| rest.strip_suffix("\""))
+        .and_then(|digits| digits.parse().ok());
+
+    version
+        .map(Condition::Version)
+        .map(Some)
+        .ok_or(ApiError::InvalidHeader(name))
+}
+
+/// The condition a write carries: `If-Match: "7"` requires version 7, and
+/// `If-None-Match: *` requires that the key does not exist.
+pub fn write_condition(headers: &amp;HeaderMap) -&gt; Result&lt;Condition, ApiError&gt; {
+    match (
+        version_header(headers, IF_MATCH)?,
+        version_header(headers, IF_NONE_MATCH)?,
+    ) {
+        (Some(Condition::Version(version)), None) =&gt; Ok(Condition::Version(version)),
+        (None, Some(Condition::Absent)) =&gt; Ok(Condition::Absent),
+        (None, None) =&gt; Ok(Condition::Always),
+        (Some(..), ..) =&gt; Err(ApiError::InvalidHeader(IF_MATCH)),
+        (None, Some(..)) =&gt; Err(ApiError::InvalidHeader(IF_NONE_MATCH)),
+    }
+}</code></pre>
+<p class="listing"><img class="mascot" src="art/crab-cute.svg" alt=""><b>Listing 2.42</b> The complete <code>kvd/src/main.rs</code>. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/distributed-systems-from-the-ground-up/code/kvd/src/main.rs">kvd/src/main.rs</a></p>
+
+<pre><code class="language-rust">//! Command kvd serves a key-value store over HTTP. Every write is in the log
+//! on disk before the response is sent.
+//!
+//! Run it from code/ with:
+//!
+//!     cargo run -p kvd -- --listen 0.0.0.0:7001 --data /var/tmp/kvd
+
+use std::error::Error;
+use std::net::SocketAddr;
+use std::path::PathBuf;
+use std::sync::Arc;
+
+use axum::body::Bytes;
+use axum::extract::{DefaultBodyLimit, Path, Query, State};
+use axum::http::header::{CONTENT_TYPE, ETAG, IF_NONE_MATCH};
+use axum::http::{HeaderMap, StatusCode};
+use axum::response::{IntoResponse, Response};
+use axum::routing::get;
+use axum::{Json, Router};
+use clap::Parser;
+use kv::{Condition, Store, StoreError, Summary};
+use kvd::api::{ApiError, MAX_VALUE, etag, valid_key, version_header, write_condition};
+use parking_lot::Mutex;
+use serde::{Deserialize, Serialize};
+use tokio::net::TcpListener;
+use tokio::task;
+
+#[derive(Parser)]
+struct Options {
+    /// The address to accept connections on.
+    #[arg(long, default_value = "127.0.0.1:7001")]
+    listen: SocketAddr,
+
+    /// The directory that holds the log.
+    #[arg(long, default_value = "data")]
+    data: PathBuf,
+
+    /// Respond to a write without waiting for the disk.
+    #[arg(long)]
+    no_sync: bool,
+}
+
+/// The store, shared by every request.
+type Shared = Arc&lt;Mutex&lt;Store&gt;&gt;;
+
+
+/// Runs a write on a thread that may block. A write waits for the disk, and
+/// a thread that waits must not be one of the threads that serve requests.
+async fn write&lt;T, F&gt;(store: Shared, work: F) -&gt; Result&lt;T, ApiError&gt;
+where
+    F: FnOnce(&amp;mut Store) -&gt; Result&lt;T, StoreError&gt; + Send + 'static,
+    T: Send + 'static,
+{
+    let result = task::spawn_blocking(move || work(&amp;mut store.lock()))
+        .await
+        .map_err(|error| ApiError::Unavailable(error.to_string()))?;
+
+    Ok(result?)
+}
+
+async fn put_key(
+    State(store): State&lt;Shared&gt;,
+    Path(key): Path&lt;String&gt;,
+    headers: HeaderMap,
+    body: Bytes,
+) -&gt; Result&lt;Response, ApiError&gt; {
+    valid_key(&amp;key)?;
+    let condition = write_condition(&amp;headers)?;
+
+    let written = write(store, move |store| store.put(key, body.to_vec(), condition)).await?;
+    let status = if written.created {
+        StatusCode::CREATED
+    } else {
+        StatusCode::NO_CONTENT
+    };
+
+    Ok((status, [(ETAG, etag(written.version))]).into_response())
+}
+
+async fn delete_key(
+    State(store): State&lt;Shared&gt;,
+    Path(key): Path&lt;String&gt;,
+    headers: HeaderMap,
+) -&gt; Result&lt;StatusCode, ApiError&gt; {
+    valid_key(&amp;key)?;
+    let condition = write_condition(&amp;headers)?;
+
+    write(store, move |store| store.delete(&amp;key, condition)).await?;
+
+    Ok(StatusCode::NO_CONTENT)
+}
+
+async fn get_key(
+    State(store): State&lt;Shared&gt;,
+    Path(key): Path&lt;String&gt;,
+    headers: HeaderMap,
+) -&gt; Result&lt;Response, ApiError&gt; {
+    valid_key(&amp;key)?;
+    let cached = version_header(&amp;headers, IF_NONE_MATCH)?;
+    let entry = store
+        .lock()
+        .get(&amp;key)
+        .cloned()
+        .ok_or(ApiError::NotFound)?;
+    let tag = [(ETAG, etag(entry.version))];
+
+    if cached == Some(Condition::Version(entry.version)) {
+        return Ok((StatusCode::NOT_MODIFIED, tag).into_response());
+    }
+
+    Ok((
+        tag,
+        [(CONTENT_TYPE, "application/octet-stream")],
+        entry.value,
+    )
+        .into_response())
+}
+
+#[derive(Deserialize)]
+struct ListQuery {
+    #[serde(default)]
+    prefix: String,
+    after: Option&lt;String&gt;,
+    limit: Option&lt;usize&gt;,
+}
+
+#[derive(Serialize)]
+struct Item {
+    key: String,
+    version: u64,
+    size: usize,
+}
+
+#[derive(Serialize)]
+struct Page {
+    keys: Vec&lt;Item&gt;,
+    /// The value of `after` that returns the next page, when there is one.
+    next_after: Option&lt;String&gt;,
+}
+
+async fn list_keys(State(store): State&lt;Shared&gt;, Query(query): Query&lt;ListQuery&gt;) -&gt; Json&lt;Page&gt; {
+    let limit = query
+        .limit
+        .unwrap_or(100)
+        .clamp(1, 1000);
+    let (page, more) = store
+        .lock()
+        .list(&amp;query.prefix, query.after.as_deref(), limit);
+    let next_after = page
+        .last()
+        .filter(|_last| more)
+        .map(|last| last.key.clone());
+    let keys = page
+        .into_iter()
+        .map(|Summary { key, version, size }| Item { key, version, size })
+        .collect();
+
+    Json(Page { keys, next_after })
+}
+
+#[derive(Serialize)]
+struct Health {
+    status: &amp;'static str,
+    keys: usize,
+    last_sequence: u64,
+}
+
+async fn health(State(store): State&lt;Shared&gt;) -&gt; Json&lt;Health&gt; {
+    let store = store.lock();
+
+    Json(Health {
+        status: "ok",
+        keys: store.len(),
+        last_sequence: store.last_sequence(),
+    })
+}
+
+#[tokio::main]
+async fn main() -&gt; Result&lt;(), Box&lt;dyn Error&gt;&gt; {
+    let options = Options::parse();
+    let (store, applied, discarded) = Store::open(&amp;options.data, !options.no_sync)?;
+
+    println!(
+        "recovered {} keys from {applied} records, cut {discarded} bytes from the end of the log",
+        store.len()
+    );
+
+    let routes = Router::new()
+        .route("/v1/keys", get(list_keys))
+        .route(
+            "/v1/keys/{key}",
+            get(get_key)
+                .put(put_key)
+                .delete(delete_key),
+        )
+        .route("/healthz", get(health))
+        .layer(DefaultBodyLimit::max(MAX_VALUE))
+        .with_state(Arc::new(Mutex::new(store)));
+
+    let listener = TcpListener::bind(options.listen).await?;
+    println!("listening on {}", listener.local_addr()?);
+
+    axum::serve(listener, routes).await?;
+
+    Ok(())
+}</code></pre>
+<p class="listing"><img class="mascot" src="art/crab-cute.svg" alt=""><b>Listing 2.43</b> The complete <code>kvctl/src/main.rs</code>. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/distributed-systems-from-the-ground-up/code/kvctl/src/main.rs">kvctl/src/main.rs</a></p>
+
+<pre><code class="language-rust">//! Command kvctl tests a kvd server from another process or another machine.
+//! `load` writes keys and records each write the server acknowledged, and
+//! `verify` reads every recorded key back.
+//!
+//! Run it from code/ with:
+//!
+//!     cargo run -p kvctl -- load --server http://127.0.0.1:7001 --count 1000 --acked acked.txt
+//!     cargo run -p kvctl -- verify --server http://127.0.0.1:7001 --acked acked.txt
+
+use std::error::Error;
+use std::fs::{self, File};
+use std::io::{BufWriter, Write};
+use std::path::PathBuf;
+
+use clap::{Parser, Subcommand};
+use ureq::Agent;
+
+#[derive(Parser)]
+struct Options {
+    #[command(subcommand)]
+    command: Command,
+}
+
+#[derive(Subcommand)]
+enum Command {
+    /// Write keys until the count is reached or a write fails.
+    Load {
+        #[arg(long)]
+        server: String,
+        #[arg(long, default_value_t = 1000)]
+        count: u32,
+        /// The file that receives the key of every acknowledged write.
+        #[arg(long)]
+        acked: PathBuf,
+    },
+    /// Read back every key in the file of acknowledged writes.
+    Verify {
+        #[arg(long)]
+        server: String,
+        #[arg(long)]
+        acked: PathBuf,
+    },
+}
+
+/// Writes `count` keys. A key is recorded in `acked` only after the server
+/// has answered with a success status.
+fn load(agent: &amp;Agent, server: &amp;str, count: u32, acked: &amp;PathBuf) -&gt; Result&lt;(), Box&lt;dyn Error&gt;&gt; {
+    let mut file = BufWriter::new(File::create(acked)?);
+    let mut written = 0;
+
+    for number in 1..=count {
+        let key = format!("key-{number:06}");
+
+        if let Err(error) = agent
+            .put(format!("{server}/v1/keys/{key}"))
+            .send(format!("value of {key}"))
+        {
+            println!("write {number} failed: {error}");
+
+            break;
+        }
+
+        writeln!(file, "{key}")?;
+        written += 1;
+    }
+
+    file.flush()?;
+    println!("{written} writes acknowledged");
+
+    Ok(())
+}
+
+/// Reads every acknowledged key and compares the value with the one that
+/// was written.
+fn verify(agent: &amp;Agent, server: &amp;str, acked: &amp;PathBuf) -&gt; Result&lt;(), Box&lt;dyn Error&gt;&gt; {
+    let keys = fs::read_to_string(acked)?;
+    let (mut found, mut missing) = (0, 0);
+
+    for key in keys.lines() {
+        let value = match agent
+            .get(format!("{server}/v1/keys/{key}"))
+            .call()
+        {
+            Ok(mut response) =&gt; response
+                .body_mut()
+                .read_to_string()?,
+            Err(ureq::Error::StatusCode(404)) =&gt; String::new(),
+            Err(error) =&gt; return Err(error.into()),
+        };
+
+        if value == format!("value of {key}") {
+            found += 1;
+        } else {
+            missing += 1;
+        }
+    }
+
+    println!(
+        "{} acknowledged, {found} found, {missing} missing",
+        found + missing
+    );
+
+    Ok(())
+}
+
+fn main() -&gt; Result&lt;(), Box&lt;dyn Error&gt;&gt; {
+    let agent = Agent::new_with_defaults();
+
+    match Options::parse().command {
+        Command::Load {
+            server,
+            count,
+            acked,
+        } =&gt; load(&amp;agent, &amp;server, count, &amp;acked),
+        Command::Verify { server, acked } =&gt; verify(&amp;agent, &amp;server, &amp;acked),
+    }
+}</code></pre>
+<p class="listing"><img class="mascot" src="art/crab-cute.svg" alt=""><b>Listing 2.44</b> The complete <code>crashsim/src/main.rs</code>. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/distributed-systems-from-the-ground-up/code/crashsim/src/main.rs">crashsim/src/main.rs</a></p>
+
+<pre><code class="language-rust">//! Command crashsim checks what the log recovers after a crash in the middle
+//! of a write. It writes a log of 5 records, then damages a copy of it in
+//! every way a crash or a bad disk can: it cuts the copy at every length,
+//! and it flips 1 bit in every byte. After each, it opens the copy and
+//! compares the records that come back with the records that were complete.
+//!
+//! Run it from code/ with:
+//!
+//!     cargo run -p crashsim
+
+use std::env;
+use std::error::Error;
+use std::fs;
+use std::path::Path;
+use std::process;
+
+use kv::log::FILE_NAME;
+use kv::{Change, Log, Record};
+
+/// The changes of the test log.
+fn changes() -&gt; Vec&lt;Change&gt; {
+    let put = |key: &amp;str, value: &amp;str| Change::Put {
+        key: key.into(),
+        value: value.into(),
+    };
+
+    vec![
+        put("user-1", "ada"),
+        put("user-2", "grace"),
+        put("user-1", "ada lovelace"),
+        Change::Delete {
+            key: "user-2".into(),
+        },
+        put("user-3", "barbara"),
+    ]
+}
+
+/// Writes the changes to a log in `directory`. It returns the bytes of the
+/// log and the offset at which each record ends.
+fn build(directory: &amp;Path) -&gt; Result&lt;(Vec&lt;u8&gt;, Vec&lt;usize&gt;), Box&lt;dyn Error&gt;&gt; {
+    let mut log = Log::open(directory, false)?.0;
+    let mut ends = Vec::new();
+
+    for change in changes() {
+        let record = log.append(change)?;
+        ends.push(ends.last().copied().unwrap_or(0) + record.encode().len());
+    }
+
+    Ok((fs::read(directory.join(FILE_NAME))?, ends))
+}
+
+/// Replaces the log in `directory` with `bytes` and opens it.
+fn recover(directory: &amp;Path, bytes: &amp;[u8]) -&gt; Result&lt;Vec&lt;Record&gt;, Box&lt;dyn Error&gt;&gt; {
+    fs::write(directory.join(FILE_NAME), bytes)?;
+    let recovery = Log::open(directory, false)?.1;
+
+    Ok(recovery.records)
+}
+
+/// Whether `records` are exactly the first `count` changes, in order.
+fn is_prefix(records: &amp;[Record], count: usize) -&gt; bool {
+    let expected = changes();
+
+    records.len() == count
+        &amp;&amp; records
+            .iter()
+            .zip(&amp;expected)
+            .enumerate()
+            .all(|(index, (record, change))| {
+                record.sequence == index as u64 + 1 &amp;&amp; &amp;record.change == change
+            })
+}
+
+/// Cuts the log at every length and checks that recovery returns the records
+/// that end at or before the cut.
+fn cuts(directory: &amp;Path, log: &amp;[u8], ends: &amp;[usize]) -&gt; Result&lt;(), Box&lt;dyn Error&gt;&gt; {
+    for length in 0..=log.len() {
+        let complete = ends
+            .iter()
+            .filter(|&amp;&amp;end| end &lt;= length)
+            .count();
+        let records = recover(directory, &amp;log[..length])?;
+
+        if !is_prefix(&amp;records, complete) {
+            return Err(format!(
+                "cut at {length}: expected {complete} records, recovered {}",
+                records.len()
+            )
+            .into());
+        }
+    }
+
+    println!(
+        "cut at every length from 0 to {}: each recovery returned the complete records",
+        log.len()
+    );
+
+    let mut first = 0;
+
+    for (count, &amp;end) in ends.iter().enumerate() {
+        println!("  lengths {first:3} to {:3}: {count} records", end - 1);
+        first = end;
+    }
+
+    println!("  length  {first:3}       : {} records", ends.len());
+
+    Ok(())
+}
+
+/// Flips 1 bit in each byte in turn and checks that recovery returns the
+/// records before the damaged one.
+fn flips(directory: &amp;Path, log: &amp;[u8], ends: &amp;[usize]) -&gt; Result&lt;(), Box&lt;dyn Error&gt;&gt; {
+    for position in 0..log.len() {
+        let mut damaged = log.to_vec();
+        damaged[position] ^= 0x10;
+
+        let before = ends
+            .iter()
+            .filter(|&amp;&amp;end| end &lt;= position)
+            .count();
+        let records = recover(directory, &amp;damaged)?;
+
+        if !is_prefix(&amp;records, before) {
+            return Err(format!(
+                "flip at {position}: expected {before} records, recovered {}",
+                records.len()
+            )
+            .into());
+        }
+    }
+
+    println!(
+        "1 bit flipped in each of {} bytes: each recovery returned the records before the damage",
+        log.len()
+    );
+
+    Ok(())
+}
+
+fn run(directory: &amp;Path) -&gt; Result&lt;(), Box&lt;dyn Error&gt;&gt; {
+    let (log, ends) = build(directory)?;
+    let boundaries: Vec&lt;String&gt; = ends
+        .iter()
+        .map(usize::to_string)
+        .collect();
+
+    println!(
+        "a log of {} records and {} bytes, with records ending at {}",
+        ends.len(),
+        log.len(),
+        boundaries.join(", ")
+    );
+
+    cuts(directory, &amp;log, &amp;ends)?;
+    flips(directory, &amp;log, &amp;ends)?;
+
+    let records = recover(directory, &amp;log[..ends[1] + 5])?;
+    let mut reopened = Log::open(directory, false)?.0;
+    let next = reopened.append(Change::Delete {
+        key: "user-1".into(),
+    })?;
+
+    println!(
+        "after a cut at {}: {} records recovered, and the next record has sequence {}",
+        ends[1] + 5,
+        records.len(),
+        next.sequence
+    );
+
+    Ok(())
+}
+
+fn main() -&gt; Result&lt;(), Box&lt;dyn Error&gt;&gt; {
+    let directory = env::temp_dir().join(format!("crashsim-{}", process::id()));
+    let result = run(&amp;directory);
+
+    fs::remove_dir_all(&amp;directory)?;
+
+    result
+}</code></pre>
+<p class="listing"><img class="mascot" src="art/crab-cute.svg" alt=""><b>Listing 2.45</b> The complete <code>synccost/src/main.rs</code>. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/distributed-systems-from-the-ground-up/code/synccost/src/main.rs">synccost/src/main.rs</a></p>
+
+<pre><code class="language-rust">//! Command synccost measures what it costs to wait for the disk. It appends
+//! the same records to 2 logs, one that calls fsync after each record and
+//! one that does not, and prints the time per record.
+//!
+//! Run it from code/ with:
+//!
+//!     cargo run --release -p synccost -- /var/tmp/synccost
+
+use std::env;
+use std::error::Error;
+use std::fs;
+use std::path::Path;
+use std::time::{Duration, Instant};
+
+use kv::{Change, Log};
+
+const RECORDS: u32 = 500;
+
+/// Appends `RECORDS` records of 100 bytes and returns the time it took.
+fn measure(directory: &amp;Path, sync: bool) -&gt; Result&lt;Duration, Box&lt;dyn Error&gt;&gt; {
+    let mut log = Log::open(directory, sync)?.0;
+    let started = Instant::now();
+
+    for number in 0..RECORDS {
+        log.append(Change::Put {
+            key: format!("key-{number:06}"),
+            value: vec![b'v'; 100],
+        })?;
+    }
+
+    Ok(started.elapsed())
+}
+
+fn main() -&gt; Result&lt;(), Box&lt;dyn Error&gt;&gt; {
+    let root = env::args()
+        .nth(1)
+        .ok_or("usage: synccost &lt;directory&gt;")?;
+
+    for (name, sync) in [("without fsync", false), ("with fsync", true)] {
+        let directory = Path::new(&amp;root).join(name.replace(' ', "-"));
+        let elapsed = measure(&amp;directory, sync)?;
+        let each = elapsed.as_secs_f64() * 1000.0 / f64::from(RECORDS);
+
+        println!(
+            "{name:13}: {RECORDS} records in {:8.1} ms, {each:.3} ms per record, {:6.0} records per second",
+            elapsed.as_secs_f64() * 1000.0,
+            1000.0 / each
+        );
+
+        fs::remove_dir_all(&amp;directory)?;
+    }
+
+    Ok(())
+}</code></pre>
+<div class="summary">
+<h2 id="summary"><a class="header" href="#summary">Summary</a></h2>
+<ul>
+<li>A storage node keeps its entries in memory for reads and a log on disk for durability, and every write is appended to the log and confirmed by the disk before it is applied in memory.</li>
+<li>With a log that is only appended to, a crash can damage nothing but the last record, whereas an update in place can destroy data that was already stored.</li>
+<li>Every record carries its length and a CRC-32 checksum, by which a reader distinguishes a complete record from one that is incomplete or corrupt.</li>
+<li>Recovery decodes records until one fails, keeps all that precede it, and cuts the file off before anything new is appended.</li>
+<li><code>write</code> hands data to the kernel, and <code>fsync</code> waits until the disk has stored it. A durable append took 5.4 ms, which is 185 records per second.</li>
+<li>The directory entry of a new file becomes durable only when the directory is synchronised.</li>
+<li>After a failed write or <code>fsync</code>, the log accepts no further records, since a repeated <code>fsync</code> can report success for data that is not on the disk.</li>
+<li>A write can be durable without having been acknowledged, when the node crashes between the disk’s confirmation and the response, and the client then repeats its request.</li>
+<li>Killing a process does not test durability under a loss of power, because the kernel keeps what the process had written.</li>
+<li>A test of faults records what was acknowledged outside the system under test, and compares that record with the state of the system afterwards.</li>
+</ul>
+</div>
+
+
+                    </main>
+
+                    <nav class="nav-wrapper" aria-label="Page navigation">
+                        <!-- Mobile navigation buttons -->
+                            <a rel="prev" href="01-key-value-store-system-design.html" class="mobile-nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                                <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M41.4 233.4c-12.5 12.5-12.5 32.8 0 45.3l160 160c12.5 12.5 32.8 12.5 45.3 0s12.5-32.8 0-45.3L109.3 256 246.6 118.6c12.5-12.5 12.5-32.8 0-45.3s-32.8-12.5-45.3 0l-160 160z"/></svg></span>
+                            </a>
+
+                            <a rel="next prefetch" href="03-key-value-store-replication.html" class="mobile-nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                                <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M278.6 233.4c12.5 12.5 12.5 32.8 0 45.3l-160 160c-12.5 12.5-32.8 12.5-45.3 0s-12.5-32.8 0-45.3L210.7 256 73.4 118.6c-12.5-12.5-12.5-32.8 0-45.3s32.8-12.5 45.3 0l160 160z"/></svg></span>
+                            </a>
+
+                        <div style="clear: both"></div>
+                    </nav>
+                </div>
+            </div>
+
+            <nav class="nav-wide-wrapper" aria-label="Page navigation">
+                    <a rel="prev" href="01-key-value-store-system-design.html" class="nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                        <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M41.4 233.4c-12.5 12.5-12.5 32.8 0 45.3l160 160c12.5 12.5 32.8 12.5 45.3 0s12.5-32.8 0-45.3L109.3 256 246.6 118.6c12.5-12.5 12.5-32.8 0-45.3s-32.8-12.5-45.3 0l-160 160z"/></svg></span>
+                    </a>
+
+                    <a rel="next prefetch" href="03-key-value-store-replication.html" class="nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                        <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M278.6 233.4c12.5 12.5 12.5 32.8 0 45.3l-160 160c-12.5 12.5-32.8 12.5-45.3 0s-12.5-32.8 0-45.3L210.7 256 73.4 118.6c-12.5-12.5-12.5-32.8 0-45.3s32.8-12.5 45.3 0l160 160z"/></svg></span>
+                    </a>
+            </nav>
+
+        </div>
+
+        <template id=fa-eye><span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 576 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M288 32c-80.8 0-145.5 36.8-192.6 80.6C48.6 156 17.3 208 2.5 243.7c-3.3 7.9-3.3 16.7 0 24.6C17.3 304 48.6 356 95.4 399.4C142.5 443.2 207.2 480 288 480s145.5-36.8 192.6-80.6c46.8-43.5 78.1-95.4 93-131.1c3.3-7.9 3.3-16.7 0-24.6c-14.9-35.7-46.2-87.7-93-131.1C433.5 68.8 368.8 32 288 32zM432 256c0 79.5-64.5 144-144 144s-144-64.5-144-144s64.5-144 144-144s144 64.5 144 144zM288 192c0 35.3-28.7 64-64 64c-11.5 0-22.3-3-31.6-8.4c-.2 2.8-.4 5.5-.4 8.4c0 53 43 96 96 96s96-43 96-96s-43-96-96-96c-2.8 0-5.6 .1-8.4 .4c5.3 9.3 8.4 20.1 8.4 31.6z"/></svg></span></template>
+        <template id=fa-eye-slash><span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M38.8 5.1C28.4-3.1 13.3-1.2 5.1 9.2S-1.2 34.7 9.2 42.9l592 464c10.4 8.2 25.5 6.3 33.7-4.1s6.3-25.5-4.1-33.7L525.6 386.7c39.6-40.6 66.4-86.1 79.9-118.4c3.3-7.9 3.3-16.7 0-24.6c-14.9-35.7-46.2-87.7-93-131.1C465.5 68.8 400.8 32 320 32c-68.2 0-125 26.3-169.3 60.8L38.8 5.1zM223.1 149.5C248.6 126.2 282.7 112 320 112c79.5 0 144 64.5 144 144c0 24.9-6.3 48.3-17.4 68.7L408 294.5c5.2-11.8 8-24.8 8-38.5c0-53-43-96-96-96c-2.8 0-5.6 .1-8.4 .4c5.3 9.3 8.4 20.1 8.4 31.6c0 10.2-2.4 19.8-6.6 28.3l-90.3-70.8zm223.1 298L373 389.9c-16.4 6.5-34.3 10.1-53 10.1c-79.5 0-144-64.5-144-144c0-6.9 .5-13.6 1.4-20.2L83.1 161.5C60.3 191.2 44 220.8 34.5 243.7c-3.3 7.9-3.3 16.7 0 24.6c14.9 35.7 46.2 87.7 93 131.1C174.5 443.2 239.2 480 320 480c47.8 0 89.9-12.9 126.2-32.5z"/></svg></span></template>
+        <template id=fa-copy><span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M502.6 70.63l-61.25-61.25C435.4 3.371 427.2 0 418.7 0H255.1c-35.35 0-64 28.66-64 64l.0195 256C192 355.4 220.7 384 256 384h192c35.2 0 64-28.8 64-64V93.25C512 84.77 508.6 76.63 502.6 70.63zM464 320c0 8.836-7.164 16-16 16H255.1c-8.838 0-16-7.164-16-16L239.1 64.13c0-8.836 7.164-16 16-16h128L384 96c0 17.67 14.33 32 32 32h47.1V320zM272 448c0 8.836-7.164 16-16 16H63.1c-8.838 0-16-7.164-16-16L47.98 192.1c0-8.836 7.164-16 16-16H160V128H63.99c-35.35 0-64 28.65-64 64l.0098 256C.002 483.3 28.66 512 64 512h192c35.2 0 64-28.8 64-64v-32h-47.1L272 448z"/></svg></span></template>
+        <template id=fa-play><span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 384 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M73 39c-14.8-9.1-33.4-9.4-48.5-.9S0 62.6 0 80V432c0 17.4 9.4 33.4 24.5 41.9s33.7 8.1 48.5-.9L361 297c14.3-8.7 23-24.2 23-41s-8.7-32.2-23-41L73 39z"/></svg></span></template>
+        <template id=fa-clock-rotate-left><span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M75 75L41 41C25.9 25.9 0 36.6 0 57.9V168c0 13.3 10.7 24 24 24H134.1c21.4 0 32.1-25.9 17-41l-30.8-30.8C155 85.5 203 64 256 64c106 0 192 86 192 192s-86 192-192 192c-40.8 0-78.6-12.7-109.7-34.4c-14.5-10.1-34.4-6.6-44.6 7.9s-6.6 34.4 7.9 44.6C151.2 495 201.7 512 256 512c141.4 0 256-114.6 256-256S397.4 0 256 0C185.3 0 121.3 28.7 75 75zm181 53c-13.3 0-24 10.7-24 24V256c0 6.4 2.5 12.5 7 17l72 72c9.4 9.4 24.6 9.4 33.9 0s9.4-24.6 0-33.9l-65-65V152c0-13.3-10.7-24-24-24z"/></svg></span></template>
+
+
+
+        <script>
+            window.playground_copyable = true;
+        </script>
+
+
+        <script src="elasticlunr-ef4e11c1.min.js"></script>
+        <script src="mark-09e88c2c.min.js"></script>
+        <script src="searcher-09f2665d.js"></script>
+
+        <script src="clipboard-1626706a.min.js"></script>
+        <script src="highlight-abc7f01d.js"></script>
+        <script src="book-609e4cb8.js"></script>
+
+        <!-- Custom JS scripts -->
+        <script src="theme/figures-47b15f7f.js"></script>
+        <script src="theme/proto-326509cd.js"></script>
+        <script src="theme/code-67e9caaf.js"></script>
+        <script src="theme/tables-9fb295e8.js"></script>
+        <script src="theme/steps-77f22afb.js"></script>
+
+
+
+    </div>
+    </body>
+</html>

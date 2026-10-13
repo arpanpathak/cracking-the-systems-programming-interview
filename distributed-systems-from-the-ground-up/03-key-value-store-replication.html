@@ -1,0 +1,3352 @@
+<!DOCTYPE HTML>
+<html lang="en" class="light sidebar-visible" dir="ltr">
+    <head>
+        <!-- Book generated using mdBook -->
+        <meta charset="UTF-8">
+        <title>Key-Value Store: Replication (Low-Level Design) - Distributed Systems from the Ground Up</title>
+
+
+        <!-- Custom HTML head -->
+
+        <meta name="description" content="System design and low-level design of resilient, fault-tolerant distributed systems, with code in Rust">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <meta name="theme-color" content="#ffffff">
+
+        <link rel="icon" href="favicon-de23e50b.svg">
+        <link rel="shortcut icon" href="favicon-8114d1fc.png">
+        <link rel="stylesheet" href="css/variables-8adf115d.css">
+        <link rel="stylesheet" href="css/general-e96d0476.css">
+        <link rel="stylesheet" href="css/chrome-d279d366.css">
+        <link rel="stylesheet" href="css/print-9e4910d8.css" media="print">
+
+        <!-- Fonts -->
+        <link rel="stylesheet" href="fonts/fonts-9644e21d.css">
+
+        <!-- Highlight.js Stylesheets -->
+        <link rel="stylesheet" id="mdbook-highlight-css" href="highlight-493f70e1.css">
+        <link rel="stylesheet" id="mdbook-tomorrow-night-css" href="tomorrow-night-4c0ae647.css">
+        <link rel="stylesheet" id="mdbook-ayu-highlight-css" href="ayu-highlight-3fdfc3ac.css">
+
+        <!-- Custom theme stylesheets -->
+        <link rel="stylesheet" href="theme/custom-8a495b63.css">
+
+
+        <!-- Provide site root and default themes to javascript -->
+        <script>
+            const path_to_root = "";
+            const default_light_theme = "light";
+            const default_dark_theme = "navy";
+            window.path_to_searchindex_js = "searchindex-fe51950f.js";
+        </script>
+        <!-- Start loading toc.js asap -->
+        <script src="toc-cc887274.js"></script>
+    </head>
+    <body>
+    <div id="mdbook-help-container">
+        <div id="mdbook-help-popup">
+            <h2 class="mdbook-help-title">Keyboard shortcuts</h2>
+            <div>
+                <p>Press <kbd>←</kbd> or <kbd>→</kbd> to navigate between chapters</p>
+                <p>Press <kbd>S</kbd> or <kbd>/</kbd> to search in the book</p>
+                <p>Press <kbd>?</kbd> to show this help</p>
+                <p>Press <kbd>Esc</kbd> to hide this help</p>
+            </div>
+        </div>
+    </div>
+    <div id="mdbook-body-container">
+        <!-- Work around some values being stored in localStorage wrapped in quotes -->
+        <script>
+            try {
+                let theme = localStorage.getItem('mdbook-theme');
+                let sidebar = localStorage.getItem('mdbook-sidebar');
+
+                if (theme.startsWith('"') && theme.endsWith('"')) {
+                    localStorage.setItem('mdbook-theme', theme.slice(1, theme.length - 1));
+                }
+
+                if (sidebar.startsWith('"') && sidebar.endsWith('"')) {
+                    localStorage.setItem('mdbook-sidebar', sidebar.slice(1, sidebar.length - 1));
+                }
+            } catch (e) { }
+        </script>
+
+        <!-- Set the theme before any content is loaded, prevents flash -->
+        <script>
+            const default_theme = window.matchMedia("(prefers-color-scheme: dark)").matches ? default_dark_theme : default_light_theme;
+            let theme;
+            try { theme = localStorage.getItem('mdbook-theme'); } catch(e) { }
+            if (theme === null || theme === undefined) { theme = default_theme; }
+            const html = document.documentElement;
+            html.classList.remove('light')
+            html.classList.add(theme);
+            html.classList.add("js");
+        </script>
+
+        <input type="checkbox" id="mdbook-sidebar-toggle-anchor" class="hidden">
+
+        <!-- Hide / unhide sidebar before it is displayed -->
+        <script>
+            let sidebar = null;
+            const sidebar_toggle = document.getElementById("mdbook-sidebar-toggle-anchor");
+            if (document.body.clientWidth >= 1080) {
+                try { sidebar = localStorage.getItem('mdbook-sidebar'); } catch(e) { }
+                sidebar = sidebar || 'visible';
+            } else {
+                sidebar = 'hidden';
+                sidebar_toggle.checked = false;
+            }
+            if (sidebar === 'visible') {
+                sidebar_toggle.checked = true;
+            } else {
+                html.classList.remove('sidebar-visible');
+            }
+        </script>
+
+        <nav id="mdbook-sidebar" class="sidebar" aria-label="Table of contents">
+            <!-- populated by js -->
+            <mdbook-sidebar-scrollbox class="sidebar-scrollbox"></mdbook-sidebar-scrollbox>
+            <noscript>
+                <iframe class="sidebar-iframe-outer" src="toc.html"></iframe>
+            </noscript>
+            <div id="mdbook-sidebar-resize-handle" class="sidebar-resize-handle">
+                <div class="sidebar-resize-indicator"></div>
+            </div>
+        </nav>
+
+        <div id="mdbook-page-wrapper" class="page-wrapper">
+
+            <div class="page">
+                <div id="mdbook-menu-bar-hover-placeholder"></div>
+                <div id="mdbook-menu-bar" class="menu-bar sticky">
+                    <div class="left-buttons">
+                        <label id="mdbook-sidebar-toggle" class="icon-button" for="mdbook-sidebar-toggle-anchor" title="Toggle Table of Contents" aria-label="Toggle Table of Contents" aria-controls="mdbook-sidebar">
+                            <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M0 96C0 78.3 14.3 64 32 64H416c17.7 0 32 14.3 32 32s-14.3 32-32 32H32C14.3 128 0 113.7 0 96zM0 256c0-17.7 14.3-32 32-32H416c17.7 0 32 14.3 32 32s-14.3 32-32 32H32c-17.7 0-32-14.3-32-32zM448 416c0 17.7-14.3 32-32 32H32c-17.7 0-32-14.3-32-32s14.3-32 32-32H416c17.7 0 32 14.3 32 32z"/></svg></span>
+                        </label>
+                        <button id="mdbook-theme-toggle" class="icon-button" type="button" title="Change theme" aria-label="Change theme" aria-haspopup="true" aria-expanded="false" aria-controls="mdbook-theme-list">
+                            <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 576 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M371.3 367.1c27.3-3.9 51.9-19.4 67.2-42.9L600.2 74.1c12.6-19.5 9.4-45.3-7.6-61.2S549.7-4.4 531.1 9.6L294.4 187.2c-24 18-38.2 46.1-38.4 76.1L371.3 367.1zm-19.6 25.4l-116-104.4C175.9 290.3 128 339.6 128 400c0 3.9 .2 7.8 .6 11.6c1.8 17.5-10.2 36.4-27.8 36.4H96c-17.7 0-32 14.3-32 32s14.3 32 32 32H240c61.9 0 112-50.1 112-112c0-2.5-.1-5-.2-7.5z"/></svg></span>
+                        </button>
+                        <ul id="mdbook-theme-list" class="theme-popup" aria-label="Themes" role="menu">
+                            <li role="none"><button role="menuitem" class="theme" id="mdbook-theme-default_theme">Auto</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="mdbook-theme-light">Light</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="mdbook-theme-rust">Rust</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="mdbook-theme-coal">Coal</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="mdbook-theme-navy">Navy</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="mdbook-theme-ayu">Ayu</button></li>
+                        </ul>
+                        <button id="mdbook-search-toggle" class="icon-button" type="button" title="Search (`/`)" aria-label="Toggle Searchbar" aria-expanded="false" aria-keyshortcuts="/ s" aria-controls="mdbook-searchbar">
+                            <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M416 208c0 45.9-14.9 88.3-40 122.7L502.6 457.4c12.5 12.5 12.5 32.8 0 45.3s-32.8 12.5-45.3 0L330.7 376c-34.4 25.2-76.8 40-122.7 40C93.1 416 0 322.9 0 208S93.1 0 208 0S416 93.1 416 208zM208 352c79.5 0 144-64.5 144-144s-64.5-144-144-144S64 128.5 64 208s64.5 144 144 144z"/></svg></span>
+                        </button>
+                    </div>
+
+                    <h1 class="menu-title">Distributed Systems from the Ground Up</h1>
+
+                    <div class="right-buttons">
+                        <a href="print.html" title="Print this book" aria-label="Print this book">
+                            <span class=fa-svg id="print-button"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M128 0C92.7 0 64 28.7 64 64v96h64V64H354.7L384 93.3V160h64V93.3c0-17-6.7-33.3-18.7-45.3L400 18.7C388 6.7 371.7 0 354.7 0H128zM384 352v32 64H128V384 368 352H384zm64 32h32c17.7 0 32-14.3 32-32V256c0-35.3-28.7-64-64-64H64c-35.3 0-64 28.7-64 64v96c0 17.7 14.3 32 32 32H64v64c0 35.3 28.7 64 64 64H384c35.3 0 64-28.7 64-64V384zm-16-88c-13.3 0-24-10.7-24-24s10.7-24 24-24s24 10.7 24 24s-10.7 24-24 24z"/></svg></span>
+                        </a>
+                        <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/tree/prep-v2/distributed-systems-from-the-ground-up" title="Git repository" aria-label="Git repository">
+                            <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 496 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M165.9 397.4c0 2-2.3 3.6-5.2 3.6-3.3.3-5.6-1.3-5.6-3.6 0-2 2.3-3.6 5.2-3.6 3-.3 5.6 1.3 5.6 3.6zm-31.1-4.5c-.7 2 1.3 4.3 4.3 4.9 2.6 1 5.6 0 6.2-2s-1.3-4.3-4.3-5.2c-2.6-.7-5.5.3-6.2 2.3zm44.2-1.7c-2.9.7-4.9 2.6-4.6 4.9.3 2 2.9 3.3 5.9 2.6 2.9-.7 4.9-2.6 4.6-4.6-.3-1.9-3-3.2-5.9-2.9zM244.8 8C106.1 8 0 113.3 0 252c0 110.9 69.8 205.8 169.5 239.2 12.8 2.3 17.3-5.6 17.3-12.1 0-6.2-.3-40.4-.3-61.4 0 0-70 15-84.7-29.8 0 0-11.4-29.1-27.8-36.6 0 0-22.9-15.7 1.6-15.4 0 0 24.9 2 38.6 25.8 21.9 38.6 58.6 27.5 72.9 20.9 2.3-16 8.8-27.1 16-33.7-55.9-6.2-112.3-14.3-112.3-110.5 0-27.5 7.6-41.3 23.6-58.9-2.6-6.5-11.1-33.3 2.6-67.9 20.9-6.5 69 27 69 27 20-5.6 41.5-8.5 62.8-8.5s42.8 2.9 62.8 8.5c0 0 48.1-33.6 69-27 13.7 34.7 5.2 61.4 2.6 67.9 16 17.7 25.8 31.5 25.8 58.9 0 96.5-58.9 104.2-114.8 110.5 9.2 7.9 17 22.9 17 46.4 0 33.7-.3 75.4-.3 83.6 0 6.5 4.6 14.4 17.3 12.1C428.2 457.8 496 362.9 496 252 496 113.3 383.5 8 244.8 8zM97.2 352.9c-1.3 1-1 3.3.7 5.2 1.6 1.6 3.9 2.3 5.2 1 1.3-1 1-3.3-.7-5.2-1.6-1.6-3.9-2.3-5.2-1zm-10.8-8.1c-.7 1.3.3 2.9 2.3 3.9 1.6 1 3.6.7 4.3-.7.7-1.3-.3-2.9-2.3-3.9-2-.6-3.6-.3-4.3.7zm32.4 35.6c-1.6 1.3-1 4.3 1.3 6.2 2.3 2.3 5.2 2.6 6.5 1 1.3-1.3.7-4.3-1.3-6.2-2.2-2.3-5.2-2.6-6.5-1zm-11.4-14.7c-1.6 1-1.6 3.6 0 5.9 1.6 2.3 4.3 3.3 5.6 2.3 1.6-1.3 1.6-3.9 0-6.2-1.4-2.3-4-3.3-5.6-2z"/></svg></span>
+                        </a>
+                        <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/edit/prep-v2/distributed-systems-from-the-ground-up/src/03-key-value-store-replication.md" title="Suggest an edit" aria-label="Suggest an edit" rel="edit">
+                            <span class=fa-svg id="git-edit-button"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M421.7 220.3l-11.3 11.3-22.6 22.6-205 205c-6.6 6.6-14.8 11.5-23.8 14.1L30.8 511c-8.4 2.5-17.5 .2-23.7-6.1S-1.5 489.7 1 481.2L38.7 353.1c2.6-9 7.5-17.2 14.1-23.8l205-205 22.6-22.6 11.3-11.3 33.9 33.9 62.1 62.1 33.9 33.9zM96 353.9l-9.3 9.3c-.9 .9-1.6 2.1-2 3.4l-25.3 86 86-25.3c1.3-.4 2.5-1.1 3.4-2l9.3-9.3H112c-8.8 0-16-7.2-16-16V353.9zM453.3 19.3l39.4 39.4c25 25 25 65.5 0 90.5l-14.5 14.5-22.6 22.6-11.3 11.3-33.9-33.9-62.1-62.1L314.3 67.7l11.3-11.3 22.6-22.6 14.5-14.5c25-25 65.5-25 90.5 0z"/></svg></span>
+                        </a>
+
+                    </div>
+                </div>
+
+                <div id="mdbook-search-wrapper" class="hidden">
+                    <form id="mdbook-searchbar-outer" class="searchbar-outer">
+                        <div class="search-wrapper">
+                            <input type="search" id="mdbook-searchbar" name="searchbar" placeholder="Search this book ..." aria-controls="mdbook-searchresults-outer" aria-describedby="searchresults-header">
+                            <div class="spinner-wrapper">
+                                <span class=fa-svg id="fa-spin"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M304 48c0-26.5-21.5-48-48-48s-48 21.5-48 48s21.5 48 48 48s48-21.5 48-48zm0 416c0-26.5-21.5-48-48-48s-48 21.5-48 48s21.5 48 48 48s48-21.5 48-48zM48 304c26.5 0 48-21.5 48-48s-21.5-48-48-48s-48 21.5-48 48s21.5 48 48 48zm464-48c0-26.5-21.5-48-48-48s-48 21.5-48 48s21.5 48 48 48s48-21.5 48-48zM142.9 437c18.7-18.7 18.7-49.1 0-67.9s-49.1-18.7-67.9 0s-18.7 49.1 0 67.9s49.1 18.7 67.9 0zm0-294.2c18.7-18.7 18.7-49.1 0-67.9S93.7 56.2 75 75s-18.7 49.1 0 67.9s49.1 18.7 67.9 0zM369.1 437c18.7 18.7 49.1 18.7 67.9 0s18.7-49.1 0-67.9s-49.1-18.7-67.9 0s-18.7 49.1 0 67.9z"/></svg></span>
+                            </div>
+                        </div>
+                    </form>
+                    <div id="mdbook-searchresults-outer" class="searchresults-outer hidden">
+                        <div id="mdbook-searchresults-header" class="searchresults-header"></div>
+                        <ul id="mdbook-searchresults">
+                        </ul>
+                    </div>
+                </div>
+
+                <!-- Apply ARIA attributes after the sidebar and the sidebar toggle button are added to the DOM -->
+                <script>
+                    document.getElementById('mdbook-sidebar-toggle').setAttribute('aria-expanded', sidebar === 'visible');
+                    document.getElementById('mdbook-sidebar').setAttribute('aria-hidden', sidebar !== 'visible');
+                    Array.from(document.querySelectorAll('#mdbook-sidebar a')).forEach(function(link) {
+                        link.setAttribute('tabIndex', sidebar === 'visible' ? 0 : -1);
+                    });
+                </script>
+
+                <div id="mdbook-content" class="content">
+                    <main>
+                        <img class="plate" src="art/ch03.svg?v=5d627052" alt="Ledger the tortoise sits at the first of 3 ledgers. 2 pigeons carry copies of its newest line to the other 2 ledgers. The first ledger shows lines 1 to 3 ticked, and the other 2 ledgers show the same lines.">
+<h1 id="key-value-store-replication-low-level-design"><a class="header" href="#key-value-store-replication-low-level-design">Key-Value Store: Replication (Low-Level Design)</a></h1>
+<p>The storage node of <a href="02-key-value-store-storage-node.html">chapter 2</a> keeps every
+acknowledged write when its process crashes. Against the loss of the machine itself,
+or of its disk, it offers nothing: a log on 1 disk is gone when that disk is gone.
+Non-functional requirement 0 of <a href="01-key-value-store-system-design.html">chapter 1</a>
+demands that an acknowledged write survive the loss of any 1 machine, and it follows
+that the record of every write has to be stored on at least 2 machines before the
+client is answered.</p>
+<p>To copy a file from 1 machine to another is easy. What makes replication a subject is
+that the copying takes place over a network which loses messages, delays them and
+delivers their answers late or not at all, between machines that stop and restart at
+arbitrary moments, and that through all of this the copies must remain identical, in
+content and in order, record for record. A follower that has missed a message must
+not apply the next one as though nothing were missing. A leader that has lost an
+answer must not conclude that the follower lacks the record, nor that it has it. And a
+machine that was the leader an hour ago and has since been replaced must be prevented
+from writing as though it still were.</p>
+<p>This chapter implements the replication that chapter 1 specified: a leader that
+orders the writes of a shard, and 2 followers that store the same records in the same
+order. It turns out that a single small rule on the follower’s side handles every one
+of the situations listed above. We define the messages and the state of a replica,
+derive the rules for followers and leaders, and implement them as a library that
+performs no network operations whatever, so that a simulation can subject it to every
+possible combination of lost messages. We then build <code>kvnode</code>, a storage node that
+exchanges the messages over gRPC, and run 3 nodes while stopping followers, removing
+the majority, and replacing a lost leader.</p>
+<div class="covers">
+<p>This chapter covers</p>
+<ul>
+<li>the <code>Append</code> message and its answer</li>
+<li>the state of a replica: its log, its committed sequence and its term</li>
+<li>what a follower does with an incoming message</li>
+<li>the rule by which a leader decides that a record is committed</li>
+<li>a simulation of 4096 combinations of lost messages</li>
+<li><code>kvnode</code>: Protocol Buffers, a gRPC service, and the tasks of a leader</li>
+<li>the path of a write and the path of a read in a leader</li>
+<li>experiments with 3 nodes: a stopped follower, a lost majority, a lost leader</li>
+<li>replacing a leader by hand, and how terms protect against a former leader</li>
+<li>the limitations that remain</li>
+</ul>
+</div>
+
+<h2 id="overview"><a class="header" href="#overview">Overview</a></h2>
+<p>Every shard has 3 replicas. All writes go to the leader, and the other 2 replicas are
+followers. Figure 3.1 shows the nodes of this chapter and the route of a
+write among them.</p>
+<figure>
+<img src="figures/repl-nodes.svg?v=616f3843" alt="The 3 nodes of the chapter and the path of a write. Step 1: the client sends a write to the leader, node 1, over HTTP on port 7001. Step 2: the leader appends the record to its log and waits for the disk. Step 3: it sends the record to both followers, node 2 on port 7102 and node 3 on port 7103, in an Append call over gRPC. Step 4: each follower appends the record, waits for its disk and answers. Step 5: after the first answer, 2 of 3 logs hold the record. Step 6: Leader applies record and answers client.">
+<figcaption><b>Figure 3.1</b> The 3 nodes and the path of a write. The steps are numbered from 1 to 6.</figcaption>
+</figure>
+<p>The implementation maintains 4 invariants.</p>
+<ol>
+<li>The log of every follower is a prefix of its leader’s log: the same records in the same order, and possibly fewer of them.</li>
+<li>A record is acknowledged to its client only after at least 2 of the 3 logs hold it.</li>
+<li>A replica applies a record to its entries only after the record is known to be held in at least 2 of the 3 logs.</li>
+<li>A replica rejects every message from a leader whose term is lower than its own.</li>
+</ol>
+<p>The second invariant is non-functional requirement 0 in the form of a rule. The third
+ensures that a read returns only data which would survive the loss of a machine. The
+fourth prevents a former leader from modifying a shard after it has been replaced.</p>
+<p>In this chapter the leader of a shard is chosen by an operator, who starts 1 node in
+that role. Automatic election, as chapter 1 described it, is built upon the mechanism
+of this chapter and is the subject of <a href="04-key-value-store-leader-election.html">chapter 4</a>.</p>
+<h2 id="the-messages"><a class="header" href="#the-messages">The messages</a></h2>
+<p>The protocol of chapter 1 defines a single call, <code>Append</code>, which a leader sends to
+each of its followers.</p>
+<p class="listing"><img class="mascot" src="art/crab-happy.svg" alt=""><b>Listing 3.1</b> The replication service in the schema. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/distributed-systems-from-the-ground-up/code/proto/store.proto">proto/store.proto</a></p>
+
+<pre><code class="language-protobuf">// Sent by the leader of a shard to each follower.
+service Replication {
+  // Appends records to the follower's log. A call with no records is a
+  // heartbeat: it tells the follower that the leader is alive.
+  rpc Append(AppendRequest) returns (AppendResponse);
+}
+
+message AppendRequest {
+  // The shard, named by the last position it owns.
+  fixed64 shard = 1;
+  // The term of the sender. A follower rejects a leader of an older term.
+  uint64 term = 2;
+  // The sequence of the record that precedes `records` in the leader's log.
+  uint64 previous_sequence = 3;
+  repeated Record records = 4;
+  // Every record up to this sequence is on a majority of the replicas.
+  uint64 committed_sequence = 5;
+  // Added for leader election. The term of the record at previous_sequence,
+  // and the id of the sender.
+  uint64 previous_term = 6;
+  uint32 leader = 7;
+}
+
+message AppendResponse {
+  uint64 term = 1;
+  // False when the follower's log does not end at `previous_sequence`.
+  bool appended = 2;
+  // The sequence of the last record in the follower's log.
+  uint64 last_sequence = 3;
+}
+</code></pre>
+<p>The library uses types of its own for these messages, so that it has no dependence on
+gRPC, and the conversion between the 2 representations is performed in the node.</p>
+<p class="listing"><img class="mascot" src="art/crab-happy.svg" alt=""><b>Listing 3.2</b> The imports of <code>repl/src/lib.rs</code>. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/distributed-systems-from-the-ground-up/code/repl/src/lib.rs">repl/src/lib.rs</a></p>
+
+<pre><code class="language-rust">use std::collections::BTreeMap;
+use std::io;
+use std::path::Path;
+
+use kv::{Change, Condition, Entry, Log, Record, StoreError, Summary, apply, check, page};</code></pre>
+<p class="listing"><img class="mascot" src="art/crab-happy.svg" alt=""><b>Listing 3.3</b> The message and its answer, as the library uses them. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/distributed-systems-from-the-ground-up/code/repl/src/lib.rs">repl/src/lib.rs</a></p>
+
+<pre><code class="language-rust">/// The message a leader sends to a follower.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct Append {
+    /// The term of the sender.
+    pub term: u64,
+    /// The sequence of the record that precedes `records` in the leader's log.
+    pub previous_sequence: u64,
+    pub records: Vec&lt;Record&gt;,
+    /// Every record up to this sequence is on a majority of the replicas.
+    pub committed_sequence: u64,
+}
+
+/// The follower's answer.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct Appended {
+    pub term: u64,
+    /// False when the follower's log does not end at `previous_sequence`,
+    /// or when the sender's term is older than the follower's.
+    pub appended: bool,
+    /// The sequence of the last record in the follower's log.
+    pub last_sequence: u64,
+}</code></pre>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th>Field</th><th>Purpose</th></tr>
+</thead>
+<tbody>
+<tr><td><code>term</code></td><td>identifies the leader’s period of leadership, and a follower refuses a message whose term is lower than its own</td></tr>
+<tr><td><code>previous_sequence</code></td><td>the position in the leader’s log immediately before <code>records</code>, and the follower appends only if its own log ends there</td></tr>
+<tr><td><code>records</code></td><td>the records the follower lacks, in order, and empty in a heartbeat</td></tr>
+<tr><td><code>committed_sequence</code></td><td>the last record that the leader knows to be on a majority, up to which the follower may apply</td></tr>
+<tr><td><code>appended</code></td><td>whether the follower appended the records</td></tr>
+<tr><td><code>last_sequence</code></td><td>the end of the follower’s log after it has processed the message, whether it appended or refused</td></tr>
+</tbody>
+</table>
+</div>
+<p>The last field is the one on which the whole protocol turns. A follower never merely
+says yes or no. In every answer it reports where its log now ends, and this single
+number is enough for a leader to correct any mistaken belief it may hold about that
+follower.</p>
+<h2 id="the-state-of-a-replica"><a class="header" href="#the-state-of-a-replica">The state of a replica</a></h2>
+<p>A replica consists of a log, of the entries that result from applying a part of that
+log, and of 3 numbers: the sequence of its last record, the point up to which records
+have been applied, and its term.</p>
+<figure>
+<img src="figures/repl-state.svg?v=8433bb6c" alt="The state of a replica. Its log holds records 1 to 9. Records 1 to 7 are committed: they are on a majority of the logs and are applied to the entries. Records 8 and 9 are on this log and perhaps on others, are not applied and are not visible to reads. The replica keeps 2 positions, last, the end of the log, and committed, the last record known to be on a majority.">
+<figcaption><b>Figure 3.2</b> The log of a replica with 9 records, of which 7 are committed.</figcaption>
+</figure>
+<p>A record is <em>committed</em> when a majority of the replicas has stored it. A committed
+record survives the loss of any 1 machine, since any 2 of the 3 replicas include at
+least 1 that holds it. A replica keeps uncommitted records in its log without
+applying them. The entries therefore reflect committed records only, and no read can
+return a value that might yet be lost.</p>
+<p>Figure 3.3 shows where each part of this state resides and which
+operation carries data from 1 part to another.</p>
+<figure>
+<img src="figures/repl-replica-struct.svg?v=a00c1c22" alt="The data of a Replica. On disk is the file kv.log with every record in order, which survives a restart and is read once, at open. In memory are records, a vector that holds the whole log with record n at index n minus 1, the numbers committed and term, and entries, a sorted map. Step 1: open reads the log file into records and applies nothing. Step 2: commit(n) applies records up to n to entries. Step 3: get and list read entries, so they see committed data only.">
+<figcaption><b>Figure 3.3</b> The data of a replica and the operations that connect its parts.</figcaption>
+</figure>
+<p>In the code, <code>records</code> is a vector that holds record <code>n</code> at index <code>n - 1</code>, so that its
+length is the sequence of its last record. <code>commit</code> proceeds from <code>committed</code> to the
+sequence it is given and passes each record to <code>apply</code>, the function of chapter 2
+that inserts or removes an entry. Since <code>commit</code> is the only caller of <code>apply</code>, there
+is no path by which an uncommitted record can reach the entries.</p>
+<p class="listing"><img class="mascot" src="art/crab-happy.svg" alt=""><b>Listing 3.4</b> The replica, and the application of committed records. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/distributed-systems-from-the-ground-up/code/repl/src/lib.rs">repl/src/lib.rs</a></p>
+
+<pre><code class="language-rust">pub struct Replica {
+    log: Log,
+    /// Every record of the log, in order. Record `n` is at index `n - 1`.
+    records: Vec&lt;Record&gt;,
+    /// The result of applying the records up to `committed`.
+    entries: BTreeMap&lt;String, Entry&gt;,
+    /// The sequence of the last record that is applied to `entries`.
+    committed: u64,
+    term: u64,
+}
+
+impl Replica {
+    /// Opens the replica in `directory`. Nothing is applied yet: a replica
+    /// that has restarted does not know which of its records are committed.
+    pub fn open(directory: &amp;Path, sync: bool, term: u64) -&gt; io::Result&lt;Replica&gt; {
+        let (log, recovery) = Log::open(directory, sync)?;
+
+        Ok(Replica {
+            log,
+            records: recovery.records,
+            entries: BTreeMap::new(),
+            committed: 0,
+            term,
+        })
+    }
+
+    pub fn term(&amp;self) -&gt; u64 {
+        self.term
+    }
+
+    pub fn last_sequence(&amp;self) -&gt; u64 {
+        self.records.len() as u64
+    }
+
+    pub fn committed(&amp;self) -&gt; u64 {
+        self.committed
+    }
+
+    /// One page of the committed keys.
+    pub fn list(&amp;self, prefix: &amp;str, after: Option&lt;&amp;str&gt;, limit: usize) -&gt; (Vec&lt;Summary&gt;, bool) {
+        page(&amp;self.entries, prefix, after, limit)
+    }
+
+    /// Every record of the log, in order.
+    pub fn records(&amp;self) -&gt; &amp;[Record] {
+        &amp;self.records
+    }
+
+    /// The committed value of a key.
+    pub fn get(&amp;self, key: &amp;str) -&gt; Option&lt;&amp;Entry&gt; {
+        self.entries.get(key)
+    }
+
+    /// Applies the records up to `sequence` that are not applied yet.
+    pub fn commit(&amp;mut self, sequence: u64) {
+        let until = sequence.min(self.last_sequence());
+
+        while self.committed &lt; until {
+            apply(
+                &amp;mut self.entries,
+                self.records[self.committed as usize].clone(),
+            );
+            self.committed += 1;
+        }
+    }
+}</code></pre>
+<p><code>Replica::open</code> sets <code>committed</code> to 0 and leaves the entries empty, although the log
+may contain records. This may seem wasteful, and it is in fact necessary. After a
+restart, a replica cannot tell from its own log which of its records had reached a
+majority, since its last few records may exist on its own disk and nowhere else. A
+follower learns the committed sequence from its leader, and a leader learns it from
+the answers of its followers.</p>
+<h2 id="the-follower"><a class="header" href="#the-follower">The follower</a></h2>
+<p>A follower applies the same procedure to every message it receives.</p>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th>Condition</th><th>Action</th><th>Answer</th></tr>
+</thead>
+<tbody>
+<tr><td>The term of the message is lower than the follower’s own.</td><td>none</td><td><code>appended = false</code>, with the follower’s term</td></tr>
+<tr><td><code>previous_sequence</code> differs from the end of the follower’s log.</td><td>adopt the term</td><td><code>appended = false</code>, with the end of the follower’s log</td></tr>
+<tr><td><code>previous_sequence</code> equals the end of the follower’s log.</td><td>adopt the term, append the records with 1 wait for the disk, apply records up to <code>committed_sequence</code></td><td><code>appended = true</code>, with the new end of the log</td></tr>
+</tbody>
+</table>
+</div>
+<figure>
+<img src="figures/repl-follower-flow.svg?v=6485da97" alt="The decisions of handle_append. First check: is the term of the message at least the follower&#39;s own term? If no, the follower refuses and reports its term. Second check: does the message start where the follower&#39;s log ends, that is, does previous_sequence equal the last sequence? If no, the follower refuses and reports its last sequence. If both checks pass, the follower appends the records, applies the committed ones, and answers that it appended, with its new last sequence.">
+<figcaption><b>Figure 3.4</b> The 2 checks that a follower applies to a message, in order.</figcaption>
+</figure>
+<p><code>handle_append</code> is a direct transcription of that figure. Each check that fails
+returns by way of a closure named <code>refuse</code>, which builds an answer from the follower’s
+present term and the end of its log. When both checks pass, <code>append_records</code> writes
+the whole batch with a single wait for the disk, and <code>commit</code> then applies whatever
+the leader has declared committed. Since <code>commit</code> stops at the end of the log, a
+committed sequence that lies beyond what this follower holds does no harm.</p>
+<p class="listing"><img class="mascot" src="art/crab-happy.svg" alt=""><b>Listing 3.5</b> The follower's handling of a message. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/distributed-systems-from-the-ground-up/code/repl/src/lib.rs">repl/src/lib.rs</a></p>
+
+<pre><code class="language-rust">impl Replica {
+    /// Processes a message from a leader.
+    pub fn handle_append(&amp;mut self, request: Append) -&gt; io::Result&lt;Appended&gt; {
+        let refuse = |replica: &amp;Replica| Appended {
+            term: replica.term,
+            appended: false,
+            last_sequence: replica.last_sequence(),
+        };
+
+        if request.term &lt; self.term {
+            return Ok(refuse(self));
+        }
+
+        self.term = request.term;
+
+        if request.previous_sequence != self.last_sequence() {
+            return Ok(refuse(self));
+        }
+
+        if !request.records.is_empty() {
+            self.log
+                .append_records(&amp;request.records)?;
+            self.records.extend(request.records);
+        }
+
+        self.commit(request.committed_sequence);
+
+        Ok(Appended {
+            term: self.term,
+            appended: true,
+            last_sequence: self.last_sequence(),
+        })
+    }
+}</code></pre>
+<p>The second row of the table is what maintains invariant 1, and it deserves to be
+looked at closely, since the whole reliability of replication derives from it. A
+follower appends records only at the exact position where the leader’s message
+begins. Its log can therefore never acquire a gap, a duplicate or a record out of
+place, whatever has happened to earlier messages. When the positions differ, the
+follower attempts no repair of any kind. It reports where its log ends, and the leader
+sends a message that begins there.</p>
+<figure>
+<img src="figures/repl-catchup.svg?v=fa143d06" alt="How a leader and a follower agree on where to continue. The leader&#39;s log holds records 1 to 9 and the follower&#39;s records 1 to 7, and the leader believes that the follower&#39;s log ends at 6. Step 1: the leader sends records 7 to 9 with previous_sequence 6. Step 2: the follower&#39;s log ends at 7, so it refuses and answers appended false, last_sequence 7. Step 3: the leader sends records 8 and 9 with previous_sequence 7. Step 4: the follower appends them and answers appended true, last_sequence 9.">
+<figcaption><b>Figure 3.5</b> A leader with an outdated view of a follower, and the exchange that corrects it.</figcaption>
+</figure>
+<p>This 1 exchange covers every circumstance in which a follower is behind or the
+leader’s information is out of date: a follower that was stopped and has restarted, a
+message that was lost, an answer that was lost, and a new follower with an empty log.
+None of these cases has code of its own. They are all the same case, in which the
+leader’s belief about the end of the follower’s log is wrong and the follower’s
+answer puts it right.</p>
+<p>The records of a message are appended with <code>Log::append_records</code>, which writes all of
+them and waits for the disk once.</p>
+<p class="listing"><img class="mascot" src="art/crab-happy.svg" alt=""><b>Listing 3.6</b> The imports of <code>kv/src/log.rs</code>. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/distributed-systems-from-the-ground-up/code/kv/src/log.rs">kv/src/log.rs</a></p>
+
+<pre><code class="language-rust">use std::fs::{self, File, OpenOptions};
+use std::io::{self, Read, Write};
+use std::path::Path;
+
+use crate::record::{Change, Decoded, Record};</code></pre>
+<p class="listing"><img class="mascot" src="art/crab-happy.svg" alt=""><b>Listing 3.7</b> Appending a batch of records that another node has numbered. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/distributed-systems-from-the-ground-up/code/kv/src/log.rs">kv/src/log.rs</a></p>
+
+<pre><code class="language-rust">impl Log {
+    /// Appends records that another node numbered, in one write and with one
+    /// wait for the disk. The first record must follow the last record of
+    /// this log.
+    pub fn append_records(&amp;mut self, records: &amp;[Record]) -&gt; io::Result&lt;()&gt; {
+        if self.failed {
+            return Err(io::Error::other(
+                "the log failed on an earlier write and is closed",
+            ));
+        }
+
+        let misplaced = (self.next..)
+            .zip(records)
+            .find(|(expected, record)| record.sequence != *expected);
+
+        if let Some((expected, record)) = misplaced {
+            return Err(io::Error::other(format!(
+                "record {} cannot follow record {}",
+                record.sequence,
+                expected - 1
+            )));
+        }
+
+        let bytes: Vec&lt;u8&gt; = records
+            .iter()
+            .flat_map(Record::encode)
+            .collect();
+
+        if let Err(error) = self.write(&amp;bytes) {
+            self.failed = true;
+
+            return Err(error);
+        }
+
+        self.next += records.len() as u64;
+
+        Ok(())
+    }
+}</code></pre>
+<h2 id="the-leader"><a class="header" href="#the-leader">The leader</a></h2>
+<p>A leader has 3 responsibilities: to accept writes, to send each follower whatever
+records it lacks, and to determine which records are committed.</p>
+<h3 id="proposing-a-record"><a class="header" href="#proposing-a-record">Proposing a record</a></h3>
+<p><code>propose</code> checks the condition of a write against the entries and appends the record
+to the leader’s own log. The record is not yet applied, since at this point only 1
+replica holds it.</p>
+<p>A leader accepts a new write only when <code>is_settled</code> is true, which is to say when
+every record in its log is committed. The reason lies in conditional writes. A
+condition is checked against the entries, and the entries do not include uncommitted
+records. If the leader were to accept a second write while an earlier record was
+still uncommitted, the condition of the second would be evaluated against a state
+that lacked its predecessor, and a conditional write could succeed when it ought to
+have failed. Requiring a settled log guarantees that every condition is evaluated
+against all earlier writes. The price is that the writes of a shard are processed
+strictly in sequence. Production systems evaluate conditions against a speculative
+state and process writes in batches, which is considerably more intricate and is not
+attempted here, although chapter 6 recovers much of the lost throughput by another
+means.</p>
+<p>Within <code>propose</code>, the present version of the key is read from the entries, a <code>Delete</code>
+of a key that does not exist is rejected, and <code>check</code> evaluates the condition. Only
+then is the record appended. On return, the record is in the leader’s log and in
+<code>records</code>, and the entries are unchanged.</p>
+<p class="listing"><img class="mascot" src="art/crab-happy.svg" alt=""><b>Listing 3.8</b> Checking the condition of a write and appending its record. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/distributed-systems-from-the-ground-up/code/repl/src/lib.rs">repl/src/lib.rs</a></p>
+
+<pre><code class="language-rust">impl Replica {
+    /// Whether every record of the log is committed. A leader accepts a new
+    /// write only in this state, so that the condition of the write is
+    /// checked against the result of all earlier writes.
+    pub fn is_settled(&amp;self) -&gt; bool {
+        self.committed == self.last_sequence()
+    }
+
+    /// Checks the condition of a write and appends its record to the
+    /// leader's log. The record is not applied: it is not committed yet.
+    pub fn propose(&amp;mut self, change: Change, condition: Condition) -&gt; Result&lt;u64, StoreError&gt; {
+        let key = match &amp;change {
+            Change::Put { key, .. } | Change::Delete { key } =&gt; key,
+        };
+        let current = self
+            .entries
+            .get(key)
+            .map(|entry| entry.version);
+
+        if matches!(change, Change::Delete { .. }) &amp;&amp; current.is_none() {
+            return Err(StoreError::NotFound);
+        }
+
+        check(condition, current)?;
+
+        let record = self.log.append(change)?;
+        let sequence = record.sequence;
+        self.records.push(record);
+
+        Ok(sequence)
+    }
+}</code></pre>
+<h3 id="building-a-message-for-a-follower"><a class="header" href="#building-a-message-for-a-follower">Building a message for a follower</a></h3>
+<p>For every follower, the leader remembers the last sequence that the follower
+reported. <code>append_for</code> takes that number and returns a message containing every later
+record. For a follower that is up to date, the slice of records is empty and the
+message is a heartbeat. A reported sequence that lies beyond the end of the leader’s
+own log is limited to that end, a situation that can arise when a leader has itself
+been replaced and restarted with a shorter log.</p>
+<p class="listing"><img class="mascot" src="art/crab-happy.svg" alt=""><b>Listing 3.9</b> The message that brings 1 follower up to date. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/distributed-systems-from-the-ground-up/code/repl/src/lib.rs">repl/src/lib.rs</a></p>
+
+<pre><code class="language-rust">impl Replica {
+    /// The message that brings a follower whose log ends at `follower_last`
+    /// up to the end of this log. With nothing to send it is a heartbeat.
+    pub fn append_for(&amp;self, follower_last: u64) -&gt; Append {
+        let from = follower_last.min(self.last_sequence()) as usize;
+
+        Append {
+            term: self.term,
+            previous_sequence: from as u64,
+            records: self.records[from..].to_vec(),
+            committed_sequence: self.committed,
+        }
+    }
+}</code></pre>
+<h3 id="the-commit-rule"><a class="header" href="#the-commit-rule">The commit rule</a></h3>
+<p>The leader knows where its own log ends and what last sequence each follower has
+reported. If these numbers are sorted, the one in the middle is the highest sequence
+that a majority has stored.</p>
+<figure>
+<img src="figures/repl-commit-rule.svg?v=dc5d2c21" alt="How the leader computes the committed sequence. The leader&#39;s log ends at 10, the log of follower 1 at 7 and the log of follower 2 at 9. Sorted with the highest first, the values are 10, 9 and 7. The value in the middle is 9, so at least 2 of the 3 replicas hold every record up to 9, and the leader commits up to 9. Record 10 is on 1 log and stays uncommitted.">
+<figcaption><b>Figure 3.6</b> The commit rule applied to logs that end at 10, 7 and 9.</figcaption>
+</figure>
+<p><code>majority_sequence</code> implements the rule for any number of replicas, by taking the
+element at index <code>n / 2</code> of the values sorted in descending order. For 3 replicas
+that is the second value, and for 5 the third.</p>
+<p class="listing"><img class="mascot" src="art/crab-happy.svg" alt=""><b>Listing 3.10</b> The commit rule. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/distributed-systems-from-the-ground-up/code/repl/src/lib.rs">repl/src/lib.rs</a></p>
+
+<pre><code class="language-rust">/// The highest sequence that is stored on a majority, given the last
+/// sequence of every replica, the leader included.
+pub fn majority_sequence(mut last_sequences: Vec&lt;u64&gt;) -&gt; u64 {
+    last_sequences.sort_unstable_by(|a, b| b.cmp(a));
+
+    last_sequences
+        .get(last_sequences.len() / 2)
+        .copied()
+        .unwrap_or(0)
+}</code></pre>
+<h2 id="simulating-lost-messages"><a class="header" href="#simulating-lost-messages">Simulating lost messages</a></h2>
+<p>Because the library performs no network operations, a test can carry the messages
+between replicas itself and decide the fate of every exchange. This is the reason for
+writing the rules as a library in the first place. Faults in a real network occur
+rarely and unrepeatably, and a protocol that has only been tested on a real network
+has scarcely been tested against faults at all.</p>
+<p><code>replsim</code> creates a leader and 2 followers in a single process. For each exchange it
+chooses 1 of 3 outcomes: the message is delivered and answered, the message is lost,
+or the message is processed and its answer is lost.</p>
+<p class="listing"><img class="mascot" src="art/crab-happy.svg" alt=""><b>Listing 3.11</b> The imports of <code>replsim/src/main.rs</code>. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/distributed-systems-from-the-ground-up/code/replsim/src/main.rs">replsim/src/main.rs</a></p>
+
+<pre><code class="language-rust">use std::env;
+use std::error::Error;
+use std::fs;
+use std::path::{Path, PathBuf};
+use std::process;
+
+use kv::{Change, Condition};
+use repl::{Replica, majority_sequence};</code></pre>
+<p class="listing"><img class="mascot" src="art/crab-happy.svg" alt=""><b>Listing 3.12</b> A cluster in 1 process, with control over every exchange. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/distributed-systems-from-the-ground-up/code/replsim/src/main.rs">replsim/src/main.rs</a></p>
+
+<pre><code class="language-rust">/// What happens to one exchange between the leader and a follower.
+#[derive(Clone, Copy, PartialEq, Eq)]
+enum Fate {
+    Delivered,
+    /// The follower does not receive the message.
+    RequestLost,
+    /// The follower processes the message, and its answer does not arrive.
+    AnswerLost,
+}
+
+/// A leader, 2 followers, and what the leader knows about each follower.
+struct Cluster {
+    leader: Replica,
+    followers: Vec&lt;Replica&gt;,
+    /// The last sequence each follower has reported.
+    reported: Vec&lt;u64&gt;,
+}
+
+impl Cluster {
+    fn open(root: &amp;Path) -&gt; Result&lt;Cluster, Box&lt;dyn Error&gt;&gt; {
+        let open = |name: &amp;str| Replica::open(&amp;root.join(name), false, 1);
+
+        Ok(Cluster {
+            leader: open("leader")?,
+            followers: vec![open("follower-1")?, open("follower-2")?],
+            reported: vec![0, 0],
+        })
+    }
+
+    /// One exchange with a follower: the leader sends what the follower
+    /// lacks, as far as it knows, and commits what a majority now holds.
+    fn exchange(&amp;mut self, follower: usize, fate: Fate) -&gt; Result&lt;(), Box&lt;dyn Error&gt;&gt; {
+        let message = self
+            .leader
+            .append_for(self.reported[follower]);
+
+        if fate == Fate::RequestLost {
+            return Ok(());
+        }
+
+        let answer = self.followers[follower].handle_append(message)?;
+
+        if fate == Fate::AnswerLost {
+            return Ok(());
+        }
+
+        self.reported[follower] = answer.last_sequence;
+
+        let stored = vec![
+            self.leader.last_sequence(),
+            self.reported[0],
+            self.reported[1],
+        ];
+        self.leader
+            .commit(majority_sequence(stored));
+
+        Ok(())
+    }
+
+    /// A write: the leader appends the record and makes one exchange with
+    /// each follower. It returns whether the write was acknowledged, or
+    /// `None` when the leader could not accept it.
+    fn write(
+        &amp;mut self,
+        key: &amp;str,
+        value: &amp;str,
+        fates: [Fate; 2],
+    ) -&gt; Result&lt;Option&lt;bool&gt;, Box&lt;dyn Error&gt;&gt; {
+        if !self.leader.is_settled() {
+            return Ok(None);
+        }
+
+        let change = Change::Put {
+            key: key.into(),
+            value: value.into(),
+        };
+        let sequence = self
+            .leader
+            .propose(change, Condition::Always)?;
+
+        self.exchange(0, fates[0])?;
+        self.exchange(1, fates[1])?;
+
+        Ok(Some(self.leader.committed() &gt;= sequence))
+    }
+
+    /// The last sequence of the leader and of each follower.
+    fn lasts(&amp;self) -&gt; [u64; 3] {
+        [
+            self.leader.last_sequence(),
+            self.followers[0].last_sequence(),
+            self.followers[1].last_sequence(),
+        ]
+    }
+}</code></pre>
+<p>The first part of the simulation runs the cases discussed above.</p>
+<p class="listing"><img class="mascot" src="art/crab-happy.svg" alt=""><b>Listing 3.13</b> The cases of the chapter, run in order. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/distributed-systems-from-the-ground-up/code/replsim/src/main.rs">replsim/src/main.rs</a></p>
+
+<pre><code class="language-rust">const BOTH: [Fate; 2] = [Fate::Delivered, Fate::Delivered];
+
+fn cases(root: &amp;Path) -&gt; Result&lt;(), Box&lt;dyn Error&gt;&gt; {
+    let mut cluster = Cluster::open(root)?;
+    let show = |cluster: &amp;Cluster| {
+        format!(
+            "logs end at {:?}, committed {}",
+            cluster.lasts(),
+            cluster.leader.committed()
+        )
+    };
+
+    for key in ["a", "b", "c"] {
+        cluster.write(key, "1", BOTH)?;
+    }
+
+    println!("3 writes, every message delivered: {}", show(&amp;cluster));
+
+    for key in ["d", "e", "f"] {
+        cluster.write(key, "1", [Fate::RequestLost, Fate::Delivered])?;
+    }
+
+    println!(
+        "3 writes while follower 1 is unreachable: {}",
+        show(&amp;cluster)
+    );
+
+    cluster.exchange(0, Fate::Delivered)?;
+    println!("follower 1 returns, 1 exchange: {}", show(&amp;cluster));
+
+    for key in ["g", "h", "i"] {
+        cluster.write(key, "1", [Fate::AnswerLost, Fate::Delivered])?;
+    }
+
+    println!(
+        "3 writes while the answers of follower 1 are lost: {}",
+        show(&amp;cluster)
+    );
+    println!(
+        "  the leader believes that the log of follower 1 ends at {}",
+        cluster.reported[0]
+    );
+
+    cluster.exchange(0, Fate::Delivered)?;
+    println!(
+        "  next exchange: the leader sends records 7 to 9, follower 1 refuses and reports {}",
+        cluster.reported[0]
+    );
+
+    cluster.exchange(0, Fate::Delivered)?;
+    println!("  the exchange after it: {}", show(&amp;cluster));
+
+    let acknowledged =
+        cluster.write("j", "1", [Fate::RequestLost, Fate::RequestLost])? == Some(true);
+    println!(
+        "1 write while both followers are unreachable: acknowledged {acknowledged}, {}",
+        show(&amp;cluster)
+    );
+    println!(
+        "  the leader reads j as {:?}",
+        cluster
+            .leader
+            .get("j")
+            .map(|entry| entry.version)
+    );
+
+    let accepted = cluster
+        .write("k", "1", [Fate::RequestLost, Fate::RequestLost])?
+        .is_some();
+    println!("  the leader accepts another write: {accepted}");
+
+    cluster.exchange(1, Fate::Delivered)?;
+    println!("follower 2 returns: {}", show(&amp;cluster));
+    println!(
+        "  the leader reads j as {:?}",
+        cluster
+            .leader
+            .get("j")
+            .map(|entry| entry.version)
+    );
+
+    let mut newer = Replica::open(&amp;root.join("newer"), false, 2)?;
+    let answer = newer.handle_append(cluster.leader.append_for(0))?;
+    println!(
+        "a replica at term 2 receives a message of term 1: appended {}, its term {}",
+        answer.appended, answer.term
+    );
+
+    Ok(())
+}</code></pre>
+<p>The second part runs 3 writes under every combination of outcomes. Each write involves
+2 exchanges, and each exchange is assigned 2 bits of a pattern, which gives 4096
+patterns. After each pattern, <code>replsim</code> verifies invariants 1 and 2, then delivers all
+messages and verifies that the 3 logs become equal.</p>
+<p class="listing"><img class="mascot" src="art/crab-happy.svg" alt=""><b>Listing 3.14</b> Every combination of lost messages over 3 writes. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/distributed-systems-from-the-ground-up/code/replsim/src/main.rs">replsim/src/main.rs</a></p>
+
+<pre><code class="language-rust">const WRITES: usize = 3;
+
+/// The fate of exchange number `index` under a pattern: 2 bits for each.
+fn fate(pattern: u32, index: usize) -&gt; Fate {
+    match (pattern &gt;&gt; (2 * index)) &amp; 3 {
+        0 | 1 =&gt; Fate::Delivered,
+        2 =&gt; Fate::RequestLost,
+        3.. =&gt; Fate::AnswerLost,
+    }
+}
+
+/// Runs 3 writes under one pattern of losses and checks the replicas. It
+/// returns the number of writes that were acknowledged.
+fn run(root: &amp;Path, pattern: u32) -&gt; Result&lt;usize, Box&lt;dyn Error&gt;&gt; {
+    let mut cluster = Cluster::open(root)?;
+    let mut acknowledged = Vec::new();
+
+    for number in 0..WRITES {
+        let fates = [fate(pattern, 2 * number), fate(pattern, 2 * number + 1)];
+
+        if cluster.write(&amp;format!("key-{number}"), "1", fates)? == Some(true) {
+            acknowledged.push(cluster.leader.last_sequence());
+        }
+    }
+
+    for &amp;sequence in &amp;acknowledged {
+        let holders = cluster
+            .lasts()
+            .iter()
+            .filter(|&amp;&amp;last| last &gt;= sequence)
+            .count();
+
+        if holders &lt; 2 {
+            return Err(format!(
+                "pattern {pattern}: record {sequence} was acknowledged and is in {holders} log"
+            )
+            .into());
+        }
+    }
+
+    for follower in &amp;cluster.followers {
+        if !cluster
+            .leader
+            .records()
+            .starts_with(follower.records())
+        {
+            return Err(format!(
+                "pattern {pattern}: a follower's log is not the beginning of the leader's"
+            )
+            .into());
+        }
+    }
+
+    for _ in 0..2 {
+        cluster.exchange(0, Fate::Delivered)?;
+        cluster.exchange(1, Fate::Delivered)?;
+    }
+
+    let [leader, first, second] = cluster.lasts();
+
+    if first != leader || second != leader || !cluster.leader.is_settled() {
+        return Err(format!(
+            "pattern {pattern}: the logs differ after every message was delivered"
+        )
+        .into());
+    }
+
+    Ok(acknowledged.len())
+}
+
+fn exhaustive(root: &amp;Path) -&gt; Result&lt;(), Box&lt;dyn Error&gt;&gt; {
+    let patterns = 1u32 &lt;&lt; (4 * WRITES);
+    let mut by_acknowledged = [0; WRITES + 1];
+
+    for pattern in 0..patterns {
+        let directory = root.join(format!("pattern-{pattern}"));
+        by_acknowledged[run(&amp;directory, pattern)?] += 1;
+        fs::remove_dir_all(&amp;directory)?;
+    }
+
+    println!("{patterns} patterns of lost messages over {WRITES} writes:");
+    println!("  every acknowledged record was in at least 2 of the 3 logs");
+    println!("  every follower's log was the beginning of the leader's log");
+    println!("  after the losses stopped, the 3 logs were equal and every record was committed");
+
+    for (count, patterns) in by_acknowledged.iter().enumerate() {
+        println!("  {count} of {WRITES} writes acknowledged: {patterns} patterns");
+    }
+
+    Ok(())
+}</code></pre>
+<p class="listing"><img class="mascot" src="art/crab-happy.svg" alt=""><b>Listing 3.15</b> Running the simulation. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/distributed-systems-from-the-ground-up/code/replsim/src/main.rs">replsim/src/main.rs</a></p>
+
+<pre><code class="language-rust">fn directory() -&gt; PathBuf {
+    env::temp_dir().join(format!("replsim-{}", process::id()))
+}
+
+fn main() -&gt; Result&lt;(), Box&lt;dyn Error&gt;&gt; {
+    let root = directory();
+    let result = cases(&amp;root.join("cases")).and_then(|()| exhaustive(&amp;root));
+
+    fs::remove_dir_all(&amp;root)?;
+
+    result
+}</code></pre>
+<pre><code class="language-console">$ cargo run --release -p replsim
+3 writes, every message delivered: logs end at [3, 3, 3], committed 3
+3 writes while follower 1 is unreachable: logs end at [6, 3, 6], committed 6
+follower 1 returns, 1 exchange: logs end at [6, 6, 6], committed 6
+3 writes while the answers of follower 1 are lost: logs end at [9, 7, 9], committed 9
+  the leader believes that the log of follower 1 ends at 6
+  next exchange: the leader sends records 7 to 9, follower 1 refuses and reports 7
+  the exchange after it: logs end at [9, 9, 9], committed 9
+1 write while both followers are unreachable: acknowledged false, logs end at [10, 9, 9], committed 9
+  the leader reads j as None
+  the leader accepts another write: false
+follower 2 returns: logs end at [10, 9, 10], committed 10
+  the leader reads j as Some(10)
+a replica at term 2 receives a message of term 1: appended false, its term 2
+4096 patterns of lost messages over 3 writes:
+  every acknowledged record was in at least 2 of the 3 logs
+  every follower's log was the beginning of the leader's log
+  after the losses stopped, the 3 logs were equal and every record was committed
+  0 of 3 writes acknowledged: 1024 patterns
+  1 of 3 writes acknowledged: 1024 patterns
+  2 of 3 writes acknowledged: 704 patterns
+  3 of 3 writes acknowledged: 1344 patterns
+</code></pre>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th>Output</th><th>What it shows</th></tr>
+</thead>
+<tbody>
+<tr><td>3 writes while follower 1 is unreachable: logs end at [6, 3, 6], committed 6</td><td>Writes are committed with 1 follower, as invariant 2 allows.</td></tr>
+<tr><td>follower 1 returns, 1 exchange: logs end at [6, 6, 6]</td><td>A single message brings the follower up to date, because the leader knew where its log ended.</td></tr>
+<tr><td>answers of follower 1 are lost: the leader believes its log ends at 6</td><td>The follower stored record 7 and the leader was not told.</td></tr>
+<tr><td>leader sends records 7 to 9, follower 1 refuses and reports 7</td><td>The follower detects that the message does not begin at the end of its log, and the leader continues from the position reported.</td></tr>
+<tr><td>1 write while both followers are unreachable: acknowledged false, committed 9</td><td>A record in 1 log is not acknowledged and is not visible to reads.</td></tr>
+<tr><td>leader accepts another write: false</td><td>The leader accepts no write while a record is uncommitted.</td></tr>
+<tr><td>follower 2 returns: committed 10, leader reads j as Some(10)</td><td>The uncommitted record is committed as soon as a second replica stores it, although its client had received an error.</td></tr>
+<tr><td>a replica at term 2 receives a message of term 1: appended false</td><td>Invariant 4 holds.</td></tr>
+<tr><td>4096 patterns: every acknowledged record was in at least 2 of 3 logs</td><td>Invariant 2 holds for every combination of lost messages and lost answers.</td></tr>
+</tbody>
+</table>
+</div>
+<p>The seventh row shows something that every client of a replicated store has to take
+into account. A write that was answered with an error may nevertheless take effect
+later. The record was in the leader’s log, and it was committed when a follower
+became reachable again. For a client, therefore, an error from a leader signifies an
+unknown outcome, exactly as a lost connection does, and is to be resolved by reading
+the key or by repeating an idempotent request. An error does not mean that nothing
+happened.</p>
+<h2 id="design-overview"><a class="header" href="#design-overview">Design overview</a></h2>
+<div class="lld">
+<p>Low-level design: replication</p>
+<p><strong>Crates</strong></p>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th>Crate</th><th>Kind</th><th>Contents</th></tr>
+</thead>
+<tbody>
+<tr><td><code>repl</code></td><td>library</td><td>the messages, <code>Replica</code>, the follower’s rule, the leader’s operations, the commit rule</td></tr>
+<tr><td><code>replsim</code></td><td>program</td><td>the simulation of lost messages</td></tr>
+<tr><td><code>kvnode</code></td><td>program</td><td>a storage node that replicates over gRPC: <code>rpc</code> (the service), <code>node</code> (the leader’s tasks, writes and reads), <code>main</code> (the HTTP API)</td></tr>
+</tbody>
+</table>
+</div>
+<p><strong>State of a node</strong></p>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th>Field</th><th>Type</th><th>Purpose</th></tr>
+</thead>
+<tbody>
+<tr><td><code>replica</code></td><td><code>Mutex&lt;Replica&gt;</code></td><td>the log, the entries, the committed sequence and the term</td></tr>
+<tr><td><code>peers</code></td><td><code>Vec&lt;Peer&gt;</code></td><td>for a leader, the address of each follower, the last sequence it reported, and the time of its last answer</td></tr>
+<tr><td><code>turn</code></td><td><code>tokio::sync::Mutex&lt;()&gt;</code></td><td>makes writes take turns</td></tr>
+<tr><td><code>committed</code></td><td><code>watch::Sender&lt;u64&gt;</code></td><td>informs waiting writes when the committed sequence advances</td></tr>
+<tr><td><code>appended</code></td><td><code>Notify</code></td><td>wakes the follower tasks when the leader has appended a record</td></tr>
+<tr><td><code>deposed</code></td><td><code>AtomicBool</code></td><td>set when a follower answers with a higher term</td></tr>
+</tbody>
+</table>
+</div>
+<p><strong>Timing</strong></p>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th>Constant</th><th>Value</th><th>Meaning</th></tr>
+</thead>
+<tbody>
+<tr><td><code>HEARTBEAT</code></td><td>100 ms</td><td>the interval between messages to a follower when there are no new records</td></tr>
+<tr><td><code>ANSWER</code></td><td>500 ms</td><td>the time the leader waits for the answer to 1 message</td></tr>
+<tr><td><code>COMMIT</code></td><td>1 s</td><td>the time a write waits for a majority, and also the period within which a majority must have answered for the leader to serve reads</td></tr>
+</tbody>
+</table>
+</div>
+<p><strong>Responses of a node</strong></p>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th>Situation</th><th>Status</th></tr>
+</thead>
+<tbody>
+<tr><td>A write or a read is sent to a follower</td><td><code>421 Misdirected Request</code></td></tr>
+<tr><td>A write is sent to a leader that has learned of a higher term</td><td><code>421 Misdirected Request</code></td></tr>
+<tr><td>A record does not reach a majority within 1 second</td><td><code>503 Service Unavailable</code></td></tr>
+<tr><td>A read is sent to a leader that no majority has answered within 1 second</td><td><code>503 Service Unavailable</code></td></tr>
+</tbody>
+</table>
+</div>
+</div>
+
+<h2 id="the-node"><a class="header" href="#the-node">The node</a></h2>
+<p><code>kvnode</code> combines a replica with a gRPC service for replication and the HTTP API of
+chapter 1.</p>
+<p class="listing"><img class="mascot" src="art/crab-happy.svg" alt=""><b>Listing 3.16</b> The imports of <code>kvnode/src/main.rs</code>. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/distributed-systems-from-the-ground-up/code/kvnode/src/main.rs">kvnode/src/main.rs</a></p>
+
+<pre><code class="language-rust">use std::error::Error;
+use std::net::SocketAddr;
+use std::path::PathBuf;
+use std::sync::Arc;
+
+use axum::body::Bytes;
+use axum::extract::{DefaultBodyLimit, Path, Query, State};
+use axum::http::header::{CONTENT_TYPE, ETAG, IF_NONE_MATCH};
+use axum::http::{HeaderMap, StatusCode};
+use axum::response::{IntoResponse, Response};
+use axum::routing::get;
+use axum::{Json, Router};
+use clap::{Parser, ValueEnum};
+use kv::{Change, Condition};
+use kvd::api::{ApiError, MAX_VALUE, etag, valid_key, version_header, write_condition};
+use repl::Replica;
+use serde::{Deserialize, Serialize};
+use tokio::net::TcpListener;
+use tonic::transport::Server;
+
+use crate::node::Node;
+use crate::rpc::{Follower, ReplicationServer};</code></pre>
+<p class="listing"><img class="mascot" src="art/crab-happy.svg" alt=""><b>Listing 3.17</b> The options of the command line. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/distributed-systems-from-the-ground-up/code/kvnode/src/main.rs">kvnode/src/main.rs</a></p>
+
+<pre><code class="language-rust">#[derive(Clone, Copy, PartialEq, Eq, ValueEnum)]
+enum Role {
+    Leader,
+    Follower,
+}
+
+#[derive(Parser)]
+struct Options {
+    #[arg(long, value_enum)]
+    role: Role,
+
+    /// The address of the HTTP API.
+    #[arg(long, default_value = "127.0.0.1:7001")]
+    listen: SocketAddr,
+
+    /// The address on which a follower accepts records from the leader.
+    #[arg(long, default_value = "127.0.0.1:7101")]
+    replication: SocketAddr,
+
+    /// The replication address of a follower, such as http://127.0.0.1:7102.
+    /// Given once for each follower, to the leader.
+    #[arg(long = "follower")]
+    followers: Vec&lt;String&gt;,
+
+    /// The term this node starts in. A new leader is given a higher term
+    /// than the leader it replaces.
+    #[arg(long, default_value_t = 1)]
+    term: u64,
+
+    #[arg(long, default_value = "data")]
+    data: PathBuf,
+
+    /// Respond without waiting for the disk.
+    #[arg(long)]
+    no_sync: bool,
+}</code></pre>
+<h3 id="the-grpc-service"><a class="header" href="#the-grpc-service">The gRPC service</a></h3>
+<p>The Rust types, the client code and the server code for <code>Append</code> are generated from
+the schema when the program is built. Building requires <code>protoc</code>, the compiler for
+Protocol Buffers, which is available as the package <code>protobuf-compiler</code> on Debian and
+Ubuntu.</p>
+<p class="listing"><img class="mascot" src="art/crab-cute.svg" alt=""><b>Listing 3.18</b> The complete <code>kvnode/build.rs</code>. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/distributed-systems-from-the-ground-up/code/kvnode/build.rs">kvnode/build.rs</a></p>
+
+<pre><code class="language-rust">//! Generates the Rust types and the gRPC client and server from the schema.
+//! It needs the Protocol Buffers compiler, `protoc`, on the PATH.
+
+fn main() -&gt; Result&lt;(), Box&lt;dyn std::error::Error&gt;&gt; {
+    tonic_prost_build::compile_protos("../proto/store.proto")?;
+
+    Ok(())
+}</code></pre>
+<p class="listing"><img class="mascot" src="art/crab-happy.svg" alt=""><b>Listing 3.19</b> The imports of <code>kvnode/src/rpc.rs</code>. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/distributed-systems-from-the-ground-up/code/kvnode/src/rpc.rs">kvnode/src/rpc.rs</a></p>
+
+<pre><code class="language-rust">use std::sync::Arc;
+
+use kv::{Change, Record};
+use repl::{Append, Appended};
+use tokio::task;
+use tonic::{Request, Response, Status};
+
+use crate::node::Node;</code></pre>
+<p class="listing"><img class="mascot" src="art/crab-happy.svg" alt=""><b>Listing 3.20</b> Including the generated code. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/distributed-systems-from-the-ground-up/code/kvnode/src/rpc.rs">kvnode/src/rpc.rs</a></p>
+
+<pre><code class="language-rust">/// The types that `build.rs` generates from `proto/store.proto`. The schema
+/// also defines the ring, which this program does not use.
+#[allow(dead_code)]
+pub mod proto {
+    tonic::include_proto!("store.v1");
+}
+
+pub use proto::replication_client::ReplicationClient;
+pub use proto::replication_server::{Replication, ReplicationServer};</code></pre>
+<p>The generated types are converted to the types of <code>kv</code> and <code>repl</code> at the boundary of
+the service. A <code>Record</code> message that has no <code>change</code> field is rejected with the gRPC
+status <code>InvalidArgument</code>.</p>
+<p class="listing"><img class="mascot" src="art/crab-happy.svg" alt=""><b>Listing 3.21</b> Conversion between the generated types and the library's types. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/distributed-systems-from-the-ground-up/code/kvnode/src/rpc.rs">kvnode/src/rpc.rs</a></p>
+
+<pre><code class="language-rust">impl From&lt;&amp;Record&gt; for proto::Record {
+    fn from(record: &amp;Record) -&gt; Self {
+        let change = match record.change.clone() {
+            Change::Put { key, value } =&gt; proto::record::Change::Put(proto::Put { key, value }),
+            Change::Delete { key } =&gt; proto::record::Change::Delete(proto::Delete { key }),
+        };
+
+        proto::Record {
+            sequence: record.sequence,
+            change: Some(change),
+        }
+    }
+}
+
+impl TryFrom&lt;proto::Record&gt; for Record {
+    type Error = Status;
+
+    fn try_from(record: proto::Record) -&gt; Result&lt;Self, Status&gt; {
+        let change = match record.change {
+            Some(proto::record::Change::Put(put)) =&gt; Change::Put {
+                key: put.key,
+                value: put.value,
+            },
+            Some(proto::record::Change::Delete(delete)) =&gt; Change::Delete { key: delete.key },
+            None =&gt; return Err(Status::invalid_argument("a record without a change")),
+        };
+
+        Ok(Record {
+            sequence: record.sequence,
+            change,
+        })
+    }
+}
+
+impl From&lt;Append&gt; for proto::AppendRequest {
+    fn from(message: Append) -&gt; Self {
+        proto::AppendRequest {
+            shard: 0,
+            term: message.term,
+            previous_sequence: message.previous_sequence,
+            records: message
+                .records
+                .iter()
+                .map(proto::Record::from)
+                .collect(),
+            committed_sequence: message.committed_sequence,
+            // The fields that leader election added are not used by this program.
+            previous_term: 0,
+            leader: 0,
+        }
+    }
+}
+
+impl From&lt;proto::AppendResponse&gt; for Appended {
+    fn from(answer: proto::AppendResponse) -&gt; Self {
+        Appended {
+            term: answer.term,
+            appended: answer.appended,
+            last_sequence: answer.last_sequence,
+        }
+    }
+}</code></pre>
+<p>Followers run the server side of the service. The handler passes each message to
+<code>Replica::handle_append</code>. Since that method waits for the disk, the call is wrapped in
+<code>block_in_place</code>, which informs the asynchronous runtime that the current thread is
+about to block.</p>
+<p class="listing"><img class="mascot" src="art/crab-happy.svg" alt=""><b>Listing 3.22</b> The server side of <code>Append</code>. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/distributed-systems-from-the-ground-up/code/kvnode/src/rpc.rs">kvnode/src/rpc.rs</a></p>
+
+<pre><code class="language-rust">/// The server side of `Append`, which a follower runs.
+pub struct Follower {
+    pub node: Arc&lt;Node&gt;,
+}
+
+#[tonic::async_trait]
+impl Replication for Follower {
+    async fn append(
+        &amp;self,
+        request: Request&lt;proto::AppendRequest&gt;,
+    ) -&gt; Result&lt;Response&lt;proto::AppendResponse&gt;, Status&gt; {
+        let request = request.into_inner();
+        let records = request
+            .records
+            .into_iter()
+            .map(Record::try_from)
+            .collect::&lt;Result&lt;Vec&lt;_&gt;, _&gt;&gt;()?;
+
+        let message = Append {
+            term: request.term,
+            previous_sequence: request.previous_sequence,
+            records,
+            committed_sequence: request.committed_sequence,
+        };
+
+        // Appending waits for the disk, so it runs where blocking is allowed.
+        let answer = task::block_in_place(|| {
+            self.node
+                .replica
+                .lock()
+                .handle_append(message)
+        })
+        .map_err(|error| Status::unavailable(error.to_string()))?;
+
+        Ok(Response::new(proto::AppendResponse {
+            term: answer.term,
+            appended: answer.appended,
+            last_sequence: answer.last_sequence,
+        }))
+    }
+}</code></pre>
+<h3 id="the-leaders-tasks"><a class="header" href="#the-leaders-tasks">The leader’s tasks</a></h3>
+<p>Figure 3.7 shows the parts of a leader and the order in which a write
+passes through them. Each box corresponds to a function or a field in the listings
+that follow.</p>
+<figure>
+<img src="figures/repl-leader-parts.svg?v=fbddd76a" alt="The parts of a leader in kvnode. The HTTP handler, Node::write, holds the turn, which 1 write holds at any moment. Step 1: the handler calls propose on the Replica, which is behind a mutex, and the record is appended to the leader&#39;s log. Step 2: both follower tasks are woken, and each calls append_for to learn what its follower lacks and sends it over gRPC. Step 3: an answer arrives, and the function record stores the follower&#39;s last sequence and applies the commit rule, majority_sequence of the 3 last sequences. Step 4: the committed sequence is published on a watch channel, where the handler waits for its sequence, and the handler answers.">
+<figcaption><b>Figure 3.7</b> The parts of a leader, and the path of a write between them.</figcaption>
+</figure>
+<p class="listing"><img class="mascot" src="art/crab-happy.svg" alt=""><b>Listing 3.23</b> The imports of <code>kvnode/src/node.rs</code>. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/distributed-systems-from-the-ground-up/code/kvnode/src/node.rs">kvnode/src/node.rs</a></p>
+
+<pre><code class="language-rust">use std::sync::Arc;
+use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
+use std::time::{Duration, Instant};
+
+use kv::{Change, Condition, Entry, Summary, Written};
+use kvd::api::ApiError;
+use parking_lot::Mutex;
+use repl::{Appended, Replica, majority_sequence};
+use tokio::sync::{Notify, watch};
+use tokio::task;
+use tokio::time::{sleep, timeout};
+use tonic::transport::{Channel, Endpoint};
+
+use crate::rpc::{ReplicationClient, proto};</code></pre>
+<p class="listing"><img class="mascot" src="art/crab-happy.svg" alt=""><b>Listing 3.24</b> The state of a node. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/distributed-systems-from-the-ground-up/code/kvnode/src/node.rs">kvnode/src/node.rs</a></p>
+
+<pre><code class="language-rust">/// How often a leader sends a message to a follower that has nothing new to receive.
+const HEARTBEAT: Duration = Duration::from_millis(100);
+
+/// How long a leader waits for the answer to one message.
+const ANSWER: Duration = Duration::from_millis(500);
+
+/// How long a write waits for its record to reach a majority.
+const COMMIT: Duration = Duration::from_secs(1);
+
+/// What the leader knows about one follower.
+pub struct Peer {
+    pub address: String,
+    /// The last sequence the follower has reported.
+    reported: AtomicU64,
+    /// When the follower last answered.
+    heard: Mutex&lt;Option&lt;Instant&gt;&gt;,
+}
+
+pub struct Node {
+    pub replica: Mutex&lt;Replica&gt;,
+    pub leader: bool,
+    pub peers: Vec&lt;Peer&gt;,
+    /// The sequence the log ended at when the node started. A leader serves
+    /// reads once this much is committed.
+    ready: u64,
+    /// Held by the write that is in progress, so that writes take turns.
+    turn: tokio::sync::Mutex&lt;()&gt;,
+    /// The committed sequence, for writes that wait for it to advance.
+    committed: watch::Sender&lt;u64&gt;,
+    /// Signalled when the leader has appended a record.
+    appended: Notify,
+    /// Set when a follower answers with a newer term: another leader exists.
+    deposed: AtomicBool,
+}
+
+impl Node {
+    pub fn new(replica: Replica, leader: bool, followers: Vec&lt;String&gt;) -&gt; Arc&lt;Node&gt; {
+        let peer = |address| Peer {
+            address,
+            reported: AtomicU64::new(0),
+            heard: Mutex::new(None),
+        };
+
+        Arc::new(Node {
+            ready: replica.last_sequence(),
+            replica: Mutex::new(replica),
+            leader,
+            peers: followers
+                .into_iter()
+                .map(peer)
+                .collect(),
+            turn: tokio::sync::Mutex::new(()),
+            committed: watch::Sender::new(0),
+            appended: Notify::new(),
+            deposed: AtomicBool::new(false),
+        })
+    }
+}</code></pre>
+<p>A leader starts 1 task for each follower. The task repeats a single exchange: it
+builds a message that begins where the follower’s log is believed to end, sends it,
+and processes the answer. When the follower is up to date, the task waits until the
+leader appends a record or until the heartbeat interval has elapsed. When the answer
+shows that records are still missing, the task continues at once.</p>
+<p><code>follow</code> runs for the lifetime of the node, and its loop has 3 phases. It first locks
+the replica for no longer than it takes to build a message. It then releases the lock and
+waits for the answer, for at most 500 ms. Finally it passes the answer to <code>record</code>. If
+<code>record</code> reports that the follower is still behind, the loop continues immediately.
+Otherwise the task sleeps until <code>appended</code> is signalled or the heartbeat interval
+elapses, whichever occurs first.</p>
+<p class="listing"><img class="mascot" src="art/crab-happy.svg" alt=""><b>Listing 3.25</b> The task that keeps a follower up to date. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/distributed-systems-from-the-ground-up/code/kvnode/src/node.rs">kvnode/src/node.rs</a></p>
+
+<pre><code class="language-rust">impl Node {
+    /// Starts one task for each follower. A task sends the follower what it
+    /// lacks, again and again, for as long as the node runs.
+    pub fn lead(self: &amp;Arc&lt;Node&gt;) -&gt; Result&lt;(), tonic::transport::Error&gt; {
+        for index in 0..self.peers.len() {
+            let channel = Endpoint::from_shared(self.peers[index].address.clone())?
+                .connect_timeout(ANSWER)
+                .connect_lazy();
+
+            tokio::spawn(Arc::clone(self).follow(index, ReplicationClient::new(channel)));
+        }
+
+        Ok(())
+    }
+
+    async fn follow(self: Arc&lt;Node&gt;, index: usize, mut client: ReplicationClient&lt;Channel&gt;) {
+        let peer = &amp;self.peers[index];
+
+        loop {
+            let message = self.replica.lock().append_for(
+                peer.reported
+                    .load(Ordering::Relaxed),
+            );
+            let request = proto::AppendRequest::from(message);
+
+            let answer = timeout(ANSWER, client.append(request)).await;
+
+            // An answer that did not come counts as a peer that is up to date:
+            // the next round is a heartbeat, which finds out more.
+            let behind = answer
+                .ok()
+                .and_then(Result::ok)
+                .is_some_and(|answer| self.record(peer, answer.into_inner().into()));
+
+            if !behind {
+                // Wait for a new record, or send a heartbeat when none comes.
+                tokio::select! {
+                    () = self.appended.notified() =&gt; {}
+                    () = sleep(HEARTBEAT) =&gt; {}
+                }
+            }
+        }
+    }
+}</code></pre>
+<p>A point of design here has a large effect on how the node behaves under faults. No
+task holds the lock of the replica while it waits for the network. It takes the lock
+to build a message and again to process an answer, and releases it in between. An
+unreachable follower therefore delays its own task and nothing else, neither the task
+of the other follower nor any request from a client. Had the lock been held across
+the network call, a single slow follower would have stopped the whole shard, which
+would have defeated the purpose of waiting only for a majority.</p>
+<p><code>record</code> is called with every answer. It first compares the term of the answer with
+the leader’s own. A higher term shows that a newer leader exists, and the node ceases
+to accept writes. Otherwise it stores the sequence reported, applies the commit rule
+to the 3 last sequences, and publishes the new committed sequence through a <code>watch</code>
+channel, where the waiting writes observe it.</p>
+<p class="listing"><img class="mascot" src="art/crab-happy.svg" alt=""><b>Listing 3.26</b> Processing an answer, and committing. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/distributed-systems-from-the-ground-up/code/kvnode/src/node.rs">kvnode/src/node.rs</a></p>
+
+<pre><code class="language-rust">impl Node {
+    /// Takes note of a follower's answer and commits what a majority now
+    /// holds. It returns whether the follower still lacks records.
+    fn record(&amp;self, peer: &amp;Peer, answer: Appended) -&gt; bool {
+        let mut replica = self.replica.lock();
+
+        if answer.term &gt; replica.term() {
+            self.deposed
+                .store(true, Ordering::Relaxed);
+
+            return false;
+        }
+
+        peer.reported
+            .store(answer.last_sequence, Ordering::Relaxed);
+        *peer.heard.lock() = Some(Instant::now());
+
+        let mut stored: Vec&lt;u64&gt; = self
+            .peers
+            .iter()
+            .map(|peer| {
+                peer.reported
+                    .load(Ordering::Relaxed)
+            })
+            .collect();
+        stored.push(replica.last_sequence());
+
+        replica.commit(majority_sequence(stored));
+        self.committed
+            .send_replace(replica.committed());
+
+        answer.last_sequence &lt; replica.last_sequence()
+    }
+}</code></pre>
+<h3 id="writes"><a class="header" href="#writes">Writes</a></h3>
+<figure>
+<img src="figures/repl-write-path.svg?v=0226fb60" alt="The steps of a write in the leader. Step 1: the handler takes its turn, since writes are processed 1 after another. Step 2: it waits until every earlier record is committed. Step 3: propose checks the condition, appends the record and waits for the disk. Step 4: it wakes the 2 follower tasks, and each sends its follower what it lacks. Step 5: a follower answers, and the task records the follower&#39;s last sequence. Step 6: the commit rule gives a new committed sequence, and the record is applied to the entries. Step 7: the handler sees its sequence committed and answers 201 or 204 with the version. Step 8: if 1 second passes without a majority, it answers 503, and the record stays In log.">
+<figcaption><b>Figure 3.8</b> The steps of a write in the leader.</figcaption>
+</figure>
+<p class="listing"><img class="mascot" src="art/crab-happy.svg" alt=""><b>Listing 3.27</b> The write path of the leader. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/distributed-systems-from-the-ground-up/code/kvnode/src/node.rs">kvnode/src/node.rs</a></p>
+
+<pre><code class="language-rust">impl Node {
+    /// A write on the leader: wait for a turn, append the record, and wait
+    /// until a majority of the replicas hold it.
+    pub async fn write(&amp;self, change: Change, condition: Condition) -&gt; Result&lt;Written, ApiError&gt; {
+        self.must_lead()?;
+
+        let turn = self.turn.lock().await;
+        let last = self.replica.lock().last_sequence();
+        self.wait_for(last).await?;
+
+        let proposed = task::block_in_place(|| {
+            let mut replica = self.replica.lock();
+            let created = match &amp;change {
+                Change::Put { key, .. } | Change::Delete { key } =&gt; replica.get(key).is_none(),
+            };
+
+            replica
+                .propose(change, condition)
+                .map(|version| Written { version, created })
+        })?;
+
+        self.appended.notify_waiters();
+        self.wait_for(proposed.version)
+            .await?;
+        drop(turn);
+
+        Ok(proposed)
+    }
+
+    /// Waits until the record with this sequence is committed.
+    async fn wait_for(&amp;self, sequence: u64) -&gt; Result&lt;(), ApiError&gt; {
+        let mut committed = self.committed.subscribe();
+
+        let reached = committed.wait_for(|&amp;committed| committed &gt;= sequence);
+        let in_time = timeout(COMMIT, reached)
+            .await
+            .is_ok_and(|reached| reached.is_ok());
+
+        if in_time {
+            Ok(())
+        } else {
+            Err(ApiError::Unavailable(format!(
+                "record {sequence} is not on a majority of the replicas"
+            )))
+        }
+    }
+
+    fn must_lead(&amp;self) -&gt; Result&lt;(), ApiError&gt; {
+        if !self.leader {
+            return Err(ApiError::Misdirected("this node is a follower".into()));
+        }
+
+        if self.deposed.load(Ordering::Relaxed) {
+            return Err(ApiError::Misdirected(
+                "a leader of a newer term exists".into(),
+            ));
+        }
+
+        Ok(())
+    }
+}</code></pre>
+<p>The handlers send no messages themselves. A handler appends a record, wakes both
+follower tasks, and waits for the committed sequence to reach the sequence of its
+record. A <code>watch</code> channel holds the most recent committed sequence, and <code>wait_for</code>
+returns as soon as that value satisfies its condition, including the case in which
+it already does.</p>
+<p>If no majority stores the record within 1 second, the handler answers <code>503</code>. The
+record remains in the leader’s log. The follower tasks go on sending it, and it is
+committed when a follower becomes reachable, as the simulation showed.</p>
+<h3 id="reads"><a class="header" href="#reads">Reads</a></h3>
+<p class="listing"><img class="mascot" src="art/crab-happy.svg" alt=""><b>Listing 3.28</b> The read path of the leader. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/distributed-systems-from-the-ground-up/code/kvnode/src/node.rs">kvnode/src/node.rs</a></p>
+
+<pre><code class="language-rust">impl Node {
+    /// A leader serves reads while a majority of the replicas, itself
+    /// included, has answered within the last second, and once everything
+    /// its log held at start is committed.
+    fn must_serve_reads(&amp;self) -&gt; Result&lt;(), ApiError&gt; {
+        self.must_lead()?;
+
+        let recently = |peer: &amp;&amp;Peer| {
+            peer.heard
+                .lock()
+                .is_some_and(|at| at.elapsed() &lt; COMMIT)
+        };
+        let reachable = 1 + self
+            .peers
+            .iter()
+            .filter(recently)
+            .count();
+
+        if 2 * reachable &lt;= self.peers.len() + 1 {
+            return Err(ApiError::Unavailable(
+                "this leader cannot reach a majority of the replicas".into(),
+            ));
+        }
+
+        if self.replica.lock().committed() &lt; self.ready {
+            return Err(ApiError::Unavailable(
+                "the records from before the restart are not committed yet".into(),
+            ));
+        }
+
+        Ok(())
+    }
+
+    pub fn get(&amp;self, key: &amp;str) -&gt; Result&lt;Entry, ApiError&gt; {
+        self.must_serve_reads()?;
+
+        self.replica
+            .lock()
+            .get(key)
+            .cloned()
+            .ok_or(ApiError::NotFound)
+    }
+
+    pub fn list(
+        &amp;self,
+        prefix: &amp;str,
+        after: Option&lt;&amp;str&gt;,
+        limit: usize,
+    ) -&gt; Result&lt;(Vec&lt;Summary&gt;, bool), ApiError&gt; {
+        self.must_serve_reads()?;
+
+        Ok(self
+            .replica
+            .lock()
+            .list(prefix, after, limit))
+    }
+
+    /// The last sequence each follower has reported.
+    pub fn reported(&amp;self) -&gt; Vec&lt;u64&gt; {
+        self.peers
+            .iter()
+            .map(|peer| {
+                peer.reported
+                    .load(Ordering::Relaxed)
+            })
+            .collect()
+    }
+}</code></pre>
+<p>A leader that has been separated from its followers by a network partition cannot
+know whether another leader has been appointed in the meantime, and its entries may
+therefore be out of date. <code>must_serve_reads</code> accordingly requires that a majority of
+the replicas, counting the leader itself, has answered within the last second. The
+check limits to 1 second the time for which a former leader could return outdated
+data, on the condition that no new leader is appointed sooner than that after the old
+one becomes unreachable. Stricter implementations confirm their leadership with a
+majority for every read, at the cost of a network round trip for each.</p>
+<p>A second check concerns a leader that has been restarted. Its log may contain
+committed records that have not yet been applied, since <code>committed</code> begins at 0. Such
+a leader serves reads once every record that its log held at startup has been
+committed again.</p>
+<h3 id="the-http-api"><a class="header" href="#the-http-api">The HTTP API</a></h3>
+<p>The handlers reuse the error type and the header parsing of chapter 2, from
+<code>kvd::api</code>. They differ from the handlers of chapter 2 in passing writes to
+<code>Node::write</code> and reads to <code>Node::get</code>.</p>
+<p class="listing"><img class="mascot" src="art/crab-happy.svg" alt=""><b>Listing 3.29</b> The handlers for <code>PUT</code>, <code>DELETE</code> and <code>GET</code>. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/distributed-systems-from-the-ground-up/code/kvnode/src/main.rs">kvnode/src/main.rs</a></p>
+
+<pre><code class="language-rust">async fn put_key(
+    State(node): State&lt;Arc&lt;Node&gt;&gt;,
+    Path(key): Path&lt;String&gt;,
+    headers: HeaderMap,
+    body: Bytes,
+) -&gt; Result&lt;Response, ApiError&gt; {
+    valid_key(&amp;key)?;
+    let condition = write_condition(&amp;headers)?;
+
+    let written = node
+        .write(
+            Change::Put {
+                key,
+                value: body.to_vec(),
+            },
+            condition,
+        )
+        .await?;
+    let status = if written.created {
+        StatusCode::CREATED
+    } else {
+        StatusCode::NO_CONTENT
+    };
+
+    Ok((status, [(ETAG, etag(written.version))]).into_response())
+}
+
+async fn delete_key(
+    State(node): State&lt;Arc&lt;Node&gt;&gt;,
+    Path(key): Path&lt;String&gt;,
+    headers: HeaderMap,
+) -&gt; Result&lt;StatusCode, ApiError&gt; {
+    valid_key(&amp;key)?;
+    let condition = write_condition(&amp;headers)?;
+
+    node.write(Change::Delete { key }, condition)
+        .await?;
+
+    Ok(StatusCode::NO_CONTENT)
+}
+
+async fn get_key(
+    State(node): State&lt;Arc&lt;Node&gt;&gt;,
+    Path(key): Path&lt;String&gt;,
+    headers: HeaderMap,
+) -&gt; Result&lt;Response, ApiError&gt; {
+    valid_key(&amp;key)?;
+    let cached = version_header(&amp;headers, IF_NONE_MATCH)?;
+    let entry = node.get(&amp;key)?;
+    let tag = [(ETAG, etag(entry.version))];
+
+    if cached == Some(Condition::Version(entry.version)) {
+        return Ok((StatusCode::NOT_MODIFIED, tag).into_response());
+    }
+
+    Ok((
+        tag,
+        [(CONTENT_TYPE, "application/octet-stream")],
+        entry.value,
+    )
+        .into_response())
+}</code></pre>
+<p class="listing"><img class="mascot" src="art/crab-happy.svg" alt=""><b>Listing 3.30</b> Listing keys, and the health of the node. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/distributed-systems-from-the-ground-up/code/kvnode/src/main.rs">kvnode/src/main.rs</a></p>
+
+<pre><code class="language-rust">#[derive(Deserialize)]
+struct ListQuery {
+    #[serde(default)]
+    prefix: String,
+    after: Option&lt;String&gt;,
+    limit: Option&lt;usize&gt;,
+}
+
+#[derive(Serialize)]
+struct Item {
+    key: String,
+    version: u64,
+    size: usize,
+}
+
+#[derive(Serialize)]
+struct Page {
+    keys: Vec&lt;Item&gt;,
+    next_after: Option&lt;String&gt;,
+}
+
+async fn list_keys(
+    State(node): State&lt;Arc&lt;Node&gt;&gt;,
+    Query(query): Query&lt;ListQuery&gt;,
+) -&gt; Result&lt;Json&lt;Page&gt;, ApiError&gt; {
+    let limit = query
+        .limit
+        .unwrap_or(100)
+        .clamp(1, 1000);
+    let (page, more) = node.list(&amp;query.prefix, query.after.as_deref(), limit)?;
+    let next_after = if more {
+        page.last()
+            .map(|last| last.key.clone())
+    } else {
+        None
+    };
+    let keys = page
+        .into_iter()
+        .map(|item| Item {
+            key: item.key,
+            version: item.version,
+            size: item.size,
+        })
+        .collect();
+
+    Ok(Json(Page { keys, next_after }))
+}
+
+#[derive(Serialize)]
+struct Health {
+    role: &amp;'static str,
+    term: u64,
+    last_sequence: u64,
+    committed: u64,
+    /// The last sequence each follower has reported to this leader.
+    followers: Vec&lt;u64&gt;,
+}
+
+async fn health(State(node): State&lt;Arc&lt;Node&gt;&gt;) -&gt; Json&lt;Health&gt; {
+    let replica = node.replica.lock();
+
+    Json(Health {
+        role: if node.leader { "leader" } else { "follower" },
+        term: replica.term(),
+        last_sequence: replica.last_sequence(),
+        committed: replica.committed(),
+        followers: node.reported(),
+    })
+}</code></pre>
+<p class="listing"><img class="mascot" src="art/crab-happy.svg" alt=""><b>Listing 3.31</b> Starting a leader or a follower. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/distributed-systems-from-the-ground-up/code/kvnode/src/main.rs">kvnode/src/main.rs</a></p>
+
+<pre><code class="language-rust">#[tokio::main]
+async fn main() -&gt; Result&lt;(), Box&lt;dyn Error&gt;&gt; {
+    let options = Options::parse();
+    let replica = Replica::open(&amp;options.data, !options.no_sync, options.term)?;
+
+    println!(
+        "term {}, log ends at {}",
+        replica.term(),
+        replica.last_sequence()
+    );
+
+    let node = Node::new(replica, options.role == Role::Leader, options.followers);
+
+    match options.role {
+        Role::Leader =&gt; node.lead()?,
+        Role::Follower =&gt; {
+            let service = ReplicationServer::new(Follower {
+                node: Arc::clone(&amp;node),
+            });
+
+            tokio::spawn(
+                Server::builder()
+                    .add_service(service)
+                    .serve(options.replication),
+            );
+            println!("accepting records on {}", options.replication);
+        }
+    }
+
+    let routes = Router::new()
+        .route("/v1/keys", get(list_keys))
+        .route(
+            "/v1/keys/{key}",
+            get(get_key)
+                .put(put_key)
+                .delete(delete_key),
+        )
+        .route("/healthz", get(health))
+        .layer(DefaultBodyLimit::max(MAX_VALUE))
+        .with_state(node);
+
+    let listener = TcpListener::bind(options.listen).await?;
+    println!("listening on {}", listener.local_addr()?);
+
+    axum::serve(listener, routes).await?;
+
+    Ok(())
+}</code></pre>
+<h2 id="running-3-nodes"><a class="header" href="#running-3-nodes">Running 3 nodes</a></h2>
+<p>The followers are started first, each with an address for HTTP and another for
+replication. The leader is then started with the replication addresses of both
+followers.</p>
+<pre><code class="language-console">$ ./target/release/kvnode --role follower --listen 127.0.0.1:7002 --replication 127.0.0.1:7102 --data /var/tmp/n2 &amp;
+term 1, log ends at 0
+accepting records on 127.0.0.1:7102
+listening on 127.0.0.1:7002
+$ ./target/release/kvnode --role follower --listen 127.0.0.1:7003 --replication 127.0.0.1:7103 --data /var/tmp/n3 &amp;
+$ ./target/release/kvnode --role leader --listen 127.0.0.1:7001 --data /var/tmp/n1 \
+      --follower http://127.0.0.1:7102 --follower http://127.0.0.1:7103 &amp;
+term 1, log ends at 0
+listening on 127.0.0.1:7001
+</code></pre>
+<p>A write to the leader is stored by all 3 nodes, and a request to a follower is refused
+with the status that chapter 1 specifies for a request sent to the wrong node.</p>
+<pre><code class="language-console">$ curl -i -X PUT http://127.0.0.1:7001/v1/keys/user-1 --data-binary 'ada'
+HTTP/1.1 201 Created
+etag: "1"
+content-length: 0
+
+$ curl -i -X PUT http://127.0.0.1:7002/v1/keys/user-1 --data-binary 'x'
+HTTP/1.1 421 Misdirected Request
+content-type: application/problem+json
+content-length: 117
+
+{"type":"/problems/not-leader","title":"This node is not the leader","status":421,"detail":"this node is a follower"}
+$ for port in 7001 7002 7003; do curl http://127.0.0.1:$port/healthz; echo; done
+{"role":"leader","term":1,"last_sequence":1,"committed":1,"followers":[1,1]}
+{"role":"follower","term":1,"last_sequence":1,"committed":1,"followers":[]}
+{"role":"follower","term":1,"last_sequence":1,"committed":1,"followers":[]}
+$ cmp /var/tmp/n1/kv.log /var/tmp/n2/kv.log &amp;&amp; cmp /var/tmp/n1/kv.log /var/tmp/n3/kv.log &amp;&amp; echo identical
+identical
+</code></pre>
+<p>The health response of the leader lists the last sequence reported by each follower.
+The 3 log files are identical byte for byte, which is invariant 1 in the strongest
+form it could take.</p>
+<h2 id="experiments"><a class="header" href="#experiments">Experiments</a></h2>
+<p>All the nodes in these experiments run on 1 machine and share its disk. On separate
+machines, each node has a disk of its own and the nodes do not compete for it.
+Nothing else changes: each node is started with the addresses of its peers in place
+of <code>127.0.0.1</code>.</p>
+<h3 id="the-cost-of-replication"><a class="header" href="#the-cost-of-replication">The cost of replication</a></h3>
+<pre><code class="language-console">$ time ./target/release/kvctl load --server http://127.0.0.1:7001 --count 300 --acked acked.txt
+300 writes acknowledged
+3.89 s, 77 writes per second
+</code></pre>
+<p>The replicated shard completes 77 writes per second, against 185 for the single node
+of chapter 2 on the same disk. Each write now waits for 2 disks in succession, the
+leader’s and then a follower’s, and for a network round trip. Chapter 1 allowed for
+this in its capacity estimate by counting 3 stored records for every write.</p>
+<h3 id="a-follower-stops"><a class="header" href="#a-follower-stops">A follower stops</a></h3>
+<p>A follower is killed while a load is running.</p>
+<pre><code class="language-console">$ ./target/release/kvctl load --server http://127.0.0.1:7001 --count 400 --acked acked.txt &amp;
+$ kill -9 &lt;pid of the node on port 7002&gt;
+$ curl http://127.0.0.1:7001/healthz
+{"role":"leader","term":1,"last_sequence":435,"committed":434,"followers":[417,434]}
+400 writes acknowledged
+$ curl http://127.0.0.1:7001/healthz
+{"role":"leader","term":1,"last_sequence":700,"committed":700,"followers":[417,700]}
+
+$ ./target/release/kvnode --role follower --listen 127.0.0.1:7002 --replication 127.0.0.1:7102 --data /var/tmp/n2 &amp;
+term 1, log ends at 417
+$ curl http://127.0.0.1:7001/healthz
+{"role":"leader","term":1,"last_sequence":700,"committed":700,"followers":[700,700]}
+$ cmp /var/tmp/n1/kv.log /var/tmp/n2/kv.log &amp;&amp; echo identical
+identical
+</code></pre>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th>Output</th><th>What it shows</th></tr>
+</thead>
+<tbody>
+<tr><td>400 writes acknowledged</td><td>Writes continued without interruption after the follower stopped. The leader and the remaining follower form a majority.</td></tr>
+<tr><td><code>"followers":[417,700]</code></td><td>The leader retains the last position that the stopped follower reported.</td></tr>
+<tr><td>term 1, log ends at 417</td><td>After its restart, the follower’s log contains the records it had stored before it was killed.</td></tr>
+<tr><td><code>"followers":[700,700]</code>, identical</td><td>The follower task sent the 283 missing records, and the logs are equal again.</td></tr>
+</tbody>
+</table>
+</div>
+<p>Apart from restarting the process, no action by an operator was required.</p>
+<h3 id="the-majority-is-lost"><a class="header" href="#the-majority-is-lost">The majority is lost</a></h3>
+<p>Both followers are killed.</p>
+<pre><code class="language-console">$ kill -9 &lt;pid of the node on port 7002&gt; &lt;pid of the node on port 7003&gt;
+$ curl -o /dev/null -w '%{http_code} in %{time_total} s\n' -X PUT http://127.0.0.1:7001/v1/keys/alone --data-binary 'x'
+503 in 1.011346 s
+$ curl -X PUT http://127.0.0.1:7001/v1/keys/alone2 --data-binary 'x'
+{"type":"/problems/store-unavailable","title":"The node cannot serve the request","status":503,"detail":"record 701 is not on a majority of the replicas"}
+$ curl http://127.0.0.1:7001/v1/keys/key-000001
+{"type":"/problems/store-unavailable","title":"The node cannot serve the request","status":503,"detail":"this leader cannot reach a majority of the replicas"}
+$ curl http://127.0.0.1:7001/healthz
+{"role":"leader","term":1,"last_sequence":701,"committed":700,"followers":[700,700]}
+
+$ ./target/release/kvnode --role follower --listen 127.0.0.1:7003 --replication 127.0.0.1:7103 --data /var/tmp/n3 &amp;
+$ curl http://127.0.0.1:7001/healthz
+{"role":"leader","term":1,"last_sequence":701,"committed":701,"followers":[700,701]}
+$ curl -o /dev/null -w '%{http_code}\n' http://127.0.0.1:7001/v1/keys/alone
+200
+$ curl -o /dev/null -w '%{http_code}\n' -X PUT http://127.0.0.1:7001/v1/keys/after --data-binary 'x'
+201
+</code></pre>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th>Output</th><th>What it shows</th></tr>
+</thead>
+<tbody>
+<tr><td>503 in 1.01 s</td><td>The leader appended record 701, could not store it on a second replica, and reported failure after the commit timeout.</td></tr>
+<tr><td>record 701 is not on a majority</td><td>The second write was not accepted, because record 701 was still uncommitted.</td></tr>
+<tr><td>this leader cannot reach a majority</td><td>Reads are refused as well, since the leader can no longer confirm that it is the current leader.</td></tr>
+<tr><td><code>"last_sequence":701,"committed":700</code></td><td>The record is in the leader’s log and has not been applied.</td></tr>
+<tr><td>after 1 follower returns: <code>"committed":701</code>, <code>GET alone</code> returns 200</td><td>The record was committed without any new request from the client.</td></tr>
+</tbody>
+</table>
+</div>
+<p>This is exactly the behaviour that chapter 1 specified for the minority side of a
+partition. The leader remains consistent and becomes unavailable, and it would be
+easy, and wrong, to regard its refusal to serve as a defect. A leader that went on
+answering in this condition would be answering from data that it cannot know to be
+current.</p>
+<h3 id="the-leader-is-lost"><a class="header" href="#the-leader-is-lost">The leader is lost</a></h3>
+<p>In this experiment a leader is killed under load and its data directory is moved
+away, which simulates the loss of a machine together with its disk.</p>
+<figure>
+<img src="figures/repl-promote.svg?v=c7c6023b" alt="Replacing a lost leader by hand, in 7 steps. Step 1: the leader&#39;s machine is lost with its disk, after 228 writes had been acknowledged. Step 2: the operator reads the health of both followers, and both logs end at 228. Step 3: the follower with the longest log is chosen, because it holds every acknowledged record. Step 4: it is restarted as leader with term 2. Step 5: the other follower receives a message of term 2, adopts the term and follows the new leader. Step 6: a new, empty node is added as a follower, and the leader sends it all 228 records. Step 7: a message of term 1 is refused from now on, so the lost leader cannot disturb the shard if it returns.">
+<figcaption><b>Figure 3.9</b> The procedure for replacing a lost leader by hand.</figcaption>
+</figure>
+<pre><code class="language-console">$ ./target/release/kvctl load --server http://127.0.0.1:7001 --count 2000 --acked acked.txt &amp;
+$ kill -9 &lt;pid of the leader&gt;
+write 229 failed: io: Peer disconnected
+228 writes acknowledged
+$ mv /var/tmp/n1 /var/tmp/n1.lost
+$ for port in 7002 7003; do curl http://127.0.0.1:$port/healthz; echo; done
+{"role":"follower","term":1,"last_sequence":228,"committed":227,"followers":[]}
+{"role":"follower","term":1,"last_sequence":228,"committed":227,"followers":[]}
+
+$ kill -9 &lt;pid of the node on port 7003&gt;
+$ ./target/release/kvnode --role follower --listen 127.0.0.1:7001 --replication 127.0.0.1:7101 --data /var/tmp/n1 &amp;
+$ ./target/release/kvnode --role leader --term 2 --listen 127.0.0.1:7003 --data /var/tmp/n3 \
+      --follower http://127.0.0.1:7102 --follower http://127.0.0.1:7101 &amp;
+term 2, log ends at 228
+listening on 127.0.0.1:7003
+$ for port in 7003 7002 7001; do curl http://127.0.0.1:$port/healthz; echo; done
+{"role":"leader","term":2,"last_sequence":228,"committed":228,"followers":[228,228]}
+{"role":"follower","term":2,"last_sequence":228,"committed":228,"followers":[]}
+{"role":"follower","term":2,"last_sequence":228,"committed":228,"followers":[]}
+$ ./target/release/kvctl verify --server http://127.0.0.1:7003 --acked acked.txt
+228 acknowledged, 228 found, 0 missing
+</code></pre>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th>Output</th><th>What it shows</th></tr>
+</thead>
+<tbody>
+<tr><td>228 writes acknowledged</td><td>the client’s record of acknowledged writes, kept outside the cluster</td></tr>
+<tr><td>both followers: <code>"last_sequence":228,"committed":227</code></td><td>Both followers hold all 228 records. They had not yet been told that record 228 was committed, because the leader stopped before its next message.</td></tr>
+<tr><td>term 2, log ends at 228</td><td>The promoted node starts as leader with a higher term.</td></tr>
+<tr><td>all 3 nodes: term 2, <code>"committed":228</code></td><td>The remaining follower adopted the new term, and the empty replacement node received the complete log.</td></tr>
+<tr><td>228 acknowledged, 228 found, 0 missing</td><td>Non-functional requirement 0 is met: every acknowledged write survived the loss of the leader and its disk.</td></tr>
+</tbody>
+</table>
+</div>
+<p>The second row illustrates why the committed sequence is not stored on disk. What a
+follower knows to be committed always lags behind its leader, and after a leader has
+been lost, the committed sequence is established afresh from the logs: a new leader
+commits a record as soon as a majority has reported it.</p>
+<p>For the promotion, the follower with the longer log must be chosen. By invariant 2,
+every acknowledged record is on at least 1 of the 2 followers, though not necessarily
+on both. If their logs differ in length, the longer contains every acknowledged
+record, and the shorter may lack some of the most recent. To promote the shorter
+would be to discard acknowledged writes, and this choice, made here by a person
+reading 2 numbers, is the one that chapter 4 has to teach the nodes to make for
+themselves.</p>
+<h3 id="the-former-leader-returns"><a class="header" href="#the-former-leader-returns">The former leader returns</a></h3>
+<p>Suppose that a former leader was not lost after all and begins to send messages
+again, as it might when a network partition ends. A leader with term 1 is started
+against the 2 followers.</p>
+<pre><code class="language-console">$ ./target/release/kvnode --role leader --term 1 --listen 127.0.0.1:7009 --data /var/tmp/n9 \
+      --follower http://127.0.0.1:7102 --follower http://127.0.0.1:7101 &amp;
+$ curl -i -X PUT http://127.0.0.1:7009/v1/keys/stale --data-binary 'x'
+HTTP/1.1 421 Misdirected Request
+content-type: application/problem+json
+content-length: 125
+
+{"type":"/problems/not-leader","title":"This node is not the leader","status":421,"detail":"a leader of a newer term exists"}
+$ curl http://127.0.0.1:7002/healthz
+{"role":"follower","term":2,"last_sequence":228,"committed":228,"followers":[]}
+$ curl -o /dev/null -w '%{http_code}\n' -X PUT http://127.0.0.1:7003/v1/keys/fresh --data-binary 'x'
+201
+</code></pre>
+<p>Both followers are at term 2 and refuse messages of term 1. Each of their answers
+carries the higher term, so that the old leader records that it has been replaced and
+rejects writes with <code>421</code>. The shard meanwhile continues to accept writes through its
+leader of term 2. Terms are what make a change of leader safe, since a leader that
+has been replaced cannot add a record to any follower.</p>
+<h2 id="limitations"><a class="header" href="#limitations">Limitations</a></h2>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th>Limitation</th><th>Consequence</th></tr>
+</thead>
+<tbody>
+<tr><td>The leader is appointed by an operator.</td><td>After the loss of a leader, the shard is unavailable for writes until a person or a script promotes a follower.</td></tr>
+<tr><td>A former leader must not rejoin with its old log.</td><td>Its log may contain records that were appended and never committed, at positions where the new leader has written different records. The implementation compares positions only, so a former leader has to rejoin with an empty data directory.</td></tr>
+<tr><td>Writes are processed 1 after another.</td><td>The write rate of a shard is limited to 1 write for each round trip. Group commit, which the capacity estimate of chapter 1 assumed, is not implemented.</td></tr>
+<tr><td>Every replica holds all its records in memory.</td><td>The memory used by a node grows with the length of its log.</td></tr>
+<tr><td>A leader serves reads for up to 1 second after losing its majority.</td><td>Non-functional requirement 2, consistency, depends on no new leader being appointed within that second.</td></tr>
+</tbody>
+</table>
+</div>
+<p>The first 2 limitations are removed in chapter 4, and the third in chapter 6.</p>
+<h2 id="the-complete-programs"><a class="header" href="#the-complete-programs">The complete programs</a></h2>
+<p>The log and the store are listed in chapter 2. Those listings include
+<code>Log::append_records</code> as well as <code>apply</code>, <code>check</code> and <code>page</code>, which this chapter uses.</p>
+<p class="listing"><img class="mascot" src="art/crab-cute.svg" alt=""><b>Listing 3.32</b> The complete <code>repl/src/lib.rs</code>. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/distributed-systems-from-the-ground-up/code/repl/src/lib.rs">repl/src/lib.rs</a></p>
+
+<pre><code class="language-rust">//! Replication of a log from a leader to its followers.
+//!
+//! A `Replica` is one copy of a shard: a log, and the entries that result
+//! from the records that are known to be on a majority of the copies. The
+//! same type serves as leader and as follower. This module does no I/O on
+//! the network. It builds the messages and processes them, and the caller
+//! carries them between replicas.
+
+use std::collections::BTreeMap;
+use std::io;
+use std::path::Path;
+
+use kv::{Change, Condition, Entry, Log, Record, StoreError, Summary, apply, check, page};
+
+/// The message a leader sends to a follower.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct Append {
+    /// The term of the sender.
+    pub term: u64,
+    /// The sequence of the record that precedes `records` in the leader's log.
+    pub previous_sequence: u64,
+    pub records: Vec&lt;Record&gt;,
+    /// Every record up to this sequence is on a majority of the replicas.
+    pub committed_sequence: u64,
+}
+
+/// The follower's answer.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct Appended {
+    pub term: u64,
+    /// False when the follower's log does not end at `previous_sequence`,
+    /// or when the sender's term is older than the follower's.
+    pub appended: bool,
+    /// The sequence of the last record in the follower's log.
+    pub last_sequence: u64,
+}
+
+pub struct Replica {
+    log: Log,
+    /// Every record of the log, in order. Record `n` is at index `n - 1`.
+    records: Vec&lt;Record&gt;,
+    /// The result of applying the records up to `committed`.
+    entries: BTreeMap&lt;String, Entry&gt;,
+    /// The sequence of the last record that is applied to `entries`.
+    committed: u64,
+    term: u64,
+}
+
+impl Replica {
+    /// Opens the replica in `directory`. Nothing is applied yet: a replica
+    /// that has restarted does not know which of its records are committed.
+    pub fn open(directory: &amp;Path, sync: bool, term: u64) -&gt; io::Result&lt;Replica&gt; {
+        let (log, recovery) = Log::open(directory, sync)?;
+
+        Ok(Replica {
+            log,
+            records: recovery.records,
+            entries: BTreeMap::new(),
+            committed: 0,
+            term,
+        })
+    }
+
+    pub fn term(&amp;self) -&gt; u64 {
+        self.term
+    }
+
+    pub fn last_sequence(&amp;self) -&gt; u64 {
+        self.records.len() as u64
+    }
+
+    pub fn committed(&amp;self) -&gt; u64 {
+        self.committed
+    }
+
+    /// One page of the committed keys.
+    pub fn list(&amp;self, prefix: &amp;str, after: Option&lt;&amp;str&gt;, limit: usize) -&gt; (Vec&lt;Summary&gt;, bool) {
+        page(&amp;self.entries, prefix, after, limit)
+    }
+
+    /// Every record of the log, in order.
+    pub fn records(&amp;self) -&gt; &amp;[Record] {
+        &amp;self.records
+    }
+
+    /// The committed value of a key.
+    pub fn get(&amp;self, key: &amp;str) -&gt; Option&lt;&amp;Entry&gt; {
+        self.entries.get(key)
+    }
+
+    /// Applies the records up to `sequence` that are not applied yet.
+    pub fn commit(&amp;mut self, sequence: u64) {
+        let until = sequence.min(self.last_sequence());
+
+        while self.committed &lt; until {
+            apply(
+                &amp;mut self.entries,
+                self.records[self.committed as usize].clone(),
+            );
+            self.committed += 1;
+        }
+    }
+}
+
+impl Replica {
+    /// Whether every record of the log is committed. A leader accepts a new
+    /// write only in this state, so that the condition of the write is
+    /// checked against the result of all earlier writes.
+    pub fn is_settled(&amp;self) -&gt; bool {
+        self.committed == self.last_sequence()
+    }
+
+    /// Checks the condition of a write and appends its record to the
+    /// leader's log. The record is not applied: it is not committed yet.
+    pub fn propose(&amp;mut self, change: Change, condition: Condition) -&gt; Result&lt;u64, StoreError&gt; {
+        let key = match &amp;change {
+            Change::Put { key, .. } | Change::Delete { key } =&gt; key,
+        };
+        let current = self
+            .entries
+            .get(key)
+            .map(|entry| entry.version);
+
+        if matches!(change, Change::Delete { .. }) &amp;&amp; current.is_none() {
+            return Err(StoreError::NotFound);
+        }
+
+        check(condition, current)?;
+
+        let record = self.log.append(change)?;
+        let sequence = record.sequence;
+        self.records.push(record);
+
+        Ok(sequence)
+    }
+}
+
+impl Replica {
+    /// The message that brings a follower whose log ends at `follower_last`
+    /// up to the end of this log. With nothing to send it is a heartbeat.
+    pub fn append_for(&amp;self, follower_last: u64) -&gt; Append {
+        let from = follower_last.min(self.last_sequence()) as usize;
+
+        Append {
+            term: self.term,
+            previous_sequence: from as u64,
+            records: self.records[from..].to_vec(),
+            committed_sequence: self.committed,
+        }
+    }
+}
+
+
+/// The highest sequence that is stored on a majority, given the last
+/// sequence of every replica, the leader included.
+pub fn majority_sequence(mut last_sequences: Vec&lt;u64&gt;) -&gt; u64 {
+    last_sequences.sort_unstable_by(|a, b| b.cmp(a));
+
+    last_sequences
+        .get(last_sequences.len() / 2)
+        .copied()
+        .unwrap_or(0)
+}
+
+impl Replica {
+    /// Processes a message from a leader.
+    pub fn handle_append(&amp;mut self, request: Append) -&gt; io::Result&lt;Appended&gt; {
+        let refuse = |replica: &amp;Replica| Appended {
+            term: replica.term,
+            appended: false,
+            last_sequence: replica.last_sequence(),
+        };
+
+        if request.term &lt; self.term {
+            return Ok(refuse(self));
+        }
+
+        self.term = request.term;
+
+        if request.previous_sequence != self.last_sequence() {
+            return Ok(refuse(self));
+        }
+
+        if !request.records.is_empty() {
+            self.log
+                .append_records(&amp;request.records)?;
+            self.records.extend(request.records);
+        }
+
+        self.commit(request.committed_sequence);
+
+        Ok(Appended {
+            term: self.term,
+            appended: true,
+            last_sequence: self.last_sequence(),
+        })
+    }
+}</code></pre>
+<p class="listing"><img class="mascot" src="art/crab-cute.svg" alt=""><b>Listing 3.33</b> The complete <code>replsim/src/main.rs</code>. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/distributed-systems-from-the-ground-up/code/replsim/src/main.rs">replsim/src/main.rs</a></p>
+
+<pre><code class="language-rust">//! Command replsim runs a leader and 2 followers in one process and carries
+//! the messages between them by hand, so that it can lose any message it
+//! chooses. It first walks through the cases of the chapter, and then tries
+//! every combination of lost requests and lost answers over 3 writes and
+//! checks what the replicas hold after each.
+//!
+//! Run it from code/ with:
+//!
+//!     cargo run --release -p replsim
+
+use std::env;
+use std::error::Error;
+use std::fs;
+use std::path::{Path, PathBuf};
+use std::process;
+
+use kv::{Change, Condition};
+use repl::{Replica, majority_sequence};
+
+/// What happens to one exchange between the leader and a follower.
+#[derive(Clone, Copy, PartialEq, Eq)]
+enum Fate {
+    Delivered,
+    /// The follower does not receive the message.
+    RequestLost,
+    /// The follower processes the message, and its answer does not arrive.
+    AnswerLost,
+}
+
+/// A leader, 2 followers, and what the leader knows about each follower.
+struct Cluster {
+    leader: Replica,
+    followers: Vec&lt;Replica&gt;,
+    /// The last sequence each follower has reported.
+    reported: Vec&lt;u64&gt;,
+}
+
+impl Cluster {
+    fn open(root: &amp;Path) -&gt; Result&lt;Cluster, Box&lt;dyn Error&gt;&gt; {
+        let open = |name: &amp;str| Replica::open(&amp;root.join(name), false, 1);
+
+        Ok(Cluster {
+            leader: open("leader")?,
+            followers: vec![open("follower-1")?, open("follower-2")?],
+            reported: vec![0, 0],
+        })
+    }
+
+    /// One exchange with a follower: the leader sends what the follower
+    /// lacks, as far as it knows, and commits what a majority now holds.
+    fn exchange(&amp;mut self, follower: usize, fate: Fate) -&gt; Result&lt;(), Box&lt;dyn Error&gt;&gt; {
+        let message = self
+            .leader
+            .append_for(self.reported[follower]);
+
+        if fate == Fate::RequestLost {
+            return Ok(());
+        }
+
+        let answer = self.followers[follower].handle_append(message)?;
+
+        if fate == Fate::AnswerLost {
+            return Ok(());
+        }
+
+        self.reported[follower] = answer.last_sequence;
+
+        let stored = vec![
+            self.leader.last_sequence(),
+            self.reported[0],
+            self.reported[1],
+        ];
+        self.leader
+            .commit(majority_sequence(stored));
+
+        Ok(())
+    }
+
+    /// A write: the leader appends the record and makes one exchange with
+    /// each follower. It returns whether the write was acknowledged, or
+    /// `None` when the leader could not accept it.
+    fn write(
+        &amp;mut self,
+        key: &amp;str,
+        value: &amp;str,
+        fates: [Fate; 2],
+    ) -&gt; Result&lt;Option&lt;bool&gt;, Box&lt;dyn Error&gt;&gt; {
+        if !self.leader.is_settled() {
+            return Ok(None);
+        }
+
+        let change = Change::Put {
+            key: key.into(),
+            value: value.into(),
+        };
+        let sequence = self
+            .leader
+            .propose(change, Condition::Always)?;
+
+        self.exchange(0, fates[0])?;
+        self.exchange(1, fates[1])?;
+
+        Ok(Some(self.leader.committed() &gt;= sequence))
+    }
+
+    /// The last sequence of the leader and of each follower.
+    fn lasts(&amp;self) -&gt; [u64; 3] {
+        [
+            self.leader.last_sequence(),
+            self.followers[0].last_sequence(),
+            self.followers[1].last_sequence(),
+        ]
+    }
+}
+
+const BOTH: [Fate; 2] = [Fate::Delivered, Fate::Delivered];
+
+fn cases(root: &amp;Path) -&gt; Result&lt;(), Box&lt;dyn Error&gt;&gt; {
+    let mut cluster = Cluster::open(root)?;
+    let show = |cluster: &amp;Cluster| {
+        format!(
+            "logs end at {:?}, committed {}",
+            cluster.lasts(),
+            cluster.leader.committed()
+        )
+    };
+
+    for key in ["a", "b", "c"] {
+        cluster.write(key, "1", BOTH)?;
+    }
+
+    println!("3 writes, every message delivered: {}", show(&amp;cluster));
+
+    for key in ["d", "e", "f"] {
+        cluster.write(key, "1", [Fate::RequestLost, Fate::Delivered])?;
+    }
+
+    println!(
+        "3 writes while follower 1 is unreachable: {}",
+        show(&amp;cluster)
+    );
+
+    cluster.exchange(0, Fate::Delivered)?;
+    println!("follower 1 returns, 1 exchange: {}", show(&amp;cluster));
+
+    for key in ["g", "h", "i"] {
+        cluster.write(key, "1", [Fate::AnswerLost, Fate::Delivered])?;
+    }
+
+    println!(
+        "3 writes while the answers of follower 1 are lost: {}",
+        show(&amp;cluster)
+    );
+    println!(
+        "  the leader believes that the log of follower 1 ends at {}",
+        cluster.reported[0]
+    );
+
+    cluster.exchange(0, Fate::Delivered)?;
+    println!(
+        "  next exchange: the leader sends records 7 to 9, follower 1 refuses and reports {}",
+        cluster.reported[0]
+    );
+
+    cluster.exchange(0, Fate::Delivered)?;
+    println!("  the exchange after it: {}", show(&amp;cluster));
+
+    let acknowledged =
+        cluster.write("j", "1", [Fate::RequestLost, Fate::RequestLost])? == Some(true);
+    println!(
+        "1 write while both followers are unreachable: acknowledged {acknowledged}, {}",
+        show(&amp;cluster)
+    );
+    println!(
+        "  the leader reads j as {:?}",
+        cluster
+            .leader
+            .get("j")
+            .map(|entry| entry.version)
+    );
+
+    let accepted = cluster
+        .write("k", "1", [Fate::RequestLost, Fate::RequestLost])?
+        .is_some();
+    println!("  the leader accepts another write: {accepted}");
+
+    cluster.exchange(1, Fate::Delivered)?;
+    println!("follower 2 returns: {}", show(&amp;cluster));
+    println!(
+        "  the leader reads j as {:?}",
+        cluster
+            .leader
+            .get("j")
+            .map(|entry| entry.version)
+    );
+
+    let mut newer = Replica::open(&amp;root.join("newer"), false, 2)?;
+    let answer = newer.handle_append(cluster.leader.append_for(0))?;
+    println!(
+        "a replica at term 2 receives a message of term 1: appended {}, its term {}",
+        answer.appended, answer.term
+    );
+
+    Ok(())
+}
+
+const WRITES: usize = 3;
+
+/// The fate of exchange number `index` under a pattern: 2 bits for each.
+fn fate(pattern: u32, index: usize) -&gt; Fate {
+    match (pattern &gt;&gt; (2 * index)) &amp; 3 {
+        0 | 1 =&gt; Fate::Delivered,
+        2 =&gt; Fate::RequestLost,
+        3.. =&gt; Fate::AnswerLost,
+    }
+}
+
+/// Runs 3 writes under one pattern of losses and checks the replicas. It
+/// returns the number of writes that were acknowledged.
+fn run(root: &amp;Path, pattern: u32) -&gt; Result&lt;usize, Box&lt;dyn Error&gt;&gt; {
+    let mut cluster = Cluster::open(root)?;
+    let mut acknowledged = Vec::new();
+
+    for number in 0..WRITES {
+        let fates = [fate(pattern, 2 * number), fate(pattern, 2 * number + 1)];
+
+        if cluster.write(&amp;format!("key-{number}"), "1", fates)? == Some(true) {
+            acknowledged.push(cluster.leader.last_sequence());
+        }
+    }
+
+    for &amp;sequence in &amp;acknowledged {
+        let holders = cluster
+            .lasts()
+            .iter()
+            .filter(|&amp;&amp;last| last &gt;= sequence)
+            .count();
+
+        if holders &lt; 2 {
+            return Err(format!(
+                "pattern {pattern}: record {sequence} was acknowledged and is in {holders} log"
+            )
+            .into());
+        }
+    }
+
+    for follower in &amp;cluster.followers {
+        if !cluster
+            .leader
+            .records()
+            .starts_with(follower.records())
+        {
+            return Err(format!(
+                "pattern {pattern}: a follower's log is not the beginning of the leader's"
+            )
+            .into());
+        }
+    }
+
+    for _ in 0..2 {
+        cluster.exchange(0, Fate::Delivered)?;
+        cluster.exchange(1, Fate::Delivered)?;
+    }
+
+    let [leader, first, second] = cluster.lasts();
+
+    if first != leader || second != leader || !cluster.leader.is_settled() {
+        return Err(format!(
+            "pattern {pattern}: the logs differ after every message was delivered"
+        )
+        .into());
+    }
+
+    Ok(acknowledged.len())
+}
+
+fn exhaustive(root: &amp;Path) -&gt; Result&lt;(), Box&lt;dyn Error&gt;&gt; {
+    let patterns = 1u32 &lt;&lt; (4 * WRITES);
+    let mut by_acknowledged = [0; WRITES + 1];
+
+    for pattern in 0..patterns {
+        let directory = root.join(format!("pattern-{pattern}"));
+        by_acknowledged[run(&amp;directory, pattern)?] += 1;
+        fs::remove_dir_all(&amp;directory)?;
+    }
+
+    println!("{patterns} patterns of lost messages over {WRITES} writes:");
+    println!("  every acknowledged record was in at least 2 of the 3 logs");
+    println!("  every follower's log was the beginning of the leader's log");
+    println!("  after the losses stopped, the 3 logs were equal and every record was committed");
+
+    for (count, patterns) in by_acknowledged.iter().enumerate() {
+        println!("  {count} of {WRITES} writes acknowledged: {patterns} patterns");
+    }
+
+    Ok(())
+}
+
+fn directory() -&gt; PathBuf {
+    env::temp_dir().join(format!("replsim-{}", process::id()))
+}
+
+fn main() -&gt; Result&lt;(), Box&lt;dyn Error&gt;&gt; {
+    let root = directory();
+    let result = cases(&amp;root.join("cases")).and_then(|()| exhaustive(&amp;root));
+
+    fs::remove_dir_all(&amp;root)?;
+
+    result
+}</code></pre>
+<p class="listing"><img class="mascot" src="art/crab-cute.svg" alt=""><b>Listing 3.34</b> The complete <code>kvnode/Cargo.toml</code>. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/distributed-systems-from-the-ground-up/code/kvnode/Cargo.toml">kvnode/Cargo.toml</a></p>
+
+<pre><code class="language-toml">[package]
+name = "kvnode"
+version = "0.1.0"
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+publish.workspace = true
+
+[dependencies]
+kv.workspace = true
+kvd.workspace = true
+repl.workspace = true
+axum.workspace = true
+clap.workspace = true
+parking_lot.workspace = true
+prost.workspace = true
+serde.workspace = true
+tokio.workspace = true
+tonic.workspace = true
+tonic-prost.workspace = true
+
+[build-dependencies]
+tonic-prost-build.workspace = true
+</code></pre>
+<p class="listing"><img class="mascot" src="art/crab-cute.svg" alt=""><b>Listing 3.35</b> The complete <code>kvnode/src/rpc.rs</code>. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/distributed-systems-from-the-ground-up/code/kvnode/src/rpc.rs">kvnode/src/rpc.rs</a></p>
+
+<pre><code class="language-rust">//! The replication service: the generated gRPC types, the conversion between
+//! them and the types of the `repl` crate, and the server side that a
+//! follower runs.
+
+use std::sync::Arc;
+
+use kv::{Change, Record};
+use repl::{Append, Appended};
+use tokio::task;
+use tonic::{Request, Response, Status};
+
+use crate::node::Node;
+
+/// The types that `build.rs` generates from `proto/store.proto`. The schema
+/// also defines the ring, which this program does not use.
+#[allow(dead_code)]
+pub mod proto {
+    tonic::include_proto!("store.v1");
+}
+
+pub use proto::replication_client::ReplicationClient;
+pub use proto::replication_server::{Replication, ReplicationServer};
+
+impl From&lt;&amp;Record&gt; for proto::Record {
+    fn from(record: &amp;Record) -&gt; Self {
+        let change = match record.change.clone() {
+            Change::Put { key, value } =&gt; proto::record::Change::Put(proto::Put { key, value }),
+            Change::Delete { key } =&gt; proto::record::Change::Delete(proto::Delete { key }),
+        };
+
+        proto::Record {
+            sequence: record.sequence,
+            change: Some(change),
+        }
+    }
+}
+
+impl TryFrom&lt;proto::Record&gt; for Record {
+    type Error = Status;
+
+    fn try_from(record: proto::Record) -&gt; Result&lt;Self, Status&gt; {
+        let change = match record.change {
+            Some(proto::record::Change::Put(put)) =&gt; Change::Put {
+                key: put.key,
+                value: put.value,
+            },
+            Some(proto::record::Change::Delete(delete)) =&gt; Change::Delete { key: delete.key },
+            None =&gt; return Err(Status::invalid_argument("a record without a change")),
+        };
+
+        Ok(Record {
+            sequence: record.sequence,
+            change,
+        })
+    }
+}
+
+impl From&lt;Append&gt; for proto::AppendRequest {
+    fn from(message: Append) -&gt; Self {
+        proto::AppendRequest {
+            shard: 0,
+            term: message.term,
+            previous_sequence: message.previous_sequence,
+            records: message
+                .records
+                .iter()
+                .map(proto::Record::from)
+                .collect(),
+            committed_sequence: message.committed_sequence,
+            // The fields that leader election added are not used by this program.
+            previous_term: 0,
+            leader: 0,
+        }
+    }
+}
+
+impl From&lt;proto::AppendResponse&gt; for Appended {
+    fn from(answer: proto::AppendResponse) -&gt; Self {
+        Appended {
+            term: answer.term,
+            appended: answer.appended,
+            last_sequence: answer.last_sequence,
+        }
+    }
+}
+
+/// The server side of `Append`, which a follower runs.
+pub struct Follower {
+    pub node: Arc&lt;Node&gt;,
+}
+
+#[tonic::async_trait]
+impl Replication for Follower {
+    async fn append(
+        &amp;self,
+        request: Request&lt;proto::AppendRequest&gt;,
+    ) -&gt; Result&lt;Response&lt;proto::AppendResponse&gt;, Status&gt; {
+        let request = request.into_inner();
+        let records = request
+            .records
+            .into_iter()
+            .map(Record::try_from)
+            .collect::&lt;Result&lt;Vec&lt;_&gt;, _&gt;&gt;()?;
+
+        let message = Append {
+            term: request.term,
+            previous_sequence: request.previous_sequence,
+            records,
+            committed_sequence: request.committed_sequence,
+        };
+
+        // Appending waits for the disk, so it runs where blocking is allowed.
+        let answer = task::block_in_place(|| {
+            self.node
+                .replica
+                .lock()
+                .handle_append(message)
+        })
+        .map_err(|error| Status::unavailable(error.to_string()))?;
+
+        Ok(Response::new(proto::AppendResponse {
+            term: answer.term,
+            appended: answer.appended,
+            last_sequence: answer.last_sequence,
+        }))
+    }
+}</code></pre>
+<p class="listing"><img class="mascot" src="art/crab-cute.svg" alt=""><b>Listing 3.36</b> The complete <code>kvnode/src/node.rs</code>. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/distributed-systems-from-the-ground-up/code/kvnode/src/node.rs">kvnode/src/node.rs</a></p>
+
+<pre><code class="language-rust">//! A node of a replicated shard: a replica, and for a leader the tasks that
+//! keep its followers up to date.
+
+use std::sync::Arc;
+use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
+use std::time::{Duration, Instant};
+
+use kv::{Change, Condition, Entry, Summary, Written};
+use kvd::api::ApiError;
+use parking_lot::Mutex;
+use repl::{Appended, Replica, majority_sequence};
+use tokio::sync::{Notify, watch};
+use tokio::task;
+use tokio::time::{sleep, timeout};
+use tonic::transport::{Channel, Endpoint};
+
+use crate::rpc::{ReplicationClient, proto};
+
+/// How often a leader sends a message to a follower that has nothing new to receive.
+const HEARTBEAT: Duration = Duration::from_millis(100);
+
+/// How long a leader waits for the answer to one message.
+const ANSWER: Duration = Duration::from_millis(500);
+
+/// How long a write waits for its record to reach a majority.
+const COMMIT: Duration = Duration::from_secs(1);
+
+/// What the leader knows about one follower.
+pub struct Peer {
+    pub address: String,
+    /// The last sequence the follower has reported.
+    reported: AtomicU64,
+    /// When the follower last answered.
+    heard: Mutex&lt;Option&lt;Instant&gt;&gt;,
+}
+
+pub struct Node {
+    pub replica: Mutex&lt;Replica&gt;,
+    pub leader: bool,
+    pub peers: Vec&lt;Peer&gt;,
+    /// The sequence the log ended at when the node started. A leader serves
+    /// reads once this much is committed.
+    ready: u64,
+    /// Held by the write that is in progress, so that writes take turns.
+    turn: tokio::sync::Mutex&lt;()&gt;,
+    /// The committed sequence, for writes that wait for it to advance.
+    committed: watch::Sender&lt;u64&gt;,
+    /// Signalled when the leader has appended a record.
+    appended: Notify,
+    /// Set when a follower answers with a newer term: another leader exists.
+    deposed: AtomicBool,
+}
+
+impl Node {
+    pub fn new(replica: Replica, leader: bool, followers: Vec&lt;String&gt;) -&gt; Arc&lt;Node&gt; {
+        let peer = |address| Peer {
+            address,
+            reported: AtomicU64::new(0),
+            heard: Mutex::new(None),
+        };
+
+        Arc::new(Node {
+            ready: replica.last_sequence(),
+            replica: Mutex::new(replica),
+            leader,
+            peers: followers
+                .into_iter()
+                .map(peer)
+                .collect(),
+            turn: tokio::sync::Mutex::new(()),
+            committed: watch::Sender::new(0),
+            appended: Notify::new(),
+            deposed: AtomicBool::new(false),
+        })
+    }
+}
+
+impl Node {
+    /// Starts one task for each follower. A task sends the follower what it
+    /// lacks, again and again, for as long as the node runs.
+    pub fn lead(self: &amp;Arc&lt;Node&gt;) -&gt; Result&lt;(), tonic::transport::Error&gt; {
+        for index in 0..self.peers.len() {
+            let channel = Endpoint::from_shared(self.peers[index].address.clone())?
+                .connect_timeout(ANSWER)
+                .connect_lazy();
+
+            tokio::spawn(Arc::clone(self).follow(index, ReplicationClient::new(channel)));
+        }
+
+        Ok(())
+    }
+
+    async fn follow(self: Arc&lt;Node&gt;, index: usize, mut client: ReplicationClient&lt;Channel&gt;) {
+        let peer = &amp;self.peers[index];
+
+        loop {
+            let message = self.replica.lock().append_for(
+                peer.reported
+                    .load(Ordering::Relaxed),
+            );
+            let request = proto::AppendRequest::from(message);
+
+            let answer = timeout(ANSWER, client.append(request)).await;
+
+            // An answer that did not come counts as a peer that is up to date:
+            // the next round is a heartbeat, which finds out more.
+            let behind = answer
+                .ok()
+                .and_then(Result::ok)
+                .is_some_and(|answer| self.record(peer, answer.into_inner().into()));
+
+            if !behind {
+                // Wait for a new record, or send a heartbeat when none comes.
+                tokio::select! {
+                    () = self.appended.notified() =&gt; {}
+                    () = sleep(HEARTBEAT) =&gt; {}
+                }
+            }
+        }
+    }
+}
+
+impl Node {
+    /// Takes note of a follower's answer and commits what a majority now
+    /// holds. It returns whether the follower still lacks records.
+    fn record(&amp;self, peer: &amp;Peer, answer: Appended) -&gt; bool {
+        let mut replica = self.replica.lock();
+
+        if answer.term &gt; replica.term() {
+            self.deposed
+                .store(true, Ordering::Relaxed);
+
+            return false;
+        }
+
+        peer.reported
+            .store(answer.last_sequence, Ordering::Relaxed);
+        *peer.heard.lock() = Some(Instant::now());
+
+        let mut stored: Vec&lt;u64&gt; = self
+            .peers
+            .iter()
+            .map(|peer| {
+                peer.reported
+                    .load(Ordering::Relaxed)
+            })
+            .collect();
+        stored.push(replica.last_sequence());
+
+        replica.commit(majority_sequence(stored));
+        self.committed
+            .send_replace(replica.committed());
+
+        answer.last_sequence &lt; replica.last_sequence()
+    }
+}
+
+impl Node {
+    /// A write on the leader: wait for a turn, append the record, and wait
+    /// until a majority of the replicas hold it.
+    pub async fn write(&amp;self, change: Change, condition: Condition) -&gt; Result&lt;Written, ApiError&gt; {
+        self.must_lead()?;
+
+        let turn = self.turn.lock().await;
+        let last = self.replica.lock().last_sequence();
+        self.wait_for(last).await?;
+
+        let proposed = task::block_in_place(|| {
+            let mut replica = self.replica.lock();
+            let created = match &amp;change {
+                Change::Put { key, .. } | Change::Delete { key } =&gt; replica.get(key).is_none(),
+            };
+
+            replica
+                .propose(change, condition)
+                .map(|version| Written { version, created })
+        })?;
+
+        self.appended.notify_waiters();
+        self.wait_for(proposed.version)
+            .await?;
+        drop(turn);
+
+        Ok(proposed)
+    }
+
+    /// Waits until the record with this sequence is committed.
+    async fn wait_for(&amp;self, sequence: u64) -&gt; Result&lt;(), ApiError&gt; {
+        let mut committed = self.committed.subscribe();
+
+        let reached = committed.wait_for(|&amp;committed| committed &gt;= sequence);
+        let in_time = timeout(COMMIT, reached)
+            .await
+            .is_ok_and(|reached| reached.is_ok());
+
+        if in_time {
+            Ok(())
+        } else {
+            Err(ApiError::Unavailable(format!(
+                "record {sequence} is not on a majority of the replicas"
+            )))
+        }
+    }
+
+    fn must_lead(&amp;self) -&gt; Result&lt;(), ApiError&gt; {
+        if !self.leader {
+            return Err(ApiError::Misdirected("this node is a follower".into()));
+        }
+
+        if self.deposed.load(Ordering::Relaxed) {
+            return Err(ApiError::Misdirected(
+                "a leader of a newer term exists".into(),
+            ));
+        }
+
+        Ok(())
+    }
+}
+
+impl Node {
+    /// A leader serves reads while a majority of the replicas, itself
+    /// included, has answered within the last second, and once everything
+    /// its log held at start is committed.
+    fn must_serve_reads(&amp;self) -&gt; Result&lt;(), ApiError&gt; {
+        self.must_lead()?;
+
+        let recently = |peer: &amp;&amp;Peer| {
+            peer.heard
+                .lock()
+                .is_some_and(|at| at.elapsed() &lt; COMMIT)
+        };
+        let reachable = 1 + self
+            .peers
+            .iter()
+            .filter(recently)
+            .count();
+
+        if 2 * reachable &lt;= self.peers.len() + 1 {
+            return Err(ApiError::Unavailable(
+                "this leader cannot reach a majority of the replicas".into(),
+            ));
+        }
+
+        if self.replica.lock().committed() &lt; self.ready {
+            return Err(ApiError::Unavailable(
+                "the records from before the restart are not committed yet".into(),
+            ));
+        }
+
+        Ok(())
+    }
+
+    pub fn get(&amp;self, key: &amp;str) -&gt; Result&lt;Entry, ApiError&gt; {
+        self.must_serve_reads()?;
+
+        self.replica
+            .lock()
+            .get(key)
+            .cloned()
+            .ok_or(ApiError::NotFound)
+    }
+
+    pub fn list(
+        &amp;self,
+        prefix: &amp;str,
+        after: Option&lt;&amp;str&gt;,
+        limit: usize,
+    ) -&gt; Result&lt;(Vec&lt;Summary&gt;, bool), ApiError&gt; {
+        self.must_serve_reads()?;
+
+        Ok(self
+            .replica
+            .lock()
+            .list(prefix, after, limit))
+    }
+
+    /// The last sequence each follower has reported.
+    pub fn reported(&amp;self) -&gt; Vec&lt;u64&gt; {
+        self.peers
+            .iter()
+            .map(|peer| {
+                peer.reported
+                    .load(Ordering::Relaxed)
+            })
+            .collect()
+    }
+}</code></pre>
+<p class="listing"><img class="mascot" src="art/crab-cute.svg" alt=""><b>Listing 3.37</b> The complete <code>kvnode/src/main.rs</code>. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/distributed-systems-from-the-ground-up/code/kvnode/src/main.rs">kvnode/src/main.rs</a></p>
+
+<pre><code class="language-rust">//! Command kvnode is a storage node that replicates its log. One node of a
+//! shard is started as the leader, with the addresses of its followers, and
+//! the others as followers. The leader serves the HTTP API and acknowledges
+//! a write when a majority of the nodes hold its record.
+//!
+//! Run 3 nodes from code/ with:
+//!
+//!     cargo run -p kvnode -- --role follower --listen 127.0.0.1:7002 --replication 127.0.0.1:7102 --data /var/tmp/n2
+//!     cargo run -p kvnode -- --role follower --listen 127.0.0.1:7003 --replication 127.0.0.1:7103 --data /var/tmp/n3
+//!     cargo run -p kvnode -- --role leader --listen 127.0.0.1:7001 --data /var/tmp/n1 \
+//!         --follower http://127.0.0.1:7102 --follower http://127.0.0.1:7103
+
+mod node;
+mod rpc;
+
+use std::error::Error;
+use std::net::SocketAddr;
+use std::path::PathBuf;
+use std::sync::Arc;
+
+use axum::body::Bytes;
+use axum::extract::{DefaultBodyLimit, Path, Query, State};
+use axum::http::header::{CONTENT_TYPE, ETAG, IF_NONE_MATCH};
+use axum::http::{HeaderMap, StatusCode};
+use axum::response::{IntoResponse, Response};
+use axum::routing::get;
+use axum::{Json, Router};
+use clap::{Parser, ValueEnum};
+use kv::{Change, Condition};
+use kvd::api::{ApiError, MAX_VALUE, etag, valid_key, version_header, write_condition};
+use repl::Replica;
+use serde::{Deserialize, Serialize};
+use tokio::net::TcpListener;
+use tonic::transport::Server;
+
+use crate::node::Node;
+use crate::rpc::{Follower, ReplicationServer};
+
+#[derive(Clone, Copy, PartialEq, Eq, ValueEnum)]
+enum Role {
+    Leader,
+    Follower,
+}
+
+#[derive(Parser)]
+struct Options {
+    #[arg(long, value_enum)]
+    role: Role,
+
+    /// The address of the HTTP API.
+    #[arg(long, default_value = "127.0.0.1:7001")]
+    listen: SocketAddr,
+
+    /// The address on which a follower accepts records from the leader.
+    #[arg(long, default_value = "127.0.0.1:7101")]
+    replication: SocketAddr,
+
+    /// The replication address of a follower, such as http://127.0.0.1:7102.
+    /// Given once for each follower, to the leader.
+    #[arg(long = "follower")]
+    followers: Vec&lt;String&gt;,
+
+    /// The term this node starts in. A new leader is given a higher term
+    /// than the leader it replaces.
+    #[arg(long, default_value_t = 1)]
+    term: u64,
+
+    #[arg(long, default_value = "data")]
+    data: PathBuf,
+
+    /// Respond without waiting for the disk.
+    #[arg(long)]
+    no_sync: bool,
+}
+
+async fn put_key(
+    State(node): State&lt;Arc&lt;Node&gt;&gt;,
+    Path(key): Path&lt;String&gt;,
+    headers: HeaderMap,
+    body: Bytes,
+) -&gt; Result&lt;Response, ApiError&gt; {
+    valid_key(&amp;key)?;
+    let condition = write_condition(&amp;headers)?;
+
+    let written = node
+        .write(
+            Change::Put {
+                key,
+                value: body.to_vec(),
+            },
+            condition,
+        )
+        .await?;
+    let status = if written.created {
+        StatusCode::CREATED
+    } else {
+        StatusCode::NO_CONTENT
+    };
+
+    Ok((status, [(ETAG, etag(written.version))]).into_response())
+}
+
+async fn delete_key(
+    State(node): State&lt;Arc&lt;Node&gt;&gt;,
+    Path(key): Path&lt;String&gt;,
+    headers: HeaderMap,
+) -&gt; Result&lt;StatusCode, ApiError&gt; {
+    valid_key(&amp;key)?;
+    let condition = write_condition(&amp;headers)?;
+
+    node.write(Change::Delete { key }, condition)
+        .await?;
+
+    Ok(StatusCode::NO_CONTENT)
+}
+
+async fn get_key(
+    State(node): State&lt;Arc&lt;Node&gt;&gt;,
+    Path(key): Path&lt;String&gt;,
+    headers: HeaderMap,
+) -&gt; Result&lt;Response, ApiError&gt; {
+    valid_key(&amp;key)?;
+    let cached = version_header(&amp;headers, IF_NONE_MATCH)?;
+    let entry = node.get(&amp;key)?;
+    let tag = [(ETAG, etag(entry.version))];
+
+    if cached == Some(Condition::Version(entry.version)) {
+        return Ok((StatusCode::NOT_MODIFIED, tag).into_response());
+    }
+
+    Ok((
+        tag,
+        [(CONTENT_TYPE, "application/octet-stream")],
+        entry.value,
+    )
+        .into_response())
+}
+
+#[derive(Deserialize)]
+struct ListQuery {
+    #[serde(default)]
+    prefix: String,
+    after: Option&lt;String&gt;,
+    limit: Option&lt;usize&gt;,
+}
+
+#[derive(Serialize)]
+struct Item {
+    key: String,
+    version: u64,
+    size: usize,
+}
+
+#[derive(Serialize)]
+struct Page {
+    keys: Vec&lt;Item&gt;,
+    next_after: Option&lt;String&gt;,
+}
+
+async fn list_keys(
+    State(node): State&lt;Arc&lt;Node&gt;&gt;,
+    Query(query): Query&lt;ListQuery&gt;,
+) -&gt; Result&lt;Json&lt;Page&gt;, ApiError&gt; {
+    let limit = query
+        .limit
+        .unwrap_or(100)
+        .clamp(1, 1000);
+    let (page, more) = node.list(&amp;query.prefix, query.after.as_deref(), limit)?;
+    let next_after = if more {
+        page.last()
+            .map(|last| last.key.clone())
+    } else {
+        None
+    };
+    let keys = page
+        .into_iter()
+        .map(|item| Item {
+            key: item.key,
+            version: item.version,
+            size: item.size,
+        })
+        .collect();
+
+    Ok(Json(Page { keys, next_after }))
+}
+
+#[derive(Serialize)]
+struct Health {
+    role: &amp;'static str,
+    term: u64,
+    last_sequence: u64,
+    committed: u64,
+    /// The last sequence each follower has reported to this leader.
+    followers: Vec&lt;u64&gt;,
+}
+
+async fn health(State(node): State&lt;Arc&lt;Node&gt;&gt;) -&gt; Json&lt;Health&gt; {
+    let replica = node.replica.lock();
+
+    Json(Health {
+        role: if node.leader { "leader" } else { "follower" },
+        term: replica.term(),
+        last_sequence: replica.last_sequence(),
+        committed: replica.committed(),
+        followers: node.reported(),
+    })
+}
+
+#[tokio::main]
+async fn main() -&gt; Result&lt;(), Box&lt;dyn Error&gt;&gt; {
+    let options = Options::parse();
+    let replica = Replica::open(&amp;options.data, !options.no_sync, options.term)?;
+
+    println!(
+        "term {}, log ends at {}",
+        replica.term(),
+        replica.last_sequence()
+    );
+
+    let node = Node::new(replica, options.role == Role::Leader, options.followers);
+
+    match options.role {
+        Role::Leader =&gt; node.lead()?,
+        Role::Follower =&gt; {
+            let service = ReplicationServer::new(Follower {
+                node: Arc::clone(&amp;node),
+            });
+
+            tokio::spawn(
+                Server::builder()
+                    .add_service(service)
+                    .serve(options.replication),
+            );
+            println!("accepting records on {}", options.replication);
+        }
+    }
+
+    let routes = Router::new()
+        .route("/v1/keys", get(list_keys))
+        .route(
+            "/v1/keys/{key}",
+            get(get_key)
+                .put(put_key)
+                .delete(delete_key),
+        )
+        .route("/healthz", get(health))
+        .layer(DefaultBodyLimit::max(MAX_VALUE))
+        .with_state(node);
+
+    let listener = TcpListener::bind(options.listen).await?;
+    println!("listening on {}", listener.local_addr()?);
+
+    axum::serve(listener, routes).await?;
+
+    Ok(())
+}</code></pre>
+<div class="summary">
+<h2 id="summary"><a class="header" href="#summary">Summary</a></h2>
+<ul>
+<li>The leader of a shard sends each follower the records it lacks, in an <code>Append</code> message that states the position at which those records begin.</li>
+<li>A follower appends only if its log ends at that position, and otherwise reports where its log ends, upon which the leader continues from there. This 1 rule deals with restarted followers, lost messages, lost answers and empty followers.</li>
+<li>A record is committed when a majority of the replicas has stored it, and the leader computes the committed sequence as the middle value of the sorted last sequences.</li>
+<li>A replica applies committed records only, so that no read returns data which could be lost with 1 machine.</li>
+<li>A write that was answered with an error may still be committed later, and a client has to treat an error as an unknown outcome.</li>
+<li>For 4096 combinations of lost messages and answers, the simulation verified that every acknowledged record was held in at least 2 of the 3 logs.</li>
+<li>With 3 nodes on 1 disk, the replicated shard completed 77 writes per second, against 185 for a single node.</li>
+<li>After the loss of a leader and its disk, promoting the follower with the longer log preserved all 228 acknowledged writes.</li>
+<li>A term identifies the current leader, and followers refuse messages with a lower term, so that a replaced leader cannot modify its shard.</li>
+</ul>
+</div>
+
+
+                    </main>
+
+                    <nav class="nav-wrapper" aria-label="Page navigation">
+                        <!-- Mobile navigation buttons -->
+                            <a rel="prev" href="02-key-value-store-storage-node.html" class="mobile-nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                                <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M41.4 233.4c-12.5 12.5-12.5 32.8 0 45.3l160 160c12.5 12.5 32.8 12.5 45.3 0s12.5-32.8 0-45.3L109.3 256 246.6 118.6c12.5-12.5 12.5-32.8 0-45.3s-32.8-12.5-45.3 0l-160 160z"/></svg></span>
+                            </a>
+
+                            <a rel="next prefetch" href="04-key-value-store-leader-election.html" class="mobile-nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                                <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M278.6 233.4c12.5 12.5 12.5 32.8 0 45.3l-160 160c-12.5 12.5-32.8 12.5-45.3 0s-12.5-32.8 0-45.3L210.7 256 73.4 118.6c-12.5-12.5-12.5-32.8 0-45.3s32.8-12.5 45.3 0l160 160z"/></svg></span>
+                            </a>
+
+                        <div style="clear: both"></div>
+                    </nav>
+                </div>
+            </div>
+
+            <nav class="nav-wide-wrapper" aria-label="Page navigation">
+                    <a rel="prev" href="02-key-value-store-storage-node.html" class="nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                        <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M41.4 233.4c-12.5 12.5-12.5 32.8 0 45.3l160 160c12.5 12.5 32.8 12.5 45.3 0s12.5-32.8 0-45.3L109.3 256 246.6 118.6c12.5-12.5 12.5-32.8 0-45.3s-32.8-12.5-45.3 0l-160 160z"/></svg></span>
+                    </a>
+
+                    <a rel="next prefetch" href="04-key-value-store-leader-election.html" class="nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                        <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M278.6 233.4c12.5 12.5 12.5 32.8 0 45.3l-160 160c-12.5 12.5-32.8 12.5-45.3 0s-12.5-32.8 0-45.3L210.7 256 73.4 118.6c-12.5-12.5-12.5-32.8 0-45.3s32.8-12.5 45.3 0l160 160z"/></svg></span>
+                    </a>
+            </nav>
+
+        </div>
+
+        <template id=fa-eye><span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 576 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M288 32c-80.8 0-145.5 36.8-192.6 80.6C48.6 156 17.3 208 2.5 243.7c-3.3 7.9-3.3 16.7 0 24.6C17.3 304 48.6 356 95.4 399.4C142.5 443.2 207.2 480 288 480s145.5-36.8 192.6-80.6c46.8-43.5 78.1-95.4 93-131.1c3.3-7.9 3.3-16.7 0-24.6c-14.9-35.7-46.2-87.7-93-131.1C433.5 68.8 368.8 32 288 32zM432 256c0 79.5-64.5 144-144 144s-144-64.5-144-144s64.5-144 144-144s144 64.5 144 144zM288 192c0 35.3-28.7 64-64 64c-11.5 0-22.3-3-31.6-8.4c-.2 2.8-.4 5.5-.4 8.4c0 53 43 96 96 96s96-43 96-96s-43-96-96-96c-2.8 0-5.6 .1-8.4 .4c5.3 9.3 8.4 20.1 8.4 31.6z"/></svg></span></template>
+        <template id=fa-eye-slash><span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M38.8 5.1C28.4-3.1 13.3-1.2 5.1 9.2S-1.2 34.7 9.2 42.9l592 464c10.4 8.2 25.5 6.3 33.7-4.1s6.3-25.5-4.1-33.7L525.6 386.7c39.6-40.6 66.4-86.1 79.9-118.4c3.3-7.9 3.3-16.7 0-24.6c-14.9-35.7-46.2-87.7-93-131.1C465.5 68.8 400.8 32 320 32c-68.2 0-125 26.3-169.3 60.8L38.8 5.1zM223.1 149.5C248.6 126.2 282.7 112 320 112c79.5 0 144 64.5 144 144c0 24.9-6.3 48.3-17.4 68.7L408 294.5c5.2-11.8 8-24.8 8-38.5c0-53-43-96-96-96c-2.8 0-5.6 .1-8.4 .4c5.3 9.3 8.4 20.1 8.4 31.6c0 10.2-2.4 19.8-6.6 28.3l-90.3-70.8zm223.1 298L373 389.9c-16.4 6.5-34.3 10.1-53 10.1c-79.5 0-144-64.5-144-144c0-6.9 .5-13.6 1.4-20.2L83.1 161.5C60.3 191.2 44 220.8 34.5 243.7c-3.3 7.9-3.3 16.7 0 24.6c14.9 35.7 46.2 87.7 93 131.1C174.5 443.2 239.2 480 320 480c47.8 0 89.9-12.9 126.2-32.5z"/></svg></span></template>
+        <template id=fa-copy><span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M502.6 70.63l-61.25-61.25C435.4 3.371 427.2 0 418.7 0H255.1c-35.35 0-64 28.66-64 64l.0195 256C192 355.4 220.7 384 256 384h192c35.2 0 64-28.8 64-64V93.25C512 84.77 508.6 76.63 502.6 70.63zM464 320c0 8.836-7.164 16-16 16H255.1c-8.838 0-16-7.164-16-16L239.1 64.13c0-8.836 7.164-16 16-16h128L384 96c0 17.67 14.33 32 32 32h47.1V320zM272 448c0 8.836-7.164 16-16 16H63.1c-8.838 0-16-7.164-16-16L47.98 192.1c0-8.836 7.164-16 16-16H160V128H63.99c-35.35 0-64 28.65-64 64l.0098 256C.002 483.3 28.66 512 64 512h192c35.2 0 64-28.8 64-64v-32h-47.1L272 448z"/></svg></span></template>
+        <template id=fa-play><span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 384 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M73 39c-14.8-9.1-33.4-9.4-48.5-.9S0 62.6 0 80V432c0 17.4 9.4 33.4 24.5 41.9s33.7 8.1 48.5-.9L361 297c14.3-8.7 23-24.2 23-41s-8.7-32.2-23-41L73 39z"/></svg></span></template>
+        <template id=fa-clock-rotate-left><span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M75 75L41 41C25.9 25.9 0 36.6 0 57.9V168c0 13.3 10.7 24 24 24H134.1c21.4 0 32.1-25.9 17-41l-30.8-30.8C155 85.5 203 64 256 64c106 0 192 86 192 192s-86 192-192 192c-40.8 0-78.6-12.7-109.7-34.4c-14.5-10.1-34.4-6.6-44.6 7.9s-6.6 34.4 7.9 44.6C151.2 495 201.7 512 256 512c141.4 0 256-114.6 256-256S397.4 0 256 0C185.3 0 121.3 28.7 75 75zm181 53c-13.3 0-24 10.7-24 24V256c0 6.4 2.5 12.5 7 17l72 72c9.4 9.4 24.6 9.4 33.9 0s9.4-24.6 0-33.9l-65-65V152c0-13.3-10.7-24-24-24z"/></svg></span></template>
+
+
+
+        <script>
+            window.playground_copyable = true;
+        </script>
+
+
+        <script src="elasticlunr-ef4e11c1.min.js"></script>
+        <script src="mark-09e88c2c.min.js"></script>
+        <script src="searcher-09f2665d.js"></script>
+
+        <script src="clipboard-1626706a.min.js"></script>
+        <script src="highlight-abc7f01d.js"></script>
+        <script src="book-609e4cb8.js"></script>
+
+        <!-- Custom JS scripts -->
+        <script src="theme/figures-47b15f7f.js"></script>
+        <script src="theme/proto-326509cd.js"></script>
+        <script src="theme/code-67e9caaf.js"></script>
+        <script src="theme/tables-9fb295e8.js"></script>
+        <script src="theme/steps-77f22afb.js"></script>
+
+
+
+    </div>
+    </body>
+</html>

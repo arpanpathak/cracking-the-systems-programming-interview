@@ -1,0 +1,69 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="18 14 444 406" width="444" height="406" role="img" aria-label="5 steps. A popular entry that was being read 500 times per second expires. 500 requests find nothing in the cache. All 500 ask the database for the same row. The database slows under the load. New requests keep missing while the cache is still empty. The cure is for 1 request to fetch the value while the others wait for it.">
+  <style>
+    text { font-family: Inter, "Segoe UI", "Helvetica Neue", Helvetica, Arial, sans-serif; fill: #1B2430; }
+    .title { font-size: 18px; font-weight: 650; }
+    .lede { font-size: 12.5px; fill: #5D6B7A; }
+    .name { font-size: 14px; font-weight: 650; }
+    .sub { font-size: 12px; fill: #5D6B7A; }
+    .note { font-size: 12px; fill: #5D6B7A; }
+    .tab { font-size: 11.5px; font-weight: 650; letter-spacing: 0.04em; fill: #5D6B7A; }
+    .mono { font-family: "JetBrains Mono", "SF Mono", Menlo, Consolas, monospace; font-size: 12px; }
+    .dim { fill: #8794A3; }
+    .strong { font-weight: 700; }
+    .trap { fill: #CF4526; font-weight: 700; }
+    .pill { font-size: 11px; font-weight: 600; }
+    .wire { fill: none; stroke: #3F5873; stroke-width: 2.4; stroke-linecap: butt; stroke-linejoin: round; }
+    .wire.danger { stroke: #CF4526; stroke-dasharray: 6 5; }
+    .wire.idle { stroke: #7F8EA0; stroke-dasharray: 2 5; }
+  </style>
+  <defs>
+    <filter id="lift" x="-10%" y="-10%" width="120%" height="135%">
+      <feDropShadow dx="0" dy="2" stdDeviation="3" flood-color="#1B2430" flood-opacity="0.13"/>
+    </filter>
+    <linearGradient id="thor-body" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#C6CCD5"/><stop offset="1" stop-color="#979EA9"/>
+    </linearGradient>
+    <linearGradient id="switch-body" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#3B4656"/><stop offset="1" stop-color="#232B37"/>
+    </linearGradient>
+    <marker id="head" viewBox="0 0 12 10" refX="8" refY="5" markerUnits="userSpaceOnUse" markerWidth="16" markerHeight="13.3" orient="auto">
+      <path d="M0,0.4 L12,5 L0,9.6 L2.8,5 Z" fill="#3F5873"/>
+    </marker>
+    <marker id="head-danger" viewBox="0 0 12 10" refX="8" refY="5" markerUnits="userSpaceOnUse" markerWidth="16" markerHeight="13.3" orient="auto">
+      <path d="M0,0.4 L12,5 L0,9.6 L2.8,5 Z" fill="#CF4526"/>
+    </marker>
+    <marker id="head-idle" viewBox="0 0 12 10" refX="8" refY="5" markerUnits="userSpaceOnUse" markerWidth="16" markerHeight="13.3" orient="auto">
+      <path d="M0,0.4 L12,5 L0,9.6 L2.8,5 Z" fill="#7F8EA0"/>
+    </marker>
+  </defs>
+  <rect width="480" height="426" rx="14" fill="#FBFAF6"/>
+  <text x="32.0" y="42.0" class="title" text-anchor="start" xml:space="preserve">A stampede on 1 expired entry</text>
+  <text x="32.0" y="63.0" class="lede" text-anchor="start" xml:space="preserve">What happens when many readers miss together.</text>
+  <rect x="32.0" y="100.0" width="416.0" height="46.0" rx="8" fill="#FFFFFF" stroke="#D5DBE3" stroke-width="1.3"/>
+  <rect x="32.0" y="100.0" width="34.0" height="46.0" rx="8" fill="#FBF1DC" stroke="#B7791F" stroke-width="1.3"/>
+  <text x="49.0" y="128.0" class="mono strong" text-anchor="middle" xml:space="preserve">1</text>
+  <text x="78.0" y="120.0" class="name" text-anchor="start" xml:space="preserve">A popular entry expires</text>
+  <text x="78.0" y="137.0" class="sub" text-anchor="start" xml:space="preserve">it was being read 500 times per second</text>
+  <rect x="32.0" y="154.0" width="416.0" height="46.0" rx="8" fill="#FFFFFF" stroke="#D5DBE3" stroke-width="1.3"/>
+  <rect x="32.0" y="154.0" width="34.0" height="46.0" rx="8" fill="#EAF1FD" stroke="#2F6FDB" stroke-width="1.3"/>
+  <text x="49.0" y="182.0" class="mono strong" text-anchor="middle" xml:space="preserve">2</text>
+  <text x="78.0" y="174.0" class="name" text-anchor="start" xml:space="preserve">500 requests find nothing in the cache</text>
+  <text x="78.0" y="191.0" class="sub" text-anchor="start" xml:space="preserve">all within the same second</text>
+  <rect x="32.0" y="208.0" width="416.0" height="46.0" rx="8" fill="#FFFFFF" stroke="#D5DBE3" stroke-width="1.3"/>
+  <rect x="32.0" y="208.0" width="34.0" height="46.0" rx="8" fill="#FCEBE6" stroke="#CF4526" stroke-width="1.3"/>
+  <text x="49.0" y="236.0" class="mono strong" text-anchor="middle" xml:space="preserve">3</text>
+  <text x="78.0" y="228.0" class="name" text-anchor="start" xml:space="preserve">All 500 ask the database</text>
+  <text x="78.0" y="245.0" class="sub" text-anchor="start" xml:space="preserve">for the same row, each unaware of the others</text>
+  <rect x="32.0" y="262.0" width="416.0" height="46.0" rx="8" fill="#FFFFFF" stroke="#D5DBE3" stroke-width="1.3"/>
+  <rect x="32.0" y="262.0" width="34.0" height="46.0" rx="8" fill="#FCEBE6" stroke="#CF4526" stroke-width="1.3"/>
+  <text x="49.0" y="290.0" class="mono strong" text-anchor="middle" xml:space="preserve">4</text>
+  <text x="78.0" y="282.0" class="name" text-anchor="start" xml:space="preserve">The database slows under the load</text>
+  <text x="78.0" y="299.0" class="sub" text-anchor="start" xml:space="preserve">and the 500 answers take longer to arrive</text>
+  <rect x="32.0" y="316.0" width="416.0" height="46.0" rx="8" fill="#FFFFFF" stroke="#D5DBE3" stroke-width="1.3"/>
+  <rect x="32.0" y="316.0" width="34.0" height="46.0" rx="8" fill="#FCEBE6" stroke="#CF4526" stroke-width="1.3"/>
+  <text x="49.0" y="344.0" class="mono strong" text-anchor="middle" xml:space="preserve">5</text>
+  <text x="78.0" y="336.0" class="name" text-anchor="start" xml:space="preserve">New requests keep missing meanwhile</text>
+  <text x="78.0" y="353.0" class="sub" text-anchor="start" xml:space="preserve">since the cache is still empty</text>
+  <rect x="32.0" y="376.0" width="416.0" height="30.0" rx="8" fill="#E7F5E9" stroke="#2E8B3D" stroke-width="1.3"/>
+  <text x="240.0" y="395.0" class="pill" text-anchor="middle" style="fill:#2E8B3D" xml:space="preserve">The cure: 1 request fetches the value, and the others wait for it</text>
+</svg>

@@ -1,0 +1,995 @@
+<!DOCTYPE HTML>
+<html lang="en" class="light sidebar-visible" dir="ltr">
+    <head>
+        <!-- Book generated using mdBook -->
+        <meta charset="UTF-8">
+        <title>Key-Value Store: Group Commit (Low-Level Design) - Distributed Systems from the Ground Up</title>
+
+
+        <!-- Custom HTML head -->
+
+        <meta name="description" content="System design and low-level design of resilient, fault-tolerant distributed systems, with code in Rust">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <meta name="theme-color" content="#ffffff">
+
+        <link rel="icon" href="favicon-de23e50b.svg">
+        <link rel="shortcut icon" href="favicon-8114d1fc.png">
+        <link rel="stylesheet" href="css/variables-8adf115d.css">
+        <link rel="stylesheet" href="css/general-e96d0476.css">
+        <link rel="stylesheet" href="css/chrome-d279d366.css">
+        <link rel="stylesheet" href="css/print-9e4910d8.css" media="print">
+
+        <!-- Fonts -->
+        <link rel="stylesheet" href="fonts/fonts-9644e21d.css">
+
+        <!-- Highlight.js Stylesheets -->
+        <link rel="stylesheet" id="mdbook-highlight-css" href="highlight-493f70e1.css">
+        <link rel="stylesheet" id="mdbook-tomorrow-night-css" href="tomorrow-night-4c0ae647.css">
+        <link rel="stylesheet" id="mdbook-ayu-highlight-css" href="ayu-highlight-3fdfc3ac.css">
+
+        <!-- Custom theme stylesheets -->
+        <link rel="stylesheet" href="theme/custom-8a495b63.css">
+
+
+        <!-- Provide site root and default themes to javascript -->
+        <script>
+            const path_to_root = "";
+            const default_light_theme = "light";
+            const default_dark_theme = "navy";
+            window.path_to_searchindex_js = "searchindex-fe51950f.js";
+        </script>
+        <!-- Start loading toc.js asap -->
+        <script src="toc-cc887274.js"></script>
+    </head>
+    <body>
+    <div id="mdbook-help-container">
+        <div id="mdbook-help-popup">
+            <h2 class="mdbook-help-title">Keyboard shortcuts</h2>
+            <div>
+                <p>Press <kbd>←</kbd> or <kbd>→</kbd> to navigate between chapters</p>
+                <p>Press <kbd>S</kbd> or <kbd>/</kbd> to search in the book</p>
+                <p>Press <kbd>?</kbd> to show this help</p>
+                <p>Press <kbd>Esc</kbd> to hide this help</p>
+            </div>
+        </div>
+    </div>
+    <div id="mdbook-body-container">
+        <!-- Work around some values being stored in localStorage wrapped in quotes -->
+        <script>
+            try {
+                let theme = localStorage.getItem('mdbook-theme');
+                let sidebar = localStorage.getItem('mdbook-sidebar');
+
+                if (theme.startsWith('"') && theme.endsWith('"')) {
+                    localStorage.setItem('mdbook-theme', theme.slice(1, theme.length - 1));
+                }
+
+                if (sidebar.startsWith('"') && sidebar.endsWith('"')) {
+                    localStorage.setItem('mdbook-sidebar', sidebar.slice(1, sidebar.length - 1));
+                }
+            } catch (e) { }
+        </script>
+
+        <!-- Set the theme before any content is loaded, prevents flash -->
+        <script>
+            const default_theme = window.matchMedia("(prefers-color-scheme: dark)").matches ? default_dark_theme : default_light_theme;
+            let theme;
+            try { theme = localStorage.getItem('mdbook-theme'); } catch(e) { }
+            if (theme === null || theme === undefined) { theme = default_theme; }
+            const html = document.documentElement;
+            html.classList.remove('light')
+            html.classList.add(theme);
+            html.classList.add("js");
+        </script>
+
+        <input type="checkbox" id="mdbook-sidebar-toggle-anchor" class="hidden">
+
+        <!-- Hide / unhide sidebar before it is displayed -->
+        <script>
+            let sidebar = null;
+            const sidebar_toggle = document.getElementById("mdbook-sidebar-toggle-anchor");
+            if (document.body.clientWidth >= 1080) {
+                try { sidebar = localStorage.getItem('mdbook-sidebar'); } catch(e) { }
+                sidebar = sidebar || 'visible';
+            } else {
+                sidebar = 'hidden';
+                sidebar_toggle.checked = false;
+            }
+            if (sidebar === 'visible') {
+                sidebar_toggle.checked = true;
+            } else {
+                html.classList.remove('sidebar-visible');
+            }
+        </script>
+
+        <nav id="mdbook-sidebar" class="sidebar" aria-label="Table of contents">
+            <!-- populated by js -->
+            <mdbook-sidebar-scrollbox class="sidebar-scrollbox"></mdbook-sidebar-scrollbox>
+            <noscript>
+                <iframe class="sidebar-iframe-outer" src="toc.html"></iframe>
+            </noscript>
+            <div id="mdbook-sidebar-resize-handle" class="sidebar-resize-handle">
+                <div class="sidebar-resize-indicator"></div>
+            </div>
+        </nav>
+
+        <div id="mdbook-page-wrapper" class="page-wrapper">
+
+            <div class="page">
+                <div id="mdbook-menu-bar-hover-placeholder"></div>
+                <div id="mdbook-menu-bar" class="menu-bar sticky">
+                    <div class="left-buttons">
+                        <label id="mdbook-sidebar-toggle" class="icon-button" for="mdbook-sidebar-toggle-anchor" title="Toggle Table of Contents" aria-label="Toggle Table of Contents" aria-controls="mdbook-sidebar">
+                            <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M0 96C0 78.3 14.3 64 32 64H416c17.7 0 32 14.3 32 32s-14.3 32-32 32H32C14.3 128 0 113.7 0 96zM0 256c0-17.7 14.3-32 32-32H416c17.7 0 32 14.3 32 32s-14.3 32-32 32H32c-17.7 0-32-14.3-32-32zM448 416c0 17.7-14.3 32-32 32H32c-17.7 0-32-14.3-32-32s14.3-32 32-32H416c17.7 0 32 14.3 32 32z"/></svg></span>
+                        </label>
+                        <button id="mdbook-theme-toggle" class="icon-button" type="button" title="Change theme" aria-label="Change theme" aria-haspopup="true" aria-expanded="false" aria-controls="mdbook-theme-list">
+                            <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 576 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M371.3 367.1c27.3-3.9 51.9-19.4 67.2-42.9L600.2 74.1c12.6-19.5 9.4-45.3-7.6-61.2S549.7-4.4 531.1 9.6L294.4 187.2c-24 18-38.2 46.1-38.4 76.1L371.3 367.1zm-19.6 25.4l-116-104.4C175.9 290.3 128 339.6 128 400c0 3.9 .2 7.8 .6 11.6c1.8 17.5-10.2 36.4-27.8 36.4H96c-17.7 0-32 14.3-32 32s14.3 32 32 32H240c61.9 0 112-50.1 112-112c0-2.5-.1-5-.2-7.5z"/></svg></span>
+                        </button>
+                        <ul id="mdbook-theme-list" class="theme-popup" aria-label="Themes" role="menu">
+                            <li role="none"><button role="menuitem" class="theme" id="mdbook-theme-default_theme">Auto</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="mdbook-theme-light">Light</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="mdbook-theme-rust">Rust</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="mdbook-theme-coal">Coal</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="mdbook-theme-navy">Navy</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="mdbook-theme-ayu">Ayu</button></li>
+                        </ul>
+                        <button id="mdbook-search-toggle" class="icon-button" type="button" title="Search (`/`)" aria-label="Toggle Searchbar" aria-expanded="false" aria-keyshortcuts="/ s" aria-controls="mdbook-searchbar">
+                            <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M416 208c0 45.9-14.9 88.3-40 122.7L502.6 457.4c12.5 12.5 12.5 32.8 0 45.3s-32.8 12.5-45.3 0L330.7 376c-34.4 25.2-76.8 40-122.7 40C93.1 416 0 322.9 0 208S93.1 0 208 0S416 93.1 416 208zM208 352c79.5 0 144-64.5 144-144s-64.5-144-144-144S64 128.5 64 208s64.5 144 144 144z"/></svg></span>
+                        </button>
+                    </div>
+
+                    <h1 class="menu-title">Distributed Systems from the Ground Up</h1>
+
+                    <div class="right-buttons">
+                        <a href="print.html" title="Print this book" aria-label="Print this book">
+                            <span class=fa-svg id="print-button"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M128 0C92.7 0 64 28.7 64 64v96h64V64H354.7L384 93.3V160h64V93.3c0-17-6.7-33.3-18.7-45.3L400 18.7C388 6.7 371.7 0 354.7 0H128zM384 352v32 64H128V384 368 352H384zm64 32h32c17.7 0 32-14.3 32-32V256c0-35.3-28.7-64-64-64H64c-35.3 0-64 28.7-64 64v96c0 17.7 14.3 32 32 32H64v64c0 35.3 28.7 64 64 64H384c35.3 0 64-28.7 64-64V384zm-16-88c-13.3 0-24-10.7-24-24s10.7-24 24-24s24 10.7 24 24s-10.7 24-24 24z"/></svg></span>
+                        </a>
+                        <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/tree/prep-v2/distributed-systems-from-the-ground-up" title="Git repository" aria-label="Git repository">
+                            <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 496 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M165.9 397.4c0 2-2.3 3.6-5.2 3.6-3.3.3-5.6-1.3-5.6-3.6 0-2 2.3-3.6 5.2-3.6 3-.3 5.6 1.3 5.6 3.6zm-31.1-4.5c-.7 2 1.3 4.3 4.3 4.9 2.6 1 5.6 0 6.2-2s-1.3-4.3-4.3-5.2c-2.6-.7-5.5.3-6.2 2.3zm44.2-1.7c-2.9.7-4.9 2.6-4.6 4.9.3 2 2.9 3.3 5.9 2.6 2.9-.7 4.9-2.6 4.6-4.6-.3-1.9-3-3.2-5.9-2.9zM244.8 8C106.1 8 0 113.3 0 252c0 110.9 69.8 205.8 169.5 239.2 12.8 2.3 17.3-5.6 17.3-12.1 0-6.2-.3-40.4-.3-61.4 0 0-70 15-84.7-29.8 0 0-11.4-29.1-27.8-36.6 0 0-22.9-15.7 1.6-15.4 0 0 24.9 2 38.6 25.8 21.9 38.6 58.6 27.5 72.9 20.9 2.3-16 8.8-27.1 16-33.7-55.9-6.2-112.3-14.3-112.3-110.5 0-27.5 7.6-41.3 23.6-58.9-2.6-6.5-11.1-33.3 2.6-67.9 20.9-6.5 69 27 69 27 20-5.6 41.5-8.5 62.8-8.5s42.8 2.9 62.8 8.5c0 0 48.1-33.6 69-27 13.7 34.7 5.2 61.4 2.6 67.9 16 17.7 25.8 31.5 25.8 58.9 0 96.5-58.9 104.2-114.8 110.5 9.2 7.9 17 22.9 17 46.4 0 33.7-.3 75.4-.3 83.6 0 6.5 4.6 14.4 17.3 12.1C428.2 457.8 496 362.9 496 252 496 113.3 383.5 8 244.8 8zM97.2 352.9c-1.3 1-1 3.3.7 5.2 1.6 1.6 3.9 2.3 5.2 1 1.3-1 1-3.3-.7-5.2-1.6-1.6-3.9-2.3-5.2-1zm-10.8-8.1c-.7 1.3.3 2.9 2.3 3.9 1.6 1 3.6.7 4.3-.7.7-1.3-.3-2.9-2.3-3.9-2-.6-3.6-.3-4.3.7zm32.4 35.6c-1.6 1.3-1 4.3 1.3 6.2 2.3 2.3 5.2 2.6 6.5 1 1.3-1.3.7-4.3-1.3-6.2-2.2-2.3-5.2-2.6-6.5-1zm-11.4-14.7c-1.6 1-1.6 3.6 0 5.9 1.6 2.3 4.3 3.3 5.6 2.3 1.6-1.3 1.6-3.9 0-6.2-1.4-2.3-4-3.3-5.6-2z"/></svg></span>
+                        </a>
+                        <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/edit/prep-v2/distributed-systems-from-the-ground-up/src/06-key-value-store-group-commit.md" title="Suggest an edit" aria-label="Suggest an edit" rel="edit">
+                            <span class=fa-svg id="git-edit-button"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M421.7 220.3l-11.3 11.3-22.6 22.6-205 205c-6.6 6.6-14.8 11.5-23.8 14.1L30.8 511c-8.4 2.5-17.5 .2-23.7-6.1S-1.5 489.7 1 481.2L38.7 353.1c2.6-9 7.5-17.2 14.1-23.8l205-205 22.6-22.6 11.3-11.3 33.9 33.9 62.1 62.1 33.9 33.9zM96 353.9l-9.3 9.3c-.9 .9-1.6 2.1-2 3.4l-25.3 86 86-25.3c1.3-.4 2.5-1.1 3.4-2l9.3-9.3H112c-8.8 0-16-7.2-16-16V353.9zM453.3 19.3l39.4 39.4c25 25 25 65.5 0 90.5l-14.5 14.5-22.6 22.6-11.3 11.3-33.9-33.9-62.1-62.1L314.3 67.7l11.3-11.3 22.6-22.6 14.5-14.5c25-25 65.5-25 90.5 0z"/></svg></span>
+                        </a>
+
+                    </div>
+                </div>
+
+                <div id="mdbook-search-wrapper" class="hidden">
+                    <form id="mdbook-searchbar-outer" class="searchbar-outer">
+                        <div class="search-wrapper">
+                            <input type="search" id="mdbook-searchbar" name="searchbar" placeholder="Search this book ..." aria-controls="mdbook-searchresults-outer" aria-describedby="searchresults-header">
+                            <div class="spinner-wrapper">
+                                <span class=fa-svg id="fa-spin"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M304 48c0-26.5-21.5-48-48-48s-48 21.5-48 48s21.5 48 48 48s48-21.5 48-48zm0 416c0-26.5-21.5-48-48-48s-48 21.5-48 48s21.5 48 48 48s48-21.5 48-48zM48 304c26.5 0 48-21.5 48-48s-21.5-48-48-48s-48 21.5-48 48s21.5 48 48 48zm464-48c0-26.5-21.5-48-48-48s-48 21.5-48 48s21.5 48 48 48s48-21.5 48-48zM142.9 437c18.7-18.7 18.7-49.1 0-67.9s-49.1-18.7-67.9 0s-18.7 49.1 0 67.9s49.1 18.7 67.9 0zm0-294.2c18.7-18.7 18.7-49.1 0-67.9S93.7 56.2 75 75s-18.7 49.1 0 67.9s49.1 18.7 67.9 0zM369.1 437c18.7 18.7 49.1 18.7 67.9 0s18.7-49.1 0-67.9s-49.1-18.7-67.9 0s-18.7 49.1 0 67.9z"/></svg></span>
+                            </div>
+                        </div>
+                    </form>
+                    <div id="mdbook-searchresults-outer" class="searchresults-outer hidden">
+                        <div id="mdbook-searchresults-header" class="searchresults-header"></div>
+                        <ul id="mdbook-searchresults">
+                        </ul>
+                    </div>
+                </div>
+
+                <!-- Apply ARIA attributes after the sidebar and the sidebar toggle button are added to the DOM -->
+                <script>
+                    document.getElementById('mdbook-sidebar-toggle').setAttribute('aria-expanded', sidebar === 'visible');
+                    document.getElementById('mdbook-sidebar').setAttribute('aria-hidden', sidebar !== 'visible');
+                    Array.from(document.querySelectorAll('#mdbook-sidebar a')).forEach(function(link) {
+                        link.setAttribute('tabIndex', sidebar === 'visible' ? 0 : -1);
+                    });
+                </script>
+
+                <div id="mdbook-content" class="content">
+                    <main>
+                        <img class="plate" src="art/ch06.svg?v=6137924e" alt="Bundle, a beaver, carries 4 logs tied together with a rope toward a door marked disk, where a single log lies that was carried alone. A crab watches with a stopwatch.">
+<h1 id="key-value-store-group-commit-low-level-design"><a class="header" href="#key-value-store-group-commit-low-level-design">Key-Value Store: Group Commit (Low-Level Design)</a></h1>
+<p>The capacity estimate of <a href="01-key-value-store-system-design.html">chapter 1</a> arrived at
+24 nodes by assuming that a node stores 20 writes with every wait for its disk.
+Without that assumption the same calculation gave 325 nodes. Nothing built so far
+does anything of the kind. The storage node of
+<a href="02-key-value-store-storage-node.html">chapter 2</a> waits once for every write, and
+reaches its limit at about 180 writes per second however many clients are sending to
+it, since each must wait its turn for a disk that confirms 185 times a second.</p>
+<p>This chapter adds the missing technique. Under <em>group commit</em>, a node stores all the
+writes that are waiting at a given moment with a single wait for the disk. The change
+is small, some 60 lines in the store and 1 thread in the server, and its effect is
+out of all proportion to its size: the measured rate rises from 180 writes per second
+to almost 5000 with 64 clients, and beyond 17000 with 256. It is among the best
+examples in systems programming of a large gain obtained by rearranging work, with
+no part of the work made faster.</p>
+<div class="covers">
+<p>This chapter covers</p>
+<ul>
+<li>why a single wait for the disk can serve many writes</li>
+<li>a committer thread that forms batches without a timer</li>
+<li>conditional writes within a batch</li>
+<li>measurements with 1, 8, 64 and 256 clients</li>
+<li>a crash in the middle of a batch</li>
+</ul>
+</div>
+
+<h2 id="the-idea"><a class="header" href="#the-idea">The idea</a></h2>
+<p>A wait for the disk takes about 5.4 ms whether it stores 1 record or 100. Nearly all
+of that time is spent by the disk in confirming that the data is safe, and very
+little in transferring the data, so that the cost is close to a fixed charge for each
+wait and almost independent of how much is written. Writes that arrive while 1 wait
+is in progress can therefore share the next.</p>
+<figure>
+<img src="figures/group-timeline.svg?v=0338736f" alt="5 writes that arrive within 1 millisecond, stored in 2 ways. With 1 wait for each write, there are 5 waits of 5.4 ms, and the last write is answered after 27 ms. With group commit there are 2 waits, and the last write is answered after 10.8 ms. Step 1: the committer takes write 1 and starts to wait for the disk. Step 2: writes 2 to 5 arrive during that wait and queue up. Step 3: the wait ends, and the committer takes all 4 that are waiting. Step 4: it stores them with 1 write and 1 wait, and answers all 4.">
+<figcaption><b>Figure 6.1</b> 5 writes stored with 5 waits, and the same 5 writes stored with 2.</figcaption>
+</figure>
+<p>The design uses no timer, and the point deserves emphasis because the alternative is
+common. Some systems hold a write back for a millisecond or so in the hope that
+others will arrive to share its wait. This improves throughput under heavy load and
+penalises every write under light load, when no others are coming. Here a batch is
+formed only from writes that are already waiting. A write that arrives alone is
+stored at once, with no delay, and the batches grow of their own accord as the load
+grows, since the busier the node is, the more writes accumulate during each wait.
+The mechanism adjusts itself to the load without any parameter that an operator has
+to tune.</p>
+<h2 id="a-batch-in-the-store"><a class="header" href="#a-batch-in-the-store">A batch in the store</a></h2>
+<p><code>Store::commit</code> takes a list of writes and returns a result for each of them.</p>
+<p class="listing"><img class="mascot" src="art/crab-happy.svg" alt=""><b>Listing 6.1</b> The imports of <code>kv/src/store.rs</code>. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/distributed-systems-from-the-ground-up/code/kv/src/store.rs">kv/src/store.rs</a></p>
+
+<pre><code class="language-rust">use std::collections::BTreeMap;
+use std::io;
+use std::ops::Bound;
+use std::path::Path;
+
+use thiserror::Error;
+
+use crate::log::Log;
+use crate::record::{Change, Record};</code></pre>
+<p class="listing"><img class="mascot" src="art/crab-happy.svg" alt=""><b>Listing 6.2</b> Storing a batch of writes with a single wait for the disk. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/distributed-systems-from-the-ground-up/code/kv/src/store.rs">kv/src/store.rs</a></p>
+
+<pre><code class="language-rust">/// One write of a batch: the change, and the condition it carries.
+pub struct Write {
+    pub change: Change,
+    pub condition: Condition,
+}
+
+impl Store {
+    /// Performs several writes with a single wait for the disk. Each write
+    /// is checked as if the writes before it in the batch had already
+    /// happened. The result of each is returned in the same order.
+    pub fn commit(&amp;mut self, writes: Vec&lt;Write&gt;) -&gt; Vec&lt;Result&lt;Written, StoreError&gt;&gt; {
+        // The versions that keys will have once the accepted writes of this
+        // batch are applied. `None` is a key that a write of the batch deletes.
+        let mut pending: BTreeMap&lt;String, Option&lt;u64&gt;&gt; = BTreeMap::new();
+        let mut records = Vec::new();
+        let mut results = Vec::new();
+        let first = self.log.last_sequence() + 1;
+
+        for write in writes {
+            let key = match &amp;write.change {
+                Change::Put { key, .. } | Change::Delete { key } =&gt; key.clone(),
+            };
+            let current = match pending.get(&amp;key) {
+                Some(version) =&gt; *version,
+                None =&gt; self.version(&amp;key),
+            };
+            let deletes = matches!(write.change, Change::Delete { .. });
+
+            let checked = if deletes &amp;&amp; current.is_none() {
+                Err(StoreError::NotFound)
+            } else {
+                check(write.condition, current)
+            };
+
+            if let Err(error) = checked {
+                results.push(Err(error));
+
+                continue;
+            }
+
+            let sequence = first + records.len() as u64;
+            let version = if deletes { None } else { Some(sequence) };
+
+            pending.insert(key, version);
+            results.push(Ok(Written {
+                version: sequence,
+                created: current.is_none(),
+            }));
+            records.push(Record {
+                sequence,
+                change: write.change,
+            });
+        }
+
+        // One write and one wait for the disk, for the whole batch.
+        if let Err(error) = self.log.append_records(&amp;records) {
+            let failure = error.to_string();
+
+            return results
+                .into_iter()
+                .map(|result| result.and(Err(StoreError::Log(io::Error::other(failure.clone())))))
+                .collect();
+        }
+
+        for record in records {
+            apply(&amp;mut self.entries, record);
+        }
+
+        results
+    }
+}</code></pre>
+<p>The method works in 3 passes.</p>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th>Pass</th><th>What happens</th></tr>
+</thead>
+<tbody>
+<tr><td>Check</td><td>The condition of each write is checked, and the writes that are accepted receive the next sequence numbers.</td></tr>
+<tr><td>Store</td><td>All the accepted records go to the log in 1 write, followed by 1 wait for the disk.</td></tr>
+<tr><td>Apply</td><td>The records are applied to the map, and the results are returned.</td></tr>
+</tbody>
+</table>
+</div>
+<p>Conditional writes need care in the first pass. Suppose that a batch contains 2
+writes to <code>user-1</code>, each carrying <code>If-None-Match: *</code>, which means “create only”. The
+first ought to succeed and the second to fail, although neither is yet in the map,
+and a check against the map alone would accept both. The <code>pending</code> map resolves the
+difficulty. It records the version that each key will have once the accepted writes
+of the batch have been applied, and a later write in the same batch is checked
+against it. The batch thus behaves, as far as any client can tell, exactly as if its
+writes had been performed in sequence, which is the property that makes batching
+invisible.</p>
+<p>The order of the passes preserves invariant 1 of chapter 2. No result leaves <code>commit</code>
+before the wait for the disk has ended, and so no client is answered early.</p>
+<h2 id="the-committer"><a class="header" href="#the-committer">The committer</a></h2>
+<p>A single thread, the <em>committer</em>, owns the store. The handlers of requests do not
+touch the store at all. Each hands its write to the committer through a channel and
+waits for the result.</p>
+<p class="listing"><img class="mascot" src="art/crab-happy.svg" alt=""><b>Listing 6.3</b> The imports of <code>kvgroup/src/main.rs</code>. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/distributed-systems-from-the-ground-up/code/kvgroup/src/main.rs">kvgroup/src/main.rs</a></p>
+
+<pre><code class="language-rust">use std::error::Error;
+use std::net::SocketAddr;
+use std::path::PathBuf;
+use std::sync::mpsc::{self, Receiver, Sender};
+use std::thread;
+
+use axum::Router;
+use axum::body::Bytes;
+use axum::extract::{DefaultBodyLimit, Path, State};
+use axum::http::header::ETAG;
+use axum::http::{HeaderMap, StatusCode};
+use axum::response::{IntoResponse, Response};
+use axum::routing::put;
+use clap::Parser;
+use kv::{Change, Store, StoreError, Write, Written};
+use kvd::api::{ApiError, MAX_VALUE, etag, valid_key, write_condition};
+use tokio::net::TcpListener;
+use tokio::sync::oneshot;</code></pre>
+<p class="listing"><img class="mascot" src="art/crab-happy.svg" alt=""><b>Listing 6.4</b> The options, and a write on its way to the committer. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/distributed-systems-from-the-ground-up/code/kvgroup/src/main.rs">kvgroup/src/main.rs</a></p>
+
+<pre><code class="language-rust">#[derive(Parser)]
+struct Options {
+    #[arg(long, default_value = "127.0.0.1:7001")]
+    listen: SocketAddr,
+
+    #[arg(long, default_value = "data")]
+    data: PathBuf,
+
+    /// The largest number of writes stored with one wait for the disk.
+    #[arg(long, default_value_t = 256)]
+    batch: usize,
+}
+
+/// A write on its way to the committer, with the channel for its result.
+struct Request {
+    write: Write,
+    reply: oneshot::Sender&lt;Result&lt;Written, StoreError&gt;&gt;,
+}</code></pre>
+<p class="listing"><img class="mascot" src="art/crab-happy.svg" alt=""><b>Listing 6.5</b> The committer thread. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/distributed-systems-from-the-ground-up/code/kvgroup/src/main.rs">kvgroup/src/main.rs</a></p>
+
+<pre><code class="language-rust">/// The committer: the one thread that owns the store. It takes the write
+/// that has waited longest, adds every write that arrived meanwhile, and
+/// stores them together.
+fn run_committer(mut store: Store, requests: Receiver&lt;Request&gt;, limit: usize) {
+    let (mut batches, mut writes) = (0u64, 0u64);
+
+    while let Ok(first) = requests.recv() {
+        // The first request, and whatever else is already waiting.
+        let mut batch = vec![first];
+
+        batch.extend(requests.try_iter().take(limit - 1));
+
+        let (changes, replies): (Vec&lt;Write&gt;, Vec&lt;_&gt;) = batch
+            .into_iter()
+            .map(|request| (request.write, request.reply))
+            .unzip();
+
+        batches += 1;
+        writes += changes.len() as u64;
+
+        // A handler that has gone away no longer wants its result.
+        store
+            .commit(changes)
+            .into_iter()
+            .zip(replies)
+            .for_each(|(result, reply)| drop(reply.send(result)));
+
+        if batches.is_multiple_of(200) {
+            let average = writes as f64 / batches as f64;
+            println!("{writes} writes in {batches} batches, {average:.1} writes per batch");
+        }
+    }
+}</code></pre>
+<p>This loop is the whole of group commit. <code>recv</code> blocks until a write arrives.
+<code>try_iter</code> then yields every write that is already in the channel, without waiting
+for more, up to a limit of 256 for the batch. While <code>commit</code> is waiting for the disk,
+new writes accumulate in the channel, and the next turn of the loop takes all of
+them.</p>
+<p>Giving the store to 1 thread has a further merit. Since no other thread touches it,
+the store needs no lock, and the question of what 2 concurrent writers might do to
+the map does not arise. Concurrency has been confined to the channel, where it is
+handled by a well-tested library, and the logic of the store remains sequential.</p>
+<p class="listing"><img class="mascot" src="art/crab-happy.svg" alt=""><b>Listing 6.6</b> Handing a write to the committer, and the HTTP handlers. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/distributed-systems-from-the-ground-up/code/kvgroup/src/main.rs">kvgroup/src/main.rs</a></p>
+
+<pre><code class="language-rust">/// Hands a write to the committer and waits for its result.
+async fn submit(committer: &amp;Sender&lt;Request&gt;, write: Write) -&gt; Result&lt;Written, ApiError&gt; {
+    let (reply, result) = oneshot::channel();
+    let stopped = || ApiError::Unavailable("the committer has stopped".into());
+
+    if committer
+        .send(Request { write, reply })
+        .is_err()
+    {
+        return Err(stopped());
+    }
+
+    let Ok(outcome) = result.await else {
+        return Err(stopped());
+    };
+
+    Ok(outcome?)
+}
+
+async fn put_key(
+    State(committer): State&lt;Sender&lt;Request&gt;&gt;,
+    Path(key): Path&lt;String&gt;,
+    headers: HeaderMap,
+    body: Bytes,
+) -&gt; Result&lt;Response, ApiError&gt; {
+    valid_key(&amp;key)?;
+
+    let write = Write {
+        change: Change::Put {
+            key,
+            value: body.to_vec(),
+        },
+        condition: write_condition(&amp;headers)?,
+    };
+
+    let written = submit(&amp;committer, write).await?;
+    let status = if written.created {
+        StatusCode::CREATED
+    } else {
+        StatusCode::NO_CONTENT
+    };
+
+    Ok((status, [(ETAG, etag(written.version))]).into_response())
+}
+
+async fn delete_key(
+    State(committer): State&lt;Sender&lt;Request&gt;&gt;,
+    Path(key): Path&lt;String&gt;,
+    headers: HeaderMap,
+) -&gt; Result&lt;StatusCode, ApiError&gt; {
+    valid_key(&amp;key)?;
+
+    let write = Write {
+        change: Change::Delete { key },
+        condition: write_condition(&amp;headers)?,
+    };
+
+    submit(&amp;committer, write).await?;
+
+    Ok(StatusCode::NO_CONTENT)
+}</code></pre>
+<p class="listing"><img class="mascot" src="art/crab-happy.svg" alt=""><b>Listing 6.7</b> Starting the committer and the server. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/distributed-systems-from-the-ground-up/code/kvgroup/src/main.rs">kvgroup/src/main.rs</a></p>
+
+<pre><code class="language-rust">#[tokio::main]
+async fn main() -&gt; Result&lt;(), Box&lt;dyn Error&gt;&gt; {
+    let options = Options::parse();
+    let (store, applied, discarded) = Store::open(&amp;options.data, true)?;
+
+    println!("recovered {applied} records, cut {discarded} bytes from the end of the log");
+
+    let (committer, requests) = mpsc::channel();
+    thread::spawn(move || run_committer(store, requests, options.batch));
+
+    let routes = Router::new()
+        .route("/v1/keys/{key}", put(put_key).delete(delete_key))
+        .layer(DefaultBodyLimit::max(MAX_VALUE))
+        .with_state(committer);
+
+    let listener = TcpListener::bind(options.listen).await?;
+    println!("listening on {}", listener.local_addr()?);
+
+    axum::serve(listener, routes).await?;
+
+    Ok(())
+}</code></pre>
+<h2 id="measurements"><a class="header" href="#measurements">Measurements</a></h2>
+<p><code>kvbench</code> runs a number of clients simultaneously. Each client sends its writes in
+succession and waits for every answer before sending the next.</p>
+<p class="listing"><img class="mascot" src="art/crab-happy.svg" alt=""><b>Listing 6.8</b> The imports of <code>kvbench/src/main.rs</code>. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/distributed-systems-from-the-ground-up/code/kvbench/src/main.rs">kvbench/src/main.rs</a></p>
+
+<pre><code class="language-rust">use std::error::Error;
+use std::fs;
+use std::path::PathBuf;
+use std::thread;
+use std::time::Instant;
+
+use clap::Parser;
+use ureq::Agent;</code></pre>
+<p class="listing"><img class="mascot" src="art/crab-happy.svg" alt=""><b>Listing 6.9</b> Writing from several clients at once. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/distributed-systems-from-the-ground-up/code/kvbench/src/main.rs">kvbench/src/main.rs</a></p>
+
+<pre><code class="language-rust">#[derive(Parser)]
+struct Options {
+    #[arg(long)]
+    server: String,
+
+    /// The number of clients that write at the same time.
+    #[arg(long, default_value_t = 8)]
+    clients: u32,
+
+    /// The number of writes each client makes.
+    #[arg(long, default_value_t = 200)]
+    writes: u32,
+
+    #[arg(long)]
+    acked: PathBuf,
+}
+
+/// The writes of one client. It returns the keys that were acknowledged.
+fn client(server: &amp;str, number: u32, writes: u32) -&gt; Vec&lt;String&gt; {
+    let agent = Agent::new_with_defaults();
+    let mut acknowledged = Vec::new();
+
+    for write in 1..=writes {
+        let key = format!("key-{number:03}-{write:06}");
+        let address = format!("{server}/v1/keys/{key}");
+
+        if agent
+            .put(&amp;address)
+            .send(format!("value of {key}"))
+            .is_ok()
+        {
+            acknowledged.push(key);
+        }
+    }
+
+    acknowledged
+}
+
+fn main() -&gt; Result&lt;(), Box&lt;dyn Error&gt;&gt; {
+    let options = Options::parse();
+    let (server, writes) = (options.server.as_str(), options.writes);
+    let started = Instant::now();
+
+    let acknowledged: Vec&lt;String&gt; = thread::scope(|scope| {
+        let clients: Vec&lt;_&gt; = (1..=options.clients)
+            .map(|number| scope.spawn(move || client(server, number, writes)))
+            .collect();
+
+        clients
+            .into_iter()
+            .flat_map(|client| client.join().unwrap_or_default())
+            .collect()
+    });
+
+    let seconds = started.elapsed().as_secs_f64();
+    let rate = acknowledged.len() as f64 / seconds;
+
+    fs::write(&amp;options.acked, acknowledged.join("\n") + "\n")?;
+
+    println!(
+        "{} clients: {} writes acknowledged in {seconds:.2} s, {rate:.0} writes per second",
+        options.clients,
+        acknowledged.len()
+    );
+
+    Ok(())
+}</code></pre>
+<pre><code class="language-console">$ ./target/release/kvd --data /var/tmp/kvd &amp;
+$ ./target/release/kvbench --server http://127.0.0.1:7001 --clients 64 --writes 12 --acked acked.txt
+64 clients: 768 writes acknowledged in 4.27 s, 180 writes per second
+
+$ ./target/release/kvgroup --data /var/tmp/kvgroup &amp;
+$ ./target/release/kvbench --server http://127.0.0.1:7001 --clients 64 --writes 400 --acked acked.txt
+64 clients: 25600 writes acknowledged in 5.13 s, 4993 writes per second
+25535 writes in 800 batches, 31.9 writes per batch
+</code></pre>
+<figure>
+<img src="figures/group-results.svg?v=4cce2822" alt="Writes per second without and with group commit. With 1 client: 167 without and 165 with, at 1.0 writes per batch. With 8 clients: 181 without and 712 with, at 4.0 writes per batch. With 64 clients: 180 without and 4993 with, at 31.9 writes per batch. With 256 clients: 17218 with group commit, at 119.9 writes per batch. Without group commit the rate stays near 180 whatever the load, and with it the rate grows with the number of clients.">
+<figcaption><b>Figure 6.2</b> Writes per second without and with group commit, for 4 numbers of clients.</figcaption>
+</figure>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th>Clients</th><th>Without</th><th>With group commit</th><th>Writes in a batch</th></tr>
+</thead>
+<tbody>
+<tr><td>1</td><td>167</td><td>165</td><td>1.0</td></tr>
+<tr><td>8</td><td>181</td><td>712</td><td>4.0</td></tr>
+<tr><td>64</td><td>180</td><td>4993</td><td>31.9</td></tr>
+<tr><td>256</td><td>not measured</td><td>17218</td><td>119.9</td></tr>
+</tbody>
+</table>
+</div>
+<p>Several things can be read from the table. A single client gains nothing, since it
+sends its next write only when the previous one has been answered, and there is
+consequently never a second write with which a wait could be shared. Group commit
+improves throughput under concurrency and does nothing for the latency of an
+individual write, which remains 1 wait for the disk.</p>
+<p>The size of a batch is about half the number of clients: 4 of 8, 32 of 64, 120 of
+256. The explanation is that the clients fall into 2 groups that alternate. While 1
+half is waiting in the batch that is being stored, the other half has just been
+answered and is sending its next writes, which form the following batch.</p>
+<p>And the assumption of chapter 1 is confirmed with something to spare. The estimate
+supposed 20 writes for each wait and 3700 writes per second. With 64 clients the node
+achieved 31.9 writes for each wait and 4993 writes per second.</p>
+<h2 id="a-crash-in-the-middle-of-a-batch"><a class="header" href="#a-crash-in-the-middle-of-a-batch">A crash in the middle of a batch</a></h2>
+<p>The server is killed while 64 clients are writing. The program <code>kvd</code> of chapter 2
+then opens the same data directory, which incidentally demonstrates that the 2
+programs use the same format for the log.</p>
+<pre><code class="language-console">$ ./target/release/kvgroup --data /var/tmp/kvgroup &amp;
+$ ./target/release/kvbench --server http://127.0.0.1:7001 --clients 64 --writes 2000 --acked acked.txt &amp;
+$ sleep 2; kill -9 &lt;pid of kvgroup&gt;
+64 clients: 9341 writes acknowledged in 2.74 s, 3412 writes per second
+$ ./target/release/kvd --data /var/tmp/kvgroup &amp;
+recovered 9366 keys from 9366 records, cut 0 bytes from the end of the log
+$ ./target/release/kvctl verify --server http://127.0.0.1:7001 --acked acked.txt
+9341 acknowledged, 9341 found, 0 missing
+</code></pre>
+<p>Every one of the 9341 acknowledged writes is present. The log contains 25 more, which
+are the batch that had reached the disk when the process was killed and whose
+answers had not yet been sent. These are the durable and unacknowledged writes of
+chapter 2, the third case of its figure of crash points, now occurring 25 together.
+Group commit has not altered the guarantee in any respect. It has enlarged the
+number of writes that may be in that uncertain state at the moment of a crash from 1
+to the size of a batch, and each of the 25 clients concerned resolves the uncertainty
+in the usual way, by repeating its request.</p>
+<h2 id="what-is-still-missing"><a class="header" href="#what-is-still-missing">What is still missing</a></h2>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th>Missing</th><th>Effect</th></tr>
+</thead>
+<tbody>
+<tr><td><code>kvgroup</code> serves writes only.</td><td>Reads need access to the map, which the committer thread owns. A shared view of the map for reading would provide it.</td></tr>
+<tr><td>The replicated nodes of chapters 3 and 4 still store 1 write for each round trip.</td><td>Their leaders could send a whole batch in 1 <code>Append</code>, which the protocol already permits, and the followers already store the records of a message with 1 wait.</td></tr>
+</tbody>
+</table>
+</div>
+<h2 id="the-complete-programs"><a class="header" href="#the-complete-programs">The complete programs</a></h2>
+<p><code>Store::commit</code> is part of <code>kv/src/store.rs</code>, which is listed in full in chapter 2.</p>
+<p class="listing"><img class="mascot" src="art/crab-cute.svg" alt=""><b>Listing 6.10</b> The complete <code>kvgroup/src/main.rs</code>. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/distributed-systems-from-the-ground-up/code/kvgroup/src/main.rs">kvgroup/src/main.rs</a></p>
+
+<pre><code class="language-rust">//! Command kvgroup is the storage node of chapter 2 with group commit: one
+//! thread writes the log, and it stores every write that is waiting with a
+//! single wait for the disk.
+//!
+//! Run it from code/ with:
+//!
+//!     cargo run --release -p kvgroup -- --listen 127.0.0.1:7001 --data /var/tmp/kvgroup
+
+use std::error::Error;
+use std::net::SocketAddr;
+use std::path::PathBuf;
+use std::sync::mpsc::{self, Receiver, Sender};
+use std::thread;
+
+use axum::Router;
+use axum::body::Bytes;
+use axum::extract::{DefaultBodyLimit, Path, State};
+use axum::http::header::ETAG;
+use axum::http::{HeaderMap, StatusCode};
+use axum::response::{IntoResponse, Response};
+use axum::routing::put;
+use clap::Parser;
+use kv::{Change, Store, StoreError, Write, Written};
+use kvd::api::{ApiError, MAX_VALUE, etag, valid_key, write_condition};
+use tokio::net::TcpListener;
+use tokio::sync::oneshot;
+
+#[derive(Parser)]
+struct Options {
+    #[arg(long, default_value = "127.0.0.1:7001")]
+    listen: SocketAddr,
+
+    #[arg(long, default_value = "data")]
+    data: PathBuf,
+
+    /// The largest number of writes stored with one wait for the disk.
+    #[arg(long, default_value_t = 256)]
+    batch: usize,
+}
+
+/// A write on its way to the committer, with the channel for its result.
+struct Request {
+    write: Write,
+    reply: oneshot::Sender&lt;Result&lt;Written, StoreError&gt;&gt;,
+}
+
+/// The committer: the one thread that owns the store. It takes the write
+/// that has waited longest, adds every write that arrived meanwhile, and
+/// stores them together.
+fn run_committer(mut store: Store, requests: Receiver&lt;Request&gt;, limit: usize) {
+    let (mut batches, mut writes) = (0u64, 0u64);
+
+    while let Ok(first) = requests.recv() {
+        // The first request, and whatever else is already waiting.
+        let mut batch = vec![first];
+
+        batch.extend(requests.try_iter().take(limit - 1));
+
+        let (changes, replies): (Vec&lt;Write&gt;, Vec&lt;_&gt;) = batch
+            .into_iter()
+            .map(|request| (request.write, request.reply))
+            .unzip();
+
+        batches += 1;
+        writes += changes.len() as u64;
+
+        // A handler that has gone away no longer wants its result.
+        store
+            .commit(changes)
+            .into_iter()
+            .zip(replies)
+            .for_each(|(result, reply)| drop(reply.send(result)));
+
+        if batches.is_multiple_of(200) {
+            let average = writes as f64 / batches as f64;
+            println!("{writes} writes in {batches} batches, {average:.1} writes per batch");
+        }
+    }
+}
+
+/// Hands a write to the committer and waits for its result.
+async fn submit(committer: &amp;Sender&lt;Request&gt;, write: Write) -&gt; Result&lt;Written, ApiError&gt; {
+    let (reply, result) = oneshot::channel();
+    let stopped = || ApiError::Unavailable("the committer has stopped".into());
+
+    if committer
+        .send(Request { write, reply })
+        .is_err()
+    {
+        return Err(stopped());
+    }
+
+    let Ok(outcome) = result.await else {
+        return Err(stopped());
+    };
+
+    Ok(outcome?)
+}
+
+async fn put_key(
+    State(committer): State&lt;Sender&lt;Request&gt;&gt;,
+    Path(key): Path&lt;String&gt;,
+    headers: HeaderMap,
+    body: Bytes,
+) -&gt; Result&lt;Response, ApiError&gt; {
+    valid_key(&amp;key)?;
+
+    let write = Write {
+        change: Change::Put {
+            key,
+            value: body.to_vec(),
+        },
+        condition: write_condition(&amp;headers)?,
+    };
+
+    let written = submit(&amp;committer, write).await?;
+    let status = if written.created {
+        StatusCode::CREATED
+    } else {
+        StatusCode::NO_CONTENT
+    };
+
+    Ok((status, [(ETAG, etag(written.version))]).into_response())
+}
+
+async fn delete_key(
+    State(committer): State&lt;Sender&lt;Request&gt;&gt;,
+    Path(key): Path&lt;String&gt;,
+    headers: HeaderMap,
+) -&gt; Result&lt;StatusCode, ApiError&gt; {
+    valid_key(&amp;key)?;
+
+    let write = Write {
+        change: Change::Delete { key },
+        condition: write_condition(&amp;headers)?,
+    };
+
+    submit(&amp;committer, write).await?;
+
+    Ok(StatusCode::NO_CONTENT)
+}
+
+#[tokio::main]
+async fn main() -&gt; Result&lt;(), Box&lt;dyn Error&gt;&gt; {
+    let options = Options::parse();
+    let (store, applied, discarded) = Store::open(&amp;options.data, true)?;
+
+    println!("recovered {applied} records, cut {discarded} bytes from the end of the log");
+
+    let (committer, requests) = mpsc::channel();
+    thread::spawn(move || run_committer(store, requests, options.batch));
+
+    let routes = Router::new()
+        .route("/v1/keys/{key}", put(put_key).delete(delete_key))
+        .layer(DefaultBodyLimit::max(MAX_VALUE))
+        .with_state(committer);
+
+    let listener = TcpListener::bind(options.listen).await?;
+    println!("listening on {}", listener.local_addr()?);
+
+    axum::serve(listener, routes).await?;
+
+    Ok(())
+}</code></pre>
+<p class="listing"><img class="mascot" src="art/crab-cute.svg" alt=""><b>Listing 6.11</b> The complete <code>kvbench/src/main.rs</code>. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/distributed-systems-from-the-ground-up/code/kvbench/src/main.rs">kvbench/src/main.rs</a></p>
+
+<pre><code class="language-rust">//! Command kvbench writes keys to a server from several clients at once and
+//! prints the number of writes per second. Every acknowledged key is added
+//! to a file, in the format that `kvctl verify` reads.
+//!
+//! Run it from code/ with:
+//!
+//!     cargo run --release -p kvbench -- --server http://127.0.0.1:7001 --clients 64 --writes 200 --acked acked.txt
+
+use std::error::Error;
+use std::fs;
+use std::path::PathBuf;
+use std::thread;
+use std::time::Instant;
+
+use clap::Parser;
+use ureq::Agent;
+
+#[derive(Parser)]
+struct Options {
+    #[arg(long)]
+    server: String,
+
+    /// The number of clients that write at the same time.
+    #[arg(long, default_value_t = 8)]
+    clients: u32,
+
+    /// The number of writes each client makes.
+    #[arg(long, default_value_t = 200)]
+    writes: u32,
+
+    #[arg(long)]
+    acked: PathBuf,
+}
+
+/// The writes of one client. It returns the keys that were acknowledged.
+fn client(server: &amp;str, number: u32, writes: u32) -&gt; Vec&lt;String&gt; {
+    let agent = Agent::new_with_defaults();
+    let mut acknowledged = Vec::new();
+
+    for write in 1..=writes {
+        let key = format!("key-{number:03}-{write:06}");
+        let address = format!("{server}/v1/keys/{key}");
+
+        if agent
+            .put(&amp;address)
+            .send(format!("value of {key}"))
+            .is_ok()
+        {
+            acknowledged.push(key);
+        }
+    }
+
+    acknowledged
+}
+
+fn main() -&gt; Result&lt;(), Box&lt;dyn Error&gt;&gt; {
+    let options = Options::parse();
+    let (server, writes) = (options.server.as_str(), options.writes);
+    let started = Instant::now();
+
+    let acknowledged: Vec&lt;String&gt; = thread::scope(|scope| {
+        let clients: Vec&lt;_&gt; = (1..=options.clients)
+            .map(|number| scope.spawn(move || client(server, number, writes)))
+            .collect();
+
+        clients
+            .into_iter()
+            .flat_map(|client| client.join().unwrap_or_default())
+            .collect()
+    });
+
+    let seconds = started.elapsed().as_secs_f64();
+    let rate = acknowledged.len() as f64 / seconds;
+
+    fs::write(&amp;options.acked, acknowledged.join("\n") + "\n")?;
+
+    println!(
+        "{} clients: {} writes acknowledged in {seconds:.2} s, {rate:.0} writes per second",
+        options.clients,
+        acknowledged.len()
+    );
+
+    Ok(())
+}</code></pre>
+<div class="summary">
+<h2 id="summary"><a class="header" href="#summary">Summary</a></h2>
+<ul>
+<li>A wait for the disk costs nearly the same for 1 record as for 100, so that the writes which arrive during a wait can share the next.</li>
+<li>The committer thread takes every write that is waiting and stores them together. It uses no timer, and a write that arrives alone is not delayed.</li>
+<li>Within a batch, every conditional write is checked against the writes that precede it, so that a batch behaves as its writes would in sequence.</li>
+<li>With 64 clients the node stored 4993 writes per second, against 180 without group commit, and with 256 clients it stored 17218.</li>
+<li>After being killed under load, the node held all 9341 acknowledged writes, and 25 more that had reached the disk without being acknowledged.</li>
+</ul>
+</div>
+
+
+                    </main>
+
+                    <nav class="nav-wrapper" aria-label="Page navigation">
+                        <!-- Mobile navigation buttons -->
+                            <a rel="prev" href="05-key-value-store-router.html" class="mobile-nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                                <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M41.4 233.4c-12.5 12.5-12.5 32.8 0 45.3l160 160c12.5 12.5 32.8 12.5 45.3 0s12.5-32.8 0-45.3L109.3 256 246.6 118.6c12.5-12.5 12.5-32.8 0-45.3s-32.8-12.5-45.3 0l-160 160z"/></svg></span>
+                            </a>
+
+                            <a rel="next prefetch" href="07-rate-limiter.html" class="mobile-nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                                <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M278.6 233.4c12.5 12.5 12.5 32.8 0 45.3l-160 160c-12.5 12.5-32.8 12.5-45.3 0s-12.5-32.8 0-45.3L210.7 256 73.4 118.6c-12.5-12.5-12.5-32.8 0-45.3s32.8-12.5 45.3 0l160 160z"/></svg></span>
+                            </a>
+
+                        <div style="clear: both"></div>
+                    </nav>
+                </div>
+            </div>
+
+            <nav class="nav-wide-wrapper" aria-label="Page navigation">
+                    <a rel="prev" href="05-key-value-store-router.html" class="nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                        <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M41.4 233.4c-12.5 12.5-12.5 32.8 0 45.3l160 160c12.5 12.5 32.8 12.5 45.3 0s12.5-32.8 0-45.3L109.3 256 246.6 118.6c12.5-12.5 12.5-32.8 0-45.3s-32.8-12.5-45.3 0l-160 160z"/></svg></span>
+                    </a>
+
+                    <a rel="next prefetch" href="07-rate-limiter.html" class="nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                        <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M278.6 233.4c12.5 12.5 12.5 32.8 0 45.3l-160 160c-12.5 12.5-32.8 12.5-45.3 0s-12.5-32.8 0-45.3L210.7 256 73.4 118.6c-12.5-12.5-12.5-32.8 0-45.3s32.8-12.5 45.3 0l160 160z"/></svg></span>
+                    </a>
+            </nav>
+
+        </div>
+
+        <template id=fa-eye><span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 576 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M288 32c-80.8 0-145.5 36.8-192.6 80.6C48.6 156 17.3 208 2.5 243.7c-3.3 7.9-3.3 16.7 0 24.6C17.3 304 48.6 356 95.4 399.4C142.5 443.2 207.2 480 288 480s145.5-36.8 192.6-80.6c46.8-43.5 78.1-95.4 93-131.1c3.3-7.9 3.3-16.7 0-24.6c-14.9-35.7-46.2-87.7-93-131.1C433.5 68.8 368.8 32 288 32zM432 256c0 79.5-64.5 144-144 144s-144-64.5-144-144s64.5-144 144-144s144 64.5 144 144zM288 192c0 35.3-28.7 64-64 64c-11.5 0-22.3-3-31.6-8.4c-.2 2.8-.4 5.5-.4 8.4c0 53 43 96 96 96s96-43 96-96s-43-96-96-96c-2.8 0-5.6 .1-8.4 .4c5.3 9.3 8.4 20.1 8.4 31.6z"/></svg></span></template>
+        <template id=fa-eye-slash><span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M38.8 5.1C28.4-3.1 13.3-1.2 5.1 9.2S-1.2 34.7 9.2 42.9l592 464c10.4 8.2 25.5 6.3 33.7-4.1s6.3-25.5-4.1-33.7L525.6 386.7c39.6-40.6 66.4-86.1 79.9-118.4c3.3-7.9 3.3-16.7 0-24.6c-14.9-35.7-46.2-87.7-93-131.1C465.5 68.8 400.8 32 320 32c-68.2 0-125 26.3-169.3 60.8L38.8 5.1zM223.1 149.5C248.6 126.2 282.7 112 320 112c79.5 0 144 64.5 144 144c0 24.9-6.3 48.3-17.4 68.7L408 294.5c5.2-11.8 8-24.8 8-38.5c0-53-43-96-96-96c-2.8 0-5.6 .1-8.4 .4c5.3 9.3 8.4 20.1 8.4 31.6c0 10.2-2.4 19.8-6.6 28.3l-90.3-70.8zm223.1 298L373 389.9c-16.4 6.5-34.3 10.1-53 10.1c-79.5 0-144-64.5-144-144c0-6.9 .5-13.6 1.4-20.2L83.1 161.5C60.3 191.2 44 220.8 34.5 243.7c-3.3 7.9-3.3 16.7 0 24.6c14.9 35.7 46.2 87.7 93 131.1C174.5 443.2 239.2 480 320 480c47.8 0 89.9-12.9 126.2-32.5z"/></svg></span></template>
+        <template id=fa-copy><span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M502.6 70.63l-61.25-61.25C435.4 3.371 427.2 0 418.7 0H255.1c-35.35 0-64 28.66-64 64l.0195 256C192 355.4 220.7 384 256 384h192c35.2 0 64-28.8 64-64V93.25C512 84.77 508.6 76.63 502.6 70.63zM464 320c0 8.836-7.164 16-16 16H255.1c-8.838 0-16-7.164-16-16L239.1 64.13c0-8.836 7.164-16 16-16h128L384 96c0 17.67 14.33 32 32 32h47.1V320zM272 448c0 8.836-7.164 16-16 16H63.1c-8.838 0-16-7.164-16-16L47.98 192.1c0-8.836 7.164-16 16-16H160V128H63.99c-35.35 0-64 28.65-64 64l.0098 256C.002 483.3 28.66 512 64 512h192c35.2 0 64-28.8 64-64v-32h-47.1L272 448z"/></svg></span></template>
+        <template id=fa-play><span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 384 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M73 39c-14.8-9.1-33.4-9.4-48.5-.9S0 62.6 0 80V432c0 17.4 9.4 33.4 24.5 41.9s33.7 8.1 48.5-.9L361 297c14.3-8.7 23-24.2 23-41s-8.7-32.2-23-41L73 39z"/></svg></span></template>
+        <template id=fa-clock-rotate-left><span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M75 75L41 41C25.9 25.9 0 36.6 0 57.9V168c0 13.3 10.7 24 24 24H134.1c21.4 0 32.1-25.9 17-41l-30.8-30.8C155 85.5 203 64 256 64c106 0 192 86 192 192s-86 192-192 192c-40.8 0-78.6-12.7-109.7-34.4c-14.5-10.1-34.4-6.6-44.6 7.9s-6.6 34.4 7.9 44.6C151.2 495 201.7 512 256 512c141.4 0 256-114.6 256-256S397.4 0 256 0C185.3 0 121.3 28.7 75 75zm181 53c-13.3 0-24 10.7-24 24V256c0 6.4 2.5 12.5 7 17l72 72c9.4 9.4 24.6 9.4 33.9 0s9.4-24.6 0-33.9l-65-65V152c0-13.3-10.7-24-24-24z"/></svg></span></template>
+
+
+
+        <script>
+            window.playground_copyable = true;
+        </script>
+
+
+        <script src="elasticlunr-ef4e11c1.min.js"></script>
+        <script src="mark-09e88c2c.min.js"></script>
+        <script src="searcher-09f2665d.js"></script>
+
+        <script src="clipboard-1626706a.min.js"></script>
+        <script src="highlight-abc7f01d.js"></script>
+        <script src="book-609e4cb8.js"></script>
+
+        <!-- Custom JS scripts -->
+        <script src="theme/figures-47b15f7f.js"></script>
+        <script src="theme/proto-326509cd.js"></script>
+        <script src="theme/code-67e9caaf.js"></script>
+        <script src="theme/tables-9fb295e8.js"></script>
+        <script src="theme/steps-77f22afb.js"></script>
+
+
+
+    </div>
+    </body>
+</html>

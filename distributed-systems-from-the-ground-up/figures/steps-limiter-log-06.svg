@@ -1,0 +1,78 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="18 14 444 376" width="444" height="376" role="img" aria-label="Sliding window log, step 6 of 13. At 950 ms. No entry is older than 1 second, so none is removed. The log holds 4 entries, fewer than 5, so 950 is added: forwarded.">
+  <style>
+    text { font-family: Inter, "Segoe UI", "Helvetica Neue", Helvetica, Arial, sans-serif; fill: #1B2430; }
+    .title { font-size: 18px; font-weight: 650; }
+    .lede { font-size: 12.5px; fill: #5D6B7A; }
+    .name { font-size: 14px; font-weight: 650; }
+    .sub { font-size: 12px; fill: #5D6B7A; }
+    .note { font-size: 12px; fill: #5D6B7A; }
+    .tab { font-size: 11.5px; font-weight: 650; letter-spacing: 0.04em; fill: #5D6B7A; }
+    .mono { font-family: "JetBrains Mono", "SF Mono", Menlo, Consolas, monospace; font-size: 12px; }
+    .dim { fill: #8794A3; }
+    .strong { font-weight: 700; }
+    .trap { fill: #CF4526; font-weight: 700; }
+    .pill { font-size: 11px; font-weight: 600; }
+    .wire { fill: none; stroke: #3F5873; stroke-width: 2.4; stroke-linecap: butt; stroke-linejoin: round; }
+    .wire.danger { stroke: #CF4526; stroke-dasharray: 6 5; }
+    .wire.idle { stroke: #7F8EA0; stroke-dasharray: 2 5; }
+  </style>
+  <defs>
+    <filter id="lift" x="-10%" y="-10%" width="120%" height="135%">
+      <feDropShadow dx="0" dy="2" stdDeviation="3" flood-color="#1B2430" flood-opacity="0.13"/>
+    </filter>
+    <linearGradient id="thor-body" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#C6CCD5"/><stop offset="1" stop-color="#979EA9"/>
+    </linearGradient>
+    <linearGradient id="switch-body" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#3B4656"/><stop offset="1" stop-color="#232B37"/>
+    </linearGradient>
+    <marker id="head" viewBox="0 0 12 10" refX="8" refY="5" markerUnits="userSpaceOnUse" markerWidth="16" markerHeight="13.3" orient="auto">
+      <path d="M0,0.4 L12,5 L0,9.6 L2.8,5 Z" fill="#3F5873"/>
+    </marker>
+    <marker id="head-danger" viewBox="0 0 12 10" refX="8" refY="5" markerUnits="userSpaceOnUse" markerWidth="16" markerHeight="13.3" orient="auto">
+      <path d="M0,0.4 L12,5 L0,9.6 L2.8,5 Z" fill="#CF4526"/>
+    </marker>
+    <marker id="head-idle" viewBox="0 0 12 10" refX="8" refY="5" markerUnits="userSpaceOnUse" markerWidth="16" markerHeight="13.3" orient="auto">
+      <path d="M0,0.4 L12,5 L0,9.6 L2.8,5 Z" fill="#7F8EA0"/>
+    </marker>
+  </defs>
+  <rect width="480" height="396" rx="14" fill="#FBFAF6"/>
+  <text x="32.0" y="42.0" class="title" text-anchor="start" xml:space="preserve">Sliding window log</text>
+  <text x="32.0" y="63.0" class="lede" text-anchor="start" xml:space="preserve">The limit is 5 requests per second. Step 6 of 13.</text>
+  <line x1="40" y1="150" x2="440" y2="150" stroke="#5D6B7A" stroke-width="1.6"/>
+  <line x1="48.0" y1="145" x2="48.0" y2="155" stroke="#5D6B7A" stroke-width="1.6"/>
+  <text x="48.0" y="171.0" class="mono dim" text-anchor="middle" xml:space="preserve">0.5 s</text>
+  <line x1="240.0" y1="145" x2="240.0" y2="155" stroke="#5D6B7A" stroke-width="1.6"/>
+  <text x="240.0" y="171.0" class="mono dim" text-anchor="middle" xml:space="preserve">1.0 s</text>
+  <line x1="432.0" y1="145" x2="432.0" y2="155" stroke="#5D6B7A" stroke-width="1.6"/>
+  <text x="432.0" y="171.0" class="mono dim" text-anchor="middle" xml:space="preserve">1.5 s</text>
+  <circle cx="86.4" cy="136" r="6" fill="#2E8B3D" stroke="#FFFFFF" stroke-width="1.2"/>
+  <circle cx="124.8" cy="136" r="6" fill="#2E8B3D" stroke="#FFFFFF" stroke-width="1.2"/>
+  <circle cx="163.2" cy="136" r="6" fill="#2E8B3D" stroke="#FFFFFF" stroke-width="1.2"/>
+  <circle cx="201.6" cy="136" r="6" fill="#2E8B3D" stroke="#FFFFFF" stroke-width="1.2"/>
+  <circle cx="220.8" cy="136" r="6" fill="#2E8B3D" stroke="#FFFFFF" stroke-width="1.2"/>
+  <line x1="220.8" y1="118" x2="220.8" y2="156" stroke="#1B2430" stroke-width="2"/>
+  <text x="220.8" y="113.0" class="pill" text-anchor="middle" style="fill:#1B2430" xml:space="preserve">now</text>
+  <text x="40.0" y="96.0" class="tab" text-anchor="start" xml:space="preserve">REQUESTS OF 1 CLIENT</text>
+  <rect x="32.0" y="196.0" width="416.0" height="76.0" rx="10" fill="#FFFFFF" stroke="#1B2430" stroke-width="2"/>
+  <text x="44.0" y="216.0" class="tab" text-anchor="start" xml:space="preserve">LOG: ARRIVAL TIMES OF THE FORWARDED REQUESTS, IN MS</text>
+  <rect x="44.0" y="228.0" width="70.0" height="26.0" rx="5" fill="#FFFFFF" stroke="#D5DBE3" stroke-width="1.3"/>
+  <rect x="44.0" y="228.0" width="70.0" height="26.0" rx="5" fill="#E4F4EF" stroke="#1F8A70" stroke-width="1.3"/>
+  <text x="79.0" y="245.0" class="mono strong" text-anchor="middle" xml:space="preserve">600</text>
+  <rect x="120.0" y="228.0" width="70.0" height="26.0" rx="5" fill="#FFFFFF" stroke="#D5DBE3" stroke-width="1.3"/>
+  <rect x="120.0" y="228.0" width="70.0" height="26.0" rx="5" fill="#E4F4EF" stroke="#1F8A70" stroke-width="1.3"/>
+  <text x="155.0" y="245.0" class="mono strong" text-anchor="middle" xml:space="preserve">700</text>
+  <rect x="196.0" y="228.0" width="70.0" height="26.0" rx="5" fill="#FFFFFF" stroke="#D5DBE3" stroke-width="1.3"/>
+  <rect x="196.0" y="228.0" width="70.0" height="26.0" rx="5" fill="#E4F4EF" stroke="#1F8A70" stroke-width="1.3"/>
+  <text x="231.0" y="245.0" class="mono strong" text-anchor="middle" xml:space="preserve">800</text>
+  <rect x="272.0" y="228.0" width="70.0" height="26.0" rx="5" fill="#FFFFFF" stroke="#D5DBE3" stroke-width="1.3"/>
+  <rect x="272.0" y="228.0" width="70.0" height="26.0" rx="5" fill="#E4F4EF" stroke="#1F8A70" stroke-width="1.3"/>
+  <text x="307.0" y="245.0" class="mono strong" text-anchor="middle" xml:space="preserve">900</text>
+  <rect x="348.0" y="228.0" width="70.0" height="26.0" rx="5" fill="#FFFFFF" stroke="#D5DBE3" stroke-width="1.3"/>
+  <rect x="348.0" y="228.0" width="70.0" height="26.0" rx="5" fill="#E4F4EF" stroke="#1F8A70" stroke-width="1.3"/>
+  <text x="383.0" y="245.0" class="mono strong" text-anchor="middle" xml:space="preserve">950</text>
+  <rect x="32.0" y="296.0" width="416.0" height="88.0" rx="10" fill="#EEF2F7" stroke="#D5DBE3" stroke-width="1.3"/>
+  <text x="44.0" y="319.0" class="note" text-anchor="start" style="fill:#1B2430" xml:space="preserve">At 950 ms. No entry is older than 1 second, so none is</text>
+  <text x="44.0" y="337.0" class="note" text-anchor="start" style="fill:#1B2430" xml:space="preserve">removed. The log holds 4 entries, fewer than 5, so 950 is</text>
+  <text x="44.0" y="355.0" class="note" text-anchor="start" style="fill:#1B2430" xml:space="preserve">added: forwarded.</text>
+</svg>

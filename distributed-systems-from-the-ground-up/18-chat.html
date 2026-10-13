@@ -1,0 +1,768 @@
+<!DOCTYPE HTML>
+<html lang="en" class="light sidebar-visible" dir="ltr">
+    <head>
+        <!-- Book generated using mdBook -->
+        <meta charset="UTF-8">
+        <title>Chat - Distributed Systems from the Ground Up</title>
+
+
+        <!-- Custom HTML head -->
+
+        <meta name="description" content="System design and low-level design of resilient, fault-tolerant distributed systems, with code in Rust">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <meta name="theme-color" content="#ffffff">
+
+        <link rel="icon" href="favicon-de23e50b.svg">
+        <link rel="shortcut icon" href="favicon-8114d1fc.png">
+        <link rel="stylesheet" href="css/variables-8adf115d.css">
+        <link rel="stylesheet" href="css/general-e96d0476.css">
+        <link rel="stylesheet" href="css/chrome-d279d366.css">
+        <link rel="stylesheet" href="css/print-9e4910d8.css" media="print">
+
+        <!-- Fonts -->
+        <link rel="stylesheet" href="fonts/fonts-9644e21d.css">
+
+        <!-- Highlight.js Stylesheets -->
+        <link rel="stylesheet" id="mdbook-highlight-css" href="highlight-493f70e1.css">
+        <link rel="stylesheet" id="mdbook-tomorrow-night-css" href="tomorrow-night-4c0ae647.css">
+        <link rel="stylesheet" id="mdbook-ayu-highlight-css" href="ayu-highlight-3fdfc3ac.css">
+
+        <!-- Custom theme stylesheets -->
+        <link rel="stylesheet" href="theme/custom-8a495b63.css">
+
+
+        <!-- Provide site root and default themes to javascript -->
+        <script>
+            const path_to_root = "";
+            const default_light_theme = "light";
+            const default_dark_theme = "navy";
+            window.path_to_searchindex_js = "searchindex-fe51950f.js";
+        </script>
+        <!-- Start loading toc.js asap -->
+        <script src="toc-cc887274.js"></script>
+    </head>
+    <body>
+    <div id="mdbook-help-container">
+        <div id="mdbook-help-popup">
+            <h2 class="mdbook-help-title">Keyboard shortcuts</h2>
+            <div>
+                <p>Press <kbd>←</kbd> or <kbd>→</kbd> to navigate between chapters</p>
+                <p>Press <kbd>S</kbd> or <kbd>/</kbd> to search in the book</p>
+                <p>Press <kbd>?</kbd> to show this help</p>
+                <p>Press <kbd>Esc</kbd> to hide this help</p>
+            </div>
+        </div>
+    </div>
+    <div id="mdbook-body-container">
+        <!-- Work around some values being stored in localStorage wrapped in quotes -->
+        <script>
+            try {
+                let theme = localStorage.getItem('mdbook-theme');
+                let sidebar = localStorage.getItem('mdbook-sidebar');
+
+                if (theme.startsWith('"') && theme.endsWith('"')) {
+                    localStorage.setItem('mdbook-theme', theme.slice(1, theme.length - 1));
+                }
+
+                if (sidebar.startsWith('"') && sidebar.endsWith('"')) {
+                    localStorage.setItem('mdbook-sidebar', sidebar.slice(1, sidebar.length - 1));
+                }
+            } catch (e) { }
+        </script>
+
+        <!-- Set the theme before any content is loaded, prevents flash -->
+        <script>
+            const default_theme = window.matchMedia("(prefers-color-scheme: dark)").matches ? default_dark_theme : default_light_theme;
+            let theme;
+            try { theme = localStorage.getItem('mdbook-theme'); } catch(e) { }
+            if (theme === null || theme === undefined) { theme = default_theme; }
+            const html = document.documentElement;
+            html.classList.remove('light')
+            html.classList.add(theme);
+            html.classList.add("js");
+        </script>
+
+        <input type="checkbox" id="mdbook-sidebar-toggle-anchor" class="hidden">
+
+        <!-- Hide / unhide sidebar before it is displayed -->
+        <script>
+            let sidebar = null;
+            const sidebar_toggle = document.getElementById("mdbook-sidebar-toggle-anchor");
+            if (document.body.clientWidth >= 1080) {
+                try { sidebar = localStorage.getItem('mdbook-sidebar'); } catch(e) { }
+                sidebar = sidebar || 'visible';
+            } else {
+                sidebar = 'hidden';
+                sidebar_toggle.checked = false;
+            }
+            if (sidebar === 'visible') {
+                sidebar_toggle.checked = true;
+            } else {
+                html.classList.remove('sidebar-visible');
+            }
+        </script>
+
+        <nav id="mdbook-sidebar" class="sidebar" aria-label="Table of contents">
+            <!-- populated by js -->
+            <mdbook-sidebar-scrollbox class="sidebar-scrollbox"></mdbook-sidebar-scrollbox>
+            <noscript>
+                <iframe class="sidebar-iframe-outer" src="toc.html"></iframe>
+            </noscript>
+            <div id="mdbook-sidebar-resize-handle" class="sidebar-resize-handle">
+                <div class="sidebar-resize-indicator"></div>
+            </div>
+        </nav>
+
+        <div id="mdbook-page-wrapper" class="page-wrapper">
+
+            <div class="page">
+                <div id="mdbook-menu-bar-hover-placeholder"></div>
+                <div id="mdbook-menu-bar" class="menu-bar sticky">
+                    <div class="left-buttons">
+                        <label id="mdbook-sidebar-toggle" class="icon-button" for="mdbook-sidebar-toggle-anchor" title="Toggle Table of Contents" aria-label="Toggle Table of Contents" aria-controls="mdbook-sidebar">
+                            <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M0 96C0 78.3 14.3 64 32 64H416c17.7 0 32 14.3 32 32s-14.3 32-32 32H32C14.3 128 0 113.7 0 96zM0 256c0-17.7 14.3-32 32-32H416c17.7 0 32 14.3 32 32s-14.3 32-32 32H32c-17.7 0-32-14.3-32-32zM448 416c0 17.7-14.3 32-32 32H32c-17.7 0-32-14.3-32-32s14.3-32 32-32H416c17.7 0 32 14.3 32 32z"/></svg></span>
+                        </label>
+                        <button id="mdbook-theme-toggle" class="icon-button" type="button" title="Change theme" aria-label="Change theme" aria-haspopup="true" aria-expanded="false" aria-controls="mdbook-theme-list">
+                            <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 576 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M371.3 367.1c27.3-3.9 51.9-19.4 67.2-42.9L600.2 74.1c12.6-19.5 9.4-45.3-7.6-61.2S549.7-4.4 531.1 9.6L294.4 187.2c-24 18-38.2 46.1-38.4 76.1L371.3 367.1zm-19.6 25.4l-116-104.4C175.9 290.3 128 339.6 128 400c0 3.9 .2 7.8 .6 11.6c1.8 17.5-10.2 36.4-27.8 36.4H96c-17.7 0-32 14.3-32 32s14.3 32 32 32H240c61.9 0 112-50.1 112-112c0-2.5-.1-5-.2-7.5z"/></svg></span>
+                        </button>
+                        <ul id="mdbook-theme-list" class="theme-popup" aria-label="Themes" role="menu">
+                            <li role="none"><button role="menuitem" class="theme" id="mdbook-theme-default_theme">Auto</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="mdbook-theme-light">Light</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="mdbook-theme-rust">Rust</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="mdbook-theme-coal">Coal</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="mdbook-theme-navy">Navy</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="mdbook-theme-ayu">Ayu</button></li>
+                        </ul>
+                        <button id="mdbook-search-toggle" class="icon-button" type="button" title="Search (`/`)" aria-label="Toggle Searchbar" aria-expanded="false" aria-keyshortcuts="/ s" aria-controls="mdbook-searchbar">
+                            <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M416 208c0 45.9-14.9 88.3-40 122.7L502.6 457.4c12.5 12.5 12.5 32.8 0 45.3s-32.8 12.5-45.3 0L330.7 376c-34.4 25.2-76.8 40-122.7 40C93.1 416 0 322.9 0 208S93.1 0 208 0S416 93.1 416 208zM208 352c79.5 0 144-64.5 144-144s-64.5-144-144-144S64 128.5 64 208s64.5 144 144 144z"/></svg></span>
+                        </button>
+                    </div>
+
+                    <h1 class="menu-title">Distributed Systems from the Ground Up</h1>
+
+                    <div class="right-buttons">
+                        <a href="print.html" title="Print this book" aria-label="Print this book">
+                            <span class=fa-svg id="print-button"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M128 0C92.7 0 64 28.7 64 64v96h64V64H354.7L384 93.3V160h64V93.3c0-17-6.7-33.3-18.7-45.3L400 18.7C388 6.7 371.7 0 354.7 0H128zM384 352v32 64H128V384 368 352H384zm64 32h32c17.7 0 32-14.3 32-32V256c0-35.3-28.7-64-64-64H64c-35.3 0-64 28.7-64 64v96c0 17.7 14.3 32 32 32H64v64c0 35.3 28.7 64 64 64H384c35.3 0 64-28.7 64-64V384zm-16-88c-13.3 0-24-10.7-24-24s10.7-24 24-24s24 10.7 24 24s-10.7 24-24 24z"/></svg></span>
+                        </a>
+                        <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/tree/prep-v2/distributed-systems-from-the-ground-up" title="Git repository" aria-label="Git repository">
+                            <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 496 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M165.9 397.4c0 2-2.3 3.6-5.2 3.6-3.3.3-5.6-1.3-5.6-3.6 0-2 2.3-3.6 5.2-3.6 3-.3 5.6 1.3 5.6 3.6zm-31.1-4.5c-.7 2 1.3 4.3 4.3 4.9 2.6 1 5.6 0 6.2-2s-1.3-4.3-4.3-5.2c-2.6-.7-5.5.3-6.2 2.3zm44.2-1.7c-2.9.7-4.9 2.6-4.6 4.9.3 2 2.9 3.3 5.9 2.6 2.9-.7 4.9-2.6 4.6-4.6-.3-1.9-3-3.2-5.9-2.9zM244.8 8C106.1 8 0 113.3 0 252c0 110.9 69.8 205.8 169.5 239.2 12.8 2.3 17.3-5.6 17.3-12.1 0-6.2-.3-40.4-.3-61.4 0 0-70 15-84.7-29.8 0 0-11.4-29.1-27.8-36.6 0 0-22.9-15.7 1.6-15.4 0 0 24.9 2 38.6 25.8 21.9 38.6 58.6 27.5 72.9 20.9 2.3-16 8.8-27.1 16-33.7-55.9-6.2-112.3-14.3-112.3-110.5 0-27.5 7.6-41.3 23.6-58.9-2.6-6.5-11.1-33.3 2.6-67.9 20.9-6.5 69 27 69 27 20-5.6 41.5-8.5 62.8-8.5s42.8 2.9 62.8 8.5c0 0 48.1-33.6 69-27 13.7 34.7 5.2 61.4 2.6 67.9 16 17.7 25.8 31.5 25.8 58.9 0 96.5-58.9 104.2-114.8 110.5 9.2 7.9 17 22.9 17 46.4 0 33.7-.3 75.4-.3 83.6 0 6.5 4.6 14.4 17.3 12.1C428.2 457.8 496 362.9 496 252 496 113.3 383.5 8 244.8 8zM97.2 352.9c-1.3 1-1 3.3.7 5.2 1.6 1.6 3.9 2.3 5.2 1 1.3-1 1-3.3-.7-5.2-1.6-1.6-3.9-2.3-5.2-1zm-10.8-8.1c-.7 1.3.3 2.9 2.3 3.9 1.6 1 3.6.7 4.3-.7.7-1.3-.3-2.9-2.3-3.9-2-.6-3.6-.3-4.3.7zm32.4 35.6c-1.6 1.3-1 4.3 1.3 6.2 2.3 2.3 5.2 2.6 6.5 1 1.3-1.3.7-4.3-1.3-6.2-2.2-2.3-5.2-2.6-6.5-1zm-11.4-14.7c-1.6 1-1.6 3.6 0 5.9 1.6 2.3 4.3 3.3 5.6 2.3 1.6-1.3 1.6-3.9 0-6.2-1.4-2.3-4-3.3-5.6-2z"/></svg></span>
+                        </a>
+                        <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/edit/prep-v2/distributed-systems-from-the-ground-up/src/18-chat.md" title="Suggest an edit" aria-label="Suggest an edit" rel="edit">
+                            <span class=fa-svg id="git-edit-button"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M421.7 220.3l-11.3 11.3-22.6 22.6-205 205c-6.6 6.6-14.8 11.5-23.8 14.1L30.8 511c-8.4 2.5-17.5 .2-23.7-6.1S-1.5 489.7 1 481.2L38.7 353.1c2.6-9 7.5-17.2 14.1-23.8l205-205 22.6-22.6 11.3-11.3 33.9 33.9 62.1 62.1 33.9 33.9zM96 353.9l-9.3 9.3c-.9 .9-1.6 2.1-2 3.4l-25.3 86 86-25.3c1.3-.4 2.5-1.1 3.4-2l9.3-9.3H112c-8.8 0-16-7.2-16-16V353.9zM453.3 19.3l39.4 39.4c25 25 25 65.5 0 90.5l-14.5 14.5-22.6 22.6-11.3 11.3-33.9-33.9-62.1-62.1L314.3 67.7l11.3-11.3 22.6-22.6 14.5-14.5c25-25 65.5-25 90.5 0z"/></svg></span>
+                        </a>
+
+                    </div>
+                </div>
+
+                <div id="mdbook-search-wrapper" class="hidden">
+                    <form id="mdbook-searchbar-outer" class="searchbar-outer">
+                        <div class="search-wrapper">
+                            <input type="search" id="mdbook-searchbar" name="searchbar" placeholder="Search this book ..." aria-controls="mdbook-searchresults-outer" aria-describedby="searchresults-header">
+                            <div class="spinner-wrapper">
+                                <span class=fa-svg id="fa-spin"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M304 48c0-26.5-21.5-48-48-48s-48 21.5-48 48s21.5 48 48 48s48-21.5 48-48zm0 416c0-26.5-21.5-48-48-48s-48 21.5-48 48s21.5 48 48 48s48-21.5 48-48zM48 304c26.5 0 48-21.5 48-48s-21.5-48-48-48s-48 21.5-48 48s21.5 48 48 48zm464-48c0-26.5-21.5-48-48-48s-48 21.5-48 48s21.5 48 48 48s48-21.5 48-48zM142.9 437c18.7-18.7 18.7-49.1 0-67.9s-49.1-18.7-67.9 0s-18.7 49.1 0 67.9s49.1 18.7 67.9 0zm0-294.2c18.7-18.7 18.7-49.1 0-67.9S93.7 56.2 75 75s-18.7 49.1 0 67.9s49.1 18.7 67.9 0zM369.1 437c18.7 18.7 49.1 18.7 67.9 0s18.7-49.1 0-67.9s-49.1-18.7-67.9 0s-18.7 49.1 0 67.9z"/></svg></span>
+                            </div>
+                        </div>
+                    </form>
+                    <div id="mdbook-searchresults-outer" class="searchresults-outer hidden">
+                        <div id="mdbook-searchresults-header" class="searchresults-header"></div>
+                        <ul id="mdbook-searchresults">
+                        </ul>
+                    </div>
+                </div>
+
+                <!-- Apply ARIA attributes after the sidebar and the sidebar toggle button are added to the DOM -->
+                <script>
+                    document.getElementById('mdbook-sidebar-toggle').setAttribute('aria-expanded', sidebar === 'visible');
+                    document.getElementById('mdbook-sidebar').setAttribute('aria-hidden', sidebar !== 'visible');
+                    Array.from(document.querySelectorAll('#mdbook-sidebar a')).forEach(function(link) {
+                        link.setAttribute('tabIndex', sidebar === 'visible' ? 0 : -1);
+                    });
+                </script>
+
+                <div id="mdbook-content" class="content">
+                    <main>
+                        <img class="plate" src="art/ch18.svg?v=9210dffb" alt="2 pigeons stand beside a sign that lists messages 1 to 4 and the words: last received 1.">
+<h1 id="chat-system-design"><a class="header" href="#chat-system-design">Chat: System Design</a></h1>
+<p>A chat service carries short messages between people, and its users hold it to a
+standard that few other systems are asked to meet. A message is expected to appear on
+the recipient’s screen within a moment of being sent, as though the 2 phones were
+directly connected. It is expected to arrive whether or not the recipient’s phone was
+reachable at the time, to arrive once, and to appear among the other messages of the
+conversation in the order in which they were sent. People notice at once when any of
+these expectations is disappointed, since a conversation in which replies precede
+their questions, or in which a remark is repeated, or in which something said an hour
+ago turns up now, is immediately felt to be broken.</p>
+<p>The system has to meet this standard on a foundation that is distinctly unreliable. A
+mobile phone loses its connection many times a day, in lifts and tunnels and when
+passing from one network to another. Its operating system suspends applications that
+are not on the screen. A message, or the acknowledgement of a message, may be lost at
+any point, and neither party can tell which of the 2 was lost. The design of a chat
+service consists largely in arranging matters so that none of this is visible: so that
+every interruption is followed by an exact recovery, and no message is lost, repeated
+or misplaced in consequence.</p>
+<div class="covers">
+<p>This chapter covers</p>
+<ul>
+<li>how a server can send to a phone that has not asked: 3 methods compared</li>
+<li>gateways, which hold the open connections, and the record of who is connected where</li>
+<li>numbering the messages of a conversation</li>
+<li>how 1 number per message deals with gaps, repetitions and disorder</li>
+<li>catching up after an absence, with a cursor</li>
+<li>sending a message twice without storing it twice</li>
+<li>sent, delivered and read</li>
+<li>groups, several devices, presence, and recipients who are offline</li>
+<li>what end-to-end encryption changes</li>
+</ul>
+</div>
+
+<h2 id="reaching-a-phone-that-has-not-asked"><a class="header" href="#reaching-a-phone-that-has-not-asked">Reaching a phone that has not asked</a></h2>
+<p>In the ordinary use of HTTP, every exchange is begun by the client. The client sends a
+request and the server replies, and a server has no means of addressing a client that
+has not just asked it something. For most applications this is no restriction. For
+chat it is the first obstacle, since the essential act of the service is to deliver a
+message to a phone at a moment the phone could not have predicted.</p>
+<p>There are 3 ways round the obstacle, and they are best compared by what each costs in
+delay and in wasted effort.</p>
+<figure>
+<img src="figures/chat-connections.svg?v=22c24da1" alt="3 time axes on which a message for a phone reaches the server at 1.3 seconds. When the phone asks every second, it receives the message at 2.0 seconds, and 3 other requests come back empty. When the phone asks and the server holds the request until there is an answer, the phone receives the message at 1.3 seconds and asks again. With 1 connection that stays open, the phone receives the message at 1.3 seconds and no requests are made.">
+<figcaption><b>Figure 18.1</b> A message reaches the server at 1.3 seconds, and the phone learns of it under each of 3 methods.</figcaption>
+</figure>
+<p>The first method is for the phone to ask at regular intervals whether anything has
+arrived, which is called <em>polling</em>. It is trivially simple and unsatisfactory in both
+respects. A message waits, on average, for half the interval before the next request
+collects it, and nearly all the requests return nothing, so that a phone polling once
+a second makes 86400 requests a day in order to receive perhaps 50 messages. Shortening
+the interval reduces the delay and multiplies the waste, and across millions of phones
+the empty requests alone amount to a formidable load.</p>
+<p>The second method, <em>long polling</em>, removes most of both defects by a simple change on
+the server. The phone sends a request as before, and the server, if it has nothing to
+report, refrains from answering and holds the request open. When a message arrives,
+the server answers the waiting request with it, and the phone, having received the
+answer, immediately sends another request to wait on. Messages are delivered as soon
+as they arrive, and no request is answered empty except when one has been held for so
+long, usually about half a minute, that it is released to prevent intermediate network
+equipment from concluding that the connection is dead.</p>
+<p>The third method abandons the pattern of request and reply. The phone opens a single
+connection to the server and keeps it open, and either side may send on it at any
+time. The protocol that provides this over the same ports and through the same
+infrastructure as HTTP is called <em>WebSocket</em>. It has the lowest delay and the least
+overhead, since a message in either direction is a small frame on an existing
+connection and involves no new request.</p>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th></th><th>Polling</th><th>Long polling</th><th>Open connection</th></tr>
+</thead>
+<tbody>
+<tr><td>Delay before a message is received</td><td>up to 1 interval</td><td>none</td><td>none</td></tr>
+<tr><td>Requests when nothing happens</td><td>1 per interval</td><td>1 per half minute or so</td><td>none, apart from a periodic sign of life</td></tr>
+<tr><td>What the server holds for each phone</td><td>nothing</td><td>1 waiting request</td><td>1 connection</td></tr>
+<tr><td>Sending from phone to server</td><td>a separate request</td><td>a separate request</td><td>on the same connection</td></tr>
+</tbody>
+</table>
+</div>
+<p>Chat services use the open connection, falling back on long polling in the rare
+environments where a connection of the third kind cannot be established. The price is
+in the third row of the table. The server must now maintain a connection for every
+phone that is online, and with 50 million phones online that is 50 million connections
+held open at once, most of them idle at any instant. This single fact shapes the
+architecture of the service.</p>
+<h2 id="gateways-and-sessions"><a class="header" href="#gateways-and-sessions">Gateways and sessions</a></h2>
+<p>An open connection is a resource of an unusual kind. It consumes little processing
+and a modest amount of memory, and it is tied irrevocably to the particular machine on
+which it terminates: a message for a given phone can be written to its connection only
+by the 1 process that holds that connection. The service therefore sets aside a class
+of servers, called <em>gateways</em>, whose sole function is to hold connections. A gateway
+accepts connections from phones, authenticates them, relays what arrives on them to
+the rest of the service, and writes to them whatever the rest of the service asks it
+to deliver. It contains as little other logic as possible, so that the software which
+changes often, concerning messages and conversations, can be deployed without
+disturbing the millions of connections.</p>
+<p>A properly configured machine can hold some hundreds of thousands of idle connections,
+and at 100000 each, 50 million phones require 500 gateways. A message addressed to a
+member must be handed to the particular gateway on which that member’s phone is
+connected, and so the service needs to know, for every member who is online, which
+gateway that is. This knowledge is kept in a <em>session store</em>, an in-memory store
+mapping each connected device to its gateway. A gateway writes an entry when a phone
+connects and removes it when the phone disconnects.</p>
+<p>The session store can be wrong, and the design has to allow for it. A gateway that
+crashes has no opportunity to remove its entries, which continue to assert that
+100000 phones are connected to a machine that no longer exists. Every entry is
+therefore given a time limit and must be renewed periodically by the gateway that owns
+it, so that the entries of a dead gateway lapse of their own accord, which is the
+lease of chapter 10 in another setting. More fundamentally, the session store is
+treated as a hint and nothing more. If the service forwards a message to a gateway and
+the phone proves not to be there, nothing has been lost, since the message is safely
+stored and the phone will collect it when it reconnects, by the mechanism described
+below. The correctness of delivery does not depend on the session store’s being
+accurate, only its speed.</p>
+<p>When a gateway does fail, its 100000 phones all detect the loss within a few seconds
+and all attempt to reconnect. If they did so immediately, the surviving gateways
+would receive 100000 connection attempts in the same instant, each requiring a
+cryptographic handshake, and might themselves be overwhelmed, causing further
+disconnections and further attempts. Phones therefore wait for a random interval
+before reconnecting and lengthen the interval after each failure, which is the backoff
+with jitter of chapter 13 applied by the client.</p>
+<h2 id="numbering-the-messages-of-a-conversation"><a class="header" href="#numbering-the-messages-of-a-conversation">Numbering the messages of a conversation</a></h2>
+<p>We come now to the central problem, which is to ensure that every member of a
+conversation sees the same messages in the same order, without omission or
+repetition, in spite of everything that can happen to connections.</p>
+<p>It is necessary first to say what “the order” is, since the obvious definition does
+not survive examination. One might order messages by the time at which they were sent,
+as recorded by the sender’s phone. But the clocks of phones differ by seconds or
+minutes, and a phone whose clock is slow would have its messages placed before
+messages to which they are replies. Nor can the times at which messages arrive at the
+various recipients be used, since these differ from one recipient to another, and the
+members would see different orders.</p>
+<p>The order is therefore defined by decree, at a single place. All messages of a
+conversation pass through 1 point in the service, which assigns to each the next
+number in a sequence belonging to that conversation: 1, 2, 3 and so on. The order of
+the conversation is the order of these numbers, for every member and on every device.
+A number of this kind is a <em>sequence number</em>, and the reader will recognise it as the
+sequence number that the leader of a shard assigned to each record in chapter 3. The
+message store that assigns it is, in fact, a replicated log for each conversation, and
+the requirement that 2 messages never receive the same number is met in the same way,
+by having a single leader accept all appends to a given conversation.</p>
+<p>The effect of this decision is to reduce the whole problem of reliable, ordered
+delivery to a matter of arithmetic on the recipient’s device. Each device remembers 1
+number for each conversation, the number of the last message it has displayed, and
+compares the number of every incoming message with it.</p>
+<figure class="steps" data-prefix="figures/steps-chat-catchup" data-count="7" data-version="d7621933">
+<img src="figures/steps-chat-catchup-01.svg?v=d7621933" alt="A phone catches up after a gap, step 1 of 7. The server gives every message of a conversation the next number. The phone is online and shows message 1. It remembers that 1 is the last number it has shown.">
+<figcaption><b>Figure 18.2</b> A phone loses its connection while 3 messages are sent, receives 1 of them out of order, catches up, and ignores a repeated message. Use Next and Back to move through the 7 steps.</figcaption>
+</figure>
+<p>3 distinct faults occur in the course of these steps, and the same comparison
+disposes of each. A message whose number is exactly 1 greater than the last displayed
+is the next message, and is shown. A message whose number is greater than that has
+arrived ahead of others that are missing, and the device does not show it, since to do
+so would present the conversation out of order. It asks the server for everything
+after the last number it has. A message whose number is equal to or less than the last
+displayed has been seen before, and is discarded. The simulation for this chapter runs
+exactly this scenario, and ends with 4 messages on the server and the same 4, in the
+same order and each once, on the phone.</p>
+<p>The number that a device remembers is called its <em>cursor</em>, and it is what makes
+recovery from an absence exact. A device that has been offline does not ask the server
+what it has missed, a question the server could answer only by keeping track of what
+each device has received. The device states its position, “I have everything up to
+number 1 in this conversation”, and the server replies with everything after that
+position. The server keeps no record of deliveries and has no need to know why the
+device was away or for how long. A phone that was switched off for a week recovers by
+the same request as a phone that passed through a tunnel.</p>
+<h2 id="sending-without-duplicating"><a class="header" href="#sending-without-duplicating">Sending without duplicating</a></h2>
+<p>The preceding section dealt with messages travelling to a device. A similar hazard
+attends messages travelling from it. A phone sends a message and waits for the
+server’s confirmation. If none arrives, the phone cannot distinguish between a message
+that never reached the server and a message that was stored and whose confirmation
+was lost, and since an unsent message is the worse outcome, it must send again. In the
+second case the server now receives the same message twice, and a server that stored
+whatever it received would give the 2 copies 2 successive numbers, to be displayed
+twice on every member’s screen.</p>
+<figure class="steps" data-prefix="figures/steps-chat-send" data-count="5" data-version="a60bd9ad">
+<img src="figures/steps-chat-send-01.svg?v=a60bd9ad" alt="Sent twice, stored once, step 1 of 5. Before sending, the phone gives the message an identifier of its own, chosen at random: a7f3. The identifier travels with the message.">
+<figcaption><b>Figure 18.3</b> The confirmation of a message is lost, the phone sends the message again, and the server recognises it. Use Next and Back to move through the 5 steps.</figcaption>
+</figure>
+<p>The remedy is the idempotency key that chapters 11 and 13 used for the same purpose.
+The phone generates a random identifier for each message before the first attempt and
+includes it in every attempt. The server records the identifier with the stored
+message, and on receiving an identifier it has already recorded for that conversation,
+stores nothing and returns the number it assigned originally. A message may then be
+sent any number of times and will be stored once.</p>
+<p>The same identifier serves the phone in another way. A message that has been typed
+and sent should appear in the sender’s own view of the conversation at once, before
+the server has confirmed it, since any perceptible delay makes the application feel
+sluggish. The phone therefore displays the message immediately, marked as pending,
+and when the confirmation arrives with the server’s number, it uses the identifier to
+find the pending message and move it to its proper place in the sequence.</p>
+<h2 id="sent-delivered-and-read"><a class="header" href="#sent-delivered-and-read">Sent, delivered and read</a></h2>
+<p>Chat applications commonly show the sender how far a message has progressed, and the
+3 customary indications correspond to 3 different events in the system. A message is
+<em>sent</em> when the server has stored it and assigned its number, at which point it is
+safe and will not be lost. It is <em>delivered</em> when a device of the recipient has
+received it, which the device reports by informing the server of its new cursor. It is
+<em>read</em> when the recipient has opened the conversation, which the device reports
+similarly, as the number of the last message actually displayed on screen.</p>
+<p>It will be seen that delivery and reading are both conveyed by a single number for
+each device, with no separate acknowledgement for every message. A cursor of 40
+acknowledges messages 1 to 40 together. This economy matters in large and busy
+conversations, and it has the further merit of being idempotent, since reporting the
+same cursor twice has no additional effect.</p>
+<p>These reports are themselves events that must be conveyed to the sender’s devices,
+and they pass through the same machinery as messages. They are, however, of less
+consequence. A message that is lost is a serious failure, whereas a read indication
+that arrives late or is occasionally lost is a blemish, and services accordingly
+transmit such indications with less ceremony, without storing each durably.</p>
+<h2 id="recipients-who-are-offline"><a class="header" href="#recipients-who-are-offline">Recipients who are offline</a></h2>
+<p>When a message is stored and the recipient has no device connected, the service has
+done all that it can do directly. The message waits in the store, and will be
+delivered by the catching-up procedure when a device next connects.</p>
+<p>To the recipient, however, a message that waits until the application is next opened
+has not really arrived. The service therefore asks the notification service of chapter
+13 to send a push notification through the provider that serves the phone’s operating
+system, which is able to wake the device and display an alert even when the
+application is not running. The notification is merely a signal. It may be delayed or
+dropped by the provider, as chapter 13 explained, and it need not carry the message
+itself. When the user responds to it, the application opens its connection, reports
+its cursor, and obtains the messages in the ordinary way. Reliability thus continues
+to rest on the store and the cursor, and the notification serves only to bring the
+user back sooner.</p>
+<p>Mobile operating systems reinforce this division. They suspend applications that are
+in the background and close their connections in order to save power, so that a phone
+is, from the service’s point of view, offline for most of the day although it is
+switched on and in its owner’s pocket. The combination of a push notification to
+attract attention and a cursor to recover the state is the pattern to which every
+mobile messaging application conforms.</p>
+<h2 id="groups-and-several-devices"><a class="header" href="#groups-and-several-devices">Groups and several devices</a></h2>
+<p>A conversation with many members requires no new mechanism. The message is stored
+once, in the conversation’s sequence, and each member’s devices keep their own
+cursors. What differs is the work of delivery: the chat service must look up the
+sessions of every member and forward the message to the gateway of each one who is
+online, which is the fan-out of chapter 15.</p>
+<p>For groups of ordinary size, a few dozen or a few hundred members, this is done
+directly. For very large groups, of tens of thousands, direct fan-out for every
+message becomes as expensive as it was for the accounts with millions of followers in
+chapter 15, and the same remedy applies. Devices are told only that the conversation
+has new messages, or discover it when the conversation is opened, and then fetch from
+their cursors.</p>
+<p>A member who uses a phone, a tablet and a computer has 3 devices, each of which may
+be online or offline independently, and each must show the complete conversation. This
+too is already provided for, since every device has a cursor of its own and catches up
+separately. A message sent from the phone reaches the member’s own computer in the
+same way that it reaches the other members, by being stored in the sequence and
+delivered to every device that has not yet reached that number. The 1 thing that is
+shared among a member’s devices is the position up to which the member has read, so
+that a conversation read on the phone is not shown as unread on the computer.</p>
+<h2 id="presence"><a class="header" href="#presence">Presence</a></h2>
+<p>Many applications show whether a contact is at present online, which is called
+<em>presence</em>. It appears a small feature and is, relative to its importance, among the
+most expensive.</p>
+<p>The difficulty is one of fan-out. Whenever a member comes online or goes offline,
+every contact who might be displaying that member’s status must be informed, and with
+phones connecting and disconnecting continually, a member with 500 contacts produces
+500 notifications at each change of state. Across all members, the traffic in presence
+updates can exceed the traffic in messages.</p>
+<p>Services contain this in several ways. Presence is declared to be eventually
+consistent, and a status that is some seconds out of date is accepted. Updates are
+sent only to contacts who are themselves online and have the member in view, a device
+subscribing to the presence of the contacts it is currently displaying and to no
+others. And a brief disconnection is not announced at all: the service waits some
+seconds before declaring a member offline, so that a phone which drops its connection
+and restores it at once does not cause its owner to flicker in a thousand contact
+lists.</p>
+<p>The indication that someone is typing is handled in the same spirit. It is forwarded
+to the other participants who are online and is stored nowhere, since if it is lost
+nothing of value is lost with it.</p>
+<h2 id="storing-messages"><a class="header" href="#storing-messages">Storing messages</a></h2>
+<p>At 20 billion messages a day, the message store receives some 230000 writes a second
+and grows by terabytes daily. Its pattern of access is, fortunately, very regular.
+Messages are always appended to the end of a conversation and almost always read as a
+range from the end of a conversation, the most recent 50, or everything after a
+cursor.</p>
+<p>The store is accordingly keyed by conversation and, within a conversation, by sequence
+number, so that the messages of a conversation lie together in order and a request for
+a range reads 1 contiguous run. It is divided among shards by a hash of the
+conversation identifier, in the manner of chapter 1, so that each conversation resides
+entirely on 1 shard and has 1 leader assigning its numbers. A very active conversation
+becomes a hot key in the sense of chapter 9, and the shards must be small enough that
+1 busy group cannot overwhelm its neighbours.</p>
+<p>Recent messages are requested constantly and old ones hardly ever, since people
+seldom scroll back more than a few days. The store can therefore keep recent messages
+on fast storage and move older ones to cheaper media, as the object store of chapter
+16 does with cold data.</p>
+<h2 id="end-to-end-encryption"><a class="header" href="#end-to-end-encryption">End-to-end encryption</a></h2>
+<p>In the design described, the service can read every message, since messages reach it
+in a form it is able to store, index and search. Many chat services now offer
+<em>end-to-end encryption</em>, in which a message is encrypted on the sender’s device with
+keys known only to the participants’ devices and is decrypted only on the recipients’
+devices. The service transports and stores ciphertext that it has no means of reading.</p>
+<p>Nothing in the architecture of this chapter is thereby altered. The service still
+numbers, stores, forwards and replays messages, which are now opaque to it. What
+changes is everything that depended on the server’s knowledge of the contents. The
+server can no longer search messages, so search must be performed on each device over
+its own copy. It cannot compose the text of a push notification, so the notification
+carries ciphertext or a bare signal, and the device decrypts or fetches. A newly added
+device cannot be given the history by the server in readable form, and must obtain the
+means of reading it from another of the member’s devices. The exchange and
+verification of keys, which is the difficult part of such a scheme, is a subject for a
+book on cryptography.</p>
+<h2 id="use-cases"><a class="header" href="#use-cases">Use cases</a></h2>
+<p>A member sends messages, receives them, and returns after absences of every length.</p>
+<figure>
+<img src="figures/chat-use-cases.svg?v=53ad15c1" alt="A use case diagram of the chat service. Member: send a message (POST /v1/conversations/{id}/messages), catch up after being offline (GET ...?after=17), see who is online (GET /v1/members/{id}/presence).">
+<figcaption><b>Figure 18.4</b> The actors and what each of them does.</figcaption>
+</figure>
+<h2 id="functional-requirements"><a class="header" href="#functional-requirements">Functional requirements</a></h2>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th>No.</th><th>Functional requirement</th></tr>
+</thead>
+<tbody>
+<tr><td>0</td><td>A member can send a message to a conversation of 2 or more members.</td></tr>
+<tr><td>1</td><td>A member who is online receives a message within 500 ms.</td></tr>
+<tr><td>2</td><td>A member who was offline receives every missed message after reconnecting.</td></tr>
+<tr><td>3</td><td>Messages in a conversation are shown in the same order to every member.</td></tr>
+<tr><td>4</td><td>A message is shown once, even when it is delivered more than once.</td></tr>
+</tbody>
+</table>
+</div>
+<h2 id="non-functional-requirements"><a class="header" href="#non-functional-requirements">Non-functional requirements</a></h2>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th>No.</th><th>Property</th><th>Non-functional requirement</th></tr>
+</thead>
+<tbody>
+<tr><td>0</td><td>Durability</td><td>A message that the sender saw as sent is not lost.</td></tr>
+<tr><td>1</td><td>Consistency</td><td>Strong within a conversation: 1 order of messages. Presence is eventual.</td></tr>
+<tr><td>2</td><td>Availability</td><td>99.95% for sending and receiving.</td></tr>
+<tr><td>3</td><td>Scale</td><td>50 million members online, and 20 billion messages per day.</td></tr>
+</tbody>
+</table>
+</div>
+<p>Order is the property that members perceive most directly, and so the sequence of
+each conversation is strongly consistent. A message is confirmed to its sender only
+when a majority of the replicas of the conversation’s log has stored it under its
+number, and no 2 replicas ever disagree about which message bears a given number.
+Everything of secondary importance, presence, typing indications and read positions,
+is eventually consistent, on the principle that it is better for these to be briefly
+wrong than for the sending of messages to wait upon them.</p>
+<h2 id="core-entities"><a class="header" href="#core-entities">Core entities</a></h2>
+<figure>
+<img src="figures/chat-entities.svg?v=74a35f50" alt="The core entities. Message has the fields conversation u64, number u64, sender string, text string. Conversation has the fields id u64, members string[], last u64. Cursor has the fields member string, conversation u64, received u64. Every message has a number within its conversation. A Cursor records the last number a member&#39;s device has received.">
+<figcaption><b>Figure 18.5</b> The core entities and their fields.</figcaption>
+</figure>
+<h2 id="capacity-estimate"><a class="header" href="#capacity-estimate">Capacity estimate</a></h2>
+<div class="estimate">
+<img class="builder" src="art/crab-builder.svg" alt="A crab in a hard hat, in tears.">
+<p><strong>Arithmetic ahead.</strong> 50 million open connections need about 500 gateway servers, and 20 billion messages per day are 230000 per second.</p>
+<p><a class="skip" href="#high-level-design">Skip to the high-level design</a></p>
+<details>
+<summary>Show the calculation</summary>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th>Quantity</th><th>Calculation</th><th>Result</th></tr>
+</thead>
+<tbody>
+<tr><td>Connections per gateway</td><td>given</td><td>100000</td></tr>
+<tr><td>Gateways</td><td>50000000 ÷ 100000</td><td>500</td></tr>
+<tr><td>Messages per second</td><td>20000000000 ÷ 86400</td><td>231000</td></tr>
+<tr><td>Storage per day</td><td>20 billion × 200 bytes</td><td>4 TB</td></tr>
+</tbody>
+</table>
+</div>
+</details>
+</div>
+
+<h2 id="the-api"><a class="header" href="#the-api">The API</a></h2>
+<p>Sending a message and catching up are ordinary HTTP requests, shown below. Live
+delivery takes place on the open connection, on which the server pushes each new
+message as a small frame carrying the conversation, the number and the content.</p>
+<p><strong>Send a message</strong></p>
+<pre><code class="language-http">POST /v1/conversations/301/messages HTTP/1.1
+Host: chat.example
+Idempotency-Key: phone-a-000512
+Content-Type: application/json
+
+{ "text": "are you coming?" }
+</code></pre>
+<pre><code class="language-http">HTTP/1.1 201 Created
+Content-Type: application/json
+
+{ "number": 1, "time": "2026-10-14T09:00:00Z" }
+</code></pre>
+<p>The server chooses the number. The key lets the phone send again after a lost answer without creating a second message.</p>
+<p><strong>Catch up after being offline</strong></p>
+<pre><code class="language-http">GET /v1/conversations/301/messages?after=1 HTTP/1.1
+Host: chat.example
+</code></pre>
+<pre><code class="language-http">HTTP/1.1 200 OK
+Content-Type: application/json
+
+{
+  "messages": [
+    { "number": 2, "sender": "bob", "text": "hello?" },
+    { "number": 3, "sender": "bob", "text": "we are starting" },
+    { "number": 4, "sender": "bob", "text": "table 4" }
+  ]
+}
+</code></pre>
+<p><code>after=1</code> is the phone’s cursor: the last number it has shown.</p>
+<h2 id="high-level-design"><a class="header" href="#high-level-design">High-level design</a></h2>
+<figure class="wide">
+<img src="figures/chat-design.svg?v=12795254" alt="Delivering a chat message. The components are Sender&#39;s phone, Gateway A, Chat service, Message store, Gateway B, Receiver&#39;s phone, Session store. Step 1: The sender&#39;s phone sends the message over its connection. Step 2: The gateway passes it to the chat service. Step 3: The service gives it the next number and stores it. Step 4: It finds the receiver&#39;s gateway and forwards the message. Step 5: The gateway pushes it to the receiver&#39;s phone.">
+<figcaption><b>Figure 18.6</b> The components and the path of a request. The steps are numbered.</figcaption>
+</figure>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th>Component</th><th>Role</th><th>State it holds</th><th>When 1 instance fails</th></tr>
+</thead>
+<tbody>
+<tr><td>Gateway</td><td>holds the open connections of many phones</td><td>connections, in memory</td><td>its phones reconnect to another gateway and catch up</td></tr>
+<tr><td>Chat service</td><td>numbers and stores messages, and forwards them</td><td>none</td><td>another instance takes the requests</td></tr>
+<tr><td>Message store</td><td>keeps every conversation’s messages in order</td><td>messages, replicated</td><td>a follower takes over, as in chapter 4</td></tr>
+<tr><td>Session store</td><td>remembers which gateway each online member is connected to</td><td>sessions, in memory</td><td>phones re-register when they reconnect</td></tr>
+</tbody>
+</table>
+</div>
+<h3 id="one-request-step-by-step"><a class="header" href="#one-request-step-by-step">One request, step by step</a></h3>
+<p>The steps follow the arrows of figure 18.6.</p>
+<ol>
+<li>The sender’s phone sends the message over the connection it keeps open to gateway A.</li>
+<li>Gateway A passes the message to the chat service.</li>
+<li>The chat service asks the message store to append it. The store gives it the next number of the conversation, and the sender is told that the message is sent.</li>
+<li>The chat service looks up the receiver in the session store, finds gateway B, and forwards the message there. A receiver who is offline is skipped: the message waits in the store.</li>
+<li>Gateway B pushes the message down the receiver’s open connection.</li>
+</ol>
+<h2 id="mistakes-to-avoid"><a class="header" href="#mistakes-to-avoid">Mistakes to avoid</a></h2>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th>Mistake</th><th>What goes wrong</th><th>What to do</th></tr>
+</thead>
+<tbody>
+<tr><td>Ordering messages by the sender’s clock</td><td>Phones’ clocks differ, and replies appear before the messages they answer.</td><td>Let the server number the messages of each conversation.</td></tr>
+<tr><td>Displaying whatever arrives</td><td>A message that overtakes others appears out of order, and a repeat appears twice.</td><td>Display a message only if its number follows the last one shown.</td></tr>
+<tr><td>Sending only new messages after a reconnection</td><td>Whatever was sent during the absence is never delivered.</td><td>Have the device report its cursor, and send everything after it.</td></tr>
+<tr><td>Tracking on the server what each device has received</td><td>The server holds a great deal of state and still cannot know what was lost in transit.</td><td>Let each device keep its cursor and report it.</td></tr>
+<tr><td>Storing every message the server receives</td><td>A retry after a lost confirmation is stored as a second message.</td><td>Have the phone attach an identifier, and store each identifier once.</td></tr>
+<tr><td>Trusting the session store</td><td>A message is sent to a gateway where the phone no longer is, and is considered delivered.</td><td>Treat sessions as a hint, and rely on the stored sequence and the cursor.</td></tr>
+<tr><td>Session entries without a time limit</td><td>A crashed gateway’s phones appear connected indefinitely.</td><td>Give entries a lease that the gateway renews.</td></tr>
+<tr><td>Reconnecting immediately after a gateway fails</td><td>Its phones overwhelm the remaining gateways.</td><td>Reconnect after a random, lengthening delay.</td></tr>
+<tr><td>Relying on a push notification to deliver the message</td><td>Notifications are delayed and dropped, and messages with them.</td><td>Use the notification as a signal, and fetch from the cursor.</td></tr>
+<tr><td>Announcing every change of presence to every contact</td><td>Presence traffic exceeds message traffic.</td><td>Inform only contacts who are watching, and wait before declaring someone offline.</td></tr>
+<tr><td>Putting message logic in the gateways</td><td>Every deployment drops millions of connections.</td><td>Keep gateways minimal and deploy the logic separately.</td></tr>
+</tbody>
+</table>
+</div>
+<h2 id="failures"><a class="header" href="#failures">Failures</a></h2>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th>Failure</th><th>What users see</th><th>How the system recovers</th></tr>
+</thead>
+<tbody>
+<tr><td>The receiver is offline</td><td>the message arrives later</td><td>it waits in the message store until the phone reports its cursor</td></tr>
+<tr><td>A gateway crashes</td><td>its phones show ‘connecting’ for a moment</td><td>they reconnect elsewhere and catch up from their cursors</td></tr>
+<tr><td>The answer to a send is lost</td><td>the sender’s phone sends again</td><td>the idempotency key returns the same message number</td></tr>
+</tbody>
+</table>
+</div>
+<h2 id="trade-offs"><a class="header" href="#trade-offs">Trade-offs</a></h2>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th>Decision</th><th>What it gains</th><th>What it costs</th></tr>
+</thead>
+<tbody>
+<tr><td>Open connections</td><td>messages arrive at once</td><td>servers hold 1 connection per online phone</td></tr>
+<tr><td>Numbers per conversation</td><td>order, gaps and repeats are handled by 1 mechanism</td><td>every message goes through the store that assigns numbers</td></tr>
+<tr><td>Storing every message</td><td>offline members catch up</td><td>storage grows with every message</td></tr>
+</tbody>
+</table>
+</div>
+<h2 id="the-simulation"><a class="header" href="#the-simulation">The simulation</a></h2>
+<div class="simulation">
+<p><strong>Simulation in the repository.</strong> The program <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/distributed-systems-from-the-ground-up/code/chatsim/src/main.rs"><code>code/chatsim</code></a> simulates this design. To run it, clone the repository and type <code>cargo run --release -p chatsim</code> in the <code>code</code> directory.</p>
+</div>
+
+<h2 id="terms-introduced-in-this-chapter"><a class="header" href="#terms-introduced-in-this-chapter">Terms introduced in this chapter</a></h2>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th>Term</th><th>Meaning</th></tr>
+</thead>
+<tbody>
+<tr><td>Polling</td><td>asking at regular intervals whether anything has arrived</td></tr>
+<tr><td>Long polling</td><td>asking, and having the server hold the request until it has an answer</td></tr>
+<tr><td>WebSocket</td><td>a protocol for a connection that stays open, on which either side may send</td></tr>
+<tr><td>Gateway</td><td>a server whose function is to hold many open connections</td></tr>
+<tr><td>Session</td><td>the record that a device is connected to a particular gateway</td></tr>
+<tr><td>Conversation</td><td>a set of members and the ordered messages exchanged among them</td></tr>
+<tr><td>Sequence number</td><td>the position of a message in its conversation, assigned by the server</td></tr>
+<tr><td>Cursor</td><td>the number of the last message a device has received or displayed</td></tr>
+<tr><td>Catching up</td><td>fetching every message after a device’s cursor</td></tr>
+<tr><td>Sent, delivered, read</td><td>stored by the server, received by a device, and displayed to the recipient</td></tr>
+<tr><td>Presence</td><td>whether a member is currently online</td></tr>
+<tr><td>End-to-end encryption</td><td>encryption between the participants’ devices, which the service cannot undo</td></tr>
+</tbody>
+</table>
+</div>
+<div class="summary">
+<h2 id="summary"><a class="header" href="#summary">Summary</a></h2>
+<ul>
+<li>A phone keeps 1 connection open, so that the server can deliver a message the moment it arrives.</li>
+<li>Gateways hold the connections, and a session store records which gateway each device is on, as a hint that may be wrong.</li>
+<li>The server assigns every message the next number of its conversation, and that numbering is the order for everyone.</li>
+<li>A device displays a message only if its number follows the last one displayed, which handles gaps, disorder and repetition alike.</li>
+<li>After any absence, a device reports its cursor and receives everything after it, and the server keeps no record of deliveries.</li>
+<li>A message carries an identifier chosen by the sending phone, so that a retry is stored once.</li>
+<li>Push notifications call the user back, and the stored sequence and the cursor do the delivering.</li>
+<li>The sequence is strongly consistent, and presence and read positions are eventually consistent.</li>
+</ul>
+</div>
+
+
+                    </main>
+
+                    <nav class="nav-wrapper" aria-label="Page navigation">
+                        <!-- Mobile navigation buttons -->
+                            <a rel="prev" href="17-video-streaming.html" class="mobile-nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                                <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M41.4 233.4c-12.5 12.5-12.5 32.8 0 45.3l160 160c12.5 12.5 32.8 12.5 45.3 0s12.5-32.8 0-45.3L109.3 256 246.6 118.6c12.5-12.5 12.5-32.8 0-45.3s-32.8-12.5-45.3 0l-160 160z"/></svg></span>
+                            </a>
+
+                            <a rel="next prefetch" href="19-payment-system.html" class="mobile-nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                                <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M278.6 233.4c12.5 12.5 12.5 32.8 0 45.3l-160 160c-12.5 12.5-32.8 12.5-45.3 0s-12.5-32.8 0-45.3L210.7 256 73.4 118.6c-12.5-12.5-12.5-32.8 0-45.3s32.8-12.5 45.3 0l160 160z"/></svg></span>
+                            </a>
+
+                        <div style="clear: both"></div>
+                    </nav>
+                </div>
+            </div>
+
+            <nav class="nav-wide-wrapper" aria-label="Page navigation">
+                    <a rel="prev" href="17-video-streaming.html" class="nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                        <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M41.4 233.4c-12.5 12.5-12.5 32.8 0 45.3l160 160c12.5 12.5 32.8 12.5 45.3 0s12.5-32.8 0-45.3L109.3 256 246.6 118.6c12.5-12.5 12.5-32.8 0-45.3s-32.8-12.5-45.3 0l-160 160z"/></svg></span>
+                    </a>
+
+                    <a rel="next prefetch" href="19-payment-system.html" class="nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                        <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M278.6 233.4c12.5 12.5 12.5 32.8 0 45.3l-160 160c-12.5 12.5-32.8 12.5-45.3 0s-12.5-32.8 0-45.3L210.7 256 73.4 118.6c-12.5-12.5-12.5-32.8 0-45.3s32.8-12.5 45.3 0l160 160z"/></svg></span>
+                    </a>
+            </nav>
+
+        </div>
+
+        <template id=fa-eye><span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 576 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M288 32c-80.8 0-145.5 36.8-192.6 80.6C48.6 156 17.3 208 2.5 243.7c-3.3 7.9-3.3 16.7 0 24.6C17.3 304 48.6 356 95.4 399.4C142.5 443.2 207.2 480 288 480s145.5-36.8 192.6-80.6c46.8-43.5 78.1-95.4 93-131.1c3.3-7.9 3.3-16.7 0-24.6c-14.9-35.7-46.2-87.7-93-131.1C433.5 68.8 368.8 32 288 32zM432 256c0 79.5-64.5 144-144 144s-144-64.5-144-144s64.5-144 144-144s144 64.5 144 144zM288 192c0 35.3-28.7 64-64 64c-11.5 0-22.3-3-31.6-8.4c-.2 2.8-.4 5.5-.4 8.4c0 53 43 96 96 96s96-43 96-96s-43-96-96-96c-2.8 0-5.6 .1-8.4 .4c5.3 9.3 8.4 20.1 8.4 31.6z"/></svg></span></template>
+        <template id=fa-eye-slash><span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M38.8 5.1C28.4-3.1 13.3-1.2 5.1 9.2S-1.2 34.7 9.2 42.9l592 464c10.4 8.2 25.5 6.3 33.7-4.1s6.3-25.5-4.1-33.7L525.6 386.7c39.6-40.6 66.4-86.1 79.9-118.4c3.3-7.9 3.3-16.7 0-24.6c-14.9-35.7-46.2-87.7-93-131.1C465.5 68.8 400.8 32 320 32c-68.2 0-125 26.3-169.3 60.8L38.8 5.1zM223.1 149.5C248.6 126.2 282.7 112 320 112c79.5 0 144 64.5 144 144c0 24.9-6.3 48.3-17.4 68.7L408 294.5c5.2-11.8 8-24.8 8-38.5c0-53-43-96-96-96c-2.8 0-5.6 .1-8.4 .4c5.3 9.3 8.4 20.1 8.4 31.6c0 10.2-2.4 19.8-6.6 28.3l-90.3-70.8zm223.1 298L373 389.9c-16.4 6.5-34.3 10.1-53 10.1c-79.5 0-144-64.5-144-144c0-6.9 .5-13.6 1.4-20.2L83.1 161.5C60.3 191.2 44 220.8 34.5 243.7c-3.3 7.9-3.3 16.7 0 24.6c14.9 35.7 46.2 87.7 93 131.1C174.5 443.2 239.2 480 320 480c47.8 0 89.9-12.9 126.2-32.5z"/></svg></span></template>
+        <template id=fa-copy><span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M502.6 70.63l-61.25-61.25C435.4 3.371 427.2 0 418.7 0H255.1c-35.35 0-64 28.66-64 64l.0195 256C192 355.4 220.7 384 256 384h192c35.2 0 64-28.8 64-64V93.25C512 84.77 508.6 76.63 502.6 70.63zM464 320c0 8.836-7.164 16-16 16H255.1c-8.838 0-16-7.164-16-16L239.1 64.13c0-8.836 7.164-16 16-16h128L384 96c0 17.67 14.33 32 32 32h47.1V320zM272 448c0 8.836-7.164 16-16 16H63.1c-8.838 0-16-7.164-16-16L47.98 192.1c0-8.836 7.164-16 16-16H160V128H63.99c-35.35 0-64 28.65-64 64l.0098 256C.002 483.3 28.66 512 64 512h192c35.2 0 64-28.8 64-64v-32h-47.1L272 448z"/></svg></span></template>
+        <template id=fa-play><span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 384 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M73 39c-14.8-9.1-33.4-9.4-48.5-.9S0 62.6 0 80V432c0 17.4 9.4 33.4 24.5 41.9s33.7 8.1 48.5-.9L361 297c14.3-8.7 23-24.2 23-41s-8.7-32.2-23-41L73 39z"/></svg></span></template>
+        <template id=fa-clock-rotate-left><span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M75 75L41 41C25.9 25.9 0 36.6 0 57.9V168c0 13.3 10.7 24 24 24H134.1c21.4 0 32.1-25.9 17-41l-30.8-30.8C155 85.5 203 64 256 64c106 0 192 86 192 192s-86 192-192 192c-40.8 0-78.6-12.7-109.7-34.4c-14.5-10.1-34.4-6.6-44.6 7.9s-6.6 34.4 7.9 44.6C151.2 495 201.7 512 256 512c141.4 0 256-114.6 256-256S397.4 0 256 0C185.3 0 121.3 28.7 75 75zm181 53c-13.3 0-24 10.7-24 24V256c0 6.4 2.5 12.5 7 17l72 72c9.4 9.4 24.6 9.4 33.9 0s9.4-24.6 0-33.9l-65-65V152c0-13.3-10.7-24-24-24z"/></svg></span></template>
+
+
+
+        <script>
+            window.playground_copyable = true;
+        </script>
+
+
+        <script src="elasticlunr-ef4e11c1.min.js"></script>
+        <script src="mark-09e88c2c.min.js"></script>
+        <script src="searcher-09f2665d.js"></script>
+
+        <script src="clipboard-1626706a.min.js"></script>
+        <script src="highlight-abc7f01d.js"></script>
+        <script src="book-609e4cb8.js"></script>
+
+        <!-- Custom JS scripts -->
+        <script src="theme/figures-47b15f7f.js"></script>
+        <script src="theme/proto-326509cd.js"></script>
+        <script src="theme/code-67e9caaf.js"></script>
+        <script src="theme/tables-9fb295e8.js"></script>
+        <script src="theme/steps-77f22afb.js"></script>
+
+
+
+    </div>
+    </body>
+</html>

@@ -1,0 +1,1557 @@
+<!DOCTYPE HTML>
+<html lang="en" class="light sidebar-visible" dir="ltr">
+    <head>
+        <!-- Book generated using mdBook -->
+        <meta charset="UTF-8">
+        <title>Key-Value Store: System Design - Distributed Systems from the Ground Up</title>
+
+
+        <!-- Custom HTML head -->
+
+        <meta name="description" content="System design and low-level design of resilient, fault-tolerant distributed systems, with code in Rust">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <meta name="theme-color" content="#ffffff">
+
+        <link rel="icon" href="favicon-de23e50b.svg">
+        <link rel="shortcut icon" href="favicon-8114d1fc.png">
+        <link rel="stylesheet" href="css/variables-8adf115d.css">
+        <link rel="stylesheet" href="css/general-e96d0476.css">
+        <link rel="stylesheet" href="css/chrome-d279d366.css">
+        <link rel="stylesheet" href="css/print-9e4910d8.css" media="print">
+
+        <!-- Fonts -->
+        <link rel="stylesheet" href="fonts/fonts-9644e21d.css">
+
+        <!-- Highlight.js Stylesheets -->
+        <link rel="stylesheet" id="mdbook-highlight-css" href="highlight-493f70e1.css">
+        <link rel="stylesheet" id="mdbook-tomorrow-night-css" href="tomorrow-night-4c0ae647.css">
+        <link rel="stylesheet" id="mdbook-ayu-highlight-css" href="ayu-highlight-3fdfc3ac.css">
+
+        <!-- Custom theme stylesheets -->
+        <link rel="stylesheet" href="theme/custom-8a495b63.css">
+
+
+        <!-- Provide site root and default themes to javascript -->
+        <script>
+            const path_to_root = "";
+            const default_light_theme = "light";
+            const default_dark_theme = "navy";
+            window.path_to_searchindex_js = "searchindex-fe51950f.js";
+        </script>
+        <!-- Start loading toc.js asap -->
+        <script src="toc-cc887274.js"></script>
+    </head>
+    <body>
+    <div id="mdbook-help-container">
+        <div id="mdbook-help-popup">
+            <h2 class="mdbook-help-title">Keyboard shortcuts</h2>
+            <div>
+                <p>Press <kbd>←</kbd> or <kbd>→</kbd> to navigate between chapters</p>
+                <p>Press <kbd>S</kbd> or <kbd>/</kbd> to search in the book</p>
+                <p>Press <kbd>?</kbd> to show this help</p>
+                <p>Press <kbd>Esc</kbd> to hide this help</p>
+            </div>
+        </div>
+    </div>
+    <div id="mdbook-body-container">
+        <!-- Work around some values being stored in localStorage wrapped in quotes -->
+        <script>
+            try {
+                let theme = localStorage.getItem('mdbook-theme');
+                let sidebar = localStorage.getItem('mdbook-sidebar');
+
+                if (theme.startsWith('"') && theme.endsWith('"')) {
+                    localStorage.setItem('mdbook-theme', theme.slice(1, theme.length - 1));
+                }
+
+                if (sidebar.startsWith('"') && sidebar.endsWith('"')) {
+                    localStorage.setItem('mdbook-sidebar', sidebar.slice(1, sidebar.length - 1));
+                }
+            } catch (e) { }
+        </script>
+
+        <!-- Set the theme before any content is loaded, prevents flash -->
+        <script>
+            const default_theme = window.matchMedia("(prefers-color-scheme: dark)").matches ? default_dark_theme : default_light_theme;
+            let theme;
+            try { theme = localStorage.getItem('mdbook-theme'); } catch(e) { }
+            if (theme === null || theme === undefined) { theme = default_theme; }
+            const html = document.documentElement;
+            html.classList.remove('light')
+            html.classList.add(theme);
+            html.classList.add("js");
+        </script>
+
+        <input type="checkbox" id="mdbook-sidebar-toggle-anchor" class="hidden">
+
+        <!-- Hide / unhide sidebar before it is displayed -->
+        <script>
+            let sidebar = null;
+            const sidebar_toggle = document.getElementById("mdbook-sidebar-toggle-anchor");
+            if (document.body.clientWidth >= 1080) {
+                try { sidebar = localStorage.getItem('mdbook-sidebar'); } catch(e) { }
+                sidebar = sidebar || 'visible';
+            } else {
+                sidebar = 'hidden';
+                sidebar_toggle.checked = false;
+            }
+            if (sidebar === 'visible') {
+                sidebar_toggle.checked = true;
+            } else {
+                html.classList.remove('sidebar-visible');
+            }
+        </script>
+
+        <nav id="mdbook-sidebar" class="sidebar" aria-label="Table of contents">
+            <!-- populated by js -->
+            <mdbook-sidebar-scrollbox class="sidebar-scrollbox"></mdbook-sidebar-scrollbox>
+            <noscript>
+                <iframe class="sidebar-iframe-outer" src="toc.html"></iframe>
+            </noscript>
+            <div id="mdbook-sidebar-resize-handle" class="sidebar-resize-handle">
+                <div class="sidebar-resize-indicator"></div>
+            </div>
+        </nav>
+
+        <div id="mdbook-page-wrapper" class="page-wrapper">
+
+            <div class="page">
+                <div id="mdbook-menu-bar-hover-placeholder"></div>
+                <div id="mdbook-menu-bar" class="menu-bar sticky">
+                    <div class="left-buttons">
+                        <label id="mdbook-sidebar-toggle" class="icon-button" for="mdbook-sidebar-toggle-anchor" title="Toggle Table of Contents" aria-label="Toggle Table of Contents" aria-controls="mdbook-sidebar">
+                            <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M0 96C0 78.3 14.3 64 32 64H416c17.7 0 32 14.3 32 32s-14.3 32-32 32H32C14.3 128 0 113.7 0 96zM0 256c0-17.7 14.3-32 32-32H416c17.7 0 32 14.3 32 32s-14.3 32-32 32H32c-17.7 0-32-14.3-32-32zM448 416c0 17.7-14.3 32-32 32H32c-17.7 0-32-14.3-32-32s14.3-32 32-32H416c17.7 0 32 14.3 32 32z"/></svg></span>
+                        </label>
+                        <button id="mdbook-theme-toggle" class="icon-button" type="button" title="Change theme" aria-label="Change theme" aria-haspopup="true" aria-expanded="false" aria-controls="mdbook-theme-list">
+                            <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 576 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M371.3 367.1c27.3-3.9 51.9-19.4 67.2-42.9L600.2 74.1c12.6-19.5 9.4-45.3-7.6-61.2S549.7-4.4 531.1 9.6L294.4 187.2c-24 18-38.2 46.1-38.4 76.1L371.3 367.1zm-19.6 25.4l-116-104.4C175.9 290.3 128 339.6 128 400c0 3.9 .2 7.8 .6 11.6c1.8 17.5-10.2 36.4-27.8 36.4H96c-17.7 0-32 14.3-32 32s14.3 32 32 32H240c61.9 0 112-50.1 112-112c0-2.5-.1-5-.2-7.5z"/></svg></span>
+                        </button>
+                        <ul id="mdbook-theme-list" class="theme-popup" aria-label="Themes" role="menu">
+                            <li role="none"><button role="menuitem" class="theme" id="mdbook-theme-default_theme">Auto</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="mdbook-theme-light">Light</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="mdbook-theme-rust">Rust</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="mdbook-theme-coal">Coal</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="mdbook-theme-navy">Navy</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="mdbook-theme-ayu">Ayu</button></li>
+                        </ul>
+                        <button id="mdbook-search-toggle" class="icon-button" type="button" title="Search (`/`)" aria-label="Toggle Searchbar" aria-expanded="false" aria-keyshortcuts="/ s" aria-controls="mdbook-searchbar">
+                            <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M416 208c0 45.9-14.9 88.3-40 122.7L502.6 457.4c12.5 12.5 12.5 32.8 0 45.3s-32.8 12.5-45.3 0L330.7 376c-34.4 25.2-76.8 40-122.7 40C93.1 416 0 322.9 0 208S93.1 0 208 0S416 93.1 416 208zM208 352c79.5 0 144-64.5 144-144s-64.5-144-144-144S64 128.5 64 208s64.5 144 144 144z"/></svg></span>
+                        </button>
+                    </div>
+
+                    <h1 class="menu-title">Distributed Systems from the Ground Up</h1>
+
+                    <div class="right-buttons">
+                        <a href="print.html" title="Print this book" aria-label="Print this book">
+                            <span class=fa-svg id="print-button"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M128 0C92.7 0 64 28.7 64 64v96h64V64H354.7L384 93.3V160h64V93.3c0-17-6.7-33.3-18.7-45.3L400 18.7C388 6.7 371.7 0 354.7 0H128zM384 352v32 64H128V384 368 352H384zm64 32h32c17.7 0 32-14.3 32-32V256c0-35.3-28.7-64-64-64H64c-35.3 0-64 28.7-64 64v96c0 17.7 14.3 32 32 32H64v64c0 35.3 28.7 64 64 64H384c35.3 0 64-28.7 64-64V384zm-16-88c-13.3 0-24-10.7-24-24s10.7-24 24-24s24 10.7 24 24s-10.7 24-24 24z"/></svg></span>
+                        </a>
+                        <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/tree/prep-v2/distributed-systems-from-the-ground-up" title="Git repository" aria-label="Git repository">
+                            <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 496 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M165.9 397.4c0 2-2.3 3.6-5.2 3.6-3.3.3-5.6-1.3-5.6-3.6 0-2 2.3-3.6 5.2-3.6 3-.3 5.6 1.3 5.6 3.6zm-31.1-4.5c-.7 2 1.3 4.3 4.3 4.9 2.6 1 5.6 0 6.2-2s-1.3-4.3-4.3-5.2c-2.6-.7-5.5.3-6.2 2.3zm44.2-1.7c-2.9.7-4.9 2.6-4.6 4.9.3 2 2.9 3.3 5.9 2.6 2.9-.7 4.9-2.6 4.6-4.6-.3-1.9-3-3.2-5.9-2.9zM244.8 8C106.1 8 0 113.3 0 252c0 110.9 69.8 205.8 169.5 239.2 12.8 2.3 17.3-5.6 17.3-12.1 0-6.2-.3-40.4-.3-61.4 0 0-70 15-84.7-29.8 0 0-11.4-29.1-27.8-36.6 0 0-22.9-15.7 1.6-15.4 0 0 24.9 2 38.6 25.8 21.9 38.6 58.6 27.5 72.9 20.9 2.3-16 8.8-27.1 16-33.7-55.9-6.2-112.3-14.3-112.3-110.5 0-27.5 7.6-41.3 23.6-58.9-2.6-6.5-11.1-33.3 2.6-67.9 20.9-6.5 69 27 69 27 20-5.6 41.5-8.5 62.8-8.5s42.8 2.9 62.8 8.5c0 0 48.1-33.6 69-27 13.7 34.7 5.2 61.4 2.6 67.9 16 17.7 25.8 31.5 25.8 58.9 0 96.5-58.9 104.2-114.8 110.5 9.2 7.9 17 22.9 17 46.4 0 33.7-.3 75.4-.3 83.6 0 6.5 4.6 14.4 17.3 12.1C428.2 457.8 496 362.9 496 252 496 113.3 383.5 8 244.8 8zM97.2 352.9c-1.3 1-1 3.3.7 5.2 1.6 1.6 3.9 2.3 5.2 1 1.3-1 1-3.3-.7-5.2-1.6-1.6-3.9-2.3-5.2-1zm-10.8-8.1c-.7 1.3.3 2.9 2.3 3.9 1.6 1 3.6.7 4.3-.7.7-1.3-.3-2.9-2.3-3.9-2-.6-3.6-.3-4.3.7zm32.4 35.6c-1.6 1.3-1 4.3 1.3 6.2 2.3 2.3 5.2 2.6 6.5 1 1.3-1.3.7-4.3-1.3-6.2-2.2-2.3-5.2-2.6-6.5-1zm-11.4-14.7c-1.6 1-1.6 3.6 0 5.9 1.6 2.3 4.3 3.3 5.6 2.3 1.6-1.3 1.6-3.9 0-6.2-1.4-2.3-4-3.3-5.6-2z"/></svg></span>
+                        </a>
+                        <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/edit/prep-v2/distributed-systems-from-the-ground-up/src/01-key-value-store-system-design.md" title="Suggest an edit" aria-label="Suggest an edit" rel="edit">
+                            <span class=fa-svg id="git-edit-button"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M421.7 220.3l-11.3 11.3-22.6 22.6-205 205c-6.6 6.6-14.8 11.5-23.8 14.1L30.8 511c-8.4 2.5-17.5 .2-23.7-6.1S-1.5 489.7 1 481.2L38.7 353.1c2.6-9 7.5-17.2 14.1-23.8l205-205 22.6-22.6 11.3-11.3 33.9 33.9 62.1 62.1 33.9 33.9zM96 353.9l-9.3 9.3c-.9 .9-1.6 2.1-2 3.4l-25.3 86 86-25.3c1.3-.4 2.5-1.1 3.4-2l9.3-9.3H112c-8.8 0-16-7.2-16-16V353.9zM453.3 19.3l39.4 39.4c25 25 25 65.5 0 90.5l-14.5 14.5-22.6 22.6-11.3 11.3-33.9-33.9-62.1-62.1L314.3 67.7l11.3-11.3 22.6-22.6 14.5-14.5c25-25 65.5-25 90.5 0z"/></svg></span>
+                        </a>
+
+                    </div>
+                </div>
+
+                <div id="mdbook-search-wrapper" class="hidden">
+                    <form id="mdbook-searchbar-outer" class="searchbar-outer">
+                        <div class="search-wrapper">
+                            <input type="search" id="mdbook-searchbar" name="searchbar" placeholder="Search this book ..." aria-controls="mdbook-searchresults-outer" aria-describedby="searchresults-header">
+                            <div class="spinner-wrapper">
+                                <span class=fa-svg id="fa-spin"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M304 48c0-26.5-21.5-48-48-48s-48 21.5-48 48s21.5 48 48 48s48-21.5 48-48zm0 416c0-26.5-21.5-48-48-48s-48 21.5-48 48s21.5 48 48 48s48-21.5 48-48zM48 304c26.5 0 48-21.5 48-48s-21.5-48-48-48s-48 21.5-48 48s21.5 48 48 48zm464-48c0-26.5-21.5-48-48-48s-48 21.5-48 48s21.5 48 48 48s48-21.5 48-48zM142.9 437c18.7-18.7 18.7-49.1 0-67.9s-49.1-18.7-67.9 0s-18.7 49.1 0 67.9s49.1 18.7 67.9 0zm0-294.2c18.7-18.7 18.7-49.1 0-67.9S93.7 56.2 75 75s-18.7 49.1 0 67.9s49.1 18.7 67.9 0zM369.1 437c18.7 18.7 49.1 18.7 67.9 0s18.7-49.1 0-67.9s-49.1-18.7-67.9 0s-18.7 49.1 0 67.9z"/></svg></span>
+                            </div>
+                        </div>
+                    </form>
+                    <div id="mdbook-searchresults-outer" class="searchresults-outer hidden">
+                        <div id="mdbook-searchresults-header" class="searchresults-header"></div>
+                        <ul id="mdbook-searchresults">
+                        </ul>
+                    </div>
+                </div>
+
+                <!-- Apply ARIA attributes after the sidebar and the sidebar toggle button are added to the DOM -->
+                <script>
+                    document.getElementById('mdbook-sidebar-toggle').setAttribute('aria-expanded', sidebar === 'visible');
+                    document.getElementById('mdbook-sidebar').setAttribute('aria-hidden', sidebar !== 'visible');
+                    Array.from(document.querySelectorAll('#mdbook-sidebar a')).forEach(function(link) {
+                        link.setAttribute('tabIndex', sidebar === 'visible' ? 0 : -1);
+                    });
+                </script>
+
+                <div id="mdbook-content" class="content">
+                    <main>
+                        <img class="plate" src="art/ch01.svg?v=76ac1f43" alt="Draft, an owl, stands beside a drawing board. The blueprint on it shows a request passing through a router to a group of 3 nodes, one of them marked as the leader. A crab looks up at the board.">
+<h1 id="key-value-store-system-design"><a class="header" href="#key-value-store-system-design">Key-Value Store: System Design</a></h1>
+<p>A <em>key-value store</em> is the simplest database that is of any practical use. It offers 2
+operations, to store a value under a key and to return the value that was stored under
+a key, and it makes no attempt to understand what the values mean. Simple as it is, it
+lies underneath a remarkable number of other systems. A web application keeps its
+users’ sessions in one. A cluster of machines keeps its configuration in one. A file
+system uses one for its directory of files, and an object store for its index of
+objects. Most of the larger storage systems in use today contain a key-value store as
+their innermost component, and the designs in the later chapters of this book rely on
+one repeatedly.</p>
+<p>On a single machine, a key-value store is an afternoon’s work: a table in memory and a
+file on disk. The difficulty, and the subject of this chapter and the 5 that follow,
+begins when the store has to outgrow 1 machine and to outlive it. The data may be
+larger than any 1 disk. The requests may be more than any 1 processor can answer. And
+the machine will certainly fail at some point, by losing power, or its disk, or its
+connection to the network, and a store on which other systems depend cannot be
+permitted to lose its data or to stop answering on that account. Meeting these demands
+means spreading the data across many machines and keeping several copies of every
+part of it, and the moment there are several copies, the questions arise that define
+the whole field: which copy is right when they differ, who decides, and what happens
+when the machines cannot reach each other to agree.</p>
+<p>This chapter designs such a store from its requirements. It is the system design, and
+it stays at the level of components and the messages between them. Chapters 2 to 6
+then build each component in Rust and measure it.</p>
+<div class="covers">
+<p>This chapter covers</p>
+<ul>
+<li>what the store is for, stated as use cases and as requirements that can be tested</li>
+<li>strong, eventual and tunable consistency, and why this design chooses the first</li>
+<li>the entities of the design, and an estimate of how many machines it needs</li>
+<li>an HTTP API, with conditional writes that prevent 1 client from overwriting another</li>
+<li>the protocol that storage nodes speak among themselves</li>
+<li>the components of the system and the path of a request through them</li>
+<li>dividing keys among machines with consistent hashing and virtual nodes</li>
+<li>how every part of the system learns where a key lives, and what happens when that knowledge is out of date</li>
+<li>keeping 3 copies of every key, with a leader and a majority</li>
+<li>what the system does when a machine, a disk or the network fails</li>
+<li>what the design guarantees, and what it gives up in return</li>
+</ul>
+</div>
+
+<h2 id="why-such-a-store-is-needed"><a class="header" href="#why-such-a-store-is-needed">Why such a store is needed</a></h2>
+<p>Consider a shop whose web site runs on 3 web servers behind a load balancer. A
+customer’s requests are distributed among the 3, so that the request which adds an
+item to the basket may be handled by 1 server and the request which displays the
+basket by another. The basket therefore cannot be kept in the memory of any 1 web
+server. It has to be held by some service that all 3 can reach.</p>
+<p>This arrangement is typical, and it divides the system into parts of 2 very different
+characters. The web servers hold nothing that matters. Any of them can be restarted,
+replaced or duplicated at any moment without loss, and a component of this kind is
+called <em>stateless</em>. The shared store is the opposite. Everything of value is in it, a
+failure of it is a failure of every web server at once, and it cannot be
+restarted on a fresh machine, since a fresh machine would not have the data. The
+simplicity of the stateless part of a system is paid for by the difficulty of the
+part that holds the state, and this chapter is about that part.</p>
+<p>What is demanded of the store follows directly from its position. Each demand has a
+consequence for the design, and each consequence is the subject of a later section.</p>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th>What is demanded</th><th>What the design must therefore do</th><th>Where it is treated</th></tr>
+</thead>
+<tbody>
+<tr><td>A crash in the middle of a write loses no data that was confirmed</td><td>write each change to disk before confirming it</td><td>the last section, and chapter 2</td></tr>
+<tr><td>The loss of a machine loses no data</td><td>keep each change on more than 1 machine</td><td>Replication</td></tr>
+<tr><td>The data may exceed the disk of 1 machine</td><td>divide the keys among machines</td><td>Sharding</td></tr>
+<tr><td>The failure of a machine does not stop the service</td><td>let another machine take over its work</td><td>Failure handling</td></tr>
+<tr><td>Clients working at the same time do not undo each other’s changes</td><td>allow a write to state what it was based on</td><td>The API</td></tr>
+</tbody>
+</table>
+</div>
+<h2 id="use-cases"><a class="header" href="#use-cases">Use cases</a></h2>
+<p>The store is used by 3 kinds of party. An <em>application</em> is any service that keeps its
+data in the store, such as the web servers of the shop. An <em>operator</em> is whoever looks
+after the machines, whether a person or an automated system. And <em>monitoring</em> is the
+system that watches the health of every machine and raises an alarm when something is
+wrong.</p>
+<figure>
+<img src="figures/use-cases.svg?v=41cb1cb8" alt="A use case diagram of the key-value store with 3 actors. The application, a service that keeps its state in the store, stores a value with PUT /v1/keys/{key}, reads a value with GET, deletes a key with DELETE, writes only if the value is unchanged with PUT and If-Match, and lists keys by prefix with GET /v1/keys. The operator, who changes the set of machines, adds a node, removes a node, and replaces a failed node. Monitoring, which watches every node, checks health with GET /healthz and reads metrics.">
+<figcaption><b>Figure 1.1</b> The 3 actors of the store and what each of them does.</figcaption>
+</figure>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th>Actor</th><th>Use case</th><th>An example</th></tr>
+</thead>
+<tbody>
+<tr><td>Application</td><td>store a value</td><td>save the basket of customer 41</td></tr>
+<tr><td>Application</td><td>read a value</td><td>load the basket when the customer’s next request arrives</td></tr>
+<tr><td>Application</td><td>delete a key</td><td>remove the basket once the order has been paid for</td></tr>
+<tr><td>Application</td><td>write only if unchanged</td><td>add an item to the basket without discarding an item that another web server has just added</td></tr>
+<tr><td>Application</td><td>list keys by prefix</td><td>find all the sessions that belong to user 7</td></tr>
+<tr><td>Operator</td><td>add a node</td><td>increase capacity before a sale</td></tr>
+<tr><td>Operator</td><td>remove a node</td><td>take a machine out of service for maintenance</td></tr>
+<tr><td>Operator</td><td>replace a failed node</td><td>a machine’s disk has failed</td></tr>
+<tr><td>Monitoring</td><td>check health</td><td>stop sending requests to a node that is not well</td></tr>
+<tr><td>Monitoring</td><td>read metrics</td><td>plot the number of keys on each node</td></tr>
+</tbody>
+</table>
+</div>
+<h2 id="functional-requirements"><a class="header" href="#functional-requirements">Functional requirements</a></h2>
+<p>The functional requirements state what the store does. Each is derived from a use case
+and is specific enough that a test could establish whether it is met.</p>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th>No.</th><th>Functional requirement</th></tr>
+</thead>
+<tbody>
+<tr><td>0</td><td>A client can set the value of a key. A key consists of 1 to 256 characters from <code>A-Z</code>, <code>a-z</code>, <code>0-9</code>, <code>.</code>, <code>_</code> and <code>-</code>. A value is 0 to 1048576 bytes of any content.</td></tr>
+<tr><td>1</td><td>A client can read the current value of a key, together with its version.</td></tr>
+<tr><td>2</td><td>A client can delete a key.</td></tr>
+<tr><td>3</td><td>Every write gives the key a new version. A client can make a write conditional on the version it last read, or on the key’s not existing.</td></tr>
+<tr><td>4</td><td>A client can list the keys that begin with a given prefix, in sorted order and in pages of limited size.</td></tr>
+<tr><td>5</td><td>An operator can add, remove and replace nodes while the store continues to serve requests.</td></tr>
+<tr><td>6</td><td>Every node reports whether it is able to serve requests.</td></tr>
+</tbody>
+</table>
+</div>
+<h2 id="non-functional-requirements"><a class="header" href="#non-functional-requirements">Non-functional requirements</a></h2>
+<p>The non-functional requirements state how well the store must do these things: how
+much data, how many requests, how quickly, and through which failures. It is these,
+far more than the functional requirements, that determine the architecture. A program
+that kept 1 file on 1 machine would satisfy functional requirements 0 to 6 completely,
+and would satisfy almost none of what follows.</p>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th>No.</th><th>Property</th><th>Non-functional requirement</th><th>Remark</th></tr>
+</thead>
+<tbody>
+<tr><td>0</td><td>Durability</td><td>An acknowledged write survives the loss of any 1 machine, including its disk.</td><td>A write is <em>acknowledged</em> when the client has received a successful response to it.</td></tr>
+<tr><td>1</td><td>Availability</td><td>99.95% of requests succeed, measured over a month.</td><td>A month of 30 days has 43200 minutes, of which 0.05% is 21.6 minutes.</td></tr>
+<tr><td>2</td><td>Consistency</td><td>Strong: a read that begins after a write was acknowledged returns that write or a later one, whichever node answers.</td><td>Explained below, with its 2 alternatives.</td></tr>
+<tr><td>3</td><td>Latency</td><td>99% of writes complete within 20 ms and 99% of reads within 5 ms, for clients in the same data centre.</td><td>The value below which 99% of measurements fall is the <em>99th percentile</em>, written p99.</td></tr>
+<tr><td>4</td><td>Scale</td><td>1 billion keys with values of 1 KB on average, 20000 writes per second and 100000 reads per second.</td><td></td></tr>
+<tr><td>5</td><td>Elasticity</td><td>Capacity can be increased by adding machines while the store is in service.</td><td></td></tr>
+</tbody>
+</table>
+</div>
+<p>Durability and availability are easily confused and should be kept apart. Durability
+concerns data that has already been written, and requires that none of it be lost.
+Availability concerns requests that are yet to come, and requires that they be
+answered. Data can be perfectly durable and entirely unavailable, as when every copy
+of a key is on a machine that has been switched off for an hour and will return
+intact. The design provides for the 2 properties by different mechanisms, and they
+sometimes pull in opposite directions.</p>
+<h3 id="which-kind-of-consistency"><a class="header" href="#which-kind-of-consistency">Which kind of consistency</a></h3>
+<p>The word “consistency” has to be given an exact meaning before anything can be
+designed to provide it, since storage systems offer 3 quite different things under
+that name. They are best distinguished by a single situation: a value has just been
+written, 1 of the copies of the data has not yet received the change, and a reader
+happens to be answered by that copy.</p>
+<figure>
+<img src="figures/consistency-models.svg?v=7b8b3e8c" alt="The 3 consistency models, shown with 1 situation. A client writes basket = tea, milk, and the write is acknowledged. Replica 3 has not received the write yet and still holds basket = tea. Another client reads the basket. Under strong consistency the answer is always tea, milk: every read sees the latest acknowledged write, and a read may have to wait or fail during a partition. Under eventual consistency the answer is tea or tea, milk: any replica may answer with what it has, and replicas agree some time after writes stop. Under tunable consistency the answer depends on the request, which names how many replicas must answer. This chapter&#39;s store is strongly consistent.">
+<figcaption><b>Figure 1.2</b> The same write, the same slow copy, and what a reader is told under each of the 3 models.</figcaption>
+</figure>
+<p>Under <em>strong consistency</em>, the reader receives the new value. The system behaves, as
+far as any client can tell, as though there were only 1 copy of the data, and a write
+that has been acknowledged is visible to every subsequent read. The precise form of
+this property is called <em>linearizability</em>. Its cost is that reads and writes must
+involve a leader or a majority of the copies, which makes them slower and means that
+they fail when a majority cannot be reached.</p>
+<p>Under <em>eventual consistency</em>, the reader may receive the old value. The system
+promises only that, once writes cease, all copies will in time come to hold the same
+value. Any copy can answer any request, which makes the system fast and keeps it
+available through almost any failure, and the burden passes to the applications, which
+have to cope with stale values and with conflicting ones.</p>
+<p><em>Tunable consistency</em> lets each request choose. With N copies, a write waits for W of
+them to confirm and a read consults R of them. Whenever R + W is greater than N, the
+copies consulted by any read must include at least 1 that took part in the latest
+write, and the read sees that write. With 3 copies, the choice of W = 2 and R = 2
+behaves strongly, and W = 1 and R = 1 is fast and only eventually consistent. The
+flexibility is real, and so is its cost, which is that every caller must choose
+correctly for every request.</p>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th>Model</th><th>What a read returns</th><th>What it costs</th><th>Where it is used</th></tr>
+</thead>
+<tbody>
+<tr><td>Strong</td><td>the latest acknowledged write</td><td>slower requests, and no service on the smaller side of a network split</td><td>money, stock levels, locks, anything guarded by a conditional write</td></tr>
+<tr><td>Eventual</td><td>possibly an older value, for a while</td><td>applications must tolerate stale and conflicting values</td><td>counters of likes, caches, activity feeds</td></tr>
+<tr><td>Tunable</td><td>whatever the request asked for</td><td>every caller has to choose correctly</td><td>varied workloads on 1 store</td></tr>
+</tbody>
+</table>
+</div>
+<p>This design chooses strong consistency, and the reason lies in the fourth use case.
+“Add an item to the basket, unless somebody else has changed the basket in the
+meantime” works only if the version that a client reads is the latest. If reads could
+be stale, 2 web servers might each read version 1, each conclude that nobody had
+changed the basket, and each write, with 1 of the 2 items lost. This is precisely the
+lost update that conditional writes exist to prevent, and a conditional write over
+stale reads prevents nothing. What strong consistency costs is set out in the section
+on guarantees: during a split of the network, the smaller side stops answering.</p>
+<h2 id="core-entities"><a class="header" href="#core-entities">Core entities</a></h2>
+<p>The <em>core entities</em> are the things that the system stores, together with the things
+it stores them on. Naming them at this stage, with their fields, provides a vocabulary
+that the API, the protocol and the code of later chapters all share.</p>
+<figure>
+<img src="figures/entities.svg?v=1c0adae2" alt="The core entities. An Entry has a key, a value and a version. A Record has a sequence, a kind that is put or delete, a key and a value, and the version of an Entry is the sequence of the Record that last wrote it. A Shard has a first and a last token, a term, a leader Node and follower Nodes. A Node has an id, an address, its tokens and a state. Ring has a version, list of Nodes and list of Shards.">
+<figcaption><b>Figure 1.3</b> The core entities and their fields.</figcaption>
+</figure>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th>Entity</th><th>What it is</th><th>Identified by</th></tr>
+</thead>
+<tbody>
+<tr><td>Entry</td><td>the current value of a key, and its version</td><td>the key</td></tr>
+<tr><td>Record</td><td>1 change to a key, in the order in which the changes occurred</td><td>a sequence number</td></tr>
+<tr><td>Node</td><td>a machine that runs the storage program</td><td>a node id</td></tr>
+<tr><td>Shard</td><td>a range of keys, together with the 3 nodes that store it</td><td>the last position of its range</td></tr>
+<tr><td>Ring</td><td>the assignment of ranges of keys to nodes</td><td>a version number</td></tr>
+</tbody>
+</table>
+</div>
+<p>The first 2 entities are 2 representations of the same data, and the distinction
+between them runs through every chapter that follows. The records are a history: “set
+<code>user-1</code> to <code>ada</code>”, “set <code>user-1</code> to <code>ada lovelace</code>”, “delete <code>user-2</code>”. The entries
+are the state that results from applying that history in order. Both are kept, because
+they serve different purposes. Records are what is written to disk and copied to other
+nodes, since a sequence of changes is easy to append to, to transmit and to compare.
+Entries are what reads are answered from, since nobody wishes to replay a history in
+order to learn the present value. The version of an entry is the sequence number of
+the last record that changed it, which fastens every entry to a definite point in the
+history.</p>
+<h2 id="capacity-estimate"><a class="header" href="#capacity-estimate">Capacity estimate</a></h2>
+<div class="estimate">
+<img class="builder" src="art/crab-builder.svg" alt="A crab in a hard hat, in tears.">
+<p><strong>Arithmetic ahead.</strong> This estimate turns non-functional requirement 4 into a number of machines. The result is 24 storage nodes, each holding 138 GB, and nothing else from this section is needed later.</p>
+<p><a class="skip" href="#high-level-design">Skip to the high-level design</a></p>
+<details>
+<summary>Show the calculation</summary>
+<p>The estimate depends on 1 quantity that has to be measured and cannot be assumed: the
+time a disk takes to store a write durably. Chapter 2 measures it with a program
+called <code>synccost</code>. On an NVMe disk, appending a record and waiting for the disk to
+confirm took 5.4 ms, so that a node which waits once for each record stores 185
+records per second. Readers can run <code>synccost</code> on their own hardware and repeat the
+calculation with their own figure.</p>
+<p><strong>Storage.</strong> An entry consists of a key of about 32 bytes, a value of 1024 bytes and
+about 44 bytes of bookkeeping, 1100 bytes in all.</p>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th>Quantity</th><th>Calculation</th><th>Result</th></tr>
+</thead>
+<tbody>
+<tr><td>Size of 1 copy of the data</td><td>1000000000 × 1100 bytes</td><td>1.1 TB</td></tr>
+<tr><td>Size of 3 copies, as non-functional requirement 0 demands</td><td>1.1 TB × 3</td><td>3.3 TB</td></tr>
+</tbody>
+</table>
+</div>
+<p><strong>Writes.</strong> Every write is stored on 3 nodes, so that 20000 writes per second become
+60000 records per second across the cluster. At 185 records per second for each node,
+325 nodes would be needed. The time the disk takes, however, is nearly the same for 1
+record as for 20, and a node can therefore gather the records that arrive during 1
+wait and store them together. Storing several records with a single wait is called
+<em>group commit</em>, and it is the subject of chapter 6. With 20 records for each wait on
+average, a node stores 185 × 20 = 3700 records per second.</p>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th>Quantity</th><th>Calculation</th><th>Result</th></tr>
+</thead>
+<tbody>
+<tr><td>Records to store per second</td><td>20000 writes × 3 copies</td><td>60000</td></tr>
+<tr><td>Records per node per second, with 1 wait for each record</td><td>1 ÷ 0.0054 s</td><td>185</td></tr>
+<tr><td>Records per node per second, with 20 records for each wait</td><td>185 × 20</td><td>3700</td></tr>
+<tr><td>Nodes required</td><td>60000 ÷ 3700</td><td>16.2, rounded up to 17</td></tr>
+<tr><td>Nodes chosen</td><td></td><td>24</td></tr>
+<tr><td>Capacity of 24 nodes</td><td>24 × 3700</td><td>88800 records per second</td></tr>
+<tr><td>Data on each node</td><td>3.3 TB ÷ 24</td><td>138 GB</td></tr>
+</tbody>
+</table>
+</div>
+<p>We choose 24 nodes. At the required rate of writes, a cluster of that size works at
+68% of its capacity, which leaves the surviving nodes room to carry the load of one
+that has failed.</p>
+<figure>
+<img src="figures/capacity.svg?v=17215b66" alt="The capacity estimate as bars. Storage: 1 copy of 1 billion keys at 1.1 KB each is 1.1 TB, 3 copies are 3.3 TB, and each of 24 nodes holds 138 GB. Records stored per second: 1 node that calls fsync for every record stores 185, 1 node that groups 20 records per fsync stores 3700, and 24 nodes store 88800, against a requirement of 60000, which is 20000 writes per second stored on 3 nodes each.">
+<figcaption><b>Figure 1.4</b> The capacity estimate, drawn to scale. The dashed line marks the required rate.</figcaption>
+</figure>
+<p><strong>Reads.</strong> Reads are answered from memory and do not wait for the disk. Spread over 24
+nodes, 100000 reads per second come to about 4200 for each node, far below what a node
+can answer from memory. The rate of reads therefore has no influence on the number of
+nodes.</p>
+</details>
+</div>
+
+<h2 id="the-api"><a class="header" href="#the-api">The API</a></h2>
+<p>Applications reach the store over HTTP. The API follows the style known as <em>REST</em>, in
+which the things a service holds are presented as <em>resources</em>, each identified by a
+URL, and the standard methods of HTTP are the operations upon them. Adhering to the
+standard meanings of the methods and status codes has a practical reward. Every
+existing HTTP client, proxy and cache already understands them, and so handles the
+API correctly without knowing anything about key-value stores.</p>
+<figure>
+<img src="figures/api-resources.svg?v=c4252b81" alt="The resources of the API. For one key, at /v1/keys/{key}: PUT creates or replaces the value and answers 201 or 204, GET reads the value and its version and answers 200, and DELETE removes the key and answers 204. For the collection, GET /v1/keys with prefix, after and limit returns one page of keys in order. For the node, GET /healthz says whether Node can serve.">
+<figcaption><b>Figure 1.5</b> The resources of the API and the methods that each accepts.</figcaption>
+</figure>
+<h3 id="the-rules-the-api-follows"><a class="header" href="#the-rules-the-api-follows">The rules the API follows</a></h3>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th>Rule</th><th>How it is applied here</th></tr>
+</thead>
+<tbody>
+<tr><td>A URL identifies a resource, and consists of nouns.</td><td><code>/v1/keys/user-1</code> identifies the key <code>user-1</code>. The API has no URLs such as <code>/setKey</code>.</td></tr>
+<tr><td>The HTTP method expresses the operation.</td><td><code>GET</code> reads a resource, <code>PUT</code> replaces it and <code>DELETE</code> removes it.</td></tr>
+<tr><td><code>GET</code> has no side effects.</td><td>Clients and intermediaries may repeat, cache and retry a <code>GET</code> freely.</td></tr>
+<tr><td><code>PUT</code> and <code>DELETE</code> are idempotent.</td><td>An operation is <em>idempotent</em> if performing it several times has the same effect as performing it once, so that a client may repeat these requests after a lost response.</td></tr>
+<tr><td>The status code reports the outcome.</td><td><code>201</code> for a key that was created, <code>204</code> for success with nothing to return, <code>404</code> for a key that does not exist, <code>412</code> for a condition that did not hold.</td></tr>
+<tr><td>Errors have a body that a program can read.</td><td>Error responses use the <code>application/problem+json</code> format defined in RFC 9457.</td></tr>
+<tr><td>The version of the API is part of the path.</td><td>An incompatible future version can be served under <code>/v2/</code> beside <code>/v1/</code>.</td></tr>
+<tr><td>Collections are returned in pages.</td><td>The <code>limit</code> parameter bounds the size of a page, and each response says how to ask for the next.</td></tr>
+</tbody>
+</table>
+</div>
+<h3 id="reference"><a class="header" href="#reference">Reference</a></h3>
+<p>Each operation is specified below by its request and its possible responses.
+<code>store.example</code> stands for the address of the load balancer.</p>
+<p><strong>Set the value of a key</strong></p>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th></th><th></th></tr>
+</thead>
+<tbody>
+<tr><td>Request</td><td><code>PUT /v1/keys/{key}</code></td></tr>
+<tr><td>Request headers</td><td><code>Content-Type: application/octet-stream</code>. Optionally <code>If-Match: "&lt;version&gt;"</code> or <code>If-None-Match: *</code>.</td></tr>
+<tr><td>Request body</td><td>the value: 0 to 1048576 bytes, stored exactly as sent</td></tr>
+<tr><td>Success</td><td><code>201 Created</code> for a new key, <code>204 No Content</code> for a value that was replaced</td></tr>
+<tr><td>Response headers</td><td><code>ETag: "&lt;version&gt;"</code>, the version of the entry after the write</td></tr>
+<tr><td>Response body</td><td>none</td></tr>
+<tr><td>Errors</td><td><code>400</code>, <code>412</code>, <code>413</code>, <code>503</code></td></tr>
+</tbody>
+</table>
+</div>
+<pre><code class="language-http">PUT /v1/keys/user-1 HTTP/1.1
+Host: store.example
+Content-Type: application/octet-stream
+Content-Length: 3
+
+ada
+</code></pre>
+<pre><code class="language-http">HTTP/1.1 201 Created
+ETag: "1"
+Content-Length: 0
+</code></pre>
+<p><strong>Read the value of a key</strong></p>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th></th><th></th></tr>
+</thead>
+<tbody>
+<tr><td>Request</td><td><code>GET /v1/keys/{key}</code></td></tr>
+<tr><td>Request headers</td><td>optionally <code>If-None-Match: "&lt;version&gt;"</code></td></tr>
+<tr><td>Request body</td><td>none</td></tr>
+<tr><td>Success</td><td><code>200 OK</code>, or <code>304 Not Modified</code> when the entry is still at the version given in <code>If-None-Match</code></td></tr>
+<tr><td>Response headers</td><td><code>ETag: "&lt;version&gt;"</code>, <code>Content-Type: application/octet-stream</code></td></tr>
+<tr><td>Response body</td><td>the value, as it was stored, and empty for <code>304</code></td></tr>
+<tr><td>Errors</td><td><code>400</code>, <code>404</code>, <code>503</code></td></tr>
+</tbody>
+</table>
+</div>
+<pre><code class="language-http">GET /v1/keys/user-1 HTTP/1.1
+Host: store.example
+</code></pre>
+<pre><code class="language-http">HTTP/1.1 200 OK
+ETag: "1"
+Content-Type: application/octet-stream
+Content-Length: 3
+
+ada
+</code></pre>
+<p><strong>Delete a key</strong></p>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th></th><th></th></tr>
+</thead>
+<tbody>
+<tr><td>Request</td><td><code>DELETE /v1/keys/{key}</code></td></tr>
+<tr><td>Request headers</td><td>optionally <code>If-Match: "&lt;version&gt;"</code></td></tr>
+<tr><td>Request body</td><td>none</td></tr>
+<tr><td>Success</td><td><code>204 No Content</code></td></tr>
+<tr><td>Response body</td><td>none</td></tr>
+<tr><td>Errors</td><td><code>400</code>, <code>404</code>, <code>412</code>, <code>503</code></td></tr>
+</tbody>
+</table>
+</div>
+<pre><code class="language-http">DELETE /v1/keys/user-2 HTTP/1.1
+Host: store.example
+If-Match: "3"
+</code></pre>
+<pre><code class="language-http">HTTP/1.1 204 No Content
+</code></pre>
+<p><strong>List keys</strong></p>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th></th><th></th></tr>
+</thead>
+<tbody>
+<tr><td>Request</td><td><code>GET /v1/keys</code></td></tr>
+<tr><td>Query parameters</td><td><code>prefix</code>: only keys that begin with this text, empty by default. <code>after</code>: only keys that sort after this key. <code>limit</code>: the largest number of keys to return, from 1 to 1000, 100 by default.</td></tr>
+<tr><td>Request body</td><td>none</td></tr>
+<tr><td>Success</td><td><code>200 OK</code></td></tr>
+<tr><td>Response headers</td><td><code>Content-Type: application/json</code></td></tr>
+<tr><td>Response body</td><td>a JSON object with the fields below</td></tr>
+<tr><td>Errors</td><td><code>503</code></td></tr>
+</tbody>
+</table>
+</div>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th>Field of the response body</th><th>Type</th><th>Meaning</th></tr>
+</thead>
+<tbody>
+<tr><td><code>keys</code></td><td>array</td><td>the keys of this page, in sorted order</td></tr>
+<tr><td><code>keys[].key</code></td><td>string</td><td>the key</td></tr>
+<tr><td><code>keys[].version</code></td><td>number</td><td>the version of the entry</td></tr>
+<tr><td><code>keys[].size</code></td><td>number</td><td>the length of the value in bytes</td></tr>
+<tr><td><code>next_after</code></td><td>string or <code>null</code></td><td>the value to pass as <code>after</code> for the next page, and <code>null</code> on the last page</td></tr>
+</tbody>
+</table>
+</div>
+<pre><code class="language-http">GET /v1/keys?prefix=user-&amp;limit=2 HTTP/1.1
+Host: store.example
+</code></pre>
+<pre><code class="language-http">HTTP/1.1 200 OK
+Content-Type: application/json
+
+{
+  "keys": [
+    { "key": "user-1", "version": 2, "size": 12 },
+    { "key": "user-2", "version": 3, "size": 5 }
+  ],
+  "next_after": "user-2"
+}
+</code></pre>
+<p><strong>Errors</strong></p>
+<p>Every error response has the content type <code>application/problem+json</code> and a body with
+these fields.</p>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th>Field</th><th>Type</th><th>Meaning</th></tr>
+</thead>
+<tbody>
+<tr><td><code>type</code></td><td>string</td><td>identifies the kind of error, and is the field a program should compare</td></tr>
+<tr><td><code>title</code></td><td>string</td><td>a description of the kind of error, the same on every occurrence</td></tr>
+<tr><td><code>status</code></td><td>number</td><td>the HTTP status code, repeated in the body</td></tr>
+<tr><td><code>detail</code></td><td>string, optional</td><td>a description of this particular occurrence</td></tr>
+</tbody>
+</table>
+</div>
+<pre><code class="language-http">HTTP/1.1 412 Precondition Failed
+Content-Type: application/problem+json
+
+{
+  "type": "/problems/condition-failed",
+  "title": "The condition on the key's version does not hold",
+  "status": 412,
+  "detail": "the key is at version 2"
+}
+</code></pre>
+<p><strong>Health of a node</strong></p>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th></th><th></th></tr>
+</thead>
+<tbody>
+<tr><td>Request</td><td><code>GET /healthz</code></td></tr>
+<tr><td>Success</td><td><code>200 OK</code></td></tr>
+<tr><td>Response body</td><td>a JSON object: <code>status</code> (a string), <code>keys</code> (the number of keys), <code>last_sequence</code> (the sequence number of the last record)</td></tr>
+</tbody>
+</table>
+</div>
+<pre><code class="language-http">HTTP/1.1 200 OK
+Content-Type: application/json
+
+{ "status": "ok", "keys": 2, "last_sequence": 5 }
+</code></pre>
+<p>The sections that follow take up the parts of this reference that embody a decision,
+and show each exchange as it was actually performed by the server of chapter 2.</p>
+<h3 id="writing-and-reading-a-key"><a class="header" href="#writing-and-reading-a-key">Writing and reading a key</a></h3>
+<p><code>PUT</code> stores the body of the request as the value of the key. Since values are opaque
+bytes, the body is sent without any encoding. The first write of a key is answered
+with <code>201 Created</code>. All the responses in this section were produced by the server of
+chapter 2, with its <code>date</code> header removed.</p>
+<pre><code class="language-console">$ curl -i -X PUT http://127.0.0.1:7001/v1/keys/user-1 --data-binary 'ada'
+HTTP/1.1 201 Created
+etag: "1"
+content-length: 0
+</code></pre>
+<p>The version of an entry is conveyed in the <code>etag</code> header. In HTTP, an <em>entity tag</em>, or
+ETag, identifies 1 particular state of a resource, which is exactly what a version is.
+<code>GET</code> returns the value together with its tag.</p>
+<pre><code class="language-console">$ curl -i http://127.0.0.1:7001/v1/keys/user-1
+HTTP/1.1 200 OK
+content-type: application/octet-stream
+etag: "1"
+content-length: 3
+
+ada
+</code></pre>
+<h3 id="conditional-writes"><a class="header" href="#conditional-writes">Conditional writes</a></h3>
+<p>Functional requirement 3 is directed at a problem called the <em>lost update</em>, which
+arises when 2 clients read a value, each modify it independently, and each write it
+back.</p>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th>Step</th><th>Web server A</th><th>Web server B</th><th>Value in the store</th></tr>
+</thead>
+<tbody>
+<tr><td>1</td><td>reads the basket: <code>tea</code></td><td></td><td><code>tea</code></td></tr>
+<tr><td>2</td><td></td><td>reads the basket: <code>tea</code></td><td><code>tea</code></td></tr>
+<tr><td>3</td><td>writes <code>tea, milk</code></td><td></td><td><code>tea, milk</code></td></tr>
+<tr><td>4</td><td></td><td>writes <code>tea, sugar</code></td><td><code>tea, sugar</code></td></tr>
+</tbody>
+</table>
+</div>
+<p>Both writes succeed, and <code>milk</code> is missing from the final value. Nothing failed, and
+no error was reported to anyone. The write at step 4 was computed from what B read at
+step 2, which by then was no longer current, and the store, having been told only to
+set the value, set it.</p>
+<p>The remedy is to let a write state which version it was based on. HTTP provides the
+<code>If-Match</code> header for this purpose: the server performs the write only if the present
+version of the resource is the version named in the header.</p>
+<pre><code class="language-console">$ curl -i -X PUT http://127.0.0.1:7001/v1/keys/user-1 -H 'If-Match: "1"' --data-binary 'ada lovelace'
+HTTP/1.1 204 No Content
+etag: "2"
+</code></pre>
+<p>The key was at version 1, the condition held, and version 2 resulted. The same request
+sent a second time is refused, since version 1 is no longer current.</p>
+<pre><code class="language-console">$ curl -i -X PUT http://127.0.0.1:7001/v1/keys/user-1 -H 'If-Match: "1"' --data-binary 'ada byron'
+HTTP/1.1 412 Precondition Failed
+content-type: application/problem+json
+content-length: 144
+
+{"type":"/problems/condition-failed","title":"The condition on the key's version does not hold","status":412,"detail":"the key is at version 2"}
+</code></pre>
+<p>The status <code>412 Precondition Failed</code> informs web server B that its copy is out of
+date. B reads again, obtains <code>tea, milk</code> at version 2, adds the sugar, and writes with
+<code>If-Match: "2"</code>. The procedure of reading, modifying and writing conditionally,
+repeated until the write succeeds, is the general method by which clients of a store
+cooperate without locks, and it recurs throughout the later chapters under the name of
+compare-and-set.</p>
+<figure>
+<img src="figures/request-annotated.svg?v=89429437" alt="A conditional write explained line by line. PUT /v1/keys/user-1 names the whole new state of the resource, so sending it twice leaves the same result. The header If-Match with version 1 makes the write happen only if the key is still at the version this client read. The answer 204 No Content means the value was replaced, and the etag header carries the new version 2. The answer 412 Precondition Failed means another client wrote first and nothing was changed.">
+<figcaption><b>Figure 1.6</b> A conditional write, and the 2 responses it can receive.</figcaption>
+</figure>
+<p>The header <code>If-None-Match: *</code> expresses the complementary condition, that the write
+is to be performed only if the key does not exist. With it, several clients may all
+attempt to create the same key, and exactly 1 succeeds.</p>
+<pre><code class="language-console">$ curl -i -X PUT http://127.0.0.1:7001/v1/keys/user-1 -H 'If-None-Match: *' --data-binary 'someone else'
+HTTP/1.1 412 Precondition Failed
+content-type: application/problem+json
+content-length: 144
+
+{"type":"/problems/condition-failed","title":"The condition on the key's version does not hold","status":412,"detail":"the key is at version 2"}
+</code></pre>
+<p>On a <code>GET</code>, <code>If-None-Match</code> with a version asks for the value only if it has changed
+since that version. If it has not, the server answers <code>304 Not Modified</code> with no body,
+which spares the transfer of data that the client already holds.</p>
+<pre><code class="language-console">$ curl -i http://127.0.0.1:7001/v1/keys/user-1 -H 'If-None-Match: "2"'
+HTTP/1.1 304 Not Modified
+etag: "2"
+</code></pre>
+<h3 id="listing-keys"><a class="header" href="#listing-keys">Listing keys</a></h3>
+<p><code>GET /v1/keys</code> returns the keys that begin with <code>prefix</code>, in sorted order, and no more
+than <code>limit</code> of them. When more remain, the response carries <code>next_after</code>, and the
+client obtains the next page by passing that value as <code>after</code>.</p>
+<pre><code class="language-console">$ curl -i 'http://127.0.0.1:7001/v1/keys?prefix=user-&amp;limit=1'
+HTTP/1.1 200 OK
+content-type: application/json
+content-length: 71
+
+{"keys":[{"key":"user-1","version":2,"size":12}],"next_after":"user-1"}
+</code></pre>
+<pre><code class="language-console">$ curl -i 'http://127.0.0.1:7001/v1/keys?prefix=user-&amp;limit=1&amp;after=user-1'
+HTTP/1.1 200 OK
+content-type: application/json
+content-length: 66
+
+{"keys":[{"key":"user-2","version":3,"size":5}],"next_after":null}
+</code></pre>
+<p>The position in the listing is thus expressed as the last key of the previous page.
+A page number would not serve, for a reason that applies to every listing of data that may
+change. If a key is inserted ahead of the reader’s position between 2 requests, every
+later key moves down by 1 place, and a request for “page 2” returns a key that the
+reader has already received. A request for the keys after <code>user-1</code> is unaffected by
+insertions and deletions elsewhere. Chapter 15 meets the same problem in a news feed
+and solves it in the same way.</p>
+<h3 id="deleting-a-key"><a class="header" href="#deleting-a-key">Deleting a key</a></h3>
+<pre><code class="language-console">$ curl -i -X DELETE http://127.0.0.1:7001/v1/keys/user-2
+HTTP/1.1 204 No Content
+</code></pre>
+<h3 id="errors"><a class="header" href="#errors">Errors</a></h3>
+<p>A failed request is answered with a status code in the 400s or the 500s and a body in
+the format of RFC 9457. The <code>type</code> field identifies the category of the error and is
+what a client program should test. The <code>title</code> is a fixed description of the category,
+and <code>detail</code>, when present, describes the particular occurrence.</p>
+<pre><code class="language-console">$ curl -i http://127.0.0.1:7001/v1/keys/user-2
+HTTP/1.1 404 Not Found
+content-type: application/problem+json
+content-length: 80
+
+{"type":"/problems/key-not-found","title":"The key does not exist","status":404}
+</code></pre>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th>Status</th><th><code>type</code></th><th>Condition</th></tr>
+</thead>
+<tbody>
+<tr><td><code>400 Bad Request</code></td><td><code>/problems/invalid-key</code></td><td>The key is empty, exceeds 256 characters, or contains a character outside the permitted set.</td></tr>
+<tr><td><code>400 Bad Request</code></td><td><code>/problems/invalid-header</code></td><td>The <code>If-Match</code> or <code>If-None-Match</code> header is malformed.</td></tr>
+<tr><td><code>404 Not Found</code></td><td><code>/problems/key-not-found</code></td><td>A <code>GET</code> or <code>DELETE</code> names a key that does not exist.</td></tr>
+<tr><td><code>405 Method Not Allowed</code></td><td></td><td>The resource does not support the method. The <code>allow</code> header lists those it does.</td></tr>
+<tr><td><code>412 Precondition Failed</code></td><td><code>/problems/condition-failed</code></td><td>The condition in <code>If-Match</code> or <code>If-None-Match</code> does not hold.</td></tr>
+<tr><td><code>413 Payload Too Large</code></td><td></td><td>The value exceeds 1048576 bytes.</td></tr>
+<tr><td><code>503 Service Unavailable</code></td><td><code>/problems/store-unavailable</code></td><td>The node is unable to store the write. The client should try again.</td></tr>
+</tbody>
+</table>
+</div>
+<p>The 2 ranges of status codes call for different behaviour on the part of the client.
+A code in the 400s signifies a fault in the request, and sending the same request
+again will produce the same error. A code in the 500s signifies that the server was
+unable to carry out a valid request, which may well succeed if repeated.</p>
+<h3 id="retries"><a class="header" href="#retries">Retries</a></h3>
+<p>Suppose that a client sends a request and loses its connection before any response
+arrives. It has no means of knowing whether the operation was performed. This
+situation, the lost response, is the most characteristic difficulty of distributed
+systems and reappears in nearly every chapter of this book. The API meets it by making
+every operation idempotent, so that repeating a request is safe whichever was the
+case.</p>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th>Request</th><th>Effect of repeating it</th></tr>
+</thead>
+<tbody>
+<tr><td><code>GET</code></td><td>None, since <code>GET</code> does not change the store.</td></tr>
+<tr><td><code>PUT</code> without a condition</td><td>The key is set to the same value again. The value is unchanged and the version increases.</td></tr>
+<tr><td><code>PUT</code> with <code>If-Match</code></td><td>If the first attempt succeeded, the repetition returns <code>412</code>, and a <code>GET</code> then shows that the key holds the client’s value.</td></tr>
+<tr><td><code>DELETE</code></td><td>If the first attempt succeeded, the repetition returns <code>404</code>, which confirms that the key is absent.</td></tr>
+</tbody>
+</table>
+</div>
+<h2 id="the-protocol-between-nodes"><a class="header" href="#the-protocol-between-nodes">The protocol between nodes</a></h2>
+<p>The API described so far serves applications. The storage nodes also communicate with
+one another. A node sends the records it has written to the nodes that hold the other
+copies, and every node obtains the current ring from the coordinator. This internal
+traffic has different needs from a public API and uses a protocol of its own.</p>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th></th><th>Public API</th><th>Internal protocol</th></tr>
+</thead>
+<tbody>
+<tr><td>Who calls it</td><td>programs in any language, and people with tools such as <code>curl</code></td><td>only the store’s own programs</td></tr>
+<tr><td>What matters most</td><td>readability, compatibility with HTTP infrastructure, stability over years</td><td>compact encoding, low cost of processing, strict types</td></tr>
+<tr><td>Format</td><td>HTTP with JSON and raw bytes</td><td>Protocol Buffers over gRPC</td></tr>
+</tbody>
+</table>
+</div>
+<p><em>Protocol Buffers</em> is a format in which the types of messages are declared in a
+schema file and encoded in a compact binary form. <em>gRPC</em> is a protocol for remote
+procedure calls that carries such messages over HTTP/2. The schema file is the
+specification of the internal protocol, and it is written before any implementation.</p>
+<p>The <code>Record</code> message corresponds to the Record entity.</p>
+<p class="listing"><img class="mascot" src="art/crab-happy.svg" alt=""><b>Listing 1.1</b> The Record message. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/distributed-systems-from-the-ground-up/code/proto/store.proto">proto/store.proto</a></p>
+
+<pre><code class="language-protobuf">// A change to one key, as the leader of a shard wrote it to its log.
+message Record {
+  uint64 sequence = 1;
+  oneof change {
+    Put put = 2;
+    Delete delete = 3;
+  }
+}
+
+message Put {
+  string key = 1;
+  bytes value = 2;
+}
+
+message Delete {
+  string key = 1;
+}
+</code></pre>
+<p>Every field of a message has a number, and it is by the number that the
+binary encoding identifies the field. Names occur only in the schema. This
+arrangement is what allows nodes running different versions of the software to
+communicate, which they must do whenever a cluster is upgraded 1 node after another
+without stopping. A newer version may add a field under a number not previously used.
+An older node disregards numbers it does not recognise, and a newer node supplies a
+default value where a field is missing. The single rule that makes this work is that
+a field number, once used, keeps its meaning for ever.</p>
+<p>A leader sends records to its followers by means of the <code>Append</code> call. The terms
+<em>leader</em>, <em>follower</em> and <em>term</em> are defined in the section on replication.</p>
+<p class="listing"><img class="mascot" src="art/crab-happy.svg" alt=""><b>Listing 1.2</b> The replication service. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/distributed-systems-from-the-ground-up/code/proto/store.proto">proto/store.proto</a></p>
+
+<pre><code class="language-protobuf">// Sent by the leader of a shard to each follower.
+service Replication {
+  // Appends records to the follower's log. A call with no records is a
+  // heartbeat: it tells the follower that the leader is alive.
+  rpc Append(AppendRequest) returns (AppendResponse);
+}
+
+message AppendRequest {
+  // The shard, named by the last position it owns.
+  fixed64 shard = 1;
+  // The term of the sender. A follower rejects a leader of an older term.
+  uint64 term = 2;
+  // The sequence of the record that precedes `records` in the leader's log.
+  uint64 previous_sequence = 3;
+  repeated Record records = 4;
+  // Every record up to this sequence is on a majority of the replicas.
+  uint64 committed_sequence = 5;
+  // Added for leader election. The term of the record at previous_sequence,
+  // and the id of the sender.
+  uint64 previous_term = 6;
+  uint32 leader = 7;
+}
+
+message AppendResponse {
+  uint64 term = 1;
+  // False when the follower's log does not end at `previous_sequence`.
+  bool appended = 2;
+  // The sequence of the last record in the follower's log.
+  uint64 last_sequence = 3;
+}
+</code></pre>
+<p>The field <code>previous_sequence</code> is what keeps a follower’s log identical to its
+leader’s. A follower appends the records it is sent only if its own log at present
+ends at <code>previous_sequence</code>. If it does not, the follower answers <code>appended = false</code>
+together with the actual last sequence number of its log, and the leader sends again
+from that point. No follower’s log can therefore contain a gap or hold records in a
+different order from the leader’s.</p>
+<p>The coordinator stores the ring as a <code>Ring</code> message.</p>
+<p class="listing"><img class="mascot" src="art/crab-happy.svg" alt=""><b>Listing 1.3</b> The ring, as the coordinator stores it. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/distributed-systems-from-the-ground-up/code/proto/store.proto">proto/store.proto</a></p>
+
+<pre><code class="language-protobuf">// The ring, as the coordinator stores it. Routers and nodes read it and watch it
+// for changes.
+message Ring {
+  uint64 version = 1;
+  repeated Node nodes = 2;
+  repeated Shard shards = 3;
+}
+
+message Node {
+  string id = 1;
+  string address = 2;
+  // The positions this node owns on the ring.
+  repeated fixed64 tokens = 3;
+}
+
+// A range of the ring and the nodes that hold its keys.
+message Shard {
+  // The shard owns the positions from first_token to last_token, both included.
+  fixed64 first_token = 1;
+  fixed64 last_token = 2;
+  uint64 term = 3;
+  string leader = 4;
+  repeated string followers = 5;
+}
+</code></pre>
+<p>Routers and storage nodes read the ring when they start and thereafter <em>watch</em> it. A
+watch is a request that the coordinator holds open and answers whenever the stored
+value changes, so that every component learns of a new version of the ring within
+milliseconds and none of them has to ask repeatedly.</p>
+<h2 id="high-level-design"><a class="header" href="#high-level-design">High-level design</a></h2>
+<p>The high-level design names the components of the system, states the role of each,
+and traces the path of a request through them. Figure 1.7 shows the
+whole. The numbers in the figure are the steps of a write, and they appear again in
+its legend and in the text below.</p>
+<figure class="wide">
+<img src="figures/system-overview.svg?v=2e207001" alt="The high-level design of the key-value store, drawn from left to right, with the path of a write numbered. Applications send requests to a load balancer, which passes each request to 1 of 3 routers. The routers have no data of their own. They hold a copy of the ring, which the coordinator, drawn above them, sends them. On the right are 24 storage nodes. For the key user-1, node-10 is the leader and node-1 and node-6 are the followers, and each has a log on disk. A monitoring system, drawn below the routers, reads the health and the metrics of every node. Step 0: routers hold a copy of the ring, sent by the coordinator. Step 1: an application sends PUT /v1/keys/user-1. Step 2: the load balancer passes it to a healthy router. Step 3: the router hashes the key and finds the leader, node-10. Step 4: node-10 stores the record in its log, on disk. Step 5: node-10 sends the record to node-1 and node-6. Step 6: when 1 of them has stored it, node-10 answers 201 Created. Step 7: the answer returns the way the request came.">
+<figcaption><b>Figure 1.7</b> The complete system and the path of a write. The steps are numbered from 0 to 7.</figcaption>
+</figure>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th>Component</th><th>Role</th><th>State it holds</th><th>When 1 instance fails</th></tr>
+</thead>
+<tbody>
+<tr><td>Load balancer</td><td>accepts connections from clients and passes each to a healthy router</td><td>none</td><td>a standby takes over the service address</td></tr>
+<tr><td>Router</td><td>finds the node responsible for a key and forwards the request to it</td><td>a copy of the ring</td><td>the load balancer stops using it</td></tr>
+<tr><td>Storage node</td><td>stores the replicas of the shards assigned to it</td><td>a log on disk, and the entries in memory</td><td>the shards it led elect new leaders</td></tr>
+<tr><td>Coordinator</td><td>stores the ring and the present leader of every shard</td><td>the ring</td><td>the remaining 2 of its 3 machines continue to serve</td></tr>
+<tr><td>Monitoring</td><td>reads the health and the metrics of every node</td><td>time series</td><td>requests are unaffected, and alerts are unavailable</td></tr>
+</tbody>
+</table>
+</div>
+<p>The <em>coordinator</em> is a small replicated store for configuration. It runs on 3
+machines, keeps a complete copy of its data on each, and remains available as long as
+a majority of them is running. It may seem odd that a key-value store should depend
+on a second, smaller store, and the reason is a circularity that cannot otherwise be
+escaped. The ring is what tells every component where a key is to be found, and the
+store cannot keep the ring within itself, since the ring would be needed in order to
+find it. The ring is therefore kept in a separate system at a fixed address that
+every component knows. Chapter 4 shows how a group of 3 machines agrees on a value,
+which is what the coordinator does.</p>
+<p>A write to the key <code>user-1</code> passes through the following steps.</p>
+<ol start="0">
+<li>Before any request arrives, every router holds a copy of the ring, and the coordinator informs the routers of every change to it.</li>
+<li>An application sends <code>PUT /v1/keys/user-1</code> to the load balancer.</li>
+<li>The load balancer forwards the request to a router that passed its most recent health check.</li>
+<li>The router hashes <code>user-1</code>, looks up the resulting position in its copy of the ring, finds that the leader of the shard is <code>node-10</code>, and forwards the request there.</li>
+<li><code>node-10</code> appends a record to its log and waits for its disk to confirm.</li>
+<li><code>node-10</code> sends the record to both followers, <code>node-1</code> and <code>node-6</code>.</li>
+<li>As soon as 1 follower has confirmed, <code>node-10</code> applies the record and answers <code>201 Created</code>.</li>
+<li>The response returns to the application by way of the router and the load balancer.</li>
+</ol>
+<p>A read follows steps 1 to 3 and is then answered by <code>node-10</code> from memory, with steps
+4 to 6 omitted.</p>
+<p>2 features of this arrangement deserve to be drawn out, since they are deliberate.</p>
+<p>The routers are stateless. A component without state can be run in any number of
+instances, added and removed at will, and replaced after a failure without any
+procedure of recovery. The design confines all lasting state to the storage nodes and
+the coordinator, so that those are the only components which require replication and
+the careful treatment of failure that occupies the rest of this chapter.</p>
+<p>And, as step 0 indicates, the coordinator takes no part in the handling of requests.
+If it becomes unreachable, reads and writes continue undisturbed on the copies of the
+ring that the routers already hold. Only changes to the ring are suspended: a change
+of leader cannot be recorded and a node cannot be added until the coordinator
+returns. A component that every request had to consult would be both a bottleneck and
+a single point of failure, and keeping the coordinator off the path of requests avoids
+both.</p>
+<h2 id="sharding"><a class="header" href="#sharding">Sharding</a></h2>
+<p><em>Sharding</em> is the division of the data into parts that are stored on different nodes,
+each part being a <em>shard</em>. With sharding, the total volume of data can exceed the
+capacity of any 1 node, and the load of requests is distributed among all of them. The
+central question is by what function a key is assigned to a node, and the obvious
+answer turns out to have a serious flaw.</p>
+<h3 id="hashing-modulo-the-number-of-nodes"><a class="header" href="#hashing-modulo-the-number-of-nodes">Hashing modulo the number of nodes</a></h3>
+<p>The obvious method hashes the key and takes the remainder on division by the number
+of nodes, <code>node = hash(key) mod N</code>. Provided that the hash function distributes its
+output evenly, every node receives an equal share of the keys, and any component that
+knows N can locate any key by a single calculation.</p>
+<p>The flaw appears when N changes. A key stays where it is only if its hash leaves the
+same remainder under the old number of nodes and the new. The following table shows,
+for a few hash values, what happens when N increases from 4 to 5.</p>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th><code>hash(key)</code></th><th><code>mod 4</code></th><th><code>mod 5</code></th><th>Does the key move</th></tr>
+</thead>
+<tbody>
+<tr><td>0</td><td>0</td><td>0</td><td>no</td></tr>
+<tr><td>1</td><td>1</td><td>1</td><td>no</td></tr>
+<tr><td>4</td><td>0</td><td>4</td><td>yes</td></tr>
+<tr><td>5</td><td>1</td><td>0</td><td>yes</td></tr>
+<tr><td>9</td><td>1</td><td>4</td><td>yes</td></tr>
+<tr><td>10</td><td>2</td><td>0</td><td>yes</td></tr>
+</tbody>
+</table>
+</div>
+<p>Of any 20 consecutive hash values, only 4 leave the same remainder modulo 4 and
+modulo 5. The addition of a fifth node therefore relocates 80% of all keys, although
+the new node has need of only 20% of them, and the other 60% merely change places
+among the existing nodes to nobody’s advantage. During such a relocation the cluster
+expends a large part of its capacity on copying data, at exactly the time when a node
+was added because capacity was short.</p>
+<h3 id="consistent-hashing"><a class="header" href="#consistent-hashing">Consistent hashing</a></h3>
+<p><em>Consistent hashing</em> is a method of assignment under which a change in the set of
+nodes relocates only the keys that have to move. The range of the hash function is
+regarded as a circle, called the <em>ring</em>, on which the largest value is followed by the
+smallest. Every node is given a position on the ring, called its <em>token</em>. A key is
+hashed to a position by the same function, and it belongs to the node whose token is
+the first at or after that position, proceeding clockwise.</p>
+<figure>
+<img src="figures/ring.svg?v=d49cc6f6" alt="A hash ring with positions 0 to 99. Node A has the token 12, B has 37, C has 62 and D has 87. Step 1: hash the key, and user-1 lands on position 20. Step 2: walk clockwise from 20 to the next token. Step 3: the next token is 37, which belongs to B, so B owns the key. Step 4: the next 2 different nodes, C and D, hold the other copies. B owns Every position from 13 to 37, because 12 is token before it.">
+<figcaption><b>Figure 1.8</b> A ring of 100 positions with 4 nodes. The key at position 20 belongs to node B.</figcaption>
+</figure>
+<p>In figure 1.8 the ring has only 100 positions, to keep the arithmetic easy. Node B
+has the token 37, and the token before it is 12, so that B owns the positions 13 to
+37. A key that hashes to position 20 belongs to B. A key that hashes to 90 lies beyond
+the last token, passes the end of the range, continues from 0, and belongs to A at
+position 12.</p>
+<p>The gain of the method is seen when a node is added.</p>
+<figure>
+<img src="figures/ring-add.svg?v=d2443ae3" alt="The same ring after node E joins with the token 50. Before, positions 38 to 62 belonged to C. E takes positions 38 to 50. 13 of the 100 positions change owner, all of them from C to E, and the keys on A, B and D and the keys at 51 to 62 on C stay in place. With hash mod N, going from 4 to 5 nodes moves 80 of 100.">
+<figcaption><b>Figure 1.9</b> Node E joins the ring. Only the positions 38 to 50 change their owner.</figcaption>
+</figure>
+<p>Node E is given the token 50, which lies between the token of B and that of C. E takes
+over the positions 38 to 50, which formerly belonged to C, and every other position
+keeps its owner. The addition has relocated 13% of the positions, and every relocated
+key has gone to E. The removal of a node has the reverse effect: its positions pass to
+its clockwise neighbour, and no other key is touched.</p>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th></th><th><code>hash mod N</code></th><th>Consistent hashing</th></tr>
+</thead>
+<tbody>
+<tr><td>Keys relocated when a node is added to N nodes</td><td>about N ÷ (N + 1) of all keys</td><td>about 1 ÷ (N + 1) of all keys</td></tr>
+<tr><td>Where the relocated keys go</td><td>to every node</td><td>to the new node only</td></tr>
+<tr><td>What is needed in order to locate a key</td><td>the number of nodes</td><td>the tokens of all the nodes</td></tr>
+</tbody>
+</table>
+</div>
+<p>The last row is the price. Under the first method a component needs to know 1 number,
+and under the second it needs the whole ring. How every component comes to have the
+ring, and what happens when its copy is out of date, is taken up below.</p>
+<h3 id="virtual-nodes"><a class="header" href="#virtual-nodes">Virtual nodes</a></h3>
+<p>With a single token for each node, the size of a node’s range depends on where its own
+token and its predecessor’s happen to fall, and the ranges can differ enormously.
+Furthermore, when a node is removed its entire range passes to 1 neighbour, which then
+carries a double load.</p>
+<p>Both defects are removed by giving every node many tokens. The tokens of a node are
+called its <em>virtual nodes</em>. Each node then owns many small ranges scattered around the
+ring. Its total share is the sum of many random range sizes, which varies far less
+than any single one of them, and the ranges of a removed node pass to many different
+neighbours.</p>
+<p>The program <code>ringsim</code> measures the effect. It places 100000 keys on a ring of 24
+nodes, with 1, 8, 64 and 256 tokens for each node, and reports the smallest and the
+largest share of keys held by any node. It then adds a node and counts the keys whose
+owner has changed.</p>
+<pre><code class="language-console">$ cargo run --release -p ringsim
+100000 keys on 24 nodes, ideal share 4.17%
+     1 tokens per node: smallest share  0.16%, largest share 11.26%
+     8 tokens per node: smallest share  1.42%, largest share  7.83%
+    64 tokens per node: smallest share  3.35%, largest share  5.07%
+   256 tokens per node: smallest share  3.86%, largest share  4.73%
+adding node 25 to a ring with 256 tokens per node, ideal movement 4.00%
+  on the ring: 4332 keys changed owner (4.33%), 4332 of them to the new node
+  hash mod N : 96001 keys changed owner (96.00%)
+replicas of user-1: node-10, node-1, node-6
+position of user-1: 0x7c7615c11438e5c9
+</code></pre>
+<figure>
+<img src="figures/ring-spread.svg?v=be915fbb" alt="The share of 100000 keys held by the emptiest and the fullest of 24 nodes, for 4 numbers of tokens per node, against an ideal share of 4.17 percent. With 1 token per node the shares run from 0.16 to 11.26 percent. With 8 tokens, from 1.42 to 7.83. With 64 tokens, from 3.35 to 5.07. With 256 tokens, from 3.86 to 4.73.">
+<figcaption><b>Figure 1.10</b> The range of shares across 24 nodes, for each number of tokens.</figcaption>
+</figure>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th>Output</th><th>What it shows</th></tr>
+</thead>
+<tbody>
+<tr><td>1 token: shares from 0.16% to 11.26%</td><td>With 1 token for each node, the most heavily loaded node holds 70 times as many keys as the least.</td></tr>
+<tr><td>256 tokens: shares from 3.86% to 4.73%</td><td>With 256 tokens, every node is within 14% of the ideal share of 4.17%.</td></tr>
+<tr><td>4332 keys changed owner, all to the new node</td><td>Adding a 25th node relocated 4.33% of the keys, close to the ideal of 4.00%, and no key moved between existing nodes.</td></tr>
+<tr><td><code>hash mod N</code>: 96001 keys changed owner</td><td>The same change relocates 96% of the keys when the node is chosen by remainder.</td></tr>
+</tbody>
+</table>
+</div>
+<p>We use 256 tokens for each node. With 24 nodes, the ring contains 6144 tokens, and
+each range between adjacent tokens holds about 180 MB on average. A larger number of
+tokens would improve the balance further, at the cost of a larger ring to store and
+to distribute.</p>
+<p>The ring uses a 64-bit hash function, xxHash3, for tokens and keys alike. The token of
+a virtual node is the hash of the name of its node followed by a number, as in
+<code>node-7#12</code>. Since the tokens are derived from the names, every router and node that
+knows the names of all the nodes computes an identical ring, and no table of tokens
+has to be transmitted.</p>
+<p>The tokens are kept in a sorted map. To find the owner of a key, a lookup takes the
+tokens from the key’s position to the end of the map, followed by those from its
+beginning, which is clockwise order on the ring. The cost is logarithmic in the number
+of tokens.</p>
+<h3 id="shards-on-the-ring"><a class="header" href="#shards-on-the-ring">Shards on the ring</a></h3>
+<p>Each range between adjacent tokens is a shard. The replicas of a shard are placed on
+the first 3 distinct nodes encountered going clockwise from its range. The node that
+owns the range is the preferred leader of the shard, and the other 2 are its
+followers. For the key <code>user-1</code>, <code>ringsim</code> reports <code>node-10</code>, <code>node-1</code> and <code>node-6</code>,
+and these 3 nodes serve as the example in every chapter that follows.</p>
+<p>The word “distinct” matters. Consecutive tokens on the ring may belong to the same
+physical node, since each node has 256 of them, and 2 replicas placed on 1 machine
+would give no protection against the loss of that machine. Tokens of a node already
+chosen are therefore passed over.</p>
+<h3 id="the-ring-in-a-running-system"><a class="header" href="#the-ring-in-a-running-system">The ring in a running system</a></h3>
+<p>The ring has so far been described as a data structure. It remains to describe how the
+components of a running cluster obtain it, use it and change it, and it is here that
+most of the practical difficulty lies.</p>
+<p><strong>Where the ring is kept.</strong> There is a single authoritative copy, the <code>Ring</code> message
+held by the coordinator. It contains the name, address and tokens of every node, and
+the present leader of every shard. Every change increases its version number by 1.
+Routers and storage nodes hold a copy in memory and keep it current by means of a
+watch.</p>
+<p><strong>How a request is routed.</strong> Routing requires no communication with the coordinator or
+with other routers. A router hashes the key and performs a binary search in its sorted
+list of tokens, which with 6144 tokens takes 13 comparisons.</p>
+<figure>
+<img src="figures/ring-route.svg?v=3a871bdd" alt="How the ring is used for a request, in 8 steps numbered from 0. Step 0: the coordinator holds the ring at version 7, with the tokens of every node and the leader of each shard. Step 1: each router keeps a copy and watches the coordinator, which sends version 8 as soon as it exists. Step 2: a request arrives and the router hashes the key. Step 3: it searches its sorted tokens for the next one, a binary search of 13 steps over 6144 tokens. Step 4: it sends the request to that shard&#39;s leader with the ring version it used. Step 5: the node compares versions and serves the request if they are the same. Step 6: if the router&#39;s ring is old, the node refuses and answers that the ring is at version 8. Step 7: the router fetches version 8 and sends again, and the client sees 1 slower request and no error.">
+<figcaption><b>Figure 1.11</b> The use of the ring for a request, including the case of a ring that is out of date.</figcaption>
+</figure>
+<p><strong>What happens when a ring is out of date.</strong> A router may forward a request an instant
+before a new version of the ring reaches it, and the request then arrives at a node
+that is no longer responsible for the key. If that node were to answer, it might
+return a stale value or accept a write that belongs elsewhere, and strong consistency
+would be lost through nothing more than a delayed notification. Routers therefore
+attach the version of their ring to every forwarded request, in a <code>Ring-Version</code>
+header. A node that holds a newer ring and is not responsible for the key refuses the
+request with the status <code>421 Misdirected Request</code>, which HTTP defines for a request
+sent to a server that cannot answer for the resource. On receiving it, the router
+waits for the newer ring and forwards again, and the client observes nothing but a
+slightly slower response. The principle, that a component acting on possibly stale
+information should declare which version it is acting on so that the recipient can
+check, reappears in this book wherever stale knowledge is dangerous.</p>
+<p><strong>How a node joins.</strong> A new node cannot assume ownership of its ranges at once, since
+it does not yet hold their data. Ownership is therefore transferred range by range,
+each after its data has been copied.</p>
+<figure>
+<img src="figures/ring-join.svg?v=10f34d21" alt="How a node joins the ring, in 7 steps. Step 1: the operator starts node-25 and gives it the address of the coordinator. Step 2: node-25 registers in the coordinator as joining, with 256 tokens computed from its name. Step 3: the coordinator publishes ring version 8, in which node-25 owns no keys yet. Step 4: each current owner copies 1 range to node-25 and still serves the range meanwhile. Step 5: node-25 confirms that a range is complete. Step 6: the coordinator moves that range to node-25 in version 9, and routers send its keys to node-25 from now on. Step 7: the old owner deletes its copy of the range, and steps 3 to 6 repeat for every range.">
+<figcaption><b>Figure 1.12</b> The procedure by which a node joins a running cluster.</figcaption>
+</figure>
+<p><strong>How a node leaves.</strong> When an operator removes a node, the procedure runs in reverse.
+The departing node copies each of its ranges to the node that will own it, and the
+coordinator reassigns a range when its copy is complete. When a node fails without
+warning, there is no opportunity to copy. Its ranges are still held by the other 2
+replicas of each shard, the shards it led elect new leaders, and a replacement node is
+supplied with the data by the surviving replicas.</p>
+<p><strong>Gossip as an alternative.</strong> Some systems distribute the ring without any
+coordinator. Each node holds a copy, and the nodes exchange their copies in pairs,
+each repeatedly choosing another at random and comparing versions, so that a change
+spreads through the cluster as a rumour does through a crowd.</p>
+<figure>
+<img src="figures/gossip.svg?v=787c5563" alt="How a gossip protocol spreads a new ring among 8 nodes without a coordinator. At the start, 1 node has ring version 8 and 7 have version 7. After round 1, 2 nodes have version 8. After round 2, 4 nodes. After round 3, all 8. Once per second, every node picks another node at random and the 2 compare ring versions, and the one with the older ring takes the newer. The number of nodes that know doubles each round, so 24 nodes need about 5 rounds and 1000 nodes about 10.">
+<figcaption><b>Figure 1.13</b> The spread of a new version of the ring among 8 nodes by gossip.</figcaption>
+</figure>
+<p>A <em>gossip protocol</em> removes the dependence on a coordinator and scales to very large
+clusters, since no node has to communicate with more than a few others. Its
+disadvantage is that for some seconds after a change, different nodes hold different
+versions of the ring and may direct the same key to different nodes. Designs founded
+on gossip have to tolerate such disagreement, and accordingly tend to be those that
+offer eventual consistency. We use a coordinator, since a single authoritative ring is
+far easier to reason about when strong consistency is the aim, and a cluster of 24
+nodes has no need of the scalability of gossip.</p>
+<h3 id="the-cost-of-sharding"><a class="header" href="#the-cost-of-sharding">The cost of sharding</a></h3>
+<p>An operation on a single key involves a single shard. An operation on many keys may
+involve many. Listing keys by prefix, functional requirement 4, is of the second kind,
+because hashing deliberately destroys the order of keys: keys with a common prefix
+hash to unrelated positions and are scattered over all the nodes. A router has to send
+such a request to every node and merge their sorted results, so that a listing takes
+time proportional to the number of nodes.</p>
+<p>This is the general price of hashing, and systems whose work consists largely of
+range queries choose differently. They divide the key space into contiguous ranges of
+keys, without hashing, so that neighbouring keys remain on the same node and a range
+query touches few nodes. In exchange they must actively move the boundaries of the
+ranges in order to keep the load even, since nothing in an unhashed key space
+guarantees that keys are evenly spread.</p>
+<h2 id="replication"><a class="header" href="#replication">Replication</a></h2>
+<p><em>Replication</em> is the keeping of copies of the same data on several nodes, each copy
+being a <em>replica</em>. Non-functional requirement 0 lays down that an acknowledged write
+survives the loss of any 1 machine, from which it follows that a write must be stored
+on at least 2 machines before it is acknowledged.</p>
+<h3 id="replication-with-a-leader"><a class="header" href="#replication-with-a-leader">Replication with a leader</a></h3>
+<p>If every replica accepted writes independently, 2 clients might write different
+values for the same key to 2 replicas at the same moment, and the replicas would then
+hold conflicting data, to be reconciled afterwards by some rule that is bound to
+discard one client’s work. This design avoids such conflicts by appointing 1 replica
+of every shard as its <em>leader</em>. All writes to the shard go to the leader, which
+assigns each the next sequence number, so that the writes have a single agreed order,
+and sends the resulting record to the other replicas, the <em>followers</em>. A follower
+applies the records in the order of their sequence numbers and thereby arrives at the
+leader’s state.</p>
+<h3 id="acknowledgement-by-a-majority"><a class="header" href="#acknowledgement-by-a-majority">Acknowledgement by a majority</a></h3>
+<p>The leader acknowledges a write as soon as its record is stored in 2 of the 3 logs,
+its own and that of 1 follower. It does not wait for the second follower.</p>
+<figure>
+<img src="figures/replicated-write.svg?v=f374131d" alt="A write to a shard of 3 replicas. The leader on node-10 and the follower on node-1 hold records 41 and 42, and the slow follower on node-6 holds only record 41. Step 1: the leader appends record 42 to its log and waits for its disk. Step 2: it sends the record to both followers in parallel. Step 3: node-1 appends it, waits for its disk and answers. Step 4: 2 of 3 logs hold the record, so it is committed, and the leader applies it and answers the client. Step 5: node-6 receives it later.">
+<figcaption><b>Figure 1.14</b> Record 42 is acknowledged although 1 follower has not yet received it.</figcaption>
+</figure>
+<p>The rule has 2 consequences, both of them wanted. The record is on 2 machines at the
+moment the client receives its acknowledgement, as non-functional requirement 0
+demands. And the response time of a write is governed by the faster of the 2
+followers, so that a follower which is slow, restarting or unreachable delays
+nothing, which is what keeps the p99 latency within the bound of non-functional
+requirement 3.</p>
+<p>Any set containing more than half of the replicas is called a <em>majority</em>. With 3
+replicas, a majority consists of 2. The whole importance of majorities derives from a
+single property: any 2 majorities of the same shard have at least 1 node in common.</p>
+<figure>
+<img src="figures/majority.svg?v=54418d41" alt="Why a majority is enough. Record 42 was written to node-10 and node-1 while node-6 was slow and its log ends at record 41, and the write was acknowledged. Then node-10 is lost, and node-1 still has the record. node-1 and node-6 elect a leader, and node-1 has the longer log, so it becomes the leader. A write needs 2 of 3 nodes and an election needs 2 of 3 nodes, and 2 groups of 2 out of 3 always share a node, so every election includes a node that holds every acknowledged record.">
+<figcaption><b>Figure 1.15</b> The node common to both majorities holds the acknowledged record.</figcaption>
+</figure>
+<p>To see what this property accomplishes, consider what happens when the leader of a
+shard fails. Its followers elect a new leader, and a candidate requires the votes of a
+majority. The majority that stored record 42 and the majority that elects the new
+leader share at least 1 node, and that node holds record 42. By the rule of the
+election, a node votes only for a candidate whose log is at least as complete as its
+own. The node holding record 42 therefore refuses its vote to any candidate that
+lacks it, and such a candidate cannot assemble a majority. Every newly elected leader
+consequently holds every acknowledged record, and no acknowledged write is lost in a
+change of leader. Chapter 4 implements this argument and tests it.</p>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th>Replicas</th><th>Majority</th><th>Failures tolerated</th><th>Storage required</th></tr>
+</thead>
+<tbody>
+<tr><td>1</td><td>1</td><td>0</td><td>1×</td></tr>
+<tr><td>2</td><td>2</td><td>0</td><td>2×</td></tr>
+<tr><td>3</td><td>2</td><td>1</td><td>3×</td></tr>
+<tr><td>4</td><td>3</td><td>1</td><td>4×</td></tr>
+<tr><td>5</td><td>3</td><td>2</td><td>5×</td></tr>
+</tbody>
+</table>
+</div>
+<p>The table shows that an even number of replicas tolerates no more failures than the
+odd number below it, while costing more. We therefore use 3 replicas. A deployment
+that must survive 2 simultaneous failures uses 5.</p>
+<h3 id="asynchronous-replication"><a class="header" href="#asynchronous-replication">Asynchronous replication</a></h3>
+<p>In <em>asynchronous replication</em>, the leader acknowledges a write as soon as its own log
+holds the record and sends it to the followers afterwards. Writes are faster, since
+they wait for 1 disk and for no network round trip. But if the leader’s machine is
+lost immediately after an acknowledgement, no other machine has the record, and a
+write that was acknowledged is gone. Asynchronous replication is therefore
+incompatible with non-functional requirement 0, and this design uses acknowledgement
+by a majority. Later chapters adopt the asynchronous form where its risk is
+acceptable, as in the cache of chapter 9, and reject it where it is not, as in the
+lock service of chapter 10.</p>
+<h2 id="failure-handling"><a class="header" href="#failure-handling">Failure handling</a></h2>
+<p>A distributed system is defined as much by what it does when its parts fail as by what
+it does when they work. This section takes each kind of failure in turn and states how
+it is detected, what clients observe, and how the system recovers.</p>
+<h3 id="failure-of-a-leader"><a class="header" href="#failure-of-a-leader">Failure of a leader</a></h3>
+<p>A leader sends an <code>Append</code> call to each of its followers every 100 ms. When there are
+no new records, the call is empty and is known as a <em>heartbeat</em>, a periodic message
+whose arrival shows that its sender is running. A follower that receives no <code>Append</code>
+for 1 second concludes that its leader has failed.</p>
+<figure>
+<img src="figures/failover.svg?v=40bdf1a6" alt="What happens when a leader fails, in 6 steps. Step 1: node-10, a leader, stops, and its followers stop receiving heartbeats. Step 2: after 1 second, node-1 stands for election and raises the term from 4 to 5. Step 3: node-6 votes for node-1, because its own log is no longer than node-1&#39;s. Step 4: the coordinator records the new leader, term 5, leader node-1, as a new ring version. Step 5: routers receive the new ring, and writes to the shard succeed again. Step 6: node-10 returns and becomes a follower, because term 5 is newer than its own term 4.">
+<figcaption><b>Figure 1.16</b> The election of a new leader after the failure of `node-10`.</figcaption>
+</figure>
+<p>Every election opens a new <em>term</em>, identified by a number that increases by 1. Terms
+are how nodes tell the present leader from a former one. In figure 1.16,
+<code>node-10</code> still regards itself as the leader of term 4 when it returns. The first
+message it receives carries term 5. Since that is higher than its own, <code>node-10</code> gives
+up its leadership and continues as a follower. Every <code>Append</code> call carries the term of
+its sender so that the receiver can make this comparison, and a returning leader that
+has been superseded is thereby prevented from doing any harm.</p>
+<h3 id="network-partition"><a class="header" href="#network-partition">Network partition</a></h3>
+<p>A <em>network partition</em> is a failure of the network that divides the nodes into groups
+which cannot communicate with each other, while every node continues to run. Seen from
+inside one group, a partition is indistinguishable from the failure of all the nodes
+in the other, and no node can discover which has occurred.</p>
+<figure>
+<img src="figures/partition.svg?v=9ae933c8" alt="A network partition splits a shard. On one side is node-10 alone, the leader of term 4. On the other side are nodes 1 and 11. A write that reaches node-10 is in 1 log, is never committed, and the client gets an error. The side with 2 nodes elects node-1 as leader of term 5 and commits writes. At most 1 side can hold 2 of 3 nodes, so at most 1 side accepts writes, and the side with 1 node refuses writes: it gives up availability to keep the data consistent.">
+<figcaption><b>Figure 1.17</b> During a partition, only the group that contains a majority accepts writes.</figcaption>
+</figure>
+<p>In figure 1.17, <code>node-10</code> is isolated and still regards itself as the leader.
+It accepts a write and appends a record to its own log, but it cannot send the record
+to a follower. Since no majority holds the record, <code>node-10</code> does not acknowledge, and
+its client receives an error. Meanwhile 2 of the 3 replicas are in the other group,
+which elects a new leader and continues to process writes.</p>
+<p>The rule of the majority thus resolves, without any further mechanism, the danger that
+a partition presents, namely 2 leaders each accepting writes that the other knows
+nothing of. At most 1 group can contain a majority of a shard’s replicas, so at most 1
+leader can acknowledge writes, and no node is required to determine why it has lost
+contact with the others.</p>
+<h3 id="summary-of-failures"><a class="header" href="#summary-of-failures">Summary of failures</a></h3>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th>Failure</th><th>How it is detected</th><th>What clients observe</th><th>Recovery</th></tr>
+</thead>
+<tbody>
+<tr><td>The process of a storage node stops</td><td><code>Append</code> calls to or from the node go unanswered</td><td>nothing for the shards it follows, and an election for the shards it leads</td><td>The process restarts, rebuilds its state from its log, and receives the records it missed.</td></tr>
+<tr><td>A leader fails</td><td>its followers receive no heartbeat for 1 second</td><td>writes to the shard fail for a few seconds, and other shards are unaffected</td><td>The followers elect a new leader.</td></tr>
+<tr><td>A follower fails</td><td>the leader’s <code>Append</code> calls go unanswered</td><td>nothing, since 2 of 3 replicas remain</td><td>The follower returns and receives the missing records from the leader.</td></tr>
+<tr><td>A disk is lost</td><td>the node cannot start, or cannot write</td><td>the same as for a stopped node</td><td>The operator replaces the node, and the leaders copy the affected shards to it.</td></tr>
+<tr><td>The network is partitioned</td><td>each group ceases to receive messages from the other</td><td>requests to the majority group succeed, and requests to the minority group fail</td><td>When the partition ends, the nodes of the minority group continue as followers.</td></tr>
+<tr><td>A router fails</td><td>the load balancer’s health check fails</td><td>open connections to it are broken, and retried requests reach another router</td><td>A new router is started and obtains the ring.</td></tr>
+<tr><td>The coordinator is unreachable</td><td>routers and nodes cannot connect to it</td><td>nothing, unless a leader fails during the outage</td><td>The coordinator runs on 3 machines and needs 2 of them.</td></tr>
+<tr><td>2 of the 3 replicas of a shard are lost</td><td>no majority can be formed</td><td>the shard is unavailable</td><td>A replica is restored from the surviving node.</td></tr>
+</tbody>
+</table>
+</div>
+<p>The last row marks the limit of the design. With 3 replicas, the store tolerates the
+loss of any 1 machine and remains consistent under any partition of the network. A
+shard that has lost a majority of its replicas is unavailable, and has to be so, since
+the single surviving replica cannot know whether it holds every acknowledged write.</p>
+<h2 id="guarantees-and-trade-offs"><a class="header" href="#guarantees-and-trade-offs">Guarantees and trade-offs</a></h2>
+<p>During a network partition, a distributed store cannot offer both consistency and
+availability. It must either refuse some requests in order to keep all its answers
+consistent, or accept all requests and allow the 2 groups to diverge. This result is
+known as the <em>CAP theorem</em>, and it is less a theorem to be proved than an observation
+that follows directly from the previous section: a node that cannot reach the others
+must choose between answering from what it has, which may be out of date, and
+declining to answer. This design gives priority to consistency.</p>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th>Property</th><th>Provided</th><th>By what means, or why not</th></tr>
+</thead>
+<tbody>
+<tr><td>An acknowledged write survives the loss of 1 machine (non-functional requirement 0)</td><td>yes</td><td>The record is in 2 of 3 logs before it is acknowledged.</td></tr>
+<tr><td>A read returns the latest acknowledged write (non-functional requirement 2)</td><td>yes</td><td>Reads are served by the leader, and a leader that cannot reach a majority stops serving.</td></tr>
+<tr><td>Requests succeed while 1 machine is down (non-functional requirement 1)</td><td>yes, after an election lasting a few seconds</td><td>A new leader is elected by a majority.</td></tr>
+<tr><td>Requests succeed in the minority group of a partition</td><td>no</td><td>The minority group cannot store a record on a majority.</td></tr>
+<tr><td>A write completes without a network round trip</td><td>no</td><td>Acknowledgement by a majority is required for non-functional requirement 0.</td></tr>
+<tr><td>Listing by prefix costs the same as a read</td><td>no</td><td>Hashing distributes adjacent keys over all the nodes.</td></tr>
+</tbody>
+</table>
+</div>
+<p>The availability allowed by non-functional requirement 1 can be related to elections
+by a short calculation. An allowance of 21.6 minutes a month is 1296 seconds. If an
+election takes 5 seconds and the failed node led 1/24 of all the shards, the election
+causes 1/24 of all writes to fail for 5 seconds and consumes about 0.2 seconds of the
+allowance. Several thousand such failures a month would be within it. In practice,
+therefore, the requirement is not threatened by the failures of individual machines,
+which this design absorbs, and is limited by events that affect many nodes together,
+such as a faulty release of the software or the loss of a segment of the network.</p>
+<h2 id="mistakes-to-avoid"><a class="header" href="#mistakes-to-avoid">Mistakes to avoid</a></h2>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th>Mistake</th><th>What goes wrong</th><th>What to do</th></tr>
+</thead>
+<tbody>
+<tr><td>Assigning keys by <code>hash mod N</code></td><td>Adding 1 node moves nearly every key.</td><td>Use consistent hashing, so that only the new node’s share moves.</td></tr>
+<tr><td>1 token for each node</td><td>Shares differ by a factor of 70, and a removed node doubles 1 neighbour’s load.</td><td>Give each node many tokens.</td></tr>
+<tr><td>Placing a shard’s replicas on the next 3 tokens</td><td>2 replicas can land on the same machine.</td><td>Take the next 3 distinct nodes.</td></tr>
+<tr><td>Answering a request with an outdated ring</td><td>A node that no longer owns a key serves stale data or accepts a misplaced write.</td><td>Send the ring’s version with each request, and refuse with <code>421</code> when it is behind.</td></tr>
+<tr><td>Acknowledging before a second copy exists</td><td>The loss of the leader loses an acknowledged write.</td><td>Acknowledge only when a majority holds the record.</td></tr>
+<tr><td>Waiting for every replica</td><td>1 slow or failed follower delays or blocks every write.</td><td>Wait for a majority only.</td></tr>
+<tr><td>An even number of replicas</td><td>More storage, and no additional failure tolerated.</td><td>Use 3 or 5.</td></tr>
+<tr><td>Letting any node with data answer reads</td><td>A follower that is behind returns an old value.</td><td>Serve reads from the leader, which must be able to reach a majority.</td></tr>
+<tr><td>Putting the coordinator on the path of requests</td><td>Every request depends on it, and its outage stops the store.</td><td>Let routers hold copies of the ring, and consult the coordinator for changes only.</td></tr>
+<tr><td>Writing without a condition after reading</td><td>2 clients overwrite each other’s changes.</td><td>Send <code>If-Match</code> with the version that was read.</td></tr>
+<tr><td>Paging by page number</td><td>Insertions shift the pages, and keys are repeated or skipped.</td><td>Page by the last key received.</td></tr>
+<tr><td>Reusing a field number in the protocol</td><td>Old and new nodes interpret the same bytes differently.</td><td>Keep the meaning of every number for ever.</td></tr>
+</tbody>
+</table>
+</div>
+<h2 id="a-first-look-at-the-low-level-design"><a class="header" href="#a-first-look-at-the-low-level-design">A first look at the low-level design</a></h2>
+<p>Every guarantee stated above rests on an assumption that has so far been taken for
+granted: that a record which a node has reported as stored is still in that node’s
+log after the node has crashed and restarted. If a node could lose such a record, a
+record counted as stored on 2 of 3 nodes might in truth be stored on 1, and the whole
+argument from majorities would be without foundation. A storage node justifies the
+assumption by observing 2 rules.</p>
+<ol>
+<li>Every change is appended to a log on disk, and the node waits for the disk to confirm, before the change is applied in memory and before any response is sent.</li>
+<li>On starting, a node rebuilds its state in memory by reading its log from beginning to end.</li>
+</ol>
+<p>Chapter 2 implements a storage node on these 2 rules: a format for records on disk, a
+log with its procedure of recovery, and an HTTP server that provides the API of this
+chapter. It includes a simulation that cuts a log short at every possible byte and
+verifies that recovery returns exactly the records that were complete. The entities
+of this chapter appear in its code under the same names.</p>
+<h2 id="the-simulation-of-the-ring"><a class="header" href="#the-simulation-of-the-ring">The simulation of the ring</a></h2>
+<div class="simulation">
+<p><strong>Simulation in the repository.</strong> The program <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/distributed-systems-from-the-ground-up/code/ringsim/src/main.rs"><code>code/ringsim</code></a> simulates this design. To run it, clone the repository and type <code>cargo run --release -p ringsim</code> in the <code>code</code> directory.</p>
+</div>
+
+<h2 id="terms-introduced-in-this-chapter"><a class="header" href="#terms-introduced-in-this-chapter">Terms introduced in this chapter</a></h2>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th>Term</th><th>Meaning</th></tr>
+</thead>
+<tbody>
+<tr><td>Key-value store</td><td>a database that stores a value under a key and returns it on request</td></tr>
+<tr><td>Stateless</td><td>holding no data whose loss would matter</td></tr>
+<tr><td>Acknowledged</td><td>confirmed to the client by a successful response</td></tr>
+<tr><td>Durability</td><td>the property that acknowledged data is not lost</td></tr>
+<tr><td>Availability</td><td>the property that requests are answered</td></tr>
+<tr><td>Strong consistency, linearizability</td><td>every read returns the latest acknowledged write</td></tr>
+<tr><td>Eventual consistency</td><td>all copies come to agree once writes cease</td></tr>
+<tr><td>Tunable consistency</td><td>each request chooses how many copies must take part</td></tr>
+<tr><td>Entry</td><td>the current value of a key, with its version</td></tr>
+<tr><td>Record</td><td>1 change to a key, with a sequence number</td></tr>
+<tr><td>Idempotent</td><td>having the same effect whether performed once or several times</td></tr>
+<tr><td>Lost update</td><td>a change overwritten by a write that was based on an older value</td></tr>
+<tr><td>Conditional write, compare-and-set</td><td>a write performed only if the version is the one expected</td></tr>
+<tr><td>Sharding</td><td>dividing the data among nodes</td></tr>
+<tr><td>Shard</td><td>1 part of the data, here a range of the ring</td></tr>
+<tr><td>Consistent hashing</td><td>assigning keys to nodes so that a change of nodes moves few keys</td></tr>
+<tr><td>Ring</td><td>the hash range regarded as a circle, with the nodes’ tokens on it</td></tr>
+<tr><td>Token, virtual node</td><td>a position on the ring that belongs to a node</td></tr>
+<tr><td>Coordinator</td><td>a small replicated store that holds the ring</td></tr>
+<tr><td>Watch</td><td>a request that is answered when a stored value changes</td></tr>
+<tr><td>Gossip protocol</td><td>spreading information by repeated exchanges between pairs of nodes</td></tr>
+<tr><td>Replication</td><td>keeping copies of the data on several nodes</td></tr>
+<tr><td>Leader, follower</td><td>the replica that orders writes, and a replica that copies it</td></tr>
+<tr><td>Majority</td><td>more than half of the replicas</td></tr>
+<tr><td>Heartbeat</td><td>a periodic message showing that its sender is running</td></tr>
+<tr><td>Term</td><td>the number of an election, by which a current leader is told from a former one</td></tr>
+<tr><td>Network partition</td><td>a failure that divides the nodes into groups that cannot communicate</td></tr>
+<tr><td>CAP theorem</td><td>during a partition, a store cannot be both consistent and available</td></tr>
+</tbody>
+</table>
+</div>
+<div class="summary">
+<h2 id="summary"><a class="header" href="#summary">Summary</a></h2>
+<ul>
+<li>The non-functional requirements determine the architecture: durability under the loss of a machine demands replication, the volume of data demands sharding, and the availability target limits how long an election may take.</li>
+<li>Strong consistency is chosen because conditional writes are meaningless over stale reads, and its price is that the minority side of a partition stops answering.</li>
+<li>The capacity estimate starts from a measured disk latency of 5.4 ms, which gives 185 records per second for a node that waits for each record and 3700 with group commit, and arrives at 24 nodes.</li>
+<li>The API uses the standard meanings of HTTP methods and status codes, every operation is idempotent, and <code>If-Match</code> prevents lost updates.</li>
+<li>Nodes communicate in Protocol Buffers, whose numbered fields allow different versions of the software to work together.</li>
+<li>Consistent hashing places nodes and keys on a ring: adding a node to 24 relocated 4.33% of the keys in the measurement, against 96% for <code>hash mod N</code>.</li>
+<li>With 256 tokens for each node, every node’s measured share lay between 3.86% and 4.73%, against an ideal of 4.17%.</li>
+<li>Routers hold copies of the ring and send its version with every request, so that a node can refuse a request based on an outdated ring.</li>
+<li>Each shard has a leader that orders writes and 2 followers, and a write is acknowledged when 2 of the 3 logs hold its record.</li>
+<li>Any 2 majorities share a node, from which it follows that a new leader holds every acknowledged record and that at most 1 group in a partition accepts writes.</li>
+</ul>
+</div>
+
+
+                    </main>
+
+                    <nav class="nav-wrapper" aria-label="Page navigation">
+                        <!-- Mobile navigation buttons -->
+                            <a rel="prev" href="about-the-cover.html" class="mobile-nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                                <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M41.4 233.4c-12.5 12.5-12.5 32.8 0 45.3l160 160c12.5 12.5 32.8 12.5 45.3 0s12.5-32.8 0-45.3L109.3 256 246.6 118.6c12.5-12.5 12.5-32.8 0-45.3s-32.8-12.5-45.3 0l-160 160z"/></svg></span>
+                            </a>
+
+                            <a rel="next prefetch" href="02-key-value-store-storage-node.html" class="mobile-nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                                <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M278.6 233.4c12.5 12.5 12.5 32.8 0 45.3l-160 160c-12.5 12.5-32.8 12.5-45.3 0s-12.5-32.8 0-45.3L210.7 256 73.4 118.6c-12.5-12.5-12.5-32.8 0-45.3s32.8-12.5 45.3 0l160 160z"/></svg></span>
+                            </a>
+
+                        <div style="clear: both"></div>
+                    </nav>
+                </div>
+            </div>
+
+            <nav class="nav-wide-wrapper" aria-label="Page navigation">
+                    <a rel="prev" href="about-the-cover.html" class="nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                        <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M41.4 233.4c-12.5 12.5-12.5 32.8 0 45.3l160 160c12.5 12.5 32.8 12.5 45.3 0s12.5-32.8 0-45.3L109.3 256 246.6 118.6c12.5-12.5 12.5-32.8 0-45.3s-32.8-12.5-45.3 0l-160 160z"/></svg></span>
+                    </a>
+
+                    <a rel="next prefetch" href="02-key-value-store-storage-node.html" class="nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                        <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M278.6 233.4c12.5 12.5 12.5 32.8 0 45.3l-160 160c-12.5 12.5-32.8 12.5-45.3 0s-12.5-32.8 0-45.3L210.7 256 73.4 118.6c-12.5-12.5-12.5-32.8 0-45.3s32.8-12.5 45.3 0l160 160z"/></svg></span>
+                    </a>
+            </nav>
+
+        </div>
+
+        <template id=fa-eye><span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 576 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M288 32c-80.8 0-145.5 36.8-192.6 80.6C48.6 156 17.3 208 2.5 243.7c-3.3 7.9-3.3 16.7 0 24.6C17.3 304 48.6 356 95.4 399.4C142.5 443.2 207.2 480 288 480s145.5-36.8 192.6-80.6c46.8-43.5 78.1-95.4 93-131.1c3.3-7.9 3.3-16.7 0-24.6c-14.9-35.7-46.2-87.7-93-131.1C433.5 68.8 368.8 32 288 32zM432 256c0 79.5-64.5 144-144 144s-144-64.5-144-144s64.5-144 144-144s144 64.5 144 144zM288 192c0 35.3-28.7 64-64 64c-11.5 0-22.3-3-31.6-8.4c-.2 2.8-.4 5.5-.4 8.4c0 53 43 96 96 96s96-43 96-96s-43-96-96-96c-2.8 0-5.6 .1-8.4 .4c5.3 9.3 8.4 20.1 8.4 31.6z"/></svg></span></template>
+        <template id=fa-eye-slash><span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M38.8 5.1C28.4-3.1 13.3-1.2 5.1 9.2S-1.2 34.7 9.2 42.9l592 464c10.4 8.2 25.5 6.3 33.7-4.1s6.3-25.5-4.1-33.7L525.6 386.7c39.6-40.6 66.4-86.1 79.9-118.4c3.3-7.9 3.3-16.7 0-24.6c-14.9-35.7-46.2-87.7-93-131.1C465.5 68.8 400.8 32 320 32c-68.2 0-125 26.3-169.3 60.8L38.8 5.1zM223.1 149.5C248.6 126.2 282.7 112 320 112c79.5 0 144 64.5 144 144c0 24.9-6.3 48.3-17.4 68.7L408 294.5c5.2-11.8 8-24.8 8-38.5c0-53-43-96-96-96c-2.8 0-5.6 .1-8.4 .4c5.3 9.3 8.4 20.1 8.4 31.6c0 10.2-2.4 19.8-6.6 28.3l-90.3-70.8zm223.1 298L373 389.9c-16.4 6.5-34.3 10.1-53 10.1c-79.5 0-144-64.5-144-144c0-6.9 .5-13.6 1.4-20.2L83.1 161.5C60.3 191.2 44 220.8 34.5 243.7c-3.3 7.9-3.3 16.7 0 24.6c14.9 35.7 46.2 87.7 93 131.1C174.5 443.2 239.2 480 320 480c47.8 0 89.9-12.9 126.2-32.5z"/></svg></span></template>
+        <template id=fa-copy><span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M502.6 70.63l-61.25-61.25C435.4 3.371 427.2 0 418.7 0H255.1c-35.35 0-64 28.66-64 64l.0195 256C192 355.4 220.7 384 256 384h192c35.2 0 64-28.8 64-64V93.25C512 84.77 508.6 76.63 502.6 70.63zM464 320c0 8.836-7.164 16-16 16H255.1c-8.838 0-16-7.164-16-16L239.1 64.13c0-8.836 7.164-16 16-16h128L384 96c0 17.67 14.33 32 32 32h47.1V320zM272 448c0 8.836-7.164 16-16 16H63.1c-8.838 0-16-7.164-16-16L47.98 192.1c0-8.836 7.164-16 16-16H160V128H63.99c-35.35 0-64 28.65-64 64l.0098 256C.002 483.3 28.66 512 64 512h192c35.2 0 64-28.8 64-64v-32h-47.1L272 448z"/></svg></span></template>
+        <template id=fa-play><span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 384 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M73 39c-14.8-9.1-33.4-9.4-48.5-.9S0 62.6 0 80V432c0 17.4 9.4 33.4 24.5 41.9s33.7 8.1 48.5-.9L361 297c14.3-8.7 23-24.2 23-41s-8.7-32.2-23-41L73 39z"/></svg></span></template>
+        <template id=fa-clock-rotate-left><span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M75 75L41 41C25.9 25.9 0 36.6 0 57.9V168c0 13.3 10.7 24 24 24H134.1c21.4 0 32.1-25.9 17-41l-30.8-30.8C155 85.5 203 64 256 64c106 0 192 86 192 192s-86 192-192 192c-40.8 0-78.6-12.7-109.7-34.4c-14.5-10.1-34.4-6.6-44.6 7.9s-6.6 34.4 7.9 44.6C151.2 495 201.7 512 256 512c141.4 0 256-114.6 256-256S397.4 0 256 0C185.3 0 121.3 28.7 75 75zm181 53c-13.3 0-24 10.7-24 24V256c0 6.4 2.5 12.5 7 17l72 72c9.4 9.4 24.6 9.4 33.9 0s9.4-24.6 0-33.9l-65-65V152c0-13.3-10.7-24-24-24z"/></svg></span></template>
+
+
+
+        <script>
+            window.playground_copyable = true;
+        </script>
+
+
+        <script src="elasticlunr-ef4e11c1.min.js"></script>
+        <script src="mark-09e88c2c.min.js"></script>
+        <script src="searcher-09f2665d.js"></script>
+
+        <script src="clipboard-1626706a.min.js"></script>
+        <script src="highlight-abc7f01d.js"></script>
+        <script src="book-609e4cb8.js"></script>
+
+        <!-- Custom JS scripts -->
+        <script src="theme/figures-47b15f7f.js"></script>
+        <script src="theme/proto-326509cd.js"></script>
+        <script src="theme/code-67e9caaf.js"></script>
+        <script src="theme/tables-9fb295e8.js"></script>
+        <script src="theme/steps-77f22afb.js"></script>
+
+
+
+    </div>
+    </body>
+</html>

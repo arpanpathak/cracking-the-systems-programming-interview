@@ -1,0 +1,708 @@
+<!DOCTYPE HTML>
+<html lang="en" class="light sidebar-visible" dir="ltr">
+    <head>
+        <!-- Book generated using mdBook -->
+        <meta charset="UTF-8">
+        <title>File Sync - Distributed Systems from the Ground Up</title>
+
+
+        <!-- Custom HTML head -->
+
+        <meta name="description" content="System design and low-level design of resilient, fault-tolerant distributed systems, with code in Rust">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <meta name="theme-color" content="#ffffff">
+
+        <link rel="icon" href="favicon-de23e50b.svg">
+        <link rel="shortcut icon" href="favicon-8114d1fc.png">
+        <link rel="stylesheet" href="css/variables-8adf115d.css">
+        <link rel="stylesheet" href="css/general-e96d0476.css">
+        <link rel="stylesheet" href="css/chrome-d279d366.css">
+        <link rel="stylesheet" href="css/print-9e4910d8.css" media="print">
+
+        <!-- Fonts -->
+        <link rel="stylesheet" href="fonts/fonts-9644e21d.css">
+
+        <!-- Highlight.js Stylesheets -->
+        <link rel="stylesheet" id="mdbook-highlight-css" href="highlight-493f70e1.css">
+        <link rel="stylesheet" id="mdbook-tomorrow-night-css" href="tomorrow-night-4c0ae647.css">
+        <link rel="stylesheet" id="mdbook-ayu-highlight-css" href="ayu-highlight-3fdfc3ac.css">
+
+        <!-- Custom theme stylesheets -->
+        <link rel="stylesheet" href="theme/custom-8a495b63.css">
+
+
+        <!-- Provide site root and default themes to javascript -->
+        <script>
+            const path_to_root = "";
+            const default_light_theme = "light";
+            const default_dark_theme = "navy";
+            window.path_to_searchindex_js = "searchindex-fe51950f.js";
+        </script>
+        <!-- Start loading toc.js asap -->
+        <script src="toc-cc887274.js"></script>
+    </head>
+    <body>
+    <div id="mdbook-help-container">
+        <div id="mdbook-help-popup">
+            <h2 class="mdbook-help-title">Keyboard shortcuts</h2>
+            <div>
+                <p>Press <kbd>←</kbd> or <kbd>→</kbd> to navigate between chapters</p>
+                <p>Press <kbd>S</kbd> or <kbd>/</kbd> to search in the book</p>
+                <p>Press <kbd>?</kbd> to show this help</p>
+                <p>Press <kbd>Esc</kbd> to hide this help</p>
+            </div>
+        </div>
+    </div>
+    <div id="mdbook-body-container">
+        <!-- Work around some values being stored in localStorage wrapped in quotes -->
+        <script>
+            try {
+                let theme = localStorage.getItem('mdbook-theme');
+                let sidebar = localStorage.getItem('mdbook-sidebar');
+
+                if (theme.startsWith('"') && theme.endsWith('"')) {
+                    localStorage.setItem('mdbook-theme', theme.slice(1, theme.length - 1));
+                }
+
+                if (sidebar.startsWith('"') && sidebar.endsWith('"')) {
+                    localStorage.setItem('mdbook-sidebar', sidebar.slice(1, sidebar.length - 1));
+                }
+            } catch (e) { }
+        </script>
+
+        <!-- Set the theme before any content is loaded, prevents flash -->
+        <script>
+            const default_theme = window.matchMedia("(prefers-color-scheme: dark)").matches ? default_dark_theme : default_light_theme;
+            let theme;
+            try { theme = localStorage.getItem('mdbook-theme'); } catch(e) { }
+            if (theme === null || theme === undefined) { theme = default_theme; }
+            const html = document.documentElement;
+            html.classList.remove('light')
+            html.classList.add(theme);
+            html.classList.add("js");
+        </script>
+
+        <input type="checkbox" id="mdbook-sidebar-toggle-anchor" class="hidden">
+
+        <!-- Hide / unhide sidebar before it is displayed -->
+        <script>
+            let sidebar = null;
+            const sidebar_toggle = document.getElementById("mdbook-sidebar-toggle-anchor");
+            if (document.body.clientWidth >= 1080) {
+                try { sidebar = localStorage.getItem('mdbook-sidebar'); } catch(e) { }
+                sidebar = sidebar || 'visible';
+            } else {
+                sidebar = 'hidden';
+                sidebar_toggle.checked = false;
+            }
+            if (sidebar === 'visible') {
+                sidebar_toggle.checked = true;
+            } else {
+                html.classList.remove('sidebar-visible');
+            }
+        </script>
+
+        <nav id="mdbook-sidebar" class="sidebar" aria-label="Table of contents">
+            <!-- populated by js -->
+            <mdbook-sidebar-scrollbox class="sidebar-scrollbox"></mdbook-sidebar-scrollbox>
+            <noscript>
+                <iframe class="sidebar-iframe-outer" src="toc.html"></iframe>
+            </noscript>
+            <div id="mdbook-sidebar-resize-handle" class="sidebar-resize-handle">
+                <div class="sidebar-resize-indicator"></div>
+            </div>
+        </nav>
+
+        <div id="mdbook-page-wrapper" class="page-wrapper">
+
+            <div class="page">
+                <div id="mdbook-menu-bar-hover-placeholder"></div>
+                <div id="mdbook-menu-bar" class="menu-bar sticky">
+                    <div class="left-buttons">
+                        <label id="mdbook-sidebar-toggle" class="icon-button" for="mdbook-sidebar-toggle-anchor" title="Toggle Table of Contents" aria-label="Toggle Table of Contents" aria-controls="mdbook-sidebar">
+                            <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M0 96C0 78.3 14.3 64 32 64H416c17.7 0 32 14.3 32 32s-14.3 32-32 32H32C14.3 128 0 113.7 0 96zM0 256c0-17.7 14.3-32 32-32H416c17.7 0 32 14.3 32 32s-14.3 32-32 32H32c-17.7 0-32-14.3-32-32zM448 416c0 17.7-14.3 32-32 32H32c-17.7 0-32-14.3-32-32s14.3-32 32-32H416c17.7 0 32 14.3 32 32z"/></svg></span>
+                        </label>
+                        <button id="mdbook-theme-toggle" class="icon-button" type="button" title="Change theme" aria-label="Change theme" aria-haspopup="true" aria-expanded="false" aria-controls="mdbook-theme-list">
+                            <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 576 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M371.3 367.1c27.3-3.9 51.9-19.4 67.2-42.9L600.2 74.1c12.6-19.5 9.4-45.3-7.6-61.2S549.7-4.4 531.1 9.6L294.4 187.2c-24 18-38.2 46.1-38.4 76.1L371.3 367.1zm-19.6 25.4l-116-104.4C175.9 290.3 128 339.6 128 400c0 3.9 .2 7.8 .6 11.6c1.8 17.5-10.2 36.4-27.8 36.4H96c-17.7 0-32 14.3-32 32s14.3 32 32 32H240c61.9 0 112-50.1 112-112c0-2.5-.1-5-.2-7.5z"/></svg></span>
+                        </button>
+                        <ul id="mdbook-theme-list" class="theme-popup" aria-label="Themes" role="menu">
+                            <li role="none"><button role="menuitem" class="theme" id="mdbook-theme-default_theme">Auto</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="mdbook-theme-light">Light</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="mdbook-theme-rust">Rust</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="mdbook-theme-coal">Coal</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="mdbook-theme-navy">Navy</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="mdbook-theme-ayu">Ayu</button></li>
+                        </ul>
+                        <button id="mdbook-search-toggle" class="icon-button" type="button" title="Search (`/`)" aria-label="Toggle Searchbar" aria-expanded="false" aria-keyshortcuts="/ s" aria-controls="mdbook-searchbar">
+                            <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M416 208c0 45.9-14.9 88.3-40 122.7L502.6 457.4c12.5 12.5 12.5 32.8 0 45.3s-32.8 12.5-45.3 0L330.7 376c-34.4 25.2-76.8 40-122.7 40C93.1 416 0 322.9 0 208S93.1 0 208 0S416 93.1 416 208zM208 352c79.5 0 144-64.5 144-144s-64.5-144-144-144S64 128.5 64 208s64.5 144 144 144z"/></svg></span>
+                        </button>
+                    </div>
+
+                    <h1 class="menu-title">Distributed Systems from the Ground Up</h1>
+
+                    <div class="right-buttons">
+                        <a href="print.html" title="Print this book" aria-label="Print this book">
+                            <span class=fa-svg id="print-button"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M128 0C92.7 0 64 28.7 64 64v96h64V64H354.7L384 93.3V160h64V93.3c0-17-6.7-33.3-18.7-45.3L400 18.7C388 6.7 371.7 0 354.7 0H128zM384 352v32 64H128V384 368 352H384zm64 32h32c17.7 0 32-14.3 32-32V256c0-35.3-28.7-64-64-64H64c-35.3 0-64 28.7-64 64v96c0 17.7 14.3 32 32 32H64v64c0 35.3 28.7 64 64 64H384c35.3 0 64-28.7 64-64V384zm-16-88c-13.3 0-24-10.7-24-24s10.7-24 24-24s24 10.7 24 24s-10.7 24-24 24z"/></svg></span>
+                        </a>
+                        <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/tree/prep-v2/distributed-systems-from-the-ground-up" title="Git repository" aria-label="Git repository">
+                            <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 496 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M165.9 397.4c0 2-2.3 3.6-5.2 3.6-3.3.3-5.6-1.3-5.6-3.6 0-2 2.3-3.6 5.2-3.6 3-.3 5.6 1.3 5.6 3.6zm-31.1-4.5c-.7 2 1.3 4.3 4.3 4.9 2.6 1 5.6 0 6.2-2s-1.3-4.3-4.3-5.2c-2.6-.7-5.5.3-6.2 2.3zm44.2-1.7c-2.9.7-4.9 2.6-4.6 4.9.3 2 2.9 3.3 5.9 2.6 2.9-.7 4.9-2.6 4.6-4.6-.3-1.9-3-3.2-5.9-2.9zM244.8 8C106.1 8 0 113.3 0 252c0 110.9 69.8 205.8 169.5 239.2 12.8 2.3 17.3-5.6 17.3-12.1 0-6.2-.3-40.4-.3-61.4 0 0-70 15-84.7-29.8 0 0-11.4-29.1-27.8-36.6 0 0-22.9-15.7 1.6-15.4 0 0 24.9 2 38.6 25.8 21.9 38.6 58.6 27.5 72.9 20.9 2.3-16 8.8-27.1 16-33.7-55.9-6.2-112.3-14.3-112.3-110.5 0-27.5 7.6-41.3 23.6-58.9-2.6-6.5-11.1-33.3 2.6-67.9 20.9-6.5 69 27 69 27 20-5.6 41.5-8.5 62.8-8.5s42.8 2.9 62.8 8.5c0 0 48.1-33.6 69-27 13.7 34.7 5.2 61.4 2.6 67.9 16 17.7 25.8 31.5 25.8 58.9 0 96.5-58.9 104.2-114.8 110.5 9.2 7.9 17 22.9 17 46.4 0 33.7-.3 75.4-.3 83.6 0 6.5 4.6 14.4 17.3 12.1C428.2 457.8 496 362.9 496 252 496 113.3 383.5 8 244.8 8zM97.2 352.9c-1.3 1-1 3.3.7 5.2 1.6 1.6 3.9 2.3 5.2 1 1.3-1 1-3.3-.7-5.2-1.6-1.6-3.9-2.3-5.2-1zm-10.8-8.1c-.7 1.3.3 2.9 2.3 3.9 1.6 1 3.6.7 4.3-.7.7-1.3-.3-2.9-2.3-3.9-2-.6-3.6-.3-4.3.7zm32.4 35.6c-1.6 1.3-1 4.3 1.3 6.2 2.3 2.3 5.2 2.6 6.5 1 1.3-1.3.7-4.3-1.3-6.2-2.2-2.3-5.2-2.6-6.5-1zm-11.4-14.7c-1.6 1-1.6 3.6 0 5.9 1.6 2.3 4.3 3.3 5.6 2.3 1.6-1.3 1.6-3.9 0-6.2-1.4-2.3-4-3.3-5.6-2z"/></svg></span>
+                        </a>
+                        <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/edit/prep-v2/distributed-systems-from-the-ground-up/src/25-file-sync.md" title="Suggest an edit" aria-label="Suggest an edit" rel="edit">
+                            <span class=fa-svg id="git-edit-button"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M421.7 220.3l-11.3 11.3-22.6 22.6-205 205c-6.6 6.6-14.8 11.5-23.8 14.1L30.8 511c-8.4 2.5-17.5 .2-23.7-6.1S-1.5 489.7 1 481.2L38.7 353.1c2.6-9 7.5-17.2 14.1-23.8l205-205 22.6-22.6 11.3-11.3 33.9 33.9 62.1 62.1 33.9 33.9zM96 353.9l-9.3 9.3c-.9 .9-1.6 2.1-2 3.4l-25.3 86 86-25.3c1.3-.4 2.5-1.1 3.4-2l9.3-9.3H112c-8.8 0-16-7.2-16-16V353.9zM453.3 19.3l39.4 39.4c25 25 25 65.5 0 90.5l-14.5 14.5-22.6 22.6-11.3 11.3-33.9-33.9-62.1-62.1L314.3 67.7l11.3-11.3 22.6-22.6 14.5-14.5c25-25 65.5-25 90.5 0z"/></svg></span>
+                        </a>
+
+                    </div>
+                </div>
+
+                <div id="mdbook-search-wrapper" class="hidden">
+                    <form id="mdbook-searchbar-outer" class="searchbar-outer">
+                        <div class="search-wrapper">
+                            <input type="search" id="mdbook-searchbar" name="searchbar" placeholder="Search this book ..." aria-controls="mdbook-searchresults-outer" aria-describedby="searchresults-header">
+                            <div class="spinner-wrapper">
+                                <span class=fa-svg id="fa-spin"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M304 48c0-26.5-21.5-48-48-48s-48 21.5-48 48s21.5 48 48 48s48-21.5 48-48zm0 416c0-26.5-21.5-48-48-48s-48 21.5-48 48s21.5 48 48 48s48-21.5 48-48zM48 304c26.5 0 48-21.5 48-48s-21.5-48-48-48s-48 21.5-48 48s21.5 48 48 48zm464-48c0-26.5-21.5-48-48-48s-48 21.5-48 48s21.5 48 48 48s48-21.5 48-48zM142.9 437c18.7-18.7 18.7-49.1 0-67.9s-49.1-18.7-67.9 0s-18.7 49.1 0 67.9s49.1 18.7 67.9 0zm0-294.2c18.7-18.7 18.7-49.1 0-67.9S93.7 56.2 75 75s-18.7 49.1 0 67.9s49.1 18.7 67.9 0zM369.1 437c18.7 18.7 49.1 18.7 67.9 0s18.7-49.1 0-67.9s-49.1-18.7-67.9 0s-18.7 49.1 0 67.9z"/></svg></span>
+                            </div>
+                        </div>
+                    </form>
+                    <div id="mdbook-searchresults-outer" class="searchresults-outer hidden">
+                        <div id="mdbook-searchresults-header" class="searchresults-header"></div>
+                        <ul id="mdbook-searchresults">
+                        </ul>
+                    </div>
+                </div>
+
+                <!-- Apply ARIA attributes after the sidebar and the sidebar toggle button are added to the DOM -->
+                <script>
+                    document.getElementById('mdbook-sidebar-toggle').setAttribute('aria-expanded', sidebar === 'visible');
+                    document.getElementById('mdbook-sidebar').setAttribute('aria-hidden', sidebar !== 'visible');
+                    Array.from(document.querySelectorAll('#mdbook-sidebar a')).forEach(function(link) {
+                        link.setAttribute('tabIndex', sidebar === 'visible' ? 0 : -1);
+                    });
+                </script>
+
+                <div id="mdbook-content" class="content">
+                    <main>
+                        <img class="plate" src="art/ch25.svg?v=56b4d2df" alt="A beaver stands beside a sign that reads: based on version 3, now version 4.">
+<h1 id="file-sync-system-design"><a class="header" href="#file-sync-system-design">File Sync: System Design</a></h1>
+<p>A file synchronisation service keeps the same folder on several devices. A person
+saves a document on a laptop, and a few seconds later the same document, with the
+same changes, is on their phone and their desktop computer, without anything having
+been copied by hand. If a device is switched off or out of reach at the time, it
+receives the changes when it next connects. From the user’s side the service is
+nearly invisible, a folder that is the same everywhere.</p>
+<p>Behind that simplicity lies a problem of replication with a feature that the
+replicated stores of earlier chapters were spared. In chapter 3 a single leader
+accepted all the writes of a shard, and the followers had only to copy what the
+leader decided. Here every device is a place where writes originate, and devices
+write while they are disconnected, sometimes for days. A laptop on a flight and a
+phone in the mountains may each change the same file, in different ways, with
+neither able to learn of the other until both return. No arrangement of leaders can
+prevent this, since the devices cannot reach any leader at the time. The service has
+to accept that conflicting changes will be made, detect them reliably when they
+come to light, and resolve them without destroying anybody’s work.</p>
+<p>The other half of the design is economy. Files are large, the connections of mobile
+devices are slow and often charged by volume, and a service that transferred a whole
+file of 500 MB because 1 paragraph of it had changed would be unusable. Much of the
+engineering lies in transferring exactly what has changed and nothing else.</p>
+<div class="covers">
+<p>This chapter covers</p>
+<ul>
+<li>a file as a list of chunks, with the bytes in 1 place and the list in another</li>
+<li>transferring only the chunks that have changed</li>
+<li>why cutting a file at fixed positions fails when a byte is inserted</li>
+<li>cuts that depend on the content</li>
+<li>versions, and detecting that 2 devices have changed the same file</li>
+<li>what to do with a conflict</li>
+<li>how a device learns that something has changed</li>
+<li>how a device catches up after being offline</li>
+<li>deleting, renaming, and the order in which things are uploaded</li>
+</ul>
+</div>
+
+<h2 id="a-file-as-a-list-of-chunks"><a class="header" href="#a-file-as-a-list-of-chunks">A file as a list of chunks</a></h2>
+<p>The service does not store a file as a single object. It follows the practice of the
+object store in chapter 16: a file is cut into <em>chunks</em> of moderate size, each chunk
+is identified by a checksum of its contents, and the file itself is represented by
+the list of the checksums of its chunks, in order.</p>
+<p>The representation divides the data into 2 parts of very different character. The
+chunks are large, immutable and without structure, and are kept in a chunk store,
+which is an object store. The lists, together with the names of the files, their
+versions and their positions in folders, are the <em>metadata</em>. They are small,
+frequently changed, and have to be strongly consistent, and they are kept in a
+replicated database.</p>
+<p>Several properties that the service needs follow from this division with little
+further effort. Identical chunks have identical checksums and are stored once,
+whether they occur in 2 versions of a file, in 2 files, or in the folders of 2
+different users. The previous versions of a file cost almost nothing to retain,
+since an old version is merely an old list, most of whose chunks are shared with the
+new one. And a transfer that is interrupted can be resumed, since the chunks that
+arrived are already in the store and need not be sent again.</p>
+<h2 id="transferring-only-what-changed"><a class="header" href="#transferring-only-what-changed">Transferring only what changed</a></h2>
+<p>When a file is modified, the device cuts the new contents into chunks, computes
+their checksums, and compares the resulting list with the list of the version it
+previously held. The chunks whose checksums already appear are in the store and
+need not be sent. Only the chunks with new checksums are uploaded, followed by the
+new list.</p>
+<p>A device that receives the change proceeds in the mirror image. It obtains the new
+list, compares it with the chunks it holds locally, downloads those it lacks, and
+assembles the new version of the file from old and new chunks together.</p>
+<p>If a paragraph is altered in the middle of a document of 100 MB that has been cut
+into chunks of 4 MB, 1 chunk of the 25 has changed, and 4 MB are transferred in
+place of 100. The scheme has, however, a weakness that depends on how the file is
+cut, and it is serious enough to determine the design.</p>
+<h2 id="where-to-cut"><a class="header" href="#where-to-cut">Where to cut</a></h2>
+<p>The obvious way of cutting a file is at fixed positions, after every 4 MB. This
+serves well when a file is modified by overwriting some of its bytes in place, and
+very badly when bytes are inserted or removed.</p>
+<p>Suppose that a single byte is added at the very beginning of a file. Every byte that
+follows is now 1 position later than it was. The first chunk consists of the new
+byte and the first 4 MB less 1 byte of the old content, the second chunk begins 1
+byte earlier in the old content than it used to, and so on to the end. Although the
+content is all but unchanged, every chunk contains different bytes from before and
+has a different checksum, and the entire file is uploaded again. Inserting text near
+the start of a document, which is among the commonest of all edits, defeats the
+scheme completely.</p>
+<figure>
+<img src="figures/sync-chunking.svg?v=edf26463" alt="2 rows of 8 chunks after 1 byte is added at the start of a file. With cuts every 1024 bytes, all chunks have changed. With cuts that depend on the content, only the first chunk has changed.">
+<figcaption><b>Figure 25.1</b> The chunks that have to be uploaded after 1 byte is added at the start of a file, under 2 ways of cutting.</figcaption>
+</figure>
+<p>The remedy is to let the content itself determine where the cuts fall. The device
+passes a small window, of a few dozen bytes, along the file, computing at each
+position a hash of the bytes in the window. Wherever the hash satisfies some fixed
+condition, for instance that its lowest 22 bits are all 0, a cut is made. Since the
+condition is met on average once in every 4 million positions, the chunks have an
+average size of 4 MB, though they vary in length. This technique is called
+<em>content-defined chunking</em>.</p>
+<p>Its value lies in the fact that a cut now depends only on the few bytes around it.
+When a byte is inserted at the start of the file, the positions of all later cuts
+shift by 1 along with the content, and each still falls between the same 2 pieces of
+content as before. The chunks after the first therefore contain exactly the bytes
+they contained previously and have the same checksums.</p>
+<p>The simulation for this chapter makes the comparison on a file of 64 KB, with small
+chunks so that the effect is visible. After 1 byte is added at the start, cuts every
+1024 bytes leave all 65 chunks to be uploaded again, and cuts that depend on the
+content leave 1 of 62.</p>
+<p>The hash of the window has to be computed at every position in the file, and would
+be slow if it were calculated from nothing each time. A <em>rolling hash</em> is designed so
+that when the window advances by 1 byte, the new value is obtained from the old by
+removing the contribution of the byte that has left and adding that of the byte that
+has entered, in a constant number of operations. Limits are also set on the size of
+a chunk in both directions, so that an unlucky stretch of content yields neither a
+swarm of tiny chunks nor a single enormous one.</p>
+<h2 id="versions-and-conflicts"><a class="header" href="#versions-and-conflicts">Versions and conflicts</a></h2>
+<p>Every file has a <em>version</em>, a number that the metadata store increases by 1 each
+time the file is changed. A device records, for each file, the version on which its
+local copy is based.</p>
+<p>When a device uploads a change, it states that version: “here is a new list of
+chunks for this file, which I produced by modifying version 3”. The service compares
+the stated version with the current one. If the file is still at version 3, nobody
+else has changed it in the meantime, and the upload is accepted as version 4. If the
+file is by now at version 4 or beyond, some other device has changed it since this
+device last looked, and the upload is rejected as a <em>conflict</em>.</p>
+<p>This is the conditional write of chapter 1, the <code>If-Match</code> header under another
+name, and it is the foundation on which the correctness of the whole service rests.
+Without it, the later of 2 uploads would silently replace the earlier, and one
+person’s work would vanish with no indication that it had ever existed.</p>
+<figure class="steps" data-prefix="figures/steps-sync-conflict" data-count="5" data-version="2e21dbd2">
+<img src="figures/steps-sync-conflict-01.svg?v=2e21dbd2" alt="2 devices change the same file, step 1 of 5. The laptop and the phone both hold version 3 of a file. Both go offline: the laptop on a flight, the phone in the mountains.">
+<figcaption><b>Figure 25.2</b> A laptop and a phone change the same file while offline, and the second upload is recognised as a conflict. Use Next and Back to move through the 5 steps.</figcaption>
+</figure>
+<p>The comparison and the update have to be a single atomic operation in the metadata
+store. If 2 devices upload within the same instant, exactly 1 must succeed, and this
+is the principal reason why the metadata is held in a strongly consistent database.</p>
+<h3 id="what-to-do-with-a-conflict"><a class="header" href="#what-to-do-with-a-conflict">What to do with a conflict</a></h3>
+<p>Detecting a conflict is a precise matter. Deciding what to do about it is a question
+of policy, on which reasonable designs differ.</p>
+<p>The simplest policy is that the last writer prevails, the later upload replacing the
+earlier. It needs no intervention from the user and silently discards somebody’s
+work, and it is acceptable only for data whose loss nobody would mind.</p>
+<p>The policy adopted by most services for ordinary files is to keep both. The version
+that arrived first remains under the original name, and the other is saved beside it
+under a name that marks it as a conflicting copy, with the device and the date.
+Nothing is lost, and the user, who alone knows what the 2 edits were meant to
+achieve, combines them by hand. It is a slightly awkward outcome and an honest one.</p>
+<p>For certain kinds of content the 2 changes can be merged automatically. If 2 people
+have edited different paragraphs of a text, both edits can be applied. This requires
+the service to understand the structure of the content, and is the subject of
+chapter 26. A service that synchronises arbitrary files treats them as opaque bytes
+and cannot attempt it, since 2 edits to a spreadsheet or an image cannot be combined
+by anything that does not know what a spreadsheet or an image is.</p>
+<h2 id="learning-that-something-changed"><a class="header" href="#learning-that-something-changed">Learning that something changed</a></h2>
+<p>A device has to find out that a file was changed elsewhere. It could ask the service
+at regular intervals, and this is the polling that chapter 18 examined and found
+wanting: frequent polling wastes requests and battery when nothing is happening, and
+infrequent polling delays every change.</p>
+<p>The service therefore uses the remedy of chapter 18. Each device keeps a connection
+open to a notification service, and when a change is accepted, the service informs
+the other devices of the same account over their connections. The message carries no
+content. It says only that something has changed, and the device, on receiving it,
+asks the metadata service what.</p>
+<p>That question is answered by means of a <em>cursor</em>, exactly as in chapter 18. The
+metadata store keeps for each account an ordered list of every change, each with a
+sequence number: file 7 changed to version 4, file 12 deleted, folder 3 renamed. A
+device remembers the number of the last change it has applied and asks for
+everything after that. The same request serves a device that was told of a change a
+second ago and one that has been switched off for a month, and the service keeps no
+record of which device has received what.</p>
+<p>The design of chapter 18 thus reappears almost unaltered: a signal to attract
+attention, which is permitted to be lost, and a cursor from which the true state is
+recovered, which is not. It is among the most reusable patterns in this book.</p>
+<h2 id="deleting-renaming-and-order"><a class="header" href="#deleting-renaming-and-order">Deleting, renaming and order</a></h2>
+<p>A few matters of detail cause a disproportionate share of the defects in services of
+this kind.</p>
+<p>A deletion has to be synchronised like any other change, and it cannot be
+represented by the mere absence of a file. Were a device to see only that a file is
+missing from the list, it could not distinguish a file that was deleted elsewhere
+from a file that it has itself created a moment ago and has yet to upload. A deletion is
+therefore recorded as an explicit entry in the list of changes, sometimes called a
+<em>tombstone</em>, and the file’s chunks are retained for a time so that the deletion can
+be undone.</p>
+<p>A rename should be recorded as a rename, an operation on the metadata alone. If it
+were treated as the deletion of one file and the creation of another, every device
+would download again a file whose bytes it already held. With chunks identified by
+their checksums, even that naive treatment would in fact transfer nothing, since the
+“new” file consists of chunks that are already present, which is a further dividend
+of content addressing.</p>
+<p>The order of an upload matters for the same reason that it did in chapter 16. The
+chunks are uploaded first, and the new list is committed to the metadata store last.
+The list is what makes the new version exist for other devices, and at that moment
+every chunk it refers to must already be in the store. An upload interrupted halfway
+leaves a few chunks that nothing refers to, to be collected later as garbage, and
+never a version that other devices are told of and cannot assemble.</p>
+<p>Finally, a file that is still being written should not be uploaded. An application
+saving a large file writes it over several seconds, and a device that began
+uploading at the first change would send a partial file, followed at once by
+another. Devices wait until a file has been unchanged for a short period before
+treating it as modified.</p>
+<h2 id="use-cases"><a class="header" href="#use-cases">Use cases</a></h2>
+<p>A person changes files on 1 device, sees the changes on another, and occasionally
+has to settle a conflict.</p>
+<figure>
+<img src="figures/sync-use-cases.svg?v=c2bf9d13" alt="A use case diagram of the sync service. Person: change a file on 1 device (PUT /v1/files/{id}), see it on the other (GET /v1/changes?after=), settle a conflict (both versions are kept).">
+<figcaption><b>Figure 25.3</b> The actor and what it does.</figcaption>
+</figure>
+<h2 id="functional-requirements"><a class="header" href="#functional-requirements">Functional requirements</a></h2>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th>No.</th><th>Functional requirement</th></tr>
+</thead>
+<tbody>
+<tr><td>0</td><td>A change made to a file on 1 device appears on the user’s other devices.</td></tr>
+<tr><td>1</td><td>A device that was offline receives every change made in its absence when it reconnects.</td></tr>
+<tr><td>2</td><td>Only the parts of a file that have changed are transferred.</td></tr>
+<tr><td>3</td><td>When 2 devices change the same file independently, neither change is lost.</td></tr>
+<tr><td>4</td><td>Earlier versions of a file can be restored for 30 days.</td></tr>
+<tr><td>5</td><td>A deleted file can be restored for 30 days.</td></tr>
+</tbody>
+</table>
+</div>
+<h2 id="non-functional-requirements"><a class="header" href="#non-functional-requirements">Non-functional requirements</a></h2>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th>No.</th><th>Property</th><th>Non-functional requirement</th></tr>
+</thead>
+<tbody>
+<tr><td>0</td><td>Durability</td><td>A file whose upload was confirmed is not lost.</td></tr>
+<tr><td>1</td><td>Consistency</td><td>Strong for metadata: of 2 uploads based on the same version, exactly 1 is accepted. Eventual between devices.</td></tr>
+<tr><td>2</td><td>Latency</td><td>A change reaches a connected device within 5 seconds.</td></tr>
+<tr><td>3</td><td>Economy</td><td>The bytes transferred are proportional to the size of the change and not to the size of the file.</td></tr>
+<tr><td>4</td><td>Scale</td><td>100 million users, 10 billion files, 1 EB of content.</td></tr>
+</tbody>
+</table>
+</div>
+<p>Non-functional requirement 1 sets 2 consistency models side by side, and it is worth
+being clear about where each applies. Among the devices, the system is eventually
+consistent by necessity, since a device that is switched off cannot possibly have
+the latest version. The metadata store that arbitrates among them is strongly
+consistent, and it has to be, because the detection of conflicts depends on every
+upload being compared with the true current version. The service as a whole can
+tolerate devices that are far behind precisely because, at its centre, there is 1
+place that is never in doubt about what the latest version is.</p>
+<h2 id="core-entities"><a class="header" href="#core-entities">Core entities</a></h2>
+<figure>
+<img src="figures/sync-entities.svg?v=c4f8a0fd" alt="The core entities. File has the fields id u64, path string, version u64, chunks checksum[]. Chunk has the fields checksum u64, bytes in object store. Device has the fields id string, cursor last change seen. A File is a list of chunks and a version. A Device remembers how far it has read in the list of changes.">
+<figcaption><b>Figure 25.4</b> The core entities and their fields.</figcaption>
+</figure>
+<h2 id="capacity-estimate"><a class="header" href="#capacity-estimate">Capacity estimate</a></h2>
+<div class="estimate">
+<img class="builder" src="art/crab-builder.svg" alt="A crab in a hard hat, in tears.">
+<p><strong>Arithmetic ahead.</strong> 1 EB of content in chunks of 4 MB is 250 billion chunks, and the metadata for 10 billion files comes to about 5 TB.</p>
+<p><a class="skip" href="#high-level-design">Skip to the high-level design</a></p>
+<details>
+<summary>Show the calculation</summary>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th>Quantity</th><th>Calculation</th><th>Result</th></tr>
+</thead>
+<tbody>
+<tr><td>Chunks</td><td>1 EB ÷ 4 MB</td><td>250 billion</td></tr>
+<tr><td>Metadata per file</td><td>name, version, folder, and 25 checksums of 16 bytes on average</td><td>about 500 bytes</td></tr>
+<tr><td>Metadata for all files</td><td>10 billion × 500 bytes</td><td>5 TB</td></tr>
+<tr><td>Open connections</td><td>100 million users × 2 devices × 20% online</td><td>40 million</td></tr>
+<tr><td>Changes per second</td><td>100 million users × 20 changes a day ÷ 86400</td><td>about 23000</td></tr>
+</tbody>
+</table>
+</div>
+</details>
+</div>
+
+<h2 id="the-api"><a class="header" href="#the-api">The API</a></h2>
+<p>A device first learns which chunks the store lacks, uploads those, and then commits
+the new version, stating the version it started from.</p>
+<p><strong>Ask which chunks are missing</strong></p>
+<pre><code class="language-http">POST /v1/chunk-queries HTTP/1.1
+Host: sync.example
+Content-Type: application/json
+
+{ "checksums": ["9f2c", "41aa", "c07e"] }
+</code></pre>
+<pre><code class="language-http">HTTP/1.1 200 OK
+Content-Type: application/json
+
+{ "missing": ["c07e"] }
+</code></pre>
+<p>The resource created is a query, which is why the request is a <code>POST</code> to a
+collection of queries and the answer comes back at once. Only the chunk <code>c07e</code> has
+to be uploaded.</p>
+<p><strong>Upload a chunk</strong></p>
+<pre><code class="language-http">PUT /v1/chunks/c07e HTTP/1.1
+Host: sync.example
+Content-Type: application/octet-stream
+Content-Length: 4194304
+
+(4194304 bytes)
+</code></pre>
+<pre><code class="language-http">HTTP/1.1 201 Created
+</code></pre>
+<p>The address of a chunk is its checksum, so that uploading the same chunk twice is
+harmless and <code>PUT</code> is the proper method.</p>
+<p><strong>Commit a new version of a file</strong></p>
+<pre><code class="language-http">PUT /v1/files/7 HTTP/1.1
+Host: sync.example
+If-Match: "3"
+Content-Type: application/json
+
+{ "path": "notes.txt", "chunks": ["9f2c", "41aa", "c07e"] }
+</code></pre>
+<pre><code class="language-http">HTTP/1.1 200 OK
+ETag: "4"
+Content-Type: application/json
+
+{ "id": 7, "version": 4 }
+</code></pre>
+<p><strong>The same commit from a device that is behind</strong></p>
+<pre><code class="language-http">PUT /v1/files/7 HTTP/1.1
+Host: sync.example
+If-Match: "3"
+Content-Type: application/json
+
+{ "path": "notes.txt", "chunks": ["9f2c", "77b0", "c07e"] }
+</code></pre>
+<pre><code class="language-http">HTTP/1.1 412 Precondition Failed
+Content-Type: application/problem+json
+
+{
+  "type": "/problems/version-conflict",
+  "title": "The file has been changed by another device",
+  "status": 412,
+  "current_version": 4
+}
+</code></pre>
+<p><strong>Fetch the changes since a cursor</strong></p>
+<pre><code class="language-http">GET /v1/changes?after=5120 HTTP/1.1
+Host: sync.example
+</code></pre>
+<pre><code class="language-http">HTTP/1.1 200 OK
+Content-Type: application/json
+
+{
+  "changes": [
+    { "number": 5121, "file": 7, "kind": "modified", "version": 4, "chunks": ["9f2c", "41aa", "c07e"] },
+    { "number": 5122, "file": 12, "kind": "deleted" }
+  ],
+  "next_after": 5122
+}
+</code></pre>
+<h2 id="high-level-design"><a class="header" href="#high-level-design">High-level design</a></h2>
+<figure class="wide">
+<img src="figures/sync-design.svg?v=24cf85ac" alt="Syncing a file between 2 devices. The components are Laptop, Sync service, Metadata store, Chunk store, Notifier, Phone. Step 1: The laptop uploads the chunks the store does not have. Step 2: It sends the chunk list and the version it started from. Step 3: The file is updated if that version is still current. Step 4: The service tells the notifier. Step 5: The phone is told, and fetches what changed.">
+<figcaption><b>Figure 25.5</b> The components and the path of a change. The steps are numbered.</figcaption>
+</figure>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th>Component</th><th>Role</th><th>State it holds</th><th>When 1 instance fails</th></tr>
+</thead>
+<tbody>
+<tr><td>Device</td><td>watches a folder, cuts files into chunks, uploads and downloads</td><td>the files, and a cursor</td><td>it catches up from its cursor when it returns</td></tr>
+<tr><td>Chunk store</td><td>keeps chunks by checksum</td><td>every chunk, as in chapter 16</td><td>as in chapter 16</td></tr>
+<tr><td>Sync service</td><td>compares versions and commits changes</td><td>none</td><td>another instance serves the request</td></tr>
+<tr><td>Metadata store</td><td>holds files, versions, chunk lists and the list of changes</td><td>all metadata, replicated</td><td>a follower is elected</td></tr>
+<tr><td>Notifier</td><td>holds a connection to every online device</td><td>connections, in memory</td><td>devices reconnect and fetch from their cursors</td></tr>
+</tbody>
+</table>
+</div>
+<h3 id="one-change-step-by-step"><a class="header" href="#one-change-step-by-step">One change, step by step</a></h3>
+<p>The steps follow the arrows of figure 25.5.</p>
+<ol>
+<li>The laptop notices that a file has changed and has been still for 2 seconds. It cuts the file into chunks, asks which of them the store lacks, and uploads those.</li>
+<li>It sends the new list of chunks to the sync service, together with the version on which its change was based.</li>
+<li>The sync service asks the metadata store to replace the list if the file is still at that version. The store does so, increases the version, and appends an entry to the account’s list of changes.</li>
+<li>The sync service tells the notifier that the account has a change.</li>
+<li>The notifier passes the signal to the phone over its open connection. The phone asks for the changes after its cursor, downloads the chunks it lacks from the chunk store, assembles the file, and moves its cursor forward.</li>
+</ol>
+<h2 id="mistakes-to-avoid"><a class="header" href="#mistakes-to-avoid">Mistakes to avoid</a></h2>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th>Mistake</th><th>What goes wrong</th><th>What to do</th></tr>
+</thead>
+<tbody>
+<tr><td>Uploading whole files</td><td>A small edit to a large file transfers all of it.</td><td>Cut files into chunks and upload only the new ones.</td></tr>
+<tr><td>Cutting at fixed positions</td><td>An insertion near the start changes every chunk.</td><td>Let the content determine the cuts.</td></tr>
+<tr><td>Accepting an upload without its base version</td><td>The later of 2 edits silently replaces the earlier.</td><td>Require the version the change was based on, and compare it atomically.</td></tr>
+<tr><td>Resolving conflicts by letting the last writer prevail</td><td>Somebody’s work is discarded without notice.</td><td>Keep both versions, and let the user decide.</td></tr>
+<tr><td>Committing the list before the chunks</td><td>Other devices are told of a version they cannot assemble.</td><td>Upload the chunks first and commit the list last.</td></tr>
+<tr><td>Polling for changes</td><td>Battery and requests are wasted, or changes arrive late.</td><td>Signal over an open connection, and fetch from a cursor.</td></tr>
+<tr><td>Trusting the signal to carry the change</td><td>A lost signal is a lost change.</td><td>Treat the signal as a hint, and recover from the cursor.</td></tr>
+<tr><td>Representing a deletion by absence</td><td>A device cannot tell a deleted file from one it has just created.</td><td>Record deletions as explicit entries.</td></tr>
+<tr><td>Treating a rename as delete and create</td><td>The history of the file is broken, and work may be repeated.</td><td>Record a rename as a change to metadata.</td></tr>
+<tr><td>Uploading a file while it is being written</td><td>Partial files are synchronised, followed by more partial files.</td><td>Wait until the file has been still for a moment.</td></tr>
+<tr><td>Deleting chunks as soon as a file is deleted</td><td>Chunks shared with other files or needed for restoring are lost.</td><td>Collect unreferenced chunks later, after a period of grace.</td></tr>
+</tbody>
+</table>
+</div>
+<h2 id="failures"><a class="header" href="#failures">Failures</a></h2>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th>Failure</th><th>What users see</th><th>How the system recovers</th></tr>
+</thead>
+<tbody>
+<tr><td>A device loses its connection during an upload</td><td>the file shows as still synchronising</td><td>the chunks already uploaded are kept, and the upload resumes with the rest</td></tr>
+<tr><td>2 devices change the same file</td><td>a second file marked as a conflicting copy</td><td>both versions are kept</td></tr>
+<tr><td>The signal of a change is lost</td><td>the change appears a little later</td><td>the device also fetches from its cursor at intervals and on reconnecting</td></tr>
+<tr><td>A device is offline for a month</td><td>nothing, until it reconnects</td><td>it fetches every change after its cursor</td></tr>
+<tr><td>The reply to a commit is lost</td><td>the device tries again</td><td>the retry finds the file already at the new version with the same chunks, and treats it as success</td></tr>
+<tr><td>The metadata store’s leader fails</td><td>commits fail for about 1 second</td><td>a follower is elected</td></tr>
+</tbody>
+</table>
+</div>
+<h2 id="trade-offs"><a class="header" href="#trade-offs">Trade-offs</a></h2>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th>Decision</th><th>What it gains</th><th>What it costs</th></tr>
+</thead>
+<tbody>
+<tr><td>Chunks identified by checksum</td><td>small transfers, shared storage, cheap old versions</td><td>metadata for every chunk, and garbage to collect</td></tr>
+<tr><td>Cuts that depend on the content</td><td>insertions change 1 chunk</td><td>chunks of uneven size, and a hash at every byte</td></tr>
+<tr><td>Strong consistency for metadata</td><td>conflicts are always detected</td><td>commits wait for a majority</td></tr>
+<tr><td>Keeping both versions in a conflict</td><td>nothing is lost</td><td>the user has to combine them</td></tr>
+<tr><td>A signal and a cursor</td><td>prompt delivery that survives lost signals</td><td>a connection for every online device</td></tr>
+</tbody>
+</table>
+</div>
+<h2 id="the-simulation"><a class="header" href="#the-simulation">The simulation</a></h2>
+<div class="simulation">
+<p><strong>Simulation in the repository.</strong> The program <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/distributed-systems-from-the-ground-up/code/syncsim/src/main.rs"><code>code/syncsim</code></a> simulates this design. To run it, clone the repository and type <code>cargo run --release -p syncsim</code> in the <code>code</code> directory.</p>
+</div>
+
+<h2 id="terms-introduced-in-this-chapter"><a class="header" href="#terms-introduced-in-this-chapter">Terms introduced in this chapter</a></h2>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th>Term</th><th>Meaning</th></tr>
+</thead>
+<tbody>
+<tr><td>Synchronisation</td><td>bringing copies of the same data on several devices into agreement</td></tr>
+<tr><td>Chunk</td><td>a piece of a file, identified by a checksum of its contents</td></tr>
+<tr><td>Metadata</td><td>the names, versions, folders and chunk lists of files</td></tr>
+<tr><td>Content-defined chunking</td><td>cutting a file where its content satisfies a condition</td></tr>
+<tr><td>Rolling hash</td><td>a hash of a moving window that is updated in constant time as the window advances</td></tr>
+<tr><td>Version</td><td>a number that increases with every change to a file</td></tr>
+<tr><td>Conflict</td><td>2 changes to the same file, each made without knowledge of the other</td></tr>
+<tr><td>Conflicting copy</td><td>the second of 2 conflicting versions, kept under another name</td></tr>
+<tr><td>Cursor</td><td>the number of the last change a device has applied</td></tr>
+<tr><td>Tombstone</td><td>an explicit record that something was deleted</td></tr>
+</tbody>
+</table>
+</div>
+<div class="summary">
+<h2 id="summary"><a class="header" href="#summary">Summary</a></h2>
+<ul>
+<li>A file is a list of chunks identified by checksum, with the chunks in an object store and the lists in a strongly consistent metadata store.</li>
+<li>A device uploads only the chunks that the store does not already hold.</li>
+<li>Cuts at fixed positions make an insertion change every chunk, and cuts that depend on the content confine the change to 1.</li>
+<li>Every upload states the version it was based on, and an upload based on an old version is a conflict.</li>
+<li>In a conflict both versions are kept, since the service cannot know which edit the user would prefer.</li>
+<li>Devices are signalled over an open connection and fetch changes from a cursor, so that a lost signal delays a change and loses nothing.</li>
+<li>Chunks are uploaded before the list that refers to them, and deletions are recorded explicitly.</li>
+</ul>
+</div>
+
+
+                    </main>
+
+                    <nav class="nav-wrapper" aria-label="Page navigation">
+                        <!-- Mobile navigation buttons -->
+                            <a rel="prev" href="24-metrics-and-monitoring.html" class="mobile-nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                                <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M41.4 233.4c-12.5 12.5-12.5 32.8 0 45.3l160 160c12.5 12.5 32.8 12.5 45.3 0s12.5-32.8 0-45.3L109.3 256 246.6 118.6c12.5-12.5 12.5-32.8 0-45.3s-32.8-12.5-45.3 0l-160 160z"/></svg></span>
+                            </a>
+
+                            <a rel="next prefetch" href="26-collaborative-editing.html" class="mobile-nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                                <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M278.6 233.4c12.5 12.5 12.5 32.8 0 45.3l-160 160c-12.5 12.5-32.8 12.5-45.3 0s-12.5-32.8 0-45.3L210.7 256 73.4 118.6c-12.5-12.5-12.5-32.8 0-45.3s32.8-12.5 45.3 0l160 160z"/></svg></span>
+                            </a>
+
+                        <div style="clear: both"></div>
+                    </nav>
+                </div>
+            </div>
+
+            <nav class="nav-wide-wrapper" aria-label="Page navigation">
+                    <a rel="prev" href="24-metrics-and-monitoring.html" class="nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                        <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M41.4 233.4c-12.5 12.5-12.5 32.8 0 45.3l160 160c12.5 12.5 32.8 12.5 45.3 0s12.5-32.8 0-45.3L109.3 256 246.6 118.6c12.5-12.5 12.5-32.8 0-45.3s-32.8-12.5-45.3 0l-160 160z"/></svg></span>
+                    </a>
+
+                    <a rel="next prefetch" href="26-collaborative-editing.html" class="nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                        <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M278.6 233.4c12.5 12.5 12.5 32.8 0 45.3l-160 160c-12.5 12.5-32.8 12.5-45.3 0s-12.5-32.8 0-45.3L210.7 256 73.4 118.6c-12.5-12.5-12.5-32.8 0-45.3s32.8-12.5 45.3 0l160 160z"/></svg></span>
+                    </a>
+            </nav>
+
+        </div>
+
+        <template id=fa-eye><span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 576 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M288 32c-80.8 0-145.5 36.8-192.6 80.6C48.6 156 17.3 208 2.5 243.7c-3.3 7.9-3.3 16.7 0 24.6C17.3 304 48.6 356 95.4 399.4C142.5 443.2 207.2 480 288 480s145.5-36.8 192.6-80.6c46.8-43.5 78.1-95.4 93-131.1c3.3-7.9 3.3-16.7 0-24.6c-14.9-35.7-46.2-87.7-93-131.1C433.5 68.8 368.8 32 288 32zM432 256c0 79.5-64.5 144-144 144s-144-64.5-144-144s64.5-144 144-144s144 64.5 144 144zM288 192c0 35.3-28.7 64-64 64c-11.5 0-22.3-3-31.6-8.4c-.2 2.8-.4 5.5-.4 8.4c0 53 43 96 96 96s96-43 96-96s-43-96-96-96c-2.8 0-5.6 .1-8.4 .4c5.3 9.3 8.4 20.1 8.4 31.6z"/></svg></span></template>
+        <template id=fa-eye-slash><span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M38.8 5.1C28.4-3.1 13.3-1.2 5.1 9.2S-1.2 34.7 9.2 42.9l592 464c10.4 8.2 25.5 6.3 33.7-4.1s6.3-25.5-4.1-33.7L525.6 386.7c39.6-40.6 66.4-86.1 79.9-118.4c3.3-7.9 3.3-16.7 0-24.6c-14.9-35.7-46.2-87.7-93-131.1C465.5 68.8 400.8 32 320 32c-68.2 0-125 26.3-169.3 60.8L38.8 5.1zM223.1 149.5C248.6 126.2 282.7 112 320 112c79.5 0 144 64.5 144 144c0 24.9-6.3 48.3-17.4 68.7L408 294.5c5.2-11.8 8-24.8 8-38.5c0-53-43-96-96-96c-2.8 0-5.6 .1-8.4 .4c5.3 9.3 8.4 20.1 8.4 31.6c0 10.2-2.4 19.8-6.6 28.3l-90.3-70.8zm223.1 298L373 389.9c-16.4 6.5-34.3 10.1-53 10.1c-79.5 0-144-64.5-144-144c0-6.9 .5-13.6 1.4-20.2L83.1 161.5C60.3 191.2 44 220.8 34.5 243.7c-3.3 7.9-3.3 16.7 0 24.6c14.9 35.7 46.2 87.7 93 131.1C174.5 443.2 239.2 480 320 480c47.8 0 89.9-12.9 126.2-32.5z"/></svg></span></template>
+        <template id=fa-copy><span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M502.6 70.63l-61.25-61.25C435.4 3.371 427.2 0 418.7 0H255.1c-35.35 0-64 28.66-64 64l.0195 256C192 355.4 220.7 384 256 384h192c35.2 0 64-28.8 64-64V93.25C512 84.77 508.6 76.63 502.6 70.63zM464 320c0 8.836-7.164 16-16 16H255.1c-8.838 0-16-7.164-16-16L239.1 64.13c0-8.836 7.164-16 16-16h128L384 96c0 17.67 14.33 32 32 32h47.1V320zM272 448c0 8.836-7.164 16-16 16H63.1c-8.838 0-16-7.164-16-16L47.98 192.1c0-8.836 7.164-16 16-16H160V128H63.99c-35.35 0-64 28.65-64 64l.0098 256C.002 483.3 28.66 512 64 512h192c35.2 0 64-28.8 64-64v-32h-47.1L272 448z"/></svg></span></template>
+        <template id=fa-play><span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 384 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M73 39c-14.8-9.1-33.4-9.4-48.5-.9S0 62.6 0 80V432c0 17.4 9.4 33.4 24.5 41.9s33.7 8.1 48.5-.9L361 297c14.3-8.7 23-24.2 23-41s-8.7-32.2-23-41L73 39z"/></svg></span></template>
+        <template id=fa-clock-rotate-left><span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M75 75L41 41C25.9 25.9 0 36.6 0 57.9V168c0 13.3 10.7 24 24 24H134.1c21.4 0 32.1-25.9 17-41l-30.8-30.8C155 85.5 203 64 256 64c106 0 192 86 192 192s-86 192-192 192c-40.8 0-78.6-12.7-109.7-34.4c-14.5-10.1-34.4-6.6-44.6 7.9s-6.6 34.4 7.9 44.6C151.2 495 201.7 512 256 512c141.4 0 256-114.6 256-256S397.4 0 256 0C185.3 0 121.3 28.7 75 75zm181 53c-13.3 0-24 10.7-24 24V256c0 6.4 2.5 12.5 7 17l72 72c9.4 9.4 24.6 9.4 33.9 0s9.4-24.6 0-33.9l-65-65V152c0-13.3-10.7-24-24-24z"/></svg></span></template>
+
+
+
+        <script>
+            window.playground_copyable = true;
+        </script>
+
+
+        <script src="elasticlunr-ef4e11c1.min.js"></script>
+        <script src="mark-09e88c2c.min.js"></script>
+        <script src="searcher-09f2665d.js"></script>
+
+        <script src="clipboard-1626706a.min.js"></script>
+        <script src="highlight-abc7f01d.js"></script>
+        <script src="book-609e4cb8.js"></script>
+
+        <!-- Custom JS scripts -->
+        <script src="theme/figures-47b15f7f.js"></script>
+        <script src="theme/proto-326509cd.js"></script>
+        <script src="theme/code-67e9caaf.js"></script>
+        <script src="theme/tables-9fb295e8.js"></script>
+        <script src="theme/steps-77f22afb.js"></script>
+
+
+
+    </div>
+    </body>
+</html>

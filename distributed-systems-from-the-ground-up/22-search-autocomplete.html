@@ -1,0 +1,744 @@
+<!DOCTYPE HTML>
+<html lang="en" class="light sidebar-visible" dir="ltr">
+    <head>
+        <!-- Book generated using mdBook -->
+        <meta charset="UTF-8">
+        <title>Search Autocomplete - Distributed Systems from the Ground Up</title>
+
+
+        <!-- Custom HTML head -->
+
+        <meta name="description" content="System design and low-level design of resilient, fault-tolerant distributed systems, with code in Rust">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <meta name="theme-color" content="#ffffff">
+
+        <link rel="icon" href="favicon-de23e50b.svg">
+        <link rel="shortcut icon" href="favicon-8114d1fc.png">
+        <link rel="stylesheet" href="css/variables-8adf115d.css">
+        <link rel="stylesheet" href="css/general-e96d0476.css">
+        <link rel="stylesheet" href="css/chrome-d279d366.css">
+        <link rel="stylesheet" href="css/print-9e4910d8.css" media="print">
+
+        <!-- Fonts -->
+        <link rel="stylesheet" href="fonts/fonts-9644e21d.css">
+
+        <!-- Highlight.js Stylesheets -->
+        <link rel="stylesheet" id="mdbook-highlight-css" href="highlight-493f70e1.css">
+        <link rel="stylesheet" id="mdbook-tomorrow-night-css" href="tomorrow-night-4c0ae647.css">
+        <link rel="stylesheet" id="mdbook-ayu-highlight-css" href="ayu-highlight-3fdfc3ac.css">
+
+        <!-- Custom theme stylesheets -->
+        <link rel="stylesheet" href="theme/custom-8a495b63.css">
+
+
+        <!-- Provide site root and default themes to javascript -->
+        <script>
+            const path_to_root = "";
+            const default_light_theme = "light";
+            const default_dark_theme = "navy";
+            window.path_to_searchindex_js = "searchindex-fe51950f.js";
+        </script>
+        <!-- Start loading toc.js asap -->
+        <script src="toc-cc887274.js"></script>
+    </head>
+    <body>
+    <div id="mdbook-help-container">
+        <div id="mdbook-help-popup">
+            <h2 class="mdbook-help-title">Keyboard shortcuts</h2>
+            <div>
+                <p>Press <kbd>←</kbd> or <kbd>→</kbd> to navigate between chapters</p>
+                <p>Press <kbd>S</kbd> or <kbd>/</kbd> to search in the book</p>
+                <p>Press <kbd>?</kbd> to show this help</p>
+                <p>Press <kbd>Esc</kbd> to hide this help</p>
+            </div>
+        </div>
+    </div>
+    <div id="mdbook-body-container">
+        <!-- Work around some values being stored in localStorage wrapped in quotes -->
+        <script>
+            try {
+                let theme = localStorage.getItem('mdbook-theme');
+                let sidebar = localStorage.getItem('mdbook-sidebar');
+
+                if (theme.startsWith('"') && theme.endsWith('"')) {
+                    localStorage.setItem('mdbook-theme', theme.slice(1, theme.length - 1));
+                }
+
+                if (sidebar.startsWith('"') && sidebar.endsWith('"')) {
+                    localStorage.setItem('mdbook-sidebar', sidebar.slice(1, sidebar.length - 1));
+                }
+            } catch (e) { }
+        </script>
+
+        <!-- Set the theme before any content is loaded, prevents flash -->
+        <script>
+            const default_theme = window.matchMedia("(prefers-color-scheme: dark)").matches ? default_dark_theme : default_light_theme;
+            let theme;
+            try { theme = localStorage.getItem('mdbook-theme'); } catch(e) { }
+            if (theme === null || theme === undefined) { theme = default_theme; }
+            const html = document.documentElement;
+            html.classList.remove('light')
+            html.classList.add(theme);
+            html.classList.add("js");
+        </script>
+
+        <input type="checkbox" id="mdbook-sidebar-toggle-anchor" class="hidden">
+
+        <!-- Hide / unhide sidebar before it is displayed -->
+        <script>
+            let sidebar = null;
+            const sidebar_toggle = document.getElementById("mdbook-sidebar-toggle-anchor");
+            if (document.body.clientWidth >= 1080) {
+                try { sidebar = localStorage.getItem('mdbook-sidebar'); } catch(e) { }
+                sidebar = sidebar || 'visible';
+            } else {
+                sidebar = 'hidden';
+                sidebar_toggle.checked = false;
+            }
+            if (sidebar === 'visible') {
+                sidebar_toggle.checked = true;
+            } else {
+                html.classList.remove('sidebar-visible');
+            }
+        </script>
+
+        <nav id="mdbook-sidebar" class="sidebar" aria-label="Table of contents">
+            <!-- populated by js -->
+            <mdbook-sidebar-scrollbox class="sidebar-scrollbox"></mdbook-sidebar-scrollbox>
+            <noscript>
+                <iframe class="sidebar-iframe-outer" src="toc.html"></iframe>
+            </noscript>
+            <div id="mdbook-sidebar-resize-handle" class="sidebar-resize-handle">
+                <div class="sidebar-resize-indicator"></div>
+            </div>
+        </nav>
+
+        <div id="mdbook-page-wrapper" class="page-wrapper">
+
+            <div class="page">
+                <div id="mdbook-menu-bar-hover-placeholder"></div>
+                <div id="mdbook-menu-bar" class="menu-bar sticky">
+                    <div class="left-buttons">
+                        <label id="mdbook-sidebar-toggle" class="icon-button" for="mdbook-sidebar-toggle-anchor" title="Toggle Table of Contents" aria-label="Toggle Table of Contents" aria-controls="mdbook-sidebar">
+                            <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M0 96C0 78.3 14.3 64 32 64H416c17.7 0 32 14.3 32 32s-14.3 32-32 32H32C14.3 128 0 113.7 0 96zM0 256c0-17.7 14.3-32 32-32H416c17.7 0 32 14.3 32 32s-14.3 32-32 32H32c-17.7 0-32-14.3-32-32zM448 416c0 17.7-14.3 32-32 32H32c-17.7 0-32-14.3-32-32s14.3-32 32-32H416c17.7 0 32 14.3 32 32z"/></svg></span>
+                        </label>
+                        <button id="mdbook-theme-toggle" class="icon-button" type="button" title="Change theme" aria-label="Change theme" aria-haspopup="true" aria-expanded="false" aria-controls="mdbook-theme-list">
+                            <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 576 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M371.3 367.1c27.3-3.9 51.9-19.4 67.2-42.9L600.2 74.1c12.6-19.5 9.4-45.3-7.6-61.2S549.7-4.4 531.1 9.6L294.4 187.2c-24 18-38.2 46.1-38.4 76.1L371.3 367.1zm-19.6 25.4l-116-104.4C175.9 290.3 128 339.6 128 400c0 3.9 .2 7.8 .6 11.6c1.8 17.5-10.2 36.4-27.8 36.4H96c-17.7 0-32 14.3-32 32s14.3 32 32 32H240c61.9 0 112-50.1 112-112c0-2.5-.1-5-.2-7.5z"/></svg></span>
+                        </button>
+                        <ul id="mdbook-theme-list" class="theme-popup" aria-label="Themes" role="menu">
+                            <li role="none"><button role="menuitem" class="theme" id="mdbook-theme-default_theme">Auto</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="mdbook-theme-light">Light</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="mdbook-theme-rust">Rust</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="mdbook-theme-coal">Coal</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="mdbook-theme-navy">Navy</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="mdbook-theme-ayu">Ayu</button></li>
+                        </ul>
+                        <button id="mdbook-search-toggle" class="icon-button" type="button" title="Search (`/`)" aria-label="Toggle Searchbar" aria-expanded="false" aria-keyshortcuts="/ s" aria-controls="mdbook-searchbar">
+                            <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M416 208c0 45.9-14.9 88.3-40 122.7L502.6 457.4c12.5 12.5 12.5 32.8 0 45.3s-32.8 12.5-45.3 0L330.7 376c-34.4 25.2-76.8 40-122.7 40C93.1 416 0 322.9 0 208S93.1 0 208 0S416 93.1 416 208zM208 352c79.5 0 144-64.5 144-144s-64.5-144-144-144S64 128.5 64 208s64.5 144 144 144z"/></svg></span>
+                        </button>
+                    </div>
+
+                    <h1 class="menu-title">Distributed Systems from the Ground Up</h1>
+
+                    <div class="right-buttons">
+                        <a href="print.html" title="Print this book" aria-label="Print this book">
+                            <span class=fa-svg id="print-button"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M128 0C92.7 0 64 28.7 64 64v96h64V64H354.7L384 93.3V160h64V93.3c0-17-6.7-33.3-18.7-45.3L400 18.7C388 6.7 371.7 0 354.7 0H128zM384 352v32 64H128V384 368 352H384zm64 32h32c17.7 0 32-14.3 32-32V256c0-35.3-28.7-64-64-64H64c-35.3 0-64 28.7-64 64v96c0 17.7 14.3 32 32 32H64v64c0 35.3 28.7 64 64 64H384c35.3 0 64-28.7 64-64V384zm-16-88c-13.3 0-24-10.7-24-24s10.7-24 24-24s24 10.7 24 24s-10.7 24-24 24z"/></svg></span>
+                        </a>
+                        <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/tree/prep-v2/distributed-systems-from-the-ground-up" title="Git repository" aria-label="Git repository">
+                            <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 496 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M165.9 397.4c0 2-2.3 3.6-5.2 3.6-3.3.3-5.6-1.3-5.6-3.6 0-2 2.3-3.6 5.2-3.6 3-.3 5.6 1.3 5.6 3.6zm-31.1-4.5c-.7 2 1.3 4.3 4.3 4.9 2.6 1 5.6 0 6.2-2s-1.3-4.3-4.3-5.2c-2.6-.7-5.5.3-6.2 2.3zm44.2-1.7c-2.9.7-4.9 2.6-4.6 4.9.3 2 2.9 3.3 5.9 2.6 2.9-.7 4.9-2.6 4.6-4.6-.3-1.9-3-3.2-5.9-2.9zM244.8 8C106.1 8 0 113.3 0 252c0 110.9 69.8 205.8 169.5 239.2 12.8 2.3 17.3-5.6 17.3-12.1 0-6.2-.3-40.4-.3-61.4 0 0-70 15-84.7-29.8 0 0-11.4-29.1-27.8-36.6 0 0-22.9-15.7 1.6-15.4 0 0 24.9 2 38.6 25.8 21.9 38.6 58.6 27.5 72.9 20.9 2.3-16 8.8-27.1 16-33.7-55.9-6.2-112.3-14.3-112.3-110.5 0-27.5 7.6-41.3 23.6-58.9-2.6-6.5-11.1-33.3 2.6-67.9 20.9-6.5 69 27 69 27 20-5.6 41.5-8.5 62.8-8.5s42.8 2.9 62.8 8.5c0 0 48.1-33.6 69-27 13.7 34.7 5.2 61.4 2.6 67.9 16 17.7 25.8 31.5 25.8 58.9 0 96.5-58.9 104.2-114.8 110.5 9.2 7.9 17 22.9 17 46.4 0 33.7-.3 75.4-.3 83.6 0 6.5 4.6 14.4 17.3 12.1C428.2 457.8 496 362.9 496 252 496 113.3 383.5 8 244.8 8zM97.2 352.9c-1.3 1-1 3.3.7 5.2 1.6 1.6 3.9 2.3 5.2 1 1.3-1 1-3.3-.7-5.2-1.6-1.6-3.9-2.3-5.2-1zm-10.8-8.1c-.7 1.3.3 2.9 2.3 3.9 1.6 1 3.6.7 4.3-.7.7-1.3-.3-2.9-2.3-3.9-2-.6-3.6-.3-4.3.7zm32.4 35.6c-1.6 1.3-1 4.3 1.3 6.2 2.3 2.3 5.2 2.6 6.5 1 1.3-1.3.7-4.3-1.3-6.2-2.2-2.3-5.2-2.6-6.5-1zm-11.4-14.7c-1.6 1-1.6 3.6 0 5.9 1.6 2.3 4.3 3.3 5.6 2.3 1.6-1.3 1.6-3.9 0-6.2-1.4-2.3-4-3.3-5.6-2z"/></svg></span>
+                        </a>
+                        <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/edit/prep-v2/distributed-systems-from-the-ground-up/src/22-search-autocomplete.md" title="Suggest an edit" aria-label="Suggest an edit" rel="edit">
+                            <span class=fa-svg id="git-edit-button"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M421.7 220.3l-11.3 11.3-22.6 22.6-205 205c-6.6 6.6-14.8 11.5-23.8 14.1L30.8 511c-8.4 2.5-17.5 .2-23.7-6.1S-1.5 489.7 1 481.2L38.7 353.1c2.6-9 7.5-17.2 14.1-23.8l205-205 22.6-22.6 11.3-11.3 33.9 33.9 62.1 62.1 33.9 33.9zM96 353.9l-9.3 9.3c-.9 .9-1.6 2.1-2 3.4l-25.3 86 86-25.3c1.3-.4 2.5-1.1 3.4-2l9.3-9.3H112c-8.8 0-16-7.2-16-16V353.9zM453.3 19.3l39.4 39.4c25 25 25 65.5 0 90.5l-14.5 14.5-22.6 22.6-11.3 11.3-33.9-33.9-62.1-62.1L314.3 67.7l11.3-11.3 22.6-22.6 14.5-14.5c25-25 65.5-25 90.5 0z"/></svg></span>
+                        </a>
+
+                    </div>
+                </div>
+
+                <div id="mdbook-search-wrapper" class="hidden">
+                    <form id="mdbook-searchbar-outer" class="searchbar-outer">
+                        <div class="search-wrapper">
+                            <input type="search" id="mdbook-searchbar" name="searchbar" placeholder="Search this book ..." aria-controls="mdbook-searchresults-outer" aria-describedby="searchresults-header">
+                            <div class="spinner-wrapper">
+                                <span class=fa-svg id="fa-spin"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M304 48c0-26.5-21.5-48-48-48s-48 21.5-48 48s21.5 48 48 48s48-21.5 48-48zm0 416c0-26.5-21.5-48-48-48s-48 21.5-48 48s21.5 48 48 48s48-21.5 48-48zM48 304c26.5 0 48-21.5 48-48s-21.5-48-48-48s-48 21.5-48 48s21.5 48 48 48zm464-48c0-26.5-21.5-48-48-48s-48 21.5-48 48s21.5 48 48 48s48-21.5 48-48zM142.9 437c18.7-18.7 18.7-49.1 0-67.9s-49.1-18.7-67.9 0s-18.7 49.1 0 67.9s49.1 18.7 67.9 0zm0-294.2c18.7-18.7 18.7-49.1 0-67.9S93.7 56.2 75 75s-18.7 49.1 0 67.9s49.1 18.7 67.9 0zM369.1 437c18.7 18.7 49.1 18.7 67.9 0s18.7-49.1 0-67.9s-49.1-18.7-67.9 0s-18.7 49.1 0 67.9z"/></svg></span>
+                            </div>
+                        </div>
+                    </form>
+                    <div id="mdbook-searchresults-outer" class="searchresults-outer hidden">
+                        <div id="mdbook-searchresults-header" class="searchresults-header"></div>
+                        <ul id="mdbook-searchresults">
+                        </ul>
+                    </div>
+                </div>
+
+                <!-- Apply ARIA attributes after the sidebar and the sidebar toggle button are added to the DOM -->
+                <script>
+                    document.getElementById('mdbook-sidebar-toggle').setAttribute('aria-expanded', sidebar === 'visible');
+                    document.getElementById('mdbook-sidebar').setAttribute('aria-hidden', sidebar !== 'visible');
+                    Array.from(document.querySelectorAll('#mdbook-sidebar a')).forEach(function(link) {
+                        link.setAttribute('tabIndex', sidebar === 'visible' ? 0 : -1);
+                    });
+                </script>
+
+                <div id="mdbook-content" class="content">
+                    <main>
+                        <img class="plate" src="art/ch22.svg?v=69a52589" alt="An owl stands beside a sign that reads: ka, then kafka, karaoke, kayak.">
+<h1 id="search-autocomplete-system-design"><a class="header" href="#search-autocomplete-system-design">Search Autocomplete: System Design</a></h1>
+<p>When a person begins to type into a search box, a short list of suggestions appears
+beneath it, and the list changes with every letter. Typing <code>ka</code> produces “kafka”,
+“karaoke near me” and “kayak”, and the addition of an <code>f</code> reduces the list to “kafka”
+and “kafka vs rabbitmq”. The feature is called <em>autocomplete</em> or <em>typeahead</em>, and it
+spares the user some typing, corrects spelling before it has gone wrong, and shows
+what other people have looked for.</p>
+<p>2 characteristics set this feature apart from the search that it accompanies. It is
+invoked far more often, once for every letter typed where a search is made once, so
+that a service handling 100000 searches a second may receive a million requests for
+suggestions in the same second. And it must be very much faster. A page of search
+results that takes half a second to appear is acceptable, whereas suggestions that
+arrive half a second after a keystroke are useless, since the user has by then typed
+2 further letters and the suggestions refer to text that is no longer in the box. The
+practical limit is about 100 ms from the keystroke to the display, of which the
+network consumes the greater part.</p>
+<p>There is no possibility of computing anything substantial within such a limit, and
+the design is governed by that fact. Whatever can be computed in advance is computed
+in advance, so that answering a request amounts to a single lookup, and whatever can
+be answered without reaching the service at all is answered nearer to the user. The
+interest of the design lies in the question of what exactly should be prepared
+beforehand, in how the prepared data is kept reasonably up to date, and in a small
+number of ways in which a feature that looks harmless can cause real embarrassment.</p>
+<div class="covers">
+<p>This chapter covers</p>
+<ul>
+<li>what a suggestion is, and where the candidates come from</li>
+<li>finding the searches that begin with a prefix: a sorted list, and a tree of letters</li>
+<li>why the answers are computed before anyone asks</li>
+<li>how much data that requires, and how it is rebuilt</li>
+<li>counting what people search for</li>
+<li>searches that became popular within the last hour</li>
+<li>what the browser must do: waiting, discarding late answers, and caching</li>
+<li>suggestions that must not be shown</li>
+<li>dividing the data among servers</li>
+</ul>
+</div>
+
+<h2 id="what-a-suggestion-is"><a class="header" href="#what-a-suggestion-is">What a suggestion is</a></h2>
+<p>A suggestion is a complete search that begins with what the user has typed so far. The
+text already typed is called the <em>prefix</em>, and the suggestions are <em>completions</em> of it.</p>
+<p>The candidates are, for the most part, searches that other people have made. A search
+engine keeps a record of the searches submitted to it, and the completions of <code>ka</code> are
+drawn from the searches in that record which begin with <code>ka</code>. There are generally far
+more of these than can be displayed, since thousands of distinct searches begin with
+any short prefix, and so they have to be ranked and only the first few shown.</p>
+<p>The basic ranking is by frequency. A search that has been made 900 times is preferred
+to one that has been made 300 times, on the reasoning that what many people have
+looked for is what the next person is most likely to want. Frequency alone is a
+serviceable beginning, and the later sections refine it.</p>
+<p>The problem can therefore be stated precisely. Given a prefix, return the k most
+frequent searches that begin with it, where k is a small number such as 5 and the
+answer is required within a few milliseconds.</p>
+<h2 id="finding-the-searches-that-begin-with-a-prefix"><a class="header" href="#finding-the-searches-that-begin-with-a-prefix">Finding the searches that begin with a prefix</a></h2>
+<h3 id="a-sorted-list"><a class="header" href="#a-sorted-list">A sorted list</a></h3>
+<p>The most direct structure is a list of all known searches in alphabetical order, each
+accompanied by its count. In such a list, all the searches that begin with a given
+prefix stand together, since alphabetical order groups words by their initial letters.
+The first of them can be found by binary search, or in an ordered index of the kind
+used throughout this book, and the remainder follow immediately after it.</p>
+<p>The simulation for this chapter is built in this way, with 10 searches held in an
+ordered map. For the prefix <code>ka</code> it locates the first entry not less than <code>ka</code>, reads
+forward for as long as the entries begin with <code>ka</code>, which yields kafka, kafka vs
+rabbitmq, karaoke near me and kayak, sorts these 4 by count, and returns the first 3.</p>
+<p>The method is correct and, for long prefixes, perfectly adequate. Its weakness lies in
+the short prefixes, which are the ones most often requested, since every search begins
+with a single letter. The number of entries beginning with <code>k</code> may run to millions,
+and all of them must be read and ranked in order to discover the 5 best. The cost of a
+request is proportional to the number of matches, and the number of matches is
+greatest for exactly those requests that are most numerous.</p>
+<h3 id="a-tree-of-letters"><a class="header" href="#a-tree-of-letters">A tree of letters</a></h3>
+<p>The traditional structure for prefixes is a tree in which each edge is labelled with a
+letter and the path from the root to any node spells out a prefix. It is called a
+<em>trie</em>, or a prefix tree.</p>
+<figure>
+<img src="figures/type-trie.svg?v=f403aa27" alt="A tree of letters. From the top, branches lead to k and r. Below k are a, e and u. Below ka are f, r and y, which lead to kafka, karaoke and kayak. The path from the top through k to a is marked, and every search that begins with ka lies below it.">
+<figcaption><b>Figure 22.1</b> A tree in which the path from the top to a node spells a prefix, with the path for 'ka' marked.</figcaption>
+</figure>
+<p>To find the completions of <code>ka</code>, one starts at the root, follows the edge labelled <code>k</code>
+and then the edge labelled <code>a</code>, and arrives at a node beneath which lie all the
+searches that begin with <code>ka</code> and no others. Reaching that node takes as many steps as
+the prefix has letters, 2 in this case, however many millions of searches the tree
+contains.</p>
+<p>The trie makes the node easy to find and leaves the main difficulty where it was. The
+completions lie somewhere in the subtree below the node, and to determine the 5 most
+frequent it is still necessary to visit the whole subtree, which for a short prefix is
+a large part of the entire tree. The structure has shortened the search for the
+beginning of the answer and has done nothing to shorten the collection of the answer
+itself.</p>
+<h2 id="computing-the-answers-before-anyone-asks"><a class="header" href="#computing-the-answers-before-anyone-asks">Computing the answers before anyone asks</a></h2>
+<p>The observation that resolves the difficulty is that the question “which are the 5
+most frequent searches beginning with <code>ka</code>” has the same answer whoever asks it and
+whenever, until the underlying counts change. There is consequently no reason to work
+it out at the time of the request. It can be worked out once, in advance, for every
+prefix, and the results stored.</p>
+<p>In terms of the trie, this means that every node carries, in addition to its children,
+a short list of the best completions that lie beneath it. In terms of a plain table,
+it means a row for every prefix, containing that prefix’s best completions.</p>
+<figure class="steps" data-prefix="figures/steps-type-lists" data-count="5" data-version="96e5e89e">
+<img src="figures/steps-type-lists-01.svg?v=96e5e89e" alt="1 lookup for each letter typed, step 1 of 5. For every prefix that occurs, the 3 most frequent searches that begin with it have been worked out in advance and stored. Answering is then a matter of looking up 1 row.">
+<figcaption><b>Figure 22.2</b> Each keystroke is answered by reading the row that was prepared for the prefix. Use Next and Back to move through the 5 steps.</figcaption>
+</figure>
+<p>With such a table, a request is a single lookup by key, of the kind that a key-value
+store or a cache performs in well under a millisecond. Its cost does not depend on the
+length of the prefix, on the number of searches that match it, or on the size of the
+collection. The simulation prints the rows of this table for the prefixes of its
+example: for <code>k</code>, kubernetes with 950, kafka with 900 and karaoke near me with 800;
+for <code>ka</code>, kafka, karaoke near me and kayak; for <code>kaf</code>, the 2 searches about kafka; and
+for <code>x</code>, nothing.</p>
+<p>Once the answers have been computed in advance, the trie is no longer indispensable.
+A flat table that maps each prefix, as a string, to its list does everything required
+and can be held in any key-value store. The trie continues to be of use in building
+the lists, as will be seen, and in memory it is the more compact representation, since
+prefixes that share their opening letters share the corresponding nodes. As far as
+serving is concerned, however, the design has reduced a search problem to a lookup
+problem, and has done so by the same exchange that chapter 15 made for the news feed,
+in which work was moved from the moment of reading to the moment of writing.</p>
+<h3 id="what-this-costs"><a class="header" href="#what-this-costs">What this costs</a></h3>
+<p>The cost is storage and the labour of construction. Every search of n letters has n
+prefixes, so that a collection of 100 million distinct searches of 20 letters on
+average gives rise to as many as 2 billion prefixes. In practice the number is much
+smaller, since a great many searches share their prefixes and there is only 1 row for
+<code>k</code>, shared by every search that begins with that letter. It can be reduced further by
+2 simple rules. Prefixes beyond a certain length, 20 letters for example, are not
+stored, since by that point so few searches match that they can be found directly. And
+searches that have been made only a few times are excluded from the collection
+altogether, which, as a later section explains, is also required for reasons that have
+nothing to do with storage.</p>
+<p>A row holds 5 completions, which can be stored as references to the searches and need
+not be full copies. A few hundred million rows of some tens of bytes each come to tens
+of gigabytes, an amount that can be held in the memory of a small number of machines.</p>
+<h3 id="building-the-lists"><a class="header" href="#building-the-lists">Building the lists</a></h3>
+<p>The lists are built from the bottom of the trie upwards. The list for a node is the
+best 5 drawn from the lists of its children, together with the search that ends at the
+node itself, if there is one. Since each child’s list contains at most 5 entries, a
+node with 26 children has to consider at most 131 candidates, and the entire trie is
+processed in a single pass whose cost is proportional to the number of nodes.</p>
+<p>The same property makes it possible to bring the lists up to date without rebuilding
+everything. When the count of a single search changes, only the lists on the path from
+that search up to the root can be affected, which for a search of 20 letters is 20
+nodes. In practice, most services nevertheless rebuild the whole table at intervals,
+hourly or daily, from the latest counts, and replace the old table with the new one in
+a single step. A complete rebuild is simpler to make correct, is done by a batch job
+that places no load on the servers answering requests, and has the considerable
+advantage that the previous table remains at hand and can be reinstated at once if the
+new one proves to be faulty.</p>
+<h2 id="counting-what-people-search-for"><a class="header" href="#counting-what-people-search-for">Counting what people search for</a></h2>
+<p>The counts from which the lists are built come from the record of searches. Every
+search that is actually submitted, as distinct from every prefix that is typed, is
+appended to a log, by way of the message queue of chapter 11, so that the recording
+adds nothing to the time taken by the search itself.</p>
+<p>A batch job reads this log at intervals and produces, for every distinct search, the
+number of times it was made within some recent period. 3 aspects of this counting
+call for care.</p>
+<p>The text of a search has to be <em>normalised</em> before it is counted, since “Kafka”,
+“kafka” and “ kafka “ are the same search to the person who typed them and would
+otherwise be counted as 3 separate ones, each with a third of the proper weight.
+Normalisation ordinarily converts the text to small letters, removes superfluous
+spaces, and brings accented characters to a standard form. The same normalisation
+must be applied to the prefix when a request for suggestions arrives, or the lookup
+will fail to find a row that exists.</p>
+<p>Not every search need be counted. At a high volume, a random sample of 1 search in 10
+or 1 in 100 yields counts that are proportionally accurate for everything popular
+enough to appear in a list of suggestions, at a tenth or a hundredth of the work.
+Sampling loses precision only for rare searches, which are not going to be suggested
+in any case.</p>
+<p>And the counts should favour what is recent. A search that was made a million times 3
+years ago and has scarcely been made since ought not to rank above one that has been
+made 100000 times this week. A common method reduces older counts by a constant factor
+at each period, halving the weight of every search’s history each week for example, so
+that popularity has to be sustained in order to be retained. This is the decay that
+chapter 9 applied to the counts of the least frequently used rule, and it is applied
+here for the same reason.</p>
+<h2 id="what-became-popular-within-the-hour"><a class="header" href="#what-became-popular-within-the-hour">What became popular within the hour</a></h2>
+<p>A table rebuilt once a day cannot know of anything that happened today. When news
+breaks and a million people begin to search for a name that nobody had searched for
+the day before, suggestions built from yesterday’s counts will not include it, and the
+feature appears conspicuously out of touch at exactly the moment when attention is
+greatest.</p>
+<p>The usual remedy is to maintain a second, much smaller collection alongside the main
+table. A stream processor reads the log of searches as they arrive and keeps counts
+over a short sliding window, the last hour for instance, using the windowed counting
+of chapter 7. Searches whose recent rate far exceeds their historical rate are
+recognised as <em>trending</em> and placed in a small table of their own, which is brought up
+to date every minute or so. When a request arrives, the service consults both the main
+table and the small one and merges the 2 lists.</p>
+<p>The division gives each part the method that suits it. The great mass of suggestions
+changes slowly and is rebuilt at leisure, in bulk, with every opportunity for
+checking. The few that change quickly are handled by a mechanism that is fast because
+it is small.</p>
+<h2 id="what-the-browser-must-do"><a class="header" href="#what-the-browser-must-do">What the browser must do</a></h2>
+<p>Much of the performance of autocomplete depends on the behaviour of the client, and a
+well-constructed service can be made to seem slow and erratic by a carelessly written
+one.</p>
+<p>A user who types quickly produces a keystroke every 100 ms or less. A request sent on
+every keystroke is mostly wasted, since its answer will be out of date before it has
+arrived. The client therefore waits for a brief pause in the typing, of perhaps 50 to
+100 ms, before sending a request, a technique known as <em>debouncing</em>. A user who types
+5 letters in rapid succession and then stops causes 1 request where there would have been 5. Requests are
+likewise withheld until at least 1 or 2 letters have been typed, according to the
+language, since the suggestions for a single letter are seldom of any use and such
+prefixes account for a large share of the load.</p>
+<p>A second matter concerns the order in which answers arrive, and it is the source of a
+defect that is frequently seen.</p>
+<figure>
+<img src="figures/type-stale.svg?v=7c128e1b" alt="5 steps. The searcher types ka, and request 1 is sent and is slow. The searcher types kaf, and request 2 is sent and is fast. The answer to request 2 arrives and is shown. The answer to request 1 arrives late and replaces it. The suggestions no longer match the text in the box. The cure is to show an answer only if it is for the text now in the box.">
+<figcaption><b>Figure 22.3</b> The answer to an earlier request arrives after the answer to a later one and replaces it.</figcaption>
+</figure>
+<p>Requests travel independently over the network and may be answered in an order
+different from that in which they were sent. If the client displays every answer as it
+arrives, a slow answer for <code>ka</code> can overwrite the correct answer for <code>kaf</code>, and the
+user is shown suggestions that do not correspond to the text in the box. The client
+must therefore remember which prefix each request was for, and display an answer only
+if that prefix is still the text in the box. Requests that have been overtaken should
+also be cancelled, which saves the work of answering them.</p>
+<p>The third matter is caching, for which autocomplete is exceptionally well suited. The
+answer for a given prefix is the same for every user, in the absence of
+personalisation, and remains valid for minutes or hours. It can therefore be cached at
+every level, with the methods of chapter 9. The browser keeps the answers it has
+already received, so that a user who deletes a letter sees the previous suggestions
+again instantly, with no request. The edge servers of a content delivery network, as
+described in chapter 17, keep the answers for common prefixes close to users, and
+since requests are heavily concentrated on a small number of short prefixes, a large
+proportion of them never reach the service. For this to work, a request for
+suggestions must be an ordinary <code>GET</code> with the prefix in its address, and the reply
+must state for how long it may be reused.</p>
+<h2 id="suggestions-that-must-not-be-shown"><a class="header" href="#suggestions-that-must-not-be-shown">Suggestions that must not be shown</a></h2>
+<p>Autocomplete presents text that the service did not write, taken from what other
+people have typed, directly beneath the service’s own name. It has in consequence 2
+ways of causing harm that are not apparent from the engineering alone.</p>
+<p>The first concerns offensive or damaging suggestions. If a sufficient number of people
+search for a person’s name together with an accusation, the plain frequency ranking
+will propose that accusation to everybody who starts to type the name, and so lends
+the authority of the service to a rumour. Suggestions may equally promote abuse,
+dangerous activity or unlawful content, for no better reason than that many people
+have searched for it. The service therefore passes candidates through a filter before
+they enter the table, composed of lists of terms and categories that are never to be
+suggested, and provides a means by which any particular suggestion can be removed
+promptly once it has been reported. Because the table is built in advance, the filter
+is applied during the build and costs nothing when requests are answered, and an
+urgent removal is effected by a small list of exclusions that is checked as answers
+are served.</p>
+<p>The second concerns privacy. A search may contain a person’s name, an address, a
+telephone number or a medical question. If a search that only 1 person ever made were
+to be offered as a suggestion, that person’s private search would be shown to
+strangers who chanced to type the same opening letters. A search is therefore admitted
+as a candidate only when it has been made by a sufficient number of different people,
+some hundreds for example, so that no suggestion can be traced to an individual. This
+threshold, which was mentioned earlier as a means of saving storage, is in fact
+required on grounds of privacy, and the number to be counted is that of distinct
+people, whatever the number of searches, since 1 person may make the same search a great many
+times.</p>
+<h2 id="dividing-the-data-among-servers"><a class="header" href="#dividing-the-data-among-servers">Dividing the data among servers</a></h2>
+<p>The table of prefixes is too large for 1 machine in a big service and has to be
+divided. The natural key for the division is the prefix itself.</p>
+<p>It is tempting to assign prefixes to servers by their first letter, and this
+distributes the load poorly. Far more searches begin with <code>s</code> than with <code>x</code>, so that
+some servers would be overloaded and others nearly idle. The division is better based
+on measured load: the ranges of prefixes are chosen so that each receives roughly the
+same number of requests, with the consequence that a common letter is spread over
+several servers by its second letter and several rare letters share 1 server. As an
+alternative, prefixes may be distributed by a hash, with the consistent hashing of
+chapter 1, which balances the load without any measurement and gives up the property
+that neighbouring prefixes reside on the same server.</p>
+<p>Since the table is read-only between rebuilds, replicating it is uncomplicated. Every
+replica of a shard holds an identical copy of the same immutable file, and any of them
+may answer any request. There is no leader and no question of consistency among the
+replicas, apart from the short interval during which a new table is being distributed
+and some replicas have it while others still serve the old one. A user may notice a
+small change in the suggestions if 2 successive requests fall on either side of that
+interval, and this is harmless.</p>
+<h2 id="use-cases"><a class="header" href="#use-cases">Use cases</a></h2>
+<p>A person types into a search box, and the service proposes completions.</p>
+<figure>
+<img src="figures/typeahead-use-cases.svg?v=7d81dcdf" alt="A use case diagram of the suggestion service. Searcher: get suggestions (GET /v1/suggestions?q=ka), run the search (GET /v1/search?q=kafka).">
+<figcaption><b>Figure 22.4</b> The actor and what it does.</figcaption>
+</figure>
+<h2 id="functional-requirements"><a class="header" href="#functional-requirements">Functional requirements</a></h2>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th>No.</th><th>Functional requirement</th></tr>
+</thead>
+<tbody>
+<tr><td>0</td><td>For the text typed so far, the service returns up to 5 searches that begin with it.</td></tr>
+<tr><td>1</td><td>Suggestions are ordered by how often they have recently been searched for.</td></tr>
+<tr><td>2</td><td>Searches that have become popular within the last hour appear among the suggestions.</td></tr>
+<tr><td>3</td><td>A suggestion that has been reported can be removed within minutes.</td></tr>
+<tr><td>4</td><td>No suggestion is shown that fewer than a set number of different people have searched for.</td></tr>
+</tbody>
+</table>
+</div>
+<h2 id="non-functional-requirements"><a class="header" href="#non-functional-requirements">Non-functional requirements</a></h2>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th>No.</th><th>Property</th><th>Non-functional requirement</th></tr>
+</thead>
+<tbody>
+<tr><td>0</td><td>Latency</td><td>Suggestions are displayed within 100 ms of a keystroke, and the service itself answers within 10 ms.</td></tr>
+<tr><td>1</td><td>Availability</td><td>99.9%. If suggestions are unavailable, searching still works.</td></tr>
+<tr><td>2</td><td>Consistency</td><td>Eventual. Suggestions reflect counts that are up to a day old, or up to a minute old for trending searches.</td></tr>
+<tr><td>3</td><td>Scale</td><td>1 million requests per second, and 100 million distinct searches.</td></tr>
+</tbody>
+</table>
+</div>
+<p>Autocomplete is an aid, and nothing else depends on it, which is
+reflected in non-functional requirements 1 and 2. A search box with no suggestions is
+merely a search box, and suggestions computed from yesterday’s counts are nearly as
+good as suggestions computed from this minute’s. Both facts are used to the full. The
+table is built offline and is allowed to be stale, and the client is written so that a
+slow or failed request for suggestions leaves the user free to type and to search
+without hindrance.</p>
+<h2 id="core-entities"><a class="header" href="#core-entities">Core entities</a></h2>
+<figure>
+<img src="figures/typeahead-entities.svg?v=0037c210" alt="The core entities. Search count has the fields text string, count u32, per week. Suggestion list has the fields prefix string, top 5 searches. Counts are collected from the searches people run. Lists are computed from the counts ahead of time, 1 for each prefix.">
+<figcaption><b>Figure 22.5</b> The core entities and their fields.</figcaption>
+</figure>
+<h2 id="capacity-estimate"><a class="header" href="#capacity-estimate">Capacity estimate</a></h2>
+<div class="estimate">
+<img class="builder" src="art/crab-builder.svg" alt="A crab in a hard hat, in tears.">
+<p><strong>Arithmetic ahead.</strong> The table of prefixes occupies about 25 GB, which is held in memory on a few machines, and most requests are answered by caches before they reach those machines.</p>
+<p><a class="skip" href="#high-level-design">Skip to the high-level design</a></p>
+<details>
+<summary>Show the calculation</summary>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th>Quantity</th><th>Calculation</th><th>Result</th></tr>
+</thead>
+<tbody>
+<tr><td>Requests per second</td><td>100000 searches × about 10 letters typed</td><td>1 million</td></tr>
+<tr><td>Requests that reach the service</td><td>1 million × 20% not answered by caches</td><td>200000 per second</td></tr>
+<tr><td>Rows in the table</td><td>distinct prefixes, after the rules on length and popularity</td><td>about 500 million</td></tr>
+<tr><td>Size of a row</td><td>prefix 12 bytes + 5 references of 8 bytes</td><td>about 50 bytes</td></tr>
+<tr><td>Size of the table</td><td>500 million × 50 bytes</td><td>25 GB</td></tr>
+</tbody>
+</table>
+</div>
+</details>
+</div>
+
+<h2 id="the-api"><a class="header" href="#the-api">The API</a></h2>
+<p>Suggestions are a resource addressed by the prefix, which is passed as a parameter of
+the query. The request is a plain <code>GET</code>, so that every cache between the user and the
+service is able to store the answer.</p>
+<p><strong>Suggestions for a prefix</strong></p>
+<pre><code class="language-http">GET /v1/suggestions?q=ka HTTP/1.1
+Host: search.example
+</code></pre>
+<pre><code class="language-http">HTTP/1.1 200 OK
+Content-Type: application/json
+Cache-Control: public, max-age=300
+
+{
+  "prefix": "ka",
+  "suggestions": ["kafka", "karaoke near me", "kayak"]
+}
+</code></pre>
+<p>The reply repeats the prefix so that the client can verify that the answer belongs to
+the text now in the box. <code>Cache-Control</code> permits browsers and edge servers to reuse
+the answer for 5 minutes.</p>
+<p><strong>A prefix with no completions</strong></p>
+<pre><code class="language-http">GET /v1/suggestions?q=kafx HTTP/1.1
+Host: search.example
+</code></pre>
+<pre><code class="language-http">HTTP/1.1 200 OK
+Content-Type: application/json
+Cache-Control: public, max-age=300
+
+{ "prefix": "kafx", "suggestions": [] }
+</code></pre>
+<p>An empty list is a successful answer and is returned with <code>200</code>. It is cached like any
+other, which protects the service against repeated requests for prefixes that lead
+nowhere.</p>
+<h2 id="high-level-design"><a class="header" href="#high-level-design">High-level design</a></h2>
+<figure class="wide">
+<img src="figures/typeahead-design.svg?v=7cca881d" alt="Suggestions while typing. The components are Searcher, Suggestion API, Prefix lists, Search log, Counting job, Search counts. Step 1: After each letter, the browser asks for suggestions. Step 2: The API returns the stored list for that prefix. Step 3: Every search that is run is written to a log. Step 4: A job counts the searches of the last week. Step 5: New lists are built from the counts.">
+<figcaption><b>Figure 22.6</b> The components and the path of a request. The steps are numbered.</figcaption>
+</figure>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th>Component</th><th>Role</th><th>State it holds</th><th>When 1 instance fails</th></tr>
+</thead>
+<tbody>
+<tr><td>Suggestion API</td><td>looks up the list for a prefix and applies the list of exclusions</td><td>a copy of the table, in memory</td><td>another replica answers</td></tr>
+<tr><td>Prefix lists</td><td>the table of the best completions for every prefix</td><td>an immutable file, replaced at each rebuild</td><td>every replica holds the same file</td></tr>
+<tr><td>Search log</td><td>records every search that is submitted</td><td>the log, in a message queue</td><td>as in chapter 11</td></tr>
+<tr><td>Counting job</td><td>counts searches, with decay, at intervals</td><td>none between runs</td><td>the job is run again</td></tr>
+<tr><td>Search counts</td><td>the count of every distinct search</td><td>counts, in a store</td><td>the previous counts are still available</td></tr>
+</tbody>
+</table>
+</div>
+<h3 id="one-request-step-by-step"><a class="header" href="#one-request-step-by-step">One request, step by step</a></h3>
+<p>The steps follow the arrows of figure 22.6.</p>
+<ol>
+<li>After a pause in the typing, the browser asks for suggestions for the text in the box, unless it already holds the answer.</li>
+<li>The suggestion API, if no cache has answered first, normalises the prefix, reads the row for it from the table in its memory, removes any excluded entries, and returns the list.</li>
+<li>Independently of this, every search that a user submits is appended to the search log.</li>
+<li>At intervals, the counting job reads the log and brings the count of every search up to date, reducing older counts.</li>
+<li>A new table of prefix lists is built from the counts, checked, and distributed to the replicas, which begin serving it in place of the old one.</li>
+</ol>
+<h2 id="mistakes-to-avoid"><a class="header" href="#mistakes-to-avoid">Mistakes to avoid</a></h2>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th>Mistake</th><th>What goes wrong</th><th>What to do</th></tr>
+</thead>
+<tbody>
+<tr><td>Ranking the matches while the user waits</td><td>Short prefixes match millions of searches and cannot be ranked in time.</td><td>Compute the best completions for every prefix in advance.</td></tr>
+<tr><td>Updating the table on every search</td><td>The serving path carries a constant load of writes.</td><td>Rebuild in batches, and keep a small separate table for what is trending.</td></tr>
+<tr><td>A request on every keystroke</td><td>Most answers are out of date on arrival.</td><td>Wait for a brief pause in the typing before asking.</td></tr>
+<tr><td>Displaying every answer as it arrives</td><td>A slow answer for an earlier prefix overwrites the right one.</td><td>Display an answer only if it is for the text now in the box.</td></tr>
+<tr><td>Requests that caches cannot store</td><td>Every keystroke of every user reaches the service.</td><td>Use <code>GET</code> with the prefix in the address, and state how long the answer may be reused.</td></tr>
+<tr><td>Counting searches without normalising</td><td>The same search is divided among several spellings.</td><td>Normalise the text before counting and before looking up.</td></tr>
+<tr><td>Counts that never decay</td><td>Searches that were popular years ago keep their places.</td><td>Reduce older counts at each period.</td></tr>
+<tr><td>Suggesting anything that is frequent</td><td>Offensive or defamatory suggestions appear under the service’s name.</td><td>Filter candidates during the build, and allow prompt removal.</td></tr>
+<tr><td>Suggesting rare searches</td><td>1 person’s private search is shown to strangers.</td><td>Admit a search only when enough different people have made it.</td></tr>
+<tr><td>Dividing by first letter</td><td>Servers for common letters are overloaded.</td><td>Divide by measured load, or by a hash.</td></tr>
+<tr><td>Making search depend on suggestions</td><td>A failure of suggestions blocks the search box.</td><td>Let the user type and search whether or not suggestions arrive.</td></tr>
+</tbody>
+</table>
+</div>
+<h2 id="failures"><a class="header" href="#failures">Failures</a></h2>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th>Failure</th><th>What users see</th><th>How the system recovers</th></tr>
+</thead>
+<tbody>
+<tr><td>The suggestion service is unreachable</td><td>no suggestions, and search works as usual</td><td>caches continue to answer common prefixes, and the service returns</td></tr>
+<tr><td>A newly built table is faulty</td><td>strange or missing suggestions</td><td>the previous table is reinstated in 1 step</td></tr>
+<tr><td>The counting job fails</td><td>suggestions grow slowly out of date</td><td>the job is run again, and the previous table serves meanwhile</td></tr>
+<tr><td>An offensive suggestion is reported</td><td>it disappears within minutes</td><td>it is added to the exclusions, and the filter is corrected for the next build</td></tr>
+<tr><td>An answer is lost or late</td><td>the list fails to update for 1 keystroke</td><td>the next keystroke sends a new request</td></tr>
+</tbody>
+</table>
+</div>
+<h2 id="trade-offs"><a class="header" href="#trade-offs">Trade-offs</a></h2>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th>Decision</th><th>What it gains</th><th>What it costs</th></tr>
+</thead>
+<tbody>
+<tr><td>Answers computed in advance</td><td>1 lookup per request, whatever the prefix</td><td>storage for every prefix, and staleness between rebuilds</td></tr>
+<tr><td>Rebuilding in batches</td><td>simple, verifiable, and easy to reverse</td><td>new searches appear late, without the trending table</td></tr>
+<tr><td>A separate trending table</td><td>fresh suggestions within a minute</td><td>a second mechanism to operate</td></tr>
+<tr><td>Caching at the edge and in the browser</td><td>most requests never reach the service</td><td>a removed suggestion lingers until the caches expire</td></tr>
+<tr><td>A threshold of distinct people</td><td>privacy, and a smaller table</td><td>rare searches that would be legitimate are never suggested</td></tr>
+</tbody>
+</table>
+</div>
+<p>The fourth row conceals a tension that deserves to be noticed. The longer the answers
+may be cached, the lighter the load, and the longer a suggestion that has been removed
+continues to be shown from caches that the service cannot reach. The period for which
+answers are cached is therefore chosen with removals in mind, and it is the reason why
+5 minutes is a more usual figure than 5 hours.</p>
+<h2 id="the-simulation"><a class="header" href="#the-simulation">The simulation</a></h2>
+<div class="simulation">
+<p><strong>Simulation in the repository.</strong> The program <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/distributed-systems-from-the-ground-up/code/typeahead/src/main.rs"><code>code/typeahead</code></a> simulates this design. To run it, clone the repository and type <code>cargo run --release -p typeahead</code> in the <code>code</code> directory.</p>
+</div>
+
+<h2 id="terms-introduced-in-this-chapter"><a class="header" href="#terms-introduced-in-this-chapter">Terms introduced in this chapter</a></h2>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th>Term</th><th>Meaning</th></tr>
+</thead>
+<tbody>
+<tr><td>Autocomplete, typeahead</td><td>proposing complete searches for the text typed so far</td></tr>
+<tr><td>Prefix</td><td>the text that has been typed so far</td></tr>
+<tr><td>Completion</td><td>a search that begins with the prefix</td></tr>
+<tr><td>Trie, prefix tree</td><td>a tree in which the path to each node spells a prefix</td></tr>
+<tr><td>Top k</td><td>the k best items by some measure, here the k most frequent</td></tr>
+<tr><td>Normalisation</td><td>bringing text to a standard form before comparing or counting it</td></tr>
+<tr><td>Decay</td><td>reducing the weight of older counts</td></tr>
+<tr><td>Trending</td><td>recently far more frequent than in the past</td></tr>
+<tr><td>Debouncing</td><td>waiting for a pause in the typing before sending a request</td></tr>
+<tr><td>Sampling</td><td>counting a random fraction of events in place of all of them</td></tr>
+</tbody>
+</table>
+</div>
+<div class="summary">
+<h2 id="summary"><a class="header" href="#summary">Summary</a></h2>
+<ul>
+<li>Autocomplete is requested for every keystroke and must answer within about 100 ms, which leaves no time to compute anything.</li>
+<li>A sorted list or a trie finds the searches that begin with a prefix quickly, and ranking them still costs in proportion to their number.</li>
+<li>The best completions of every prefix are therefore computed in advance, so that a request is a single lookup.</li>
+<li>The table is rebuilt in batches from counts of submitted searches, normalised, sampled and weighted towards the recent.</li>
+<li>A small table of trending searches, brought up to date every minute, supplies what the daily rebuild cannot.</li>
+<li>The client waits for a pause before asking, discards answers that arrive late, and reuses answers it already has.</li>
+<li>Candidates are filtered for offensive content, and a search is suggested only if enough different people have made it.</li>
+</ul>
+</div>
+
+
+                    </main>
+
+                    <nav class="nav-wrapper" aria-label="Page navigation">
+                        <!-- Mobile navigation buttons -->
+                            <a rel="prev" href="21-ride-hailing.html" class="mobile-nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                                <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M41.4 233.4c-12.5 12.5-12.5 32.8 0 45.3l160 160c12.5 12.5 32.8 12.5 45.3 0s12.5-32.8 0-45.3L109.3 256 246.6 118.6c12.5-12.5 12.5-32.8 0-45.3s-32.8-12.5-45.3 0l-160 160z"/></svg></span>
+                            </a>
+
+                            <a rel="next prefetch" href="23-web-crawler.html" class="mobile-nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                                <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M278.6 233.4c12.5 12.5 12.5 32.8 0 45.3l-160 160c-12.5 12.5-32.8 12.5-45.3 0s-12.5-32.8 0-45.3L210.7 256 73.4 118.6c-12.5-12.5-12.5-32.8 0-45.3s32.8-12.5 45.3 0l160 160z"/></svg></span>
+                            </a>
+
+                        <div style="clear: both"></div>
+                    </nav>
+                </div>
+            </div>
+
+            <nav class="nav-wide-wrapper" aria-label="Page navigation">
+                    <a rel="prev" href="21-ride-hailing.html" class="nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                        <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M41.4 233.4c-12.5 12.5-12.5 32.8 0 45.3l160 160c12.5 12.5 32.8 12.5 45.3 0s12.5-32.8 0-45.3L109.3 256 246.6 118.6c12.5-12.5 12.5-32.8 0-45.3s-32.8-12.5-45.3 0l-160 160z"/></svg></span>
+                    </a>
+
+                    <a rel="next prefetch" href="23-web-crawler.html" class="nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                        <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M278.6 233.4c12.5 12.5 12.5 32.8 0 45.3l-160 160c-12.5 12.5-32.8 12.5-45.3 0s-12.5-32.8 0-45.3L210.7 256 73.4 118.6c-12.5-12.5-12.5-32.8 0-45.3s32.8-12.5 45.3 0l160 160z"/></svg></span>
+                    </a>
+            </nav>
+
+        </div>
+
+        <template id=fa-eye><span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 576 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M288 32c-80.8 0-145.5 36.8-192.6 80.6C48.6 156 17.3 208 2.5 243.7c-3.3 7.9-3.3 16.7 0 24.6C17.3 304 48.6 356 95.4 399.4C142.5 443.2 207.2 480 288 480s145.5-36.8 192.6-80.6c46.8-43.5 78.1-95.4 93-131.1c3.3-7.9 3.3-16.7 0-24.6c-14.9-35.7-46.2-87.7-93-131.1C433.5 68.8 368.8 32 288 32zM432 256c0 79.5-64.5 144-144 144s-144-64.5-144-144s64.5-144 144-144s144 64.5 144 144zM288 192c0 35.3-28.7 64-64 64c-11.5 0-22.3-3-31.6-8.4c-.2 2.8-.4 5.5-.4 8.4c0 53 43 96 96 96s96-43 96-96s-43-96-96-96c-2.8 0-5.6 .1-8.4 .4c5.3 9.3 8.4 20.1 8.4 31.6z"/></svg></span></template>
+        <template id=fa-eye-slash><span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M38.8 5.1C28.4-3.1 13.3-1.2 5.1 9.2S-1.2 34.7 9.2 42.9l592 464c10.4 8.2 25.5 6.3 33.7-4.1s6.3-25.5-4.1-33.7L525.6 386.7c39.6-40.6 66.4-86.1 79.9-118.4c3.3-7.9 3.3-16.7 0-24.6c-14.9-35.7-46.2-87.7-93-131.1C465.5 68.8 400.8 32 320 32c-68.2 0-125 26.3-169.3 60.8L38.8 5.1zM223.1 149.5C248.6 126.2 282.7 112 320 112c79.5 0 144 64.5 144 144c0 24.9-6.3 48.3-17.4 68.7L408 294.5c5.2-11.8 8-24.8 8-38.5c0-53-43-96-96-96c-2.8 0-5.6 .1-8.4 .4c5.3 9.3 8.4 20.1 8.4 31.6c0 10.2-2.4 19.8-6.6 28.3l-90.3-70.8zm223.1 298L373 389.9c-16.4 6.5-34.3 10.1-53 10.1c-79.5 0-144-64.5-144-144c0-6.9 .5-13.6 1.4-20.2L83.1 161.5C60.3 191.2 44 220.8 34.5 243.7c-3.3 7.9-3.3 16.7 0 24.6c14.9 35.7 46.2 87.7 93 131.1C174.5 443.2 239.2 480 320 480c47.8 0 89.9-12.9 126.2-32.5z"/></svg></span></template>
+        <template id=fa-copy><span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M502.6 70.63l-61.25-61.25C435.4 3.371 427.2 0 418.7 0H255.1c-35.35 0-64 28.66-64 64l.0195 256C192 355.4 220.7 384 256 384h192c35.2 0 64-28.8 64-64V93.25C512 84.77 508.6 76.63 502.6 70.63zM464 320c0 8.836-7.164 16-16 16H255.1c-8.838 0-16-7.164-16-16L239.1 64.13c0-8.836 7.164-16 16-16h128L384 96c0 17.67 14.33 32 32 32h47.1V320zM272 448c0 8.836-7.164 16-16 16H63.1c-8.838 0-16-7.164-16-16L47.98 192.1c0-8.836 7.164-16 16-16H160V128H63.99c-35.35 0-64 28.65-64 64l.0098 256C.002 483.3 28.66 512 64 512h192c35.2 0 64-28.8 64-64v-32h-47.1L272 448z"/></svg></span></template>
+        <template id=fa-play><span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 384 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M73 39c-14.8-9.1-33.4-9.4-48.5-.9S0 62.6 0 80V432c0 17.4 9.4 33.4 24.5 41.9s33.7 8.1 48.5-.9L361 297c14.3-8.7 23-24.2 23-41s-8.7-32.2-23-41L73 39z"/></svg></span></template>
+        <template id=fa-clock-rotate-left><span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M75 75L41 41C25.9 25.9 0 36.6 0 57.9V168c0 13.3 10.7 24 24 24H134.1c21.4 0 32.1-25.9 17-41l-30.8-30.8C155 85.5 203 64 256 64c106 0 192 86 192 192s-86 192-192 192c-40.8 0-78.6-12.7-109.7-34.4c-14.5-10.1-34.4-6.6-44.6 7.9s-6.6 34.4 7.9 44.6C151.2 495 201.7 512 256 512c141.4 0 256-114.6 256-256S397.4 0 256 0C185.3 0 121.3 28.7 75 75zm181 53c-13.3 0-24 10.7-24 24V256c0 6.4 2.5 12.5 7 17l72 72c9.4 9.4 24.6 9.4 33.9 0s9.4-24.6 0-33.9l-65-65V152c0-13.3-10.7-24-24-24z"/></svg></span></template>
+
+
+
+        <script>
+            window.playground_copyable = true;
+        </script>
+
+
+        <script src="elasticlunr-ef4e11c1.min.js"></script>
+        <script src="mark-09e88c2c.min.js"></script>
+        <script src="searcher-09f2665d.js"></script>
+
+        <script src="clipboard-1626706a.min.js"></script>
+        <script src="highlight-abc7f01d.js"></script>
+        <script src="book-609e4cb8.js"></script>
+
+        <!-- Custom JS scripts -->
+        <script src="theme/figures-47b15f7f.js"></script>
+        <script src="theme/proto-326509cd.js"></script>
+        <script src="theme/code-67e9caaf.js"></script>
+        <script src="theme/tables-9fb295e8.js"></script>
+        <script src="theme/steps-77f22afb.js"></script>
+
+
+
+    </div>
+    </body>
+</html>

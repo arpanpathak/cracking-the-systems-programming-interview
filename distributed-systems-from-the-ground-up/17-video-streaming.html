@@ -1,0 +1,725 @@
+<!DOCTYPE HTML>
+<html lang="en" class="light sidebar-visible" dir="ltr">
+    <head>
+        <!-- Book generated using mdBook -->
+        <meta charset="UTF-8">
+        <title>Video Streaming - Distributed Systems from the Ground Up</title>
+
+
+        <!-- Custom HTML head -->
+
+        <meta name="description" content="System design and low-level design of resilient, fault-tolerant distributed systems, with code in Rust">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <meta name="theme-color" content="#ffffff">
+
+        <link rel="icon" href="favicon-de23e50b.svg">
+        <link rel="shortcut icon" href="favicon-8114d1fc.png">
+        <link rel="stylesheet" href="css/variables-8adf115d.css">
+        <link rel="stylesheet" href="css/general-e96d0476.css">
+        <link rel="stylesheet" href="css/chrome-d279d366.css">
+        <link rel="stylesheet" href="css/print-9e4910d8.css" media="print">
+
+        <!-- Fonts -->
+        <link rel="stylesheet" href="fonts/fonts-9644e21d.css">
+
+        <!-- Highlight.js Stylesheets -->
+        <link rel="stylesheet" id="mdbook-highlight-css" href="highlight-493f70e1.css">
+        <link rel="stylesheet" id="mdbook-tomorrow-night-css" href="tomorrow-night-4c0ae647.css">
+        <link rel="stylesheet" id="mdbook-ayu-highlight-css" href="ayu-highlight-3fdfc3ac.css">
+
+        <!-- Custom theme stylesheets -->
+        <link rel="stylesheet" href="theme/custom-8a495b63.css">
+
+
+        <!-- Provide site root and default themes to javascript -->
+        <script>
+            const path_to_root = "";
+            const default_light_theme = "light";
+            const default_dark_theme = "navy";
+            window.path_to_searchindex_js = "searchindex-fe51950f.js";
+        </script>
+        <!-- Start loading toc.js asap -->
+        <script src="toc-cc887274.js"></script>
+    </head>
+    <body>
+    <div id="mdbook-help-container">
+        <div id="mdbook-help-popup">
+            <h2 class="mdbook-help-title">Keyboard shortcuts</h2>
+            <div>
+                <p>Press <kbd>←</kbd> or <kbd>→</kbd> to navigate between chapters</p>
+                <p>Press <kbd>S</kbd> or <kbd>/</kbd> to search in the book</p>
+                <p>Press <kbd>?</kbd> to show this help</p>
+                <p>Press <kbd>Esc</kbd> to hide this help</p>
+            </div>
+        </div>
+    </div>
+    <div id="mdbook-body-container">
+        <!-- Work around some values being stored in localStorage wrapped in quotes -->
+        <script>
+            try {
+                let theme = localStorage.getItem('mdbook-theme');
+                let sidebar = localStorage.getItem('mdbook-sidebar');
+
+                if (theme.startsWith('"') && theme.endsWith('"')) {
+                    localStorage.setItem('mdbook-theme', theme.slice(1, theme.length - 1));
+                }
+
+                if (sidebar.startsWith('"') && sidebar.endsWith('"')) {
+                    localStorage.setItem('mdbook-sidebar', sidebar.slice(1, sidebar.length - 1));
+                }
+            } catch (e) { }
+        </script>
+
+        <!-- Set the theme before any content is loaded, prevents flash -->
+        <script>
+            const default_theme = window.matchMedia("(prefers-color-scheme: dark)").matches ? default_dark_theme : default_light_theme;
+            let theme;
+            try { theme = localStorage.getItem('mdbook-theme'); } catch(e) { }
+            if (theme === null || theme === undefined) { theme = default_theme; }
+            const html = document.documentElement;
+            html.classList.remove('light')
+            html.classList.add(theme);
+            html.classList.add("js");
+        </script>
+
+        <input type="checkbox" id="mdbook-sidebar-toggle-anchor" class="hidden">
+
+        <!-- Hide / unhide sidebar before it is displayed -->
+        <script>
+            let sidebar = null;
+            const sidebar_toggle = document.getElementById("mdbook-sidebar-toggle-anchor");
+            if (document.body.clientWidth >= 1080) {
+                try { sidebar = localStorage.getItem('mdbook-sidebar'); } catch(e) { }
+                sidebar = sidebar || 'visible';
+            } else {
+                sidebar = 'hidden';
+                sidebar_toggle.checked = false;
+            }
+            if (sidebar === 'visible') {
+                sidebar_toggle.checked = true;
+            } else {
+                html.classList.remove('sidebar-visible');
+            }
+        </script>
+
+        <nav id="mdbook-sidebar" class="sidebar" aria-label="Table of contents">
+            <!-- populated by js -->
+            <mdbook-sidebar-scrollbox class="sidebar-scrollbox"></mdbook-sidebar-scrollbox>
+            <noscript>
+                <iframe class="sidebar-iframe-outer" src="toc.html"></iframe>
+            </noscript>
+            <div id="mdbook-sidebar-resize-handle" class="sidebar-resize-handle">
+                <div class="sidebar-resize-indicator"></div>
+            </div>
+        </nav>
+
+        <div id="mdbook-page-wrapper" class="page-wrapper">
+
+            <div class="page">
+                <div id="mdbook-menu-bar-hover-placeholder"></div>
+                <div id="mdbook-menu-bar" class="menu-bar sticky">
+                    <div class="left-buttons">
+                        <label id="mdbook-sidebar-toggle" class="icon-button" for="mdbook-sidebar-toggle-anchor" title="Toggle Table of Contents" aria-label="Toggle Table of Contents" aria-controls="mdbook-sidebar">
+                            <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M0 96C0 78.3 14.3 64 32 64H416c17.7 0 32 14.3 32 32s-14.3 32-32 32H32C14.3 128 0 113.7 0 96zM0 256c0-17.7 14.3-32 32-32H416c17.7 0 32 14.3 32 32s-14.3 32-32 32H32c-17.7 0-32-14.3-32-32zM448 416c0 17.7-14.3 32-32 32H32c-17.7 0-32-14.3-32-32s14.3-32 32-32H416c17.7 0 32 14.3 32 32z"/></svg></span>
+                        </label>
+                        <button id="mdbook-theme-toggle" class="icon-button" type="button" title="Change theme" aria-label="Change theme" aria-haspopup="true" aria-expanded="false" aria-controls="mdbook-theme-list">
+                            <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 576 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M371.3 367.1c27.3-3.9 51.9-19.4 67.2-42.9L600.2 74.1c12.6-19.5 9.4-45.3-7.6-61.2S549.7-4.4 531.1 9.6L294.4 187.2c-24 18-38.2 46.1-38.4 76.1L371.3 367.1zm-19.6 25.4l-116-104.4C175.9 290.3 128 339.6 128 400c0 3.9 .2 7.8 .6 11.6c1.8 17.5-10.2 36.4-27.8 36.4H96c-17.7 0-32 14.3-32 32s14.3 32 32 32H240c61.9 0 112-50.1 112-112c0-2.5-.1-5-.2-7.5z"/></svg></span>
+                        </button>
+                        <ul id="mdbook-theme-list" class="theme-popup" aria-label="Themes" role="menu">
+                            <li role="none"><button role="menuitem" class="theme" id="mdbook-theme-default_theme">Auto</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="mdbook-theme-light">Light</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="mdbook-theme-rust">Rust</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="mdbook-theme-coal">Coal</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="mdbook-theme-navy">Navy</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="mdbook-theme-ayu">Ayu</button></li>
+                        </ul>
+                        <button id="mdbook-search-toggle" class="icon-button" type="button" title="Search (`/`)" aria-label="Toggle Searchbar" aria-expanded="false" aria-keyshortcuts="/ s" aria-controls="mdbook-searchbar">
+                            <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M416 208c0 45.9-14.9 88.3-40 122.7L502.6 457.4c12.5 12.5 12.5 32.8 0 45.3s-32.8 12.5-45.3 0L330.7 376c-34.4 25.2-76.8 40-122.7 40C93.1 416 0 322.9 0 208S93.1 0 208 0S416 93.1 416 208zM208 352c79.5 0 144-64.5 144-144s-64.5-144-144-144S64 128.5 64 208s64.5 144 144 144z"/></svg></span>
+                        </button>
+                    </div>
+
+                    <h1 class="menu-title">Distributed Systems from the Ground Up</h1>
+
+                    <div class="right-buttons">
+                        <a href="print.html" title="Print this book" aria-label="Print this book">
+                            <span class=fa-svg id="print-button"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M128 0C92.7 0 64 28.7 64 64v96h64V64H354.7L384 93.3V160h64V93.3c0-17-6.7-33.3-18.7-45.3L400 18.7C388 6.7 371.7 0 354.7 0H128zM384 352v32 64H128V384 368 352H384zm64 32h32c17.7 0 32-14.3 32-32V256c0-35.3-28.7-64-64-64H64c-35.3 0-64 28.7-64 64v96c0 17.7 14.3 32 32 32H64v64c0 35.3 28.7 64 64 64H384c35.3 0 64-28.7 64-64V384zm-16-88c-13.3 0-24-10.7-24-24s10.7-24 24-24s24 10.7 24 24s-10.7 24-24 24z"/></svg></span>
+                        </a>
+                        <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/tree/prep-v2/distributed-systems-from-the-ground-up" title="Git repository" aria-label="Git repository">
+                            <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 496 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M165.9 397.4c0 2-2.3 3.6-5.2 3.6-3.3.3-5.6-1.3-5.6-3.6 0-2 2.3-3.6 5.2-3.6 3-.3 5.6 1.3 5.6 3.6zm-31.1-4.5c-.7 2 1.3 4.3 4.3 4.9 2.6 1 5.6 0 6.2-2s-1.3-4.3-4.3-5.2c-2.6-.7-5.5.3-6.2 2.3zm44.2-1.7c-2.9.7-4.9 2.6-4.6 4.9.3 2 2.9 3.3 5.9 2.6 2.9-.7 4.9-2.6 4.6-4.6-.3-1.9-3-3.2-5.9-2.9zM244.8 8C106.1 8 0 113.3 0 252c0 110.9 69.8 205.8 169.5 239.2 12.8 2.3 17.3-5.6 17.3-12.1 0-6.2-.3-40.4-.3-61.4 0 0-70 15-84.7-29.8 0 0-11.4-29.1-27.8-36.6 0 0-22.9-15.7 1.6-15.4 0 0 24.9 2 38.6 25.8 21.9 38.6 58.6 27.5 72.9 20.9 2.3-16 8.8-27.1 16-33.7-55.9-6.2-112.3-14.3-112.3-110.5 0-27.5 7.6-41.3 23.6-58.9-2.6-6.5-11.1-33.3 2.6-67.9 20.9-6.5 69 27 69 27 20-5.6 41.5-8.5 62.8-8.5s42.8 2.9 62.8 8.5c0 0 48.1-33.6 69-27 13.7 34.7 5.2 61.4 2.6 67.9 16 17.7 25.8 31.5 25.8 58.9 0 96.5-58.9 104.2-114.8 110.5 9.2 7.9 17 22.9 17 46.4 0 33.7-.3 75.4-.3 83.6 0 6.5 4.6 14.4 17.3 12.1C428.2 457.8 496 362.9 496 252 496 113.3 383.5 8 244.8 8zM97.2 352.9c-1.3 1-1 3.3.7 5.2 1.6 1.6 3.9 2.3 5.2 1 1.3-1 1-3.3-.7-5.2-1.6-1.6-3.9-2.3-5.2-1zm-10.8-8.1c-.7 1.3.3 2.9 2.3 3.9 1.6 1 3.6.7 4.3-.7.7-1.3-.3-2.9-2.3-3.9-2-.6-3.6-.3-4.3.7zm32.4 35.6c-1.6 1.3-1 4.3 1.3 6.2 2.3 2.3 5.2 2.6 6.5 1 1.3-1.3.7-4.3-1.3-6.2-2.2-2.3-5.2-2.6-6.5-1zm-11.4-14.7c-1.6 1-1.6 3.6 0 5.9 1.6 2.3 4.3 3.3 5.6 2.3 1.6-1.3 1.6-3.9 0-6.2-1.4-2.3-4-3.3-5.6-2z"/></svg></span>
+                        </a>
+                        <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/edit/prep-v2/distributed-systems-from-the-ground-up/src/17-video-streaming.md" title="Suggest an edit" aria-label="Suggest an edit" rel="edit">
+                            <span class=fa-svg id="git-edit-button"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M421.7 220.3l-11.3 11.3-22.6 22.6-205 205c-6.6 6.6-14.8 11.5-23.8 14.1L30.8 511c-8.4 2.5-17.5 .2-23.7-6.1S-1.5 489.7 1 481.2L38.7 353.1c2.6-9 7.5-17.2 14.1-23.8l205-205 22.6-22.6 11.3-11.3 33.9 33.9 62.1 62.1 33.9 33.9zM96 353.9l-9.3 9.3c-.9 .9-1.6 2.1-2 3.4l-25.3 86 86-25.3c1.3-.4 2.5-1.1 3.4-2l9.3-9.3H112c-8.8 0-16-7.2-16-16V353.9zM453.3 19.3l39.4 39.4c25 25 25 65.5 0 90.5l-14.5 14.5-22.6 22.6-11.3 11.3-33.9-33.9-62.1-62.1L314.3 67.7l11.3-11.3 22.6-22.6 14.5-14.5c25-25 65.5-25 90.5 0z"/></svg></span>
+                        </a>
+
+                    </div>
+                </div>
+
+                <div id="mdbook-search-wrapper" class="hidden">
+                    <form id="mdbook-searchbar-outer" class="searchbar-outer">
+                        <div class="search-wrapper">
+                            <input type="search" id="mdbook-searchbar" name="searchbar" placeholder="Search this book ..." aria-controls="mdbook-searchresults-outer" aria-describedby="searchresults-header">
+                            <div class="spinner-wrapper">
+                                <span class=fa-svg id="fa-spin"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M304 48c0-26.5-21.5-48-48-48s-48 21.5-48 48s21.5 48 48 48s48-21.5 48-48zm0 416c0-26.5-21.5-48-48-48s-48 21.5-48 48s21.5 48 48 48s48-21.5 48-48zM48 304c26.5 0 48-21.5 48-48s-21.5-48-48-48s-48 21.5-48 48s21.5 48 48 48zm464-48c0-26.5-21.5-48-48-48s-48 21.5-48 48s21.5 48 48 48s48-21.5 48-48zM142.9 437c18.7-18.7 18.7-49.1 0-67.9s-49.1-18.7-67.9 0s-18.7 49.1 0 67.9s49.1 18.7 67.9 0zm0-294.2c18.7-18.7 18.7-49.1 0-67.9S93.7 56.2 75 75s-18.7 49.1 0 67.9s49.1 18.7 67.9 0zM369.1 437c18.7 18.7 49.1 18.7 67.9 0s18.7-49.1 0-67.9s-49.1-18.7-67.9 0s-18.7 49.1 0 67.9z"/></svg></span>
+                            </div>
+                        </div>
+                    </form>
+                    <div id="mdbook-searchresults-outer" class="searchresults-outer hidden">
+                        <div id="mdbook-searchresults-header" class="searchresults-header"></div>
+                        <ul id="mdbook-searchresults">
+                        </ul>
+                    </div>
+                </div>
+
+                <!-- Apply ARIA attributes after the sidebar and the sidebar toggle button are added to the DOM -->
+                <script>
+                    document.getElementById('mdbook-sidebar-toggle').setAttribute('aria-expanded', sidebar === 'visible');
+                    document.getElementById('mdbook-sidebar').setAttribute('aria-hidden', sidebar !== 'visible');
+                    Array.from(document.querySelectorAll('#mdbook-sidebar a')).forEach(function(link) {
+                        link.setAttribute('tabIndex', sidebar === 'visible' ? 0 : -1);
+                    });
+                </script>
+
+                <div id="mdbook-content" class="content">
+                    <main>
+                        <img class="plate" src="art/ch17.svg?v=81fa550e" alt="A whale swims beside a sign that reads: 4 seconds at a time, in 4 qualities.">
+<h1 id="video-streaming-system-design"><a class="header" href="#video-streaming-system-design">Video Streaming: System Design</a></h1>
+<p>A film of 2 hours in high definition occupies about 4.5 GB. A viewer who presses play
+expects the picture to appear within a second and to continue without interruption,
+on a phone connected through a mobile network whose speed changes from moment to
+moment as readily as on a television connected by cable, and a popular film is
+watched by millions of such viewers at once, in every part of the world. Video
+accounts for the greater part of all the bytes carried by the internet, and a service
+that delivers it is, before it is anything else, a system for moving very large
+quantities of data to very many places under conditions it cannot control.</p>
+<p>The observation on which every such system rests is that a video does not have to be
+delivered as a video. It can be cut into short pieces, each an ordinary file of a few
+megabytes, and delivered as files. Once this is done, the difficult parts of the
+problem turn out to have been solved already. Files of this size can be kept in the
+object store of chapter 16, served by ordinary web servers, and held in caches close
+to the viewers, and the player, which is the only component that knows how fast the
+viewer’s connection is at this instant, can decide for itself, piece by piece, which
+quality of picture to ask for. This chapter follows a video from the moment it is
+uploaded to the moment it is watched, and explains each of these steps.</p>
+<div class="covers">
+<p>This chapter covers</p>
+<ul>
+<li>why a video is delivered as a sequence of small files</li>
+<li>encoding 1 upload at several qualities, and dividing that work among many machines</li>
+<li>the manifest, which tells a player what pieces exist</li>
+<li>how a player chooses a quality for each piece, and what it does when the connection worsens</li>
+<li>the buffer, and the balance between quality and interruptions</li>
+<li>edge servers that keep copies of pieces near the viewers</li>
+<li>what determines the cost of the service</li>
+<li>how live video differs from video on demand</li>
+</ul>
+</div>
+
+<h2 id="why-a-video-is-delivered-in-pieces"><a class="header" href="#why-a-video-is-delivered-in-pieces">Why a video is delivered in pieces</a></h2>
+<p>The earliest method of delivering video over the internet treated it as a single file.
+The browser requested the file and played it as it arrived, and for a short clip on a
+fast connection this is adequate. For anything longer it has several defects, all of
+which follow from the indivisibility of the file. The quality is fixed when the
+download begins, so that a viewer whose connection deteriorates must either wait for
+the picture to catch up or abandon it. A viewer who wishes to skip to the middle must
+wait for everything before it, unless the server supports requests for ranges of
+bytes. And a viewer who leaves after 2 minutes may by then have received 20 minutes’
+worth of data, which was paid for and never watched.</p>
+<p>A second method, common for some years, used protocols designed especially for video,
+in which a server kept a connection open to each viewer and sent a continuous stream
+at whatever rate the connection would bear. This adapted well to changing conditions
+and scaled badly, since the server had to maintain state for every viewer and nothing
+between the server and the viewer was able to cache a stream.</p>
+<p>The method that prevailed is simpler than either. The video is cut into pieces of a
+few seconds each, and every piece is stored as a separate file. The player fetches the
+pieces in order, by ordinary HTTP requests, and plays each as it arrives. The server
+keeps no state about any viewer, since each request is complete in itself and any
+server can answer any request. Skipping to the middle is a matter of requesting a
+later piece. And because pieces are ordinary files with ordinary addresses, the whole
+existing apparatus for delivering files over HTTP, caches above all, applies to video
+without modification.</p>
+<h2 id="several-qualities-of-1-video"><a class="header" href="#several-qualities-of-1-video">Several qualities of 1 video</a></h2>
+<p>Viewers differ too widely for any single version of a video to suit them all. A phone
+on a weak mobile signal can receive perhaps 500 kilobits per second, while a
+television on a fibre connection can receive 50 times as much and has the screen to
+show the difference. A version small enough for the phone would look poor on the
+television, and a version suited to the television could not be played on the phone at
+all.</p>
+<p>The service therefore prepares each video at several qualities. The process of
+producing a compressed video at a given picture size and data rate is called
+<em>encoding</em>, and each complete version so produced is a <em>rendition</em>. The data rate of a
+rendition, the number of bits it needs for each second of video, is its <em>bitrate</em>.</p>
+<figure>
+<img src="figures/stream-ladder.svg?v=08525f60" alt="The same video encoded 4 times: at 240 lines and 400 kbit/s, at 480 lines and 1200 kbit/s, at 720 lines and 2500 kbit/s, and at 1080 lines and 5000 kbit/s. Each version is cut at the same moments into pieces of 4 seconds.">
+<figcaption><b>Figure 17.1</b> 1 video encoded at 4 bitrates, each cut into pieces at the same moments.</figcaption>
+</figure>
+<p>A detail of this figure is essential to everything that follows. All renditions are
+cut into pieces at exactly the same points in time, so that piece 17 covers the same 4
+seconds of the film in each of them. A player can therefore take piece 17 from one
+rendition and piece 18 from another, and the picture continues without a break,
+changing only in sharpness. For this to work, every piece must begin with a complete picture. Most frames of a
+compressed video are stored only as a description of how they differ from the frame
+before, and the encoder is instructed to place a complete picture at the start of
+every piece.</p>
+<p>The length of a piece is a compromise. Short pieces allow the player to change
+quality quickly and to begin playing sooner, and they compress less efficiently and
+multiply the number of requests. Long pieces are the reverse. Values between 2 and 6
+seconds are usual, and this chapter uses 4.</p>
+<h2 id="from-an-upload-to-pieces"><a class="header" href="#from-an-upload-to-pieces">From an upload to pieces</a></h2>
+<p>A creator uploads a single file, in whatever format their camera or editing software
+produced. Before anyone can watch it, the service must encode it at every quality and
+cut each result into pieces, and encoding is among the most computationally expensive
+operations in common use. To encode a film of 2 hours at 1 quality may take a single
+machine an hour or more, and there are 4 qualities.</p>
+<p>The work is made tolerable by dividing it. The source is first cut into sections of
+about a minute, at points where a complete picture begins, so that each section can be
+encoded without reference to any other. Each section, at each quality, then becomes an
+independent job, and the jobs are distributed among a pool of encoding machines by a
+scheduler of the kind designed in chapter 12.</p>
+<figure>
+<img src="figures/stream-encode.svg?v=a363a722" alt="5 steps. The uploaded file is stored as it is. The source is cut into sections of 1 minute. Each section becomes 4 encoding jobs, 1 for each quality. Each job cuts its result into pieces of 4 seconds and stores them in the object store. A manifest lists every piece, and the video is ready to play.">
+<figcaption><b>Figure 17.2</b> An upload is stored, cut into sections, encoded by many machines in parallel, and stored as pieces.</figcaption>
+</figure>
+<p>A film of 2 hours yields 120 sections and so 480 jobs, which 100 machines complete in
+roughly the time that 1 machine would need for 5 of them. The arrangement also
+confines the effect of failures. If an encoder crashes, the scheduler reissues that 1
+job, as chapter 12 described, and a minute of video at a single quality is encoded
+again, the remainder being unaffected. Encoding jobs are idempotent without any
+special effort, since encoding the same section twice produces the same pieces under
+the same names.</p>
+<p>The original upload is retained permanently, in the object store, although nobody will
+ever watch it directly. Encoding technology improves steadily, and a service will in
+time wish to encode its catalogue again in a more efficient format. This can be done
+well only from the source, since every encoding discards information, and to encode
+again from an already encoded version would compound the loss.</p>
+<p>Not all videos need be treated alike. The distribution of views is extremely uneven,
+a small number of videos accounting for most of the watching and most uploads being
+watched a handful of times. A service may therefore encode every upload quickly at 2
+or 3 qualities, so that it is soon available, and spend the considerable additional
+effort of a full set of carefully optimised renditions only on videos that prove
+popular.</p>
+<h2 id="the-manifest"><a class="header" href="#the-manifest">The manifest</a></h2>
+<p>A player that is to fetch pieces must know what pieces exist. This information is
+supplied by a small text file called a <em>manifest</em>, which the player requests first. It
+lists the renditions available, with the bitrate and picture size of each, and, for
+each rendition, the addresses of its pieces in order together with their durations.</p>
+<p>With the manifest in hand, the player needs nothing further from the service except
+the pieces themselves. It knows how long the video is, what qualities are offered, and
+the address of the piece that covers any given moment at any given quality. All
+subsequent decisions, including which quality to request and when, are taken by the
+player alone.</p>
+<p>That the intelligence should reside in the player, with the server left ignorant, is a
+deliberate feature of the design and one of its chief strengths. The server answers
+requests for files and need not know that the files are video. The player is the 1
+participant that can observe the speed of this particular viewer’s connection at this
+moment, the size of the screen, and the amount of video already downloaded, and it is
+therefore the participant best placed to choose.</p>
+<h2 id="choosing-a-quality-for-each-piece"><a class="header" href="#choosing-a-quality-for-each-piece">Choosing a quality for each piece</a></h2>
+<p>Before requesting each piece, the player must decide which rendition to take it from.
+If it chooses too high a bitrate, the piece takes longer to download than it takes to
+play, the player eventually has nothing left to show, and the picture stops while the
+viewer waits. If it chooses too low a bitrate, the picture is needlessly poor.
+Choosing well, piece after piece, as conditions change, is called <em>adaptive bitrate</em>
+selection.</p>
+<p>The player has 2 measurements to guide it. It knows how fast recent pieces were
+downloaded, which is an estimate of the present speed of the connection. And it knows
+how much video it has downloaded but has yet to play, an amount called the <em>buffer</em>.</p>
+<p>The simplest rule uses the first measurement alone: request the highest bitrate that
+is comfortably below the measured speed. The simulation for this chapter applies this
+rule with a margin of 20%, taking the best rendition whose bitrate is at most 80% of
+the speed of the last download, to a connection whose speed drops twice and then
+recovers.</p>
+<figure class="steps" data-prefix="figures/steps-stream-adapt" data-count="10" data-version="949cd732">
+<img src="figures/steps-stream-adapt-01.svg?v=949cd732" alt="The player adapts to the connection, step 1 of 10. The player knows nothing about the connection yet, so it starts with the lowest quality. The piece arrives in 0.3 seconds, which tells the player that the connection is fast.">
+<figcaption><b>Figure 17.3</b> A player chooses a quality for each of 10 pieces while the speed of the connection falls and rises again. Use Next and Back to move through the 10 steps.</figcaption>
+</figure>
+<p>The steps show both the virtue of the rule and its inherent limitation. The player
+always acts on the speed of the previous download, and is consequently 1 piece behind
+events. When the speed fell from 6000 to 1500 at piece 4, the player had already
+committed itself to a piece at 2500, which took 6.7 seconds to arrive and consumed
+part of the buffer. It is the buffer that absorbed the error. The picture did not
+stop, because nearly 9 seconds of video were in hand when the slow download began.
+Over the 10 pieces, the only time without video was the fraction of a second before
+the first piece arrived.</p>
+<p>The buffer is thus what allows the player to make mistakes without the viewer
+noticing, and the size at which to maintain it is another compromise. A large buffer
+tolerates long periods of poor connection. It also represents video that has been
+downloaded and may never be watched if the viewer leaves, and it delays the effect of
+a change of quality, since everything already in the buffer will be played at the
+quality at which it was fetched. Players commonly aim to hold between 10 and 30
+seconds.</p>
+<p>More refined rules take the buffer into account as well as the speed. When the buffer
+is nearly empty, such a rule chooses conservatively whatever the measured speed,
+because the cost of a mistake is an interruption. When the buffer is full, it can
+afford to try a higher quality, since an error will cost only some seconds of buffer.
+Some players ignore the measured speed altogether and select the quality as a function
+of the buffer alone, on the grounds that the level of the buffer already reflects
+everything the connection has recently done.</p>
+<p>Whatever the rule, it must respect an asymmetry in what viewers will tolerate. An
+interruption, during which the picture freezes, is far more objectionable than a
+period of reduced sharpness, and viewers who experience interruptions stop watching.
+A change of quality is also somewhat disturbing in itself, so that a rule which
+switches up and down with every fluctuation of the measured speed is worse than one
+which holds a steady, slightly lower quality. A good rule accordingly steps down
+promptly, steps up cautiously, and prefers stability.</p>
+<p>The first piece is a special case. The player has no measurement of the connection
+when it starts, and viewers are impatient for the picture to appear. Players therefore
+begin with a low bitrate, which arrives quickly whatever the connection, and improve
+within a few seconds as measurements accumulate.</p>
+<h2 id="copies-near-the-viewers"><a class="header" href="#copies-near-the-viewers">Copies near the viewers</a></h2>
+<p>Pieces are stored in the object store, in 1 or a few locations. A viewer on another
+continent is separated from that location by a network path with a delay of perhaps
+150 ms in each direction and a capacity shared with a great many others, and if every
+viewer fetched every piece from the origin, the origin’s network connection would have
+to carry the entire traffic of the service.</p>
+<p>A <em>content delivery network</em>, or CDN, removes both problems. It consists of a large
+number of servers, called <em>edge servers</em>, placed in or near the networks of the
+internet providers that viewers use, in hundreds of cities. Each edge server is a
+cache, of the kind described in chapter 9, for the files of the origin.</p>
+<figure>
+<img src="figures/stream-edge.svg?v=0969da55" alt="4 steps. A viewer in Lisbon asks for piece 17, and the request goes to the nearest edge server. If the edge has the piece, it answers from its own disk. If it lacks the piece, it fetches the piece from the origin. The edge keeps a copy, so the next viewer in Lisbon is served from the edge.">
+<figcaption><b>Figure 17.4</b> A request for a piece is answered by a nearby edge server, which fetches the piece from the origin only if it lacks a copy.</figcaption>
+</figure>
+<p>A viewer’s request is directed to a nearby edge server, most often by the name
+resolution system returning the address of a server close to wherever the question
+came from. If that server holds the piece, it answers immediately. If not, it obtains
+the piece from the origin, answers, and retains a copy for subsequent viewers.</p>
+<p>Video suits this arrangement exceptionally well, for 2 reasons. A piece, once
+encoded, never changes, so that the problem of stale copies, which dominated chapter
+9, does not arise, and pieces can be cached for as long as there is room for them. And
+the demand for video is highly concentrated, so that an edge server which holds the
+pieces of the currently popular videos answers the great majority of the requests it
+receives. For a popular video the origin serves each piece once to each edge server,
+and the edge servers serve it to millions.</p>
+<p>The manifest of an ordinary video is equally immutable and is cached in the same way.
+The requests that must reach the service itself are thus reduced to those that depend
+on who is asking, such as checking that the viewer is entitled to watch.</p>
+<p>2 refinements are common. When a film is expected to be in great demand on its
+release, its pieces are copied to the edge servers beforehand, so that the first
+viewers do not all miss at once and produce at the origin the stampede described in
+chapter 9. And for videos that are rarely watched, an edge server may hold only the
+first few pieces, which is sufficient for playback to start promptly, and fetch the
+remainder from the origin when a viewer in fact continues.</p>
+<h2 id="what-the-service-costs"><a class="header" href="#what-the-service-costs">What the service costs</a></h2>
+<p>It is instructive to ask where the money goes in such a service, since the answer
+shapes many decisions that would otherwise seem arbitrary.</p>
+<p>Storage is not the principal cost. The renditions of a film amount to a few gigabytes,
+and a catalogue of 100 million videos to some hundreds of petabytes, which is
+substantial and, with the erasure coding of chapter 16, affordable. Encoding is a cost
+incurred once for each video.</p>
+<p>The cost that recurs and dominates is the delivery of bytes. Every hour watched at
+2500 kilobits per second is rather more than 1 GB transferred, and a service whose
+members watch a billion hours a month transfers more than an exabyte a year. Almost
+any measure that reduces the bytes delivered per hour watched therefore repays its
+cost: more efficient encoding formats, which convey the same picture in fewer bits and
+justify the expense of encoding the catalogue again; the avoidance of renditions
+beyond what a device’s screen can display; a limit on how far ahead the player
+buffers, so that less is wasted when viewers leave; and arrangements with internet
+providers to place edge servers inside their networks.</p>
+<h2 id="live-video"><a class="header" href="#live-video">Live video</a></h2>
+<p>Everything described so far concerns video that exists in full before anyone watches
+it. A live broadcast uses the same machinery, with 1 important difference: the pieces
+are produced while the event is taking place.</p>
+<p>The camera’s signal is encoded continuously at several qualities, and every 4 seconds
+a new piece of each rendition is completed and stored. The manifest is no longer fixed.
+It lists the most recent pieces, is revised as each new piece appears, and is fetched
+by players again and again, every few seconds, so that they learn of new pieces. It
+may accordingly be cached only very briefly.</p>
+<p>The price of this simplicity is <em>latency</em>, the delay between an event and its
+appearance on the viewer’s screen. A piece cannot be delivered until it has been
+completed, which takes 4 seconds, and players hold several pieces in the buffer to
+guard against interruptions, so that viewers of a live stream built in this way are
+typically 15 to 30 seconds behind reality. For a concert this is immaterial. For a
+football match it means hearing the neighbours celebrate a goal that has not yet
+appeared, and for a conversation between 2 people it is unusable. Shorter pieces and
+the delivery of pieces while they are still being produced bring the delay down to a
+few seconds, and truly interactive video, such as a call, requires a different kind of
+protocol altogether, one which sends each frame as soon as it is captured and accepts
+occasional loss in exchange for immediacy.</p>
+<p>Live video also changes the pattern of load on the caches. Every viewer wants the same
+new piece in the same instant, at the moment it comes into existence and before any
+edge server holds it. Edge servers must therefore ensure that the first request for a
+new piece fetches it from the origin once while the others wait for that fetch to
+complete, which is the remedy for the stampede given in chapter 9.</p>
+<h2 id="use-cases"><a class="header" href="#use-cases">Use cases</a></h2>
+<p>Viewers play videos, in very large numbers. Creators upload them.</p>
+<figure>
+<img src="figures/stream-use-cases.svg?v=fe540d94" alt="A use case diagram of the video service. Viewer: play a video (GET /v1/videos/{id}/manifest), fetch the next 4 seconds (GET .../1200/piece-17.ts). Creator: upload a video (PUT /v1/videos/{id}/source), see when it is ready (GET /v1/videos/{id}).">
+<figcaption><b>Figure 17.5</b> The actors and what each of them does.</figcaption>
+</figure>
+<h2 id="functional-requirements"><a class="header" href="#functional-requirements">Functional requirements</a></h2>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th>No.</th><th>Functional requirement</th></tr>
+</thead>
+<tbody>
+<tr><td>0</td><td>A creator can upload a video file of up to 10 GB.</td></tr>
+<tr><td>1</td><td>After processing, the video can be played on any device.</td></tr>
+<tr><td>2</td><td>Playback starts within 2 seconds.</td></tr>
+<tr><td>3</td><td>The quality adapts to the viewer’s connection while the video plays.</td></tr>
+<tr><td>4</td><td>A viewer can jump to any point of the video.</td></tr>
+</tbody>
+</table>
+</div>
+<h2 id="non-functional-requirements"><a class="header" href="#non-functional-requirements">Non-functional requirements</a></h2>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th>No.</th><th>Property</th><th>Non-functional requirement</th></tr>
+</thead>
+<tbody>
+<tr><td>0</td><td>Availability</td><td>99.95% for playback.</td></tr>
+<tr><td>1</td><td>Latency</td><td>The first piece arrives within 1 second of pressing play.</td></tr>
+<tr><td>2</td><td>Consistency</td><td>Eventual. A new video may take minutes to appear, and that is acceptable.</td></tr>
+<tr><td>3</td><td>Scale</td><td>10 million viewers at the same time, and 500 hours of video uploaded per minute.</td></tr>
+</tbody>
+</table>
+</div>
+<p>Consistency is scarcely an issue in the playback path, for the reason that has
+appeared repeatedly: pieces and the manifests of finished videos do not change after
+they are written, and unchanging data cannot be inconsistent. The catalogue of videos
+and their states is ordinary metadata and is kept in a strongly consistent store. The
+1 window of eventual consistency a creator can observe is between completing an upload
+and the video’s becoming playable, which lasts as long as the encoding does.</p>
+<h2 id="core-entities"><a class="header" href="#core-entities">Core entities</a></h2>
+<figure>
+<img src="figures/stream-entities.svg?v=8cb8fa34" alt="The core entities. Video has the fields id u64, title string, duration seconds, state ready|.... Rendition has the fields video u64, bitrate kbit/s, pieces count. Piece has the fields rendition u64, number u32, seconds 4, bytes in object store. A Rendition is the whole video at 1 quality. A Piece is 4 seconds of 1 rendition, stored as an object.">
+<figcaption><b>Figure 17.6</b> The core entities and their fields.</figcaption>
+</figure>
+<h2 id="capacity-estimate"><a class="header" href="#capacity-estimate">Capacity estimate</a></h2>
+<div class="estimate">
+<img class="builder" src="art/crab-builder.svg" alt="A crab in a hard hat, in tears.">
+<p><strong>Arithmetic ahead.</strong> 10 million viewers at an average of 2500 kbit/s need 25000 Gbit/s, far more than 1 site can send, so pieces are served from a CDN.</p>
+<p><a class="skip" href="#high-level-design">Skip to the high-level design</a></p>
+<details>
+<summary>Show the calculation</summary>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th>Quantity</th><th>Calculation</th><th>Result</th></tr>
+</thead>
+<tbody>
+<tr><td>Outgoing traffic</td><td>10000000 viewers × 2500 kbit/s</td><td>25000 Gbit/s</td></tr>
+<tr><td>Storage per hour of video, 4 qualities</td><td>(400 + 1200 + 2500 + 5000) kbit/s × 3600 s</td><td>4.1 GB</td></tr>
+<tr><td>New storage per day</td><td>500 hours × 60 × 24 × 4.1 GB</td><td>2.95 PB</td></tr>
+<tr><td>Pieces per hour of video</td><td>3600 ÷ 4 × 4 qualities</td><td>3600</td></tr>
+</tbody>
+</table>
+</div>
+</details>
+</div>
+
+<h2 id="the-api"><a class="header" href="#the-api">The API</a></h2>
+<p>A viewer’s player makes 2 kinds of request: 1 for the manifest, and then a long series
+for pieces.</p>
+<p><strong>Get the manifest of a video</strong></p>
+<pre><code class="language-http">GET /v1/videos/8842/manifest HTTP/1.1
+Host: video.example
+</code></pre>
+<pre><code class="language-http">HTTP/1.1 200 OK
+Content-Type: application/json
+
+{
+  "piece_seconds": 4,
+  "pieces": 450,
+  "qualities": [
+    { "kbit": 400,  "url": "https://cdn.example/8842/400/piece-{n}.ts" },
+    { "kbit": 1200, "url": "https://cdn.example/8842/1200/piece-{n}.ts" },
+    { "kbit": 2500, "url": "https://cdn.example/8842/2500/piece-{n}.ts" },
+    { "kbit": 5000, "url": "https://cdn.example/8842/5000/piece-{n}.ts" }
+  ]
+}
+</code></pre>
+<p>The manifest tells the player which qualities exist and how to build the URL of any piece.</p>
+<p><strong>Get 1 piece</strong></p>
+<pre><code class="language-http">GET /8842/1200/piece-17.ts HTTP/1.1
+Host: cdn.example
+</code></pre>
+<pre><code class="language-http">HTTP/1.1 200 OK
+Content-Type: video/mp2t
+Cache-Control: max-age=31536000, immutable
+Content-Length: 600000
+
+(600000 bytes)
+</code></pre>
+<p><code>immutable</code> tells every cache that this piece will not change, so it can be kept for a year.</p>
+<h2 id="high-level-design"><a class="header" href="#high-level-design">High-level design</a></h2>
+<figure class="wide">
+<img src="figures/stream-design.svg?v=d503392b" alt="Uploading and playing a video. The components are Creator, Upload service, Queue, Encoders, Object store, CDN, Viewer, Video API. Step 1: A creator uploads the source file. Step 2: The upload service queues an encoding task. Step 3: Encoders make 4 qualities, cut into pieces. Step 4: Every piece is stored as an object. Step 5: A viewer asks for the manifest: the list of pieces. Step 6: The player fetches pieces from the CDN.">
+<figcaption><b>Figure 17.7</b> The components and the path of a request. The steps are numbered.</figcaption>
+</figure>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th>Component</th><th>Role</th><th>State it holds</th><th>When 1 instance fails</th></tr>
+</thead>
+<tbody>
+<tr><td>Upload service</td><td>receives the source file and stores it</td><td>none</td><td>the creator’s upload resumes on another instance</td></tr>
+<tr><td>Encoders</td><td>turn the source into pieces at 4 qualities</td><td>none</td><td>the task is delivered again, as in chapter 11</td></tr>
+<tr><td>Object store</td><td>keeps the source and every piece</td><td>everything, see chapter 16</td><td>chunks have 3 copies</td></tr>
+<tr><td>Video API</td><td>returns the manifest</td><td>video records</td><td>another instance answers</td></tr>
+<tr><td>CDN</td><td>keeps copies of pieces close to viewers</td><td>copies only</td><td>viewers are served from the next nearest site</td></tr>
+</tbody>
+</table>
+</div>
+<h3 id="one-request-step-by-step"><a class="header" href="#one-request-step-by-step">One request, step by step</a></h3>
+<p>The steps follow the arrows of figure 17.7.</p>
+<ol>
+<li>A creator uploads the source file. Large uploads are sent in parts, so that a broken upload continues where it stopped.</li>
+<li>The upload service stores the source in the object store and puts 1 task on the queue.</li>
+<li>An encoder takes the task and produces the video at 4 qualities, each cut into pieces of 4 seconds.</li>
+<li>Each piece is stored as its own object. When all are stored, the video is marked ready.</li>
+<li>A viewer presses play. The player asks the video API for the manifest.</li>
+<li>The player fetches pieces from the CDN, 1 after another. A CDN site that does not have a piece fetches it from the object store once and keeps it.</li>
+</ol>
+<h2 id="mistakes-to-avoid"><a class="header" href="#mistakes-to-avoid">Mistakes to avoid</a></h2>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th>Mistake</th><th>What goes wrong</th><th>What to do</th></tr>
+</thead>
+<tbody>
+<tr><td>Delivering a video as 1 file</td><td>The quality cannot change, and caches hold all of it or none.</td><td>Cut it into pieces of a few seconds.</td></tr>
+<tr><td>Cutting each quality at different moments</td><td>A change of quality causes a jump or a gap in the picture.</td><td>Cut all renditions at the same times, each piece beginning with a complete picture.</td></tr>
+<tr><td>Encoding a long video as 1 job</td><td>It takes hours, and a failure starts it again from the beginning.</td><td>Split the source into sections and encode them as separate jobs.</td></tr>
+<tr><td>Discarding the uploaded source</td><td>The catalogue cannot later be encoded in a better format.</td><td>Keep the source.</td></tr>
+<tr><td>Choosing the quality on the server</td><td>The server cannot see the viewer’s connection or buffer.</td><td>Let the player choose, from its own measurements.</td></tr>
+<tr><td>Requesting the highest quality the last measurement allows</td><td>Any drop in speed empties the buffer and stops the picture.</td><td>Keep a margin, and take the buffer into account.</td></tr>
+<tr><td>Changing quality with every fluctuation</td><td>The picture flickers between sharp and soft.</td><td>Step down promptly and step up cautiously.</td></tr>
+<tr><td>Serving every piece from the origin</td><td>Distant viewers start slowly, and the origin carries all the traffic.</td><td>Serve pieces from edge servers near the viewers.</td></tr>
+<tr><td>A popular release with cold caches</td><td>The first viewers all miss and overload the origin.</td><td>Copy the pieces to the edge beforehand.</td></tr>
+<tr><td>Caching the manifest of a live stream for long</td><td>Players do not learn of new pieces.</td><td>Cache it for a second or 2 only.</td></tr>
+<tr><td>Buffering as far ahead as possible</td><td>Viewers who leave have downloaded video they never watched.</td><td>Limit the buffer to some tens of seconds.</td></tr>
+</tbody>
+</table>
+</div>
+<h2 id="failures"><a class="header" href="#failures">Failures</a></h2>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th>Failure</th><th>What users see</th><th>How the system recovers</th></tr>
+</thead>
+<tbody>
+<tr><td>An encoder crashes during a video</td><td>the video is ready later</td><td>the task returns to the queue and another encoder takes it</td></tr>
+<tr><td>A CDN site fails</td><td>a short pause, then playback continues</td><td>the player’s requests go to another site</td></tr>
+<tr><td>The viewer’s connection slows down</td><td>the picture gets less sharp</td><td>the player picks a lower quality for the next piece</td></tr>
+</tbody>
+</table>
+</div>
+<h2 id="trade-offs"><a class="header" href="#trade-offs">Trade-offs</a></h2>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th>Decision</th><th>What it gains</th><th>What it costs</th></tr>
+</thead>
+<tbody>
+<tr><td>Pieces of 4 seconds</td><td>quick reaction to speed changes, cheap seeking</td><td>many small files per video</td></tr>
+<tr><td>4 qualities</td><td>smooth playback on most connections</td><td>4 times the encoding work and storage</td></tr>
+<tr><td>A CDN</td><td>short distance to viewers, low load on the origin</td><td>cost, and a new video takes time to spread</td></tr>
+</tbody>
+</table>
+</div>
+<h2 id="the-simulation"><a class="header" href="#the-simulation">The simulation</a></h2>
+<div class="simulation">
+<p><strong>Simulation in the repository.</strong> The program <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/distributed-systems-from-the-ground-up/code/streamsim/src/main.rs"><code>code/streamsim</code></a> simulates this design. To run it, clone the repository and type <code>cargo run --release -p streamsim</code> in the <code>code</code> directory.</p>
+</div>
+
+<h2 id="terms-introduced-in-this-chapter"><a class="header" href="#terms-introduced-in-this-chapter">Terms introduced in this chapter</a></h2>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th>Term</th><th>Meaning</th></tr>
+</thead>
+<tbody>
+<tr><td>Encoding</td><td>producing a compressed video at a chosen picture size and bitrate</td></tr>
+<tr><td>Bitrate</td><td>the number of bits a video uses for each second of playing time</td></tr>
+<tr><td>Rendition</td><td>1 complete version of a video at 1 quality</td></tr>
+<tr><td>Piece</td><td>a few seconds of 1 rendition, stored as a file</td></tr>
+<tr><td>Manifest</td><td>a file that lists the renditions of a video and the addresses of their pieces</td></tr>
+<tr><td>Adaptive bitrate</td><td>choosing the quality of each piece according to current conditions</td></tr>
+<tr><td>Buffer</td><td>video that the player has downloaded and not yet shown</td></tr>
+<tr><td>Interruption</td><td>a pause in playback because the buffer is empty</td></tr>
+<tr><td>Origin</td><td>the place where the service itself stores its files</td></tr>
+<tr><td>Content delivery network, CDN</td><td>a large set of caches placed near viewers</td></tr>
+<tr><td>Edge server</td><td>1 of those caches</td></tr>
+<tr><td>Latency of a live stream</td><td>the delay between an event and its appearance on the screen</td></tr>
+</tbody>
+</table>
+</div>
+<div class="summary">
+<h2 id="summary"><a class="header" href="#summary">Summary</a></h2>
+<ul>
+<li>A video is delivered as a sequence of small files, which makes it cacheable, stateless to serve, and adjustable in quality.</li>
+<li>Each upload is encoded at several bitrates, all cut into pieces at the same moments, by many machines working on separate sections.</li>
+<li>A manifest tells the player which pieces exist, and the player alone decides what to fetch.</li>
+<li>The player chooses a quality for each piece from the measured speed and the state of its buffer, and gives up sharpness to avoid interruptions.</li>
+<li>The buffer absorbs the player’s errors, since the player learns of a change in speed only after the next download.</li>
+<li>Edge servers near the viewers hold copies of pieces, which never change and are in highly concentrated demand.</li>
+<li>The dominant cost is the delivery of bytes, which is why efficient encoding and well-placed caches matter so much.</li>
+<li>Live video uses the same pieces, produced as the event happens, at the price of some seconds of delay.</li>
+</ul>
+</div>
+
+
+                    </main>
+
+                    <nav class="nav-wrapper" aria-label="Page navigation">
+                        <!-- Mobile navigation buttons -->
+                            <a rel="prev" href="16-object-store.html" class="mobile-nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                                <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M41.4 233.4c-12.5 12.5-12.5 32.8 0 45.3l160 160c12.5 12.5 32.8 12.5 45.3 0s12.5-32.8 0-45.3L109.3 256 246.6 118.6c12.5-12.5 12.5-32.8 0-45.3s-32.8-12.5-45.3 0l-160 160z"/></svg></span>
+                            </a>
+
+                            <a rel="next prefetch" href="18-chat.html" class="mobile-nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                                <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M278.6 233.4c12.5 12.5 12.5 32.8 0 45.3l-160 160c-12.5 12.5-32.8 12.5-45.3 0s-12.5-32.8 0-45.3L210.7 256 73.4 118.6c-12.5-12.5-12.5-32.8 0-45.3s32.8-12.5 45.3 0l160 160z"/></svg></span>
+                            </a>
+
+                        <div style="clear: both"></div>
+                    </nav>
+                </div>
+            </div>
+
+            <nav class="nav-wide-wrapper" aria-label="Page navigation">
+                    <a rel="prev" href="16-object-store.html" class="nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                        <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M41.4 233.4c-12.5 12.5-12.5 32.8 0 45.3l160 160c12.5 12.5 32.8 12.5 45.3 0s12.5-32.8 0-45.3L109.3 256 246.6 118.6c12.5-12.5 12.5-32.8 0-45.3s-32.8-12.5-45.3 0l-160 160z"/></svg></span>
+                    </a>
+
+                    <a rel="next prefetch" href="18-chat.html" class="nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                        <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M278.6 233.4c12.5 12.5 12.5 32.8 0 45.3l-160 160c-12.5 12.5-32.8 12.5-45.3 0s-12.5-32.8 0-45.3L210.7 256 73.4 118.6c-12.5-12.5-12.5-32.8 0-45.3s32.8-12.5 45.3 0l160 160z"/></svg></span>
+                    </a>
+            </nav>
+
+        </div>
+
+        <template id=fa-eye><span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 576 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M288 32c-80.8 0-145.5 36.8-192.6 80.6C48.6 156 17.3 208 2.5 243.7c-3.3 7.9-3.3 16.7 0 24.6C17.3 304 48.6 356 95.4 399.4C142.5 443.2 207.2 480 288 480s145.5-36.8 192.6-80.6c46.8-43.5 78.1-95.4 93-131.1c3.3-7.9 3.3-16.7 0-24.6c-14.9-35.7-46.2-87.7-93-131.1C433.5 68.8 368.8 32 288 32zM432 256c0 79.5-64.5 144-144 144s-144-64.5-144-144s64.5-144 144-144s144 64.5 144 144zM288 192c0 35.3-28.7 64-64 64c-11.5 0-22.3-3-31.6-8.4c-.2 2.8-.4 5.5-.4 8.4c0 53 43 96 96 96s96-43 96-96s-43-96-96-96c-2.8 0-5.6 .1-8.4 .4c5.3 9.3 8.4 20.1 8.4 31.6z"/></svg></span></template>
+        <template id=fa-eye-slash><span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M38.8 5.1C28.4-3.1 13.3-1.2 5.1 9.2S-1.2 34.7 9.2 42.9l592 464c10.4 8.2 25.5 6.3 33.7-4.1s6.3-25.5-4.1-33.7L525.6 386.7c39.6-40.6 66.4-86.1 79.9-118.4c3.3-7.9 3.3-16.7 0-24.6c-14.9-35.7-46.2-87.7-93-131.1C465.5 68.8 400.8 32 320 32c-68.2 0-125 26.3-169.3 60.8L38.8 5.1zM223.1 149.5C248.6 126.2 282.7 112 320 112c79.5 0 144 64.5 144 144c0 24.9-6.3 48.3-17.4 68.7L408 294.5c5.2-11.8 8-24.8 8-38.5c0-53-43-96-96-96c-2.8 0-5.6 .1-8.4 .4c5.3 9.3 8.4 20.1 8.4 31.6c0 10.2-2.4 19.8-6.6 28.3l-90.3-70.8zm223.1 298L373 389.9c-16.4 6.5-34.3 10.1-53 10.1c-79.5 0-144-64.5-144-144c0-6.9 .5-13.6 1.4-20.2L83.1 161.5C60.3 191.2 44 220.8 34.5 243.7c-3.3 7.9-3.3 16.7 0 24.6c14.9 35.7 46.2 87.7 93 131.1C174.5 443.2 239.2 480 320 480c47.8 0 89.9-12.9 126.2-32.5z"/></svg></span></template>
+        <template id=fa-copy><span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M502.6 70.63l-61.25-61.25C435.4 3.371 427.2 0 418.7 0H255.1c-35.35 0-64 28.66-64 64l.0195 256C192 355.4 220.7 384 256 384h192c35.2 0 64-28.8 64-64V93.25C512 84.77 508.6 76.63 502.6 70.63zM464 320c0 8.836-7.164 16-16 16H255.1c-8.838 0-16-7.164-16-16L239.1 64.13c0-8.836 7.164-16 16-16h128L384 96c0 17.67 14.33 32 32 32h47.1V320zM272 448c0 8.836-7.164 16-16 16H63.1c-8.838 0-16-7.164-16-16L47.98 192.1c0-8.836 7.164-16 16-16H160V128H63.99c-35.35 0-64 28.65-64 64l.0098 256C.002 483.3 28.66 512 64 512h192c35.2 0 64-28.8 64-64v-32h-47.1L272 448z"/></svg></span></template>
+        <template id=fa-play><span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 384 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M73 39c-14.8-9.1-33.4-9.4-48.5-.9S0 62.6 0 80V432c0 17.4 9.4 33.4 24.5 41.9s33.7 8.1 48.5-.9L361 297c14.3-8.7 23-24.2 23-41s-8.7-32.2-23-41L73 39z"/></svg></span></template>
+        <template id=fa-clock-rotate-left><span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M75 75L41 41C25.9 25.9 0 36.6 0 57.9V168c0 13.3 10.7 24 24 24H134.1c21.4 0 32.1-25.9 17-41l-30.8-30.8C155 85.5 203 64 256 64c106 0 192 86 192 192s-86 192-192 192c-40.8 0-78.6-12.7-109.7-34.4c-14.5-10.1-34.4-6.6-44.6 7.9s-6.6 34.4 7.9 44.6C151.2 495 201.7 512 256 512c141.4 0 256-114.6 256-256S397.4 0 256 0C185.3 0 121.3 28.7 75 75zm181 53c-13.3 0-24 10.7-24 24V256c0 6.4 2.5 12.5 7 17l72 72c9.4 9.4 24.6 9.4 33.9 0s9.4-24.6 0-33.9l-65-65V152c0-13.3-10.7-24-24-24z"/></svg></span></template>
+
+
+
+        <script>
+            window.playground_copyable = true;
+        </script>
+
+
+        <script src="elasticlunr-ef4e11c1.min.js"></script>
+        <script src="mark-09e88c2c.min.js"></script>
+        <script src="searcher-09f2665d.js"></script>
+
+        <script src="clipboard-1626706a.min.js"></script>
+        <script src="highlight-abc7f01d.js"></script>
+        <script src="book-609e4cb8.js"></script>
+
+        <!-- Custom JS scripts -->
+        <script src="theme/figures-47b15f7f.js"></script>
+        <script src="theme/proto-326509cd.js"></script>
+        <script src="theme/code-67e9caaf.js"></script>
+        <script src="theme/tables-9fb295e8.js"></script>
+        <script src="theme/steps-77f22afb.js"></script>
+
+
+
+    </div>
+    </body>
+</html>

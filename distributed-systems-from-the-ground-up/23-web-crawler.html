@@ -1,0 +1,703 @@
+<!DOCTYPE HTML>
+<html lang="en" class="light sidebar-visible" dir="ltr">
+    <head>
+        <!-- Book generated using mdBook -->
+        <meta charset="UTF-8">
+        <title>Web Crawler - Distributed Systems from the Ground Up</title>
+
+
+        <!-- Custom HTML head -->
+
+        <meta name="description" content="System design and low-level design of resilient, fault-tolerant distributed systems, with code in Rust">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <meta name="theme-color" content="#ffffff">
+
+        <link rel="icon" href="favicon-de23e50b.svg">
+        <link rel="shortcut icon" href="favicon-8114d1fc.png">
+        <link rel="stylesheet" href="css/variables-8adf115d.css">
+        <link rel="stylesheet" href="css/general-e96d0476.css">
+        <link rel="stylesheet" href="css/chrome-d279d366.css">
+        <link rel="stylesheet" href="css/print-9e4910d8.css" media="print">
+
+        <!-- Fonts -->
+        <link rel="stylesheet" href="fonts/fonts-9644e21d.css">
+
+        <!-- Highlight.js Stylesheets -->
+        <link rel="stylesheet" id="mdbook-highlight-css" href="highlight-493f70e1.css">
+        <link rel="stylesheet" id="mdbook-tomorrow-night-css" href="tomorrow-night-4c0ae647.css">
+        <link rel="stylesheet" id="mdbook-ayu-highlight-css" href="ayu-highlight-3fdfc3ac.css">
+
+        <!-- Custom theme stylesheets -->
+        <link rel="stylesheet" href="theme/custom-8a495b63.css">
+
+
+        <!-- Provide site root and default themes to javascript -->
+        <script>
+            const path_to_root = "";
+            const default_light_theme = "light";
+            const default_dark_theme = "navy";
+            window.path_to_searchindex_js = "searchindex-fe51950f.js";
+        </script>
+        <!-- Start loading toc.js asap -->
+        <script src="toc-cc887274.js"></script>
+    </head>
+    <body>
+    <div id="mdbook-help-container">
+        <div id="mdbook-help-popup">
+            <h2 class="mdbook-help-title">Keyboard shortcuts</h2>
+            <div>
+                <p>Press <kbd>←</kbd> or <kbd>→</kbd> to navigate between chapters</p>
+                <p>Press <kbd>S</kbd> or <kbd>/</kbd> to search in the book</p>
+                <p>Press <kbd>?</kbd> to show this help</p>
+                <p>Press <kbd>Esc</kbd> to hide this help</p>
+            </div>
+        </div>
+    </div>
+    <div id="mdbook-body-container">
+        <!-- Work around some values being stored in localStorage wrapped in quotes -->
+        <script>
+            try {
+                let theme = localStorage.getItem('mdbook-theme');
+                let sidebar = localStorage.getItem('mdbook-sidebar');
+
+                if (theme.startsWith('"') && theme.endsWith('"')) {
+                    localStorage.setItem('mdbook-theme', theme.slice(1, theme.length - 1));
+                }
+
+                if (sidebar.startsWith('"') && sidebar.endsWith('"')) {
+                    localStorage.setItem('mdbook-sidebar', sidebar.slice(1, sidebar.length - 1));
+                }
+            } catch (e) { }
+        </script>
+
+        <!-- Set the theme before any content is loaded, prevents flash -->
+        <script>
+            const default_theme = window.matchMedia("(prefers-color-scheme: dark)").matches ? default_dark_theme : default_light_theme;
+            let theme;
+            try { theme = localStorage.getItem('mdbook-theme'); } catch(e) { }
+            if (theme === null || theme === undefined) { theme = default_theme; }
+            const html = document.documentElement;
+            html.classList.remove('light')
+            html.classList.add(theme);
+            html.classList.add("js");
+        </script>
+
+        <input type="checkbox" id="mdbook-sidebar-toggle-anchor" class="hidden">
+
+        <!-- Hide / unhide sidebar before it is displayed -->
+        <script>
+            let sidebar = null;
+            const sidebar_toggle = document.getElementById("mdbook-sidebar-toggle-anchor");
+            if (document.body.clientWidth >= 1080) {
+                try { sidebar = localStorage.getItem('mdbook-sidebar'); } catch(e) { }
+                sidebar = sidebar || 'visible';
+            } else {
+                sidebar = 'hidden';
+                sidebar_toggle.checked = false;
+            }
+            if (sidebar === 'visible') {
+                sidebar_toggle.checked = true;
+            } else {
+                html.classList.remove('sidebar-visible');
+            }
+        </script>
+
+        <nav id="mdbook-sidebar" class="sidebar" aria-label="Table of contents">
+            <!-- populated by js -->
+            <mdbook-sidebar-scrollbox class="sidebar-scrollbox"></mdbook-sidebar-scrollbox>
+            <noscript>
+                <iframe class="sidebar-iframe-outer" src="toc.html"></iframe>
+            </noscript>
+            <div id="mdbook-sidebar-resize-handle" class="sidebar-resize-handle">
+                <div class="sidebar-resize-indicator"></div>
+            </div>
+        </nav>
+
+        <div id="mdbook-page-wrapper" class="page-wrapper">
+
+            <div class="page">
+                <div id="mdbook-menu-bar-hover-placeholder"></div>
+                <div id="mdbook-menu-bar" class="menu-bar sticky">
+                    <div class="left-buttons">
+                        <label id="mdbook-sidebar-toggle" class="icon-button" for="mdbook-sidebar-toggle-anchor" title="Toggle Table of Contents" aria-label="Toggle Table of Contents" aria-controls="mdbook-sidebar">
+                            <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M0 96C0 78.3 14.3 64 32 64H416c17.7 0 32 14.3 32 32s-14.3 32-32 32H32C14.3 128 0 113.7 0 96zM0 256c0-17.7 14.3-32 32-32H416c17.7 0 32 14.3 32 32s-14.3 32-32 32H32c-17.7 0-32-14.3-32-32zM448 416c0 17.7-14.3 32-32 32H32c-17.7 0-32-14.3-32-32s14.3-32 32-32H416c17.7 0 32 14.3 32 32z"/></svg></span>
+                        </label>
+                        <button id="mdbook-theme-toggle" class="icon-button" type="button" title="Change theme" aria-label="Change theme" aria-haspopup="true" aria-expanded="false" aria-controls="mdbook-theme-list">
+                            <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 576 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M371.3 367.1c27.3-3.9 51.9-19.4 67.2-42.9L600.2 74.1c12.6-19.5 9.4-45.3-7.6-61.2S549.7-4.4 531.1 9.6L294.4 187.2c-24 18-38.2 46.1-38.4 76.1L371.3 367.1zm-19.6 25.4l-116-104.4C175.9 290.3 128 339.6 128 400c0 3.9 .2 7.8 .6 11.6c1.8 17.5-10.2 36.4-27.8 36.4H96c-17.7 0-32 14.3-32 32s14.3 32 32 32H240c61.9 0 112-50.1 112-112c0-2.5-.1-5-.2-7.5z"/></svg></span>
+                        </button>
+                        <ul id="mdbook-theme-list" class="theme-popup" aria-label="Themes" role="menu">
+                            <li role="none"><button role="menuitem" class="theme" id="mdbook-theme-default_theme">Auto</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="mdbook-theme-light">Light</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="mdbook-theme-rust">Rust</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="mdbook-theme-coal">Coal</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="mdbook-theme-navy">Navy</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="mdbook-theme-ayu">Ayu</button></li>
+                        </ul>
+                        <button id="mdbook-search-toggle" class="icon-button" type="button" title="Search (`/`)" aria-label="Toggle Searchbar" aria-expanded="false" aria-keyshortcuts="/ s" aria-controls="mdbook-searchbar">
+                            <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M416 208c0 45.9-14.9 88.3-40 122.7L502.6 457.4c12.5 12.5 12.5 32.8 0 45.3s-32.8 12.5-45.3 0L330.7 376c-34.4 25.2-76.8 40-122.7 40C93.1 416 0 322.9 0 208S93.1 0 208 0S416 93.1 416 208zM208 352c79.5 0 144-64.5 144-144s-64.5-144-144-144S64 128.5 64 208s64.5 144 144 144z"/></svg></span>
+                        </button>
+                    </div>
+
+                    <h1 class="menu-title">Distributed Systems from the Ground Up</h1>
+
+                    <div class="right-buttons">
+                        <a href="print.html" title="Print this book" aria-label="Print this book">
+                            <span class=fa-svg id="print-button"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M128 0C92.7 0 64 28.7 64 64v96h64V64H354.7L384 93.3V160h64V93.3c0-17-6.7-33.3-18.7-45.3L400 18.7C388 6.7 371.7 0 354.7 0H128zM384 352v32 64H128V384 368 352H384zm64 32h32c17.7 0 32-14.3 32-32V256c0-35.3-28.7-64-64-64H64c-35.3 0-64 28.7-64 64v96c0 17.7 14.3 32 32 32H64v64c0 35.3 28.7 64 64 64H384c35.3 0 64-28.7 64-64V384zm-16-88c-13.3 0-24-10.7-24-24s10.7-24 24-24s24 10.7 24 24s-10.7 24-24 24z"/></svg></span>
+                        </a>
+                        <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/tree/prep-v2/distributed-systems-from-the-ground-up" title="Git repository" aria-label="Git repository">
+                            <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 496 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M165.9 397.4c0 2-2.3 3.6-5.2 3.6-3.3.3-5.6-1.3-5.6-3.6 0-2 2.3-3.6 5.2-3.6 3-.3 5.6 1.3 5.6 3.6zm-31.1-4.5c-.7 2 1.3 4.3 4.3 4.9 2.6 1 5.6 0 6.2-2s-1.3-4.3-4.3-5.2c-2.6-.7-5.5.3-6.2 2.3zm44.2-1.7c-2.9.7-4.9 2.6-4.6 4.9.3 2 2.9 3.3 5.9 2.6 2.9-.7 4.9-2.6 4.6-4.6-.3-1.9-3-3.2-5.9-2.9zM244.8 8C106.1 8 0 113.3 0 252c0 110.9 69.8 205.8 169.5 239.2 12.8 2.3 17.3-5.6 17.3-12.1 0-6.2-.3-40.4-.3-61.4 0 0-70 15-84.7-29.8 0 0-11.4-29.1-27.8-36.6 0 0-22.9-15.7 1.6-15.4 0 0 24.9 2 38.6 25.8 21.9 38.6 58.6 27.5 72.9 20.9 2.3-16 8.8-27.1 16-33.7-55.9-6.2-112.3-14.3-112.3-110.5 0-27.5 7.6-41.3 23.6-58.9-2.6-6.5-11.1-33.3 2.6-67.9 20.9-6.5 69 27 69 27 20-5.6 41.5-8.5 62.8-8.5s42.8 2.9 62.8 8.5c0 0 48.1-33.6 69-27 13.7 34.7 5.2 61.4 2.6 67.9 16 17.7 25.8 31.5 25.8 58.9 0 96.5-58.9 104.2-114.8 110.5 9.2 7.9 17 22.9 17 46.4 0 33.7-.3 75.4-.3 83.6 0 6.5 4.6 14.4 17.3 12.1C428.2 457.8 496 362.9 496 252 496 113.3 383.5 8 244.8 8zM97.2 352.9c-1.3 1-1 3.3.7 5.2 1.6 1.6 3.9 2.3 5.2 1 1.3-1 1-3.3-.7-5.2-1.6-1.6-3.9-2.3-5.2-1zm-10.8-8.1c-.7 1.3.3 2.9 2.3 3.9 1.6 1 3.6.7 4.3-.7.7-1.3-.3-2.9-2.3-3.9-2-.6-3.6-.3-4.3.7zm32.4 35.6c-1.6 1.3-1 4.3 1.3 6.2 2.3 2.3 5.2 2.6 6.5 1 1.3-1.3.7-4.3-1.3-6.2-2.2-2.3-5.2-2.6-6.5-1zm-11.4-14.7c-1.6 1-1.6 3.6 0 5.9 1.6 2.3 4.3 3.3 5.6 2.3 1.6-1.3 1.6-3.9 0-6.2-1.4-2.3-4-3.3-5.6-2z"/></svg></span>
+                        </a>
+                        <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/edit/prep-v2/distributed-systems-from-the-ground-up/src/23-web-crawler.md" title="Suggest an edit" aria-label="Suggest an edit" rel="edit">
+                            <span class=fa-svg id="git-edit-button"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M421.7 220.3l-11.3 11.3-22.6 22.6-205 205c-6.6 6.6-14.8 11.5-23.8 14.1L30.8 511c-8.4 2.5-17.5 .2-23.7-6.1S-1.5 489.7 1 481.2L38.7 353.1c2.6-9 7.5-17.2 14.1-23.8l205-205 22.6-22.6 11.3-11.3 33.9 33.9 62.1 62.1 33.9 33.9zM96 353.9l-9.3 9.3c-.9 .9-1.6 2.1-2 3.4l-25.3 86 86-25.3c1.3-.4 2.5-1.1 3.4-2l9.3-9.3H112c-8.8 0-16-7.2-16-16V353.9zM453.3 19.3l39.4 39.4c25 25 25 65.5 0 90.5l-14.5 14.5-22.6 22.6-11.3 11.3-33.9-33.9-62.1-62.1L314.3 67.7l11.3-11.3 22.6-22.6 14.5-14.5c25-25 65.5-25 90.5 0z"/></svg></span>
+                        </a>
+
+                    </div>
+                </div>
+
+                <div id="mdbook-search-wrapper" class="hidden">
+                    <form id="mdbook-searchbar-outer" class="searchbar-outer">
+                        <div class="search-wrapper">
+                            <input type="search" id="mdbook-searchbar" name="searchbar" placeholder="Search this book ..." aria-controls="mdbook-searchresults-outer" aria-describedby="searchresults-header">
+                            <div class="spinner-wrapper">
+                                <span class=fa-svg id="fa-spin"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M304 48c0-26.5-21.5-48-48-48s-48 21.5-48 48s21.5 48 48 48s48-21.5 48-48zm0 416c0-26.5-21.5-48-48-48s-48 21.5-48 48s21.5 48 48 48s48-21.5 48-48zM48 304c26.5 0 48-21.5 48-48s-21.5-48-48-48s-48 21.5-48 48s21.5 48 48 48zm464-48c0-26.5-21.5-48-48-48s-48 21.5-48 48s21.5 48 48 48s48-21.5 48-48zM142.9 437c18.7-18.7 18.7-49.1 0-67.9s-49.1-18.7-67.9 0s-18.7 49.1 0 67.9s49.1 18.7 67.9 0zm0-294.2c18.7-18.7 18.7-49.1 0-67.9S93.7 56.2 75 75s-18.7 49.1 0 67.9s49.1 18.7 67.9 0zM369.1 437c18.7 18.7 49.1 18.7 67.9 0s18.7-49.1 0-67.9s-49.1-18.7-67.9 0s-18.7 49.1 0 67.9z"/></svg></span>
+                            </div>
+                        </div>
+                    </form>
+                    <div id="mdbook-searchresults-outer" class="searchresults-outer hidden">
+                        <div id="mdbook-searchresults-header" class="searchresults-header"></div>
+                        <ul id="mdbook-searchresults">
+                        </ul>
+                    </div>
+                </div>
+
+                <!-- Apply ARIA attributes after the sidebar and the sidebar toggle button are added to the DOM -->
+                <script>
+                    document.getElementById('mdbook-sidebar-toggle').setAttribute('aria-expanded', sidebar === 'visible');
+                    document.getElementById('mdbook-sidebar').setAttribute('aria-hidden', sidebar !== 'visible');
+                    Array.from(document.querySelectorAll('#mdbook-sidebar a')).forEach(function(link) {
+                        link.setAttribute('tabIndex', sidebar === 'visible' ? 0 : -1);
+                    });
+                </script>
+
+                <div id="mdbook-content" class="content">
+                    <main>
+                        <img class="plate" src="art/ch23.svg?v=c31a6091" alt="An octopus stands beside a sign that reads: 1 queue per host, wait 2 seconds, never twice.">
+<h1 id="web-crawler-system-design"><a class="header" href="#web-crawler-system-design">Web Crawler: System Design</a></h1>
+<p>A <em>web crawler</em> is a program that reads the web as a person would who had unlimited
+patience and no particular interest in any page. It begins with a few known
+addresses, downloads the pages at those addresses, extracts from each page the
+addresses to which it links, and proceeds to download those in their turn. Continued
+long enough, the process reaches every page that can be reached by following links,
+and the collection that results is the raw material of a search engine, of an
+archive, or of any system that needs to know what the web contains.</p>
+<p>As an algorithm, this is the traversal of a graph, and an introductory course in
+programming covers it in a week. What separates the exercise from the system is the
+nature of this particular graph. It has tens of billions of nodes and can be stored
+on no single machine. It is not given in advance, each node being discoverable only
+by fetching another. It changes while it is being traversed. Parts of it are
+infinite, generated on demand by programs that will produce a new page for every
+address they are asked for. And every node belongs to somebody, who is paying for the
+server that answers and who will, quite reasonably, block a crawler that asks too
+much too quickly. A crawler has therefore to be at once fast in aggregate and gentle
+towards each individual site, and most of its design follows from the need to
+reconcile the 2.</p>
+<div class="covers">
+<p>This chapter covers</p>
+<ul>
+<li>the loop at the centre of every crawler</li>
+<li>the frontier: which address to fetch next, and why it is more than a queue</li>
+<li>politeness, and a queue for every host</li>
+<li>what a site asks of crawlers, and why a crawler complies</li>
+<li>recognising an address that has been seen before</li>
+<li>recognising a page that has been seen before under another address</li>
+<li>sites that never end</li>
+<li>dividing the crawl among many machines</li>
+<li>returning to pages that change</li>
+</ul>
+</div>
+
+<h2 id="the-loop"><a class="header" href="#the-loop">The loop</a></h2>
+<p>Every crawler, whatever its size, repeats the same 4 steps. It takes an address from
+the collection of those waiting to be fetched, which is called the <em>frontier</em>. It
+downloads the page at that address. It extracts the links from the page. And it adds
+to the frontier those of the links that it has not met before.</p>
+<p>If the frontier were a simple first-in, first-out queue, this would be a breadth-first
+traversal. Almost everything of interest in a crawler’s design is a departure from
+that simple queue, prompted by 1 of 3 matters: the order in which addresses should
+be taken, given that there are always far more waiting than can be fetched, how soon
+the same server may be asked again, and how it is known that an address, or a page,
+has been dealt with already.</p>
+<h2 id="politeness"><a class="header" href="#politeness">Politeness</a></h2>
+<p>A crawler with 1000 connections at its disposal could, if it chose, direct all of
+them at a single web site. For a small site this would be indistinguishable from an
+attack. The server would be overwhelmed, its ordinary visitors would be turned away,
+and its owner would respond by blocking the crawler’s addresses permanently, as would
+the owners of other sites who heard of it. A crawler that is to be tolerated must
+restrict itself, for each site separately, to a rate that the site will not notice. A
+usual rule allows 1 request to a given host at any moment, followed by a pause of a
+second or more before the next.</p>
+<p>The difficulty is that this restriction is at odds with the order in which addresses
+are discovered. A page generally links mostly to other pages of its own site, so that
+the frontier, at any moment, contains long runs of addresses on the same host. A
+crawler that took addresses strictly in order would spend nearly all its time waiting
+for the pause on some host to expire, while thousands of other hosts stood ready.</p>
+<p>The standard arrangement resolves this by giving the frontier a structure that
+mirrors the constraint. There is a separate queue for every host, and with each queue
+is recorded the earliest time at which that host may next be asked. A fetcher that
+wants work takes an address from any host whose time has come, and that host’s time
+is then moved forward by the length of the pause.</p>
+<figure class="steps" data-prefix="figures/steps-crawl-frontier" data-count="5" data-version="53461153">
+<img src="figures/steps-crawl-frontier-01.svg?v=53461153" alt="A frontier with 1 queue for each host, step 1 of 5. The crawl starts from 1 address. The frontier keeps a separate queue for every host, and each host may be asked once every 2 seconds.">
+<figcaption><b>Figure 23.1</b> A crawl of 3 hosts, each of which may be asked once every 2 seconds. Use Next and Back to move through the 5 steps.</figcaption>
+</figure>
+<p>The simulation for this chapter crawls a small invented web of 3 hosts under this
+rule. In 8 seconds it fetches 10 pages, never asking any host twice within 2 seconds,
+and never standing idle while some host is ready.</p>
+<p>The consequence for the performance of a crawler is fundamental and somewhat
+counter-intuitive. The speed of a crawl is determined by the number of different
+hosts it has in hand, and hardly at all by how fast any 1 of them answers. With a
+pause of 1 second, a crawler that knows of a million hosts can fetch a million pages
+a second, and a crawler confined to a single enormous site can fetch 1. A very large
+site therefore takes a long time to crawl completely however many machines are
+available, and the only remedy is an agreement with its owner.</p>
+<p>The pause need not be the same for every host. A crawler can measure how long a
+server takes to answer and wait some multiple of that, which treats a fast server
+more briskly and backs away from one that is struggling. A server that begins to
+return errors, or the status <code>429</code> of chapter 7, is telling the crawler directly that
+it is asking too much, and the pause for that host should be lengthened at once.</p>
+<h2 id="what-a-site-asks-of-crawlers"><a class="header" href="#what-a-site-asks-of-crawlers">What a site asks of crawlers</a></h2>
+<p>By a convention almost as old as the web, a site may publish a file named
+<code>robots.txt</code> at its root, stating which parts of the site crawlers are asked to stay
+out of, and sometimes how long they should wait between requests. A site might
+exclude its search results, its shopping baskets, or pages that are costly to
+generate.</p>
+<p>Nothing enforces this file. A crawler obeys it because the alternative is to be
+blocked, and because the exclusions usually serve the crawler’s own interest by
+steering it away from pages of no value. The file has to be fetched before any other
+page of the host, and since it applies to every later request it is kept in a cache,
+with a time limit of perhaps a day, so that it is neither fetched for every page nor
+relied upon indefinitely after the site has changed it.</p>
+<p>A crawler also identifies itself, by a name in the <code>User-Agent</code> header of each
+request together with an address at which its operators can be reached. An
+administrator who finds an unfamiliar program in the logs and can discover what it is
+and whom to write to is far less inclined to block it than one who cannot.</p>
+<h2 id="an-address-seen-before"><a class="header" href="#an-address-seen-before">An address seen before</a></h2>
+<p>The web is densely connected, and the same address appears as a link on a great many
+pages. In the small simulation, 7 of the links encountered led to addresses that were
+already known. On the real web the proportion is far higher, and a crawler that
+fetched every address every time it was mentioned would never finish. Every address
+ever added to the frontier is therefore recorded in a <em>seen set</em>, and a newly
+extracted link is checked against the set before anything else is done with it.</p>
+<p>Before the check, the address has to be brought to a standard form, since many
+different strings denote the same page. The name of the host is not sensitive to
+case. A port number that is the default may be given or left out. The part of an
+address after a <code>#</code> refers to a position within the page and is never sent to the
+server. The parameters of a query may appear in any order, and often include
+identifiers of a session or of an advertising campaign that have no effect on what
+is returned. A crawler that failed to <em>normalise</em> its addresses would fetch the same
+page many times under different spellings.</p>
+<p>The seen set is very large. 10 billion addresses of 80 bytes each would occupy 800
+GB, and the set is consulted for every link on every page. Storing a fixed-size hash
+of each address in place of the address reduces this by a factor of 10. A further
+reduction is possible if occasional errors are tolerated. The <em>Bloom filter</em> that
+chapter 9 used against cache penetration serves here too: it occupies about 10 bits
+for each address and answers the question of membership with certainty when the
+answer is no, and with a small probability of error, around 1 in 100, when the answer
+is yes. For a crawler the error means that a few addresses in every hundred which are
+in truth new are taken as seen and are not fetched. Whether that loss is acceptable
+depends on the purpose of the crawl, and for most purposes a web of which 1% is
+missed is a perfectly good web.</p>
+<h2 id="a-page-seen-before"><a class="header" href="#a-page-seen-before">A page seen before</a></h2>
+<p>Normalising addresses does not eliminate duplication, because the same content is
+very often served at addresses that are truly distinct. A site answers both with and
+without <code>www</code>. An article is available at a short address and a long one, or in a
+printable version, or on a second site that reproduces it. Estimates of the share of
+the web that duplicates some other part of it run to a quarter or more.</p>
+<p>Identical copies are detected easily. The crawler computes a checksum of the content
+of each page it fetches and keeps the checksums, as the object store of chapter 16
+does for chunks. A page whose checksum is already present is a duplicate, and is
+neither stored again nor examined for links.</p>
+<p>Copies that are nearly identical are a harder matter, and are much the commoner
+case. 2 copies of the same article may differ in the date printed at the top, in the
+advertisements, or in a counter of visitors, and a checksum, which changes completely
+when a single byte changes, treats them as unrelated. For this purpose a different
+kind of fingerprint is used, constructed so that similar documents receive similar
+fingerprints. The page is broken into overlapping sequences of a few words, each
+sequence is hashed, and the hashes are combined into a short value in such a way that
+every sequence has a small influence on every bit. 2 pages that share most of their
+sequences then receive fingerprints that differ in only a few bits, and near
+duplicates can be found by looking for fingerprints close to one another.</p>
+<h2 id="sites-that-never-end"><a class="header" href="#sites-that-never-end">Sites that never end</a></h2>
+<p>Some parts of the web are generated by programs and have no boundary. The classic
+instance is a calendar.</p>
+<figure>
+<img src="figures/crawl-trap.svg?v=94ff9e55" alt="4 steps. A page shows the events of 1 day. It links to the next day, which links to the day after. Every day exists for ever, because the site computes each page when asked. A crawler that follows every link never finishes. The cure is a limit on pages and on depth for every host.">
+<figcaption><b>Figure 23.2</b> A calendar in which every day links to the next.</figcaption>
+</figure>
+<p>The page for each day contains a link to the following day, and the server will
+obligingly produce a page for any date whatever. A crawler that follows links
+faithfully proceeds through the calendar day by day into the indefinite future. A
+shop with 5 filters that may be combined in any order, a site that embeds a fresh
+session identifier in every link, and a directory that by mistake contains a link to
+itself all have the same effect. Such structures are called <em>crawler traps</em>. Most are
+accidents, and a few are built on purpose to waste the time of crawlers.</p>
+<p>No test can tell, for an arbitrary site, whether its pages are endless, and the
+defences are accordingly limits, since nothing can serve as a detector. A crawler restricts the number of
+pages it will take from any 1 host, as the simulation does when it stops the calendar
+at 4. It restricts the depth to which it will follow links from the page at which it
+entered a site. It restricts the length of the addresses it will accept, since
+addresses in a trap tend to grow. And it gives a larger allowance to hosts that many
+other sites link to, on the grounds that a site which the rest of the web considers
+important is unlikely to be a trap.</p>
+<h2 id="which-address-next"><a class="header" href="#which-address-next">Which address next</a></h2>
+<p>With far more addresses waiting than can ever be fetched, the order in which they are
+taken decides what the crawl contains. A crawler that is to feed a search engine
+wants the important pages first, and has to estimate importance before fetching, from
+what is known about an address in advance: how many pages link to it, how important
+those pages are themselves, how near it is to the root of its site, and how valuable
+the other pages of its host have proved.</p>
+<p>Priority and politeness have to be combined, and the usual structure has 2 stages. A
+set of queues ordered by priority feeds the queues ordered by host. Addresses enter
+at the front according to their estimated importance, are drawn from the
+high-priority queues more often than from the low, and are then placed in the queue
+of their host, from which the rule of politeness releases them. The first stage
+decides what is worth fetching, and the second decides when it may be fetched.</p>
+<h2 id="many-machines"><a class="header" href="#many-machines">Many machines</a></h2>
+<p>A crawl of billions of pages is carried out by many machines, and the work has to be
+divided among them in such a way that the constraints still hold. The decisive
+constraint is politeness, which is a property of a host and must therefore be
+enforced in 1 place for each host. If 2 machines each held addresses of the same host
+and each observed the pause on its own account, the host would receive twice the
+permitted load.</p>
+<p>The division is therefore made by host. Each host is assigned to a single crawler
+machine, by hashing its name, with the consistent hashing of chapter 1 so that the
+addition of a machine moves only a small share of the hosts. All the addresses of a
+host are queued on its machine, which alone keeps the host’s waiting time and its
+<code>robots.txt</code>. When a machine extracts a link to a host that belongs to another
+machine, it forwards the address there, usually in batches by way of a message queue.
+Since most links lead to the site on which they are found, most addresses stay where
+they were discovered.</p>
+<p>The frontier must survive failures. It represents days of accumulated discovery and
+cannot quickly be rebuilt. It is therefore kept on disk, and since it is far larger
+than memory, each host’s queue is held mostly on disk, with only the next few
+addresses of each host in memory.</p>
+<p>A crawler also depends heavily on the name resolution system, since every host name
+has to be turned into a network address before the host can be contacted. At
+thousands of requests a second, the ordinary resolver becomes a bottleneck, and
+crawlers keep their own cache of resolved names, refreshed as the entries expire.</p>
+<h2 id="returning-to-pages"><a class="header" href="#returning-to-pages">Returning to pages</a></h2>
+<p>The web changes, and a collection that was accurate last month is partly wrong
+today. A crawler has to revisit, and since it cannot revisit everything as often as
+it would wish, it has to decide how its limited capacity is best spent.</p>
+<p>Pages change at very different rates. The front page of a newspaper changes every few
+minutes, and a paper published by a scientific journal 10 years ago will never change
+again. A crawler therefore records, for each page, how often it has found the page
+changed on its previous visits, and schedules the next visit accordingly: soon for a
+page that is usually different, and after a long interval for one that is usually the
+same.</p>
+<p>HTTP allows a revisit to be made cheaply. The crawler sends the entity tag that it
+received with the page on the last occasion, in the <code>If-None-Match</code> header that
+chapter 1 described, and a server whose page has not changed answers <code>304 Not Modified</code> with no body. The crawler has confirmed that its copy is current at the
+cost of a few hundred bytes.</p>
+<h2 id="use-cases"><a class="header" href="#use-cases">Use cases</a></h2>
+<p>An operator starts a crawl and governs it. A consumer, typically the indexer of a
+search engine, reads the pages that have been fetched.</p>
+<figure>
+<img src="figures/crawl-use-cases.svg?v=c2f0f847" alt="A use case diagram of the crawler. Operator: give starting addresses (POST /v1/seeds), set the rules for a host (PUT /v1/hosts/{host}/rules), read the progress (GET /v1/crawls/{id}). Indexer: read the fetched pages (GET /v1/pages?after=).">
+<figcaption><b>Figure 23.3</b> The actors and what each of them does.</figcaption>
+</figure>
+<h2 id="functional-requirements"><a class="header" href="#functional-requirements">Functional requirements</a></h2>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th>No.</th><th>Functional requirement</th></tr>
+</thead>
+<tbody>
+<tr><td>0</td><td>Starting from given addresses, the crawler fetches the pages that can be reached by following links.</td></tr>
+<tr><td>1</td><td>No address is fetched more than once in a crawl.</td></tr>
+<tr><td>2</td><td>The crawler observes the rules that each site publishes for crawlers.</td></tr>
+<tr><td>3</td><td>No host is asked more often than once in a configured interval.</td></tr>
+<tr><td>4</td><td>Pages whose content has already been stored are recognised and not stored again.</td></tr>
+<tr><td>5</td><td>Pages are fetched again at intervals that depend on how often they change.</td></tr>
+</tbody>
+</table>
+</div>
+<h2 id="non-functional-requirements"><a class="header" href="#non-functional-requirements">Non-functional requirements</a></h2>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th>No.</th><th>Property</th><th>Non-functional requirement</th></tr>
+</thead>
+<tbody>
+<tr><td>0</td><td>Scale</td><td>10 billion pages in a crawl of a month, which is about 4000 pages per second.</td></tr>
+<tr><td>1</td><td>Politeness</td><td>At most 1 request at any moment to a host, with at least 1 second between requests.</td></tr>
+<tr><td>2</td><td>Durability</td><td>The frontier and the seen set survive the failure of any machine.</td></tr>
+<tr><td>3</td><td>Consistency</td><td>Eventual. A small share of addresses may be fetched twice or missed.</td></tr>
+<tr><td>4</td><td>Robustness</td><td>No page, however malformed or large, stops the crawl.</td></tr>
+</tbody>
+</table>
+</div>
+<p>A crawler is unusually tolerant of small errors, and non-functional requirement 3
+says so. If 1 address in 100 is skipped because a Bloom filter was mistaken, or
+fetched twice because a machine failed between fetching and recording, the resulting
+collection is for all practical purposes as good. This tolerance is what allows the
+seen set to be approximate and the coordination between machines to be loose. The 1
+requirement that admits no approximation is politeness, since the party harmed by a
+violation is somebody else.</p>
+<h2 id="core-entities"><a class="header" href="#core-entities">Core entities</a></h2>
+<figure>
+<img src="figures/crawl-entities.svg?v=0d6561c6" alt="The core entities. Page has the fields address string, fetched time, checksum u64, status 200|404|.... Host has the fields name string, ready_at time, rules robots.txt, taken pages so far. A Host is every address on 1 server. The crawler keeps a queue and a waiting time for each host, and not for each page.">
+<figcaption><b>Figure 23.4</b> The core entities and their fields.</figcaption>
+</figure>
+<h2 id="capacity-estimate"><a class="header" href="#capacity-estimate">Capacity estimate</a></h2>
+<div class="estimate">
+<img class="builder" src="art/crab-builder.svg" alt="A crab in a hard hat, in tears.">
+<p><strong>Arithmetic ahead.</strong> 10 billion pages of 100 KB are 1 PB of content, fetched at 4000 pages per second, which needs about 3 Gbit/s of bandwidth and a few hundred fetching machines.</p>
+<p><a class="skip" href="#high-level-design">Skip to the high-level design</a></p>
+<details>
+<summary>Show the calculation</summary>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th>Quantity</th><th>Calculation</th><th>Result</th></tr>
+</thead>
+<tbody>
+<tr><td>Pages per second</td><td>10 billion ÷ (30 × 86400 s)</td><td>about 3900</td></tr>
+<tr><td>Content stored</td><td>10 billion × 100 KB</td><td>1 PB</td></tr>
+<tr><td>Bandwidth</td><td>3900 × 100 KB × 8</td><td>about 3 Gbit/s</td></tr>
+<tr><td>Hosts needed to sustain the rate</td><td>3900 pages per second × 1 s pause</td><td>at least 3900 hosts ready at every moment</td></tr>
+<tr><td>Seen set as hashes</td><td>10 billion × 8 bytes</td><td>80 GB</td></tr>
+<tr><td>Seen set as a Bloom filter</td><td>10 billion × 10 bits</td><td>12.5 GB</td></tr>
+</tbody>
+</table>
+</div>
+</details>
+</div>
+
+<h2 id="the-api"><a class="header" href="#the-api">The API</a></h2>
+<p>A crawler has few callers. An operator supplies starting addresses and rules, and a
+consumer reads what has been fetched, in pages, by a cursor.</p>
+<p><strong>Give starting addresses</strong></p>
+<pre><code class="language-http">POST /v1/seeds HTTP/1.1
+Host: crawler.internal
+Content-Type: application/json
+
+{ "addresses": ["https://news.example/", "https://shop.example/"] }
+</code></pre>
+<pre><code class="language-http">HTTP/1.1 202 Accepted
+Content-Type: application/json
+
+{ "accepted": 2 }
+</code></pre>
+<p>The status is <code>202</code>, since the addresses have been taken into the frontier and
+nothing has yet been fetched.</p>
+<p><strong>Set the rules for a host</strong></p>
+<pre><code class="language-http">PUT /v1/hosts/calendar.example/rules HTTP/1.1
+Host: crawler.internal
+Content-Type: application/json
+
+{ "pause_seconds": 5, "page_limit": 1000, "depth_limit": 6 }
+</code></pre>
+<pre><code class="language-http">HTTP/1.1 204 No Content
+</code></pre>
+<p><strong>Read the fetched pages</strong></p>
+<pre><code class="language-http">GET /v1/pages?after=880213&amp;limit=2 HTTP/1.1
+Host: crawler.internal
+</code></pre>
+<pre><code class="language-http">HTTP/1.1 200 OK
+Content-Type: application/json
+
+{
+  "pages": [
+    { "id": 880214, "address": "https://news.example/a", "fetched": "2026-10-14T09:00:02Z", "status": 200, "content": "/v1/pages/880214/content" },
+    { "id": 880215, "address": "https://shop.example/item-1", "fetched": "2026-10-14T09:00:03Z", "status": 200, "content": "/v1/pages/880215/content" }
+  ],
+  "next_after": 880215
+}
+</code></pre>
+<h2 id="high-level-design"><a class="header" href="#high-level-design">High-level design</a></h2>
+<figure class="wide">
+<img src="figures/crawl-design.svg?v=e2b8e660" alt="A web crawler. The components are Frontier, Fetchers, Parser, Link filter, Host rules, Page store, Seen set. Step 1: The frontier hands out an address of a host that is ready. Step 2: The fetcher checks the host&#39;s rules and downloads the page. Step 3: The parser receives the page. Step 4: The page is stored. Step 5: The links of the page go to the filter. Step 6: New addresses return to the frontier.">
+<figcaption><b>Figure 23.5</b> The components and the path of a page. The steps are numbered.</figcaption>
+</figure>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th>Component</th><th>Role</th><th>State it holds</th><th>When 1 instance fails</th></tr>
+</thead>
+<tbody>
+<tr><td>Frontier</td><td>holds the waiting addresses, in a queue for each host</td><td>the queues and waiting times, on disk</td><td>its hosts are taken over, with their queues, by another machine</td></tr>
+<tr><td>Fetcher</td><td>downloads pages, within a time limit and a size limit</td><td>none</td><td>the address returns to the frontier</td></tr>
+<tr><td>Host rules</td><td>holds each host’s <code>robots.txt</code> and limits</td><td>a cache</td><td>the rules are fetched again</td></tr>
+<tr><td>Parser</td><td>extracts and normalises the links of a page</td><td>none</td><td>the page is parsed again</td></tr>
+<tr><td>Link filter</td><td>removes addresses that have been seen</td><td>the seen set</td><td>the set is restored from its copy</td></tr>
+<tr><td>Page store</td><td>keeps the content of every page</td><td>the pages, in an object store</td><td>as in chapter 16</td></tr>
+</tbody>
+</table>
+</div>
+<h3 id="one-page-step-by-step"><a class="header" href="#one-page-step-by-step">One page, step by step</a></h3>
+<p>The steps follow the arrows of figure 23.5.</p>
+<ol>
+<li>The frontier hands a fetcher the next address of a host whose waiting time has passed, and moves that host’s time forward.</li>
+<li>The fetcher consults the rules of the host. If the address is excluded, it is dropped. Otherwise the fetcher downloads the page, giving up if the server is too slow or the page too large.</li>
+<li>The page passes to the parser.</li>
+<li>The content is given a checksum. If no page with that checksum has been stored, the page is stored.</li>
+<li>The parser extracts the links, normalises them, and passes them to the link filter.</li>
+<li>The filter drops every address that is in the seen set, adds the others to the set, and sends them to the frontier, where each joins the queue of its host.</li>
+</ol>
+<h2 id="mistakes-to-avoid"><a class="header" href="#mistakes-to-avoid">Mistakes to avoid</a></h2>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th>Mistake</th><th>What goes wrong</th><th>What to do</th></tr>
+</thead>
+<tbody>
+<tr><td>1 queue for all addresses</td><td>The crawler either overloads a site or waits on 1 host while thousands are ready.</td><td>Keep a queue and a waiting time for every host.</td></tr>
+<tr><td>Enforcing politeness separately on each machine</td><td>A host served by 2 machines receives twice the permitted load.</td><td>Assign each host to exactly 1 machine.</td></tr>
+<tr><td>Ignoring <code>robots.txt</code></td><td>The crawler is blocked, and fetches pages of no value.</td><td>Fetch and cache the rules of each host before anything else.</td></tr>
+<tr><td>Comparing addresses as raw strings</td><td>The same page is fetched under many spellings.</td><td>Normalise every address before checking the seen set.</td></tr>
+<tr><td>Detecting duplicates by address only</td><td>The same article is stored from many addresses.</td><td>Compare checksums of content, and fingerprints for near duplicates.</td></tr>
+<tr><td>Following every link without limit</td><td>A calendar or a set of filters occupies the crawler for ever.</td><td>Limit the pages and the depth for each host.</td></tr>
+<tr><td>No limit on time or size of a download</td><td>1 slow or endless response holds a fetcher indefinitely.</td><td>Give every download a time limit and a size limit.</td></tr>
+<tr><td>The frontier in memory only</td><td>A restart loses days of discovery.</td><td>Keep the frontier on disk.</td></tr>
+<tr><td>Asking the resolver for every request</td><td>Name resolution becomes the bottleneck.</td><td>Cache resolved names.</td></tr>
+<tr><td>Revisiting every page equally often</td><td>Capacity is spent on pages that never change.</td><td>Revisit according to how often each page has changed.</td></tr>
+<tr><td>Persisting when a host returns errors</td><td>The host is pushed further into overload, and blocks the crawler.</td><td>Lengthen the pause for a host that answers with errors or <code>429</code>.</td></tr>
+</tbody>
+</table>
+</div>
+<h2 id="failures"><a class="header" href="#failures">Failures</a></h2>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th>Failure</th><th>What is observed</th><th>How the system recovers</th></tr>
+</thead>
+<tbody>
+<tr><td>A fetcher crashes during a download</td><td>the page is not stored</td><td>the address was not removed from its queue until the page was stored, and is fetched again</td></tr>
+<tr><td>A crawler machine is lost</td><td>its hosts are not crawled for a time</td><td>its hosts and their queues pass to other machines</td></tr>
+<tr><td>A host does not respond</td><td>downloads to it time out</td><td>its pause is lengthened, and after repeated failures it is set aside for a day</td></tr>
+<tr><td>A page is enormous or never ends</td><td>the download is cut off</td><td>the size limit and the time limit end it</td></tr>
+<tr><td>The seen set gives a false “seen”</td><td>a new address is not fetched</td><td>accepted, as a known property of the filter</td></tr>
+<tr><td>A site blocks the crawler</td><td>every request is refused</td><td>the host is set aside, and an operator is informed</td></tr>
+</tbody>
+</table>
+</div>
+<h2 id="trade-offs"><a class="header" href="#trade-offs">Trade-offs</a></h2>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th>Decision</th><th>What it gains</th><th>What it costs</th></tr>
+</thead>
+<tbody>
+<tr><td>A queue for every host</td><td>politeness without idleness</td><td>a frontier that is large and complicated</td></tr>
+<tr><td>Hosts assigned to machines by hash</td><td>politeness enforced in 1 place</td><td>links to other hosts have to be forwarded</td></tr>
+<tr><td>A Bloom filter for the seen set</td><td>a tenth of the memory</td><td>about 1 new address in 100 is missed</td></tr>
+<tr><td>Limits for each host</td><td>traps cannot hold the crawler</td><td>a large legitimate site may be cut short</td></tr>
+<tr><td>Revisits according to past change</td><td>fresh copies of what changes</td><td>stale copies of pages that change unexpectedly</td></tr>
+</tbody>
+</table>
+</div>
+<h2 id="the-simulation"><a class="header" href="#the-simulation">The simulation</a></h2>
+<div class="simulation">
+<p><strong>Simulation in the repository.</strong> The program <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/distributed-systems-from-the-ground-up/code/crawlsim/src/main.rs"><code>code/crawlsim</code></a> simulates this design. To run it, clone the repository and type <code>cargo run --release -p crawlsim</code> in the <code>code</code> directory.</p>
+</div>
+
+<h2 id="terms-introduced-in-this-chapter"><a class="header" href="#terms-introduced-in-this-chapter">Terms introduced in this chapter</a></h2>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th>Term</th><th>Meaning</th></tr>
+</thead>
+<tbody>
+<tr><td>Crawler</td><td>a program that fetches pages and follows their links</td></tr>
+<tr><td>Frontier</td><td>the addresses that are known and have yet to be fetched</td></tr>
+<tr><td>Seed</td><td>an address from which a crawl starts</td></tr>
+<tr><td>Host</td><td>the server named in an address, to which politeness applies</td></tr>
+<tr><td>Politeness</td><td>limiting the rate of requests to each host</td></tr>
+<tr><td><code>robots.txt</code></td><td>a file in which a site states what crawlers are asked to leave alone</td></tr>
+<tr><td>Normalisation</td><td>bringing an address to a standard form</td></tr>
+<tr><td>Seen set</td><td>the set of every address that has been added to the frontier</td></tr>
+<tr><td>Bloom filter</td><td>a compact set that can be wrong only by reporting an absent item as present</td></tr>
+<tr><td>Near duplicate</td><td>a page that differs only slightly from another</td></tr>
+<tr><td>Crawler trap</td><td>a part of a site that produces pages without end</td></tr>
+<tr><td>Revisit</td><td>fetching a page again to learn whether it has changed</td></tr>
+</tbody>
+</table>
+</div>
+<div class="summary">
+<h2 id="summary"><a class="header" href="#summary">Summary</a></h2>
+<ul>
+<li>A crawler repeats 4 steps: take an address, fetch the page, extract its links, and add the new ones to the frontier.</li>
+<li>Each host may be asked only at intervals, so the frontier keeps a queue and a waiting time for every host.</li>
+<li>The speed of a crawl comes from the number of hosts in hand, and no single site can be crawled quickly.</li>
+<li>Addresses are normalised and checked against a seen set, which may be a Bloom filter where a small loss is acceptable.</li>
+<li>Duplicate content is found by checksum, and near duplicates by fingerprints that are similar for similar pages.</li>
+<li>Endless sites cannot be detected, and are contained by limits on pages and depth for every host.</li>
+<li>Each host is assigned to 1 machine, so that politeness is enforced in a single place.</li>
+<li>Pages are revisited at intervals that depend on how often they have been found changed.</li>
+</ul>
+</div>
+
+
+                    </main>
+
+                    <nav class="nav-wrapper" aria-label="Page navigation">
+                        <!-- Mobile navigation buttons -->
+                            <a rel="prev" href="22-search-autocomplete.html" class="mobile-nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                                <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M41.4 233.4c-12.5 12.5-12.5 32.8 0 45.3l160 160c12.5 12.5 32.8 12.5 45.3 0s12.5-32.8 0-45.3L109.3 256 246.6 118.6c12.5-12.5 12.5-32.8 0-45.3s-32.8-12.5-45.3 0l-160 160z"/></svg></span>
+                            </a>
+
+                            <a rel="next prefetch" href="24-metrics-and-monitoring.html" class="mobile-nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                                <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M278.6 233.4c12.5 12.5 12.5 32.8 0 45.3l-160 160c-12.5 12.5-32.8 12.5-45.3 0s-12.5-32.8 0-45.3L210.7 256 73.4 118.6c-12.5-12.5-12.5-32.8 0-45.3s32.8-12.5 45.3 0l160 160z"/></svg></span>
+                            </a>
+
+                        <div style="clear: both"></div>
+                    </nav>
+                </div>
+            </div>
+
+            <nav class="nav-wide-wrapper" aria-label="Page navigation">
+                    <a rel="prev" href="22-search-autocomplete.html" class="nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                        <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M41.4 233.4c-12.5 12.5-12.5 32.8 0 45.3l160 160c12.5 12.5 32.8 12.5 45.3 0s12.5-32.8 0-45.3L109.3 256 246.6 118.6c12.5-12.5 12.5-32.8 0-45.3s-32.8-12.5-45.3 0l-160 160z"/></svg></span>
+                    </a>
+
+                    <a rel="next prefetch" href="24-metrics-and-monitoring.html" class="nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                        <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M278.6 233.4c12.5 12.5 12.5 32.8 0 45.3l-160 160c-12.5 12.5-32.8 12.5-45.3 0s-12.5-32.8 0-45.3L210.7 256 73.4 118.6c-12.5-12.5-12.5-32.8 0-45.3s32.8-12.5 45.3 0l160 160z"/></svg></span>
+                    </a>
+            </nav>
+
+        </div>
+
+        <template id=fa-eye><span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 576 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M288 32c-80.8 0-145.5 36.8-192.6 80.6C48.6 156 17.3 208 2.5 243.7c-3.3 7.9-3.3 16.7 0 24.6C17.3 304 48.6 356 95.4 399.4C142.5 443.2 207.2 480 288 480s145.5-36.8 192.6-80.6c46.8-43.5 78.1-95.4 93-131.1c3.3-7.9 3.3-16.7 0-24.6c-14.9-35.7-46.2-87.7-93-131.1C433.5 68.8 368.8 32 288 32zM432 256c0 79.5-64.5 144-144 144s-144-64.5-144-144s64.5-144 144-144s144 64.5 144 144zM288 192c0 35.3-28.7 64-64 64c-11.5 0-22.3-3-31.6-8.4c-.2 2.8-.4 5.5-.4 8.4c0 53 43 96 96 96s96-43 96-96s-43-96-96-96c-2.8 0-5.6 .1-8.4 .4c5.3 9.3 8.4 20.1 8.4 31.6z"/></svg></span></template>
+        <template id=fa-eye-slash><span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M38.8 5.1C28.4-3.1 13.3-1.2 5.1 9.2S-1.2 34.7 9.2 42.9l592 464c10.4 8.2 25.5 6.3 33.7-4.1s6.3-25.5-4.1-33.7L525.6 386.7c39.6-40.6 66.4-86.1 79.9-118.4c3.3-7.9 3.3-16.7 0-24.6c-14.9-35.7-46.2-87.7-93-131.1C465.5 68.8 400.8 32 320 32c-68.2 0-125 26.3-169.3 60.8L38.8 5.1zM223.1 149.5C248.6 126.2 282.7 112 320 112c79.5 0 144 64.5 144 144c0 24.9-6.3 48.3-17.4 68.7L408 294.5c5.2-11.8 8-24.8 8-38.5c0-53-43-96-96-96c-2.8 0-5.6 .1-8.4 .4c5.3 9.3 8.4 20.1 8.4 31.6c0 10.2-2.4 19.8-6.6 28.3l-90.3-70.8zm223.1 298L373 389.9c-16.4 6.5-34.3 10.1-53 10.1c-79.5 0-144-64.5-144-144c0-6.9 .5-13.6 1.4-20.2L83.1 161.5C60.3 191.2 44 220.8 34.5 243.7c-3.3 7.9-3.3 16.7 0 24.6c14.9 35.7 46.2 87.7 93 131.1C174.5 443.2 239.2 480 320 480c47.8 0 89.9-12.9 126.2-32.5z"/></svg></span></template>
+        <template id=fa-copy><span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M502.6 70.63l-61.25-61.25C435.4 3.371 427.2 0 418.7 0H255.1c-35.35 0-64 28.66-64 64l.0195 256C192 355.4 220.7 384 256 384h192c35.2 0 64-28.8 64-64V93.25C512 84.77 508.6 76.63 502.6 70.63zM464 320c0 8.836-7.164 16-16 16H255.1c-8.838 0-16-7.164-16-16L239.1 64.13c0-8.836 7.164-16 16-16h128L384 96c0 17.67 14.33 32 32 32h47.1V320zM272 448c0 8.836-7.164 16-16 16H63.1c-8.838 0-16-7.164-16-16L47.98 192.1c0-8.836 7.164-16 16-16H160V128H63.99c-35.35 0-64 28.65-64 64l.0098 256C.002 483.3 28.66 512 64 512h192c35.2 0 64-28.8 64-64v-32h-47.1L272 448z"/></svg></span></template>
+        <template id=fa-play><span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 384 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M73 39c-14.8-9.1-33.4-9.4-48.5-.9S0 62.6 0 80V432c0 17.4 9.4 33.4 24.5 41.9s33.7 8.1 48.5-.9L361 297c14.3-8.7 23-24.2 23-41s-8.7-32.2-23-41L73 39z"/></svg></span></template>
+        <template id=fa-clock-rotate-left><span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M75 75L41 41C25.9 25.9 0 36.6 0 57.9V168c0 13.3 10.7 24 24 24H134.1c21.4 0 32.1-25.9 17-41l-30.8-30.8C155 85.5 203 64 256 64c106 0 192 86 192 192s-86 192-192 192c-40.8 0-78.6-12.7-109.7-34.4c-14.5-10.1-34.4-6.6-44.6 7.9s-6.6 34.4 7.9 44.6C151.2 495 201.7 512 256 512c141.4 0 256-114.6 256-256S397.4 0 256 0C185.3 0 121.3 28.7 75 75zm181 53c-13.3 0-24 10.7-24 24V256c0 6.4 2.5 12.5 7 17l72 72c9.4 9.4 24.6 9.4 33.9 0s9.4-24.6 0-33.9l-65-65V152c0-13.3-10.7-24-24-24z"/></svg></span></template>
+
+
+
+        <script>
+            window.playground_copyable = true;
+        </script>
+
+
+        <script src="elasticlunr-ef4e11c1.min.js"></script>
+        <script src="mark-09e88c2c.min.js"></script>
+        <script src="searcher-09f2665d.js"></script>
+
+        <script src="clipboard-1626706a.min.js"></script>
+        <script src="highlight-abc7f01d.js"></script>
+        <script src="book-609e4cb8.js"></script>
+
+        <!-- Custom JS scripts -->
+        <script src="theme/figures-47b15f7f.js"></script>
+        <script src="theme/proto-326509cd.js"></script>
+        <script src="theme/code-67e9caaf.js"></script>
+        <script src="theme/tables-9fb295e8.js"></script>
+        <script src="theme/steps-77f22afb.js"></script>
+
+
+
+    </div>
+    </body>
+</html>

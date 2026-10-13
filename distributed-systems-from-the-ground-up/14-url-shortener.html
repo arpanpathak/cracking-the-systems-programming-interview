@@ -1,0 +1,728 @@
+<!DOCTYPE HTML>
+<html lang="en" class="light sidebar-visible" dir="ltr">
+    <head>
+        <!-- Book generated using mdBook -->
+        <meta charset="UTF-8">
+        <title>URL Shortener - Distributed Systems from the Ground Up</title>
+
+
+        <!-- Custom HTML head -->
+
+        <meta name="description" content="System design and low-level design of resilient, fault-tolerant distributed systems, with code in Rust">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <meta name="theme-color" content="#ffffff">
+
+        <link rel="icon" href="favicon-de23e50b.svg">
+        <link rel="shortcut icon" href="favicon-8114d1fc.png">
+        <link rel="stylesheet" href="css/variables-8adf115d.css">
+        <link rel="stylesheet" href="css/general-e96d0476.css">
+        <link rel="stylesheet" href="css/chrome-d279d366.css">
+        <link rel="stylesheet" href="css/print-9e4910d8.css" media="print">
+
+        <!-- Fonts -->
+        <link rel="stylesheet" href="fonts/fonts-9644e21d.css">
+
+        <!-- Highlight.js Stylesheets -->
+        <link rel="stylesheet" id="mdbook-highlight-css" href="highlight-493f70e1.css">
+        <link rel="stylesheet" id="mdbook-tomorrow-night-css" href="tomorrow-night-4c0ae647.css">
+        <link rel="stylesheet" id="mdbook-ayu-highlight-css" href="ayu-highlight-3fdfc3ac.css">
+
+        <!-- Custom theme stylesheets -->
+        <link rel="stylesheet" href="theme/custom-8a495b63.css">
+
+
+        <!-- Provide site root and default themes to javascript -->
+        <script>
+            const path_to_root = "";
+            const default_light_theme = "light";
+            const default_dark_theme = "navy";
+            window.path_to_searchindex_js = "searchindex-fe51950f.js";
+        </script>
+        <!-- Start loading toc.js asap -->
+        <script src="toc-cc887274.js"></script>
+    </head>
+    <body>
+    <div id="mdbook-help-container">
+        <div id="mdbook-help-popup">
+            <h2 class="mdbook-help-title">Keyboard shortcuts</h2>
+            <div>
+                <p>Press <kbd>←</kbd> or <kbd>→</kbd> to navigate between chapters</p>
+                <p>Press <kbd>S</kbd> or <kbd>/</kbd> to search in the book</p>
+                <p>Press <kbd>?</kbd> to show this help</p>
+                <p>Press <kbd>Esc</kbd> to hide this help</p>
+            </div>
+        </div>
+    </div>
+    <div id="mdbook-body-container">
+        <!-- Work around some values being stored in localStorage wrapped in quotes -->
+        <script>
+            try {
+                let theme = localStorage.getItem('mdbook-theme');
+                let sidebar = localStorage.getItem('mdbook-sidebar');
+
+                if (theme.startsWith('"') && theme.endsWith('"')) {
+                    localStorage.setItem('mdbook-theme', theme.slice(1, theme.length - 1));
+                }
+
+                if (sidebar.startsWith('"') && sidebar.endsWith('"')) {
+                    localStorage.setItem('mdbook-sidebar', sidebar.slice(1, sidebar.length - 1));
+                }
+            } catch (e) { }
+        </script>
+
+        <!-- Set the theme before any content is loaded, prevents flash -->
+        <script>
+            const default_theme = window.matchMedia("(prefers-color-scheme: dark)").matches ? default_dark_theme : default_light_theme;
+            let theme;
+            try { theme = localStorage.getItem('mdbook-theme'); } catch(e) { }
+            if (theme === null || theme === undefined) { theme = default_theme; }
+            const html = document.documentElement;
+            html.classList.remove('light')
+            html.classList.add(theme);
+            html.classList.add("js");
+        </script>
+
+        <input type="checkbox" id="mdbook-sidebar-toggle-anchor" class="hidden">
+
+        <!-- Hide / unhide sidebar before it is displayed -->
+        <script>
+            let sidebar = null;
+            const sidebar_toggle = document.getElementById("mdbook-sidebar-toggle-anchor");
+            if (document.body.clientWidth >= 1080) {
+                try { sidebar = localStorage.getItem('mdbook-sidebar'); } catch(e) { }
+                sidebar = sidebar || 'visible';
+            } else {
+                sidebar = 'hidden';
+                sidebar_toggle.checked = false;
+            }
+            if (sidebar === 'visible') {
+                sidebar_toggle.checked = true;
+            } else {
+                html.classList.remove('sidebar-visible');
+            }
+        </script>
+
+        <nav id="mdbook-sidebar" class="sidebar" aria-label="Table of contents">
+            <!-- populated by js -->
+            <mdbook-sidebar-scrollbox class="sidebar-scrollbox"></mdbook-sidebar-scrollbox>
+            <noscript>
+                <iframe class="sidebar-iframe-outer" src="toc.html"></iframe>
+            </noscript>
+            <div id="mdbook-sidebar-resize-handle" class="sidebar-resize-handle">
+                <div class="sidebar-resize-indicator"></div>
+            </div>
+        </nav>
+
+        <div id="mdbook-page-wrapper" class="page-wrapper">
+
+            <div class="page">
+                <div id="mdbook-menu-bar-hover-placeholder"></div>
+                <div id="mdbook-menu-bar" class="menu-bar sticky">
+                    <div class="left-buttons">
+                        <label id="mdbook-sidebar-toggle" class="icon-button" for="mdbook-sidebar-toggle-anchor" title="Toggle Table of Contents" aria-label="Toggle Table of Contents" aria-controls="mdbook-sidebar">
+                            <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M0 96C0 78.3 14.3 64 32 64H416c17.7 0 32 14.3 32 32s-14.3 32-32 32H32C14.3 128 0 113.7 0 96zM0 256c0-17.7 14.3-32 32-32H416c17.7 0 32 14.3 32 32s-14.3 32-32 32H32c-17.7 0-32-14.3-32-32zM448 416c0 17.7-14.3 32-32 32H32c-17.7 0-32-14.3-32-32s14.3-32 32-32H416c17.7 0 32 14.3 32 32z"/></svg></span>
+                        </label>
+                        <button id="mdbook-theme-toggle" class="icon-button" type="button" title="Change theme" aria-label="Change theme" aria-haspopup="true" aria-expanded="false" aria-controls="mdbook-theme-list">
+                            <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 576 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M371.3 367.1c27.3-3.9 51.9-19.4 67.2-42.9L600.2 74.1c12.6-19.5 9.4-45.3-7.6-61.2S549.7-4.4 531.1 9.6L294.4 187.2c-24 18-38.2 46.1-38.4 76.1L371.3 367.1zm-19.6 25.4l-116-104.4C175.9 290.3 128 339.6 128 400c0 3.9 .2 7.8 .6 11.6c1.8 17.5-10.2 36.4-27.8 36.4H96c-17.7 0-32 14.3-32 32s14.3 32 32 32H240c61.9 0 112-50.1 112-112c0-2.5-.1-5-.2-7.5z"/></svg></span>
+                        </button>
+                        <ul id="mdbook-theme-list" class="theme-popup" aria-label="Themes" role="menu">
+                            <li role="none"><button role="menuitem" class="theme" id="mdbook-theme-default_theme">Auto</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="mdbook-theme-light">Light</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="mdbook-theme-rust">Rust</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="mdbook-theme-coal">Coal</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="mdbook-theme-navy">Navy</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="mdbook-theme-ayu">Ayu</button></li>
+                        </ul>
+                        <button id="mdbook-search-toggle" class="icon-button" type="button" title="Search (`/`)" aria-label="Toggle Searchbar" aria-expanded="false" aria-keyshortcuts="/ s" aria-controls="mdbook-searchbar">
+                            <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M416 208c0 45.9-14.9 88.3-40 122.7L502.6 457.4c12.5 12.5 12.5 32.8 0 45.3s-32.8 12.5-45.3 0L330.7 376c-34.4 25.2-76.8 40-122.7 40C93.1 416 0 322.9 0 208S93.1 0 208 0S416 93.1 416 208zM208 352c79.5 0 144-64.5 144-144s-64.5-144-144-144S64 128.5 64 208s64.5 144 144 144z"/></svg></span>
+                        </button>
+                    </div>
+
+                    <h1 class="menu-title">Distributed Systems from the Ground Up</h1>
+
+                    <div class="right-buttons">
+                        <a href="print.html" title="Print this book" aria-label="Print this book">
+                            <span class=fa-svg id="print-button"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M128 0C92.7 0 64 28.7 64 64v96h64V64H354.7L384 93.3V160h64V93.3c0-17-6.7-33.3-18.7-45.3L400 18.7C388 6.7 371.7 0 354.7 0H128zM384 352v32 64H128V384 368 352H384zm64 32h32c17.7 0 32-14.3 32-32V256c0-35.3-28.7-64-64-64H64c-35.3 0-64 28.7-64 64v96c0 17.7 14.3 32 32 32H64v64c0 35.3 28.7 64 64 64H384c35.3 0 64-28.7 64-64V384zm-16-88c-13.3 0-24-10.7-24-24s10.7-24 24-24s24 10.7 24 24s-10.7 24-24 24z"/></svg></span>
+                        </a>
+                        <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/tree/prep-v2/distributed-systems-from-the-ground-up" title="Git repository" aria-label="Git repository">
+                            <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 496 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M165.9 397.4c0 2-2.3 3.6-5.2 3.6-3.3.3-5.6-1.3-5.6-3.6 0-2 2.3-3.6 5.2-3.6 3-.3 5.6 1.3 5.6 3.6zm-31.1-4.5c-.7 2 1.3 4.3 4.3 4.9 2.6 1 5.6 0 6.2-2s-1.3-4.3-4.3-5.2c-2.6-.7-5.5.3-6.2 2.3zm44.2-1.7c-2.9.7-4.9 2.6-4.6 4.9.3 2 2.9 3.3 5.9 2.6 2.9-.7 4.9-2.6 4.6-4.6-.3-1.9-3-3.2-5.9-2.9zM244.8 8C106.1 8 0 113.3 0 252c0 110.9 69.8 205.8 169.5 239.2 12.8 2.3 17.3-5.6 17.3-12.1 0-6.2-.3-40.4-.3-61.4 0 0-70 15-84.7-29.8 0 0-11.4-29.1-27.8-36.6 0 0-22.9-15.7 1.6-15.4 0 0 24.9 2 38.6 25.8 21.9 38.6 58.6 27.5 72.9 20.9 2.3-16 8.8-27.1 16-33.7-55.9-6.2-112.3-14.3-112.3-110.5 0-27.5 7.6-41.3 23.6-58.9-2.6-6.5-11.1-33.3 2.6-67.9 20.9-6.5 69 27 69 27 20-5.6 41.5-8.5 62.8-8.5s42.8 2.9 62.8 8.5c0 0 48.1-33.6 69-27 13.7 34.7 5.2 61.4 2.6 67.9 16 17.7 25.8 31.5 25.8 58.9 0 96.5-58.9 104.2-114.8 110.5 9.2 7.9 17 22.9 17 46.4 0 33.7-.3 75.4-.3 83.6 0 6.5 4.6 14.4 17.3 12.1C428.2 457.8 496 362.9 496 252 496 113.3 383.5 8 244.8 8zM97.2 352.9c-1.3 1-1 3.3.7 5.2 1.6 1.6 3.9 2.3 5.2 1 1.3-1 1-3.3-.7-5.2-1.6-1.6-3.9-2.3-5.2-1zm-10.8-8.1c-.7 1.3.3 2.9 2.3 3.9 1.6 1 3.6.7 4.3-.7.7-1.3-.3-2.9-2.3-3.9-2-.6-3.6-.3-4.3.7zm32.4 35.6c-1.6 1.3-1 4.3 1.3 6.2 2.3 2.3 5.2 2.6 6.5 1 1.3-1.3.7-4.3-1.3-6.2-2.2-2.3-5.2-2.6-6.5-1zm-11.4-14.7c-1.6 1-1.6 3.6 0 5.9 1.6 2.3 4.3 3.3 5.6 2.3 1.6-1.3 1.6-3.9 0-6.2-1.4-2.3-4-3.3-5.6-2z"/></svg></span>
+                        </a>
+                        <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/edit/prep-v2/distributed-systems-from-the-ground-up/src/14-url-shortener.md" title="Suggest an edit" aria-label="Suggest an edit" rel="edit">
+                            <span class=fa-svg id="git-edit-button"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M421.7 220.3l-11.3 11.3-22.6 22.6-205 205c-6.6 6.6-14.8 11.5-23.8 14.1L30.8 511c-8.4 2.5-17.5 .2-23.7-6.1S-1.5 489.7 1 481.2L38.7 353.1c2.6-9 7.5-17.2 14.1-23.8l205-205 22.6-22.6 11.3-11.3 33.9 33.9 62.1 62.1 33.9 33.9zM96 353.9l-9.3 9.3c-.9 .9-1.6 2.1-2 3.4l-25.3 86 86-25.3c1.3-.4 2.5-1.1 3.4-2l9.3-9.3H112c-8.8 0-16-7.2-16-16V353.9zM453.3 19.3l39.4 39.4c25 25 25 65.5 0 90.5l-14.5 14.5-22.6 22.6-11.3 11.3-33.9-33.9-62.1-62.1L314.3 67.7l11.3-11.3 22.6-22.6 14.5-14.5c25-25 65.5-25 90.5 0z"/></svg></span>
+                        </a>
+
+                    </div>
+                </div>
+
+                <div id="mdbook-search-wrapper" class="hidden">
+                    <form id="mdbook-searchbar-outer" class="searchbar-outer">
+                        <div class="search-wrapper">
+                            <input type="search" id="mdbook-searchbar" name="searchbar" placeholder="Search this book ..." aria-controls="mdbook-searchresults-outer" aria-describedby="searchresults-header">
+                            <div class="spinner-wrapper">
+                                <span class=fa-svg id="fa-spin"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M304 48c0-26.5-21.5-48-48-48s-48 21.5-48 48s21.5 48 48 48s48-21.5 48-48zm0 416c0-26.5-21.5-48-48-48s-48 21.5-48 48s21.5 48 48 48s48-21.5 48-48zM48 304c26.5 0 48-21.5 48-48s-21.5-48-48-48s-48 21.5-48 48s21.5 48 48 48zm464-48c0-26.5-21.5-48-48-48s-48 21.5-48 48s21.5 48 48 48s48-21.5 48-48zM142.9 437c18.7-18.7 18.7-49.1 0-67.9s-49.1-18.7-67.9 0s-18.7 49.1 0 67.9s49.1 18.7 67.9 0zm0-294.2c18.7-18.7 18.7-49.1 0-67.9S93.7 56.2 75 75s-18.7 49.1 0 67.9s49.1 18.7 67.9 0zM369.1 437c18.7 18.7 49.1 18.7 67.9 0s18.7-49.1 0-67.9s-49.1-18.7-67.9 0s-18.7 49.1 0 67.9z"/></svg></span>
+                            </div>
+                        </div>
+                    </form>
+                    <div id="mdbook-searchresults-outer" class="searchresults-outer hidden">
+                        <div id="mdbook-searchresults-header" class="searchresults-header"></div>
+                        <ul id="mdbook-searchresults">
+                        </ul>
+                    </div>
+                </div>
+
+                <!-- Apply ARIA attributes after the sidebar and the sidebar toggle button are added to the DOM -->
+                <script>
+                    document.getElementById('mdbook-sidebar-toggle').setAttribute('aria-expanded', sidebar === 'visible');
+                    document.getElementById('mdbook-sidebar').setAttribute('aria-hidden', sidebar !== 'visible');
+                    Array.from(document.querySelectorAll('#mdbook-sidebar a')).forEach(function(link) {
+                        link.setAttribute('tabIndex', sidebar === 'visible' ? 0 : -1);
+                    });
+                </script>
+
+                <div id="mdbook-content" class="content">
+                    <main>
+                        <img class="plate" src="art/ch14.svg?v=f194620c" alt="Dash, a hare, stands beside a sign that reads: 1000000 becomes 4C92.">
+<h1 id="url-shortener-system-design"><a class="header" href="#url-shortener-system-design">URL Shortener: System Design</a></h1>
+<p>A URL shortener accepts a long web address and returns a short one, such as
+<code>sho.rt/4C92</code>, which leads to the same place. Anyone who opens the short address is
+redirected to the long one. The service does 2 things only, creating a link and
+following a link, and its data is a single table with 2 columns. It is nevertheless a
+standard exercise in system design, and deservedly so, because within that small
+compass it raises several questions that recur in much larger systems: how to generate
+identifiers that are short, unique and hard to guess; how to serve a load that
+consists almost entirely of reads; how to count events without slowing down the
+operation being counted; and how to run a public service that people will certainly
+try to misuse.</p>
+<p>The quantities involved shape every decision. Links are created at a modest rate and
+followed at a far higher one, typically a hundred times higher, and a link once
+created is never changed. A system with these characteristics is designed around its
+read path, which must be fast and must stay available, while the write path may be
+slower and may, if necessary, be briefly unavailable without great harm. A link that
+fails to open is a failure visible to everyone who was sent it, and a link that cannot
+be created for a minute inconveniences 1 person.</p>
+<div class="covers">
+<p>This chapter covers</p>
+<ul>
+<li>how long a code has to be</li>
+<li>3 ways of making a code: from a hash, at random, and from a counter</li>
+<li>writing a number in base 62, step by step</li>
+<li>why codes from a counter can be guessed, and how to prevent it</li>
+<li>the 2 kinds of redirect, and what each means for speed and for counting</li>
+<li>a read path built from a cache and a key-value store</li>
+<li>counting clicks without writing on every redirect</li>
+<li>custom names, expiry, and the same address submitted twice</li>
+<li>the misuse of a public redirect service</li>
+</ul>
+</div>
+
+<h2 id="how-long-a-code-must-be"><a class="header" href="#how-long-a-code-must-be">How long a code must be</a></h2>
+<p>The code is the part of the short address that follows the domain, and its length is
+the first thing to be settled, since shortness is the product.</p>
+<p>A code is a string over some alphabet, and the number of distinct codes of a given
+length is the size of the alphabet raised to that length. The customary alphabet
+consists of the 10 digits, the 26 capital letters and the 26 small letters, 62
+characters in all, each of which may appear in a web address without special
+encoding. With 62 characters, codes of length 6 number about 57 billion and codes of
+length 7 about 3.5 trillion.</p>
+<p>The service of this chapter expects 100 million new links per month, or 6 billion in 5
+years. Codes of 6 characters would suffice for that in principle, with about 10 times
+as many codes as links. We choose 7, which provides nearly 600 times as many, for 2
+reasons. The service should not approach exhaustion within its lifetime, since
+lengthening the codes later is disruptive. And, as will appear below, a code space
+that is sparsely occupied is considerably harder to explore by guessing.</p>
+<p>Some alphabets omit characters that are easily confused in print or over the
+telephone, such as the digit 0 and the capital O, or the digit 1 and the small l. This
+reduces the alphabet to 58 or fewer characters and the number of codes accordingly. It
+is worth doing where links are likely to be read aloud or copied by hand.</p>
+<h2 id="making-a-code"><a class="header" href="#making-a-code">Making a code</a></h2>
+<p>A code must be unique, because a code that referred to 2 addresses would send some
+visitors to the wrong one. There are 3 established ways of producing codes, and they
+differ in how uniqueness is obtained and in what the codes reveal.</p>
+<h3 id="from-a-hash-of-the-address"><a class="header" href="#from-a-hash-of-the-address">From a hash of the address</a></h3>
+<p>The first idea is to compute a hash of the long address and take its first 7
+characters. The method has the attraction of needing no state at all: the code is a
+function of the address, and any server can compute it.</p>
+<p>Its defect is that 2 different addresses can produce the same 7 characters. This is
+the collision that chapter 8 calculated for random identifiers, and the same
+arithmetic applies: among n codes drawn from N possibilities, the expected number of
+colliding pairs is about n squared divided by twice N. The simulation for this chapter
+shortened 2 million addresses to 6 characters of a hash, a form that allows about 20
+billion different codes, and 97 of the addresses received a code that another address
+already had.</p>
+<figure>
+<img src="figures/short-collide.svg?v=8bce771b" alt="2 million addresses are each given a code. With codes from a counter, no 2 addresses share a code. With codes made of 6 characters of a hash, 97 addresses share a code with another address.">
+<figcaption><b>Figure 14.1</b> Codes from a counter never coincide, while codes cut from a hash coincide once there are enough of them.</figcaption>
+</figure>
+<p>A collision rate of 97 in 2 million sounds small, and a service cannot send even 1
+visitor in 20000 to the wrong destination. Every newly computed code must therefore be
+checked against the store, and when it is found to be taken by a different address,
+the service must derive another, for instance by appending a counter to the address
+and hashing again. The method thus requires a read before every write and a loop for
+retries, and the collisions become more frequent as the store fills.</p>
+<p>Deriving the code from the address has a further consequence that is sometimes wanted
+and sometimes not. The same address always yields the same code, so that 2 people who
+shorten the same address receive the same link, and neither can have statistics or an
+expiry date of their own.</p>
+<h3 id="at-random"><a class="header" href="#at-random">At random</a></h3>
+<p>The second method draws 7 characters at random and checks whether the resulting code
+is already in use, drawing again if it is. As with the hash, a check before each write
+is unavoidable. With 6 billion links among 3.5 trillion codes, about 1 draw in 600
+finds its code taken, so the retries are rare and remain rare for the life of the
+service.</p>
+<p>Random codes have an important virtue, which is that they disclose nothing. A code
+says nothing about when its link was created or how many others exist, and knowing 1
+valid code is of no help in finding another. The cost is the check, which on a
+replicated store must be an atomic “create if absent” of the kind described in
+chapter 10, since 2 servers might otherwise draw the same code at the same moment and
+both find it free.</p>
+<h3 id="from-a-counter"><a class="header" href="#from-a-counter">From a counter</a></h3>
+<p>The third method abandons chance. Each new link is assigned the next number from a
+counter, and the code is that number written in a compact notation. Since no 2 links
+are given the same number, no 2 receive the same code, and uniqueness requires no
+check and no retry.</p>
+<p>The compact notation is base 62, which uses the 62 characters of the alphabet as
+digits in the way that decimal notation uses 10.</p>
+<figure class="steps" data-prefix="figures/steps-short-encode" data-count="6" data-version="d0e5eca4">
+<img src="figures/steps-short-encode-01.svg?v=d0e5eca4" alt="Writing a number in base 62, step 1 of 6. The link is number 1000000 from the counter. To write it as a code, we divide by 62 again and again. Each remainder is 1 digit of the code, starting from the right.">
+<figcaption><b>Figure 14.2</b> The number 1000000 is written in base 62 by repeated division. Use Next and Back to move through the 6 steps.</figcaption>
+</figure>
+<p>The simulation confirms the round trip for a selection of numbers: 0 is written as
+<code>0</code>, 61 as <code>z</code>, 62 as <code>10</code>, a million as <code>4C92</code>, and the largest number that fits in 7
+characters, 3521614606207, as <code>zzzzzzz</code>, and each code reads back as the number from
+which it came. It also shortens 2 million addresses by counter and finds no collision
+among them, as must be the case.</p>
+<p>The counter itself must be shared by all the servers that create links, and chapter 8
+was devoted to that problem. The method of blocks suits this service well. Each web
+server obtains a block of, say, 1000 consecutive numbers from the counter and assigns
+them from memory, returning for another block when the first is used up. The counter
+is consulted once per 1000 links, and the numbers lost when a server restarts in the
+middle of a block are of no consequence when 3.5 trillion are available.</p>
+<h3 id="what-a-counter-gives-away"><a class="header" href="#what-a-counter-gives-away">What a counter gives away</a></h3>
+<p>Codes that are consecutive numbers have a property that is unacceptable in a public
+service. They can be guessed.</p>
+<figure>
+<img src="figures/short-guess.svg?v=d7f03fb4" alt="4 steps. An author creates a link and receives the code 4C92, which leads to a private document. A stranger tries the neighbouring codes 4C91, 4C93 and 4C94. Each neighbour is somebody&#39;s link, because codes come from a counter. The stranger reads documents meant for others. The cure is to scramble the number before writing it in base 62.">
+<figcaption><b>Figure 14.3</b> The codes next to a known code are valid links belonging to other people.</figcaption>
+</figure>
+<p>Anyone who holds 1 link can obtain others by adding or subtracting 1, and can walk
+through the entire collection in order. Short links are routinely created for
+addresses that carry a secret within them, such as a shared document that anyone with
+the link may read or a page for resetting a password, on the assumption that the
+address cannot be found by a stranger. Sequential codes destroy that assumption. They
+also reveal the volume of the business, since the difference between a code created
+today and one created a week ago is the number of links made in the week.</p>
+<p>The remedy keeps the counter and conceals its order. Before the number is written in
+base 62, it is passed through a fixed scrambling function that maps each number below
+62 to the power 7 to a different number in the same range. Because the mapping sends
+distinct inputs to distinct outputs, the codes remain unique without any check, and
+because it is designed so that neighbouring inputs give unrelated outputs, consecutive
+links receive codes with no visible relation to one another. Such a function is in
+effect a small cipher with a secret key, and anyone without the key cannot recover the
+sequence.</p>
+<p>Even with scrambled or random codes, a stranger can still try codes blindly, and the
+fraction of attempts that succeed equals the fraction of the code space in use. This
+is the second reason for preferring 7 characters to 6. With 6 billion links in 57
+billion codes, 1 guess in 10 would find a link. With 3.5 trillion codes, 1 guess in
+600 does, and a rate limit on requests for codes that do not exist, of the kind
+described in chapter 7, makes systematic exploration impractical.</p>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th></th><th>From a hash</th><th>At random</th><th>From a counter, scrambled</th></tr>
+</thead>
+<tbody>
+<tr><td>Uniqueness</td><td>by check and retry</td><td>by check and retry</td><td>by construction</td></tr>
+<tr><td>A read before each write</td><td>yes</td><td>yes</td><td>no</td></tr>
+<tr><td>Shared state</td><td>none</td><td>none</td><td>a counter, consulted once per block</td></tr>
+<tr><td>The same address twice</td><td>the same code</td><td>different codes</td><td>different codes</td></tr>
+<tr><td>Can codes be guessed</td><td>no</td><td>no</td><td>no, while the key is secret</td></tr>
+</tbody>
+</table>
+</div>
+<p>The design of this chapter uses a counter with blocks and a scrambling step. It avoids
+the read before each write, and it never has to retry.</p>
+<h2 id="following-a-link"><a class="header" href="#following-a-link">Following a link</a></h2>
+<p>When a visitor’s browser requests <code>sho.rt/4C92</code>, the service looks up the code and
+replies with a <em>redirect</em>, a response that carries no page and names another
+address to which the browser should go. HTTP provides 2 principal kinds, and the
+choice between them is a real design decision with consequences for load and for
+measurement.</p>
+<p>A reply with status <code>301 Moved Permanently</code> tells the browser that the short address
+has been replaced by the long one for good. Browsers are entitled to remember this,
+and they do: the next time the same person opens the same short link, the browser goes
+directly to the long address without contacting the shortener at all. A reply with
+status <code>302 Found</code> states that the redirect is temporary, and the browser asks the
+shortener again on each occasion.</p>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th></th><th><code>301 Moved Permanently</code></th><th><code>302 Found</code></th></tr>
+</thead>
+<tbody>
+<tr><td>Repeat visits by the same browser</td><td>go straight to the destination</td><td>return to the shortener each time</td></tr>
+<tr><td>Load on the shortener</td><td>lower</td><td>higher</td></tr>
+<tr><td>Click counts</td><td>count each browser once</td><td>count every visit</td></tr>
+<tr><td>Changing or disabling the link later</td><td>does not reach browsers that remembered it</td><td>takes effect immediately</td></tr>
+</tbody>
+</table>
+</div>
+<p>The last row is the one most often overlooked. A link that has been served with <code>301</code>
+cannot reliably be withdrawn, because browsers that have stored the redirect will
+continue to follow it. A service that must be able to disable links, which, as the
+section on misuse explains, every public shortener must, should prefer <code>302</code>, or
+should send <code>301</code> with a short limit on how long it may be remembered. Our design
+sends <code>301</code> together with a header that limits the browser’s memory of it to a day,
+which removes most repeat requests while ensuring that a disabled link stops working
+within 24 hours.</p>
+<h2 id="the-read-path"><a class="header" href="#the-read-path">The read path</a></h2>
+<p>Redirects outnumber creations by a hundred to 1 and must be answered in a few
+milliseconds, so the read path is built for speed in layers.</p>
+<p>The mapping from code to address is a pure lookup by key, with no queries by any
+other attribute, and it is therefore kept in a key-value store of the kind built in
+chapters 1 to 6, divided among shards by a hash of the code. At 6 billion links of
+about 500 bytes each, the data amounts to 3 TB, which is too much for 1 machine and
+entirely ordinary for a sharded store.</p>
+<p>In front of the store stands a cache, as described in chapter 9. Traffic to short
+links is extremely uneven: a link shared by a popular account may be opened a million
+times in an hour, while most links are opened a few times in their whole existence. A
+cache holding a small fraction of the links therefore answers the great majority of
+requests. Links are also the ideal content for a cache, because a link is never
+modified after creation, so that the problem of stale entries, which occupied much of
+chapter 9, scarcely arises. The 1 change that can occur is the disabling of a link,
+and it is handled by deleting the cache entry at that moment.</p>
+<p>Requests for codes that do not exist deserve attention, since they are what an
+exploring stranger or a mistyped address produces. As chapter 9 explained under the
+name of cache penetration, such requests pass straight through an ordinary cache to
+the store. The service therefore caches the fact that a code is absent, for a short
+time, and limits the rate at which any 1 client may request absent codes.</p>
+<p>The web servers themselves hold no data. Each request can be served by any of them,
+and the load balancer in front distributes requests without regard to who is asking.
+Servers can accordingly be added and removed freely, and the failure of 1 is of no
+consequence to visitors.</p>
+<h2 id="counting-clicks"><a class="header" href="#counting-clicks">Counting clicks</a></h2>
+<p>Authors wish to know how often their links are followed. The obvious implementation,
+incrementing a counter in the database on every redirect, would convert the read path
+into a write path. Every redirect would cost a durable write, a hundred times more
+writes than link creation produces, all contending on the rows of the popular links.</p>
+<p>The redirect and the count are therefore separated. On each redirect the web server
+appends a small record, consisting of the code and the time, to a message queue of the
+kind described in chapter 11, and replies to the visitor without waiting for anything
+further. A separate consumer reads these records and maintains the counts, typically
+adding up the clicks for each link over a minute and applying the sum in a single
+write. The visitor’s redirect is delayed by nothing, the store receives 1 write per
+link per minute in place of 1 per click, and if the counting consumer fails, redirects
+continue undisturbed and the counts are brought up to date when it returns.</p>
+<p>The price is that the counts are eventually consistent. They lag behind reality by up
+to a minute, and since the queue delivers at least once, a consumer that crashes and
+repeats a batch may count some clicks twice unless it records which batches it has
+applied. For a statistic shown on a dashboard this is entirely acceptable. It would
+not be acceptable if clicks were being billed for, in which case each click record
+would need an identifier and the counting would have to be made idempotent in the
+manner of chapter 11.</p>
+<h2 id="further-features"><a class="header" href="#further-features">Further features</a></h2>
+<p>Authors sometimes wish to choose the code themselves, as in <code>sho.rt/spring-sale</code>. A
+<em>custom name</em> is stored in the same table as a generated code and must be reserved
+with an atomic “create if absent”, since 2 authors may ask for the same name at the
+same moment. Custom names and generated codes have to be kept from colliding, which is
+most arranged by making them differ in form: generated codes are exactly 7
+characters, and custom names are required to be longer or to contain a hyphen.</p>
+<p>A link may be given an <em>expiry</em>, after which it ceases to work. The expiry time is
+stored with the link, and the web server compares it with the clock on each redirect,
+so that an expired link is refused from the correct moment even though its row has not
+yet been removed. A periodic job deletes expired rows later, at leisure. Codes of
+expired links should not be given to new links, since old messages and documents
+containing the code would then lead to an unrelated destination.</p>
+<p>When the same long address is submitted twice, the service may return the existing
+link or create a new one. Returning the existing link saves storage and requires an
+additional index from addresses to codes, and it means that the 2 submitters share 1
+link, with shared statistics. Most services create a new link each time, on the
+grounds that links belong to their authors and that storage is the cheaper resource.</p>
+<h2 id="misuse"><a class="header" href="#misuse">Misuse</a></h2>
+<p>A service that will redirect anyone to anywhere is useful to people with bad
+intentions, and a design that ignores this will not survive contact with the public.</p>
+<p>The principal abuse is concealment. A short link hides its destination, and so it is
+used to disguise addresses that the recipient would not knowingly open: pages that
+imitate a bank’s login form, or downloads of harmful software. Mail filters and
+messaging services respond by treating all links of a shortener that carries much of
+this as suspect, at which point the legitimate links of the service stop working in
+practice. A public shortener therefore checks each submitted address against lists of
+known harmful sites when the link is created, checks again periodically, since a
+destination may turn harmful after the link was made, and provides a means of
+reporting links. A link found to be harmful is disabled, and this is the reason the
+service must retain the ability to disable a link promptly, which the earlier
+discussion of <code>301</code> and <code>302</code> turned upon.</p>
+<p>Creation must be rate limited, per account and per network address, to prevent a
+single party from generating links by the million. And the service must refuse to
+shorten its own short links, since chains of redirects are used to defeat the checks
+just described and a link that redirects to itself would loop.</p>
+<h2 id="use-cases"><a class="header" href="#use-cases">Use cases</a></h2>
+<p>Authors create links and read their statistics. Visitors follow links, in far greater
+numbers.</p>
+<figure>
+<img src="figures/shortener-use-cases.svg?v=d0ea3d7d" alt="A use case diagram of the URL shortener. Author: shorten a URL (POST /v1/links), read the click count (GET /v1/links/{code}). Visitor: open a short link (GET /{code}, then 301).">
+<figcaption><b>Figure 14.4</b> The actors and what each of them does.</figcaption>
+</figure>
+<h2 id="functional-requirements"><a class="header" href="#functional-requirements">Functional requirements</a></h2>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th>No.</th><th>Functional requirement</th></tr>
+</thead>
+<tbody>
+<tr><td>0</td><td>An author can create a short link for a URL and receives a code of 7 characters.</td></tr>
+<tr><td>1</td><td>Opening a short link redirects the visitor to the URL.</td></tr>
+<tr><td>2</td><td>A code, once given out, always leads to the same URL.</td></tr>
+<tr><td>3</td><td>An author can read how often a link was opened.</td></tr>
+</tbody>
+</table>
+</div>
+<h2 id="non-functional-requirements"><a class="header" href="#non-functional-requirements">Non-functional requirements</a></h2>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th>No.</th><th>Property</th><th>Non-functional requirement</th></tr>
+</thead>
+<tbody>
+<tr><td>0</td><td>Availability</td><td>99.99% for redirects. A link that does not open is the worst failure.</td></tr>
+<tr><td>1</td><td>Latency</td><td>A redirect takes under 10 ms.</td></tr>
+<tr><td>2</td><td>Consistency</td><td>Strong for creating a link: each code belongs to exactly 1 URL. Eventual for click counts.</td></tr>
+<tr><td>3</td><td>Scale</td><td>100 million new links per month, and 100 redirects for every new link.</td></tr>
+</tbody>
+</table>
+</div>
+<p>The mapping from a code to its address must be strongly consistent in 1 specific
+respect: once a link has been created and its code returned to the author, every
+subsequent lookup must find it, since the author will share the code immediately. The
+key-value store provides this by confirming a write only when a majority holds it.
+Click counts, by contrast, are eventually consistent by design, as the section on
+counting explained.</p>
+<h2 id="core-entities"><a class="header" href="#core-entities">Core entities</a></h2>
+<figure>
+<img src="figures/shortener-entities.svg?v=8a5ba436" alt="The core entities. Link has the fields code 7 characters, url string, owner string, created time. Click has the fields code 7 characters, at time. A Link is written once and read many times. Clicks are counted apart from links, so that reading a link stays cheap.">
+<figcaption><b>Figure 14.5</b> The core entities and their fields.</figcaption>
+</figure>
+<h2 id="capacity-estimate"><a class="header" href="#capacity-estimate">Capacity estimate</a></h2>
+<div class="estimate">
+<img class="builder" src="art/crab-builder.svg" alt="A crab in a hard hat, in tears.">
+<p><strong>Arithmetic ahead.</strong> 5 years of links are 6 billion codes and 3 TB, and redirects average 3900 per second.</p>
+<p><a class="skip" href="#high-level-design">Skip to the high-level design</a></p>
+<details>
+<summary>Show the calculation</summary>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th>Quantity</th><th>Calculation</th><th>Result</th></tr>
+</thead>
+<tbody>
+<tr><td>Links in 5 years</td><td>100000000 × 12 × 5</td><td>6 billion</td></tr>
+<tr><td>Codes of 7 characters</td><td>62 to the power 7</td><td>3.5 trillion</td></tr>
+<tr><td>Storage for links</td><td>6 billion × 500 bytes</td><td>3 TB</td></tr>
+<tr><td>New links per second</td><td>100000000 ÷ (30 × 86400)</td><td>39</td></tr>
+<tr><td>Redirects per second</td><td>39 × 100</td><td>3900</td></tr>
+</tbody>
+</table>
+</div>
+</details>
+</div>
+
+<h2 id="the-api"><a class="header" href="#the-api">The API</a></h2>
+<p>Creating a link is an ordinary <code>POST</code> to the collection of links. Following one is a
+<code>GET</code> on the shortest path the service can offer, the code itself.</p>
+<p><strong>Create a link</strong></p>
+<pre><code class="language-http">POST /v1/links HTTP/1.1
+Host: sho.rt
+Content-Type: application/json
+
+{ "url": "https://example.com/a/very/long/address?with=parameters" }
+</code></pre>
+<pre><code class="language-http">HTTP/1.1 201 Created
+Location: /v1/links/4C92
+Content-Type: application/json
+
+{ "code": "4C92", "short_url": "https://sho.rt/4C92" }
+</code></pre>
+<p>Its code is the base 62 form of the link’s id.</p>
+<p><strong>Open a link</strong></p>
+<pre><code class="language-http">GET /4C92 HTTP/1.1
+Host: sho.rt
+</code></pre>
+<pre><code class="language-http">HTTP/1.1 301 Moved Permanently
+Location: https://example.com/a/very/long/address?with=parameters
+Cache-Control: max-age=86400
+</code></pre>
+<p>Browsers follow <code>Location</code> by themselves.</p>
+<h2 id="high-level-design"><a class="header" href="#high-level-design">High-level design</a></h2>
+<figure class="wide">
+<img src="figures/shortener-design.svg?v=2c037aed" alt="A URL shortener. The components are Visitors, Load balancer, Web servers, Cache, Key-value store, Id generator. Step 1: A visitor opens a short link. Step 2: The load balancer picks a web server. Step 3: The server looks for the code in the cache. Step 4: On a miss it reads the store and fills the cache. Step 5: For a new link, it takes the next id and encodes it. Step 6: The visitor is redirected with status 301.">
+<figcaption><b>Figure 14.6</b> The components and the path of a request. The steps are numbered.</figcaption>
+</figure>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th>Component</th><th>Role</th><th>State it holds</th><th>When 1 instance fails</th></tr>
+</thead>
+<tbody>
+<tr><td>Web server</td><td>creates links and answers redirects</td><td>none</td><td>the load balancer uses the others</td></tr>
+<tr><td>Cache</td><td>holds the most opened links</td><td>copies, in memory</td><td>its links are read from the store once more</td></tr>
+<tr><td>Key-value store</td><td>maps a code to its URL</td><td>every link, replicated</td><td>a follower takes over, as in chapter 4</td></tr>
+<tr><td>Id generator</td><td>gives each new link a number</td><td>see chapter 8</td><td>another id node is asked</td></tr>
+</tbody>
+</table>
+</div>
+<h3 id="one-request-step-by-step"><a class="header" href="#one-request-step-by-step">One request, step by step</a></h3>
+<p>The steps follow the arrows of figure 14.6.</p>
+<ol>
+<li>A visitor’s browser sends <code>GET /4C92</code>.</li>
+<li>The load balancer passes the request to a web server.</li>
+<li>The web server asks the cache for <code>4C92</code>. Popular links are found here.</li>
+<li>On a miss, it reads <code>4C92</code> from the key-value store and puts the answer in the cache.</li>
+<li>When an author creates a link, the web server takes the next number from the id generator and writes it in base 62.</li>
+<li>The visitor receives <code>301</code> with the long address in <code>Location</code>, and the browser goes there.</li>
+</ol>
+<h2 id="mistakes-to-avoid"><a class="header" href="#mistakes-to-avoid">Mistakes to avoid</a></h2>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th>Mistake</th><th>What goes wrong</th><th>What to do</th></tr>
+</thead>
+<tbody>
+<tr><td>Codes cut from a hash, without a check</td><td>2 addresses receive the same code, and some visitors reach the wrong page.</td><td>Check every code against the store, or use a counter.</td></tr>
+<tr><td>Checking for a free code and then writing it</td><td>2 servers find the same code free and both take it.</td><td>Use an atomic create-if-absent.</td></tr>
+<tr><td>Codes that are consecutive numbers</td><td>Anyone can walk through all links by counting.</td><td>Scramble the number before encoding it, or use random codes.</td></tr>
+<tr><td>Codes only just long enough</td><td>Blind guesses find real links often, and the codes run out.</td><td>Choose a length that leaves the code space sparsely used.</td></tr>
+<tr><td><code>301</code> with unlimited caching</td><td>A link that has been disabled keeps working in browsers that remembered it.</td><td>Use <code>302</code>, or limit how long <code>301</code> may be remembered.</td></tr>
+<tr><td>Incrementing a counter on every redirect</td><td>Every read becomes a write, and popular links contend.</td><td>Record clicks in a queue and count them in batches.</td></tr>
+<tr><td>Not caching absent codes</td><td>Requests for nonexistent codes all reach the store.</td><td>Cache absence briefly, and rate limit such requests.</td></tr>
+<tr><td>Giving the code of an expired link to a new link</td><td>Old references lead to an unrelated destination.</td><td>Do not reuse codes.</td></tr>
+<tr><td>Accepting any address</td><td>The service carries links to harmful pages and is blocked by mail filters.</td><td>Check addresses against lists of harmful sites, and be able to disable a link.</td></tr>
+<tr><td>Shortening the service’s own links</td><td>Redirects chain or loop.</td><td>Refuse addresses on the service’s own domain.</td></tr>
+</tbody>
+</table>
+</div>
+<h2 id="failures"><a class="header" href="#failures">Failures</a></h2>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th>Failure</th><th>What users see</th><th>How the system recovers</th></tr>
+</thead>
+<tbody>
+<tr><td>The cache is lost</td><td>redirects are slower for a few minutes</td><td>links are read from the store and cached again</td></tr>
+<tr><td>The id generator is unreachable</td><td>new links cannot be created; redirects work</td><td>another id node is used</td></tr>
+<tr><td>A store leader fails</td><td>about 1 second without new links for its shard</td><td>a follower is elected</td></tr>
+</tbody>
+</table>
+</div>
+<h2 id="trade-offs"><a class="header" href="#trade-offs">Trade-offs</a></h2>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th>Decision</th><th>What it gains</th><th>What it costs</th></tr>
+</thead>
+<tbody>
+<tr><td>Codes from a counter</td><td>no collisions and no retry</td><td>codes can be guessed in order</td></tr>
+<tr><td>Cache in front of the store</td><td>most redirects avoid the store</td><td>more memory</td></tr>
+<tr><td><code>301</code> with a time limit</td><td>fewer requests reach us</td><td>click counts are approximate</td></tr>
+</tbody>
+</table>
+</div>
+<h2 id="the-simulation"><a class="header" href="#the-simulation">The simulation</a></h2>
+<div class="simulation">
+<p><strong>Simulation in the repository.</strong> The program <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/distributed-systems-from-the-ground-up/code/shortener/src/main.rs"><code>code/shortener</code></a> simulates this design. To run it, clone the repository and type <code>cargo run --release -p shortener</code> in the <code>code</code> directory.</p>
+</div>
+
+<h2 id="terms-introduced-in-this-chapter"><a class="header" href="#terms-introduced-in-this-chapter">Terms introduced in this chapter</a></h2>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th>Term</th><th>Meaning</th></tr>
+</thead>
+<tbody>
+<tr><td>Short link</td><td>a short address that redirects to a longer one</td></tr>
+<tr><td>Code</td><td>the part of a short link that identifies it</td></tr>
+<tr><td>Base 62</td><td>a way of writing numbers with 62 digits: 0 to 9, A to Z and a to z</td></tr>
+<tr><td>Collision</td><td>2 addresses receiving the same code</td></tr>
+<tr><td>Redirect</td><td>a response that tells the browser to go to another address</td></tr>
+<tr><td><code>301 Moved Permanently</code></td><td>a redirect that the browser may remember</td></tr>
+<tr><td><code>302 Found</code></td><td>a redirect that the browser asks for again each time</td></tr>
+<tr><td>Custom name</td><td>a code chosen by the author</td></tr>
+<tr><td>Expiry</td><td>the time after which a link no longer works</td></tr>
+<tr><td>Enumeration</td><td>finding valid codes by trying them in order</td></tr>
+</tbody>
+</table>
+</div>
+<div class="summary">
+<h2 id="summary"><a class="header" href="#summary">Summary</a></h2>
+<ul>
+<li>Codes of 7 characters over 62 symbols give 3.5 trillion possibilities, far more than the links expected, which keeps guessing unrewarding.</li>
+<li>Codes cut from a hash or drawn at random must be checked against the store before use, while codes from a counter are unique by construction.</li>
+<li>A counter’s numbers are written in base 62 after a scrambling step, since consecutive codes could be guessed.</li>
+<li><code>301</code> lets browsers skip the shortener on repeat visits, and <code>302</code> keeps every visit visible and every link revocable.</li>
+<li>Redirects are served from a cache in front of a sharded key-value store, by web servers that hold no data.</li>
+<li>Clicks are written to a queue and counted in batches, so that a redirect never waits for a write.</li>
+<li>A public shortener checks destinations, limits creation, and can disable a link quickly.</li>
+</ul>
+</div>
+
+
+                    </main>
+
+                    <nav class="nav-wrapper" aria-label="Page navigation">
+                        <!-- Mobile navigation buttons -->
+                            <a rel="prev" href="13-notification-service.html" class="mobile-nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                                <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M41.4 233.4c-12.5 12.5-12.5 32.8 0 45.3l160 160c12.5 12.5 32.8 12.5 45.3 0s12.5-32.8 0-45.3L109.3 256 246.6 118.6c12.5-12.5 12.5-32.8 0-45.3s-32.8-12.5-45.3 0l-160 160z"/></svg></span>
+                            </a>
+
+                            <a rel="next prefetch" href="15-news-feed.html" class="mobile-nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                                <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M278.6 233.4c12.5 12.5 12.5 32.8 0 45.3l-160 160c-12.5 12.5-32.8 12.5-45.3 0s-12.5-32.8 0-45.3L210.7 256 73.4 118.6c-12.5-12.5-12.5-32.8 0-45.3s32.8-12.5 45.3 0l160 160z"/></svg></span>
+                            </a>
+
+                        <div style="clear: both"></div>
+                    </nav>
+                </div>
+            </div>
+
+            <nav class="nav-wide-wrapper" aria-label="Page navigation">
+                    <a rel="prev" href="13-notification-service.html" class="nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                        <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M41.4 233.4c-12.5 12.5-12.5 32.8 0 45.3l160 160c12.5 12.5 32.8 12.5 45.3 0s12.5-32.8 0-45.3L109.3 256 246.6 118.6c12.5-12.5 12.5-32.8 0-45.3s-32.8-12.5-45.3 0l-160 160z"/></svg></span>
+                    </a>
+
+                    <a rel="next prefetch" href="15-news-feed.html" class="nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                        <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M278.6 233.4c12.5 12.5 12.5 32.8 0 45.3l-160 160c-12.5 12.5-32.8 12.5-45.3 0s-12.5-32.8 0-45.3L210.7 256 73.4 118.6c-12.5-12.5-12.5-32.8 0-45.3s32.8-12.5 45.3 0l160 160z"/></svg></span>
+                    </a>
+            </nav>
+
+        </div>
+
+        <template id=fa-eye><span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 576 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M288 32c-80.8 0-145.5 36.8-192.6 80.6C48.6 156 17.3 208 2.5 243.7c-3.3 7.9-3.3 16.7 0 24.6C17.3 304 48.6 356 95.4 399.4C142.5 443.2 207.2 480 288 480s145.5-36.8 192.6-80.6c46.8-43.5 78.1-95.4 93-131.1c3.3-7.9 3.3-16.7 0-24.6c-14.9-35.7-46.2-87.7-93-131.1C433.5 68.8 368.8 32 288 32zM432 256c0 79.5-64.5 144-144 144s-144-64.5-144-144s64.5-144 144-144s144 64.5 144 144zM288 192c0 35.3-28.7 64-64 64c-11.5 0-22.3-3-31.6-8.4c-.2 2.8-.4 5.5-.4 8.4c0 53 43 96 96 96s96-43 96-96s-43-96-96-96c-2.8 0-5.6 .1-8.4 .4c5.3 9.3 8.4 20.1 8.4 31.6z"/></svg></span></template>
+        <template id=fa-eye-slash><span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M38.8 5.1C28.4-3.1 13.3-1.2 5.1 9.2S-1.2 34.7 9.2 42.9l592 464c10.4 8.2 25.5 6.3 33.7-4.1s6.3-25.5-4.1-33.7L525.6 386.7c39.6-40.6 66.4-86.1 79.9-118.4c3.3-7.9 3.3-16.7 0-24.6c-14.9-35.7-46.2-87.7-93-131.1C465.5 68.8 400.8 32 320 32c-68.2 0-125 26.3-169.3 60.8L38.8 5.1zM223.1 149.5C248.6 126.2 282.7 112 320 112c79.5 0 144 64.5 144 144c0 24.9-6.3 48.3-17.4 68.7L408 294.5c5.2-11.8 8-24.8 8-38.5c0-53-43-96-96-96c-2.8 0-5.6 .1-8.4 .4c5.3 9.3 8.4 20.1 8.4 31.6c0 10.2-2.4 19.8-6.6 28.3l-90.3-70.8zm223.1 298L373 389.9c-16.4 6.5-34.3 10.1-53 10.1c-79.5 0-144-64.5-144-144c0-6.9 .5-13.6 1.4-20.2L83.1 161.5C60.3 191.2 44 220.8 34.5 243.7c-3.3 7.9-3.3 16.7 0 24.6c14.9 35.7 46.2 87.7 93 131.1C174.5 443.2 239.2 480 320 480c47.8 0 89.9-12.9 126.2-32.5z"/></svg></span></template>
+        <template id=fa-copy><span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M502.6 70.63l-61.25-61.25C435.4 3.371 427.2 0 418.7 0H255.1c-35.35 0-64 28.66-64 64l.0195 256C192 355.4 220.7 384 256 384h192c35.2 0 64-28.8 64-64V93.25C512 84.77 508.6 76.63 502.6 70.63zM464 320c0 8.836-7.164 16-16 16H255.1c-8.838 0-16-7.164-16-16L239.1 64.13c0-8.836 7.164-16 16-16h128L384 96c0 17.67 14.33 32 32 32h47.1V320zM272 448c0 8.836-7.164 16-16 16H63.1c-8.838 0-16-7.164-16-16L47.98 192.1c0-8.836 7.164-16 16-16H160V128H63.99c-35.35 0-64 28.65-64 64l.0098 256C.002 483.3 28.66 512 64 512h192c35.2 0 64-28.8 64-64v-32h-47.1L272 448z"/></svg></span></template>
+        <template id=fa-play><span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 384 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M73 39c-14.8-9.1-33.4-9.4-48.5-.9S0 62.6 0 80V432c0 17.4 9.4 33.4 24.5 41.9s33.7 8.1 48.5-.9L361 297c14.3-8.7 23-24.2 23-41s-8.7-32.2-23-41L73 39z"/></svg></span></template>
+        <template id=fa-clock-rotate-left><span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M75 75L41 41C25.9 25.9 0 36.6 0 57.9V168c0 13.3 10.7 24 24 24H134.1c21.4 0 32.1-25.9 17-41l-30.8-30.8C155 85.5 203 64 256 64c106 0 192 86 192 192s-86 192-192 192c-40.8 0-78.6-12.7-109.7-34.4c-14.5-10.1-34.4-6.6-44.6 7.9s-6.6 34.4 7.9 44.6C151.2 495 201.7 512 256 512c141.4 0 256-114.6 256-256S397.4 0 256 0C185.3 0 121.3 28.7 75 75zm181 53c-13.3 0-24 10.7-24 24V256c0 6.4 2.5 12.5 7 17l72 72c9.4 9.4 24.6 9.4 33.9 0s9.4-24.6 0-33.9l-65-65V152c0-13.3-10.7-24-24-24z"/></svg></span></template>
+
+
+
+        <script>
+            window.playground_copyable = true;
+        </script>
+
+
+        <script src="elasticlunr-ef4e11c1.min.js"></script>
+        <script src="mark-09e88c2c.min.js"></script>
+        <script src="searcher-09f2665d.js"></script>
+
+        <script src="clipboard-1626706a.min.js"></script>
+        <script src="highlight-abc7f01d.js"></script>
+        <script src="book-609e4cb8.js"></script>
+
+        <!-- Custom JS scripts -->
+        <script src="theme/figures-47b15f7f.js"></script>
+        <script src="theme/proto-326509cd.js"></script>
+        <script src="theme/code-67e9caaf.js"></script>
+        <script src="theme/tables-9fb295e8.js"></script>
+        <script src="theme/steps-77f22afb.js"></script>
+
+
+
+    </div>
+    </body>
+</html>

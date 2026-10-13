@@ -1,0 +1,734 @@
+<!DOCTYPE HTML>
+<html lang="en" class="light sidebar-visible" dir="ltr">
+    <head>
+        <!-- Book generated using mdBook -->
+        <meta charset="UTF-8">
+        <title>Collaborative Editing - Distributed Systems from the Ground Up</title>
+
+
+        <!-- Custom HTML head -->
+
+        <meta name="description" content="System design and low-level design of resilient, fault-tolerant distributed systems, with code in Rust">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <meta name="theme-color" content="#ffffff">
+
+        <link rel="icon" href="favicon-de23e50b.svg">
+        <link rel="shortcut icon" href="favicon-8114d1fc.png">
+        <link rel="stylesheet" href="css/variables-8adf115d.css">
+        <link rel="stylesheet" href="css/general-e96d0476.css">
+        <link rel="stylesheet" href="css/chrome-d279d366.css">
+        <link rel="stylesheet" href="css/print-9e4910d8.css" media="print">
+
+        <!-- Fonts -->
+        <link rel="stylesheet" href="fonts/fonts-9644e21d.css">
+
+        <!-- Highlight.js Stylesheets -->
+        <link rel="stylesheet" id="mdbook-highlight-css" href="highlight-493f70e1.css">
+        <link rel="stylesheet" id="mdbook-tomorrow-night-css" href="tomorrow-night-4c0ae647.css">
+        <link rel="stylesheet" id="mdbook-ayu-highlight-css" href="ayu-highlight-3fdfc3ac.css">
+
+        <!-- Custom theme stylesheets -->
+        <link rel="stylesheet" href="theme/custom-8a495b63.css">
+
+
+        <!-- Provide site root and default themes to javascript -->
+        <script>
+            const path_to_root = "";
+            const default_light_theme = "light";
+            const default_dark_theme = "navy";
+            window.path_to_searchindex_js = "searchindex-fe51950f.js";
+        </script>
+        <!-- Start loading toc.js asap -->
+        <script src="toc-cc887274.js"></script>
+    </head>
+    <body>
+    <div id="mdbook-help-container">
+        <div id="mdbook-help-popup">
+            <h2 class="mdbook-help-title">Keyboard shortcuts</h2>
+            <div>
+                <p>Press <kbd>←</kbd> or <kbd>→</kbd> to navigate between chapters</p>
+                <p>Press <kbd>S</kbd> or <kbd>/</kbd> to search in the book</p>
+                <p>Press <kbd>?</kbd> to show this help</p>
+                <p>Press <kbd>Esc</kbd> to hide this help</p>
+            </div>
+        </div>
+    </div>
+    <div id="mdbook-body-container">
+        <!-- Work around some values being stored in localStorage wrapped in quotes -->
+        <script>
+            try {
+                let theme = localStorage.getItem('mdbook-theme');
+                let sidebar = localStorage.getItem('mdbook-sidebar');
+
+                if (theme.startsWith('"') && theme.endsWith('"')) {
+                    localStorage.setItem('mdbook-theme', theme.slice(1, theme.length - 1));
+                }
+
+                if (sidebar.startsWith('"') && sidebar.endsWith('"')) {
+                    localStorage.setItem('mdbook-sidebar', sidebar.slice(1, sidebar.length - 1));
+                }
+            } catch (e) { }
+        </script>
+
+        <!-- Set the theme before any content is loaded, prevents flash -->
+        <script>
+            const default_theme = window.matchMedia("(prefers-color-scheme: dark)").matches ? default_dark_theme : default_light_theme;
+            let theme;
+            try { theme = localStorage.getItem('mdbook-theme'); } catch(e) { }
+            if (theme === null || theme === undefined) { theme = default_theme; }
+            const html = document.documentElement;
+            html.classList.remove('light')
+            html.classList.add(theme);
+            html.classList.add("js");
+        </script>
+
+        <input type="checkbox" id="mdbook-sidebar-toggle-anchor" class="hidden">
+
+        <!-- Hide / unhide sidebar before it is displayed -->
+        <script>
+            let sidebar = null;
+            const sidebar_toggle = document.getElementById("mdbook-sidebar-toggle-anchor");
+            if (document.body.clientWidth >= 1080) {
+                try { sidebar = localStorage.getItem('mdbook-sidebar'); } catch(e) { }
+                sidebar = sidebar || 'visible';
+            } else {
+                sidebar = 'hidden';
+                sidebar_toggle.checked = false;
+            }
+            if (sidebar === 'visible') {
+                sidebar_toggle.checked = true;
+            } else {
+                html.classList.remove('sidebar-visible');
+            }
+        </script>
+
+        <nav id="mdbook-sidebar" class="sidebar" aria-label="Table of contents">
+            <!-- populated by js -->
+            <mdbook-sidebar-scrollbox class="sidebar-scrollbox"></mdbook-sidebar-scrollbox>
+            <noscript>
+                <iframe class="sidebar-iframe-outer" src="toc.html"></iframe>
+            </noscript>
+            <div id="mdbook-sidebar-resize-handle" class="sidebar-resize-handle">
+                <div class="sidebar-resize-indicator"></div>
+            </div>
+        </nav>
+
+        <div id="mdbook-page-wrapper" class="page-wrapper">
+
+            <div class="page">
+                <div id="mdbook-menu-bar-hover-placeholder"></div>
+                <div id="mdbook-menu-bar" class="menu-bar sticky">
+                    <div class="left-buttons">
+                        <label id="mdbook-sidebar-toggle" class="icon-button" for="mdbook-sidebar-toggle-anchor" title="Toggle Table of Contents" aria-label="Toggle Table of Contents" aria-controls="mdbook-sidebar">
+                            <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M0 96C0 78.3 14.3 64 32 64H416c17.7 0 32 14.3 32 32s-14.3 32-32 32H32C14.3 128 0 113.7 0 96zM0 256c0-17.7 14.3-32 32-32H416c17.7 0 32 14.3 32 32s-14.3 32-32 32H32c-17.7 0-32-14.3-32-32zM448 416c0 17.7-14.3 32-32 32H32c-17.7 0-32-14.3-32-32s14.3-32 32-32H416c17.7 0 32 14.3 32 32z"/></svg></span>
+                        </label>
+                        <button id="mdbook-theme-toggle" class="icon-button" type="button" title="Change theme" aria-label="Change theme" aria-haspopup="true" aria-expanded="false" aria-controls="mdbook-theme-list">
+                            <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 576 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M371.3 367.1c27.3-3.9 51.9-19.4 67.2-42.9L600.2 74.1c12.6-19.5 9.4-45.3-7.6-61.2S549.7-4.4 531.1 9.6L294.4 187.2c-24 18-38.2 46.1-38.4 76.1L371.3 367.1zm-19.6 25.4l-116-104.4C175.9 290.3 128 339.6 128 400c0 3.9 .2 7.8 .6 11.6c1.8 17.5-10.2 36.4-27.8 36.4H96c-17.7 0-32 14.3-32 32s14.3 32 32 32H240c61.9 0 112-50.1 112-112c0-2.5-.1-5-.2-7.5z"/></svg></span>
+                        </button>
+                        <ul id="mdbook-theme-list" class="theme-popup" aria-label="Themes" role="menu">
+                            <li role="none"><button role="menuitem" class="theme" id="mdbook-theme-default_theme">Auto</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="mdbook-theme-light">Light</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="mdbook-theme-rust">Rust</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="mdbook-theme-coal">Coal</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="mdbook-theme-navy">Navy</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="mdbook-theme-ayu">Ayu</button></li>
+                        </ul>
+                        <button id="mdbook-search-toggle" class="icon-button" type="button" title="Search (`/`)" aria-label="Toggle Searchbar" aria-expanded="false" aria-keyshortcuts="/ s" aria-controls="mdbook-searchbar">
+                            <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M416 208c0 45.9-14.9 88.3-40 122.7L502.6 457.4c12.5 12.5 12.5 32.8 0 45.3s-32.8 12.5-45.3 0L330.7 376c-34.4 25.2-76.8 40-122.7 40C93.1 416 0 322.9 0 208S93.1 0 208 0S416 93.1 416 208zM208 352c79.5 0 144-64.5 144-144s-64.5-144-144-144S64 128.5 64 208s64.5 144 144 144z"/></svg></span>
+                        </button>
+                    </div>
+
+                    <h1 class="menu-title">Distributed Systems from the Ground Up</h1>
+
+                    <div class="right-buttons">
+                        <a href="print.html" title="Print this book" aria-label="Print this book">
+                            <span class=fa-svg id="print-button"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M128 0C92.7 0 64 28.7 64 64v96h64V64H354.7L384 93.3V160h64V93.3c0-17-6.7-33.3-18.7-45.3L400 18.7C388 6.7 371.7 0 354.7 0H128zM384 352v32 64H128V384 368 352H384zm64 32h32c17.7 0 32-14.3 32-32V256c0-35.3-28.7-64-64-64H64c-35.3 0-64 28.7-64 64v96c0 17.7 14.3 32 32 32H64v64c0 35.3 28.7 64 64 64H384c35.3 0 64-28.7 64-64V384zm-16-88c-13.3 0-24-10.7-24-24s10.7-24 24-24s24 10.7 24 24s-10.7 24-24 24z"/></svg></span>
+                        </a>
+                        <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/tree/prep-v2/distributed-systems-from-the-ground-up" title="Git repository" aria-label="Git repository">
+                            <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 496 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M165.9 397.4c0 2-2.3 3.6-5.2 3.6-3.3.3-5.6-1.3-5.6-3.6 0-2 2.3-3.6 5.2-3.6 3-.3 5.6 1.3 5.6 3.6zm-31.1-4.5c-.7 2 1.3 4.3 4.3 4.9 2.6 1 5.6 0 6.2-2s-1.3-4.3-4.3-5.2c-2.6-.7-5.5.3-6.2 2.3zm44.2-1.7c-2.9.7-4.9 2.6-4.6 4.9.3 2 2.9 3.3 5.9 2.6 2.9-.7 4.9-2.6 4.6-4.6-.3-1.9-3-3.2-5.9-2.9zM244.8 8C106.1 8 0 113.3 0 252c0 110.9 69.8 205.8 169.5 239.2 12.8 2.3 17.3-5.6 17.3-12.1 0-6.2-.3-40.4-.3-61.4 0 0-70 15-84.7-29.8 0 0-11.4-29.1-27.8-36.6 0 0-22.9-15.7 1.6-15.4 0 0 24.9 2 38.6 25.8 21.9 38.6 58.6 27.5 72.9 20.9 2.3-16 8.8-27.1 16-33.7-55.9-6.2-112.3-14.3-112.3-110.5 0-27.5 7.6-41.3 23.6-58.9-2.6-6.5-11.1-33.3 2.6-67.9 20.9-6.5 69 27 69 27 20-5.6 41.5-8.5 62.8-8.5s42.8 2.9 62.8 8.5c0 0 48.1-33.6 69-27 13.7 34.7 5.2 61.4 2.6 67.9 16 17.7 25.8 31.5 25.8 58.9 0 96.5-58.9 104.2-114.8 110.5 9.2 7.9 17 22.9 17 46.4 0 33.7-.3 75.4-.3 83.6 0 6.5 4.6 14.4 17.3 12.1C428.2 457.8 496 362.9 496 252 496 113.3 383.5 8 244.8 8zM97.2 352.9c-1.3 1-1 3.3.7 5.2 1.6 1.6 3.9 2.3 5.2 1 1.3-1 1-3.3-.7-5.2-1.6-1.6-3.9-2.3-5.2-1zm-10.8-8.1c-.7 1.3.3 2.9 2.3 3.9 1.6 1 3.6.7 4.3-.7.7-1.3-.3-2.9-2.3-3.9-2-.6-3.6-.3-4.3.7zm32.4 35.6c-1.6 1.3-1 4.3 1.3 6.2 2.3 2.3 5.2 2.6 6.5 1 1.3-1.3.7-4.3-1.3-6.2-2.2-2.3-5.2-2.6-6.5-1zm-11.4-14.7c-1.6 1-1.6 3.6 0 5.9 1.6 2.3 4.3 3.3 5.6 2.3 1.6-1.3 1.6-3.9 0-6.2-1.4-2.3-4-3.3-5.6-2z"/></svg></span>
+                        </a>
+                        <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/edit/prep-v2/distributed-systems-from-the-ground-up/src/26-collaborative-editing.md" title="Suggest an edit" aria-label="Suggest an edit" rel="edit">
+                            <span class=fa-svg id="git-edit-button"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M421.7 220.3l-11.3 11.3-22.6 22.6-205 205c-6.6 6.6-14.8 11.5-23.8 14.1L30.8 511c-8.4 2.5-17.5 .2-23.7-6.1S-1.5 489.7 1 481.2L38.7 353.1c2.6-9 7.5-17.2 14.1-23.8l205-205 22.6-22.6 11.3-11.3 33.9 33.9 62.1 62.1 33.9 33.9zM96 353.9l-9.3 9.3c-.9 .9-1.6 2.1-2 3.4l-25.3 86 86-25.3c1.3-.4 2.5-1.1 3.4-2l9.3-9.3H112c-8.8 0-16-7.2-16-16V353.9zM453.3 19.3l39.4 39.4c25 25 25 65.5 0 90.5l-14.5 14.5-22.6 22.6-11.3 11.3-33.9-33.9-62.1-62.1L314.3 67.7l11.3-11.3 22.6-22.6 14.5-14.5c25-25 65.5-25 90.5 0z"/></svg></span>
+                        </a>
+
+                    </div>
+                </div>
+
+                <div id="mdbook-search-wrapper" class="hidden">
+                    <form id="mdbook-searchbar-outer" class="searchbar-outer">
+                        <div class="search-wrapper">
+                            <input type="search" id="mdbook-searchbar" name="searchbar" placeholder="Search this book ..." aria-controls="mdbook-searchresults-outer" aria-describedby="searchresults-header">
+                            <div class="spinner-wrapper">
+                                <span class=fa-svg id="fa-spin"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M304 48c0-26.5-21.5-48-48-48s-48 21.5-48 48s21.5 48 48 48s48-21.5 48-48zm0 416c0-26.5-21.5-48-48-48s-48 21.5-48 48s21.5 48 48 48s48-21.5 48-48zM48 304c26.5 0 48-21.5 48-48s-21.5-48-48-48s-48 21.5-48 48s21.5 48 48 48zm464-48c0-26.5-21.5-48-48-48s-48 21.5-48 48s21.5 48 48 48s48-21.5 48-48zM142.9 437c18.7-18.7 18.7-49.1 0-67.9s-49.1-18.7-67.9 0s-18.7 49.1 0 67.9s49.1 18.7 67.9 0zm0-294.2c18.7-18.7 18.7-49.1 0-67.9S93.7 56.2 75 75s-18.7 49.1 0 67.9s49.1 18.7 67.9 0zM369.1 437c18.7 18.7 49.1 18.7 67.9 0s18.7-49.1 0-67.9s-49.1-18.7-67.9 0s-18.7 49.1 0 67.9z"/></svg></span>
+                            </div>
+                        </div>
+                    </form>
+                    <div id="mdbook-searchresults-outer" class="searchresults-outer hidden">
+                        <div id="mdbook-searchresults-header" class="searchresults-header"></div>
+                        <ul id="mdbook-searchresults">
+                        </ul>
+                    </div>
+                </div>
+
+                <!-- Apply ARIA attributes after the sidebar and the sidebar toggle button are added to the DOM -->
+                <script>
+                    document.getElementById('mdbook-sidebar-toggle').setAttribute('aria-expanded', sidebar === 'visible');
+                    document.getElementById('mdbook-sidebar').setAttribute('aria-hidden', sidebar !== 'visible');
+                    Array.from(document.querySelectorAll('#mdbook-sidebar a')).forEach(function(link) {
+                        link.setAttribute('tabIndex', sidebar === 'visible' ? 0 : -1);
+                    });
+                </script>
+
+                <div id="mdbook-content" class="content">
+                    <main>
+                        <img class="plate" src="art/ch26.svg?v=8495e880" alt="2 penguins stand beside a sign that reads: cat, chat, cats, chats.">
+<h1 id="collaborative-editing-system-design"><a class="header" href="#collaborative-editing-system-design">Collaborative Editing: System Design</a></h1>
+<p>In a collaborative editor, several people work on the same document at once. Each
+sees the others’ changes appear as they are made, character by character, with a
+coloured cursor marking where each person is typing, and nobody has to save, send or
+merge anything. The experience is that of several pens writing on a single sheet of
+paper.</p>
+<p>The previous chapter dealt with 2 devices that had changed the same file, and
+resolved the matter by keeping both versions and asking the user to choose. In an
+editor that answer is not available. Conflicting changes are here the ordinary
+condition, by no means an occasional accident: whenever 2 people type within the same
+fraction of a second, each has changed the document without knowledge of the other’s
+change, and this happens many times a minute. The editor cannot present a conflict
+for a human to settle on every keystroke. It has to combine concurrent changes
+automatically, in a way that keeps every participant’s intention, and it has to do
+so in such a manner that everybody ends with exactly the same document.</p>
+<p>That last requirement, known as <em>convergence</em>, is the difficult one. Each person’s
+own keystrokes must appear on their own screen at once, since nobody will tolerate
+typing into an editor that waits for a server before showing a letter. Every
+participant therefore applies their own changes first and the others’ afterwards,
+which means that different participants apply the same changes in different orders,
+and the result must nevertheless be identical for all of them. This chapter explains
+why the obvious representation of a change fails that test, and then the 2 families
+of solution that are in use.</p>
+<div class="covers">
+<p>This chapter covers</p>
+<ul>
+<li>why each person’s changes must take effect at once on their own screen</li>
+<li>changes described by position, and how 2 of them go wrong</li>
+<li>operational transformation, which adjusts a change for what its author had not seen</li>
+<li>the role of a central server in ordering changes</li>
+<li>conflict-free replicated data types, which give every character a name</li>
+<li>deleting, and why deleted characters cannot disappear</li>
+<li>cursors, presence and working offline</li>
+<li>storing a document as a log of operations with snapshots</li>
+</ul>
+</div>
+
+<h2 id="changes-that-take-effect-at-once"><a class="header" href="#changes-that-take-effect-at-once">Changes that take effect at once</a></h2>
+<p>The simplest way of building a shared editor would be to treat the document as a
+value in a strongly consistent store. A keystroke would be sent to the server, the
+server would apply it, and the new document would be returned to everybody. All
+participants would see the same thing, because there would be only 1 copy.</p>
+<p>It would also be unusable. Every character would appear on the typist’s own screen
+only after a round trip to the server, some 50 to 200 ms later, and on a poor
+connection later still. People notice a delay of that size in their own typing
+within a few characters, and find it intolerable.</p>
+<p>An editor therefore applies each change to the local copy of the document
+immediately, and sends it to the others afterwards. This is the same decision that
+chapter 18 took when it displayed a sent message before the server had confirmed it,
+and it has a far-reaching consequence. Each participant now holds a copy of the
+document that is momentarily ahead of everyone else’s in respect of their own
+changes, and behind in respect of the others’. The copies are replicas in the full
+sense, every one of them accepts writes, and the system is one of replication with
+many writers and no possibility of coordination before a write.</p>
+<h2 id="2-changes-by-position"><a class="header" href="#2-changes-by-position">2 changes by position</a></h2>
+<p>A change to a text is most naturally described as an <em>operation</em> on a position:
+insert this character at position 5, or delete the character at position 9. This is
+how a single-user editor works internally, and it is entirely adequate so long as
+every operation is applied to the same text that its author was looking at.</p>
+<p>With 2 people editing concurrently, that condition fails, and the consequences can
+be followed in a small example.</p>
+<figure class="steps" data-prefix="figures/steps-edit-positions" data-count="5" data-version="92325ab8">
+<img src="figures/steps-edit-positions-01.svg?v=92325ab8" alt="2 changes by position, step 1 of 5. Ada and Bob are both looking at the text &#39;cat&#39;. Positions are counted from 0: c is at 0, a at 1, t at 2, and position 3 is the end.">
+<figcaption><b>Figure 26.1</b> Ada and Bob each insert a character into "cat" at the same moment, and applying the changes by position gives different results. Use Next and Back to move through the 5 steps.</figcaption>
+</figure>
+<p>Ada inserted an <code>h</code> at position 1, and Bob an <code>s</code> at position 3, which at the time
+was the end of the word. When Bob’s operation reaches Ada, her text has already
+changed: her own <code>h</code> has moved every later character 1 place to the right, and
+position 3 no longer means what it meant to Bob. The operation is applied faithfully
+and lands in the wrong place. Ada’s operation, arriving at Bob’s copy, is unaffected,
+since nothing before position 1 has moved. The 2 copies now read <code>chast</code> and
+<code>chats</code>.</p>
+<p>The simulation for this chapter runs exactly this case and prints the 2 different
+results. The copies have <em>diverged</em>, and the fault will never correct itself, since
+each later operation is applied to 2 different texts and can only compound the
+difference.</p>
+<p>The root of the trouble is that a position is not a stable way of referring to a
+place in a text. It is meaningful only relative to a particular state of the
+document, and an operation that travels to another replica arrives at a different
+state. The 2 families of solution correspond to the 2 possible remedies. One may
+keep positions and correct them on arrival, or one may abandon positions for
+something that does not go out of date.</p>
+<h2 id="adjusting-a-change-for-what-its-author-had-not-seen"><a class="header" href="#adjusting-a-change-for-what-its-author-had-not-seen">Adjusting a change for what its author had not seen</a></h2>
+<p>The first remedy is called <em>operational transformation</em>, usually abbreviated OT.
+Before an operation that was made concurrently with others is applied, it is
+transformed so as to take account of them.</p>
+<p>In the example, Bob’s insertion at position 3 was made without knowledge of Ada’s
+insertion at position 1. Ada’s character was placed before position 3 and so
+displaced it by 1. The transformed operation is therefore an insertion at position
+4, and applied to Ada’s text it yields <code>chats</code>. Ada’s operation is transformed
+against Bob’s in turn. Bob’s character was placed after position 1 and displaced
+nothing before it, so Ada’s operation is unchanged, and Bob’s text becomes <code>chats</code> as
+well. The last step of the picture above shows the outcome, and the simulation
+confirms it.</p>
+<p>For insertions the rule is short. An insertion is moved 1 place to the right for
+every concurrent insertion that was made at an earlier position. A further rule is
+needed for the case in which 2 people insert at the very same position, where some
+fixed convention, such as giving precedence to the participant with the smaller
+identifier, must decide which character comes first, and must decide it identically
+on every replica.</p>
+<p>Deletions add further cases. An insertion after a concurrently deleted character
+moves 1 place to the left. 2 participants who both delete the same character must
+between them delete it once. An insertion in the middle of a range that somebody
+else is deleting must survive. For each pair of kinds of operation there is a
+transformation, and the difficulty of OT lies in the number of these cases and in
+the requirement that they agree with one another: whichever order a replica happens
+to receive 2 concurrent operations in, transforming and applying them must lead to
+the same text. Published algorithms have been found, years afterwards, to violate
+this requirement in obscure combinations.</p>
+<h3 id="what-a-central-server-contributes"><a class="header" href="#what-a-central-server-contributes">What a central server contributes</a></h3>
+<p>The difficulty is greatly reduced by a decision about architecture. If participants
+exchanged operations directly with one another, each might see the operations in a
+different order, and the transformations would have to be correct for every possible
+order among any number of participants. Nearly all practical systems avoid this by
+routing every operation through a central server.</p>
+<p>The server gives the document a single, agreed history. It maintains a <em>revision</em>
+number, which counts the operations applied so far. A participant sends each
+operation together with the revision of the document on which it was based. The
+server compares that revision with its current one. If others have been applied
+since, the server transforms the incoming operation against each of them in order,
+applies the result, assigns it the next revision number, and sends the transformed
+operation to all the other participants. Each participant, meanwhile, transforms the
+operations it receives from the server against any of its own that the server has
+not yet acknowledged.</p>
+<p>With this arrangement, every transformation involves only 2 sequences: what the
+server has applied, and what 1 client has pending. The server is the single place at
+which order is decided, exactly as the leader of a shard was in chapter 3 and the
+message store was in chapter 18, and the general lesson holds here too, that a
+problem of ordering among many parties becomes tractable when 1 of them is appointed
+to decide the order.</p>
+<p>The price is the usual one. The server must be reachable for collaboration to
+proceed. A participant who is offline can continue to type, and the operations
+accumulate locally, but they are merged only on reconnection, by transformation
+against everything that has happened in the meantime.</p>
+<h2 id="a-name-for-every-character"><a class="header" href="#a-name-for-every-character">A name for every character</a></h2>
+<p>The second remedy removes the cause of the trouble. If positions go out of date,
+characters can be referred to by something that does not.</p>
+<p>In this approach every character is given, at the moment it is typed, a unique
+identifier that it keeps for ever. The identifiers are chosen so that they can be
+ordered, and the text is defined as the characters arranged in the order of their
+identifiers. An insertion no longer says “at position 3”. It says “a new character
+with this identifier”, and the identifier is chosen to fall between those of the 2
+characters where the author placed it.</p>
+<figure class="steps" data-prefix="figures/steps-edit-names" data-count="4" data-version="9b47c6d9">
+<img src="figures/steps-edit-names-01.svg?v=9b47c6d9" alt="A name for every character, step 1 of 4. In the second approach, a character is never referred to by its position. Each has a name of its own, a number that does not change, and the text is the characters in the order of their names.">
+<figcaption><b>Figure 26.2</b> Every character has an identifier that fixes its place, so that insertions can be applied in any order. Use Next and Back to move through the 4 steps.</figcaption>
+</figure>
+<p>An operation of this form has a remarkable property. It refers to nothing that
+another operation can alter, and applying it consists merely in adding 1 element to
+a sorted collection. 2 such operations can be applied in either order with the same
+result, and an operation applied twice has the same effect as once. No
+transformation is required, and no server is needed to decide an order, since order
+is irrelevant.</p>
+<p>A data structure whose operations can be applied in any order, any number of times,
+with every replica arriving at the same state, is called a <em>conflict-free replicated
+data type</em>, or CRDT. In the simulation, the same 2 insertions are applied in both
+orders to a text represented in this way, and both replicas read <code>chats</code>. When both
+participants insert at the same place, the identifiers are distinguished by the
+identity of the device, and both replicas read <code>carnt</code>, with the characters in the
+same order on each.</p>
+<p>The identifiers have to satisfy 2 conditions. They must be unique, which is arranged
+by including the identity of the device in each. And it must always be possible to
+create a new identifier between any 2 existing ones, however close together. Whole
+numbers do not suffice, since nothing lies between 1500 and 1501. Practical schemes
+use sequences of numbers of variable length, compared as the entries of a dictionary
+are, so that between any 2 a longer one can be found, or else define each character’s
+place by reference to the identifier of the character it was typed after.</p>
+<h3 id="the-cost-of-a-name"><a class="header" href="#the-cost-of-a-name">The cost of a name</a></h3>
+<p>The simplicity of the operations is bought with metadata. A plain text of 10000
+characters occupies 10000 bytes. The same text as a CRDT carries an identifier for
+every character, which may be 10 or 20 times the size of the character itself, and
+identifiers of the dictionary kind grow longer wherever a great deal of text has
+been inserted in the same place. Much of the engineering in CRDT libraries is
+devoted to compressing this, for instance by storing a run of characters typed in
+succession by 1 person as a single unit with 1 identifier and a length.</p>
+<p>Automatic merging has a further limit, which applies to both families and which no
+algorithm can remove. Convergence guarantees that all replicas end with the same
+text. It does not guarantee that the text is what anybody meant. If 2 people correct
+the same misspelt word simultaneously, each by deleting it and typing it again, the
+merged document contains the corrected word twice. The result is consistent and
+wrong, and what collaborative editors rely upon in practice is that people can see
+each other’s cursors, and tend not to edit the same word at the same moment.</p>
+<h2 id="deleting"><a class="header" href="#deleting">Deleting</a></h2>
+<p>Deletion presents a difficulty of its own in a CRDT. Suppose that Ada deletes a
+character at the same moment that Bob inserts a new one immediately after it, his
+operation saying in effect “after the character with identifier 2000”. If Ada’s
+replica had removed that character altogether, Bob’s operation would arrive
+referring to something that no longer exists there.</p>
+<p>A deleted character is therefore not removed. It is marked as deleted and hidden
+from view, and its identifier remains in the structure to serve as a point of
+reference. Such a marker is the <em>tombstone</em> of chapter 25. The consequence is that a
+document which has been heavily edited contains far more tombstones than visible
+characters, and they can be discarded only when it is certain that no replica
+anywhere still holds an operation that refers to them, which, with participants who
+may be offline for weeks, is difficult to establish.</p>
+<h2 id="the-2-approaches-compared"><a class="header" href="#the-2-approaches-compared">The 2 approaches compared</a></h2>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th></th><th>Operational transformation</th><th>CRDT</th></tr>
+</thead>
+<tbody>
+<tr><td>How an operation refers to a place</td><td>by position</td><td>by the identifier of a character</td></tr>
+<tr><td>What makes replicas converge</td><td>transforming operations against concurrent ones</td><td>operations that give the same result in any order</td></tr>
+<tr><td>Central server</td><td>required, to fix the order</td><td>not required</td></tr>
+<tr><td>Working offline, or peer to peer</td><td>awkward: everything is transformed on return</td><td>natural: operations are merged whenever they meet</td></tr>
+<tr><td>Size of the document</td><td>close to the plain text</td><td>several times the plain text, with tombstones</td></tr>
+<tr><td>Where the complexity lies</td><td>in the transformation rules</td><td>in the identifiers and their compaction</td></tr>
+</tbody>
+</table>
+</div>
+<p>Services in which a server is always in the path, and in which documents are large
+and long-lived, have mostly used operational transformation. Applications that must
+work offline for long periods, or without any central server, have mostly used
+CRDTs. The design in the remainder of this chapter uses a central server with
+operational transformation.</p>
+<h2 id="around-the-text"><a class="header" href="#around-the-text">Around the text</a></h2>
+<p>A collaborative editor conveys more than the text. Each participant sees where the
+others’ cursors and selections are, and who is present in the document. This
+information is <em>ephemeral</em>: it is forwarded to the other participants as it changes
+and is stored nowhere, since a cursor position that is lost is replaced by the next
+one a moment later. It is the presence of chapter 18, with the same loose
+guarantees.</p>
+<p>Cursors are nonetheless subject to the central problem of this chapter. A cursor is
+a position in the text, and when another participant inserts characters before it,
+it has to move. A cursor is therefore transformed against incoming operations in
+the way that an operation would be, or, in a CRDT, is attached to the
+identifier of a character, which does not move.</p>
+<p>Undo also needs rethinking. In an editor for 1 person, undo reverses the most recent
+change. In a shared document the most recent change may be somebody else’s, and to
+reverse it would be bewildering. Undo is accordingly made to reverse the most recent
+change of the person who invokes it, which requires the inverse of an operation that
+is no longer the latest and has to be transformed against everything that came
+after.</p>
+<h2 id="storing-the-document"><a class="header" href="#storing-the-document">Storing the document</a></h2>
+<p>The server retains every operation, in order, in a log, each with its revision
+number. The document at any revision is the result of applying the operations up to
+that point, so that the log is the authoritative record and the current text is
+derived from it. This is the relation between records and entries from chapter 1,
+and it yields the complete history of the document, by which an author can see what
+it contained at any earlier moment and who changed what.</p>
+<p>To replay the whole log each time a document is opened would grow slower with every
+keystroke ever made. The server therefore saves a <em>snapshot</em> of the text at
+intervals, every few hundred operations, and a document is opened by loading the
+latest snapshot and applying the operations that follow it. The operations before a
+snapshot are kept as long as history is wanted and are not needed for opening.</p>
+<p>Each document is served, at any moment, by a single server process, which holds its
+current text in memory and decides the order of its operations. Documents are
+assigned to servers by hashing their identifiers, and every participant in a
+document is connected, through a gateway of the kind described in chapter 18, to
+that document’s server. The operation is appended to the log before it is
+acknowledged and broadcast, so that if the process fails, another can take over the
+document from the log without losing anything that was confirmed.</p>
+<h2 id="use-cases"><a class="header" href="#use-cases">Use cases</a></h2>
+<p>An author types in a shared document, sees what the others type, and may continue
+while offline.</p>
+<figure>
+<img src="figures/edit-use-cases.svg?v=0353eb6a" alt="A use case diagram of the editing service. Author: change the text (an operation, over an open connection), see what others type (their operations, pushed), continue offline (operations wait, then are sent).">
+<figcaption><b>Figure 26.3</b> The actor and what it does.</figcaption>
+</figure>
+<h2 id="functional-requirements"><a class="header" href="#functional-requirements">Functional requirements</a></h2>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th>No.</th><th>Functional requirement</th></tr>
+</thead>
+<tbody>
+<tr><td>0</td><td>Several authors can edit the same document at the same moment.</td></tr>
+<tr><td>1</td><td>An author’s own change appears on their screen immediately.</td></tr>
+<tr><td>2</td><td>A change by another author appears within 200 ms.</td></tr>
+<tr><td>3</td><td>When all changes have been delivered, every author sees the same document.</td></tr>
+<tr><td>4</td><td>An author sees the cursors of the other authors.</td></tr>
+<tr><td>5</td><td>An author who is offline can continue to edit, and the changes are merged on reconnection.</td></tr>
+<tr><td>6</td><td>The history of a document can be viewed, and an earlier state restored.</td></tr>
+</tbody>
+</table>
+</div>
+<h2 id="non-functional-requirements"><a class="header" href="#non-functional-requirements">Non-functional requirements</a></h2>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th>No.</th><th>Property</th><th>Non-functional requirement</th></tr>
+</thead>
+<tbody>
+<tr><td>0</td><td>Convergence</td><td>All replicas reach the same state once every operation has been delivered, in whatever order they were applied locally.</td></tr>
+<tr><td>1</td><td>Durability</td><td>An operation that the server has acknowledged is not lost.</td></tr>
+<tr><td>2</td><td>Consistency</td><td>Eventual between authors. Strong for the order of operations in the server’s log.</td></tr>
+<tr><td>3</td><td>Latency</td><td>A local change takes effect in under 16 ms, and a remote one within 200 ms.</td></tr>
+<tr><td>4</td><td>Scale</td><td>10 million documents open at once, with up to 100 authors in a document.</td></tr>
+</tbody>
+</table>
+</div>
+<p>Non-functional requirement 2 has the form that has now appeared in several chapters.
+The replicas that people look at are eventually consistent, each running ahead with
+its own changes. At the centre is a log whose order is strongly consistent and never
+in dispute, and the eventual consistency of the edges is made safe by the certainty
+of the centre. Convergence, non-functional requirement 0, is the precise statement
+of what “eventual” promises here.</p>
+<h2 id="core-entities"><a class="header" href="#core-entities">Core entities</a></h2>
+<figure>
+<img src="figures/edit-entities.svg?v=98f0a9d2" alt="The core entities. Document has the fields id u64, revision u64, text at that revision. Operation has the fields document u64, author string, based_on revision, change insert|delete. An Operation says what was changed and which revision its author was looking at. The revision counts operations applied.">
+<figcaption><b>Figure 26.4</b> The core entities and their fields.</figcaption>
+</figure>
+<h2 id="capacity-estimate"><a class="header" href="#capacity-estimate">Capacity estimate</a></h2>
+<div class="estimate">
+<img class="builder" src="art/crab-builder.svg" alt="A crab in a hard hat, in tears.">
+<p><strong>Arithmetic ahead.</strong> 10 million open documents with 2 authors typing in each produce about 10 million operations per second at the peak, and far fewer in practice, since people pause.</p>
+<p><a class="skip" href="#high-level-design">Skip to the high-level design</a></p>
+<details>
+<summary>Show the calculation</summary>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th>Quantity</th><th>Calculation</th><th>Result</th></tr>
+</thead>
+<tbody>
+<tr><td>Authors typing at any moment</td><td>10 million documents × 2 authors × 10% actually typing</td><td>2 million</td></tr>
+<tr><td>Operations per second</td><td>2 million × 5 keystrokes per second</td><td>10 million</td></tr>
+<tr><td>Size of an operation in the log</td><td>document, author, revision, position, character</td><td>about 30 bytes</td></tr>
+<tr><td>Log growth</td><td>10 million × 30 bytes</td><td>300 MB per second at the peak</td></tr>
+<tr><td>Memory for open documents</td><td>10 million × 50 KB</td><td>500 GB, across the session servers</td></tr>
+</tbody>
+</table>
+</div>
+</details>
+</div>
+
+<p>In practice operations are sent in small batches, several keystrokes together, which
+reduces the number of messages by a large factor without any perceptible delay.</p>
+<h2 id="the-api"><a class="header" href="#the-api">The API</a></h2>
+<p>A document is opened with an ordinary request, which returns the text and its
+revision. From then on, operations travel in both directions over an open
+connection.</p>
+<p><strong>Open a document</strong></p>
+<pre><code class="language-http">GET /v1/documents/8812 HTTP/1.1
+Host: docs.example
+</code></pre>
+<pre><code class="language-http">HTTP/1.1 200 OK
+Content-Type: application/json
+
+{ "id": 8812, "revision": 4410, "text": "cat" }
+</code></pre>
+<p><strong>An operation sent by a client, over the open connection</strong></p>
+<pre><code class="language-json">{ "document": 8812, "client_id": "ada-17", "based_on": 4410, "insert": { "at": 1, "text": "h" } }
+</code></pre>
+<p><code>based_on</code> is the revision that the author was looking at. <code>client_id</code> identifies
+the operation, so that if it is sent a second time after a lost acknowledgement, the
+server recognises it.</p>
+<p><strong>The server’s acknowledgement to the sender</strong></p>
+<pre><code class="language-json">{ "document": 8812, "client_id": "ada-17", "revision": 4412 }
+</code></pre>
+<p><strong>The same operation as broadcast to the other authors</strong></p>
+<pre><code class="language-json">{ "document": 8812, "author": "ada", "revision": 4412, "insert": { "at": 1, "text": "h" } }
+</code></pre>
+<p>The operation broadcast is the transformed one, and its revision is the position it
+was given in the log. Revision 4411 belonged to an operation by another author that
+reached the server first.</p>
+<p><strong>Read the history of a document</strong></p>
+<pre><code class="language-http">GET /v1/documents/8812/operations?after=4400&amp;limit=100 HTTP/1.1
+Host: docs.example
+</code></pre>
+<pre><code class="language-http">HTTP/1.1 200 OK
+Content-Type: application/json
+
+{
+  "operations": [
+    { "revision": 4411, "author": "bob", "insert": { "at": 3, "text": "s" } },
+    { "revision": 4412, "author": "ada", "insert": { "at": 1, "text": "h" } }
+  ],
+  "next_after": 4412
+}
+</code></pre>
+<h2 id="high-level-design"><a class="header" href="#high-level-design">High-level design</a></h2>
+<figure class="wide">
+<img src="figures/edit-design.svg?v=79da8749" alt="2 authors in 1 document. The components are Author A, Session server, Operation log, Author B, Snapshots. Step 1: An author&#39;s change travels to the session server. Step 2: The server adjusts it, numbers it and logs it. Step 3: The adjusted change is sent to every other author. Step 4: The text is saved now and then, to shorten the log.">
+<figcaption><b>Figure 26.5</b> The components and the path of an operation. The steps are numbered.</figcaption>
+</figure>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th>Component</th><th>Role</th><th>State it holds</th><th>When 1 instance fails</th></tr>
+</thead>
+<tbody>
+<tr><td>Client</td><td>applies the author’s changes at once, and transforms incoming ones</td><td>its copy of the document, and operations not yet acknowledged</td><td>it reopens the document and sends its pending operations again</td></tr>
+<tr><td>Session server</td><td>orders the operations of a document, transforms them, and broadcasts</td><td>the current text of each of its documents, in memory</td><td>another server loads the document from its snapshot and log</td></tr>
+<tr><td>Operation log</td><td>every operation of every document, in order</td><td>the log, replicated</td><td>a follower is elected</td></tr>
+<tr><td>Snapshots</td><td>the text of a document at intervals</td><td>snapshots, in an object store</td><td>as in chapter 16</td></tr>
+</tbody>
+</table>
+</div>
+<h3 id="one-operation-step-by-step"><a class="header" href="#one-operation-step-by-step">One operation, step by step</a></h3>
+<p>The steps follow the arrows of figure 26.5.</p>
+<ol>
+<li>Author A types a character. The client applies it to its own copy at once, and sends the operation to the session server with the revision on which it was based.</li>
+<li>The session server transforms the operation against every operation applied since that revision, appends the result to the log under the next revision number, and acknowledges it to A.</li>
+<li>The server sends the transformed operation to author B, whose client transforms it against any operations of its own that the server has not yet acknowledged, and applies it.</li>
+<li>Every few hundred operations, the current text is saved as a snapshot.</li>
+</ol>
+<h2 id="mistakes-to-avoid"><a class="header" href="#mistakes-to-avoid">Mistakes to avoid</a></h2>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th>Mistake</th><th>What goes wrong</th><th>What to do</th></tr>
+</thead>
+<tbody>
+<tr><td>Waiting for the server before showing a keystroke</td><td>Typing feels delayed and becomes unusable on a slow connection.</td><td>Apply every local change at once, and reconcile afterwards.</td></tr>
+<tr><td>Applying operations by position as they arrive</td><td>Replicas diverge, and never recover.</td><td>Transform them, or use identifiers in place of positions.</td></tr>
+<tr><td>Exchanging operations between clients directly</td><td>Every client sees a different order, and the transformations must be right for all of them.</td><td>Route every operation through a server that fixes the order.</td></tr>
+<tr><td>No fixed rule for 2 insertions at the same place</td><td>Replicas order the 2 characters differently.</td><td>Break the tie by a rule that every replica applies alike.</td></tr>
+<tr><td>Removing deleted characters from a CRDT</td><td>A concurrent operation refers to a character that is gone.</td><td>Keep a tombstone.</td></tr>
+<tr><td>Acknowledging an operation before logging it</td><td>A crash loses an edit that the author believes is saved.</td><td>Append to the log first.</td></tr>
+<tr><td>Replaying the whole log to open a document</td><td>Opening grows slower with every edit ever made.</td><td>Save snapshots, and replay from the latest.</td></tr>
+<tr><td>Storing cursors durably</td><td>A flood of writes for information that is worthless a second later.</td><td>Forward cursors, and store nothing.</td></tr>
+<tr><td>Undo that reverses the latest operation</td><td>An author undoes somebody else’s work.</td><td>Undo the author’s own latest operation, transformed against what followed.</td></tr>
+<tr><td>Assuming that convergence means correctness</td><td>2 simultaneous corrections of 1 word leave it doubled.</td><td>Show cursors, so that people avoid editing the same place.</td></tr>
+</tbody>
+</table>
+</div>
+<h2 id="failures"><a class="header" href="#failures">Failures</a></h2>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th>Failure</th><th>What authors see</th><th>How the system recovers</th></tr>
+</thead>
+<tbody>
+<tr><td>An author’s connection drops</td><td>their own typing continues, and others’ changes stop arriving</td><td>on reconnection, pending operations are sent and missed ones fetched from the log</td></tr>
+<tr><td>The acknowledgement of an operation is lost</td><td>nothing</td><td>the client sends it again, and the server recognises its identifier</td></tr>
+<tr><td>A session server fails</td><td>a pause of a second or 2</td><td>another server loads the snapshot and the log, and the clients reconnect to it</td></tr>
+<tr><td>An author is offline for a day</td><td>their copy and the shared one differ</td><td>every local operation is transformed against the day’s operations and merged</td></tr>
+<tr><td>2 authors edit the same word</td><td>a result that neither intended, the same on both screens</td><td>the authors see it and correct it</td></tr>
+</tbody>
+</table>
+</div>
+<h2 id="trade-offs"><a class="header" href="#trade-offs">Trade-offs</a></h2>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th>Decision</th><th>What it gains</th><th>What it costs</th></tr>
+</thead>
+<tbody>
+<tr><td>Local changes applied at once</td><td>typing with no delay</td><td>replicas that differ for a moment, and the whole problem of merging</td></tr>
+<tr><td>A central server</td><td>a single order, and far simpler transformation</td><td>no collaboration without the server</td></tr>
+<tr><td>Operational transformation</td><td>documents close to the size of their text</td><td>intricate rules that are hard to get right</td></tr>
+<tr><td>A log with snapshots</td><td>full history, and fast opening</td><td>storage that grows with every keystroke</td></tr>
+<tr><td>Automatic merging</td><td>no conflict is ever put to the author</td><td>results that are consistent and sometimes unintended</td></tr>
+</tbody>
+</table>
+</div>
+<h2 id="the-simulation"><a class="header" href="#the-simulation">The simulation</a></h2>
+<div class="simulation">
+<p><strong>Simulation in the repository.</strong> The program <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/distributed-systems-from-the-ground-up/code/editsim/src/main.rs"><code>code/editsim</code></a> simulates this design. To run it, clone the repository and type <code>cargo run --release -p editsim</code> in the <code>code</code> directory.</p>
+</div>
+
+<h2 id="terms-introduced-in-this-chapter"><a class="header" href="#terms-introduced-in-this-chapter">Terms introduced in this chapter</a></h2>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th>Term</th><th>Meaning</th></tr>
+</thead>
+<tbody>
+<tr><td>Operation</td><td>a description of 1 change to a document</td></tr>
+<tr><td>Concurrent</td><td>made without knowledge of each other</td></tr>
+<tr><td>Convergence</td><td>all replicas reaching the same state once every operation has been delivered</td></tr>
+<tr><td>Divergence</td><td>replicas that hold different states and will not come together</td></tr>
+<tr><td>Operational transformation, OT</td><td>adjusting an operation to take account of concurrent ones</td></tr>
+<tr><td>Revision</td><td>the number of operations that the server has applied to a document</td></tr>
+<tr><td>Conflict-free replicated data type, CRDT</td><td>a data structure whose operations give the same result in any order</td></tr>
+<tr><td>Tombstone</td><td>a deleted element that is kept, hidden, as a point of reference</td></tr>
+<tr><td>Ephemeral</td><td>forwarded and not stored</td></tr>
+<tr><td>Snapshot</td><td>the state of a document at 1 revision, saved so that earlier operations need not be replayed</td></tr>
+</tbody>
+</table>
+</div>
+<div class="summary">
+<h2 id="summary"><a class="header" href="#summary">Summary</a></h2>
+<ul>
+<li>Each author’s changes are applied to their own copy at once, so that every copy is a replica that accepts writes without coordination.</li>
+<li>An operation described by position is wrong on a replica where earlier concurrent changes have moved the text, and the replicas diverge.</li>
+<li>Operational transformation adjusts each operation for the concurrent ones its author had not seen.</li>
+<li>A central server fixes a single order of operations, which reduces transformation to a manageable problem.</li>
+<li>A CRDT gives every character an unchanging identifier, so that operations can be applied in any order and no server is needed.</li>
+<li>Deleted characters are kept as tombstones, since concurrent operations may refer to them.</li>
+<li>Convergence makes all copies equal, and does not make the result what anybody intended.</li>
+<li>The document is a log of operations with periodic snapshots, served for each document by a single process.</li>
+</ul>
+</div>
+
+
+                    </main>
+
+                    <nav class="nav-wrapper" aria-label="Page navigation">
+                        <!-- Mobile navigation buttons -->
+                            <a rel="prev" href="25-file-sync.html" class="mobile-nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                                <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M41.4 233.4c-12.5 12.5-12.5 32.8 0 45.3l160 160c12.5 12.5 32.8 12.5 45.3 0s12.5-32.8 0-45.3L109.3 256 246.6 118.6c12.5-12.5 12.5-32.8 0-45.3s-32.8-12.5-45.3 0l-160 160z"/></svg></span>
+                            </a>
+
+                            <a rel="next prefetch" href="27-stock-exchange.html" class="mobile-nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                                <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M278.6 233.4c12.5 12.5 12.5 32.8 0 45.3l-160 160c-12.5 12.5-32.8 12.5-45.3 0s-12.5-32.8 0-45.3L210.7 256 73.4 118.6c-12.5-12.5-12.5-32.8 0-45.3s32.8-12.5 45.3 0l160 160z"/></svg></span>
+                            </a>
+
+                        <div style="clear: both"></div>
+                    </nav>
+                </div>
+            </div>
+
+            <nav class="nav-wide-wrapper" aria-label="Page navigation">
+                    <a rel="prev" href="25-file-sync.html" class="nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                        <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M41.4 233.4c-12.5 12.5-12.5 32.8 0 45.3l160 160c12.5 12.5 32.8 12.5 45.3 0s12.5-32.8 0-45.3L109.3 256 246.6 118.6c12.5-12.5 12.5-32.8 0-45.3s-32.8-12.5-45.3 0l-160 160z"/></svg></span>
+                    </a>
+
+                    <a rel="next prefetch" href="27-stock-exchange.html" class="nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                        <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M278.6 233.4c12.5 12.5 12.5 32.8 0 45.3l-160 160c-12.5 12.5-32.8 12.5-45.3 0s-12.5-32.8 0-45.3L210.7 256 73.4 118.6c-12.5-12.5-12.5-32.8 0-45.3s32.8-12.5 45.3 0l160 160z"/></svg></span>
+                    </a>
+            </nav>
+
+        </div>
+
+        <template id=fa-eye><span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 576 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M288 32c-80.8 0-145.5 36.8-192.6 80.6C48.6 156 17.3 208 2.5 243.7c-3.3 7.9-3.3 16.7 0 24.6C17.3 304 48.6 356 95.4 399.4C142.5 443.2 207.2 480 288 480s145.5-36.8 192.6-80.6c46.8-43.5 78.1-95.4 93-131.1c3.3-7.9 3.3-16.7 0-24.6c-14.9-35.7-46.2-87.7-93-131.1C433.5 68.8 368.8 32 288 32zM432 256c0 79.5-64.5 144-144 144s-144-64.5-144-144s64.5-144 144-144s144 64.5 144 144zM288 192c0 35.3-28.7 64-64 64c-11.5 0-22.3-3-31.6-8.4c-.2 2.8-.4 5.5-.4 8.4c0 53 43 96 96 96s96-43 96-96s-43-96-96-96c-2.8 0-5.6 .1-8.4 .4c5.3 9.3 8.4 20.1 8.4 31.6z"/></svg></span></template>
+        <template id=fa-eye-slash><span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M38.8 5.1C28.4-3.1 13.3-1.2 5.1 9.2S-1.2 34.7 9.2 42.9l592 464c10.4 8.2 25.5 6.3 33.7-4.1s6.3-25.5-4.1-33.7L525.6 386.7c39.6-40.6 66.4-86.1 79.9-118.4c3.3-7.9 3.3-16.7 0-24.6c-14.9-35.7-46.2-87.7-93-131.1C465.5 68.8 400.8 32 320 32c-68.2 0-125 26.3-169.3 60.8L38.8 5.1zM223.1 149.5C248.6 126.2 282.7 112 320 112c79.5 0 144 64.5 144 144c0 24.9-6.3 48.3-17.4 68.7L408 294.5c5.2-11.8 8-24.8 8-38.5c0-53-43-96-96-96c-2.8 0-5.6 .1-8.4 .4c5.3 9.3 8.4 20.1 8.4 31.6c0 10.2-2.4 19.8-6.6 28.3l-90.3-70.8zm223.1 298L373 389.9c-16.4 6.5-34.3 10.1-53 10.1c-79.5 0-144-64.5-144-144c0-6.9 .5-13.6 1.4-20.2L83.1 161.5C60.3 191.2 44 220.8 34.5 243.7c-3.3 7.9-3.3 16.7 0 24.6c14.9 35.7 46.2 87.7 93 131.1C174.5 443.2 239.2 480 320 480c47.8 0 89.9-12.9 126.2-32.5z"/></svg></span></template>
+        <template id=fa-copy><span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M502.6 70.63l-61.25-61.25C435.4 3.371 427.2 0 418.7 0H255.1c-35.35 0-64 28.66-64 64l.0195 256C192 355.4 220.7 384 256 384h192c35.2 0 64-28.8 64-64V93.25C512 84.77 508.6 76.63 502.6 70.63zM464 320c0 8.836-7.164 16-16 16H255.1c-8.838 0-16-7.164-16-16L239.1 64.13c0-8.836 7.164-16 16-16h128L384 96c0 17.67 14.33 32 32 32h47.1V320zM272 448c0 8.836-7.164 16-16 16H63.1c-8.838 0-16-7.164-16-16L47.98 192.1c0-8.836 7.164-16 16-16H160V128H63.99c-35.35 0-64 28.65-64 64l.0098 256C.002 483.3 28.66 512 64 512h192c35.2 0 64-28.8 64-64v-32h-47.1L272 448z"/></svg></span></template>
+        <template id=fa-play><span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 384 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M73 39c-14.8-9.1-33.4-9.4-48.5-.9S0 62.6 0 80V432c0 17.4 9.4 33.4 24.5 41.9s33.7 8.1 48.5-.9L361 297c14.3-8.7 23-24.2 23-41s-8.7-32.2-23-41L73 39z"/></svg></span></template>
+        <template id=fa-clock-rotate-left><span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M75 75L41 41C25.9 25.9 0 36.6 0 57.9V168c0 13.3 10.7 24 24 24H134.1c21.4 0 32.1-25.9 17-41l-30.8-30.8C155 85.5 203 64 256 64c106 0 192 86 192 192s-86 192-192 192c-40.8 0-78.6-12.7-109.7-34.4c-14.5-10.1-34.4-6.6-44.6 7.9s-6.6 34.4 7.9 44.6C151.2 495 201.7 512 256 512c141.4 0 256-114.6 256-256S397.4 0 256 0C185.3 0 121.3 28.7 75 75zm181 53c-13.3 0-24 10.7-24 24V256c0 6.4 2.5 12.5 7 17l72 72c9.4 9.4 24.6 9.4 33.9 0s9.4-24.6 0-33.9l-65-65V152c0-13.3-10.7-24-24-24z"/></svg></span></template>
+
+
+
+        <script>
+            window.playground_copyable = true;
+        </script>
+
+
+        <script src="elasticlunr-ef4e11c1.min.js"></script>
+        <script src="mark-09e88c2c.min.js"></script>
+        <script src="searcher-09f2665d.js"></script>
+
+        <script src="clipboard-1626706a.min.js"></script>
+        <script src="highlight-abc7f01d.js"></script>
+        <script src="book-609e4cb8.js"></script>
+
+        <!-- Custom JS scripts -->
+        <script src="theme/figures-47b15f7f.js"></script>
+        <script src="theme/proto-326509cd.js"></script>
+        <script src="theme/code-67e9caaf.js"></script>
+        <script src="theme/tables-9fb295e8.js"></script>
+        <script src="theme/steps-77f22afb.js"></script>
+
+
+
+    </div>
+    </body>
+</html>

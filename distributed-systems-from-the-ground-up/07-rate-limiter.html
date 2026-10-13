@@ -1,0 +1,1212 @@
+<!DOCTYPE HTML>
+<html lang="en" class="light sidebar-visible" dir="ltr">
+    <head>
+        <!-- Book generated using mdBook -->
+        <meta charset="UTF-8">
+        <title>Rate Limiter - Distributed Systems from the Ground Up</title>
+
+
+        <!-- Custom HTML head -->
+
+        <meta name="description" content="System design and low-level design of resilient, fault-tolerant distributed systems, with code in Rust">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <meta name="theme-color" content="#ffffff">
+
+        <link rel="icon" href="favicon-de23e50b.svg">
+        <link rel="shortcut icon" href="favicon-8114d1fc.png">
+        <link rel="stylesheet" href="css/variables-8adf115d.css">
+        <link rel="stylesheet" href="css/general-e96d0476.css">
+        <link rel="stylesheet" href="css/chrome-d279d366.css">
+        <link rel="stylesheet" href="css/print-9e4910d8.css" media="print">
+
+        <!-- Fonts -->
+        <link rel="stylesheet" href="fonts/fonts-9644e21d.css">
+
+        <!-- Highlight.js Stylesheets -->
+        <link rel="stylesheet" id="mdbook-highlight-css" href="highlight-493f70e1.css">
+        <link rel="stylesheet" id="mdbook-tomorrow-night-css" href="tomorrow-night-4c0ae647.css">
+        <link rel="stylesheet" id="mdbook-ayu-highlight-css" href="ayu-highlight-3fdfc3ac.css">
+
+        <!-- Custom theme stylesheets -->
+        <link rel="stylesheet" href="theme/custom-8a495b63.css">
+
+
+        <!-- Provide site root and default themes to javascript -->
+        <script>
+            const path_to_root = "";
+            const default_light_theme = "light";
+            const default_dark_theme = "navy";
+            window.path_to_searchindex_js = "searchindex-fe51950f.js";
+        </script>
+        <!-- Start loading toc.js asap -->
+        <script src="toc-cc887274.js"></script>
+    </head>
+    <body>
+    <div id="mdbook-help-container">
+        <div id="mdbook-help-popup">
+            <h2 class="mdbook-help-title">Keyboard shortcuts</h2>
+            <div>
+                <p>Press <kbd>←</kbd> or <kbd>→</kbd> to navigate between chapters</p>
+                <p>Press <kbd>S</kbd> or <kbd>/</kbd> to search in the book</p>
+                <p>Press <kbd>?</kbd> to show this help</p>
+                <p>Press <kbd>Esc</kbd> to hide this help</p>
+            </div>
+        </div>
+    </div>
+    <div id="mdbook-body-container">
+        <!-- Work around some values being stored in localStorage wrapped in quotes -->
+        <script>
+            try {
+                let theme = localStorage.getItem('mdbook-theme');
+                let sidebar = localStorage.getItem('mdbook-sidebar');
+
+                if (theme.startsWith('"') && theme.endsWith('"')) {
+                    localStorage.setItem('mdbook-theme', theme.slice(1, theme.length - 1));
+                }
+
+                if (sidebar.startsWith('"') && sidebar.endsWith('"')) {
+                    localStorage.setItem('mdbook-sidebar', sidebar.slice(1, sidebar.length - 1));
+                }
+            } catch (e) { }
+        </script>
+
+        <!-- Set the theme before any content is loaded, prevents flash -->
+        <script>
+            const default_theme = window.matchMedia("(prefers-color-scheme: dark)").matches ? default_dark_theme : default_light_theme;
+            let theme;
+            try { theme = localStorage.getItem('mdbook-theme'); } catch(e) { }
+            if (theme === null || theme === undefined) { theme = default_theme; }
+            const html = document.documentElement;
+            html.classList.remove('light')
+            html.classList.add(theme);
+            html.classList.add("js");
+        </script>
+
+        <input type="checkbox" id="mdbook-sidebar-toggle-anchor" class="hidden">
+
+        <!-- Hide / unhide sidebar before it is displayed -->
+        <script>
+            let sidebar = null;
+            const sidebar_toggle = document.getElementById("mdbook-sidebar-toggle-anchor");
+            if (document.body.clientWidth >= 1080) {
+                try { sidebar = localStorage.getItem('mdbook-sidebar'); } catch(e) { }
+                sidebar = sidebar || 'visible';
+            } else {
+                sidebar = 'hidden';
+                sidebar_toggle.checked = false;
+            }
+            if (sidebar === 'visible') {
+                sidebar_toggle.checked = true;
+            } else {
+                html.classList.remove('sidebar-visible');
+            }
+        </script>
+
+        <nav id="mdbook-sidebar" class="sidebar" aria-label="Table of contents">
+            <!-- populated by js -->
+            <mdbook-sidebar-scrollbox class="sidebar-scrollbox"></mdbook-sidebar-scrollbox>
+            <noscript>
+                <iframe class="sidebar-iframe-outer" src="toc.html"></iframe>
+            </noscript>
+            <div id="mdbook-sidebar-resize-handle" class="sidebar-resize-handle">
+                <div class="sidebar-resize-indicator"></div>
+            </div>
+        </nav>
+
+        <div id="mdbook-page-wrapper" class="page-wrapper">
+
+            <div class="page">
+                <div id="mdbook-menu-bar-hover-placeholder"></div>
+                <div id="mdbook-menu-bar" class="menu-bar sticky">
+                    <div class="left-buttons">
+                        <label id="mdbook-sidebar-toggle" class="icon-button" for="mdbook-sidebar-toggle-anchor" title="Toggle Table of Contents" aria-label="Toggle Table of Contents" aria-controls="mdbook-sidebar">
+                            <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M0 96C0 78.3 14.3 64 32 64H416c17.7 0 32 14.3 32 32s-14.3 32-32 32H32C14.3 128 0 113.7 0 96zM0 256c0-17.7 14.3-32 32-32H416c17.7 0 32 14.3 32 32s-14.3 32-32 32H32c-17.7 0-32-14.3-32-32zM448 416c0 17.7-14.3 32-32 32H32c-17.7 0-32-14.3-32-32s14.3-32 32-32H416c17.7 0 32 14.3 32 32z"/></svg></span>
+                        </label>
+                        <button id="mdbook-theme-toggle" class="icon-button" type="button" title="Change theme" aria-label="Change theme" aria-haspopup="true" aria-expanded="false" aria-controls="mdbook-theme-list">
+                            <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 576 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M371.3 367.1c27.3-3.9 51.9-19.4 67.2-42.9L600.2 74.1c12.6-19.5 9.4-45.3-7.6-61.2S549.7-4.4 531.1 9.6L294.4 187.2c-24 18-38.2 46.1-38.4 76.1L371.3 367.1zm-19.6 25.4l-116-104.4C175.9 290.3 128 339.6 128 400c0 3.9 .2 7.8 .6 11.6c1.8 17.5-10.2 36.4-27.8 36.4H96c-17.7 0-32 14.3-32 32s14.3 32 32 32H240c61.9 0 112-50.1 112-112c0-2.5-.1-5-.2-7.5z"/></svg></span>
+                        </button>
+                        <ul id="mdbook-theme-list" class="theme-popup" aria-label="Themes" role="menu">
+                            <li role="none"><button role="menuitem" class="theme" id="mdbook-theme-default_theme">Auto</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="mdbook-theme-light">Light</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="mdbook-theme-rust">Rust</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="mdbook-theme-coal">Coal</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="mdbook-theme-navy">Navy</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="mdbook-theme-ayu">Ayu</button></li>
+                        </ul>
+                        <button id="mdbook-search-toggle" class="icon-button" type="button" title="Search (`/`)" aria-label="Toggle Searchbar" aria-expanded="false" aria-keyshortcuts="/ s" aria-controls="mdbook-searchbar">
+                            <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M416 208c0 45.9-14.9 88.3-40 122.7L502.6 457.4c12.5 12.5 12.5 32.8 0 45.3s-32.8 12.5-45.3 0L330.7 376c-34.4 25.2-76.8 40-122.7 40C93.1 416 0 322.9 0 208S93.1 0 208 0S416 93.1 416 208zM208 352c79.5 0 144-64.5 144-144s-64.5-144-144-144S64 128.5 64 208s64.5 144 144 144z"/></svg></span>
+                        </button>
+                    </div>
+
+                    <h1 class="menu-title">Distributed Systems from the Ground Up</h1>
+
+                    <div class="right-buttons">
+                        <a href="print.html" title="Print this book" aria-label="Print this book">
+                            <span class=fa-svg id="print-button"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M128 0C92.7 0 64 28.7 64 64v96h64V64H354.7L384 93.3V160h64V93.3c0-17-6.7-33.3-18.7-45.3L400 18.7C388 6.7 371.7 0 354.7 0H128zM384 352v32 64H128V384 368 352H384zm64 32h32c17.7 0 32-14.3 32-32V256c0-35.3-28.7-64-64-64H64c-35.3 0-64 28.7-64 64v96c0 17.7 14.3 32 32 32H64v64c0 35.3 28.7 64 64 64H384c35.3 0 64-28.7 64-64V384zm-16-88c-13.3 0-24-10.7-24-24s10.7-24 24-24s24 10.7 24 24s-10.7 24-24 24z"/></svg></span>
+                        </a>
+                        <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/tree/prep-v2/distributed-systems-from-the-ground-up" title="Git repository" aria-label="Git repository">
+                            <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 496 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M165.9 397.4c0 2-2.3 3.6-5.2 3.6-3.3.3-5.6-1.3-5.6-3.6 0-2 2.3-3.6 5.2-3.6 3-.3 5.6 1.3 5.6 3.6zm-31.1-4.5c-.7 2 1.3 4.3 4.3 4.9 2.6 1 5.6 0 6.2-2s-1.3-4.3-4.3-5.2c-2.6-.7-5.5.3-6.2 2.3zm44.2-1.7c-2.9.7-4.9 2.6-4.6 4.9.3 2 2.9 3.3 5.9 2.6 2.9-.7 4.9-2.6 4.6-4.6-.3-1.9-3-3.2-5.9-2.9zM244.8 8C106.1 8 0 113.3 0 252c0 110.9 69.8 205.8 169.5 239.2 12.8 2.3 17.3-5.6 17.3-12.1 0-6.2-.3-40.4-.3-61.4 0 0-70 15-84.7-29.8 0 0-11.4-29.1-27.8-36.6 0 0-22.9-15.7 1.6-15.4 0 0 24.9 2 38.6 25.8 21.9 38.6 58.6 27.5 72.9 20.9 2.3-16 8.8-27.1 16-33.7-55.9-6.2-112.3-14.3-112.3-110.5 0-27.5 7.6-41.3 23.6-58.9-2.6-6.5-11.1-33.3 2.6-67.9 20.9-6.5 69 27 69 27 20-5.6 41.5-8.5 62.8-8.5s42.8 2.9 62.8 8.5c0 0 48.1-33.6 69-27 13.7 34.7 5.2 61.4 2.6 67.9 16 17.7 25.8 31.5 25.8 58.9 0 96.5-58.9 104.2-114.8 110.5 9.2 7.9 17 22.9 17 46.4 0 33.7-.3 75.4-.3 83.6 0 6.5 4.6 14.4 17.3 12.1C428.2 457.8 496 362.9 496 252 496 113.3 383.5 8 244.8 8zM97.2 352.9c-1.3 1-1 3.3.7 5.2 1.6 1.6 3.9 2.3 5.2 1 1.3-1 1-3.3-.7-5.2-1.6-1.6-3.9-2.3-5.2-1zm-10.8-8.1c-.7 1.3.3 2.9 2.3 3.9 1.6 1 3.6.7 4.3-.7.7-1.3-.3-2.9-2.3-3.9-2-.6-3.6-.3-4.3.7zm32.4 35.6c-1.6 1.3-1 4.3 1.3 6.2 2.3 2.3 5.2 2.6 6.5 1 1.3-1.3.7-4.3-1.3-6.2-2.2-2.3-5.2-2.6-6.5-1zm-11.4-14.7c-1.6 1-1.6 3.6 0 5.9 1.6 2.3 4.3 3.3 5.6 2.3 1.6-1.3 1.6-3.9 0-6.2-1.4-2.3-4-3.3-5.6-2z"/></svg></span>
+                        </a>
+                        <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/edit/prep-v2/distributed-systems-from-the-ground-up/src/07-rate-limiter.md" title="Suggest an edit" aria-label="Suggest an edit" rel="edit">
+                            <span class=fa-svg id="git-edit-button"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M421.7 220.3l-11.3 11.3-22.6 22.6-205 205c-6.6 6.6-14.8 11.5-23.8 14.1L30.8 511c-8.4 2.5-17.5 .2-23.7-6.1S-1.5 489.7 1 481.2L38.7 353.1c2.6-9 7.5-17.2 14.1-23.8l205-205 22.6-22.6 11.3-11.3 33.9 33.9 62.1 62.1 33.9 33.9zM96 353.9l-9.3 9.3c-.9 .9-1.6 2.1-2 3.4l-25.3 86 86-25.3c1.3-.4 2.5-1.1 3.4-2l9.3-9.3H112c-8.8 0-16-7.2-16-16V353.9zM453.3 19.3l39.4 39.4c25 25 25 65.5 0 90.5l-14.5 14.5-22.6 22.6-11.3 11.3-33.9-33.9-62.1-62.1L314.3 67.7l11.3-11.3 22.6-22.6 14.5-14.5c25-25 65.5-25 90.5 0z"/></svg></span>
+                        </a>
+
+                    </div>
+                </div>
+
+                <div id="mdbook-search-wrapper" class="hidden">
+                    <form id="mdbook-searchbar-outer" class="searchbar-outer">
+                        <div class="search-wrapper">
+                            <input type="search" id="mdbook-searchbar" name="searchbar" placeholder="Search this book ..." aria-controls="mdbook-searchresults-outer" aria-describedby="searchresults-header">
+                            <div class="spinner-wrapper">
+                                <span class=fa-svg id="fa-spin"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M304 48c0-26.5-21.5-48-48-48s-48 21.5-48 48s21.5 48 48 48s48-21.5 48-48zm0 416c0-26.5-21.5-48-48-48s-48 21.5-48 48s21.5 48 48 48s48-21.5 48-48zM48 304c26.5 0 48-21.5 48-48s-21.5-48-48-48s-48 21.5-48 48s21.5 48 48 48zm464-48c0-26.5-21.5-48-48-48s-48 21.5-48 48s21.5 48 48 48s48-21.5 48-48zM142.9 437c18.7-18.7 18.7-49.1 0-67.9s-49.1-18.7-67.9 0s-18.7 49.1 0 67.9s49.1 18.7 67.9 0zm0-294.2c18.7-18.7 18.7-49.1 0-67.9S93.7 56.2 75 75s-18.7 49.1 0 67.9s49.1 18.7 67.9 0zM369.1 437c18.7 18.7 49.1 18.7 67.9 0s18.7-49.1 0-67.9s-49.1-18.7-67.9 0s-18.7 49.1 0 67.9z"/></svg></span>
+                            </div>
+                        </div>
+                    </form>
+                    <div id="mdbook-searchresults-outer" class="searchresults-outer hidden">
+                        <div id="mdbook-searchresults-header" class="searchresults-header"></div>
+                        <ul id="mdbook-searchresults">
+                        </ul>
+                    </div>
+                </div>
+
+                <!-- Apply ARIA attributes after the sidebar and the sidebar toggle button are added to the DOM -->
+                <script>
+                    document.getElementById('mdbook-sidebar-toggle').setAttribute('aria-expanded', sidebar === 'visible');
+                    document.getElementById('mdbook-sidebar').setAttribute('aria-hidden', sidebar !== 'visible');
+                    Array.from(document.querySelectorAll('#mdbook-sidebar a')).forEach(function(link) {
+                        link.setAttribute('tabIndex', sidebar === 'visible' ? 0 : -1);
+                    });
+                </script>
+
+                <div id="mdbook-content" class="content">
+                    <main>
+                        <img class="plate" src="art/ch07.svg?v=9f64176b" alt="Toll, a gnu, stands beside a sign that reads: 5 per second, burst of 10.">
+<h1 id="rate-limiter-system-design"><a class="header" href="#rate-limiter-system-design">Rate Limiter: System Design</a></h1>
+<p>A service that accepts requests from the outside world has no say in how many of them
+arrive. Its capacity is fixed by the machines it runs on, while the demand placed on it
+is decided by other people’s programs, and whenever demand exceeds capacity for more
+than a moment the service fails in a way that does not distinguish between the guilty
+and the innocent: the requests of a well-behaved client wait in the same queue as the
+requests of the client that caused the overload, and they time out together. A <em>rate
+limiter</em> gives the service back some of the control it lacks. It attaches an allowance
+to each caller, counts what each caller sends, and refuses whatever exceeds the
+allowance before the service has spent any work on it, so that a problem which would
+have been shared by everybody becomes a refusal addressed to the caller responsible.</p>
+<p>Stated like this, the idea seems to leave little to design, and yet 2 parts of it
+turn out to be subtle. The first is the meaning of the allowance itself, because a
+phrase such as “5 requests per second” admits several readings that differ sharply in
+what they let through, and each reading leads to a different algorithm. The second is
+the counting, which is trivial on 1 machine and becomes a small distributed systems
+problem as soon as the limiter runs on several machines that each see only a part of a
+caller’s traffic. This chapter takes the 2 in that order. It examines 5 algorithms by
+following the same 11 requests through each of them, and then builds the system around
+the one we choose.</p>
+<div class="covers">
+<p>This chapter covers</p>
+<ul>
+<li>why a service limits its callers, and what happens to a service that does not</li>
+<li>the rate and the burst, which every limit contains whether or not it says so</li>
+<li>5 algorithms followed step by step on the same traffic: fixed window counter, sliding window log, sliding window counter, token bucket and leaky bucket</li>
+<li>how the algorithms compare and how to choose between them</li>
+<li>where a limiter runs, and whose requests it counts together</li>
+<li>counting correctly when the limiter runs on many machines</li>
+<li>what a refused caller should be told</li>
+<li>what the limiter does when its own parts fail</li>
+</ul>
+</div>
+
+<h2 id="why-a-service-limits-its-callers"><a class="header" href="#why-a-service-limits-its-callers">Why a service limits its callers</a></h2>
+<p>Consider an API server that can answer 1000 requests per second and serves 200 clients,
+each of which normally sends a few requests per second. One day a client is released
+with a defect in its error handling, so that a failed call is retried immediately and
+without pause, and this single client begins to send 5000 requests per second. The
+server has no means of setting these requests aside, since it cannot know who sent a
+request until it has accepted the connection and read the request, and by then the
+cost has been paid. Its queue lengthens and the response time of every client grows
+with it. Some of the other clients, finding their calls slow, give up and try again,
+which adds to the queue the very requests that were already in it. Within a minute or
+so the 199 clients that did nothing wrong are receiving errors on account of the 1
+that did, and the operators of the service are looking at a failure whose cause lies
+in a program they do not own and cannot fix.</p>
+<p>With a rate limiter in front of the server, the same defect has a very different
+outcome. The limiter recognises the caller, finds that it has exhausted its allowance,
+and answers with a short refusal that costs a small fraction of what a real response
+would have cost. The defective client receives a great many refusals, which is an
+accurate reflection of its behaviour, and the remaining clients are served as usual
+and never learn that anything was wrong.</p>
+<p>Protection against overload is the best known reason for limiting callers, and there
+are 2 others that a design usually has to serve at the same time. One is fairness: a
+large customer running a nightly export may stay well within what the service can
+bear and still consume so much of it that smaller customers are crowded out, and an
+allowance per customer is the simplest way of dividing capacity among them. The other
+is the control of cost and abuse, where the concern is what each individual request
+makes possible. If every call costs money to answer, an unlimited caller is an
+unlimited bill, and if every call is a guess at a password, a login form that permits
+5 attempts per minute for an account turns guessing into a hopeless undertaking,
+whereas a form without a limit will patiently evaluate millions of guesses a day. In
+this last case the limit is a security control as much as a protection, a distinction
+that matters later when we decide how the limiter should behave when it breaks.</p>
+<p>It is worth separating the rate limiter from a neighbouring mechanism with which it is
+often confused. <em>Load shedding</em> is what a service does when it is close to overload and
+drops a share of its incoming requests, without regard to who sent them, in order to
+keep answering the rest. A rate limiter acts earlier and on different grounds, since it
+refuses a particular caller for exceeding that caller’s own allowance, and it does so
+even when the service has capacity to spare. The 2 complement each other, and large
+systems generally have both.</p>
+<h2 id="what-5-requests-per-second-can-mean"><a class="header" href="#what-5-requests-per-second-can-mean">What “5 requests per second” can mean</a></h2>
+<p>The phrase “each client may send 5 requests per second” has the appearance of a
+complete specification, and the easiest way to see that it is incomplete is to imagine
+3 clients and to ask of each whether it has kept to the limit.</p>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th>Client</th><th>What it sends</th></tr>
+</thead>
+<tbody>
+<tr><td>A</td><td>1 request every 200 ms, for an hour</td></tr>
+<tr><td>B</td><td>nothing for 10 seconds, and then 5 requests within the same millisecond</td></tr>
+<tr><td>C</td><td>5 requests at 0.9 s and 5 more at 1.1 s</td></tr>
+</tbody>
+</table>
+</div>
+<p>Nobody would dispute that client A is within the limit. Client B has also sent 5
+requests in a second, and in fact far fewer than 5 per second on average, although the
+server received all 5 at the same instant and had to work on them concurrently. Client
+C sent 5 requests in the first second of the clock and 5 in the next, so that each
+calendar second contains exactly the permitted number, and nevertheless the server
+received 10 requests within 200 ms.</p>
+<p>Clients B and C expose 2 questions on which the phrase is silent. The first concerns
+the <em>burst</em>, by which we mean the number of requests that may arrive together. A limit
+of 5 per second does not say whether the 5 may come in the same instant or must be
+spread across the second, and there is no universally right answer, because services
+differ in what they can tolerate. A web API usually ought to permit short bursts,
+since that is how honest clients behave: a page is opened and issues 6 calls at once,
+and then nothing happens while a person reads. A service that feeds a device or a
+downstream system able to handle only one thing after another may need its requests
+evenly spaced, and would be harmed by exactly the burst that the web API welcomes.</p>
+<p>The second question concerns the second itself. “Per second” may refer to the seconds
+of the clock, each beginning when the previous one ends, or it may refer to every span
+of 1000 ms regardless of where the span begins. Client C satisfies the first reading
+and violates the second, and the difference between the 2 readings is a factor of 2
+in the load the server may have to carry.</p>
+<p>Each of the 5 algorithms that follow amounts to a particular pair of answers to these
+2 questions. They are best understood as different definitions of the limit that
+happen to be cheap to compute, and the reason no one of them has displaced the others
+is that the right definition depends on what is being protected.</p>
+<p>A limit also depends on a third thing, which the phrase names without defining, namely
+the client. The limiter must count requests under some identity, and the identity
+under which requests are added together is called the <em>key</em> of the limit. It may be an
+API key, a user id, an IP address, or some combination of these. The choice of key
+deserves a section of its own after the algorithms, because a poorly chosen key will
+undo the work of a well chosen algorithm.</p>
+<h2 id="the-traffic-used-in-this-chapter"><a class="header" href="#the-traffic-used-in-this-chapter">The traffic used in this chapter</a></h2>
+<p>So that the algorithms can be compared on equal terms, every one of them is given the
+same requests from a single client under the same limit of 5 requests per second. The
+client sends 11 requests within 650 ms, at the following times in milliseconds.</p>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th>Request</th><th>1</th><th>2</th><th>3</th><th>4</th><th>5</th><th>6</th><th>7</th><th>8</th><th>9</th><th>10</th><th>11</th></tr>
+</thead>
+<tbody>
+<tr><td>Time</td><td>600</td><td>700</td><td>800</td><td>900</td><td>950</td><td>1000</td><td>1050</td><td>1100</td><td>1150</td><td>1200</td><td>1250</td></tr>
+</tbody>
+</table>
+</div>
+<p>By any reading of the limit this client is sending too much, since it issues 11
+requests in well under a second where 5 are permitted. The times have been chosen so
+that the requests lie across the 1 second mark of the clock, with 5 before it and 6
+after it, because that is the arrangement on which the algorithms disagree most. One
+would expect a sound limiter to forward about 5 of the 11 and perhaps a few more as
+time goes by. The 5 algorithms forward 10, 5, 6, 8 and 9 of them respectively, and
+the reasons for these differences are the substance of the next 5 sections.</p>
+<p>Each algorithm is accompanied by a picture that proceeds in steps, one step for each
+arriving request. The Next button advances to the following request and shows what the
+limiter has stored and what it decides. In these pictures a green dot marks a request
+that was forwarded to the API and a red cross marks a request that was refused.</p>
+<h2 id="algorithm-1-the-fixed-window-counter"><a class="header" href="#algorithm-1-the-fixed-window-counter">Algorithm 1: the fixed window counter</a></h2>
+<p>The most direct way of enforcing 5 requests per second is to divide time into windows
+of 1 second, aligned with the clock, and to count the requests that arrive in the
+current window. The limiter then needs to remember only a single number for each
+client. Every forwarded request increases the number by 1, a request that finds the
+number already at 5 is refused, and when the clock passes into the next window the
+number begins again at 0.</p>
+<figure class="steps" data-prefix="figures/steps-limiter-fixed" data-count="13" data-version="4f0b5cf9">
+<img src="figures/steps-limiter-fixed-01.svg?v=4f0b5cf9" alt="Fixed window counter, step 1 of 13. The limiter keeps 1 number for the client: how many requests it has forwarded in the current window. Windows are the seconds of the clock, and each starts with a count of 0.">
+<figcaption><b>Figure 7.1</b> The fixed window counter on the 11 requests. Use Next and Back to move through the 13 steps.</figcaption>
+</figure>
+<p>At the end of the sequence 10 of the 11 requests have been forwarded. Requests 1 to 5
+arrived between 600 and 950 ms and were counted in window 0, which they filled. At
+1000 ms the clock moved into window 1, where the count stood at 0 again, so that
+requests 6 to 10 were forwarded as readily as the first 5 had been, and only request
+11 met a full count.</p>
+<p>The server therefore received 10 requests within 600 ms from a client whose limit is 5
+per second, and it is important to see that the algorithm did precisely what it was
+defined to do. Each window contains exactly 5 forwarded requests. The rule is
+expressed in terms of the seconds of the clock, the client’s burst happened to fall
+across the boundary between 2 of them, and the rule has nothing to say about spans
+of time that do not coincide with its windows.</p>
+<figure>
+<img src="figures/limiter-boundary.svg?v=5c03e648" alt="A time axis with 2 windows of 1 second. 5 requests arrive in the last 100 ms of window 0 and 5 in the first 100 ms of window 1. Each window counts 5 of 5, so all 10 requests are forwarded within 180 ms.">
+<figcaption><b>Figure 7.2</b> 2 full windows meet at the boundary, and all 10 requests are forwarded.</figcaption>
+</figure>
+<p>This behaviour is the defining weakness of the fixed window, and its extent can be
+stated exactly: a client can send up to twice the limit within an arbitrarily short
+span of time, by sending one full allowance at the end of a window and another at the
+start of the next. No ill intent is needed for this to occur. A great many programs do
+their work on a schedule, waking at the start of each minute or each hour, and a limit
+that is reset on the minute or the hour will meet such a program exactly at its
+boundary, day after day.</p>
+<p>The synchronised reset has a second consequence that is less often noticed. Because
+the counts of all clients return to 0 at the same instant, all the clients that had
+been refused and were retrying succeed together at the start of the next window, and
+the server experiences a surge of traffic at every boundary that the limiter itself
+has organised.</p>
+<p>These properties make the fixed window a poor choice for protecting a server against
+overload, since the boundary admits twice the load that the limit appears to promise.
+They matter much less when the window is long and the purpose is to meter usage, and
+this is where the algorithm is properly at home. Daily and monthly quotas are almost
+always fixed windows, for the good reason that customers readily understand a quota
+that “resets at midnight”, and a doubling of the daily quota around midnight is spread
+over enough time to be harmless. The cost is as low as a limiter’s can be: a count and
+the number of the window to which it belongs.</p>
+<h2 id="algorithm-2-the-sliding-window-log"><a class="header" href="#algorithm-2-the-sliding-window-log">Algorithm 2: the sliding window log</a></h2>
+<p>The fixed window goes wrong because its windows are fastened to the clock, and the
+obvious remedy is to fasten the window to the request: when a request arrives,
+the limiter should look back exactly 1 second from that moment and count what it
+forwarded during that span, wherever the span happens to begin.</p>
+<p>To do this the limiter has to know when each recent request arrived, and so it keeps a
+<em>log</em>, a list of the arrival times of the requests it has forwarded. On each new
+request it first discards the times that lie more than 1 second in the past. If fewer
+than 5 times then remain, the request is forwarded and its own arrival time is
+appended to the log, and otherwise the request is refused.</p>
+<figure class="steps" data-prefix="figures/steps-limiter-log" data-count="13" data-version="b39732b1">
+<img src="figures/steps-limiter-log-01.svg?v=b39732b1" alt="Sliding window log, step 1 of 13. The limiter keeps a log: the arrival time of every request it forwarded during the last second. The log has room for 5 times, because the limit is 5.">
+<figcaption><b>Figure 7.3</b> The sliding window log on the same 11 requests. Use Next and Back to move through the 13 steps.</figcaption>
+</figure>
+<p>This time only 5 requests are forwarded. From 1000 ms onwards each arriving request
+looks back over the preceding second and finds the 5 entries from 600 to 950 ms still
+within it, and the fact that the clock has passed the 1 second mark is of no
+significance to the rule. The oldest entry, 600, leaves the log at 1600 ms, and until
+then nothing more can pass.</p>
+<p>The sliding window log is exact in a sense that none of the other algorithms can
+match. Whichever span of 1 second one chooses to examine, beginning at any instant
+whatever, it contains at most 5 forwarded requests, and this is surely what most
+people have in mind when they say “5 per second”.</p>
+<p>Exactness is paid for in memory. Where the fixed window stores 1 number for a client,
+the log stores a timestamp for every forwarded request up to the limit. For a limit of
+5 per second that is 5 timestamps and of no concern. For a limit of 10000 requests per
+hour it is as many as 10000 timestamps for a single client, about 80 KB, and for a
+million active clients about 80 GB. The cost thus rises in proportion to the size of
+the limit, with the awkward result that the most generous limits are the most
+expensive to enforce.</p>
+<p>The description above contains a decision that is easily overlooked, in the words “the
+requests it has forwarded”. One has to decide whether a refused request should also be
+entered in the log. In the version shown it is left out, so that a client which keeps
+on sending is served again as soon as its old entries expire. Some implementations
+record refused requests as well, and under that rule a client that never stops sending
+is never served again, since its own refused requests keep the log permanently full.
+That is a much harsher policy, and occasionally it is the one intended, for instance
+as a defence against password guessing. What must be avoided is arriving at it
+unintentionally, which is what happens in an implementation that appends every request
+to the log first and checks the count afterwards.</p>
+<p>The log is therefore the natural choice for limits that are small and must be strict,
+such as 5 login attempts per minute or 3 password resets per hour, where its memory
+cost is negligible and its exactness is valuable. It is a poor choice for large limits
+applied to a large number of clients.</p>
+<h2 id="algorithm-3-the-sliding-window-counter"><a class="header" href="#algorithm-3-the-sliding-window-counter">Algorithm 3: the sliding window counter</a></h2>
+<p>We now have one algorithm that is cheap and wrong at the boundary and another that is
+exact and expensive, and it is natural to look for something between them. The sliding
+window counter keeps the 2 counts that a fixed window limiter would have kept for
+2 consecutive windows, and from them it estimates what the log would have reported.</p>
+<p>The limiter stores the count of the current window and the count of the window before
+it. When a request arrives, the second that precedes it overlaps both windows: it
+includes the whole of the current window up to now, together with the final portion of
+the previous window. If the current window began 250 ms ago, the preceding second
+extends 750 ms back into the previous window and so covers 75% of it.</p>
+<p>The limiter cannot know how the requests of the previous window were distributed
+within that window, having kept only their number, and so it makes the simplest
+assumption available, which is that they were spread evenly. On that assumption 75% of
+the window contains 75% of its requests, and the number of requests in the preceding
+second is estimated as</p>
+<p>estimate = previous count × share of the previous window still covered + current count</p>
+<figure>
+<img src="figures/limiter-overlap.svg?v=4788c1cb" alt="A time axis with a previous window that counted 5 requests and a current window that has counted 0. At 1250 ms the last second covers 75% of the previous window and 25% of the current window. The estimate is 5 times 0.75 plus 0, which is 3.75, although all 5 requests lie inside the last second.">
+<figcaption><b>Figure 7.4</b> Seen from 1250 ms, the preceding second covers 75% of the previous window.</figcaption>
+</figure>
+<p>A request is forwarded when the estimate, with the request itself included, does not
+exceed the limit.</p>
+<figure class="steps" data-prefix="figures/steps-limiter-counter" data-count="13" data-version="6ead65b4">
+<img src="figures/steps-limiter-counter-01.svg?v=6ead65b4" alt="Sliding window counter, step 1 of 13. The limiter keeps 2 counts: the window before, and the current window. From them it estimates how many requests the last second contained.">
+<figcaption><b>Figure 7.5</b> The sliding window counter on the same 11 requests. Use Next and Back to move through the 13 steps.</figcaption>
+</figure>
+<p>Requests 6 to 10 are refused, as they were by the log. Immediately after the boundary
+the preceding second still covers nearly all of the previous window, so that nearly
+all of its 5 requests are counted, and the burst that the fixed window admitted across
+the boundary does not get through.</p>
+<p>Request 11, at 1250 ms, is forwarded, and it is in this decision that the estimate
+shows what it is. The limiter calculates 5 × 0.75 + 0 = 3.75 and concludes that there
+is room for another request. In reality all 5 of the earlier requests arrived between
+600 and 950 ms and therefore lie entirely within the preceding second, so that the
+true count is 5, and the log, which knew this, refused the same request. The estimate
+came out too low because the requests were concentrated at the end of their window,
+while the formula took them to be evenly spread.</p>
+<p>The error can equally fall on the other side. When the requests of the previous window
+were concentrated at its beginning, the formula continues to count some of them after
+they have become more than 1 second old, and the limiter then refuses a request that
+the log would have forwarded. For traffic that is reasonably smooth the error is small
+in either direction, typically a few percent of the limit, and the worst case is the
+kind of burst at the very end of a window that we constructed deliberately. Even in
+the worst case the client gains a fraction of one allowance, where the fixed window
+would have given it a whole additional allowance.</p>
+<p>In exchange for this modest inaccuracy the algorithm needs 2 counts per client
+whatever the size of the limit. For a limit of 10000 per hour that is 2 numbers where
+the log requires up to 10000 timestamps, and this trade explains why the sliding
+window counter is so often chosen for public APIs with large limits and many clients.
+It should not be used where a small limit has to be enforced exactly.</p>
+<h2 id="algorithm-4-the-token-bucket"><a class="header" href="#algorithm-4-the-token-bucket">Algorithm 4: the token bucket</a></h2>
+<p>The 3 algorithms considered so far all count requests within a window, and they treat
+the burst only by implication. The remaining 2 start from a different picture, in which
+the burst is represented explicitly.</p>
+<p>Imagine a bucket that holds tokens, each token being a permission to send 1 request.
+Tokens are added to the bucket at a steady rate, which in our case is 1 every 200 ms
+or 5 per second. The bucket has a capacity, here 5 tokens, and a token that arrives
+when the bucket is already full is discarded. A request is forwarded if it can remove
+1 token from the bucket, and it is refused if the bucket is empty.</p>
+<figure>
+<img src="figures/limiter-token-bucket.svg?v=3250482a" alt="A bucket that holds up to 5 tokens. A refill adds 1 token every 200 ms, and a token that arrives at a full bucket is thrown away. Each request takes 1 token from the bucket, and a request that finds no token is refused.">
+<figcaption><b>Figure 7.6</b> A token bucket is described by the rate at which tokens arrive and the number of tokens the bucket can hold.</figcaption>
+</figure>
+<p>The 2 numbers that describe a token bucket correspond directly to the 2 questions
+that a limit has to answer. The rate determines how many requests per second a client
+can go on sending indefinitely, since over a long period it cannot spend tokens faster
+than they arrive. The capacity determines how many requests a client can send in the
+same instant after a period of quiet, since a client that has been silent finds the
+bucket full and is free to empty it at once. After such a burst the bucket is empty
+and the client is held to the rate until it pauses long enough for the bucket to fill
+again.</p>
+<p>That the rate and the capacity can be chosen independently is the particular strength
+of this algorithm. An API whose clients typically open a page with 20 calls and then
+fall silent can be given a rate of 5 per second and a capacity of 20, which serves
+those clients well and still bounds what they can sustain. A window counter has a
+single number at its disposal and cannot express such a limit.</p>
+<figure class="steps" data-prefix="figures/steps-limiter-token" data-count="13" data-version="4309ceba">
+<img src="figures/steps-limiter-token-01.svg?v=4309ceba" alt="Token bucket, step 1 of 13. The limiter keeps a bucket of tokens for the client. The client has been quiet, so the bucket is full: 5 tokens. Every request must take 1 token, and 1 new token arrives every 200 ms.">
+<figcaption><b>Figure 7.7</b> The token bucket on the same 11 requests. Use Next and Back to move through the 13 steps.</figcaption>
+</figure>
+<p>Here 8 requests are forwarded. The first 5 consume the contents of the full bucket.
+While they are arriving, and in the 300 ms that follow, 650 ms elapse in all, during
+which 3 further tokens are added, and requests 6, 7 and 10 each find one of them.</p>
+<p>This result repays some attention, because it regularly surprises people who have
+configured a token bucket and then measured it. The limit is described as “5 per
+second”, and the limiter forwarded 8 requests in 600 ms. The explanation is that a
+token bucket with rate r and capacity b forwards at most b + r × t requests in any
+span of t seconds, namely the contents of the bucket together with whatever arrives
+during the span. Over 1 second, with the numbers used here, this comes to 5 + 5 = 10.
+Whoever sets the capacity equal to the rate and expects a strict limit of 5 in every
+second will therefore observe up to twice that number in the second following a quiet
+period. If the server truly cannot bear more than 5 requests in any second, then the
+capacity must be made smaller, or the rate lower, or the algorithm of the next section
+is the one to use.</p>
+<h3 id="how-the-bucket-is-stored"><a class="header" href="#how-the-bucket-is-stored">How the bucket is stored</a></h3>
+<p>The picture suggests a timer that drops a token into every bucket every 200 ms. For a
+million clients that would mean 5 million updates per second, almost all of them
+applied to the buckets of clients that are sending nothing at all, and no practical
+limiter works in this way.</p>
+<p>The timer can be dispensed with entirely. The limiter stores 2 numbers for each
+client: the number of tokens in the bucket, and the time at which that number was last
+brought up to date. When a request arrives, the limiter works out how much time has
+passed since that moment, adds the tokens that would have arrived in the interval, and
+caps the result at the capacity. It then removes 1 token if one is available and
+stores the new number together with the present time. The steps of the picture show
+this arithmetic in captions such as “50 ms have passed, which adds 0.25 tokens”.</p>
+<p>The same captions show why the number of tokens has to be a fraction. A request that
+arrives 50 ms after its predecessor has earned a quarter of a token, and if that
+quarter were rounded down to nothing on every request, a client sending every 50 ms
+would never accumulate a token at all.</p>
+<p>Storing the bucket in this way has a welcome consequence for memory. A bucket that
+has not been touched for capacity ÷ rate seconds, which is 1 second in our example,
+must be full, and a full bucket is indistinguishable from a bucket that has never been
+used. The limiter may therefore delete the entry of any client that has been silent
+for that long and create a full bucket when the client next appears, so that memory is
+occupied only by the clients that are active at the moment.</p>
+<p>With 2 numbers of state, a few arithmetic operations per request and a burst that the
+operator sets directly, the token bucket is the usual choice for the general
+protection of an API. It is unsuitable only where the traffic reaching the service
+must be evenly spaced.</p>
+<h2 id="algorithm-5-the-leaky-bucket"><a class="header" href="#algorithm-5-the-leaky-bucket">Algorithm 5: the leaky bucket</a></h2>
+<p>The token bucket passes a burst through to the service, within the bound set by its
+capacity. The leaky bucket does the opposite: it accepts a burst and releases it
+slowly.</p>
+<p>The name comes from a bucket with a small hole in its base. However quickly water is
+poured in, it leaves through the hole at a constant rate, and if water continues to be
+poured in faster than it leaks, the bucket eventually fills and the excess runs over
+the side.</p>
+<p>Applied to requests, the bucket is a queue. An arriving request joins the back of the
+queue, and requests leave the front of it at a fixed pace, 1 every 200 ms, to be
+forwarded to the API. The queue has a fixed number of places, 5 in this example, and a
+request that arrives when all of them are occupied is refused.</p>
+<figure class="steps" data-prefix="figures/steps-limiter-leaky" data-count="13" data-version="d4541bfc">
+<img src="figures/steps-limiter-leaky-01.svg?v=d4541bfc" alt="Leaky bucket, step 1 of 13. The limiter keeps a queue with 5 places. Requests leave the queue for the API at a fixed pace: 1 every 200 ms. A request that finds the queue full is refused.">
+<figcaption><b>Figure 7.8</b> The leaky bucket on the same 11 requests. The lower axis shows when each request leaves for the API. Use Next and Back to move through the 13 steps.</figcaption>
+</figure>
+<p>The leaky bucket accepts 9 of the 11 requests, more than any algorithm except the
+fixed window, and yet it places a lighter burden on the API than any of the others.
+The lower axis of the picture explains the apparent paradox. The requests arrived
+bunched together within 650 ms, and they departed at intervals of 200 ms over a period
+of 1.6 seconds, so that the API at no time received 2 requests less than 200 ms apart.</p>
+<p>This is what the leaky bucket is for. The other 4 algorithms decide only whether a
+request is forwarded, and a request that is forwarded goes on its way at the instant
+of its arrival. The leaky bucket decides in addition when the request is forwarded,
+and in doing so it alters the shape of the traffic as well as its volume.</p>
+<figure>
+<img src="figures/limiter-shapes.svg?v=2691c323" alt="3 time axes. On the first, 20 requests arrive in the same instant. On the second, a token bucket forwards 5 of them in that instant. On the third, a leaky bucket forwards 5 of them at 0, 200, 400, 600 and 800 ms.">
+<figcaption><b>Figure 7.9</b> 20 requests arrive together. Both buckets forward 5 of them, at different times.</figcaption>
+</figure>
+<p>The smoothing has a price, and it is the client who pays it. A request that joins the
+queue behind 4 others waits 800 ms before it so much as reaches the API. For a person
+waiting on a web page such a delay is worse than a prompt refusal followed by a retry.
+For a background job that sends email through a provider which accepts exactly 5
+messages per second it is ideal, since nothing is refused, nothing has to be retried,
+and the provider’s limit is observed to the letter.</p>
+<p>A queue of waiting requests also holds resources, because each waiting request keeps
+a connection open and occupies memory in the limiter. For this reason the leaky bucket
+is found more often inside a system, between a service and something slower that it
+feeds, than at the public edge of an API.</p>
+<h3 id="the-leaky-bucket-as-a-meter"><a class="header" href="#the-leaky-bucket-as-a-meter">The leaky bucket as a meter</a></h3>
+<p>The literature uses the name “leaky bucket” for a second algorithm as well, and the
+2 are frequently confused. In this other version nothing waits. The bucket has a
+level, which rises by 1 with each accepted request and falls at a constant rate, and a
+request that would raise the level above the capacity is refused, while every accepted
+request is forwarded immediately.</p>
+<p>This “leaky bucket as a meter” makes exactly the same decisions as a token bucket. The
+level of the water is the number of tokens missing from a full token bucket, and the
+one drains at the rate at which the other fills. When a document speaks of a leaky
+bucket and nothing is being queued, what it describes is a token bucket seen upside
+down, and everything said in the previous section applies to it, the burst included.</p>
+<h3 id="how-the-queue-is-stored"><a class="header" href="#how-the-queue-is-stored">How the queue is stored</a></h3>
+<p>The queueing version, too, needs less state than its picture suggests. Because
+requests depart at a fixed pace, the limiter does not have to consult a list of them
+in order to reach a decision. It is enough to keep 1 number, the time of the next free
+turn to depart. An arriving request is assigned that turn, and the number is advanced
+by 200 ms. If the turn lies 1 second or more in the future, then 5 requests must
+already be waiting, and the new arrival is refused. The captions of the picture report
+this number at each step, as in “the next free turn to leave is at 1400 ms”.</p>
+<p>Deciding from a single stored time in this manner is an old technique. It was
+standardised in the 1990s for telephone and data networks under the name <em>generic cell
+rate algorithm</em>, usually abbreviated GCRA, and it is used in present-day rate limiters
+for the same reason it was attractive then, which is that it requires 1 number of
+state per client.</p>
+<h2 id="the-algorithms-compared"><a class="header" href="#the-algorithms-compared">The algorithms compared</a></h2>
+<p>The table below collects the results for the 11 requests of this chapter under the
+limit of 5 per second.</p>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th>Algorithm</th><th>Forwarded</th><th>What the API received</th></tr>
+</thead>
+<tbody>
+<tr><td>Fixed window counter</td><td>10</td><td>10 requests within 600 ms</td></tr>
+<tr><td>Sliding window log</td><td>5</td><td>5 requests, then nothing until 1600 ms</td></tr>
+<tr><td>Sliding window counter</td><td>6</td><td>5 requests, and a 6th at 1250 ms that an exact count would have refused</td></tr>
+<tr><td>Token bucket</td><td>8</td><td>5 at once from the full bucket, then 1 for each 200 ms that passed</td></tr>
+<tr><td>Leaky bucket</td><td>9</td><td>1 request every 200 ms for 1.6 seconds</td></tr>
+</tbody>
+</table>
+</div>
+<p>The simulation in the book’s repository sends 3 further kinds of traffic through the
+same 5 algorithms. In its results the column “most in any second” gives the largest
+number of requests that reached the API within any span of 1000 ms, which is the
+quantity the server actually has to withstand.</p>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th>Traffic</th><th>Algorithm</th><th>Forwarded</th><th>Most in any second</th></tr>
+</thead>
+<tbody>
+<tr><td>20 requests in the same instant</td><td>fixed window</td><td>5</td><td>5</td></tr>
+<tr><td></td><td>sliding window log</td><td>5</td><td>5</td></tr>
+<tr><td></td><td>sliding window counter</td><td>5</td><td>5</td></tr>
+<tr><td></td><td>token bucket</td><td>5</td><td>5</td></tr>
+<tr><td></td><td>leaky bucket</td><td>5</td><td>5, spread over 800 ms</td></tr>
+<tr><td>5 requests shortly before the 1 second mark and 5 shortly after</td><td>fixed window</td><td>10</td><td>10</td></tr>
+<tr><td></td><td>sliding window log</td><td>5</td><td>5</td></tr>
+<tr><td></td><td>sliding window counter</td><td>5</td><td>5</td></tr>
+<tr><td></td><td>token bucket</td><td>5</td><td>5</td></tr>
+<tr><td></td><td>leaky bucket</td><td>6</td><td>5</td></tr>
+<tr><td>10 requests per second for 3 seconds</td><td>fixed window</td><td>15</td><td>5</td></tr>
+<tr><td></td><td>sliding window log</td><td>15</td><td>5</td></tr>
+<tr><td></td><td>sliding window counter</td><td>13</td><td>5</td></tr>
+<tr><td></td><td>token bucket</td><td>19</td><td>9</td></tr>
+<tr><td></td><td>leaky bucket</td><td>20</td><td>5</td></tr>
+</tbody>
+</table>
+</div>
+<p>The first block of this table carries a warning for anyone who tests a limiter. A
+single burst does not distinguish the algorithms at all, since every one of them
+forwards 5 requests out of 20. Their differences emerge only when traffic continues
+for a while or crosses a boundary, and a limiter that has passed a quick test with one
+burst may therefore still behave quite differently from what its author expects once
+it is in production.</p>
+<p>The second and third blocks show, as measurements, the 2 effects described earlier.
+The fixed window alone admits 10 requests in a second when they are arranged around
+the boundary. The token bucket admits 9 in the first second of sustained traffic,
+which is its full bucket of 5 and the 4 tokens that arrived meanwhile. In the third
+block the sliding window counter forwards 13 requests where the exact log forwards 15,
+its estimate having erred on the strict side on this occasion.</p>
+<p>The properties of the 5 algorithms can be summarised as follows.</p>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th>Algorithm</th><th>State per client</th><th>Burst</th><th>Accuracy</th><th>Typical use</th></tr>
+</thead>
+<tbody>
+<tr><td>Fixed window counter</td><td>1 count</td><td>the limit at once, and twice the limit across a boundary</td><td>exact within a clock window only</td><td>long quotas, such as calls per day</td></tr>
+<tr><td>Sliding window log</td><td>1 timestamp per request, up to the limit</td><td>the limit at once</td><td>exact over every window</td><td>small, strict limits, such as login attempts</td></tr>
+<tr><td>Sliding window counter</td><td>2 counts</td><td>the limit at once</td><td>within a few percent</td><td>large limits on many clients</td></tr>
+<tr><td>Token bucket</td><td>2 numbers</td><td>the capacity, chosen separately from the rate</td><td>exact for rate and capacity</td><td>general protection of an API</td></tr>
+<tr><td>Leaky bucket</td><td>1 number, and the waiting requests</td><td>accepted and then spread out</td><td>output is evenly spaced</td><td>feeding something that needs a steady pace</td></tr>
+</tbody>
+</table>
+</div>
+<p>In choosing among them it is usually enough to consider what the limit is for. If
+whatever stands behind the limiter can work only at a fixed pace, the leaky bucket is
+the appropriate choice, with the understanding that requests will wait. If the limit
+is small and has to be exact, as with a handful of attempts per minute on something
+sensitive, the sliding window log should be used, its memory cost being negligible at
+that size. If the limit is a long quota that customers read about in a price list, a
+fixed window that resets at a predictable time is both the simplest and the easiest to
+explain. For the general protection of an API, which is the commonest case, the choice
+lies between the token bucket, when clients are bursty and a bounded burst does no
+harm, and the sliding window counter, when the limit is meant to hold over every
+window to within a small error.</p>
+<p>The design in the remainder of this chapter uses a token bucket with a rate of 5 per
+second and a capacity of 10 for each client. This is the most widespread arrangement
+at an API gateway, being cheap, well suited to the way real clients behave, and
+equipped with a burst that the operator controls directly.</p>
+<h2 id="use-cases"><a class="header" href="#use-cases">Use cases</a></h2>
+<p>The limiter has 2 kinds of user. Clients encounter it on every call they make, usually
+without noticing, and operators set the limits it enforces.</p>
+<figure>
+<img src="figures/limiter-use-cases.svg?v=ed442776" alt="A use case diagram of the rate limiter. Client: call the API (GET /v1/orders), be told to slow down (429, Retry-After: 2). Operator: set a client&#39;s limit (PUT /v1/limits/{client}), read a client&#39;s usage (GET /v1/limits/{client}).">
+<figcaption><b>Figure 7.10</b> The actors and what each of them does.</figcaption>
+</figure>
+<h2 id="functional-requirements"><a class="header" href="#functional-requirements">Functional requirements</a></h2>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th>No.</th><th>Functional requirement</th></tr>
+</thead>
+<tbody>
+<tr><td>0</td><td>Each client has a limit: a number of requests per second, and a burst it may send at once.</td></tr>
+<tr><td>1</td><td>A request within the limit passes to the API unchanged.</td></tr>
+<tr><td>2</td><td>A request over the limit is answered with <code>429 Too Many Requests</code> and the time to wait.</td></tr>
+<tr><td>3</td><td>An operator can change a client’s limit without a restart.</td></tr>
+<tr><td>4</td><td>Different routes of the API can have different limits for the same client.</td></tr>
+</tbody>
+</table>
+</div>
+<h2 id="non-functional-requirements"><a class="header" href="#non-functional-requirements">Non-functional requirements</a></h2>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th>No.</th><th>Property</th><th>Non-functional requirement</th></tr>
+</thead>
+<tbody>
+<tr><td>0</td><td>Latency</td><td>The check adds less than 1 ms to a request.</td></tr>
+<tr><td>1</td><td>Availability</td><td>If the limiter cannot decide, requests pass. A broken limiter must not take the API down.</td></tr>
+<tr><td>2</td><td>Consistency</td><td>Eventual. A client may briefly exceed its limit by a few requests when limiter nodes disagree.</td></tr>
+<tr><td>3</td><td>Scale</td><td>1 million clients and 50000 requests per second.</td></tr>
+</tbody>
+</table>
+</div>
+<p>Non-functional requirement 2 calls for some justification, since in it we deliberately
+choose the weaker of the consistency models introduced in chapter 1. The limiter is a
+protective layer, and the consequences of its being slightly wrong are mild: if a
+limit of 100 requests per second occasionally admits 103, the API is still protected
+and no data anywhere is incorrect. To make every count exact, all the limiter nodes
+would have to agree on a client’s count before any of them answered a request, and
+agreement of that kind is what chapters 3 and 4 obtain by means of a leader and a
+majority, at the cost of a disk write and a network round trip. Incurring that cost on
+every call to the API would make the protection more expensive than much of what it
+protects. We therefore accept counts that are slightly wrong for short periods, and
+concentrate on bounding how wrong they can be.</p>
+<p>Non-functional requirement 1 is likewise a decision that could have gone the other
+way, and for certain limits it does. The section on failures takes it up again.</p>
+<h2 id="core-entities"><a class="header" href="#core-entities">Core entities</a></h2>
+<figure>
+<img src="figures/limiter-entities.svg?v=dbc0077a" alt="The core entities. Limit has the fields client string, capacity u32, rate per second. Bucket has the fields client string, tokens f64, updated time. A Limit is what the operator sets. A Bucket is the running state the limiter keeps for each client.">
+<figcaption><b>Figure 7.11</b> The core entities and their fields.</figcaption>
+</figure>
+<p>The 2 entities differ in character, and the difference shapes the design. A Limit is
+configuration. It changes when an operator changes it, perhaps a few times a day, it
+must survive restarts, and it is read enormously more often than it is written, so
+each limiter node keeps a copy of the limits in memory and refreshes it periodically.
+A Bucket is running state that changes with every request and can be lost without
+real harm, since a bucket that has been lost is created again full, and the
+only effect is that 1 client is granted 1 additional burst.</p>
+<h2 id="capacity-estimate"><a class="header" href="#capacity-estimate">Capacity estimate</a></h2>
+<div class="estimate">
+<img class="builder" src="art/crab-builder.svg" alt="A crab in a hard hat, in tears.">
+<p><strong>Arithmetic ahead.</strong> The buckets of 1 million clients need about 64 MB of memory. They fit on 1 node, and we run 3 for availability.</p>
+<p><a class="skip" href="#high-level-design">Skip to the high-level design</a></p>
+<details>
+<summary>Show the calculation</summary>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th>Quantity</th><th>Calculation</th><th>Result</th></tr>
+</thead>
+<tbody>
+<tr><td>Memory per bucket</td><td>client id 40 bytes + tokens 8 + time 8 + overhead 8</td><td>64 bytes</td></tr>
+<tr><td>Memory for all clients</td><td>1000000 × 64 bytes</td><td>64 MB</td></tr>
+<tr><td>Checks per second</td><td>1 per request</td><td>50000</td></tr>
+<tr><td>The same clients with a sliding window log and a limit of 10000 per hour</td><td>1000000 × 10000 × 8 bytes</td><td>80 GB</td></tr>
+</tbody>
+</table>
+</div>
+</details>
+</div>
+
+<p>The last row of the calculation is included for contrast. It shows that the choice of
+algorithm can change the memory required by a factor of more than 1000.</p>
+<h2 id="the-api"><a class="header" href="#the-api">The API</a></h2>
+<p>A rate limiter offers clients no API of its own. It makes itself known through the
+responses of the API it protects, by means of 1 status code and a small number of
+headers.</p>
+<p><strong>A request within the limit</strong></p>
+<pre><code class="language-http">GET /v1/orders HTTP/1.1
+Host: api.example
+Authorization: Bearer client-42
+</code></pre>
+<pre><code class="language-http">HTTP/1.1 200 OK
+RateLimit-Limit: 5
+RateLimit-Remaining: 3
+RateLimit-Reset: 1
+</code></pre>
+<p>The 3 headers inform the client of its rate, of the number of requests it could still
+send at this moment, and of the number of seconds after which its allowance will be
+full again, so that a client which reads them can slow down before it is ever refused.
+The names of such headers differ from one API to another, and an API should document
+the ones it sends.</p>
+<p><strong>A request over the limit</strong></p>
+<pre><code class="language-http">GET /v1/orders HTTP/1.1
+Host: api.example
+Authorization: Bearer client-42
+</code></pre>
+<pre><code class="language-http">HTTP/1.1 429 Too Many Requests
+Retry-After: 2
+Content-Type: application/problem+json
+
+{
+  "type": "/problems/rate-limited",
+  "title": "Too many requests",
+  "status": 429,
+  "detail": "5 requests per second are allowed"
+}
+</code></pre>
+<p><code>429 Too Many Requests</code> is the status code that HTTP provides for this situation, and
+<code>Retry-After</code> is the standard header for stating how many seconds the client should
+wait.</p>
+<p><strong>An operator sets a limit</strong></p>
+<pre><code class="language-http">PUT /v1/limits/client-42 HTTP/1.1
+Host: limiter.internal
+Content-Type: application/json
+
+{ "rate": 5, "capacity": 10 }
+</code></pre>
+<pre><code class="language-http">HTTP/1.1 200 OK
+Content-Type: application/json
+
+{ "client": "client-42", "rate": 5, "capacity": 10 }
+</code></pre>
+<p><code>PUT</code> replaces the whole limit of the named client, and repeating the request leaves
+the limit as it was after the first.</p>
+<h2 id="high-level-design"><a class="header" href="#high-level-design">High-level design</a></h2>
+<figure class="wide">
+<img src="figures/limiter-design.svg?v=1975781b" alt="A rate limiter in front of an API. The components are Clients, API gateway, API servers, Rate limiter, Counter store. Step 1: A client sends a request to the gateway. Step 2: The gateway asks the limiter about this client. Step 3: The limiter refills and updates the client&#39;s bucket. Step 4: Allowed: the request goes on. Refused: 429.">
+<figcaption><b>Figure 7.12</b> The components and the path of a request. The steps are numbered.</figcaption>
+</figure>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th>Component</th><th>Role</th><th>State it holds</th><th>When 1 instance fails</th></tr>
+</thead>
+<tbody>
+<tr><td>API gateway</td><td>asks the limiter before it forwards a request</td><td>none</td><td>another gateway takes its traffic</td></tr>
+<tr><td>Rate limiter</td><td>determines the key, applies the token bucket rule and decides</td><td>a copy of the limits, in memory</td><td>requests pass unchecked until it returns</td></tr>
+<tr><td>Counter store</td><td>holds the buckets, shared by all limiter nodes</td><td>the buckets, in memory</td><td>limiters fall back to local buckets</td></tr>
+</tbody>
+</table>
+</div>
+<h3 id="one-request-step-by-step"><a class="header" href="#one-request-step-by-step">One request, step by step</a></h3>
+<p>The steps follow the arrows of figure 7.12.</p>
+<ol>
+<li>A client sends <code>GET /v1/orders</code> with its credentials. The gateway verifies the credentials and obtains the client id, <code>client-42</code>, from them.</li>
+<li>The gateway asks the rate limiter whether <code>client-42</code> may make 1 request to this route now.</li>
+<li>The limiter finds the limit of <code>client-42</code> in its own memory. It then asks the counter store to bring the client’s bucket up to date for the time that has passed and to remove 1 token, as a single operation, and the store replies with the decision and the number of tokens remaining.</li>
+<li>If a token was removed, the gateway forwards the request to an API server and adds the <code>RateLimit</code> headers to the response. If the bucket was empty, the gateway answers <code>429</code> itself, and the API servers never see the request.</li>
+</ol>
+<p>The order of the first 2 steps is deliberate. The gateway authenticates the caller
+before consulting the limiter because the limiter needs to know whose request it is
+counting. It follows that requests which fail authentication must be limited in some
+other way, usually by IP address, since otherwise an attacker could submit login
+attempts without limit and never come within reach of a limit that is keyed by client.</p>
+<h2 id="where-the-limiter-runs"><a class="header" href="#where-the-limiter-runs">Where the limiter runs</a></h2>
+<p>The design places the limiter at the gateway. A limiter can in fact run in any of 3
+places, and the 3 protect against different things.</p>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th>Place</th><th>What it sees</th><th>What it is suited to</th><th>What it cannot do</th></tr>
+</thead>
+<tbody>
+<tr><td>In the client</td><td>the client’s own outgoing calls</td><td>keeping a well-behaved client within a known limit, so that it is never refused</td><td>protect the service, since a defective or hostile client does not run it</td></tr>
+<tr><td>At the gateway</td><td>every request, before any service has worked on it</td><td>protecting all services with 1 set of rules and refusing cheaply</td><td>know what a request will cost once it is inside a service</td></tr>
+<tr><td>Inside a service</td><td>the requests to that service, in full detail</td><td>limits that depend on content, such as rows returned or money moved</td><td>refuse a request before it has consumed a connection and some processing</td></tr>
+</tbody>
+</table>
+</div>
+<p>These are complements, and a mature system uses all of them. A carefully written
+client library paces its own calls with a leaky bucket so that it seldom sees a <code>429</code>.
+The gateway enforces the limit regardless, because a service cannot make its safety
+depend on the good conduct of its clients. And an expensive operation deep inside a
+service may carry a tighter limit of its own, based on knowledge that the gateway does
+not have.</p>
+<h2 id="whose-requests-are-counted-together"><a class="header" href="#whose-requests-are-counted-together">Whose requests are counted together</a></h2>
+<p>The key of a limit determines which requests are added up, and a badly chosen key
+causes the limiter to penalise the wrong people while leaving the intended target
+untouched.</p>
+<p>The IP address is the only identity available before a caller has authenticated, and
+it is a poor one in both directions. A university, a company or a mobile network may
+place thousands of people behind a single address, all of whom then share one
+allowance and are refused together when any one of them is busy. An attacker in
+control of 10000 addresses, on the other hand, enjoys 10000 allowances. A limit by IP
+address is therefore best kept generous and regarded as a coarse defence for
+unauthenticated traffic.</p>
+<p>Once the caller is known, an API key or a user id is a far better key, since it
+identifies the party actually responsible for the traffic. Combining it with the
+route gives finer control, at the cost of 1 bucket for every pair of client and route.
+A limit keyed on nothing at all, which counts every request to a service, protects the
+service’s total capacity and provides no fairness whatever, because a single client is
+free to use it up.</p>
+<p>In practice several limits are applied to each request, and the request is forwarded
+only if every one of them permits it. A representative set is shown below.</p>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th>Key</th><th>Limit</th><th>Purpose</th></tr>
+</thead>
+<tbody>
+<tr><td>IP address</td><td>100 per second</td><td>coarse defence against unauthenticated abuse</td></tr>
+<tr><td>client id</td><td>5 per second, burst 10</td><td>fairness between clients</td></tr>
+<tr><td>client id and <code>POST /v1/exports</code></td><td>2 per minute</td><td>an expensive operation</td></tr>
+<tr><td>the whole service</td><td>40000 per second</td><td>the real capacity of the service</td></tr>
+</tbody>
+</table>
+</div>
+<p>Layered limits introduce a subtlety of their own. Suppose a request is admitted by the
+second limit and then refused by the third. A token has already been removed from the
+client’s general bucket on behalf of a request that was never served, and a client
+that keeps running into the limit on exports will find that its general allowance
+drains away as well. The correct procedure is to examine all the applicable limits
+first and to remove tokens only when every one of them has room, which with a shared
+store means that all the buckets concerned are checked and updated within the same
+single operation.</p>
+<h2 id="counting-on-many-machines"><a class="header" href="#counting-on-many-machines">Counting on many machines</a></h2>
+<p>Everything said so far has assumed that 1 limiter sees all the requests of a client.
+At 50000 requests per second, and for the sake of availability, there will be several
+limiter nodes behind a load balancer, and the requests of <code>client-42</code> will be
+distributed among them. The question of where the buckets are to be kept has 3
+answers in common use.</p>
+<h3 id="each-node-keeps-its-own-buckets"><a class="header" href="#each-node-keeps-its-own-buckets">Each node keeps its own buckets</a></h3>
+<p>The simplest arrangement is for every limiter node to keep buckets in its own memory
+and to consult nobody. Nothing could be faster, and there is no dependency that might
+fail.</p>
+<p>The arrangement is also wrong by a constant factor. With 3 nodes and traffic spread
+evenly among them, each node sees a third of the client’s requests and allows the full
+limit, so that the client obtains 3 times its allowance. One might give each node a
+third of the limit, but this is correct only for as long as the traffic is in fact
+evenly spread, which a load balancer does not undertake to ensure for any individual
+client: a client that keeps 1 connection open sends everything to 1 node and receives
+a third of what it is entitled to. The size of the error also changes whenever a node
+is added or removed.</p>
+<p>The load balancer can be instructed to send all the requests of a client to the same
+node, for instance by hashing the client id as chapter 1 hashes keys. Local buckets
+are then exact. The weakness shows itself when a node is added or fails, since the
+clients that are moved to another node begin there with a fresh and full bucket. For a
+coarse protective limit this is often acceptable, and a number of large systems
+operate in exactly this way.</p>
+<h3 id="a-shared-counter-store"><a class="header" href="#a-shared-counter-store">A shared counter store</a></h3>
+<p>In the second arrangement all the limiter nodes keep the buckets in 1 shared in-memory
+store, so that a request works on the same bucket whichever node it reaches. This is
+the arrangement our design adopts.</p>
+<p>It brings with it a problem that did not exist on a single machine. Updating a token
+bucket consists of 3 steps: reading the bucket, computing the new number of tokens,
+and writing the result back. When 2 limiter nodes carry out these steps for the same
+client at the same time, the steps of one may be interleaved with the steps of the
+other.</p>
+<figure>
+<img src="figures/limiter-race.svg?v=4273cf87" alt="5 steps. Limiter node A reads the bucket and sees 1 token. Node B reads the bucket and sees the same token. Node A writes 0 tokens and forwards its request. Node B writes 0 tokens and forwards its request. 2 requests passed and 1 token was taken. The cure is for the store to refill and take the token in 1 operation.">
+<figcaption><b>Figure 7.13</b> Both nodes read the bucket before either has written it back.</figcaption>
+</figure>
+<p>Each node saw 1 token and forwarded a request, and the bucket lost only 1 token. No
+error is reported anywhere. The limit has been exceeded, and it will be
+exceeded more often the more traffic the client sends, so that the fault is at its
+worst in exactly the circumstances for which the limiter was installed.</p>
+<p>The remedy is to make the 3 steps indivisible. The limiter sends the store a single
+request whose meaning is “bring this bucket up to date, remove 1 token if there is
+one, and report the outcome”, and the store carries out the whole of it before
+attending to any other request for the same bucket. In-memory stores provide for this
+in 2 ways: by executing a small script inside the store as one unit, or by offering
+a compare-and-set operation that writes a value only if it has not changed since it
+was read, as described in chapter 1. The fixed window is the easy case here, since
+its entire update is “add 1 and return the new value”, which every store of this kind
+offers as a single operation.</p>
+<p>The same reasoning extends to time. If every limiter node supplies its own clock
+reading with its request, then 2 nodes whose clocks differ by 20 ms will cause the
+recorded time of a bucket to jump backwards and forwards, and the refill calculation
+will sometimes be presented with a negative interval and sometimes credit the same 20
+ms twice. This is avoided by letting the store apply its own clock to every bucket, so
+that all the updates of a bucket are measured against a single clock.</p>
+<p>What the shared store costs is 1 network round trip per request, well under 1 ms
+within a data centre, together with a new dependency, since the limiter can now do its
+work properly only while the store is reachable.</p>
+<h3 id="local-tokens-obtained-in-batches"><a class="header" href="#local-tokens-obtained-in-batches">Local tokens obtained in batches</a></h3>
+<p>The third arrangement retains the shared store and avoids consulting it for every
+request. A limiter node asks the store for a batch of tokens on behalf of a client,
+say 10, and serves the next 10 requests of that client from its own memory, returning
+to the store only when the batch is spent.</p>
+<p>The number of calls to the store is thereby divided by the batch size, and the price
+is a loss of accuracy at the margins. Tokens lying unused in the memory of one node
+are unavailable to the others, so that a client may be refused at one node while
+another still holds tokens for it, and a node that crashes takes its unspent tokens
+with it. The larger the batch, the fewer the calls and the coarser the count.</p>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th></th><th>Local buckets</th><th>Shared store</th><th>Local batches</th></tr>
+</thead>
+<tbody>
+<tr><td>Calls to the store per request</td><td>0</td><td>1</td><td>1 ÷ batch size</td></tr>
+<tr><td>Accuracy</td><td>wrong by up to the number of nodes</td><td>exact, provided the update is 1 operation</td><td>wrong by up to batch size × number of nodes</td></tr>
+<tr><td>If the store is down</td><td>unaffected</td><td>must fall back</td><td>continues until the batches are spent</td></tr>
+<tr><td>Typical use</td><td>coarse protection, or requests routed by client</td><td>most API gateways</td><td>very high request rates</td></tr>
+</tbody>
+</table>
+</div>
+<p>For this design we choose the shared store. A single in-memory store handles 50000
+checks per second comfortably, and non-functional requirement 0 leaves room for the
+round trip.</p>
+<h2 id="what-a-refused-caller-should-be-told"><a class="header" href="#what-a-refused-caller-should-be-told">What a refused caller should be told</a></h2>
+<p>A refusal is a message addressed to a program, and whether the limiter reduces the
+load on the system or multiplies it depends on what that program does next.</p>
+<p>Consider a client that responds to <code>429</code> by retrying at once. It is refused again, and
+retries again, and the limiter finds itself answering many times more requests from
+this client than it did before the limit was reached. Each refusal is cheap, but the
+total is not negligible, and none of it is of any use. The <code>Retry-After</code> header exists
+to prevent this, by telling the client the earliest moment at which a further attempt
+can succeed. With a token bucket that moment is easily calculated, since the limiter
+knows how many tokens are lacking and how quickly they arrive.</p>
+<p>A second effect arises when many clients are involved. Suppose that 1000 clients are
+refused within the same second, perhaps because a brief outage caused all of them to
+retry together, and that each is told <code>Retry-After: 2</code>. Exactly 2 seconds later 1000
+requests arrive at the same instant. This is known as a <em>thundering herd</em>, and the
+remedy lies with the clients, which should wait for the stated time and then for an
+additional random interval, called <em>jitter</em>, so that their retries are spread out.
+Retries, lengthening pauses and jitter are treated in detail in chapter 13.</p>
+<p>The limiter’s own boundary can also be made less abrupt. Some systems maintain 2
+thresholds, adding a warning header to responses once the lower one is passed and
+refusing only at the higher. An operator who is about to introduce a new limit can
+first run it in a mode that merely records which requests it would have refused, and
+after a week the record will show whether the limit would have harmed legitimate
+clients, before any client has actually been turned away.</p>
+<h2 id="when-the-limiter-itself-fails"><a class="header" href="#when-the-limiter-itself-fails">When the limiter itself fails</a></h2>
+<p>The limiter depends on the counter store, and the store may become unreachable. Each
+request then confronts the limiter with a decision for which no good answer exists: it
+cannot count, and it must nevertheless either forward the request or refuse it. To
+forward it is to <em>fail open</em>, which keeps the API available and leaves it unprotected
+for the duration. To refuse it is to <em>fail closed</em>, which keeps the API protected and
+makes it unavailable to everyone.</p>
+<p>For the general protection of an API we fail open. The limiter exists in order to keep
+the API available, and if a fault in the limiter’s own store were to make the API
+unavailable, the limiter would have brought about the very outage it was installed to
+prevent. It should also be remembered that at most moments no client is misbehaving,
+so that an hour without limits will usually pass without incident.</p>
+<p>Failing open need not mean having no limit at all. When the store cannot be reached,
+each limiter node can fall back on buckets in its own memory, in the manner of the
+first arrangement above, with every node enforcing its share of each limit. The count
+is coarser than usual, and a client that goes badly wrong is still contained.</p>
+<p>For some limits the decision must be reversed. A limit on login attempts, on password
+resets, or on calls each of which costs money is a control on security or expenditure,
+and to forward requests without limit in those cases is worse than to refuse them.
+Such limits fail closed, and a sound design names them one by one, since a single switch
+for the whole limiter cannot serve both kinds.</p>
+<p>The store itself can be run as a leader with followers, as in chapter 3, so that the
+loss of 1 machine does not make it unreachable. After a change of leader the new
+leader may lack the most recent updates, because an in-memory store commonly
+replicates without waiting for a majority to confirm. For buckets this is harmless,
+amounting to a few extra tokens for a few clients, and it is the eventual consistency
+of non-functional requirement 2 as it appears in practice.</p>
+<h2 id="mistakes-to-avoid"><a class="header" href="#mistakes-to-avoid">Mistakes to avoid</a></h2>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th>Mistake</th><th>What goes wrong</th><th>What to do</th></tr>
+</thead>
+<tbody>
+<tr><td>Using a fixed window to protect a server from overload</td><td>A client sends a full allowance on each side of a boundary, and the server receives twice the limit within moments.</td><td>Use a token bucket or a sliding window, and keep fixed windows for long quotas.</td></tr>
+<tr><td>Setting a token bucket’s capacity equal to its rate and reading the result as a strict limit per second</td><td>After a quiet period the contents of the bucket and a second’s refill pass together, up to twice the rate in 1 second.</td><td>Set the capacity to the burst that the server can really absorb.</td></tr>
+<tr><td>Reading and writing the bucket in separate steps</td><td>2 limiter nodes read the same value and both forward a request.</td><td>Refill and remove the token in a single operation inside the store.</td></tr>
+<tr><td>Refilling every bucket from a timer</td><td>Millions of updates per second are spent on clients that send nothing.</td><td>Refill when a request arrives, from the time that has passed.</td></tr>
+<tr><td>Limiting by IP address alone</td><td>Thousands of users behind 1 address share an allowance, while an attacker with many addresses has many allowances.</td><td>Use the client id once the caller is authenticated, and the IP address only before that.</td></tr>
+<tr><td>Removing a token for one limit before checking the others</td><td>A request refused by a later limit has already consumed allowance.</td><td>Check all the limits, then remove tokens from all of them, in 1 operation.</td></tr>
+<tr><td>Letting each limiter node supply its own clock reading</td><td>Clocks that differ make the recorded time of a bucket run backwards.</td><td>Let the store’s clock time every update.</td></tr>
+<tr><td>Refusing everything when the store is down</td><td>A fault in the protective layer takes the API down.</td><td>Fail open with local buckets, except for the limits identified as security controls.</td></tr>
+<tr><td>Answering <code>429</code> without <code>Retry-After</code></td><td>Clients retry at once and add to the load.</td><td>State the time to wait, and ask the authors of clients to add jitter.</td></tr>
+<tr><td>Appending a request to the sliding window log before checking the count</td><td>A client that keeps sending is never served again.</td><td>Log only forwarded requests, unless a lasting block is intended.</td></tr>
+</tbody>
+</table>
+</div>
+<h2 id="failures"><a class="header" href="#failures">Failures</a></h2>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th>Failure</th><th>What users see</th><th>How the system recovers</th></tr>
+</thead>
+<tbody>
+<tr><td>The counter store is unreachable</td><td>nothing, since requests pass</td><td>limiter nodes use local buckets with a share of each limit until the store returns</td></tr>
+<tr><td>The leader of the counter store is replaced</td><td>a few clients are allowed a few extra requests</td><td>the new leader continues with buckets that are at most a moment out of date</td></tr>
+<tr><td>A limiter node stops</td><td>nothing</td><td>the gateway uses the other nodes, and the buckets are in the store</td></tr>
+<tr><td>A client ignores <code>429</code> and keeps sending</td><td>that client continues to receive <code>429</code></td><td>each refusal costs 1 store operation and no work in the API</td></tr>
+<tr><td>An operator sets a limit far too low</td><td>many clients receive <code>429</code></td><td>the record of the trial mode reveals the problem beforehand, and <code>PUT</code> restores the previous value</td></tr>
+</tbody>
+</table>
+</div>
+<h2 id="trade-offs"><a class="header" href="#trade-offs">Trade-offs</a></h2>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th>Decision</th><th>What it gains</th><th>What it costs</th></tr>
+</thead>
+<tbody>
+<tr><td>Token bucket</td><td>a rate and a burst that are set independently, in 2 numbers of state</td><td>up to capacity + rate requests in the first second after a silence</td></tr>
+<tr><td>Shared counter store</td><td>every node counts on the same bucket</td><td>1 round trip per request, and a dependency</td></tr>
+<tr><td>Eventual consistency</td><td>no agreement protocol on the path of every request</td><td>a limit can be exceeded by a few requests</td></tr>
+<tr><td>Fail open</td><td>the API stays available when the store is down</td><td>weaker protection during that time</td></tr>
+<tr><td>Limiter at the gateway</td><td>1 place for all rules, and cheap refusals</td><td>no knowledge of what a request costs inside a service</td></tr>
+</tbody>
+</table>
+</div>
+<h2 id="the-simulation"><a class="header" href="#the-simulation">The simulation</a></h2>
+<div class="simulation">
+<p><strong>Simulation in the repository.</strong> The program <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/distributed-systems-from-the-ground-up/code/ratelimit/src/main.rs"><code>code/ratelimit</code></a> simulates this design. To run it, clone the repository and type <code>cargo run --release -p ratelimit</code> in the <code>code</code> directory.</p>
+</div>
+
+<h2 id="terms-introduced-in-this-chapter"><a class="header" href="#terms-introduced-in-this-chapter">Terms introduced in this chapter</a></h2>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th>Term</th><th>Meaning</th></tr>
+</thead>
+<tbody>
+<tr><td>Rate limiter</td><td>a component that refuses requests from a caller that has sent too many</td></tr>
+<tr><td>Rate</td><td>the number of requests per unit of time that a caller may send indefinitely</td></tr>
+<tr><td>Burst</td><td>a group of requests sent at the same moment, or the largest such group that is allowed</td></tr>
+<tr><td>Key</td><td>the identity under which requests are counted together, such as a client id</td></tr>
+<tr><td>Window</td><td>a span of time over which requests are counted</td></tr>
+<tr><td>Fixed window counter</td><td>a count for each clock window, beginning again at 0 in every window</td></tr>
+<tr><td>Sliding window log</td><td>a list of the arrival times of recent requests, counted exactly</td></tr>
+<tr><td>Sliding window counter</td><td>an estimate of the sliding count, made from the counts of 2 fixed windows</td></tr>
+<tr><td>Token bucket</td><td>a rule with a refill rate and a capacity, in which each request removes 1 token</td></tr>
+<tr><td>Leaky bucket</td><td>a queue that releases requests at a fixed pace</td></tr>
+<tr><td>GCRA</td><td>the generic cell rate algorithm, which decides from 1 stored time</td></tr>
+<tr><td>Load shedding</td><td>dropping requests, whoever sent them, when a service is close to overload</td></tr>
+<tr><td><code>429 Too Many Requests</code></td><td>the HTTP status for a request refused by a limit</td></tr>
+<tr><td><code>Retry-After</code></td><td>the HTTP header that states how long to wait before trying again</td></tr>
+<tr><td>Thundering herd</td><td>many clients retrying at the same moment</td></tr>
+<tr><td>Jitter</td><td>a random additional wait that spreads retries out</td></tr>
+<tr><td>Fail open</td><td>to let requests pass when the check itself cannot be made</td></tr>
+<tr><td>Fail closed</td><td>to refuse requests when the check itself cannot be made</td></tr>
+</tbody>
+</table>
+</div>
+<div class="summary">
+<h2 id="summary"><a class="header" href="#summary">Summary</a></h2>
+<ul>
+<li>Every limit contains a rate and a permitted burst, and the phrase “5 per second” specifies only the first.</li>
+<li>The fixed window counter is the cheapest algorithm and admits twice the limit across a window boundary, which confines it to long quotas.</li>
+<li>The sliding window log is exact and keeps a timestamp for every request, which suits it to small, strict limits.</li>
+<li>The sliding window counter estimates the log from 2 counts, with a small error in either direction.</li>
+<li>The token bucket sets rate and burst independently in 2 numbers of state, and forwards up to capacity + rate × time.</li>
+<li>The leaky bucket queues requests and releases them at a fixed pace, shaping the traffic at the cost of waiting.</li>
+<li>On many machines the buckets are kept in a shared store, and each update is a single indivisible operation timed by the store’s clock.</li>
+<li>A refusal carries <code>Retry-After</code>, and well-written clients add jitter before retrying.</li>
+<li>General limits fail open with local buckets, and limits that act as security controls fail closed.</li>
+</ul>
+</div>
+
+
+                    </main>
+
+                    <nav class="nav-wrapper" aria-label="Page navigation">
+                        <!-- Mobile navigation buttons -->
+                            <a rel="prev" href="06-key-value-store-group-commit.html" class="mobile-nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                                <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M41.4 233.4c-12.5 12.5-12.5 32.8 0 45.3l160 160c12.5 12.5 32.8 12.5 45.3 0s12.5-32.8 0-45.3L109.3 256 246.6 118.6c12.5-12.5 12.5-32.8 0-45.3s-32.8-12.5-45.3 0l-160 160z"/></svg></span>
+                            </a>
+
+                            <a rel="next prefetch" href="08-unique-id-generator.html" class="mobile-nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                                <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M278.6 233.4c12.5 12.5 12.5 32.8 0 45.3l-160 160c-12.5 12.5-32.8 12.5-45.3 0s-12.5-32.8 0-45.3L210.7 256 73.4 118.6c-12.5-12.5-12.5-32.8 0-45.3s32.8-12.5 45.3 0l160 160z"/></svg></span>
+                            </a>
+
+                        <div style="clear: both"></div>
+                    </nav>
+                </div>
+            </div>
+
+            <nav class="nav-wide-wrapper" aria-label="Page navigation">
+                    <a rel="prev" href="06-key-value-store-group-commit.html" class="nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                        <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M41.4 233.4c-12.5 12.5-12.5 32.8 0 45.3l160 160c12.5 12.5 32.8 12.5 45.3 0s12.5-32.8 0-45.3L109.3 256 246.6 118.6c12.5-12.5 12.5-32.8 0-45.3s-32.8-12.5-45.3 0l-160 160z"/></svg></span>
+                    </a>
+
+                    <a rel="next prefetch" href="08-unique-id-generator.html" class="nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                        <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M278.6 233.4c12.5 12.5 12.5 32.8 0 45.3l-160 160c-12.5 12.5-32.8 12.5-45.3 0s-12.5-32.8 0-45.3L210.7 256 73.4 118.6c-12.5-12.5-12.5-32.8 0-45.3s32.8-12.5 45.3 0l160 160z"/></svg></span>
+                    </a>
+            </nav>
+
+        </div>
+
+        <template id=fa-eye><span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 576 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M288 32c-80.8 0-145.5 36.8-192.6 80.6C48.6 156 17.3 208 2.5 243.7c-3.3 7.9-3.3 16.7 0 24.6C17.3 304 48.6 356 95.4 399.4C142.5 443.2 207.2 480 288 480s145.5-36.8 192.6-80.6c46.8-43.5 78.1-95.4 93-131.1c3.3-7.9 3.3-16.7 0-24.6c-14.9-35.7-46.2-87.7-93-131.1C433.5 68.8 368.8 32 288 32zM432 256c0 79.5-64.5 144-144 144s-144-64.5-144-144s64.5-144 144-144s144 64.5 144 144zM288 192c0 35.3-28.7 64-64 64c-11.5 0-22.3-3-31.6-8.4c-.2 2.8-.4 5.5-.4 8.4c0 53 43 96 96 96s96-43 96-96s-43-96-96-96c-2.8 0-5.6 .1-8.4 .4c5.3 9.3 8.4 20.1 8.4 31.6z"/></svg></span></template>
+        <template id=fa-eye-slash><span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M38.8 5.1C28.4-3.1 13.3-1.2 5.1 9.2S-1.2 34.7 9.2 42.9l592 464c10.4 8.2 25.5 6.3 33.7-4.1s6.3-25.5-4.1-33.7L525.6 386.7c39.6-40.6 66.4-86.1 79.9-118.4c3.3-7.9 3.3-16.7 0-24.6c-14.9-35.7-46.2-87.7-93-131.1C465.5 68.8 400.8 32 320 32c-68.2 0-125 26.3-169.3 60.8L38.8 5.1zM223.1 149.5C248.6 126.2 282.7 112 320 112c79.5 0 144 64.5 144 144c0 24.9-6.3 48.3-17.4 68.7L408 294.5c5.2-11.8 8-24.8 8-38.5c0-53-43-96-96-96c-2.8 0-5.6 .1-8.4 .4c5.3 9.3 8.4 20.1 8.4 31.6c0 10.2-2.4 19.8-6.6 28.3l-90.3-70.8zm223.1 298L373 389.9c-16.4 6.5-34.3 10.1-53 10.1c-79.5 0-144-64.5-144-144c0-6.9 .5-13.6 1.4-20.2L83.1 161.5C60.3 191.2 44 220.8 34.5 243.7c-3.3 7.9-3.3 16.7 0 24.6c14.9 35.7 46.2 87.7 93 131.1C174.5 443.2 239.2 480 320 480c47.8 0 89.9-12.9 126.2-32.5z"/></svg></span></template>
+        <template id=fa-copy><span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M502.6 70.63l-61.25-61.25C435.4 3.371 427.2 0 418.7 0H255.1c-35.35 0-64 28.66-64 64l.0195 256C192 355.4 220.7 384 256 384h192c35.2 0 64-28.8 64-64V93.25C512 84.77 508.6 76.63 502.6 70.63zM464 320c0 8.836-7.164 16-16 16H255.1c-8.838 0-16-7.164-16-16L239.1 64.13c0-8.836 7.164-16 16-16h128L384 96c0 17.67 14.33 32 32 32h47.1V320zM272 448c0 8.836-7.164 16-16 16H63.1c-8.838 0-16-7.164-16-16L47.98 192.1c0-8.836 7.164-16 16-16H160V128H63.99c-35.35 0-64 28.65-64 64l.0098 256C.002 483.3 28.66 512 64 512h192c35.2 0 64-28.8 64-64v-32h-47.1L272 448z"/></svg></span></template>
+        <template id=fa-play><span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 384 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M73 39c-14.8-9.1-33.4-9.4-48.5-.9S0 62.6 0 80V432c0 17.4 9.4 33.4 24.5 41.9s33.7 8.1 48.5-.9L361 297c14.3-8.7 23-24.2 23-41s-8.7-32.2-23-41L73 39z"/></svg></span></template>
+        <template id=fa-clock-rotate-left><span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M75 75L41 41C25.9 25.9 0 36.6 0 57.9V168c0 13.3 10.7 24 24 24H134.1c21.4 0 32.1-25.9 17-41l-30.8-30.8C155 85.5 203 64 256 64c106 0 192 86 192 192s-86 192-192 192c-40.8 0-78.6-12.7-109.7-34.4c-14.5-10.1-34.4-6.6-44.6 7.9s-6.6 34.4 7.9 44.6C151.2 495 201.7 512 256 512c141.4 0 256-114.6 256-256S397.4 0 256 0C185.3 0 121.3 28.7 75 75zm181 53c-13.3 0-24 10.7-24 24V256c0 6.4 2.5 12.5 7 17l72 72c9.4 9.4 24.6 9.4 33.9 0s9.4-24.6 0-33.9l-65-65V152c0-13.3-10.7-24-24-24z"/></svg></span></template>
+
+
+
+        <script>
+            window.playground_copyable = true;
+        </script>
+
+
+        <script src="elasticlunr-ef4e11c1.min.js"></script>
+        <script src="mark-09e88c2c.min.js"></script>
+        <script src="searcher-09f2665d.js"></script>
+
+        <script src="clipboard-1626706a.min.js"></script>
+        <script src="highlight-abc7f01d.js"></script>
+        <script src="book-609e4cb8.js"></script>
+
+        <!-- Custom JS scripts -->
+        <script src="theme/figures-47b15f7f.js"></script>
+        <script src="theme/proto-326509cd.js"></script>
+        <script src="theme/code-67e9caaf.js"></script>
+        <script src="theme/tables-9fb295e8.js"></script>
+        <script src="theme/steps-77f22afb.js"></script>
+
+
+
+    </div>
+    </body>
+</html>
