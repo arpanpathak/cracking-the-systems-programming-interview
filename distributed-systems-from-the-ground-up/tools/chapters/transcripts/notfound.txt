@@ -1,0 +1,6 @@
+$ curl -i http://127.0.0.1:7001/v1/keys/user-2
+HTTP/1.1 404 Not Found
+content-type: application/problem+json
+content-length: 80
+
+{"type":"/problems/key-not-found","title":"The key does not exist","status":404}

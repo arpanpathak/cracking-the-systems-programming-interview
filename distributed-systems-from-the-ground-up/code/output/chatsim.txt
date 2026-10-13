@@ -1,0 +1,15 @@
+the phone is online
+  phone shows 1: are you coming?
+the phone loses its connection, and 3 messages are sent
+  server stores 2: hello?
+  server stores 3: we are starting
+  server stores 4: table 4
+message 4 reaches the phone alone, over a connection that drops again
+  phone ignores 4: message 2 is missing
+the phone reconnects and reports that it has message 1
+  phone shows 2: hello?
+  phone shows 3: we are starting
+  phone shows 4: table 4
+the server repeats message 3, because an acknowledgement was lost
+  phone ignores 3: already shown
+messages on the server: 4, shown on the phone: 4

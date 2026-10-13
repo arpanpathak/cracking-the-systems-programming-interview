@@ -1,0 +1,471 @@
+# Distributed Lock: System Design
+
+Some operations must be performed by 1 party only. A nightly billing run that charges
+every customer should execute once, on 1 machine, a file that
+is being rewritten should not be rewritten by 2 processes whose changes would
+interleave, and of the replicas of a database exactly 1 should accept writes. Within a
+single process this need is met by a *lock*, an object that 1 thread holds while it
+works and that makes every other thread wait, and the operating system guarantees that
+the lock behaves as advertised.
+
+A *distributed lock* attempts to offer the same service to processes on different
+machines, and it has to do so under conditions that a lock inside 1 process is spared.
+The holder of a distributed lock may crash without releasing it. It may be cut off
+from the network and continue working in the belief that it still holds the lock. It
+may stop for a while, through no fault of its own, and resume later with no
+awareness that time has passed. In each case the other participants can observe only
+that the holder has fallen silent, and they cannot tell which of these things has
+happened. The central result of this chapter is that under these conditions a lock
+service cannot, by itself, guarantee that only 1 process acts at any moment, however
+carefully it is built, and that the guarantee has to be completed by the resource
+which the lock protects.
+
+<div class="covers">
+
+This chapter covers
+
+- the 2 purposes of a lock, and why they call for different amounts of care
+- a lock as an entry in a shared store, and why it has to expire
+- the paused holder, which no lease can exclude
+- fencing tokens, by which the protected resource rejects a late holder
+- releasing a lock safely, and renewing a lease
+- why the lock service itself must store each lock on a majority
+- waiting for a lock without a stampede
+- when a lock is the wrong tool
+
+</div>
+
+## What a lock is for
+
+Locks are taken for 2 quite different reasons, and it is necessary to know which one
+applies before deciding how much machinery a lock deserves.
+
+In the first case the lock serves *efficiency*. Its purpose is to avoid doing the same
+work twice: sending a reminder email from 2 machines, or having 5 servers recompute
+the same expensive report. If the lock occasionally fails and 2 processes do proceed
+together, the consequence is some wasted effort or a duplicated email, which is
+regrettable and nothing more. A lock of this kind may be simple and may be wrong once
+in a long while.
+
+In the second case the lock serves *correctness*. Here 2 processes acting together
+would corrupt something: a file written by both, an account debited twice, 2 database
+nodes both accepting writes as leader. When such a lock fails, the result is lost or
+damaged data, and "once in a long while" is not an acceptable frequency.
+
+Much of the confusion surrounding distributed locks arises from applying a mechanism
+that is adequate for the first purpose to the second. The simple designs described in
+the next 2 sections are perfectly serviceable for efficiency. The remainder of the
+chapter concerns what must be added for correctness, and it turns out to be a good
+deal.
+
+## A lock as an entry in a store
+
+The basic construction requires nothing more than a store that all the parties can
+reach and that offers 1 atomic operation: create this key, provided it does not
+already exist. To acquire the lock named `nightly-billing`, a worker asks the store to
+create that key with the worker's own name as its value. If the creation succeeds, the
+worker holds the lock. If the key already exists, another worker holds it, and the
+creation fails. To release the lock, the holder deletes the key.
+
+The atomicity of "create if absent" is what makes this a lock. Were the worker to read
+the key first and create it afterwards, in 2 separate operations, 2 workers could both
+read that the key was absent and both proceed to create it, which is the same race
+that chapter 7 found between 2 rate limiter nodes sharing a bucket.
+
+This lock has an obvious and fatal defect. If the worker that holds it crashes, or
+loses its network connection, the key is never deleted, and the lock remains taken
+for ever. Every other worker waits indefinitely on a holder that no longer exists.
+
+## Leases
+
+The remedy is to let the lock expire. The key is created with a time limit, 10
+seconds for example, and the store deletes it automatically when that time has passed.
+A lock that expires in this way is called a *lease*. A worker that needs the lock for
+longer than the lease must *renew* it periodically, by asking the store to extend the
+time limit while the worker's name is still on the key, and a worker that crashes
+ceases to renew, so that its lease runs out and the lock becomes available to
+others.
+
+The lease repairs the defect of the previous section and in doing so introduces the
+difficulty that occupies the rest of this chapter. The lock can now pass to a second
+worker without the first having agreed to give it up. Whenever a lease ends, there are
+2 possibilities which the store cannot distinguish: the holder is dead, in which case
+handing the lock to someone else is exactly right, or the holder is alive and has
+merely been prevented from renewing, in which case there will shortly be 2 workers
+that each consider themselves the holder.
+
+The duration of the lease expresses a trade between these cases. A short lease means
+that a crashed holder is replaced quickly and that a slow or briefly disconnected
+holder is more often presumed dead. A long lease means the opposite. No duration
+makes the second case impossible.
+
+## The holder that pauses
+
+It might seem that a careful worker could protect itself against the second case. It
+knows when its lease ends, so it could check the clock before each step of its work
+and stop if the lease has run out.
+
+This fails, and the reason is fundamental. No amount of careful programming
+removes it. Between the moment at which the worker checks its lease and the moment at
+which the effect of its next action reaches the protected resource, an arbitrary
+amount of time can pass without the worker being aware of it. The process may be
+suspended by its runtime in order to reclaim memory, which in some languages can take
+seconds. The virtual machine in which it runs may be paused by its host, for instance
+while being moved to another physical machine. The operating system may be short of
+memory and spend a long time reading the process's pages back from disk. Or the
+worker's write may be on its way through a congested network, delayed in a buffer for
+longer than the lease has left to run. In every one of these cases the worker
+performed its check correctly, found the lease valid, and acted in good faith, and
+the action took effect after the lease had ended and the lock had been given to
+someone else.
+
+Nor can the worker rely on its clock to notice. A lease is measured on the clock of
+the lock service, while the worker reads its own, and chapter 8 has already shown
+that the clocks of 2 machines differ and that either may be corrected at any moment.
+
+The conclusion has to be stated without qualification. A worker can never be certain,
+at the instant its action takes effect, that it still holds the lock. Any design in
+which correctness depends on that certainty is unsound, and the degree of unsoundness
+is merely a question of how often pauses of sufficient length occur.
+
+## Fencing tokens
+
+Since the lock service cannot prevent a late holder from acting, and the holder cannot
+detect its own lateness, the only remaining party that can intervene is the resource
+being protected. It needs some means of recognising that a request comes from a holder
+whose lease has been superseded, and the lock service can supply that means at very
+small cost.
+
+Each time the service grants the lock, it also issues a number that is larger than
+any it has issued before. This number is the *fencing token*. The holder attaches its
+token to every request it sends to the protected resource, and the resource remembers
+the highest token it has seen and refuses any request that carries a lower one.
+
+@steps steps-lock-fencing :: Worker A pauses while holding the lock, and its late write is refused because worker B has since presented a higher token.
+
+The picture follows the scenario of the previous section to its end. Worker A was
+suspended, its lease expired, B was granted the lock with token 2 and wrote, and A
+then resumed and attempted to write with token 1. The storage refused, on the simple
+ground that 1 is less than 2. Nothing in this depends on clocks, on the length of the
+pause, or on A's noticing anything.
+
+The token changes the nature of what the lock service provides. Without tokens, the
+service is asked to guarantee that 2 workers never act together, which it cannot. With
+tokens, it is asked only to issue increasing numbers and to grant the lock to 1
+worker per number, which it can, and the exclusion is enforced at the 1 place where it
+can be enforced, namely the resource itself.
+
+There is a requirement hidden in this arrangement, and it is the reason fencing is
+used less often than it should be. The protected resource must take part. It has to
+accept a token with each request, store the highest, and compare. A database can do
+this readily, by keeping the token in a column and making each write conditional on
+the token's being no lower than the stored one, which is the compare-and-set operation
+of chapter 1. A resource that cannot be made to check tokens, such as a third-party
+API that merely accepts requests, cannot be protected for correctness by any
+distributed lock at all, and in that case one must either accept the risk or redesign
+the operation so that performing it twice does no harm.
+
+## Releasing and renewing
+
+Releasing a lock looks like the simplest of the operations and conceals a well-known
+error. A worker that releases by deleting the key, without regard to its contents, may
+delete a lock that it no longer holds.
+
+@steps steps-lock-release :: A worker whose lease has ended deletes the lock that another worker has meanwhile acquired.
+
+The correct release is conditional: delete the key only if its value is still my
+name. The comparison and the deletion have to be a single atomic operation in the
+store, for the usual reason that the lock might change hands between a separate read
+and delete. The same condition applies to renewal, which must extend the lease only
+if the caller is still the holder.
+
+Renewal raises a question of timing. A worker normally renews at intervals of about a
+third of the lease, so that 2 consecutive renewals may be lost before the lease is in
+danger. The renewing is commonly done by a separate thread, so that the work itself
+need not be interrupted, and this has a hazard of its own. If the working thread
+becomes stuck while the renewing thread continues happily, the lock is held for ever
+by a worker that is accomplishing nothing, which is the original defect returned by
+another route. A sound implementation ties the 2 together, for example by renewing
+only while the work reports progress.
+
+## The lock service must not lose locks
+
+Everything so far has treated the store that holds the lock as reliable, and a lock
+service on a single machine is as reliable as that machine. For availability the
+service is therefore replicated, and how it is replicated matters a great deal.
+
+Many in-memory stores replicate in the manner that chapter 3 called asynchronous: the
+leader confirms a write to the client at once and forwards it to its followers
+afterwards. For a cache this is a sensible choice. For a lock it is a flaw.
+
+@figure lock-failover :: The leader fails after confirming a lock and before copying it, and the new leader grants the same lock again.
+
+The lock service is the 1 component in this design that requires strong consistency
+in the full sense of chapter 1. A granted lock has to survive the failure of any
+single node, which means that it has to be stored on a majority of nodes before it is
+confirmed, exactly as chapter 3 stores a record and chapter 4 elects a leader. Token
+numbers must likewise come from the replicated log, so that a new leader continues
+from the highest token ever issued and does not start again from a lower one. In
+practice this means building the lock service on a consensus system of the kind
+developed in chapters 3 and 4, and the coordinator of chapter 1 is such a system and
+commonly offers locks as one of its services.
+
+An alternative that is sometimes proposed avoids consensus by using several
+independent stores. The worker attempts to create the lock on each of 5 unrelated
+nodes and regards itself as the holder if it succeeds on at least 3 within a short
+time. This is more dependable than a single node, since no 1 failure loses the lock. Its
+safety, however, rests on assumptions about time: that the clocks of the 5 nodes
+advance at nearly the same rate, and that the worker is not paused between acquiring
+the lock and using it. The previous sections have shown that neither assumption can be
+relied upon, and so this approach is suitable for locks taken for efficiency and
+should be combined with fencing, like any other, when correctness is at stake. It
+cannot itself supply fencing tokens, since 5 independent nodes have no common counter.
+
+## Waiting for a lock
+
+A worker that fails to acquire a lock generally wishes to obtain it as soon as it is
+free. The crude method is to try again at intervals, which either wastes requests if
+the interval is short or wastes time if it is long.
+
+Lock services therefore let a worker *watch* a key and be notified when it is deleted.
+The naive use of this facility has a defect at scale. If 100 workers are all watching
+the same lock, its release wakes all 100, all of them attempt to acquire it, 1
+succeeds, and 99 resume watching, so that every release costs 100 notifications and
+100 attempts. This is the thundering herd that chapter 7 met among retrying clients.
+
+The established remedy arranges the waiters in a queue. Each worker, on arriving,
+creates an entry of its own that the service numbers in order of arrival. The worker
+whose entry bears the lowest number holds the lock. Every other worker watches only
+the entry immediately ahead of its own. When the holder finishes and deletes its
+entry, exactly 1 worker is notified, the next in line, and it becomes the holder. The
+entries are tied to the sessions of their workers, so that the entry of a worker that
+crashes is removed by the service and the queue closes up behind it. As well as
+avoiding the herd, this arrangement is fair, since the lock is granted in the order in
+which it was requested.
+
+## When a lock is the wrong tool
+
+A distributed lock used for correctness requires a consensus system, fencing tokens,
+and the cooperation of the protected resource. It is worth asking, before paying that
+price, whether the problem can be solved without mutual exclusion.
+
+Often it can. If the operation can be made *idempotent*, so that performing it twice
+has the same effect as performing it once, then 2 workers doing it together is
+harmless and no lock is needed: chapter 19 uses this approach for payments. If the
+operation is an update to a single record, a conditional write expresses "change this
+only if nobody else has changed it since I read it" directly, and the loser of a race
+reads again and retries, which is the compare-and-set of chapter 1 and is
+called *optimistic concurrency*. And if work can be partitioned so that each item has
+exactly 1 owner, as the message queue of chapter 11 assigns each partition to 1
+consumer, then exclusion is achieved by the assignment and need not be negotiated for
+each item.
+
+It will be observed that fencing is itself a conditional write, and this is no
+coincidence. In a correct design the resource's own check does the real work of
+protection, and the lock in front of it serves chiefly to keep workers from wasting
+effort on attempts that would be refused. Seen in this light, a lock is an
+optimisation layered over a conditional write, and a design that has the conditional
+write may find that it needs the lock less than it supposed.
+
+## Use cases
+
+The lock service has a single kind of user, a worker that must be alone during some
+critical step.
+
+@figure lock-use-cases :: The actors and what each of them does.
+
+## Functional requirements
+
+| No. | Functional requirement |
+|---|---|
+| 0 | A worker can acquire a named lock. At most 1 worker holds a lock at any time. |
+| 1 | A lock is held for a limited time, a *lease*, and the holder can renew it. |
+| 2 | A lock whose lease has ended can be acquired by another worker. |
+| 3 | Every lease comes with a token that is larger than the token of every earlier lease. |
+
+## Non-functional requirements
+
+| No. | Property | Non-functional requirement |
+|---|---|---|
+| 0 | Consistency | Strong. At any moment, the lock service grants a lock to at most 1 worker. |
+| 1 | Availability | The service survives the loss of 1 of its 3 nodes. |
+| 2 | Latency | Acquiring a lock takes 1 round trip to a majority, a few milliseconds. |
+
+This is one of the few designs in the book that demands strong consistency without
+reservation. A cache may be stale and a rate limiter may be off by a few requests, but
+a lock service that grants 1 lock to 2 holders has failed at the only thing it is for.
+The lock and its token are therefore stored on a majority of the service's nodes
+before a grant is confirmed, and when a majority cannot be reached the service
+refuses to grant locks at all, preferring unavailability to error.
+
+## Core entities
+
+@figure lock-entities :: The core entities and their fields.
+
+## Capacity estimate
+
+<div class="estimate">
+
+<img class="builder" src="art/crab-builder.svg" alt="A crab in a hard hat, in tears.">
+
+**Arithmetic ahead.** A lock is about 100 bytes, so a million locks fit in 100 MB, and 3 small nodes are enough.
+
+<a class="skip" href="#high-level-design">Skip to the high-level design</a>
+
+<details>
+<summary>Show the calculation</summary>
+
+| Quantity | Calculation | Result |
+|---|---|---|
+| Memory per lock | name 50 bytes + holder 30 + token 8 + expiry 8 | about 100 bytes |
+| Memory for 1 million locks | 1000000 × 100 bytes | 100 MB |
+
+</details>
+
+</div>
+
+## The API
+
+A lock is a resource with a name. Acquiring it creates the resource, renewing it
+replaces the expiry, and releasing it deletes the resource.
+
+**Acquire a lock for 10 seconds**
+
+```http
+POST /v1/locks/nightly-billing HTTP/1.1
+Host: locks.example
+Content-Type: application/json
+
+{ "holder": "worker-a", "seconds": 10 }
+```
+
+```http
+HTTP/1.1 201 Created
+Content-Type: application/json
+
+{ "token": 1, "expires_in": 10 }
+```
+
+Workers have to pass the token on to whatever the lock protects.
+
+**Acquire a lock that is held**
+
+```http
+POST /v1/locks/nightly-billing HTTP/1.1
+Host: locks.example
+Content-Type: application/json
+
+{ "holder": "worker-b", "seconds": 10 }
+```
+
+```http
+HTTP/1.1 409 Conflict
+Content-Type: application/problem+json
+
+{
+  "type": "/problems/lock-held",
+  "title": "The lock is held",
+  "status": 409,
+  "detail": "held for 9 more seconds"
+}
+```
+
+`409 Conflict` is the status for a request that is valid but cannot be carried out in the current state.
+
+## High-level design
+
+@figure lock-design :: The components and the path of a request. The steps are numbered.
+
+| Component | Role | State it holds | When 1 instance fails |
+|---|---|---|---|
+| Worker | acquires the lock, then does its work | the token of its lease | its lease runs out, and another worker can acquire the lock |
+| Lock service | grants leases and counts tokens | the locks, replicated on 3 nodes | the other 2 nodes continue |
+| Storage | the thing the lock protects; checks the token | the highest token it has accepted | outside the scope of the lock service |
+
+### One request, step by step
+
+The steps follow the arrows of figure 10.lock-design.
+
+1. A worker sends `POST /v1/locks/nightly-billing`. The lock service, a group of 3 nodes that agree by majority, records the worker as holder for 10 seconds and returns token 1.
+2. The worker does its protected work and sends token 1 with every write to the storage. The storage compares the token with the highest it has accepted.
+
+## The scenario, simulated
+
+The simulation for this chapter plays out the paused holder with and without help
+from the storage. Its output for the fenced case reads as follows.
+
+| Time | Event | Result |
+|---|---|---|
+| 0 s | worker A acquires the lock | token 1, lease until 10 s |
+| 1 s | worker B asks for the lock | refused |
+| 2 s | worker A is paused for 15 seconds | |
+| 12 s | the lease has ended, and worker B acquires the lock | token 2 |
+| 13 s | worker B writes with token 2 | accepted |
+| 17 s | worker A resumes and writes with token 1 | refused |
+
+At the end the storage holds what worker B wrote.
+
+## Mistakes to avoid
+
+| Mistake | What goes wrong | What to do |
+|---|---|---|
+| A lock without a time limit | A holder that crashes keeps the lock for ever. | Make every lock a lease. |
+| Believing that a lease guarantees 1 holder | A paused or delayed holder acts after its lease has ended. | Have the protected resource check a fencing token. |
+| Checking the lease and then writing | The pause can fall between the check and the write. | Let the resource decide, on the token, at the moment of the write. |
+| Releasing by deleting the key unconditionally | A late holder deletes the lock of its successor. | Delete only if the key still carries the caller's name, in 1 operation. |
+| Reading the key and then creating it | 2 workers both find it absent and both create it. | Use the store's atomic create-if-absent. |
+| A lock store that confirms before replicating | A failover forgets the lock, and it is granted twice. | Store each lock on a majority before confirming. |
+| Renewing from a thread that ignores the work | A stuck worker holds the lock indefinitely. | Renew only while the work makes progress. |
+| Every waiter watching the lock itself | Each release wakes all of them. | Queue the waiters, each watching the one ahead. |
+| A lease shorter than the usual length of the work | The lock changes hands in the middle of ordinary runs. | Set the lease well above the normal duration, and renew. |
+| Taking a lock where a conditional write would do | Machinery and a dependency that add no safety. | Use compare-and-set or an idempotent operation. |
+
+## Failures
+
+| Failure | What users see | How the system recovers |
+|---|---|---|
+| A worker crashes while holding a lock | the lock is unavailable until the lease ends | another worker acquires it afterwards |
+| A worker pauses for longer than its lease | nothing wrong: its late writes are refused | the worker sees the refusal and stops |
+| A lock service node is lost | nothing | the remaining 2 nodes form a majority |
+
+## Trade-offs
+
+| Decision | What it gains | What it costs |
+|---|---|---|
+| Leases | a crashed holder cannot block others for ever | work that takes longer than a lease needs renewals |
+| Fencing tokens | a late holder cannot cause damage | the protected resource has to check tokens |
+| A majority of 3 nodes | at most 1 holder per lock | acquiring a lock costs a round trip |
+
+## The simulation
+
+@sim locksim
+
+## Terms introduced in this chapter
+
+| Term | Meaning |
+|---|---|
+| Lock | a right, held by 1 party, to act alone on something |
+| Mutual exclusion | the property that at most 1 party acts at any moment |
+| Lease | a lock that expires unless its holder renews it |
+| Renewal | extending a lease before it expires |
+| Process pause | a period in which a process does not run and is unaware of it |
+| Fencing token | a number, larger with every grant of a lock, that the protected resource checks |
+| Watch | a request to be notified when a key changes or is deleted |
+| Session | the connection between a worker and the lock service, whose end removes the worker's entries |
+| Idempotent | having the same effect whether performed once or several times |
+| Optimistic concurrency | writing on condition that nobody else has written since the data was read |
+
+<div class="summary">
+
+## Summary
+
+- A lock taken for efficiency may occasionally fail, and a lock taken for correctness may not, and the 2 need very different designs.
+- A lock in a shared store has to be a lease, since a holder that crashes would otherwise keep it for ever.
+- A lease can end while its holder is paused or delayed, and the holder cannot detect this, so a lease alone does not guarantee 1 holder.
+- A fencing token, which grows with every grant and is checked by the protected resource, rejects the late holder.
+- Release and renewal must be conditional on the caller still being the holder.
+- The lock service stores each lock and token on a majority, because a lock forgotten in a failover is a lock granted twice.
+- Waiters are queued so that a release notifies 1 of them.
+- Idempotent operations and conditional writes often remove the need for a lock.
+
+</div>

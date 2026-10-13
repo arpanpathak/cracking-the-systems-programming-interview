@@ -1,0 +1,20 @@
+produced order-7 created: partition 1, offset 0
+produced order-8 created: partition 1, offset 1
+produced order-7 paid: partition 1, offset 2
+produced order-9 created: partition 1, offset 3
+produced order-7 shipped: partition 1, offset 4
+the consumer reads partition 1 and crashes before it commits
+  offset 0: order-7 created -> acted on
+  offset 1: order-8 created -> acted on
+  offset 2: order-7 paid -> acted on
+  offset 3: order-9 created -> acted on
+  offset 4: order-7 shipped -> acted on
+  offset 5: order-7 delivered -> acted on
+it restarts and reads from the committed offset, which is still 0
+  offset 0: order-7 created -> seen before, skipped
+  offset 1: order-8 created -> seen before, skipped
+  offset 2: order-7 paid -> seen before, skipped
+  offset 3: order-9 created -> seen before, skipped
+  offset 4: order-7 shipped -> seen before, skipped
+  offset 5: order-7 delivered -> seen before, skipped
+messages in the partition: 6, actions taken: 6, committed offset: 6

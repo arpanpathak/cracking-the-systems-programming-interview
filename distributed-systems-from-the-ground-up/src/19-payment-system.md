@@ -1,0 +1,599 @@
+<img class="plate" src="art/ch19.svg?v=7b39c491" alt="A tortoise stands beside a sign that reads: minus 40, plus 40, total 0.">
+
+# Payment System: System Design
+
+A payment system moves money from a customer to a shop. In its outward form it
+resembles many of the systems in this book, being a service that accepts requests,
+writes records and calls other services, and yet it differs from all of them in the
+consequences of its errors. When a news feed shows a post some seconds late, or a
+cache returns a slightly stale value, or a rate limiter admits a few requests too
+many, nobody is harmed, and the preceding chapters made deliberate use of that
+latitude in order to gain speed and availability. A payment system has no such
+latitude. If it charges a customer twice, real money has left a real account, and if
+it records a payment that did not take place, goods are shipped that were never paid
+for. Its errors are measured in currency, are noticed by the people affected, and in
+most jurisdictions are regulated by law.
+
+The priorities of the design are in consequence the reverse of those that governed
+earlier chapters. Correctness is placed before availability, so that a payment system
+which is uncertain declines to act where another system would guess. Nothing is ever
+deleted or overwritten, so that every state the system has been in can be
+reconstructed and explained. And every operation is built on the assumption that it
+will be attempted more than once, since the networks and services on which payments
+depend fail in ways that leave the outcome of a request unknown. This chapter develops
+the 3 ideas on which a sound payment system rests: the idempotent request, the
+double-entry ledger, and the treatment of an unknown outcome as a state in its own
+right.
+
+<div class="covers">
+
+This chapter covers
+
+- the parties to a card payment, and the stages it passes through over several days
+- why a payment request must be safe to repeat, and how a key makes it so
+- representing money without losing fractions of a cent
+- the double-entry ledger, in which every movement is 2 entries that cancel
+- why entries are never changed, and how mistakes are corrected
+- a charge whose outcome is unknown, and why it is neither a success nor a failure
+- reconciliation, which compares our records with the bank's
+- payments that span several services, and undoing what cannot be made atomic
+- keeping card numbers out of the system
+
+</div>
+
+## The parties and the stages
+
+A payment by card involves more parties than the 2 that are visible at the checkout.
+The customer's card was issued by a bank, which holds the customer's account. The
+shop has an account at another bank. Between the 2 banks stands a *card network*,
+which carries messages between them and lays down the rules. A payment system of the
+kind designed here acts on behalf of the shop: it receives the shop's request to
+charge a card, communicates with the network, and keeps the records. For the purposes
+of this chapter, the banks and the network may be regarded as a single external
+service, slow and occasionally unavailable, whose behaviour we can observe and cannot
+change.
+
+What appears to the customer as a single event is in fact spread over several days.
+
+<figure>
+<img src="figures/pay-stages.svg?v=6c4ac676" alt="4 stages of a card payment. Authorisation, in which the customer&#x27;s bank sets the amount aside, takes seconds. Capture, in which the shop confirms that it wants the money, happens at shipping. Settlement, in which the banks move the money, follows 1 to 3 days later. A refund or a dispute remains possible for months.">
+<figcaption><b>Figure 19.1</b> A card payment passes through authorisation, capture and settlement, and can be reversed long afterwards.</figcaption>
+</figure>
+
+In *authorisation*, the customer's bank is asked whether the card is valid and the
+funds are available, and, if so, sets the amount aside. No money moves. The customer
+sees "payment accepted" at this point, within a second or 2. In *capture*, the shop
+confirms that it wishes to collect the authorised amount, which it typically does when
+the goods are dispatched, and the amount captured may be less than the amount
+authorised if part of an order could not be fulfilled. In *settlement*, which takes
+place in batches some days later, the money is actually transferred between the banks.
+And for months afterwards the payment may be reversed, by a *refund* that the shop
+initiates or by a *dispute* in which the customer's bank reclaims the money on the
+customer's complaint.
+
+The practical consequence is that a payment is not a single action with a result. It
+is an object with a long life and a series of states, and at each stage our system's
+record of that state must be brought into agreement with what the banks have actually
+done. Much of the design follows from taking this seriously.
+
+## A request that is safe to repeat
+
+Suppose a shop's server sends a request to charge a customer 40 euros, and the
+connection fails before any reply is received. The shop does not know whether the
+charge was made. If it does nothing, it may have failed to collect payment for an
+order. If it sends the request again and the first had in fact succeeded, the customer
+is charged 80 euros. This is the dilemma of the lost reply, which has appeared in
+chapters 11, 13 and 18, and here it concerns money.
+
+It is resolved in the same way. The shop attaches to each request an *idempotency
+key*, a string of its own choosing that uniquely identifies the business event
+concerned, such as the number of the order. The payment system records every key
+together with the result of its request, and when a request arrives bearing a key that
+has been seen before, it performs no action and returns the recorded result. The shop
+may then repeat a request as often as it needs to, in complete safety, until it
+obtains an answer.
+
+Four details determine whether this protection is real.
+
+The key and the effects of the request must be recorded atomically. If the system were
+to move the money in 1 step and record the key in another, a crash between the 2 would
+leave a completed charge with no record of its key, and the shop's retry would be
+treated as new. Both are therefore written in a single database transaction.
+
+The recorded result must include failures. In the simulation for this chapter, a
+charge of 9000 cents is refused because the customer's account holds only 6000. That
+refusal is stored under the key, and a retry of the same request receives the same
+refusal, even if the customer has in the meantime received funds that would now cover
+it. The principle is that a retry must behave as a second delivery of the same request,
+which it is, since the shop, having perhaps already told the customer
+that the payment was declined, would otherwise find that it had succeeded after all.
+
+Concurrent requests with the same key must be dealt with. A shop's client may retry
+while the first attempt is still in progress, so that 2 requests bearing the same key
+are being processed at once. The system reserves the key, by an atomic "create if
+absent", before doing anything else, and the second request, finding the key already
+reserved and no result yet recorded, is told to try again shortly.
+
+And a key should be bound to the contents of its request. If a key that was first used
+for a charge of 40 euros arrives with a request for 400, something is wrong in the
+client, and the system should reject the request. To return the result of
+the earlier and different one would hide the fault.
+
+The simulation sends 5 requests, of which 2 are repetitions. The 2 requests under the
+key `order-7` leave the customer with the same balance of 6000, the second having
+moved nothing, and likewise for `order-9`. The total held across all accounts is 10000
+cents at the start and 10000 at the end.
+
+## Representing money
+
+A matter that seems too elementary to need discussion has caused a remarkable number
+of defects. Amounts of money must not be held in the floating-point numbers that
+programming languages offer for fractional values.
+
+Floating-point numbers are stored in binary, and most decimal fractions have no exact
+binary representation, in the same way that a third has no exact decimal one. The
+value 0.10 is held as a number very slightly different from a tenth, and arithmetic on
+such values accumulates the differences: in most languages, the sum of 0.10 and 0.20
+is not equal to 0.30. A single such discrepancy is far smaller than a cent. Across
+millions of transactions, in sums, percentages and currency conversions, the
+discrepancies round in different directions in different parts of the system, and
+totals that ought to agree fail to agree by a few cents, which in accounting is an
+error to be found and explained.
+
+Amounts are therefore held as whole numbers of the smallest unit of the currency, so
+that 40 euros is the integer 4000, in cents. Arithmetic on integers is exact. The
+currency is always stored beside the amount, since 4000 means nothing without it, and
+since the smallest unit is not a hundredth in every currency: some have no subdivision
+and others divide into a thousand. Where a calculation yields a fraction of the
+smallest unit, as when a fee of 2.9% is computed or an amount is divided among 3
+recipients, the rule for rounding is laid down explicitly, and the remainder is
+assigned to a specified party, so that the parts always add up to the whole.
+
+## The ledger
+
+The core of a payment system is its record of where money is, and the form of that
+record has been settled for some 500 years. It is the *double-entry ledger*, and its
+governing rule is that every movement of money is recorded as 2 entries of equal
+amount and opposite sign, 1 against the account the money leaves and 1 for the account
+it enters.
+
+<figure class="steps" data-prefix="figures/steps-pay-ledger" data-count="5" data-version="56bbe801">
+<img src="figures/steps-pay-ledger-01.svg?v=56bbe801" alt="2 entries for every movement, step 1 of 5. Ada has 10000 cents and the shop has none. The ledger of movements is empty. Amounts are whole numbers of cents throughout.">
+<figcaption><b>Figure 19.2</b> 2 payments and a refund are recorded, each as a pair of entries that add up to 0. Use Next and Back to move through the 5 steps.</figcaption>
+</figure>
+
+The method has 3 properties, each of which answers a need that a simpler design would
+leave unmet.
+
+It cannot create or destroy money. Since every movement consists of 2 entries that
+cancel, the sum of all entries in the ledger is 0 at all times, whatever has
+happened. Should the sum ever differ from 0, the ledger contains an error, and this
+is discovered by a single addition, with no need to understand any individual
+transaction. A design that kept only a balance for each account and adjusted the 2
+balances in turn would have no such check. A defect that deducted from 1 account and
+failed to credit the other would cause money to vanish, and nothing would
+reveal it until a customer complained.
+
+It explains every balance. The balance of an account is defined as the sum of that
+account's entries, and so for any balance one can produce the complete list of
+movements that gave rise to it. When a shop asks why its balance is what it is, the
+answer is a list of entries, each referring to the payment that caused it.
+
+And its history is permanent. Entries are added and never altered or removed, so that
+the ledger is an append-only log of the same kind as the log of chapter 2. An error is
+corrected by adding entries that reverse it, as the refund in the steps above reverses
+the first payment, and the record then shows both the error and its correction. This
+is what makes the system auditable. If a row could be edited, then a mistaken edit, or
+a dishonest one, would leave no evidence, whereas in an append-only ledger whatever
+has once been recorded remains for inspection.
+
+The 2 entries of a movement must be written atomically, both or neither. This is the
+principal reason why the ledger is kept in a database with transactions and strong
+consistency, and why the weaker models that sufficed elsewhere in this book are out of
+place here.
+
+### Balances in practice
+
+To define a balance as the sum of an account's entries is correct and, taken
+literally, slow, since an account with a million entries would require a million
+additions for each reading. The system therefore keeps a stored balance for each
+account as well and updates it in the same transaction that adds the entries. The
+entries remain the authority. The stored balance is a cache of their sum, and it can
+be verified against them, or recomputed from them, at any time.
+
+Checking that a customer has sufficient funds and then deducting the amount is a
+sequence of reading and writing, and it is exposed to the race that has appeared
+several times in this book: 2 simultaneous payments from the same account each read a
+balance of 6000, each conclude that 4000 can be afforded, and each deduct, leaving the
+account overdrawn. The check and the deduction have to be a single atomic step, which
+is obtained either by having the transaction lock the account's row before reading it,
+or by making the update conditional, in the form "deduct 4000 if the balance is at
+least 4000".
+
+An account that takes part in a very large number of payments, such as that of a
+major shop, becomes a point of contention under this arrangement, since every payment
+to that shop must lock the same row. A usual remedy is to add the entries at once and
+to bring the shop's stored balance up to date a little later, in batches. For an
+account that only receives money, a balance that lags by a few seconds is harmless.
+For the account from which a payment is made, the balance must be exact at the moment
+of the check.
+
+## A charge whose outcome is unknown
+
+The ledger is under our control. The card network is not, and a request to it can
+come to 3 ends, of which the third is the source of most of the difficulty in the
+subject. The network may reply that the charge succeeded. It may reply that the charge
+was declined. Or no reply may arrive within the time allowed.
+
+In the third case our system does not know whether the customer has been charged.
+Both of the natural reactions are mistaken. To treat the timeout as a failure and
+inform the shop that the payment did not go through is wrong if the charge in fact
+succeeded, since the customer has then paid for an order that the shop believes
+unpaid. To send the charge again is wrong for the same reason, since the customer may
+then be charged twice.
+
+The correct treatment recognises "unknown" as a legitimate state of a payment, with a
+name and a procedure of its own.
+
+<figure class="steps" data-prefix="figures/steps-pay-pending" data-count="6" data-version="37645ef4">
+<img src="figures/steps-pay-pending-01.svg?v=37645ef4" alt="A charge whose outcome is unknown, step 1 of 6. Before anything is sent to the card network, the payment is stored in our own system in the state pending, with a reference of our choosing. If we crash in the next step, the record will tell us what we were doing.">
+<figcaption><b>Figure 19.3</b> The network's reply to a charge is lost, the payment remains pending, and its outcome is established by asking. Use Next and Back to move through the 6 steps.</figcaption>
+</figure>
+
+The steps display 3 practices that are worth stating in general terms.
+
+The payment is recorded as *pending* in our own system before the network is called.
+If our process crashes during the call, the record survives to say that a charge was
+in progress and under what reference, so that it can be followed up on restarting.
+Had we called the network first and recorded afterwards, a crash between the 2 would
+leave a customer charged and our system unaware that any payment had been attempted.
+
+The request to the network carries a reference that we generate, and the network
+supports either the repetition of a request under the same reference without a second
+charge, or a query on the status of a reference. This is our own idempotency key,
+presented to the next party along. Without some such facility at the network, the
+dilemma of the lost reply cannot be resolved at all, and a payment system must select
+its external partners with this requirement in mind.
+
+And the outcome is determined by asking. A background process
+takes each pending payment in turn and queries the network until it obtains a definite
+answer, upon which the payment moves to *done* or *failed* and the ledger entries are
+written. The shop, which was told that the payment was pending, is informed of the
+final outcome by a call to an address it has registered, the webhook of chapter 13.
+
+The states of a payment thus form a small machine: created, pending, and then either
+done or failed, with later movements to refunded or disputed. Every transition is
+recorded with its time and its cause, and certain transitions are prohibited
+outright. A payment that is done never returns to pending, and a refund is a new
+movement with entries of its own.
+
+## Reconciliation
+
+However carefully all of this is constructed, our records and the bank's will
+sometimes differ. A reply was lost and the query that should have resolved it was
+itself mishandled. A defect in our software caused a step to be skipped. A dispute was
+raised at the bank and never communicated to us. The bank made an error of its own.
+
+A payment system therefore does not assume that its records are right. Every day it
+obtains from the bank a statement of what the bank did in fact process, and compares
+that statement, payment by payment, with its own ledger. This comparison is called
+*reconciliation*.
+
+<figure>
+<img src="figures/pay-reconcile.svg?v=8071928f" alt="2 records of the same payments, side by side. Payments 9001 and 9002 agree. Payment 9004 is pending in our ledger and settled on the bank&#x27;s statement. Payment 9005 is done in our ledger and missing from the bank&#x27;s statement.">
+<figcaption><b>Figure 19.4</b> The same 4 payments in our ledger and on the bank's statement, with 2 that do not agree.</figcaption>
+</figure>
+
+Each discrepancy falls into 1 of a few classes: a payment that the bank has and we
+lack, a payment that we have and the bank lacks, or a payment present in both with
+different amounts or states. Each is investigated, automatically where a rule can
+decide and by a person where it cannot, and is corrected by adding entries to the
+ledger, in accordance with the rule that nothing already recorded is altered.
+
+Reconciliation is the final safeguard of the whole system. Idempotency keys, atomic
+transactions and the handling of pending payments are all intended to prevent
+discrepancies, and reconciliation is what detects those that occur in spite of them,
+including any that arise from mistakes in the preventive mechanisms themselves. A
+payment system without it is correct only so long as all of its code is free of
+defects, which is to say that it is not correct.
+
+## Payments that span several services
+
+Placing an order usually requires more than a payment. Stock has to be reserved, the
+payment taken, and a shipment arranged, and in a system divided into services each of
+these belongs to a different service with a database of its own. One would wish the 3
+to be atomic, so that either all take place or none does, and no single database
+transaction can span 3 databases.
+
+There is a protocol, called *2-phase commit*, that makes several databases commit
+together. A coordinator first asks every participant to prepare and to promise that it
+will be able to commit, and when all have promised, instructs them all to do so. The
+protocol achieves atomicity and is seldom used between services, for 2 reasons. Each
+participant must hold its locks from the moment of its promise until the instruction
+arrives, and if the coordinator fails in that interval the participants are left
+holding locks indefinitely, unable to proceed in either direction. And every
+participant, including external ones such as a card network, must implement the
+protocol, which external services do not.
+
+The usual alternative gives up atomicity and substitutes for it the assurance that the
+process will eventually be either completed or undone. The operation is divided into
+steps, each a local transaction in a single service, and for every step there is
+defined a *compensating action* that reverses its effect: releasing the reserved
+stock, refunding the payment, cancelling the shipment. The steps are executed in
+order, and if one fails, the compensating actions of those already completed are
+executed in reverse. A sequence of steps organised in this way is called a *saga*.
+
+A saga is not a transaction, and the difference is observable. While it is in
+progress, other parts of the system can see its intermediate states: the stock is
+reserved before the payment has been taken, and for a short time a customer may have
+been charged for an order that is about to be cancelled. Compensation, moreover, is
+not erasure. A refunded payment appears on the customer's statement as a charge and a
+refund, and a confirmation email that has been sent cannot be recalled. The design of
+a saga consists largely in ordering its steps so that those most easily reversed come
+first and those that cannot be reversed come last.
+
+The mechanisms needed to run a saga dependably are those of earlier chapters. The
+steps are driven by messages on a queue, as in chapter 11, and each service publishes
+its message by means of an outbox, in the same transaction as its own change. Every
+step and every compensating action is idempotent, since the queue delivers at least
+once.
+
+## Keeping card numbers out
+
+A card number, in combination with its expiry date and security code, is all that is
+required in order to spend someone else's money, and a system that stores card numbers
+is a target for theft in exact proportion to the number it holds. The card industry
+imposes a demanding security standard on any system that handles them, with audits
+whose burden grows with every component the numbers pass through.
+
+The most effective measure is therefore structural: to arrange that card numbers pass
+through as little of the system as possible. The form in which the customer enters the
+card is served by, and submits directly to, a small and isolated service called a
+*vault*, whose sole purpose is to hold card numbers. The vault returns a *token*, a
+random identifier that stands for the card and has no value outside this system. The
+remainder of the system, including the shop's servers, the payment API and the ledger,
+stores and handles only the token. When a charge is to be made, the token is presented
+to the vault, which alone communicates the real number to the card network. A breach
+of any component other than the vault then yields tokens, which are of no use to a
+thief.
+
+## Use cases
+
+Shops charge customers and refund them. Accountants read the ledger, in order to
+confirm that it balances.
+
+<figure>
+<img src="figures/pay-use-cases.svg?v=9068d7db" alt="A use case diagram of the payment system. Shop: charge a customer (POST /v1/payments), refund a payment (POST /v1/payments/{id}/refunds), read a payment (GET /v1/payments/{id}). Accountant: read an account&#x27;s entries (GET /v1/accounts/{id}/entries).">
+<figcaption><b>Figure 19.5</b> The actors and what each of them does.</figcaption>
+</figure>
+
+## Functional requirements
+
+| No. | Functional requirement |
+|---|---|
+| 0 | A shop can charge a customer an amount. |
+| 1 | A request that is sent again with the same key has no second effect and returns the first result. |
+| 2 | A shop can refund a payment, in full or in part. |
+| 3 | Every payment is recorded as entries in a ledger, and the entries of a payment add up to 0. |
+| 4 | An accountant can list the entries of any account. |
+
+## Non-functional requirements
+
+| No. | Property | Non-functional requirement |
+|---|---|---|
+| 0 | Consistency | Strong. Both entries of a payment are written, or neither. |
+| 1 | Durability | A recorded payment is not lost under any single failure. |
+| 2 | Availability | 99.99%. When in doubt, the system refuses a payment and does not guess. |
+| 3 | Scale | 1000 payments per second. |
+
+This is the chapter in which strong consistency prevails in every dispute. The 2
+entries of a movement, the stored balance and the result recorded under the
+idempotency key are all written in 1 transaction on a store that confirms a write
+only when a majority of its replicas hold it. When the store cannot reach a majority,
+payments are refused. A payment system that is unavailable for a minute loses some
+sales, and a payment system that is inconsistent loses money and, with it, the
+confidence of the people whose money it was.
+
+## Core entities
+
+<figure>
+<img src="figures/pay-entities.svg?v=2dbf3767" alt="The core entities. Payment has the fields id u64, key string, amount cents, state done|refused. Entry has the fields payment u64, account string, amount +/- cents. Account has the fields id string, balance cents. A Payment produces 2 Entries that add up to 0: money leaves 1 account and enters another. A balance is the sum of entries.">
+<figcaption><b>Figure 19.6</b> The core entities and their fields.</figcaption>
+</figure>
+
+## Capacity estimate
+
+<div class="estimate">
+
+<img class="builder" src="art/crab-builder.svg" alt="A crab in a hard hat, in tears.">
+
+**Arithmetic ahead.** 1000 payments per second are 86 million per day and about 35 GB of ledger entries per day.
+
+<a class="skip" href="#high-level-design">Skip to the high-level design</a>
+
+<details>
+<summary>Show the calculation</summary>
+
+| Quantity | Calculation | Result |
+|---|---|---|
+| Payments per day | 1000 × 86400 | 86.4 million |
+| Entries per day | 86.4 million × 2 | 172.8 million |
+| Storage per day | 172.8 million × 200 bytes | 34.6 GB |
+
+</details>
+
+</div>
+
+## The API
+
+A charge is a new resource and is created with `POST`, a method that HTTP does not
+define as idempotent, and this is exactly why the API demands a key with every such
+request.
+
+**Charge a customer**
+
+```http
+POST /v1/payments HTTP/1.1
+Host: pay.example
+Idempotency-Key: order-7
+Content-Type: application/json
+
+{ "from": "ada", "to": "shop", "amount": 4000, "currency": "EUR" }
+```
+
+```http
+HTTP/1.1 201 Created
+Location: /v1/payments/9001
+Content-Type: application/json
+
+{ "id": 9001, "state": "done", "amount": 4000, "currency": "EUR" }
+```
+
+Amounts are whole numbers of cents. Fractions of a currency are not stored as floating-point numbers, which cannot represent 0.10 exactly.
+
+**The same request again**
+
+```http
+POST /v1/payments HTTP/1.1
+Host: pay.example
+Idempotency-Key: order-7
+Content-Type: application/json
+
+{ "from": "ada", "to": "shop", "amount": 4000, "currency": "EUR" }
+```
+
+```http
+HTTP/1.1 200 OK
+Content-Type: application/json
+
+{ "id": 9001, "state": "done", "amount": 4000, "currency": "EUR" }
+```
+
+The same payment comes back with `200`, and no money moves.
+
+**A charge without enough money**
+
+```http
+POST /v1/payments HTTP/1.1
+Host: pay.example
+Idempotency-Key: order-8
+Content-Type: application/json
+
+{ "from": "ada", "to": "shop", "amount": 9000, "currency": "EUR" }
+```
+
+```http
+HTTP/1.1 422 Unprocessable Content
+Content-Type: application/problem+json
+
+{
+  "type": "/problems/insufficient-funds",
+  "title": "The account does not hold this amount",
+  "status": 422
+}
+```
+
+`422` is the status for a request that is well formed and cannot be carried out.
+
+## High-level design
+
+<figure class="wide">
+<img src="figures/pay-design.svg?v=4e3b07e3" alt="Charging a customer. The components are Shop, Payment API, Ledger, Card network, Key store. Step 1: A shop sends a charge with a key of its own. Step 2: A key seen before returns the earlier result. Step 3: The ledger writes 2 entries in 1 transaction. Step 4: The card network moves the money between banks.">
+<figcaption><b>Figure 19.7</b> The components and the path of a request. The steps are numbered.</figcaption>
+</figure>
+
+| Component | Role | State it holds | When 1 instance fails |
+|---|---|---|---|
+| Payment API | checks the key and the request | none | another instance answers |
+| Key store | remembers the result of every key | keys, replicated | a follower takes over; until then payments are refused |
+| Ledger | writes the 2 entries of a payment in 1 transaction | every entry, replicated | a follower takes over; until then payments are refused |
+| Card network | moves money between banks | outside our control | the payment stays pending and is checked again |
+
+### One request, step by step
+
+The steps follow the arrows of figure 19.7.
+
+1. A shop sends `POST /v1/payments` with the key `order-7`.
+2. The API looks up `order-7` in the key store. If a result is stored, it is returned and nothing else happens.
+3. For a new key, the ledger checks the balance and writes 2 entries, minus 4000 for the customer and plus 4000 for the shop, together with the key's result, in 1 transaction.
+4. The card network is asked to move the money between the banks. Its answer can take seconds, so the payment is first *pending* and becomes *done* when the answer arrives.
+
+## Mistakes to avoid
+
+| Mistake | What goes wrong | What to do |
+|---|---|---|
+| A charge without an idempotency key | A retry after a lost reply charges the customer twice. | Require a key, and record the result of every key. |
+| Recording the key separately from the charge | A crash between the 2 leaves a charge whose retry is treated as new. | Write the key, the entries and the result in 1 transaction. |
+| Not recording failures under the key | A retry of a declined charge may succeed after the shop has reported failure. | Store every outcome, and return it for every retry. |
+| Amounts in floating-point numbers | Totals differ by cents across millions of transactions. | Store whole numbers of the smallest unit, with the currency. |
+| Adjusting 1 balance and then the other | A crash in between destroys or creates money. | Write both entries of a movement in 1 transaction. |
+| Editing or deleting ledger rows | History is lost, and mistakes and fraud leave no trace. | Add reversing entries, and never change existing ones. |
+| Reading a balance and then deducting | 2 simultaneous payments both pass the check and overdraw the account. | Lock the account, or make the deduction conditional on the balance. |
+| Treating a timeout as a failure | The customer was charged, and the shop is told otherwise. | Keep the payment pending, and ask the network for its outcome. |
+| Sending a timed-out charge again without a reference | The customer is charged twice. | Give every charge a reference by which the network recognises a repeat. |
+| Calling the network before recording the payment | A crash leaves a charge of which the system has no knowledge. | Record the payment as pending first. |
+| No reconciliation | Differences from the bank's records accumulate unnoticed. | Compare the ledger with the bank's statement every day. |
+| Treating a saga as a transaction | Intermediate states are seen by others, and some steps cannot be undone. | Put reversible steps first and irreversible ones last. |
+| Card numbers in ordinary databases and logs | A breach anywhere exposes cards. | Confine card numbers to a vault, and use tokens elsewhere. |
+
+## Failures
+
+| Failure | What users see | How the system recovers |
+|---|---|---|
+| The answer to a charge is lost | the shop retries | the key returns the first result |
+| The card network times out | the payment shows as pending | the system asks the network about that payment until it gets a definite answer |
+| The ledger's leader fails | payments are refused for about 1 second | a follower is elected, as in chapter 4 |
+
+## Trade-offs
+
+| Decision | What it gains | What it costs |
+|---|---|---|
+| Strong consistency everywhere | money is not lost or duplicated | payments are refused during a failover |
+| A key on every request | retries are safe | the result of every key has to be stored |
+| Entries, with balances computed from them | every balance can be explained and checked | more data than 1 number per account |
+
+## The simulation
+
+<div class="simulation">
+
+**Simulation in the repository.** The program [`code/paysim`](https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/distributed-systems-from-the-ground-up/code/paysim/src/main.rs) simulates this design. To run it, clone the repository and type `cargo run --release -p paysim` in the `code` directory.
+
+</div>
+
+## Terms introduced in this chapter
+
+| Term | Meaning |
+|---|---|
+| Card network | the organisation that carries payment messages between banks |
+| Authorisation | asking the customer's bank to approve an amount and set it aside |
+| Capture | the shop's confirmation that an authorised amount is to be collected |
+| Settlement | the actual transfer of money between banks |
+| Refund | a return of money initiated by the shop |
+| Dispute | a reversal initiated by the customer through their bank |
+| Idempotency key | a name the caller gives a request, so that a repeat has no further effect |
+| Ledger | the append-only list of all entries, which is the record of where money has gone |
+| Double entry | recording every movement as 2 entries that add up to 0 |
+| Entry | 1 line of the ledger: an account, an amount with a sign, and the payment that caused it |
+| Pending | the state of a payment whose outcome is not yet known |
+| Reconciliation | comparing 2 records of the same payments in order to find differences |
+| 2-phase commit | a protocol by which several databases commit together or not at all |
+| Saga | a sequence of local transactions, each with a compensating action |
+| Compensating action | an operation that reverses the effect of an earlier step |
+| Token | a random identifier that stands for a card number |
+| Vault | the isolated service that alone holds card numbers |
+
+<div class="summary">
+
+## Summary
+
+- A payment system places correctness before availability, and declines to act when it is uncertain.
+- A card payment is an object with a life of days: authorisation, capture, settlement, and possibly refund or dispute.
+- Every request carries an idempotency key, recorded atomically with its result, so that a repeat changes nothing.
+- Money is held as whole numbers of the smallest unit of its currency.
+- Every movement is 2 ledger entries that add up to 0, written together and never altered afterwards.
+- A charge whose reply is lost stays pending until its outcome has been established by asking the network.
+- Reconciliation compares the ledger with the bank's statement every day and catches what everything else missed.
+- Operations that span several services are run as sagas, with compensating actions in place of atomicity.
+- Card numbers are confined to a vault, and the rest of the system handles tokens.
+
+</div>

@@ -1,0 +1,25 @@
+the limit for every algorithm: 5 requests per second
+
+20 requests in the same instant: 20 requests
+  algorithm               forwarded  most in any second  first 5 forwarded at (ms)
+  fixed window                    5                   5  0 0 0 0 0
+  sliding window log              5                   5  0 0 0 0 0
+  sliding window counter          5                   5  0 0 0 0 0
+  token bucket                    5                   5  0 0 0 0 0
+  leaky bucket                    5                   5  0 200 400 600 800
+
+5 requests before the 1 second mark and 5 after it: 10 requests
+  algorithm               forwarded  most in any second  first 5 forwarded at (ms)
+  fixed window                   10                  10  900 920 940 960 980
+  sliding window log              5                   5  900 920 940 960 980
+  sliding window counter          5                   5  900 920 940 960 980
+  token bucket                    5                   5  900 920 940 960 980
+  leaky bucket                    6                   5  900 1100 1300 1500 1700
+
+10 requests per second for 3 seconds: 30 requests
+  algorithm               forwarded  most in any second  first 5 forwarded at (ms)
+  fixed window                   15                   5  0 100 200 300 400
+  sliding window log             15                   5  0 100 200 300 400
+  sliding window counter         13                   5  0 100 200 300 400
+  token bucket                   19                   9  0 100 200 300 400
+  leaky bucket                   20                   5  0 200 400 600 800

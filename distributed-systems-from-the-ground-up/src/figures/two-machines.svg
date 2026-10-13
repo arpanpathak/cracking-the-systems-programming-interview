@@ -1,0 +1,80 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="18 14 444 464" width="444" height="464" role="img" aria-label="The test on 2 machines. On node-a, kvctl load sends PUT requests and writes each acknowledged key to acked.txt. On node-b, kvd listens on port 7001 and writes kv.log. kvctl writes keys and notes each one the server answered. After 3 seconds kvd is killed with signal 9. kvd is started again and reads its log. kvctl reads every noted key, and 1107 of 1107 are there.">
+  <style>
+    text { font-family: Inter, "Segoe UI", "Helvetica Neue", Helvetica, Arial, sans-serif; fill: #1B2430; }
+    .title { font-size: 18px; font-weight: 650; }
+    .lede { font-size: 12.5px; fill: #5D6B7A; }
+    .name { font-size: 14px; font-weight: 650; }
+    .sub { font-size: 12px; fill: #5D6B7A; }
+    .note { font-size: 12px; fill: #5D6B7A; }
+    .tab { font-size: 11.5px; font-weight: 650; letter-spacing: 0.04em; fill: #5D6B7A; }
+    .mono { font-family: "JetBrains Mono", "SF Mono", Menlo, Consolas, monospace; font-size: 12px; }
+    .dim { fill: #8794A3; }
+    .strong { font-weight: 700; }
+    .trap { fill: #CF4526; font-weight: 700; }
+    .pill { font-size: 11px; font-weight: 600; }
+    .wire { fill: none; stroke: #3F5873; stroke-width: 2.4; stroke-linecap: butt; stroke-linejoin: round; }
+    .wire.danger { stroke: #CF4526; stroke-dasharray: 6 5; }
+    .wire.idle { stroke: #7F8EA0; stroke-dasharray: 2 5; }
+  </style>
+  <defs>
+    <filter id="lift" x="-10%" y="-10%" width="120%" height="135%">
+      <feDropShadow dx="0" dy="2" stdDeviation="3" flood-color="#1B2430" flood-opacity="0.13"/>
+    </filter>
+    <linearGradient id="thor-body" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#C6CCD5"/><stop offset="1" stop-color="#979EA9"/>
+    </linearGradient>
+    <linearGradient id="switch-body" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#3B4656"/><stop offset="1" stop-color="#232B37"/>
+    </linearGradient>
+    <marker id="head" viewBox="0 0 12 10" refX="8" refY="5" markerUnits="userSpaceOnUse" markerWidth="16" markerHeight="13.3" orient="auto">
+      <path d="M0,0.4 L12,5 L0,9.6 L2.8,5 Z" fill="#3F5873"/>
+    </marker>
+    <marker id="head-danger" viewBox="0 0 12 10" refX="8" refY="5" markerUnits="userSpaceOnUse" markerWidth="16" markerHeight="13.3" orient="auto">
+      <path d="M0,0.4 L12,5 L0,9.6 L2.8,5 Z" fill="#CF4526"/>
+    </marker>
+    <marker id="head-idle" viewBox="0 0 12 10" refX="8" refY="5" markerUnits="userSpaceOnUse" markerWidth="16" markerHeight="13.3" orient="auto">
+      <path d="M0,0.4 L12,5 L0,9.6 L2.8,5 Z" fill="#7F8EA0"/>
+    </marker>
+  </defs>
+  <rect width="480" height="484" rx="14" fill="#FBFAF6"/>
+  <text x="32.0" y="42.0" class="title" text-anchor="start" xml:space="preserve">The same test on 2 machines</text>
+  <text x="32.0" y="63.0" class="lede" text-anchor="start" xml:space="preserve">Client keeps its own record of what server promised.</text>
+  <rect x="32" y="104" width="196" height="150" rx="16" fill="#F3F1EA" stroke="#E4E0D4" stroke-width="1.2"/>
+  <rect x="50" y="93" width="138.1" height="22" rx="11" fill="#1B2430"/>
+  <text x="119.1" y="108.2" class="tab" text-anchor="middle" style="fill:#FFFFFF" xml:space="preserve">NODE-A: CLIENT</text>
+  <rect x="252" y="104" width="196" height="150" rx="16" fill="#F3F1EA" stroke="#E4E0D4" stroke-width="1.2"/>
+  <rect x="270" y="93" width="138.1" height="22" rx="11" fill="#1B2430"/>
+  <text x="339.1" y="108.2" class="tab" text-anchor="middle" style="fill:#FFFFFF" xml:space="preserve">NODE-B: SERVER</text>
+  <rect x="44" y="130" width="172" height="52" rx="12" fill="#FFFFFF" stroke="#D5DBE3" stroke-width="1.3" filter="url(#lift)"/>
+  <path d="M56,130.7 H50 V181.3 H56 A11.3,11.3 0 0 1 44.7,170 V142 A11.3,11.3 0 0 1 56,130.7 Z" fill="#2F6FDB"/>
+  <rect x="60" y="140.0" width="32" height="32" rx="8" fill="#EAF1FD"/>
+  <g transform="translate(66.0,146.0) scale(0.8333)"><path d="M3 4h18a1 1 0 0 1 1 1v14a1 1 0 0 1-1 1H3a1 1 0 0 1-1-1V5a1 1 0 0 1 1-1zm3.3 4.3-1.4 1.4L7.2 12l-2.3 2.3 1.4 1.4L10 12zM11 14v2h7v-2z" fill="#2F6FDB" fill-rule="evenodd"/></g>
+  <text x="102.0" y="152.0" class="name" text-anchor="start" xml:space="preserve">kvctl load</text>
+  <text x="102.0" y="170.0" class="sub" text-anchor="start" xml:space="preserve">sends PUT</text>
+  <rect x="264" y="130" width="172" height="52" rx="12" fill="#FFFFFF" stroke="#D5DBE3" stroke-width="1.3" filter="url(#lift)"/>
+  <path d="M276,130.7 H270 V181.3 H276 A11.3,11.3 0 0 1 264.7,170 V142 A11.3,11.3 0 0 1 276,130.7 Z" fill="#B7791F"/>
+  <rect x="280" y="140.0" width="32" height="32" rx="8" fill="#FBF1DC"/>
+  <g transform="translate(286.0,146.0) scale(0.8333)"><path d="M4 3h16a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2h-8.5L6 21.5V17H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2zM12 14.3l-3.4-3.2a2.1 2.1 0 0 1 3.4-2.4 2.1 2.1 0 0 1 3.4 2.4z" fill="#B7791F" fill-rule="evenodd"/></g>
+  <text x="322.0" y="152.0" class="name" text-anchor="start" xml:space="preserve">kvd</text>
+  <text x="322.0" y="170.0" class="sub" text-anchor="start" xml:space="preserve">port 7001</text>
+  <path d="M54,201 A76.0,9 0 0 1 206,201 V237 A76.0,9 0 0 1 54,237 Z" fill="#F1F4F7" stroke="#7F8EA0" stroke-width="1.4" filter="url(#lift)"/>
+  <ellipse cx="130.0" cy="201" rx="76.0" ry="9" fill="#FFFFFF" stroke="#7F8EA0" stroke-width="1.4"/>
+  <text x="130.0" y="231.0" class="name" text-anchor="middle" xml:space="preserve">acked.txt</text>
+  <path d="M274,201 A76.0,9 0 0 1 426,201 V237 A76.0,9 0 0 1 274,237 Z" fill="#FBF1DC" stroke="#B7791F" stroke-width="1.4" filter="url(#lift)"/>
+  <ellipse cx="350.0" cy="201" rx="76.0" ry="9" fill="#FFFFFF" stroke="#B7791F" stroke-width="1.4"/>
+  <text x="350.0" y="231.0" class="name" text-anchor="middle" xml:space="preserve">kv.log</text>
+  <text x="32.0" y="290.0" class="tab" text-anchor="start" xml:space="preserve">THE TEST</text>
+  <rect x="32.0" y="300.0" width="416.0" height="34.0" rx="8" fill="#FFFFFF" stroke="#D5DBE3" stroke-width="1.3"/>
+  <rect x="32.0" y="300.0" width="6.0" height="34.0" rx="3" fill="#2F6FDB" stroke="#2F6FDB" stroke-width="1.3"/>
+  <text x="48.0" y="322.0" class="sub" text-anchor="start" xml:space="preserve">Kvctl writes keys and notes each one server answered</text>
+  <rect x="32.0" y="342.0" width="416.0" height="34.0" rx="8" fill="#FFFFFF" stroke="#D5DBE3" stroke-width="1.3"/>
+  <rect x="32.0" y="342.0" width="6.0" height="34.0" rx="3" fill="#CF4526" stroke="#CF4526" stroke-width="1.3"/>
+  <text x="48.0" y="364.0" class="sub" text-anchor="start" xml:space="preserve">After 3 seconds kvd is killed with signal 9</text>
+  <rect x="32.0" y="384.0" width="416.0" height="34.0" rx="8" fill="#FFFFFF" stroke="#D5DBE3" stroke-width="1.3"/>
+  <rect x="32.0" y="384.0" width="6.0" height="34.0" rx="3" fill="#B7791F" stroke="#B7791F" stroke-width="1.3"/>
+  <text x="48.0" y="406.0" class="sub" text-anchor="start" xml:space="preserve">kvd is started again and reads its log</text>
+  <rect x="32.0" y="426.0" width="416.0" height="34.0" rx="8" fill="#FFFFFF" stroke="#D5DBE3" stroke-width="1.3"/>
+  <rect x="32.0" y="426.0" width="6.0" height="34.0" rx="3" fill="#2E8B3D" stroke="#2E8B3D" stroke-width="1.3"/>
+  <text x="48.0" y="448.0" class="sub" text-anchor="start" xml:space="preserve">kvctl reads every noted key: 1107 of 1107 are there</text>
+  <path class="wire" d="M216,156 L258.5,156.0" marker-end="url(#head)"/>
+</svg>

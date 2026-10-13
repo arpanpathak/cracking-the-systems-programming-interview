@@ -1,0 +1,9 @@
+$ ./target/release/kvnode --role follower --listen 127.0.0.1:7002 --replication 127.0.0.1:7102 --data /var/tmp/n2 &
+term 1, log ends at 0
+accepting records on 127.0.0.1:7102
+listening on 127.0.0.1:7002
+$ ./target/release/kvnode --role follower --listen 127.0.0.1:7003 --replication 127.0.0.1:7103 --data /var/tmp/n3 &
+$ ./target/release/kvnode --role leader --listen 127.0.0.1:7001 --data /var/tmp/n1 \
+      --follower http://127.0.0.1:7102 --follower http://127.0.0.1:7103 &
+term 1, log ends at 0
+listening on 127.0.0.1:7001

@@ -1,0 +1,477 @@
+# Web Crawler: System Design
+
+A *web crawler* is a program that reads the web as a person would who had unlimited
+patience and no particular interest in any page. It begins with a few known
+addresses, downloads the pages at those addresses, extracts from each page the
+addresses to which it links, and proceeds to download those in their turn. Continued
+long enough, the process reaches every page that can be reached by following links,
+and the collection that results is the raw material of a search engine, of an
+archive, or of any system that needs to know what the web contains.
+
+As an algorithm, this is the traversal of a graph, and an introductory course in
+programming covers it in a week. What separates the exercise from the system is the
+nature of this particular graph. It has tens of billions of nodes and can be stored
+on no single machine. It is not given in advance, each node being discoverable only
+by fetching another. It changes while it is being traversed. Parts of it are
+infinite, generated on demand by programs that will produce a new page for every
+address they are asked for. And every node belongs to somebody, who is paying for the
+server that answers and who will, quite reasonably, block a crawler that asks too
+much too quickly. A crawler has therefore to be at once fast in aggregate and gentle
+towards each individual site, and most of its design follows from the need to
+reconcile the 2.
+
+<div class="covers">
+
+This chapter covers
+
+- the loop at the centre of every crawler
+- the frontier: which address to fetch next, and why it is more than a queue
+- politeness, and a queue for every host
+- what a site asks of crawlers, and why a crawler complies
+- recognising an address that has been seen before
+- recognising a page that has been seen before under another address
+- sites that never end
+- dividing the crawl among many machines
+- returning to pages that change
+
+</div>
+
+## The loop
+
+Every crawler, whatever its size, repeats the same 4 steps. It takes an address from
+the collection of those waiting to be fetched, which is called the *frontier*. It
+downloads the page at that address. It extracts the links from the page. And it adds
+to the frontier those of the links that it has not met before.
+
+If the frontier were a simple first-in, first-out queue, this would be a breadth-first
+traversal. Almost everything of interest in a crawler's design is a departure from
+that simple queue, prompted by 1 of 3 matters: the order in which addresses should
+be taken, given that there are always far more waiting than can be fetched, how soon
+the same server may be asked again, and how it is known that an address, or a page,
+has been dealt with already.
+
+## Politeness
+
+A crawler with 1000 connections at its disposal could, if it chose, direct all of
+them at a single web site. For a small site this would be indistinguishable from an
+attack. The server would be overwhelmed, its ordinary visitors would be turned away,
+and its owner would respond by blocking the crawler's addresses permanently, as would
+the owners of other sites who heard of it. A crawler that is to be tolerated must
+restrict itself, for each site separately, to a rate that the site will not notice. A
+usual rule allows 1 request to a given host at any moment, followed by a pause of a
+second or more before the next.
+
+The difficulty is that this restriction is at odds with the order in which addresses
+are discovered. A page generally links mostly to other pages of its own site, so that
+the frontier, at any moment, contains long runs of addresses on the same host. A
+crawler that took addresses strictly in order would spend nearly all its time waiting
+for the pause on some host to expire, while thousands of other hosts stood ready.
+
+The standard arrangement resolves this by giving the frontier a structure that
+mirrors the constraint. There is a separate queue for every host, and with each queue
+is recorded the earliest time at which that host may next be asked. A fetcher that
+wants work takes an address from any host whose time has come, and that host's time
+is then moved forward by the length of the pause.
+
+@steps steps-crawl-frontier :: A crawl of 3 hosts, each of which may be asked once every 2 seconds.
+
+The simulation for this chapter crawls a small invented web of 3 hosts under this
+rule. In 8 seconds it fetches 10 pages, never asking any host twice within 2 seconds,
+and never standing idle while some host is ready.
+
+The consequence for the performance of a crawler is fundamental and somewhat
+counter-intuitive. The speed of a crawl is determined by the number of different
+hosts it has in hand, and hardly at all by how fast any 1 of them answers. With a
+pause of 1 second, a crawler that knows of a million hosts can fetch a million pages
+a second, and a crawler confined to a single enormous site can fetch 1. A very large
+site therefore takes a long time to crawl completely however many machines are
+available, and the only remedy is an agreement with its owner.
+
+The pause need not be the same for every host. A crawler can measure how long a
+server takes to answer and wait some multiple of that, which treats a fast server
+more briskly and backs away from one that is struggling. A server that begins to
+return errors, or the status `429` of chapter 7, is telling the crawler directly that
+it is asking too much, and the pause for that host should be lengthened at once.
+
+## What a site asks of crawlers
+
+By a convention almost as old as the web, a site may publish a file named
+`robots.txt` at its root, stating which parts of the site crawlers are asked to stay
+out of, and sometimes how long they should wait between requests. A site might
+exclude its search results, its shopping baskets, or pages that are costly to
+generate.
+
+Nothing enforces this file. A crawler obeys it because the alternative is to be
+blocked, and because the exclusions usually serve the crawler's own interest by
+steering it away from pages of no value. The file has to be fetched before any other
+page of the host, and since it applies to every later request it is kept in a cache,
+with a time limit of perhaps a day, so that it is neither fetched for every page nor
+relied upon indefinitely after the site has changed it.
+
+A crawler also identifies itself, by a name in the `User-Agent` header of each
+request together with an address at which its operators can be reached. An
+administrator who finds an unfamiliar program in the logs and can discover what it is
+and whom to write to is far less inclined to block it than one who cannot.
+
+## An address seen before
+
+The web is densely connected, and the same address appears as a link on a great many
+pages. In the small simulation, 7 of the links encountered led to addresses that were
+already known. On the real web the proportion is far higher, and a crawler that
+fetched every address every time it was mentioned would never finish. Every address
+ever added to the frontier is therefore recorded in a *seen set*, and a newly
+extracted link is checked against the set before anything else is done with it.
+
+Before the check, the address has to be brought to a standard form, since many
+different strings denote the same page. The name of the host is not sensitive to
+case. A port number that is the default may be given or left out. The part of an
+address after a `#` refers to a position within the page and is never sent to the
+server. The parameters of a query may appear in any order, and often include
+identifiers of a session or of an advertising campaign that have no effect on what
+is returned. A crawler that failed to *normalise* its addresses would fetch the same
+page many times under different spellings.
+
+The seen set is very large. 10 billion addresses of 80 bytes each would occupy 800
+GB, and the set is consulted for every link on every page. Storing a fixed-size hash
+of each address in place of the address reduces this by a factor of 10. A further
+reduction is possible if occasional errors are tolerated. The *Bloom filter* that
+chapter 9 used against cache penetration serves here too: it occupies about 10 bits
+for each address and answers the question of membership with certainty when the
+answer is no, and with a small probability of error, around 1 in 100, when the answer
+is yes. For a crawler the error means that a few addresses in every hundred which are
+in truth new are taken as seen and are not fetched. Whether that loss is acceptable
+depends on the purpose of the crawl, and for most purposes a web of which 1% is
+missed is a perfectly good web.
+
+## A page seen before
+
+Normalising addresses does not eliminate duplication, because the same content is
+very often served at addresses that are truly distinct. A site answers both with and
+without `www`. An article is available at a short address and a long one, or in a
+printable version, or on a second site that reproduces it. Estimates of the share of
+the web that duplicates some other part of it run to a quarter or more.
+
+Identical copies are detected easily. The crawler computes a checksum of the content
+of each page it fetches and keeps the checksums, as the object store of chapter 16
+does for chunks. A page whose checksum is already present is a duplicate, and is
+neither stored again nor examined for links.
+
+Copies that are nearly identical are a harder matter, and are much the commoner
+case. 2 copies of the same article may differ in the date printed at the top, in the
+advertisements, or in a counter of visitors, and a checksum, which changes completely
+when a single byte changes, treats them as unrelated. For this purpose a different
+kind of fingerprint is used, constructed so that similar documents receive similar
+fingerprints. The page is broken into overlapping sequences of a few words, each
+sequence is hashed, and the hashes are combined into a short value in such a way that
+every sequence has a small influence on every bit. 2 pages that share most of their
+sequences then receive fingerprints that differ in only a few bits, and near
+duplicates can be found by looking for fingerprints close to one another.
+
+## Sites that never end
+
+Some parts of the web are generated by programs and have no boundary. The classic
+instance is a calendar.
+
+@figure crawl-trap :: A calendar in which every day links to the next.
+
+The page for each day contains a link to the following day, and the server will
+obligingly produce a page for any date whatever. A crawler that follows links
+faithfully proceeds through the calendar day by day into the indefinite future. A
+shop with 5 filters that may be combined in any order, a site that embeds a fresh
+session identifier in every link, and a directory that by mistake contains a link to
+itself all have the same effect. Such structures are called *crawler traps*. Most are
+accidents, and a few are built on purpose to waste the time of crawlers.
+
+No test can tell, for an arbitrary site, whether its pages are endless, and the
+defences are accordingly limits, since nothing can serve as a detector. A crawler restricts the number of
+pages it will take from any 1 host, as the simulation does when it stops the calendar
+at 4. It restricts the depth to which it will follow links from the page at which it
+entered a site. It restricts the length of the addresses it will accept, since
+addresses in a trap tend to grow. And it gives a larger allowance to hosts that many
+other sites link to, on the grounds that a site which the rest of the web considers
+important is unlikely to be a trap.
+
+## Which address next
+
+With far more addresses waiting than can ever be fetched, the order in which they are
+taken decides what the crawl contains. A crawler that is to feed a search engine
+wants the important pages first, and has to estimate importance before fetching, from
+what is known about an address in advance: how many pages link to it, how important
+those pages are themselves, how near it is to the root of its site, and how valuable
+the other pages of its host have proved.
+
+Priority and politeness have to be combined, and the usual structure has 2 stages. A
+set of queues ordered by priority feeds the queues ordered by host. Addresses enter
+at the front according to their estimated importance, are drawn from the
+high-priority queues more often than from the low, and are then placed in the queue
+of their host, from which the rule of politeness releases them. The first stage
+decides what is worth fetching, and the second decides when it may be fetched.
+
+## Many machines
+
+A crawl of billions of pages is carried out by many machines, and the work has to be
+divided among them in such a way that the constraints still hold. The decisive
+constraint is politeness, which is a property of a host and must therefore be
+enforced in 1 place for each host. If 2 machines each held addresses of the same host
+and each observed the pause on its own account, the host would receive twice the
+permitted load.
+
+The division is therefore made by host. Each host is assigned to a single crawler
+machine, by hashing its name, with the consistent hashing of chapter 1 so that the
+addition of a machine moves only a small share of the hosts. All the addresses of a
+host are queued on its machine, which alone keeps the host's waiting time and its
+`robots.txt`. When a machine extracts a link to a host that belongs to another
+machine, it forwards the address there, usually in batches by way of a message queue.
+Since most links lead to the site on which they are found, most addresses stay where
+they were discovered.
+
+The frontier must survive failures. It represents days of accumulated discovery and
+cannot quickly be rebuilt. It is therefore kept on disk, and since it is far larger
+than memory, each host's queue is held mostly on disk, with only the next few
+addresses of each host in memory.
+
+A crawler also depends heavily on the name resolution system, since every host name
+has to be turned into a network address before the host can be contacted. At
+thousands of requests a second, the ordinary resolver becomes a bottleneck, and
+crawlers keep their own cache of resolved names, refreshed as the entries expire.
+
+## Returning to pages
+
+The web changes, and a collection that was accurate last month is partly wrong
+today. A crawler has to revisit, and since it cannot revisit everything as often as
+it would wish, it has to decide how its limited capacity is best spent.
+
+Pages change at very different rates. The front page of a newspaper changes every few
+minutes, and a paper published by a scientific journal 10 years ago will never change
+again. A crawler therefore records, for each page, how often it has found the page
+changed on its previous visits, and schedules the next visit accordingly: soon for a
+page that is usually different, and after a long interval for one that is usually the
+same.
+
+HTTP allows a revisit to be made cheaply. The crawler sends the entity tag that it
+received with the page on the last occasion, in the `If-None-Match` header that
+chapter 1 described, and a server whose page has not changed answers `304 Not
+Modified` with no body. The crawler has confirmed that its copy is current at the
+cost of a few hundred bytes.
+
+## Use cases
+
+An operator starts a crawl and governs it. A consumer, typically the indexer of a
+search engine, reads the pages that have been fetched.
+
+@figure crawl-use-cases :: The actors and what each of them does.
+
+## Functional requirements
+
+| No. | Functional requirement |
+|---|---|
+| 0 | Starting from given addresses, the crawler fetches the pages that can be reached by following links. |
+| 1 | No address is fetched more than once in a crawl. |
+| 2 | The crawler observes the rules that each site publishes for crawlers. |
+| 3 | No host is asked more often than once in a configured interval. |
+| 4 | Pages whose content has already been stored are recognised and not stored again. |
+| 5 | Pages are fetched again at intervals that depend on how often they change. |
+
+## Non-functional requirements
+
+| No. | Property | Non-functional requirement |
+|---|---|---|
+| 0 | Scale | 10 billion pages in a crawl of a month, which is about 4000 pages per second. |
+| 1 | Politeness | At most 1 request at any moment to a host, with at least 1 second between requests. |
+| 2 | Durability | The frontier and the seen set survive the failure of any machine. |
+| 3 | Consistency | Eventual. A small share of addresses may be fetched twice or missed. |
+| 4 | Robustness | No page, however malformed or large, stops the crawl. |
+
+A crawler is unusually tolerant of small errors, and non-functional requirement 3
+says so. If 1 address in 100 is skipped because a Bloom filter was mistaken, or
+fetched twice because a machine failed between fetching and recording, the resulting
+collection is for all practical purposes as good. This tolerance is what allows the
+seen set to be approximate and the coordination between machines to be loose. The 1
+requirement that admits no approximation is politeness, since the party harmed by a
+violation is somebody else.
+
+## Core entities
+
+@figure crawl-entities :: The core entities and their fields.
+
+## Capacity estimate
+
+<div class="estimate">
+
+<img class="builder" src="art/crab-builder.svg" alt="A crab in a hard hat, in tears.">
+
+**Arithmetic ahead.** 10 billion pages of 100 KB are 1 PB of content, fetched at 4000 pages per second, which needs about 3 Gbit/s of bandwidth and a few hundred fetching machines.
+
+<a class="skip" href="#high-level-design">Skip to the high-level design</a>
+
+<details>
+<summary>Show the calculation</summary>
+
+| Quantity | Calculation | Result |
+|---|---|---|
+| Pages per second | 10 billion ÷ (30 × 86400 s) | about 3900 |
+| Content stored | 10 billion × 100 KB | 1 PB |
+| Bandwidth | 3900 × 100 KB × 8 | about 3 Gbit/s |
+| Hosts needed to sustain the rate | 3900 pages per second × 1 s pause | at least 3900 hosts ready at every moment |
+| Seen set as hashes | 10 billion × 8 bytes | 80 GB |
+| Seen set as a Bloom filter | 10 billion × 10 bits | 12.5 GB |
+
+</details>
+
+</div>
+
+## The API
+
+A crawler has few callers. An operator supplies starting addresses and rules, and a
+consumer reads what has been fetched, in pages, by a cursor.
+
+**Give starting addresses**
+
+```http
+POST /v1/seeds HTTP/1.1
+Host: crawler.internal
+Content-Type: application/json
+
+{ "addresses": ["https://news.example/", "https://shop.example/"] }
+```
+
+```http
+HTTP/1.1 202 Accepted
+Content-Type: application/json
+
+{ "accepted": 2 }
+```
+
+The status is `202`, since the addresses have been taken into the frontier and
+nothing has yet been fetched.
+
+**Set the rules for a host**
+
+```http
+PUT /v1/hosts/calendar.example/rules HTTP/1.1
+Host: crawler.internal
+Content-Type: application/json
+
+{ "pause_seconds": 5, "page_limit": 1000, "depth_limit": 6 }
+```
+
+```http
+HTTP/1.1 204 No Content
+```
+
+**Read the fetched pages**
+
+```http
+GET /v1/pages?after=880213&limit=2 HTTP/1.1
+Host: crawler.internal
+```
+
+```http
+HTTP/1.1 200 OK
+Content-Type: application/json
+
+{
+  "pages": [
+    { "id": 880214, "address": "https://news.example/a", "fetched": "2026-10-14T09:00:02Z", "status": 200, "content": "/v1/pages/880214/content" },
+    { "id": 880215, "address": "https://shop.example/item-1", "fetched": "2026-10-14T09:00:03Z", "status": 200, "content": "/v1/pages/880215/content" }
+  ],
+  "next_after": 880215
+}
+```
+
+## High-level design
+
+@figure crawl-design :: The components and the path of a page. The steps are numbered.
+
+| Component | Role | State it holds | When 1 instance fails |
+|---|---|---|---|
+| Frontier | holds the waiting addresses, in a queue for each host | the queues and waiting times, on disk | its hosts are taken over, with their queues, by another machine |
+| Fetcher | downloads pages, within a time limit and a size limit | none | the address returns to the frontier |
+| Host rules | holds each host's `robots.txt` and limits | a cache | the rules are fetched again |
+| Parser | extracts and normalises the links of a page | none | the page is parsed again |
+| Link filter | removes addresses that have been seen | the seen set | the set is restored from its copy |
+| Page store | keeps the content of every page | the pages, in an object store | as in chapter 16 |
+
+### One page, step by step
+
+The steps follow the arrows of figure 23.crawl-design.
+
+1. The frontier hands a fetcher the next address of a host whose waiting time has passed, and moves that host's time forward.
+2. The fetcher consults the rules of the host. If the address is excluded, it is dropped. Otherwise the fetcher downloads the page, giving up if the server is too slow or the page too large.
+3. The page passes to the parser.
+4. The content is given a checksum. If no page with that checksum has been stored, the page is stored.
+5. The parser extracts the links, normalises them, and passes them to the link filter.
+6. The filter drops every address that is in the seen set, adds the others to the set, and sends them to the frontier, where each joins the queue of its host.
+
+## Mistakes to avoid
+
+| Mistake | What goes wrong | What to do |
+|---|---|---|
+| 1 queue for all addresses | The crawler either overloads a site or waits on 1 host while thousands are ready. | Keep a queue and a waiting time for every host. |
+| Enforcing politeness separately on each machine | A host served by 2 machines receives twice the permitted load. | Assign each host to exactly 1 machine. |
+| Ignoring `robots.txt` | The crawler is blocked, and fetches pages of no value. | Fetch and cache the rules of each host before anything else. |
+| Comparing addresses as raw strings | The same page is fetched under many spellings. | Normalise every address before checking the seen set. |
+| Detecting duplicates by address only | The same article is stored from many addresses. | Compare checksums of content, and fingerprints for near duplicates. |
+| Following every link without limit | A calendar or a set of filters occupies the crawler for ever. | Limit the pages and the depth for each host. |
+| No limit on time or size of a download | 1 slow or endless response holds a fetcher indefinitely. | Give every download a time limit and a size limit. |
+| The frontier in memory only | A restart loses days of discovery. | Keep the frontier on disk. |
+| Asking the resolver for every request | Name resolution becomes the bottleneck. | Cache resolved names. |
+| Revisiting every page equally often | Capacity is spent on pages that never change. | Revisit according to how often each page has changed. |
+| Persisting when a host returns errors | The host is pushed further into overload, and blocks the crawler. | Lengthen the pause for a host that answers with errors or `429`. |
+
+## Failures
+
+| Failure | What is observed | How the system recovers |
+|---|---|---|
+| A fetcher crashes during a download | the page is not stored | the address was not removed from its queue until the page was stored, and is fetched again |
+| A crawler machine is lost | its hosts are not crawled for a time | its hosts and their queues pass to other machines |
+| A host does not respond | downloads to it time out | its pause is lengthened, and after repeated failures it is set aside for a day |
+| A page is enormous or never ends | the download is cut off | the size limit and the time limit end it |
+| The seen set gives a false "seen" | a new address is not fetched | accepted, as a known property of the filter |
+| A site blocks the crawler | every request is refused | the host is set aside, and an operator is informed |
+
+## Trade-offs
+
+| Decision | What it gains | What it costs |
+|---|---|---|
+| A queue for every host | politeness without idleness | a frontier that is large and complicated |
+| Hosts assigned to machines by hash | politeness enforced in 1 place | links to other hosts have to be forwarded |
+| A Bloom filter for the seen set | a tenth of the memory | about 1 new address in 100 is missed |
+| Limits for each host | traps cannot hold the crawler | a large legitimate site may be cut short |
+| Revisits according to past change | fresh copies of what changes | stale copies of pages that change unexpectedly |
+
+## The simulation
+
+@sim crawlsim
+
+## Terms introduced in this chapter
+
+| Term | Meaning |
+|---|---|
+| Crawler | a program that fetches pages and follows their links |
+| Frontier | the addresses that are known and have yet to be fetched |
+| Seed | an address from which a crawl starts |
+| Host | the server named in an address, to which politeness applies |
+| Politeness | limiting the rate of requests to each host |
+| `robots.txt` | a file in which a site states what crawlers are asked to leave alone |
+| Normalisation | bringing an address to a standard form |
+| Seen set | the set of every address that has been added to the frontier |
+| Bloom filter | a compact set that can be wrong only by reporting an absent item as present |
+| Near duplicate | a page that differs only slightly from another |
+| Crawler trap | a part of a site that produces pages without end |
+| Revisit | fetching a page again to learn whether it has changed |
+
+<div class="summary">
+
+## Summary
+
+- A crawler repeats 4 steps: take an address, fetch the page, extract its links, and add the new ones to the frontier.
+- Each host may be asked only at intervals, so the frontier keeps a queue and a waiting time for every host.
+- The speed of a crawl comes from the number of hosts in hand, and no single site can be crawled quickly.
+- Addresses are normalised and checked against a seen set, which may be a Bloom filter where a small loss is acceptable.
+- Duplicate content is found by checksum, and near duplicates by fingerprints that are similar for similar pages.
+- Endless sites cannot be detected, and are contained by limits on pages and depth for every host.
+- Each host is assigned to 1 machine, so that politeness is enforced in a single place.
+- Pages are revisited at intervals that depend on how often they have been found changed.
+
+</div>

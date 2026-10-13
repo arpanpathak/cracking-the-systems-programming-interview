@@ -1,0 +1,10 @@
+$ ./target/release/kvrouter --listen 127.0.0.1:7000 --ring ring.json &
+routing to 2 shards
+listening on 127.0.0.1:7000
+$ ./target/release/kvctl load --server http://127.0.0.1:7000 --count 400 --acked acked.txt
+400 writes acknowledged
+$ for port in 7013 7023; do curl http://127.0.0.1:$port/healthz; echo; done
+{"id":3,"role":"leader","term":1,"leader":3,"last_sequence":206,"committed":206}
+{"id":3,"role":"leader","term":1,"leader":3,"last_sequence":196,"committed":196}
+$ ./target/release/kvctl verify --server http://127.0.0.1:7000 --acked acked.txt
+400 acknowledged, 400 found, 0 missing

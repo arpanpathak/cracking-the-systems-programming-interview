@@ -1,0 +1,8 @@
+$ ./target/release/kvgroup --data /var/tmp/kvgroup &
+$ ./target/release/kvbench --server http://127.0.0.1:7001 --clients 64 --writes 2000 --acked acked.txt &
+$ sleep 2; kill -9 <pid of kvgroup>
+64 clients: 9341 writes acknowledged in 2.74 s, 3412 writes per second
+$ ./target/release/kvd --data /var/tmp/kvgroup &
+recovered 9366 keys from 9366 records, cut 0 bytes from the end of the log
+$ ./target/release/kvctl verify --server http://127.0.0.1:7001 --acked acked.txt
+9341 acknowledged, 9341 found, 0 missing

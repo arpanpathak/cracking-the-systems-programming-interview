@@ -1,0 +1,16 @@
+$ cargo run --release -p jobsim
+t= 0  worker 0 takes job 0
+t= 0  worker 1 takes job 1
+t= 0  worker 2 takes job 2
+t= 2  worker 0 finishes job 0: accepted true
+t= 2  worker 0 takes job 3
+t= 2  worker 2 finishes job 2: accepted true
+t= 2  worker 2 takes job 4
+t= 3  job 1 was held by worker 1 past its deadline: back in the queue
+t= 4  worker 0 finishes job 3: accepted true
+t= 4  worker 0 takes job 1
+t= 4  worker 2 finishes job 4: accepted true
+t= 4  worker 2 takes job 5
+t= 6  worker 0 finishes job 1: accepted true
+t= 6  worker 2 finishes job 5: accepted true
+jobs done: 6 of 6, attempts per job: 1 2 1 1 1 1

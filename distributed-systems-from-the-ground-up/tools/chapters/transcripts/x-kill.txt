@@ -1,0 +1,8 @@
+$ ./target/release/probe --seconds 12 --acked acked.txt --server http://127.0.0.1:7000 &
+$ sleep 4; kill -9 <pid of member 3 of shard-a, its leader>
+780 writes acknowledged in 12 seconds, 0 attempts refused
+the longest pause between 2 acknowledged writes was 1.08 s, ending 5.2 s after the start
+$ curl http://127.0.0.1:7000/healthz
+{"shards":[{"leader":"http://127.0.0.1:7011","name":"shard-a"},{"leader":"http://127.0.0.1:7023","name":"shard-b"}],"status":"ok"}
+$ ./target/release/kvctl verify --server http://127.0.0.1:7000 --acked acked.txt
+780 acknowledged, 780 found, 0 missing

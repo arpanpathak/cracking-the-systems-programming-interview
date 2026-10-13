@@ -1,0 +1,56 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="18 14 444 247" width="444" height="247" role="img" aria-label="The core entities. Id: 64 bits has the fields time 41 bits, ms, node 10 bits, counter 12 bits. Node has the fields number 0 to 1023, last time, ms, counter 0 to 4095. An id is 3 numbers packed into 64 bits. Because the time is at the top, ids sort in the order they were made.">
+  <style>
+    text { font-family: Inter, "Segoe UI", "Helvetica Neue", Helvetica, Arial, sans-serif; fill: #1B2430; }
+    .title { font-size: 18px; font-weight: 650; }
+    .lede { font-size: 12.5px; fill: #5D6B7A; }
+    .name { font-size: 14px; font-weight: 650; }
+    .sub { font-size: 12px; fill: #5D6B7A; }
+    .note { font-size: 12px; fill: #5D6B7A; }
+    .tab { font-size: 11.5px; font-weight: 650; letter-spacing: 0.04em; fill: #5D6B7A; }
+    .mono { font-family: "JetBrains Mono", "SF Mono", Menlo, Consolas, monospace; font-size: 12px; }
+    .dim { fill: #8794A3; }
+    .strong { font-weight: 700; }
+    .trap { fill: #CF4526; font-weight: 700; }
+    .pill { font-size: 11px; font-weight: 600; }
+    .wire { fill: none; stroke: #3F5873; stroke-width: 2.4; stroke-linecap: butt; stroke-linejoin: round; }
+    .wire.danger { stroke: #CF4526; stroke-dasharray: 6 5; }
+    .wire.idle { stroke: #7F8EA0; stroke-dasharray: 2 5; }
+  </style>
+  <defs>
+    <filter id="lift" x="-10%" y="-10%" width="120%" height="135%">
+      <feDropShadow dx="0" dy="2" stdDeviation="3" flood-color="#1B2430" flood-opacity="0.13"/>
+    </filter>
+    <linearGradient id="thor-body" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#C6CCD5"/><stop offset="1" stop-color="#979EA9"/>
+    </linearGradient>
+    <linearGradient id="switch-body" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#3B4656"/><stop offset="1" stop-color="#232B37"/>
+    </linearGradient>
+    <marker id="head" viewBox="0 0 12 10" refX="8" refY="5" markerUnits="userSpaceOnUse" markerWidth="16" markerHeight="13.3" orient="auto">
+      <path d="M0,0.4 L12,5 L0,9.6 L2.8,5 Z" fill="#3F5873"/>
+    </marker>
+    <marker id="head-danger" viewBox="0 0 12 10" refX="8" refY="5" markerUnits="userSpaceOnUse" markerWidth="16" markerHeight="13.3" orient="auto">
+      <path d="M0,0.4 L12,5 L0,9.6 L2.8,5 Z" fill="#CF4526"/>
+    </marker>
+    <marker id="head-idle" viewBox="0 0 12 10" refX="8" refY="5" markerUnits="userSpaceOnUse" markerWidth="16" markerHeight="13.3" orient="auto">
+      <path d="M0,0.4 L12,5 L0,9.6 L2.8,5 Z" fill="#7F8EA0"/>
+    </marker>
+  </defs>
+  <rect width="480" height="267" rx="14" fill="#FBFAF6"/>
+  <text x="32.0" y="42.0" class="title" text-anchor="start" xml:space="preserve">The core entities</text>
+  <text x="32.0" y="63.0" class="lede" text-anchor="start" xml:space="preserve">What the system stores.</text>
+  <rect x="32.0" y="96.0" width="194.0" height="99.0" rx="10" fill="#FFFFFF" stroke="#D5DBE3" stroke-width="1.3"/>
+  <rect x="32.0" y="96.0" width="194.0" height="28.0" rx="10" fill="#EAF1FD" stroke="#2F6FDB" stroke-width="1.3"/>
+  <text x="44.0" y="115.0" class="mono strong" text-anchor="start" xml:space="preserve">Id: 64 bits</text>
+  <text x="44.0" y="146.0" class="mono" text-anchor="start" xml:space="preserve">time     41 bits, ms</text>
+  <text x="44.0" y="165.0" class="mono" text-anchor="start" xml:space="preserve">node     10 bits</text>
+  <text x="44.0" y="184.0" class="mono" text-anchor="start" xml:space="preserve">counter  12 bits</text>
+  <rect x="254.0" y="96.0" width="194.0" height="99.0" rx="10" fill="#FFFFFF" stroke="#D5DBE3" stroke-width="1.3"/>
+  <rect x="254.0" y="96.0" width="194.0" height="28.0" rx="10" fill="#FBF1DC" stroke="#B7791F" stroke-width="1.3"/>
+  <text x="266.0" y="115.0" class="mono strong" text-anchor="start" xml:space="preserve">Node</text>
+  <text x="266.0" y="146.0" class="mono" text-anchor="start" xml:space="preserve">number   0 to 1023</text>
+  <text x="266.0" y="165.0" class="mono" text-anchor="start" xml:space="preserve">last     time, ms</text>
+  <text x="266.0" y="184.0" class="mono" text-anchor="start" xml:space="preserve">counter  0 to 4095</text>
+  <text x="32.0" y="227.0" class="sub" text-anchor="start" xml:space="preserve">An id is 3 numbers packed into 64 bits. Because the time is at</text>
+  <text x="32.0" y="244.0" class="sub" text-anchor="start" xml:space="preserve">the top, ids sort in the order they were made.</text>
+</svg>

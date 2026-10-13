@@ -1,0 +1,81 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="18 14 444 482" width="444" height="482" role="img" aria-label="The inside of a storage node. The HTTP handler reads the key, the headers and the body, and calls the store, which checks the condition on the version. A write goes first to the log on disk, which holds every change in order and survives a crash, and second to the map in memory, which goes from key to entry, is sorted by key, and is rebuilt at start. A read uses map only.">
+  <style>
+    text { font-family: Inter, "Segoe UI", "Helvetica Neue", Helvetica, Arial, sans-serif; fill: #1B2430; }
+    .title { font-size: 18px; font-weight: 650; }
+    .lede { font-size: 12.5px; fill: #5D6B7A; }
+    .name { font-size: 14px; font-weight: 650; }
+    .sub { font-size: 12px; fill: #5D6B7A; }
+    .note { font-size: 12px; fill: #5D6B7A; }
+    .tab { font-size: 11.5px; font-weight: 650; letter-spacing: 0.04em; fill: #5D6B7A; }
+    .mono { font-family: "JetBrains Mono", "SF Mono", Menlo, Consolas, monospace; font-size: 12px; }
+    .dim { fill: #8794A3; }
+    .strong { font-weight: 700; }
+    .trap { fill: #CF4526; font-weight: 700; }
+    .pill { font-size: 11px; font-weight: 600; }
+    .wire { fill: none; stroke: #3F5873; stroke-width: 2.4; stroke-linecap: butt; stroke-linejoin: round; }
+    .wire.danger { stroke: #CF4526; stroke-dasharray: 6 5; }
+    .wire.idle { stroke: #7F8EA0; stroke-dasharray: 2 5; }
+  </style>
+  <defs>
+    <filter id="lift" x="-10%" y="-10%" width="120%" height="135%">
+      <feDropShadow dx="0" dy="2" stdDeviation="3" flood-color="#1B2430" flood-opacity="0.13"/>
+    </filter>
+    <linearGradient id="thor-body" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#C6CCD5"/><stop offset="1" stop-color="#979EA9"/>
+    </linearGradient>
+    <linearGradient id="switch-body" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#3B4656"/><stop offset="1" stop-color="#232B37"/>
+    </linearGradient>
+    <marker id="head" viewBox="0 0 12 10" refX="8" refY="5" markerUnits="userSpaceOnUse" markerWidth="16" markerHeight="13.3" orient="auto">
+      <path d="M0,0.4 L12,5 L0,9.6 L2.8,5 Z" fill="#3F5873"/>
+    </marker>
+    <marker id="head-danger" viewBox="0 0 12 10" refX="8" refY="5" markerUnits="userSpaceOnUse" markerWidth="16" markerHeight="13.3" orient="auto">
+      <path d="M0,0.4 L12,5 L0,9.6 L2.8,5 Z" fill="#CF4526"/>
+    </marker>
+    <marker id="head-idle" viewBox="0 0 12 10" refX="8" refY="5" markerUnits="userSpaceOnUse" markerWidth="16" markerHeight="13.3" orient="auto">
+      <path d="M0,0.4 L12,5 L0,9.6 L2.8,5 Z" fill="#7F8EA0"/>
+    </marker>
+  </defs>
+  <rect width="480" height="502" rx="14" fill="#FBFAF6"/>
+  <text x="32.0" y="42.0" class="title" text-anchor="start" xml:space="preserve">Inside a storage node</text>
+  <text x="32.0" y="63.0" class="lede" text-anchor="start" xml:space="preserve">A log on disk, and a map in memory that is built from it.</text>
+  <rect x="32" y="262" width="200" height="150" rx="16" fill="#F3F1EA" stroke="#E4E0D4" stroke-width="1.2"/>
+  <rect x="50" y="251" width="83.1" height="22" rx="11" fill="#1B2430"/>
+  <text x="91.5" y="266.2" class="tab" text-anchor="middle" style="fill:#FFFFFF" xml:space="preserve">ON DISK</text>
+  <rect x="248" y="262" width="200" height="150" rx="16" fill="#F3F1EA" stroke="#E4E0D4" stroke-width="1.2"/>
+  <rect x="266" y="251" width="98.8" height="22" rx="11" fill="#1B2430"/>
+  <text x="315.4" y="266.2" class="tab" text-anchor="middle" style="fill:#FFFFFF" xml:space="preserve">IN MEMORY</text>
+  <rect x="100" y="96" width="280" height="52" rx="12" fill="#FFFFFF" stroke="#D5DBE3" stroke-width="1.3" filter="url(#lift)"/>
+  <path d="M112,96.7 H106 V147.3 H112 A11.3,11.3 0 0 1 100.7,136 V108 A11.3,11.3 0 0 1 112,96.7 Z" fill="#2F6FDB"/>
+  <rect x="116" y="106.0" width="32" height="32" rx="8" fill="#EAF1FD"/>
+  <g transform="translate(122.0,112.0) scale(0.8333)"><path d="M4 3h16a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2h-8.5L6 21.5V17H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2zM12 14.3l-3.4-3.2a2.1 2.1 0 0 1 3.4-2.4 2.1 2.1 0 0 1 3.4 2.4z" fill="#2F6FDB" fill-rule="evenodd"/></g>
+  <text x="158.0" y="118.0" class="name" text-anchor="start" xml:space="preserve">HTTP handler</text>
+  <text x="158.0" y="136.0" class="sub" text-anchor="start" xml:space="preserve">key, headers, body</text>
+  <rect x="100" y="176" width="280" height="52" rx="12" fill="#FFFFFF" stroke="#D5DBE3" stroke-width="1.3" filter="url(#lift)"/>
+  <path d="M112,176.7 H106 V227.3 H112 A11.3,11.3 0 0 1 100.7,216 V188 A11.3,11.3 0 0 1 112,176.7 Z" fill="#1F8A70"/>
+  <rect x="116" y="186.0" width="32" height="32" rx="8" fill="#E4F4EF"/>
+  <g transform="translate(122.0,192.0) scale(0.8333)"><path d="M7 10V7a5 5 0 0 1 10 0v3h1a1 1 0 0 1 1 1v9a1 1 0 0 1-1 1H6a1 1 0 0 1-1-1v-9a1 1 0 0 1 1-1zm2.2 0h5.6V7a2.8 2.8 0 0 0-5.6 0zM12 13.5a1.6 1.6 0 0 0-.8 3v2h1.6v-2a1.6 1.6 0 0 0-.8-3z" fill="#1F8A70" fill-rule="evenodd"/></g>
+  <text x="158.0" y="198.0" class="name" text-anchor="start" xml:space="preserve">Store</text>
+  <text x="158.0" y="216.0" class="sub" text-anchor="start" xml:space="preserve">Checks version condition</text>
+  <path d="M52,299 A80.0,9 0 0 1 212,299 V355 A80.0,9 0 0 1 52,355 Z" fill="#FBF1DC" stroke="#B7791F" stroke-width="1.4" filter="url(#lift)"/>
+  <ellipse cx="132.0" cy="299" rx="80.0" ry="9" fill="#FFFFFF" stroke="#B7791F" stroke-width="1.4"/>
+  <text x="132.0" y="330.0" class="name" text-anchor="middle" xml:space="preserve">log</text>
+  <text x="132.0" y="348.0" class="sub" text-anchor="middle" xml:space="preserve">every change in order</text>
+  <rect x="262" y="290" width="172" height="74" rx="12" fill="#FFFFFF" stroke="#D5DBE3" stroke-width="1.3" filter="url(#lift)"/>
+  <path d="M274,290.7 H268 V363.3 H274 A11.3,11.3 0 0 1 262.7,352 V302 A11.3,11.3 0 0 1 274,290.7 Z" fill="#5E9400"/>
+  <text x="282.0" y="314.0" class="name" text-anchor="start" xml:space="preserve">map</text>
+  <text x="282.0" y="332.0" class="sub" text-anchor="start" xml:space="preserve">key to entry,</text>
+  <text x="282.0" y="350.0" class="sub" text-anchor="start" xml:space="preserve">sorted by key</text>
+  <text x="132.0" y="392.0" class="pill" text-anchor="middle" style="fill:#B7791F" xml:space="preserve">survives a crash</text>
+  <text x="348.0" y="392.0" class="pill" text-anchor="middle" style="fill:#5E9400" xml:space="preserve">rebuilt at start</text>
+  <text x="32.0" y="444.0" class="sub" text-anchor="start" xml:space="preserve">A write goes to log first and to map second.</text>
+  <text x="32.0" y="461.0" class="sub" text-anchor="start" xml:space="preserve">A read uses map only.</text>
+  <text x="32.0" y="478.0" class="sub" text-anchor="start" xml:space="preserve">After a restart map is empty, and log fills it again.</text>
+  <path class="wire" d="M240,148 L240.0,170.5" marker-end="url(#head)"/>
+  <path class="wire" d="M170,228 L170.0,256.5" marker-end="url(#head)"/>
+  <rect x="159.7" y="236.0" width="20.6" height="18" rx="9" fill="#FBFAF6" stroke="#3F5873" stroke-width="1"/>
+  <text x="170.0" y="248.8" class="pill" text-anchor="middle" style="fill:#3F5873" xml:space="preserve">1</text>
+  <path class="wire" d="M310,228 L310.0,256.5" marker-end="url(#head)"/>
+  <rect x="299.7" y="236.0" width="20.6" height="18" rx="9" fill="#FBFAF6" stroke="#3F5873" stroke-width="1"/>
+  <text x="310.0" y="248.8" class="pill" text-anchor="middle" style="fill:#3F5873" xml:space="preserve">2</text>
+</svg>

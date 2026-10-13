@@ -1,0 +1,127 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="18 14 444 470" width="444" height="470" role="img" aria-label="A square map divided into 36 squares, with 60 drivers scattered over it and a rider. The square that contains the rider and the 8 squares around it are shaded. Only the drivers in those 9 squares are considered.">
+  <style>
+    text { font-family: Inter, "Segoe UI", "Helvetica Neue", Helvetica, Arial, sans-serif; fill: #1B2430; }
+    .title { font-size: 18px; font-weight: 650; }
+    .lede { font-size: 12.5px; fill: #5D6B7A; }
+    .name { font-size: 14px; font-weight: 650; }
+    .sub { font-size: 12px; fill: #5D6B7A; }
+    .note { font-size: 12px; fill: #5D6B7A; }
+    .tab { font-size: 11.5px; font-weight: 650; letter-spacing: 0.04em; fill: #5D6B7A; }
+    .mono { font-family: "JetBrains Mono", "SF Mono", Menlo, Consolas, monospace; font-size: 12px; }
+    .dim { fill: #8794A3; }
+    .strong { font-weight: 700; }
+    .trap { fill: #CF4526; font-weight: 700; }
+    .pill { font-size: 11px; font-weight: 600; }
+    .wire { fill: none; stroke: #3F5873; stroke-width: 2.4; stroke-linecap: butt; stroke-linejoin: round; }
+    .wire.danger { stroke: #CF4526; stroke-dasharray: 6 5; }
+    .wire.idle { stroke: #7F8EA0; stroke-dasharray: 2 5; }
+  </style>
+  <defs>
+    <filter id="lift" x="-10%" y="-10%" width="120%" height="135%">
+      <feDropShadow dx="0" dy="2" stdDeviation="3" flood-color="#1B2430" flood-opacity="0.13"/>
+    </filter>
+    <linearGradient id="thor-body" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#C6CCD5"/><stop offset="1" stop-color="#979EA9"/>
+    </linearGradient>
+    <linearGradient id="switch-body" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#3B4656"/><stop offset="1" stop-color="#232B37"/>
+    </linearGradient>
+    <marker id="head" viewBox="0 0 12 10" refX="8" refY="5" markerUnits="userSpaceOnUse" markerWidth="16" markerHeight="13.3" orient="auto">
+      <path d="M0,0.4 L12,5 L0,9.6 L2.8,5 Z" fill="#3F5873"/>
+    </marker>
+    <marker id="head-danger" viewBox="0 0 12 10" refX="8" refY="5" markerUnits="userSpaceOnUse" markerWidth="16" markerHeight="13.3" orient="auto">
+      <path d="M0,0.4 L12,5 L0,9.6 L2.8,5 Z" fill="#CF4526"/>
+    </marker>
+    <marker id="head-idle" viewBox="0 0 12 10" refX="8" refY="5" markerUnits="userSpaceOnUse" markerWidth="16" markerHeight="13.3" orient="auto">
+      <path d="M0,0.4 L12,5 L0,9.6 L2.8,5 Z" fill="#7F8EA0"/>
+    </marker>
+  </defs>
+  <rect width="480" height="490" rx="14" fill="#FBFAF6"/>
+  <text x="32.0" y="42.0" class="title" text-anchor="start" xml:space="preserve">Searching 9 squares of a grid</text>
+  <text x="32.0" y="63.0" class="lede" text-anchor="start" xml:space="preserve">Blue dots are drivers.</text>
+  <rect x="144.0" y="196.0" width="48.0" height="48.0" rx="0" fill="#E7F5E9" stroke="#2E8B3D" stroke-width="1.6"/>
+  <rect x="144.0" y="244.0" width="48.0" height="48.0" rx="0" fill="#E7F5E9" stroke="#2E8B3D" stroke-width="1.6"/>
+  <rect x="144.0" y="292.0" width="48.0" height="48.0" rx="0" fill="#E7F5E9" stroke="#2E8B3D" stroke-width="1.6"/>
+  <rect x="192.0" y="196.0" width="48.0" height="48.0" rx="0" fill="#E7F5E9" stroke="#2E8B3D" stroke-width="1.6"/>
+  <rect x="192.0" y="244.0" width="48.0" height="48.0" rx="0" fill="#E7F5E9" stroke="#2E8B3D" stroke-width="1.6"/>
+  <rect x="192.0" y="292.0" width="48.0" height="48.0" rx="0" fill="#E7F5E9" stroke="#2E8B3D" stroke-width="1.6"/>
+  <rect x="240.0" y="196.0" width="48.0" height="48.0" rx="0" fill="#E7F5E9" stroke="#2E8B3D" stroke-width="1.6"/>
+  <rect x="240.0" y="244.0" width="48.0" height="48.0" rx="0" fill="#E7F5E9" stroke="#2E8B3D" stroke-width="1.6"/>
+  <rect x="240.0" y="292.0" width="48.0" height="48.0" rx="0" fill="#E7F5E9" stroke="#2E8B3D" stroke-width="1.6"/>
+  <rect x="96" y="100" width="288" height="288" fill="none" stroke="#5D6B7A" stroke-width="1.6"/>
+  <line x1="144.0" y1="100" x2="144.0" y2="388" stroke="#D5DBE3" stroke-width="1"/>
+  <line x1="192.0" y1="100" x2="192.0" y2="388" stroke="#D5DBE3" stroke-width="1"/>
+  <line x1="240.0" y1="100" x2="240.0" y2="388" stroke="#D5DBE3" stroke-width="1"/>
+  <line x1="288.0" y1="100" x2="288.0" y2="388" stroke="#D5DBE3" stroke-width="1"/>
+  <line x1="336.0" y1="100" x2="336.0" y2="388" stroke="#D5DBE3" stroke-width="1"/>
+  <line x1="96" y1="148.0" x2="384" y2="148.0" stroke="#D5DBE3" stroke-width="1"/>
+  <line x1="96" y1="196.0" x2="384" y2="196.0" stroke="#D5DBE3" stroke-width="1"/>
+  <line x1="96" y1="244.0" x2="384" y2="244.0" stroke="#D5DBE3" stroke-width="1"/>
+  <line x1="96" y1="292.0" x2="384" y2="292.0" stroke="#D5DBE3" stroke-width="1"/>
+  <line x1="96" y1="340.0" x2="384" y2="340.0" stroke="#D5DBE3" stroke-width="1"/>
+  <circle cx="129.4" cy="195.9" r="4" fill="#2F6FDB"/>
+  <circle cx="366.1" cy="264.4" r="4" fill="#2F6FDB"/>
+  <circle cx="280.3" cy="250.0" r="4" fill="#2F6FDB"/>
+  <circle cx="171.5" cy="125.1" r="4" fill="#2F6FDB"/>
+  <circle cx="325.2" cy="306.5" r="4" fill="#2F6FDB"/>
+  <circle cx="225.6" cy="165.4" r="4" fill="#2F6FDB"/>
+  <circle cx="349.4" cy="233.9" r="4" fill="#2F6FDB"/>
+  <circle cx="282.0" cy="194.2" r="4" fill="#2F6FDB"/>
+  <circle cx="297.6" cy="159.0" r="4" fill="#2F6FDB"/>
+  <circle cx="356.9" cy="165.4" r="4" fill="#2F6FDB"/>
+  <circle cx="128.3" cy="123.3" r="4" fill="#2F6FDB"/>
+  <circle cx="111.6" cy="320.9" r="4" fill="#2F6FDB"/>
+  <circle cx="286.1" cy="230.5" r="4" fill="#2F6FDB"/>
+  <circle cx="356.9" cy="234.5" r="4" fill="#2F6FDB"/>
+  <circle cx="303.4" cy="240.8" r="4" fill="#2F6FDB"/>
+  <circle cx="305.1" cy="191.9" r="4" fill="#2F6FDB"/>
+  <circle cx="267.6" cy="345.7" r="4" fill="#2F6FDB"/>
+  <circle cx="250.9" cy="174.6" r="4" fill="#2F6FDB"/>
+  <circle cx="317.2" cy="263.9" r="4" fill="#2F6FDB"/>
+  <circle cx="120.8" cy="293.2" r="4" fill="#2F6FDB"/>
+  <circle cx="293.0" cy="138.3" r="4" fill="#2F6FDB"/>
+  <circle cx="301.6" cy="294.4" r="4" fill="#2F6FDB"/>
+  <circle cx="335.6" cy="171.7" r="4" fill="#2F6FDB"/>
+  <circle cx="222.1" cy="339.3" r="4" fill="#2F6FDB"/>
+  <circle cx="336.8" cy="244.3" r="4" fill="#2F6FDB"/>
+  <circle cx="347.7" cy="156.2" r="4" fill="#2F6FDB"/>
+  <circle cx="218.1" cy="229.3" r="4" fill="#2F6FDB"/>
+  <circle cx="120.8" cy="150.4" r="4" fill="#2F6FDB"/>
+  <circle cx="168.6" cy="163.6" r="4" fill="#2F6FDB"/>
+  <circle cx="246.3" cy="156.2" r="4" fill="#2F6FDB"/>
+  <circle cx="220.4" cy="130.2" r="4" fill="#2F6FDB"/>
+  <circle cx="130.0" cy="309.4" r="4" fill="#2F6FDB"/>
+  <circle cx="311.4" cy="258.1" r="4" fill="#2F6FDB"/>
+  <circle cx="170.3" cy="382.0" r="4" fill="#2F6FDB"/>
+  <circle cx="245.8" cy="157.9" r="4" fill="#2F6FDB"/>
+  <circle cx="256.7" cy="286.3" r="4" fill="#2F6FDB"/>
+  <circle cx="279.2" cy="129.1" r="4" fill="#2F6FDB"/>
+  <circle cx="211.8" cy="303.6" r="4" fill="#2F6FDB"/>
+  <circle cx="98.3" cy="337.6" r="4" fill="#2F6FDB"/>
+  <circle cx="164.5" cy="341.6" r="4" fill="#2F6FDB"/>
+  <circle cx="136.3" cy="320.3" r="4" fill="#2F6FDB"/>
+  <circle cx="331.6" cy="248.3" r="4" fill="#2F6FDB"/>
+  <circle cx="183.6" cy="114.1" r="4" fill="#2F6FDB"/>
+  <circle cx="224.4" cy="385.4" r="4" fill="#2F6FDB"/>
+  <circle cx="302.2" cy="364.1" r="4" fill="#2F6FDB"/>
+  <circle cx="244.0" cy="151.6" r="4" fill="#2F6FDB"/>
+  <circle cx="278.0" cy="121.0" r="4" fill="#2F6FDB"/>
+  <circle cx="233.7" cy="231.0" r="4" fill="#2F6FDB"/>
+  <circle cx="154.8" cy="322.6" r="4" fill="#2F6FDB"/>
+  <circle cx="303.9" cy="176.9" r="4" fill="#2F6FDB"/>
+  <circle cx="137.5" cy="293.8" r="4" fill="#2F6FDB"/>
+  <circle cx="272.8" cy="341.6" r="4" fill="#2F6FDB"/>
+  <circle cx="281.5" cy="352.6" r="4" fill="#2F6FDB"/>
+  <circle cx="131.1" cy="100.9" r="4" fill="#2F6FDB"/>
+  <circle cx="105.2" cy="187.8" r="4" fill="#2F6FDB"/>
+  <circle cx="378.8" cy="161.9" r="4" fill="#2F6FDB"/>
+  <circle cx="297.6" cy="288.1" r="4" fill="#2F6FDB"/>
+  <circle cx="98.9" cy="315.1" r="4" fill="#2F6FDB"/>
+  <circle cx="337.9" cy="167.1" r="4" fill="#2F6FDB"/>
+  <circle cx="226.8" cy="228.7" r="4" fill="#2F6FDB"/>
+  <rect x="211.0" y="252.4" width="12" height="12" fill="#CF4526" transform="rotate(45 217.0 258.4)"/>
+  <text x="32.0" y="416.0" class="sub" text-anchor="start" xml:space="preserve">The city is divided into squares. The rider, the red diamond, is in</text>
+  <text x="32.0" y="433.0" class="sub" text-anchor="start" xml:space="preserve">1 square, and the search looks at that square and the 8 around it.</text>
+  <text x="32.0" y="450.0" class="sub" text-anchor="start" xml:space="preserve">Of the 60 drivers on this map, 9 are in those 9 squares. Only their</text>
+  <text x="32.0" y="467.0" class="sub" text-anchor="start" xml:space="preserve">distances are measured.</text>
+</svg>

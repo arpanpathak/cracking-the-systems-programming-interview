@@ -1,0 +1,11 @@
+$ cargo run -p crashsim
+a log of 5 records and 152 bytes, with records ending at 28, 58, 95, 120, 152
+cut at every length from 0 to 152: each recovery returned the complete records
+  lengths   0 to  27: 0 records
+  lengths  28 to  57: 1 records
+  lengths  58 to  94: 2 records
+  lengths  95 to 119: 3 records
+  lengths 120 to 151: 4 records
+  length  152       : 5 records
+1 bit flipped in each of 152 bytes: each recovery returned the records before the damage
+after a cut at 63: 2 records recovered, and the next record has sequence 3

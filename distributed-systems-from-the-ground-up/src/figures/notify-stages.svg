@@ -1,0 +1,69 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="18 14 444 406" width="444" height="406" role="img" aria-label="5 stages of a notification: accepted, when the service has stored the request and answered 202; queued, waiting for a sender; handed to the provider; delivered, when the provider reports later that the phone or mailbox has it; and opened, which is known only for some channels.">
+  <style>
+    text { font-family: Inter, "Segoe UI", "Helvetica Neue", Helvetica, Arial, sans-serif; fill: #1B2430; }
+    .title { font-size: 18px; font-weight: 650; }
+    .lede { font-size: 12.5px; fill: #5D6B7A; }
+    .name { font-size: 14px; font-weight: 650; }
+    .sub { font-size: 12px; fill: #5D6B7A; }
+    .note { font-size: 12px; fill: #5D6B7A; }
+    .tab { font-size: 11.5px; font-weight: 650; letter-spacing: 0.04em; fill: #5D6B7A; }
+    .mono { font-family: "JetBrains Mono", "SF Mono", Menlo, Consolas, monospace; font-size: 12px; }
+    .dim { fill: #8794A3; }
+    .strong { font-weight: 700; }
+    .trap { fill: #CF4526; font-weight: 700; }
+    .pill { font-size: 11px; font-weight: 600; }
+    .wire { fill: none; stroke: #3F5873; stroke-width: 2.4; stroke-linecap: butt; stroke-linejoin: round; }
+    .wire.danger { stroke: #CF4526; stroke-dasharray: 6 5; }
+    .wire.idle { stroke: #7F8EA0; stroke-dasharray: 2 5; }
+  </style>
+  <defs>
+    <filter id="lift" x="-10%" y="-10%" width="120%" height="135%">
+      <feDropShadow dx="0" dy="2" stdDeviation="3" flood-color="#1B2430" flood-opacity="0.13"/>
+    </filter>
+    <linearGradient id="thor-body" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#C6CCD5"/><stop offset="1" stop-color="#979EA9"/>
+    </linearGradient>
+    <linearGradient id="switch-body" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#3B4656"/><stop offset="1" stop-color="#232B37"/>
+    </linearGradient>
+    <marker id="head" viewBox="0 0 12 10" refX="8" refY="5" markerUnits="userSpaceOnUse" markerWidth="16" markerHeight="13.3" orient="auto">
+      <path d="M0,0.4 L12,5 L0,9.6 L2.8,5 Z" fill="#3F5873"/>
+    </marker>
+    <marker id="head-danger" viewBox="0 0 12 10" refX="8" refY="5" markerUnits="userSpaceOnUse" markerWidth="16" markerHeight="13.3" orient="auto">
+      <path d="M0,0.4 L12,5 L0,9.6 L2.8,5 Z" fill="#CF4526"/>
+    </marker>
+    <marker id="head-idle" viewBox="0 0 12 10" refX="8" refY="5" markerUnits="userSpaceOnUse" markerWidth="16" markerHeight="13.3" orient="auto">
+      <path d="M0,0.4 L12,5 L0,9.6 L2.8,5 Z" fill="#7F8EA0"/>
+    </marker>
+  </defs>
+  <rect width="480" height="426" rx="14" fill="#FBFAF6"/>
+  <text x="32.0" y="42.0" class="title" text-anchor="start" xml:space="preserve">How far a notification has got</text>
+  <text x="32.0" y="63.0" class="lede" text-anchor="start" xml:space="preserve">Each stage is further from what the service can see.</text>
+  <rect x="32.0" y="100.0" width="416.0" height="46.0" rx="8" fill="#FFFFFF" stroke="#D5DBE3" stroke-width="1.3"/>
+  <rect x="32.0" y="100.0" width="34.0" height="46.0" rx="8" fill="#EAF1FD" stroke="#2F6FDB" stroke-width="1.3"/>
+  <text x="49.0" y="128.0" class="mono strong" text-anchor="middle" xml:space="preserve">1</text>
+  <text x="78.0" y="120.0" class="name" text-anchor="start" xml:space="preserve">Accepted</text>
+  <text x="78.0" y="137.0" class="sub" text-anchor="start" xml:space="preserve">the service has stored the request and answered 202</text>
+  <rect x="32.0" y="154.0" width="416.0" height="46.0" rx="8" fill="#FFFFFF" stroke="#D5DBE3" stroke-width="1.3"/>
+  <rect x="32.0" y="154.0" width="34.0" height="46.0" rx="8" fill="#FBF1DC" stroke="#B7791F" stroke-width="1.3"/>
+  <text x="49.0" y="182.0" class="mono strong" text-anchor="middle" xml:space="preserve">2</text>
+  <text x="78.0" y="174.0" class="name" text-anchor="start" xml:space="preserve">Queued</text>
+  <text x="78.0" y="191.0" class="sub" text-anchor="start" xml:space="preserve">waiting for a sender</text>
+  <rect x="32.0" y="208.0" width="416.0" height="46.0" rx="8" fill="#FFFFFF" stroke="#D5DBE3" stroke-width="1.3"/>
+  <rect x="32.0" y="208.0" width="34.0" height="46.0" rx="8" fill="#E4F4EF" stroke="#1F8A70" stroke-width="1.3"/>
+  <text x="49.0" y="236.0" class="mono strong" text-anchor="middle" xml:space="preserve">3</text>
+  <text x="78.0" y="228.0" class="name" text-anchor="start" xml:space="preserve">Handed to the provider</text>
+  <text x="78.0" y="245.0" class="sub" text-anchor="start" xml:space="preserve">the provider answered that it has taken the message</text>
+  <rect x="32.0" y="262.0" width="416.0" height="46.0" rx="8" fill="#FFFFFF" stroke="#D5DBE3" stroke-width="1.3"/>
+  <rect x="32.0" y="262.0" width="34.0" height="46.0" rx="8" fill="#E7F5E9" stroke="#2E8B3D" stroke-width="1.3"/>
+  <text x="49.0" y="290.0" class="mono strong" text-anchor="middle" xml:space="preserve">4</text>
+  <text x="78.0" y="282.0" class="name" text-anchor="start" xml:space="preserve">Delivered</text>
+  <text x="78.0" y="299.0" class="sub" text-anchor="start" xml:space="preserve">the provider reports that the phone or mailbox has it</text>
+  <rect x="32.0" y="316.0" width="416.0" height="46.0" rx="8" fill="#FFFFFF" stroke="#D5DBE3" stroke-width="1.3"/>
+  <rect x="32.0" y="316.0" width="34.0" height="46.0" rx="8" fill="#F1F4F7" stroke="#7F8EA0" stroke-width="1.3"/>
+  <text x="49.0" y="344.0" class="mono strong" text-anchor="middle" xml:space="preserve">5</text>
+  <text x="78.0" y="336.0" class="name" text-anchor="start" xml:space="preserve">Opened</text>
+  <text x="78.0" y="353.0" class="sub" text-anchor="start" xml:space="preserve">known only for some channels, and only sometimes</text>
+  <text x="32.0" y="386.0" class="sub" text-anchor="start" xml:space="preserve">A notification can stop at any stage. &#x27;Handed to the provider&#x27; is the</text>
+  <text x="32.0" y="403.0" class="sub" text-anchor="start" xml:space="preserve">last stage that the service itself can observe.</text>
+</svg>

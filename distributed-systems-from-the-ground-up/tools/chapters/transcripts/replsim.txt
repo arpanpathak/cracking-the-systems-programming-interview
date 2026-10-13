@@ -1,0 +1,22 @@
+$ cargo run --release -p replsim
+3 writes, every message delivered: logs end at [3, 3, 3], committed 3
+3 writes while follower 1 is unreachable: logs end at [6, 3, 6], committed 6
+follower 1 returns, 1 exchange: logs end at [6, 6, 6], committed 6
+3 writes while the answers of follower 1 are lost: logs end at [9, 7, 9], committed 9
+  the leader believes that the log of follower 1 ends at 6
+  next exchange: the leader sends records 7 to 9, follower 1 refuses and reports 7
+  the exchange after it: logs end at [9, 9, 9], committed 9
+1 write while both followers are unreachable: acknowledged false, logs end at [10, 9, 9], committed 9
+  the leader reads j as None
+  the leader accepts another write: false
+follower 2 returns: logs end at [10, 9, 10], committed 10
+  the leader reads j as Some(10)
+a replica at term 2 receives a message of term 1: appended false, its term 2
+4096 patterns of lost messages over 3 writes:
+  every acknowledged record was in at least 2 of the 3 logs
+  every follower's log was the beginning of the leader's log
+  after the losses stopped, the 3 logs were equal and every record was committed
+  0 of 3 writes acknowledged: 1024 patterns
+  1 of 3 writes acknowledged: 1024 patterns
+  2 of 3 writes acknowledged: 704 patterns
+  3 of 3 writes acknowledged: 1344 patterns

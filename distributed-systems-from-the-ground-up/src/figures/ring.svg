@@ -1,0 +1,84 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="18 14 444 578" width="444" height="578" role="img" aria-label="A hash ring with positions 0 to 99. Node A has the token 12, B has 37, C has 62 and D has 87. Step 1: hash the key, and user-1 lands on position 20. Step 2: walk clockwise from 20 to the next token. Step 3: the next token is 37, which belongs to B, so B owns the key. Step 4: the next 2 different nodes, C and D, hold the other copies. B owns Every position from 13 to 37, because 12 is token before it.">
+  <style>
+    text { font-family: Inter, "Segoe UI", "Helvetica Neue", Helvetica, Arial, sans-serif; fill: #1B2430; }
+    .title { font-size: 18px; font-weight: 650; }
+    .lede { font-size: 12.5px; fill: #5D6B7A; }
+    .name { font-size: 14px; font-weight: 650; }
+    .sub { font-size: 12px; fill: #5D6B7A; }
+    .note { font-size: 12px; fill: #5D6B7A; }
+    .tab { font-size: 11.5px; font-weight: 650; letter-spacing: 0.04em; fill: #5D6B7A; }
+    .mono { font-family: "JetBrains Mono", "SF Mono", Menlo, Consolas, monospace; font-size: 12px; }
+    .dim { fill: #8794A3; }
+    .strong { font-weight: 700; }
+    .trap { fill: #CF4526; font-weight: 700; }
+    .pill { font-size: 11px; font-weight: 600; }
+    .wire { fill: none; stroke: #3F5873; stroke-width: 2.4; stroke-linecap: butt; stroke-linejoin: round; }
+    .wire.danger { stroke: #CF4526; stroke-dasharray: 6 5; }
+    .wire.idle { stroke: #7F8EA0; stroke-dasharray: 2 5; }
+  </style>
+  <defs>
+    <filter id="lift" x="-10%" y="-10%" width="120%" height="135%">
+      <feDropShadow dx="0" dy="2" stdDeviation="3" flood-color="#1B2430" flood-opacity="0.13"/>
+    </filter>
+    <linearGradient id="thor-body" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#C6CCD5"/><stop offset="1" stop-color="#979EA9"/>
+    </linearGradient>
+    <linearGradient id="switch-body" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#3B4656"/><stop offset="1" stop-color="#232B37"/>
+    </linearGradient>
+    <marker id="head" viewBox="0 0 12 10" refX="8" refY="5" markerUnits="userSpaceOnUse" markerWidth="16" markerHeight="13.3" orient="auto">
+      <path d="M0,0.4 L12,5 L0,9.6 L2.8,5 Z" fill="#3F5873"/>
+    </marker>
+    <marker id="head-danger" viewBox="0 0 12 10" refX="8" refY="5" markerUnits="userSpaceOnUse" markerWidth="16" markerHeight="13.3" orient="auto">
+      <path d="M0,0.4 L12,5 L0,9.6 L2.8,5 Z" fill="#CF4526"/>
+    </marker>
+    <marker id="head-idle" viewBox="0 0 12 10" refX="8" refY="5" markerUnits="userSpaceOnUse" markerWidth="16" markerHeight="13.3" orient="auto">
+      <path d="M0,0.4 L12,5 L0,9.6 L2.8,5 Z" fill="#7F8EA0"/>
+    </marker>
+  </defs>
+  <rect width="480" height="598" rx="14" fill="#FBFAF6"/>
+  <text x="32.0" y="42.0" class="title" text-anchor="start" xml:space="preserve">Finding node of a key</text>
+  <text x="32.0" y="63.0" class="lede" text-anchor="start" xml:space="preserve">Follow numbers from 1 to 4.</text>
+  <circle cx="240" cy="250" r="126" fill="none" stroke="#D5DBE3" stroke-width="10"/>
+  <path d="M359.8,211.1 A126,126 0 0 1 331.9,336.3" fill="none" stroke="#B7791F" stroke-width="10" stroke-linecap="butt" opacity="0.55"/>
+  <circle cx="326.3" cy="158.1" r="13" fill="#EAF1FD" stroke="#2F6FDB" stroke-width="2"/>
+  <text x="326.3" y="162.6" class="pill" text-anchor="middle" style="fill:#2F6FDB" xml:space="preserve">A</text>
+  <text x="346.8" y="140.3" class="mono dim" text-anchor="middle" xml:space="preserve">12</text>
+  <circle cx="331.9" cy="336.3" r="13" fill="#FBF1DC" stroke="#B7791F" stroke-width="2"/>
+  <text x="331.9" y="340.8" class="pill" text-anchor="middle" style="fill:#B7791F" xml:space="preserve">B</text>
+  <text x="353.7" y="360.8" class="mono dim" text-anchor="middle" xml:space="preserve">37</text>
+  <circle cx="153.7" cy="341.9" r="13" fill="#E4F4EF" stroke="#1F8A70" stroke-width="2"/>
+  <text x="153.7" y="346.4" class="pill" text-anchor="middle" style="fill:#1F8A70" xml:space="preserve">C</text>
+  <text x="133.2" y="367.7" class="mono dim" text-anchor="middle" xml:space="preserve">62</text>
+  <circle cx="148.1" cy="163.7" r="13" fill="#F0EAFB" stroke="#7A4FD0" stroke-width="2"/>
+  <text x="148.1" y="168.2" class="pill" text-anchor="middle" style="fill:#7A4FD0" xml:space="preserve">D</text>
+  <text x="126.3" y="147.2" class="mono dim" text-anchor="middle" xml:space="preserve">87</text>
+  <rect x="353.8" y="205.1" width="12" height="12" fill="#1B2430" transform="rotate(45 359.8 211.1)"/>
+  <text x="321.8" y="227.4" class="pill" text-anchor="middle" style="fill:#1B2430" xml:space="preserve">user-1</text>
+  <text x="240.0" y="246.0" class="sub" text-anchor="middle" xml:space="preserve">positions</text>
+  <text x="240.0" y="263.0" class="sub" text-anchor="middle" xml:space="preserve">0 to 99</text>
+  <text x="32.0" y="560.0" class="sub" text-anchor="start" xml:space="preserve">A token is a position that a node owns. B owns every position</text>
+  <text x="32.0" y="577.0" class="sub" text-anchor="start" xml:space="preserve">From 13 to 37, because 12 is token before it.</text>
+  <circle cx="384.56059047686335" cy="203.02941685500798" r="10" fill="#1B2430" stroke="#FFFFFF" stroke-width="2"/>
+  <text x="384.6" y="207.0" class="pill" text-anchor="middle" style="fill:#FFFFFF" xml:space="preserve">1</text>
+  <circle cx="386.3875142908121" cy="282.7214862094814" r="10" fill="#1B2430" stroke="#FFFFFF" stroke-width="2"/>
+  <text x="386.4" y="286.7" class="pill" text-anchor="middle" style="fill:#FFFFFF" xml:space="preserve">2</text>
+  <circle cx="374.13022744553973" cy="375.9566674908788" r="10" fill="#1B2430" stroke="#FFFFFF" stroke-width="2"/>
+  <text x="374.1" y="380.0" class="pill" text-anchor="middle" style="fill:#FFFFFF" xml:space="preserve">3</text>
+  <circle cx="114.04333250912134" cy="384.13022744553973" r="10" fill="#1B2430" stroke="#FFFFFF" stroke-width="2"/>
+  <text x="114.0" y="388.1" class="pill" text-anchor="middle" style="fill:#FFFFFF" xml:space="preserve">4</text>
+  <circle cx="105.86977255446018" cy="124.0433325091214" r="10" fill="#1B2430" stroke="#FFFFFF" stroke-width="2"/>
+  <text x="105.9" y="128.0" class="pill" text-anchor="middle" style="fill:#FFFFFF" xml:space="preserve">4</text>
+  <circle cx="44" cy="452" r="10" fill="#1B2430" stroke="#FFFFFF" stroke-width="2"/>
+  <text x="44.0" y="456.0" class="pill" text-anchor="middle" style="fill:#FFFFFF" xml:space="preserve">1</text>
+  <text x="64.0" y="456.0" class="note" text-anchor="start" style="fill:#1B2430" xml:space="preserve">Hash key. user-1 lands on position 20.</text>
+  <circle cx="44" cy="476" r="10" fill="#1B2430" stroke="#FFFFFF" stroke-width="2"/>
+  <text x="44.0" y="480.0" class="pill" text-anchor="middle" style="fill:#FFFFFF" xml:space="preserve">2</text>
+  <text x="64.0" y="480.0" class="note" text-anchor="start" style="fill:#1B2430" xml:space="preserve">Walk clockwise from 20 to the next token.</text>
+  <circle cx="44" cy="500" r="10" fill="#1B2430" stroke="#FFFFFF" stroke-width="2"/>
+  <text x="44.0" y="504.0" class="pill" text-anchor="middle" style="fill:#FFFFFF" xml:space="preserve">3</text>
+  <text x="64.0" y="504.0" class="note" text-anchor="start" style="fill:#1B2430" xml:space="preserve">The next token is 37. It belongs to B, so B owns key.</text>
+  <circle cx="44" cy="524" r="10" fill="#1B2430" stroke="#FFFFFF" stroke-width="2"/>
+  <text x="44.0" y="528.0" class="pill" text-anchor="middle" style="fill:#FFFFFF" xml:space="preserve">4</text>
+  <text x="64.0" y="528.0" class="note" text-anchor="start" style="fill:#1B2430" xml:space="preserve">The next 2 nodes, C and D, hold the other copies.</text>
+</svg>

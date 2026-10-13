@@ -1,0 +1,411 @@
+# Notification Service: System Design
+
+Nearly every service in a large system has occasion to tell a person something. The
+order service wishes to say that a parcel has been shipped, the security service that
+a login was attempted from a new device, the billing service that a payment has
+failed. If each of these services dealt with email, text messages and push
+notifications for itself, each would need to know the user's preferred channel and
+language, to hold credentials for the outside companies that carry the messages, to
+handle their failures, and to refrain from disturbing the user at 3 in the morning.
+A *notification service* gathers all of this into 1 place. Other services tell it
+what should be said and to whom, and it sees to the saying.
+
+The peculiar character of this system comes from the fact that its most important
+work is done by parties it does not control. An email is delivered by an email
+provider, a text message by a telephone network, a push notification by the company
+that makes the phone's operating system. These *providers* are slow at some times and
+unavailable at others, they impose limits on how fast they may be called, and they
+reply to a request in ways that leave real doubt about what has happened. The design
+of a notification service is therefore, to a large extent, a study in calling an
+unreliable dependency well: when to try again and how long to wait, when to stop
+trying, how to avoid sending the same message twice, and how to avoid making a
+struggling provider's condition worse.
+
+<div class="covers">
+
+This chapter covers
+
+- the path of a notification, from a request to a phone
+- why a request is accepted first and sent later
+- repeated requests, and the key that identifies them
+- failures that will pass and failures that will not
+- retries with pauses that double, and why the pauses are made random
+- the circuit breaker, which stops calling a provider that is down
+- the limits that providers impose, and a second provider as a fallback
+- the difference between sent and delivered
+- preferences, quiet hours, priorities, and sending to millions at once
+
+</div>
+
+## The path of a notification
+
+A notification passes through a sequence of decisions before anything is sent, and
+laying them out in order shows where the service's responsibilities lie.
+
+A calling service submits a request that names a user, a kind of message and the data
+to be inserted into it, for example "tell user 42 that order 7 has shipped". The
+notification service first establishes that it has not already received this request.
+It then consults the user's preferences to learn whether the user wishes to receive
+messages of this kind at all and by which channel. It finds the address for that
+channel, which may be an email address, a telephone number, or the *device token* by
+which a push provider identifies a particular installation of an app on a particular
+phone. It selects the template for this kind of message in the user's language and
+fills in the data. Only then is there something to send, and it is placed in a queue
+from which a pool of *senders* takes messages and hands them to the appropriate
+provider.
+
+The division into a part that accepts requests and a part that sends them, with a
+queue between, is the central structural decision, and it follows from the first
+section of chapter 11. A provider may take several seconds to answer, or may not
+answer at all. If the calling service had to wait for the provider, an outage at a
+text message provider would make the order service slow, which is exactly the coupling
+a notification service exists to remove. The service therefore answers the caller as
+soon as the request has been stored durably, with the status `202 Accepted`, whose
+meaning in HTTP is precisely "received, and not yet acted upon", and does the sending
+afterwards.
+
+## The same request twice
+
+The calling service is itself a distributed program and will sometimes send the same
+request more than once. It may time out while waiting for the `202` and try again, or
+it may be a consumer of a message queue that, as chapter 11 explained, delivers its
+messages at least once. From the user's side the result of treating both requests as
+new would be 2 identical text messages, which is a visible defect and, for some kinds
+of message, an alarming one.
+
+The notification service cannot recognise a repeat by comparing contents, since 2
+separate and legitimate notifications may have identical text. The caller must
+therefore say which requests are the same, and does so by attaching an *idempotency
+key*, a name of the caller's own choosing that identifies the event being reported,
+such as `order-7-shipped`. The service records every key it has accepted, and when a
+request arrives with a key that is already recorded, it returns the original response
+and sends nothing.
+
+The recording of the key and the placing of the message in the queue must succeed or
+fail together. If the key were recorded and the service then crashed before queueing
+the message, the caller's retry would be dismissed as a repeat and the notification
+would never be sent. This is the problem of writing to a database and publishing a
+message as 1 step, and the outbox of chapter 11 solves it here as it did there. Keys
+need not be kept for ever. A retry arrives within seconds or minutes of the original,
+and a key that is retained for a day covers every realistic case.
+
+## Failures that pass and failures that do not
+
+When a sender hands a message to a provider, the provider's reply falls into 1 of 3
+classes, and the proper response is different for each.
+
+The provider may accept the message. The sender records the fact and is finished.
+
+The provider may refuse the message for a reason that is permanent. The telephone
+number does not exist, the email address is malformed, or the device token belongs to
+an app that the user has since removed. Sending the same request again will yield the
+same refusal, so the sender must not retry. It should record the failure and, in the
+case of an invalid address or token, mark it so that no further notifications are
+attempted there. Continuing to send to dead addresses is more than wasteful: providers
+of email in particular observe what proportion of a sender's messages are
+undeliverable and begin to treat a sender with a high proportion as a source of
+unwanted mail, to the detriment of its deliverable messages.
+
+Or the provider may fail in a way that is probably temporary. It answers that it is
+overloaded, or that the sender has exceeded its permitted rate, or it does not answer
+within the time allowed. These are the cases for trying again, and they include the
+1 that is most awkward. When a request times out, the sender does not know whether the
+provider never received it or received it, sent the message, and lost only the reply.
+A retry in the second case sends the user a duplicate. Where the provider's API accepts
+an idempotency key of its own, the sender should supply one, so that the provider can
+recognise the retry, and where it does not, an occasional duplicate after a timeout is
+a risk that has to be accepted, since the alternative is an occasional message that is
+never sent.
+
+| The provider's reply | What it means | What the sender does |
+|---|---|---|
+| Accepted | the provider has taken the message | records success |
+| Refused: invalid address, unknown token, malformed request | repeating the request cannot help | records failure, marks the address, does not retry |
+| Overloaded, rate exceeded, internal error | the condition will probably pass | retries after a pause |
+| No reply in time | unknown: the message may or may not have gone | retries after a pause, with the provider's own idempotency key if it has one |
+
+## Retrying with pauses that double
+
+Having decided to retry, the sender must decide when. The answer that comes first to
+mind, immediately, is the worst available.
+
+A provider that reports overload is receiving more requests than it can handle. A
+sender that responds by repeating its request at once has increased the load on a
+system that has just said it has too much, and if a thousand senders do the same, the
+provider is held in its overloaded condition by the very traffic that its failures
+generate. Systems have been kept down for hours in this way after the original cause
+of the trouble had gone.
+
+The sender should therefore wait, and the question of how long is settled by the
+observation that each successive failure is evidence that the previous wait was too
+short. The wait is accordingly doubled after every failure: 1 second, then 2, then 4,
+then 8. This is *exponential backoff*. It has the property that a brief disturbance is
+overcome quickly, by the first or second retry, while in a prolonged outage the
+sender's requests become rapidly less frequent and soon impose almost no load.
+
+@steps steps-notify-backoff :: A notification fails 4 times and succeeds on the fifth try, 15 seconds after the first.
+
+The simulation for this chapter sends 5 notifications to a provider that fails a set
+number of times for each. One succeeds at the first try. One fails twice and is sent
+on the third try, 3 seconds after the first, and one fails 4 times and is sent on the
+fifth, after 15 seconds, as in the picture. One fails every time and is set aside
+after 5 tries. The remaining request carries a key that has been seen before and
+causes nothing to be sent.
+
+2 limits complete the scheme. The pause is capped at some maximum, a minute for
+instance, so that it does not grow to absurd lengths. And the number of tries is
+bounded, so that a notification which can never be sent leaves the system. What should
+be done with a notification that has exhausted its tries depends on its kind. A code
+for logging in is worthless after a few minutes and may be dropped, whereas a notice
+that a payment has failed should be set aside, in the manner of the dead-letter queue
+of chapter 11, and looked at by a person.
+
+### Why the pauses are made random
+
+Doubling the pause protects a provider from a single sender. It does not protect the
+provider from many senders that failed at the same moment, which is the usual
+situation, since a provider's difficulty affects all of its callers together.
+
+Suppose that 1000 notifications fail in the same second. All 1000 wait 1 second and
+return together, and if the provider has not recovered they fail together, wait 2
+seconds, and return together again. The doubling has spaced the waves further apart
+and has done nothing to diminish them: each wave strikes the provider with the full
+1000 requests, and a provider that is on the point of recovering is knocked down
+afresh by each.
+
+@figure notify-jitter :: Retries with equal pauses arrive in waves, and retries with random pauses arrive as a trickle.
+
+The remedy is to make each sender's pause random, which is called *jitter*. In the
+simplest effective form, where the plain scheme would wait 4 seconds, the sender waits
+for a time chosen at random between 0 and 4 seconds. The 1000 retries are then spread
+evenly over the interval and reach the provider as a steady flow of about 250 per
+second. The average wait has been halved, and the peak load on the provider has been
+reduced by a far larger factor. This thundering herd and its cure appeared in chapter
+7 from the other side, as the advice a rate limiter gives its clients.
+
+## The circuit breaker
+
+Backoff governs the retries of a single notification. It leaves untouched a further
+problem, which arises when a provider is not merely slow but down. Every new
+notification that arrives is then tried for the first time, and each such first try
+waits for the full length of the timeout before failing. Senders are occupied with
+calls that cannot succeed, the queue lengthens behind them, and notifications for
+other channels, whose providers are perfectly healthy, are delayed because all the
+senders are waiting on the provider that is not.
+
+A *circuit breaker* is a small mechanism that remembers the recent behaviour of a
+dependency and, when the dependency is plainly failing, stops calling it for a time.
+It takes its name from the electrical device that cuts off a circuit in which too much
+current is flowing.
+
+@steps steps-notify-breaker :: A circuit breaker opens after 5 failures in a row, refuses calls for 30 seconds, and closes again after a successful trial.
+
+The breaker has 3 states. While it is *closed*, calls pass through to the provider and
+the breaker counts consecutive failures. When the count reaches a threshold, the
+breaker becomes *open*, and in that state it rejects every call at once without
+contacting the provider. After a set interval it becomes *half open* and admits a
+single trial call. If the trial succeeds, the breaker closes and normal operation
+resumes, and if the trial fails, the breaker opens again for another interval.
+
+2 benefits follow. The senders fail fast, in microseconds, where they would
+otherwise have waited out a timeout of many seconds, and so remain free to serve the
+other channels. And the failing provider is relieved of all traffic but the occasional
+trial, which gives it the best chance of recovering. A notification rejected by an
+open breaker has not been lost. It returns to the queue to be tried later, or is
+directed to another provider.
+
+## Providers' limits and a second provider
+
+Providers restrict the rate at which they may be called, and a sender that exceeds the
+permitted rate is refused, usually with the status `429` that chapter 7 described. A
+well-behaved notification service does not discover the limit by running into it. It
+paces its own calls to each provider slightly below that provider's limit, using the
+leaky bucket of chapter 7, which is the algorithm designed for exactly this purpose of
+feeding a consumer at a steady rate. Notifications that arrive faster than the
+provider will take them wait in the queue, which is what the queue is for.
+
+For channels on which delivery matters greatly, such as the text messages that carry
+login codes, a service commonly holds accounts with 2 providers. When the circuit
+breaker for the first is open, messages are directed to the second. This raises the
+availability of the channel considerably and brings a small complication with it: a
+message that timed out at the first provider and was then sent through the second may
+arrive twice, since the 2 providers know nothing of each other and cannot recognise
+the duplicate.
+
+## Sent is not delivered
+
+When a provider accepts a message, it has undertaken to try to deliver it, and nothing
+more. The email may yet be rejected by the recipient's mail server, the text message
+may wait for a phone that is switched off, and the push notification may be addressed
+to an app that was removed last week. None of this is known at the moment the provider
+replies to the sender.
+
+@figure notify-stages :: The stages through which a notification passes, of which the service observes only the first 3 directly.
+
+Providers report the later fate of a message after the event, by calling an address
+that the notification service has registered with them. Such a call from a provider
+back to its customer is known as a *webhook*. The service must be prepared to receive
+these reports at any time, in any order, and more than once, and uses them to bring
+the recorded state of each notification up to date. They are also the principal means
+by which the service learns that an address has gone bad, so that it can stop sending
+to it.
+
+The practical consequence is that a notification service should be careful in what it
+claims. It can truthfully state that a message was handed to a provider. Whether the
+message was delivered is known only later and only for some channels, and whether it
+was read is hardly ever known. A system that requires certainty that a person has
+seen something, such as an alert to an engineer on call, cannot rely on a notification
+alone. It must require an explicit acknowledgement from the person and escalate to
+someone else when none arrives.
+
+## Preferences, quiet hours and priorities
+
+Not every notification that is requested ought to be sent, and the service is the
+place where this is decided.
+
+Users choose which kinds of message they wish to receive and by which channels, and in
+many countries the law requires that every promotional message offer a means of
+refusing further ones and that the refusal be honoured. The check against preferences
+belongs in the notification service itself, where no calling service can omit it by
+oversight. Users may also set hours during which they are not to be disturbed, and a
+message that falls within them is held and released when they end, unless it is of a
+kind, such as a security alert, that overrides them.
+
+A limit on frequency protects users from the combined enthusiasm of many calling
+services, each of which considers its own messages important. A user who receives 30
+notifications in a day will turn all of them off, the important ones included, and so
+the service limits the number of non-urgent notifications per user per day and
+discards or combines the excess.
+
+Notifications differ enormously in urgency. A login code is useless unless it arrives
+within seconds, and a weekly digest may arrive at any time today. If both wait in the
+same queue, a campaign that addresses 10 million users will delay every login code
+until it has been worked through. The service therefore keeps separate queues for
+separate priorities, each with senders of its own, so that the bulk traffic cannot
+occupy the capacity on which urgent traffic depends.
+
+## Sending to very many users
+
+A single request sometimes asks that millions of users be notified, of a change to the
+terms of service for example. Treated naively as 1 unit of work, it would occupy a
+sender for hours and would have to begin again from the start if that sender failed.
+
+The request is *fanned out*. A first stage divides the list of recipients into
+batches of perhaps 1000 and places 1 message per batch in the queue, and a second
+stage expands each batch into individual notifications. The work is thereby spread
+across all the senders, a failure affects 1 batch only, and the progress of the whole
+is the number of batches completed. Each individual notification is given an
+idempotency key derived from the campaign and the user, so that a batch which is
+processed twice does not send anything twice. Such campaigns are sent at low priority
+and paced over minutes or hours, both to respect the providers' limits and because a
+notification that brings a million users to the app within the same minute is an
+overload of one's own making.
+
+## Use cases
+
+Other services ask for notifications to be sent. Users decide which they are willing
+to receive.
+
+@part use_cases
+
+## Functional requirements
+
+@part functional
+
+## Non-functional requirements
+
+@part non_functional
+
+The guarantee offered to callers is that an accepted request leads to at least 1
+attempt to hand the message to a provider, and that a request repeated with the same
+key leads to no more than the first one did. The record of keys must be strongly
+consistent, since 2 nodes that disagreed about whether a key had been seen would
+between them send a duplicate. The state of a notification, by contrast, is eventually
+consistent with reality, since delivery is learned of after the fact, from the
+provider's reports.
+
+## Core entities
+
+@part entities
+
+## Capacity estimate
+
+@part capacity
+
+## The API
+
+A request creates a notification. The reply does not say that anything was sent, only
+that the request has been stored and will be acted upon.
+
+@part api
+
+## High-level design
+
+@part design
+
+### One request, step by step
+
+@part walk
+
+## Mistakes to avoid
+
+| Mistake | What goes wrong | What to do |
+|---|---|---|
+| Calling the provider while the caller waits | A slow provider makes every calling service slow. | Store the request, answer `202`, and send from a queue. |
+| No idempotency key | A caller's retry sends the user the same message twice. | Require a key and record the keys accepted. |
+| Recording the key and queueing the message as 2 steps | A crash between them loses the notification, and the retry is dismissed as a repeat. | Do both in 1 transaction, through an outbox. |
+| Retrying every failure | Invalid addresses are tried again and again, and the sender's reputation suffers. | Retry only failures that may pass, and mark addresses that are permanently refused. |
+| Retrying at once | Retries keep an overloaded provider overloaded. | Double the pause after each failure. |
+| The same pauses for everyone | Senders that failed together return together, in waves. | Choose each pause at random within its range. |
+| Retrying without limit | A notification that can never be sent circulates for ever. | Stop after a fixed number of tries and set it aside. |
+| No circuit breaker | Senders wait out timeouts on a dead provider, and healthy channels are delayed. | Stop calling a provider after repeated failures, and test it with single trial calls. |
+| Reporting "delivered" when the provider accepts | Users are told of messages that never arrived. | Record "handed to the provider", and update from the provider's reports. |
+| 1 queue for everything | A large campaign delays login codes. | Keep separate queues and senders for each priority. |
+| Checking preferences in each calling service | A service forgets, and a user who refused messages receives them. | Check preferences in the notification service. |
+| Sending a campaign as fast as possible | The providers refuse the excess, and the users who respond overload the app. | Pace campaigns over time at low priority. |
+
+## Failures
+
+@part failures
+
+## Trade-offs
+
+@part tradeoffs
+
+## The simulation
+
+@part sim
+
+## Terms introduced in this chapter
+
+| Term | Meaning |
+|---|---|
+| Notification | a message from a system to a person |
+| Channel | the means of delivery: email, text message or push notification |
+| Provider | an outside company that carries messages on a channel |
+| Device token | the identifier by which a push provider addresses 1 installation of an app |
+| Template | the text of a kind of message, with places for data to be inserted |
+| `202 Accepted` | the HTTP status for a request that has been received and not yet acted upon |
+| Idempotency key | a name the caller gives a request, so that a repeat is recognised |
+| Exponential backoff | waiting twice as long after each successive failure |
+| Jitter | making each pause random, so that retries do not coincide |
+| Circuit breaker | a mechanism that stops calls to a failing dependency for a time |
+| Closed, open, half open | the breaker's states: passing calls, refusing calls, and admitting 1 trial |
+| Webhook | a call from a provider back to its customer to report an event |
+| Fan-out | turning 1 request into many individual messages |
+| Quiet hours | a period in which a user is not to be disturbed |
+
+<div class="summary">
+
+## Summary
+
+- A notification service accepts a request, stores it, answers `202`, and sends from a queue, so that slow providers do not slow down the callers.
+- A caller identifies each request with an idempotency key, and a repeated key sends nothing.
+- A provider's refusal is either permanent, in which case retrying is harmful, or temporary, in which case the sender tries again.
+- The pause before each retry doubles, so that a failing provider receives less and less traffic.
+- The pauses are random, so that senders which failed together do not return together.
+- A circuit breaker stops calls to a provider that is down and tests it with single trial calls.
+- Acceptance by a provider is not delivery, which is learned of later from the provider's reports.
+- Preferences, limits on frequency and priorities are enforced in the service, and very large sends are fanned out in batches and paced.
+
+</div>

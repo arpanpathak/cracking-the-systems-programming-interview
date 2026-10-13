@@ -1,0 +1,6 @@
+$ curl -i -X PUT 'http://127.0.0.1:7001/v1/keys/bad%20key' --data-binary 'x'
+HTTP/1.1 400 Bad Request
+content-type: application/problem+json
+content-length: 153
+
+{"type":"/problems/invalid-key","title":"The key is not valid","status":400,"detail":"a key is 1 to 256 characters from A-Z, a-z, 0-9, '.', '_' and '-'"}

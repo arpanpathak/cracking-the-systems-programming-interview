@@ -1,0 +1,35 @@
+[workspace]
+resolver = "3"
+members = ["kv", "kvd", "kvctl", "crashsim", "synccost", "ring", "ringsim", "repl", "replsim", "kvnode", "raft", "raftsim", "kvraft", "probe", "kvrouter", "kvgroup", "kvbench",
+    "ratelimit", "idgen", "shortener", "cachesim", "queuesim", "locksim", "jobsim", "notifysim", "feedsim", "objectsim",
+    "streamsim", "chatsim", "paysim", "bookingsim", "nearbysim", "typeahead",
+    "crawlsim", "metricsim", "syncsim", "editsim", "matchsim", "clicksim",
+]
+
+[workspace.package]
+edition = "2024"
+rust-version = "1.99"
+license = "MIT"
+publish = false
+
+[workspace.dependencies]
+kv = { path = "kv" }
+ring = { path = "ring" }
+repl = { path = "repl" }
+raft = { path = "raft" }
+kvd = { path = "kvd" }
+axum = "0.8"
+clap = { version = "4", features = ["derive"] }
+crc32fast = "1"
+parking_lot = "0.12"
+reqwest = { version = "0.13", default-features = false, features = ["json"] }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+thiserror = "2"
+prost = "0.14"
+tokio = { version = "1", features = ["macros", "net", "rt-multi-thread", "sync", "time"] }
+tonic = "0.14"
+tonic-prost = "0.14"
+tonic-prost-build = "0.14"
+ureq = "3"
+xxhash-rust = { version = "0.8", features = ["xxh3"] }

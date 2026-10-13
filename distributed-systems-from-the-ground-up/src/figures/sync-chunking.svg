@@ -1,0 +1,80 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="18 14 444 324" width="444" height="324" role="img" aria-label="2 rows of 8 chunks after 1 byte is added at the start of a file. With cuts every 1024 bytes, all chunks have changed. With cuts that depend on the content, only the first chunk has changed.">
+  <style>
+    text { font-family: Inter, "Segoe UI", "Helvetica Neue", Helvetica, Arial, sans-serif; fill: #1B2430; }
+    .title { font-size: 18px; font-weight: 650; }
+    .lede { font-size: 12.5px; fill: #5D6B7A; }
+    .name { font-size: 14px; font-weight: 650; }
+    .sub { font-size: 12px; fill: #5D6B7A; }
+    .note { font-size: 12px; fill: #5D6B7A; }
+    .tab { font-size: 11.5px; font-weight: 650; letter-spacing: 0.04em; fill: #5D6B7A; }
+    .mono { font-family: "JetBrains Mono", "SF Mono", Menlo, Consolas, monospace; font-size: 12px; }
+    .dim { fill: #8794A3; }
+    .strong { font-weight: 700; }
+    .trap { fill: #CF4526; font-weight: 700; }
+    .pill { font-size: 11px; font-weight: 600; }
+    .wire { fill: none; stroke: #3F5873; stroke-width: 2.4; stroke-linecap: butt; stroke-linejoin: round; }
+    .wire.danger { stroke: #CF4526; stroke-dasharray: 6 5; }
+    .wire.idle { stroke: #7F8EA0; stroke-dasharray: 2 5; }
+  </style>
+  <defs>
+    <filter id="lift" x="-10%" y="-10%" width="120%" height="135%">
+      <feDropShadow dx="0" dy="2" stdDeviation="3" flood-color="#1B2430" flood-opacity="0.13"/>
+    </filter>
+    <linearGradient id="thor-body" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#C6CCD5"/><stop offset="1" stop-color="#979EA9"/>
+    </linearGradient>
+    <linearGradient id="switch-body" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#3B4656"/><stop offset="1" stop-color="#232B37"/>
+    </linearGradient>
+    <marker id="head" viewBox="0 0 12 10" refX="8" refY="5" markerUnits="userSpaceOnUse" markerWidth="16" markerHeight="13.3" orient="auto">
+      <path d="M0,0.4 L12,5 L0,9.6 L2.8,5 Z" fill="#3F5873"/>
+    </marker>
+    <marker id="head-danger" viewBox="0 0 12 10" refX="8" refY="5" markerUnits="userSpaceOnUse" markerWidth="16" markerHeight="13.3" orient="auto">
+      <path d="M0,0.4 L12,5 L0,9.6 L2.8,5 Z" fill="#CF4526"/>
+    </marker>
+    <marker id="head-idle" viewBox="0 0 12 10" refX="8" refY="5" markerUnits="userSpaceOnUse" markerWidth="16" markerHeight="13.3" orient="auto">
+      <path d="M0,0.4 L12,5 L0,9.6 L2.8,5 Z" fill="#7F8EA0"/>
+    </marker>
+  </defs>
+  <rect width="480" height="344" rx="14" fill="#FBFAF6"/>
+  <text x="32.0" y="42.0" class="title" text-anchor="start" xml:space="preserve">Where a file is cut into chunks</text>
+  <text x="32.0" y="63.0" class="lede" text-anchor="start" xml:space="preserve">A red chunk has to be uploaded again.</text>
+  <text x="32.0" y="104.0" class="tab" text-anchor="start" xml:space="preserve">CUTS EVERY 1024 BYTES, AFTER 1 BYTE IS ADDED AT THE START</text>
+  <rect x="40.0" y="116.0" width="44.0" height="34.0" rx="5" fill="#FCEBE6" stroke="#CF4526" stroke-width="1.3"/>
+  <text x="62.0" y="137.0" class="mono strong" text-anchor="middle" xml:space="preserve">c1</text>
+  <rect x="88.0" y="116.0" width="44.0" height="34.0" rx="5" fill="#FCEBE6" stroke="#CF4526" stroke-width="1.3"/>
+  <text x="110.0" y="137.0" class="mono strong" text-anchor="middle" xml:space="preserve">c2</text>
+  <rect x="136.0" y="116.0" width="44.0" height="34.0" rx="5" fill="#FCEBE6" stroke="#CF4526" stroke-width="1.3"/>
+  <text x="158.0" y="137.0" class="mono strong" text-anchor="middle" xml:space="preserve">c3</text>
+  <rect x="184.0" y="116.0" width="44.0" height="34.0" rx="5" fill="#FCEBE6" stroke="#CF4526" stroke-width="1.3"/>
+  <text x="206.0" y="137.0" class="mono strong" text-anchor="middle" xml:space="preserve">c4</text>
+  <rect x="232.0" y="116.0" width="44.0" height="34.0" rx="5" fill="#FCEBE6" stroke="#CF4526" stroke-width="1.3"/>
+  <text x="254.0" y="137.0" class="mono strong" text-anchor="middle" xml:space="preserve">c5</text>
+  <rect x="280.0" y="116.0" width="44.0" height="34.0" rx="5" fill="#FCEBE6" stroke="#CF4526" stroke-width="1.3"/>
+  <text x="302.0" y="137.0" class="mono strong" text-anchor="middle" xml:space="preserve">c6</text>
+  <rect x="328.0" y="116.0" width="44.0" height="34.0" rx="5" fill="#FCEBE6" stroke="#CF4526" stroke-width="1.3"/>
+  <text x="350.0" y="137.0" class="mono strong" text-anchor="middle" xml:space="preserve">c7</text>
+  <rect x="376.0" y="116.0" width="44.0" height="34.0" rx="5" fill="#FCEBE6" stroke="#CF4526" stroke-width="1.3"/>
+  <text x="398.0" y="137.0" class="mono strong" text-anchor="middle" xml:space="preserve">c8</text>
+  <text x="32.0" y="174.0" class="sub" text-anchor="start" xml:space="preserve">Every cut is now 1 byte later in the content, so every chunk has</text>
+  <text x="32.0" y="191.0" class="sub" text-anchor="start" xml:space="preserve">different bytes and a different checksum. All 65 are uploaded again.</text>
+  <text x="32.0" y="234.0" class="tab" text-anchor="start" xml:space="preserve">CUTS THAT DEPEND ON THE CONTENT, AFTER THE SAME CHANGE</text>
+  <rect x="40.0" y="246.0" width="44.0" height="34.0" rx="5" fill="#FCEBE6" stroke="#CF4526" stroke-width="1.3"/>
+  <text x="62.0" y="267.0" class="mono strong" text-anchor="middle" xml:space="preserve">c1</text>
+  <rect x="88.0" y="246.0" width="44.0" height="34.0" rx="5" fill="#F1F4F7" stroke="#7F8EA0" stroke-width="1.3"/>
+  <text x="110.0" y="267.0" class="mono strong" text-anchor="middle" xml:space="preserve">c2</text>
+  <rect x="136.0" y="246.0" width="44.0" height="34.0" rx="5" fill="#F1F4F7" stroke="#7F8EA0" stroke-width="1.3"/>
+  <text x="158.0" y="267.0" class="mono strong" text-anchor="middle" xml:space="preserve">c3</text>
+  <rect x="184.0" y="246.0" width="44.0" height="34.0" rx="5" fill="#F1F4F7" stroke="#7F8EA0" stroke-width="1.3"/>
+  <text x="206.0" y="267.0" class="mono strong" text-anchor="middle" xml:space="preserve">c4</text>
+  <rect x="232.0" y="246.0" width="44.0" height="34.0" rx="5" fill="#F1F4F7" stroke="#7F8EA0" stroke-width="1.3"/>
+  <text x="254.0" y="267.0" class="mono strong" text-anchor="middle" xml:space="preserve">c5</text>
+  <rect x="280.0" y="246.0" width="44.0" height="34.0" rx="5" fill="#F1F4F7" stroke="#7F8EA0" stroke-width="1.3"/>
+  <text x="302.0" y="267.0" class="mono strong" text-anchor="middle" xml:space="preserve">c6</text>
+  <rect x="328.0" y="246.0" width="44.0" height="34.0" rx="5" fill="#F1F4F7" stroke="#7F8EA0" stroke-width="1.3"/>
+  <text x="350.0" y="267.0" class="mono strong" text-anchor="middle" xml:space="preserve">c7</text>
+  <rect x="376.0" y="246.0" width="44.0" height="34.0" rx="5" fill="#F1F4F7" stroke="#7F8EA0" stroke-width="1.3"/>
+  <text x="398.0" y="267.0" class="mono strong" text-anchor="middle" xml:space="preserve">c8</text>
+  <text x="32.0" y="304.0" class="sub" text-anchor="start" xml:space="preserve">A cut falls where the bytes themselves say so, and those places</text>
+  <text x="32.0" y="321.0" class="sub" text-anchor="start" xml:space="preserve">move with the content. Only the first chunk changed. 1 of 62 is uploaded.</text>
+</svg>

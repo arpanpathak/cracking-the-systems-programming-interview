@@ -1,0 +1,12 @@
+$ ./target/release/kvraft --id 1 --listen 127.0.0.1:7001 --replication 127.0.0.1:7101 --data /var/tmp/m1 \
+      --peer 2=http://127.0.0.1:7102 --peer 3=http://127.0.0.1:7103 &
+member 1, term 0, log ends at 0
+listening on 127.0.0.1:7001
+$ ./target/release/kvraft --id 2 --listen 127.0.0.1:7002 --replication 127.0.0.1:7102 --data /var/tmp/m2 \
+      --peer 1=http://127.0.0.1:7101 --peer 3=http://127.0.0.1:7103 &
+$ ./target/release/kvraft --id 3 --listen 127.0.0.1:7003 --replication 127.0.0.1:7103 --data /var/tmp/m3 \
+      --peer 1=http://127.0.0.1:7101 --peer 2=http://127.0.0.1:7102 &
+$ for port in 7001 7002 7003; do curl http://127.0.0.1:$port/healthz; echo; done
+{"id":1,"role":"follower","term":1,"leader":3,"last_sequence":1,"committed":1}
+{"id":2,"role":"follower","term":1,"leader":3,"last_sequence":1,"committed":1}
+{"id":3,"role":"leader","term":1,"leader":3,"last_sequence":1,"committed":1}

@@ -1,0 +1,182 @@
+# Key-Value Store: Router (Low-Level Design)
+
+With [chapter 4](04-key-value-store-leader-election.md) complete, we have a shard
+that survives the loss of its leader without anybody's help. Measured against the
+design of [chapter 1](01-key-value-store-system-design.md), 2 things are still
+wanting. A client has to discover for itself which member of the shard is the leader,
+as the program `probe` did by trying each node in turn and collecting 51 refusals in
+the process. And all the data is in a single shard, whereas the design calls for the
+keys to be divided among many.
+
+A single small component supplies both. The *router* stands between the clients and
+the shards. Clients send every request to it, and for each request it works out which
+shard owns the key and which member of that shard is at present the leader, and
+passes the request on. The clients are thereby relieved of all knowledge of the
+cluster. They know 1 address, and neither the number of shards nor a change of leader
+is visible to them.
+
+The router is the least intricate program in this part of the book, and it contains
+1 decision that is easy to get wrong and expensive when it is: what to do when the
+member it has asked does not give a clear answer. A router that retries too readily
+will perform a write twice, and a router that retries too reluctantly will report
+failures that it could have concealed. The chapter builds the router, states the rule
+that settles this question, and then repeats the experiment of chapter 4, killing a
+leader under load, with the router in front.
+
+<div class="covers">
+
+This chapter covers
+
+- what a router does, and why it holds no data
+- a ring file that lists the shards and their members
+- finding the shard of a key with the ring of chapter 1
+- finding the leader, and the rule that decides when another member may be asked
+- 2 shards behind 1 router, measured
+- the loss of a leader behind the router, as a client sees it
+
+</div>
+
+## What a router does
+
+@figure route-overview :: A request on its way through the router to the shard that owns its key.
+
+A router keeps no data. Everything it knows comes from a ring file, read when it
+starts, and from what the members tell it in the course of its work. This is the
+statelessness that chapter 1 required of routers, and its practical value is
+considerable: any number of routers may be run side by side, and any of them may be
+stopped or restarted at any time, since a router that has lost its memory rebuilds it
+from the first few answers it receives.
+
+## The ring file
+
+@out x-ring
+
+Each shard is a group of 3 `kvraft` members, listed in the order of their ids. In the
+design of chapter 1, the ring is held by a coordinator and changes while the system
+runs. Here it is a file that the router reads once at startup. That is sufficient for
+routing requests, and it leaves changes to the ring, which are a substantial subject
+in themselves, outside this chapter.
+
+@code kvrouter/src/main.rs config :: The ring file, and what the router keeps for each shard
+
+For every shard the router remembers a single number, the position in the list of the
+member that was the leader when it last asked. This is a guess and nothing more. The
+sections that follow show what happens when the guess is wrong, and the important
+property of the design is that a wrong guess costs an extra request and never a wrong
+result.
+
+## Finding the shard
+
+Each shard is placed on the ring of chapter 1 with 256 tokens. To look up a key then
+takes 2 steps: the ring is asked for the name of the owner, and the shard of that
+name is fetched.
+
+@code kvrouter/src/main.rs load :: Building the ring, and finding the shard of a key
+
+## Finding the leader
+
+The router sends the request to the member that it believes to be the leader. Usually
+the belief is correct. When it is not, the answer of the member tells the router what
+to do next.
+
+@figure route-attempts :: The answers a member can give, and the router's reaction to each.
+
+All the cases are decided by a single rule: the router asks another member only if
+the first attempt has certainly changed nothing. A follower that answers `421` did
+not touch its log. Nor did a member that reports that the shard is electing a leader,
+nor one whose process is not running and whose connection was refused. In all 3
+cases, to ask another member is safe, since whatever that member does will be the
+only effect of the request.
+
+A timeout is a different matter altogether. The leader may have appended the record,
+and even committed it, before the connection failed, and the router cannot know. If
+it were to send the request to another member, a write might be performed twice, and
+a conditional write that had succeeded might be reported as failed. The router
+therefore answers `503` and leaves the decision to the client, which is the only
+party that knows whether its request is safe to repeat. This is the lost response of
+chapter 1 once again, and the router's rule is a refusal to guess about it on
+somebody else's behalf.
+
+In the code, the possible outcomes of asking a member are the variants of an enum.
+
+@code kvrouter/src/main.rs attempt :: The 3 outcomes of asking a member
+
+`ask` sends the request to 1 member and classifies what comes back as 1 of the
+outcomes.
+
+@code kvrouter/src/main.rs ask :: Asking 1 member
+
+`forward` is the loop around it. A refusal moves the guess to the member that the
+refusal named, or failing that to the next in the list. When every member has refused
+once, an election must be in progress, and the router then waits 150 ms between
+further attempts, so that it does not flood a shard which is busy choosing a leader.
+
+@code kvrouter/src/main.rs forward :: Trying members until one serves the request
+
+@code kvrouter/src/main.rs handlers :: The HTTP handlers, and the start of the program
+
+## 2 shards behind 1 router
+
+We start 6 `kvraft` members in 2 groups of 3, then the router, and write 400 keys
+through it.
+
+@out x-load
+
+| Output | What it shows |
+|---|---|
+| logs end at 206 and 196 | The 400 keys were divided 205 to 195. Each log also contains 1 term marker. |
+| 400 found, 0 missing | A read through the router reaches the shard that holds the key. |
+
+The client used a single address throughout. It never learned how many shards exist,
+or which members lead them.
+
+## A leader is lost behind the router
+
+`probe`, from chapter 4, is now given the router's address and no other. While it is
+writing, the leader of `shard-a` is killed.
+
+@out x-kill
+
+| Output | What it shows |
+|---|---|
+| 0 attempts refused | The client saw no error of any kind. In chapter 4, without a router, the same experiment produced 51 refusals. |
+| longest pause 1.08 s | Requests for `shard-a` waited inside the router while the shard elected a leader. |
+| leader of `shard-a` is now member 1 | The router found the new leader by asking, and remembered it. |
+| 780 found, 0 missing | No acknowledged write was lost. |
+
+The comparison with chapter 4 shows what the router contributes. The election took
+as long as it did before, about a second, since the router does nothing to hasten it.
+What has changed is what the client experiences. A second of refusals, which every
+client would have had to be written to handle, has become a second of waiting, which
+requires nothing of the client at all.
+
+Writes to `shard-b` were at no time affected. `probe` sends its keys in turn, and so
+it waited behind the 1 request for `shard-a` that was being held. Independent clients
+writing to `shard-b` would have noticed nothing.
+
+## What is still missing
+
+| Missing | Effect |
+|---|---|
+| The ring is a file read at startup. | To add a shard, the router has to be restarted, and existing keys do not move to the new shard. |
+| Members do not check which shard a key belongs to. | A router with a wrong ring file could write a key to the wrong shard. Chapter 1 prevents this by sending the version of the ring with every request. |
+| Listing keys by prefix is not routed. | The router would have to ask every shard and merge the answers. |
+
+## The complete program
+
+@full kvrouter/Cargo.toml
+
+@full kvrouter/src/main.rs
+
+<div class="summary">
+
+## Summary
+
+- A router hashes the key, finds the shard on the ring, and forwards the request to the leader of that shard, and it holds no data of its own.
+- The router keeps a guess at the leader of each shard and corrects the guess from the answers it receives.
+- It asks another member only when the first attempt certainly changed nothing: after a follower's `421`, after a `503` that reports no leader, or after a refused connection.
+- After a timeout it answers `503`, since the write may have been performed, and only the client knows whether the request is safe to repeat.
+- With 2 shards, 400 keys were divided 205 to 195, and every key was found again through the router.
+- When a leader was killed, clients behind the router experienced a pause of 1.08 seconds and no errors.
+
+</div>

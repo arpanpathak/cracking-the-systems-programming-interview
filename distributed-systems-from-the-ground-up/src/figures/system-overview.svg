@@ -1,0 +1,156 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="18 14 1104 648" width="1104" height="648" role="img" aria-label="The high-level design of the key-value store, drawn from left to right, with the path of a write numbered. Applications send requests to a load balancer, which passes each request to 1 of 3 routers. The routers have no data of their own. They hold a copy of the ring, which the coordinator, drawn above them, sends them. On the right are 24 storage nodes. For the key user-1, node-10 is the leader and node-1 and node-6 are the followers, and each has a log on disk. A monitoring system, drawn below the routers, reads the health and the metrics of every node. Step 0: routers hold a copy of the ring, sent by the coordinator. Step 1: an application sends PUT /v1/keys/user-1. Step 2: the load balancer passes it to a healthy router. Step 3: the router hashes the key and finds the leader, node-10. Step 4: node-10 stores the record in its log, on disk. Step 5: node-10 sends the record to node-1 and node-6. Step 6: when 1 of them has stored it, node-10 answers 201 Created. Step 7: the answer returns the way the request came.">
+  <style>
+    text { font-family: Inter, "Segoe UI", "Helvetica Neue", Helvetica, Arial, sans-serif; fill: #1B2430; }
+    .title { font-size: 18px; font-weight: 650; }
+    .lede { font-size: 12.5px; fill: #5D6B7A; }
+    .name { font-size: 14px; font-weight: 650; }
+    .sub { font-size: 12px; fill: #5D6B7A; }
+    .note { font-size: 12px; fill: #5D6B7A; }
+    .tab { font-size: 11.5px; font-weight: 650; letter-spacing: 0.04em; fill: #5D6B7A; }
+    .mono { font-family: "JetBrains Mono", "SF Mono", Menlo, Consolas, monospace; font-size: 12px; }
+    .dim { fill: #8794A3; }
+    .strong { font-weight: 700; }
+    .trap { fill: #CF4526; font-weight: 700; }
+    .pill { font-size: 11px; font-weight: 600; }
+    .wire { fill: none; stroke: #3F5873; stroke-width: 2.4; stroke-linecap: butt; stroke-linejoin: round; }
+    .wire.danger { stroke: #CF4526; stroke-dasharray: 6 5; }
+    .wire.idle { stroke: #7F8EA0; stroke-dasharray: 2 5; }
+  </style>
+  <defs>
+    <filter id="lift" x="-10%" y="-10%" width="120%" height="135%">
+      <feDropShadow dx="0" dy="2" stdDeviation="3" flood-color="#1B2430" flood-opacity="0.13"/>
+    </filter>
+    <linearGradient id="thor-body" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#C6CCD5"/><stop offset="1" stop-color="#979EA9"/>
+    </linearGradient>
+    <linearGradient id="switch-body" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#3B4656"/><stop offset="1" stop-color="#232B37"/>
+    </linearGradient>
+    <marker id="head" viewBox="0 0 12 10" refX="8" refY="5" markerUnits="userSpaceOnUse" markerWidth="16" markerHeight="13.3" orient="auto">
+      <path d="M0,0.4 L12,5 L0,9.6 L2.8,5 Z" fill="#3F5873"/>
+    </marker>
+    <marker id="head-danger" viewBox="0 0 12 10" refX="8" refY="5" markerUnits="userSpaceOnUse" markerWidth="16" markerHeight="13.3" orient="auto">
+      <path d="M0,0.4 L12,5 L0,9.6 L2.8,5 Z" fill="#CF4526"/>
+    </marker>
+    <marker id="head-idle" viewBox="0 0 12 10" refX="8" refY="5" markerUnits="userSpaceOnUse" markerWidth="16" markerHeight="13.3" orient="auto">
+      <path d="M0,0.4 L12,5 L0,9.6 L2.8,5 Z" fill="#7F8EA0"/>
+    </marker>
+  </defs>
+  <rect width="1140" height="668" rx="14" fill="#FBFAF6"/>
+  <text x="32.0" y="42.0" class="title" text-anchor="start" xml:space="preserve">The high-level design</text>
+  <text x="32.0" y="63.0" class="lede" text-anchor="start" xml:space="preserve">A request travels from left to right. Follow the numbers from 0 to 7.</text>
+  <rect x="550" y="150" width="220" height="224" rx="16" fill="#F3F1EA" stroke="#E4E0D4" stroke-width="1.2"/>
+  <rect x="568" y="139" width="83.1" height="22" rx="11" fill="#1B2430"/>
+  <text x="609.5" y="154.2" class="tab" text-anchor="middle" style="fill:#FFFFFF" xml:space="preserve">ROUTERS</text>
+  <rect x="830" y="150" width="270" height="320" rx="16" fill="#F3F1EA" stroke="#E4E0D4" stroke-width="1.2"/>
+  <rect x="848" y="139" width="232.5" height="22" rx="11" fill="#1B2430"/>
+  <text x="964.3" y="154.2" class="tab" text-anchor="middle" style="fill:#FFFFFF" xml:space="preserve">STORAGE NODES: 24 MACHINES</text>
+  <rect x="40" y="232" width="190" height="50" rx="12" fill="#FFFFFF" stroke="#D5DBE3" stroke-width="1.3" filter="url(#lift)"/>
+  <path d="M52,232.7 H46 V281.3 H52 A11.3,11.3 0 0 1 40.7,270 V244 A11.3,11.3 0 0 1 52,232.7 Z" fill="#2F6FDB"/>
+  <rect x="56" y="241.0" width="32" height="32" rx="8" fill="#EAF1FD"/>
+  <g transform="translate(62.0,247.0) scale(0.8333)"><path d="M5 4h14a1 1 0 0 1 1 1v10H4V5a1 1 0 0 1 1-1zm1 2v7h12V6zM2 16.5h20V18a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2z" fill="#2F6FDB" fill-rule="evenodd"/></g>
+  <text x="98.0" y="253.0" class="name" text-anchor="start" xml:space="preserve">Applications</text>
+  <text x="98.0" y="271.0" class="sub" text-anchor="start" xml:space="preserve">HTTP clients</text>
+  <rect x="290" y="232" width="200" height="50" rx="12" fill="#FFFFFF" stroke="#D5DBE3" stroke-width="1.3" filter="url(#lift)"/>
+  <path d="M302,232.7 H296 V281.3 H302 A11.3,11.3 0 0 1 290.7,270 V244 A11.3,11.3 0 0 1 302,232.7 Z" fill="#7F8EA0"/>
+  <rect x="306" y="241.0" width="32" height="32" rx="8" fill="#F1F4F7"/>
+  <g transform="translate(312.0,247.0) scale(0.8333)"><path d="M7 4 2 9l5 5v-3.5h9V8H7zm10 6v3.5H8V16h9v3.5l5-5z" fill="#7F8EA0" fill-rule="evenodd"/></g>
+  <text x="348.0" y="253.0" class="name" text-anchor="start" xml:space="preserve">Load balancer</text>
+  <text x="348.0" y="271.0" class="sub" text-anchor="start" xml:space="preserve">spreads requests</text>
+  <rect x="564" y="172" width="192" height="50" rx="12" fill="#FFFFFF" stroke="#D5DBE3" stroke-width="1.3" filter="url(#lift)"/>
+  <path d="M576,172.7 H570 V221.3 H576 A11.3,11.3 0 0 1 564.7,210 V184 A11.3,11.3 0 0 1 576,172.7 Z" fill="#2F6FDB"/>
+  <rect x="580" y="181.0" width="32" height="32" rx="8" fill="#EAF1FD"/>
+  <g transform="translate(586.0,187.0) scale(0.8333)"><path d="M10 2h4v4h-4zM2 15h5v5H2zM17 15h5v5h-5zM3.6 15a8.4 8.4 0 0 1 16.8 0h-1.8a6.6 6.6 0 0 0-13.2 0z" fill="#2F6FDB" fill-rule="evenodd"/></g>
+  <text x="622.0" y="193.0" class="name" text-anchor="start" xml:space="preserve">router 1</text>
+  <text x="622.0" y="211.0" class="sub" text-anchor="start" xml:space="preserve">stateless</text>
+  <rect x="564" y="236" width="192" height="50" rx="12" fill="#FFFFFF" stroke="#D5DBE3" stroke-width="1.3" filter="url(#lift)"/>
+  <path d="M576,236.7 H570 V285.3 H576 A11.3,11.3 0 0 1 564.7,274 V248 A11.3,11.3 0 0 1 576,236.7 Z" fill="#2F6FDB"/>
+  <rect x="580" y="245.0" width="32" height="32" rx="8" fill="#EAF1FD"/>
+  <g transform="translate(586.0,251.0) scale(0.8333)"><path d="M10 2h4v4h-4zM2 15h5v5H2zM17 15h5v5h-5zM3.6 15a8.4 8.4 0 0 1 16.8 0h-1.8a6.6 6.6 0 0 0-13.2 0z" fill="#2F6FDB" fill-rule="evenodd"/></g>
+  <text x="622.0" y="257.0" class="name" text-anchor="start" xml:space="preserve">router 2</text>
+  <text x="622.0" y="275.0" class="sub" text-anchor="start" xml:space="preserve">stateless</text>
+  <rect x="564" y="300" width="192" height="50" rx="12" fill="#FFFFFF" stroke="#D5DBE3" stroke-width="1.3" filter="url(#lift)"/>
+  <path d="M576,300.7 H570 V349.3 H576 A11.3,11.3 0 0 1 564.7,338 V312 A11.3,11.3 0 0 1 576,300.7 Z" fill="#2F6FDB"/>
+  <rect x="580" y="309.0" width="32" height="32" rx="8" fill="#EAF1FD"/>
+  <g transform="translate(586.0,315.0) scale(0.8333)"><path d="M10 2h4v4h-4zM2 15h5v5H2zM17 15h5v5h-5zM3.6 15a8.4 8.4 0 0 1 16.8 0h-1.8a6.6 6.6 0 0 0-13.2 0z" fill="#2F6FDB" fill-rule="evenodd"/></g>
+  <text x="622.0" y="321.0" class="name" text-anchor="start" xml:space="preserve">router 3</text>
+  <text x="622.0" y="339.0" class="sub" text-anchor="start" xml:space="preserve">stateless</text>
+  <rect x="844" y="172" width="222" height="50" rx="12" fill="#FFFFFF" stroke="#D5DBE3" stroke-width="1.3" filter="url(#lift)"/>
+  <path d="M856,172.7 H850 V221.3 H856 A11.3,11.3 0 0 1 844.7,210 V184 A11.3,11.3 0 0 1 856,172.7 Z" fill="#B7791F"/>
+  <rect x="860" y="181.0" width="32" height="32" rx="8" fill="#FBF1DC"/>
+  <g transform="translate(866.0,187.0) scale(0.8333)"><path d="M8 2h2v3h4V2h2v3h2a1 1 0 0 1 1 1v2h3v2h-3v4h3v2h-3v2a1 1 0 0 1-1 1h-2v3h-2v-3h-4v3H8v-3H6a1 1 0 0 1-1-1v-2H2v-2h3v-4H2V8h3V6a1 1 0 0 1 1-1h2zM7 7v10h10V7zm2.5 2.5h5v5h-5z" fill="#B7791F" fill-rule="evenodd"/></g>
+  <text x="902.0" y="193.0" class="name" text-anchor="start" xml:space="preserve">node-10</text>
+  <text x="902.0" y="211.0" class="sub" text-anchor="start" xml:space="preserve">leader, log on disk</text>
+  <rect x="844" y="258" width="222" height="50" rx="12" fill="#FFFFFF" stroke="#D5DBE3" stroke-width="1.3" filter="url(#lift)"/>
+  <path d="M856,258.7 H850 V307.3 H856 A11.3,11.3 0 0 1 844.7,296 V270 A11.3,11.3 0 0 1 856,258.7 Z" fill="#1F8A70"/>
+  <rect x="860" y="267.0" width="32" height="32" rx="8" fill="#E4F4EF"/>
+  <g transform="translate(866.0,273.0) scale(0.8333)"><path d="M8 2h2v3h4V2h2v3h2a1 1 0 0 1 1 1v2h3v2h-3v4h3v2h-3v2a1 1 0 0 1-1 1h-2v3h-2v-3h-4v3H8v-3H6a1 1 0 0 1-1-1v-2H2v-2h3v-4H2V8h3V6a1 1 0 0 1 1-1h2zM7 7v10h10V7zm2.5 2.5h5v5h-5z" fill="#1F8A70" fill-rule="evenodd"/></g>
+  <text x="902.0" y="279.0" class="name" text-anchor="start" xml:space="preserve">node-1</text>
+  <text x="902.0" y="297.0" class="sub" text-anchor="start" xml:space="preserve">follower, log on disk</text>
+  <rect x="844" y="334" width="222" height="50" rx="12" fill="#FFFFFF" stroke="#D5DBE3" stroke-width="1.3" filter="url(#lift)"/>
+  <path d="M856,334.7 H850 V383.3 H856 A11.3,11.3 0 0 1 844.7,372 V346 A11.3,11.3 0 0 1 856,334.7 Z" fill="#1F8A70"/>
+  <rect x="860" y="343.0" width="32" height="32" rx="8" fill="#E4F4EF"/>
+  <g transform="translate(866.0,349.0) scale(0.8333)"><path d="M8 2h2v3h4V2h2v3h2a1 1 0 0 1 1 1v2h3v2h-3v4h3v2h-3v2a1 1 0 0 1-1 1h-2v3h-2v-3h-4v3H8v-3H6a1 1 0 0 1-1-1v-2H2v-2h3v-4H2V8h3V6a1 1 0 0 1 1-1h2zM7 7v10h10V7zm2.5 2.5h5v5h-5z" fill="#1F8A70" fill-rule="evenodd"/></g>
+  <text x="902.0" y="355.0" class="name" text-anchor="start" xml:space="preserve">node-6</text>
+  <text x="902.0" y="373.0" class="sub" text-anchor="start" xml:space="preserve">follower, log on disk</text>
+  <rect x="844" y="412" width="38" height="16" rx="4" fill="#F1F4F7" stroke="#C9D3DF" stroke-width="1"/><circle cx="874" cy="420" r="2.2" fill="#5FD38D"/><rect x="890" y="412" width="38" height="16" rx="4" fill="#F1F4F7" stroke="#C9D3DF" stroke-width="1"/><circle cx="920" cy="420" r="2.2" fill="#5FD38D"/><rect x="936" y="412" width="38" height="16" rx="4" fill="#F1F4F7" stroke="#C9D3DF" stroke-width="1"/><circle cx="966" cy="420" r="2.2" fill="#5FD38D"/><rect x="982" y="412" width="38" height="16" rx="4" fill="#F1F4F7" stroke="#C9D3DF" stroke-width="1"/><circle cx="1012" cy="420" r="2.2" fill="#5FD38D"/><rect x="1028" y="412" width="38" height="16" rx="4" fill="#F1F4F7" stroke="#C9D3DF" stroke-width="1"/><circle cx="1058" cy="420" r="2.2" fill="#5FD38D"/>
+  <text x="844.0" y="452.0" class="sub" text-anchor="start" xml:space="preserve">21 more nodes hold the other shards</text>
+  <rect x="564" y="64" width="192" height="50" rx="12" fill="#FFFFFF" stroke="#D5DBE3" stroke-width="1.3" filter="url(#lift)"/>
+  <path d="M576,64.7 H570 V113.3 H576 A11.3,11.3 0 0 1 564.7,102 V76 A11.3,11.3 0 0 1 576,64.7 Z" fill="#5E9400"/>
+  <rect x="580" y="73.0" width="32" height="32" rx="8" fill="#EEF6DC"/>
+  <g transform="translate(586.0,79.0) scale(0.8333)"><path d="M12 2 2 7l10 5 10-5zm-7.8 8.6L2 11.7l10 5 10-5-2.2-1.1L12 14.5zm0 4.7L2 16.4l10 5 10-5-2.2-1.1L12 19.2z" fill="#5E9400" fill-rule="evenodd"/></g>
+  <text x="622.0" y="85.0" class="name" text-anchor="start" xml:space="preserve">Coordinator</text>
+  <text x="622.0" y="103.0" class="sub" text-anchor="start" xml:space="preserve">holds the ring</text>
+  <rect x="564" y="412" width="192" height="50" rx="12" fill="#FFFFFF" stroke="#D5DBE3" stroke-width="1.3" filter="url(#lift)"/>
+  <path d="M576,412.7 H570 V461.3 H576 A11.3,11.3 0 0 1 564.7,450 V424 A11.3,11.3 0 0 1 576,412.7 Z" fill="#CF4526"/>
+  <rect x="580" y="421.0" width="32" height="32" rx="8" fill="#FCEBE6"/>
+  <g transform="translate(586.0,427.0) scale(0.8333)"><path d="M12 5c5 0 8.5 3.5 10 7-1.5 3.5-5 7-10 7S3.5 15.5 2 12c1.5-3.5 5-7 10-7zm0 3a4 4 0 1 0 0 8 4 4 0 0 0 0-8zm0 2.2a1.8 1.8 0 1 1 0 3.6 1.8 1.8 0 0 1 0-3.6z" fill="#CF4526" fill-rule="evenodd"/></g>
+  <text x="622.0" y="433.0" class="name" text-anchor="start" xml:space="preserve">Monitoring</text>
+  <text x="622.0" y="451.0" class="sub" text-anchor="start" xml:space="preserve">health, metrics</text>
+  <text x="40.0" y="520.0" class="tab" text-anchor="start" xml:space="preserve">THE PATH OF A WRITE</text>
+  <text x="72.0" y="552.0" class="note" text-anchor="start" style="fill:#1B2430" xml:space="preserve">Routers hold a copy of the ring, sent by the coordinator.</text>
+  <text x="72.0" y="578.0" class="note" text-anchor="start" style="fill:#1B2430" xml:space="preserve">An application sends PUT /v1/keys/user-1.</text>
+  <text x="72.0" y="604.0" class="note" text-anchor="start" style="fill:#1B2430" xml:space="preserve">The load balancer passes it to a healthy router.</text>
+  <text x="72.0" y="630.0" class="note" text-anchor="start" style="fill:#1B2430" xml:space="preserve">The router hashes the key and finds the leader, node-10.</text>
+  <text x="620.0" y="552.0" class="note" text-anchor="start" style="fill:#1B2430" xml:space="preserve">node-10 stores the record in its log, on disk.</text>
+  <text x="620.0" y="578.0" class="note" text-anchor="start" style="fill:#1B2430" xml:space="preserve">node-10 sends the record to node-1 and node-6.</text>
+  <text x="620.0" y="604.0" class="note" text-anchor="start" style="fill:#1B2430" xml:space="preserve">When 1 of them has stored it, node-10 answers 201 Created.</text>
+  <text x="620.0" y="630.0" class="note" text-anchor="start" style="fill:#1B2430" xml:space="preserve">The answer returns the way the request came.</text>
+  <path class="wire" d="M230,257 L284.5,257.0" marker-end="url(#head)"/>
+  <path class="wire" d="M490,257 L544.5,257.0" marker-end="url(#head)"/>
+  <path class="wire" d="M770,197 L838.5,197.0" marker-end="url(#head)"/>
+  <path class="wire" d="M930,222 L930.0,252.5" marker-end="url(#head)"/>
+  <path class="wire" d="M1066,197 L1077,197 Q1086,197 1086,206 L1086,350 Q1086,359 1077,359 L1071.5,359.0" marker-end="url(#head)"/>
+  <path class="wire idle" d="M660,114 L660.0,144.5" marker-end="url(#head-idle)"/>
+  <path class="wire idle" d="M756,437 L824.5,437.0" marker-end="url(#head-idle)"/>
+  <circle cx="260" cy="239" r="10" fill="#1B2430" stroke="#FFFFFF" stroke-width="2"/>
+  <text x="260.0" y="243.0" class="pill" text-anchor="middle" style="fill:#FFFFFF" xml:space="preserve">1</text>
+  <circle cx="520" cy="239" r="10" fill="#1B2430" stroke="#FFFFFF" stroke-width="2"/>
+  <text x="520.0" y="243.0" class="pill" text-anchor="middle" style="fill:#FFFFFF" xml:space="preserve">2</text>
+  <circle cx="807" cy="179" r="10" fill="#1B2430" stroke="#FFFFFF" stroke-width="2"/>
+  <text x="807.0" y="183.0" class="pill" text-anchor="middle" style="fill:#FFFFFF" xml:space="preserve">3</text>
+  <circle cx="868" cy="240" r="10" fill="#1B2430" stroke="#FFFFFF" stroke-width="2"/>
+  <text x="868.0" y="244.0" class="pill" text-anchor="middle" style="fill:#FFFFFF" xml:space="preserve">4</text>
+  <circle cx="952" cy="240" r="10" fill="#1B2430" stroke="#FFFFFF" stroke-width="2"/>
+  <text x="952.0" y="244.0" class="pill" text-anchor="middle" style="fill:#FFFFFF" xml:space="preserve">5</text>
+  <circle cx="1086" cy="278" r="10" fill="#1B2430" stroke="#FFFFFF" stroke-width="2"/>
+  <text x="1086.0" y="282.0" class="pill" text-anchor="middle" style="fill:#FFFFFF" xml:space="preserve">5</text>
+  <circle cx="684" cy="132" r="10" fill="#1B2430" stroke="#FFFFFF" stroke-width="2"/>
+  <text x="684.0" y="136.0" class="pill" text-anchor="middle" style="fill:#FFFFFF" xml:space="preserve">0</text>
+  <circle cx="52" cy="548" r="10" fill="#1B2430" stroke="#FFFFFF" stroke-width="2"/>
+  <text x="52.0" y="552.0" class="pill" text-anchor="middle" style="fill:#FFFFFF" xml:space="preserve">0</text>
+  <circle cx="52" cy="574" r="10" fill="#1B2430" stroke="#FFFFFF" stroke-width="2"/>
+  <text x="52.0" y="578.0" class="pill" text-anchor="middle" style="fill:#FFFFFF" xml:space="preserve">1</text>
+  <circle cx="52" cy="600" r="10" fill="#1B2430" stroke="#FFFFFF" stroke-width="2"/>
+  <text x="52.0" y="604.0" class="pill" text-anchor="middle" style="fill:#FFFFFF" xml:space="preserve">2</text>
+  <circle cx="52" cy="626" r="10" fill="#1B2430" stroke="#FFFFFF" stroke-width="2"/>
+  <text x="52.0" y="630.0" class="pill" text-anchor="middle" style="fill:#FFFFFF" xml:space="preserve">3</text>
+  <circle cx="600" cy="548" r="10" fill="#1B2430" stroke="#FFFFFF" stroke-width="2"/>
+  <text x="600.0" y="552.0" class="pill" text-anchor="middle" style="fill:#FFFFFF" xml:space="preserve">4</text>
+  <circle cx="600" cy="574" r="10" fill="#1B2430" stroke="#FFFFFF" stroke-width="2"/>
+  <text x="600.0" y="578.0" class="pill" text-anchor="middle" style="fill:#FFFFFF" xml:space="preserve">5</text>
+  <circle cx="600" cy="600" r="10" fill="#1B2430" stroke="#FFFFFF" stroke-width="2"/>
+  <text x="600.0" y="604.0" class="pill" text-anchor="middle" style="fill:#FFFFFF" xml:space="preserve">6</text>
+  <circle cx="600" cy="626" r="10" fill="#1B2430" stroke="#FFFFFF" stroke-width="2"/>
+  <text x="600.0" y="630.0" class="pill" text-anchor="middle" style="fill:#FFFFFF" xml:space="preserve">7</text>
+</svg>

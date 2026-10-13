@@ -1,0 +1,17 @@
+$ kill -9 <pid of the node on port 7002> <pid of the node on port 7003>
+$ curl -o /dev/null -w '%{http_code} in %{time_total} s\n' -X PUT http://127.0.0.1:7001/v1/keys/alone --data-binary 'x'
+503 in 1.011346 s
+$ curl -X PUT http://127.0.0.1:7001/v1/keys/alone2 --data-binary 'x'
+{"type":"/problems/store-unavailable","title":"The node cannot serve the request","status":503,"detail":"record 701 is not on a majority of the replicas"}
+$ curl http://127.0.0.1:7001/v1/keys/key-000001
+{"type":"/problems/store-unavailable","title":"The node cannot serve the request","status":503,"detail":"this leader cannot reach a majority of the replicas"}
+$ curl http://127.0.0.1:7001/healthz
+{"role":"leader","term":1,"last_sequence":701,"committed":700,"followers":[700,700]}
+
+$ ./target/release/kvnode --role follower --listen 127.0.0.1:7003 --replication 127.0.0.1:7103 --data /var/tmp/n3 &
+$ curl http://127.0.0.1:7001/healthz
+{"role":"leader","term":1,"last_sequence":701,"committed":701,"followers":[700,701]}
+$ curl -o /dev/null -w '%{http_code}\n' http://127.0.0.1:7001/v1/keys/alone
+200
+$ curl -o /dev/null -w '%{http_code}\n' -X PUT http://127.0.0.1:7001/v1/keys/after --data-binary 'x'
+201

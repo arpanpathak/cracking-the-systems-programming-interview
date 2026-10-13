@@ -1,0 +1,66 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="18 14 444 538" width="444" height="538" role="img" aria-label="The same ring after node E joins with the token 50. Before, positions 38 to 62 belonged to C. E takes positions 38 to 50. 13 of the 100 positions change owner, all of them from C to E, and the keys on A, B and D and the keys at 51 to 62 on C stay in place. With hash mod N, going from 4 to 5 nodes moves 80 of 100.">
+  <style>
+    text { font-family: Inter, "Segoe UI", "Helvetica Neue", Helvetica, Arial, sans-serif; fill: #1B2430; }
+    .title { font-size: 18px; font-weight: 650; }
+    .lede { font-size: 12.5px; fill: #5D6B7A; }
+    .name { font-size: 14px; font-weight: 650; }
+    .sub { font-size: 12px; fill: #5D6B7A; }
+    .note { font-size: 12px; fill: #5D6B7A; }
+    .tab { font-size: 11.5px; font-weight: 650; letter-spacing: 0.04em; fill: #5D6B7A; }
+    .mono { font-family: "JetBrains Mono", "SF Mono", Menlo, Consolas, monospace; font-size: 12px; }
+    .dim { fill: #8794A3; }
+    .strong { font-weight: 700; }
+    .trap { fill: #CF4526; font-weight: 700; }
+    .pill { font-size: 11px; font-weight: 600; }
+    .wire { fill: none; stroke: #3F5873; stroke-width: 2.4; stroke-linecap: butt; stroke-linejoin: round; }
+    .wire.danger { stroke: #CF4526; stroke-dasharray: 6 5; }
+    .wire.idle { stroke: #7F8EA0; stroke-dasharray: 2 5; }
+  </style>
+  <defs>
+    <filter id="lift" x="-10%" y="-10%" width="120%" height="135%">
+      <feDropShadow dx="0" dy="2" stdDeviation="3" flood-color="#1B2430" flood-opacity="0.13"/>
+    </filter>
+    <linearGradient id="thor-body" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#C6CCD5"/><stop offset="1" stop-color="#979EA9"/>
+    </linearGradient>
+    <linearGradient id="switch-body" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#3B4656"/><stop offset="1" stop-color="#232B37"/>
+    </linearGradient>
+    <marker id="head" viewBox="0 0 12 10" refX="8" refY="5" markerUnits="userSpaceOnUse" markerWidth="16" markerHeight="13.3" orient="auto">
+      <path d="M0,0.4 L12,5 L0,9.6 L2.8,5 Z" fill="#3F5873"/>
+    </marker>
+    <marker id="head-danger" viewBox="0 0 12 10" refX="8" refY="5" markerUnits="userSpaceOnUse" markerWidth="16" markerHeight="13.3" orient="auto">
+      <path d="M0,0.4 L12,5 L0,9.6 L2.8,5 Z" fill="#CF4526"/>
+    </marker>
+    <marker id="head-idle" viewBox="0 0 12 10" refX="8" refY="5" markerUnits="userSpaceOnUse" markerWidth="16" markerHeight="13.3" orient="auto">
+      <path d="M0,0.4 L12,5 L0,9.6 L2.8,5 Z" fill="#7F8EA0"/>
+    </marker>
+  </defs>
+  <rect width="480" height="558" rx="14" fill="#FBFAF6"/>
+  <text x="32.0" y="42.0" class="title" text-anchor="start" xml:space="preserve">A node joins ring</text>
+  <text x="32.0" y="63.0" class="lede" text-anchor="start" xml:space="preserve">Only arc before new token changes owner.</text>
+  <circle cx="240" cy="262" r="126" fill="none" stroke="#D5DBE3" stroke-width="10"/>
+  <path d="M331.9,348.3 A126,126 0 0 1 240.0,388.0" fill="none" stroke="#CF4526" stroke-width="10" stroke-linecap="butt" opacity="0.55"/>
+  <circle cx="326.3" cy="170.1" r="13" fill="#EAF1FD" stroke="#2F6FDB" stroke-width="2"/>
+  <text x="326.3" y="174.6" class="pill" text-anchor="middle" style="fill:#2F6FDB" xml:space="preserve">A</text>
+  <text x="346.8" y="152.3" class="mono dim" text-anchor="middle" xml:space="preserve">12</text>
+  <circle cx="331.9" cy="348.3" r="13" fill="#FBF1DC" stroke="#B7791F" stroke-width="2"/>
+  <text x="331.9" y="352.8" class="pill" text-anchor="middle" style="fill:#B7791F" xml:space="preserve">B</text>
+  <text x="353.7" y="372.8" class="mono dim" text-anchor="middle" xml:space="preserve">37</text>
+  <circle cx="153.7" cy="353.9" r="13" fill="#E4F4EF" stroke="#1F8A70" stroke-width="2"/>
+  <text x="153.7" y="358.4" class="pill" text-anchor="middle" style="fill:#1F8A70" xml:space="preserve">C</text>
+  <text x="133.2" y="379.7" class="mono dim" text-anchor="middle" xml:space="preserve">62</text>
+  <circle cx="148.1" cy="175.7" r="13" fill="#F0EAFB" stroke="#7A4FD0" stroke-width="2"/>
+  <text x="148.1" y="180.2" class="pill" text-anchor="middle" style="fill:#7A4FD0" xml:space="preserve">D</text>
+  <text x="126.3" y="159.2" class="mono dim" text-anchor="middle" xml:space="preserve">87</text>
+  <circle cx="240.0" cy="388.0" r="13" fill="#FCEBE6" stroke="#CF4526" stroke-width="2"/>
+  <text x="240.0" y="392.5" class="pill" text-anchor="middle" style="fill:#CF4526" xml:space="preserve">E</text>
+  <text x="240.0" y="422.0" class="mono dim" text-anchor="middle" xml:space="preserve">50</text>
+  <text x="240.0" y="258.0" class="sub" text-anchor="middle" xml:space="preserve">E joins</text>
+  <text x="240.0" y="275.0" class="sub" text-anchor="middle" xml:space="preserve">at 50</text>
+  <text x="32.0" y="468.0" class="sub" text-anchor="start" xml:space="preserve">Before E joined, positions 38 to 62 belonged to C.</text>
+  <text x="32.0" y="485.0" class="sub" text-anchor="start" xml:space="preserve">E takes positions 38 to 50, shaded arc.</text>
+  <text x="32.0" y="502.0" class="sub" text-anchor="start" xml:space="preserve">13 of 100 positions change owner, all of them from C to E.</text>
+  <text x="32.0" y="519.0" class="sub" text-anchor="start" xml:space="preserve">Keys on A, B and D, and keys at 51 to 62 on C, stay in place.</text>
+  <text x="32.0" y="536.0" class="sub" text-anchor="start" xml:space="preserve">With hash mod N, going from 4 to 5 nodes moves 80 of 100.</text>
+</svg>

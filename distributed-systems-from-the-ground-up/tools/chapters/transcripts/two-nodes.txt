@@ -1,0 +1,16 @@
+node-a$ scp target/release/kvd node-b:/tmp/kvd
+node-b$ /tmp/kvd --listen 0.0.0.0:7001 --data /tmp/kvd-data &
+recovered 0 keys from 0 records, cut 0 bytes from the end of the log
+listening on 0.0.0.0:7001
+
+node-a$ ./target/release/kvctl load --server http://10.0.0.2:7001 --count 5000 --acked acked.txt &
+node-b$ pkill -9 -x kvd
+write 1108 failed: io: Connection reset by peer (os error 104)
+1107 writes acknowledged
+
+node-b$ /tmp/kvd --listen 0.0.0.0:7001 --data /tmp/kvd-data &
+recovered 1107 keys from 1107 records, cut 0 bytes from the end of the log
+node-a$ ./target/release/kvctl verify --server http://10.0.0.2:7001 --acked acked.txt
+1107 acknowledged, 1107 found, 0 missing
+node-a$ curl http://10.0.0.2:7001/healthz
+{"status":"ok","keys":1107,"last_sequence":1107}
