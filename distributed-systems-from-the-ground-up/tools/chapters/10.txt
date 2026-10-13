@@ -405,6 +405,44 @@ from the storage. Its output for the fenced case reads as follows.
 
 At the end the storage holds what worker B wrote.
 
+## The design, deployed
+
+@figure lock-deploy :: The lock service as it is deployed: 3 nodes in 3 zones, and the storage that checks the tokens.
+
+The lock service is small. It has 3 nodes, 1 in each zone, which form a single
+consensus group of the kind built in chapter 4, and workers reach whichever of them
+is the leader. It needs no more machines than this, because a well-designed system
+takes locks rarely and holds them for long periods, so that the rate of requests is
+low. What the figure is chiefly meant to show is the second arrow. The workers write
+to the protected storage directly, and the lock service is not on that path at all,
+which is why the last line of defence has to be in the storage.
+
+## How real systems do it
+
+The lock service of this chapter is modelled on Chubby, which Google described in
+2006 and which is the origin of most of the vocabulary. Chubby is a small replicated
+store whose locks are leases renewed by periodic messages, and its paper makes 2
+observations that bear directly on this chapter. It introduces the *sequencer*, a
+token obtained with a lock that the holder passes to the servers it uses and that
+they check, which is the fencing token under its original name. And it reports that
+the service was designed for coarse locks held for hours or days, chiefly for
+electing leaders, and that using it for fine-grained locking is discouraged.
+
+ZooKeeper provides the queue of waiters described above as a standard recipe. Each
+waiter creates a node that is numbered in sequence and tied to its session, and
+watches only the node immediately before its own. In etcd, a lock is a key attached
+to a lease, and the revision number at which the key was created, which increases
+with every change to the store, serves as a fencing token.
+
+The approach of acquiring a lock on a majority of independent in-memory stores is
+the Redlock algorithm proposed by the author of Redis. Martin Kleppmann's analysis
+of it in 2016 set out the argument of this chapter: that a pause of the process or a
+jump of a clock can leave 2 clients each believing that it holds the lock, that no
+lease-based lock can prevent this, and that safety therefore requires fencing, which
+Redlock does not provide since it has no source of increasing numbers. The author of
+Redis replied in defence of the algorithm, and the exchange remains the clearest
+public discussion of what a distributed lock can and cannot promise.
+
 ## Mistakes to avoid
 
 | Mistake | What goes wrong | What to do |
@@ -439,6 +477,14 @@ At the end the storage holds what worker B wrote.
 ## The simulation
 
 @sim locksim
+
+## References
+
+- M. Burrows, "The Chubby Lock Service for Loosely-Coupled Distributed Systems", OSDI 2006.
+- P. Hunt and others, "ZooKeeper: Wait-free Coordination for Internet-scale Systems", USENIX ATC 2010.
+- M. Kleppmann, "How to do distributed locking", 2016.
+- S. Sanfilippo, "Is Redlock safe?", 2016.
+- C. Gray and D. Cheriton, "Leases: An Efficient Fault-Tolerant Mechanism for Distributed File Cache Consistency", SOSP 1989.
 
 ## Terms introduced in this chapter
 

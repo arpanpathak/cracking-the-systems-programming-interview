@@ -287,7 +287,7 @@ session, and page through that fixed result.
 A member publishes posts, reads the feed, and chooses whom to follow.
 
 <figure>
-<img src="figures/feed-use-cases.svg?v=4e55b5f6" alt="A use case diagram of the news feed. Member: publish a post (POST /v1/posts), read the feed (GET /v1/feed?after=), follow an account (PUT /v1/follows/{id}).">
+<img src="figures/feed-use-cases.svg?v=341e2b0c" alt="A use case diagram of the news feed. Member: publish a post (POST /v1/posts), read the feed (GET /v1/newsfeeds/{user}/posts), follow an account (PUT /v1/follows/{id}).">
 <figcaption><b>Figure 15.5</b> The actors and what each of them does.</figcaption>
 </figure>
 
@@ -348,7 +348,9 @@ disposable view of that data, which can be rebuilt whenever they are lost.
 
 ## The API
 
-Publishing creates a post. Reading the feed returns a page together with the cursor
+Publishing creates a post in the collection of posts. Every member has a news feed,
+so the feeds form a collection too, `/v1/newsfeeds`, in which a feed is identified
+by its owner, and reading a feed returns a page of its posts together with the cursor
 for the page that follows.
 
 **Publish a post**
@@ -374,7 +376,7 @@ We store the post before the response and copy it to followers afterwards.
 **Read a page of the feed**
 
 ```http
-GET /v1/feed?limit=2 HTTP/1.1
+GET /v1/newsfeeds/ada/posts?limit=2 HTTP/1.1
 Host: feed.example
 ```
 
@@ -415,13 +417,55 @@ The steps follow the arrows of figure 15.7.
 2. The post service stores the post once and puts a small task on the queue: "post 90210 by ada".
 3. A fan-out worker takes the task and looks up ada's followers.
 4. For each follower, the worker adds the post's id to that follower's list in the feed cache.
-5. A reader sends `GET /v1/feed`.
+5. A reader sends `GET /v1/newsfeeds/{user}/posts`.
 6. The feed service reads the reader's list, merges in recent posts of any very large accounts the reader follows, and fetches the posts themselves.
 
 For a reader who follows a very large account, the feed service adds 1 step to this
 path. Having read the stored list, it fetches the recent posts of each large account
 the reader follows, from a cache in which they are nearly always present, and merges
 them into the list by time before returning the page.
+
+## The design, deployed
+
+<figure class="wide">
+<img src="figures/feed-deploy.svg?v=a56764a6" alt="The news feed, deployed. Members: Members (10 million), post and read. Services, in 3 zones: Load balancers (x 4), by service, Post service (x 20), stores posts, Feed service (x 40), merges and filters. Data, in 3 zones: Feed cache (x 12), 1 list for each member, Post store (x 30), shards x 3 replicas, Follow store (x 9), who follows whom. Fan-out: Queue brokers (x 6), see chapter 11, Fan-out workers (x 60), copy to followers.">
+<figcaption><b>Figure 15.8</b> The news feed as it is deployed, with the fan-out workers as the only writers of the feed cache.</figcaption>
+</figure>
+
+The feed service is the largest stateless tier, since reads dominate, and it stands
+with the post service behind load balancers in 3 zones. Below them are 3 stores of
+different kinds: the feed cache, in memory, holding 1 list for each member, and the
+post store and follow store, both sharded and replicated across the zones. The
+fan-out workers at the bottom take 1 task for each post from the queue and are the
+only component that writes to the feed cache, which keeps the read path free of any
+concern with copying.
+
+## How real systems do it
+
+The best documented feed is Twitter's home timeline, described in a talk of 2012
+that is the source of the arrangement in this chapter. Twitter then had about 150
+million active users. Timelines were read some 300000 times per second and written
+a few thousand times per second, a ratio that settled the choice in favour of doing
+the work on writing. Every tweet was inserted, by its identifier, into a list held
+in an in-memory store for each follower, exactly as the feed lists here. The talk
+gives the aim of delivering a tweet to all followers within 5 seconds, and
+acknowledges that for accounts with tens of millions of followers this was not
+always achieved, and that the company was therefore moving to merge the tweets of
+such accounts at reading time, which is the mixture this chapter recommends.
+
+Facebook's news feed has taken the other course from the beginning. Its feed is
+assembled when it is requested, by aggregator servers that query a set of leaf
+servers holding recent activity and rank what they collect, which suits a feed that
+is ordered by predicted interest and drawn from many kinds of story. The social
+graph beneath it, who is connected to whom, is served by a system called TAO, a
+read-optimised cache over a sharded database, whose paper is the standard account
+of storing a graph of followers at scale.
+
+The 2 examples show that the choice between the schemes is not settled by size
+alone. Twitter's feed, chronological and with extremely skewed followings, favoured
+copying with an exception for the largest accounts. Facebook's, ranked and with
+bounded numbers of friends, favoured collecting. LinkedIn has described a feed for
+its own service that is likewise assembled at reading time.
 
 ## Mistakes to avoid
 
@@ -461,6 +505,13 @@ them into the list by time before returning the page.
 **Simulation in the repository.** The program [`code/feedsim`](https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/distributed-systems-from-the-ground-up/code/feedsim/src/main.rs) simulates this design. To run it, clone the repository and type `cargo run --release -p feedsim` in the `code` directory.
 
 </div>
+
+## References
+
+- R. Krikorian, "Timelines at Scale", QCon San Francisco, 2012.
+- N. Bronson and others, "TAO: Facebook's Distributed Data Store for the Social Graph", USENIX ATC 2013.
+- Facebook engineering blog, "Serving Facebook Multifeed: Efficiency, performance gains through redesign", 2015.
+- LinkedIn engineering blog, "FollowFeed: LinkedIn's Feed Made Faster and Smarter", 2016.
 
 ## Terms introduced in this chapter
 

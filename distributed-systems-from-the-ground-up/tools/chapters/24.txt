@@ -450,6 +450,52 @@ to 2 machines, each of which builds its own blocks independently. The 2 copies a
 not kept identical by any protocol, and may differ by a point here and there. For
 this data that is acceptable, and the query service merges whatever it receives.
 
+## The design, deployed
+
+@figure metrics-deploy :: The monitoring system as it is deployed, on infrastructure that it shares with nothing it watches.
+
+The system watches 100000 service instances with 60 collectors, arranged so that
+every group of services is visited by 2 of them. Each collector sends its points to
+2 nodes of the series store, which build their blocks independently, and finished
+blocks are copied to an object store. The reading tier is kept apart from the
+writing tier, with its own machines, so that a flood of queries during an incident
+cannot delay the storing of new points. The last box is the smallest and among the
+most important: a second, minimal monitor in another place, which checks nothing
+except that the first is alive.
+
+## How real systems do it
+
+The compression described in this chapter is that of Gorilla, an in-memory store
+that Facebook described in 2015. The paper introduced the 2 techniques together:
+storing each timestamp as the difference between successive differences, and
+storing each value as the result of combining its bits with those of the previous
+value, which for a floating-point number that changes little leaves mostly zeros. It
+reports an average of 1.37 bytes for each point against 16 uncompressed, a
+reduction of 12 times, which is somewhat better than the 2 bytes of the simulation
+here, whose encoding works on whole bytes. The paper also argues for the priorities
+adopted in this chapter, that a monitoring store should favour availability for
+writing and for recent reads over consistency, and should tolerate the loss of a
+small amount of data.
+
+Prometheus is the widely used system that collects by pulling, and its storage
+engine adopts Gorilla's encoding, with blocks of 2 hours that are written once and
+merged into larger blocks as they age. Google's Monarch, described in 2020, is a
+system on a far larger scale that receives pushes and keeps recent data in memory
+in every region, and its paper gives as a design principle the independence from
+other systems that this chapter set out under watching the watcher.
+
+The advice on alerts is drawn from Google's book on site reliability engineering,
+which distinguishes symptoms from causes and proposes 4 signals to watch for any
+service that answers requests: latency, traffic, errors and saturation. The danger
+of the average, and the way in which a small proportion of slow requests comes to
+affect most users of a service built from many parts, is the subject of a well
+known article by Dean and Barroso.
+
+For percentiles, fixed buckets are the simplest histogram, and better ones exist. More
+recent structures choose their buckets so that the relative error of any percentile
+is bounded, and can still be merged across machines, which removes the need to
+guess the boundaries in advance.
+
 ## Mistakes to avoid
 
 | Mistake | What goes wrong | What to do |
@@ -491,6 +537,15 @@ this data that is acceptable, and the query service merges whatever it receives.
 ## The simulation
 
 @sim metricsim
+
+## References
+
+- T. Pelkonen and others, "Gorilla: A Fast, Scalable, In-Memory Time Series Database", VLDB 2015.
+- C. Adams and others, "Monarch: Google's Planet-Scale In-Memory Time Series Database", VLDB 2020.
+- Prometheus documentation, "Storage".
+- B. Beyer and others (editors), *Site Reliability Engineering*, O'Reilly, 2016, chapter 6, "Monitoring Distributed Systems".
+- J. Dean and L. Barroso, "The Tail at Scale", Communications of the ACM, 2013.
+- C. Masson, J. Rim and H. Lee, "DDSketch: A Fast and Fully-Mergeable Quantile Sketch with Relative-Error Guarantees", VLDB 2019.
 
 ## Terms introduced in this chapter
 

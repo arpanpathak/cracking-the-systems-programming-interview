@@ -437,6 +437,54 @@ The steps follow the arrows of figure 25.5.
 4. The sync service tells the notifier that the account has a change.
 5. The notifier passes the signal to the phone over its open connection. The phone asks for the changes after its cursor, downloads the chunks it lacks from the chunk store, assembles the file, and moves its cursor forward.
 
+## The design, deployed
+
+<figure class="wide">
+<img src="figures/sync-deploy.svg?v=a21c394c" alt="The sync service, deployed. Devices: Devices (40 million online), laptops and phones. Services, in 3 zones: Load balancers (x 12), by kind of request, Sync service (x 100), compares versions, Notifiers (x 400), 1 connection per device. Storage: Metadata store (x 90), 30 shards x 3 replicas, Chunk store (1 EB), see chapter 16.">
+<figcaption><b>Figure 25.6</b> The sync service as it is deployed, with the bytes travelling directly between devices and the chunk store.</figcaption>
+</figure>
+
+The deployment separates 3 kinds of traffic that have nothing in common. Small
+requests about metadata go through load balancers to the 100 instances of the sync
+service and from there to the metadata store, which is sharded by account with 3
+replicas of each shard. Long-lived connections, 1 for every online device, are held
+by 400 notifiers, a tier of the same kind as the gateways of chapter 18. And the
+bytes of the files travel directly between the devices and the chunk store, without
+passing through either of the other tiers, which is what keeps them small.
+
+## How real systems do it
+
+Dropbox has described the protocol of its service, and it matches the outline of
+this chapter closely. A file is divided into blocks of 4 MB, each named by a
+cryptographic hash of its contents, and the list of those hashes identifies the
+contents of the file. To upload, a client sends the list to a metadata server. If
+the server lacks some of the blocks, it says which, the client sends them to a
+separate block server, and the commit is then repeated and recorded in a journal of
+changes for the account, which is the ordered list of changes from which other
+clients read with a cursor.
+
+In 1 respect the published design differs from the recommendation of this chapter,
+and the difference should be stated plainly. Dropbox's blocks are of fixed size.
+Cutting at positions determined by the content, which this chapter presents as the
+remedy for insertions, is the method of the Low-Bandwidth File System, a research
+system of 2001, and it is used today mainly by backup programs, for which
+deduplication across many versions matters most. A fixed block size is simpler, and
+a service can limit the damage of an insertion by other means, notably by
+transferring within a changed block only the differences from its previous version.
+That technique comes from rsync, whose rolling checksum is the original of the
+rolling hash described above.
+
+The cost of the rolling hash has itself been reduced. A method published in 2016
+replaces the traditional fingerprint by a much cheaper one and adjusts the
+condition for a cut so as to avoid very small and very large chunks, and reports
+chunking several times faster with nearly the same deduplication.
+
+For the storage of the blocks, Dropbox built its own system of the kind described
+in chapter 16, holding exabytes, and has described rewriting its client's
+synchronisation engine after concluding that the hardest part of the problem is
+the client, which has to reconcile the server's view with a local file system that
+other programs are changing all the time.
+
 ## Mistakes to avoid
 
 | Mistake | What goes wrong | What to do |
@@ -481,6 +529,14 @@ The steps follow the arrows of figure 25.5.
 **Simulation in the repository.** The program [`code/syncsim`](https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/distributed-systems-from-the-ground-up/code/syncsim/src/main.rs) simulates this design. To run it, clone the repository and type `cargo run --release -p syncsim` in the `code` directory.
 
 </div>
+
+## References
+
+- N. Koorapati, "Streaming File Synchronization", Dropbox tech blog, 2014.
+- A. Muthitacharoen, B. Chen and D. Mazieres, "A Low-bandwidth Network File System", SOSP 2001.
+- A. Tridgell and P. Mackerras, "The rsync algorithm", Australian National University technical report, 1996.
+- W. Xia and others, "FastCDC: A Fast and Efficient Content-Defined Chunking Approach for Data Deduplication", USENIX ATC 2016.
+- Dropbox tech blog, "Rewriting the heart of our sync engine", 2020.
 
 ## Terms introduced in this chapter
 

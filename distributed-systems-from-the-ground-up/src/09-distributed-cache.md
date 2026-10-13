@@ -391,7 +391,7 @@ Services read through the cache and inform it when the data behind an entry has
 changed. Operators add and remove nodes.
 
 <figure>
-<img src="figures/cache-use-cases.svg?v=ed291d5d" alt="A use case diagram of the cache. Service: read through the cache (GET /v1/cache/{key}), store a value for a time (PUT, with a TTL), drop a stale value (DELETE /v1/cache/{key}). Operator: add a cache node (the ring gains its tokens).">
+<img src="figures/cache-use-cases.svg?v=b8f8dfff" alt="A use case diagram of the cache. Service: read through the cache (GET /v1/entries/{key}), store a value for a time (PUT, with a TTL), drop a stale value (DELETE /v1/entries/{key}). Operator: add a cache node (the ring gains its tokens).">
 <figcaption><b>Figure 9.6</b> The actors and what each of them does.</figcaption>
 </figure>
 
@@ -459,7 +459,7 @@ an entry travels in a header.
 **Store a value for 60 seconds**
 
 ```http
-PUT /v1/cache/user-42 HTTP/1.1
+PUT /v1/entries/user-42 HTTP/1.1
 Host: cache.example
 Cache-Control: max-age=60
 Content-Length: 9
@@ -476,7 +476,7 @@ After 60 seconds the entry is gone, whether or not it was read.
 **Read a value that is not cached**
 
 ```http
-GET /v1/cache/user-43 HTTP/1.1
+GET /v1/entries/user-43 HTTP/1.1
 Host: cache.example
 ```
 
@@ -517,6 +517,56 @@ when the database has confirmed, it sends `DELETE` for the key to the cache node
 owns it. If that `DELETE` fails because the node is unreachable, the entry survives
 with the old value until its TTL expires, which is the case the TTL exists for.
 
+## The design, deployed
+
+<figure class="wide">
+<img src="figures/cache-deploy.svg?v=cfb968f5" alt="The cache, deployed. Services: Service instances (x 400), cache library inside. Cache nodes, in 3 zones: Cache nodes (x 3), zone a, Cache nodes (x 3), zone b, Cache nodes (x 2), zone c. The source of truth: Database leader (x 1), takes the writes, Database followers (x 2), take the reads.">
+<figcaption><b>Figure 9.9</b> The cache as it is deployed: a library in every service, 8 cache nodes in 3 zones, and the database behind them.</figcaption>
+</figure>
+
+The deployment has a feature that distinguishes it from most others in this book,
+which is the absence of a load balancer. Each of the 400 service instances contains
+the cache library with its copy of the ring, and sends every request directly to the
+1 cache node that owns the key. The 8 nodes are spread over 3 zones. With a hit
+ratio of 99%, about 2000 of the 200000 reads per second go on to the database, whose
+followers serve them. The figure makes the dependence plain: the database tier is
+sized for the traffic that passes the cache, and would receive 100 times as much if
+the cache tier were lost.
+
+## How real systems do it
+
+The most thorough public account of a cache at scale is Facebook's paper on its use
+of memcached, and nearly every difficulty in this chapter appears in it with the
+remedy that Facebook adopted.
+
+The stale value left by an overlapping read and write, and the stampede on a missing
+entry, are both solved there by 1 mechanism, the *lease*. On a miss, the cache gives
+the client a token that entitles it to fill the entry. A delete invalidates any
+outstanding token, so that a late fill with an old value is rejected, which is the
+conditional store described above. And the cache issues a token for a given key only
+at intervals, telling other clients that miss in the meantime to wait briefly and try
+again, which prevents the stampede. The paper reports that leases reduced the peak
+rate of database queries for a set of keys prone to stampedes from 17000 per second
+to 1300.
+
+The paper also describes what it does about the avalanche. When a cache server
+fails, its keys are not moved to the remaining servers, which might then be
+overloaded in turn. Requests for them go to a small set of idle machines kept for the
+purpose, called the gutter. Invalidation is driven from the database's own log of
+committed changes, which is more dependable than relying on every application to
+issue its deletes, and a cluster that starts empty is warmed by reading from a
+neighbouring cluster's cache before it is allowed to reach the database.
+
+On eviction, the rule of sampling a few entries and removing the least recently used
+among them is what Redis does by default, with 5 samples. The admission policy that
+compares the estimated frequency of a newcomer with that of the entry it would
+replace is TinyLFU, implemented in the Caffeine library. A study of the cache
+clusters at Twitter found, among other things, that for many workloads at realistic
+cache sizes plain first in, first out performed about as well as LRU, which has
+since led to a family of simple queue-based policies. The technique of refreshing an
+entry early with a probability that rises towards its expiry has been analysed
+formally and shown to be optimal in a certain sense.
+
 ## Mistakes to avoid
 
 | Mistake | What goes wrong | What to do |
@@ -556,6 +606,15 @@ with the old value until its TTL expires, which is the case the TTL exists for.
 **Simulation in the repository.** The program [`code/cachesim`](https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/distributed-systems-from-the-ground-up/code/cachesim/src/main.rs) simulates this design. To run it, clone the repository and type `cargo run --release -p cachesim` in the `code` directory.
 
 </div>
+
+## References
+
+- R. Nishtala and others, "Scaling Memcache at Facebook", NSDI 2013.
+- G. Einziger, R. Friedman and B. Manes, "TinyLFU: A Highly Efficient Cache Admission Policy", ACM Transactions on Storage, 2017.
+- J. Yang, Y. Yue and K. Rashmi, "A Large Scale Analysis of Hundreds of In-memory Cache Clusters at Twitter", OSDI 2020.
+- A. Vattani, F. Chierichetti and K. Lowenstein, "Optimal Probabilistic Cache Stampede Prevention", VLDB 2015.
+- Redis documentation, "Key eviction", on approximated LRU.
+- B. Bloom, "Space/Time Trade-offs in Hash Coding with Allowable Errors", Communications of the ACM, 1970.
 
 ## Terms introduced in this chapter
 

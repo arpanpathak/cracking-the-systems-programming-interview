@@ -507,6 +507,55 @@ The steps follow the arrows of figure 20.6.
 3. The buyer submits payment. The API first extends the hold, conditionally, and then asks the payment system to charge the buyer. When the charge succeeds, the API sends a second conditional write: set A1 to sold to this buyer, provided that it is still held by them.
 4. Independently of any request, holds whose time has passed are cleared from the records. No sale depends on this, since an expired hold is already treated as free.
 
+## The design, deployed
+
+<figure class="wide">
+<img src="figures/booking-deploy.svg?v=5d0e03a6" alt="The booking system, deployed. Buyers: Buyers (33000 arrivals/s), at the opening of a sale. In front of the sale: Edge servers (x 100s), serve the waiting page, Waiting room (x 6), positions and tokens. Booking, in 3 zones: Load balancers (x 2), any API node, Booking API (x 20), conditional writes, Seat map cache (x 4), up to 2 s old. State: Seat store (x 9), by show, x 3 replicas, Payment system (its own tier), see chapter 19.">
+<figcaption><b>Figure 20.7</b> The booking system as it is deployed, with the waiting room holding the crowd above the booking tier.</figcaption>
+</figure>
+
+The figure shows where the load goes. At the opening of a great sale, 33000 people
+arrive each second, and they are met by the edge servers and the waiting room, which
+do almost no work for each of them. Only 500 a second pass through to the booking
+tier, which is an ordinary arrangement of load balancers, stateless API servers and
+a cache for the seat map. The seat store at the bottom, 3 replicas of each shard
+with shards assigned by showing, therefore sees a load that it can serve with strong
+consistency. The numbers of machines in the lower tiers do not change between an
+ordinary day and the largest sale.
+
+## How real systems do it
+
+The mechanisms of this chapter are those of database practice more than of any 1
+published system, and the references are accordingly to the foundations.
+
+Optimistic concurrency control, the method of proceeding without locks and checking
+at the moment of writing whether anything has changed, was set out in a paper of
+1981 that also states the condition for preferring it, which is that conflicts be
+rare. A sale in which hundreds of buyers want the same seat does not meet that
+condition for the popular seats, and the consequence is the one this chapter
+accepts: most of those buyers are refused and choose again. Systems that cannot
+accept this lock in advance, or avoid the contention altogether by assigning seats
+to buyers, on the principle of "best available", so that buyers do not choose.
+
+For sales in which stock is a count, a pattern often described for the largest
+shopping events takes the deduction out of the database altogether during the peak.
+The remaining stock of each item is held in an in-memory store, a purchase is a
+small script that checks and decrements it atomically, and the orders are written to
+the database afterwards from a queue. This is the conditional update of this
+chapter, moved to a faster store, at the cost of a period in which the 2 stores have
+to be reconciled.
+
+The waiting room is offered as a product by several content delivery networks, and
+their descriptions match the design here: a queue held at the edge, a signed cookie
+or token for those admitted, a controlled rate of admission, and a choice between
+admitting in order of arrival and admitting at random from those present when the
+sale opens. The random choice exists for the reason given above, that order of
+arrival in the first second measures the speed of connections and of programs.
+
+Deliberate overbooking is studied under the name of revenue management, and the
+airlines' practice rests on decades of statistics about how many passengers fail to
+appear on each route.
+
 ## Mistakes to avoid
 
 | Mistake | What goes wrong | What to do |
@@ -553,6 +602,14 @@ The steps follow the arrows of figure 20.6.
 **Simulation in the repository.** The program [`code/bookingsim`](https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/distributed-systems-from-the-ground-up/code/bookingsim/src/main.rs) simulates this design. To run it, clone the repository and type `cargo run --release -p bookingsim` in the `code` directory.
 
 </div>
+
+## References
+
+- H. Kung and J. Robinson, "On Optimistic Methods for Concurrency Control", ACM Transactions on Database Systems, 1981.
+- PostgreSQL documentation, "Explicit Locking", on `SELECT ... FOR UPDATE`.
+- Cloudflare documentation, "Waiting Room", on queueing methods.
+- K. Talluri and G. van Ryzin, *The Theory and Practice of Revenue Management*, Springer, 2004.
+- RFC 9110, *HTTP Semantics*, 2022, for status 409.
 
 ## Terms introduced in this chapter
 

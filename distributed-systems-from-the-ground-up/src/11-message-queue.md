@@ -492,6 +492,50 @@ The steps follow the arrows of figure 11.8.
 3. A consumer asks the leader for messages from its committed offset onward.
 4. The consumer acts on each message. When the batch is done, it stores the new offset in the offset store.
 
+## The design, deployed
+
+<figure class="wide">
+<img src="figures/queue-deploy.svg?v=71d89ed5" alt="The message queue, deployed. Producers: Producing services (x 200), publish events. Brokers, in 3 zones: Brokers (x 4), zone a, Brokers (x 4), zone b, Brokers (x 4), zone c. Consumers: Consumer groups (x 30), 1 group for each service, Offset store (x 3), committed offsets.">
+<figcaption><b>Figure 11.9</b> The message queue as it is deployed: 12 brokers in 3 zones between the producers and the consumer groups.</figcaption>
+</figure>
+
+The 12 brokers are divided among 3 zones, and each partition has 1 replica in each
+zone. Leadership is spread evenly, so that every broker leads roughly a third of the
+partitions it holds, and the failure of a broker moves the leadership of only those.
+Producers and consumers hold a list of the brokers and connect directly to the
+leader of each partition they use, so that here too there is no load balancer on the
+path of the data. The offsets of the consumer groups are kept in a small replicated
+store of their own.
+
+## How real systems do it
+
+The log-structured queue of this chapter is Kafka, which LinkedIn described in 2011.
+The partitioned log, the offset kept by the consumer, the consumer group and the
+retention of messages by age all come from that design, as do the compaction of a
+log by key and the producer that numbers its messages so that a retry is not stored
+twice, which was added in 2017 together with transactions.
+
+In 1 respect Kafka differs from this chapter, and the difference is instructive.
+This chapter replicates a partition as chapter 3 does, confirming a message when a
+majority of replicas hold it. Kafka uses a different rule. The leader keeps a list
+of the replicas that are fully caught up, the *in-sync replicas*, and confirms a
+message when every one of them has it. A replica that falls behind is removed from
+the list, and the partition continues with those that remain. With this rule, f + 1
+replicas tolerate f failures, where a majority rule needs 2f + 1, which matters for
+a system that stores a great deal of data. The cost is that the list itself must be
+agreed upon by some other means, for which Kafka relied on ZooKeeper and now on a
+Raft-based controller of its own, and that a setting for the smallest permitted size
+of the list has to be chosen with care, since a list that has shrunk to the leader
+alone confirms messages that exist on 1 machine.
+
+The task queue described at the start of the chapter is the model of Amazon's SQS,
+whose *visibility timeout* is the period after which an unacknowledged message is
+given to another consumer, and of RabbitMQ. Pulsar separates the brokers, which
+serve requests, from the storage of the log, which is delegated to a separate
+replicated service. And the outbox pattern is commonly implemented without a relay
+process, by reading the database's own log of changes and publishing from that, a
+technique called change data capture.
+
 ## Mistakes to avoid
 
 | Mistake | What goes wrong | What to do |
@@ -531,6 +575,15 @@ The steps follow the arrows of figure 11.8.
 **Simulation in the repository.** The program [`code/queuesim`](https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/distributed-systems-from-the-ground-up/code/queuesim/src/main.rs) simulates this design. To run it, clone the repository and type `cargo run --release -p queuesim` in the `code` directory.
 
 </div>
+
+## References
+
+- J. Kreps, N. Narkhede and J. Rao, "Kafka: a Distributed Messaging System for Log Processing", NetDB 2011.
+- J. Kreps, "The Log: What every software engineer should know about real-time data's unifying abstraction", LinkedIn engineering blog, 2013.
+- Apache Kafka documentation, "Replication", on in-sync replicas.
+- Apache Kafka, KIP-98, "Exactly Once Delivery and Transactional Messaging", 2017.
+- Amazon SQS documentation, "Visibility timeout".
+- C. Richardson, *Microservices Patterns*, Manning, 2018, for the transactional outbox.
 
 ## Terms introduced in this chapter
 

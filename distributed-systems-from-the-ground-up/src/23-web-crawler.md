@@ -420,6 +420,53 @@ The steps follow the arrows of figure 23.5.
 5. The parser extracts the links, normalises them, and passes them to the link filter.
 6. The filter drops every address that is in the seen set, adds the others to the set, and sends them to the frontier, where each joins the queue of its host.
 
+## The design, deployed
+
+<figure class="wide">
+<img src="figures/crawl-deploy.svg?v=97f125a6" alt="The crawler, deployed. Control: Operator (1 crawl), seeds and rules. Crawling: Frontier machines (x 40), hosts assigned by hash, Fetchers (x 300), many connections each, Resolver cache (x 6), names to addresses. Processing: Parsers (x 60), links, checksums, Seen set (x 8), hashes or a filter, Link queue (x 6), to the owning machine. Storage: Page store (1 PB), an object store.">
+<figcaption><b>Figure 23.6</b> The crawler as it is deployed: frontier machines that each own a set of hosts, and the fetching and processing tiers around them.</figcaption>
+</figure>
+
+A crawler has no users in the ordinary sense, and its deployment is that of a
+pipeline. The 40 frontier machines are the heart of it. Each owns the hosts whose
+names hash to it, and holds their queues on disk. The 300 fetchers are stateless and
+hold thousands of connections each. Parsers, the seen set and the queue that
+forwards links to the machine owning their host form the processing tier, and the
+pages themselves go to an object store. Since the frontier is the only state that
+cannot be rebuilt quickly, it is the part that is replicated.
+
+## How real systems do it
+
+The frontier of this chapter, with queues by priority feeding queues by host, is
+the design of Mercator, a crawler built at Compaq and described in 1999. Mercator's
+paper names the 2 stages the front queues and the back queues, keeps exactly 1 back
+queue for each host being crawled, and holds a heap of the times at which each host
+may next be contacted. The paper on the original Google crawler, of the year before,
+describes a simpler arrangement and is of interest chiefly for its account of what
+went wrong when a crawler first met the real web.
+
+How far a single machine can be taken was shown by IRLbot, which crawled over 6
+billion pages in 41 days from 1 server. Its paper is largely about the 2 problems
+that this chapter treats under the seen set and the endless site. For the first it
+replaces the in-memory set by a structure on disk that checks addresses in large
+sorted batches. For the second it gives each site a budget that depends on how many
+other sites link to it, which is the allowance described above, and it argues that
+without such a budget any crawler at scale is eventually captured by sites that
+generate pages without end.
+
+The fingerprint under which similar pages receive similar values is *simhash*.
+Google described using it on a collection of 8 billion pages, with fingerprints of
+64 bits, treating 2 pages as near duplicates when their fingerprints differ in at
+most 3 bits, and the paper's main contribution is a way of finding all fingerprints
+within that distance of a given one without comparing it with every other.
+
+The convention of `robots.txt`, in use since 1994, was written down as a standard
+only in 2022. And the scheduling of revisits according to observed rates of change
+goes back to a study which showed, among other things, that revisiting every page
+equally often keeps a collection fresher than revisiting each in proportion to how
+often it changes, since pages that change constantly can never be kept fresh and
+absorb the effort.
+
 ## Mistakes to avoid
 
 | Mistake | What goes wrong | What to do |
@@ -464,6 +511,15 @@ The steps follow the arrows of figure 23.5.
 **Simulation in the repository.** The program [`code/crawlsim`](https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/distributed-systems-from-the-ground-up/code/crawlsim/src/main.rs) simulates this design. To run it, clone the repository and type `cargo run --release -p crawlsim` in the `code` directory.
 
 </div>
+
+## References
+
+- A. Heydon and M. Najork, "Mercator: A Scalable, Extensible Web Crawler", World Wide Web, 1999.
+- S. Brin and L. Page, "The Anatomy of a Large-Scale Hypertextual Web Search Engine", WWW 1998.
+- H. Lee, D. Leonard, X. Wang and D. Loguinov, "IRLbot: Scaling to 6 Billion Pages and Beyond", WWW 2008.
+- G. Manku, A. Jain and A. Das Sarma, "Detecting Near-Duplicates for Web Crawling", WWW 2007.
+- RFC 9309, *Robots Exclusion Protocol*, 2022.
+- J. Cho and H. Garcia-Molina, "Effective Page Refresh Policies for Web Crawlers", ACM Transactions on Database Systems, 2003.
 
 ## Terms introduced in this chapter
 

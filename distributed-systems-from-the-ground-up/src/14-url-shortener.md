@@ -448,6 +448,46 @@ The steps follow the arrows of figure 14.6.
 5. When an author creates a link, the web server takes the next number from the id generator and writes it in base 62.
 6. The visitor receives `301` with the long address in `Location`, and the browser goes there.
 
+## The design, deployed
+
+<figure class="wide">
+<img src="figures/shortener-deploy.svg?v=be160444" alt="The URL shortener, deployed. Visitors: Visitors (3900 redirects/s), open short links. Edge, in 3 zones: Load balancers (x 2), any web server, Web servers (x 12), hold no data. Data, in 3 zones: Cache nodes (x 6), popular links, Key-value store (x 24), 8 shards x 3 replicas, Id counter (x 3), blocks of numbers. Counting: Click queue (x 3), see chapter 11, Click counters (x 4), sum each minute.">
+<figcaption><b>Figure 14.7</b> The URL shortener as it is deployed, with the tier that counts clicks kept off the path of a redirect.</figcaption>
+</figure>
+
+Visitors reach a pair of load balancers in front of 12 web servers in 3 zones, any
+of which can answer any request. A redirect reads the cache and, on a miss, 1 of the
+8 shards of the key-value store, each of which has a replica in every zone. The
+counter that supplies numbers for new links is consulted once for each block of 1000
+and stands to 1 side. Below the line, the click queue and its counters form a
+separate tier, which a redirect writes to and never waits for. In front of all this,
+a service of this kind normally places the edge servers of a content delivery
+network, which can answer a popular redirect without reaching the origin at all.
+
+## How real systems do it
+
+The published material on URL shorteners is thinner than on most systems in this
+book, since their operators have written little about them, and this section is
+accordingly short and confined to what can be supported.
+
+The semantics of the redirects are fixed by the HTTP standard, which also defines 2
+further status codes, `307` and `308`. These are the temporary and permanent
+redirects that additionally require the browser to repeat the request with the same
+method, where `301` and `302` allow a `POST` to be turned into a `GET`. For a link
+that is only ever followed with `GET`, the difference does not arise.
+
+The scrambling of a counter described above is an instance of *format-preserving
+encryption*, a cipher whose output lies in the same range as its input. The
+construction generally used for small ranges is a Feistel network of a few rounds,
+and it should be distinguished from libraries that merely obfuscate numbers by a
+fixed shuffle of the alphabet, which resist casual inspection and do not resist
+analysis.
+
+The alphabet of 58 characters that omits the easily confused ones is known as
+Base58, and Flickr has described using it for its short addresses. The checking of
+submitted addresses against lists of harmful sites is offered as a public service by
+the makers of the major browsers.
+
 ## Mistakes to avoid
 
 | Mistake | What goes wrong | What to do |
@@ -486,6 +526,13 @@ The steps follow the arrows of figure 14.6.
 **Simulation in the repository.** The program [`code/shortener`](https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/distributed-systems-from-the-ground-up/code/shortener/src/main.rs) simulates this design. To run it, clone the repository and type `cargo run --release -p shortener` in the `code` directory.
 
 </div>
+
+## References
+
+- RFC 9110, *HTTP Semantics*, 2022, sections on status codes 301, 302, 307 and 308.
+- M. Bellare and others, "Format-Preserving Encryption", Selected Areas in Cryptography, 2009.
+- J. Black and P. Rogaway, "Ciphers with Arbitrary Finite Domains", CT-RSA 2002.
+- Flickr API documentation, "URLs", on short addresses in base 58.
 
 ## Terms introduced in this chapter
 

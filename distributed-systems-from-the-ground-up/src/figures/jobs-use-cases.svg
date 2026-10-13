@@ -1,4 +1,4 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="18 14 444 400" width="444" height="400" role="img" aria-label="A use case diagram of the job scheduler. Developer: submit a job (POST /v1/jobs), read a job&#x27;s state (GET /v1/jobs/{id}). Worker: take a job (POST /v1/leases), report the result (PUT /v1/jobs/{id}/result).">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="18 14 444 400" width="444" height="400" role="img" aria-label="A use case diagram of the job scheduler. Developer: submit a job (POST /v1/jobs), read a job&#x27;s state (GET /v1/jobs/{id}). Worker: take a job (POST /v1/leases), report the result (PUT /v1/jobs/{id}/results/{lease}).">
   <style>
     text { font-family: Inter, "Segoe UI", "Helvetica Neue", Helvetica, Arial, sans-serif; fill: #1B2430; }
     .title { font-size: 18px; font-weight: 650; }
@@ -96,5 +96,5 @@
   <text x="318.0" y="303.0" class="mono dim" text-anchor="middle" xml:space="preserve">POST /v1/leases</text>
   <rect x="206.0" y="320" width="224" height="44" rx="12" fill="#FBF1DC" stroke="#B7791F" stroke-width="1.4"/>
   <text x="318.0" y="339.0" class="pill" text-anchor="middle" style="fill:#1B2430" xml:space="preserve">report the result</text>
-  <text x="318.0" y="355.0" class="mono dim" text-anchor="middle" xml:space="preserve">PUT /v1/jobs/{id}/result</text>
+  <text textLength="200" lengthAdjust="spacingAndGlyphs" x="318.0" y="355.0" class="mono dim" text-anchor="middle" xml:space="preserve">PUT /v1/jobs/{id}/results/{lease}</text>
 </svg>

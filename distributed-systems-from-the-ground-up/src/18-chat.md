@@ -489,6 +489,53 @@ The steps follow the arrows of figure 18.6.
 4. The chat service looks up the receiver in the session store, finds gateway B, and forwards the message there. A receiver who is offline is skipped: the message waits in the store.
 5. Gateway B pushes the message down the receiver's open connection.
 
+## The design, deployed
+
+<figure class="wide">
+<img src="figures/chat-deploy.svg?v=ae76ca2b" alt="The chat service, deployed. Phones: Phones (50 million online), 1 open connection each. Connections, in 3 zones: Load balancers (x 20), by connection, Gateways (x 500), 100000 connections each. Services, in 3 zones: Chat service (x 200), numbers, stores, forwards, Session store (x 12), who is on which gateway. Storage: Message store (x 300), 100 shards x 3 replicas, Notification service (for offline phones), see chapter 13.">
+<figcaption><b>Figure 18.7</b> The chat service as it is deployed: 500 gateways holding 50 million connections, and the services and stores behind them.</figcaption>
+</figure>
+
+The gateway tier is the one that this system has and most others lack. Its 500
+machines hold 100000 connections each, and the load balancers in front of them
+distribute connections, which last for hours, where other systems distribute requests. Because a
+connection is tied to its gateway, this tier cannot be drained quickly: replacing
+the software on a gateway means disconnecting 100000 phones, and deployments are
+therefore made in small groups of gateways. Behind the gateways, the chat service is
+stateless and the message store is sharded by conversation, with 3 replicas of each
+shard in 3 zones.
+
+## How real systems do it
+
+WhatsApp is the best known example of how few machines the connection tier needs
+when it is built with care. In 2012 its engineers reported more than 2 million
+connections held open on a single server, running a server written in Erlang on
+FreeBSD, and later accounts put the figure between 2 and 3 million. The figure of
+100000 for each gateway used in this chapter is therefore conservative, and the
+difference is mostly a matter of memory for each connection and of how much work
+the gateway is asked to do beyond holding it.
+
+For storage, Discord has published 2 accounts that follow the same service as it
+grew, first on Cassandra when it held billions of messages and later on ScyllaDB
+when it held trillions. In both, messages are keyed by channel and by a bucket of
+time, so that the messages of a channel for a given period lie together and a
+request for recent history reads 1 partition, which is the layout described under
+storing messages. The accounts are candid about the hot key: a single very large and
+active channel overloads the partition that holds it, and much of the later work
+concerns protecting the store from that.
+
+The numbering of messages by the server within a conversation, and the client's
+cursor, are the common practice of such services. Protocols differ in the transport.
+Facebook described building its mobile messenger on MQTT, a lightweight protocol of
+publishing and subscribing designed for unreliable networks, in order to keep the
+connection cheap in power.
+
+End-to-end encryption, where it is offered, is nearly always the Signal protocol,
+whose central mechanism derives a fresh key for every message, so that the capture
+of 1 key exposes neither earlier messages nor later ones. For groups, each sender
+distributes a key of their own to the members, which is why adding and removing
+members of a large encrypted group is expensive.
+
 ## Mistakes to avoid
 
 | Mistake | What goes wrong | What to do |
@@ -528,6 +575,15 @@ The steps follow the arrows of figure 18.6.
 **Simulation in the repository.** The program [`code/chatsim`](https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/distributed-systems-from-the-ground-up/code/chatsim/src/main.rs) simulates this design. To run it, clone the repository and type `cargo run --release -p chatsim` in the `code` directory.
 
 </div>
+
+## References
+
+- WhatsApp blog, "1 million is so 2011", 2012.
+- S. Vishnevskiy, "How Discord Stores Billions of Messages", Discord blog, 2017.
+- B. Ingram, "How Discord Stores Trillions of Messages", Discord blog, 2023.
+- RFC 6455, *The WebSocket Protocol*, 2011.
+- M. Marlinspike and T. Perrin, "The Double Ratchet Algorithm", Signal specifications, 2016.
+- L. Zhang, "Building Facebook Messenger", Facebook engineering blog, 2011.
 
 ## Terms introduced in this chapter
 

@@ -1,4 +1,4 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="18 14 444 400" width="444" height="400" role="img" aria-label="A use case diagram of the ride service. Rider: request a ride (POST /v1/rides), watch the driver approach (GET /v1/rides/{id}). Driver: report a position (PUT /v1/drivers/{id}/position), accept a ride (PUT /v1/rides/{id}/driver).">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="18 14 444 400" width="444" height="400" role="img" aria-label="A use case diagram of the ride service. Rider: request a ride (POST /v1/rides), watch the driver approach (GET /v1/rides/{id}). Driver: report a position (POST /v1/drivers/{id}/positions), accept a ride (PUT /v1/rides/{id}/assignments/{driver}).">
   <style>
     text { font-family: Inter, "Segoe UI", "Helvetica Neue", Helvetica, Arial, sans-serif; fill: #1B2430; }
     .title { font-size: 18px; font-weight: 650; }
@@ -92,8 +92,8 @@
   <text x="318.0" y="205.0" class="mono dim" text-anchor="middle" xml:space="preserve">GET /v1/rides/{id}</text>
   <rect x="206.0" y="268" width="224" height="44" rx="12" fill="#FBF1DC" stroke="#B7791F" stroke-width="1.4"/>
   <text x="318.0" y="287.0" class="pill" text-anchor="middle" style="fill:#1B2430" xml:space="preserve">report a position</text>
-  <text textLength="200" lengthAdjust="spacingAndGlyphs" x="318.0" y="303.0" class="mono dim" text-anchor="middle" xml:space="preserve">PUT /v1/drivers/{id}/position</text>
+  <text textLength="200" lengthAdjust="spacingAndGlyphs" x="318.0" y="303.0" class="mono dim" text-anchor="middle" xml:space="preserve">POST /v1/drivers/{id}/positions</text>
   <rect x="206.0" y="320" width="224" height="44" rx="12" fill="#FBF1DC" stroke="#B7791F" stroke-width="1.4"/>
   <text x="318.0" y="339.0" class="pill" text-anchor="middle" style="fill:#1B2430" xml:space="preserve">accept a ride</text>
-  <text x="318.0" y="355.0" class="mono dim" text-anchor="middle" xml:space="preserve">PUT /v1/rides/{id}/driver</text>
+  <text textLength="200" lengthAdjust="spacingAndGlyphs" x="318.0" y="355.0" class="mono dim" text-anchor="middle" xml:space="preserve">PUT /v1/rides/{id}/assignments/{driver}</text>
 </svg>

@@ -385,6 +385,50 @@ message as a small frame carrying the conversation, the number and the content.
 
 @part walk
 
+## The design, deployed
+
+@figure chat-deploy :: The chat service as it is deployed: 500 gateways holding 50 million connections, and the services and stores behind them.
+
+The gateway tier is the one that this system has and most others lack. Its 500
+machines hold 100000 connections each, and the load balancers in front of them
+distribute connections, which last for hours, where other systems distribute requests. Because a
+connection is tied to its gateway, this tier cannot be drained quickly: replacing
+the software on a gateway means disconnecting 100000 phones, and deployments are
+therefore made in small groups of gateways. Behind the gateways, the chat service is
+stateless and the message store is sharded by conversation, with 3 replicas of each
+shard in 3 zones.
+
+## How real systems do it
+
+WhatsApp is the best known example of how few machines the connection tier needs
+when it is built with care. In 2012 its engineers reported more than 2 million
+connections held open on a single server, running a server written in Erlang on
+FreeBSD, and later accounts put the figure between 2 and 3 million. The figure of
+100000 for each gateway used in this chapter is therefore conservative, and the
+difference is mostly a matter of memory for each connection and of how much work
+the gateway is asked to do beyond holding it.
+
+For storage, Discord has published 2 accounts that follow the same service as it
+grew, first on Cassandra when it held billions of messages and later on ScyllaDB
+when it held trillions. In both, messages are keyed by channel and by a bucket of
+time, so that the messages of a channel for a given period lie together and a
+request for recent history reads 1 partition, which is the layout described under
+storing messages. The accounts are candid about the hot key: a single very large and
+active channel overloads the partition that holds it, and much of the later work
+concerns protecting the store from that.
+
+The numbering of messages by the server within a conversation, and the client's
+cursor, are the common practice of such services. Protocols differ in the transport.
+Facebook described building its mobile messenger on MQTT, a lightweight protocol of
+publishing and subscribing designed for unreliable networks, in order to keep the
+connection cheap in power.
+
+End-to-end encryption, where it is offered, is nearly always the Signal protocol,
+whose central mechanism derives a fresh key for every message, so that the capture
+of 1 key exposes neither earlier messages nor later ones. For groups, each sender
+distributes a key of their own to the members, which is why adding and removing
+members of a large encrypted group is expensive.
+
 ## Mistakes to avoid
 
 | Mistake | What goes wrong | What to do |
@@ -412,6 +456,15 @@ message as a small frame carrying the conversation, the number and the content.
 ## The simulation
 
 @part sim
+
+## References
+
+- WhatsApp blog, "1 million is so 2011", 2012.
+- S. Vishnevskiy, "How Discord Stores Billions of Messages", Discord blog, 2017.
+- B. Ingram, "How Discord Stores Trillions of Messages", Discord blog, 2023.
+- RFC 6455, *The WebSocket Protocol*, 2011.
+- M. Marlinspike and T. Perrin, "The Double Ratchet Algorithm", Signal specifications, 2016.
+- L. Zhang, "Building Facebook Messenger", Facebook engineering blog, 2011.
 
 ## Terms introduced in this chapter
 

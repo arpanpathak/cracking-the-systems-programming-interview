@@ -249,6 +249,11 @@ in the usual way, by repeating its request.
 ```
 
 
+## Further reading
+
+- D. DeWitt and others, "Implementation Techniques for Main Memory Database Systems", SIGMOD 1984, which introduced group commit.
+- J. Gray and A. Reuter, *Transaction Processing: Concepts and Techniques*, Morgan Kaufmann, 1992.
+
 <div class="summary">
 
 ## Summary

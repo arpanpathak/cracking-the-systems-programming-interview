@@ -895,6 +895,13 @@ replication upon it.
 ```
 
 
+## Further reading
+
+- T. Pillai and others, "All File Systems Are Not Created Equal: On the Complexity of Crafting Crash-Consistent Applications", OSDI 2014.
+- A. Rebello and others, "Can Applications Recover from fsync Failures?", USENIX ATC 2020.
+- C. Mohan and others, "ARIES: A Transaction Recovery Method Supporting Fine-Granularity Locking and Partial Rollbacks Using Write-Ahead Logging", ACM Transactions on Database Systems, 1992.
+- A. Petrov, *Database Internals*, O'Reilly, 2019.
+
 <div class="summary">
 
 ## Summary

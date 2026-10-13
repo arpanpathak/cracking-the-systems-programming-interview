@@ -468,6 +468,51 @@ The steps follow the arrows of figure 22.6.
 4. At intervals, the counting job reads the log and brings the count of every search up to date, reducing older counts.
 5. A new table of prefix lists is built from the counts, checked, and distributed to the replicas, which begin serving it in place of the old one.
 
+## The design, deployed
+
+<figure class="wide">
+<img src="figures/typeahead-deploy.svg?v=0a7a695f" alt="The suggestion service, deployed. Browsers: Browsers (1 million req/s), keep answers they had. Near the users: Edge servers (x 100s), cache by prefix, 5 min. Serving, in 3 zones: Load balancers (x 4), by range of prefixes, Suggestion API (x 24), whole table in memory. Building, offline: Search log (x 6), every search made, Counting job (batch), normalise, count, decay, Trending processor (x 4), the last hour.">
+<figcaption><b>Figure 22.7</b> The suggestion service as it is deployed: caches in front, a serving tier that only reads, and an offline build behind.</figcaption>
+</figure>
+
+Most of the million requests per second are answered before they reach this
+system, by the browser's own memory of earlier answers and by edge servers that
+cache each prefix for 5 minutes. The serving tier receives about a fifth of them. It
+consists of 24 machines, each holding a part of the table in memory, behind load
+balancers that route by the range of the prefix. Nothing in the serving tier ever
+writes. The table is produced by the build tier below, from the log of searches, and
+handed upwards once an hour as a finished file, so that a fault in the building can
+at worst leave the serving tier with an old table.
+
+## How real systems do it
+
+Facebook published an early and clear account of a typeahead in 2010, for the search
+box that suggests people and pages. Its design starts in the browser, which is
+loaded with the user's own friends and pages before a letter is typed and answers
+from that list first, and which caches every reply so that deleting a letter costs
+nothing. Only then is the service asked, and the service is a set of indexes, 1 for
+each kind of result, queried in parallel and merged by an aggregator. The emphasis
+on the client is the same as in this chapter, and the personal first stage is a
+form of the personalisation that this chapter mentions only in passing.
+
+The data structure for the general problem, the most frequent completions of a
+prefix, has been studied as *top-k completion*. A paper from Microsoft compares
+several structures and shows that a trie which stores at each node the best score
+beneath it can find the best completions without visiting the whole subtree, in
+space close to that of the compressed strings. This is a middle way between the 2
+extremes of this chapter, the trie that must be searched and the table that stores
+every answer, and it is what a system uses when the table would be too large. Search
+libraries commonly implement completion with a compact automaton that shares both
+the prefixes and the suffixes of the stored strings.
+
+On what must not be shown, the operators of the large search engines publish
+policies stating which kinds of prediction they remove, covering violence, sexually
+explicit and hateful predictions and those that make damaging statements about
+named people, together with a means of reporting. The existence of these policies
+is the practical evidence for the section on suggestions that must not be shown.
+The threshold of distinct users is an application of the idea of k-anonymity, that
+no released item should be traceable to fewer than k people.
+
 ## Mistakes to avoid
 
 | Mistake | What goes wrong | What to do |
@@ -517,6 +562,13 @@ answers are cached is therefore chosen with removals in mind, and it is the reas
 **Simulation in the repository.** The program [`code/typeahead`](https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/distributed-systems-from-the-ground-up/code/typeahead/src/main.rs) simulates this design. To run it, clone the repository and type `cargo run --release -p typeahead` in the `code` directory.
 
 </div>
+
+## References
+
+- Facebook engineering blog, "The Life of a Typeahead Query", 2010.
+- B. Hsu and G. Ottaviano, "Space-Efficient Data Structures for Top-k Completion", WWW 2013.
+- Google Search Help, "How Google autocomplete predictions work".
+- L. Sweeney, "k-Anonymity: A Model for Protecting Privacy", International Journal of Uncertainty, Fuzziness and Knowledge-Based Systems, 2002.
 
 ## Terms introduced in this chapter
 
