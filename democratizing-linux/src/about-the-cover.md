@@ -1,7 +1,9 @@
 # About the cover
 
-The cover shows a penguin asleep on an ice floe, dreaming of the year of the Linux
-desktop. Beside it, a dumpster is on fire.
+The cover shows a penguin asleep in the snow. Its dream is visible through the open end
+of a steel pipe: a sunny hill, a desktop computer that runs Linux, and the years 1999,
+2009 and 2019 struck out. Beside the sleeper a dumpster labelled teraSlop is on fire, and
+a crab toasts a marshmallow over it.
 
 Each chapter opens with a different animal at work on the chapter's subject.
 

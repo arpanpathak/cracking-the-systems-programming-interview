@@ -12,6 +12,7 @@ alternative text.
 """
 
 import json
+import math
 import sys
 from pathlib import Path
 from xml.sax.saxutils import escape
@@ -536,39 +537,188 @@ def flame(cx, base, s=1.0):
 
 # --------------------------------------------------------------------- plates
 
-@plate("cover", "", "", "The cover of Democratizing Linux: A Pipe Dream. A penguin in a nightcap sleeps on an ice floe and dreams "
-       "of a desktop computer with a penguin on its screen, under the words the year of the Linux desktop. Beside it a "
-       "dumpster is on fire, with a broken four-pane window sticking out of it. The dumpster is labelled teraSlop, and a sign "
-       "reads: the evolution of spyware, vapourware and bloatware.", size=(960, 680))
-def cover():
-    base = 680 - (H - GROUND)
-    pane = lambda x, y, c: rect(x, y, 34, 34, c, 3)
+COVER_W, COVER_H = 960, 1280
+SERIF = "Georgia, Iowan Old Style, Times New Roman, serif"
 
-    return [
-        label(480, 74, "DEMOCRATIZING LINUX", 60, extra='letter-spacing="5"'),
-        label(480, 116, "A PIPE DREAM", 28, "#9fd8c6", extra='letter-spacing="10"'),
-        *[circle(300 + 20 * k, 372 - 32 * k, 7 + 4 * k, SNOW, 'opacity="0.92"') for k in range(3)],
-        rect(330, 150, 330, 122, SNOW, 50, extra='opacity="0.95"'),
-        rect(370, 172, 110, 70, "#12263d", 6, STEEL, 4), rect(414, 242, 22, 12, STEEL), rect(396, 252, 58, 8, STEEL, 3),
-        penguin(425, 236, 0.26),
-        label(562, 198, "THE YEAR OF", 17, "#27405a"), label(562, 222, "THE LINUX", 21, RUST), label(562, 246, "DESKTOP", 21, RUST),
-        penguin(230, base + 4, 1.0, asleep=True, left=8, right=-8, scarf=RUST, hat="nightcap"),
-        *[label(150 - 18 * k, 400 - 24 * k, "z", 20 + 8 * k, "#cfe1f0", weight=800) for k in range(3)],
-        flame(740, base - 96, 1.25), flame(812, base - 96, 0.9), flame(676, base - 96, 0.8),
-        f'<g transform="rotate(-14 760 {base - 150})">' + pane(722, base - 190, "#4aa3e0") + pane(760, base - 190, "#4aa3e0")
-        + pane(722, base - 152, "#4aa3e0") + pane(760, base - 152, "#4aa3e0")
-        + path(f"M730,{base - 186} l18,22 l-8,10 l14,24", stroke=SNOW, sw=2.5) + "</g>",
-        path(f"M640,{base - 100} H880 L860,{base + 2} H660 Z", "#2e6b4a", "#1d4a32", 4),
-        rect(628, base - 112, 264, 18, "#3d8f5a", 5, "#1d4a32", 3),
-        rect(676, base + 2, 22, 12, "#1d2733", 3), rect(822, base + 2, 22, 12, "#1d2733", 3),
-        label(760, base - 44, "teraSlop", 34, SNOW, font=MONO),
-        crab(540, base + 8, 0.62, "angry", look=1),
-        rect(560, base + 26, 380, 54, "#fff8ea", 8, WOOD, 3),
-        label(750, base + 48, "THE EVOLUTION OF", 15, "#5a421a", extra='letter-spacing="2"'),
-        label(750, base + 70, "spyware · vapourware · bloatware", 19, RUST, font=MONO),
-        label(250, base + 50, "The kernel's ideas, built by hand", 21, "#27405a", weight=600),
-        label(250, base + 76, "in Go and in Rust", 21, "#27405a", weight=600),
+
+def panes(cx, cy, s, fill="#3d9be0", stroke="none", dash=False, rx=2):
+    """A window of 4 panes, centred on (cx, cy). `s` is the side of one pane."""
+    extra = 'stroke-dasharray="4 4"' if dash else ""
+
+    corner = lambda d: 1.5 if d > 0 else -s - 1.5
+
+    return "\n".join(rect(cx + corner(dx), cy + corner(dy), s, s, fill, rx, stroke, 2 if stroke != "none" else 0, extra)
+                     for dx in (-1, 1) for dy in (-1, 1))
+
+
+def sparkle(cx, cy, r, fill=SNOW, opacity=0.9):
+    return path(f"M{cx},{cy - r} Q{cx},{cy} {cx + r},{cy} Q{cx},{cy} {cx},{cy + r} Q{cx},{cy} {cx - r},{cy} Q{cx},{cy} {cx},{cy - r} Z",
+                fill, extra=f'opacity="{opacity}"')
+
+
+def pine(cx, base, h, fill):
+    return "\n".join(path(f"M{cx - h * (0.30 - 0.07 * k):.1f},{base - h * 0.28 * k:.1f} L{cx:.1f},{base - h * (0.52 + 0.24 * k):.1f}"
+                          f" L{cx + h * (0.30 - 0.07 * k):.1f},{base - h * 0.28 * k:.1f} Z", fill) for k in range(3))
+
+
+@plate("cover", "", "", "The cover of Democratizing Linux: A Pipe Dream. On a snowy night a penguin in a nightcap sleeps, and its "
+       "dream is seen through the open end of a large steel pipe: a sunny hill where a penguin waves beside a desktop "
+       "computer, under the words the year of the Linux desktop, with the years 1999, 2009 and 2019 struck out. Next to the "
+       "sleeper a dumpster labelled teraSlop is on fire, with a cracked four-pane window and a blue error screen sticking "
+       "out of it, and a crab toasts a marshmallow over the flames. A sign shows the evolution of teraSlop: spyware, "
+       "vapourware, bloatware, and fire.", size=(COVER_W, COVER_H))
+def cover():
+    cx, cy, bore, flange = 400, 640, 185, 215
+    ux, uy, nx, ny = 0.950, -0.312, 0.312, 0.950
+    along = lambda t, side=0.0: (cx + ux * t + nx * side, cy + uy * t + ny * side)
+    pt = lambda p: f"{p[0]:.1f},{p[1]:.1f}"
+    top, low = along(0, -bore), along(0, bore)
+
+    defs = f'''<defs>
+<linearGradient id="night" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#060b1a"/><stop offset="0.45" stop-color="#13264a"/>
+<stop offset="0.72" stop-color="#2b2a5c"/><stop offset="0.86" stop-color="#6b3550"/><stop offset="1" stop-color="#b3563c"/></linearGradient>
+<linearGradient id="aurora" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#3fd6a8" stop-opacity="0"/>
+<stop offset="0.35" stop-color="#3fd6a8" stop-opacity="0.42"/><stop offset="0.7" stop-color="#7aa6ff" stop-opacity="0.30"/>
+<stop offset="1" stop-color="#b98cff" stop-opacity="0"/></linearGradient>
+<linearGradient id="title" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#ffffff"/><stop offset="1" stop-color="#a9cdea"/></linearGradient>
+<radialGradient id="halo"><stop offset="0" stop-color="#fff6d8" stop-opacity="0.55"/><stop offset="1" stop-color="#fff6d8" stop-opacity="0"/></radialGradient>
+<radialGradient id="fire"><stop offset="0" stop-color="#ffb347" stop-opacity="0.75"/><stop offset="0.5" stop-color="#ff6a2b" stop-opacity="0.28"/>
+<stop offset="1" stop-color="#ff6a2b" stop-opacity="0"/></radialGradient>
+<radialGradient id="dreamglow"><stop offset="0.55" stop-color="#bfeeff" stop-opacity="0.55"/><stop offset="1" stop-color="#bfeeff" stop-opacity="0"/></radialGradient>
+<linearGradient id="steel" gradientUnits="userSpaceOnUse" x1="{top[0]:.1f}" y1="{top[1]:.1f}" x2="{low[0]:.1f}" y2="{low[1]:.1f}">
+<stop offset="0" stop-color="#6f8195"/><stop offset="0.18" stop-color="#b9c7d6"/><stop offset="0.5" stop-color="#5b6b7c"/><stop offset="1" stop-color="#232c38"/></linearGradient>
+<linearGradient id="ring" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#d3dde8"/><stop offset="0.5" stop-color="#7d8ea1"/><stop offset="1" stop-color="#36424f"/></linearGradient>
+<linearGradient id="day" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#58b7f2"/><stop offset="0.7" stop-color="#c9ecff"/><stop offset="1" stop-color="#fff3cf"/></linearGradient>
+<linearGradient id="snow" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#dfeaf6"/><stop offset="1" stop-color="#9fb6d3"/></linearGradient>
+<linearGradient id="bin" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#3f8f61"/><stop offset="1" stop-color="#1c4a33"/></linearGradient>
+<radialGradient id="smoke"><stop offset="0" stop-color="#3b4254" stop-opacity="0.6"/><stop offset="1" stop-color="#3b4254" stop-opacity="0"/></radialGradient>
+<clipPath id="bore"><circle cx="{cx}" cy="{cy}" r="{bore}"/></clipPath>
+</defs>'''
+
+    # The night: stars, a moon, an aurora and 2 ranges of hills.
+    sky = [defs, rect(0, 0, COVER_W, COVER_H, "url(#night)")]
+    sky += [circle((k * 211 + 37) % COVER_W, (k * 131 + 17) % 860, 0.9 + (k % 4) * 0.45, SNOW, f'opacity="{0.30 + (k % 5) * 0.14:.2f}"') for k in range(110)]
+    sky += [sparkle(x, y, r) for x, y, r in ((96, 430, 9), (700, 96, 7), (905, 330, 10), (560, 380, 6), (40, 700, 7), (300, 52, 6))]
+    sky += [
+        path("M560,40 L700,84", stroke=SNOW, sw=2, extra='opacity="0.55"'), circle(700, 84, 2.6, SNOW),
+        circle(838, 158, 150, "url(#halo)"), circle(838, 158, 62, "#fdf3cf"),
+        circle(858, 146, 62, "#13264a", 'opacity="0.0"'),
+        *[circle(838 + dx, 158 + dy, r, "#e6d7a4", 'opacity="0.7"') for dx, dy, r in ((-22, -14, 11), (16, 20, 15), (24, -24, 7), (-12, 26, 6))],
+        path("M-20,470 C200,330 420,560 640,420 S900,380 980,440 L980,520 C820,470 700,560 520,540 S180,470 -20,580 Z", "url(#aurora)"),
+        path("M-20,380 C160,300 380,440 560,350 S860,270 980,330 L980,372 C860,320 640,420 480,410 S140,380 -20,440 Z", "url(#aurora)", extra='opacity="0.7"'),
+        path("M0,940 C120,880 260,930 380,900 S620,860 760,905 S900,880 960,900 L960,1280 L0,1280 Z", "#1a2748"),
+        *[pine(x, y, h, "#101a33") for x, y, h in ((60, 925, 70), (104, 918, 50), (318, 912, 62), (352, 908, 44), (910, 898, 76), (940, 900, 48))],
     ]
+
+    # The pipe: its body runs off to the upper right, and its open end faces the reader.
+    far = 760
+    body = [
+        path(f"M{pt(along(0, -bore))} L{pt(along(far, -bore * 0.86))} L{pt(along(far, bore * 0.86))} L{pt(along(0, bore))} Z", "url(#steel)"),
+        *[path(f"M{pt(along(t, -bore * (1 - 0.14 * t / far) - 9))} L{pt(along(t, bore * (1 - 0.14 * t / far) + 9))}", stroke="#2b3644", sw=20, extra='opacity="0.9"')
+          for t in (240, 600)],
+        *[path(f"M{pt(along(t - 6, -bore * (1 - 0.14 * t / far) - 9))} L{pt(along(t - 6, -bore * 0.2))}", stroke="#c9d5e2", sw=5, extra='opacity="0.55"') for t in (240, 600)],
+        f'<g transform="rotate(-18.2 {cx} {cy})">' + label(cx + 292, cy + 70, "dream | desktop", 24, "#e9f0f7", "start", MONO, 800, 'opacity="0.42" letter-spacing="3"') + "</g>",
+        circle(cx, cy, 300, "url(#dreamglow)"),
+        circle(cx, cy, flange, "url(#ring)"), circle(cx, cy, flange, "none", 'stroke="#1b2430" stroke-width="3" opacity="0.6"'),
+        *[circle(cx + 200 * math.cos(k * 0.5236 + 0.26), cy + 200 * math.sin(k * 0.5236 + 0.26), 7.5, "#2b3644") for k in range(12)],
+        *[circle(cx + 200 * math.cos(k * 0.5236 + 0.26) - 1.6, cy + 200 * math.sin(k * 0.5236 + 0.26) - 1.6, 3.2, "#aebccb") for k in range(12)],
+    ]
+
+    # The dream, seen through the open end.
+    strike = lambda x, y, text: label(x, y, text, 17, "#51657a", font=MONO) + line(x - 23, y - 4, x + 23, y - 8, RUST, 3)
+    dream = [
+        '<g clip-path="url(#bore)">',
+        rect(cx - bore, cy - bore, 2 * bore, 2 * bore, "url(#day)"),
+        circle(cx - 96, cy - 104, 78, "#fff6c9", 'opacity="0.55"'), circle(cx - 96, cy - 104, 44, "#ffe27a"),
+        *[path(f"M{cx - 96},{cy - 104} L{cx - 96 + 330 * math.cos(a):.1f},{cy - 104 + 330 * math.sin(a):.1f}"
+               f" L{cx - 96 + 330 * math.cos(a + 0.09):.1f},{cy - 104 + 330 * math.sin(a + 0.09):.1f} Z", "#fff6c9", extra='opacity="0.35"')
+          for a in (0.15, 0.55, 0.95, 1.35, 1.75)],
+        *[ellipse(x, y, rx, rx * 0.36, SNOW, 'opacity="0.9"') for x, y, rx in ((cx + 96, cy - 128, 46), (cx + 62, cy - 116, 30), (cx - 10, cy - 150, 26))],
+        path(f"M{cx - 200},{cy + 96} C{cx - 90},{cy + 40} {cx + 60},{cy + 96} {cx + 200},{cy + 56} L{cx + 200},{cy + 200} L{cx - 200},{cy + 200} Z", "#7cc66f"),
+        path(f"M{cx - 200},{cy + 128} C{cx - 60},{cy + 92} {cx + 90},{cy + 140} {cx + 200},{cy + 104} L{cx + 200},{cy + 200} L{cx - 200},{cy + 200} Z", "#5aa85a"),
+        label(cx + 4, cy - 62, "THE YEAR OF", 19, "#27405a", extra='letter-spacing="4"'),
+        label(cx + 4, cy - 32, "THE LINUX DESKTOP", 27, RUST, weight=800, extra='letter-spacing="1"'),
+        rect(cx - 112, cy - 14, 168, 108, "#1b2430", 9), rect(cx - 104, cy - 6, 152, 86, "#2f7f86", 4),
+        path(f"M{cx - 104},{cy + 50} C{cx - 60},{cy + 26} {cx - 10},{cy + 62} {cx + 48},{cy + 34} L{cx + 48},{cy + 80} L{cx - 104},{cy + 80} Z", "#3fa39b"),
+        rect(cx - 94, cy + 4, 78, 48, "#12202e", 4), rect(cx - 94, cy + 4, 78, 10, "#3b4f6b", 4),
+        *[circle(cx - 88 + 8 * k, cy + 9, 2.2, c) for k, c in enumerate(("#ff6b5e", "#ffc24a", "#5fd38d"))],
+        label(cx - 88, cy + 29, "$ uname", 10, "#9fe8c6", "start", MONO, 600), label(cx - 88, cy + 43, "Linux", 10, SNOW, "start", MONO, 600),
+        rect(cx - 104, cy + 70, 152, 10, "#12202e"), circle(cx - 96, cy + 75, 3, "#ffc24a"),
+        rect(cx - 40, cy + 94, 24, 16, "#3b4856"), rect(cx - 66, cy + 108, 76, 9, "#3b4856", 4),
+        penguin(cx + 112, cy + 138, 0.58, look=-1, left=18, right=-128, scarf=RUST),
+        strike(cx - 96, cy + 132, "1999"), strike(cx - 42, cy + 132, "2009"), strike(cx + 12, cy + 132, "2019"),
+        label(cx - 30, cy + 156, "this year. really.", 15, "#1f4d2c", font=SERIF, weight=700, extra='font-style="italic"'),
+        "</g>",
+        circle(cx, cy, bore - 5, "none", 'stroke="#0b1320" stroke-width="12" opacity="0.38"'),
+        circle(cx, cy, bore, "none", 'stroke="#1b2430" stroke-width="4"'),
+        path(f"M{cx - 150},{cy - 150} A212,212 0 0 1 {cx + 40},{cy - 208}", stroke=SNOW, sw=5, extra='opacity="0.55"'),
+    ]
+
+    # The ground, lit by the fire.
+    ground = [
+        path("M0,1060 C140,1010 300,1066 470,1040 S760,1070 960,1030 L960,1280 L0,1280 Z", "url(#snow)"),
+        ellipse(730, 1070, 430, 250, "url(#fire)"),
+        path("M0,1128 C200,1100 420,1150 640,1124 S860,1112 960,1126 L960,1280 L0,1280 Z", "#f1f6fb"),
+    ]
+
+    # The dumpster fire.
+    smoke = [circle(748 + 30 * k + (k % 2) * 16, 760 - 58 * k, 44 + 16 * k, "url(#smoke)", f'opacity="{0.85 - 0.11 * k:.2f}"') for k in range(6)]
+    embers = [circle(x, y, r, c) for x, y, r, c in ((640, 800, 3, "#ffc24a"), (688, 742, 2.4, "#ff8a3c"), (812, 730, 3, "#ffc24a"), (866, 808, 2.2, "#ff8a3c"),
+                                                    (760, 690, 2.6, "#ffd98a"), (606, 866, 2.2, "#ffc24a"), (900, 744, 2, "#ffd98a"), (720, 640, 2, "#ff8a3c"))]
+    bin_top, bin_base = 962, 1104
+    dumpster = [
+        *smoke,
+        flame(650, bin_top, 1.0), flame(836, bin_top, 1.1), flame(742, bin_top, 1.5),
+        f'<g transform="rotate(-16 668 {bin_top - 84})">' + rect(616, bin_top - 136, 104, 104, "#eaf3fb", 7) + panes(668, bin_top - 84, 42)
+        + path(f"M628,{bin_top - 128} l26,32 l-10,14 l24,28 l-8,18", stroke=SNOW, sw=3.5) + "</g>",
+        f'<g transform="rotate(14 826 {bin_top - 76})">' + rect(772, bin_top - 124, 108, 86, "#1b2430", 7) + rect(779, bin_top - 117, 94, 72, "#1e63d6", 3)
+        + label(794, bin_top - 78, ":(", 32, SNOW, "start", weight=500) + rect(794, bin_top - 68, 56, 4, "#cfe0ff", 2) + rect(794, bin_top - 58, 36, 4, "#cfe0ff", 2) + "</g>",
+        flame(612, bin_top, 0.5), flame(742, bin_top, 0.62), flame(868, bin_top, 0.45), flame(690, bin_top, 0.4), flame(800, bin_top, 0.42),
+        *embers,
+        path(f"M576,{bin_top} H884 L862,{bin_base} H598 Z", "url(#bin)", "#12301f", 4),
+        *[line(612 + 42 * k + (3 - k) * 3.2, bin_top + 22, 620 + 40 * k + (3 - k) * 1.2, bin_base - 10, "#12301f", 3, 'opacity="0.45"') for k in range(7)],
+        rect(562, bin_top - 14, 336, 22, "#4fa873", 6, "#12301f", 4),
+        rect(552, bin_top + 16, 22, 34, "#2b6a47", 4, "#12301f", 3), rect(886, bin_top + 16, 22, 34, "#2b6a47", 4, "#12301f", 3),
+        rect(612, bin_base, 30, 14, "#141b24", 5), rect(818, bin_base, 30, 14, "#141b24", 5),
+        rect(634, bin_top + 40, 192, 62, "#12301f", 6, extra='opacity="0.55"'),
+        label(730, bin_top + 84, "teraSlop", 36, SNOW, font=MONO, weight=800), label(822, bin_top + 62, "TM", 10, "#cfe6d8", font=MONO),
+    ]
+
+    # The sleeper and the crab at the fire.
+    crew = [
+        ellipse(196, 1118, 150, 26, "#c9d9ea"),
+        penguin(196, 1112, 1.08, asleep=True, left=10, right=-10, scarf=RUST, hat="nightcap"),
+        *[circle(x, y, r, SNOW, 'opacity="0.92"') for x, y, r in ((252, 884, 8), (270, 862, 12), (286, 834, 16))],
+        *[label(112 - 20 * k, 900 - 30 * k, "z", 24 + 9 * k, "#dbe9f6", font=SERIF, weight=700, extra='font-style="italic"') for k in range(3)],
+        line(508, 1050, 596, 968, "#6b4a2a", 4), rect(588, 950, 22, 18, "#fffaf0", 5, "#e7d9bf", 2, rot(-42, 599, 959)),
+        crab(462, 1126, 0.66, "happy", look=1),
+        ellipse(462, 1090, 60, 30, "#ffb347", 'opacity="0.16"'),
+    ]
+
+    # The title.
+    title = [
+        label(66, 98, "DEMOCRATIZING", 50, "#cfe1f0", "start", weight=600, extra='letter-spacing="13"'),
+        label(58, 268, "LINUX", 188, "url(#title)", "start", weight=900, extra='letter-spacing="2"'),
+        label(70, 344, "A Pipe Dream", 64, "#ffc24a", "start", SERIF, 700, 'font-style="italic"'),
+        rect(70, 366, 300, 4, "#ffc24a", 2, extra='opacity="0.7"'),
+    ]
+
+    # The sign and the line under the sleeper.
+    stage = lambda x, word: label(x, 1250, word, 13, "#5a421a", font=MONO, weight=700)
+    arrow = lambda x: path(f"M{x - 12},1212 h20 m-7,-6 l7,6 l-7,6", stroke="#8a6a44", sw=3)
+    sign = [
+        rect(476, 1150, 20, 130, WOOD), rect(884, 1150, 20, 130, WOOD),
+        rect(462, 1146, 456, 118, "#fff6e2", 10, WOOD, 4),
+        label(690, 1174, "THE EVOLUTION OF teraSlop", 15, "#5a421a", weight=800, extra='letter-spacing="2.5"'),
+        panes(528, 1212, 9, "#3d9be0"), circle(528, 1212, 7, SNOW), circle(528, 1212, 3.4, INK), stage(528, "spyware"), arrow(580),
+        panes(634, 1212, 12, "none", "#3d9be0", dash=True), stage(634, "vapourware"), arrow(690),
+        panes(752, 1210, 17, "#3d9be0", rx=7), stage(752, "bloatware"), arrow(812),
+        flame(862, 1232, 0.3), stage(862, "fire"),
+        label(40, 1204, "The kernel's ideas, built by hand", 20, "#1d3350", "start", SERIF, 700),
+        label(40, 1232, "in Go and in Rust", 20, "#1d3350", "start", SERIF, 700),
+    ]
+
+    return sky + body + dream + ground + dumpster + crew + title + sign
 
 
 @plate("ch01", "Pipes", "Flange the penguin", "Flange, a penguin in a hard hat, feeds the bytes of the word hello into a pipe. "
@@ -774,9 +924,7 @@ def main(names):
         title, crew, description, draw, size = PLATES[name]
         parts = draw()
 
-        if name == "cover":
-            parts = [backdrop(seed=3, size=size, **ICE), *parts]
-        elif name.startswith("ch"):
+        if name.startswith("ch"):
             parts.append(ribbon(str(int(name[2:])), title, crew, size))
 
         (OUT / (name + ".svg")).write_text(
