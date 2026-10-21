@@ -1,52 +1,48 @@
 # Introduction
 
-In this book, we will learn about running GPU workloads on Kubernetes and dive deep into
-Kubernetes machinery with hands-on examples, both in Rust and Go. We will first build
-intuition by reasoning and quickly prototype the data structures behind Kubernetes
-machinery and concepts. Then we will build the same machinery with the libraries that
-production controllers use, controller-runtime in Go and kube-rs in Rust, and run it on a
-real cluster.
+This book is about running GPU workloads on Kubernetes and about the machinery inside
+Kubernetes that makes it possible. Each topic is first worked out as a small model, written
+in both Go and Rust with only the standard library, so that the data structures and their
+failure cases can be read in a few hundred lines. The same machinery is then built with the
+libraries that production controllers use, controller-runtime in Go and kube-rs in Rust,
+and run on a real cluster.
 
-GPU workloads range from distributed training jobs that run across many machines to
-inference services that answer requests all day. Running them by hand means choosing a
-machine for each job, tracking which GPUs are free, and restarting work when something
-fails, and doing that manually is error-prone and cumbersome. Kubernetes automates it: we
-declare what we want to run, and its scheduler and controllers place the work and keep it
-running. It is also extensible, so we can teach it about GPUs and about new kinds of work,
-such as training jobs.
+GPU workloads range from training jobs that span many machines to inference services that
+answer requests continuously. Run by hand, each job needs a machine chosen for it, a record
+of which GPUs are free, and someone to restart it when it fails. Kubernetes takes over that
+work. A user declares what should run, and the scheduler and controllers place the work and
+keep it running. Kubernetes is also extensible, so it can be taught about GPUs and about new
+kinds of work such as training jobs.
 
-When a model is too large to train on one machine, we split the training across many
-machines, and every training step needs every GPU in the job. This makes scheduling
-harder. All of the job's workers have to start together, because a job that gets only
-some of its workers holds those GPUs and makes no progress. The workers should also run
-close to each other, because GPUs in the same machine exchange data much faster than GPUs
-in different machines. And when several teams share one cluster, we need queues and
-quotas so that every team gets its share of the GPUs. In this book, we will learn how
-Kubernetes solves each of these problems, starting with how a controller learns about a
-new job.
+A model too large for one machine is trained across many, and every training step needs
+every GPU in the job. That requirement shapes the scheduling problem. All of a job's workers
+have to start together, because a job that receives only some of its workers holds those
+GPUs and makes no progress. The workers should run close to each other, because GPUs in one
+machine exchange data much faster than GPUs in different machines. When several teams share
+a cluster, queues and quotas divide the GPUs between them. The chapters take these problems
+in turn, beginning with how a controller learns that a new job exists.
 
 The examples run on any Kubernetes cluster with GPU nodes: a managed cluster from a cloud
-provider, a cluster in our own data center, or a small cluster on a single machine.
+provider, a cluster in a private data center, or a single-machine cluster.
 
-By default, Kubernetes knows nothing about GPUs. It knows how many CPU cores and how much
-memory each machine has, and it places containers on machines that have enough of both.
-Two pieces of software, supplied by the GPU vendor, teach it about GPUs.
+Kubernetes has no built-in knowledge of GPUs. It knows each machine's CPU cores and memory
+and places containers on machines with enough of both. Two pieces of software from the GPU
+vendor add GPUs to that picture.
 
-The first is the *device plugin*, a small program that runs on every machine with GPUs.
-It counts the GPUs, reports the count to the kubelet (the Kubernetes agent on each
-machine), and from then on the machine advertises the GPUs as a resource next to its CPU
-and memory; for NVIDIA GPUs the resource is called `nvidia.com/gpu`. A *pod*, the object
-in which Kubernetes runs one or more containers, can then ask for `nvidia.com/gpu: 1` in
-the same way that it asks for two CPU cores, and the *scheduler*, the Kubernetes
-component that chooses a machine for each new pod, places it only on a machine with a
-free GPU. By default, one unit is one whole physical GPU; chapter 2 looks at what that unit
-contains and at the ways a GPU can be shared or divided.
+The first is the *device plugin*, a small program on every GPU machine. It counts the
+machine's GPUs and reports the count to the kubelet, the Kubernetes agent on each machine,
+which then advertises the GPUs as a resource alongside CPU and memory. For NVIDIA GPUs the
+resource is named `nvidia.com/gpu`. A *pod*, the object in which Kubernetes runs one or more
+containers, can ask for `nvidia.com/gpu: 1` in the same way it asks for two CPU cores, and
+the *scheduler*, the component that chooses a machine for each new pod, places it only on a
+machine with a free GPU. One unit is one whole physical GPU by default. Chapter 2 examines
+what that unit contains and the ways a GPU can be shared or divided.
 
 The second is a GPU-aware *container runtime*. A container normally sees none of the
-machine's hardware devices, and its image does not contain the machine's GPU driver. When
-a pod has been given a GPU, the runtime adds the GPU's device files and the driver's
-libraries to the container just before it starts, so that a program inside it can use the
-GPU.
+machine's hardware devices, and its image does not contain the machine's GPU driver. When a
+pod has been granted a GPU, the runtime adds the GPU's device files and the driver's
+libraries to the container just before it starts, and a program inside the container can
+then open the GPU.
 
 Figure I.1 follows one request for a GPU past both pieces.
 
@@ -55,12 +51,12 @@ Figure I.1 follows one request for a GPU past both pieces.
 <figcaption><b>Figure I.1</b> A pod asks for one GPU, the scheduler finds a machine that advertises one, and the two vendor pieces on that machine count the GPUs and open one to the container.</figcaption>
 </figure>
 
-We develop and test every example on a single-node cluster created with kind, a tool that
-runs Kubernetes nodes as Docker containers. Appendix A shows how we build that cluster and
-install both pieces on it.
+Every example was developed and tested on a single-node cluster created with kind, a tool
+that runs Kubernetes nodes as Docker containers. Appendix A builds that cluster and installs
+both pieces on it.
 
-We assume you can read Go and Rust and have used containers and kubectl. We explain each
-Kubernetes concept when we first need it.
+The book assumes the reader can read Go and Rust and has used containers and kubectl. Each
+Kubernetes concept is defined where it is first needed.
 
 ## Running the code
 
@@ -74,9 +70,8 @@ $ git clone https://github.com/arpanpathak/cracking-the-systems-programming-inte
 $ cd cracking-the-systems-programming-interview/gpu-accelerated-kubernetes
 ```
 
-The listings in each chapter are included from the files under `code/`, so the code
-printed in the book is the code that runs, and the `source:` link above each listing opens
-that file on GitHub.
+Every listing is included from a file under `code/`, so the printed code is the code that
+runs. The link above each listing opens its file on GitHub.
 
 - [`code/go`](https://github.com/arpanpathak/cracking-the-systems-programming-interview/tree/prep-v2/gpu-accelerated-kubernetes/code/go) is one Go module. `informer` is the in-memory model from chapter 1, `gpujob`
   is the controller from section 1.1, built on controller-runtime, and `gpuusage` is the
@@ -125,10 +120,10 @@ The programs of chapters 4 to 10 are models: they need no cluster, finish in wel
 second, and print the same output in Go and in Rust. The output shown in each chapter is
 included from `code/output`, where a run of the program wrote it.
 
-Each chapter introduces its programs in the same order. It starts from the problem and a
-small example worked by hand, draws the design, and states the types and the rules they
-keep in a box headed "Low-level design". The code then appears in short parts, each next to
-the text that explains it, and the complete program is printed at the end of the chapter.
+Each chapter has the same shape. It states the problem and works a small example by hand,
+draws the design, and lists the types and the rules they keep in a box headed "Low-level
+design". The code follows in short parts, each beside the text that explains it, and the
+complete programs are printed at the end.
 
 The Go module declares Go 1.26, and the Rust programs need Rust 1.89 or later, the
 minimum version of the kube crate. The controllers need a Kubernetes cluster in the

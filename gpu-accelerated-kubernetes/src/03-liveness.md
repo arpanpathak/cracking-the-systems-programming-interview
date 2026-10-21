@@ -4,18 +4,17 @@ A training job can run on a machine for hours or days. If that machine loses pow
 network cable is pulled, the job stops, and nothing on the machine can report the failure.
 The control plane has to notice on its own, so that it can restart the job somewhere else.
 
-In this chapter, we will learn how a control plane decides which machines are alive. We
-will first build intuition by reasoning about heartbeats and timeouts, and quickly
-prototype a liveness registry and a failure detector from scratch. Then we will use the
-Lease objects that Kubernetes itself uses to track its nodes: we will write an agent that
-renews a Lease for a host and a watcher that notices when the renewals stop, and run both
-on our cluster.
+This chapter covers how a control plane decides which machines are alive. Two models
+work out the mechanics of heartbeats and timeouts: a liveness registry and an adaptive
+failure detector. The chapter then turns to the Lease objects that Kubernetes uses to track
+its own nodes, with an agent that renews a Lease for a host and a watcher that detects when
+the renewals stop, both run on the cluster.
 
-As before, every program is written in Go and in Rust. The two models, `heartbeats` and
-`phi`, use only the standard library. The two Kubernetes programs, `leaseagent` and
-`leasewatch`, use client-go and kube-rs. The Go programs are in `code/go`, and we run them
-with `go run ./<name>`; the Rust programs are packages in the workspace in `code/rust`, and
-we run them with `cargo run -p <name>`.
+Every program is written in Go and in Rust. The two models, `heartbeats` and `phi`, use only
+the standard library. The two Kubernetes programs, `leaseagent` and `leasewatch`, use
+client-go and kube-rs. The Go programs are in `code/go` and run with `go run ./<name>`; the
+Rust programs are packages in the workspace in `code/rust` and run with
+`cargo run -p <name>`.
 
 <div class="covers">
 
@@ -33,14 +32,14 @@ This chapter covers
 ## Heartbeats and timeouts
 
 A machine that has crashed cannot announce that it has crashed. The only evidence the
-control plane gets is silence. So each machine runs a small agent that sends a message, a
+control plane receives is silence. Each machine therefore runs a small agent that sends a message, a
 *heartbeat*, at a fixed interval, and the control plane treats a long enough silence as a
 failure.
 
-The difficulty is that silence has more than one cause. The machine may be dead, or it may
-be alive but overloaded, or the network between it and the control plane may be broken
-while the machine keeps running its job. From the control plane's side, the three look the
-same. Every failure detector therefore makes a bet on how long a silence has to last before
+Silence has three possible causes. The machine may be dead; it may be alive and
+overloaded; or the network between it and the control plane may be broken while the machine
+keeps running its job. From the control plane's side the three are indistinguishable, so
+every failure detector makes a bet on how long a silence has to last before
 it is more likely to mean death than delay, and the bet has a cost in both directions. A
 short timeout declares healthy machines dead, and their jobs are restarted for nothing,
 sometimes while the original copy is still running. A long timeout leaves the jobs of truly
@@ -48,8 +47,9 @@ dead machines stopped for longer.
 
 ## Keeping heartbeats out of the database
 
-The control plane has to remember the last heartbeat of every machine. The obvious place
-for that is its database, and the obvious design writes every heartbeat there. A fleet of
+The control plane has to remember the last heartbeat of every machine. Writing every
+heartbeat to the control plane's database is the direct design, and it does not scale. A
+fleet of
 10,000 hosts sending one heartbeat a second would then make 10,000 writes a second. In a
 replicated store such as etcd, every write is sent to a majority of the replicas and
 flushed to disk before it is acknowledged, and a steady stream of 10,000 writes a second
@@ -57,7 +57,7 @@ would leave little capacity for the writes that matter, such as creating jobs.
 
 Most heartbeats carry no news: they say that a host that was alive is still alive. The
 registry can keep the time of each host's last heartbeat in memory and write to the
-database only when a host changes state. Our model uses three states. A host is *Up* while
+database only when a host changes state. The model uses three states. A host is *Up* while
 heartbeats arrive. It becomes *Suspect* after 3 seconds of silence, which lets the control
 plane stop placing new work on it without yet giving up on the work it has. It becomes
 *Dead* after 10 seconds, at which point its jobs would be restarted elsewhere.
@@ -160,15 +160,15 @@ Figure 3.1 shows the two paths, and the three states with the silences that sepa
 <figcaption><b>Figure 3.1</b> Every heartbeat updates memory. The database receives a write when a host changes state.</figcaption>
 </figure>
 
-Keeping the state in memory has one consequence. When the registry itself restarts, it
-has lost every host's last-seen time. Our model starts by marking every host Up with a
+Keeping the state in memory has one consequence: a registry that restarts has lost every
+host's last-seen time. The model starts by marking every host Up with a
 last-seen time of 0, which gives each host a full timeout to report in before anything is
 declared dead. A real registry has to do the same after a restart, or it would declare
 the whole fleet dead at once.
 
 ## Choosing the timeout: the phi accrual detector
 
-A fixed timeout treats every host alike. Hosts are not alike: one on a quiet network sends
+A fixed timeout treats every host alike, while hosts differ. One on a quiet network sends
 heartbeats exactly a second apart, and another on a congested link sends them anywhere from
 half a second to two and a half seconds apart. Two seconds of silence is alarming for the
 first host and ordinary for the second.
@@ -180,8 +180,8 @@ samples of a normal distribution, and computes the probability that a heartbeat 
 arrive after the current silence. It reports that probability as *phi*, minus its base-10
 logarithm, so that each unit of phi is a factor of ten: phi 1 means a 10 percent chance
 that the host is fine, phi 2 means 1 percent, phi 3 means 0.1 percent. The control plane
-picks a phi threshold instead of a timeout, and each host's effective timeout follows from
-its own behaviour.
+chooses a phi threshold, and each host's effective timeout follows from its own
+behaviour.
 
 <div class="lld">
 
@@ -284,7 +284,7 @@ after about 1.6 seconds and on the jittery host only after about 3.4 seconds.
 Kubernetes applies the same ideas to its own nodes. Every node has a *Lease*, a small
 object in the `coordination.k8s.io` API group, in the namespace `kube-node-lease`. The
 kubelet renews its node's Lease every 10 seconds by writing the current time into the
-Lease's `renewTime` field. Our cluster has one node and one node Lease:
+Lease's `renewTime` field. The cluster has one node and one node Lease:
 
 ```console
 $ kubectl get lease -n kube-node-lease
@@ -320,7 +320,7 @@ only lost contact with the control plane may still be running its pods.
 
 ## A lease agent
 
-We will give each simulated GPU host a Lease of its own, in a namespace called `fleet`:
+Each simulated GPU host gets a Lease of its own, in a namespace called `fleet`:
 
 <p class="listing"><b>Listing 3.13</b> The namespace for the fleet's Leases. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/manifests/fleet-namespace.yaml">code/manifests/fleet-namespace.yaml</a></p>
 
@@ -392,26 +392,25 @@ types. The Rust version builds it in a function of its own.
 ```
 
 
-Both agents write with server-side apply, which we met in section 1.1: each renewal sends
+Both agents write with server-side apply, introduced in section 1.1. Each renewal sends
 the whole Lease, and the API server creates it on the first renewal and updates it on the
 others. A failed renewal, for example while the API server restarts, is logged and retried
-at the next tick; the Lease simply ages until a renewal succeeds. The renewal time is
+at the next tick, and the Lease ages until a renewal succeeds. The renewal time is
 written in UTC, as every Kubernetes timestamp is, and it comes from the host's own clock.
 
 ## A lease watcher
 
-The watcher plays the part of the node lifecycle controller. It has to decide when a Lease
-has expired, and the obvious rule, "expired when `renewTime` plus the lease duration is in
-the past", has a flaw: `renewTime` was written with the host's clock and is compared with
-the watcher's clock. If the two clocks disagree by a few seconds, healthy hosts look
+The watcher plays the part of the node lifecycle controller and decides when a Lease has
+expired. The direct rule, "expired when `renewTime` plus the lease duration is in the
+past", compares a time written with the host's clock against the watcher's clock. If the two clocks disagree by a few seconds, healthy hosts look
 expired, or dead hosts look alive for longer than they should.
 
-The node lifecycle controller avoids this by never comparing the two clocks. A comment in
+The node lifecycle controller does not compare the two clocks. A comment in
 its source explains that it records its own time of observation "to avoid the problem with
 time skew across the cluster": whenever it sees a Lease's `renewTime` change, it notes its
 own current time, and it declares the node unhealthy when its own clock shows that the
 grace period has passed since that note. The value of `renewTime` matters only in that it
-changed. Our watcher works the same way.
+changed. The watcher here works the same way.
 
 <div class="lld">
 
@@ -428,8 +427,8 @@ Low-level design: `leasewatch`
 
 </div>
 
-An observation is three fields, and the second is the one that matters: the local time at
-which the watcher first saw the current `renewTime`.
+An observation is three fields. The second carries the rule: the local time at which the
+watcher first saw the current `renewTime`.
 
 <p class="listing"><b>Listing 3.19</b> What the watcher remembers about one Lease, in Go. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/go/leasewatch/main.go">code/go/leasewatch/main.go</a></p>
 
@@ -492,8 +491,8 @@ system's wall clock is adjusted.
 
 ## Running it
 
-We create the namespace, start three agents, two in Go and one in Rust, and then start both
-watchers. Each command runs in its own terminal:
+The run creates the namespace, starts three agents, two in Go and one in Rust, and then
+starts both watchers. Each command runs in its own terminal:
 
 ```console
 $ kubectl apply -f code/manifests/fleet-namespace.yaml
@@ -528,9 +527,9 @@ spec:
   renewTime: "2026-10-01T01:31:44.511013Z"
 ```
 
-At 18:31:25 we kill the agent for `gpu-host-b` with `kill -9`, which stops it without
-giving it a chance to clean up, as a power failure would. Fourteen seconds later, at
-18:31:39, we start it again. The agent's own log shows the gap:
+At 18:31:25 the agent for `gpu-host-b` was killed with `kill -9`, which stops it with no
+chance to clean up, as a power failure would. Fourteen seconds later, at 18:31:39, it was
+started again. The agent's own log shows the gap:
 
 ```console
 18:31:16 gpu-host-b renewed
@@ -554,7 +553,7 @@ The Go watcher printed:
 18:31:39 gpu-host-b renewing again
 ```
 
-And the Rust watcher printed:
+The Rust watcher printed:
 
 ```console
 18:31:19 gpu-host-c seen, lease duration 6s

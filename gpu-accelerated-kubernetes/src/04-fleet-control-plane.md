@@ -1,19 +1,17 @@
 # 4. A control plane for a fleet of hosts
 
-In chapter 3, we learned how a control plane notices that a machine has gone silent. A
-silent machine is the simple case. More often a machine keeps sending heartbeats while
-something on it is going wrong: a GPU reports a memory error, a job crashes with a GPU
-fault, or a network link drops for a second and returns. In this chapter, we will build
-the part of a control plane that reads those reports and decides what to do with the
-machine.
+Chapter 3 showed how a control plane detects a machine that has gone silent. Silence is
+the simple case. More often a machine keeps sending heartbeats while something on it fails:
+a GPU reports a memory error, a job crashes with a GPU fault, or a network link drops for a
+second and returns. This chapter builds the part of a control plane that reads those reports
+and decides what to do with the machine.
 
-We will work with a fleet of real machines, small enough to keep in our heads: five
-Jetson AGX Thor developer kits on one switch, two DGX Sparks joined by a cable, and the
-Jetson Orin NX that has run every example so far. We will first reason about what each
-kind of report tells us, then draw the design, then write it as two programs in Go and in
-Rust. `fleethealth` decides which reports blame a machine and walks a blamed machine
-through its repair. `fencing` deals with the question chapter 3 ended on: what stops a job
-from running twice when a machine that was declared dead turns out to be alive.
+The examples use a fleet of eight machines: five Jetson AGX Thor developer kits on one
+switch, two DGX Sparks joined by a cable, and the Jetson Orin NX that ran every earlier
+example. Two programs, each in Go and in Rust, implement the design. `fleethealth` decides
+which reports blame a machine and takes a blamed machine through its repair. `fencing`
+answers the question chapter 3 ended on: what stops a job from running twice when a machine
+declared dead turns out to be alive.
 
 <div class="covers">
 
@@ -31,7 +29,7 @@ This chapter covers
 ## The fleet
 
 Figure 4.1 shows the eight machines. Each has one GPU that shares memory with the CPU, as
-we saw for the Orin in chapter 2, so a machine's memory is also the limit on what its GPU
+chapter 2 showed for the Orin, so a machine's memory is also the limit on what its GPU
 can hold.
 
 <figure>
@@ -46,7 +44,7 @@ can hold.
 | Jetson AGX Thor | 14 | 128 GB | 273 GB/s | four lanes of 25 GbE | 40 to 130 W |
 | DGX Spark | 20 | 128 GB | 273 GB/s | up to 200 GbE | about 170 W |
 
-Three facts about this fleet shape the chapter. The machines are few, so losing two of
+Three properties of this fleet shape the design. The machines are few, so losing two of
 them removes a quarter of the capacity. They are connected in groups: the five Thors
 reach each other through one switch, and the two Sparks through one cable, so one failed
 switch looks like five failed machines. And every machine runs long jobs whose progress
@@ -55,27 +53,27 @@ destroys work.
 
 <div class="callout">
 
-**What we measured and what we modelled.** The cluster in this book runs on the Orin NX,
+**Measured and modelled numbers.** The cluster in this book runs on the Orin NX,
 and the CUDA programs of chapter 2 ran on the Orin NX and on one Thor. The fleet of five
 Thors and two Sparks is the one the programs of this chapter and the next ones model.
-Its core counts, memory sizes, link speeds, and power figures are the manufacturer's,
-and where a number in the book comes from a run on our own hardware, the text shows the
-command and its output.
+Its core counts, memory sizes, link speeds, and power figures are the manufacturer's.
+Where a number comes from a run on the book's own hardware, the text shows the command and
+its output.
 
 </div>
 
 A fleet of ten thousand machines has the same three properties with larger numbers. The
-design that follows is the one such fleets use, and our eight machines are enough to
-exercise every part of it.
+design that follows is the one such fleets use, and eight machines are enough to exercise
+every part of it.
 
-## What a failure report tells us
+## What a failure report says
 
 Each machine produces several kinds of report about its GPU and its network link.
 
 The GPU driver writes a message to the kernel log when the GPU reports an error. On
 discrete and data center GPUs, the NVIDIA driver numbers these messages, and the number
 is called an *Xid*. NVIDIA publishes a catalog that gives the usual cause of each one.
-The table lists the Xids our model has a class for:
+The table lists the Xids the model assigns a class to:
 
 | Xid | What the driver reports | Usual cause | Class in our model |
 |---|---|---|---|
@@ -83,8 +81,8 @@ The table lists the Xids our model has a class for:
 | 48, 95 | a double-bit or uncontained memory error | the GPU's memory | uncorrectable ECC |
 | 79 | the GPU has fallen off the bus | the GPU, its power, or its slot | GPU off the bus |
 
-Of our two boards, the Thor runs this driver, version 595.78, and reports its errors as
-Xids. Its kernel log held none when we looked. The Orin NX runs the older `nvgpu` driver,
+Of the two boards, the Thor runs this driver, version 595.78, and reports its errors as
+Xids. Its kernel log held none when checked. The Orin NX runs the older `nvgpu` driver,
 which writes its errors to the kernel log without Xid numbers. The model reduces every
 report to a class, so it does not depend on the format.
 
@@ -92,8 +90,8 @@ ECC stands for error-correcting code: GPU memory stores a few extra bits with ea
 enough to repair one flipped bit and to detect two. An *uncorrectable* error is one the
 extra bits detected and could not repair.
 
-The network interface reports each time its link goes down and comes back. We call one
-such event a *link flap*.
+The network interface reports each time its link goes down and comes back. One such event
+is a *link flap*.
 
 The same report can have three different causes, and the right response differs for each:
 
@@ -105,8 +103,8 @@ The same report can have three different causes, and the right response differs 
   few seconds. The machines are healthy, and draining them would turn a short network
   interruption into a loss of five machines' worth of running jobs.
 
-One report cannot distinguish these cases. Several reports can, by counting along two
-directions. A fault that follows one job across three machines blames the job. Faults from
+One report cannot distinguish these cases. Several reports can, when they are counted
+along two directions. A fault that follows one job across three machines blames the job. Faults from
 three different jobs on one machine blame the machine. Flaps from three machines on one
 link, close together in time, blame the link. A report of a memory error or of a GPU off
 the bus needs no counting, because no program can cause one.
@@ -121,7 +119,7 @@ A report has to reach two places, at two speeds. Figure 4.2 shows both.
 </figure>
 
 
-The fast path stays on the machine. The device plugin, which we met in the introduction,
+The fast path stays on the machine. The device plugin, described in the introduction,
 reports the health of each GPU to the kubelet along with the count. When a GPU fails, the
 plugin marks it unhealthy, the kubelet lowers the number of GPUs the node offers, and the
 scheduler stops placing pods that ask for that GPU. This takes seconds and needs no
@@ -134,13 +132,13 @@ it alone, or repair it. A *remediation controller* acts on the verdict. It is a
 controller in the sense of chapter 1: it holds a desired state for each machine and moves
 the machine towards it one step at a time, through the Kubernetes API. In a production
 cluster the reports travel through a metrics pipeline, and the verdict is written to a
-custom resource that the controller watches. Our model keeps both halves in one process
-so that we can see every decision in one log.
+custom resource that the controller watches. The model keeps both halves in one process
+so that every decision appears in one log.
 
-The two halves stay separate in the design for a practical reason. The rules that produce
+The design keeps the two halves separate. The rules that produce
 verdicts change often, as new failure patterns appear. The controller that drains and
-reboots machines changes rarely and is dangerous when it is wrong. Keeping them apart
-lets us change a rule, or run a new rule in a mode that only logs its verdicts, without
+reboots machines changes rarely and is dangerous when it is wrong. With the two apart, a
+rule can be changed, or a new rule run in a mode that only logs its verdicts, without
 touching the code that can take machines away.
 
 ## The repair lifecycle
@@ -180,13 +178,13 @@ the pool, and a ticket asks a person to look at the hardware.
 
 A controller that can drain machines can also drain all of them. If a faulty rule
 condemned every machine in the fleet, a controller that obeyed would cause a larger
-outage than any hardware failure. So the controller carries a *disruption budget*: the
+outage than any hardware failure. The controller therefore carries a *disruption budget*: the
 largest number of machines that may be out of service at once. A machine whose verdict
 arrives when the budget is spent stays Cordoned, which costs nothing that is running, and
-waits for a slot. A budget that stays spent is itself a signal worth a page to a person,
-because it means failures are arriving faster than repairs finish.
+waits for a slot. A budget that stays spent should page an operator, because it means
+failures are arriving faster than repairs finish.
 
-Our fleet's budget is two machines. A quarantined machine keeps its slot until someone
+The fleet's budget is two machines. A quarantined machine keeps its slot until someone
 repairs or removes it, since it is still missing from the fleet.
 
 <div class="lld">
@@ -252,8 +250,7 @@ its class. Hardware signals and link flaps have no job.
 ### The states and the ladder
 
 The states are declared in the order a failing machine passes through them, and both
-languages can compare them. That ordering does real work later: "every state from
-Draining on" becomes one comparison.
+languages can compare them, so "every state from Draining on" is one comparison.
 
 <p class="listing"><b>Listing 4.5</b> The lifecycle states and the repair ladder, in Go. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/go/fleethealth/main.go">code/go/fleethealth/main.go</a></p>
 
@@ -297,7 +294,7 @@ single expression `self.blamed.insert(s.job)`.
 ### The budget
 
 The budget check is a count of the machines in the four states that take a machine away
-from the fleet. Cordoned is left out on purpose: a cordoned machine still runs its jobs.
+from the fleet. Cordoned is excluded because a cordoned machine still runs its jobs.
 
 <p class="listing"><b>Listing 4.9</b> Counting the machines that are out of service, in Go. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/go/fleethealth/main.go">code/go/fleethealth/main.go</a></p>
 
@@ -413,8 +410,8 @@ own progress back from the API server.
 
 ## A job that runs twice
 
-The lifecycle above covers a machine that still answers. Chapter 3 left us with the
-harder case: a machine whose Lease has expired. The control plane cannot drain it,
+The lifecycle above covers a machine that still answers. Chapter 3 ended with the harder
+case, a machine whose Lease has expired. The control plane cannot drain it,
 because it cannot reach it, and it cannot tell a machine that has lost power from one
 that has lost only its network link. If it waits, the job on a truly dead machine stays
 stopped. If it starts the job elsewhere, the job on a machine that was only cut off is
@@ -512,7 +509,7 @@ In the first run, `thor-1`'s write of step 1500 lands after `thor-2`'s write of 
 and the stored checkpoint comes from the copy that should have stopped. In the second
 run the store refuses that write, and a restart resumes from step 2000.
 
-Kubernetes gives us the pieces for both parts. A Lease's `leaseTransitions` field counts
+Kubernetes provides the pieces for both parts. A Lease's `leaseTransitions` field counts
 how often the Lease has changed hands, and it rises by one with each new holder, so it
 can serve as the epoch. The check has to be made by whatever stores the checkpoints: an
 object store that supports conditional writes, a database row with a version column, or a

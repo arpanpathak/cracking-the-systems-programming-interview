@@ -1,16 +1,16 @@
 # 11. A command-line tool for Windows, macOS, and Linux
 
-Everything we have built so far runs inside the cluster or next to it, on Linux. The
+Every program in the earlier chapters runs inside the cluster or beside it, on Linux. The
 people who use the cluster sit somewhere else. A researcher submits jobs from a MacBook,
 an operator checks nodes from a Windows laptop, and a build pipeline does both from a
 Linux container. What they all run is a command-line tool, and it is the one piece of a
 GPU platform that has to work on three operating systems.
 
-In this chapter, we will write that tool. `gpuctl` is small: it lists the nodes of a
-cluster with their GPUs, reports where it keeps its files, and prints its version. We
-will first decide how a command-line tool should behave so that both people and scripts
-can use it, then write it in Go and in Rust, and then build it for the three systems
-from our Jetson and see where each language makes that easy and where it does not.
+This chapter writes that tool. `gpuctl` is small: it lists a cluster's nodes with their
+GPUs, reports where it keeps its files, and prints its version. The chapter sets out how a
+command-line tool should behave so that both people and scripts can use it, implements it
+in Go and in Rust, and builds it for the three systems from a Jetson, which shows where
+each language makes cross-building straightforward and where it does not.
 
 <div class="covers">
 
@@ -118,7 +118,7 @@ rules for the path. The Rust version applies the rule itself.
 
 ## Reading the nodes
 
-`gpuctl nodes` makes one request, a list of Node objects, which we met in chapter 1,
+`gpuctl nodes` makes one request, a list of Node objects,
 and keeps five fields of each: the name, the allocatable `nvidia.com/gpu` count from
 chapter 5, and the architecture, operating system, and kubelet version that the kubelet
 reports about its machine.
@@ -213,13 +213,13 @@ The Rust version matches the whole argument list against patterns. The pattern
 `["nodes", "-o", "table" | "json"]` accepts exactly the two valid forms, and any other
 list that starts with `nodes` falls through to the usage arm.
 
-Here is the tool on our cluster. Both versions print exactly this:
+On the cluster, both versions print exactly this:
 
 ```console
 {{#include ../code/output/gpuctl.txt}}
 ```
 
-The table and the JSON hold the same row: our one node, with its one GPU, on `arm64`.
+The table and the JSON hold the same row: the cluster's one node, with its one GPU, on `arm64`.
 The unknown command prints its message and the usage text on standard error and exits
 with 2. When the cluster cannot be reached, each version prints the error its client
 library produced and exits with 1. The Go version prints:
@@ -241,11 +241,11 @@ Animation 11.1 shows three of these runs, each with its two streams and its stat
 
 ## Building for three systems
 
-A program that runs on our Jetson is a file of ARM machine code in the format Linux
+A program that runs on the Jetson is a file of ARM machine code in the format Linux
 loads, called ELF. A Windows laptop with an Intel processor needs different machine
 code in a different format, PE, and a MacBook needs ARM code in a third, Mach-O.
 Producing a program for a system other than the one the compiler runs on is called
-*cross-compilation*. Figure 11.2 shows what we are after.
+*cross-compilation*. Figure 11.2 shows the three targets.
 
 <figure>
 <img src="figures/cross-build.svg" alt="One source tree on the Jetson, a Linux arm64 machine, is built into four files: an ELF executable for Linux on arm64, an ELF executable for Linux on amd64, a Mach-O executable for macOS on arm64, and a PE executable for Windows on amd64.">
@@ -257,7 +257,7 @@ Producing a program for a system other than the one the compiler runs on is call
 
 The Go compiler and linker are written in Go and contain the code generators for every
 platform Go supports. Two environment variables select the target: `GOOS` names the
-operating system and `GOARCH` the processor. On our Jetson:
+operating system and `GOARCH` the processor. On the Jetson:
 
 ```console
 $ GOOS=windows GOARCH=amd64 go build -o gpuctl-windows-amd64 ./gpuctl
@@ -279,7 +279,7 @@ needs a C compiler for each target.
 
 Rust selects a target with a *target triple*, such as `x86_64-unknown-linux-gnu` or
 `aarch64-apple-darwin`, and `rustup target add` installs the standard library for one.
-Our Jetson has these installed:
+The Jetson has these installed:
 
 ```console
 $ rustup target list --installed
@@ -299,12 +299,12 @@ error: failed to run custom build command for `ring v0.17.14`
 
 `ring` is the cryptography library that kube-rs uses, through its TLS library, for its
 encrypted connection to the API server. Parts of it are written in C and assembly, and
-its build compiles them with a C compiler for the target. Our board has a C compiler
+its build compiles them with a C compiler for the target. The board has a C compiler
 for ARM Linux and none for Intel Linux or for macOS. The same would happen at the last
 step of any Rust build for another system: Rust calls the target system's linker to
 produce the final file, and that linker has to be installed.
 
-So cross-compiling Rust means supplying a C toolchain for each target. Projects handle
+Cross-compiling Rust therefore means supplying a C toolchain for each target. Projects handle
 this in one of two ways. Most build each target on a machine that runs it: a pipeline
 with one Linux, one macOS, and one Windows runner, each running a plain `cargo build
 --release` and uploading its binary. Others install cross toolchains, either one by one
@@ -313,7 +313,7 @@ has the right toolchain for the target.
 
 A Rust program with no C in its dependencies gets further. `fleethealth` from chapter 4
 uses only the standard library, and `cargo check -p fleethealth --target
-aarch64-apple-darwin` passes on our Jetson, which shows that the compiler itself has no
+aarch64-apple-darwin` passes on the Jetson, which shows that the compiler itself has no
 difficulty with the target. The difficulty belongs to one dependency with C in it, the
 same condition under which Go's cross-compilation stops working.
 

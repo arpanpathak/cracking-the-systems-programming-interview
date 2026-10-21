@@ -2,15 +2,14 @@
 
 The jobs in the earlier chapters each ran on one machine. A model that is too large or
 too slow to train on one machine is trained on several at once, and that changes what a
-failure means. In this chapter, we will look at what the machines of a training job say
-to each other during every step, why the failure of one machine stops all of them, and
-how often a job should save its state so that a failure costs little.
+failure means. This chapter covers what the machines of a training job exchange during
+every step, why the failure of one machine stops all of them, and how often a job should
+save its state so that a failure costs little.
 
-We will first reason about the communication with pencil and paper, on the five Thors
-from chapter 4. Then we will write `allreduce`, in Go and in Rust: five workers running
-at the same time, connected in a ring, exchanging the pieces of a gradient. We will run
-it healthy, run it again with one worker failing part of the way through, and finish
-with the arithmetic of checkpoints.
+The communication is first worked out by hand on the five Thors from chapter 4. `allreduce`,
+written in Go and in Rust, then runs five concurrent workers connected in a ring that
+exchange the pieces of a gradient, once healthy and once with a worker failing partway
+through. The chapter ends with the arithmetic of checkpoints.
 
 <div class="covers">
 
@@ -18,7 +17,7 @@ This chapter covers
 
 - one step of training on several machines, and the sum every machine needs
 - all-reduce, and why a ring carries it better than a coordinator
-- the cost of a step in gigabytes, for our Thors and our Sparks
+- the cost of a step in gigabytes, for the Thors and the Sparks
 - five concurrent workers in Go (goroutines and channels) and in Rust (threads and
   channels)
 - how the failure of one worker spreads around the ring, one neighbour per exchange
@@ -55,11 +54,10 @@ between the machines is part of the inner loop of training.
 
 ## Two ways to add five gradients
 
-The obvious design gives the job to one machine. Every worker sends its gradient to a
+The direct design gives the job to one machine. Every worker sends its gradient to a
 coordinator, the coordinator adds them, and sends the sum back to every worker.
 
-Count what the coordinator's network link carries in one step: five gradients in and
-five out. Every other link carries one in each direction. The coordinator's link is the
+The coordinator's network link carries five gradients in and five out in each step. Every other link carries one in each direction. The coordinator's link is the
 bottleneck, and it gets worse in proportion to the number of workers. With 14 GB
 gradients and five workers, 70 GB pass through one link in each direction, every step.
 
@@ -73,8 +71,8 @@ workers. Figure 7.1 compares the two shapes.
 </figure>
 
 
-The ring works in two phases. We follow one chunk, chunk 0, through both. Our five
-workers start with the values 1, 2, 3, 4, and 5 in chunk 0, so its sum is 15.
+The ring works in two phases. The walk-through follows one chunk, chunk 0, through both.
+The five workers start with the values 1, 2, 3, 4, and 5 in chunk 0, so its sum is 15.
 
 In the first phase, each worker passes a partial sum to the right, and the receiver adds
 its own value:
@@ -96,13 +94,13 @@ copy. `thor-5` sends the 15 to `thor-1`, which stores it and passes it on, and a
 four more exchanges every worker holds it. The other finished chunks circulate at the
 same time.
 
-Now count what a link carries. With N workers there are 2(N − 1) exchanges, and each
+With N workers there are 2(N − 1) exchanges, and each
 sends one chunk, which is one Nth of a gradient, across every link. A worker therefore
 sends 2(N − 1)/N gradients' worth of data per step. For five workers that is 1.6, and
 however many workers join, it stays below 2. Every link carries the same amount, and
 none is special.
 
-Here is what that costs on our machines for the 14 GB gradient:
+For the 14 GB gradient, the fleet's links give these costs:
 
 | Workers | Link between them | Sent by each worker per step | Time for the exchange |
 |---|---|---|---|
@@ -111,8 +109,8 @@ Here is what that costs on our machines for the 14 GB gradient:
 | two Sparks | the 200 GbE cable, 25 GB/s | 1.0 × 14 = 14 GB | 0.56 s |
 
 A step whose computation takes a second is dominated by seven seconds of communication
-on a single 25 GbE lane. This is the reason the fast links on these machines exist, and
-the reason chapter 8 places a job's workers by the links between them.
+on a single 25 GbE lane. The fast links on these machines exist for this traffic, and
+chapter 8 places a job's workers by the links between them for the same reason.
 
 One more property follows from the ring's shape. Every chunk crosses every link. If one
 link is slower than the rest, every chunk waits for it, and the whole step runs at the
@@ -122,7 +120,7 @@ speed of the slowest link.
 
 The same shape decides what happens when a worker fails in the middle of a step. A
 worker's every exchange depends on its left-hand neighbour: it cannot add to a chunk it
-has not received. So when one worker stops, its right-hand neighbour is stuck at its
+has not received. When one worker stops, its right-hand neighbour is stuck at its
 next exchange. That neighbour had already sent its chunk for the exchange, so the worker
 after it completes one more exchange and is stuck at the following one. The stall
 travels around the ring, one worker per exchange, until it has reached everyone.
@@ -132,16 +130,16 @@ some partial sums, and some of its own original values, in a mixture that depend
 where it was stopped. The step cannot be finished by the workers that remain, because
 the failed worker's values for some chunks were not sent.
 
-The model in every worker's memory is intact, since the step had not yet changed it. But
-a training job is built as a fixed group: its workers were started together with a fixed
+The model in every worker's memory is intact, since the step had not yet changed it.
+A training job, however, is built as a fixed group: its workers were started together with a fixed
 ring, and the frameworks do not shrink the ring in mid-run. The practical response to
 one failed worker is to stop all of them, replace the failed one, and start the whole
 group again from the last saved state.
 
 This has a consequence for the control plane that the single-machine jobs did not have.
 The controller that owns a training job treats its pods as one unit: when one pod
-fails, it deletes all of them and creates them all again. And it makes the two numbers
-from chapter 3 matter in a new way. The time to detect the failed machine is time during
+fails, it deletes all of them and creates them all again. The detection times from
+chapter 3 also gain a new cost. The time to detect the failed machine is time during
 which the surviving machines hold their GPUs and do nothing.
 
 <div class="lld">
@@ -165,8 +163,7 @@ Low-level design: `allreduce`
 ## Building `allreduce`
 
 Each worker in the program stands for one Thor. One number stands for each chunk, which
-keeps the output readable. The algorithm does the same thing to a chunk of three
-gigabytes.
+keeps the output readable. The algorithm treats a chunk of three gigabytes the same way.
 
 ### A worker and its two channels
 
@@ -193,9 +190,9 @@ share no memory, only a network.
 
 `Run` is the algorithm. Each pass of its loop is one exchange: send a chunk to the right,
 then wait for a chunk from the left. The chunk to send is found by counting backwards
-from the worker's own position, one place per exchange. Working through the hand example
-shows why that is right: after the first exchange, the chunk a worker sends next is
-always the one it received last.
+from the worker's own position, one place per exchange. The hand example confirms the
+rule: after the first exchange, the chunk a worker sends next is always the one it
+received last.
 
 <p class="listing"><b>Listing 7.3</b> A worker's 2(n − 1) exchanges, in Go. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/go/allreduce/main.go">code/go/allreduce/main.go</a></p>
 
@@ -257,7 +254,7 @@ it waits for something in return.
 The last piece is arithmetic. Saving a *checkpoint*, the model's parameters and the
 position in the training data, takes time during which no training happens. Saving
 rarely wastes little time on checkpoints and loses much work at each failure. Saving
-often does the opposite. Somewhere between lies the interval that wastes the least.
+often does the opposite. Between the two lies the interval that wastes the least.
 
 Let C be the time one checkpoint takes, and M the job's *mean time between failures*
 (MTBF), the average time from one failure to the next. With a checkpoint every T
@@ -309,13 +306,13 @@ $ go run ./allreduce
 ```
 
 
-In the first part every worker ends with the same five sums, starting with the 15 we
+In the first part every worker ends with the same five sums, starting with the 15
 computed by hand. Each sent 8 chunks, 1.6 gradients' worth, as the count predicted.
 
 In the second part `thor-3` fails after two exchanges. `thor-4`, on its right, also
 completed two and stopped at the third, waiting for `thor-3`. `thor-5` completed three,
 `thor-1` four, and `thor-2` five. Reading the workers in ring order from the failure,
-the counts are 2, 3, 4, 5: the stall moved one worker per exchange, as we reasoned. Each
+the counts are 2, 3, 4, 5: the stall moved one worker per exchange, as predicted. Each
 worker names the neighbour it was waiting for, and only one of the four names the
 machine that failed. A person who reads the report from `thor-2` alone would suspect
 `thor-1`, which is healthy. Finding the worker that every chain of blame leads back to
@@ -335,12 +332,11 @@ The third part assumes that one machine fails every 30 days and that a checkpoin
 arithmetic, and the formula takes whatever numbers a real fleet measures.
 
 A job on one machine should checkpoint every 268 minutes and loses 0.6 percent of its
-time. Our five Thors together fail every 144 hours, and the best interval is exactly two
+time. The five Thors together fail every 144 hours, and the best interval is exactly two
 hours, at a cost of 1.4 percent. At 512 machines the job fails every 1.4 hours on
 average. It should checkpoint every 12 minutes, and 14.1 percent of its time goes to
-checkpoints and repeated work. The machines are no less reliable than before. There are
-more of them in one job, and this is why large training jobs invest in making
-checkpoints fast.
+checkpoints and repeated work. The machines are as reliable as before; there are more of
+them in one job. Large training jobs therefore invest in making checkpoints fast.
 
 ## The complete program
 

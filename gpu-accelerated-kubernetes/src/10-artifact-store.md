@@ -7,12 +7,11 @@ model every few hours. Something has to hold all of these versions, deliver them
 machines, and do so without copying a hundred gigabytes every time one layer of a model
 changes.
 
-In this chapter, we will build the storage scheme that container registries and model
-stores share. We will first see what is wrong with naming a file by a name someone
-chose, and what changes when a file is named by its own contents. Then we will write
-`cas`, in Go and in Rust, a store that keeps artifacts as chunks named by their hashes,
-and use it to push two versions of a model, pull one to a machine that already has the
-other, detect a corrupted chunk and repair it, and reclaim space.
+This chapter builds the storage scheme that container registries and model stores share.
+It starts with the limits of a name someone chose and what changes when a file is named by
+its own contents. `cas`, written in Go and in Rust, stores artifacts as chunks named by
+their hashes. The run pushes two versions of a model, pulls one to a machine that already
+has the other, detects and repairs a corrupted chunk, and reclaims space.
 
 <div class="covers">
 
@@ -20,7 +19,7 @@ This chapter covers
 
 - names that people choose, and what they fail to promise
 - a digest: a name computed from the contents
-- the same scheme in the containerd on our own node
+- the same scheme in containerd on the cluster's node
 - chunks and manifests: an artifact as a list of digests
 - pushing a second version that shares most of its chunks with the first
 - pulling only what a machine lacks, and verifying every byte that arrives
@@ -30,8 +29,8 @@ This chapter covers
 
 ## What a chosen name does not promise
 
-Suppose we store model weights in files named by hand: `llm-v1.bin`, `llm-v2.bin`, and
-`llm-latest.bin`. A machine that is told to load `llm-latest.bin` and has a file of that
+Model weights stored in files named by hand, such as `llm-v1.bin`, `llm-v2.bin`, and
+`llm-latest.bin`, leave three questions open. A machine that is told to load `llm-latest.bin` and has a file of that
 name faces three questions that the name cannot answer.
 
 - *Is it the right version?* `latest` pointed at one model yesterday and points at
@@ -43,21 +42,21 @@ name faces three questions that the name cannot answer.
   two files are almost the same bytes, and nothing in their names says so. The machine
   downloads all of it.
 
-All three come from one cause: the name and the contents are unrelated, so knowing one
-tells us nothing about the other.
+All three have one cause: the name and the contents are unrelated, so knowing one says
+nothing about the other.
 
 ## A name computed from the contents
 
 A *cryptographic hash function* takes any sequence of bytes and computes a short,
-fixed-size value from it. SHA-256, the one we will use, produces 256 bits, written as 64
+fixed-size value from it. SHA-256, used here, produces 256 bits, written as 64
 hexadecimal digits. Two properties make it useful here. The same bytes always give the
-same value. And although different inputs that give the same value must exist, nobody
+same value, and although different inputs that give the same value must exist, nobody
 knows how to find two, so in practice a value identifies one particular sequence of
 bytes. The value is called a *digest*.
 
-A *content-addressed store* uses the digest as the name. To store a blob of bytes, we
-compute its digest and file the blob under it. To fetch a blob, we ask for a digest.
-This one change answers all three questions.
+A *content-addressed store* uses the digest as the name. A blob of bytes is stored under
+its digest and fetched by asking for that digest. This one change answers all three
+questions.
 
 - A digest names exactly one sequence of bytes, for ever. Two machines that load the
   same digest load the same model.
@@ -67,11 +66,10 @@ This one change answers all three questions.
   lookup that finds the first. A machine that is asked for a digest it holds has nothing
   to download.
 
-### The same scheme on our node
+### The same scheme on the cluster's node
 
-The container images on our cluster are stored this way already. containerd keeps the
-parts of every image in a directory of files named by their SHA-256 digests. On our
-kind node:
+The cluster's container images are already stored this way. containerd keeps the parts of
+every image in a directory of files named by their SHA-256 digests. On the kind node:
 
 ```console
 $ docker exec gpu-lab-control-plane sh -c \
@@ -84,8 +82,8 @@ $ docker exec gpu-lab-control-plane sh -c \
 168
 ```
 
-The node holds 168 blobs. The images we built in earlier chapters appear with the first
-digits of their digests when we list them:
+The node holds 168 blobs. The images built in earlier chapters are listed with the first
+digits of their digests:
 
 ```console
 $ docker exec gpu-lab-control-plane crictl images --digests | grep -E 'IMAGE|gpu-'
@@ -102,7 +100,7 @@ docker.io/library/gpu-sharing    1     413391f612a31   4212abdefc4b5   74.3MB
 
 Naming a whole 100 GB file by one digest answers the first two questions and does little
 for the third: change one byte and the digest changes, and the whole file is a new blob.
-To share the unchanged parts between versions, we store a large artifact in pieces.
+Sharing the unchanged parts between versions requires storing a large artifact in pieces.
 
 - The artifact is cut into *chunks* of a fixed size. Each chunk is a blob, stored under
   its own digest.
@@ -121,8 +119,7 @@ Figure 10.1 shows two versions of a model stored this way.
 
 
 Version 2 is version 1 with its last quarter retrained. Its first six chunks have the
-same bytes as version 1's, therefore the same digests, therefore they are the same
-blobs. Pushing version 2 stores two new chunks and one new manifest.
+same bytes as version 1's, so they have the same digests and are the same blobs. Pushing version 2 stores two new chunks and one new manifest.
 
 Container images have had this shape for years. An image is a manifest that lists
 *layers*, each layer is a blob named by its digest, and two images built from the same
@@ -153,14 +150,14 @@ Low-level design: `cas`
 
 ## Building `cas`
 
-Our store keeps its blobs in memory, in a map from digest to bytes, so that the program
-has no files to clean up. A store on disk is the same map with one file per blob, in a
-directory layout like the one containerd showed us.
+The model store keeps its blobs in memory, in a map from digest to bytes, so that the
+program has no files to clean up. A store on disk is the same map with one file per blob,
+in a directory layout like containerd's.
 
 ### Blobs by digest
 
-`Put` computes the digest, and stores the bytes only if that digest is not already a
-key. `Get` does more than a lookup: it hashes the bytes again and compares the result
+`Put` computes the digest and stores the bytes only if that digest is not already a key.
+`Get` hashes the bytes again and compares the result
 with the name it was asked for. Every read is therefore a check of the data.
 
 <p class="listing"><b>Listing 10.1</b> Digests, the store, and verified reads, in Go. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/go/cas/main.go">code/go/cas/main.go</a></p>
@@ -178,8 +175,8 @@ with the name it was asked for. Every read is therefore a check of the data.
 
 The Go standard library includes SHA-256 in `crypto/sha256`. Rust's standard library has
 no hash functions of this kind, and the Rust version uses the `sha2` crate. The two
-programs print the same digests, which is itself a check: both computed the same
-function over the same bytes.
+programs print the same digests, which confirms that both computed the same function over
+the same bytes.
 
 ### Pushing an artifact
 
@@ -201,7 +198,7 @@ manifest is then stored like any other blob, and the tag is pointed at it.
 ```
 
 
-Our chunks are 8 KiB so that the example stays small. Real stores use chunks of a few
+The model's chunks are 8 KiB so that the example stays small. Real stores use chunks of a few
 megabytes: large enough that the list of digests stays short, small enough that a
 change touches few of them.
 

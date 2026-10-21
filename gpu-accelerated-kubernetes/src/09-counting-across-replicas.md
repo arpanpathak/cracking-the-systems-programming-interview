@@ -7,12 +7,11 @@ hard: the API server is the single place every write passes through. A platform 
 spans several sites has several places where things happen, and they cannot always
 reach each other.
 
-In this chapter, we will count across three replicas of a usage service, one beside
-each group of machines in our fleet. We will first see why the obvious ways of keeping
-the replicas in step lose counts or count twice. Then we will write `counter`, in Go and
-in Rust, which builds a count that survives a network partition, extends it to a count
-that goes down as well as up, and finally shows the one thing such a count cannot do,
-which is to enforce a limit, and what does that job in its place.
+This chapter counts across three replicas of a usage service, one beside each group of
+machines in the fleet. The direct ways of keeping the replicas in step either lose counts
+or count twice. `counter`, written in Go and in Rust, builds a count that survives a
+network partition, extends it to a count that can decrease, and then shows what such a
+count cannot do, enforce a limit, along with the mechanism that enforces one.
 
 <div class="covers">
 
@@ -29,8 +28,7 @@ This chapter covers
 
 ## One authority, or several
 
-Suppose each group of machines in our fleet has a small service beside it that records
-usage: one on the shelf with the Thors, one on the desk with the Sparks, one on the
+Each group of machines in the fleet has a small service beside it that records usage: one on the shelf with the Thors, one on the desk with the Sparks, one on the
 bench with the Orin NX. Jobs report to the nearest one. Each of these is a *replica* of
 the usage service, and all three are meant to hold the same totals.
 
@@ -40,21 +38,20 @@ database of this kind: it stores each write on a majority of its members before 
 acknowledges the write, so that all members agree on the order of writes. The count is
 always exact.
 
-The cost appears when the network between the sites fails. Our three groups are joined
+The cost appears when the network between the sites fails. The three groups are joined
 only by the house network. If it goes down, the bench is alone. A replica that cannot
 reach a majority has two choices, and both are bad for a usage counter:
 
 - It can refuse reports until the network returns. The jobs near it keep running, and
   their usage for that period is not recorded.
-- It can accept reports into a count of its own. Now there are two counts, and the
-  design gave us no rule for combining them afterwards.
+- It can accept reports into a count of its own. There are then two counts, and the
+  design has no rule for combining them afterwards.
 
 A split like this is called a *network partition*, and the choice is a general one.
 During a partition, a replica that is cut off can stay *consistent*, by refusing work it
-cannot coordinate, or stay *available*, by doing the work alone. It cannot do both. For
-a count of usage we want availability: a report should be accepted wherever it arrives.
-So we need the thing the second choice lacked, a rule for combining counts that were
-kept apart.
+cannot coordinate, or stay *available*, by doing the work alone. It cannot do both. A
+usage count needs availability, so that a report is accepted wherever it arrives, and
+therefore needs what the second choice lacked: a rule for combining counts kept apart.
 
 ## Two rules that do not work
 
@@ -68,8 +65,8 @@ bench are gone, because the rule treats two different counts as two versions of 
 count.
 
 *Add the other's number.* Each replica adds what it receives to its own. After the shelf
-and the desk exchange once, both say 420, which is right for those two. But exchanges
-repeat, and messages are sometimes delivered twice. When the desk's 120 arrives at the
+and the desk exchange once, both say 420, which is right for those two. Exchanges
+repeat, however, and messages are sometimes delivered twice. When the desk's 120 arrives at the
 shelf a second time, the shelf says 540. A rule based on adding counts every report
 again each time the replicas talk.
 
@@ -78,7 +75,7 @@ contains, so a replica that receives one cannot tell which part of it is news.
 
 ## One entry per replica
 
-The fix is to keep that information. Each replica holds a row with one entry for every
+The fix is to keep that information in the count. Each replica holds a row with one entry for every
 replica, itself included. Two rules govern the row:
 
 - A replica records a report by adding to *its own* entry. It leaves every other
@@ -90,11 +87,11 @@ The count is the sum of the row.
 
 "Keep the larger" failed for totals and works here, and the difference is what the two
 numbers being compared mean. An entry is written by exactly one replica and only ever
-increases. So when two values of the same entry differ, they really are an older and a
-newer version of the same thing, and the larger is the newer.
+increases. When two values of the same entry differ, they are an older and a newer
+version of the same thing, and the larger is the newer.
 
-Let us run the earlier example. After the first reports, written as rows of
-(shelf, desk, bench):
+The earlier example, rerun with rows of (shelf, desk, bench), starts from these rows after
+the first reports:
 
 - the shelf holds (300, 0, 0),
 - the desk holds (0, 120, 0),
@@ -119,12 +116,12 @@ of them through a partition.
 The merge has three properties, and each one removes a requirement from the network
 between the replicas.
 
-- Merging the same row twice gives the same result as merging it once. So a message may
+- Merging the same row twice gives the same result as merging it once, so a message may
   be delivered twice, and replicas may exchange rows as often as they like.
-- Merging row A and then row B gives the same result as B and then A. So messages may
+- Merging row A and then row B gives the same result as B and then A, so messages may
   arrive in any order.
 - Merging A with the result of merging B and C gives the same result as merging A and B
-  first and then C. So a row may travel through other replicas on its way, picking up
+  first and then C, so a row may travel through other replicas on its way, picking up
   their entries, and nothing is lost or doubled.
 
 Together they mean that any two replicas that have received the same reports, by any
@@ -138,24 +135,23 @@ A count of GPUs in use has to go down when a job ends, and "keep the larger" can
 represent a decrease: a replica that lowered its entry would have the old, larger value
 merged straight back in.
 
-The way round this is to use two grow-only counters. One counts every increase and the
+The solution is two grow-only counters. One counts every increase and the
 other counts every decrease, and the value is the first minus the second. Both halves
 only grow, so both merge safely. This is a *PN-counter*, for positive and negative.
 
 ## What a merged count cannot do
 
 A quota is a limit: this team may use at most six GPUs at once. Enforcing it means
-refusing a job when the count is at the limit, and here the merged count lets us down.
+refusing a job when the count is at the limit, which a merged count cannot do safely.
 
-Suppose the shelf and the desk both know that four of the six GPUs are in use, and then
+The shelf and the desk both know that four of the six GPUs are in use, and then
 lose contact. A two-GPU job arrives at each. Each replica looks at its own count, sees
 four in use, and admits the job, correctly by everything it knows. When contact returns
 and the counts merge, eight GPUs are in use against a quota of six.
 
 No cleverer merge fixes this. A limit is a statement about the sum of what all replicas
 have done, and a replica that is cut off cannot know what the others are doing at this
-moment. What we can do is divide the limit beforehand, while the replicas can still
-talk. Each replica is given a *share* of the quota and admits jobs only out of its own
+moment. The limit can instead be divided beforehand, while the replicas can still talk. Each replica is given a *share* of the quota and admits jobs only out of its own
 share. The shares add up to the quota, so whatever the replicas do while apart, the
 total stays within it. When they are in contact, a replica with unused share can hand
 some to one that has run out.
@@ -163,7 +159,7 @@ some to one that has run out.
 The price is that a job can be refused while capacity exists. If the shelf has one GPU
 of its share left and the desk has one, a two-GPU job is refused at both, even though
 two GPUs are free in total, until the replicas can talk and move a share across. The
-partition forces a choice here too, and for a limit we chose to refuse.
+partition forces a choice here too, and for a limit the choice is to refuse.
 
 <div class="lld">
 

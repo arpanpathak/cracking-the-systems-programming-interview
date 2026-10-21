@@ -1,14 +1,13 @@
 # Appendix A. A local GPU cluster with kind
 
-Our controller in section 1.1 runs pods that ask for GPUs. In this appendix, we will set up
-a kind cluster on a Jetson so that those pods really run on the board's GPU. We will first
-follow a GPU request all the way from a pod to the hardware, so that we know every piece
-involved and why it is there. Then we will look at a fresh kind node, see which of those
-pieces it is missing, and add them one at a time, checking our work after each step.
-Finally we will run a CUDA program in a pod and watch it use the GPU. All the files are in
+The controller in section 1.1 runs pods that ask for GPUs. This appendix sets up a kind
+cluster on a Jetson so that those pods run on the board's GPU. It follows a GPU request from
+a pod to the hardware, naming each piece involved and its purpose, then identifies the
+pieces a fresh kind node lacks and adds them one at a time, with a check after each step.
+It ends with a CUDA program running in a pod on the GPU. All the files are in
 `code/jetson-gpu`.
 
-We tested every step on this system:
+Every step was tested on this system:
 
 ```console
 $ tr -d '\0' < /proc/device-tree/model; echo
@@ -46,16 +45,16 @@ neither.
 
 A container's files come from its image, and its `/dev` holds only a handful of harmless
 devices such as `/dev/null`. The GPU's device files are not there, and the host's driver
-libraries are not in the image. The image cannot simply bring its own copy of the driver
-libraries, either, because they have to match the kernel driver running on this particular
+libraries are not in the image. The image cannot bring its own copy of the driver
+libraries, because they have to match the kernel driver running on this particular
 board exactly.
 
-So something has to add the device files and the host's libraries to each GPU container,
-and it has to do so at the moment the container is created. To see where that can happen,
-we need to know how containers are created.
+Something therefore has to add the device files and the host's libraries to each GPU
+container at the moment the container is created, which requires a look at how containers
+are created.
 
 When Kubernetes starts a container, the kubelet (the Kubernetes agent on each machine)
-asks the machine's *container engine*, containerd in our case, to create it. containerd
+asks the machine's *container engine*, here containerd, to create it. containerd
 prepares the container's filesystem and writes a JSON document called the *OCI runtime
 specification*, which lists everything about the container: its mounts, its device
 files, its environment variables, and the command to run. containerd then hands that
@@ -63,8 +62,8 @@ document to a *low-level runtime*, usually a program called `runc`, which create
 container exactly as the document says.
 
 The NVIDIA Container Runtime slots into that hand-off. NVIDIA's documentation describes it
-as "a shim for OCI-compliant low-level runtimes such as runc". In practice, containerd is
-configured to call `nvidia-container-runtime` instead of `runc`. The NVIDIA runtime reads
+as "a shim for OCI-compliant low-level runtimes such as runc". containerd is configured to
+call `nvidia-container-runtime` in place of `runc`. The NVIDIA runtime reads
 the specification, adds the GPU's device files and mounts for the driver libraries, and
 then calls `runc` with the edited document. The container starts with the GPU already in
 place.
@@ -72,15 +71,14 @@ place.
 ## How the runtime knows what to add
 
 On a data center machine with PCIe GPUs, the runtime asks the driver which GPUs exist and
-which files each one needs. On a Jetson it reads that information from plain text files
-instead. NVIDIA's runtime documentation calls this CSV mode: "CSV files at
+which files each one needs. On a Jetson it reads that information from plain text files. NVIDIA's runtime documentation calls this CSV mode: "CSV files at
 `/etc/nvidia-container-runtime/host-files-for-container.d` define the devices and mounts
 that are to be injected", and the mode "is primarily targeted at Tegra-based systems
 without NVML available". NVML is the management library that data center drivers provide;
-Tegra is the family name of NVIDIA's system-on-chip products, including the Orin in our
+Tegra is the family name of NVIDIA's system-on-chip products, including the Orin in this
 Jetson.
 
-Each line of a CSV file gives a type and a path. Here are the lines for `libcuda`:
+Each line of a CSV file gives a type and a path. These are the lines for `libcuda`:
 
 ```console
 $ grep -h "libcuda" /etc/nvidia-container-runtime/host-files-for-container.d/drivers.csv
@@ -109,14 +107,13 @@ around it.
 
 The lists contain the driver and nothing else. The CUDA toolkit, `libcudart` and the rest
 of `/usr/local/cuda`, is not in them, so a container has to bring its own CUDA runtime
-library, either in its image or linked into its program. We will do the latter for our
-test program.
+library, either in its image or linked into its program. The test program below links it
+in.
 
-One question remains: how does the runtime know which containers should get a GPU? It
-looks for an environment variable, `NVIDIA_VISIBLE_DEVICES`. If a container's
+The runtime decides which containers get a GPU by looking for an environment variable, `NVIDIA_VISIBLE_DEVICES`. If a container's
 specification sets it, the runtime adds the GPU. If not, the runtime passes the
-specification to `runc` untouched, and the container starts like any other. The next
-piece of the puzzle is who sets that variable.
+specification to `runc` untouched, and the container starts like any other. The device
+plugin, described next, sets the variable.
 
 ## How a pod asks for a GPU
 
@@ -129,7 +126,7 @@ more units than it advertises.
 
 A machine advertises an extended resource through a *device plugin*. A device plugin is a
 small program, usually running as a pod on the machine, that speaks a protocol defined by
-Kubernetes to the kubelet. The conversation goes like this:
+Kubernetes to the kubelet. The exchange has four steps:
 
 1. The plugin starts a gRPC server on a Unix socket in `/var/lib/kubelet/device-plugins`.
    It then connects to the kubelet's own socket in the same directory, `kubelet.sock`, and
@@ -138,7 +135,7 @@ Kubernetes to the kubelet. The conversation goes like this:
    device IDs and their health, and keeps the call open to report changes, such as a GPU
    becoming unhealthy. The kubelet adds the number of healthy devices to the machine's
    advertised capacity, and from that moment the scheduler sees, for example,
-   `nvidia.com/gpu: 1` on our node.
+   `nvidia.com/gpu: 1` on the node.
 3. When the scheduler places a pod that asks for `nvidia.com/gpu: 1` on the machine, the
    kubelet chooses a free device ID and calls the plugin's `Allocate` method with it. The
    plugin answers with what the container needs in order to use that device: environment
@@ -151,10 +148,10 @@ Kubernetes to the kubelet. The conversation goes like this:
 NVIDIA's device plugin can answer `Allocate` in several ways. Its README lists the options
 for the setting `DEVICE_LIST_STRATEGY` and describes the default: "`envvar` (default):
 the `NVIDIA_VISIBLE_DEVICES` environment variable ... is used to select the devices that
-are to be injected by the NVIDIA Container Runtime." That is the missing link: the plugin
-sets the variable, and the runtime acts on it.
+are to be injected by the NVIDIA Container Runtime." The plugin sets the variable, and
+the runtime acts on it.
 
-Putting the whole path together:
+The whole path:
 
 ```text
 pod: limits: nvidia.com/gpu: 1
@@ -190,8 +187,8 @@ the `nvidia` runtime, but then every GPU pod would have to name that RuntimeClas
 
 ## Step 1: create the cluster
 
-Now we can build our cluster. A kind cluster with a single node is enough, and the node
-image `kindest/node:v1.37.0` gives us Kubernetes 1.37:
+A kind cluster with a single node is enough, and the node image `kindest/node:v1.37.0`
+provides Kubernetes 1.37:
 
 ```console
 $ kind create cluster --name gpu-lab --image kindest/node:v1.37.0
@@ -204,14 +201,14 @@ gpu-lab-control-plane   Ready    control-plane   22s   v1.37.0
 ```
 
 kind names the node's container after the cluster, `gpu-lab-control-plane`. In the steps
-below, we use that name with `docker exec` to run commands inside the node.
+below use that name with `docker exec` to run commands inside the node.
 
-## What our kind node is missing
+## What a kind node is missing
 
 A kind node is a Docker container that runs systemd, containerd, and the kubelet, much
 like a small virtual machine. kind starts it with Docker's `--privileged` option, and a
-privileged container sees all of the host's device files. So the GPU's device files are
-already there:
+privileged container sees all of the host's device files, so the GPU's device files are
+already present:
 
 ```console
 $ docker exec gpu-lab-control-plane ls -l /dev/nvhost-gpu /dev/nvmap
@@ -219,20 +216,19 @@ crw-rw---- 1 root video 487,   1 Sep 26 13:59 /dev/nvhost-gpu
 crw-rw---- 1 root video  10, 124 Sep 26 13:59 /dev/nvmap
 ```
 
-Everything else on our path is missing. The node's files come from the `kindest/node`
+Everything else on the path is missing. The node's files come from the `kindest/node`
 image, a Debian system that has none of the Jetson's driver libraries, none of the CSV
-lists, and no NVIDIA Container Toolkit. Its containerd calls plain `runc`. And no device
-plugin runs on it, so it advertises no `nvidia.com/gpu`, and every pod that asks for one
+lists, and no NVIDIA Container Toolkit. Its containerd calls plain `runc`. No device plugin
+runs on it, so it advertises no `nvidia.com/gpu`, and every pod that asks for one
 waits forever.
 
-On a data center cluster, NVIDIA's GPU Operator would install all of these pieces for us.
-It cannot help here: its platform support page states that "NVIDIA Jetson, or other
-embedded products with integrated GPUs, are not supported." So we will install the same
-pieces by hand.
+On a data center cluster, NVIDIA's GPU Operator installs all of these pieces. Its platform
+support page states that "NVIDIA Jetson, or other embedded products with integrated GPUs,
+are not supported," so here the same pieces are installed by hand.
 
 ## Step 2: give the node the driver and the runtime
 
-Our script, `enable-gpu-in-kind.sh`, copies the files the node lacks and then configures
+The script `enable-gpu-in-kind.sh` copies the files the node lacks and then configures
 containerd:
 
 <p class="listing"><b>Listing A.1</b> Giving the kind node the driver and the runtime. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/jetson-gpu/enable-gpu-in-kind.sh">code/jetson-gpu/enable-gpu-in-kind.sh</a></p>
@@ -247,11 +243,11 @@ what the runtime will later try to mount. It skips the `dev` lines, because the 
 files are already in the node, and it skips paths that do not exist on this particular
 board.
 
-Two details of the copy matter, and we ran into both while building this setup. First, `sym` entries
-must arrive as symbolic links. Suppose a link were copied as a regular file. The runtime
-would bind-mount that file into the container, and then its hook would try to replace the
-mounted file with a link and fail with "device or resource busy". So the script copies
-links as links, and before copying it deletes any path that is a link on the host, in case
+Two details of the copy matter; both caused failures while this setup was built. First,
+`sym` entries must arrive as symbolic links. A link copied as a regular file is
+bind-mounted into the container, and the runtime's hook then fails with "device or
+resource busy" when it tries to replace the mounted file with a link. The script therefore
+copies links as links, and before copying it deletes any path that is a link on the host, in case
 an earlier copy left a regular file or a directory there. Second, some firmware files are
 *hard links*, two names for the same file, and `--hard-dereference` makes tar store each
 name as a separate file so that both arrive intact.
@@ -265,13 +261,13 @@ toolkit's own tool for editing that file.
 
 Finally, the script configures containerd with the command from NVIDIA's installation
 guide, adding `--set-as-default` because the device plugin requires the NVIDIA runtime to
-be the default. Then it restarts containerd. You might expect that to stop every running
-pod, but it does not: each container is supervised by its own small *shim* process, which
-keeps running while containerd restarts and reconnects to it afterwards. The check at the
+be the default, and restarts containerd. The restart leaves running pods alone, because
+each container is supervised by its own small *shim* process, which keeps running while
+containerd restarts and reconnects to it afterwards. The check at the
 top of that block skips the whole step when containerd is already configured, so the
 script is safe to run again.
 
-We run it with the name of our cluster:
+The script takes the cluster's name:
 
 ```console
 $ cd code/jetson-gpu
@@ -286,7 +282,7 @@ Version 1.17.3 of the toolkit edits `config.toml` directly. Newer versions write
 separate file, `/etc/containerd/conf.d/99-nvidia.toml`, and add it to the `imports` list in
 `config.toml`, as NVIDIA's installation guide describes. The result is the same.
 
-Let us check our work. A `sym` entry should be a link inside the node, the NVIDIA runtime
+After the script, a `sym` entry should be a link inside the node, the NVIDIA runtime
 should be registered and set as the default, and the node should still be `Ready`:
 
 ```console
@@ -309,7 +305,7 @@ gpu-lab-control-plane   Ready    control-plane   30s   v1.37.0
 ## Step 3: run the device plugin
 
 The device plugin runs as a *DaemonSet*, a Kubernetes workload that runs one pod on every
-node, which is exactly what a per-machine agent needs:
+node, which suits a per-machine agent:
 
 <p class="listing"><b>Listing A.2</b> The device plugin. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/jetson-gpu/device-plugin.yaml">code/jetson-gpu/device-plugin.yaml</a></p>
 
@@ -328,15 +324,15 @@ where that same root appears inside the plugin's container.
 This setting is not in the plugin's README; it is defined among the plugin's command-line
 flags in its source code (`cmd/nvidia-device-plugin/main.go`), which accepts `auto`,
 `nvml`, or `tegra`. The default, `auto`, inspects the system and would most likely choose
-the same, but we prefer to be explicit. We leave `DEVICE_LIST_STRATEGY` at its default,
-`envvar`, the mechanism we traced above.
+the same; the manifest sets it explicitly. `DEVICE_LIST_STRATEGY` stays at its default,
+`envvar`, the mechanism traced above.
 
 The plugin also offers newer strategies based on CDI, the Container Device Interface, a
 standard file format that describes devices to container engines. They do not work on this
 board: with `DEVICE_LIST_STRATEGY=cdi-cri`, version 0.20.1 stops at startup with
 `CDI --device-list-strategy options are only supported on NVML-based systems`.
 
-We apply the DaemonSet and read the plugin's log:
+Apply the DaemonSet and read the plugin's log:
 
 ```console
 $ kubectl apply -f device-plugin.yaml
@@ -353,16 +349,15 @@ $ kubectl get node -o jsonpath='{.items[0].status.allocatable.nvidia\.com/gpu}';
 1
 ```
 
-The last three log lines are the first step of the conversation we described earlier: the
+The last three log lines are the first step of the exchange described earlier: the
 plugin starts its gRPC server, listens on `nvidia-gpu.sock`, and registers with the
-kubelet. The node now advertises one GPU. If you check within a few seconds of the plugin
-starting, you may still see 0, because the kubelet updates the node's status shortly after
+kubelet. The node now advertises one GPU. A check within a few seconds of the plugin
+starting may still show 0, because the kubelet updates the node's status shortly after
 the plugin registers.
 
 ## Step 4: run a CUDA program in a pod
 
-To prove the whole path works, we need a program that uses the GPU and tells us so. Ours
-adds two vectors of a million elements on the GPU and prints the device it ran on. If no
+The test program adds two vectors of a million elements on the GPU and prints the device it ran on. If no
 GPU is visible, or the result is wrong, it exits with a non-zero status, so Kubernetes
 marks the pod as failed.
 
@@ -380,9 +375,9 @@ marks the pod as failed.
 ```
 
 
-We build it on the board with the CUDA compiler from JetPack. `-arch=sm_87` targets the
+It is built on the board with the CUDA compiler from JetPack. `-arch=sm_87` targets the
 Orin's GPU, whose *compute capability*, NVIDIA's version number for a GPU's feature set, is
-8.7. `-cudart static` links the CUDA runtime library into the program itself, so our image
+8.7. `-cudart static` links the CUDA runtime library into the program itself, so the image
 does not need to contain it. The only library the program needs at run time is the driver
 library, `libcuda`, and that is one of the files the NVIDIA runtime mounts.
 
@@ -403,16 +398,16 @@ provides:
 ```
 
 
-A kind node has its own image store and cannot see the images in the host's Docker, so we
-build the image and then copy it into the node:
+A kind node has its own image store and cannot see the images in the host's Docker, so the
+image is built and then copied into the node:
 
 ```console
 $ docker build -t gpu-check:1 .
 $ kind load docker-image gpu-check:1 --name gpu-lab
 ```
 
-We run the image in two pods. The first asks for a GPU and the second does not, so the
-second one tells us whether containers that did not ask for a GPU really stay without one.
+The image runs in two pods. The first asks for a GPU and the second does not, which checks
+that containers that did not ask for a GPU stay without one.
 
 <p class="listing"><b>Listing A.6</b> A pod that runs `gpu_check` with one GPU. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/jetson-gpu/gpu-check-pod.yaml">code/jetson-gpu/gpu-check-pod.yaml</a></p>
 
@@ -445,13 +440,12 @@ no CUDA device visible
 $ kubectl delete -f gpu-check-pod.yaml -f no-gpu-pod.yaml
 ```
 
-The first pod ran our kernel on the GPU. The second ran the same image, through the same
+The first pod ran the kernel on the GPU. The second ran the same image, through the same
 default runtime, and saw no GPU, because the device plugin was never asked to allocate one
 for it and so never set `NVIDIA_VISIBLE_DEVICES`.
 
-We can also look inside a GPU container while it runs, to see every piece of the path at
-work. This pod asks for a GPU and then just sleeps for five minutes, which gives us time to
-look around inside it:
+Every piece of the path can be inspected inside a running GPU container. This pod asks for
+a GPU and then sleeps for five minutes, long enough to examine it:
 
 <p class="listing"><b>Listing A.8</b> A pod that sets the variable itself. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/jetson-gpu/gpu-env-pod.yaml">code/jetson-gpu/gpu-env-pod.yaml</a></p>
 
@@ -460,8 +454,8 @@ look around inside it:
 ```
 
 
-We start it, wait until it is running, and look at its environment, its device files,
-and its driver libraries:
+Start it, wait until it is running, and inspect its environment, its device files, and its
+driver libraries:
 
 ```console
 $ kubectl apply -f gpu-env-pod.yaml
@@ -476,7 +470,7 @@ $ kubectl exec gpu-env -- sh -c 'ls /usr/lib/aarch64-linux-gnu/nvidia/libcuda.so
 /usr/lib/aarch64-linux-gnu/nvidia/libcuda.so.1.1
 ```
 
-The device plugin advertises our single GPU under the device ID `tegra`, and its answer to
+The device plugin advertises the single GPU under the device ID `tegra`, and its answer to
 `Allocate` set `NVIDIA_VISIBLE_DEVICES=tegra` in the container. The NVIDIA runtime saw the
 variable and added the device files, the real library `libcuda.so.1.1`, and the two links
 to it. The kubelet's checkpoint file on the node shows the same allocation from the
@@ -488,11 +482,10 @@ $ docker exec gpu-lab-control-plane cat /var/lib/kubelet/device-plugins/kubelet_
 ```
 
 `RegisteredDevices` is the device list the plugin reported through `ListAndWatch`, and the
-entry under `PodDeviceEntries` records that the container `check` of our pod holds the device
+entry under `PodDeviceEntries` records that the container `check` of the pod holds the device
 `tegra`. `AllocResp` is the plugin's answer to `Allocate`, stored in its binary Protocol
 Buffers encoding; decoded, it contains the environment variable
-`NVIDIA_VISIBLE_DEVICES=tegra`. When we are done looking, we delete the pod so that it
-releases the GPU:
+`NVIDIA_VISIBLE_DEVICES=tegra`. Deleting the pod releases the GPU:
 
 ```console
 $ kubectl delete -f gpu-env-pod.yaml
@@ -500,11 +493,11 @@ $ kubectl delete -f gpu-env-pod.yaml
 
 Because the plugin advertises the board's one GPU as one unit, only one pod that asks for
 a GPU can run at a time. Any other GPU pod waits in Pending until the first one finishes,
-and section 1.1 shows a job in exactly that state.
+and section 1.1 shows a job in that state.
 
 ## When a step fails
 
-We ran into each of these problems while building this setup.
+Each of these problems occurred while this setup was built.
 
 *The plugin exits with `CDI --device-list-strategy options are only supported on
 NVML-based systems`.* `DEVICE_LIST_STRATEGY` is set to one of the CDI strategies. Remove the
@@ -524,7 +517,7 @@ registered, which its log and the node's allocatable resources will show, or ano
 is holding the GPU.
 
 *GPU pods fail after the cluster was deleted and created again.* A new node starts from
-the `kindest/node` image, without any of our changes. Run the script and apply the
+the `kindest/node` image, without any of the changes. Run the script and apply the
 DaemonSet again. Restarting the node's container, or Docker itself, keeps the changes,
 since they live in the container's filesystem.
 

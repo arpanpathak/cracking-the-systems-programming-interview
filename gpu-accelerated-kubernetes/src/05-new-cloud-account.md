@@ -1,17 +1,15 @@
 # 5. Kubernetes in a new cloud account
 
-So far our cluster has existed before each chapter began. In this chapter, we will look
-at where a cluster comes from. We start with an account at a provider of machines, which
-holds nothing, and end with a set of machines that the API server knows as nodes and the
-scheduler can place GPU pods on.
+In the earlier chapters the cluster already existed. This chapter covers where a cluster
+comes from, starting from an empty account at a provider of machines and ending with
+machines that the API server knows as nodes and the scheduler can place GPU pods on.
 
-Two separate things have to happen. Something has to ask the provider for machines and
-keep asking until the right number exist, and each machine, once it boots, has to prove
-to the cluster that it is allowed to join. We will take the second first, because we can
-watch it on the cluster we already have. Then we will write `provisioner`, in Go and in
-Rust, a model of the controller that asks for machines, and use it to study the one
-failure that makes this job harder than it looks: a request that succeeds while its reply
-is lost.
+Two separate things have to happen. Something must ask the provider for machines and keep
+asking until the right number exist, and each machine, once booted, must prove to the
+cluster that it is allowed to join. The joining step comes first, because it can be
+observed on the existing cluster. `provisioner`, a model in Go and in Rust of the controller
+that requests machines, then shows the failure that complicates provisioning: a request
+that succeeds while its reply is lost.
 
 <div class="covers">
 
@@ -19,34 +17,34 @@ This chapter covers
 
 - what an empty account offers: a create call, a quota, and nothing else
 - how a machine joins a cluster: a bootstrap token, a signed certificate, a Node object
-- the labels and capacity a node reports, read from our own cluster
+- the labels and capacity a node reports, read from the cluster
 - a controller that fills pools of machines, and what a lost reply does to it
 - client tokens, which make a create call safe to send twice
 - how Cluster API expresses the same design as Kubernetes objects
 
 </div>
 
-## What the account gives us
+## What an account provides
 
 A provider of machines, whether a public cloud or the team that racks hardware in a
-company's own data center, offers the same small interface. We can ask for a machine of
-a given model, list the machines we have, and give one back. The account also has a
+company's own data center, offers the same small interface: request a machine of a given model, list the machines
+held, and release one. The account also has a
 *quota* for each model: the largest number of machines of that model it may hold at
 once.
 
-Our fleet from chapter 4 fits this picture exactly, and its quotas are physical. There
+The fleet from chapter 4 fits this picture, and its quotas are physical. There
 are five Jetson AGX Thors on the shelf and two DGX Sparks on the desk. A request for a
 sixth Thor fails for the same reason a request for a sixth GPU instance fails in a cloud
-account whose quota is five: the provider has no more to give us.
+account whose quota is five: the provider has no more to give.
 
 A new machine is a computer with an operating system and a network address. It knows
-nothing about our cluster, and our cluster knows nothing about it.
+nothing about the cluster, and the cluster knows nothing about it.
 
 ## How a machine becomes a node
 
-A machine becomes a node when the kubelet on it registers with the API server. From
-chapter 1 we know that every request to the API server is an HTTP request, and the API
-server requires each one to identify its sender. A kubelet identifies itself with a
+A machine becomes a node when the kubelet on it registers with the API server. Every
+request to the API server is an HTTP request, and the API server requires each one to
+identify its sender. A kubelet identifies itself with a
 *client certificate*: a file that states a name, here the node's name, and carries a
 signature from the cluster's *certificate authority* (CA), a key pair the cluster
 created for itself when it was first set up. The API server trusts any certificate that
@@ -54,7 +52,7 @@ its CA signed.
 
 A new machine has no such certificate, and it cannot be handed the CA's private key,
 since any holder of that key can impersonate every node in the cluster. The machine is
-given something much weaker instead, and trades it for a certificate. Figure 5.1 shows
+given a much weaker credential and trades it for a certificate. Figure 5.1 shows
 the exchange.
 
 <figure>
@@ -63,21 +61,21 @@ the exchange.
 </figure>
 
 
-The weaker thing is a *bootstrap token*: a short string that the API server accepts for
-a limited time and for one purpose. Our kind cluster was created with kubeadm, the
+The weaker credential is a *bootstrap token*: a short string that the API server accepts
+for a limited time and for one purpose. The kind cluster was created with kubeadm, the
 standard tool for setting up a cluster, and kubeadm can print the command a new machine
-would run to join. We have cut the two secret values from the output:
+would run to join. The two secret values are cut from the output:
 
 ```console
 $ docker exec gpu-lab-control-plane kubeadm token create --ttl 10m --print-join-command
 kubeadm join gpu-lab-control-plane:6443 --token <token> --discovery-token-ca-cert-hash sha256:<hash>
 ```
 
-The command carries three facts, and each one answers a question the new machine has.
+The command carries three facts, each answering a question the new machine has.
 
 - `gpu-lab-control-plane:6443` is where the API server listens.
-- The token is what the machine will show to prove it was invited. We asked for it to
-  expire after ten minutes.
+- The token is what the machine shows to prove it was invited. This one expires after ten
+  minutes.
 - The hash is a fingerprint of the cluster's CA public key. The machine uses it in the
   other direction: before it sends the token anywhere, it checks that the server it
   reached presents a certificate signed by the CA with this fingerprint. A machine
@@ -91,13 +89,13 @@ asks for a node identity, approves it, and signs it with the CA. The kubelet dow
 the certificate and from then on uses it for every request. The private key was
 generated on the machine and has stayed there.
 
-With its certificate, the kubelet creates the two objects we already know: a Node
-object, and the Lease from chapter 3 that it will renew every ten seconds.
+With its certificate, the kubelet creates two familiar objects: a Node object, and the
+Lease from chapter 3 that it renews every ten seconds.
 
 ### What a node reports about itself
 
-The Node object is where the kubelet tells the scheduler what the machine has. Here is
-the capacity our Orin NX reports, with the huge-page lines removed:
+The kubelet tells the scheduler what the machine has through the Node object. The Orin NX
+reports this capacity, with the huge-page lines removed:
 
 ```console
 $ kubectl get node gpu-lab-control-plane -o jsonpath='{.status.capacity}'
@@ -123,8 +121,8 @@ Nothing here says which GPU the machine has. A count of `nvidia.com/gpu: 1` is t
 on an Orin NX with 16 GB and on a Thor with 128 GB, and a job that needs 60 GB of GPU
 memory fits on only one of them. On clusters that the GPU Operator supports, a component
 called GPU Feature Discovery adds labels such as `nvidia.com/gpu.product` and
-`nvidia.com/gpu.memory` to each node. On our fleet we would set a label by hand as each
-machine joins:
+`nvidia.com/gpu.memory` to each node. On this fleet a label is set by hand as each machine
+joins:
 
 ```console
 $ kubectl label node thor-3 gpucloud.dev/model=jetson-agx-thor
@@ -136,14 +134,14 @@ labels of this kind to place jobs.
 
 ## Asking for machines
 
-Now for the first half: getting the machines to exist. We describe what we want as
-*pools*. A pool is a model and a count: five Thors, two Sparks. The controller's job is
+The other half of the problem is getting the machines to exist. The wanted machines are
+described as *pools*. A pool is a model and a count: five Thors, two Sparks. The controller's job is
 to make the account hold exactly that.
 
 This is reconciliation again, with the provider's interface in place of the API server.
 The controller compares the wanted count with the machines it has and creates the
-difference. The difficulty lies in a property of the create call that the calls in
-chapter 1 did not have. Creating a machine changes the world outside the cluster, costs
+difference. The create call differs from the calls in chapter 1 in one respect. Creating a
+machine changes the world outside the cluster, costs
 money while the machine runs, and counts against a quota.
 
 Consider what the controller knows after a create call. There are three outcomes:
@@ -152,8 +150,8 @@ Consider what the controller knows after a create call. There are three outcomes
 2. A reply arrives with an error such as "quota exceeded". No machine was created.
 3. No reply arrives before the controller's timeout.
 
-The third outcome is the awkward one, because it covers two different situations that
-look identical from the controller's side. The request may have been lost on the way, in
+The third outcome covers two different situations that look identical from the
+controller's side. The request may have been lost on the way, in
 which case nothing was created. Or the provider may have created the machine and the
 reply was lost on the way back. Figure 5.2 follows the second situation.
 
@@ -170,7 +168,7 @@ controller assumes the machine was created, it has no identifier to manage it by
 
 ### A token that names the request
 
-The remedy is to let the controller name each request. The controller attaches a
+The remedy is for the controller to name each request. The controller attaches a
 *client token* to the call: a string it chose, which identifies this particular
 machine-to-be. The provider stores the token with the machine it creates. When a second
 call arrives with a token it has already seen, the provider creates nothing and returns
@@ -181,7 +179,7 @@ as sending it once. With an idempotent create, the controller needs no way to te
 two timeout situations apart. It sends the same call again, and the answer is the same
 machine either way.
 
-The token has to be the same on the retry, so it cannot be random. Our controller
+The token has to be the same on the retry, so it cannot be random. The controller
 derives it from the pool's name and the slot it is filling: the third Thor's token is
 `thor-3`, on every attempt. Real providers work the same way. The call that creates a
 virtual machine in Amazon EC2 takes a `ClientToken` parameter for exactly this purpose.
@@ -208,11 +206,11 @@ Low-level design: `provisioner`
 
 ### The provider
 
-The provider is the account. `Create` does three things in order. It looks for a
-machine that already carries the caller's token and, if it finds one, returns it. It
-checks the quota. Then it creates the machine, and only after that does the run get the
-chance to lose the reply. That ordering is what makes the lost reply dangerous: the
-machine is in the list before the caller learns anything.
+The provider is the account. `Create` does three things in order. It returns any machine
+that already carries the caller's token, checks the quota, and creates the machine. The
+run can lose the reply only after that last step, so the machine is already in the list
+before the caller learns anything, which is the condition that makes a lost reply
+dangerous.
 
 <p class="listing"><b>Listing 5.1</b> The provider and its create call, in Go. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/go/provisioner/main.go">code/go/provisioner/main.go</a></p>
 
@@ -228,7 +226,7 @@ machine is in the list before the caller learns anything.
 
 
 The Rust version represents a missing token as `None`, and the lookup is an
-`if let ... && let ...` chain, the same construct we used in section 1.1: the first
+`if let ... && let ...` chain, the construct from section 1.1: the first
 `let` unwraps the caller's token, and the second searches for a machine that carries it.
 
 ### The controller
@@ -252,8 +250,8 @@ same slot.
 
 
 The controller counts only what it has been told. `owned` grows by one machine for each
-successful reply, and `Reconcile` reads the pool's size from it. This is where a lost
-reply does its damage in the first run, as the output will show.
+successful reply, and `Reconcile` reads the pool's size from it, so a lost reply leaves the
+controller with a count lower than the provider's.
 
 ### The run
 
@@ -317,9 +315,9 @@ last loop does this comparison once, at the end of the run.
 
 *Cluster API* is the Kubernetes project that manages clusters with Kubernetes objects. It
 runs in one cluster, called the management cluster, and creates others. Its objects map
-onto our model directly:
+onto the model directly:
 
-| Our model | Cluster API |
+| Model | Cluster API |
 |---|---|
 | `Pool`: a model and a wanted count | `MachineDeployment`, with a replica count and a machine template |
 | one slot of a pool | `Machine` |

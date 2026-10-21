@@ -1,16 +1,15 @@
 # 8. Placing jobs on GPUs
 
-Chapter 7 gave us two facts about a training job that spans several machines. It makes
-progress only when all of its workers are running, and its speed is set by the slowest
-network link among them. In this chapter, we will see what those facts ask of the
+Chapter 7 established two facts about a training job that spans several machines. It
+makes progress only when all of its workers are running, and its speed is set by the
+slowest network link among them. This chapter covers what those facts require of the
 scheduler, the component that chooses a machine for each pod.
 
-We will first look at how the Kubernetes scheduler places one pod, and at what goes
-wrong when a job of several pods is placed that way. Then we will write `gangsched`, in
-Go and in Rust: a model that hands out the eight GPUs of our fleet one pod at a time,
-then one whole job at a time, and then chooses a job's machines by the links between
-them. Finally we will map the model onto the pieces of a real cluster: Kueue, pod groups,
-and topology labels.
+It starts with how the Kubernetes scheduler places one pod and what goes wrong when a job
+of several pods is placed that way. `gangsched`, a model in Go and in Rust, then hands out
+the fleet's eight GPUs one pod at a time, then one whole job at a time, and then chooses a
+job's machines by the links between them. The last section maps the model onto the pieces
+of a real cluster: Kueue, pod groups, and topology labels.
 
 <div class="covers">
 
@@ -40,12 +39,12 @@ one at a time, in three stages.
    kubelet on that node sees the pod through its own watch and starts the containers.
 
 Each pod is a separate decision. The scheduler has no notion that five pods belong
-together, and that is the source of the first problem.
+together, which causes the first problem.
 
 ## Two jobs, each with part of what it needs
 
-Suppose two training jobs arrive at the same moment, each made of five worker pods that
-ask for one GPU, and our fleet has eight GPUs. Ten pods wait, and the scheduler takes
+Two training jobs arrive at the same moment, each made of five worker pods that ask for
+one GPU, and the fleet has eight GPUs. Ten pods wait, and the scheduler takes
 them in turn. The first eight are placed and the last two wait.
 
 If the pods of the two jobs are interleaved in the queue, each job ends up with four of
@@ -76,7 +75,7 @@ the first job finishes the second starts.
 Admitting a job settles when it starts. Where it runs matters as much, because of the
 links.
 
-Our eight machines are connected in three groups, which we will call *domains*. The five
+The eight machines are connected in three groups, called *domains* here. The five
 Thors share the 25 GbE switch on the shelf. The two Sparks share the 200 GbE cable on
 the desk. The Orin NX sits on the bench with 1 GbE. Between domains, the only path is
 the house network that all machines use for SSH and for reaching the API server, at
@@ -95,7 +94,7 @@ two workers placed in different domains exchange their gradients over the house 
 and need 14 / 0.125 = 112 seconds. The job is the same and the GPUs are equally fast.
 The placement makes it two hundred times slower.
 
-So the placement rule has two parts.
+The placement rule therefore has two parts.
 
 - *Keep a job inside one domain when one can hold it.* Then the job's slowest link is
   the domain's own.
@@ -177,8 +176,7 @@ A *placer* is a function that takes the free machines and a number of workers an
 returns the machines to use, or nothing. Making it a function lets `admit` work with
 either policy.
 
-`firstFree` takes the first free machines in the list. It is what we get when nobody
-has thought about placement.
+`firstFree` takes the first free machines in the list, which is placement with no policy.
 
 `byTopology` groups the free machines by domain, keeps the domains with enough room, and
 takes the smallest of those. When no single domain can hold the job, it falls back to
@@ -200,7 +198,7 @@ scheduler would let the job's owner choose between that and waiting.
 
 ### What a placement costs
 
-To compare placements we need a number. `slowest` finds the link a set of machines is
+Comparing placements requires a number. `slowest` finds the link a set of machines is
 limited by: their domain's link if they share one, the house network if they do not.
 `exchangeSeconds` applies chapter 7's count to it.
 
@@ -296,7 +294,7 @@ built-in Job object that tells the Job controller to create no pods yet. Kueue k
 such jobs in a queue and holds a quota of each resource for each team, in an object
 called a *ClusterQueue*. When the whole job fits within the quota, Kueue admits it by
 setting `suspend` to false, and only then do its pods exist and reach the scheduler.
-This is the `admit` of our model with quota in place of free machines. Kueue's quotas
+This is the model's `admit` with quota in place of free machines. Kueue's quotas
 are also where fairness between teams lives: each team has a share of the GPUs it is
 guaranteed, and a queue may borrow what another team is not using.
 
@@ -305,12 +303,12 @@ scheduler can be extended with plugins, and a coscheduling plugin lets a set of 
 declare that they form a group with a minimum size. The scheduler finds a node for each
 pod as usual and then, before binding, holds the pod until enough members of its group
 have found nodes too. If they do not within a timeout, all of them are released and
-retried. This removes the partial placements of our first experiment at the level of
+retried. This removes the partial placements of the first experiment at the level of
 individual machines.
 
 *Topology labels* tell the scheduler which machines share a link. A node carries labels,
-as we saw in chapter 5, and a cluster's administrator adds one for each level of the
-network: the rack, the switch, the block of racks. For our fleet one label is enough:
+as chapter 5 showed, and a cluster's administrator adds one for each level of the network:
+the rack, the switch, the block of racks. For this fleet one label is enough:
 
 ```console
 $ kubectl label node thor-1 thor-2 thor-3 thor-4 thor-5 gpucloud.dev/domain=shelf
@@ -321,7 +319,7 @@ $ kubectl label node orin-nx-1 gpucloud.dev/domain=bench
 A job then asks for all of its pods to land on nodes with the same value of that label.
 Kueue's topology-aware scheduling reads the levels from an object that lists the label
 keys from widest to narrowest, and picks the narrowest level whose free capacity holds
-the job, which is the rule `byTopology` applies to our three domains.
+the job, which is the rule `byTopology` applies to the three domains.
 
 <div class="callout">
 

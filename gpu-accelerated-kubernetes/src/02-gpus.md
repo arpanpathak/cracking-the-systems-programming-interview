@@ -1,19 +1,18 @@
 # 2. What one GPU means
 
-So far our pods have asked for `nvidia.com/gpu: 1` as if a GPU were a single, indivisible
-thing. In this chapter, we will open that unit up. We will first look at what a GPU is
-made of and measure the one in our cluster, then see exactly what Kubernetes gives a pod
-when it grants one unit. Then we will go through the ways a GPU can be shared or divided:
-time-slicing, the Multi-Process Service, Multi-Instance GPU, virtual GPUs, and Dynamic
-Resource Allocation. We will try time-slicing on our own cluster and measure what it
-does.
+The pods in chapter 1 asked for `nvidia.com/gpu: 1` as if a GPU were a single, indivisible
+thing. This chapter opens that unit. It describes what a GPU is made of, measures the GPU in
+the cluster, and shows what Kubernetes gives a pod when it grants one unit. It then covers
+the ways a GPU can be shared or divided: time-slicing, the Multi-Process Service,
+Multi-Instance GPU, virtual GPUs, and Dynamic Resource Allocation. Time-slicing is tried on
+the cluster and its effect measured.
 
 <div class="covers">
 
 This chapter covers
 
 - streaming multiprocessors, warps, and the levels of GPU memory
-- the properties of the GPU in our cluster, read with a CUDA program
+- the properties of the GPU in the cluster, read with a CUDA program
 - what a pod receives with one `nvidia.com/gpu` unit
 - time-slicing, measured with three pods on one GPU
 - MPS, MIG, vGPU, and Dynamic Resource Allocation
@@ -23,17 +22,17 @@ This chapter covers
 
 ## The programs in this chapter
 
-We use four programs, two that run on the GPU and two that look at the cluster.
+The chapter uses four programs: two run on the GPU and two inspect the cluster.
 
-`gpu_info` and `gpu_load` are CUDA programs in `code/gpu-sharing`. We compile them on the
-host with `nvcc`, the CUDA compiler, for the compute capability of our GPU, and link the
-CUDA runtime library into each binary. Each binary then needs only the driver library,
+`gpu_info` and `gpu_load` are CUDA programs in `code/gpu-sharing`. They are compiled on the
+host with `nvcc`, the CUDA compiler, for the compute capability of the cluster's GPU, with the
+CUDA runtime library linked into each binary. Each binary then needs only the driver library,
 `libcuda`, at run time, and that library is one of the files the NVIDIA container runtime
-mounts into a GPU container (Appendix A). We copy both binaries into one image,
-`gpu-sharing:1`, and run them in pods that request `nvidia.com/gpu`. When such a pod
+mounts into a GPU container (Appendix A). Both binaries go into one image,
+`gpu-sharing:1`, and run in pods that request `nvidia.com/gpu`. When such a pod
 starts, the device plugin tells the kubelet to set `NVIDIA_VISIBLE_DEVICES` in the
 container, the NVIDIA runtime adds the GPU's device files and `libcuda`, and the CUDA
-calls in our programs reach the GPU through them.
+calls in the programs reach the GPU through them.
 
 - `gpu_info` asks the CUDA runtime for the properties of the GPU it sees and prints them,
   one per line. It shows what one `nvidia.com/gpu` unit contains.
@@ -42,10 +41,10 @@ calls in our programs reach the GPU through them.
   receives.
 
 `gpuusage` is written in Go (`code/go/gpuusage`) and in Rust (`code/rust/gpuusage`). It is
-an ordinary Kubernetes client that runs on our workstation. It lists every node and every
+an ordinary Kubernetes client that runs on a workstation. It lists every node and every
 pod through the API server, adds up the `nvidia.com/gpu` units that running pods hold on
 each node, and prints them next to the node's capacity. It shows the scheduler's view of
-the GPU: how many units exist and who holds them. We run it in a second terminal, from
+the GPU: how many units exist and who holds them. It runs in a second terminal, from
 `code/go` with `go run ./gpuusage` or from `code/rust` with `cargo run -p gpuusage`, while
 the pods from `code/gpu-sharing` run.
 
@@ -79,7 +78,7 @@ dedicated interconnect; a program copies data into that memory before a kernel c
 it. An *integrated* GPU sits on the same chip as the CPU and shares the system's memory
 with it.
 
-## Measuring our GPU
+## Measuring the GPU
 
 The CUDA runtime reports most of these properties through `cudaGetDeviceProperties`.
 This program prints them, along with the current free and total device memory:
@@ -91,8 +90,8 @@ This program prints them, along with the current free and total device memory:
 ```
 
 
-The image for this chapter holds `gpu_info` and a second program, `gpu_load`, which we
-use later:
+The image for this chapter holds `gpu_info` and a second program, `gpu_load`, used
+later:
 
 <p class="listing"><b>Listing 2.2</b> The image that holds both CUDA programs. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/gpu-sharing/Dockerfile">code/gpu-sharing/Dockerfile</a></p>
 
@@ -109,7 +108,7 @@ $ docker build -t gpu-sharing:1 .
 $ kind load docker-image gpu-sharing:1 --name gpu-lab
 ```
 
-We run it in a pod that asks for one GPU:
+`gpu_info` runs in a pod that asks for one GPU:
 
 <p class="listing"><b>Listing 2.3</b> A pod that runs `gpu_info` with one GPU. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/gpu-sharing/gpu-info-pod.yaml">code/gpu-sharing/gpu-info-pod.yaml</a></p>
 
@@ -136,7 +135,7 @@ concurrent kernels          yes
 managed memory              yes
 ```
 
-The GPU in our cluster has 8 SMs. An Ampere SM of this generation has 128 CUDA cores,
+The cluster's GPU has 8 SMs. An Ampere SM of this generation has 128 CUDA cores,
 which gives the 1,024 cores in NVIDIA's specification for the Orin NX, and each SM can
 hold 1,536 threads at once, 12,288 for the whole GPU. All SMs share a 2 MiB L2 cache, and
 two copy engines move data. For comparison, a data center H100 SXM5 has 132 SMs and
@@ -158,9 +157,8 @@ the machine.
 
 ## The same measurement on a Thor
 
-We also have a Jetson AGX Thor developer kit on the network. It runs Jetson Linux R39.2.1
-with CUDA 13.2 and has no Kubernetes on it, so we compile `gpu_info` on the board and run
-it directly:
+A Jetson AGX Thor developer kit on the same network runs Jetson Linux R39.2.1 with
+CUDA 13.2 and has no Kubernetes, so `gpu_info` was compiled on the board and run directly:
 
 ```console
 $ /usr/local/cuda/bin/nvcc -O2 -cudart static -o gpu_info gpu_info.cu
@@ -180,7 +178,7 @@ concurrent kernels          yes
 managed memory              yes
 ```
 
-The program is the same source file, and the two boards answer differently in four lines:
+The same source file gives different answers on the two boards:
 
 | | Jetson Orin NX | Jetson AGX Thor |
 |---|---|---|
@@ -192,7 +190,7 @@ The program is the same source file, and the two boards answer differently in fo
 
 Twenty SMs with 128 CUDA cores each give the 2,560 cores in NVIDIA's specification for
 the Thor. The L2 cache is sixteen times as large, and the device memory is eight times
-as large. It is again the board's own memory: 44.8 GiB were free when we ran the program,
+as large. It is again the board's own memory: 44.8 GiB were free when the program ran,
 because two other programs on the Thor, a model server among them, held 24 GiB and 39 GiB
 at the time.
 
@@ -209,7 +207,7 @@ cannot ask for half a GPU, and the node never hands out more units than it adver
 
 `gpuusage` shows the same accounting that the scheduler does. It sums the GPU limits of
 every pod that is bound to a node and has not finished, and compares the sum with the
-node's allocatable units. The Go version uses client-go's typed clientset, and the Rust version uses kube-rs.
+node's allocatable units. The Go version uses client-go's typed clientset and the Rust version uses kube-rs.
 
 <div class="lld">
 
@@ -272,7 +270,7 @@ NODE                   CAPACITY  ALLOCATABLE  IN USE  FREE
 gpu-lab-control-plane  1         1            0       1
 ```
 
-This is simple and gives each pod exclusive use of its GPU, but it is coarse. An
+Whole-GPU allocation gives each pod exclusive use of its GPU, and it is coarse. An
 inference service that keeps 5 percent of the SMs busy still holds the entire GPU, and
 the other 95 percent sits idle while other pods wait. The rest of this chapter covers the
 ways to share or divide a GPU, each with a different trade-off between isolation and
@@ -292,7 +290,7 @@ the GPU's memory, one pod can allocate so much that the others fail, and, in the
 the device plugin's README, workloads run "in the same fault-domain as of all the others
 (meaning if one workload crashes, they all do)".
 
-We can measure the effect. `gpu_load` launches a kernel ten times, each launch keeping
+`gpu_load` measures the effect. It launches a kernel ten times, each launch keeping
 1,024 blocks of 256 threads busy with 200,000 multiply-adds per thread, and prints how
 long the work took:
 
@@ -402,12 +400,12 @@ gpu-lab-control-plane  4         4            4       0
 
 Each pod now took about 2,230 milliseconds for the same work, roughly 3.6 times as long
 as it took alone. The four pods took turns on the same 8 SMs. Time-slicing added no
-compute: it changed how many pods can hold the GPU at once and how long each one waits.
+compute. It changed how many pods can hold the GPU at once and how long each one waits.
 Together, the four runs occupied the GPU for about 2.3 seconds, close to the
 4 × 620 = 2,480 milliseconds they needed one after another.
 
-The Thor shows the same behaviour with different numbers. We ran `gpu_load` there
-directly on the host, first alone and then as three processes started together:
+The Thor shows the same behaviour with different numbers. There `gpu_load` ran directly
+on the host, first alone and then as three processes started together:
 
 ```console
 $ ./gpu_load thor-alone
@@ -427,8 +425,8 @@ switching and adds the extra units that the scheduler counts.
 
 The scheduler now believes the node has four GPUs. A pod that asks for two replicas gets
 two units of the same GPU and no more of its time; the plugin's `failRequestsGreaterThanOne`
-option rejects such requests to make that explicit. To switch time-slicing off, we apply
-the original plugin manifest again:
+option rejects such requests to make that explicit. Applying the original plugin manifest
+again switches time-slicing off:
 
 ```console
 $ kubectl apply -f ../jetson-gpu/device-plugin.yaml
@@ -456,7 +454,7 @@ indicating which client generated the error".
 The device plugin can hand out MPS shares in the same way as time-slicing replicas, each
 with an equal fraction of the GPU's memory and compute. Its README marks this support as
 experimental and limits it to whole GPUs without MIG. MPS runs on Tegra devices such as
-ours with restrictions, so we do not use it here.
+the Orin with restrictions, so this chapter does not use it.
 
 ## Dividing the hardware: Multi-Instance GPU
 
@@ -490,7 +488,7 @@ the `single` strategy every instance is advertised as `nvidia.com/gpu`, and with
 A pod then asks for a slice of known size and gets guaranteed memory and bandwidth.
 
 MIG requires a supporting GPU: the A100, H100, H200, and B200 families support seven
-instances, and smaller models support fewer. The Orin in our cluster does not support
+instances, and smaller models support fewer. The cluster's Orin does not support
 MIG.
 
 ## Virtual GPUs for virtual machines: vGPU
@@ -517,7 +515,7 @@ Kubernetes 1.34, replaces the count with structured requests:
   them with expressions over their attributes; several pods can refer to the same claim
   to share its devices.
 
-The scheduler then allocates concrete devices that satisfy each claim. Our cluster
+The scheduler then allocates concrete devices that satisfy each claim. The cluster
 already serves these APIs:
 
 ```console
@@ -532,7 +530,7 @@ resourceslices                        resource.k8s.io/v1   false        Resource
 
 A driver has to publish the devices, and NVIDIA's DRA driver describes its GPU support
 as not yet official: "While some GPU allocation features can be tried out, they are not
-yet officially supported." Our cluster therefore stays with the device plugin.
+yet officially supported." The cluster therefore stays with the device plugin.
 
 ## Choosing a method
 

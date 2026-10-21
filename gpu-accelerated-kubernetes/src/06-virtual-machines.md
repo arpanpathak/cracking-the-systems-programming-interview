@@ -7,12 +7,11 @@ or a team with an appliance that ships as a disk image. For them the unit of wor
 *virtual machine* (VM), a complete computer simulated in software, with its own kernel,
 on a real one.
 
-In this chapter, we will see how a VM runs on a Kubernetes cluster and what that means
-for the two things this book cares about: giving the VM a GPU, and moving the VM off a
-machine that has to be repaired. The second leads to *live migration*, moving a running
-VM to another host without stopping it. We will reason about when that can work, and
-then write `migration`, in Go and in Rust, a model of the algorithm that we can run with
-the memory sizes and link speeds of our own fleet.
+This chapter covers how a VM runs on a Kubernetes cluster and two consequences for GPU
+work: how the VM is given a GPU, and how it is moved off a machine that needs repair. The
+second leads to *live migration*, moving a running VM to another host without stopping
+it. `migration`, a model of the algorithm in Go and in Rust, runs with the memory sizes and
+link speeds of the fleet to show when a migration can finish.
 
 <div class="covers">
 
@@ -22,7 +21,7 @@ This chapter covers
 - KubeVirt, which runs each VM inside a pod
 - two ways to give a VM a GPU, and what each costs
 - live migration by pre-copy: rounds, dirty memory, and the final pause
-- when a migration converges, worked out for the links between our machines
+- when a migration converges, worked out for the links between the fleet's machines
 - why a VM that holds a GPU directly has to be stopped to be moved
 
 </div>
@@ -40,7 +39,7 @@ control to QEMU whenever the guest does something that needs the host's help, su
 talking to a disk or a network card. A program asks for this by opening the device file
 `/dev/kvm`.
 
-The Orin NX that runs our cluster has it:
+The Orin NX that runs the cluster has it:
 
 ```console
 $ ls -l /dev/kvm
@@ -50,8 +49,8 @@ CONFIG_KVM=y
 CONFIG_VFIO=y
 ```
 
-Since a VM is a process, it can run in a container, and so in a pod. That observation is
-the whole basis for running VMs on Kubernetes.
+Since a VM is a process, it can run in a container, and therefore in a pod. Running VMs on
+Kubernetes rests on that fact.
 
 ## KubeVirt: a VM inside a pod
 
@@ -69,8 +68,8 @@ parts.
 A user creates a *VirtualMachine* object, whose spec describes the VM: its CPUs, its
 memory, its disks, and its devices. A controller, `virt-controller`, creates a pod for
 it, named `virt-launcher` followed by the VM's name. The pod's resource requests match
-the VM's size, so the scheduler places it exactly as it places any pod, and everything
-we have built so far applies: the pod is counted against the node's capacity, it shows
+the VM's size, so the scheduler places it as it places any pod, and the machinery of the
+earlier chapters applies: the pod is counted against the node's capacity, it shows
 up in `gpuusage` from chapter 2 if it holds a GPU, and it is evicted when chapter 4's
 controller drains the node.
 
@@ -97,7 +96,7 @@ guest, and the guest's NVIDIA driver then operates the real GPU directly. The gu
 the full performance of the card. The host can no longer use it, and can no longer see
 what it is doing.
 
-A *vGPU*, which we met in chapter 2, divides one physical GPU among several VMs. The
+A *vGPU*, introduced in chapter 2, divides one physical GPU among several VMs. The
 host keeps its own driver, which creates several virtual devices and schedules their
 work on the real GPU. Each VM is given one virtual device.
 
@@ -113,13 +112,13 @@ of resource name a pod uses, and a device plugin on the node advertises the GPUs
 have been set aside for VMs. The scheduler counts them as it counts
 `nvidia.com/gpu`.
 
-The last row of the table decides what the rest of this chapter can do for a VM with a
-GPU, as we will see once we have built the model.
+The last row of the table determines whether a VM with a GPU can be live-migrated, which
+the end of the chapter returns to.
 
 <div class="callout">
 
-**On our machines.** Passthrough with VFIO works on a device that sits on a PCI bus, and
-our two boards differ here. The Orin NX's GPU is part of the system-on-chip and has no
+**On the fleet's machines.** Passthrough with VFIO works on a device that sits on a PCI
+bus, and the two boards differ here. The Orin NX's GPU is part of the system-on-chip and has no
 bus address. Its driver is `nvgpu`, and `nvidia-smi` shows nothing where the address
 would be:
 
@@ -140,9 +139,9 @@ $ lspci -nnk -s 01:00.0            # on the Thor
 	Kernel modules: nouveau, nvgpu, nvidia_drm, nvidia
 ```
 
-The Thor also has `/dev/kvm`. We have not tried to pass its GPU to a virtual machine, and
-with one GPU on the board, doing so would leave the host with none. The memory sizes and
-link speeds of the fleet are what we use in the rest of the chapter.
+The Thor also has `/dev/kvm`. Passing its GPU to a virtual machine has not been tried; with
+one GPU on the board, doing so would leave the host with none. The rest of the chapter uses
+the fleet's memory sizes and link speeds.
 
 </div>
 
@@ -151,15 +150,14 @@ link speeds of the fleet are what we use in the rest of the chapter.
 Chapter 4's controller drains a machine before repairing it. For a container, draining
 means stopping the process and starting a new one elsewhere. A VM often runs software
 that expects to stay up for months, and its users did not write it to be restarted. For
-a VM we would like something better: to move it to another host while it runs.
+a VM the goal is to move it to another host while it runs.
 
 A VM's state is its memory, the registers of its CPUs, and the state of its devices.
-The registers and most device state amount to a few kilobytes. The memory is the
-problem. A VM sized for a Thor may hold 100 GB, and at the 3.125 GB per second that one
+The registers and most device state amount to a few kilobytes, and the memory dominates. A VM sized for a Thor may hold 100 GB, and at the 3.125 GB per second that one
 25 GbE lane carries, copying it takes 32 seconds. If the VM were paused for that long,
 its network connections would time out and its users would see an outage.
 
-So the copy happens while the VM runs, and that creates a second problem: the VM keeps
+The copy therefore happens while the VM runs, which creates a second problem: the VM keeps
 writing to its memory during the copy, and the pages it writes after they were sent are
 stale on the other side. Memory that has been written since it was last sent is called
 *dirty*.
@@ -172,19 +170,18 @@ The standard algorithm, *pre-copy*, turns this into a loop.
 2. Send every dirty page to the target host, and clear the mark on each page as it is
    sent. The VM keeps running, and the hypervisor marks each page it writes.
 3. When the round ends, some pages are dirty again. If they are few enough to send
-   within the pause we are willing to accept, go to step 4. Otherwise go back to step 2.
+   within the acceptable pause, go to step 4. Otherwise go back to step 2.
 4. Pause the VM, send the remaining dirty pages and the CPU and device state, and resume
    the VM on the target.
 
 Each round sends less than the one before, provided the VM dirties memory more slowly
-than the link carries it. Let us work one case by hand. A 100 GB VM dirties 4 GB each
-second, and the link carries 12.5 GB each second, which is four bonded 25 GbE lanes.
+than the link carries it. In a worked case, a 100 GB VM dirties 4 GB each second, and the link carries 12.5 GB each second, which is four bonded 25 GbE lanes.
 
 - Round 1 sends 100 GB. That takes 100 / 12.5 = 8 seconds, during which the VM dirties
   4 × 8 = 32 GB.
 - Round 2 sends 32 GB in 2.56 seconds, during which the VM dirties 10.24 GB.
 - Round 3 sends 10.24 GB in 0.82 seconds, during which the VM dirties 3.28 GB.
-- 3.28 GB takes 0.26 seconds to send. If we allow a pause of 0.3 seconds, the VM is
+- 3.28 GB takes 0.26 seconds to send. With an allowed pause of 0.3 seconds, the VM is
   paused now and the last 3.28 GB are sent.
 
 Each round is smaller than the last by the same factor: the dirty rate divided by the
@@ -196,7 +193,7 @@ link rate, here 4 / 12.5 = 0.32. Figure 6.2 shows the rounds as bars.
 </figure>
 
 
-That factor is the whole story of convergence:
+That factor decides convergence:
 
 - When the VM dirties memory more slowly than the link carries it, the factor is below
   one, the rounds shrink, and the migration finishes.
@@ -282,7 +279,7 @@ it slows the guest by another 20 percent and tries again.
 
 ### The run
 
-The run uses two VMs and the four links our fleet has: the Orin NX's 1 GbE, one of a
+The run uses two VMs and the fleet's four links: the Orin NX's 1 GbE, one of a
 Thor's 25 GbE lanes, all four lanes bonded together, and the 200 GbE cable between the
 two Sparks.
 
@@ -307,8 +304,8 @@ $ go run ./migration
 
 The inference VM dirties 0.2 GB per second. The Orin NX's 1 GbE link carries 0.125 GB
 per second, which is less, so after 128 seconds of copying all 16 GB are dirty again.
-Over one 25 GbE lane the same VM moves in 5.5 seconds with a pause of 21 milliseconds.
-The VM is the same in both runs. The link decides the outcome.
+Over one 25 GbE lane the same VM moves in 5.5 seconds with a pause of 21 milliseconds. The
+VM is the same in both runs, and the link decides the outcome.
 
 The training VM dirties 4 GB per second, which is more than one 25 GbE lane carries, so
 that migration does not converge either. With throttling, the first two rounds make no
@@ -330,8 +327,7 @@ to send beside the memory that changes during the round.
 </figure>
 
 
-This is the reason clusters that migrate large VMs give migration a fast network of its
-own. The memory size sets how long the first round takes. The ratio of dirty rate to
+Clusters that migrate large VMs therefore give migration a fast network of its own. The memory size sets how long the first round takes. The ratio of dirty rate to
 link rate sets whether there is a last round at all.
 
 ## Migration in KubeVirt
@@ -344,8 +340,7 @@ removed.
 
 A VM's spec can set `evictionStrategy: LiveMigrate`. An eviction of the launcher pod,
 the request chapter 4's drain sends for every pod on a node, then starts a migration and
-is refused until the VM has moved. This is how the two chapters meet: the remediation
-controller drains with the Eviction API and needs no knowledge of VMs, and each VM
+is refused until the VM has moved. The remediation controller of chapter 4 therefore drains with the Eviction API and needs no knowledge of VMs, and each VM
 leaves in the way its owner chose.
 
 ### The VM that cannot move
@@ -354,7 +349,7 @@ Step 4 of pre-copy sends "the CPU and device state". For a virtual disk or a vir
 network card, the hypervisor implements the device, so it has that state in its own
 memory and can send it.
 
-A GPU given to the VM by passthrough is different. The device's state, including
+A GPU given to the VM by passthrough has no such copy. The device's state, including
 everything in the GPU's memory, is inside the physical card on the source host, and the
 host gave up its driver for that card when it attached the stub. The hypervisor has
 nothing to read and nothing to send, and the target host's GPU is a different physical
