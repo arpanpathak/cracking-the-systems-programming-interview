@@ -137,18 +137,35 @@ pre code {
 }
 
 pre {
-    font-size: 1.4rem;
-    line-height: 1.6;
+    font-size: 1.36rem;
+    line-height: 1.55;
     background: var(--code-bg) !important;
     border: 1px solid var(--code-border);
     border-radius: 8px;
-    padding: 1.1em 1.3em;
-    margin-block: 0.4em 1.4em;
+    padding: 0.85em 1.05em;
+    margin-block: 0 1.5em;
+    overflow-x: auto;
+    tab-size: 4;
 }
 
+pre > code,
 pre > code.hljs {
+    display: block;
     background: transparent;
+    border: 0;
     padding: 0;
+    overflow-x: visible;
+}
+
+/* A listing's caption sits directly on its code. */
+p.listing + pre {
+    margin-top: 0.5em;
+}
+
+/* Copy button: inside the box, clear of the first line. */
+pre > .buttons {
+    top: 0.45em;
+    right: 0.45em;
 }
 
 /* Lists */

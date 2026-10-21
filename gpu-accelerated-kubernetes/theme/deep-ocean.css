@@ -82,20 +82,28 @@ html.navy .content strong {
     color: var(--ocean-text);
 }
 
-/* Code blocks and the highlight.js token colours of Material Deep Ocean. */
-html.navy pre,
+/* Code blocks and the highlight.js token colours of Material Deep Ocean.
+   One box per block: the <pre> carries the background, border and padding, and
+   the <code> inside it is transparent and flush, so no second frame appears. */
+html.navy pre {
+    background: var(--ocean-bg-deep) !important;
+    border: 1px solid var(--ocean-border);
+    border-radius: 8px;
+}
+html.navy pre > code,
 html.navy pre > .hljs {
-    background: var(--ocean-bg-deep);
-    border: 1px solid var(--ocean-selection);
-    border-radius: 6px;
+    background: transparent;
+    border: 0;
+    border-radius: 0;
+    padding: 0;
 }
 html.navy .hljs { color: var(--ocean-fg); }
 html.navy .hljs-comment,
-html.navy .hljs-quote { color: var(--ocean-disabled); font-style: italic; }
+html.navy .hljs-quote { color: #7A82A8; }
 html.navy .hljs-keyword,
 html.navy .hljs-selector-tag,
 html.navy .hljs-type,
-html.navy .hljs-built_in { color: var(--ocean-blue); font-style: italic; }
+html.navy .hljs-built_in { color: var(--ocean-blue); }
 html.navy .hljs-string,
 html.navy .hljs-regexp,
 html.navy .hljs-addition { color: var(--ocean-green); }
