@@ -43,12 +43,12 @@ func (c *Controller) reconcile(name string) error {
 		return nil
 	}
 
-	if o.Status.GPUs == o.Spec.GPUs {
+	if o.Status.GPU == o.Spec.GPU {
 		return nil
 	}
 
 	time.Sleep(20 * time.Millisecond) // slow work, such as starting containers
-	o.Status.GPUs = o.Spec.GPUs
+	o.Status.GPU = o.Spec.GPU
 
 	if err := c.server.Update(o); err != nil {
 		logf("reconcile %s: write at version %d: %v", name, o.ResourceVersion, err)
@@ -56,7 +56,7 @@ func (c *Controller) reconcile(name string) error {
 		return err
 	}
 
-	logf("reconcile %s: status.GPUs = %d", name, o.Status.GPUs)
+	logf("reconcile %s: status.gpu = %v", name, o.Status.GPU)
 
 	return nil
 }

@@ -27,8 +27,10 @@ func logf(format string, args ...any) {
 func main() {
 	log.SetFlags(0)
 	server := NewAPIServer()
-	server.Update(Object{Name: "job-a", Spec: Spec{GPUs: 1}})
-	server.Update(Object{Name: "job-b", Spec: Spec{GPUs: 8}})
+	thor := GPURequest{Count: 1, Product: "Thor", MemoryGiB: 100}
+	spark := GPURequest{Count: 8, Product: "GB10", MemoryGiB: 96}
+	server.Update(Object{Name: "job-a", Spec: Spec{GPU: thor}})
+	server.Update(Object{Name: "job-b", Spec: Spec{GPU: spark}})
 
 	cache := NewCache()
 	queue := NewWorkQueue()
@@ -38,10 +40,11 @@ func main() {
 
 	logf("--- job-a is edited five times in a burst")
 
-	for gpus := 2; gpus <= 6; gpus++ {
-		server.Update(Object{Name: "job-a", Spec: Spec{GPUs: gpus}})
+	for count := 2; count <= 6; count++ {
+		thor.Count = count
+		server.Update(Object{Name: "job-a", Spec: Spec{GPU: thor}})
 
-		if gpus == 2 {
+		if count == 2 {
 			time.Sleep(5 * time.Millisecond) // the controller starts on the first edit
 		}
 	}

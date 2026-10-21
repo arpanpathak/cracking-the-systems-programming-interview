@@ -47,17 +47,17 @@ impl Controller {
             return Ok(());
         };
 
-        if object.status.gpus == object.spec.gpus {
+        if object.status.gpu == object.spec.gpu {
             return Ok(());
         }
 
         thread::sleep(Duration::from_millis(20)); // slow work, such as starting containers
-        object.status.gpus = object.spec.gpus;
+        object.status.gpu = object.spec.gpu.clone();
         let version = object.resource_version;
 
         match self.server.update(object.clone()) {
             Ok(()) => {
-                log!("reconcile {name}: status.gpus = {}", object.status.gpus);
+                log!("reconcile {name}: status.gpu = {}", object.status.gpu);
 
                 Ok(())
             }

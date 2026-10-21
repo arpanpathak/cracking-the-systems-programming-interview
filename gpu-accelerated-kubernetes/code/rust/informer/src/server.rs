@@ -7,18 +7,57 @@ use std::sync::Mutex;
 use std::sync::mpsc::{Receiver, Sender, channel};
 
 // ANCHOR: objects
+/// The GPUs a job needs. `count` is what the scheduler counts, the
+/// `nvidia.com/gpu` limit; it says nothing about which GPU a unit is, so
+/// `product` and `memory_gib` name the kind of GPU each unit must be.
+#[derive(Clone, Debug, Default, PartialEq, Eq)]
+pub struct GpuRequest {
+    /// Number of whole GPUs.
+    pub count: u32,
+    /// GPU model, as in the node label `nvidia.com/gpu.product`.
+    pub product: String,
+    /// Device memory each GPU must have.
+    pub memory_gib: u32,
+}
+
+impl GpuRequest {
+    /// Returns a request for `count` GPUs of the given model and memory.
+    pub fn new(count: u32, product: &str, memory_gib: u32) -> Self {
+        Self {
+            count,
+            product: product.to_string(),
+            memory_gib,
+        }
+    }
+}
+
+impl fmt::Display for GpuRequest {
+    /// Formats a request as "2 x Thor (100 GiB)", or "none" if it is empty.
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        if self.count == 0 {
+            return write!(f, "none");
+        }
+
+        write!(
+            f,
+            "{} x {} ({} GiB)",
+            self.count, self.product, self.memory_gib
+        )
+    }
+}
+
 /// The part of an object that a user writes: the desired state.
-#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+#[derive(Clone, Debug, Default, PartialEq, Eq)]
 pub struct Spec {
-    /// Number of GPUs the job asks for.
-    pub gpus: u32,
+    /// What the job asks for.
+    pub gpu: GpuRequest,
 }
 
 /// The part of an object that the controller writes: the observed state.
-#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+#[derive(Clone, Debug, Default, PartialEq, Eq)]
 pub struct Status {
-    /// Number of GPUs the controller has provided to the job.
-    pub gpus: u32,
+    /// The request the controller has satisfied; empty until it has.
+    pub gpu: GpuRequest,
 }
 
 /// One stored record, such as a training job.
@@ -37,10 +76,10 @@ pub struct Object {
 impl Object {
     /// Returns a new object with the given name and GPU request, an empty
     /// status, and no resource version.
-    pub fn new(name: &str, gpus: u32) -> Self {
+    pub fn new(name: &str, gpu: GpuRequest) -> Self {
         Self {
             name: name.to_string(),
-            spec: Spec { gpus },
+            spec: Spec { gpu },
             ..Self::default()
         }
     }
@@ -51,8 +90,8 @@ impl fmt::Display for Object {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(
             f,
-            "{}{{spec.gpus: {}, status.gpus: {}, v{}}}",
-            self.name, self.spec.gpus, self.status.gpus, self.resource_version
+            "{}{{spec: {}, status: {}, v{}}}",
+            self.name, self.spec.gpu, self.status.gpu, self.resource_version
         )
     }
 }
