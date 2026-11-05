@@ -39,7 +39,7 @@
             const path_to_root = "";
             const default_light_theme = "light";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "searchindex-243b62bc.js";
+            window.path_to_searchindex_js = "searchindex-e1554b34.js";
         </script>
         <!-- Start loading toc.js asap -->
         <script src="toc-f31bf49e.js"></script>
@@ -604,16 +604,19 @@ list was read. Then it opens a <strong>watch</strong>, a long-lived request that
 change after a given revision: <code>ADDED</code>, <code>MODIFIED</code> or <code>DELETED</code>, each carrying the object as it
 was after the change.</p>
 <div class="callout note">
-<p><strong>A bank statement and a stream of alerts.</strong> Think of how you would keep track of a bank account
-without visiting the branch. You ask for a statement, and the statement ends with “balance after
-transaction 10”. Then you sign up for text alerts. If you ask for alerts “from transaction 10
-onwards”, you will get transaction 11, which happened while you were reading the statement, and
-everything after it. If you ask for alerts “from now”, you will miss transaction 11 for good, and
-your balance will be wrong until you ask for another statement. The analogy breaks down in one
-place: a real bank keeps every transaction forever, while the API server keeps only a few minutes
-of recent changes, which is the subject of the next section. Mapping it back: the statement is the
-list, “transaction 10” is the list’s resource version, the alerts are the watch, and asking for
-alerts “from 10” is opening the watch from the list’s version.</p>
+<p><strong>Following a chess game from another room.</strong> Suppose we follow a chess game that is played in
+another room, and a messenger carries news to us. First we ask for the position of the board, and
+the messenger brings a drawing of the board as it stood after move 30. Then we ask to be told every
+move from now on. Moves are numbered, and each report says only which piece moved where, so our
+board is correct only if we apply every move, in order. If we ask for moves “after move 30”, the
+messenger also brings move 31, which was played while the drawing was on its way, and our board
+stays correct. If we ask for moves “from now”, and move 31 has already been played, we never hear
+of it, and every later move is applied to a wrong board. The comparison breaks down in 1 place.
+Every move of a game is written on the score sheet and can be read back at any time, while the API
+server keeps only the last few minutes of changes; a client that asks for changes older than that
+must ask for a new drawing, which is the subject of the next section. Mapped back to Kubernetes, the
+drawing is the list, “after move 30” is the list’s resource version, the reported moves are the
+watch events, and asking for moves after 30 is opening the watch from the list’s version.</p>
 </div>
 
 <p>The list and the watch are 2 separate requests, and other clients keep writing between them.
