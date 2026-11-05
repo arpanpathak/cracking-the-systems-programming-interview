@@ -39,7 +39,7 @@
             const path_to_root = "";
             const default_light_theme = "light";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "searchindex-07152483.js";
+            window.path_to_searchindex_js = "searchindex-b99a260b.js";
         </script>
         <!-- Start loading toc.js asap -->
         <script src="toc-f31bf49e.js"></script>
@@ -1208,11 +1208,11 @@ finished reconcile, and <code>for_each</code> keeps reading that stream until th
 job waits in it at most once, and a job that one worker is reconciling is held back from
 all the others until that worker is done.</p>
 <h2 id="running-it"><a class="header" href="#running-it">Running it</a></h2>
-<p>Figure 1.13 shows what one reconcile writes for a job named <code>train</code>, and what Kubernetes does
+<p>Figure 1.14 shows what one reconcile writes for a job named <code>train</code>, and what Kubernetes does
 with the pod.</p>
 <figure>
 <img src="figures/gpujob-controller.svg" alt="A GpuJob named train, with image gpu-check:1 and gpus 1, is applied to the API server with kubectl. The gpujob-controller watches jobs and the pods they own. It applies a pod named train, whose owner reference names the job and whose limits ask for nvidia.com/gpu: 1, and writes the job&#39;s phase through the status subresource. The scheduler and the kubelet place and start the pod, and its program runs on the GPU.">
-<figcaption><b>Figure 1.13</b> One <code>GpuJob</code>, the pod the controller keeps for it, and the two writes of a reconcile: the pod, and the job's status.</figcaption>
+<figcaption><b>Figure 1.14</b> One <code>GpuJob</code>, the pod the controller keeps for it, and the two writes of a reconcile: the pod, and the job's status.</figcaption>
 </figure>
 <p>We will test the controller with two jobs. <code>smoke-test</code> asks for no GPUs and runs a short
 shell command, which tells us the basic machinery works. <code>train</code> asks for one GPU and runs
