@@ -118,3 +118,37 @@
         text-align: left;
     }
 }
+
+/* Go and Rust as 2 tabs of 1 box (theme/tabs.js). */
+.code-tabs { margin: 1.2em 0 1.6em; }
+.code-tabs > p.listing { margin-bottom: 0.4em; }
+.code-tabs-bar { display: flex; gap: 0.3em; margin-bottom: -1px; }
+.code-tabs-bar button {
+    font: 600 1.3rem var(--code-face);
+    padding: 0.35em 1em;
+    border: 1px solid var(--code-border);
+    border-bottom: none;
+    border-radius: 8px 8px 0 0;
+    background: transparent;
+    color: var(--muted);
+    cursor: pointer;
+}
+.code-tabs-bar button[aria-selected="true"] { background: var(--code-bg); color: var(--ink); }
+.code-tabs > pre { margin-top: 0; border-top-left-radius: 0; }
+
+/* Every line of a listing is its own block (theme/code.js), so a long line
+   wraps under its own indentation and a listing never scrolls sideways. */
+.content pre { overflow-x: visible; }
+.content pre > code.lined { white-space: normal; }
+.content pre > code .line {
+    display: block;
+    min-height: 1.55em;
+    white-space: pre-wrap;
+    overflow-wrap: anywhere;
+    padding-left: calc(var(--indent, 0) * 1ch + 4ch);
+    text-indent: calc(var(--indent, 0) * -1ch - 4ch);
+}
+
+/* The complete programs, folded until a reader opens one. */
+details.program { margin: 0.6em 0; border: 1px solid var(--code-border); border-radius: 8px; padding: 0.3em 1em; }
+details.program > summary { cursor: pointer; font-weight: 600; padding: 0.4em 0; }

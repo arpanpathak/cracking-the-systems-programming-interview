@@ -107,6 +107,7 @@ func NewAPIServer() *APIServer {
 // ANCHOR_END: server
 
 // ANCHOR: writes
+// ANCHOR: update
 // Update creates or replaces an object and returns ErrConflict if the write's
 // condition fails. A non-zero o.ResourceVersion is a condition: the caller read
 // the object at that version and wants the write applied only if the object is
@@ -134,6 +135,7 @@ func (s *APIServer) Update(o Object) error {
 	return nil
 }
 
+// ANCHOR_END: update
 // Delete removes the named object, if it exists.
 func (s *APIServer) Delete(name string) {
 	s.mu.Lock()

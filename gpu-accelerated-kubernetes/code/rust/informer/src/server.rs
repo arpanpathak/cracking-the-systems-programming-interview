@@ -145,6 +145,7 @@ impl ApiServer {
 // ANCHOR_END: server
 
 // ANCHOR: writes
+// ANCHOR: update
 impl ApiServer {
     /// Creates or replaces an object. A non-zero `resource_version` is a
     /// condition: the caller read the object at that version and wants the
@@ -171,7 +172,10 @@ impl ApiServer {
 
         Ok(())
     }
+}
+// ANCHOR_END: update
 
+impl ApiServer {
     /// Removes the named object, if it exists.
     pub fn delete(&self, name: &str) {
         let mut state = self.state();

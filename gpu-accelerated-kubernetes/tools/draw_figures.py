@@ -816,7 +816,8 @@ def cross_build():
          "One source, four binaries", "Each operating system loads its own file format, and each processor runs its own machine code.", parts)
 
 
-for name in sys.argv[1:] or list(FIGURES):
-    FIGURES[name]()
-    print("  " + name)
-print("wrote %d figure(s) to %s" % (len(sys.argv[1:]) or len(FIGURES), OUT))
+if __name__ == "__main__":
+    for name in sys.argv[1:] or list(FIGURES):
+        FIGURES[name]()
+        print("  " + name)
+    print("wrote %d figure(s) to %s" % (len(sys.argv[1:]) or len(FIGURES), OUT))

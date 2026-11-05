@@ -35,6 +35,7 @@ impl WorkQueue {
 // ANCHOR_END: state
 
 // ANCHOR: ops
+// ANCHOR: add
 impl WorkQueue {
     /// Marks each name as needing processing. A name that is already pending
     /// is left where it is. A name that a worker holds is queued again by `done`.
@@ -52,7 +53,11 @@ impl WorkQueue {
             }
         }
     }
+}
+// ANCHOR_END: add
 
+// ANCHOR: getdone
+impl WorkQueue {
     /// Blocks until a name is ready and hands it to the caller.
     pub fn get(&self) -> String {
         let mut state = self.state();
@@ -81,4 +86,5 @@ impl WorkQueue {
         }
     }
 }
+// ANCHOR_END: getdone
 // ANCHOR_END: ops

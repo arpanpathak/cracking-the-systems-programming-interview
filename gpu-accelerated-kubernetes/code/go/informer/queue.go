@@ -32,6 +32,7 @@ func NewWorkQueue() *WorkQueue {
 // ANCHOR_END: state
 
 // ANCHOR: ops
+// ANCHOR: add
 // Add marks each name as needing processing. A name that is already pending
 // is left where it is. A name that a worker holds is queued again by Done.
 func (q *WorkQueue) Add(names ...string) {
@@ -52,6 +53,8 @@ func (q *WorkQueue) Add(names ...string) {
 	}
 }
 
+// ANCHOR_END: add
+// ANCHOR: getdone
 // Get blocks until a name is ready and hands it to the caller.
 func (q *WorkQueue) Get() string {
 	q.mu.Lock()
@@ -82,4 +85,5 @@ func (q *WorkQueue) Done(name string) {
 	}
 }
 
+// ANCHOR_END: getdone
 // ANCHOR_END: ops

@@ -366,7 +366,7 @@ def edge_level():
          "5 times, and 4 of those runs act on specs that were already replaced. A level-triggered reconcile runs "
          "twice and each time reads the current spec from the cache, first 2 and then 6.",
          "Reacting to events, and reacting to state",
-         "The burst of edits from the run in section 1.10, seen by 2 kinds of controller.", parts)
+         "The burst of edits from the run of the model, seen by 2 kinds of controller.", parts)
 
 
 # Figure 1.9 -----------------------------------------------------------------
@@ -386,6 +386,100 @@ def shared_informer():
          "indexer. Three controllers in the same process each register a handler and keep their own work queue.",
          "Controllers in one process share one watch and one cache",
          "SharedInformerFactory hands every controller the same informer for a given kind.", parts)
+
+
+def marker(x, y, n):
+    """A numbered marker, the same glyph the prose uses: a dark disc with a white digit."""
+    return badge(x, y, n)
+
+
+def legend_rows(x, y, rows, width=440):
+    out = []
+    for n, body in rows:
+        out += [marker(x + 10, y - 4, n), label(x + 28, y, body, "note", fill=INK)]
+        y += 24
+    return out
+
+
+# Structure of the API server ------------------------------------------------
+
+@figure
+def server_struct():
+    parts = [
+        f'  <rect x="330" y="96" width="638" height="300" rx="16" fill="#F3F1EA" stroke="#E4E0D4" stroke-width="1.2"/>',
+        label(350, 122, "APISERVER: 4 FIELDS BEHIND 1 LOCK", "tab"),
+        label(350, 156, "objects", "tab"),
+        cell(450, 138, 150, 30, "client", "job-a  v10"), cell(610, 138, 150, 30, "service", "job-b  v8"),
+        label(350, 202, "version", "tab"), cell(450, 184, 70, 30, "client", "10", strong=True),
+        label(350, 248, "history", "tab"),
+        cell(450, 230, 90, 30, "grey", "1-2 gone", cls="note", dashed=True),
+    ]
+    for i, v in enumerate(range(3, 11)):
+        parts.append(cell(548 + i * 50, 230, 44, 30, "idle", str(v)))
+    parts += [label(350, 294, "watches", "tab"),
+              cell(450, 276, 200, 30, "good", "watch A: sent to 10", cls="note"),
+              cell(660, 276, 200, 30, "good", "watch B: sent to 10", cls="note"),
+              label(350, 348, "compacted", "tab"), cell(450, 330, 70, 30, "grey", "2"),
+              label(530, 350, "a watch from below 2 gets 410 Gone", "note")]
+
+    parts += [cell(32, 136, 250, 40, "client", "Update(job-a, read at v10)", cls="note"),
+              line(282, 156, 330, 156, arrow=True), marker(306, 140, 1),
+              cell(32, 300, 250, 40, "outside", "Watch(from 8)", cls="note"),
+              line(282, 320, 330, 320, arrow=True), marker(306, 304, 4),
+              marker(540, 199, 2), marker(954, 245, 3), marker(882, 291, 5)]
+    rows = [(1, "Update compares the version the caller read with the stored one: equal, or 409 Conflict."),
+            (2, "It increments the counter, stamps the object with the new value and stores it."),
+            (3, "It appends 1 event to the history and sends it on every open watch."),
+            (4, "Watch(from 8) checks 8 against the compaction point, then replays events 9 and 10,"),
+            (5, "and registers the new watch under the same lock, so no event falls between the 2.")]
+    parts += legend_rows(32, 436, rows)
+    save(OUT / "ch01-server-struct.svg", 1000, 560,
+         "The API server holds 4 fields behind 1 lock: objects (job-a at version 10, job-b at 8), the version counter 10, "
+         "a history of events 3 to 10 with 1 and 2 compacted, and 2 open watches that have been sent everything up to 10. "
+         "Update checks the version, increments the counter, stores the object, and publishes 1 event to the history and every "
+         "watch. Watch from 8 checks the compaction point, replays 9 and 10, and registers itself under the same lock.",
+         "Inside the model API server",
+         "The state after 10 writes. Markers follow 1 Update and 1 Watch through it.", parts)
+
+
+# Reconcile as a decision flow ------------------------------------------------
+
+@figure
+def reconcile_flow():
+    xs, w, last = [32, 292, 552, 812], 190, 156
+    mid = lambda i: xs[i] + w / 2
+    parts = [
+        card(xs[0], 100, w, 62, "store", "Get a name", ["from the queue"], glyph="stack"),
+        card(xs[1], 100, w, 62, "service", "Read the cache", ["object by name"], glyph="search"),
+        wire([(xs[0] + w, 131), (xs[1], 131)]),
+        card(xs[2], 100, w, 62, "idle", "Object exists?", ["missing: deleted"]),
+        wire([(xs[1] + w, 131), (xs[2], 131)]),
+        card(xs[3], 100, last, 62, "danger", "Release", ["GPUs, then Done"]),
+        wire([(xs[2] + w, 131), (xs[3], 131)], label="no"),
+        card(xs[2], 222, w, 62, "idle", "Status = spec?", ["already handled"]),
+        wire([(mid(2), 162), (mid(2), 222)], label="yes"),
+        card(xs[3], 222, last, 62, "good", "Done", ["no write needed"]),
+        wire([(xs[2] + w, 253), (xs[3], 253)], label="yes"),
+        card(xs[2], 344, w, 62, "client", "Do the work", ["start a container"], glyph="gear"),
+        wire([(mid(2), 284), (mid(2), 344)], label="no"),
+        card(xs[1], 344, w, 62, "client", "Write status", ["with version read"]),
+        wire([(xs[2], 375), (xs[1] + w, 375)]),
+        card(xs[0], 344, w, 62, "danger", "409 Conflict", ["Add the name again"]),
+        wire([(xs[1], 375), (xs[0] + w, 375)], label="409"),
+        marker(xs[1] - 2, 100, 1), marker(xs[2] - 2, 100, 2), marker(xs[2] - 2, 222, 3), marker(xs[2] - 2, 344, 4), marker(xs[1] - 2, 344, 5),
+    ]
+    rows = [(1, "The worker holds the name; no other worker can take it."),
+            (2, "The cache is exact up to the last event, so a missing object was deleted."),
+            (3, "A status equal to the spec means an earlier reconcile already finished the work."),
+            (4, "Starting a container stands for any action outside Kubernetes."),
+            (5, "A write that fails returns the name to the queue; the next run reads the newer object.")]
+    parts += legend_rows(32, 452, rows)
+    save(OUT / "ch01-reconcile-flow.svg", 1000, 580,
+         "The reconcile decision flow. Get a name from the work queue, read the object from the cache. If it does not exist, "
+         "release its GPUs and finish. If its status equals its spec, finish. Otherwise do the work, then write the status with "
+         "the version that was read. If the write fails with 409 Conflict, add the name to the queue again.",
+         "One reconcile, from name to status",
+         "Every path ends with Done. Only a conflict puts the name back in the queue.", parts)
 
 
 for name in sys.argv[1:] or list(FIGURES):

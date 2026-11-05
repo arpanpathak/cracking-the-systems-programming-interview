@@ -3812,8 +3812,9 @@ for _slug, (_title, _tiers, _note) in DEPLOYS.items():
     _deployment(_slug, _title, _tiers, _note)
 
 
-for name in sys.argv[1:] or list(FIGURES):
-    FIGURES[name]()
-    print("  " + name)
+if __name__ == "__main__":
+    for name in sys.argv[1:] or list(FIGURES):
+        FIGURES[name]()
+        print("  " + name)
 
-print("wrote %d figure(s) to %s" % (len(sys.argv[1:]) or len(FIGURES), OUT))
+    print("wrote %d figure(s) to %s" % (len(sys.argv[1:]) or len(FIGURES), OUT))

@@ -10,7 +10,6 @@ python3 tools/chapters/gen.py 3 tools/chapters/03.txt src/03-key-value-store-rep
 python3 tools/chapters/gen.py 4 tools/chapters/04.txt src/04-key-value-store-leader-election.md
 python3 tools/chapters/gen.py 5 tools/chapters/05.txt src/05-key-value-store-router.md
 python3 tools/chapters/gen.py 6 tools/chapters/06.txt src/06-key-value-store-group-commit.md
-python3 tools/chapters/designs.py > /dev/null
 python3 tools/chapters/gen.py 7 tools/chapters/07.txt src/07-rate-limiter.md
 python3 tools/chapters/gen.py 8 tools/chapters/08.txt src/08-unique-id-generator.md
 python3 tools/chapters/gen.py 9 tools/chapters/09.txt src/09-distributed-cache.md
