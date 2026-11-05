@@ -8,27 +8,57 @@ pieces as a small program in Go and in Rust, starting with the data structures a
 operation at a time, and we will finish by running the whole model through a burst of edits, a
 dropped connection and a network partition.
 
-## The controller and its objects
+## Objects and controllers
 
-Our running example is a program that runs GPU training jobs. When a user creates a job that needs
-1 GPU, the program starts a container for it on a machine with a free GPU. When the user later
-raises the job to 2 GPUs, the program replaces the container, and when the user deletes the job,
-the program stops the container and releases the GPU. A program of this kind, which compares the
-state a user has requested with the state of the cluster and acts until the 2 agree, is called a
-**controller** in Kubernetes.
+Kubernetes represents the state of a cluster as a set of objects, and every change to that state
+is a change to an object. We first define the terms precisely and then illustrate them with the GPU
+training job that serves as the example throughout this chapter.
 
-Kubernetes records each job as an **object**, a named record that the API server stores. An object
-has 2 main parts. The **spec**, also known as the desired state, is written by the user; for our
-job it says how many GPUs the job needs. The **status**, also known as the observed state, is
-written by the controller; it says how many GPUs the job actually has. Keeping the 2 apart means
-that each part has exactly 1 writer. The user never edits the status, and the controller never
-edits the spec, so the controller can always tell what was requested from what it has done so far.
-A job named `job-a` that has just been created has a spec of 1 GPU and a status of 0 GPUs, and the
-controller's work is finished when the status reaches 1.
+<div class="definition">
 
-Listing 1.1 gives the object in our model. A real Kubernetes object carries much more, such as
-labels, an owner and a container image, but a GPU count in each half is enough for every mechanism
-in this chapter. The last field, the resource version, is explained in the next 2 sections.
+**Definition 1.1** (Object). An *object* is a record stored by the Kubernetes API server and
+identified by its kind and its name. It consists of a *spec*, which describes the desired state of
+the entity the object represents, and a *status*, which describes the most recently observed state
+of that entity.
+
+</div>
+
+<div class="definition">
+
+**Definition 1.2** (API server). The *API server* is the HTTP service through which every object is
+created, read, updated and deleted. It stores the objects in etcd, a replicated key-value store,
+and no other component of the cluster accesses etcd directly.
+
+</div>
+
+<div class="definition">
+
+**Definition 1.3** (Controller). A *controller* is a process that, for every object of a given
+kind, compares the spec with the observed state of the cluster, acts to remove any difference
+between the 2, and records the result in the status.
+
+</div>
+
+The spec and the status have different writers. The spec is written by the owner of the object,
+which is a user or another program, and the status is written only by the controller responsible
+for the object. Since each part has exactly 1 writer, a controller can always distinguish the state
+that was requested from the state it has achieved.
+
+<div class="example">
+
+**Example 1.1** (A GPU training job). Let `job-a` be an object of kind `GpuJob` with
+`spec.gpus = 1` and `status.gpus = 0` immediately after its creation. Its controller starts a
+container with 1 GPU on a machine that has a free GPU and then sets `status.gpus = 1`, at which
+point spec and status agree. If the owner later sets `spec.gpus = 2`, the 2 parts differ again, and
+the controller replaces the container and sets `status.gpus = 2`. If the owner deletes `job-a`, the
+controller stops the container and releases its GPUs.
+
+</div>
+
+Listing 1.1 defines the object of our model. A Kubernetes object carries many more fields, among
+them labels, owner references and a container specification. A GPU count in the spec and in the
+status is sufficient for every mechanism in this chapter. The field `ResourceVersion` is defined in
+the next section (Definition 1.4).
 
 <div class="code-tabs">
 
@@ -44,16 +74,14 @@ in this chapter. The last field, the resource version, is explained in the next 
 
 </div>
 
-All objects are kept by 1 HTTP service, the **API server**, which persists them in etcd, a
-replicated key-value store. Users, `kubectl` and controllers all read and write objects through the
-API server, and none of them talks to etcd directly. A controller therefore needs 2 things from
-the API server: an exact view of every object of its kind, and notice of each change soon after it
-happens.
+To do its work, a controller requires 2 things from the API server: the current state of every
+object of its kind, and notification of each change to such an object shortly after the change
+occurs.
 
 ## The cost of asking for everything
 
-The simplest way for a controller to obtain both is to ask the API server for every job every few
-seconds and compare the answer with what it is running. We can estimate the cost of this approach
+The simplest way for a controller to obtain both is to request every object of its kind every few
+seconds and to compare the result with the state it has recorded. We can estimate the cost of this approach
 for a large cluster. Suppose the cluster runs 50,000 pods and each pod is about 4 KB of JSON. A
 single request for all pods then transfers 50,000 × 4 KB = 200 MB. If 12 controllers each repeat
 the request every 5 seconds, the API server sends 12 × 200 MB ÷ 5 s = 480 MB every second. Between
@@ -88,11 +116,17 @@ the revisions that wrote it. For example, `job-a` was written at revisions 1, 4,
 <figcaption><b>Figure 1.1</b> One counter numbers every write. An object's resource version is the revision of its latest write, the solid cell in each row.</figcaption>
 </figure>
 
-Kubernetes passes the revision on to its clients as the **resource version**. The resource version
-of an object is the revision of the last write that changed it, so in Fig. 1.1 the resource version
-of `job-a` is 11 and that of `pod-1` is 8. A list of objects also carries a resource version, which
-is the revision of the whole store at the moment the list was read.[^opaque] This single number
-lets a client say exactly how far its knowledge of the cluster goes.
+<div class="definition">
+
+**Definition 1.4** (Resource version). The *resource version* of an object is the etcd revision of
+the last write that changed the object. The resource version of a list of objects is the revision
+of the whole store at the moment the list was read.[^opaque]
+
+</div>
+
+In Fig. 1.1 the resource version of `job-a` is therefore 11, and that of `pod-1` is 8. A client
+that holds a list read at resource version *v* knows the state of the cluster exactly as it was
+after revision *v*.
 
 [^opaque]: Kubernetes asks clients to treat resource versions as opaque strings and to compare them only for equality. Our model uses plain integers so that we can print them, and nothing in the client depends on their order.
 
@@ -140,11 +174,21 @@ at ➓ the write succeeds as version 9, which holds both changes.
 <figcaption><b>Figure 1.2</b> A write that names the version it read is accepted only if the object is still at that version.</figcaption>
 </figure>
 
-This technique is called **optimistic concurrency control**, also known as compare-and-set. No
-client locks the object while it works. Each client assumes that nobody else will write the
-object in the meantime, and the server detects the cases where that assumption was wrong when the
-write arrives. The cost of a wrong assumption is 1 extra read and 1 extra write, which is small
-when clashes are rare, as they are for most Kubernetes objects.
+<div class="definition">
+
+**Definition 1.5** (Conditional write). An update that carries a resource version *v* succeeds only
+if the stored object still has resource version *v*. Otherwise the API server rejects the update
+with the HTTP status `409 Conflict`, and the client must read the object again and reapply its
+change.
+
+</div>
+
+This technique is called *optimistic concurrency control*, also known as compare-and-set. No client
+holds a lock on the object while it computes its change. Each client proceeds on the assumption that
+no other client will write the object in the meantime, and the server detects the cases in which
+that assumption was false at the moment the write arrives. The cost of a false assumption is 1
+additional read and 1 additional write, which is small when conflicts are rare, as they are for most
+Kubernetes objects.
 
 We now have enough to build the server's side of these rules. Fig. 1.3 shows the state that our
 model API server keeps after 10 writes. There are 4 fields behind 1 lock. The **objects** map holds
