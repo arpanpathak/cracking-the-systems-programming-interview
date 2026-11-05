@@ -1,11 +1,11 @@
 # 1. Keeping a local copy of the cluster
 
-This chapter depicts what happens under the hood when a Kubernetes controller learns that an
-object in the cluster has changed. We'll examine how the API server numbers every write, how a
+In this chapter we study how a Kubernetes controller learns that an object in the cluster has
+changed. We will examine how the API server numbers every write, how a
 client combines a list and a stream of changes into an exact copy of the cluster, what the client
-does when that stream breaks, and how the copy is turned into work. We'll build each of these
+does when that stream breaks, and how the copy is turned into work. We will build each of these
 pieces as a small program in Go and in Rust, starting with the data structures and adding one
-operation at a time, and we'll finish by running the whole model through a burst of edits, a
+operation at a time, and we will finish by running the whole model through a burst of edits, a
 dropped connection and a network partition.
 
 ## The controller and its objects
@@ -100,7 +100,7 @@ Each change that the API server reports to a client is an **event**. An event ha
 `MODIFIED` or `DELETED`, and it carries the whole object as it was after the change, or its last
 state for a deletion. Sending the whole object, rather than only the fields that changed, means that
 a client can apply an event without knowing anything about the object's earlier state. Listing 1.2
-gives the event, together with the 3 errors that the server can return. We'll meet `409 Conflict`
+gives the event, together with the 3 errors that the server can return. We will meet `409 Conflict`
 in the next section and `410 Gone` when we discuss lost history.
 
 <div class="code-tabs">
@@ -212,11 +212,11 @@ was after the change.
 
 <div class="callout note">
 
-**A bank statement and a stream of alerts.** Think of how you'd keep track of a bank account
+**A bank statement and a stream of alerts.** Think of how you would keep track of a bank account
 without visiting the branch. You ask for a statement, and the statement ends with "balance after
 transaction 10". Then you sign up for text alerts. If you ask for alerts "from transaction 10
-onwards", you'll get transaction 11, which happened while you were reading the statement, and
-everything after it. If you ask for alerts "from now", you'll miss transaction 11 for good, and
+onwards", you will get transaction 11, which happened while you were reading the statement, and
+everything after it. If you ask for alerts "from now", you will miss transaction 11 for good, and
 your balance will be wrong until you ask for another statement. The analogy breaks down in one
 place: a real bank keeps every transaction forever, while the API server keeps only a few minutes
 of recent changes, which is the subject of the next section. Mapping it back: the statement is the
@@ -262,7 +262,7 @@ lands either in the replay or on the new channel, never in neither and never in 
 
 </div>
 
-The real API server doesn't send every watch to etcd. For each kind of object it keeps a **watch
+The real API server does not send every watch to etcd. For each kind of object it keeps a **watch
 cache**: the current objects and a window of recent events in memory, fed by 1 etcd watch, and it
 serves most watches from there. Since Kubernetes 1.31 it serves consistent lists from that cache
 too, after checking that the cache has caught up with etcd's latest revision.
@@ -270,13 +270,13 @@ too, after checking that the cache has caught up with etcd's latest revision.
 ## The server forgets old history
 
 A watch can replay only events the server still has. etcd keeps every revision of every key until
-it's told to throw old ones away. That clean-up is called **compaction**, and kube-apiserver asks
-for one every 5 minutes by default. When a client asks to resume from a revision older than what's
+it is told to throw old ones away. That clean-up is called **compaction**, and kube-apiserver asks
+for one every 5 minutes by default. When a client asks to resume from a revision older than what is
 left, the API server answers `410 Gone`, and the only way back to an exact copy is a fresh list.
 
 Watches also end for ordinary reasons. kube-apiserver closes every watch after a random timeout
-between 30 and 60 minutes, so that thousands of clients don't all reconnect at once. A load
-balancer may drop a connection that's been quiet too long. A network partition may make the server
+between 30 and 60 minutes, so that thousands of clients do not all reconnect at once. A load
+balancer may drop a connection that is been quiet too long. A network partition may make the server
 unreachable for a while. Figure 1.5 shows the 3 endings and what a client does after each. The
 variable *v* is the version of the last event the client applied, and since its copy is exact up to
 *v*, resuming from *v* is correct in the first 2 cases.
@@ -293,12 +293,12 @@ position forward.
 
 ## Deletions that no event reports
 
-Once we've listed and are watching, we can keep our own copy of every object in memory. We call it
+Once we have listed and are watching, we can keep our own copy of every object in memory. We call it
 the **cache**. Reading an object becomes a map lookup, and the API server sends each change to our
 process once.
 
 The cache needs 2 operations. *Apply* records 1 event. *Replace* installs a fresh list, and it has a
-job that events can't do. When we relist after `410 Gone`, some objects may have been deleted while
+job that events cannot do. When we relist after `410 Gone`, some objects may have been deleted while
 we were cut off, and their `DELETED` events went away with the compaction. Nobody will ever send us
 those events. The only evidence is that an object is in our old cache and missing from the new list.
 Figure 1.6 compares the 2 for 4 objects.
@@ -314,7 +314,7 @@ Figure 1.6 compares the 2 for 4 objects.
 
 1. *changed* ← an empty list
 2. for each object *o* in *list*: if *cache* has no entry for *o*.name, or its version differs from *o*.version, append *o*.name to *changed*
-3. for each name *n* in *cache* that isn't in *list*: append *n* to *changed*
+3. for each name *n* in *cache* that is not in *list*: append *n* to *changed*
 4. *cache* ← the objects of *list*, by name
 5. return *changed*
 
@@ -334,7 +334,7 @@ Figure 1.6 compares the 2 for 4 objects.
 
 </div>
 
-An object that's new to us has no cached version. Go reads the missing map entry as version 0, and
+An object that is new to us has no cached version. Go reads the missing map entry as version 0, and
 Rust compares against `None`, so both report it as changed, which is step 2 of Algorithm 1.1.
 
 ## A worker reads the cache too early
@@ -362,8 +362,8 @@ whatever does the work, and the order of those 2 steps matters more than it look
 
 Step 2.3 updates the cache before it queues the name. Figure 1.7 shows why. In the left column the
 name is queued first, at marker ➋. A worker takes it at ➌ and reads the cache at ➍ before the
-update lands at ➎. It sees the old spec of 1 GPU, decides there's nothing to do, and finishes. The
-name won't be queued again, so the edit to 2 GPUs waits until the job happens to change once more.
+update lands at ➎. It sees the old spec of 1 GPU, decides there is nothing to do, and finishes. The
+name will not be queued again, so the edit to 2 GPUs waits until the job happens to change once more.
 In the right column the cache is updated first, and the worker reads 2 GPUs.
 
 <figure>
@@ -380,7 +380,7 @@ already reflects every event that caused the name to be queued.
 
 Listing 1.7 is step 2 of Algorithm 1.2. Our model retries an unreachable server every 10
 milliseconds. client-go doubles the wait after each failure in a row, up to a cap, so that
-thousands of clients don't overload a server that's trying to recover.
+thousands of clients do not overload a server that is trying to recover.
 
 <div class="code-tabs">
 
@@ -396,7 +396,7 @@ thousands of clients don't overload a server that's trying to recover.
 
 </div>
 
-## A burst of edits starts work that's already out of date
+## A burst of edits starts work that is already out of date
 
 The reflector knows when an object changes, and the controller needs to hear about it. The direct
 way is to call the controller once for every event. That goes wrong in 2 ways. A user who edits a
@@ -430,7 +430,7 @@ appears in the ready list at most once.
 
 </div>
 
-`Add` puts a name in *dirty*, and in the ready list only if no worker holds it. That's the third
+`Add` puts a name in *dirty*, and in the ready list only if no worker holds it. That is the third
 row of Figure 1.8: the name is marked and left out of the ready list.
 
 <div class="code-tabs">
@@ -481,7 +481,7 @@ still busy.
 
 The function a worker runs for each name is called **reconcile**: it reads the object's current
 spec, compares it with the world, acts to remove the difference, and records the result in the
-status. It doesn't know, or care, why it was called. A name queued once and a name queued 10 times
+status. It does not know, or care, why it was called. A name queued once and a name queued 10 times
 lead to the same action, and so do a change reported by an event and a change found by a relist.
 
 Engineers call this style **level-triggered**, after circuits that respond to the present level of
@@ -497,7 +497,7 @@ level-triggered one finds the change on its next read.
 <figcaption><b>Figure 1.9</b> 1 action per event, and 1 action per state read.</figcaption>
 </figure>
 
-Figure 1.10 lays out 1 reconcile as a decision flow. There's one more trap in it, at marker ➎. Our
+Figure 1.10 lays out 1 reconcile as a decision flow. There is one more trap in it, at marker ➎. Our
 cache trails the server by the time an event takes to arrive, and the work at ➍ takes time too. If
 the user changes the spec meanwhile and we write our copy of the object back unconditionally, we
 store the old spec along with a status computed for it, and the user's edit disappears. So
@@ -557,7 +557,7 @@ $ cargo run -p informer
 {{#include ../code/output/rust-informer.txt}}
 ```
 
-Here's the Go log read line by line against the sections of this chapter.
+Here is the Go log read line by line against the sections of this chapter.
 
 | Time | Log | What happened |
 |---|---|---|
@@ -567,7 +567,7 @@ Here's the Go log read line by line against the sections of this chapter.
 | 121 ms | `409 Conflict` at version 5 | The object was at version 9 by then, so the conditional write failed and the name went back in the queue. |
 | 141 ms | status 6 | The second run read version 9 and wrote status 6 at version 10. Specs 3, 4 and 5 were never acted on (Figure 1.9). |
 | 257 ms | watch closed, resuming from 10 | The stream closed. The cache was exact up to 10, so the reflector watched again from 10 with no list. |
-| 307 to 338 ms | `410 Gone`, list at version 11 | During the partition, `job-b` was deleted at 11 and history was compacted to 11, so a watch from 10 couldn't be served. |
+| 307 to 338 ms | `410 Gone`, list at version 11 | During the partition, `job-b` was deleted at 11 and history was compacted to 11, so a watch from 10 could not be served. |
 | 338 ms | `job-b`: deleted | Replace found `job-b` in the old cache and missing from the list (Figure 1.6). Its `DELETED` event no longer existed anywhere. |
 
 Animation 1.2 replays the run from the list at version 2 to the list at version 11, with the
@@ -636,9 +636,9 @@ against this with **expectations**: after creating 3 pods it waits to see 3 crea
 timeout, before it looks at that ReplicaSet again. A second guard uses 2 numbers every object
 carries. The API server increments `metadata.generation` whenever the spec changes, and the
 controller copies the generation it acted on into `status.observedGeneration`. When the 2 differ,
-anyone can see that the latest spec hasn't been handled yet.
+anyone can see that the latest spec has not been handled yet.
 
-An informer isn't always the right tool. A cache is always a little behind, so a decision that must
+An informer is not always the right tool. A cache is always a little behind, so a decision that must
 see the very latest state, such as granting the last free GPU of a quota, needs a direct read or a
 conditional write at the moment of decision. And a controller that cares about a handful of objects
 among millions pays for a cache of all of them unless it narrows its watch with a label or field
@@ -647,7 +647,7 @@ selector.
 ## Summary
 
 - The API server numbers every write with etcd's revision, and an object's resource version is the revision of its latest write.
-- A write that carries the version it read is refused with `409 Conflict` if the object has moved on, so 2 writers can't silently undo each other.
+- A write that carries the version it read is refused with `409 Conflict` if the object has moved on, so 2 writers cannot silently undo each other.
 - A client lists, then watches from the list's version, and gets every change exactly once (Invariant 1.1).
 - A watch resumes from the last version applied after a closed stream or an outage, and lists again only after `410 Gone`.
 - Replace finds deletions whose events were compacted away by comparing the old cache with the new list.
@@ -660,9 +660,9 @@ against a real cluster, with client-go in Go and kube-rs in Rust.
 
 ## Exercises
 
-1. In Figure 1.1, a client lists at revision 8 and watches from 8. Which revisions does it receive as events, and what's its cached resource version for `job-b` afterwards?
+1. In Figure 1.1, a client lists at revision 8 and watches from 8. Which revisions does it receive as events, and what is its cached resource version for `job-b` afterwards?
 2. In Figure 1.3, a client calls `Watch(from 1)`. What does the server answer, and what must the client do next?
-3. Swap the 2 steps of Algorithm 1.2, step 2.3, in the Go model, and add a 30-millisecond sleep between them. Run the demonstration and find the edit that's never reconciled.
+3. Swap the 2 steps of Algorithm 1.2, step 2.3, in the Go model, and add a 30-millisecond sleep between them. Run the demonstration and find the edit that is never reconciled.
 4. Remove the *processing* set from the work queue and run the demonstration with 2 workers. How many reconciles of `job-a` overlap during the burst?
 5. With client-go's default rate limiter, after how many consecutive failures does 1 name wait longer than 1 minute between attempts?
 6. A relist finds an object with the same name, a different resource version and a different UID. What happened on the server, and what should a controller that owns a container for that object do?
