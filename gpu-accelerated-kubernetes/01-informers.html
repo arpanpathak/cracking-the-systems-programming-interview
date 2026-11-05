@@ -39,7 +39,7 @@
             const path_to_root = "";
             const default_light_theme = "light";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "searchindex-eb6b5f73.js";
+            window.path_to_searchindex_js = "searchindex-c3bf3b60.js";
         </script>
         <!-- Start loading toc.js asap -->
         <script src="toc-f31bf49e.js"></script>
@@ -193,39 +193,42 @@ pieces as a small program in Go and in Rust, starting with the data structures a
 operation at a time, and we will finish by running the whole model through a burst of edits, a
 dropped connection and a network partition.</p>
 <h2 id="objects-and-controllers"><a class="header" href="#objects-and-controllers">Objects and controllers</a></h2>
-<p>Kubernetes represents the state of a cluster as a set of objects, and every change to that state
-is a change to an object. We first define the terms precisely and then illustrate them with the GPU
-training job that serves as the example throughout this chapter.</p>
+<p>Kubernetes describes the state of a cluster as a collection of objects. A user who wants a
+training job to run does not start the job’s container directly; the user creates an object that
+describes the job, and a program inside the cluster makes the description true. In this section we
+define the object, the API server that stores it and the controller that acts on it, and then trace
+a single job through its life.</p>
 <div class="definition">
-<p><strong>Definition 1.1</strong> (Object). An <em>object</em> is a record stored by the Kubernetes API server and
-identified by its kind and its name. It consists of a <em>spec</em>, which describes the desired state of
-the entity the object represents, and a <em>status</em>, which describes the most recently observed state
-of that entity.</p>
+<p><strong>Definition 1.1</strong> (Object). An <em>object</em> is a record that the API server stores under a kind and a
+name. It consists of a <em>spec</em>, also referred to as the desired state, which describes the state that
+the owner of the object requests, and a <em>status</em>, also referred to as the observed state, which
+describes the state that has been achieved so far.</p>
 </div>
 
 <div class="definition">
 <p><strong>Definition 1.2</strong> (API server). The <em>API server</em> is the HTTP service through which every object is
-created, read, updated and deleted. It stores the objects in etcd, a replicated key-value store,
-and no other component of the cluster accesses etcd directly.</p>
+created, read, updated and deleted. It stores the objects in etcd, a replicated key-value store, and
+no other component of the cluster accesses etcd directly.</p>
 </div>
 
 <div class="definition">
-<p><strong>Definition 1.3</strong> (Controller). A <em>controller</em> is a process that, for every object of a given
-kind, compares the spec with the observed state of the cluster, acts to remove any difference
-between the 2, and records the result in the status.</p>
+<p><strong>Definition 1.3</strong> (Controller). A <em>controller</em> is a process that drives the status of every object
+of a given kind towards its spec. It repeatedly compares the 2 parts of each object, performs the
+actions that remove any difference between them, and records the outcome in the status.</p>
 </div>
 
-<p>The spec and the status have different writers. The spec is written by the owner of the object,
-which is a user or another program, and the status is written only by the controller responsible
-for the object. Since each part has exactly 1 writer, a controller can always distinguish the state
-that was requested from the state it has achieved.</p>
+<p>The 2 parts of an object have different writers. The owner of the object, a user or another
+program, writes only the spec. The controller writes only the status. This division allows a
+controller to distinguish, at any moment, the state that was requested from the state it has
+achieved.</p>
 <div class="example">
-<p><strong>Example 1.1</strong> (A GPU training job). Let <code>job-a</code> be an object of kind <code>GpuJob</code> with
-<code>spec.gpus = 1</code> and <code>status.gpus = 0</code> immediately after its creation. Its controller starts a
-container with 1 GPU on a machine that has a free GPU and then sets <code>status.gpus = 1</code>, at which
-point spec and status agree. If the owner later sets <code>spec.gpus = 2</code>, the 2 parts differ again, and
-the controller replaces the container and sets <code>status.gpus = 2</code>. If the owner deletes <code>job-a</code>, the
-controller stops the container and releases its GPUs.</p>
+<p><strong>Example 1.1</strong> (A GPU training job). Consider an object <code>job-a</code> of kind <code>GpuJob</code>. Immediately after
+its creation it has <code>spec.gpus = 1</code> and <code>status.gpus = 0</code>. The controller observes that the 2 values
+differ, starts a container with 1 GPU on a machine that has a free GPU, and writes
+<code>status.gpus = 1</code>, after which spec and status agree and the controller takes no further action.
+When the owner later writes <code>spec.gpus = 2</code>, the values differ again; the controller replaces the
+container with one that has 2 GPUs and writes <code>status.gpus = 2</code>. When the owner deletes <code>job-a</code>, the
+controller stops the container and releases both GPUs.</p>
 </div>
 
 <p>Listing 1.1 defines the object of our model. A Kubernetes object carries many more fields, among
