@@ -31,8 +31,8 @@
         <!-- Custom theme stylesheets -->
         <link rel="stylesheet" href="theme/custom-84de3dd1.css">
         <link rel="stylesheet" href="theme/deep-ocean-18294553.css">
-        <link rel="stylesheet" href="theme/formal-05bd78f0.css">
-        <link rel="stylesheet" href="theme/layout-ef06b503.css">
+        <link rel="stylesheet" href="theme/formal-f616fcec.css">
+        <link rel="stylesheet" href="theme/layout-407df753.css">
 
 
         <!-- Provide site root and default themes to javascript -->
@@ -40,7 +40,7 @@
             const path_to_root = "";
             const default_light_theme = "light";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "searchindex-50936894.js";
+            window.path_to_searchindex_js = "searchindex-eb6b5f73.js";
         </script>
         <!-- Start loading toc.js asap -->
         <script src="toc-f31bf49e.js"></script>
@@ -325,24 +325,46 @@ does when that stream breaks, and how the copy is turned into work. We will buil
 pieces as a small program in Go and in Rust, starting with the data structures and adding one
 operation at a time, and we will finish by running the whole model through a burst of edits, a
 dropped connection and a network partition.</p>
-<h2 id="the-controller-and-its-objects"><a class="header" href="#the-controller-and-its-objects">The controller and its objects</a></h2>
-<p>Our running example is a program that runs GPU training jobs. When a user creates a job that needs
-1 GPU, the program starts a container for it on a machine with a free GPU. When the user later
-raises the job to 2 GPUs, the program replaces the container, and when the user deletes the job,
-the program stops the container and releases the GPU. A program of this kind, which compares the
-state a user has requested with the state of the cluster and acts until the 2 agree, is called a
-<strong>controller</strong> in Kubernetes.</p>
-<p>Kubernetes records each job as an <strong>object</strong>, a named record that the API server stores. An object
-has 2 main parts. The <strong>spec</strong>, also known as the desired state, is written by the user; for our
-job it says how many GPUs the job needs. The <strong>status</strong>, also known as the observed state, is
-written by the controller; it says how many GPUs the job actually has. Keeping the 2 apart means
-that each part has exactly 1 writer. The user never edits the status, and the controller never
-edits the spec, so the controller can always tell what was requested from what it has done so far.
-A job named <code>job-a</code> that has just been created has a spec of 1 GPU and a status of 0 GPUs, and the
-controller’s work is finished when the status reaches 1.</p>
-<p>Listing 1.1 gives the object in our model. A real Kubernetes object carries much more, such as
-labels, an owner and a container image, but a GPU count in each half is enough for every mechanism
-in this chapter. The last field, the resource version, is explained in the next 2 sections.</p>
+<h2 id="objects-and-controllers"><a class="header" href="#objects-and-controllers">Objects and controllers</a></h2>
+<p>Kubernetes represents the state of a cluster as a set of objects, and every change to that state
+is a change to an object. We first define the terms precisely and then illustrate them with the GPU
+training job that serves as the example throughout this chapter.</p>
+<div class="definition">
+<p><strong>Definition 1.1</strong> (Object). An <em>object</em> is a record stored by the Kubernetes API server and
+identified by its kind and its name. It consists of a <em>spec</em>, which describes the desired state of
+the entity the object represents, and a <em>status</em>, which describes the most recently observed state
+of that entity.</p>
+</div>
+
+<div class="definition">
+<p><strong>Definition 1.2</strong> (API server). The <em>API server</em> is the HTTP service through which every object is
+created, read, updated and deleted. It stores the objects in etcd, a replicated key-value store,
+and no other component of the cluster accesses etcd directly.</p>
+</div>
+
+<div class="definition">
+<p><strong>Definition 1.3</strong> (Controller). A <em>controller</em> is a process that, for every object of a given
+kind, compares the spec with the observed state of the cluster, acts to remove any difference
+between the 2, and records the result in the status.</p>
+</div>
+
+<p>The spec and the status have different writers. The spec is written by the owner of the object,
+which is a user or another program, and the status is written only by the controller responsible
+for the object. Since each part has exactly 1 writer, a controller can always distinguish the state
+that was requested from the state it has achieved.</p>
+<div class="example">
+<p><strong>Example 1.1</strong> (A GPU training job). Let <code>job-a</code> be an object of kind <code>GpuJob</code> with
+<code>spec.gpus = 1</code> and <code>status.gpus = 0</code> immediately after its creation. Its controller starts a
+container with 1 GPU on a machine that has a free GPU and then sets <code>status.gpus = 1</code>, at which
+point spec and status agree. If the owner later sets <code>spec.gpus = 2</code>, the 2 parts differ again, and
+the controller replaces the container and sets <code>status.gpus = 2</code>. If the owner deletes <code>job-a</code>, the
+controller stops the container and releases its GPUs.</p>
+</div>
+
+<p>Listing 1.1 defines the object of our model. A Kubernetes object carries many more fields, among
+them labels, owner references and a container specification. A GPU count in the spec and in the
+status is sufficient for every mechanism in this chapter. The field <code>ResourceVersion</code> is defined in
+the next section (Definition 1.4).</p>
 <div class="code-tabs">
 <p class="listing"><b>Listing 1.1</b> An object, with its spec and its status. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/go/informer/server.go">Go</a> · <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/rust/informer/src/server.rs">Rust</a></p>
 
@@ -427,14 +449,12 @@ impl fmt::Display for Object {
 }</code></pre>
 </div>
 
-<p>All objects are kept by 1 HTTP service, the <strong>API server</strong>, which persists them in etcd, a
-replicated key-value store. Users, <code>kubectl</code> and controllers all read and write objects through the
-API server, and none of them talks to etcd directly. A controller therefore needs 2 things from
-the API server: an exact view of every object of its kind, and notice of each change soon after it
-happens.</p>
+<p>To do its work, a controller requires 2 things from the API server: the current state of every
+object of its kind, and notification of each change to such an object shortly after the change
+occurs.</p>
 <h2 id="the-cost-of-asking-for-everything"><a class="header" href="#the-cost-of-asking-for-everything">The cost of asking for everything</a></h2>
-<p>The simplest way for a controller to obtain both is to ask the API server for every job every few
-seconds and compare the answer with what it is running. We can estimate the cost of this approach
+<p>The simplest way for a controller to obtain both is to request every object of its kind every few
+seconds and to compare the result with the state it has recorded. We can estimate the cost of this approach
 for a large cluster. Suppose the cluster runs 50,000 pods and each pod is about 4 KB of JSON. A
 single request for all pods then transfers 50,000 × 4 KB = 200 MB. If 12 controllers each repeat
 the request every 5 seconds, the API server sends 12 × 200 MB ÷ 5 s = 480 MB every second. Between
@@ -463,11 +483,15 @@ the revisions that wrote it. For example, <code>job-a</code> was written at revi
 <img src="figures/ch01-revisions.svg" alt="Twelve writes numbered 1 to 12, coloured by the key they wrote: job-a, job-b, pod-1 and pod-2. Below, the key index lists for each key the revisions that wrote it. job-a was written at 1, 4, 5, 9 and 11, so its resourceVersion is 11.">
 <figcaption><b>Figure 1.1</b> One counter numbers every write. An object's resource version is the revision of its latest write, the solid cell in each row.</figcaption>
 </figure>
-<p>Kubernetes passes the revision on to its clients as the <strong>resource version</strong>. The resource version
-of an object is the revision of the last write that changed it, so in Fig. 1.1 the resource version
-of <code>job-a</code> is 11 and that of <code>pod-1</code> is 8. A list of objects also carries a resource version, which
-is the revision of the whole store at the moment the list was read.<sup class="footnote-reference" id="fr-opaque-1"><a href="#footnote-opaque">1</a></sup> This single number
-lets a client say exactly how far its knowledge of the cluster goes.</p>
+<div class="definition">
+<p><strong>Definition 1.4</strong> (Resource version). The <em>resource version</em> of an object is the etcd revision of
+the last write that changed the object. The resource version of a list of objects is the revision
+of the whole store at the moment the list was read.<sup class="footnote-reference" id="fr-opaque-1"><a href="#footnote-opaque">1</a></sup></p>
+</div>
+
+<p>In Fig. 1.1 the resource version of <code>job-a</code> is therefore 11, and that of <code>pod-1</code> is 8. A client
+that holds a list read at resource version <em>v</em> knows the state of the cluster exactly as it was
+after revision <em>v</em>.</p>
 <p>Each change that the API server reports to a client is an <strong>event</strong>. An event has a type, <code>ADDED</code>,
 <code>MODIFIED</code> or <code>DELETED</code>, and it carries the whole object as it was after the change, or its last
 state for a deletion. Sending the whole object, rather than only the fields that changed, means that
@@ -574,11 +598,19 @@ at ➓ the write succeeds as version 9, which holds both changes.</p>
 <img src="figures/ch01-conflict.svg" alt="Client A and client B both read job-a at version 7. A writes 2 GPUs with version 7 and the server accepts it as version 8. B writes a new image with version 7 and the server answers 409 Conflict. B reads version 8, writes again with version 8, and the server stores version 9 with both changes.">
 <figcaption><b>Figure 1.2</b> A write that names the version it read is accepted only if the object is still at that version.</figcaption>
 </figure>
-<p>This technique is called <strong>optimistic concurrency control</strong>, also known as compare-and-set. No
-client locks the object while it works. Each client assumes that nobody else will write the
-object in the meantime, and the server detects the cases where that assumption was wrong when the
-write arrives. The cost of a wrong assumption is 1 extra read and 1 extra write, which is small
-when clashes are rare, as they are for most Kubernetes objects.</p>
+<div class="definition">
+<p><strong>Definition 1.5</strong> (Conditional write). An update that carries a resource version <em>v</em> succeeds only
+if the stored object still has resource version <em>v</em>. Otherwise the API server rejects the update
+with the HTTP status <code>409 Conflict</code>, and the client must read the object again and reapply its
+change.</p>
+</div>
+
+<p>This technique is called <em>optimistic concurrency control</em>, also known as compare-and-set. No client
+holds a lock on the object while it computes its change. Each client proceeds on the assumption that
+no other client will write the object in the meantime, and the server detects the cases in which
+that assumption was false at the moment the write arrives. The cost of a false assumption is 1
+additional read and 1 additional write, which is small when conflicts are rare, as they are for most
+Kubernetes objects.</p>
 <p>We now have enough to build the server’s side of these rules. Fig. 1.3 shows the state that our
 model API server keeps after 10 writes. There are 4 fields behind 1 lock. The <strong>objects</strong> map holds
 the current version of each object. The <strong>version</strong> counter plays the role of etcd’s revision. The

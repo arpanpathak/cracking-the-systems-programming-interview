@@ -82,7 +82,7 @@
     .content main table td,
     .content main table th { padding: 0.45em 0.6em; min-width: 5em; }
 
-    .covers, .lld, .callout, .definition, .invariant, .algorithm, .exercises {
+    .covers, .lld, .callout, .definition, .invariant, .algorithm, .exercises, .example {
         padding-inline: 0.85em !important;
         margin-inline: 0 !important;
     }
@@ -152,3 +152,8 @@
 /* The complete programs, folded until a reader opens one. */
 details.program { margin: 0.6em 0; border: 1px solid var(--code-border); border-radius: 8px; padding: 0.3em 1em; }
 details.program > summary { cursor: pointer; font-weight: 600; padding: 0.4em 0; }
+
+/* A tabbed listing links to both sources inline: "... Go · Rust". */
+.code-tabs p.listing a::before { content: none; }
+.code-tabs p.listing:has(> b) a,
+.code-tabs p.listing a { float: none; display: inline; font-family: var(--code-face); font-size: 0.9em; }
