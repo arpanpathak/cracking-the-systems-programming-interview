@@ -1,0 +1,92 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 520" width="1000" height="520" role="img" aria-label="Two rows of versions 8 to 14. In both a list is taken at version 10. In the first row the watch starts from 10, and versions 11 to 14 are delivered. In the second the watch starts from 12, the version current when it opened, and versions 11 and 12 are missed.">
+  <style>
+    text { font-family: Inter, "Segoe UI", "Helvetica Neue", Helvetica, Arial, sans-serif; fill: #1B2430; }
+    .title { font-size: 18px; font-weight: 650; }
+    .lede { font-size: 12.5px; fill: #5D6B7A; }
+    .name { font-size: 14px; font-weight: 650; }
+    .sub { font-size: 12px; fill: #5D6B7A; }
+    .note { font-size: 12px; fill: #5D6B7A; }
+    .tab { font-size: 11.5px; font-weight: 650; letter-spacing: 0.04em; fill: #5D6B7A; }
+    .mono { font-family: "JetBrains Mono", "SF Mono", Menlo, Consolas, monospace; font-size: 12px; }
+    .dim { fill: #8794A3; }
+    .strong { font-weight: 700; }
+    .trap { fill: #CF4526; font-weight: 700; }
+    .pill { font-size: 11px; font-weight: 600; }
+    .wire { fill: none; stroke: #3F5873; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+    .wire.danger { stroke: #CF4526; stroke-dasharray: 6 5; }
+    .wire.idle { stroke: #7F8EA0; stroke-dasharray: 2 5; }
+  </style>
+  <defs>
+    <filter id="lift" x="-10%" y="-10%" width="120%" height="135%">
+      <feDropShadow dx="0" dy="2" stdDeviation="3" flood-color="#1B2430" flood-opacity="0.13"/>
+    </filter>
+    <linearGradient id="thor-body" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#C6CCD5"/><stop offset="1" stop-color="#979EA9"/>
+    </linearGradient>
+    <linearGradient id="switch-body" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#3B4656"/><stop offset="1" stop-color="#232B37"/>
+    </linearGradient>
+    <marker id="head" viewBox="0 0 10 10" refX="8.5" refY="5" markerUnits="userSpaceOnUse" markerWidth="11" markerHeight="11" orient="auto">
+      <path d="M0.5,1 L9,5 L0.5,9 Z" fill="#3F5873"/>
+    </marker>
+    <marker id="head-danger" viewBox="0 0 10 10" refX="8.5" refY="5" markerUnits="userSpaceOnUse" markerWidth="11" markerHeight="11" orient="auto">
+      <path d="M0.5,1 L9,5 L0.5,9 Z" fill="#CF4526"/>
+    </marker>
+    <marker id="head-idle" viewBox="0 0 10 10" refX="8.5" refY="5" markerUnits="userSpaceOnUse" markerWidth="11" markerHeight="11" orient="auto">
+      <path d="M0.5,1 L9,5 L0.5,9 Z" fill="#7F8EA0"/>
+    </marker>
+  </defs>
+  <rect width="1000" height="520" rx="14" fill="#FBFAF6"/>
+  <text x="32.0" y="42.0" class="title" text-anchor="start" xml:space="preserve">The watch must start from the list&#x27;s version</text>
+  <text x="32.0" y="63.0" class="lede" text-anchor="start" xml:space="preserve">A list taken at 10, an edit at 11, and a watch opened when the store is at 12.</text>
+  <rect x="32" y="90" width="936" height="170" rx="12" fill="#FFFFFF" stroke="#D5DBE3" stroke-width="1.2"/>
+  <rect x="32" y="90" width="936" height="4" rx="2" fill="#2E8B3D"/>
+  <text x="50.0" y="120.0" class="name" text-anchor="start" style="fill:#2E8B3D" xml:space="preserve">Watch from the list&#x27;s version, 10</text>
+  <rect x="210.0" y="146.0" width="74.0" height="40.0" rx="6" fill="#EAF1FD" stroke="#2F6FDB" stroke-width="1.3"/>
+  <text x="247.0" y="170.3" class="mono" text-anchor="middle" style="fill:#1B2430">8</text>
+  <rect x="292.0" y="146.0" width="74.0" height="40.0" rx="6" fill="#EAF1FD" stroke="#2F6FDB" stroke-width="1.3"/>
+  <text x="329.0" y="170.3" class="mono" text-anchor="middle" style="fill:#1B2430">9</text>
+  <rect x="374.0" y="146.0" width="74.0" height="40.0" rx="6" fill="#EAF1FD" stroke="#2F6FDB" stroke-width="1.3"/>
+  <text x="411.0" y="170.3" class="mono" text-anchor="middle" style="fill:#1B2430">10</text>
+  <rect x="456.0" y="146.0" width="74.0" height="40.0" rx="6" fill="#E7F5E9" stroke="#2E8B3D" stroke-width="1.3"/>
+  <text x="493.0" y="170.3" class="mono" text-anchor="middle" style="fill:#2E8B3D" font-weight="700">11</text>
+  <rect x="538.0" y="146.0" width="74.0" height="40.0" rx="6" fill="#E7F5E9" stroke="#2E8B3D" stroke-width="1.3"/>
+  <text x="575.0" y="170.3" class="mono" text-anchor="middle" style="fill:#2E8B3D" font-weight="700">12</text>
+  <rect x="620.0" y="146.0" width="74.0" height="40.0" rx="6" fill="#E7F5E9" stroke="#2E8B3D" stroke-width="1.3"/>
+  <text x="657.0" y="170.3" class="mono" text-anchor="middle" style="fill:#2E8B3D" font-weight="700">13</text>
+  <rect x="702.0" y="146.0" width="74.0" height="40.0" rx="6" fill="#E7F5E9" stroke="#2E8B3D" stroke-width="1.3"/>
+  <text x="739.0" y="170.3" class="mono" text-anchor="middle" style="fill:#2E8B3D" font-weight="700">14</text>
+  <text x="50.0" y="171.0" class="tab" text-anchor="start" xml:space="preserve">versions</text>
+  <path d="M210,203 V196 H448 V203" fill="none" stroke="#2F6FDB" stroke-width="1.6"/>
+  <text x="329.0" y="218.0" class="pill" text-anchor="middle" style="fill:#2F6FDB" xml:space="preserve">list snapshot at 10</text>
+  <path d="M462.0,138.0 L462.0,196.0" fill="none" stroke="#1B2430" stroke-width="2"/>
+  <text x="586.0" y="238.0" class="note" text-anchor="start" xml:space="preserve">11 is replayed from history; 12 and later arrive live</text>
+  <rect x="32" y="290" width="936" height="170" rx="12" fill="#FFFFFF" stroke="#D5DBE3" stroke-width="1.2"/>
+  <rect x="32" y="290" width="936" height="4" rx="2" fill="#CF4526"/>
+  <text x="50.0" y="320.0" class="name" text-anchor="start" style="fill:#CF4526" xml:space="preserve">Watch from the version current when the watch opens, 12</text>
+  <rect x="210.0" y="346.0" width="74.0" height="40.0" rx="6" fill="#EAF1FD" stroke="#2F6FDB" stroke-width="1.3"/>
+  <text x="247.0" y="370.3" class="mono" text-anchor="middle" style="fill:#1B2430">8</text>
+  <rect x="292.0" y="346.0" width="74.0" height="40.0" rx="6" fill="#EAF1FD" stroke="#2F6FDB" stroke-width="1.3"/>
+  <text x="329.0" y="370.3" class="mono" text-anchor="middle" style="fill:#1B2430">9</text>
+  <rect x="374.0" y="346.0" width="74.0" height="40.0" rx="6" fill="#EAF1FD" stroke="#2F6FDB" stroke-width="1.3"/>
+  <text x="411.0" y="370.3" class="mono" text-anchor="middle" style="fill:#1B2430">10</text>
+  <rect x="456.0" y="346.0" width="74.0" height="40.0" rx="6" fill="#FCEBE6" stroke="#CF4526" stroke-width="1.3" stroke-dasharray="4 3"/>
+  <text x="493.0" y="370.3" class="mono" text-anchor="middle" style="fill:#CF4526" font-weight="700">11</text>
+  <rect x="538.0" y="346.0" width="74.0" height="40.0" rx="6" fill="#FCEBE6" stroke="#CF4526" stroke-width="1.3" stroke-dasharray="4 3"/>
+  <text x="575.0" y="370.3" class="mono" text-anchor="middle" style="fill:#CF4526" font-weight="700">12</text>
+  <rect x="620.0" y="346.0" width="74.0" height="40.0" rx="6" fill="#E7F5E9" stroke="#2E8B3D" stroke-width="1.3"/>
+  <text x="657.0" y="370.3" class="mono" text-anchor="middle" style="fill:#2E8B3D" font-weight="700">13</text>
+  <rect x="702.0" y="346.0" width="74.0" height="40.0" rx="6" fill="#E7F5E9" stroke="#2E8B3D" stroke-width="1.3"/>
+  <text x="739.0" y="370.3" class="mono" text-anchor="middle" style="fill:#2E8B3D" font-weight="700">14</text>
+  <text x="50.0" y="371.0" class="tab" text-anchor="start" xml:space="preserve">versions</text>
+  <path d="M210,403 V396 H448 V403" fill="none" stroke="#2F6FDB" stroke-width="1.6"/>
+  <text x="329.0" y="418.0" class="pill" text-anchor="middle" style="fill:#2F6FDB" xml:space="preserve">list snapshot at 10</text>
+  <path d="M626.0,338.0 L626.0,396.0" fill="none" stroke="#1B2430" stroke-width="2"/>
+  <text x="586.0" y="438.0" class="note" text-anchor="start" style="fill:#CF4526" xml:space="preserve">11 and 12 happened before the watch opened and are never delivered</text>
+  <rect x="32.0" y="486" width="139.4" height="18" rx="9" fill="#EAF1FD"/>
+  <text x="101.7" y="498.6" class="pill" text-anchor="middle" style="fill:#2F6FDB" xml:space="preserve">covered by the list</text>
+  <rect x="200.0" y="486" width="159.2" height="18" rx="9" fill="#E7F5E9"/>
+  <text x="279.6" y="498.6" class="pill" text-anchor="middle" style="fill:#2E8B3D" xml:space="preserve">delivered by the watch</text>
+  <rect x="400.0" y="486" width="53.6" height="18" rx="9" fill="#FCEBE6"/>
+  <text x="426.8" y="498.6" class="pill" text-anchor="middle" style="fill:#CF4526" xml:space="preserve">missed</text>
+</svg>

@@ -1,0 +1,31 @@
+/* Page layout at every screen width. Loaded after custom.css, so the rules
+   here decide the column width, the gutters and the type size.
+
+   Phone        up to 600 px    16 px gutters, the column fills the screen
+   Tablet       601 to 1279 px  the column is at most 820 px
+   Desktop      1280 to 1679 px 900 px column, type 4% larger
+   Wide         1680 px and up  1000 px column, type 10% larger           */
+
+:root { --content-max-width: 820px; }
+
+.content { padding: 1.2em 32px 5em; }
+
+@media (min-width: 1280px) {
+    :root { --content-max-width: 900px; font-size: 65%; }
+}
+
+@media (min-width: 1680px) {
+    :root { --content-max-width: 1000px; font-size: 68.75%; }
+}
+
+.content main figure { max-width: 100%; margin-inline: 0; }
+
+@media (max-width: 600px) {
+    :root { --page-padding: 0px; }
+    .content { padding: 0.6em 16px 4em; }
+    .content pre { margin-inline: 0; border-radius: 6px; }
+    .content pre > code { font-size: 0.78em; padding: 0.75em 0.8em; }
+    .nav-chapters { display: none; }
+    .lld, .covers, .callout, .sidebar, .estimate, .simulation,
+    .definition, .invariant, .algorithm, .exercises { margin-inline: 0; }
+}

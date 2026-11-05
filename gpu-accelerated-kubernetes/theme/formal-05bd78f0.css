@@ -1,0 +1,55 @@
+/* Numbered blocks in the style of a textbook: definitions, invariants,
+   algorithms and exercises. Each is a <div> whose first paragraph is its
+   heading, for example
+
+   <div class="definition">
+
+   **Definition 1.1** (Resource version). ...
+
+   </div>                                                                    */
+
+.definition,
+.invariant,
+.algorithm,
+.exercises {
+    margin: 1.5em 0;
+    padding: 0.85em 1.2em 0.2em;
+    border-radius: 10px;
+}
+
+.definition { background: #eef2fb; }
+.invariant { background: #edf6f1; }
+.algorithm { background: #f6f7f9; border: 1px solid #dde2e8; }
+.exercises { background: #fdf6e8; }
+
+.definition > p:first-child strong:first-child { color: #3554b8; }
+.invariant > p:first-child strong:first-child { color: #1f7a55; }
+.algorithm > p:first-child strong:first-child { color: #1b2430; }
+.exercises > p:first-child strong:first-child {
+    color: #a1621a;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    font-size: 0.85em;
+}
+
+/* An algorithm is a numbered list of steps, set a little tighter than prose. */
+.algorithm ol { margin-block: 0.2em 0.9em; padding-left: 1.8em; }
+.algorithm ol ol { margin-block: 0.1em; }
+.algorithm li { margin-block: 0.15em; }
+.algorithm li::marker { color: #7f8ea0; font-variant-numeric: tabular-nums; }
+
+.exercises ol { padding-left: 2.2em; }
+.exercises li::marker { color: #a1621a; font-weight: 600; }
+
+html.navy .definition, html.coal .definition, html.ayu .definition { background: #1c2740; }
+html.navy .invariant, html.coal .invariant, html.ayu .invariant { background: #17302a; }
+html.navy .algorithm, html.coal .algorithm, html.ayu .algorithm { background: #1a2230; border-color: #2c3a4d; }
+html.navy .exercises, html.coal .exercises, html.ayu .exercises { background: #33291a; }
+html.navy .definition > p:first-child strong:first-child,
+html.coal .definition > p:first-child strong:first-child { color: #9db4f2; }
+html.navy .invariant > p:first-child strong:first-child,
+html.coal .invariant > p:first-child strong:first-child { color: #7fd1ad; }
+html.navy .algorithm > p:first-child strong:first-child,
+html.coal .algorithm > p:first-child strong:first-child { color: #d6dde5; }
+html.navy .exercises > p:first-child strong:first-child,
+html.coal .exercises > p:first-child strong:first-child { color: #f2c75c; }
