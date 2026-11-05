@@ -39,7 +39,7 @@
             const path_to_root = "";
             const default_light_theme = "light";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "searchindex-c3bf3b60.js";
+            window.path_to_searchindex_js = "searchindex-58abac33.js";
         </script>
         <!-- Start loading toc.js asap -->
         <script src="toc-f31bf49e.js"></script>
@@ -254,10 +254,13 @@ type Status struct {
 type Object struct {
 	// Name identifies the object on the server.
 	Name string
+
 	// Spec holds what the user asked for.
 	Spec Spec
+
 	// Status holds what the controller has done about it.
 	Status Status
+
 	// ResourceVersion is the server's write counter at the object's latest change.
 	ResourceVersion int
 }
@@ -287,10 +290,13 @@ pub struct Status {
 pub struct Object {
     /// Identifies the object on the server.
     pub name: String,
+
     /// What the user asked for.
     pub spec: Spec,
+
     /// What the controller has done about it.
     pub status: Status,
+
     /// The server's write counter at the object's latest change.
     pub resource_version: u64,
 }
@@ -390,6 +396,7 @@ func (t EventType) String() string {
 type Event struct {
 	// Type is the kind of change.
 	Type EventType
+
 	// Object is the object after the change, or its final state if it was deleted.
 	Object Object
 }
@@ -399,8 +406,10 @@ type Event struct {
 var (
 	// ErrGone reports that the history a watch needs has been discarded.
 	ErrGone = errors.New("410 Gone: resource version too old")
+
 	// ErrConflict reports a conditional write whose resource version is out of date.
 	ErrConflict = errors.New("409 Conflict: object has been modified")
+
 	// ErrUnreachable reports that the client cannot reach the server.
 	ErrUnreachable = errors.New("server unreachable")
 )
@@ -410,8 +419,10 @@ var (
 pub enum EventType {
     /// The object was created.
     Added,
+
     /// The object was updated.
     Modified,
+
     /// The object was removed.
     Deleted,
 }
@@ -421,6 +432,7 @@ pub enum EventType {
 pub struct Event {
     /// The kind of change.
     pub kind: EventType,
+
     /// The object after the change, or its final state if it was deleted.
     pub object: Object,
 }
@@ -431,8 +443,10 @@ pub struct Event {
 pub enum ApiError {
     /// The history that a watch needs has been discarded.
     Gone,
+
     /// A conditional write carried an out-of-date resource version.
     Conflict,
+
     /// The client cannot reach the server.
     Unreachable,
 }
@@ -501,16 +515,22 @@ demonstration sets it to make the server behave as if a network partition had cu
 type APIServer struct {
 	// mu guards every field below.
 	mu sync.Mutex
+
 	// version is the last resource version the server handed out.
 	version int
+
 	// objects holds the current state of every object, keyed by name.
 	objects map[string]Object
+
 	// history holds the events newer than compacted, oldest first.
 	history []Event
+
 	// compacted is the oldest version from which a watch may resume.
 	compacted int
+
 	// watches holds one channel for each open watch.
 	watches []chan Event
+
 	// unreachable makes new watches fail, to simulate a network partition.
 	unreachable bool
 }
@@ -525,14 +545,19 @@ func NewAPIServer() *APIServer {
 struct State {
     /// The last resource version the server handed out.
     version: u64,
+
     /// The current state of every object, keyed by name.
     objects: HashMap&lt;String, Object&gt;,
+
     /// The events newer than `compacted`, oldest first.
     history: Vec&lt;Event&gt;,
+
     /// The oldest version from which a watch may resume.
     compacted: u64,
+
     /// One sender for each open watch.
     watches: Vec&lt;Sender&lt;Event&gt;&gt;,
+
     /// Makes new watches fail, to simulate a network partition.
     unreachable: bool,
 }
@@ -557,7 +582,7 @@ pub struct ApiServer {
 impl ApiServer {
     /// Locks the server's data.
     fn state(&amp;self) -&gt; std::sync::MutexGuard&lt;'_, State&gt; {
-        self.state.lock().expect("server lock poisoned")
+        self.state.lock().unwrap_or_else(PoisonError::into_inner)
     }
 }</code></pre>
 </div>
@@ -578,6 +603,7 @@ that does not exist yet counts as version 0.</p>
 func (s *APIServer) Update(o Object) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
+
 	current, exists := s.objects[o.Name]
 
 	if o.ResourceVersion != 0 &amp;&amp; o.ResourceVersion != current.ResourceVersion {
@@ -593,6 +619,7 @@ func (s *APIServer) Update(o Object) error {
 	s.version++
 	o.ResourceVersion = s.version
 	s.objects[o.Name] = o
+
 	s.publish(Event{eventType, o})
 
 	return nil
@@ -605,6 +632,7 @@ func (s *APIServer) Update(o Object) error {
     /// unconditionally.
     pub fn update(&amp;self, mut object: Object) -&gt; Result&lt;(), ApiError&gt; {
         let mut state = self.state();
+
         let current = state.objects.get(&amp;object.name);
         let current_version = current.map_or(0, |o| o.resource_version);
 
@@ -617,9 +645,11 @@ func (s *APIServer) Update(o Object) error {
         } else {
             EventType::Added
         };
+
         state.version += 1;
         object.resource_version = state.version;
         state.objects.insert(object.name.clone(), object.clone());
+
         state.publish(Event { kind, object });
 
         Ok(())
@@ -680,6 +710,7 @@ lands either in the replay or on the new channel, never in neither and never in 
 func (s *APIServer) List() ([]Object, int) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
+
 	byName := func(a, b Object) int { return strings.Compare(a.Name, b.Name) }
 
 	return slices.SortedFunc(maps.Values(s.objects), byName), s.version
@@ -716,6 +747,7 @@ func (s *APIServer) Watch(version int) (&lt;-chan Event, error) {
     /// snapshot was taken.
     pub fn list(&amp;self) -&gt; (Vec&lt;Object&gt;, u64) {
         let state = self.state();
+
         let mut objects: Vec&lt;Object&gt; = state.objects.values().cloned().collect();
         objects.sort_by(|a, b| a.name.cmp(&amp;b.name));
 
@@ -739,7 +771,8 @@ func (s *APIServer) Watch(version int) (&lt;-chan Event, error) {
 
         for event in &amp;state.history {
             if event.object.resource_version &gt; version {
-                sender.send(event.clone()).expect("receiver is held here");
+                // Cannot fail: the receiver is still held here.
+                let _ = sender.send(event.clone());
             }
         }
 
@@ -806,12 +839,15 @@ Figure 1.6 compares the 2 for 4 objects.</p>
 func (c *Cache) Replace(list []Object) []string {
 	c.mu.Lock()
 	defer c.mu.Unlock()
+
 	old := c.objects
 	c.objects = make(map[string]Object, len(list))
+
 	var changed []string
 
 	for _, o := range list {
 		c.objects[o.Name] = o
+
 		// A name missing from old reads as version 0, so it counts as changed.
 		if old[o.Name].ResourceVersion != o.ResourceVersion {
 			changed = append(changed, o.Name)
@@ -832,7 +868,8 @@ func (c *Cache) Replace(list []Object) []string {
     /// objects that changed, including objects that disappeared while the
     /// client was not watching.
     pub fn replace(&amp;self, list: &amp;[Object]) -&gt; Vec&lt;String&gt; {
-        let mut objects = self.objects.write().expect("cache lock poisoned");
+        let mut objects = self.objects.write().unwrap_or_else(PoisonError::into_inner);
+
         let old = std::mem::take(&amp;mut *objects);
         let mut changed = Vec::new();
 
@@ -919,6 +956,7 @@ func (r *Reflector) watchFrom(version int) {
 
 		if err != nil {
 			time.Sleep(10 * time.Millisecond) // client-go backs off exponentially
+
 			continue
 		}
 
@@ -927,6 +965,7 @@ func (r *Reflector) watchFrom(version int) {
 			// that takes the name reads the object as of this event.
 			r.cache.Apply(e)
 			r.queue.Add(e.Object.Name)
+
 			version = e.Object.ResourceVersion
 		}
 
@@ -951,6 +990,7 @@ func (r *Reflector) watchFrom(version int) {
                 }
                 Err(_) =&gt; {
                     thread::sleep(Duration::from_millis(10)); // client-go backs off exponentially
+
                     continue;
                 }
             };
@@ -958,6 +998,7 @@ func (r *Reflector) watchFrom(version int) {
             for event in events {
                 version = event.object.resource_version;
                 let name = event.object.name.clone();
+
                 // Update the cache before queueing the name, so that a worker
                 // that takes the name reads the object as of this event.
                 self.cache.apply(event);
@@ -1062,6 +1103,7 @@ func (q *WorkQueue) Get() string {
 
 	name := q.queue[0]
 	q.queue = q.queue[1:]
+
 	delete(q.dirty, name)
 	q.processing[name] = true
 
@@ -1073,6 +1115,7 @@ func (q *WorkQueue) Get() string {
 func (q *WorkQueue) Done(name string) {
 	q.mu.Lock()
 	defer q.mu.Unlock()
+
 	delete(q.processing, name)
 
 	if q.dirty[name] {
@@ -1094,7 +1137,10 @@ func (q *WorkQueue) Done(name string) {
                 return name;
             }
 
-            state = self.ready.wait(state).expect("queue lock poisoned");
+            state = self
+                .ready
+                .wait(state)
+                .unwrap_or_else(PoisonError::into_inner);
         }
     }
 
@@ -1102,6 +1148,7 @@ func (q *WorkQueue) Done(name string) {
     /// added while the worker held it.
     pub fn done(&amp;self, name: &amp;str) {
         let mut state = self.state();
+
         state.processing.remove(name);
 
         if state.dirty.contains(name) {
@@ -1167,6 +1214,7 @@ func (c *Controller) reconcile(name string) error {
 	}
 
 	time.Sleep(20 * time.Millisecond) // slow work, such as starting containers
+
 	o.Status.GPUs = o.Spec.GPUs
 
 	if err := c.server.Update(o); err != nil {
@@ -1195,6 +1243,7 @@ func (c *Controller) reconcile(name string) error {
         }
 
         thread::sleep(Duration::from_millis(20)); // slow work, such as starting containers
+
         object.status.gpus = object.spec.gpus;
         let version = object.resource_version;
 
@@ -1404,10 +1453,13 @@ type Status struct {
 type Object struct {
 	// Name identifies the object on the server.
 	Name string
+
 	// Spec holds what the user asked for.
 	Spec Spec
+
 	// Status holds what the controller has done about it.
 	Status Status
+
 	// ResourceVersion is the server's write counter at the object's latest change.
 	ResourceVersion int
 }
@@ -1437,6 +1489,7 @@ func (t EventType) String() string {
 type Event struct {
 	// Type is the kind of change.
 	Type EventType
+
 	// Object is the object after the change, or its final state if it was deleted.
 	Object Object
 }
@@ -1446,8 +1499,10 @@ type Event struct {
 var (
 	// ErrGone reports that the history a watch needs has been discarded.
 	ErrGone = errors.New("410 Gone: resource version too old")
+
 	// ErrConflict reports a conditional write whose resource version is out of date.
 	ErrConflict = errors.New("409 Conflict: object has been modified")
+
 	// ErrUnreachable reports that the client cannot reach the server.
 	ErrUnreachable = errors.New("server unreachable")
 )
@@ -1458,16 +1513,22 @@ var (
 type APIServer struct {
 	// mu guards every field below.
 	mu sync.Mutex
+
 	// version is the last resource version the server handed out.
 	version int
+
 	// objects holds the current state of every object, keyed by name.
 	objects map[string]Object
+
 	// history holds the events newer than compacted, oldest first.
 	history []Event
+
 	// compacted is the oldest version from which a watch may resume.
 	compacted int
+
 	// watches holds one channel for each open watch.
 	watches []chan Event
+
 	// unreachable makes new watches fail, to simulate a network partition.
 	unreachable bool
 }
@@ -1485,6 +1546,7 @@ func NewAPIServer() *APIServer {
 func (s *APIServer) Update(o Object) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
+
 	current, exists := s.objects[o.Name]
 
 	if o.ResourceVersion != 0 &amp;&amp; o.ResourceVersion != current.ResourceVersion {
@@ -1500,6 +1562,7 @@ func (s *APIServer) Update(o Object) error {
 	s.version++
 	o.ResourceVersion = s.version
 	s.objects[o.Name] = o
+
 	s.publish(Event{eventType, o})
 
 	return nil
@@ -1509,6 +1572,7 @@ func (s *APIServer) Update(o Object) error {
 func (s *APIServer) Delete(name string) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
+
 	o, exists := s.objects[name]
 
 	if !exists {
@@ -1516,8 +1580,10 @@ func (s *APIServer) Delete(name string) {
 	}
 
 	delete(s.objects, name)
+
 	s.version++
 	o.ResourceVersion = s.version
+
 	s.publish(Event{Deleted, o})
 }
 
@@ -1537,6 +1603,7 @@ func (s *APIServer) publish(e Event) {
 func (s *APIServer) List() ([]Object, int) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
+
 	byName := func(a, b Object) int { return strings.Compare(a.Name, b.Name) }
 
 	return slices.SortedFunc(maps.Values(s.objects), byName), s.version
@@ -1573,6 +1640,7 @@ func (s *APIServer) Watch(version int) (&lt;-chan Event, error) {
 func (s *APIServer) Compact() {
 	s.mu.Lock()
 	defer s.mu.Unlock()
+
 	s.compacted = s.version
 	s.history = nil
 }
@@ -1581,6 +1649,7 @@ func (s *APIServer) Compact() {
 func (s *APIServer) DropWatches() {
 	s.mu.Lock()
 	defer s.mu.Unlock()
+
 	s.dropWatches()
 }
 
@@ -1588,7 +1657,9 @@ func (s *APIServer) DropWatches() {
 func (s *APIServer) Partition() {
 	s.mu.Lock()
 	defer s.mu.Unlock()
+
 	s.unreachable = true
+
 	s.dropWatches()
 }
 
@@ -1596,6 +1667,7 @@ func (s *APIServer) Partition() {
 func (s *APIServer) Heal() {
 	s.mu.Lock()
 	defer s.mu.Unlock()
+
 	s.unreachable = false
 }
 
@@ -1613,8 +1685,8 @@ func (s *APIServer) dropWatches() {
 
 use std::collections::HashMap;
 use std::fmt;
-use std::sync::Mutex;
 use std::sync::mpsc::{Receiver, Sender, channel};
+use std::sync::{Mutex, PoisonError};
 
 /// The part of an object that a user writes: the desired state.
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
@@ -1635,10 +1707,13 @@ pub struct Status {
 pub struct Object {
     /// Identifies the object on the server.
     pub name: String,
+
     /// What the user asked for.
     pub spec: Spec,
+
     /// What the controller has done about it.
     pub status: Status,
+
     /// The server's write counter at the object's latest change.
     pub resource_version: u64,
 }
@@ -1671,8 +1746,10 @@ impl fmt::Display for Object {
 pub enum EventType {
     /// The object was created.
     Added,
+
     /// The object was updated.
     Modified,
+
     /// The object was removed.
     Deleted,
 }
@@ -1682,6 +1759,7 @@ pub enum EventType {
 pub struct Event {
     /// The kind of change.
     pub kind: EventType,
+
     /// The object after the change, or its final state if it was deleted.
     pub object: Object,
 }
@@ -1692,8 +1770,10 @@ pub struct Event {
 pub enum ApiError {
     /// The history that a watch needs has been discarded.
     Gone,
+
     /// A conditional write carried an out-of-date resource version.
     Conflict,
+
     /// The client cannot reach the server.
     Unreachable,
 }
@@ -1714,14 +1794,19 @@ impl fmt::Display for ApiError {
 struct State {
     /// The last resource version the server handed out.
     version: u64,
+
     /// The current state of every object, keyed by name.
     objects: HashMap&lt;String, Object&gt;,
+
     /// The events newer than `compacted`, oldest first.
     history: Vec&lt;Event&gt;,
+
     /// The oldest version from which a watch may resume.
     compacted: u64,
+
     /// One sender for each open watch.
     watches: Vec&lt;Sender&lt;Event&gt;&gt;,
+
     /// Makes new watches fail, to simulate a network partition.
     unreachable: bool,
 }
@@ -1746,7 +1831,7 @@ pub struct ApiServer {
 impl ApiServer {
     /// Locks the server's data.
     fn state(&amp;self) -&gt; std::sync::MutexGuard&lt;'_, State&gt; {
-        self.state.lock().expect("server lock poisoned")
+        self.state.lock().unwrap_or_else(PoisonError::into_inner)
     }
 }
 
@@ -1757,6 +1842,7 @@ impl ApiServer {
     /// unconditionally.
     pub fn update(&amp;self, mut object: Object) -&gt; Result&lt;(), ApiError&gt; {
         let mut state = self.state();
+
         let current = state.objects.get(&amp;object.name);
         let current_version = current.map_or(0, |o| o.resource_version);
 
@@ -1769,9 +1855,11 @@ impl ApiServer {
         } else {
             EventType::Added
         };
+
         state.version += 1;
         object.resource_version = state.version;
         state.objects.insert(object.name.clone(), object.clone());
+
         state.publish(Event { kind, object });
 
         Ok(())
@@ -1782,11 +1870,14 @@ impl ApiServer {
     /// Removes the named object, if it exists.
     pub fn delete(&amp;self, name: &amp;str) {
         let mut state = self.state();
+
         let Some(mut object) = state.objects.remove(name) else {
             return;
         };
+
         state.version += 1;
         object.resource_version = state.version;
+
         state.publish(Event {
             kind: EventType::Deleted,
             object,
@@ -1799,6 +1890,7 @@ impl ApiServer {
     /// snapshot was taken.
     pub fn list(&amp;self) -&gt; (Vec&lt;Object&gt;, u64) {
         let state = self.state();
+
         let mut objects: Vec&lt;Object&gt; = state.objects.values().cloned().collect();
         objects.sort_by(|a, b| a.name.cmp(&amp;b.name));
 
@@ -1822,7 +1914,8 @@ impl ApiServer {
 
         for event in &amp;state.history {
             if event.object.resource_version &gt; version {
-                sender.send(event.clone()).expect("receiver is held here");
+                // Cannot fail: the receiver is still held here.
+                let _ = sender.send(event.clone());
             }
         }
 
@@ -1836,6 +1929,7 @@ impl ApiServer {
     /// Discards the event history, as etcd discards old versions.
     pub fn compact(&amp;self) {
         let mut state = self.state();
+
         state.compacted = state.version;
         state.history.clear();
     }
@@ -1848,7 +1942,9 @@ impl ApiServer {
     /// Closes every open watch and makes new watches fail until [`Self::heal`].
     pub fn partition(&amp;self) {
         let mut state = self.state();
+
         state.unreachable = true;
+
         state.watches.clear();
     }
 
@@ -1875,6 +1971,7 @@ import "sync"
 type Cache struct {
 	// mu guards objects.
 	mu sync.RWMutex
+
 	// objects holds the latest known state of every object, keyed by name.
 	objects map[string]Object
 }
@@ -1888,6 +1985,7 @@ func NewCache() *Cache {
 func (c *Cache) Get(name string) (Object, bool) {
 	c.mu.RLock()
 	defer c.mu.RUnlock()
+
 	o, ok := c.objects[name]
 
 	return o, ok
@@ -1914,12 +2012,15 @@ func (c *Cache) Apply(e Event) {
 func (c *Cache) Replace(list []Object) []string {
 	c.mu.Lock()
 	defer c.mu.Unlock()
+
 	old := c.objects
 	c.objects = make(map[string]Object, len(list))
+
 	var changed []string
 
 	for _, o := range list {
 		c.objects[o.Name] = o
+
 		// A name missing from old reads as version 0, so it counts as changed.
 		if old[o.Name].ResourceVersion != o.ResourceVersion {
 			changed = append(changed, o.Name)
@@ -1939,7 +2040,7 @@ func (c *Cache) Replace(list []Object) []string {
 
 use crate::server::{Event, EventType, Object};
 use std::collections::HashMap;
-use std::sync::RwLock;
+use std::sync::{PoisonError, RwLock};
 
 /// The client's copy of the server's objects, kept current by a
 /// [`Reflector`](crate::reflector::Reflector). Its methods are safe to call
@@ -1953,14 +2054,14 @@ pub struct Cache {
 impl Cache {
     /// Returns the cached copy of the named object, if it exists.
     pub fn get(&amp;self, name: &amp;str) -&gt; Option&lt;Object&gt; {
-        let objects = self.objects.read().expect("cache lock poisoned");
+        let objects = self.objects.read().unwrap_or_else(PoisonError::into_inner);
 
         objects.get(name).cloned()
     }
 
     /// Records one event from a watch.
     pub fn apply(&amp;self, event: Event) {
-        let mut objects = self.objects.write().expect("cache lock poisoned");
+        let mut objects = self.objects.write().unwrap_or_else(PoisonError::into_inner);
 
         match event.kind {
             EventType::Deleted =&gt; objects.remove(&amp;event.object.name),
@@ -1976,7 +2077,8 @@ impl Cache {
     /// objects that changed, including objects that disappeared while the
     /// client was not watching.
     pub fn replace(&amp;self, list: &amp;[Object]) -&gt; Vec&lt;String&gt; {
-        let mut objects = self.objects.write().expect("cache lock poisoned");
+        let mut objects = self.objects.write().unwrap_or_else(PoisonError::into_inner);
+
         let old = std::mem::take(&amp;mut *objects);
         let mut changed = Vec::new();
 
@@ -2020,8 +2122,10 @@ import (
 type Reflector struct {
 	// server is the source of objects and events.
 	server *APIServer
+
 	// cache receives every object the reflector sees.
 	cache *Cache
+
 	// queue receives the name of every object that changes.
 	queue *WorkQueue
 }
@@ -2032,7 +2136,9 @@ func (r *Reflector) Run() {
 	for {
 		list, version := r.server.List()
 		r.queue.Add(r.cache.Replace(list)...)
+
 		logf("reflector: list at version %d: %v", version, list)
+
 		r.watchFrom(version)
 	}
 }
@@ -2052,6 +2158,7 @@ func (r *Reflector) watchFrom(version int) {
 
 		if err != nil {
 			time.Sleep(10 * time.Millisecond) // client-go backs off exponentially
+
 			continue
 		}
 
@@ -2060,6 +2167,7 @@ func (r *Reflector) watchFrom(version int) {
 			// that takes the name reads the object as of this event.
 			r.cache.Apply(e)
 			r.queue.Add(e.Object.Name)
+
 			version = e.Object.ResourceVersion
 		}
 
@@ -2082,8 +2190,10 @@ use std::time::Duration;
 pub struct Reflector {
     /// The source of objects and events.
     pub server: Arc&lt;ApiServer&gt;,
+
     /// Receives every object the reflector sees.
     pub cache: Arc&lt;Cache&gt;,
+
     /// Receives the name of every object that changes.
     pub queue: Arc&lt;WorkQueue&gt;,
 }
@@ -2095,11 +2205,13 @@ impl Reflector {
         loop {
             let (list, version) = self.server.list();
             self.queue.add(self.cache.replace(&amp;list));
+
             let objects: Vec&lt;String&gt; = list.iter().map(ToString::to_string).collect();
             log!(
                 "reflector: list at version {version}: [{}]",
                 objects.join(" ")
             );
+
             self.watch_from(version);
         }
     }
@@ -2122,6 +2234,7 @@ impl Reflector {
                 }
                 Err(_) =&gt; {
                     thread::sleep(Duration::from_millis(10)); // client-go backs off exponentially
+
                     continue;
                 }
             };
@@ -2129,6 +2242,7 @@ impl Reflector {
             for event in events {
                 version = event.object.resource_version;
                 let name = event.object.name.clone();
+
                 // Update the cache before queueing the name, so that a worker
                 // that takes the name reads the object as of this event.
                 self.cache.apply(event);
@@ -2158,12 +2272,16 @@ import "sync"
 type WorkQueue struct {
 	// mu guards every field below.
 	mu sync.Mutex
+
 	// cond wakes workers blocked in Get.
 	cond *sync.Cond
+
 	// queue holds the names ready for a worker, in arrival order.
 	queue []string
+
 	// dirty holds every name that needs processing.
 	dirty map[string]bool
+
 	// processing holds every name that a worker currently holds.
 	processing map[string]bool
 }
@@ -2208,6 +2326,7 @@ func (q *WorkQueue) Get() string {
 
 	name := q.queue[0]
 	q.queue = q.queue[1:]
+
 	delete(q.dirty, name)
 	q.processing[name] = true
 
@@ -2219,6 +2338,7 @@ func (q *WorkQueue) Get() string {
 func (q *WorkQueue) Done(name string) {
 	q.mu.Lock()
 	defer q.mu.Unlock()
+
 	delete(q.processing, name)
 
 	if q.dirty[name] {
@@ -2230,15 +2350,17 @@ func (q *WorkQueue) Done(name string) {
 <pre><code class="language-rust">//! The work queue between the reflector and the controller.
 
 use std::collections::{HashSet, VecDeque};
-use std::sync::{Condvar, Mutex, MutexGuard};
+use std::sync::{Condvar, Mutex, MutexGuard, PoisonError};
 
 /// The queue's data, kept behind one lock.
 #[derive(Default)]
 struct State {
     /// The names ready for a worker, in arrival order.
     ready: VecDeque&lt;String&gt;,
+
     /// Every name that needs processing.
     dirty: HashSet&lt;String&gt;,
+
     /// Every name that a worker currently holds.
     processing: HashSet&lt;String&gt;,
 }
@@ -2250,6 +2372,7 @@ struct State {
 pub struct WorkQueue {
     /// Guards the queue's data.
     state: Mutex&lt;State&gt;,
+
     /// Wakes workers blocked in [`WorkQueue::get`].
     ready: Condvar,
 }
@@ -2257,7 +2380,7 @@ pub struct WorkQueue {
 impl WorkQueue {
     /// Locks the queue's data.
     fn state(&amp;self) -&gt; MutexGuard&lt;'_, State&gt; {
-        self.state.lock().expect("queue lock poisoned")
+        self.state.lock().unwrap_or_else(PoisonError::into_inner)
     }
 }
 
@@ -2293,7 +2416,10 @@ impl WorkQueue {
                 return name;
             }
 
-            state = self.ready.wait(state).expect("queue lock poisoned");
+            state = self
+                .ready
+                .wait(state)
+                .unwrap_or_else(PoisonError::into_inner);
         }
     }
 
@@ -2301,6 +2427,7 @@ impl WorkQueue {
     /// added while the worker held it.
     pub fn done(&amp;self, name: &amp;str) {
         let mut state = self.state();
+
         state.processing.remove(name);
 
         if state.dirty.contains(name) {
@@ -2326,8 +2453,10 @@ import "time"
 type Controller struct {
 	// server receives the controller's status writes.
 	server *APIServer
+
 	// cache supplies the current state of each object.
 	cache *Cache
+
 	// queue supplies the names of objects to reconcile.
 	queue *WorkQueue
 }
@@ -2337,7 +2466,9 @@ type Controller struct {
 func (c *Controller) Run() {
 	for {
 		name := c.queue.Get()
+
 		err := c.reconcile(name)
+
 		c.queue.Done(name)
 
 		if err != nil {
@@ -2363,6 +2494,7 @@ func (c *Controller) reconcile(name string) error {
 	}
 
 	time.Sleep(20 * time.Millisecond) // slow work, such as starting containers
+
 	o.Status.GPUs = o.Spec.GPUs
 
 	if err := c.server.Update(o); err != nil {
@@ -2390,8 +2522,10 @@ use std::time::Duration;
 pub struct Controller {
     /// Receives the controller's status writes.
     pub server: Arc&lt;ApiServer&gt;,
+
     /// Supplies the current state of each object.
     pub cache: Arc&lt;Cache&gt;,
+
     /// Supplies the names of objects to reconcile.
     pub queue: Arc&lt;WorkQueue&gt;,
 }
@@ -2402,7 +2536,9 @@ impl Controller {
     pub fn run(&amp;self) {
         loop {
             let name = self.queue.get();
+
             let result = self.reconcile(&amp;name);
+
             self.queue.done(&amp;name);
 
             if result.is_err() {
@@ -2427,6 +2563,7 @@ impl Controller {
         }
 
         thread::sleep(Duration::from_millis(20)); // slow work, such as starting containers
+
         object.status.gpus = object.spec.gpus;
         let version = object.resource_version;
 
@@ -2478,14 +2615,17 @@ func logf(format string, args ...any) {
 
 func main() {
 	log.SetFlags(0)
+
 	server := NewAPIServer()
 	server.Update(Object{Name: "job-a", Spec: Spec{GPUs: 1}})
 	server.Update(Object{Name: "job-b", Spec: Spec{GPUs: 8}})
 
 	cache := NewCache()
 	queue := NewWorkQueue()
+
 	go (&amp;Reflector{server, cache, queue}).Run()
 	go (&amp;Controller{server, cache, queue}).Run()
+
 	time.Sleep(100 * time.Millisecond)
 
 	logf("--- job-a is edited five times in a burst")
@@ -2502,17 +2642,22 @@ func main() {
 
 	logf("--- the watch connection drops")
 	server.DropWatches()
+
 	time.Sleep(50 * time.Millisecond)
 
 	logf("--- partition: job-b is deleted and the history compacted meanwhile")
 	server.Partition()
 	server.Delete("job-b")
 	server.Compact()
+
 	time.Sleep(30 * time.Millisecond)
+
 	server.Heal()
+
 	time.Sleep(150 * time.Millisecond)
 
 	list, version := server.List()
+
 	logf("final state at version %d: %v", version, list)
 }
 </code></pre>
@@ -2534,7 +2679,7 @@ use cache::Cache;
 use controller::Controller;
 use queue::WorkQueue;
 use reflector::Reflector;
-use server::{ApiServer, Object};
+use server::{ApiError, ApiServer, Object};
 use std::sync::{Arc, OnceLock};
 use std::thread;
 use std::time::{Duration, Instant};
@@ -2561,15 +2706,12 @@ fn sleep_ms(ms: u64) {
     thread::sleep(Duration::from_millis(ms));
 }
 
-fn main() {
+fn main() -&gt; Result&lt;(), ApiError&gt; {
     START.get_or_init(Instant::now);
+
     let server = Arc::new(ApiServer::default());
-    server
-        .update(Object::new("job-a", 1))
-        .expect("unconditional write");
-    server
-        .update(Object::new("job-b", 8))
-        .expect("unconditional write");
+    server.update(Object::new("job-a", 1))?;
+    server.update(Object::new("job-b", 8))?;
 
     let cache = Arc::new(Cache::default());
     let queue = Arc::new(WorkQueue::default());
@@ -2583,16 +2725,17 @@ fn main() {
         cache,
         queue,
     };
+
     thread::spawn(move || reflector.run());
     thread::spawn(move || controller.run());
+
     sleep_ms(100);
 
     log!("--- job-a is edited five times in a burst");
 
     for gpus in 2..=6 {
-        server
-            .update(Object::new("job-a", gpus))
-            .expect("unconditional write");
+        server.update(Object::new("job-a", gpus))?;
+
         if gpus == 2 {
             sleep_ms(5); // the controller starts on the first edit
         }
@@ -2602,19 +2745,25 @@ fn main() {
 
     log!("--- the watch connection drops");
     server.drop_watches();
+
     sleep_ms(50);
 
     log!("--- partition: job-b is deleted and the history compacted meanwhile");
     server.partition();
     server.delete("job-b");
     server.compact();
+
     sleep_ms(30);
+
     server.heal();
+
     sleep_ms(150);
 
     let (list, version) = server.list();
     let objects: Vec&lt;String&gt; = list.iter().map(ToString::to_string).collect();
     log!("final state at version {version}: [{}]", objects.join(" "));
+
+    Ok(())
 }</code></pre>
 </div>
 
