@@ -14,8 +14,10 @@ use std::time::Duration;
 pub struct Reflector {
     /// The source of objects and events.
     pub server: Arc<ApiServer>,
+
     /// Receives every object the reflector sees.
     pub cache: Arc<Cache>,
+
     /// Receives the name of every object that changes.
     pub queue: Arc<WorkQueue>,
 }
@@ -27,11 +29,13 @@ impl Reflector {
         loop {
             let (list, version) = self.server.list();
             self.queue.add(self.cache.replace(&list));
+
             let objects: Vec<String> = list.iter().map(ToString::to_string).collect();
             log!(
                 "reflector: list at version {version}: [{}]",
                 objects.join(" ")
             );
+
             self.watch_from(version);
         }
     }
@@ -56,6 +60,7 @@ impl Reflector {
                 }
                 Err(_) => {
                     thread::sleep(Duration::from_millis(10)); // client-go backs off exponentially
+
                     continue;
                 }
             };
@@ -63,6 +68,7 @@ impl Reflector {
             for event in events {
                 version = event.object.resource_version;
                 let name = event.object.name.clone();
+
                 // Update the cache before queueing the name, so that a worker
                 // that takes the name reads the object as of this event.
                 self.cache.apply(event);

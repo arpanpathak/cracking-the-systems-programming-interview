@@ -30,10 +30,13 @@ type Status struct {
 type Object struct {
 	// Name identifies the object on the server.
 	Name string
+
 	// Spec holds what the user asked for.
 	Spec Spec
+
 	// Status holds what the controller has done about it.
 	Status Status
+
 	// ResourceVersion is the server's write counter at the object's latest change.
 	ResourceVersion int
 }
@@ -65,6 +68,7 @@ func (t EventType) String() string {
 type Event struct {
 	// Type is the kind of change.
 	Type EventType
+
 	// Object is the object after the change, or its final state if it was deleted.
 	Object Object
 }
@@ -74,8 +78,10 @@ type Event struct {
 var (
 	// ErrGone reports that the history a watch needs has been discarded.
 	ErrGone = errors.New("410 Gone: resource version too old")
+
 	// ErrConflict reports a conditional write whose resource version is out of date.
 	ErrConflict = errors.New("409 Conflict: object has been modified")
+
 	// ErrUnreachable reports that the client cannot reach the server.
 	ErrUnreachable = errors.New("server unreachable")
 )
@@ -89,16 +95,22 @@ var (
 type APIServer struct {
 	// mu guards every field below.
 	mu sync.Mutex
+
 	// version is the last resource version the server handed out.
 	version int
+
 	// objects holds the current state of every object, keyed by name.
 	objects map[string]Object
+
 	// history holds the events newer than compacted, oldest first.
 	history []Event
+
 	// compacted is the oldest version from which a watch may resume.
 	compacted int
+
 	// watches holds one channel for each open watch.
 	watches []chan Event
+
 	// unreachable makes new watches fail, to simulate a network partition.
 	unreachable bool
 }
@@ -119,6 +131,7 @@ func NewAPIServer() *APIServer {
 func (s *APIServer) Update(o Object) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
+
 	current, exists := s.objects[o.Name]
 
 	if o.ResourceVersion != 0 && o.ResourceVersion != current.ResourceVersion {
@@ -134,6 +147,7 @@ func (s *APIServer) Update(o Object) error {
 	s.version++
 	o.ResourceVersion = s.version
 	s.objects[o.Name] = o
+
 	s.publish(Event{eventType, o})
 
 	return nil
@@ -144,6 +158,7 @@ func (s *APIServer) Update(o Object) error {
 func (s *APIServer) Delete(name string) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
+
 	o, exists := s.objects[name]
 
 	if !exists {
@@ -151,8 +166,10 @@ func (s *APIServer) Delete(name string) {
 	}
 
 	delete(s.objects, name)
+
 	s.version++
 	o.ResourceVersion = s.version
+
 	s.publish(Event{Deleted, o})
 }
 
@@ -174,6 +191,7 @@ func (s *APIServer) publish(e Event) {
 func (s *APIServer) List() ([]Object, int) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
+
 	byName := func(a, b Object) int { return strings.Compare(a.Name, b.Name) }
 
 	return slices.SortedFunc(maps.Values(s.objects), byName), s.version
@@ -212,6 +230,7 @@ func (s *APIServer) Watch(version int) (<-chan Event, error) {
 func (s *APIServer) Compact() {
 	s.mu.Lock()
 	defer s.mu.Unlock()
+
 	s.compacted = s.version
 	s.history = nil
 }
@@ -220,6 +239,7 @@ func (s *APIServer) Compact() {
 func (s *APIServer) DropWatches() {
 	s.mu.Lock()
 	defer s.mu.Unlock()
+
 	s.dropWatches()
 }
 
@@ -227,7 +247,9 @@ func (s *APIServer) DropWatches() {
 func (s *APIServer) Partition() {
 	s.mu.Lock()
 	defer s.mu.Unlock()
+
 	s.unreachable = true
+
 	s.dropWatches()
 }
 
@@ -235,6 +257,7 @@ func (s *APIServer) Partition() {
 func (s *APIServer) Heal() {
 	s.mu.Lock()
 	defer s.mu.Unlock()
+
 	s.unreachable = false
 }
 

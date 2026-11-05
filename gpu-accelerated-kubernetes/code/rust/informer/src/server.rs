@@ -3,8 +3,8 @@
 
 use std::collections::HashMap;
 use std::fmt;
-use std::sync::Mutex;
 use std::sync::mpsc::{Receiver, Sender, channel};
+use std::sync::{Mutex, PoisonError};
 
 // ANCHOR: objects
 // ANCHOR: types
@@ -27,10 +27,13 @@ pub struct Status {
 pub struct Object {
     /// Identifies the object on the server.
     pub name: String,
+
     /// What the user asked for.
     pub spec: Spec,
+
     /// What the controller has done about it.
     pub status: Status,
+
     /// The server's write counter at the object's latest change.
     pub resource_version: u64,
 }
@@ -65,8 +68,10 @@ impl fmt::Display for Object {
 pub enum EventType {
     /// The object was created.
     Added,
+
     /// The object was updated.
     Modified,
+
     /// The object was removed.
     Deleted,
 }
@@ -76,6 +81,7 @@ pub enum EventType {
 pub struct Event {
     /// The kind of change.
     pub kind: EventType,
+
     /// The object after the change, or its final state if it was deleted.
     pub object: Object,
 }
@@ -86,8 +92,10 @@ pub struct Event {
 pub enum ApiError {
     /// The history that a watch needs has been discarded.
     Gone,
+
     /// A conditional write carried an out-of-date resource version.
     Conflict,
+
     /// The client cannot reach the server.
     Unreachable,
 }
@@ -111,14 +119,19 @@ impl fmt::Display for ApiError {
 struct State {
     /// The last resource version the server handed out.
     version: u64,
+
     /// The current state of every object, keyed by name.
     objects: HashMap<String, Object>,
+
     /// The events newer than `compacted`, oldest first.
     history: Vec<Event>,
+
     /// The oldest version from which a watch may resume.
     compacted: u64,
+
     /// One sender for each open watch.
     watches: Vec<Sender<Event>>,
+
     /// Makes new watches fail, to simulate a network partition.
     unreachable: bool,
 }
@@ -143,7 +156,7 @@ pub struct ApiServer {
 impl ApiServer {
     /// Locks the server's data.
     fn state(&self) -> std::sync::MutexGuard<'_, State> {
-        self.state.lock().expect("server lock poisoned")
+        self.state.lock().unwrap_or_else(PoisonError::into_inner)
     }
 }
 // ANCHOR_END: server
@@ -157,6 +170,7 @@ impl ApiServer {
     /// unconditionally.
     pub fn update(&self, mut object: Object) -> Result<(), ApiError> {
         let mut state = self.state();
+
         let current = state.objects.get(&object.name);
         let current_version = current.map_or(0, |o| o.resource_version);
 
@@ -169,9 +183,11 @@ impl ApiServer {
         } else {
             EventType::Added
         };
+
         state.version += 1;
         object.resource_version = state.version;
         state.objects.insert(object.name.clone(), object.clone());
+
         state.publish(Event { kind, object });
 
         Ok(())
@@ -183,11 +199,14 @@ impl ApiServer {
     /// Removes the named object, if it exists.
     pub fn delete(&self, name: &str) {
         let mut state = self.state();
+
         let Some(mut object) = state.objects.remove(name) else {
             return;
         };
+
         state.version += 1;
         object.resource_version = state.version;
+
         state.publish(Event {
             kind: EventType::Deleted,
             object,
@@ -202,6 +221,7 @@ impl ApiServer {
     /// snapshot was taken.
     pub fn list(&self) -> (Vec<Object>, u64) {
         let state = self.state();
+
         let mut objects: Vec<Object> = state.objects.values().cloned().collect();
         objects.sort_by(|a, b| a.name.cmp(&b.name));
 
@@ -225,7 +245,8 @@ impl ApiServer {
 
         for event in &state.history {
             if event.object.resource_version > version {
-                sender.send(event.clone()).expect("receiver is held here");
+                // Cannot fail: the receiver is still held here.
+                let _ = sender.send(event.clone());
             }
         }
 
@@ -241,6 +262,7 @@ impl ApiServer {
     /// Discards the event history, as etcd discards old versions.
     pub fn compact(&self) {
         let mut state = self.state();
+
         state.compacted = state.version;
         state.history.clear();
     }
@@ -253,7 +275,9 @@ impl ApiServer {
     /// Closes every open watch and makes new watches fail until [`Self::heal`].
     pub fn partition(&self) {
         let mut state = self.state();
+
         state.unreachable = true;
+
         state.watches.clear();
     }
 

@@ -9,8 +9,10 @@ import "time"
 type Controller struct {
 	// server receives the controller's status writes.
 	server *APIServer
+
 	// cache supplies the current state of each object.
 	cache *Cache
+
 	// queue supplies the names of objects to reconcile.
 	queue *WorkQueue
 }
@@ -20,7 +22,9 @@ type Controller struct {
 func (c *Controller) Run() {
 	for {
 		name := c.queue.Get()
+
 		err := c.reconcile(name)
+
 		c.queue.Done(name)
 
 		if err != nil {
@@ -48,6 +52,7 @@ func (c *Controller) reconcile(name string) error {
 	}
 
 	time.Sleep(20 * time.Millisecond) // slow work, such as starting containers
+
 	o.Status.GPUs = o.Spec.GPUs
 
 	if err := c.server.Update(o); err != nil {

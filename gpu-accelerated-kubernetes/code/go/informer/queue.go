@@ -11,12 +11,16 @@ import "sync"
 type WorkQueue struct {
 	// mu guards every field below.
 	mu sync.Mutex
+
 	// cond wakes workers blocked in Get.
 	cond *sync.Cond
+
 	// queue holds the names ready for a worker, in arrival order.
 	queue []string
+
 	// dirty holds every name that needs processing.
 	dirty map[string]bool
+
 	// processing holds every name that a worker currently holds.
 	processing map[string]bool
 }
@@ -66,6 +70,7 @@ func (q *WorkQueue) Get() string {
 
 	name := q.queue[0]
 	q.queue = q.queue[1:]
+
 	delete(q.dirty, name)
 	q.processing[name] = true
 
@@ -77,6 +82,7 @@ func (q *WorkQueue) Get() string {
 func (q *WorkQueue) Done(name string) {
 	q.mu.Lock()
 	defer q.mu.Unlock()
+
 	delete(q.processing, name)
 
 	if q.dirty[name] {

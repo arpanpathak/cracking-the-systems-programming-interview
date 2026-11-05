@@ -1,7 +1,7 @@
 //! The work queue between the reflector and the controller.
 
 use std::collections::{HashSet, VecDeque};
-use std::sync::{Condvar, Mutex, MutexGuard};
+use std::sync::{Condvar, Mutex, MutexGuard, PoisonError};
 
 // ANCHOR: state
 /// The queue's data, kept behind one lock.
@@ -9,8 +9,10 @@ use std::sync::{Condvar, Mutex, MutexGuard};
 struct State {
     /// The names ready for a worker, in arrival order.
     ready: VecDeque<String>,
+
     /// Every name that needs processing.
     dirty: HashSet<String>,
+
     /// Every name that a worker currently holds.
     processing: HashSet<String>,
 }
@@ -22,6 +24,7 @@ struct State {
 pub struct WorkQueue {
     /// Guards the queue's data.
     state: Mutex<State>,
+
     /// Wakes workers blocked in [`WorkQueue::get`].
     ready: Condvar,
 }
@@ -29,7 +32,7 @@ pub struct WorkQueue {
 impl WorkQueue {
     /// Locks the queue's data.
     fn state(&self) -> MutexGuard<'_, State> {
-        self.state.lock().expect("queue lock poisoned")
+        self.state.lock().unwrap_or_else(PoisonError::into_inner)
     }
 }
 // ANCHOR_END: state
@@ -70,7 +73,10 @@ impl WorkQueue {
                 return name;
             }
 
-            state = self.ready.wait(state).expect("queue lock poisoned");
+            state = self
+                .ready
+                .wait(state)
+                .unwrap_or_else(PoisonError::into_inner);
         }
     }
 
@@ -78,6 +84,7 @@ impl WorkQueue {
     /// added while the worker held it.
     pub fn done(&self, name: &str) {
         let mut state = self.state();
+
         state.processing.remove(name);
 
         if state.dirty.contains(name) {
