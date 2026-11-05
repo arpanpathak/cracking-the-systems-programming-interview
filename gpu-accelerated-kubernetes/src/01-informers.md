@@ -59,7 +59,7 @@ single request for all pods then transfers 50,000 × 4 KB = 200 MB. If 12 contro
 the request every 5 seconds, the API server sends 12 × 200 MB ÷ 5 s = 480 MB every second. Between
 2 requests, perhaps 3 pods have changed, so almost all of those bytes describe objects that the
 controller already knew about. On our own lab fleet, 5 Jetson AGX Thors, 2 DGX Sparks and a Jetson
-Orin NX Super, a few hundred pods fit in well under 1 MB and polling works, which is why the
+Orin NX Super, a few hundred pods fit in well under 1 MB and polling works, and so the
 approach is tempting. Its cost grows with the size of the cluster, while the useful information it
 returns grows only with the rate of change.
 
