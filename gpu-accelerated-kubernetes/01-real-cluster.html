@@ -39,7 +39,7 @@
             const path_to_root = "";
             const default_light_theme = "light";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "searchindex-58abac33.js";
+            window.path_to_searchindex_js = "searchindex-07152483.js";
         </script>
         <!-- Start loading toc.js asap -->
         <script src="toc-f31bf49e.js"></script>
@@ -225,7 +225,7 @@ gpu-lab-control-plane   Ready    control-plane   22s   v1.37.0
 
 <h2 id="the-projects"><a class="header" href="#the-projects">The projects</a></h2>
 <p>Our Go code lives in the module in <code>code/go</code>, next to the model from chapter 1:</p>
-<p class="listing"><b>Listing 1.17</b> The Go module. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/go/go.mod">code/go/go.mod</a></p>
+<p class="listing"><b>Listing 1.23</b> The Go module. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/go/go.mod">code/go/go.mod</a></p>
 
 <pre><code class="language-text">module gpuk8s
 
@@ -246,13 +246,13 @@ controller framework built on it. We pick versions that match our cluster’s
 Kubernetes 1.37.</p>
 <p>Our Rust code is the <code>gpujob</code> package in the Cargo workspace in <code>code/rust</code>, next to the
 model’s <code>informer</code> package:</p>
-<p class="listing"><b>Listing 1.18</b> The Cargo workspace. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/rust/Cargo.toml">code/rust/Cargo.toml</a></p>
+<p class="listing"><b>Listing 1.24</b> The Cargo workspace. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/rust/Cargo.toml">code/rust/Cargo.toml</a></p>
 
 <pre><code class="language-toml">[workspace]
 members = ["informer", "gpujob", "gpuusage", "heartbeats", "phi", "leaseagent", "leasewatch", "fleethealth", "fencing", "provisioner", "migration", "allreduce", "gangsched", "counter", "cas", "gpuctl"]
 resolver = "3"
 </code></pre>
-<p class="listing"><b>Listing 1.19</b> The `gpujob` package. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/rust/gpujob/Cargo.toml">code/rust/gpujob/Cargo.toml</a></p>
+<p class="listing"><b>Listing 1.25</b> The `gpujob` package. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/rust/gpujob/Cargo.toml">code/rust/gpujob/Cargo.toml</a></p>
 
 <pre><code class="language-toml">[package]
 name = "gpujob"
@@ -299,7 +299,7 @@ ordinary types and let a tool generate the CRD from them.</p>
 registers our types in a <em>scheme</em>. A scheme is a table that maps Go types to the API kinds
 they represent. A client needs it to know that JSON with <code>"kind": "GpuJob"</code> should become a
 <code>GpuJob</code> value, and which URL to use when it sends one to the server.</p>
-<p class="listing"><b>Listing 1.20</b> The group, the version, and the scheme. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/go/gpujob/api/v1/groupversion.go">code/go/gpujob/api/v1/groupversion.go</a></p>
+<p class="listing"><b>Listing 1.26</b> The group, the version, and the scheme. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/go/gpujob/api/v1/groupversion.go">code/go/gpujob/api/v1/groupversion.go</a></p>
 
 <pre><code class="language-go">// Package v1 defines version v1 of the GpuJob custom resource in the API group
 // gpucloud.dev: a request to run one container with a number of GPUs, and the
@@ -332,7 +332,7 @@ var AddToScheme = SchemeBuilder.AddToScheme
 </code></pre>
 <p>The second file defines the types themselves, in three parts: the spec, the status, and the
 object that holds both.</p>
-<p class="listing"><b>Listing 1.21</b> The spec and the phases a job passes through. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/go/gpujob/api/v1/types.go">code/go/gpujob/api/v1/types.go</a></p>
+<p class="listing"><b>Listing 1.27</b> The spec and the phases a job passes through. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/go/gpujob/api/v1/types.go">code/go/gpujob/api/v1/types.go</a></p>
 
 <pre><code class="language-go">// GpuJobSpec is a request to run one container with a number of GPUs.
 type GpuJobSpec struct {
@@ -362,7 +362,7 @@ const (
 	PhaseFailed Phase = "Failed"
 )
 </code></pre>
-<p class="listing"><b>Listing 1.22</b> The status. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/go/gpujob/api/v1/types.go">code/go/gpujob/api/v1/types.go</a></p>
+<p class="listing"><b>Listing 1.28</b> The status. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/go/gpujob/api/v1/types.go">code/go/gpujob/api/v1/types.go</a></p>
 
 <pre><code class="language-go">// GpuJobStatus is the state of a job as the controller last observed it.
 type GpuJobStatus struct {
@@ -376,7 +376,7 @@ type GpuJobStatus struct {
 	ObservedGeneration int64 `json:"observedGeneration,omitempty"`
 }
 </code></pre>
-<p class="listing"><b>Listing 1.23</b> The object, the list, and their registration. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/go/gpujob/api/v1/types.go">code/go/gpujob/api/v1/types.go</a></p>
+<p class="listing"><b>Listing 1.29</b> The object, the list, and their registration. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/go/gpujob/api/v1/types.go">code/go/gpujob/api/v1/types.go</a></p>
 
 <pre><code class="language-go">// GpuJob runs one container with a number of GPUs.
 //
@@ -427,7 +427,7 @@ sees it.</li>
 </ul>
 <p>The ordinary comments on our types and fields matter as well: controller-gen copies them
 into the CRD as field descriptions, and <code>kubectl explain gpujob.spec</code> shows them to users.</p>
-<p class="listing"><b>Listing 1.24</b> Working out a status from a pod. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/go/gpujob/api/v1/types.go">code/go/gpujob/api/v1/types.go</a></p>
+<p class="listing"><b>Listing 1.30</b> Working out a status from a pod. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/go/gpujob/api/v1/types.go">code/go/gpujob/api/v1/types.go</a></p>
 
 <pre><code class="language-go">// StatusFromPod derives a job's status from its pod. generation is the job's
 // metadata.generation, recorded as the generation that the status describes.
@@ -474,7 +474,7 @@ customresourcedefinition.apiextensions.k8s.io/gpujobs.gpucloud.dev configured
 <h3 id="in-rust"><a class="header" href="#in-rust">In Rust</a></h3>
 <p>In Rust, there is no separate generator to run. kube-rs builds the CRD while our program
 compiles, from derive macros on our types:</p>
-<p class="listing"><b>Listing 1.25</b> The spec, with the attributes that describe the kind. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/rust/gpujob/src/lib.rs">code/rust/gpujob/src/lib.rs</a></p>
+<p class="listing"><b>Listing 1.31</b> The spec, with the attributes that describe the kind. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/rust/gpujob/src/lib.rs">code/rust/gpujob/src/lib.rs</a></p>
 
 <pre><code class="language-rust">/// A request to run one container with a number of GPUs.
 ///
@@ -503,7 +503,7 @@ pub struct GpuJobSpec {
     #[schemars(with = "i32", range(min = 0))]
     pub gpus: u32,
 }</code></pre>
-<p class="listing"><b>Listing 1.26</b> The status and the phases. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/rust/gpujob/src/lib.rs">code/rust/gpujob/src/lib.rs</a></p>
+<p class="listing"><b>Listing 1.32</b> The status and the phases. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/rust/gpujob/src/lib.rs">code/rust/gpujob/src/lib.rs</a></p>
 
 <pre><code class="language-rust">/// The state of a job as the controller last observed it.
 #[derive(Deserialize, Serialize, Clone, Debug, Default, PartialEq, JsonSchema)]
@@ -532,7 +532,7 @@ pub enum Phase {
     /// The container exited with a non-zero status.
     Failed,
 }</code></pre>
-<p class="listing"><b>Listing 1.27</b> Working out a status from a pod. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/rust/gpujob/src/lib.rs">code/rust/gpujob/src/lib.rs</a></p>
+<p class="listing"><b>Listing 1.33</b> Working out a status from a pod. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/rust/gpujob/src/lib.rs">code/rust/gpujob/src/lib.rs</a></p>
 
 <pre><code class="language-rust">impl GpuJobStatus {
     /// Derives a job's status from its pod. `generation` is the job's
@@ -575,7 +575,7 @@ warning every time the CRD is applied. The attribute <code>#[schemars(with = "i3
 schema the Go field of type <code>int32</code> with its <code>Minimum=0</code> marker produces, while the Rust
 field itself stays unsigned. <code>from_pod</code> is the Rust version of <code>StatusFromPod</code>.</p>
 <p>A tiny program prints the CRD, and we pipe it straight into kubectl:</p>
-<p class="listing"><b>Listing 1.28</b> Printing the CRD. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/rust/gpujob/src/bin/crdgen.rs">code/rust/gpujob/src/bin/crdgen.rs</a></p>
+<p class="listing"><b>Listing 1.34</b> Printing the CRD. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/rust/gpujob/src/bin/crdgen.rs">code/rust/gpujob/src/bin/crdgen.rs</a></p>
 
 <pre><code class="language-rust">//! Prints the `CustomResourceDefinition` for `GpuJob` as JSON, ready for kubectl:
 //!
@@ -619,7 +619,7 @@ controller-runtime’s <code>cache</code> package creates one informer per kind 
 about changes, we register an <em>event handler</em>: a set of three functions that the informer
 calls whenever it adds, updates, or deletes an object in its cache. Our handlers simply
 print what they receive:</p>
-<p class="listing"><b>Listing 1.29</b> Describing an object for the log. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/go/gpujob/cmd/watch-jobs/main.go">code/go/gpujob/cmd/watch-jobs/main.go</a></p>
+<p class="listing"><b>Listing 1.35</b> Describing an object for the log. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/go/gpujob/cmd/watch-jobs/main.go">code/go/gpujob/cmd/watch-jobs/main.go</a></p>
 
 <pre><code class="language-go">// namespace is the namespace whose jobs the program watches.
 const namespace = "default"
@@ -636,7 +636,7 @@ func describe(obj any) string {
 	return fmt.Sprintf("%s gpus=%d v%s", job.Name, job.Spec.GPUs, job.ResourceVersion)
 }
 </code></pre>
-<p class="listing"><b>Listing 1.30</b> Starting the informer and registering the handlers. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/go/gpujob/cmd/watch-jobs/main.go">code/go/gpujob/cmd/watch-jobs/main.go</a></p>
+<p class="listing"><b>Listing 1.36</b> Starting the informer and registering the handlers. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/go/gpujob/cmd/watch-jobs/main.go">code/go/gpujob/cmd/watch-jobs/main.go</a></p>
 
 <pre><code class="language-go">// run does the work of main and returns the first error it meets.
 func run() error {
@@ -702,7 +702,7 @@ deletion that the informer only discovered by relisting, and <code>describe</cod
 arrive over time, which we read one at a time with <code>await</code>. It is the asynchronous
 counterpart of an iterator. The function <code>watcher</code> returns a stream of <code>Event</code> values for one
 kind of object:</p>
-<p class="listing"><b>Listing 1.31</b> Printing every event, in Rust. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/rust/gpujob/src/bin/watch_jobs.rs">code/rust/gpujob/src/bin/watch_jobs.rs</a></p>
+<p class="listing"><b>Listing 1.37</b> Printing every event, in Rust. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/rust/gpujob/src/bin/watch_jobs.rs">code/rust/gpujob/src/bin/watch_jobs.rs</a></p>
 
 <pre><code class="language-rust">//! Prints the event stream that a watcher produces for `GpuJob` objects in the
 //! current namespace: the initial list, one object at a time, and then one
@@ -823,7 +823,7 @@ the chapter.</p>
 </div>
 
 <h3 id="the-pod-for-a-job"><a class="header" href="#the-pod-for-a-job">The pod for a job</a></h3>
-<p class="listing"><b>Listing 1.32</b> The pod a job should have, in Go. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/go/gpujob/cmd/controller/main.go">code/go/gpujob/cmd/controller/main.go</a></p>
+<p class="listing"><b>Listing 1.38</b> The pod a job should have, in Go. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/go/gpujob/cmd/controller/main.go">code/go/gpujob/cmd/controller/main.go</a></p>
 
 <pre><code class="language-go">// manager is the field manager name under which the controller writes with
 // server-side apply.
@@ -874,7 +874,7 @@ func podGPUs(pod *corev1.Pod) (int32, bool) {
 	return int32(quantity.Value()), ok
 }
 </code></pre>
-<p class="listing"><b>Listing 1.33</b> The pod a job should have, in Rust. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/rust/gpujob/src/bin/controller.rs">code/rust/gpujob/src/bin/controller.rs</a></p>
+<p class="listing"><b>Listing 1.39</b> The pod a job should have, in Rust. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/rust/gpujob/src/bin/controller.rs">code/rust/gpujob/src/bin/controller.rs</a></p>
 
 <pre><code class="language-rust">/// The field manager name under which the controller writes with server-side apply.
 const MANAGER: &amp;str = "gpujob-controller";
@@ -965,7 +965,7 @@ returns the count and a flag saying whether the pod had a GPU limit at all. In R
 returns an <code>Option&lt;u32&gt;</code>, and each <code>?</code> bails out with <code>None</code> as soon as any field along the
 way is missing.</p>
 <h3 id="reconciling-a-job"><a class="header" href="#reconciling-a-job">Reconciling a job</a></h3>
-<p class="listing"><b>Listing 1.34</b> Reconciling one job, in Go. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/go/gpujob/cmd/controller/main.go">code/go/gpujob/cmd/controller/main.go</a></p>
+<p class="listing"><b>Listing 1.40</b> Reconciling one job, in Go. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/go/gpujob/cmd/controller/main.go">code/go/gpujob/cmd/controller/main.go</a></p>
 
 <pre><code class="language-go">// GpuJobReconciler makes the cluster match each GpuJob.
 type GpuJobReconciler struct {
@@ -1028,7 +1028,7 @@ func (r *GpuJobReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctr
 	return ctrl.Result{}, nil
 }
 </code></pre>
-<p class="listing"><b>Listing 1.35</b> Reconciling one job, in Rust. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/rust/gpujob/src/bin/controller.rs">code/rust/gpujob/src/bin/controller.rs</a></p>
+<p class="listing"><b>Listing 1.41</b> Reconciling one job, in Rust. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/rust/gpujob/src/bin/controller.rs">code/rust/gpujob/src/bin/controller.rs</a></p>
 
 <pre><code class="language-rust">/// Makes the cluster match one job: ensures its pod exists with the requested
 /// GPUs, and writes the pod's progress into the job's status.
@@ -1120,7 +1120,7 @@ job back in the queue with the growing delay we described at the end of chapter 
 Rust version returns the error to kube-rs, which asks our <code>error_policy</code> function what to
 do; ours logs the error and tries again in five seconds.</p>
 <h3 id="starting-the-controller"><a class="header" href="#starting-the-controller">Starting the controller</a></h3>
-<p class="listing"><b>Listing 1.36</b> Starting the controller, in Go. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/go/gpujob/cmd/controller/main.go">code/go/gpujob/cmd/controller/main.go</a></p>
+<p class="listing"><b>Listing 1.42</b> Starting the controller, in Go. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/go/gpujob/cmd/controller/main.go">code/go/gpujob/cmd/controller/main.go</a></p>
 
 <pre><code class="language-go">// main builds a manager, registers the reconciler, and runs until Ctrl-C.
 func main() {
@@ -1164,7 +1164,7 @@ func main() {
 	}
 }
 </code></pre>
-<p class="listing"><b>Listing 1.37</b> Starting the controller, in Rust. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/rust/gpujob/src/bin/controller.rs">code/rust/gpujob/src/bin/controller.rs</a></p>
+<p class="listing"><b>Listing 1.43</b> Starting the controller, in Rust. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/rust/gpujob/src/bin/controller.rs">code/rust/gpujob/src/bin/controller.rs</a></p>
 
 <pre><code class="language-rust">/// Starts the controller and runs it until Ctrl-C.
 #[tokio::main]
@@ -1218,7 +1218,7 @@ with the pod.</p>
 shell command, which tells us the basic machinery works. <code>train</code> asks for one GPU and runs
 <code>gpu-check</code>, a small CUDA program from Appendix A that adds two vectors on the GPU and
 prints which device it used.</p>
-<p class="listing"><b>Listing 1.38</b> The two jobs. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/manifests/gpujobs.yaml">code/manifests/gpujobs.yaml</a></p>
+<p class="listing"><b>Listing 1.44</b> The two jobs. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/manifests/gpujobs.yaml">code/manifests/gpujobs.yaml</a></p>
 
 <pre><code class="language-yaml">apiVersion: gpucloud.dev/v1
 kind: GpuJob
@@ -1294,7 +1294,7 @@ server applies the same check as our <code>Update</code> in chapter 1. To see th
 server, we will write a program in which two clients read the <code>train</code> job and then both
 try to write it back.</p>
 <p>In Go:</p>
-<p class="listing"><b>Listing 1.39</b> Two clients and one refused write, in Go. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/go/gpujob/cmd/conflict/main.go">code/go/gpujob/cmd/conflict/main.go</a></p>
+<p class="listing"><b>Listing 1.45</b> Two clients and one refused write, in Go. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/go/gpujob/cmd/conflict/main.go">code/go/gpujob/cmd/conflict/main.go</a></p>
 
 <pre><code class="language-go">// run does the work of main and returns the first unexpected error.
 func run(ctx context.Context) error {
@@ -1341,7 +1341,7 @@ func run(ctx context.Context) error {
 }
 </code></pre>
 <p>In Rust:</p>
-<p class="listing"><b>Listing 1.40</b> Two clients and one refused write, in Rust. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/rust/gpujob/src/bin/conflict.rs">code/rust/gpujob/src/bin/conflict.rs</a></p>
+<p class="listing"><b>Listing 1.46</b> Two clients and one refused write, in Rust. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/rust/gpujob/src/bin/conflict.rs">code/rust/gpujob/src/bin/conflict.rs</a></p>
 
 <pre><code class="language-rust">//! Shows the API server refusing a write with an outdated resource version.
 //! Two clients read the `train` job, and both write it back with `replace`.
@@ -1425,7 +1425,7 @@ Thanks to the message we copy from the pod’s <code>PodScheduled</code> conditi
 tells the user exactly why, and <code>kubectl get gpujobs</code> shows the job as Pending until its
 request is lowered or a machine with two free GPUs joins the cluster.</p>
 <h2 id="the-complete-programs"><a class="header" href="#the-complete-programs">The complete programs</a></h2>
-<p class="listing"><b>Listing 1.41</b> The API types, complete, in Go. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/go/gpujob/api/v1/types.go">code/go/gpujob/api/v1/types.go</a></p>
+<p class="listing"><b>Listing 1.47</b> The API types, complete, in Go. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/go/gpujob/api/v1/types.go">code/go/gpujob/api/v1/types.go</a></p>
 
 <pre><code class="language-go">package v1
 
@@ -1538,7 +1538,7 @@ func StatusFromPod(pod *corev1.Pod, generation int64) GpuJobStatus {
 	return status
 }
 </code></pre>
-<p class="listing"><b>Listing 1.42</b> The API types, complete, in Rust. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/rust/gpujob/src/lib.rs">code/rust/gpujob/src/lib.rs</a></p>
+<p class="listing"><b>Listing 1.48</b> The API types, complete, in Rust. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/rust/gpujob/src/lib.rs">code/rust/gpujob/src/lib.rs</a></p>
 
 <pre><code class="language-rust">//! The `GpuJob` custom resource: a request to run one container with a number
 //! of GPUs, and the status that the controller reports back.
@@ -1634,7 +1634,7 @@ impl GpuJobStatus {
         }
     }
 }</code></pre>
-<p class="listing"><b>Listing 1.43</b> The event printer, complete, in Go. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/go/gpujob/cmd/watch-jobs/main.go">code/go/gpujob/cmd/watch-jobs/main.go</a></p>
+<p class="listing"><b>Listing 1.49</b> The event printer, complete, in Go. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/go/gpujob/cmd/watch-jobs/main.go">code/go/gpujob/cmd/watch-jobs/main.go</a></p>
 
 <pre><code class="language-go">// Command watch-jobs prints the events that an informer delivers for GpuJob
 // objects in the default namespace: the initial list, one object at a time,
@@ -1734,7 +1734,7 @@ func run() error {
 	return nil
 }
 </code></pre>
-<p class="listing"><b>Listing 1.44</b> The controller, complete, in Go. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/go/gpujob/cmd/controller/main.go">code/go/gpujob/cmd/controller/main.go</a></p>
+<p class="listing"><b>Listing 1.50</b> The controller, complete, in Go. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/go/gpujob/cmd/controller/main.go">code/go/gpujob/cmd/controller/main.go</a></p>
 
 <pre><code class="language-go">// Command controller is a controller for GpuJob objects. It runs each job as a
 // pod that requests the job's GPUs, and reports the pod's progress in the
@@ -1920,7 +1920,7 @@ func main() {
 	}
 }
 </code></pre>
-<p class="listing"><b>Listing 1.45</b> The controller, complete, in Rust. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/rust/gpujob/src/bin/controller.rs">code/rust/gpujob/src/bin/controller.rs</a></p>
+<p class="listing"><b>Listing 1.51</b> The controller, complete, in Rust. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/rust/gpujob/src/bin/controller.rs">code/rust/gpujob/src/bin/controller.rs</a></p>
 
 <pre><code class="language-rust">//! A controller for `GpuJob` objects. It runs each job as a pod that requests
 //! the job's GPUs, and reports the pod's progress in the job's status.
@@ -2076,7 +2076,7 @@ async fn main() -&gt; Result&lt;(), kube::Error&gt; {
         .await;
     Ok(())
 }</code></pre>
-<p class="listing"><b>Listing 1.46</b> The two-client program, complete, in Go. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/go/gpujob/cmd/conflict/main.go">code/go/gpujob/cmd/conflict/main.go</a></p>
+<p class="listing"><b>Listing 1.52</b> The two-client program, complete, in Go. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/go/gpujob/cmd/conflict/main.go">code/go/gpujob/cmd/conflict/main.go</a></p>
 
 <pre><code class="language-go">// Command conflict shows the API server refusing a write with an out-of-date
 // resource version. Two clients read the train job, and both write it back
