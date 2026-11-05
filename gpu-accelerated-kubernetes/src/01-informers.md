@@ -1,107 +1,190 @@
 # 1. Keeping a local copy of the cluster
 
-This chapter depicts what happens under the hood when a Kubernetes controller learns that
-something in the cluster has changed. We'll examine how the API server numbers every write,
-how a client turns a list and a stream of changes into an exact copy of the cluster, what the
-client does when that stream breaks, and how the copy is turned into work without doing the same
-work twice. We'll build each piece as a small model in Go and in Rust, run it through a burst of
-edits, a dropped connection and a network partition, and then match every piece to client-go,
-the library that real Go controllers use.
+This chapter depicts what happens under the hood when a Kubernetes controller learns that an
+object in the cluster has changed. We'll examine how the API server numbers every write, how a
+client combines a list and a stream of changes into an exact copy of the cluster, what the client
+does when that stream breaks, and how the copy is turned into work. We'll build each of these
+pieces as a small program in Go and in Rust, starting with the data structures and adding one
+operation at a time, and we'll finish by running the whole model through a burst of edits, a
+dropped connection and a network partition.
 
-## A controller, and the simplest way to build one
+## The controller and its objects
 
-Our running example is a program that runs GPU training jobs. A user creates a job that asks for
-1 GPU, and our program starts a container for it on a machine with a free GPU. When the user
-raises the request to 2 GPUs, our program replaces the container. When the user deletes the job,
-our program stops the container and frees the GPU. In Kubernetes, a program that watches what
-users ask for and acts until the world matches is called a **controller**.
+Our running example is a program that runs GPU training jobs. When a user creates a job that needs
+1 GPU, the program starts a container for it on a machine with a free GPU. When the user later
+raises the job to 2 GPUs, the program replaces the container, and when the user deletes the job,
+the program stops the container and releases the GPU. A program of this kind, which compares the
+state a user has requested with the state of the cluster and acts until the 2 agree, is called a
+**controller** in Kubernetes.
 
-Kubernetes stores what users ask for as **objects**. An object is a named record with 2 main
-parts. Its **spec** holds the desired state, such as "run this image with 1 GPU". Its
-**status** holds the observed state, such as "running on 1 GPU". Every object lives behind 1 HTTP
-service, the **API server**, which keeps them in etcd, a replicated key-value store. Users,
-`kubectl` and controllers all read and write objects through the API server, and none of them
-talks to etcd directly.
+Kubernetes records each job as an **object**, a named record that the API server stores. An object
+has 2 main parts. The **spec**, also known as the desired state, is written by the user; for our
+job it says how many GPUs the job needs. The **status**, also known as the observed state, is
+written by the controller; it says how many GPUs the job actually has. Keeping the 2 apart means
+that each part has exactly 1 writer. The user never edits the status, and the controller never
+edits the spec, so the controller can always tell what was requested from what it has done so far.
+A job named `job-a` that has just been created has a spec of 1 GPU and a status of 0 GPUs, and the
+controller's work is finished when the status reaches 1.
 
-The simplest controller we could write asks the API server for every job every few seconds and
-compares each one with what it's running. On a small cluster this works well. Our own lab fleet,
-5 Jetson AGX Thors, 2 DGX Sparks and a Jetson Orin NX Super, runs a few hundred pods, and a full
-list of them is well under a megabyte.
+Listing 1.1 gives the object in our model. A real Kubernetes object carries much more, such as
+labels, an owner and a container image, but a GPU count in each half is enough for every mechanism
+in this chapter. The last field, the resource version, is explained in the next 2 sections.
 
-Now let's scale it up. A large cluster runs 50,000 pods, and each pod is about 4 KB of JSON, so 1
-list is 200 MB. If 12 controllers each list every 5 seconds, the API server sends
-12 × 200 MB ÷ 5 s = 480 MB every second. Between 2 lists, perhaps 3 pods changed. Almost all of
-those bytes describe objects the controller already knew about.
+<div class="code-tabs">
 
-This problem isn't new. Google's Borg ran cluster state through a central master for years, and
-its successor research system, Omega, published in 2013, let many schedulers share one copy of the
-cluster state and resolve clashes with version checks instead of locks. Kubernetes, announced in
-2014, took that idea and added a stream of changes on top of it. The rest of this chapter follows
-the problems that the simple polling loop runs into, one per section, and the mechanism that fixes
-each one.
+<p class="listing"><b>Listing 1.1</b> An object, with its spec and its status. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/go/informer/server.go">Go</a> · <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/rust/informer/src/server.rs">Rust</a></p>
 
-## Polling sends 200 MB to learn about 3 changes
+```go
+{{#include ../code/go/informer/server.go:types}}
+```
 
-What we'd like is for the API server to tell us about each change as it happens. That needs a way
-to name a point in the history of the store, so that a client whose connection breaks can say "send
-me everything after the last change I saw".
+```rust
+{{#include ../code/rust/informer/src/server.rs:types}}
+```
 
-etcd already keeps such a name. It has 1 counter for the whole store, called the **revision**.
-Every create, update and delete of any key takes the next value of the counter, and etcd keeps
-older values of a key under their old revisions until a clean-up removes them. Figure 1.1 shows 12
-writes to 4 keys. The top row is the history in order. The bottom rows are etcd's key index, which
-records, for each key, the revisions that wrote it.
+</div>
+
+All objects are kept by 1 HTTP service, the **API server**, which persists them in etcd, a
+replicated key-value store. Users, `kubectl` and controllers all read and write objects through the
+API server, and none of them talks to etcd directly. A controller therefore needs 2 things from
+the API server: an exact view of every object of its kind, and notice of each change soon after it
+happens.
+
+## The cost of asking for everything
+
+The simplest way for a controller to obtain both is to ask the API server for every job every few
+seconds and compare the answer with what it is running. We can estimate the cost of this approach
+for a large cluster. Suppose the cluster runs 50,000 pods and each pod is about 4 KB of JSON. A
+single request for all pods then transfers 50,000 × 4 KB = 200 MB. If 12 controllers each repeat
+the request every 5 seconds, the API server sends 12 × 200 MB ÷ 5 s = 480 MB every second. Between
+2 requests, perhaps 3 pods have changed, so almost all of those bytes describe objects that the
+controller already knew about. On our own lab fleet, 5 Jetson AGX Thors, 2 DGX Sparks and a Jetson
+Orin NX Super, a few hundred pods fit in well under 1 MB and polling works, which is why the
+approach is tempting. Its cost grows with the size of the cluster, while the useful information it
+returns grows only with the rate of change.
+
+Kubernetes inherited the answer to this problem from its predecessors at Google. Borg kept the
+state of a cluster in a central master, and Omega, described in 2013, let many schedulers share 1
+copy of that state and settle clashing updates with version checks instead of locks. Kubernetes,
+announced in 2014, kept the version checks and added a stream of changes, so that a client reads
+the whole state once and then receives only the changes. The rest of this chapter builds that
+mechanism one step at a time.
+
+## Numbering every write
+
+A stream of changes needs a way to name a point in the history of the store, so that a client whose
+connection breaks can ask for every change after the last one it received. etcd provides such a
+name. It keeps 1 counter, called the **revision**, for the whole store, and every create, update and
+delete of any key takes the next value of that counter. etcd also keeps the older values of each key
+under their old revisions until a clean-up removes them.
+
+Fig. 1.1 shows 12 writes to 4 keys. The top row is the history in the order of the writes, coloured
+by the key that each write changed. The rows below form etcd's key index, which lists for each key
+the revisions that wrote it. For example, `job-a` was written at revisions 1, 4, 5, 9 and 11, and
+`pod-1` at revisions 3 and 8.
 
 <figure>
 <img src="figures/ch01-revisions.svg" alt="Twelve writes numbered 1 to 12, coloured by the key they wrote: job-a, job-b, pod-1 and pod-2. Below, the key index lists for each key the revisions that wrote it. job-a was written at 1, 4, 5, 9 and 11, so its resourceVersion is 11.">
 <figcaption><b>Figure 1.1</b> One counter numbers every write. An object's resource version is the revision of its latest write, the solid cell in each row.</figcaption>
 </figure>
 
-Kubernetes passes the revision through to clients as the **resource version** of an object: the
-revision of the last write that changed it. In Figure 1.1, `job-a` was last written at revision 11,
-so its resource version is 11, and `pod-1`'s is 8. A list also carries a resource version, the
-revision of the whole store at the moment the list was read.[^opaque]
+Kubernetes passes the revision on to its clients as the **resource version**. The resource version
+of an object is the revision of the last write that changed it, so in Fig. 1.1 the resource version
+of `job-a` is 11 and that of `pod-1` is 8. A list of objects also carries a resource version, which
+is the revision of the whole store at the moment the list was read.[^opaque] This single number
+lets a client say exactly how far its knowledge of the cluster goes.
 
 [^opaque]: Kubernetes asks clients to treat resource versions as opaque strings and to compare them only for equality. Our model uses plain integers so that we can print them, and nothing in the client depends on their order.
 
-## Two writers undo each other
+Each change that the API server reports to a client is an **event**. An event has a type, `ADDED`,
+`MODIFIED` or `DELETED`, and it carries the whole object as it was after the change, or its last
+state for a deletion. Sending the whole object, rather than only the fields that changed, means that
+a client can apply an event without knowing anything about the object's earlier state. Listing 1.2
+gives the event, together with the 3 errors that the server can return. We'll meet `409 Conflict`
+in the next section and `410 Gone` when we discuss lost history.
 
-The resource version solves a second problem before we even get to streams. A client writes an
-object by sending the whole object back. Suppose 2 clients read `job-a` at version 7. Client A
-raises the GPU count and writes the job back. A moment later, client B changes the image and
-writes the job back too, still holding the copy it read at version 7. Client B's copy has the old
-GPU count, so its write quietly undoes client A's change.
+<div class="code-tabs">
 
-The fix is to let a write say which version it was based on. Figure 1.2 traces the same 2 clients
-with that rule in place. At marker ➏ the server accepts client A's write, because the object was
-still at version 7, and stores it as version 8. At marker ➐ client B also says "I read this at
-version 7", but the object is now at version 8, so at ➑ the server refuses with `409 Conflict`.
-Client B reads the job again at ➒, reapplies its change, and this time the write succeeds.
+<p class="listing"><b>Listing 1.2</b> Events, and the errors the server returns. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/go/informer/server.go">Go</a> · <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/rust/informer/src/server.rs">Rust</a></p>
+
+```go
+{{#include ../code/go/informer/server.go:events}}
+```
+
+```rust
+{{#include ../code/rust/informer/src/server.rs:events}}
+```
+
+</div>
+
+## Two writers and one object
+
+The resource version also solves a problem that has nothing to do with streams. A client updates
+an object by sending the whole object back to the API server. Consider 2 clients that both read
+`job-a` at resource version 7. Client A raises the job's GPU count and sends the job back. A moment
+later, client B changes the job's container image and sends its copy back as well. Client B's copy
+still holds the GPU count it read at version 7, so its write replaces client A's change with the
+old value. Neither client receives an error, and the GPU change is simply gone. This failure is
+called a **lost update**.
+
+The API server prevents it by letting each write state the resource version it was based on.
+Fig. 1.2 traces the same 2 clients under that rule. Both read version 7 at markers ➋ and ➍. At
+marker ➎ client A sends its change with "read at version 7"; the object is still at version 7, so at
+➏ the server accepts the write and stores it as version 8. At ➐ client B sends its change, also
+with "read at version 7". The object is now at version 8, so at ➑ the server refuses the write
+with `409 Conflict`. Client B then reads the job again, applies its image change to version 8, and
+at ➓ the write succeeds as version 9, which holds both changes.
 
 <figure>
 <img src="figures/ch01-conflict.svg" alt="Client A and client B both read job-a at version 7. A writes 2 GPUs with version 7 and the server accepts it as version 8. B writes a new image with version 7 and the server answers 409 Conflict. B reads version 8, writes again with version 8, and the server stores version 9 with both changes.">
 <figcaption><b>Figure 1.2</b> A write that names the version it read is accepted only if the object is still at that version.</figcaption>
 </figure>
 
-This is called **optimistic concurrency**, also known as compare-and-set. Nobody holds a lock on
-the object. Each client assumes nobody else will write in the meantime, and the server catches the
-cases where that assumption was wrong at the one moment it matters: when the write arrives.
+This technique is called **optimistic concurrency control**, also known as compare-and-set. No
+client locks the object while it works. Each client assumes that nobody else will write the
+object in the meantime, and the server detects the cases where that assumption was wrong when the
+write arrives. The cost of a wrong assumption is 1 extra read and 1 extra write, which is small
+when clashes are rare, as they are for most Kubernetes objects.
 
-Before we write any code, Figure 1.3 shows what our model API server holds. It's 4 fields behind 1
-lock: the objects, the revision counter, a history of recent events, and the open watches. The
-markers follow 1 update and 1 watch through it, and we'll meet the watch half in the next section.
+We now have enough to build the server's side of these rules. Fig. 1.3 shows the state that our
+model API server keeps after 10 writes. There are 4 fields behind 1 lock. The **objects** map holds
+the current version of each object. The **version** counter plays the role of etcd's revision. The
+**history** holds recent events in order, and the **watches** are the open streams of changes,
+which the next section introduces. A fifth field, **compacted**, records how much of the oldest
+history has been discarded.
 
 <figure>
 <img src="figures/ch01-server-struct.svg" alt="The API server holds 4 fields behind 1 lock: objects (job-a at version 10, job-b at 8), the version counter 10, a history of events 3 to 10 with 1 and 2 compacted, and 2 open watches that have been sent everything up to 10. Update checks the version, increments the counter, stores the object, and publishes 1 event to the history and every watch. Watch from 8 checks the compaction point, replays 9 and 10, and registers itself under the same lock.">
-<figcaption><b>Figure 1.3</b> The model API server after 10 writes.</figcaption>
+<figcaption><b>Figure 1.3</b> The model API server after 10 writes. Markers ➊ to ➌ follow an update, and ➍ and ➎ a new watch.</figcaption>
 </figure>
 
-Listing 1.1 is the update path, markers ➊ to ➌. A version of 0 means "write unconditionally",
-which our demonstration uses to play a user editing a job, and a missing object counts as version 0.
+Listing 1.3 declares these fields. The field `unreachable` has no counterpart in Kubernetes; our
+demonstration sets it to make the server behave as if a network partition had cut it off.
 
 <div class="code-tabs">
 
-<p class="listing"><b>Listing 1.1</b> A write that checks the version it was based on. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/go/informer/server.go">Go</a> · <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/rust/informer/src/server.rs">Rust</a></p>
+<p class="listing"><b>Listing 1.3</b> The state of the API server. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/go/informer/server.go">Go</a> · <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/rust/informer/src/server.rs">Rust</a></p>
+
+```go
+{{#include ../code/go/informer/server.go:server}}
+```
+
+```rust
+{{#include ../code/rust/informer/src/server.rs:server}}
+```
+
+</div>
+
+The update path follows markers ➊ to ➌ in Fig. 1.3. The server first compares the version that the
+caller read with the version it has stored, and returns `409 Conflict` if they differ. It then
+increments the counter, stamps the object with the new value, stores it, and publishes 1 event to
+the history and to every open watch. In our model a version of 0 means that the caller wants to
+write unconditionally, which the demonstration uses to play a user editing a job, and an object
+that does not exist yet counts as version 0.
+
+<div class="code-tabs">
+
+<p class="listing"><b>Listing 1.4</b> An update that checks the version it was based on. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/go/informer/server.go">Go</a> · <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/rust/informer/src/server.rs">Rust</a></p>
 
 ```go
 {{#include ../code/go/informer/server.go:update}}
@@ -113,9 +196,11 @@ which our demonstration uses to play a user editing a job, and a missing object 
 
 </div>
 
-The counter increment and the store happen under the same lock as the check. If they didn't, 2
-writers could both pass the check against version 7 before either stored its result, and we'd be
-back to a lost update.
+The check, the increment and the store all happen while the lock is held. If the lock were released
+between the check and the store, 2 writers could both pass the check against version 7 before
+either stored its result, and the lost update would return. Note that the lock is held only for the
+time of a few map operations, so it does not limit the server's throughput in our model; the real
+API server delegates the same check to etcd, which performs it as a single transaction.
 
 ## A watch that starts late misses writes
 
@@ -159,13 +244,13 @@ covers every write up to *v*, and the watch delivers every write after *v* exact
 
 </div>
 
-Listing 1.2 is the server's side of that promise, markers ➍ and ➎ of Figure 1.3. `Watch` holds
+Listing 1.5 is the server's side of that promise, markers ➍ and ➎ of Figure 1.3. `Watch` holds
 the same lock as `Update` while it replays the history and registers the new watch, so every event
 lands either in the replay or on the new channel, never in neither and never in both.
 
 <div class="code-tabs">
 
-<p class="listing"><b>Listing 1.2</b> List, and watch from a version. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/go/informer/server.go">Go</a> · <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/rust/informer/src/server.rs">Rust</a></p>
+<p class="listing"><b>Listing 1.5</b> List, and watch from a version. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/go/informer/server.go">Go</a> · <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/rust/informer/src/server.rs">Rust</a></p>
 
 ```go
 {{#include ../code/go/informer/server.go:listwatch}}
@@ -237,7 +322,7 @@ Figure 1.6 compares the 2 for 4 objects.
 
 <div class="code-tabs">
 
-<p class="listing"><b>Listing 1.3</b> Replace. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/go/informer/cache.go">Go</a> · <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/rust/informer/src/cache.rs">Rust</a></p>
+<p class="listing"><b>Listing 1.6</b> Replace. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/go/informer/cache.go">Go</a> · <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/rust/informer/src/cache.rs">Rust</a></p>
 
 ```go
 {{#include ../code/go/informer/cache.go:replace}}
@@ -293,13 +378,13 @@ already reflects every event that caused the name to be queued.
 
 </div>
 
-Listing 1.4 is step 2 of Algorithm 1.2. Our model retries an unreachable server every 10
+Listing 1.7 is step 2 of Algorithm 1.2. Our model retries an unreachable server every 10
 milliseconds. client-go doubles the wait after each failure in a row, up to a cap, so that
 thousands of clients don't overload a server that's trying to recover.
 
 <div class="code-tabs">
 
-<p class="listing"><b>Listing 1.4</b> Watching from a version, and the 3 endings. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/go/informer/reflector.go">Go</a> · <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/rust/informer/src/reflector.rs">Rust</a></p>
+<p class="listing"><b>Listing 1.7</b> Watching from a version, and the 3 endings. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/go/informer/reflector.go">Go</a> · <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/rust/informer/src/reflector.rs">Rust</a></p>
 
 ```go
 {{#include ../code/go/informer/reflector.go:watch}}
@@ -350,7 +435,7 @@ row of Figure 1.8: the name is marked and left out of the ready list.
 
 <div class="code-tabs">
 
-<p class="listing"><b>Listing 1.5</b> Add. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/go/informer/queue.go">Go</a> · <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/rust/informer/src/queue.rs">Rust</a></p>
+<p class="listing"><b>Listing 1.8</b> Add. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/go/informer/queue.go">Go</a> · <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/rust/informer/src/queue.rs">Rust</a></p>
 
 ```go
 {{#include ../code/go/informer/queue.go:add}}
@@ -371,7 +456,7 @@ because another worker may have taken the name first.
 
 <div class="code-tabs">
 
-<p class="listing"><b>Listing 1.6</b> Get and Done. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/go/informer/queue.go">Go</a> · <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/rust/informer/src/queue.rs">Rust</a></p>
+<p class="listing"><b>Listing 1.9</b> Get and Done. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/go/informer/queue.go">Go</a> · <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/rust/informer/src/queue.rs">Rust</a></p>
 
 ```go
 {{#include ../code/go/informer/queue.go:getdone}}
@@ -430,7 +515,7 @@ deleted, and a real controller would release what it had set up for it; our mode
 
 <div class="code-tabs">
 
-<p class="listing"><b>Listing 1.7</b> Reconciling 1 name. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/go/informer/controller.go">Go</a> · <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/rust/informer/src/controller.rs">Rust</a></p>
+<p class="listing"><b>Listing 1.10</b> Reconciling 1 name. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/go/informer/controller.go">Go</a> · <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/rust/informer/src/controller.rs">Rust</a></p>
 
 ```go
 {{#include ../code/go/informer/controller.go:reconcile}}
@@ -590,7 +675,7 @@ The model is 6 source files in each language. Each is folded here, with Go and R
 
 <div class="code-tabs">
 
-<p class="listing"><b>Listing 1.8</b> The API server, complete. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/go/informer/server.go">Go</a> · <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/rust/informer/src/server.rs">Rust</a></p>
+<p class="listing"><b>Listing 1.11</b> The API server, complete. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/go/informer/server.go">Go</a> · <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/rust/informer/src/server.rs">Rust</a></p>
 
 ```go
 {{#include ../code/go/informer/server.go}}
@@ -608,7 +693,7 @@ The model is 6 source files in each language. Each is folded here, with Go and R
 
 <div class="code-tabs">
 
-<p class="listing"><b>Listing 1.9</b> The cache, complete. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/go/informer/cache.go">Go</a> · <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/rust/informer/src/cache.rs">Rust</a></p>
+<p class="listing"><b>Listing 1.12</b> The cache, complete. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/go/informer/cache.go">Go</a> · <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/rust/informer/src/cache.rs">Rust</a></p>
 
 ```go
 {{#include ../code/go/informer/cache.go}}
@@ -626,7 +711,7 @@ The model is 6 source files in each language. Each is folded here, with Go and R
 
 <div class="code-tabs">
 
-<p class="listing"><b>Listing 1.10</b> The reflector, complete. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/go/informer/reflector.go">Go</a> · <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/rust/informer/src/reflector.rs">Rust</a></p>
+<p class="listing"><b>Listing 1.13</b> The reflector, complete. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/go/informer/reflector.go">Go</a> · <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/rust/informer/src/reflector.rs">Rust</a></p>
 
 ```go
 {{#include ../code/go/informer/reflector.go}}
@@ -644,7 +729,7 @@ The model is 6 source files in each language. Each is folded here, with Go and R
 
 <div class="code-tabs">
 
-<p class="listing"><b>Listing 1.11</b> The work queue, complete. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/go/informer/queue.go">Go</a> · <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/rust/informer/src/queue.rs">Rust</a></p>
+<p class="listing"><b>Listing 1.14</b> The work queue, complete. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/go/informer/queue.go">Go</a> · <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/rust/informer/src/queue.rs">Rust</a></p>
 
 ```go
 {{#include ../code/go/informer/queue.go}}
@@ -662,7 +747,7 @@ The model is 6 source files in each language. Each is folded here, with Go and R
 
 <div class="code-tabs">
 
-<p class="listing"><b>Listing 1.12</b> The controller, complete. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/go/informer/controller.go">Go</a> · <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/rust/informer/src/controller.rs">Rust</a></p>
+<p class="listing"><b>Listing 1.15</b> The controller, complete. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/go/informer/controller.go">Go</a> · <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/rust/informer/src/controller.rs">Rust</a></p>
 
 ```go
 {{#include ../code/go/informer/controller.go}}
@@ -680,7 +765,7 @@ The model is 6 source files in each language. Each is folded here, with Go and R
 
 <div class="code-tabs">
 
-<p class="listing"><b>Listing 1.13</b> The demonstration, complete. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/go/informer/main.go">Go</a> · <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/rust/informer/src/main.rs">Rust</a></p>
+<p class="listing"><b>Listing 1.16</b> The demonstration, complete. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/go/informer/main.go">Go</a> · <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/rust/informer/src/main.rs">Rust</a></p>
 
 ```go
 {{#include ../code/go/informer/main.go}}

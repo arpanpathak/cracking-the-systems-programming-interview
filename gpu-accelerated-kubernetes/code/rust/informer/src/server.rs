@@ -7,6 +7,7 @@ use std::sync::Mutex;
 use std::sync::mpsc::{Receiver, Sender, channel};
 
 // ANCHOR: objects
+// ANCHOR: types
 /// The part of an object that a user writes: the desired state.
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
 pub struct Spec {
@@ -57,6 +58,8 @@ impl fmt::Display for Object {
     }
 }
 
+// ANCHOR_END: types
+// ANCHOR: events
 /// The kind of change that an [`Event`] records.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum EventType {
@@ -99,6 +102,7 @@ impl fmt::Display for ApiError {
         })
     }
 }
+// ANCHOR_END: events
 // ANCHOR_END: objects
 
 // ANCHOR: server

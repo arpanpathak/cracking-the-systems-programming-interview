@@ -13,6 +13,7 @@ import (
 )
 
 // ANCHOR: objects
+// ANCHOR: types
 // Spec is the part of an object that a user writes: the desired state.
 type Spec struct {
 	// GPUs is the number of GPUs the job asks for.
@@ -43,6 +44,8 @@ func (o Object) String() string {
 		o.Name, o.Spec.GPUs, o.Status.GPUs, o.ResourceVersion)
 }
 
+// ANCHOR_END: types
+// ANCHOR: events
 // EventType is the kind of change that an Event records.
 type EventType int
 
@@ -77,6 +80,7 @@ var (
 	ErrUnreachable = errors.New("server unreachable")
 )
 
+// ANCHOR_END: events
 // ANCHOR_END: objects
 
 // ANCHOR: server
