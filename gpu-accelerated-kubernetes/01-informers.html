@@ -39,7 +39,7 @@
             const path_to_root = "";
             const default_light_theme = "light";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "searchindex-e1554b34.js";
+            window.path_to_searchindex_js = "searchindex-50936894.js";
         </script>
         <!-- Start loading toc.js asap -->
         <script src="toc-f31bf49e.js"></script>
@@ -185,8 +185,8 @@
                 <div id="mdbook-content" class="content">
                     <main>
                         <h1 id="1-keeping-a-local-copy-of-the-cluster"><a class="header" href="#1-keeping-a-local-copy-of-the-cluster">1. Keeping a local copy of the cluster</a></h1>
-<p>In this chapter we study how a Kubernetes controller learns that an object in the cluster has
-changed. We will examine how the API server numbers every write, how a
+<p>This chapter depicts what happens under the hood when a Kubernetes controller learns that an
+object in the cluster has changed. We will examine how the API server numbers every write, how a
 client combines a list and a stream of changes into an exact copy of the cluster, what the client
 does when that stream breaks, and how the copy is turned into work. We will build each of these
 pieces as a small program in Go and in Rust, starting with the data structures and adding one
