@@ -1,7 +1,7 @@
 # 1. Keeping a local copy of the cluster
 
-In this chapter we study how a Kubernetes controller learns that an object in the cluster has
-changed. We will examine how the API server numbers every write, how a
+This chapter depicts what happens under the hood when a Kubernetes controller learns that an
+object in the cluster has changed. We will examine how the API server numbers every write, how a
 client combines a list and a stream of changes into an exact copy of the cluster, what the client
 does when that stream breaks, and how the copy is turned into work. We will build each of these
 pieces as a small program in Go and in Rust, starting with the data structures and adding one
