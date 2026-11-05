@@ -1,0 +1,111 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 560" width="1000" height="560" role="img" aria-label="The API server holds 4 fields behind 1 lock: objects (job-a at version 10, job-b at 8), the version counter 10, a history of events 3 to 10 with 1 and 2 compacted, and 2 open watches that have been sent everything up to 10. Update checks the version, increments the counter, stores the object, and publishes 1 event to the history and every watch. Watch from 8 checks the compaction point, replays 9 and 10, and registers itself under the same lock.">
+  <style>
+    text { font-family: Inter, "Segoe UI", "Helvetica Neue", Helvetica, Arial, sans-serif; fill: #1B2430; }
+    .title { font-size: 18px; font-weight: 650; }
+    .lede { font-size: 12.5px; fill: #5D6B7A; }
+    .name { font-size: 14px; font-weight: 650; }
+    .sub { font-size: 12px; fill: #5D6B7A; }
+    .note { font-size: 12px; fill: #5D6B7A; }
+    .tab { font-size: 11.5px; font-weight: 650; letter-spacing: 0.04em; fill: #5D6B7A; }
+    .mono { font-family: "JetBrains Mono", "SF Mono", Menlo, Consolas, monospace; font-size: 12px; }
+    .dim { fill: #8794A3; }
+    .strong { font-weight: 700; }
+    .trap { fill: #CF4526; font-weight: 700; }
+    .pill { font-size: 11px; font-weight: 600; }
+    .wire { fill: none; stroke: #3F5873; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+    .wire.danger { stroke: #CF4526; stroke-dasharray: 6 5; }
+    .wire.idle { stroke: #7F8EA0; stroke-dasharray: 2 5; }
+  </style>
+  <defs>
+    <filter id="lift" x="-10%" y="-10%" width="120%" height="135%">
+      <feDropShadow dx="0" dy="2" stdDeviation="3" flood-color="#1B2430" flood-opacity="0.13"/>
+    </filter>
+    <linearGradient id="thor-body" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#C6CCD5"/><stop offset="1" stop-color="#979EA9"/>
+    </linearGradient>
+    <linearGradient id="switch-body" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#3B4656"/><stop offset="1" stop-color="#232B37"/>
+    </linearGradient>
+    <marker id="head" viewBox="0 0 10 10" refX="8.5" refY="5" markerUnits="userSpaceOnUse" markerWidth="11" markerHeight="11" orient="auto">
+      <path d="M0.5,1 L9,5 L0.5,9 Z" fill="#3F5873"/>
+    </marker>
+    <marker id="head-danger" viewBox="0 0 10 10" refX="8.5" refY="5" markerUnits="userSpaceOnUse" markerWidth="11" markerHeight="11" orient="auto">
+      <path d="M0.5,1 L9,5 L0.5,9 Z" fill="#CF4526"/>
+    </marker>
+    <marker id="head-idle" viewBox="0 0 10 10" refX="8.5" refY="5" markerUnits="userSpaceOnUse" markerWidth="11" markerHeight="11" orient="auto">
+      <path d="M0.5,1 L9,5 L0.5,9 Z" fill="#7F8EA0"/>
+    </marker>
+  </defs>
+  <rect width="1000" height="560" rx="14" fill="#FBFAF6"/>
+  <text x="32.0" y="42.0" class="title" text-anchor="start" xml:space="preserve">Inside the model API server</text>
+  <text x="32.0" y="63.0" class="lede" text-anchor="start" xml:space="preserve">The state after 10 writes. Markers follow 1 Update and 1 Watch through it.</text>
+  <rect x="330" y="96" width="638" height="300" rx="16" fill="#F3F1EA" stroke="#E4E0D4" stroke-width="1.2"/>
+  <text x="350.0" y="122.0" class="tab" text-anchor="start" xml:space="preserve">APISERVER: 4 FIELDS BEHIND 1 LOCK</text>
+  <text x="350.0" y="156.0" class="tab" text-anchor="start" xml:space="preserve">objects</text>
+  <rect x="450.0" y="138.0" width="150.0" height="30.0" rx="6" fill="#EAF1FD" stroke="#2F6FDB" stroke-width="1.3"/>
+  <text x="525.0" y="157.3" class="mono" text-anchor="middle" style="fill:#1B2430">job-a  v10</text>
+  <rect x="610.0" y="138.0" width="150.0" height="30.0" rx="6" fill="#E4F4EF" stroke="#1F8A70" stroke-width="1.3"/>
+  <text x="685.0" y="157.3" class="mono" text-anchor="middle" style="fill:#1B2430">job-b  v8</text>
+  <text x="350.0" y="202.0" class="tab" text-anchor="start" xml:space="preserve">version</text>
+  <rect x="450.0" y="184.0" width="70.0" height="30.0" rx="6" fill="#2F6FDB" stroke="#2F6FDB" stroke-width="1.3"/>
+  <text x="485.0" y="203.3" class="mono" text-anchor="middle" style="fill:#FFFFFF" font-weight="700">10</text>
+  <text x="350.0" y="248.0" class="tab" text-anchor="start" xml:space="preserve">history</text>
+  <rect x="450.0" y="230.0" width="90.0" height="30.0" rx="6" fill="#EEF1F4" stroke="#9AA6B2" stroke-width="1.3" stroke-dasharray="4 3"/>
+  <text x="495.0" y="249.3" class="note" text-anchor="middle" style="fill:#1B2430">1-2 gone</text>
+  <rect x="548.0" y="230.0" width="44.0" height="30.0" rx="6" fill="#F1F4F7" stroke="#7F8EA0" stroke-width="1.3"/>
+  <text x="570.0" y="249.3" class="mono" text-anchor="middle" style="fill:#1B2430">3</text>
+  <rect x="598.0" y="230.0" width="44.0" height="30.0" rx="6" fill="#F1F4F7" stroke="#7F8EA0" stroke-width="1.3"/>
+  <text x="620.0" y="249.3" class="mono" text-anchor="middle" style="fill:#1B2430">4</text>
+  <rect x="648.0" y="230.0" width="44.0" height="30.0" rx="6" fill="#F1F4F7" stroke="#7F8EA0" stroke-width="1.3"/>
+  <text x="670.0" y="249.3" class="mono" text-anchor="middle" style="fill:#1B2430">5</text>
+  <rect x="698.0" y="230.0" width="44.0" height="30.0" rx="6" fill="#F1F4F7" stroke="#7F8EA0" stroke-width="1.3"/>
+  <text x="720.0" y="249.3" class="mono" text-anchor="middle" style="fill:#1B2430">6</text>
+  <rect x="748.0" y="230.0" width="44.0" height="30.0" rx="6" fill="#F1F4F7" stroke="#7F8EA0" stroke-width="1.3"/>
+  <text x="770.0" y="249.3" class="mono" text-anchor="middle" style="fill:#1B2430">7</text>
+  <rect x="798.0" y="230.0" width="44.0" height="30.0" rx="6" fill="#F1F4F7" stroke="#7F8EA0" stroke-width="1.3"/>
+  <text x="820.0" y="249.3" class="mono" text-anchor="middle" style="fill:#1B2430">8</text>
+  <rect x="848.0" y="230.0" width="44.0" height="30.0" rx="6" fill="#F1F4F7" stroke="#7F8EA0" stroke-width="1.3"/>
+  <text x="870.0" y="249.3" class="mono" text-anchor="middle" style="fill:#1B2430">9</text>
+  <rect x="898.0" y="230.0" width="44.0" height="30.0" rx="6" fill="#F1F4F7" stroke="#7F8EA0" stroke-width="1.3"/>
+  <text x="920.0" y="249.3" class="mono" text-anchor="middle" style="fill:#1B2430">10</text>
+  <text x="350.0" y="294.0" class="tab" text-anchor="start" xml:space="preserve">watches</text>
+  <rect x="450.0" y="276.0" width="200.0" height="30.0" rx="6" fill="#E7F5E9" stroke="#2E8B3D" stroke-width="1.3"/>
+  <text x="550.0" y="295.3" class="note" text-anchor="middle" style="fill:#1B2430">watch A: sent to 10</text>
+  <rect x="660.0" y="276.0" width="200.0" height="30.0" rx="6" fill="#E7F5E9" stroke="#2E8B3D" stroke-width="1.3"/>
+  <text x="760.0" y="295.3" class="note" text-anchor="middle" style="fill:#1B2430">watch B: sent to 10</text>
+  <text x="350.0" y="348.0" class="tab" text-anchor="start" xml:space="preserve">compacted</text>
+  <rect x="450.0" y="330.0" width="70.0" height="30.0" rx="6" fill="#EEF1F4" stroke="#9AA6B2" stroke-width="1.3"/>
+  <text x="485.0" y="349.3" class="mono" text-anchor="middle" style="fill:#1B2430">2</text>
+  <text x="530.0" y="350.0" class="note" text-anchor="start" xml:space="preserve">a watch from below 2 gets 410 Gone</text>
+  <rect x="32.0" y="136.0" width="250.0" height="40.0" rx="6" fill="#EAF1FD" stroke="#2F6FDB" stroke-width="1.3"/>
+  <text x="157.0" y="160.3" class="note" text-anchor="middle" style="fill:#1B2430">Update(job-a, read at v10)</text>
+  <path d="M282.0,156.0 L330.0,156.0" fill="none" stroke="#3F5873" stroke-width="1.4" marker-end="url(#head)"/>
+  <circle cx="306" cy="140" r="10" fill="#1B2430"/>
+  <text x="306" y="144" class="pill" text-anchor="middle" style="fill:#FFFFFF">1</text>
+  <rect x="32.0" y="300.0" width="250.0" height="40.0" rx="6" fill="#F0EAFB" stroke="#7A4FD0" stroke-width="1.3"/>
+  <text x="157.0" y="324.3" class="note" text-anchor="middle" style="fill:#1B2430">Watch(from 8)</text>
+  <path d="M282.0,320.0 L330.0,320.0" fill="none" stroke="#3F5873" stroke-width="1.4" marker-end="url(#head)"/>
+  <circle cx="306" cy="304" r="10" fill="#1B2430"/>
+  <text x="306" y="308" class="pill" text-anchor="middle" style="fill:#FFFFFF">4</text>
+  <circle cx="540" cy="199" r="10" fill="#1B2430"/>
+  <text x="540" y="203" class="pill" text-anchor="middle" style="fill:#FFFFFF">2</text>
+  <circle cx="954" cy="245" r="10" fill="#1B2430"/>
+  <text x="954" y="249" class="pill" text-anchor="middle" style="fill:#FFFFFF">3</text>
+  <circle cx="882" cy="291" r="10" fill="#1B2430"/>
+  <text x="882" y="295" class="pill" text-anchor="middle" style="fill:#FFFFFF">5</text>
+  <circle cx="42" cy="432" r="10" fill="#1B2430"/>
+  <text x="42" y="436" class="pill" text-anchor="middle" style="fill:#FFFFFF">1</text>
+  <text x="60.0" y="436.0" class="note" text-anchor="start" style="fill:#1B2430" xml:space="preserve">Update compares the version the caller read with the stored one: equal, or 409 Conflict.</text>
+  <circle cx="42" cy="456" r="10" fill="#1B2430"/>
+  <text x="42" y="460" class="pill" text-anchor="middle" style="fill:#FFFFFF">2</text>
+  <text x="60.0" y="460.0" class="note" text-anchor="start" style="fill:#1B2430" xml:space="preserve">It increments the counter, stamps the object with the new value and stores it.</text>
+  <circle cx="42" cy="480" r="10" fill="#1B2430"/>
+  <text x="42" y="484" class="pill" text-anchor="middle" style="fill:#FFFFFF">3</text>
+  <text x="60.0" y="484.0" class="note" text-anchor="start" style="fill:#1B2430" xml:space="preserve">It appends 1 event to the history and sends it on every open watch.</text>
+  <circle cx="42" cy="504" r="10" fill="#1B2430"/>
+  <text x="42" y="508" class="pill" text-anchor="middle" style="fill:#FFFFFF">4</text>
+  <text x="60.0" y="508.0" class="note" text-anchor="start" style="fill:#1B2430" xml:space="preserve">Watch(from 8) checks 8 against the compaction point, then replays events 9 and 10,</text>
+  <circle cx="42" cy="528" r="10" fill="#1B2430"/>
+  <text x="42" y="532" class="pill" text-anchor="middle" style="fill:#FFFFFF">5</text>
+  <text x="60.0" y="532.0" class="note" text-anchor="start" style="fill:#1B2430" xml:space="preserve">and registers the new watch under the same lock, so no event falls between the 2.</text>
+</svg>
