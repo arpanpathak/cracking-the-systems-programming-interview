@@ -12,7 +12,7 @@ import sys
 from html import escape
 from pathlib import Path
 
-from figkit import EDGE, INK, KINDS, MUTED, PAPER, WIRE, card, save, tag, text, width_of, wire
+from figkit import EDGE, INK, KINDS, MUTED, PAPER, WIRE, card, cylinder, save, tag, text, width_of, wire, zone
 
 OUT = Path(__file__).resolve().parent.parent / "src" / "figures"
 FIGURES = {}
@@ -480,6 +480,33 @@ def reconcile_flow():
          "the version that was read. If the write fails with 409 Conflict, add the name to the queue again.",
          "One reconcile, from name to status",
          "Every path ends with Done. Only a conflict puts the name back in the queue.", parts)
+
+
+@figure
+def informer_overview():
+    parts = [
+        card(32, 128, 210, 64, "service", "API server", ["stores every object"], glyph="gear"),
+        cylinder(57, 250, 160, 92, "store", "etcd", ["objects on disk"]),
+        wire([(137, 192), (137, 250)]),
+        zone(362, 96, 440, 350, "informer"),
+        card(392, 128, 380, 64, "service", "Reflector", ["sends the list and watch requests"], glyph="swap"),
+        wire([(242, 160), (392, 160)], label="list, then watch"),
+        cylinder(392, 240, 170, 92, "store", "Cache", ["copy of every object"]),
+        wire([(477, 192), (477, 240)]),
+        card(602, 250, 170, 64, "client", "Handlers", ["report changes"]),
+        wire([(687, 192), (687, 250)]),
+        card(860, 250, 208, 64, "store", "Work queue", ["names to handle"], glyph="stack"),
+        wire([(772, 282), (860, 282)], label="name"),
+        card(860, 372, 208, 64, "client", "Controller", ["acts on 1 name"], glyph="gear"),
+        wire([(964, 314), (964, 372)]),
+        wire([(860, 412), (477, 412), (477, 332)], label="reads objects"),
+    ]
+    save(OUT / "ch01-informer-overview.svg", 1100, 470,
+         "The API server stores objects in etcd. Inside the informer, the reflector sends a list request and then a watch "
+         "request to the API server and writes what it receives into the cache. The handlers report each changed object's "
+         "name to the work queue. The controller takes a name from the work queue and reads the object from the cache.",
+         "An informer between the API server and a controller",
+         "The informer keeps the cache current and reports the name of every object that changes.", parts)
 
 
 for name in sys.argv[1:] or list(FIGURES):

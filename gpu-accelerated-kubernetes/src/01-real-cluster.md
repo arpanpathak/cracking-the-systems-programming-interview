@@ -558,12 +558,12 @@ all the others until that worker is done.
 
 ## Running it
 
-Figure 1.13 shows what one reconcile writes for a job named `train`, and what Kubernetes does
+Figure 1.14 shows what one reconcile writes for a job named `train`, and what Kubernetes does
 with the pod.
 
 <figure>
 <img src="figures/gpujob-controller.svg" alt="A GpuJob named train, with image gpu-check:1 and gpus 1, is applied to the API server with kubectl. The gpujob-controller watches jobs and the pods they own. It applies a pod named train, whose owner reference names the job and whose limits ask for nvidia.com/gpu: 1, and writes the job's phase through the status subresource. The scheduler and the kubelet place and start the pod, and its program runs on the GPU.">
-<figcaption><b>Figure 1.13</b> One <code>GpuJob</code>, the pod the controller keeps for it, and the two writes of a reconcile: the pod, and the job's status.</figcaption>
+<figcaption><b>Figure 1.14</b> One <code>GpuJob</code>, the pod the controller keeps for it, and the two writes of a reconcile: the pod, and the job's status.</figcaption>
 </figure>
 
 We will test the controller with two jobs. `smoke-test` asks for no GPUs and runs a short
