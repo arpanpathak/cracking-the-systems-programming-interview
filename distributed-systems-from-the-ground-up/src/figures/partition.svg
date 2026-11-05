@@ -1,4 +1,4 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="18 14 444 422" width="444" height="422" role="img" aria-label="A network partition splits a shard. On one side is node-10 alone, the leader of term 4. On the other side are nodes 1 and 11. A write that reaches node-10 is in 1 log, is never committed, and the client gets an error. The side with 2 nodes elects node-1 as leader of term 5 and commits writes. At most 1 side can hold 2 of 3 nodes, so at most 1 side accepts writes, and the side with 1 node refuses writes: it gives up availability to keep the data consistent.">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="18 14 444 422" width="444" height="422" role="img" aria-label="A network partition splits a shard. On one side is node-10 alone, the leader of term 4. On the other side are node-1 and node-6. A write that reaches node-10 is in 1 log, is never committed, and the client gets an error. The side with 2 nodes elects node-1 as leader of term 5 and commits writes. At most 1 side can hold 2 of 3 nodes, so at most 1 side accepts writes, and the side with 1 node refuses writes: it gives up availability to keep the data consistent.">
   <style>
     text { font-family: Inter, "Segoe UI", "Helvetica Neue", Helvetica, Arial, sans-serif; fill: #1B2430; }
     .title { font-size: 18px; font-weight: 650; }
@@ -37,8 +37,8 @@
     </marker>
   </defs>
   <rect width="480" height="442" rx="14" fill="#FBFAF6"/>
-  <text x="32.0" y="42.0" class="title" text-anchor="start" xml:space="preserve">Network splits</text>
-  <text x="32.0" y="63.0" class="lede" text-anchor="start" xml:space="preserve">Side with a majority continues. The other side stops.</text>
+  <text x="32.0" y="42.0" class="title" text-anchor="start" xml:space="preserve">A network partition</text>
+  <text x="32.0" y="63.0" class="lede" text-anchor="start" xml:space="preserve">The side with a majority continues. The other side stops.</text>
   <rect x="32" y="104" width="196" height="170" rx="16" fill="#F3F1EA" stroke="#E4E0D4" stroke-width="1.2"/>
   <rect x="50" y="93" width="161.7" height="22" rx="11" fill="#1B2430"/>
   <text x="130.9" y="108.2" class="tab" text-anchor="middle" style="fill:#FFFFFF" xml:space="preserve">THIS SIDE: 1 OF 3</text>
@@ -60,13 +60,13 @@
   <line x1="240" y1="96" x2="240" y2="282" stroke="#CF4526" stroke-width="3" stroke-dasharray="7 6"/>
   <text x="44.0" y="204.0" class="sub" text-anchor="start" xml:space="preserve">a write reaches 1 log</text>
   <text x="44.0" y="222.0" class="sub" text-anchor="start" xml:space="preserve">it is never committed</text>
-  <text x="44.0" y="240.0" class="sub" text-anchor="start" xml:space="preserve">Client gets an error</text>
+  <text x="44.0" y="240.0" class="sub" text-anchor="start" xml:space="preserve">the client gets an error</text>
   <text x="264.0" y="258.0" class="sub" text-anchor="start" xml:space="preserve">writes are committed</text>
   <text x="32.0" y="312.0" class="sub" text-anchor="start" xml:space="preserve">Network splits, and node-10 cannot reach the others.</text>
   <text x="32.0" y="329.0" class="sub" text-anchor="start" xml:space="preserve">node-10 still believes it leads, and accepts a write. It cannot</text>
-  <text x="32.0" y="346.0" class="sub" text-anchor="start" xml:space="preserve">Copy record to a second node, so it cannot acknowledge it.</text>
-  <text x="32.0" y="363.0" class="sub" text-anchor="start" xml:space="preserve">Side with 2 nodes elects node-1 and continues.</text>
+  <text x="32.0" y="346.0" class="sub" text-anchor="start" xml:space="preserve">copy the record to a second node, so it cannot acknowledge it.</text>
+  <text x="32.0" y="363.0" class="sub" text-anchor="start" xml:space="preserve">The side with 2 nodes elects node-1 and continues.</text>
   <text x="32.0" y="380.0" class="sub" text-anchor="start" xml:space="preserve">At most 1 side can hold 2 of 3 nodes, so at most 1 side accepts</text>
   <text x="32.0" y="397.0" class="sub" text-anchor="start" xml:space="preserve">writes. A side with 1 node refuses writes: it gives up availability</text>
-  <text x="32.0" y="414.0" class="sub" text-anchor="start" xml:space="preserve">To keep data consistent.</text>
+  <text x="32.0" y="414.0" class="sub" text-anchor="start" xml:space="preserve">to keep the data consistent.</text>
 </svg>

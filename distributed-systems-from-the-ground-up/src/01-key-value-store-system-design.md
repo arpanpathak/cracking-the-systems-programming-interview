@@ -2,85 +2,36 @@
 
 # Key-Value Store: System Design
 
-A *key-value store* is the simplest database that is of any practical use. It offers 2
-operations, to store a value under a key and to return the value that was stored under
-a key, and it makes no attempt to understand what the values mean. Simple as it is, it
-lies underneath a remarkable number of other systems. A web application keeps its
-users' sessions in one. A cluster of machines keeps its configuration in one. A file
-system uses one for its directory of files, and an object store for its index of
-objects. Most of the larger storage systems in use today contain a key-value store as
-their innermost component, and the designs in the later chapters of this book rely on
-one repeatedly.
+A *key-value store* stores a value under a key and returns it on request, without
+interpreting the value. It is the innermost component of most larger storage systems:
+session stores, configuration services, the index of an object store and the metadata of
+a file system are all key-value stores, and the designs in Part 2 use one repeatedly.
 
-On a single machine, a key-value store is an afternoon's work: a table in memory and a
-file on disk. The difficulty, and the subject of this chapter and the 5 that follow,
-begins when the store has to outgrow 1 machine and to outlive it. The data may be
-larger than any 1 disk. The requests may be more than any 1 processor can answer. And
-the machine will certainly fail at some point, by losing power, or its disk, or its
-connection to the network, and a store on which other systems depend cannot be
-permitted to lose its data or to stop answering on that account. Meeting these demands
-means spreading the data across many machines and keeping several copies of every
-part of it, and the moment there are several copies, the questions arise that define
-the whole field: which copy is right when they differ, who decides, and what happens
-when the machines cannot reach each other to agree.
-
-This chapter designs such a store from its requirements. It is the system design, and
-it stays at the level of components and the messages between them. Chapters 2 to 6
-then build each component in Rust and measure it.
+In this chapter, we will design a key-value store that holds more data than 1 machine
+can, serves more requests than 1 machine can, and keeps every acknowledged write through
+the loss of any 1 machine. The chapter stays at the level of components and the messages
+between them. Chapters 2 to 6 build each component in Rust and measure it.
 
 <div class="covers">
 
 This chapter covers
 
-- what the store is for, stated as use cases and as requirements that can be tested
-- strong, eventual and tunable consistency, and why this design chooses the first
-- the entities of the design, and an estimate of how many machines it needs
-- an HTTP API, with conditional writes that prevent 1 client from overwriting another
-- the protocol that storage nodes speak among themselves
-- the components of the system and the path of a request through them
-- dividing keys among machines with consistent hashing and virtual nodes
-- how every part of the system learns where a key lives, and what happens when that knowledge is out of date
-- keeping 3 copies of every key, with a leader and a majority
-- what the system does when a machine, a disk or the network fails
-- what the design guarantees, and what it gives up in return
+- use cases, and requirements stated so that a test can check them
+- strong, eventual and tunable consistency, and the choice between them
+- a capacity estimate from a measured disk latency, and the decisions it forces
+- an HTTP API with conditional writes, and the protocol between storage nodes
+- consistent hashing with virtual nodes, hot keys, and the cost of many shards
+- leader-based replication with majorities, and reads that stay linearizable under a stale leader
+- failures of machines, disks and networks, and what each costs a client
 
 </div>
 
-## Why such a store is needed
-
-Consider a shop whose web site runs on 3 web servers behind a load balancer. A
-customer's requests are distributed among the 3, so that the request which adds an
-item to the basket may be handled by 1 server and the request which displays the
-basket by another. The basket therefore cannot be kept in the memory of any 1 web
-server. It has to be held by some service that all 3 can reach.
-
-This arrangement is typical, and it divides the system into parts of 2 very different
-characters. The web servers hold nothing that matters. Any of them can be restarted,
-replaced or duplicated at any moment without loss, and a component of this kind is
-called *stateless*. The shared store is the opposite. Everything of value is in it, a
-failure of it is a failure of every web server at once, and it cannot be
-restarted on a fresh machine, since a fresh machine would not have the data. The
-simplicity of the stateless part of a system is paid for by the difficulty of the
-part that holds the state, and this chapter is about that part.
-
-What is demanded of the store follows directly from its position. Each demand has a
-consequence for the design, and each consequence is the subject of a later section.
-
-| What is demanded | What the design must therefore do | Where it is treated |
-|---|---|---|
-| A crash in the middle of a write loses no data that was confirmed | write each change to disk before confirming it | the last section, and chapter 2 |
-| The loss of a machine loses no data | keep each change on more than 1 machine | Replication |
-| The data may exceed the disk of 1 machine | divide the keys among machines | Sharding |
-| The failure of a machine does not stop the service | let another machine take over its work | Failure handling |
-| Clients working at the same time do not undo each other's changes | allow a write to state what it was based on | The API |
-
 ## Use cases
 
-The store is used by 3 kinds of party. An *application* is any service that keeps its
-data in the store, such as the web servers of the shop. An *operator* is whoever looks
-after the machines, whether a person or an automated system. And *monitoring* is the
-system that watches the health of every machine and raises an alarm when something is
-wrong.
+3 actors use the store. An *application* is any service that keeps its data in it, such
+as the web servers of a shop that keep each customer's basket there, so that any web
+server can handle any request. An *operator* adds, removes and replaces machines, by hand
+or through automation. *Monitoring* reads the health and the metrics of every machine.
 
 <figure>
 <img src="figures/use-cases.svg?v=41cb1cb8" alt="A use case diagram of the key-value store with 3 actors. The application, a service that keeps its state in the store, stores a value with PUT /v1/keys/{key}, reads a value with GET, deletes a key with DELETE, writes only if the value is unchanged with PUT and If-Match, and lists keys by prefix with GET /v1/keys. The operator, who changes the set of machines, adds a node, removes a node, and replaces a failed node. Monitoring, which watches every node, checks health with GET /healthz and reads metrics.">
@@ -274,6 +225,14 @@ that has failed.
 <figcaption><b>Figure 1.4</b> The capacity estimate, drawn to scale. The dashed line marks the required rate.</figcaption>
 </figure>
 
+**Memory.** Every node keeps the entries of all its replicas in memory: 138 GB of data,
+plus about 30% for the hash table and allocator overhead, or about 180 GB. A machine with
+256 GB of memory holds that with room for the operating system and the page cache. The
+choice to keep every entry in memory is what makes a read cost no disk access, and it is
+also what bounds the data per node. A store whose data exceeds the memory of its nodes
+keeps the entries on disk in an LSM tree, as RocksDB does, and serves hot keys from a block
+cache.
+
 **Reads.** Reads are answered from memory and do not wait for the disk. Spread over 24
 nodes, 100000 reads per second come to about 4200 for each node, far below what a node
 can answer from memory. The rate of reads therefore has no influence on the number of
@@ -282,6 +241,22 @@ nodes.
 </details>
 
 </div>
+
+## Design decisions
+
+The requirements and the estimate fix the shape of the design before any component is
+drawn. Each row below is a decision that the rest of the chapter explains, with the
+alternative a reviewer is likely to propose and the reason it was not taken.
+
+| Decision | Chosen | Main alternative | Reason |
+|---|---|---|---|
+| Consistency | strong (linearizable) | eventual or tunable | Functional requirement 3, a write conditional on the version read, is meaningless over stale reads. |
+| Partitioning | consistent hashing, 256 virtual nodes per machine | contiguous key ranges that split and merge | Even load with no split, merge or rebalancing machinery. The cost is that a prefix listing visits every node. |
+| Replication | 1 leader per shard, acknowledged by 2 of 3 replicas | leaderless quorums; asynchronous copies | Survives the loss of any machine (non-functional requirement 0) with 1 network round trip per write. |
+| Reads | served by the leader while it holds a lease | a majority round trip per read; reads from followers | No network round trip and no work on the followers per read. The cost is a dependence on bounded clock drift. |
+| Routing | a tier of stateless routers that hold the ring | a client library that routes; any node forwards | Applications in any language use plain HTTP. The cost is 1 extra hop, about 0.2 ms inside a data centre. |
+| Metadata | a 3-machine coordinator holds the ring | gossip between nodes | 1 authoritative, versioned ring lets a node detect a request routed with an old ring. |
+| Storage engine | a log on disk, every entry in memory | an LSM tree on disk | 138 GB per node fits in a 256 GB machine. A larger data set needs the LSM tree. |
 
 ## The API
 
@@ -746,15 +721,12 @@ its legend and in the text below.
 | Coordinator | stores the ring and the present leader of every shard | the ring | the remaining 2 of its 3 machines continue to serve |
 | Monitoring | reads the health and the metrics of every node | time series | requests are unaffected, and alerts are unavailable |
 
-The *coordinator* is a small replicated store for configuration. It runs on 3
-machines, keeps a complete copy of its data on each, and remains available as long as
-a majority of them is running. It may seem odd that a key-value store should depend
-on a second, smaller store, and the reason is a circularity that cannot otherwise be
-escaped. The ring is what tells every component where a key is to be found, and the
-store cannot keep the ring within itself, since the ring would be needed in order to
-find it. The ring is therefore kept in a separate system at a fixed address that
-every component knows. Chapter 4 shows how a group of 3 machines agrees on a value,
-which is what the coordinator does.
+The *coordinator* is a small replicated store for configuration, of the kind etcd and
+ZooKeeper provide. It runs on 3 machines, keeps a complete copy of its data on each, and
+stays available while 2 of them run. The store cannot keep the ring inside itself,
+because a component would need the ring to find it, so the ring lives in a separate
+system at a fixed address that every component knows. Chapter 4 shows how a group of 3
+machines agrees on a value, which is what the coordinator does.
 
 A write to the key `user-1` passes through the following steps.
 
@@ -770,21 +742,15 @@ A write to the key `user-1` passes through the following steps.
 A read follows steps 1 to 3 and is then answered by `node-10` from memory, with steps
 4 to 6 omitted.
 
-2 features of this arrangement deserve to be drawn out, since they are deliberate.
+The routers are *stateless*: they hold nothing whose loss matters, so any number of them
+can run, and a failed one is replaced without recovery. All lasting state is confined to
+the storage nodes and the coordinator, which are therefore the only components that need
+replication.
 
-The routers are stateless. A component without state can be run in any number of
-instances, added and removed at will, and replaced after a failure without any
-procedure of recovery. The design confines all lasting state to the storage nodes and
-the coordinator, so that those are the only components which require replication and
-the careful treatment of failure that occupies the rest of this chapter.
-
-And, as step 0 indicates, the coordinator takes no part in the handling of requests.
-If it becomes unreachable, reads and writes continue undisturbed on the copies of the
-ring that the routers already hold. Only changes to the ring are suspended: a change
-of leader cannot be recorded and a node cannot be added until the coordinator
-returns. A component that every request had to consult would be both a bottleneck and
-a single point of failure, and keeping the coordinator off the path of requests avoids
-both.
+The coordinator is off the path of requests (step 0). If it becomes unreachable, reads
+and writes continue on the copies of the ring the routers already hold, and only changes
+to the ring wait: a node cannot be added until the coordinator returns. A component that
+every request consulted would be both a bottleneck and a single point of failure.
 
 ## Sharding
 
@@ -937,6 +903,39 @@ physical node, since each node has 256 of them, and 2 replicas placed on 1 machi
 would give no protection against the loss of that machine. Tokens of a node already
 chosen are therefore passed over.
 
+### Hot keys
+
+Consistent hashing balances the number of keys per node. It does nothing for the load on a
+single key, because every request for that key goes to the same shard and its leader. In
+a shop during a sale, 1 product's stock counter may receive 20000 reads per second, a
+fifth of the whole store's read rate, on 1 machine out of 24. The design has 3 answers,
+in the order they are applied. Applications cache values that tolerate staleness, such
+as a product description, for a few seconds. Reads of a hot shard can be served by its
+followers with a read index (section on reads below), which spreads them over 3 machines.
+And a key that receives too many writes is split by the application into several keys,
+such as `stock-41#0` to `stock-41#7`, whose values are combined on read. Monitoring finds
+hot keys by sampling the keys of requests on each node and reporting the most frequent.
+
+### The cost of many shards
+
+With 256 tokens on each of 24 nodes, the ring has 6144 ranges, and every range is a
+shard with its own leader and its own log. Each node holds 768 replicas, 3 × 6144 ÷ 24,
+and leads 256 of them. If every leader sent its own heartbeat to its 2 followers every
+100 ms, each node would send 256 × 2 × 10 = 5120 heartbeats per second and receive
+about as many, roughly 10000 messages per second that carry no data.
+
+<figure>
+<img src="figures/heartbeat-cost.svg?v=c1f630e0" alt="Heartbeats sent by 1 node per second. One heartbeat per shard it leads: 256 shards times 2 followers times 10 per second, 5120. One per peer machine: 23 peers times 10 per second, 230. A coalesced heartbeat lists every shard the sender leads on that peer.">
+<figcaption><b>Figure 1.11</b> Heartbeats sent by 1 node, per shard and coalesced per pair of nodes.</figcaption>
+</figure>
+
+The messages are coalesced. A node sends 1 heartbeat per peer node every 100 ms, listing
+every shard it leads on that peer, so that the count depends on the number of machines
+and not on the number of shards: at most 23 peers × 10 = 230 messages per second. A
+shard that received no write for some time stops heartbeating altogether and is woken by
+its next request. CockroachDB coalesces heartbeats in this way, and TiKV lets idle
+regions hibernate.
+
 ### The ring in a running system
 
 The ring has so far been described as a data structure. It remains to describe how the
@@ -955,7 +954,7 @@ list of tokens, which with 6144 tokens takes 13 comparisons.
 
 <figure>
 <img src="figures/ring-route.svg?v=3a871bdd" alt="How the ring is used for a request, in 8 steps numbered from 0. Step 0: the coordinator holds the ring at version 7, with the tokens of every node and the leader of each shard. Step 1: each router keeps a copy and watches the coordinator, which sends version 8 as soon as it exists. Step 2: a request arrives and the router hashes the key. Step 3: it searches its sorted tokens for the next one, a binary search of 13 steps over 6144 tokens. Step 4: it sends the request to that shard&#x27;s leader with the ring version it used. Step 5: the node compares versions and serves the request if they are the same. Step 6: if the router&#x27;s ring is old, the node refuses and answers that the ring is at version 8. Step 7: the router fetches version 8 and sends again, and the client sees 1 slower request and no error.">
-<figcaption><b>Figure 1.11</b> The use of the ring for a request, including the case of a ring that is out of date.</figcaption>
+<figcaption><b>Figure 1.12</b> The use of the ring for a request, including the case of a ring that is out of date.</figcaption>
 </figure>
 
 **What happens when a ring is out of date.** A router may forward a request an instant
@@ -978,7 +977,7 @@ each after its data has been copied.
 
 <figure>
 <img src="figures/ring-join.svg?v=10f34d21" alt="How a node joins the ring, in 7 steps. Step 1: the operator starts node-25 and gives it the address of the coordinator. Step 2: node-25 registers in the coordinator as joining, with 256 tokens computed from its name. Step 3: the coordinator publishes ring version 8, in which node-25 owns no keys yet. Step 4: each current owner copies 1 range to node-25 and still serves the range meanwhile. Step 5: node-25 confirms that a range is complete. Step 6: the coordinator moves that range to node-25 in version 9, and routers send its keys to node-25 from now on. Step 7: the old owner deletes its copy of the range, and steps 3 to 6 repeat for every range.">
-<figcaption><b>Figure 1.12</b> The procedure by which a node joins a running cluster.</figcaption>
+<figcaption><b>Figure 1.13</b> The procedure by which a node joins a running cluster.</figcaption>
 </figure>
 
 **How a node leaves.** When an operator removes a node, the procedure runs in reverse.
@@ -995,7 +994,7 @@ spreads through the cluster as a rumour does through a crowd.
 
 <figure>
 <img src="figures/gossip.svg?v=787c5563" alt="How a gossip protocol spreads a new ring among 8 nodes without a coordinator. At the start, 1 node has ring version 8 and 7 have version 7. After round 1, 2 nodes have version 8. After round 2, 4 nodes. After round 3, all 8. Once per second, every node picks another node at random and the 2 compare ring versions, and the one with the older ring takes the newer. The number of nodes that know doubles each round, so 24 nodes need about 5 rounds and 1000 nodes about 10.">
-<figcaption><b>Figure 1.13</b> The spread of a new version of the ring among 8 nodes by gossip.</figcaption>
+<figcaption><b>Figure 1.14</b> The spread of a new version of the ring among 8 nodes by gossip.</figcaption>
 </figure>
 
 A *gossip protocol* removes the dependence on a coordinator and scales to very large
@@ -1049,7 +1048,7 @@ its own and that of 1 follower. It does not wait for the second follower.
 
 <figure>
 <img src="figures/replicated-write.svg?v=f374131d" alt="A write to a shard of 3 replicas. The leader on node-10 and the follower on node-1 hold records 41 and 42, and the slow follower on node-6 holds only record 41. Step 1: the leader appends record 42 to its log and waits for its disk. Step 2: it sends the record to both followers in parallel. Step 3: node-1 appends it, waits for its disk and answers. Step 4: 2 of 3 logs hold the record, so it is committed, and the leader applies it and answers the client. Step 5: node-6 receives it later.">
-<figcaption><b>Figure 1.14</b> Record 42 is acknowledged although 1 follower has not yet received it.</figcaption>
+<figcaption><b>Figure 1.15</b> Record 42 is acknowledged although 1 follower has not yet received it.</figcaption>
 </figure>
 
 The rule has 2 consequences, both of them wanted. The record is on 2 machines at the
@@ -1064,8 +1063,8 @@ replicas, a majority consists of 2. The whole importance of majorities derives f
 single property: any 2 majorities of the same shard have at least 1 node in common.
 
 <figure>
-<img src="figures/majority.svg?v=54418d41" alt="Why a majority is enough. Record 42 was written to node-10 and node-1 while node-6 was slow and its log ends at record 41, and the write was acknowledged. Then node-10 is lost, and node-1 still has the record. node-1 and node-6 elect a leader, and node-1 has the longer log, so it becomes the leader. A write needs 2 of 3 nodes and an election needs 2 of 3 nodes, and 2 groups of 2 out of 3 always share a node, so every election includes a node that holds every acknowledged record.">
-<figcaption><b>Figure 1.15</b> The node common to both majorities holds the acknowledged record.</figcaption>
+<img src="figures/majority.svg?v=956d2a2b" alt="Why a majority is enough. Record 42 was written to node-10 and node-1 while node-6 was slow and its log ends at record 41, and the write was acknowledged. Then node-10 is lost, and node-1 still has the record. node-1 and node-6 elect a leader, and node-1 has the longer log, so it becomes the leader. A write needs 2 of 3 nodes and an election needs 2 of 3 nodes, and 2 groups of 2 out of 3 always share a node, so every election includes a node that holds every acknowledged record.">
+<figcaption><b>Figure 1.16</b> The node common to both majorities holds the acknowledged record.</figcaption>
 </figure>
 
 To see what this property accomplishes, consider what happens when the leader of a
@@ -1102,6 +1101,37 @@ by a majority. Later chapters adopt the asynchronous form where its risk is
 acceptable, as in the cache of chapter 9, and reject it where it is not, as in the
 lock service of chapter 10.
 
+### Reads from the leader
+
+A read answered by the leader from memory costs no disk access and no network round trip.
+It is linearizable only if the node answering is still the leader. A leader cut off from
+its followers keeps believing that it leads until it hears otherwise, while the other 2
+replicas elect a new leader and accept writes. A client that can still reach the old
+leader then reads a value that a newer write has replaced.
+
+<figure>
+<img src="figures/lease-read.svg?v=ebdd3a7b" alt="A timeline from 0 to 1900 milliseconds. node-10, the old leader, is cut off just after its last acknowledged heartbeat at 0 ms. Its lease lets it serve reads alone until 900 ms, after which it refuses reads. The followers promised not to vote for 1000 ms, so they elect node-1 only at 1000 ms. The 100 ms between the 2 covers clock drift, and 2 leaders never serve reads at the same time.">
+<figcaption><b>Figure 1.17</b> A deposed leader serves a stale read. A lease makes it stop serving before a successor can be elected.</figcaption>
+</figure>
+
+Two mechanisms prevent this. With a *read index*, the leader records its commit position
+when a read arrives, confirms with a heartbeat that a majority still accepts it as leader,
+and answers once its state has reached that position. The read costs 1 network round
+trip, about 0.5 ms inside a data centre, and some work on the followers. With a *leader
+lease*, each heartbeat that a majority acknowledges extends the leader's right to serve
+reads alone for 900 ms, measured from the moment the leader sent that heartbeat, and followers promise not to vote for
+another candidate until 1 second after they last heard from the leader. A successor can
+therefore not be elected while the old lease runs, and the old leader stops serving reads
+when its lease expires. The margin of 100 ms covers the drift between the 2 machines'
+clocks, which must stay below it.
+
+This design uses the lease, because reads outnumber writes 5 to 1 and the lease makes each
+of them a lookup in memory. The read index serves as the fallback when a lease cannot be
+held, for example right after an election, and for reads served by followers of a hot
+shard: a follower asks the leader for its commit position and answers once its own log
+has reached it. Spanner bounds clock uncertainty with TrueTime; etcd uses the read index
+by default.
+
 ## Failure handling
 
 A distributed system is defined as much by what it does when its parts fail as by what
@@ -1117,11 +1147,11 @@ for 1 second concludes that its leader has failed.
 
 <figure>
 <img src="figures/failover.svg?v=40bdf1a6" alt="What happens when a leader fails, in 6 steps. Step 1: node-10, a leader, stops, and its followers stop receiving heartbeats. Step 2: after 1 second, node-1 stands for election and raises the term from 4 to 5. Step 3: node-6 votes for node-1, because its own log is no longer than node-1&#x27;s. Step 4: the coordinator records the new leader, term 5, leader node-1, as a new ring version. Step 5: routers receive the new ring, and writes to the shard succeed again. Step 6: node-10 returns and becomes a follower, because term 5 is newer than its own term 4.">
-<figcaption><b>Figure 1.16</b> The election of a new leader after the failure of `node-10`.</figcaption>
+<figcaption><b>Figure 1.18</b> The election of a new leader after the failure of `node-10`.</figcaption>
 </figure>
 
 Every election opens a new *term*, identified by a number that increases by 1. Terms
-are how nodes tell the present leader from a former one. In figure 1.16,
+are how nodes tell the present leader from a former one. In figure 1.18,
 `node-10` still regards itself as the leader of term 4 when it returns. The first
 message it receives carries term 5. Since that is higher than its own, `node-10` gives
 up its leadership and continues as a follower. Every `Append` call carries the term of
@@ -1136,11 +1166,11 @@ inside one group, a partition is indistinguishable from the failure of all the n
 in the other, and no node can discover which has occurred.
 
 <figure>
-<img src="figures/partition.svg?v=9ae933c8" alt="A network partition splits a shard. On one side is node-10 alone, the leader of term 4. On the other side are nodes 1 and 11. A write that reaches node-10 is in 1 log, is never committed, and the client gets an error. The side with 2 nodes elects node-1 as leader of term 5 and commits writes. At most 1 side can hold 2 of 3 nodes, so at most 1 side accepts writes, and the side with 1 node refuses writes: it gives up availability to keep the data consistent.">
-<figcaption><b>Figure 1.17</b> During a partition, only the group that contains a majority accepts writes.</figcaption>
+<img src="figures/partition.svg?v=96464e8b" alt="A network partition splits a shard. On one side is node-10 alone, the leader of term 4. On the other side are node-1 and node-6. A write that reaches node-10 is in 1 log, is never committed, and the client gets an error. The side with 2 nodes elects node-1 as leader of term 5 and commits writes. At most 1 side can hold 2 of 3 nodes, so at most 1 side accepts writes, and the side with 1 node refuses writes: it gives up availability to keep the data consistent.">
+<figcaption><b>Figure 1.19</b> During a partition, only the group that contains a majority accepts writes.</figcaption>
 </figure>
 
-In figure 1.17, `node-10` is isolated and still regards itself as the leader.
+In figure 1.19, `node-10` is isolated and still regards itself as the leader.
 It accepts a write and appends a record to its own log, but it cannot send the record
 to a follower. Since no majority holds the record, `node-10` does not acknowledge, and
 its client receives an error. Meanwhile 2 of the 3 replicas are in the other group,
@@ -1183,7 +1213,7 @@ declining to answer. This design gives priority to consistency.
 | Property | Provided | By what means, or why not |
 |---|---|---|
 | An acknowledged write survives the loss of 1 machine (non-functional requirement 0) | yes | The record is in 2 of 3 logs before it is acknowledged. |
-| A read returns the latest acknowledged write (non-functional requirement 2) | yes | Reads are served by the leader, and a leader that cannot reach a majority stops serving. |
+| A read returns the latest acknowledged write (non-functional requirement 2) | yes, while clock drift stays below 100 ms | Reads are served by a leader that holds a lease, and no successor can be elected before the lease ends. |
 | Requests succeed while 1 machine is down (non-functional requirement 1) | yes, after an election lasting a few seconds | A new leader is elected by a majority. |
 | Requests succeed in the minority group of a partition | no | The minority group cannot store a record on a majority. |
 | A write completes without a network round trip | no | Acknowledgement by a majority is required for non-functional requirement 0. |
@@ -1202,7 +1232,7 @@ such as a faulty release of the software or the loss of a segment of the network
 
 <figure class="wide">
 <img src="figures/kv-deploy.svg?v=b2e0d15c" alt="The key-value store, deployed. Applications: Applications (120000 req/s), keep their state here. Edge: Load balancers (x 2), active and standby, Routers (x 12), stateless, hold the ring. Storage, in 3 zones: Storage nodes (x 8), zone a, Storage nodes (x 8), zone b, Storage nodes (x 8), zone c. Control: Coordinator (x 3), holds the ring, Monitoring (x 2), health and metrics.">
-<figcaption><b>Figure 1.18</b> The key-value store as it is deployed: 12 routers, 24 storage nodes in 3 zones, and a coordinator of 3 machines.</figcaption>
+<figcaption><b>Figure 1.20</b> The key-value store as it is deployed: 12 routers, 24 storage nodes in 3 zones, and a coordinator of 3 machines.</figcaption>
 </figure>
 
 The figure of the high-level design showed 1 box for each kind of component. A
@@ -1247,9 +1277,7 @@ does not need. Google's Bigtable and Spanner also partition by range.
 Several things that a production store requires are absent from this chapter and
 from the code that follows. A log that grows for ever must be cut short by taking
 *snapshots* of the state. Changing the set of members of a shard while it runs needs
-a protocol of its own, which Raft calls joint consensus. Reads served by a leader on
-the strength of a recent heartbeat depend on clocks behaving reasonably, and stricter
-systems confirm leadership with a majority for each read. And none of this has been
+a protocol of its own, which Raft calls joint consensus. And none of this has been
 tested here in the way that such systems are tested in earnest, by a tool such as
 Jepsen, which partitions a real cluster at random and checks every response against
 the definition of linearizability.
@@ -1265,7 +1293,10 @@ the definition of linearizability.
 | Acknowledging before a second copy exists | The loss of the leader loses an acknowledged write. | Acknowledge only when a majority holds the record. |
 | Waiting for every replica | 1 slow or failed follower delays or blocks every write. | Wait for a majority only. |
 | An even number of replicas | More storage, and no additional failure tolerated. | Use 3 or 5. |
-| Letting any node with data answer reads | A follower that is behind returns an old value. | Serve reads from the leader, which must be able to reach a majority. |
+| Letting any node with data answer reads | A follower that is behind returns an old value. | Serve reads from the leader, or from a follower that has caught up to the leader's read index. |
+| Serving reads from a leader without a lease | A deposed leader on the minority side returns values that a new leader has replaced. | Serve reads under a lease shorter than the election timeout, or confirm leadership per read. |
+| 1 heartbeat per shard | Thousands of shards per node send about 10000 empty messages per second. | Coalesce heartbeats per pair of nodes, and let idle shards sleep. |
+| Expecting the hash ring to spread a hot key | Every request for 1 key reaches 1 leader. | Cache, serve reads from followers, or split the key. |
 | Putting the coordinator on the path of requests | Every request depends on it, and its outage stops the store. | Let routers hold copies of the ring, and consult the coordinator for changes only. |
 | Writing without a condition after reading | 2 clients overwrite each other's changes. | Send `If-Match` with the version that was read. |
 | Paging by page number | Insertions shift the pages, and keys are repeated or skipped. | Page by the last key received. |
@@ -1337,6 +1368,9 @@ of this chapter appear in its code under the same names.
 | Leader, follower | the replica that orders writes, and a replica that copies it |
 | Majority | more than half of the replicas |
 | Heartbeat | a periodic message showing that its sender is running |
+| Leader lease | a period during which a leader may serve reads alone, because no successor can be elected |
+| Read index | the leader's commit position, confirmed by a majority, that a read must wait for |
+| Hot key | a single key that receives a large share of all requests |
 | Term | the number of an election, by which a current leader is told from a former one |
 | Network partition | a failure that divides the nodes into groups that cannot communicate |
 | CAP theorem | during a partition, a store cannot be both consistent and available |
@@ -1355,5 +1389,7 @@ of this chapter appear in its code under the same names.
 - Routers hold copies of the ring and send its version with every request, so that a node can refuse a request based on an outdated ring.
 - Each shard has a leader that orders writes and 2 followers, and a write is acknowledged when 2 of the 3 logs hold its record.
 - Any 2 majorities share a node, from which it follows that a new leader holds every acknowledged record and that at most 1 group in a partition accepts writes.
+- A leader serves reads alone only while it holds a lease, which ends before any successor can be elected. Without it, a deposed leader returns stale values.
+- 6144 shards on 24 nodes would send about 10000 heartbeats per node per second. Coalescing per pair of nodes reduces this to at most 230.
 
 </div>

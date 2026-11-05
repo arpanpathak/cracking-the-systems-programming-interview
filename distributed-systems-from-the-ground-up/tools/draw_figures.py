@@ -655,9 +655,9 @@ def majority():
 
         return out + [text(32, y + 74, note, "sub")]
 
-    parts = [*trio(104, "RECORD 42 IS ACKNOWLEDGED", ["has record 42", "has record 42", "ends at 41"], "node-6 was slow. 2 of 3 logs hold record, which is enough."),
-             *trio(214, "THEN NODE 3 IS LOST", ["lost", "has record 42", "ends at 41"], "node-1 still has record 42."),
-             *trio(324, "NODES 1 AND 6 ELECT A LEADER", ["lost", "has record 42", "ends at 41"], "node-1 has longer log, so it becomes leader."),
+    parts = [*trio(104, "RECORD 42 IS ACKNOWLEDGED", ["has record 42", "has record 42", "ends at 41"], "node-6 was slow. 2 of 3 logs hold the record, which is enough."),
+             *trio(214, "THEN NODE-10 IS LOST", ["lost", "has record 42", "ends at 41"], "node-1 still has record 42."),
+             *trio(324, "NODES 1 AND 6 ELECT A LEADER", ["lost", "has record 42", "ends at 41"], "node-1 has the longer log, so it becomes the leader."),
              lines(32, 432, ["A write needs 2 of 3 nodes and an election needs 2 of 3 nodes.", "2 groups of 2 out of 3 always share a node, so every election",
                               "includes a node that holds every acknowledged record."], "sub")]
     save(OUT / "majority.svg", WIDTH, 484,
@@ -665,7 +665,7 @@ def majority():
          "record 41, and the write was acknowledged. Then node-10 is lost, and node-1 still has the record. node-1 and node-6 elect "
          "a leader, and node-1 has the longer log, so it becomes the leader. A write needs 2 of 3 nodes and an election needs 2 of 3 nodes, and 2 groups of 2 out of 3 always "
          "share a node, so every election includes a node that holds every acknowledged record.",
-         "Why 2 of 3 is enough", "Nodes that write and nodes that elect overlap.", parts)
+         "Why 2 of 3 is enough", "The nodes that write and the nodes that elect overlap.", parts)
 
 
 @figure
@@ -675,19 +675,73 @@ def partition():
         node(44, 130, 172, "node-10", "leader of term 4", "store"),
         node(264, 130, 172, "node-1", "leader of term 5", "service"), node(264, 190, 172, "node-6", "follower", "service"),
         f'  <line x1="240" y1="96" x2="240" y2="282" stroke="{KINDS["danger"][0]}" stroke-width="3" stroke-dasharray="7 6"/>',
-        text(44, 204, "a write reaches 1 log", "sub"), text(44, 222, "it is never committed", "sub"), text(44, 240, "Client gets an error", "sub"),
+        text(44, 204, "a write reaches 1 log", "sub"), text(44, 222, "it is never committed", "sub"), text(44, 240, "the client gets an error", "sub"),
         text(264, 258, "writes are committed", "sub"),
         lines(32, 312, ["Network splits, and node-10 cannot reach the others.", "node-10 still believes it leads, and accepts a write. It cannot",
-                         "Copy record to a second node, so it cannot acknowledge it.", "Side with 2 nodes elects node-1 and continues.",
+                         "copy the record to a second node, so it cannot acknowledge it.", "The side with 2 nodes elects node-1 and continues.",
                          "At most 1 side can hold 2 of 3 nodes, so at most 1 side accepts", "writes. A side with 1 node refuses writes: it gives up availability",
-                         "To keep data consistent."], "sub"),
+                         "to keep the data consistent."], "sub"),
     ]
     save(OUT / "partition.svg", WIDTH, 442,
-         "A network partition splits a shard. On one side is node-10 alone, the leader of term 4. On the other side are nodes 1 "
-         "and 11. A write that reaches node-10 is in 1 log, is never committed, and the client gets an error. The side with 2 "
+         "A network partition splits a shard. On one side is node-10 alone, the leader of term 4. On the other side are node-1 "
+         "and node-6. A write that reaches node-10 is in 1 log, is never committed, and the client gets an error. The side with 2 "
          "nodes elects node-1 as leader of term 5 and commits writes. At most 1 side can hold 2 of 3 nodes, so at most 1 side "
          "accepts writes, and the side with 1 node refuses writes: it gives up availability to keep the data consistent.",
-         "Network splits", "Side with a majority continues. The other side stops.", parts)
+         "A network partition", "The side with a majority continues. The other side stops.", parts)
+
+
+@figure
+def lease_read():
+    def bar(y, x0, x1, kind, body):
+        accent, tint = KINDS[kind]
+        return "\n".join([box(x0, y, x1 - x0, 26, tint, accent, 6), text(x0 + 8, y + 17, body, "sub", fill=accent)])
+
+    # 1 unit of time = 0.2 px per ms, from t = 0 to t = 1900 ms.
+    t = lambda ms: 40 + ms * 0.21
+    parts = [text(32, 100, "TIME, IN MS", "tab")]
+    for ms in range(0, 2000, 500):
+        parts += [text(t(ms), 118, str(ms), "mono", "middle"),
+                  f'  <line x1="{t(ms)}" y1="124" x2="{t(ms)}" y2="250" stroke="{EDGE}" stroke-width="1" stroke-dasharray="3 4"/>']
+    parts += [text(32, 146, "node-10, cut off", "name"),
+              bar(154, t(0), t(900), "store", "lease: serves reads alone"),
+              bar(154, t(900), t(1900), "idle", "lease over: refuses reads"),
+              text(32, 206, "node-1 and node-6", "name"),
+              bar(214, t(0), t(1000), "idle", "no vote for 1000 ms"),
+              bar(214, t(1000), t(1900), "service", "elect node-1, accept writes"),
+              cross(166, 141, 6)]
+    rows, end = step_rows(276, [
+        ("store", "0 ms: last heartbeat is acknowledged", "then the network cuts node-10 off"),
+        ("store", "0 to 900 ms: node-10 answers reads", "no other node can lead yet"),
+        ("idle", "900 ms: node-10's lease ends", "it refuses reads it cannot confirm"),
+        ("service", "1000 ms: the promise not to vote ends", "followers elect node-1, it accepts writes"),
+        ("good", "2 leaders never serve at once", "100 ms margin covers clock drift"),
+    ])
+    parts += [rows]
+    save(OUT / "lease-read.svg", WIDTH, end + 14,
+         "A timeline from 0 to 1900 milliseconds. node-10, the old leader, is cut off just after its last acknowledged "
+         "heartbeat at 0 ms. Its lease lets it serve reads alone until 900 ms, after which it refuses reads. The followers "
+         "promised not to vote for 1000 ms, so they elect node-1 only at 1000 ms. The 100 ms between the 2 covers clock drift, "
+         "and 2 leaders never serve reads at the same time.",
+         "A lease ends before a successor starts", "The old leader stops 100 ms before a successor may start.", parts)
+
+
+@figure
+def heartbeat_cost():
+    parts = [text(32, 104, "HEARTBEATS SENT BY 1 NODE PER SECOND", "tab"),
+             text(32, 134, "1 per shard it leads", "name"),
+             box(32, 144, 416, 30, KINDS["danger"][1], KINDS["danger"][0], 6),
+             text(44, 164, "256 shards x 2 followers x 10 per second = 5120", "mono"),
+             text(32, 206, "1 per peer machine", "name"),
+             box(32, 216, 416 * 230 / 5120 + 4, 30, KINDS["good"][1], KINDS["good"][0], 6),
+             text(64, 236, "23 peers x 10 per second = 230", "mono"),
+             lines(32, 284, ["A coalesced heartbeat lists every shard the sender leads on",
+                             "that peer, so its count follows the number of machines",
+                             "and stays the same as shards are added."], "sub")]
+    save(OUT / "heartbeat-cost.svg", WIDTH, 344,
+         "Heartbeats sent by 1 node per second. One heartbeat per shard it leads: 256 shards times 2 followers times 10 per "
+         "second, 5120. One per peer machine: 23 peers times 10 per second, 230. A coalesced heartbeat lists every shard the "
+         "sender leads on that peer.",
+         "Heartbeats per shard, and per machine", "The bars are drawn to the same scale.", parts)
 
 
 # -------------------------------------------- chapter 2: the storage node

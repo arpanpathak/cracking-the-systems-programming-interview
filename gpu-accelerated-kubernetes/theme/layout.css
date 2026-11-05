@@ -1,0 +1,120 @@
+/* Page layout at every screen width. Loaded after the other style sheets, so
+   the rules here decide the column width, the gutters and the type size.
+
+   Phone        up to 600 px    16 px gutters, the column fills the screen
+   Tablet       601 to 1279 px  the column is at most 820 px
+   Desktop      1280 to 1679 px 900 px column, type 4% larger
+   Wide         1680 px and up  1000 px column, type 10% larger           */
+
+:root { --content-max-width: 820px; }
+
+.content { padding: 1.2em 32px 5em; }
+.content main { max-width: var(--content-max-width); }
+
+@media (min-width: 1280px) {
+    :root { --content-max-width: 900px; }
+    :root { font-size: 65%; }
+}
+
+@media (min-width: 1680px) {
+    :root { --content-max-width: 1000px; }
+    :root { font-size: 68.75%; }
+}
+
+/* One box per listing: the frame belongs to <pre>, and the code inside it has
+   no border, background or padding of its own. */
+.content pre {
+    margin-inline: 0;
+    padding: 1em 1.15em;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+}
+
+.content pre > code,
+.content pre > code.hljs {
+    display: block;
+    padding: 0;
+    margin: 0;
+    border: 0;
+    background: transparent;
+    overflow: visible;
+}
+
+/* Figures never push the page sideways. */
+.content main figure { max-width: 100%; margin-inline: 0; }
+.content main figure img,
+.content main figure video { max-width: 100%; height: auto; }
+
+/* A table wider than the column scrolls inside its own frame. */
+.content main table {
+    display: block;
+    max-width: 100%;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+}
+
+.content main table td,
+.content main table th { min-width: 6em; }
+
+.content main table code { white-space: normal; overflow-wrap: anywhere; }
+
+@media (max-width: 600px) {
+    :root { font-size: 58%; --page-padding: 0px; }
+
+    .content { padding: 0.6em 16px 4em; }
+
+    body { font-size: 1.75rem; line-height: 1.62; }
+
+    .content main h1 { font-size: 2.6rem; margin-block: 0.4em 0.7em; }
+    .content main h2 { font-size: 2.15rem; margin-block: 1.8em 0.6em; }
+    .content main h3 { font-size: 1.9rem; }
+
+    .content pre {
+        font-size: 1.32rem;
+        line-height: 1.55;
+        padding: 0.8em 0.85em;
+        border-radius: 6px;
+    }
+
+    :not(pre) > code { white-space: normal; overflow-wrap: anywhere; }
+
+    .content main table { font-size: 0.88em; }
+    .content main table td,
+    .content main table th { padding: 0.45em 0.6em; min-width: 5em; }
+
+    .covers, .lld, .callout, .definition, .invariant, .algorithm, .exercises {
+        padding-inline: 0.85em !important;
+        margin-inline: 0 !important;
+    }
+
+    p.listing:has(> b) a { float: none; display: block; overflow-wrap: anywhere; }
+
+    .nav-chapters { display: none; }
+}
+
+/* On a phone a diagram keeps a readable size and scrolls sideways inside its
+   own frame; the page itself never scrolls sideways. A tap opens it at full
+   size (theme/figures.js). */
+@media (max-width: 600px) {
+    .content main figure:has(> img[src$=".svg"]) {
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+        text-align: left;
+        padding-bottom: 0.4em;
+    }
+
+    .content main figure > img[src$=".svg"] {
+        width: 760px;
+        max-width: none;
+        border-radius: 10px;
+        box-shadow: none;
+        border: 1px solid #dde2e8;
+    }
+
+    .content main figure > figcaption {
+        position: sticky;
+        left: 0;
+        width: calc(100vw - 32px);
+        text-align: left;
+    }
+}
