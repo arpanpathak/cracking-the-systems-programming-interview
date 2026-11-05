@@ -10,48 +10,51 @@ dropped connection and a network partition.
 
 ## Objects and controllers
 
-Kubernetes represents the state of a cluster as a set of objects, and every change to that state
-is a change to an object. We first define the terms precisely and then illustrate them with the GPU
-training job that serves as the example throughout this chapter.
+Kubernetes describes the state of a cluster as a collection of objects. A user who wants a
+training job to run does not start the job's container directly; the user creates an object that
+describes the job, and a program inside the cluster makes the description true. In this section we
+define the object, the API server that stores it and the controller that acts on it, and then trace
+a single job through its life.
 
 <div class="definition">
 
-**Definition 1.1** (Object). An *object* is a record stored by the Kubernetes API server and
-identified by its kind and its name. It consists of a *spec*, which describes the desired state of
-the entity the object represents, and a *status*, which describes the most recently observed state
-of that entity.
+**Definition 1.1** (Object). An *object* is a record that the API server stores under a kind and a
+name. It consists of a *spec*, also referred to as the desired state, which describes the state that
+the owner of the object requests, and a *status*, also referred to as the observed state, which
+describes the state that has been achieved so far.
 
 </div>
 
 <div class="definition">
 
 **Definition 1.2** (API server). The *API server* is the HTTP service through which every object is
-created, read, updated and deleted. It stores the objects in etcd, a replicated key-value store,
-and no other component of the cluster accesses etcd directly.
+created, read, updated and deleted. It stores the objects in etcd, a replicated key-value store, and
+no other component of the cluster accesses etcd directly.
 
 </div>
 
 <div class="definition">
 
-**Definition 1.3** (Controller). A *controller* is a process that, for every object of a given
-kind, compares the spec with the observed state of the cluster, acts to remove any difference
-between the 2, and records the result in the status.
+**Definition 1.3** (Controller). A *controller* is a process that drives the status of every object
+of a given kind towards its spec. It repeatedly compares the 2 parts of each object, performs the
+actions that remove any difference between them, and records the outcome in the status.
 
 </div>
 
-The spec and the status have different writers. The spec is written by the owner of the object,
-which is a user or another program, and the status is written only by the controller responsible
-for the object. Since each part has exactly 1 writer, a controller can always distinguish the state
-that was requested from the state it has achieved.
+The 2 parts of an object have different writers. The owner of the object, a user or another
+program, writes only the spec. The controller writes only the status. This division allows a
+controller to distinguish, at any moment, the state that was requested from the state it has
+achieved.
 
 <div class="example">
 
-**Example 1.1** (A GPU training job). Let `job-a` be an object of kind `GpuJob` with
-`spec.gpus = 1` and `status.gpus = 0` immediately after its creation. Its controller starts a
-container with 1 GPU on a machine that has a free GPU and then sets `status.gpus = 1`, at which
-point spec and status agree. If the owner later sets `spec.gpus = 2`, the 2 parts differ again, and
-the controller replaces the container and sets `status.gpus = 2`. If the owner deletes `job-a`, the
-controller stops the container and releases its GPUs.
+**Example 1.1** (A GPU training job). Consider an object `job-a` of kind `GpuJob`. Immediately after
+its creation it has `spec.gpus = 1` and `status.gpus = 0`. The controller observes that the 2 values
+differ, starts a container with 1 GPU on a machine that has a free GPU, and writes
+`status.gpus = 1`, after which spec and status agree and the controller takes no further action.
+When the owner later writes `spec.gpus = 2`, the values differ again; the controller replaces the
+container with one that has 2 GPUs and writes `status.gpus = 2`. When the owner deletes `job-a`, the
+controller stops the container and releases both GPUs.
 
 </div>
 
