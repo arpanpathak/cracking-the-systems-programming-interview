@@ -243,17 +243,30 @@ The model needs three numbers: the VM's memory, the rate at which the VM dirties
 the rate of the link. Link speeds are quoted in gigabits per second and memory in
 gigabytes, so each link is entered in gigabytes per second: 25 GbE is 25 / 8 = 3.125.
 
+<div class="code-tabs">
+
+<div class="code-tab" data-lang="Go">
+
 <p class="listing"><b>Listing 6.1</b> The VM, the link, and the limits, in Go. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/go/migration/main.go">code/go/migration/main.go</a></p>
 
 ```go
 {{#include ../code/go/migration/main.go:types}}
 ```
 
+</div>
+
+<div class="code-tab" data-lang="Rust">
+
 <p class="listing"><b>Listing 6.2</b> The VM, the link, and the limits, in Rust. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/rust/migration/src/main.rs">code/rust/migration/src/main.rs</a></p>
 
 ```rust
 {{#include ../code/rust/migration/src/main.rs:types}}
 ```
+
+</div>
+
+</div>
+
 
 
 ### One migration
@@ -265,17 +278,30 @@ how long the round takes and how much memory the guest dirties in that time. The
 amount is capped at the VM's size, since a page that is written twice is still one
 dirty page.
 
+<div class="code-tabs">
+
+<div class="code-tab" data-lang="Go">
+
 <p class="listing"><b>Listing 6.3</b> The pre-copy loop, in Go. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/go/migration/main.go">code/go/migration/main.go</a></p>
 
 ```go
 {{#include ../code/go/migration/main.go:migrate}}
 ```
 
+</div>
+
+<div class="code-tab" data-lang="Rust">
+
 <p class="listing"><b>Listing 6.4</b> The pre-copy loop, in Rust. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/rust/migration/src/main.rs">code/rust/migration/src/main.rs</a></p>
 
 ```rust
 {{#include ../code/rust/migration/src/main.rs:migrate}}
 ```
+
+</div>
+
+</div>
+
 
 
 A round that dirties at least as much as it sent has made no progress. Without
@@ -288,17 +314,30 @@ The run uses two VMs and the four links our fleet has: the Orin NX's 1 GbE, one 
 Thor's 25 GbE lanes, all four lanes bonded together, and the 200 GbE cable between the
 two Sparks.
 
+<div class="code-tabs">
+
+<div class="code-tab" data-lang="Go">
+
 <p class="listing"><b>Listing 6.5</b> The VMs, the links, and the six migrations, in Go. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/go/migration/main.go">code/go/migration/main.go</a></p>
 
 ```go
 {{#include ../code/go/migration/main.go:main}}
 ```
 
+</div>
+
+<div class="code-tab" data-lang="Rust">
+
 <p class="listing"><b>Listing 6.6</b> The VMs, the links, and the six migrations, in Rust. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/rust/migration/src/main.rs">code/rust/migration/src/main.rs</a></p>
 
 ```rust
 {{#include ../code/rust/migration/src/main.rs:main}}
 ```
+
+</div>
+
+</div>
+
 
 
 ```console
@@ -371,17 +410,30 @@ combination.
 
 ## The complete program
 
+<div class="code-tabs">
+
+<div class="code-tab" data-lang="Go">
+
 <p class="listing"><b>Listing 6.7</b> The complete program in Go. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/go/migration/main.go">code/go/migration/main.go</a></p>
 
 ```go
 {{#include ../code/go/migration/main.go}}
 ```
 
+</div>
+
+<div class="code-tab" data-lang="Rust">
+
 <p class="listing"><b>Listing 6.8</b> The complete program in Rust. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/rust/migration/src/main.rs">code/rust/migration/src/main.rs</a></p>
 
 ```rust
 {{#include ../code/rust/migration/src/main.rs}}
 ```
+
+</div>
+
+</div>
+
 
 
 <div class="summary">

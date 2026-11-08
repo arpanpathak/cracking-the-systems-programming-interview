@@ -165,17 +165,30 @@ directory layout like the one containerd showed us.
 key. `Get` does more than a lookup: it hashes the bytes again and compares the result
 with the name it was asked for. Every read is therefore a check of the data.
 
+<div class="code-tabs">
+
+<div class="code-tab" data-lang="Go">
+
 <p class="listing"><b>Listing 10.1</b> Digests, the store, and verified reads, in Go. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/go/cas/main.go">code/go/cas/main.go</a></p>
 
 ```go
 {{#include ../code/go/cas/main.go:store}}
 ```
 
+</div>
+
+<div class="code-tab" data-lang="Rust">
+
 <p class="listing"><b>Listing 10.2</b> Digests, the store, and verified reads, in Rust. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/rust/cas/src/main.rs">code/rust/cas/src/main.rs</a></p>
 
 ```rust
 {{#include ../code/rust/cas/src/main.rs:store}}
 ```
+
+</div>
+
+</div>
+
 
 
 The Go standard library includes SHA-256 in `crypto/sha256`. Rust's standard library has
@@ -190,17 +203,30 @@ writes one line of the manifest for it. It counts how many chunks `Put` reported
 which is the amount of data a push to a remote registry would have to send. The
 manifest is then stored like any other blob, and the tag is pointed at it.
 
+<div class="code-tabs">
+
+<div class="code-tab" data-lang="Go">
+
 <p class="listing"><b>Listing 10.3</b> Chunking an artifact and writing its manifest, in Go. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/go/cas/main.go">code/go/cas/main.go</a></p>
 
 ```go
 {{#include ../code/go/cas/main.go:push}}
 ```
 
+</div>
+
+<div class="code-tab" data-lang="Rust">
+
 <p class="listing"><b>Listing 10.4</b> Chunking an artifact and writing its manifest, in Rust. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/rust/cas/src/main.rs">code/rust/cas/src/main.rs</a></p>
 
 ```rust
 {{#include ../code/rust/cas/src/main.rs:push}}
 ```
+
+</div>
+
+</div>
+
 
 
 Our chunks are 8 KiB so that the example stays small. Real stores use chunks of a few
@@ -214,17 +240,30 @@ and for each chunk it lists, fetches the chunk only if the local store has no bl
 that name. `Read` reassembles the artifact from local chunks, and since it goes through
 `Get`, a damaged chunk stops the read with an error that says which chunk it was.
 
+<div class="code-tabs">
+
+<div class="code-tab" data-lang="Go">
+
 <p class="listing"><b>Listing 10.5</b> Fetching what is missing, and reading with verification, in Go. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/go/cas/main.go">code/go/cas/main.go</a></p>
 
 ```go
 {{#include ../code/go/cas/main.go:pull}}
 ```
 
+</div>
+
+<div class="code-tab" data-lang="Rust">
+
 <p class="listing"><b>Listing 10.6</b> Fetching what is missing, and reading with verification, in Rust. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/rust/cas/src/main.rs">code/rust/cas/src/main.rs</a></p>
 
 ```rust
 {{#include ../code/rust/cas/src/main.rs:pull}}
 ```
+
+</div>
+
+</div>
+
 
 
 ### Reclaiming space
@@ -236,11 +275,19 @@ tags, which are the only names people use, and notes every manifest they point a
 every chunk those manifests list. The *sweep* phase removes every blob that was not
 noted.
 
+<div class="code-tabs">
+
+<div class="code-tab" data-lang="Go">
+
 <p class="listing"><b>Listing 10.7</b> Mark from the tags, then sweep, in Go. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/go/cas/main.go">code/go/cas/main.go</a></p>
 
 ```go
 {{#include ../code/go/cas/main.go:gc}}
 ```
+
+</div>
+
+<div class="code-tab" data-lang="Rust">
 
 <p class="listing"><b>Listing 10.8</b> Mark from the tags, then sweep, in Rust. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/rust/cas/src/main.rs">code/rust/cas/src/main.rs</a></p>
 
@@ -248,11 +295,20 @@ noted.
 {{#include ../code/rust/cas/src/main.rs:gc}}
 ```
 
+</div>
+
+</div>
+
+
 
 ### The run
 
 The model's weights are 64 KiB from a fixed pseudo-random sequence, which stand in for
 gigabytes. Version 2 keeps the first 48 KiB and replaces the last 16.
+
+<div class="code-tabs">
+
+<div class="code-tab" data-lang="Go">
 
 <p class="listing"><b>Listing 10.9</b> Two versions, a pull, a damaged chunk, and a collection, in Go. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/go/cas/main.go">code/go/cas/main.go</a></p>
 
@@ -260,11 +316,20 @@ gigabytes. Version 2 keeps the first 48 KiB and replaces the last 16.
 {{#include ../code/go/cas/main.go:main}}
 ```
 
+</div>
+
+<div class="code-tab" data-lang="Rust">
+
 <p class="listing"><b>Listing 10.10</b> Two versions, a pull, a damaged chunk, and a collection, in Rust. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/rust/cas/src/main.rs">code/rust/cas/src/main.rs</a></p>
 
 ```rust
 {{#include ../code/rust/cas/src/main.rs:main}}
 ```
+
+</div>
+
+</div>
+
 
 
 ```console
@@ -330,17 +395,30 @@ the verification on every chunk doubles as a test of its new disk.
 
 ## The complete program
 
+<div class="code-tabs">
+
+<div class="code-tab" data-lang="Go">
+
 <p class="listing"><b>Listing 10.11</b> The complete program in Go. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/go/cas/main.go">code/go/cas/main.go</a></p>
 
 ```go
 {{#include ../code/go/cas/main.go}}
 ```
 
+</div>
+
+<div class="code-tab" data-lang="Rust">
+
 <p class="listing"><b>Listing 10.12</b> The complete program in Rust. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/rust/cas/src/main.rs">code/rust/cas/src/main.rs</a></p>
 
 ```rust
 {{#include ../code/rust/cas/src/main.rs}}
 ```
+
+</div>
+
+</div>
+
 
 
 <div class="summary">

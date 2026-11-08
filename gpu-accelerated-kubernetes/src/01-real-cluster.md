@@ -409,19 +409,30 @@ Low-level design: the `GpuJob` controller
 
 ### The pod for a job
 
+<div class="code-tabs">
+
+<div class="code-tab" data-lang="Go">
+
 <p class="listing"><b>Listing 1.56</b> The pod a job should have, in Go. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/go/gpujob/cmd/controller/main.go">code/go/gpujob/cmd/controller/main.go</a></p>
 
 ```go
 {{#include ../code/go/gpujob/cmd/controller/main.go:pod}}
 ```
 
+</div>
 
+<div class="code-tab" data-lang="Rust">
 
 <p class="listing"><b>Listing 1.57</b> The pod a job should have, in Rust. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/rust/gpujob/src/bin/controller.rs">code/rust/gpujob/src/bin/controller.rs</a></p>
 
 ```rust
 {{#include ../code/rust/gpujob/src/bin/controller.rs:pod}}
 ```
+
+</div>
+
+</div>
+
 
 
 
@@ -458,19 +469,30 @@ way is missing.
 
 ### Reconciling a job
 
+<div class="code-tabs">
+
+<div class="code-tab" data-lang="Go">
+
 <p class="listing"><b>Listing 1.58</b> Reconciling one job, in Go. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/go/gpujob/cmd/controller/main.go">code/go/gpujob/cmd/controller/main.go</a></p>
 
 ```go
 {{#include ../code/go/gpujob/cmd/controller/main.go:reconcile}}
 ```
 
+</div>
 
+<div class="code-tab" data-lang="Rust">
 
 <p class="listing"><b>Listing 1.59</b> Reconciling one job, in Rust. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/rust/gpujob/src/bin/controller.rs">code/rust/gpujob/src/bin/controller.rs</a></p>
 
 ```rust
 {{#include ../code/rust/gpujob/src/bin/controller.rs:reconcile}}
 ```
+
+</div>
+
+</div>
+
 
 
 
@@ -522,19 +544,30 @@ do; ours logs the error and tries again in five seconds.
 
 ### Starting the controller
 
+<div class="code-tabs">
+
+<div class="code-tab" data-lang="Go">
+
 <p class="listing"><b>Listing 1.60</b> Starting the controller, in Go. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/go/gpujob/cmd/controller/main.go">code/go/gpujob/cmd/controller/main.go</a></p>
 
 ```go
 {{#include ../code/go/gpujob/cmd/controller/main.go:main}}
 ```
 
+</div>
 
+<div class="code-tab" data-lang="Rust">
 
 <p class="listing"><b>Listing 1.61</b> Starting the controller, in Rust. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/rust/gpujob/src/bin/controller.rs">code/rust/gpujob/src/bin/controller.rs</a></p>
 
 ```rust
 {{#include ../code/rust/gpujob/src/bin/controller.rs:main}}
 ```
+
+</div>
+
+</div>
+
 
 
 
@@ -720,12 +753,19 @@ request is lowered or a machine with two free GPUs joins the cluster.
 
 ## The complete programs
 
+<div class="code-tabs">
+
+<div class="code-tab" data-lang="Go">
+
 <p class="listing"><b>Listing 1.65</b> The API types, complete, in Go. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/go/gpujob/api/v1/types.go">code/go/gpujob/api/v1/types.go</a></p>
 
 ```go
 {{#include ../code/go/gpujob/api/v1/types.go}}
 ```
 
+</div>
+
+<div class="code-tab" data-lang="Rust">
 
 <p class="listing"><b>Listing 1.66</b> The API types, complete, in Rust. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/rust/gpujob/src/lib.rs">code/rust/gpujob/src/lib.rs</a></p>
 
@@ -733,6 +773,14 @@ request is lowered or a machine with two free GPUs joins the cluster.
 {{#include ../code/rust/gpujob/src/lib.rs}}
 ```
 
+</div>
+
+</div>
+
+
+<div class="code-tabs">
+
+<div class="code-tab" data-lang="Go">
 
 <p class="listing"><b>Listing 1.67</b> The event printer, complete, in Go. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/go/gpujob/cmd/watch-jobs/main.go">code/go/gpujob/cmd/watch-jobs/main.go</a></p>
 
@@ -740,19 +788,26 @@ request is lowered or a machine with two free GPUs joins the cluster.
 {{#include ../code/go/gpujob/cmd/watch-jobs/main.go}}
 ```
 
-
 <p class="listing"><b>Listing 1.68</b> The controller, complete, in Go. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/go/gpujob/cmd/controller/main.go">code/go/gpujob/cmd/controller/main.go</a></p>
 
 ```go
 {{#include ../code/go/gpujob/cmd/controller/main.go}}
 ```
 
+</div>
+
+<div class="code-tab" data-lang="Rust">
 
 <p class="listing"><b>Listing 1.69</b> The controller, complete, in Rust. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/rust/gpujob/src/bin/controller.rs">code/rust/gpujob/src/bin/controller.rs</a></p>
 
 ```rust
 {{#include ../code/rust/gpujob/src/bin/controller.rs}}
 ```
+
+</div>
+
+</div>
+
 
 
 <p class="listing"><b>Listing 1.70</b> The two-client program, complete, in Go. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/go/gpujob/cmd/conflict/main.go">code/go/gpujob/cmd/conflict/main.go</a></p>

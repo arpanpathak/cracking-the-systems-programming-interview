@@ -162,12 +162,19 @@ order.
 The server's data comes first: the object, the event that reports a change to it, and the
 two errors a client has to tell apart.
 
+<div class="code-tabs">
+
+<div class="code-tab" data-lang="Go">
+
 <p class="listing"><b>Listing 1.1</b> Objects, events, and the two errors, in Go. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/go/informer/server.go">code/go/informer/server.go</a></p>
 
 ```go
 {{#include ../code/go/informer/server.go:objects}}
 ```
 
+</div>
+
+<div class="code-tab" data-lang="Rust">
 
 <p class="listing"><b>Listing 1.2</b> Objects, events, and the two errors, in Rust. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/rust/informer/src/server.rs">code/rust/informer/src/server.rs</a></p>
 
@@ -175,11 +182,20 @@ two errors a client has to tell apart.
 {{#include ../code/rust/informer/src/server.rs:objects}}
 ```
 
+</div>
+
+</div>
+
+
 
 The model reduces a job to a GPU count in its spec and in its status.
 
 The server itself is a lock around four things: the objects, the counter, the events it
 still has, and the watches that are open.
+
+<div class="code-tabs">
+
+<div class="code-tab" data-lang="Go">
 
 <p class="listing"><b>Listing 1.3</b> The server's state, in Go. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/go/informer/server.go">code/go/informer/server.go</a></p>
 
@@ -187,6 +203,9 @@ still has, and the watches that are open.
 {{#include ../code/go/informer/server.go:server}}
 ```
 
+</div>
+
+<div class="code-tab" data-lang="Rust">
 
 <p class="listing"><b>Listing 1.4</b> The server's state, in Rust. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/rust/informer/src/server.rs">code/rust/informer/src/server.rs</a></p>
 
@@ -194,8 +213,17 @@ still has, and the watches that are open.
 {{#include ../code/rust/informer/src/server.rs:server}}
 ```
 
+</div>
+
+</div>
+
+
 
 Two methods change objects, and both end by publishing an event.
+
+<div class="code-tabs">
+
+<div class="code-tab" data-lang="Go">
 
 <p class="listing"><b>Listing 1.5</b> Writing: update, delete, and publish, in Go. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/go/informer/server.go">code/go/informer/server.go</a></p>
 
@@ -203,12 +231,20 @@ Two methods change objects, and both end by publishing an event.
 {{#include ../code/go/informer/server.go:writes}}
 ```
 
+</div>
+
+<div class="code-tab" data-lang="Rust">
 
 <p class="listing"><b>Listing 1.6</b> Writing: update, delete, and publish, in Rust. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/rust/informer/src/server.rs">code/rust/informer/src/server.rs</a></p>
 
 ```rust
 {{#include ../code/rust/informer/src/server.rs:writes}}
 ```
+
+</div>
+
+</div>
+
 
 
 `Update` carries both uses of the resource version. A zero version skips the check, which
@@ -219,18 +255,30 @@ version.
 
 Two methods read: one for the snapshot and one for the stream of changes after it.
 
+<div class="code-tabs">
+
+<div class="code-tab" data-lang="Go">
+
 <p class="listing"><b>Listing 1.7</b> Reading: list and watch, in Go. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/go/informer/server.go">code/go/informer/server.go</a></p>
 
 ```go
 {{#include ../code/go/informer/server.go:listwatch}}
 ```
 
+</div>
+
+<div class="code-tab" data-lang="Rust">
 
 <p class="listing"><b>Listing 1.8</b> Reading: list and watch, in Rust. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/rust/informer/src/server.rs">code/rust/informer/src/server.rs</a></p>
 
 ```rust
 {{#include ../code/rust/informer/src/server.rs:listwatch}}
 ```
+
+</div>
+
+</div>
+
 
 
 `publish` runs while the server lock is held, and `Watch` holds the same lock while it
@@ -245,18 +293,30 @@ channel; in Rust it drops the sender, which ends the receiver's loop.
 
 The last four methods cause the failures of the previous section on request.
 
+<div class="code-tabs">
+
+<div class="code-tab" data-lang="Go">
+
 <p class="listing"><b>Listing 1.9</b> Compaction, dropped watches, and partitions, in Go. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/go/informer/server.go">code/go/informer/server.go</a></p>
 
 ```go
 {{#include ../code/go/informer/server.go:faults}}
 ```
 
+</div>
+
+<div class="code-tab" data-lang="Rust">
 
 <p class="listing"><b>Listing 1.10</b> Compaction, dropped watches, and partitions, in Rust. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/rust/informer/src/server.rs">code/rust/informer/src/server.rs</a></p>
 
 ```rust
 {{#include ../code/rust/informer/src/server.rs:faults}}
 ```
+
+</div>
+
+</div>
+
 
 
 `Watch` fails with the gone error when the requested version is older than `compacted`.
@@ -272,18 +332,30 @@ once. We call this copy the *cache*.
 
 The cache is a map behind a lock, with a method for one event.
 
+<div class="code-tabs">
+
+<div class="code-tab" data-lang="Go">
+
 <p class="listing"><b>Listing 1.11</b> The cache, a lookup, and applying one event, in Go. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/go/informer/cache.go">code/go/informer/cache.go</a></p>
 
 ```go
 {{#include ../code/go/informer/cache.go:cache}}
 ```
 
+</div>
+
+<div class="code-tab" data-lang="Rust">
 
 <p class="listing"><b>Listing 1.12</b> The cache, a lookup, and applying one event, in Rust. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/rust/informer/src/cache.rs">code/rust/informer/src/cache.rs</a></p>
 
 ```rust
 {{#include ../code/rust/informer/src/cache.rs:cache}}
 ```
+
+</div>
+
+</div>
+
 
 
 Both caches use a read-write lock: every reconcile reads the cache, and only incoming
@@ -294,18 +366,30 @@ and removes it for a deletion.
 
 A second method installs a whole list.
 
+<div class="code-tabs">
+
+<div class="code-tab" data-lang="Go">
+
 <p class="listing"><b>Listing 1.13</b> Replacing the cache with a fresh list, in Go. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/go/informer/cache.go">code/go/informer/cache.go</a></p>
 
 ```go
 {{#include ../code/go/informer/cache.go:replace}}
 ```
 
+</div>
+
+<div class="code-tab" data-lang="Rust">
 
 <p class="listing"><b>Listing 1.14</b> Replacing the cache with a fresh list, in Rust. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/rust/informer/src/cache.rs">code/rust/informer/src/cache.rs</a></p>
 
 ```rust
 {{#include ../code/rust/informer/src/cache.rs:replace}}
 ```
+
+</div>
+
+</div>
+
 
 
 `Replace` installs the result of a fresh list, and it has one more job that events alone
@@ -328,12 +412,19 @@ call this loop the *reflector*.
 
 The outer loop lists, installs the list, and hands over to the watch.
 
+<div class="code-tabs">
+
+<div class="code-tab" data-lang="Go">
+
 <p class="listing"><b>Listing 1.15</b> The reflector and its list step, in Go. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/go/informer/reflector.go">code/go/informer/reflector.go</a></p>
 
 ```go
 {{#include ../code/go/informer/reflector.go:run}}
 ```
 
+</div>
+
+<div class="code-tab" data-lang="Rust">
 
 <p class="listing"><b>Listing 1.16</b> The reflector and its list step, in Rust. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/rust/informer/src/reflector.rs">code/rust/informer/src/reflector.rs</a></p>
 
@@ -341,8 +432,17 @@ The outer loop lists, installs the list, and hands over to the watch.
 {{#include ../code/rust/informer/src/reflector.rs:run}}
 ```
 
+</div>
+
+</div>
+
+
 
 The inner loop watches, and decides what each kind of ending calls for.
+
+<div class="code-tabs">
+
+<div class="code-tab" data-lang="Go">
 
 <p class="listing"><b>Listing 1.17</b> Watching from a version, in Go. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/go/informer/reflector.go">code/go/informer/reflector.go</a></p>
 
@@ -350,12 +450,20 @@ The inner loop watches, and decides what each kind of ending calls for.
 {{#include ../code/go/informer/reflector.go:watch}}
 ```
 
+</div>
+
+<div class="code-tab" data-lang="Rust">
 
 <p class="listing"><b>Listing 1.18</b> Watching from a version, in Rust. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/rust/informer/src/reflector.rs">code/rust/informer/src/reflector.rs</a></p>
 
 ```rust
 {{#include ../code/rust/informer/src/reflector.rs:watch}}
 ```
+
+</div>
+
+</div>
+
 
 
 The heart of the reflector is `watchFrom` (`watch_from` in Rust). It keeps a variable,
@@ -407,18 +515,30 @@ Our model runs a single worker.
 
 The queue's state is a list and two sets behind one lock.
 
+<div class="code-tabs">
+
+<div class="code-tab" data-lang="Go">
+
 <p class="listing"><b>Listing 1.19</b> The queue's state, in Go. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/go/informer/queue.go">code/go/informer/queue.go</a></p>
 
 ```go
 {{#include ../code/go/informer/queue.go:state}}
 ```
 
+</div>
+
+<div class="code-tab" data-lang="Rust">
 
 <p class="listing"><b>Listing 1.20</b> The queue's state, in Rust. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/rust/informer/src/queue.rs">code/rust/informer/src/queue.rs</a></p>
 
 ```rust
 {{#include ../code/rust/informer/src/queue.rs:state}}
 ```
+
+</div>
+
+</div>
+
 
 
 Besides the list of names that are ready for a worker, the queue keeps two sets. `dirty`
@@ -427,18 +547,30 @@ taken and not yet handed back.
 
 Three operations work on that state.
 
+<div class="code-tabs">
+
+<div class="code-tab" data-lang="Go">
+
 <p class="listing"><b>Listing 1.21</b> Add, Get, and Done, in Go. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/go/informer/queue.go">code/go/informer/queue.go</a></p>
 
 ```go
 {{#include ../code/go/informer/queue.go:ops}}
 ```
 
+</div>
+
+<div class="code-tab" data-lang="Rust">
 
 <p class="listing"><b>Listing 1.22</b> Add, Get, and Done, in Rust. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/rust/informer/src/queue.rs">code/rust/informer/src/queue.rs</a></p>
 
 ```rust
 {{#include ../code/rust/informer/src/queue.rs:ops}}
 ```
+
+</div>
+
+</div>
+
 
 
 Why the second set? Because an object can change while a worker is in the middle of
@@ -487,18 +619,30 @@ bringing what actually exists into agreement with what the user asked for.
 
 The part that does the work is one function.
 
+<div class="code-tabs">
+
+<div class="code-tab" data-lang="Go">
+
 <p class="listing"><b>Listing 1.23</b> Reconciling one name, in Go. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/go/informer/controller.go">code/go/informer/controller.go</a></p>
 
 ```go
 {{#include ../code/go/informer/controller.go:reconcile}}
 ```
 
+</div>
+
+<div class="code-tab" data-lang="Rust">
 
 <p class="listing"><b>Listing 1.24</b> Reconciling one name, in Rust. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/rust/informer/src/controller.rs">code/rust/informer/src/controller.rs</a></p>
 
 ```rust
 {{#include ../code/rust/informer/src/controller.rs:reconcile}}
 ```
+
+</div>
+
+</div>
+
 
 
 `reconcile` first looks the object up in the cache. If the object is missing, it was
@@ -518,18 +662,30 @@ of edits and miss changes whose events a compaction had discarded.
 
 Around it sits the loop that feeds it names.
 
+<div class="code-tabs">
+
+<div class="code-tab" data-lang="Go">
+
 <p class="listing"><b>Listing 1.25</b> The controller and its worker loop, in Go. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/go/informer/controller.go">code/go/informer/controller.go</a></p>
 
 ```go
 {{#include ../code/go/informer/controller.go:run}}
 ```
 
+</div>
+
+<div class="code-tab" data-lang="Rust">
 
 <p class="listing"><b>Listing 1.26</b> The controller and its worker loop, in Rust. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/rust/informer/src/controller.rs">code/rust/informer/src/controller.rs</a></p>
 
 ```rust
 {{#include ../code/rust/informer/src/controller.rs:run}}
 ```
+
+</div>
+
+</div>
+
 
 
 `Run` is the worker loop. It takes a name, reconciles it, and hands it back with `Done`.
@@ -571,18 +727,30 @@ holding an `Arc` handle to the shared server, cache, and queue. Both write their
 standard error, with the number of milliseconds since the program started; Rust does this
 with a small `log!` macro, and Go with a `logf` function.
 
+<div class="code-tabs">
+
+<div class="code-tab" data-lang="Go">
+
 <p class="listing"><b>Listing 1.27</b> The demonstration, in Go. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/go/informer/main.go">code/go/informer/main.go</a></p>
 
 ```go
 {{#include ../code/go/informer/main.go:main}}
 ```
 
+</div>
+
+<div class="code-tab" data-lang="Rust">
 
 <p class="listing"><b>Listing 1.28</b> The demonstration, in Rust. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/rust/informer/src/main.rs">code/rust/informer/src/main.rs</a></p>
 
 ```rust
 {{#include ../code/rust/informer/src/main.rs:main}}
 ```
+
+</div>
+
+</div>
+
 
 
 The Go version prints:
@@ -718,12 +886,19 @@ the object can see that the latest change to the spec has not been handled yet.
 The model is six source files in each language, printed here in the order the chapter built
 them.
 
+<div class="code-tabs">
+
+<div class="code-tab" data-lang="Go">
+
 <p class="listing"><b>Listing 1.29</b> The API server, complete, in Go. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/go/informer/server.go">code/go/informer/server.go</a></p>
 
 ```go
 {{#include ../code/go/informer/server.go}}
 ```
 
+</div>
+
+<div class="code-tab" data-lang="Rust">
 
 <p class="listing"><b>Listing 1.30</b> The API server, complete, in Rust. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/rust/informer/src/server.rs">code/rust/informer/src/server.rs</a></p>
 
@@ -731,6 +906,14 @@ them.
 {{#include ../code/rust/informer/src/server.rs}}
 ```
 
+</div>
+
+</div>
+
+
+<div class="code-tabs">
+
+<div class="code-tab" data-lang="Go">
 
 <p class="listing"><b>Listing 1.31</b> The cache, complete, in Go. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/go/informer/cache.go">code/go/informer/cache.go</a></p>
 
@@ -738,6 +921,9 @@ them.
 {{#include ../code/go/informer/cache.go}}
 ```
 
+</div>
+
+<div class="code-tab" data-lang="Rust">
 
 <p class="listing"><b>Listing 1.32</b> The cache, complete, in Rust. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/rust/informer/src/cache.rs">code/rust/informer/src/cache.rs</a></p>
 
@@ -745,6 +931,14 @@ them.
 {{#include ../code/rust/informer/src/cache.rs}}
 ```
 
+</div>
+
+</div>
+
+
+<div class="code-tabs">
+
+<div class="code-tab" data-lang="Go">
 
 <p class="listing"><b>Listing 1.33</b> The reflector, complete, in Go. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/go/informer/reflector.go">code/go/informer/reflector.go</a></p>
 
@@ -752,6 +946,9 @@ them.
 {{#include ../code/go/informer/reflector.go}}
 ```
 
+</div>
+
+<div class="code-tab" data-lang="Rust">
 
 <p class="listing"><b>Listing 1.34</b> The reflector, complete, in Rust. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/rust/informer/src/reflector.rs">code/rust/informer/src/reflector.rs</a></p>
 
@@ -759,6 +956,14 @@ them.
 {{#include ../code/rust/informer/src/reflector.rs}}
 ```
 
+</div>
+
+</div>
+
+
+<div class="code-tabs">
+
+<div class="code-tab" data-lang="Go">
 
 <p class="listing"><b>Listing 1.35</b> The work queue, complete, in Go. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/go/informer/queue.go">code/go/informer/queue.go</a></p>
 
@@ -766,6 +971,9 @@ them.
 {{#include ../code/go/informer/queue.go}}
 ```
 
+</div>
+
+<div class="code-tab" data-lang="Rust">
 
 <p class="listing"><b>Listing 1.36</b> The work queue, complete, in Rust. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/rust/informer/src/queue.rs">code/rust/informer/src/queue.rs</a></p>
 
@@ -773,6 +981,14 @@ them.
 {{#include ../code/rust/informer/src/queue.rs}}
 ```
 
+</div>
+
+</div>
+
+
+<div class="code-tabs">
+
+<div class="code-tab" data-lang="Go">
 
 <p class="listing"><b>Listing 1.37</b> The controller, complete, in Go. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/go/informer/controller.go">code/go/informer/controller.go</a></p>
 
@@ -780,6 +996,9 @@ them.
 {{#include ../code/go/informer/controller.go}}
 ```
 
+</div>
+
+<div class="code-tab" data-lang="Rust">
 
 <p class="listing"><b>Listing 1.38</b> The controller, complete, in Rust. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/rust/informer/src/controller.rs">code/rust/informer/src/controller.rs</a></p>
 
@@ -787,6 +1006,14 @@ them.
 {{#include ../code/rust/informer/src/controller.rs}}
 ```
 
+</div>
+
+</div>
+
+
+<div class="code-tabs">
+
+<div class="code-tab" data-lang="Go">
 
 <p class="listing"><b>Listing 1.39</b> The demonstration, complete, in Go. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/go/informer/main.go">code/go/informer/main.go</a></p>
 
@@ -794,9 +1021,17 @@ them.
 {{#include ../code/go/informer/main.go}}
 ```
 
+</div>
+
+<div class="code-tab" data-lang="Rust">
 
 <p class="listing"><b>Listing 1.40</b> The demonstration, complete, in Rust. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/rust/informer/src/main.rs">code/rust/informer/src/main.rs</a></p>
 
 ```rust
 {{#include ../code/rust/informer/src/main.rs}}
 ```
+
+</div>
+
+</div>
+

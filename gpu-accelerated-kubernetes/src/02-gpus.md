@@ -226,13 +226,19 @@ Low-level design: `gpuusage`
 
 The first part decides what one pod holds.
 
+<div class="code-tabs">
+
+<div class="code-tab" data-lang="Go">
+
 <p class="listing"><b>Listing 2.4</b> What one pod holds, in Go. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/go/gpuusage/main.go">code/go/gpuusage/main.go</a></p>
 
 ```go
 {{#include ../code/go/gpuusage/main.go:count}}
 ```
 
+</div>
 
+<div class="code-tab" data-lang="Rust">
 
 <p class="listing"><b>Listing 2.5</b> What one pod holds, in Rust. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/rust/gpuusage/src/main.rs">code/rust/gpuusage/src/main.rs</a></p>
 
@@ -240,9 +246,18 @@ The first part decides what one pod holds.
 {{#include ../code/rust/gpuusage/src/main.rs:count}}
 ```
 
+</div>
+
+</div>
+
+
 
 
 The second part asks the API server and prints the table.
+
+<div class="code-tabs">
+
+<div class="code-tab" data-lang="Go">
 
 <p class="listing"><b>Listing 2.6</b> Listing, grouping, and printing, in Go. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/go/gpuusage/main.go">code/go/gpuusage/main.go</a></p>
 
@@ -250,13 +265,20 @@ The second part asks the API server and prints the table.
 {{#include ../code/go/gpuusage/main.go:report}}
 ```
 
+</div>
 
+<div class="code-tab" data-lang="Rust">
 
 <p class="listing"><b>Listing 2.7</b> Listing, grouping, and printing, in Rust. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/rust/gpuusage/src/main.rs">code/rust/gpuusage/src/main.rs</a></p>
 
 ```rust
 {{#include ../code/rust/gpuusage/src/main.rs:report}}
 ```
+
+</div>
+
+</div>
+
 
 
 
@@ -571,7 +593,9 @@ virtual machines.
 {{#include ../code/gpu-sharing/gpu_load.cu}}
 ```
 
+<div class="code-tabs">
 
+<div class="code-tab" data-lang="Go">
 
 <p class="listing"><b>Listing 2.14</b> `gpuusage`, complete, in Go. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/go/gpuusage/main.go">code/go/gpuusage/main.go</a></p>
 
@@ -579,13 +603,20 @@ virtual machines.
 {{#include ../code/go/gpuusage/main.go}}
 ```
 
+</div>
 
+<div class="code-tab" data-lang="Rust">
 
 <p class="listing"><b>Listing 2.15</b> `gpuusage`, complete, in Rust. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/rust/gpuusage/src/main.rs">code/rust/gpuusage/src/main.rs</a></p>
 
 ```rust
 {{#include ../code/rust/gpuusage/src/main.rs}}
 ```
+
+</div>
+
+</div>
+
 
 
 

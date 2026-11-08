@@ -88,11 +88,19 @@ Low-level design: `heartbeats`
 The types come first. A host's record is two fields, and a `Transition` is the only thing
 the registry writes to the database.
 
+<div class="code-tabs">
+
+<div class="code-tab" data-lang="Go">
+
 <p class="listing"><b>Listing 3.1</b> The states, the thresholds, and the registry's records, in Go. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/go/heartbeats/main.go">code/go/heartbeats/main.go</a></p>
 
 ```go
 {{#include ../code/go/heartbeats/main.go:types}}
 ```
+
+</div>
+
+<div class="code-tab" data-lang="Rust">
 
 <p class="listing"><b>Listing 3.2</b> The states, the thresholds, and the registry's records, in Rust. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/rust/heartbeats/src/main.rs">code/rust/heartbeats/src/main.rs</a></p>
 
@@ -100,9 +108,18 @@ the registry writes to the database.
 {{#include ../code/rust/heartbeats/src/main.rs:types}}
 ```
 
+</div>
+
+</div>
+
+
 
 The registry has one operation for an arriving heartbeat and one for the sweep, and a small
 function that turns a length of silence into a state.
+
+<div class="code-tabs">
+
+<div class="code-tab" data-lang="Go">
 
 <p class="listing"><b>Listing 3.3</b> A heartbeat, the sweep, and the rule from silence to state, in Go. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/go/heartbeats/main.go">code/go/heartbeats/main.go</a></p>
 
@@ -110,15 +127,28 @@ function that turns a length of silence into a state.
 {{#include ../code/go/heartbeats/main.go:registry}}
 ```
 
+</div>
+
+<div class="code-tab" data-lang="Rust">
+
 <p class="listing"><b>Listing 3.4</b> A heartbeat, the sweep, and the rule from silence to state, in Rust. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/rust/heartbeats/src/main.rs">code/rust/heartbeats/src/main.rs</a></p>
 
 ```rust
 {{#include ../code/rust/heartbeats/src/main.rs:registry}}
 ```
 
+</div>
+
+</div>
+
+
 
 The run feeds the registry one heartbeat from every host each second, except from the two
 hosts that the scenario silences.
+
+<div class="code-tabs">
+
+<div class="code-tab" data-lang="Go">
 
 <p class="listing"><b>Listing 3.5</b> The simulated fleet and the main loop, in Go. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/go/heartbeats/main.go">code/go/heartbeats/main.go</a></p>
 
@@ -126,11 +156,20 @@ hosts that the scenario silences.
 {{#include ../code/go/heartbeats/main.go:main}}
 ```
 
+</div>
+
+<div class="code-tab" data-lang="Rust">
+
 <p class="listing"><b>Listing 3.6</b> The simulated fleet and the main loop, in Rust. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/rust/heartbeats/src/main.rs">code/rust/heartbeats/src/main.rs</a></p>
 
 ```rust
 {{#include ../code/rust/heartbeats/src/main.rs:main}}
 ```
+
+</div>
+
+</div>
+
 
 
 `Heartbeat` updates the host's last-seen time in memory and writes to the database only
@@ -203,11 +242,19 @@ Low-level design: `phi`
 A detector belongs to one host. It remembers a window of gaps and the time of the latest
 heartbeat.
 
+<div class="code-tabs">
+
+<div class="code-tab" data-lang="Go">
+
 <p class="listing"><b>Listing 3.7</b> The detector and the recording of a heartbeat, in Go. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/go/phi/main.go">code/go/phi/main.go</a></p>
 
 ```go
 {{#include ../code/go/phi/main.go:detector}}
 ```
+
+</div>
+
+<div class="code-tab" data-lang="Rust">
 
 <p class="listing"><b>Listing 3.8</b> The detector and the recording of a heartbeat, in Rust. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/rust/phi/src/main.rs">code/rust/phi/src/main.rs</a></p>
 
@@ -215,8 +262,17 @@ heartbeat.
 {{#include ../code/rust/phi/src/main.rs:detector}}
 ```
 
+</div>
+
+</div>
+
+
 
 `Phi` turns the window into a number.
+
+<div class="code-tabs">
+
+<div class="code-tab" data-lang="Go">
 
 <p class="listing"><b>Listing 3.9</b> Computing phi from the recorded gaps, in Go. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/go/phi/main.go">code/go/phi/main.go</a></p>
 
@@ -224,15 +280,28 @@ heartbeat.
 {{#include ../code/go/phi/main.go:phi}}
 ```
 
+</div>
+
+<div class="code-tab" data-lang="Rust">
+
 <p class="listing"><b>Listing 3.10</b> Computing phi from the recorded gaps, in Rust. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/rust/phi/src/main.rs">code/rust/phi/src/main.rs</a></p>
 
 ```rust
 {{#include ../code/rust/phi/src/main.rs:phi}}
 ```
 
+</div>
+
+</div>
+
+
 
 The run trains one detector on a steady host and one on a jittery host, then asks each for
 phi after silences of increasing length.
+
+<div class="code-tabs">
+
+<div class="code-tab" data-lang="Go">
 
 <p class="listing"><b>Listing 3.11</b> Two hosts and the table of results, in Go. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/go/phi/main.go">code/go/phi/main.go</a></p>
 
@@ -240,11 +309,20 @@ phi after silences of increasing length.
 {{#include ../code/go/phi/main.go:main}}
 ```
 
+</div>
+
+<div class="code-tab" data-lang="Rust">
+
 <p class="listing"><b>Listing 3.12</b> Two hosts and the table of results, in Rust. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/rust/phi/src/main.rs">code/rust/phi/src/main.rs</a></p>
 
 ```rust
 {{#include ../code/rust/phi/src/main.rs:main}}
 ```
+
+</div>
+
+</div>
+
 
 
 `Phi` computes the mean and standard deviation of the remembered gaps and measures how many
@@ -356,12 +434,19 @@ Low-level design: `leaseagent`
 
 The settings are constants.
 
+<div class="code-tabs">
+
+<div class="code-tab" data-lang="Go">
+
 <p class="listing"><b>Listing 3.14</b> The agent's settings, in Go. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/go/leaseagent/main.go">code/go/leaseagent/main.go</a></p>
 
 ```go
 {{#include ../code/go/leaseagent/main.go:settings}}
 ```
 
+</div>
+
+<div class="code-tab" data-lang="Rust">
 
 <p class="listing"><b>Listing 3.15</b> The agent's settings, in Rust. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/rust/leaseagent/src/main.rs">code/rust/leaseagent/src/main.rs</a></p>
 
@@ -369,9 +454,18 @@ The settings are constants.
 {{#include ../code/rust/leaseagent/src/main.rs:settings}}
 ```
 
+</div>
+
+</div>
+
+
 
 The Go version builds the Lease inside its loop with client-go's apply configuration
 types. The Rust version builds it in a function of its own.
+
+<div class="code-tabs">
+
+<div class="code-tab" data-lang="Go">
 
 <p class="listing"><b>Listing 3.16</b> The renewal loop, in Go. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/go/leaseagent/main.go">code/go/leaseagent/main.go</a></p>
 
@@ -379,6 +473,9 @@ types. The Rust version builds it in a function of its own.
 {{#include ../code/go/leaseagent/main.go:renew}}
 ```
 
+</div>
+
+<div class="code-tab" data-lang="Rust">
 
 <p class="listing"><b>Listing 3.17</b> Building the Lease, in Rust. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/rust/leaseagent/src/main.rs">code/rust/leaseagent/src/main.rs</a></p>
 
@@ -386,12 +483,16 @@ types. The Rust version builds it in a function of its own.
 {{#include ../code/rust/leaseagent/src/main.rs:lease}}
 ```
 
-
 <p class="listing"><b>Listing 3.18</b> The renewal loop, in Rust. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/rust/leaseagent/src/main.rs">code/rust/leaseagent/src/main.rs</a></p>
 
 ```rust
 {{#include ../code/rust/leaseagent/src/main.rs:renew}}
 ```
+
+</div>
+
+</div>
+
 
 
 Both agents write with server-side apply, which we met in section 1.1: each renewal sends
@@ -433,11 +534,19 @@ Low-level design: `leasewatch`
 An observation is three fields, and the second is the one that matters: the local time at
 which the watcher first saw the current `renewTime`.
 
+<div class="code-tabs">
+
+<div class="code-tab" data-lang="Go">
+
 <p class="listing"><b>Listing 3.19</b> What the watcher remembers about one Lease, in Go. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/go/leasewatch/main.go">code/go/leasewatch/main.go</a></p>
 
 ```go
 {{#include ../code/go/leasewatch/main.go:observation}}
 ```
+
+</div>
+
+<div class="code-tab" data-lang="Rust">
 
 <p class="listing"><b>Listing 3.20</b> What the watcher remembers about one Lease, in Rust. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/rust/leasewatch/src/main.rs">code/rust/leasewatch/src/main.rs</a></p>
 
@@ -445,8 +554,17 @@ which the watcher first saw the current `renewTime`.
 {{#include ../code/rust/leasewatch/src/main.rs:observation}}
 ```
 
+</div>
+
+</div>
+
+
 
 `check` holds the rule from the node lifecycle controller.
+
+<div class="code-tabs">
+
+<div class="code-tab" data-lang="Go">
 
 <p class="listing"><b>Listing 3.21</b> Checking one Lease against the watcher's own clock, in Go. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/go/leasewatch/main.go">code/go/leasewatch/main.go</a></p>
 
@@ -454,15 +572,28 @@ which the watcher first saw the current `renewTime`.
 {{#include ../code/go/leasewatch/main.go:check}}
 ```
 
+</div>
+
+<div class="code-tab" data-lang="Rust">
+
 <p class="listing"><b>Listing 3.22</b> Checking one Lease against the watcher's own clock, in Rust. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/rust/leasewatch/src/main.rs">code/rust/leasewatch/src/main.rs</a></p>
 
 ```rust
 {{#include ../code/rust/leasewatch/src/main.rs:check}}
 ```
 
+</div>
+
+</div>
+
+
 
 The rest of the program keeps a cache of Leases and calls `check` for each of them once a
 second.
+
+<div class="code-tabs">
+
+<div class="code-tab" data-lang="Go">
 
 <p class="listing"><b>Listing 3.23</b> The cache of Leases and the once-a-second loop, in Go. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/go/leasewatch/main.go">code/go/leasewatch/main.go</a></p>
 
@@ -470,11 +601,20 @@ second.
 {{#include ../code/go/leasewatch/main.go:run}}
 ```
 
+</div>
+
+<div class="code-tab" data-lang="Rust">
+
 <p class="listing"><b>Listing 3.24</b> The cache of Leases and the once-a-second loop, in Rust. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/rust/leasewatch/src/main.rs">code/rust/leasewatch/src/main.rs</a></p>
 
 ```rust
 {{#include ../code/rust/leasewatch/src/main.rs:run}}
 ```
+
+</div>
+
+</div>
+
 
 
 Neither version sends a request per check. The Go version starts an informer for Leases in
@@ -595,11 +735,19 @@ control plane for GPU jobs needs a firmer answer as well.
 
 ## The complete programs
 
+<div class="code-tabs">
+
+<div class="code-tab" data-lang="Go">
+
 <p class="listing"><b>Listing 3.25</b> The complete program in Go. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/go/heartbeats/main.go">code/go/heartbeats/main.go</a></p>
 
 ```go
 {{#include ../code/go/heartbeats/main.go}}
 ```
+
+</div>
+
+<div class="code-tab" data-lang="Rust">
 
 <p class="listing"><b>Listing 3.26</b> The complete program in Rust. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/rust/heartbeats/src/main.rs">code/rust/heartbeats/src/main.rs</a></p>
 
@@ -607,6 +755,14 @@ control plane for GPU jobs needs a firmer answer as well.
 {{#include ../code/rust/heartbeats/src/main.rs}}
 ```
 
+</div>
+
+</div>
+
+
+<div class="code-tabs">
+
+<div class="code-tab" data-lang="Go">
 
 <p class="listing"><b>Listing 3.27</b> The complete program in Go. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/go/phi/main.go">code/go/phi/main.go</a></p>
 
@@ -614,12 +770,24 @@ control plane for GPU jobs needs a firmer answer as well.
 {{#include ../code/go/phi/main.go}}
 ```
 
+</div>
+
+<div class="code-tab" data-lang="Rust">
+
 <p class="listing"><b>Listing 3.28</b> The complete program in Rust. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/rust/phi/src/main.rs">code/rust/phi/src/main.rs</a></p>
 
 ```rust
 {{#include ../code/rust/phi/src/main.rs}}
 ```
 
+</div>
+
+</div>
+
+
+<div class="code-tabs">
+
+<div class="code-tab" data-lang="Go">
 
 <p class="listing"><b>Listing 3.29</b> The complete program in Go. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/go/leaseagent/main.go">code/go/leaseagent/main.go</a></p>
 
@@ -627,12 +795,24 @@ control plane for GPU jobs needs a firmer answer as well.
 {{#include ../code/go/leaseagent/main.go}}
 ```
 
+</div>
+
+<div class="code-tab" data-lang="Rust">
+
 <p class="listing"><b>Listing 3.30</b> The complete program in Rust. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/rust/leaseagent/src/main.rs">code/rust/leaseagent/src/main.rs</a></p>
 
 ```rust
 {{#include ../code/rust/leaseagent/src/main.rs}}
 ```
 
+</div>
+
+</div>
+
+
+<div class="code-tabs">
+
+<div class="code-tab" data-lang="Go">
 
 <p class="listing"><b>Listing 3.31</b> The complete program in Go. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/go/leasewatch/main.go">code/go/leasewatch/main.go</a></p>
 
@@ -640,11 +820,20 @@ control plane for GPU jobs needs a firmer answer as well.
 {{#include ../code/go/leasewatch/main.go}}
 ```
 
+</div>
+
+<div class="code-tab" data-lang="Rust">
+
 <p class="listing"><b>Listing 3.32</b> The complete program in Rust. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/rust/leasewatch/src/main.rs">code/rust/leasewatch/src/main.rs</a></p>
 
 ```rust
 {{#include ../code/rust/leasewatch/src/main.rs}}
 ```
+
+</div>
+
+</div>
+
 
 
 <div class="summary">
