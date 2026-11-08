@@ -1,3 +1,5 @@
+<img class="plate" src="art/ch02.svg" alt="8 hexagonal cells of a honeycomb are labelled SM 0 to SM 7. Bees fill the cells in rows of 32, and a lead bee named Comb carries a card that reads 1 unit = the whole GPU.">
+
 # 2. What one GPU means
 
 So far our pods have asked for `nvidia.com/gpu: 1` as if a GPU were a single, indivisible

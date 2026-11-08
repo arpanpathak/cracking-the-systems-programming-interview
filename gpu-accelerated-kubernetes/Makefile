@@ -12,9 +12,13 @@
 MDBOOK ?= mdbook
 PYTHON ?= python3
 
-.PHONY: all figures animations html serve check clean
+.PHONY: all art figures animations html serve check clean
 
-all: figures animations html
+all: art figures animations html
+
+## The cover and the chapter-opener plates, drawn by tools/art.py to src/art/*.svg
+art:
+	$(PYTHON) tools/art.py
 
 ## Every diagram, drawn by tools/draw_figures.py to src/figures/*.svg
 figures:

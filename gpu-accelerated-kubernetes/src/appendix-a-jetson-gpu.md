@@ -1,3 +1,5 @@
+<img class="plate" src="art/appendix.svg" alt="Kindle, a hedgehog, plugs a small GPU board into a shipping container labelled kind node. A cable runs from the board to the container, and a lamp on the container turns green.">
+
 # Appendix A. A local GPU cluster with kind
 
 Our controller in section 1.1 runs pods that ask for GPUs. In this appendix, we will set up
