@@ -128,7 +128,7 @@ pre code {
 }
 
 :not(pre) > code {
-    font-size: 0.86em;
+    font-size: 0.94em;
     background: var(--inline-code-bg);
     padding: 0.12em 0.38em;
     border-radius: 4px;
@@ -137,13 +137,18 @@ pre code {
 }
 
 pre {
-    font-size: 1.4rem;
-    line-height: 1.6;
+    font-size: 1.7rem;
+    line-height: 1.65;
     background: var(--code-bg) !important;
     border: 1px solid var(--code-border);
     border-radius: 8px;
     padding: 1.1em 1.3em;
     margin-block: 0.4em 1.4em;
+}
+
+/* mdBook sets code to 0.875em of its parent; code in a block uses the block's size. */
+pre code {
+    font-size: 1em;
 }
 
 pre > code.hljs {
@@ -222,7 +227,7 @@ blockquote {
 p.listing {
     margin-block: 0.2em 0.25em;
     font-family: var(--code-face);
-    font-size: 1.3rem;
+    font-size: 1.45rem;
     text-align: right;
 }
 
@@ -256,4 +261,14 @@ img.cover {
     margin: 1em auto;
     border-radius: 8px;
     box-shadow: 0 14px 40px rgba(0, 0, 0, 0.4);
+}
+
+/* Code at 17px needs about 1,000px for the book's longest lines (95 characters).
+   On wide screens a code block extends past the text column, as the plates do. */
+@media (min-width: 1180px) {
+    pre,
+    p.listing {
+        margin-left: -120px;
+        margin-right: -120px;
+    }
 }
