@@ -1,4 +1,4 @@
-<img class="plate" src="art/ch05.svg" alt="Badge, a fox in a guard&#x27;s cap, stands at a gate and hands an ID card to a new server that has arrived with a short-lived ticket. The card reads system:node:thor-3.">
+<img class="plate" src="art/ch05.svg" alt="Badge, a fox in a guard&#x27;s cap, stands at the cluster gate and holds out an ID card that reads system:node:thor-3. A new server waits with a short-lived token, and an arrow shows the token traded for the card.">
 
 # 5. Kubernetes in a new cloud account
 

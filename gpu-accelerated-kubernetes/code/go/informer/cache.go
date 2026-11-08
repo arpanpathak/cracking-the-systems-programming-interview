@@ -10,6 +10,7 @@ import "sync"
 type Cache struct {
 	// mu guards objects.
 	mu sync.RWMutex
+
 	// objects holds the latest known state of every object, keyed by name.
 	objects map[string]Object
 }
@@ -23,6 +24,7 @@ func NewCache() *Cache {
 func (c *Cache) Get(name string) (Object, bool) {
 	c.mu.RLock()
 	defer c.mu.RUnlock()
+
 	o, ok := c.objects[name]
 
 	return o, ok
@@ -51,12 +53,15 @@ func (c *Cache) Apply(e Event) {
 func (c *Cache) Replace(list []Object) []string {
 	c.mu.Lock()
 	defer c.mu.Unlock()
+
 	old := c.objects
 	c.objects = make(map[string]Object, len(list))
+
 	var changed []string
 
 	for _, o := range list {
 		c.objects[o.Name] = o
+
 		// A name missing from old reads as version 0, so it counts as changed.
 		if old[o.Name].ResourceVersion != o.ResourceVersion {
 			changed = append(changed, o.Name)

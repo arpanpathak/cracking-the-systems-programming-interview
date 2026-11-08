@@ -1,4 +1,4 @@
-<img class="plate" src="art/ch04.svg" alt="Sergeant Cone, a raccoon in a police cap, directs traffic at a crossing with a raised paw and a whistle. A traffic light beside it shows green for healthy, amber for cordoned and red for quarantined. A server with a red lamp stands inside a ring of orange cones.">
+<img class="plate" src="art/ch04.svg" alt="Sergeant Cone, a raccoon in a police cap, raises a paw to stop traffic and holds a whistle. A traffic light shows green for healthy, amber for cordoned and red for quarantined, with arrows between them. thor-4, a server with a red lamp, stands inside a ring of orange cones.">
 
 # 4. A control plane for a fleet of hosts
 

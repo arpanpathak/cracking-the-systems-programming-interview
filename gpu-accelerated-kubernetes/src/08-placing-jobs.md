@@ -1,4 +1,4 @@
-<img class="plate" src="art/ch08.svg" alt="Flock, a sheepdog, herds 5 sheep numbered 1 to 5 together into 1 pen labelled shelf. A second pen labelled desk holds 2 sheep, and a gate stays closed until the whole flock is in.">
+<img class="plate" src="art/ch08.svg" alt="Flock, a sheepdog, herds 5 sheep numbered 1 to 5 into 1 pen labelled shelf: 5 Thors, following an arrow through the open gate. A second pen labelled desk: 2 Sparks holds 2 sheep.">
 
 # 8. Placing jobs on GPUs
 

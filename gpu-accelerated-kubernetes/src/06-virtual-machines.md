@@ -1,4 +1,4 @@
-<img class="plate" src="art/ch06.svg" alt="Shellby, a hermit crab, moves from an old shell on the left to a new shell on the right while carrying a stack of memory pages. A thin line of pages already sits in the new shell, and the last few pages fly across.">
+<img class="plate" src="art/ch06.svg" alt="Shellby, a hermit crab, carries memory pages from the shell on host A to a new shell on host B. Arrows mark each round of copying, and the pages already copied are stacked in the new shell.">
 
 # 6. Virtual machines on Kubernetes
 

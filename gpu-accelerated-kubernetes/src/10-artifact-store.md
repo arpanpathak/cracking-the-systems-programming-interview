@@ -1,4 +1,4 @@
-<img class="plate" src="art/ch10.svg" alt="Hash, a magpie, perches on a cabinet of small drawers. Every drawer is labelled with the first digits of a sha256 digest, and the magpie drops a shiny chunk into the drawer whose label matches it.">
+<img class="plate" src="art/ch10.svg" alt="Hash, a magpie, holds a shiny 8K chunk. An arrow labelled sha256 leads from the chunk to the drawer of a cabinet whose label, a6a98d, matches the chunk&#x27;s digest.">
 
 # 10. A content-addressed artifact store
 

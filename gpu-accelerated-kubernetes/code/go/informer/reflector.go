@@ -13,8 +13,10 @@ import (
 type Reflector struct {
 	// server is the source of objects and events.
 	server *APIServer
+
 	// cache receives every object the reflector sees.
 	cache *Cache
+
 	// queue receives the name of every object that changes.
 	queue *WorkQueue
 }
@@ -25,7 +27,9 @@ func (r *Reflector) Run() {
 	for {
 		list, version := r.server.List()
 		r.queue.Add(r.cache.Replace(list)...)
+
 		logf("reflector: list at version %d: %v", version, list)
+
 		r.watchFrom(version)
 	}
 }
@@ -47,6 +51,7 @@ func (r *Reflector) watchFrom(version int) {
 
 		if err != nil {
 			time.Sleep(10 * time.Millisecond) // client-go backs off exponentially
+
 			continue
 		}
 
@@ -55,6 +60,7 @@ func (r *Reflector) watchFrom(version int) {
 			// that takes the name reads the object as of this event.
 			r.cache.Apply(e)
 			r.queue.Add(e.Object.Name)
+
 			version = e.Object.ResourceVersion
 		}
 

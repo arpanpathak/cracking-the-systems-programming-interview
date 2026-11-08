@@ -16,7 +16,7 @@ use cache::Cache;
 use controller::Controller;
 use queue::WorkQueue;
 use reflector::Reflector;
-use server::{ApiServer, Object};
+use server::{ApiError, ApiServer, Object};
 use std::sync::{Arc, OnceLock};
 use std::thread;
 use std::time::{Duration, Instant};
@@ -44,15 +44,12 @@ fn sleep_ms(ms: u64) {
 }
 
 // ANCHOR: main
-fn main() {
+fn main() -> Result<(), ApiError> {
     START.get_or_init(Instant::now);
+
     let server = Arc::new(ApiServer::default());
-    server
-        .update(Object::new("job-a", 1))
-        .expect("unconditional write");
-    server
-        .update(Object::new("job-b", 8))
-        .expect("unconditional write");
+    server.update(Object::new("job-a", 1))?;
+    server.update(Object::new("job-b", 8))?;
 
     let cache = Arc::new(Cache::default());
     let queue = Arc::new(WorkQueue::default());
@@ -66,16 +63,17 @@ fn main() {
         cache,
         queue,
     };
+
     thread::spawn(move || reflector.run());
     thread::spawn(move || controller.run());
+
     sleep_ms(100);
 
     log!("--- job-a is edited five times in a burst");
 
     for gpus in 2..=6 {
-        server
-            .update(Object::new("job-a", gpus))
-            .expect("unconditional write");
+        server.update(Object::new("job-a", gpus))?;
+
         if gpus == 2 {
             sleep_ms(5); // the controller starts on the first edit
         }
@@ -85,18 +83,24 @@ fn main() {
 
     log!("--- the watch connection drops");
     server.drop_watches();
+
     sleep_ms(50);
 
     log!("--- partition: job-b is deleted and the history compacted meanwhile");
     server.partition();
     server.delete("job-b");
     server.compact();
+
     sleep_ms(30);
+
     server.heal();
+
     sleep_ms(150);
 
     let (list, version) = server.list();
     let objects: Vec<String> = list.iter().map(ToString::to_string).collect();
     log!("final state at version {version}: [{}]", objects.join(" "));
+
+    Ok(())
 }
 // ANCHOR_END: main

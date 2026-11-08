@@ -23,6 +23,7 @@ art:
 ## Every diagram, drawn by tools/draw_figures.py to src/figures/*.svg
 figures:
 	$(PYTHON) tools/draw_figures.py
+	$(PYTHON) tools/draw_ch01.py
 
 ## Every animation (GIF, MP4, and step list), then the <video> markup in the chapters
 animations:
