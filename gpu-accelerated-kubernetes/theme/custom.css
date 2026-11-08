@@ -231,20 +231,29 @@ p.listing a::before {
     color: var(--muted);
 }
 
-/* Chapter-opener plates and the cover, drawn by tools/art.py. */
+/* Chapter-opener plates and the cover, drawn by tools/art.py. On wide screens a
+   plate extends past the text column. */
 img.plate {
     display: block;
     width: 100%;
-    border-radius: 6px;
-    margin: 0.4em 0 1.2em;
-    box-shadow: 0 1px 4px rgba(0, 0, 0, 0.18);
+    border-radius: 10px;
+    margin: 0.2em 0 1.6em;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.35);
+}
+
+@media (min-width: 1180px) {
+    img.plate {
+        width: calc(100% + 240px);
+        max-width: none;
+        margin-left: -120px;
+    }
 }
 
 img.cover {
     display: block;
     width: 100%;
-    max-width: 560px;
+    max-width: 640px;
     margin: 1em auto;
-    border-radius: 6px;
-    box-shadow: 0 6px 24px rgba(0, 0, 0, 0.28);
+    border-radius: 8px;
+    box-shadow: 0 14px 40px rgba(0, 0, 0, 0.4);
 }
