@@ -28,8 +28,8 @@
         <link rel="stylesheet" id="mdbook-ayu-highlight-css" href="ayu-highlight-3fdfc3ac.css">
 
         <!-- Custom theme stylesheets -->
-        <link rel="stylesheet" href="theme/custom-84de3dd1.css">
-        <link rel="stylesheet" href="theme/deep-ocean-18294553.css">
+        <link rel="stylesheet" href="theme/custom-1b086cbe.css">
+        <link rel="stylesheet" href="theme/deep-ocean-37d0e942.css">
         <link rel="stylesheet" href="theme/formal-f616fcec.css">
         <link rel="stylesheet" href="theme/layout-407df753.css">
 
@@ -39,10 +39,10 @@
             const path_to_root = "";
             const default_light_theme = "light";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "searchindex-b99a260b.js";
+            window.path_to_searchindex_js = "searchindex-459beae3.js";
         </script>
         <!-- Start loading toc.js asap -->
-        <script src="toc-f31bf49e.js"></script>
+        <script src="toc-42e4f11f.js"></script>
     </head>
     <body>
     <div id="mdbook-help-container">
@@ -184,7 +184,8 @@
 
                 <div id="mdbook-content" class="content">
                     <main>
-                        <h1 id="10-a-content-addressed-artifact-store"><a class="header" href="#10-a-content-addressed-artifact-store">10. A content-addressed artifact store</a></h1>
+                        <img class="plate" src="art/ch10.svg" alt="Hash, a magpie, holds a shiny 8K chunk. An arrow labelled sha256 leads from the chunk to the drawer of a cabinet whose label, a6a98d, matches the chunk&#39;s digest.">
+<h1 id="10-a-content-addressed-artifact-store"><a class="header" href="#10-a-content-addressed-artifact-store">10. A content-addressed artifact store</a></h1>
 <p>Before a job can run on a machine, the machine needs two large things: the container
 image with the job’s programs, and usually a model’s weights. A Thor or a Spark has room
 for a model of a hundred gigabytes, and a training run produces a new version of such a
@@ -333,6 +334,8 @@ directory layout like the one containerd showed us.</p>
 <p><code>Put</code> computes the digest, and stores the bytes only if that digest is not already a
 key. <code>Get</code> does more than a lookup: it hashes the bytes again and compares the result
 with the name it was asked for. Every read is therefore a check of the data.</p>
+<div class="code-tabs">
+<div class="code-tab" data-lang="Go">
 <p class="listing"><b>Listing 10.1</b> Digests, the store, and verified reads, in Go. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/go/cas/main.go">code/go/cas/main.go</a></p>
 
 <pre><code class="language-go">// Digest names a blob: "sha256:" followed by the hash of its bytes in hex.
@@ -393,6 +396,9 @@ func (s *Store) Get(d Digest) ([]byte, error) {
 	return data, nil
 }
 </code></pre>
+</div>
+
+<div class="code-tab" data-lang="Rust">
 <p class="listing"><b>Listing 10.2</b> Digests, the store, and verified reads, in Rust. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/rust/cas/src/main.rs">code/rust/cas/src/main.rs</a></p>
 
 <pre><code class="language-rust">/// Names a blob: "sha256:" followed by the hash of its bytes in hex.
@@ -475,6 +481,10 @@ impl Store {
         Ok(data)
     }
 }</code></pre>
+</div>
+
+</div>
+
 <p>The Go standard library includes SHA-256 in <code>crypto/sha256</code>. Rust’s standard library has
 no hash functions of this kind, and the Rust version uses the <code>sha2</code> crate. The two
 programs print the same digests, which is itself a check: both computed the same
@@ -484,6 +494,8 @@ function over the same bytes.</p>
 writes one line of the manifest for it. It counts how many chunks <code>Put</code> reported as new,
 which is the amount of data a push to a remote registry would have to send. The
 manifest is then stored like any other blob, and the tag is pointed at it.</p>
+<div class="code-tabs">
+<div class="code-tab" data-lang="Go">
 <p class="listing"><b>Listing 10.3</b> Chunking an artifact and writing its manifest, in Go. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/go/cas/main.go">code/go/cas/main.go</a></p>
 
 <pre><code class="language-go">// chunkSize is the size of the pieces an artifact is cut into.
@@ -531,6 +543,9 @@ func (s *Store) chunksOf(manifest Digest) ([]Digest, error) {
 	return out, nil
 }
 </code></pre>
+</div>
+
+<div class="code-tab" data-lang="Rust">
 <p class="listing"><b>Listing 10.4</b> Chunking an artifact and writing its manifest, in Rust. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/rust/cas/src/main.rs">code/rust/cas/src/main.rs</a></p>
 
 <pre><code class="language-rust">impl Store {
@@ -565,6 +580,10 @@ func (s *Store) chunksOf(manifest Digest) ([]Digest, error) {
             .collect())
     }
 }</code></pre>
+</div>
+
+</div>
+
 <p>Our chunks are 8 KiB so that the example stays small. Real stores use chunks of a few
 megabytes: large enough that the list of digests stays short, small enough that a
 change touches few of them.</p>
@@ -573,6 +592,8 @@ change touches few of them.</p>
 and for each chunk it lists, fetches the chunk only if the local store has no blob of
 that name. <code>Read</code> reassembles the artifact from local chunks, and since it goes through
 <code>Get</code>, a damaged chunk stops the read with an error that says which chunk it was.</p>
+<div class="code-tabs">
+<div class="code-tab" data-lang="Go">
 <p class="listing"><b>Listing 10.5</b> Fetching what is missing, and reading with verification, in Go. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/go/cas/main.go">code/go/cas/main.go</a></p>
 
 <pre><code class="language-go">// Pull copies a tagged artifact from a remote store into this one, fetching
@@ -632,6 +653,9 @@ func (s *Store) Read(tag string) ([]byte, error) {
 	return artifact, nil
 }
 </code></pre>
+</div>
+
+<div class="code-tab" data-lang="Rust">
 <p class="listing"><b>Listing 10.6</b> Fetching what is missing, and reading with verification, in Rust. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/rust/cas/src/main.rs">code/rust/cas/src/main.rs</a></p>
 
 <pre><code class="language-rust">impl Store {
@@ -672,6 +696,10 @@ func (s *Store) Read(tag string) ([]byte, error) {
         Ok(artifact)
     }
 }</code></pre>
+</div>
+
+</div>
+
 <h3 id="reclaiming-space"><a class="header" href="#reclaiming-space">Reclaiming space</a></h3>
 <p>A content-addressed store grows with every push, and blobs cannot be deleted one
 artifact at a time, because a chunk may be listed by several manifests. The store
@@ -679,6 +707,8 @@ removes blobs by <em>garbage collection</em> in two phases. The <em>mark</em> ph
 tags, which are the only names people use, and notes every manifest they point at and
 every chunk those manifests list. The <em>sweep</em> phase removes every blob that was not
 noted.</p>
+<div class="code-tabs">
+<div class="code-tab" data-lang="Go">
 <p class="listing"><b>Listing 10.7</b> Mark from the tags, then sweep, in Go. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/go/cas/main.go">code/go/cas/main.go</a></p>
 
 <pre><code class="language-go">// Collect removes every blob that no tag leads to. It first marks the
@@ -707,6 +737,9 @@ func (s *Store) Collect() (removed, bytes int) {
 	return removed, bytes
 }
 </code></pre>
+</div>
+
+<div class="code-tab" data-lang="Rust">
 <p class="listing"><b>Listing 10.8</b> Mark from the tags, then sweep, in Rust. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/rust/cas/src/main.rs">code/rust/cas/src/main.rs</a></p>
 
 <pre><code class="language-rust">impl Store {
@@ -728,9 +761,15 @@ func (s *Store) Collect() (removed, bytes int) {
         (before - after, bytes_before - bytes_after)
     }
 }</code></pre>
+</div>
+
+</div>
+
 <h3 id="the-run"><a class="header" href="#the-run">The run</a></h3>
 <p>The model’s weights are 64 KiB from a fixed pseudo-random sequence, which stand in for
 gigabytes. Version 2 keeps the first 48 KiB and replaces the last 16.</p>
+<div class="code-tabs">
+<div class="code-tab" data-lang="Go">
 <p class="listing"><b>Listing 10.9</b> Two versions, a pull, a damaged chunk, and a collection, in Go. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/go/cas/main.go">code/go/cas/main.go</a></p>
 
 <pre><code class="language-go">func main() {
@@ -779,6 +818,9 @@ gigabytes. Version 2 keeps the first 48 KiB and replaces the last 16.</p>
 	fmt.Printf("  collected %d blobs, %d bytes; %d blobs and %d bytes remain\n", removed, n, blobs, bytes)
 }
 </code></pre>
+</div>
+
+<div class="code-tab" data-lang="Rust">
 <p class="listing"><b>Listing 10.10</b> Two versions, a pull, a damaged chunk, and a collection, in Rust. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/rust/cas/src/main.rs">code/rust/cas/src/main.rs</a></p>
 
 <pre><code class="language-rust">fn main() -&gt; Result&lt;(), StoreError&gt; {
@@ -837,6 +879,10 @@ gigabytes. Version 2 keeps the first 48 KiB and replaces the last 16.</p>
 
     Ok(())
 }</code></pre>
+</div>
+
+</div>
+
 <pre><code class="language-console">$ go run ./cas
 push llm:v1: 8 chunks, 8 new; manifest sha256:eea2b9042521
 push llm:v2: 8 chunks, 2 new; manifest sha256:7df8dd2bef7e
@@ -894,6 +940,8 @@ tag, which is the only thing that is overwritten. And a machine that returns fro
 reimage, the last rung of chapter 4’s ladder, refills its local store by pulling, and
 the verification on every chunk doubles as a test of its new disk.</p>
 <h2 id="the-complete-program"><a class="header" href="#the-complete-program">The complete program</a></h2>
+<div class="code-tabs">
+<div class="code-tab" data-lang="Go">
 <p class="listing"><b>Listing 10.11</b> The complete program in Go. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/go/cas/main.go">code/go/cas/main.go</a></p>
 
 <pre><code class="language-go">// Command cas builds a small content-addressed store for model artifacts and
@@ -1177,6 +1225,9 @@ func main() {
 	fmt.Printf("  collected %d blobs, %d bytes; %d blobs and %d bytes remain\n", removed, n, blobs, bytes)
 }
 </code></pre>
+</div>
+
+<div class="code-tab" data-lang="Rust">
 <p class="listing"><b>Listing 10.12</b> The complete program in Rust. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/rust/cas/src/main.rs">code/rust/cas/src/main.rs</a></p>
 
 <pre><code class="language-rust">//! Builds a small content-addressed store for model artifacts and runs it
@@ -1450,6 +1501,10 @@ fn main() -&gt; Result&lt;(), StoreError&gt; {
 
     Ok(())
 }</code></pre>
+</div>
+
+</div>
+
 <div class="summary">
 <h2 id="summary"><a class="header" href="#summary">Summary</a></h2>
 <ul>
@@ -1534,7 +1589,7 @@ returns.</li>
         <script src="theme/figures-f9e9be6d.js"></script>
         <script src="theme/anim-4192821e.js"></script>
         <script src="theme/code-67e9caaf.js"></script>
-        <script src="theme/tabs-c73f18f8.js"></script>
+        <script src="theme/tabs-ef9f11bc.js"></script>
 
 
 

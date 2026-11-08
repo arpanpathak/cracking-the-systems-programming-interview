@@ -28,8 +28,8 @@
         <link rel="stylesheet" id="mdbook-ayu-highlight-css" href="ayu-highlight-3fdfc3ac.css">
 
         <!-- Custom theme stylesheets -->
-        <link rel="stylesheet" href="theme/custom-84de3dd1.css">
-        <link rel="stylesheet" href="theme/deep-ocean-18294553.css">
+        <link rel="stylesheet" href="theme/custom-1b086cbe.css">
+        <link rel="stylesheet" href="theme/deep-ocean-37d0e942.css">
         <link rel="stylesheet" href="theme/formal-f616fcec.css">
         <link rel="stylesheet" href="theme/layout-407df753.css">
 
@@ -39,10 +39,10 @@
             const path_to_root = "";
             const default_light_theme = "light";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "searchindex-b99a260b.js";
+            window.path_to_searchindex_js = "searchindex-459beae3.js";
         </script>
         <!-- Start loading toc.js asap -->
-        <script src="toc-f31bf49e.js"></script>
+        <script src="toc-42e4f11f.js"></script>
     </head>
     <body>
     <div id="mdbook-help-container">
@@ -184,7 +184,8 @@
 
                 <div id="mdbook-content" class="content">
                     <main>
-                        <h1 id="8-placing-jobs-on-gpus"><a class="header" href="#8-placing-jobs-on-gpus">8. Placing jobs on GPUs</a></h1>
+                        <img class="plate" src="art/ch08.svg" alt="Flock, a sheepdog, herds 5 sheep numbered 1 to 5 into 1 pen labelled shelf: 5 Thors, following an arrow through the open gate. A second pen labelled desk: 2 Sparks holds 2 sheep.">
+<h1 id="8-placing-jobs-on-gpus"><a class="header" href="#8-placing-jobs-on-gpus">8. Placing jobs on GPUs</a></h1>
 <p>Chapter 7 gave us two facts about a training job that spans several machines. It makes
 progress only when all of its workers are running, and its speed is set by the slowest
 network link among them. In this chapter, we will see what those facts ask of the
@@ -309,6 +310,8 @@ makes good choices for the jobs it has seen and cannot know what will arrive nex
 <p>Each machine has one GPU, so a node is a name, a domain, and the job that holds its GPU.
 The machines are listed in name order, which is the order in which a listing of Node
 objects from the API server arrives.</p>
+<div class="code-tabs">
+<div class="code-tab" data-lang="Go">
 <p class="listing"><b>Listing 8.1</b> Nodes, links, and jobs, in Go. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/go/gangsched/main.go">code/go/gangsched/main.go</a></p>
 
 <pre><code class="language-go">// Node is one machine with one GPU.
@@ -355,6 +358,9 @@ type Job struct {
 	Workers int
 }
 </code></pre>
+</div>
+
+<div class="code-tab" data-lang="Rust">
 <p class="listing"><b>Listing 8.2</b> Nodes, links, and jobs, in Rust. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/rust/gangsched/src/main.rs">code/rust/gangsched/src/main.rs</a></p>
 
 <pre><code class="language-rust">/// One machine with one GPU.
@@ -439,12 +445,18 @@ struct Job {
     name: &amp;'static str,
     workers: usize,
 }</code></pre>
+</div>
+
+</div>
+
 <p>The Go version names a domain with a string and looks its link up in a map. The Rust
 version makes the domain an <code>enum</code> and the lookup a <code>match</code>, so a domain with no link is
 a compile error.</p>
 <h3 id="one-pod-at-a-time"><a class="header" href="#one-pod-at-a-time">One pod at a time</a></h3>
 <p><code>podAtATime</code> plays the scheduler without gangs. It goes round the jobs, giving each one
 free GPU per turn, until a whole round passes in which nobody could be given anything.</p>
+<div class="code-tabs">
+<div class="code-tab" data-lang="Go">
 <p class="listing"><b>Listing 8.3</b> Handing out GPUs one pod at a time, in Go. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/go/gangsched/main.go">code/go/gangsched/main.go</a></p>
 
 <pre><code class="language-go">// podAtATime gives each job one GPU in turn until none are left, the way a
@@ -480,6 +492,9 @@ func podAtATime(fleet []*Node, jobs []Job) {
 	fmt.Printf("  %d of %d GPUs are held and %d jobs are running\n", len(fleet)-len(free(fleet)), len(fleet), running)
 }
 </code></pre>
+</div>
+
+<div class="code-tab" data-lang="Rust">
 <p class="listing"><b>Listing 8.4</b> Handing out GPUs one pod at a time, in Rust. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/rust/gangsched/src/main.rs">code/rust/gangsched/src/main.rs</a></p>
 
 <pre><code class="language-rust">/// Gives each job one GPU in turn until none are left, the way a scheduler
@@ -529,6 +544,10 @@ fn pod_at_a_time(mut fleet: Vec&lt;Node&gt;, jobs: &amp;[Job]) {
         fleet.len()
     );
 }</code></pre>
+</div>
+
+</div>
+
 <h3 id="two-ways-to-choose-machines"><a class="header" href="#two-ways-to-choose-machines">Two ways to choose machines</a></h3>
 <p>A <em>placer</em> is a function that takes the free machines and a number of workers and
 returns the machines to use, or nothing. Making it a function lets <code>admit</code> work with
@@ -539,6 +558,8 @@ has thought about placement.</p>
 takes the smallest of those. When no single domain can hold the job, it falls back to
 <code>firstFree</code>, and the job runs across domains at the speed of the house network. A real
 scheduler would let the job’s owner choose between that and waiting.</p>
+<div class="code-tabs">
+<div class="code-tab" data-lang="Go">
 <p class="listing"><b>Listing 8.5</b> The two placers, in Go. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/go/gangsched/main.go">code/go/gangsched/main.go</a></p>
 
 <pre><code class="language-go">// A placer chooses machines for a job from the free ones, or returns nil when
@@ -587,6 +608,9 @@ func byTopology(open []*Node, workers int) []*Node {
 	return byDomain[best][:workers]
 }
 </code></pre>
+</div>
+
+<div class="code-tab" data-lang="Rust">
 <p class="listing"><b>Listing 8.6</b> The two placers, in Rust. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/rust/gangsched/src/main.rs">code/rust/gangsched/src/main.rs</a></p>
 
 <pre><code class="language-rust">/// Chooses machines for a job from the free ones, or returns `None` when it
@@ -617,10 +641,16 @@ fn by_topology(fleet: &amp;[Node], open: &amp;[usize], workers: usize) -&gt; Opt
         .map(|members| members[..workers].to_vec())
         .or_else(|| first_free(fleet, open, workers))
 }</code></pre>
+</div>
+
+</div>
+
 <h3 id="what-a-placement-costs"><a class="header" href="#what-a-placement-costs">What a placement costs</a></h3>
 <p>To compare placements we need a number. <code>slowest</code> finds the link a set of machines is
 limited by: their domain’s link if they share one, the house network if they do not.
 <code>exchangeSeconds</code> applies chapter 7’s count to it.</p>
+<div class="code-tabs">
+<div class="code-tab" data-lang="Go">
 <p class="listing"><b>Listing 8.7</b> The slowest link and the time of one all-reduce, in Go. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/go/gangsched/main.go">code/go/gangsched/main.go</a></p>
 
 <pre><code class="language-go">// gradientGB is the size of the gradient every worker contributes per step.
@@ -646,6 +676,9 @@ func exchangeSeconds(nodes []*Node) float64 {
 	return 2 * (n - 1) / n * gradientGB / slowest(nodes).GBps
 }
 </code></pre>
+</div>
+
+<div class="code-tab" data-lang="Rust">
 <p class="listing"><b>Listing 8.8</b> The slowest link and the time of one all-reduce, in Rust. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/rust/gangsched/src/main.rs">code/rust/gangsched/src/main.rs</a></p>
 
 <pre><code class="language-rust">/// The size of the gradient every worker contributes per step, in gigabytes.
@@ -669,10 +702,16 @@ fn exchange_seconds(fleet: &amp;[Node], nodes: &amp;[usize]) -&gt; f64 {
 
     2.0 * (n - 1.0) / n * GRADIENT_GB / slowest(fleet, nodes).gbps
 }</code></pre>
+</div>
+
+</div>
+
 <h3 id="admitting-a-whole-job"><a class="header" href="#admitting-a-whole-job">Admitting a whole job</a></h3>
 <p><code>admit</code> is gang scheduling in a dozen lines. It asks the placer for machines for every
 worker. If the placer returns nothing, the job waits and the fleet is untouched. Only
 when every worker has a machine does <code>admit</code> mark any of them as taken.</p>
+<div class="code-tabs">
+<div class="code-tab" data-lang="Go">
 <p class="listing"><b>Listing 8.9</b> All of a job's workers, or none, in Go. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/go/gangsched/main.go">code/go/gangsched/main.go</a></p>
 
 <pre><code class="language-go">// admit starts a job only when every one of its workers has a machine. It
@@ -712,6 +751,9 @@ func release(fleet []*Node, job string) {
 	fmt.Printf("  %-8s finishes\n", job)
 }
 </code></pre>
+</div>
+
+<div class="code-tab" data-lang="Rust">
 <p class="listing"><b>Listing 8.10</b> All of a job's workers, or none, in Rust. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/rust/gangsched/src/main.rs">code/rust/gangsched/src/main.rs</a></p>
 
 <pre><code class="language-rust">/// Starts a job only when every one of its workers has a machine. It reports
@@ -756,7 +798,13 @@ fn release(fleet: &amp;mut [Node], job: &amp;str) {
 
     println!("  {job:&lt;8} finishes");
 }</code></pre>
+</div>
+
+</div>
+
 <h3 id="the-run"><a class="header" href="#the-run">The run</a></h3>
+<div class="code-tabs">
+<div class="code-tab" data-lang="Go">
 <p class="listing"><b>Listing 8.11</b> Four experiments on the same fleet, in Go. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/go/gangsched/main.go">code/go/gangsched/main.go</a></p>
 
 <pre><code class="language-go">func main() {
@@ -788,6 +836,9 @@ fn release(fleet: &amp;mut [Node], job: &amp;str) {
 	}
 }
 </code></pre>
+</div>
+
+<div class="code-tab" data-lang="Rust">
 <p class="listing"><b>Listing 8.12</b> Four experiments on the same fleet, in Rust. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/rust/gangsched/src/main.rs">code/rust/gangsched/src/main.rs</a></p>
 
 <pre><code class="language-rust">fn main() {
@@ -840,6 +891,10 @@ fn release(fleet: &amp;mut [Node], job: &amp;str) {
         admit(&amp;mut fleet, job, by_topology);
     }
 }</code></pre>
+</div>
+
+</div>
+
 <pre><code class="language-console">$ go run ./gangsched
 one pod at a time, two jobs of five workers:
   train-a  holds 4 of 5 GPUs: orin-nx-1 spark-2 thor-2 thor-4
@@ -925,6 +980,8 @@ should count a draining machine against every gang that needs it.</p>
 </div>
 
 <h2 id="the-complete-program"><a class="header" href="#the-complete-program">The complete program</a></h2>
+<div class="code-tabs">
+<div class="code-tab" data-lang="Go">
 <p class="listing"><b>Listing 8.13</b> The complete program in Go. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/go/gangsched/main.go">code/go/gangsched/main.go</a></p>
 
 <pre><code class="language-go">// Command gangsched models two decisions a scheduler makes for a training job
@@ -1187,6 +1244,9 @@ func main() {
 	}
 }
 </code></pre>
+</div>
+
+<div class="code-tab" data-lang="Rust">
 <p class="listing"><b>Listing 8.14</b> The complete program in Rust. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/rust/gangsched/src/main.rs">code/rust/gangsched/src/main.rs</a></p>
 
 <pre><code class="language-rust">//! Models two decisions a scheduler makes for a training job that needs
@@ -1495,6 +1555,10 @@ fn main() {
         admit(&amp;mut fleet, job, by_topology);
     }
 }</code></pre>
+</div>
+
+</div>
+
 <div class="summary">
 <h2 id="summary"><a class="header" href="#summary">Summary</a></h2>
 <ul>
@@ -1581,7 +1645,7 @@ from binding part of a gang, and node labels describe the topology.</li>
         <script src="theme/figures-f9e9be6d.js"></script>
         <script src="theme/anim-4192821e.js"></script>
         <script src="theme/code-67e9caaf.js"></script>
-        <script src="theme/tabs-c73f18f8.js"></script>
+        <script src="theme/tabs-ef9f11bc.js"></script>
 
 
 

@@ -28,8 +28,8 @@
         <link rel="stylesheet" id="mdbook-ayu-highlight-css" href="ayu-highlight-3fdfc3ac.css">
 
         <!-- Custom theme stylesheets -->
-        <link rel="stylesheet" href="theme/custom-84de3dd1.css">
-        <link rel="stylesheet" href="theme/deep-ocean-18294553.css">
+        <link rel="stylesheet" href="theme/custom-1b086cbe.css">
+        <link rel="stylesheet" href="theme/deep-ocean-37d0e942.css">
         <link rel="stylesheet" href="theme/formal-f616fcec.css">
         <link rel="stylesheet" href="theme/layout-407df753.css">
 
@@ -39,10 +39,10 @@
             const path_to_root = "";
             const default_light_theme = "light";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "searchindex-b99a260b.js";
+            window.path_to_searchindex_js = "searchindex-459beae3.js";
         </script>
         <!-- Start loading toc.js asap -->
-        <script src="toc-f31bf49e.js"></script>
+        <script src="toc-42e4f11f.js"></script>
     </head>
     <body>
     <div id="mdbook-help-container">
@@ -184,7 +184,8 @@
 
                 <div id="mdbook-content" class="content">
                     <main>
-                        <h1 id="11-a-gpu-job-controller-on-a-real-cluster"><a class="header" href="#11-a-gpu-job-controller-on-a-real-cluster">1.1 A GPU job controller on a real cluster</a></h1>
+                        <img class="plate" src="art/ch01-1.svg" alt="Rivet, a beaver in a hard hat, holds a glowing GPU chip in its paw and is about to set it into an open pea pod. The pod already holds 2 peas shaped like containers, and an arrow labelled apply points from the chip to the empty place. A tag on the pod reads GpuJob train.">
+<h1 id="11-a-gpu-job-controller-on-a-real-cluster"><a class="header" href="#11-a-gpu-job-controller-on-a-real-cluster">1.1 A GPU job controller on a real cluster</a></h1>
 <p>In chapter 1, we built a server, a cache, a reflector, a work queue, and a controller, and
 ran all of them inside one process. In this chapter, we will take that machinery to a real
 Kubernetes cluster and write a controller that runs GPU jobs on a real GPU. We will first
@@ -823,6 +824,8 @@ the chapter.</p>
 </div>
 
 <h3 id="the-pod-for-a-job"><a class="header" href="#the-pod-for-a-job">The pod for a job</a></h3>
+<div class="code-tabs">
+<div class="code-tab" data-lang="Go">
 <p class="listing"><b>Listing 1.38</b> The pod a job should have, in Go. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/go/gpujob/cmd/controller/main.go">code/go/gpujob/cmd/controller/main.go</a></p>
 
 <pre><code class="language-go">// manager is the field manager name under which the controller writes with
@@ -874,6 +877,9 @@ func podGPUs(pod *corev1.Pod) (int32, bool) {
 	return int32(quantity.Value()), ok
 }
 </code></pre>
+</div>
+
+<div class="code-tab" data-lang="Rust">
 <p class="listing"><b>Listing 1.39</b> The pod a job should have, in Rust. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/rust/gpujob/src/bin/controller.rs">code/rust/gpujob/src/bin/controller.rs</a></p>
 
 <pre><code class="language-rust">/// The field manager name under which the controller writes with server-side apply.
@@ -937,6 +943,10 @@ fn pod_gpus(pod: &amp;Pod) -&gt; Option&lt;u32&gt; {
 
     limits.get(GPU)?.0.parse().ok()
 }</code></pre>
+</div>
+
+</div>
+
 <p><code>desiredPod</code> (<code>desired_pod</code> in Rust) builds the pod that a job should have. The
 interesting part is how the pod asks for a GPU. It puts <code>nvidia.com/gpu</code> in its resource
 limits, just as it would put CPU or memory there. Kubernetes calls a resource like this an
@@ -965,6 +975,8 @@ returns the count and a flag saying whether the pod had a GPU limit at all. In R
 returns an <code>Option&lt;u32&gt;</code>, and each <code>?</code> bails out with <code>None</code> as soon as any field along the
 way is missing.</p>
 <h3 id="reconciling-a-job"><a class="header" href="#reconciling-a-job">Reconciling a job</a></h3>
+<div class="code-tabs">
+<div class="code-tab" data-lang="Go">
 <p class="listing"><b>Listing 1.40</b> Reconciling one job, in Go. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/go/gpujob/cmd/controller/main.go">code/go/gpujob/cmd/controller/main.go</a></p>
 
 <pre><code class="language-go">// GpuJobReconciler makes the cluster match each GpuJob.
@@ -1028,6 +1040,9 @@ func (r *GpuJobReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctr
 	return ctrl.Result{}, nil
 }
 </code></pre>
+</div>
+
+<div class="code-tab" data-lang="Rust">
 <p class="listing"><b>Listing 1.41</b> Reconciling one job, in Rust. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/rust/gpujob/src/bin/controller.rs">code/rust/gpujob/src/bin/controller.rs</a></p>
 
 <pre><code class="language-rust">/// Makes the cluster match one job: ensures its pod exists with the requested
@@ -1079,6 +1094,10 @@ fn error_policy(job: Arc&lt;GpuJob&gt;, error: &amp;Error, _ctx: Arc&lt;Context&
 
     Action::requeue(Duration::from_secs(5))
 }</code></pre>
+</div>
+
+</div>
+
 <p>Our reconcile function receives a job and brings the cluster into line with it in three
 steps.</p>
 <p>The first step covers a change that cannot be made in place. Kubernetes fixes a pod’s
@@ -1120,6 +1139,8 @@ job back in the queue with the growing delay we described at the end of chapter 
 Rust version returns the error to kube-rs, which asks our <code>error_policy</code> function what to
 do; ours logs the error and tries again in five seconds.</p>
 <h3 id="starting-the-controller"><a class="header" href="#starting-the-controller">Starting the controller</a></h3>
+<div class="code-tabs">
+<div class="code-tab" data-lang="Go">
 <p class="listing"><b>Listing 1.42</b> Starting the controller, in Go. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/go/gpujob/cmd/controller/main.go">code/go/gpujob/cmd/controller/main.go</a></p>
 
 <pre><code class="language-go">// main builds a manager, registers the reconciler, and runs until Ctrl-C.
@@ -1164,6 +1185,9 @@ func main() {
 	}
 }
 </code></pre>
+</div>
+
+<div class="code-tab" data-lang="Rust">
 <p class="listing"><b>Listing 1.43</b> Starting the controller, in Rust. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/rust/gpujob/src/bin/controller.rs">code/rust/gpujob/src/bin/controller.rs</a></p>
 
 <pre><code class="language-rust">/// Starts the controller and runs it until Ctrl-C.
@@ -1190,6 +1214,10 @@ async fn main() -&gt; Result&lt;(), kube::Error&gt; {
         .await;
     Ok(())
 }</code></pre>
+</div>
+
+</div>
+
 <p>In Go, everything a controller process shares lives in a <em>manager</em>: the connection to the
 cluster, the scheme, the informer caches, and the client that reads from them.
 <code>ctrl.NewControllerManagedBy(mgr)</code> builds our controller inside the manager, and each
@@ -1425,6 +1453,8 @@ Thanks to the message we copy from the pod’s <code>PodScheduled</code> conditi
 tells the user exactly why, and <code>kubectl get gpujobs</code> shows the job as Pending until its
 request is lowered or a machine with two free GPUs joins the cluster.</p>
 <h2 id="the-complete-programs"><a class="header" href="#the-complete-programs">The complete programs</a></h2>
+<div class="code-tabs">
+<div class="code-tab" data-lang="Go">
 <p class="listing"><b>Listing 1.47</b> The API types, complete, in Go. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/go/gpujob/api/v1/types.go">code/go/gpujob/api/v1/types.go</a></p>
 
 <pre><code class="language-go">package v1
@@ -1538,6 +1568,9 @@ func StatusFromPod(pod *corev1.Pod, generation int64) GpuJobStatus {
 	return status
 }
 </code></pre>
+</div>
+
+<div class="code-tab" data-lang="Rust">
 <p class="listing"><b>Listing 1.48</b> The API types, complete, in Rust. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/rust/gpujob/src/lib.rs">code/rust/gpujob/src/lib.rs</a></p>
 
 <pre><code class="language-rust">//! The `GpuJob` custom resource: a request to run one container with a number
@@ -1634,6 +1667,12 @@ impl GpuJobStatus {
         }
     }
 }</code></pre>
+</div>
+
+</div>
+
+<div class="code-tabs">
+<div class="code-tab" data-lang="Go">
 <p class="listing"><b>Listing 1.49</b> The event printer, complete, in Go. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/go/gpujob/cmd/watch-jobs/main.go">code/go/gpujob/cmd/watch-jobs/main.go</a></p>
 
 <pre><code class="language-go">// Command watch-jobs prints the events that an informer delivers for GpuJob
@@ -1920,6 +1959,9 @@ func main() {
 	}
 }
 </code></pre>
+</div>
+
+<div class="code-tab" data-lang="Rust">
 <p class="listing"><b>Listing 1.51</b> The controller, complete, in Rust. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/rust/gpujob/src/bin/controller.rs">code/rust/gpujob/src/bin/controller.rs</a></p>
 
 <pre><code class="language-rust">//! A controller for `GpuJob` objects. It runs each job as a pod that requests
@@ -2076,6 +2118,10 @@ async fn main() -&gt; Result&lt;(), kube::Error&gt; {
         .await;
     Ok(())
 }</code></pre>
+</div>
+
+</div>
+
 <p class="listing"><b>Listing 1.52</b> The two-client program, complete, in Go. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/go/gpujob/cmd/conflict/main.go">code/go/gpujob/cmd/conflict/main.go</a></p>
 
 <pre><code class="language-go">// Command conflict shows the API server refusing a write with an out-of-date
@@ -2213,7 +2259,7 @@ func run(ctx context.Context) error {
         <script src="theme/figures-f9e9be6d.js"></script>
         <script src="theme/anim-4192821e.js"></script>
         <script src="theme/code-67e9caaf.js"></script>
-        <script src="theme/tabs-c73f18f8.js"></script>
+        <script src="theme/tabs-ef9f11bc.js"></script>
 
 
 

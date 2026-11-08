@@ -28,8 +28,8 @@
         <link rel="stylesheet" id="mdbook-ayu-highlight-css" href="ayu-highlight-3fdfc3ac.css">
 
         <!-- Custom theme stylesheets -->
-        <link rel="stylesheet" href="theme/custom-84de3dd1.css">
-        <link rel="stylesheet" href="theme/deep-ocean-18294553.css">
+        <link rel="stylesheet" href="theme/custom-1b086cbe.css">
+        <link rel="stylesheet" href="theme/deep-ocean-37d0e942.css">
         <link rel="stylesheet" href="theme/formal-f616fcec.css">
         <link rel="stylesheet" href="theme/layout-407df753.css">
 
@@ -39,10 +39,10 @@
             const path_to_root = "";
             const default_light_theme = "light";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "searchindex-b99a260b.js";
+            window.path_to_searchindex_js = "searchindex-459beae3.js";
         </script>
         <!-- Start loading toc.js asap -->
-        <script src="toc-f31bf49e.js"></script>
+        <script src="toc-42e4f11f.js"></script>
     </head>
     <body>
     <div id="mdbook-help-container">
@@ -184,7 +184,8 @@
 
                 <div id="mdbook-content" class="content">
                     <main>
-                        <h1 id="4-a-control-plane-for-a-fleet-of-hosts"><a class="header" href="#4-a-control-plane-for-a-fleet-of-hosts">4. A control plane for a fleet of hosts</a></h1>
+                        <img class="plate" src="art/ch04.svg" alt="Sergeant Cone, a raccoon in a police cap, raises a paw to stop traffic and holds a whistle. A traffic light shows green for healthy, amber for cordoned and red for quarantined, with arrows between them. thor-4, a server with a red lamp, stands inside a ring of orange cones.">
+<h1 id="4-a-control-plane-for-a-fleet-of-hosts"><a class="header" href="#4-a-control-plane-for-a-fleet-of-hosts">4. A control plane for a fleet of hosts</a></h1>
 <p>In chapter 3, we learned how a control plane notices that a machine has gone silent. A
 silent machine is the simple case. More often a machine keeps sending heartbeats while
 something on it is going wrong: a GPU reports a memory error, a job crashes with a GPU
@@ -387,6 +388,8 @@ so a run takes a few milliseconds and prints the same log every time.</p>
 <p>A machine is a name, a model, and the name of the switch or cable it shares with its
 neighbours. The link name is what lets the program see that five reports came from one
 place.</p>
+<div class="code-tabs">
+<div class="code-tab" data-lang="Go">
 <p class="listing"><b>Listing 4.1</b> The machines, in Go. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/go/fleethealth/main.go">code/go/fleethealth/main.go</a></p>
 
 <pre><code class="language-go">// Node is one machine in the fleet.
@@ -411,6 +414,9 @@ var fleet = []Node{
 	{"orin-nx-1", "Jetson Orin NX", "bench"},
 }
 </code></pre>
+</div>
+
+<div class="code-tab" data-lang="Rust">
 <p class="listing"><b>Listing 4.2</b> The machines, in Rust. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/rust/fleethealth/src/main.rs">code/rust/fleethealth/src/main.rs</a></p>
 
 <pre><code class="language-rust">/// One machine in the fleet.
@@ -466,8 +472,14 @@ const FLEET: [Node; 8] = [
         link: "bench",
     },
 ];</code></pre>
+</div>
+
+</div>
+
 <p>A signal carries the second it arrived, the machine, the job that was using the GPU, and
 its class. Hardware signals and link flaps have no job.</p>
+<div class="code-tabs">
+<div class="code-tab" data-lang="Go">
 <p class="listing"><b>Listing 4.3</b> Signals and their classes, in Go. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/go/fleethealth/main.go">code/go/fleethealth/main.go</a></p>
 
 <pre><code class="language-go">// Kind is the class of a failure signal.
@@ -498,6 +510,9 @@ type Signal struct {
 	Kind Kind
 }
 </code></pre>
+</div>
+
+<div class="code-tab" data-lang="Rust">
 <p class="listing"><b>Listing 4.4</b> Signals and their classes, in Rust. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/rust/fleethealth/src/main.rs">code/rust/fleethealth/src/main.rs</a></p>
 
 <pre><code class="language-rust">/// The class of a failure signal.
@@ -535,10 +550,16 @@ struct Signal {
     /// The signal's class.
     kind: Kind,
 }</code></pre>
+</div>
+
+</div>
+
 <h3 id="the-states-and-the-ladder"><a class="header" href="#the-states-and-the-ladder">The states and the ladder</a></h3>
 <p>The states are declared in the order a failing machine passes through them, and both
 languages can compare them. That ordering does real work later: “every state from
 Draining on” becomes one comparison.</p>
+<div class="code-tabs">
+<div class="code-tab" data-lang="Go">
 <p class="listing"><b>Listing 4.5</b> The lifecycle states and the repair ladder, in Go. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/go/fleethealth/main.go">code/go/fleethealth/main.go</a></p>
 
 <pre><code class="language-go">// State is a machine's place in the repair lifecycle.
@@ -562,6 +583,9 @@ func (s State) String() string {
 // ladder lists the repair actions from the cheapest to the most thorough.
 var ladder = []string{"reset the GPU", "reboot", "reimage"}
 </code></pre>
+</div>
+
+<div class="code-tab" data-lang="Rust">
 <p class="listing"><b>Listing 4.6</b> The lifecycle states and the repair ladder, in Rust. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/rust/fleethealth/src/main.rs">code/rust/fleethealth/src/main.rs</a></p>
 
 <pre><code class="language-rust">/// A machine's place in the repair lifecycle, in the order a failing machine
@@ -591,6 +615,10 @@ impl fmt::Display for State {
 
 /// The repair actions, from the cheapest to the most thorough.
 const LADDER: [&amp;str; 3] = ["reset the GPU", "reboot", "reimage"];</code></pre>
+</div>
+
+</div>
+
 <h3 id="deciding-what-a-signal-blames"><a class="header" href="#deciding-what-a-signal-blames">Deciding what a signal blames</a></h3>
 <p><code>Observe</code> holds the counting rules. A hardware signal condemns its machine at once. An
 application fault is recorded twice, under the machine and under the job, and then both
@@ -598,6 +626,8 @@ counts are checked. Three machines for one job blames the job, and the program p
 that verdict once and leaves every machine in service. Three jobs on one machine condemns
 the machine. A link flap is stamped on its machine, and the program counts the machines
 on the same link whose latest flap lies within five seconds.</p>
+<div class="code-tabs">
+<div class="code-tab" data-lang="Go">
 <p class="listing"><b>Listing 4.7</b> Triage: which of a job, a machine, or a link a signal blames, in Go. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/go/fleethealth/main.go">code/go/fleethealth/main.go</a></p>
 
 <pre><code class="language-go">// Observe takes one signal and decides what it blames. A hardware signal
@@ -646,6 +676,9 @@ func (p *Plane) Observe(s Signal) {
 	}
 }
 </code></pre>
+</div>
+
+<div class="code-tab" data-lang="Rust">
 <p class="listing"><b>Listing 4.8</b> Triage: which of a job, a machine, or a link a signal blames, in Rust. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/rust/fleethealth/src/main.rs">code/rust/fleethealth/src/main.rs</a></p>
 
 <pre><code class="language-rust">impl Plane {
@@ -693,12 +726,18 @@ func (p *Plane) Observe(s Signal) {
         }
     }
 }</code></pre>
+</div>
+
+</div>
+
 <p>The Go version keeps each set as a map from a name to <code>true</code>. The Rust version uses
 <code>BTreeSet</code>, whose <code>insert</code> returns whether the value was new, so “blame this once” is the
 single expression <code>self.blamed.insert(s.job)</code>.</p>
 <h3 id="the-budget"><a class="header" href="#the-budget">The budget</a></h3>
 <p>The budget check is a count of the machines in the four states that take a machine away
 from the fleet. Cordoned is left out on purpose: a cordoned machine still runs its jobs.</p>
+<div class="code-tabs">
+<div class="code-tab" data-lang="Go">
 <p class="listing"><b>Listing 4.9</b> Counting the machines that are out of service, in Go. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/go/fleethealth/main.go">code/go/fleethealth/main.go</a></p>
 
 <pre><code class="language-go">// outOfService counts the machines that hold a slot of the disruption budget:
@@ -715,6 +754,9 @@ func (p *Plane) outOfService() int {
 	return n
 }
 </code></pre>
+</div>
+
+<div class="code-tab" data-lang="Rust">
 <p class="listing"><b>Listing 4.10</b> Counting the machines that are out of service, in Rust. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/rust/fleethealth/src/main.rs">code/rust/fleethealth/src/main.rs</a></p>
 
 <pre><code class="language-rust">impl Plane {
@@ -727,6 +769,10 @@ func (p *Plane) outOfService() int {
             .count()
     }
 }</code></pre>
+</div>
+
+</div>
+
 <h3 id="one-second-of-the-lifecycle"><a class="header" href="#one-second-of-the-lifecycle">One second of the lifecycle</a></h3>
 <p><code>Step</code> visits every machine and asks how long it has been in its state. A Cordoned
 machine starts to drain as soon as the budget has room, and reports once that it is
@@ -734,6 +780,8 @@ blocked when the budget has none. Each of the other states lasts a fixed number 
 seconds in the model: four for a job to write its checkpoint and leave, three for a
 repair action, three for the burn-in. The result of a burn-in comes from a table the run
 supplies, which says how many tests each machine fails before one passes.</p>
+<div class="code-tabs">
+<div class="code-tab" data-lang="Go">
 <p class="listing"><b>Listing 4.11</b> Advancing every machine by one second, in Go. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/go/fleethealth/main.go">code/go/fleethealth/main.go</a></p>
 
 <pre><code class="language-go">// Step advances every machine by one second. A Cordoned machine starts to
@@ -782,6 +830,9 @@ func (p *Plane) finishBurnIn(now int, r *record) {
 	p.move(now, r, Remediating, "burn-in failed; "+ladder[r.step])
 }
 </code></pre>
+</div>
+
+<div class="code-tab" data-lang="Rust">
 <p class="listing"><b>Listing 4.12</b> Advancing every machine by one second, in Rust. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/rust/fleethealth/src/main.rs">code/rust/fleethealth/src/main.rs</a></p>
 
 <pre><code class="language-rust">impl Plane {
@@ -846,6 +897,10 @@ func (p *Plane) finishBurnIn(now int, r *record) {
         self.transition(now, index, State::Remediating, &amp;why);
     }
 }</code></pre>
+</div>
+
+</div>
+
 <p><code>Step</code> reads the current state and acts on it, with no memory of which signal started the
 repair. This is the level-triggered style of chapter 1 applied to machines. If the
 process stopped and started again with the same records, the next call to <code>Step</code> would
@@ -854,6 +909,8 @@ continue every repair from where it was.</p>
 <p>The script holds eleven signals that exercise each rule: one job faulting on three Thors,
 a memory error on a Spark, a Thor whose GPU stops answering, a restart of the 25 GbE
 switch, and two machines failing in the same second.</p>
+<div class="code-tabs">
+<div class="code-tab" data-lang="Go">
 <p class="listing"><b>Listing 4.13</b> The scripted signals and the main loop, in Go. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/go/fleethealth/main.go">code/go/fleethealth/main.go</a></p>
 
 <pre><code class="language-go">// script is the run: the signals in the order they arrive.
@@ -896,6 +953,9 @@ func main() {
 	}
 }
 </code></pre>
+</div>
+
+<div class="code-tab" data-lang="Rust">
 <p class="listing"><b>Listing 4.14</b> The scripted signals and the main loop, in Rust. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/rust/fleethealth/src/main.rs">code/rust/fleethealth/src/main.rs</a></p>
 
 <pre><code class="language-rust">/// The run: the signals in the order they arrive.
@@ -992,6 +1052,10 @@ fn main() {
         println!("  {:&lt;10} {:&lt;16} {}", r.node.name, r.node.model, r.state);
     }
 }</code></pre>
+</div>
+
+</div>
+
 <p>Both versions print the same log:</p>
 <pre><code class="language-console">$ go run ./fleethealth
   14s  job finetune-7b faulted on 3 machines: the job is at fault, no machine is drained
@@ -1109,6 +1173,8 @@ and the refusal tells it that it has been replaced, so it can stop.</p>
 </div>
 
 <p>The store is a single checkpoint and one comparison.</p>
+<div class="code-tabs">
+<div class="code-tab" data-lang="Go">
 <p class="listing"><b>Listing 4.15</b> The checkpoint store and its epoch check, in Go. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/go/fencing/main.go">code/go/fencing/main.go</a></p>
 
 <pre><code class="language-go">// Checkpoint is what a worker saves: the training step it reached and the
@@ -1146,6 +1212,9 @@ func (s *Store) Write(c Checkpoint) error {
 	return nil
 }
 </code></pre>
+</div>
+
+<div class="code-tab" data-lang="Rust">
 <p class="listing"><b>Listing 4.16</b> The checkpoint store and its epoch check, in Rust. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/rust/fencing/src/main.rs">code/rust/fencing/src/main.rs</a></p>
 
 <pre><code class="language-rust">/// What a worker saves: the training step it reached and the epoch of the
@@ -1192,7 +1261,13 @@ impl Store {
         Ok(())
     }
 }</code></pre>
+</div>
+
+</div>
+
 <p>The control plane is a counter.</p>
+<div class="code-tabs">
+<div class="code-tab" data-lang="Go">
 <p class="listing"><b>Listing 4.17</b> Handing out epochs, in Go. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/go/fencing/main.go">code/go/fencing/main.go</a></p>
 
 <pre><code class="language-go">// ControlPlane hands out assignments of one job. Each assignment gets the
@@ -1209,6 +1284,9 @@ func (c *ControlPlane) Assign(host string) int {
 	return c.epoch
 }
 </code></pre>
+</div>
+
+<div class="code-tab" data-lang="Rust">
 <p class="listing"><b>Listing 4.18</b> Handing out epochs, in Rust. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/rust/fencing/src/main.rs">code/rust/fencing/src/main.rs</a></p>
 
 <pre><code class="language-rust">/// Hands out assignments of one job. Each assignment gets the next epoch, so a
@@ -1230,7 +1308,13 @@ impl ControlPlane {
         self.epoch
     }
 }</code></pre>
+</div>
+
+</div>
+
 <p>The run plays the same sequence against both kinds of store.</p>
+<div class="code-tabs">
+<div class="code-tab" data-lang="Go">
 <p class="listing"><b>Listing 4.19</b> The sequence of writes, in Go. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/go/fencing/main.go">code/go/fencing/main.go</a></p>
 
 <pre><code class="language-go">// save writes one checkpoint and prints what the store answered.
@@ -1267,6 +1351,9 @@ func main() {
 	run(&amp;Store{Fencing: true})
 }
 </code></pre>
+</div>
+
+<div class="code-tab" data-lang="Rust">
 <p class="listing"><b>Listing 4.20</b> The sequence of writes, in Rust. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/rust/fencing/src/main.rs">code/rust/fencing/src/main.rs</a></p>
 
 <pre><code class="language-rust">/// Writes one checkpoint and prints what the store answered.
@@ -1307,6 +1394,10 @@ fn main() {
         ..Store::default()
     });
 }</code></pre>
+</div>
+
+</div>
+
 <pre><code class="language-console">$ go run ./fencing
 a store that accepts every write:
   control plane: job assigned to thor-1 with epoch 1
@@ -1340,6 +1431,8 @@ object store that supports conditional writes, a database row with a version col
 file server that rejects clients holding an old token. The resource version check from
 chapter 1 is the same idea applied to Kubernetes objects.</p>
 <h2 id="the-complete-programs"><a class="header" href="#the-complete-programs">The complete programs</a></h2>
+<div class="code-tabs">
+<div class="code-tab" data-lang="Go">
 <p class="listing"><b>Listing 4.21</b> The complete program in Go. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/go/fleethealth/main.go">code/go/fleethealth/main.go</a></p>
 
 <pre><code class="language-go">// Command fleethealth models the part of a control plane that keeps a fleet of
@@ -1657,6 +1750,9 @@ func main() {
 	}
 }
 </code></pre>
+</div>
+
+<div class="code-tab" data-lang="Rust">
 <p class="listing"><b>Listing 4.22</b> The complete program in Rust. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/rust/fleethealth/src/main.rs">code/rust/fleethealth/src/main.rs</a></p>
 
 <pre><code class="language-rust">//! Models the part of a control plane that keeps a fleet of GPU machines
@@ -2106,6 +2202,12 @@ fn main() {
         println!("  {:&lt;10} {:&lt;16} {}", r.node.name, r.node.model, r.state);
     }
 }</code></pre>
+</div>
+
+</div>
+
+<div class="code-tabs">
+<div class="code-tab" data-lang="Go">
 <p class="listing"><b>Listing 4.23</b> The complete program in Go. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/go/fencing/main.go">code/go/fencing/main.go</a></p>
 
 <pre><code class="language-go">// Command fencing shows why a checkpoint store has to check who is writing.
@@ -2214,6 +2316,9 @@ func main() {
 	run(&amp;Store{Fencing: true})
 }
 </code></pre>
+</div>
+
+<div class="code-tab" data-lang="Rust">
 <p class="listing"><b>Listing 4.24</b> The complete program in Rust. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/rust/fencing/src/main.rs">code/rust/fencing/src/main.rs</a></p>
 
 <pre><code class="language-rust">//! Shows why a checkpoint store has to check who is writing.
@@ -2338,6 +2443,10 @@ fn main() {
         ..Store::default()
     });
 }</code></pre>
+</div>
+
+</div>
+
 <div class="summary">
 <h2 id="summary"><a class="header" href="#summary">Summary</a></h2>
 <ul>
@@ -2426,7 +2535,7 @@ replaced copy of a job from overwriting newer progress.</li>
         <script src="theme/figures-f9e9be6d.js"></script>
         <script src="theme/anim-4192821e.js"></script>
         <script src="theme/code-67e9caaf.js"></script>
-        <script src="theme/tabs-c73f18f8.js"></script>
+        <script src="theme/tabs-ef9f11bc.js"></script>
 
 
 

@@ -28,8 +28,8 @@
         <link rel="stylesheet" id="mdbook-ayu-highlight-css" href="ayu-highlight-3fdfc3ac.css">
 
         <!-- Custom theme stylesheets -->
-        <link rel="stylesheet" href="theme/custom-84de3dd1.css">
-        <link rel="stylesheet" href="theme/deep-ocean-18294553.css">
+        <link rel="stylesheet" href="theme/custom-1b086cbe.css">
+        <link rel="stylesheet" href="theme/deep-ocean-37d0e942.css">
         <link rel="stylesheet" href="theme/formal-f616fcec.css">
         <link rel="stylesheet" href="theme/layout-407df753.css">
 
@@ -39,10 +39,10 @@
             const path_to_root = "";
             const default_light_theme = "light";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "searchindex-b99a260b.js";
+            window.path_to_searchindex_js = "searchindex-459beae3.js";
         </script>
         <!-- Start loading toc.js asap -->
-        <script src="toc-f31bf49e.js"></script>
+        <script src="toc-42e4f11f.js"></script>
     </head>
     <body>
     <div id="mdbook-help-container">
@@ -184,7 +184,8 @@
 
                 <div id="mdbook-content" class="content">
                     <main>
-                        <h1 id="5-kubernetes-in-a-new-cloud-account"><a class="header" href="#5-kubernetes-in-a-new-cloud-account">5. Kubernetes in a new cloud account</a></h1>
+                        <img class="plate" src="art/ch05.svg" alt="Badge, a fox in a guard&#39;s cap, stands at the cluster gate and holds out an ID card that reads system:node:thor-3. A new server waits with a short-lived token, and an arrow shows the token traded for the card.">
+<h1 id="5-kubernetes-in-a-new-cloud-account"><a class="header" href="#5-kubernetes-in-a-new-cloud-account">5. Kubernetes in a new cloud account</a></h1>
 <p>So far our cluster has existed before each chapter began. In this chapter, we will look
 at where a cluster comes from. We start with an account at a provider of machines, which
 holds nothing, and end with a set of machines that the API server knows as nodes and the
@@ -366,6 +367,8 @@ machine that already carries the caller’s token and, if it finds one, returns 
 checks the quota. Then it creates the machine, and only after that does the run get the
 chance to lose the reply. That ordering is what makes the lost reply dangerous: the
 machine is in the list before the caller learns anything.</p>
+<div class="code-tabs">
+<div class="code-tab" data-lang="Go">
 <p class="listing"><b>Listing 5.1</b> The provider and its create call, in Go. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/go/provisioner/main.go">code/go/provisioner/main.go</a></p>
 
 <pre><code class="language-go">// Machine is one machine the provider has created.
@@ -439,6 +442,9 @@ func (p *Provider) Create(model, token string) (Machine, error) {
 	return m, nil
 }
 </code></pre>
+</div>
+
+<div class="code-tab" data-lang="Rust">
 <p class="listing"><b>Listing 5.2</b> The provider and its create call, in Rust. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/rust/provisioner/src/main.rs">code/rust/provisioner/src/main.rs</a></p>
 
 <pre><code class="language-rust">/// One machine the provider has created.
@@ -519,6 +525,10 @@ impl Provider {
         Ok(machine)
     }
 }</code></pre>
+</div>
+
+</div>
+
 <p>The Rust version represents a missing token as <code>None</code>, and the lookup is an
 <code>if let ... &amp;&amp; let ...</code> chain, the same construct we used in section 1.1: the first
 <code>let</code> unwraps the caller’s token, and the second searches for a machine that carries it.</p>
@@ -527,6 +537,8 @@ impl Provider {
 name when tokens are switched on, and calls the provider. A failed call ends the pass
 for this pool, and the controller records nothing for it. The next pass starts from the
 same slot.</p>
+<div class="code-tabs">
+<div class="code-tab" data-lang="Go">
 <p class="listing"><b>Listing 5.3</b> The pool and the controller's reconcile, in Go. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/go/provisioner/main.go">code/go/provisioner/main.go</a></p>
 
 <pre><code class="language-go">// Pool is a group of identical machines and the size its owner wants.
@@ -574,6 +586,9 @@ func (c *Controller) Reconcile(pool Pool) bool {
 	return true
 }
 </code></pre>
+</div>
+
+<div class="code-tab" data-lang="Rust">
 <p class="listing"><b>Listing 5.4</b> The pool and the controller's reconcile, in Rust. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/rust/provisioner/src/main.rs">code/rust/provisioner/src/main.rs</a></p>
 
 <pre><code class="language-rust">/// A group of identical machines and the size its owner wants.
@@ -621,6 +636,10 @@ impl Controller {
         true
     }
 }</code></pre>
+</div>
+
+</div>
+
 <p>The controller counts only what it has been told. <code>owned</code> grows by one machine for each
 successful reply, and <code>Reconcile</code> reads the pool’s size from it. This is where a lost
 reply does its damage in the first run, as the output will show.</p>
@@ -628,6 +647,8 @@ reply does its damage in the first run, as the output will show.</p>
 <p>The run asks for five Thors and two Sparks, with quotas of exactly five and two, and
 loses the reply to the third create call. It allows three passes and then prints what
 the controller owns beside what the provider holds.</p>
+<div class="code-tabs">
+<div class="code-tab" data-lang="Go">
 <p class="listing"><b>Listing 5.5</b> The pools, the three passes, and the final comparison, in Go. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/go/provisioner/main.go">code/go/provisioner/main.go</a></p>
 
 <pre><code class="language-go">// pools is the fleet we ask for: the Thors on the shelf and the two Sparks.
@@ -681,6 +702,9 @@ func main() {
 	run(true)
 }
 </code></pre>
+</div>
+
+<div class="code-tab" data-lang="Rust">
 <p class="listing"><b>Listing 5.6</b> The pools, the three passes, and the final comparison, in Rust. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/rust/provisioner/src/main.rs">code/rust/provisioner/src/main.rs</a></p>
 
 <pre><code class="language-rust">/// The fleet we ask for: the Thors on the shelf and the two Sparks.
@@ -759,6 +783,10 @@ fn main() {
     println!("create calls with the slot name as the client token:");
     run(true);
 }</code></pre>
+</div>
+
+</div>
+
 <pre><code class="language-console">$ go run ./provisioner
 create calls without a client token:
   pass 1
@@ -840,6 +868,8 @@ was working on by listing Machine objects. The record of ownership lives in the 
 server, where the resource versions of chapter 1 protect it, and the provider’s account
 is reconciled towards it.</p>
 <h2 id="the-complete-program"><a class="header" href="#the-complete-program">The complete program</a></h2>
+<div class="code-tabs">
+<div class="code-tab" data-lang="Go">
 <p class="listing"><b>Listing 5.7</b> The complete program in Go. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/go/provisioner/main.go">code/go/provisioner/main.go</a></p>
 
 <pre><code class="language-go">// Command provisioner models a controller that asks a provider for machines
@@ -1030,6 +1060,9 @@ func main() {
 	run(true)
 }
 </code></pre>
+</div>
+
+<div class="code-tab" data-lang="Rust">
 <p class="listing"><b>Listing 5.8</b> The complete program in Rust. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/rust/provisioner/src/main.rs">code/rust/provisioner/src/main.rs</a></p>
 
 <pre><code class="language-rust">//! Models a controller that asks a provider for machines until a pool has the
@@ -1251,6 +1284,10 @@ fn main() {
     println!("create calls with the slot name as the client token:");
     run(true);
 }</code></pre>
+</div>
+
+</div>
+
 <div class="summary">
 <h2 id="summary"><a class="header" href="#summary">Summary</a></h2>
 <ul>
@@ -1337,7 +1374,7 @@ retry returns the machine the first attempt made.</li>
         <script src="theme/figures-f9e9be6d.js"></script>
         <script src="theme/anim-4192821e.js"></script>
         <script src="theme/code-67e9caaf.js"></script>
-        <script src="theme/tabs-c73f18f8.js"></script>
+        <script src="theme/tabs-ef9f11bc.js"></script>
 
 
 

@@ -29,8 +29,8 @@
         <link rel="stylesheet" id="mdbook-ayu-highlight-css" href="ayu-highlight-3fdfc3ac.css">
 
         <!-- Custom theme stylesheets -->
-        <link rel="stylesheet" href="theme/custom-84de3dd1.css">
-        <link rel="stylesheet" href="theme/deep-ocean-18294553.css">
+        <link rel="stylesheet" href="theme/custom-1b086cbe.css">
+        <link rel="stylesheet" href="theme/deep-ocean-37d0e942.css">
         <link rel="stylesheet" href="theme/formal-f616fcec.css">
         <link rel="stylesheet" href="theme/layout-407df753.css">
 
@@ -40,10 +40,10 @@
             const path_to_root = "";
             const default_light_theme = "light";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "searchindex-b99a260b.js";
+            window.path_to_searchindex_js = "searchindex-459beae3.js";
         </script>
         <!-- Start loading toc.js asap -->
-        <script src="toc-f31bf49e.js"></script>
+        <script src="toc-42e4f11f.js"></script>
     </head>
     <body>
     <div id="mdbook-help-container">
@@ -182,7 +182,10 @@
 
                 <div id="mdbook-content" class="content">
                     <main>
-                        <h1 id="introduction"><a class="header" href="#introduction">Introduction</a></h1>
+                        <h1 id="cover"><a href="#cover" class="header">Cover</a></h1>
+<img class="cover" src="art/cover.svg" alt="The cover of GPU-Accelerated Kubernetes. At night in a harbour, a raccoon in a dark blue cape stands at a ship&#39;s wheel on the deck of a container ship, its whistle in one paw. The containers are stacked in rows, and each glows with a green GPU chip. A stork on the top row holds a bundle marked 1 GPU, a hound on the dock listens to a server with a stethoscope, and 5 parrots sit on a ring-shaped perch on the mast, with arrows showing a value passed round the ring.">
+<div style="break-before: page; page-break-before: always;"></div><img class="plate" src="art/intro.svg" alt="Bundle, a stork, stands on the quay with a cloth bundle marked 1 GPU in its beak. An arrow leads from the bundle to a container ship, where a crane lowers a container holding a glowing GPU chip onto the deck.">
+<h1 id="introduction"><a class="header" href="#introduction">Introduction</a></h1>
 <p>In this book, we will learn about running GPU workloads on Kubernetes and dive deep into
 Kubernetes machinery with hands-on examples, both in Rust and Go. We will first build
 intuition by reasoning and quickly prototype the data structures behind Kubernetes
@@ -316,7 +319,7 @@ installed.</p>
 <p>To read the book in a browser, install mdBook and run:</p>
 <pre><code class="language-console">$ mdbook serve --open
 </code></pre>
-<div style="break-before: page; page-break-before: always;"></div>
+<div style="break-before: page; page-break-before: always;"></div><img class="plate" src="art/ch01.svg" alt="Ledger, an owl in round glasses, sits at a desk between the API server&#39;s ledger on the left, whose lines are numbered v10, v11 and v12, and its cache notebook on the right. An arrow labelled watch from v10 carries events from the ledger to the notebook, and the owl writes with a quill.">
 <h1 id="1-keeping-a-local-copy-of-the-cluster"><a class="header" href="#1-keeping-a-local-copy-of-the-cluster">1. Keeping a local copy of the cluster</a></h1>
 <p>This chapter depicts what happens under the hood when a Kubernetes controller learns that an
 object in the cluster has changed. The component that does this work is called an <strong>informer</strong>. We
@@ -3183,7 +3186,7 @@ fn main() -&gt; Result&lt;(), ApiError&gt; {
 <p>Kubernetes asks clients to treat resource versions as opaque strings and to compare them only for equality. Our model uses integers so that we can print them. <a href="#fr-opaque-1">↩</a></p>
 </li>
 </ol>
-<div style="break-before: page; page-break-before: always;"></div>
+<div style="break-before: page; page-break-before: always;"></div><img class="plate" src="art/ch01-1.svg" alt="Rivet, a beaver in a hard hat, holds a glowing GPU chip in its paw and is about to set it into an open pea pod. The pod already holds 2 peas shaped like containers, and an arrow labelled apply points from the chip to the empty place. A tag on the pod reads GpuJob train.">
 <h1 id="11-a-gpu-job-controller-on-a-real-cluster"><a class="header" href="#11-a-gpu-job-controller-on-a-real-cluster">1.1 A GPU job controller on a real cluster</a></h1>
 <p>In chapter 1, we built a server, a cache, a reflector, a work queue, and a controller, and
 ran all of them inside one process. In this chapter, we will take that machinery to a real
@@ -3823,6 +3826,8 @@ the chapter.</p>
 </div>
 
 <h3 id="the-pod-for-a-job"><a class="header" href="#the-pod-for-a-job">The pod for a job</a></h3>
+<div class="code-tabs">
+<div class="code-tab" data-lang="Go">
 <p class="listing"><b>Listing 1.38</b> The pod a job should have, in Go. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/go/gpujob/cmd/controller/main.go">code/go/gpujob/cmd/controller/main.go</a></p>
 
 <pre><code class="language-go">// manager is the field manager name under which the controller writes with
@@ -3874,6 +3879,9 @@ func podGPUs(pod *corev1.Pod) (int32, bool) {
 	return int32(quantity.Value()), ok
 }
 </code></pre>
+</div>
+
+<div class="code-tab" data-lang="Rust">
 <p class="listing"><b>Listing 1.39</b> The pod a job should have, in Rust. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/rust/gpujob/src/bin/controller.rs">code/rust/gpujob/src/bin/controller.rs</a></p>
 
 <pre><code class="language-rust">/// The field manager name under which the controller writes with server-side apply.
@@ -3937,6 +3945,10 @@ fn pod_gpus(pod: &amp;Pod) -&gt; Option&lt;u32&gt; {
 
     limits.get(GPU)?.0.parse().ok()
 }</code></pre>
+</div>
+
+</div>
+
 <p><code>desiredPod</code> (<code>desired_pod</code> in Rust) builds the pod that a job should have. The
 interesting part is how the pod asks for a GPU. It puts <code>nvidia.com/gpu</code> in its resource
 limits, just as it would put CPU or memory there. Kubernetes calls a resource like this an
@@ -3965,6 +3977,8 @@ returns the count and a flag saying whether the pod had a GPU limit at all. In R
 returns an <code>Option&lt;u32&gt;</code>, and each <code>?</code> bails out with <code>None</code> as soon as any field along the
 way is missing.</p>
 <h3 id="reconciling-a-job"><a class="header" href="#reconciling-a-job">Reconciling a job</a></h3>
+<div class="code-tabs">
+<div class="code-tab" data-lang="Go">
 <p class="listing"><b>Listing 1.40</b> Reconciling one job, in Go. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/go/gpujob/cmd/controller/main.go">code/go/gpujob/cmd/controller/main.go</a></p>
 
 <pre><code class="language-go">// GpuJobReconciler makes the cluster match each GpuJob.
@@ -4028,6 +4042,9 @@ func (r *GpuJobReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctr
 	return ctrl.Result{}, nil
 }
 </code></pre>
+</div>
+
+<div class="code-tab" data-lang="Rust">
 <p class="listing"><b>Listing 1.41</b> Reconciling one job, in Rust. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/rust/gpujob/src/bin/controller.rs">code/rust/gpujob/src/bin/controller.rs</a></p>
 
 <pre><code class="language-rust">/// Makes the cluster match one job: ensures its pod exists with the requested
@@ -4079,6 +4096,10 @@ fn error_policy(job: Arc&lt;GpuJob&gt;, error: &amp;Error, _ctx: Arc&lt;Context&
 
     Action::requeue(Duration::from_secs(5))
 }</code></pre>
+</div>
+
+</div>
+
 <p>Our reconcile function receives a job and brings the cluster into line with it in three
 steps.</p>
 <p>The first step covers a change that cannot be made in place. Kubernetes fixes a pod’s
@@ -4120,6 +4141,8 @@ job back in the queue with the growing delay we described at the end of chapter 
 Rust version returns the error to kube-rs, which asks our <code>error_policy</code> function what to
 do; ours logs the error and tries again in five seconds.</p>
 <h3 id="starting-the-controller"><a class="header" href="#starting-the-controller">Starting the controller</a></h3>
+<div class="code-tabs">
+<div class="code-tab" data-lang="Go">
 <p class="listing"><b>Listing 1.42</b> Starting the controller, in Go. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/go/gpujob/cmd/controller/main.go">code/go/gpujob/cmd/controller/main.go</a></p>
 
 <pre><code class="language-go">// main builds a manager, registers the reconciler, and runs until Ctrl-C.
@@ -4164,6 +4187,9 @@ func main() {
 	}
 }
 </code></pre>
+</div>
+
+<div class="code-tab" data-lang="Rust">
 <p class="listing"><b>Listing 1.43</b> Starting the controller, in Rust. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/rust/gpujob/src/bin/controller.rs">code/rust/gpujob/src/bin/controller.rs</a></p>
 
 <pre><code class="language-rust">/// Starts the controller and runs it until Ctrl-C.
@@ -4190,6 +4216,10 @@ async fn main() -&gt; Result&lt;(), kube::Error&gt; {
         .await;
     Ok(())
 }</code></pre>
+</div>
+
+</div>
+
 <p>In Go, everything a controller process shares lives in a <em>manager</em>: the connection to the
 cluster, the scheme, the informer caches, and the client that reads from them.
 <code>ctrl.NewControllerManagedBy(mgr)</code> builds our controller inside the manager, and each
@@ -4425,6 +4455,8 @@ Thanks to the message we copy from the pod’s <code>PodScheduled</code> conditi
 tells the user exactly why, and <code>kubectl get gpujobs</code> shows the job as Pending until its
 request is lowered or a machine with two free GPUs joins the cluster.</p>
 <h2 id="the-complete-programs"><a class="header" href="#the-complete-programs">The complete programs</a></h2>
+<div class="code-tabs">
+<div class="code-tab" data-lang="Go">
 <p class="listing"><b>Listing 1.47</b> The API types, complete, in Go. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/go/gpujob/api/v1/types.go">code/go/gpujob/api/v1/types.go</a></p>
 
 <pre><code class="language-go">package v1
@@ -4538,6 +4570,9 @@ func StatusFromPod(pod *corev1.Pod, generation int64) GpuJobStatus {
 	return status
 }
 </code></pre>
+</div>
+
+<div class="code-tab" data-lang="Rust">
 <p class="listing"><b>Listing 1.48</b> The API types, complete, in Rust. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/rust/gpujob/src/lib.rs">code/rust/gpujob/src/lib.rs</a></p>
 
 <pre><code class="language-rust">//! The `GpuJob` custom resource: a request to run one container with a number
@@ -4634,6 +4669,12 @@ impl GpuJobStatus {
         }
     }
 }</code></pre>
+</div>
+
+</div>
+
+<div class="code-tabs">
+<div class="code-tab" data-lang="Go">
 <p class="listing"><b>Listing 1.49</b> The event printer, complete, in Go. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/go/gpujob/cmd/watch-jobs/main.go">code/go/gpujob/cmd/watch-jobs/main.go</a></p>
 
 <pre><code class="language-go">// Command watch-jobs prints the events that an informer delivers for GpuJob
@@ -4920,6 +4961,9 @@ func main() {
 	}
 }
 </code></pre>
+</div>
+
+<div class="code-tab" data-lang="Rust">
 <p class="listing"><b>Listing 1.51</b> The controller, complete, in Rust. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/rust/gpujob/src/bin/controller.rs">code/rust/gpujob/src/bin/controller.rs</a></p>
 
 <pre><code class="language-rust">//! A controller for `GpuJob` objects. It runs each job as a pod that requests
@@ -5076,6 +5120,10 @@ async fn main() -&gt; Result&lt;(), kube::Error&gt; {
         .await;
     Ok(())
 }</code></pre>
+</div>
+
+</div>
+
 <p class="listing"><b>Listing 1.52</b> The two-client program, complete, in Go. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/go/gpujob/cmd/conflict/main.go">code/go/gpujob/cmd/conflict/main.go</a></p>
 
 <pre><code class="language-go">// Command conflict shows the API server refusing a write with an out-of-date
@@ -5158,7 +5206,7 @@ func run(ctx context.Context) error {
 	return fmt.Errorf("unexpected result: %v", err)
 }
 </code></pre>
-<div style="break-before: page; page-break-before: always;"></div>
+<div style="break-before: page; page-break-before: always;"></div><img class="plate" src="art/ch02.svg" alt="8 hexagonal cells of a honeycomb are labelled SM 0 to SM 7, each holding rows of bees. Comb, the lead bee, flies in with arrows into the cells, beside a card that reads 1 unit = the whole GPU.">
 <h1 id="2-what-one-gpu-means"><a class="header" href="#2-what-one-gpu-means">2. What one GPU means</a></h1>
 <p>So far our pods have asked for <code>nvidia.com/gpu: 1</code> as if a GPU were a single, indivisible
 thing. In this chapter, we will open that unit up. We will first look at what a GPU is
@@ -5419,6 +5467,8 @@ node’s allocatable units. The Go version uses client-go’s typed clientset, a
 </div>
 
 <p>The first part decides what one pod holds.</p>
+<div class="code-tabs">
+<div class="code-tab" data-lang="Go">
 <p class="listing"><b>Listing 2.4</b> What one pod holds, in Go. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/go/gpuusage/main.go">code/go/gpuusage/main.go</a></p>
 
 <pre><code class="language-go">// gpu is the extended resource that the NVIDIA device plugin advertises.
@@ -5455,6 +5505,9 @@ func holdsResources(pod *corev1.Pod) bool {
 	return pod.Spec.NodeName != "" &amp;&amp; !finished
 }
 </code></pre>
+</div>
+
+<div class="code-tab" data-lang="Rust">
 <p class="listing"><b>Listing 2.5</b> What one pod holds, in Rust. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/rust/gpuusage/src/main.rs">code/rust/gpuusage/src/main.rs</a></p>
 
 <pre><code class="language-rust">/// The extended resource that the NVIDIA device plugin advertises.
@@ -5499,7 +5552,13 @@ fn gpu_units(resources: Option&lt;&amp;BTreeMap&lt;String, Quantity&gt;&gt;) -&g
         .and_then(|q| q.0.parse().ok())
         .unwrap_or(0)
 }</code></pre>
+</div>
+
+</div>
+
 <p>The second part asks the API server and prints the table.</p>
+<div class="code-tabs">
+<div class="code-tab" data-lang="Go">
 <p class="listing"><b>Listing 2.6</b> Listing, grouping, and printing, in Go. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/go/gpuusage/main.go">code/go/gpuusage/main.go</a></p>
 
 <pre><code class="language-go">// run lists every node and every pod, groups the GPU-holding pods by node,
@@ -5566,6 +5625,9 @@ func run(ctx context.Context) error {
 	return nil
 }
 </code></pre>
+</div>
+
+<div class="code-tab" data-lang="Rust">
 <p class="listing"><b>Listing 2.7</b> Listing, grouping, and printing, in Rust. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/rust/gpuusage/src/main.rs">code/rust/gpuusage/src/main.rs</a></p>
 
 <pre><code class="language-rust">/// Lists every node and every pod, groups the GPU-holding pods by node, and
@@ -5626,6 +5688,10 @@ async fn main() -&gt; Result&lt;(), Box&lt;dyn Error&gt;&gt; {
 
     Ok(())
 }</code></pre>
+</div>
+
+</div>
+
 <p>Both programs list the nodes and the pods with one request each, keep the pods that hold
 GPU units, and group them by node. A pod counts from the moment the scheduler binds it to
 a node until it succeeds or fails; a finished pod has released its units even though the
@@ -6050,6 +6116,8 @@ int main(int argc, char **argv) {
     return err == cudaSuccess ? 0 : 1;
 }
 </code></pre>
+<div class="code-tabs">
+<div class="code-tab" data-lang="Go">
 <p class="listing"><b>Listing 2.14</b> `gpuusage`, complete, in Go. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/go/gpuusage/main.go">code/go/gpuusage/main.go</a></p>
 
 <pre><code class="language-go">// Command gpuusage reports, for every node in the cluster, how many
@@ -6185,6 +6253,9 @@ func run(ctx context.Context) error {
 	return nil
 }
 </code></pre>
+</div>
+
+<div class="code-tab" data-lang="Rust">
 <p class="listing"><b>Listing 2.15</b> `gpuusage`, complete, in Rust. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/rust/gpuusage/src/main.rs">code/rust/gpuusage/src/main.rs</a></p>
 
 <pre><code class="language-rust">//! Reports, for every node in the cluster, how many `nvidia.com/gpu` units the
@@ -6303,6 +6374,10 @@ async fn main() -&gt; Result&lt;(), Box&lt;dyn Error&gt;&gt; {
 
     Ok(())
 }</code></pre>
+</div>
+
+</div>
+
 <h2 id="references-1"><a class="header" href="#references-1">References</a></h2>
 <ul>
 <li>NVIDIA Multi-Instance GPU user guide:
@@ -6322,7 +6397,7 @@ async fn main() -&gt; Result&lt;(), Box&lt;dyn Error&gt;&gt; {
 <li>NVIDIA Jetson Orin technical specifications:
 <a href="https://www.nvidia.com/en-us/autonomous-machines/embedded-systems/jetson-orin/">https://www.nvidia.com/en-us/autonomous-machines/embedded-systems/jetson-orin/</a></li>
 </ul>
-<div style="break-before: page; page-break-before: always;"></div>
+<div style="break-before: page; page-break-before: always;"></div><img class="plate" src="art/ch03.svg" alt="Doc, a hound in a white coat, holds a stethoscope&#39;s chest piece against a rack of servers. Heartbeat arrows travel from thor-1 and thor-2 to a monitor above, which shows a regular line for each. thor-3&#39;s lamp is red, and its line is flat.">
 <h1 id="3-knowing-which-machines-are-alive"><a class="header" href="#3-knowing-which-machines-are-alive">3. Knowing which machines are alive</a></h1>
 <p>A training job can run on a machine for hours or days. If that machine loses power, or its
 network cable is pulled, the job stops, and nothing on the machine can report the failure.
@@ -6408,6 +6483,8 @@ crashes at second 20, and host 7 misses four heartbeats, from second 30 to secon
 
 <p>The types come first. A host’s record is two fields, and a <code>Transition</code> is the only thing
 the registry writes to the database.</p>
+<div class="code-tabs">
+<div class="code-tab" data-lang="Go">
 <p class="listing"><b>Listing 3.1</b> The states, the thresholds, and the registry's records, in Go. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/go/heartbeats/main.go">code/go/heartbeats/main.go</a></p>
 
 <pre><code class="language-go">// State is what the registry believes about a host.
@@ -6461,6 +6538,9 @@ type Registry struct {
 	writes []Transition
 }
 </code></pre>
+</div>
+
+<div class="code-tab" data-lang="Rust">
 <p class="listing"><b>Listing 3.2</b> The states, the thresholds, and the registry's records, in Rust. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/rust/heartbeats/src/main.rs">code/rust/heartbeats/src/main.rs</a></p>
 
 <pre><code class="language-rust">/// Seconds without a heartbeat before a host is Suspect.
@@ -6512,8 +6592,14 @@ struct Registry {
     /// The durable writes, in order.
     writes: Vec&lt;Transition&gt;,
 }</code></pre>
+</div>
+
+</div>
+
 <p>The registry has one operation for an arriving heartbeat and one for the sweep, and a small
 function that turns a length of silence into a state.</p>
+<div class="code-tabs">
+<div class="code-tab" data-lang="Go">
 <p class="listing"><b>Listing 3.3</b> A heartbeat, the sweep, and the rule from silence to state, in Go. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/go/heartbeats/main.go">code/go/heartbeats/main.go</a></p>
 
 <pre><code class="language-go">// NewRegistry returns a registry in which every host is Up, as it would be
@@ -6560,6 +6646,9 @@ func stateAfter(silent int) State {
 	}
 }
 </code></pre>
+</div>
+
+<div class="code-tab" data-lang="Rust">
 <p class="listing"><b>Listing 3.4</b> A heartbeat, the sweep, and the rule from silence to state, in Rust. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/rust/heartbeats/src/main.rs">code/rust/heartbeats/src/main.rs</a></p>
 
 <pre><code class="language-rust">impl Registry {
@@ -6615,8 +6704,14 @@ fn state_after(silent: u32) -&gt; State {
         _ =&gt; State::Up,
     }
 }</code></pre>
+</div>
+
+</div>
+
 <p>The run feeds the registry one heartbeat from every host each second, except from the two
 hosts that the scenario silences.</p>
+<div class="code-tabs">
+<div class="code-tab" data-lang="Go">
 <p class="listing"><b>Listing 3.5</b> The simulated fleet and the main loop, in Go. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/go/heartbeats/main.go">code/go/heartbeats/main.go</a></p>
 
 <pre><code class="language-go">// sendsHeartbeat reports whether host sends a heartbeat at second now in the
@@ -6654,6 +6749,9 @@ func main() {
 	}
 }
 </code></pre>
+</div>
+
+<div class="code-tab" data-lang="Rust">
 <p class="listing"><b>Listing 3.6</b> The simulated fleet and the main loop, in Rust. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/rust/heartbeats/src/main.rs">code/rust/heartbeats/src/main.rs</a></p>
 
 <pre><code class="language-rust">/// Reports whether `host` sends a heartbeat at second `now` in the simulation.
@@ -6686,6 +6784,10 @@ fn main() {
         println!("  second {:2}  host {:2} -&gt; {:?}", w.at, w.host, w.state);
     }
 }</code></pre>
+</div>
+
+</div>
+
 <p><code>Heartbeat</code> updates the host’s last-seen time in memory and writes to the database only
 when the host was not Up. <code>Sweep</code> runs once a second, computes each host’s state from the
 length of its silence, and writes only the hosts whose state changed. A heartbeat from a
@@ -6754,6 +6856,8 @@ its own behaviour.</p>
 
 <p>A detector belongs to one host. It remembers a window of gaps and the time of the latest
 heartbeat.</p>
+<div class="code-tabs">
+<div class="code-tab" data-lang="Go">
 <p class="listing"><b>Listing 3.7</b> The detector and the recording of a heartbeat, in Go. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/go/phi/main.go">code/go/phi/main.go</a></p>
 
 <pre><code class="language-go">// timeout is the fixed timeout that the program compares against, in seconds.
@@ -6791,6 +6895,9 @@ func (d *Detector) Heartbeat(now float64) {
 	d.last = now
 }
 </code></pre>
+</div>
+
+<div class="code-tab" data-lang="Rust">
 <p class="listing"><b>Listing 3.8</b> The detector and the recording of a heartbeat, in Rust. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/rust/phi/src/main.rs">code/rust/phi/src/main.rs</a></p>
 
 <pre><code class="language-rust">/// The fixed timeout that the program compares against, in seconds.
@@ -6833,7 +6940,13 @@ impl Detector {
         self.last = now;
     }
 }</code></pre>
+</div>
+
+</div>
+
 <p><code>Phi</code> turns the window into a number.</p>
+<div class="code-tabs">
+<div class="code-tab" data-lang="Go">
 <p class="listing"><b>Listing 3.9</b> Computing phi from the recorded gaps, in Go. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/go/phi/main.go">code/go/phi/main.go</a></p>
 
 <pre><code class="language-go">// Phi returns the suspicion level at time now: minus the base-10 logarithm of
@@ -6870,6 +6983,9 @@ func (d *Detector) Phi(now float64) float64 {
 	return -math.Log10(pLater)
 }
 </code></pre>
+</div>
+
+<div class="code-tab" data-lang="Rust">
 <p class="listing"><b>Listing 3.10</b> Computing phi from the recorded gaps, in Rust. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/rust/phi/src/main.rs">code/rust/phi/src/main.rs</a></p>
 
 <pre><code class="language-rust">impl Detector {
@@ -6903,8 +7019,14 @@ func (d *Detector) Phi(now float64) float64 {
         -p_later.log10()
     }
 }</code></pre>
+</div>
+
+</div>
+
 <p>The run trains one detector on a steady host and one on a jittery host, then asks each for
 phi after silences of increasing length.</p>
+<div class="code-tabs">
+<div class="code-tab" data-lang="Go">
 <p class="listing"><b>Listing 3.11</b> Two hosts and the table of results, in Go. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/go/phi/main.go">code/go/phi/main.go</a></p>
 
 <pre><code class="language-go">// hosts lists the simulated hosts and the gaps between their heartbeats.
@@ -6943,6 +7065,9 @@ func main() {
 	}
 }
 </code></pre>
+</div>
+
+<div class="code-tab" data-lang="Rust">
 <p class="listing"><b>Listing 3.12</b> Two hosts and the table of results, in Rust. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/rust/phi/src/main.rs">code/rust/phi/src/main.rs</a></p>
 
 <pre><code class="language-rust">/// The simulated hosts and the gaps between their heartbeats.
@@ -6980,6 +7105,10 @@ fn main() {
         }
     }
 }</code></pre>
+</div>
+
+</div>
+
 <p><code>Phi</code> computes the mean and standard deviation of the remembered gaps and measures how many
 standard deviations the current silence lies beyond the mean. The logistic expression is a
 standard approximation of the normal distribution’s tail, the same one Akka uses, and it
@@ -7084,6 +7213,8 @@ row before its Lease expires.</p>
 </div>
 
 <p>The settings are constants.</p>
+<div class="code-tabs">
+<div class="code-tab" data-lang="Go">
 <p class="listing"><b>Listing 3.14</b> The agent's settings, in Go. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/go/leaseagent/main.go">code/go/leaseagent/main.go</a></p>
 
 <pre><code class="language-go">// Lease settings. The renewal interval is a third of the lease duration, so a
@@ -7095,6 +7226,9 @@ const (
 	fieldManager  = "leaseagent"
 )
 </code></pre>
+</div>
+
+<div class="code-tab" data-lang="Rust">
 <p class="listing"><b>Listing 3.15</b> The agent's settings, in Rust. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/rust/leaseagent/src/main.rs">code/rust/leaseagent/src/main.rs</a></p>
 
 <pre><code class="language-rust">/// The namespace that holds the hosts' Leases.
@@ -7106,8 +7240,14 @@ const RENEW_EVERY: Duration = Duration::from_secs(2);
 const LEASE_DURATION: i32 = 6;
 /// The field manager name for server-side apply.
 const FIELD_MANAGER: &amp;str = "leaseagent";</code></pre>
+</div>
+
+</div>
+
 <p>The Go version builds the Lease inside its loop with client-go’s apply configuration
 types. The Rust version builds it in a function of its own.</p>
+<div class="code-tabs">
+<div class="code-tab" data-lang="Go">
 <p class="listing"><b>Listing 3.16</b> The renewal loop, in Go. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/go/leaseagent/main.go">code/go/leaseagent/main.go</a></p>
 
 <pre><code class="language-go">// run writes the host's Lease with server-side apply once per renewEvery.
@@ -7154,6 +7294,9 @@ func run(host string) error {
 	}
 }
 </code></pre>
+</div>
+
+<div class="code-tab" data-lang="Rust">
 <p class="listing"><b>Listing 3.17</b> Building the Lease, in Rust. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/rust/leaseagent/src/main.rs">code/rust/leaseagent/src/main.rs</a></p>
 
 <pre><code class="language-rust">/// Builds the Lease that `host` writes at time `now`, having first acquired
@@ -7205,6 +7348,10 @@ async fn main() -&gt; Result&lt;(), Box&lt;dyn Error&gt;&gt; {
         }
     }
 }</code></pre>
+</div>
+
+</div>
+
 <p>Both agents write with server-side apply, which we met in section 1.1: each renewal sends
 the whole Lease, and the API server creates it on the first renewal and updates it on the
 others. A failed renewal, for example while the API server restarts, is logged and retried
@@ -7249,6 +7396,8 @@ changed. Our watcher works the same way.</p>
 
 <p>An observation is three fields, and the second is the one that matters: the local time at
 which the watcher first saw the current <code>renewTime</code>.</p>
+<div class="code-tabs">
+<div class="code-tab" data-lang="Go">
 <p class="listing"><b>Listing 3.19</b> What the watcher remembers about one Lease, in Go. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/go/leasewatch/main.go">code/go/leasewatch/main.go</a></p>
 
 <pre><code class="language-go">// observation is what the program knows about one host's Lease.
@@ -7261,6 +7410,9 @@ type observation struct {
 	expired bool
 }
 </code></pre>
+</div>
+
+<div class="code-tab" data-lang="Rust">
 <p class="listing"><b>Listing 3.20</b> What the watcher remembers about one Lease, in Rust. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/rust/leasewatch/src/main.rs">code/rust/leasewatch/src/main.rs</a></p>
 
 <pre><code class="language-rust">/// What the program knows about one host's Lease.
@@ -7272,7 +7424,13 @@ struct Observation {
     /// Whether the host has been reported as expired.
     expired: bool,
 }</code></pre>
+</div>
+
+</div>
+
 <p><code>check</code> holds the rule from the node lifecycle controller.</p>
+<div class="code-tabs">
+<div class="code-tab" data-lang="Go">
 <p class="listing"><b>Listing 3.21</b> Checking one Lease against the watcher's own clock, in Go. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/go/leasewatch/main.go">code/go/leasewatch/main.go</a></p>
 
 <pre><code class="language-go">// check updates the observation of one Lease at local time now and prints a
@@ -7306,6 +7464,9 @@ func check(seen map[string]*observation, lease *coordinationv1.Lease, now time.T
 	}
 }
 </code></pre>
+</div>
+
+<div class="code-tab" data-lang="Rust">
 <p class="listing"><b>Listing 3.22</b> Checking one Lease against the watcher's own clock, in Rust. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/rust/leasewatch/src/main.rs">code/rust/leasewatch/src/main.rs</a></p>
 
 <pre><code class="language-rust">/// Updates the observation of one Lease at local time `now` and prints a line
@@ -7351,8 +7512,14 @@ fn check(seen: &amp;mut HashMap&lt;String, Observation&gt;, lease: &amp;Lease, n
         Some(_) =&gt; {}
     }
 }</code></pre>
+</div>
+
+</div>
+
 <p>The rest of the program keeps a cache of Leases and calls <code>check</code> for each of them once a
 second.</p>
+<div class="code-tabs">
+<div class="code-tab" data-lang="Go">
 <p class="listing"><b>Listing 3.23</b> The cache of Leases and the once-a-second loop, in Go. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/go/leasewatch/main.go">code/go/leasewatch/main.go</a></p>
 
 <pre><code class="language-go">// run starts an informer for Leases in the namespace, waits for its first
@@ -7397,6 +7564,9 @@ func run() error {
 	}
 }
 </code></pre>
+</div>
+
+<div class="code-tab" data-lang="Rust">
 <p class="listing"><b>Listing 3.24</b> The cache of Leases and the once-a-second loop, in Rust. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/rust/leasewatch/src/main.rs">code/rust/leasewatch/src/main.rs</a></p>
 
 <pre><code class="language-rust">/// Starts a watcher that fills a reflector store with the namespace's Leases,
@@ -7428,6 +7598,10 @@ async fn main() -&gt; Result&lt;(), Box&lt;dyn Error&gt;&gt; {
         }
     }
 }</code></pre>
+</div>
+
+</div>
+
 <p>Neither version sends a request per check. The Go version starts an informer for Leases in
 the <code>fleet</code> namespace from client-go’s shared informer factory and reads its cache through a
 lister. The Rust version runs a <code>watcher</code> stream into a reflector store in a background task,
@@ -7520,6 +7694,8 @@ running them, and a GPU job that writes checkpoints or holds a reservation must 
 twice at once. Kubernetes answers part of this with the 5-minute delay before eviction. A
 control plane for GPU jobs needs a firmer answer as well.</p>
 <h2 id="the-complete-programs-2"><a class="header" href="#the-complete-programs-2">The complete programs</a></h2>
+<div class="code-tabs">
+<div class="code-tab" data-lang="Go">
 <p class="listing"><b>Listing 3.25</b> The complete program in Go. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/go/heartbeats/main.go">code/go/heartbeats/main.go</a></p>
 
 <pre><code class="language-go">// Command heartbeats models how a control plane tracks which machines in a
@@ -7671,6 +7847,9 @@ func main() {
 	}
 }
 </code></pre>
+</div>
+
+<div class="code-tab" data-lang="Rust">
 <p class="listing"><b>Listing 3.26</b> The complete program in Rust. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/rust/heartbeats/src/main.rs">code/rust/heartbeats/src/main.rs</a></p>
 
 <pre><code class="language-rust">//! Models how a control plane tracks which machines in a fleet are alive.
@@ -7819,6 +7998,12 @@ fn main() {
         println!("  second {:2}  host {:2} -&gt; {:?}", w.at, w.host, w.state);
     }
 }</code></pre>
+</div>
+
+</div>
+
+<div class="code-tabs">
+<div class="code-tab" data-lang="Go">
 <p class="listing"><b>Listing 3.27</b> The complete program in Go. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/go/phi/main.go">code/go/phi/main.go</a></p>
 
 <pre><code class="language-go">// Command phi compares two ways of deciding that a host has failed: a fixed
@@ -7948,6 +8133,9 @@ func main() {
 	}
 }
 </code></pre>
+</div>
+
+<div class="code-tab" data-lang="Rust">
 <p class="listing"><b>Listing 3.28</b> The complete program in Rust. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/rust/phi/src/main.rs">code/rust/phi/src/main.rs</a></p>
 
 <pre><code class="language-rust">//! Compares two ways of deciding that a host has failed: a fixed timeout, and
@@ -8072,6 +8260,12 @@ fn main() {
         }
     }
 }</code></pre>
+</div>
+
+</div>
+
+<div class="code-tabs">
+<div class="code-tab" data-lang="Go">
 <p class="listing"><b>Listing 3.29</b> The complete program in Go. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/go/leaseagent/main.go">code/go/leaseagent/main.go</a></p>
 
 <pre><code class="language-go">// Command leaseagent keeps a Kubernetes Lease alive for one host, the way the
@@ -8168,6 +8362,9 @@ func run(host string) error {
 	}
 }
 </code></pre>
+</div>
+
+<div class="code-tab" data-lang="Rust">
 <p class="listing"><b>Listing 3.30</b> The complete program in Rust. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/rust/leaseagent/src/main.rs">code/rust/leaseagent/src/main.rs</a></p>
 
 <pre><code class="language-rust">//! Keeps a Kubernetes Lease alive for one host, the way the kubelet keeps its
@@ -8253,6 +8450,12 @@ async fn main() -&gt; Result&lt;(), Box&lt;dyn Error&gt;&gt; {
         }
     }
 }</code></pre>
+</div>
+
+</div>
+
+<div class="code-tabs">
+<div class="code-tab" data-lang="Go">
 <p class="listing"><b>Listing 3.31</b> The complete program in Go. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/go/leasewatch/main.go">code/go/leasewatch/main.go</a></p>
 
 <pre><code class="language-go">// Command leasewatch reports when a host in the fleet namespace stops renewing
@@ -8385,6 +8588,9 @@ func check(seen map[string]*observation, lease *coordinationv1.Lease, now time.T
 	}
 }
 </code></pre>
+</div>
+
+<div class="code-tab" data-lang="Rust">
 <p class="listing"><b>Listing 3.32</b> The complete program in Rust. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/rust/leasewatch/src/main.rs">code/rust/leasewatch/src/main.rs</a></p>
 
 <pre><code class="language-rust">//! Reports when a host in the `fleet` namespace stops renewing its Lease, and
@@ -8498,6 +8704,10 @@ async fn main() -&gt; Result&lt;(), Box&lt;dyn Error&gt;&gt; {
         }
     }
 }</code></pre>
+</div>
+
+</div>
+
 <div class="summary">
 <h2 id="summary-1"><a class="header" href="#summary-1">Summary</a></h2>
 <ul>
@@ -8527,7 +8737,7 @@ a difference between two machines’ clocks cannot make a healthy host look expi
 <li>N. Hayashibara, X. Défago, R. Yared, T. Katayama, “The φ Accrual Failure Detector”,
 23rd IEEE International Symposium on Reliable Distributed Systems (SRDS), 2004.</li>
 </ul>
-<div style="break-before: page; page-break-before: always;"></div>
+<div style="break-before: page; page-break-before: always;"></div><img class="plate" src="art/ch04.svg" alt="Sergeant Cone, a raccoon in a police cap, raises a paw to stop traffic and holds a whistle. A traffic light shows green for healthy, amber for cordoned and red for quarantined, with arrows between them. thor-4, a server with a red lamp, stands inside a ring of orange cones.">
 <h1 id="4-a-control-plane-for-a-fleet-of-hosts"><a class="header" href="#4-a-control-plane-for-a-fleet-of-hosts">4. A control plane for a fleet of hosts</a></h1>
 <p>In chapter 3, we learned how a control plane notices that a machine has gone silent. A
 silent machine is the simple case. More often a machine keeps sending heartbeats while
@@ -8731,6 +8941,8 @@ so a run takes a few milliseconds and prints the same log every time.</p>
 <p>A machine is a name, a model, and the name of the switch or cable it shares with its
 neighbours. The link name is what lets the program see that five reports came from one
 place.</p>
+<div class="code-tabs">
+<div class="code-tab" data-lang="Go">
 <p class="listing"><b>Listing 4.1</b> The machines, in Go. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/go/fleethealth/main.go">code/go/fleethealth/main.go</a></p>
 
 <pre><code class="language-go">// Node is one machine in the fleet.
@@ -8755,6 +8967,9 @@ var fleet = []Node{
 	{"orin-nx-1", "Jetson Orin NX", "bench"},
 }
 </code></pre>
+</div>
+
+<div class="code-tab" data-lang="Rust">
 <p class="listing"><b>Listing 4.2</b> The machines, in Rust. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/rust/fleethealth/src/main.rs">code/rust/fleethealth/src/main.rs</a></p>
 
 <pre><code class="language-rust">/// One machine in the fleet.
@@ -8810,8 +9025,14 @@ const FLEET: [Node; 8] = [
         link: "bench",
     },
 ];</code></pre>
+</div>
+
+</div>
+
 <p>A signal carries the second it arrived, the machine, the job that was using the GPU, and
 its class. Hardware signals and link flaps have no job.</p>
+<div class="code-tabs">
+<div class="code-tab" data-lang="Go">
 <p class="listing"><b>Listing 4.3</b> Signals and their classes, in Go. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/go/fleethealth/main.go">code/go/fleethealth/main.go</a></p>
 
 <pre><code class="language-go">// Kind is the class of a failure signal.
@@ -8842,6 +9063,9 @@ type Signal struct {
 	Kind Kind
 }
 </code></pre>
+</div>
+
+<div class="code-tab" data-lang="Rust">
 <p class="listing"><b>Listing 4.4</b> Signals and their classes, in Rust. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/rust/fleethealth/src/main.rs">code/rust/fleethealth/src/main.rs</a></p>
 
 <pre><code class="language-rust">/// The class of a failure signal.
@@ -8879,10 +9103,16 @@ struct Signal {
     /// The signal's class.
     kind: Kind,
 }</code></pre>
+</div>
+
+</div>
+
 <h3 id="the-states-and-the-ladder"><a class="header" href="#the-states-and-the-ladder">The states and the ladder</a></h3>
 <p>The states are declared in the order a failing machine passes through them, and both
 languages can compare them. That ordering does real work later: “every state from
 Draining on” becomes one comparison.</p>
+<div class="code-tabs">
+<div class="code-tab" data-lang="Go">
 <p class="listing"><b>Listing 4.5</b> The lifecycle states and the repair ladder, in Go. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/go/fleethealth/main.go">code/go/fleethealth/main.go</a></p>
 
 <pre><code class="language-go">// State is a machine's place in the repair lifecycle.
@@ -8906,6 +9136,9 @@ func (s State) String() string {
 // ladder lists the repair actions from the cheapest to the most thorough.
 var ladder = []string{"reset the GPU", "reboot", "reimage"}
 </code></pre>
+</div>
+
+<div class="code-tab" data-lang="Rust">
 <p class="listing"><b>Listing 4.6</b> The lifecycle states and the repair ladder, in Rust. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/rust/fleethealth/src/main.rs">code/rust/fleethealth/src/main.rs</a></p>
 
 <pre><code class="language-rust">/// A machine's place in the repair lifecycle, in the order a failing machine
@@ -8935,6 +9168,10 @@ impl fmt::Display for State {
 
 /// The repair actions, from the cheapest to the most thorough.
 const LADDER: [&amp;str; 3] = ["reset the GPU", "reboot", "reimage"];</code></pre>
+</div>
+
+</div>
+
 <h3 id="deciding-what-a-signal-blames"><a class="header" href="#deciding-what-a-signal-blames">Deciding what a signal blames</a></h3>
 <p><code>Observe</code> holds the counting rules. A hardware signal condemns its machine at once. An
 application fault is recorded twice, under the machine and under the job, and then both
@@ -8942,6 +9179,8 @@ counts are checked. Three machines for one job blames the job, and the program p
 that verdict once and leaves every machine in service. Three jobs on one machine condemns
 the machine. A link flap is stamped on its machine, and the program counts the machines
 on the same link whose latest flap lies within five seconds.</p>
+<div class="code-tabs">
+<div class="code-tab" data-lang="Go">
 <p class="listing"><b>Listing 4.7</b> Triage: which of a job, a machine, or a link a signal blames, in Go. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/go/fleethealth/main.go">code/go/fleethealth/main.go</a></p>
 
 <pre><code class="language-go">// Observe takes one signal and decides what it blames. A hardware signal
@@ -8990,6 +9229,9 @@ func (p *Plane) Observe(s Signal) {
 	}
 }
 </code></pre>
+</div>
+
+<div class="code-tab" data-lang="Rust">
 <p class="listing"><b>Listing 4.8</b> Triage: which of a job, a machine, or a link a signal blames, in Rust. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/rust/fleethealth/src/main.rs">code/rust/fleethealth/src/main.rs</a></p>
 
 <pre><code class="language-rust">impl Plane {
@@ -9037,12 +9279,18 @@ func (p *Plane) Observe(s Signal) {
         }
     }
 }</code></pre>
+</div>
+
+</div>
+
 <p>The Go version keeps each set as a map from a name to <code>true</code>. The Rust version uses
 <code>BTreeSet</code>, whose <code>insert</code> returns whether the value was new, so “blame this once” is the
 single expression <code>self.blamed.insert(s.job)</code>.</p>
 <h3 id="the-budget"><a class="header" href="#the-budget">The budget</a></h3>
 <p>The budget check is a count of the machines in the four states that take a machine away
 from the fleet. Cordoned is left out on purpose: a cordoned machine still runs its jobs.</p>
+<div class="code-tabs">
+<div class="code-tab" data-lang="Go">
 <p class="listing"><b>Listing 4.9</b> Counting the machines that are out of service, in Go. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/go/fleethealth/main.go">code/go/fleethealth/main.go</a></p>
 
 <pre><code class="language-go">// outOfService counts the machines that hold a slot of the disruption budget:
@@ -9059,6 +9307,9 @@ func (p *Plane) outOfService() int {
 	return n
 }
 </code></pre>
+</div>
+
+<div class="code-tab" data-lang="Rust">
 <p class="listing"><b>Listing 4.10</b> Counting the machines that are out of service, in Rust. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/rust/fleethealth/src/main.rs">code/rust/fleethealth/src/main.rs</a></p>
 
 <pre><code class="language-rust">impl Plane {
@@ -9071,6 +9322,10 @@ func (p *Plane) outOfService() int {
             .count()
     }
 }</code></pre>
+</div>
+
+</div>
+
 <h3 id="one-second-of-the-lifecycle"><a class="header" href="#one-second-of-the-lifecycle">One second of the lifecycle</a></h3>
 <p><code>Step</code> visits every machine and asks how long it has been in its state. A Cordoned
 machine starts to drain as soon as the budget has room, and reports once that it is
@@ -9078,6 +9333,8 @@ blocked when the budget has none. Each of the other states lasts a fixed number 
 seconds in the model: four for a job to write its checkpoint and leave, three for a
 repair action, three for the burn-in. The result of a burn-in comes from a table the run
 supplies, which says how many tests each machine fails before one passes.</p>
+<div class="code-tabs">
+<div class="code-tab" data-lang="Go">
 <p class="listing"><b>Listing 4.11</b> Advancing every machine by one second, in Go. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/go/fleethealth/main.go">code/go/fleethealth/main.go</a></p>
 
 <pre><code class="language-go">// Step advances every machine by one second. A Cordoned machine starts to
@@ -9126,6 +9383,9 @@ func (p *Plane) finishBurnIn(now int, r *record) {
 	p.move(now, r, Remediating, "burn-in failed; "+ladder[r.step])
 }
 </code></pre>
+</div>
+
+<div class="code-tab" data-lang="Rust">
 <p class="listing"><b>Listing 4.12</b> Advancing every machine by one second, in Rust. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/rust/fleethealth/src/main.rs">code/rust/fleethealth/src/main.rs</a></p>
 
 <pre><code class="language-rust">impl Plane {
@@ -9190,6 +9450,10 @@ func (p *Plane) finishBurnIn(now int, r *record) {
         self.transition(now, index, State::Remediating, &amp;why);
     }
 }</code></pre>
+</div>
+
+</div>
+
 <p><code>Step</code> reads the current state and acts on it, with no memory of which signal started the
 repair. This is the level-triggered style of chapter 1 applied to machines. If the
 process stopped and started again with the same records, the next call to <code>Step</code> would
@@ -9198,6 +9462,8 @@ continue every repair from where it was.</p>
 <p>The script holds eleven signals that exercise each rule: one job faulting on three Thors,
 a memory error on a Spark, a Thor whose GPU stops answering, a restart of the 25 GbE
 switch, and two machines failing in the same second.</p>
+<div class="code-tabs">
+<div class="code-tab" data-lang="Go">
 <p class="listing"><b>Listing 4.13</b> The scripted signals and the main loop, in Go. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/go/fleethealth/main.go">code/go/fleethealth/main.go</a></p>
 
 <pre><code class="language-go">// script is the run: the signals in the order they arrive.
@@ -9240,6 +9506,9 @@ func main() {
 	}
 }
 </code></pre>
+</div>
+
+<div class="code-tab" data-lang="Rust">
 <p class="listing"><b>Listing 4.14</b> The scripted signals and the main loop, in Rust. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/rust/fleethealth/src/main.rs">code/rust/fleethealth/src/main.rs</a></p>
 
 <pre><code class="language-rust">/// The run: the signals in the order they arrive.
@@ -9336,6 +9605,10 @@ fn main() {
         println!("  {:&lt;10} {:&lt;16} {}", r.node.name, r.node.model, r.state);
     }
 }</code></pre>
+</div>
+
+</div>
+
 <p>Both versions print the same log:</p>
 <pre><code class="language-console">$ go run ./fleethealth
   14s  job finetune-7b faulted on 3 machines: the job is at fault, no machine is drained
@@ -9453,6 +9726,8 @@ and the refusal tells it that it has been replaced, so it can stop.</p>
 </div>
 
 <p>The store is a single checkpoint and one comparison.</p>
+<div class="code-tabs">
+<div class="code-tab" data-lang="Go">
 <p class="listing"><b>Listing 4.15</b> The checkpoint store and its epoch check, in Go. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/go/fencing/main.go">code/go/fencing/main.go</a></p>
 
 <pre><code class="language-go">// Checkpoint is what a worker saves: the training step it reached and the
@@ -9490,6 +9765,9 @@ func (s *Store) Write(c Checkpoint) error {
 	return nil
 }
 </code></pre>
+</div>
+
+<div class="code-tab" data-lang="Rust">
 <p class="listing"><b>Listing 4.16</b> The checkpoint store and its epoch check, in Rust. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/rust/fencing/src/main.rs">code/rust/fencing/src/main.rs</a></p>
 
 <pre><code class="language-rust">/// What a worker saves: the training step it reached and the epoch of the
@@ -9536,7 +9814,13 @@ impl Store {
         Ok(())
     }
 }</code></pre>
+</div>
+
+</div>
+
 <p>The control plane is a counter.</p>
+<div class="code-tabs">
+<div class="code-tab" data-lang="Go">
 <p class="listing"><b>Listing 4.17</b> Handing out epochs, in Go. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/go/fencing/main.go">code/go/fencing/main.go</a></p>
 
 <pre><code class="language-go">// ControlPlane hands out assignments of one job. Each assignment gets the
@@ -9553,6 +9837,9 @@ func (c *ControlPlane) Assign(host string) int {
 	return c.epoch
 }
 </code></pre>
+</div>
+
+<div class="code-tab" data-lang="Rust">
 <p class="listing"><b>Listing 4.18</b> Handing out epochs, in Rust. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/rust/fencing/src/main.rs">code/rust/fencing/src/main.rs</a></p>
 
 <pre><code class="language-rust">/// Hands out assignments of one job. Each assignment gets the next epoch, so a
@@ -9574,7 +9861,13 @@ impl ControlPlane {
         self.epoch
     }
 }</code></pre>
+</div>
+
+</div>
+
 <p>The run plays the same sequence against both kinds of store.</p>
+<div class="code-tabs">
+<div class="code-tab" data-lang="Go">
 <p class="listing"><b>Listing 4.19</b> The sequence of writes, in Go. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/go/fencing/main.go">code/go/fencing/main.go</a></p>
 
 <pre><code class="language-go">// save writes one checkpoint and prints what the store answered.
@@ -9611,6 +9904,9 @@ func main() {
 	run(&amp;Store{Fencing: true})
 }
 </code></pre>
+</div>
+
+<div class="code-tab" data-lang="Rust">
 <p class="listing"><b>Listing 4.20</b> The sequence of writes, in Rust. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/rust/fencing/src/main.rs">code/rust/fencing/src/main.rs</a></p>
 
 <pre><code class="language-rust">/// Writes one checkpoint and prints what the store answered.
@@ -9651,6 +9947,10 @@ fn main() {
         ..Store::default()
     });
 }</code></pre>
+</div>
+
+</div>
+
 <pre><code class="language-console">$ go run ./fencing
 a store that accepts every write:
   control plane: job assigned to thor-1 with epoch 1
@@ -9684,6 +9984,8 @@ object store that supports conditional writes, a database row with a version col
 file server that rejects clients holding an old token. The resource version check from
 chapter 1 is the same idea applied to Kubernetes objects.</p>
 <h2 id="the-complete-programs-3"><a class="header" href="#the-complete-programs-3">The complete programs</a></h2>
+<div class="code-tabs">
+<div class="code-tab" data-lang="Go">
 <p class="listing"><b>Listing 4.21</b> The complete program in Go. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/go/fleethealth/main.go">code/go/fleethealth/main.go</a></p>
 
 <pre><code class="language-go">// Command fleethealth models the part of a control plane that keeps a fleet of
@@ -10001,6 +10303,9 @@ func main() {
 	}
 }
 </code></pre>
+</div>
+
+<div class="code-tab" data-lang="Rust">
 <p class="listing"><b>Listing 4.22</b> The complete program in Rust. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/rust/fleethealth/src/main.rs">code/rust/fleethealth/src/main.rs</a></p>
 
 <pre><code class="language-rust">//! Models the part of a control plane that keeps a fleet of GPU machines
@@ -10450,6 +10755,12 @@ fn main() {
         println!("  {:&lt;10} {:&lt;16} {}", r.node.name, r.node.model, r.state);
     }
 }</code></pre>
+</div>
+
+</div>
+
+<div class="code-tabs">
+<div class="code-tab" data-lang="Go">
 <p class="listing"><b>Listing 4.23</b> The complete program in Go. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/go/fencing/main.go">code/go/fencing/main.go</a></p>
 
 <pre><code class="language-go">// Command fencing shows why a checkpoint store has to check who is writing.
@@ -10558,6 +10869,9 @@ func main() {
 	run(&amp;Store{Fencing: true})
 }
 </code></pre>
+</div>
+
+<div class="code-tab" data-lang="Rust">
 <p class="listing"><b>Listing 4.24</b> The complete program in Rust. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/rust/fencing/src/main.rs">code/rust/fencing/src/main.rs</a></p>
 
 <pre><code class="language-rust">//! Shows why a checkpoint store has to check who is writing.
@@ -10682,6 +10996,10 @@ fn main() {
         ..Store::default()
     });
 }</code></pre>
+</div>
+
+</div>
+
 <div class="summary">
 <h2 id="summary-2"><a class="header" href="#summary-2">Summary</a></h2>
 <ul>
@@ -10715,7 +11033,7 @@ replaced copy of a job from overwriting newer progress.</li>
 <li>M. Kleppmann, “How to do distributed locking”, 2016:
 <a href="https://martin.kleppmann.com/2016/02/08/how-to-do-distributed-locking.html">https://martin.kleppmann.com/2016/02/08/how-to-do-distributed-locking.html</a></li>
 </ul>
-<div style="break-before: page; page-break-before: always;"></div>
+<div style="break-before: page; page-break-before: always;"></div><img class="plate" src="art/ch05.svg" alt="Badge, a fox in a guard&#39;s cap, stands at the cluster gate and holds out an ID card that reads system:node:thor-3. A new server waits with a short-lived token, and an arrow shows the token traded for the card.">
 <h1 id="5-kubernetes-in-a-new-cloud-account"><a class="header" href="#5-kubernetes-in-a-new-cloud-account">5. Kubernetes in a new cloud account</a></h1>
 <p>So far our cluster has existed before each chapter began. In this chapter, we will look
 at where a cluster comes from. We start with an account at a provider of machines, which
@@ -10898,6 +11216,8 @@ machine that already carries the caller’s token and, if it finds one, returns 
 checks the quota. Then it creates the machine, and only after that does the run get the
 chance to lose the reply. That ordering is what makes the lost reply dangerous: the
 machine is in the list before the caller learns anything.</p>
+<div class="code-tabs">
+<div class="code-tab" data-lang="Go">
 <p class="listing"><b>Listing 5.1</b> The provider and its create call, in Go. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/go/provisioner/main.go">code/go/provisioner/main.go</a></p>
 
 <pre><code class="language-go">// Machine is one machine the provider has created.
@@ -10971,6 +11291,9 @@ func (p *Provider) Create(model, token string) (Machine, error) {
 	return m, nil
 }
 </code></pre>
+</div>
+
+<div class="code-tab" data-lang="Rust">
 <p class="listing"><b>Listing 5.2</b> The provider and its create call, in Rust. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/rust/provisioner/src/main.rs">code/rust/provisioner/src/main.rs</a></p>
 
 <pre><code class="language-rust">/// One machine the provider has created.
@@ -11051,6 +11374,10 @@ impl Provider {
         Ok(machine)
     }
 }</code></pre>
+</div>
+
+</div>
+
 <p>The Rust version represents a missing token as <code>None</code>, and the lookup is an
 <code>if let ... &amp;&amp; let ...</code> chain, the same construct we used in section 1.1: the first
 <code>let</code> unwraps the caller’s token, and the second searches for a machine that carries it.</p>
@@ -11059,6 +11386,8 @@ impl Provider {
 name when tokens are switched on, and calls the provider. A failed call ends the pass
 for this pool, and the controller records nothing for it. The next pass starts from the
 same slot.</p>
+<div class="code-tabs">
+<div class="code-tab" data-lang="Go">
 <p class="listing"><b>Listing 5.3</b> The pool and the controller's reconcile, in Go. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/go/provisioner/main.go">code/go/provisioner/main.go</a></p>
 
 <pre><code class="language-go">// Pool is a group of identical machines and the size its owner wants.
@@ -11106,6 +11435,9 @@ func (c *Controller) Reconcile(pool Pool) bool {
 	return true
 }
 </code></pre>
+</div>
+
+<div class="code-tab" data-lang="Rust">
 <p class="listing"><b>Listing 5.4</b> The pool and the controller's reconcile, in Rust. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/rust/provisioner/src/main.rs">code/rust/provisioner/src/main.rs</a></p>
 
 <pre><code class="language-rust">/// A group of identical machines and the size its owner wants.
@@ -11153,6 +11485,10 @@ impl Controller {
         true
     }
 }</code></pre>
+</div>
+
+</div>
+
 <p>The controller counts only what it has been told. <code>owned</code> grows by one machine for each
 successful reply, and <code>Reconcile</code> reads the pool’s size from it. This is where a lost
 reply does its damage in the first run, as the output will show.</p>
@@ -11160,6 +11496,8 @@ reply does its damage in the first run, as the output will show.</p>
 <p>The run asks for five Thors and two Sparks, with quotas of exactly five and two, and
 loses the reply to the third create call. It allows three passes and then prints what
 the controller owns beside what the provider holds.</p>
+<div class="code-tabs">
+<div class="code-tab" data-lang="Go">
 <p class="listing"><b>Listing 5.5</b> The pools, the three passes, and the final comparison, in Go. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/go/provisioner/main.go">code/go/provisioner/main.go</a></p>
 
 <pre><code class="language-go">// pools is the fleet we ask for: the Thors on the shelf and the two Sparks.
@@ -11213,6 +11551,9 @@ func main() {
 	run(true)
 }
 </code></pre>
+</div>
+
+<div class="code-tab" data-lang="Rust">
 <p class="listing"><b>Listing 5.6</b> The pools, the three passes, and the final comparison, in Rust. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/rust/provisioner/src/main.rs">code/rust/provisioner/src/main.rs</a></p>
 
 <pre><code class="language-rust">/// The fleet we ask for: the Thors on the shelf and the two Sparks.
@@ -11291,6 +11632,10 @@ fn main() {
     println!("create calls with the slot name as the client token:");
     run(true);
 }</code></pre>
+</div>
+
+</div>
+
 <pre><code class="language-console">$ go run ./provisioner
 create calls without a client token:
   pass 1
@@ -11372,6 +11717,8 @@ was working on by listing Machine objects. The record of ownership lives in the 
 server, where the resource versions of chapter 1 protect it, and the provider’s account
 is reconciled towards it.</p>
 <h2 id="the-complete-program-1"><a class="header" href="#the-complete-program-1">The complete program</a></h2>
+<div class="code-tabs">
+<div class="code-tab" data-lang="Go">
 <p class="listing"><b>Listing 5.7</b> The complete program in Go. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/go/provisioner/main.go">code/go/provisioner/main.go</a></p>
 
 <pre><code class="language-go">// Command provisioner models a controller that asks a provider for machines
@@ -11562,6 +11909,9 @@ func main() {
 	run(true)
 }
 </code></pre>
+</div>
+
+<div class="code-tab" data-lang="Rust">
 <p class="listing"><b>Listing 5.8</b> The complete program in Rust. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/rust/provisioner/src/main.rs">code/rust/provisioner/src/main.rs</a></p>
 
 <pre><code class="language-rust">//! Models a controller that asks a provider for machines until a pool has the
@@ -11783,6 +12133,10 @@ fn main() {
     println!("create calls with the slot name as the client token:");
     run(true);
 }</code></pre>
+</div>
+
+</div>
+
 <div class="summary">
 <h2 id="summary-3"><a class="header" href="#summary-3">Summary</a></h2>
 <ul>
@@ -11814,7 +12168,7 @@ retry returns the machine the first attempt made.</li>
 <li>NVIDIA, GPU Feature Discovery:
 <a href="https://github.com/NVIDIA/k8s-device-plugin/blob/main/docs/gpu-feature-discovery/README.md">https://github.com/NVIDIA/k8s-device-plugin/blob/main/docs/gpu-feature-discovery/README.md</a></li>
 </ul>
-<div style="break-before: page; page-break-before: always;"></div>
+<div style="break-before: page; page-break-before: always;"></div><img class="plate" src="art/ch06.svg" alt="Shellby, a hermit crab, carries memory pages from the shell on host A to a new shell on host B. Arrows mark each round of copying, and the pages already copied are stacked in the new shell.">
 <h1 id="6-virtual-machines-on-kubernetes"><a class="header" href="#6-virtual-machines-on-kubernetes">6. Virtual machines on Kubernetes</a></h1>
 <p>Every workload so far has run in a container. A container shares the host’s kernel, and
 some users of a GPU cluster need a kernel of their own: a customer who must run a
@@ -12036,6 +12390,8 @@ two hosts with no complete copy on either.</p>
 <p>The model needs three numbers: the VM’s memory, the rate at which the VM dirties it, and
 the rate of the link. Link speeds are quoted in gigabits per second and memory in
 gigabytes, so each link is entered in gigabytes per second: 25 GbE is 25 / 8 = 3.125.</p>
+<div class="code-tabs">
+<div class="code-tab" data-lang="Go">
 <p class="listing"><b>Listing 6.1</b> The VM, the link, and the limits, in Go. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/go/migration/main.go">code/go/migration/main.go</a></p>
 
 <pre><code class="language-go">// VM describes the virtual machine being moved.
@@ -12070,6 +12426,9 @@ const (
 	maxThrottle = 0.8
 )
 </code></pre>
+</div>
+
+<div class="code-tab" data-lang="Rust">
 <p class="listing"><b>Listing 6.2</b> The VM, the link, and the limits, in Rust. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/rust/migration/src/main.rs">code/rust/migration/src/main.rs</a></p>
 
 <pre><code class="language-rust">/// The virtual machine being moved.
@@ -12100,6 +12459,10 @@ const MAX_ROUNDS: u32 = 30;
 const THROTTLE_STEP: f64 = 0.2;
 /// The most the guest may be slowed.
 const MAX_THROTTLE: f64 = 0.8;</code></pre>
+</div>
+
+</div>
+
 <h3 id="one-migration"><a class="header" href="#one-migration">One migration</a></h3>
 <p><code>Migrate</code> keeps one quantity between rounds: <code>remaining</code>, the memory still to be sent.
 It starts as the whole memory. Each pass of the loop first asks whether <code>remaining</code> can
@@ -12107,6 +12470,8 @@ be sent within the pause, and if so pauses the VM and finishes. Otherwise it com
 how long the round takes and how much memory the guest dirties in that time. The dirtied
 amount is capped at the VM’s size, since a page that is written twice is still one
 dirty page.</p>
+<div class="code-tabs">
+<div class="code-tab" data-lang="Go">
 <p class="listing"><b>Listing 6.3</b> The pre-copy loop, in Go. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/go/migration/main.go">code/go/migration/main.go</a></p>
 
 <pre><code class="language-go">// Migrate runs pre-copy rounds until the remaining memory can be sent within
@@ -12157,6 +12522,9 @@ func Migrate(vm VM, link Link, throttle bool) {
 	fmt.Printf("  gave up after %d rounds\n", maxRounds)
 }
 </code></pre>
+</div>
+
+<div class="code-tab" data-lang="Rust">
 <p class="listing"><b>Listing 6.4</b> The pre-copy loop, in Rust. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/rust/migration/src/main.rs">code/rust/migration/src/main.rs</a></p>
 
 <pre><code class="language-rust">/// Runs pre-copy rounds until the remaining memory can be sent within the
@@ -12209,6 +12577,10 @@ fn migrate(vm: &amp;Vm, link: &amp;Link, throttle: bool) {
 
     println!("  gave up after {MAX_ROUNDS} rounds");
 }</code></pre>
+</div>
+
+</div>
+
 <p>A round that dirties at least as much as it sent has made no progress. Without
 throttling the function reports that the migration does not converge. With throttling
 it slows the guest by another 20 percent and tries again.</p>
@@ -12216,6 +12588,8 @@ it slows the guest by another 20 percent and tries again.</p>
 <p>The run uses two VMs and the four links our fleet has: the Orin NX’s 1 GbE, one of a
 Thor’s 25 GbE lanes, all four lanes bonded together, and the 200 GbE cable between the
 two Sparks.</p>
+<div class="code-tabs">
+<div class="code-tab" data-lang="Go">
 <p class="listing"><b>Listing 6.5</b> The VMs, the links, and the six migrations, in Go. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/go/migration/main.go">code/go/migration/main.go</a></p>
 
 <pre><code class="language-go">func main() {
@@ -12238,6 +12612,9 @@ two Sparks.</p>
 	Migrate(training, spark, false)
 }
 </code></pre>
+</div>
+
+<div class="code-tab" data-lang="Rust">
 <p class="listing"><b>Listing 6.6</b> The VMs, the links, and the six migrations, in Rust. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/rust/migration/src/main.rs">code/rust/migration/src/main.rs</a></p>
 
 <pre><code class="language-rust">fn main() {
@@ -12279,6 +12656,10 @@ two Sparks.</p>
     migrate(&amp;training, &amp;bonded, false);
     migrate(&amp;training, &amp;spark, false);
 }</code></pre>
+</div>
+
+</div>
+
 <pre><code class="language-console">$ go run ./migration
 16 GB inference VM (0.2 GB/s changed) over 1 GbE:
   round  1:  16.00 GB sent in  128.0 s,  16.00 GB changed meanwhile
@@ -12377,6 +12758,8 @@ migration is possible when the host driver and the hypervisor both support it. T
 support depends on the driver and hypervisor versions, and has to be checked for each
 combination.</p>
 <h2 id="the-complete-program-2"><a class="header" href="#the-complete-program-2">The complete program</a></h2>
+<div class="code-tabs">
+<div class="code-tab" data-lang="Go">
 <p class="listing"><b>Listing 6.7</b> The complete program in Go. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/go/migration/main.go">code/go/migration/main.go</a></p>
 
 <pre><code class="language-go">// Command migration models the live migration of a virtual machine: moving a
@@ -12497,6 +12880,9 @@ func main() {
 	Migrate(training, spark, false)
 }
 </code></pre>
+</div>
+
+<div class="code-tab" data-lang="Rust">
 <p class="listing"><b>Listing 6.8</b> The complete program in Rust. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/rust/migration/src/main.rs">code/rust/migration/src/main.rs</a></p>
 
 <pre><code class="language-rust">//! Models the live migration of a virtual machine: moving a running VM's
@@ -12633,6 +13019,10 @@ fn main() {
     migrate(&amp;training, &amp;bonded, false);
     migrate(&amp;training, &amp;spark, false);
 }</code></pre>
+</div>
+
+</div>
+
 <div class="summary">
 <h2 id="summary-4"><a class="header" href="#summary-4">Summary</a></h2>
 <ul>
@@ -12666,7 +13056,7 @@ out of the hypervisor’s reach.</li>
 <li>C. Clark and others, “Live Migration of Virtual Machines”, 2nd USENIX Symposium on
 Networked Systems Design and Implementation (NSDI), 2005.</li>
 </ul>
-<div style="break-before: page; page-break-before: always;"></div>
+<div style="break-before: page; page-break-before: always;"></div><img class="plate" src="art/ch07.svg" alt="5 parrots of different colours sit on a ring-shaped perch. Arrows between neighbours show each parrot passing a partial sum to its right, and the sums read 1, 3, 6, 10 and 15.">
 <h1 id="7-collective-communication-and-training-failures"><a class="header" href="#7-collective-communication-and-training-failures">7. Collective communication and training failures</a></h1>
 <p>The jobs in the earlier chapters each ran on one machine. A model that is too large or
 too slow to train on one machine is trained on several at once, and that changes what a
@@ -12830,6 +13220,8 @@ and sends on the other. Both languages use a <em>channel</em>, a queue that one 
 running piece of code puts values into and another takes them out of. Nothing else is
 shared between workers, which mirrors the real situation: machines in a training job
 share no memory, only a network.</p>
+<div class="code-tabs">
+<div class="code-tab" data-lang="Go">
 <p class="listing"><b>Listing 7.1</b> The message, the worker, and how long it waits, in Go. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/go/allreduce/main.go">code/go/allreduce/main.go</a></p>
 
 <pre><code class="language-go">// message carries one chunk of a gradient from a worker to its right-hand
@@ -12862,6 +13254,9 @@ var errFailed = errors.New("failed")
 // patience is how long a worker waits for its neighbour before giving up.
 const patience = 100 * time.Millisecond
 </code></pre>
+</div>
+
+<div class="code-tab" data-lang="Rust">
 <p class="listing"><b>Listing 7.2</b> The message, the worker, and how long it waits, in Rust. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/rust/allreduce/src/main.rs">code/rust/allreduce/src/main.rs</a></p>
 
 <pre><code class="language-rust">/// Carries one chunk of a gradient from a worker to its right-hand neighbour.
@@ -12890,12 +13285,18 @@ struct Worker {
 
 /// How long a worker waits for its neighbour before giving up.
 const PATIENCE: Duration = Duration::from_millis(100);</code></pre>
+</div>
+
+</div>
+
 <h3 id="the-exchanges"><a class="header" href="#the-exchanges">The exchanges</a></h3>
 <p><code>Run</code> is the algorithm. Each pass of its loop is one exchange: send a chunk to the right,
 then wait for a chunk from the left. The chunk to send is found by counting backwards
 from the worker’s own position, one place per exchange. Working through the hand example
 shows why that is right: after the first exchange, the chunk a worker sends next is
 always the one it received last.</p>
+<div class="code-tabs">
+<div class="code-tab" data-lang="Go">
 <p class="listing"><b>Listing 7.3</b> A worker's 2(n − 1) exchanges, in Go. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/go/allreduce/main.go">code/go/allreduce/main.go</a></p>
 
 <pre><code class="language-go">// Run performs the worker's 2(n-1) exchanges. In each one it sends a chunk to
@@ -12930,6 +13331,9 @@ func (w *Worker) Run(n int) (int, error) {
 	return 2 * (n - 1), nil
 }
 </code></pre>
+</div>
+
+<div class="code-tab" data-lang="Rust">
 <p class="listing"><b>Listing 7.4</b> A worker's 2(n − 1) exchanges, in Rust. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/rust/allreduce/src/main.rs">code/rust/allreduce/src/main.rs</a></p>
 
 <pre><code class="language-rust">impl Worker {
@@ -12973,6 +13377,10 @@ func (w *Worker) Run(n int) (int, error) {
         (self, 2 * (n - 1), None)
     }
 }</code></pre>
+</div>
+
+</div>
+
 <p>The wait for the left-hand neighbour has a time limit, which the program calls
 <code>patience</code>. In Go the wait is a <code>select</code> with two cases, a message on the channel or the
 timer from <code>time.After</code>, and whichever is ready first runs. In Rust it is the channel’s
@@ -12986,6 +13394,8 @@ the main thread can read each worker’s final gradient without any lock.</p>
 <p><code>ring</code> creates one channel per link and gives each worker the receiving end of its own
 link and the sending end of its right-hand neighbour’s. It then starts every worker at
 once and waits for all of them.</p>
+<div class="code-tabs">
+<div class="code-tab" data-lang="Go">
 <p class="listing"><b>Listing 7.5</b> Connecting the workers and running them together, in Go. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/go/allreduce/main.go">code/go/allreduce/main.go</a></p>
 
 <pre><code class="language-go">// result is what one worker reports when it stops.
@@ -13037,6 +13447,9 @@ func ring(n, failing, failAfter int) ([]*Worker, []result) {
 	return workers, results
 }
 </code></pre>
+</div>
+
+<div class="code-tab" data-lang="Rust">
 <p class="listing"><b>Listing 7.6</b> Connecting the workers and running them together, in Rust. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/rust/allreduce/src/main.rs">code/rust/allreduce/src/main.rs</a></p>
 
 <pre><code class="language-rust">/// Connects n workers in a circle, runs them all at once, and returns each
@@ -13069,6 +13482,10 @@ fn ring(n: usize, failing: Option&lt;(usize, usize)&gt;) -&gt; Vec&lt;(Worker, u
         .map(|h| h.join().expect("a worker panicked"))
         .collect()
 }</code></pre>
+</div>
+
+</div>
+
 <p>In Go each worker runs in a goroutine started with <code>wg.Go</code>, a method of
 <code>sync.WaitGroup</code> that starts a function and counts it, and <code>wg.Wait</code> blocks until all
 have returned. Each goroutine writes its result into its own element of <code>results</code>, so
@@ -13098,6 +13515,8 @@ T = √(2CM). This is <em>Young’s formula</em>, published in 1974.</p>
 <p>The M in the formula is the job’s, and a job fails when any one of its machines fails. A
 job on N machines therefore fails N times as often as one machine: its MTBF is one
 machine’s divided by N.</p>
+<div class="code-tabs">
+<div class="code-tab" data-lang="Go">
 <p class="listing"><b>Listing 7.7</b> Young's formula, in Go. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/go/allreduce/main.go">code/go/allreduce/main.go</a></p>
 
 <pre><code class="language-go">// Costs and failure rates for the checkpoint arithmetic, in seconds.
@@ -13115,6 +13534,9 @@ func interval(jobMTBF float64) float64 {
 	return math.Sqrt(2 * checkpointCost * jobMTBF)
 }
 </code></pre>
+</div>
+
+<div class="code-tab" data-lang="Rust">
 <p class="listing"><b>Listing 7.8</b> Young's formula, in Rust. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/rust/allreduce/src/main.rs">code/rust/allreduce/src/main.rs</a></p>
 
 <pre><code class="language-rust">/// The time one checkpoint takes to write, in seconds.
@@ -13128,7 +13550,13 @@ const MACHINE_MTBF: f64 = 30.0 * 24.0 * 3600.0;
 fn interval(job_mtbf: f64) -&gt; f64 {
     (2.0 * CHECKPOINT_COST * job_mtbf).sqrt()
 }</code></pre>
+</div>
+
+</div>
+
 <h3 id="the-run-3"><a class="header" href="#the-run-3">The run</a></h3>
+<div class="code-tabs">
+<div class="code-tab" data-lang="Go">
 <p class="listing"><b>Listing 7.9</b> The healthy step, the failed step, and the checkpoint table, in Go. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/go/allreduce/main.go">code/go/allreduce/main.go</a></p>
 
 <pre><code class="language-go">func main() {
@@ -13169,6 +13597,9 @@ fn interval(job_mtbf: f64) -&gt; f64 {
 	}
 }
 </code></pre>
+</div>
+
+<div class="code-tab" data-lang="Rust">
 <p class="listing"><b>Listing 7.10</b> The healthy step, the failed step, and the checkpoint table, in Rust. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/rust/allreduce/src/main.rs">code/rust/allreduce/src/main.rs</a></p>
 
 <pre><code class="language-rust">fn main() {
@@ -13222,6 +13653,10 @@ fn interval(job_mtbf: f64) -&gt; f64 {
         );
     }
 }</code></pre>
+</div>
+
+</div>
+
 <pre><code class="language-console">$ go run ./allreduce
 ring all-reduce over 5 workers, 5 chunks each:
   thor-1 starts with 1 11 21 31 41     and ends with 15 65 115 165 215
@@ -13270,6 +13705,8 @@ checkpoints and repeated work. The machines are no less reliable than before. Th
 more of them in one job, and this is why large training jobs invest in making
 checkpoints fast.</p>
 <h2 id="the-complete-program-3"><a class="header" href="#the-complete-program-3">The complete program</a></h2>
+<div class="code-tabs">
+<div class="code-tab" data-lang="Go">
 <p class="listing"><b>Listing 7.11</b> The complete program in Go. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/go/allreduce/main.go">code/go/allreduce/main.go</a></p>
 
 <pre><code class="language-go">// Command allreduce runs one step of distributed training's communication:
@@ -13475,6 +13912,9 @@ func main() {
 	}
 }
 </code></pre>
+</div>
+
+<div class="code-tab" data-lang="Rust">
 <p class="listing"><b>Listing 7.12</b> The complete program in Rust. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/rust/allreduce/src/main.rs">code/rust/allreduce/src/main.rs</a></p>
 
 <pre><code class="language-rust">//! Runs one step of distributed training's communication: five workers each
@@ -13679,6 +14119,10 @@ fn main() {
         );
     }
 }</code></pre>
+</div>
+
+</div>
+
 <div class="summary">
 <h2 id="summary-5"><a class="header" href="#summary-5">Summary</a></h2>
 <ul>
@@ -13709,7 +14153,7 @@ Communications of the ACM, 17(9), 1974.</li>
 <li>MPI Forum, MPI: A Message-Passing Interface Standard, chapter on collective
 communication: <a href="https://www.mpi-forum.org/docs/">https://www.mpi-forum.org/docs/</a></li>
 </ul>
-<div style="break-before: page; page-break-before: always;"></div>
+<div style="break-before: page; page-break-before: always;"></div><img class="plate" src="art/ch08.svg" alt="Flock, a sheepdog, herds 5 sheep numbered 1 to 5 into 1 pen labelled shelf: 5 Thors, following an arrow through the open gate. A second pen labelled desk: 2 Sparks holds 2 sheep.">
 <h1 id="8-placing-jobs-on-gpus"><a class="header" href="#8-placing-jobs-on-gpus">8. Placing jobs on GPUs</a></h1>
 <p>Chapter 7 gave us two facts about a training job that spans several machines. It makes
 progress only when all of its workers are running, and its speed is set by the slowest
@@ -13835,6 +14279,8 @@ makes good choices for the jobs it has seen and cannot know what will arrive nex
 <p>Each machine has one GPU, so a node is a name, a domain, and the job that holds its GPU.
 The machines are listed in name order, which is the order in which a listing of Node
 objects from the API server arrives.</p>
+<div class="code-tabs">
+<div class="code-tab" data-lang="Go">
 <p class="listing"><b>Listing 8.1</b> Nodes, links, and jobs, in Go. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/go/gangsched/main.go">code/go/gangsched/main.go</a></p>
 
 <pre><code class="language-go">// Node is one machine with one GPU.
@@ -13881,6 +14327,9 @@ type Job struct {
 	Workers int
 }
 </code></pre>
+</div>
+
+<div class="code-tab" data-lang="Rust">
 <p class="listing"><b>Listing 8.2</b> Nodes, links, and jobs, in Rust. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/rust/gangsched/src/main.rs">code/rust/gangsched/src/main.rs</a></p>
 
 <pre><code class="language-rust">/// One machine with one GPU.
@@ -13965,12 +14414,18 @@ struct Job {
     name: &amp;'static str,
     workers: usize,
 }</code></pre>
+</div>
+
+</div>
+
 <p>The Go version names a domain with a string and looks its link up in a map. The Rust
 version makes the domain an <code>enum</code> and the lookup a <code>match</code>, so a domain with no link is
 a compile error.</p>
 <h3 id="one-pod-at-a-time"><a class="header" href="#one-pod-at-a-time">One pod at a time</a></h3>
 <p><code>podAtATime</code> plays the scheduler without gangs. It goes round the jobs, giving each one
 free GPU per turn, until a whole round passes in which nobody could be given anything.</p>
+<div class="code-tabs">
+<div class="code-tab" data-lang="Go">
 <p class="listing"><b>Listing 8.3</b> Handing out GPUs one pod at a time, in Go. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/go/gangsched/main.go">code/go/gangsched/main.go</a></p>
 
 <pre><code class="language-go">// podAtATime gives each job one GPU in turn until none are left, the way a
@@ -14006,6 +14461,9 @@ func podAtATime(fleet []*Node, jobs []Job) {
 	fmt.Printf("  %d of %d GPUs are held and %d jobs are running\n", len(fleet)-len(free(fleet)), len(fleet), running)
 }
 </code></pre>
+</div>
+
+<div class="code-tab" data-lang="Rust">
 <p class="listing"><b>Listing 8.4</b> Handing out GPUs one pod at a time, in Rust. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/rust/gangsched/src/main.rs">code/rust/gangsched/src/main.rs</a></p>
 
 <pre><code class="language-rust">/// Gives each job one GPU in turn until none are left, the way a scheduler
@@ -14055,6 +14513,10 @@ fn pod_at_a_time(mut fleet: Vec&lt;Node&gt;, jobs: &amp;[Job]) {
         fleet.len()
     );
 }</code></pre>
+</div>
+
+</div>
+
 <h3 id="two-ways-to-choose-machines"><a class="header" href="#two-ways-to-choose-machines">Two ways to choose machines</a></h3>
 <p>A <em>placer</em> is a function that takes the free machines and a number of workers and
 returns the machines to use, or nothing. Making it a function lets <code>admit</code> work with
@@ -14065,6 +14527,8 @@ has thought about placement.</p>
 takes the smallest of those. When no single domain can hold the job, it falls back to
 <code>firstFree</code>, and the job runs across domains at the speed of the house network. A real
 scheduler would let the job’s owner choose between that and waiting.</p>
+<div class="code-tabs">
+<div class="code-tab" data-lang="Go">
 <p class="listing"><b>Listing 8.5</b> The two placers, in Go. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/go/gangsched/main.go">code/go/gangsched/main.go</a></p>
 
 <pre><code class="language-go">// A placer chooses machines for a job from the free ones, or returns nil when
@@ -14113,6 +14577,9 @@ func byTopology(open []*Node, workers int) []*Node {
 	return byDomain[best][:workers]
 }
 </code></pre>
+</div>
+
+<div class="code-tab" data-lang="Rust">
 <p class="listing"><b>Listing 8.6</b> The two placers, in Rust. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/rust/gangsched/src/main.rs">code/rust/gangsched/src/main.rs</a></p>
 
 <pre><code class="language-rust">/// Chooses machines for a job from the free ones, or returns `None` when it
@@ -14143,10 +14610,16 @@ fn by_topology(fleet: &amp;[Node], open: &amp;[usize], workers: usize) -&gt; Opt
         .map(|members| members[..workers].to_vec())
         .or_else(|| first_free(fleet, open, workers))
 }</code></pre>
+</div>
+
+</div>
+
 <h3 id="what-a-placement-costs"><a class="header" href="#what-a-placement-costs">What a placement costs</a></h3>
 <p>To compare placements we need a number. <code>slowest</code> finds the link a set of machines is
 limited by: their domain’s link if they share one, the house network if they do not.
 <code>exchangeSeconds</code> applies chapter 7’s count to it.</p>
+<div class="code-tabs">
+<div class="code-tab" data-lang="Go">
 <p class="listing"><b>Listing 8.7</b> The slowest link and the time of one all-reduce, in Go. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/go/gangsched/main.go">code/go/gangsched/main.go</a></p>
 
 <pre><code class="language-go">// gradientGB is the size of the gradient every worker contributes per step.
@@ -14172,6 +14645,9 @@ func exchangeSeconds(nodes []*Node) float64 {
 	return 2 * (n - 1) / n * gradientGB / slowest(nodes).GBps
 }
 </code></pre>
+</div>
+
+<div class="code-tab" data-lang="Rust">
 <p class="listing"><b>Listing 8.8</b> The slowest link and the time of one all-reduce, in Rust. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/rust/gangsched/src/main.rs">code/rust/gangsched/src/main.rs</a></p>
 
 <pre><code class="language-rust">/// The size of the gradient every worker contributes per step, in gigabytes.
@@ -14195,10 +14671,16 @@ fn exchange_seconds(fleet: &amp;[Node], nodes: &amp;[usize]) -&gt; f64 {
 
     2.0 * (n - 1.0) / n * GRADIENT_GB / slowest(fleet, nodes).gbps
 }</code></pre>
+</div>
+
+</div>
+
 <h3 id="admitting-a-whole-job"><a class="header" href="#admitting-a-whole-job">Admitting a whole job</a></h3>
 <p><code>admit</code> is gang scheduling in a dozen lines. It asks the placer for machines for every
 worker. If the placer returns nothing, the job waits and the fleet is untouched. Only
 when every worker has a machine does <code>admit</code> mark any of them as taken.</p>
+<div class="code-tabs">
+<div class="code-tab" data-lang="Go">
 <p class="listing"><b>Listing 8.9</b> All of a job's workers, or none, in Go. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/go/gangsched/main.go">code/go/gangsched/main.go</a></p>
 
 <pre><code class="language-go">// admit starts a job only when every one of its workers has a machine. It
@@ -14238,6 +14720,9 @@ func release(fleet []*Node, job string) {
 	fmt.Printf("  %-8s finishes\n", job)
 }
 </code></pre>
+</div>
+
+<div class="code-tab" data-lang="Rust">
 <p class="listing"><b>Listing 8.10</b> All of a job's workers, or none, in Rust. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/rust/gangsched/src/main.rs">code/rust/gangsched/src/main.rs</a></p>
 
 <pre><code class="language-rust">/// Starts a job only when every one of its workers has a machine. It reports
@@ -14282,7 +14767,13 @@ fn release(fleet: &amp;mut [Node], job: &amp;str) {
 
     println!("  {job:&lt;8} finishes");
 }</code></pre>
+</div>
+
+</div>
+
 <h3 id="the-run-4"><a class="header" href="#the-run-4">The run</a></h3>
+<div class="code-tabs">
+<div class="code-tab" data-lang="Go">
 <p class="listing"><b>Listing 8.11</b> Four experiments on the same fleet, in Go. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/go/gangsched/main.go">code/go/gangsched/main.go</a></p>
 
 <pre><code class="language-go">func main() {
@@ -14314,6 +14805,9 @@ fn release(fleet: &amp;mut [Node], job: &amp;str) {
 	}
 }
 </code></pre>
+</div>
+
+<div class="code-tab" data-lang="Rust">
 <p class="listing"><b>Listing 8.12</b> Four experiments on the same fleet, in Rust. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/rust/gangsched/src/main.rs">code/rust/gangsched/src/main.rs</a></p>
 
 <pre><code class="language-rust">fn main() {
@@ -14366,6 +14860,10 @@ fn release(fleet: &amp;mut [Node], job: &amp;str) {
         admit(&amp;mut fleet, job, by_topology);
     }
 }</code></pre>
+</div>
+
+</div>
+
 <pre><code class="language-console">$ go run ./gangsched
 one pod at a time, two jobs of five workers:
   train-a  holds 4 of 5 GPUs: orin-nx-1 spark-2 thor-2 thor-4
@@ -14451,6 +14949,8 @@ should count a draining machine against every gang that needs it.</p>
 </div>
 
 <h2 id="the-complete-program-4"><a class="header" href="#the-complete-program-4">The complete program</a></h2>
+<div class="code-tabs">
+<div class="code-tab" data-lang="Go">
 <p class="listing"><b>Listing 8.13</b> The complete program in Go. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/go/gangsched/main.go">code/go/gangsched/main.go</a></p>
 
 <pre><code class="language-go">// Command gangsched models two decisions a scheduler makes for a training job
@@ -14713,6 +15213,9 @@ func main() {
 	}
 }
 </code></pre>
+</div>
+
+<div class="code-tab" data-lang="Rust">
 <p class="listing"><b>Listing 8.14</b> The complete program in Rust. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/rust/gangsched/src/main.rs">code/rust/gangsched/src/main.rs</a></p>
 
 <pre><code class="language-rust">//! Models two decisions a scheduler makes for a training job that needs
@@ -15021,6 +15524,10 @@ fn main() {
         admit(&amp;mut fleet, job, by_topology);
     }
 }</code></pre>
+</div>
+
+</div>
+
 <div class="summary">
 <h2 id="summary-6"><a class="header" href="#summary-6">Summary</a></h2>
 <ul>
@@ -15052,7 +15559,7 @@ from binding part of a gang, and node labels describe the topology.</li>
 <li>Kubernetes, Jobs, suspending a Job:
 <a href="https://kubernetes.io/docs/concepts/workloads/controllers/job/#suspending-a-job">https://kubernetes.io/docs/concepts/workloads/controllers/job/#suspending-a-job</a></li>
 </ul>
-<div style="break-before: page; page-break-before: always;"></div>
+<div style="break-before: page; page-break-before: always;"></div><img class="plate" src="art/ch09.svg" alt="3 squirrels sit under 3 trees named shelf, desk and bench, each holding up a slate. Arrows between the slates show them merged, and every slate now reads 360 120 65.">
 <h1 id="9-counting-across-replicas"><a class="header" href="#9-counting-across-replicas">9. Counting across replicas</a></h1>
 <p>A GPU platform counts all day. It counts the GPU time each team’s jobs have used, so
 that the time can be billed or shared out fairly, and it counts the GPUs each team has
@@ -15221,6 +15728,8 @@ partition forces a choice here too, and for a limit we chose to refuse.</p>
 <h3 id="the-grow-only-counter"><a class="header" href="#the-grow-only-counter">The grow-only counter</a></h3>
 <p>A <code>GCounter</code> is an array with one entry per replica. <code>Add</code> touches one entry, <code>Merge</code>
 takes the larger value of each, and <code>Value</code> sums them.</p>
+<div class="code-tabs">
+<div class="code-tab" data-lang="Go">
 <p class="listing"><b>Listing 9.1</b> The grow-only counter, in Go. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/go/counter/main.go">code/go/counter/main.go</a></p>
 
 <pre><code class="language-go">// GCounter is a count that only grows. It keeps one entry per replica, and
@@ -15249,6 +15758,9 @@ func (c GCounter) Value() int {
 	return total
 }
 </code></pre>
+</div>
+
+<div class="code-tab" data-lang="Rust">
 <p class="listing"><b>Listing 9.2</b> The grow-only counter, in Rust. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/rust/counter/src/main.rs">code/rust/counter/src/main.rs</a></p>
 
 <pre><code class="language-rust">/// A count that only grows. It keeps one entry per replica, and each replica
@@ -15275,12 +15787,18 @@ impl GCounter {
         self.0.iter().sum()
     }
 }</code></pre>
+</div>
+
+</div>
+
 <p>The counter is a fixed-size array in both languages, which makes it a plain value:
 assigning it copies it, and “send my row to another replica” in the program is passing
 the array to <code>Merge</code>.</p>
 <h3 id="the-counter-that-goes-down"><a class="header" href="#the-counter-that-goes-down">The counter that goes down</a></h3>
 <p><code>PNCounter</code> holds two grow-only counters. A positive change goes into <code>Up</code>, a negative
 one into <code>Down</code> with its sign removed.</p>
+<div class="code-tabs">
+<div class="code-tab" data-lang="Go">
 <p class="listing"><b>Listing 9.3</b> The up-and-down counter, in Go. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/go/counter/main.go">code/go/counter/main.go</a></p>
 
 <pre><code class="language-go">// PNCounter is a count that goes up and down, built from two counters that
@@ -15307,6 +15825,9 @@ func (c *PNCounter) Merge(other PNCounter) {
 // Value is the increments minus the decrements.
 func (c PNCounter) Value() int { return c.Up.Value() - c.Down.Value() }
 </code></pre>
+</div>
+
+<div class="code-tab" data-lang="Rust">
 <p class="listing"><b>Listing 9.4</b> The up-and-down counter, in Rust. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/rust/counter/src/main.rs">code/rust/counter/src/main.rs</a></p>
 
 <pre><code class="language-rust">/// A count that goes up and down, built from two counters that only grow: one
@@ -15338,9 +15859,15 @@ impl PnCounter {
         self.up.value() - self.down.value()
     }
 }</code></pre>
+</div>
+
+</div>
+
 <h3 id="one-number-per-replica"><a class="header" href="#one-number-per-replica">One number per replica</a></h3>
 <p>The first experiment is the rule that fails: one total per replica, synchronised by
 keeping the larger.</p>
+<div class="code-tabs">
+<div class="code-tab" data-lang="Go">
 <p class="listing"><b>Listing 9.5</b> Keeping the larger of two totals, in Go. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/go/counter/main.go">code/go/counter/main.go</a></p>
 
 <pre><code class="language-go">// oneNumber counts with a single number per replica and synchronises by
@@ -15360,6 +15887,9 @@ func oneNumber() {
 	fmt.Printf("  after synchronising, every replica says %d; the jobs used %d\n", largest, sum)
 }
 </code></pre>
+</div>
+
+<div class="code-tab" data-lang="Rust">
 <p class="listing"><b>Listing 9.6</b> Keeping the larger of two totals, in Rust. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/rust/counter/src/main.rs">code/rust/counter/src/main.rs</a></p>
 
 <pre><code class="language-rust">/// Counts with a single number per replica and synchronises by keeping the
@@ -15375,10 +15905,16 @@ fn one_number() {
     let sum: i64 = adds.iter().sum();
     println!("  after synchronising, every replica says {largest}; the jobs used {sum}");
 }</code></pre>
+</div>
+
+</div>
+
 <h3 id="through-a-partition"><a class="header" href="#through-a-partition">Through a partition</a></h3>
 <p>The second experiment gives each replica a <code>GCounter</code>. The bench is cut off, the shelf
 and the desk merge with each other, and reports keep arriving on both sides. After the
 partition the rows are merged in an order chosen to be untidy, with one merge repeated.</p>
+<div class="code-tabs">
+<div class="code-tab" data-lang="Go">
 <p class="listing"><b>Listing 9.7</b> Grow-only counters, a partition, and an untidy recovery, in Go. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/go/counter/main.go">code/go/counter/main.go</a></p>
 
 <pre><code class="language-go">// growOnly counts the same usage with a GCounter at each replica, through a
@@ -15412,6 +15948,9 @@ func growOnly() {
 	}
 }
 </code></pre>
+</div>
+
+<div class="code-tab" data-lang="Rust">
 <p class="listing"><b>Listing 9.8</b> Grow-only counters, a partition, and an untidy recovery, in Rust. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/rust/counter/src/main.rs">code/rust/counter/src/main.rs</a></p>
 
 <pre><code class="language-rust">/// Counts the same usage with a `GCounter` at each replica, through a
@@ -15444,10 +15983,16 @@ fn grow_only() {
         show(r, c);
     }
 }</code></pre>
+</div>
+
+</div>
+
 <h3 id="gpus-in-use"><a class="header" href="#gpus-in-use">GPUs in use</a></h3>
 <p>The third experiment counts jobs starting and ending. One job’s end is reported to a
 different replica from the one that recorded its start, which is ordinary: a job’s
 machine and the replica that hears of its end need not be in the same place.</p>
+<div class="code-tabs">
+<div class="code-tab" data-lang="Go">
 <p class="listing"><b>Listing 9.9</b> Starts and ends recorded at different replicas, in Go. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/go/counter/main.go">code/go/counter/main.go</a></p>
 
 <pre><code class="language-go">// upAndDown counts GPUs in use. A job's start and its end may be recorded at
@@ -15469,6 +16014,9 @@ func upAndDown() {
 	fmt.Printf("  started %v, ended %v: %d GPUs in use\n", [replicas]int(c.Up), [replicas]int(c.Down), c.Value())
 }
 </code></pre>
+</div>
+
+<div class="code-tab" data-lang="Rust">
 <p class="listing"><b>Listing 9.10</b> Starts and ends recorded at different replicas, in Rust. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/rust/counter/src/main.rs">code/rust/counter/src/main.rs</a></p>
 
 <pre><code class="language-rust">/// Counts GPUs in use. A job's start and its end may be recorded at different
@@ -15495,9 +16043,15 @@ fn up_and_down() {
         c.value()
     );
 }</code></pre>
+</div>
+
+</div>
+
 <h3 id="a-quota-two-ways"><a class="header" href="#a-quota-two-ways">A quota, two ways</a></h3>
 <p>The last two experiments enforce a quota of six GPUs. <code>sharedLimit</code> lets each replica
 check its own merged count. <code>allowances</code> gives each replica a share.</p>
+<div class="code-tabs">
+<div class="code-tab" data-lang="Go">
 <p class="listing"><b>Listing 9.11</b> A limit checked against a local count, and a limit divided into shares, in Go. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/go/counter/main.go">code/go/counter/main.go</a></p>
 
 <pre><code class="language-go">// quota is the number of GPUs one team may use at once.
@@ -15550,6 +16104,9 @@ func allowances() {
 	fmt.Printf("  shares %v, in use %v: %d of %d\n", share, used, used[shelf]+used[desk]+used[bench], quota)
 }
 </code></pre>
+</div>
+
+<div class="code-tab" data-lang="Rust">
 <p class="listing"><b>Listing 9.12</b> A limit checked against a local count, and a limit divided into shares, in Rust. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/rust/counter/src/main.rs">code/rust/counter/src/main.rs</a></p>
 
 <pre><code class="language-rust">/// The number of GPUs one team may use at once.
@@ -15627,6 +16184,10 @@ fn allowances() {
         used.iter().sum::&lt;i64&gt;()
     );
 }</code></pre>
+</div>
+
+</div>
+
 <h3 id="the-run-5"><a class="header" href="#the-run-5">The run</a></h3>
 <pre><code class="language-console">$ go run ./counter
 one number per replica:
@@ -15694,6 +16255,8 @@ limit enforced by many copies of an API gateway. In each of these, no single API
 sees every event, and the count has to be assembled from replicas that are sometimes
 apart.</p>
 <h2 id="the-complete-program-5"><a class="header" href="#the-complete-program-5">The complete program</a></h2>
+<div class="code-tabs">
+<div class="code-tab" data-lang="Go">
 <p class="listing"><b>Listing 9.13</b> The complete program in Go. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/go/counter/main.go">code/go/counter/main.go</a></p>
 
 <pre><code class="language-go">// Command counter shows how replicas of a service that cannot always reach
@@ -15914,6 +16477,9 @@ func main() {
 	allowances()
 }
 </code></pre>
+</div>
+
+<div class="code-tab" data-lang="Rust">
 <p class="listing"><b>Listing 9.14</b> The complete program in Rust. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/rust/counter/src/main.rs">code/rust/counter/src/main.rs</a></p>
 
 <pre><code class="language-rust">//! Shows how replicas of a service that cannot always reach each other can
@@ -16163,6 +16729,10 @@ fn main() {
     println!("a quota divided into shares:");
     allowances();
 }</code></pre>
+</div>
+
+</div>
+
 <div class="summary">
 <h2 id="summary-7"><a class="header" href="#summary-7">Summary</a></h2>
 <ul>
@@ -16195,7 +16765,7 @@ available, partition-tolerant web services”, ACM SIGACT News, 33(2), 2002.</li
 <li>etcd, KV API guarantees:
 <a href="https://etcd.io/docs/latest/learning/api_guarantees/">https://etcd.io/docs/latest/learning/api_guarantees/</a></li>
 </ul>
-<div style="break-before: page; page-break-before: always;"></div>
+<div style="break-before: page; page-break-before: always;"></div><img class="plate" src="art/ch10.svg" alt="Hash, a magpie, holds a shiny 8K chunk. An arrow labelled sha256 leads from the chunk to the drawer of a cabinet whose label, a6a98d, matches the chunk&#39;s digest.">
 <h1 id="10-a-content-addressed-artifact-store"><a class="header" href="#10-a-content-addressed-artifact-store">10. A content-addressed artifact store</a></h1>
 <p>Before a job can run on a machine, the machine needs two large things: the container
 image with the job’s programs, and usually a model’s weights. A Thor or a Spark has room
@@ -16345,6 +16915,8 @@ directory layout like the one containerd showed us.</p>
 <p><code>Put</code> computes the digest, and stores the bytes only if that digest is not already a
 key. <code>Get</code> does more than a lookup: it hashes the bytes again and compares the result
 with the name it was asked for. Every read is therefore a check of the data.</p>
+<div class="code-tabs">
+<div class="code-tab" data-lang="Go">
 <p class="listing"><b>Listing 10.1</b> Digests, the store, and verified reads, in Go. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/go/cas/main.go">code/go/cas/main.go</a></p>
 
 <pre><code class="language-go">// Digest names a blob: "sha256:" followed by the hash of its bytes in hex.
@@ -16405,6 +16977,9 @@ func (s *Store) Get(d Digest) ([]byte, error) {
 	return data, nil
 }
 </code></pre>
+</div>
+
+<div class="code-tab" data-lang="Rust">
 <p class="listing"><b>Listing 10.2</b> Digests, the store, and verified reads, in Rust. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/rust/cas/src/main.rs">code/rust/cas/src/main.rs</a></p>
 
 <pre><code class="language-rust">/// Names a blob: "sha256:" followed by the hash of its bytes in hex.
@@ -16487,6 +17062,10 @@ impl Store {
         Ok(data)
     }
 }</code></pre>
+</div>
+
+</div>
+
 <p>The Go standard library includes SHA-256 in <code>crypto/sha256</code>. Rust’s standard library has
 no hash functions of this kind, and the Rust version uses the <code>sha2</code> crate. The two
 programs print the same digests, which is itself a check: both computed the same
@@ -16496,6 +17075,8 @@ function over the same bytes.</p>
 writes one line of the manifest for it. It counts how many chunks <code>Put</code> reported as new,
 which is the amount of data a push to a remote registry would have to send. The
 manifest is then stored like any other blob, and the tag is pointed at it.</p>
+<div class="code-tabs">
+<div class="code-tab" data-lang="Go">
 <p class="listing"><b>Listing 10.3</b> Chunking an artifact and writing its manifest, in Go. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/go/cas/main.go">code/go/cas/main.go</a></p>
 
 <pre><code class="language-go">// chunkSize is the size of the pieces an artifact is cut into.
@@ -16543,6 +17124,9 @@ func (s *Store) chunksOf(manifest Digest) ([]Digest, error) {
 	return out, nil
 }
 </code></pre>
+</div>
+
+<div class="code-tab" data-lang="Rust">
 <p class="listing"><b>Listing 10.4</b> Chunking an artifact and writing its manifest, in Rust. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/rust/cas/src/main.rs">code/rust/cas/src/main.rs</a></p>
 
 <pre><code class="language-rust">impl Store {
@@ -16577,6 +17161,10 @@ func (s *Store) chunksOf(manifest Digest) ([]Digest, error) {
             .collect())
     }
 }</code></pre>
+</div>
+
+</div>
+
 <p>Our chunks are 8 KiB so that the example stays small. Real stores use chunks of a few
 megabytes: large enough that the list of digests stays short, small enough that a
 change touches few of them.</p>
@@ -16585,6 +17173,8 @@ change touches few of them.</p>
 and for each chunk it lists, fetches the chunk only if the local store has no blob of
 that name. <code>Read</code> reassembles the artifact from local chunks, and since it goes through
 <code>Get</code>, a damaged chunk stops the read with an error that says which chunk it was.</p>
+<div class="code-tabs">
+<div class="code-tab" data-lang="Go">
 <p class="listing"><b>Listing 10.5</b> Fetching what is missing, and reading with verification, in Go. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/go/cas/main.go">code/go/cas/main.go</a></p>
 
 <pre><code class="language-go">// Pull copies a tagged artifact from a remote store into this one, fetching
@@ -16644,6 +17234,9 @@ func (s *Store) Read(tag string) ([]byte, error) {
 	return artifact, nil
 }
 </code></pre>
+</div>
+
+<div class="code-tab" data-lang="Rust">
 <p class="listing"><b>Listing 10.6</b> Fetching what is missing, and reading with verification, in Rust. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/rust/cas/src/main.rs">code/rust/cas/src/main.rs</a></p>
 
 <pre><code class="language-rust">impl Store {
@@ -16684,6 +17277,10 @@ func (s *Store) Read(tag string) ([]byte, error) {
         Ok(artifact)
     }
 }</code></pre>
+</div>
+
+</div>
+
 <h3 id="reclaiming-space"><a class="header" href="#reclaiming-space">Reclaiming space</a></h3>
 <p>A content-addressed store grows with every push, and blobs cannot be deleted one
 artifact at a time, because a chunk may be listed by several manifests. The store
@@ -16691,6 +17288,8 @@ removes blobs by <em>garbage collection</em> in two phases. The <em>mark</em> ph
 tags, which are the only names people use, and notes every manifest they point at and
 every chunk those manifests list. The <em>sweep</em> phase removes every blob that was not
 noted.</p>
+<div class="code-tabs">
+<div class="code-tab" data-lang="Go">
 <p class="listing"><b>Listing 10.7</b> Mark from the tags, then sweep, in Go. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/go/cas/main.go">code/go/cas/main.go</a></p>
 
 <pre><code class="language-go">// Collect removes every blob that no tag leads to. It first marks the
@@ -16719,6 +17318,9 @@ func (s *Store) Collect() (removed, bytes int) {
 	return removed, bytes
 }
 </code></pre>
+</div>
+
+<div class="code-tab" data-lang="Rust">
 <p class="listing"><b>Listing 10.8</b> Mark from the tags, then sweep, in Rust. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/rust/cas/src/main.rs">code/rust/cas/src/main.rs</a></p>
 
 <pre><code class="language-rust">impl Store {
@@ -16740,9 +17342,15 @@ func (s *Store) Collect() (removed, bytes int) {
         (before - after, bytes_before - bytes_after)
     }
 }</code></pre>
+</div>
+
+</div>
+
 <h3 id="the-run-6"><a class="header" href="#the-run-6">The run</a></h3>
 <p>The model’s weights are 64 KiB from a fixed pseudo-random sequence, which stand in for
 gigabytes. Version 2 keeps the first 48 KiB and replaces the last 16.</p>
+<div class="code-tabs">
+<div class="code-tab" data-lang="Go">
 <p class="listing"><b>Listing 10.9</b> Two versions, a pull, a damaged chunk, and a collection, in Go. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/go/cas/main.go">code/go/cas/main.go</a></p>
 
 <pre><code class="language-go">func main() {
@@ -16791,6 +17399,9 @@ gigabytes. Version 2 keeps the first 48 KiB and replaces the last 16.</p>
 	fmt.Printf("  collected %d blobs, %d bytes; %d blobs and %d bytes remain\n", removed, n, blobs, bytes)
 }
 </code></pre>
+</div>
+
+<div class="code-tab" data-lang="Rust">
 <p class="listing"><b>Listing 10.10</b> Two versions, a pull, a damaged chunk, and a collection, in Rust. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/rust/cas/src/main.rs">code/rust/cas/src/main.rs</a></p>
 
 <pre><code class="language-rust">fn main() -&gt; Result&lt;(), StoreError&gt; {
@@ -16849,6 +17460,10 @@ gigabytes. Version 2 keeps the first 48 KiB and replaces the last 16.</p>
 
     Ok(())
 }</code></pre>
+</div>
+
+</div>
+
 <pre><code class="language-console">$ go run ./cas
 push llm:v1: 8 chunks, 8 new; manifest sha256:eea2b9042521
 push llm:v2: 8 chunks, 2 new; manifest sha256:7df8dd2bef7e
@@ -16906,6 +17521,8 @@ tag, which is the only thing that is overwritten. And a machine that returns fro
 reimage, the last rung of chapter 4’s ladder, refills its local store by pulling, and
 the verification on every chunk doubles as a test of its new disk.</p>
 <h2 id="the-complete-program-6"><a class="header" href="#the-complete-program-6">The complete program</a></h2>
+<div class="code-tabs">
+<div class="code-tab" data-lang="Go">
 <p class="listing"><b>Listing 10.11</b> The complete program in Go. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/go/cas/main.go">code/go/cas/main.go</a></p>
 
 <pre><code class="language-go">// Command cas builds a small content-addressed store for model artifacts and
@@ -17189,6 +17806,9 @@ func main() {
 	fmt.Printf("  collected %d blobs, %d bytes; %d blobs and %d bytes remain\n", removed, n, blobs, bytes)
 }
 </code></pre>
+</div>
+
+<div class="code-tab" data-lang="Rust">
 <p class="listing"><b>Listing 10.12</b> The complete program in Rust. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/rust/cas/src/main.rs">code/rust/cas/src/main.rs</a></p>
 
 <pre><code class="language-rust">//! Builds a small content-addressed store for model artifacts and runs it
@@ -17462,6 +18082,10 @@ fn main() -&gt; Result&lt;(), StoreError&gt; {
 
     Ok(())
 }</code></pre>
+</div>
+
+</div>
+
 <div class="summary">
 <h2 id="summary-8"><a class="header" href="#summary-8">Summary</a></h2>
 <ul>
@@ -17491,7 +18115,7 @@ returns.</li>
 <li>NIST, FIPS 180-4, Secure Hash Standard:
 <a href="https://csrc.nist.gov/pubs/fips/180-4/upd1/final">https://csrc.nist.gov/pubs/fips/180-4/upd1/final</a></li>
 </ul>
-<div style="break-before: page; page-break-before: always;"></div>
+<div style="break-before: page; page-break-before: always;"></div><img class="plate" src="art/ch11.svg" alt="Chroma, a chameleon whose skin shades from green to blue to orange, sits on a branch above 3 terminals labelled linux, macos and windows. Arrows lead from 1 build down to each terminal, and each runs the same gpuctl nodes command.">
 <h1 id="11-a-command-line-tool-for-windows-macos-and-linux"><a class="header" href="#11-a-command-line-tool-for-windows-macos-and-linux">11. A command-line tool for Windows, macOS, and Linux</a></h1>
 <p>Everything we have built so far runs inside the cluster or next to it, on Linux. The
 people who use the cluster sit somewhere else. A researcher submits jobs from a MacBook,
@@ -17593,6 +18217,8 @@ portable program builds every path with it and writes no separator of its own.</
 on each system. Rust’s standard library has no such function, so the Rust version
 writes the three cases out. <code>cfg!(windows)</code> and <code>cfg!(target_os = "macos")</code> are decided
 when the program is compiled, so each build contains only its own case.</p>
+<div class="code-tabs">
+<div class="code-tab" data-lang="Go">
 <p class="listing"><b>Listing 11.1</b> The configuration file and the kubeconfig, in Go. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/go/gpuctl/main.go">code/go/gpuctl/main.go</a></p>
 
 <pre><code class="language-go">// configFile returns the path of gpuctl's own configuration file. The
@@ -17615,6 +18241,9 @@ func kubeconfig() string {
 	return clientcmd.NewDefaultClientConfigLoadingRules().GetDefaultFilename()
 }
 </code></pre>
+</div>
+
+<div class="code-tab" data-lang="Rust">
 <p class="listing"><b>Listing 11.2</b> The configuration file and the kubeconfig, in Rust. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/rust/gpuctl/src/main.rs">code/rust/gpuctl/src/main.rs</a></p>
 
 <pre><code class="language-rust">/// Returns the path of gpuctl's own configuration file. The directory is the
@@ -17643,6 +18272,10 @@ fn kubeconfig() -&gt; Option&lt;PathBuf&gt; {
         _ =&gt; Some(env::home_dir()?.join(".kube").join("config")),
     }
 }</code></pre>
+</div>
+
+</div>
+
 <p>The second path is the <em>kubeconfig</em>, the file from which kubectl and every other client
 reads the address of the API server and the user’s credentials. Its location follows
 one rule on all three systems: the <code>KUBECONFIG</code> environment variable if it is set, and
@@ -17654,6 +18287,8 @@ rules for the path. The Rust version applies the rule itself.</p>
 and keeps five fields of each: the name, the allocatable <code>nvidia.com/gpu</code> count from
 chapter 5, and the architecture, operating system, and kubelet version that the kubelet
 reports about its machine.</p>
+<div class="code-tabs">
+<div class="code-tab" data-lang="Go">
 <p class="listing"><b>Listing 11.3</b> Listing the nodes and keeping five fields, in Go. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/go/gpuctl/main.go">code/go/gpuctl/main.go</a></p>
 
 <pre><code class="language-go">// NodeInfo is one row of "gpuctl nodes".
@@ -17703,6 +18338,9 @@ func listNodes(ctx context.Context) ([]NodeInfo, error) {
 	return rows, nil
 }
 </code></pre>
+</div>
+
+<div class="code-tab" data-lang="Rust">
 <p class="listing"><b>Listing 11.4</b> Listing the nodes and keeping five fields, in Rust. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/rust/gpuctl/src/main.rs">code/rust/gpuctl/src/main.rs</a></p>
 
 <pre><code class="language-rust">/// One row of "gpuctl nodes".
@@ -17741,6 +18379,10 @@ async fn list_nodes() -&gt; Result&lt;Vec&lt;NodeInfo&gt;, kube::Error&gt; {
         })
         .collect())
 }</code></pre>
+</div>
+
+</div>
+
 <p>The Go version builds its client from the kubeconfig with <code>clientcmd</code>, the package of
 client-go that implements the loading rule. Earlier programs used controller-runtime’s
 <code>GetConfigOrDie</code> for this. A command-line tool wants the error back as a value, so that
@@ -17753,6 +18395,8 @@ the string the API server sent, so the Rust version parses that string as an int
 and a node with no GPUs, which has no such entry at all, counts as zero.</p>
 <h2 id="one-result-two-forms"><a class="header" href="#one-result-two-forms">One result, two forms</a></h2>
 <p>The rows are printed in one of two forms, chosen by the <code>-o</code> flag.</p>
+<div class="code-tabs">
+<div class="code-tab" data-lang="Go">
 <p class="listing"><b>Listing 11.5</b> A table or JSON, in Go. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/go/gpuctl/main.go">code/go/gpuctl/main.go</a></p>
 
 <pre><code class="language-go">// printNodes writes the rows as a table for a person or as JSON for a program.
@@ -17774,6 +18418,9 @@ func printNodes(out io.Writer, rows []NodeInfo, format string) error {
 	return table.Flush()
 }
 </code></pre>
+</div>
+
+<div class="code-tab" data-lang="Rust">
 <p class="listing"><b>Listing 11.6</b> A table or JSON, in Rust. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/rust/gpuctl/src/main.rs">code/rust/gpuctl/src/main.rs</a></p>
 
 <pre><code class="language-rust">/// Writes the rows as a table for a person or as JSON for a program.
@@ -17809,6 +18456,10 @@ fn print_nodes(rows: &amp;[NodeInfo], json: bool) -&gt; serde_json::Result&lt;()
 
     Ok(())
 }</code></pre>
+</div>
+
+</div>
+
 <p>The table is for reading. Its columns are padded so that they line up, which Go’s
 <code>text/tabwriter</code> does from tab-separated cells and the Rust version does by measuring
 each column’s widest cell.</p>
@@ -17821,6 +18472,8 @@ written out in both versions, as struct tags in Go and as the field names of a
 <p><code>run</code> ties the pieces together. It looks at the first argument, carries out the
 command, and returns the status. Every path through it ends in one of the three
 statuses, and every message for a person goes to standard error.</p>
+<div class="code-tabs">
+<div class="code-tab" data-lang="Go">
 <p class="listing"><b>Listing 11.7</b> Choosing the command and returning the status, in Go. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/go/gpuctl/main.go">code/go/gpuctl/main.go</a></p>
 
 <pre><code class="language-go">// Exit statuses. A script that calls gpuctl tells a failed command from a
@@ -17837,6 +18490,9 @@ const usage = `usage:
   gpuctl version
 `
 </code></pre>
+</div>
+
+<div class="code-tab" data-lang="Rust">
 <p class="listing"><b>Listing 11.8</b> Choosing the command and returning the status, in Rust. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/rust/gpuctl/src/main.rs">code/rust/gpuctl/src/main.rs</a></p>
 
 <pre><code class="language-rust">/// The exit status for a command line that is wrong. A script that calls
@@ -17849,6 +18505,12 @@ const USAGE: &amp;str = "usage:
   gpuctl config
   gpuctl version
 ";</code></pre>
+</div>
+
+</div>
+
+<div class="code-tabs">
+<div class="code-tab" data-lang="Go">
 <p class="listing"><b>Listing 11.9</b> The run function and main, in Go. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/go/gpuctl/main.go">code/go/gpuctl/main.go</a></p>
 
 <pre><code class="language-go">// run carries out one command line and returns the exit status. It takes its
@@ -17909,6 +18571,9 @@ func main() {
 	os.Exit(run(os.Args[1:], os.Stdout, os.Stderr))
 }
 </code></pre>
+</div>
+
+<div class="code-tab" data-lang="Rust">
 <p class="listing"><b>Listing 11.10</b> The run function and main, in Rust. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/rust/gpuctl/src/main.rs">code/rust/gpuctl/src/main.rs</a></p>
 
 <pre><code class="language-rust">/// Carries out one command line and returns the exit status.
@@ -17967,6 +18632,10 @@ async fn main() -&gt; ExitCode {
 
     run(&amp;args).await
 }</code></pre>
+</div>
+
+</div>
+
 <p>The Go version parses the <code>-o</code> flag with the standard <code>flag</code> package and tells it to
 stay silent, so that <code>run</code> prints one consistent usage text for every kind of mistake.
 The Rust version matches the whole argument list against patterns. The pattern
@@ -18082,6 +18751,8 @@ mapping down.</p>
 </div>
 
 <h2 id="the-complete-program-7"><a class="header" href="#the-complete-program-7">The complete program</a></h2>
+<div class="code-tabs">
+<div class="code-tab" data-lang="Go">
 <p class="listing"><b>Listing 11.11</b> The complete program in Go. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/go/gpuctl/main.go">code/go/gpuctl/main.go</a></p>
 
 <pre><code class="language-go">// Command gpuctl is a small command-line client for a GPU cluster, written to
@@ -18281,6 +18952,9 @@ func main() {
 	os.Exit(run(os.Args[1:], os.Stdout, os.Stderr))
 }
 </code></pre>
+</div>
+
+<div class="code-tab" data-lang="Rust">
 <p class="listing"><b>Listing 11.12</b> The complete program in Rust. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/rust/gpuctl/src/main.rs">code/rust/gpuctl/src/main.rs</a></p>
 
 <pre><code class="language-rust">//! A small command-line client for a GPU cluster, written to build and behave
@@ -18487,6 +19161,10 @@ async fn main() -&gt; ExitCode {
 
     run(&amp;args).await
 }</code></pre>
+</div>
+
+</div>
+
 <div class="summary">
 <h2 id="summary-9"><a class="header" href="#summary-9">Summary</a></h2>
 <ul>
@@ -18518,7 +19196,7 @@ usually build each target on its own operating system.</li>
 <a href="https://specifications.freedesktop.org/basedir-spec/latest/">https://specifications.freedesktop.org/basedir-spec/latest/</a></li>
 <li><code>cross</code>, zero-setup cross compilation for Rust: <a href="https://github.com/cross-rs/cross">https://github.com/cross-rs/cross</a></li>
 </ul>
-<div style="break-before: page; page-break-before: always;"></div>
+<div style="break-before: page; page-break-before: always;"></div><img class="plate" src="art/appendix.svg" alt="Kindle, a hedgehog, reaches out with a plug to connect a small GPU board to a shipping container labelled kind node. Arrows follow the cable from the board to the container, and the container&#39;s lamp turns green.">
 <h1 id="appendix-a-a-local-gpu-cluster-with-kind"><a class="header" href="#appendix-a-a-local-gpu-cluster-with-kind">Appendix A. A local GPU cluster with kind</a></h1>
 <p>Our controller in section 1.1 runs pods that ask for GPUs. In this appendix, we will set up
 a kind cluster on a Jetson so that those pods really run on the board’s GPU. We will first
@@ -19229,7 +19907,7 @@ int main() {
         <script src="theme/figures-f9e9be6d.js"></script>
         <script src="theme/anim-4192821e.js"></script>
         <script src="theme/code-67e9caaf.js"></script>
-        <script src="theme/tabs-c73f18f8.js"></script>
+        <script src="theme/tabs-ef9f11bc.js"></script>
 
         <script>
         window.addEventListener('load', function() {

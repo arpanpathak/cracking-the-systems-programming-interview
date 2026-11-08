@@ -28,8 +28,8 @@
         <link rel="stylesheet" id="mdbook-ayu-highlight-css" href="ayu-highlight-3fdfc3ac.css">
 
         <!-- Custom theme stylesheets -->
-        <link rel="stylesheet" href="theme/custom-84de3dd1.css">
-        <link rel="stylesheet" href="theme/deep-ocean-18294553.css">
+        <link rel="stylesheet" href="theme/custom-1b086cbe.css">
+        <link rel="stylesheet" href="theme/deep-ocean-37d0e942.css">
         <link rel="stylesheet" href="theme/formal-f616fcec.css">
         <link rel="stylesheet" href="theme/layout-407df753.css">
 
@@ -39,10 +39,10 @@
             const path_to_root = "";
             const default_light_theme = "light";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "searchindex-b99a260b.js";
+            window.path_to_searchindex_js = "searchindex-459beae3.js";
         </script>
         <!-- Start loading toc.js asap -->
-        <script src="toc-f31bf49e.js"></script>
+        <script src="toc-42e4f11f.js"></script>
     </head>
     <body>
     <div id="mdbook-help-container">
@@ -184,7 +184,8 @@
 
                 <div id="mdbook-content" class="content">
                     <main>
-                        <h1 id="3-knowing-which-machines-are-alive"><a class="header" href="#3-knowing-which-machines-are-alive">3. Knowing which machines are alive</a></h1>
+                        <img class="plate" src="art/ch03.svg" alt="Doc, a hound in a white coat, holds a stethoscope&#39;s chest piece against a rack of servers. Heartbeat arrows travel from thor-1 and thor-2 to a monitor above, which shows a regular line for each. thor-3&#39;s lamp is red, and its line is flat.">
+<h1 id="3-knowing-which-machines-are-alive"><a class="header" href="#3-knowing-which-machines-are-alive">3. Knowing which machines are alive</a></h1>
 <p>A training job can run on a machine for hours or days. If that machine loses power, or its
 network cable is pulled, the job stops, and nothing on the machine can report the failure.
 The control plane has to notice on its own, so that it can restart the job somewhere else.</p>
@@ -269,6 +270,8 @@ crashes at second 20, and host 7 misses four heartbeats, from second 30 to secon
 
 <p>The types come first. A host’s record is two fields, and a <code>Transition</code> is the only thing
 the registry writes to the database.</p>
+<div class="code-tabs">
+<div class="code-tab" data-lang="Go">
 <p class="listing"><b>Listing 3.1</b> The states, the thresholds, and the registry's records, in Go. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/go/heartbeats/main.go">code/go/heartbeats/main.go</a></p>
 
 <pre><code class="language-go">// State is what the registry believes about a host.
@@ -322,6 +325,9 @@ type Registry struct {
 	writes []Transition
 }
 </code></pre>
+</div>
+
+<div class="code-tab" data-lang="Rust">
 <p class="listing"><b>Listing 3.2</b> The states, the thresholds, and the registry's records, in Rust. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/rust/heartbeats/src/main.rs">code/rust/heartbeats/src/main.rs</a></p>
 
 <pre><code class="language-rust">/// Seconds without a heartbeat before a host is Suspect.
@@ -373,8 +379,14 @@ struct Registry {
     /// The durable writes, in order.
     writes: Vec&lt;Transition&gt;,
 }</code></pre>
+</div>
+
+</div>
+
 <p>The registry has one operation for an arriving heartbeat and one for the sweep, and a small
 function that turns a length of silence into a state.</p>
+<div class="code-tabs">
+<div class="code-tab" data-lang="Go">
 <p class="listing"><b>Listing 3.3</b> A heartbeat, the sweep, and the rule from silence to state, in Go. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/go/heartbeats/main.go">code/go/heartbeats/main.go</a></p>
 
 <pre><code class="language-go">// NewRegistry returns a registry in which every host is Up, as it would be
@@ -421,6 +433,9 @@ func stateAfter(silent int) State {
 	}
 }
 </code></pre>
+</div>
+
+<div class="code-tab" data-lang="Rust">
 <p class="listing"><b>Listing 3.4</b> A heartbeat, the sweep, and the rule from silence to state, in Rust. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/rust/heartbeats/src/main.rs">code/rust/heartbeats/src/main.rs</a></p>
 
 <pre><code class="language-rust">impl Registry {
@@ -476,8 +491,14 @@ fn state_after(silent: u32) -&gt; State {
         _ =&gt; State::Up,
     }
 }</code></pre>
+</div>
+
+</div>
+
 <p>The run feeds the registry one heartbeat from every host each second, except from the two
 hosts that the scenario silences.</p>
+<div class="code-tabs">
+<div class="code-tab" data-lang="Go">
 <p class="listing"><b>Listing 3.5</b> The simulated fleet and the main loop, in Go. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/go/heartbeats/main.go">code/go/heartbeats/main.go</a></p>
 
 <pre><code class="language-go">// sendsHeartbeat reports whether host sends a heartbeat at second now in the
@@ -515,6 +536,9 @@ func main() {
 	}
 }
 </code></pre>
+</div>
+
+<div class="code-tab" data-lang="Rust">
 <p class="listing"><b>Listing 3.6</b> The simulated fleet and the main loop, in Rust. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/rust/heartbeats/src/main.rs">code/rust/heartbeats/src/main.rs</a></p>
 
 <pre><code class="language-rust">/// Reports whether `host` sends a heartbeat at second `now` in the simulation.
@@ -547,6 +571,10 @@ fn main() {
         println!("  second {:2}  host {:2} -&gt; {:?}", w.at, w.host, w.state);
     }
 }</code></pre>
+</div>
+
+</div>
+
 <p><code>Heartbeat</code> updates the host’s last-seen time in memory and writes to the database only
 when the host was not Up. <code>Sweep</code> runs once a second, computes each host’s state from the
 length of its silence, and writes only the hosts whose state changed. A heartbeat from a
@@ -615,6 +643,8 @@ its own behaviour.</p>
 
 <p>A detector belongs to one host. It remembers a window of gaps and the time of the latest
 heartbeat.</p>
+<div class="code-tabs">
+<div class="code-tab" data-lang="Go">
 <p class="listing"><b>Listing 3.7</b> The detector and the recording of a heartbeat, in Go. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/go/phi/main.go">code/go/phi/main.go</a></p>
 
 <pre><code class="language-go">// timeout is the fixed timeout that the program compares against, in seconds.
@@ -652,6 +682,9 @@ func (d *Detector) Heartbeat(now float64) {
 	d.last = now
 }
 </code></pre>
+</div>
+
+<div class="code-tab" data-lang="Rust">
 <p class="listing"><b>Listing 3.8</b> The detector and the recording of a heartbeat, in Rust. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/rust/phi/src/main.rs">code/rust/phi/src/main.rs</a></p>
 
 <pre><code class="language-rust">/// The fixed timeout that the program compares against, in seconds.
@@ -694,7 +727,13 @@ impl Detector {
         self.last = now;
     }
 }</code></pre>
+</div>
+
+</div>
+
 <p><code>Phi</code> turns the window into a number.</p>
+<div class="code-tabs">
+<div class="code-tab" data-lang="Go">
 <p class="listing"><b>Listing 3.9</b> Computing phi from the recorded gaps, in Go. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/go/phi/main.go">code/go/phi/main.go</a></p>
 
 <pre><code class="language-go">// Phi returns the suspicion level at time now: minus the base-10 logarithm of
@@ -731,6 +770,9 @@ func (d *Detector) Phi(now float64) float64 {
 	return -math.Log10(pLater)
 }
 </code></pre>
+</div>
+
+<div class="code-tab" data-lang="Rust">
 <p class="listing"><b>Listing 3.10</b> Computing phi from the recorded gaps, in Rust. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/rust/phi/src/main.rs">code/rust/phi/src/main.rs</a></p>
 
 <pre><code class="language-rust">impl Detector {
@@ -764,8 +806,14 @@ func (d *Detector) Phi(now float64) float64 {
         -p_later.log10()
     }
 }</code></pre>
+</div>
+
+</div>
+
 <p>The run trains one detector on a steady host and one on a jittery host, then asks each for
 phi after silences of increasing length.</p>
+<div class="code-tabs">
+<div class="code-tab" data-lang="Go">
 <p class="listing"><b>Listing 3.11</b> Two hosts and the table of results, in Go. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/go/phi/main.go">code/go/phi/main.go</a></p>
 
 <pre><code class="language-go">// hosts lists the simulated hosts and the gaps between their heartbeats.
@@ -804,6 +852,9 @@ func main() {
 	}
 }
 </code></pre>
+</div>
+
+<div class="code-tab" data-lang="Rust">
 <p class="listing"><b>Listing 3.12</b> Two hosts and the table of results, in Rust. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/rust/phi/src/main.rs">code/rust/phi/src/main.rs</a></p>
 
 <pre><code class="language-rust">/// The simulated hosts and the gaps between their heartbeats.
@@ -841,6 +892,10 @@ fn main() {
         }
     }
 }</code></pre>
+</div>
+
+</div>
+
 <p><code>Phi</code> computes the mean and standard deviation of the remembered gaps and measures how many
 standard deviations the current silence lies beyond the mean. The logistic expression is a
 standard approximation of the normal distribution’s tail, the same one Akka uses, and it
@@ -945,6 +1000,8 @@ row before its Lease expires.</p>
 </div>
 
 <p>The settings are constants.</p>
+<div class="code-tabs">
+<div class="code-tab" data-lang="Go">
 <p class="listing"><b>Listing 3.14</b> The agent's settings, in Go. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/go/leaseagent/main.go">code/go/leaseagent/main.go</a></p>
 
 <pre><code class="language-go">// Lease settings. The renewal interval is a third of the lease duration, so a
@@ -956,6 +1013,9 @@ const (
 	fieldManager  = "leaseagent"
 )
 </code></pre>
+</div>
+
+<div class="code-tab" data-lang="Rust">
 <p class="listing"><b>Listing 3.15</b> The agent's settings, in Rust. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/rust/leaseagent/src/main.rs">code/rust/leaseagent/src/main.rs</a></p>
 
 <pre><code class="language-rust">/// The namespace that holds the hosts' Leases.
@@ -967,8 +1027,14 @@ const RENEW_EVERY: Duration = Duration::from_secs(2);
 const LEASE_DURATION: i32 = 6;
 /// The field manager name for server-side apply.
 const FIELD_MANAGER: &amp;str = "leaseagent";</code></pre>
+</div>
+
+</div>
+
 <p>The Go version builds the Lease inside its loop with client-go’s apply configuration
 types. The Rust version builds it in a function of its own.</p>
+<div class="code-tabs">
+<div class="code-tab" data-lang="Go">
 <p class="listing"><b>Listing 3.16</b> The renewal loop, in Go. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/go/leaseagent/main.go">code/go/leaseagent/main.go</a></p>
 
 <pre><code class="language-go">// run writes the host's Lease with server-side apply once per renewEvery.
@@ -1015,6 +1081,9 @@ func run(host string) error {
 	}
 }
 </code></pre>
+</div>
+
+<div class="code-tab" data-lang="Rust">
 <p class="listing"><b>Listing 3.17</b> Building the Lease, in Rust. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/rust/leaseagent/src/main.rs">code/rust/leaseagent/src/main.rs</a></p>
 
 <pre><code class="language-rust">/// Builds the Lease that `host` writes at time `now`, having first acquired
@@ -1066,6 +1135,10 @@ async fn main() -&gt; Result&lt;(), Box&lt;dyn Error&gt;&gt; {
         }
     }
 }</code></pre>
+</div>
+
+</div>
+
 <p>Both agents write with server-side apply, which we met in section 1.1: each renewal sends
 the whole Lease, and the API server creates it on the first renewal and updates it on the
 others. A failed renewal, for example while the API server restarts, is logged and retried
@@ -1110,6 +1183,8 @@ changed. Our watcher works the same way.</p>
 
 <p>An observation is three fields, and the second is the one that matters: the local time at
 which the watcher first saw the current <code>renewTime</code>.</p>
+<div class="code-tabs">
+<div class="code-tab" data-lang="Go">
 <p class="listing"><b>Listing 3.19</b> What the watcher remembers about one Lease, in Go. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/go/leasewatch/main.go">code/go/leasewatch/main.go</a></p>
 
 <pre><code class="language-go">// observation is what the program knows about one host's Lease.
@@ -1122,6 +1197,9 @@ type observation struct {
 	expired bool
 }
 </code></pre>
+</div>
+
+<div class="code-tab" data-lang="Rust">
 <p class="listing"><b>Listing 3.20</b> What the watcher remembers about one Lease, in Rust. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/rust/leasewatch/src/main.rs">code/rust/leasewatch/src/main.rs</a></p>
 
 <pre><code class="language-rust">/// What the program knows about one host's Lease.
@@ -1133,7 +1211,13 @@ struct Observation {
     /// Whether the host has been reported as expired.
     expired: bool,
 }</code></pre>
+</div>
+
+</div>
+
 <p><code>check</code> holds the rule from the node lifecycle controller.</p>
+<div class="code-tabs">
+<div class="code-tab" data-lang="Go">
 <p class="listing"><b>Listing 3.21</b> Checking one Lease against the watcher's own clock, in Go. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/go/leasewatch/main.go">code/go/leasewatch/main.go</a></p>
 
 <pre><code class="language-go">// check updates the observation of one Lease at local time now and prints a
@@ -1167,6 +1251,9 @@ func check(seen map[string]*observation, lease *coordinationv1.Lease, now time.T
 	}
 }
 </code></pre>
+</div>
+
+<div class="code-tab" data-lang="Rust">
 <p class="listing"><b>Listing 3.22</b> Checking one Lease against the watcher's own clock, in Rust. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/rust/leasewatch/src/main.rs">code/rust/leasewatch/src/main.rs</a></p>
 
 <pre><code class="language-rust">/// Updates the observation of one Lease at local time `now` and prints a line
@@ -1212,8 +1299,14 @@ fn check(seen: &amp;mut HashMap&lt;String, Observation&gt;, lease: &amp;Lease, n
         Some(_) =&gt; {}
     }
 }</code></pre>
+</div>
+
+</div>
+
 <p>The rest of the program keeps a cache of Leases and calls <code>check</code> for each of them once a
 second.</p>
+<div class="code-tabs">
+<div class="code-tab" data-lang="Go">
 <p class="listing"><b>Listing 3.23</b> The cache of Leases and the once-a-second loop, in Go. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/go/leasewatch/main.go">code/go/leasewatch/main.go</a></p>
 
 <pre><code class="language-go">// run starts an informer for Leases in the namespace, waits for its first
@@ -1258,6 +1351,9 @@ func run() error {
 	}
 }
 </code></pre>
+</div>
+
+<div class="code-tab" data-lang="Rust">
 <p class="listing"><b>Listing 3.24</b> The cache of Leases and the once-a-second loop, in Rust. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/rust/leasewatch/src/main.rs">code/rust/leasewatch/src/main.rs</a></p>
 
 <pre><code class="language-rust">/// Starts a watcher that fills a reflector store with the namespace's Leases,
@@ -1289,6 +1385,10 @@ async fn main() -&gt; Result&lt;(), Box&lt;dyn Error&gt;&gt; {
         }
     }
 }</code></pre>
+</div>
+
+</div>
+
 <p>Neither version sends a request per check. The Go version starts an informer for Leases in
 the <code>fleet</code> namespace from client-go’s shared informer factory and reads its cache through a
 lister. The Rust version runs a <code>watcher</code> stream into a reflector store in a background task,
@@ -1381,6 +1481,8 @@ running them, and a GPU job that writes checkpoints or holds a reservation must 
 twice at once. Kubernetes answers part of this with the 5-minute delay before eviction. A
 control plane for GPU jobs needs a firmer answer as well.</p>
 <h2 id="the-complete-programs"><a class="header" href="#the-complete-programs">The complete programs</a></h2>
+<div class="code-tabs">
+<div class="code-tab" data-lang="Go">
 <p class="listing"><b>Listing 3.25</b> The complete program in Go. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/go/heartbeats/main.go">code/go/heartbeats/main.go</a></p>
 
 <pre><code class="language-go">// Command heartbeats models how a control plane tracks which machines in a
@@ -1532,6 +1634,9 @@ func main() {
 	}
 }
 </code></pre>
+</div>
+
+<div class="code-tab" data-lang="Rust">
 <p class="listing"><b>Listing 3.26</b> The complete program in Rust. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/rust/heartbeats/src/main.rs">code/rust/heartbeats/src/main.rs</a></p>
 
 <pre><code class="language-rust">//! Models how a control plane tracks which machines in a fleet are alive.
@@ -1680,6 +1785,12 @@ fn main() {
         println!("  second {:2}  host {:2} -&gt; {:?}", w.at, w.host, w.state);
     }
 }</code></pre>
+</div>
+
+</div>
+
+<div class="code-tabs">
+<div class="code-tab" data-lang="Go">
 <p class="listing"><b>Listing 3.27</b> The complete program in Go. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/go/phi/main.go">code/go/phi/main.go</a></p>
 
 <pre><code class="language-go">// Command phi compares two ways of deciding that a host has failed: a fixed
@@ -1809,6 +1920,9 @@ func main() {
 	}
 }
 </code></pre>
+</div>
+
+<div class="code-tab" data-lang="Rust">
 <p class="listing"><b>Listing 3.28</b> The complete program in Rust. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/rust/phi/src/main.rs">code/rust/phi/src/main.rs</a></p>
 
 <pre><code class="language-rust">//! Compares two ways of deciding that a host has failed: a fixed timeout, and
@@ -1933,6 +2047,12 @@ fn main() {
         }
     }
 }</code></pre>
+</div>
+
+</div>
+
+<div class="code-tabs">
+<div class="code-tab" data-lang="Go">
 <p class="listing"><b>Listing 3.29</b> The complete program in Go. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/go/leaseagent/main.go">code/go/leaseagent/main.go</a></p>
 
 <pre><code class="language-go">// Command leaseagent keeps a Kubernetes Lease alive for one host, the way the
@@ -2029,6 +2149,9 @@ func run(host string) error {
 	}
 }
 </code></pre>
+</div>
+
+<div class="code-tab" data-lang="Rust">
 <p class="listing"><b>Listing 3.30</b> The complete program in Rust. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/rust/leaseagent/src/main.rs">code/rust/leaseagent/src/main.rs</a></p>
 
 <pre><code class="language-rust">//! Keeps a Kubernetes Lease alive for one host, the way the kubelet keeps its
@@ -2114,6 +2237,12 @@ async fn main() -&gt; Result&lt;(), Box&lt;dyn Error&gt;&gt; {
         }
     }
 }</code></pre>
+</div>
+
+</div>
+
+<div class="code-tabs">
+<div class="code-tab" data-lang="Go">
 <p class="listing"><b>Listing 3.31</b> The complete program in Go. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/go/leasewatch/main.go">code/go/leasewatch/main.go</a></p>
 
 <pre><code class="language-go">// Command leasewatch reports when a host in the fleet namespace stops renewing
@@ -2246,6 +2375,9 @@ func check(seen map[string]*observation, lease *coordinationv1.Lease, now time.T
 	}
 }
 </code></pre>
+</div>
+
+<div class="code-tab" data-lang="Rust">
 <p class="listing"><b>Listing 3.32</b> The complete program in Rust. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/rust/leasewatch/src/main.rs">code/rust/leasewatch/src/main.rs</a></p>
 
 <pre><code class="language-rust">//! Reports when a host in the `fleet` namespace stops renewing its Lease, and
@@ -2359,6 +2491,10 @@ async fn main() -&gt; Result&lt;(), Box&lt;dyn Error&gt;&gt; {
         }
     }
 }</code></pre>
+</div>
+
+</div>
+
 <div class="summary">
 <h2 id="summary"><a class="header" href="#summary">Summary</a></h2>
 <ul>
@@ -2443,7 +2579,7 @@ a difference between two machines’ clocks cannot make a healthy host look expi
         <script src="theme/figures-f9e9be6d.js"></script>
         <script src="theme/anim-4192821e.js"></script>
         <script src="theme/code-67e9caaf.js"></script>
-        <script src="theme/tabs-c73f18f8.js"></script>
+        <script src="theme/tabs-ef9f11bc.js"></script>
 
 
 

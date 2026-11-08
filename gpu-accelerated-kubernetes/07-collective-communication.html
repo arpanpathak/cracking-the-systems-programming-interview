@@ -28,8 +28,8 @@
         <link rel="stylesheet" id="mdbook-ayu-highlight-css" href="ayu-highlight-3fdfc3ac.css">
 
         <!-- Custom theme stylesheets -->
-        <link rel="stylesheet" href="theme/custom-84de3dd1.css">
-        <link rel="stylesheet" href="theme/deep-ocean-18294553.css">
+        <link rel="stylesheet" href="theme/custom-1b086cbe.css">
+        <link rel="stylesheet" href="theme/deep-ocean-37d0e942.css">
         <link rel="stylesheet" href="theme/formal-f616fcec.css">
         <link rel="stylesheet" href="theme/layout-407df753.css">
 
@@ -39,10 +39,10 @@
             const path_to_root = "";
             const default_light_theme = "light";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "searchindex-b99a260b.js";
+            window.path_to_searchindex_js = "searchindex-459beae3.js";
         </script>
         <!-- Start loading toc.js asap -->
-        <script src="toc-f31bf49e.js"></script>
+        <script src="toc-42e4f11f.js"></script>
     </head>
     <body>
     <div id="mdbook-help-container">
@@ -184,7 +184,8 @@
 
                 <div id="mdbook-content" class="content">
                     <main>
-                        <h1 id="7-collective-communication-and-training-failures"><a class="header" href="#7-collective-communication-and-training-failures">7. Collective communication and training failures</a></h1>
+                        <img class="plate" src="art/ch07.svg" alt="5 parrots of different colours sit on a ring-shaped perch. Arrows between neighbours show each parrot passing a partial sum to its right, and the sums read 1, 3, 6, 10 and 15.">
+<h1 id="7-collective-communication-and-training-failures"><a class="header" href="#7-collective-communication-and-training-failures">7. Collective communication and training failures</a></h1>
 <p>The jobs in the earlier chapters each ran on one machine. A model that is too large or
 too slow to train on one machine is trained on several at once, and that changes what a
 failure means. In this chapter, we will look at what the machines of a training job say
@@ -347,6 +348,8 @@ and sends on the other. Both languages use a <em>channel</em>, a queue that one 
 running piece of code puts values into and another takes them out of. Nothing else is
 shared between workers, which mirrors the real situation: machines in a training job
 share no memory, only a network.</p>
+<div class="code-tabs">
+<div class="code-tab" data-lang="Go">
 <p class="listing"><b>Listing 7.1</b> The message, the worker, and how long it waits, in Go. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/go/allreduce/main.go">code/go/allreduce/main.go</a></p>
 
 <pre><code class="language-go">// message carries one chunk of a gradient from a worker to its right-hand
@@ -379,6 +382,9 @@ var errFailed = errors.New("failed")
 // patience is how long a worker waits for its neighbour before giving up.
 const patience = 100 * time.Millisecond
 </code></pre>
+</div>
+
+<div class="code-tab" data-lang="Rust">
 <p class="listing"><b>Listing 7.2</b> The message, the worker, and how long it waits, in Rust. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/rust/allreduce/src/main.rs">code/rust/allreduce/src/main.rs</a></p>
 
 <pre><code class="language-rust">/// Carries one chunk of a gradient from a worker to its right-hand neighbour.
@@ -407,12 +413,18 @@ struct Worker {
 
 /// How long a worker waits for its neighbour before giving up.
 const PATIENCE: Duration = Duration::from_millis(100);</code></pre>
+</div>
+
+</div>
+
 <h3 id="the-exchanges"><a class="header" href="#the-exchanges">The exchanges</a></h3>
 <p><code>Run</code> is the algorithm. Each pass of its loop is one exchange: send a chunk to the right,
 then wait for a chunk from the left. The chunk to send is found by counting backwards
 from the worker’s own position, one place per exchange. Working through the hand example
 shows why that is right: after the first exchange, the chunk a worker sends next is
 always the one it received last.</p>
+<div class="code-tabs">
+<div class="code-tab" data-lang="Go">
 <p class="listing"><b>Listing 7.3</b> A worker's 2(n − 1) exchanges, in Go. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/go/allreduce/main.go">code/go/allreduce/main.go</a></p>
 
 <pre><code class="language-go">// Run performs the worker's 2(n-1) exchanges. In each one it sends a chunk to
@@ -447,6 +459,9 @@ func (w *Worker) Run(n int) (int, error) {
 	return 2 * (n - 1), nil
 }
 </code></pre>
+</div>
+
+<div class="code-tab" data-lang="Rust">
 <p class="listing"><b>Listing 7.4</b> A worker's 2(n − 1) exchanges, in Rust. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/rust/allreduce/src/main.rs">code/rust/allreduce/src/main.rs</a></p>
 
 <pre><code class="language-rust">impl Worker {
@@ -490,6 +505,10 @@ func (w *Worker) Run(n int) (int, error) {
         (self, 2 * (n - 1), None)
     }
 }</code></pre>
+</div>
+
+</div>
+
 <p>The wait for the left-hand neighbour has a time limit, which the program calls
 <code>patience</code>. In Go the wait is a <code>select</code> with two cases, a message on the channel or the
 timer from <code>time.After</code>, and whichever is ready first runs. In Rust it is the channel’s
@@ -503,6 +522,8 @@ the main thread can read each worker’s final gradient without any lock.</p>
 <p><code>ring</code> creates one channel per link and gives each worker the receiving end of its own
 link and the sending end of its right-hand neighbour’s. It then starts every worker at
 once and waits for all of them.</p>
+<div class="code-tabs">
+<div class="code-tab" data-lang="Go">
 <p class="listing"><b>Listing 7.5</b> Connecting the workers and running them together, in Go. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/go/allreduce/main.go">code/go/allreduce/main.go</a></p>
 
 <pre><code class="language-go">// result is what one worker reports when it stops.
@@ -554,6 +575,9 @@ func ring(n, failing, failAfter int) ([]*Worker, []result) {
 	return workers, results
 }
 </code></pre>
+</div>
+
+<div class="code-tab" data-lang="Rust">
 <p class="listing"><b>Listing 7.6</b> Connecting the workers and running them together, in Rust. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/rust/allreduce/src/main.rs">code/rust/allreduce/src/main.rs</a></p>
 
 <pre><code class="language-rust">/// Connects n workers in a circle, runs them all at once, and returns each
@@ -586,6 +610,10 @@ fn ring(n: usize, failing: Option&lt;(usize, usize)&gt;) -&gt; Vec&lt;(Worker, u
         .map(|h| h.join().expect("a worker panicked"))
         .collect()
 }</code></pre>
+</div>
+
+</div>
+
 <p>In Go each worker runs in a goroutine started with <code>wg.Go</code>, a method of
 <code>sync.WaitGroup</code> that starts a function and counts it, and <code>wg.Wait</code> blocks until all
 have returned. Each goroutine writes its result into its own element of <code>results</code>, so
@@ -615,6 +643,8 @@ T = √(2CM). This is <em>Young’s formula</em>, published in 1974.</p>
 <p>The M in the formula is the job’s, and a job fails when any one of its machines fails. A
 job on N machines therefore fails N times as often as one machine: its MTBF is one
 machine’s divided by N.</p>
+<div class="code-tabs">
+<div class="code-tab" data-lang="Go">
 <p class="listing"><b>Listing 7.7</b> Young's formula, in Go. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/go/allreduce/main.go">code/go/allreduce/main.go</a></p>
 
 <pre><code class="language-go">// Costs and failure rates for the checkpoint arithmetic, in seconds.
@@ -632,6 +662,9 @@ func interval(jobMTBF float64) float64 {
 	return math.Sqrt(2 * checkpointCost * jobMTBF)
 }
 </code></pre>
+</div>
+
+<div class="code-tab" data-lang="Rust">
 <p class="listing"><b>Listing 7.8</b> Young's formula, in Rust. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/rust/allreduce/src/main.rs">code/rust/allreduce/src/main.rs</a></p>
 
 <pre><code class="language-rust">/// The time one checkpoint takes to write, in seconds.
@@ -645,7 +678,13 @@ const MACHINE_MTBF: f64 = 30.0 * 24.0 * 3600.0;
 fn interval(job_mtbf: f64) -&gt; f64 {
     (2.0 * CHECKPOINT_COST * job_mtbf).sqrt()
 }</code></pre>
+</div>
+
+</div>
+
 <h3 id="the-run"><a class="header" href="#the-run">The run</a></h3>
+<div class="code-tabs">
+<div class="code-tab" data-lang="Go">
 <p class="listing"><b>Listing 7.9</b> The healthy step, the failed step, and the checkpoint table, in Go. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/go/allreduce/main.go">code/go/allreduce/main.go</a></p>
 
 <pre><code class="language-go">func main() {
@@ -686,6 +725,9 @@ fn interval(job_mtbf: f64) -&gt; f64 {
 	}
 }
 </code></pre>
+</div>
+
+<div class="code-tab" data-lang="Rust">
 <p class="listing"><b>Listing 7.10</b> The healthy step, the failed step, and the checkpoint table, in Rust. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/rust/allreduce/src/main.rs">code/rust/allreduce/src/main.rs</a></p>
 
 <pre><code class="language-rust">fn main() {
@@ -739,6 +781,10 @@ fn interval(job_mtbf: f64) -&gt; f64 {
         );
     }
 }</code></pre>
+</div>
+
+</div>
+
 <pre><code class="language-console">$ go run ./allreduce
 ring all-reduce over 5 workers, 5 chunks each:
   thor-1 starts with 1 11 21 31 41     and ends with 15 65 115 165 215
@@ -787,6 +833,8 @@ checkpoints and repeated work. The machines are no less reliable than before. Th
 more of them in one job, and this is why large training jobs invest in making
 checkpoints fast.</p>
 <h2 id="the-complete-program"><a class="header" href="#the-complete-program">The complete program</a></h2>
+<div class="code-tabs">
+<div class="code-tab" data-lang="Go">
 <p class="listing"><b>Listing 7.11</b> The complete program in Go. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/go/allreduce/main.go">code/go/allreduce/main.go</a></p>
 
 <pre><code class="language-go">// Command allreduce runs one step of distributed training's communication:
@@ -992,6 +1040,9 @@ func main() {
 	}
 }
 </code></pre>
+</div>
+
+<div class="code-tab" data-lang="Rust">
 <p class="listing"><b>Listing 7.12</b> The complete program in Rust. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/rust/allreduce/src/main.rs">code/rust/allreduce/src/main.rs</a></p>
 
 <pre><code class="language-rust">//! Runs one step of distributed training's communication: five workers each
@@ -1196,6 +1247,10 @@ fn main() {
         );
     }
 }</code></pre>
+</div>
+
+</div>
+
 <div class="summary">
 <h2 id="summary"><a class="header" href="#summary">Summary</a></h2>
 <ul>
@@ -1281,7 +1336,7 @@ communication: <a href="https://www.mpi-forum.org/docs/">https://www.mpi-forum.o
         <script src="theme/figures-f9e9be6d.js"></script>
         <script src="theme/anim-4192821e.js"></script>
         <script src="theme/code-67e9caaf.js"></script>
-        <script src="theme/tabs-c73f18f8.js"></script>
+        <script src="theme/tabs-ef9f11bc.js"></script>
 
 
 

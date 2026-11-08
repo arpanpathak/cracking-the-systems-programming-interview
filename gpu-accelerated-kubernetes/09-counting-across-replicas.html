@@ -28,8 +28,8 @@
         <link rel="stylesheet" id="mdbook-ayu-highlight-css" href="ayu-highlight-3fdfc3ac.css">
 
         <!-- Custom theme stylesheets -->
-        <link rel="stylesheet" href="theme/custom-84de3dd1.css">
-        <link rel="stylesheet" href="theme/deep-ocean-18294553.css">
+        <link rel="stylesheet" href="theme/custom-1b086cbe.css">
+        <link rel="stylesheet" href="theme/deep-ocean-37d0e942.css">
         <link rel="stylesheet" href="theme/formal-f616fcec.css">
         <link rel="stylesheet" href="theme/layout-407df753.css">
 
@@ -39,10 +39,10 @@
             const path_to_root = "";
             const default_light_theme = "light";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "searchindex-b99a260b.js";
+            window.path_to_searchindex_js = "searchindex-459beae3.js";
         </script>
         <!-- Start loading toc.js asap -->
-        <script src="toc-f31bf49e.js"></script>
+        <script src="toc-42e4f11f.js"></script>
     </head>
     <body>
     <div id="mdbook-help-container">
@@ -184,7 +184,8 @@
 
                 <div id="mdbook-content" class="content">
                     <main>
-                        <h1 id="9-counting-across-replicas"><a class="header" href="#9-counting-across-replicas">9. Counting across replicas</a></h1>
+                        <img class="plate" src="art/ch09.svg" alt="3 squirrels sit under 3 trees named shelf, desk and bench, each holding up a slate. Arrows between the slates show them merged, and every slate now reads 360 120 65.">
+<h1 id="9-counting-across-replicas"><a class="header" href="#9-counting-across-replicas">9. Counting across replicas</a></h1>
 <p>A GPU platform counts all day. It counts the GPU time each team’s jobs have used, so
 that the time can be billed or shared out fairly, and it counts the GPUs each team has
 in use right now, so that a quota can be enforced. Inside one cluster, counting is not
@@ -352,6 +353,8 @@ partition forces a choice here too, and for a limit we chose to refuse.</p>
 <h3 id="the-grow-only-counter"><a class="header" href="#the-grow-only-counter">The grow-only counter</a></h3>
 <p>A <code>GCounter</code> is an array with one entry per replica. <code>Add</code> touches one entry, <code>Merge</code>
 takes the larger value of each, and <code>Value</code> sums them.</p>
+<div class="code-tabs">
+<div class="code-tab" data-lang="Go">
 <p class="listing"><b>Listing 9.1</b> The grow-only counter, in Go. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/go/counter/main.go">code/go/counter/main.go</a></p>
 
 <pre><code class="language-go">// GCounter is a count that only grows. It keeps one entry per replica, and
@@ -380,6 +383,9 @@ func (c GCounter) Value() int {
 	return total
 }
 </code></pre>
+</div>
+
+<div class="code-tab" data-lang="Rust">
 <p class="listing"><b>Listing 9.2</b> The grow-only counter, in Rust. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/rust/counter/src/main.rs">code/rust/counter/src/main.rs</a></p>
 
 <pre><code class="language-rust">/// A count that only grows. It keeps one entry per replica, and each replica
@@ -406,12 +412,18 @@ impl GCounter {
         self.0.iter().sum()
     }
 }</code></pre>
+</div>
+
+</div>
+
 <p>The counter is a fixed-size array in both languages, which makes it a plain value:
 assigning it copies it, and “send my row to another replica” in the program is passing
 the array to <code>Merge</code>.</p>
 <h3 id="the-counter-that-goes-down"><a class="header" href="#the-counter-that-goes-down">The counter that goes down</a></h3>
 <p><code>PNCounter</code> holds two grow-only counters. A positive change goes into <code>Up</code>, a negative
 one into <code>Down</code> with its sign removed.</p>
+<div class="code-tabs">
+<div class="code-tab" data-lang="Go">
 <p class="listing"><b>Listing 9.3</b> The up-and-down counter, in Go. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/go/counter/main.go">code/go/counter/main.go</a></p>
 
 <pre><code class="language-go">// PNCounter is a count that goes up and down, built from two counters that
@@ -438,6 +450,9 @@ func (c *PNCounter) Merge(other PNCounter) {
 // Value is the increments minus the decrements.
 func (c PNCounter) Value() int { return c.Up.Value() - c.Down.Value() }
 </code></pre>
+</div>
+
+<div class="code-tab" data-lang="Rust">
 <p class="listing"><b>Listing 9.4</b> The up-and-down counter, in Rust. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/rust/counter/src/main.rs">code/rust/counter/src/main.rs</a></p>
 
 <pre><code class="language-rust">/// A count that goes up and down, built from two counters that only grow: one
@@ -469,9 +484,15 @@ impl PnCounter {
         self.up.value() - self.down.value()
     }
 }</code></pre>
+</div>
+
+</div>
+
 <h3 id="one-number-per-replica"><a class="header" href="#one-number-per-replica">One number per replica</a></h3>
 <p>The first experiment is the rule that fails: one total per replica, synchronised by
 keeping the larger.</p>
+<div class="code-tabs">
+<div class="code-tab" data-lang="Go">
 <p class="listing"><b>Listing 9.5</b> Keeping the larger of two totals, in Go. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/go/counter/main.go">code/go/counter/main.go</a></p>
 
 <pre><code class="language-go">// oneNumber counts with a single number per replica and synchronises by
@@ -491,6 +512,9 @@ func oneNumber() {
 	fmt.Printf("  after synchronising, every replica says %d; the jobs used %d\n", largest, sum)
 }
 </code></pre>
+</div>
+
+<div class="code-tab" data-lang="Rust">
 <p class="listing"><b>Listing 9.6</b> Keeping the larger of two totals, in Rust. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/rust/counter/src/main.rs">code/rust/counter/src/main.rs</a></p>
 
 <pre><code class="language-rust">/// Counts with a single number per replica and synchronises by keeping the
@@ -506,10 +530,16 @@ fn one_number() {
     let sum: i64 = adds.iter().sum();
     println!("  after synchronising, every replica says {largest}; the jobs used {sum}");
 }</code></pre>
+</div>
+
+</div>
+
 <h3 id="through-a-partition"><a class="header" href="#through-a-partition">Through a partition</a></h3>
 <p>The second experiment gives each replica a <code>GCounter</code>. The bench is cut off, the shelf
 and the desk merge with each other, and reports keep arriving on both sides. After the
 partition the rows are merged in an order chosen to be untidy, with one merge repeated.</p>
+<div class="code-tabs">
+<div class="code-tab" data-lang="Go">
 <p class="listing"><b>Listing 9.7</b> Grow-only counters, a partition, and an untidy recovery, in Go. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/go/counter/main.go">code/go/counter/main.go</a></p>
 
 <pre><code class="language-go">// growOnly counts the same usage with a GCounter at each replica, through a
@@ -543,6 +573,9 @@ func growOnly() {
 	}
 }
 </code></pre>
+</div>
+
+<div class="code-tab" data-lang="Rust">
 <p class="listing"><b>Listing 9.8</b> Grow-only counters, a partition, and an untidy recovery, in Rust. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/rust/counter/src/main.rs">code/rust/counter/src/main.rs</a></p>
 
 <pre><code class="language-rust">/// Counts the same usage with a `GCounter` at each replica, through a
@@ -575,10 +608,16 @@ fn grow_only() {
         show(r, c);
     }
 }</code></pre>
+</div>
+
+</div>
+
 <h3 id="gpus-in-use"><a class="header" href="#gpus-in-use">GPUs in use</a></h3>
 <p>The third experiment counts jobs starting and ending. One job’s end is reported to a
 different replica from the one that recorded its start, which is ordinary: a job’s
 machine and the replica that hears of its end need not be in the same place.</p>
+<div class="code-tabs">
+<div class="code-tab" data-lang="Go">
 <p class="listing"><b>Listing 9.9</b> Starts and ends recorded at different replicas, in Go. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/go/counter/main.go">code/go/counter/main.go</a></p>
 
 <pre><code class="language-go">// upAndDown counts GPUs in use. A job's start and its end may be recorded at
@@ -600,6 +639,9 @@ func upAndDown() {
 	fmt.Printf("  started %v, ended %v: %d GPUs in use\n", [replicas]int(c.Up), [replicas]int(c.Down), c.Value())
 }
 </code></pre>
+</div>
+
+<div class="code-tab" data-lang="Rust">
 <p class="listing"><b>Listing 9.10</b> Starts and ends recorded at different replicas, in Rust. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/rust/counter/src/main.rs">code/rust/counter/src/main.rs</a></p>
 
 <pre><code class="language-rust">/// Counts GPUs in use. A job's start and its end may be recorded at different
@@ -626,9 +668,15 @@ fn up_and_down() {
         c.value()
     );
 }</code></pre>
+</div>
+
+</div>
+
 <h3 id="a-quota-two-ways"><a class="header" href="#a-quota-two-ways">A quota, two ways</a></h3>
 <p>The last two experiments enforce a quota of six GPUs. <code>sharedLimit</code> lets each replica
 check its own merged count. <code>allowances</code> gives each replica a share.</p>
+<div class="code-tabs">
+<div class="code-tab" data-lang="Go">
 <p class="listing"><b>Listing 9.11</b> A limit checked against a local count, and a limit divided into shares, in Go. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/go/counter/main.go">code/go/counter/main.go</a></p>
 
 <pre><code class="language-go">// quota is the number of GPUs one team may use at once.
@@ -681,6 +729,9 @@ func allowances() {
 	fmt.Printf("  shares %v, in use %v: %d of %d\n", share, used, used[shelf]+used[desk]+used[bench], quota)
 }
 </code></pre>
+</div>
+
+<div class="code-tab" data-lang="Rust">
 <p class="listing"><b>Listing 9.12</b> A limit checked against a local count, and a limit divided into shares, in Rust. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/rust/counter/src/main.rs">code/rust/counter/src/main.rs</a></p>
 
 <pre><code class="language-rust">/// The number of GPUs one team may use at once.
@@ -758,6 +809,10 @@ fn allowances() {
         used.iter().sum::&lt;i64&gt;()
     );
 }</code></pre>
+</div>
+
+</div>
+
 <h3 id="the-run"><a class="header" href="#the-run">The run</a></h3>
 <pre><code class="language-console">$ go run ./counter
 one number per replica:
@@ -825,6 +880,8 @@ limit enforced by many copies of an API gateway. In each of these, no single API
 sees every event, and the count has to be assembled from replicas that are sometimes
 apart.</p>
 <h2 id="the-complete-program"><a class="header" href="#the-complete-program">The complete program</a></h2>
+<div class="code-tabs">
+<div class="code-tab" data-lang="Go">
 <p class="listing"><b>Listing 9.13</b> The complete program in Go. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/go/counter/main.go">code/go/counter/main.go</a></p>
 
 <pre><code class="language-go">// Command counter shows how replicas of a service that cannot always reach
@@ -1045,6 +1102,9 @@ func main() {
 	allowances()
 }
 </code></pre>
+</div>
+
+<div class="code-tab" data-lang="Rust">
 <p class="listing"><b>Listing 9.14</b> The complete program in Rust. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/rust/counter/src/main.rs">code/rust/counter/src/main.rs</a></p>
 
 <pre><code class="language-rust">//! Shows how replicas of a service that cannot always reach each other can
@@ -1294,6 +1354,10 @@ fn main() {
     println!("a quota divided into shares:");
     allowances();
 }</code></pre>
+</div>
+
+</div>
+
 <div class="summary">
 <h2 id="summary"><a class="header" href="#summary">Summary</a></h2>
 <ul>
@@ -1381,7 +1445,7 @@ available, partition-tolerant web services”, ACM SIGACT News, 33(2), 2002.</li
         <script src="theme/figures-f9e9be6d.js"></script>
         <script src="theme/anim-4192821e.js"></script>
         <script src="theme/code-67e9caaf.js"></script>
-        <script src="theme/tabs-c73f18f8.js"></script>
+        <script src="theme/tabs-ef9f11bc.js"></script>
 
 
 

@@ -28,8 +28,8 @@
         <link rel="stylesheet" id="mdbook-ayu-highlight-css" href="ayu-highlight-3fdfc3ac.css">
 
         <!-- Custom theme stylesheets -->
-        <link rel="stylesheet" href="theme/custom-84de3dd1.css">
-        <link rel="stylesheet" href="theme/deep-ocean-18294553.css">
+        <link rel="stylesheet" href="theme/custom-1b086cbe.css">
+        <link rel="stylesheet" href="theme/deep-ocean-37d0e942.css">
         <link rel="stylesheet" href="theme/formal-f616fcec.css">
         <link rel="stylesheet" href="theme/layout-407df753.css">
 
@@ -39,10 +39,10 @@
             const path_to_root = "";
             const default_light_theme = "light";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "searchindex-b99a260b.js";
+            window.path_to_searchindex_js = "searchindex-459beae3.js";
         </script>
         <!-- Start loading toc.js asap -->
-        <script src="toc-f31bf49e.js"></script>
+        <script src="toc-42e4f11f.js"></script>
     </head>
     <body>
     <div id="mdbook-help-container">
@@ -184,7 +184,8 @@
 
                 <div id="mdbook-content" class="content">
                     <main>
-                        <h1 id="6-virtual-machines-on-kubernetes"><a class="header" href="#6-virtual-machines-on-kubernetes">6. Virtual machines on Kubernetes</a></h1>
+                        <img class="plate" src="art/ch06.svg" alt="Shellby, a hermit crab, carries memory pages from the shell on host A to a new shell on host B. Arrows mark each round of copying, and the pages already copied are stacked in the new shell.">
+<h1 id="6-virtual-machines-on-kubernetes"><a class="header" href="#6-virtual-machines-on-kubernetes">6. Virtual machines on Kubernetes</a></h1>
 <p>Every workload so far has run in a container. A container shares the host’s kernel, and
 some users of a GPU cluster need a kernel of their own: a customer who must run a
 particular operating system, a tenant who is not trusted to share a kernel with others,
@@ -405,6 +406,8 @@ two hosts with no complete copy on either.</p>
 <p>The model needs three numbers: the VM’s memory, the rate at which the VM dirties it, and
 the rate of the link. Link speeds are quoted in gigabits per second and memory in
 gigabytes, so each link is entered in gigabytes per second: 25 GbE is 25 / 8 = 3.125.</p>
+<div class="code-tabs">
+<div class="code-tab" data-lang="Go">
 <p class="listing"><b>Listing 6.1</b> The VM, the link, and the limits, in Go. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/go/migration/main.go">code/go/migration/main.go</a></p>
 
 <pre><code class="language-go">// VM describes the virtual machine being moved.
@@ -439,6 +442,9 @@ const (
 	maxThrottle = 0.8
 )
 </code></pre>
+</div>
+
+<div class="code-tab" data-lang="Rust">
 <p class="listing"><b>Listing 6.2</b> The VM, the link, and the limits, in Rust. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/rust/migration/src/main.rs">code/rust/migration/src/main.rs</a></p>
 
 <pre><code class="language-rust">/// The virtual machine being moved.
@@ -469,6 +475,10 @@ const MAX_ROUNDS: u32 = 30;
 const THROTTLE_STEP: f64 = 0.2;
 /// The most the guest may be slowed.
 const MAX_THROTTLE: f64 = 0.8;</code></pre>
+</div>
+
+</div>
+
 <h3 id="one-migration"><a class="header" href="#one-migration">One migration</a></h3>
 <p><code>Migrate</code> keeps one quantity between rounds: <code>remaining</code>, the memory still to be sent.
 It starts as the whole memory. Each pass of the loop first asks whether <code>remaining</code> can
@@ -476,6 +486,8 @@ be sent within the pause, and if so pauses the VM and finishes. Otherwise it com
 how long the round takes and how much memory the guest dirties in that time. The dirtied
 amount is capped at the VM’s size, since a page that is written twice is still one
 dirty page.</p>
+<div class="code-tabs">
+<div class="code-tab" data-lang="Go">
 <p class="listing"><b>Listing 6.3</b> The pre-copy loop, in Go. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/go/migration/main.go">code/go/migration/main.go</a></p>
 
 <pre><code class="language-go">// Migrate runs pre-copy rounds until the remaining memory can be sent within
@@ -526,6 +538,9 @@ func Migrate(vm VM, link Link, throttle bool) {
 	fmt.Printf("  gave up after %d rounds\n", maxRounds)
 }
 </code></pre>
+</div>
+
+<div class="code-tab" data-lang="Rust">
 <p class="listing"><b>Listing 6.4</b> The pre-copy loop, in Rust. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/rust/migration/src/main.rs">code/rust/migration/src/main.rs</a></p>
 
 <pre><code class="language-rust">/// Runs pre-copy rounds until the remaining memory can be sent within the
@@ -578,6 +593,10 @@ fn migrate(vm: &amp;Vm, link: &amp;Link, throttle: bool) {
 
     println!("  gave up after {MAX_ROUNDS} rounds");
 }</code></pre>
+</div>
+
+</div>
+
 <p>A round that dirties at least as much as it sent has made no progress. Without
 throttling the function reports that the migration does not converge. With throttling
 it slows the guest by another 20 percent and tries again.</p>
@@ -585,6 +604,8 @@ it slows the guest by another 20 percent and tries again.</p>
 <p>The run uses two VMs and the four links our fleet has: the Orin NX’s 1 GbE, one of a
 Thor’s 25 GbE lanes, all four lanes bonded together, and the 200 GbE cable between the
 two Sparks.</p>
+<div class="code-tabs">
+<div class="code-tab" data-lang="Go">
 <p class="listing"><b>Listing 6.5</b> The VMs, the links, and the six migrations, in Go. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/go/migration/main.go">code/go/migration/main.go</a></p>
 
 <pre><code class="language-go">func main() {
@@ -607,6 +628,9 @@ two Sparks.</p>
 	Migrate(training, spark, false)
 }
 </code></pre>
+</div>
+
+<div class="code-tab" data-lang="Rust">
 <p class="listing"><b>Listing 6.6</b> The VMs, the links, and the six migrations, in Rust. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/rust/migration/src/main.rs">code/rust/migration/src/main.rs</a></p>
 
 <pre><code class="language-rust">fn main() {
@@ -648,6 +672,10 @@ two Sparks.</p>
     migrate(&amp;training, &amp;bonded, false);
     migrate(&amp;training, &amp;spark, false);
 }</code></pre>
+</div>
+
+</div>
+
 <pre><code class="language-console">$ go run ./migration
 16 GB inference VM (0.2 GB/s changed) over 1 GbE:
   round  1:  16.00 GB sent in  128.0 s,  16.00 GB changed meanwhile
@@ -746,6 +774,8 @@ migration is possible when the host driver and the hypervisor both support it. T
 support depends on the driver and hypervisor versions, and has to be checked for each
 combination.</p>
 <h2 id="the-complete-program"><a class="header" href="#the-complete-program">The complete program</a></h2>
+<div class="code-tabs">
+<div class="code-tab" data-lang="Go">
 <p class="listing"><b>Listing 6.7</b> The complete program in Go. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/go/migration/main.go">code/go/migration/main.go</a></p>
 
 <pre><code class="language-go">// Command migration models the live migration of a virtual machine: moving a
@@ -866,6 +896,9 @@ func main() {
 	Migrate(training, spark, false)
 }
 </code></pre>
+</div>
+
+<div class="code-tab" data-lang="Rust">
 <p class="listing"><b>Listing 6.8</b> The complete program in Rust. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/rust/migration/src/main.rs">code/rust/migration/src/main.rs</a></p>
 
 <pre><code class="language-rust">//! Models the live migration of a virtual machine: moving a running VM's
@@ -1002,6 +1035,10 @@ fn main() {
     migrate(&amp;training, &amp;bonded, false);
     migrate(&amp;training, &amp;spark, false);
 }</code></pre>
+</div>
+
+</div>
+
 <div class="summary">
 <h2 id="summary"><a class="header" href="#summary">Summary</a></h2>
 <ul>
@@ -1090,7 +1127,7 @@ Networked Systems Design and Implementation (NSDI), 2005.</li>
         <script src="theme/figures-f9e9be6d.js"></script>
         <script src="theme/anim-4192821e.js"></script>
         <script src="theme/code-67e9caaf.js"></script>
-        <script src="theme/tabs-c73f18f8.js"></script>
+        <script src="theme/tabs-ef9f11bc.js"></script>
 
 
 
