@@ -1,4 +1,4 @@
-<img class="plate" src="art/ch07.svg" alt="5 parrots of different colours sit on a ring-shaped perch. Each passes a seed to its right-hand neighbour, and the seeds carry the partial sums 1, 3, 6, 10 and 15.">
+<img class="plate" src="art/ch07.svg" alt="5 parrots of different colours sit on a ring-shaped perch. Arrows between neighbours show each parrot passing a partial sum to its right, and the sums read 1, 3, 6, 10 and 15.">
 
 # 7. Collective communication and training failures
 

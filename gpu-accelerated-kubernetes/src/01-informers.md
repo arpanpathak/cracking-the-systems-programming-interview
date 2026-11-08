@@ -1,213 +1,159 @@
-<img class="plate" src="art/ch01.svg" alt="Ledger, an owl in round glasses, sits at a desk between a large book of record on the left, whose lines are numbered v10, v11 and v12, and a small notebook on the right in which it copies each numbered line. A ribbon of paper carries events from the book to the notebook.">
+<img class="plate" src="art/ch01.svg" alt="Ledger, an owl in round glasses, sits at a desk between the API server&#x27;s ledger on the left, whose lines are numbered v10, v11 and v12, and its cache notebook on the right. An arrow labelled watch from v10 carries events from the ledger to the notebook, and the owl writes with a quill.">
 
 # 1. Keeping a local copy of the cluster
 
-Suppose we want to write a program that runs GPU training jobs on Kubernetes. A user
-creates a job and says "this job needs one GPU". Our program has to notice the new job,
-start its container on a machine with a free GPU, and write down that the job is
-running. When the user changes the job to ask for two GPUs, our program has to notice
-that too and replace the container. When the user deletes the job, our program has to
-stop the container and free the GPU.
+This chapter depicts what happens under the hood when a Kubernetes controller learns that an
+object in the cluster has changed. The component that does this work is called an **informer**. We
+will first describe what an informer gives a controller. We will then build one in Go and in Rust,
+one part at a time, and finally compare our version with the informer in client-go, the library
+that real Go controllers use.
 
-In Kubernetes, a program like this is called a *controller*. In this chapter, we will
-learn how a controller finds out what is happening in the cluster, which turns out to be
-the most interesting part of the whole design. We will first build intuition by reasoning
-about the problems a controller runs into, and quickly prototype the data structures that
-solve them: a small API server, a cache, a loop that keeps the cache up to date, a work
-queue, and the controller itself. Then we will run our prototype through a burst of edits,
-a dropped connection, and a network partition, and finally we will map each piece onto
-client-go, the library that real Go controllers use.
+## What an informer does
 
-We will build the model twice, in Go and in Rust, with the same six parts and the same
-behaviour. The Go files are in `code/go/informer`, and we run them with
-`go run ./informer` from `code/go`. The Rust files are in `code/rust/informer`, and we run
-them with `cargo run -p informer` from `code/rust`. Neither version needs anything beyond
-its language's standard library.
+An informer keeps a copy of every object of one kind, for example every `GpuJob`, in the
+controller's memory, and keeps that copy up to date. Each time an object is created, changed or
+deleted, the informer updates its copy and then passes the object's name to the controller. The
+controller does not ask the API server for objects. It reads them from the informer's copy.
 
-<div class="covers">
+Fig. 1.1 shows an informer between the API server and a controller. The informer sends 2 requests
+to the API server. The first, a **list**, returns all objects of the kind. The second, a **watch**,
+stays open and returns each later change as it happens. The informer stores the result of the list
+in its cache, applies every change from the watch to the same cache, and passes the name of each
+changed object to the controller's work queue.
 
-This chapter covers
+<figure>
+<img src="figures/ch01-informer-overview.svg" alt="The API server stores objects in etcd. Inside the informer, the reflector sends a list request and then a watch request to the API server and writes what it receives into the cache. The handlers report each changed object's name to the work queue. The controller takes a name from the work queue and reads the object from the cache.">
+<figcaption><b>Figure 1.1</b> An informer keeps a cache of one kind of object and reports the name of every object that changes.</figcaption>
+</figure>
 
-- objects, and the API server that stores them
-- resource versions, and the `409 Conflict` that protects a write
-- listing and watching, and the `410 Gone` that forces a second list
-- a cache, a reflector, a work queue, and a controller, each in Go and in Rust
-- one run through a burst of edits, a dropped watch, and a partition
-- the parts of client-go that match the model
+An informer has 3 parts, and the rest of this chapter builds them in this order:
+
+- the **reflector**, which sends the list and watch requests and keeps the cache current;
+- the **cache**, which holds the copy of the objects;
+- the **event handlers**, which pass the names of changed objects to the controller.
+
+Before we build them, we need the objects themselves, and a way for a client to tell the API server
+which changes it has already seen.
+
+## Objects, specs and statuses
+
+Kubernetes stores the state of a cluster as **objects**. An object is a named record with 2 main
+parts. The **spec** is the state that the owner of the object requests. The **status** is the state
+that has been reached so far. The owner writes the spec, and a controller writes the status. A
+**controller** is a program that compares the 2 for every object of one kind and acts until they
+agree.
+
+Our example is a training job. A job named `job-a` is created with a spec of 1 GPU and a status of 0
+GPUs. Its controller starts a container with 1 GPU and then writes a status of 1 GPU. If the owner
+later changes the spec to 2 GPUs, the controller replaces the container and writes a status of 2.
+If the owner deletes the job, the controller stops the container and frees the GPUs.
+
+All objects are kept by 1 HTTP service, the **API server**, which stores them in etcd, a replicated
+key-value store. Every client, including `kubectl` and every controller, reads and writes objects
+through the API server. Listing 1.1 gives the object in our model. A real object has many more
+fields; a GPU count in the spec and in the status is enough for this chapter.
+
+<div class="code-tabs">
+
+<p class="listing"><b>Listing 1.1</b> An object, with its spec and its status. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/go/informer/server.go">Go</a> · <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/rust/informer/src/server.rs">Rust</a></p>
+
+```go
+{{#include ../code/go/informer/server.go:types}}
+```
+
+```rust
+{{#include ../code/rust/informer/src/server.rs:types}}
+```
 
 </div>
 
-## Objects, specs, and statuses
+## Why not ask the API server every time
 
-Kubernetes describes a cluster as a collection of *objects*. An object is a record with a
-name and two main parts. The *spec* holds what a user asked for: "run this image with one
-GPU". The *status* holds what has actually happened so far: "running on one GPU". A
-training job in our cluster will be one such object.
+A controller could do without an informer. It could ask the API server for every job every few
+seconds and compare the answer with what it is running. On a small cluster this works. On a large
+one it does not. A cluster with 50,000 pods, at about 4 KB of JSON per pod, returns 200 MB for each
+such request. If 12 controllers each ask every 5 seconds, the API server sends 480 MB per second,
+although only a few pods change between 2 requests.
 
-All objects live behind a single HTTP service, the *API server*. Every read and every
-write of every object goes through it, and it stores the objects in etcd, a replicated
-key-value database. Users, command-line tools, and controllers are all just clients of
-the API server.
-
-A controller's job is to compare each object's spec with the real world and act on any
-difference, then record what it did in the status. To do that well, it needs two things
-from the API server: an accurate view of every object of its kind, and news of every
-change within a fraction of a second. Let us see how to get both.
+An informer reads all objects once and then receives only the changes. To do that safely, it needs a
+way to say which changes it has already seen. That is the purpose of the resource version.
 
 ## Numbering every write
 
-The most obvious approach is to ask the API server for every object every few seconds.
-It works for a handful of objects, and it falls apart as the cluster grows. A cluster with
-50,000 pods stores a few kilobytes of JSON per pod, so a single request for all of them
-transfers around 200 megabytes. If a dozen controllers each did that every five seconds,
-the API server would be sending almost half a gigabyte per second, and between two of
-those requests only a handful of pods would have changed.
+etcd keeps 1 counter for the whole store, called the **revision**. Every create, update and delete
+of any key takes the next value of the counter. Fig. 1.2 shows 12 writes to 4 keys. The top row is
+the writes in order. The rows below show, for each key, the revisions that wrote it.
 
-What we really want is for the API server to tell us about each change as it happens.
-That idea brings a problem with it. Connections break: networks fail, servers restart,
-and proxies close connections they consider idle. When our connection breaks and we open
-a new one, we need to say "send me everything I missed", and that requires a way to name
-the point where we left off.
+<figure>
+<img src="figures/ch01-revisions.svg" alt="Twelve writes numbered 1 to 12, coloured by the key they wrote: job-a, job-b, pod-1 and pod-2. Below, the key index lists for each key the revisions that wrote it. job-a was written at 1, 4, 5, 9 and 11, so its resourceVersion is 11.">
+<figcaption><b>Figure 1.2</b> One counter numbers every write. Each object's resource version is the revision of its latest write.</figcaption>
+</figure>
 
-The API server solves this by numbering its writes. It keeps a single counter for the
-whole store. Every time any object is created, updated, or deleted, it increments the
-counter and stamps the new value onto the object that changed. Kubernetes calls this
-number the object's *resource version*. The numbers come straight from etcd, which gives
-every write a *revision* number from one counter for the whole database.
+Kubernetes reports this number to clients as the **resource version**. The resource version of an
+object is the revision of the last write that changed it. In Fig. 1.2, `job-a` has resource version
+11 and `pod-1` has resource version 8. A list also has a resource version: the revision of the
+store when the list was read.[^opaque]
 
-The same number helps with a second problem. Imagine two clients read a job at version 7.
-The first changes the GPU count and writes the job back. The second changes the image and
-writes the job back a moment later, still based on what it read at version 7. Without
-any check, the second write would replace the whole object and silently undo the first
-client's change. With resource versions, the second client sends "I read this at
-version 7" along with its write. The object is now at version 8, so the server refuses
-the write with the HTTP status `409 Conflict`, and the second client knows it has to read
-the job again and redo its change on top of the new version.
+[^opaque]: Kubernetes asks clients to treat resource versions as opaque strings and to compare them only for equality. Our model uses integers so that we can print them.
 
-## Listing, then watching
-
-With numbered writes, a client can build an exact view of the cluster in two steps.
-
-First it asks for every object. This request is called a *list*, and the response carries
-the objects together with the resource version at which the server took the snapshot.
-Then the client opens a *watch*: a request that stays open and asks the server to send
-every change made after a given version, one *event* per change. The client passes the
-version it got from the list.
-
-Passing that version is the important detail. The list and the watch are two separate
-requests, and other clients keep writing in between. Suppose our list is taken at
-version 10, then a user edits a job at version 11, and only then does our watch open, when
-the store is at version 12:
-
-```text
-version:   10          11             12
-           list        job-a edited   watch opened
-           snapshot                   from version 10
-                                      -> the server replays event 11,
-                                         then sends new events as they occur
-```
-
-Because the watch asks for everything after version 10, the server first sends us event 11
-from its record of recent changes and then carries on with new events. Our view is the
-snapshot at version 10 plus every change after it: nothing missing, nothing counted twice.
-If we had opened the watch at the current version, 12, we would have skipped the edit at
-version 11 and kept an out-of-date copy of `job-a` until the job happened to change again.
-
-## When the history runs out
-
-The server can only replay changes it still has. etcd keeps every revision of every key
-until it is told to throw old ones away, and that clean-up is called *compaction*.
-Without it the database would grow forever. The Kubernetes API server asks etcd to
-compact every five minutes by default. After a compaction, a watch that asks to resume
-from an older version cannot be served, because the events it needs have been thrown
-away. The API server answers with the HTTP status `410 Gone`, and the only way for us to
-get back to an exact view is to list again and watch from the new list's version.
-
-Watches also end for ordinary reasons. The API server closes every watch after a timeout,
-chosen at random between 30 and 60 minutes by default, so that thousands of clients do not
-all reconnect at the same moment. A load balancer between us and the server may close a
-connection that has been quiet for too long. And the network may fail for a while, so
-that even new connections fail.
-
-Each of these calls for a different response, and our client has to tell them apart. If
-the watch simply closed, we reopen it from the last version we received. If we cannot
-connect at all, we wait and try again. If the server says `410 Gone`, we list again.
-
-## Building the server
-
-Now we have enough understanding to build a model. We start with the server. It keeps the
-objects in memory, numbers every write, records recent events, and answers lists and
-watches. We also give it three extra methods, `DropWatches`, `Partition`, and `Heal`, so
-that our demonstration at the end of the chapter can cause each of the failures we just
-discussed.
-
-<div class="lld">
-
-Low-level design: the model
-
-| Part | Holds | Rule it keeps |
-|---|---|---|
-| `Object` | a name, a spec, a status, a version | the version is the number of the write that last changed it |
-| `APIServer` | the objects, the write counter, recent events, the open watches | every write increments the counter and publishes one event |
-| `Cache` | a copy of every object | exact up to the last event applied |
-| `Reflector` | the server, the cache, the queue | updates the cache before it queues a name |
-| `WorkQueue` | the ready names, and the sets `dirty` and `processing` | a name is with at most one worker at a time |
-| `Controller` | the server, the cache, the queue | acts only on the object's current state |
-
-Each part is one source file in each language, and the sections below build them in this
-order.
-
-</div>
-
-The server's data comes first: the object, the event that reports a change to it, and the
-two errors a client has to tell apart.
+Each change that a watch reports is an **event**. An event has a type, `ADDED`, `MODIFIED` or
+`DELETED`, and it carries the whole object after the change. Listing 1.2 gives the event and the 3
+errors that our server can return.
 
 <div class="code-tabs">
 
-<div class="code-tab" data-lang="Go">
-
-<p class="listing"><b>Listing 1.1</b> Objects, events, and the two errors, in Go. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/go/informer/server.go">code/go/informer/server.go</a></p>
+<p class="listing"><b>Listing 1.2</b> Events, and the errors the server returns. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/go/informer/server.go">Go</a> · <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/rust/informer/src/server.rs">Rust</a></p>
 
 ```go
-{{#include ../code/go/informer/server.go:objects}}
+{{#include ../code/go/informer/server.go:events}}
 ```
-
-</div>
-
-<div class="code-tab" data-lang="Rust">
-
-<p class="listing"><b>Listing 1.2</b> Objects, events, and the two errors, in Rust. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/rust/informer/src/server.rs">code/rust/informer/src/server.rs</a></p>
 
 ```rust
-{{#include ../code/rust/informer/src/server.rs:objects}}
+{{#include ../code/rust/informer/src/server.rs:events}}
 ```
 
 </div>
 
-</div>
+## Writing with a version
 
+The resource version also protects writes. Suppose 2 clients read `job-a` at version 7. Client A
+changes the GPU count and writes the job back. Client B then changes the image and writes back its
+own copy, which still has the old GPU count. Without a check, client B's write would undo client A's
+change.
 
+To prevent this, a write can carry the version it was based on. The API server accepts the write
+only if the object still has that version, and otherwise answers `409 Conflict`. Fig. 1.3 shows the
+2 clients with this rule. Client A's write (step 5) is accepted and the job becomes version 8. Client
+B's write (step 7) still says version 7, so it is refused (step 8). Client B reads version 8,
+applies its change again, and its second write succeeds as version 9.
 
-The model reduces a job to a GPU count in its spec and in its status.
+<figure>
+<img src="figures/ch01-conflict.svg" alt="Client A and client B both read job-a at version 7. A writes 2 GPUs with version 7 and the server accepts it as version 8. B writes a new image with version 7 and the server answers 409 Conflict. B reads version 8, writes again with version 8, and the server stores version 9 with both changes.">
+<figcaption><b>Figure 1.3</b> A write that names the version it read is accepted only if the object is still at that version.</figcaption>
+</figure>
 
-The server itself is a lock around four things: the objects, the counter, the events it
-still has, and the watches that are open.
+This is called **optimistic concurrency**. No client locks the object. A client that loses the race
+reads the object again and repeats its change.
+
+Our model server needs a few fields to support writes, lists and watches. Fig. 1.4 shows them after
+10 writes: the objects, the version counter, a history of recent events, and the open watches. A
+fifth field, `compacted`, records how much of the history has been thrown away.
+
+<figure>
+<img src="figures/ch01-server-struct.svg" alt="The API server holds 4 fields behind 1 lock: objects (job-a at version 10, job-b at 8), the version counter 10, a history of events 3 to 10 with 1 and 2 compacted, and 2 open watches that have been sent everything up to 10. Update checks the version, increments the counter, stores the object, and publishes 1 event to the history and every watch. Watch from 8 checks the compaction point, replays 9 and 10, and registers itself under the same lock.">
+<figcaption><b>Figure 1.4</b> The model API server after 10 writes.</figcaption>
+</figure>
+
+Listing 1.3 declares these fields. The field `unreachable` is only for our demonstration: it lets
+the server act as if a network partition had cut it off.
 
 <div class="code-tabs">
 
-<div class="code-tab" data-lang="Go">
-
-<p class="listing"><b>Listing 1.3</b> The server's state, in Go. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/go/informer/server.go">code/go/informer/server.go</a></p>
+<p class="listing"><b>Listing 1.3</b> The state of the API server. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/go/informer/server.go">Go</a> · <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/rust/informer/src/server.rs">Rust</a></p>
 
 ```go
 {{#include ../code/go/informer/server.go:server}}
 ```
-
-</div>
-
-<div class="code-tab" data-lang="Rust">
-
-<p class="listing"><b>Listing 1.4</b> The server's state, in Rust. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/rust/informer/src/server.rs">code/rust/informer/src/server.rs</a></p>
 
 ```rust
 {{#include ../code/rust/informer/src/server.rs:server}}
@@ -215,61 +161,52 @@ still has, and the watches that are open.
 
 </div>
 
-</div>
-
-
-
-Two methods change objects, and both end by publishing an event.
+Listing 1.4 is the write. It checks the version, takes the next number from the counter, stores the
+object, and publishes 1 event. A version of 0 means "write without a check", which the demonstration
+uses to play a user editing a job. All of this happens under 1 lock, so 2 writers can never pass the
+check at the same time.
 
 <div class="code-tabs">
 
-<div class="code-tab" data-lang="Go">
-
-<p class="listing"><b>Listing 1.5</b> Writing: update, delete, and publish, in Go. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/go/informer/server.go">code/go/informer/server.go</a></p>
+<p class="listing"><b>Listing 1.4</b> A write that checks the version it was based on. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/go/informer/server.go">Go</a> · <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/rust/informer/src/server.rs">Rust</a></p>
 
 ```go
-{{#include ../code/go/informer/server.go:writes}}
+{{#include ../code/go/informer/server.go:update}}
 ```
-
-</div>
-
-<div class="code-tab" data-lang="Rust">
-
-<p class="listing"><b>Listing 1.6</b> Writing: update, delete, and publish, in Rust. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/rust/informer/src/server.rs">code/rust/informer/src/server.rs</a></p>
 
 ```rust
-{{#include ../code/rust/informer/src/server.rs:writes}}
+{{#include ../code/rust/informer/src/server.rs:update}}
 ```
 
 </div>
 
-</div>
+## The list and the watch
 
+The reflector builds its copy with a list followed by a watch. The list returns all objects and a
+resource version. The watch then asks for every change after that version.
 
+The watch must start from the list's version. The 2 requests are separate, and other clients may
+write between them. Fig. 1.5 shows a list read at version 10, an edit at version 11, and a watch
+that opens when the store is already at version 12. If the watch asks for changes after 10, the
+server replays 11 and 12 and nothing is lost. If it asks for changes after 12, the edit at 11 is
+never delivered, and the copy of that object stays wrong.
 
-`Update` carries both uses of the resource version. A zero version skips the check, which
-the demonstration uses to play a user editing a job. Any other version must equal the
-stored one, and a missing object counts as version 0. Each successful write increments the
-counter and publishes one event. `Delete` publishes the object's final state under a new
-version.
+<figure>
+<img src="figures/ch01-list-watch-gap.svg" alt="Two rows of versions 8 to 14. In both a list is taken at version 10. In the first row the watch starts from 10, and versions 11 to 14 are delivered. In the second the watch starts from 12, the version current when it opened, and versions 11 and 12 are missed.">
+<figcaption><b>Figure 1.5</b> A watch must start from the list's version. Starting from the current version leaves a gap.</figcaption>
+</figure>
 
-Two methods read: one for the snapshot and one for the stream of changes after it.
+Listing 1.5 gives both requests. `Watch` replays the stored events newer than the requested version
+and then registers the new watch, both under the server's lock. Every event therefore reaches the
+new watch exactly once.
 
 <div class="code-tabs">
 
-<div class="code-tab" data-lang="Go">
-
-<p class="listing"><b>Listing 1.7</b> Reading: list and watch, in Go. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/go/informer/server.go">code/go/informer/server.go</a></p>
+<p class="listing"><b>Listing 1.5</b> List, and watch from a version. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/go/informer/server.go">Go</a> · <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/rust/informer/src/server.rs">Rust</a></p>
 
 ```go
 {{#include ../code/go/informer/server.go:listwatch}}
 ```
-
-</div>
-
-<div class="code-tab" data-lang="Rust">
-
-<p class="listing"><b>Listing 1.8</b> Reading: list and watch, in Rust. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/rust/informer/src/server.rs">code/rust/informer/src/server.rs</a></p>
 
 ```rust
 {{#include ../code/rust/informer/src/server.rs:listwatch}}
@@ -277,37 +214,38 @@ Two methods read: one for the snapshot and one for the stream of changes after i
 
 </div>
 
-</div>
+## When a watch ends
 
+A watch can replay only the events the server still keeps. etcd throws away old revisions from time
+to time; this is called **compaction**, and kube-apiserver requests it every 5 minutes by default. If
+a client asks to resume from a version that has been thrown away, the server answers `410 Gone`, and
+the client must list again.
 
+A watch can also end for ordinary reasons. The API server closes every watch after 30 to 60
+minutes. A load balancer may close an idle connection. The network may fail for a while. Fig. 1.6
+shows what the reflector does in each case. Here *v* is the version of the last event it applied.
+After a closed stream or a network failure, it watches again from *v*. Only after `410 Gone` does
+it list again.
 
-`publish` runs while the server lock is held, and `Watch` holds the same lock while it
-replays the history and registers the new watch. Every event is therefore either in the
-replayed history or delivered after registration: no watch misses an event or receives
-one twice.
+<figure>
+<img src="figures/ch01-watch-endings.svg" alt="A watch from version v can end in 3 ways. If the stream closes, the reflector watches again from v. If the server is unreachable, it waits and retries from v, doubling the wait after each failure. If the server answers 410 Gone, v is older than the compaction point and the reflector lists again.">
+<figcaption><b>Figure 1.6</b> The 3 ways a watch ends. Only <code>410 Gone</code> requires a new list.</figcaption>
+</figure>
 
-A Go watch buffers 1,024 events. A client that stops reading would eventually block
-`publish` while it holds the lock and stall every writer; the real API server closes such
-a watch. The Rust channel is unbounded. In Go the server ends a watch by closing its
-channel; in Rust it drops the sender, which ends the receiver's loop.
+A watch on objects that rarely change receives few events, so its *v* can fall behind the next
+compaction even though nothing was missed. The API server prevents this by sending **bookmark**
+events, which carry only a resource version.
 
-The last four methods cause the failures of the previous section on request.
+Our server can cause each of these endings on request, so that the demonstration can show them.
+Listing 1.6 gives the 4 methods: `Compact`, `DropWatches`, `Partition` and `Heal`.
 
 <div class="code-tabs">
 
-<div class="code-tab" data-lang="Go">
-
-<p class="listing"><b>Listing 1.9</b> Compaction, dropped watches, and partitions, in Go. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/go/informer/server.go">code/go/informer/server.go</a></p>
+<p class="listing"><b>Listing 1.6</b> Compaction, dropped watches and partitions. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/go/informer/server.go">Go</a> · <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/rust/informer/src/server.rs">Rust</a></p>
 
 ```go
 {{#include ../code/go/informer/server.go:faults}}
 ```
-
-</div>
-
-<div class="code-tab" data-lang="Rust">
-
-<p class="listing"><b>Listing 1.10</b> Compaction, dropped watches, and partitions, in Rust. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/rust/informer/src/server.rs">code/rust/informer/src/server.rs</a></p>
 
 ```rust
 {{#include ../code/rust/informer/src/server.rs:faults}}
@@ -315,38 +253,19 @@ The last four methods cause the failures of the previous section on request.
 
 </div>
 
-</div>
+## The cache
 
-
-
-`Watch` fails with the gone error when the requested version is older than `compacted`.
-`Compact`, `DropWatches`, `Partition`, and `Heal` exist only to reproduce the failures
-described above.
-
-## A local copy of the objects
-
-Once we have listed and are watching, we can keep our own copy of every object in memory.
-The copy is exact up to the last event we received. Reading an object becomes a map
-lookup instead of a network request, and the server only has to send each change to us
-once. We call this copy the *cache*.
-
-The cache is a map behind a lock, with a method for one event.
+The cache is a map from object name to object. Reading an object is a lookup in this map. Listing
+1.7 gives the cache with 2 operations. `Get` returns 1 object. `Apply` records 1 event: it stores
+the object for `ADDED` and `MODIFIED`, and removes it for `DELETED`.
 
 <div class="code-tabs">
 
-<div class="code-tab" data-lang="Go">
-
-<p class="listing"><b>Listing 1.11</b> The cache, a lookup, and applying one event, in Go. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/go/informer/cache.go">code/go/informer/cache.go</a></p>
+<p class="listing"><b>Listing 1.7</b> The cache, Get and Apply. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/go/informer/cache.go">Go</a> · <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/rust/informer/src/cache.rs">Rust</a></p>
 
 ```go
 {{#include ../code/go/informer/cache.go:cache}}
 ```
-
-</div>
-
-<div class="code-tab" data-lang="Rust">
-
-<p class="listing"><b>Listing 1.12</b> The cache, a lookup, and applying one event, in Rust. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/rust/informer/src/cache.rs">code/rust/informer/src/cache.rs</a></p>
 
 ```rust
 {{#include ../code/rust/informer/src/cache.rs:cache}}
@@ -354,33 +273,24 @@ The cache is a map behind a lock, with a method for one event.
 
 </div>
 
-</div>
+The cache needs a third operation for a new list. After `410 Gone`, some objects may have been
+deleted while the reflector was cut off, and their `DELETED` events were thrown away. No event will
+report them. The only sign is that they are in the old cache and missing from the new list.
+`Replace` therefore compares the 2. Fig. 1.7 shows 4 cases: a changed object, a deleted object, a
+new object and an unchanged object. `Replace` returns the names of the first 3.
 
-
-
-Both caches use a read-write lock: every reconcile reads the cache, and only incoming
-events write to it.
-
-`Apply` records a single event. It stores the object for an addition or a modification
-and removes it for a deletion.
-
-A second method installs a whole list.
+<figure>
+<img src="figures/ch01-replace.svg" alt="Four objects compared between the old cache and a new list taken at version 12. job-a went from 9 to 11 and is reported modified. job-b is in the old cache but not in the list and is reported deleted. job-c is new and reported added. job-d is unchanged at 6 and is not queued.">
+<figcaption><b>Figure 1.7</b> Replace compares the old cache with the new list. <code>job-b</code> is reported deleted although no event says so.</figcaption>
+</figure>
 
 <div class="code-tabs">
 
-<div class="code-tab" data-lang="Go">
-
-<p class="listing"><b>Listing 1.13</b> Replacing the cache with a fresh list, in Go. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/go/informer/cache.go">code/go/informer/cache.go</a></p>
+<p class="listing"><b>Listing 1.8</b> Replace. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/go/informer/cache.go">Go</a> · <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/rust/informer/src/cache.rs">Rust</a></p>
 
 ```go
 {{#include ../code/go/informer/cache.go:replace}}
 ```
-
-</div>
-
-<div class="code-tab" data-lang="Rust">
-
-<p class="listing"><b>Listing 1.14</b> Replacing the cache with a fresh list, in Rust. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/rust/informer/src/cache.rs">code/rust/informer/src/cache.rs</a></p>
 
 ```rust
 {{#include ../code/rust/informer/src/cache.rs:replace}}
@@ -388,45 +298,31 @@ A second method installs a whole list.
 
 </div>
 
-</div>
-
-
-
-`Replace` installs the result of a fresh list, and it has one more job that events alone
-cannot do. Think about what happens when we relist after `410 Gone`. Some objects may have
-been deleted while we were disconnected, and their deletion events were thrown away by the
-compaction. Nobody will ever send us those events. The only evidence that the objects are
-gone is that they are in our old cache and missing from the new list. So `Replace` builds
-the new contents from the list, reports every object whose version differs from the one we
-had, and then reports every name that was in the old cache but is missing from the list.
-Objects that are new to us have no cached version at all; Go reads the missing entry as
-version 0 and Rust compares against `None`, so new objects get reported as changed too.
-
 ## The reflector
 
-Next we need a loop that keeps the cache in step with the server. It lists, installs the
-result with `Replace`, and queues the names of the objects that `Replace` reported, so
-that the controller will look at them. Then it watches from the list's version and
-applies each event as it arrives. When the history it needs is gone, it lists again. We
-call this loop the *reflector*.
+The reflector is the loop that keeps the cache current. It lists, installs the list with `Replace`,
+and watches from the list's version. For each event it updates the cache and then reports the
+object's name. When the watch ends with `410 Gone`, it starts again with a new list.
 
-The outer loop lists, installs the list, and hands over to the watch.
+The order of the last 2 steps matters. The cache must be updated before the name is reported. Fig.
+1.8 shows why. On the left, the name is reported first. A worker takes the name and reads the cache
+before the update has arrived. It sees the old spec, finds nothing to do, and the change is never
+handled. On the right, the cache is updated first, and the worker sees the new spec.
+
+<figure>
+<img src="figures/ch01-order.svg" alt="Two orderings of the reflector's steps. Left: the name is queued before the cache is updated, a worker reads the old spec of 1 GPU, finds nothing to do, and the edit to 2 GPUs is never handled. Right: the cache is updated first, so the worker reads 2 GPUs and acts.">
+<figcaption><b>Figure 1.8</b> The same event handled in 2 orders. Only the second order is correct.</figcaption>
+</figure>
+
+Listing 1.8 is the outer loop: list, install, watch.
 
 <div class="code-tabs">
 
-<div class="code-tab" data-lang="Go">
-
-<p class="listing"><b>Listing 1.15</b> The reflector and its list step, in Go. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/go/informer/reflector.go">code/go/informer/reflector.go</a></p>
+<p class="listing"><b>Listing 1.9</b> The reflector and its outer loop. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/go/informer/reflector.go">Go</a> · <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/rust/informer/src/reflector.rs">Rust</a></p>
 
 ```go
 {{#include ../code/go/informer/reflector.go:run}}
 ```
-
-</div>
-
-<div class="code-tab" data-lang="Rust">
-
-<p class="listing"><b>Listing 1.16</b> The reflector and its list step, in Rust. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/rust/informer/src/reflector.rs">code/rust/informer/src/reflector.rs</a></p>
 
 ```rust
 {{#include ../code/rust/informer/src/reflector.rs:run}}
@@ -434,27 +330,18 @@ The outer loop lists, installs the list, and hands over to the watch.
 
 </div>
 
-</div>
-
-
-
-The inner loop watches, and decides what each kind of ending calls for.
+Listing 1.9 is the watch loop. It keeps `version` equal to the version of the last event applied,
+so a new watch from `version` continues exactly where the old one stopped. The 3 branches match the
+3 endings of Fig. 1.6. In our model the reflector waits 10 milliseconds before retrying an
+unreachable server. client-go doubles the wait after each failure.
 
 <div class="code-tabs">
 
-<div class="code-tab" data-lang="Go">
-
-<p class="listing"><b>Listing 1.17</b> Watching from a version, in Go. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/go/informer/reflector.go">code/go/informer/reflector.go</a></p>
+<p class="listing"><b>Listing 1.10</b> Watching from a version. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/go/informer/reflector.go">Go</a> · <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/rust/informer/src/reflector.rs">Rust</a></p>
 
 ```go
 {{#include ../code/go/informer/reflector.go:watch}}
 ```
-
-</div>
-
-<div class="code-tab" data-lang="Rust">
-
-<p class="listing"><b>Listing 1.18</b> Watching from a version, in Rust. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/rust/informer/src/reflector.rs">code/rust/informer/src/reflector.rs</a></p>
 
 ```rust
 {{#include ../code/rust/informer/src/reflector.rs:watch}}
@@ -462,74 +349,39 @@ The inner loop watches, and decides what each kind of ending calls for.
 
 </div>
 
-</div>
+## The event handlers and the work queue
 
+When the cache changes, the controller must hear about it. In client-go this is the job of the
+**event handlers**: functions that the informer calls after each change. A typical handler does 1
+thing: it adds the object's name to a work queue. In our model the reflector does this directly,
+with 1 call to `queue.Add` after each update of the cache.
 
+The queue holds names, and the controller reads each object from the cache when it takes the name.
+This has 2 advantages. If a user edits a job 5 times in 1 second, the name is added 5 times, but the
+queue keeps it only once, so the controller does the work once, for the latest spec. And after a new
+list, `Replace` reports names without events, which the queue accepts in the same way.
 
-The heart of the reflector is `watchFrom` (`watch_from` in Rust). It keeps a variable,
-`version`, that always holds the version of the last event it applied to the cache. That
-means our cache is complete up to `version`, so a new watch opened from `version` picks up
-exactly where the old one stopped. With that in mind, here is what the function does for
-each of the three ways a watch can end:
+The queue must also stop 2 workers from handling the same object at the same time. For this it keeps
+2 sets beside the list of ready names. The **dirty** set holds every name that needs handling. The
+**processing** set holds every name a worker is handling now. A name that is added while a worker
+holds it goes into the dirty set only. It becomes ready again when the worker calls `Done`. Fig. 1.9
+follows 1 name through these calls.
 
-- If the watch channel closes because the server dropped the connection, we log the
-  version and open a new watch from it. The server replays anything that happened while
-  we were reconnecting.
-- If `Watch` fails because the server is unreachable, we wait 10 milliseconds and try
-  again with the same version. client-go waits a little longer after each failure in a
-  row, so that thousands of clients do not hammer a server that is trying to recover.
-- If `Watch` fails with the gone error, our version is older than the compaction point,
-  and no watch can continue from it. `watchFrom` returns, and `Run` starts over with a new
-  list.
+<figure>
+<img src="figures/ch01-queue-states.svg" alt="The ready list, the dirty set and the processing set after each call: Add puts job-a in ready and dirty; Get moves it to processing; Adds during the reconcile mark it dirty only; Done makes it ready again; a second Get starts a reconcile that reads the latest spec.">
+<figcaption><b>Figure 1.9</b> The queue after each call. A name is never ready while a worker holds it.</figcaption>
+</figure>
 
-Look closely at the order of the two calls inside the event loop: we update the cache
-first, and only then queue the object's name. Suppose we did it the other way round. A
-worker could take the name straight away, read the object from the cache before our update
-landed, see the old state, decide there was nothing to do, and finish. The name would not
-be queued again, and the change would sit unhandled until the object happened to change
-once more. Updating the cache first rules that out.
-
-client-go uses the same name for this loop, *reflector*, because it reflects the server's
-state into local memory. A reflector together with its cache, plus the plumbing that tells
-other code about changes, is what client-go calls an *informer*.
-
-## A queue of names
-
-The reflector knows when an object changes, and the controller needs to hear about it.
-The obvious design is for the reflector to call the controller once for every event.
-Let us see why that design breaks down.
-
-The first problem is bursts. A user who edits a job five times in one second produces five
-events. A controller called five times would start work for four specs that were already
-out of date before the work finished. The second problem is lost events. After a relist,
-`Replace` tells us which names changed, but the individual events that led there are gone
-for good. A controller that relies on seeing every event would have nothing to react to,
-and it would miss changes every time the history was compacted.
-
-So we give the controller only the *names* of objects that changed, and the controller
-reads the object's current state from the cache when it gets to the name. Five edits now
-put the same name in the queue five times, and if the queue simply ignores a name it
-already holds, they turn into one reconcile that acts on the latest spec. The controller
-takes names from the queue in one or more *workers*, each processing one name at a time.
-Our model runs a single worker.
-
-The queue's state is a list and two sets behind one lock.
+Listing 1.10 declares the queue: the ready list and the 2 sets under 1 lock, and a condition
+variable on which idle workers wait.
 
 <div class="code-tabs">
 
-<div class="code-tab" data-lang="Go">
-
-<p class="listing"><b>Listing 1.19</b> The queue's state, in Go. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/go/informer/queue.go">code/go/informer/queue.go</a></p>
+<p class="listing"><b>Listing 1.11</b> The state of the work queue. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/go/informer/queue.go">Go</a> · <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/rust/informer/src/queue.rs">Rust</a></p>
 
 ```go
 {{#include ../code/go/informer/queue.go:state}}
 ```
-
-</div>
-
-<div class="code-tab" data-lang="Rust">
-
-<p class="listing"><b>Listing 1.20</b> The queue's state, in Rust. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/rust/informer/src/queue.rs">code/rust/informer/src/queue.rs</a></p>
 
 ```rust
 {{#include ../code/rust/informer/src/queue.rs:state}}
@@ -537,103 +389,86 @@ The queue's state is a list and two sets behind one lock.
 
 </div>
 
-</div>
-
-
-
-Besides the list of names that are ready for a worker, the queue keeps two sets. `dirty`
-holds every name that needs processing. `processing` holds every name that a worker has
-taken and not yet handed back.
-
-Three operations work on that state.
+Listing 1.11 is `Add`. It ignores a name that is already dirty, marks a new name dirty, and makes it
+ready only if no worker holds it.
 
 <div class="code-tabs">
 
-<div class="code-tab" data-lang="Go">
-
-<p class="listing"><b>Listing 1.21</b> Add, Get, and Done, in Go. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/go/informer/queue.go">code/go/informer/queue.go</a></p>
+<p class="listing"><b>Listing 1.12</b> Add. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/go/informer/queue.go">Go</a> · <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/rust/informer/src/queue.rs">Rust</a></p>
 
 ```go
-{{#include ../code/go/informer/queue.go:ops}}
+{{#include ../code/go/informer/queue.go:add}}
 ```
-
-</div>
-
-<div class="code-tab" data-lang="Rust">
-
-<p class="listing"><b>Listing 1.22</b> Add, Get, and Done, in Rust. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/rust/informer/src/queue.rs">code/rust/informer/src/queue.rs</a></p>
 
 ```rust
-{{#include ../code/rust/informer/src/queue.rs:ops}}
+{{#include ../code/rust/informer/src/queue.rs:add}}
 ```
 
 </div>
 
-</div>
+Listing 1.12 gives `Get` and `Done`. `Get` waits until a name is ready, then moves it from the dirty
+set to the processing set. `Done` removes the name from the processing set and makes it ready again
+if it was added in the meantime. A waiting worker must not hold the lock, or `Add` could never run,
+so both versions wait on a **condition variable** (`sync.Cond` in Go, `std::sync::Condvar` in Rust),
+which releases the lock while the worker sleeps.
 
+<div class="code-tabs">
 
+<p class="listing"><b>Listing 1.13</b> Get and Done. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/go/informer/queue.go">Go</a> · <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/rust/informer/src/queue.rs">Rust</a></p>
 
-Why the second set? Because an object can change while a worker is in the middle of
-reconciling it. Without `processing`, the new event would put the name back in the ready
-list, a second worker would take it, and two workers would be acting on the same object at
-once. If both write a status with a version check, one of them fails with a conflict and
-its work is wasted. If both do something outside Kubernetes, like starting a container,
-both succeed, and our job ends up with two containers. So the queue holds the name back
-instead. When `Add` sees a name that a worker is holding, it marks the name dirty but
-leaves it out of the ready list. When the worker calls `Done`, the queue notices the mark
-and makes the name ready again, and the next reconcile sees the object as it is after the
-change. The table follows one name through that sequence:
-
-```text
-call             ready      dirty      processing   effect
----------------  ---------  ---------  -----------  --------------------------------
-Add(job-a)       [job-a]    {job-a}    {}           ready for a worker
-Get() -> job-a   []         {}         {job-a}      a worker takes it
-Add(job-a)       []         {job-a}    {job-a}      edited during the run: marked
-Add(job-a)       []         {job-a}    {job-a}      already marked: no change
-Done(job-a)      [job-a]    {job-a}    {}           marked, so ready again
+```go
+{{#include ../code/go/informer/queue.go:getdone}}
 ```
 
-Animation 1.1 plays that sequence with the burst of five edits from the run at the end of this
-chapter. Its last part repeats the calls on a queue that has no `processing` set and gives
-the name to a second worker.
+```rust
+{{#include ../code/rust/informer/src/queue.rs:getdone}}
+```
+
+</div>
+
+Animation 1.1 shows the same calls for a burst of 5 edits. Its last part removes the processing set
+and shows a second worker taking the name while the first is still working.
 
 <figure class="anim">
 <video class="motion" src="figures/work-queue.mp4" autoplay loop muted playsinline preload="metadata" aria-label="Three boxes, ready, dirty and processing, above a worker. Add puts job-a in ready and dirty. Get moves it to processing and the worker starts a reconcile. Four more Add calls during the reconcile mark the name dirty and leave ready empty. Done moves the name back to ready, and a second reconcile reads a spec of 6 GPUs. In the last part the processing set is removed: an Add during the reconcile makes the name ready, and a second worker takes it while the first is still working." data-chapters="[[0.0, &quot;Add&quot;], [7.86, &quot;Get&quot;], [18.06, &quot;Add while held&quot;], [33.66, &quot;Done&quot;], [46.86, &quot;no processing set&quot;]]"><img src="figures/work-queue.gif" alt="Three boxes, ready, dirty and processing, above a worker. Add puts job-a in ready and dirty. Get moves it to processing and the worker starts a reconcile. Four more Add calls during the reconcile mark the name dirty and leave ready empty. Done moves the name back to ready, and a second reconcile reads a spec of 6 GPUs. In the last part the processing set is removed: an Add during the reconcile makes the name ready, and a second worker takes it while the first is still working."></video>
-<figcaption><b>Animation 1.1</b> One name through the work queue. Five edits lead to two reconciles, and the two never overlap.</figcaption>
+<figcaption><b>Animation 1.1</b> One name through the work queue. 5 edits lead to 2 runs, and the 2 never overlap.</figcaption>
 </figure>
 
-One more detail: a worker that calls `Get` on an empty queue has to go to sleep until a
-name arrives, and it must not hold the lock while it sleeps, or `Add` could never get in
-to add one. Both versions solve this with a *condition variable*, `sync.Cond` in Go and
-`std::sync::Condvar` in Rust. Waiting on a condition variable releases the lock and puts
-the worker to sleep in one step. `Add` and `Done` signal it whenever they make a name
-ready. The wait sits inside a loop that checks the list again after waking up, because
-with several workers another one may have taken the name first.
+## The controller
 
-## Reconciling
+The controller takes names from the queue and handles each one with a function called
+**reconcile**. Reconcile reads the object from the cache, compares the spec with the status, does
+the work, and writes the new status. Fig. 1.10 shows the steps.
 
-Now we can write the controller itself. It takes a name from the queue, reads the object
-from the cache, and makes the world match it. Kubernetes calls this *reconciling*:
-bringing what actually exists into agreement with what the user asked for.
+<figure>
+<img src="figures/ch01-reconcile-flow.svg" alt="The reconcile decision flow. Get a name from the work queue, read the object from the cache. If it does not exist, release its GPUs and finish. If its status equals its spec, finish. Otherwise do the work, then write the status with the version that was read. If the write fails with 409 Conflict, add the name to the queue again.">
+<figcaption><b>Figure 1.10</b> One reconcile. Only a conflict puts the name back in the queue.</figcaption>
+</figure>
 
-The part that does the work is one function.
+Reconcile looks only at the object's current state. It does not need to know which events
+happened, or how many. This style is called **level-triggered**. A controller that acted once per
+event would be **edge-triggered**. Fig. 1.11 compares the 2 for the burst of 5 edits. The
+edge-triggered controller acts 5 times, 4 of them on specs that were already replaced. The
+level-triggered controller acts twice. It also does not depend on any single event, so an event
+thrown away by compaction does not matter to it.
+
+<figure>
+<img src="figures/ch01-edge-level.svg" alt="Five edits of a job's GPU count, to 2, 3, 4, 5 and 6. An edge-triggered handler runs once per edit, 5 times, and 4 of those runs act on specs that were already replaced. A level-triggered reconcile runs twice and each time reads the current spec from the cache, first 2 and then 6.">
+<figcaption><b>Figure 1.11</b> Acting once per event, and acting on the current state.</figcaption>
+</figure>
+
+Reconcile writes the status with the version it read, as in Fig. 1.3. The cache can be slightly
+behind the server, and the user may change the spec while the controller works. In that case the
+write fails with `409 Conflict`, the name goes back into the queue, and the next reconcile reads the
+newer object. Listing 1.13 gives reconcile; a sleep of 20 milliseconds stands for the real work.
 
 <div class="code-tabs">
 
-<div class="code-tab" data-lang="Go">
-
-<p class="listing"><b>Listing 1.23</b> Reconciling one name, in Go. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/go/informer/controller.go">code/go/informer/controller.go</a></p>
+<p class="listing"><b>Listing 1.14</b> Reconciling 1 name. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/go/informer/controller.go">Go</a> · <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/rust/informer/src/controller.rs">Rust</a></p>
 
 ```go
 {{#include ../code/go/informer/controller.go:reconcile}}
 ```
-
-</div>
-
-<div class="code-tab" data-lang="Rust">
-
-<p class="listing"><b>Listing 1.24</b> Reconciling one name, in Rust. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/rust/informer/src/controller.rs">code/rust/informer/src/controller.rs</a></p>
 
 ```rust
 {{#include ../code/rust/informer/src/controller.rs:reconcile}}
@@ -641,42 +476,16 @@ The part that does the work is one function.
 
 </div>
 
-</div>
-
-
-
-`reconcile` first looks the object up in the cache. If the object is missing, it was
-deleted, and a real controller would now release whatever it had set up for it; our model
-logs a message. If the status already matches the spec, there is nothing to do.
-Otherwise the controller does its work, which our model stands in for with a
-20-millisecond sleep, sets the status, and writes the object back.
-
-Notice that `reconcile` looks only at the object's current state. It does not know, or
-care, why it was called. A name queued once and a name queued ten times lead to the same
-action, and so do a change reported by an event and a change discovered by a relist.
-Engineers call this style *level-triggered*, a term borrowed from digital electronics,
-where a level-triggered circuit responds to the present level of a signal and an
-*edge-triggered* circuit responds to each change of the signal. A controller that reacted
-to individual events would be edge-triggered, and it would do wasted work during bursts
-of edits and miss changes whose events a compaction had discarded.
-
-Around it sits the loop that feeds it names.
+Listing 1.14 is the worker loop: take a name, reconcile it, call `Done`, and add the name again if
+the reconcile failed.
 
 <div class="code-tabs">
 
-<div class="code-tab" data-lang="Go">
-
-<p class="listing"><b>Listing 1.25</b> The controller and its worker loop, in Go. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/go/informer/controller.go">code/go/informer/controller.go</a></p>
+<p class="listing"><b>Listing 1.15</b> The controller and its worker loop. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/go/informer/controller.go">Go</a> · <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/rust/informer/src/controller.rs">Rust</a></p>
 
 ```go
 {{#include ../code/go/informer/controller.go:run}}
 ```
-
-</div>
-
-<div class="code-tab" data-lang="Rust">
-
-<p class="listing"><b>Listing 1.26</b> The controller and its worker loop, in Rust. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/rust/informer/src/controller.rs">code/rust/informer/src/controller.rs</a></p>
 
 ```rust
 {{#include ../code/rust/informer/src/controller.rs:run}}
@@ -684,74 +493,30 @@ Around it sits the loop that feeds it names.
 
 </div>
 
-</div>
-
-
-
-`Run` is the worker loop. It takes a name, reconciles it, and hands it back with `Done`.
-If the reconcile failed, it adds the name again so that the next attempt starts from
-whatever the cache holds by then.
-
-## Writing back to the server
-
-Our cache always trails the server by the time it takes an event to arrive. During the
-20 milliseconds that `reconcile` spends working, a user might change the spec. If the
-controller then wrote its copy of the object back unconditionally, it would store the old
-spec together with a status computed for the old spec, and the user's edit would simply
-disappear.
-
-This is exactly the situation the resource version check was made for. `reconcile` writes
-the object with the version it read. If the object changed in the meantime, the server
-refuses the write with a conflict, `Run` puts the name back in the queue, and the next
-reconcile reads the newer object from the cache. This approach is called *optimistic
-concurrency*: we take no lock on the object, we assume nobody else will change it, and we
-rely on the server to catch the cases where that assumption was wrong at the moment we
-write.
-
 ## Running the model
 
-Figure 1.1 shows the five parts together and numbers the two steps the reflector takes for
-each event.
+Fig. 1.12 puts the parts together, and Listing 1.15 runs them. The demonstration creates 2 jobs,
+starts the reflector and 1 worker, and then causes 3 events: a burst of 5 edits, a dropped watch,
+and a network partition during which a job is deleted and the history is compacted.
 
 <figure>
 <img src="figures/informer-pipeline.svg" alt="The API server numbers every write and stores objects in etcd. Inside the controller's process, the reflector receives events, applies each one to the cache, and then adds the object's name to the work queue. The controller gets a name from the queue, reads the object from the cache, and writes the status back to the API server with the version it read.">
-<figcaption><b>Figure 1.1</b> The path of one change: an event from the API server, the cache, the work queue, a reconcile, and a conditional write back to the server.</figcaption>
+<figcaption><b>Figure 1.12</b> The path of 1 change through the informer and the controller.</figcaption>
 </figure>
-
-Time to see it all work together. `main` creates two jobs, starts the reflector and the
-controller, and then puts the machinery through each situation from this chapter: a burst
-of edits that arrives while a reconcile is running, a dropped watch, and a partition
-during which a job is deleted and the history is compacted. The Go version runs the
-reflector and the controller as goroutines. The Rust version runs them on threads, each
-holding an `Arc` handle to the shared server, cache, and queue. Both write their log to
-standard error, with the number of milliseconds since the program started; Rust does this
-with a small `log!` macro, and Go with a `logf` function.
 
 <div class="code-tabs">
 
-<div class="code-tab" data-lang="Go">
-
-<p class="listing"><b>Listing 1.27</b> The demonstration, in Go. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/go/informer/main.go">code/go/informer/main.go</a></p>
+<p class="listing"><b>Listing 1.16</b> The demonstration. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/go/informer/main.go">Go</a> · <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/rust/informer/src/main.rs">Rust</a></p>
 
 ```go
 {{#include ../code/go/informer/main.go:main}}
 ```
-
-</div>
-
-<div class="code-tab" data-lang="Rust">
-
-<p class="listing"><b>Listing 1.28</b> The demonstration, in Rust. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/rust/informer/src/main.rs">code/rust/informer/src/main.rs</a></p>
 
 ```rust
 {{#include ../code/rust/informer/src/main.rs:main}}
 ```
 
 </div>
-
-</div>
-
-
 
 The Go version prints:
 
@@ -760,147 +525,113 @@ $ go run ./informer
 {{#include ../code/output/go-informer.txt}}
 ```
 
-The Rust version prints the same sequence of events. Its timings differ by a millisecond
-or two, and its field names follow Rust's naming conventions:
+The Rust version prints the same lines, with timings that differ by 1 or 2 milliseconds:
 
 ```console
 $ cargo run -p informer
 {{#include ../code/output/rust-informer.txt}}
 ```
 
-Let us read the log from the top. The first three lines are the initial list and one
-reconcile for each job. Each status write is itself a change, so the reflector receives an
-event for it and queues the name again. The reconcile that follows finds the status equal
-to the spec and returns quietly, so each job appears only once.
+Table 1.1 explains each line of the Go output.
 
-The burst of five edits led to just two reconciles of `job-a`. The controller took the
-name right after the first edit, read a spec of 2 GPUs at version 5, and started its
-20 milliseconds of work. The other four edits arrived while it was busy, moving the object
-to version 9, and because the controller was holding the name, the queue marked it dirty.
-When the controller wrote its status with version 5, the server refused it with a
-conflict. `Done` made the name ready again, the next reconcile read a spec of 6 GPUs at
-version 9, and it wrote a status of 6 at version 10. The specs of 3, 4, and 5 GPUs had been
-replaced before the controller ever read them, so it did no work for them at all.
+| Time | Output | What happened |
+|---|---|---|
+| 0 ms | list at version 2 | The reflector lists. Both jobs are new, so both names are queued. |
+| 20 to 40 ms | 1 reconcile per job | The controller writes each status. |
+| 101 ms | 5 edits | The worker takes `job-a` after the first edit and reads a spec of 2. The other 4 edits arrive while it works, so the queue only marks the name dirty. |
+| 121 ms | `409 Conflict` | The worker writes with version 5, but the job is now at version 9. The name goes back into the queue. |
+| 141 ms | status 6 | The second reconcile reads the latest spec, 6 GPUs. Specs 3, 4 and 5 were never handled, and did not need to be. |
+| 257 ms | resuming from version 10 | The watch closed. The reflector watches again from 10, without a list. |
+| 338 ms | `410 Gone`, list at version 11 | During the partition `job-b` was deleted and the history compacted, so the watch cannot resume. The reflector lists again. |
+| 338 ms | `job-b`: deleted | `Replace` finds `job-b` in the old cache but not in the new list, and the controller releases its GPUs. |
 
-When the watch was dropped, the reflector reopened it from version 10, the version of the
-last event it had applied, and there was no need to list. During the partition, `job-b`
-was deleted at version 11 and the history was compacted, which moved the compaction point
-to 11. When the partition ended, the reflector asked to resume from version 10, the server
-answered `410 Gone`, and the reflector listed again. The new list held only `job-a`,
-`Replace` reported `job-b` as missing, and the controller found no `job-b` in the cache and
-released its GPUs. Our client learned about the deletion by comparing the list with its
-cache, because the compaction had thrown the deletion event away.
-
-Animation 1.2 replays the log from the list at version 2 to the list at version 11, with the
-server's objects on the left and the cache on the right.
+Animation 1.2 replays the same run, with the server on the left and the cache on the right.
 
 <figure class="anim">
 <video class="motion" src="figures/list-watch.mp4" autoplay loop muted playsinline preload="metadata" aria-label="The API server on the left with job-a, job-b and its recent events; the reflector's cache on the right. The reflector lists at version 2 and opens a watch. Events 3 to 10 arrive and the cache follows. The watch is closed and reopened from 10 with no list. During a partition job-b is deleted at version 11 and the history is compacted, while the cache still holds job-b. After the partition the server answers a watch from 10 with 410 Gone, the reflector lists at version 11, and job-b, present in the old cache and missing from the list, is removed." data-chapters="[[0.0, &quot;list&quot;], [10.01, &quot;watch&quot;], [34.28, &quot;drop&quot;], [43.69, &quot;partition&quot;], [60.08, &quot;410 Gone&quot;]]"><img src="figures/list-watch.gif" alt="The API server on the left with job-a, job-b and its recent events; the reflector's cache on the right. The reflector lists at version 2 and opens a watch. Events 3 to 10 arrive and the cache follows. The watch is closed and reopened from 10 with no list. During a partition job-b is deleted at version 11 and the history is compacted, while the cache still holds job-b. After the partition the server answers a watch from 10 with 410 Gone, the reflector lists at version 11, and job-b, present in the old cache and missing from the list, is removed."></video>
 <figcaption><b>Animation 1.2</b> The run of the model: a list, a watch, a dropped watch that resumes, and a partition that ends in <code>410 Gone</code> and a second list.</figcaption>
 </figure>
 
-## The same design in client-go
+## The informer in client-go
 
-Real Go controllers use client-go, either directly or through controller-runtime, a
-higher-level library built on top of it. Every part of our model has a counterpart there:
+Real Go controllers use the informer in client-go, directly or through controller-runtime. Table 1.2
+matches its parts to our model.
 
-```text
-model                     client-go
-------------------------  ---------------------------------------------------------
-APIServer.List, Watch     ListerWatcher, backed by HTTP list and watch requests
-Reflector                 Reflector
-Cache                     Indexer: a thread-safe store with secondary indexes,
-                          for example all pods on one node
-Reflector and Cache       SharedIndexInformer
-WorkQueue                 workqueue, with the same dirty and processing sets
-Controller.reconcile      the Reconcile method of a controller
-```
+| Our model | client-go |
+|---|---|
+| `APIServer.List`, `Watch` | `ListerWatcher` |
+| `Reflector` | `cache.Reflector` |
+| `Cache` | `cache.Indexer`, a cache with extra indexes, such as all pods on 1 node |
+| reflector, cache and handlers together | `cache.SharedIndexInformer`, the informer |
+| the call to `queue.Add` | an event handler registered with `AddEventHandler` |
+| `WorkQueue` | `workqueue`, with the same dirty and processing sets |
+| `reconcile` | the controller's `Reconcile` method |
 
-client-go also has a few mechanisms that our model leaves out, and each one fixes a
-problem we can now recognize.
+client-go adds a few things that our model leaves out.
 
-Between the reflector and the cache, client-go puts a queue called the *DeltaFIFO*. For
-each object it collects the changes in the order they arrived, and the code that updates
-the cache and notifies controllers takes one object at a time along with all of its
-pending changes. When a relist shows that an object has disappeared, the DeltaFIFO emits
-a deletion whose object is wrapped in a `DeletedFinalStateUnknown` marker. The marker
-warns event handlers that the object they receive is the last state the cache had seen,
-which may be older than the state the object was in when it was deleted.
+**Shared informers.** If 3 controllers in 1 process all need pods, they share 1 informer, and so 1
+watch and 1 cache. Each controller registers its own handler and has its own work queue. Fig. 1.13
+shows this. Because the cache is shared, a controller must copy an object with `DeepCopy` before
+changing it.
 
-The API server can send *bookmark* events, which carry a resource version and no object.
-They solve a problem with quiet watches. A watch on a kind of object that rarely changes
-can go a long time without any events, so the version it would resume from grows old.
-After the next compaction, reconnecting from that version would fail with `410 Gone` and
-force a full relist. Bookmarks move the watch's position forward even when nothing
-changes, so a reconnect usually succeeds.
+<figure>
+<img src="figures/ch01-shared-informer.svg" alt="One API server watch on pods feeds a shared informer holding the reflector, the DeltaFIFO and the indexer. Three controllers in the same process each register a handler and keep their own work queue.">
+<figcaption><b>Figure 1.13</b> 3 controllers in 1 process share 1 informer.</figcaption>
+</figure>
 
-An informer can be given a *resync period*. Every so often it queues the name of every
-object in its cache again, straight from memory and without asking the server for
-anything. This is for controllers that manage something outside Kubernetes, such as a
-cloud load balancer. If someone changes that load balancer by hand, no Kubernetes event
-tells the controller, and a periodic resync gives it a regular chance to notice and fix
-the drift.
+**DeltaFIFO.** Between the reflector and the cache, client-go keeps a queue of the pending changes
+of each object. When a new list shows that an object is gone, the deletion it reports carries a
+marker, `DeletedFinalStateUnknown`, because the last state of the object is not known.
 
-The work queue waits before retrying a name whose reconcile failed. By default the wait
-starts at 5 milliseconds and doubles after each failure, up to 1,000 seconds, and the queue
-also limits how fast it hands out names overall. Our model retries at once. A real
-controller that did that while its writes kept failing, say because of a bug in how it
-builds the object, would flood the API server with requests.
+**Retry limits.** Our model retries a failed name at once. client-go waits 5 ms after the first
+failure, doubles the wait after each further failure up to 1,000 s, and allows at most 10 retries
+per second across all names.
 
-Finally, informers are shared within a process. If ten controllers in one program all
-care about pods, they share a single pod watch and a single cache through a
-`SharedInformerFactory`, and each registers its own event handlers and its own work queue.
-The API server then serves one watch per process instead of one per controller.
+**Resync.** An informer can queue every name in its cache again at a fixed interval. This helps
+controllers that manage things outside Kubernetes, whose changes no event reports.
 
-## Sharing a cache safely
+**Memory.** A cache holds every object of its kind: 50,000 pods at 4 KB each take 200 MB. A
+controller that needs only names and labels can use a metadata-only informer, which stores much less.
 
-Our model's cache hands out copies, so a caller can change what it gets without affecting
-anyone else. client-go's cache hands out pointers into the shared store instead, to avoid
-copying every object on every read. That has a sharp edge. If a client-go controller
-changes a field of an object it read from the cache, it is changing the very object every
-other controller in the process reads, while the server still holds the original. The
-other controllers now see a state that exists nowhere else. The rule is to call the
-object's generated `DeepCopy` method, which copies every nested slice and map, and to
-change the copy.
+**Its own writes.** A controller's own writes reach its cache only when their events arrive. Until
+then, the cache shows the old state, and a reconcile could create the same pod twice. The
+ReplicaSet controller avoids this by recording how many creation events it expects and waiting for
+them. Many controllers also copy `metadata.generation`, which the API server increases on every
+spec change, into `status.observedGeneration`, so that anyone can see whether the latest spec has
+been handled.
 
-## Reading your own writes
+## Summary
 
-A controller's own writes reach its cache the same way everyone else's do: the server
-stores the write, emits an event, and the reflector applies it. Until that event arrives,
-the cache still shows the state from before the write. Picture a reconcile that creates a
-pod for a job. If a second event for the same job arrives before the pod's creation event,
-the next reconcile finds no pod in the cache and creates a second one.
+An informer gives a controller a copy of all objects of one kind and reports every change. Its
+reflector lists, then watches from the list's version, so that no change is missed. When a watch
+ends it resumes from the last version applied, and it lists again only after `410 Gone`, using
+`Replace` to find deletions that no event reported. The reflector updates the cache before it
+reports a name. The work queue merges repeated names and gives each name to 1 worker at a time.
+The controller reads the current state from the cache and writes with the version it read.
 
-Kubernetes controllers guard against this in two ways. The ReplicaSet controller, which
-keeps a requested number of identical pods running, records *expectations*: after
-creating three pods, it notes that it expects to see three creation events, and it leaves
-that ReplicaSet alone until the cache has shown them or a timeout has passed. The second
-technique uses two fields that every object carries. The API server increments
-`metadata.generation` every time the spec changes, and a controller copies the generation
-it acted on into `status.observedGeneration`. When the two numbers are equal, the status
-describes the current spec. When they differ, both the controller and any user reading
-the object can see that the latest change to the spec has not been handled yet.
+The next part of this chapter, *A GPU job controller on a real cluster*, uses client-go's informer
+in Go and kube-rs in Rust against a real cluster.
+
+## Exercises
+
+1. In Fig. 1.2, a client lists at revision 8 and then watches from 8. Which revisions does it receive as events?
+2. In Fig. 1.4, a client calls `Watch` with version 1. What does the server answer, and what must the client do?
+3. Change the Go reflector so that it adds the name to the queue before it updates the cache, and add a sleep of 30 milliseconds between the 2 steps. Run the demonstration and find the edit that is never handled.
+4. Remove the processing set from the queue and run the demonstration with 2 workers. What happens during the burst of edits?
+5. With client-go's retry limits, after how many failures in a row does 1 name wait more than 1 minute?
 
 ## The complete program
 
-The model is six source files in each language, printed here in the order the chapter built
-them.
+The model has 6 source files in each language. Each is printed here in full, with the Go and Rust
+versions as tabs.
 
 <div class="code-tabs">
 
-<div class="code-tab" data-lang="Go">
-
-<p class="listing"><b>Listing 1.29</b> The API server, complete, in Go. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/go/informer/server.go">code/go/informer/server.go</a></p>
+<p class="listing"><b>Listing 1.17</b> The API server, complete. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/go/informer/server.go">Go</a> · <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/rust/informer/src/server.rs">Rust</a></p>
 
 ```go
 {{#include ../code/go/informer/server.go}}
 ```
-
-</div>
-
-<div class="code-tab" data-lang="Rust">
-
-<p class="listing"><b>Listing 1.30</b> The API server, complete, in Rust. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/rust/informer/src/server.rs">code/rust/informer/src/server.rs</a></p>
 
 ```rust
 {{#include ../code/rust/informer/src/server.rs}}
@@ -908,24 +639,13 @@ them.
 
 </div>
 
-</div>
-
-
 <div class="code-tabs">
 
-<div class="code-tab" data-lang="Go">
-
-<p class="listing"><b>Listing 1.31</b> The cache, complete, in Go. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/go/informer/cache.go">code/go/informer/cache.go</a></p>
+<p class="listing"><b>Listing 1.18</b> The cache, complete. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/go/informer/cache.go">Go</a> · <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/rust/informer/src/cache.rs">Rust</a></p>
 
 ```go
 {{#include ../code/go/informer/cache.go}}
 ```
-
-</div>
-
-<div class="code-tab" data-lang="Rust">
-
-<p class="listing"><b>Listing 1.32</b> The cache, complete, in Rust. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/rust/informer/src/cache.rs">code/rust/informer/src/cache.rs</a></p>
 
 ```rust
 {{#include ../code/rust/informer/src/cache.rs}}
@@ -933,24 +653,13 @@ them.
 
 </div>
 
-</div>
-
-
 <div class="code-tabs">
 
-<div class="code-tab" data-lang="Go">
-
-<p class="listing"><b>Listing 1.33</b> The reflector, complete, in Go. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/go/informer/reflector.go">code/go/informer/reflector.go</a></p>
+<p class="listing"><b>Listing 1.19</b> The reflector, complete. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/go/informer/reflector.go">Go</a> · <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/rust/informer/src/reflector.rs">Rust</a></p>
 
 ```go
 {{#include ../code/go/informer/reflector.go}}
 ```
-
-</div>
-
-<div class="code-tab" data-lang="Rust">
-
-<p class="listing"><b>Listing 1.34</b> The reflector, complete, in Rust. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/rust/informer/src/reflector.rs">code/rust/informer/src/reflector.rs</a></p>
 
 ```rust
 {{#include ../code/rust/informer/src/reflector.rs}}
@@ -958,24 +667,13 @@ them.
 
 </div>
 
-</div>
-
-
 <div class="code-tabs">
 
-<div class="code-tab" data-lang="Go">
-
-<p class="listing"><b>Listing 1.35</b> The work queue, complete, in Go. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/go/informer/queue.go">code/go/informer/queue.go</a></p>
+<p class="listing"><b>Listing 1.20</b> The work queue, complete. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/go/informer/queue.go">Go</a> · <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/rust/informer/src/queue.rs">Rust</a></p>
 
 ```go
 {{#include ../code/go/informer/queue.go}}
 ```
-
-</div>
-
-<div class="code-tab" data-lang="Rust">
-
-<p class="listing"><b>Listing 1.36</b> The work queue, complete, in Rust. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/rust/informer/src/queue.rs">code/rust/informer/src/queue.rs</a></p>
 
 ```rust
 {{#include ../code/rust/informer/src/queue.rs}}
@@ -983,24 +681,13 @@ them.
 
 </div>
 
-</div>
-
-
 <div class="code-tabs">
 
-<div class="code-tab" data-lang="Go">
-
-<p class="listing"><b>Listing 1.37</b> The controller, complete, in Go. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/go/informer/controller.go">code/go/informer/controller.go</a></p>
+<p class="listing"><b>Listing 1.21</b> The controller, complete. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/go/informer/controller.go">Go</a> · <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/rust/informer/src/controller.rs">Rust</a></p>
 
 ```go
 {{#include ../code/go/informer/controller.go}}
 ```
-
-</div>
-
-<div class="code-tab" data-lang="Rust">
-
-<p class="listing"><b>Listing 1.38</b> The controller, complete, in Rust. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/rust/informer/src/controller.rs">code/rust/informer/src/controller.rs</a></p>
 
 ```rust
 {{#include ../code/rust/informer/src/controller.rs}}
@@ -1008,24 +695,13 @@ them.
 
 </div>
 
-</div>
-
-
 <div class="code-tabs">
 
-<div class="code-tab" data-lang="Go">
-
-<p class="listing"><b>Listing 1.39</b> The demonstration, complete, in Go. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/go/informer/main.go">code/go/informer/main.go</a></p>
+<p class="listing"><b>Listing 1.22</b> The demonstration, complete. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/go/informer/main.go">Go</a> · <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/rust/informer/src/main.rs">Rust</a></p>
 
 ```go
 {{#include ../code/go/informer/main.go}}
 ```
-
-</div>
-
-<div class="code-tab" data-lang="Rust">
-
-<p class="listing"><b>Listing 1.40</b> The demonstration, complete, in Rust. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/rust/informer/src/main.rs">code/rust/informer/src/main.rs</a></p>
 
 ```rust
 {{#include ../code/rust/informer/src/main.rs}}
@@ -1033,5 +709,10 @@ them.
 
 </div>
 
-</div>
+## References
 
+1. Kubernetes documentation, "API Concepts": resource versions, watches and bookmarks. <https://kubernetes.io/docs/reference/using-api/api-concepts/>
+2. Kubernetes API conventions, "Concurrency Control and Consistency". <https://github.com/kubernetes/community/blob/master/contributors/devel/sig-architecture/api-conventions.md>
+3. etcd documentation, "Data model": revisions and compaction. <https://etcd.io/docs/latest/learning/data_model/>
+4. client-go source: `tools/cache/shared_informer.go`, `tools/cache/reflector.go`, `tools/cache/delta_fifo.go`, `util/workqueue/queue.go`, `util/workqueue/default_rate_limiters.go`. <https://github.com/kubernetes/client-go>
+5. M. Hausenblas and S. Schimanski, *Programming Kubernetes*, O'Reilly, 2019, chapter 3.

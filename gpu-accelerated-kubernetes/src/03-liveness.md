@@ -1,4 +1,4 @@
-<img class="plate" src="art/ch03.svg" alt="Doc, a hound in a white coat, listens to a rack of servers with a stethoscope. A monitor above shows a regular heartbeat line for 2 servers and a flat line for the third, whose lamp is red.">
+<img class="plate" src="art/ch03.svg" alt="Doc, a hound in a white coat, holds a stethoscope&#x27;s chest piece against a rack of servers. Heartbeat arrows travel from thor-1 and thor-2 to a monitor above, which shows a regular line for each. thor-3&#x27;s lamp is red, and its line is flat.">
 
 # 3. Knowing which machines are alive
 

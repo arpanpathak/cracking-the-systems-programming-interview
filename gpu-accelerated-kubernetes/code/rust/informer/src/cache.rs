@@ -2,7 +2,7 @@
 
 use crate::server::{Event, EventType, Object};
 use std::collections::HashMap;
-use std::sync::RwLock;
+use std::sync::{PoisonError, RwLock};
 
 // ANCHOR: cache
 /// The client's copy of the server's objects, kept current by a
@@ -17,14 +17,14 @@ pub struct Cache {
 impl Cache {
     /// Returns the cached copy of the named object, if it exists.
     pub fn get(&self, name: &str) -> Option<Object> {
-        let objects = self.objects.read().expect("cache lock poisoned");
+        let objects = self.objects.read().unwrap_or_else(PoisonError::into_inner);
 
         objects.get(name).cloned()
     }
 
     /// Records one event from a watch.
     pub fn apply(&self, event: Event) {
-        let mut objects = self.objects.write().expect("cache lock poisoned");
+        let mut objects = self.objects.write().unwrap_or_else(PoisonError::into_inner);
 
         match event.kind {
             EventType::Deleted => objects.remove(&event.object.name),
@@ -42,7 +42,8 @@ impl Cache {
     /// objects that changed, including objects that disappeared while the
     /// client was not watching.
     pub fn replace(&self, list: &[Object]) -> Vec<String> {
-        let mut objects = self.objects.write().expect("cache lock poisoned");
+        let mut objects = self.objects.write().unwrap_or_else(PoisonError::into_inner);
+
         let old = std::mem::take(&mut *objects);
         let mut changed = Vec::new();
 

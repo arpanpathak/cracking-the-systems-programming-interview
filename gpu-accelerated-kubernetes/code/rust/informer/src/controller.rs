@@ -13,8 +13,10 @@ use std::time::Duration;
 pub struct Controller {
     /// Receives the controller's status writes.
     pub server: Arc<ApiServer>,
+
     /// Supplies the current state of each object.
     pub cache: Arc<Cache>,
+
     /// Supplies the names of objects to reconcile.
     pub queue: Arc<WorkQueue>,
 }
@@ -25,7 +27,9 @@ impl Controller {
     pub fn run(&self) {
         loop {
             let name = self.queue.get();
+
             let result = self.reconcile(&name);
+
             self.queue.done(&name);
 
             if result.is_err() {
@@ -52,6 +56,7 @@ impl Controller {
         }
 
         thread::sleep(Duration::from_millis(20)); // slow work, such as starting containers
+
         object.status.gpus = object.spec.gpus;
         let version = object.resource_version;
 

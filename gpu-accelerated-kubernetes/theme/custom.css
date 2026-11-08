@@ -147,11 +147,9 @@ pre {
 }
 
 /* mdBook sets code to 0.875em of its parent; code in a block uses the block's size.
-   A line longer than the column wraps, so no code hides behind a scroll bar. */
+   theme/code.js wraps a line longer than the column under its own indentation. */
 pre code {
     font-size: 1em;
-    white-space: pre-wrap !important;
-    overflow-wrap: anywhere;
 }
 
 pre > code.hljs {

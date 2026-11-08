@@ -1,0 +1,73 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 410" width="1000" height="410" role="img" aria-label="Five edits of a job&#x27;s GPU count, to 2, 3, 4, 5 and 6. An edge-triggered handler runs once per edit, 5 times, and 4 of those runs act on specs that were already replaced. A level-triggered reconcile runs twice and each time reads the current spec from the cache, first 2 and then 6.">
+  <style>
+    text { font-family: Inter, "Segoe UI", "Helvetica Neue", Helvetica, Arial, sans-serif; fill: #1B2430; }
+    .title { font-size: 18px; font-weight: 650; }
+    .lede { font-size: 12.5px; fill: #5D6B7A; }
+    .name { font-size: 14px; font-weight: 650; }
+    .sub { font-size: 12px; fill: #5D6B7A; }
+    .note { font-size: 12px; fill: #5D6B7A; }
+    .tab { font-size: 11.5px; font-weight: 650; letter-spacing: 0.04em; fill: #5D6B7A; }
+    .mono { font-family: "JetBrains Mono", "SF Mono", Menlo, Consolas, monospace; font-size: 12px; }
+    .dim { fill: #8794A3; }
+    .strong { font-weight: 700; }
+    .trap { fill: #CF4526; font-weight: 700; }
+    .pill { font-size: 11px; font-weight: 600; }
+    .wire { fill: none; stroke: #3F5873; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+    .wire.danger { stroke: #CF4526; stroke-dasharray: 6 5; }
+    .wire.idle { stroke: #7F8EA0; stroke-dasharray: 2 5; }
+  </style>
+  <defs>
+    <filter id="lift" x="-10%" y="-10%" width="120%" height="135%">
+      <feDropShadow dx="0" dy="2" stdDeviation="3" flood-color="#1B2430" flood-opacity="0.13"/>
+    </filter>
+    <linearGradient id="thor-body" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#C6CCD5"/><stop offset="1" stop-color="#979EA9"/>
+    </linearGradient>
+    <linearGradient id="switch-body" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#3B4656"/><stop offset="1" stop-color="#232B37"/>
+    </linearGradient>
+    <marker id="head" viewBox="0 0 10 10" refX="8.5" refY="5" markerUnits="userSpaceOnUse" markerWidth="11" markerHeight="11" orient="auto">
+      <path d="M0.5,1 L9,5 L0.5,9 Z" fill="#3F5873"/>
+    </marker>
+    <marker id="head-danger" viewBox="0 0 10 10" refX="8.5" refY="5" markerUnits="userSpaceOnUse" markerWidth="11" markerHeight="11" orient="auto">
+      <path d="M0.5,1 L9,5 L0.5,9 Z" fill="#CF4526"/>
+    </marker>
+    <marker id="head-idle" viewBox="0 0 10 10" refX="8.5" refY="5" markerUnits="userSpaceOnUse" markerWidth="11" markerHeight="11" orient="auto">
+      <path d="M0.5,1 L9,5 L0.5,9 Z" fill="#7F8EA0"/>
+    </marker>
+  </defs>
+  <rect width="1000" height="410" rx="14" fill="#FBFAF6"/>
+  <text x="32.0" y="42.0" class="title" text-anchor="start" xml:space="preserve">Reacting to events, and reacting to state</text>
+  <text x="32.0" y="63.0" class="lede" text-anchor="start" xml:space="preserve">The burst of edits from the run of the model, seen by 2 kinds of controller.</text>
+  <text x="32.0" y="132.0" class="tab" text-anchor="start" xml:space="preserve">spec edits</text>
+  <rect x="200.0" y="110.0" width="84.0" height="34.0" rx="6" fill="#EAF1FD" stroke="#2F6FDB" stroke-width="1.3"/>
+  <text x="242.0" y="131.3" class="mono" text-anchor="middle" style="fill:#2F6FDB" font-weight="700">gpus 2</text>
+  <rect x="304.0" y="110.0" width="84.0" height="34.0" rx="6" fill="#EAF1FD" stroke="#2F6FDB" stroke-width="1.3"/>
+  <text x="346.0" y="131.3" class="mono" text-anchor="middle" style="fill:#2F6FDB" font-weight="700">gpus 3</text>
+  <rect x="408.0" y="110.0" width="84.0" height="34.0" rx="6" fill="#EAF1FD" stroke="#2F6FDB" stroke-width="1.3"/>
+  <text x="450.0" y="131.3" class="mono" text-anchor="middle" style="fill:#2F6FDB" font-weight="700">gpus 4</text>
+  <rect x="512.0" y="110.0" width="84.0" height="34.0" rx="6" fill="#EAF1FD" stroke="#2F6FDB" stroke-width="1.3"/>
+  <text x="554.0" y="131.3" class="mono" text-anchor="middle" style="fill:#2F6FDB" font-weight="700">gpus 5</text>
+  <rect x="616.0" y="110.0" width="84.0" height="34.0" rx="6" fill="#EAF1FD" stroke="#2F6FDB" stroke-width="1.3"/>
+  <text x="658.0" y="131.3" class="mono" text-anchor="middle" style="fill:#2F6FDB" font-weight="700">gpus 6</text>
+  <text x="32.0" y="210.0" class="tab" text-anchor="start" xml:space="preserve">edge-triggered</text>
+  <rect x="200.0" y="188.0" width="84.0" height="34.0" rx="6" fill="#FCEBE6" stroke="#CF4526" stroke-width="1.3"/>
+  <text x="242.0" y="209.3" class="note" text-anchor="middle" style="fill:#1B2430">act on 2</text>
+  <rect x="304.0" y="188.0" width="84.0" height="34.0" rx="6" fill="#FCEBE6" stroke="#CF4526" stroke-width="1.3"/>
+  <text x="346.0" y="209.3" class="note" text-anchor="middle" style="fill:#1B2430">act on 3</text>
+  <rect x="408.0" y="188.0" width="84.0" height="34.0" rx="6" fill="#FCEBE6" stroke="#CF4526" stroke-width="1.3"/>
+  <text x="450.0" y="209.3" class="note" text-anchor="middle" style="fill:#1B2430">act on 4</text>
+  <rect x="512.0" y="188.0" width="84.0" height="34.0" rx="6" fill="#FCEBE6" stroke="#CF4526" stroke-width="1.3"/>
+  <text x="554.0" y="209.3" class="note" text-anchor="middle" style="fill:#1B2430">act on 5</text>
+  <rect x="616.0" y="188.0" width="84.0" height="34.0" rx="6" fill="#E7F5E9" stroke="#2E8B3D" stroke-width="1.3"/>
+  <text x="658.0" y="209.3" class="note" text-anchor="middle" style="fill:#1B2430">act on 6</text>
+  <text x="200.0" y="246.0" class="note" text-anchor="start" style="fill:#CF4526" xml:space="preserve">1 run per event: 5 runs, and 4 of them act on a spec that is already replaced</text>
+  <text x="32.0" y="300.0" class="tab" text-anchor="start" xml:space="preserve">level-triggered</text>
+  <rect x="200.0" y="278.0" width="396.0" height="34.0" rx="6" fill="#E7F5E9" stroke="#2E8B3D" stroke-width="1.3"/>
+  <text x="398.0" y="299.3" class="note" text-anchor="middle" style="fill:#1B2430">reconcile 1 reads the cache: gpus 2</text>
+  <rect x="616.0" y="278.0" width="144.0" height="34.0" rx="6" fill="#E7F5E9" stroke="#2E8B3D" stroke-width="1.3"/>
+  <text x="688.0" y="299.3" class="note" text-anchor="middle" style="fill:#1B2430">reconcile 2: gpus 6</text>
+  <text x="200.0" y="336.0" class="note" text-anchor="start" style="fill:#2E8B3D" xml:space="preserve">1 run per state: 2 runs, each reads the current spec from the cache</text>
+  <path d="M194.0,368.0 L780.0,368.0" fill="none" stroke="#5D6B7A" stroke-width="1.4" marker-end="url(#head)"/>
+  <text x="780.0" y="388.0" class="note" text-anchor="end" xml:space="preserve">time</text>
+</svg>

@@ -1,0 +1,91 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 580" width="1000" height="580" role="img" aria-label="Client A and client B both read job-a at version 7. A writes 2 GPUs with version 7 and the server accepts it as version 8. B writes a new image with version 7 and the server answers 409 Conflict. B reads version 8, writes again with version 8, and the server stores version 9 with both changes.">
+  <style>
+    text { font-family: Inter, "Segoe UI", "Helvetica Neue", Helvetica, Arial, sans-serif; fill: #1B2430; }
+    .title { font-size: 18px; font-weight: 650; }
+    .lede { font-size: 12.5px; fill: #5D6B7A; }
+    .name { font-size: 14px; font-weight: 650; }
+    .sub { font-size: 12px; fill: #5D6B7A; }
+    .note { font-size: 12px; fill: #5D6B7A; }
+    .tab { font-size: 11.5px; font-weight: 650; letter-spacing: 0.04em; fill: #5D6B7A; }
+    .mono { font-family: "JetBrains Mono", "SF Mono", Menlo, Consolas, monospace; font-size: 12px; }
+    .dim { fill: #8794A3; }
+    .strong { font-weight: 700; }
+    .trap { fill: #CF4526; font-weight: 700; }
+    .pill { font-size: 11px; font-weight: 600; }
+    .wire { fill: none; stroke: #3F5873; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+    .wire.danger { stroke: #CF4526; stroke-dasharray: 6 5; }
+    .wire.idle { stroke: #7F8EA0; stroke-dasharray: 2 5; }
+  </style>
+  <defs>
+    <filter id="lift" x="-10%" y="-10%" width="120%" height="135%">
+      <feDropShadow dx="0" dy="2" stdDeviation="3" flood-color="#1B2430" flood-opacity="0.13"/>
+    </filter>
+    <linearGradient id="thor-body" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#C6CCD5"/><stop offset="1" stop-color="#979EA9"/>
+    </linearGradient>
+    <linearGradient id="switch-body" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#3B4656"/><stop offset="1" stop-color="#232B37"/>
+    </linearGradient>
+    <marker id="head" viewBox="0 0 10 10" refX="8.5" refY="5" markerUnits="userSpaceOnUse" markerWidth="11" markerHeight="11" orient="auto">
+      <path d="M0.5,1 L9,5 L0.5,9 Z" fill="#3F5873"/>
+    </marker>
+    <marker id="head-danger" viewBox="0 0 10 10" refX="8.5" refY="5" markerUnits="userSpaceOnUse" markerWidth="11" markerHeight="11" orient="auto">
+      <path d="M0.5,1 L9,5 L0.5,9 Z" fill="#CF4526"/>
+    </marker>
+    <marker id="head-idle" viewBox="0 0 10 10" refX="8.5" refY="5" markerUnits="userSpaceOnUse" markerWidth="11" markerHeight="11" orient="auto">
+      <path d="M0.5,1 L9,5 L0.5,9 Z" fill="#7F8EA0"/>
+    </marker>
+  </defs>
+  <rect width="1000" height="580" rx="14" fill="#FBFAF6"/>
+  <text x="32.0" y="42.0" class="title" text-anchor="start" xml:space="preserve">A write that names the version it was based on</text>
+  <text x="32.0" y="63.0" class="lede" text-anchor="start" xml:space="preserve">Client B&#x27;s first write would undo client A&#x27;s change, so the server refuses it.</text>
+  <rect x="70" y="80" width="160" height="36" rx="8" fill="#EAF1FD" stroke="#2F6FDB" stroke-width="1.3"/>
+  <text x="150.0" y="103.0" class="name" text-anchor="middle" style="fill:#2F6FDB" xml:space="preserve">client A</text>
+  <path d="M150.0,116.0 L150.0,560.0" fill="none" stroke="#D5DBE3" stroke-width="2" stroke-dasharray="5 5"/>
+  <rect x="420" y="80" width="160" height="36" rx="8" fill="#E4F4EF" stroke="#1F8A70" stroke-width="1.3"/>
+  <text x="500.0" y="103.0" class="name" text-anchor="middle" style="fill:#1F8A70" xml:space="preserve">API server</text>
+  <path d="M500.0,116.0 L500.0,560.0" fill="none" stroke="#D5DBE3" stroke-width="2" stroke-dasharray="5 5"/>
+  <rect x="770" y="80" width="160" height="36" rx="8" fill="#F0EAFB" stroke="#7A4FD0" stroke-width="1.3"/>
+  <text x="850.0" y="103.0" class="name" text-anchor="middle" style="fill:#7A4FD0" xml:space="preserve">client B</text>
+  <path d="M850.0,116.0 L850.0,560.0" fill="none" stroke="#D5DBE3" stroke-width="2" stroke-dasharray="5 5"/>
+  <path d="M150,144 H494" fill="none" stroke="#3F5873" stroke-width="1.8" marker-end="url(#head)"/>
+  <text x="325.0" y="137.0" class="mono" text-anchor="middle" style="fill:#1B2430" xml:space="preserve">GET job-a</text>
+  <circle cx="124" cy="144" r="10" fill="#1B2430"/>
+  <text x="124" y="148" class="pill" text-anchor="middle" style="fill:#FFFFFF">1</text>
+  <path d="M500,186 H156" fill="none" stroke="#2F6FDB" stroke-width="1.8" marker-end="url(#head)"/>
+  <text x="325.0" y="179.0" class="mono" text-anchor="middle" style="fill:#2F6FDB" xml:space="preserve">v7  gpus 1  image x</text>
+  <circle cx="124" cy="186" r="10" fill="#1B2430"/>
+  <text x="124" y="190" class="pill" text-anchor="middle" style="fill:#FFFFFF">2</text>
+  <path d="M850,228 H506" fill="none" stroke="#3F5873" stroke-width="1.8" marker-end="url(#head)"/>
+  <text x="675.0" y="221.0" class="mono" text-anchor="middle" style="fill:#1B2430" xml:space="preserve">GET job-a</text>
+  <circle cx="876" cy="228" r="10" fill="#1B2430"/>
+  <text x="876" y="232" class="pill" text-anchor="middle" style="fill:#FFFFFF">3</text>
+  <path d="M500,270 H844" fill="none" stroke="#7A4FD0" stroke-width="1.8" marker-end="url(#head)"/>
+  <text x="675.0" y="263.0" class="mono" text-anchor="middle" style="fill:#7A4FD0" xml:space="preserve">v7  gpus 1  image x</text>
+  <circle cx="876" cy="270" r="10" fill="#1B2430"/>
+  <text x="876" y="274" class="pill" text-anchor="middle" style="fill:#FFFFFF">4</text>
+  <path d="M150,312 H494" fill="none" stroke="#3F5873" stroke-width="1.8" marker-end="url(#head)"/>
+  <text x="325.0" y="305.0" class="mono" text-anchor="middle" style="fill:#1B2430" xml:space="preserve">PUT gpus 2, read at v7</text>
+  <circle cx="124" cy="312" r="10" fill="#1B2430"/>
+  <text x="124" y="316" class="pill" text-anchor="middle" style="fill:#FFFFFF">5</text>
+  <path d="M500,354 H156" fill="none" stroke="#2E8B3D" stroke-width="1.8" marker-end="url(#head)"/>
+  <text x="325.0" y="347.0" class="mono" text-anchor="middle" style="fill:#2E8B3D" xml:space="preserve">200 OK, now v8</text>
+  <circle cx="124" cy="354" r="10" fill="#1B2430"/>
+  <text x="124" y="358" class="pill" text-anchor="middle" style="fill:#FFFFFF">6</text>
+  <path d="M850,396 H506" fill="none" stroke="#3F5873" stroke-width="1.8" marker-end="url(#head)"/>
+  <text x="675.0" y="389.0" class="mono" text-anchor="middle" style="fill:#1B2430" xml:space="preserve">PUT image y, read at v7</text>
+  <circle cx="876" cy="396" r="10" fill="#1B2430"/>
+  <text x="876" y="400" class="pill" text-anchor="middle" style="fill:#FFFFFF">7</text>
+  <path d="M500,438 H844" fill="none" stroke="#CF4526" stroke-width="1.8" marker-end="url(#head)"/>
+  <text x="675.0" y="431.0" class="mono" text-anchor="middle" style="fill:#CF4526" xml:space="preserve">409 Conflict: object is at v8</text>
+  <circle cx="876" cy="438" r="10" fill="#1B2430"/>
+  <text x="876" y="442" class="pill" text-anchor="middle" style="fill:#FFFFFF">8</text>
+  <path d="M850,480 H506" fill="none" stroke="#3F5873" stroke-width="1.8" marker-end="url(#head)"/>
+  <text x="675.0" y="473.0" class="mono" text-anchor="middle" style="fill:#1B2430" xml:space="preserve">GET, then PUT image y, read at v8</text>
+  <circle cx="876" cy="480" r="10" fill="#1B2430"/>
+  <text x="876" y="484" class="pill" text-anchor="middle" style="fill:#FFFFFF">9</text>
+  <path d="M500,522 H844" fill="none" stroke="#2E8B3D" stroke-width="1.8" marker-end="url(#head)"/>
+  <text x="675.0" y="515.0" class="mono" text-anchor="middle" style="fill:#2E8B3D" xml:space="preserve">200 OK, now v9: gpus 2, image y</text>
+  <circle cx="876" cy="522" r="10" fill="#1B2430"/>
+  <text x="876" y="526" class="pill" text-anchor="middle" style="fill:#FFFFFF">10</text>
+</svg>

@@ -24,6 +24,34 @@
     }
 
     var groups = [];
+    var NAMES = { "language-go": "Go", "language-rust": "Rust" };
+
+    // A box can also hold 1 shared caption and the code blocks directly. Each code
+    // block is then wrapped in a panel named after its language, so both forms of
+    // box get the same tabs.
+    function panelize(box) {
+        Array.prototype.slice.call(box.querySelectorAll(":scope > pre")).forEach(function (pre) {
+            var code = pre.querySelector("code");
+            var lang = null;
+
+            Object.keys(NAMES).forEach(function (cls) {
+                if (code && code.classList.contains(cls)) {
+                    lang = NAMES[cls];
+                }
+            });
+
+            if (lang === null) {
+                return;
+            }
+
+            var panel = document.createElement("div");
+
+            panel.className = "code-tab";
+            panel.dataset.lang = lang;
+            box.insertBefore(panel, pre);
+            panel.appendChild(pre);
+        });
+    }
 
     function show(group, lang) {
         var found = group.panels.some(function (panel) {
@@ -55,6 +83,10 @@
     }
 
     document.querySelectorAll("div.code-tabs").forEach(function (box, index) {
+        if (box.querySelector(":scope > .code-tab") === null) {
+            panelize(box);
+        }
+
         var panels = Array.prototype.slice.call(box.querySelectorAll(":scope > .code-tab"));
 
         if (panels.length === 0) {
@@ -99,7 +131,7 @@
             bar.appendChild(button);
         });
 
-        box.insertBefore(bar, box.firstChild);
+        box.insertBefore(bar, panels[0]);
         box.classList.add("ready");
         groups.push({ panels: panels, buttons: buttons });
     });

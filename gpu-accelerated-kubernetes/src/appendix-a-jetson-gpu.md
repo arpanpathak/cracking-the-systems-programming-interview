@@ -1,4 +1,4 @@
-<img class="plate" src="art/appendix.svg" alt="Kindle, a hedgehog, plugs a small GPU board into a shipping container labelled kind node. A cable runs from the board to the container, and a lamp on the container turns green.">
+<img class="plate" src="art/appendix.svg" alt="Kindle, a hedgehog, reaches out with a plug to connect a small GPU board to a shipping container labelled kind node. Arrows follow the cable from the board to the container, and the container&#x27;s lamp turns green.">
 
 # Appendix A. A local GPU cluster with kind
 
