@@ -1,4 +1,4 @@
-<img class="plate" src="art/ch09.svg" alt="3 squirrels sit under 3 trees named shelf, desk and bench. Each holds a slate with a row of 3 numbers. After they compare slates, all 3 rows read 360, 120, 65.">
+<img class="plate" src="art/ch09.svg" alt="4 red squirrels sit side by side on a mossy branch in a forest.">
 
 # 9. Counting across replicas
 

@@ -1,4 +1,4 @@
-<img class="plate" src="art/ch01.svg" alt="Ledger, an owl in round glasses, sits at a desk between a large book of record on the left, whose lines are numbered v10, v11 and v12, and a small notebook on the right in which it copies each numbered line. A ribbon of paper carries events from the book to the notebook.">
+<img class="plate" src="art/ch01.svg" alt="Ledger, a great horned owl, sits on an open ledger at a library desk at night, under a warm desk lamp.">
 
 # 1. Keeping a local copy of the cluster
 

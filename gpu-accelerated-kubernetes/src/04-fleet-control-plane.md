@@ -1,4 +1,4 @@
-<img class="plate" src="art/ch04.svg" alt="Sergeant Cone, a raccoon in a police cap, directs traffic at a crossing with a raised paw and a whistle. A traffic light beside it shows green for healthy, amber for cordoned and red for quarantined. A server with a red lamp stands inside a ring of orange cones.">
+<img class="plate" src="art/ch04.svg" alt="Sergeant Cone, a raccoon in a police cap and a reflective vest, directs traffic on a wet street at night, with police cars and traffic lights behind.">
 
 # 4. A control plane for a fleet of hosts
 

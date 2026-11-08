@@ -16,7 +16,8 @@ PYTHON ?= python3
 
 all: art figures animations html
 
-## The cover and the chapter-opener plates, drawn by tools/art.py to src/art/*.svg
+## The cover and the chapter-opener plates: tools/art.py lays each chapter's ribbon over its
+## painting in tools/paintings/ (made by tools/paint.py, which needs a GPU and diffusers)
 art:
 	$(PYTHON) tools/art.py
 
