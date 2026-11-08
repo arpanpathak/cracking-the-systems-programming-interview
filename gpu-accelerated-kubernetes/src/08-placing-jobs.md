@@ -138,17 +138,30 @@ Each machine has one GPU, so a node is a name, a domain, and the job that holds 
 The machines are listed in name order, which is the order in which a listing of Node
 objects from the API server arrives.
 
+<div class="code-tabs">
+
+<div class="code-tab" data-lang="Go">
+
 <p class="listing"><b>Listing 8.1</b> Nodes, links, and jobs, in Go. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/go/gangsched/main.go">code/go/gangsched/main.go</a></p>
 
 ```go
 {{#include ../code/go/gangsched/main.go:fleet}}
 ```
 
+</div>
+
+<div class="code-tab" data-lang="Rust">
+
 <p class="listing"><b>Listing 8.2</b> Nodes, links, and jobs, in Rust. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/rust/gangsched/src/main.rs">code/rust/gangsched/src/main.rs</a></p>
 
 ```rust
 {{#include ../code/rust/gangsched/src/main.rs:fleet}}
 ```
+
+</div>
+
+</div>
+
 
 
 The Go version names a domain with a string and looks its link up in a map. The Rust
@@ -160,17 +173,30 @@ a compile error.
 `podAtATime` plays the scheduler without gangs. It goes round the jobs, giving each one
 free GPU per turn, until a whole round passes in which nobody could be given anything.
 
+<div class="code-tabs">
+
+<div class="code-tab" data-lang="Go">
+
 <p class="listing"><b>Listing 8.3</b> Handing out GPUs one pod at a time, in Go. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/go/gangsched/main.go">code/go/gangsched/main.go</a></p>
 
 ```go
 {{#include ../code/go/gangsched/main.go:podwise}}
 ```
 
+</div>
+
+<div class="code-tab" data-lang="Rust">
+
 <p class="listing"><b>Listing 8.4</b> Handing out GPUs one pod at a time, in Rust. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/rust/gangsched/src/main.rs">code/rust/gangsched/src/main.rs</a></p>
 
 ```rust
 {{#include ../code/rust/gangsched/src/main.rs:podwise}}
 ```
+
+</div>
+
+</div>
+
 
 
 ### Two ways to choose machines
@@ -187,17 +213,30 @@ takes the smallest of those. When no single domain can hold the job, it falls ba
 `firstFree`, and the job runs across domains at the speed of the house network. A real
 scheduler would let the job's owner choose between that and waiting.
 
+<div class="code-tabs">
+
+<div class="code-tab" data-lang="Go">
+
 <p class="listing"><b>Listing 8.5</b> The two placers, in Go. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/go/gangsched/main.go">code/go/gangsched/main.go</a></p>
 
 ```go
 {{#include ../code/go/gangsched/main.go:place}}
 ```
 
+</div>
+
+<div class="code-tab" data-lang="Rust">
+
 <p class="listing"><b>Listing 8.6</b> The two placers, in Rust. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/rust/gangsched/src/main.rs">code/rust/gangsched/src/main.rs</a></p>
 
 ```rust
 {{#include ../code/rust/gangsched/src/main.rs:place}}
 ```
+
+</div>
+
+</div>
+
 
 
 ### What a placement costs
@@ -206,17 +245,30 @@ To compare placements we need a number. `slowest` finds the link a set of machin
 limited by: their domain's link if they share one, the house network if they do not.
 `exchangeSeconds` applies chapter 7's count to it.
 
+<div class="code-tabs">
+
+<div class="code-tab" data-lang="Go">
+
 <p class="listing"><b>Listing 8.7</b> The slowest link and the time of one all-reduce, in Go. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/go/gangsched/main.go">code/go/gangsched/main.go</a></p>
 
 ```go
 {{#include ../code/go/gangsched/main.go:cost}}
 ```
 
+</div>
+
+<div class="code-tab" data-lang="Rust">
+
 <p class="listing"><b>Listing 8.8</b> The slowest link and the time of one all-reduce, in Rust. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/rust/gangsched/src/main.rs">code/rust/gangsched/src/main.rs</a></p>
 
 ```rust
 {{#include ../code/rust/gangsched/src/main.rs:cost}}
 ```
+
+</div>
+
+</div>
+
 
 
 ### Admitting a whole job
@@ -225,11 +277,19 @@ limited by: their domain's link if they share one, the house network if they do 
 worker. If the placer returns nothing, the job waits and the fleet is untouched. Only
 when every worker has a machine does `admit` mark any of them as taken.
 
+<div class="code-tabs">
+
+<div class="code-tab" data-lang="Go">
+
 <p class="listing"><b>Listing 8.9</b> All of a job's workers, or none, in Go. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/go/gangsched/main.go">code/go/gangsched/main.go</a></p>
 
 ```go
 {{#include ../code/go/gangsched/main.go:admit}}
 ```
+
+</div>
+
+<div class="code-tab" data-lang="Rust">
 
 <p class="listing"><b>Listing 8.10</b> All of a job's workers, or none, in Rust. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/rust/gangsched/src/main.rs">code/rust/gangsched/src/main.rs</a></p>
 
@@ -237,8 +297,17 @@ when every worker has a machine does `admit` mark any of them as taken.
 {{#include ../code/rust/gangsched/src/main.rs:admit}}
 ```
 
+</div>
+
+</div>
+
+
 
 ### The run
+
+<div class="code-tabs">
+
+<div class="code-tab" data-lang="Go">
 
 <p class="listing"><b>Listing 8.11</b> Four experiments on the same fleet, in Go. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/go/gangsched/main.go">code/go/gangsched/main.go</a></p>
 
@@ -246,11 +315,20 @@ when every worker has a machine does `admit` mark any of them as taken.
 {{#include ../code/go/gangsched/main.go:main}}
 ```
 
+</div>
+
+<div class="code-tab" data-lang="Rust">
+
 <p class="listing"><b>Listing 8.12</b> Four experiments on the same fleet, in Rust. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/rust/gangsched/src/main.rs">code/rust/gangsched/src/main.rs</a></p>
 
 ```rust
 {{#include ../code/rust/gangsched/src/main.rs:main}}
 ```
+
+</div>
+
+</div>
+
 
 
 ```console
@@ -337,17 +415,30 @@ should count a draining machine against every gang that needs it.
 
 ## The complete program
 
+<div class="code-tabs">
+
+<div class="code-tab" data-lang="Go">
+
 <p class="listing"><b>Listing 8.13</b> The complete program in Go. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/go/gangsched/main.go">code/go/gangsched/main.go</a></p>
 
 ```go
 {{#include ../code/go/gangsched/main.go}}
 ```
 
+</div>
+
+<div class="code-tab" data-lang="Rust">
+
 <p class="listing"><b>Listing 8.14</b> The complete program in Rust. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/rust/gangsched/src/main.rs">code/rust/gangsched/src/main.rs</a></p>
 
 ```rust
 {{#include ../code/rust/gangsched/src/main.rs}}
 ```
+
+</div>
+
+</div>
+
 
 
 <div class="summary">

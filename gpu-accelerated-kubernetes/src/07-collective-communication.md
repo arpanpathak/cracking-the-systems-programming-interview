@@ -178,17 +178,30 @@ running piece of code puts values into and another takes them out of. Nothing el
 shared between workers, which mirrors the real situation: machines in a training job
 share no memory, only a network.
 
+<div class="code-tabs">
+
+<div class="code-tab" data-lang="Go">
+
 <p class="listing"><b>Listing 7.1</b> The message, the worker, and how long it waits, in Go. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/go/allreduce/main.go">code/go/allreduce/main.go</a></p>
 
 ```go
 {{#include ../code/go/allreduce/main.go:worker}}
 ```
 
+</div>
+
+<div class="code-tab" data-lang="Rust">
+
 <p class="listing"><b>Listing 7.2</b> The message, the worker, and how long it waits, in Rust. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/rust/allreduce/src/main.rs">code/rust/allreduce/src/main.rs</a></p>
 
 ```rust
 {{#include ../code/rust/allreduce/src/main.rs:worker}}
 ```
+
+</div>
+
+</div>
+
 
 
 ### The exchanges
@@ -199,17 +212,30 @@ from the worker's own position, one place per exchange. Working through the hand
 shows why that is right: after the first exchange, the chunk a worker sends next is
 always the one it received last.
 
+<div class="code-tabs">
+
+<div class="code-tab" data-lang="Go">
+
 <p class="listing"><b>Listing 7.3</b> A worker's 2(n − 1) exchanges, in Go. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/go/allreduce/main.go">code/go/allreduce/main.go</a></p>
 
 ```go
 {{#include ../code/go/allreduce/main.go:run}}
 ```
 
+</div>
+
+<div class="code-tab" data-lang="Rust">
+
 <p class="listing"><b>Listing 7.4</b> A worker's 2(n − 1) exchanges, in Rust. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/rust/allreduce/src/main.rs">code/rust/allreduce/src/main.rs</a></p>
 
 ```rust
 {{#include ../code/rust/allreduce/src/main.rs:run}}
 ```
+
+</div>
+
+</div>
+
 
 
 The wait for the left-hand neighbour has a time limit, which the program calls
@@ -229,17 +255,30 @@ the main thread can read each worker's final gradient without any lock.
 link and the sending end of its right-hand neighbour's. It then starts every worker at
 once and waits for all of them.
 
+<div class="code-tabs">
+
+<div class="code-tab" data-lang="Go">
+
 <p class="listing"><b>Listing 7.5</b> Connecting the workers and running them together, in Go. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/go/allreduce/main.go">code/go/allreduce/main.go</a></p>
 
 ```go
 {{#include ../code/go/allreduce/main.go:ring}}
 ```
 
+</div>
+
+<div class="code-tab" data-lang="Rust">
+
 <p class="listing"><b>Listing 7.6</b> Connecting the workers and running them together, in Rust. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/rust/allreduce/src/main.rs">code/rust/allreduce/src/main.rs</a></p>
 
 ```rust
 {{#include ../code/rust/allreduce/src/main.rs:ring}}
 ```
+
+</div>
+
+</div>
+
 
 
 In Go each worker runs in a goroutine started with `wg.Go`, a method of
@@ -277,11 +316,19 @@ The M in the formula is the job's, and a job fails when any one of its machines 
 job on N machines therefore fails N times as often as one machine: its MTBF is one
 machine's divided by N.
 
+<div class="code-tabs">
+
+<div class="code-tab" data-lang="Go">
+
 <p class="listing"><b>Listing 7.7</b> Young's formula, in Go. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/go/allreduce/main.go">code/go/allreduce/main.go</a></p>
 
 ```go
 {{#include ../code/go/allreduce/main.go:checkpoint}}
 ```
+
+</div>
+
+<div class="code-tab" data-lang="Rust">
 
 <p class="listing"><b>Listing 7.8</b> Young's formula, in Rust. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/rust/allreduce/src/main.rs">code/rust/allreduce/src/main.rs</a></p>
 
@@ -289,8 +336,17 @@ machine's divided by N.
 {{#include ../code/rust/allreduce/src/main.rs:checkpoint}}
 ```
 
+</div>
+
+</div>
+
+
 
 ### The run
+
+<div class="code-tabs">
+
+<div class="code-tab" data-lang="Go">
 
 <p class="listing"><b>Listing 7.9</b> The healthy step, the failed step, and the checkpoint table, in Go. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/go/allreduce/main.go">code/go/allreduce/main.go</a></p>
 
@@ -298,11 +354,20 @@ machine's divided by N.
 {{#include ../code/go/allreduce/main.go:main}}
 ```
 
+</div>
+
+<div class="code-tab" data-lang="Rust">
+
 <p class="listing"><b>Listing 7.10</b> The healthy step, the failed step, and the checkpoint table, in Rust. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/rust/allreduce/src/main.rs">code/rust/allreduce/src/main.rs</a></p>
 
 ```rust
 {{#include ../code/rust/allreduce/src/main.rs:main}}
 ```
+
+</div>
+
+</div>
+
 
 
 ```console
@@ -346,17 +411,30 @@ checkpoints fast.
 
 ## The complete program
 
+<div class="code-tabs">
+
+<div class="code-tab" data-lang="Go">
+
 <p class="listing"><b>Listing 7.11</b> The complete program in Go. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/go/allreduce/main.go">code/go/allreduce/main.go</a></p>
 
 ```go
 {{#include ../code/go/allreduce/main.go}}
 ```
 
+</div>
+
+<div class="code-tab" data-lang="Rust">
+
 <p class="listing"><b>Listing 7.12</b> The complete program in Rust. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/rust/allreduce/src/main.rs">code/rust/allreduce/src/main.rs</a></p>
 
 ```rust
 {{#include ../code/rust/allreduce/src/main.rs}}
 ```
+
+</div>
+
+</div>
+
 
 
 <div class="summary">

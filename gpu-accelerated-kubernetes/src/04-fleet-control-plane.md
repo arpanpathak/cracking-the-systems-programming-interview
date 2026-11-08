@@ -222,11 +222,19 @@ A machine is a name, a model, and the name of the switch or cable it shares with
 neighbours. The link name is what lets the program see that five reports came from one
 place.
 
+<div class="code-tabs">
+
+<div class="code-tab" data-lang="Go">
+
 <p class="listing"><b>Listing 4.1</b> The machines, in Go. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/go/fleethealth/main.go">code/go/fleethealth/main.go</a></p>
 
 ```go
 {{#include ../code/go/fleethealth/main.go:fleet}}
 ```
+
+</div>
+
+<div class="code-tab" data-lang="Rust">
 
 <p class="listing"><b>Listing 4.2</b> The machines, in Rust. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/rust/fleethealth/src/main.rs">code/rust/fleethealth/src/main.rs</a></p>
 
@@ -234,9 +242,18 @@ place.
 {{#include ../code/rust/fleethealth/src/main.rs:fleet}}
 ```
 
+</div>
+
+</div>
+
+
 
 A signal carries the second it arrived, the machine, the job that was using the GPU, and
 its class. Hardware signals and link flaps have no job.
+
+<div class="code-tabs">
+
+<div class="code-tab" data-lang="Go">
 
 <p class="listing"><b>Listing 4.3</b> Signals and their classes, in Go. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/go/fleethealth/main.go">code/go/fleethealth/main.go</a></p>
 
@@ -244,11 +261,20 @@ its class. Hardware signals and link flaps have no job.
 {{#include ../code/go/fleethealth/main.go:signal}}
 ```
 
+</div>
+
+<div class="code-tab" data-lang="Rust">
+
 <p class="listing"><b>Listing 4.4</b> Signals and their classes, in Rust. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/rust/fleethealth/src/main.rs">code/rust/fleethealth/src/main.rs</a></p>
 
 ```rust
 {{#include ../code/rust/fleethealth/src/main.rs:signal}}
 ```
+
+</div>
+
+</div>
+
 
 
 ### The states and the ladder
@@ -257,17 +283,30 @@ The states are declared in the order a failing machine passes through them, and 
 languages can compare them. That ordering does real work later: "every state from
 Draining on" becomes one comparison.
 
+<div class="code-tabs">
+
+<div class="code-tab" data-lang="Go">
+
 <p class="listing"><b>Listing 4.5</b> The lifecycle states and the repair ladder, in Go. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/go/fleethealth/main.go">code/go/fleethealth/main.go</a></p>
 
 ```go
 {{#include ../code/go/fleethealth/main.go:state}}
 ```
 
+</div>
+
+<div class="code-tab" data-lang="Rust">
+
 <p class="listing"><b>Listing 4.6</b> The lifecycle states and the repair ladder, in Rust. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/rust/fleethealth/src/main.rs">code/rust/fleethealth/src/main.rs</a></p>
 
 ```rust
 {{#include ../code/rust/fleethealth/src/main.rs:state}}
 ```
+
+</div>
+
+</div>
+
 
 
 ### Deciding what a signal blames
@@ -279,17 +318,30 @@ that verdict once and leaves every machine in service. Three jobs on one machine
 the machine. A link flap is stamped on its machine, and the program counts the machines
 on the same link whose latest flap lies within five seconds.
 
+<div class="code-tabs">
+
+<div class="code-tab" data-lang="Go">
+
 <p class="listing"><b>Listing 4.7</b> Triage: which of a job, a machine, or a link a signal blames, in Go. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/go/fleethealth/main.go">code/go/fleethealth/main.go</a></p>
 
 ```go
 {{#include ../code/go/fleethealth/main.go:triage}}
 ```
 
+</div>
+
+<div class="code-tab" data-lang="Rust">
+
 <p class="listing"><b>Listing 4.8</b> Triage: which of a job, a machine, or a link a signal blames, in Rust. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/rust/fleethealth/src/main.rs">code/rust/fleethealth/src/main.rs</a></p>
 
 ```rust
 {{#include ../code/rust/fleethealth/src/main.rs:triage}}
 ```
+
+</div>
+
+</div>
+
 
 
 The Go version keeps each set as a map from a name to `true`. The Rust version uses
@@ -301,17 +353,30 @@ single expression `self.blamed.insert(s.job)`.
 The budget check is a count of the machines in the four states that take a machine away
 from the fleet. Cordoned is left out on purpose: a cordoned machine still runs its jobs.
 
+<div class="code-tabs">
+
+<div class="code-tab" data-lang="Go">
+
 <p class="listing"><b>Listing 4.9</b> Counting the machines that are out of service, in Go. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/go/fleethealth/main.go">code/go/fleethealth/main.go</a></p>
 
 ```go
 {{#include ../code/go/fleethealth/main.go:budget}}
 ```
 
+</div>
+
+<div class="code-tab" data-lang="Rust">
+
 <p class="listing"><b>Listing 4.10</b> Counting the machines that are out of service, in Rust. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/rust/fleethealth/src/main.rs">code/rust/fleethealth/src/main.rs</a></p>
 
 ```rust
 {{#include ../code/rust/fleethealth/src/main.rs:budget}}
 ```
+
+</div>
+
+</div>
+
 
 
 ### One second of the lifecycle
@@ -323,17 +388,30 @@ seconds in the model: four for a job to write its checkpoint and leave, three fo
 repair action, three for the burn-in. The result of a burn-in comes from a table the run
 supplies, which says how many tests each machine fails before one passes.
 
+<div class="code-tabs">
+
+<div class="code-tab" data-lang="Go">
+
 <p class="listing"><b>Listing 4.11</b> Advancing every machine by one second, in Go. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/go/fleethealth/main.go">code/go/fleethealth/main.go</a></p>
 
 ```go
 {{#include ../code/go/fleethealth/main.go:step}}
 ```
 
+</div>
+
+<div class="code-tab" data-lang="Rust">
+
 <p class="listing"><b>Listing 4.12</b> Advancing every machine by one second, in Rust. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/rust/fleethealth/src/main.rs">code/rust/fleethealth/src/main.rs</a></p>
 
 ```rust
 {{#include ../code/rust/fleethealth/src/main.rs:step}}
 ```
+
+</div>
+
+</div>
+
 
 
 `Step` reads the current state and acts on it, with no memory of which signal started the
@@ -347,17 +425,30 @@ The script holds eleven signals that exercise each rule: one job faulting on thr
 a memory error on a Spark, a Thor whose GPU stops answering, a restart of the 25 GbE
 switch, and two machines failing in the same second.
 
+<div class="code-tabs">
+
+<div class="code-tab" data-lang="Go">
+
 <p class="listing"><b>Listing 4.13</b> The scripted signals and the main loop, in Go. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/go/fleethealth/main.go">code/go/fleethealth/main.go</a></p>
 
 ```go
 {{#include ../code/go/fleethealth/main.go:main}}
 ```
 
+</div>
+
+<div class="code-tab" data-lang="Rust">
+
 <p class="listing"><b>Listing 4.14</b> The scripted signals and the main loop, in Rust. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/rust/fleethealth/src/main.rs">code/rust/fleethealth/src/main.rs</a></p>
 
 ```rust
 {{#include ../code/rust/fleethealth/src/main.rs:main}}
 ```
+
+</div>
+
+</div>
+
 
 
 Both versions print the same log:
@@ -460,11 +551,19 @@ Low-level design: `fencing`
 
 The store is a single checkpoint and one comparison.
 
+<div class="code-tabs">
+
+<div class="code-tab" data-lang="Go">
+
 <p class="listing"><b>Listing 4.15</b> The checkpoint store and its epoch check, in Go. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/go/fencing/main.go">code/go/fencing/main.go</a></p>
 
 ```go
 {{#include ../code/go/fencing/main.go:store}}
 ```
+
+</div>
+
+<div class="code-tab" data-lang="Rust">
 
 <p class="listing"><b>Listing 4.16</b> The checkpoint store and its epoch check, in Rust. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/rust/fencing/src/main.rs">code/rust/fencing/src/main.rs</a></p>
 
@@ -472,8 +571,17 @@ The store is a single checkpoint and one comparison.
 {{#include ../code/rust/fencing/src/main.rs:store}}
 ```
 
+</div>
+
+</div>
+
+
 
 The control plane is a counter.
+
+<div class="code-tabs">
+
+<div class="code-tab" data-lang="Go">
 
 <p class="listing"><b>Listing 4.17</b> Handing out epochs, in Go. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/go/fencing/main.go">code/go/fencing/main.go</a></p>
 
@@ -481,14 +589,27 @@ The control plane is a counter.
 {{#include ../code/go/fencing/main.go:assign}}
 ```
 
+</div>
+
+<div class="code-tab" data-lang="Rust">
+
 <p class="listing"><b>Listing 4.18</b> Handing out epochs, in Rust. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/rust/fencing/src/main.rs">code/rust/fencing/src/main.rs</a></p>
 
 ```rust
 {{#include ../code/rust/fencing/src/main.rs:assign}}
 ```
 
+</div>
+
+</div>
+
+
 
 The run plays the same sequence against both kinds of store.
+
+<div class="code-tabs">
+
+<div class="code-tab" data-lang="Go">
 
 <p class="listing"><b>Listing 4.19</b> The sequence of writes, in Go. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/go/fencing/main.go">code/go/fencing/main.go</a></p>
 
@@ -496,11 +617,20 @@ The run plays the same sequence against both kinds of store.
 {{#include ../code/go/fencing/main.go:run}}
 ```
 
+</div>
+
+<div class="code-tab" data-lang="Rust">
+
 <p class="listing"><b>Listing 4.20</b> The sequence of writes, in Rust. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/rust/fencing/src/main.rs">code/rust/fencing/src/main.rs</a></p>
 
 ```rust
 {{#include ../code/rust/fencing/src/main.rs:run}}
 ```
+
+</div>
+
+</div>
+
 
 
 ```console
@@ -523,11 +653,19 @@ chapter 1 is the same idea applied to Kubernetes objects.
 
 ## The complete programs
 
+<div class="code-tabs">
+
+<div class="code-tab" data-lang="Go">
+
 <p class="listing"><b>Listing 4.21</b> The complete program in Go. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/go/fleethealth/main.go">code/go/fleethealth/main.go</a></p>
 
 ```go
 {{#include ../code/go/fleethealth/main.go}}
 ```
+
+</div>
+
+<div class="code-tab" data-lang="Rust">
 
 <p class="listing"><b>Listing 4.22</b> The complete program in Rust. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/rust/fleethealth/src/main.rs">code/rust/fleethealth/src/main.rs</a></p>
 
@@ -535,6 +673,14 @@ chapter 1 is the same idea applied to Kubernetes objects.
 {{#include ../code/rust/fleethealth/src/main.rs}}
 ```
 
+</div>
+
+</div>
+
+
+<div class="code-tabs">
+
+<div class="code-tab" data-lang="Go">
 
 <p class="listing"><b>Listing 4.23</b> The complete program in Go. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/go/fencing/main.go">code/go/fencing/main.go</a></p>
 
@@ -542,11 +688,20 @@ chapter 1 is the same idea applied to Kubernetes objects.
 {{#include ../code/go/fencing/main.go}}
 ```
 
+</div>
+
+<div class="code-tab" data-lang="Rust">
+
 <p class="listing"><b>Listing 4.24</b> The complete program in Rust. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/rust/fencing/src/main.rs">code/rust/fencing/src/main.rs</a></p>
 
 ```rust
 {{#include ../code/rust/fencing/src/main.rs}}
 ```
+
+</div>
+
+</div>
+
 
 
 <div class="summary">

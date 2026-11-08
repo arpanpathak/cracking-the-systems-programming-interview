@@ -98,17 +98,30 @@ on each system. Rust's standard library has no such function, so the Rust versio
 writes the three cases out. `cfg!(windows)` and `cfg!(target_os = "macos")` are decided
 when the program is compiled, so each build contains only its own case.
 
+<div class="code-tabs">
+
+<div class="code-tab" data-lang="Go">
+
 <p class="listing"><b>Listing 11.1</b> The configuration file and the kubeconfig, in Go. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/go/gpuctl/main.go">code/go/gpuctl/main.go</a></p>
 
 ```go
 {{#include ../code/go/gpuctl/main.go:paths}}
 ```
 
+</div>
+
+<div class="code-tab" data-lang="Rust">
+
 <p class="listing"><b>Listing 11.2</b> The configuration file and the kubeconfig, in Rust. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/rust/gpuctl/src/main.rs">code/rust/gpuctl/src/main.rs</a></p>
 
 ```rust
 {{#include ../code/rust/gpuctl/src/main.rs:paths}}
 ```
+
+</div>
+
+</div>
+
 
 
 The second path is the *kubeconfig*, the file from which kubectl and every other client
@@ -125,17 +138,30 @@ and keeps five fields of each: the name, the allocatable `nvidia.com/gpu` count 
 chapter 5, and the architecture, operating system, and kubelet version that the kubelet
 reports about its machine.
 
+<div class="code-tabs">
+
+<div class="code-tab" data-lang="Go">
+
 <p class="listing"><b>Listing 11.3</b> Listing the nodes and keeping five fields, in Go. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/go/gpuctl/main.go">code/go/gpuctl/main.go</a></p>
 
 ```go
 {{#include ../code/go/gpuctl/main.go:nodes}}
 ```
 
+</div>
+
+<div class="code-tab" data-lang="Rust">
+
 <p class="listing"><b>Listing 11.4</b> Listing the nodes and keeping five fields, in Rust. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/rust/gpuctl/src/main.rs">code/rust/gpuctl/src/main.rs</a></p>
 
 ```rust
 {{#include ../code/rust/gpuctl/src/main.rs:nodes}}
 ```
+
+</div>
+
+</div>
+
 
 
 The Go version builds its client from the kubeconfig with `clientcmd`, the package of
@@ -154,17 +180,30 @@ and a node with no GPUs, which has no such entry at all, counts as zero.
 
 The rows are printed in one of two forms, chosen by the `-o` flag.
 
+<div class="code-tabs">
+
+<div class="code-tab" data-lang="Go">
+
 <p class="listing"><b>Listing 11.5</b> A table or JSON, in Go. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/go/gpuctl/main.go">code/go/gpuctl/main.go</a></p>
 
 ```go
 {{#include ../code/go/gpuctl/main.go:output}}
 ```
 
+</div>
+
+<div class="code-tab" data-lang="Rust">
+
 <p class="listing"><b>Listing 11.6</b> A table or JSON, in Rust. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/rust/gpuctl/src/main.rs">code/rust/gpuctl/src/main.rs</a></p>
 
 ```rust
 {{#include ../code/rust/gpuctl/src/main.rs:output}}
 ```
+
+</div>
+
+</div>
+
 
 
 The table is for reading. Its columns are padded so that they line up, which Go's
@@ -183,11 +222,19 @@ written out in both versions, as struct tags in Go and as the field names of a
 command, and returns the status. Every path through it ends in one of the three
 statuses, and every message for a person goes to standard error.
 
+<div class="code-tabs">
+
+<div class="code-tab" data-lang="Go">
+
 <p class="listing"><b>Listing 11.7</b> Choosing the command and returning the status, in Go. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/go/gpuctl/main.go">code/go/gpuctl/main.go</a></p>
 
 ```go
 {{#include ../code/go/gpuctl/main.go:exit}}
 ```
+
+</div>
+
+<div class="code-tab" data-lang="Rust">
 
 <p class="listing"><b>Listing 11.8</b> Choosing the command and returning the status, in Rust. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/rust/gpuctl/src/main.rs">code/rust/gpuctl/src/main.rs</a></p>
 
@@ -195,6 +242,14 @@ statuses, and every message for a person goes to standard error.
 {{#include ../code/rust/gpuctl/src/main.rs:exit}}
 ```
 
+</div>
+
+</div>
+
+
+<div class="code-tabs">
+
+<div class="code-tab" data-lang="Go">
 
 <p class="listing"><b>Listing 11.9</b> The run function and main, in Go. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/go/gpuctl/main.go">code/go/gpuctl/main.go</a></p>
 
@@ -202,11 +257,20 @@ statuses, and every message for a person goes to standard error.
 {{#include ../code/go/gpuctl/main.go:run}}
 ```
 
+</div>
+
+<div class="code-tab" data-lang="Rust">
+
 <p class="listing"><b>Listing 11.10</b> The run function and main, in Rust. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/rust/gpuctl/src/main.rs">code/rust/gpuctl/src/main.rs</a></p>
 
 ```rust
 {{#include ../code/rust/gpuctl/src/main.rs:run}}
 ```
+
+</div>
+
+</div>
+
 
 
 The Go version parses the `-o` flag with the standard `flag` package and tells it to
@@ -333,17 +397,30 @@ mapping down.
 
 ## The complete program
 
+<div class="code-tabs">
+
+<div class="code-tab" data-lang="Go">
+
 <p class="listing"><b>Listing 11.11</b> The complete program in Go. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/go/gpuctl/main.go">code/go/gpuctl/main.go</a></p>
 
 ```go
 {{#include ../code/go/gpuctl/main.go}}
 ```
 
+</div>
+
+<div class="code-tab" data-lang="Rust">
+
 <p class="listing"><b>Listing 11.12</b> The complete program in Rust. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/rust/gpuctl/src/main.rs">code/rust/gpuctl/src/main.rs</a></p>
 
 ```rust
 {{#include ../code/rust/gpuctl/src/main.rs}}
 ```
+
+</div>
+
+</div>
+
 
 
 <div class="summary">

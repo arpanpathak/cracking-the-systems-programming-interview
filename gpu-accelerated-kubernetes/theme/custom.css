@@ -137,7 +137,7 @@ pre code {
 }
 
 pre {
-    font-size: 1.7rem;
+    font-size: 1.55rem;
     line-height: 1.65;
     background: var(--code-bg) !important;
     border: 1px solid var(--code-border);
@@ -146,9 +146,12 @@ pre {
     margin-block: 0.4em 1.4em;
 }
 
-/* mdBook sets code to 0.875em of its parent; code in a block uses the block's size. */
+/* mdBook sets code to 0.875em of its parent; code in a block uses the block's size.
+   A line longer than the column wraps, so no code hides behind a scroll bar. */
 pre code {
     font-size: 1em;
+    white-space: pre-wrap !important;
+    overflow-wrap: anywhere;
 }
 
 pre > code.hljs {
@@ -263,12 +266,69 @@ img.cover {
     box-shadow: 0 14px 40px rgba(0, 0, 0, 0.4);
 }
 
-/* Code at 17px needs about 1,000px for the book's longest lines (95 characters).
-   On wide screens a code block extends past the text column, as the plates do. */
-@media (min-width: 1180px) {
-    pre,
-    p.listing {
-        margin-left: -120px;
-        margin-right: -120px;
+/* Go and Rust versions of a listing share 1 box with a tab per language
+   (theme/tabs.js), so the reader sees 1 language at a time. */
+.code-tabs {
+    margin: 1.6em 0 1.8em;
+}
+
+.code-tab-bar {
+    display: flex;
+    gap: 4px;
+    border-bottom: 2px solid var(--rule);
+}
+
+.code-tab-bar button {
+    font: inherit;
+    font-size: 1.5rem;
+    font-weight: 600;
+    padding: 0.4em 1.3em;
+    color: var(--muted);
+    background: transparent;
+    border: 1px solid transparent;
+    border-bottom: none;
+    border-radius: 8px 8px 0 0;
+    cursor: pointer;
+    margin-bottom: -2px;
+}
+
+.code-tab-bar button.active {
+    color: var(--ink);
+    background: var(--code-bg);
+    border-color: var(--rule);
+    border-bottom: 2px solid var(--accent);
+}
+
+.code-tab-bar button:focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 2px;
+}
+
+.code-tabs > .code-tab > p.listing {
+    margin-top: 0.9em;
+}
+
+/* Without the script, and in print, every panel shows with its language as a label. */
+.code-tabs:not(.ready) > .code-tab::before {
+    content: attr(data-lang);
+    display: block;
+    font-weight: 600;
+    color: var(--muted);
+    margin-top: 0.75em;
+}
+
+@media print {
+    .code-tab-bar {
+        display: none;
+    }
+
+    .code-tabs > .code-tab[hidden] {
+        display: block !important;
+    }
+
+    .code-tabs > .code-tab::before {
+        content: attr(data-lang);
+        display: block;
+        font-weight: 600;
     }
 }

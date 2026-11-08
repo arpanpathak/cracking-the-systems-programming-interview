@@ -191,17 +191,30 @@ Low-level design: `counter`
 A `GCounter` is an array with one entry per replica. `Add` touches one entry, `Merge`
 takes the larger value of each, and `Value` sums them.
 
+<div class="code-tabs">
+
+<div class="code-tab" data-lang="Go">
+
 <p class="listing"><b>Listing 9.1</b> The grow-only counter, in Go. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/go/counter/main.go">code/go/counter/main.go</a></p>
 
 ```go
 {{#include ../code/go/counter/main.go:gcounter}}
 ```
 
+</div>
+
+<div class="code-tab" data-lang="Rust">
+
 <p class="listing"><b>Listing 9.2</b> The grow-only counter, in Rust. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/rust/counter/src/main.rs">code/rust/counter/src/main.rs</a></p>
 
 ```rust
 {{#include ../code/rust/counter/src/main.rs:gcounter}}
 ```
+
+</div>
+
+</div>
+
 
 
 The counter is a fixed-size array in both languages, which makes it a plain value:
@@ -213,11 +226,19 @@ the array to `Merge`.
 `PNCounter` holds two grow-only counters. A positive change goes into `Up`, a negative
 one into `Down` with its sign removed.
 
+<div class="code-tabs">
+
+<div class="code-tab" data-lang="Go">
+
 <p class="listing"><b>Listing 9.3</b> The up-and-down counter, in Go. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/go/counter/main.go">code/go/counter/main.go</a></p>
 
 ```go
 {{#include ../code/go/counter/main.go:pncounter}}
 ```
+
+</div>
+
+<div class="code-tab" data-lang="Rust">
 
 <p class="listing"><b>Listing 9.4</b> The up-and-down counter, in Rust. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/rust/counter/src/main.rs">code/rust/counter/src/main.rs</a></p>
 
@@ -225,11 +246,20 @@ one into `Down` with its sign removed.
 {{#include ../code/rust/counter/src/main.rs:pncounter}}
 ```
 
+</div>
+
+</div>
+
+
 
 ### One number per replica
 
 The first experiment is the rule that fails: one total per replica, synchronised by
 keeping the larger.
+
+<div class="code-tabs">
+
+<div class="code-tab" data-lang="Go">
 
 <p class="listing"><b>Listing 9.5</b> Keeping the larger of two totals, in Go. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/go/counter/main.go">code/go/counter/main.go</a></p>
 
@@ -237,11 +267,20 @@ keeping the larger.
 {{#include ../code/go/counter/main.go:naive}}
 ```
 
+</div>
+
+<div class="code-tab" data-lang="Rust">
+
 <p class="listing"><b>Listing 9.6</b> Keeping the larger of two totals, in Rust. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/rust/counter/src/main.rs">code/rust/counter/src/main.rs</a></p>
 
 ```rust
 {{#include ../code/rust/counter/src/main.rs:naive}}
 ```
+
+</div>
+
+</div>
+
 
 
 ### Through a partition
@@ -250,17 +289,30 @@ The second experiment gives each replica a `GCounter`. The bench is cut off, the
 and the desk merge with each other, and reports keep arriving on both sides. After the
 partition the rows are merged in an order chosen to be untidy, with one merge repeated.
 
+<div class="code-tabs">
+
+<div class="code-tab" data-lang="Go">
+
 <p class="listing"><b>Listing 9.7</b> Grow-only counters, a partition, and an untidy recovery, in Go. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/go/counter/main.go">code/go/counter/main.go</a></p>
 
 ```go
 {{#include ../code/go/counter/main.go:grow}}
 ```
 
+</div>
+
+<div class="code-tab" data-lang="Rust">
+
 <p class="listing"><b>Listing 9.8</b> Grow-only counters, a partition, and an untidy recovery, in Rust. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/rust/counter/src/main.rs">code/rust/counter/src/main.rs</a></p>
 
 ```rust
 {{#include ../code/rust/counter/src/main.rs:grow}}
 ```
+
+</div>
+
+</div>
+
 
 
 ### GPUs in use
@@ -269,11 +321,19 @@ The third experiment counts jobs starting and ending. One job's end is reported 
 different replica from the one that recorded its start, which is ordinary: a job's
 machine and the replica that hears of its end need not be in the same place.
 
+<div class="code-tabs">
+
+<div class="code-tab" data-lang="Go">
+
 <p class="listing"><b>Listing 9.9</b> Starts and ends recorded at different replicas, in Go. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/go/counter/main.go">code/go/counter/main.go</a></p>
 
 ```go
 {{#include ../code/go/counter/main.go:updown}}
 ```
+
+</div>
+
+<div class="code-tab" data-lang="Rust">
 
 <p class="listing"><b>Listing 9.10</b> Starts and ends recorded at different replicas, in Rust. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/rust/counter/src/main.rs">code/rust/counter/src/main.rs</a></p>
 
@@ -281,11 +341,20 @@ machine and the replica that hears of its end need not be in the same place.
 {{#include ../code/rust/counter/src/main.rs:updown}}
 ```
 
+</div>
+
+</div>
+
+
 
 ### A quota, two ways
 
 The last two experiments enforce a quota of six GPUs. `sharedLimit` lets each replica
 check its own merged count. `allowances` gives each replica a share.
+
+<div class="code-tabs">
+
+<div class="code-tab" data-lang="Go">
 
 <p class="listing"><b>Listing 9.11</b> A limit checked against a local count, and a limit divided into shares, in Go. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/go/counter/main.go">code/go/counter/main.go</a></p>
 
@@ -293,11 +362,20 @@ check its own merged count. `allowances` gives each replica a share.
 {{#include ../code/go/counter/main.go:quota}}
 ```
 
+</div>
+
+<div class="code-tab" data-lang="Rust">
+
 <p class="listing"><b>Listing 9.12</b> A limit checked against a local count, and a limit divided into shares, in Rust. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/rust/counter/src/main.rs">code/rust/counter/src/main.rs</a></p>
 
 ```rust
 {{#include ../code/rust/counter/src/main.rs:quota}}
 ```
+
+</div>
+
+</div>
+
 
 
 ### The run
@@ -357,17 +435,30 @@ apart.
 
 ## The complete program
 
+<div class="code-tabs">
+
+<div class="code-tab" data-lang="Go">
+
 <p class="listing"><b>Listing 9.13</b> The complete program in Go. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/go/counter/main.go">code/go/counter/main.go</a></p>
 
 ```go
 {{#include ../code/go/counter/main.go}}
 ```
 
+</div>
+
+<div class="code-tab" data-lang="Rust">
+
 <p class="listing"><b>Listing 9.14</b> The complete program in Rust. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/rust/counter/src/main.rs">code/rust/counter/src/main.rs</a></p>
 
 ```rust
 {{#include ../code/rust/counter/src/main.rs}}
 ```
+
+</div>
+
+</div>
+
 
 
 <div class="summary">

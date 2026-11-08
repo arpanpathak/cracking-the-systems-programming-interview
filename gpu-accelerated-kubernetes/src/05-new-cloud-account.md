@@ -216,17 +216,30 @@ checks the quota. Then it creates the machine, and only after that does the run 
 chance to lose the reply. That ordering is what makes the lost reply dangerous: the
 machine is in the list before the caller learns anything.
 
+<div class="code-tabs">
+
+<div class="code-tab" data-lang="Go">
+
 <p class="listing"><b>Listing 5.1</b> The provider and its create call, in Go. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/go/provisioner/main.go">code/go/provisioner/main.go</a></p>
 
 ```go
 {{#include ../code/go/provisioner/main.go:provider}}
 ```
 
+</div>
+
+<div class="code-tab" data-lang="Rust">
+
 <p class="listing"><b>Listing 5.2</b> The provider and its create call, in Rust. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/rust/provisioner/src/main.rs">code/rust/provisioner/src/main.rs</a></p>
 
 ```rust
 {{#include ../code/rust/provisioner/src/main.rs:provider}}
 ```
+
+</div>
+
+</div>
+
 
 
 The Rust version represents a missing token as `None`, and the lookup is an
@@ -240,17 +253,30 @@ name when tokens are switched on, and calls the provider. A failed call ends the
 for this pool, and the controller records nothing for it. The next pass starts from the
 same slot.
 
+<div class="code-tabs">
+
+<div class="code-tab" data-lang="Go">
+
 <p class="listing"><b>Listing 5.3</b> The pool and the controller's reconcile, in Go. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/go/provisioner/main.go">code/go/provisioner/main.go</a></p>
 
 ```go
 {{#include ../code/go/provisioner/main.go:controller}}
 ```
 
+</div>
+
+<div class="code-tab" data-lang="Rust">
+
 <p class="listing"><b>Listing 5.4</b> The pool and the controller's reconcile, in Rust. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/rust/provisioner/src/main.rs">code/rust/provisioner/src/main.rs</a></p>
 
 ```rust
 {{#include ../code/rust/provisioner/src/main.rs:controller}}
 ```
+
+</div>
+
+</div>
+
 
 
 The controller counts only what it has been told. `owned` grows by one machine for each
@@ -263,17 +289,30 @@ The run asks for five Thors and two Sparks, with quotas of exactly five and two,
 loses the reply to the third create call. It allows three passes and then prints what
 the controller owns beside what the provider holds.
 
+<div class="code-tabs">
+
+<div class="code-tab" data-lang="Go">
+
 <p class="listing"><b>Listing 5.5</b> The pools, the three passes, and the final comparison, in Go. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/go/provisioner/main.go">code/go/provisioner/main.go</a></p>
 
 ```go
 {{#include ../code/go/provisioner/main.go:run}}
 ```
 
+</div>
+
+<div class="code-tab" data-lang="Rust">
+
 <p class="listing"><b>Listing 5.6</b> The pools, the three passes, and the final comparison, in Rust. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/rust/provisioner/src/main.rs">code/rust/provisioner/src/main.rs</a></p>
 
 ```rust
 {{#include ../code/rust/provisioner/src/main.rs:run}}
 ```
+
+</div>
+
+</div>
+
 
 
 ```console
@@ -337,17 +376,30 @@ is reconciled towards it.
 
 ## The complete program
 
+<div class="code-tabs">
+
+<div class="code-tab" data-lang="Go">
+
 <p class="listing"><b>Listing 5.7</b> The complete program in Go. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/go/provisioner/main.go">code/go/provisioner/main.go</a></p>
 
 ```go
 {{#include ../code/go/provisioner/main.go}}
 ```
 
+</div>
+
+<div class="code-tab" data-lang="Rust">
+
 <p class="listing"><b>Listing 5.8</b> The complete program in Rust. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/gpu-accelerated-kubernetes/code/rust/provisioner/src/main.rs">code/rust/provisioner/src/main.rs</a></p>
 
 ```rust
 {{#include ../code/rust/provisioner/src/main.rs}}
 ```
+
+</div>
+
+</div>
+
 
 
 <div class="summary">
