@@ -16,7 +16,7 @@ use cache::Cache;
 use controller::Controller;
 use queue::WorkQueue;
 use reflector::Reflector;
-use server::{ApiServer, GpuRequest, Object};
+use server::{ApiServer, Object};
 use std::sync::{Arc, OnceLock};
 use std::thread;
 use std::time::{Duration, Instant};
@@ -48,10 +48,10 @@ fn main() {
     START.get_or_init(Instant::now);
     let server = Arc::new(ApiServer::default());
     server
-        .update(Object::new("job-a", GpuRequest::new(1, "Thor", 100)))
+        .update(Object::new("job-a", 1))
         .expect("unconditional write");
     server
-        .update(Object::new("job-b", GpuRequest::new(8, "GB10", 96)))
+        .update(Object::new("job-b", 8))
         .expect("unconditional write");
 
     let cache = Arc::new(Cache::default());
@@ -72,11 +72,11 @@ fn main() {
 
     log!("--- job-a is edited five times in a burst");
 
-    for count in 2..=6 {
+    for gpus in 2..=6 {
         server
-            .update(Object::new("job-a", GpuRequest::new(count, "Thor", 100)))
+            .update(Object::new("job-a", gpus))
             .expect("unconditional write");
-        if count == 2 {
+        if gpus == 2 {
             sleep_ms(5); // the controller starts on the first edit
         }
     }

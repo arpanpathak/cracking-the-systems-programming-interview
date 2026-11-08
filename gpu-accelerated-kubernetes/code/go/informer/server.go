@@ -13,37 +13,16 @@ import (
 )
 
 // ANCHOR: objects
-// GPURequest describes the GPUs a job needs. Count is what the scheduler
-// counts, the nvidia.com/gpu limit; it says nothing about which GPU a unit is,
-// so Product and MemoryGiB name the kind of GPU each unit must be.
-type GPURequest struct {
-	// Count is the number of whole GPUs.
-	Count int
-	// Product is the GPU model, as in the node label nvidia.com/gpu.product.
-	Product string
-	// MemoryGiB is the device memory each GPU must have.
-	MemoryGiB int
-}
-
-// String formats a request as "2 x Thor (100 GiB)", or "none" if it is empty.
-func (r GPURequest) String() string {
-	if r.Count == 0 {
-		return "none"
-	}
-
-	return fmt.Sprintf("%d x %s (%d GiB)", r.Count, r.Product, r.MemoryGiB)
-}
-
 // Spec is the part of an object that a user writes: the desired state.
 type Spec struct {
-	// GPU is what the job asks for.
-	GPU GPURequest
+	// GPUs is the number of GPUs the job asks for.
+	GPUs int
 }
 
 // Status is the part of an object that the controller writes: the observed state.
 type Status struct {
-	// GPU is the request the controller has satisfied; zero until it has.
-	GPU GPURequest
+	// GPUs is the number of GPUs the controller has provided to the job.
+	GPUs int
 }
 
 // Object is one stored record, such as a training job.
@@ -60,8 +39,8 @@ type Object struct {
 
 // String formats an object for the demonstration's log lines.
 func (o Object) String() string {
-	return fmt.Sprintf("%s{spec: %v, status: %v, v%d}",
-		o.Name, o.Spec.GPU, o.Status.GPU, o.ResourceVersion)
+	return fmt.Sprintf("%s{spec.GPUs: %d, status.GPUs: %d, v%d}",
+		o.Name, o.Spec.GPUs, o.Status.GPUs, o.ResourceVersion)
 }
 
 // EventType is the kind of change that an Event records.
