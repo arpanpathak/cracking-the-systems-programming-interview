@@ -1,4 +1,4 @@
-<img class="plate" src="art/ch01-1.svg" alt="Rivet, a beaver in a yellow hard hat, works at a bench in a workshop, fitting a part that glows green.">
+<img class="plate" src="art/ch01-1.svg" alt="Rivet, a beaver in a hard hat, places a glowing GPU chip into an open pea pod. The pod holds 2 more peas shaped like containers, and a tag on the pod reads GpuJob train.">
 
 # 1.1 A GPU job controller on a real cluster
 

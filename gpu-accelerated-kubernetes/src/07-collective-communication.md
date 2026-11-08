@@ -1,4 +1,4 @@
-<img class="plate" src="art/ch07.svg" alt="6 macaws sit side by side on 1 branch in a rainforest, each next to its neighbours.">
+<img class="plate" src="art/ch07.svg" alt="5 parrots of different colours sit on a ring-shaped perch. Each passes a seed to its right-hand neighbour, and the seeds carry the partial sums 1, 3, 6, 10 and 15.">
 
 # 7. Collective communication and training failures
 

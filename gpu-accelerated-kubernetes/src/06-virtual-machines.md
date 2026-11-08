@@ -1,4 +1,4 @@
-<img class="plate" src="art/ch06.svg" alt="Shellby, a hermit crab, crawls across the sand at sunset between shells, with the sea behind.">
+<img class="plate" src="art/ch06.svg" alt="Shellby, a hermit crab, moves from an old shell on the left to a new shell on the right while carrying a stack of memory pages. A thin line of pages already sits in the new shell, and the last few pages fly across.">
 
 # 6. Virtual machines on Kubernetes
 

@@ -1,4 +1,4 @@
-<img class="plate" src="art/ch03.svg" alt="Doc, a basset hound in a white doctor&#x27;s coat, stands in an aisle of a dark data center lit by status lights.">
+<img class="plate" src="art/ch03.svg" alt="Doc, a hound in a white coat, listens to a rack of servers with a stethoscope. A monitor above shows a regular heartbeat line for 2 servers and a flat line for the third, whose lamp is red.">
 
 # 3. Knowing which machines are alive
 

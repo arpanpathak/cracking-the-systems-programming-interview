@@ -1,4 +1,4 @@
-<img class="plate" src="art/intro.svg" alt="Bundle, a white stork, stands on a wooden dock at dusk. Behind it a container ship loaded with stacked containers waits under cargo cranes.">
+<img class="plate" src="art/intro.svg" alt="Bundle, a stork, flies over a harbour at dusk carrying a cloth bundle marked nvidia.com/gpu: 1 towards a container ship. On the dock, a crane lowers a container that holds a glowing GPU chip.">
 
 # Introduction
 
