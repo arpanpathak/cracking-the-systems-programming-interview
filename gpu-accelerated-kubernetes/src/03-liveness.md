@@ -1,3 +1,5 @@
+<img class="plate" src="art/ch03.svg" alt="Doc, a hound in a white coat, listens to a rack of servers with a stethoscope. A monitor above shows a regular heartbeat line for 2 servers and a flat line for the third, whose lamp is red.">
+
 # 3. Knowing which machines are alive
 
 A training job can run on a machine for hours or days. If that machine loses power, or its

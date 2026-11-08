@@ -1,3 +1,5 @@
+<img class="plate" src="art/ch09.svg" alt="3 squirrels sit under 3 trees named shelf, desk and bench. Each holds a slate with a row of 3 numbers. After they compare slates, all 3 rows read 360, 120, 65.">
+
 # 9. Counting across replicas
 
 A GPU platform counts all day. It counts the GPU time each team's jobs have used, so

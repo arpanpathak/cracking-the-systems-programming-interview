@@ -1,5 +1,7 @@
 # Summary
 
+[Cover](cover.md)
+
 [Introduction](introduction.md)
 
 # Kubernetes controllers

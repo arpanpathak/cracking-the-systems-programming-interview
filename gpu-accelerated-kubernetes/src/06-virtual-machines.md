@@ -1,3 +1,5 @@
+<img class="plate" src="art/ch06.svg" alt="Shellby, a hermit crab, moves from an old shell on the left to a new shell on the right while carrying a stack of memory pages. A thin line of pages already sits in the new shell, and the last few pages fly across.">
+
 # 6. Virtual machines on Kubernetes
 
 Every workload so far has run in a container. A container shares the host's kernel, and

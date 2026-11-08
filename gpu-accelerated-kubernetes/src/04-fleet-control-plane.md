@@ -1,3 +1,5 @@
+<img class="plate" src="art/ch04.svg" alt="Sergeant Cone, a raccoon in a police cap, directs traffic at a crossing with a raised paw and a whistle. A traffic light beside it shows green for healthy, amber for cordoned and red for quarantined. A server with a red lamp stands inside a ring of orange cones.">
+
 # 4. A control plane for a fleet of hosts
 
 In chapter 3, we learned how a control plane notices that a machine has gone silent. A

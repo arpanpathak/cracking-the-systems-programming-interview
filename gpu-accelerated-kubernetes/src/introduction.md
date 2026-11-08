@@ -1,3 +1,5 @@
+<img class="plate" src="art/intro.svg" alt="Bundle, a stork, flies over a harbour at dusk carrying a cloth bundle marked nvidia.com/gpu: 1 towards a container ship. On the dock, a crane lowers a container that holds a glowing GPU chip.">
+
 # Introduction
 
 In this book, we will learn about running GPU workloads on Kubernetes and dive deep into

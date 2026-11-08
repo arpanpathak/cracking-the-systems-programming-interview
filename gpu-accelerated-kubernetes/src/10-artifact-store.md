@@ -1,3 +1,5 @@
+<img class="plate" src="art/ch10.svg" alt="Hash, a magpie, perches on a cabinet of small drawers. Every drawer is labelled with the first digits of a sha256 digest, and the magpie drops a shiny chunk into the drawer whose label matches it.">
+
 # 10. A content-addressed artifact store
 
 Before a job can run on a machine, the machine needs two large things: the container

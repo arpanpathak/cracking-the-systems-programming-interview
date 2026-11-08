@@ -1,3 +1,5 @@
+<img class="plate" src="art/ch08.svg" alt="Flock, a sheepdog, herds 5 sheep numbered 1 to 5 together into 1 pen labelled shelf. A second pen labelled desk holds 2 sheep, and a gate stays closed until the whole flock is in.">
+
 # 8. Placing jobs on GPUs
 
 Chapter 7 gave us two facts about a training job that spans several machines. It makes

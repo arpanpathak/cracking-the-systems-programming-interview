@@ -1,3 +1,5 @@
+<img class="plate" src="art/ch05.svg" alt="Badge, a fox in a guard&#x27;s cap, stands at a gate and hands an ID card to a new server that has arrived with a short-lived ticket. The card reads system:node:thor-3.">
+
 # 5. Kubernetes in a new cloud account
 
 So far our cluster has existed before each chapter began. In this chapter, we will look

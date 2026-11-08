@@ -1,3 +1,5 @@
+<img class="plate" src="art/ch11.svg" alt="Chroma, a chameleon, sits on a branch above 3 terminals labelled linux, macos and windows. Each terminal shows the same gpuctl nodes command, and the chameleon&#x27;s colour shifts from green to blue to orange along its body.">
+
 # 11. A command-line tool for Windows, macOS, and Linux
 
 Everything we have built so far runs inside the cluster or next to it, on Linux. The
