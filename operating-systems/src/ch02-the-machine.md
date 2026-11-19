@@ -126,7 +126,7 @@ When the Local APIC or GIC presents an unmasked interrupt vector `v` to a proces
 
 An Interrupt Service Routine (ISR) executes under severe architectural constraints: it runs in **interrupt context** rather than process context. Because an interrupt preempts whichever arbitrary process happened to be running on that core, the ISR has no Process Control Block (`current` points to the interrupted victim task) and **cannot sleep, block on a mutex, or perform voluntary context switches**. Furthermore, while executing with local interrupts masked (`RFLAGS.IF == 0` / `PSTATE.I == 1`), the core is deaf to subsequent hardware interrupts; prolonged execution in an ISR causes packet drops, timer drift, and I/O latency spikes.
 
-To resolve the tension between deterministic low latency and complex protocol processing, modern operating system kernels bifurcate interrupt handling into two distinct phases:
+To reconcile deterministic low latency with complex protocol processing, modern operating system kernels bifurcate interrupt handling into two distinct phases:
 
 1. **Top-Half (`hardirq` Context):**
    - Executes immediately upon hardware vector dispatch with local interrupts disabled on the core.

@@ -27,22 +27,46 @@ A critical constraint of the event loop is the requirement for **non-blocking ex
 {{#include ../code/ch13/poll_echo_server.cpp}}
 ```
 
-**Listing 13-2. The client.**
+**Listing 13-2. The C++20 echo client.**
 
 ```cpp
 {{#include ../code/ch13/echo_client.cpp}}
 ```
 
-**Output 13-1. The log of the server.**
+**Output 13-1. The log of the C++20 server.**
 
 ```text
 {{#include ../code/out/ch13_poll_echo_server.out}}
 ```
 
-**Output 13-2. The first client run. The second run prints the same lines.**
+**Output 13-2. The first C++20 client run. The second run prints the same lines.**
 
 ```text
 {{#include ../code/out/ch13_echo_client_1.out}}
+```
+
+**Listing 13-3. The same single-threaded `poll` echo server in Rust.**
+
+```rust
+{{#include ../code/ch13/poll_echo_server.rs}}
+```
+
+**Listing 13-4. The Rust echo client.**
+
+```rust
+{{#include ../code/ch13/echo_client.rs}}
+```
+
+**Output 13-3. The log of the Rust `poll` server.**
+
+```text
+{{#include ../code/out/ch13_poll_echo_server_rs.out}}
+```
+
+**Output 13-4. The first Rust client run.**
+
+```text
+{{#include ../code/out/ch13_echo_client_1_rs.out}}
 ```
 
 ## 13.3 Complexity and Evolution of Multiplexing Primitives
@@ -51,13 +75,13 @@ The efficiency of the event loop is heavily influenced by the underlying multipl
 
 In contrast, more advanced interfaces like `epoll` and `kqueue` optimize this process by maintaining the interest list within the kernel and returning only the descriptors that have actually become ready. This reduces the complexity of the observation phase to O(ready events), enabling a single thread to efficiently manage hundreds of thousands of concurrent connections. This architectural pattern underpins high-performance networking frameworks such as Nginx, Node.js, and Tokio.
 
-**Listing 13-3. An echo server with one thread per connection, and its client (Rust).**
+**Listing 13-5. Contrast: a thread-per-connection echo server and client (Rust).**
 
 ```rust
 {{#include ../code/ch13/thread_echo.rs}}
 ```
 
-**Output 13-3.**
+**Output 13-5.**
 
 ```text
 {{#include ../code/out/ch13_thread_echo_rs.out}}

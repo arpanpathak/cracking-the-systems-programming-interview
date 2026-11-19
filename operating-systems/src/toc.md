@@ -49,13 +49,26 @@
     - [4.3.2 Language-Level Thread Safety: C++20 vs. Rust 2024](ch04-threads.md#432-language-level-thread-safety-c20-vs-rust-2024)
 - [**5. Scheduling Theory and Policy**](ch05-scheduling.md#5-scheduling-theory-and-policy)
   - [5.1 Scheduling Dynamics and Performance Metrics](ch05-scheduling.md#51-scheduling-dynamics-and-performance-metrics)
-  - [5.2 Fundamental Scheduling Policies (FIFO, SJF, RR, MLFQ)](ch05-scheduling.md#52-fundamental-scheduling-policies)
-  - [5.3 Advanced Heuristics in Production Schedulers (CFS, Priority Inversion)](ch05-scheduling.md#53-advanced-heuristics-in-production-schedulers)
+  - [5.2 Fundamental Scheduling Policies (FCFS, SJF, RR)](ch05-scheduling.md#52-fundamental-scheduling-policies)
+  - [5.3 Proportional-Share Scheduling: Linux CFS and EEVDF](ch05-scheduling.md#53-proportional-share-scheduling-linux-cfs-and-eevdf)
+    - [5.3.1 Virtual Runtime (`vruntime`) Accounting](ch05-scheduling.md#531-virtual-runtime-vruntime-accounting)
+    - [5.3.2 Red-Black Tree Runqueue and the Transition to EEVDF](ch05-scheduling.md#532-red-black-tree-runqueue-and-the-transition-to-eevdf)
+  - [5.4 Priority Inversion and Priority Inheritance Protocols](ch05-scheduling.md#54-priority-inversion-and-priority-inheritance-protocols)
+  - [5.5 Multi-Core Work Stealing, Cache Affinity, and NUMA Domains](ch05-scheduling.md#55-multi-core-work-stealing-cache-affinity-and-numa-domains)
 - [**6. Synchronization and Memory Ordering**](ch06-synchronization.md#6-synchronization-and-memory-ordering)
   - [6.1 Mutual Exclusion and Critical Sections](ch06-synchronization.md#61-mutual-exclusion-and-critical-sections)
   - [6.2 Condition Variables and Predicate-Based Synchronization](ch06-synchronization.md#62-condition-variables-and-predicate-based-synchronization)
   - [6.3 Deadlock: Causes and Prevention (Coffman Conditions)](ch06-synchronization.md#63-deadlock-causes-and-prevention)
-  - [6.4 Memory Ordering and Visibility (Acquire/Release vs. SeqCst)](ch06-synchronization.md#64-memory-ordering-and-visibility)
+  - [6.4 Atomic Compare-And-Swap (`compare_exchange` vs. `compare_exchange_weak`)](ch06-synchronization.md#64-atomic-compare-and-swap-compare_exchange-vs-compare_exchange_weak)
+    - [6.4.1 Semantics of the Atomic Read-Modify-Write](ch06-synchronization.md#641-semantics-of-the-atomic-read-modify-write)
+    - [6.4.2 Hardware Realization: x86-64 `LOCK CMPXCHG` vs. ARM64 LL/SC](ch06-synchronization.md#642-hardware-realization-x86-64-lock-cmpxchg-vs-arm64-llsc)
+  - [6.5 Hardware Memory Ordering, Store Buffers, and Litmus Tests](ch06-synchronization.md#65-hardware-memory-ordering-store-buffers-and-litmus-tests)
+    - [6.5.1 Microarchitectural Origins of Memory Reordering](ch06-synchronization.md#651-microarchitectural-origins-of-memory-reordering)
+    - [6.5.2 Hardware Litmus Tests: Store Buffering vs. Message Passing](ch06-synchronization.md#652-hardware-litmus-tests-store-buffering-vs-message-passing)
+    - [6.5.3 Complete Reference Table of C++20 and Rust 2024 Memory Orderings](ch06-synchronization.md#653-complete-reference-table-of-c20-and-rust-2024-memory-orderings)
+  - [6.6 Synchronization Beneath the Primitives: Futexes and Seqlocks](ch06-synchronization.md#66-synchronization-beneath-the-primitives-futexes-and-seqlocks)
+    - [6.6.1 Fast Userspace Mutexes (`futex` on Linux / `__ulock` on Darwin)](ch06-synchronization.md#661-fast-userspace-mutexes-futex-on-linux--__ulock-on-darwin)
+    - [6.6.2 Sequence Locks (`Seqlock`) for Read-Mostly Kernel Data](ch06-synchronization.md#662-sequence-locks-seqlock-for-read-mostly-kernel-data)
 
 ---
 
@@ -179,16 +192,6 @@
 
 ---
 
-### Appendices
-- [**Appendix A. The Verification Harness**](appendix-a-harness.md#appendix-a-the-verification-harness)
-  - [A.1 The Environment](appendix-a-harness.md#a1-the-environment)
-  - [A.2 How the Script Works](appendix-a-harness.md#a2-how-the-script-works)
-  - [A.3 Running the Listings](appendix-a-harness.md#a3-running-the-listings)
-  - [A.4 Target Inventory](appendix-a-harness.md#a4-inventory)
-- [**Appendix B. Further Reading**](appendix-b-reading.md#appendix-b-further-reading)
-
----
-
 ## Part II: Systems Subject & Keyword Index
 
 A thematic, alphabetical cross-reference linking systems topics directly to their foundational derivation and practical implementation.
@@ -198,7 +201,7 @@ A thematic, alphabetical cross-reference linking systems topics directly to thei
   - Ontological Derivation: [§1.2](ch01-what-is-an-os.md#12-axiomatic-roles-abstraction-isolation-and-resource-management)
   - Device Independence: [§1.1](ch01-what-is-an-os.md#11-architectural-limitations-of-bare-metal-execution)
 - **Acquire-Release Semantics** — Synchronizes shared memory between threads without the heavy hardware penalty of full sequential consistency fences.
-  - Theory & Memory Models: [§6.4](ch06-synchronization.md#64-memory-ordering-and-visibility)
+  - Theory & Memory Models: [§6.5](ch06-synchronization.md#65-hardware-memory-ordering-store-buffers-and-litmus-tests)
   - Lock-Free SPSC Application: [§19.4.1](ch19-interview-problems.md#1941-architectural-model-and-single-writer-principle)
 - **Address Space Layout** — Virtual memory organization across text, data, BSS, heap, memory-mapped regions, and user stack.
   - Process Memory Topology: [§3.1](ch03-processes.md#31-the-process-control-block-and-address-space-topology)
@@ -221,7 +224,7 @@ A thematic, alphabetical cross-reference linking systems topics directly to thei
   - Concurrency Hazards: [§4.2](ch04-threads.md#42-atomicity-and-the-resolution-of-data-races)
 - **Atomics (Memory Models)** — Load and store instructions providing hardware memory synchronization guarantees.
   - Core Primitive Taxonomy: [§4.2](ch04-threads.md#42-atomicity-and-the-resolution-of-data-races)
-  - Memory Ordering Guarantees: [§6.4](ch06-synchronization.md#64-memory-ordering-and-visibility)
+  - Memory Ordering Guarantees: [§6.5](ch06-synchronization.md#65-hardware-memory-ordering-store-buffers-and-litmus-tests)
   - Lock-Free Queue Invariants: [§19.4](ch19-interview-problems.md#194-the-lock-free-single-producer-single-consumer-ring-buffer)
 
 ### B
@@ -310,7 +313,7 @@ A thematic, alphabetical cross-reference linking systems topics directly to thei
   - Axiomatic Separation: [§1.3](ch01-what-is-an-os.md#13-mechanism-versus-policy-separation)
   - Scheduling Dynamics: [§5.1](ch05-scheduling.md#51-scheduling-dynamics-and-performance-metrics)
 - **Memory Fences & Ordering** — CPU instructions constraining the reordering of loads and stores across memory buses.
-  - Theoretical Derivation: [§6.4](ch06-synchronization.md#64-memory-ordering-and-visibility)
+  - Theoretical Derivation: [§6.5](ch06-synchronization.md#65-hardware-memory-ordering-store-buffers-and-litmus-tests)
 - **Multi-Level Page Tables** — Tree-structured hierarchical address translation enabling sparse virtual address spaces without wasting physical RAM.
   - Radix Tree Architecture: [§7.2](ch07-virtual-memory.md#72-hierarchical-translation-and-the-tlb)
   - Page Fault Resolution: [§19.12.6](ch19-interview-problems.md#19126-virtual-memory-architecture-and-page-fault-resolution)
@@ -326,7 +329,7 @@ A thematic, alphabetical cross-reference linking systems topics directly to thei
 - **POSIX Standard Interface** — Standardized system call boundary unifying process management, file I/O, virtual memory, and IPC across UNIX-like systems.
   - Core API Taxonomy: [§1.4](ch01-what-is-an-os.md#14-the-system-call-boundary-and-posix-standard-interface)
 - **Priority Inversion** — Scheduling hazard where a high-priority thread blocks on a resource held by a low-priority thread.
-  - Priority Inheritance Solutions: [§5.3](ch05-scheduling.md#53-advanced-heuristics-in-production-schedulers)
+  - Priority Inheritance Solutions: [§5.4](ch05-scheduling.md#54-priority-inversion-and-priority-inheritance-protocols)
 - **Process Control Block (PCB)** — Kernel data structure maintaining architectural register state, page tables, and file descriptors.
   - Topology & Management: [§3.1](ch03-processes.md#31-the-process-control-block-and-address-space-topology)
   - Process Isolation: [§19.12.1](ch19-interview-problems.md#19121-process-isolation-vs-thread-concurrency-topology)

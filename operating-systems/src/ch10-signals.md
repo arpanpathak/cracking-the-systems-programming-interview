@@ -59,3 +59,15 @@ To avoid the loss of information due to the non-accumulative nature of the pendi
 ```text
 {{#include ../code/out/ch10_sigchld.out}}
 ```
+
+**Listing 10-4. The same SIGCHLD reaping sequence in Rust.**
+
+```rust
+{{#include ../code/ch10/sigchld.rs}}
+```
+
+**Output 10-4.**
+
+```text
+{{#include ../code/out/ch10_sigchld_rs.out}}
+```

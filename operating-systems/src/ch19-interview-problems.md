@@ -383,7 +383,7 @@ The central challenge of an LRU cache is achieving strict O(1) time complexity f
 <img src="figures/ch19_lru_cache.svg" alt="LRU cache: hash table indexing into a doubly linked recency chain."/>
 </figure>
 
-The LRU cache resolves this tension through structural composition: a hash map whose values are direct pointers (or iterators) referencing nodes within a doubly linked list. The linked list stores the actual key-value pairs, while the hash map provides instantaneous O(1) index access into the list.
+The LRU cache reconciles these dual complexity constraints through structural composition: a hash map whose values are direct pointers (or iterators) referencing nodes within a doubly linked list. The linked list stores the actual key-value pairs, while the hash map provides instantaneous O(1) index access into the list.
 
 ### 19.6.2 State Invariants and Access Dynamics
 

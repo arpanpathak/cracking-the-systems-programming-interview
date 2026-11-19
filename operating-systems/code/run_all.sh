@@ -38,7 +38,7 @@ for f in \
     ch03/layout ch03/fork \
     ch04/threads ch04/race ch04/race_atomic \
     ch05/sched_sim \
-    ch06/mutex_counter ch06/prodcons ch06/deadlock ch06/trylock \
+    ch06/mutex_counter ch06/prodcons ch06/deadlock ch06/trylock ch06/cas_ordering \
     ch07/pagesize ch07/mmap_file ch07/tlb \
     ch08/bump ch08/free_list \
     ch09/syscall_cost ch09/write_buffered \
@@ -58,11 +58,12 @@ done
 # Rust listings that need libc
 for f in \
     ch03/fork \
-    ch07/pagesize \
+    ch07/pagesize ch07/mmap_file ch07/tlb \
     ch08/bump ch08/free_list \
     ch09/syscall_cost ch09/write_buffered \
-    ch10/signals \
-    ch11/pipe \
+    ch10/signals ch10/sigchld \
+    ch11/pipe ch11/shm_counter ch11/socketpair \
+    ch13/poll_echo_server \
     ch15/daemon ch15/kqueue_supervisor \
     ch19/mini_pipeline; do
     rs_libc "$f.rs"
@@ -73,9 +74,9 @@ for f in \
     ch03/layout \
     ch04/threads ch04/race ch04/race_atomic \
     ch05/sched_sim \
-    ch06/mutex_counter ch06/prodcons \
+    ch06/mutex_counter ch06/prodcons ch06/deadlock ch06/trylock ch06/cas_ordering \
     ch12/files ch12/sparse \
-    ch13/thread_echo \
+    ch13/thread_echo ch13/echo_client \
     ch14/udp ch14/to_socket_addrs \
     ch17/false_sharing \
     ch18/cache_bench \
@@ -106,8 +107,11 @@ run out/mutex_counter_rs.bin ch06_mutex_rs
 run out/prodcons.bin ch06_prodcons
 run out/prodcons_rs.bin ch06_prodcons_rs
 run out/trylock.bin ch06_trylock
+run out/trylock_rs.bin ch06_trylock_rs
+run out/cas_ordering.bin ch06_cas_ordering
+run out/cas_ordering_rs.bin ch06_cas_ordering_rs
 
-# deadlock.cpp is expected to hang; detect and kill it.
+# deadlock.cpp and deadlock.rs are expected to hang; detect and kill them.
 out/deadlock.bin > out/ch06_deadlock.out 2>&1 &
 DPID=$!
 sleep 1
@@ -119,10 +123,23 @@ else
     echo "harness: process exited on its own - no deadlock" >> out/ch06_deadlock.out
 fi
 
+out/deadlock_rs.bin > out/ch06_deadlock_rs.out 2>&1 &
+DPID=$!
+sleep 1
+if kill -0 "$DPID" 2>/dev/null; then
+    echo "harness: process still alive after 1 s - deadlocked (killed)" \
+        >> out/ch06_deadlock_rs.out
+    kill -9 "$DPID"
+else
+    echo "harness: process exited on its own - no deadlock" >> out/ch06_deadlock_rs.out
+fi
+
 run out/pagesize.bin ch07_pagesize
 run out/pagesize_rs.bin ch07_pagesize_rs
 run out/mmap_file.bin ch07_mmap_file
+run out/mmap_file_rs.bin ch07_mmap_file_rs
 run out/tlb.bin ch07_tlb
+run out/tlb_rs.bin ch07_tlb_rs
 
 run out/bump.bin ch08_bump
 run out/bump_rs.bin ch08_bump_rs
@@ -137,11 +154,14 @@ run out/write_buffered_rs.bin ch09_write_buffered_rs
 run out/signals.bin ch10_signals
 run out/signals_rs.bin ch10_signals_rs
 run out/sigchld.bin ch10_sigchld
+run out/sigchld_rs.bin ch10_sigchld_rs
 
 run out/pipe.bin ch11_pipe
 run out/pipe_rs.bin ch11_pipe_rs
 run out/shm_counter.bin ch11_shm_counter
+run out/shm_counter_rs.bin ch11_shm_counter_rs
 run out/socketpair.bin ch11_socketpair
+run out/socketpair_rs.bin ch11_socketpair_rs
 
 run out/files.bin ch12_files
 run out/files_rs.bin ch12_files_rs
@@ -154,6 +174,13 @@ SPID=$!
 sleep 0.4
 run out/echo_client.bin ch13_echo_client_1
 run out/echo_client.bin ch13_echo_client_2
+wait "$SPID" || true
+
+out/poll_echo_server_rs.bin > out/ch13_poll_echo_server_rs.out 2>&1 &
+SPID=$!
+sleep 0.4
+run out/echo_client_rs.bin ch13_echo_client_1_rs
+run out/echo_client_rs.bin ch13_echo_client_2_rs
 wait "$SPID" || true
 
 run out/thread_echo_rs.bin ch13_thread_echo_rs

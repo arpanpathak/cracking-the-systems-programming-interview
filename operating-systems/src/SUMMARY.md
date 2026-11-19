@@ -23,5 +23,3 @@
 - [17. Multiprocessor Systems and Hardware Accelerators](ch17-multiprocessors.md)
 - [18. Performance Analysis and Observability](ch18-performance.md)
 - [19. Systems Interview Problems: Derivations and Reference Implementations](ch19-interview-problems.md)
-- [Appendix A. The Verification Harness](appendix-a-harness.md)
-- [Appendix B. Further Reading](appendix-b-reading.md)

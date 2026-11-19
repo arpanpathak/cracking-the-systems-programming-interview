@@ -162,14 +162,38 @@ This flexibility also allows for the implementation of **guard pages**, unmapped
 {{#include ../code/out/ch07_mmap_file.out}}
 ```
 
-**Listing 7-4. One access per page, for a growing number of pages (C++20).**
+**Listing 7-4. The same file-mapping comparison in Rust, using the libc crate.**
+
+```rust
+{{#include ../code/ch07/mmap_file.rs}}
+```
+
+**Output 7-4.**
+
+```text
+{{#include ../code/out/ch07_mmap_file_rs.out}}
+```
+
+**Listing 7-5. One access per page, for a growing number of pages (C++20).**
 
 ```cpp
 {{#include ../code/ch07/tlb.cpp}}
 ```
 
-**Output 7-4. One run on the verification machine.**
+**Output 7-5. One run on the verification machine.**
 
 ```text
 {{#include ../code/out/ch07_tlb.out}}
+```
+
+**Listing 7-6. The same TLB working-set sweep in Rust.**
+
+```rust
+{{#include ../code/ch07/tlb.rs}}
+```
+
+**Output 7-6.**
+
+```text
+{{#include ../code/out/ch07_tlb_rs.out}}
 ```

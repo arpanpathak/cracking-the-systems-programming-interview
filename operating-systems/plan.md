@@ -59,7 +59,10 @@ filler_patterns = [
     r"\bbasically\b", r"\bunder the hood\b", r"\bsort of\b",
     r"\bkind of\b", r"\bpretty much\b", r"\bin a nutshell\b",
     r"\bstuff\b", r"\bhandy\b", r"\bneat\b",
-    r"\bsenior\b", r"\bjunior\b", r"\bnaive\b"
+    r"\bsenior\b", r"\bjunior\b", r"\bnaive\b",
+    r"\btension\b", r"\bdilemma\b", r"\bflavor\b", r"\bcurtain\b",
+    r"\bin a vacuum\b", r"\bburning power\b", r"\bgamed\b",
+    r"\bhappens to\b", r"\bright in time\b", r"\bnotice why\b"
 ]
 
 errors = []
@@ -144,30 +147,28 @@ else:
 
 Each of the following phases addresses a major systems gap identified in our architectural analysis. **Execute one phase per iteration**, followed by the Prose & SVG Geometry Audit, Headless Chrome PNG inspection of any new diagrams, `./code/run_all.sh`, `mdbook build`, `./scripts/generate_pdf.sh`, and a clean Git commit.
 
-### Phase 6: Production CPU Scheduling — CFS `vruntime`, EEVDF, and Priority Inversion (Chapter 5)
-- [ ] **Objective**: Expand Chapter 5 from classic textbook policies (FCFS, SJF, RR) to modern production kernel schedulers and real-time concurrency hazards.
-- [ ] **Proportional-Share & Linux Completely Fair Scheduler (CFS) / EEVDF**:
+### Phase 6: Production CPU Scheduling — CFS `vruntime`, EEVDF, and Priority Inversion (Chapter 5) — [COMPLETED & AUDITED]
+- [x] **Objective**: Expand Chapter 5 from classic textbook policies (FCFS, SJF, RR) to modern production kernel schedulers and real-time concurrency hazards.
+- [x] **Proportional-Share & Linux Completely Fair Scheduler (CFS) / EEVDF**:
   - Derive **Virtual Runtime (`vruntime`)** weighted by nice value (`weight_0 / weight_i`), tracking physical execution time in nanoseconds.
   - Explain the **Red-Black Tree** runqueue (`rb_leftmost` O(1) cached minimum `vruntime` pointer), dynamic scheduling latency, and `min_granularity` preemption floor, plus the transition to **EEVDF** (Earliest Eligible Virtual Deadline First) for latency-critical tasks.
-- [ ] **Priority Inversion and Priority Inheritance / Ceiling Protocols**:
+- [x] **Priority Inversion and Priority Inheritance / Ceiling Protocols**:
   - Formalize the unbounded **Priority Inversion** hazard (the Mars Pathfinder failure mode: Low-priority thread `T_L` holds mutex `M`; High-priority thread `T_H` blocks on `M`; Medium-priority CPU-bound thread `T_M` preempts `T_L` indefinitely).
   - Derive **Priority Inheritance** (`PTHREAD_PRIO_INHERIT`, boosting `T_L` to `T_H`'s effective priority while holding `M`) and **Priority Ceiling** protocols.
-- [ ] **Multi-Core Load Balancing & Cache Affinity**:
+- [x] **Multi-Core Load Balancing & Cache Affinity**:
   - Per-CPU runqueues, work-stealing migration costs (L1/L2 cache warmth loss vs. core idle utilization), and NUMA scheduling domains.
-- [ ] **Vector Diagram**: Implement `ch05_cfs_priority_inversion()` in `tools/draw_figures.py` showing the CFS Red-Black Tree `vruntime` timeline alongside a Priority Inversion / Priority Inheritance rescue timeline, and visually audit via Headless Chrome.
-- [ ] **Poorly Written Appendix:** Rewrite Appendices A & B in formal, high-quality Computer Science English.
+- [x] **Vector Diagrams**: Implemented dedicated full-width `ch05_cfs_vruntime()` and `ch05_priority_inversion()` in `tools/draw_figures.py` and visually audited via Headless Chrome.
+- [x] **Appendix Removal & Material Design Code Tabs**: Removed redundant Appendices A & B (`appendix-a-harness.md`, `appendix-b-reading.md`), implemented global Material Design tabbed code cards (`C++20` | `Rust 2024`) with synced language preference and print-mode expansion, and achieved 100% C++20/Rust 2024 parity across Chapters 6, 7, 10, 11, and 13.
 
-### Phase 7: Synchronization Beneath the Primitives — Futexes, Seqlocks, and Hardware Litmus Tests (Chapter 6)
-- [ ] **Objective**: Reveal the kernel and microarchitectural mechanisms that implement user-space mutexes, reader-writer locks, and memory barriers in Chapter 6.
-- [ ] **Fast Userspace Mutexes (`futex` on Linux / `__ulock` on Darwin)**:
-  - Derive the two-path architecture of modern `std::mutex` / `pthread_mutex_t`:
-    1. **Uncontended Fast Path (User Mode Ring 3):** A single atomic Compare-And-Swap (`CAS`, `0 -> 1`) acquires the lock in ~5 ns with **zero system calls**.
-    2. **Contended Slow Path (Kernel Trap Ring 0):** Transitions lock state to `2` (contended) and invokes `futex(addr, FUTEX_WAIT, 2)`. The kernel atomically verifies `*addr == 2` before parking the TCB in the futex hash bucket wait queue, preventing lost wakeups between user-space check and kernel sleep.
-- [ ] **Sequence Locks (`Seqlock`) and Read-Copy-Update (RCU) Concepts**:
-  - Explain how a **Seqlock** eliminates reader-writer contention for read-mostly data (e.g., kernel system time `vdso`): writers increment a sequence counter to an odd number before mutation and to an even number after (`memory_order_release`); readers check that the sequence counter is even and unchanged before and after reading (`memory_order_acquire`), retrying without ever blocking writers or dirtying the cache line.
-- [ ] **Hardware Memory Reordering Litmus Tests (Store Buffers & Invalidation Queues)**:
-  - Provide the formal **Store-Buffering (SB)** and **Message-Passing (MP)** litmus tests explaining why x86-64 Total Store Order (TSO) permits `Store-Load` reordering (`r1 == 0 && r2 == 0` via per-core FIFO Store Buffers) while ARM64 weak ordering permits `Store-Store` and `Load-Load` reordering without explicit `dmb ish` / `ldar` / `stlr` barriers.
-- [ ] **Vector Diagram**: Implement `ch06_futex_litmus()` in `tools/draw_figures.py` illustrating the Futex fast/slow path state machine and the Store-Buffer reordering datapath, and visually audit via Headless Chrome.
+### Phase 7: Synchronization Beneath the Primitives — CAS, Futexes, Seqlocks, and Hardware Litmus Tests (Chapter 6) — [COMPLETED & AUDITED]
+- [x] **Objective**: Reveal the kernel and microarchitectural mechanisms that implement user-space mutexes, CAS loops, seqlocks, and memory barriers in Chapter 6.
+- [x] **Atomic Compare-And-Swap (`compare_exchange` vs. `compare_exchange_weak`)**:
+  - Derived x86-64 `LOCK CMPXCHG` vs. ARM64 Load-Linked / Store-Conditional (`LDXR` / `STXR`) exclusive reservation monitors and spurious failure semantics.
+- [x] **Fast Userspace Mutexes (`futex` on Linux / `__ulock` on Darwin)**:
+  - Derived the 3-state fast/slow-path architecture (`0 = Unlocked`, `1 = Locked Uncontended`, `2 = Locked Contended`).
+- [x] **Sequence Locks (`Seqlock`) and Hardware Memory Reordering Litmus Tests (Store Buffers & Invalidation Queues)**:
+  - Derived Store-Buffering (SB) vs. Message-Passing (MP) litmus tests across x86-64 TSO and ARM64 weak ordering, verified with `code/ch06/cas_ordering.cpp` and `code/ch06/cas_ordering.rs`.
+- [x] **Vector Diagrams**: Implemented 4 dedicated full-width diagrams (`ch06_cas_llsc`, `ch06_store_buffer_litmus`, `ch06_futex_automaton`, `ch06_seqlock`) in `tools/draw_figures.py` and visually audited all four via Headless Chrome.
 
 ### Phase 8: Production Allocator Architecture, `mmap` Thresholds, and Lock-Free Reclamation (Chapter 8)
 - [ ] **Objective**: Bridge the gap between Chapter 8's educational free-list allocator and production multi-threaded allocators (`jemalloc`, `tcmalloc`, `mimalloc`).

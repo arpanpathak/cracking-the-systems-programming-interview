@@ -8,7 +8,7 @@ To transition from a terminal-bound process to a fully independent daemon in a s
 
 1. **Session Decoupling (First Fork):** The process calls `fork`, allowing the parent to exit and returning control to the shell. This places the child in the background.
 2. **Session Leadership (setsid):** The child invokes `setsid` to establish a new session. This creates a new session with the child as its leader and, crucially, detaches the process from its original controlling terminal.
-3. **Terminal Prevention (Second Fork):** A second `fork` is performed to ensure the resulting grandchild is not a session leader. This prevents the process from inadvertently acquiring a new controlling terminal if it happens to open a terminal device.
+3. **Terminal Prevention (Second Fork):** A second `fork` is performed to ensure the resulting grandchild is not a session leader. This prevents the process from inadvertently acquiring a new controlling terminal should it subsequently open a terminal device.
 4. **Environment Sanitization:** The process redirects its standard input, output, and error streams to `/dev/null` or a log file, changes its working directory to the root (`/`) to avoid pinning a mounted filesystem, and sets its `umask` to ensure predictable file permissions. Finally, it records its Process ID (PID) in a **pidfile** to facilitate external management.
 
 <figure>

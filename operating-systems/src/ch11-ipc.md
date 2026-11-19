@@ -61,20 +61,44 @@ However, the removal of kernel-mediated buffering places the burden of synchroni
 {{#include ../code/out/ch11_shm_counter.out}}
 ```
 
+**Listing 11-4. The same process-shared mutex counter in Rust.**
+
+```rust
+{{#include ../code/ch11/shm_counter.rs}}
+```
+
+**Output 11-4.**
+
+```text
+{{#include ../code/out/ch11_shm_counter_rs.out}}
+```
+
 ## 11.3 Bidirectional Channels: Socket Pairs
 
 A socket pair provides a full-duplex (bidirectional) communication channel between related processes. Unlike a pipe, which is strictly unidirectional, a socket pair creates two connected descriptors that allow for simultaneous two-way data exchange. This mechanism is widely used for implementing command-and-reply protocols between a controlling shell and its child processes.
 
-**Listing 11-4. A two-way channel between parent and child (C++20).**
+**Listing 11-5. A two-way channel between parent and child (C++20).**
 
 ```cpp
 {{#include ../code/ch11/socketpair.cpp}}
 ```
 
-**Output 11-4. Each process sends one message and receives the other.**
+**Output 11-5. Each process sends one message and receives the other.**
 
 ```text
 {{#include ../code/out/ch11_socketpair.out}}
+```
+
+**Listing 11-6. The same bidirectional socketpair in Rust.**
+
+```rust
+{{#include ../code/ch11/socketpair.rs}}
+```
+
+**Output 11-6.**
+
+```text
+{{#include ../code/out/ch11_socketpair_rs.out}}
 ```
 
 ## 11.4 Comparative Analysis of IPC Mechanisms

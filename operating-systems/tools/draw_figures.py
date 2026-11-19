@@ -899,6 +899,139 @@ def ch05_gantt():
     ])
 
 
+@figure
+def ch05_cfs_vruntime():
+    fig = Fig("ch05_cfs_vruntime", "Figure 5-3. Linux CFS Red-Black Tree Runqueue and Weighted Virtual Runtime Accounting", 392)
+
+    # Left: Red-Black Tree Structure (x=28..452, w=424)
+    fig.node(28, 12, 424, 362, "blue", kind="tonal", r=12)
+    fig.tile(42, 22, "call_split", "blue", 26)
+    fig.text(76, 36, "Per-Core Red-Black Tree Runqueue", "name", fit=(76, 440))
+    fig.text(76, 52, "Ordered strictly ascending by virtual runtime (vruntime)", "small", fit=(76, 440))
+
+    root = fig.cell(168, 72, 146, 52, "blue", [
+        ("Task B (nice 0)", "name"),
+        ("vruntime: 14.0 ms", "mono"),
+    ], kind="card", r=8)
+
+    left_ch = fig.cell(44, 162, 168, 56, "green", [
+        ("Task A (nice -10)", "name"),
+        ("vruntime: 9.8 ms", "mono"),
+    ], kind="card", r=8)
+
+    right_ch = fig.cell(264, 162, 172, 56, "amber", [
+        ("Task C (nice +10)", "name"),
+        ("vruntime: 21.5 ms", "mono"),
+    ], kind="card", r=8)
+
+    fig.wire([(root.cx - 24, root.b + 2), (left_ch.cx + 12, left_ch.y - 2)], "green", width=2.2)
+    fig.wire([(root.cx + 24, root.b + 2), (right_ch.cx - 12, right_ch.y - 2)], "amber", width=2.2)
+
+    leftmost = fig.cell(44, 250, 168, 48, "green", [
+        ("rb_leftmost pointer", "monob"),
+        ("O(1) next-task dispatch", "small"),
+    ], kind="mid", r=8)
+    fig.wire([(leftmost.cx, leftmost.y - 2), (left_ch.cx, left_ch.b + 2)], "green", width=2.2)
+
+    fig.cell(236, 250, 200, 48, "purple", [
+        ("EEVDF Virtual Deadline", "name"),
+        ("d = vruntime + slice / w", "mono"),
+    ], kind="card", r=8)
+
+    fig.cell(44, 314, 392, 46, "blue", [
+        ("Enqueue / Re-insert: O(log N)  |  Pick Next: O(1)", "mono"),
+        ("Minimum execution floor (min_granularity) prevents cache thrashing", "small"),
+    ], kind="card", r=8)
+
+    # Right: Worked Numerical Example (x=476..772, w=296)
+    fig.node(476, 12, 296, 362, "teal", kind="tonal", r=12)
+    fig.tile(490, 22, "schedule", "teal", 26)
+    fig.text(524, 36, "Same 4 ms Physical Slice", "name", fit=(524, 760))
+    fig.text(524, 52, "Δvruntime = Δexec × (1024 / w)", "mono", fit=(524, 760))
+
+    fig.cell(492, 74, 264, 82, "green", [
+        ("High Priority (nice -10)", "name"),
+        ("weight = 9,548 (~9.3× base)", "small"),
+        ("Δvruntime = 4 × (1024 / 9548)", "mono"),
+        ("= +0.43 ms  (stays leftmost)", "monob"),
+    ], kind="card", r=8)
+
+    fig.cell(492, 174, 264, 82, "blue", [
+        ("Baseline Priority (nice 0)", "name"),
+        ("weight = 1,024 (1.0× base)", "small"),
+        ("Δvruntime = 4 × (1024 / 1024)", "mono"),
+        ("= +4.00 ms  (1:1 wall time)", "monob"),
+    ], kind="card", r=8)
+
+    fig.cell(492, 274, 264, 82, "amber", [
+        ("Batch Priority (nice +10)", "name"),
+        ("weight = 110 (~0.11× base)", "small"),
+        ("Δvruntime = 4 × (1024 / 110)", "mono"),
+        ("= +37.2 ms  (moves far right)", "monob"),
+    ], kind="card", r=8)
+
+    fig.save([
+        "Because higher-priority tasks possess larger weights, their virtual runtime advances slowly, keeping them near rb_leftmost.",
+        "Linux 6.6 EEVDF pairs eligibility lag with virtual deadlines so short latency-sensitive tasks preempt long compute bursts.",
+    ])
+
+
+@figure
+def ch05_priority_inversion():
+    fig = Fig("ch05_priority_inversion", "Figure 5-4. Unbounded Priority Inversion vs. Priority Inheritance Protocol Timeline", 386)
+
+    # Top Timeline: Unbounded Priority Inversion Hazard (y=12..182)
+    fig.node(28, 12, 744, 172, "red", kind="tonal", r=12)
+    fig.tile(42, 22, "warning", "red", 24)
+    fig.text(74, 35, "Scenario A: Unbounded Priority Inversion (No Inheritance — Mars Pathfinder Failure Mode)", "name", fit=(74, 760))
+
+    lanes_a = [("T_High", 62, "red"), ("T_Med", 100, "amber"), ("T_Low", 138, "blue")]
+    for label, ly, tone in lanes_a:
+        fig.text(42, ly + 17, label, "monob", tone=tone, fit=(40, 102))
+        fig.rule(108, ly + 13, 754, ly + 13, "gray", width=1.0, dash="3 3")
+
+    # T_Low acquires M at t=0..2
+    fig.cell(112, 136, 90, 26, "blue", [("holds M", "small")], kind="mid", r=6)
+    # T_High wakes at t=2, tries M, blocks!
+    fig.cell(204, 60, 74, 26, "red", [("lock(M)", "small")], kind="card", r=6)
+    fig.rect(282, 60, 286, 26, "paper", r=6)
+    fig.cell(282, 60, 286, 26, "red", [("BLOCKED on M (preempted by T_Med)", "small")], kind="dashed", r=6)
+    # T_Med wakes at t=3, preempts T_Low for an unbounded duration!
+    fig.cell(282, 98, 224, 26, "amber", [("T_Med preempts T_Low (CPU-bound)", "small")], kind="mid", r=6)
+    # Finally T_Med finishes, T_Low resumes and unlocks M
+    fig.cell(508, 136, 62, 26, "blue", [("unlock", "small")], kind="mid", r=6)
+    # T_High finally runs
+    fig.cell(572, 60, 178, 26, "green", [("T_High runs (severe delay)", "small")], kind="mid", r=6)
+
+    # Bottom Timeline: Priority Inheritance Rescue (y=202..372)
+    fig.node(28, 202, 744, 172, "green", kind="tonal", r=12)
+    fig.tile(42, 212, "shield", "green", 24)
+    fig.text(74, 225, "Scenario B: Priority Inheritance (PTHREAD_PRIO_INHERIT / FUTEX_LOCK_PI)", "name", fit=(74, 760))
+
+    lanes_b = [("T_High", 252, "green"), ("T_Med", 290, "amber"), ("T_Low", 328, "blue")]
+    for label, ly, tone in lanes_b:
+        fig.text(42, ly + 17, label, "monob", tone=tone, fit=(40, 102))
+        fig.rule(108, ly + 13, 754, ly + 13, "gray", width=1.0, dash="3 3")
+
+    # T_Low holds M
+    fig.cell(112, 326, 90, 26, "blue", [("holds M", "small")], kind="mid", r=6)
+    # T_High blocks on M -> boosts T_Low!
+    fig.cell(204, 250, 74, 26, "amber", [("lock(M)", "small")], kind="card", r=6)
+    fig.rect(282, 250, 112, 26, "paper", r=6)
+    fig.cell(282, 250, 112, 26, "gray", [("bounded wait", "small")], kind="dashed", r=6)
+    # T_Low boosted to prio(T_High), finishes critical section immediately while T_Med stays runnable
+    fig.cell(282, 326, 112, 26, "green", [("boosted → unlock", "small")], kind="mid", r=6)
+    # T_High acquires M immediately and finishes!
+    fig.cell(396, 250, 152, 26, "green", [("T_High acquires M & runs", "small")], kind="mid", r=6)
+    # T_Med runs only AFTER T_High completes
+    fig.cell(550, 288, 200, 26, "amber", [("T_Med runs after T_High finishes", "small")], kind="mid", r=6)
+
+    fig.save([
+        "Without priority inheritance, an unrelated medium-priority thread prevents the low-priority lock owner from releasing M.",
+        "With priority inheritance, blocking on M temporarily donates T_High's priority to T_Low, bounding T_High's wait time.",
+    ])
+
+
 # ---------------------------------------------------------------- Chapter 6
 
 @figure
@@ -955,6 +1088,319 @@ def ch06_deadlock():
     fig.save([
         "A deadlock needs four conditions: mutual exclusion, hold and wait, no preemption, and circular wait.",
         "Removing one condition prevents the deadlock. Listing 6-6 removes hold and wait with try_lock.",
+    ])
+
+
+@figure
+def ch06_cas_llsc():
+    fig = Fig("ch06_cas_llsc", "Figure 6-3. Compare-And-Swap Realization: x86-64 LOCK CMPXCHG vs. ARM64 LL/SC Reservation Monitor", 408)
+
+    # Top container: x86-64 LOCK CMPXCHG (y=12..152)
+    fig.node(28, 12, 744, 140, "blue", kind="tonal", r=12)
+    fig.tile(42, 22, "memory", "blue", 24)
+    fig.text(74, 35, "x86-64: Single-Instruction Atomic CAS (LOCK CMPXCHG)", "name", fit=(74, 760))
+    fig.text(74, 50, "Micro-coded instruction locks the 64-byte cache line in MESI Modified (M) state throughout RMW", "small", fit=(74, 760))
+
+    x_a = fig.cell(44, 66, 208, 72, "blue", [
+        ("1. Load Expected", "name"),
+        ("RAX = expected (5)", "mono"),
+        ("RDX = desired  (6)", "mono"),
+    ], kind="card", r=8)
+
+    x_b = fig.cell(286, 66, 228, 72, "amber", [
+        ("2. LOCK CMPXCHG", "name"),
+        ("Compare [mem] == RAX", "mono"),
+        ("Zero spurious failures", "small"),
+    ], kind="card", r=8)
+
+    x_c = fig.cell(548, 66, 208, 72, "green", [
+        ("3. Commit or Reload", "name"),
+        ("ZF=1 → [mem]=6 (Ok)", "mono"),
+        ("ZF=0 → RAX=[mem] (Err)", "mono"),
+    ], kind="card", r=8)
+
+    fig.wire([(x_a.r + 2, 102), (x_b.x - 2, 102)], "blue", width=2.0)
+    fig.wire([(x_b.r + 2, 102), (x_c.x - 2, 102)], "green", width=2.0)
+
+    # Bottom container: ARM64 LL/SC (y=168..396)
+    fig.node(28, 168, 744, 226, "purple", kind="tonal", r=12)
+    fig.tile(42, 178, "swap_horiz", "purple", 24)
+    fig.text(74, 191, "ARM64: Load-Linked / Store-Conditional (LDXR / STXR) and compare_exchange_weak", "name", fit=(74, 760))
+    fig.text(74, 206, "Split into two instructions monitored by a hardware Exclusive Reservation Monitor on the cache line", "small", fit=(74, 760))
+
+    a_1 = fig.cell(44, 224, 206, 78, "purple", [
+        ("1. Load-Linked (LDXR)", "name"),
+        ("x0 = [addr]  (reads 5)", "mono"),
+        ("Sets Exclusive Monitor", "small"),
+        ("on 64B/128B cache line", "small"),
+    ], kind="card", r=8)
+
+    a_2 = fig.cell(284, 224, 220, 78, "amber", [
+        ("2. Reservation Window", "name"),
+        ("Check x0 == expected", "mono"),
+        ("IRQ or sibling write to", "small"),
+        ("same line clears Monitor", "small"),
+    ], kind="card", r=8)
+
+    a_3 = fig.cell(538, 224, 218, 78, "green", [
+        ("3. Store-Cond (STXR)", "name"),
+        ("Monitor intact → Ok", "mono"),
+        ("Monitor cleared → Err", "mono"),
+        ("(Spurious fail even if 5)", "small"),
+    ], kind="card", r=8)
+
+    fig.wire([(a_1.r + 2, 263), (a_2.x - 2, 263)], "purple", width=2.0)
+    fig.wire([(a_2.r + 2, 263), (a_3.x - 2, 263)], "amber", width=2.0)
+
+    fig.cell(44, 318, 344, 62, "green", [
+        ("compare_exchange_weak (Use in Loops)", "name"),
+        ("Single LDXR/STXR pair; outer while-loop retries", "small"),
+        ("spurious monitor clears with zero nested branch.", "small"),
+    ], kind="card", r=8)
+
+    fig.cell(412, 318, 344, 62, "red", [
+        ("compare_exchange (Use One-Shot)", "name"),
+        ("Compiler emits a hidden inner loop around STXR", "small"),
+        ("to suppress spurious failures outside a loop.", "small"),
+    ], kind="card", r=8)
+
+    fig.save([
+        "On ARM64 LL/SC hardware, compare_exchange_weak compiles to one LDXR/STXR pair; an enclosing retry loop handles spurious failures.",
+        "ARMv8.1 Large System Extensions (LSE) add single-instruction CASAL, narrowing the gap under heavy multi-core contention.",
+    ])
+
+
+@figure
+def ch06_store_buffer_litmus():
+    fig = Fig("ch06_store_buffer_litmus", "Figure 6-4. Per-Core Hardware Store Buffers: Store-Buffering (SB) vs. Acquire-Release Message Passing (MP)", 424)
+
+    # Top: Store-Buffering Litmus Test (y=12..216)
+    fig.node(28, 12, 744, 202, "red", kind="tonal", r=12)
+    fig.tile(42, 22, "warning", "red", 24)
+    fig.text(74, 35, "Litmus 1: Store Buffering (SB) — Why Store-Load Reordering Happens Even on x86-64 TSO", "name", fit=(74, 760))
+
+    c0 = fig.cell(44, 54, 178, 66, "blue", [
+        ("Core 0 Program", "name"),
+        ("1. x.store(1)", "mono"),
+        ("2. r1 = y.load()", "mono"),
+    ], kind="card", r=8)
+
+    sb0 = fig.cell(44, 140, 178, 58, "amber", [
+        ("Core 0 Store Buffer", "name"),
+        ("x = 1  (unflushed)", "mono"),
+        ("invisible to Core 1", "small"),
+    ], kind="mid", r=8)
+
+    mem = fig.cell(264, 76, 272, 122, "red", [
+        ("Coherent L1/L2 Cache & DRAM", "name"),
+        ("Initial state: x = 0, y = 0", "mono"),
+        ("Core 0 loads y → observes 0", "small"),
+        ("Core 1 loads x → observes 0", "small"),
+        ("Result: r1 == 0 && r2 == 0", "monob"),
+        ("Fix: SeqCst drains store buffers", "small"),
+    ], kind="card", r=8)
+
+    c1 = fig.cell(578, 54, 178, 66, "purple", [
+        ("Core 1 Program", "name"),
+        ("1. y.store(1)", "mono"),
+        ("2. r2 = x.load()", "mono"),
+    ], kind="card", r=8)
+
+    sb1 = fig.cell(578, 140, 178, 58, "amber", [
+        ("Core 1 Store Buffer", "name"),
+        ("y = 1  (unflushed)", "mono"),
+        ("invisible to Core 0", "small"),
+    ], kind="mid", r=8)
+
+    fig.wire([(c0.cx, c0.b + 2), (sb0.cx, sb0.y - 2)], "amber", width=2.0)
+    fig.wire([(c1.cx, c1.b + 2), (sb1.cx, sb1.y - 2)], "amber", width=2.0)
+    fig.wire([(c0.r + 2, 92), (mem.x - 2, 92)], "blue", width=2.0)
+    fig.wire([(c1.x - 2, 92), (mem.r + 2, 92)], "purple", width=2.0)
+
+    # Bottom: Message-Passing Litmus Test (y=230..410)
+    fig.node(28, 230, 744, 180, "blue", kind="tonal", r=12)
+    fig.tile(42, 240, "bolt", "blue", 24)
+    fig.text(74, 253, "Litmus 2: Message Passing (MP) — Acquire-Release Happens-Before Edge", "name", fit=(74, 760))
+
+    mp_p = fig.cell(44, 274, 236, 120, "blue", [
+        ("Producer (Core 0)", "name"),
+        ("1. payload = 0xCAFE;", "mono"),
+        ("── Release Barrier ──", "small"),
+        ("2. ready.store(1, Release)", "monob"),
+        ("Prior stores cannot float down", "small"),
+    ], kind="card", r=8)
+
+    mp_e = fig.cell(310, 294, 180, 80, "teal", [
+        ("Happens-Before", "name"),
+        ("Synchronizes-With", "small"),
+        ("STLR → LDAR (ARM64)", "mono"),
+    ], kind="mid", r=8)
+
+    mp_c = fig.cell(520, 274, 236, 120, "green", [
+        ("Consumer (Core 1)", "name"),
+        ("1. ready.load(Acquire) == 1", "monob"),
+        ("── Acquire Barrier ──", "small"),
+        ("2. assert(payload == 0xCAFE)", "mono"),
+        ("Later reads cannot float up", "small"),
+    ], kind="card", r=8)
+
+    fig.wire([(mp_p.r + 2, 334), (mp_e.x - 2, 334)], "blue", width=2.2)
+    fig.wire([(mp_e.r + 2, 334), (mp_c.x - 2, 334)], "teal", width=2.2)
+
+    fig.save([
+        "In Store Buffering, neither Release nor Acquire prevents a later load from bypassing an earlier store; only SeqCst drains the buffer.",
+        "In Message Passing, Relaxed accidentally passes on x86-64 TSO but breaks on weakly ordered ARM64 without Release/Acquire.",
+    ])
+
+
+@figure
+def ch06_futex_automaton():
+    fig = Fig("ch06_futex_automaton", "Figure 6-5. Fast Userspace Mutex (futex / __ulock): Ring 3 Fast Path vs. Ring 0 Wait-Queue Parking", 364)
+
+    # Ring 3 User Mode band (y=12..196)
+    fig.node(28, 12, 744, 184, "blue", kind="tonal", r=12)
+    fig.tile(42, 22, "lock", "blue", 24)
+    fig.text(74, 35, "Ring 3 (User Mode): Single 32-Bit Atomic Word — Zero System Calls When Uncontended", "name", fit=(74, 760))
+
+    s0 = fig.cell(44, 58, 212, 120, "green", [
+        ("State 0: UNLOCKED", "name"),
+        ("atomic_word == 0", "mono"),
+        ("Fast lock (~5 ns):", "small"),
+        ("CAS(0 → 1, Acquire)", "mono"),
+        ("Zero kernel traps", "small"),
+    ], kind="card", r=8)
+
+    s1 = fig.cell(294, 58, 212, 120, "blue", [
+        ("State 1: LOCKED", "name"),
+        ("atomic_word == 1", "mono"),
+        ("No sleeping waiters", "small"),
+        ("Fast unlock (~5 ns):", "small"),
+        ("swap(0, Release) == 1", "mono"),
+    ], kind="card", r=8)
+
+    s2 = fig.cell(544, 58, 212, 120, "amber", [
+        ("State 2: CONTENDED", "name"),
+        ("atomic_word == 2", "mono"),
+        ("Contender executes:", "small"),
+        ("swap(2, Acquire)", "mono"),
+        ("→ traps to Ring 0", "small"),
+    ], kind="card", r=8)
+
+    fig.wire([(s0.r + 2, 102), (s1.x - 2, 102)], "green", width=2.2)
+    fig.wire([(s1.x - 2, 134), (s0.r + 2, 134)], "blue", dash=True, width=2.0)
+    fig.wire([(s1.r + 2, 118), (s2.x - 2, 118)], "amber", width=2.2)
+
+    # Privilege boundary rule
+    fig.rule(28, 214, 772, 214, "gray", width=1.8, dash="4 4")
+    fig.label(400, 218, "Ring 3 / Ring 0 Syscall Boundary (Only Crossed Under Contention)", backed=True)
+
+    # Ring 0 Kernel band (y=234..352)
+    fig.node(28, 234, 744, 118, "teal", kind="tonal", r=12)
+    fig.tile(42, 244, "shield", "teal", 24)
+    fig.text(74, 257, "Ring 0 (Kernel Mode): Futex Hash-Bucket Wait Queue", "name", fit=(74, 620))
+
+    k_wake = fig.cell(44, 276, 336, 62, "green", [
+        ("futex(&state, FUTEX_WAKE, 1)", "monob"),
+        ("Invoked only when unlock's swap(0) returns 2;", "small"),
+        ("moves one sleeping TCB back to core runqueue.", "small"),
+    ], kind="card", r=8)
+
+    k_wait = fig.cell(420, 276, 336, 62, "amber", [
+        ("futex(&state, FUTEX_WAIT, 2)", "monob"),
+        ("Acquires bucket spinlock, verifies *(&state) == 2,", "small"),
+        ("parks TCB on wait queue (or returns EAGAIN if 0).", "small"),
+    ], kind="card", r=8)
+
+    fig.wire([(650, s2.b + 2), (650, k_wait.y - 2)], "amber", width=2.2)
+
+    fig.save([
+        "Over 95% of lock acquisitions in well-tuned systems succeed on the 0 → 1 Ring 3 fast path without a single system call.",
+        "Kernel re-verification of *(&state) == 2 inside FUTEX_WAIT eliminates the lost-wakeup race between Ring 3 and Ring 0.",
+    ])
+
+
+@figure
+def ch06_seqlock():
+    fig = Fig("ch06_seqlock", "Figure 6-6. Lock-Free Sequence Lock (Seqlock): Zero-Write Reader Scaling and Torn-Read Retry", 358)
+
+    # Top lane: Writer (y=12..118)
+    fig.node(28, 12, 744, 102, "purple", kind="tonal", r=12)
+    fig.text(44, 34, "Writer (Single)", "name", tone="purple")
+    fig.text(44, 50, "Mutates seq", "small")
+
+    w1 = fig.cell(168, 28, 168, 70, "amber", [
+        ("1. Begin Write", "name"),
+        ("seq: 4 → 5 (ODD)", "monob"),
+        ("store(Release)", "small"),
+    ], kind="card", r=8)
+
+    w2 = fig.cell(372, 28, 186, 70, "purple", [
+        ("2. Update Payload", "name"),
+        ("ticks = 1001", "mono"),
+        ("scaled_ns = 10010", "mono"),
+    ], kind="card", r=8)
+
+    w3 = fig.cell(594, 28, 162, 70, "green", [
+        ("3. Publish Snapshot", "name"),
+        ("seq: 5 → 6 (EVEN)", "monob"),
+        ("store(Release)", "small"),
+    ], kind="card", r=8)
+
+    fig.wire([(w1.r + 2, 63), (w2.x - 2, 63)], "amber", width=2.0)
+    fig.wire([(w2.r + 2, 63), (w3.x - 2, 63)], "green", width=2.0)
+
+    # Middle lane: Overlapping Reader B (retries cleanly) (y=130..236)
+    fig.node(28, 130, 744, 102, "red", kind="tonal", r=12)
+    fig.text(44, 152, "Reader B", "name", tone="red")
+    fig.text(44, 168, "Overlaps writer", "small")
+
+    rb1 = fig.cell(168, 146, 168, 70, "blue", [
+        ("1. Sample s1 = 4", "name"),
+        ("s1 is EVEN (Acquire)", "mono"),
+        ("Proceeds to copy", "small"),
+    ], kind="card", r=8)
+
+    rb2 = fig.cell(372, 146, 186, 70, "red", [
+        ("2. Torn Payload Read", "name"),
+        ("Sees mixed old/new", "small"),
+        ("Acquire fence()", "mono"),
+    ], kind="card", r=8)
+
+    rb3 = fig.cell(594, 146, 162, 70, "red", [
+        ("3. Verify s2 = 6", "name"),
+        ("s1 (4) ≠ s2 (6)", "monob"),
+        ("Discard & retry loop", "small"),
+    ], kind="mid", r=8)
+
+    fig.wire([(rb1.r + 2, 181), (rb2.x - 2, 181)], "red", width=2.0)
+    fig.wire([(rb2.r + 2, 181), (rb3.x - 2, 181)], "red", width=2.0)
+
+    # Bottom lane: Clean Reader A (zero shared writes) (y=248..348)
+    fig.node(28, 248, 744, 96, "green", kind="tonal", r=12)
+    fig.text(44, 270, "Reader A", "name", tone="green")
+    fig.text(44, 286, "Clean window", "small")
+
+    ra1 = fig.cell(168, 262, 168, 68, "green", [
+        ("1. Sample s1 = 6", "name"),
+        ("s1 is EVEN (Acquire)", "mono"),
+    ], kind="card", r=8)
+
+    ra2 = fig.cell(372, 262, 186, 68, "green", [
+        ("2. Read Payload", "name"),
+        ("1001, 10010 (Shared S)", "mono"),
+    ], kind="card", r=8)
+
+    ra3 = fig.cell(594, 262, 162, 68, "green", [
+        ("3. Verify s2 = 6", "name"),
+        ("s1 == s2 → Valid", "monob"),
+    ], kind="mid", r=8)
+
+    fig.wire([(ra1.r + 2, 296), (ra2.x - 2, 296)], "green", width=2.0)
+    fig.wire([(ra2.r + 2, 296), (ra3.x - 2, 296)], "green", width=2.0)
+
+    fig.save([
+        "Readers never modify shared memory: dozens of cores hold the Seqlock cache line in MESI Shared (S) state simultaneously.",
+        "Linux vDSO clock_gettime() relies on a Seqlock in the read-only vvar page so user processes read system time without trapping.",
     ])
 
 
