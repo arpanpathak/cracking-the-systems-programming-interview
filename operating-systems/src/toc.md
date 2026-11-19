@@ -30,7 +30,8 @@
     - [2.1.1 The Fetch-Decode-Execute Datapath and Function Activation Records](ch02-the-machine.md#211-the-fetch-decode-execute-datapath-and-function-activation-records)
     - [2.1.2 Formal Derivation of the Atomicity Gap](ch02-the-machine.md#212-formal-derivation-of-the-atomicity-gap)
   - [2.2 Memory Hierarchy and Locality Dynamics](ch02-the-machine.md#22-memory-hierarchy-and-locality-dynamics)
-  - [2.3 Privilege Domains and Boundary Enforcement](ch02-the-machine.md#23-privilege-domains-and-boundary-enforcement)
+  - [2.3 Privilege Domains and How the CPU Talks to Hardware Devices](ch02-the-machine.md#23-privilege-domains-and-how-the-cpu-talks-to-hardware-devices)
+    - [2.3.1 Two Physical Mechanisms Behind Every Device: MMIO and DMA](ch02-the-machine.md#231-two-physical-mechanisms-behind-every-device-mmio-and-dma)
   - [2.4 Synchronous Traps and the Asynchronous Interrupt Subsystem](ch02-the-machine.md#24-synchronous-traps-and-the-asynchronous-interrupt-subsystem)
     - [2.4.1 Why Interrupt Controllers Exist: From One Copper Pin to Multi-Core Fabrics](ch02-the-machine.md#241-why-interrupt-controllers-exist-from-one-copper-pin-to-multi-core-fabrics)
     - [2.4.2 Vector Tables (`IDT`, `VBAR_EL1`), `TSS.rsp0`, and Hardware Trapframe Construction](ch02-the-machine.md#242-vector-tables-idt-vbar_el1-tssrsp0-and-hardware-trapframe-construction)
@@ -363,7 +364,7 @@ A thematic, alphabetical cross-reference linking systems topics directly to thei
   - Process Isolation: [§19.12.1](ch19-interview-problems.md#19121-process-isolation-vs-thread-concurrency-topology)
 - **Program Counter (PC / RIP / PC_EL0)**: Microarchitectural register holding the linear virtual address of the next instruction to fetch.
   - Instruction Cycle & Branching: [§2.1](ch02-the-machine.md#21-the-execution-model-and-the-atomicity-gap)
-  - Trapframe Preservation: [§2.4](ch02-the-machine.md#23-privilege-domains-and-boundary-enforcement), [§3.1](ch03-processes.md#31-the-process-control-block-and-address-space-topology)
+  - Trapframe Preservation: [§2.4.2](ch02-the-machine.md#242-vector-tables-idt-vbar_el1-tssrsp0-and-hardware-trapframe-construction), [§3.1](ch03-processes.md#31-the-process-control-block-and-address-space-topology)
 
 ### R - S
 - **Reader-Writer Lock**: Synchronization primitive permitting concurrent readers while restricting writers to exclusive access.
@@ -380,12 +381,12 @@ A thematic, alphabetical cross-reference linking systems topics directly to thei
   - Systems Nuances: [§19.2.4](ch19-interview-problems.md#1924-systems-analysis-and-nuances)
 - **Stack Pointer (SP / RSP / SP_EL0)**: Architectural register tracking the active boundary of the descending call stack.
   - Stack Frame Structure: [§2.1](ch02-the-machine.md#21-the-execution-model-and-the-atomicity-gap)
-  - Kernel Stack Switching: [§2.4](ch02-the-machine.md#23-privilege-domains-and-boundary-enforcement), [§9.1](ch09-system-calls.md#91-the-mechanics-of-the-system-call-interface)
+  - Kernel Stack Switching: [§2.4.2](ch02-the-machine.md#242-vector-tables-idt-vbar_el1-tssrsp0-and-hardware-trapframe-construction), [§9.1](ch09-system-calls.md#91-the-mechanics-of-the-system-call-interface)
 - **Status Flags (FLAGS / RFLAGS / PSTATE)**: CPU condition codes (ZF, CF, SF, OF) and interrupt mask control flags (IF).
   - Condition Evaluation: [§2.1](ch02-the-machine.md#21-the-execution-model-and-the-atomicity-gap)
 - **System Call Boundary**: Hardware-supervised privilege gatekeeper transferring control from user mode to kernel mode.
   - Gatekeeper Role: [§1.4](ch01-what-is-an-os.md#14-the-system-call-boundary-and-posix-standard-interface)
-  - Traps & Privilege Elevation: [§2.4](ch02-the-machine.md#23-privilege-domains-and-boundary-enforcement), [§9.1](ch09-system-calls.md#91-the-mechanics-of-the-system-call-interface)
+  - Traps & Privilege Elevation: [§2.3](ch02-the-machine.md#23-privilege-domains-and-how-the-cpu-talks-to-hardware-devices), [§9.1](ch09-system-calls.md#91-the-mechanics-of-the-system-call-interface)
 
 ### T - Z
 - **TCP Protocols & Sockets**: Reliable, connection-oriented byte streams with flow control and congestion avoidance.
