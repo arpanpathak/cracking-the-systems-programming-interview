@@ -38,7 +38,7 @@
             const path_to_root = "";
             const default_light_theme = "light";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "searchindex-72cdfbf6.js";
+            window.path_to_searchindex_js = "searchindex-ba80298f.js";
         </script>
         <!-- Start loading toc.js asap -->
         <script src="toc-f3585118.js"></script>
@@ -224,7 +224,11 @@
 </ul>
 </li>
 <li><a href="ch02-the-machine.html#22-memory-hierarchy-and-locality-dynamics">2.2 Memory Hierarchy and Locality Dynamics</a></li>
-<li><a href="ch02-the-machine.html#23-privilege-domains-and-boundary-enforcement">2.3 Privilege Domains and Boundary Enforcement</a></li>
+<li><a href="ch02-the-machine.html#23-privilege-domains-and-how-the-cpu-talks-to-hardware-devices">2.3 Privilege Domains and How the CPU Talks to Hardware Devices</a>
+<ul>
+<li><a href="ch02-the-machine.html#231-two-physical-mechanisms-behind-every-device-mmio-and-dma">2.3.1 Two Physical Mechanisms Behind Every Device: MMIO and DMA</a></li>
+</ul>
+</li>
 <li><a href="ch02-the-machine.html#24-synchronous-traps-and-the-asynchronous-interrupt-subsystem">2.4 Synchronous Traps and the Asynchronous Interrupt Subsystem</a>
 <ul>
 <li><a href="ch02-the-machine.html#241-why-interrupt-controllers-exist-from-one-copper-pin-to-multi-core-fabrics">2.4.1 Why Interrupt Controllers Exist: From One Copper Pin to Multi-Core Fabrics</a></li>
@@ -876,7 +880,7 @@
 <li><strong>Program Counter (PC / RIP / PC_EL0)</strong>: Microarchitectural register holding the linear virtual address of the next instruction to fetch.
 <ul>
 <li>Instruction Cycle &amp; Branching: <a href="ch02-the-machine.html#21-the-execution-model-and-the-atomicity-gap">§2.1</a></li>
-<li>Trapframe Preservation: <a href="ch02-the-machine.html#23-privilege-domains-and-boundary-enforcement">§2.4</a>, <a href="ch03-processes.html#31-the-process-control-block-and-address-space-topology">§3.1</a></li>
+<li>Trapframe Preservation: <a href="ch02-the-machine.html#242-vector-tables-idt-vbar_el1-tssrsp0-and-hardware-trapframe-construction">§2.4.2</a>, <a href="ch03-processes.html#31-the-process-control-block-and-address-space-topology">§3.1</a></li>
 </ul>
 </li>
 </ul>
@@ -915,7 +919,7 @@
 <li><strong>Stack Pointer (SP / RSP / SP_EL0)</strong>: Architectural register tracking the active boundary of the descending call stack.
 <ul>
 <li>Stack Frame Structure: <a href="ch02-the-machine.html#21-the-execution-model-and-the-atomicity-gap">§2.1</a></li>
-<li>Kernel Stack Switching: <a href="ch02-the-machine.html#23-privilege-domains-and-boundary-enforcement">§2.4</a>, <a href="ch09-system-calls.html#91-the-mechanics-of-the-system-call-interface">§9.1</a></li>
+<li>Kernel Stack Switching: <a href="ch02-the-machine.html#242-vector-tables-idt-vbar_el1-tssrsp0-and-hardware-trapframe-construction">§2.4.2</a>, <a href="ch09-system-calls.html#91-the-mechanics-of-the-system-call-interface">§9.1</a></li>
 </ul>
 </li>
 <li><strong>Status Flags (FLAGS / RFLAGS / PSTATE)</strong>: CPU condition codes (ZF, CF, SF, OF) and interrupt mask control flags (IF).
@@ -926,7 +930,7 @@
 <li><strong>System Call Boundary</strong>: Hardware-supervised privilege gatekeeper transferring control from user mode to kernel mode.
 <ul>
 <li>Gatekeeper Role: <a href="ch01-what-is-an-os.html#14-the-system-call-boundary-and-posix-standard-interface">§1.4</a></li>
-<li>Traps &amp; Privilege Elevation: <a href="ch02-the-machine.html#23-privilege-domains-and-boundary-enforcement">§2.4</a>, <a href="ch09-system-calls.html#91-the-mechanics-of-the-system-call-interface">§9.1</a></li>
+<li>Traps &amp; Privilege Elevation: <a href="ch02-the-machine.html#23-privilege-domains-and-how-the-cpu-talks-to-hardware-devices">§2.3</a>, <a href="ch09-system-calls.html#91-the-mechanics-of-the-system-call-interface">§9.1</a></li>
 </ul>
 </li>
 </ul>
