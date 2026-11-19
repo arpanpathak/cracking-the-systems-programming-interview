@@ -35,7 +35,7 @@ By implementing every mechanism—from lock-free ring buffers and virtual memory
 
 ## The Anatomy of a Systems Engineering Interview
 
-High-bar engineering organizations—such as infrastructure, kernel, and performance teams at Apple, Meta, Google, Jane Street, and Datadog—rarely evaluate senior systems candidates on generic algorithmic puzzles. Instead, they probe the friction points where software touches the operating system and the physical machine:
+Systems, infrastructure, kernel, and performance engineering interviews probe the boundary where software meets the operating system and the physical machine:
 
 1. **Memory Ordering & Hardware Visibility:** Do you understand why sequentially consistent atomics (`seq_cst`) incur severe penalties on ARM64 architectures compared to acquire-release semantics (`memory_order_acquire` / `memory_order_release`)?
 2. **Concurrency Invariants & Pitfalls:** Can you explain why a condition variable requires a predicate evaluation loop (`while` instead of `if`), why spurious wakeups occur in OS schedulers, and how to avoid the Thundering Herd penalty?

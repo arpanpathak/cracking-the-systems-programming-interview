@@ -1,7 +1,7 @@
 # Book Enhancement Plan & Systems Engineering Roadmap
 
 ## Context & Objectives
-This book, *Operating Systems: A Hands-On Approach*, is a rigorous, production-grade systems software textbook and senior interview preparation guide (targeting high-bar engineering organizations such as Apple Cloud OS, Meta, Google, Jane Street, and Datadog).
+This book, *Operating Systems: A Hands-On Approach*, is a rigorous, first-principles systems software textbook and practical interview preparation guide.
 
 To prevent context degradation, hallucinations, or regressions, **all future agent runs MUST proceed incrementally**, executing one discrete phase at a time and committing verified changes to Git after running both the Technical Prose Quality Audit and the SVG Diagram Visual & Geometric Audit.
 
@@ -58,7 +58,8 @@ import figkit
 filler_patterns = [
     r"\bbasically\b", r"\bunder the hood\b", r"\bsort of\b",
     r"\bkind of\b", r"\bpretty much\b", r"\bin a nutshell\b",
-    r"\bstuff\b", r"\bhandy\b", r"\bneat\b"
+    r"\bstuff\b", r"\bhandy\b", r"\bneat\b",
+    r"\bsenior\b", r"\bjunior\b", r"\bnaive\b"
 ]
 
 errors = []

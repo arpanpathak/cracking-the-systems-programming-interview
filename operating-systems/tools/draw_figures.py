@@ -46,9 +46,9 @@ def preface_roadmap():
             ("Ch 15: Daemons & Init", "small"),
             ("Ch 16: Virtualization", "small"),
         ]),
-        (598, "amber", "Part IV: Mastery", "Perf & Interviews", "engineering", [
+        (598, "amber", "Part IV: Practice", "Perf & Interviews", "engineering", [
             ("Ch 18: Profiling & Perf", "small"),
-            ("Ch 19: Senior Interviews", "small"),
+            ("Ch 19: Systems Problems", "small"),
         ]),
     ]
 

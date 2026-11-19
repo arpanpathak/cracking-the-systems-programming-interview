@@ -302,7 +302,7 @@ The POSIX specification establishes a critical distinction between `memcpy` and 
 - `memcpy` assumes the source and destination memory buffers are strictly non-overlapping. Passing overlapping regions to `memcpy` invokes undefined behavior.
 - `memmove` guarantees correct copying regardless of whether the source and destination memory regions overlap.
 
-The necessity for directional copying arises when the destination buffer begins within the source buffer at a higher memory address (`dst > src` and `dst < src + count`). If a naive forward copy (index 0 to `count - 1`) is executed, writing to early destination offsets overwrites later source bytes before they have been read, destroying the source data.
+The necessity for directional copying arises when the destination buffer begins within the source buffer at a higher memory address (`dst > src` and `dst < src + count`). If an unconditional forward copy (index 0 to `count - 1`) is executed, writing to early destination offsets overwrites later source bytes before they have been read, destroying the source data.
 
 For example, shifting the string `"abcdef"` two bytes to the right (source offset 0, destination offset 2, length 4) via forward copying writes `'a'` to offset 2 and `'b'` to offset 3. When the copy reaches offset 2, it reads the newly written `'a'`, resulting in corrupted repetition (`"ababad"`).
 
@@ -352,7 +352,7 @@ Converting an ASCII character sequence to a signed 32-bit integer requires manag
 
 ### 19.5.5 Systems Optimization and Vectorization
 
-- **Vectorized Word Processing (SWAR and SIMD):** Naive implementations process one byte per iteration. Production standard libraries (`glibc`, `musl`) achieve an order-of-magnitude higher throughput using SIMD vector instructions (AVX-512, ARM NEON) or SIMD Within A Register (SWAR) bit-tricks. For example, `strlen` tests 64 bytes simultaneously using vector mask instructions (`_mm512_cmpeq_epi8_mask`), identifying null bytes in a single processor cycle.
+- **Vectorized Word Processing (SWAR and SIMD):** Byte-at-a-time implementations process one byte per iteration. Production standard libraries (`glibc`, `musl`) achieve an order-of-magnitude higher throughput using SIMD vector instructions (AVX-512, ARM NEON) or SIMD Within A Register (SWAR) bit-tricks. For example, `strlen` tests 64 bytes simultaneously using vector mask instructions (`_mm512_cmpeq_epi8_mask`), identifying null bytes in a single processor cycle.
 - **Relational Pointer Comparisons:** The ISO C++ standard specifies that relational comparisons (`<`, `>`) between pointers are only well-defined when both pointers refer to elements of the same complete array object. For arbitrary pointers, `std::less` provides a total hardware-level address ordering. In systems programming where execution occurs on flat linear address spaces, direct relational comparisons correspond directly to unsigned integer address evaluations.
 
 <div class="callout keyidea">
@@ -475,7 +475,7 @@ The system upholds the fundamental mutual exclusion invariant:
 
 ### 19.7.2 The Starvation Hazard and Writer-Preference Policy
 
-A naive reader-writer lock grants access to any arriving reader as long as `writer_active` is false. Under high read concurrency, new reader threads arrive before existing readers release the lock, causing `readers_active` to remain non-zero indefinitely. Under this "reader-preference" policy, waiting writers experience catastrophic **writer starvation**, blocked from updating state for unbounded durations.
+A reader-preference lock grants access to any arriving reader as long as `writer_active` is false. Under high read concurrency, new reader threads arrive before existing readers release the lock, causing `readers_active` to remain non-zero indefinitely. Under this reader-preference policy, waiting writers experience **writer starvation**, blocked from updating state for unbounded durations.
 
 To prevent starvation, the lock implements a **writer-preference policy**: an arriving reader thread is forced to wait if `writer_active` is true *or* if `writers_waiting > 0`. Prioritizing queued writers bounds write latency and ensures fair forward progress across both read and write operations.
 
@@ -581,7 +581,7 @@ In the Rust implementation, task coordination is built on standard library cross
 
 ### 19.8.4 Systems Nuances and Synchronization Hazards
 
-- **Task Execution Outside the Synchronization Lock:** A critical bug in naive thread pool implementations is invoking the task closure while still holding the task queue mutex. This serializes task execution: only one worker can execute at any time, reducing the entire multi-core pool to a single-threaded bottleneck. The worker must extract the task from the queue, release the mutex, and execute the task completely unconstrained.
+- **Task Execution Outside the Synchronization Lock:** A frequent bug in thread pool implementations is invoking the task closure while still holding the task queue mutex. This serializes task execution: only one worker can execute at any time, reducing the entire multi-core pool to a single-threaded bottleneck. The worker must extract the task from the queue, release the mutex, and execute the task completely unconstrained.
 - **Lost Wakeups During Teardown:** Updating the `stopping` flag without holding the mutex can trigger race conditions where a worker evaluates the predicate, finds no work, and prepares to sleep just as the shutdown signal is broadcast. Holding the mutex during the state update ensures that workers cannot enter the sleep state after shutdown has commenced.
 - **Production Extensions:** Enterprise thread pools (such as Rust's Tokio or Go's runtime scheduler) enhance this model with **work stealing**: each core maintains a local task deque, stealing tasks from remote queues only when local work is exhausted, thereby minimizing central lock contention.
 
@@ -700,7 +700,7 @@ Computing the bitwise AND of `x` and `x - 1` clears the lowest set bit while lea
 
 ### 19.10.2 Algorithmic Derivations
 
-- **Population Count (`count_set_bits`):** Brian Kernighan's algorithm applies `x & (x - 1)` iteratively. Each operation clears exactly one set bit. The algorithm terminates when `x` reaches 0, executing in `O(k)` operations where `k` is the number of set bits, significantly outperforming naive 64-step bit-shifting loops.
+- **Population Count (`count_set_bits`):** Brian Kernighan's algorithm applies `x & (x - 1)` iteratively. Each operation clears exactly one set bit. The algorithm terminates when `x` reaches 0, executing in `O(k)` operations where `k` is the number of set bits, outperforming fixed 64-step bit-shifting loops.
 - **Power-of-Two Detection (`is_power_of_two`):** A positive integer is an exact power of two if and only if its binary representation contains exactly one set bit. Testing whether `x > 0` and `(x & (x - 1)) == 0` establishes this in `O(1)` constant time without division or loops.
 - **Power-of-Two Memory Alignment (`align_up`):** System architectures require memory buffers to be aligned to powers of two (e.g., 16-byte cache line alignment, 4096-byte page alignment). For an alignment `A = 2^k`, the mask `A - 1` contains 1s in the lowest `k` bit positions. Rounding an address `x` up to the next multiple of `A` is computed as:
   ```text
@@ -764,7 +764,7 @@ Traversing the list once achieves O(N) linear time complexity while consuming O(
 
 Merging two sorted linked lists into a single consolidated chain requires repeatedly comparing the head elements of each list, detaching the smaller node, and appending it to the result.
 
-In naive implementations, initializing the result list requires special-case branching to establish the initial `head` pointer. In systems programming, this branching overhead is eliminated using a **sentinel node** (or dummy node): a temporary, stack-allocated node placed at the root of the chain. Subsequent appends link directly to `tail->next`, eliminating conditionals inside the loop. Once the merge completes, the true head is retrieved as `sentinel.next`. In Rust, `Option::insert` initializes the tail pointer in-place; once either list is exhausted, the entire remainder is spliced in O(1) constant time via `*tail = left.or(right)`.
+Without a dummy header, initializing the result list requires special-case branching to establish the initial `head` pointer. In systems programming, this branching overhead is eliminated using a **sentinel node** (or dummy node): a temporary, stack-allocated node placed at the root of the chain. Subsequent appends link directly to `tail->next`, eliminating conditionals inside the loop. Once the merge completes, the true head is retrieved as `sentinel.next`. In Rust, `Option::insert` initializes the tail pointer in-place; once either list is exhausted, the entire remainder is spliced in O(1) constant time via `*tail = left.or(right)`.
 
 ### 19.11.3 Cycle Detection: Floyd's Tortoise and Hare Algorithm
 

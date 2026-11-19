@@ -1,0 +1,277 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 960 1280" width="100%" height="100%" role="img" aria-label="Operating Systems: A Hands-On Approach — Front Cover">
+  <defs>
+    <!-- Sky & Horizon Gradients -->
+    <linearGradient id="sky-grad" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#091024"/>
+      <stop offset="35%" stop-color="#132247"/>
+      <stop offset="68%" stop-color="#1F3B6D"/>
+      <stop offset="88%" stop-color="#3B5284"/>
+      <stop offset="100%" stop-color="#F59E0B" stop-opacity="0.55"/>
+    </linearGradient>
+    <radialGradient id="sun-glow" cx="50%" cy="46%" r="45%">
+      <stop offset="0%" stop-color="#FDE68A" stop-opacity="0.75"/>
+      <stop offset="35%" stop-color="#F59E0B" stop-opacity="0.32"/>
+      <stop offset="70%" stop-color="#38BDF8" stop-opacity="0.10"/>
+      <stop offset="100%" stop-color="#091024" stop-opacity="0"/>
+    </radialGradient>
+    <linearGradient id="mtn-far-l" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#60A5FA"/>
+      <stop offset="100%" stop-color="#1E3A8A"/>
+    </linearGradient>
+    <linearGradient id="mtn-far-r" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#2563EB"/>
+      <stop offset="100%" stop-color="#172554"/>
+    </linearGradient>
+    <linearGradient id="mtn-mid-l" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#14B8A6"/>
+      <stop offset="100%" stop-color="#115E59"/>
+    </linearGradient>
+    <linearGradient id="mtn-mid-r" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#0D9488"/>
+      <stop offset="100%" stop-color="#0F172A"/>
+    </linearGradient>
+    <linearGradient id="ground-grad" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#0F172A"/>
+      <stop offset="40%" stop-color="#0B1325"/>
+      <stop offset="100%" stop-color="#070C18"/>
+    </linearGradient>
+    <linearGradient id="shell-bg" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#111827" stop-opacity="0.96"/>
+      <stop offset="100%" stop-color="#0B1120" stop-opacity="0.98"/>
+    </linearGradient>
+    <linearGradient id="die-grad" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#1E293B"/>
+      <stop offset="50%" stop-color="#0F172A"/>
+      <stop offset="100%" stop-color="#1E1B4B"/>
+    </linearGradient>
+    <filter id="mat-shadow" x="-8%" y="-8%" width="116%" height="120%">
+      <feDropShadow dx="0" dy="8" stdDeviation="10" flood-color="#020617" flood-opacity="0.55"/>
+    </filter>
+    <filter id="soft-glow" x="-20%" y="-20%" width="140%" height="140%">
+      <feGaussianBlur stdDeviation="3.5" result="b"/>
+      <feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge>
+    </filter>
+  </defs>
+  <style>
+    .sans { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif; }
+    .mono { font-family: "SF Mono", SFMono-Regular, ui-monospace, Menlo, Consolas, monospace; }
+  </style>
+
+  <rect width="960" height="1280" rx="16" fill="#070C18"/>
+  <rect width="960" height="660" rx="16" fill="url(#sky-grad)"/>
+  <rect width="960" height="660" fill="url(#sun-glow)"/>
+  <circle cx="78" cy="52" r="1.5" fill="#E0F2FE" opacity="0.75"/>
+  <circle cx="164" cy="38" r="1.2" fill="#E0F2FE" opacity="0.75"/>
+  <circle cx="285" cy="62" r="1.6" fill="#E0F2FE" opacity="0.75"/>
+  <circle cx="412" cy="40" r="1.3" fill="#E0F2FE" opacity="0.75"/>
+  <circle cx="560" cy="48" r="1.8" fill="#E0F2FE" opacity="0.75"/>
+  <circle cx="690" cy="36" r="1.4" fill="#E0F2FE" opacity="0.75"/>
+  <circle cx="825" cy="58" r="1.6" fill="#E0F2FE" opacity="0.75"/>
+  <circle cx="895" cy="42" r="1.2" fill="#E0F2FE" opacity="0.75"/>
+  <circle cx="110" cy="118" r="1.2" fill="#E0F2FE" opacity="0.75"/>
+  <circle cx="860" cy="112" r="1.5" fill="#E0F2FE" opacity="0.75"/>
+  <circle cx="65" cy="195" r="1.4" fill="#E0F2FE" opacity="0.75"/>
+  <circle cx="902" cy="185" r="1.3" fill="#E0F2FE" opacity="0.75"/>
+  <circle cx="140" cy="250" r="1.2" fill="#E0F2FE" opacity="0.75"/>
+  <circle cx="830" cy="240" r="1.5" fill="#E0F2FE" opacity="0.75"/>
+  <circle cx="480" cy="435" r="78" fill="#FDE68A" opacity="0.22"/>
+  <circle cx="480" cy="435" r="46" fill="#FEF08A" opacity="0.55"/>
+  <rect x="290" y="50" width="380" height="32" rx="16" fill="#0F172A" fill-opacity="0.72" stroke="#38BDF8" stroke-width="1.2"/>
+  <circle cx="312" cy="66" r="4.5" fill="#34D399"/>
+  <text x="490" y="71" text-anchor="middle" class="mono" font-size="12.5" font-weight="700" letter-spacing="1.4" fill="#E0F2FE">C++20 · RUST 2024 · x86-64 &amp; ARM64</text>
+  <text x="480" y="152" text-anchor="middle" class="sans" font-size="68" font-weight="800" letter-spacing="-1.2" fill="#FFFFFF" filter="url(#mat-shadow)">Operating Systems</text>
+  <text x="480" y="198" text-anchor="middle" class="sans" font-size="27" font-weight="500" letter-spacing="0.4" fill="#7DD3FC">A Hands-On Approach</text>
+  <line x1="270" y1="220" x2="690" y2="220" stroke="#F59E0B" stroke-width="1.8" stroke-opacity="0.75"/>
+  <circle cx="480" cy="220" r="4" fill="#FDE68A"/>
+  <text x="480" y="248" text-anchor="middle" class="sans" font-size="15.5" font-weight="500" fill="#E2E8F0">From Silicon Microarchitecture &amp; Kernel Internals to Shells, Event Loops &amp; Daemons</text>
+  <polygon points="0,540 0,430 115,355 235,288 375,445 440,540" fill="url(#mtn-far-l)"/>
+  <polygon points="235,288 375,445 440,540 270,540 218,395" fill="url(#mtn-far-r)"/>
+  <polygon points="235,288 184,321 206,338 224,324 239,344 268,325" fill="#E0F2FE" opacity="0.92"/>
+  <polygon points="470,540 595,365 725,276 865,390 960,445 960,540" fill="url(#mtn-far-l)"/>
+  <polygon points="725,276 865,390 960,445 960,540 705,540 695,382" fill="url(#mtn-far-r)"/>
+  <polygon points="725,276 676,313 698,329 718,314 736,336 772,316" fill="#E0F2FE" opacity="0.92"/>
+  <polygon points="330,540 480,348 630,540" fill="#1E3A8A" opacity="0.85"/>
+  <polygon points="480,348 630,540 495,540" fill="#172554" opacity="0.9"/>
+  <polygon points="480,348 448,386 468,396 482,382 498,398 512,386" fill="#FDE68A" opacity="0.85"/>
+  <polygon points="0,565 0,468 155,398 335,488 510,425 685,485 835,402 960,465 960,565" fill="url(#mtn-mid-l)"/>
+  <polygon points="155,398 335,488 335,565 140,565" fill="url(#mtn-mid-r)" opacity="0.55"/>
+  <polygon points="510,425 685,485 685,565 495,565" fill="url(#mtn-mid-r)" opacity="0.55"/>
+  <polygon points="835,402 960,465 960,565 815,565" fill="url(#mtn-mid-r)" opacity="0.55"/>
+  <path d="M 40 495 L 155 445 L 260 495 L 390 495" fill="none" stroke="#38BDF8" stroke-width="1.5" stroke-opacity="0.45"/>
+  <circle cx="155" cy="445" r="3.5" fill="#38BDF8" opacity="0.75"/>
+  <path d="M 570 495 L 710 495 L 835 442 L 920 482" fill="none" stroke="#34D399" stroke-width="1.5" stroke-opacity="0.45"/>
+  <circle cx="835" cy="442" r="3.5" fill="#34D399" opacity="0.75"/>
+  <rect x="0" y="535" width="960" height="745" fill="url(#ground-grad)"/>
+  <line x1="80" y1="790" x2="-60.0" y2="1150" stroke="#1E293B" stroke-width="1"/>
+  <line x1="160" y1="790" x2="48.0" y2="1150" stroke="#1E293B" stroke-width="1"/>
+  <line x1="240" y1="790" x2="156.0" y2="1150" stroke="#1E293B" stroke-width="1"/>
+  <line x1="320" y1="790" x2="264.0" y2="1150" stroke="#1E293B" stroke-width="1"/>
+  <line x1="400" y1="790" x2="372.0" y2="1150" stroke="#1E293B" stroke-width="1"/>
+  <line x1="480" y1="790" x2="480.0" y2="1150" stroke="#1E293B" stroke-width="1"/>
+  <line x1="560" y1="790" x2="588.0" y2="1150" stroke="#1E293B" stroke-width="1"/>
+  <line x1="640" y1="790" x2="696.0" y2="1150" stroke="#1E293B" stroke-width="1"/>
+  <line x1="720" y1="790" x2="804.0" y2="1150" stroke="#1E293B" stroke-width="1"/>
+  <line x1="800" y1="790" x2="912.0" y2="1150" stroke="#1E293B" stroke-width="1"/>
+  <line x1="880" y1="790" x2="1020.0" y2="1150" stroke="#1E293B" stroke-width="1"/>
+  <line x1="36" y1="820" x2="924" y2="820" stroke="#1E293B" stroke-width="1"/>
+  <line x1="36" y1="875" x2="924" y2="875" stroke="#1E293B" stroke-width="1"/>
+  <line x1="36" y1="935" x2="924" y2="935" stroke="#1E293B" stroke-width="1"/>
+  <line x1="36" y1="1000" x2="924" y2="1000" stroke="#1E293B" stroke-width="1"/>
+  <line x1="36" y1="1070" x2="924" y2="1070" stroke="#1E293B" stroke-width="1"/>
+  <line x1="36" y1="1145" x2="924" y2="1145" stroke="#1E293B" stroke-width="1"/>
+  <rect x="64" y="488" width="832" height="296" rx="14" fill="url(#shell-bg)" stroke="#38BDF8" stroke-width="1.8" filter="url(#mat-shadow)"/>
+  <path d="M 64 502 Q 64 488 78 488 L 882 488 Q 896 488 896 502 L 896 530 L 64 530 Z" fill="#1E293B"/>
+  <line x1="64" y1="530" x2="896" y2="530" stroke="#334155" stroke-width="1.2"/>
+  <circle cx="90" cy="509" r="6" fill="#EF4444"/>
+  <circle cx="110" cy="509" r="6" fill="#F59E0B"/>
+  <circle cx="130" cy="509" r="6" fill="#10B981"/>
+  <rect x="160" y="495" width="182" height="28" rx="6" fill="#0F172A" stroke="#38BDF8" stroke-width="1"/>
+  <g transform="translate(170.0 500.0) scale(0.7500)" fill="#38BDF8"><path d="M20 4H4a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h16c1.1 0 2-.9 2-2V6a2 2 0 0 0-2-2zm0 14H4V8h16v10zm-8-2c0-.55.45-1 1-1h4c.55 0 1 .45 1 1s-.45 1-1 1h-4c-.55 0-1-.45-1-1zM6.79 9.71a.996.996 0 0 1 1.41 0l2.59 2.59c.39.39.39 1.02 0 1.41L8.2 16.3a.996.996 0 1 1-1.41-1.41L8.67 13l-1.88-1.88a.996.996 0 0 1 0-1.41z"/></g>
+  <text x="194" y="514" class="mono" font-size="12" font-weight="700" fill="#E0F2FE">zsh · tty0 (Ring 3)</text>
+  <rect x="352" y="495" width="178" height="28" rx="6" fill="#1E293B" stroke="#475569" stroke-width="1"/>
+  <g transform="translate(362.0 500.0) scale(0.7500)" fill="#94A3B8"><path d="M14 9h-4c-.55 0-1 .45-1 1v4c0 .55.45 1 1 1h4c.55 0 1-.45 1-1v-4c0-.55-.45-1-1-1zm-1 4h-2v-2h2v2zm8-3c0-.55-.45-1-1-1h-1V7c0-1.1-.9-2-2-2h-2V4c0-.55-.45-1-1-1s-1 .45-1 1v1h-2V4c0-.55-.45-1-1-1s-1 .45-1 1v1H7c-1.1 0-2 .9-2 2v2H4c-.55 0-1 .45-1 1s.45 1 1 1h1v2H4c-.55 0-1 .45-1 1s.45 1 1 1h1v2c0 1.1.9 2 2 2h2v1c0 .55.45 1 1 1s1-.45 1-1v-1h2v1c0 .55.45 1 1 1s1-.45 1-1v-1h2c1.1 0 2-.9 2-2v-2h1c.55 0 1-.45 1-1s-.45-1-1-1h-1v-2h1c.55 0 1-.45 1-1zm-5 7H8c-.55 0-1-.45-1-1V8c0-.55.45-1 1-1h8c.55 0 1 .45 1 1v8c0 .55-.45 1-1 1z"/></g>
+  <text x="386" y="514" class="mono" font-size="12" font-weight="600" fill="#94A3B8">vm_map · 4-Level PT</text>
+  <rect x="540" y="495" width="178" height="28" rx="6" fill="#1E293B" stroke="#475569" stroke-width="1"/>
+  <g transform="translate(550.0 500.0) scale(0.7500)" fill="#F59E0B"><path d="M10.67 21c-.35 0-.62-.31-.57-.66L11 14H7.5c-.88 0-.33-.75-.31-.78 1.26-2.23 3.15-5.53 5.65-9.93a.577.577 0 0 1 1.07.37l-.9 6.34h3.51c.4 0 .62.19.4.66-3.29 5.74-5.2 9.09-5.75 10.05-.1.18-.29.29-.5.29z"/></g>
+  <text x="574" y="514" class="mono" font-size="12" font-weight="600" fill="#FDE68A">kqueue · io_uring</text>
+  <text x="88" y="560" class="mono" font-size="13" font-weight="700" fill="#34D399">arpan@darwin-xnu</text>
+  <text x="226" y="560" class="mono" font-size="13" font-weight="600" fill="#94A3B8">~ $</text>
+  <text x="260" y="560" class="mono" font-size="13" font-weight="700" fill="#F8FAFC">fork() &amp;&amp; execve("/bin/sh", argv, envp)</text>
+  <text x="88" y="584" class="mono" font-size="12" font-weight="500" fill="#7DD3FC">├─ PID 1 (launchd) ──► PID 4280 (worker) · COW pages mapped</text>
+  <text x="88" y="618" class="mono" font-size="13" font-weight="700" fill="#34D399">arpan@darwin-xnu</text>
+  <text x="226" y="618" class="mono" font-size="13" font-weight="600" fill="#94A3B8">~ $</text>
+  <text x="260" y="618" class="mono" font-size="13" font-weight="700" fill="#F8FAFC">pagetable --walk 0x0000_7FFF_ABCD_EF01</text>
+  <text x="88" y="642" class="mono" font-size="12" font-weight="500" fill="#C4B5FD">└─ CR3 0x1000_0000 → PML4[255] → PDPT[510] → PD[350] → PT[223]</text>
+  <text x="88" y="664" class="mono" font-size="12" font-weight="700" fill="#FDE68A">   ✓ TLB Hit (PCID 4) · Physical Frame PA = 0x0000_0000_8A42_0F01</text>
+  <text x="88" y="698" class="mono" font-size="13" font-weight="700" fill="#34D399">arpan@darwin-xnu</text>
+  <text x="226" y="698" class="mono" font-size="13" font-weight="600" fill="#94A3B8">~ $</text>
+  <text x="260" y="698" class="mono" font-size="13" font-weight="700" fill="#F8FAFC">kevent(kq, EVFILT_READ | EVFILT_PROC)</text>
+  <rect x="572" y="685" width="9" height="16" rx="1.5" fill="#38BDF8"/>
+  <rect x="84" y="724" width="510" height="42" rx="8" fill="#1E293B" stroke="#334155" stroke-width="1"/>
+  <g transform="translate(96.0 735.0) scale(0.8333)" fill="#F59E0B"><path d="m11.3 2.26-6 2.25C4.52 4.81 4 5.55 4 6.39v4.7c0 4.83 3.13 9.37 7.43 10.75.37.12.77.12 1.14 0 4.3-1.38 7.43-5.91 7.43-10.75v-4.7a2 2 0 0 0-1.3-1.87l-6-2.25c-.45-.18-.95-.18-1.4-.01z"/></g>
+  <text x="124" y="742" class="sans" font-size="11.5" font-weight="700" fill="#FDE68A">TRAP GATE · SYSCALL / SVC #0 · RING 3 → RING 0</text>
+  <text x="124" y="758" class="mono" font-size="11" font-weight="500" fill="#94A3B8">Saves RIP/RFLAGS to TSS.rsp0 · Dispatches IDT / VBAR_EL1</text>
+  <line x1="612" y1="544" x2="612" y2="766" stroke="#1E293B" stroke-width="1.5"/>
+  <rect x="628" y="548" width="248" height="62" rx="8" fill="#1E293B" stroke="#34D399" stroke-width="1.2"/>
+  <rect x="640" y="561" width="36" height="36" rx="8" fill="#064E3B"/>
+  <g transform="translate(646.0 567.0) scale(1.0000)" fill="#34D399"><path d="M11.99 2C6.47 2 2 6.48 2 12s4.47 10 9.99 10C17.52 22 22 17.52 22 12S17.52 2 11.99 2zM12 20c-4.42 0-8-3.58-8-8s3.58-8 8-8 8 3.58 8 8-3.58 8-8 8zm-.22-13h-.06c-.4 0-.72.32-.72.72v4.72c0 .35.18.68.49.86l4.15 2.49c.34.2.78.1.98-.24a.71.71 0 0 0-.25-.99l-3.87-2.3V7.72c0-.4-.32-.72-.72-.72z"/></g>
+  <text x="688" y="575" class="sans" font-size="13" font-weight="700" fill="#F8FAFC">CFS / EEVDF Scheduler</text>
+  <text x="688" y="594" class="mono" font-size="11.2" font-weight="500" fill="#34D399">vruntime RB-Tree · Futex</text>
+  <rect x="628" y="622" width="248" height="62" rx="8" fill="#1E293B" stroke="#38BDF8" stroke-width="1.2"/>
+  <rect x="640" y="635" width="36" height="36" rx="8" fill="#0C4A6E"/>
+  <g transform="translate(646.0 641.0) scale(1.0000)" fill="#38BDF8"><path d="M14.67 6v4.5c0 .55-.45 1-1 1h-3.33c-.55 0-1-.45-1-1V6c0-.55.45-1 1-1h3.33c.55 0 1 .45 1 1zm2 5.5H20c.55 0 1-.45 1-1V6c0-.55-.45-1-1-1h-3.33c-.55 0-1 .45-1 1v4.5c0 .55.44 1 1 1zm-2 6.5v-4.5c0-.55-.45-1-1-1h-3.33c-.55 0-1 .45-1 1V18c0 .55.45 1 1 1h3.33c.55 0 1-.45 1-1zm1-4.5V18c0 .55.45 1 1 1H20c.55 0 1-.45 1-1v-4.5c0-.55-.45-1-1-1h-3.33c-.56 0-1 .45-1 1zm-8.34-1H4c-.55 0-1 .45-1 1V18c0 .55.45 1 1 1h3.33c.55 0 1-.45 1-1v-4.5c0-.55-.44-1-1-1zm1-2V6c0-.55-.45-1-1-1H4c-.55 0-1 .45-1 1v4.5c0 .55.45 1 1 1h3.33c.56 0 1-.45 1-1z"/></g>
+  <text x="688" y="649" class="sans" font-size="13" font-weight="700" fill="#F8FAFC">Arena &amp; Lock-Free Ring</text>
+  <text x="688" y="668" class="mono" font-size="11.2" font-weight="500" fill="#38BDF8">LruCache&lt;K,V&gt; · SPSC 64B</text>
+  <rect x="628" y="696" width="248" height="62" rx="8" fill="#1E293B" stroke="#C084FC" stroke-width="1.2"/>
+  <rect x="640" y="709" width="36" height="36" rx="8" fill="#3B0764"/>
+  <g transform="translate(646.0 715.0) scale(1.0000)" fill="#C084FC"><path d="M15 22h4c1.1 0 2-.9 2-2v-3c0-1.1-.9-2-2-2h-1v-2c0-1.1-.9-2-2-2h-3V9h1c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2h-4c-1.1 0-2 .9-2 2v3c0 1.1.9 2 2 2h1v2H8c-1.1 0-2 .9-2 2v2H5c-1.1 0-2 .9-2 2v3c0 1.1.9 2 2 2h4c1.1 0 2-.9 2-2v-3c0-1.1-.9-2-2-2H8v-2h8v2h-1c-1.1 0-2 .9-2 2v3c0 1.1.9 2 2 2z"/></g>
+  <text x="688" y="723" class="sans" font-size="13" font-weight="700" fill="#F8FAFC">VFS &amp; Zero-Copy I/O</text>
+  <text x="688" y="742" class="mono" font-size="11.2" font-weight="500" fill="#C084FC">Page Cache · WAL · DMA</text>
+  <path d="M 480 784 L 480 838" fill="none" stroke="#F59E0B" stroke-width="3" filter="url(#soft-glow)"/>
+  <path d="M 330 784 L 330 816 L 410 816 L 410 838" fill="none" stroke="#38BDF8" stroke-width="2.2"/>
+  <path d="M 630 784 L 630 816 L 550 816 L 550 838" fill="none" stroke="#34D399" stroke-width="2.2"/>
+  <path d="M 255 965 L 348 965" fill="none" stroke="#38BDF8" stroke-width="3" stroke-dasharray="6 4"/>
+  <path d="M 612 965 L 705 965" fill="none" stroke="#F97316" stroke-width="3" stroke-dasharray="6 4"/>
+  <rect x="348" y="838" width="264" height="256" rx="16" fill="url(#die-grad)" stroke="#F59E0B" stroke-width="2.2" filter="url(#mat-shadow)"/>
+  <rect x="376" y="829" width="12" height="9" rx="2" fill="#F59E0B"/>
+  <rect x="376" y="1094" width="12" height="9" rx="2" fill="#F59E0B"/>
+  <rect x="410" y="829" width="12" height="9" rx="2" fill="#F59E0B"/>
+  <rect x="410" y="1094" width="12" height="9" rx="2" fill="#F59E0B"/>
+  <rect x="444" y="829" width="12" height="9" rx="2" fill="#F59E0B"/>
+  <rect x="444" y="1094" width="12" height="9" rx="2" fill="#F59E0B"/>
+  <rect x="478" y="829" width="12" height="9" rx="2" fill="#F59E0B"/>
+  <rect x="478" y="1094" width="12" height="9" rx="2" fill="#F59E0B"/>
+  <rect x="512" y="829" width="12" height="9" rx="2" fill="#F59E0B"/>
+  <rect x="512" y="1094" width="12" height="9" rx="2" fill="#F59E0B"/>
+  <rect x="546" y="829" width="12" height="9" rx="2" fill="#F59E0B"/>
+  <rect x="546" y="1094" width="12" height="9" rx="2" fill="#F59E0B"/>
+  <rect x="580" y="829" width="12" height="9" rx="2" fill="#F59E0B"/>
+  <rect x="580" y="1094" width="12" height="9" rx="2" fill="#F59E0B"/>
+  <rect x="339" y="866" width="9" height="12" rx="2" fill="#F59E0B"/>
+  <rect x="612" y="866" width="9" height="12" rx="2" fill="#F59E0B"/>
+  <rect x="339" y="902" width="9" height="12" rx="2" fill="#F59E0B"/>
+  <rect x="612" y="902" width="9" height="12" rx="2" fill="#F59E0B"/>
+  <rect x="339" y="938" width="9" height="12" rx="2" fill="#F59E0B"/>
+  <rect x="612" y="938" width="9" height="12" rx="2" fill="#F59E0B"/>
+  <rect x="339" y="974" width="9" height="12" rx="2" fill="#F59E0B"/>
+  <rect x="612" y="974" width="9" height="12" rx="2" fill="#F59E0B"/>
+  <rect x="339" y="1010" width="9" height="12" rx="2" fill="#F59E0B"/>
+  <rect x="612" y="1010" width="9" height="12" rx="2" fill="#F59E0B"/>
+  <rect x="339" y="1046" width="9" height="12" rx="2" fill="#F59E0B"/>
+  <rect x="612" y="1046" width="9" height="12" rx="2" fill="#F59E0B"/>
+  <text x="480" y="864" text-anchor="middle" class="sans" font-size="12" font-weight="800" letter-spacing="1.4" fill="#FDE68A">UNIFIED SILICON &amp; RING 0 DIE</text>
+  <rect x="368" y="878" width="106" height="64" rx="8" fill="#0C4A6E" stroke="#38BDF8" stroke-width="1.4"/>
+  <text x="421" y="905" text-anchor="middle" class="mono" font-size="11.5" font-weight="700" fill="#FFFFFF">CORE 0 · SMP</text>
+  <text x="421" y="925" text-anchor="middle" class="sans" font-size="10.5" font-weight="500" fill="#38BDF8">Out-of-Order ALU</text>
+  <rect x="486" y="878" width="106" height="64" rx="8" fill="#0C4A6E" stroke="#38BDF8" stroke-width="1.4"/>
+  <text x="539" y="905" text-anchor="middle" class="mono" font-size="11.5" font-weight="700" fill="#FFFFFF">CORE 1 · SMP</text>
+  <text x="539" y="925" text-anchor="middle" class="sans" font-size="10.5" font-weight="500" fill="#38BDF8">MESI L1d / L2</text>
+  <rect x="368" y="954" width="106" height="64" rx="8" fill="#064E3B" stroke="#34D399" stroke-width="1.4"/>
+  <text x="421" y="981" text-anchor="middle" class="mono" font-size="11.5" font-weight="700" fill="#FFFFFF">MMU &amp; TLB</text>
+  <text x="421" y="1001" text-anchor="middle" class="sans" font-size="10.5" font-weight="500" fill="#34D399">4-Level Radix PT</text>
+  <rect x="486" y="954" width="106" height="64" rx="8" fill="#3B0764" stroke="#C084FC" stroke-width="1.4"/>
+  <text x="539" y="981" text-anchor="middle" class="mono" font-size="11.5" font-weight="700" fill="#FFFFFF">UMA · GPU/NPU</text>
+  <text x="539" y="1001" text-anchor="middle" class="sans" font-size="10.5" font-weight="500" fill="#C084FC">Zero-Copy Fabric</text>
+  <rect x="368" y="1032" width="224" height="44" rx="8" fill="#0F172A" stroke="#F59E0B" stroke-width="1.2"/>
+  <text x="480" y="1051" text-anchor="middle" class="mono" font-size="11" font-weight="700" fill="#FDE68A">COHERENT FABRIC · IO-APIC / GICv4</text>
+  <text x="480" y="1068" text-anchor="middle" class="mono" font-size="10.2" font-weight="500" fill="#94A3B8">64B Cache Lines · NVMe &amp; NIC DMA</text>
+  <rect x="64" y="852" width="242" height="242" rx="16" fill="#0F172A" fill-opacity="0.85" stroke="#38BDF8" stroke-width="1.5" filter="url(#mat-shadow)"/>
+  <g transform="translate(185 955)">
+    <ellipse cx="-24" cy="64" rx="18" ry="8" fill="#F59E0B"/>
+    <ellipse cx="24" cy="64" rx="18" ry="8" fill="#F59E0B"/>
+    <ellipse cx="0" cy="14" rx="46" ry="52" fill="#1E293B" stroke="#475569" stroke-width="1.5"/>
+    <ellipse cx="0" cy="20" rx="31" ry="40" fill="#F8FAFC"/>
+    <circle cx="0" cy="-38" r="32" fill="#1E293B" stroke="#475569" stroke-width="1.5"/>
+    <rect x="-24" y="-48" width="48" height="16" rx="8" fill="#0284C7" stroke="#7DD3FC" stroke-width="1.5"/>
+    <circle cx="-10" cy="-40" r="3.5" fill="#E0F2FE"/>
+    <circle cx="10" cy="-40" r="3.5" fill="#E0F2FE"/>
+    <polygon points="-9,-29 9,-29 0,-18" fill="#F59E0B"/>
+    <ellipse cx="-44" cy="12" rx="11" ry="26" transform="rotate(18 -44 12)" fill="#1E293B"/>
+    <ellipse cx="44" cy="12" rx="11" ry="26" transform="rotate(-18 44 12)" fill="#1E293B"/>
+    <rect x="-36" y="18" width="72" height="18" rx="9" fill="#064E3B" stroke="#34D399" stroke-width="1.6"/>
+    <text x="0" y="31" text-anchor="middle" class="mono" font-size="10" font-weight="700" fill="#6EE7B7">pipe(fd)</text>
+  </g>
+  <text x="185" y="1052" text-anchor="middle" class="sans" font-size="13.5" font-weight="700" fill="#F8FAFC">Kernel &amp; POSIX Pipelines</text>
+  <text x="185" y="1072" text-anchor="middle" class="mono" font-size="11" font-weight="500" fill="#7DD3FC">fork · dup2 · waitpid · signals</text>
+  <rect x="654" y="852" width="242" height="242" rx="16" fill="#0F172A" fill-opacity="0.85" stroke="#F97316" stroke-width="1.5" filter="url(#mat-shadow)"/>
+  <g transform="translate(775 952)">
+    <path d="M -46 28 L -57.5 52" stroke="#EA580C" stroke-width="5" stroke-linecap="round"/>
+    <path d="M -32 28 L -40.0 52" stroke="#EA580C" stroke-width="5" stroke-linecap="round"/>
+    <path d="M 32 28 L 40.0 52" stroke="#EA580C" stroke-width="5" stroke-linecap="round"/>
+    <path d="M 46 28 L 57.5 52" stroke="#EA580C" stroke-width="5" stroke-linecap="round"/>
+    <path d="M -42 0 C -62 -18 -58 -42 -36 -46" fill="none" stroke="#F97316" stroke-width="6" stroke-linecap="round"/>
+    <circle cx="-36" cy="-46" r="9" fill="#FB923C"/>
+    <path d="M 42 0 C 62 -18 58 -42 36 -46" fill="none" stroke="#F97316" stroke-width="6" stroke-linecap="round"/>
+    <circle cx="36" cy="-46" r="9" fill="#FB923C"/>
+    <rect x="-44" y="-68" width="88" height="24" rx="6" fill="#3B0764" stroke="#C084FC" stroke-width="1.6"/>
+    <text x="0" y="-52" text-anchor="middle" class="mono" font-size="10.5" font-weight="700" fill="#E9D5FF">4 KiB PTE</text>
+    <ellipse cx="0" cy="10" rx="48" ry="34" fill="#F97316" stroke="#FDBA74" stroke-width="1.5"/>
+    <ellipse cx="0" cy="18" rx="34" ry="20" fill="#FB923C"/>
+    <line x1="-16" y1="-20" x2="-16" y2="-32" stroke="#EA580C" stroke-width="4" stroke-linecap="round"/>
+    <line x1="16" y1="-20" x2="16" y2="-32" stroke="#EA580C" stroke-width="4" stroke-linecap="round"/>
+    <circle cx="-16" cy="-34" r="7" fill="#FFFFFF"/>
+    <circle cx="-16" cy="-34" r="3.5" fill="#0F172A"/>
+    <circle cx="16" cy="-34" r="7" fill="#FFFFFF"/>
+    <circle cx="16" cy="-34" r="3.5" fill="#0F172A"/>
+    <path d="M -10 -2 Q 0 6 10 -2" fill="none" stroke="#7C2D12" stroke-width="2.5" stroke-linecap="round"/>
+    <rect x="-36" y="12" width="72" height="17" rx="5" fill="#0F172A"/>
+    <text x="0" y="24" text-anchor="middle" class="mono" font-size="9.8" font-weight="700" fill="#FDBA74">Send + Sync</text>
+  </g>
+  <text x="775" y="1052" text-anchor="middle" class="sans" font-size="13.5" font-weight="700" fill="#F8FAFC">Zero-Cost Memory Safety</text>
+  <text x="775" y="1072" text-anchor="middle" class="mono" font-size="11" font-weight="500" fill="#FDBA74">Arena LRU · Atomics · mmap</text>
+  <g transform="translate(838 470)">
+    <line x1="0" y1="-26" x2="0" y2="-38" stroke="#F59E0B" stroke-width="2.5"/>
+    <circle cx="0" cy="-41" r="4.5" fill="#34D399" filter="url(#soft-glow)"/>
+    <rect x="-24" y="-26" width="48" height="32" rx="10" fill="#1E293B" stroke="#F59E0B" stroke-width="1.8"/>
+    <circle cx="-9" cy="-12" r="4" fill="#38BDF8"/>
+    <circle cx="9" cy="-12" r="4" fill="#38BDF8"/>
+    <rect x="-14" y="-2" width="28" height="4" rx="2" fill="#34D399"/>
+  </g>
+  <rect x="64" y="1148" width="832" height="84" rx="14" fill="#0F172A" stroke="#334155" stroke-width="1.5" filter="url(#mat-shadow)"/>
+  <rect x="64" y="1148" width="8" height="84" rx="4" fill="#38BDF8"/>
+  <text x="92" y="1177" class="sans" font-size="11" font-weight="700" letter-spacing="2" fill="#7DD3FC">AUTHOR</text>
+  <text x="92" y="1208" class="sans" font-size="24" font-weight="800" letter-spacing="0.8" fill="#FFFFFF">ARPAN PATHAK</text>
+  <line x1="304" y1="1164" x2="304" y2="1216" stroke="#1E293B" stroke-width="1.5"/>
+  <text x="326" y="1181" class="sans" font-size="14" font-weight="700" fill="#F8FAFC">19 Chapters · 54 Verified C++20 &amp; Rust 2024 Programs · 41 Vector Diagrams</text>
+  <text x="326" y="1205" class="mono" font-size="11.2" font-weight="500" fill="#94A3B8">Processes · Concurrency · Virtual Memory · File Systems · Networking · Daemons</text>
+</svg>
