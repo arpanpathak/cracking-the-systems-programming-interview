@@ -38,7 +38,7 @@
             const path_to_root = "";
             const default_light_theme = "light";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "searchindex-6aaf8639.js";
+            window.path_to_searchindex_js = "searchindex-b4a859a6.js";
         </script>
         <!-- Start loading toc.js asap -->
         <script src="toc-2b639993.js"></script>
@@ -239,10 +239,10 @@ int main() {
 }
 </code></pre>
 <p><strong>Output 9-1. One run on the verification machine.</strong></p>
-<pre><code class="language-text">plain function call  :     2.5 ns
-getppid() system call:   778.7 ns
-ratio                :   310.8x
-(parent pid 35058, checksum 1279998207)
+<pre><code class="language-text">plain function call  :     2.1 ns
+getppid() system call:   597.2 ns
+ratio                :   278.9x
+(parent pid 49110, checksum 1279998207)
 </code></pre>
 <p><strong>Listing 9-2. The same comparison in Rust.</strong></p>
 <pre class="playground"><code class="language-rust">// ch09/syscall_cost.rs: the same comparison in Rust.
@@ -288,10 +288,10 @@ fn main() {
     println!("(parent pid {ppid}, checksum {acc})");
 }</code></pre>
 <p><strong>Output 9-2.</strong></p>
-<pre><code class="language-text">plain function call  :     3.8 ns
-getppid() system call:   815.0 ns
-ratio                :   213.5x
-(parent pid 35058, checksum 1279998207)
+<pre><code class="language-text">plain function call  :     1.7 ns
+getppid() system call:   596.8 ns
+ratio                :   354.3x
+(parent pid 49110, checksum 1279998207)
 </code></pre>
 <figure>
 <img src="figures/ch09_buffering.svg" alt="Unbuffered writes cross into the kernel per call; a 64 KiB user buffer crosses only when full" />
@@ -343,8 +343,8 @@ int main() {
 }
 </code></pre>
 <p><strong>Output 9-3.</strong></p>
-<pre><code class="language-text">write(2) into /dev/null, 200000 x 17 bytes :   446.3 ms
-fwrite buffered, 200000 x 17 bytes         :    22.5 ms
+<pre><code class="language-text">write(2) into /dev/null, 200000 x 17 bytes :   277.8 ms
+fwrite buffered, 200000 x 17 bytes         :    13.4 ms
 </code></pre>
 <p><strong>Listing 9-4. The same comparison in Rust, with write(2) and BufWriter.</strong></p>
 <pre class="playground"><code class="language-rust">// ch09/write_buffered.rs: the same comparison with raw write(2) and BufWriter.
@@ -413,8 +413,8 @@ fn main() {
     unsafe { libc::close(fd) };
 }</code></pre>
 <p><strong>Output 9-4.</strong></p>
-<pre><code class="language-text">write(2) into /dev/null, 200000 x 17 bytes :   440.8 ms
-BufWriter,     200000 x 17 bytes         :     0.8 ms
+<pre><code class="language-text">write(2) into /dev/null, 200000 x 17 bytes :   271.1 ms
+BufWriter,     200000 x 17 bytes         :     0.5 ms
 </code></pre>
 
                     </main>

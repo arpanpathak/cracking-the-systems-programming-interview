@@ -38,7 +38,7 @@
             const path_to_root = "";
             const default_light_theme = "light";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "searchindex-6aaf8639.js";
+            window.path_to_searchindex_js = "searchindex-b4a859a6.js";
         </script>
         <!-- Start loading toc.js asap -->
         <script src="toc-2b639993.js"></script>
@@ -251,12 +251,12 @@ int main() {
 }
 </code></pre>
 <p><strong>Output 8-1. Three allocations and a reset.</strong></p>
-<pre><code class="language-text">arena: 0x1060ae000, 65536 bytes
+<pre><code class="language-text">arena: 0x10028b000, 65536 bytes
 
-alloc(8,8)   -&gt; 0x1060ae000 (offset 0)
-alloc(3,8)   -&gt; 0x1060ae008 (offset 8)
-alloc(16,16) -&gt; 0x1060ae010 (offset 16)
-after reset, alloc(8,8) -&gt; 0x1060ae000 (same as first: yes)
+alloc(8,8)   -&gt; 0x10028b000 (offset 0)
+alloc(3,8)   -&gt; 0x10028b008 (offset 8)
+alloc(16,16) -&gt; 0x10028b010 (offset 16)
+after reset, alloc(8,8) -&gt; 0x10028b000 (same as first: yes)
 </code></pre>
 <p><strong>Listing 8-2. The same allocator in Rust.</strong></p>
 <pre class="playground"><code class="language-rust">// ch08/bump.rs: the same bump allocator in Rust.
@@ -296,10 +296,10 @@ impl Bump {
 
     fn alloc(&amp;mut self, n: usize, align: usize) -&gt; Option&lt;*mut u8&gt; {
         // Mathematical Alignment Proof:
-        // Assuming `align` is a power of two ($2^k$), `align - 1` has its lowest $k$ bits set to 1.
-        // Adding `align - 1` rounds any unaligned offset up to or past the next multiple of $2^k$.
-        // Bitwise AND with `!(align - 1)` clears the lower $k$ bits, producing the exact minimal
-        // multiple of `align` that is $\ge \text{self.offset}$.
+        // Assuming `align` is a power of two (2^k), `align - 1` has its lowest k bits set to 1.
+        // Adding `align - 1` rounds any unaligned offset up to or past the next multiple of 2^k.
+        // Bitwise AND with `!(align - 1)` clears the lower k bits, producing the exact minimal
+        // multiple of `align` that is &gt;= self.offset.
         let aligned = (self.offset + align - 1) &amp; !(align - 1);
         if aligned + n &gt; self.size {
             return None;
@@ -345,12 +345,12 @@ fn main() {
     println!("after reset, alloc(8,8) -&gt; {e:p} (same as first: {})", e == a);
 }</code></pre>
 <p><strong>Output 8-2.</strong></p>
-<pre><code class="language-text">arena: 0x108450000, 65536 bytes
+<pre><code class="language-text">arena: 0x10818e000, 65536 bytes
 
-alloc(8,8)   -&gt; 0x108450000 (offset 0)
-alloc(3,8)   -&gt; 0x108450008 (offset 8)
-alloc(16,16) -&gt; 0x108450010 (offset 16)
-after reset, alloc(8,8) -&gt; 0x108450000 (same as first: true)
+alloc(8,8)   -&gt; 0x10818e000 (offset 0)
+alloc(3,8)   -&gt; 0x10818e008 (offset 8)
+alloc(16,16) -&gt; 0x10818e010 (offset 16)
+after reset, alloc(8,8) -&gt; 0x10818e000 (same as first: true)
 </code></pre>
 <h2 id="83-explicit-management-free-list-allocation"><a class="header" href="#83-explicit-management-free-list-allocation">8.3 Explicit Management: Free-List Allocation</a></h2>
 <p>To support the independent deallocation of individual objects, an allocator must implement a mechanism for tracking free memory. A <strong>free-list allocator</strong> accomplishes this by embedding metadata, or a <strong>header</strong>, immediately preceding each allocated or free block. This header typically stores the block’s size, its status (free or used), and a pointer to the next block in the free list.</p>
@@ -490,7 +490,7 @@ int main() {
 }
 </code></pre>
 <p><strong>Output 8-3. The block map after each step.</strong></p>
-<pre><code class="language-text">arena: 0x10c924000, 262144 bytes, header 24 bytes
+<pre><code class="language-text">arena: 0x109112000, 262144 bytes, header 24 bytes
 
 after alloc(100), alloc(200), alloc(300):
   block map:
@@ -703,7 +703,7 @@ fn main() {
     h.dump();
 }</code></pre>
 <p><strong>Output 8-4.</strong></p>
-<pre><code class="language-text">arena: 0x104b30000, 262144 bytes, header 24 bytes
+<pre><code class="language-text">arena: 0x1081ce000, 262144 bytes, header 24 bytes
 
 after alloc(100), alloc(200), alloc(300):
   block map:

@@ -38,7 +38,7 @@
             const path_to_root = "";
             const default_light_theme = "light";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "searchindex-6aaf8639.js";
+            window.path_to_searchindex_js = "searchindex-b4a859a6.js";
         </script>
         <!-- Start loading toc.js asap -->
         <script src="toc-2b639993.js"></script>
@@ -263,9 +263,9 @@ int main() {
 }
 </code></pre>
 <p><strong>Output 17-1. One run on the verification machine.</strong></p>
-<pre><code class="language-text">unpadded (shared line):  1435.5 ms
-padded   (separate)   :   346.5 ms
-ratio                 :  4.14x
+<pre><code class="language-text">unpadded (shared line):  1525.6 ms
+padded   (separate)   :   379.5 ms
+ratio                 :  4.02x
 (unpadded 80000000, padded 80000000)
 </code></pre>
 <p><strong>Listing 17-2. The same experiment in Rust, with atomic counters.</strong></p>
@@ -328,9 +328,9 @@ fn main() {
     );
 }</code></pre>
 <p><strong>Output 17-2.</strong></p>
-<pre><code class="language-text">unpadded (shared line):  1601.9 ms
-padded   (separate)   :   337.8 ms
-ratio                 :  4.74x
+<pre><code class="language-text">unpadded (shared line):  1547.9 ms
+padded   (separate)   :   397.7 ms
+ratio                 :  3.89x
 (unpadded 80000000, padded 80000000)
 </code></pre>
 <div class="callout keyidea">

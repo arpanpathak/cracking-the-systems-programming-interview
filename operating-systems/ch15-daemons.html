@@ -38,7 +38,7 @@
             const path_to_root = "";
             const default_light_theme = "light";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "searchindex-6aaf8639.js";
+            window.path_to_searchindex_js = "searchindex-b4a859a6.js";
         </script>
         <!-- Start loading toc.js asap -->
         <script src="toc-2b639993.js"></script>
@@ -283,13 +283,13 @@ int main() {
 }
 </code></pre>
 <p><strong>Output 15-1. The C++ daemon.</strong></p>
-<pre><code class="language-text">harness: daemon running with pid 36079
+<pre><code class="language-text">harness: daemon running with pid 50141
 harness: process alive: yes
 harness: sent SIGHUP
 harness: sent SIGTERM
 harness: pidfile removed after SIGTERM: yes
 --- daemon log ---
-daemon 36079 started
+daemon 50141 started
 tick 1
 reload requested
 tick 2
@@ -394,13 +394,13 @@ fn main() {
     std::fs::remove_file(pidfile).unwrap();
 }</code></pre>
 <p><strong>Output 15-2. The Rust daemon.</strong></p>
-<pre><code class="language-text">harness: daemon running with pid 36093
+<pre><code class="language-text">harness: daemon running with pid 50156
 harness: process alive: yes
 harness: sent SIGHUP
 harness: sent SIGTERM
 harness: pidfile removed after SIGTERM: yes
 --- daemon log ---
-daemon 36093 started
+daemon 50156 started
 tick 1
 reload requested
 tick 2
@@ -495,7 +495,7 @@ int main() {
 }
 </code></pre>
 <p><strong>Output 15-3. The C++ supervisor output.</strong></p>
-<pre><code class="language-text">supervisor detected child 36105 termination, exit status: 0
+<pre><code class="language-text">supervisor detected child 50166 termination, exit status: 0
 </code></pre>
 <p><strong>Listing 15-4. The same supervisor in Rust.</strong></p>
 <pre class="playground"><code class="language-rust">// ch15/kqueue_supervisor.rs: process fault monitoring using kqueue in Rust.
@@ -556,7 +556,7 @@ fn main() {
     }
 }</code></pre>
 <p><strong>Output 15-4. The Rust supervisor output.</strong></p>
-<pre><code class="language-text">supervisor detected child 36125 termination, success: true
+<pre><code class="language-text">supervisor detected child 50186 termination, success: true
 </code></pre>
 <h2 id="155-fault-recovery-policies-and-health-checks"><a class="header" href="#155-fault-recovery-policies-and-health-checks">15.5 Fault Recovery Policies and Health Checks</a></h2>
 <p>Detecting a failure is only the first half of high-availability systems software; the second half is executing a deterministic recovery policy.</p>

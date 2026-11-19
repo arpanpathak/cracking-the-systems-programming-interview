@@ -38,7 +38,7 @@
             const path_to_root = "";
             const default_light_theme = "light";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "searchindex-6aaf8639.js";
+            window.path_to_searchindex_js = "searchindex-b4a859a6.js";
         </script>
         <!-- Start loading toc.js asap -->
         <script src="toc-2b639993.js"></script>
@@ -229,12 +229,12 @@ int main() {
 }
 </code></pre>
 <p><strong>Output 3-1. One run on the verification machine.</strong></p>
-<pre><code class="language-text">pid 35993
-text   (function)      : 105E805E0
-data   (initialized)   : 105E82000
-bss    (uninitialized) : 105E82004
-heap   (new int)       : 600001594040
-stack  (local)         : 7FF7BA07E53C
+<pre><code class="language-text">pid 50046
+text   (function)      : 103E785E0
+data   (initialized)   : 103E7A000
+bss    (uninitialized) : 103E7A004
+heap   (new int)       : 6000037E0040
+stack  (local)         : 7FF7BC0858AC
 </code></pre>
 <p><strong>Listing 3-2. The same program in Rust (2024 edition).</strong></p>
 <pre class="playground"><code class="language-rust">// ch03/layout.rs: the same address-space regions, observed from Rust.
@@ -263,11 +263,11 @@ fn main() {
     );
 }</code></pre>
 <p><strong>Output 3-2.</strong></p>
-<pre><code class="language-text">text   (fn anchor)     : 0x10c8d6960
-data   (static atomic) : 0x10c91cbc8
-bss    (static mut)    : 0x10c91d710
-heap   (Box&lt;i32&gt;)      : 0x600003614050
-stack  (local)         : 0x7ff7b362846c
+<pre><code class="language-text">text   (fn anchor)     : 0x107979960
+data   (static atomic) : 0x1079bfbc8
+bss    (static mut)    : 0x1079c0710
+heap   (Box&lt;i32&gt;)      : 0x600002a2c040
+stack  (local)         : 0x7ff7b85847ec
 </code></pre>
 <h2 id="32-process-creation-and-the-mechanics-of-fork"><a class="header" href="#32-process-creation-and-the-mechanics-of-fork">3.2 Process Creation and the Mechanics of <code>fork</code></a></h2>
 <p>On Unix-like systems, process creation is facilitated through the <code>fork</code> system call, which implements a “copy-on-write” (COW) paradigm. Rather than performing an immediate, computationally expensive duplication of the parent’s entire address space, the kernel initially permits the parent and child to share the same physical pages, marking them as read-only. A private copy is only instantiated when one of the processes attempts a write operation. This mechanism ensures that <code>fork</code> remains highly efficient, particularly when the child intends to immediately replace its image using <code>execve</code>.</p>
@@ -308,10 +308,10 @@ int main() {
 }
 </code></pre>
 <p><strong>Output 3-3. The first line is printed twice.</strong></p>
-<pre><code class="language-text">before fork: pid=35995
-child : pid=35996 parent=35995
-before fork: pid=35995
-parent: child 35996 exited with status 7
+<pre><code class="language-text">before fork: pid=50048
+child : pid=50049 parent=50048
+before fork: pid=50048
+parent: child 50049 exited with status 7
 </code></pre>
 <p><strong>Listing 3-4. The same sequence in Rust, using the libc crate.</strong></p>
 <pre class="playground"><code class="language-rust">// ch03/fork.rs: the same fork/wait sequence through Rust's libc bindings.
@@ -365,9 +365,9 @@ fn main() {
     println!("parent: child {waited} exited with status {code}");
 }</code></pre>
 <p><strong>Output 3-4.</strong></p>
-<pre><code class="language-text">before fork: pid=35997
-child : pid=35998 parent=35997
-parent: child 35998 exited with status 7
+<pre><code class="language-text">before fork: pid=50050
+child : pid=50051 parent=50050
+parent: child 50051 exited with status 7
 </code></pre>
 <h2 id="33-lifecycle-management-state-automaton-and-termination"><a class="header" href="#33-lifecycle-management-state-automaton-and-termination">3.3 Lifecycle Management, State Automaton, and Termination</a></h2>
 <p>The operational lifecycle of a process is governed by a formal five-state finite automaton managed by the kernel scheduler and process subsystem, coupled with four primary system call transitions: <code>fork</code> (or <code>clone</code>) for instantiation, <code>execve</code> for binary image replacement, <code>_exit</code> for termination, and <code>waitpid</code> for parent acknowledgment and resource reclamation.</p>

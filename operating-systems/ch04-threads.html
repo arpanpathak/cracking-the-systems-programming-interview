@@ -38,7 +38,7 @@
             const path_to_root = "";
             const default_light_theme = "light";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "searchindex-6aaf8639.js";
+            window.path_to_searchindex_js = "searchindex-b4a859a6.js";
         </script>
         <!-- Start loading toc.js asap -->
         <script src="toc-2b639993.js"></script>
@@ -229,7 +229,7 @@ int main() {
 }
 </code></pre>
 <p><strong>Output 4-1. One run. The observed value differs from run to run.</strong></p>
-<pre><code class="language-text">expected 160000000, observed 46017370
+<pre><code class="language-text">expected 160000000, observed 37220654
 </code></pre>
 <p><strong>Listing 4-2. The same race in Rust, written with <code>unsafe</code>.</strong></p>
 <pre class="playground"><code class="language-rust">// ch04/race.rs: the unsynchronized counter in Rust. Reading or writing a
@@ -280,7 +280,7 @@ fn main() {
     println!("expected {}, observed {observed}", THREADS as u64 * ITERS);
 }</code></pre>
 <p><strong>Output 4-2.</strong></p>
-<pre><code class="language-text">expected 160000000, observed 47682122
+<pre><code class="language-text">expected 160000000, observed 45548801
 </code></pre>
 <p><strong>Listing 4-3. The counter as a <code>std::atomic</code> (C++20).</strong></p>
 <pre><code class="language-cpp">// ch04/race_atomic.cpp: the same counter with an atomic increment.
@@ -409,10 +409,10 @@ int main() {
 }
 </code></pre>
 <p><strong>Output 4-5. The order of the lines differs from run to run.</strong></p>
-<pre><code class="language-text">thread 0 running
+<pre><code class="language-text">thread 1 running
+thread 0 running
 thread 2 running
 thread 3 running
-thread 1 running
 all threads joined
 </code></pre>
 <p><strong>Listing 4-6. The same four threads in Rust.</strong></p>
@@ -434,10 +434,10 @@ fn main() {
     println!("all threads joined");
 }</code></pre>
 <p><strong>Output 4-6.</strong></p>
-<pre><code class="language-text">thread 3 running
-thread 0 running
-thread 2 running
+<pre><code class="language-text">thread 2 running
 thread 1 running
+thread 0 running
+thread 3 running
 all threads joined
 </code></pre>
 

@@ -39,7 +39,7 @@
             const path_to_root = "";
             const default_light_theme = "light";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "searchindex-6aaf8639.js";
+            window.path_to_searchindex_js = "searchindex-b4a859a6.js";
         </script>
         <!-- Start loading toc.js asap -->
         <script src="toc-2b639993.js"></script>
@@ -1161,12 +1161,12 @@ __attribute__((noinline)) <span class="hljs-function"><span class="hljs-keyword"
 }
 </code></pre>
 <p><strong>Output 3-1. One run on the verification machine.</strong></p>
-<pre><code class="hljs language-text">pid 35993
-text   (function)      : 105E805E0
-data   (initialized)   : 105E82000
-bss    (uninitialized) : 105E82004
-heap   (new int)       : 600001594040
-stack  (local)         : 7FF7BA07E53C
+<pre><code class="hljs language-text">pid 50046
+text   (function)      : 103E785E0
+data   (initialized)   : 103E7A000
+bss    (uninitialized) : 103E7A004
+heap   (new int)       : 6000037E0040
+stack  (local)         : 7FF7BC0858AC
 </code></pre>
 <p><strong>Listing 3-2. The same program in Rust (2024 edition).</strong></p>
 <pre class="playground"><code class="hljs language-rust"><span class="hljs-comment">// ch03/layout.rs: the same address-space regions, observed from Rust.</span>
@@ -1195,11 +1195,11 @@ stack  (local)         : 7FF7BA07E53C
     );
 }</code></pre>
 <p><strong>Output 3-2.</strong></p>
-<pre><code class="hljs language-text">text   (fn anchor)     : 0x10c8d6960
-data   (static atomic) : 0x10c91cbc8
-bss    (static mut)    : 0x10c91d710
-heap   (Box&lt;i32&gt;)      : 0x600003614050
-stack  (local)         : 0x7ff7b362846c
+<pre><code class="hljs language-text">text   (fn anchor)     : 0x107979960
+data   (static atomic) : 0x1079bfbc8
+bss    (static mut)    : 0x1079c0710
+heap   (Box&lt;i32&gt;)      : 0x600002a2c040
+stack  (local)         : 0x7ff7b85847ec
 </code></pre>
 <h2 id="32-process-creation-and-the-mechanics-of-fork"><a class="header" href="#32-process-creation-and-the-mechanics-of-fork">3.2 Process Creation and the Mechanics of <code>fork</code></a></h2>
 <p>On Unix-like systems, process creation is facilitated through the <code>fork</code> system call, which implements a “copy-on-write” (COW) paradigm. Rather than performing an immediate, computationally expensive duplication of the parent’s entire address space, the kernel initially permits the parent and child to share the same physical pages, marking them as read-only. A private copy is only instantiated when one of the processes attempts a write operation. This mechanism ensures that <code>fork</code> remains highly efficient, particularly when the child intends to immediately replace its image using <code>execve</code>.</p>
@@ -1240,10 +1240,10 @@ stack  (local)         : 0x7ff7b362846c
 }
 </code></pre>
 <p><strong>Output 3-3. The first line is printed twice.</strong></p>
-<pre><code class="hljs language-text">before fork: pid=35995
-child : pid=35996 parent=35995
-before fork: pid=35995
-parent: child 35996 exited with status 7
+<pre><code class="hljs language-text">before fork: pid=50048
+child : pid=50049 parent=50048
+before fork: pid=50048
+parent: child 50049 exited with status 7
 </code></pre>
 <p><strong>Listing 3-4. The same sequence in Rust, using the libc crate.</strong></p>
 <pre class="playground"><code class="hljs language-rust"><span class="hljs-comment">// ch03/fork.rs: the same fork/wait sequence through Rust&#x27;s libc bindings.</span>
@@ -1297,9 +1297,9 @@ parent: child 35996 exited with status 7
     <span class="hljs-built_in">println!</span>(<span class="hljs-string">&quot;parent: child {waited} exited with status {code}&quot;</span>);
 }</code></pre>
 <p><strong>Output 3-4.</strong></p>
-<pre><code class="hljs language-text">before fork: pid=35997
-child : pid=35998 parent=35997
-parent: child 35998 exited with status 7
+<pre><code class="hljs language-text">before fork: pid=50050
+child : pid=50051 parent=50050
+parent: child 50051 exited with status 7
 </code></pre>
 <h2 id="33-lifecycle-management-state-automaton-and-termination"><a class="header" href="#33-lifecycle-management-state-automaton-and-termination">3.3 Lifecycle Management, State Automaton, and Termination</a></h2>
 <p>The operational lifecycle of a process is governed by a formal five-state finite automaton managed by the kernel scheduler and process subsystem, coupled with four primary system call transitions: <code>fork</code> (or <code>clone</code>) for instantiation, <code>execve</code> for binary image replacement, <code>_exit</code> for termination, and <code>waitpid</code> for parent acknowledgment and resource reclamation.</p>
@@ -1370,7 +1370,7 @@ parent: child 35998 exited with status 7
 }
 </code></pre>
 <p><strong>Output 4-1. One run. The observed value differs from run to run.</strong></p>
-<pre><code class="hljs language-text">expected 160000000, observed 46017370
+<pre><code class="hljs language-text">expected 160000000, observed 37220654
 </code></pre>
 <p><strong>Listing 4-2. The same race in Rust, written with <code>unsafe</code>.</strong></p>
 <pre class="playground"><code class="hljs language-rust"><span class="hljs-comment">// ch04/race.rs: the unsynchronized counter in Rust. Reading or writing a</span>
@@ -1421,7 +1421,7 @@ parent: child 35998 exited with status 7
     <span class="hljs-built_in">println!</span>(<span class="hljs-string">&quot;expected {}, observed {observed}&quot;</span>, THREADS <span class="hljs-keyword">as</span> <span class="hljs-built_in">u64</span> * ITERS);
 }</code></pre>
 <p><strong>Output 4-2.</strong></p>
-<pre><code class="hljs language-text">expected 160000000, observed 47682122
+<pre><code class="hljs language-text">expected 160000000, observed 45548801
 </code></pre>
 <p><strong>Listing 4-3. The counter as a <code>std::atomic</code> (C++20).</strong></p>
 <pre><code class="hljs language-cpp"><span class="hljs-comment">// ch04/race_atomic.cpp: the same counter with an atomic increment.</span>
@@ -1550,10 +1550,10 @@ parent: child 35998 exited with status 7
 }
 </code></pre>
 <p><strong>Output 4-5. The order of the lines differs from run to run.</strong></p>
-<pre><code class="hljs language-text">thread 0 running
+<pre><code class="hljs language-text">thread 1 running
+thread 0 running
 thread 2 running
 thread 3 running
-thread 1 running
 all threads joined
 </code></pre>
 <p><strong>Listing 4-6. The same four threads in Rust.</strong></p>
@@ -1575,10 +1575,10 @@ all threads joined
     <span class="hljs-built_in">println!</span>(<span class="hljs-string">&quot;all threads joined&quot;</span>);
 }</code></pre>
 <p><strong>Output 4-6.</strong></p>
-<pre><code class="hljs language-text">thread 3 running
-thread 0 running
-thread 2 running
+<pre><code class="hljs language-text">thread 2 running
 thread 1 running
+thread 0 running
+thread 3 running
 all threads joined
 </code></pre>
 <div style="break-before: page; page-break-before: always;"></div>
@@ -2288,6 +2288,7 @@ worker 2 holds B, tries A
 worker 2 holds B, tries A
 worker 2 holds B, tries A
 worker 2 holds B, tries A
+worker 2 holds B, tries A
 worker 1 got A and B
 worker 2 holds B, tries A
 worker 2 got B and A
@@ -2323,7 +2324,7 @@ finished without deadlock
 <img src="figures/ch07_vm_paging.svg" alt="Virtual pages mapping through a page table to scattered physical frames" />
 </figure>
 <h2 id="72-hierarchical-translation-and-the-tlb"><a class="header" href="#72-hierarchical-translation-and-the-tlb">7.2 Hierarchical Translation and the TLB</a></h2>
-<p>On modern 64-bit architectures like x86-64 and ARM64, the virtual address space is too vast to be mapped by a single flat array. A flat page table covering a 48-bit address space ($2^{48} = 256\text{ TiB}$) with 4 KiB pages ($2^{12}\text{ bytes}$) would require $2^{36}$ entries; at 8 bytes per entry, every active process would consume 512 GiB of physical DRAM solely for its page table. Instead, the kernel employs a sparse, multi-level hierarchical radix tree—typically a four-level page table (or five-level with Intel LA57 / ARM64 LPA2). Because entire unmapped subtrees are omitted when their parent directory entry is marked non-present, physical memory is allocated only for page table nodes that map active regions of the process’s address space.</p>
+<p>On modern 64-bit architectures like x86-64 and ARM64, the virtual address space is too vast to be mapped by a single flat array. A flat page table covering a 48-bit address space (2<sup>48</sup> = 256 TiB) with 4 KiB pages (2<sup>12</sup> bytes) would require 2<sup>36</sup> entries; at 8 bytes per entry, every active process would consume 512 GiB of physical DRAM solely for its page table. Instead, the kernel employs a sparse, multi-level hierarchical radix tree—typically a four-level page table (or five-level with Intel LA57 / ARM64 LPA2). Because entire unmapped subtrees are omitted when their parent directory entry is marked non-present, physical memory is allocated only for page table nodes that map active regions of the process’s address space.</p>
 <h3 id="721-canonical-addresses-and-multi-level-radix-decomposition"><a class="header" href="#721-canonical-addresses-and-multi-level-radix-decomposition">7.2.1 Canonical Addresses and Multi-Level Radix Decomposition</a></h3>
 <p>Under standard 4-level paging on x86-64 (and 48-bit <code>VA_BITS</code> with 4 KiB granules on ARM64), only the lower 48 bits (<code>[47:0]</code>) of a 64-bit pointer participate in hardware address translation. To prevent software from overloading the upper unused bits (<code>[63:48]</code>) with arbitrary metadata that would break compatibility with 5-level paging extensions, the hardware enforces <strong>canonical address form</strong>: bits <code>63:48</code> must be an exact sign-extension (replication) of bit <code>47</code>.</p>
 <ul>
@@ -2333,9 +2334,9 @@ finished without deadlock
 </ul>
 <p>Why does each radix table level consume exactly <strong>9 bits</strong> of the virtual address? The geometry is derived directly from the hardware page size and entry width:</p>
 <ul>
-<li>Each page table node occupies exactly one physical 4 KiB frame ($2^{12} = 4,096\text{ bytes}$).</li>
-<li>Each Page Table Entry (PTE) is 64 bits wide ($8\text{ bytes} = 2^3\text{ bytes}$).</li>
-<li>Consequently, one 4 KiB page table houses exactly $4,096 / 8 = 512 = 2^9$ entries, requiring a <strong>9-bit unsigned index</strong> (<code>0</code> to <code>511</code>) to select an entry at each level, while the lowest <strong>12 bits</strong> (<code>0</code> to <code>4,095</code>) address the individual byte offset within the target 4 KiB physical frame ($9 + 9 + 9 + 9 + 12 = 48\text{ bits}$).</li>
+<li>Each page table node occupies exactly one physical 4 KiB frame (2<sup>12</sup> = 4,096 bytes).</li>
+<li>Each Page Table Entry (PTE) is 64 bits wide (8 bytes = 2<sup>3</sup> bytes).</li>
+<li>Consequently, one 4 KiB page table houses exactly 4,096 / 8 = 512 = 2<sup>9</sup> entries, requiring a <strong>9-bit unsigned index</strong> (<code>0</code> to <code>511</code>) to select an entry at each level, while the lowest <strong>12 bits</strong> (<code>0</code> to <code>4,095</code>) address the individual byte offset within the target 4 KiB physical frame (9 + 9 + 9 + 9 + 12 = 48 bits).</li>
 </ul>
 <figure>
 <img src="figures/ch07_pagewalk.svg" alt="A virtual address split into four 9-bit indices and a 12-bit offset, walking four table levels" />
@@ -2422,9 +2423,9 @@ Binary: 0111 1111 1111 1111 1010 1011 1100 1101 1110 1111 0000 0001
 <p>Because a 4-level radix walk requires <strong>four sequential memory accesses</strong> before the actual data load or store can proceed, performing a full walk on every instruction would quadruple memory latency. To avoid this penalty, the MMU caches recent virtual-page-to-physical-frame (<code>VPN → PFN</code>) translations in the <strong>Translation Lookaside Buffer (TLB)</strong>—a hardware content-addressable cache checked in parallel with the L1 cache tag array (~0.5–1 cycle latency on an L1 dTLB hit).</p>
 <p>Three microarchitectural properties of the TLB directly govern systems software performance:</p>
 <ol>
-<li><strong>TLB Reach and Working-Set Cliffs:</strong> A typical L1 dTLB holds 64 entries and an L2 STLB holds 1,024–2,048 entries. With 4 KiB pages, a 1,536-entry L2 TLB covers a maximum working set (“TLB reach”) of only $1,536 \times 4\text{ KiB} = 6\text{ MiB}$. When an application randomly accesses a memory buffer larger than the TLB reach, TLB misses spike, forcing the hardware page walker to stall the CPU pipeline. Configuring <strong>2 MiB Huge Pages</strong> (<code>MAP_HUGEPAGE</code> / <code>MADV_HUGEPAGE</code>, terminating the radix walk at Level 2 with <code>PDE.PS = 1</code>) increases the reach of those same 1,536 TLB entries to <strong>3 GiB</strong>, eliminating L1/L2 PT memory traffic and dramatically reducing translation latency for database buffer pools and VM hypervisors.</li>
+<li><strong>TLB Reach and Working-Set Cliffs:</strong> A typical L1 dTLB holds 64 entries and an L2 STLB holds 1,024–2,048 entries. With 4 KiB pages, a 1,536-entry L2 TLB covers a maximum working set (“TLB reach”) of only 1,536 × 4 KiB = 6 MiB. When an application randomly accesses a memory buffer larger than the TLB reach, TLB misses spike, forcing the hardware page walker to stall the CPU pipeline. Configuring <strong>2 MiB Huge Pages</strong> (<code>MAP_HUGEPAGE</code> / <code>MADV_HUGEPAGE</code>, terminating the radix walk at Level 2 with <code>PDE.PS = 1</code>) increases the reach of those same 1,536 TLB entries to <strong>3 GiB</strong>, eliminating L1/L2 PT memory traffic and dramatically reducing translation latency for database buffer pools and VM hypervisors.</li>
 <li><strong>Address Space Identifiers (<code>PCID</code> / <code>ASID</code>):</strong> Historically, reloading <code>CR3</code> during a process context switch flushed all non-global TLB entries to prevent Process B from using Process A’s cached translations. Contemporary processors tag each TLB entry with a 12-bit <strong>Process-Context Identifier (<code>PCID</code> on x86-64)</strong> or 16-bit <strong>Address Space Identifier (<code>ASID</code> on ARM64)</strong>, allowing translations from multiple processes to coexist safely in the TLB across context switches.</li>
-<li><strong>TLB Shootdowns:</strong> Unlike the L1/L2/L3 data caches, <strong>hardware TLBs are not automatically kept coherent across CPU cores</strong>. When the kernel modifies or unmaps a valid PTE (<code>munmap</code>, <code>mprotect</code>, or page eviction) in a multi-threaded process running across $K$ cores, the kernel must flush its local TLB (<code>invlpg</code> on x86-64; <code>tlbi</code> on ARM64) and dispatch synchronous <strong>Inter-Processor Interrupts (IPIs)</strong> to all sibling cores running that address space—a high-overhead synchronization operation known as a <strong>TLB shootdown</strong>.</li>
+<li><strong>TLB Shootdowns:</strong> Unlike the L1/L2/L3 data caches, <strong>hardware TLBs are not automatically kept coherent across CPU cores</strong>. When the kernel modifies or unmaps a valid PTE (<code>munmap</code>, <code>mprotect</code>, or page eviction) in a multi-threaded process running across <em>K</em> cores, the kernel must flush its local TLB (<code>invlpg</code> on x86-64; <code>tlbi</code> on ARM64) and dispatch synchronous <strong>Inter-Processor Interrupts (IPIs)</strong> to all sibling cores running that address space—a high-overhead synchronization operation known as a <strong>TLB shootdown</strong>.</li>
 </ol>
 <h2 id="73-fault-handling-and-memory-management-strategies"><a class="header" href="#73-fault-handling-and-memory-management-strategies">7.3 Fault Handling and Memory Management Strategies</a></h2>
 <p>The kernel’s involvement in memory management is primarily event-driven, occurring through the handling of <strong>page faults</strong>. A page fault is not necessarily an error; rather, it is a mechanism for lazy resource allocation and sophisticated memory management. The kernel responds to faults in several ways:</p>
@@ -2501,8 +2502,8 @@ Binary: 0111 1111 1111 1111 1010 1011 1100 1101 1110 1111 0000 0001
 </code></pre>
 <p><strong>Output 7-1. The fault occurs on the protected page.</strong></p>
 <pre><code class="hljs language-text">page size: 4096 bytes
-region:    0x109a9d000 (page-aligned by construction)
-fault on write to 0x109a9e000
+region:    0x1081f1000 (page-aligned by construction)
+fault on write to 0x1081f2000
 fault address is the guard page: yes
 neighbors still readable: a c
 </code></pre>
@@ -2576,7 +2577,7 @@ neighbors still readable: a c
 }</code></pre>
 <p><strong>Output 7-2.</strong></p>
 <pre><code class="hljs language-text">page size: 4096 bytes
-region:    0x105719000 (page-aligned by construction)
+region:    0x104c99000 (page-aligned by construction)
 mprotect(middle page, PROT_NONE): rc=0
 </code></pre>
 <p><strong>Listing 7-3. Reading one file with read(2) and with mmap (C++20).</strong></p>
@@ -2712,12 +2713,12 @@ match       : yes
 
       4096 bytes         1 pages       1.8 ns per access  (checksum 4000000)
      65536 bytes        16 pages       2.0 ns per access  (checksum 4000000)
-    262144 bytes        64 pages       2.1 ns per access  (checksum 4000000)
-   1048576 bytes       256 pages       2.7 ns per access  (checksum 4000000)
-   4194304 bytes      1024 pages       3.8 ns per access  (checksum 4000000)
-  16777216 bytes      4096 pages       9.8 ns per access  (checksum 4000000)
-  67108864 bytes     16384 pages      12.4 ns per access  (checksum 4000000)
-  268435456 bytes     65536 pages      19.6 ns per access  (checksum 4000000)
+    262144 bytes        64 pages       1.9 ns per access  (checksum 4000000)
+   1048576 bytes       256 pages       2.0 ns per access  (checksum 4000000)
+   4194304 bytes      1024 pages       3.3 ns per access  (checksum 4000000)
+  16777216 bytes      4096 pages       7.2 ns per access  (checksum 4000000)
+  67108864 bytes     16384 pages       9.1 ns per access  (checksum 4000000)
+  268435456 bytes     65536 pages      10.6 ns per access  (checksum 4000000)
 </code></pre>
 <div style="break-before: page; page-break-before: always;"></div>
 <h1 id="8-memory-allocation-and-management-strategies"><a class="header" href="#8-memory-allocation-and-management-strategies">8. Memory Allocation and Management Strategies</a></h1>
@@ -2788,12 +2789,12 @@ match       : yes
 }
 </code></pre>
 <p><strong>Output 8-1. Three allocations and a reset.</strong></p>
-<pre><code class="hljs language-text">arena: 0x1060ae000, 65536 bytes
+<pre><code class="hljs language-text">arena: 0x10028b000, 65536 bytes
 
-alloc(8,8)   -&gt; 0x1060ae000 (offset 0)
-alloc(3,8)   -&gt; 0x1060ae008 (offset 8)
-alloc(16,16) -&gt; 0x1060ae010 (offset 16)
-after reset, alloc(8,8) -&gt; 0x1060ae000 (same as first: yes)
+alloc(8,8)   -&gt; 0x10028b000 (offset 0)
+alloc(3,8)   -&gt; 0x10028b008 (offset 8)
+alloc(16,16) -&gt; 0x10028b010 (offset 16)
+after reset, alloc(8,8) -&gt; 0x10028b000 (same as first: yes)
 </code></pre>
 <p><strong>Listing 8-2. The same allocator in Rust.</strong></p>
 <pre class="playground"><code class="hljs language-rust"><span class="hljs-comment">// ch08/bump.rs: the same bump allocator in Rust.</span>
@@ -2833,10 +2834,10 @@ after reset, alloc(8,8) -&gt; 0x1060ae000 (same as first: yes)
 
     <span class="hljs-function"><span class="hljs-keyword">fn</span> <span class="hljs-title">alloc</span></span>(&amp;<span class="hljs-keyword">mut</span> <span class="hljs-keyword">self</span>, n: <span class="hljs-built_in">usize</span>, align: <span class="hljs-built_in">usize</span>) -&gt; <span class="hljs-built_in">Option</span>&lt;*<span class="hljs-keyword">mut</span> <span class="hljs-built_in">u8</span>&gt; {
         <span class="hljs-comment">// Mathematical Alignment Proof:</span>
-        <span class="hljs-comment">// Assuming `align` is a power of two ($2^k$), `align - 1` has its lowest $k$ bits set to 1.</span>
-        <span class="hljs-comment">// Adding `align - 1` rounds any unaligned offset up to or past the next multiple of $2^k$.</span>
-        <span class="hljs-comment">// Bitwise AND with `!(align - 1)` clears the lower $k$ bits, producing the exact minimal</span>
-        <span class="hljs-comment">// multiple of `align` that is $\ge \text{self.offset}$.</span>
+        <span class="hljs-comment">// Assuming `align` is a power of two (2^k), `align - 1` has its lowest k bits set to 1.</span>
+        <span class="hljs-comment">// Adding `align - 1` rounds any unaligned offset up to or past the next multiple of 2^k.</span>
+        <span class="hljs-comment">// Bitwise AND with `!(align - 1)` clears the lower k bits, producing the exact minimal</span>
+        <span class="hljs-comment">// multiple of `align` that is &gt;= self.offset.</span>
         <span class="hljs-keyword">let</span> aligned = (<span class="hljs-keyword">self</span>.offset + align - <span class="hljs-number">1</span>) &amp; !(align - <span class="hljs-number">1</span>);
         <span class="hljs-keyword">if</span> aligned + n &gt; <span class="hljs-keyword">self</span>.size {
             <span class="hljs-keyword">return</span> <span class="hljs-literal">None</span>;
@@ -2882,12 +2883,12 @@ after reset, alloc(8,8) -&gt; 0x1060ae000 (same as first: yes)
     <span class="hljs-built_in">println!</span>(<span class="hljs-string">&quot;after reset, alloc(8,8) -&gt; {e:p} (same as first: {})&quot;</span>, e == a);
 }</code></pre>
 <p><strong>Output 8-2.</strong></p>
-<pre><code class="hljs language-text">arena: 0x108450000, 65536 bytes
+<pre><code class="hljs language-text">arena: 0x10818e000, 65536 bytes
 
-alloc(8,8)   -&gt; 0x108450000 (offset 0)
-alloc(3,8)   -&gt; 0x108450008 (offset 8)
-alloc(16,16) -&gt; 0x108450010 (offset 16)
-after reset, alloc(8,8) -&gt; 0x108450000 (same as first: true)
+alloc(8,8)   -&gt; 0x10818e000 (offset 0)
+alloc(3,8)   -&gt; 0x10818e008 (offset 8)
+alloc(16,16) -&gt; 0x10818e010 (offset 16)
+after reset, alloc(8,8) -&gt; 0x10818e000 (same as first: true)
 </code></pre>
 <h2 id="83-explicit-management-free-list-allocation"><a class="header" href="#83-explicit-management-free-list-allocation">8.3 Explicit Management: Free-List Allocation</a></h2>
 <p>To support the independent deallocation of individual objects, an allocator must implement a mechanism for tracking free memory. A <strong>free-list allocator</strong> accomplishes this by embedding metadata, or a <strong>header</strong>, immediately preceding each allocated or free block. This header typically stores the block’s size, its status (free or used), and a pointer to the next block in the free list.</p>
@@ -3027,7 +3028,7 @@ after reset, alloc(8,8) -&gt; 0x108450000 (same as first: true)
 }
 </code></pre>
 <p><strong>Output 8-3. The block map after each step.</strong></p>
-<pre><code class="hljs language-text">arena: 0x10c924000, 262144 bytes, header 24 bytes
+<pre><code class="hljs language-text">arena: 0x109112000, 262144 bytes, header 24 bytes
 
 after alloc(100), alloc(200), alloc(300):
   block map:
@@ -3240,7 +3241,7 @@ after freeing everything:
     h.dump();
 }</code></pre>
 <p><strong>Output 8-4.</strong></p>
-<pre><code class="hljs language-text">arena: 0x104b30000, 262144 bytes, header 24 bytes
+<pre><code class="hljs language-text">arena: 0x1081ce000, 262144 bytes, header 24 bytes
 
 after alloc(100), alloc(200), alloc(300):
   block map:
@@ -3326,10 +3327,10 @@ __attribute__((noinline)) <span class="hljs-function"><span class="hljs-keyword"
 }
 </code></pre>
 <p><strong>Output 9-1. One run on the verification machine.</strong></p>
-<pre><code class="hljs language-text">plain function call  :     2.5 ns
-getppid() system call:   778.7 ns
-ratio                :   310.8x
-(parent pid 35058, checksum 1279998207)
+<pre><code class="hljs language-text">plain function call  :     2.1 ns
+getppid() system call:   597.2 ns
+ratio                :   278.9x
+(parent pid 49110, checksum 1279998207)
 </code></pre>
 <p><strong>Listing 9-2. The same comparison in Rust.</strong></p>
 <pre class="playground"><code class="hljs language-rust"><span class="hljs-comment">// ch09/syscall_cost.rs: the same comparison in Rust.</span>
@@ -3375,10 +3376,10 @@ ratio                :   310.8x
     <span class="hljs-built_in">println!</span>(<span class="hljs-string">&quot;(parent pid {ppid}, checksum {acc})&quot;</span>);
 }</code></pre>
 <p><strong>Output 9-2.</strong></p>
-<pre><code class="hljs language-text">plain function call  :     3.8 ns
-getppid() system call:   815.0 ns
-ratio                :   213.5x
-(parent pid 35058, checksum 1279998207)
+<pre><code class="hljs language-text">plain function call  :     1.7 ns
+getppid() system call:   596.8 ns
+ratio                :   354.3x
+(parent pid 49110, checksum 1279998207)
 </code></pre>
 <figure>
 <img src="figures/ch09_buffering.svg" alt="Unbuffered writes cross into the kernel per call; a 64 KiB user buffer crosses only when full" />
@@ -3430,8 +3431,8 @@ ratio                :   213.5x
 }
 </code></pre>
 <p><strong>Output 9-3.</strong></p>
-<pre><code class="hljs language-text">write(2) into /dev/null, 200000 x 17 bytes :   446.3 ms
-fwrite buffered, 200000 x 17 bytes         :    22.5 ms
+<pre><code class="hljs language-text">write(2) into /dev/null, 200000 x 17 bytes :   277.8 ms
+fwrite buffered, 200000 x 17 bytes         :    13.4 ms
 </code></pre>
 <p><strong>Listing 9-4. The same comparison in Rust, with write(2) and BufWriter.</strong></p>
 <pre class="playground"><code class="hljs language-rust"><span class="hljs-comment">// ch09/write_buffered.rs: the same comparison with raw write(2) and BufWriter.</span>
@@ -3500,8 +3501,8 @@ fwrite buffered, 200000 x 17 bytes         :    22.5 ms
     <span class="hljs-keyword">unsafe</span> { libc::close(fd) };
 }</code></pre>
 <p><strong>Output 9-4.</strong></p>
-<pre><code class="hljs language-text">write(2) into /dev/null, 200000 x 17 bytes :   440.8 ms
-BufWriter,     200000 x 17 bytes         :     0.8 ms
+<pre><code class="hljs language-text">write(2) into /dev/null, 200000 x 17 bytes :   271.1 ms
+BufWriter,     200000 x 17 bytes         :     0.5 ms
 </code></pre>
 <div style="break-before: page; page-break-before: always;"></div>
 <h1 id="10-asynchronous-notifications-and-signal-semantics"><a class="header" href="#10-asynchronous-notifications-and-signal-semantics">10. Asynchronous Notifications and Signal Semantics</a></h1>
@@ -3671,9 +3672,9 @@ after SIGINT: handled=true
 }
 </code></pre>
 <p><strong>Output 10-3. The second child has already been reaped when the main program calls waitpid.</strong></p>
-<pre><code class="hljs language-text">child 36046: exiting
-parent reaped child 36046 by hand, status 0
-child 36047: exiting
+<pre><code class="hljs language-text">child 50109: exiting
+parent reaped child 50109 by hand, status 0
+child 50110: exiting
 after handler: waitpid(WNOHANG) -&gt; -1 (-1 = already reaped)
 </code></pre>
 <div style="break-before: page; page-break-before: always;"></div>
@@ -3950,7 +3951,7 @@ parent received: &quot;ping from child&quot;
 read back 36 bytes:
 operating systems
 operating systems
-inode 11203144, size 36 bytes, 8 blocks
+inode 11275294, size 36 bytes, 8 blocks
 </code></pre>
 <p><strong>Listing 12-2. The same operations with the Rust standard library.</strong></p>
 <pre class="playground"><code class="hljs language-rust"><span class="hljs-comment">// ch12/files.rs: the same file operations through the Rust standard library.</span>
@@ -4002,7 +4003,7 @@ read back 36 bytes:
 operating systems
 operating systems
 
-inode 11203145, size 36 bytes, 8 blocks
+inode 11275299, size 36 bytes, 8 blocks
 </code></pre>
 <h2 id="122-on-disk-organization-and-inode-based-mapping"><a class="header" href="#122-on-disk-organization-and-inode-based-mapping">12.2 On-Disk Organization and Inode-Based Mapping</a></h2>
 <p>A file system decomposes a storage device into fixed-size blocks and manages them through several specialized structures:</p>
@@ -4599,13 +4600,13 @@ done
 }
 </code></pre>
 <p><strong>Output 15-1. The C++ daemon.</strong></p>
-<pre><code class="hljs language-text">harness: daemon running with pid 36079
+<pre><code class="hljs language-text">harness: daemon running with pid 50141
 harness: process alive: yes
 harness: sent SIGHUP
 harness: sent SIGTERM
 harness: pidfile removed after SIGTERM: yes
 --- daemon log ---
-daemon 36079 started
+daemon 50141 started
 tick 1
 reload requested
 tick 2
@@ -4710,13 +4711,13 @@ stopping after 3 ticks
     std::fs::remove_file(pidfile).unwrap();
 }</code></pre>
 <p><strong>Output 15-2. The Rust daemon.</strong></p>
-<pre><code class="hljs language-text">harness: daemon running with pid 36093
+<pre><code class="hljs language-text">harness: daemon running with pid 50156
 harness: process alive: yes
 harness: sent SIGHUP
 harness: sent SIGTERM
 harness: pidfile removed after SIGTERM: yes
 --- daemon log ---
-daemon 36093 started
+daemon 50156 started
 tick 1
 reload requested
 tick 2
@@ -4811,7 +4812,7 @@ stopping after 2 ticks
 }
 </code></pre>
 <p><strong>Output 15-3. The C++ supervisor output.</strong></p>
-<pre><code class="hljs language-text">supervisor detected child 36105 termination, exit status: 0
+<pre><code class="hljs language-text">supervisor detected child 50166 termination, exit status: 0
 </code></pre>
 <p><strong>Listing 15-4. The same supervisor in Rust.</strong></p>
 <pre class="playground"><code class="hljs language-rust"><span class="hljs-comment">// ch15/kqueue_supervisor.rs: process fault monitoring using kqueue in Rust.</span>
@@ -4872,7 +4873,7 @@ stopping after 2 ticks
     }
 }</code></pre>
 <p><strong>Output 15-4. The Rust supervisor output.</strong></p>
-<pre><code class="hljs language-text">supervisor detected child 36125 termination, success: true
+<pre><code class="hljs language-text">supervisor detected child 50186 termination, success: true
 </code></pre>
 <h2 id="155-fault-recovery-policies-and-health-checks"><a class="header" href="#155-fault-recovery-policies-and-health-checks">15.5 Fault Recovery Policies and Health Checks</a></h2>
 <p>Detecting a failure is only the first half of high-availability systems software; the second half is executing a deterministic recovery policy.</p>
@@ -5020,9 +5021,9 @@ stopping after 2 ticks
 }
 </code></pre>
 <p><strong>Output 17-1. One run on the verification machine.</strong></p>
-<pre><code class="hljs language-text">unpadded (shared line):  1435.5 ms
-padded   (separate)   :   346.5 ms
-ratio                 :  4.14x
+<pre><code class="hljs language-text">unpadded (shared line):  1525.6 ms
+padded   (separate)   :   379.5 ms
+ratio                 :  4.02x
 (unpadded 80000000, padded 80000000)
 </code></pre>
 <p><strong>Listing 17-2. The same experiment in Rust, with atomic counters.</strong></p>
@@ -5085,9 +5086,9 @@ ratio                 :  4.14x
     );
 }</code></pre>
 <p><strong>Output 17-2.</strong></p>
-<pre><code class="hljs language-text">unpadded (shared line):  1601.9 ms
-padded   (separate)   :   337.8 ms
-ratio                 :  4.74x
+<pre><code class="hljs language-text">unpadded (shared line):  1547.9 ms
+padded   (separate)   :   397.7 ms
+ratio                 :  3.89x
 (unpadded 80000000, padded 80000000)
 </code></pre>
 <div class="callout keyidea">
@@ -5198,14 +5199,14 @@ ratio                 :  4.74x
 <p><strong>Output 18-1. One run on the verification machine.</strong></p>
 <pre><code class="hljs language-text">stride 64 bytes, 16,000,000 accesses per size
 
-      16384 bytes      0.7 ns per access  (checksum 16000000)
-      65536 bytes      0.7 ns per access  (checksum 16000000)
-     262144 bytes      0.7 ns per access  (checksum 16000000)
-    1048576 bytes      1.4 ns per access  (checksum 16000000)
-    4194304 bytes      1.7 ns per access  (checksum 16000000)
-   16777216 bytes      3.6 ns per access  (checksum 16000000)
-   67108864 bytes      3.9 ns per access  (checksum 16000000)
-  268435456 bytes      4.0 ns per access  (checksum 16000000)
+      16384 bytes      0.8 ns per access  (checksum 16000000)
+      65536 bytes      1.1 ns per access  (checksum 16000000)
+     262144 bytes      1.6 ns per access  (checksum 16000000)
+    1048576 bytes      1.6 ns per access  (checksum 16000000)
+    4194304 bytes      5.2 ns per access  (checksum 16000000)
+   16777216 bytes      9.3 ns per access  (checksum 16000000)
+   67108864 bytes      9.0 ns per access  (checksum 16000000)
+  268435456 bytes      4.8 ns per access  (checksum 16000000)
 </code></pre>
 <p><strong>Listing 18-2. The same program in Rust.</strong></p>
 <pre class="playground"><code class="hljs language-rust"><span class="hljs-comment">// ch18/cache_bench.rs: the same memory-hierarchy walk in Rust.</span>
@@ -5247,14 +5248,14 @@ ratio                 :  4.74x
 <p><strong>Output 18-2.</strong></p>
 <pre><code class="hljs language-text">stride 64 bytes, 16,000,000 accesses per size
 
-      16384 bytes      0.8 ns per access  (checksum 16000000)
+      16384 bytes      0.7 ns per access  (checksum 16000000)
       65536 bytes      0.7 ns per access  (checksum 16000000)
      262144 bytes      0.7 ns per access  (checksum 16000000)
-    1048576 bytes      1.5 ns per access  (checksum 16000000)
-    4194304 bytes      1.8 ns per access  (checksum 16000000)
-   16777216 bytes      4.0 ns per access  (checksum 16000000)
-   67108864 bytes      4.1 ns per access  (checksum 16000000)
-  268435456 bytes      4.7 ns per access  (checksum 16000000)
+    1048576 bytes      1.4 ns per access  (checksum 16000000)
+    4194304 bytes      1.9 ns per access  (checksum 16000000)
+   16777216 bytes      3.4 ns per access  (checksum 16000000)
+   67108864 bytes      4.0 ns per access  (checksum 16000000)
+  268435456 bytes      4.5 ns per access  (checksum 16000000)
 </code></pre>
 <h2 id="182-observability-profilers-tracers-and-visualizations"><a class="header" href="#182-observability-profilers-tracers-and-visualizations">18.2 Observability: Profilers, Tracers, and Visualizations</a></h2>
 <p>Quantifying system behavior requires distinct categories of observability tools, each offering a different trade-off between overhead and granularity:</p>

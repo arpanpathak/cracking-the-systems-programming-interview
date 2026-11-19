@@ -38,7 +38,7 @@
             const path_to_root = "";
             const default_light_theme = "light";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "searchindex-6aaf8639.js";
+            window.path_to_searchindex_js = "searchindex-b4a859a6.js";
         </script>
         <!-- Start loading toc.js asap -->
         <script src="toc-2b639993.js"></script>
@@ -191,7 +191,7 @@
 <img src="figures/ch07_vm_paging.svg" alt="Virtual pages mapping through a page table to scattered physical frames" />
 </figure>
 <h2 id="72-hierarchical-translation-and-the-tlb"><a class="header" href="#72-hierarchical-translation-and-the-tlb">7.2 Hierarchical Translation and the TLB</a></h2>
-<p>On modern 64-bit architectures like x86-64 and ARM64, the virtual address space is too vast to be mapped by a single flat array. A flat page table covering a 48-bit address space ($2^{48} = 256\text{ TiB}$) with 4 KiB pages ($2^{12}\text{ bytes}$) would require $2^{36}$ entries; at 8 bytes per entry, every active process would consume 512 GiB of physical DRAM solely for its page table. Instead, the kernel employs a sparse, multi-level hierarchical radix tree—typically a four-level page table (or five-level with Intel LA57 / ARM64 LPA2). Because entire unmapped subtrees are omitted when their parent directory entry is marked non-present, physical memory is allocated only for page table nodes that map active regions of the process’s address space.</p>
+<p>On modern 64-bit architectures like x86-64 and ARM64, the virtual address space is too vast to be mapped by a single flat array. A flat page table covering a 48-bit address space (2<sup>48</sup> = 256 TiB) with 4 KiB pages (2<sup>12</sup> bytes) would require 2<sup>36</sup> entries; at 8 bytes per entry, every active process would consume 512 GiB of physical DRAM solely for its page table. Instead, the kernel employs a sparse, multi-level hierarchical radix tree—typically a four-level page table (or five-level with Intel LA57 / ARM64 LPA2). Because entire unmapped subtrees are omitted when their parent directory entry is marked non-present, physical memory is allocated only for page table nodes that map active regions of the process’s address space.</p>
 <h3 id="721-canonical-addresses-and-multi-level-radix-decomposition"><a class="header" href="#721-canonical-addresses-and-multi-level-radix-decomposition">7.2.1 Canonical Addresses and Multi-Level Radix Decomposition</a></h3>
 <p>Under standard 4-level paging on x86-64 (and 48-bit <code>VA_BITS</code> with 4 KiB granules on ARM64), only the lower 48 bits (<code>[47:0]</code>) of a 64-bit pointer participate in hardware address translation. To prevent software from overloading the upper unused bits (<code>[63:48]</code>) with arbitrary metadata that would break compatibility with 5-level paging extensions, the hardware enforces <strong>canonical address form</strong>: bits <code>63:48</code> must be an exact sign-extension (replication) of bit <code>47</code>.</p>
 <ul>
@@ -201,9 +201,9 @@
 </ul>
 <p>Why does each radix table level consume exactly <strong>9 bits</strong> of the virtual address? The geometry is derived directly from the hardware page size and entry width:</p>
 <ul>
-<li>Each page table node occupies exactly one physical 4 KiB frame ($2^{12} = 4,096\text{ bytes}$).</li>
-<li>Each Page Table Entry (PTE) is 64 bits wide ($8\text{ bytes} = 2^3\text{ bytes}$).</li>
-<li>Consequently, one 4 KiB page table houses exactly $4,096 / 8 = 512 = 2^9$ entries, requiring a <strong>9-bit unsigned index</strong> (<code>0</code> to <code>511</code>) to select an entry at each level, while the lowest <strong>12 bits</strong> (<code>0</code> to <code>4,095</code>) address the individual byte offset within the target 4 KiB physical frame ($9 + 9 + 9 + 9 + 12 = 48\text{ bits}$).</li>
+<li>Each page table node occupies exactly one physical 4 KiB frame (2<sup>12</sup> = 4,096 bytes).</li>
+<li>Each Page Table Entry (PTE) is 64 bits wide (8 bytes = 2<sup>3</sup> bytes).</li>
+<li>Consequently, one 4 KiB page table houses exactly 4,096 / 8 = 512 = 2<sup>9</sup> entries, requiring a <strong>9-bit unsigned index</strong> (<code>0</code> to <code>511</code>) to select an entry at each level, while the lowest <strong>12 bits</strong> (<code>0</code> to <code>4,095</code>) address the individual byte offset within the target 4 KiB physical frame (9 + 9 + 9 + 9 + 12 = 48 bits).</li>
 </ul>
 <figure>
 <img src="figures/ch07_pagewalk.svg" alt="A virtual address split into four 9-bit indices and a 12-bit offset, walking four table levels" />
@@ -290,9 +290,9 @@ Binary: 0111 1111 1111 1111 1010 1011 1100 1101 1110 1111 0000 0001
 <p>Because a 4-level radix walk requires <strong>four sequential memory accesses</strong> before the actual data load or store can proceed, performing a full walk on every instruction would quadruple memory latency. To avoid this penalty, the MMU caches recent virtual-page-to-physical-frame (<code>VPN → PFN</code>) translations in the <strong>Translation Lookaside Buffer (TLB)</strong>—a hardware content-addressable cache checked in parallel with the L1 cache tag array (~0.5–1 cycle latency on an L1 dTLB hit).</p>
 <p>Three microarchitectural properties of the TLB directly govern systems software performance:</p>
 <ol>
-<li><strong>TLB Reach and Working-Set Cliffs:</strong> A typical L1 dTLB holds 64 entries and an L2 STLB holds 1,024–2,048 entries. With 4 KiB pages, a 1,536-entry L2 TLB covers a maximum working set (“TLB reach”) of only $1,536 \times 4\text{ KiB} = 6\text{ MiB}$. When an application randomly accesses a memory buffer larger than the TLB reach, TLB misses spike, forcing the hardware page walker to stall the CPU pipeline. Configuring <strong>2 MiB Huge Pages</strong> (<code>MAP_HUGEPAGE</code> / <code>MADV_HUGEPAGE</code>, terminating the radix walk at Level 2 with <code>PDE.PS = 1</code>) increases the reach of those same 1,536 TLB entries to <strong>3 GiB</strong>, eliminating L1/L2 PT memory traffic and dramatically reducing translation latency for database buffer pools and VM hypervisors.</li>
+<li><strong>TLB Reach and Working-Set Cliffs:</strong> A typical L1 dTLB holds 64 entries and an L2 STLB holds 1,024–2,048 entries. With 4 KiB pages, a 1,536-entry L2 TLB covers a maximum working set (“TLB reach”) of only 1,536 × 4 KiB = 6 MiB. When an application randomly accesses a memory buffer larger than the TLB reach, TLB misses spike, forcing the hardware page walker to stall the CPU pipeline. Configuring <strong>2 MiB Huge Pages</strong> (<code>MAP_HUGEPAGE</code> / <code>MADV_HUGEPAGE</code>, terminating the radix walk at Level 2 with <code>PDE.PS = 1</code>) increases the reach of those same 1,536 TLB entries to <strong>3 GiB</strong>, eliminating L1/L2 PT memory traffic and dramatically reducing translation latency for database buffer pools and VM hypervisors.</li>
 <li><strong>Address Space Identifiers (<code>PCID</code> / <code>ASID</code>):</strong> Historically, reloading <code>CR3</code> during a process context switch flushed all non-global TLB entries to prevent Process B from using Process A’s cached translations. Contemporary processors tag each TLB entry with a 12-bit <strong>Process-Context Identifier (<code>PCID</code> on x86-64)</strong> or 16-bit <strong>Address Space Identifier (<code>ASID</code> on ARM64)</strong>, allowing translations from multiple processes to coexist safely in the TLB across context switches.</li>
-<li><strong>TLB Shootdowns:</strong> Unlike the L1/L2/L3 data caches, <strong>hardware TLBs are not automatically kept coherent across CPU cores</strong>. When the kernel modifies or unmaps a valid PTE (<code>munmap</code>, <code>mprotect</code>, or page eviction) in a multi-threaded process running across $K$ cores, the kernel must flush its local TLB (<code>invlpg</code> on x86-64; <code>tlbi</code> on ARM64) and dispatch synchronous <strong>Inter-Processor Interrupts (IPIs)</strong> to all sibling cores running that address space—a high-overhead synchronization operation known as a <strong>TLB shootdown</strong>.</li>
+<li><strong>TLB Shootdowns:</strong> Unlike the L1/L2/L3 data caches, <strong>hardware TLBs are not automatically kept coherent across CPU cores</strong>. When the kernel modifies or unmaps a valid PTE (<code>munmap</code>, <code>mprotect</code>, or page eviction) in a multi-threaded process running across <em>K</em> cores, the kernel must flush its local TLB (<code>invlpg</code> on x86-64; <code>tlbi</code> on ARM64) and dispatch synchronous <strong>Inter-Processor Interrupts (IPIs)</strong> to all sibling cores running that address space—a high-overhead synchronization operation known as a <strong>TLB shootdown</strong>.</li>
 </ol>
 <h2 id="73-fault-handling-and-memory-management-strategies"><a class="header" href="#73-fault-handling-and-memory-management-strategies">7.3 Fault Handling and Memory Management Strategies</a></h2>
 <p>The kernel’s involvement in memory management is primarily event-driven, occurring through the handling of <strong>page faults</strong>. A page fault is not necessarily an error; rather, it is a mechanism for lazy resource allocation and sophisticated memory management. The kernel responds to faults in several ways:</p>
@@ -369,8 +369,8 @@ int main() {
 </code></pre>
 <p><strong>Output 7-1. The fault occurs on the protected page.</strong></p>
 <pre><code class="language-text">page size: 4096 bytes
-region:    0x109a9d000 (page-aligned by construction)
-fault on write to 0x109a9e000
+region:    0x1081f1000 (page-aligned by construction)
+fault on write to 0x1081f2000
 fault address is the guard page: yes
 neighbors still readable: a c
 </code></pre>
@@ -444,7 +444,7 @@ fn main() {
 }</code></pre>
 <p><strong>Output 7-2.</strong></p>
 <pre><code class="language-text">page size: 4096 bytes
-region:    0x105719000 (page-aligned by construction)
+region:    0x104c99000 (page-aligned by construction)
 mprotect(middle page, PROT_NONE): rc=0
 </code></pre>
 <p><strong>Listing 7-3. Reading one file with read(2) and with mmap (C++20).</strong></p>
@@ -580,12 +580,12 @@ int main() {
 
       4096 bytes         1 pages       1.8 ns per access  (checksum 4000000)
      65536 bytes        16 pages       2.0 ns per access  (checksum 4000000)
-    262144 bytes        64 pages       2.1 ns per access  (checksum 4000000)
-   1048576 bytes       256 pages       2.7 ns per access  (checksum 4000000)
-   4194304 bytes      1024 pages       3.8 ns per access  (checksum 4000000)
-  16777216 bytes      4096 pages       9.8 ns per access  (checksum 4000000)
-  67108864 bytes     16384 pages      12.4 ns per access  (checksum 4000000)
-  268435456 bytes     65536 pages      19.6 ns per access  (checksum 4000000)
+    262144 bytes        64 pages       1.9 ns per access  (checksum 4000000)
+   1048576 bytes       256 pages       2.0 ns per access  (checksum 4000000)
+   4194304 bytes      1024 pages       3.3 ns per access  (checksum 4000000)
+  16777216 bytes      4096 pages       7.2 ns per access  (checksum 4000000)
+  67108864 bytes     16384 pages       9.1 ns per access  (checksum 4000000)
+  268435456 bytes     65536 pages      10.6 ns per access  (checksum 4000000)
 </code></pre>
 
                     </main>

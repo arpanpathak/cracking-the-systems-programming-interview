@@ -38,7 +38,7 @@
             const path_to_root = "";
             const default_light_theme = "light";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "searchindex-6aaf8639.js";
+            window.path_to_searchindex_js = "searchindex-b4a859a6.js";
         </script>
         <!-- Start loading toc.js asap -->
         <script src="toc-2b639993.js"></script>
@@ -233,14 +233,14 @@ int main() {
 <p><strong>Output 18-1. One run on the verification machine.</strong></p>
 <pre><code class="language-text">stride 64 bytes, 16,000,000 accesses per size
 
-      16384 bytes      0.7 ns per access  (checksum 16000000)
-      65536 bytes      0.7 ns per access  (checksum 16000000)
-     262144 bytes      0.7 ns per access  (checksum 16000000)
-    1048576 bytes      1.4 ns per access  (checksum 16000000)
-    4194304 bytes      1.7 ns per access  (checksum 16000000)
-   16777216 bytes      3.6 ns per access  (checksum 16000000)
-   67108864 bytes      3.9 ns per access  (checksum 16000000)
-  268435456 bytes      4.0 ns per access  (checksum 16000000)
+      16384 bytes      0.8 ns per access  (checksum 16000000)
+      65536 bytes      1.1 ns per access  (checksum 16000000)
+     262144 bytes      1.6 ns per access  (checksum 16000000)
+    1048576 bytes      1.6 ns per access  (checksum 16000000)
+    4194304 bytes      5.2 ns per access  (checksum 16000000)
+   16777216 bytes      9.3 ns per access  (checksum 16000000)
+   67108864 bytes      9.0 ns per access  (checksum 16000000)
+  268435456 bytes      4.8 ns per access  (checksum 16000000)
 </code></pre>
 <p><strong>Listing 18-2. The same program in Rust.</strong></p>
 <pre class="playground"><code class="language-rust">// ch18/cache_bench.rs: the same memory-hierarchy walk in Rust.
@@ -282,14 +282,14 @@ fn main() {
 <p><strong>Output 18-2.</strong></p>
 <pre><code class="language-text">stride 64 bytes, 16,000,000 accesses per size
 
-      16384 bytes      0.8 ns per access  (checksum 16000000)
+      16384 bytes      0.7 ns per access  (checksum 16000000)
       65536 bytes      0.7 ns per access  (checksum 16000000)
      262144 bytes      0.7 ns per access  (checksum 16000000)
-    1048576 bytes      1.5 ns per access  (checksum 16000000)
-    4194304 bytes      1.8 ns per access  (checksum 16000000)
-   16777216 bytes      4.0 ns per access  (checksum 16000000)
-   67108864 bytes      4.1 ns per access  (checksum 16000000)
-  268435456 bytes      4.7 ns per access  (checksum 16000000)
+    1048576 bytes      1.4 ns per access  (checksum 16000000)
+    4194304 bytes      1.9 ns per access  (checksum 16000000)
+   16777216 bytes      3.4 ns per access  (checksum 16000000)
+   67108864 bytes      4.0 ns per access  (checksum 16000000)
+  268435456 bytes      4.5 ns per access  (checksum 16000000)
 </code></pre>
 <h2 id="182-observability-profilers-tracers-and-visualizations"><a class="header" href="#182-observability-profilers-tracers-and-visualizations">18.2 Observability: Profilers, Tracers, and Visualizations</a></h2>
 <p>Quantifying system behavior requires distinct categories of observability tools, each offering a different trade-off between overhead and granularity:</p>
