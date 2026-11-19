@@ -38,7 +38,7 @@
             const path_to_root = "";
             const default_light_theme = "light";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "searchindex-b4a859a6.js";
+            window.path_to_searchindex_js = "searchindex-4f3aedde.js";
         </script>
         <!-- Start loading toc.js asap -->
         <script src="toc-2b639993.js"></script>
@@ -211,7 +211,7 @@
 <p>By implementing every mechanism—from lock-free ring buffers and virtual memory allocators to pipeline orchestrators and kqueue supervisors—in both languages side-by-side, you learn to decouple abstract systems principles from language-specific idiosyncrasies. You will understand both the raw microarchitectural consequences of memory operations and the formal type-theoretic invariants required to prove their soundness.</p>
 <hr>
 <h2 id="the-anatomy-of-a-systems-engineering-interview"><a class="header" href="#the-anatomy-of-a-systems-engineering-interview">The Anatomy of a Systems Engineering Interview</a></h2>
-<p>High-bar engineering organizations—such as infrastructure, kernel, and performance teams at Apple, Meta, Google, Jane Street, and Datadog—rarely evaluate senior systems candidates on generic algorithmic puzzles. Instead, they probe the friction points where software touches the operating system and the physical machine:</p>
+<p>Systems, infrastructure, kernel, and performance engineering interviews probe the boundary where software meets the operating system and the physical machine:</p>
 <ol>
 <li><strong>Memory Ordering &amp; Hardware Visibility:</strong> Do you understand why sequentially consistent atomics (<code>seq_cst</code>) incur severe penalties on ARM64 architectures compared to acquire-release semantics (<code>memory_order_acquire</code> / <code>memory_order_release</code>)?</li>
 <li><strong>Concurrency Invariants &amp; Pitfalls:</strong> Can you explain why a condition variable requires a predicate evaluation loop (<code>while</code> instead of <code>if</code>), why spurious wakeups occur in OS schedulers, and how to avoid the Thundering Herd penalty?</li>

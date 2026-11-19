@@ -38,7 +38,7 @@
             const path_to_root = "";
             const default_light_theme = "light";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "searchindex-b4a859a6.js";
+            window.path_to_searchindex_js = "searchindex-4f3aedde.js";
         </script>
         <!-- Start loading toc.js asap -->
         <script src="toc-2b639993.js"></script>
@@ -1256,7 +1256,7 @@ match        yes
 <li><code>memcpy</code> assumes the source and destination memory buffers are strictly non-overlapping. Passing overlapping regions to <code>memcpy</code> invokes undefined behavior.</li>
 <li><code>memmove</code> guarantees correct copying regardless of whether the source and destination memory regions overlap.</li>
 </ul>
-<p>The necessity for directional copying arises when the destination buffer begins within the source buffer at a higher memory address (<code>dst &gt; src</code> and <code>dst &lt; src + count</code>). If a naive forward copy (index 0 to <code>count - 1</code>) is executed, writing to early destination offsets overwrites later source bytes before they have been read, destroying the source data.</p>
+<p>The necessity for directional copying arises when the destination buffer begins within the source buffer at a higher memory address (<code>dst &gt; src</code> and <code>dst &lt; src + count</code>). If an unconditional forward copy (index 0 to <code>count - 1</code>) is executed, writing to early destination offsets overwrites later source bytes before they have been read, destroying the source data.</p>
 <p>For example, shifting the string <code>"abcdef"</code> two bytes to the right (source offset 0, destination offset 2, length 4) via forward copying writes <code>'a'</code> to offset 2 and <code>'b'</code> to offset 3. When the copy reaches offset 2, it reads the newly written <code>'a'</code>, resulting in corrupted repetition (<code>"ababad"</code>).</p>
 <p>To guarantee correctness under all geometries, <code>memmove</code> evaluates pointer addresses:</p>
 <ul>
@@ -1474,7 +1474,7 @@ parse over : None
 </code></pre>
 <h3 id="1955-systems-optimization-and-vectorization"><a class="header" href="#1955-systems-optimization-and-vectorization">19.5.5 Systems Optimization and Vectorization</a></h3>
 <ul>
-<li><strong>Vectorized Word Processing (SWAR and SIMD):</strong> Naive implementations process one byte per iteration. Production standard libraries (<code>glibc</code>, <code>musl</code>) achieve an order-of-magnitude higher throughput using SIMD vector instructions (AVX-512, ARM NEON) or SIMD Within A Register (SWAR) bit-tricks. For example, <code>strlen</code> tests 64 bytes simultaneously using vector mask instructions (<code>_mm512_cmpeq_epi8_mask</code>), identifying null bytes in a single processor cycle.</li>
+<li><strong>Vectorized Word Processing (SWAR and SIMD):</strong> Byte-at-a-time implementations process one byte per iteration. Production standard libraries (<code>glibc</code>, <code>musl</code>) achieve an order-of-magnitude higher throughput using SIMD vector instructions (AVX-512, ARM NEON) or SIMD Within A Register (SWAR) bit-tricks. For example, <code>strlen</code> tests 64 bytes simultaneously using vector mask instructions (<code>_mm512_cmpeq_epi8_mask</code>), identifying null bytes in a single processor cycle.</li>
 <li><strong>Relational Pointer Comparisons:</strong> The ISO C++ standard specifies that relational comparisons (<code>&lt;</code>, <code>&gt;</code>) between pointers are only well-defined when both pointers refer to elements of the same complete array object. For arbitrary pointers, <code>std::less</code> provides a total hardware-level address ordering. In systems programming where execution occurs on flat linear address spaces, direct relational comparisons correspond directly to unsigned integer address evaluations.</li>
 </ul>
 <div class="callout keyidea">
@@ -1899,7 +1899,7 @@ get 4 -&gt; 40
 <pre><code class="language-text">(writer_active =&gt; readers_active == 0) and (readers_active &gt; 0 =&gt; !writer_active)
 </code></pre>
 <h3 id="1972-the-starvation-hazard-and-writer-preference-policy"><a class="header" href="#1972-the-starvation-hazard-and-writer-preference-policy">19.7.2 The Starvation Hazard and Writer-Preference Policy</a></h3>
-<p>A naive reader-writer lock grants access to any arriving reader as long as <code>writer_active</code> is false. Under high read concurrency, new reader threads arrive before existing readers release the lock, causing <code>readers_active</code> to remain non-zero indefinitely. Under this “reader-preference” policy, waiting writers experience catastrophic <strong>writer starvation</strong>, blocked from updating state for unbounded durations.</p>
+<p>A reader-preference lock grants access to any arriving reader as long as <code>writer_active</code> is false. Under high read concurrency, new reader threads arrive before existing readers release the lock, causing <code>readers_active</code> to remain non-zero indefinitely. Under this reader-preference policy, waiting writers experience <strong>writer starvation</strong>, blocked from updating state for unbounded durations.</p>
 <p>To prevent starvation, the lock implements a <strong>writer-preference policy</strong>: an arriving reader thread is forced to wait if <code>writer_active</code> is true <em>or</em> if <code>writers_waiting &gt; 0</code>. Prioritizing queued writers bounds write latency and ensures fair forward progress across both read and write operations.</p>
 <h3 id="1973-reference-implementation"><a class="header" href="#1973-reference-implementation">19.7.3 Reference Implementation</a></h3>
 <p><strong>Listing 19-11. A reader-writer lock with writer preference (C++20).</strong></p>
@@ -2445,7 +2445,7 @@ total    500500
 <p>In the Rust implementation, task coordination is built on standard library cross-thread channels (<code>std::sync::mpsc</code>). When the thread pool is dropped, the sender endpoint is closed. In accordance with channel semantics, when a channel disconnects and its buffer empties, subsequent <code>recv()</code> calls return <code>Err</code>, causing worker threads to terminate naturally without requiring manual condition variable management.</p>
 <h3 id="1984-systems-nuances-and-synchronization-hazards"><a class="header" href="#1984-systems-nuances-and-synchronization-hazards">19.8.4 Systems Nuances and Synchronization Hazards</a></h3>
 <ul>
-<li><strong>Task Execution Outside the Synchronization Lock:</strong> A critical bug in naive thread pool implementations is invoking the task closure while still holding the task queue mutex. This serializes task execution: only one worker can execute at any time, reducing the entire multi-core pool to a single-threaded bottleneck. The worker must extract the task from the queue, release the mutex, and execute the task completely unconstrained.</li>
+<li><strong>Task Execution Outside the Synchronization Lock:</strong> A frequent bug in thread pool implementations is invoking the task closure while still holding the task queue mutex. This serializes task execution: only one worker can execute at any time, reducing the entire multi-core pool to a single-threaded bottleneck. The worker must extract the task from the queue, release the mutex, and execute the task completely unconstrained.</li>
 <li><strong>Lost Wakeups During Teardown:</strong> Updating the <code>stopping</code> flag without holding the mutex can trigger race conditions where a worker evaluates the predicate, finds no work, and prepares to sleep just as the shutdown signal is broadcast. Holding the mutex during the state update ensures that workers cannot enter the sleep state after shutdown has commenced.</li>
 <li><strong>Production Extensions:</strong> Enterprise thread pools (such as Rust’s Tokio or Go’s runtime scheduler) enhance this model with <strong>work stealing</strong>: each core maintains a local task deque, stealing tasks from remote queues only when local work is exhausted, thereby minimizing central lock contention.</li>
 </ul>
@@ -2690,7 +2690,7 @@ x &amp; (x - 1) =  8_10 = 0000 1000_2
 <p>Computing the bitwise AND of <code>x</code> and <code>x - 1</code> clears the lowest set bit while leaving all higher-order bits unaltered.</p>
 <h3 id="19102-algorithmic-derivations"><a class="header" href="#19102-algorithmic-derivations">19.10.2 Algorithmic Derivations</a></h3>
 <ul>
-<li><strong>Population Count (<code>count_set_bits</code>):</strong> Brian Kernighan’s algorithm applies <code>x &amp; (x - 1)</code> iteratively. Each operation clears exactly one set bit. The algorithm terminates when <code>x</code> reaches 0, executing in <code>O(k)</code> operations where <code>k</code> is the number of set bits, significantly outperforming naive 64-step bit-shifting loops.</li>
+<li><strong>Population Count (<code>count_set_bits</code>):</strong> Brian Kernighan’s algorithm applies <code>x &amp; (x - 1)</code> iteratively. Each operation clears exactly one set bit. The algorithm terminates when <code>x</code> reaches 0, executing in <code>O(k)</code> operations where <code>k</code> is the number of set bits, outperforming fixed 64-step bit-shifting loops.</li>
 <li><strong>Power-of-Two Detection (<code>is_power_of_two</code>):</strong> A positive integer is an exact power of two if and only if its binary representation contains exactly one set bit. Testing whether <code>x &gt; 0</code> and <code>(x &amp; (x - 1)) == 0</code> establishes this in <code>O(1)</code> constant time without division or loops.</li>
 <li><strong>Power-of-Two Memory Alignment (<code>align_up</code>):</strong> System architectures require memory buffers to be aligned to powers of two (e.g., 16-byte cache line alignment, 4096-byte page alignment). For an alignment <code>A = 2^k</code>, the mask <code>A - 1</code> contains 1s in the lowest <code>k</code> bit positions. Rounding an address <code>x</code> up to the next multiple of <code>A</code> is computed as:
 <pre><code class="language-text">align_up(x, A) = (x + (A - 1)) &amp; ~(A - 1)
@@ -2841,7 +2841,7 @@ next_power_of_two(1000) = 1024
 <p>Traversing the list once achieves O(N) linear time complexity while consuming O(1) auxiliary memory.</p>
 <h3 id="19112-sorted-merging-and-sentinel-nodes"><a class="header" href="#19112-sorted-merging-and-sentinel-nodes">19.11.2 Sorted Merging and Sentinel Nodes</a></h3>
 <p>Merging two sorted linked lists into a single consolidated chain requires repeatedly comparing the head elements of each list, detaching the smaller node, and appending it to the result.</p>
-<p>In naive implementations, initializing the result list requires special-case branching to establish the initial <code>head</code> pointer. In systems programming, this branching overhead is eliminated using a <strong>sentinel node</strong> (or dummy node): a temporary, stack-allocated node placed at the root of the chain. Subsequent appends link directly to <code>tail-&gt;next</code>, eliminating conditionals inside the loop. Once the merge completes, the true head is retrieved as <code>sentinel.next</code>. In Rust, <code>Option::insert</code> initializes the tail pointer in-place; once either list is exhausted, the entire remainder is spliced in O(1) constant time via <code>*tail = left.or(right)</code>.</p>
+<p>Without a dummy header, initializing the result list requires special-case branching to establish the initial <code>head</code> pointer. In systems programming, this branching overhead is eliminated using a <strong>sentinel node</strong> (or dummy node): a temporary, stack-allocated node placed at the root of the chain. Subsequent appends link directly to <code>tail-&gt;next</code>, eliminating conditionals inside the loop. Once the merge completes, the true head is retrieved as <code>sentinel.next</code>. In Rust, <code>Option::insert</code> initializes the tail pointer in-place; once either list is exhausted, the entire remainder is spliced in O(1) constant time via <code>*tail = left.or(right)</code>.</p>
 <h3 id="19113-cycle-detection-floyds-tortoise-and-hare-algorithm"><a class="header" href="#19113-cycle-detection-floyds-tortoise-and-hare-algorithm">19.11.3 Cycle Detection: Floyd’s Tortoise and Hare Algorithm</a></h3>
 <p>Determining whether a linked list contains a cycle using O(1) auxiliary memory precludes the use of hash sets to record visited pointers. Instead, Floyd’s cycle detection algorithm employs two pointers traversing the list at different velocities:</p>
 <ul>
