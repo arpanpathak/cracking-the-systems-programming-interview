@@ -1,182 +1,198 @@
-// ch08/free_list.rs: first-fit with headers, splitting, and coalescing in Rust.
+// ch08/free_list.rs: First-fit free-list allocator with in-band headers,
+// block splitting, and adjacent free-block coalescing in Rust.
 use std::process::exit;
 use std::ptr;
 
+// Metadata stored immediately before every user payload (24 bytes on 64-bit systems).
 #[derive(Clone, Copy)]
-struct Block {
-    size: usize,   // payload bytes available in this block
-    free: bool,
-    next: *mut Block,
+struct BlockHeader {
+    payload_bytes: usize,       // Usable payload bytes immediately following this header
+    is_free: bool,              // true = available for allocation; false = owned by caller
+    next_block: *mut BlockHeader, // Next block in physical address order inside the arena
 }
 
-const HEADER: usize = std::mem::size_of::<Block>();
+const HEADER_BYTES: usize = std::mem::size_of::<BlockHeader>();
+// Minimum usable payload required before splitting a free block, preventing tiny fragments.
+const MIN_SPLIT_PAYLOAD: usize = 16;
 
-struct Heap {
-    base: *mut u8,
-    size: usize,
-    free_head: *mut Block,
+struct FreeListHeap {
+    arena_base: *mut u8,
+    arena_capacity: usize,
+    head_block: *mut BlockHeader,
 }
 
-impl Heap {
-    fn create(bytes: usize) -> Heap {
-        // SAFETY:
-        // `mmap` requests a private, anonymous virtual memory mapping.
-        // `bytes` defines the contiguous arena size. Upon verifying `p != MAP_FAILED`,
-        // `p` is page-aligned and guaranteed by the kernel to be isolated from any other
-        // memory region. We write the initial root `Block` header spanning the entire arena,
-        // establishing the base inductive state for the intrusive linked list.
+impl FreeListHeap {
+    fn create(capacity_bytes: usize) -> FreeListHeap {
+        // SAFETY: `mmap` allocates a page-aligned, isolated private mapping of `capacity_bytes`.
+        // After verifying `mapped != libc::MAP_FAILED`, we initialize a single root `BlockHeader`
+        // at offset 0 spanning the entire arena.
         unsafe {
-            let p = libc::mmap(
+            let mapped = libc::mmap(
                 ptr::null_mut(),
-                bytes,
+                capacity_bytes,
                 libc::PROT_READ | libc::PROT_WRITE,
                 libc::MAP_PRIVATE | libc::MAP_ANON,
                 -1,
                 0,
             );
-            if p == libc::MAP_FAILED {
+            if mapped == libc::MAP_FAILED {
                 eprintln!("mmap failed");
                 exit(1);
             }
 
-            let head = p.cast::<Block>();
+            let initial_header = mapped.cast::<BlockHeader>();
             ptr::write(
-                head,
-                Block { size: bytes - HEADER, free: true, next: ptr::null_mut() },
+                initial_header,
+                BlockHeader {
+                    payload_bytes: capacity_bytes - HEADER_BYTES,
+                    is_free: true,
+                    next_block: ptr::null_mut(),
+                },
             );
 
-            Heap { base: p.cast::<u8>(), size: bytes, free_head: head }
+            FreeListHeap {
+                arena_base: mapped.cast::<u8>(),
+                arena_capacity: capacity_bytes,
+                head_block: initial_header,
+            }
         }
     }
 
-    fn alloc(&mut self, n: usize) -> Option<*mut u8> {
-        let mut b = self.free_head;
-        while !b.is_null() {
-            // SAFETY: Invariant Proof:
-            // 1. `b` is verified non-null and originates from `self.free_head` or a valid `(*b).next` pointer.
-            // 2. Structural induction ensures every node in the intrusive chain points to an initialized,
-            //    in-bounds `Block` header inside `[self.base, self.base + self.size)`.
-            // 3. When `rest >= HEADER + 16`, the split boundary `nb = b + HEADER + n` is guaranteed
-            //    to reside strictly inside the current block's payload span, ensuring the newly
-            //    carved header does not collide with neighboring allocations.
+    // First-fit allocation: finds the first free block large enough for `requested_bytes`.
+    fn alloc(&mut self, requested_bytes: usize) -> Option<*mut u8> {
+        let mut current = self.head_block;
+        while !current.is_null() {
+            // SAFETY: Every pointer in the intrusive list resides inside `[arena_base, arena_base + arena_capacity)`
+            // and points to an initialized `BlockHeader`. When `leftover_bytes >= HEADER_BYTES + MIN_SPLIT_PAYLOAD`,
+            // the split header at `current + HEADER_BYTES + requested_bytes` lies strictly inside `current`'s payload.
             unsafe {
-                if (*b).free && (*b).size >= n {
-                    let rest = (*b).size - n;
-                    if rest >= HEADER + 16 {
-                        // Split: carve a free block out of the remainder.
-                        let nb = b.cast::<u8>().add(HEADER + n).cast::<Block>();
+                if (*current).is_free && (*current).payload_bytes >= requested_bytes {
+                    let leftover_bytes = (*current).payload_bytes - requested_bytes;
+                    if leftover_bytes >= HEADER_BYTES + MIN_SPLIT_PAYLOAD {
+                        let split_header = current
+                            .cast::<u8>()
+                            .add(HEADER_BYTES + requested_bytes)
+                            .cast::<BlockHeader>();
+
                         ptr::write(
-                            nb,
-                            Block { size: rest - HEADER, free: true, next: (*b).next },
+                            split_header,
+                            BlockHeader {
+                                payload_bytes: leftover_bytes - HEADER_BYTES,
+                                is_free: true,
+                                next_block: (*current).next_block,
+                            },
                         );
 
-                        (*b).size = n;
-                        (*b).next = nb;
+                        (*current).payload_bytes = requested_bytes;
+                        (*current).next_block = split_header;
                     }
 
-                    (*b).free = false;
-                    return Some(b.cast::<u8>().add(HEADER));
+                    (*current).is_free = false;
+                    // Advance past the 24-byte header to return the start of the user payload.
+                    return Some(current.cast::<u8>().add(HEADER_BYTES));
                 }
 
-                b = (*b).next;
+                current = (*current).next_block;
             }
         }
 
         None
     }
 
-    fn free(&mut self, p: *mut u8) {
-        // SAFETY: Allocator Contract Proof:
-        // `p` was returned by a preceding call to `alloc()`. In our layout geometry, the user payload
-        // begins exactly `HEADER` bytes after the start of the `Block` header. Subtracting `HEADER`
-        // reconstructs the original, valid header pointer `b`. Marking `(*b).free = true` returns
-        // ownership of this slice to the allocator pool.
+    // Releases a previously allocated payload pointer and merges adjacent free blocks.
+    fn free(&mut self, user_payload_ptr: *mut u8) {
+        // SAFETY: `user_payload_ptr` was returned by `alloc()` at `header + HEADER_BYTES`.
+        // Stepping backward by `HEADER_BYTES` recovers the initialized `BlockHeader`.
         unsafe {
-            let b = p.sub(HEADER).cast::<Block>();
-            (*b).free = true;
+            let header = user_payload_ptr.sub(HEADER_BYTES).cast::<BlockHeader>();
+            (*header).is_free = true;
         }
 
-        self.coalesce();
+        self.coalesce_adjacent_free_blocks();
     }
 
-    fn coalesce(&mut self) {
-        let mut b = self.free_head;
-        // SAFETY: Coalescing Invariant Proof:
-        // `b` and `n = (*b).next` are active, initialized headers.
-        // Adjacency verification `n == b + HEADER + (*b).size` proves that no allocated or unmapped
-        // space exists between block `b` and block `n`. Merging them by extending `(*b).size` by
-        // `HEADER + (*n).size` and splicing `(*b).next = (*n).next` eliminates internal header
-        // fragmentation without violating any memory boundaries.
+    // Linear pass merging any two physically adjacent free blocks into one larger block.
+    fn coalesce_adjacent_free_blocks(&mut self) {
+        let mut current = self.head_block;
+        // SAFETY: `current` and `neighbor` are valid initialized headers within the arena.
+        // Verifying `neighbor == current + HEADER_BYTES + current.payload_bytes` confirms
+        // physical adjacency before absorbing `neighbor`'s header and payload into `current`.
         unsafe {
-            while !b.is_null() && !(*b).next.is_null() {
-                let n = (*b).next;
-                let b_end = b.cast::<u8>().add(HEADER + (*b).size);
-                let adjacent = n.cast::<u8>() == b_end;
+            while !current.is_null() && !(*current).next_block.is_null() {
+                let neighbor = (*current).next_block;
+                let current_end_addr = current
+                    .cast::<u8>()
+                    .add(HEADER_BYTES + (*current).payload_bytes);
+                let is_physically_adjacent = neighbor.cast::<u8>() == current_end_addr;
 
-                if (*b).free && (*n).free && adjacent {
-                    (*b).size += HEADER + (*n).size;
-                    (*b).next = (*n).next;
+                if (*current).is_free && (*neighbor).is_free && is_physically_adjacent {
+                    (*current).payload_bytes += HEADER_BYTES + (*neighbor).payload_bytes;
+                    (*current).next_block = (*neighbor).next_block;
                 } else {
-                    b = n;
+                    current = neighbor;
                 }
             }
         }
     }
 
-    fn dump(&self) {
+    fn dump_block_map(&self) {
         println!("  block map:");
-
-        let mut b = self.free_head;
-        let mut i = 0;
-        // SAFETY: Safe read-only traversal of the validated intrusive header list.
+        let mut current = self.head_block;
+        let mut block_index = 0;
+        // SAFETY: Read-only traversal of the validated intrusive block header chain.
         unsafe {
-            while !b.is_null() {
-                let off = b.cast::<u8>() as usize - self.base as usize;
+            while !current.is_null() {
+                let byte_offset = current.cast::<u8>() as usize - self.arena_base as usize;
                 println!(
-                    "    [{i}] offset {off} size {} {}",
-                    (*b).size,
-                    if (*b).free { "free" } else { "used" }
+                    "    [{block_index}] offset {byte_offset}  payload {}  {}",
+                    (*current).payload_bytes,
+                    if (*current).is_free { "free" } else { "used" }
                 );
-
-                b = (*b).next;
-                i += 1;
+                current = (*current).next_block;
+                block_index += 1;
             }
         }
     }
 }
 
-impl Drop for Heap {
+impl Drop for FreeListHeap {
     fn drop(&mut self) {
-        // SAFETY: `munmap` releases the virtual memory mapping allocated in `create()`.
-        // By RAII, `drop` is invoked only once when the `Heap` instance exits scope.
-        unsafe { libc::munmap(self.base.cast::<libc::c_void>(), self.size) };
+        // SAFETY: Releases the exact virtual mapping allocated in `create()`.
+        unsafe { libc::munmap(self.arena_base.cast::<libc::c_void>(), self.arena_capacity) };
     }
 }
 
 fn main() {
-    let mut h = Heap::create(256 * 1024);
-    println!("arena: {:p}, {} bytes, header {} bytes\n", h.base, h.size, HEADER);
+    let mut heap = FreeListHeap::create(256 * 1024);
+    println!(
+        "arena: {:p}, {} bytes, header {} bytes\n",
+        heap.arena_base, heap.arena_capacity, HEADER_BYTES
+    );
 
-    let a = h.alloc(100).unwrap();
-    let b = h.alloc(200).unwrap();
-    let c = h.alloc(300).unwrap();
+    let block_a = heap.alloc(100).unwrap();
+    let block_b = heap.alloc(200).unwrap();
+    let block_c = heap.alloc(300).unwrap();
 
     println!("after alloc(100), alloc(200), alloc(300):");
-    h.dump();
+    heap.dump_block_map();
 
-    h.free(b);
-    println!("\nafter free(b):");
-    h.dump();
+    heap.free(block_b);
+    println!("\nafter free(block_b):");
+    heap.dump_block_map();
 
-    let d = h.alloc(150).unwrap();
-    println!("\nafter alloc(150) into the hole left by b:");
-    h.dump();
-    println!("d reuses b's block: {}", d == b);
+    // Reuses block_b's 200-byte hole: 150B used + 24B new header + 26B free remainder.
+    let block_d = heap.alloc(150).unwrap();
+    println!("\nafter alloc(150) into block_b's hole:");
+    heap.dump_block_map();
+    println!(
+        "block_d reuses block_b's address: {}",
+        if block_d == block_b { "yes" } else { "no" }
+    );
 
-    h.free(a);
-    h.free(d);
-    h.free(c);
+    heap.free(block_a);
+    heap.free(block_d);
+    heap.free(block_c);
 
-    println!("\nafter freeing everything:");
-    h.dump();
+    println!("\nafter freeing all blocks (coalesced back to 1 free block):");
+    heap.dump_block_map();
 }

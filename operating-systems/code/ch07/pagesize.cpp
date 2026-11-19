@@ -1,62 +1,67 @@
-// ch07/pagesize.cpp: page size, page alignment, and a guard page that faults.
+// ch07/pagesize.cpp: Queries hardware page size, maps three contiguous virtual pages,
+// and converts the middle page into an inaccessible guard page via mprotect(PROT_NONE).
 #include <sys/mman.h>
 #include <unistd.h>
 #include <csignal>
 #include <csetjmp>
 #include <cstdio>
 
-static sigjmp_buf g_env;
-static volatile void* g_fault_addr = nullptr;
+static sigjmp_buf g_recovery_env;
+static volatile void* g_fault_address = nullptr;
 
-static void on_segv(int, siginfo_t* si, void*) {
-    g_fault_addr = si->si_addr;   // address the CPU tried to touch
-    siglongjmp(g_env, 1);
+// Signal handler invoked by the kernel when the MMU raises a page protection fault.
+static void on_protection_fault(int, siginfo_t* sig_info, void*) {
+    g_fault_address = sig_info->si_addr;  // Exact virtual address that triggered the fault
+    siglongjmp(g_recovery_env, 1);        // Resume execution cleanly in main()
 }
 
 int main() {
-    long ps = sysconf(_SC_PAGESIZE);
-    printf("page size: %ld bytes\n", ps);
+    // Query the hardware virtual-memory page granularity (4,096 B on x86-64; 16,384 B on Apple Silicon).
+    long page_size = sysconf(_SC_PAGESIZE);
+    printf("page size: %ld bytes\n", page_size);
 
-    // Three anonymous pages, mapped readable and writable.
-    char* region = static_cast<char*>(
-        mmap(nullptr, 3 * ps, PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANON, -1, 0));
-    if (region == MAP_FAILED) {
+    // Map three contiguous anonymous virtual pages with read/write permissions.
+    // The kernel guarantees the returned base address is aligned to `page_size`.
+    char* mapped_region = static_cast<char*>(
+        mmap(nullptr, 3 * page_size, PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANON, -1, 0));
+    if (mapped_region == MAP_FAILED) {
         perror("mmap");
         return 1;
     }
 
-    printf("region:    %p (page-aligned by construction)\n", static_cast<void*>(region));
+    printf("region:    %p (page-aligned by construction)\n", static_cast<void*>(mapped_region));
 
-    region[0] = 'a';
-    region[ps] = 'b';
-    region[2 * ps] = 'c';
+    // Write one byte into Page 0, Page 1, and Page 2 (triggering demand-zero physical frame allocation).
+    mapped_region[0] = 'a';
+    mapped_region[page_size] = 'b';
+    mapped_region[2 * page_size] = 'c';
 
-    // Turn the middle page into a guard page: any access faults.
-    if (mprotect(region + ps, ps, PROT_NONE) != 0) {
+    // Convert Page 1 (the middle page) into a guard page by stripping all PTE permissions (PROT_NONE).
+    if (mprotect(mapped_region + page_size, page_size, PROT_NONE) != 0) {
         perror("mprotect");
         return 1;
     }
 
-    struct sigaction sa {};
-    sa.sa_sigaction = on_segv;
-    sa.sa_flags = SA_SIGINFO;
-    sigemptyset(&sa.sa_mask);
+    struct sigaction signal_action {};
+    signal_action.sa_sigaction = on_protection_fault;
+    signal_action.sa_flags = SA_SIGINFO;  // Deliver siginfo_t containing the faulting virtual address
+    sigemptyset(&signal_action.sa_mask);
 
-    // macOS reports protection violations as SIGBUS; Linux reports SIGSEGV.
-    sigaction(SIGSEGV, &sa, nullptr);
-    sigaction(SIGBUS, &sa, nullptr);
+    // Linux delivers SIGSEGV for PTE permission faults; macOS/Darwin delivers SIGBUS.
+    sigaction(SIGSEGV, &signal_action, nullptr);
+    sigaction(SIGBUS, &signal_action, nullptr);
 
-    if (sigsetjmp(g_env, 1) == 0) {
-        region[ps] = 'x';          // faults: page has PROT_NONE
+    if (sigsetjmp(g_recovery_env, 1) == 0) {
+        mapped_region[page_size] = 'x';   // Triggers hardware page protection fault on Page 1
         printf("write succeeded (unexpected)\n");
     } else {
-        printf("fault on write to %p\n", g_fault_addr);
+        printf("fault on write to %p\n", g_fault_address);
         printf("fault address is the guard page: %s\n",
-               g_fault_addr == static_cast<void*>(region + ps) ? "yes" : "no");
+               g_fault_address == static_cast<void*>(mapped_region + page_size) ? "yes" : "no");
     }
 
-    // The neighbors are untouched by the fault.
-    printf("neighbors still readable: %c %c\n", region[0], region[2 * ps]);
+    // Neighboring Page 0 and Page 2 retain their permissions and data intact.
+    printf("neighbors still readable: %c %c\n", mapped_region[0], mapped_region[2 * page_size]);
 
-    munmap(region, 3 * ps);
+    munmap(mapped_region, 3 * page_size);
 }

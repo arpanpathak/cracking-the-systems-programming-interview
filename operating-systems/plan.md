@@ -170,15 +170,15 @@ Each of the following phases addresses a major systems gap identified in our arc
   - Derived Store-Buffering (SB) vs. Message-Passing (MP) litmus tests across x86-64 TSO and ARM64 weak ordering, verified with `code/ch06/cas_ordering.cpp` and `code/ch06/cas_ordering.rs`.
 - [x] **Vector Diagrams**: Implemented 4 dedicated full-width diagrams (`ch06_cas_llsc`, `ch06_store_buffer_litmus`, `ch06_futex_automaton`, `ch06_seqlock`) in `tools/draw_figures.py` and visually audited all four via Headless Chrome.
 
-### Phase 8: Production Allocator Architecture, `mmap` Thresholds, and Lock-Free Reclamation (Chapter 8)
-- [ ] **Objective**: Bridge the gap between Chapter 8's educational free-list allocator and production multi-threaded allocators (`jemalloc`, `tcmalloc`, `mimalloc`).
-- [ ] **Boundary Tags for O(1) Bidirectional Coalescing**:
-  - Derive Knuth's **Boundary Tag** layout (header + footer size/status replication), enabling immediate O(1) coalescing with both the physical predecessor and successor blocks without an O(N) linear list traversal.
-- [ ] **Segregated Size Classes, Slab Caches, and Thread-Local Caches (`tcache`)**:
-  - Show how size-class bucketing (`16, 32, 48, 64 ... 4096` bytes) bounds internal fragmentation while eliminating search scans, and how per-thread caches (`tcache`) satisfy small allocations in Ring 3 without acquiring any global heap mutex.
-- [ ] **The `brk` vs. `mmap` Allocation Threshold (`M_MMAP_THRESHOLD`)**:
-  - Explain why allocators sub-allocate small objects from persistent arenas (`sbrk` / `mmap` pools) to avoid per-object syscall and TLB-shootdown costs, while routing large allocations (&ge; 128 KiB) directly to standalone `mmap` regions so they can be returned immediately to the OS kernel via `munmap` upon `free()`.
-- [ ] **Vector Diagram**: Implement `ch08_allocator_hierarchy()` in `tools/draw_figures.py` showing thread-local `tcache` bins, central size-class arenas, boundary-tag blocks, and direct `mmap` huge allocations, and visually audit via Headless Chrome.
+### Phase 8: Production Allocator Architecture, `mmap` Thresholds, and Clear Alignment Mechanics (Chapter 8) — [COMPLETED & AUDITED]
+- [x] **Objective**: Bridge the gap between Chapter 8's educational free-list allocator and production multi-threaded allocators (`jemalloc`, `tcmalloc`, `mimalloc`), eliminating cryptic abbreviations across Chapters 7 & 8 code listings and clarifying hardware alignment padding.
+- [x] **Boundary Tags for O(1) Bidirectional Coalescing**:
+  - Derived Knuth's **Boundary Tag** layout (header + footer size/status replication), enabling immediate O(1) coalescing with both the physical predecessor and successor blocks without an O(N) linear list traversal.
+- [x] **Segregated Size Classes, Slab Caches, and Thread-Local Caches (`tcache`)**:
+  - Showed how size-class bucketing (`16, 32, 48, 64 ... 4096` bytes) bounds internal fragmentation while eliminating search scans, and how per-thread caches (`tcache`) satisfy small allocations in Ring 3 without acquiring any global heap mutex.
+- [x] **The `brk` vs. `mmap` Allocation Threshold (`M_MMAP_THRESHOLD`)**:
+  - Explained why allocators sub-allocate small objects from persistent arenas while routing large allocations (&ge; 128 KiB) directly to standalone `mmap` regions returned immediately to the OS via `munmap`.
+- [x] **Vector Diagrams**: Rebuilt `ch08_bump()` (with explicit `5 B Padding (11..15)` and step-by-step bitwise arithmetic) and `ch08_freelist()` (unified splitting/coalescing trace with zero rotated text), and added `ch08_allocator_hierarchy()`, visually auditing all three via Headless Chrome.
 
 ### Phase 9: Modern System Call Acceleration (`vDSO`) and Zero-Copy Data Paths (Chapters 9 & 11)
 - [ ] **Objective**: Enrich Chapter 9 (System Calls) and Chapter 11 (IPC) with kernel-bypass mechanisms and zero-copy I/O data paths.

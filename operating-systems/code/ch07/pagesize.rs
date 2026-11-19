@@ -1,67 +1,50 @@
-// ch07/pagesize.rs: page size and page alignment through Rust's libc bindings.
+// ch07/pagesize.rs: Queries hardware page size, maps three contiguous virtual pages,
+// and strips permissions from the middle guard page via mprotect(PROT_NONE).
 use std::process::exit;
 use std::ptr;
 
 fn main() {
-    let ps = unsafe {
-        // SAFETY: `_SC_PAGESIZE` is a POSIX-standard sysconf parameter with no memory
-        // preconditions. It queries the architectural hardware translation granularity
-        // established by the CPU MMU (typically 4096 bytes on x86_64, 16384 on Apple Silicon).
-        libc::sysconf(libc::_SC_PAGESIZE) as usize
-    };
-    println!("page size: {ps} bytes");
+    // SAFETY: `_SC_PAGESIZE` is a read-only POSIX configuration constant returning
+    // the CPU MMU's native page granularity (4,096 B on x86-64; 16,384 B on Apple Silicon).
+    let page_size = unsafe { libc::sysconf(libc::_SC_PAGESIZE) as usize };
+    println!("page size: {page_size} bytes");
 
-    let region = unsafe {
-        // SAFETY: Anonymous, private mapping (`MAP_ANON | MAP_PRIVATE`) with a null hint
-        // requests the kernel to allocate an arbitrary, unmapped region in the process's
-        // address space. The requested length `3 * ps` is an exact multiple of the page size,
-        // ensuring clean page-boundary alignment by construction. The descriptor is -1 and
-        // offset is 0 per POSIX specifications for anonymous allocations.
+    // SAFETY: Anonymous private mapping (`MAP_PRIVATE | MAP_ANON`) of `3 * page_size` bytes.
+    // Checking `mapped_region != MAP_FAILED` guarantees a valid page-aligned virtual range.
+    let mapped_region = unsafe {
         libc::mmap(
             ptr::null_mut(),
-            3 * ps,
+            3 * page_size,
             libc::PROT_READ | libc::PROT_WRITE,
             libc::MAP_PRIVATE | libc::MAP_ANON,
             -1,
             0,
         )
     };
-    if region == libc::MAP_FAILED {
+    if mapped_region == libc::MAP_FAILED {
         eprintln!("mmap failed");
         exit(1);
     }
 
-    println!("region:    {region:p} (page-aligned by construction)");
+    println!("region:    {mapped_region:p} (page-aligned by construction)");
 
     unsafe {
-        // SAFETY:
-        // 1. Validity: `region` was verified != MAP_FAILED, guaranteeing a valid 3-page
-        //    contiguous virtual address reservation in the page table.
-        // 2. Alignment: Offsets 0, `ps`, and `2 * ps` are exact multiples of the hardware page
-        //    granularity. Because `region` is page-aligned, each offset addresses the base of a distinct page.
-        // 3. Protection: The mapping was created with `PROT_READ | PROT_WRITE`. Writing here triggers
-        //    a minor page fault on each page, prompting the kernel to allocate a physical frame
-        //    and install the PTE with dirty and accessed bits set.
-        ptr::write(region.cast::<u8>(), b'a');
-        ptr::write(region.cast::<u8>().add(ps), b'b');
-        ptr::write(region.cast::<u8>().add(2 * ps), b'c');
+        // SAFETY: `mapped_region` spans 3 writable pages starting at a page-aligned address.
+        // Writing to offsets 0, `page_size`, and `2 * page_size` touches Page 0, Page 1, and Page 2.
+        ptr::write(mapped_region.cast::<u8>(), b'a');
+        ptr::write(mapped_region.cast::<u8>().add(page_size), b'b');
+        ptr::write(mapped_region.cast::<u8>().add(2 * page_size), b'c');
 
-        // Turn the middle page into a guard page: any access faults.
-        // SAFETY: `mprotect` requires a page-aligned address and valid length.
-        // `region.add(ps)` points exactly to the second page boundary, and `ps` spans
-        // precisely one page. Stripping permissions (`PROT_NONE`) modifies the PTE
-        // protection bits, causing any subsequent load/store to that 4 KiB/16 KiB range
-        // to immediately trigger an unrecoverable hardware trap (SIGSEGV / EXC_BAD_ACCESS).
-        let rc = libc::mprotect(
-            region.cast::<u8>().add(ps) as *mut libc::c_void,
-            ps,
+        // Convert Page 1 (middle page) into a guard page by setting PTE permissions to PROT_NONE.
+        // SAFETY: `mapped_region + page_size` is page-aligned and lies strictly within the mapping.
+        let mprotect_status = libc::mprotect(
+            mapped_region.cast::<u8>().add(page_size) as *mut libc::c_void,
+            page_size,
             libc::PROT_NONE,
         );
-        println!("mprotect(middle page, PROT_NONE): rc={rc}");
+        println!("mprotect(middle page, PROT_NONE): status={mprotect_status}");
 
-        // SAFETY: `munmap` releases the virtual memory range back to the OS. `region` is the exact
-        // base pointer returned by `mmap`, and `3 * ps` is the exact mapped size. No subsequent
-        // references to this virtual address range occur.
-        libc::munmap(region, 3 * ps);
+        // SAFETY: Unmaps the exact base address and length returned by `mmap`.
+        libc::munmap(mapped_region, 3 * page_size);
     }
 }

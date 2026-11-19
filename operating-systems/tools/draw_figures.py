@@ -1586,77 +1586,233 @@ def ch07_canonical_va():
 
 @figure
 def ch08_bump():
-    fig = Fig("ch08_bump", "Figure 8-1. A bump allocator: hand out, never reclaim, reset to reuse.", 152)
+    fig = Fig("ch08_bump", "Figure 8-1. Bump Allocator Layout: Sequential Offsets and Explicit 16-Byte Alignment Padding", 336)
 
-    fig.text(28, 12, "one 64 KiB arena", "sub")
+    # Top container: 64 KiB Arena Linear Byte Layout (y=12..166)
+    fig.node(28, 12, 744, 152, "gray", kind="tonal", r=12)
+    fig.text(44, 34, "Contiguous 64 KiB Arena (Byte Offsets 0 .. 65,535)", "name")
+    fig.text(44, 50, "Each allocation advances next_offset; alignment padding fills any gap to the next power-of-two boundary", "small", fit=(44, 756))
 
-    fig.cell(28, 22, 148, 64, "blue", [("8 bytes (a)", "body"), ("offset 0", "mono")], kind="mid", r=8)
-    fig.cell(179, 22, 88, 64, "purple", [("3 bytes", "body"), ("offset 8", "mono")], kind="mid", r=8)
-    fig.hatch(270, 22, 46, 64, "gray", r=8)
-    fig.cell(319, 22, 188, 64, "teal", [("16 bytes (16-aligned)", "body"), ("offset 16", "mono")], kind="mid", r=8)
-    free = fig.node(510, 22, 262, 64, "gray", kind="dashed", r=8)
-    fig.lines(free.cx, free.cy, [("free space", "body"), ("offset 32 onward", "mono")], "middle",
-              fit=(free.x + 4, free.r - 4))
+    fig.cell(44, 68, 126, 76, "blue", [
+        ("Block 1 (8 B)", "name"),
+        ("bytes 0..7", "mono"),
+        ("align = 8", "small"),
+    ], kind="card", r=8)
 
-    fig.wire([(508.5, 120), (508.5, 90)], "red", width=2.2)
-    fig.lines(508.5, 137, [("offset = 32", "monob"), ("next allocation starts here", "sub")], "middle")
+    fig.cell(178, 68, 114, 76, "purple", [
+        ("Block 2 (3 B)", "name"),
+        ("bytes 8..10", "mono"),
+        ("align = 8", "small"),
+    ], kind="card", r=8)
+
+    fig.cell(300, 68, 116, 76, "amber", [
+        ("5 B Padding", "name"),
+        ("bytes 11..15", "mono"),
+        ("align 11 → 16", "small"),
+    ], kind="mid", r=8)
+
+    fig.cell(424, 68, 150, 76, "teal", [
+        ("Block 3 (16 B)", "name"),
+        ("bytes 16..31", "mono"),
+        ("align = 16", "small"),
+    ], kind="card", r=8)
+
+    free_box = fig.cell(582, 68, 174, 76, "green", [
+        ("Free Arena Space", "name"),
+        ("bytes 32..65535", "mono"),
+        ("next_offset = 32", "monob"),
+    ], kind="card", r=8)
+
+    # Bottom row: Step-by-step arithmetic explanation (y=182..322)
+    fig.cell(28, 182, 232, 136, "blue", [
+        ("Step 1: alloc(8, align=8)", "name"),
+        ("next_offset = 0", "mono"),
+        ("(0 + 7) & ~7 = 0", "mono"),
+        ("Returns base + 0", "small"),
+        ("Advances offset: 0 → 8", "small"),
+    ], kind="card", r=10)
+
+    fig.cell(284, 182, 232, 136, "purple", [
+        ("Step 2: alloc(3, align=8)", "name"),
+        ("next_offset = 8", "mono"),
+        ("(8 + 7) & ~7 = 8", "mono"),
+        ("Returns base + 8", "small"),
+        ("Advances offset: 8 → 11", "small"),
+    ], kind="card", r=10)
+
+    fig.cell(540, 182, 232, 136, "teal", [
+        ("Step 3: alloc(16, align=16)", "name"),
+        ("next_offset = 11 (misaligned)", "mono"),
+        ("(11 + 15) & ~15 = 16", "monob"),
+        ("Skips 5 pad bytes (11..15)", "small"),
+        ("Advances offset: 16 → 32", "small"),
+    ], kind="card", r=10)
 
     fig.save([
-        "alloc(n, align) rounds the offset up to a multiple of align, checks that n bytes fit, and advances the offset by n.",
-        "There is no per-object metadata and no free list. A single object cannot be freed.",
-        "reset() sets the offset to 0 and makes the whole arena available again.",
+        "Why bytes 11..15 are skipped: 11 is not a multiple of 16, so rounding up inserts 5 bytes of alignment padding.",
+        "Individual objects cannot be freed; reset() rewinds next_offset to 0 in O(1) to reclaim the entire arena.",
     ])
-
-
-def heap_header(fig, x, y, height):
-    fig.rect(x, y, 46, height, "m-amber", r=7)
-    fig.text(x + 23, y + height / 2 + 4, "header", "small", "middle", rotate=-90)
 
 
 @figure
 def ch08_freelist():
-    fig = Fig("ch08_freelist", "Figure 8-2. A free list: headers next to payloads, free blocks chained.", 366)
+    fig = Fig("ch08_freelist", "Figure 8-2. Free-List Allocator: Unified Trace of Header Layout, Block Splitting, and Coalescing", 414)
 
-    row = [(28, "payload A, 100", 150, "blue"), (230, "payload B, 200", 176, "purple"), (458, "payload C, 300", 176, "teal")]
-    for x, text, width, tone in row:
-        heap_header(fig, x, 0, 64)
-        fig.cell(x + 49, 0, width, 64, tone, [(text, "body")], kind="mid")
-    heap_header(fig, 686, 0, 64)
-    fig.hatch(735, 0, 37, 64, "gray", r=7)
+    # Band 1: Initial allocations A(100), B(200), C(300) (y=12..130)
+    fig.node(28, 12, 744, 118, "blue", kind="tonal", r=12)
+    fig.text(44, 34, "1. Initial Layout After alloc(100), alloc(200), alloc(300)  (BlockHeader = 24 bytes)", "name", fit=(44, 756))
 
-    for start, end in ((51, 253), (253, 481), (481, 709)):
-        fig.arc((start, 67), (end - 6, 68), 30, "amber")
-    fig.label(152, 106, "next", tone="amber", backed=False)
+    fig.cell(44, 48, 166, 68, "blue", [
+        ("Hdr 24B | Block A", "name"),
+        ("off 0 · 100 B", "mono"),
+        ("next → offset 124", "small"),
+    ], kind="card", r=8)
 
-    fig.text(28, 132, "header fields: size · free/used · next pointer (24 bytes on this machine)", "sub")
+    fig.cell(226, 48, 166, 68, "purple", [
+        ("Hdr 24B | Block B", "name"),
+        ("off 124 · 200 B", "mono"),
+        ("next → offset 348", "small"),
+    ], kind="card", r=8)
 
-    fig.text(28, 170, "split: free(b), then alloc(150) into the hole", "name")
-    fig.rect(28, 184, 199, 64, "c-gray", r=7)
-    fig.rect(458, 184, 314, 64, "c-gray", r=7)
-    heap_header(fig, 230, 184, 64)
-    fig.cell(279, 184, 104, 64, "green", [("payload d, 150", "small")], kind="mid")
-    heap_header(fig, 386, 184, 64)
-    fig.rect(435, 184, 20, 64, "m-gray", r=5)
-    fig.text(445, 220, "26 free", "small", "middle", rotate=-90)
+    fig.cell(408, 48, 166, 68, "teal", [
+        ("Hdr 24B | Block C", "name"),
+        ("off 348 · 300 B", "mono"),
+        ("next → offset 672", "small"),
+    ], kind="card", r=8)
 
-    fig.text(28, 290, "coalesce: adjacent free blocks merge", "name")
-    heap_header(fig, 28, 304, 56)
-    left_free = fig.node(77, 304, 84, 56, "gray", kind="dashed", r=7)
-    fig.text(left_free.cx, left_free.cy + 4.5, "40 free", "sub", "middle")
-    heap_header(fig, 164, 304, 56)
-    right_free = fig.node(213, 304, 76, 56, "gray", kind="dashed", r=7)
-    fig.text(right_free.cx, right_free.cy + 4.5, "30 free", "sub", "middle")
+    fig.cell(590, 48, 166, 68, "gray", [
+        ("Hdr 24B | Free Tail", "name"),
+        ("off 672 · free", "mono"),
+        ("next → null", "small"),
+    ], kind="card", r=8)
 
-    fig.wire([(306, 332), (382, 332)], "green", width=2.4)
+    fig.wire([(210, 82), (224, 82)], "blue", width=1.8)
+    fig.wire([(392, 82), (406, 82)], "purple", width=1.8)
+    fig.wire([(574, 82), (588, 82)], "teal", width=1.8)
 
-    heap_header(fig, 398, 304, 56)
-    merged = fig.node(447, 304, 260, 56, "green", kind="dashed", r=7)
-    fig.text(merged.cx, merged.cy + 4.5, "one block, 40 + 24 + 30 = 94 free", "sub", "middle",
-             fit=(merged.x + 4, merged.r - 4))
+    # Band 2: Splitting Block B's 200 B hole on alloc(150) (y=146..268)
+    fig.node(28, 146, 744, 122, "amber", kind="tonal", r=12)
+    fig.text(44, 168, "2. Block Splitting: free(B) leaves 200 B; alloc(150) carves a 24 B header + 26 B remainder", "name", fit=(44, 756))
+
+    fig.cell(44, 184, 126, 68, "gray", [
+        ("Block A", "name"),
+        ("used 100 B", "mono"),
+    ], kind="card", r=8)
+
+    fig.cell(184, 184, 196, 68, "green", [
+        ("Hdr 24B | Block D", "name"),
+        ("off 124 · used 150 B", "mono"),
+        ("reuses old B address", "small"),
+    ], kind="card", r=8)
+
+    fig.cell(394, 184, 212, 68, "amber", [
+        ("New Hdr 24B | Free Rem", "name"),
+        ("offset 298 · free 26 B", "mono"),
+        ("200 − 150 − 24 = 26 B", "small"),
+    ], kind="mid", r=8)
+
+    fig.cell(620, 184, 136, 68, "gray", [
+        ("Block C + Tail", "name"),
+        ("offset 348 ..", "mono"),
+    ], kind="card", r=8)
+
+    fig.wire([(380, 218), (392, 218)], "green", width=1.8)
+    fig.wire([(606, 218), (618, 218)], "amber", width=1.8)
+
+    # Band 3: Coalescing adjacent free blocks on free(D) (y=284..402)
+    fig.node(28, 284, 744, 118, "green", kind="tonal", r=12)
+    fig.text(44, 306, "3. Coalescing: free(D) merges adjacent free blocks and reclaims the 24 B middle header", "name", fit=(44, 756))
+
+    c_left = fig.cell(44, 322, 166, 66, "amber", [
+        ("Free Block D", "name"),
+        ("150 B payload", "mono"),
+    ], kind="card", r=8)
+
+    c_mid = fig.cell(224, 322, 164, 66, "amber", [
+        ("Hdr 24B + Rem", "name"),
+        ("24 B + 26 B free", "mono"),
+    ], kind="card", r=8)
+
+    c_merged = fig.cell(442, 322, 314, 66, "green", [
+        ("Coalesced Free Block (offset 124)", "name"),
+        ("150 + 24 + 26 = 200 B payload restored", "monob"),
+        ("External fragmentation eliminated", "small"),
+    ], kind="card", r=8)
+
+    fig.wire([(c_left.r + 2, 355), (c_mid.x - 2, 355)], "amber", width=1.8)
+    fig.wire([(c_mid.r + 4, 355), (c_merged.x - 4, 355)], "green", width=2.4)
 
     fig.save([
-        "alloc takes the first free block that is large enough (first fit) and splits off the unused remainder.",
-        "free marks the header and merges the block with a free neighbor. Listing 8-3 prints these steps.",
+        "The user pointer returned by alloc() points 24 bytes past BlockHeader; free(ptr) subtracts 24 bytes to recover the header.",
+        "Splitting requires leftover_bytes >= sizeof(BlockHeader) + 16 so the remainder holds a valid header and usable payload.",
+    ])
+
+
+@figure
+def ch08_allocator_hierarchy():
+    fig = Fig("ch08_allocator_hierarchy", "Figure 8-3. Production Allocator Architecture: Thread Caches, Boundary Tags, and mmap Threshold", 392)
+
+    # Tier 1: Thread-Local Cache (tcache) (y=12..126)
+    fig.node(28, 12, 744, 114, "green", kind="tonal", r=12)
+    fig.tile(42, 22, "bolt", "green", 24)
+    fig.text(74, 35, "Tier 1: Per-Thread Cache (tcache) — Lock-Free Ring 3 Fast Path for Small Allocations", "name", fit=(74, 760))
+
+    classes = [("16 B Bin", "freelist head"), ("32 B Bin", "freelist head"), ("64 B Bin", "freelist head"), ("128 B..4 KiB", "segregated bins")]
+    for idx, (label, sub) in enumerate(classes):
+        x = 44 + idx * 180
+        fig.cell(x, 54, 168, 56, "green", [(label, "name"), (sub, "small")], kind="card", r=8)
+
+    # Tier 2: Central Arenas & Boundary Tags (y=142..268)
+    fig.node(28, 142, 744, 126, "blue", kind="tonal", r=12)
+    fig.tile(42, 152, "layers", "blue", 24)
+    fig.text(74, 165, "Tier 2: Central Size-Class Arenas & Knuth Boundary Tags (O(1) Bidirectional Coalescing)", "name", fit=(74, 760))
+
+    fig.cell(44, 184, 134, 68, "amber", [
+        ("Prev Footer", "name"),
+        ("size | free_bit", "mono"),
+        ("O(1) back-peek", "small"),
+    ], kind="card", r=8)
+
+    fig.cell(190, 184, 114, 68, "blue", [
+        ("Header", "name"),
+        ("size | flag", "mono"),
+        ("8 B tag", "small"),
+    ], kind="mid", r=8)
+
+    fig.cell(312, 184, 200, 68, "blue", [
+        ("User Payload Region", "name"),
+        ("16-byte aligned address", "mono"),
+        ("returned to caller", "small"),
+    ], kind="card", r=8)
+
+    fig.cell(520, 184, 114, 68, "blue", [
+        ("Footer", "name"),
+        ("size | flag", "mono"),
+        ("replicated", "small"),
+    ], kind="mid", r=8)
+
+    fig.cell(646, 184, 110, 68, "amber", [
+        ("Next Header", "name"),
+        ("size | flag", "mono"),
+        ("O(1) fwd", "small"),
+    ], kind="card", r=8)
+
+    # Tier 3: Large Allocations via Direct mmap (y=284..378)
+    fig.node(28, 284, 744, 94, "purple", kind="tonal", r=12)
+    fig.tile(42, 294, "memory", "purple", 24)
+    fig.text(74, 307, "Tier 3: Large Allocations (≥ 128 KiB, M_MMAP_THRESHOLD) — Direct mmap / munmap", "name", fit=(74, 760))
+
+    fig.cell(44, 326, 344, 38, "purple", [
+        ("alloc(≥ 128 KiB) → dedicated mmap() region", "mono"),
+    ], kind="card", r=8)
+
+    fig.cell(412, 326, 344, 38, "purple", [
+        ("free() → immediate munmap() back to OS", "mono"),
+    ], kind="card", r=8)
+
+    fig.save([
+        "Per-thread segregated size-class caches satisfy small allocations in Ring 3 without acquiring global arena locks.",
+        "Replicating size and free status in a block Footer lets free() inspect the previous physical block in O(1) time.",
     ])
 
 

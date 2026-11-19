@@ -1,6 +1,8 @@
-arena: 0x1070f5000, 65536 bytes
+arena: 0x10b388000, 65536 bytes
 
-alloc(8,8)   -> 0x1070f5000 (offset 0)
-alloc(3,8)   -> 0x1070f5008 (offset 8)
-alloc(16,16) -> 0x1070f5010 (offset 16)
-after reset, alloc(8,8) -> 0x1070f5000 (same as first: yes)
+alloc(8,  align=8)  -> 0x10b388000 (offset 0,  bytes 0..7)
+alloc(3,  align=8)  -> 0x10b388008 (offset 8,  bytes 8..10)
+alloc(16, align=16) -> 0x10b388010 (offset 16, bytes 16..31 after 5B padding)
+next_offset         -> 32
+
+after reset, alloc(8, align=8) -> 0x10b388000 (reuses offset 0: yes)

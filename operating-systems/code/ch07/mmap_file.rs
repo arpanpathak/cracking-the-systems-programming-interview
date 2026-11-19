@@ -1,82 +1,94 @@
-// ch07/mmap_file.rs: read a file with read(2), then map it and read it again.
+// ch07/mmap_file.rs: Compares counting bytes via read(2) (kernel-to-user copy)
+// against reading directly through an mmap(2) virtual memory mapping.
 extern crate libc;
 
 use std::ptr;
 use std::slice;
 
-const SIZE: usize = 4 * 1024 * 1024; // 4 MiB
-const LINE: usize = 64;              // 63 'a' + newline
+const FILE_BYTES: usize = 4 * 1024 * 1024;  // 4 MiB test file
+const LINE_BYTES: usize = 64;               // 63 'a' characters + '\n'
 
 fn main() {
-    let path = b"/tmp/osbook_mmap_demo_rs.txt\0";
+    let file_path = b"/tmp/osbook_mmap_demo_rs.txt\0";
 
-    // SAFETY: `path` is a valid NUL-terminated byte array; opening with O_CREAT
-    // passes mode 0o644 and returns a valid descriptor or -1 on error.
-    let fd = unsafe {
+    // SAFETY: `file_path` is a NUL-terminated path; mode 0o644 creates a readable/writable file.
+    let file_fd = unsafe {
         libc::open(
-            path.as_ptr() as *const libc::c_char,
+            file_path.as_ptr() as *const libc::c_char,
             libc::O_CREAT | libc::O_RDWR | libc::O_TRUNC,
             0o644 as libc::c_uint,
         )
     };
-    assert!(fd >= 0, "open failed");
+    assert!(file_fd >= 0, "open failed");
 
-    let mut line = [b'a'; LINE];
-    line[LINE - 1] = b'\n';
+    let mut line_buffer = [b'a'; LINE_BYTES];
+    line_buffer[LINE_BYTES - 1] = b'\n';
 
-    for _ in (0..SIZE).step_by(LINE) {
-        // SAFETY: `fd` is an open writable file descriptor and `line` is a valid
-        // 64-byte stack buffer for the duration of the `write` system call.
-        let written = unsafe { libc::write(fd, line.as_ptr() as *const libc::c_void, LINE) };
-        assert_eq!(written, LINE as isize);
+    for _ in (0..FILE_BYTES).step_by(LINE_BYTES) {
+        // SAFETY: `file_fd` is open for writing and `line_buffer` provides `LINE_BYTES` valid bytes.
+        let bytes_written = unsafe {
+            libc::write(file_fd, line_buffer.as_ptr() as *const libc::c_void, LINE_BYTES)
+        };
+        assert_eq!(bytes_written, LINE_BYTES as isize);
     }
 
-    // SAFETY: `fd` is a valid open file descriptor.
+    // SAFETY: `file_fd` is an open file descriptor; sync data and rewind offset to byte 0.
     unsafe {
-        libc::fsync(fd);
-        libc::lseek(fd, 0, libc::SEEK_SET);
+        libc::fsync(file_fd);
+        libc::lseek(file_fd, 0, libc::SEEK_SET);
     }
 
-    let mut via_read: usize = 0;
-    let mut buf = [0_u8; 8192];
+    // Step 2: Count 'a' bytes via read(2) (copies from kernel page cache into user buffer).
+    let mut count_via_read: usize = 0;
+    let mut read_buffer = [0_u8; 8192];
     loop {
-        // SAFETY: `fd` is readable and `buf` provides 8,192 writable bytes.
-        let n = unsafe { libc::read(fd, buf.as_mut_ptr() as *mut libc::c_void, buf.len()) };
-        if n <= 0 {
+        // SAFETY: `file_fd` is readable and `read_buffer` provides 8,192 writable bytes.
+        let bytes_read = unsafe {
+            libc::read(
+                file_fd,
+                read_buffer.as_mut_ptr() as *mut libc::c_void,
+                read_buffer.len(),
+            )
+        };
+        if bytes_read <= 0 {
             break;
         }
-        via_read += buf[..n as usize].iter().filter(|&&b| b == b'a').count();
+        count_via_read += read_buffer[..bytes_read as usize]
+            .iter()
+            .filter(|&&byte| byte == b'a')
+            .count();
     }
 
-    // SAFETY: We request a read-only private mapping of `SIZE` bytes backed by `fd`.
-    // Checking against `MAP_FAILED` ensures the returned pointer is valid and mapped.
-    let map = unsafe {
+    // Step 3: Map the file directly into virtual memory (no explicit user-buffer copy).
+    // SAFETY: Read-only private mapping of `FILE_BYTES` backed by `file_fd`.
+    let mapped_ptr = unsafe {
         libc::mmap(
             ptr::null_mut(),
-            SIZE,
+            FILE_BYTES,
             libc::PROT_READ,
             libc::MAP_PRIVATE,
-            fd,
+            file_fd,
             0,
         )
     };
-    assert_ne!(map, libc::MAP_FAILED, "mmap failed");
+    assert_ne!(mapped_ptr, libc::MAP_FAILED, "mmap failed");
 
-    // SAFETY: `map` points to a valid read-only page-aligned mapping of `SIZE` bytes
-    // that remains immutable and mapped until `munmap` below.
-    let mapped_bytes = unsafe { slice::from_raw_parts(map as *const u8, SIZE) };
-    let via_mmap = mapped_bytes.iter().filter(|&&b| b == b'a').count();
+    // SAFETY: `mapped_ptr` is verified valid and remains read-only and mapped until `munmap`.
+    let mapped_slice = unsafe { slice::from_raw_parts(mapped_ptr as *const u8, FILE_BYTES) };
+    let count_via_mmap = mapped_slice.iter().filter(|&&byte| byte == b'a').count();
 
-    println!("file size   : {SIZE} bytes");
-    println!("read(2)     : {via_read} 'a' characters");
-    println!("mmap        : {via_mmap} 'a' characters");
-    println!("match       : {}", if via_read == via_mmap { "yes" } else { "NO" });
+    println!("file size   : {FILE_BYTES} bytes");
+    println!("read(2)     : {count_via_read} 'a' characters");
+    println!("mmap        : {count_via_mmap} 'a' characters");
+    println!(
+        "match       : {}",
+        if count_via_read == count_via_mmap { "yes" } else { "NO" }
+    );
 
-    // SAFETY: `map` was returned by `mmap` with length `SIZE`, `fd` is open,
-    // and `path` is NUL-terminated.
+    // SAFETY: Unmaps the exact mapping, closes `file_fd`, and removes the temporary file.
     unsafe {
-        libc::munmap(map, SIZE);
-        libc::close(fd);
-        libc::unlink(path.as_ptr() as *const libc::c_char);
+        libc::munmap(mapped_ptr, FILE_BYTES);
+        libc::close(file_fd);
+        libc::unlink(file_path.as_ptr() as *const libc::c_char);
     }
 }

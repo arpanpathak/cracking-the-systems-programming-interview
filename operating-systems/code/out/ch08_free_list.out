@@ -1,28 +1,28 @@
-arena: 0x105bee000, 262144 bytes, header 24 bytes
+arena: 0x10128a000, 262144 bytes, header 24 bytes
 
 after alloc(100), alloc(200), alloc(300):
   block map:
-    [0] offset 0 size 100 used
-    [1] offset 124 size 200 used
-    [2] offset 348 size 300 used
-    [3] offset 672 size 261448 free
+    [0] offset 0  payload 100  used
+    [1] offset 124  payload 200  used
+    [2] offset 348  payload 300  used
+    [3] offset 672  payload 261448  free
 
-after free(b):
+after free(block_b):
   block map:
-    [0] offset 0 size 100 used
-    [1] offset 124 size 200 free
-    [2] offset 348 size 300 used
-    [3] offset 672 size 261448 free
+    [0] offset 0  payload 100  used
+    [1] offset 124  payload 200  free
+    [2] offset 348  payload 300  used
+    [3] offset 672  payload 261448  free
 
-after alloc(150) into the hole left by b:
+after alloc(150) into block_b's hole:
   block map:
-    [0] offset 0 size 100 used
-    [1] offset 124 size 150 used
-    [2] offset 298 size 26 free
-    [3] offset 348 size 300 used
-    [4] offset 672 size 261448 free
-d reuses b's block: yes
+    [0] offset 0  payload 100  used
+    [1] offset 124  payload 150  used
+    [2] offset 298  payload 26  free
+    [3] offset 348  payload 300  used
+    [4] offset 672  payload 261448  free
+block_d reuses block_b's address: yes
 
-after freeing everything:
+after freeing all blocks (coalesced back to 1 free block):
   block map:
-    [0] offset 0 size 262120 free
+    [0] offset 0  payload 262120  free

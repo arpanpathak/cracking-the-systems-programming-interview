@@ -1,63 +1,65 @@
-// ch07/tlb.rs: one access per page, sweeping the working set upward.
+// ch07/tlb.rs: Measures per-access latency while sweeping the working set upward,
+// stepping by one full hardware page per access so latency cliffs reveal TLB capacity.
 extern crate libc;
 
 use std::ptr;
 use std::slice;
 use std::time::Instant;
 
-fn ns_per_access(bytes: usize, touches: u64) {
-    // SAFETY: `sysconf(_SC_PAGESIZE)` queries a read-only kernel constant.
-    let ps = unsafe { libc::sysconf(libc::_SC_PAGESIZE) } as usize;
+fn measure_ns_per_access(working_set_bytes: usize, total_accesses: u64) {
+    // SAFETY: `_SC_PAGESIZE` queries the read-only OS hardware page granularity.
+    let page_size = unsafe { libc::sysconf(libc::_SC_PAGESIZE) } as usize;
 
-    // SAFETY: Anonymous private mapping of `bytes` length requires no file descriptor.
-    // Verified against `MAP_FAILED` before forming a Rust slice.
-    let region = unsafe {
+    // SAFETY: Anonymous private mapping of `working_set_bytes`; validated against `MAP_FAILED`.
+    let region_ptr = unsafe {
         libc::mmap(
             ptr::null_mut(),
-            bytes,
+            working_set_bytes,
             libc::PROT_READ | libc::PROT_WRITE,
             libc::MAP_PRIVATE | libc::MAP_ANON,
             -1,
             0,
         )
     };
-    assert_ne!(region, libc::MAP_FAILED, "mmap failed");
+    assert_ne!(region_ptr, libc::MAP_FAILED, "mmap failed");
 
-    // SAFETY: `region` is a valid, exclusively owned mapping of `bytes` initialized
-    // by the kernel to zero; valid until `munmap` at the end of this function.
-    let mem = unsafe { slice::from_raw_parts_mut(region as *mut u8, bytes) };
-    let pages = bytes / ps;
+    // SAFETY: `region_ptr` is an exclusively owned, zero-initialized mapping valid until `munmap`.
+    let mapped_bytes =
+        unsafe { slice::from_raw_parts_mut(region_ptr as *mut u8, working_set_bytes) };
+    let page_count = working_set_bytes / page_size;
 
-    // Pre-fault every page so page-allocation traps do not pollute TLB timings.
-    for p in 0..pages {
-        mem[p * ps] = 1;
+    // Pre-fault every page once so page-allocation traps do not distort TLB timings.
+    for page_index in 0..page_count {
+        mapped_bytes[page_index * page_size] = 1;
     }
 
-    let mut sum: u64 = 0;
-    let mut p: usize = 0;
-    let start = Instant::now();
-    for _ in 0..touches {
-        sum += u64::from(mem[p * ps]);
-        p += 1;
-        if p == pages {
-            p = 0;
+    let mut checksum: u64 = 0;
+    let mut page_index: usize = 0;
+    let start_time = Instant::now();
+    for _ in 0..total_accesses {
+        checksum += u64::from(mapped_bytes[page_index * page_size]);
+        page_index += 1;
+        if page_index == page_count {
+            page_index = 0;
         }
     }
-    let ns = start.elapsed().as_nanos() as f64 / touches as f64;
+    let ns_per_access = start_time.elapsed().as_nanos() as f64 / total_accesses as f64;
 
-    println!("  {bytes:8} bytes  {pages:8} pages  {ns:8.1} ns per access  (checksum {sum})");
+    println!(
+        "  {working_set_bytes:9} bytes  {page_count:7} pages  {ns_per_access:6.1} ns per access  (checksum {checksum})"
+    );
 
-    // SAFETY: `mem` is no longer referenced; unmaps the exact region returned by `mmap`.
+    // SAFETY: `mapped_bytes` is no longer referenced; unmaps the exact mapping from `mmap`.
     unsafe {
-        libc::munmap(region, bytes);
+        libc::munmap(region_ptr, working_set_bytes);
     }
 }
 
 fn main() {
-    const TOUCHES: u64 = 4_000_000;
-    println!("one access per page, {TOUCHES} accesses per size\n");
+    const TOTAL_ACCESSES: u64 = 4_000_000;
+    println!("one access per page, {TOTAL_ACCESSES} accesses per working-set size\n");
 
-    for &bytes in &[
+    for &working_set_bytes in &[
         4 * 1024,
         64 * 1024,
         256 * 1024,
@@ -67,6 +69,6 @@ fn main() {
         64 << 20,
         256 << 20,
     ] {
-        ns_per_access(bytes, TOUCHES);
+        measure_ns_per_access(working_set_bytes, TOTAL_ACCESSES);
     }
 }

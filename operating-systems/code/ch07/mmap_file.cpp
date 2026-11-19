@@ -1,4 +1,5 @@
-// ch07/mmap_file.cpp: read a file with read(2), then map it and read it again.
+// ch07/mmap_file.cpp: Compares counting bytes via read(2) (kernel-to-user copy)
+// against reading directly through an mmap(2) virtual memory mapping.
 #include <fcntl.h>
 #include <sys/mman.h>
 #include <sys/stat.h>
@@ -7,58 +8,60 @@
 #include <vector>
 
 int main() {
-    const char* path = "/tmp/osbook_mmap_demo.txt";
-    constexpr size_t kSize = 4 * 1024 * 1024;   // 4 MiB
-    constexpr size_t kLine = 64;                // 63 'a' + newline
+    const char* file_path = "/tmp/osbook_mmap_demo.txt";
+    constexpr size_t kFileBytes = 4 * 1024 * 1024;  // 4 MiB test file
+    constexpr size_t kLineBytes = 64;               // 63 'a' characters + '\n'
 
-    // 1. Create the file: 65,536 identical lines.
-    int fd = open(path, O_CREAT | O_RDWR | O_TRUNC, 0644);
-    if (fd < 0) {
+    // Step 1: Create and populate the 4 MiB file (65,536 lines of 64 bytes).
+    int file_fd = open(file_path, O_CREAT | O_RDWR | O_TRUNC, 0644);
+    if (file_fd < 0) {
         perror("open");
         return 1;
     }
 
-    std::vector<char> line(kLine, 'a');
-    line[kLine - 1] = '\n';
+    std::vector<char> line_buffer(kLineBytes, 'a');
+    line_buffer[kLineBytes - 1] = '\n';
 
-    for (size_t off = 0; off < kSize; off += kLine) {
-        write(fd, line.data(), kLine);
+    for (size_t byte_offset = 0; byte_offset < kFileBytes; byte_offset += kLineBytes) {
+        write(file_fd, line_buffer.data(), kLineBytes);
     }
+    fsync(file_fd);
 
-    fsync(fd);
+    // Step 2: Count 'a' bytes via read(2), which copies data from the kernel page cache
+    // into our user-space `read_buffer` on every system call.
+    lseek(file_fd, 0, SEEK_SET);
+    long count_via_read = 0;
+    char read_buffer[8192];
+    ssize_t bytes_read = 0;
 
-    // 2. Count characters with read(2): the file is copied into a buffer first.
-    lseek(fd, 0, SEEK_SET);
-    long via_read = 0;
-    char buf[8192];
-    ssize_t n;
-
-    while ((n = read(fd, buf, sizeof buf)) > 0) {
-        for (ssize_t i = 0; i < n; ++i) {
-            if (buf[i] == 'a') ++via_read;
+    while ((bytes_read = read(file_fd, read_buffer, sizeof read_buffer)) > 0) {
+        for (ssize_t index = 0; index < bytes_read; ++index) {
+            if (read_buffer[index] == 'a') ++count_via_read;
         }
     }
 
-    // 3. Map the file and count again: no explicit copies in the loop.
-    char* map = static_cast<char*>(mmap(nullptr, kSize, PROT_READ, MAP_PRIVATE, fd, 0));
-    if (map == MAP_FAILED) {
+    // Step 3: Map the file directly into our virtual address space via mmap(2).
+    // Hardware page faults map the kernel page cache frames directly into user PTEs.
+    char* mapped_file = static_cast<char*>(
+        mmap(nullptr, kFileBytes, PROT_READ, MAP_PRIVATE, file_fd, 0));
+    if (mapped_file == MAP_FAILED) {
         perror("mmap");
         return 1;
     }
 
-    long via_mmap = 0;
-    for (size_t i = 0; i < kSize; ++i) {
-        if (map[i] == 'a') ++via_mmap;
+    long count_via_mmap = 0;
+    for (size_t index = 0; index < kFileBytes; ++index) {
+        if (mapped_file[index] == 'a') ++count_via_mmap;
     }
 
-    struct stat st {};
-    fstat(fd, &st);
-    printf("file size   : %lld bytes\n", static_cast<long long>(st.st_size));
-    printf("read(2)     : %ld 'a' characters\n", via_read);
-    printf("mmap        : %ld 'a' characters\n", via_mmap);
-    printf("match       : %s\n", via_read == via_mmap ? "yes" : "NO");
+    struct stat file_stat {};
+    fstat(file_fd, &file_stat);
+    printf("file size   : %lld bytes\n", static_cast<long long>(file_stat.st_size));
+    printf("read(2)     : %ld 'a' characters\n", count_via_read);
+    printf("mmap        : %ld 'a' characters\n", count_via_mmap);
+    printf("match       : %s\n", count_via_read == count_via_mmap ? "yes" : "NO");
 
-    munmap(map, kSize);
-    close(fd);
-    unlink(path);
+    munmap(mapped_file, kFileBytes);
+    close(file_fd);
+    unlink(file_path);
 }

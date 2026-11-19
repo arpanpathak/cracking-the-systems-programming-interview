@@ -1,54 +1,57 @@
-// ch07/tlb.cpp: one access per page, sweeping the working set upward.
-// Each size step crosses another level of the memory hierarchy; the
-// latency steps mark the TLB and cache boundaries.
+// ch07/tlb.cpp: Measures per-access latency while sweeping the working set upward,
+// stepping by one full hardware page per access so latency cliffs reveal TLB capacity.
 #include <sys/mman.h>
 #include <unistd.h>
 #include <chrono>
 #include <cstdint>
 #include <cstdio>
 
-static double ns_per_access(size_t bytes, uint64_t touches) {
-    const long ps = sysconf(_SC_PAGESIZE);
+static double measure_ns_per_access(size_t working_set_bytes, uint64_t total_accesses) {
+    const size_t page_size = static_cast<size_t>(sysconf(_SC_PAGESIZE));
 
     char* region = static_cast<char*>(
-        mmap(nullptr, bytes, PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANON, -1, 0));
+        mmap(nullptr, working_set_bytes, PROT_READ | PROT_WRITE,
+             MAP_PRIVATE | MAP_ANON, -1, 0));
     if (region == MAP_FAILED) return -1.0;
 
-    const size_t pages = bytes / static_cast<size_t>(ps);
+    const size_t page_count = working_set_bytes / page_size;
 
-    // Touch every page once so the measurement is not dominated by page faults.
-    for (size_t p = 0; p < pages; ++p) region[p * ps] = 1;
-
-    uint64_t sum = 0;
-    size_t p = 0;
-
-    auto start = std::chrono::steady_clock::now();
-    for (uint64_t i = 0; i < touches; ++i) {
-        sum += static_cast<uint8_t>(region[p * ps]);
-        if (++p == pages) p = 0;
+    // Pre-fault every page once so page-allocation traps do not distort TLB timings.
+    for (size_t page_index = 0; page_index < page_count; ++page_index) {
+        region[page_index * page_size] = 1;
     }
-    auto end = std::chrono::steady_clock::now();
 
-    double ns = std::chrono::duration<double, std::nano>(end - start).count() / touches;
+    uint64_t checksum = 0;
+    size_t page_index = 0;
 
-    printf("  %8zu bytes  %8zu pages  %8.1f ns per access  (checksum %llu)\n",
-           bytes, pages, ns, static_cast<unsigned long long>(sum));
+    auto start_time = std::chrono::steady_clock::now();
+    for (uint64_t step = 0; step < total_accesses; ++step) {
+        checksum += static_cast<uint8_t>(region[page_index * page_size]);
+        if (++page_index == page_count) page_index = 0;
+    }
+    auto end_time = std::chrono::steady_clock::now();
 
-    munmap(region, bytes);
-    return ns;
+    double ns_per_access =
+        std::chrono::duration<double, std::nano>(end_time - start_time).count() / total_accesses;
+
+    printf("  %9zu bytes  %7zu pages  %6.1f ns per access  (checksum %llu)\n",
+           working_set_bytes, page_count, ns_per_access,
+           static_cast<unsigned long long>(checksum));
+
+    munmap(region, working_set_bytes);
+    return ns_per_access;
 }
 
 int main() {
-    constexpr uint64_t kTouches = 4'000'000;
-    printf("one access per page, %llu accesses per size\n\n",
-           static_cast<unsigned long long>(kTouches));
+    constexpr uint64_t kTotalAccesses = 4'000'000;
+    printf("one access per page, %llu accesses per working-set size\n\n",
+           static_cast<unsigned long long>(kTotalAccesses));
 
-    ns_per_access(4 * 1024, kTouches);
-    ns_per_access(64 * 1024, kTouches);
-    ns_per_access(256 * 1024, kTouches);
-    ns_per_access(1u << 20, kTouches);
-    ns_per_access(4u << 20, kTouches);
-    ns_per_access(16u << 20, kTouches);
-    ns_per_access(64u << 20, kTouches);
-    ns_per_access(256u << 20, kTouches);
+    for (size_t bytes : {
+             size_t{4} * 1024, size_t{64} * 1024, size_t{256} * 1024,
+             size_t{1} << 20,  size_t{4} << 20,   size_t{16} << 20,
+             size_t{64} << 20, size_t{256} << 20,
+         }) {
+        measure_ns_per_access(bytes, kTotalAccesses);
+    }
 }

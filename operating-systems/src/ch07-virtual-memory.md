@@ -14,6 +14,19 @@ The fundamental mechanism of virtual memory is the page table, a per-process dat
 
 On modern 64-bit architectures like x86-64 and ARM64, the virtual address space is too vast to be mapped by a single flat array. A flat page table covering a 48-bit address space (2<sup>48</sup> = 256 TiB) with 4 KiB pages (2<sup>12</sup> bytes) would require 2<sup>36</sup> entries; at 8 bytes per entry, every active process would consume 512 GiB of physical DRAM solely for its page table. Instead, the kernel employs a sparse, multi-level hierarchical radix tree—typically a four-level page table (or five-level with Intel LA57 / ARM64 LPA2). Because entire unmapped subtrees are omitted when their parent directory entry is marked non-present, physical memory is allocated only for page table nodes that map active regions of the process's address space.
 
+**Table 7-1. Architectural abbreviations used throughout virtual-memory translation.**
+
+| Abbreviation | Full Term | Role in Hardware Translation |
+| :--- | :--- | :--- |
+| **MMU** | Memory Management Unit | Hardware circuit that translates virtual addresses and enforces page permissions |
+| **VA / PA** | Virtual Address / Physical Address | Program pointer address versus actual DRAM physical bus address |
+| **VPN / PFN** | Virtual Page Number / Physical Frame Number | Upper address bits identifying a 4 KiB virtual page or 4 KiB physical DRAM frame |
+| **CR3 / TTBR0** | Control Register 3 (x86-64) / Translation Table Base Register (ARM64) | Privileged hardware register holding the physical base address of the root page table |
+| **PML4 / PDPT / PD / PT** | Page Map Level 4 / Page Directory Pointer Table / Page Directory / Page Table | The four radix tree levels (Levels 4, 3, 2, and 1) traversed on x86-64 |
+| **PTE** | Page Table Entry | 64-bit table entry containing the target PFN and permission/status bits (`P`, `R/W`, `U/S`, `NX`) |
+| **TLB** | Translation Lookaside Buffer | Core-private hardware cache storing recent `VPN → PFN` translations (~1 cycle hit) |
+| **PCID / ASID** | Process-Context ID (x86-64) / Address Space ID (ARM64) | Hardware tag distinguishing TLB entries across processes without flushing on context switch |
+
 ### 7.2.1 Canonical Addresses and Multi-Level Radix Decomposition
 
 Under standard 4-level paging on x86-64 (and 48-bit `VA_BITS` with 4 KiB granules on ARM64), only the lower 48 bits (`[47:0]`) of a 64-bit pointer participate in hardware address translation. To prevent software from overloading the upper unused bits (`[63:48]`) with arbitrary metadata that would break compatibility with 5-level paging extensions, the hardware enforces **canonical address form**: bits `63:48` must be an exact sign-extension (replication) of bit `47`.
