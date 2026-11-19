@@ -137,7 +137,22 @@ The kernel's involvement in memory management is primarily event-driven, occurri
 - **Copy-on-Write (COW):** Facilitating efficient process duplication by mapping shared pages as read-only and only performing a physical copy when a write is attempted.
 - **Protection Violations:** Terminating a process via a signal (e.g., `SIGSEGV` or `SIGBUS`) when an access violates the page's permission bits.
 
-This flexibility also allows for the implementation of **guard pages**, unmapped or protected pages placed strategically (such as at the end of a stack) to detect and halt buffer overflows or stack exhaustion before they corrupt adjacent memory regions. Furthermore, the `mmap` system call allows files to be mapped directly into the process's address space, enabling the program to access file data through the page cache without the overhead of explicit `read` calls and redundant data copying.
+This flexibility also allows for the implementation of **guard pages**, unmapped or protected pages placed strategically (such as at the end of a stack) to detect and halt buffer overflows or stack exhaustion before they corrupt adjacent memory regions. Furthermore, the `mmap` system call allows files or anonymous RAM to be mapped directly into the process's virtual address space, enabling programs to access file data through the page cache without explicit `read` copies or to allocate raw page-aligned arenas directly from the kernel.
+
+### 7.3.1 The `mmap` and `mprotect` System Call Interface
+
+Before examining the reference implementations below, every parameter and flag of `mmap(addr, length, prot, flags, fd, offset)` and `mprotect(addr, length, prot)` maps directly to the page-table architecture derived in Section 7.2:
+
+- **Address Hint (`addr`) and Mapping Size (`length`):** Passing `nullptr` (`ptr::null_mut()` in Rust) instructs the kernel to select an unused, page-aligned virtual address automatically (subject to Address Space Layout Randomization, ASLR). The kernel rounds `length` upward to an exact multiple of the hardware page size (`4,096` bytes on x86-64; `16,384` bytes on Apple Silicon ARM64).
+- **Hardware Page Protections (`prot`):** Bitwise-OR flags written directly into each mapped page's PTE permission bits:
+  - `PROT_READ`: Authorizes CPU load instructions from the mapped virtual range.
+  - `PROT_WRITE`: Sets the PTE Read/Write bit (`R/W = 1`), authorizing store instructions. Combining `PROT_READ | PROT_WRITE` creates standard readable and writable data memory while keeping the No-Execute bit (`NX = 1`) enforced.
+  - `PROT_NONE`: Revokes all read, write, and execute permissions in the PTE while retaining the virtual address reservation. Passing `PROT_NONE` to `mprotect()` turns a mapped page into a **guard page** so any accidental dereference raises an immediate hardware protection fault (`SIGSEGV` on Linux; `SIGBUS` on macOS).
+- **Visibility and Backing Store (`flags`):** Controls whether the mapping is private or shared across processes, and whether it is backed by a disk file or fresh zeroed RAM:
+  - `MAP_PRIVATE`: Creates a private, copy-on-write mapping isolated to the calling process; modifications are never written back to an underlying file.
+  - `MAP_SHARED`: Shares the underlying physical frames across processes (used for inter-process shared memory in Chapter 11) and flushes writes back to file-backed mappings.
+  - `MAP_ANON` (also aliased as `MAP_ANONYMOUS` on Linux): Allocates fresh, demand-zeroed anonymous RAM rather than mapping a file. When `MAP_ANON` is specified, POSIX mandates passing `-1` for the file descriptor `fd` and `0` for the byte `offset`.
+- **Error Handling and Reclamation:** Upon failure, `mmap` returns the sentinel pointer `MAP_FAILED` (`(void*)-1`) rather than `nullptr`. Programs must verify `mapped != MAP_FAILED` before dereferencing the region, and release the virtual mapping via `munmap(addr, length)`.
 
 **Listing 7-1. Page size, page alignment, and a guard page (C++20).**
 
