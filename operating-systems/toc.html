@@ -38,7 +38,7 @@
             const path_to_root = "";
             const default_light_theme = "light";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "searchindex-ea113b75.js";
+            window.path_to_searchindex_js = "searchindex-3ec56076.js";
         </script>
         <!-- Start loading toc.js asap -->
         <script src="toc-f3585118.js"></script>
@@ -502,7 +502,8 @@
 <li><a href="ch19-interview-problems.html#1922-state-invariants-and-predicate-verification">19.2.2 State Invariants and Predicate Verification</a></li>
 <li><a href="ch19-interview-problems.html#1923-reference-implementation">19.2.3 Reference Implementation (C++20 &amp; Rust 2024)</a></li>
 <li><a href="ch19-interview-problems.html#1924-backing-store-variants-and-building-the-ring-buffer-by-hand">19.2.4 Backing-Store Variants and Building the Ring Buffer by Hand</a></li>
-<li><a href="ch19-interview-problems.html#1925-systems-analysis-and-concurrency-interview-follow-ups">19.2.5 Systems Analysis and Concurrency Interview Follow-Ups</a></li>
+<li><a href="ch19-interview-problems.html#1925-memory-layout-the-optiont-tag-niche-optimization-and-maybeuninitt">19.2.5 Memory Layout: The <code>Option&lt;T&gt;</code> Tag, Niche Optimization, and <code>MaybeUninit&lt;T&gt;</code></a></li>
+<li><a href="ch19-interview-problems.html#1926-systems-analysis-and-concurrency-interview-follow-ups">19.2.6 Systems Analysis and Concurrency Interview Follow-Ups</a></li>
 </ul>
 </li>
 <li><a href="ch19-interview-problems.html#193-the-free-list-allocator">19.3 The Free-List Allocator</a>
@@ -705,7 +706,7 @@
 <li><strong>Condition Variables</strong>: Execution barriers enabling threads to sleep until notified of a state change under a controlling mutex.
 <ul>
 <li>Predicate Loop Requirement: <a href="ch06-synchronization.html#62-condition-variables-and-predicate-based-synchronization">§6.2</a></li>
-<li>Spurious Wakeup Verification: <a href="ch19-interview-problems.html#1925-systems-analysis-and-concurrency-interview-follow-ups">§19.2.5</a></li>
+<li>Spurious Wakeup Verification: <a href="ch19-interview-problems.html#1926-systems-analysis-and-concurrency-interview-follow-ups">§19.2.6</a></li>
 </ul>
 </li>
 <li><strong>Context Switch Overhead</strong>: The microarchitectural penalty of saving CPU registers, swapping page tables, and invalidating pipeline state.
@@ -914,7 +915,7 @@
 </li>
 <li><strong>Spurious Wakeups</strong>: Condition variable unblocking without explicit notification caused by kernel scheduler dynamics.
 <ul>
-<li>Systems Nuances: <a href="ch19-interview-problems.html#1925-systems-analysis-and-concurrency-interview-follow-ups">§19.2.5</a></li>
+<li>Systems Nuances: <a href="ch19-interview-problems.html#1926-systems-analysis-and-concurrency-interview-follow-ups">§19.2.6</a></li>
 </ul>
 </li>
 <li><strong>Stack Pointer (SP / RSP / SP_EL0)</strong>: Architectural register tracking the active boundary of the descending call stack.
@@ -949,7 +950,7 @@
 </li>
 <li><strong>Thundering Herd Mitigation</strong>: Preventing catastrophic CPU contention by waking single threads (<code>notify_one</code>) rather than all sleeping threads.
 <ul>
-<li>Bounded Queue Optimization: <a href="ch19-interview-problems.html#1925-systems-analysis-and-concurrency-interview-follow-ups">§19.2.5</a></li>
+<li>Bounded Queue Optimization: <a href="ch19-interview-problems.html#1926-systems-analysis-and-concurrency-interview-follow-ups">§19.2.6</a></li>
 </ul>
 </li>
 <li><strong>TLB (Translation Lookaside Buffer)</strong>: High-speed CPU hardware cache storing recent virtual-to-physical address translations.

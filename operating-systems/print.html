@@ -39,7 +39,7 @@
             const path_to_root = "";
             const default_light_theme = "light";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "searchindex-ea113b75.js";
+            window.path_to_searchindex_js = "searchindex-3ec56076.js";
         </script>
         <!-- Start loading toc.js asap -->
         <script src="toc-f3585118.js"></script>
@@ -576,7 +576,8 @@
 <li><a href="#1922-state-invariants-and-predicate-verification">19.2.2 State Invariants and Predicate Verification</a></li>
 <li><a href="#1923-reference-implementation">19.2.3 Reference Implementation (C++20 &amp; Rust 2024)</a></li>
 <li><a href="#1924-backing-store-variants-and-building-the-ring-buffer-by-hand">19.2.4 Backing-Store Variants and Building the Ring Buffer by Hand</a></li>
-<li><a href="#1925-systems-analysis-and-concurrency-interview-follow-ups">19.2.5 Systems Analysis and Concurrency Interview Follow-Ups</a></li>
+<li><a href="#1925-memory-layout-the-optiont-tag-niche-optimization-and-maybeuninitt">19.2.5 Memory Layout: The <code>Option&lt;T&gt;</code> Tag, Niche Optimization, and <code>MaybeUninit&lt;T&gt;</code></a></li>
+<li><a href="#1926-systems-analysis-and-concurrency-interview-follow-ups">19.2.6 Systems Analysis and Concurrency Interview Follow-Ups</a></li>
 </ul>
 </li>
 <li><a href="#193-the-free-list-allocator">19.3 The Free-List Allocator</a>
@@ -779,7 +780,7 @@
 <li><strong>Condition Variables</strong>: Execution barriers enabling threads to sleep until notified of a state change under a controlling mutex.
 <ul>
 <li>Predicate Loop Requirement: <a href="#62-condition-variables-and-predicate-based-synchronization">§6.2</a></li>
-<li>Spurious Wakeup Verification: <a href="#1925-systems-analysis-and-concurrency-interview-follow-ups">§19.2.5</a></li>
+<li>Spurious Wakeup Verification: <a href="#1926-systems-analysis-and-concurrency-interview-follow-ups">§19.2.6</a></li>
 </ul>
 </li>
 <li><strong>Context Switch Overhead</strong>: The microarchitectural penalty of saving CPU registers, swapping page tables, and invalidating pipeline state.
@@ -988,7 +989,7 @@
 </li>
 <li><strong>Spurious Wakeups</strong>: Condition variable unblocking without explicit notification caused by kernel scheduler dynamics.
 <ul>
-<li>Systems Nuances: <a href="#1925-systems-analysis-and-concurrency-interview-follow-ups">§19.2.5</a></li>
+<li>Systems Nuances: <a href="#1926-systems-analysis-and-concurrency-interview-follow-ups">§19.2.6</a></li>
 </ul>
 </li>
 <li><strong>Stack Pointer (SP / RSP / SP_EL0)</strong>: Architectural register tracking the active boundary of the descending call stack.
@@ -1023,7 +1024,7 @@
 </li>
 <li><strong>Thundering Herd Mitigation</strong>: Preventing catastrophic CPU contention by waking single threads (<code>notify_one</code>) rather than all sleeping threads.
 <ul>
-<li>Bounded Queue Optimization: <a href="#1925-systems-analysis-and-concurrency-interview-follow-ups">§19.2.5</a></li>
+<li>Bounded Queue Optimization: <a href="#1926-systems-analysis-and-concurrency-interview-follow-ups">§19.2.6</a></li>
 </ul>
 </li>
 <li><strong>TLB (Translation Lookaside Buffer)</strong>: High-speed CPU hardware cache storing recent virtual-to-physical address translations.
@@ -7900,7 +7901,361 @@ int main() {
 <p><strong>Output 19-2b.</strong></p>
 <pre><code class="hljs language-text">hand-rolled ring queue: 200 String messages transferred in strict FIFO order (verified)
 </code></pre>
-<h3 id="1925-systems-analysis-and-concurrency-interview-follow-ups"><a class="header" href="#1925-systems-analysis-and-concurrency-interview-follow-ups">19.2.5 Systems Analysis and Concurrency Interview Follow-Ups</a></h3>
+<h3 id="1925-memory-layout-the-optiont-tag-niche-optimization-and-maybeuninitt"><a class="header" href="#1925-memory-layout-the-optiont-tag-niche-optimization-and-maybeuninitt">19.2.5 Memory Layout: The <code>Option&lt;T&gt;</code> Tag, Niche Optimization, and <code>MaybeUninit&lt;T&gt;</code></a></h3>
+<p>To evaluate when <code>Vec&lt;Option&lt;T&gt;&gt;</code> is completely free and when dropping down to <code>Box&lt;[MaybeUninit&lt;T&gt;]&gt;</code> (or C++ raw aligned byte storage) doubles cache efficiency, examine the exact bytes stored in RAM.</p>
+<h4 id="what-is-the-optiont-tag-discriminant-and-why-does-optionu64-cost-16-bytes"><a class="header" href="#what-is-the-optiont-tag-discriminant-and-why-does-optionu64-cost-16-bytes">What Is the <code>Option&lt;T&gt;</code> Tag (Discriminant) and Why Does <code>Option&lt;u64&gt;</code> Cost 16 Bytes?</a></h4>
+<p>A Rust <code>Option&lt;T&gt;</code> (and C++’s <code>std::optional&lt;T&gt;</code>) is a <strong>tagged union</strong>: in memory, the program must be able to distinguish <code>None</code> from <code>Some(value)</code> at runtime. Consider storing a 64-bit integer <code>u64</code>:</p>
+<ol>
+<li><strong>No unused bit patterns exist:</strong> A <code>u64</code> uses every single one of its <code>2^64</code> bit combinations (<code>0x0000_0000_0000_0000</code> through <code>0xFFFF_FFFF_FFFF_FFFF</code>) as a legitimate number. The compiler cannot steal <code>0</code> or <code>u64::MAX</code> to mean <code>None</code>.</li>
+<li><strong>Adding the discriminant tag:</strong> The compiler therefore appends a <strong>1-byte tag (discriminant)</strong>: <code>0</code> means <code>None</code>, <code>1</code> means <code>Some</code>.</li>
+<li><strong>Alignment padding doubles the slot size:</strong> In an array of elements, every <code>u64</code> must start at an address divisible by its 8-byte hardware alignment (Chapter 8, Section 8.1.2). If a slot occupied only <code>1 + 8 = 9</code> bytes, slot <code>1</code> would start at misaligned byte offset <code>9</code>. The compiler therefore inserts <strong>7 bytes of alignment padding</strong> between the tag and the payload (or after the payload in C++), inflating <code>size_of::&lt;Option&lt;u64&gt;&gt;()</code> from <strong>8 bytes to 16 bytes</strong>. Inside a 64-byte L1 cache line, <code>Vec&lt;Option&lt;u64&gt;&gt;</code> holds only <strong>4 elements</strong> instead of <strong>8</strong>, doubling RAM usage and cutting L1 cache density in half.</li>
+</ol>
+<h4 id="rusts-niche-optimization-when-optiont-costs-zero-extra-bytes"><a class="header" href="#rusts-niche-optimization-when-optiont-costs-zero-extra-bytes">Rust’s Niche Optimization (When <code>Option&lt;T&gt;</code> Costs Zero Extra Bytes)</a></h4>
+<p>Not every type exhausts all of its bit patterns. A reference (<code>&amp;T</code>), <code>Box&lt;T&gt;</code>, <code>NonNull&lt;T&gt;</code>, <code>String</code> (whose internal heap pointer is <code>NonNull&lt;u8&gt;</code>), or <code>bool</code> (which uses only <code>0</code> and <code>1</code>, leaving <code>2..255</code> unused) possesses at least one <strong>invalid bit pattern</strong>, called a <strong>niche</strong>. Whenever <code>T</code> has a niche, the Rust compiler encodes <code>None</code> using that forbidden bit pattern (for example, all-zeros <code>0x0</code> for <code>Box&lt;T&gt;</code> or <code>String</code>) and eliminates the discriminant byte and padding completely:</p>
+<ul>
+<li><code>size_of::&lt;Option&lt;Box&lt;u64&gt;&gt;&gt;() == 8</code> (identical to <code>Box&lt;u64&gt;</code>, zero overhead)</li>
+<li><code>size_of::&lt;Option&lt;String&gt;&gt;() == 24</code> (identical to <code>String</code>, zero overhead)</li>
+<li>By contrast, C++’s <code>std::optional&lt;T&gt;</code> does not perform niche optimization: <code>sizeof(std::optional&lt;std::string&gt;)</code> inflates from <strong>24 bytes to 32 bytes</strong> (24-byte <code>std::string</code> + 1-byte engaged <code>bool</code> + 7 bytes padding).</li>
+</ul>
+<h4 id="zero-overhead-storage-for-every-type-maybeuninitt-and-c-aligned-raw-bytes"><a class="header" href="#zero-overhead-storage-for-every-type-maybeuninitt-and-c-aligned-raw-bytes">Zero-Overhead Storage for Every Type: <code>MaybeUninit&lt;T&gt;</code> and C++ Aligned Raw Bytes</a></h4>
+<p>Even with Rust’s niche optimization, plain numeric types (<code>u32</code>, <code>u64</code>, <code>i64</code>, <code>f64</code>, fixed-size structs of integers) have no niche, so <code>Option&lt;T&gt;</code> still pays tag plus padding overhead. Yet inside a ring buffer, storing a per-slot tag is redundant: the ring’s own <code>(head, len)</code> indices <strong>already tell us</strong> which slots are initialized (<code>(head + k) % cap</code> for <code>0 &lt;= k &lt; len</code>) and which slots are empty.</p>
+<p>Rust’s <strong><code>std::mem::MaybeUninit&lt;T&gt;</code></strong> (internally a <code>#[repr(transparent)]</code> union of <code>()</code> and <code>ManuallyDrop&lt;T&gt;</code>) exploits this exact insight:</p>
+<ul>
+<li><strong>Exact byte-for-byte layout of <code>T</code>:</strong> <code>size_of::&lt;MaybeUninit&lt;T&gt;&gt;() == size_of::&lt;T&gt;()</code> and <code>align_of::&lt;MaybeUninit&lt;T&gt;&gt;() == align_of::&lt;T&gt;()</code>, packing <strong>8 <code>u64</code> slots per 64-byte cache line</strong> (Figure 19-3).</li>
+<li><strong>Explicit initialization and extraction:</strong> Empty slots are created with <code>MaybeUninit::uninit()</code> (no <code>Default</code> bound); <code>push_back</code> initializes a slot via <code>.write(item)</code>; <code>pop_front</code> moves ownership out via <code>unsafe { self.buf[head].assume_init_read() }</code> and immediately advances <code>head</code> and decrements <code>len</code> so the slot is never read twice.</li>
+<li><strong>Mandatory manual <code>Drop</code>:</strong> Because <code>MaybeUninit&lt;T&gt;</code> deliberately suppresses automatic destructors (otherwise Rust would attempt to drop garbage uninitialized bytes), <code>RawRing&lt;T&gt;</code> <strong>must</strong> implement <code>Drop</code> to pop and drop only the live slots <code>[head .. (head + len) % cap)</code>.</li>
+<li><strong>C++20 counterpart:</strong> Storing <code>alignas(T) std::byte bytes[sizeof(T)]</code> per slot, constructing in place with <code>std::construct_at</code> (placement <code>new</code>), moving out and ending lifetime with <code>std::destroy_at</code>, and destroying remaining live slots in <code>~RawRing()</code>.</li>
+</ul>
+<p><strong>Table 19-1. Verified 64-bit memory layout comparison (x86-64 / ARM64).</strong></p>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th style="text-align: left">Type</th><th style="text-align: left">Rust 2024 Size</th><th style="text-align: left">C++20 Equivalent Size</th><th style="text-align: left">Slots per 64 B Cache Line</th><th style="text-align: left">Per-Slot Tag Overhead</th></tr>
+</thead>
+<tbody>
+<tr><td style="text-align: left"><code>u64</code> / <code>uint64_t</code></td><td style="text-align: left">8 B</td><td style="text-align: left">8 B</td><td style="text-align: left">8</td><td style="text-align: left">None</td></tr>
+<tr><td style="text-align: left"><code>Option&lt;u64&gt;</code> / <code>std::optional&lt;uint64_t&gt;</code></td><td style="text-align: left">16 B</td><td style="text-align: left">16 B</td><td style="text-align: left">4</td><td style="text-align: left">1 B tag + 7 B padding (2x)</td></tr>
+<tr><td style="text-align: left"><code>Option&lt;Box&lt;u64&gt;&gt;</code> / <code>std::optional&lt;unique_ptr&lt;uint64_t&gt;&gt;</code></td><td style="text-align: left"><strong>8 B</strong> (niche)</td><td style="text-align: left">16 B</td><td style="text-align: left">8 (Rust) / 4 (C++)</td><td style="text-align: left">0 B (Rust) / 8 B (C++)</td></tr>
+<tr><td style="text-align: left"><code>Option&lt;String&gt;</code> / <code>std::optional&lt;std::string&gt;</code></td><td style="text-align: left"><strong>24 B</strong> (niche)</td><td style="text-align: left">32 B</td><td style="text-align: left">~2.6 (Rust) / 2 (C++)</td><td style="text-align: left">0 B (Rust) / 8 B (C++)</td></tr>
+<tr><td style="text-align: left"><code>MaybeUninit&lt;u64&gt;</code> / <code>alignas(uint64_t) std::byte[8]</code></td><td style="text-align: left"><strong>8 B</strong></td><td style="text-align: left"><strong>8 B</strong></td><td style="text-align: left"><strong>8</strong></td><td style="text-align: left"><strong>0 B (tracked by <code>head</code> + <code>len</code>)</strong></td></tr>
+</tbody>
+</table>
+</div>
+<figure>
+<img src="figures/ch19_option_maybeuninit_layout.svg" alt="Memory layout inside one 64-byte cache line comparing Option&lt;u64&gt; with 1B tag and 7B padding, Option&lt;Box&lt;u64&gt;&gt; niche optimization, and tightly packed MaybeUninit&lt;u64&gt;" />
+</figure>
+<p><strong>Listing 19-2c. Zero-overhead ring buffer using raw aligned byte storage, <code>std::construct_at</code>, and <code>std::destroy_at</code> (C++20).</strong></p>
+<pre><code class="hljs language-cpp">// ch19/ring_buffer_uninit.cpp: Zero-overhead fixed-capacity ring buffer using raw
+// uninitialized aligned storage (C++20 counterpart to Rust&#x27;s MaybeUninit&lt;T&gt;).
+#include &lt;atomic&gt;
+#include &lt;cassert&gt;
+#include &lt;condition_variable&gt;
+#include &lt;cstddef&gt;
+#include &lt;cstdint&gt;
+#include &lt;cstdio&gt;
+#include &lt;memory&gt;
+#include &lt;mutex&gt;
+#include &lt;optional&gt;
+#include &lt;string&gt;
+#include &lt;thread&gt;
+#include &lt;utility&gt;
+
+template &lt;typename T&gt;
+class RawRing {
+public:
+    explicit RawRing(size_t capacity)
+        : cap_(capacity == 0 ? 1 : capacity),
+          storage_(std::make_unique&lt;Slot[]&gt;(cap_)),
+          head_(0),
+          len_(0) {}
+
+    ~RawRing() {
+        // Raw byte slots do NOT invoke ~T() automatically; destroy every live element.
+        while (len_ &gt; 0) {
+            std::destroy_at(slot_ptr(head_));
+            head_ = (head_ + 1) % cap_;
+            --len_;
+        }
+    }
+
+    RawRing(const RawRing&amp;) = delete;
+    RawRing&amp; operator=(const RawRing&amp;) = delete;
+
+    bool is_full() const { return len_ == cap_; }
+    bool is_empty() const { return len_ == 0; }
+
+    void push_back(T item) {
+        size_t tail = (head_ + len_) % cap_;
+        std::construct_at(slot_ptr(tail), std::move(item));  // Placement new into raw bytes
+        ++len_;
+    }
+
+    T pop_front() {
+        T* ptr = slot_ptr(head_);
+        T item = std::move(*ptr);
+        std::destroy_at(ptr);  // Explicitly end lifetime so slot returns to raw uninit bytes
+        head_ = (head_ + 1) % cap_;
+        --len_;
+        return item;
+    }
+
+private:
+    struct Slot {
+        alignas(T) std::byte bytes[sizeof(T)];  // Identical size &amp; alignment to T; zero tag
+    };
+
+    T* slot_ptr(size_t index) { return std::launder(reinterpret_cast&lt;T*&gt;(storage_[index].bytes)); }
+
+    size_t cap_;
+    std::unique_ptr&lt;Slot[]&gt; storage_;
+    size_t head_;
+    size_t len_;
+};
+
+template &lt;typename T&gt;
+class BoundedRawQueue {
+public:
+    explicit BoundedRawQueue(size_t capacity) : ring_(capacity) {}
+
+    void push(T item) {
+        {
+            std::unique_lock&lt;std::mutex&gt; lock(mu_);
+            not_full_.wait(lock, [this] { return !ring_.is_full(); });
+            ring_.push_back(std::move(item));
+        }
+        not_empty_.notify_one();
+    }
+
+    T pop() {
+        T item = [&amp;] {
+            std::unique_lock&lt;std::mutex&gt; lock(mu_);
+            not_empty_.wait(lock, [this] { return !ring_.is_empty(); });
+            return ring_.pop_front();
+        }();
+        not_full_.notify_one();
+        return item;
+    }
+
+private:
+    RawRing&lt;T&gt; ring_;
+    std::mutex mu_;
+    std::condition_variable not_full_;
+    std::condition_variable not_empty_;
+};
+
+struct DropTracker {
+    std::atomic&lt;size_t&gt;* count;
+    ~DropTracker() {
+        if (count != nullptr) count-&gt;fetch_add(1, std::memory_order_relaxed);
+    }
+    DropTracker(std::atomic&lt;size_t&gt;* c) : count(c) {}
+    DropTracker(DropTracker&amp;&amp; other) noexcept : count(other.count) { other.count = nullptr; }
+    DropTracker(const DropTracker&amp;) = delete;
+};
+
+int main() {
+    struct RawSlotU64 { alignas(uint64_t) std::byte bytes[sizeof(uint64_t)]; };
+    printf(&quot;layouts (bytes): uint64_t=%zu, std::optional&lt;uint64_t&gt;=%zu, RawSlot&lt;uint64_t&gt;=%zu, std::string=%zu, std::optional&lt;std::string&gt;=%zu\n&quot;,
+           sizeof(uint64_t), sizeof(std::optional&lt;uint64_t&gt;), sizeof(RawSlotU64),
+           sizeof(std::string), sizeof(std::optional&lt;std::string&gt;));
+    assert(sizeof(std::optional&lt;uint64_t&gt;) == 16);
+    assert(sizeof(RawSlotU64) == 8);
+
+    constexpr size_t kTotal = 200;
+    BoundedRawQueue&lt;std::string&gt; queue(4);
+    std::thread producer([&amp;] {
+        for (size_t i = 0; i &lt; kTotal; ++i) {
+            queue.push(&quot;raw-&quot; + std::to_string(i));
+        }
+    });
+    for (size_t expected = 0; expected &lt; kTotal; ++expected) {
+        assert(queue.pop() == &quot;raw-&quot; + std::to_string(expected));
+    }
+    producer.join();
+
+    std::atomic&lt;size_t&gt; drops{0};
+    {
+        RawRing&lt;DropTracker&gt; ring(8);
+        for (int i = 0; i &lt; 3; ++i) ring.push_back(DropTracker(&amp;drops));
+    }
+    assert(drops.load(std::memory_order_relaxed) == 3);
+    printf(&quot;RawSlot ring: %zu std::strings transferred + partial-ring ~RawRing destroyed 3/3 live items (verified)\n&quot;,
+           kTotal);
+}
+</code></pre>
+<p><strong>Output 19-2c. Verified byte layouts, 200 wrapped <code>std::string</code> transfers, and exact partial-ring destruction.</strong></p>
+<pre><code class="hljs language-text">layouts (bytes): uint64_t=8, std::optional&lt;uint64_t&gt;=16, RawSlot&lt;uint64_t&gt;=8, std::string=24, std::optional&lt;std::string&gt;=32
+RawSlot ring: 200 std::strings transferred + partial-ring ~RawRing destroyed 3/3 live items (verified)
+</code></pre>
+<p><strong>Listing 19-2d. Zero-overhead ring buffer over <code>Box&lt;[MaybeUninit&lt;T&gt;]&gt;</code> with verified manual <code>Drop</code> (Rust 2024).</strong></p>
+<pre class="playground"><code class="hljs language-rust"><span class="hljs-comment">// ch19/ring_buffer_uninit.rs: Zero-overhead fixed-capacity ring buffer backed by</span>
+<span class="hljs-comment">// Box&lt;[MaybeUninit&lt;T&gt;]&gt;, eliminating Option&lt;T&gt;&#x27;s discriminant + padding overhead.</span>
+<span class="hljs-keyword">use</span> std::mem::{<span class="hljs-keyword">self</span>, MaybeUninit};
+<span class="hljs-keyword">use</span> std::sync::atomic::{AtomicUsize, Ordering};
+<span class="hljs-keyword">use</span> std::sync::{Arc, Condvar, Mutex};
+<span class="hljs-keyword">use</span> std::thread;
+
+<span class="hljs-class"><span class="hljs-keyword">type</span> <span class="hljs-title">QueueResult</span></span>&lt;T&gt; = <span class="hljs-built_in">Result</span>&lt;T, &amp;<span class="hljs-symbol">&#x27;static</span> <span class="hljs-built_in">str</span>&gt;;
+
+<span class="hljs-keyword">const</span> POISONED: &amp;<span class="hljs-built_in">str</span> = <span class="hljs-string">&quot;a thread panicked while holding the raw ring mutex&quot;</span>;
+<span class="hljs-keyword">const</span> PANICKED: &amp;<span class="hljs-built_in">str</span> = <span class="hljs-string">&quot;a worker thread panicked&quot;</span>;
+
+<span class="hljs-comment">/// Fixed-capacity ring storing raw MaybeUninit&lt;T&gt; slots with zero tag overhead.</span>
+<span class="hljs-comment">/// Invariant: slots at `(head + k) % buf.len()` for `0 &lt;= k &lt; len` are initialized;</span>
+<span class="hljs-comment">/// all remaining slots are uninitialized and must never be read or dropped.</span>
+<span class="hljs-class"><span class="hljs-keyword">struct</span> <span class="hljs-title">RawRing</span></span>&lt;T&gt; {
+    buf: <span class="hljs-built_in">Box</span>&lt;[MaybeUninit&lt;T&gt;]&gt;,
+    head: <span class="hljs-built_in">usize</span>,
+    len: <span class="hljs-built_in">usize</span>,
+}
+
+<span class="hljs-keyword">impl</span>&lt;T&gt; RawRing&lt;T&gt; {
+    <span class="hljs-function"><span class="hljs-keyword">fn</span> <span class="hljs-title">new</span></span>(capacity: <span class="hljs-built_in">usize</span>) -&gt; <span class="hljs-keyword">Self</span> {
+        <span class="hljs-keyword">let</span> cap = capacity.max(<span class="hljs-number">1</span>);
+        <span class="hljs-keyword">let</span> buf = (<span class="hljs-number">0</span>..cap).map(|_| MaybeUninit::uninit()).collect();
+        <span class="hljs-keyword">Self</span> {
+            buf,
+            head: <span class="hljs-number">0</span>,
+            len: <span class="hljs-number">0</span>,
+        }
+    }
+
+    <span class="hljs-function"><span class="hljs-keyword">fn</span> <span class="hljs-title">is_full</span></span>(&amp;<span class="hljs-keyword">self</span>) -&gt; <span class="hljs-built_in">bool</span> {
+        <span class="hljs-keyword">self</span>.len == <span class="hljs-keyword">self</span>.buf.len()
+    }
+
+    <span class="hljs-function"><span class="hljs-keyword">fn</span> <span class="hljs-title">is_empty</span></span>(&amp;<span class="hljs-keyword">self</span>) -&gt; <span class="hljs-built_in">bool</span> {
+        <span class="hljs-keyword">self</span>.len == <span class="hljs-number">0</span>
+    }
+
+    <span class="hljs-comment">/// Writes `item` into the uninitialized tail slot in O(1) time.</span>
+    <span class="hljs-comment">/// Caller guarantees `!self.is_full()`.</span>
+    <span class="hljs-function"><span class="hljs-keyword">fn</span> <span class="hljs-title">push_back</span></span>(&amp;<span class="hljs-keyword">mut</span> <span class="hljs-keyword">self</span>, item: T) {
+        <span class="hljs-keyword">let</span> tail = (<span class="hljs-keyword">self</span>.head + <span class="hljs-keyword">self</span>.len) % <span class="hljs-keyword">self</span>.buf.len();
+        <span class="hljs-keyword">self</span>.buf[tail].write(item);
+        <span class="hljs-keyword">self</span>.len += <span class="hljs-number">1</span>;
+    }
+
+    <span class="hljs-comment">/// Moves the oldest initialized element out of `buf[head]` in O(1) time.</span>
+    <span class="hljs-function"><span class="hljs-keyword">fn</span> <span class="hljs-title">pop_front</span></span>(&amp;<span class="hljs-keyword">mut</span> <span class="hljs-keyword">self</span>) -&gt; <span class="hljs-built_in">Option</span>&lt;T&gt; {
+        <span class="hljs-keyword">if</span> <span class="hljs-keyword">self</span>.len == <span class="hljs-number">0</span> {
+            <span class="hljs-keyword">return</span> <span class="hljs-literal">None</span>;
+        }
+        <span class="hljs-comment">// SAFETY: `self.len &gt; 0` guarantees `self.buf[self.head]` was initialized by</span>
+        <span class="hljs-comment">// `push_back`. Advancing `head` and decrementing `len` immediately marks this</span>
+        <span class="hljs-comment">// slot uninitialized so it can never be read or dropped a second time.</span>
+        <span class="hljs-keyword">let</span> item = <span class="hljs-keyword">unsafe</span> { <span class="hljs-keyword">self</span>.buf[<span class="hljs-keyword">self</span>.head].assume_init_read() };
+        <span class="hljs-keyword">self</span>.head = (<span class="hljs-keyword">self</span>.head + <span class="hljs-number">1</span>) % <span class="hljs-keyword">self</span>.buf.len();
+        <span class="hljs-keyword">self</span>.len -= <span class="hljs-number">1</span>;
+        <span class="hljs-literal">Some</span>(item)
+    }
+}
+
+<span class="hljs-keyword">impl</span>&lt;T&gt; <span class="hljs-built_in">Drop</span> <span class="hljs-keyword">for</span> RawRing&lt;T&gt; {
+    <span class="hljs-function"><span class="hljs-keyword">fn</span> <span class="hljs-title">drop</span></span>(&amp;<span class="hljs-keyword">mut</span> <span class="hljs-keyword">self</span>) {
+        <span class="hljs-comment">// MaybeUninit&lt;T&gt; does NOT run T&#x27;s destructor automatically.</span>
+        <span class="hljs-comment">// Pop and drop every remaining live slot; uninitialized slots are untouched.</span>
+        <span class="hljs-keyword">while</span> <span class="hljs-keyword">self</span>.pop_front().is_some() {}
+    }
+}
+
+<span class="hljs-class"><span class="hljs-keyword">struct</span> <span class="hljs-title">BoundedRawQueue</span></span>&lt;T&gt; {
+    ring: Mutex&lt;RawRing&lt;T&gt;&gt;,
+    not_full: Condvar,
+    not_empty: Condvar,
+}
+
+<span class="hljs-keyword">impl</span>&lt;T&gt; BoundedRawQueue&lt;T&gt; {
+    <span class="hljs-function"><span class="hljs-keyword">fn</span> <span class="hljs-title">new</span></span>(capacity: <span class="hljs-built_in">usize</span>) -&gt; <span class="hljs-keyword">Self</span> {
+        <span class="hljs-keyword">Self</span> {
+            ring: Mutex::new(RawRing::new(capacity)),
+            not_full: Condvar::new(),
+            not_empty: Condvar::new(),
+        }
+    }
+
+    <span class="hljs-function"><span class="hljs-keyword">fn</span> <span class="hljs-title">push</span></span>(&amp;<span class="hljs-keyword">self</span>, item: T) -&gt; QueueResult&lt;()&gt; {
+        <span class="hljs-keyword">let</span> guard = <span class="hljs-keyword">self</span>.ring.lock().map_err(|_| POISONED)?;
+        <span class="hljs-keyword">let</span> <span class="hljs-keyword">mut</span> ring = <span class="hljs-keyword">self</span>
+            .not_full
+            .wait_while(guard, |r| r.is_full())
+            .map_err(|_| POISONED)?;
+        ring.push_back(item);
+        <span class="hljs-built_in">drop</span>(ring);
+        <span class="hljs-keyword">self</span>.not_empty.notify_one();
+        <span class="hljs-literal">Ok</span>(())
+    }
+
+    <span class="hljs-function"><span class="hljs-keyword">fn</span> <span class="hljs-title">pop</span></span>(&amp;<span class="hljs-keyword">self</span>) -&gt; QueueResult&lt;T&gt; {
+        <span class="hljs-keyword">let</span> guard = <span class="hljs-keyword">self</span>.ring.lock().map_err(|_| POISONED)?;
+        <span class="hljs-keyword">let</span> <span class="hljs-keyword">mut</span> ring = <span class="hljs-keyword">self</span>
+            .not_empty
+            .wait_while(guard, |r| r.is_empty())
+            .map_err(|_| POISONED)?;
+        <span class="hljs-keyword">let</span> item = ring
+            .pop_front()
+            .ok_or(<span class="hljs-string">&quot;raw ring was empty after wait_while&quot;</span>)?;
+        <span class="hljs-built_in">drop</span>(ring);
+        <span class="hljs-keyword">self</span>.not_full.notify_one();
+        <span class="hljs-literal">Ok</span>(item)
+    }
+}
+
+<span class="hljs-class"><span class="hljs-keyword">struct</span> <span class="hljs-title">DropTracker</span></span>(Arc&lt;AtomicUsize&gt;);
+<span class="hljs-keyword">impl</span> <span class="hljs-built_in">Drop</span> <span class="hljs-keyword">for</span> DropTracker {
+    <span class="hljs-function"><span class="hljs-keyword">fn</span> <span class="hljs-title">drop</span></span>(&amp;<span class="hljs-keyword">mut</span> <span class="hljs-keyword">self</span>) {
+        <span class="hljs-keyword">self</span>.<span class="hljs-number">0</span>.fetch_add(<span class="hljs-number">1</span>, Ordering::Relaxed);
+    }
+}
+
+<span class="hljs-function"><span class="hljs-keyword">fn</span> <span class="hljs-title">main</span></span>() -&gt; QueueResult&lt;()&gt; {
+    <span class="hljs-comment">// 1. Verify memory layouts directly at runtime.</span>
+    <span class="hljs-built_in">println!</span>(
+        <span class="hljs-string">&quot;layouts (bytes): u64={}, Option&lt;u64&gt;={}, MaybeUninit&lt;u64&gt;={}, Option&lt;Box&lt;u64&gt;&gt;={} (niche), Option&lt;String&gt;={} (niche)&quot;</span>,
+        mem::size_of::&lt;<span class="hljs-built_in">u64</span>&gt;(),
+        mem::size_of::&lt;<span class="hljs-built_in">Option</span>&lt;<span class="hljs-built_in">u64</span>&gt;&gt;(),
+        mem::size_of::&lt;MaybeUninit&lt;<span class="hljs-built_in">u64</span>&gt;&gt;(),
+        mem::size_of::&lt;<span class="hljs-built_in">Option</span>&lt;<span class="hljs-built_in">Box</span>&lt;<span class="hljs-built_in">u64</span>&gt;&gt;&gt;(),
+        mem::size_of::&lt;<span class="hljs-built_in">Option</span>&lt;<span class="hljs-built_in">String</span>&gt;&gt;(),
+    );
+    <span class="hljs-built_in">assert_eq!</span>(mem::size_of::&lt;<span class="hljs-built_in">Option</span>&lt;<span class="hljs-built_in">u64</span>&gt;&gt;(), <span class="hljs-number">16</span>);
+    <span class="hljs-built_in">assert_eq!</span>(mem::size_of::&lt;MaybeUninit&lt;<span class="hljs-built_in">u64</span>&gt;&gt;(), <span class="hljs-number">8</span>);
+    <span class="hljs-built_in">assert_eq!</span>(mem::size_of::&lt;<span class="hljs-built_in">Option</span>&lt;<span class="hljs-built_in">Box</span>&lt;<span class="hljs-built_in">u64</span>&gt;&gt;&gt;(), <span class="hljs-number">8</span>);
+
+    <span class="hljs-comment">// 2. Verify multi-threaded FIFO wrap-around with heap-owning String values.</span>
+    <span class="hljs-keyword">const</span> TOTAL: <span class="hljs-built_in">usize</span> = <span class="hljs-number">200</span>;
+    <span class="hljs-keyword">let</span> queue = Arc::new(BoundedRawQueue::&lt;<span class="hljs-built_in">String</span>&gt;::new(<span class="hljs-number">4</span>));
+    <span class="hljs-keyword">let</span> producer = {
+        <span class="hljs-keyword">let</span> q = Arc::clone(&amp;queue);
+        thread::spawn(<span class="hljs-keyword">move</span> || -&gt; QueueResult&lt;()&gt; {
+            <span class="hljs-keyword">for</span> i <span class="hljs-keyword">in</span> <span class="hljs-number">0</span>..TOTAL {
+                q.push(<span class="hljs-built_in">format!</span>(<span class="hljs-string">&quot;raw-{i}&quot;</span>))?;
+            }
+            <span class="hljs-literal">Ok</span>(())
+        })
+    };
+    <span class="hljs-keyword">for</span> expected <span class="hljs-keyword">in</span> <span class="hljs-number">0</span>..TOTAL {
+        <span class="hljs-built_in">assert_eq!</span>(queue.pop()?, <span class="hljs-built_in">format!</span>(<span class="hljs-string">&quot;raw-{expected}&quot;</span>));
+    }
+    producer.join().map_err(|_| PANICKED)??;
+
+    <span class="hljs-comment">// 3. Verify manual Drop destroys ONLY the 3 live items in an 8-slot ring (not the 5 uninit slots).</span>
+    <span class="hljs-keyword">let</span> drops = Arc::new(AtomicUsize::new(<span class="hljs-number">0</span>));
+    {
+        <span class="hljs-keyword">let</span> <span class="hljs-keyword">mut</span> ring = RawRing::new(<span class="hljs-number">8</span>);
+        <span class="hljs-keyword">for</span> _ <span class="hljs-keyword">in</span> <span class="hljs-number">0</span>..<span class="hljs-number">3</span> {
+            ring.push_back(DropTracker(Arc::clone(&amp;drops)));
+        }
+    }
+    <span class="hljs-built_in">assert_eq!</span>(drops.load(Ordering::Relaxed), <span class="hljs-number">3</span>);
+    <span class="hljs-built_in">println!</span>(<span class="hljs-string">&quot;MaybeUninit ring: {TOTAL} Strings transferred + partial-ring Drop destroyed 3/3 live items (verified)&quot;</span>);
+    <span class="hljs-literal">Ok</span>(())
+}</code></pre>
+<p><strong>Output 19-2d.</strong></p>
+<pre><code class="hljs language-text">layouts (bytes): u64=8, Option&lt;u64&gt;=16, MaybeUninit&lt;u64&gt;=8, Option&lt;Box&lt;u64&gt;&gt;=8 (niche), Option&lt;String&gt;=24 (niche)
+MaybeUninit ring: 200 Strings transferred + partial-ring Drop destroyed 3/3 live items (verified)
+</code></pre>
+<h3 id="1926-systems-analysis-and-concurrency-interview-follow-ups"><a class="header" href="#1926-systems-analysis-and-concurrency-interview-follow-ups">19.2.6 Systems Analysis and Concurrency Interview Follow-Ups</a></h3>
 <p>Interviewers routinely probe five concurrency subtleties directly on top of your bounded queue implementation (in C/C++ with <code>std::condition_variable</code> or <code>pthread_cond_wait</code>, and in Rust with <code>Condvar</code>):</p>
 <ul>
 <li><strong>Why <code>wait_while</code> (or a <code>while</code> loop) instead of a single <code>if</code> + <code>wait</code>?</strong> Operating system schedulers and POSIX condition variables permit <strong>spurious wakeups</strong>, where a sleeping thread unblocks without any matching signal. Even on a legitimate wakeup, another thread can acquire the mutex first and consume the item or fill the slot before the awakened thread re-acquires the lock. Rechecking the predicate inside a <code>while</code> loop (which <code>Condvar::wait_while</code> and <code>std::condition_variable::wait(lock, pred)</code> encapsulate for you) guarantees that the thread proceeds only when the invariant holds under exclusive lock ownership.</li>
