@@ -144,7 +144,73 @@ A classic bug in hand-rolled ring buffers arises from tracking only `(head, tail
 {{#include ../code/out/ch19_ring_buffer_rs.out}}
 ```
 
-### 19.2.5 Systems Analysis and Concurrency Interview Follow-Ups
+### 19.2.5 Memory Layout: The `Option<T>` Tag, Niche Optimization, and `MaybeUninit<T>`
+
+To evaluate when `Vec<Option<T>>` is completely free and when dropping down to `Box<[MaybeUninit<T>]>` (or C++ raw aligned byte storage) doubles cache efficiency, examine the exact bytes stored in RAM.
+
+#### What Is the `Option<T>` Tag (Discriminant) and Why Does `Option<u64>` Cost 16 Bytes?
+
+A Rust `Option<T>` (and C++'s `std::optional<T>`) is a **tagged union**: in memory, the program must be able to distinguish `None` from `Some(value)` at runtime. Consider storing a 64-bit integer `u64`:
+1. **No unused bit patterns exist:** A `u64` uses every single one of its `2^64` bit combinations (`0x0000_0000_0000_0000` through `0xFFFF_FFFF_FFFF_FFFF`) as a legitimate number. The compiler cannot steal `0` or `u64::MAX` to mean `None`.
+2. **Adding the discriminant tag:** The compiler therefore appends a **1-byte tag (discriminant)**: `0` means `None`, `1` means `Some`.
+3. **Alignment padding doubles the slot size:** In an array of elements, every `u64` must start at an address divisible by its 8-byte hardware alignment (Chapter 8, Section 8.1.2). If a slot occupied only `1 + 8 = 9` bytes, slot `1` would start at misaligned byte offset `9`. The compiler therefore inserts **7 bytes of alignment padding** between the tag and the payload (or after the payload in C++), inflating `size_of::<Option<u64>>()` from **8 bytes to 16 bytes**. Inside a 64-byte L1 cache line, `Vec<Option<u64>>` holds only **4 elements** instead of **8**, doubling RAM usage and cutting L1 cache density in half.
+
+#### Rust's Niche Optimization (When `Option<T>` Costs Zero Extra Bytes)
+
+Not every type exhausts all of its bit patterns. A reference (`&T`), `Box<T>`, `NonNull<T>`, `String` (whose internal heap pointer is `NonNull<u8>`), or `bool` (which uses only `0` and `1`, leaving `2..255` unused) possesses at least one **invalid bit pattern**, called a **niche**. Whenever `T` has a niche, the Rust compiler encodes `None` using that forbidden bit pattern (for example, all-zeros `0x0` for `Box<T>` or `String`) and eliminates the discriminant byte and padding completely:
+- `size_of::<Option<Box<u64>>>() == 8` (identical to `Box<u64>`, zero overhead)
+- `size_of::<Option<String>>() == 24` (identical to `String`, zero overhead)
+- By contrast, C++'s `std::optional<T>` does not perform niche optimization: `sizeof(std::optional<std::string>)` inflates from **24 bytes to 32 bytes** (24-byte `std::string` + 1-byte engaged `bool` + 7 bytes padding).
+
+#### Zero-Overhead Storage for Every Type: `MaybeUninit<T>` and C++ Aligned Raw Bytes
+
+Even with Rust's niche optimization, plain numeric types (`u32`, `u64`, `i64`, `f64`, fixed-size structs of integers) have no niche, so `Option<T>` still pays tag plus padding overhead. Yet inside a ring buffer, storing a per-slot tag is redundant: the ring's own `(head, len)` indices **already tell us** which slots are initialized (`(head + k) % cap` for `0 <= k < len`) and which slots are empty.
+
+Rust's **`std::mem::MaybeUninit<T>`** (internally a `#[repr(transparent)]` union of `()` and `ManuallyDrop<T>`) exploits this exact insight:
+- **Exact byte-for-byte layout of `T`:** `size_of::<MaybeUninit<T>>() == size_of::<T>()` and `align_of::<MaybeUninit<T>>() == align_of::<T>()`, packing **8 `u64` slots per 64-byte cache line** (Figure 19-3).
+- **Explicit initialization and extraction:** Empty slots are created with `MaybeUninit::uninit()` (no `Default` bound); `push_back` initializes a slot via `.write(item)`; `pop_front` moves ownership out via `unsafe { self.buf[head].assume_init_read() }` and immediately advances `head` and decrements `len` so the slot is never read twice.
+- **Mandatory manual `Drop`:** Because `MaybeUninit<T>` deliberately suppresses automatic destructors (otherwise Rust would attempt to drop garbage uninitialized bytes), `RawRing<T>` **must** implement `Drop` to pop and drop only the live slots `[head .. (head + len) % cap)`.
+- **C++20 counterpart:** Storing `alignas(T) std::byte bytes[sizeof(T)]` per slot, constructing in place with `std::construct_at` (placement `new`), moving out and ending lifetime with `std::destroy_at`, and destroying remaining live slots in `~RawRing()`.
+
+**Table 19-1. Verified 64-bit memory layout comparison (x86-64 / ARM64).**
+
+| Type | Rust 2024 Size | C++20 Equivalent Size | Slots per 64 B Cache Line | Per-Slot Tag Overhead |
+| :--- | :--- | :--- | :--- | :--- |
+| `u64` / `uint64_t` | 8 B | 8 B | 8 | None |
+| `Option<u64>` / `std::optional<uint64_t>` | 16 B | 16 B | 4 | 1 B tag + 7 B padding (2x) |
+| `Option<Box<u64>>` / `std::optional<unique_ptr<uint64_t>>` | **8 B** (niche) | 16 B | 8 (Rust) / 4 (C++) | 0 B (Rust) / 8 B (C++) |
+| `Option<String>` / `std::optional<std::string>` | **24 B** (niche) | 32 B | ~2.6 (Rust) / 2 (C++) | 0 B (Rust) / 8 B (C++) |
+| `MaybeUninit<u64>` / `alignas(uint64_t) std::byte[8]` | **8 B** | **8 B** | **8** | **0 B (tracked by `head` + `len`)** |
+
+<figure>
+<img src="figures/ch19_option_maybeuninit_layout.svg" alt="Memory layout inside one 64-byte cache line comparing Option<u64> with 1B tag and 7B padding, Option<Box<u64>> niche optimization, and tightly packed MaybeUninit<u64>"/>
+</figure>
+
+**Listing 19-2c. Zero-overhead ring buffer using raw aligned byte storage, `std::construct_at`, and `std::destroy_at` (C++20).**
+
+```cpp
+{{#include ../code/ch19/ring_buffer_uninit.cpp}}
+```
+
+**Output 19-2c. Verified byte layouts, 200 wrapped `std::string` transfers, and exact partial-ring destruction.**
+
+```text
+{{#include ../code/out/ch19_ring_buffer_uninit.out}}
+```
+
+**Listing 19-2d. Zero-overhead ring buffer over `Box<[MaybeUninit<T>]>` with verified manual `Drop` (Rust 2024).**
+
+```rust
+{{#include ../code/ch19/ring_buffer_uninit.rs}}
+```
+
+**Output 19-2d.**
+
+```text
+{{#include ../code/out/ch19_ring_buffer_uninit_rs.out}}
+```
+
+### 19.2.6 Systems Analysis and Concurrency Interview Follow-Ups
 
 Interviewers routinely probe five concurrency subtleties directly on top of your bounded queue implementation (in C/C++ with `std::condition_variable` or `pthread_cond_wait`, and in Rust with `Condvar`):
 

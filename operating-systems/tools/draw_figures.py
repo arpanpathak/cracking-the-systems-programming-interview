@@ -2440,8 +2440,62 @@ def ch19_ring_variants():
 
 
 @figure
+def ch19_option_maybeuninit_layout():
+    fig = Fig(
+        "ch19_option_maybeuninit_layout",
+        "Figure 19-3. Memory Layout Inside One 64-Byte Cache Line: Option<u64> Tag + Padding, Niche Optimization, and MaybeUninit<u64>.",
+        396,
+    )
+
+    # Row 1: Option<u64> -> 16 bytes/slot -> 4 slots in 64 bytes
+    r1 = fig.node(20, 18, 760, 108, "red")
+    fig.text(34, 40, "1. Vec<Option<u64>>:  16 bytes/slot (4 slots per 64 B cache line -> 50% overhead)", "name")
+    fig.text(34, 58, "u64 uses all 2^64 bit patterns -> compiler adds 1 B discriminant tag + 7 B alignment padding", "sub")
+    x = 34
+    for i in range(4):
+        # 180 px per 16-byte slot: 38px tag + 58px pad + 80px payload
+        fig.cell(x, 68, 38, 44, "red", [("tag", "small"), ("1 B", "mono")], kind="card", r=5)
+        fig.cell(x + 40, 68, 56, 44, "gray", [("pad", "small"), ("7 B", "mono")], kind="card", r=5)
+        fig.cell(x + 98, 68, 78, 44, "blue", [(f"u64[{i}]", "small"), ("8 B", "monob")], kind="card", r=5)
+        x += 184
+
+    # Row 2: Option<Box<u64>> -> Niche optimization -> 8 bytes/slot -> 8 slots in 64 bytes
+    r2 = fig.node(20, 140, 760, 108, "teal")
+    fig.text(34, 162, "2. Rust Niche Optimization: Option<Box<u64>>  (8 bytes/slot, 8 slots per 64 B line)", "name")
+    fig.text(34, 180, "NonNull pointer can never be 0x0 -> Rust encodes None as 0x0 (zero tag, zero padding)", "sub")
+    x = 34
+    niche_vals = ["0x0 (None)", "0x0 (None)", "ptr A", "ptr B", "ptr C", "0x0 (None)", "0x0 (None)", "0x0 (None)"]
+    for i, lbl in enumerate(niche_vals):
+        tone = "green" if lbl.startswith("ptr") else "gray"
+        short = "0x0" if lbl.startswith("0x0") else lbl
+        sub = "None" if lbl.startswith("0x0") else "8 B"
+        fig.cell(x, 190, 88, 44, tone, [(short, "monob"), (sub, "small")], kind="card", r=6)
+        x += 92
+
+    # Row 3: Box<[MaybeUninit<u64>]> / C++ raw byte storage -> 8 bytes/slot -> 8 slots in 64 bytes
+    r3 = fig.node(20, 262, 760, 118, "green")
+    fig.text(34, 284, "3. Box<[MaybeUninit<u64>]> / C++ alignas(T) std::byte[8]:  8 bytes/slot (8 slots/line)", "name")
+    fig.text(34, 302, "Zero per-slot tag for ANY type T; validity tracked externally by (head = 2, len = 3)", "sub")
+    x = 34
+    raw_slots = [
+        ("uninit", "gray"), ("uninit", "gray"),
+        ("u64 A", "green"), ("u64 B", "green"), ("u64 C", "green"),
+        ("uninit", "gray"), ("uninit", "gray"), ("uninit", "gray"),
+    ]
+    for i, (lbl, tone) in enumerate(raw_slots):
+        fig.cell(x, 312, 88, 44, tone, [(lbl, "monob"), (f"[{i}] 8 B", "small")], kind="card", r=6)
+        x += 92
+    fig.text(400, 370, "Manual Drop required: drop only live indices [head .. (head + len) % cap) so uninit bytes are never dropped.", "sub", "middle", fit=(28, 772))
+
+    fig.save([
+        "Option<u64> doubles slot size from 8 B to 16 B because 1 tag byte forces 7 alignment padding bytes to keep every u64 8-byte aligned.",
+        "MaybeUninit<T> is #[repr(transparent)]: zero tag, zero padding, 2x L1 cache density for integers, and identical layout to raw T.",
+    ])
+
+
+@figure
 def ch19_spsc_ring():
-    fig = Fig("ch19_spsc_ring", "Figure 19-3. Lock-free SPSC ring buffer: single-writer indices and cache line isolation.", 240)
+    fig = Fig("ch19_spsc_ring", "Figure 19-4. Lock-free SPSC ring buffer: single-writer indices and cache line isolation.", 240)
 
     p_box = fig.node(28, 20, 220, 190, "blue")
     fig.tile(42, 34, "developer_board", "blue", 34)
@@ -2474,7 +2528,7 @@ def ch19_spsc_ring():
 
 @figure
 def ch19_mini_pipeline():
-    fig = Fig("ch19_mini_pipeline", "Figure 19-4. Process pipeline: stdout-to-stdin redirection via a kernel pipe buffer.", 270)
+    fig = Fig("ch19_mini_pipeline", "Figure 19-5. Process pipeline: stdout-to-stdin redirection via a kernel pipe buffer.", 270)
 
     c1 = fig.node(28, 20, 210, 140, "blue")
     fig.tile(42, 34, "terminal", "blue", 34)
@@ -2510,7 +2564,7 @@ def ch19_mini_pipeline():
 
 @figure
 def ch19_lru_cache():
-    fig = Fig("ch19_lru_cache", "Figure 19-5. LRU cache: hash table indexing into a doubly linked recency chain.", 270)
+    fig = Fig("ch19_lru_cache", "Figure 19-6. LRU cache: hash table indexing into a doubly linked recency chain.", 270)
 
     h_box = fig.node(28, 16, 744, 76, "blue")
     fig.tile(42, 28, "table_rows", "blue", 34)
