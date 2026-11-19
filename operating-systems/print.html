@@ -39,7 +39,7 @@
             const path_to_root = "";
             const default_light_theme = "light";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "searchindex-ba80298f.js";
+            window.path_to_searchindex_js = "searchindex-ea113b75.js";
         </script>
         <!-- Start loading toc.js asap -->
         <script src="toc-f3585118.js"></script>
@@ -575,7 +575,8 @@
 <li><a href="#1921-concurrency-model-and-synchronization-primitives">19.2.1 Concurrency Model and Synchronization Primitives</a></li>
 <li><a href="#1922-state-invariants-and-predicate-verification">19.2.2 State Invariants and Predicate Verification</a></li>
 <li><a href="#1923-reference-implementation">19.2.3 Reference Implementation (C++20 &amp; Rust 2024)</a></li>
-<li><a href="#1924-systems-analysis-and-nuances">19.2.4 Systems Analysis: Spurious Wakeups &amp; Thundering Herd</a></li>
+<li><a href="#1924-backing-store-variants-and-building-the-ring-buffer-by-hand">19.2.4 Backing-Store Variants and Building the Ring Buffer by Hand</a></li>
+<li><a href="#1925-systems-analysis-and-concurrency-interview-follow-ups">19.2.5 Systems Analysis and Concurrency Interview Follow-Ups</a></li>
 </ul>
 </li>
 <li><a href="#193-the-free-list-allocator">19.3 The Free-List Allocator</a>
@@ -778,7 +779,7 @@
 <li><strong>Condition Variables</strong>: Execution barriers enabling threads to sleep until notified of a state change under a controlling mutex.
 <ul>
 <li>Predicate Loop Requirement: <a href="#62-condition-variables-and-predicate-based-synchronization">§6.2</a></li>
-<li>Spurious Wakeup Verification: <a href="#1924-systems-analysis-and-nuances">§19.2.4</a></li>
+<li>Spurious Wakeup Verification: <a href="#1925-systems-analysis-and-concurrency-interview-follow-ups">§19.2.5</a></li>
 </ul>
 </li>
 <li><strong>Context Switch Overhead</strong>: The microarchitectural penalty of saving CPU registers, swapping page tables, and invalidating pipeline state.
@@ -987,7 +988,7 @@
 </li>
 <li><strong>Spurious Wakeups</strong>: Condition variable unblocking without explicit notification caused by kernel scheduler dynamics.
 <ul>
-<li>Systems Nuances: <a href="#1924-systems-analysis-and-nuances">§19.2.4</a></li>
+<li>Systems Nuances: <a href="#1925-systems-analysis-and-concurrency-interview-follow-ups">§19.2.5</a></li>
 </ul>
 </li>
 <li><strong>Stack Pointer (SP / RSP / SP_EL0)</strong>: Architectural register tracking the active boundary of the descending call stack.
@@ -1022,7 +1023,7 @@
 </li>
 <li><strong>Thundering Herd Mitigation</strong>: Preventing catastrophic CPU contention by waking single threads (<code>notify_one</code>) rather than all sleeping threads.
 <ul>
-<li>Bounded Queue Optimization: <a href="#1924-systems-analysis-and-nuances">§19.2.4</a></li>
+<li>Bounded Queue Optimization: <a href="#1925-systems-analysis-and-concurrency-interview-follow-ups">§19.2.5</a></li>
 </ul>
 </li>
 <li><strong>TLB (Translation Lookaside Buffer)</strong>: High-speed CPU hardware cache storing recent virtual-to-physical address translations.
@@ -7638,14 +7639,279 @@ match        yes
 </code></pre>
 <p>The verified outputs confirm that the aggregate consumed sum exactly matches this expectation, demonstrating zero item loss, zero duplication, and strict FIFO integrity under heavy thread contention.</p>
 <p>In Rust, acquiring a mutex lock or waiting on a condition variable returns a <code>PoisonError</code> if another thread panicked while holding the guard. In the reference implementation, this error is converted into a structured message and propagated deterministically via the <code>?</code> operator.</p>
-<h3 id="1924-systems-analysis-and-nuances"><a class="header" href="#1924-systems-analysis-and-nuances">19.2.4 Systems Analysis and Nuances</a></h3>
+<h3 id="1924-backing-store-variants-and-building-the-ring-buffer-by-hand"><a class="header" href="#1924-backing-store-variants-and-building-the-ring-buffer-by-hand">19.2.4 Backing-Store Variants and Building the Ring Buffer by Hand</a></h3>
+<p>In operating systems and embedded engineering interviews, picking the right underlying container for the access pattern is evaluated closely, and a standard follow-up immediately after Listing 19-2 is: <em>“Now build the queue without <code>VecDeque</code> or <code>std::deque</code>.”</em> Understanding every backing-store variant, and the exact ownership rules behind each one, turns a routine queue question into a demonstration of systems mastery.</p>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th style="text-align: left">Backing Store</th><th style="text-align: left">FIFO / LIFO</th><th style="text-align: left">Push / Pop Cost</th><th style="text-align: left">Memory &amp; Safety Profile</th><th style="text-align: left">When to Use</th></tr>
+</thead>
+<tbody>
+<tr><td style="text-align: left"><strong><code>VecDeque&lt;T&gt;</code> / <code>std::deque&lt;T&gt;</code></strong></td><td style="text-align: left">FIFO</td><td style="text-align: left">O(1) / O(1)</td><td style="text-align: left">Contiguous ring using <code>MaybeUninit</code> internally (Rust) or chunked blocks (C++); zero manual <code>unsafe</code></td><td style="text-align: left"><strong>Default interview choice</strong> for mutex-backed bounded queues</td></tr>
+<tr><td style="text-align: left"><strong>Hand-rolled <code>Vec&lt;Option&lt;T&gt;&gt;</code> (<code>head</code> + <code>len</code>)</strong></td><td style="text-align: left">FIFO</td><td style="text-align: left">O(1) / O(1)</td><td style="text-align: left">Fixed allocation after <code>new()</code>, zero <code>unsafe</code>, handles any non-<code>Copy</code> / non-<code>Default</code> <code>T</code>; small <code>Option</code> tag overhead</td><td style="text-align: left"><strong>Follow-up: “implement without <code>VecDeque</code>”</strong> in safe Rust / C++ (<code>std::optional&lt;T&gt;</code>)</td></tr>
+<tr><td style="text-align: left"><strong>Raw <code>Box&lt;[MaybeUninit&lt;T&gt;]&gt;</code></strong></td><td style="text-align: left">FIFO</td><td style="text-align: left">O(1) / O(1)</td><td style="text-align: left">Zero <code>Option</code> tag overhead, no <code>Default</code> bound; requires <code>unsafe</code> (<code>write</code>, <code>assume_init_read</code>) and custom <code>Drop</code></td><td style="text-align: left">Production channels, kernel rings, and lock-free SPSC queues (Section 19.4)</td></tr>
+<tr><td style="text-align: left"><strong>Two-stack <code>Vec&lt;T&gt;</code> (<code>inbox</code> + <code>outbox</code>)</strong></td><td style="text-align: left">FIFO</td><td style="text-align: left">Amortized O(1)</td><td style="text-align: left">Plain <code>Vec&lt;T&gt;</code> with zero <code>Option&lt;T&gt;</code> and zero <code>unsafe</code>, but reverses <code>inbox</code> in O(N) whenever <code>outbox</code> empties</td><td style="text-align: left">Functional or safe FIFO when occasional O(N) tail-latency spikes are acceptable</td></tr>
+<tr><td style="text-align: left"><strong>Plain <code>Vec&lt;T&gt;</code> (<code>push</code> + <code>pop</code>)</strong></td><td style="text-align: left"><strong>LIFO</strong></td><td style="text-align: left">O(1) / O(1)</td><td style="text-align: left">Plain <code>Vec&lt;T&gt;</code>, zero overhead, improves L1 cache warmth for recent items</td><td style="text-align: left">Object pools and worker stacks where FIFO ordering is not required</td></tr>
+<tr><td style="text-align: left"><strong>Plain <code>Vec&lt;T&gt;</code> (<code>push</code> + <code>remove(0)</code>)</strong></td><td style="text-align: left">FIFO</td><td style="text-align: left">O(1) / <strong>O(N)</strong></td><td style="text-align: left">Shifts every remaining element left via <code>memmove</code> on every pop</td><td style="text-align: left"><strong>Interview red flag</strong> unless you explicitly call out the O(N) cost for tiny bounds</td></tr>
+</tbody>
+</table>
+</div>
+<h4 id="why-vecdeque-is-the-right-first-answer"><a class="header" href="#why-vecdeque-is-the-right-first-answer">Why <code>VecDeque</code> Is the Right First Answer</a></h4>
+<p>For a mutex-guarded bounded queue in an interview, start with <code>VecDeque::with_capacity(capacity)</code> (or <code>std::deque&lt;T&gt;</code> in C++) and state your reasoning out loud: <code>VecDeque</code> is already a contiguous circular ring buffer whose <code>push_back</code> and <code>pop_front</code> operations both run in O(1) time without reallocating once pre-sized, while using <code>MaybeUninit&lt;T&gt;</code> internally to avoid <code>Option&lt;T&gt;</code> discriminant padding. Using <code>Vec::remove(0)</code> is a mild red flag on systems teams because removing from index <code>0</code> copies <code>N - 1</code> elements left on every dequeue, turning a constant-time primitive into a linear bottleneck.</p>
+<h4 id="why-a-hand-rolled-safe-ring-uses-vecoptiont-and-not-plain-vect"><a class="header" href="#why-a-hand-rolled-safe-ring-uses-vecoptiont-and-not-plain-vect">Why a Hand-Rolled Safe Ring Uses <code>Vec&lt;Option&lt;T&gt;&gt;</code> (and Not Plain <code>Vec&lt;T&gt;</code>)</a></h4>
+<p>When an interviewer asks you to drop <code>VecDeque</code> and write the circular buffer directly, three Rust ownership invariants explain why a generic ring buffer cannot be backed by a plain <code>Vec&lt;T&gt;</code>:</p>
+<ol>
+<li><strong>Empty slots cannot remain uninitialized in <code>Vec&lt;T&gt;</code>:</strong> Every index <code>0..vec.len()</code> in a <code>Vec&lt;T&gt;</code> must hold a fully initialized <code>T</code>. At construction, the ring is empty, and arbitrary types such as <code>String</code>, <code>TcpStream</code>, or <code>Job</code> do not implement <code>Default</code>. (Plain <code>vec![0u8; cap]</code> works only for <code>T: Copy + Default</code>, such as a raw byte buffer.)</li>
+<li><strong>Moving a non-<code>Copy</code> item out of <code>buf[head]</code>:</strong> Writing <code>let item = self.buf[self.head];</code> fails to compile for any owning type such as <code>String</code> or <code>Box&lt;T&gt;</code>, because <code>Vec&lt;T&gt;</code> retains ownership of the slot and would double-free it when overwritten or dropped. Wrapping each slot in <code>Option&lt;T&gt;</code> lets <code>self.buf[self.head].take()</code> atomically move ownership of the <code>T</code> to the caller while leaving <code>None</code> in the slot.</li>
+<li><strong>Sound destruction on <code>Drop</code>:</strong> When the ring is dropped while partially populated, <code>Vec&lt;Option&lt;T&gt;&gt;</code> executes destructors strictly on live <code>Some(T)</code> slots and skips empty <code>None</code> slots automatically.</li>
+</ol>
+<h4 id="avoiding-the-full-versus-empty-ambiguity-with-head-len"><a class="header" href="#avoiding-the-full-versus-empty-ambiguity-with-head-len">Avoiding the Full-versus-Empty Ambiguity with <code>(head, len)</code></a></h4>
+<p>A classic bug in hand-rolled ring buffers arises from tracking only <code>(head, tail)</code>: when <code>head == tail</code>, the ring could be either completely empty (<code>len == 0</code>) or completely full (<code>len == cap</code>). Traditional fixes waste one array slot (<code>cap + 1</code> allocation) or add a separate <code>full: bool</code> flag. Tracking <strong><code>head</code></strong> (index of the oldest live element) together with <strong><code>len</code></strong> (count of live elements) eliminates the ambiguity cleanly:</p>
 <ul>
-<li><strong>Notification Discipline (<code>notify_one</code> vs. <code>notify_all</code>):</strong> Because separate condition variables isolate producers from consumers, inserting a single item allows exactly one consumer to make forward progress. Therefore, <code>notify_one</code> is both sufficient and optimal, avoiding the performance degradation of the “thundering herd” problem where multiple threads awaken only for all but one to re-suspend. If a single shared condition variable were used for both predicates, <code>notify_all</code> would be mandatory; signaling only one thread could wake a producer when only consumers can proceed, precipitating permanent deadlock.</li>
-<li><strong>Signaling Outside the Lock:</strong> The condition variable notification can be dispatched either before or after releasing the mutex. Signaling while holding the mutex can induce a “hurry up and wait” condition: the awakened thread immediately attempts to acquire the mutex, finds it held by the signaler, and re-blocks. Releasing the mutex prior to signaling avoids this contention, though modern OS kernels optimize this via <em>wait morphing</em>, moving threads directly from the condition variable wait queue to the mutex queue without unblocking them in user space.</li>
+<li><code>is_empty()</code> is <code>len == 0</code></li>
+<li><code>is_full()</code> is <code>len == cap</code></li>
+<li>The next write index is derived deterministically as <strong><code>tail = (head + len) % cap</code></strong> (or <code>(head + len) &amp; (cap - 1)</code> when <code>cap</code> is a power of two).</li>
+</ul>
+<figure>
+<img src="figures/ch19_ring_variants.svg" alt="Hand-rolled ring buffer using head and len wrap-around geometry alongside four backing-store trade-off cards" />
+</figure>
+<p><strong>Listing 19-2a. Bounded blocking queue backed by a hand-rolled <code>Ring&lt;T&gt;</code> without <code>std::deque</code> (C++20).</strong></p>
+<pre><code class="hljs language-cpp">// ch19/ring_buffer.cpp: Hand-rolled fixed-capacity ring buffer (without std::deque)
+// paired with std::mutex and dual std::condition_variables.
+#include &lt;cassert&gt;
+#include &lt;condition_variable&gt;
+#include &lt;cstddef&gt;
+#include &lt;cstdio&gt;
+#include &lt;mutex&gt;
+#include &lt;optional&gt;
+#include &lt;string&gt;
+#include &lt;thread&gt;
+#include &lt;utility&gt;
+#include &lt;vector&gt;
+
+template &lt;typename T&gt;
+class Ring {
+public:
+    explicit Ring(size_t capacity)
+        : buf_(capacity == 0 ? 1 : capacity), head_(0), len_(0) {}
+
+    bool is_full() const { return len_ == buf_.size(); }
+    bool is_empty() const { return len_ == 0; }
+
+    void push_back(T item) {
+        size_t tail = (head_ + len_) % buf_.size();
+        buf_[tail].emplace(std::move(item));
+        ++len_;
+    }
+
+    T pop_front() {
+        T item = std::move(*buf_[head_]);
+        buf_[head_].reset();  // Destroy moved-from slot so empty slots stay disengaged
+        head_ = (head_ + 1) % buf_.size();
+        --len_;
+        return item;
+    }
+
+private:
+    std::vector&lt;std::optional&lt;T&gt;&gt; buf_;
+    size_t head_;
+    size_t len_;
+};
+
+template &lt;typename T&gt;
+class BoundedRingQueue {
+public:
+    explicit BoundedRingQueue(size_t capacity) : ring_(capacity) {}
+
+    void push(T item) {
+        {
+            std::unique_lock&lt;std::mutex&gt; lock(mu_);
+            not_full_.wait(lock, [this] { return !ring_.is_full(); });
+            ring_.push_back(std::move(item));
+        }  // Unlock before notify_one to minimize mutex contention on wakeup
+        not_empty_.notify_one();
+    }
+
+    T pop() {
+        T item = [&amp;] {
+            std::unique_lock&lt;std::mutex&gt; lock(mu_);
+            not_empty_.wait(lock, [this] { return !ring_.is_empty(); });
+            return ring_.pop_front();
+        }();
+        not_full_.notify_one();
+        return item;
+    }
+
+private:
+    Ring&lt;T&gt; ring_;
+    std::mutex mu_;
+    std::condition_variable not_full_;
+    std::condition_variable not_empty_;
+};
+
+int main() {
+    constexpr size_t kTotal = 200;
+    BoundedRingQueue&lt;std::string&gt; queue(4);
+
+    std::thread producer([&amp;] {
+        for (size_t i = 0; i &lt; kTotal; ++i) {
+            queue.push(&quot;msg-&quot; + std::to_string(i));
+        }
+    });
+
+    for (size_t expected = 0; expected &lt; kTotal; ++expected) {
+        std::string received = queue.pop();
+        assert(received == &quot;msg-&quot; + std::to_string(expected));
+    }
+
+    producer.join();
+    printf(&quot;hand-rolled ring queue: %zu std::string messages transferred in strict FIFO order (verified)\n&quot;,
+           kTotal);
+}
+</code></pre>
+<p><strong>Output 19-2a.</strong></p>
+<pre><code class="hljs language-text">hand-rolled ring queue: 200 std::string messages transferred in strict FIFO order (verified)
+</code></pre>
+<p><strong>Listing 19-2b. The same hand-rolled <code>Ring&lt;T&gt;</code> over <code>Vec&lt;Option&lt;T&gt;&gt;</code> without <code>VecDeque</code> (Rust 2024).</strong></p>
+<pre class="playground"><code class="hljs language-rust"><span class="hljs-comment">// ch19/ring_buffer.rs: Hand-rolled fixed-capacity ring buffer (without VecDeque)</span>
+<span class="hljs-comment">// paired with a Mutex and dual Condvars for thread-safe bounded queuing.</span>
+<span class="hljs-keyword">use</span> std::sync::{Arc, Condvar, Mutex};
+<span class="hljs-keyword">use</span> std::thread;
+
+<span class="hljs-class"><span class="hljs-keyword">type</span> <span class="hljs-title">QueueResult</span></span>&lt;T&gt; = <span class="hljs-built_in">Result</span>&lt;T, &amp;<span class="hljs-symbol">&#x27;static</span> <span class="hljs-built_in">str</span>&gt;;
+
+<span class="hljs-keyword">const</span> POISONED: &amp;<span class="hljs-built_in">str</span> = <span class="hljs-string">&quot;a thread panicked while holding the ring mutex&quot;</span>;
+<span class="hljs-keyword">const</span> PANICKED: &amp;<span class="hljs-built_in">str</span> = <span class="hljs-string">&quot;a worker thread panicked&quot;</span>;
+
+<span class="hljs-comment">/// Fixed-capacity circular buffer backed by Vec&lt;Option&lt;T&gt;&gt;.</span>
+<span class="hljs-comment">/// Tracking (head, len) instead of (head, tail) avoids the classic ambiguity</span>
+<span class="hljs-comment">/// where head == tail could mean either completely empty or completely full.</span>
+<span class="hljs-class"><span class="hljs-keyword">struct</span> <span class="hljs-title">Ring</span></span>&lt;T&gt; {
+    buf: <span class="hljs-built_in">Vec</span>&lt;<span class="hljs-built_in">Option</span>&lt;T&gt;&gt;, <span class="hljs-comment">// Fixed length after construction; never reallocates</span>
+    head: <span class="hljs-built_in">usize</span>,         <span class="hljs-comment">// Index of the oldest live element</span>
+    len: <span class="hljs-built_in">usize</span>,          <span class="hljs-comment">// Count of live elements currently stored</span>
+}
+
+<span class="hljs-keyword">impl</span>&lt;T&gt; Ring&lt;T&gt; {
+    <span class="hljs-function"><span class="hljs-keyword">fn</span> <span class="hljs-title">new</span></span>(capacity: <span class="hljs-built_in">usize</span>) -&gt; <span class="hljs-keyword">Self</span> {
+        <span class="hljs-keyword">let</span> cap = capacity.max(<span class="hljs-number">1</span>);
+        <span class="hljs-keyword">Self</span> {
+            buf: (<span class="hljs-number">0</span>..cap).map(|_| <span class="hljs-literal">None</span>).collect(),
+            head: <span class="hljs-number">0</span>,
+            len: <span class="hljs-number">0</span>,
+        }
+    }
+
+    <span class="hljs-function"><span class="hljs-keyword">fn</span> <span class="hljs-title">is_full</span></span>(&amp;<span class="hljs-keyword">self</span>) -&gt; <span class="hljs-built_in">bool</span> {
+        <span class="hljs-keyword">self</span>.len == <span class="hljs-keyword">self</span>.buf.len()
+    }
+
+    <span class="hljs-function"><span class="hljs-keyword">fn</span> <span class="hljs-title">is_empty</span></span>(&amp;<span class="hljs-keyword">self</span>) -&gt; <span class="hljs-built_in">bool</span> {
+        <span class="hljs-keyword">self</span>.len == <span class="hljs-number">0</span>
+    }
+
+    <span class="hljs-comment">/// Inserts an item at the logical tail in O(1) time.</span>
+    <span class="hljs-comment">/// Caller guarantees `!self.is_full()`.</span>
+    <span class="hljs-function"><span class="hljs-keyword">fn</span> <span class="hljs-title">push_back</span></span>(&amp;<span class="hljs-keyword">mut</span> <span class="hljs-keyword">self</span>, item: T) {
+        <span class="hljs-keyword">let</span> tail = (<span class="hljs-keyword">self</span>.head + <span class="hljs-keyword">self</span>.len) % <span class="hljs-keyword">self</span>.buf.len();
+        <span class="hljs-keyword">self</span>.buf[tail] = <span class="hljs-literal">Some</span>(item);
+        <span class="hljs-keyword">self</span>.len += <span class="hljs-number">1</span>;
+    }
+
+    <span class="hljs-comment">/// Removes and returns the oldest item at `head` in O(1) time.</span>
+    <span class="hljs-comment">/// `Option::take()` moves ownership of any non-Copy `T` out safely and leaves `None`.</span>
+    <span class="hljs-function"><span class="hljs-keyword">fn</span> <span class="hljs-title">pop_front</span></span>(&amp;<span class="hljs-keyword">mut</span> <span class="hljs-keyword">self</span>) -&gt; <span class="hljs-built_in">Option</span>&lt;T&gt; {
+        <span class="hljs-keyword">let</span> item = <span class="hljs-keyword">self</span>.buf[<span class="hljs-keyword">self</span>.head].take()?;
+        <span class="hljs-keyword">self</span>.head = (<span class="hljs-keyword">self</span>.head + <span class="hljs-number">1</span>) % <span class="hljs-keyword">self</span>.buf.len();
+        <span class="hljs-keyword">self</span>.len -= <span class="hljs-number">1</span>;
+        <span class="hljs-literal">Some</span>(item)
+    }
+}
+
+<span class="hljs-class"><span class="hljs-keyword">struct</span> <span class="hljs-title">BoundedRingQueue</span></span>&lt;T&gt; {
+    ring: Mutex&lt;Ring&lt;T&gt;&gt;,
+    not_full: Condvar,
+    not_empty: Condvar,
+}
+
+<span class="hljs-keyword">impl</span>&lt;T&gt; BoundedRingQueue&lt;T&gt; {
+    <span class="hljs-function"><span class="hljs-keyword">fn</span> <span class="hljs-title">new</span></span>(capacity: <span class="hljs-built_in">usize</span>) -&gt; <span class="hljs-keyword">Self</span> {
+        <span class="hljs-keyword">Self</span> {
+            ring: Mutex::new(Ring::new(capacity)),
+            not_full: Condvar::new(),
+            not_empty: Condvar::new(),
+        }
+    }
+
+    <span class="hljs-function"><span class="hljs-keyword">fn</span> <span class="hljs-title">push</span></span>(&amp;<span class="hljs-keyword">self</span>, item: T) -&gt; QueueResult&lt;()&gt; {
+        <span class="hljs-keyword">let</span> guard = <span class="hljs-keyword">self</span>.ring.lock().map_err(|_| POISONED)?;
+        <span class="hljs-keyword">let</span> <span class="hljs-keyword">mut</span> ring = <span class="hljs-keyword">self</span>
+            .not_full
+            .wait_while(guard, |r| r.is_full())
+            .map_err(|_| POISONED)?;
+
+        ring.push_back(item);
+        <span class="hljs-built_in">drop</span>(ring); <span class="hljs-comment">// Release lock before waking so the consumer does not immediately re-block</span>
+        <span class="hljs-keyword">self</span>.not_empty.notify_one();
+        <span class="hljs-literal">Ok</span>(())
+    }
+
+    <span class="hljs-function"><span class="hljs-keyword">fn</span> <span class="hljs-title">pop</span></span>(&amp;<span class="hljs-keyword">self</span>) -&gt; QueueResult&lt;T&gt; {
+        <span class="hljs-keyword">let</span> guard = <span class="hljs-keyword">self</span>.ring.lock().map_err(|_| POISONED)?;
+        <span class="hljs-keyword">let</span> <span class="hljs-keyword">mut</span> ring = <span class="hljs-keyword">self</span>
+            .not_empty
+            .wait_while(guard, |r| r.is_empty())
+            .map_err(|_| POISONED)?;
+
+        <span class="hljs-keyword">let</span> item = ring
+            .pop_front()
+            .ok_or(<span class="hljs-string">&quot;ring was empty after wait_while&quot;</span>)?;
+        <span class="hljs-built_in">drop</span>(ring);
+        <span class="hljs-keyword">self</span>.not_full.notify_one();
+        <span class="hljs-literal">Ok</span>(item)
+    }
+}
+
+<span class="hljs-function"><span class="hljs-keyword">fn</span> <span class="hljs-title">main</span></span>() -&gt; QueueResult&lt;()&gt; {
+    <span class="hljs-comment">// Use non-Copy String values to verify ownership transfer via Option::take()</span>
+    <span class="hljs-comment">// across many wrap-around cycles on a 4-slot ring buffer.</span>
+    <span class="hljs-keyword">const</span> TOTAL: <span class="hljs-built_in">usize</span> = <span class="hljs-number">200</span>;
+    <span class="hljs-keyword">let</span> queue = Arc::new(BoundedRingQueue::&lt;<span class="hljs-built_in">String</span>&gt;::new(<span class="hljs-number">4</span>));
+
+    <span class="hljs-keyword">let</span> producer = {
+        <span class="hljs-keyword">let</span> q = Arc::clone(&amp;queue);
+        thread::spawn(<span class="hljs-keyword">move</span> || -&gt; QueueResult&lt;()&gt; {
+            <span class="hljs-keyword">for</span> i <span class="hljs-keyword">in</span> <span class="hljs-number">0</span>..TOTAL {
+                q.push(<span class="hljs-built_in">format!</span>(<span class="hljs-string">&quot;msg-{i}&quot;</span>))?;
+            }
+            <span class="hljs-literal">Ok</span>(())
+        })
+    };
+
+    <span class="hljs-keyword">for</span> expected <span class="hljs-keyword">in</span> <span class="hljs-number">0</span>..TOTAL {
+        <span class="hljs-keyword">let</span> received = queue.pop()?;
+        <span class="hljs-built_in">assert_eq!</span>(received, <span class="hljs-built_in">format!</span>(<span class="hljs-string">&quot;msg-{expected}&quot;</span>));
+    }
+
+    producer.join().map_err(|_| PANICKED)??;
+    <span class="hljs-built_in">println!</span>(<span class="hljs-string">&quot;hand-rolled ring queue: {TOTAL} String messages transferred in strict FIFO order (verified)&quot;</span>);
+    <span class="hljs-literal">Ok</span>(())
+}</code></pre>
+<p><strong>Output 19-2b.</strong></p>
+<pre><code class="hljs language-text">hand-rolled ring queue: 200 String messages transferred in strict FIFO order (verified)
+</code></pre>
+<h3 id="1925-systems-analysis-and-concurrency-interview-follow-ups"><a class="header" href="#1925-systems-analysis-and-concurrency-interview-follow-ups">19.2.5 Systems Analysis and Concurrency Interview Follow-Ups</a></h3>
+<p>Interviewers routinely probe five concurrency subtleties directly on top of your bounded queue implementation (in C/C++ with <code>std::condition_variable</code> or <code>pthread_cond_wait</code>, and in Rust with <code>Condvar</code>):</p>
+<ul>
+<li><strong>Why <code>wait_while</code> (or a <code>while</code> loop) instead of a single <code>if</code> + <code>wait</code>?</strong> Operating system schedulers and POSIX condition variables permit <strong>spurious wakeups</strong>, where a sleeping thread unblocks without any matching signal. Even on a legitimate wakeup, another thread can acquire the mutex first and consume the item or fill the slot before the awakened thread re-acquires the lock. Rechecking the predicate inside a <code>while</code> loop (which <code>Condvar::wait_while</code> and <code>std::condition_variable::wait(lock, pred)</code> encapsulate for you) guarantees that the thread proceeds only when the invariant holds under exclusive lock ownership.</li>
+<li><strong>Why two condition variables (<code>not_full</code> and <code>not_empty</code>) instead of one?</strong> Dual condition variables isolate waiting producers from waiting consumers: a producer wakes only consumers, and a consumer wakes only producers. With a single shared condition variable, <code>notify_one</code> can wake another producer when the queue is full (causing permanent deadlock), forcing <code>notify_all</code> on every operation and waking every sleeping thread when only one can proceed.</li>
+<li><strong>Why is <code>notify_one</code> safe and preferred over <code>notify_all</code>?</strong> Because each <code>push</code> inserts exactly one item (enabling at most one consumer to proceed) and each <code>pop</code> frees exactly one slot (enabling at most one producer to proceed). Waking every waiter via <code>notify_all</code> triggers a <strong>thundering herd</strong>, burning CPU cycles as <code>K - 1</code> threads re-acquire the mutex only to fall back asleep. (Reserve <code>notify_all</code> for shutdown/close transitions where all waiters must wake and exit.)</li>
+<li><strong>Should you notify before or after dropping the mutex lock?</strong> Both orders are strictly correct. Signaling while holding the mutex can cause a “hurry up and wait” penalty where the woken thread immediately blocks trying to acquire the mutex still held by the signaler; dropping the guard (<code>drop(ring)</code>) before calling <code>notify_one()</code> avoids that redundant context switch, though modern OS kernels also mitigate inside-lock signaling via <strong>wait morphing</strong> (moving a waiter directly from the condvar wait queue to the mutex wait queue in kernel space).</li>
+<li><strong>What is Rust lock poisoning (<code>PoisonError</code>)?</strong> Unique to Rust’s <code>std::sync::Mutex</code>, a mutex transitions to a <em>poisoned</em> state if a thread panics while holding its <code>MutexGuard</code>, warning subsequent callers that the protected data structure may have been left halfway through a multi-field update with broken invariants. In production and interview code, propagate the error cleanly with <code>.map_err(...)?</code> (as in Listings 19-2 and 19-2b) rather than panicking blindly with <code>.unwrap()</code>.</li>
 </ul>
 <div class="callout keyidea">
 <span class="label">Key idea</span>
-<p>A bounded blocking queue coordinates producers and consumers through dual condition variables. Under lock, the invariant <code>0 ≤ size ≤ capacity</code> must hold at all times. Evaluating predicates inside a <code>while</code> loop is mandatory to defend against spurious wakeups and post-wakeup race conditions.</p>
+<p>Start a bounded-queue interview with <code>VecDeque</code> for O(1) ring semantics, be ready to drop down to a hand-rolled <code>Vec&lt;Option&lt;T&gt;&gt;</code> ring tracking <code>(head, len)</code> to eliminate full-versus-empty ambiguity, and pair dual condition variables with <code>while</code> / <code>wait_while</code> loops and <code>notify_one</code> to prevent spurious wakeups, lost wakeups, and thundering herds.</p>
 </div>
 
 <div class="callout caution">
@@ -10335,7 +10601,7 @@ cycle after : yes
         <script src="book-609e4cb8.js"></script>
 
         <!-- Custom JS scripts -->
-        <script src="theme/figures-afd72f2c.js"></script>
+        <script src="theme/figures-f1be29a8.js"></script>
 
         <script>
         window.addEventListener('load', function() {
