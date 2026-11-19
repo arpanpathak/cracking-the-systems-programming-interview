@@ -32,8 +32,8 @@
   - [2.2 Memory Hierarchy and Locality Dynamics](ch02-the-machine.md#22-memory-hierarchy-and-locality-dynamics)
   - [2.3 Privilege Domains and Boundary Enforcement](ch02-the-machine.md#23-privilege-domains-and-boundary-enforcement)
   - [2.4 Synchronous Traps and the Asynchronous Interrupt Subsystem](ch02-the-machine.md#24-synchronous-traps-and-the-asynchronous-interrupt-subsystem)
-    - [2.4.1 Interrupt Controllers: APIC, IO-APIC, MSI-X, and ARM GIC](ch02-the-machine.md#241-interrupt-controllers-apic-io-apic-msi-x-and-arm-gic)
-    - [2.4.2 Vector Tables (IVT, IDT, VBAR_EL1) and the Hardware Context-Save Sequence](ch02-the-machine.md#242-vector-tables-ivt-idt-vbar_el1-and-the-hardware-context-save-sequence)
+    - [2.4.1 Why Interrupt Controllers Exist: From One Copper Pin to Multi-Core Fabrics](ch02-the-machine.md#241-why-interrupt-controllers-exist-from-one-copper-pin-to-multi-core-fabrics)
+    - [2.4.2 Vector Tables (`IDT`, `VBAR_EL1`), `TSS.rsp0`, and Hardware Trapframe Construction](ch02-the-machine.md#242-vector-tables-idt-vbar_el1-tssrsp0-and-hardware-trapframe-construction)
     - [2.4.3 Top-Half (`hardirq`) vs. Bottom-Half (`softirq`) Split and EOI Lifecycle](ch02-the-machine.md#243-top-half-hardirq-vs-bottom-half-softirq-split-and-eoi-lifecycle)
 - [**3. Process Abstraction and Lifecycle**](ch03-processes.md#3-process-abstraction-and-lifecycle)
   - [3.1 The Process Control Block and Address Space Topology](ch03-processes.md#31-the-process-control-block-and-address-space-topology)
@@ -143,6 +143,8 @@
     - [15.4.2 Event-Driven Supervision with `EVFILT_PROC` and the `struct kevent` Interface](ch15-daemons.md#1542-event-driven-supervision-with-evfilt_proc-and-the-struct-kevent-interface)
 - [**16. Virtualization and Containerization**](ch16-virtualization.md#16-virtualization-and-containerization)
   - [16.1 Virtual Machines and Hypervisor Orchestration](ch16-virtualization.md#161-virtual-machines-and-hypervisor-orchestration)
+    - [16.1.1 Two-Stage Hardware Address Translation (Intel EPT / AMD NPT)](ch16-virtualization.md#1611-two-stage-hardware-address-translation-intel-ept--amd-npt)
+    - [16.1.2 Device Virtualization: Emulation, VirtIO, and Direct Passthrough](ch16-virtualization.md#1612-device-virtualization-emulation-virtio-and-direct-passthrough)
   - [16.2 Containerization: Namespace and Resource Isolation](ch16-virtualization.md#162-containerization-namespace-and-resource-isolation)
   - [16.3 Architectural Synthesis in Cloud Computing](ch16-virtualization.md#163-architectural-synthesis-in-cloud-computing)
 - [**17. Multiprocessor Systems and Hardware Accelerators**](ch17-multiprocessors.md#17-multiprocessor-systems-and-hardware-accelerators)
@@ -150,8 +152,10 @@
   - [17.2 Cache Coherence and the False Sharing Phenomenon](ch17-multiprocessors.md#172-cache-coherence-and-the-false-sharing-phenomenon)
   - [17.3 Hardware Accelerators: Discrete Architecture vs. Unified Memory Architecture (UMA)](ch17-multiprocessors.md#173-hardware-accelerators-discrete-architecture-vs-unified-memory-architecture-uma)
 - [**18. Performance Analysis and Observability**](ch18-performance.md#18-performance-analysis-and-observability)
-  - [18.1 The Empirical Method and Resource Bottlenecks](ch18-performance.md#181-the-empirical-method-and-resource-bottlenecks)
-  - [18.2 Observability: Profilers, Tracers, and Visualizations](ch18-performance.md#182-observability-profilers-tracers-and-visualizations)
+  - [18.1 The Empirical Method and the Memory Latency Hierarchy](ch18-performance.md#181-the-empirical-method-and-the-memory-latency-hierarchy)
+  - [18.2 Observability: Hardware PMU Counters, Profilers, Tracers, and Flame Graphs](ch18-performance.md#182-observability-hardware-pmu-counters-profilers-tracers-and-flame-graphs)
+    - [18.2.1 The Hardware Performance Monitoring Unit (PMU)](ch18-performance.md#1821-the-hardware-performance-monitoring-unit-pmu)
+    - [18.2.2 Sampling Profilers versus Event Tracers](ch18-performance.md#1822-sampling-profilers-versus-event-tracers)
   - [18.3 Statistical Rigor and Measurement Pitfalls](ch18-performance.md#183-statistical-rigor-and-measurement-pitfalls)
 
 ---
@@ -237,7 +241,7 @@ A thematic, alphabetical cross-reference linking systems topics directly to thei
   - Page Fault Dynamics: [§7.1](ch07-virtual-memory.md#71-page-based-abstraction-and-isolation)
   - Heap Arena Construction: [§8.2.2](ch08-allocation.md#822-level-2-the-raw-byte-bump-allocator-mmap-backed), [§8.3](ch08-allocation.md#83-explicit-management-free-list-allocation)
 - **APIC / IO-APIC & ARM GIC (Interrupt Controllers)**: Two-tier hardware interrupt routing, Message Signaled Interrupts (MSI-X), and priority arbitration across multiprocessor cores.
-  - Hardware Routing & EOI: [§2.4.1](ch02-the-machine.md#241-interrupt-controllers-apic-io-apic-msi-x-and-arm-gic)
+  - Hardware Routing & EOI: [§2.4.1](ch02-the-machine.md#241-why-interrupt-controllers-exist-from-one-copper-pin-to-multi-core-fabrics)
 - **Apple Silicon Unified Memory (UMA)**: Shared physical memory substrate between CPU, GPU, and Neural Engine without PCIe bus serialization.
   - Architectural Analysis: [§17.3](ch17-multiprocessors.md#173-hardware-accelerators-discrete-architecture-vs-unified-memory-architecture-uma)
 - **Async-Signal-Safety**: Functions safe to execute inside asynchronous signal handlers without corrupting thread stacks or deadlocking libc mutexes.
@@ -321,7 +325,7 @@ A thematic, alphabetical cross-reference linking systems topics directly to thei
 - **Huge Pages**: 2 MiB / 1 GiB virtual page translations designed to maximize TLB coverage and eliminate translation latency.
   - Hardware TLB Reach: [§7.2.3](ch07-virtual-memory.md#723-the-translation-lookaside-buffer-tlb-huge-pages-and-shootdowns)
 - **Interrupt Descriptor Table (IDT) & Top/Bottom-Half Handlers**: Hardware vector dispatch table, `TSS.rsp0` trapframe saving, `hardirq` masking, and `softirq` deferred execution.
-  - Architectural Mechanics: [§2.4.2](ch02-the-machine.md#242-vector-tables-ivt-idt-vbar_el1-and-the-hardware-context-save-sequence), [§2.4.3](ch02-the-machine.md#243-top-half-hardirq-vs-bottom-half-softirq-split-and-eoi-lifecycle)
+  - Architectural Mechanics: [§2.4.2](ch02-the-machine.md#242-vector-tables-idt-vbar_el1-tssrsp0-and-hardware-trapframe-construction), [§2.4.3](ch02-the-machine.md#243-top-half-hardirq-vs-bottom-half-softirq-split-and-eoi-lifecycle)
 - **Inter-Process Communication (IPC)**: Exchanging state across hardware isolation boundaries via pipes, sockets, and shared memory.
   - IPC Taxonomy: [§11.1](ch11-ipc.md#111-unidirectional-byte-streams-pipes), [§11.2](ch11-ipc.md#112-zero-copy-communication-shared-memory), [§11.3](ch11-ipc.md#113-bidirectional-channels-socket-pairs)
 - **Isolation (Process Protection)**: Hardware-enforced boundary preventing cross-process interference and securing kernel memory.

@@ -432,7 +432,7 @@ def ch02_stack_frame():
 
 @figure
 def ch02_interrupt_flow():
-    fig = Fig("ch02_interrupt_flow", "Figure 2-4. Asynchronous Hardware Interrupt Lifecycle: IRQ → APIC/GIC → IDT → Top/Bottom Half → EOI", 384)
+    fig = Fig("ch02_interrupt_flow", "Figure 2-7. End-to-End Hardware Interrupt Lifecycle: Device Signal, Top-Half hardirq, EOI, and Bottom-Half softirq.", 384)
 
     # Top row: Hardware delivery pipeline
     dev = fig.node(28, 16, 168, 102, "amber", [
@@ -2208,7 +2208,7 @@ def ch16_vm_vs_container():
 
 @figure
 def ch16_namespaces():
-    fig = Fig("ch16_namespaces", "Figure 16-2. A PID namespace maps its own numbers onto the host’s table.", 270)
+    fig = Fig("ch16_namespaces", "Figure 16-3. A PID namespace maps its own numbers onto the host’s table.", 270)
 
     fig.node(28, 0, 290, 270, "gray")
     fig.tile(44, 12, "table_rows", "gray", 28)
@@ -2484,6 +2484,346 @@ def ch19_lru_cache():
     fig.save([
         "A get() hit or put() splices the referenced node to the head (MRU) in O(1) time without reallocating nodes.",
         "When capacity is exceeded, the tail node (LRU) is popped and removed from the hash map in O(1) time.",
+    ])
+
+
+@figure
+def ch02_x86_apic():
+    fig = Fig(
+        "ch02_x86_apic",
+        "Figure 2-4. x86-64 Interrupt Controller Hardware Topology: Legacy IO-APIC, PCIe MSI-X Bypass, and Per-Core Local APICs.",
+        396,
+    )
+
+    # Left column: Hardware Interrupt Sources
+    legacy = fig.node(20, 22, 188, 114, "amber")
+    fig.tile(32, 34, "developer_board", "amber", 30)
+    fig.text(70, 54, "Legacy Devices", "name")
+    fig.lines(114, 96, [
+        ("Keyboard, UART, SATA", "small"),
+        ("Physical copper IRQ pins", "sub"),
+        ("IRQ 0..23 -> chipset", "mono"),
+    ], "middle", fit=(26, 202))
+
+    pcie = fig.node(20, 160, 188, 126, "blue")
+    fig.tile(32, 172, "bolt", "blue", 30)
+    fig.text(70, 192, "PCIe Devices", "name")
+    fig.lines(114, 240, [
+        ("NVMe, 100GbE NIC, GPU", "small"),
+        ("MSI-X: zero IRQ pins", "sub"),
+        ("DMA -> 0xFEE0_xxxx", "mono"),
+        ("1 vector per queue", "sub"),
+    ], "middle", fit=(26, 202))
+
+    # Middle top: Chipset IO-APIC
+    ioapic = fig.node(244, 22, 220, 114, "red")
+    fig.tile(256, 34, "table_rows", "red", 30)
+    fig.text(294, 54, "Chipset IO-APIC", "name")
+    fig.cell(256, 72, 196, 52, "red", [
+        ("24 Redirection Entries", "monob"),
+        ("Pin -> Vector + Core ID", "small"),
+    ], kind="card", r=8)
+
+    # Middle bottom: PCIe Fabric / Interconnect Bus Banner
+    bus = fig.node(244, 160, 220, 126, "teal")
+    fig.tile(256, 172, "swap_horiz", "teal", 30)
+    fig.text(294, 192, "System Interconnect", "name")
+    fig.lines(354, 240, [
+        ("MSI-X bypasses IO-APIC", "monob"),
+        ("Device writes vector directly", "small"),
+        ("to target core LAPIC MMIO", "small"),
+        ("eliminating shared-pin contention", "sub"),
+    ], "middle", fit=(250, 458))
+
+    # Right column: Core 0 LAPIC + Core 1 LAPIC
+    core0 = fig.node(500, 18, 280, 164, "purple")
+    fig.tile(512, 30, "memory", "purple", 30)
+    fig.text(550, 50, "Core 0: On-Die Local APIC", "name")
+    fig.cell(512, 68, 124, 48, "purple", [
+        ("IRR (256-bit)", "monob"),
+        ("Pending vectors", "small"),
+    ], kind="card", r=7)
+    fig.cell(644, 68, 124, 48, "purple", [
+        ("ISR (256-bit)", "monob"),
+        ("Active in-service", "small"),
+    ], kind="card", r=7)
+    fig.cell(512, 124, 124, 44, "green", [
+        ("APIC Timer", "monob"),
+        ("Preemption tick", "small"),
+    ], kind="card", r=7)
+    fig.cell(644, 124, 124, 44, "red", [
+        ("EOI Register", "monob"),
+        ("Clears ISR bit", "small"),
+    ], kind="card", r=7)
+
+    core1 = fig.node(500, 214, 280, 92, "green")
+    fig.tile(512, 226, "memory", "green", 30)
+    fig.text(550, 246, "Core 1: On-Die Local APIC", "name")
+    fig.cell(512, 260, 256, 36, "green", [
+        ("IRR | ISR | APIC Timer | EOI", "mono"),
+    ], kind="card", r=7)
+
+    # Bottom summary banner: Why two 256-bit bitmaps (IRR vs ISR) + IPIs
+    note_bar = fig.node(20, 322, 760, 62, "gray")
+    fig.lines(400, 353, [
+        ("Arbitration: LAPIC delivers the highest pending bit in IRR that outranks the active bit in ISR.", "small"),
+        ("Vectors 0..31: hardware exceptions (#PF, #GP); Vectors 32..255: OS-assigned devices, timers, IPIs.", "sub"),
+    ], "middle", fit=(28, 772))
+
+    # Wires
+    fig.wire([(legacy.r + 2, 79), (ioapic.x - 2, 79)], "amber", width=2.0)
+    fig.wire([(ioapic.r + 2, 79), (core0.x - 2, 79)], "red", width=2.0)
+    fig.wire([(pcie.r + 2, 223), (bus.x - 2, 223)], "blue", width=2.0)
+    fig.wire([(bus.r + 2, 200), (482, 200), (482, 130), (core0.x - 2, 130)], "teal", width=2.0)
+    fig.wire([(bus.r + 2, 258), (core1.x - 2, 258)], "teal", width=2.0)
+    # Cross-core IPI arrow between Core 0 and Core 1
+    fig.wire([(560, core0.b + 2), (560, core1.y - 2)], "purple", dash=True, width=1.8, tail=True)
+    fig.label(674, 198, "IPI (TLB shootdown / wakeup)", tone="purple", cls="small")
+
+    fig.save([
+        "Legacy peripherals use shared copper pins routed through the chipset IO-APIC Redirection Table.",
+        "Modern PCIe devices bypass the IO-APIC with MSI-X memory writes directly to a target core's Local APIC MMIO register.",
+    ])
+
+
+@figure
+def ch02_arm_gic():
+    fig = Fig(
+        "ch02_arm_gic",
+        "Figure 2-5. ARM64 Generic Interrupt Controller (GICv3 / GICv4): Distributor, ITS, Per-Core Redistributor, and CPU Interface.",
+        366,
+    )
+
+    # Column 1: Sources
+    spi_src = fig.node(20, 22, 176, 86, "amber")
+    fig.tile(32, 34, "developer_board", "amber", 28)
+    fig.text(68, 52, "SoC Peripherals", "name")
+    fig.lines(108, 84, [
+        ("SPI: IDs 32..1019", "monob"),
+        ("Shared wired lines", "sub"),
+    ], "middle", fit=(26, 190))
+
+    lpi_src = fig.node(20, 126, 176, 92, "blue")
+    fig.tile(32, 138, "bolt", "blue", 28)
+    fig.text(68, 156, "PCIe MSI-X", "name")
+    fig.lines(108, 190, [
+        ("LPI: IDs 8192+", "monob"),
+        ("Message-based DMA", "sub"),
+    ], "middle", fit=(26, 190))
+
+    priv_src = fig.node(20, 236, 176, 108, "green")
+    fig.tile(32, 248, "timer", "green", 28)
+    fig.text(68, 266, "Per-Core Local", "name")
+    fig.lines(108, 308, [
+        ("SGI: IDs 0..15 (IPIs)", "mono"),
+        ("PPI: IDs 16..31", "mono"),
+        ("(ARM Generic Timer)", "sub"),
+    ], "middle", fit=(26, 190))
+
+    # Column 2: GICD (Distributor) & ITS
+    gicd = fig.node(232, 22, 168, 86, "red")
+    fig.tile(244, 34, "call_split", "red", 28)
+    fig.text(280, 52, "Distributor", "name")
+    fig.lines(316, 84, [
+        ("GICD (SoC-wide)", "monob"),
+        ("Routes SPIs to cores", "sub"),
+    ], "middle", fit=(238, 394))
+
+    its = fig.node(232, 126, 168, 92, "teal")
+    fig.tile(244, 138, "table_rows", "teal", 28)
+    fig.text(280, 156, "GIC ITS", "name")
+    fig.lines(316, 190, [
+        ("Translation Service", "monob"),
+        ("DeviceID -> LPI + Core", "sub"),
+    ], "middle", fit=(238, 394))
+
+    # Column 3: Per-Core Redistributor (GICR)
+    gicr = fig.node(436, 22, 168, 322, "purple")
+    fig.tile(448, 36, "layers", "purple", 30)
+    fig.text(486, 56, "Redistributor", "name")
+    fig.text(520, 82, "GICR (1 per core)", "monob", "middle", tone="purple")
+    fig.cell(448, 98, 144, 62, "red", [
+        ("SPI Queue", "monob"),
+        ("From GICD", "small"),
+    ], kind="card", r=7)
+    fig.cell(448, 172, 144, 62, "teal", [
+        ("LPI Table (RAM)", "monob"),
+        ("From ITS", "small"),
+    ], kind="card", r=7)
+    fig.cell(448, 246, 144, 82, "green", [
+        ("SGI + PPI State", "monob"),
+        ("Core-private timer", "small"),
+        ("and IPI delivery", "small"),
+    ], kind="card", r=7)
+
+    # Column 4: CPU Interface + Core
+    cpuif = fig.node(638, 22, 142, 322, "blue")
+    fig.tile(650, 36, "memory", "blue", 30)
+    fig.text(688, 56, "Core N", "name")
+    fig.text(709, 84, "CPU Interface", "monob", "middle", tone="blue")
+    fig.cell(648, 102, 122, 66, "blue", [
+        ("ICC_IAR1_EL1", "mono"),
+        ("Acknowledge ID", "small"),
+    ], kind="card", r=7)
+    fig.cell(648, 182, 122, 66, "purple", [
+        ("VBAR_EL1", "mono"),
+        ("Jump to IRQ stub", "small"),
+    ], kind="card", r=7)
+    fig.cell(648, 262, 122, 66, "red", [
+        ("ICC_EOIR1_EL1", "mono"),
+        ("Signal EOI", "small"),
+    ], kind="card", r=7)
+
+    # Wires
+    fig.wire([(spi_src.r + 2, 65), (gicd.x - 2, 65)], "amber", width=2.0)
+    fig.wire([(gicd.r + 2, 65), (gicr.x - 2, 65)], "red", width=2.0)
+    fig.wire([(lpi_src.r + 2, 172), (its.x - 2, 172)], "blue", width=2.0)
+    fig.wire([(its.r + 2, 172), (gicr.x - 2, 172)], "teal", width=2.0)
+    fig.wire([(priv_src.r + 2, 290), (gicr.x - 2, 290)], "green", width=2.0)
+    fig.wire([(gicr.r + 2, 135), (cpuif.x - 2, 135)], "purple", width=2.2)
+
+    fig.save([
+        "ARM64 separates SoC-wide shared routing (GICD + ITS) from per-core arbitration (GICR) so interrupt delivery scales to hundreds of cores.",
+        "GICv3 exposes the CPU Interface through fast architectural system registers (ICC_*) rather than slower MMIO reads.",
+    ])
+
+
+@figure
+def ch02_idt_trapframe():
+    fig = Fig(
+        "ch02_idt_trapframe",
+        "Figure 2-6. x86-64 Hardware Vector Dispatch: IDTR Lookup, TSS Kernel Stack Switch, and Trapframe Construction.",
+        396,
+    )
+
+    # Left top: IDTR + IDT Table
+    idt = fig.node(20, 20, 360, 176, "blue")
+    fig.tile(32, 32, "table_rows", "blue", 30)
+    fig.text(70, 52, "IDTR -> Interrupt Descriptor Table (IDT)", "name")
+    fig.text(32, 74, "256 entries x 16 bytes (Gate Descriptors in kernel RAM)", "sub")
+    fig.cell(32, 86, 336, 30, "gray", [("IDT[0..31]: CPU Exceptions (#DE, #GP, #PF)", "mono")], kind="card", r=6)
+    fig.cell(32, 122, 336, 62, "blue", [
+        ("IDT[v] (e.g. vector 0x30: NVMe MSI-X)", "monob"),
+        ("64-bit ISR addr | CS=Ring 0 | Interrupt Gate (IF=0) | IST", "small"),
+    ], kind="card", r=7)
+
+    # Left bottom: TSS Stack Switch
+    tss = fig.node(20, 218, 360, 158, "amber")
+    fig.tile(32, 230, "shield", "amber", 30)
+    fig.text(70, 250, "Per-Core Task State Segment (TSS)", "name")
+    fig.lines(200, 286, [
+        ("Why switch stacks? User RSP may be corrupt or unmapped.", "small"),
+    ], "middle", fit=(28, 372))
+    fig.cell(32, 306, 160, 56, "amber", [
+        ("TSS.rsp0", "monob"),
+        ("Per-thread Ring 0 stack", "small"),
+    ], kind="card", r=7)
+    fig.cell(204, 306, 164, 56, "red", [
+        ("TSS.ist[1..7]", "monob"),
+        ("Private #DF / #NMI stack", "small"),
+    ], kind="card", r=7)
+
+    # Right column: Kernel Stack Trapframe (high addr top -> low addr bottom)
+    stack = fig.node(424, 20, 356, 356, "purple")
+    fig.tile(436, 32, "layers", "purple", 30)
+    fig.text(474, 52, "Kernel Stack Trapframe (Ring 0)", "name")
+    fig.text(436, 74, "High address (top of kernel stack: TSS.rsp0)", "sub")
+
+    hw_rows = [
+        ("SS (User Stack Segment)", "amber"),
+        ("User RSP (Saved User Stack Ptr)", "amber"),
+        ("RFLAGS (Saved IF, ZF, CF...)", "amber"),
+        ("CS (Previous CPL = 3)", "amber"),
+        ("User RIP (Resume Address)", "amber"),
+        ("Error Code (optional: #PF, #GP)", "red"),
+    ]
+    y = 86
+    for label_txt, tone in hw_rows:
+        fig.cell(438, y, 328, 28, tone, [(label_txt, "mono")], kind="card", r=6)
+        y += 32
+
+    fig.text(602, 288, "Pushed atomically by CPU silicon", "sub", "middle", tone="amber")
+    fig.cell(438, 298, 328, 48, "teal", [
+        ("Software Entry Stub: struct pt_regs", "monob"),
+        ("Pushes RAX, RBX, RCX, RDX, RSI, RDI, RBP, R8..R15", "small"),
+    ], kind="card", r=7)
+    fig.text(602, 362, "iretq pops hardware frame atomically back to Ring 3", "sub", "middle", tone="purple")
+
+    # Wires connecting left to right
+    fig.wire([(idt.r + 2, 152), (stack.x - 2, 152)], "blue", width=2.0)
+    fig.wire([(tss.r + 2, 322), (402, 322), (402, 98), (stack.x - 2, 98)], "amber", width=2.0)
+
+    fig.save([
+        "On a Ring 3 -> Ring 0 interrupt, CPU hardware switches RSP to TSS.rsp0 and pushes the 5-word return frame before running 1 instruction of kernel code.",
+        "On ARM64, silicon stores the interrupted PC and flags in ELR_EL1 and SPSR_EL1 while switching SP_EL0 to SP_EL1 automatically.",
+    ])
+
+
+@figure
+def ch16_ept_walk():
+    fig = Fig(
+        "ch16_ept_walk",
+        "Figure 16-2. Two-Stage Hardware Virtualization (Intel EPT / AMD NPT): Guest Page Walk Nested Inside Host Page Walk.",
+        356,
+    )
+
+    # Top row: Stage 1 (Guest OS)
+    gva = fig.node(20, 24, 150, 96, "blue")
+    fig.tile(32, 36, "apps", "blue", 28)
+    fig.text(68, 54, "Guest App", "name")
+    fig.lines(95, 90, [
+        ("Guest Virtual Addr", "small"),
+        ("GVA (48-bit)", "monob"),
+    ], "middle", fit=(26, 164))
+
+    gwalk = fig.node(210, 24, 248, 96, "purple")
+    fig.tile(222, 36, "layers", "purple", 28)
+    fig.text(258, 54, "Stage 1: Guest Page Table", "name")
+    fig.lines(334, 90, [
+        ("Guest CR3 (managed by Guest OS)", "small"),
+        ("GVA -> Guest Physical (GPA)", "mono"),
+    ], "middle", fit=(216, 452))
+
+    # Bottom row: Stage 2 (Hypervisor EPT)
+    ept = fig.node(210, 156, 248, 114, "amber")
+    fig.tile(222, 168, "shield", "amber", 28)
+    fig.text(258, 186, "Stage 2: Hypervisor EPT", "name")
+    fig.lines(334, 232, [
+        ("EPTP (controlled by Host Hypervisor)", "small"),
+        ("GPA -> Host Physical (HPA)", "mono"),
+        ("Invoked for every guest level + data", "sub"),
+    ], "middle", fit=(216, 452))
+
+    # Right column: Physical Host DRAM
+    dram = fig.node(500, 24, 280, 246, "green")
+    fig.tile(512, 38, "memory", "green", 30)
+    fig.text(550, 58, "Physical Host DRAM", "name")
+    fig.cell(512, 80, 256, 62, "purple", [
+        ("Guest Page Table Frames", "monob"),
+        ("4 Guest levels x 4 EPT walks", "small"),
+    ], kind="card", r=7)
+    fig.cell(512, 154, 256, 62, "green", [
+        ("Target Guest Data Frame", "monob"),
+        ("Final GPA -> HPA (+4 EPT walks)", "small"),
+    ], kind="card", r=7)
+    fig.text(640, 244, "Cold TLB miss: up to 24 RAM reads", "monob", "middle", tone="red")
+
+    # Bottom takeaway bar
+    bar = fig.node(20, 290, 760, 52, "teal")
+    fig.lines(400, 316, [
+        ("Hardware Mitigations: TLB caches GVA -> HPA directly (1 cycle); VPID/ASID tags avoid flushing TLBs on VM-Exit.", "small"),
+    ], "middle", fit=(28, 772))
+
+    # Wires
+    fig.wire([(gva.r + 2, 72), (gwalk.x - 2, 72)], "blue", width=2.0)
+    fig.wire([(334, gwalk.b + 2), (334, ept.y - 2)], "purple", width=2.0, tail=True)
+    fig.label(408, 138, "each GPA lookup", tone="purple", cls="small")
+    fig.wire([(ept.r + 2, 185), (dram.x - 2, 185)], "amber", width=2.0)
+    fig.wire([(gwalk.r + 2, 100), (dram.x - 2, 100)], "purple", dash=True, width=1.8)
+
+    fig.save([
+        "A cold nested page walk multiplies 4 guest levels by 4 EPT levels plus 4 EPT lookups for the final data frame (up to 24 DRAM reads vs. 4 native).",
+        "Using 2 MiB huge pages in both guest and host EPT collapses the 2D walk drastically and expands TLB coverage.",
     ])
 
 
