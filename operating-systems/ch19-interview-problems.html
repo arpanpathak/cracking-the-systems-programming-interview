@@ -28,7 +28,7 @@
         <link rel="stylesheet" id="mdbook-ayu-highlight-css" href="ayu-highlight-3fdfc3ac.css">
 
         <!-- Custom theme stylesheets -->
-        <link rel="stylesheet" href="theme/custom-e0671a52.css">
+        <link rel="stylesheet" href="theme/custom-9125cc61.css">
 
         <!-- MathJax -->
         <script async src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.1/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
@@ -38,10 +38,10 @@
             const path_to_root = "";
             const default_light_theme = "light";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "searchindex-4f3aedde.js";
+            window.path_to_searchindex_js = "searchindex-2f3b4ad9.js";
         </script>
         <!-- Start loading toc.js asap -->
-        <script src="toc-2b639993.js"></script>
+        <script src="toc-f3585118.js"></script>
     </head>
     <body>
     <div id="mdbook-help-container">
@@ -190,7 +190,7 @@
 <ul>
 <li><strong>Formal Contract Specification:</strong> Defining explicit preconditions, postconditions, and resource ownership boundaries before writing code. This encompasses capacity limits, pointer ownership transfers, lifetime bounds, and the exact threading model.</li>
 <li><strong>State Invariant Formulation:</strong> Explicitly identifying the logical properties that must hold across all execution paths. In concurrent programming, this dictates the exact state protected by each mutex or synchronized via atomic variables.</li>
-<li><strong>Boundary and Interleaving Analysis:</strong> Rigorously tracing edge cases—such as queue saturation, memory depletion, cache line false sharing, and spurious wakeups—under arbitrary thread interleavings.</li>
+<li><strong>Boundary and Interleaving Analysis:</strong> Rigorously tracing edge cases (such as queue saturation, memory depletion, cache line false sharing, and spurious wakeups) under arbitrary thread interleavings.</li>
 </ul>
 <p>This chapter presents ten canonical systems programming problems, followed by a rigorous examination of six fundamental operating system mechanisms. Each problem articulates the underlying systems model, establishes the mathematical and concurrency invariants, provides verified reference implementations in C++20 and Rust (2024 edition), and evaluates subtle hardware and language-level trade-offs.</p>
 <h2 id="192-the-bounded-blocking-queue"><a class="header" href="#192-the-bounded-blocking-queue">19.2 The Bounded Blocking Queue</a></h2>
@@ -202,7 +202,7 @@
 <li><strong>Predicate Coordination:</strong> When the queue reaches capacity, producer threads must suspend execution until space becomes available. Conversely, when the queue is empty, consumer threads must suspend until an item is enqueued.</li>
 </ol>
 <p>A <strong>mutex</strong> provides mutual exclusion but possesses no native mechanism for suspended waiting on arbitrary logical state. A thread that simply loops while checking queue occupancy (“busy-waiting”) wastes processor cycles and starves other threads contending for execution cores.</p>
-<p>To resolve this, the queue pairs a mutex with <strong>condition variables</strong>. A condition variable enables a thread to release its held mutex and enter a sleep state atomically in a single hardware-supervised step. The atomicity of this transition is essential: if releasing the lock and sleeping were separate operations, a competing thread could signal a state change in the intervening gap, causing the waiting thread to sleep indefinitely—a catastrophic concurrency failure known as a <strong>lost wakeup</strong>.</p>
+<p>To resolve this, the queue pairs a mutex with <strong>condition variables</strong>. A condition variable enables a thread to release its held mutex and enter a sleep state atomically in a single hardware-supervised step. The atomicity of this transition is essential: if releasing the lock and sleeping were separate operations, a competing thread could signal a state change in the intervening gap, causing the waiting thread to sleep indefinitely, a catastrophic concurrency failure known as a <strong>lost wakeup</strong>.</p>
 <p>Because the queue coordinates two opposing boundary states, it employs dual condition variables:</p>
 <ul>
 <li><strong><code>is_full</code>:</strong> Suspends producer threads while the queue is full (<code>size == capacity</code>).</li>
@@ -476,7 +476,7 @@ match        yes
 </div>
 
 <h2 id="193-the-free-list-allocator"><a class="header" href="#193-the-free-list-allocator">19.3 The Free-List Allocator</a></h2>
-<p>While the operating system allocates memory in coarse, page-sized increments (typically 4 KiB), user-space applications require dynamic allocation for objects with arbitrary sizes and heterogeneous lifetimes. A memory allocator bridges this granularity gap by requesting a large contiguous memory region—an <strong>arena</strong>—from the kernel and managing sub-allocations internally.</p>
+<p>While the operating system allocates memory in coarse, page-sized increments (typically 4 KiB), user-space applications require dynamic allocation for objects with arbitrary sizes and heterogeneous lifetimes. A memory allocator bridges this granularity gap by requesting a large contiguous memory region (an <strong>arena</strong>) from the kernel and managing sub-allocations internally.</p>
 <h3 id="1931-memory-architecture-and-layout-topology"><a class="header" href="#1931-memory-architecture-and-layout-topology">19.3.1 Memory Architecture and Layout Topology</a></h3>
 <p>A free-list allocator manages an arena as a continuous sequence of memory blocks without gaps. Every block consists of two distinct components:</p>
 <ul>
@@ -489,7 +489,7 @@ match        yes
 <ul>
 <li><strong>First-Fit Search:</strong> Upon receiving an allocation request of <code>n</code> bytes, the allocator rounds <code>n</code> up to the next 16-byte boundary. It then traverses the block list in address order and selects the first free block whose payload capacity meets or exceeds the aligned request.</li>
 <li><strong>Block Splitting:</strong> If the selected free block is significantly larger than the requested size, allocating the entire block causes excessive <strong>internal fragmentation</strong> (wasted capacity within an allocated block). If the excess capacity is sufficient to house a 32-byte header and at least a 16-byte payload (48 bytes minimum), the allocator splits the block: the front portion is assigned to the caller, and the remainder is formatted into a new free block linked into the arena.</li>
-<li><strong>Coalescing Upon Release:</strong> When <code>release(p)</code> is invoked, the allocator accesses the preceding header at <code>p - sizeof(Header)</code> and marks the block as free. If adjacent neighboring blocks in memory are also free, leaving them fragmented would prevent future large allocations even if total free capacity is sufficient—a condition known as <strong>external fragmentation</strong>. The allocator therefore coalesces adjacent free blocks into a single unified block, recovering the 32-byte overhead of the subsumed header and consolidating available memory.</li>
+<li><strong>Coalescing Upon Release:</strong> When <code>release(p)</code> is invoked, the allocator accesses the preceding header at <code>p - sizeof(Header)</code> and marks the block as free. If adjacent neighboring blocks in memory are also free, leaving them fragmented would prevent future large allocations even if total free capacity is sufficient, a condition known as <strong>external fragmentation</strong>. The allocator therefore coalesces adjacent free blocks into a single unified block, recovering the 32-byte overhead of the subsumed header and consolidating available memory.</li>
 </ul>
 <h3 id="1933-structural-invariants"><a class="header" href="#1933-structural-invariants">19.3.3 Structural Invariants</a></h3>
 <p>The allocator preserves the following invariants across every allocation and release cycle:</p>
@@ -971,7 +971,7 @@ after releasing everything:
 </div>
 
 <h2 id="194-the-lock-free-single-producer-single-consumer-ring-buffer"><a class="header" href="#194-the-lock-free-single-producer-single-consumer-ring-buffer">19.4 The Lock-Free Single-Producer Single-Consumer Ring Buffer</a></h2>
-<p>In ultra-low-latency systems—such as high-frequency trading engines, audio processing graphs, and real-time network drivers—mutex-based queues introduce unacceptable jitter. Kernel-managed thread preemption, lock acquisition overhead, and priority inversions degrade deterministic throughput. A lock-free Single-Producer Single-Consumer (SPSC) ring buffer eliminates locks entirely, enabling safe, asynchronous communication across a dedicated producer and consumer thread using hardware-level memory ordering.</p>
+<p>In ultra-low-latency systems (such as high-frequency trading engines, audio processing graphs, and real-time network drivers), mutex-based queues introduce unacceptable jitter. Kernel-managed thread preemption, lock acquisition overhead, and priority inversions degrade deterministic throughput. A lock-free Single-Producer Single-Consumer (SPSC) ring buffer eliminates locks entirely, enabling safe, asynchronous communication across a dedicated producer and consumer thread using hardware-level memory ordering.</p>
 <h3 id="1941-architectural-model-and-single-writer-principle"><a class="header" href="#1941-architectural-model-and-single-writer-principle">19.4.1 Architectural Model and Single-Writer Principle</a></h3>
 <p>The ring buffer manages a fixed-size contiguous array of capacity C, accessed via two monotonically increasing 64-bit integer indices:</p>
 <ul>
@@ -1493,12 +1493,12 @@ parse over : None
 <p>The central challenge of an LRU cache is achieving strict O(1) time complexity for both data retrieval (<code>get</code>) and insertion/eviction (<code>put</code>). Neither primitive data structure satisfies both constraints independently:</p>
 <ul>
 <li><strong>Hash Table:</strong> Provides expected O(1) key lookup and insertion, but maintains no sequential record of access history. Evicting the oldest key requires an O(N) linear scan of all entries.</li>
-<li><strong>Doubly Linked List:</strong> Preserves access history by maintaining elements in temporal order—most recently accessed at the head, least recently accessed at the tail. Splicing a known node to the head or removing the tail executes in O(1) time, but locating a specific key requires an O(N) linear traversal.</li>
+<li><strong>Doubly Linked List:</strong> Preserves access history by maintaining elements in temporal order, with the most recently accessed at the head and the least recently accessed at the tail. Splicing a known node to the head or removing the tail executes in O(1) time, but locating a specific key requires an O(N) linear traversal.</li>
 </ul>
 <figure>
 <img src="figures/ch19_lru_cache.svg" alt="LRU cache: hash table indexing into a doubly linked recency chain." />
 </figure>
-<p>The LRU cache resolves this tension through structural composition: a hash map whose values are direct pointers (or iterators) referencing nodes within a doubly linked list. The linked list stores the actual key-value pairs, while the hash map provides instantaneous O(1) index access into the list.</p>
+<p>The LRU cache reconciles these dual complexity constraints through structural composition: a hash map whose values are direct pointers (or iterators) referencing nodes within a doubly linked list. The linked list stores the actual key-value pairs, while the hash map provides instantaneous O(1) index access into the list.</p>
 <h3 id="1962-state-invariants-and-access-dynamics"><a class="header" href="#1962-state-invariants-and-access-dynamics">19.6.2 State Invariants and Access Dynamics</a></h3>
 <p>The cache maintains the following structural invariants:</p>
 <ul>
@@ -1603,8 +1603,8 @@ get 4 -&gt; 40
 //!
 //! Two structures cooperate to give O(1) `get` and `put`:
 //!
-//! * `lookup_table: HashMap&lt;K, usize&gt;` — key → index into the arena.
-//! * `nodes: Vec&lt;Node&lt;K, V&gt;&gt;` — an **arena** of nodes; indices play the role
+//! * `lookup_table: HashMap&lt;K, usize&gt;`: key → index into the arena.
+//! * `nodes: Vec&lt;Node&lt;K, V&gt;&gt;`: an **arena** of nodes; indices play the role
 //!   of pointers, sidestepping `Rc&lt;RefCell&lt;…&gt;&gt;` and its borrow-checker overhead.
 //!
 //! The arena is stitched into a doubly linked list through `head`/`tail`:
@@ -1887,7 +1887,7 @@ get 4 -&gt; 40
 <p>The synchronization contract of a reader-writer lock enforces two distinct access modes:</p>
 <ul>
 <li><strong>Shared Access (Read):</strong> Arbitrary numbers of reader threads may acquire the lock concurrently, provided no writer thread holds or is actively modifying the resource.</li>
-<li><strong>Exclusive Access (Write):</strong> Exactly one writer thread may hold the lock. While a writer is active, all other threads—both readers and writers—are precluded from entering.</li>
+<li><strong>Exclusive Access (Write):</strong> Exactly one writer thread may hold the lock. While a writer is active, all other threads (both readers and writers) are precluded from entering.</li>
 </ul>
 <p>The internal state is mediated via three counters protected by an underlying mutex and coordinated via a condition variable:</p>
 <ul>
@@ -2460,7 +2460,7 @@ total    500500
 </div>
 
 <h2 id="199-the-process-pipeline-fork-exec-and-pipe"><a class="header" href="#199-the-process-pipeline-fork-exec-and-pipe">19.9 The Process Pipeline: <code>fork</code>, <code>exec</code> and <code>pipe</code></a></h2>
-<p>The Unix architecture is distinguished by the philosophy of composing complex data processing workflows from small, specialized utilities connected via standardized byte streams. Constructing a process pipeline—such as piping the output of <code>echo hello</code> into <code>tr a-z A-Z</code>—requires orchestrating inter-process communication (IPC) through kernel file descriptors, process duplication, and address space replacement.</p>
+<p>The Unix architecture is distinguished by the philosophy of composing complex data processing workflows from small, specialized utilities connected via standardized byte streams. Constructing a process pipeline, such as piping the output of <code>echo hello</code> into <code>tr a-z A-Z</code>, requires orchestrating inter-process communication (IPC) through kernel file descriptors, process duplication, and address space replacement.</p>
 <h3 id="1991-kernel-file-descriptor-mechanics-and-redirection"><a class="header" href="#1991-kernel-file-descriptor-mechanics-and-redirection">19.9.1 Kernel File Descriptor Mechanics and Redirection</a></h3>
 <p>A running program interacts with input/output channels via integer file descriptors, which index into the process’s kernel-managed File Descriptor Table. Standard conventions establish descriptor 0 as standard input (<code>stdin</code>), descriptor 1 as standard output (<code>stdout</code>), and descriptor 2 as standard error (<code>stderr</code>).</p>
 <p>Crucially, user-space programs are decoupled from underlying device geometries: writing to descriptor 1 invokes the same <code>write()</code> system call regardless of whether the descriptor refers to a terminal display, a disk file, a network socket, or an IPC pipe. Constructing a pipeline exploits this indirection by remapping file descriptors before executing program binaries.</p>
@@ -3126,9 +3126,6 @@ cycle after : yes
                                 <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M41.4 233.4c-12.5 12.5-12.5 32.8 0 45.3l160 160c12.5 12.5 32.8 12.5 45.3 0s12.5-32.8 0-45.3L109.3 256 246.6 118.6c12.5-12.5 12.5-32.8 0-45.3s-32.8-12.5-45.3 0l-160 160z"/></svg></span>
                             </a>
 
-                            <a rel="next prefetch" href="appendix-a-harness.html" class="mobile-nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
-                                <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M278.6 233.4c12.5 12.5 12.5 32.8 0 45.3l-160 160c-12.5 12.5-32.8 12.5-45.3 0s-12.5-32.8 0-45.3L210.7 256 73.4 118.6c-12.5-12.5-12.5-32.8 0-45.3s32.8-12.5 45.3 0l160 160z"/></svg></span>
-                            </a>
 
                         <div style="clear: both"></div>
                     </nav>
@@ -3140,9 +3137,6 @@ cycle after : yes
                         <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M41.4 233.4c-12.5 12.5-12.5 32.8 0 45.3l160 160c12.5 12.5 32.8 12.5 45.3 0s12.5-32.8 0-45.3L109.3 256 246.6 118.6c12.5-12.5 12.5-32.8 0-45.3s-32.8-12.5-45.3 0l-160 160z"/></svg></span>
                     </a>
 
-                    <a rel="next prefetch" href="appendix-a-harness.html" class="nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
-                        <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M278.6 233.4c12.5 12.5 12.5 32.8 0 45.3l-160 160c-12.5 12.5-32.8 12.5-45.3 0s-12.5-32.8 0-45.3L210.7 256 73.4 118.6c-12.5-12.5-12.5-32.8 0-45.3s32.8-12.5 45.3 0l160 160z"/></svg></span>
-                    </a>
             </nav>
 
         </div>
@@ -3169,7 +3163,7 @@ cycle after : yes
         <script src="book-609e4cb8.js"></script>
 
         <!-- Custom JS scripts -->
-        <script src="theme/figures-7a3fdfc9.js"></script>
+        <script src="theme/figures-afd72f2c.js"></script>
 
 
 

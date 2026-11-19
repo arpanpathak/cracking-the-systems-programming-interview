@@ -28,7 +28,7 @@
         <link rel="stylesheet" id="mdbook-ayu-highlight-css" href="ayu-highlight-3fdfc3ac.css">
 
         <!-- Custom theme stylesheets -->
-        <link rel="stylesheet" href="theme/custom-e0671a52.css">
+        <link rel="stylesheet" href="theme/custom-9125cc61.css">
 
         <!-- MathJax -->
         <script async src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.1/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
@@ -38,10 +38,10 @@
             const path_to_root = "";
             const default_light_theme = "light";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "searchindex-4f3aedde.js";
+            window.path_to_searchindex_js = "searchindex-2f3b4ad9.js";
         </script>
         <!-- Start loading toc.js asap -->
-        <script src="toc-2b639993.js"></script>
+        <script src="toc-f3585118.js"></script>
     </head>
     <body>
     <div id="mdbook-help-container">
@@ -237,7 +237,11 @@
 <li><a href="ch03-processes.html#3-process-abstraction-and-lifecycle"><strong>3. Process Abstraction and Lifecycle</strong></a>
 <ul>
 <li><a href="ch03-processes.html#31-the-process-control-block-and-address-space-topology">3.1 The Process Control Block and Address Space Topology</a></li>
-<li><a href="ch03-processes.html#32-process-creation-and-the-mechanics-of-fork">3.2 Process Creation and the Mechanics of <code>fork</code></a></li>
+<li><a href="ch03-processes.html#32-process-creation-and-the-mechanics-of-fork">3.2 Process Creation and the Mechanics of <code>fork</code></a>
+<ul>
+<li><a href="ch03-processes.html#321-the-process-creation-and-reaping-system-call-interface-fork-_exit-waitpid">3.2.1 The Process Creation and Reaping System Call Interface (<code>fork</code>, <code>_exit</code>, <code>waitpid</code>)</a></li>
+</ul>
+</li>
 <li><a href="ch03-processes.html#33-lifecycle-management-state-automaton-and-termination">3.3 Lifecycle Management, State Automaton, and Termination</a>
 <ul>
 <li><a href="ch03-processes.html#331-the-five-state-process-lifecycle-automaton">3.3.1 The Five-State Process Lifecycle Automaton</a></li>
@@ -261,8 +265,15 @@
 <li><a href="ch05-scheduling.html#5-scheduling-theory-and-policy"><strong>5. Scheduling Theory and Policy</strong></a>
 <ul>
 <li><a href="ch05-scheduling.html#51-scheduling-dynamics-and-performance-metrics">5.1 Scheduling Dynamics and Performance Metrics</a></li>
-<li><a href="ch05-scheduling.html#52-fundamental-scheduling-policies">5.2 Fundamental Scheduling Policies (FIFO, SJF, RR, MLFQ)</a></li>
-<li><a href="ch05-scheduling.html#53-advanced-heuristics-in-production-schedulers">5.3 Advanced Heuristics in Production Schedulers (CFS, Priority Inversion)</a></li>
+<li><a href="ch05-scheduling.html#52-fundamental-scheduling-policies">5.2 Fundamental Scheduling Policies (FCFS, SJF, RR)</a></li>
+<li><a href="ch05-scheduling.html#53-proportional-share-scheduling-linux-cfs-and-eevdf">5.3 Proportional-Share Scheduling: Linux CFS and EEVDF</a>
+<ul>
+<li><a href="ch05-scheduling.html#531-virtual-runtime-vruntime-accounting">5.3.1 Virtual Runtime (<code>vruntime</code>) Accounting</a></li>
+<li><a href="ch05-scheduling.html#532-red-black-tree-runqueue-and-the-transition-to-eevdf">5.3.2 Red-Black Tree Runqueue and the Transition to EEVDF</a></li>
+</ul>
+</li>
+<li><a href="ch05-scheduling.html#54-priority-inversion-and-priority-inheritance-protocols">5.4 Priority Inversion and Priority Inheritance Protocols</a></li>
+<li><a href="ch05-scheduling.html#55-multi-core-work-stealing-cache-affinity-and-numa-domains">5.5 Multi-Core Work Stealing, Cache Affinity, and NUMA Domains</a></li>
 </ul>
 </li>
 <li><a href="ch06-synchronization.html#6-synchronization-and-memory-ordering"><strong>6. Synchronization and Memory Ordering</strong></a>
@@ -270,7 +281,25 @@
 <li><a href="ch06-synchronization.html#61-mutual-exclusion-and-critical-sections">6.1 Mutual Exclusion and Critical Sections</a></li>
 <li><a href="ch06-synchronization.html#62-condition-variables-and-predicate-based-synchronization">6.2 Condition Variables and Predicate-Based Synchronization</a></li>
 <li><a href="ch06-synchronization.html#63-deadlock-causes-and-prevention">6.3 Deadlock: Causes and Prevention (Coffman Conditions)</a></li>
-<li><a href="ch06-synchronization.html#64-memory-ordering-and-visibility">6.4 Memory Ordering and Visibility (Acquire/Release vs. SeqCst)</a></li>
+<li><a href="ch06-synchronization.html#64-atomic-compare-and-swap-compare_exchange-vs-compare_exchange_weak">6.4 Atomic Compare-And-Swap (<code>compare_exchange</code> vs. <code>compare_exchange_weak</code>)</a>
+<ul>
+<li><a href="ch06-synchronization.html#641-semantics-of-the-atomic-read-modify-write">6.4.1 Semantics of the Atomic Read-Modify-Write</a></li>
+<li><a href="ch06-synchronization.html#642-hardware-realization-x86-64-lock-cmpxchg-vs-arm64-llsc">6.4.2 Hardware Realization: x86-64 <code>LOCK CMPXCHG</code> vs. ARM64 LL/SC</a></li>
+</ul>
+</li>
+<li><a href="ch06-synchronization.html#65-hardware-memory-ordering-store-buffers-and-litmus-tests">6.5 Hardware Memory Ordering, Store Buffers, and Litmus Tests</a>
+<ul>
+<li><a href="ch06-synchronization.html#651-microarchitectural-origins-of-memory-reordering">6.5.1 Microarchitectural Origins of Memory Reordering</a></li>
+<li><a href="ch06-synchronization.html#652-hardware-litmus-tests-store-buffering-vs-message-passing">6.5.2 Hardware Litmus Tests: Store Buffering vs. Message Passing</a></li>
+<li><a href="ch06-synchronization.html#653-complete-reference-table-of-c20-and-rust-2024-memory-orderings">6.5.3 Complete Reference Table of C++20 and Rust 2024 Memory Orderings</a></li>
+</ul>
+</li>
+<li><a href="ch06-synchronization.html#66-synchronization-beneath-the-primitives-futexes-and-seqlocks">6.6 Synchronization Beneath the Primitives: Futexes and Seqlocks</a>
+<ul>
+<li><a href="ch06-synchronization.html#661-fast-userspace-mutexes-futex-on-linux--__ulock-on-darwin">6.6.1 Fast Userspace Mutexes (<code>futex</code> on Linux / <code>__ulock</code> on Darwin)</a></li>
+<li><a href="ch06-synchronization.html#662-sequence-locks-seqlock-for-read-mostly-kernel-data">6.6.2 Sequence Locks (<code>Seqlock</code>) for Read-Mostly Kernel Data</a></li>
+</ul>
+</li>
 </ul>
 </li>
 </ul>
@@ -287,40 +316,94 @@
 <li><a href="ch07-virtual-memory.html#723-the-translation-lookaside-buffer-tlb-huge-pages-and-shootdowns">7.2.3 The Translation Lookaside Buffer (TLB), Huge Pages, and Shootdowns</a></li>
 </ul>
 </li>
-<li><a href="ch07-virtual-memory.html#73-fault-handling-and-memory-management-strategies">7.3 Fault Handling and Memory Management Strategies</a></li>
+<li><a href="ch07-virtual-memory.html#73-fault-handling-and-memory-management-strategies">7.3 Fault Handling and Memory Management Strategies</a>
+<ul>
+<li><a href="ch07-virtual-memory.html#731-the-mmap-and-mprotect-system-call-interface">7.3.1 The <code>mmap</code> and <code>mprotect</code> System Call Interface</a></li>
+</ul>
+</li>
 </ul>
 </li>
 <li><a href="ch08-allocation.html#8-memory-allocation-and-management-strategies"><strong>8. Memory Allocation and Management Strategies</strong></a>
 <ul>
-<li><a href="ch08-allocation.html#81-the-allocator-interface-and-efficiency-constraints">8.1 The Allocator Interface and Efficiency Constraints</a></li>
-<li><a href="ch08-allocation.html#82-arena-allocation-the-bump-allocator">8.2 Arena Allocation: The Bump Allocator</a></li>
-<li><a href="ch08-allocation.html#83-explicit-management-free-list-allocation">8.3 Explicit Management: Free-List Allocation</a></li>
+<li><a href="ch08-allocation.html#81-the-allocator-interface-and-efficiency-constraints">8.1 The Allocator Interface and Efficiency Constraints</a>
+<ul>
+<li><a href="ch08-allocation.html#811-requesting-raw-arenas-from-the-kernel-mmap">8.1.1 Requesting Raw Arenas from the Kernel (<code>mmap</code>)</a></li>
+<li><a href="ch08-allocation.html#812-hardware-alignment-and-bitwise-rounding">8.1.2 Hardware Alignment and Bitwise Rounding</a></li>
+</ul>
+</li>
+<li><a href="ch08-allocation.html#82-arena-allocation-from-safe-index-pools-to-raw-bump-allocators">8.2 Arena Allocation: From Safe Index Pools to Raw Bump Allocators</a>
+<ul>
+<li><a href="ch08-allocation.html#821-level-1-the-safe-index-arena-zero-unsafe">8.2.1 Level 1: The Safe Index Arena (Zero <code>unsafe</code>)</a></li>
+<li><a href="ch08-allocation.html#822-level-2-the-raw-byte-bump-allocator-mmap-backed">8.2.2 Level 2: The Raw Byte Bump Allocator (<code>mmap</code>-Backed)</a></li>
+<li><a href="ch08-allocation.html#823-backing-store-trade-off-global-allocator-chunks-malloc--stdalloc-vs-direct-mmap">8.2.3 Backing Store Trade-Off: Global-Allocator Chunks (<code>malloc</code> / <code>std::alloc</code>) vs. Direct <code>mmap</code></a></li>
+</ul>
+</li>
+<li><a href="ch08-allocation.html#83-explicit-management-free-list-allocation">8.3 Explicit Management: Free-List Allocation</a>
+<ul>
+<li><a href="ch08-allocation.html#831-first-fit-search-splitting-and-coalescing">8.3.1 First-Fit Search, Splitting, and Coalescing</a></li>
+</ul>
+</li>
+<li><a href="ch08-allocation.html#84-production-allocator-architecture-boundary-tags-size-classes-and-mmap">8.4 Production Allocator Architecture: Boundary Tags, Size Classes, and <code>mmap</code></a>
+<ul>
+<li><a href="ch08-allocation.html#841-knuths-boundary-tags-for-o1-bidirectional-coalescing">8.4.1 Knuth’s Boundary Tags for O(1) Bidirectional Coalescing</a></li>
+<li><a href="ch08-allocation.html#842-segregated-size-classes-and-per-thread-caches-tcache">8.4.2 Segregated Size Classes and Per-Thread Caches (<code>tcache</code>)</a></li>
+<li><a href="ch08-allocation.html#843-the-brk--arena-vs-mmap-allocation-threshold-m_mmap_threshold">8.4.3 The <code>brk</code> / Arena vs. <code>mmap</code> Allocation Threshold (<code>M_MMAP_THRESHOLD</code>)</a></li>
+</ul>
+</li>
 </ul>
 </li>
 <li><a href="ch09-system-calls.html#9-the-kernel-boundary-and-the-cost-of-system-calls"><strong>9. The Kernel Boundary and the Cost of System Calls</strong></a>
 <ul>
-<li><a href="ch09-system-calls.html#91-the-mechanics-of-the-system-call-interface">9.1 The Mechanics of the System Call Interface</a></li>
-<li><a href="ch09-system-calls.html#92-performance-implications-and-optimization-via-buffering">9.2 Performance Implications and Optimization via Buffering</a></li>
+<li><a href="ch09-system-calls.html#91-the-mechanics-of-the-system-call-interface">9.1 The Mechanics of the System Call Interface</a>
+<ul>
+<li><a href="ch09-system-calls.html#911-why-benchmarking-uses-getppid-not-getpid">9.1.1 Why Benchmarking Uses <code>getppid()</code>, Not <code>getpid()</code></a></li>
+</ul>
+</li>
+<li><a href="ch09-system-calls.html#92-performance-implications-and-optimization-via-buffering">9.2 Performance Implications and Optimization via Buffering</a>
+<ul>
+<li><a href="ch09-system-calls.html#921-the-posix-descriptor-io-interface-open-write-close-setvbuf">9.2.1 The POSIX Descriptor I/O Interface (<code>open</code>, <code>write</code>, <code>close</code>, <code>setvbuf</code>)</a></li>
+</ul>
+</li>
 </ul>
 </li>
 <li><a href="ch10-signals.html#10-asynchronous-notifications-and-signal-semantics"><strong>10. Asynchronous Notifications and Signal Semantics</strong></a>
 <ul>
 <li><a href="ch10-signals.html#101-the-signal-lifecycle-generation-pending-and-delivery">10.1 The Signal Lifecycle: Generation, Pending, and Delivery</a></li>
-<li><a href="ch10-signals.html#102-constraints-on-asynchronous-execution">10.2 Constraints on Asynchronous Execution and Async-Signal-Safety</a></li>
+<li><a href="ch10-signals.html#102-constraints-on-asynchronous-execution-and-async-signal-safety">10.2 Constraints on Asynchronous Execution and Async-Signal-Safety</a>
+<ul>
+<li><a href="ch10-signals.html#1021-the-signal-configuration-interface-struct-sigaction-sigaction-sigprocmask-sigset_t-raise">10.2.1 The Signal Configuration Interface (<code>struct sigaction</code>, <code>sigaction</code>, <code>sigprocmask</code>, <code>sigset_t</code>, <code>raise</code>)</a></li>
+</ul>
+</li>
 <li><a href="ch10-signals.html#103-process-lifecycle-synchronization-sigchld-and-reaping">10.3 Process Lifecycle Synchronization: <code>SIGCHLD</code> and Reaping</a></li>
 </ul>
 </li>
 <li><a href="ch11-ipc.html#11-inter-process-communication-ipc"><strong>11. Inter-Process Communication (IPC)</strong></a>
 <ul>
-<li><a href="ch11-ipc.html#111-unidirectional-byte-streams-pipes">11.1 Unidirectional Byte Streams: Pipes</a></li>
-<li><a href="ch11-ipc.html#112-zero-copy-communication-shared-memory">11.2 Zero-Copy Communication: Shared Memory</a></li>
-<li><a href="ch11-ipc.html#113-bidirectional-channels-socket-pairs">11.3 Bidirectional Channels: Socket Pairs</a></li>
+<li><a href="ch11-ipc.html#111-unidirectional-byte-streams-pipes">11.1 Unidirectional Byte Streams: Pipes</a>
+<ul>
+<li><a href="ch11-ipc.html#1111-the-pipe-system-call-interface-and-stream-semantics">11.1.1 The <code>pipe</code> System Call Interface and Stream Semantics</a></li>
+</ul>
+</li>
+<li><a href="ch11-ipc.html#112-zero-copy-communication-shared-memory">11.2 Zero-Copy Communication: Shared Memory</a>
+<ul>
+<li><a href="ch11-ipc.html#1121-map_shared-mappings-and-process-shared-mutex-attributes">11.2.1 <code>MAP_SHARED</code> Mappings and Process-Shared Mutex Attributes</a></li>
+</ul>
+</li>
+<li><a href="ch11-ipc.html#113-bidirectional-channels-socket-pairs">11.3 Bidirectional Channels: Socket Pairs</a>
+<ul>
+<li><a href="ch11-ipc.html#1131-the-socketpair-system-call-interface">11.3.1 The <code>socketpair</code> System Call Interface</a></li>
+</ul>
+</li>
 <li><a href="ch11-ipc.html#114-comparative-analysis-of-ipc-mechanisms">11.4 Comparative Analysis of IPC Mechanisms</a></li>
 </ul>
 </li>
 <li><a href="ch12-filesystems.html#12-file-system-architecture-and-durability"><strong>12. File System Architecture and Durability</strong></a>
 <ul>
-<li><a href="ch12-filesystems.html#121-the-file-descriptor-and-the-open-file-description">12.1 The File Descriptor and the Open File Description</a></li>
+<li><a href="ch12-filesystems.html#121-the-file-descriptor-and-the-open-file-description">12.1 The File Descriptor and the Open File Description</a>
+<ul>
+<li><a href="ch12-filesystems.html#1211-the-posix-file-system-call-interface-open-lseek-fstat-struct-stat-ftruncate-fsync-unlink">12.1.1 The POSIX File System Call Interface (<code>open</code>, <code>lseek</code>, <code>fstat</code>, <code>struct stat</code>, <code>ftruncate</code>, <code>fsync</code>, <code>unlink</code>)</a></li>
+</ul>
+</li>
 <li><a href="ch12-filesystems.html#122-on-disk-organization-and-inode-based-mapping">12.2 On-Disk Organization and Inode-Based Mapping</a></li>
 <li><a href="ch12-filesystems.html#123-sparse-files-and-the-mechanics-of-durability">12.3 Sparse Files and the Mechanics of Durability (<code>fsync</code>, Journaling)</a></li>
 </ul>
@@ -332,23 +415,43 @@
 <li><a href="ch13-io-event-loops.html#13-io-multiplexing-and-the-event-loop"><strong>13. I/O Multiplexing and the Event Loop</strong></a>
 <ul>
 <li><a href="ch13-io-event-loops.html#131-the-scalability-limits-of-thread-per-connection">13.1 The Scalability Limits of Thread-Per-Connection</a></li>
-<li><a href="ch13-io-event-loops.html#132-event-driven-architecture-and-io-multiplexing">13.2 Event-Driven Architecture and I/O Multiplexing</a></li>
-<li><a href="ch13-io-event-loops.html#133-complexity-and-evolution-of-multiplexing-primitives">13.3 Complexity and Evolution of Multiplexing Primitives (<code>select</code>, <code>poll</code>, <code>epoll</code>, <code>kqueue</code>)</a></li>
+<li><a href="ch13-io-event-loops.html#132-event-driven-architecture-and-io-multiplexing">13.2 Event-Driven Architecture and I/O Multiplexing</a>
+<ul>
+<li><a href="ch13-io-event-loops.html#1321-socket-setup-struct-sockaddr_in-and-the-poll2-system-call-interface">13.2.1 Socket Setup, <code>struct sockaddr_in</code>, and the <code>poll(2)</code> System Call Interface</a></li>
+</ul>
+</li>
+<li><a href="ch13-io-event-loops.html#133-complexity-and-evolution-of-multiplexing-primitives-select-poll-epoll-kqueue">13.3 Complexity and Evolution of Multiplexing Primitives (<code>select</code>, <code>poll</code>, <code>epoll</code>, <code>kqueue</code>)</a></li>
 </ul>
 </li>
 <li><a href="ch14-networking.html#14-network-protocols-and-the-socket-interface"><strong>14. Network Protocols and the Socket Interface</strong></a>
 <ul>
 <li><a href="ch14-networking.html#141-the-transmission-control-protocol-tcp-reliable-byte-streams">14.1 The Transmission Control Protocol (TCP): Reliable Byte Streams</a></li>
-<li><a href="ch14-networking.html#142-the-user-datagram-protocol-udp-unreliable-message-delivery">14.2 The User Datagram Protocol (UDP): Unreliable Message Delivery</a></li>
-<li><a href="ch14-networking.html#143-name-resolution-and-addressing">14.3 Name Resolution and Addressing</a></li>
+<li><a href="ch14-networking.html#142-the-user-datagram-protocol-udp-unreliable-message-delivery">14.2 The User Datagram Protocol (UDP): Unreliable Message Delivery</a>
+<ul>
+<li><a href="ch14-networking.html#1421-the-connectionless-datagram-system-call-interface-sendto-recvfrom">14.2.1 The Connectionless Datagram System Call Interface (<code>sendto</code>, <code>recvfrom</code>)</a></li>
+</ul>
+</li>
+<li><a href="ch14-networking.html#143-name-resolution-and-addressing">14.3 Name Resolution and Addressing</a>
+<ul>
+<li><a href="ch14-networking.html#1431-protocol-independent-resolution-struct-addrinfo-getaddrinfo-freeaddrinfo-inet_ntop">14.3.1 Protocol-Independent Resolution (<code>struct addrinfo</code>, <code>getaddrinfo</code>, <code>freeaddrinfo</code>, <code>inet_ntop</code>)</a></li>
+</ul>
+</li>
 </ul>
 </li>
 <li><a href="ch15-daemons.html#15-daemon-lifecycle-and-service-supervision"><strong>15. Daemon Lifecycle and Service Supervision</strong></a>
 <ul>
-<li><a href="ch15-daemons.html#151-the-ritual-of-detachment">15.1 The Ritual of Detachment (Double Fork, <code>setsid</code>, <code>umask</code>)</a></li>
+<li><a href="ch15-daemons.html#151-the-ritual-of-detachment">15.1 The Ritual of Detachment (Double Fork, <code>setsid</code>, <code>umask</code>)</a>
+<ul>
+<li><a href="ch15-daemons.html#1511-the-detachment-system-call-interface-setsid-umask-chdir-dup2">15.1.1 The Detachment System Call Interface (<code>setsid</code>, <code>umask</code>, <code>chdir</code>, <code>dup2</code>)</a></li>
+</ul>
+</li>
 <li><a href="ch15-daemons.html#152-signal-driven-management-and-the-lifecycle-interface">15.2 Signal-Driven Management and the Lifecycle Interface</a></li>
 <li><a href="ch15-daemons.html#153-service-supervision-and-on-demand-activation-launchd-and-systemd">15.3 Service Supervision and On-Demand Activation: <code>launchd</code> and <code>systemd</code></a></li>
-<li><a href="ch15-daemons.html#154-asynchronous-fault-detection-and-process-monitoring-via-kqueue">15.4 Asynchronous Fault Detection and Process Monitoring via <code>kqueue</code></a></li>
+<li><a href="ch15-daemons.html#154-asynchronous-fault-detection-and-process-monitoring-via-kqueue">15.4 Asynchronous Fault Detection and Process Monitoring via <code>kqueue</code></a>
+<ul>
+<li><a href="ch15-daemons.html#1542-event-driven-supervision-with-evfilt_proc-and-the-struct-kevent-interface">15.4.2 Event-Driven Supervision with <code>EVFILT_PROC</code> and the <code>struct kevent</code> Interface</a></li>
+</ul>
+</li>
 </ul>
 </li>
 <li><a href="ch16-virtualization.html#16-virtualization-and-containerization"><strong>16. Virtualization and Containerization</strong></a>
@@ -470,146 +573,133 @@
 </li>
 </ul>
 <hr>
-<h3 id="appendices"><a class="header" href="#appendices">Appendices</a></h3>
-<ul>
-<li><a href="appendix-a-harness.html#appendix-a-the-verification-harness"><strong>Appendix A. The Verification Harness</strong></a>
-<ul>
-<li><a href="appendix-a-harness.html#a1-the-environment">A.1 The Environment</a></li>
-<li><a href="appendix-a-harness.html#a2-how-the-script-works">A.2 How the Script Works</a></li>
-<li><a href="appendix-a-harness.html#a3-running-the-listings">A.3 Running the Listings</a></li>
-<li><a href="appendix-a-harness.html#a4-inventory">A.4 Target Inventory</a></li>
-</ul>
-</li>
-<li><a href="appendix-b-reading.html#appendix-b-further-reading"><strong>Appendix B. Further Reading</strong></a></li>
-</ul>
-<hr>
 <h2 id="part-ii-systems-subject--keyword-index"><a class="header" href="#part-ii-systems-subject--keyword-index">Part II: Systems Subject &amp; Keyword Index</a></h2>
 <p>A thematic, alphabetical cross-reference linking systems topics directly to their foundational derivation and practical implementation.</p>
 <h3 id="a"><a class="header" href="#a">A</a></h3>
 <ul>
-<li><strong>Abstraction (Hardware Abstraction Layer)</strong> — The foundational operating system role mediating between complex physical hardware and uniform software primitives (files, sockets, processes).
+<li><strong>Abstraction (Hardware Abstraction Layer)</strong>: The foundational operating system role mediating between complex physical hardware and uniform software primitives (files, sockets, processes).
 <ul>
 <li>Ontological Derivation: <a href="ch01-what-is-an-os.html#12-axiomatic-roles-abstraction-isolation-and-resource-management">§1.2</a></li>
 <li>Device Independence: <a href="ch01-what-is-an-os.html#11-architectural-limitations-of-bare-metal-execution">§1.1</a></li>
 </ul>
 </li>
-<li><strong>Acquire-Release Semantics</strong> — Synchronizes shared memory between threads without the heavy hardware penalty of full sequential consistency fences.
+<li><strong>Acquire-Release Semantics</strong>: Synchronizes shared memory between threads without the heavy hardware penalty of full sequential consistency fences.
 <ul>
-<li>Theory &amp; Memory Models: <a href="ch06-synchronization.html#64-memory-ordering-and-visibility">§6.4</a></li>
+<li>Theory &amp; Memory Models: <a href="ch06-synchronization.html#65-hardware-memory-ordering-store-buffers-and-litmus-tests">§6.5</a></li>
 <li>Lock-Free SPSC Application: <a href="ch19-interview-problems.html#1941-architectural-model-and-single-writer-principle">§19.4.1</a></li>
 </ul>
 </li>
-<li><strong>Address Space Layout</strong> — Virtual memory organization across text, data, BSS, heap, memory-mapped regions, and user stack.
+<li><strong>Address Space Layout</strong>: Virtual memory organization across text, data, BSS, heap, memory-mapped regions, and user stack.
 <ul>
 <li>Process Memory Topology: <a href="ch03-processes.html#31-the-process-control-block-and-address-space-topology">§3.1</a></li>
 <li>Page-Based Isolation: <a href="ch07-virtual-memory.html#71-page-based-abstraction-and-isolation">§7.1</a></li>
 <li>Architectural Comparison: <a href="ch19-interview-problems.html#19121-process-isolation-vs-thread-concurrency-topology">§19.12.1</a></li>
 </ul>
 </li>
-<li><strong>Address Translation (Hand Calculation)</strong> — Complete step-by-step mathematical walk of a 48-bit canonical virtual address through PML4, PDPT, PD, and PT levels to physical address assembly.
+<li><strong>Address Translation (Hand Calculation)</strong>: Complete step-by-step mathematical walk of a 48-bit canonical virtual address through PML4, PDPT, PD, and PT levels to physical address assembly.
 <ul>
 <li>Numerical Walkthrough &amp; Invariants: <a href="ch07-virtual-memory.html#722-hand-calculated-4-level-address-translation-walkthrough">§7.2.2</a></li>
 </ul>
 </li>
-<li><strong>Anonymous Mapping (<code>MAP_ANON | MAP_PRIVATE</code>)</strong> — Kernel allocation of zero-initialized demand pages unbacked by physical disk files.
+<li><strong>Anonymous Mapping (<code>MAP_ANON | MAP_PRIVATE</code>)</strong>: Kernel allocation of zero-initialized demand pages unbacked by physical disk files.
 <ul>
 <li>Page Fault Dynamics: <a href="ch07-virtual-memory.html#71-page-based-abstraction-and-isolation">§7.1</a></li>
-<li>Heap Arena Construction: <a href="ch08-allocation.html#82-arena-allocation-the-bump-allocator">§8.2</a>, <a href="ch08-allocation.html#83-explicit-management-free-list-allocation">§8.3</a></li>
+<li>Heap Arena Construction: <a href="ch08-allocation.html#822-level-2-the-raw-byte-bump-allocator-mmap-backed">§8.2.2</a>, <a href="ch08-allocation.html#83-explicit-management-free-list-allocation">§8.3</a></li>
 </ul>
 </li>
-<li><strong>APIC / IO-APIC &amp; ARM GIC (Interrupt Controllers)</strong> — Two-tier hardware interrupt routing, Message Signaled Interrupts (MSI-X), and priority arbitration across multiprocessor cores.
+<li><strong>APIC / IO-APIC &amp; ARM GIC (Interrupt Controllers)</strong>: Two-tier hardware interrupt routing, Message Signaled Interrupts (MSI-X), and priority arbitration across multiprocessor cores.
 <ul>
 <li>Hardware Routing &amp; EOI: <a href="ch02-the-machine.html#241-interrupt-controllers-apic-io-apic-msi-x-and-arm-gic">§2.4.1</a></li>
 </ul>
 </li>
-<li><strong>Apple Silicon Unified Memory (UMA)</strong> — Shared physical memory substrate between CPU, GPU, and Neural Engine without PCIe bus serialization.
+<li><strong>Apple Silicon Unified Memory (UMA)</strong>: Shared physical memory substrate between CPU, GPU, and Neural Engine without PCIe bus serialization.
 <ul>
 <li>Architectural Analysis: <a href="ch17-multiprocessors.html#173-hardware-accelerators-discrete-architecture-vs-unified-memory-architecture-uma">§17.3</a></li>
 </ul>
 </li>
-<li><strong>Async-Signal-Safety</strong> — Functions safe to execute inside asynchronous signal handlers without corrupting thread stacks or deadlocking libc mutexes.
+<li><strong>Async-Signal-Safety</strong>: Functions safe to execute inside asynchronous signal handlers without corrupting thread stacks or deadlocking libc mutexes.
 <ul>
-<li>Re-entrancy Invariants: <a href="ch10-signals.html#102-constraints-on-asynchronous-execution">§10.2</a></li>
+<li>Re-entrancy Invariants: <a href="ch10-signals.html#102-constraints-on-asynchronous-execution-and-async-signal-safety">§10.2</a></li>
 <li>Atomic Handler Disposition: <a href="ch15-daemons.html#152-signal-driven-management-and-the-lifecycle-interface">§15.2</a></li>
 </ul>
 </li>
-<li><strong>Atomicity Gap</strong> — The structural discrepancy between high-level language expressions (<code>counter++</code>) and low-level load-modify-store sequences causing lost updates.
+<li><strong>Atomicity Gap</strong>: The structural discrepancy between high-level language expressions (<code>counter++</code>) and low-level load-modify-store sequences causing lost updates.
 <ul>
 <li>Architectural Analysis: <a href="ch02-the-machine.html#212-formal-derivation-of-the-atomicity-gap">§2.1.2</a></li>
 <li>Concurrency Hazards: <a href="ch04-threads.html#42-atomicity-and-the-resolution-of-data-races">§4.2</a></li>
 </ul>
 </li>
-<li><strong>Atomics (Memory Models)</strong> — Load and store instructions providing hardware memory synchronization guarantees.
+<li><strong>Atomics (Memory Models)</strong>: Load and store instructions providing hardware memory synchronization guarantees.
 <ul>
 <li>Core Primitive Taxonomy: <a href="ch04-threads.html#42-atomicity-and-the-resolution-of-data-races">§4.2</a></li>
-<li>Memory Ordering Guarantees: <a href="ch06-synchronization.html#64-memory-ordering-and-visibility">§6.4</a></li>
+<li>Memory Ordering Guarantees: <a href="ch06-synchronization.html#65-hardware-memory-ordering-store-buffers-and-litmus-tests">§6.5</a></li>
 <li>Lock-Free Queue Invariants: <a href="ch19-interview-problems.html#194-the-lock-free-single-producer-single-consumer-ring-buffer">§19.4</a></li>
 </ul>
 </li>
 </ul>
 <h3 id="b"><a class="header" href="#b">B</a></h3>
 <ul>
-<li><strong>Bare-Metal Execution</strong> — The fundamental architectural limitations (no concurrency, no memory protection, no unified device drivers) of executing directly on raw hardware.
+<li><strong>Bare-Metal Execution</strong>: The fundamental architectural limitations (no concurrency, no memory protection, no unified device drivers) of executing directly on raw hardware.
 <ul>
 <li>Architectural Invariants: <a href="ch01-what-is-an-os.html#11-architectural-limitations-of-bare-metal-execution">§1.1</a></li>
 </ul>
 </li>
-<li><strong>Bit Manipulation (Branchless)</strong> — Microarchitectural optimizations utilizing bit smearing and hardware popcount instructions.
+<li><strong>Bit Manipulation (Branchless)</strong>: Microarchitectural optimizations utilizing bit smearing and hardware popcount instructions.
 <ul>
 <li>Two’s Complement Principles: <a href="ch19-interview-problems.html#19101-mathematical-principles-of-twos-complement-arithmetic">§19.10.1</a></li>
 <li>Power-of-Two Rounding: <a href="ch19-interview-problems.html#19102-algorithmic-derivations">§19.10.2</a></li>
 </ul>
 </li>
-<li><strong>Bounded Blocking Queue</strong> — Multi-threaded queue that synchronizes producers and consumers under strict capacity limits.
+<li><strong>Bounded Blocking Queue</strong>: Multi-threaded queue that synchronizes producers and consumers under strict capacity limits.
 <ul>
 <li>Predicate Synchronization: <a href="ch06-synchronization.html#62-condition-variables-and-predicate-based-synchronization">§6.2</a></li>
 <li>Complete Derivation &amp; Code: <a href="ch19-interview-problems.html#192-the-bounded-blocking-queue">§19.2</a></li>
 </ul>
 </li>
-<li><strong>Buffered I/O (<code>BufWriter</code>)</strong> — Amortizing the overhead of user-to-kernel context transitions via large user-space memory buffers.
+<li><strong>Buffered I/O (<code>BufWriter</code>)</strong>: Amortizing the overhead of user-to-kernel context transitions via large user-space memory buffers.
 <ul>
 <li>System Call Trap Overhead: <a href="ch09-system-calls.html#92-performance-implications-and-optimization-via-buffering">§9.2</a></li>
 </ul>
 </li>
-<li><strong>Bump Allocator (Arena)</strong> — Extreme high-throughput allocation strategy incrementing an offset pointer within contiguous memory.
+<li><strong>Bump Allocator (Arena)</strong>: Extreme high-throughput allocation strategy incrementing an offset pointer within contiguous memory.
 <ul>
-<li>Design &amp; Mathematical Alignment: <a href="ch08-allocation.html#82-arena-allocation-the-bump-allocator">§8.2</a></li>
+<li>Design &amp; Mathematical Alignment: <a href="ch08-allocation.html#82-arena-allocation-from-safe-index-pools-to-raw-bump-allocators">§8.2</a></li>
 </ul>
 </li>
 </ul>
 <h3 id="c"><a class="header" href="#c">C</a></h3>
 <ul>
-<li><strong>Cache Coherence Protocols (MESI / MOESI)</strong> — Hardware protocols ensuring cache-line consistency across multi-core systems.
+<li><strong>Cache Coherence Protocols (MESI / MOESI)</strong>: Hardware protocols ensuring cache-line consistency across multi-core systems.
 <ul>
 <li>Memory Hierarchy Basics: <a href="ch02-the-machine.html#22-memory-hierarchy-and-locality-dynamics">§2.2</a></li>
 <li>Inter-Core Invalidation Overhead: <a href="ch17-multiprocessors.html#172-cache-coherence-and-the-false-sharing-phenomenon">§17.2</a></li>
 </ul>
 </li>
-<li><strong>Cache Lines (64-byte Granularity)</strong> — The atomic transfer unit between L1/L2/L3 caches and main memory.
+<li><strong>Cache Lines (64-byte Granularity)</strong>: The atomic transfer unit between L1/L2/L3 caches and main memory.
 <ul>
 <li>Microarchitectural Substrate: <a href="ch02-the-machine.html#22-memory-hierarchy-and-locality-dynamics">§2.2</a></li>
 <li>False Sharing Prevention: <a href="ch17-multiprocessors.html#172-cache-coherence-and-the-false-sharing-phenomenon">§17.2</a>, <a href="ch19-interview-problems.html#1945-microarchitectural-optimization-and-false-sharing">§19.4.2</a></li>
 </ul>
 </li>
-<li><strong>Coffman Deadlock Conditions</strong> — The four axiomatic conditions required for a system to enter permanent deadlock.
+<li><strong>Coffman Deadlock Conditions</strong>: The four axiomatic conditions required for a system to enter permanent deadlock.
 <ul>
 <li>Theoretical Analysis &amp; Prevention: <a href="ch06-synchronization.html#63-deadlock-causes-and-prevention">§6.3</a></li>
 <li>Technical Derivation: <a href="ch19-interview-problems.html#19125-deadlock-dynamics-coffman-conditions-and-prevention-strategies">§19.12.5</a></li>
 </ul>
 </li>
-<li><strong>Condition Variables</strong> — Execution barriers enabling threads to sleep until notified of a state change under a controlling mutex.
+<li><strong>Condition Variables</strong>: Execution barriers enabling threads to sleep until notified of a state change under a controlling mutex.
 <ul>
 <li>Predicate Loop Requirement: <a href="ch06-synchronization.html#62-condition-variables-and-predicate-based-synchronization">§6.2</a></li>
 <li>Spurious Wakeup Verification: <a href="ch19-interview-problems.html#1924-systems-analysis-and-nuances">§19.2.4</a></li>
 </ul>
 </li>
-<li><strong>Context Switch Overhead</strong> — The microarchitectural penalty of saving CPU registers, swapping page tables, and invalidating pipeline state.
+<li><strong>Context Switch Overhead</strong>: The microarchitectural penalty of saving CPU registers, swapping page tables, and invalidating pipeline state.
 <ul>
 <li>Hardware Control Transfers: <a href="ch02-the-machine.html#24-synchronous-traps-and-the-asynchronous-interrupt-subsystem">§2.4</a></li>
 <li>Process versus Thread Transitions: <a href="ch03-processes.html#31-the-process-control-block-and-address-space-topology">§3.1</a>, <a href="ch19-interview-problems.html#19122-context-switch-mechanics-and-microarchitectural-overhead">§19.12.2</a></li>
 </ul>
 </li>
-<li><strong>Copy-on-Write (COW)</strong> — Memory optimization where physical frames are shared as read-only until mutated by child or parent.
+<li><strong>Copy-on-Write (COW)</strong>: Memory optimization where physical frames are shared as read-only until mutated by child or parent.
 <ul>
 <li>Fork Optimization: <a href="ch03-processes.html#32-process-creation-and-the-mechanics-of-fork">§3.2</a></li>
 <li>Page Fault Resolution: <a href="ch07-virtual-memory.html#73-fault-handling-and-memory-management-strategies">§7.3</a></li>
@@ -618,24 +708,24 @@
 </ul>
 <h3 id="d"><a class="header" href="#d">D</a></h3>
 <ul>
-<li><strong>Daemons &amp; Detachment Ritual</strong> — Creating autonomous background processes detached from terminals and session leaders.
+<li><strong>Daemons &amp; Detachment Ritual</strong>: Creating autonomous background processes detached from terminals and session leaders.
 <ul>
 <li>The Double-Fork Idiom: <a href="ch15-daemons.html#151-the-ritual-of-detachment">§15.1</a></li>
 <li>Signal-Driven Supervision: <a href="ch15-daemons.html#152-signal-driven-management-and-the-lifecycle-interface">§15.2</a></li>
 </ul>
 </li>
-<li><strong>Data Races</strong> — Undefined behavior occurring when concurrent threads access identical memory without synchronization and at least one is a write.
+<li><strong>Data Races</strong>: Undefined behavior occurring when concurrent threads access identical memory without synchronization and at least one is a write.
 <ul>
 <li>Hazard Mechanics: <a href="ch04-threads.html#41-shared-address-space-and-the-loss-of-intra-process-isolation">§4.1</a>, <a href="ch04-threads.html#42-atomicity-and-the-resolution-of-data-races">§4.2</a></li>
 </ul>
 </li>
-<li><strong>Demand Paging</strong> — Memory virtualization where physical frames are allocated lazily upon page fault rather than reservation.
+<li><strong>Demand Paging</strong>: Memory virtualization where physical frames are allocated lazily upon page fault rather than reservation.
 <ul>
 <li>Page Table Mapping: <a href="ch07-virtual-memory.html#71-page-based-abstraction-and-isolation">§7.1</a></li>
 <li>Page Fault Resolution Path: <a href="ch07-virtual-memory.html#73-fault-handling-and-memory-management-strategies">§7.3</a>, <a href="ch19-interview-problems.html#19126-virtual-memory-architecture-and-page-fault-resolution">§19.12.6</a></li>
 </ul>
 </li>
-<li><strong>Dentry &amp; Inode Topology</strong> — The directory cache and file metadata structures governing VFS storage durability.
+<li><strong>Dentry &amp; Inode Topology</strong>: The directory cache and file metadata structures governing VFS storage durability.
 <ul>
 <li>Inode Architecture: <a href="ch12-filesystems.html#122-on-disk-organization-and-inode-based-mapping">§12.2</a></li>
 </ul>
@@ -643,35 +733,35 @@
 </ul>
 <h3 id="e---f"><a class="header" href="#e---f">E - F</a></h3>
 <ul>
-<li><strong>Edge-Triggered vs. Level-Triggered Multiplexing</strong> — Notification mechanics for ready file descriptors under high concurrency.
+<li><strong>Edge-Triggered vs. Level-Triggered Multiplexing</strong>: Notification mechanics for ready file descriptors under high concurrency.
 <ul>
-<li>Multiplexing Scalability: <a href="ch13-io-event-loops.html#132-event-driven-architecture-and-io-multiplexing">§13.2</a>, <a href="ch13-io-event-loops.html#133-complexity-and-evolution-of-multiplexing-primitives">§13.3</a></li>
+<li>Multiplexing Scalability: <a href="ch13-io-event-loops.html#132-event-driven-architecture-and-io-multiplexing">§13.2</a>, <a href="ch13-io-event-loops.html#133-complexity-and-evolution-of-multiplexing-primitives-select-poll-epoll-kqueue">§13.3</a></li>
 </ul>
 </li>
-<li><strong>Event Loops (<code>kqueue</code> / <code>epoll</code> / <code>poll</code>)</strong> — Scalable single-threaded I/O engines multiplexing thousands of descriptors.
+<li><strong>Event Loops (<code>kqueue</code> / <code>epoll</code> / <code>poll</code>)</strong>: Scalable single-threaded I/O engines multiplexing thousands of descriptors.
 <ul>
 <li>Architecture: <a href="ch13-io-event-loops.html#132-event-driven-architecture-and-io-multiplexing">§13.2</a></li>
 <li>Process Monitoring via <code>kqueue</code>: <a href="ch15-daemons.html#154-asynchronous-fault-detection-and-process-monitoring-via-kqueue">§15.4</a></li>
 </ul>
 </li>
-<li><strong>False Sharing</strong> — Severe performance degradation caused by distinct CPU cores mutating independent variables residing on the same cache line.
+<li><strong>False Sharing</strong>: Severe performance degradation caused by distinct CPU cores mutating independent variables residing on the same cache line.
 <ul>
 <li>Microarchitectural Analysis: <a href="ch02-the-machine.html#22-memory-hierarchy-and-locality-dynamics">§2.3</a>, <a href="ch17-multiprocessors.html#172-cache-coherence-and-the-false-sharing-phenomenon">§17.2</a></li>
 <li>Cache Line Alignment Mitigation: <a href="ch19-interview-problems.html#1945-microarchitectural-optimization-and-false-sharing">§19.4.2</a></li>
 </ul>
 </li>
-<li><strong>File Descriptors</strong> — Per-process integer indices referencing open file descriptions and inodes in the kernel.
+<li><strong>File Descriptors</strong>: Per-process integer indices referencing open file descriptions and inodes in the kernel.
 <ul>
 <li>Process Management: <a href="ch12-filesystems.html#121-the-file-descriptor-and-the-open-file-description">§12.1</a></li>
 <li>Pipeline Redirection &amp; Leaks: <a href="ch19-interview-problems.html#1991-kernel-file-descriptor-mechanics-and-redirection">§19.9.1</a></li>
 </ul>
 </li>
-<li><strong>Frame Pointer (FP / RBP / x29)</strong> — Invariant structural anchor for function activation records, enabling debugger backtraces and call frame unwinding.
+<li><strong>Frame Pointer (FP / RBP / x29)</strong>: Invariant structural anchor for function activation records, enabling debugger backtraces and call frame unwinding.
 <ul>
 <li>Architectural Function: <a href="ch02-the-machine.html#21-the-execution-model-and-the-atomicity-gap">§2.1</a></li>
 </ul>
 </li>
-<li><strong>Free-List Allocator</strong> — Explicit heap allocator with header metadata, block splitting, and contiguous coalescing.
+<li><strong>Free-List Allocator</strong>: Explicit heap allocator with header metadata, block splitting, and contiguous coalescing.
 <ul>
 <li>Memory Management Foundations: <a href="ch08-allocation.html#83-explicit-management-free-list-allocation">§8.3</a></li>
 <li>Complete Systems Implementation: <a href="ch19-interview-problems.html#193-the-free-list-allocator">§19.3</a></li>
@@ -680,38 +770,38 @@
 </ul>
 <h3 id="g---l"><a class="header" href="#g---l">G - L</a></h3>
 <ul>
-<li><strong>Guard Pages (<code>PROT_NONE</code>)</strong> — Virtual memory pages configured with zero permissions to detect stack overflows or buffer out-of-bounds accesses.
+<li><strong>Guard Pages (<code>PROT_NONE</code>)</strong>: Virtual memory pages configured with zero permissions to detect stack overflows or buffer out-of-bounds accesses.
 <ul>
 <li>Protection Mechanics: <a href="ch07-virtual-memory.html#73-fault-handling-and-memory-management-strategies">§7.3</a></li>
 </ul>
 </li>
-<li><strong>Huge Pages</strong> — 2 MiB / 1 GiB virtual page translations designed to maximize TLB coverage and eliminate translation latency.
+<li><strong>Huge Pages</strong>: 2 MiB / 1 GiB virtual page translations designed to maximize TLB coverage and eliminate translation latency.
 <ul>
 <li>Hardware TLB Reach: <a href="ch07-virtual-memory.html#723-the-translation-lookaside-buffer-tlb-huge-pages-and-shootdowns">§7.2.3</a></li>
 </ul>
 </li>
-<li><strong>Interrupt Descriptor Table (IDT) &amp; Top/Bottom-Half Handlers</strong> — Hardware vector dispatch table, <code>TSS.rsp0</code> trapframe saving, <code>hardirq</code> masking, and <code>softirq</code> deferred execution.
+<li><strong>Interrupt Descriptor Table (IDT) &amp; Top/Bottom-Half Handlers</strong>: Hardware vector dispatch table, <code>TSS.rsp0</code> trapframe saving, <code>hardirq</code> masking, and <code>softirq</code> deferred execution.
 <ul>
 <li>Architectural Mechanics: <a href="ch02-the-machine.html#242-vector-tables-ivt-idt-vbar_el1-and-the-hardware-context-save-sequence">§2.4.2</a>, <a href="ch02-the-machine.html#243-top-half-hardirq-vs-bottom-half-softirq-split-and-eoi-lifecycle">§2.4.3</a></li>
 </ul>
 </li>
-<li><strong>Inter-Process Communication (IPC)</strong> — Exchanging state across hardware isolation boundaries via pipes, sockets, and shared memory.
+<li><strong>Inter-Process Communication (IPC)</strong>: Exchanging state across hardware isolation boundaries via pipes, sockets, and shared memory.
 <ul>
 <li>IPC Taxonomy: <a href="ch11-ipc.html#111-unidirectional-byte-streams-pipes">§11.1</a>, <a href="ch11-ipc.html#112-zero-copy-communication-shared-memory">§11.2</a>, <a href="ch11-ipc.html#113-bidirectional-channels-socket-pairs">§11.3</a></li>
 </ul>
 </li>
-<li><strong>Isolation (Process Protection)</strong> — Hardware-enforced boundary preventing cross-process interference and securing kernel memory.
+<li><strong>Isolation (Process Protection)</strong>: Hardware-enforced boundary preventing cross-process interference and securing kernel memory.
 <ul>
 <li>Ontological Necessity: <a href="ch01-what-is-an-os.html#12-axiomatic-roles-abstraction-isolation-and-resource-management">§1.2</a></li>
 <li>Address Space Separation: <a href="ch03-processes.html#31-the-process-control-block-and-address-space-topology">§3.1</a></li>
 </ul>
 </li>
-<li><strong>Lock-Free Programming</strong> — Concurrency without mutex barriers, relying on atomic instructions and hardware memory ordering guarantees.
+<li><strong>Lock-Free Programming</strong>: Concurrency without mutex barriers, relying on atomic instructions and hardware memory ordering guarantees.
 <ul>
 <li>SPSC Queue Derivation: <a href="ch19-interview-problems.html#194-the-lock-free-single-producer-single-consumer-ring-buffer">§19.4</a></li>
 </ul>
 </li>
-<li><strong>LRU Cache</strong> — High-performance eviction cache pairing an O(1) hash table with a doubly-linked list.
+<li><strong>LRU Cache</strong>: High-performance eviction cache pairing an O(1) hash table with a doubly-linked list.
 <ul>
 <li>Zero-Allocation Splice Implementation: <a href="ch19-interview-problems.html#196-the-lru-cache">§19.6</a></li>
 </ul>
@@ -719,61 +809,61 @@
 </ul>
 <h3 id="m---p"><a class="header" href="#m---p">M - P</a></h3>
 <ul>
-<li><strong>Mechanism versus Policy Separation</strong> — Foundational architectural principle decoupling invariant low-level hardware mechanisms from tunable high-level allocation algorithms.
+<li><strong>Mechanism versus Policy Separation</strong>: Foundational architectural principle decoupling invariant low-level hardware mechanisms from tunable high-level allocation algorithms.
 <ul>
 <li>Axiomatic Separation: <a href="ch01-what-is-an-os.html#13-mechanism-versus-policy-separation">§1.3</a></li>
 <li>Scheduling Dynamics: <a href="ch05-scheduling.html#51-scheduling-dynamics-and-performance-metrics">§5.1</a></li>
 </ul>
 </li>
-<li><strong>Memory Fences &amp; Ordering</strong> — CPU instructions constraining the reordering of loads and stores across memory buses.
+<li><strong>Memory Fences &amp; Ordering</strong>: CPU instructions constraining the reordering of loads and stores across memory buses.
 <ul>
-<li>Theoretical Derivation: <a href="ch06-synchronization.html#64-memory-ordering-and-visibility">§6.4</a></li>
+<li>Theoretical Derivation: <a href="ch06-synchronization.html#65-hardware-memory-ordering-store-buffers-and-litmus-tests">§6.5</a></li>
 </ul>
 </li>
-<li><strong>Multi-Level Page Tables</strong> — Tree-structured hierarchical address translation enabling sparse virtual address spaces without wasting physical RAM.
+<li><strong>Multi-Level Page Tables</strong>: Tree-structured hierarchical address translation enabling sparse virtual address spaces without wasting physical RAM.
 <ul>
 <li>Radix Tree Architecture: <a href="ch07-virtual-memory.html#72-hierarchical-translation-and-the-tlb">§7.2</a></li>
 <li>Page Fault Resolution: <a href="ch19-interview-problems.html#19126-virtual-memory-architecture-and-page-fault-resolution">§19.12.6</a></li>
 </ul>
 </li>
-<li><strong>Non-Blocking I/O (<code>O_NONBLOCK</code>)</strong> — System call semantics allowing asynchronous execution without thread suspension.
+<li><strong>Non-Blocking I/O (<code>O_NONBLOCK</code>)</strong>: System call semantics allowing asynchronous execution without thread suspension.
 <ul>
 <li>Event-Driven Architecture: <a href="ch13-io-event-loops.html#132-event-driven-architecture-and-io-multiplexing">§13.2</a></li>
 <li>Socket Multiplexing: <a href="ch14-networking.html#141-the-transmission-control-protocol-tcp-reliable-byte-streams">§14.1</a></li>
 </ul>
 </li>
-<li><strong>NUMA Topologies</strong> — Non-Uniform Memory Access architectures where latency depends on memory socket locality.
+<li><strong>NUMA Topologies</strong>: Non-Uniform Memory Access architectures where latency depends on memory socket locality.
 <ul>
 <li>Optimization Strategies: <a href="ch17-multiprocessors.html#171-numa-topologies-and-locality-optimization">§17.1</a></li>
 </ul>
 </li>
-<li><strong>Page Map Level 4 (PML4)</strong> — The root table of the 4-level x86-64 page hierarchy loaded into the CR3 control register.
+<li><strong>Page Map Level 4 (PML4)</strong>: The root table of the 4-level x86-64 page hierarchy loaded into the CR3 control register.
 <ul>
 <li>Translation Walk: <a href="ch07-virtual-memory.html#72-hierarchical-translation-and-the-tlb">§7.2</a></li>
 </ul>
 </li>
-<li><strong>Pipeline Deadlocks</strong> — Common concurrency pitfall where unclosed write descriptors prevent readers from observing EOF.
+<li><strong>Pipeline Deadlocks</strong>: Common concurrency pitfall where unclosed write descriptors prevent readers from observing EOF.
 <ul>
 <li>Descriptor Management &amp; Proof: <a href="ch19-interview-problems.html#1994-deadlock-hazards-and-process-isolation">§19.9.4</a></li>
 </ul>
 </li>
-<li><strong>POSIX Standard Interface</strong> — Standardized system call boundary unifying process management, file I/O, virtual memory, and IPC across UNIX-like systems.
+<li><strong>POSIX Standard Interface</strong>: Standardized system call boundary unifying process management, file I/O, virtual memory, and IPC across UNIX-like systems.
 <ul>
 <li>Core API Taxonomy: <a href="ch01-what-is-an-os.html#14-the-system-call-boundary-and-posix-standard-interface">§1.4</a></li>
 </ul>
 </li>
-<li><strong>Priority Inversion</strong> — Scheduling hazard where a high-priority thread blocks on a resource held by a low-priority thread.
+<li><strong>Priority Inversion</strong>: Scheduling hazard where a high-priority thread blocks on a resource held by a low-priority thread.
 <ul>
-<li>Priority Inheritance Solutions: <a href="ch05-scheduling.html#53-advanced-heuristics-in-production-schedulers">§5.3</a></li>
+<li>Priority Inheritance Solutions: <a href="ch05-scheduling.html#54-priority-inversion-and-priority-inheritance-protocols">§5.4</a></li>
 </ul>
 </li>
-<li><strong>Process Control Block (PCB)</strong> — Kernel data structure maintaining architectural register state, page tables, and file descriptors.
+<li><strong>Process Control Block (PCB)</strong>: Kernel data structure maintaining architectural register state, page tables, and file descriptors.
 <ul>
 <li>Topology &amp; Management: <a href="ch03-processes.html#31-the-process-control-block-and-address-space-topology">§3.1</a></li>
 <li>Process Isolation: <a href="ch19-interview-problems.html#19121-process-isolation-vs-thread-concurrency-topology">§19.12.1</a></li>
 </ul>
 </li>
-<li><strong>Program Counter (PC / RIP / PC_EL0)</strong> — Microarchitectural register holding the linear virtual address of the next instruction to fetch.
+<li><strong>Program Counter (PC / RIP / PC_EL0)</strong>: Microarchitectural register holding the linear virtual address of the next instruction to fetch.
 <ul>
 <li>Instruction Cycle &amp; Branching: <a href="ch02-the-machine.html#21-the-execution-model-and-the-atomicity-gap">§2.1</a></li>
 <li>Trapframe Preservation: <a href="ch02-the-machine.html#23-privilege-domains-and-boundary-enforcement">§2.4</a>, <a href="ch03-processes.html#31-the-process-control-block-and-address-space-topology">§3.1</a></li>
@@ -782,48 +872,48 @@
 </ul>
 <h3 id="r---s"><a class="header" href="#r---s">R - S</a></h3>
 <ul>
-<li><strong>Reader-Writer Lock</strong> — Synchronization primitive permitting concurrent readers while restricting writers to exclusive access.
+<li><strong>Reader-Writer Lock</strong>: Synchronization primitive permitting concurrent readers while restricting writers to exclusive access.
 <ul>
 <li>Writer-Preference Implementation: <a href="ch19-interview-problems.html#197-the-reader-writer-lock">§19.7</a></li>
 </ul>
 </li>
-<li><strong>Resource Management (Arbitration)</strong> — Operating system orchestration and time/space multiplexing of CPU cores, memory frames, and I/O bandwidth.
+<li><strong>Resource Management (Arbitration)</strong>: Operating system orchestration and time/space multiplexing of CPU cores, memory frames, and I/O bandwidth.
 <ul>
 <li>Ontological Necessity: <a href="ch01-what-is-an-os.html#12-axiomatic-roles-abstraction-isolation-and-resource-management">§1.2</a></li>
 </ul>
 </li>
-<li><strong>Shared Memory (<code>mmap</code> / POSIX <code>shm</code>)</strong> — Highest-throughput IPC mechanism bypassing the kernel during data exchange.
+<li><strong>Shared Memory (<code>mmap</code> / POSIX <code>shm</code>)</strong>: Highest-throughput IPC mechanism bypassing the kernel during data exchange.
 <ul>
 <li>Zero-Copy Implementation: <a href="ch11-ipc.html#112-zero-copy-communication-shared-memory">§11.2</a></li>
 </ul>
 </li>
-<li><strong>Signal Coalescing &amp; Reaping</strong> — POSIX signal delivery property requiring non-blocking loops to prevent zombie leaks.
+<li><strong>Signal Coalescing &amp; Reaping</strong>: POSIX signal delivery property requiring non-blocking loops to prevent zombie leaks.
 <ul>
 <li><code>SIGCHLD</code> and <code>waitpid</code>: <a href="ch10-signals.html#103-process-lifecycle-synchronization-sigchld-and-reaping">§10.3</a></li>
 </ul>
 </li>
-<li><strong>Sparse Files</strong> — File system structures where unwritten data blocks are unallocated, saving physical storage.
+<li><strong>Sparse Files</strong>: File system structures where unwritten data blocks are unallocated, saving physical storage.
 <ul>
 <li>Block Allocation Mechanics: <a href="ch12-filesystems.html#123-sparse-files-and-the-mechanics-of-durability">§12.3</a></li>
 </ul>
 </li>
-<li><strong>Spurious Wakeups</strong> — Condition variable unblocking without explicit notification caused by kernel scheduler dynamics.
+<li><strong>Spurious Wakeups</strong>: Condition variable unblocking without explicit notification caused by kernel scheduler dynamics.
 <ul>
 <li>Systems Nuances: <a href="ch19-interview-problems.html#1924-systems-analysis-and-nuances">§19.2.4</a></li>
 </ul>
 </li>
-<li><strong>Stack Pointer (SP / RSP / SP_EL0)</strong> — Architectural register tracking the active boundary of the descending call stack.
+<li><strong>Stack Pointer (SP / RSP / SP_EL0)</strong>: Architectural register tracking the active boundary of the descending call stack.
 <ul>
 <li>Stack Frame Structure: <a href="ch02-the-machine.html#21-the-execution-model-and-the-atomicity-gap">§2.1</a></li>
 <li>Kernel Stack Switching: <a href="ch02-the-machine.html#23-privilege-domains-and-boundary-enforcement">§2.4</a>, <a href="ch09-system-calls.html#91-the-mechanics-of-the-system-call-interface">§9.1</a></li>
 </ul>
 </li>
-<li><strong>Status Flags (FLAGS / RFLAGS / PSTATE)</strong> — CPU condition codes (ZF, CF, SF, OF) and interrupt mask control flags (IF).
+<li><strong>Status Flags (FLAGS / RFLAGS / PSTATE)</strong>: CPU condition codes (ZF, CF, SF, OF) and interrupt mask control flags (IF).
 <ul>
 <li>Condition Evaluation: <a href="ch02-the-machine.html#21-the-execution-model-and-the-atomicity-gap">§2.1</a></li>
 </ul>
 </li>
-<li><strong>System Call Boundary</strong> — Hardware-supervised privilege gatekeeper transferring control from user mode to kernel mode.
+<li><strong>System Call Boundary</strong>: Hardware-supervised privilege gatekeeper transferring control from user mode to kernel mode.
 <ul>
 <li>Gatekeeper Role: <a href="ch01-what-is-an-os.html#14-the-system-call-boundary-and-posix-standard-interface">§1.4</a></li>
 <li>Traps &amp; Privilege Elevation: <a href="ch02-the-machine.html#23-privilege-domains-and-boundary-enforcement">§2.4</a>, <a href="ch09-system-calls.html#91-the-mechanics-of-the-system-call-interface">§9.1</a></li>
@@ -832,33 +922,33 @@
 </ul>
 <h3 id="t---z"><a class="header" href="#t---z">T - Z</a></h3>
 <ul>
-<li><strong>TCP Protocols &amp; Sockets</strong> — Reliable, connection-oriented byte streams with flow control and congestion avoidance.
+<li><strong>TCP Protocols &amp; Sockets</strong>: Reliable, connection-oriented byte streams with flow control and congestion avoidance.
 <ul>
 <li>Socket Interface Mechanics: <a href="ch14-networking.html#141-the-transmission-control-protocol-tcp-reliable-byte-streams">§14.1</a></li>
 </ul>
 </li>
-<li><strong>Thread Pool</strong> — Concurrency architecture amortizing thread creation costs across a fixed pool of persistent worker threads.
+<li><strong>Thread Pool</strong>: Concurrency architecture amortizing thread creation costs across a fixed pool of persistent worker threads.
 <ul>
 <li>Implementation &amp; RAII Shutdown: <a href="ch19-interview-problems.html#198-the-thread-pool">§19.8</a></li>
 </ul>
 </li>
-<li><strong>Thundering Herd Mitigation</strong> — Preventing catastrophic CPU contention by waking single threads (<code>notify_one</code>) rather than all sleeping threads.
+<li><strong>Thundering Herd Mitigation</strong>: Preventing catastrophic CPU contention by waking single threads (<code>notify_one</code>) rather than all sleeping threads.
 <ul>
 <li>Bounded Queue Optimization: <a href="ch19-interview-problems.html#1924-systems-analysis-and-nuances">§19.2.4</a></li>
 </ul>
 </li>
-<li><strong>TLB (Translation Lookaside Buffer)</strong> — High-speed CPU hardware cache storing recent virtual-to-physical address translations.
+<li><strong>TLB (Translation Lookaside Buffer)</strong>: High-speed CPU hardware cache storing recent virtual-to-physical address translations.
 <ul>
 <li>Architecture &amp; Invalidation: <a href="ch07-virtual-memory.html#72-hierarchical-translation-and-the-tlb">§7.2</a></li>
 </ul>
 </li>
-<li><strong>Virtual Memory Architecture</strong> — Core isolation mechanism presenting processes with private, contiguous address spaces.
+<li><strong>Virtual Memory Architecture</strong>: Core isolation mechanism presenting processes with private, contiguous address spaces.
 <ul>
 <li>Page Tables &amp; MMU: <a href="ch07-virtual-memory.html#71-page-based-abstraction-and-isolation">§7.1</a>, <a href="ch07-virtual-memory.html#72-hierarchical-translation-and-the-tlb">§7.2</a></li>
 <li>Architectural Derivation: <a href="ch19-interview-problems.html#19126-virtual-memory-architecture-and-page-fault-resolution">§19.12.6</a></li>
 </ul>
 </li>
-<li><strong>Zombie Processes</strong> — Terminated processes awaiting parent retrieval of exit status, retaining a PID table slot.
+<li><strong>Zombie Processes</strong>: Terminated processes awaiting parent retrieval of exit status, retaining a PID table slot.
 <ul>
 <li>Process Reaping: <a href="ch03-processes.html#33-lifecycle-management-state-automaton-and-termination">§3.3</a>, <a href="ch10-signals.html#103-process-lifecycle-synchronization-sigchld-and-reaping">§10.3</a></li>
 </ul>
@@ -916,7 +1006,7 @@
         <script src="book-609e4cb8.js"></script>
 
         <!-- Custom JS scripts -->
-        <script src="theme/figures-7a3fdfc9.js"></script>
+        <script src="theme/figures-afd72f2c.js"></script>
 
 
 

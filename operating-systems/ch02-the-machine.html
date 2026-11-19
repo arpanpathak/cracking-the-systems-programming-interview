@@ -28,7 +28,7 @@
         <link rel="stylesheet" id="mdbook-ayu-highlight-css" href="ayu-highlight-3fdfc3ac.css">
 
         <!-- Custom theme stylesheets -->
-        <link rel="stylesheet" href="theme/custom-e0671a52.css">
+        <link rel="stylesheet" href="theme/custom-9125cc61.css">
 
         <!-- MathJax -->
         <script async src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.1/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
@@ -38,10 +38,10 @@
             const path_to_root = "";
             const default_light_theme = "light";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "searchindex-4f3aedde.js";
+            window.path_to_searchindex_js = "searchindex-2f3b4ad9.js";
         </script>
         <!-- Start loading toc.js asap -->
-        <script src="toc-2b639993.js"></script>
+        <script src="toc-f3585118.js"></script>
     </head>
     <body>
     <div id="mdbook-help-container">
@@ -186,12 +186,12 @@
                         <h1 id="2-the-architectural-substrate-and-execution-constraints"><a class="header" href="#2-the-architectural-substrate-and-execution-constraints">2. The Architectural Substrate and Execution Constraints</a></h1>
 <p>The design and operational behavior of an operating system are fundamentally dictated by the invariant properties of the underlying hardware. Without a supervisory kernel arbitrating execution, a bare-metal processor provides no memory isolation, no concurrent time-multiplexing, and no protection against errant or malicious instruction streams. The microarchitectural substrate defines the physical boundaries of computation, the necessity of virtual memory management, and the hardware mechanisms required to enforce system integrity.</p>
 <h2 id="21-the-execution-model-and-the-atomicity-gap"><a class="header" href="#21-the-execution-model-and-the-atomicity-gap">2.1 The Execution Model and the Atomicity Gap</a></h2>
-<p>A processor core operates via a continuous fetch-decode-execute datapath cycle. At any discrete clock edge, the architectural state of an executing thread is encapsulated by its hardware register file. Across contemporary instruction set architectures—specifically x86-64 and ARM64 (AArch64)—this register complement is partitioned into control pointers, status flags, and general-purpose storage:</p>
+<p>A processor core operates via a continuous fetch-decode-execute datapath cycle. At any discrete clock edge, the architectural state of an executing thread is encapsulated by its hardware register file. Across contemporary instruction set architectures (specifically x86-64 and ARM64/AArch64), this register file is partitioned into control pointers, status flags, and general-purpose storage:</p>
 <ul>
 <li><strong>Program Counter (<code>PC</code> / <code>RIP</code> on x86-64 / <code>PC_EL0</code> on ARM64):</strong> Holds the 64-bit linear virtual address of the next instruction to be fetched from the L1 instruction cache (I-cache). During sequential execution, the control unit automatically increments the program counter by the byte length of the decoded instruction; control-flow transfers (branches, procedure calls, traps, and hardware interrupts) overwrite this register with a target address.</li>
 <li><strong>Stack Pointer (<code>SP</code> / <code>RSP</code> on x86-64 / <code>SP_EL0</code> on ARM64):</strong> Points to the active downward-growing boundary of the thread’s call stack in virtual memory. Stack allocations decrement the stack pointer, whereas frame deallocations increment it. Both the System V AMD64 ABI and the ARM64 Procedure Call Standard (AAPCS64) mandate that the stack pointer maintain 16-byte alignment at function call boundaries to satisfy vector SIMD load/store alignment constraints.</li>
 <li><strong>Frame Pointer (<code>FP</code> / <code>RBP</code> on x86-64 / <code>x29</code> on ARM64):</strong> Serves as an invariant base anchor within the current function activation record. While the stack pointer fluctuates dynamically during expression evaluation and outgoing parameter construction, the frame pointer remains fixed throughout the function’s lifetime. Compilers store the caller’s saved frame pointer at the base of the new frame (<code>[RBP]</code> or <code>[x29]</code>) and the return address immediately above it (<code>[RBP + 8]</code> or <code>[x29 + 8]</code>), establishing a contiguous, singly linked chain of activation records. Walking this frame-pointer chain enables debuggers, crash handlers, and kernel sampling profilers (<code>perf</code>, DTrace) to reconstruct full call stacks in <code>O(depth)</code> time without DWARF unwind tables.</li>
-<li><strong>Processor Status and Control Flags (<code>FLAGS</code> / <code>RFLAGS</code> on x86-64 / <code>PSTATE</code> on ARM64):</strong> Encapsulates arithmetic condition codes—Zero (<code>ZF</code>), Carry (<code>CF</code>), Sign/Negative (<code>SF</code>/<code>N</code>), and Overflow (<code>OF</code>/<code>V</code>)—alongside privileged execution controls. Most critically for operating system design, this register contains the hardware interrupt mask: the Interrupt Enable Flag (<code>IF</code>, bit 9 of <code>RFLAGS</code>) on x86-64 and the <code>DAIF</code> (Debug, SError, IRQ, FIQ) mask bits on ARM64.</li>
+<li><strong>Processor Status and Control Flags (<code>FLAGS</code> / <code>RFLAGS</code> on x86-64 / <code>PSTATE</code> on ARM64):</strong> Encapsulates arithmetic condition codes (Zero <code>ZF</code>, Carry <code>CF</code>, Sign/Negative <code>SF</code>/<code>N</code>, and Overflow <code>OF</code>/<code>V</code>) alongside privileged execution controls. Most critically for operating system design, this register contains the hardware interrupt mask: the Interrupt Enable Flag (<code>IF</code>, bit 9 of <code>RFLAGS</code>) on x86-64 and the <code>DAIF</code> (Debug, SError, IRQ, FIQ) mask bits on ARM64.</li>
 <li><strong>General-Purpose Registers (GPRs):</strong> Provide sub-nanosecond, zero-cycle-Wait operand storage for arithmetic, bitwise logic, and memory addressing. On x86-64, the 16 GPRs (<code>RAX</code>, <code>RBX</code>, <code>RCX</code>, <code>RDX</code>, <code>RSI</code>, <code>RDI</code>, <code>RBP</code>, <code>RSP</code>, and <code>R8</code>–<code>R15</code>) are partitioned by ABI convention into caller-saved volatile registers (<code>RAX</code>, <code>RCX</code>, <code>RDX</code>, <code>RSI</code>, <code>RDI</code>, <code>R8</code>–<code>R11</code>, where <code>RDI</code>, <code>RSI</code>, <code>RDX</code>, <code>RCX</code>, <code>R8</code>, <code>R9</code> pass the first six integer arguments) and callee-saved non-volatile registers (<code>RBX</code>, <code>RBP</code>, <code>R12</code>–<code>R15</code>). On ARM64, the 31 64-bit registers (<code>x0</code>–<code>x30</code>) assign <code>x0</code>–<code>x7</code> to argument passing and return values, <code>x9</code>–<code>x15</code> to caller-saved temporaries, <code>x19</code>–<code>x28</code> to callee-saved state, <code>x29</code> to the Frame Pointer, and <code>x30</code> to the Link Register (<code>LR</code>), which captures the return address on a Branch-with-Link (<code>BL</code>) instruction.</li>
 </ul>
 <figure>
@@ -225,7 +225,7 @@
 <li>Core 0 executes Step 3, invalidating Core 1’s shared cache line via the hardware cache coherency protocol and writing <code>43</code>.</li>
 <li>Core 1 executes Step 3 immediately thereafter, overwriting the memory location with its own value of <code>43</code>.</li>
 </ul>
-<p>Although two distinct increments occurred, the final state in memory is <code>43</code> rather than <code>44</code>—a concurrency failure known as a <strong>lost update</strong>. Bridging this atomicity gap requires hardware-enforced atomic instructions (such as <code>lock xadd</code> on x86-64, which locks the cache line throughout the RMW cycle, or Load-Linked/Store-Conditional <code>ldxr</code>/<code>stxr</code> and Large System Extensions <code>ldaddal</code> on ARM64) coupled with kernel synchronization primitives.</p>
+<p>Although two distinct increments occurred, the final state in memory is <code>43</code> rather than <code>44</code>, a concurrency failure known as a <strong>lost update</strong>. Bridging this atomicity gap requires hardware-enforced atomic instructions (such as <code>lock xadd</code> on x86-64, which locks the cache line throughout the RMW cycle, or Load-Linked/Store-Conditional <code>ldxr</code>/<code>stxr</code> and Large System Extensions <code>ldaddal</code> on ARM64) coupled with kernel synchronization primitives.</p>
 <h2 id="22-memory-hierarchy-and-locality-dynamics"><a class="header" href="#22-memory-hierarchy-and-locality-dynamics">2.2 Memory Hierarchy and Locality Dynamics</a></h2>
 <p>The memory subsystem is architected as a tiered hierarchy that balances physical storage capacity against access latency. This hierarchy progresses from core-private registers (~0.3 ns, 1 cycle) through L1 instruction and data caches (32–64 KiB, ~1 ns, 3–4 cycles), unified L2 caches (256 KiB–1 MiB, ~3–4 ns, 10–12 cycles), and shared L3 / System-Level Caches (4–64 MiB, ~10–15 ns, 35–50 cycles) to main DRAM (gigabytes, ~60–100 ns, 200+ cycles).</p>
 <p>The throughput of this hierarchy relies on two empirical properties of program execution:</p>
@@ -250,7 +250,7 @@
 <p>Control transfers across the privilege boundary from user mode (<code>Ring 3</code> / <code>EL0</code>) to kernel mode (<code>Ring 0</code> / <code>EL1</code>) are classified into two architectural categories based on their causal relationship to the executing instruction stream:</p>
 <ul>
 <li><strong>Synchronous Traps and Exceptions:</strong> Triggered deterministically as a direct result of executing a specific instruction on the local core. The processor cannot retire the instruction until the kernel intervenes. Synchronous events subdivide into deliberate <strong>system call traps</strong> (<code>syscall</code> on x86-64, <code>svc #0</code> on ARM64), recoverable <strong>faults</strong> (such as a minor Page Fault <code>#PF</code>, where the kernel allocates a frame and re-executes the faulting instruction), and unrecoverable <strong>aborts</strong> (such as hardware machine-check exceptions <code>#MC</code> or division by zero <code>#DE</code>).</li>
-<li><strong>Asynchronous Hardware Interrupts (IRQs):</strong> Triggered by external physical devices—such as a network interface card (NIC) completing a DMA packet transfer, an NVMe controller signaling I/O completion, or a hardware timer tick expiring. Asynchronous interrupts arrive at arbitrary clock cycles, completely independent of the instruction stream currently executing on the processor core.</li>
+<li><strong>Asynchronous Hardware Interrupts (IRQs):</strong> Triggered by external physical devices, such as a network interface card (NIC) completing a DMA packet transfer, an NVMe controller signaling I/O completion, or a hardware timer tick expiring. Asynchronous interrupts arrive at arbitrary clock cycles, completely independent of the instruction stream currently executing on the processor core.</li>
 </ul>
 <h3 id="241-interrupt-controllers-apic-io-apic-msi-x-and-arm-gic"><a class="header" href="#241-interrupt-controllers-apic-io-apic-msi-x-and-arm-gic">2.4.1 Interrupt Controllers: APIC, IO-APIC, MSI-X, and ARM GIC</a></h3>
 <p>In a multiprocessor system with dozens of CPU cores and hundreds of peripheral interrupt sources, devices do not wire directly to a single CPU pin. Instead, interrupt routing and prioritization are arbitrated by a two-tier hardware interrupt subsystem:</p>
@@ -310,7 +310,7 @@
 </figure>
 <h3 id="243-top-half-hardirq-vs-bottom-half-softirq-split-and-eoi-lifecycle"><a class="header" href="#243-top-half-hardirq-vs-bottom-half-softirq-split-and-eoi-lifecycle">2.4.3 Top-Half (<code>hardirq</code>) vs. Bottom-Half (<code>softirq</code>) Split and EOI Lifecycle</a></h3>
 <p>An Interrupt Service Routine (ISR) executes under severe architectural constraints: it runs in <strong>interrupt context</strong> rather than process context. Because an interrupt preempts whichever arbitrary process happened to be running on that core, the ISR has no Process Control Block (<code>current</code> points to the interrupted victim task) and <strong>cannot sleep, block on a mutex, or perform voluntary context switches</strong>. Furthermore, while executing with local interrupts masked (<code>RFLAGS.IF == 0</code> / <code>PSTATE.I == 1</code>), the core is deaf to subsequent hardware interrupts; prolonged execution in an ISR causes packet drops, timer drift, and I/O latency spikes.</p>
-<p>To resolve the tension between deterministic low latency and complex protocol processing, modern operating system kernels bifurcate interrupt handling into two distinct phases:</p>
+<p>To reconcile deterministic low latency with complex protocol processing, modern operating system kernels bifurcate interrupt handling into two distinct phases:</p>
 <ol>
 <li><strong>Top-Half (<code>hardirq</code> Context):</strong>
 <ul>
@@ -379,7 +379,7 @@
         <script src="book-609e4cb8.js"></script>
 
         <!-- Custom JS scripts -->
-        <script src="theme/figures-7a3fdfc9.js"></script>
+        <script src="theme/figures-afd72f2c.js"></script>
 
 
 

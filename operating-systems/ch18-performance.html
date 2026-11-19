@@ -28,7 +28,7 @@
         <link rel="stylesheet" id="mdbook-ayu-highlight-css" href="ayu-highlight-3fdfc3ac.css">
 
         <!-- Custom theme stylesheets -->
-        <link rel="stylesheet" href="theme/custom-e0671a52.css">
+        <link rel="stylesheet" href="theme/custom-9125cc61.css">
 
         <!-- MathJax -->
         <script async src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.1/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
@@ -38,10 +38,10 @@
             const path_to_root = "";
             const default_light_theme = "light";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "searchindex-4f3aedde.js";
+            window.path_to_searchindex_js = "searchindex-2f3b4ad9.js";
         </script>
         <!-- Start loading toc.js asap -->
-        <script src="toc-2b639993.js"></script>
+        <script src="toc-f3585118.js"></script>
     </head>
     <body>
     <div id="mdbook-help-container">
@@ -233,14 +233,14 @@ int main() {
 <p><strong>Output 18-1. One run on the verification machine.</strong></p>
 <pre><code class="language-text">stride 64 bytes, 16,000,000 accesses per size
 
-      16384 bytes      0.8 ns per access  (checksum 16000000)
-      65536 bytes      1.1 ns per access  (checksum 16000000)
-     262144 bytes      1.6 ns per access  (checksum 16000000)
-    1048576 bytes      1.6 ns per access  (checksum 16000000)
-    4194304 bytes      5.2 ns per access  (checksum 16000000)
-   16777216 bytes      9.3 ns per access  (checksum 16000000)
-   67108864 bytes      9.0 ns per access  (checksum 16000000)
-  268435456 bytes      4.8 ns per access  (checksum 16000000)
+      16384 bytes      0.7 ns per access  (checksum 16000000)
+      65536 bytes      0.7 ns per access  (checksum 16000000)
+     262144 bytes      0.8 ns per access  (checksum 16000000)
+    1048576 bytes      1.4 ns per access  (checksum 16000000)
+    4194304 bytes      1.8 ns per access  (checksum 16000000)
+   16777216 bytes      3.7 ns per access  (checksum 16000000)
+   67108864 bytes      3.8 ns per access  (checksum 16000000)
+  268435456 bytes      4.0 ns per access  (checksum 16000000)
 </code></pre>
 <p><strong>Listing 18-2. The same program in Rust.</strong></p>
 <pre class="playground"><code class="language-rust">// ch18/cache_bench.rs: the same memory-hierarchy walk in Rust.
@@ -285,10 +285,10 @@ fn main() {
       16384 bytes      0.7 ns per access  (checksum 16000000)
       65536 bytes      0.7 ns per access  (checksum 16000000)
      262144 bytes      0.7 ns per access  (checksum 16000000)
-    1048576 bytes      1.4 ns per access  (checksum 16000000)
+    1048576 bytes      1.3 ns per access  (checksum 16000000)
     4194304 bytes      1.9 ns per access  (checksum 16000000)
-   16777216 bytes      3.4 ns per access  (checksum 16000000)
-   67108864 bytes      4.0 ns per access  (checksum 16000000)
+   16777216 bytes      3.6 ns per access  (checksum 16000000)
+   67108864 bytes      3.9 ns per access  (checksum 16000000)
   268435456 bytes      4.5 ns per access  (checksum 16000000)
 </code></pre>
 <h2 id="182-observability-profilers-tracers-and-visualizations"><a class="header" href="#182-observability-profilers-tracers-and-visualizations">18.2 Observability: Profilers, Tracers, and Visualizations</a></h2>
@@ -353,7 +353,7 @@ fn main() {
         <script src="book-609e4cb8.js"></script>
 
         <!-- Custom JS scripts -->
-        <script src="theme/figures-7a3fdfc9.js"></script>
+        <script src="theme/figures-afd72f2c.js"></script>
 
 
 

@@ -28,7 +28,7 @@
         <link rel="stylesheet" id="mdbook-ayu-highlight-css" href="ayu-highlight-3fdfc3ac.css">
 
         <!-- Custom theme stylesheets -->
-        <link rel="stylesheet" href="theme/custom-e0671a52.css">
+        <link rel="stylesheet" href="theme/custom-9125cc61.css">
 
         <!-- MathJax -->
         <script async src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.1/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
@@ -38,10 +38,10 @@
             const path_to_root = "";
             const default_light_theme = "light";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "searchindex-4f3aedde.js";
+            window.path_to_searchindex_js = "searchindex-2f3b4ad9.js";
         </script>
         <!-- Start loading toc.js asap -->
-        <script src="toc-2b639993.js"></script>
+        <script src="toc-f3585118.js"></script>
     </head>
     <body>
     <div id="mdbook-help-container">
@@ -263,9 +263,9 @@ int main() {
 }
 </code></pre>
 <p><strong>Output 17-1. One run on the verification machine.</strong></p>
-<pre><code class="language-text">unpadded (shared line):  1525.6 ms
-padded   (separate)   :   379.5 ms
-ratio                 :  4.02x
+<pre><code class="language-text">unpadded (shared line):  1745.7 ms
+padded   (separate)   :   340.6 ms
+ratio                 :  5.13x
 (unpadded 80000000, padded 80000000)
 </code></pre>
 <p><strong>Listing 17-2. The same experiment in Rust, with atomic counters.</strong></p>
@@ -328,9 +328,9 @@ fn main() {
     );
 }</code></pre>
 <p><strong>Output 17-2.</strong></p>
-<pre><code class="language-text">unpadded (shared line):  1547.9 ms
-padded   (separate)   :   397.7 ms
-ratio                 :  3.89x
+<pre><code class="language-text">unpadded (shared line):  1748.2 ms
+padded   (separate)   :   337.5 ms
+ratio                 :  5.18x
 (unpadded 80000000, padded 80000000)
 </code></pre>
 <div class="callout keyidea">
@@ -339,7 +339,7 @@ ratio                 :  3.89x
 </div>
 
 <h2 id="173-hardware-accelerators-discrete-architecture-vs-unified-memory-architecture-uma"><a class="header" href="#173-hardware-accelerators-discrete-architecture-vs-unified-memory-architecture-uma">17.3 Hardware Accelerators: Discrete Architecture vs. Unified Memory Architecture (UMA)</a></h2>
-<p>Beyond general-purpose CPUs, modern servers increasingly rely on specialized hardware accelerators—such as GPUs, Neural Processing Units (NPUs), and cryptographic ASICs—to handle computationally intensive ML and HPC workloads.</p>
+<p>Beyond general-purpose CPUs, modern servers increasingly rely on specialized hardware accelerators, such as GPUs, Neural Processing Units (NPUs), and cryptographic ASICs, to handle computationally intensive ML and HPC workloads.</p>
 <p>The operating system and runtime libraries manage accelerators across two fundamentally distinct memory architectures:</p>
 <h3 id="1731-the-discrete-accelerator-model-pcie--dedicated-vram"><a class="header" href="#1731-the-discrete-accelerator-model-pcie--dedicated-vram">17.3.1 The Discrete Accelerator Model (PCIe + Dedicated VRAM)</a></h3>
 <p>In traditional enterprise servers (such as x86 hosts paired with discrete PCIe GPUs), the host CPU and the accelerator inhabit completely separate physical memory domains:</p>
@@ -442,7 +442,7 @@ ratio                 :  3.89x
         <script src="book-609e4cb8.js"></script>
 
         <!-- Custom JS scripts -->
-        <script src="theme/figures-7a3fdfc9.js"></script>
+        <script src="theme/figures-afd72f2c.js"></script>
 
 
 

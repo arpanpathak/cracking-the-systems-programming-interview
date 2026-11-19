@@ -28,7 +28,7 @@
         <link rel="stylesheet" id="mdbook-ayu-highlight-css" href="ayu-highlight-3fdfc3ac.css">
 
         <!-- Custom theme stylesheets -->
-        <link rel="stylesheet" href="theme/custom-e0671a52.css">
+        <link rel="stylesheet" href="theme/custom-9125cc61.css">
 
         <!-- MathJax -->
         <script async src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.1/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
@@ -38,10 +38,10 @@
             const path_to_root = "";
             const default_light_theme = "light";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "searchindex-4f3aedde.js";
+            window.path_to_searchindex_js = "searchindex-2f3b4ad9.js";
         </script>
         <!-- Start loading toc.js asap -->
-        <script src="toc-2b639993.js"></script>
+        <script src="toc-f3585118.js"></script>
     </head>
     <body>
     <div id="mdbook-help-container">
@@ -184,10 +184,19 @@
                 <div id="mdbook-content" class="content">
                     <main>
                         <h1 id="6-synchronization-and-memory-ordering"><a class="header" href="#6-synchronization-and-memory-ordering">6. Synchronization and Memory Ordering</a></h1>
-<p>While atomic instructions suffice for single-word updates, most concurrent operations involve complex, multi-instruction transformations of data structures. To preserve system integrity, threads must coordinate their access to these critical sections using higher-level synchronization primitives.</p>
+<p>Chapter 4 established that a non-atomic Read-Modify-Write expression (<code>counter++</code>) decomposes into three discrete machine instructions (load, increment, and store), creating an <strong>atomicity gap</strong> through which concurrent threads lose updates. Single-word atomic instructions eliminate lost updates on isolated scalar variables. Systems software, however, routinely mutates composite data structures (linked lists, circular buffers, page-table hierarchies, file descriptor tables, and allocator free lists) whose structural invariants span multiple machine words and cache lines.</p>
+<p>Preserving data integrity across concurrent threads requires enforcing two orthogonal properties:</p>
+<ol>
+<li><strong>Mutual Exclusion and Predicate Coordination:</strong> Serializing multi-instruction critical sections and suspending threads passively when a required logical precondition is unsatisfied.</li>
+<li><strong>Memory Ordering and Cross-Core Visibility:</strong> Constraining compiler instruction reordering and per-core hardware store buffers so that writes committed prior to a synchronization point become deterministically visible to peer cores observing that synchronization point.</li>
+</ol>
 <h2 id="61-mutual-exclusion-and-critical-sections"><a class="header" href="#61-mutual-exclusion-and-critical-sections">6.1 Mutual Exclusion and Critical Sections</a></h2>
-<p>A <strong>mutex</strong> (mutual exclusion) is a synchronization primitive that grants exclusive access to a critical section of code to a single thread at a time. When a thread attempts to acquire a mutex already held by another, the kernel may suspend the thread, placing it in a wait queue to prevent wasteful “spinning.”</p>
-<p>The choice between atomic instructions and mutexes is primarily a matter of granularity and overhead. Atomic operations are highly efficient for single-word updates, as they are implemented directly in hardware. However, when a critical section encompasses complex data structures, such as queues or trees, the overhead of a mutex is negligible compared to the work performed within the section. In languages like Rust, the <code>Mutex</code> type enforces safety by wrapping the data it protects, ensuring that the data can only be accessed through a lock guard, thereby preventing accidental unprotected access at compile time.</p>
+<p>A <strong>mutex</strong> (mutual exclusion lock) enforces an exclusive ownership invariant: at most one thread may execute within the protected <strong>critical section</strong> at any instant. When a thread invokes <code>lock()</code> on a mutex currently owned by another thread, the synchronization runtime parks the contending thread in a kernel wait queue, allowing the physical core to execute other runnable threads rather than spinning idly.</p>
+<p>The selection between atomic instructions and mutexes is governed by critical-section granularity and static safety guarantees:</p>
+<ul>
+<li><strong>Atomic Instructions</strong> operate directly in user mode (<code>Ring 3</code> / <code>EL0</code>, ~5–20 ns uncontended) and are appropriate for isolated counters, state flags, bitmasks, and lock-free single-producer/single-consumer ring indices.</li>
+<li><strong>Mutexes</strong> guard multi-object invariants of arbitrary complexity. In C++, <code>std::mutex</code> is declared independently of the variables it protects, relying on developer discipline to ensure every access acquires the lock. In Rust, <code>Mutex&lt;T&gt;</code> encapsulates the protected payload <code>T</code> inside the lock type itself: the type system enforces at compile time that <code>T</code> is accessible solely through an active <code>MutexGuard&lt;'_, T&gt;</code>, whose <code>Drop</code> implementation releases the lock deterministically upon scope exit or stack unwinding.</li>
+</ul>
 <figure>
 <img src="figures/ch06_mutex.svg" alt="A mutex with an owner, a wait queue, and the critical section it protects" />
 </figure>
@@ -230,7 +239,7 @@ int main() {
 use std::sync::{Arc, Mutex};
 use std::thread;
 
-fn main() {
+fn main() -&gt; Result&lt;(), Box&lt;dyn std::error::Error&gt;&gt; {
     const THREADS: usize = 8;
     const ITERS: u64 = 5_000_000;
 
@@ -241,27 +250,45 @@ fn main() {
         let c = Arc::clone(&amp;counter);
         handles.push(thread::spawn(move || {
             for _ in 0..ITERS {
-                *c.lock().unwrap() += 1;
+                if let Ok(mut guard) = c.lock() {
+                    *guard += 1;
+                }
             }
         }));
     }
 
     for h in handles {
-        h.join().unwrap();
+        h.join().map_err(|_| "worker thread panicked")?;
     }
 
+    let guard = counter.lock().map_err(|_| "mutex poisoned")?;
     println!(
         "expected {}, observed {}",
         THREADS as u64 * ITERS,
-        *counter.lock().unwrap()
+        *guard
     );
+    Ok(())
 }</code></pre>
 <p><strong>Output 6-2.</strong></p>
 <pre><code class="language-text">expected 40000000, observed 40000000
 </code></pre>
 <h2 id="62-condition-variables-and-predicate-based-synchronization"><a class="header" href="#62-condition-variables-and-predicate-based-synchronization">6.2 Condition Variables and Predicate-Based Synchronization</a></h2>
-<p>Mutexes provide exclusion, but they lack the ability to facilitate coordination based on state changes. <strong>Condition variables</strong> bridge this gap by allowing threads to sleep until a specific logical condition, or <strong>predicate</strong>, is satisfied.</p>
-<p>The standard pattern for using a condition variable is implemented through a <code>wait</code> operation that atomically releases the associated mutex and suspends the thread. When another thread modifies the state and invokes <code>notify</code>, the sleeping thread is awakened and must re-acquire the mutex before the <code>wait</code> returns. Because of potential race conditions and “spurious wakeups” (where a thread is awakened without the predicate being met), the <code>wait</code> operation must always be encapsulated within a loop that repeatedly tests the predicate. This ensures that the thread only proceeds when the condition is truly satisfied.</p>
+<p>Mutexes enforce mutual exclusion, yet they provide no mechanism for suspending execution until a shared logical state (a <strong>predicate</strong>) becomes true (for example, awaiting non-empty occupancy or available buffer capacity in a bounded queue). Repeatedly acquiring a mutex, testing the predicate, and releasing the mutex in a polling loop wastes CPU cycles and saturates the cache coherence bus.</p>
+<p>A <strong>condition variable</strong> resolves predicate waiting by pairing an internal wait queue with an associated mutex. Invoking <code>wait(lock)</code> performs two state transitions as a single <strong>atomic operation</strong>:</p>
+<ol>
+<li>Releases the held mutex <code>M</code>.</li>
+<li>Enqueues the calling thread onto the condition variable’s sleep queue.</li>
+</ol>
+<p>Atomicity across these two steps eliminates the <strong>lost-wakeup hazard</strong>. If releasing <code>M</code> and entering the sleep queue were separate, interruptible steps, a consumer could observe an empty queue and unlock <code>M</code>; prior to the consumer entering the wait queue, a producer could acquire <code>M</code>, append an item, invoke <code>notify_one()</code> on an empty wait queue, and unlock <code>M</code>. The consumer would subsequently enter the wait queue and remain blocked indefinitely despite an unread item residing in the buffer. Atomic unlock-and-sleep ensures that no peer thread can acquire <code>M</code> until the caller is already enrolled on the wait queue.</p>
+<div class="callout caution">
+<span class="label">Watch out</span>
+<p>Every condition-variable wait must be enclosed within a <strong><code>while (!predicate)</code> loop</strong> (or Rust’s <code>Condvar::wait_while</code>), never a single <code>if (!predicate)</code> branch. Two distinct mechanisms invalidate a non-looping check:</p>
+<ol>
+<li><strong>Spurious Wakeups:</strong> POSIX (<code>pthread_cond_wait</code>) and operating system kernels permit a waiting thread to return from <code>wait</code> without a corresponding notification event.</li>
+<li><strong>Post-Wakeup State Interception:</strong> Returning from a condition wait moves the thread from the condition variable queue to the mutex acquisition queue rather than granting immediate ownership. An intervening thread may acquire the mutex first and invalidate the predicate before the awakened thread obtains lock ownership.</li>
+</ol>
+</div>
+
 <p><strong>Listing 6-3. A bounded buffer with two producers and two consumers (C++20).</strong></p>
 <pre><code class="language-cpp">// ch06/prodcons.cpp: a bounded buffer shared by two producers and two consumers.
 #include &lt;condition_variable&gt;
@@ -486,18 +513,25 @@ expected     20000100000
 match        yes
 </code></pre>
 <h2 id="63-deadlock-causes-and-prevention"><a class="header" href="#63-deadlock-causes-and-prevention">6.3 Deadlock: Causes and Prevention</a></h2>
-<p>A <strong>deadlock</strong> occurs when a group of threads enters a state of permanent suspension, where each thread is waiting for a resource held by another thread in the cycle. For a deadlock to manifest, four necessary conditions must hold simultaneously:</p>
-<ol>
-<li><strong>Mutual Exclusion:</strong> The resource is held by exactly one thread.</li>
-<li><strong>Hold and Wait:</strong> A thread holds one resource while requesting another.</li>
-<li><strong>No Preemption:</strong> A resource cannot be forcibly taken from its holder.</li>
-<li><strong>Circular Wait:</strong> A closed chain of dependencies exists among the waiting threads.</li>
-</ol>
-<p>Deadlock prevention strategies focus on breaking one of these conditions. One effective method is to enforce a strict, global acquisition order for all locks, which eliminates the possibility of a circular wait. Alternatively, threads can employ a “try-and-back-off” strategy using <code>try_lock</code> operations; if a thread fails to acquire a secondary resource, it releases its held resources and retries, thereby breaking the “hold and wait” condition.</p>
+<p>A <strong>deadlock</strong> occurs when a set of threads enters permanent suspension because every member of the set holds at least one exclusive resource while waiting indefinitely for a resource owned by another member of the same set. Coffman’s theorem establishes that deadlock occurs if and only if four necessary conditions hold simultaneously:</p>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th style="text-align: left">Coffman Condition</th><th style="text-align: left">Formal Definition</th><th style="text-align: left">Engineering Prevention Mechanism</th></tr>
+</thead>
+<tbody>
+<tr><td style="text-align: left"><strong>1. Mutual Exclusion</strong></td><td style="text-align: left">At least one resource is held in non-shareable exclusive mode</td><td style="text-align: left">Substitute lock-free atomics, immutable snapshots, or Seqlocks where applicable</td></tr>
+<tr><td style="text-align: left"><strong>2. Hold and Wait</strong></td><td style="text-align: left">A thread retains ownership of one lock while blocking to acquire another</td><td style="text-align: left">Acquire lock sets atomically (<code>std::scoped_lock(a, b)</code>) or release held locks upon <code>try_lock</code> failure</td></tr>
+<tr><td style="text-align: left"><strong>3. No Preemption</strong></td><td style="text-align: left">The kernel cannot forcibly revoke a held mutex from its owning thread</td><td style="text-align: left">Implement cooperative backoff protocols using non-blocking <code>try_lock()</code></td></tr>
+<tr><td style="text-align: left"><strong>4. Circular Wait</strong></td><td style="text-align: left">A directed cycle exists in the resource wait-for graph (T<sub>1</sub> → B, T<sub>2</sub> → A)</td><td style="text-align: left">Enforce a strict global acquisition hierarchy (for example, ascending lock address order <code>&amp;a &lt; &amp;b</code>)</td></tr>
+</tbody>
+</table>
+</div>
+<p>Negating any single Coffman condition provably precludes deadlock. Production kernels (such as Linux’s <code>lockdep</code> lock-order validator) rely primarily on enforcing a strict <strong>global lock acquisition hierarchy</strong> to eliminate circular wait statically and dynamically.</p>
 <figure>
 <img src="figures/ch06_deadlock.svg" alt="Two workers each holding one resource and waiting for the other, forming a cycle" />
 </figure>
-<p><strong>Listing 6-5. A deliberate deadlock (C++20).</strong></p>
+<p><strong>Listing 6-5. A deliberate deadlock caused by inverted lock acquisition order (C++20).</strong></p>
 <pre><code class="language-cpp">// ch06/deadlock.cpp: two workers, two mutexes, opposite acquisition order.
 // This program is expected to hang; the harness kills it and records the outcome.
 #include &lt;chrono&gt;
@@ -530,12 +564,65 @@ int main() {
     std::cout &lt;&lt; "finished without deadlock\n";
 }
 </code></pre>
-<p><strong>Output 6-5. Each worker acquires its first mutex and never acquires the second.</strong></p>
+<p><strong>Output 6-5. Each worker acquires its first mutex and blocks indefinitely on the second.</strong></p>
 <pre><code class="language-text">worker 1 holds A
 worker 2 holds B
 harness: process still alive after 1 s - deadlocked (killed)
 </code></pre>
-<p><strong>Listing 6-6. Using try_lock to release and retry (C++20).</strong></p>
+<p><strong>Listing 6-6. The same deliberate deadlock in Rust.</strong></p>
+<pre class="playground"><code class="language-rust">// ch06/deadlock.rs: two workers, two mutexes, opposite acquisition order.
+// This program is expected to hang; the harness terminates it and records the outcome.
+use std::io::{self, Write};
+use std::sync::{Arc, Mutex};
+use std::thread;
+use std::time::Duration;
+
+fn main() {
+    let a = Arc::new(Mutex::new(()));
+    let b = Arc::new(Mutex::new(()));
+
+    let t1 = {
+        let a = Arc::clone(&amp;a);
+        let b = Arc::clone(&amp;b);
+        thread::spawn(move || {
+            let _la = a.lock().expect("mutex A poisoned");
+            println!("worker 1 holds A");
+            let _ = io::stdout().flush();
+            thread::sleep(Duration::from_millis(50));
+
+            let _lb = b.lock().expect("mutex B poisoned"); // waits for B, held by worker 2
+            println!("worker 1 got A and B");
+            let _ = io::stdout().flush();
+        })
+    };
+
+    let t2 = {
+        let a = Arc::clone(&amp;a);
+        let b = Arc::clone(&amp;b);
+        thread::spawn(move || {
+            let _lb = b.lock().expect("mutex B poisoned");
+            println!("worker 2 holds B");
+            let _ = io::stdout().flush();
+            thread::sleep(Duration::from_millis(50));
+
+            let _la = a.lock().expect("mutex A poisoned"); // waits for A, held by worker 1
+            println!("worker 2 got B and A");
+            let _ = io::stdout().flush();
+        })
+    };
+
+    let _ = t1.join();
+    let _ = t2.join();
+
+    println!("finished without deadlock");
+}</code></pre>
+<p><strong>Output 6-6.</strong></p>
+<pre><code class="language-text">worker 1 holds A
+worker 2 holds B
+harness: process still alive after 1 s - deadlocked (killed)
+</code></pre>
+<p>Where a global lock hierarchy cannot be established statically, breaking <strong>Hold and Wait</strong> via non-blocking <code>try_lock()</code> eliminates the deadlock cycle. When Worker 2 holds Mutex B and <code>a.try_lock()</code> fails, Worker 2 immediately releases Mutex B, pauses briefly to mitigate livelock, and retries acquisition.</p>
+<p><strong>Listing 6-7. Deadlock elimination using <code>try_lock</code> backoff (C++20).</strong></p>
 <pre><code class="language-cpp">// ch06/trylock.cpp: the same two workers, but worker 2 backs off instead of blocking.
 #include &lt;chrono&gt;
 #include &lt;iostream&gt;
@@ -575,7 +662,75 @@ int main() {
     std::cout &lt;&lt; "finished without deadlock\n";
 }
 </code></pre>
-<p><strong>Output 6-6. Worker 2 retries several times, and both workers finish.</strong></p>
+<p><strong>Output 6-7. Worker 2 backs off until Worker 1 completes, and both threads finish.</strong></p>
+<pre><code class="language-text">worker 2 holds B, tries A
+worker 1 holds A
+worker 2 holds B, tries A
+worker 2 holds B, tries A
+worker 2 holds B, tries A
+worker 2 holds B, tries A
+worker 2 holds B, tries A
+worker 2 holds B, tries A
+worker 2 holds B, tries A
+worker 2 holds B, tries A
+worker 2 holds B, tries A
+worker 1 got A and B
+worker 2 holds B, tries A
+worker 2 got B and A
+finished without deadlock
+</code></pre>
+<p><strong>Listing 6-8. The same <code>try_lock</code> backoff protocol in Rust.</strong></p>
+<pre class="playground"><code class="language-rust">// ch06/trylock.rs: the same two workers, but worker 2 backs off instead of blocking.
+use std::io::{self, Write};
+use std::sync::{Arc, Mutex};
+use std::thread;
+use std::time::Duration;
+
+fn main() {
+    let a = Arc::new(Mutex::new(()));
+    let b = Arc::new(Mutex::new(()));
+
+    let t1 = {
+        let a = Arc::clone(&amp;a);
+        let b = Arc::clone(&amp;b);
+        thread::spawn(move || {
+            let _la = a.lock().expect("mutex A poisoned");
+            println!("worker 1 holds A");
+            let _ = io::stdout().flush();
+            thread::sleep(Duration::from_millis(50));
+
+            let _lb = b.lock().expect("mutex B poisoned");
+            println!("worker 1 got A and B");
+            let _ = io::stdout().flush();
+        })
+    };
+
+    let t2 = {
+        let a = Arc::clone(&amp;a);
+        let b = Arc::clone(&amp;b);
+        thread::spawn(move || {
+            loop {
+                {
+                    let _lb = b.lock().expect("mutex B poisoned");
+                    println!("worker 2 holds B, tries A");
+                    let _ = io::stdout().flush();
+                    if let Ok(_la) = a.try_lock() {
+                        println!("worker 2 got B and A");
+                        let _ = io::stdout().flush();
+                        break;
+                    }
+                }
+                thread::sleep(Duration::from_millis(5));
+            }
+        })
+    };
+
+    t1.join().expect("worker 1 panicked");
+    t2.join().expect("worker 2 panicked");
+
+    println!("finished without deadlock");
+}</code></pre>
+<p><strong>Output 6-8.</strong></p>
 <pre><code class="language-text">worker 1 holds A
 worker 2 holds B, tries A
 worker 2 holds B, tries A
@@ -592,27 +747,418 @@ worker 2 holds B, tries A
 worker 2 got B and A
 finished without deadlock
 </code></pre>
-<h2 id="64-memory-ordering-and-visibility"><a class="header" href="#64-memory-ordering-and-visibility">6.4 Memory Ordering and Visibility</a></h2>
-<p>In a concurrent system, the visibility of memory operations is not guaranteed by atomicity alone. Memory ordering models define how different threads perceive the sequence of reads and writes performed by others.</p>
+<h2 id="64-atomic-compare-and-swap-compare_exchange-vs-compare_exchange_weak"><a class="header" href="#64-atomic-compare-and-swap-compare_exchange-vs-compare_exchange_weak">6.4 Atomic Compare-And-Swap (<code>compare_exchange</code> vs. <code>compare_exchange_weak</code>)</a></h2>
+<p>Lock-free data structures, spinlocks, atomic reference counters (<code>std::shared_ptr</code> and Rust’s <code>Arc</code>), and uncontended mutex fast paths are built upon a single universal read-modify-write primitive: <strong>Compare-And-Swap (CAS)</strong>. Both C++20 and Rust expose two variants on atomic types: strong (<code>compare_exchange_strong</code> / <code>compare_exchange</code>) and weak (<code>compare_exchange_weak</code>).</p>
+<h3 id="641-semantics-of-the-atomic-read-modify-write"><a class="header" href="#641-semantics-of-the-atomic-read-modify-write">6.4.1 Semantics of the Atomic Read-Modify-Write</a></h3>
+<p>Consider maintaining a shared atomic maximum (<code>max_val</code>) updated concurrently by multiple threads without a mutex. Evaluating <code>if (candidate &gt; max_val) max_val = candidate;</code> is unsound: a peer thread may raise <code>max_val</code> to a higher value between the load and the store, causing the first thread to overwrite a strictly larger maximum with a stale candidate.</p>
+<p>Compare-And-Swap closes this race by executing the equality check and conditional write as a single indivisible hardware transaction:</p>
+<pre><code class="language-text">// Indivisible hardware semantics of CAS(addr, expected, desired):
+atomic {
+    current = *addr;
+    if (current == expected) {
+        *addr = desired;
+        return Success(current);
+    } else {
+        expected = current;   // reload current memory state for caller retry
+        return Failure(current);
+    }
+}
+</code></pre>
+<p>Because failure automatically returns the current value stored at <code>addr</code>, arbitrary lock-free state transitions (such as computing a maximum, claiming a slot index, or updating a linked-list head pointer) are structured as a deterministic <strong>read-compute-CAS retry loop</strong>:</p>
+<ol>
+<li>Load the current atomic word into a thread-local variable <code>prev</code>.</li>
+<li>Compute the proposed <code>desired</code> value solely in local registers.</li>
+<li>Execute <code>compare_exchange_weak(prev, desired, success_order, failure_order)</code>.</li>
+<li>On success, the update committed atomically; on failure, another core mutated the word concurrently, so the loop reloads <code>prev</code> and recomputes <code>desired</code> against the updated state.</li>
+</ol>
+<h3 id="642-hardware-realization-x86-64-lock-cmpxchg-vs-arm64-llsc"><a class="header" href="#642-hardware-realization-x86-64-lock-cmpxchg-vs-arm64-llsc">6.4.2 Hardware Realization: x86-64 <code>LOCK CMPXCHG</code> vs. ARM64 LL/SC</a></h3>
+<p>The coexistence of <strong>strong</strong> (<code>compare_exchange</code>) and <strong>weak</strong> (<code>compare_exchange_weak</code>) primitives reflects a fundamental microarchitectural divergence between x86-64 CISC cores and ARM64 / RISC-V cores:</p>
+<pre><code class="language-text">// x86-64 Single-Instruction CAS                 // ARM64 Load-Linked / Store-Conditional (LL/SC)
+mov  rax, r_expected                             1: ldxr  x0, [x_addr]          // Load &amp; set Exclusive Monitor
+lock cmpxchg QWORD PTR [r_addr], r_desired          cmp   x0, x_expected        // Verify equality
+// ZF=1 on commit; ZF=0 loads [r_addr]-&gt;rax         b.ne  2f                    // Mismatch: exit without store
+                                                    stxr  w1, x_desired, [x_addr] // Store if Monitor intact
+                                                    cbnz  w1, 1b                // Internal retry loop (STRONG only)
+                                                 2:
+</code></pre>
 <ul>
-<li><strong>Relaxed Ordering:</strong> Guarantees only that the operation itself is atomic. It provides no guarantees regarding the order in which subsequent or preceding memory operations become visible to other threads.</li>
-<li><strong>Acquire/Release Semantics:</strong> Provides a mechanism for transitive visibility. A <code>release</code> operation on a variable ensures that all prior memory writes by the thread are made visible to any thread that subsequently performs an <code>acquire</code> operation on that same variable. This is the fundamental pattern for publishing data safely between threads.</li>
-<li><strong>Sequential Consistency:</strong> The strongest ordering model, providing a single, global total order of all operations that is consistent with all threads’ views. While the easiest to reason about, it incurs significant performance penalties on modern hardware due to the requirement for strict synchronization across cores.</li>
+<li><strong>x86-64 (<code>LOCK CMPXCHG</code>):</strong> The processor executes the comparison and conditional store within a single micro-coded instruction while holding the target 64-byte cache line exclusively in the MESI <strong>Modified (<code>M</code>)</strong> state. Whenever <code>*addr == expected</code>, the store commits deterministically; <strong>spurious failures do not occur</strong>.</li>
+<li><strong>ARM64 / RISC-V (Load-Linked / Store-Conditional, <code>LDXR</code> / <code>STXR</code>):</strong> RISC architectures split the atomic update into two distinct instructions coordinated by a hardware <strong>Exclusive Reservation Monitor</strong> associated with the target cache line (64 bytes on standard ARM64 cores; 128 bytes on Apple Silicon M-series cores):
+<ol>
+<li><code>LDXR</code> (Load-Exclusive Register) reads the target word and marks the cache line as exclusively reserved by the local core.</li>
+<li><code>STXR</code> (Store-Exclusive Register) commits <code>desired</code> only if the local core’s exclusive reservation remained undisturbed since <code>LDXR</code>, returning a status flag (<code>0</code> for commit, <code>1</code> for abort).</li>
+</ol>
+</li>
+<li><strong>Spurious Failure Mechanics on LL/SC Hardware:</strong> Between <code>LDXR</code> and <code>STXR</code>, any hardware event that invalidates the cache-line reservation clears the Exclusive Monitor, including an asynchronous timer interrupt, a thread preemption, or a sibling core writing to an unrelated variable occupying the same 64-byte or 128-byte cache line (false sharing). Consequently, <code>STXR</code> may abort and report failure even though <code>*addr</code> remains equal to <code>expected</code>.</li>
 </ul>
-<p><strong>Table 6-1. Memory orderings in C++ and Rust.</strong></p>
+<figure>
+<img src="figures/ch06_cas_llsc.svg" alt="Compare-And-Swap realization comparing x86-64 LOCK CMPXCHG against ARM64 LDXR/STXR Load-Linked Store-Conditional" />
+</figure>
+<p>This hardware divergence establishes an unambiguous engineering guideline:</p>
+<ul>
+<li><strong>Use <code>compare_exchange_weak</code> inside retry loops:</strong> Because the enclosing loop already handles retry upon failure, emitting a single <code>LDXR</code>/<code>STXR</code> pair avoids the redundant nested retry branch generated by strong CAS. (ARMv8.1 Large System Extensions, <code>LSE</code>, add a single-instruction <code>CASAL</code> opcode that reduces contention overhead, yet <code>compare_exchange_weak</code> remains portable and optimal across all targets).</li>
+<li><strong>Use <code>compare_exchange</code> (strong) for single-attempt calls outside a loop:</strong> In routines such as <code>try_lock()</code> or uncontended mutex fast paths, a spurious LL/SC abort would produce a false negative and unnecessarily divert execution onto a slow kernel path.</li>
+</ul>
+<p>Both CAS primitives accept two ordering arguments: <code>(success_order, failure_order)</code>. Because a failed CAS neither modifies shared memory nor acquires resource ownership, specifying <code>Relaxed</code> for <code>failure_order</code> avoids unnecessary memory-barrier overhead on rejected iterations.</p>
+<h2 id="65-hardware-memory-ordering-store-buffers-and-litmus-tests"><a class="header" href="#65-hardware-memory-ordering-store-buffers-and-litmus-tests">6.5 Hardware Memory Ordering, Store Buffers, and Litmus Tests</a></h2>
+<p>Atomicity guarantees that a single memory word is never observed in a torn, partially written state. Atomicity alone, however, provides <strong>no guarantee</strong> regarding the relative order in which reads and writes to distinct memory addresses become observable across separate CPU cores.</p>
+<h3 id="651-microarchitectural-origins-of-memory-reordering"><a class="header" href="#651-microarchitectural-origins-of-memory-reordering">6.5.1 Microarchitectural Origins of Memory Reordering</a></h3>
+<p>Observable reordering of memory operations originates at two distinct layers of the execution stack:</p>
+<ol>
+<li><strong>Compiler Optimization:</strong> Optimizing compilers (<code>clang -O2</code>, <code>rustc -O</code>) assume single-threaded sequential semantics for non-atomic objects. Unless constrained by explicit atomic memory orderings, the compiler may reorder independent loads and stores, eliminate redundant memory reads, or cache values in registers across loop iterations.</li>
+<li><strong>Per-Core Hardware Store Buffers and Weakly Ordered Pipelines:</strong> Even when machine code emits store and load instructions in strict source order, modern out-of-order processors decouple core execution from cache-coherence latency through private microarchitectural queues:
+<ul>
+<li><strong>Per-Core FIFO Store Buffer:</strong> When Core 0 executes a store (<code>x = 1</code>), stalling the pipeline for 40–100 cycles while awaiting MESI invalidation acknowledgments from sibling cores severely degrades instruction throughput. Core 0 instead enqueues <code>(addr: x, val: 1)</code> in its private <strong>Store Buffer</strong> and proceeds immediately to subsequent instructions. Core 0’s own loads snoop its Store Buffer via <em>store forwarding</em>, preserving single-threaded program semantics; sibling cores, however, cannot observe <code>x = 1</code> until the buffer drains to the coherent L1 cache.</li>
+<li><strong>x86-64 TSO vs. ARM64 Weak Ordering:</strong> x86-64 enforces <strong>Total Store Order (TSO)</strong>, preserving <code>Store-Store</code>, <code>Load-Load</code>, and <code>Load-Store</code> order in silicon while permitting <strong><code>Store-Load</code> reordering</strong> via the Store Buffer. Weakly ordered architectures such as <strong>ARM64</strong> (Apple Silicon, AWS Graviton) permit all four instruction reorderings (<code>Load-Load</code>, <code>Load-Store</code>, <code>Store-Store</code>, and <code>Store-Load</code>) unless constrained by explicit ordering opcodes (<code>LDAR</code>, <code>STLR</code>, <code>DMB ISH</code>).</li>
+</ul>
+</li>
+</ol>
+<h3 id="652-hardware-litmus-tests-store-buffering-vs-message-passing"><a class="header" href="#652-hardware-litmus-tests-store-buffering-vs-message-passing">6.5.2 Hardware Litmus Tests: Store Buffering vs. Message Passing</a></h3>
+<p>Concurrent memory models are verified using minimal two-thread specifications termed <strong>litmus tests</strong>. Two canonical litmus tests define the exact operational boundaries separating <code>Relaxed</code>, <code>Release</code>/<code>Acquire</code>, and <code>SeqCst</code>.</p>
+<h4 id="litmus-test-1-store-buffering-sb-store-load-reordering-under-tso"><a class="header" href="#litmus-test-1-store-buffering-sb-store-load-reordering-under-tso">Litmus Test 1: Store Buffering (SB): <code>Store-Load</code> Reordering Under TSO</a></h4>
+<p>Assume coherent memory initially holds <code>x = 0</code> and <code>y = 0</code>. Core 0 and Core 1 execute concurrently:</p>
+<pre><code class="language-text">// Core 0                              // Core 1
+1. x.store(1, ordering);               1. y.store(1, ordering);
+2. r1 = y.load(ordering);              2. r2 = x.load(ordering);
+</code></pre>
+<p>Under sequential interleaving, one store must commit first, guaranteeing that at least one core observes <code>1</code>. On physical hardware executing with <strong><code>Relaxed</code> or <code>Release</code>/<code>Acquire</code></strong>, however, both cores may finish with <strong><code>r1 == 0 &amp;&amp; r2 == 0</code></strong>:</p>
+<ul>
+<li>Core 0 buffers <code>x = 1</code> in its private Store Buffer and immediately executes <code>load(y)</code>, reading <code>0</code> from the coherent cache before Core 1’s buffer drains.</li>
+<li>Simultaneously, Core 1 buffers <code>y = 1</code> in its private Store Buffer and immediately executes <code>load(x)</code>, reading <code>0</code> from the coherent cache before Core 0’s buffer drains.</li>
+<li>Neither <code>Release</code> nor <code>Acquire</code> prohibits this outcome: a <code>Release</code> store prevents <em>prior</em> operations from floating below it, and an <code>Acquire</code> load prevents <em>subsequent</em> operations from floating above it; neither forbids a <em>subsequent</em> load (<code>y.load</code>) from executing ahead of a <em>prior</em> store (<code>x.store</code>).</li>
+<li><strong>Resolution (<code>SeqCst</code>):</strong> Specifying <code>SeqCst</code> instructs the processor to drain its Store Buffer (<code>XCHG</code> / <code>MFENCE</code> on x86-64; <code>STLR</code> paired with <code>LDAR</code> on ARM64) before issuing the subsequent load, establishing a single global total order across all cores in which <code>r1 == 0 &amp;&amp; r2 == 0</code> is strictly precluded.</li>
+</ul>
+<h4 id="litmus-test-2-message-passing-mp-acquire-release-synchronization"><a class="header" href="#litmus-test-2-message-passing-mp-acquire-release-synchronization">Litmus Test 2: Message Passing (MP): Acquire-Release Synchronization</a></h4>
+<p>Assume coherent memory initially holds <code>payload = 0</code> and <code>ready = false</code>. Core 0 initializes a data payload and publishes a readiness flag; Core 1 waits for the flag and inspects the payload:</p>
+<pre><code class="language-text">// Producer (Core 0)                           // Consumer (Core 1)
+1. payload = 0xCAFE;                           1. while (!ready.load(Acquire)) {}
+2. ready.store(true, Release);                 2. assert(payload == 0xCAFE);
+</code></pre>
+<ul>
+<li><strong>Architecture-Dependent Failure Under <code>Relaxed</code>:</strong> Replacing <code>Release</code> and <code>Acquire</code> with <code>Relaxed</code> constitutes a data race in both C++20 and Rust. Because x86-64 TSO hardware preserves <code>Store-Store</code> and <code>Load-Load</code> order implicitly, a defective <code>Relaxed</code> implementation frequently passes empirical testing on x86-64 hosts. On weakly ordered <strong>ARM64</strong> processors, however, hardware may reorder the two stores on Core 0 or the two loads on Core 1, causing Core 1 to observe <code>ready == true</code> while reading stale <code>payload == 0</code>.</li>
+<li><strong>Formal Happens-Before Guarantee (<code>Release</code> / <code>Acquire</code>):</strong>
+<ul>
+<li><strong><code>Release</code> on <code>ready.store(true)</code></strong> guarantees that all memory writes sequenced prior to the store (<code>payload = 0xCAFE</code>) become globally visible before <code>ready = true</code> enters the coherence domain (compiled to <code>STLR</code> on ARM64).</li>
+<li><strong><code>Acquire</code> on <code>ready.load()</code></strong> guarantees that no memory read sequenced after the load (<code>read(payload)</code>) executes prior to observing <code>ready</code> (compiled to <code>LDAR</code> on ARM64).</li>
+<li>When Core 1’s <code>Acquire</code> load observes the <code>true</code> value written by Core 0’s <code>Release</code> store, the two operations establish a <strong>synchronizes-with</strong> edge, inducing a transitive <strong>happens-before</strong> relationship that guarantees Core 1 observes <code>payload == 0xCAFE</code> across all architectures.</li>
+</ul>
+</li>
+</ul>
+<figure>
+<img src="figures/ch06_store_buffer_litmus.svg" alt="Per-core hardware store buffers demonstrating Store-Buffering reordering and Acquire-Release Message-Passing happens-before edges" />
+</figure>
+<h3 id="653-complete-reference-table-of-c20-and-rust-2024-memory-orderings"><a class="header" href="#653-complete-reference-table-of-c20-and-rust-2024-memory-orderings">6.5.3 Complete Reference Table of C++20 and Rust 2024 Memory Orderings</a></h3>
 <div class="table-wrapper">
 <table>
 <thead>
-<tr><th>Need</th><th>C++</th><th>Rust</th></tr>
+<tr><th style="text-align: left">Ordering</th><th style="text-align: left">Formal Visibility Contract</th><th style="text-align: left">x86-64 Machine Code</th><th style="text-align: left">ARM64 Machine Code</th><th style="text-align: left">Canonical Engineering Usage</th></tr>
 </thead>
 <tbody>
-<tr><td>atomic increment only</td><td><code>fetch_add(1, memory_order_relaxed)</code></td><td><code>fetch_add(1, Ordering::Relaxed)</code></td></tr>
-<tr><td>publish data, then set a flag</td><td><code>store(v, memory_order_release)</code></td><td><code>store(v, Ordering::Release)</code></td></tr>
-<tr><td>read the flag, then read the data</td><td><code>load(memory_order_acquire)</code></td><td><code>load(Ordering::Acquire)</code></td></tr>
-<tr><td>one common order for all threads</td><td>default (<code>memory_order_seq_cst</code>)</td><td><code>Ordering::SeqCst</code></td></tr>
+<tr><td style="text-align: left"><strong><code>Relaxed</code></strong></td><td style="text-align: left">Single-word atomicity only; zero cross-address ordering</td><td style="text-align: left"><code>MOV</code> / <code>LOCK XADD</code></td><td style="text-align: left"><code>LDR</code> / <code>STR</code></td><td style="text-align: left">Telemetry counters, unique ID allocation (<code>fetch_add</code>), failed CAS branch</td></tr>
+<tr><td style="text-align: left"><strong><code>Release</code></strong> <em>(stores)</em></td><td style="text-align: left">Prior reads/writes cannot float below this store</td><td style="text-align: left">Plain <code>MOV</code> (TSO)</td><td style="text-align: left"><code>STLR</code></td><td style="text-align: left"><code>mutex.unlock()</code>, publishing a payload flag, committing SPSC ring <code>tail</code></td></tr>
+<tr><td style="text-align: left"><strong><code>Acquire</code></strong> <em>(loads)</em></td><td style="text-align: left">Subsequent reads/writes cannot float above this load</td><td style="text-align: left">Plain <code>MOV</code> (TSO)</td><td style="text-align: left"><code>LDAR</code></td><td style="text-align: left"><code>mutex.lock()</code>, polling a readiness flag, inspecting SPSC ring <code>head</code></td></tr>
+<tr><td style="text-align: left"><strong><code>AcqRel</code></strong> <em>(RMW)</em></td><td style="text-align: left">Both <code>Acquire</code> (on read) and <code>Release</code> (on write)</td><td style="text-align: left">Implicit in <code>LOCK</code></td><td style="text-align: left"><code>LDAXR</code>/<code>STLXR</code> or <code>CASAL</code></td><td style="text-align: left">Atomic reference-count decrements (<code>Arc::drop</code>), MPMC queue slot claims</td></tr>
+<tr><td style="text-align: left"><strong><code>SeqCst</code></strong></td><td style="text-align: left">Global total order across all <code>SeqCst</code> ops; drains Store Buffers</td><td style="text-align: left"><code>XCHG</code> / <code>MFENCE</code></td><td style="text-align: left"><code>STLR</code> + <code>LDAR</code> / <code>DMB ISH</code></td><td style="text-align: left">Multi-variable Dekker mutual exclusion, Store-Buffering litmus invariants</td></tr>
 </tbody>
 </table>
 </div>
+<h2 id="66-synchronization-beneath-the-primitives-futexes-and-seqlocks"><a class="header" href="#66-synchronization-beneath-the-primitives-futexes-and-seqlocks">6.6 Synchronization Beneath the Primitives: Futexes and Seqlocks</a></h2>
+<p>Production operating systems combine user-mode atomic CAS instructions with kernel wait queues to achieve sub-10-nanosecond uncontended locking while avoiding CPU waste under contention.</p>
+<h3 id="661-fast-userspace-mutexes-futex-on-linux--__ulock-on-darwin"><a class="header" href="#661-fast-userspace-mutexes-futex-on-linux--__ulock-on-darwin">6.6.1 Fast Userspace Mutexes (<code>futex</code> on Linux / <code>__ulock</code> on Darwin)</a></h3>
+<p>Executing a kernel system call upon every <code>lock()</code> and <code>unlock()</code> invocation would impose a 300–1,000 ns privilege-transition penalty on every critical section, whereas pure user-mode spinlocks waste processor cycles whenever contention persists beyond a few nanoseconds.</p>
+<p>Contemporary mutex implementations (<code>std::mutex</code>, <code>pthread_mutex_t</code>, and Rust’s <code>std::sync::Mutex</code>) resolve this trade-off through a <strong>hybrid Ring 3 / Ring 0 architecture</strong> built upon Linux’s <strong><code>futex</code></strong> (Fast Userspace Mutex) or Darwin/macOS’s <strong><code>__ulock_wait</code> / <code>__ulock_wake</code></strong>. The lock state is encoded in a single 32-bit atomic word possessing three discrete states:</p>
+<ul>
+<li><strong>State <code>0</code> (Unlocked):</strong> No thread holds the mutex.</li>
+<li><strong>State <code>1</code> (Locked, Uncontended):</strong> One thread owns the mutex; zero threads are parked in the kernel wait queue.</li>
+<li><strong>State <code>2</code> (Locked, Contended):</strong> One thread owns the mutex, and one or more contending threads are parked (or entering the wait path) in Ring 0.</li>
+</ul>
+<p>The protocol bifurcates into two execution paths:</p>
+<ol>
+<li><strong>Uncontended Fast Path (Ring 3 Only, ~5 ns, Zero System Calls):</strong>
+<ul>
+<li><code>lock()</code> executes a single strong <code>compare_exchange(0, 1, Acquire, Relaxed)</code>. When the mutex is unlocked (<code>0</code>), ownership transfers immediately in user mode without crossing the kernel boundary.</li>
+<li><code>unlock()</code> executes <code>swap(0, Release)</code>. When the previous state is <code>1</code> (confirming no waiting threads exist), <code>unlock()</code> returns directly in Ring 3 with zero system calls.</li>
+</ul>
+</li>
+<li><strong>Contended Slow Path (Ring 0 Parking and Lost-Wakeup Prevention):</strong>
+<ul>
+<li>When Thread B invokes <code>lock()</code> against a held mutex (state <code>1</code> or <code>2</code>), its fast-path CAS fails.</li>
+<li>Thread B atomically swaps the lock word to <strong><code>2</code></strong> via <code>swap(2, Acquire)</code>, recording the presence of a contender. If <code>swap(2)</code> returns <code>0</code>, Thread A released the mutex concurrently and Thread B immediately acquires ownership.</li>
+<li>Otherwise, Thread B issues the system call <strong><code>futex(&amp;state, FUTEX_WAIT, 2)</code></strong>.</li>
+<li>Within Ring 0, the kernel hashes the address <code>&amp;state</code> to a wait-queue hash bucket, acquires the bucket spinlock, and <strong>atomically re-verifies <code>*(&amp;state) == 2</code></strong> prior to removing Thread B from the CPU runqueue. If Thread A invoked <code>unlock()</code> and stored <code>0</code> during the interval between Thread B’s user-mode check and its kernel entry, the kernel detects <code>*(&amp;state) != 2</code>, aborts the sleep immediately with <code>EAGAIN</code>, and returns Thread B to Ring 3 to re-attempt acquisition, eliminating the lost-wakeup race.</li>
+<li>When Thread A invokes <code>unlock()</code> and its <code>swap(0, Release)</code> returns <strong><code>2</code></strong>, Thread A invokes <strong><code>futex(&amp;state, FUTEX_WAKE, 1)</code></strong>, transitioning one parked TCB from the hash-bucket wait queue back onto a runnable core runqueue.</li>
+</ul>
+</li>
+</ol>
+<figure>
+<img src="figures/ch06_futex_automaton.svg" alt="Fast Userspace Mutex three-state automaton showing Ring 3 fast path and Ring 0 futex wait-queue parking" />
+</figure>
+<h3 id="662-sequence-locks-seqlock-for-read-mostly-kernel-data"><a class="header" href="#662-sequence-locks-seqlock-for-read-mostly-kernel-data">6.6.2 Sequence Locks (<code>Seqlock</code>) for Read-Mostly Kernel Data</a></h3>
+<p>Certain kernel data structures, such as the monotonic clock calibration parameters exported to user processes via the Linux <code>vDSO</code> / <code>vvar</code> page (Chapter 9), experience millions of concurrent reads per second across dozens of cores but infrequent single-writer updates. Standard reader-writer locks (<code>RwLock</code>) degrade severely under this access profile because every reader must execute an atomic increment and decrement on a shared <code>reader_count</code> word, forcing the MESI coherence protocol to bounce the cache line into Exclusive/Modified state across every reading core.</p>
+<p>A <strong>Sequence Lock (<code>Seqlock</code>)</strong> eliminates all reader-side writes to shared memory by pairing the protected payload fields with an atomic 64-bit <strong>sequence counter (<code>seq</code>)</strong> initialized to <code>0</code> (even):</p>
+<ol>
+<li><strong>Writer Protocol (Single Writer):</strong>
+<ul>
+<li>Increments <code>seq</code> from an even value <code>2k</code> to the <strong>odd</strong> value <code>2k + 1</code> with <code>Release</code> ordering, indicating an active mutation window.</li>
+<li>Stores the updated payload fields (<code>ticks</code>, <code>scaled_ns</code>).</li>
+<li>Increments <code>seq</code> to the next <strong>even</strong> value <code>2k + 2</code> with <code>Release</code> ordering, publishing the consistent snapshot.</li>
+</ul>
+</li>
+<li><strong>Reader Protocol (Zero Shared Memory Writes):</strong>
+<ul>
+<li>Loads <code>s1 = seq.load(Acquire)</code>. If <code>s1</code> is <strong>odd</strong> (<code>(s1 &amp; 1) != 0</code>), a writer is actively mutating the structure; the reader retries immediately.</li>
+<li>Copies the payload fields into thread-local registers using atomic <code>Relaxed</code> loads (satisfying C++20 and Rust data-race freedom rules even if a writer overlaps the read).</li>
+<li>Executes an <code>Acquire</code> memory fence (<code>std::atomic_thread_fence(memory_order_acquire)</code> / <code>fence(Ordering::Acquire)</code>) so that payload loads cannot be reordered past the closing sequence verification, then loads <code>s2 = seq.load(Relaxed)</code>.</li>
+<li><strong>Snapshot Verification:</strong> If <code>s1 == s2</code>, no write commenced or completed during the read interval, proving that the local copy represents an untorn, consistent snapshot. If <code>s1 != s2</code>, a write overlapped the read; the reader discards the local copy and repeats the loop.</li>
+</ul>
+</li>
+</ol>
+<p>Because readers issue exclusively read transactions, all processor cores simultaneously retain the Seqlock cache line in the MESI <strong>Shared (<code>S</code>)</strong> state, achieving linear multi-core read throughput with zero coherence invalidation traffic while writers never block behind active readers.</p>
+<figure>
+<img src="figures/ch06_seqlock.svg" alt="Lock-free Sequence Lock timeline showing writer even-odd-even transitions, torn-read retry, and zero-write clean reader execution" />
+</figure>
+<p><strong>Listing 6-9. <code>compare_exchange_weak</code> CAS loop, Acquire-Release message passing, and a lock-free Seqlock (C++20).</strong></p>
+<pre><code class="language-cpp">// ch06/cas_ordering.cpp: compare_exchange_weak CAS loop, Acquire-Release
+// message passing, and a lock-free Seqlock snapshot reader/writer.
+#include &lt;atomic&gt;
+#include &lt;cstdint&gt;
+#include &lt;iostream&gt;
+#include &lt;thread&gt;
+#include &lt;vector&gt;
+
+// 1. Atomic Compare-And-Swap (CAS) maximum accumulator using compare_exchange_weak.
+static void update_max(std::atomic&lt;uint64_t&gt;&amp; max_val, uint64_t candidate) {
+    uint64_t prev = max_val.load(std::memory_order_relaxed);
+    while (candidate &gt; prev &amp;&amp;
+           !max_val.compare_exchange_weak(prev, candidate,
+                                          std::memory_order_release,
+                                          std::memory_order_relaxed)) {
+        // On failure (or spurious LL/SC clear on ARM64), prev is reloaded
+        // with the current value of max_val automatically.
+    }
+}
+
+// 2. Lock-free Seqlock for read-mostly telemetry coordinates.
+struct TelemetrySnapshot {
+    uint64_t ticks;
+    uint64_t scaled_ns;
+};
+
+class Seqlock {
+public:
+    void write(TelemetrySnapshot next) {
+        uint64_t s = seq_.load(std::memory_order_relaxed);
+        seq_.store(s + 1, std::memory_order_release); // odd: write in progress
+        std::atomic_signal_fence(std::memory_order_acq_rel);
+        slot_ticks_.store(next.ticks, std::memory_order_relaxed);
+        slot_ns_.store(next.scaled_ns, std::memory_order_relaxed);
+        seq_.store(s + 2, std::memory_order_release); // even: coherent snapshot
+    }
+
+    TelemetrySnapshot read() const {
+        for (;;) {
+            uint64_t s1 = seq_.load(std::memory_order_acquire);
+            if ((s1 &amp; 1u) != 0) continue; // writer active; retry
+
+            uint64_t t = slot_ticks_.load(std::memory_order_relaxed);
+            uint64_t ns = slot_ns_.load(std::memory_order_relaxed);
+            std::atomic_thread_fence(std::memory_order_acquire);
+
+            uint64_t s2 = seq_.load(std::memory_order_relaxed);
+            if (s1 == s2) return {t, ns};
+        }
+    }
+
+private:
+    std::atomic&lt;uint64_t&gt; seq_{0};
+    std::atomic&lt;uint64_t&gt; slot_ticks_{0};
+    std::atomic&lt;uint64_t&gt; slot_ns_{0};
+};
+
+int main() {
+    // Part A: CAS loop across 4 threads.
+    std::atomic&lt;uint64_t&gt; peak{0};
+    std::vector&lt;std::thread&gt; workers;
+    for (uint64_t id = 1; id &lt;= 4; ++id) {
+        workers.emplace_back([&amp;peak, id] {
+            for (uint64_t step = 1; step &lt;= 25'000; ++step) {
+                update_max(peak, id * step);
+            }
+        });
+    }
+    for (auto&amp; w : workers) w.join();
+
+    // Part B: Acquire-Release message passing.
+    uint64_t payload = 0;
+    std::atomic&lt;bool&gt; ready{false};
+    uint64_t observed_payload = 0;
+
+    std::thread producer([&amp;] {
+        payload = 0xCAFE'BABE'2026ULL;
+        ready.store(true, std::memory_order_release);
+    });
+    std::thread consumer([&amp;] {
+        while (!ready.load(std::memory_order_acquire)) {}
+        observed_payload = payload;
+    });
+    producer.join();
+    consumer.join();
+
+    // Part C: Seqlock invariant verification (scaled_ns == ticks * 10).
+    Seqlock clock_lock;
+    std::atomic&lt;bool&gt; done{false};
+    uint64_t torn_reads = 0;
+
+    std::thread writer([&amp;] {
+        for (uint64_t i = 1; i &lt;= 50'000; ++i) {
+            clock_lock.write({i, i * 10});
+        }
+        done.store(true, std::memory_order_release);
+    });
+    std::thread reader([&amp;] {
+        while (!done.load(std::memory_order_acquire)) {
+            TelemetrySnapshot snap = clock_lock.read();
+            if (snap.scaled_ns != snap.ticks * 10) ++torn_reads;
+        }
+    });
+    writer.join();
+    reader.join();
+
+    std::cout &lt;&lt; "cas peak value   : " &lt;&lt; peak.load() &lt;&lt; "\n"
+              &lt;&lt; "acq-rel payload  : 0x" &lt;&lt; std::hex &lt;&lt; observed_payload &lt;&lt; std::dec &lt;&lt; "\n"
+              &lt;&lt; "seqlock torn     : " &lt;&lt; torn_reads &lt;&lt; "\n";
+}
+</code></pre>
+<p><strong>Output 6-9. Peak CAS convergence, verified Acquire-Release visibility, and zero torn Seqlock reads.</strong></p>
+<pre><code class="language-text">cas peak value   : 100000
+acq-rel payload  : 0xcafebabe2026
+seqlock torn     : 0
+</code></pre>
+<p><strong>Listing 6-10. The same CAS loop, Acquire-Release handoff, and Seqlock in Rust.</strong></p>
+<pre class="playground"><code class="language-rust">// ch06/cas_ordering.rs: compare_exchange_weak CAS loop, Acquire-Release
+// message passing, and a lock-free Seqlock snapshot reader/writer.
+use std::sync::atomic::{AtomicBool, AtomicU64, Ordering, compiler_fence, fence};
+use std::thread;
+
+fn update_max(max_val: &amp;AtomicU64, candidate: u64) {
+    let mut prev = max_val.load(Ordering::Relaxed);
+    while candidate &gt; prev {
+        match max_val.compare_exchange_weak(
+            prev,
+            candidate,
+            Ordering::Release,
+            Ordering::Relaxed,
+        ) {
+            Ok(_) =&gt; break,
+            Err(actual) =&gt; prev = actual,
+        }
+    }
+}
+
+struct Seqlock {
+    seq: AtomicU64,
+    slot_ticks: AtomicU64,
+    slot_ns: AtomicU64,
+}
+
+impl Seqlock {
+    const fn new() -&gt; Self {
+        Self {
+            seq: AtomicU64::new(0),
+            slot_ticks: AtomicU64::new(0),
+            slot_ns: AtomicU64::new(0),
+        }
+    }
+
+    fn write(&amp;self, ticks: u64, scaled_ns: u64) {
+        let s = self.seq.load(Ordering::Relaxed);
+        self.seq.store(s + 1, Ordering::Release);
+        compiler_fence(Ordering::AcqRel);
+        self.slot_ticks.store(ticks, Ordering::Relaxed);
+        self.slot_ns.store(scaled_ns, Ordering::Relaxed);
+        self.seq.store(s + 2, Ordering::Release);
+    }
+
+    fn read(&amp;self) -&gt; (u64, u64) {
+        loop {
+            let s1 = self.seq.load(Ordering::Acquire);
+            if (s1 &amp; 1) != 0 {
+                continue;
+            }
+            let t = self.slot_ticks.load(Ordering::Relaxed);
+            let ns = self.slot_ns.load(Ordering::Relaxed);
+            fence(Ordering::Acquire);
+            let s2 = self.seq.load(Ordering::Relaxed);
+            if s1 == s2 {
+                return (t, ns);
+            }
+        }
+    }
+}
+
+fn main() {
+    let peak = AtomicU64::new(0);
+    thread::scope(|s| {
+        for id in 1..=4_u64 {
+            let peak_ref = &amp;peak;
+            s.spawn(move || {
+                for step in 1..=25_000_u64 {
+                    update_max(peak_ref, id * step);
+                }
+            });
+        }
+    });
+
+    let payload = AtomicU64::new(0);
+    let ready = AtomicBool::new(false);
+    let mut observed_payload = 0_u64;
+
+    thread::scope(|s| {
+        s.spawn(|| {
+            payload.store(0xCAFE_BABE_2026, Ordering::Relaxed);
+            ready.store(true, Ordering::Release);
+        });
+        s.spawn(|| {
+            while !ready.load(Ordering::Acquire) {}
+            observed_payload = payload.load(Ordering::Relaxed);
+        });
+    });
+
+    let clock_lock = Seqlock::new();
+    let done = AtomicBool::new(false);
+    let mut torn_reads = 0_u64;
+
+    thread::scope(|s| {
+        s.spawn(|| {
+            for i in 1..=50_000_u64 {
+                clock_lock.write(i, i * 10);
+            }
+            done.store(true, Ordering::Release);
+        });
+        s.spawn(|| {
+            while !done.load(Ordering::Acquire) {
+                let (ticks, scaled_ns) = clock_lock.read();
+                if scaled_ns != ticks * 10 {
+                    torn_reads += 1;
+                }
+            }
+        });
+    });
+
+    println!("cas peak value   : {}", peak.load(Ordering::Relaxed));
+    println!("acq-rel payload  : 0x{observed_payload:x}");
+    println!("seqlock torn     : {torn_reads}");
+}</code></pre>
+<p><strong>Output 6-10.</strong></p>
+<pre><code class="language-text">cas peak value   : 100000
+acq-rel payload  : 0xcafebabe2026
+seqlock torn     : 0
+</code></pre>
+<div class="callout keyidea">
+<span class="label">Key idea</span>
+<p>Production synchronization integrates three architectural layers: <code>compare_exchange_weak</code> drives lock-free retry loops and uncontended Ring 3 fast paths (~5 ns), <code>Release</code>/<code>Acquire</code> barriers enforce cross-core visibility across private Store Buffers without <code>SeqCst</code> pipeline drains, and <code>futex</code> / <code>__ulock</code> parks contended threads in Ring 0 only when exclusive ownership fails.</p>
+</div>
+
 
                     </main>
 
@@ -665,7 +1211,7 @@ finished without deadlock
         <script src="book-609e4cb8.js"></script>
 
         <!-- Custom JS scripts -->
-        <script src="theme/figures-7a3fdfc9.js"></script>
+        <script src="theme/figures-afd72f2c.js"></script>
 
 
 

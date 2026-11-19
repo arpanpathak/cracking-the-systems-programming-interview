@@ -28,7 +28,7 @@
         <link rel="stylesheet" id="mdbook-ayu-highlight-css" href="ayu-highlight-3fdfc3ac.css">
 
         <!-- Custom theme stylesheets -->
-        <link rel="stylesheet" href="theme/custom-e0671a52.css">
+        <link rel="stylesheet" href="theme/custom-9125cc61.css">
 
         <!-- MathJax -->
         <script async src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.1/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
@@ -38,10 +38,10 @@
             const path_to_root = "";
             const default_light_theme = "light";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "searchindex-4f3aedde.js";
+            window.path_to_searchindex_js = "searchindex-2f3b4ad9.js";
         </script>
         <!-- Start loading toc.js asap -->
-        <script src="toc-2b639993.js"></script>
+        <script src="toc-f3585118.js"></script>
     </head>
     <body>
     <div id="mdbook-help-container">
@@ -184,9 +184,50 @@
                 <div id="mdbook-content" class="content">
                     <main>
                         <h1 id="12-file-system-architecture-and-durability"><a class="header" href="#12-file-system-architecture-and-durability">12. File System Architecture and Durability</a></h1>
-<p>A file system provides a persistent, named abstraction for data stored on a physical device. It organizes storage into structured entities, files and directories, and manages the complex mapping between human-readable names and the underlying physical blocks of a storage medium.</p>
+<p>A file system provides a persistent, named abstraction for data stored on a block device. It organizes storage into structured entities, files and directories, and manages the mapping between human-readable hierarchical paths and physical disk blocks while surviving power loss and abrupt system crashes.</p>
 <h2 id="121-the-file-descriptor-and-the-open-file-description"><a class="header" href="#121-the-file-descriptor-and-the-open-file-description">12.1 The File Descriptor and the Open File Description</a></h2>
-<p>The interface between a process and a file is mediated by the file descriptor, a lightweight integer handle. However, the logical state of a file, most notably its current offset, is maintained within a distinct kernel object known as an <strong>open file description</strong>. This separation is critical for supporting process semantics: while multiple file descriptors within a single process may point to the same open file description (via <code>dup</code>), descriptors inherited from a parent during a <code>fork</code> also share the same underlying description. Consequently, these descriptors share a single, synchronized file offset. In contrast, independent calls to <code>open</code> on the same file create separate open file descriptions, each maintaining its own independent offset.</p>
+<p>The kernel mediates every file operation through three distinct layers of indirection:</p>
+<ol>
+<li><strong>Per-Process File Descriptor Table:</strong> Maps a small non-negative integer (<code>fd</code>, such as <code>3</code>) inside the process’s PCB to a pointer in the system-wide open file table, along with per-descriptor flags such as <code>FD_CLOEXEC</code>.</li>
+<li><strong>System-Wide Open File Description:</strong> A kernel object created by each call to <code>open()</code> that stores the current byte offset, access mode (<code>O_RDONLY</code>, <code>O_WRONLY</code>, <code>O_RDWR</code>), status flags (<code>O_APPEND</code>, <code>O_NONBLOCK</code>), a reference count, and a pointer to the target inode.</li>
+<li><strong>In-Memory Inode (<code>vnode</code> / <code>struct inode</code>):</strong> Represents the underlying file itself (size, permissions, timestamps, link count, and physical block map), shared across all processes opening that file.</li>
+</ol>
+<p>This three-level design explains why descriptors duplicated via <code>dup()</code> / <code>dup2()</code> or inherited across <code>fork()</code> point to the <strong>same</strong> open file description and therefore share a single synchronized byte offset, whereas two independent calls to <code>open()</code> on the same pathname allocate <strong>separate</strong> open file descriptions with independent offsets referencing the same underlying inode.</p>
+<h3 id="1211-the-posix-file-system-call-interface-open-lseek-fstat-struct-stat-ftruncate-fsync-unlink"><a class="header" href="#1211-the-posix-file-system-call-interface-open-lseek-fstat-struct-stat-ftruncate-fsync-unlink">12.1.1 The POSIX File System Call Interface (<code>open</code>, <code>lseek</code>, <code>fstat</code>, <code>struct stat</code>, <code>ftruncate</code>, <code>fsync</code>, <code>unlink</code>)</a></h3>
+<p>Listings 12-1 through 12-4 exercise the core POSIX file-manipulation interface directly:</p>
+<pre><code class="language-text">int     open(const char *pathname, int flags, mode_t mode);
+off_t   lseek(int fd, off_t offset, int whence);
+int     fstat(int fd, struct stat *statbuf);
+int     ftruncate(int fd, off_t length);
+int     fsync(int fd);
+int     unlink(const char *pathname);
+</code></pre>
+<ul>
+<li><strong><code>open(pathname, flags, mode)</code>:</strong> Opens or creates a file and returns the lowest unused file descriptor (<code>&gt;= 0</code>), or <code>-1</code> on error (<code>ENOENT</code>, <code>EACCES</code>, <code>EEXIST</code>, <code>EMFILE</code>).
+<ul>
+<li><strong><code>flags</code>:</strong> Combines an access mode (<code>O_RDWR</code> for both reading and writing) with creation and state flags: <strong><code>O_CREAT</code></strong> creates the file if it does not already exist; <strong><code>O_TRUNC</code></strong> resets an existing regular file’s length to <code>0</code> bytes upon opening.</li>
+<li><strong><code>mode</code>:</strong> Octal permission mask applied only when <code>O_CREAT</code> creates a new file. Passing <strong><code>0644</code></strong> requests owner read/write (<code>6 = rw-</code>), group read (<code>4 = r--</code>), and other read (<code>4 = r--</code>), which the kernel masks against the process’s <code>umask</code> (<code>mode &amp; ~umask</code>).</li>
+</ul>
+</li>
+<li><strong><code>lseek(fd, offset, whence)</code>:</strong> Repositions the open file description’s byte offset without transferring any data, returning the resulting absolute byte offset from the start of the file (<code>off_t &gt;= 0</code>), or <code>(off_t)-1</code> on error (<code>ESPIPE</code> if <code>fd</code> refers to a non-seekable pipe or socket).
+<ul>
+<li><strong><code>whence</code>:</strong> Reference origin for <code>offset</code>: <strong><code>SEEK_SET</code></strong> sets the offset to <code>offset</code> bytes from byte <code>0</code>; <strong><code>SEEK_CUR</code></strong> adds <code>offset</code> to the current cursor (so <code>lseek(fd, 0, SEEK_CUR)</code> queries the current offset without moving it); <strong><code>SEEK_END</code></strong> sets the offset relative to the current end of the file.</li>
+<li>Seeking beyond the current end of file is legal in POSIX and does not immediately allocate storage; a subsequent <code>write()</code> at the new offset creates a <strong>sparse hole</strong> spanning the unwritten gap.</li>
+</ul>
+</li>
+<li><strong><code>fstat(fd, statbuf)</code> and <code>struct stat</code>:</strong> Populates the caller’s <code>struct stat</code> with authoritative metadata read from the file’s inode (returning <code>0</code> on success or <code>-1</code> on <code>EBADF</code> / <code>EFAULT</code>). Key fields inspected in systems code include:
+<ul>
+<li><strong><code>st_ino</code> (<code>ino_t</code>):</strong> Unique inode number identifying the file within its mounted filesystem.</li>
+<li><strong><code>st_size</code> (<code>off_t</code>):</strong> Logical length of the file in bytes (the highest written or truncated byte offset, including any unallocated sparse holes).</li>
+<li><strong><code>st_blocks</code> (<code>blkcnt_t</code>):</strong> Actual physical disk space allocated to the file, always reported by POSIX in <strong>512-byte units</strong> regardless of the filesystem’s native 4 KiB page or cluster size (<code>st_blocks * 512</code> equals allocated bytes on disk).</li>
+<li><strong><code>st_blksize</code> (<code>blksize_t</code>):</strong> Preferred I/O transfer block size for efficient buffered reads and writes.</li>
+<li><strong><code>st_mode</code> (<code>mode_t</code>) and <code>st_nlink</code> (<code>nlink_t</code>):</strong> File type and permission bits, and the hard-link reference count pointing to this inode.</li>
+</ul>
+</li>
+<li><strong><code>ftruncate(fd, length)</code>:</strong> Adjusts the file’s logical size (<code>st_size</code>) to exactly <code>length</code> bytes, returning <code>0</code> on success or <code>-1</code> on error (<code>EINVAL</code>, <code>EACCES</code>). Shrinking discards trailing blocks; extending past the previous end creates a zero-reading sparse extension without allocating disk blocks.</li>
+<li><strong><code>fsync(fd)</code>:</strong> Flushes all modified data pages and inode metadata associated with <code>fd</code> from the kernel’s volatile page cache down to stable non-volatile storage, blocking until the storage controller acknowledges completion (returning <code>0</code> on success or <code>-1</code> with <code>EIO</code> / <code>ENOSPC</code>).</li>
+<li><strong><code>unlink(pathname)</code>:</strong> Removes the directory entry naming <code>pathname</code> and decrements the target inode’s hard-link count (<code>st_nlink</code>). Importantly, the kernel reclaims the inode and its data blocks only when <strong>both</strong> <code>st_nlink == 0</code> <strong>and</strong> zero open file descriptions reference the inode; an already-open file remains readable and writable even after being unlinked. Returns <code>0</code> on success or <code>-1</code> (<code>ENOENT</code>, <code>EACCES</code>).</li>
+</ul>
 <p><strong>Listing 12-1. open, write, lseek, read, and stat (C++20).</strong></p>
 <pre><code class="language-cpp">// ch12/files.cpp: open, write, seek, read, stat: the syscall layer of a file system.
 #include &lt;fcntl.h&gt;
@@ -234,7 +275,7 @@ int main() {
 read back 36 bytes:
 operating systems
 operating systems
-inode 11275294, size 36 bytes, 8 blocks
+inode 11420117, size 36 bytes, 8 blocks
 </code></pre>
 <p><strong>Listing 12-2. The same operations with the Rust standard library.</strong></p>
 <pre class="playground"><code class="language-rust">// ch12/files.rs: the same file operations through the Rust standard library.
@@ -242,7 +283,7 @@ use std::fs::OpenOptions;
 use std::io::{Read, Seek, SeekFrom, Write};
 use std::os::unix::fs::MetadataExt;
 
-fn main() {
+fn main() -&gt; std::io::Result&lt;()&gt; {
     let path = "/tmp/osbook_files_rs.txt";
 
     let mut f = OpenOptions::new()
@@ -250,25 +291,24 @@ fn main() {
         .read(true)
         .write(true)
         .truncate(true)
-        .open(path)
-        .unwrap();
+        .open(path)?;
 
     let line = b"operating systems\n";   // 18 bytes
-    f.write_all(line).unwrap();
-    f.write_all(line).unwrap();
+    f.write_all(line)?;
+    f.write_all(line)?;
 
     // The file offset is a per-open-description cursor.
-    println!("offset after two writes: {}", f.stream_position().unwrap());
+    println!("offset after two writes: {}", f.stream_position()?);
 
-    f.seek(SeekFrom::Start(0)).unwrap();
+    f.seek(SeekFrom::Start(0))?;
     let mut buf = [0u8; 64];
-    let n = f.read(&amp;mut buf).unwrap();
+    let n = f.read(&amp;mut buf)?;
     println!(
         "read back {n} bytes:\n{}",
         String::from_utf8_lossy(&amp;buf[..n])
     );
 
-    let meta = f.metadata().unwrap();
+    let meta = f.metadata()?;
     println!(
         "inode {}, size {} bytes, {} blocks",
         meta.ino(),
@@ -276,9 +316,10 @@ fn main() {
         meta.blocks()
     );
 
-    f.sync_all().unwrap();
+    f.sync_all()?;
     drop(f);
-    std::fs::remove_file(path).unwrap();
+    std::fs::remove_file(path)?;
+    Ok(())
 }</code></pre>
 <p><strong>Output 12-2.</strong></p>
 <pre><code class="language-text">offset after two writes: 36
@@ -286,17 +327,17 @@ read back 36 bytes:
 operating systems
 operating systems
 
-inode 11275299, size 36 bytes, 8 blocks
+inode 11420119, size 36 bytes, 8 blocks
 </code></pre>
 <h2 id="122-on-disk-organization-and-inode-based-mapping"><a class="header" href="#122-on-disk-organization-and-inode-based-mapping">12.2 On-Disk Organization and Inode-Based Mapping</a></h2>
-<p>A file system decomposes a storage device into fixed-size blocks and manages them through several specialized structures:</p>
+<p>A classic Unix file system partitions a block device into fixed-size blocks (commonly 4 KiB) organized into four structural regions:</p>
 <ul>
-<li><strong>Superblock:</strong> Maintains global metadata regarding the file system’s geometry and status.</li>
-<li><strong>Bitmaps:</strong> Track the allocation status of inodes and data blocks.</li>
-<li><strong>Inode Table:</strong> Contains the inode entries, which act as the authoritative descriptors for individual files.</li>
-<li><strong>Data Blocks:</strong> The physical regions where the actual contents of files and directories are stored.</li>
+<li><strong>Superblock:</strong> Stores global file system geometry, block size, total inode and block counts, mount state, and pointers to root structures.</li>
+<li><strong>Allocation Bitmaps:</strong> Compact bit arrays tracking which inodes (inode bitmap) and physical data blocks (data bitmap) are free or allocated.</li>
+<li><strong>Inode Table:</strong> A fixed or dynamically allocated array of on-disk inode records indexed directly by inode number (<code>st_ino</code>).</li>
+<li><strong>Data Blocks:</strong> The bulk of the partition storing file payloads and directory entry tables.</li>
 </ul>
-<p>An <strong>inode</strong> is the central metadata structure for a file, containing its type, permissions, ownership, size, and link count. Crucially, the inode does not store the file’s name; instead, names are managed within <strong>directories</strong>, which are specialized files containing mappings from filenames to inode numbers. This decoupling allows for the implementation of <strong>hard links</strong>, where multiple directory entries point to the same inode, increasing its link count. The inode maintains the file’s data via a hierarchical pointer structure: twelve <strong>direct pointers</strong> for small files, supplemented by <strong>indirect</strong>, <strong>double indirect</strong>, and <strong>triple indirect</strong> pointers to facilitate the addressing of much larger files.</p>
+<p>An <strong>inode</strong> is the authoritative descriptor for a file, recording its type, permissions, owner UID/GID, logical size, timestamps, hard-link count, and block-pointer table. Crucially, an inode does <strong>not</strong> store the file’s name. Names reside exclusively inside <strong>directories</strong>, which are specialized files mapping <code>(filename -&gt; inode_number)</code> pairs. Decoupling names from inodes makes <strong>hard links</strong> straightforward: multiple directory entries reference the same <code>st_ino</code>, incrementing <code>st_nlink</code>. To balance O(1) lookup for small files with multi-terabyte capacity for large files, classic inodes maintain twelve <strong>direct block pointers</strong>, followed by <strong>single indirect</strong>, <strong>double indirect</strong>, and <strong>triple indirect</strong> pointer trees (modern filesystems such as ext4, XFS, and APFS generalize this into <strong>extent trees</strong> recording contiguous <code>(logical_offset, physical_start, length)</code> ranges).</p>
 <figure>
 <img src="figures/ch12_fs_layout.svg" alt="A file system&#39;s blocks: superblock, bitmaps, inode table, data blocks, with a directory resolving a name to an inode" />
 </figure>
@@ -304,9 +345,13 @@ inode 11275299, size 36 bytes, 8 blocks
 <img src="figures/ch12_inode.svg" alt="An inode with direct, indirect, double, and triple block pointers" />
 </figure>
 <h2 id="123-sparse-files-and-the-mechanics-of-durability"><a class="header" href="#123-sparse-files-and-the-mechanics-of-durability">12.3 Sparse Files and the Mechanics of Durability</a></h2>
-<p>File systems can optimize storage through the use of <strong>sparse files</strong>. By allowing files to contain “holes”, regions of the virtual address space that are not backed by physical blocks, the system can represent large, mostly empty files without consuming excessive physical storage. When a program reads from a hole, the kernel transparently returns zero-filled data.</p>
-<p>A significant challenge in file system design is ensuring <strong>durability</strong> in the face of system failures. While a <code>write</code> operation merely transfers data into the kernel’s page cache, the actual persistence to the physical medium is deferred. To guarantee that data is safely committed to stable storage, a program must invoke <code>fsync</code>. However, for a newly created file to be truly durable, a two-stage synchronization is required: first, an <code>fsync</code> on the file itself to commit its data and inode, followed by an <code>fsync</code> on the containing directory to ensure the directory entry (the link between the name and the inode) is also persisted.</p>
-<p>While modern file systems employ <strong>journaling</strong> to maintain the structural integrity of the file system after a crash, journaling does not substitute for <code>fsync</code> in guaranteeing the durability of individual application-level writes.</p>
+<p>File systems avoid wasting physical storage on large zero-filled regions through <strong>sparse files</strong>. When a process seeks forward across an unwritten interval (for example, writing 4 KiB at byte <code>0</code>, calling <code>lseek(fd, 4 * 1024 * 1024, SEEK_SET)</code>, writing 4 KiB at 4 MiB, and calling <code>ftruncate(fd, 8 * 1024 * 1024)</code>), the file system leaves the intermediate block pointers or extent entries unmapped. As Output 12-3 confirms, <code>st_size</code> reports the full 8 MiB logical span while <code>st_blocks * 512</code> consumes only 8 KiB of physical storage. Whenever a process reads from an unmapped hole, the kernel synthesizes zero bytes directly in memory without touching the disk. Virtual-machine disk images, core dumps, and database files rely heavily on sparse allocation.</p>
+<p>Achieving crash <strong>durability</strong> requires explicit coordination with both the kernel page cache and the disk controller:</p>
+<ol>
+<li><strong>Deferred writeback on <code>write()</code>:</strong> Returning from <code>write()</code> confirms only that user bytes were copied into the kernel’s volatile RAM page cache. On sudden power loss, dirty page-cache pages vanish.</li>
+<li><strong>File and directory <code>fsync()</code>:</strong> Invoking <code>fsync(fd)</code> forces the file’s dirty data blocks and inode metadata onto stable media. However, for a <strong>newly created</strong> or <strong>renamed</strong> file, calling <code>fsync(fd)</code> alone is insufficient: the parent directory entry linking the filename to the new inode may still reside solely in the page cache. Crash-safe atomic file replacement therefore follows a strict four-step protocol: write to a temporary sibling file, <code>fsync()</code> the temporary file, atomically <code>rename()</code> it over the target path, and <code>fsync()</code> the parent directory descriptor.</li>
+<li><strong>Journaling versus application durability:</strong> Metadata journaling (ext4, XFS, NTFS) logs structural filesystem transitions in a write-ahead journal so the filesystem mounts consistently after a crash without running a full <code>fsck</code> scan, yet journaling does <strong>not</strong> guarantee that un-<code>fsync</code>ed application writes survive a power cut.</li>
+</ol>
 <p><strong>Listing 12-3. A file with a logical size of 8 MiB and 8 KiB of storage (C++20).</strong></p>
 <pre><code class="language-cpp">// ch12/sparse.cpp: a sparse file: two small islands, a hole between them.
 #include &lt;fcntl.h&gt;
@@ -368,7 +413,7 @@ use std::fs::OpenOptions;
 use std::io::{Read, Seek, SeekFrom, Write};
 use std::os::unix::fs::MetadataExt;
 
-fn main() {
+fn main() -&gt; std::io::Result&lt;()&gt; {
     let path = "/tmp/osbook_sparse_rs.txt";
 
     let mut f = OpenOptions::new()
@@ -376,16 +421,15 @@ fn main() {
         .read(true)
         .write(true)
         .truncate(true)
-        .open(path)
-        .unwrap();
+        .open(path)?;
 
     let island = [b'a'; 4096];
-    f.write_all(&amp;island).unwrap();                     // bytes 0..4096
-    f.seek(SeekFrom::Start(4 * 1024 * 1024)).unwrap(); // jump to 4 MiB
-    f.write_all(&amp;island).unwrap();                     // bytes 4M..4M+4096
-    f.set_len(8 * 1024 * 1024).unwrap();               // extend to 8 MiB
+    f.write_all(&amp;island)?;                     // bytes 0..4096
+    f.seek(SeekFrom::Start(4 * 1024 * 1024))?; // jump to 4 MiB
+    f.write_all(&amp;island)?;                     // bytes 4M..4M+4096
+    f.set_len(8 * 1024 * 1024)?;               // extend to 8 MiB
 
-    let meta = f.metadata().unwrap();
+    let meta = f.metadata()?;
     println!("logical size : {} bytes", meta.len());
     println!(
         "blocks used  : {} x 512 bytes = {} bytes",
@@ -394,9 +438,9 @@ fn main() {
     );
 
     // Read the hole: the file system supplies zeros.
-    f.seek(SeekFrom::Start(2 * 1024 * 1024)).unwrap();
+    f.seek(SeekFrom::Start(2 * 1024 * 1024))?;
     let mut probe = [1u8; 16];
-    let n = f.read(&amp;mut probe).unwrap();
+    let n = f.read(&amp;mut probe)?;
     let all_zero = probe.iter().all(|&amp;b| b == 0);
 
     println!(
@@ -405,7 +449,8 @@ fn main() {
     );
 
     drop(f);
-    std::fs::remove_file(path).unwrap();
+    std::fs::remove_file(path)?;
+    Ok(())
 }</code></pre>
 <p><strong>Output 12-4.</strong></p>
 <pre><code class="language-text">logical size : 8388608 bytes
@@ -464,7 +509,7 @@ hole at 2 MiB reads back 16 bytes, all zero: yes
         <script src="book-609e4cb8.js"></script>
 
         <!-- Custom JS scripts -->
-        <script src="theme/figures-7a3fdfc9.js"></script>
+        <script src="theme/figures-afd72f2c.js"></script>
 
 
 

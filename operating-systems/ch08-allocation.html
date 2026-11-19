@@ -28,7 +28,7 @@
         <link rel="stylesheet" id="mdbook-ayu-highlight-css" href="ayu-highlight-3fdfc3ac.css">
 
         <!-- Custom theme stylesheets -->
-        <link rel="stylesheet" href="theme/custom-e0671a52.css">
+        <link rel="stylesheet" href="theme/custom-9125cc61.css">
 
         <!-- MathJax -->
         <script async src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.1/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
@@ -38,10 +38,10 @@
             const path_to_root = "";
             const default_light_theme = "light";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "searchindex-4f3aedde.js";
+            window.path_to_searchindex_js = "searchindex-2f3b4ad9.js";
         </script>
         <!-- Start loading toc.js asap -->
-        <script src="toc-2b639993.js"></script>
+        <script src="toc-f3585118.js"></script>
     </head>
     <body>
     <div id="mdbook-help-container">
@@ -184,554 +184,873 @@
                 <div id="mdbook-content" class="content">
                     <main>
                         <h1 id="8-memory-allocation-and-management-strategies"><a class="header" href="#8-memory-allocation-and-management-strategies">8. Memory Allocation and Management Strategies</a></h1>
-<p>While the operating system manages memory in coarse-grained units, typically 4 KiB pages, application-level software requires a mechanism for managing objects of diverse and often much smaller sizes. A memory allocator bridges this granularity gap by requesting large, contiguous regions of memory from the kernel and subdividing them into smaller, appropriately sized blocks for the program.</p>
+<p>The operating system virtual-memory subsystem manages physical RAM at coarse page granularity (typically 4 KiB on x86-64 and 16 KiB on Apple Silicon ARM64). Application software, however, dynamically allocates and deallocates millions of objects ranging from 16-byte linked-list nodes to multi-megabyte buffers with heterogeneous lifetimes. Issuing a kernel system call (<code>mmap</code> or <code>brk</code>) for every small object would impose prohibitive privilege-transition latency and waste nearly an entire 4 KiB page for a 24-byte struct.</p>
+<p>A user-space memory allocator bridges this granularity gap. It acquires large, contiguous virtual memory regions (termed <strong>arenas</strong>) from the operating system in bulk via <code>mmap</code>, subdivides those regions internally in Ring 3 according to alignment and reuse policies, and returns unneeded memory to the kernel only at coarse page boundaries.</p>
 <h2 id="81-the-allocator-interface-and-efficiency-constraints"><a class="header" href="#81-the-allocator-interface-and-efficiency-constraints">8.1 The Allocator Interface and Efficiency Constraints</a></h2>
 <p>A functional allocator provides two primary primitives: <code>alloc(n)</code>, which returns an aligned address for <code>n</code> bytes of memory, and <code>free(p)</code>, which returns a previously allocated block to the allocator for future reuse. The primary efficiency constraint is the high cost of system calls; therefore, an allocator must minimize its interaction with the kernel by requesting large regions and managing the lifecycle of these regions internally.</p>
 <p>Allocators are distinguished by three architectural decisions: the placement strategy for new objects, the metadata utilized for block tracking, and the mechanism for reclaimed block reuse.</p>
-<h2 id="82-arena-allocation-the-bump-allocator"><a class="header" href="#82-arena-allocation-the-bump-allocator">8.2 Arena Allocation: The Bump Allocator</a></h2>
-<p>The bump allocator represents the simplest form of memory management. It maintains a single offset within a contiguous memory region, known as an <strong>arena</strong>. Allocation is performed by rounding the current offset to the required alignment, verifying sufficient remaining space, and advancing the offset by the requested size.</p>
-<p>The computational complexity of allocation in a bump allocator is negligible, consisting only of a few arithmetic operations. However, this speed is traded for a lack of granularity in deallocation: the allocator cannot free individual objects. Instead, it provides a <code>reset</code> operation that clears the entire arena at once. This model is highly effective for <strong>arena allocation</strong>, where a group of objects with identical lifetimes (such as request-scoped objects in a web server or nodes in a parse tree) are allocated together and discarded as a single unit.</p>
+<h3 id="811-requesting-raw-arenas-from-the-kernel-mmap"><a class="header" href="#811-requesting-raw-arenas-from-the-kernel-mmap">8.1.1 Requesting Raw Arenas from the Kernel (<code>mmap</code>)</a></h3>
+<p>The low-level allocators in Sections 8.2.2 and 8.3 acquire their backing memory (an <strong>arena</strong>) directly from the kernel via the POSIX <code>mmap</code> system call rather than calling <code>malloc</code>:</p>
+<pre><code class="language-text">mmap(nullptr, capacity_bytes, PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANON, -1, 0)
+</code></pre>
+<p>Each argument encodes a specific architectural contract with the kernel virtual-memory manager (detailed in Section 7.3.1):</p>
+<ul>
+<li><strong><code>nullptr</code> (<code>ptr::null_mut()</code>):</strong> Delegates virtual base-address selection to the kernel, guaranteeing a page-aligned starting address.</li>
+<li><strong><code>capacity_bytes</code>:</strong> Total contiguous virtual reservation requested (rounded upward by the kernel to whole hardware pages).</li>
+<li><strong><code>PROT_READ | PROT_WRITE</code>:</strong> Programs the hardware Page Table Entry (PTE) permission bits so the process can both load from and store into the arena while preserving non-executable (<code>NX = 1</code>) protection.</li>
+<li><strong><code>MAP_PRIVATE | MAP_ANON</code>:</strong> Allocates private, zero-initialized anonymous RAM unbacked by any disk file (<code>MAP_ANON</code>), ensuring modifications remain strictly isolated to this process (<code>MAP_PRIVATE</code>).</li>
+<li><strong><code>-1, 0</code>:</strong> Because <code>MAP_ANON</code> specifies no backing file, POSIX requires passing <code>-1</code> as the file descriptor and <code>0</code> as the file offset.</li>
+<li><strong>Error Check and Release:</strong> <code>mmap</code> returns the sentinel <code>MAP_FAILED</code> (<code>(void*)-1</code>) on failure rather than <code>nullptr</code>. When the arena is destroyed, <code>munmap(arena_base, arena_capacity)</code> unmaps the virtual pages and returns their physical frames to the operating system.</li>
+</ul>
+<h3 id="812-hardware-alignment-and-bitwise-rounding"><a class="header" href="#812-hardware-alignment-and-bitwise-rounding">8.1.2 Hardware Alignment and Bitwise Rounding</a></h3>
+<p>Before subdividing an arena into individual objects, an allocator must enforce <strong>memory alignment</strong>. Modern 64-bit processors transfer data between caches and registers in aligned 8-byte words, 16-byte SIMD vectors, and 64-byte cache lines. A type requiring alignment <code>A</code> (always a power of two: 1, 2, 4, 8, 16, or 64 bytes) must start at an address divisible by <code>A</code> (<code>address % A == 0</code>); unaligned accesses split across cache-line boundaries, break single-line hardware atomicity, or trigger hardware alignment faults (<code>#AC</code> / <code>SIGBUS</code>). Both the System V AMD64 ABI and ARM64 AAPCS64 therefore require <strong>16-byte alignment</strong> for general-purpose heap allocations.</p>
+<p>Given a current cursor <code>next_offset</code> and a power-of-two alignment <code>A = 2^k</code>, the smallest multiple of <code>A</code> greater than or equal to <code>next_offset</code> is computed in two instructions:</p>
+<pre><code class="language-text">aligned_offset = (next_offset + A - 1) &amp; ~(A - 1)
+</code></pre>
+<p>Because <code>A = 2^k</code>, <code>A - 1</code> has <code>k</code> trailing binary <code>1</code> bits, and <code>~(A - 1)</code> clears those lowest <code>k</code> bits. Adding <code>A - 1</code> advances any misaligned offset into the next multiple of <code>A</code> while leaving already-aligned offsets unchanged. Tracing three sequential allocations starting from <code>next_offset = 0</code> illustrates how alignment padding arises:</p>
+<ol>
+<li><strong><code>alloc(8, align=8)</code>:</strong> Offset <code>0</code> is already 8-byte aligned (<code>(0 + 7) &amp; ~7 = 0</code>). Occupies <strong>bytes <code>0..7</code></strong>, advancing <code>next_offset</code> to <strong><code>8</code></strong>.</li>
+<li><strong><code>alloc(3, align=8)</code>:</strong> Offset <code>8</code> is already 8-byte aligned (<code>(8 + 7) &amp; ~7 = 8</code>). Occupies <strong>bytes <code>8..10</code></strong>, advancing <code>next_offset</code> to <strong><code>11</code></strong>.</li>
+<li><strong><code>alloc(16, align=16)</code>:</strong> Offset <code>11</code> is not a multiple of 16. Rounding up yields <code>(11 + 15) &amp; ~15 = 26 &amp; ~15 = 16</code>. Bytes <strong><code>11..15</code> (5 bytes)</strong> are skipped as <strong>alignment padding</strong> so the 16-byte block begins cleanly at <strong>offset <code>16</code></strong> (<strong>bytes <code>16..31</code></strong>), advancing <code>next_offset</code> to <strong><code>32</code></strong>.</li>
+</ol>
+<h2 id="82-arena-allocation-from-safe-index-pools-to-raw-bump-allocators"><a class="header" href="#82-arena-allocation-from-safe-index-pools-to-raw-bump-allocators">8.2 Arena Allocation: From Safe Index Pools to Raw Bump Allocators</a></h2>
+<p>An <strong>arena</strong> groups objects with identical lifetimes (such as request-scoped records in a web server, frame state in a renderer, or nodes in a syntax tree) into a single contiguous region and reclaims all of them simultaneously. Rather than introducing raw pointer arithmetic immediately, we construct arena allocation in two progressive stages: a completely safe typed index pool requiring zero raw pointers, followed by a raw <code>mmap</code>-backed bump allocator.</p>
+<h3 id="821-level-1-the-safe-index-arena-zero-unsafe"><a class="header" href="#821-level-1-the-safe-index-arena-zero-unsafe">8.2.1 Level 1: The Safe Index Arena (Zero <code>unsafe</code>)</a></h3>
+<p>When all arena-resident nodes share a single homogeneous type <code>T</code> (such as abstract syntax tree nodes, graph vertices, or linked-list entries), raw memory management is unnecessary. Placing every node inside one contiguous array (<code>std::vector&lt;T&gt;</code> in C++20 or <code>Vec&lt;T&gt;</code> in Rust 2024) wrapped in a minimal <code>Arena&lt;T&gt;</code> and linking nodes via copyable integer handles (<code>Id</code>) yields four immediate engineering benefits:</p>
+<ul>
+<li><strong>Memory safety without <code>unsafe</code>:</strong> Indices remain valid even when the backing array reallocates to grow, eliminating dangling pointers and self-referential borrow-checker conflicts.</li>
+<li><strong>Cache-line locality:</strong> Nodes allocated sequentially occupy adjacent bytes in L1/L2 caches, removing the pointer-chasing stalls characteristic of per-node <code>malloc</code> / <code>Box::new</code> trees.</li>
+<li><strong>Zero-cost bulk reclamation:</strong> <code>reset()</code> calls <code>clear()</code>, reclaiming all nodes in O(1) while retaining the backing capacity for the next request or frame.</li>
+<li><strong>Production adoption:</strong> Compilers (including <code>rustc</code> and LLVM), query planners, and Entity Component Systems (ECS) rely heavily on index-addressed arenas for cyclic graphs and syntax trees.</li>
+</ul>
+<p><strong>Listing 8-1. Level 1 arena: a safe, contiguous index pool allocating a 10,000-node list (C++20).</strong></p>
+<pre><code class="language-cpp">// ch08/index_arena.cpp: Level 1 arena: a minimal, zero-raw-pointer index pool.
+// Nodes live contiguously inside one std::vector&lt;T&gt; and link via copyable Id handles.
+#include &lt;cassert&gt;
+#include &lt;cstddef&gt;
+#include &lt;cstdio&gt;
+#include &lt;optional&gt;
+#include &lt;utility&gt;
+#include &lt;vector&gt;
+
+struct Id {
+    size_t index;
+};
+
+template &lt;typename T&gt;
+class Arena {
+public:
+    Id alloc(T value) {
+        items_.push_back(std::move(value));
+        return Id{items_.size() - 1};
+    }
+
+    const T&amp; get(Id id) const { return items_[id.index]; }
+    size_t len() const { return items_.size(); }
+    void reset() { items_.clear(); }  // Reclaims all nodes while keeping capacity
+
+private:
+    std::vector&lt;T&gt; items_;
+};
+
+struct Node {
+    int value;
+    std::optional&lt;Id&gt; next;
+};
+
+int main() {
+    Arena&lt;Node&gt; arena;
+    std::optional&lt;Id&gt; head = std::nullopt;
+
+    for (int i = 0; i &lt; 10'000; ++i) {
+        head = arena.alloc(Node{i, head});
+    }
+
+    long long sum = 0;
+    size_t visited = 0;
+    std::optional&lt;Id&gt; cursor = head;
+    while (cursor.has_value()) {
+        const Node&amp; node = arena.get(*cursor);
+        sum += node.value;
+        ++visited;
+        cursor = node.next;
+    }
+
+    assert(visited == 10'000);
+    assert(sum == 49'995'000);
+    printf("index arena: %zu nodes allocated, sum = %lld (verified)\n", arena.len(), sum);
+
+    arena.reset();
+    assert(arena.len() == 0);
+    printf("after reset: %zu nodes\n", arena.len());
+}
+</code></pre>
+<p><strong>Output 8-1. Verification of 10,000 contiguous arena nodes and O(1) bulk reset.</strong></p>
+<pre><code class="language-text">index arena: 10000 nodes allocated, sum = 49995000 (verified)
+after reset: 0 nodes
+</code></pre>
+<p><strong>Listing 8-2. The same zero-<code>unsafe</code> index arena in Rust.</strong></p>
+<pre class="playground"><code class="language-rust">// ch08/index_arena.rs: Level 1 arena: a minimal, zero-unsafe index pool.
+// Nodes live contiguously inside one Vec&lt;T&gt; and link via copyable Id(usize) handles.
+struct Arena&lt;T&gt; {
+    items: Vec&lt;T&gt;,
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+struct Id(usize);
+
+impl&lt;T&gt; Arena&lt;T&gt; {
+    fn new() -&gt; Self {
+        Self { items: Vec::new() }
+    }
+
+    fn alloc(&amp;mut self, value: T) -&gt; Id {
+        self.items.push(value);
+        Id(self.items.len() - 1)
+    }
+
+    fn get(&amp;self, id: Id) -&gt; &amp;T {
+        &amp;self.items[id.0]
+    }
+
+    fn len(&amp;self) -&gt; usize {
+        self.items.len()
+    }
+
+    // Reclaims all nodes in O(1) while retaining the backing capacity for reuse.
+    fn reset(&amp;mut self) {
+        self.items.clear();
+    }
+}
+
+struct Node {
+    value: i64,
+    next: Option&lt;Id&gt;,
+}
+
+fn main() {
+    let mut arena = Arena::new();
+    let mut head: Option&lt;Id&gt; = None;
+
+    for i in 0..10_000_i64 {
+        head = Some(arena.alloc(Node { value: i, next: head }));
+    }
+
+    let mut sum = 0_i64;
+    let mut visited = 0_usize;
+    let mut cursor = head;
+    while let Some(id) = cursor {
+        let node = arena.get(id);
+        sum += node.value;
+        visited += 1;
+        cursor = node.next;
+    }
+
+    assert_eq!(visited, 10_000);
+    assert_eq!(sum, 49_995_000);
+    println!("index arena: {} nodes allocated, sum = {sum} (verified)", arena.len());
+
+    arena.reset();
+    assert_eq!(arena.len(), 0);
+    println!("after reset: {} nodes", arena.len());
+}</code></pre>
+<p><strong>Output 8-2.</strong></p>
+<pre><code class="language-text">index arena: 10000 nodes allocated, sum = 49995000 (verified)
+after reset: 0 nodes
+</code></pre>
+<h3 id="822-level-2-the-raw-byte-bump-allocator-mmap-backed"><a class="header" href="#822-level-2-the-raw-byte-bump-allocator-mmap-backed">8.2.2 Level 2: The Raw Byte Bump Allocator (<code>mmap</code>-Backed)</a></h3>
+<p>When an arena must store heterogeneous types of varying sizes and alignments, or return direct typed references rather than integer handles, the allocator operates over a raw byte buffer. A <strong>bump allocator</strong> maintains a single monotonic offset (<code>next_offset</code>) within its contiguous virtual region. Allocation rounds <code>next_offset</code> upward to the requested alignment, verifies sufficient remaining space (<code>aligned_offset + requested_bytes &lt;= arena_capacity</code>), and advances <code>next_offset</code> by the requested size.</p>
+<p>The computational complexity of allocation in a bump allocator is O(1), consisting of only a few arithmetic operations with zero per-object metadata overhead. This speed is traded for coarse reclamation: individual objects cannot be freed, and <code>reset()</code> rewinds <code>next_offset = 0</code> to reclaim the entire arena at once.</p>
 <figure>
-<img src="figures/ch08_bump.svg" alt="A bump allocator arena with three allocations and the offset pointer marking the next free byte" />
+<img src="figures/ch08_bump.svg" alt="Bump allocator sequential byte layout showing 8-byte, 3-byte, 5-byte alignment padding, and 16-byte aligned allocations" />
 </figure>
-<p><strong>Listing 8-1. A bump allocator (C++20).</strong></p>
-<pre><code class="language-cpp">// ch08/bump.cpp: the simplest allocator: hand out memory, never reclaim it.
+<p><strong>Listing 8-3. Level 2 arena: an <code>mmap</code>-backed bump allocator with explicit alignment rounding (C++20).</strong></p>
+<pre><code class="language-cpp">// ch08/bump.cpp: A linear bump (arena) allocator with explicit power-of-two alignment.
+// Allocations advance a single monotonic offset; individual objects cannot be freed,
+// and reset() reclaims the entire arena in O(1) time.
 #include &lt;sys/mman.h&gt;
 #include &lt;unistd.h&gt;
+#include &lt;cassert&gt;
 #include &lt;cstdint&gt;
 #include &lt;cstdio&gt;
 
-struct Bump {
-    uint8_t* base;
-    size_t size;
-    size_t offset;
+struct BumpAllocator {
+    uint8_t* arena_base;     // Page-aligned start address returned by mmap()
+    size_t arena_capacity;   // Total size of the virtual mapping in bytes
+    size_t next_offset;      // Byte offset of the next unallocated byte
 
-    static Bump create(size_t bytes) {
-        void* p = mmap(nullptr, bytes, PROT_READ | PROT_WRITE,
-                       MAP_PRIVATE | MAP_ANON, -1, 0);
-        if (p == MAP_FAILED) {
+    static BumpAllocator create(size_t capacity_bytes) {
+        // Request a private, zero-initialized anonymous virtual memory region from the kernel.
+        // Passing nullptr lets the kernel choose the virtual base address; fd = -1 and offset = 0
+        // are required by POSIX when mapping anonymous (non-file-backed) memory.
+        void* mapped = mmap(nullptr, capacity_bytes, PROT_READ | PROT_WRITE,
+                            MAP_PRIVATE | MAP_ANON, -1, 0);
+        if (mapped == MAP_FAILED) {
             perror("mmap");
             return {nullptr, 0, 0};
         }
 
-        return {static_cast&lt;uint8_t*&gt;(p), bytes, 0};
+        return {static_cast&lt;uint8_t*&gt;(mapped), capacity_bytes, 0};
     }
 
-    void* alloc(size_t n, size_t align) {
-        size_t aligned = (offset + align - 1) &amp; ~(align - 1);
-        if (aligned + n &gt; size) return nullptr;
+    // Allocates `requested_bytes` aligned upward to a power-of-two `alignment` boundary.
+    void* alloc(size_t requested_bytes, size_t alignment) {
+        // Round `next_offset` up to the smallest multiple of `alignment` &gt;= `next_offset`.
+        // Example: next_offset = 11, alignment = 16:
+        //   (11 + 15) &amp; ~15  =  26 &amp; 0xFFFF...FFF0  =  16  (inserts 5 bytes of padding: 11..15).
+        size_t aligned_offset = (next_offset + alignment - 1) &amp; ~(alignment - 1);
+        if (aligned_offset + requested_bytes &gt; arena_capacity) {
+            return nullptr;  // Arena exhausted
+        }
 
-        offset = aligned + n;
-        return base + aligned;
+        next_offset = aligned_offset + requested_bytes;
+        return arena_base + aligned_offset;
     }
 
-    void reset() { offset = 0; }
-    void destroy() { munmap(base, size); }
+    // Reclaims all allocations simultaneously by rewinding the bump pointer to zero.
+    void reset() { next_offset = 0; }
+
+    // Returns the entire virtual memory mapping to the operating system.
+    void destroy() { munmap(arena_base, arena_capacity); }
 };
 
 int main() {
-    Bump b = Bump::create(64 * 1024);
-    printf("arena: %p, %zu bytes\n\n", static_cast&lt;void*&gt;(b.base), b.size);
+    BumpAllocator allocator = BumpAllocator::create(64 * 1024);
+    printf("arena: %p, %zu bytes\n\n",
+           static_cast&lt;void*&gt;(allocator.arena_base), allocator.arena_capacity);
 
-    void* a = b.alloc(8, 8);
-    void* c = b.alloc(3, 8);
-    void* d = b.alloc(16, 16);
+    // 1. Offset 0 is already 8-byte aligned -&gt; occupies bytes [0, 8), next_offset becomes 8.
+    void* first_block = allocator.alloc(8, 8);
+    // 2. Offset 8 is already 8-byte aligned -&gt; occupies bytes [8, 11), next_offset becomes 11.
+    void* small_block = allocator.alloc(3, 8);
+    // 3. Offset 11 is NOT 16-byte aligned -&gt; inserts 5 bytes of padding [11, 16),
+    //    then allocates 16 bytes at [16, 32), advancing next_offset to 32.
+    void* aligned_block = allocator.alloc(16, 16);
 
-    printf("alloc(8,8)   -&gt; %p (offset 0)\n", a);
-    printf("alloc(3,8)   -&gt; %p (offset 8)\n", c);
-    printf("alloc(16,16) -&gt; %p (offset 16)\n", d);
+    assert(first_block == allocator.arena_base);
+    assert(small_block == allocator.arena_base + 8);
+    assert(aligned_block == allocator.arena_base + 16);
+    assert(allocator.next_offset == 32);
 
-    // The only way to reuse memory is to reset the whole arena.
-    b.reset();
-    void* e = b.alloc(8, 8);
-    printf("after reset, alloc(8,8) -&gt; %p (same as first: %s)\n", e,
-           e == a ? "yes" : "no");
+    printf("alloc(8,  align=8)  -&gt; %p (offset 0,  bytes 0..7)\n", first_block);
+    printf("alloc(3,  align=8)  -&gt; %p (offset 8,  bytes 8..10)\n", small_block);
+    printf("alloc(16, align=16) -&gt; %p (offset 16, bytes 16..31 after 5B padding)\n", aligned_block);
+    printf("next_offset         -&gt; %zu\n\n", allocator.next_offset);
 
-    b.destroy();
+    // Resetting rewinds next_offset to 0 so the arena can be reused immediately.
+    allocator.reset();
+    void* reused_block = allocator.alloc(8, 8);
+    assert(reused_block == first_block);
+    printf("after reset, alloc(8, align=8) -&gt; %p (reuses offset 0: yes)\n", reused_block);
+
+    allocator.destroy();
 }
 </code></pre>
-<p><strong>Output 8-1. Three allocations and a reset.</strong></p>
-<pre><code class="language-text">arena: 0x10028b000, 65536 bytes
+<p><strong>Output 8-3. Three allocations demonstrating 5 bytes of alignment padding, followed by an O(1) reset.</strong></p>
+<pre><code class="language-text">arena: 0x10b85a000, 65536 bytes
 
-alloc(8,8)   -&gt; 0x10028b000 (offset 0)
-alloc(3,8)   -&gt; 0x10028b008 (offset 8)
-alloc(16,16) -&gt; 0x10028b010 (offset 16)
-after reset, alloc(8,8) -&gt; 0x10028b000 (same as first: yes)
+alloc(8,  align=8)  -&gt; 0x10b85a000 (offset 0,  bytes 0..7)
+alloc(3,  align=8)  -&gt; 0x10b85a008 (offset 8,  bytes 8..10)
+alloc(16, align=16) -&gt; 0x10b85a010 (offset 16, bytes 16..31 after 5B padding)
+next_offset         -&gt; 32
+
+after reset, alloc(8, align=8) -&gt; 0x10b85a000 (reuses offset 0: yes)
 </code></pre>
-<p><strong>Listing 8-2. The same allocator in Rust.</strong></p>
-<pre class="playground"><code class="language-rust">// ch08/bump.rs: the same bump allocator in Rust.
-use std::process::exit;
+<p><strong>Listing 8-4. The same <code>mmap</code>-backed bump allocator in Rust.</strong></p>
+<pre class="playground"><code class="language-rust">// ch08/bump.rs: A linear bump (arena) allocator with explicit power-of-two alignment.
+use std::error::Error;
+use std::io;
 use std::ptr;
 
-struct Bump {
-    base: *mut u8,
-    size: usize,
-    offset: usize,
+struct BumpAllocator {
+    arena_base: *mut u8,    // Page-aligned start address returned by mmap()
+    arena_capacity: usize,  // Total size of the virtual mapping in bytes
+    next_offset: usize,     // Byte offset of the next unallocated byte
 }
 
-impl Bump {
-    fn create(bytes: usize) -&gt; Bump {
-        // SAFETY:
-        // `libc::mmap` allocates an anonymous private memory mapping (`MAP_ANON | MAP_PRIVATE`).
-        // The null pointer argument leaves virtual address placement to the kernel's ASLR.
-        // `bytes` represents the contiguous reservation size. We explicitly verify `p != MAP_FAILED`
-        // before dereferencing, ensuring a valid, zero-initialized arena backed by demand-zero pages.
+impl BumpAllocator {
+    fn create(capacity_bytes: usize) -&gt; io::Result&lt;BumpAllocator&gt; {
+        // SAFETY: `libc::mmap` with `MAP_PRIVATE | MAP_ANON` allocates a fresh,
+        // zero-initialized anonymous virtual memory region of `capacity_bytes`.
+        // Checking `mapped != libc::MAP_FAILED` guarantees a valid page-aligned base pointer.
         unsafe {
-            let p = libc::mmap(
+            let mapped = libc::mmap(
                 ptr::null_mut(),
-                bytes,
+                capacity_bytes,
                 libc::PROT_READ | libc::PROT_WRITE,
                 libc::MAP_PRIVATE | libc::MAP_ANON,
                 -1,
                 0,
             );
-            if p == libc::MAP_FAILED {
-                eprintln!("mmap failed");
-                exit(1);
+            if mapped == libc::MAP_FAILED {
+                return Err(io::Error::last_os_error());
             }
 
-            Bump { base: p.cast::&lt;u8&gt;(), size: bytes, offset: 0 }
+            Ok(BumpAllocator {
+                arena_base: mapped.cast::&lt;u8&gt;(),
+                arena_capacity: capacity_bytes,
+                next_offset: 0,
+            })
         }
     }
 
-    fn alloc(&amp;mut self, n: usize, align: usize) -&gt; Option&lt;*mut u8&gt; {
-        // Mathematical Alignment Proof:
-        // Assuming `align` is a power of two (2^k), `align - 1` has its lowest k bits set to 1.
-        // Adding `align - 1` rounds any unaligned offset up to or past the next multiple of 2^k.
-        // Bitwise AND with `!(align - 1)` clears the lower k bits, producing the exact minimal
-        // multiple of `align` that is &gt;= self.offset.
-        let aligned = (self.offset + align - 1) &amp; !(align - 1);
-        if aligned + n &gt; self.size {
+    // Allocates `requested_bytes` aligned upward to a power-of-two `alignment` boundary.
+    fn alloc(&amp;mut self, requested_bytes: usize, alignment: usize) -&gt; Option&lt;*mut u8&gt; {
+        // Round `next_offset` up to the smallest multiple of `alignment` &gt;= `next_offset`.
+        // Example: next_offset = 11, alignment = 16:
+        //   (11 + 15) &amp; !15  =  26 &amp; !15  =  16  (inserts 5 bytes of padding: 11..15).
+        let aligned_offset = (self.next_offset + alignment - 1) &amp; !(alignment - 1);
+        if aligned_offset + requested_bytes &gt; self.arena_capacity {
             return None;
         }
 
-        self.offset = aligned + n;
-        // SAFETY: The bounds check `aligned + n &lt;= self.size` guarantees that the computed
-        // pointer offset `self.base + aligned` points strictly within the allocated arena
-        // boundary, preventing buffer overruns beyond the mapped virtual page range.
-        Some(unsafe { self.base.add(aligned) })
+        self.next_offset = aligned_offset + requested_bytes;
+        // SAFETY: The bounds check `aligned_offset + requested_bytes &lt;= self.arena_capacity`
+        // proves that `arena_base.add(aligned_offset)` remains strictly within the mapped arena.
+        Some(unsafe { self.arena_base.add(aligned_offset) })
     }
 
+    // Reclaims all allocations simultaneously by rewinding the bump pointer to zero.
     fn reset(&amp;mut self) {
-        self.offset = 0;
+        self.next_offset = 0;
     }
 }
 
-impl Drop for Bump {
+impl Drop for BumpAllocator {
     fn drop(&amp;mut self) {
-        // SAFETY: `munmap` releases the virtual address reservation back to the kernel page tables.
-        // `self.base` and `self.size` match the exact pointer and length returned by `mmap`.
-        // By Rust's affine type system, `drop` consumes `self`, guaranteeing no dangling pointers
-        // to this arena remain accessible through the allocator.
-        unsafe { libc::munmap(self.base.cast::&lt;libc::c_void&gt;(), self.size) };
+        // SAFETY: `arena_base` and `arena_capacity` match the exact arguments from `mmap`.
+        unsafe { libc::munmap(self.arena_base.cast::&lt;libc::c_void&gt;(), self.arena_capacity) };
     }
 }
 
-fn main() {
-    let mut b = Bump::create(64 * 1024);
-    println!("arena: {:p}, {} bytes\n", b.base, b.size);
+fn main() -&gt; Result&lt;(), Box&lt;dyn Error&gt;&gt; {
+    let mut allocator = BumpAllocator::create(64 * 1024)?;
+    println!("arena: {:p}, {} bytes\n", allocator.arena_base, allocator.arena_capacity);
 
-    let a = b.alloc(8, 8).unwrap();
-    let c = b.alloc(3, 8).unwrap();
-    let d = b.alloc(16, 16).unwrap();
+    // 1. Offset 0 is already 8-byte aligned -&gt; occupies bytes [0, 8), next_offset becomes 8.
+    let first_block = allocator.alloc(8, 8).ok_or("arena exhausted on first_block")?;
+    // 2. Offset 8 is already 8-byte aligned -&gt; occupies bytes [8, 11), next_offset becomes 11.
+    let small_block = allocator.alloc(3, 8).ok_or("arena exhausted on small_block")?;
+    // 3. Offset 11 is NOT 16-byte aligned -&gt; inserts 5 bytes of padding [11, 16),
+    //    then allocates 16 bytes at [16, 32), advancing next_offset to 32.
+    let aligned_block = allocator.alloc(16, 16).ok_or("arena exhausted on aligned_block")?;
 
-    println!("alloc(8,8)   -&gt; {a:p} (offset 0)");
-    println!("alloc(3,8)   -&gt; {c:p} (offset 8)");
-    println!("alloc(16,16) -&gt; {d:p} (offset 16)");
+    assert_eq!(first_block, allocator.arena_base);
+    assert_eq!(small_block as usize - allocator.arena_base as usize, 8);
+    assert_eq!(aligned_block as usize - allocator.arena_base as usize, 16);
+    assert_eq!(allocator.next_offset, 32);
 
-    // The only way to reuse memory is to reset the whole arena.
-    b.reset();
-    let e = b.alloc(8, 8).unwrap();
-    println!("after reset, alloc(8,8) -&gt; {e:p} (same as first: {})", e == a);
+    println!("alloc(8,  align=8)  -&gt; {first_block:p} (offset 0,  bytes 0..7)");
+    println!("alloc(3,  align=8)  -&gt; {small_block:p} (offset 8,  bytes 8..10)");
+    println!("alloc(16, align=16) -&gt; {aligned_block:p} (offset 16, bytes 16..31 after 5B padding)");
+    println!("next_offset         -&gt; {}\n", allocator.next_offset);
+
+    // Resetting rewinds next_offset to 0 so the arena can be reused immediately.
+    allocator.reset();
+    let reused_block = allocator.alloc(8, 8).ok_or("arena exhausted after reset")?;
+    assert_eq!(reused_block, first_block);
+    println!("after reset, alloc(8, align=8) -&gt; {reused_block:p} (reuses offset 0: yes)");
+    Ok(())
 }</code></pre>
-<p><strong>Output 8-2.</strong></p>
-<pre><code class="language-text">arena: 0x10818e000, 65536 bytes
+<p><strong>Output 8-4.</strong></p>
+<pre><code class="language-text">arena: 0x102252000, 65536 bytes
 
-alloc(8,8)   -&gt; 0x10818e000 (offset 0)
-alloc(3,8)   -&gt; 0x10818e008 (offset 8)
-alloc(16,16) -&gt; 0x10818e010 (offset 16)
-after reset, alloc(8,8) -&gt; 0x10818e000 (same as first: true)
+alloc(8,  align=8)  -&gt; 0x102252000 (offset 0,  bytes 0..7)
+alloc(3,  align=8)  -&gt; 0x102252008 (offset 8,  bytes 8..10)
+alloc(16, align=16) -&gt; 0x102252010 (offset 16, bytes 16..31 after 5B padding)
+next_offset         -&gt; 32
+
+after reset, alloc(8, align=8) -&gt; 0x102252000 (reuses offset 0: yes)
 </code></pre>
-<h2 id="83-explicit-management-free-list-allocation"><a class="header" href="#83-explicit-management-free-list-allocation">8.3 Explicit Management: Free-List Allocation</a></h2>
-<p>To support the independent deallocation of individual objects, an allocator must implement a mechanism for tracking free memory. A <strong>free-list allocator</strong> accomplishes this by embedding metadata, or a <strong>header</strong>, immediately preceding each allocated or free block. This header typically stores the block’s size, its status (free or used), and a pointer to the next block in the free list.</p>
-<p>The allocator’s performance and fragmentation characteristics are defined by its search and reclamation policies:</p>
+<p>Extending a raw byte bump allocator into a production typed Rust arena (such as <code>bumpalo</code>) introduces three subtle language and memory-model invariants:</p>
 <ul>
-<li><strong>Allocation Policy (e.g., First-Fit):</strong> The allocator traverses the free list to find the first block that satisfies the requested size.</li>
-<li><strong>Splitting:</strong> When a chosen block is significantly larger than the requested size, the allocator divides it into a used portion and a new, smaller free block to minimize internal fragmentation.</li>
-<li><strong>Coalescing:</strong> To combat external fragmentation, the allocator merges adjacent free blocks into larger, contiguous regions during the <code>free</code> operation.</li>
+<li><strong>Shared-borrow allocation (<code>&amp;self</code> to <code>&amp;'arena mut T</code>):</strong> In Listing 8-4, <code>alloc(&amp;mut self, ...)</code> requires exclusive access to the allocator, preventing callers from holding multiple live references returned by the same arena simultaneously. Production arenas wrap the bump cursor in interior mutability (<code>Cell&lt;*mut u8&gt;</code>) so <code>alloc&lt;T&gt;(&amp;self, value: T) -&gt; &amp;mut T</code> accepts <code>&amp;self</code>. Every returned reference carries the lifetime of <code>&amp;self</code>, enabling arbitrary cross-referencing graphs while the borrow checker statically forbids any reference from outliving the arena; because <code>Cell</code> is neither <code>Send</code> nor <code>Sync</code>, single-threaded ownership is enforced at compile time.</li>
+<li><strong>Pointer provenance:</strong> Storing the active cursor as a typed raw pointer (<code>*mut u8</code>) and computing alignment via <code>ptr::align_offset</code> and <code>ptr::add</code>, rather than casting pointers to <code>usize</code> integers and back, preserves strict pointer provenance under Rust’s Stacked/Tree Borrows models and verifies cleanly under Miri.</li>
+<li><strong>Destructor omission:</strong> Rewinding or unmapping a raw bump arena reclaims the backing bytes without executing per-object destructors (<code>Drop</code> in Rust, <code>~T()</code> in C++). Placing heap-owning types such as <code>Vec</code> or <code>String</code> inside a raw bump arena leaks their secondary heap allocations unless the arena records an explicit drop-function list (as in <code>typed-arena</code>) or restricts stored values to plain data and arena-scoped references.</li>
 </ul>
-<p>Production-grade allocators, such as <code>jemalloc</code> or <code>tcmalloc</code>, extend these principles by implementing <strong>size classes</strong> (maintaining separate free lists for different size ranges), <strong>per-thread arenas</strong> (to reduce contention in multi-threaded environments), and highly optimized metadata structures to minimize the memory overhead of the headers themselves.</p>
+<h3 id="823-backing-store-trade-off-global-allocator-chunks-malloc--stdalloc-vs-direct-mmap"><a class="header" href="#823-backing-store-trade-off-global-allocator-chunks-malloc--stdalloc-vs-direct-mmap">8.2.3 Backing Store Trade-Off: Global-Allocator Chunks (<code>malloc</code> / <code>std::alloc</code>) vs. Direct <code>mmap</code></a></h3>
+<p>Listings 8-3 and 8-4 call <code>mmap</code> directly to expose the exact OS boundary. In production systems, however, choosing between acquiring chunks from the global allocator (<code>malloc</code> / <code>std::alloc</code>) and mapping virtual memory directly with <code>mmap</code> depends on workload geometry:</p>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th style="text-align: left">Dimension</th><th style="text-align: left">Global-Allocator Chunks (<code>malloc</code> / <code>std::alloc</code>, e.g., 64 KiB)</th><th style="text-align: left">Direct <code>mmap</code> Virtual Reservation (<code>MAP_NORESERVE</code>)</th></tr>
+</thead>
+<tbody>
+<tr><td style="text-align: left"><strong>Syscall &amp; page-fault overhead</strong></td><td style="text-align: left">Amortized; small chunks (64 KiB) are served from warm, already-faulted user-space arenas with zero kernel traps.</td><td style="text-align: left">Each new <code>mmap</code> invokes a kernel trap and triggers minor page faults upon first write to every freshly mapped page.</td></tr>
+<tr><td style="text-align: left"><strong>Contiguity &amp; oversized requests</strong></td><td style="text-align: left">Requires a chunk list (<code>Vec&lt;(NonNull&lt;u8&gt;, Layout)&gt;</code>) and a cold <code>grow()</code> path; leaves tail waste at chunk boundaries.</td><td style="text-align: left">Single contiguous virtual range (e.g., 64 GiB reserved, committed lazily on demand); no chunk list and no relocation.</td></tr>
+<tr><td style="text-align: left"><strong>Reclamation on <code>reset()</code></strong></td><td style="text-align: left">Rewinding a chunked arena retains committed RAM in user space until the arena itself is dropped.</td><td style="text-align: left"><code>madvise(base, used, MADV_DONTNEED)</code> returns physical frames to the kernel while keeping the virtual range mapped and zeroed on reuse.</td></tr>
+<tr><td style="text-align: left"><strong>Hardware page control</strong></td><td style="text-align: left">Controlled indirectly by the global allocator.</td><td style="text-align: left">Direct access to huge pages (<code>MAP_HUGETLB</code> / <code>MADV_HUGEPAGE</code>) and hardware guard pages (<code>mprotect(..., PROT_NONE)</code>).</td></tr>
+<tr><td style="text-align: left"><strong>Portability &amp; tooling</strong></td><td style="text-align: left">Fully portable across POSIX and Windows; automatically checked by AddressSanitizer, Valgrind, and Miri.</td><td style="text-align: left">OS-specific (<code>mmap</code> vs. <code>VirtualAlloc(MEM_RESERVE)</code>); may fail under strict overcommit (<code>vm.overcommit_memory=2</code>) and requires manual ASan poisoning.</td></tr>
+</tbody>
+</table>
+</div>
+<p>As a general rule, application-level arenas such as <code>bumpalo</code> allocate geometrically growing chunks (starting around 64 KiB) from <code>malloc</code> or <code>std::alloc</code>, avoiding syscall overhead and preserving sanitizer visibility. Direct <code>mmap</code> reserve-then-commit arenas are reserved for systems requiring single-span address stability, explicit huge-page or guard-page control, or immediate OS frame reclamation, most notably database buffer pools, JIT code heaps, and game-engine frame allocators.</p>
+<h2 id="83-explicit-management-free-list-allocation"><a class="header" href="#83-explicit-management-free-list-allocation">8.3 Explicit Management: Free-List Allocation</a></h2>
+<p>To support the independent deallocation of individual objects, an allocator must track the size and ownership state of each allocated region. A <strong>free-list allocator</strong> accomplishes this by embedding an <strong>in-band <code>BlockHeader</code></strong> immediately preceding every user payload in memory:</p>
+<pre><code class="language-text">[ BlockHeader (24 bytes): payload_bytes | is_free | next_block ] [ User Payload (payload_bytes) ]
+^                                                                ^
+header pointer                                                   pointer returned to caller
+</code></pre>
+<p>This layout establishes two direct pointer-arithmetic invariants:</p>
+<ul>
+<li><strong>On <code>alloc()</code>:</strong> After finding a suitable free <code>BlockHeader* current</code>, the allocator advances past the 24-byte header (<code>current + 1</code> in C++ pointer arithmetic, or <code>current.cast::&lt;u8&gt;().add(HEADER_BYTES)</code> in Rust) and returns that payload address to the caller.</li>
+<li><strong>On <code>free(user_payload_ptr)</code>:</strong> Because the caller supplies only the payload pointer, the allocator subtracts <code>sizeof(BlockHeader)</code> (24 bytes) from <code>user_payload_ptr</code> to recover the hidden <code>BlockHeader</code>, reads <code>payload_bytes</code>, and sets <code>is_free = true</code>.</li>
+</ul>
+<h3 id="831-first-fit-search-splitting-and-coalescing"><a class="header" href="#831-first-fit-search-splitting-and-coalescing">8.3.1 First-Fit Search, Splitting, and Coalescing</a></h3>
+<p>The allocator’s performance and fragmentation profile are governed by three policies:</p>
+<ol>
+<li><strong>Allocation Policy (First-Fit):</strong> Starting at <code>head_block</code>, <code>alloc(requested_bytes)</code> traverses the block list in address order and selects the first block satisfying <code>is_free &amp;&amp; payload_bytes &gt;= requested_bytes</code>.</li>
+<li><strong>Splitting (Suppressing Internal Fragmentation):</strong> When a chosen free block is significantly larger than <code>requested_bytes</code> (for example, satisfying <code>alloc(150)</code> inside a 200-byte hole), handing out all 200 bytes wastes 50 bytes of <strong>internal fragmentation</strong>. Whenever <code>leftover_bytes = payload_bytes - requested_bytes &gt;= sizeof(BlockHeader) + MIN_SPLIT_PAYLOAD</code> (<code>24 + 16 = 40</code> bytes), the allocator writes a new <code>BlockHeader</code> immediately after the 150-byte payload, carving a reusable free block of <code>200 - 150 - 24 = 26</code> bytes and linking it into the list.</li>
+<li><strong>Coalescing (Eliminating External Fragmentation):</strong> Freeing adjacent blocks without merging them shatters the arena into small, unusable holes, causing <strong>external fragmentation</strong>. Upon <code>free()</code>, <code>coalesce_adjacent_free_blocks()</code> verifies physical contiguity (<code>neighbor == current + sizeof(BlockHeader) + current-&gt;payload_bytes</code>) and merges consecutive free blocks into a single unified region, reclaiming both the neighbor’s payload and its redundant 24-byte header (<code>150 + 24 + 26 = 200</code> bytes restored).</li>
+</ol>
 <figure>
-<img src="figures/ch08_freelist.svg" alt="A free list of headers and payloads, with a split and a coalesce step" />
+<img src="figures/ch08_freelist.svg" alt="Free-list allocator unified trace showing initial allocations, block splitting of 200 B into 150 B plus 26 B, and coalescing back to 200 B" />
 </figure>
-<p><strong>Listing 8-3. A first-fit allocator with splitting and coalescing (C++20).</strong></p>
-<pre><code class="language-cpp">// ch08/free_list.cpp: a first-fit allocator with headers, splitting, and coalescing.
+<p><strong>Listing 8-5. A first-fit free-list allocator with splitting and coalescing (C++20).</strong></p>
+<pre><code class="language-cpp">// ch08/free_list.cpp: First-fit free-list allocator with in-band headers,
+// block splitting, and adjacent free-block coalescing.
+// Written with flat control flow (early returns and small helpers) to keep logic clear.
 #include &lt;sys/mman.h&gt;
 #include &lt;unistd.h&gt;
+#include &lt;cassert&gt;
 #include &lt;cstdint&gt;
 #include &lt;cstdio&gt;
 
-struct Block {
-    size_t size;    // payload bytes available in this block
-    bool free;
-    Block* next;
+// Metadata stored immediately before every user payload (24 bytes on 64-bit systems).
+struct BlockHeader {
+    size_t payload_bytes;    // Usable payload bytes immediately following this header
+    bool is_free;            // true = available; false = owned by caller
+    BlockHeader* next_block; // Next block in physical address order inside the arena
 };
 
-struct Heap {
-    uint8_t* base;
-    size_t size;
-    Block* free_head;
+constexpr size_t kMinSplitPayload = 16;
 
-    static Heap create(size_t bytes) {
-        void* p = mmap(nullptr, bytes, PROT_READ | PROT_WRITE,
-                       MAP_PRIVATE | MAP_ANON, -1, 0);
-        if (p == MAP_FAILED) {
+struct FreeListHeap {
+    uint8_t* arena_base;
+    size_t arena_capacity;
+    BlockHeader* head_block;
+
+    static FreeListHeap create(size_t capacity_bytes) {
+        void* mapped = mmap(nullptr, capacity_bytes, PROT_READ | PROT_WRITE,
+                            MAP_PRIVATE | MAP_ANON, -1, 0);
+        if (mapped == MAP_FAILED) {
             perror("mmap");
             return {nullptr, 0, nullptr};
         }
 
-        Heap h{static_cast&lt;uint8_t*&gt;(p), bytes, static_cast&lt;Block*&gt;(p)};
-        h.free_head-&gt;size = bytes - sizeof(Block);
-        h.free_head-&gt;free = true;
-        h.free_head-&gt;next = nullptr;
+        auto* initial_header = static_cast&lt;BlockHeader*&gt;(mapped);
+        initial_header-&gt;payload_bytes = capacity_bytes - sizeof(BlockHeader);
+        initial_header-&gt;is_free = true;
+        initial_header-&gt;next_block = nullptr;
 
-        return h;
+        return {static_cast&lt;uint8_t*&gt;(mapped), capacity_bytes, initial_header};
     }
 
-    void* alloc(size_t n) {
-        for (Block* b = free_head; b != nullptr; b = b-&gt;next) {
-            if (!b-&gt;free || b-&gt;size &lt; n) continue;
-
-            size_t rest = b-&gt;size - n;
-            if (rest &gt;= sizeof(Block) + 16) {
-                // Split: carve a free block out of the remainder.
-                Block* nb = reinterpret_cast&lt;Block*&gt;(
-                    reinterpret_cast&lt;uint8_t*&gt;(b + 1) + n);
-                nb-&gt;size = rest - sizeof(Block);
-                nb-&gt;free = true;
-                nb-&gt;next = b-&gt;next;
-
-                b-&gt;size = n;
-                b-&gt;next = nb;
-            }
-
-            b-&gt;free = false;
-            return reinterpret_cast&lt;uint8_t*&gt;(b + 1);
+    // Splits `block` if the leftover space fits both a new BlockHeader and &gt;= 16 payload bytes.
+    static void split_if_large_enough(BlockHeader* block, size_t requested_bytes) {
+        size_t leftover_bytes = block-&gt;payload_bytes - requested_bytes;
+        if (leftover_bytes &lt; sizeof(BlockHeader) + kMinSplitPayload) {
+            return;
         }
 
+        // `block + 1` steps past the 24-byte header to the first byte of the user payload.
+        uint8_t* payload_start = reinterpret_cast&lt;uint8_t*&gt;(block + 1);
+        auto* split_header = reinterpret_cast&lt;BlockHeader*&gt;(payload_start + requested_bytes);
+
+        split_header-&gt;payload_bytes = leftover_bytes - sizeof(BlockHeader);
+        split_header-&gt;is_free = true;
+        split_header-&gt;next_block = block-&gt;next_block;
+
+        block-&gt;payload_bytes = requested_bytes;
+        block-&gt;next_block = split_header;
+    }
+
+    // Returns true when `current` and `neighbor` are both free and physically contiguous.
+    static bool can_coalesce(const BlockHeader* current, const BlockHeader* neighbor) {
+        if (!current-&gt;is_free || !neighbor-&gt;is_free) return false;
+        const uint8_t* current_end =
+            reinterpret_cast&lt;const uint8_t*&gt;(current + 1) + current-&gt;payload_bytes;
+        return reinterpret_cast&lt;const uint8_t*&gt;(neighbor) == current_end;
+    }
+
+    // First-fit allocation: returns a payload pointer or nullptr if no free block fits.
+    void* alloc(size_t requested_bytes) {
+        for (BlockHeader* current = head_block; current != nullptr; current = current-&gt;next_block) {
+            if (!current-&gt;is_free || current-&gt;payload_bytes &lt; requested_bytes) {
+                continue;
+            }
+            split_if_large_enough(current, requested_bytes);
+            current-&gt;is_free = false;
+            return reinterpret_cast&lt;uint8_t*&gt;(current + 1);
+        }
         return nullptr;
     }
 
-    void free(void* p) {
-        Block* b = reinterpret_cast&lt;Block*&gt;(static_cast&lt;uint8_t*&gt;(p)) - 1;
-        b-&gt;free = true;
-        coalesce();
+    // Releases a payload pointer and merges any physically adjacent free blocks.
+    void free(void* user_payload_ptr) {
+        // Step backward by sizeof(BlockHeader) (24 bytes) to recover the hidden header.
+        auto* header = reinterpret_cast&lt;BlockHeader*&gt;(
+            static_cast&lt;uint8_t*&gt;(user_payload_ptr) - sizeof(BlockHeader));
+        header-&gt;is_free = true;
+        coalesce_adjacent_free_blocks();
     }
 
-    void coalesce() {
-        Block* b = free_head;
-        while (b != nullptr &amp;&amp; b-&gt;next != nullptr) {
-            Block* n = b-&gt;next;
-            uint8_t* b_end = reinterpret_cast&lt;uint8_t*&gt;(b + 1) + b-&gt;size;
-            bool adjacent = reinterpret_cast&lt;uint8_t*&gt;(n) == b_end;
-
-            if (b-&gt;free &amp;&amp; n-&gt;free &amp;&amp; adjacent) {
-                b-&gt;size += sizeof(Block) + n-&gt;size;
-                b-&gt;next = n-&gt;next;
-            } else {
-                b = b-&gt;next;
+    void coalesce_adjacent_free_blocks() {
+        BlockHeader* current = head_block;
+        while (current != nullptr &amp;&amp; current-&gt;next_block != nullptr) {
+            BlockHeader* neighbor = current-&gt;next_block;
+            if (!can_coalesce(current, neighbor)) {
+                current = neighbor;
+                continue;
             }
+            // Absorb both the neighbor's payload and its redundant 24-byte header.
+            current-&gt;payload_bytes += sizeof(BlockHeader) + neighbor-&gt;payload_bytes;
+            current-&gt;next_block = neighbor-&gt;next_block;
         }
     }
 
-    void dump() {
+    void dump_block_map() const {
         printf("  block map:\n");
-
-        int i = 0;
-        for (Block* b = free_head; b != nullptr; b = b-&gt;next, ++i) {
-            printf("    [%d] offset %zu size %zu %s\n", i,
-                   static_cast&lt;size_t&gt;(reinterpret_cast&lt;uint8_t*&gt;(b) - base),
-                   b-&gt;size, b-&gt;free ? "free" : "used");
+        int block_index = 0;
+        for (BlockHeader* current = head_block; current != nullptr;
+             current = current-&gt;next_block, ++block_index) {
+            size_t byte_offset =
+                static_cast&lt;size_t&gt;(reinterpret_cast&lt;uint8_t*&gt;(current) - arena_base);
+            printf("    [%d] offset %zu  payload %zu  %s\n",
+                   block_index, byte_offset, current-&gt;payload_bytes,
+                   current-&gt;is_free ? "free" : "used");
         }
     }
 
-    void destroy() { munmap(base, size); }
+    void destroy() { munmap(arena_base, arena_capacity); }
 };
 
 int main() {
-    Heap h = Heap::create(256 * 1024);
+    FreeListHeap heap = FreeListHeap::create(256 * 1024);
     printf("arena: %p, %zu bytes, header %zu bytes\n\n",
-           static_cast&lt;void*&gt;(h.base), h.size, sizeof(Block));
+           static_cast&lt;void*&gt;(heap.arena_base), heap.arena_capacity, sizeof(BlockHeader));
 
-    void* a = h.alloc(100);
-    void* b = h.alloc(200);
-    void* c = h.alloc(300);
+    void* block_a = heap.alloc(100);
+    void* block_b = heap.alloc(200);
+    void* block_c = heap.alloc(300);
 
     printf("after alloc(100), alloc(200), alloc(300):\n");
-    h.dump();
+    heap.dump_block_map();
 
-    h.free(b);
-    printf("\nafter free(b):\n");
-    h.dump();
+    heap.free(block_b);
+    printf("\nafter free(block_b):\n");
+    heap.dump_block_map();
 
-    void* d = h.alloc(150);
-    printf("\nafter alloc(150) into the hole left by b:\n");
-    h.dump();
-    printf("d reuses b's block: %s\n", d == b ? "yes" : "no");
+    void* block_d = heap.alloc(150);
+    assert(block_d == block_b);
+    printf("\nafter alloc(150) into block_b's hole:\n");
+    heap.dump_block_map();
+    printf("block_d reuses block_b's address: yes\n");
 
-    h.free(a);
-    h.free(d);
-    h.free(c);
+    heap.free(block_a);
+    heap.free(block_d);
+    heap.free(block_c);
+    assert(heap.head_block-&gt;is_free &amp;&amp; heap.head_block-&gt;next_block == nullptr);
 
-    printf("\nafter freeing everything:\n");
-    h.dump();
+    printf("\nafter freeing all blocks (coalesced back to 1 free block):\n");
+    heap.dump_block_map();
 
-    h.destroy();
+    heap.destroy();
 }
 </code></pre>
-<p><strong>Output 8-3. The block map after each step.</strong></p>
-<pre><code class="language-text">arena: 0x109112000, 262144 bytes, header 24 bytes
+<p><strong>Output 8-5. The block map after initial allocations, free, split reuse, and full coalescing.</strong></p>
+<pre><code class="language-text">arena: 0x108a18000, 262144 bytes, header 24 bytes
 
 after alloc(100), alloc(200), alloc(300):
   block map:
-    [0] offset 0 size 100 used
-    [1] offset 124 size 200 used
-    [2] offset 348 size 300 used
-    [3] offset 672 size 261448 free
+    [0] offset 0  payload 100  used
+    [1] offset 124  payload 200  used
+    [2] offset 348  payload 300  used
+    [3] offset 672  payload 261448  free
 
-after free(b):
+after free(block_b):
   block map:
-    [0] offset 0 size 100 used
-    [1] offset 124 size 200 free
-    [2] offset 348 size 300 used
-    [3] offset 672 size 261448 free
+    [0] offset 0  payload 100  used
+    [1] offset 124  payload 200  free
+    [2] offset 348  payload 300  used
+    [3] offset 672  payload 261448  free
 
-after alloc(150) into the hole left by b:
+after alloc(150) into block_b's hole:
   block map:
-    [0] offset 0 size 100 used
-    [1] offset 124 size 150 used
-    [2] offset 298 size 26 free
-    [3] offset 348 size 300 used
-    [4] offset 672 size 261448 free
-d reuses b's block: yes
+    [0] offset 0  payload 100  used
+    [1] offset 124  payload 150  used
+    [2] offset 298  payload 26  free
+    [3] offset 348  payload 300  used
+    [4] offset 672  payload 261448  free
+block_d reuses block_b's address: yes
 
-after freeing everything:
+after freeing all blocks (coalesced back to 1 free block):
   block map:
-    [0] offset 0 size 262120 free
+    [0] offset 0  payload 262120  free
 </code></pre>
-<p><strong>Listing 8-4. The same allocator in Rust, using raw pointers.</strong></p>
-<pre class="playground"><code class="language-rust">// ch08/free_list.rs: first-fit with headers, splitting, and coalescing in Rust.
-use std::process::exit;
+<p><strong>Listing 8-6. The same free-list allocator in Rust.</strong></p>
+<pre class="playground"><code class="language-rust">// ch08/free_list.rs: First-fit free-list allocator with in-band headers,
+// block splitting, and adjacent free-block coalescing in Rust.
+// Written with flat control flow (early returns and small helpers) to keep logic clear.
+use std::error::Error;
+use std::io;
 use std::ptr;
 
 #[derive(Clone, Copy)]
-struct Block {
-    size: usize,   // payload bytes available in this block
-    free: bool,
-    next: *mut Block,
+struct BlockHeader {
+    payload_bytes: usize,
+    is_free: bool,
+    next_block: *mut BlockHeader,
 }
 
-const HEADER: usize = std::mem::size_of::&lt;Block&gt;();
+const HEADER_BYTES: usize = std::mem::size_of::&lt;BlockHeader&gt;();
+const MIN_SPLIT_PAYLOAD: usize = 16;
 
-struct Heap {
-    base: *mut u8,
-    size: usize,
-    free_head: *mut Block,
+struct FreeListHeap {
+    arena_base: *mut u8,
+    arena_capacity: usize,
+    head_block: *mut BlockHeader,
 }
 
-impl Heap {
-    fn create(bytes: usize) -&gt; Heap {
-        // SAFETY:
-        // `mmap` requests a private, anonymous virtual memory mapping.
-        // `bytes` defines the contiguous arena size. Upon verifying `p != MAP_FAILED`,
-        // `p` is page-aligned and guaranteed by the kernel to be isolated from any other
-        // memory region. We write the initial root `Block` header spanning the entire arena,
-        // establishing the base inductive state for the intrusive linked list.
+impl FreeListHeap {
+    fn create(capacity_bytes: usize) -&gt; io::Result&lt;FreeListHeap&gt; {
+        // SAFETY: `mmap` allocates a page-aligned, zero-initialized anonymous region.
+        // After verifying `mapped != MAP_FAILED`, we initialize a single root BlockHeader at offset 0.
         unsafe {
-            let p = libc::mmap(
+            let mapped = libc::mmap(
                 ptr::null_mut(),
-                bytes,
+                capacity_bytes,
                 libc::PROT_READ | libc::PROT_WRITE,
                 libc::MAP_PRIVATE | libc::MAP_ANON,
                 -1,
                 0,
             );
-            if p == libc::MAP_FAILED {
-                eprintln!("mmap failed");
-                exit(1);
+            if mapped == libc::MAP_FAILED {
+                return Err(io::Error::last_os_error());
             }
 
-            let head = p.cast::&lt;Block&gt;();
+            let initial_header = mapped.cast::&lt;BlockHeader&gt;();
             ptr::write(
-                head,
-                Block { size: bytes - HEADER, free: true, next: ptr::null_mut() },
+                initial_header,
+                BlockHeader {
+                    payload_bytes: capacity_bytes - HEADER_BYTES,
+                    is_free: true,
+                    next_block: ptr::null_mut(),
+                },
             );
 
-            Heap { base: p.cast::&lt;u8&gt;(), size: bytes, free_head: head }
+            Ok(FreeListHeap {
+                arena_base: mapped.cast::&lt;u8&gt;(),
+                arena_capacity: capacity_bytes,
+                head_block: initial_header,
+            })
         }
     }
 
-    fn alloc(&amp;mut self, n: usize) -&gt; Option&lt;*mut u8&gt; {
-        let mut b = self.free_head;
-        while !b.is_null() {
-            // SAFETY: Invariant Proof:
-            // 1. `b` is verified non-null and originates from `self.free_head` or a valid `(*b).next` pointer.
-            // 2. Structural induction ensures every node in the intrusive chain points to an initialized,
-            //    in-bounds `Block` header inside `[self.base, self.base + self.size)`.
-            // 3. When `rest &gt;= HEADER + 16`, the split boundary `nb = b + HEADER + n` is guaranteed
-            //    to reside strictly inside the current block's payload span, ensuring the newly
-            //    carved header does not collide with neighboring allocations.
-            unsafe {
-                if (*b).free &amp;&amp; (*b).size &gt;= n {
-                    let rest = (*b).size - n;
-                    if rest &gt;= HEADER + 16 {
-                        // Split: carve a free block out of the remainder.
-                        let nb = b.cast::&lt;u8&gt;().add(HEADER + n).cast::&lt;Block&gt;();
-                        ptr::write(
-                            nb,
-                            Block { size: rest - HEADER, free: true, next: (*b).next },
-                        );
-
-                        (*b).size = n;
-                        (*b).next = nb;
-                    }
-
-                    (*b).free = false;
-                    return Some(b.cast::&lt;u8&gt;().add(HEADER));
-                }
-
-                b = (*b).next;
-            }
+    // Splits `block` if leftover bytes fit a new BlockHeader plus &gt;= MIN_SPLIT_PAYLOAD bytes.
+    // SAFETY: Caller guarantees `block` is a valid initialized header with `payload_bytes &gt;= requested_bytes`.
+    unsafe fn split_if_large_enough(block: *mut BlockHeader, requested_bytes: usize) {
+        let leftover_bytes = unsafe { (*block).payload_bytes - requested_bytes };
+        if leftover_bytes &lt; HEADER_BYTES + MIN_SPLIT_PAYLOAD {
+            return;
         }
 
+        // SAFETY: `HEADER_BYTES + requested_bytes` lies strictly inside `block`'s payload span.
+        unsafe {
+            let split_header = block
+                .cast::&lt;u8&gt;()
+                .add(HEADER_BYTES + requested_bytes)
+                .cast::&lt;BlockHeader&gt;();
+            ptr::write(
+                split_header,
+                BlockHeader {
+                    payload_bytes: leftover_bytes - HEADER_BYTES,
+                    is_free: true,
+                    next_block: (*block).next_block,
+                },
+            );
+            (*block).payload_bytes = requested_bytes;
+            (*block).next_block = split_header;
+        }
+    }
+
+    // Returns true when `current` and `neighbor` are both free and physically contiguous.
+    // SAFETY: Caller guarantees both pointers refer to valid initialized headers inside the arena.
+    unsafe fn can_coalesce(current: *const BlockHeader, neighbor: *const BlockHeader) -&gt; bool {
+        unsafe {
+            if !(*current).is_free || !(*neighbor).is_free {
+                return false;
+            }
+            let current_end = current
+                .cast::&lt;u8&gt;()
+                .add(HEADER_BYTES + (*current).payload_bytes);
+            neighbor.cast::&lt;u8&gt;() == current_end
+        }
+    }
+
+    // First-fit allocation: scans the block chain with flat guard clauses.
+    fn alloc(&amp;mut self, requested_bytes: usize) -&gt; Option&lt;*mut u8&gt; {
+        let mut current = self.head_block;
+        while !current.is_null() {
+            // SAFETY: Every pointer in the intrusive list is an initialized in-bounds BlockHeader.
+            unsafe {
+                if !(*current).is_free || (*current).payload_bytes &lt; requested_bytes {
+                    current = (*current).next_block;
+                    continue;
+                }
+                Self::split_if_large_enough(current, requested_bytes);
+                (*current).is_free = false;
+                return Some(current.cast::&lt;u8&gt;().add(HEADER_BYTES));
+            }
+        }
         None
     }
 
-    fn free(&amp;mut self, p: *mut u8) {
-        // SAFETY: Allocator Contract Proof:
-        // `p` was returned by a preceding call to `alloc()`. In our layout geometry, the user payload
-        // begins exactly `HEADER` bytes after the start of the `Block` header. Subtracting `HEADER`
-        // reconstructs the original, valid header pointer `b`. Marking `(*b).free = true` returns
-        // ownership of this slice to the allocator pool.
+    // Releases a payload pointer and merges any physically adjacent free blocks.
+    fn free(&amp;mut self, user_payload_ptr: *mut u8) {
+        // SAFETY: `user_payload_ptr` was returned by `alloc()` at `header + HEADER_BYTES`.
         unsafe {
-            let b = p.sub(HEADER).cast::&lt;Block&gt;();
-            (*b).free = true;
+            let header = user_payload_ptr.sub(HEADER_BYTES).cast::&lt;BlockHeader&gt;();
+            (*header).is_free = true;
         }
-
-        self.coalesce();
+        self.coalesce_adjacent_free_blocks();
     }
 
-    fn coalesce(&amp;mut self) {
-        let mut b = self.free_head;
-        // SAFETY: Coalescing Invariant Proof:
-        // `b` and `n = (*b).next` are active, initialized headers.
-        // Adjacency verification `n == b + HEADER + (*b).size` proves that no allocated or unmapped
-        // space exists between block `b` and block `n`. Merging them by extending `(*b).size` by
-        // `HEADER + (*n).size` and splicing `(*b).next = (*n).next` eliminates internal header
-        // fragmentation without violating any memory boundaries.
+    fn coalesce_adjacent_free_blocks(&amp;mut self) {
+        let mut current = self.head_block;
+        // SAFETY: `current` and `neighbor` are valid initialized headers within the arena.
         unsafe {
-            while !b.is_null() &amp;&amp; !(*b).next.is_null() {
-                let n = (*b).next;
-                let b_end = b.cast::&lt;u8&gt;().add(HEADER + (*b).size);
-                let adjacent = n.cast::&lt;u8&gt;() == b_end;
-
-                if (*b).free &amp;&amp; (*n).free &amp;&amp; adjacent {
-                    (*b).size += HEADER + (*n).size;
-                    (*b).next = (*n).next;
-                } else {
-                    b = n;
+            while !current.is_null() &amp;&amp; !(*current).next_block.is_null() {
+                let neighbor = (*current).next_block;
+                if !Self::can_coalesce(current, neighbor) {
+                    current = neighbor;
+                    continue;
                 }
+                // Absorb both the neighbor's payload and its redundant 24-byte header.
+                (*current).payload_bytes += HEADER_BYTES + (*neighbor).payload_bytes;
+                (*current).next_block = (*neighbor).next_block;
             }
         }
     }
 
-    fn dump(&amp;self) {
+    fn dump_block_map(&amp;self) {
         println!("  block map:");
-
-        let mut b = self.free_head;
-        let mut i = 0;
-        // SAFETY: Safe read-only traversal of the validated intrusive header list.
+        let mut current = self.head_block;
+        let mut block_index = 0;
+        // SAFETY: Read-only traversal of the validated intrusive header list.
         unsafe {
-            while !b.is_null() {
-                let off = b.cast::&lt;u8&gt;() as usize - self.base as usize;
+            while !current.is_null() {
+                let byte_offset = current.cast::&lt;u8&gt;() as usize - self.arena_base as usize;
                 println!(
-                    "    [{i}] offset {off} size {} {}",
-                    (*b).size,
-                    if (*b).free { "free" } else { "used" }
+                    "    [{block_index}] offset {byte_offset}  payload {}  {}",
+                    (*current).payload_bytes,
+                    if (*current).is_free { "free" } else { "used" }
                 );
-
-                b = (*b).next;
-                i += 1;
+                current = (*current).next_block;
+                block_index += 1;
             }
         }
     }
 }
 
-impl Drop for Heap {
+impl Drop for FreeListHeap {
     fn drop(&amp;mut self) {
-        // SAFETY: `munmap` releases the virtual memory mapping allocated in `create()`.
-        // By RAII, `drop` is invoked only once when the `Heap` instance exits scope.
-        unsafe { libc::munmap(self.base.cast::&lt;libc::c_void&gt;(), self.size) };
+        // SAFETY: Unmaps the exact virtual region created in `create()`.
+        unsafe { libc::munmap(self.arena_base.cast::&lt;libc::c_void&gt;(), self.arena_capacity) };
     }
 }
 
-fn main() {
-    let mut h = Heap::create(256 * 1024);
-    println!("arena: {:p}, {} bytes, header {} bytes\n", h.base, h.size, HEADER);
+fn main() -&gt; Result&lt;(), Box&lt;dyn Error&gt;&gt; {
+    let mut heap = FreeListHeap::create(256 * 1024)?;
+    println!(
+        "arena: {:p}, {} bytes, header {} bytes\n",
+        heap.arena_base, heap.arena_capacity, HEADER_BYTES
+    );
 
-    let a = h.alloc(100).unwrap();
-    let b = h.alloc(200).unwrap();
-    let c = h.alloc(300).unwrap();
+    let block_a = heap.alloc(100).ok_or("heap exhausted on block_a")?;
+    let block_b = heap.alloc(200).ok_or("heap exhausted on block_b")?;
+    let block_c = heap.alloc(300).ok_or("heap exhausted on block_c")?;
 
     println!("after alloc(100), alloc(200), alloc(300):");
-    h.dump();
+    heap.dump_block_map();
 
-    h.free(b);
-    println!("\nafter free(b):");
-    h.dump();
+    heap.free(block_b);
+    println!("\nafter free(block_b):");
+    heap.dump_block_map();
 
-    let d = h.alloc(150).unwrap();
-    println!("\nafter alloc(150) into the hole left by b:");
-    h.dump();
-    println!("d reuses b's block: {}", d == b);
+    let block_d = heap.alloc(150).ok_or("heap exhausted on block_d")?;
+    assert_eq!(block_d, block_b);
+    println!("\nafter alloc(150) into block_b's hole:");
+    heap.dump_block_map();
+    println!("block_d reuses block_b's address: yes");
 
-    h.free(a);
-    h.free(d);
-    h.free(c);
+    heap.free(block_a);
+    heap.free(block_d);
+    heap.free(block_c);
+    // SAFETY: `head_block` is always a valid initialized header spanning the coalesced arena.
+    unsafe {
+        assert!((*heap.head_block).is_free &amp;&amp; (*heap.head_block).next_block.is_null());
+    }
 
-    println!("\nafter freeing everything:");
-    h.dump();
+    println!("\nafter freeing all blocks (coalesced back to 1 free block):");
+    heap.dump_block_map();
+    Ok(())
 }</code></pre>
-<p><strong>Output 8-4.</strong></p>
-<pre><code class="language-text">arena: 0x1081ce000, 262144 bytes, header 24 bytes
+<p><strong>Output 8-6.</strong></p>
+<pre><code class="language-text">arena: 0x11009c000, 262144 bytes, header 24 bytes
 
 after alloc(100), alloc(200), alloc(300):
   block map:
-    [0] offset 0 size 100 used
-    [1] offset 124 size 200 used
-    [2] offset 348 size 300 used
-    [3] offset 672 size 261448 free
+    [0] offset 0  payload 100  used
+    [1] offset 124  payload 200  used
+    [2] offset 348  payload 300  used
+    [3] offset 672  payload 261448  free
 
-after free(b):
+after free(block_b):
   block map:
-    [0] offset 0 size 100 used
-    [1] offset 124 size 200 free
-    [2] offset 348 size 300 used
-    [3] offset 672 size 261448 free
+    [0] offset 0  payload 100  used
+    [1] offset 124  payload 200  free
+    [2] offset 348  payload 300  used
+    [3] offset 672  payload 261448  free
 
-after alloc(150) into the hole left by b:
+after alloc(150) into block_b's hole:
   block map:
-    [0] offset 0 size 100 used
-    [1] offset 124 size 150 used
-    [2] offset 298 size 26 free
-    [3] offset 348 size 300 used
-    [4] offset 672 size 261448 free
-d reuses b's block: true
+    [0] offset 0  payload 100  used
+    [1] offset 124  payload 150  used
+    [2] offset 298  payload 26  free
+    [3] offset 348  payload 300  used
+    [4] offset 672  payload 261448  free
+block_d reuses block_b's address: yes
 
-after freeing everything:
+after freeing all blocks (coalesced back to 1 free block):
   block map:
-    [0] offset 0 size 262120 free
+    [0] offset 0  payload 262120  free
 </code></pre>
+<h2 id="84-production-allocator-architecture-boundary-tags-size-classes-and-mmap"><a class="header" href="#84-production-allocator-architecture-boundary-tags-size-classes-and-mmap">8.4 Production Allocator Architecture: Boundary Tags, Size Classes, and <code>mmap</code></a></h2>
+<p>The educational free-list allocator in Listing 8-5 demonstrates core mechanics, yet exhibits three bottlenecks under multi-threaded production workloads: O(N) linear free-list search, O(N) coalescing traversal, and global lock contention across cores. Production allocators (<code>jemalloc</code>, <code>tcmalloc</code>, <code>mimalloc</code>, and <code>glibc ptmalloc2</code>) eliminate these bottlenecks through a three-tier hierarchy.</p>
+<h3 id="841-knuths-boundary-tags-for-o1-bidirectional-coalescing"><a class="header" href="#841-knuths-boundary-tags-for-o1-bidirectional-coalescing">8.4.1 Knuth’s Boundary Tags for O(1) Bidirectional Coalescing</a></h3>
+<p>In Listing 8-5, coalescing a freed block with its <em>preceding</em> physical neighbor required scanning the list from <code>head_block</code> in O(N) time because each header links only forward. Donald Knuth’s <strong>Boundary Tag</strong> architecture eliminates linear scanning by replicating the 8-byte block descriptor (<code>payload_bytes | allocated_bit</code>, exploiting the fact that 16-byte aligned sizes leave the lowest 4 bits zero) as both a <strong>Header</strong> before the payload and a <strong>Footer</strong> immediately after the payload:</p>
+<ul>
+<li><strong>Forward Coalescing (O(1)):</strong> Add <code>current-&gt;size</code> to <code>current</code> to inspect the next physical block’s Header directly.</li>
+<li><strong>Backward Coalescing (O(1)):</strong> Step backward 8 bytes prior to <code>current</code>’s Header to read the previous physical block’s <strong>Footer</strong>. When the footer’s allocated bit is <code>0</code>, subtract its encoded size to jump directly to the predecessor’s Header and merge in constant time.</li>
+</ul>
+<h3 id="842-segregated-size-classes-and-per-thread-caches-tcache"><a class="header" href="#842-segregated-size-classes-and-per-thread-caches-tcache">8.4.2 Segregated Size Classes and Per-Thread Caches (<code>tcache</code>)</a></h3>
+<p>Rather than searching a heterogeneous list of arbitrary block sizes under a single global mutex, production allocators partition small allocations into <strong>segregated size classes</strong> (discrete fixed-size bins such as <code>16 B</code>, <code>32 B</code>, <code>48 B</code>, <code>64 B</code>, …, <code>4 KiB</code>). Each bin manages a homogeneous slab of identically sized slots, eliminating external fragmentation within a size class and reducing allocation and deallocation to O(1) stack pop and push operations.</p>
+<p>To eliminate multi-core lock contention, each thread maintains a private <strong>thread-local cache (<code>tcache</code>)</strong> storing pre-allocated slots for every small size class. The vast majority of small <code>malloc()</code> and <code>free()</code> calls complete in Ring 3 against thread-private cache lines with zero atomic operations and zero mutex acquisitions, contacting central arenas only when a thread-local bin empties or overflows.</p>
+<h3 id="843-the-brk--arena-vs-mmap-allocation-threshold-m_mmap_threshold"><a class="header" href="#843-the-brk--arena-vs-mmap-allocation-threshold-m_mmap_threshold">8.4.3 The <code>brk</code> / Arena vs. <code>mmap</code> Allocation Threshold (<code>M_MMAP_THRESHOLD</code>)</a></h3>
+<p>Sub-allocating small objects out of persistent arenas amortizes system-call overhead, whereas placing a multi-megabyte temporary buffer inside a shared arena risks retaining large physical memory spans if a single tiny allocation remains live near the end of the arena. Production allocators enforce a size threshold (<strong><code>M_MMAP_THRESHOLD</code></strong>, typically <strong>128 KiB</strong>):</p>
+<ul>
+<li><strong>Allocations <code>&amp;lt; 128 KiB</code>:</strong> Served from per-thread <code>tcache</code> bins and central size-class arenas backed by persistent <code>mmap</code> / <code>brk</code> spans.</li>
+<li><strong>Allocations <code>&amp;ge; 128 KiB</code>:</strong> Routed directly to standalone kernel <code>mmap(MAP_PRIVATE | MAP_ANON)</code> mappings. Upon <code>free()</code>, the allocator invokes <code>munmap()</code> immediately, returning the physical frames directly to the operating system kernel.</li>
+</ul>
+<figure>
+<img src="figures/ch08_allocator_hierarchy.svg" alt="Production allocator three-tier architecture showing per-thread caches, central arenas with Knuth boundary tags, and direct mmap for large allocations" />
+</figure>
+<div class="callout keyidea">
+<span class="label">Key idea</span>
+<p>Memory allocators reconcile kernel page granularity with fine-grained object lifetimes: safe index pools and raw bump allocators trade individual deallocation for O(1) bulk resets, free-list allocators enforce splitting and coalescing via in-band headers, and production allocators achieve lock-free O(1) scaling via per-thread size-class caches, Knuth boundary tags, and direct <code>mmap</code> above 128 KiB.</p>
+</div>
+
 
                     </main>
 
@@ -784,7 +1103,7 @@ after freeing everything:
         <script src="book-609e4cb8.js"></script>
 
         <!-- Custom JS scripts -->
-        <script src="theme/figures-7a3fdfc9.js"></script>
+        <script src="theme/figures-afd72f2c.js"></script>
 
 
 

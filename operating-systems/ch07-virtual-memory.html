@@ -28,7 +28,7 @@
         <link rel="stylesheet" id="mdbook-ayu-highlight-css" href="ayu-highlight-3fdfc3ac.css">
 
         <!-- Custom theme stylesheets -->
-        <link rel="stylesheet" href="theme/custom-e0671a52.css">
+        <link rel="stylesheet" href="theme/custom-9125cc61.css">
 
         <!-- MathJax -->
         <script async src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.1/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
@@ -38,10 +38,10 @@
             const path_to_root = "";
             const default_light_theme = "light";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "searchindex-4f3aedde.js";
+            window.path_to_searchindex_js = "searchindex-2f3b4ad9.js";
         </script>
         <!-- Start loading toc.js asap -->
-        <script src="toc-2b639993.js"></script>
+        <script src="toc-f3585118.js"></script>
     </head>
     <body>
     <div id="mdbook-help-container">
@@ -191,7 +191,25 @@
 <img src="figures/ch07_vm_paging.svg" alt="Virtual pages mapping through a page table to scattered physical frames" />
 </figure>
 <h2 id="72-hierarchical-translation-and-the-tlb"><a class="header" href="#72-hierarchical-translation-and-the-tlb">7.2 Hierarchical Translation and the TLB</a></h2>
-<p>On modern 64-bit architectures like x86-64 and ARM64, the virtual address space is too vast to be mapped by a single flat array. A flat page table covering a 48-bit address space (2<sup>48</sup> = 256 TiB) with 4 KiB pages (2<sup>12</sup> bytes) would require 2<sup>36</sup> entries; at 8 bytes per entry, every active process would consume 512 GiB of physical DRAM solely for its page table. Instead, the kernel employs a sparse, multi-level hierarchical radix tree—typically a four-level page table (or five-level with Intel LA57 / ARM64 LPA2). Because entire unmapped subtrees are omitted when their parent directory entry is marked non-present, physical memory is allocated only for page table nodes that map active regions of the process’s address space.</p>
+<p>On modern 64-bit architectures like x86-64 and ARM64, the virtual address space is too vast to be mapped by a single flat array. A flat page table covering a 48-bit address space (2<sup>48</sup> = 256 TiB) with 4 KiB pages (2<sup>12</sup> bytes) would require 2<sup>36</sup> entries; at 8 bytes per entry, every active process would consume 512 GiB of physical DRAM solely for its page table. Instead, the kernel employs a sparse, multi-level hierarchical radix tree, typically a four-level page table (or five-level with Intel LA57 / ARM64 LPA2). Because entire unmapped subtrees are omitted when their parent directory entry is marked non-present, physical memory is allocated only for page table nodes that map active regions of the process’s address space.</p>
+<p><strong>Table 7-1. Architectural abbreviations used throughout virtual-memory translation.</strong></p>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th style="text-align: left">Abbreviation</th><th style="text-align: left">Full Term</th><th style="text-align: left">Role in Hardware Translation</th></tr>
+</thead>
+<tbody>
+<tr><td style="text-align: left"><strong>MMU</strong></td><td style="text-align: left">Memory Management Unit</td><td style="text-align: left">Hardware circuit that translates virtual addresses and enforces page permissions</td></tr>
+<tr><td style="text-align: left"><strong>VA / PA</strong></td><td style="text-align: left">Virtual Address / Physical Address</td><td style="text-align: left">Program pointer address versus actual DRAM physical bus address</td></tr>
+<tr><td style="text-align: left"><strong>VPN / PFN</strong></td><td style="text-align: left">Virtual Page Number / Physical Frame Number</td><td style="text-align: left">Upper address bits identifying a 4 KiB virtual page or 4 KiB physical DRAM frame</td></tr>
+<tr><td style="text-align: left"><strong>CR3 / TTBR0</strong></td><td style="text-align: left">Control Register 3 (x86-64) / Translation Table Base Register (ARM64)</td><td style="text-align: left">Privileged hardware register holding the physical base address of the root page table</td></tr>
+<tr><td style="text-align: left"><strong>PML4 / PDPT / PD / PT</strong></td><td style="text-align: left">Page Map Level 4 / Page Directory Pointer Table / Page Directory / Page Table</td><td style="text-align: left">The four radix tree levels (Levels 4, 3, 2, and 1) traversed on x86-64</td></tr>
+<tr><td style="text-align: left"><strong>PTE</strong></td><td style="text-align: left">Page Table Entry</td><td style="text-align: left">64-bit table entry containing the target PFN and permission/status bits (<code>P</code>, <code>R/W</code>, <code>U/S</code>, <code>NX</code>)</td></tr>
+<tr><td style="text-align: left"><strong>TLB</strong></td><td style="text-align: left">Translation Lookaside Buffer</td><td style="text-align: left">Core-private hardware cache storing recent <code>VPN → PFN</code> translations (~1 cycle hit)</td></tr>
+<tr><td style="text-align: left"><strong>PCID / ASID</strong></td><td style="text-align: left">Process-Context ID (x86-64) / Address Space ID (ARM64)</td><td style="text-align: left">Hardware tag distinguishing TLB entries across processes without flushing on context switch</td></tr>
+</tbody>
+</table>
+</div>
 <h3 id="721-canonical-addresses-and-multi-level-radix-decomposition"><a class="header" href="#721-canonical-addresses-and-multi-level-radix-decomposition">7.2.1 Canonical Addresses and Multi-Level Radix Decomposition</a></h3>
 <p>Under standard 4-level paging on x86-64 (and 48-bit <code>VA_BITS</code> with 4 KiB granules on ARM64), only the lower 48 bits (<code>[47:0]</code>) of a 64-bit pointer participate in hardware address translation. To prevent software from overloading the upper unused bits (<code>[63:48]</code>) with arbitrary metadata that would break compatibility with 5-level paging extensions, the hardware enforces <strong>canonical address form</strong>: bits <code>63:48</code> must be an exact sign-extension (replication) of bit <code>47</code>.</p>
 <ul>
@@ -229,7 +247,7 @@ Binary: 0111 1111 1111 1111 1010 1011 1100 1101 1110 1111 0000 0001
 <h4 id="step-2-sequential-radix-table-lookups-from-cr3"><a class="header" href="#step-2-sequential-radix-table-lookups-from-cr3">Step 2: Sequential Radix Table Lookups from <code>CR3</code></a></h4>
 <p>The hardware page table walker executes four sequential 8-byte physical memory reads across DRAM (or the L1/L2 data cache):</p>
 <ol>
-<li><strong>Level 4 — Page Map Level 4 (PML4 / <code>PGD</code>):</strong>
+<li><strong>Level 4: Page Map Level 4 (PML4 / <code>PGD</code>):</strong>
 <ul>
 <li>The MMU reads the physical base address of the PML4 table from <code>CR3</code> (<code>0x1000_0000</code>) and indexes entry <code>255</code>:
 <pre><code class="language-text">PML4E_Addr = 0x1000_0000 + (255 × 8) = 0x1000_0000 + 0x7F8 = 0x1000_07F8
@@ -238,7 +256,7 @@ Binary: 0111 1111 1111 1111 1010 1011 1100 1101 1110 1111 0000 0001
 <li>Suppose physical memory at <code>0x1000_07F8</code> contains <code>PML4E = 0x0000_0000_2040_0007</code>. The low flags <code>0x007</code> (<code>Present = 1</code>, <code>Read/Write = 1</code>, <code>User = 1</code>) authorize user-mode traversal, and bits <code>51:12</code> extract the Level 3 table physical base address: <code>L3_Base = 0x2040_0000</code>.</li>
 </ul>
 </li>
-<li><strong>Level 3 — Page Directory Pointer Table (PDPT / <code>PUD</code>):</strong>
+<li><strong>Level 3: Page Directory Pointer Table (PDPT / <code>PUD</code>):</strong>
 <ul>
 <li>The MMU indexes entry <code>510</code> in the PDPT at <code>0x2040_0000</code>:
 <pre><code class="language-text">PDPTE_Addr = 0x2040_0000 + (510 × 8) = 0x2040_0000 + 0xFF0 = 0x2040_0FF0
@@ -247,7 +265,7 @@ Binary: 0111 1111 1111 1111 1010 1011 1100 1101 1110 1111 0000 0001
 <li>Suppose <code>PDPTE = 0x0000_0000_3080_0007</code> (with Page Size bit <code>PS = 0</code>, indicating a pointer to a Level 2 directory rather than a 1 GiB huge page). Bits <code>51:12</code> yield <code>L2_Base = 0x3080_0000</code>.</li>
 </ul>
 </li>
-<li><strong>Level 2 — Page Directory (PD / <code>PMD</code>):</strong>
+<li><strong>Level 2: Page Directory (PD / <code>PMD</code>):</strong>
 <ul>
 <li>The MMU indexes entry <code>350</code> in the Page Directory at <code>0x3080_0000</code>:
 <pre><code class="language-text">PDE_Addr   = 0x3080_0000 + (350 × 8) = 0x3080_0000 + 0xAF0 = 0x3080_0AF0
@@ -256,7 +274,7 @@ Binary: 0111 1111 1111 1111 1010 1011 1100 1101 1110 1111 0000 0001
 <li>Suppose <code>PDE = 0x0000_0000_40C0_0007</code> (<code>PS = 0</code>, pointing to a 4 KiB leaf Page Table rather than a 2 MiB huge page). Bits <code>51:12</code> yield <code>L1_Base = 0x40C0_0000</code>.</li>
 </ul>
 </li>
-<li><strong>Level 1 — Leaf Page Table (PT / <code>PTE</code>):</strong>
+<li><strong>Level 1: Leaf Page Table (PT / <code>PTE</code>):</strong>
 <ul>
 <li>The MMU indexes entry <code>223</code> in the leaf Page Table at <code>0x40C0_0000</code>:
 <pre><code class="language-text">PTE_Addr   = 0x40C0_0000 + (223 × 8) = 0x40C0_0000 + 0x6F8 = 0x40C0_06F8
@@ -269,14 +287,14 @@ Binary: 0111 1111 1111 1111 1010 1011 1100 1101 1110 1111 0000 0001
 <h4 id="step-3-64-bit-pte-bit-layout-verification-and-physical-address-composition"><a class="header" href="#step-3-64-bit-pte-bit-layout-verification-and-physical-address-composition">Step 3: 64-Bit PTE Bit-Layout Verification and Physical Address Composition</a></h4>
 <p>The MMU masks and validates the architectural permission and status bits of the leaf <strong><code>PTE = 0x8000_0000_8A42_0067</code></strong>:</p>
 <ul>
-<li><strong>Bit 0 (<code>P</code> — Present = <code>1</code>):</strong> The physical frame is resident in DRAM. (If <code>0</code>, the MMU halts and raises a <code>#PF</code> Page Fault exception, loading the faulting virtual address into control register <code>CR2</code>).</li>
-<li><strong>Bit 1 (<code>R/W</code> — Read/Write = <code>1</code>):</strong> Store instructions are permitted on this page. (During <code>fork()</code> copy-on-write, the kernel clears this bit to <code>0</code> so the first write traps into the COW duplication handler).</li>
-<li><strong>Bit 2 (<code>U/S</code> — User/Supervisor = <code>1</code>):</strong> Accessible from Ring 3 (<code>CPL = 3</code>). (Kernel pages set <code>U/S = 0</code>).</li>
-<li><strong>Bit 5 (<code>A</code> — Accessed = <code>1</code>) &amp; Bit 6 (<code>D</code> — Dirty = <code>1</code>):</strong> Set atomically by hardware when the page is read (<code>A</code>) or written (<code>D</code>). The kernel page-reclamation daemon inspects these bits to implement LRU/CLOCK eviction and to determine whether a file-backed page must be flushed to storage before eviction.</li>
+<li><strong>Bit 0 (<code>P</code>, Present = <code>1</code>):</strong> The physical frame is resident in DRAM. (If <code>0</code>, the MMU halts and raises a <code>#PF</code> Page Fault exception, loading the faulting virtual address into control register <code>CR2</code>).</li>
+<li><strong>Bit 1 (<code>R/W</code>, Read/Write = <code>1</code>):</strong> Store instructions are permitted on this page. (During <code>fork()</code> copy-on-write, the kernel clears this bit to <code>0</code> so the first write traps into the COW duplication handler).</li>
+<li><strong>Bit 2 (<code>U/S</code>, User/Supervisor = <code>1</code>):</strong> Accessible from Ring 3 (<code>CPL = 3</code>). (Kernel pages set <code>U/S = 0</code>).</li>
+<li><strong>Bit 5 (<code>A</code>, Accessed = <code>1</code>) &amp; Bit 6 (<code>D</code>, Dirty = <code>1</code>):</strong> Set atomically by hardware when the page is read (<code>A</code>) or written (<code>D</code>). The kernel page-reclamation daemon inspects these bits to implement LRU/CLOCK eviction and to determine whether a file-backed page must be flushed to storage before eviction.</li>
 <li><strong>Bit 7 (<code>PS</code> / <code>PAT</code> = <code>0</code>):</strong> Standard 4 KiB leaf page (at Level 2 or Level 3, setting <code>PS = 1</code> terminates the walk early to map a contiguous <strong>2 MiB</strong> or <strong>1 GiB Huge Page</strong>).</li>
-<li><strong>Bit 8 (<code>G</code> — Global = <code>0</code>):</strong> When set to <code>1</code> on shared kernel mappings, prevents the TLB entry from being flushed when <code>CR3</code> is reloaded during a cross-process context switch.</li>
-<li><strong>Bits 51:12 (<code>PFN</code> — Physical Frame Number = <code>0x000_8A420</code>):</strong> Extracted via <code>PTE &amp; 0x000F_FFFF_FFFF_F000</code>, yielding the 4 KiB-aligned physical frame base address <strong><code>0x0000_0000_8A42_0000</code></strong>.</li>
-<li><strong>Bit 63 (<code>NX</code> / <code>XD</code> — No-Execute = <code>1</code>, from leading hex digit <code>8</code>):</strong> Hardware Data Execution Prevention (<code>W^X</code>). Instruction fetches from this stack page are blocked in silicon; any attempt to jump to shellcode on this page raises an immediate <code>#PF</code> instruction-fetch fault.</li>
+<li><strong>Bit 8 (<code>G</code>, Global = <code>0</code>):</strong> When set to <code>1</code> on shared kernel mappings, prevents the TLB entry from being flushed when <code>CR3</code> is reloaded during a cross-process context switch.</li>
+<li><strong>Bits 51:12 (<code>PFN</code>, Physical Frame Number = <code>0x000_8A420</code>):</strong> Extracted via <code>PTE &amp; 0x000F_FFFF_FFFF_F000</code>, yielding the 4 KiB-aligned physical frame base address <strong><code>0x0000_0000_8A42_0000</code></strong>.</li>
+<li><strong>Bit 63 (<code>NX</code> / <code>XD</code>, No-Execute = <code>1</code>, from leading hex digit <code>8</code>):</strong> Hardware Data Execution Prevention (<code>W^X</code>). Instruction fetches from this stack page are blocked in silicon; any attempt to jump to shellcode on this page raises an immediate <code>#PF</code> instruction-fetch fault.</li>
 </ul>
 <p>Finally, the MMU concatenates the 40-bit Physical Frame Number with the 12-bit Page Offset (<code>0xF01</code>) in a single hardware clock cycle:</p>
 <pre><code class="language-text">Physical_Address = (PTE &amp; 0x000F_FFFF_FFFF_F000) | (VA &amp; 0x0000_0000_0000_0FFF)
@@ -287,12 +305,12 @@ Binary: 0111 1111 1111 1111 1010 1011 1100 1101 1110 1111 0000 0001
 <img src="figures/ch07_canonical_va.svg" alt="Canonical 48-bit virtual address decomposition for 0x0000_7FFF_ABCD_EF01, 4-level radix walk arithmetic, and 64-bit PTE bit layout" />
 </figure>
 <h3 id="723-the-translation-lookaside-buffer-tlb-huge-pages-and-shootdowns"><a class="header" href="#723-the-translation-lookaside-buffer-tlb-huge-pages-and-shootdowns">7.2.3 The Translation Lookaside Buffer (TLB), Huge Pages, and Shootdowns</a></h3>
-<p>Because a 4-level radix walk requires <strong>four sequential memory accesses</strong> before the actual data load or store can proceed, performing a full walk on every instruction would quadruple memory latency. To avoid this penalty, the MMU caches recent virtual-page-to-physical-frame (<code>VPN → PFN</code>) translations in the <strong>Translation Lookaside Buffer (TLB)</strong>—a hardware content-addressable cache checked in parallel with the L1 cache tag array (~0.5–1 cycle latency on an L1 dTLB hit).</p>
+<p>Because a 4-level radix walk requires <strong>four sequential memory accesses</strong> before the actual data load or store can proceed, performing a full walk on every instruction would quadruple memory latency. To avoid this penalty, the MMU caches recent virtual-page-to-physical-frame (<code>VPN → PFN</code>) translations in the <strong>Translation Lookaside Buffer (TLB)</strong>, a hardware content-addressable cache checked in parallel with the L1 cache tag array (~0.5 to 1 cycle latency on an L1 dTLB hit).</p>
 <p>Three microarchitectural properties of the TLB directly govern systems software performance:</p>
 <ol>
 <li><strong>TLB Reach and Working-Set Cliffs:</strong> A typical L1 dTLB holds 64 entries and an L2 STLB holds 1,024–2,048 entries. With 4 KiB pages, a 1,536-entry L2 TLB covers a maximum working set (“TLB reach”) of only 1,536 × 4 KiB = 6 MiB. When an application randomly accesses a memory buffer larger than the TLB reach, TLB misses spike, forcing the hardware page walker to stall the CPU pipeline. Configuring <strong>2 MiB Huge Pages</strong> (<code>MAP_HUGEPAGE</code> / <code>MADV_HUGEPAGE</code>, terminating the radix walk at Level 2 with <code>PDE.PS = 1</code>) increases the reach of those same 1,536 TLB entries to <strong>3 GiB</strong>, eliminating L1/L2 PT memory traffic and dramatically reducing translation latency for database buffer pools and VM hypervisors.</li>
 <li><strong>Address Space Identifiers (<code>PCID</code> / <code>ASID</code>):</strong> Historically, reloading <code>CR3</code> during a process context switch flushed all non-global TLB entries to prevent Process B from using Process A’s cached translations. Contemporary processors tag each TLB entry with a 12-bit <strong>Process-Context Identifier (<code>PCID</code> on x86-64)</strong> or 16-bit <strong>Address Space Identifier (<code>ASID</code> on ARM64)</strong>, allowing translations from multiple processes to coexist safely in the TLB across context switches.</li>
-<li><strong>TLB Shootdowns:</strong> Unlike the L1/L2/L3 data caches, <strong>hardware TLBs are not automatically kept coherent across CPU cores</strong>. When the kernel modifies or unmaps a valid PTE (<code>munmap</code>, <code>mprotect</code>, or page eviction) in a multi-threaded process running across <em>K</em> cores, the kernel must flush its local TLB (<code>invlpg</code> on x86-64; <code>tlbi</code> on ARM64) and dispatch synchronous <strong>Inter-Processor Interrupts (IPIs)</strong> to all sibling cores running that address space—a high-overhead synchronization operation known as a <strong>TLB shootdown</strong>.</li>
+<li><strong>TLB Shootdowns:</strong> Unlike the L1/L2/L3 data caches, <strong>hardware TLBs are not automatically kept coherent across CPU cores</strong>. When the kernel modifies or unmaps a valid PTE (<code>munmap</code>, <code>mprotect</code>, or page eviction) in a multi-threaded process running across <em>K</em> cores, the kernel must flush its local TLB (<code>invlpg</code> on x86-64; <code>tlbi</code> on ARM64) and dispatch synchronous <strong>Inter-Processor Interrupts (IPIs)</strong> to all sibling cores running that address space, a high-overhead synchronization operation known as a <strong>TLB shootdown</strong>.</li>
 </ol>
 <h2 id="73-fault-handling-and-memory-management-strategies"><a class="header" href="#73-fault-handling-and-memory-management-strategies">7.3 Fault Handling and Memory Management Strategies</a></h2>
 <p>The kernel’s involvement in memory management is primarily event-driven, occurring through the handling of <strong>page faults</strong>. A page fault is not necessarily an error; rather, it is a mechanism for lazy resource allocation and sophisticated memory management. The kernel responds to faults in several ways:</p>
@@ -302,153 +320,162 @@ Binary: 0111 1111 1111 1111 1010 1011 1100 1101 1110 1111 0000 0001
 <li><strong>Copy-on-Write (COW):</strong> Facilitating efficient process duplication by mapping shared pages as read-only and only performing a physical copy when a write is attempted.</li>
 <li><strong>Protection Violations:</strong> Terminating a process via a signal (e.g., <code>SIGSEGV</code> or <code>SIGBUS</code>) when an access violates the page’s permission bits.</li>
 </ul>
-<p>This flexibility also allows for the implementation of <strong>guard pages</strong>, unmapped or protected pages placed strategically (such as at the end of a stack) to detect and halt buffer overflows or stack exhaustion before they corrupt adjacent memory regions. Furthermore, the <code>mmap</code> system call allows files to be mapped directly into the process’s address space, enabling the program to access file data through the page cache without the overhead of explicit <code>read</code> calls and redundant data copying.</p>
+<p>This flexibility also allows for the implementation of <strong>guard pages</strong>, unmapped or protected pages placed strategically (such as at the end of a stack) to detect and halt buffer overflows or stack exhaustion before they corrupt adjacent memory regions. Furthermore, the <code>mmap</code> system call allows files or anonymous RAM to be mapped directly into the process’s virtual address space, enabling programs to access file data through the page cache without explicit <code>read</code> copies or to allocate raw page-aligned arenas directly from the kernel.</p>
+<h3 id="731-the-mmap-and-mprotect-system-call-interface"><a class="header" href="#731-the-mmap-and-mprotect-system-call-interface">7.3.1 The <code>mmap</code> and <code>mprotect</code> System Call Interface</a></h3>
+<p>Before examining the reference implementations below, every parameter and flag of <code>mmap(addr, length, prot, flags, fd, offset)</code> and <code>mprotect(addr, length, prot)</code> maps directly to the page-table architecture derived in Section 7.2:</p>
+<ul>
+<li><strong>Address Hint (<code>addr</code>) and Mapping Size (<code>length</code>):</strong> Passing <code>nullptr</code> (<code>ptr::null_mut()</code> in Rust) instructs the kernel to select an unused, page-aligned virtual address automatically (subject to Address Space Layout Randomization, ASLR). The kernel rounds <code>length</code> upward to an exact multiple of the hardware page size (<code>4,096</code> bytes on x86-64; <code>16,384</code> bytes on Apple Silicon ARM64).</li>
+<li><strong>Hardware Page Protections (<code>prot</code>):</strong> Bitwise-OR flags written directly into each mapped page’s PTE permission bits:
+<ul>
+<li><code>PROT_READ</code>: Authorizes CPU load instructions from the mapped virtual range.</li>
+<li><code>PROT_WRITE</code>: Sets the PTE Read/Write bit (<code>R/W = 1</code>), authorizing store instructions. Combining <code>PROT_READ | PROT_WRITE</code> creates standard readable and writable data memory while keeping the No-Execute bit (<code>NX = 1</code>) enforced.</li>
+<li><code>PROT_NONE</code>: Revokes all read, write, and execute permissions in the PTE while retaining the virtual address reservation. Passing <code>PROT_NONE</code> to <code>mprotect()</code> turns a mapped page into a <strong>guard page</strong> so any accidental dereference raises an immediate hardware protection fault (<code>SIGSEGV</code> on Linux; <code>SIGBUS</code> on macOS).</li>
+</ul>
+</li>
+<li><strong>Visibility and Backing Store (<code>flags</code>):</strong> Controls whether the mapping is private or shared across processes, and whether it is backed by a disk file or fresh zeroed RAM:
+<ul>
+<li><code>MAP_PRIVATE</code>: Creates a private, copy-on-write mapping isolated to the calling process; modifications are never written back to an underlying file.</li>
+<li><code>MAP_SHARED</code>: Shares the underlying physical frames across processes (used for inter-process shared memory in Chapter 11) and flushes writes back to file-backed mappings.</li>
+<li><code>MAP_ANON</code> (also aliased as <code>MAP_ANONYMOUS</code> on Linux): Allocates fresh, demand-zeroed anonymous RAM rather than mapping a file. When <code>MAP_ANON</code> is specified, POSIX mandates passing <code>-1</code> for the file descriptor <code>fd</code> and <code>0</code> for the byte <code>offset</code>.</li>
+</ul>
+</li>
+<li><strong>Error Handling and Reclamation:</strong> Upon failure, <code>mmap</code> returns the sentinel pointer <code>MAP_FAILED</code> (<code>(void*)-1</code>) rather than <code>nullptr</code>. Programs must verify <code>mapped != MAP_FAILED</code> before dereferencing the region, and release the virtual mapping via <code>munmap(addr, length)</code>.</li>
+</ul>
 <p><strong>Listing 7-1. Page size, page alignment, and a guard page (C++20).</strong></p>
-<pre><code class="language-cpp">// ch07/pagesize.cpp: page size, page alignment, and a guard page that faults.
+<pre><code class="language-cpp">// ch07/pagesize.cpp: Queries hardware page size, maps three contiguous virtual pages,
+// and converts the middle page into an inaccessible guard page via mprotect(PROT_NONE).
 #include &lt;sys/mman.h&gt;
 #include &lt;unistd.h&gt;
 #include &lt;csignal&gt;
 #include &lt;csetjmp&gt;
 #include &lt;cstdio&gt;
 
-static sigjmp_buf g_env;
-static volatile void* g_fault_addr = nullptr;
+static sigjmp_buf g_recovery_env;
+static volatile void* g_fault_address = nullptr;
 
-static void on_segv(int, siginfo_t* si, void*) {
-    g_fault_addr = si-&gt;si_addr;   // address the CPU tried to touch
-    siglongjmp(g_env, 1);
+// Signal handler invoked by the kernel when the MMU raises a page protection fault.
+static void on_protection_fault(int, siginfo_t* sig_info, void*) {
+    g_fault_address = sig_info-&gt;si_addr;  // Exact virtual address that triggered the fault
+    siglongjmp(g_recovery_env, 1);        // Resume execution cleanly in main()
 }
 
 int main() {
-    long ps = sysconf(_SC_PAGESIZE);
-    printf("page size: %ld bytes\n", ps);
+    // Query the hardware virtual-memory page granularity (4,096 B on x86-64; 16,384 B on Apple Silicon).
+    long page_size = sysconf(_SC_PAGESIZE);
+    printf("page size: %ld bytes\n", page_size);
 
-    // Three anonymous pages, mapped readable and writable.
-    char* region = static_cast&lt;char*&gt;(
-        mmap(nullptr, 3 * ps, PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANON, -1, 0));
-    if (region == MAP_FAILED) {
+    // Map three contiguous anonymous virtual pages with read/write permissions.
+    // The kernel guarantees the returned base address is aligned to `page_size`.
+    char* mapped_region = static_cast&lt;char*&gt;(
+        mmap(nullptr, 3 * page_size, PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANON, -1, 0));
+    if (mapped_region == MAP_FAILED) {
         perror("mmap");
         return 1;
     }
 
-    printf("region:    %p (page-aligned by construction)\n", static_cast&lt;void*&gt;(region));
+    printf("region:    %p (page-aligned by construction)\n", static_cast&lt;void*&gt;(mapped_region));
 
-    region[0] = 'a';
-    region[ps] = 'b';
-    region[2 * ps] = 'c';
+    // Write one byte into Page 0, Page 1, and Page 2 (triggering demand-zero physical frame allocation).
+    mapped_region[0] = 'a';
+    mapped_region[page_size] = 'b';
+    mapped_region[2 * page_size] = 'c';
 
-    // Turn the middle page into a guard page: any access faults.
-    if (mprotect(region + ps, ps, PROT_NONE) != 0) {
+    // Convert Page 1 (the middle page) into a guard page by stripping all PTE permissions (PROT_NONE).
+    if (mprotect(mapped_region + page_size, page_size, PROT_NONE) != 0) {
         perror("mprotect");
         return 1;
     }
 
-    struct sigaction sa {};
-    sa.sa_sigaction = on_segv;
-    sa.sa_flags = SA_SIGINFO;
-    sigemptyset(&amp;sa.sa_mask);
+    struct sigaction signal_action {};
+    signal_action.sa_sigaction = on_protection_fault;
+    signal_action.sa_flags = SA_SIGINFO;  // Deliver siginfo_t containing the faulting virtual address
+    sigemptyset(&amp;signal_action.sa_mask);
 
-    // macOS reports protection violations as SIGBUS; Linux reports SIGSEGV.
-    sigaction(SIGSEGV, &amp;sa, nullptr);
-    sigaction(SIGBUS, &amp;sa, nullptr);
+    // Linux delivers SIGSEGV for PTE permission faults; macOS/Darwin delivers SIGBUS.
+    sigaction(SIGSEGV, &amp;signal_action, nullptr);
+    sigaction(SIGBUS, &amp;signal_action, nullptr);
 
-    if (sigsetjmp(g_env, 1) == 0) {
-        region[ps] = 'x';          // faults: page has PROT_NONE
+    if (sigsetjmp(g_recovery_env, 1) == 0) {
+        mapped_region[page_size] = 'x';   // Triggers hardware page protection fault on Page 1
         printf("write succeeded (unexpected)\n");
     } else {
-        printf("fault on write to %p\n", g_fault_addr);
+        printf("fault on write to %p\n", g_fault_address);
         printf("fault address is the guard page: %s\n",
-               g_fault_addr == static_cast&lt;void*&gt;(region + ps) ? "yes" : "no");
+               g_fault_address == static_cast&lt;void*&gt;(mapped_region + page_size) ? "yes" : "no");
     }
 
-    // The neighbors are untouched by the fault.
-    printf("neighbors still readable: %c %c\n", region[0], region[2 * ps]);
+    // Neighboring Page 0 and Page 2 retain their permissions and data intact.
+    printf("neighbors still readable: %c %c\n", mapped_region[0], mapped_region[2 * page_size]);
 
-    munmap(region, 3 * ps);
+    munmap(mapped_region, 3 * page_size);
 }
 </code></pre>
 <p><strong>Output 7-1. The fault occurs on the protected page.</strong></p>
 <pre><code class="language-text">page size: 4096 bytes
-region:    0x1081f1000 (page-aligned by construction)
-fault on write to 0x1081f2000
+region:    0x10b4dd000 (page-aligned by construction)
+fault on write to 0x10b4de000
 fault address is the guard page: yes
 neighbors still readable: a c
 </code></pre>
 <p><strong>Listing 7-2. Mapping and protecting pages in Rust, using the libc crate.</strong></p>
-<pre class="playground"><code class="language-rust">// ch07/pagesize.rs: page size and page alignment through Rust's libc bindings.
+<pre class="playground"><code class="language-rust">// ch07/pagesize.rs: Queries hardware page size, maps three contiguous virtual pages,
+// and strips permissions from the middle guard page via mprotect(PROT_NONE).
 use std::process::exit;
 use std::ptr;
 
 fn main() {
-    let ps = unsafe {
-        // SAFETY: `_SC_PAGESIZE` is a POSIX-standard sysconf parameter with no memory
-        // preconditions. It queries the architectural hardware translation granularity
-        // established by the CPU MMU (typically 4096 bytes on x86_64, 16384 on Apple Silicon).
-        libc::sysconf(libc::_SC_PAGESIZE) as usize
-    };
-    println!("page size: {ps} bytes");
+    // SAFETY: `_SC_PAGESIZE` is a read-only POSIX configuration constant returning
+    // the CPU MMU's native page granularity (4,096 B on x86-64; 16,384 B on Apple Silicon).
+    let page_size = unsafe { libc::sysconf(libc::_SC_PAGESIZE) as usize };
+    println!("page size: {page_size} bytes");
 
-    let region = unsafe {
-        // SAFETY: Anonymous, private mapping (`MAP_ANON | MAP_PRIVATE`) with a null hint
-        // requests the kernel to allocate an arbitrary, unmapped region in the process's
-        // address space. The requested length `3 * ps` is an exact multiple of the page size,
-        // ensuring clean page-boundary alignment by construction. The descriptor is -1 and
-        // offset is 0 per POSIX specifications for anonymous allocations.
+    // SAFETY: Anonymous private mapping (`MAP_PRIVATE | MAP_ANON`) of `3 * page_size` bytes.
+    // Checking `mapped_region != MAP_FAILED` guarantees a valid page-aligned virtual range.
+    let mapped_region = unsafe {
         libc::mmap(
             ptr::null_mut(),
-            3 * ps,
+            3 * page_size,
             libc::PROT_READ | libc::PROT_WRITE,
             libc::MAP_PRIVATE | libc::MAP_ANON,
             -1,
             0,
         )
     };
-    if region == libc::MAP_FAILED {
+    if mapped_region == libc::MAP_FAILED {
         eprintln!("mmap failed");
         exit(1);
     }
 
-    println!("region:    {region:p} (page-aligned by construction)");
+    println!("region:    {mapped_region:p} (page-aligned by construction)");
 
     unsafe {
-        // SAFETY:
-        // 1. Validity: `region` was verified != MAP_FAILED, guaranteeing a valid 3-page
-        //    contiguous virtual address reservation in the page table.
-        // 2. Alignment: Offsets 0, `ps`, and `2 * ps` are exact multiples of the hardware page
-        //    granularity. Because `region` is page-aligned, each offset addresses the base of a distinct page.
-        // 3. Protection: The mapping was created with `PROT_READ | PROT_WRITE`. Writing here triggers
-        //    a minor page fault on each page, prompting the kernel to allocate a physical frame
-        //    and install the PTE with dirty and accessed bits set.
-        ptr::write(region.cast::&lt;u8&gt;(), b'a');
-        ptr::write(region.cast::&lt;u8&gt;().add(ps), b'b');
-        ptr::write(region.cast::&lt;u8&gt;().add(2 * ps), b'c');
+        // SAFETY: `mapped_region` spans 3 writable pages starting at a page-aligned address.
+        // Writing to offsets 0, `page_size`, and `2 * page_size` touches Page 0, Page 1, and Page 2.
+        ptr::write(mapped_region.cast::&lt;u8&gt;(), b'a');
+        ptr::write(mapped_region.cast::&lt;u8&gt;().add(page_size), b'b');
+        ptr::write(mapped_region.cast::&lt;u8&gt;().add(2 * page_size), b'c');
 
-        // Turn the middle page into a guard page: any access faults.
-        // SAFETY: `mprotect` requires a page-aligned address and valid length.
-        // `region.add(ps)` points exactly to the second page boundary, and `ps` spans
-        // precisely one page. Stripping permissions (`PROT_NONE`) modifies the PTE
-        // protection bits, causing any subsequent load/store to that 4 KiB/16 KiB range
-        // to immediately trigger an unrecoverable hardware trap (SIGSEGV / EXC_BAD_ACCESS).
-        let rc = libc::mprotect(
-            region.cast::&lt;u8&gt;().add(ps) as *mut libc::c_void,
-            ps,
+        // Convert Page 1 (middle page) into a guard page by setting PTE permissions to PROT_NONE.
+        // SAFETY: `mapped_region + page_size` is page-aligned and lies strictly within the mapping.
+        let mprotect_status = libc::mprotect(
+            mapped_region.cast::&lt;u8&gt;().add(page_size) as *mut libc::c_void,
+            page_size,
             libc::PROT_NONE,
         );
-        println!("mprotect(middle page, PROT_NONE): rc={rc}");
+        println!("mprotect(middle page, PROT_NONE): status={mprotect_status}");
 
-        // SAFETY: `munmap` releases the virtual memory range back to the OS. `region` is the exact
-        // base pointer returned by `mmap`, and `3 * ps` is the exact mapped size. No subsequent
-        // references to this virtual address range occur.
-        libc::munmap(region, 3 * ps);
+        // SAFETY: Unmaps the exact base address and length returned by `mmap`.
+        libc::munmap(mapped_region, 3 * page_size);
     }
 }</code></pre>
 <p><strong>Output 7-2.</strong></p>
 <pre><code class="language-text">page size: 4096 bytes
-region:    0x104c99000 (page-aligned by construction)
-mprotect(middle page, PROT_NONE): rc=0
+region:    0x1086e2000 (page-aligned by construction)
+mprotect(middle page, PROT_NONE): status=0
 </code></pre>
 <p><strong>Listing 7-3. Reading one file with read(2) and with mmap (C++20).</strong></p>
-<pre><code class="language-cpp">// ch07/mmap_file.cpp: read a file with read(2), then map it and read it again.
+<pre><code class="language-cpp">// ch07/mmap_file.cpp: Compares counting bytes via read(2) (kernel-to-user copy)
+// against reading directly through an mmap(2) virtual memory mapping.
 #include &lt;fcntl.h&gt;
 #include &lt;sys/mman.h&gt;
 #include &lt;sys/stat.h&gt;
@@ -457,60 +484,62 @@ mprotect(middle page, PROT_NONE): rc=0
 #include &lt;vector&gt;
 
 int main() {
-    const char* path = "/tmp/osbook_mmap_demo.txt";
-    constexpr size_t kSize = 4 * 1024 * 1024;   // 4 MiB
-    constexpr size_t kLine = 64;                // 63 'a' + newline
+    const char* file_path = "/tmp/osbook_mmap_demo.txt";
+    constexpr size_t kFileBytes = 4 * 1024 * 1024;  // 4 MiB test file
+    constexpr size_t kLineBytes = 64;               // 63 'a' characters + '\n'
 
-    // 1. Create the file: 65,536 identical lines.
-    int fd = open(path, O_CREAT | O_RDWR | O_TRUNC, 0644);
-    if (fd &lt; 0) {
+    // Step 1: Create and populate the 4 MiB file (65,536 lines of 64 bytes).
+    int file_fd = open(file_path, O_CREAT | O_RDWR | O_TRUNC, 0644);
+    if (file_fd &lt; 0) {
         perror("open");
         return 1;
     }
 
-    std::vector&lt;char&gt; line(kLine, 'a');
-    line[kLine - 1] = '\n';
+    std::vector&lt;char&gt; line_buffer(kLineBytes, 'a');
+    line_buffer[kLineBytes - 1] = '\n';
 
-    for (size_t off = 0; off &lt; kSize; off += kLine) {
-        write(fd, line.data(), kLine);
+    for (size_t byte_offset = 0; byte_offset &lt; kFileBytes; byte_offset += kLineBytes) {
+        write(file_fd, line_buffer.data(), kLineBytes);
     }
+    fsync(file_fd);
 
-    fsync(fd);
+    // Step 2: Count 'a' bytes via read(2), which copies data from the kernel page cache
+    // into our user-space `read_buffer` on every system call.
+    lseek(file_fd, 0, SEEK_SET);
+    long count_via_read = 0;
+    char read_buffer[8192];
+    ssize_t bytes_read = 0;
 
-    // 2. Count characters with read(2): the file is copied into a buffer first.
-    lseek(fd, 0, SEEK_SET);
-    long via_read = 0;
-    char buf[8192];
-    ssize_t n;
-
-    while ((n = read(fd, buf, sizeof buf)) &gt; 0) {
-        for (ssize_t i = 0; i &lt; n; ++i) {
-            if (buf[i] == 'a') ++via_read;
+    while ((bytes_read = read(file_fd, read_buffer, sizeof read_buffer)) &gt; 0) {
+        for (ssize_t index = 0; index &lt; bytes_read; ++index) {
+            if (read_buffer[index] == 'a') ++count_via_read;
         }
     }
 
-    // 3. Map the file and count again: no explicit copies in the loop.
-    char* map = static_cast&lt;char*&gt;(mmap(nullptr, kSize, PROT_READ, MAP_PRIVATE, fd, 0));
-    if (map == MAP_FAILED) {
+    // Step 3: Map the file directly into our virtual address space via mmap(2).
+    // Hardware page faults map the kernel page cache frames directly into user PTEs.
+    char* mapped_file = static_cast&lt;char*&gt;(
+        mmap(nullptr, kFileBytes, PROT_READ, MAP_PRIVATE, file_fd, 0));
+    if (mapped_file == MAP_FAILED) {
         perror("mmap");
         return 1;
     }
 
-    long via_mmap = 0;
-    for (size_t i = 0; i &lt; kSize; ++i) {
-        if (map[i] == 'a') ++via_mmap;
+    long count_via_mmap = 0;
+    for (size_t index = 0; index &lt; kFileBytes; ++index) {
+        if (mapped_file[index] == 'a') ++count_via_mmap;
     }
 
-    struct stat st {};
-    fstat(fd, &amp;st);
-    printf("file size   : %lld bytes\n", static_cast&lt;long long&gt;(st.st_size));
-    printf("read(2)     : %ld 'a' characters\n", via_read);
-    printf("mmap        : %ld 'a' characters\n", via_mmap);
-    printf("match       : %s\n", via_read == via_mmap ? "yes" : "NO");
+    struct stat file_stat {};
+    fstat(file_fd, &amp;file_stat);
+    printf("file size   : %lld bytes\n", static_cast&lt;long long&gt;(file_stat.st_size));
+    printf("read(2)     : %ld 'a' characters\n", count_via_read);
+    printf("mmap        : %ld 'a' characters\n", count_via_mmap);
+    printf("match       : %s\n", count_via_read == count_via_mmap ? "yes" : "NO");
 
-    munmap(map, kSize);
-    close(fd);
-    unlink(path);
+    munmap(mapped_file, kFileBytes);
+    close(file_fd);
+    unlink(file_path);
 }
 </code></pre>
 <p><strong>Output 7-3. Both methods count 4,128,768 characters.</strong></p>
@@ -519,73 +548,264 @@ read(2)     : 4128768 'a' characters
 mmap        : 4128768 'a' characters
 match       : yes
 </code></pre>
-<p><strong>Listing 7-4. One access per page, for a growing number of pages (C++20).</strong></p>
-<pre><code class="language-cpp">// ch07/tlb.cpp: one access per page, sweeping the working set upward.
-// Each size step crosses another level of the memory hierarchy; the
-// latency steps mark the TLB and cache boundaries.
+<p><strong>Listing 7-4. The same file-mapping comparison in Rust, using the libc crate.</strong></p>
+<pre class="playground"><code class="language-rust">// ch07/mmap_file.rs: Compares counting bytes via read(2) (kernel-to-user copy)
+// against reading directly through an mmap(2) virtual memory mapping.
+extern crate libc;
+
+use std::ptr;
+use std::slice;
+
+const FILE_BYTES: usize = 4 * 1024 * 1024;  // 4 MiB test file
+const LINE_BYTES: usize = 64;               // 63 'a' characters + '\n'
+
+fn main() {
+    let file_path = b"/tmp/osbook_mmap_demo_rs.txt\0";
+
+    // SAFETY: `file_path` is a NUL-terminated path; mode 0o644 creates a readable/writable file.
+    let file_fd = unsafe {
+        libc::open(
+            file_path.as_ptr() as *const libc::c_char,
+            libc::O_CREAT | libc::O_RDWR | libc::O_TRUNC,
+            0o644 as libc::c_uint,
+        )
+    };
+    assert!(file_fd &gt;= 0, "open failed");
+
+    let mut line_buffer = [b'a'; LINE_BYTES];
+    line_buffer[LINE_BYTES - 1] = b'\n';
+
+    for _ in (0..FILE_BYTES).step_by(LINE_BYTES) {
+        // SAFETY: `file_fd` is open for writing and `line_buffer` provides `LINE_BYTES` valid bytes.
+        let bytes_written = unsafe {
+            libc::write(file_fd, line_buffer.as_ptr() as *const libc::c_void, LINE_BYTES)
+        };
+        assert_eq!(bytes_written, LINE_BYTES as isize);
+    }
+
+    // SAFETY: `file_fd` is an open file descriptor; sync data and rewind offset to byte 0.
+    unsafe {
+        libc::fsync(file_fd);
+        libc::lseek(file_fd, 0, libc::SEEK_SET);
+    }
+
+    // Step 2: Count 'a' bytes via read(2) (copies from kernel page cache into user buffer).
+    let mut count_via_read: usize = 0;
+    let mut read_buffer = [0_u8; 8192];
+    loop {
+        // SAFETY: `file_fd` is readable and `read_buffer` provides 8,192 writable bytes.
+        let bytes_read = unsafe {
+            libc::read(
+                file_fd,
+                read_buffer.as_mut_ptr() as *mut libc::c_void,
+                read_buffer.len(),
+            )
+        };
+        if bytes_read &lt;= 0 {
+            break;
+        }
+        count_via_read += read_buffer[..bytes_read as usize]
+            .iter()
+            .filter(|&amp;&amp;byte| byte == b'a')
+            .count();
+    }
+
+    // Step 3: Map the file directly into virtual memory (no explicit user-buffer copy).
+    // SAFETY: Read-only private mapping of `FILE_BYTES` backed by `file_fd`.
+    let mapped_ptr = unsafe {
+        libc::mmap(
+            ptr::null_mut(),
+            FILE_BYTES,
+            libc::PROT_READ,
+            libc::MAP_PRIVATE,
+            file_fd,
+            0,
+        )
+    };
+    assert_ne!(mapped_ptr, libc::MAP_FAILED, "mmap failed");
+
+    // SAFETY: `mapped_ptr` is verified valid and remains read-only and mapped until `munmap`.
+    let mapped_slice = unsafe { slice::from_raw_parts(mapped_ptr as *const u8, FILE_BYTES) };
+    let count_via_mmap = mapped_slice.iter().filter(|&amp;&amp;byte| byte == b'a').count();
+
+    println!("file size   : {FILE_BYTES} bytes");
+    println!("read(2)     : {count_via_read} 'a' characters");
+    println!("mmap        : {count_via_mmap} 'a' characters");
+    println!(
+        "match       : {}",
+        if count_via_read == count_via_mmap { "yes" } else { "NO" }
+    );
+
+    // SAFETY: Unmaps the exact mapping, closes `file_fd`, and removes the temporary file.
+    unsafe {
+        libc::munmap(mapped_ptr, FILE_BYTES);
+        libc::close(file_fd);
+        libc::unlink(file_path.as_ptr() as *const libc::c_char);
+    }
+}</code></pre>
+<p><strong>Output 7-4.</strong></p>
+<pre><code class="language-text">file size   : 4194304 bytes
+read(2)     : 4128768 'a' characters
+mmap        : 4128768 'a' characters
+match       : yes
+</code></pre>
+<p><strong>Listing 7-5. One access per page, for a growing number of pages (C++20).</strong></p>
+<pre><code class="language-cpp">// ch07/tlb.cpp: Measures per-access latency while sweeping the working set upward,
+// stepping by one full hardware page per access so latency cliffs reveal TLB capacity.
 #include &lt;sys/mman.h&gt;
 #include &lt;unistd.h&gt;
 #include &lt;chrono&gt;
 #include &lt;cstdint&gt;
 #include &lt;cstdio&gt;
 
-static double ns_per_access(size_t bytes, uint64_t touches) {
-    const long ps = sysconf(_SC_PAGESIZE);
+static double measure_ns_per_access(size_t working_set_bytes, uint64_t total_accesses) {
+    const size_t page_size = static_cast&lt;size_t&gt;(sysconf(_SC_PAGESIZE));
 
     char* region = static_cast&lt;char*&gt;(
-        mmap(nullptr, bytes, PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANON, -1, 0));
+        mmap(nullptr, working_set_bytes, PROT_READ | PROT_WRITE,
+             MAP_PRIVATE | MAP_ANON, -1, 0));
     if (region == MAP_FAILED) return -1.0;
 
-    const size_t pages = bytes / static_cast&lt;size_t&gt;(ps);
+    const size_t page_count = working_set_bytes / page_size;
 
-    // Touch every page once so the measurement is not dominated by page faults.
-    for (size_t p = 0; p &lt; pages; ++p) region[p * ps] = 1;
-
-    uint64_t sum = 0;
-    size_t p = 0;
-
-    auto start = std::chrono::steady_clock::now();
-    for (uint64_t i = 0; i &lt; touches; ++i) {
-        sum += static_cast&lt;uint8_t&gt;(region[p * ps]);
-        if (++p == pages) p = 0;
+    // Pre-fault every page once so page-allocation traps do not distort TLB timings.
+    for (size_t page_index = 0; page_index &lt; page_count; ++page_index) {
+        region[page_index * page_size] = 1;
     }
-    auto end = std::chrono::steady_clock::now();
 
-    double ns = std::chrono::duration&lt;double, std::nano&gt;(end - start).count() / touches;
+    uint64_t checksum = 0;
+    size_t page_index = 0;
 
-    printf("  %8zu bytes  %8zu pages  %8.1f ns per access  (checksum %llu)\n",
-           bytes, pages, ns, static_cast&lt;unsigned long long&gt;(sum));
+    auto start_time = std::chrono::steady_clock::now();
+    for (uint64_t step = 0; step &lt; total_accesses; ++step) {
+        checksum += static_cast&lt;uint8_t&gt;(region[page_index * page_size]);
+        if (++page_index == page_count) page_index = 0;
+    }
+    auto end_time = std::chrono::steady_clock::now();
 
-    munmap(region, bytes);
-    return ns;
+    double ns_per_access =
+        std::chrono::duration&lt;double, std::nano&gt;(end_time - start_time).count() / total_accesses;
+
+    printf("  %9zu bytes  %7zu pages  %6.1f ns per access  (checksum %llu)\n",
+           working_set_bytes, page_count, ns_per_access,
+           static_cast&lt;unsigned long long&gt;(checksum));
+
+    munmap(region, working_set_bytes);
+    return ns_per_access;
 }
 
 int main() {
-    constexpr uint64_t kTouches = 4'000'000;
-    printf("one access per page, %llu accesses per size\n\n",
-           static_cast&lt;unsigned long long&gt;(kTouches));
+    constexpr uint64_t kTotalAccesses = 4'000'000;
+    printf("one access per page, %llu accesses per working-set size\n\n",
+           static_cast&lt;unsigned long long&gt;(kTotalAccesses));
 
-    ns_per_access(4 * 1024, kTouches);
-    ns_per_access(64 * 1024, kTouches);
-    ns_per_access(256 * 1024, kTouches);
-    ns_per_access(1u &lt;&lt; 20, kTouches);
-    ns_per_access(4u &lt;&lt; 20, kTouches);
-    ns_per_access(16u &lt;&lt; 20, kTouches);
-    ns_per_access(64u &lt;&lt; 20, kTouches);
-    ns_per_access(256u &lt;&lt; 20, kTouches);
+    for (size_t bytes : {
+             size_t{4} * 1024, size_t{64} * 1024, size_t{256} * 1024,
+             size_t{1} &lt;&lt; 20,  size_t{4} &lt;&lt; 20,   size_t{16} &lt;&lt; 20,
+             size_t{64} &lt;&lt; 20, size_t{256} &lt;&lt; 20,
+         }) {
+        measure_ns_per_access(bytes, kTotalAccesses);
+    }
 }
 </code></pre>
-<p><strong>Output 7-4. One run on the verification machine.</strong></p>
-<pre><code class="language-text">one access per page, 4000000 accesses per size
+<p><strong>Output 7-5. One run on the verification machine.</strong></p>
+<pre><code class="language-text">one access per page, 4000000 accesses per working-set size
 
-      4096 bytes         1 pages       1.8 ns per access  (checksum 4000000)
-     65536 bytes        16 pages       2.0 ns per access  (checksum 4000000)
-    262144 bytes        64 pages       1.9 ns per access  (checksum 4000000)
-   1048576 bytes       256 pages       2.0 ns per access  (checksum 4000000)
-   4194304 bytes      1024 pages       3.3 ns per access  (checksum 4000000)
-  16777216 bytes      4096 pages       7.2 ns per access  (checksum 4000000)
-  67108864 bytes     16384 pages       9.1 ns per access  (checksum 4000000)
-  268435456 bytes     65536 pages      10.6 ns per access  (checksum 4000000)
+       4096 bytes        1 pages     1.7 ns per access  (checksum 4000000)
+      65536 bytes       16 pages     1.7 ns per access  (checksum 4000000)
+     262144 bytes       64 pages     1.8 ns per access  (checksum 4000000)
+    1048576 bytes      256 pages     2.5 ns per access  (checksum 4000000)
+    4194304 bytes     1024 pages     4.7 ns per access  (checksum 4000000)
+   16777216 bytes     4096 pages     8.9 ns per access  (checksum 4000000)
+   67108864 bytes    16384 pages    10.6 ns per access  (checksum 4000000)
+  268435456 bytes    65536 pages    13.4 ns per access  (checksum 4000000)
+</code></pre>
+<p><strong>Listing 7-6. The same TLB working-set sweep in Rust.</strong></p>
+<pre class="playground"><code class="language-rust">// ch07/tlb.rs: Measures per-access latency while sweeping the working set upward,
+// stepping by one full hardware page per access so latency cliffs reveal TLB capacity.
+extern crate libc;
+
+use std::ptr;
+use std::slice;
+use std::time::Instant;
+
+fn measure_ns_per_access(working_set_bytes: usize, total_accesses: u64) {
+    // SAFETY: `_SC_PAGESIZE` queries the read-only OS hardware page granularity.
+    let page_size = unsafe { libc::sysconf(libc::_SC_PAGESIZE) } as usize;
+
+    // SAFETY: Anonymous private mapping of `working_set_bytes`; validated against `MAP_FAILED`.
+    let region_ptr = unsafe {
+        libc::mmap(
+            ptr::null_mut(),
+            working_set_bytes,
+            libc::PROT_READ | libc::PROT_WRITE,
+            libc::MAP_PRIVATE | libc::MAP_ANON,
+            -1,
+            0,
+        )
+    };
+    assert_ne!(region_ptr, libc::MAP_FAILED, "mmap failed");
+
+    // SAFETY: `region_ptr` is an exclusively owned, zero-initialized mapping valid until `munmap`.
+    let mapped_bytes =
+        unsafe { slice::from_raw_parts_mut(region_ptr as *mut u8, working_set_bytes) };
+    let page_count = working_set_bytes / page_size;
+
+    // Pre-fault every page once so page-allocation traps do not distort TLB timings.
+    for page_index in 0..page_count {
+        mapped_bytes[page_index * page_size] = 1;
+    }
+
+    let mut checksum: u64 = 0;
+    let mut page_index: usize = 0;
+    let start_time = Instant::now();
+    for _ in 0..total_accesses {
+        checksum += u64::from(mapped_bytes[page_index * page_size]);
+        page_index += 1;
+        if page_index == page_count {
+            page_index = 0;
+        }
+    }
+    let ns_per_access = start_time.elapsed().as_nanos() as f64 / total_accesses as f64;
+
+    println!(
+        "  {working_set_bytes:9} bytes  {page_count:7} pages  {ns_per_access:6.1} ns per access  (checksum {checksum})"
+    );
+
+    // SAFETY: `mapped_bytes` is no longer referenced; unmaps the exact mapping from `mmap`.
+    unsafe {
+        libc::munmap(region_ptr, working_set_bytes);
+    }
+}
+
+fn main() {
+    const TOTAL_ACCESSES: u64 = 4_000_000;
+    println!("one access per page, {TOTAL_ACCESSES} accesses per working-set size\n");
+
+    for &amp;working_set_bytes in &amp;[
+        4 * 1024,
+        64 * 1024,
+        256 * 1024,
+        1 &lt;&lt; 20,
+        4 &lt;&lt; 20,
+        16 &lt;&lt; 20,
+        64 &lt;&lt; 20,
+        256 &lt;&lt; 20,
+    ] {
+        measure_ns_per_access(working_set_bytes, TOTAL_ACCESSES);
+    }
+}</code></pre>
+<p><strong>Output 7-6.</strong></p>
+<pre><code class="language-text">one access per page, 4000000 accesses per working-set size
+
+       4096 bytes        1 pages     1.8 ns per access  (checksum 4000000)
+      65536 bytes       16 pages     1.9 ns per access  (checksum 4000000)
+     262144 bytes       64 pages     1.9 ns per access  (checksum 4000000)
+    1048576 bytes      256 pages     2.1 ns per access  (checksum 4000000)
+    4194304 bytes     1024 pages     4.0 ns per access  (checksum 4000000)
+   16777216 bytes     4096 pages    11.4 ns per access  (checksum 4000000)
+   67108864 bytes    16384 pages    11.3 ns per access  (checksum 4000000)
+  268435456 bytes    65536 pages    13.3 ns per access  (checksum 4000000)
 </code></pre>
 
                     </main>
@@ -639,7 +859,7 @@ int main() {
         <script src="book-609e4cb8.js"></script>
 
         <!-- Custom JS scripts -->
-        <script src="theme/figures-7a3fdfc9.js"></script>
+        <script src="theme/figures-afd72f2c.js"></script>
 
 
 

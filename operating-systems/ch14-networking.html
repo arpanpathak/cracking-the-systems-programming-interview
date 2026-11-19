@@ -28,7 +28,7 @@
         <link rel="stylesheet" id="mdbook-ayu-highlight-css" href="ayu-highlight-3fdfc3ac.css">
 
         <!-- Custom theme stylesheets -->
-        <link rel="stylesheet" href="theme/custom-e0671a52.css">
+        <link rel="stylesheet" href="theme/custom-9125cc61.css">
 
         <!-- MathJax -->
         <script async src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.1/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
@@ -38,10 +38,10 @@
             const path_to_root = "";
             const default_light_theme = "light";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "searchindex-4f3aedde.js";
+            window.path_to_searchindex_js = "searchindex-2f3b4ad9.js";
         </script>
         <!-- Start loading toc.js asap -->
-        <script src="toc-2b639993.js"></script>
+        <script src="toc-f3585118.js"></script>
     </head>
     <body>
     <div id="mdbook-help-container">
@@ -184,21 +184,41 @@
                 <div id="mdbook-content" class="content">
                     <main>
                         <h1 id="14-network-protocols-and-the-socket-interface"><a class="header" href="#14-network-protocols-and-the-socket-interface">14. Network Protocols and the Socket Interface</a></h1>
-<p>Network communication is abstracted through the socket interface, which provides a standardized mechanism for processes to exchange data across local or remote hosts. While the underlying network may be unreliable, the socket API allows applications to choose between different transport protocols, primarily TCP and UDP, depending on their requirements for reliability, ordering, and latency.</p>
+<p>Network communication is abstracted through the BSD socket interface, which exposes transport protocols through ordinary file descriptors while letting applications select between fundamentally different delivery contracts: reliable, ordered byte streams (TCP) and connectionless, boundary-preserving datagrams (UDP).</p>
 <h2 id="141-the-transmission-control-protocol-tcp-reliable-byte-streams"><a class="header" href="#141-the-transmission-control-protocol-tcp-reliable-byte-streams">14.1 The Transmission Control Protocol (TCP): Reliable Byte Streams</a></h2>
-<p>The Transmission Control Protocol (TCP) provides a robust, connection-oriented abstraction that presents the network as a reliable, ordered stream of bytes. To overcome the inherent unreliability of the underlying network (such as packet loss, duplication, or out-of-order delivery), TCP employs sequence numbers and acknowledgment mechanisms. By tracking the exact byte offset of every transmitted segment, the protocol can reassemble data in the correct order, discard duplicates, and retransmit lost segments, ensuring that the application perceives a seamless and continuous stream.</p>
-<p>Establishing and terminating a TCP connection involves a structured exchange of control segments:</p>
+<p>The <strong>Transmission Control Protocol (TCP)</strong> provides a connection-oriented, reliable, full-duplex byte stream over an inherently unreliable packet-switched IP network that can drop, duplicate, reorder, or corrupt packets. TCP enforces reliability through cumulative byte <strong>sequence numbers</strong>, receiver <strong>acknowledgments (ACKs)</strong>, retransmission timers, sliding-window <strong>flow control</strong> (preventing a fast sender from overflowing a slow receiver’s kernel buffer), and <strong>congestion control</strong> (adapting transmission rate to network path capacity).</p>
+<p>Every TCP connection traverses two control phases around its data transfer:</p>
 <ul>
-<li><strong>Connection Establishment:</strong> A three-way handshake (SYN, SYN-ACK, ACK) synchronizes sequence numbers and establishes the connection state.</li>
-<li><strong>Connection Teardown:</strong> The termination process utilizes FIN segments to signal the end of the stream, allowing both sides to gracefully conclude communication.</li>
+<li><strong>Three-Way Handshake (Establishment):</strong> The client transmits <code>SYN</code> with an initial sequence number; the server responds with <code>SYN-ACK</code>; the client replies with <code>ACK</code>. Only after this round trip completes do <code>connect()</code> and <code>accept()</code> succeed.</li>
+<li><strong>Graceful Teardown:</strong> Each direction closes independently via <code>FIN</code> and <code>ACK</code> segments (half-close), allowing buffered in-flight data to drain cleanly before the endpoint enters <code>TIME_WAIT</code> and releases the port.</li>
 </ul>
-<p>From a programming perspective, TCP operations are managed through a specific sequence of system calls: <code>bind</code> and <code>listen</code> prepare a server to accept connections; <code>connect</code> initiates a client-side handshake; and <code>accept</code> generates a new file descriptor for an established connection. A critical implementation detail is that TCP, being a stream-oriented protocol, does not preserve application-level message boundaries. Consequently, any protocol layered atop TCP must implement its own framing mechanism, such as length-prefixing or delimiters, to reconstruct discrete messages from the continuous byte stream.</p>
+<p>Because TCP treats transmitted data as an unstructured sequence of bytes, it does <strong>not</strong> preserve <code>write()</code> boundaries: three 10-byte writes may arrive as a single 30-byte <code>read()</code> or thirty 1-byte reads. Every application protocol layered over TCP (HTTP, TLS, gRPC, PostgreSQL wire protocol) must therefore define explicit framing, such as length prefixes or delimiters.</p>
 <figure>
 <img src="figures/ch14_tcp.svg" alt="The TCP handshake, data exchange with sequence numbers, and FIN teardown" />
 </figure>
 <h2 id="142-the-user-datagram-protocol-udp-unreliable-message-delivery"><a class="header" href="#142-the-user-datagram-protocol-udp-unreliable-message-delivery">14.2 The User Datagram Protocol (UDP): Unreliable Message Delivery</a></h2>
-<p>In contrast to the complexity of TCP, the User Datagram Protocol (UDP) provides a minimalist, connectionless service. Communication via UDP is centered around discrete datagrams, each of which is sent independently with its own destination address. Unlike TCP, UDP provides no guarantees regarding delivery, ordering, or integrity; a datagram may be lost, duplicated, or arrive out of sequence.</p>
-<p>The primary advantage of UDP is its low latency and reduced overhead, as it avoids the handshake and acknowledgment cycles required by TCP. This makes it ideal for real-time applications (such as voice or video streaming) where late data is useless, or for short, transactional exchanges (such as DNS queries) where the cost of a handshake would exceed the cost of the data transfer itself. Furthermore, UDP preserves message boundaries: a single <code>sendto</code> call corresponds to exactly one <code>recvfrom</code> call, simplifying the application-level framing requirements.</p>
+<p>The <strong>User Datagram Protocol (UDP)</strong> strips away connection state, handshakes, retransmissions, and ordering guarantees, adding only 8 bytes of header (source port, destination port, length, and checksum) atop raw IP packets. Each UDP datagram is routed independently and may arrive out of order, arrive duplicated, or vanish silently in transit.</p>
+<p>This minimal contract yields two major engineering properties:</p>
+<ul>
+<li><strong>Zero handshake latency and no head-of-line blocking:</strong> Sending the first payload incurs zero setup round trips, and losing one packet never stalls subsequent packets waiting behind it. Real-time voice/video pipelines, DNS resolvers, telemetry collectors, and modern QUIC (HTTP/3) transports build directly on UDP.</li>
+<li><strong>Strict message-boundary preservation:</strong> Unlike TCP streams, one <code>sendto()</code> call produces exactly one discrete datagram delivered atomically by one <code>recvfrom()</code> call.</li>
+</ul>
+<h3 id="1421-the-connectionless-datagram-system-call-interface-sendto-recvfrom"><a class="header" href="#1421-the-connectionless-datagram-system-call-interface-sendto-recvfrom">14.2.1 The Connectionless Datagram System Call Interface (<code>sendto</code>, <code>recvfrom</code>)</a></h3>
+<p>Because a UDP socket (<code>socket(AF_INET, SOCK_DGRAM, 0)</code>) does not maintain a fixed peer connection, each transmission and reception carries its own endpoint address explicitly:</p>
+<pre><code class="language-text">ssize_t sendto(int sockfd, const void *buf, size_t len, int flags,
+               const struct sockaddr *dest_addr, socklen_t addrlen);
+
+ssize_t recvfrom(int sockfd, void *buf, size_t len, int flags,
+                 struct sockaddr *src_addr, socklen_t *addrlen);
+</code></pre>
+<ul>
+<li><strong><code>sockfd</code>:</strong> A <code>SOCK_DGRAM</code> file descriptor. Calling <code>bind()</code> assigns a local port (such as <code>45680</code> in Listing 14-1) so peers know where to address datagrams; an unbound socket sending via <code>sendto()</code> receives an ephemeral port automatically from the kernel.</li>
+<li><strong><code>buf</code> and <code>len</code>:</strong> User-space payload buffer and its byte length.</li>
+<li><strong><code>flags</code>:</strong> Per-operation bitmask (<code>0</code> for standard blocking transfer; <code>MSG_DONTWAIT</code> for non-blocking single-call I/O; <code>MSG_PEEK</code> to inspect a queued datagram without removing it from the receive buffer).</li>
+<li><strong><code>dest_addr</code> and <code>addrlen</code> (in <code>sendto</code>):</strong> Pointer to the destination <code>struct sockaddr_in</code> (or <code>sockaddr_in6</code>) and its exact byte size passed <strong>by value</strong> (<code>sizeof addr</code>).</li>
+<li><strong><code>src_addr</code> and <code>addrlen</code> (in <code>recvfrom</code>):</strong> Output parameters allowing the kernel to populate the sender’s IP address and port. Notice that <strong><code>addrlen</code> is passed by pointer (<code>socklen_t *</code>)</strong> as a value-result argument: the caller initializes <code>*addrlen</code> to the buffer capacity (for example, <code>sizeof(struct sockaddr_storage)</code>) before the call, and the kernel overwrites <code>*addrlen</code> with the actual address length written. Passing <code>nullptr, nullptr</code> (as in Listing 14-1) tells the kernel the caller does not need the sender’s address.</li>
+<li><strong>Return values and truncation hazard:</strong> Both functions return the signed number of bytes sent or received (<code>ssize_t &gt;= 0</code>), or <code>-1</code> on error (<code>EMSGSIZE</code> if a datagram exceeds the link MTU/limit, <code>EAGAIN</code> on non-blocking empty receive, <code>EINTR</code>). Crucially, if an arriving UDP datagram is larger than the <code>len</code> buffer supplied to <code>recvfrom()</code>, the kernel copies the first <code>len</code> bytes and <strong>silently discards the remaining tail of the datagram</strong> (unlike TCP <code>read()</code>, which leaves unread bytes queued for the next call).</li>
+</ul>
 <p><strong>Listing 14-1. Sending and receiving one datagram (C++20).</strong></p>
 <pre><code class="language-cpp">// ch14/udp.cpp: a datagram sent to the loopback address and read back.
 #include &lt;arpa/inet.h&gt;
@@ -243,26 +263,55 @@ int main() {
 <pre class="playground"><code class="language-rust">// ch14/udp.rs: the same datagram round trip with std::net::UdpSocket.
 use std::net::UdpSocket;
 
-fn main() {
-    let s = UdpSocket::bind("127.0.0.1:45681").unwrap();
+fn main() -&gt; std::io::Result&lt;()&gt; {
+    let s = UdpSocket::bind("127.0.0.1:45681")?;
 
     let msg = b"datagram";
-    s.send_to(msg, "127.0.0.1:45681").unwrap();
+    s.send_to(msg, "127.0.0.1:45681")?;
 
     let mut buf = [0u8; 64];
-    let (n, from) = s.recv_from(&amp;mut buf).unwrap();
+    let (n, from) = s.recv_from(&amp;mut buf)?;
 
     println!(
         "sent {} bytes, received {n} bytes from {from}: \"{}\"",
         msg.len(),
         String::from_utf8_lossy(&amp;buf[..n])
     );
+    Ok(())
 }</code></pre>
 <p><strong>Output 14-2.</strong></p>
 <pre><code class="language-text">sent 8 bytes, received 8 bytes from 127.0.0.1:45681: "datagram"
 </code></pre>
 <h2 id="143-name-resolution-and-addressing"><a class="header" href="#143-name-resolution-and-addressing">14.3 Name Resolution and Addressing</a></h2>
-<p>While network communication occurs via numeric IP addresses, practical applications utilize human-readable hostnames. Name resolution is the process of translating these names into a list of compatible network addresses (typically encompassing both IPv4 and IPv6). Using standardized interfaces like <code>getaddrinfo</code>, applications can iterate through the returned address list to attempt connection to the first available endpoint, ensuring compatibility across diverse network environments.</p>
+<p>Applications operate on human-readable hostnames (<code>"localhost"</code>, <code>"api.example.com"</code>) and service names (<code>"https"</code>, <code>"443"</code>), whereas <code>connect()</code> and <code>bind()</code> require binary IPv4 (<code>sockaddr_in</code>) or IPv6 (<code>sockaddr_in6</code>) structures. Modern POSIX software replaces legacy IPv4-only functions (<code>gethostbyname</code>) with the re-entrant, protocol-independent resolver <strong><code>getaddrinfo(3)</code></strong>.</p>
+<h3 id="1431-protocol-independent-resolution-struct-addrinfo-getaddrinfo-freeaddrinfo-inet_ntop"><a class="header" href="#1431-protocol-independent-resolution-struct-addrinfo-getaddrinfo-freeaddrinfo-inet_ntop">14.3.1 Protocol-Independent Resolution (<code>struct addrinfo</code>, <code>getaddrinfo</code>, <code>freeaddrinfo</code>, <code>inet_ntop</code>)</a></h3>
+<pre><code class="language-text">struct addrinfo {
+    int              ai_flags;     // Input options (e.g., AI_PASSIVE, AI_NUMERICHOST)
+    int              ai_family;    // AF_UNSPEC (IPv4 or IPv6), AF_INET, or AF_INET6
+    int              ai_socktype;  // SOCK_STREAM (TCP), SOCK_DGRAM (UDP), or 0 (any)
+    int              ai_protocol;  // Protocol number or 0 (any matching protocol)
+    socklen_t        ai_addrlen;   // Byte length of the socket address in ai_addr
+    struct sockaddr *ai_addr;      // Pointer to populated sockaddr_in or sockaddr_in6
+    char            *ai_canonname; // Canonical hostname (when AI_CANONNAME requested)
+    struct addrinfo *ai_next;      // Next candidate in the singly-linked result list
+};
+
+int         getaddrinfo(const char *node, const char *service,
+                        const struct addrinfo *hints, struct addrinfo **res);
+void        freeaddrinfo(struct addrinfo *res);
+const char *gai_strerror(int errcode);
+const char *inet_ntop(int af, const void *src, char *dst, socklen_t size);
+</code></pre>
+<ul>
+<li><strong>Filtering via <code>hints</code>:</strong> Callers zero-initialize a <code>struct addrinfo hints{}</code> and populate only the constraint fields they care about: setting <strong><code>ai_family = AF_UNSPEC</code></strong> accepts both IPv4 and IPv6 addresses, while <strong><code>ai_socktype = SOCK_STREAM</code></strong> restricts results to stream (TCP) endpoints so each IP address is not duplicated for both TCP and UDP. For server <code>bind()</code> lookups, setting <code>ai_flags = AI_PASSIVE</code> with <code>node = nullptr</code> produces wildcard listen addresses (<code>0.0.0.0</code> / <code>::</code>).</li>
+<li><strong><code>getaddrinfo(node, service, hints, res)</code>:</strong> Queries <code>/etc/hosts</code> and configured DNS resolvers for hostname <code>node</code> (e.g., <code>"localhost"</code>) and optional port/service string <code>service</code> (<code>nullptr</code> when inspecting addresses without a port). On success it allocates a linked list of <code>struct addrinfo</code> nodes on the heap, writes the head pointer into <code>*res</code>, and returns <strong><code>0</code></strong>.
+<ul>
+<li><strong>Dedicated error codes (<code>gai_strerror</code>):</strong> Unlike raw system calls, <code>getaddrinfo()</code> does <strong>not</strong> return <code>-1</code> with <code>errno</code>. On failure it returns a specific non-zero resolver code (<code>EAI_NONAME</code>, <code>EAI_AGAIN</code>, <code>EAI_MEMORY</code>), which callers must translate via <strong><code>gai_strerror(rc)</code></strong> rather than <code>perror()</code>.</li>
+</ul>
+</li>
+<li><strong>Traversing and freeing (<code>ai_next</code> and <code>freeaddrinfo</code>):</strong> Because a hostname commonly resolves to both IPv6 (<code>::1</code>) and IPv4 (<code>127.0.0.1</code>) endpoints, callers iterate <code>for (addrinfo *ai = list; ai != nullptr; ai = ai-&gt;ai_next)</code>, inspecting <code>ai-&gt;ai_family</code> to safely cast <code>ai-&gt;ai_addr</code> to either <code>sockaddr_in *</code> or <code>sockaddr_in6 *</code>. Once finished, the caller <strong>must</strong> invoke <strong><code>freeaddrinfo(list)</code></strong> to release the entire heap-allocated linked list.</li>
+<li><strong><code>inet_ntop(af, src, dst, size)</code> (“network to presentation”):</strong> Converts a binary network-order address pointer (<code>&amp;sin_addr</code> for <code>AF_INET</code>, or <code>&amp;sin6_addr</code> for <code>AF_INET6</code>) into a null-terminated text string inside <code>dst</code>. Sizing <code>dst</code> to <strong><code>INET6_ADDRSTRLEN</code></strong> (46 bytes) guarantees sufficient capacity for both IPv4 dotted-quad (<code>127.0.0.1</code>) and full IPv6 colon-hex (<code>::1</code>) representations. Returns <code>dst</code> on success or <code>nullptr</code> on error (<code>EAFNOSUPPORT</code>, <code>ENOSPC</code>).</li>
+</ul>
 <p><strong>Listing 14-3. The addresses that <code>getaddrinfo</code> returns for “localhost” (C++20).</strong></p>
 <pre><code class="language-cpp">// ch14/getaddrinfo.cpp: resolve a name and inspect what the resolver returns.
 #include &lt;arpa/inet.h&gt;
@@ -310,10 +359,11 @@ int main() {
 <pre class="playground"><code class="language-rust">// ch14/to_socket_addrs.rs: the Rust equivalent of getaddrinfo.
 use std::net::ToSocketAddrs;
 
-fn main() {
-    for (i, addr) in ("localhost", 45682).to_socket_addrs().unwrap().enumerate() {
+fn main() -&gt; std::io::Result&lt;()&gt; {
+    for (i, addr) in ("localhost", 45682).to_socket_addrs()?.enumerate() {
         println!("[{i}] {addr}");
     }
+    Ok(())
 }</code></pre>
 <p><strong>Output 14-4.</strong></p>
 <pre><code class="language-text">[0] [::1]:45682
@@ -371,7 +421,7 @@ fn main() {
         <script src="book-609e4cb8.js"></script>
 
         <!-- Custom JS scripts -->
-        <script src="theme/figures-7a3fdfc9.js"></script>
+        <script src="theme/figures-afd72f2c.js"></script>
 
 
 

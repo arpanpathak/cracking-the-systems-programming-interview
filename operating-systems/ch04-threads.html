@@ -28,7 +28,7 @@
         <link rel="stylesheet" id="mdbook-ayu-highlight-css" href="ayu-highlight-3fdfc3ac.css">
 
         <!-- Custom theme stylesheets -->
-        <link rel="stylesheet" href="theme/custom-e0671a52.css">
+        <link rel="stylesheet" href="theme/custom-9125cc61.css">
 
         <!-- MathJax -->
         <script async src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.1/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
@@ -38,10 +38,10 @@
             const path_to_root = "";
             const default_light_theme = "light";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "searchindex-4f3aedde.js";
+            window.path_to_searchindex_js = "searchindex-2f3b4ad9.js";
         </script>
         <!-- Start loading toc.js asap -->
-        <script src="toc-2b639993.js"></script>
+        <script src="toc-f3585118.js"></script>
     </head>
     <body>
     <div id="mdbook-help-container">
@@ -229,7 +229,7 @@ int main() {
 }
 </code></pre>
 <p><strong>Output 4-1. One run. The observed value differs from run to run.</strong></p>
-<pre><code class="language-text">expected 160000000, observed 37220654
+<pre><code class="language-text">expected 160000000, observed 39242198
 </code></pre>
 <p><strong>Listing 4-2. The same race in Rust, written with <code>unsafe</code>.</strong></p>
 <pre class="playground"><code class="language-rust">// ch04/race.rs: the unsynchronized counter in Rust. Reading or writing a
@@ -240,7 +240,7 @@ use std::thread;
 
 static mut COUNTER: u64 = 0;
 
-fn main() {
+fn main() -&gt; Result&lt;(), Box&lt;dyn std::error::Error&gt;&gt; {
     const THREADS: usize = 8;
     const ITERS: u64 = 20_000_000;
 
@@ -268,7 +268,7 @@ fn main() {
     }
 
     for h in handles {
-        h.join().unwrap();
+        h.join().map_err(|_| "worker thread panicked")?;
     }
 
     // SAFETY: Synchronization Barrier Proof:
@@ -278,9 +278,10 @@ fn main() {
     // final counter value.
     let observed = unsafe { read_volatile(addr_of!(COUNTER)) };
     println!("expected {}, observed {observed}", THREADS as u64 * ITERS);
+    Ok(())
 }</code></pre>
 <p><strong>Output 4-2.</strong></p>
-<pre><code class="language-text">expected 160000000, observed 45548801
+<pre><code class="language-text">expected 160000000, observed 50144289
 </code></pre>
 <p><strong>Listing 4-3. The counter as a <code>std::atomic</code> (C++20).</strong></p>
 <pre><code class="language-cpp">// ch04/race_atomic.cpp: the same counter with an atomic increment.
@@ -321,7 +322,7 @@ use std::thread;
 
 static COUNTER: AtomicU64 = AtomicU64::new(0);
 
-fn main() {
+fn main() -&gt; Result&lt;(), Box&lt;dyn std::error::Error&gt;&gt; {
     const THREADS: usize = 8;
     const ITERS: u64 = 5_000_000;
 
@@ -341,7 +342,7 @@ fn main() {
     }
 
     for h in handles {
-        h.join().unwrap();
+        h.join().map_err(|_| "worker thread panicked")?;
     }
 
     // Synchronization Proof: `JoinHandle::join()` provides an acquire-release synchronization barrier
@@ -351,12 +352,13 @@ fn main() {
         THREADS as u64 * ITERS,
         COUNTER.load(Ordering::Relaxed)
     );
+    Ok(())
 }</code></pre>
 <p><strong>Output 4-4.</strong></p>
 <pre><code class="language-text">expected 40000000, observed 40000000
 </code></pre>
 <h2 id="43-thread-lifecycle-state-transitions-and-language-level-safety"><a class="header" href="#43-thread-lifecycle-state-transitions-and-language-level-safety">4.3 Thread Lifecycle, State Transitions, and Language-Level Safety</a></h2>
-<p>Whereas a process lifecycle revolves around address-space creation (<code>fork</code>), binary replacement (<code>execve</code>), and process-table reaping (<code>waitpid</code>), a thread lifecycle operates entirely within the shared virtual address space of its host process. The operating system kernel schedules threads—not processes—as the fundamental unit of CPU execution, maintaining a <strong>Thread Control Block (TCB)</strong> for each thread to track its private architectural registers (<code>PC</code>, <code>SP</code>, <code>FP</code>, <code>FLAGS</code>, GPRs), thread-local storage (TLS) base register (<code>FS</code> or <code>GS</code> on x86-64; <code>TPIDR_EL0</code> on ARM64), signal mask, and kernel scheduling state.</p>
+<p>Whereas a process lifecycle revolves around address-space creation (<code>fork</code>), binary replacement (<code>execve</code>), and process-table reaping (<code>waitpid</code>), a thread lifecycle operates entirely within the shared virtual address space of its host process. The operating system kernel schedules threads, not processes, as the fundamental unit of CPU execution, maintaining a <strong>Thread Control Block (TCB)</strong> for each thread to track its private architectural registers (<code>PC</code>, <code>SP</code>, <code>FP</code>, <code>FLAGS</code>, GPRs), thread-local storage (TLS) base register (<code>FS</code> or <code>GS</code> on x86-64; <code>TPIDR_EL0</code> on ARM64), signal mask, and kernel scheduling state.</p>
 <h3 id="431-the-thread-lifecycle-state-automaton"><a class="header" href="#431-the-thread-lifecycle-state-automaton">4.3.1 The Thread Lifecycle State Automaton</a></h3>
 <p>From creation to memory reclamation, a kernel-scheduled thread (allocated via <code>clone(CLONE_VM | CLONE_FS | CLONE_FILES | CLONE_SIGHAND | CLONE_THREAD, ...)</code> on Linux or <code>bsdthread_create</code> on macOS) transitions across five distinct operational states:</p>
 <ol>
@@ -366,7 +368,7 @@ fn main() {
 <li><strong>Sleeping / Parked (Blocked):</strong> The thread has suspended execution waiting for an intra-process synchronization primitive (such as a contended mutex via <code>futex(FUTEX_WAIT)</code>, a condition variable <code>wait</code>, or an I/O readiness event). The kernel removes the TCB from the runqueue and parks it on the synchronization object’s wait queue, where it consumes zero processor cycles until a peer thread invokes <code>futex(FUTEX_WAKE)</code> or an interrupt handler signals completion.</li>
 <li><strong>Terminated and Reclaimed (<code>join</code> vs. <code>detach</code>):</strong> When the thread’s entry function returns (or invokes <code>pthread_exit</code>), the thread ceases execution. How its stack and TCB are reclaimed depends on its detachment contract:
 <ul>
-<li><strong>Joinable Threads:</strong> By default, a thread is <em>joinable</em>. Upon termination, its user-space stack virtual memory mapping and TCB metadata remain allocated so that another thread can invoke <code>pthread_join</code> (or <code>JoinHandle::join</code>), which synchronizes on thread completion, extracts the thread’s return value (or panic payload), and unmaps the thread’s stack and TCB. Failing to join or detach a terminated joinable thread leaks its virtual stack mapping and TCB—the thread-level equivalent of a zombie process.</li>
+<li><strong>Joinable Threads:</strong> By default, a thread is <em>joinable</em>. Upon termination, its user-space stack virtual memory mapping and TCB metadata remain allocated so that another thread can invoke <code>pthread_join</code> (or <code>JoinHandle::join</code>), which synchronizes on thread completion, extracts the thread’s return value (or panic payload), and unmaps the thread’s stack and TCB. Failing to join or detach a terminated joinable thread leaks its virtual stack mapping and TCB, which is the thread-level equivalent of a zombie process.</li>
 <li><strong>Detached Threads:</strong> If a thread is detached (<code>pthread_detach</code>), it relinquishes any synchronization contract with a parent caller; the runtime and kernel automatically unmap its stack and deallocate its TCB immediately upon thread exit.</li>
 </ul>
 </li>
@@ -409,17 +411,17 @@ int main() {
 }
 </code></pre>
 <p><strong>Output 4-5. The order of the lines differs from run to run.</strong></p>
-<pre><code class="language-text">thread 1 running
-thread 0 running
-thread 2 running
+<pre><code class="language-text">thread 0 running
 thread 3 running
+thread 1 running
+thread 2 running
 all threads joined
 </code></pre>
 <p><strong>Listing 4-6. The same four threads in Rust.</strong></p>
 <pre class="playground"><code class="language-rust">// ch04/threads.rs: the same four threads in Rust.
 use std::thread;
 
-fn main() {
+fn main() -&gt; Result&lt;(), Box&lt;dyn std::error::Error&gt;&gt; {
     let mut handles = Vec::new();
     for i in 0..4 {
         handles.push(thread::spawn(move || {
@@ -428,15 +430,16 @@ fn main() {
     }
 
     for h in handles {
-        h.join().unwrap();
+        h.join().map_err(|_| "worker thread panicked")?;
     }
 
     println!("all threads joined");
+    Ok(())
 }</code></pre>
 <p><strong>Output 4-6.</strong></p>
-<pre><code class="language-text">thread 2 running
+<pre><code class="language-text">thread 0 running
 thread 1 running
-thread 0 running
+thread 2 running
 thread 3 running
 all threads joined
 </code></pre>
@@ -492,7 +495,7 @@ all threads joined
         <script src="book-609e4cb8.js"></script>
 
         <!-- Custom JS scripts -->
-        <script src="theme/figures-7a3fdfc9.js"></script>
+        <script src="theme/figures-afd72f2c.js"></script>
 
 
 

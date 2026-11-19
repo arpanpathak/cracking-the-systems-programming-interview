@@ -28,7 +28,7 @@
         <link rel="stylesheet" id="mdbook-ayu-highlight-css" href="ayu-highlight-3fdfc3ac.css">
 
         <!-- Custom theme stylesheets -->
-        <link rel="stylesheet" href="theme/custom-e0671a52.css">
+        <link rel="stylesheet" href="theme/custom-9125cc61.css">
 
         <!-- MathJax -->
         <script async src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.1/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
@@ -38,10 +38,10 @@
             const path_to_root = "";
             const default_light_theme = "light";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "searchindex-4f3aedde.js";
+            window.path_to_searchindex_js = "searchindex-2f3b4ad9.js";
         </script>
         <!-- Start loading toc.js asap -->
-        <script src="toc-2b639993.js"></script>
+        <script src="toc-f3585118.js"></script>
     </head>
     <body>
     <div id="mdbook-help-container">
@@ -229,12 +229,12 @@ int main() {
 }
 </code></pre>
 <p><strong>Output 3-1. One run on the verification machine.</strong></p>
-<pre><code class="language-text">pid 50046
-text   (function)      : 103E785E0
-data   (initialized)   : 103E7A000
-bss    (uninitialized) : 103E7A004
-heap   (new int)       : 6000037E0040
-stack  (local)         : 7FF7BC0858AC
+<pre><code class="language-text">pid 65085
+text   (function)      : 101A225E0
+data   (initialized)   : 101A24000
+bss    (uninitialized) : 101A24004
+heap   (new int)       : 600000B00040
+stack  (local)         : 7FF7BE4DC1EC
 </code></pre>
 <p><strong>Listing 3-2. The same program in Rust (2024 edition).</strong></p>
 <pre class="playground"><code class="language-rust">// ch03/layout.rs: the same address-space regions, observed from Rust.
@@ -263,15 +263,42 @@ fn main() {
     );
 }</code></pre>
 <p><strong>Output 3-2.</strong></p>
-<pre><code class="language-text">text   (fn anchor)     : 0x107979960
-data   (static atomic) : 0x1079bfbc8
-bss    (static mut)    : 0x1079c0710
-heap   (Box&lt;i32&gt;)      : 0x600002a2c040
-stack  (local)         : 0x7ff7b85847ec
+<pre><code class="language-text">text   (fn anchor)     : 0x1032ef960
+data   (static atomic) : 0x103335bc8
+bss    (static mut)    : 0x103336710
+heap   (Box&lt;i32&gt;)      : 0x600001478000
+stack  (local)         : 0x7ff7bcc0f12c
 </code></pre>
 <h2 id="32-process-creation-and-the-mechanics-of-fork"><a class="header" href="#32-process-creation-and-the-mechanics-of-fork">3.2 Process Creation and the Mechanics of <code>fork</code></a></h2>
 <p>On Unix-like systems, process creation is facilitated through the <code>fork</code> system call, which implements a “copy-on-write” (COW) paradigm. Rather than performing an immediate, computationally expensive duplication of the parent’s entire address space, the kernel initially permits the parent and child to share the same physical pages, marking them as read-only. A private copy is only instantiated when one of the processes attempts a write operation. This mechanism ensures that <code>fork</code> remains highly efficient, particularly when the child intends to immediately replace its image using <code>execve</code>.</p>
 <p>A critical nuance of <code>fork</code> involves the inheritance of process state, specifically the buffers within standard I/O libraries. Because <code>fork</code> duplicates the process’s memory, including any unwritten data in user-mode buffers, a child process may inadvertently re-output data that was buffered by the parent prior to the fork. This necessitates explicit synchronization, such as calling <code>fflush</code> before a <code>fork</code> operation, to maintain output integrity.</p>
+<h3 id="321-the-process-creation-and-reaping-system-call-interface-fork-_exit-waitpid"><a class="header" href="#321-the-process-creation-and-reaping-system-call-interface-fork-_exit-waitpid">3.2.1 The Process Creation and Reaping System Call Interface (<code>fork</code>, <code>_exit</code>, <code>waitpid</code>)</a></h3>
+<p>Before examining Listings 3-3 and 3-4, it is essential to understand the exact parameter contracts, return conventions, and status encodings of the POSIX process-control primitives:</p>
+<pre><code class="language-text">pid_t fork(void);
+pid_t getpid(void);
+pid_t getppid(void);
+void  _exit(int status);
+pid_t waitpid(pid_t pid, int *wstatus, int options);
+</code></pre>
+<ul>
+<li><strong><code>fork()</code>:</strong> Accepts no arguments, yet returns <strong>twice</strong> on success: once in the parent and once in the newly created child. In the parent process, <code>fork()</code> returns the positive Process Identifier (<code>pid_t &gt; 0</code>) of the child; in the child process, <code>fork()</code> returns <code>0</code>. If kernel process limits (<code>RLIMIT_NPROC</code>) or physical memory are exhausted, <code>fork()</code> creates no child and returns <code>-1</code> solely in the parent, setting <code>errno</code> to <code>EAGAIN</code> or <code>ENOMEM</code>. Every caller must therefore branch cleanly on all three outcomes (<code>&lt; 0</code>, <code>== 0</code>, <code>&gt; 0</code>).</li>
+<li><strong><code>getpid()</code> and <code>getppid()</code>:</strong> Take no arguments and never fail, returning the calling process’s own PID and its parent’s PID, respectively.</li>
+<li><strong><code>_exit(status)</code> versus <code>exit(status)</code>:</strong> Terminates the calling process immediately in kernel mode and never returns. Only the lowest 8 bits (<code>status &amp; 0xFF</code>, yielding values <code>0</code> through <code>255</code>) are stored in the zombie PCB for parent inspection. A forked child should invoke <code>_exit()</code> rather than the C library <code>exit()</code> whenever it terminates without calling <code>execve</code>: <code>exit()</code> runs user-space <code>atexit</code> destructors and flushes all duplicated <code>stdio</code> buffers, which would cause buffered output inherited from the parent to be written twice. Because <code>_exit()</code> bypasses user-space flushing, the child explicitly flushes its own output with <code>fflush(stdout)</code> immediately beforehand.</li>
+<li><strong><code>waitpid(pid, wstatus, options)</code>:</strong> Suspends or polls for a state change in a child process and reaps its zombie PCB.
+<ul>
+<li><strong><code>pid</code>:</strong> Selects which children to wait on: a positive value (<code>pid &gt; 0</code>) waits for that exact child; <code>-1</code> waits for any direct child; <code>0</code> waits for any child in the caller’s process group.</li>
+<li><strong><code>wstatus</code>:</strong> Pointer to an <code>int</code> where the kernel writes a packed status bitfield (passing <code>nullptr</code> discards the status). This integer is <strong>not</strong> the raw exit code passed to <code>_exit()</code>; the kernel encodes both the termination cause and the exit code or signal number inside distinct bit ranges. Callers must decode it using standard POSIX inspection macros from <code>&lt;sys/wait.h&gt;</code>:
+<ul>
+<li><code>WIFEXITED(status)</code>: evaluates to non-zero if the child terminated normally via <code>_exit()</code> or returning from <code>main()</code>.</li>
+<li><code>WEXITSTATUS(status)</code>: valid only when <code>WIFEXITED(status)</code> is true; shifts and masks out the 8-bit exit code (<code>(status &gt;&gt; 8) &amp; 0xFF</code>).</li>
+<li><code>WIFSIGNALED(status)</code>: evaluates to non-zero if the child was killed by an uncaught signal (such as <code>SIGSEGV</code> or <code>SIGKILL</code>), in which case <code>WTERMSIG(status)</code> extracts the terminating signal number.</li>
+</ul>
+</li>
+<li><strong><code>options</code>:</strong> Bitmask modifying wait behavior. Passing <code>0</code> blocks until a matching child terminates; passing <code>WNOHANG</code> turns <code>waitpid()</code> into a non-blocking poll that returns <code>0</code> immediately if live matching children exist but none have exited yet.</li>
+<li><strong>Return value:</strong> Returns the PID (<code>&gt; 0</code>) of the reaped child on success, <code>0</code> when <code>WNOHANG</code> is set and no child has exited yet, or <code>-1</code> on error (<code>errno = ECHILD</code> if the caller has no matching children, or <code>EINTR</code> if interrupted by a signal).</li>
+</ul>
+</li>
+</ul>
 <figure>
 <img src="figures/ch03_fork.svg" alt="fork copies the process; parent receives the child PID, child receives 0" />
 </figure>
@@ -308,10 +335,10 @@ int main() {
 }
 </code></pre>
 <p><strong>Output 3-3. The first line is printed twice.</strong></p>
-<pre><code class="language-text">before fork: pid=50048
-child : pid=50049 parent=50048
-before fork: pid=50048
-parent: child 50049 exited with status 7
+<pre><code class="language-text">before fork: pid=65087
+child : pid=65088 parent=65087
+before fork: pid=65087
+parent: child 65088 exited with status 7
 </code></pre>
 <p><strong>Listing 3-4. The same sequence in Rust, using the libc crate.</strong></p>
 <pre class="playground"><code class="language-rust">// ch03/fork.rs: the same fork/wait sequence through Rust's libc bindings.
@@ -343,7 +370,7 @@ fn main() {
         let me = unsafe { libc::getpid() };
         let parent = unsafe { libc::getppid() };
         println!("child : pid={me} parent={parent}");
-        std::io::stdout().flush().unwrap(); // _exit() skips stdio flushing
+        let _ = std::io::stdout().flush(); // _exit() skips stdio flushing
         // SAFETY: `_exit(2)` immediately terminates execution without running user-space `atexit`
         // handlers or flushing C stdio buffers. This prevents double-flushing data buffers that
         // were duplicated across the fork boundary into the child's address space.
@@ -365,9 +392,9 @@ fn main() {
     println!("parent: child {waited} exited with status {code}");
 }</code></pre>
 <p><strong>Output 3-4.</strong></p>
-<pre><code class="language-text">before fork: pid=50050
-child : pid=50051 parent=50050
-parent: child 50051 exited with status 7
+<pre><code class="language-text">before fork: pid=65089
+child : pid=65090 parent=65089
+parent: child 65090 exited with status 7
 </code></pre>
 <h2 id="33-lifecycle-management-state-automaton-and-termination"><a class="header" href="#33-lifecycle-management-state-automaton-and-termination">3.3 Lifecycle Management, State Automaton, and Termination</a></h2>
 <p>The operational lifecycle of a process is governed by a formal five-state finite automaton managed by the kernel scheduler and process subsystem, coupled with four primary system call transitions: <code>fork</code> (or <code>clone</code>) for instantiation, <code>execve</code> for binary image replacement, <code>_exit</code> for termination, and <code>waitpid</code> for parent acknowledgment and resource reclamation.</p>
@@ -377,8 +404,8 @@ parent: child 50051 exited with status 7
 <li><strong>New (Embryonic):</strong> The parent process has invoked <code>fork()</code>. The kernel allocates a new Process Control Block (<code>struct task_struct</code> on Linux; <code>struct proc</code> on Darwin/XNU), assigns a unique Process Identifier (PID), duplicates the parent’s file descriptor table, and clones the parent’s virtual memory areas (<code>vm_area_struct</code>) with copy-on-write (COW) page-table protections. The process does not yet compete for CPU execution until initialization completes and the scheduler admits it into a per-CPU runqueue.</li>
 <li><strong>Ready (Runnable):</strong> The process possesses all resources required for execution save for an available physical processor core. Its PCB resides in a per-CPU scheduler runqueue (in Linux, both Ready and Running states share the <code>TASK_RUNNING</code> descriptor flag, distinguished by whether the task is currently the active <code>curr</code> pointer on a CPU runqueue).</li>
 <li><strong>Running:</strong> The kernel dispatcher has selected the process from the Ready queue, loaded its page table root address into the MMU base register (<code>CR3</code> on x86-64; <code>TTBR0_EL1</code> on ARM64), restored its architectural register context (<code>RIP</code>, <code>RSP</code>, <code>RBP</code>, <code>RFLAGS</code>, and GPRs), and returned control to user mode (<code>iretq</code> / <code>eret</code>).</li>
-<li><strong>Blocked (Waiting / Sleeping):</strong> The running process has issued a system call whose completion depends on an asynchronous external event—such as reading from an empty pipe or network socket, waiting on a contended futex or mutex, or faulting on a disk-backed virtual page. Because busy-waiting in kernel mode would waste processor cycles, the kernel transitions the process out of the CPU runqueue, appends its PCB to a wait queue associated with the target event (<code>TASK_INTERRUPTIBLE</code> if signals may wake it early, or <code>TASK_UNINTERRUPTIBLE</code> for critical hardware DMA waits), and immediately invokes the scheduler (<code>schedule()</code>) to context-switch to another Ready process. When the hardware interrupt or peer thread satisfies the condition, the wakeup handler moves the PCB from the wait queue back to the Ready runqueue.</li>
-<li><strong>Zombie (Defunct / <code>EXIT_ZOMBIE</code>):</strong> The process has terminated—either voluntarily by invoking <code>_exit(status)</code> / returning from <code>main</code>, or involuntarily via an unhandled fatal signal (<code>SIGSEGV</code>, <code>SIGKILL</code>). Upon entering <code>_exit</code>, the kernel immediately closes all open file descriptors, releases the process’s user-space virtual memory mappings and physical page frames, and notifies the parent process via <code>SIGCHLD</code>. However, the kernel <strong>cannot</strong> deallocate the PCB or release the PID slot yet, because the parent process may subsequently query the child’s termination status.</li>
+<li><strong>Blocked (Waiting / Sleeping):</strong> The running process has issued a system call whose completion depends on an asynchronous external event, such as reading from an empty pipe or network socket, waiting on a contended futex or mutex, or faulting on a disk-backed virtual page. Because busy-waiting in kernel mode would waste processor cycles, the kernel transitions the process out of the CPU runqueue, appends its PCB to a wait queue associated with the target event (<code>TASK_INTERRUPTIBLE</code> if signals may wake it early, or <code>TASK_UNINTERRUPTIBLE</code> for critical hardware DMA waits), and immediately invokes the scheduler (<code>schedule()</code>) to context-switch to another Ready process. When the hardware interrupt or peer thread satisfies the condition, the wakeup handler moves the PCB from the wait queue back to the Ready runqueue.</li>
+<li><strong>Zombie (Defunct / <code>EXIT_ZOMBIE</code>):</strong> The process has terminated, either voluntarily by invoking <code>_exit(status)</code> / returning from <code>main</code>, or involuntarily via an unhandled fatal signal (<code>SIGSEGV</code>, <code>SIGKILL</code>). Upon entering <code>_exit</code>, the kernel immediately closes all open file descriptors, releases the process’s user-space virtual memory mappings and physical page frames, and notifies the parent process via <code>SIGCHLD</code>. However, the kernel <strong>cannot</strong> deallocate the PCB or release the PID slot yet, because the parent process may subsequently query the child’s termination status.</li>
 </ol>
 <figure>
 <img src="figures/ch03_process_lifecycle.svg" alt="The five-state process lifecycle automaton showing New, Ready, Running, Blocked, Zombie, and Reaped states with kernel transitions" />
@@ -388,7 +415,7 @@ parent: child 50051 exited with status 7
 <p>Two critical lifecycle boundary conditions arise in production systems:</p>
 <ul>
 <li><strong>Zombie Accumulation Leaks:</strong> If a long-running parent process spawns child workers and neglects to invoke <code>waitpid</code> (and does not explicitly set its <code>SIGCHLD</code> disposition to <code>SIG_IGN</code>), every terminated child remains permanently trapped in the Zombie state, eventually exhausting the kernel’s maximum process limit (<code>pid_max</code> / <code>RLIMIT_NPROC</code>) and preventing any new processes or threads from spawning across the host.</li>
-<li><strong>Orphan Reparenting:</strong> If a parent process terminates while one or more of its children are still active, those children become <strong>orphans</strong>. Because every process requires a parent to reap its eventual zombie PCB, the kernel walks the terminating parent’s child list and reparents all orphaned descendants to the root supervisor process—<strong>PID 1</strong> (<code>launchd</code> on macOS, <code>systemd</code> or <code>init</code> on Linux)—or to the nearest ancestor designated as a subreaper (<code>PR_SET_CHILD_SUBREAPER</code>). PID 1 continuously executes a <code>waitpid</code> loop in its main event cycle, automatically reaping reparented orphans upon their termination.</li>
+<li><strong>Orphan Reparenting:</strong> If a parent process terminates while one or more of its children are still active, those children become <strong>orphans</strong>. Because every process requires a parent to reap its eventual zombie PCB, the kernel walks the terminating parent’s child list and reparents all orphaned descendants to the root supervisor process, <strong>PID 1</strong> (<code>launchd</code> on macOS, <code>systemd</code> or <code>init</code> on Linux), or to the nearest ancestor designated as a subreaper (<code>PR_SET_CHILD_SUBREAPER</code>). PID 1 continuously executes a <code>waitpid</code> loop in its main event cycle, automatically reaping reparented orphans upon their termination.</li>
 </ul>
 <p>Finally, the <code>execve(path, argv, envp)</code> system call enables a process to replace its executing program without spawning a new PID. When invoked, the kernel tears down the process’s entire existing user-space virtual address space (text, data, BSS, heap, and stack), parses the target executable binary header (ELF on Linux; Mach-O on macOS), maps the new program segments into fresh page tables, initializes a clean user stack containing the <code>argv</code> argument vector and <code>envp</code> environment strings, resets caught signal handlers to <code>SIG_DFL</code> (because the old handler function pointers no longer exist in the new address space), and jumps to the new binary’s entry point (<code>_start</code>). Crucially, the PID, parent PID, process group, working directory, and all open file descriptors not marked with the close-on-exec flag (<code>FD_CLOEXEC</code> / <code>O_CLOEXEC</code>) persist unaltered across <code>execve</code>, forming the foundation for shell I/O redirection and process supervision.</p>
 
@@ -443,7 +470,7 @@ parent: child 50051 exited with status 7
         <script src="book-609e4cb8.js"></script>
 
         <!-- Custom JS scripts -->
-        <script src="theme/figures-7a3fdfc9.js"></script>
+        <script src="theme/figures-afd72f2c.js"></script>
 
 
 

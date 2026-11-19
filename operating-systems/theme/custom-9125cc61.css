@@ -269,6 +269,182 @@ body {
   background: transparent;
 }
 
+/* ---------- Material Design Code Tabs (C++20 | Rust 2024 | Split) ---------- */
+
+.md-code-tabs {
+  margin: 1.5em 0;
+  border: 1px solid var(--hairline);
+  border-radius: 12px;
+  background: var(--paper);
+  box-shadow: 0 2px 10px rgba(27, 36, 48, 0.06);
+  overflow: hidden;
+}
+
+html.coal .md-code-tabs,
+html.navy .md-code-tabs,
+html.ayu .md-code-tabs {
+  box-shadow: 0 3px 14px rgba(0, 0, 0, 0.32);
+}
+
+.md-code-tabs-bar {
+  display: flex;
+  align-items: stretch;
+  gap: 4px;
+  padding: 6px 10px 0;
+  background: var(--wash);
+  border-bottom: 1px solid var(--hairline);
+}
+
+.md-code-tab {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 8px 14px 9px;
+  border: none;
+  border-bottom: 3px solid transparent;
+  border-radius: 8px 8px 0 0;
+  background: transparent;
+  color: var(--muted);
+  font-family: inherit;
+  font-size: 0.84em;
+  font-weight: 600;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background-color 0.15s ease, color 0.15s ease, border-color 0.15s ease;
+}
+
+.md-code-tab:hover {
+  background: rgba(0, 102, 204, 0.06);
+  color: var(--ink);
+}
+
+.md-code-tab.active {
+  background: var(--paper);
+  color: var(--ink);
+  border-bottom-color: var(--accent);
+}
+
+.md-code-tab-split {
+  margin-left: auto;
+}
+
+.md-lang-chip {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 999px;
+  font-size: 0.78em;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+}
+
+.md-lang-chip.cpp {
+  background: #e6effd;
+  color: #1a5fc4;
+}
+
+.md-lang-chip.rust {
+  background: #fde8e4;
+  color: #bf3620;
+}
+
+.md-lang-chip.split {
+  background: #eef0f4;
+  color: #3a3a3c;
+}
+
+html.coal .md-lang-chip.cpp,
+html.navy .md-lang-chip.cpp,
+html.ayu .md-lang-chip.cpp {
+  background: rgba(90, 150, 255, 0.22);
+  color: #9cc0fb;
+}
+
+html.coal .md-lang-chip.rust,
+html.navy .md-lang-chip.rust,
+html.ayu .md-lang-chip.rust {
+  background: rgba(245, 130, 100, 0.22);
+  color: #f59e8d;
+}
+
+html.coal .md-lang-chip.split,
+html.navy .md-lang-chip.split,
+html.ayu .md-lang-chip.split {
+  background: rgba(255, 255, 255, 0.12);
+  color: #d6dbe6;
+}
+
+.md-code-panels {
+  display: block;
+}
+
+.md-code-panel {
+  display: none;
+  padding: 0.75em 0.9em 0.85em;
+  min-width: 0;
+}
+
+.md-code-panel.active {
+  display: block;
+}
+
+.md-code-panel > p {
+  margin: 0.65em 0 0.4em;
+  font-size: 0.9em;
+}
+
+.md-code-panel > p:first-child {
+  margin-top: 0;
+}
+
+.md-code-panel pre {
+  margin: 0.4em 0 0.7em;
+  border-radius: 8px;
+}
+
+.md-code-panel pre:last-child {
+  margin-bottom: 0;
+}
+
+/* Side-by-Side Split View (desktop) */
+.md-code-tabs.is-split .md-code-panels {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+}
+
+.md-code-tabs.is-split .md-code-panel {
+  display: block;
+  padding: 0.75em 0.8em 0.85em;
+}
+
+.md-code-tabs.is-split .md-code-panel:first-child {
+  border-right: 1px solid var(--hairline);
+}
+
+.md-code-tabs.is-split .md-code-panel pre > code {
+  font-size: 0.78em;
+  padding: 0.8em 0.9em;
+}
+
+@media (min-width: 1280px) {
+  .md-code-tabs.is-split {
+    width: calc(100% + 180px);
+    max-width: 1060px;
+    margin-left: -90px;
+  }
+}
+
+@media (max-width: 960px) {
+  .md-code-tab-split {
+    display: none;
+  }
+  .md-code-tabs.is-split .md-code-panels {
+    display: block;
+  }
+  .md-code-tabs.is-split .md-code-panel:first-child {
+    border-right: none;
+  }
+}
+
 /* ---------- Sidebar ---------- */
 
 .sidebar {
@@ -298,6 +474,42 @@ body {
   .content h1 { font-size: 1.7em; }
   .content h2 { font-size: 1.32em; }
   .callout { padding: 0.85em 1em; }
+
+  /* Mobile-optimized Material code tabs: eliminate nested horizontal padding */
+  .md-code-tabs {
+    margin: 1.2em -12px;
+    border-radius: 8px;
+    border-left: none;
+    border-right: none;
+  }
+  .md-code-tabs-bar {
+    padding: 4px 6px 0;
+    gap: 2px;
+  }
+  .md-code-tab {
+    flex: 1;
+    justify-content: center;
+    padding: 8px 6px;
+    font-size: 0.8em;
+    gap: 5px;
+  }
+  .md-code-panel {
+    padding: 0.55em 0 0;
+  }
+  .md-code-panel > p {
+    padding: 0 12px;
+    font-size: 0.85em;
+  }
+  .md-code-panel pre {
+    border-left: none;
+    border-right: none;
+    border-radius: 0;
+    margin: 0.35em 0 0.5em;
+  }
+  .md-code-panel pre > code {
+    padding: 0.7em 12px;
+    font-size: 0.78em;
+  }
 
   /* A figure keeps a readable size and scrolls sideways. */
   .content figure { overflow-x: auto; }
@@ -479,5 +691,18 @@ body {
 
   /* Hide UI chrome */
   .sidebar, .menu-bar, .nav-chapters, #mdbook-help-container,
-  #mdbook-help-popup, .buttons, .fa { display: none !important; }
+  #mdbook-help-popup, .buttons, .fa, .md-code-tabs-bar { display: none !important; }
+
+  .md-code-tabs {
+    border: none !important;
+    box-shadow: none !important;
+    margin: 0.6em 0 !important;
+    padding: 0 !important;
+  }
+
+  .md-code-panel {
+    display: block !important;
+    padding: 0 !important;
+    margin: 0.5em 0 !important;
+  }
 }
