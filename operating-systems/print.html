@@ -39,7 +39,7 @@
             const path_to_root = "";
             const default_light_theme = "light";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "searchindex-3ec56076.js";
+            window.path_to_searchindex_js = "searchindex-1647a97a.js";
         </script>
         <!-- Start loading toc.js asap -->
         <script src="toc-f3585118.js"></script>
@@ -412,8 +412,9 @@
 <li><a href="#82-arena-allocation-from-safe-index-pools-to-raw-bump-allocators">8.2 Arena Allocation: From Safe Index Pools to Raw Bump Allocators</a>
 <ul>
 <li><a href="#821-level-1-the-safe-index-arena-zero-unsafe">8.2.1 Level 1: The Safe Index Arena (Zero <code>unsafe</code>)</a></li>
-<li><a href="#822-level-2-the-raw-byte-bump-allocator-mmap-backed">8.2.2 Level 2: The Raw Byte Bump Allocator (<code>mmap</code>-Backed)</a></li>
-<li><a href="#823-backing-store-trade-off-global-allocator-chunks-malloc--stdalloc-vs-direct-mmap">8.2.3 Backing Store Trade-Off: Global-Allocator Chunks (<code>malloc</code> / <code>std::alloc</code>) vs. Direct <code>mmap</code></a></li>
+<li><a href="#822-level-2-the-generational-arena-with-an-intrusive-free-list-zero-unsafe">8.2.2 Level 2: The Generational Arena with an Intrusive Free List (Zero <code>unsafe</code>)</a></li>
+<li><a href="#823-level-3-the-raw-byte-bump-allocator-mmap-backed">8.2.3 Level 3: The Raw Byte Bump Allocator (<code>mmap</code>-Backed)</a></li>
+<li><a href="#824-backing-store-trade-off-global-allocator-chunks-malloc--stdalloc-vs-direct-mmap">8.2.4 Backing Store Trade-Off: Global-Allocator Chunks (<code>malloc</code> / <code>std::alloc</code>) vs. Direct <code>mmap</code></a></li>
 </ul>
 </li>
 <li><a href="#83-explicit-management-free-list-allocation">8.3 Explicit Management: Free-List Allocation</a>
@@ -694,7 +695,7 @@
 <li><strong>Anonymous Mapping (<code>MAP_ANON | MAP_PRIVATE</code>)</strong>: Kernel allocation of zero-initialized demand pages unbacked by physical disk files.
 <ul>
 <li>Page Fault Dynamics: <a href="#71-page-based-abstraction-and-isolation">§7.1</a></li>
-<li>Heap Arena Construction: <a href="#822-level-2-the-raw-byte-bump-allocator-mmap-backed">§8.2.2</a>, <a href="#83-explicit-management-free-list-allocation">§8.3</a></li>
+<li>Heap Arena Construction: <a href="#823-level-3-the-raw-byte-bump-allocator-mmap-backed">§8.2.3</a>, <a href="#83-explicit-management-free-list-allocation">§8.3</a></li>
 </ul>
 </li>
 <li><strong>APIC / IO-APIC &amp; ARM GIC (Interrupt Controllers)</strong>: Two-tier hardware interrupt routing, Message Signaled Interrupts (MSI-X), and priority arbitration across multiprocessor cores.
@@ -3773,7 +3774,7 @@ match       : yes
 <p>A functional allocator provides two primary primitives: <code>alloc(n)</code>, which returns an aligned address for <code>n</code> bytes of memory, and <code>free(p)</code>, which returns a previously allocated block to the allocator for future reuse. The primary efficiency constraint is the high cost of system calls; therefore, an allocator must minimize its interaction with the kernel by requesting large regions and managing the lifecycle of these regions internally.</p>
 <p>Allocators are distinguished by three architectural decisions: the placement strategy for new objects, the metadata utilized for block tracking, and the mechanism for reclaimed block reuse.</p>
 <h3 id="811-requesting-raw-arenas-from-the-kernel-mmap"><a class="header" href="#811-requesting-raw-arenas-from-the-kernel-mmap">8.1.1 Requesting Raw Arenas from the Kernel (<code>mmap</code>)</a></h3>
-<p>The low-level allocators in Sections 8.2.2 and 8.3 acquire their backing memory (an <strong>arena</strong>) directly from the kernel via the POSIX <code>mmap</code> system call rather than calling <code>malloc</code>:</p>
+<p>The low-level allocators in Sections 8.2.3 and 8.3 acquire their backing memory (an <strong>arena</strong>) directly from the kernel via the POSIX <code>mmap</code> system call rather than calling <code>malloc</code>:</p>
 <pre><code class="hljs language-text">mmap(nullptr, capacity_bytes, PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANON, -1, 0)
 </code></pre>
 <p>Each argument encodes a specific architectural contract with the kernel virtual-memory manager (detailed in Section 7.3.1):</p>
@@ -3797,7 +3798,7 @@ match       : yes
 <li><strong><code>alloc(16, align=16)</code>:</strong> Offset <code>11</code> is not a multiple of 16. Rounding up yields <code>(11 + 15) &amp; ~15 = 26 &amp; ~15 = 16</code>. Bytes <strong><code>11..15</code> (5 bytes)</strong> are skipped as <strong>alignment padding</strong> so the 16-byte block begins cleanly at <strong>offset <code>16</code></strong> (<strong>bytes <code>16..31</code></strong>), advancing <code>next_offset</code> to <strong><code>32</code></strong>.</li>
 </ol>
 <h2 id="82-arena-allocation-from-safe-index-pools-to-raw-bump-allocators"><a class="header" href="#82-arena-allocation-from-safe-index-pools-to-raw-bump-allocators">8.2 Arena Allocation: From Safe Index Pools to Raw Bump Allocators</a></h2>
-<p>An <strong>arena</strong> groups objects with identical lifetimes (such as request-scoped records in a web server, frame state in a renderer, or nodes in a syntax tree) into a single contiguous region and reclaims all of them simultaneously. Rather than introducing raw pointer arithmetic immediately, we construct arena allocation in two progressive stages: a completely safe typed index pool requiring zero raw pointers, followed by a raw <code>mmap</code>-backed bump allocator.</p>
+<p>An <strong>arena</strong> groups objects with identical lifetimes (such as request-scoped records in a web server, frame state in a renderer, or nodes in a syntax tree) into a single contiguous region and reclaims all of them simultaneously. Rather than introducing raw pointer arithmetic immediately, we construct arena allocation in three progressive stages: a minimal append-only index pool requiring zero raw pointers, a generational arena with an intrusive free list supporting O(1) individual deletion and stale-handle detection, and finally a raw <code>mmap</code>-backed bump allocator.</p>
 <h3 id="821-level-1-the-safe-index-arena-zero-unsafe"><a class="header" href="#821-level-1-the-safe-index-arena-zero-unsafe">8.2.1 Level 1: The Safe Index Arena (Zero <code>unsafe</code>)</a></h3>
 <p>When all arena-resident nodes share a single homogeneous type <code>T</code> (such as abstract syntax tree nodes, graph vertices, or linked-list entries), raw memory management is unnecessary. Placing every node inside one contiguous array (<code>std::vector&lt;T&gt;</code> in C++20 or <code>Vec&lt;T&gt;</code> in Rust 2024) wrapped in a minimal <code>Arena&lt;T&gt;</code> and linking nodes via copyable integer handles (<code>Id</code>) yields four immediate engineering benefits:</p>
 <ul>
@@ -3941,13 +3942,335 @@ after reset: 0 nodes
 <pre><code class="hljs language-text">index arena: 10000 nodes allocated, sum = 49995000 (verified)
 after reset: 0 nodes
 </code></pre>
-<h3 id="822-level-2-the-raw-byte-bump-allocator-mmap-backed"><a class="header" href="#822-level-2-the-raw-byte-bump-allocator-mmap-backed">8.2.2 Level 2: The Raw Byte Bump Allocator (<code>mmap</code>-Backed)</a></h3>
+<h3 id="822-level-2-the-generational-arena-with-an-intrusive-free-list-zero-unsafe"><a class="header" href="#822-level-2-the-generational-arena-with-an-intrusive-free-list-zero-unsafe">8.2.2 Level 2: The Generational Arena with an Intrusive Free List (Zero <code>unsafe</code>)</a></h3>
+<p>The Level 1 <code>Arena&lt;T&gt;</code> in Listing 8-2 supports O(1) bulk <code>reset()</code>, yet it cannot reclaim individual removed objects without leaking their slots. Supporting individual deletion brings two subtle systems design questions to the foreground:</p>
+<ol>
+<li><strong>Why avoid textbook <code>LinkedList&lt;T&gt;</code> while still using an intrusive free list?</strong>
+A textbook pointer-based linked list (such as <code>std::collections::LinkedList</code>) calls the global heap allocator once per node, scattering nodes across DRAM and causing a cache miss on every pointer hop. By contrast, an <strong>intrusive free list</strong> inside an arena allocates zero separate nodes: each empty slot inside the contiguous <code>Vec&lt;Slot&lt;T&gt;&gt;</code> stores <code>Entry::Free { next_free: Option&lt;u32&gt; }</code>, and the arena holds a single <code>free_head: Option&lt;u32&gt;</code> pointing to the most recently freed index. Inserting pops <code>free_head</code> in O(1); removing pushes the freed index onto <code>free_head</code> in O(1).
+<ul>
+<li><strong>How this compares to the Linux kernel:</strong> Linux itself combines both halves of this insight. Its primary kernel object allocator (<strong>SLUB</strong>) manages contiguous arenas (slabs) of fixed-size objects with an intrusive free list threaded directly through empty slots. Meanwhile, Linux’s intrusive <strong><code>struct list_head</code></strong> embeds <code>prev</code>/<code>next</code> pointers directly inside kernel objects such as <code>task_struct</code> (allocating zero wrapper nodes), giving kernel code three capabilities a growable <code>Vec</code> cannot match: O(1) self-unlinking when you already hold a pointer to the object, simultaneous membership of one object in multiple lists (runqueue, parent’s children list, and a wait queue), and stable physical addresses that never relocate.</li>
+</ul>
+</li>
+<li><strong>The hidden hazard of plain indices: stale handles (logical use-after-free / ABA):</strong>
+Replacing raw pointers with <code>usize</code> indices eliminates segfaults and undefined behavior, yet an index is still a pointer the borrow checker cannot track. Suppose slot <code>0</code> holds <code>"alpha"</code>, someone keeps a copy of <code>Id(0)</code>, slot <code>0</code> is freed onto the free list, and <code>"gamma"</code> is inserted into recycled slot <code>0</code>. Dereferencing the stale <code>Id(0)</code> will not crash; it will silently return <code>"gamma"</code>, trading memory corruption for silent logical corruption.
+<ul>
+<li><strong>The solution (generational indices):</strong> Pair every slot index with a <strong>generation counter</strong> (<code>Handle { index: u32, generation: u32 }</code>), and store a matching <code>generation: u32</code> inside each <code>Slot&lt;T&gt;</code>. Every time a slot is freed, its <code>generation</code> increments by 1. On every <code>get()</code> or <code>remove()</code>, the arena verifies <code>slot.generation == handle.generation</code>; any stale handle from an earlier lifetime fails the check immediately and returns <code>None</code> (<code>nullptr</code> in C++). Production Rust crates such as <code>slotmap</code> and <code>generational-arena</code> use this exact design. (Note: in long-running processes where a hot slot might recycle <code>2^32</code> times, production implementations use 64-bit generations or retire saturated slots to prevent wraparound collisions.)</li>
+</ul>
+</li>
+</ol>
+<figure>
+<img src="figures/ch08_gen_arena.svg" alt="Generational arena with intrusive free list showing stale handle rejection versus textbook LinkedList and Linux intrusive list_head plus SLUB" />
+</figure>
+<p><strong>Listing 8-3. Level 2 arena: a generational arena with an intrusive free list (C++20).</strong></p>
+<pre><code class="hljs language-cpp"><span class="hljs-comment">// ch08/gen_arena.cpp: Level 2 arena: a generational arena with an intrusive</span>
+<span class="hljs-comment">// free list threaded through empty slots (C++20 counterpart to gen_arena.rs).</span>
+<span class="hljs-comment">//</span>
+<span class="hljs-comment">// Each Handle pairs a slot index with a generation counter. Freeing a slot</span>
+<span class="hljs-comment">// increments its generation, so stale handles return nullptr instead of</span>
+<span class="hljs-comment">// silently aliasing a newer object occupying the recycled slot.</span>
+<span class="hljs-meta">#<span class="hljs-meta-keyword">include</span> <span class="hljs-meta-string">&lt;cassert&gt;</span></span>
+<span class="hljs-meta">#<span class="hljs-meta-keyword">include</span> <span class="hljs-meta-string">&lt;cstdint&gt;</span></span>
+<span class="hljs-meta">#<span class="hljs-meta-keyword">include</span> <span class="hljs-meta-string">&lt;cstdio&gt;</span></span>
+<span class="hljs-meta">#<span class="hljs-meta-keyword">include</span> <span class="hljs-meta-string">&lt;optional&gt;</span></span>
+<span class="hljs-meta">#<span class="hljs-meta-keyword">include</span> <span class="hljs-meta-string">&lt;string&gt;</span></span>
+<span class="hljs-meta">#<span class="hljs-meta-keyword">include</span> <span class="hljs-meta-string">&lt;utility&gt;</span></span>
+<span class="hljs-meta">#<span class="hljs-meta-keyword">include</span> <span class="hljs-meta-string">&lt;vector&gt;</span></span>
+
+<span class="hljs-class"><span class="hljs-keyword">struct</span> <span class="hljs-title">Handle</span> {</span>
+    <span class="hljs-keyword">uint32_t</span> index;
+    <span class="hljs-keyword">uint32_t</span> generation;
+
+    <span class="hljs-keyword">bool</span> <span class="hljs-keyword">operator</span>==(<span class="hljs-keyword">const</span> Handle&amp;) <span class="hljs-keyword">const</span> = <span class="hljs-keyword">default</span>;
+};
+
+<span class="hljs-keyword">template</span> &lt;<span class="hljs-keyword">typename</span> T&gt;
+<span class="hljs-class"><span class="hljs-keyword">class</span> <span class="hljs-title">GenArena</span> {</span>
+<span class="hljs-keyword">public</span>:
+    <span class="hljs-comment">// Inserts `value` into a recycled slot in O(1), or appends a fresh slot.</span>
+    <span class="hljs-function">Handle <span class="hljs-title">insert</span><span class="hljs-params">(T value)</span> </span>{
+        <span class="hljs-keyword">if</span> (<span class="hljs-keyword">auto</span> index = pop_free_slot()) {
+            Slot&amp; slot = slots_[*index];
+            slot.value.emplace(<span class="hljs-built_in">std</span>::move(value));
+            slot.next_free.reset();
+
+            <span class="hljs-keyword">return</span> Handle{*index, slot.generation};
+        }
+
+        <span class="hljs-keyword">uint32_t</span> index = <span class="hljs-keyword">static_cast</span>&lt;<span class="hljs-keyword">uint32_t</span>&gt;(slots_.size());
+        slots_.push_back(Slot{<span class="hljs-number">0</span>, <span class="hljs-built_in">std</span>::move(value), <span class="hljs-built_in">std</span>::nullopt});
+
+        <span class="hljs-keyword">return</span> Handle{index, <span class="hljs-number">0</span>};
+    }
+
+    <span class="hljs-comment">// Looks up `handle` in O(1), returning nullptr if the handle is stale or freed.</span>
+    <span class="hljs-function"><span class="hljs-keyword">const</span> T* <span class="hljs-title">get</span><span class="hljs-params">(Handle handle)</span> <span class="hljs-keyword">const</span> </span>{
+        <span class="hljs-keyword">if</span> (handle.index &gt;= slots_.size()) {
+            <span class="hljs-keyword">return</span> <span class="hljs-literal">nullptr</span>;
+        }
+
+        <span class="hljs-keyword">const</span> Slot&amp; slot = slots_[handle.index];
+        <span class="hljs-keyword">if</span> (slot.generation != handle.generation || !slot.value.has_value()) {
+            <span class="hljs-keyword">return</span> <span class="hljs-literal">nullptr</span>;
+        }
+
+        <span class="hljs-keyword">return</span> &amp;(*slot.value);
+    }
+
+    <span class="hljs-comment">// Frees `handle` in O(1), bumps its slot generation, and pushes it onto `free_head_`.</span>
+    <span class="hljs-function"><span class="hljs-built_in">std</span>::optional&lt;T&gt; <span class="hljs-title">remove</span><span class="hljs-params">(Handle handle)</span> </span>{
+        <span class="hljs-keyword">if</span> (handle.index &gt;= slots_.size()) {
+            <span class="hljs-keyword">return</span> <span class="hljs-built_in">std</span>::nullopt;
+        }
+
+        Slot&amp; slot = slots_[handle.index];
+
+        <span class="hljs-comment">// Reject stale handles and double-removes before touching the free list.</span>
+        <span class="hljs-keyword">if</span> (slot.generation != handle.generation || !slot.value.has_value()) {
+            <span class="hljs-keyword">return</span> <span class="hljs-built_in">std</span>::nullopt;
+        }
+
+        <span class="hljs-comment">// Move the live object out and thread this slot onto the intrusive free list.</span>
+        <span class="hljs-built_in">std</span>::optional&lt;T&gt; extracted = <span class="hljs-built_in">std</span>::move(slot.value);
+        slot.value.reset();
+        slot.next_free = free_head_;
+
+        <span class="hljs-comment">// Advance generation so every existing copy of `handle` becomes permanently stale.</span>
+        slot.generation += <span class="hljs-number">1</span>;
+        free_head_ = handle.index;
+
+        <span class="hljs-keyword">return</span> extracted;
+    }
+
+    <span class="hljs-function"><span class="hljs-keyword">size_t</span> <span class="hljs-title">slot_count</span><span class="hljs-params">()</span> <span class="hljs-keyword">const</span> </span>{ <span class="hljs-keyword">return</span> slots_.size(); }
+
+<span class="hljs-keyword">private</span>:
+    <span class="hljs-comment">// Production allocators overlay `value` and `next_free` inside a std::variant</span>
+    <span class="hljs-comment">// or union (as Rust&#x27;s `enum Entry&lt;T&gt;` does) so free links consume zero extra bytes.</span>
+    <span class="hljs-class"><span class="hljs-keyword">struct</span> <span class="hljs-title">Slot</span> {</span>
+        <span class="hljs-keyword">uint32_t</span> generation;
+        <span class="hljs-built_in">std</span>::optional&lt;T&gt; value;
+        <span class="hljs-built_in">std</span>::optional&lt;<span class="hljs-keyword">uint32_t</span>&gt; next_free;
+    };
+
+    <span class="hljs-function"><span class="hljs-built_in">std</span>::optional&lt;<span class="hljs-keyword">uint32_t</span>&gt; <span class="hljs-title">pop_free_slot</span><span class="hljs-params">()</span> </span>{
+        <span class="hljs-keyword">if</span> (!free_head_.has_value()) {
+            <span class="hljs-keyword">return</span> <span class="hljs-built_in">std</span>::nullopt;
+        }
+
+        <span class="hljs-keyword">uint32_t</span> index = *free_head_;
+        free_head_ = slots_[index].next_free;
+        <span class="hljs-keyword">return</span> index;
+    }
+
+    <span class="hljs-built_in">std</span>::<span class="hljs-built_in">vector</span>&lt;Slot&gt; slots_;
+    <span class="hljs-built_in">std</span>::optional&lt;<span class="hljs-keyword">uint32_t</span>&gt; free_head_ = <span class="hljs-built_in">std</span>::nullopt;
+};
+
+<span class="hljs-function"><span class="hljs-keyword">int</span> <span class="hljs-title">main</span><span class="hljs-params">()</span> </span>{
+    GenArena&lt;<span class="hljs-built_in">std</span>::<span class="hljs-built_in">string</span>&gt; arena;
+
+    <span class="hljs-comment">// 1. Insert two objects into fresh slots 0 and 1 (both at generation 0).</span>
+    Handle alpha = arena.insert(<span class="hljs-string">&quot;alpha&quot;</span>);
+    Handle beta = arena.insert(<span class="hljs-string">&quot;beta&quot;</span>);
+
+    assert((alpha == Handle{<span class="hljs-number">0</span>, <span class="hljs-number">0</span>}));
+    assert((beta == Handle{<span class="hljs-number">1</span>, <span class="hljs-number">0</span>}));
+
+    <span class="hljs-comment">// 2. Remove `alpha`; slot 0 bumps to generation 1 and joins `free_head_`.</span>
+    <span class="hljs-built_in">std</span>::optional&lt;<span class="hljs-built_in">std</span>::<span class="hljs-built_in">string</span>&gt; removed = arena.remove(alpha);
+    assert(removed.has_value() &amp;&amp; *removed == <span class="hljs-string">&quot;alpha&quot;</span>);
+    assert(!arena.remove(alpha).has_value());  <span class="hljs-comment">// Double-remove safely ignored</span>
+
+    <span class="hljs-comment">// 3. Insert `gamma`; O(1) reuse of slot 0 without growing the backing vector.</span>
+    Handle gamma = arena.insert(<span class="hljs-string">&quot;gamma&quot;</span>);
+    assert((gamma == Handle{<span class="hljs-number">0</span>, <span class="hljs-number">1</span>}));
+    assert(arena.slot_count() == <span class="hljs-number">2</span>);
+
+    <span class="hljs-comment">// 4. Stale `alpha` handle (index 0, gen 0) is rejected instead of returning &quot;gamma&quot;.</span>
+    assert(arena.get(alpha) == <span class="hljs-literal">nullptr</span>);
+    assert(arena.get(gamma) != <span class="hljs-literal">nullptr</span> &amp;&amp; *arena.get(gamma) == <span class="hljs-string">&quot;gamma&quot;</span>);
+    assert(arena.get(beta) != <span class="hljs-literal">nullptr</span> &amp;&amp; *arena.get(beta) == <span class="hljs-string">&quot;beta&quot;</span>);
+
+    <span class="hljs-built_in">printf</span>(<span class="hljs-string">&quot;reused slot %u at generation %u (backing vector slots = %zu)\n&quot;</span>,
+           gamma.index, gamma.generation, arena.slot_count());
+    <span class="hljs-built_in">printf</span>(<span class="hljs-string">&quot;stale handle (idx=0, gen=0) -&gt; %s (ABA prevented)\n&quot;</span>,
+           arena.get(alpha) == <span class="hljs-literal">nullptr</span> ? <span class="hljs-string">&quot;nullptr&quot;</span> : arena.get(alpha)-&gt;c_str());
+    <span class="hljs-built_in">printf</span>(<span class="hljs-string">&quot;live  handle (idx=0, gen=1) -&gt; \&quot;%s\&quot;\n&quot;</span>, arena.get(gamma)-&gt;c_str());
+}
+</code></pre>
+<p><strong>Output 8-3. O(1) slot recycling and deterministic rejection of stale handles.</strong></p>
+<pre><code class="hljs language-text">reused slot 0 at generation 1 (backing vector slots = 2)
+stale handle (idx=0, gen=0) -&gt; nullptr (ABA prevented)
+live  handle (idx=0, gen=1) -&gt; &quot;gamma&quot;
+</code></pre>
+<p><strong>Listing 8-4. The same zero-<code>unsafe</code> generational arena with intrusive free list in Rust.</strong></p>
+<pre class="playground"><code class="hljs language-rust"><span class="hljs-comment">// ch08/gen_arena.rs: Level 2 arena: a zero-unsafe generational arena with an</span>
+<span class="hljs-comment">// intrusive free list threaded directly through empty slots.</span>
+<span class="hljs-comment">//</span>
+<span class="hljs-comment">// Each handle pairs a slot index with a generation counter. Freeing a slot</span>
+<span class="hljs-comment">// increments its generation, so stale handles return None instead of silently</span>
+<span class="hljs-comment">// reading a newer object that reused the same slot.</span>
+
+<span class="hljs-meta">#[derive(Clone, Copy, Debug, PartialEq, Eq)]</span>
+<span class="hljs-class"><span class="hljs-keyword">struct</span> <span class="hljs-title">Handle</span></span> {
+    index: <span class="hljs-built_in">u32</span>,
+    generation: <span class="hljs-built_in">u32</span>,
+}
+
+<span class="hljs-class"><span class="hljs-keyword">enum</span> <span class="hljs-title">Entry</span></span>&lt;T&gt; {
+    Occupied(T),
+    Free { next_free: <span class="hljs-built_in">Option</span>&lt;<span class="hljs-built_in">u32</span>&gt; },
+}
+
+<span class="hljs-keyword">impl</span>&lt;T&gt; Entry&lt;T&gt; {
+    <span class="hljs-function"><span class="hljs-keyword">fn</span> <span class="hljs-title">into_value</span></span>(<span class="hljs-keyword">self</span>) -&gt; <span class="hljs-built_in">Option</span>&lt;T&gt; {
+        <span class="hljs-keyword">match</span> <span class="hljs-keyword">self</span> {
+            Entry::Occupied(value) =&gt; <span class="hljs-literal">Some</span>(value),
+            Entry::Free { .. } =&gt; <span class="hljs-literal">None</span>,
+        }
+    }
+}
+
+<span class="hljs-class"><span class="hljs-keyword">struct</span> <span class="hljs-title">Slot</span></span>&lt;T&gt; {
+    generation: <span class="hljs-built_in">u32</span>,
+    entry: Entry&lt;T&gt;,
+}
+
+<span class="hljs-keyword">impl</span>&lt;T&gt; Slot&lt;T&gt; {
+    <span class="hljs-function"><span class="hljs-keyword">fn</span> <span class="hljs-title">is_occupied</span></span>(&amp;<span class="hljs-keyword">self</span>) -&gt; <span class="hljs-built_in">bool</span> {
+        matches!(<span class="hljs-keyword">self</span>.entry, Entry::Occupied(_))
+    }
+}
+
+<span class="hljs-class"><span class="hljs-keyword">struct</span> <span class="hljs-title">GenArena</span></span>&lt;T&gt; {
+    slots: <span class="hljs-built_in">Vec</span>&lt;Slot&lt;T&gt;&gt;,
+    free_head: <span class="hljs-built_in">Option</span>&lt;<span class="hljs-built_in">u32</span>&gt;,
+}
+
+<span class="hljs-keyword">impl</span>&lt;T&gt; GenArena&lt;T&gt; {
+    <span class="hljs-function"><span class="hljs-keyword">fn</span> <span class="hljs-title">new</span></span>() -&gt; <span class="hljs-keyword">Self</span> {
+        <span class="hljs-keyword">Self</span> {
+            slots: <span class="hljs-built_in">Vec</span>::new(),
+            free_head: <span class="hljs-literal">None</span>,
+        }
+    }
+
+    <span class="hljs-comment">// Pops the head index from the intrusive free list, if any freed slot exists.</span>
+    <span class="hljs-function"><span class="hljs-keyword">fn</span> <span class="hljs-title">pop_free_slot</span></span>(&amp;<span class="hljs-keyword">mut</span> <span class="hljs-keyword">self</span>) -&gt; <span class="hljs-built_in">Option</span>&lt;<span class="hljs-built_in">u32</span>&gt; {
+        <span class="hljs-keyword">let</span> index = <span class="hljs-keyword">self</span>.free_head?;
+
+        <span class="hljs-keyword">if</span> <span class="hljs-keyword">let</span> Entry::Free { next_free } = <span class="hljs-keyword">self</span>.slots[index <span class="hljs-keyword">as</span> <span class="hljs-built_in">usize</span>].entry {
+            <span class="hljs-keyword">self</span>.free_head = next_free;
+        }
+
+        <span class="hljs-literal">Some</span>(index)
+    }
+
+    <span class="hljs-comment">// Inserts `value` into a recycled slot in O(1), or appends a fresh slot.</span>
+    <span class="hljs-function"><span class="hljs-keyword">fn</span> <span class="hljs-title">insert</span></span>(&amp;<span class="hljs-keyword">mut</span> <span class="hljs-keyword">self</span>, value: T) -&gt; Handle {
+        <span class="hljs-keyword">if</span> <span class="hljs-keyword">let</span> <span class="hljs-literal">Some</span>(index) = <span class="hljs-keyword">self</span>.pop_free_slot() {
+            <span class="hljs-keyword">let</span> slot = &amp;<span class="hljs-keyword">mut</span> <span class="hljs-keyword">self</span>.slots[index <span class="hljs-keyword">as</span> <span class="hljs-built_in">usize</span>];
+            slot.entry = Entry::Occupied(value);
+
+            <span class="hljs-keyword">return</span> Handle {
+                index,
+                generation: slot.generation,
+            };
+        }
+
+        <span class="hljs-keyword">let</span> index = <span class="hljs-keyword">self</span>.slots.len() <span class="hljs-keyword">as</span> <span class="hljs-built_in">u32</span>;
+        <span class="hljs-keyword">self</span>.slots.push(Slot {
+            generation: <span class="hljs-number">0</span>,
+            entry: Entry::Occupied(value),
+        });
+
+        Handle {
+            index,
+            generation: <span class="hljs-number">0</span>,
+        }
+    }
+
+    <span class="hljs-comment">// Looks up `handle` in O(1), rejecting stale handles whose generation mismatches.</span>
+    <span class="hljs-function"><span class="hljs-keyword">fn</span> <span class="hljs-title">get</span></span>(&amp;<span class="hljs-keyword">self</span>, handle: Handle) -&gt; <span class="hljs-built_in">Option</span>&lt;&amp;T&gt; {
+        <span class="hljs-keyword">let</span> slot = <span class="hljs-keyword">self</span>.slots.get(handle.index <span class="hljs-keyword">as</span> <span class="hljs-built_in">usize</span>)?;
+
+        <span class="hljs-keyword">if</span> slot.generation != handle.generation {
+            <span class="hljs-keyword">return</span> <span class="hljs-literal">None</span>;
+        }
+
+        <span class="hljs-keyword">match</span> &amp;slot.entry {
+            Entry::Occupied(value) =&gt; <span class="hljs-literal">Some</span>(value),
+            Entry::Free { .. } =&gt; <span class="hljs-literal">None</span>,
+        }
+    }
+
+    <span class="hljs-comment">// Frees `handle` in O(1), advances its slot&#x27;s generation, and pushes it onto `free_head`.</span>
+    <span class="hljs-function"><span class="hljs-keyword">fn</span> <span class="hljs-title">remove</span></span>(&amp;<span class="hljs-keyword">mut</span> <span class="hljs-keyword">self</span>, handle: Handle) -&gt; <span class="hljs-built_in">Option</span>&lt;T&gt; {
+        <span class="hljs-keyword">let</span> slot = <span class="hljs-keyword">self</span>.slots.get_mut(handle.index <span class="hljs-keyword">as</span> <span class="hljs-built_in">usize</span>)?;
+
+        <span class="hljs-comment">// Reject stale handles and double-removes before modifying the free list.</span>
+        <span class="hljs-keyword">if</span> slot.generation != handle.generation || !slot.is_occupied() {
+            <span class="hljs-keyword">return</span> <span class="hljs-literal">None</span>;
+        }
+
+        <span class="hljs-comment">// Thread this slot onto the front of the intrusive free list.</span>
+        <span class="hljs-keyword">let</span> next_free = <span class="hljs-keyword">self</span>.free_head;
+        <span class="hljs-keyword">let</span> old_entry = std::mem::replace(&amp;<span class="hljs-keyword">mut</span> slot.entry, Entry::Free { next_free });
+
+        <span class="hljs-comment">// Bump generation so every existing copy of `handle` becomes permanently stale.</span>
+        slot.generation = slot.generation.wrapping_add(<span class="hljs-number">1</span>);
+        <span class="hljs-keyword">self</span>.free_head = <span class="hljs-literal">Some</span>(handle.index);
+
+        old_entry.into_value()
+    }
+
+    <span class="hljs-function"><span class="hljs-keyword">fn</span> <span class="hljs-title">slot_count</span></span>(&amp;<span class="hljs-keyword">self</span>) -&gt; <span class="hljs-built_in">usize</span> {
+        <span class="hljs-keyword">self</span>.slots.len()
+    }
+}
+
+<span class="hljs-function"><span class="hljs-keyword">fn</span> <span class="hljs-title">main</span></span>() {
+    <span class="hljs-keyword">let</span> <span class="hljs-keyword">mut</span> arena = GenArena::new();
+
+    <span class="hljs-comment">// 1. Insert two objects into fresh slots 0 and 1 (both at generation 0).</span>
+    <span class="hljs-keyword">let</span> alpha = arena.insert(<span class="hljs-built_in">String</span>::from(<span class="hljs-string">&quot;alpha&quot;</span>));
+    <span class="hljs-keyword">let</span> beta = arena.insert(<span class="hljs-built_in">String</span>::from(<span class="hljs-string">&quot;beta&quot;</span>));
+
+    <span class="hljs-built_in">assert_eq!</span>(alpha, Handle { index: <span class="hljs-number">0</span>, generation: <span class="hljs-number">0</span> });
+    <span class="hljs-built_in">assert_eq!</span>(beta, Handle { index: <span class="hljs-number">1</span>, generation: <span class="hljs-number">0</span> });
+
+    <span class="hljs-comment">// 2. Remove `alpha`; slot 0 increments to generation 1 and joins `free_head`.</span>
+    <span class="hljs-keyword">let</span> removed = arena.remove(alpha);
+    <span class="hljs-built_in">assert_eq!</span>(removed.as_deref(), <span class="hljs-literal">Some</span>(<span class="hljs-string">&quot;alpha&quot;</span>));
+    <span class="hljs-built_in">assert_eq!</span>(arena.remove(alpha), <span class="hljs-literal">None</span>); <span class="hljs-comment">// Double-remove safely ignored</span>
+
+    <span class="hljs-comment">// 3. Insert `gamma`; O(1) reuse of slot 0 without growing the backing Vec.</span>
+    <span class="hljs-keyword">let</span> gamma = arena.insert(<span class="hljs-built_in">String</span>::from(<span class="hljs-string">&quot;gamma&quot;</span>));
+    <span class="hljs-built_in">assert_eq!</span>(gamma, Handle { index: <span class="hljs-number">0</span>, generation: <span class="hljs-number">1</span> });
+    <span class="hljs-built_in">assert_eq!</span>(arena.slot_count(), <span class="hljs-number">2</span>);
+
+    <span class="hljs-comment">// 4. Stale `alpha` handle (index 0, gen 0) is rejected instead of returning &quot;gamma&quot;.</span>
+    <span class="hljs-built_in">assert_eq!</span>(arena.get(alpha), <span class="hljs-literal">None</span>);
+    <span class="hljs-built_in">assert_eq!</span>(arena.get(gamma).map(<span class="hljs-built_in">String</span>::as_str), <span class="hljs-literal">Some</span>(<span class="hljs-string">&quot;gamma&quot;</span>));
+    <span class="hljs-built_in">assert_eq!</span>(arena.get(beta).map(<span class="hljs-built_in">String</span>::as_str), <span class="hljs-literal">Some</span>(<span class="hljs-string">&quot;beta&quot;</span>));
+
+    <span class="hljs-built_in">println!</span>(<span class="hljs-string">&quot;reused slot {} at generation {} (backing vec slots = {})&quot;</span>,
+             gamma.index, gamma.generation, arena.slot_count());
+    <span class="hljs-built_in">println!</span>(<span class="hljs-string">&quot;stale handle (idx=0, gen=0) -&gt; {:?} (ABA prevented)&quot;</span>, arena.get(alpha));
+    <span class="hljs-built_in">println!</span>(<span class="hljs-string">&quot;live  handle (idx=0, gen=1) -&gt; {:?}&quot;</span>, arena.get(gamma));
+}</code></pre>
+<p><strong>Output 8-4.</strong></p>
+<pre><code class="hljs language-text">reused slot 0 at generation 1 (backing vec slots = 2)
+stale handle (idx=0, gen=0) -&gt; None (ABA prevented)
+live  handle (idx=0, gen=1) -&gt; Some(&quot;gamma&quot;)
+</code></pre>
+<h3 id="823-level-3-the-raw-byte-bump-allocator-mmap-backed"><a class="header" href="#823-level-3-the-raw-byte-bump-allocator-mmap-backed">8.2.3 Level 3: The Raw Byte Bump Allocator (<code>mmap</code>-Backed)</a></h3>
 <p>When an arena must store heterogeneous types of varying sizes and alignments, or return direct typed references rather than integer handles, the allocator operates over a raw byte buffer. A <strong>bump allocator</strong> maintains a single monotonic offset (<code>next_offset</code>) within its contiguous virtual region. Allocation rounds <code>next_offset</code> upward to the requested alignment, verifies sufficient remaining space (<code>aligned_offset + requested_bytes &lt;= arena_capacity</code>), and advances <code>next_offset</code> by the requested size.</p>
 <p>The computational complexity of allocation in a bump allocator is O(1), consisting of only a few arithmetic operations with zero per-object metadata overhead. This speed is traded for coarse reclamation: individual objects cannot be freed, and <code>reset()</code> rewinds <code>next_offset = 0</code> to reclaim the entire arena at once.</p>
 <figure>
 <img src="figures/ch08_bump.svg" alt="Bump allocator sequential byte layout showing 8-byte, 3-byte, 5-byte alignment padding, and 16-byte aligned allocations" />
 </figure>
-<p><strong>Listing 8-3. Level 2 arena: an <code>mmap</code>-backed bump allocator with explicit alignment rounding (C++20).</strong></p>
+<p><strong>Listing 8-5. Level 3 arena: an <code>mmap</code>-backed bump allocator with explicit alignment rounding (C++20).</strong></p>
 <pre><code class="hljs language-cpp"><span class="hljs-comment">// ch08/bump.cpp: A linear bump (arena) allocator with explicit power-of-two alignment.</span>
 <span class="hljs-comment">// Allocations advance a single monotonic offset; individual objects cannot be freed,</span>
 <span class="hljs-comment">// and reset() reclaims the entire arena in O(1) time.</span>
@@ -4029,7 +4352,7 @@ after reset: 0 nodes
     allocator.destroy();
 }
 </code></pre>
-<p><strong>Output 8-3. Three allocations demonstrating 5 bytes of alignment padding, followed by an O(1) reset.</strong></p>
+<p><strong>Output 8-5. Three allocations demonstrating 5 bytes of alignment padding, followed by an O(1) reset.</strong></p>
 <pre><code class="hljs language-text">arena: 0x10b85a000, 65536 bytes
 
 alloc(8,  align=8)  -&gt; 0x10b85a000 (offset 0,  bytes 0..7)
@@ -4039,7 +4362,7 @@ next_offset         -&gt; 32
 
 after reset, alloc(8, align=8) -&gt; 0x10b85a000 (reuses offset 0: yes)
 </code></pre>
-<p><strong>Listing 8-4. The same <code>mmap</code>-backed bump allocator in Rust.</strong></p>
+<p><strong>Listing 8-6. The same <code>mmap</code>-backed bump allocator in Rust.</strong></p>
 <pre class="playground"><code class="hljs language-rust"><span class="hljs-comment">// ch08/bump.rs: A linear bump (arena) allocator with explicit power-of-two alignment.</span>
 <span class="hljs-keyword">use</span> std::error::Error;
 <span class="hljs-keyword">use</span> std::io;
@@ -4135,7 +4458,7 @@ after reset, alloc(8, align=8) -&gt; 0x10b85a000 (reuses offset 0: yes)
     <span class="hljs-built_in">println!</span>(<span class="hljs-string">&quot;after reset, alloc(8, align=8) -&gt; {reused_block:p} (reuses offset 0: yes)&quot;</span>);
     <span class="hljs-literal">Ok</span>(())
 }</code></pre>
-<p><strong>Output 8-4.</strong></p>
+<p><strong>Output 8-6.</strong></p>
 <pre><code class="hljs language-text">arena: 0x102252000, 65536 bytes
 
 alloc(8,  align=8)  -&gt; 0x102252000 (offset 0,  bytes 0..7)
@@ -4147,12 +4470,12 @@ after reset, alloc(8, align=8) -&gt; 0x102252000 (reuses offset 0: yes)
 </code></pre>
 <p>Extending a raw byte bump allocator into a production typed Rust arena (such as <code>bumpalo</code>) introduces three subtle language and memory-model invariants:</p>
 <ul>
-<li><strong>Shared-borrow allocation (<code>&amp;self</code> to <code>&amp;'arena mut T</code>):</strong> In Listing 8-4, <code>alloc(&amp;mut self, ...)</code> requires exclusive access to the allocator, preventing callers from holding multiple live references returned by the same arena simultaneously. Production arenas wrap the bump cursor in interior mutability (<code>Cell&lt;*mut u8&gt;</code>) so <code>alloc&lt;T&gt;(&amp;self, value: T) -&gt; &amp;mut T</code> accepts <code>&amp;self</code>. Every returned reference carries the lifetime of <code>&amp;self</code>, enabling arbitrary cross-referencing graphs while the borrow checker statically forbids any reference from outliving the arena; because <code>Cell</code> is neither <code>Send</code> nor <code>Sync</code>, single-threaded ownership is enforced at compile time.</li>
+<li><strong>Shared-borrow allocation (<code>&amp;self</code> to <code>&amp;'arena mut T</code>):</strong> In Listing 8-6, <code>alloc(&amp;mut self, ...)</code> requires exclusive access to the allocator, preventing callers from holding multiple live references returned by the same arena simultaneously. Production arenas wrap the bump cursor in interior mutability (<code>Cell&lt;*mut u8&gt;</code>) so <code>alloc&lt;T&gt;(&amp;self, value: T) -&gt; &amp;mut T</code> accepts <code>&amp;self</code>. Every returned reference carries the lifetime of <code>&amp;self</code>, enabling arbitrary cross-referencing graphs while the borrow checker statically forbids any reference from outliving the arena; because <code>Cell</code> is neither <code>Send</code> nor <code>Sync</code>, single-threaded ownership is enforced at compile time.</li>
 <li><strong>Pointer provenance:</strong> Storing the active cursor as a typed raw pointer (<code>*mut u8</code>) and computing alignment via <code>ptr::align_offset</code> and <code>ptr::add</code>, rather than casting pointers to <code>usize</code> integers and back, preserves strict pointer provenance under Rust’s Stacked/Tree Borrows models and verifies cleanly under Miri.</li>
 <li><strong>Destructor omission:</strong> Rewinding or unmapping a raw bump arena reclaims the backing bytes without executing per-object destructors (<code>Drop</code> in Rust, <code>~T()</code> in C++). Placing heap-owning types such as <code>Vec</code> or <code>String</code> inside a raw bump arena leaks their secondary heap allocations unless the arena records an explicit drop-function list (as in <code>typed-arena</code>) or restricts stored values to plain data and arena-scoped references.</li>
 </ul>
-<h3 id="823-backing-store-trade-off-global-allocator-chunks-malloc--stdalloc-vs-direct-mmap"><a class="header" href="#823-backing-store-trade-off-global-allocator-chunks-malloc--stdalloc-vs-direct-mmap">8.2.3 Backing Store Trade-Off: Global-Allocator Chunks (<code>malloc</code> / <code>std::alloc</code>) vs. Direct <code>mmap</code></a></h3>
-<p>Listings 8-3 and 8-4 call <code>mmap</code> directly to expose the exact OS boundary. In production systems, however, choosing between acquiring chunks from the global allocator (<code>malloc</code> / <code>std::alloc</code>) and mapping virtual memory directly with <code>mmap</code> depends on workload geometry:</p>
+<h3 id="824-backing-store-trade-off-global-allocator-chunks-malloc--stdalloc-vs-direct-mmap"><a class="header" href="#824-backing-store-trade-off-global-allocator-chunks-malloc--stdalloc-vs-direct-mmap">8.2.4 Backing Store Trade-Off: Global-Allocator Chunks (<code>malloc</code> / <code>std::alloc</code>) vs. Direct <code>mmap</code></a></h3>
+<p>Listings 8-5 and 8-6 call <code>mmap</code> directly to expose the exact OS boundary. In production systems, however, choosing between acquiring chunks from the global allocator (<code>malloc</code> / <code>std::alloc</code>) and mapping virtual memory directly with <code>mmap</code> depends on workload geometry:</p>
 <div class="table-wrapper">
 <table>
 <thead>
@@ -4189,7 +4512,7 @@ header pointer                                                   pointer returne
 <figure>
 <img src="figures/ch08_freelist.svg" alt="Free-list allocator unified trace showing initial allocations, block splitting of 200 B into 150 B plus 26 B, and coalescing back to 200 B" />
 </figure>
-<p><strong>Listing 8-5. A first-fit free-list allocator with splitting and coalescing (C++20).</strong></p>
+<p><strong>Listing 8-7. A first-fit free-list allocator with splitting and coalescing (C++20).</strong></p>
 <pre><code class="hljs language-cpp"><span class="hljs-comment">// ch08/free_list.cpp: First-fit free-list allocator with in-band headers,</span>
 <span class="hljs-comment">// block splitting, and adjacent free-block coalescing.</span>
 <span class="hljs-comment">// Written with flat control flow (early returns and small helpers) to keep logic clear.</span>
@@ -4341,7 +4664,7 @@ header pointer                                                   pointer returne
     heap.destroy();
 }
 </code></pre>
-<p><strong>Output 8-5. The block map after initial allocations, free, split reuse, and full coalescing.</strong></p>
+<p><strong>Output 8-7. The block map after initial allocations, free, split reuse, and full coalescing.</strong></p>
 <pre><code class="hljs language-text">arena: 0x108a18000, 262144 bytes, header 24 bytes
 
 after alloc(100), alloc(200), alloc(300):
@@ -4371,7 +4694,7 @@ after freeing all blocks (coalesced back to 1 free block):
   block map:
     [0] offset 0  payload 262120  free
 </code></pre>
-<p><strong>Listing 8-6. The same free-list allocator in Rust.</strong></p>
+<p><strong>Listing 8-8. The same free-list allocator in Rust.</strong></p>
 <pre class="playground"><code class="hljs language-rust"><span class="hljs-comment">// ch08/free_list.rs: First-fit free-list allocator with in-band headers,</span>
 <span class="hljs-comment">// block splitting, and adjacent free-block coalescing in Rust.</span>
 <span class="hljs-comment">// Written with flat control flow (early returns and small helpers) to keep logic clear.</span>
@@ -4579,7 +4902,7 @@ after freeing all blocks (coalesced back to 1 free block):
     heap.dump_block_map();
     <span class="hljs-literal">Ok</span>(())
 }</code></pre>
-<p><strong>Output 8-6.</strong></p>
+<p><strong>Output 8-8.</strong></p>
 <pre><code class="hljs language-text">arena: 0x11009c000, 262144 bytes, header 24 bytes
 
 after alloc(100), alloc(200), alloc(300):
@@ -4610,9 +4933,9 @@ after freeing all blocks (coalesced back to 1 free block):
     [0] offset 0  payload 262120  free
 </code></pre>
 <h2 id="84-production-allocator-architecture-boundary-tags-size-classes-and-mmap"><a class="header" href="#84-production-allocator-architecture-boundary-tags-size-classes-and-mmap">8.4 Production Allocator Architecture: Boundary Tags, Size Classes, and <code>mmap</code></a></h2>
-<p>The educational free-list allocator in Listing 8-5 demonstrates core mechanics, yet exhibits three bottlenecks under multi-threaded production workloads: O(N) linear free-list search, O(N) coalescing traversal, and global lock contention across cores. Production allocators (<code>jemalloc</code>, <code>tcmalloc</code>, <code>mimalloc</code>, and <code>glibc ptmalloc2</code>) eliminate these bottlenecks through a three-tier hierarchy.</p>
+<p>The educational free-list allocator in Listing 8-7 demonstrates core mechanics, yet exhibits three bottlenecks under multi-threaded production workloads: O(N) linear free-list search, O(N) coalescing traversal, and global lock contention across cores. Production allocators (<code>jemalloc</code>, <code>tcmalloc</code>, <code>mimalloc</code>, and <code>glibc ptmalloc2</code>) eliminate these bottlenecks through a three-tier hierarchy.</p>
 <h3 id="841-knuths-boundary-tags-for-o1-bidirectional-coalescing"><a class="header" href="#841-knuths-boundary-tags-for-o1-bidirectional-coalescing">8.4.1 Knuth’s Boundary Tags for O(1) Bidirectional Coalescing</a></h3>
-<p>In Listing 8-5, coalescing a freed block with its <em>preceding</em> physical neighbor required scanning the list from <code>head_block</code> in O(N) time because each header links only forward. Donald Knuth’s <strong>Boundary Tag</strong> architecture eliminates linear scanning by replicating the 8-byte block descriptor (<code>payload_bytes | allocated_bit</code>, exploiting the fact that 16-byte aligned sizes leave the lowest 4 bits zero) as both a <strong>Header</strong> before the payload and a <strong>Footer</strong> immediately after the payload:</p>
+<p>In Listing 8-7, coalescing a freed block with its <em>preceding</em> physical neighbor required scanning the list from <code>head_block</code> in O(N) time because each header links only forward. Donald Knuth’s <strong>Boundary Tag</strong> architecture eliminates linear scanning by replicating the 8-byte block descriptor (<code>payload_bytes | allocated_bit</code>, exploiting the fact that 16-byte aligned sizes leave the lowest 4 bits zero) as both a <strong>Header</strong> before the payload and a <strong>Footer</strong> immediately after the payload:</p>
 <ul>
 <li><strong>Forward Coalescing (O(1)):</strong> Add <code>current-&gt;size</code> to <code>current</code> to inspect the next physical block’s Header directly.</li>
 <li><strong>Backward Coalescing (O(1)):</strong> Step backward 8 bytes prior to <code>current</code>’s Header to read the previous physical block’s <strong>Footer</strong>. When the footer’s allocated bit is <code>0</code>, subtract its encoded size to jump directly to the predecessor’s Header and merge in constant time.</li>

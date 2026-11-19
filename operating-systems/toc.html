@@ -38,7 +38,7 @@
             const path_to_root = "";
             const default_light_theme = "light";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "searchindex-3ec56076.js";
+            window.path_to_searchindex_js = "searchindex-1647a97a.js";
         </script>
         <!-- Start loading toc.js asap -->
         <script src="toc-f3585118.js"></script>
@@ -338,8 +338,9 @@
 <li><a href="ch08-allocation.html#82-arena-allocation-from-safe-index-pools-to-raw-bump-allocators">8.2 Arena Allocation: From Safe Index Pools to Raw Bump Allocators</a>
 <ul>
 <li><a href="ch08-allocation.html#821-level-1-the-safe-index-arena-zero-unsafe">8.2.1 Level 1: The Safe Index Arena (Zero <code>unsafe</code>)</a></li>
-<li><a href="ch08-allocation.html#822-level-2-the-raw-byte-bump-allocator-mmap-backed">8.2.2 Level 2: The Raw Byte Bump Allocator (<code>mmap</code>-Backed)</a></li>
-<li><a href="ch08-allocation.html#823-backing-store-trade-off-global-allocator-chunks-malloc--stdalloc-vs-direct-mmap">8.2.3 Backing Store Trade-Off: Global-Allocator Chunks (<code>malloc</code> / <code>std::alloc</code>) vs. Direct <code>mmap</code></a></li>
+<li><a href="ch08-allocation.html#822-level-2-the-generational-arena-with-an-intrusive-free-list-zero-unsafe">8.2.2 Level 2: The Generational Arena with an Intrusive Free List (Zero <code>unsafe</code>)</a></li>
+<li><a href="ch08-allocation.html#823-level-3-the-raw-byte-bump-allocator-mmap-backed">8.2.3 Level 3: The Raw Byte Bump Allocator (<code>mmap</code>-Backed)</a></li>
+<li><a href="ch08-allocation.html#824-backing-store-trade-off-global-allocator-chunks-malloc--stdalloc-vs-direct-mmap">8.2.4 Backing Store Trade-Off: Global-Allocator Chunks (<code>malloc</code> / <code>std::alloc</code>) vs. Direct <code>mmap</code></a></li>
 </ul>
 </li>
 <li><a href="ch08-allocation.html#83-explicit-management-free-list-allocation">8.3 Explicit Management: Free-List Allocation</a>
@@ -620,7 +621,7 @@
 <li><strong>Anonymous Mapping (<code>MAP_ANON | MAP_PRIVATE</code>)</strong>: Kernel allocation of zero-initialized demand pages unbacked by physical disk files.
 <ul>
 <li>Page Fault Dynamics: <a href="ch07-virtual-memory.html#71-page-based-abstraction-and-isolation">§7.1</a></li>
-<li>Heap Arena Construction: <a href="ch08-allocation.html#822-level-2-the-raw-byte-bump-allocator-mmap-backed">§8.2.2</a>, <a href="ch08-allocation.html#83-explicit-management-free-list-allocation">§8.3</a></li>
+<li>Heap Arena Construction: <a href="ch08-allocation.html#823-level-3-the-raw-byte-bump-allocator-mmap-backed">§8.2.3</a>, <a href="ch08-allocation.html#83-explicit-management-free-list-allocation">§8.3</a></li>
 </ul>
 </li>
 <li><strong>APIC / IO-APIC &amp; ARM GIC (Interrupt Controllers)</strong>: Two-tier hardware interrupt routing, Message Signaled Interrupts (MSI-X), and priority arbitration across multiprocessor cores.
