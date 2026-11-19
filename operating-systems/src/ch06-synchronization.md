@@ -1,6 +1,6 @@
 # 6. Synchronization and Memory Ordering
 
-Chapter 4 established that a non-atomic Read-Modify-Write expression (`counter++`) decomposes into three discrete machine instructions—load, increment, and store—creating an **atomicity gap** through which concurrent threads lose updates. Single-word atomic instructions eliminate lost updates on isolated scalar variables. Systems software, however, routinely mutates composite data structures—linked lists, circular buffers, page-table hierarchies, file descriptor tables, and allocator free lists—whose structural invariants span multiple machine words and cache lines.
+Chapter 4 established that a non-atomic Read-Modify-Write expression (`counter++`) decomposes into three discrete machine instructions (load, increment, and store), creating an **atomicity gap** through which concurrent threads lose updates. Single-word atomic instructions eliminate lost updates on isolated scalar variables. Systems software, however, routinely mutates composite data structures (linked lists, circular buffers, page-table hierarchies, file descriptor tables, and allocator free lists) whose structural invariants span multiple machine words and cache lines.
 
 Preserving data integrity across concurrent threads requires enforcing two orthogonal properties:
 1. **Mutual Exclusion and Predicate Coordination:** Serializing multi-instruction critical sections and suspending threads passively when a required logical precondition is unsatisfied.
@@ -44,7 +44,7 @@ The selection between atomic instructions and mutexes is governed by critical-se
 
 ## 6.2 Condition Variables and Predicate-Based Synchronization
 
-Mutexes enforce mutual exclusion, yet they provide no mechanism for suspending execution until a shared logical state—a **predicate**—becomes true (for example, awaiting non-empty occupancy or available buffer capacity in a bounded queue). Repeatedly acquiring a mutex, testing the predicate, and releasing the mutex in a polling loop wastes CPU cycles and saturates the cache coherence bus.
+Mutexes enforce mutual exclusion, yet they provide no mechanism for suspending execution until a shared logical state (a **predicate**) becomes true (for example, awaiting non-empty occupancy or available buffer capacity in a bounded queue). Repeatedly acquiring a mutex, testing the predicate, and releasing the mutex in a polling loop wastes CPU cycles and saturates the cache coherence bus.
 
 A **condition variable** resolves predicate waiting by pairing an internal wait queue with an associated mutex. Invoking `wait(lock)` performs two state transitions as a single **atomic operation**:
 1. Releases the held mutex `M`.
@@ -176,7 +176,7 @@ atomic {
 }
 ```
 
-Because failure automatically returns the current value stored at `addr`, arbitrary lock-free state transitions—computing a maximum, claiming a slot index, or updating a linked-list head pointer—are structured as a deterministic **read-compute-CAS retry loop**:
+Because failure automatically returns the current value stored at `addr`, arbitrary lock-free state transitions (such as computing a maximum, claiming a slot index, or updating a linked-list head pointer) are structured as a deterministic **read-compute-CAS retry loop**:
 1. Load the current atomic word into a thread-local variable `prev`.
 2. Compute the proposed `desired` value solely in local registers.
 3. Execute `compare_exchange_weak(prev, desired, success_order, failure_order)`.
@@ -200,7 +200,7 @@ lock cmpxchg QWORD PTR [r_addr], r_desired          cmp   x0, x_expected        
 - **ARM64 / RISC-V (Load-Linked / Store-Conditional, `LDXR` / `STXR`):** RISC architectures split the atomic update into two distinct instructions coordinated by a hardware **Exclusive Reservation Monitor** associated with the target cache line (64 bytes on standard ARM64 cores; 128 bytes on Apple Silicon M-series cores):
   1. `LDXR` (Load-Exclusive Register) reads the target word and marks the cache line as exclusively reserved by the local core.
   2. `STXR` (Store-Exclusive Register) commits `desired` only if the local core's exclusive reservation remained undisturbed since `LDXR`, returning a status flag (`0` for commit, `1` for abort).
-- **Spurious Failure Mechanics on LL/SC Hardware:** Between `LDXR` and `STXR`, any hardware event that invalidates the cache-line reservation clears the Exclusive Monitor—including an asynchronous timer interrupt, a thread preemption, or a sibling core writing to an unrelated variable occupying the same 64-byte or 128-byte cache line (false sharing). Consequently, `STXR` may abort and report failure even though `*addr` remains equal to `expected`.
+- **Spurious Failure Mechanics on LL/SC Hardware:** Between `LDXR` and `STXR`, any hardware event that invalidates the cache-line reservation clears the Exclusive Monitor, including an asynchronous timer interrupt, a thread preemption, or a sibling core writing to an unrelated variable occupying the same 64-byte or 128-byte cache line (false sharing). Consequently, `STXR` may abort and report failure even though `*addr` remains equal to `expected`.
 
 <figure>
 <img src="figures/ch06_cas_llsc.svg" alt="Compare-And-Swap realization comparing x86-64 LOCK CMPXCHG against ARM64 LDXR/STXR Load-Linked Store-Conditional"/>
@@ -229,7 +229,7 @@ Observable reordering of memory operations originates at two distinct layers of 
 
 Concurrent memory models are verified using minimal two-thread specifications termed **litmus tests**. Two canonical litmus tests define the exact operational boundaries separating `Relaxed`, `Release`/`Acquire`, and `SeqCst`.
 
-#### Litmus Test 1: Store Buffering (SB) — `Store-Load` Reordering Under TSO
+#### Litmus Test 1: Store Buffering (SB): `Store-Load` Reordering Under TSO
 
 Assume coherent memory initially holds `x = 0` and `y = 0`. Core 0 and Core 1 execute concurrently:
 
@@ -245,7 +245,7 @@ Under sequential interleaving, one store must commit first, guaranteeing that at
 - Neither `Release` nor `Acquire` prohibits this outcome: a `Release` store prevents *prior* operations from floating below it, and an `Acquire` load prevents *subsequent* operations from floating above it; neither forbids a *subsequent* load (`y.load`) from executing ahead of a *prior* store (`x.store`).
 - **Resolution (`SeqCst`):** Specifying `SeqCst` instructs the processor to drain its Store Buffer (`XCHG` / `MFENCE` on x86-64; `STLR` paired with `LDAR` on ARM64) before issuing the subsequent load, establishing a single global total order across all cores in which `r1 == 0 && r2 == 0` is strictly precluded.
 
-#### Litmus Test 2: Message Passing (MP) — Acquire-Release Synchronization
+#### Litmus Test 2: Message Passing (MP): Acquire-Release Synchronization
 
 Assume coherent memory initially holds `payload = 0` and `ready = false`. Core 0 initializes a data payload and publishes a readiness flag; Core 1 waits for the flag and inspects the payload:
 
@@ -298,7 +298,7 @@ The protocol bifurcates into two execution paths:
    - When Thread B invokes `lock()` against a held mutex (state `1` or `2`), its fast-path CAS fails.
    - Thread B atomically swaps the lock word to **`2`** via `swap(2, Acquire)`, recording the presence of a contender. If `swap(2)` returns `0`, Thread A released the mutex concurrently and Thread B immediately acquires ownership.
    - Otherwise, Thread B issues the system call **`futex(&state, FUTEX_WAIT, 2)`**.
-   - Within Ring 0, the kernel hashes the address `&state` to a wait-queue hash bucket, acquires the bucket spinlock, and **atomically re-verifies `*(&state) == 2`** prior to removing Thread B from the CPU runqueue. If Thread A invoked `unlock()` and stored `0` during the interval between Thread B's user-mode check and its kernel entry, the kernel detects `*(&state) != 2`, aborts the sleep immediately with `EAGAIN`, and returns Thread B to Ring 3 to re-attempt acquisition—eliminating the lost-wakeup race.
+   - Within Ring 0, the kernel hashes the address `&state` to a wait-queue hash bucket, acquires the bucket spinlock, and **atomically re-verifies `*(&state) == 2`** prior to removing Thread B from the CPU runqueue. If Thread A invoked `unlock()` and stored `0` during the interval between Thread B's user-mode check and its kernel entry, the kernel detects `*(&state) != 2`, aborts the sleep immediately with `EAGAIN`, and returns Thread B to Ring 3 to re-attempt acquisition, eliminating the lost-wakeup race.
    - When Thread A invokes `unlock()` and its `swap(0, Release)` returns **`2`**, Thread A invokes **`futex(&state, FUTEX_WAKE, 1)`**, transitioning one parked TCB from the hash-bucket wait queue back onto a runnable core runqueue.
 
 <figure>
@@ -307,7 +307,7 @@ The protocol bifurcates into two execution paths:
 
 ### 6.6.2 Sequence Locks (`Seqlock`) for Read-Mostly Kernel Data
 
-Certain kernel data structures—such as the monotonic clock calibration parameters exported to user processes via the Linux `vDSO` / `vvar` page (Chapter 9)—experience millions of concurrent reads per second across dozens of cores but infrequent single-writer updates. Standard reader-writer locks (`RwLock`) degrade severely under this access profile because every reader must execute an atomic increment and decrement on a shared `reader_count` word, forcing the MESI coherence protocol to bounce the cache line into Exclusive/Modified state across every reading core.
+Certain kernel data structures, such as the monotonic clock calibration parameters exported to user processes via the Linux `vDSO` / `vvar` page (Chapter 9), experience millions of concurrent reads per second across dozens of cores but infrequent single-writer updates. Standard reader-writer locks (`RwLock`) degrade severely under this access profile because every reader must execute an atomic increment and decrement on a shared `reader_count` word, forcing the MESI coherence protocol to bounce the cache line into Exclusive/Modified state across every reading core.
 
 A **Sequence Lock (`Seqlock`)** eliminates all reader-side writes to shared memory by pairing the protected payload fields with an atomic 64-bit **sequence counter (`seq`)** initialized to `0` (even):
 

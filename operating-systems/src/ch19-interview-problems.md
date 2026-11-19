@@ -8,7 +8,7 @@ Every robust systems component is derived from three foundational tenets:
 
 - **Formal Contract Specification:** Defining explicit preconditions, postconditions, and resource ownership boundaries before writing code. This encompasses capacity limits, pointer ownership transfers, lifetime bounds, and the exact threading model.
 - **State Invariant Formulation:** Explicitly identifying the logical properties that must hold across all execution paths. In concurrent programming, this dictates the exact state protected by each mutex or synchronized via atomic variables.
-- **Boundary and Interleaving Analysis:** Rigorously tracing edge cases—such as queue saturation, memory depletion, cache line false sharing, and spurious wakeups—under arbitrary thread interleavings.
+- **Boundary and Interleaving Analysis:** Rigorously tracing edge cases (such as queue saturation, memory depletion, cache line false sharing, and spurious wakeups) under arbitrary thread interleavings.
 
 This chapter presents ten canonical systems programming problems, followed by a rigorous examination of six fundamental operating system mechanisms. Each problem articulates the underlying systems model, establishes the mathematical and concurrency invariants, provides verified reference implementations in C++20 and Rust (2024 edition), and evaluates subtle hardware and language-level trade-offs.
 
@@ -25,7 +25,7 @@ Managing a shared bounded buffer requires resolving two distinct concurrency haz
 
 A **mutex** provides mutual exclusion but possesses no native mechanism for suspended waiting on arbitrary logical state. A thread that simply loops while checking queue occupancy ("busy-waiting") wastes processor cycles and starves other threads contending for execution cores.
 
-To resolve this, the queue pairs a mutex with **condition variables**. A condition variable enables a thread to release its held mutex and enter a sleep state atomically in a single hardware-supervised step. The atomicity of this transition is essential: if releasing the lock and sleeping were separate operations, a competing thread could signal a state change in the intervening gap, causing the waiting thread to sleep indefinitely—a catastrophic concurrency failure known as a **lost wakeup**.
+To resolve this, the queue pairs a mutex with **condition variables**. A condition variable enables a thread to release its held mutex and enter a sleep state atomically in a single hardware-supervised step. The atomicity of this transition is essential: if releasing the lock and sleeping were separate operations, a competing thread could signal a state change in the intervening gap, causing the waiting thread to sleep indefinitely, a catastrophic concurrency failure known as a **lost wakeup**.
 
 Because the queue coordinates two opposing boundary states, it employs dual condition variables:
 - **`is_full`:** Suspends producer threads while the queue is full (`size == capacity`).
@@ -106,7 +106,7 @@ Using `if (!is_full())` instead of `while (is_full())`: an awakened producer doe
 
 ## 19.3 The Free-List Allocator
 
-While the operating system allocates memory in coarse, page-sized increments (typically 4 KiB), user-space applications require dynamic allocation for objects with arbitrary sizes and heterogeneous lifetimes. A memory allocator bridges this granularity gap by requesting a large contiguous memory region—an **arena**—from the kernel and managing sub-allocations internally.
+While the operating system allocates memory in coarse, page-sized increments (typically 4 KiB), user-space applications require dynamic allocation for objects with arbitrary sizes and heterogeneous lifetimes. A memory allocator bridges this granularity gap by requesting a large contiguous memory region (an **arena**) from the kernel and managing sub-allocations internally.
 
 ### 19.3.1 Memory Architecture and Layout Topology
 
@@ -122,7 +122,7 @@ The allocator's efficiency and memory fragmentation profile are governed by thre
 
 - **First-Fit Search:** Upon receiving an allocation request of `n` bytes, the allocator rounds `n` up to the next 16-byte boundary. It then traverses the block list in address order and selects the first free block whose payload capacity meets or exceeds the aligned request.
 - **Block Splitting:** If the selected free block is significantly larger than the requested size, allocating the entire block causes excessive **internal fragmentation** (wasted capacity within an allocated block). If the excess capacity is sufficient to house a 32-byte header and at least a 16-byte payload (48 bytes minimum), the allocator splits the block: the front portion is assigned to the caller, and the remainder is formatted into a new free block linked into the arena.
-- **Coalescing Upon Release:** When `release(p)` is invoked, the allocator accesses the preceding header at `p - sizeof(Header)` and marks the block as free. If adjacent neighboring blocks in memory are also free, leaving them fragmented would prevent future large allocations even if total free capacity is sufficient—a condition known as **external fragmentation**. The allocator therefore coalesces adjacent free blocks into a single unified block, recovering the 32-byte overhead of the subsumed header and consolidating available memory.
+- **Coalescing Upon Release:** When `release(p)` is invoked, the allocator accesses the preceding header at `p - sizeof(Header)` and marks the block as free. If adjacent neighboring blocks in memory are also free, leaving them fragmented would prevent future large allocations even if total free capacity is sufficient, a condition known as **external fragmentation**. The allocator therefore coalesces adjacent free blocks into a single unified block, recovering the 32-byte overhead of the subsumed header and consolidating available memory.
 
 ### 19.3.3 Structural Invariants
 
@@ -186,7 +186,7 @@ In-band metadata corruption: because block headers reside immediately before pay
 
 ## 19.4 The Lock-Free Single-Producer Single-Consumer Ring Buffer
 
-In ultra-low-latency systems—such as high-frequency trading engines, audio processing graphs, and real-time network drivers—mutex-based queues introduce unacceptable jitter. Kernel-managed thread preemption, lock acquisition overhead, and priority inversions degrade deterministic throughput. A lock-free Single-Producer Single-Consumer (SPSC) ring buffer eliminates locks entirely, enabling safe, asynchronous communication across a dedicated producer and consumer thread using hardware-level memory ordering.
+In ultra-low-latency systems (such as high-frequency trading engines, audio processing graphs, and real-time network drivers), mutex-based queues introduce unacceptable jitter. Kernel-managed thread preemption, lock acquisition overhead, and priority inversions degrade deterministic throughput. A lock-free Single-Producer Single-Consumer (SPSC) ring buffer eliminates locks entirely, enabling safe, asynchronous communication across a dedicated producer and consumer thread using hardware-level memory ordering.
 
 ### 19.4.1 Architectural Model and Single-Writer Principle
 
@@ -377,7 +377,7 @@ A Least Recently Used (LRU) cache is a foundational eviction mechanism used acro
 
 The central challenge of an LRU cache is achieving strict O(1) time complexity for both data retrieval (`get`) and insertion/eviction (`put`). Neither primitive data structure satisfies both constraints independently:
 - **Hash Table:** Provides expected O(1) key lookup and insertion, but maintains no sequential record of access history. Evicting the oldest key requires an O(N) linear scan of all entries.
-- **Doubly Linked List:** Preserves access history by maintaining elements in temporal order—most recently accessed at the head, least recently accessed at the tail. Splicing a known node to the head or removing the tail executes in O(1) time, but locating a specific key requires an O(N) linear traversal.
+- **Doubly Linked List:** Preserves access history by maintaining elements in temporal order, with the most recently accessed at the head and the least recently accessed at the tail. Splicing a known node to the head or removing the tail executes in O(1) time, but locating a specific key requires an O(N) linear traversal.
 
 <figure>
 <img src="figures/ch19_lru_cache.svg" alt="LRU cache: hash table indexing into a doubly linked recency chain."/>
@@ -460,7 +460,7 @@ In concurrent systems, workloads frequently exhibit read-heavy asymmetry: many t
 
 The synchronization contract of a reader-writer lock enforces two distinct access modes:
 - **Shared Access (Read):** Arbitrary numbers of reader threads may acquire the lock concurrently, provided no writer thread holds or is actively modifying the resource.
-- **Exclusive Access (Write):** Exactly one writer thread may hold the lock. While a writer is active, all other threads—both readers and writers—are precluded from entering.
+- **Exclusive Access (Write):** Exactly one writer thread may hold the lock. While a writer is active, all other threads (both readers and writers) are precluded from entering.
 
 The internal state is mediated via three counters protected by an underlying mutex and coordinated via a condition variable:
 - **`readers_active`:** Count of reader threads currently holding shared access.
@@ -601,7 +601,7 @@ Executing tasks with the queue mutex held: worker threads must release the lock 
 
 ## 19.9 The Process Pipeline: `fork`, `exec` and `pipe`
 
-The Unix architecture is distinguished by the philosophy of composing complex data processing workflows from small, specialized utilities connected via standardized byte streams. Constructing a process pipeline—such as piping the output of `echo hello` into `tr a-z A-Z`—requires orchestrating inter-process communication (IPC) through kernel file descriptors, process duplication, and address space replacement.
+The Unix architecture is distinguished by the philosophy of composing complex data processing workflows from small, specialized utilities connected via standardized byte streams. Constructing a process pipeline, such as piping the output of `echo hello` into `tr a-z A-Z`, requires orchestrating inter-process communication (IPC) through kernel file descriptors, process duplication, and address space replacement.
 
 ### 19.9.1 Kernel File Descriptor Mechanics and Redirection
 

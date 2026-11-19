@@ -1,4 +1,4 @@
-// ch08/index_arena.cpp: Level 1 arena — a safe, zero-raw-pointer index pool.
+// ch08/index_arena.cpp: Level 1 arena: a safe, zero-raw-pointer index pool.
 // All nodes live contiguously inside one std::vector; integer indices replace
 // raw pointers, eliminating dangling references and per-node heap allocations.
 #include <cassert>

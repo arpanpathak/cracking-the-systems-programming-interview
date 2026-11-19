@@ -16,7 +16,7 @@ The kernel invokes the scheduler at four deterministic state transitions within 
 
 The operational behavior of a scheduling policy is quantified by three primary metrics:
 - **Turnaround Time (`T_completion - T_arrival`):** The total elapsed interval from the instant a job enters the ready queue until its final instruction retires. Throughput-oriented batch pipelines and compilation workloads optimize primarily for minimal mean turnaround time.
-- **Wait Time:** The cumulative duration a job resides in the ready queue—runnable and awaiting dispatch onto a physical core, excluding productive CPU execution and voluntary I/O wait intervals.
+- **Wait Time:** The cumulative duration a job resides in the ready queue, runnable and awaiting dispatch onto a physical core, excluding productive CPU execution and voluntary I/O wait intervals.
 - **Response Time (`T_first_run - T_arrival`):** The latency interval between a job's arrival (or wakeup from a blocked state) and its initial dispatch onto an execution core. Interactive user interfaces, real-time audio pipelines, and low-latency network RPC services optimize primarily for bounded tail response time.
 
 These metrics represent competing optimization objectives. Minimizing mean turnaround time requires executing short jobs to completion without interruption, which reduces context-switch frequency and preserves cache locality; minimizing response time requires frequent preemption so that newly awakened interactive threads receive processor time within strict latency bounds, even at the cost of increased context-switch overhead and reduced throughput for long-running compute jobs.
@@ -61,7 +61,7 @@ Classical scheduling theory establishes three foundational policies that formali
 
 Historical Unix schedulers employed Multi-Level Feedback Queues (MLFQ), partitioning runnable threads across discrete priority levels and demoting threads that exhausted full execution quanta while retaining I/O-bound interactive threads at elevated priorities. While effective in practice, heuristic MLFQ policies depend on empirically tuned priority-decay constants and permit adversarial workloads to preserve artificially high priority by relinquishing the processor immediately prior to quantum expiration.
 
-To establish a rigorous mathematical model for processor allocation, Linux replaced discrete feedback queues with **proportional-share scheduling**—implemented initially by the **Completely Fair Scheduler (CFS)** and superseded in Linux 6.6 by **EEVDF** (Earliest Eligible Virtual Deadline First).
+To establish a rigorous mathematical model for processor allocation, Linux replaced discrete feedback queues with **proportional-share scheduling**, implemented initially by the **Completely Fair Scheduler (CFS)** and superseded in Linux 6.6 by **EEVDF** (Earliest Eligible Virtual Deadline First).
 
 ### 5.3.1 Virtual Runtime (`vruntime`) Accounting
 
@@ -75,7 +75,7 @@ When task *i* executes for an actual physical duration `Δexec_i`, the scheduler
 
 In this formulation, `weight_0 = 1,024` represents the baseline weight corresponding to POSIX priority `nice = 0`. Linux maps the forty integer `nice` values (`-20` highest priority to `+19` lowest priority) onto a geometric weight table in which each unit decrement in `nice` increases CPU share by approximately 10% (a weight ratio of approximately `1.25` per step).
 
-To illustrate the arithmetic directly, consider three runnable threads—Task A (`nice = -10`, `weight = 9,548`), Task B (`nice = 0`, `weight = 1,024`), and Task C (`nice = +10`, `weight = 110`)—each executing for an identical physical duration of **4.00 ms**:
+To illustrate the arithmetic directly, consider three runnable threads, Task A (`nice = -10`, `weight = 9,548`), Task B (`nice = 0`, `weight = 1,024`), and Task C (`nice = +10`, `weight = 110`), each executing for an identical physical duration of **4.00 ms**:
 
 | Task | Nice Level | CFS Weight | Physical Execution (`Δexec`) | Virtual Runtime Increment (`Δvruntime`) | Scheduling Effect |
 | :--- | :---: | :---: | :---: | :---: | :--- |
@@ -102,14 +102,14 @@ To identify the runnable entity with the minimum `vruntime` efficiently under hi
 
 ## 5.4 Priority Inversion and Priority Inheritance Protocols
 
-In priority-preemptive scheduling environments—including real-time Linux (`SCHED_FIFO`, `SCHED_RR`), Darwin/XNU audio and compositor subsystems, and embedded avionics kernels—strict priority preemption combined with mutual exclusion locks introduces a critical liveness pathology termed **unbounded priority inversion**.
+In priority-preemptive scheduling environments (including real-time Linux `SCHED_FIFO`/`SCHED_RR`, Darwin/XNU audio and compositor subsystems, and embedded avionics kernels), strict priority preemption combined with mutual exclusion locks introduces a critical liveness pathology termed **unbounded priority inversion**.
 
 Consider three threads sharing a single execution core: a high-priority real-time thread **T<sub>High</sub>**, a medium-priority compute-bound thread **T<sub>Med</sub>**, and a low-priority thread **T<sub>Low</sub>** that shares mutex **M** with **T<sub>High</sub>**. The failure evolves across four sequential steps:
 
 1. **T = 0 ms:** **T<sub>Low</sub>** executes, acquires mutex **M**, and enters its critical section.
 2. **T = 2 ms:** **T<sub>High</sub>** becomes runnable upon an interrupt. Because **prio(T<sub>High</sub>) &gt; prio(T<sub>Low</sub>)**, the scheduler preempts **T<sub>Low</sub>** and dispatches **T<sub>High</sub>**. **T<sub>High</sub>** invokes `lock(M)`, observes that **M** is held by **T<sub>Low</sub>**, and blocks on **M**'s wait queue.
 3. **T = 3 ms:** **T<sub>Med</sub>** becomes runnable. Although **T<sub>Med</sub>** does not reference mutex **M**, **T<sub>High</sub>** is blocked and **prio(T<sub>Med</sub>) &gt; prio(T<sub>Low</sub>)**; consequently, the scheduler dispatches **T<sub>Med</sub>** ahead of **T<sub>Low</sub>**.
-4. **Unbounded Blocking:** **T<sub>Med</sub>**—along with any subsequently arriving medium-priority threads—preempts **T<sub>Low</sub>** indefinitely. Because **T<sub>Low</sub>** receives zero CPU cycles to complete its critical section and invoke `unlock(M)`, **T<sub>High</sub>** experiences unbounded blocking latency induced by lower-priority work. This exact interaction produced repeated watchdog resets on the 1997 Mars Pathfinder spacecraft when medium-priority communications tasks preempted a low-priority meteorological task holding a shared bus mutex required by the high-priority bus management task.
+4. **Unbounded Blocking:** **T<sub>Med</sub>**, along with any subsequently arriving medium-priority threads, preempts **T<sub>Low</sub>** indefinitely. Because **T<sub>Low</sub>** receives zero CPU cycles to complete its critical section and invoke `unlock(M)`, **T<sub>High</sub>** experiences unbounded blocking latency induced by lower-priority work. This exact interaction produced repeated watchdog resets on the 1997 Mars Pathfinder spacecraft when medium-priority communications tasks preempted a low-priority meteorological task holding a shared bus mutex required by the high-priority bus management task.
 
 <figure>
 <img src="figures/ch05_priority_inversion.svg" alt="Timeline contrasting unbounded priority inversion against the Priority Inheritance Protocol"/>
@@ -134,7 +134,7 @@ In symmetric multiprocessing (SMP) and Non-Uniform Memory Access (NUMA) architec
 Modern kernels resolve this contention by partitioning scheduling state into **per-CPU runqueues** managed by a topology-aware load balancer:
 
 - **Cache Affinity:** While a thread executes on Core 2, its active working set populates Core 2's private L1/L2 caches and TLBs. Dispatching that thread back onto Core 2 following a brief blocking interval eliminates cold cache refills and cross-core MESI coherence invalidations. Schedulers enforce **soft affinity** automatically by biasing wakeups toward the thread's previous core, while providing explicit pinning interfaces (`sched_setaffinity`) for **hard affinity** in deterministic latency-critical deployments.
-- **Work-Stealing Load Balancing:** Partitioned runqueues permit transient imbalance in which one core holds multiple queued threads while a sibling core becomes idle. Upon emptying its local runqueue—or at periodic load-balancing ticks—an idle core invokes **work stealing**, migrating a cache-cold runnable thread from an overloaded sibling runqueue.
+- **Work-Stealing Load Balancing:** Partitioned runqueues permit transient imbalance in which one core holds multiple queued threads while a sibling core becomes idle. Upon emptying its local runqueue, or at periodic load-balancing ticks, an idle core invokes **work stealing**, migrating a cache-cold runnable thread from an overloaded sibling runqueue.
 - **Hierarchical Scheduling Domains and NUMA Awareness:** The kernel encodes physical hardware topology as a hierarchy of **scheduling domains**:
   1. **SMT / Hyperthread Siblings:** Hardware threads sharing a physical core and L1/L2 caches (minimal migration cost).
   2. **Core / Last-Level Cache (LLC) Domain:** Distinct cores sharing a unified L3 cache (moderate migration cost limited to L1/L2 warm-up).

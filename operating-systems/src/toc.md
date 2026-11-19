@@ -208,179 +208,179 @@
 A thematic, alphabetical cross-reference linking systems topics directly to their foundational derivation and practical implementation.
 
 ### A
-- **Abstraction (Hardware Abstraction Layer)** — The foundational operating system role mediating between complex physical hardware and uniform software primitives (files, sockets, processes).
+- **Abstraction (Hardware Abstraction Layer)**: The foundational operating system role mediating between complex physical hardware and uniform software primitives (files, sockets, processes).
   - Ontological Derivation: [§1.2](ch01-what-is-an-os.md#12-axiomatic-roles-abstraction-isolation-and-resource-management)
   - Device Independence: [§1.1](ch01-what-is-an-os.md#11-architectural-limitations-of-bare-metal-execution)
-- **Acquire-Release Semantics** — Synchronizes shared memory between threads without the heavy hardware penalty of full sequential consistency fences.
+- **Acquire-Release Semantics**: Synchronizes shared memory between threads without the heavy hardware penalty of full sequential consistency fences.
   - Theory & Memory Models: [§6.5](ch06-synchronization.md#65-hardware-memory-ordering-store-buffers-and-litmus-tests)
   - Lock-Free SPSC Application: [§19.4.1](ch19-interview-problems.md#1941-architectural-model-and-single-writer-principle)
-- **Address Space Layout** — Virtual memory organization across text, data, BSS, heap, memory-mapped regions, and user stack.
+- **Address Space Layout**: Virtual memory organization across text, data, BSS, heap, memory-mapped regions, and user stack.
   - Process Memory Topology: [§3.1](ch03-processes.md#31-the-process-control-block-and-address-space-topology)
   - Page-Based Isolation: [§7.1](ch07-virtual-memory.md#71-page-based-abstraction-and-isolation)
   - Architectural Comparison: [§19.12.1](ch19-interview-problems.md#19121-process-isolation-vs-thread-concurrency-topology)
-- **Address Translation (Hand Calculation)** — Complete step-by-step mathematical walk of a 48-bit canonical virtual address through PML4, PDPT, PD, and PT levels to physical address assembly.
+- **Address Translation (Hand Calculation)**: Complete step-by-step mathematical walk of a 48-bit canonical virtual address through PML4, PDPT, PD, and PT levels to physical address assembly.
   - Numerical Walkthrough & Invariants: [§7.2.2](ch07-virtual-memory.md#722-hand-calculated-4-level-address-translation-walkthrough)
-- **Anonymous Mapping (`MAP_ANON | MAP_PRIVATE`)** — Kernel allocation of zero-initialized demand pages unbacked by physical disk files.
+- **Anonymous Mapping (`MAP_ANON | MAP_PRIVATE`)**: Kernel allocation of zero-initialized demand pages unbacked by physical disk files.
   - Page Fault Dynamics: [§7.1](ch07-virtual-memory.md#71-page-based-abstraction-and-isolation)
   - Heap Arena Construction: [§8.2.2](ch08-allocation.md#822-level-2-the-raw-byte-bump-allocator-mmap-backed), [§8.3](ch08-allocation.md#83-explicit-management-free-list-allocation)
-- **APIC / IO-APIC & ARM GIC (Interrupt Controllers)** — Two-tier hardware interrupt routing, Message Signaled Interrupts (MSI-X), and priority arbitration across multiprocessor cores.
+- **APIC / IO-APIC & ARM GIC (Interrupt Controllers)**: Two-tier hardware interrupt routing, Message Signaled Interrupts (MSI-X), and priority arbitration across multiprocessor cores.
   - Hardware Routing & EOI: [§2.4.1](ch02-the-machine.md#241-interrupt-controllers-apic-io-apic-msi-x-and-arm-gic)
-- **Apple Silicon Unified Memory (UMA)** — Shared physical memory substrate between CPU, GPU, and Neural Engine without PCIe bus serialization.
+- **Apple Silicon Unified Memory (UMA)**: Shared physical memory substrate between CPU, GPU, and Neural Engine without PCIe bus serialization.
   - Architectural Analysis: [§17.3](ch17-multiprocessors.md#173-hardware-accelerators-discrete-architecture-vs-unified-memory-architecture-uma)
-- **Async-Signal-Safety** — Functions safe to execute inside asynchronous signal handlers without corrupting thread stacks or deadlocking libc mutexes.
+- **Async-Signal-Safety**: Functions safe to execute inside asynchronous signal handlers without corrupting thread stacks or deadlocking libc mutexes.
   - Re-entrancy Invariants: [§10.2](ch10-signals.md#102-constraints-on-asynchronous-execution)
   - Atomic Handler Disposition: [§15.2](ch15-daemons.md#152-signal-driven-management-and-the-lifecycle-interface)
-- **Atomicity Gap** — The structural discrepancy between high-level language expressions (`counter++`) and low-level load-modify-store sequences causing lost updates.
+- **Atomicity Gap**: The structural discrepancy between high-level language expressions (`counter++`) and low-level load-modify-store sequences causing lost updates.
   - Architectural Analysis: [§2.1.2](ch02-the-machine.md#212-formal-derivation-of-the-atomicity-gap)
   - Concurrency Hazards: [§4.2](ch04-threads.md#42-atomicity-and-the-resolution-of-data-races)
-- **Atomics (Memory Models)** — Load and store instructions providing hardware memory synchronization guarantees.
+- **Atomics (Memory Models)**: Load and store instructions providing hardware memory synchronization guarantees.
   - Core Primitive Taxonomy: [§4.2](ch04-threads.md#42-atomicity-and-the-resolution-of-data-races)
   - Memory Ordering Guarantees: [§6.5](ch06-synchronization.md#65-hardware-memory-ordering-store-buffers-and-litmus-tests)
   - Lock-Free Queue Invariants: [§19.4](ch19-interview-problems.md#194-the-lock-free-single-producer-single-consumer-ring-buffer)
 
 ### B
-- **Bare-Metal Execution** — The fundamental architectural limitations (no concurrency, no memory protection, no unified device drivers) of executing directly on raw hardware.
+- **Bare-Metal Execution**: The fundamental architectural limitations (no concurrency, no memory protection, no unified device drivers) of executing directly on raw hardware.
   - Architectural Invariants: [§1.1](ch01-what-is-an-os.md#11-architectural-limitations-of-bare-metal-execution)
-- **Bit Manipulation (Branchless)** — Microarchitectural optimizations utilizing bit smearing and hardware popcount instructions.
+- **Bit Manipulation (Branchless)**: Microarchitectural optimizations utilizing bit smearing and hardware popcount instructions.
   - Two's Complement Principles: [§19.10.1](ch19-interview-problems.md#19101-mathematical-principles-of-twos-complement-arithmetic)
   - Power-of-Two Rounding: [§19.10.2](ch19-interview-problems.md#19102-algorithmic-derivations)
-- **Bounded Blocking Queue** — Multi-threaded queue that synchronizes producers and consumers under strict capacity limits.
+- **Bounded Blocking Queue**: Multi-threaded queue that synchronizes producers and consumers under strict capacity limits.
   - Predicate Synchronization: [§6.2](ch06-synchronization.md#62-condition-variables-and-predicate-based-synchronization)
   - Complete Derivation & Code: [§19.2](ch19-interview-problems.md#192-the-bounded-blocking-queue)
-- **Buffered I/O (`BufWriter`)** — Amortizing the overhead of user-to-kernel context transitions via large user-space memory buffers.
+- **Buffered I/O (`BufWriter`)**: Amortizing the overhead of user-to-kernel context transitions via large user-space memory buffers.
   - System Call Trap Overhead: [§9.2](ch09-system-calls.md#92-performance-implications-and-optimization-via-buffering)
-- **Bump Allocator (Arena)** — Extreme high-throughput allocation strategy incrementing an offset pointer within contiguous memory.
+- **Bump Allocator (Arena)**: Extreme high-throughput allocation strategy incrementing an offset pointer within contiguous memory.
   - Design & Mathematical Alignment: [§8.2](ch08-allocation.md#82-arena-allocation-from-safe-index-pools-to-raw-bump-allocators)
 
 ### C
-- **Cache Coherence Protocols (MESI / MOESI)** — Hardware protocols ensuring cache-line consistency across multi-core systems.
+- **Cache Coherence Protocols (MESI / MOESI)**: Hardware protocols ensuring cache-line consistency across multi-core systems.
   - Memory Hierarchy Basics: [§2.2](ch02-the-machine.md#22-memory-hierarchy-and-locality-dynamics)
   - Inter-Core Invalidation Overhead: [§17.2](ch17-multiprocessors.md#172-cache-coherence-and-the-false-sharing-phenomenon)
-- **Cache Lines (64-byte Granularity)** — The atomic transfer unit between L1/L2/L3 caches and main memory.
+- **Cache Lines (64-byte Granularity)**: The atomic transfer unit between L1/L2/L3 caches and main memory.
   - Microarchitectural Substrate: [§2.2](ch02-the-machine.md#22-memory-hierarchy-and-locality-dynamics)
   - False Sharing Prevention: [§17.2](ch17-multiprocessors.md#172-cache-coherence-and-the-false-sharing-phenomenon), [§19.4.2](ch19-interview-problems.md#1945-microarchitectural-optimization-and-false-sharing)
-- **Coffman Deadlock Conditions** — The four axiomatic conditions required for a system to enter permanent deadlock.
+- **Coffman Deadlock Conditions**: The four axiomatic conditions required for a system to enter permanent deadlock.
   - Theoretical Analysis & Prevention: [§6.3](ch06-synchronization.md#63-deadlock-causes-and-prevention)
   - Technical Derivation: [§19.12.5](ch19-interview-problems.md#19125-deadlock-dynamics-coffman-conditions-and-prevention-strategies)
-- **Condition Variables** — Execution barriers enabling threads to sleep until notified of a state change under a controlling mutex.
+- **Condition Variables**: Execution barriers enabling threads to sleep until notified of a state change under a controlling mutex.
   - Predicate Loop Requirement: [§6.2](ch06-synchronization.md#62-condition-variables-and-predicate-based-synchronization)
   - Spurious Wakeup Verification: [§19.2.4](ch19-interview-problems.md#1924-systems-analysis-and-nuances)
-- **Context Switch Overhead** — The microarchitectural penalty of saving CPU registers, swapping page tables, and invalidating pipeline state.
+- **Context Switch Overhead**: The microarchitectural penalty of saving CPU registers, swapping page tables, and invalidating pipeline state.
   - Hardware Control Transfers: [§2.4](ch02-the-machine.md#24-synchronous-traps-and-the-asynchronous-interrupt-subsystem)
   - Process versus Thread Transitions: [§3.1](ch03-processes.md#31-the-process-control-block-and-address-space-topology), [§19.12.2](ch19-interview-problems.md#19122-context-switch-mechanics-and-microarchitectural-overhead)
-- **Copy-on-Write (COW)** — Memory optimization where physical frames are shared as read-only until mutated by child or parent.
+- **Copy-on-Write (COW)**: Memory optimization where physical frames are shared as read-only until mutated by child or parent.
   - Fork Optimization: [§3.2](ch03-processes.md#32-process-creation-and-the-mechanics-of-fork)
   - Page Fault Resolution: [§7.3](ch07-virtual-memory.md#73-fault-handling-and-memory-management-strategies)
 
 ### D
-- **Daemons & Detachment Ritual** — Creating autonomous background processes detached from terminals and session leaders.
+- **Daemons & Detachment Ritual**: Creating autonomous background processes detached from terminals and session leaders.
   - The Double-Fork Idiom: [§15.1](ch15-daemons.md#151-the-ritual-of-detachment)
   - Signal-Driven Supervision: [§15.2](ch15-daemons.md#152-signal-driven-management-and-the-lifecycle-interface)
-- **Data Races** — Undefined behavior occurring when concurrent threads access identical memory without synchronization and at least one is a write.
+- **Data Races**: Undefined behavior occurring when concurrent threads access identical memory without synchronization and at least one is a write.
   - Hazard Mechanics: [§4.1](ch04-threads.md#41-shared-address-space-and-the-loss-of-intra-process-isolation), [§4.2](ch04-threads.md#42-atomicity-and-the-resolution-of-data-races)
-- **Demand Paging** — Memory virtualization where physical frames are allocated lazily upon page fault rather than reservation.
+- **Demand Paging**: Memory virtualization where physical frames are allocated lazily upon page fault rather than reservation.
   - Page Table Mapping: [§7.1](ch07-virtual-memory.md#71-page-based-abstraction-and-isolation)
   - Page Fault Resolution Path: [§7.3](ch07-virtual-memory.md#73-fault-handling-and-memory-management-strategies), [§19.12.6](ch19-interview-problems.md#19126-virtual-memory-architecture-and-page-fault-resolution)
-- **Dentry & Inode Topology** — The directory cache and file metadata structures governing VFS storage durability.
+- **Dentry & Inode Topology**: The directory cache and file metadata structures governing VFS storage durability.
   - Inode Architecture: [§12.2](ch12-filesystems.md#122-on-disk-organization-and-inode-based-mapping)
 
 ### E - F
-- **Edge-Triggered vs. Level-Triggered Multiplexing** — Notification mechanics for ready file descriptors under high concurrency.
+- **Edge-Triggered vs. Level-Triggered Multiplexing**: Notification mechanics for ready file descriptors under high concurrency.
   - Multiplexing Scalability: [§13.2](ch13-io-event-loops.md#132-event-driven-architecture-and-io-multiplexing), [§13.3](ch13-io-event-loops.md#133-complexity-and-evolution-of-multiplexing-primitives)
-- **Event Loops (`kqueue` / `epoll` / `poll`)** — Scalable single-threaded I/O engines multiplexing thousands of descriptors.
+- **Event Loops (`kqueue` / `epoll` / `poll`)**: Scalable single-threaded I/O engines multiplexing thousands of descriptors.
   - Architecture: [§13.2](ch13-io-event-loops.md#132-event-driven-architecture-and-io-multiplexing)
   - Process Monitoring via `kqueue`: [§15.4](ch15-daemons.md#154-asynchronous-fault-detection-and-process-monitoring-via-kqueue)
-- **False Sharing** — Severe performance degradation caused by distinct CPU cores mutating independent variables residing on the same cache line.
+- **False Sharing**: Severe performance degradation caused by distinct CPU cores mutating independent variables residing on the same cache line.
   - Microarchitectural Analysis: [§2.3](ch02-the-machine.md#22-memory-hierarchy-and-locality-dynamics), [§17.2](ch17-multiprocessors.md#172-cache-coherence-and-the-false-sharing-phenomenon)
   - Cache Line Alignment Mitigation: [§19.4.2](ch19-interview-problems.md#1945-microarchitectural-optimization-and-false-sharing)
-- **File Descriptors** — Per-process integer indices referencing open file descriptions and inodes in the kernel.
+- **File Descriptors**: Per-process integer indices referencing open file descriptions and inodes in the kernel.
   - Process Management: [§12.1](ch12-filesystems.md#121-the-file-descriptor-and-the-open-file-description)
   - Pipeline Redirection & Leaks: [§19.9.1](ch19-interview-problems.md#1991-kernel-file-descriptor-mechanics-and-redirection)
-- **Frame Pointer (FP / RBP / x29)** — Invariant structural anchor for function activation records, enabling debugger backtraces and call frame unwinding.
+- **Frame Pointer (FP / RBP / x29)**: Invariant structural anchor for function activation records, enabling debugger backtraces and call frame unwinding.
   - Architectural Function: [§2.1](ch02-the-machine.md#21-the-execution-model-and-the-atomicity-gap)
-- **Free-List Allocator** — Explicit heap allocator with header metadata, block splitting, and contiguous coalescing.
+- **Free-List Allocator**: Explicit heap allocator with header metadata, block splitting, and contiguous coalescing.
   - Memory Management Foundations: [§8.3](ch08-allocation.md#83-explicit-management-free-list-allocation)
   - Complete Systems Implementation: [§19.3](ch19-interview-problems.md#193-the-free-list-allocator)
 
 ### G - L
-- **Guard Pages (`PROT_NONE`)** — Virtual memory pages configured with zero permissions to detect stack overflows or buffer out-of-bounds accesses.
+- **Guard Pages (`PROT_NONE`)**: Virtual memory pages configured with zero permissions to detect stack overflows or buffer out-of-bounds accesses.
   - Protection Mechanics: [§7.3](ch07-virtual-memory.md#73-fault-handling-and-memory-management-strategies)
-- **Huge Pages** — 2 MiB / 1 GiB virtual page translations designed to maximize TLB coverage and eliminate translation latency.
+- **Huge Pages**: 2 MiB / 1 GiB virtual page translations designed to maximize TLB coverage and eliminate translation latency.
   - Hardware TLB Reach: [§7.2.3](ch07-virtual-memory.md#723-the-translation-lookaside-buffer-tlb-huge-pages-and-shootdowns)
-- **Interrupt Descriptor Table (IDT) & Top/Bottom-Half Handlers** — Hardware vector dispatch table, `TSS.rsp0` trapframe saving, `hardirq` masking, and `softirq` deferred execution.
+- **Interrupt Descriptor Table (IDT) & Top/Bottom-Half Handlers**: Hardware vector dispatch table, `TSS.rsp0` trapframe saving, `hardirq` masking, and `softirq` deferred execution.
   - Architectural Mechanics: [§2.4.2](ch02-the-machine.md#242-vector-tables-ivt-idt-vbar_el1-and-the-hardware-context-save-sequence), [§2.4.3](ch02-the-machine.md#243-top-half-hardirq-vs-bottom-half-softirq-split-and-eoi-lifecycle)
-- **Inter-Process Communication (IPC)** — Exchanging state across hardware isolation boundaries via pipes, sockets, and shared memory.
+- **Inter-Process Communication (IPC)**: Exchanging state across hardware isolation boundaries via pipes, sockets, and shared memory.
   - IPC Taxonomy: [§11.1](ch11-ipc.md#111-unidirectional-byte-streams-pipes), [§11.2](ch11-ipc.md#112-zero-copy-communication-shared-memory), [§11.3](ch11-ipc.md#113-bidirectional-channels-socket-pairs)
-- **Isolation (Process Protection)** — Hardware-enforced boundary preventing cross-process interference and securing kernel memory.
+- **Isolation (Process Protection)**: Hardware-enforced boundary preventing cross-process interference and securing kernel memory.
   - Ontological Necessity: [§1.2](ch01-what-is-an-os.md#12-axiomatic-roles-abstraction-isolation-and-resource-management)
   - Address Space Separation: [§3.1](ch03-processes.md#31-the-process-control-block-and-address-space-topology)
-- **Lock-Free Programming** — Concurrency without mutex barriers, relying on atomic instructions and hardware memory ordering guarantees.
+- **Lock-Free Programming**: Concurrency without mutex barriers, relying on atomic instructions and hardware memory ordering guarantees.
   - SPSC Queue Derivation: [§19.4](ch19-interview-problems.md#194-the-lock-free-single-producer-single-consumer-ring-buffer)
-- **LRU Cache** — High-performance eviction cache pairing an O(1) hash table with a doubly-linked list.
+- **LRU Cache**: High-performance eviction cache pairing an O(1) hash table with a doubly-linked list.
   - Zero-Allocation Splice Implementation: [§19.6](ch19-interview-problems.md#196-the-lru-cache)
 
 ### M - P
-- **Mechanism versus Policy Separation** — Foundational architectural principle decoupling invariant low-level hardware mechanisms from tunable high-level allocation algorithms.
+- **Mechanism versus Policy Separation**: Foundational architectural principle decoupling invariant low-level hardware mechanisms from tunable high-level allocation algorithms.
   - Axiomatic Separation: [§1.3](ch01-what-is-an-os.md#13-mechanism-versus-policy-separation)
   - Scheduling Dynamics: [§5.1](ch05-scheduling.md#51-scheduling-dynamics-and-performance-metrics)
-- **Memory Fences & Ordering** — CPU instructions constraining the reordering of loads and stores across memory buses.
+- **Memory Fences & Ordering**: CPU instructions constraining the reordering of loads and stores across memory buses.
   - Theoretical Derivation: [§6.5](ch06-synchronization.md#65-hardware-memory-ordering-store-buffers-and-litmus-tests)
-- **Multi-Level Page Tables** — Tree-structured hierarchical address translation enabling sparse virtual address spaces without wasting physical RAM.
+- **Multi-Level Page Tables**: Tree-structured hierarchical address translation enabling sparse virtual address spaces without wasting physical RAM.
   - Radix Tree Architecture: [§7.2](ch07-virtual-memory.md#72-hierarchical-translation-and-the-tlb)
   - Page Fault Resolution: [§19.12.6](ch19-interview-problems.md#19126-virtual-memory-architecture-and-page-fault-resolution)
-- **Non-Blocking I/O (`O_NONBLOCK`)** — System call semantics allowing asynchronous execution without thread suspension.
+- **Non-Blocking I/O (`O_NONBLOCK`)**: System call semantics allowing asynchronous execution without thread suspension.
   - Event-Driven Architecture: [§13.2](ch13-io-event-loops.md#132-event-driven-architecture-and-io-multiplexing)
   - Socket Multiplexing: [§14.1](ch14-networking.md#141-the-transmission-control-protocol-tcp-reliable-byte-streams)
-- **NUMA Topologies** — Non-Uniform Memory Access architectures where latency depends on memory socket locality.
+- **NUMA Topologies**: Non-Uniform Memory Access architectures where latency depends on memory socket locality.
   - Optimization Strategies: [§17.1](ch17-multiprocessors.md#171-numa-topologies-and-locality-optimization)
-- **Page Map Level 4 (PML4)** — The root table of the 4-level x86-64 page hierarchy loaded into the CR3 control register.
+- **Page Map Level 4 (PML4)**: The root table of the 4-level x86-64 page hierarchy loaded into the CR3 control register.
   - Translation Walk: [§7.2](ch07-virtual-memory.md#72-hierarchical-translation-and-the-tlb)
-- **Pipeline Deadlocks** — Common concurrency pitfall where unclosed write descriptors prevent readers from observing EOF.
+- **Pipeline Deadlocks**: Common concurrency pitfall where unclosed write descriptors prevent readers from observing EOF.
   - Descriptor Management & Proof: [§19.9.4](ch19-interview-problems.md#1994-deadlock-hazards-and-process-isolation)
-- **POSIX Standard Interface** — Standardized system call boundary unifying process management, file I/O, virtual memory, and IPC across UNIX-like systems.
+- **POSIX Standard Interface**: Standardized system call boundary unifying process management, file I/O, virtual memory, and IPC across UNIX-like systems.
   - Core API Taxonomy: [§1.4](ch01-what-is-an-os.md#14-the-system-call-boundary-and-posix-standard-interface)
-- **Priority Inversion** — Scheduling hazard where a high-priority thread blocks on a resource held by a low-priority thread.
+- **Priority Inversion**: Scheduling hazard where a high-priority thread blocks on a resource held by a low-priority thread.
   - Priority Inheritance Solutions: [§5.4](ch05-scheduling.md#54-priority-inversion-and-priority-inheritance-protocols)
-- **Process Control Block (PCB)** — Kernel data structure maintaining architectural register state, page tables, and file descriptors.
+- **Process Control Block (PCB)**: Kernel data structure maintaining architectural register state, page tables, and file descriptors.
   - Topology & Management: [§3.1](ch03-processes.md#31-the-process-control-block-and-address-space-topology)
   - Process Isolation: [§19.12.1](ch19-interview-problems.md#19121-process-isolation-vs-thread-concurrency-topology)
-- **Program Counter (PC / RIP / PC_EL0)** — Microarchitectural register holding the linear virtual address of the next instruction to fetch.
+- **Program Counter (PC / RIP / PC_EL0)**: Microarchitectural register holding the linear virtual address of the next instruction to fetch.
   - Instruction Cycle & Branching: [§2.1](ch02-the-machine.md#21-the-execution-model-and-the-atomicity-gap)
   - Trapframe Preservation: [§2.4](ch02-the-machine.md#23-privilege-domains-and-boundary-enforcement), [§3.1](ch03-processes.md#31-the-process-control-block-and-address-space-topology)
 
 ### R - S
-- **Reader-Writer Lock** — Synchronization primitive permitting concurrent readers while restricting writers to exclusive access.
+- **Reader-Writer Lock**: Synchronization primitive permitting concurrent readers while restricting writers to exclusive access.
   - Writer-Preference Implementation: [§19.7](ch19-interview-problems.md#197-the-reader-writer-lock)
-- **Resource Management (Arbitration)** — Operating system orchestration and time/space multiplexing of CPU cores, memory frames, and I/O bandwidth.
+- **Resource Management (Arbitration)**: Operating system orchestration and time/space multiplexing of CPU cores, memory frames, and I/O bandwidth.
   - Ontological Necessity: [§1.2](ch01-what-is-an-os.md#12-axiomatic-roles-abstraction-isolation-and-resource-management)
-- **Shared Memory (`mmap` / POSIX `shm`)** — Highest-throughput IPC mechanism bypassing the kernel during data exchange.
+- **Shared Memory (`mmap` / POSIX `shm`)**: Highest-throughput IPC mechanism bypassing the kernel during data exchange.
   - Zero-Copy Implementation: [§11.2](ch11-ipc.md#112-zero-copy-communication-shared-memory)
-- **Signal Coalescing & Reaping** — POSIX signal delivery property requiring non-blocking loops to prevent zombie leaks.
+- **Signal Coalescing & Reaping**: POSIX signal delivery property requiring non-blocking loops to prevent zombie leaks.
   - `SIGCHLD` and `waitpid`: [§10.3](ch10-signals.md#103-process-lifecycle-synchronization-sigchld-and-reaping)
-- **Sparse Files** — File system structures where unwritten data blocks are unallocated, saving physical storage.
+- **Sparse Files**: File system structures where unwritten data blocks are unallocated, saving physical storage.
   - Block Allocation Mechanics: [§12.3](ch12-filesystems.md#123-sparse-files-and-the-mechanics-of-durability)
-- **Spurious Wakeups** — Condition variable unblocking without explicit notification caused by kernel scheduler dynamics.
+- **Spurious Wakeups**: Condition variable unblocking without explicit notification caused by kernel scheduler dynamics.
   - Systems Nuances: [§19.2.4](ch19-interview-problems.md#1924-systems-analysis-and-nuances)
-- **Stack Pointer (SP / RSP / SP_EL0)** — Architectural register tracking the active boundary of the descending call stack.
+- **Stack Pointer (SP / RSP / SP_EL0)**: Architectural register tracking the active boundary of the descending call stack.
   - Stack Frame Structure: [§2.1](ch02-the-machine.md#21-the-execution-model-and-the-atomicity-gap)
   - Kernel Stack Switching: [§2.4](ch02-the-machine.md#23-privilege-domains-and-boundary-enforcement), [§9.1](ch09-system-calls.md#91-the-mechanics-of-the-system-call-interface)
-- **Status Flags (FLAGS / RFLAGS / PSTATE)** — CPU condition codes (ZF, CF, SF, OF) and interrupt mask control flags (IF).
+- **Status Flags (FLAGS / RFLAGS / PSTATE)**: CPU condition codes (ZF, CF, SF, OF) and interrupt mask control flags (IF).
   - Condition Evaluation: [§2.1](ch02-the-machine.md#21-the-execution-model-and-the-atomicity-gap)
-- **System Call Boundary** — Hardware-supervised privilege gatekeeper transferring control from user mode to kernel mode.
+- **System Call Boundary**: Hardware-supervised privilege gatekeeper transferring control from user mode to kernel mode.
   - Gatekeeper Role: [§1.4](ch01-what-is-an-os.md#14-the-system-call-boundary-and-posix-standard-interface)
   - Traps & Privilege Elevation: [§2.4](ch02-the-machine.md#23-privilege-domains-and-boundary-enforcement), [§9.1](ch09-system-calls.md#91-the-mechanics-of-the-system-call-interface)
 
 ### T - Z
-- **TCP Protocols & Sockets** — Reliable, connection-oriented byte streams with flow control and congestion avoidance.
+- **TCP Protocols & Sockets**: Reliable, connection-oriented byte streams with flow control and congestion avoidance.
   - Socket Interface Mechanics: [§14.1](ch14-networking.md#141-the-transmission-control-protocol-tcp-reliable-byte-streams)
-- **Thread Pool** — Concurrency architecture amortizing thread creation costs across a fixed pool of persistent worker threads.
+- **Thread Pool**: Concurrency architecture amortizing thread creation costs across a fixed pool of persistent worker threads.
   - Implementation & RAII Shutdown: [§19.8](ch19-interview-problems.md#198-the-thread-pool)
-- **Thundering Herd Mitigation** — Preventing catastrophic CPU contention by waking single threads (`notify_one`) rather than all sleeping threads.
+- **Thundering Herd Mitigation**: Preventing catastrophic CPU contention by waking single threads (`notify_one`) rather than all sleeping threads.
   - Bounded Queue Optimization: [§19.2.4](ch19-interview-problems.md#1924-systems-analysis-and-nuances)
-- **TLB (Translation Lookaside Buffer)** — High-speed CPU hardware cache storing recent virtual-to-physical address translations.
+- **TLB (Translation Lookaside Buffer)**: High-speed CPU hardware cache storing recent virtual-to-physical address translations.
   - Architecture & Invalidation: [§7.2](ch07-virtual-memory.md#72-hierarchical-translation-and-the-tlb)
-- **Virtual Memory Architecture** — Core isolation mechanism presenting processes with private, contiguous address spaces.
+- **Virtual Memory Architecture**: Core isolation mechanism presenting processes with private, contiguous address spaces.
   - Page Tables & MMU: [§7.1](ch07-virtual-memory.md#71-page-based-abstraction-and-isolation), [§7.2](ch07-virtual-memory.md#72-hierarchical-translation-and-the-tlb)
   - Architectural Derivation: [§19.12.6](ch19-interview-problems.md#19126-virtual-memory-architecture-and-page-fault-resolution)
-- **Zombie Processes** — Terminated processes awaiting parent retrieval of exit status, retaining a PID table slot.
+- **Zombie Processes**: Terminated processes awaiting parent retrieval of exit status, retaining a PID table slot.
   - Process Reaping: [§3.3](ch03-processes.md#33-lifecycle-management-state-automaton-and-termination), [§10.3](ch10-signals.md#103-process-lifecycle-synchronization-sigchld-and-reaping)

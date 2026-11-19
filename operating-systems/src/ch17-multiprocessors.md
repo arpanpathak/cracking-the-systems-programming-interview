@@ -57,7 +57,7 @@ Hardware cache coherence guarantees correctness, not performance. Independent va
 
 ## 17.3 Hardware Accelerators: Discrete Architecture vs. Unified Memory Architecture (UMA)
 
-Beyond general-purpose CPUs, modern servers increasingly rely on specialized hardware accelerators—such as GPUs, Neural Processing Units (NPUs), and cryptographic ASICs—to handle computationally intensive ML and HPC workloads.
+Beyond general-purpose CPUs, modern servers increasingly rely on specialized hardware accelerators, such as GPUs, Neural Processing Units (NPUs), and cryptographic ASICs, to handle computationally intensive ML and HPC workloads.
 
 The operating system and runtime libraries manage accelerators across two fundamentally distinct memory architectures:
 

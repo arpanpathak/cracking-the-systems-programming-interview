@@ -1,4 +1,4 @@
-// ch08/index_arena.rs: Level 1 arena — a completely safe, zero-unsafe index pool.
+// ch08/index_arena.rs: Level 1 arena: a completely safe, zero-unsafe index pool.
 // Nodes live contiguously inside one Vec<T> and reference each other via copyable
 // NodeId indices, avoiding raw pointers, self-referential lifetimes, and unsafe blocks.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]

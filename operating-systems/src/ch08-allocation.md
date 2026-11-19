@@ -1,8 +1,8 @@
 # 8. Memory Allocation and Management Strategies
 
-The operating system virtual-memory subsystem manages physical RAM at coarse page granularity—typically 4 KiB on x86-64 and 16 KiB on Apple Silicon ARM64. Application software, however, dynamically allocates and destroys millions of objects ranging from 16-byte linked-list nodes to multi-megabyte buffers with heterogeneous lifetimes. Issuing a kernel system call (`mmap` or `brk`) for every small object would impose prohibitive privilege-transition latency and waste nearly an entire 4 KiB page for a 24-byte struct.
+The operating system virtual-memory subsystem manages physical RAM at coarse page granularity (typically 4 KiB on x86-64 and 16 KiB on Apple Silicon ARM64). Application software, however, dynamically allocates and deallocates millions of objects ranging from 16-byte linked-list nodes to multi-megabyte buffers with heterogeneous lifetimes. Issuing a kernel system call (`mmap` or `brk`) for every small object would impose prohibitive privilege-transition latency and waste nearly an entire 4 KiB page for a 24-byte struct.
 
-A user-space memory allocator bridges this granularity gap. It acquires large, contiguous virtual memory regions—**arenas**—from the operating system in bulk via `mmap`, subdivides those regions internally in Ring 3 according to alignment and reuse policies, and returns unneeded memory to the kernel only at coarse page boundaries.
+A user-space memory allocator bridges this granularity gap. It acquires large, contiguous virtual memory regions (termed **arenas**) from the operating system in bulk via `mmap`, subdivides those regions internally in Ring 3 according to alignment and reuse policies, and returns unneeded memory to the kernel only at coarse page boundaries.
 
 ## 8.1 The Allocator Interface and Efficiency Constraints
 
@@ -12,7 +12,7 @@ Allocators are distinguished by three architectural decisions: the placement str
 
 ### 8.1.1 Requesting Raw Arenas from the Kernel (`mmap`)
 
-The low-level allocators in Sections 8.2.2 and 8.3 acquire their backing memory—an **arena**—directly from the kernel via the POSIX `mmap` system call rather than calling `malloc`:
+The low-level allocators in Sections 8.2.2 and 8.3 acquire their backing memory (an **arena**) directly from the kernel via the POSIX `mmap` system call rather than calling `malloc`:
 
 ```text
 mmap(nullptr, capacity_bytes, PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANON, -1, 0)
@@ -43,7 +43,7 @@ Because `A = 2^k`, `A - 1` has `k` trailing binary `1` bits, and `~(A - 1)` clea
 
 ## 8.2 Arena Allocation: From Safe Index Pools to Raw Bump Allocators
 
-An **arena** groups objects with identical lifetimes—such as request-scoped records in a web server, frame state in a renderer, or nodes in a syntax tree—into a single contiguous region and reclaims all of them simultaneously. Rather than introducing raw pointer arithmetic immediately, we construct arena allocation in two progressive stages: a completely safe typed index pool requiring zero raw pointers, followed by a raw `mmap`-backed bump allocator.
+An **arena** groups objects with identical lifetimes (such as request-scoped records in a web server, frame state in a renderer, or nodes in a syntax tree) into a single contiguous region and reclaims all of them simultaneously. Rather than introducing raw pointer arithmetic immediately, we construct arena allocation in two progressive stages: a completely safe typed index pool requiring zero raw pointers, followed by a raw `mmap`-backed bump allocator.
 
 ### 8.2.1 Level 1: The Safe Index Arena (Zero `unsafe`)
 
@@ -79,7 +79,7 @@ When all arena-resident nodes share a single homogeneous type `T` (such as abstr
 
 ### 8.2.2 Level 2: The Raw Byte Bump Allocator (`mmap`-Backed)
 
-When an arena must store heterogeneous types of varying sizes and alignments—or return direct typed references rather than integer handles—the allocator operates over a raw byte buffer. A **bump allocator** maintains a single monotonic offset (`next_offset`) within its contiguous virtual region. Allocation rounds `next_offset` upward to the requested alignment, verifies sufficient remaining space (`aligned_offset + requested_bytes <= arena_capacity`), and advances `next_offset` by the requested size.
+When an arena must store heterogeneous types of varying sizes and alignments, or return direct typed references rather than integer handles, the allocator operates over a raw byte buffer. A **bump allocator** maintains a single monotonic offset (`next_offset`) within its contiguous virtual region. Allocation rounds `next_offset` upward to the requested alignment, verifies sufficient remaining space (`aligned_offset + requested_bytes <= arena_capacity`), and advances `next_offset` by the requested size.
 
 The computational complexity of allocation in a bump allocator is O(1), consisting of only a few arithmetic operations with zero per-object metadata overhead. This speed is traded for coarse reclamation: individual objects cannot be freed, and `reset()` rewinds `next_offset = 0` to reclaim the entire arena at once.
 
@@ -113,7 +113,7 @@ The computational complexity of allocation in a bump allocator is O(1), consisti
 
 Extending a raw byte bump allocator into a production typed Rust arena (such as `bumpalo`) introduces three subtle language and memory-model invariants:
 - **Shared-borrow allocation (`&self` to `&'arena mut T`):** In Listing 8-4, `alloc(&mut self, ...)` requires exclusive access to the allocator, preventing callers from holding multiple live references returned by the same arena simultaneously. Production arenas wrap the bump cursor in interior mutability (`Cell<*mut u8>`) so `alloc<T>(&self, value: T) -> &mut T` accepts `&self`. Every returned reference carries the lifetime of `&self`, enabling arbitrary cross-referencing graphs while the borrow checker statically forbids any reference from outliving the arena; because `Cell` is neither `Send` nor `Sync`, single-threaded ownership is enforced at compile time.
-- **Pointer provenance:** Storing the active cursor as a typed raw pointer (`*mut u8`) and computing alignment via `ptr::align_offset` and `ptr::add`—rather than casting pointers to `usize` integers and back—preserves strict pointer provenance under Rust's Stacked/Tree Borrows models and verifies cleanly under Miri.
+- **Pointer provenance:** Storing the active cursor as a typed raw pointer (`*mut u8`) and computing alignment via `ptr::align_offset` and `ptr::add`, rather than casting pointers to `usize` integers and back, preserves strict pointer provenance under Rust's Stacked/Tree Borrows models and verifies cleanly under Miri.
 - **Destructor omission:** Rewinding or unmapping a raw bump arena reclaims the backing bytes without executing per-object destructors (`Drop` in Rust, `~T()` in C++). Placing heap-owning types such as `Vec` or `String` inside a raw bump arena leaks their secondary heap allocations unless the arena records an explicit drop-function list (as in `typed-arena`) or restricts stored values to plain data and arena-scoped references.
 
 ### 8.2.3 Backing Store Trade-Off: Global-Allocator Chunks (`malloc` / `std::alloc`) vs. Direct `mmap`
@@ -128,7 +128,7 @@ Listings 8-3 and 8-4 call `mmap` directly to expose the exact OS boundary. In pr
 | **Hardware page control** | Controlled indirectly by the global allocator. | Direct access to huge pages (`MAP_HUGETLB` / `MADV_HUGEPAGE`) and hardware guard pages (`mprotect(..., PROT_NONE)`). |
 | **Portability & tooling** | Fully portable across POSIX and Windows; automatically checked by AddressSanitizer, Valgrind, and Miri. | OS-specific (`mmap` vs. `VirtualAlloc(MEM_RESERVE)`); may fail under strict overcommit (`vm.overcommit_memory=2`) and requires manual ASan poisoning. |
 
-As a general rule, application-level arenas such as `bumpalo` allocate geometrically growing chunks (starting around 64 KiB) from `malloc` or `std::alloc`, avoiding syscall overhead and preserving sanitizer visibility. Direct `mmap` reserve-then-commit arenas are reserved for systems requiring single-span address stability, explicit huge-page or guard-page control, or immediate OS frame reclamation—most notably database buffer pools, JIT code heaps, and game-engine frame allocators.
+As a general rule, application-level arenas such as `bumpalo` allocate geometrically growing chunks (starting around 64 KiB) from `malloc` or `std::alloc`, avoiding syscall overhead and preserving sanitizer visibility. Direct `mmap` reserve-then-commit arenas are reserved for systems requiring single-span address stability, explicit huge-page or guard-page control, or immediate OS frame reclamation, most notably database buffer pools, JIT code heaps, and game-engine frame allocators.
 
 ## 8.3 Explicit Management: Free-List Allocation
 
@@ -148,8 +148,8 @@ This layout establishes two direct pointer-arithmetic invariants:
 
 The allocator's performance and fragmentation profile are governed by three policies:
 1. **Allocation Policy (First-Fit):** Starting at `head_block`, `alloc(requested_bytes)` traverses the block list in address order and selects the first block satisfying `is_free && payload_bytes >= requested_bytes`.
-2. **Splitting (Suppressing Internal Fragmentation):** When a chosen free block is significantly larger than `requested_bytes`—for example, satisfying `alloc(150)` inside a 200-byte hole—handing out all 200 bytes wastes 50 bytes of **internal fragmentation**. Whenever `leftover_bytes = payload_bytes - requested_bytes >= sizeof(BlockHeader) + MIN_SPLIT_PAYLOAD` (`24 + 16 = 40` bytes), the allocator writes a new `BlockHeader` immediately after the 150-byte payload, carving a reusable free block of `200 - 150 - 24 = 26` bytes and linking it into the list.
-3. **Coalescing (Eliminating External Fragmentation):** Freeing adjacent blocks without merging them shatters the arena into small, unusable holes—**external fragmentation**. Upon `free()`, `coalesce_adjacent_free_blocks()` verifies physical contiguity (`neighbor == current + sizeof(BlockHeader) + current->payload_bytes`) and merges consecutive free blocks into a single unified region, reclaiming both the neighbor's payload and its redundant 24-byte header (`150 + 24 + 26 = 200` bytes restored).
+2. **Splitting (Suppressing Internal Fragmentation):** When a chosen free block is significantly larger than `requested_bytes` (for example, satisfying `alloc(150)` inside a 200-byte hole), handing out all 200 bytes wastes 50 bytes of **internal fragmentation**. Whenever `leftover_bytes = payload_bytes - requested_bytes >= sizeof(BlockHeader) + MIN_SPLIT_PAYLOAD` (`24 + 16 = 40` bytes), the allocator writes a new `BlockHeader` immediately after the 150-byte payload, carving a reusable free block of `200 - 150 - 24 = 26` bytes and linking it into the list.
+3. **Coalescing (Eliminating External Fragmentation):** Freeing adjacent blocks without merging them shatters the arena into small, unusable holes, causing **external fragmentation**. Upon `free()`, `coalesce_adjacent_free_blocks()` verifies physical contiguity (`neighbor == current + sizeof(BlockHeader) + current->payload_bytes`) and merges consecutive free blocks into a single unified region, reclaiming both the neighbor's payload and its redundant 24-byte header (`150 + 24 + 26 = 200` bytes restored).
 
 <figure>
 <img src="figures/ch08_freelist.svg" alt="Free-list allocator unified trace showing initial allocations, block splitting of 200 B into 150 B plus 26 B, and coalescing back to 200 B"/>

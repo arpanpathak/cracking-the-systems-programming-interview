@@ -1,6 +1,6 @@
 # 15. Daemon Lifecycle and Service Supervision
 
-A daemon is a specialized process designed for long-running background execution, decoupled from any interactive terminal. While traditional daemons implement complex detachment rituals to ensure they are truly independent, modern operating systems have evolved toward a supervision-based model where central init systems—such as `launchd` on macOS and Darwin, or `systemd` on Linux—manage the lifecycle, socket activation, resource boundaries, and fault recovery of background services.
+A daemon is a specialized process designed for long-running background execution, decoupled from any interactive terminal. While traditional daemons implement complex detachment rituals to ensure they are truly independent, modern operating systems have evolved toward a supervision-based model where central init systems (such as `launchd` on macOS and Darwin, or `systemd` on Linux) manage the lifecycle, socket activation, resource boundaries, and fault recovery of background services.
 
 ## 15.1 The Ritual of Detachment
 
@@ -55,7 +55,7 @@ A daemon's interface is three artifacts: a pidfile that names it, a log that rec
 
 ## 15.3 Service Supervision and On-Demand Activation: `launchd` and `systemd`
 
-In modern production environments—particularly cloud server operating systems and Apple platforms—the manual detachment ritual is replaced by centralized **service supervision**. Central supervisors, such as Apple's `launchd` and Linux's `systemd`, operate as PID 1, managing daemons as managed child processes.
+In modern production environments (particularly cloud server operating systems and Apple platforms), the manual detachment ritual is replaced by centralized **service supervision**. Central supervisors, such as Apple's `launchd` and Linux's `systemd`, operate as PID 1, managing daemons as managed child processes.
 
 ### 15.3.1 The Foreground Daemon Model
 
@@ -80,7 +80,7 @@ Socket activation eliminates boot-time startup ordering issues: client connectio
 
 ## 15.4 Asynchronous Fault Detection and Process Monitoring via `kqueue`
 
-In distributed infrastructure and cloud platforms, daemons frequently act as local supervisors—managing worker processes, telemetry sidecars, and hardware accelerators. A supervisor must detect worker crashes and hardware faults instantaneously.
+In distributed infrastructure and cloud platforms, daemons frequently act as local supervisors that manage worker processes, telemetry sidecars, and hardware accelerators. A supervisor must detect worker crashes and hardware faults instantaneously.
 
 ### 15.4.1 The Limits of Signal-Based Monitoring (`SIGCHLD`)
 

@@ -1,7 +1,7 @@
 # Preface
 
 > *"There are two ways of constructing a software design: One way is to make it so simple that there are obviously no deficiencies, and the other way is to make it so complicated that there are no obvious deficiencies. The first method is far more difficult."*
-> — **C.A.R. Hoare**, The Emperor's Old Clothes (1980 Turing Award Lecture)
+> **C.A.R. Hoare**, The Emperor's Old Clothes (1980 Turing Award Lecture)
 
 ---
 
@@ -29,7 +29,7 @@ To truly master systems programming, one must transcend language dogma. This boo
 - **C++20** provides raw mechanical sympathy: explicit pointers, manual memory layout control, direct access to architectural instructions, unconstrained memory ordering, and direct POSIX system interfaces. It represents the historical and contemporary foundation of kernels, runtime engines, database storage managers, and high-frequency trading infrastructure.
 - **Rust (2024 edition)** introduces mathematical rigor to systems engineering: affine type systems, compile-time data race freedom enforced by `Send` and `Sync`, deterministic destruction without exception hazards, and explicit demarcation of unsafe operations via strict invariant proofs.
 
-By implementing every mechanism—from lock-free ring buffers and virtual memory allocators to pipeline orchestrators and kqueue supervisors—in both languages side-by-side, you learn to decouple abstract systems principles from language-specific idiosyncrasies. You will understand both the raw microarchitectural consequences of memory operations and the formal type-theoretic invariants required to prove their soundness.
+By implementing every mechanism (from lock-free ring buffers and virtual memory allocators to pipeline orchestrators and kqueue supervisors) in both languages side-by-side, you learn to decouple abstract systems principles from language-specific idiosyncrasies. You will understand both the raw microarchitectural consequences of memory operations and the formal type-theoretic invariants required to prove their soundness.
 
 ---
 

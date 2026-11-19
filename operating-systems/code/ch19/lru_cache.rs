@@ -4,8 +4,8 @@
 //!
 //! Two structures cooperate to give O(1) `get` and `put`:
 //!
-//! * `lookup_table: HashMap<K, usize>` — key → index into the arena.
-//! * `nodes: Vec<Node<K, V>>` — an **arena** of nodes; indices play the role
+//! * `lookup_table: HashMap<K, usize>`: key → index into the arena.
+//! * `nodes: Vec<Node<K, V>>`: an **arena** of nodes; indices play the role
 //!   of pointers, sidestepping `Rc<RefCell<…>>` and its borrow-checker overhead.
 //!
 //! The arena is stitched into a doubly linked list through `head`/`tail`:
