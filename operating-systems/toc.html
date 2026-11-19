@@ -38,7 +38,7 @@
             const path_to_root = "";
             const default_light_theme = "light";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "searchindex-2f3b4ad9.js";
+            window.path_to_searchindex_js = "searchindex-72cdfbf6.js";
         </script>
         <!-- Start loading toc.js asap -->
         <script src="toc-f3585118.js"></script>
@@ -227,8 +227,8 @@
 <li><a href="ch02-the-machine.html#23-privilege-domains-and-boundary-enforcement">2.3 Privilege Domains and Boundary Enforcement</a></li>
 <li><a href="ch02-the-machine.html#24-synchronous-traps-and-the-asynchronous-interrupt-subsystem">2.4 Synchronous Traps and the Asynchronous Interrupt Subsystem</a>
 <ul>
-<li><a href="ch02-the-machine.html#241-interrupt-controllers-apic-io-apic-msi-x-and-arm-gic">2.4.1 Interrupt Controllers: APIC, IO-APIC, MSI-X, and ARM GIC</a></li>
-<li><a href="ch02-the-machine.html#242-vector-tables-ivt-idt-vbar_el1-and-the-hardware-context-save-sequence">2.4.2 Vector Tables (IVT, IDT, VBAR_EL1) and the Hardware Context-Save Sequence</a></li>
+<li><a href="ch02-the-machine.html#241-why-interrupt-controllers-exist-from-one-copper-pin-to-multi-core-fabrics">2.4.1 Why Interrupt Controllers Exist: From One Copper Pin to Multi-Core Fabrics</a></li>
+<li><a href="ch02-the-machine.html#242-vector-tables-idt-vbar_el1-tssrsp0-and-hardware-trapframe-construction">2.4.2 Vector Tables (<code>IDT</code>, <code>VBAR_EL1</code>), <code>TSS.rsp0</code>, and Hardware Trapframe Construction</a></li>
 <li><a href="ch02-the-machine.html#243-top-half-hardirq-vs-bottom-half-softirq-split-and-eoi-lifecycle">2.4.3 Top-Half (<code>hardirq</code>) vs. Bottom-Half (<code>softirq</code>) Split and EOI Lifecycle</a></li>
 </ul>
 </li>
@@ -456,7 +456,12 @@
 </li>
 <li><a href="ch16-virtualization.html#16-virtualization-and-containerization"><strong>16. Virtualization and Containerization</strong></a>
 <ul>
-<li><a href="ch16-virtualization.html#161-virtual-machines-and-hypervisor-orchestration">16.1 Virtual Machines and Hypervisor Orchestration</a></li>
+<li><a href="ch16-virtualization.html#161-virtual-machines-and-hypervisor-orchestration">16.1 Virtual Machines and Hypervisor Orchestration</a>
+<ul>
+<li><a href="ch16-virtualization.html#1611-two-stage-hardware-address-translation-intel-ept--amd-npt">16.1.1 Two-Stage Hardware Address Translation (Intel EPT / AMD NPT)</a></li>
+<li><a href="ch16-virtualization.html#1612-device-virtualization-emulation-virtio-and-direct-passthrough">16.1.2 Device Virtualization: Emulation, VirtIO, and Direct Passthrough</a></li>
+</ul>
+</li>
 <li><a href="ch16-virtualization.html#162-containerization-namespace-and-resource-isolation">16.2 Containerization: Namespace and Resource Isolation</a></li>
 <li><a href="ch16-virtualization.html#163-architectural-synthesis-in-cloud-computing">16.3 Architectural Synthesis in Cloud Computing</a></li>
 </ul>
@@ -470,8 +475,13 @@
 </li>
 <li><a href="ch18-performance.html#18-performance-analysis-and-observability"><strong>18. Performance Analysis and Observability</strong></a>
 <ul>
-<li><a href="ch18-performance.html#181-the-empirical-method-and-resource-bottlenecks">18.1 The Empirical Method and Resource Bottlenecks</a></li>
-<li><a href="ch18-performance.html#182-observability-profilers-tracers-and-visualizations">18.2 Observability: Profilers, Tracers, and Visualizations</a></li>
+<li><a href="ch18-performance.html#181-the-empirical-method-and-the-memory-latency-hierarchy">18.1 The Empirical Method and the Memory Latency Hierarchy</a></li>
+<li><a href="ch18-performance.html#182-observability-hardware-pmu-counters-profilers-tracers-and-flame-graphs">18.2 Observability: Hardware PMU Counters, Profilers, Tracers, and Flame Graphs</a>
+<ul>
+<li><a href="ch18-performance.html#1821-the-hardware-performance-monitoring-unit-pmu">18.2.1 The Hardware Performance Monitoring Unit (PMU)</a></li>
+<li><a href="ch18-performance.html#1822-sampling-profilers-versus-event-tracers">18.2.2 Sampling Profilers versus Event Tracers</a></li>
+</ul>
+</li>
 <li><a href="ch18-performance.html#183-statistical-rigor-and-measurement-pitfalls">18.3 Statistical Rigor and Measurement Pitfalls</a></li>
 </ul>
 </li>
@@ -609,7 +619,7 @@
 </li>
 <li><strong>APIC / IO-APIC &amp; ARM GIC (Interrupt Controllers)</strong>: Two-tier hardware interrupt routing, Message Signaled Interrupts (MSI-X), and priority arbitration across multiprocessor cores.
 <ul>
-<li>Hardware Routing &amp; EOI: <a href="ch02-the-machine.html#241-interrupt-controllers-apic-io-apic-msi-x-and-arm-gic">§2.4.1</a></li>
+<li>Hardware Routing &amp; EOI: <a href="ch02-the-machine.html#241-why-interrupt-controllers-exist-from-one-copper-pin-to-multi-core-fabrics">§2.4.1</a></li>
 </ul>
 </li>
 <li><strong>Apple Silicon Unified Memory (UMA)</strong>: Shared physical memory substrate between CPU, GPU, and Neural Engine without PCIe bus serialization.
@@ -782,7 +792,7 @@
 </li>
 <li><strong>Interrupt Descriptor Table (IDT) &amp; Top/Bottom-Half Handlers</strong>: Hardware vector dispatch table, <code>TSS.rsp0</code> trapframe saving, <code>hardirq</code> masking, and <code>softirq</code> deferred execution.
 <ul>
-<li>Architectural Mechanics: <a href="ch02-the-machine.html#242-vector-tables-ivt-idt-vbar_el1-and-the-hardware-context-save-sequence">§2.4.2</a>, <a href="ch02-the-machine.html#243-top-half-hardirq-vs-bottom-half-softirq-split-and-eoi-lifecycle">§2.4.3</a></li>
+<li>Architectural Mechanics: <a href="ch02-the-machine.html#242-vector-tables-idt-vbar_el1-tssrsp0-and-hardware-trapframe-construction">§2.4.2</a>, <a href="ch02-the-machine.html#243-top-half-hardirq-vs-bottom-half-softirq-split-and-eoi-lifecycle">§2.4.3</a></li>
 </ul>
 </li>
 <li><strong>Inter-Process Communication (IPC)</strong>: Exchanging state across hardware isolation boundaries via pipes, sockets, and shared memory.

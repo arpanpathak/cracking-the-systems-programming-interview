@@ -39,7 +39,7 @@
             const path_to_root = "";
             const default_light_theme = "light";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "searchindex-2f3b4ad9.js";
+            window.path_to_searchindex_js = "searchindex-72cdfbf6.js";
         </script>
         <!-- Start loading toc.js asap -->
         <script src="toc-f3585118.js"></script>
@@ -301,8 +301,8 @@
 <li><a href="#23-privilege-domains-and-boundary-enforcement">2.3 Privilege Domains and Boundary Enforcement</a></li>
 <li><a href="#24-synchronous-traps-and-the-asynchronous-interrupt-subsystem">2.4 Synchronous Traps and the Asynchronous Interrupt Subsystem</a>
 <ul>
-<li><a href="#241-interrupt-controllers-apic-io-apic-msi-x-and-arm-gic">2.4.1 Interrupt Controllers: APIC, IO-APIC, MSI-X, and ARM GIC</a></li>
-<li><a href="#242-vector-tables-ivt-idt-vbar_el1-and-the-hardware-context-save-sequence">2.4.2 Vector Tables (IVT, IDT, VBAR_EL1) and the Hardware Context-Save Sequence</a></li>
+<li><a href="#241-why-interrupt-controllers-exist-from-one-copper-pin-to-multi-core-fabrics">2.4.1 Why Interrupt Controllers Exist: From One Copper Pin to Multi-Core Fabrics</a></li>
+<li><a href="#242-vector-tables-idt-vbar_el1-tssrsp0-and-hardware-trapframe-construction">2.4.2 Vector Tables (<code>IDT</code>, <code>VBAR_EL1</code>), <code>TSS.rsp0</code>, and Hardware Trapframe Construction</a></li>
 <li><a href="#243-top-half-hardirq-vs-bottom-half-softirq-split-and-eoi-lifecycle">2.4.3 Top-Half (<code>hardirq</code>) vs. Bottom-Half (<code>softirq</code>) Split and EOI Lifecycle</a></li>
 </ul>
 </li>
@@ -530,7 +530,12 @@
 </li>
 <li><a href="#16-virtualization-and-containerization"><strong>16. Virtualization and Containerization</strong></a>
 <ul>
-<li><a href="#161-virtual-machines-and-hypervisor-orchestration">16.1 Virtual Machines and Hypervisor Orchestration</a></li>
+<li><a href="#161-virtual-machines-and-hypervisor-orchestration">16.1 Virtual Machines and Hypervisor Orchestration</a>
+<ul>
+<li><a href="#1611-two-stage-hardware-address-translation-intel-ept--amd-npt">16.1.1 Two-Stage Hardware Address Translation (Intel EPT / AMD NPT)</a></li>
+<li><a href="#1612-device-virtualization-emulation-virtio-and-direct-passthrough">16.1.2 Device Virtualization: Emulation, VirtIO, and Direct Passthrough</a></li>
+</ul>
+</li>
 <li><a href="#162-containerization-namespace-and-resource-isolation">16.2 Containerization: Namespace and Resource Isolation</a></li>
 <li><a href="#163-architectural-synthesis-in-cloud-computing">16.3 Architectural Synthesis in Cloud Computing</a></li>
 </ul>
@@ -544,8 +549,13 @@
 </li>
 <li><a href="#18-performance-analysis-and-observability"><strong>18. Performance Analysis and Observability</strong></a>
 <ul>
-<li><a href="#181-the-empirical-method-and-resource-bottlenecks">18.1 The Empirical Method and Resource Bottlenecks</a></li>
-<li><a href="#182-observability-profilers-tracers-and-visualizations">18.2 Observability: Profilers, Tracers, and Visualizations</a></li>
+<li><a href="#181-the-empirical-method-and-the-memory-latency-hierarchy">18.1 The Empirical Method and the Memory Latency Hierarchy</a></li>
+<li><a href="#182-observability-hardware-pmu-counters-profilers-tracers-and-flame-graphs">18.2 Observability: Hardware PMU Counters, Profilers, Tracers, and Flame Graphs</a>
+<ul>
+<li><a href="#1821-the-hardware-performance-monitoring-unit-pmu">18.2.1 The Hardware Performance Monitoring Unit (PMU)</a></li>
+<li><a href="#1822-sampling-profilers-versus-event-tracers">18.2.2 Sampling Profilers versus Event Tracers</a></li>
+</ul>
+</li>
 <li><a href="#183-statistical-rigor-and-measurement-pitfalls">18.3 Statistical Rigor and Measurement Pitfalls</a></li>
 </ul>
 </li>
@@ -683,7 +693,7 @@
 </li>
 <li><strong>APIC / IO-APIC &amp; ARM GIC (Interrupt Controllers)</strong>: Two-tier hardware interrupt routing, Message Signaled Interrupts (MSI-X), and priority arbitration across multiprocessor cores.
 <ul>
-<li>Hardware Routing &amp; EOI: <a href="#241-interrupt-controllers-apic-io-apic-msi-x-and-arm-gic">§2.4.1</a></li>
+<li>Hardware Routing &amp; EOI: <a href="#241-why-interrupt-controllers-exist-from-one-copper-pin-to-multi-core-fabrics">§2.4.1</a></li>
 </ul>
 </li>
 <li><strong>Apple Silicon Unified Memory (UMA)</strong>: Shared physical memory substrate between CPU, GPU, and Neural Engine without PCIe bus serialization.
@@ -856,7 +866,7 @@
 </li>
 <li><strong>Interrupt Descriptor Table (IDT) &amp; Top/Bottom-Half Handlers</strong>: Hardware vector dispatch table, <code>TSS.rsp0</code> trapframe saving, <code>hardirq</code> masking, and <code>softirq</code> deferred execution.
 <ul>
-<li>Architectural Mechanics: <a href="#242-vector-tables-ivt-idt-vbar_el1-and-the-hardware-context-save-sequence">§2.4.2</a>, <a href="#243-top-half-hardirq-vs-bottom-half-softirq-split-and-eoi-lifecycle">§2.4.3</a></li>
+<li>Architectural Mechanics: <a href="#242-vector-tables-idt-vbar_el1-tssrsp0-and-hardware-trapframe-construction">§2.4.2</a>, <a href="#243-top-half-hardirq-vs-bottom-half-softirq-split-and-eoi-lifecycle">§2.4.3</a></li>
 </ul>
 </li>
 <li><strong>Inter-Process Communication (IPC)</strong>: Exchanging state across hardware isolation boundaries via pipes, sockets, and shared memory.
@@ -1030,32 +1040,50 @@
 </ul>
 <div style="break-before: page; page-break-before: always;"></div>
 <h1 id="1-the-ontological-necessity-of-the-operating-system"><a class="header" href="#1-the-ontological-necessity-of-the-operating-system">1. The Ontological Necessity of the Operating System</a></h1>
+<p>Before inspecting a single kernel data structure or POSIX system call, a systems engineer must understand <em>why</em> operating systems exist at all. Every abstraction introduced later in this book, from virtual memory page tables and preemptive schedulers to file descriptors and sockets, is a direct engineering answer to a specific failure mode of executing software directly on bare-metal hardware.</p>
 <h2 id="11-architectural-limitations-of-bare-metal-execution"><a class="header" href="#11-architectural-limitations-of-bare-metal-execution">1.1 Architectural Limitations of Bare-Metal Execution</a></h2>
-<p>The requirement for an operating system is fundamentally predicated on the inherent architectural limitations of bare-metal execution. In a primitive hardware environment, a single processor core is constrained by a solitary program counter, which effectively precludes multi-program concurrency by capturing the instruction stream. Furthermore, the absence of a supervisory layer leaves the system without mechanisms for memory protection or instruction restriction, rendering any program capable of unmitigated interference with the hardware or other co-resident software. Finally, the lack of unified device drivers necessitates that every application manage its own hardware-specific communication, a process that is both inefficient and prone to catastrophic resource contention.</p>
+<p>Consider booting a computer with zero operating system: a single compiled binary loaded into physical DRAM and executed directly by the processor. Even on modern 64-bit silicon, three structural limitations make bare-metal execution untenable for general-purpose computing:</p>
+<ol>
+<li><strong>Monopolization of the Instruction Stream (No Concurrency):</strong> A processor core possesses a single architectural Program Counter (<code>RIP</code> on x86-64; <code>PC</code> on ARM64). When a bare-metal program enters an infinite loop or waits for a slow disk read to complete, the core remains trapped inside that loop indefinitely. Running a compiler, a database, and a network daemon concurrently requires an external authority capable of periodically interrupting an executing program via a hardware timer, saving its complete register snapshot, and loading another program’s registers onto the core.</li>
+<li><strong>Absence of Memory and Fault Isolation:</strong> Without hardware-enforced address translation configured by a trusted supervisor, every program reads and writes raw physical DRAM addresses directly. A single out-of-bounds array store in a text editor can silently overwrite the executable code of a co-resident database, corrupt hardware DMA buffers, or execute privileged <code>cli</code>/<code>hlt</code> instructions that freeze the entire machine.</li>
+<li><strong>Hardware Heterogeneity and Device Contention:</strong> Every NVMe SSD, Ethernet controller, and graphics card exposes proprietary Memory-Mapped I/O (MMIO) command queues, DMA ring formats, and interrupt registers. On bare metal, every application would need to embed device-specific drivers for every storage and network vendor on the market, and two programs writing to the same disk controller simultaneously would interleave commands and corrupt stored data.</li>
+</ol>
 <h2 id="12-axiomatic-roles-abstraction-isolation-and-resource-management"><a class="header" href="#12-axiomatic-roles-abstraction-isolation-and-resource-management">1.2 Axiomatic Roles: Abstraction, Isolation, and Resource Management</a></h2>
-<p>To resolve these deficiencies, the operating system implements three critical roles: abstraction, isolation, and resource management. Through abstraction, the OS mediates between complex hardware interfaces and simplified software objects, such as processes, files, and sockets, thereby decoupling program logic from physical device geometry. This abstraction, however, necessitates isolation; once multiple processes coexist within a managed environment, the OS must enforce strict boundaries to prevent cross-process interference. This enforcement is delegated to the hardware through privilege levels and page tables, ensuring that memory and resource access remain confined to authorized domains. The resulting contention for finite hardware necessitates resource management, where the OS acts as a central arbiter, orchestrating the distribution of CPU time, memory capacity, and I/O bandwidth according to evolving workload policies.</p>
+<p>An operating system kernel resolves these three bare-metal failure modes by assuming three interlocking architectural responsibilities, illustrated in Figure 1-1:</p>
 <figure>
 <img src="figures/ch01_layers.svg" alt="Four layers: applications, system libraries, kernel, hardware, with requests flowing down and interrupts flowing up" />
 </figure>
+<ul>
+<li><strong>Abstraction (Virtualizing Raw Hardware):</strong> The kernel transforms unruly physical components into clean, portable software primitives. A physical CPU core becomes an arbitrary number of <strong>processes</strong> and <strong>threads</strong> (Chapters 3 and 4); physical DRAM banks become private, contiguous <strong>virtual address spaces</strong> (Chapter 7); raw NVMe block sectors and PCIe NIC rings become unified byte streams accessed through integer <strong>file descriptors</strong> and <strong>sockets</strong> (Chapters 12 through 14). Application code written against POSIX <code>read()</code> and <code>write()</code> runs identically on an x86-64 server with NVMe storage and an Apple Silicon workstation without knowing a single hardware register layout.</li>
+<li><strong>Isolation (Hardware-Enforced Protection):</strong> Virtualization is safe only when one program cannot inspect or corrupt another. The kernel programs the processor’s privilege levels (Ring 0 / <code>EL1</code> for the kernel, Ring 3 / <code>EL0</code> for applications) and per-process hardware page tables (MMU) so that every memory reference and I/O operation is checked in silicon on every clock cycle. When a user process dereferences an unmapped pointer or executes a privileged instruction, the hardware traps into the kernel, which terminates only the offending process (<code>SIGSEGV</code>) while leaving every other process intact.</li>
+<li><strong>Resource Management (Arbitrating Contention):</strong> When dozens of processes compete simultaneously for finite CPU cores, gigabytes of physical DRAM, and shared disk and network bandwidth, the kernel serves as the central arbiter. Schedulers allocate CPU quanta fairly while minimizing interactive latency (Chapter 5); the virtual-memory manager evicts cold pages and caches hot disk blocks in the page cache (Chapters 7 and 12); and I/O queues balance throughput against tail latency.</li>
+</ul>
 <h2 id="13-mechanism-versus-policy-separation"><a class="header" href="#13-mechanism-versus-policy-separation">1.3 Mechanism versus Policy Separation</a></h2>
-<p>The implementation of these roles relies on the distinction between mechanism and policy. Mechanisms, the low-level primitives provided by the hardware, such as context switching or page table walks, remain constant across architectural iterations, while policies, the logic governing which process to schedule or which page to evict, are tuned to specific system requirements.</p>
+<p>A foundational principle of durable operating system architecture is decoupling <strong>mechanism</strong> from <strong>policy</strong>:</p>
+<ul>
+<li><strong>Mechanism</strong> answers <em>how</em> an operation is performed in hardware or low-level kernel code: saving registers and swapping <code>CR3</code> during a context switch, walking a 4-level page table, or flushing dirty pages to storage. Mechanisms are dictated by silicon constraints and remain stable for decades.</li>
+<li><strong>Policy</strong> answers <em>which</em> choice to make under a given workload: which runnable thread to dispatch next (CFS/EEVDF proportional fairness vs. real-time <code>SCHED_FIFO</code>), which physical frame to evict under memory pressure (LRU/CLOCK vs. MGLRU), or which packets to prioritize on a saturated NIC.</li>
+</ul>
+<p>Separating the two allows engineers to evolve scheduling or eviction policies across kernel releases (or tune them per container via <code>cgroups</code>, Chapter 16) without rewriting the underlying assembly context-switch or MMU fault-handling mechanisms.</p>
 <h2 id="14-the-system-call-boundary-and-posix-standard-interface"><a class="header" href="#14-the-system-call-boundary-and-posix-standard-interface">1.4 The System Call Boundary and POSIX Standard Interface</a></h2>
-<p>The boundary between the kernel (which executes in a privileged mode with unrestricted instruction access) and user-mode applications is mediated through the system call interface. A system call provides a hardware-supervised, deterministic transfer of control, allowing a program to request kernel services without compromising the integrity of the kernel’s own address space. This transition, while computationally expensive compared to standard function calls, serves as the essential gatekeeper for system security and stability.</p>
-<p><strong>Table 1-1. POSIX calls in this book.</strong></p>
+<p>Because applications execute in unprivileged User Mode, they cannot open files, allocate virtual mappings, spawn processes, or send network packets directly. Every such request must cross the hardware privilege boundary via a <strong>system call</strong> (<code>syscall</code> on x86-64; <code>svc #0</code> on ARM64, detailed in Chapter 9). The kernel validates every pointer, permission bit, and length supplied by user space, executes the privileged operation on the caller’s behalf, and returns either a result or <code>-1</code> with a specific POSIX error code in <code>errno</code>.</p>
+<p>Table 1-1 maps the core POSIX system calls studied and implemented in both C++20 and Rust 2024 throughout this textbook.</p>
+<p><strong>Table 1-1. POSIX system calls examined and implemented in this book.</strong></p>
 <div class="table-wrapper">
 <table>
 <thead>
-<tr><th>Call</th><th>What it does</th><th>Chapter</th></tr>
+<tr><th style="text-align: left">Call</th><th style="text-align: left">Architectural Purpose</th><th style="text-align: left">Chapter</th></tr>
 </thead>
 <tbody>
-<tr><td><code>open</code> / <code>read</code> / <code>write</code> / <code>close</code></td><td>access files through descriptors</td><td>12, 13</td></tr>
-<tr><td><code>fork</code> / <code>waitpid</code> / <code>execve</code></td><td>create, reap, and replace processes</td><td>3</td></tr>
-<tr><td><code>mmap</code> / <code>mprotect</code> / <code>munmap</code></td><td>map memory and change its protection</td><td>7, 11</td></tr>
-<tr><td><code>pipe</code> / <code>socketpair</code></td><td>create communication channels</td><td>11</td></tr>
-<tr><td><code>poll</code> / <code>kqueue</code> / <code>epoll</code></td><td>wait for readiness on many descriptors</td><td>13</td></tr>
-<tr><td><code>sigaction</code> / <code>sigprocmask</code></td><td>install and mask signal handlers</td><td>10</td></tr>
-<tr><td><code>bind</code> / <code>listen</code> / <code>accept</code> / <code>connect</code></td><td>establish network connections</td><td>14</td></tr>
-<tr><td><code>setsid</code> / <code>umask</code> / <code>chdir</code></td><td>detach a daemon from its terminal</td><td>15</td></tr>
+<tr><td style="text-align: left"><code>fork</code> / <code>waitpid</code> / <code>_exit</code> / <code>execve</code></td><td style="text-align: left">Create, reap, terminate, and replace process images</td><td style="text-align: left">3, 10, 19</td></tr>
+<tr><td style="text-align: left"><code>mmap</code> / <code>mprotect</code> / <code>munmap</code></td><td style="text-align: left">Map virtual memory arenas, enforce page permissions, unmap frames</td><td style="text-align: left">7, 8, 11</td></tr>
+<tr><td style="text-align: left"><code>open</code> / <code>read</code> / <code>write</code> / <code>lseek</code> / <code>fstat</code> / <code>fsync</code> / <code>close</code></td><td style="text-align: left">Access files, offsets, inode metadata, and durable storage</td><td style="text-align: left">9, 12</td></tr>
+<tr><td style="text-align: left"><code>sigaction</code> / <code>sigprocmask</code> / <code>raise</code></td><td style="text-align: left">Configure asynchronous signal handlers and blocked signal masks</td><td style="text-align: left">10, 15</td></tr>
+<tr><td style="text-align: left"><code>pipe</code> / <code>socketpair</code> / <code>dup2</code></td><td style="text-align: left">Establish inter-process streams and redirect file descriptors</td><td style="text-align: left">11, 15, 19</td></tr>
+<tr><td style="text-align: left"><code>socket</code> / <code>setsockopt</code> / <code>bind</code> / <code>listen</code> / <code>accept</code> / <code>connect</code></td><td style="text-align: left">Construct and connect TCP/UDP network endpoints</td><td style="text-align: left">13, 14</td></tr>
+<tr><td style="text-align: left"><code>poll</code> / <code>epoll</code> / <code>kqueue</code> / <code>kevent</code></td><td style="text-align: left">Multiplex readiness across thousands of descriptors and process exits</td><td style="text-align: left">13, 15</td></tr>
+<tr><td style="text-align: left"><code>sendto</code> / <code>recvfrom</code> / <code>getaddrinfo</code></td><td style="text-align: left">Transmit connectionless datagrams and resolve hostnames to IPs</td><td style="text-align: left">14</td></tr>
+<tr><td style="text-align: left"><code>setsid</code> / <code>umask</code> / <code>chdir</code></td><td style="text-align: left">Detach standalone daemons from controlling terminals and sanitize state</td><td style="text-align: left">15</td></tr>
 </tbody>
 </table>
 </div>
@@ -1129,81 +1157,85 @@
 <li><strong>Synchronous Traps and Exceptions:</strong> Triggered deterministically as a direct result of executing a specific instruction on the local core. The processor cannot retire the instruction until the kernel intervenes. Synchronous events subdivide into deliberate <strong>system call traps</strong> (<code>syscall</code> on x86-64, <code>svc #0</code> on ARM64), recoverable <strong>faults</strong> (such as a minor Page Fault <code>#PF</code>, where the kernel allocates a frame and re-executes the faulting instruction), and unrecoverable <strong>aborts</strong> (such as hardware machine-check exceptions <code>#MC</code> or division by zero <code>#DE</code>).</li>
 <li><strong>Asynchronous Hardware Interrupts (IRQs):</strong> Triggered by external physical devices, such as a network interface card (NIC) completing a DMA packet transfer, an NVMe controller signaling I/O completion, or a hardware timer tick expiring. Asynchronous interrupts arrive at arbitrary clock cycles, completely independent of the instruction stream currently executing on the processor core.</li>
 </ul>
-<h3 id="241-interrupt-controllers-apic-io-apic-msi-x-and-arm-gic"><a class="header" href="#241-interrupt-controllers-apic-io-apic-msi-x-and-arm-gic">2.4.1 Interrupt Controllers: APIC, IO-APIC, MSI-X, and ARM GIC</a></h3>
-<p>In a multiprocessor system with dozens of CPU cores and hundreds of peripheral interrupt sources, devices do not wire directly to a single CPU pin. Instead, interrupt routing and prioritization are arbitrated by a two-tier hardware interrupt subsystem:</p>
+<h3 id="241-why-interrupt-controllers-exist-from-one-copper-pin-to-multi-core-fabrics"><a class="header" href="#241-why-interrupt-controllers-exist-from-one-copper-pin-to-multi-core-fabrics">2.4.1 Why Interrupt Controllers Exist: From One Copper Pin to Multi-Core Fabrics</a></h3>
+<p>To understand modern interrupt hardware without memorizing disconnected acronyms, begin with the physical wiring problem hardware architects had to solve. Early single-core microprocessors (such as the Intel 8086) had literally <strong>one</strong> physical interrupt input pin (<code>INTR</code>) entering the CPU package. A simple motherboard chip (the 8259A Programmable Interrupt Controller) gathered eight physical device wires (timer, keyboard, disk, serial port), chose the highest-priority active wire, and raised that single <code>INTR</code> pin to tap the CPU on the shoulder.</p>
+<p>That single-pin model collapses completely on a modern server with 64 CPU cores and dozens of high-speed PCIe devices (NVMe drives, 100GbE network cards, GPUs) completing millions of operations per second. Three physical problems forced the evolution of modern two-tier interrupt fabrics:</p>
 <ol>
-<li><strong>x86-64 Advanced Programmable Interrupt Controller (IO-APIC and Local APIC):</strong>
-<ul>
-<li><strong>IO-APIC:</strong> Resides on the system chipset and receives physical Interrupt Request Lines (IRQs) from legacy peripherals. The kernel programs the IO-APIC’s <strong>Redirection Table Entries (RTEs)</strong> to map each physical IRQ pin to an 8-bit <strong>Interrupt Vector Number</strong> (<code>32</code>–<code>255</code>, as vectors <code>0</code>–<code>31</code> are reserved by Intel/AMD for processor exceptions) and a target CPU core destination mask.</li>
-<li><strong>Message Signaled Interrupts (MSI / MSI-X):</strong> High-speed PCIe devices (NVMe drives, 100GbE NICs, GPUs) bypass physical IRQ pins and the IO-APIC entirely. With MSI-X, the device signals an interrupt by performing a standard PCIe DMA memory write of a vector payload directly to a dedicated physical MMIO address mapped to a target core’s Local APIC. This eliminates shared IRQ line contention and allows a multi-queue NIC to bind distinct receive queues to dedicated CPU cores.</li>
-<li><strong>Local APIC (LAPIC):</strong> Integrated directly onto every CPU core. The LAPIC receives interrupt messages from the IO-APIC, MSI-X PCIe writes, <strong>Inter-Processor Interrupts (IPIs)</strong> from sibling cores (used for cross-core TLB shootdowns and scheduler wakeups), and its own on-die <strong>APIC Timer</strong>. It Arbitrates priority between pending vectors in its Interrupt Request Register (IRR) and In-Service Register (ISR) before asserting an interrupt to the core’s control unit.</li>
-</ul>
-</li>
-<li><strong>ARM64 Generic Interrupt Controller (GICv3 / GICv4):</strong>
-<ul>
-<li><strong>Distributor (<code>GICD</code>):</strong> Centralizes interrupt prioritization and routing across the SoC for <strong>Shared Peripheral Interrupts (SPIs, IDs 32–1019)</strong>.</li>
-<li><strong>Redistributor (<code>GICR</code>):</strong> Managed per core, controlling <strong>Software Generated Interrupts (SGIs, IDs 0–15)</strong> used for inter-processor signaling, <strong>Private Peripheral Interrupts (PPIs, IDs 16–31)</strong> such as the per-core ARM Generic Timer, and <strong>Locality-Specific Peripheral Interrupts (LPIs, IDs 8192+)</strong> routed via GIC Interrupt Translation Services (ITS) from PCIe MSI-X writes.</li>
-<li><strong>CPU Interface (<code>ICC_*</code> system registers):</strong> Delivers the highest-priority pending interrupt ID directly to the ARM64 core.</li>
-</ul>
-</li>
+<li><strong>Pin scarcity and shared-line contention:</strong> Routing hundreds of dedicated copper IRQ traces across a motherboard is physically impractical. When multiple devices share one copper pin, the kernel cannot tell which device fired and must wake every driver attached to that pin to poll its status registers, wasting thousands of cycles per interrupt.</li>
+<li><strong>Multi-core affinity routing:</strong> A single interrupt wire cannot steer Network Receive Queue 4 to Core 4 while steering NVMe Completion Queue 7 to Core 7. Keeping a device queue pinned to one specific core preserves warm L1/L2 cache lines for that queue’s ring buffer and driver state.</li>
+<li><strong>Cross-core coordination:</strong> Cores must be able to interrupt <em>each other</em> directly in hardware. For example, when Core 0 unmaps a shared memory page via <code>munmap()</code>, Core 0 must send a hardware signal to Cores 1 through 63 forcing them to flush stale entries from their private TLBs (Chapter 7).</li>
 </ol>
-<h3 id="242-vector-tables-ivt-idt-vbar_el1-and-the-hardware-context-save-sequence"><a class="header" href="#242-vector-tables-ivt-idt-vbar_el1-and-the-hardware-context-save-sequence">2.4.2 Vector Tables (IVT, IDT, VBAR_EL1) and the Hardware Context-Save Sequence</a></h3>
-<p>When the Local APIC or GIC presents an unmasked interrupt vector <code>v</code> to a processor core, the hardware control unit suspends the instruction fetch pipeline at the next instruction boundary and executes an atomic, hardware-sequenced privilege and stack transition before executing a single line of kernel software:</p>
-<ol>
-<li><strong>Vector Table Lookup:</strong>
-<ul>
-<li>On x86-64 (Protected/Long Mode, which supersedes the legacy 16-bit Real Mode Interrupt Vector Table, IVT), the CPU reads the <strong>Interrupt Descriptor Table Register (<code>IDTR</code>)</strong>, which holds the physical/linear base address and limit of the <strong>Interrupt Descriptor Table (IDT)</strong>. The IDT is an array of 256 16-byte <strong>Gate Descriptors</strong>. The processor indexes <code>IDT[v]</code> to extract the target 64-bit Interrupt Service Routine (ISR) entry address, the target Code Segment selector (<code>CS</code>, specifying <code>CPL = 0</code>), the gate type (Interrupt Gate, which automatically clears <code>RFLAGS.IF</code> to mask further interrupts, vs. Trap Gate, which leaves <code>IF</code> unchanged), and an optional 3-bit <strong>Interrupt Stack Table (IST)</strong> index.</li>
-<li>On ARM64, the processor reads the <strong>Vector Base Address Register (<code>VBAR_EL1</code>)</strong>, which points to a 2 KiB-aligned table partitioned into 16 128-byte exception entry stubs grouped by exception type (Synchronous, IRQ, FIQ, SError) and source execution state (<code>EL0</code> vs. <code>EL1</code>).</li>
-</ul>
-</li>
-<li><strong>Privilege Elevation and Per-CPU Kernel Stack Switch:</strong>
-<ul>
-<li>The kernel can never trust the user-mode stack pointer (<code>RSP</code> / <code>SP_EL0</code>), which may be unaligned, exhausted, or pointing to unmapped memory. If the interrupted instruction was executing in Ring 3 (<code>CPL = 3</code>), the x86-64 processor queries the current core’s <strong>Task State Segment (TSS)</strong> and loads the privileged Ring 0 stack pointer from <code>TSS.rsp0</code> (or from <code>TSS.ist[n]</code> for critical faults like Double Fault <code>#DF</code> or Non-Maskable Interrupt <code>#NMI</code>). On ARM64, elevating from <code>EL0</code> to <code>EL1</code> automatically switches the active stack pointer register from <code>SP_EL0</code> to <code>SP_EL1</code> and masks IRQs by setting <code>PSTATE.I = 1</code>.</li>
-</ul>
-</li>
-<li><strong>Hardware Context Save (Trapframe Construction):</strong>
-<ul>
-<li>On x86-64, the CPU hardware pushes a 5-word (40-byte) interrupt frame directly onto the newly activated kernel stack (<code>TSS.rsp0</code>):
-<ol>
-<li>Interrupted Stack Segment (<code>SS</code>)</li>
-<li>Interrupted User Stack Pointer (<code>RSP</code>)</li>
-<li>Interrupted Processor Flags (<code>RFLAGS</code>)</li>
-<li>Interrupted Code Segment (<code>CS</code>, encoding the previous privilege ring <code>CPL = 3</code>)</li>
-<li>Interrupted Instruction Pointer (<code>RIP</code>)</li>
-<li><em>(For specific exceptions such as <code>#PF</code> or <code>#GP</code>, the hardware pushes a 6th 64-bit word: the architectural Error Code).</em></li>
-</ol>
-</li>
-<li>On ARM64, rather than pushing to memory in hardware, the core saves the interrupted program counter into the <strong>Exception Link Register (<code>ELR_EL1</code>)</strong>, the interrupted processor state into the <strong>Saved Program Status Register (<code>SPSR_EL1</code>)</strong>, and the fault syndrome into the <strong>Exception Syndrome Register (<code>ESR_EL1</code>)</strong>.</li>
-</ul>
-</li>
-<li><strong>Software Trapframe Completion:</strong>
-<ul>
-<li>The CPU loads <code>RIP</code> / <code>PC</code> with the ISR entry point. The kernel’s assembly entry stub immediately pushes all remaining general-purpose registers (<code>RAX</code>–<code>R15</code> or <code>x0</code>–<code>x30</code>) onto the kernel stack, completing the <strong>trapframe</strong> (<code>struct pt_regs</code>) so the interrupted thread’s exact register state can be restored later.</li>
-</ul>
-</li>
-</ol>
+<h4 id="x86-64-interrupt-architecture-io-apic-pcie-msi-x-and-per-core-local-apics"><a class="header" href="#x86-64-interrupt-architecture-io-apic-pcie-msi-x-and-per-core-local-apics">x86-64 Interrupt Architecture: IO-APIC, PCIe MSI-X, and Per-Core Local APICs</a></h4>
+<p>Intel and AMD solve all three problems by splitting interrupt handling across two hardware tiers: external routing logic on the chipset or PCIe bus, and an <strong>on-die Local APIC</strong> built directly inside every CPU core (Figure 2-4).</p>
 <figure>
-<img src="figures/ch02_interrupt_flow.svg" alt="Asynchronous hardware interrupt lifecycle from device IRQ assertion through IO-APIC/GIC, IDT lookup, hardware context save, top-half hardirq, EOI, bottom-half softirq, and iretq return" />
+<img src="figures/ch02_x86_apic.svg" alt="x86-64 interrupt controller hardware topology showing legacy IO-APIC redirection table, PCIe MSI-X bypass DMA writes, and per-core Local APICs with IRR, ISR, APIC timer, EOI, and cross-core IPIs" />
 </figure>
-<h3 id="243-top-half-hardirq-vs-bottom-half-softirq-split-and-eoi-lifecycle"><a class="header" href="#243-top-half-hardirq-vs-bottom-half-softirq-split-and-eoi-lifecycle">2.4.3 Top-Half (<code>hardirq</code>) vs. Bottom-Half (<code>softirq</code>) Split and EOI Lifecycle</a></h3>
-<p>An Interrupt Service Routine (ISR) executes under severe architectural constraints: it runs in <strong>interrupt context</strong> rather than process context. Because an interrupt preempts whichever arbitrary process happened to be running on that core, the ISR has no Process Control Block (<code>current</code> points to the interrupted victim task) and <strong>cannot sleep, block on a mutex, or perform voluntary context switches</strong>. Furthermore, while executing with local interrupts masked (<code>RFLAGS.IF == 0</code> / <code>PSTATE.I == 1</code>), the core is deaf to subsequent hardware interrupts; prolonged execution in an ISR causes packet drops, timer drift, and I/O latency spikes.</p>
-<p>To reconcile deterministic low latency with complex protocol processing, modern operating system kernels bifurcate interrupt handling into two distinct phases:</p>
+<ul>
+<li><strong>Chipset IO-APIC (Legacy Wired Devices):</strong> Sits on the motherboard chipset and replaces the legacy 8259A for fixed physical IRQ pins (keyboard, serial UART, legacy SATA, power buttons). Inside the IO-APIC lives a programmable <strong>Redirection Table</strong> containing 24 (or more) 64-bit <strong>Redirection Table Entries (RTEs)</strong>, one per physical input pin. During boot, the OS kernel writes each RTE with four key fields: an 8-bit <strong>Interrupt Vector Number</strong> in the range <code>32</code> through <code>255</code> (vectors <code>0</code> through <code>31</code> are permanently reserved by CPU silicon for processor exceptions such as <code>#DE</code> divide error, <code>#GP</code> general protection fault, and <code>#PF</code> page fault), the <strong>Destination Core APIC ID</strong> that should handle the pin, the electrical trigger mode (edge-triggered vs. level-triggered), and a mask bit. When a legacy device raises pin <code>k</code>, the IO-APIC looks up <code>RTE[k]</code> and sends an interrupt message over the system interconnect to the designated CPU core’s Local APIC.</li>
+<li><strong>Message Signaled Interrupts (MSI and MSI-X) for High-Speed PCIe Devices:</strong> Modern PCIe peripherals (NVMe SSDs, 100GbE NICs, GPUs) eliminate physical interrupt pins and bypass the IO-APIC altogether. Instead, they signal interrupts using the exact same mechanism they already use to transfer data: a <strong>DMA memory write</strong> across the PCIe bus. During driver initialization, the kernel programs the device’s PCIe <strong>MSI-X Table</strong> (supporting up to 2,048 independent vectors per device), writing a target physical <strong>MMIO address</strong> (encoding a specific CPU core’s Local APIC window, such as <code>0xFEE0_0000</code> with the target core’s APIC ID encoded in bits 19:12) paired with a 32-bit <strong>data payload</strong> (encoding the vector number <code>32..255</code>). When NVMe Completion Queue 3 finishes writing a 4 KiB disk block into DRAM, the NVMe controller issues a single 4-byte PCIe write to Core 3’s Local APIC address containing Vector <code>0x30</code>. Because PCIe guarantees that earlier DMA writes to DRAM are ordered ahead of subsequent MSI-X writes, the data is already visible in memory the instant the interrupt arrives, with zero shared-pin contention and exact per-queue core affinity.</li>
+<li><strong>Per-Core Local APIC (LAPIC):</strong> Integrated directly onto the silicon die of <strong>every</strong> CPU core. Each core’s LAPIC accepts four independent interrupt feeds: routed messages from the IO-APIC, direct MSI-X writes from PCIe devices, <strong>Inter-Processor Interrupts (IPIs)</strong> dispatched by sibling cores (for TLB shootdowns, scheduler wakeups, and system-wide halts), and its own private on-die <strong>APIC Timer</strong> (providing independent preemption ticks per core without contending on a single motherboard timer).</li>
+<li><strong>Why Every LAPIC Maintains Two 256-Bit Bitmaps (<code>IRR</code> and <code>ISR</code>):</strong> Multiple interrupts can arrive while a core is already executing an interrupt handler. To arbitrate priority cleanly in hardware without dropping signals, every LAPIC contains two 256-bit registers (one bit per vector <code>0..255</code>):
 <ol>
-<li><strong>Top-Half (<code>hardirq</code> Context):</strong>
-<ul>
-<li>Executes immediately upon hardware vector dispatch with local interrupts disabled on the core.</li>
-<li>Performs only the minimum time-critical hardware interaction: reads the device’s MMIO interrupt status register to verify the interrupt source, clears the device-level interrupt line, unmaps or rotates DMA descriptor ring pointers, schedules deferred work, and writes an <strong>End of Interrupt (EOI)</strong> command to the Local APIC EOI register (or GIC <code>ICC_EOIR1_EL1</code>). Writing EOI informs the interrupt controller that the active priority level has completed, allowing delivery of queued interrupts.</li>
-</ul>
+<li><strong>Interrupt Request Register (<code>IRR</code>):</strong> Records every vector that has <em>arrived</em> at this core and is waiting to be delivered. Setting bit <code>0x30</code> in <code>IRR</code> means “Vector <code>0x30</code> is pending.”</li>
+<li><strong>In-Service Register (<code>ISR</code>):</strong> Records every vector whose handler the core is <em>currently executing</em>.
+On each cycle, the LAPIC compares the highest-priority set bit in <code>IRR</code> (priority class is determined by the upper four bits, <code>vector &gt;&gt; 4</code>) against the highest-priority set bit in <code>ISR</code>. Only when a pending vector in <code>IRR</code> strictly outranks the currently active vector in <code>ISR</code> (and <code>RFLAGS.IF == 1</code>) does the LAPIC atomically clear that bit in <code>IRR</code>, set it in <code>ISR</code>, and signal the core’s control unit to dispatch <code>IDT[vector]</code>. When the OS handler finishes acknowledging the hardware device, it writes <code>0</code> to the LAPIC’s <strong>End-of-Interrupt (<code>EOI</code>)</strong> register; that single write clears the highest set bit in <code>ISR</code>, unlocking the LAPIC to deliver the next waiting vector from <code>IRR</code>.</li>
+</ol>
 </li>
-<li><strong>Bottom-Half (<code>softirq</code>, Tasklets, NAPI, and Threaded IRQs):</strong>
+</ul>
+<h4 id="arm64-interrupt-architecture-generic-interrupt-controller-gicv3--gicv4"><a class="header" href="#arm64-interrupt-architecture-generic-interrupt-controller-gicv3--gicv4">ARM64 Interrupt Architecture: Generic Interrupt Controller (GICv3 / GICv4)</a></h4>
+<p>ARM64 server and mobile SoCs solve the exact same multi-core routing and priority problem through the <strong>Generic Interrupt Controller (GICv3 / GICv4)</strong>, cleanly separating SoC-wide shared routing from per-core arbitration (Figure 2-5). Mapping each GIC component directly to its x86-64 counterpart makes both architectures easy to retain permanently:</p>
+<figure>
+<img src="figures/ch02_arm_gic.svg" alt="ARM64 Generic Interrupt Controller GICv3 topology showing SoC peripherals through GICD Distributor, PCIe MSI-X through GIC ITS, per-core local SGI/PPI into GICR Redistributor, and Core N CPU Interface system registers" />
+</figure>
 <ul>
-<li>Executes after the top-half completes, with hardware interrupts <strong>re-enabled</strong> on the core (<code>RFLAGS.IF == 1</code>).</li>
-<li>Handles computationally intensive work: traversing the TCP/IP network protocol stack, reassembling fragmented packets, running NAPI (New API) network ring polling loops, validating filesystem checksums, and awakening blocked threads in wait queues.</li>
-<li>In Linux, static high-throughput subsystems (networking <code>NET_RX_SOFTIRQ</code>, block storage <code>BLOCK_SOFTIRQ</code>, timers <code>TIMER_SOFTIRQ</code>) execute as <strong><code>softirq</code></strong> vectors immediately upon exiting the outermost nested <code>hardirq</code> (or inside per-CPU <code>ksoftirqd/N</code> kernel threads under heavy interrupt storms), whereas work items requiring sleeping or mutex acquisition are delegated to <strong>workqueues</strong> (<code>kworker</code> kernel threads) or <strong>threaded IRQ handlers</strong> (<code>request_threaded_irq</code>).</li>
+<li><strong>Distributor (<code>GICD</code>):</strong> The SoC-wide counterpart to the x86-64 IO-APIC. It manages <strong>Shared Peripheral Interrupts (<code>SPI</code>, Interrupt IDs <code>32..1019</code>)</strong>, which are physical wired interrupt lines from on-chip controllers (UART, I2C, storage, legacy platform devices). The kernel programs <code>GICD</code> routing registers to assign each SPI a priority byte and a target core affinity.</li>
+<li><strong>Interrupt Translation Service (<code>ITS</code>):</strong> The ARM64 counterpart to x86-64 MSI-X routing. High-speed PCIe devices write a <code>(DeviceID, EventID)</code> payload to a dedicated ITS doorbell register; the ITS translates that pair through in-RAM device tables into a <strong>Locality-Specific Peripheral Interrupt (<code>LPI</code>, Interrupt IDs <code>8192+</code>)</strong> and forwards it directly to the target core’s Redistributor. Because LPI state lives in main RAM rather than fixed flip-flops inside the controller, GICv3 scales smoothly to tens of thousands of PCIe and virtualized interrupt vectors.</li>
+<li><strong>Per-Core Redistributor (<code>GICR</code>):</strong> The per-core counterpart to x86-64 LAPIC state, instantiated once per CPU core so hundreds of cores never contend on a single global distributor lock. Each core’s <code>GICR</code> manages two core-private namespaces directly without crossing the SoC fabric: <strong>Software Generated Interrupts (<code>SGI</code>, IDs <code>0..15</code>)</strong> used for cross-core IPIs, and <strong>Private Peripheral Interrupts (<code>PPI</code>, IDs <code>16..31</code>)</strong> wired privately to one core (most notably each core’s local ARM Generic Timer). The <code>GICR</code> merges incoming SPIs, LPIs, SGIs, and PPIs and forwards the single highest-priority pending ID to the core.</li>
+<li><strong>CPU Interface (<code>ICC_*</code> System Registers):</strong> Rather than forcing the kernel to execute slower uncached MMIO loads and stores on every interrupt entry and exit, GICv3 maps the CPU Interface directly into fast architectural system registers. Upon entering the IRQ handler via <code>VBAR_EL1</code>, the kernel executes a single register read of <strong><code>ICC_IAR1_EL1</code></strong> (Interrupt Acknowledge Register) to obtain the winning Interrupt ID and atomically transition it from pending to active; when the handler finishes, a single register write to <strong><code>ICC_EOIR1_EL1</code></strong> signals End of Interrupt.</li>
+</ul>
+<h3 id="242-vector-tables-idt-vbar_el1-tssrsp0-and-hardware-trapframe-construction"><a class="header" href="#242-vector-tables-idt-vbar_el1-tssrsp0-and-hardware-trapframe-construction">2.4.2 Vector Tables (<code>IDT</code>, <code>VBAR_EL1</code>), <code>TSS.rsp0</code>, and Hardware Trapframe Construction</a></h3>
+<p>Once a Local APIC or GIC presents an unmasked interrupt vector <code>v</code> (for example, Vector <code>0x30</code> from an NVMe MSI-X completion arriving while Core 0 is executing an application loop in Ring 3), the processor cannot immediately call a C or Rust function. First, the hardware control unit must solve two safety problems in silicon before running even one instruction of kernel code: <strong>how to locate the kernel’s handler address</strong>, and <strong>where to save the interrupted program’s registers without trusting the user-mode stack</strong>.</p>
+<p>Why can the CPU never push the interrupted state onto the application’s own user stack (<code>RSP</code>)? Because user-mode code controls <code>RSP</code>: a buggy or malicious program might set <code>RSP = 0</code>, point <code>RSP</code> into read-only memory, or point <code>RSP</code> into kernel memory. Pushing a hardware interrupt frame onto an untrusted <code>RSP</code> would trigger a recursive page fault or overwrite kernel memory. Therefore, every privilege elevation from Ring 3 to Ring 0 must atomically switch to a kernel-owned stack first (Figure 2-6).</p>
+<figure>
+<img src="figures/ch02_idt_trapframe.svg" alt="x86-64 hardware vector dispatch showing IDTR lookup into the 256-entry IDT, TSS.rsp0 kernel stack switch, hardware-pushed 5-word return frame, and software-pushed pt_regs" />
+</figure>
+<p>On <strong>x86-64</strong>, hardware executes four strictly ordered steps atomically on the clock cycle an interrupt is accepted:</p>
+<ol>
+<li><strong>Vector Table Lookup (<code>IDTR</code> and <code>IDT</code>):</strong> The CPU reads the privileged <strong>Interrupt Descriptor Table Register (<code>IDTR</code>)</strong>, which holds the base linear address of the kernel’s <strong>Interrupt Descriptor Table (IDT)</strong> (superseding the legacy 16-bit Real Mode Interrupt Vector Table, IVT). The IDT is a 4 KiB array of 256 16-byte <strong>Gate Descriptors</strong>. The processor indexes <code>IDT[v]</code> (for example, <code>IDT[0x30]</code>) to read four fields: the 64-bit target Interrupt Service Routine (ISR) address, the target Code Segment selector (<code>CS</code>, specifying <code>CPL = 0</code>), the Gate Type (<strong>Interrupt Gate</strong>, which automatically clears <code>RFLAGS.IF = 0</code> to mask nested interrupts during entry, versus <strong>Trap Gate</strong>, which leaves <code>IF</code> unchanged), and an optional 3-bit <strong>Interrupt Stack Table (IST)</strong> index.</li>
+<li><strong>Privilege Elevation and Per-Thread Kernel Stack Switch (<code>TSS.rsp0</code>):</strong> Seeing that the interrupted code ran at <code>CPL = 3</code> while <code>IDT[v]</code> targets <code>CPL = 0</code>, the hardware reads the current core’s <strong>Task State Segment (TSS)</strong> and loads a fresh, trusted Ring 0 stack pointer from <strong><code>TSS.rsp0</code></strong> (which the kernel scheduler updates on every context switch to point to the top of the current thread’s private 8 to 16 KiB kernel stack). For catastrophic exceptions where even the normal kernel stack might be overflowed (such as Double Fault <code>#DF</code> or Non-Maskable Interrupt <code>#NMI</code>), <code>IDT[v]</code> specifies a non-zero IST index so hardware switches to an emergency dedicated stack in <strong><code>TSS.ist[1..7]</code></strong>.</li>
+<li><strong>Atomic Hardware Context Save:</strong> On the newly activated Ring 0 kernel stack, CPU silicon pushes a 5-word (40-byte) architectural return frame in descending address order:
+<ol>
+<li>Interrupted User Stack Segment (<code>SS</code>)</li>
+<li>Interrupted User Stack Pointer (<code>RSP</code>)</li>
+<li>Interrupted Processor Flags (<code>RFLAGS</code>, preserving the user thread’s condition codes and <code>IF = 1</code>)</li>
+<li>Interrupted Code Segment (<code>CS</code>, recording the previous <code>CPL = 3</code>)</li>
+<li>Interrupted Instruction Pointer (<code>RIP</code>, the exact address to resume when the handler finishes)</li>
+<li><em>(For specific synchronous faults such as <code>#PF</code> or <code>#GP</code>, silicon pushes a 6th 64-bit word: the architectural Error Code encoding whether a page fault was caused by a read, write, instruction fetch, or permission violation).</em></li>
+</ol>
+</li>
+<li><strong>Software Trapframe Completion (<code>struct pt_regs</code>):</strong> The CPU loads <code>RIP</code> with the ISR entry address from <code>IDT[v]</code>. The kernel’s assembly entry stub immediately pushes every remaining general-purpose register (<code>RAX</code> through <code>R15</code>) directly below the hardware frame on the kernel stack, completing <strong><code>struct pt_regs</code></strong>. From this point onward, normal C or Rust kernel code can run safely using standard calling conventions without clobbering a single bit of the interrupted user thread’s state.</li>
+</ol>
+<p>On <strong>ARM64</strong>, the hardware achieves the exact same isolation with dedicated exception registers instead of pushing a frame to memory in silicon: elevating from <code>EL0</code> to <code>EL1</code> automatically switches the active stack pointer from <code>SP_EL0</code> to the kernel’s <code>SP_EL1</code>, masks further IRQs (<code>PSTATE.I = 1</code>), saves the interrupted <code>PC</code> in <strong><code>ELR_EL1</code></strong> (Exception Link Register), saves the interrupted flags and mode in <strong><code>SPSR_EL1</code></strong> (Saved Program Status Register), records the fault cause in <strong><code>ESR_EL1</code></strong> (Exception Syndrome Register), and jumps to an entry stub inside the 2 KiB-aligned table pointed to by <strong><code>VBAR_EL1</code></strong> (Vector Base Address Register, organized into 16 128-byte slots grouped by exception type and source exception level). The kernel entry stub then spills <code>x0</code> through <code>x30</code>, <code>ELR_EL1</code>, <code>SPSR_EL1</code>, and <code>SP_EL0</code> onto <code>SP_EL1</code>.</p>
+<h3 id="243-top-half-hardirq-vs-bottom-half-softirq-split-and-eoi-lifecycle"><a class="header" href="#243-top-half-hardirq-vs-bottom-half-softirq-split-and-eoi-lifecycle">2.4.3 Top-Half (<code>hardirq</code>) vs. Bottom-Half (<code>softirq</code>) Split and EOI Lifecycle</a></h3>
+<p>An Interrupt Service Routine executes in <strong>interrupt context</strong>, not process context, which imposes two strict rules that shape all kernel driver architecture:</p>
+<ul>
+<li><strong>Interrupt handlers can never sleep or block on a mutex:</strong> Because the interrupt hijacked whatever unrelated process happened to be running on Core 0 at that nanosecond, calling <code>schedule()</code> to sleep on a lock would suspend an innocent victim process. Worse, if the interrupted process <em>already held</em> that exact kernel mutex when the interrupt fired on Core 0, attempting to acquire the mutex inside the ISR would deadlock Core 0 permanently.</li>
+<li><strong>Interrupt handlers must complete in microseconds:</strong> While executing with local interrupts masked (<code>RFLAGS.IF == 0</code> / <code>PSTATE.I == 1</code>) and the active vector bit set in the LAPIC <code>ISR</code>, the core cannot service subsequent lower-priority or same-priority interrupts. Parsing TCP headers, validating filesystem checksums, or allocating memory inside a masked handler causes network ring-buffer drops, audio glitches, and timer drift.</li>
+</ul>
+<p>To keep interrupt masking as brief as possible while still performing complex protocol processing safely, modern kernels split interrupt execution into two distinct halves (Figure 2-7):</p>
+<figure>
+<img src="figures/ch02_interrupt_flow.svg" alt="End-to-end hardware interrupt lifecycle from device signal through IO-APIC/GIC, IDT lookup, hardware context save, top-half hardirq, EOI, bottom-half softirq, and iretq return" />
+</figure>
+<ol>
+<li><strong>Top-Half (<code>hardirq</code> Context, Interrupts Masked):</strong> Runs immediately upon vector dispatch for at most a few microseconds. It performs only the hardware actions that cannot wait: reads the device’s status register to confirm the completion, advances or acknowledges the hardware DMA descriptor ring so the device can resume accepting work, sets a bit in the kernel’s per-CPU deferred-work mask, and writes <strong>End of Interrupt (EOI)</strong> to the Local APIC EOI register (or GIC <code>ICC_EOIR1_EL1</code>). Writing EOI clears the vector’s bit in the LAPIC <code>ISR</code>, immediately allowing the interrupt controller to deliver new hardware events.</li>
+<li><strong>Bottom-Half (<code>softirq</code>, NAPI, and Workqueues, Interrupts Re-Enabled):</strong> Runs immediately after the top-half exits, with hardware interrupts <strong>re-enabled</strong> (<code>RFLAGS.IF == 1</code>) so urgent hardware signals can preempt heavy software work cleanly.
+<ul>
+<li><strong>High-throughput lock-free subsystems (<code>softirq</code> and NAPI):</strong> In Linux, network packet processing (<code>NET_RX_SOFTIRQ</code>), block I/O completion (<code>BLOCK_SOFTIRQ</code>), and timer wheel expiration (<code>TIMER_SOFTIRQ</code>) execute as static <strong><code>softirq</code></strong> handlers on the local core right before returning to user space. Under sustained 100GbE traffic, Linux <strong>NAPI (New API)</strong> intentionally disables further NIC interrupts while polling batches of packets inside <code>NET_RX_SOFTIRQ</code>, preventing interrupt livelock; if softirq load exceeds a budget, work spills onto per-CPU <strong><code>ksoftirqd/N</code></strong> kernel threads so user applications are not starved.</li>
+<li><strong>Blocking work (<code>workqueues</code> and Threaded IRQs):</strong> Any driver cleanup that must acquire sleeping mutexes or wait on secondary I/O is enqueued onto a <strong>workqueue</strong> executed by normal schedulable <strong><code>kworker</code></strong> kernel threads (or registered via <code>request_threaded_irq</code>), which possess full Process Control Blocks and may sleep freely.</li>
 </ul>
 </li>
 </ol>
-<p>Upon completing bottom-half processing, the kernel checks whether the interrupt awakened a higher-priority runnable thread (<code>TIF_NEED_RESCHED</code>). If preemption is required, the kernel invokes the scheduler to switch stacks to the newly selected thread; otherwise, it pops the saved general-purpose registers from the kernel stack and executes the privileged return instruction (<code>iretq</code> on x86-64; <code>eret</code> on ARM64), atomically restoring <code>RIP</code>/<code>ELR_EL1</code>, <code>RSP</code>/<code>SP_EL0</code>, and <code>RFLAGS</code>/<code>SPSR_EL1</code> while demoting the core back to User Mode (<code>Ring 3</code> / <code>EL0</code>).</p>
+<p>Finally, before returning to user space, the kernel inspects the interrupted task’s <code>TIF_NEED_RESCHED</code> flag. If the interrupt woke up a higher-priority thread (for example, a blocked web server thread whose network packet has arrived), the kernel invokes <code>schedule()</code> to context-switch directly to the newly runnable thread. Otherwise, the exit stub restores <code>RAX..R15</code> from <code>struct pt_regs</code> and executes <strong><code>iretq</code></strong> (x86-64) or <strong><code>eret</code></strong> (ARM64), which atomically pops <code>RIP</code>, <code>CS</code>, <code>RFLAGS</code>, <code>RSP</code>, and <code>SS</code> (or restores <code>ELR_EL1</code> and <code>SPSR_EL1</code>), re-enables interrupts, and returns Core 0 cleanly to Ring 3 / <code>EL0</code> at the exact instruction that was preempted.</p>
 <div style="break-before: page; page-break-before: always;"></div>
 <h1 id="3-process-abstraction-and-lifecycle"><a class="header" href="#3-process-abstraction-and-lifecycle">3. Process Abstraction and Lifecycle</a></h1>
 <p>A program is a static sequence of instructions; it becomes a process only when the operating system instantiates it into an active execution environment. A process is defined by its execution state, its resource ownership, and its isolated address space.</p>
@@ -6855,32 +6887,74 @@ int  kevent(int kq, const struct kevent *changelist, int nchanges,
 
 <div style="break-before: page; page-break-before: always;"></div>
 <h1 id="16-virtualization-and-containerization"><a class="header" href="#16-virtualization-and-containerization">16. Virtualization and Containerization</a></h1>
-<p>Modern computing environments frequently run multiple isolated workloads on a single physical machine. This is achieved through two distinct architectural approaches: virtual machines (VMs), which provide heavy-weight isolation through hardware emulation, and containers, which provide light-weight isolation through kernel-level namespace and resource-control mechanisms.</p>
+<p>Modern cloud infrastructure packs dozens of mutually untrusted customer workloads onto a single physical server while preserving the illusion that each tenant owns a dedicated machine. Systems engineers achieve this multi-tenancy through two distinct architectural mechanisms: <strong>hardware virtual machines (VMs)</strong>, which virtualize the physical processor and memory controller beneath complete guest kernels, and <strong>containers</strong>, which partition visibility and resource quotas inside a single shared host kernel.</p>
 <h2 id="161-virtual-machines-and-hypervisor-orchestration"><a class="header" href="#161-virtual-machines-and-hypervisor-orchestration">16.1 Virtual Machines and Hypervisor Orchestration</a></h2>
-<p>A virtual machine provides a high-fidelity simulation of hardware, allowing one or more “guest” operating systems to run concurrently on a single physical host. This is managed by a <strong>hypervisor</strong>, a software layer that operates at a privilege level even more elevated than the guest kernels.</p>
-<p>The hypervisor mediates the guest’s interaction with the underlying hardware through three primary mechanisms:</p>
+<p>A <strong>virtual machine</strong> executes an unmodified guest operating system (such as Linux or Windows) inside an isolated hardware environment synthesized by a <strong>hypervisor</strong> (such as Linux KVM, Xen, VMware ESXi, or Apple Virtualization.framework). Early software-only hypervisors faced a difficult architectural problem on x86: several sensitive instructions silently behaved differently in unprivileged rings instead of trapping, forcing complex binary translation.</p>
+<p>Modern processors resolve this directly in silicon by introducing a dedicated hypervisor privilege tier orthogonal to Ring 0 through Ring 3:</p>
 <ul>
-<li><strong>Two-Stage Address Translation:</strong> To maintain isolation, the hypervisor manages a secondary layer of page tables. While the guest kernel manages the translation from virtual addresses to “guest physical” addresses, the hypervisor manages the translation from guest physical addresses to the actual machine frames. On modern processors, this is implemented in hardware via Extended Page Tables (EPT) or Nested Page Tables (NPT).</li>
-<li><strong>Device Virtualization:</strong> The hypervisor intercepts privileged I/O operations, either by emulating a virtual device in software or by assigning a physical device directly to a guest.</li>
-<li><strong>CPU and Interrupt Scheduling:</strong> The hypervisor acts as a meta-scheduler, allocating physical CPU time to guests and delivering virtualized hardware interrupts to their respective kernels.</li>
+<li><strong>On x86-64 (Intel VT-x / AMD-V):</strong> The CPU divides execution into <strong>VMX Root mode</strong> (where the host kernel and hypervisor run) and <strong>VMX Non-Root mode</strong> (where the guest kernel runs at guest Ring 0 and guest apps run at guest Ring 3). Each virtual CPU (vCPU) is backed by an in-memory <strong>Virtual Machine Control Structure (VMCS)</strong> storing guest registers, host registers, and an execution-control bitmap specifying which sensitive guest instructions (<code>cpuid</code>, <code>hlt</code>, <code>in</code>/<code>out</code>, <code>mov cr3</code>, EPT violations) trigger a hardware <strong>VM-Exit</strong> back into the hypervisor, and how <code>VMLAUNCH</code> / <code>VMRESUME</code> re-enters the guest (<strong>VM-Entry</strong>).</li>
+<li><strong>On ARM64:</strong> The processor provides an explicit <strong>Exception Level 2 (<code>EL2</code>)</strong> strictly above the guest kernel (<code>EL1</code>) and guest applications (<code>EL0</code>).</li>
 </ul>
-<p>Because each VM runs a complete operating system, they provide exceptional security isolation; a compromise of a guest kernel does not inherently grant access to the host or other guests. The trade-off is the significant computational and memory overhead required to maintain multiple full OS environments.</p>
 <figure>
 <img src="figures/ch16_vm_vs_container.svg" alt="Virtual machines stack guest OSes on a hypervisor; containers share one host kernel with namespaces and cgroups" />
 </figure>
-<h2 id="162-containerization-namespace-and-resource-isolation"><a class="header" href="#162-containerization-namespace-and-resource-isolation">16.2 Containerization: Namespace and Resource Isolation</a></h2>
-<p>Containers represent a more lightweight approach to workload isolation. Rather than running a complete guest operating system, a container consists of a group of processes that share the single host kernel but are restricted in their visibility and resource consumption. This is achieved through two kernel-level mechanisms:</p>
+<h3 id="1611-two-stage-hardware-address-translation-intel-ept--amd-npt"><a class="header" href="#1611-two-stage-hardware-address-translation-intel-ept--amd-npt">16.1.1 Two-Stage Hardware Address Translation (Intel EPT / AMD NPT)</a></h3>
+<p>Virtualizing memory poses a subtle challenge: the guest kernel believes it owns physical DRAM starting at address <code>0x0</code>, so it writes <strong>Guest Physical Addresses (GPAs)</strong> into its own page tables (<code>Guest CR3</code>). The host hypervisor cannot allow the guest kernel to map arbitrary <strong>Host Physical Addresses (HPAs)</strong> directly, or a compromised guest could read another tenant’s DRAM.</p>
+<p>Hardware-assisted virtualization solves this with <strong>Two-Stage Address Translation</strong> (Intel <strong>Extended Page Tables, EPT</strong>; AMD <strong>Nested Page Tables, NPT</strong>; ARM64 <strong>Stage-2 Translation</strong>), illustrated in Figure 16-2:</p>
+<figure>
+<img src="figures/ch16_ept_walk.svg" alt="Two-stage hardware virtualization showing Guest CR3 translating GVA to GPA and Hypervisor EPT translating every guest level GPA to Host Physical Address HPA" />
+</figure>
+<ol>
+<li><strong>Stage 1 (Controlled by Guest OS):</strong> The guest application issues a <strong>Guest Virtual Address (GVA)</strong>. The MMU begins walking the guest’s 4-level page table rooted at <code>Guest CR3</code> to translate <code>GVA -&gt; GPA</code>.</li>
+<li><strong>Stage 2 (Controlled by Host Hypervisor):</strong> Every single pointer stored inside the guest’s PML4, PDPT, PD, and PT is itself a <em>Guest Physical Address</em>, NOT a real host DRAM address. Before the MMU can read any of those four guest page-table entries, hardware must first walk the hypervisor’s 4-level <strong>EPT</strong> (rooted at <code>EPTP</code> inside the VMCS) to translate that guest table’s <code>GPA -&gt; HPA</code>. Once the guest walk finally yields the data frame’s GPA, hardware walks the EPT a fifth time to obtain the true host DRAM frame <code>HPA</code>.</li>
+<li><strong>The 2D Page-Walk Cost and Hardware Mitigations:</strong> Whereas a native 4-level TLB miss requires 4 DRAM accesses, a completely cold nested 4x4 walk requires up to <code>(4 * 4) + 4 + 4 = 24</code> memory reads (4 EPT reads for each of the 4 guest levels, 4 reads of the guest entries themselves, plus 4 EPT reads for the final data page). Hardware and hypervisors neutralize this penalty through three mechanisms:
 <ul>
-<li><strong>Namespaces:</strong> These provide the mechanism for <strong>visibility isolation</strong>. Namespaces partition kernel resources so that a process sees only a subset of the system. Examples include <strong>PID namespaces</strong> (providing a private process numbering scheme), <strong>mount namespaces</strong> (providing a private file system hierarchy), <strong>network namespaces</strong> (providing isolated network stacks), and <strong>user namespaces</strong> (mapping user identities).</li>
-<li><strong>Control Groups (cgroups):</strong> These provide the mechanism for <strong>resource isolation</strong>. Cgroups allow the kernel to enforce strict limits on the consumption of hardware resources, such as CPU cycles, memory capacity, and I/O bandwidth, preventing a single container from exhausting the host’s capacity.</li>
+<li><strong>Direct <code>GVA -&gt; HPA</code> TLB Caching:</strong> Once the 2D walk completes, the CPU caches the final collapsed mapping <code>GVA -&gt; HPA</code> directly in the TLB, delivering native 1-cycle hits on subsequent accesses.</li>
+<li><strong>VPID / ASID Tagging:</strong> Every TLB entry is tagged with a <strong>Virtual Processor Identifier (<code>VPID</code> on Intel; <code>ASID</code> on AMD/ARM64)</strong> so switching between host and guest on VM-Exit and VM-Entry does <strong>not</strong> flush the TLB.</li>
+<li><strong>Huge Pages (2 MiB / 1 GiB):</strong> Backing guest memory with 2 MiB host huge pages reduces EPT depth from 4 levels to 3 (and expands TLB reach by 512x).</li>
 </ul>
-<p>The lifecycle of a container is managed by a runtime that utilizes system calls like <code>clone</code> (with namespace flags), configures cgroups, sets the root directory for the mount namespace, and finally executes the target program via <code>execve</code>.</p>
-<p>While containers offer near-native performance and rapid startup times, they offer weaker isolation than VMs, as all containers share the same host kernel and are thus vulnerable to kernel-level exploits.</p>
+</li>
+</ol>
+<h3 id="1612-device-virtualization-emulation-virtio-and-direct-passthrough"><a class="header" href="#1612-device-virtualization-emulation-virtio-and-direct-passthrough">16.1.2 Device Virtualization: Emulation, VirtIO, and Direct Passthrough</a></h3>
+<p>A guest kernel expects disk controllers and NICs to exist on its virtual PCIe bus. Hypervisors provide virtual I/O across three performance tiers:</p>
+<ul>
+<li><strong>Full Hardware Emulation:</strong> Every guest MMIO register write traps via a VM-Exit into user-space QEMU, which emulates a legacy device (such as an Intel e1000 NIC). Compatible with any OS, but thousands of VM-Exits per second limit throughput severely.</li>
+<li><strong>Paravirtualization (<code>virtio</code>):</strong> The guest runs a hypervisor-aware driver (<code>virtio-net</code>, <code>virtio-blk</code>) that places batches of I/O descriptors into shared-memory lock-free <strong>virtqueues</strong> in guest RAM and notifies the host once per batch via a single doorbell write, amortizing VM-Exit cost across dozens of packets or disk requests.</li>
+<li><strong>Hardware Passthrough (<code>VFIO</code> / <code>SR-IOV</code>):</strong> Using an <strong>IOMMU</strong> (Intel VT-d / AMD-Vi / ARM SMMU) to translate device DMA addresses through the guest’s <code>GPA -&gt; HPA</code> mapping safely in silicon, the hypervisor assigns a physical GPU or SR-IOV NIC virtual function directly to the guest, achieving near-bare-metal latency and zero hypervisor data-plane overhead.</li>
+</ul>
+<h2 id="162-containerization-namespace-and-resource-isolation"><a class="header" href="#162-containerization-namespace-and-resource-isolation">16.2 Containerization: Namespace and Resource Isolation</a></h2>
+<p>Running a complete guest kernel for every microservice duplicates hundreds of megabytes of kernel memory and requires seconds to boot. <strong>Containers</strong> (Docker, containerd, Kubernetes pods) take the opposite architectural path: every container shares the <strong>single host Linux kernel</strong>, executing as ordinary host processes constrained by three kernel subsystems:</p>
+<ol>
+<li><strong>Namespaces (Visibility Isolation):</strong> Partition global kernel tables so processes inside a container perceive a private system view (Figure 16-3). Container runtimes create namespaces via <code>clone()</code> flags or <code>unshare()</code>:
+<ul>
+<li><strong><code>CLONE_NEWPID</code> (PID Namespace):</strong> Assigns the container’s entrypoint process PID <code>1</code> inside its own namespace while mapping it to an ordinary PID (such as <code>4821</code>) in the host process table. Processes inside the container cannot observe or signal host processes outside their subtree.</li>
+<li><strong><code>CLONE_NEWNS</code> (Mount Namespace) + <code>pivot_root</code>:</strong> Gives the container an independent filesystem mount table rooted at its OCI container image layer (commonly assembled via <code>OverlayFS</code>).</li>
+<li><strong><code>CLONE_NEWNET</code> (Network Namespace):</strong> Provides a private loopback interface, virtual Ethernet pair (<code>veth</code>), routing table, IP address, and iptables/eBPF firewall rules.</li>
+<li><strong><code>CLONE_NEWUTS</code>, <code>CLONE_NEWIPC</code>, <code>CLONE_NEWUSER</code>:</strong> Isolate hostname, POSIX IPC/shared memory identifiers, and UID/GID mappings (allowing UID <code>0</code> inside a rootless container to map to an unprivileged UID such as <code>100000</code> on the host).</li>
+</ul>
+</li>
+<li><strong>Control Groups (<code>cgroups</code> v2, Resource Isolation):</strong> Namespaces hide resources, whereas <strong>cgroups</strong> cap consumption so a single runaway container cannot starve noisy neighbors on the same host. The kernel exposes a hierarchical virtual filesystem (<code>/sys/fs/cgroup/</code>) where a runtime enforces hard ceilings on CPU bandwidth (<code>cpu.max</code>), physical RAM (<code>memory.max</code>, triggering the container-scoped OOM killer when exceeded), process count (<code>pids.max</code>, blocking fork bombs), and block storage IOPS (<code>io.max</code>).</li>
+<li><strong>Syscall Filtering (<code>seccomp-bpf</code> and Linux Capabilities):</strong> Because all containers share one host kernel, a vulnerability in an obscure kernel system call (such as <code>io_uring</code>, <code>bpf</code>, or <code>kexec_load</code>) threatens every container on the host. Runtimes drop unnecessary Linux capabilities (<code>CAP_SYS_ADMIN</code>, <code>CAP_NET_RAW</code>) and attach a <strong>seccomp-bpf</strong> filter program that intercepts every system call at Ring 0 entry and rejects disallowed syscall numbers with <code>EPERM</code> before the kernel handler ever runs.</li>
+</ol>
 <figure>
 <img src="figures/ch16_namespaces.svg" alt="Two PID namespaces presenting their own numbering over one host process table" />
 </figure>
 <h2 id="163-architectural-synthesis-in-cloud-computing"><a class="header" href="#163-architectural-synthesis-in-cloud-computing">16.3 Architectural Synthesis in Cloud Computing</a></h2>
-<p>In modern cloud infrastructure, these two technologies are frequently combined to balance the competing requirements of security and efficiency. Cloud providers utilize virtual machines to establish strong security boundaries between different customers, ensuring that one tenant cannot compromise another. Within these secure VMs, customers deploy containers to manage their individual workloads with high density and minimal overhead.</p>
+<p>Virtual machines and containers solve complementary layers of the cloud isolation problem, so production platforms routinely combine both:</p>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th style="text-align: left">Dimension</th><th style="text-align: left">Virtual Machines (KVM / Firecracker)</th><th style="text-align: left">Containers (Namespaces + cgroups v2)</th></tr>
+</thead>
+<tbody>
+<tr><td style="text-align: left"><strong>Isolation Boundary</strong></td><td style="text-align: left">Hardware-enforced (VMX Non-Root + EPT + IOMMU); distinct guest kernel per VM</td><td style="text-align: left">Software-enforced inside one shared host kernel</td></tr>
+<tr><td style="text-align: left"><strong>Attack Surface</strong></td><td style="text-align: left">Narrow hypervisor + VirtIO device boundary</td><td style="text-align: left">Entire host Linux syscall surface (mitigated by <code>seccomp-bpf</code>)</td></tr>
+<tr><td style="text-align: left"><strong>Startup Latency</strong></td><td style="text-align: left">Hundreds of milliseconds (microVMs) to seconds (full VMs)</td><td style="text-align: left">Tens of milliseconds (<code>clone</code> + <code>execve</code>)</td></tr>
+<tr><td style="text-align: left"><strong>Memory Overhead</strong></td><td style="text-align: left">Dedicated guest kernel + page cache per VM</td><td style="text-align: left">Near zero (shared host kernel and page cache)</td></tr>
+</tbody>
+</table>
+</div>
+<p>Cloud providers place a hardware VM boundary between distinct tenants (using lightweight <strong>microVMs</strong> such as AWS Firecracker or Kata Containers when serverless startup speed is required), and tenants deploy containers inside those VMs to package dependencies, orchestrate rolling upgrades, and pack microservices densely.</p>
 <div style="break-before: page; page-break-before: always;"></div>
 <h1 id="17-multiprocessor-systems-and-hardware-accelerators"><a class="header" href="#17-multiprocessor-systems-and-hardware-accelerators">17. Multiprocessor Systems and Hardware Accelerators</a></h1>
 <p>As computing scale increases, the idealized model of a single, uniform pool of memory and a set of identical cores gives way to more complex architectures. Large-scale systems are characterized by Non-Uniform Memory Access (NUMA) topologies, complex cache coherency protocols, and the tight integration of specialized hardware accelerators for machine learning (ML) and high-performance computing (HPC). These hardware realities impose unique constraints on operating system design, runtime libraries, and systems software.</p>
@@ -7091,10 +7165,18 @@ ratio                 :  5.18x
 
 <div style="break-before: page; page-break-before: always;"></div>
 <h1 id="18-performance-analysis-and-observability"><a class="header" href="#18-performance-analysis-and-observability">18. Performance Analysis and Observability</a></h1>
-<p>System performance optimization is an empirical process that must be rooted in rigorous measurement rather than intuition. Improving a system requires identifying the primary resource bottleneck, be it CPU, memory, storage, or network, and verifying the efficacy of a change through comparative, controlled observations.</p>
-<h2 id="181-the-empirical-method-and-resource-bottlenecks"><a class="header" href="#181-the-empirical-method-and-resource-bottlenecks">18.1 The Empirical Method and Resource Bottlenecks</a></h2>
-<p>The investigation of performance begins by characterizing the program’s limiting resource. A program is <strong>compute-bound</strong> if its execution is constrained by CPU throughput, whereas it is <strong>blocked</strong> if it spends the majority of its time awaiting I/O, synchronization, or network responses.</p>
-<p>A critical component of this analysis is understanding the latency hierarchy of the memory subsystem. As demonstrated by empirical measurement, access times transition from sub-nanosecond latencies in the L1 and L2 caches to several nanoseconds in the L3 cache, and eventually to the 60–100 ns range associated with DRAM. While the raw latency of DRAM is high, the effective access time for sequential workloads is significantly mitigated by <strong>hardware prefetching</strong>, a mechanism where the processor predicts future memory requests based on access patterns and preloads data into the cache before it is explicitly requested.</p>
+<p>Systems performance optimization is an empirical engineering discipline. Intuition about why a program is slow is routinely wrong on modern out-of-order superscalar processors with multi-level caches, hardware prefetchers, and complex kernel I/O stacks. Rigorous diagnosis follows a closed scientific loop: characterize which physical resource bounds throughput or latency (CPU pipeline, memory hierarchy, lock contention, storage, or network), instrument the live system with low-overhead observability tools, hypothesize a single structural change, and verify the improvement under controlled statistical measurements.</p>
+<h2 id="181-the-empirical-method-and-the-memory-latency-hierarchy"><a class="header" href="#181-the-empirical-method-and-the-memory-latency-hierarchy">18.1 The Empirical Method and the Memory Latency Hierarchy</a></h2>
+<p>Performance triage begins by classifying whether a workload is <strong>on-CPU</strong> (compute-bound or stalled on cache/TLB misses while holding a core) or <strong>off-CPU</strong> (blocked in kernel wait queues awaiting disk I/O, network packets, or contended mutexes).</p>
+<p>When a workload runs on-CPU, the dominant performance cliff on modern hardware is the three-order-of-magnitude latency gap across the memory hierarchy (Figure 18-1):</p>
+<ul>
+<li><strong>CPU Registers (~0.3 ns, 1 cycle):</strong> Private operand storage inside the execution pipeline.</li>
+<li><strong>L1 Cache (32 to 64 KiB per core, ~1 ns, 3 to 4 cycles):</strong> Split instruction and data caches; accessed virtually in parallel with the L1 TLB.</li>
+<li><strong>L2 Cache (256 KiB to 4 MiB per core, ~3 to 5 ns, 10 to 14 cycles):</strong> Unified per-core cache absorbing L1 capacity misses.</li>
+<li><strong>L3 / System-Level Cache (8 to 128 MiB shared, ~12 to 20 ns, 35 to 55 cycles):</strong> Shared across cores; last stop before crossing the memory controller to off-chip DRAM.</li>
+<li><strong>Main DRAM (~60 to 100 ns, 200 to 300 cycles):</strong> Hundreds of execution slots can stall inside the core’s Reorder Buffer while a single pointer-chasing load waits for DRAM.</li>
+</ul>
+<p>Sequential scans mask much of DRAM latency because the CPU’s <strong>hardware stride prefetcher</strong> detects regular address increments and fetches future 64-byte cache lines into L1/L2 ahead of the instruction stream. Listings 18-1 and 18-2 isolate raw cache-level capacity cliffs by striding through progressively larger working sets (from 4 KiB up to 64 MiB) in 64-byte steps: as soon as the working set exceeds L1, L2, and then L3 capacity, measured nanoseconds per access climb sharply in visible plateaus.</p>
 <figure>
 <img src="figures/ch18_pyramid.svg" alt="The memory hierarchy pyramid: registers and caches at the top, DRAM, SSD, and network below" />
 </figure>
@@ -7198,16 +7280,34 @@ ratio                 :  5.18x
    67108864 bytes      3.9 ns per access  (checksum 16000000)
   268435456 bytes      4.5 ns per access  (checksum 16000000)
 </code></pre>
-<h2 id="182-observability-profilers-tracers-and-visualizations"><a class="header" href="#182-observability-profilers-tracers-and-visualizations">18.2 Observability: Profilers, Tracers, and Visualizations</a></h2>
-<p>Quantifying system behavior requires distinct categories of observability tools, each offering a different trade-off between overhead and granularity:</p>
+<h2 id="182-observability-hardware-pmu-counters-profilers-tracers-and-flame-graphs"><a class="header" href="#182-observability-hardware-pmu-counters-profilers-tracers-and-flame-graphs">18.2 Observability: Hardware PMU Counters, Profilers, Tracers, and Flame Graphs</a></h2>
+<p>Understanding <em>how</em> observability tools collect data prevents misinterpreting their output or distorting the system under measurement.</p>
+<h3 id="1821-the-hardware-performance-monitoring-unit-pmu"><a class="header" href="#1821-the-hardware-performance-monitoring-unit-pmu">18.2.1 The Hardware Performance Monitoring Unit (PMU)</a></h3>
+<p>Every modern x86-64 and ARM64 core contains a dedicated <strong>Performance Monitoring Unit (PMU)</strong>: a set of silicon hardware event counters that increment in parallel with execution at zero software cost. Tools such as Linux <code>perf stat</code> program these counters to measure exact microarchitectural events:</p>
 <ul>
-<li><strong>Sampling Profilers:</strong> These tools interrupt the execution stream at regular intervals to record the current call stack. By capturing a statistical distribution of function execution, they identify “hot spots” where the program spends the most time. Profilers are characterized by low overhead and are suitable for production-like environments.</li>
-<li><strong>Tracers:</strong> Unlike profilers, tracers record every discrete event (e.g., every system call) with its arguments and results. While tracers provide an exhaustive view of a program’s interaction with the kernel, their high overhead makes them unsuitable for measuring real-time performance, though they are invaluable for debugging logical flow.</li>
-<li><strong>Flame Graphs:</strong> This visualization technique represents the hierarchical structure of profiler samples. By rendering function call paths as stacked rectangles where width is proportional to execution time, flame graphs allow engineers to rapidly identify the primary contributors to CPU consumption.</li>
+<li><strong><code>cycles</code> and <code>instructions</code> (IPC = Instructions Per Cycle):</strong> A modern superscalar core can retire 4 to 8 instructions per cycle. Observing an IPC of <code>0.3</code> on a supposedly CPU-bound loop immediately reveals that the core is not computing, but rather stalling on L3 cache misses, branch mispredictions, or atomic lock bus traffic.</li>
+<li><strong><code>LLC-load-misses</code> and <code>dTLB-load-misses</code>:</strong> Quantify whether stalls stem from working-set overflow out of the Last-Level Cache or TLB reach exhaustion (addressable with 2 MiB huge pages, Chapter 7).</li>
+</ul>
+<h3 id="1822-sampling-profilers-versus-event-tracers"><a class="header" href="#1822-sampling-profilers-versus-event-tracers">18.2.2 Sampling Profilers versus Event Tracers</a></h3>
+<ul>
+<li><strong>Sampling Profilers (<code>perf record</code>, macOS <code>sample</code> / Instruments):</strong> Program the core’s PMU counter to overflow every <code>N</code> cycles (or every 1 ms via a timer) and raise a Non-Maskable Interrupt (NMI). Inside the interrupt handler, the kernel records the interrupted instruction pointer (<code>RIP</code>/<code>PC</code>) and walks the Frame Pointer chain (<code>RBP</code>/<code>x29</code>, Chapter 2) to capture the full call stack. Because sampling wakes only ~1,000 times per second, runtime overhead stays below 1 to 2%, making sampling safe in live production clusters.</li>
+<li><strong>Event Tracers (<code>strace</code>, <code>dtrace</code>, <code>eBPF</code> / <code>bpftrace</code>):</strong> Record <em>every</em> discrete occurrence of a selected event (such as every <code>open</code>, <code>read</code>, or <code>futex</code> system call with exact arguments, return value, and duration). Legacy <code>strace</code> attaches via <code>ptrace(2)</code>, pausing the traced process twice per system call (on entry and exit) and imposing 10x to 100x slowdowns on syscall-heavy servers. Modern <strong>eBPF</strong> avoids user-space context switches by running verified bytecode directly inside Ring 0 tracepoints and aggregating latency histograms in kernel maps, cutting tracing overhead to a few percent.</li>
+<li><strong>Flame Graphs:</strong> Aggregate thousands of profiler stack samples into a single visual hierarchy. Two reading rules are critical:
+<ol>
+<li><strong>The Y-axis is call-stack depth</strong> (entry point <code>main()</code> at the bottom, active leaf function on-CPU at the top).</li>
+<li><strong>The X-axis is alphabetical proportion of total samples, NOT chronological time.</strong> A wide plateau at the top of a flame graph indicates a leaf function consuming a large fraction of total CPU cycles; narrow spikes indicate brief functions.</li>
+</ol>
+</li>
 </ul>
 <h2 id="183-statistical-rigor-and-measurement-pitfalls"><a class="header" href="#183-statistical-rigor-and-measurement-pitfalls">18.3 Statistical Rigor and Measurement Pitfalls</a></h2>
-<p>Performance metrics must be reported using a statistical distribution rather than a simple arithmetic mean. Averages frequently obscure “tail latency”, the significant delays experienced by a small percentage of requests. Reporting the <strong>50th (median), 99th, and 99.9th percentiles</strong> is essential for capturing the true user experience, particularly in distributed systems where outliers can have cascading effects.</p>
-<p>Finally, practitioners must avoid common measurement fallacies. These include analyzing unoptimized binaries or ignoring the “cold start” effect, where the first execution of a program is unrepresentative due to uninitialized caches and unmapped pages. Furthermore, measurements must be conducted under representative workloads, as a system’s bottleneck is highly sensitive to the specific patterns of resource contention.</p>
+<p>Reporting a single arithmetic mean hides the exact latency spikes that break production service-level objectives (SLOs). Consider a web gateway that fans out one user request to 100 backend shards in parallel and waits for the slowest shard to respond. Even if each individual shard responds in 2 ms on average and has a <strong>p99</strong> (99th percentile) latency of 50 ms (meaning 99% of calls are fast), the probability that <em>at least one</em> of the 100 parallel shard calls hits the slow 1% tail is <code>1 - 0.99^100 = 63.4%</code>. In distributed fan-out architectures, <strong>tail latency (<code>p99</code> and <code>p99.9</code>) becomes the common case</strong>.</p>
+<p>Reliable systems benchmarking must therefore report full latency distributions (<code>p50</code>, <code>p95</code>, <code>p99</code>, <code>p99.9</code>) and guard against four classic measurement traps:</p>
+<ol>
+<li><strong>Unoptimized builds and dead-code elimination:</strong> Benchmarking debug binaries measures compiler boilerplate rather than hardware limits; conversely, under <code>-O2</code>/<code>-O3</code>, compilers delete loops whose results are never observed unless outputs are consumed (as in Listing 18-1’s checksum print) or fenced with <code>std::hint::black_box</code>.</li>
+<li><strong>Cold-start bias:</strong> The first iteration of a benchmark suffers minor page faults, cold instruction/data caches, cold TLBs, and low CPU turbo clocks. Always separate warm-up iterations from measured trials.</li>
+<li><strong>Coordinated omission:</strong> When a single-threaded load generator waits for one slow response before sending the next request, it pauses during server stalls and fails to record the queuing delay that real open-loop users experience.</li>
+<li><strong>Power-management and frequency scaling noise:</strong> Modern laptops and servers dynamically throttle CPU frequency (<code>Turbo Boost</code>, thermal throttling) and migrate threads across performance (P) and efficiency (E) cores. Pin benchmark threads when isolating microarchitectural costs, and run multiple independent trials to verify low variance.</li>
+</ol>
 <div style="break-before: page; page-break-before: always;"></div>
 <h1 id="19-systems-interview-problems-derivations-and-reference-implementations"><a class="header" href="#19-systems-interview-problems-derivations-and-reference-implementations">19. Systems Interview Problems: Derivations and Reference Implementations</a></h1>
 <p>The systems programming interview serves as an empirical evaluation of an engineer’s capacity to translate low-level hardware constraints into correct, deterministic software abstractions. While application-level engineering frequently abstracts away execution costs, systems engineering requires direct reasoning from first principles: the mechanics of cache coherence, memory ordering semantics, kernel privilege transitions, memory fragmentation, and atomic instruction guarantees.</p>

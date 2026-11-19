@@ -38,7 +38,7 @@
             const path_to_root = "";
             const default_light_theme = "light";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "searchindex-2f3b4ad9.js";
+            window.path_to_searchindex_js = "searchindex-72cdfbf6.js";
         </script>
         <!-- Start loading toc.js asap -->
         <script src="toc-f3585118.js"></script>
@@ -184,10 +184,18 @@
                 <div id="mdbook-content" class="content">
                     <main>
                         <h1 id="18-performance-analysis-and-observability"><a class="header" href="#18-performance-analysis-and-observability">18. Performance Analysis and Observability</a></h1>
-<p>System performance optimization is an empirical process that must be rooted in rigorous measurement rather than intuition. Improving a system requires identifying the primary resource bottleneck, be it CPU, memory, storage, or network, and verifying the efficacy of a change through comparative, controlled observations.</p>
-<h2 id="181-the-empirical-method-and-resource-bottlenecks"><a class="header" href="#181-the-empirical-method-and-resource-bottlenecks">18.1 The Empirical Method and Resource Bottlenecks</a></h2>
-<p>The investigation of performance begins by characterizing the program’s limiting resource. A program is <strong>compute-bound</strong> if its execution is constrained by CPU throughput, whereas it is <strong>blocked</strong> if it spends the majority of its time awaiting I/O, synchronization, or network responses.</p>
-<p>A critical component of this analysis is understanding the latency hierarchy of the memory subsystem. As demonstrated by empirical measurement, access times transition from sub-nanosecond latencies in the L1 and L2 caches to several nanoseconds in the L3 cache, and eventually to the 60–100 ns range associated with DRAM. While the raw latency of DRAM is high, the effective access time for sequential workloads is significantly mitigated by <strong>hardware prefetching</strong>, a mechanism where the processor predicts future memory requests based on access patterns and preloads data into the cache before it is explicitly requested.</p>
+<p>Systems performance optimization is an empirical engineering discipline. Intuition about why a program is slow is routinely wrong on modern out-of-order superscalar processors with multi-level caches, hardware prefetchers, and complex kernel I/O stacks. Rigorous diagnosis follows a closed scientific loop: characterize which physical resource bounds throughput or latency (CPU pipeline, memory hierarchy, lock contention, storage, or network), instrument the live system with low-overhead observability tools, hypothesize a single structural change, and verify the improvement under controlled statistical measurements.</p>
+<h2 id="181-the-empirical-method-and-the-memory-latency-hierarchy"><a class="header" href="#181-the-empirical-method-and-the-memory-latency-hierarchy">18.1 The Empirical Method and the Memory Latency Hierarchy</a></h2>
+<p>Performance triage begins by classifying whether a workload is <strong>on-CPU</strong> (compute-bound or stalled on cache/TLB misses while holding a core) or <strong>off-CPU</strong> (blocked in kernel wait queues awaiting disk I/O, network packets, or contended mutexes).</p>
+<p>When a workload runs on-CPU, the dominant performance cliff on modern hardware is the three-order-of-magnitude latency gap across the memory hierarchy (Figure 18-1):</p>
+<ul>
+<li><strong>CPU Registers (~0.3 ns, 1 cycle):</strong> Private operand storage inside the execution pipeline.</li>
+<li><strong>L1 Cache (32 to 64 KiB per core, ~1 ns, 3 to 4 cycles):</strong> Split instruction and data caches; accessed virtually in parallel with the L1 TLB.</li>
+<li><strong>L2 Cache (256 KiB to 4 MiB per core, ~3 to 5 ns, 10 to 14 cycles):</strong> Unified per-core cache absorbing L1 capacity misses.</li>
+<li><strong>L3 / System-Level Cache (8 to 128 MiB shared, ~12 to 20 ns, 35 to 55 cycles):</strong> Shared across cores; last stop before crossing the memory controller to off-chip DRAM.</li>
+<li><strong>Main DRAM (~60 to 100 ns, 200 to 300 cycles):</strong> Hundreds of execution slots can stall inside the core’s Reorder Buffer while a single pointer-chasing load waits for DRAM.</li>
+</ul>
+<p>Sequential scans mask much of DRAM latency because the CPU’s <strong>hardware stride prefetcher</strong> detects regular address increments and fetches future 64-byte cache lines into L1/L2 ahead of the instruction stream. Listings 18-1 and 18-2 isolate raw cache-level capacity cliffs by striding through progressively larger working sets (from 4 KiB up to 64 MiB) in 64-byte steps: as soon as the working set exceeds L1, L2, and then L3 capacity, measured nanoseconds per access climb sharply in visible plateaus.</p>
 <figure>
 <img src="figures/ch18_pyramid.svg" alt="The memory hierarchy pyramid: registers and caches at the top, DRAM, SSD, and network below" />
 </figure>
@@ -291,16 +299,34 @@ fn main() {
    67108864 bytes      3.9 ns per access  (checksum 16000000)
   268435456 bytes      4.5 ns per access  (checksum 16000000)
 </code></pre>
-<h2 id="182-observability-profilers-tracers-and-visualizations"><a class="header" href="#182-observability-profilers-tracers-and-visualizations">18.2 Observability: Profilers, Tracers, and Visualizations</a></h2>
-<p>Quantifying system behavior requires distinct categories of observability tools, each offering a different trade-off between overhead and granularity:</p>
+<h2 id="182-observability-hardware-pmu-counters-profilers-tracers-and-flame-graphs"><a class="header" href="#182-observability-hardware-pmu-counters-profilers-tracers-and-flame-graphs">18.2 Observability: Hardware PMU Counters, Profilers, Tracers, and Flame Graphs</a></h2>
+<p>Understanding <em>how</em> observability tools collect data prevents misinterpreting their output or distorting the system under measurement.</p>
+<h3 id="1821-the-hardware-performance-monitoring-unit-pmu"><a class="header" href="#1821-the-hardware-performance-monitoring-unit-pmu">18.2.1 The Hardware Performance Monitoring Unit (PMU)</a></h3>
+<p>Every modern x86-64 and ARM64 core contains a dedicated <strong>Performance Monitoring Unit (PMU)</strong>: a set of silicon hardware event counters that increment in parallel with execution at zero software cost. Tools such as Linux <code>perf stat</code> program these counters to measure exact microarchitectural events:</p>
 <ul>
-<li><strong>Sampling Profilers:</strong> These tools interrupt the execution stream at regular intervals to record the current call stack. By capturing a statistical distribution of function execution, they identify “hot spots” where the program spends the most time. Profilers are characterized by low overhead and are suitable for production-like environments.</li>
-<li><strong>Tracers:</strong> Unlike profilers, tracers record every discrete event (e.g., every system call) with its arguments and results. While tracers provide an exhaustive view of a program’s interaction with the kernel, their high overhead makes them unsuitable for measuring real-time performance, though they are invaluable for debugging logical flow.</li>
-<li><strong>Flame Graphs:</strong> This visualization technique represents the hierarchical structure of profiler samples. By rendering function call paths as stacked rectangles where width is proportional to execution time, flame graphs allow engineers to rapidly identify the primary contributors to CPU consumption.</li>
+<li><strong><code>cycles</code> and <code>instructions</code> (IPC = Instructions Per Cycle):</strong> A modern superscalar core can retire 4 to 8 instructions per cycle. Observing an IPC of <code>0.3</code> on a supposedly CPU-bound loop immediately reveals that the core is not computing, but rather stalling on L3 cache misses, branch mispredictions, or atomic lock bus traffic.</li>
+<li><strong><code>LLC-load-misses</code> and <code>dTLB-load-misses</code>:</strong> Quantify whether stalls stem from working-set overflow out of the Last-Level Cache or TLB reach exhaustion (addressable with 2 MiB huge pages, Chapter 7).</li>
+</ul>
+<h3 id="1822-sampling-profilers-versus-event-tracers"><a class="header" href="#1822-sampling-profilers-versus-event-tracers">18.2.2 Sampling Profilers versus Event Tracers</a></h3>
+<ul>
+<li><strong>Sampling Profilers (<code>perf record</code>, macOS <code>sample</code> / Instruments):</strong> Program the core’s PMU counter to overflow every <code>N</code> cycles (or every 1 ms via a timer) and raise a Non-Maskable Interrupt (NMI). Inside the interrupt handler, the kernel records the interrupted instruction pointer (<code>RIP</code>/<code>PC</code>) and walks the Frame Pointer chain (<code>RBP</code>/<code>x29</code>, Chapter 2) to capture the full call stack. Because sampling wakes only ~1,000 times per second, runtime overhead stays below 1 to 2%, making sampling safe in live production clusters.</li>
+<li><strong>Event Tracers (<code>strace</code>, <code>dtrace</code>, <code>eBPF</code> / <code>bpftrace</code>):</strong> Record <em>every</em> discrete occurrence of a selected event (such as every <code>open</code>, <code>read</code>, or <code>futex</code> system call with exact arguments, return value, and duration). Legacy <code>strace</code> attaches via <code>ptrace(2)</code>, pausing the traced process twice per system call (on entry and exit) and imposing 10x to 100x slowdowns on syscall-heavy servers. Modern <strong>eBPF</strong> avoids user-space context switches by running verified bytecode directly inside Ring 0 tracepoints and aggregating latency histograms in kernel maps, cutting tracing overhead to a few percent.</li>
+<li><strong>Flame Graphs:</strong> Aggregate thousands of profiler stack samples into a single visual hierarchy. Two reading rules are critical:
+<ol>
+<li><strong>The Y-axis is call-stack depth</strong> (entry point <code>main()</code> at the bottom, active leaf function on-CPU at the top).</li>
+<li><strong>The X-axis is alphabetical proportion of total samples, NOT chronological time.</strong> A wide plateau at the top of a flame graph indicates a leaf function consuming a large fraction of total CPU cycles; narrow spikes indicate brief functions.</li>
+</ol>
+</li>
 </ul>
 <h2 id="183-statistical-rigor-and-measurement-pitfalls"><a class="header" href="#183-statistical-rigor-and-measurement-pitfalls">18.3 Statistical Rigor and Measurement Pitfalls</a></h2>
-<p>Performance metrics must be reported using a statistical distribution rather than a simple arithmetic mean. Averages frequently obscure “tail latency”, the significant delays experienced by a small percentage of requests. Reporting the <strong>50th (median), 99th, and 99.9th percentiles</strong> is essential for capturing the true user experience, particularly in distributed systems where outliers can have cascading effects.</p>
-<p>Finally, practitioners must avoid common measurement fallacies. These include analyzing unoptimized binaries or ignoring the “cold start” effect, where the first execution of a program is unrepresentative due to uninitialized caches and unmapped pages. Furthermore, measurements must be conducted under representative workloads, as a system’s bottleneck is highly sensitive to the specific patterns of resource contention.</p>
+<p>Reporting a single arithmetic mean hides the exact latency spikes that break production service-level objectives (SLOs). Consider a web gateway that fans out one user request to 100 backend shards in parallel and waits for the slowest shard to respond. Even if each individual shard responds in 2 ms on average and has a <strong>p99</strong> (99th percentile) latency of 50 ms (meaning 99% of calls are fast), the probability that <em>at least one</em> of the 100 parallel shard calls hits the slow 1% tail is <code>1 - 0.99^100 = 63.4%</code>. In distributed fan-out architectures, <strong>tail latency (<code>p99</code> and <code>p99.9</code>) becomes the common case</strong>.</p>
+<p>Reliable systems benchmarking must therefore report full latency distributions (<code>p50</code>, <code>p95</code>, <code>p99</code>, <code>p99.9</code>) and guard against four classic measurement traps:</p>
+<ol>
+<li><strong>Unoptimized builds and dead-code elimination:</strong> Benchmarking debug binaries measures compiler boilerplate rather than hardware limits; conversely, under <code>-O2</code>/<code>-O3</code>, compilers delete loops whose results are never observed unless outputs are consumed (as in Listing 18-1’s checksum print) or fenced with <code>std::hint::black_box</code>.</li>
+<li><strong>Cold-start bias:</strong> The first iteration of a benchmark suffers minor page faults, cold instruction/data caches, cold TLBs, and low CPU turbo clocks. Always separate warm-up iterations from measured trials.</li>
+<li><strong>Coordinated omission:</strong> When a single-threaded load generator waits for one slow response before sending the next request, it pauses during server stalls and fails to record the queuing delay that real open-loop users experience.</li>
+<li><strong>Power-management and frequency scaling noise:</strong> Modern laptops and servers dynamically throttle CPU frequency (<code>Turbo Boost</code>, thermal throttling) and migrate threads across performance (P) and efficiency (E) cores. Pin benchmark threads when isolating microarchitectural costs, and run multiple independent trials to verify low variance.</li>
+</ol>
 
                     </main>
 

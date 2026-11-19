@@ -38,7 +38,7 @@
             const path_to_root = "";
             const default_light_theme = "light";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "searchindex-2f3b4ad9.js";
+            window.path_to_searchindex_js = "searchindex-72cdfbf6.js";
         </script>
         <!-- Start loading toc.js asap -->
         <script src="toc-f3585118.js"></script>
@@ -184,32 +184,74 @@
                 <div id="mdbook-content" class="content">
                     <main>
                         <h1 id="16-virtualization-and-containerization"><a class="header" href="#16-virtualization-and-containerization">16. Virtualization and Containerization</a></h1>
-<p>Modern computing environments frequently run multiple isolated workloads on a single physical machine. This is achieved through two distinct architectural approaches: virtual machines (VMs), which provide heavy-weight isolation through hardware emulation, and containers, which provide light-weight isolation through kernel-level namespace and resource-control mechanisms.</p>
+<p>Modern cloud infrastructure packs dozens of mutually untrusted customer workloads onto a single physical server while preserving the illusion that each tenant owns a dedicated machine. Systems engineers achieve this multi-tenancy through two distinct architectural mechanisms: <strong>hardware virtual machines (VMs)</strong>, which virtualize the physical processor and memory controller beneath complete guest kernels, and <strong>containers</strong>, which partition visibility and resource quotas inside a single shared host kernel.</p>
 <h2 id="161-virtual-machines-and-hypervisor-orchestration"><a class="header" href="#161-virtual-machines-and-hypervisor-orchestration">16.1 Virtual Machines and Hypervisor Orchestration</a></h2>
-<p>A virtual machine provides a high-fidelity simulation of hardware, allowing one or more “guest” operating systems to run concurrently on a single physical host. This is managed by a <strong>hypervisor</strong>, a software layer that operates at a privilege level even more elevated than the guest kernels.</p>
-<p>The hypervisor mediates the guest’s interaction with the underlying hardware through three primary mechanisms:</p>
+<p>A <strong>virtual machine</strong> executes an unmodified guest operating system (such as Linux or Windows) inside an isolated hardware environment synthesized by a <strong>hypervisor</strong> (such as Linux KVM, Xen, VMware ESXi, or Apple Virtualization.framework). Early software-only hypervisors faced a difficult architectural problem on x86: several sensitive instructions silently behaved differently in unprivileged rings instead of trapping, forcing complex binary translation.</p>
+<p>Modern processors resolve this directly in silicon by introducing a dedicated hypervisor privilege tier orthogonal to Ring 0 through Ring 3:</p>
 <ul>
-<li><strong>Two-Stage Address Translation:</strong> To maintain isolation, the hypervisor manages a secondary layer of page tables. While the guest kernel manages the translation from virtual addresses to “guest physical” addresses, the hypervisor manages the translation from guest physical addresses to the actual machine frames. On modern processors, this is implemented in hardware via Extended Page Tables (EPT) or Nested Page Tables (NPT).</li>
-<li><strong>Device Virtualization:</strong> The hypervisor intercepts privileged I/O operations, either by emulating a virtual device in software or by assigning a physical device directly to a guest.</li>
-<li><strong>CPU and Interrupt Scheduling:</strong> The hypervisor acts as a meta-scheduler, allocating physical CPU time to guests and delivering virtualized hardware interrupts to their respective kernels.</li>
+<li><strong>On x86-64 (Intel VT-x / AMD-V):</strong> The CPU divides execution into <strong>VMX Root mode</strong> (where the host kernel and hypervisor run) and <strong>VMX Non-Root mode</strong> (where the guest kernel runs at guest Ring 0 and guest apps run at guest Ring 3). Each virtual CPU (vCPU) is backed by an in-memory <strong>Virtual Machine Control Structure (VMCS)</strong> storing guest registers, host registers, and an execution-control bitmap specifying which sensitive guest instructions (<code>cpuid</code>, <code>hlt</code>, <code>in</code>/<code>out</code>, <code>mov cr3</code>, EPT violations) trigger a hardware <strong>VM-Exit</strong> back into the hypervisor, and how <code>VMLAUNCH</code> / <code>VMRESUME</code> re-enters the guest (<strong>VM-Entry</strong>).</li>
+<li><strong>On ARM64:</strong> The processor provides an explicit <strong>Exception Level 2 (<code>EL2</code>)</strong> strictly above the guest kernel (<code>EL1</code>) and guest applications (<code>EL0</code>).</li>
 </ul>
-<p>Because each VM runs a complete operating system, they provide exceptional security isolation; a compromise of a guest kernel does not inherently grant access to the host or other guests. The trade-off is the significant computational and memory overhead required to maintain multiple full OS environments.</p>
 <figure>
 <img src="figures/ch16_vm_vs_container.svg" alt="Virtual machines stack guest OSes on a hypervisor; containers share one host kernel with namespaces and cgroups" />
 </figure>
-<h2 id="162-containerization-namespace-and-resource-isolation"><a class="header" href="#162-containerization-namespace-and-resource-isolation">16.2 Containerization: Namespace and Resource Isolation</a></h2>
-<p>Containers represent a more lightweight approach to workload isolation. Rather than running a complete guest operating system, a container consists of a group of processes that share the single host kernel but are restricted in their visibility and resource consumption. This is achieved through two kernel-level mechanisms:</p>
+<h3 id="1611-two-stage-hardware-address-translation-intel-ept--amd-npt"><a class="header" href="#1611-two-stage-hardware-address-translation-intel-ept--amd-npt">16.1.1 Two-Stage Hardware Address Translation (Intel EPT / AMD NPT)</a></h3>
+<p>Virtualizing memory poses a subtle challenge: the guest kernel believes it owns physical DRAM starting at address <code>0x0</code>, so it writes <strong>Guest Physical Addresses (GPAs)</strong> into its own page tables (<code>Guest CR3</code>). The host hypervisor cannot allow the guest kernel to map arbitrary <strong>Host Physical Addresses (HPAs)</strong> directly, or a compromised guest could read another tenant’s DRAM.</p>
+<p>Hardware-assisted virtualization solves this with <strong>Two-Stage Address Translation</strong> (Intel <strong>Extended Page Tables, EPT</strong>; AMD <strong>Nested Page Tables, NPT</strong>; ARM64 <strong>Stage-2 Translation</strong>), illustrated in Figure 16-2:</p>
+<figure>
+<img src="figures/ch16_ept_walk.svg" alt="Two-stage hardware virtualization showing Guest CR3 translating GVA to GPA and Hypervisor EPT translating every guest level GPA to Host Physical Address HPA" />
+</figure>
+<ol>
+<li><strong>Stage 1 (Controlled by Guest OS):</strong> The guest application issues a <strong>Guest Virtual Address (GVA)</strong>. The MMU begins walking the guest’s 4-level page table rooted at <code>Guest CR3</code> to translate <code>GVA -&gt; GPA</code>.</li>
+<li><strong>Stage 2 (Controlled by Host Hypervisor):</strong> Every single pointer stored inside the guest’s PML4, PDPT, PD, and PT is itself a <em>Guest Physical Address</em>, NOT a real host DRAM address. Before the MMU can read any of those four guest page-table entries, hardware must first walk the hypervisor’s 4-level <strong>EPT</strong> (rooted at <code>EPTP</code> inside the VMCS) to translate that guest table’s <code>GPA -&gt; HPA</code>. Once the guest walk finally yields the data frame’s GPA, hardware walks the EPT a fifth time to obtain the true host DRAM frame <code>HPA</code>.</li>
+<li><strong>The 2D Page-Walk Cost and Hardware Mitigations:</strong> Whereas a native 4-level TLB miss requires 4 DRAM accesses, a completely cold nested 4x4 walk requires up to <code>(4 * 4) + 4 + 4 = 24</code> memory reads (4 EPT reads for each of the 4 guest levels, 4 reads of the guest entries themselves, plus 4 EPT reads for the final data page). Hardware and hypervisors neutralize this penalty through three mechanisms:
 <ul>
-<li><strong>Namespaces:</strong> These provide the mechanism for <strong>visibility isolation</strong>. Namespaces partition kernel resources so that a process sees only a subset of the system. Examples include <strong>PID namespaces</strong> (providing a private process numbering scheme), <strong>mount namespaces</strong> (providing a private file system hierarchy), <strong>network namespaces</strong> (providing isolated network stacks), and <strong>user namespaces</strong> (mapping user identities).</li>
-<li><strong>Control Groups (cgroups):</strong> These provide the mechanism for <strong>resource isolation</strong>. Cgroups allow the kernel to enforce strict limits on the consumption of hardware resources, such as CPU cycles, memory capacity, and I/O bandwidth, preventing a single container from exhausting the host’s capacity.</li>
+<li><strong>Direct <code>GVA -&gt; HPA</code> TLB Caching:</strong> Once the 2D walk completes, the CPU caches the final collapsed mapping <code>GVA -&gt; HPA</code> directly in the TLB, delivering native 1-cycle hits on subsequent accesses.</li>
+<li><strong>VPID / ASID Tagging:</strong> Every TLB entry is tagged with a <strong>Virtual Processor Identifier (<code>VPID</code> on Intel; <code>ASID</code> on AMD/ARM64)</strong> so switching between host and guest on VM-Exit and VM-Entry does <strong>not</strong> flush the TLB.</li>
+<li><strong>Huge Pages (2 MiB / 1 GiB):</strong> Backing guest memory with 2 MiB host huge pages reduces EPT depth from 4 levels to 3 (and expands TLB reach by 512x).</li>
 </ul>
-<p>The lifecycle of a container is managed by a runtime that utilizes system calls like <code>clone</code> (with namespace flags), configures cgroups, sets the root directory for the mount namespace, and finally executes the target program via <code>execve</code>.</p>
-<p>While containers offer near-native performance and rapid startup times, they offer weaker isolation than VMs, as all containers share the same host kernel and are thus vulnerable to kernel-level exploits.</p>
+</li>
+</ol>
+<h3 id="1612-device-virtualization-emulation-virtio-and-direct-passthrough"><a class="header" href="#1612-device-virtualization-emulation-virtio-and-direct-passthrough">16.1.2 Device Virtualization: Emulation, VirtIO, and Direct Passthrough</a></h3>
+<p>A guest kernel expects disk controllers and NICs to exist on its virtual PCIe bus. Hypervisors provide virtual I/O across three performance tiers:</p>
+<ul>
+<li><strong>Full Hardware Emulation:</strong> Every guest MMIO register write traps via a VM-Exit into user-space QEMU, which emulates a legacy device (such as an Intel e1000 NIC). Compatible with any OS, but thousands of VM-Exits per second limit throughput severely.</li>
+<li><strong>Paravirtualization (<code>virtio</code>):</strong> The guest runs a hypervisor-aware driver (<code>virtio-net</code>, <code>virtio-blk</code>) that places batches of I/O descriptors into shared-memory lock-free <strong>virtqueues</strong> in guest RAM and notifies the host once per batch via a single doorbell write, amortizing VM-Exit cost across dozens of packets or disk requests.</li>
+<li><strong>Hardware Passthrough (<code>VFIO</code> / <code>SR-IOV</code>):</strong> Using an <strong>IOMMU</strong> (Intel VT-d / AMD-Vi / ARM SMMU) to translate device DMA addresses through the guest’s <code>GPA -&gt; HPA</code> mapping safely in silicon, the hypervisor assigns a physical GPU or SR-IOV NIC virtual function directly to the guest, achieving near-bare-metal latency and zero hypervisor data-plane overhead.</li>
+</ul>
+<h2 id="162-containerization-namespace-and-resource-isolation"><a class="header" href="#162-containerization-namespace-and-resource-isolation">16.2 Containerization: Namespace and Resource Isolation</a></h2>
+<p>Running a complete guest kernel for every microservice duplicates hundreds of megabytes of kernel memory and requires seconds to boot. <strong>Containers</strong> (Docker, containerd, Kubernetes pods) take the opposite architectural path: every container shares the <strong>single host Linux kernel</strong>, executing as ordinary host processes constrained by three kernel subsystems:</p>
+<ol>
+<li><strong>Namespaces (Visibility Isolation):</strong> Partition global kernel tables so processes inside a container perceive a private system view (Figure 16-3). Container runtimes create namespaces via <code>clone()</code> flags or <code>unshare()</code>:
+<ul>
+<li><strong><code>CLONE_NEWPID</code> (PID Namespace):</strong> Assigns the container’s entrypoint process PID <code>1</code> inside its own namespace while mapping it to an ordinary PID (such as <code>4821</code>) in the host process table. Processes inside the container cannot observe or signal host processes outside their subtree.</li>
+<li><strong><code>CLONE_NEWNS</code> (Mount Namespace) + <code>pivot_root</code>:</strong> Gives the container an independent filesystem mount table rooted at its OCI container image layer (commonly assembled via <code>OverlayFS</code>).</li>
+<li><strong><code>CLONE_NEWNET</code> (Network Namespace):</strong> Provides a private loopback interface, virtual Ethernet pair (<code>veth</code>), routing table, IP address, and iptables/eBPF firewall rules.</li>
+<li><strong><code>CLONE_NEWUTS</code>, <code>CLONE_NEWIPC</code>, <code>CLONE_NEWUSER</code>:</strong> Isolate hostname, POSIX IPC/shared memory identifiers, and UID/GID mappings (allowing UID <code>0</code> inside a rootless container to map to an unprivileged UID such as <code>100000</code> on the host).</li>
+</ul>
+</li>
+<li><strong>Control Groups (<code>cgroups</code> v2, Resource Isolation):</strong> Namespaces hide resources, whereas <strong>cgroups</strong> cap consumption so a single runaway container cannot starve noisy neighbors on the same host. The kernel exposes a hierarchical virtual filesystem (<code>/sys/fs/cgroup/</code>) where a runtime enforces hard ceilings on CPU bandwidth (<code>cpu.max</code>), physical RAM (<code>memory.max</code>, triggering the container-scoped OOM killer when exceeded), process count (<code>pids.max</code>, blocking fork bombs), and block storage IOPS (<code>io.max</code>).</li>
+<li><strong>Syscall Filtering (<code>seccomp-bpf</code> and Linux Capabilities):</strong> Because all containers share one host kernel, a vulnerability in an obscure kernel system call (such as <code>io_uring</code>, <code>bpf</code>, or <code>kexec_load</code>) threatens every container on the host. Runtimes drop unnecessary Linux capabilities (<code>CAP_SYS_ADMIN</code>, <code>CAP_NET_RAW</code>) and attach a <strong>seccomp-bpf</strong> filter program that intercepts every system call at Ring 0 entry and rejects disallowed syscall numbers with <code>EPERM</code> before the kernel handler ever runs.</li>
+</ol>
 <figure>
 <img src="figures/ch16_namespaces.svg" alt="Two PID namespaces presenting their own numbering over one host process table" />
 </figure>
 <h2 id="163-architectural-synthesis-in-cloud-computing"><a class="header" href="#163-architectural-synthesis-in-cloud-computing">16.3 Architectural Synthesis in Cloud Computing</a></h2>
-<p>In modern cloud infrastructure, these two technologies are frequently combined to balance the competing requirements of security and efficiency. Cloud providers utilize virtual machines to establish strong security boundaries between different customers, ensuring that one tenant cannot compromise another. Within these secure VMs, customers deploy containers to manage their individual workloads with high density and minimal overhead.</p>
+<p>Virtual machines and containers solve complementary layers of the cloud isolation problem, so production platforms routinely combine both:</p>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th style="text-align: left">Dimension</th><th style="text-align: left">Virtual Machines (KVM / Firecracker)</th><th style="text-align: left">Containers (Namespaces + cgroups v2)</th></tr>
+</thead>
+<tbody>
+<tr><td style="text-align: left"><strong>Isolation Boundary</strong></td><td style="text-align: left">Hardware-enforced (VMX Non-Root + EPT + IOMMU); distinct guest kernel per VM</td><td style="text-align: left">Software-enforced inside one shared host kernel</td></tr>
+<tr><td style="text-align: left"><strong>Attack Surface</strong></td><td style="text-align: left">Narrow hypervisor + VirtIO device boundary</td><td style="text-align: left">Entire host Linux syscall surface (mitigated by <code>seccomp-bpf</code>)</td></tr>
+<tr><td style="text-align: left"><strong>Startup Latency</strong></td><td style="text-align: left">Hundreds of milliseconds (microVMs) to seconds (full VMs)</td><td style="text-align: left">Tens of milliseconds (<code>clone</code> + <code>execve</code>)</td></tr>
+<tr><td style="text-align: left"><strong>Memory Overhead</strong></td><td style="text-align: left">Dedicated guest kernel + page cache per VM</td><td style="text-align: left">Near zero (shared host kernel and page cache)</td></tr>
+</tbody>
+</table>
+</div>
+<p>Cloud providers place a hardware VM boundary between distinct tenants (using lightweight <strong>microVMs</strong> such as AWS Firecracker or Kata Containers when serverless startup speed is required), and tenants deploy containers inside those VMs to package dependencies, orchestrate rolling upgrades, and pack microservices densely.</p>
 
                     </main>
 
