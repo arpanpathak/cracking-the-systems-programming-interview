@@ -47,6 +47,30 @@ On Unix-like systems, process creation is facilitated through the `fork` system 
 
 A critical nuance of `fork` involves the inheritance of process state, specifically the buffers within standard I/O libraries. Because `fork` duplicates the process's memory, including any unwritten data in user-mode buffers, a child process may inadvertently re-output data that was buffered by the parent prior to the fork. This necessitates explicit synchronization, such as calling `fflush` before a `fork` operation, to maintain output integrity.
 
+### 3.2.1 The Process Creation and Reaping System Call Interface (`fork`, `_exit`, `waitpid`)
+
+Before examining Listings 3-3 and 3-4, it is essential to understand the exact parameter contracts, return conventions, and status encodings of the POSIX process-control primitives:
+
+```text
+pid_t fork(void);
+pid_t getpid(void);
+pid_t getppid(void);
+void  _exit(int status);
+pid_t waitpid(pid_t pid, int *wstatus, int options);
+```
+
+- **`fork()`:** Accepts no arguments, yet returns **twice** on success: once in the parent and once in the newly created child. In the parent process, `fork()` returns the positive Process Identifier (`pid_t > 0`) of the child; in the child process, `fork()` returns `0`. If kernel process limits (`RLIMIT_NPROC`) or physical memory are exhausted, `fork()` creates no child and returns `-1` solely in the parent, setting `errno` to `EAGAIN` or `ENOMEM`. Every caller must therefore branch cleanly on all three outcomes (`< 0`, `== 0`, `> 0`).
+- **`getpid()` and `getppid()`:** Take no arguments and never fail, returning the calling process's own PID and its parent's PID, respectively.
+- **`_exit(status)` versus `exit(status)`:** Terminates the calling process immediately in kernel mode and never returns. Only the lowest 8 bits (`status & 0xFF`, yielding values `0` through `255`) are stored in the zombie PCB for parent inspection. A forked child should invoke `_exit()` rather than the C library `exit()` whenever it terminates without calling `execve`: `exit()` runs user-space `atexit` destructors and flushes all duplicated `stdio` buffers, which would cause buffered output inherited from the parent to be written twice. Because `_exit()` bypasses user-space flushing, the child explicitly flushes its own output with `fflush(stdout)` immediately beforehand.
+- **`waitpid(pid, wstatus, options)`:** Suspends or polls for a state change in a child process and reaps its zombie PCB.
+  - **`pid`:** Selects which children to wait on: a positive value (`pid > 0`) waits for that exact child; `-1` waits for any direct child; `0` waits for any child in the caller's process group.
+  - **`wstatus`:** Pointer to an `int` where the kernel writes a packed status bitfield (passing `nullptr` discards the status). This integer is **not** the raw exit code passed to `_exit()`; the kernel encodes both the termination cause and the exit code or signal number inside distinct bit ranges. Callers must decode it using standard POSIX inspection macros from `<sys/wait.h>`:
+    - `WIFEXITED(status)`: evaluates to non-zero if the child terminated normally via `_exit()` or returning from `main()`.
+    - `WEXITSTATUS(status)`: valid only when `WIFEXITED(status)` is true; shifts and masks out the 8-bit exit code (`(status >> 8) & 0xFF`).
+    - `WIFSIGNALED(status)`: evaluates to non-zero if the child was killed by an uncaught signal (such as `SIGSEGV` or `SIGKILL`), in which case `WTERMSIG(status)` extracts the terminating signal number.
+  - **`options`:** Bitmask modifying wait behavior. Passing `0` blocks until a matching child terminates; passing `WNOHANG` turns `waitpid()` into a non-blocking poll that returns `0` immediately if live matching children exist but none have exited yet.
+  - **Return value:** Returns the PID (`> 0`) of the reaped child on success, `0` when `WNOHANG` is set and no child has exited yet, or `-1` on error (`errno = ECHILD` if the caller has no matching children, or `EINTR` if interrupted by a signal).
+
 <figure>
 <img src="figures/ch03_fork.svg" alt="fork copies the process; parent receives the child PID, child receives 0"/>
 </figure>
