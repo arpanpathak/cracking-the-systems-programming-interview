@@ -499,12 +499,13 @@ def main():
     gif_art = ROOT / "src" / "art" / "cover-linkedin.gif"
     mp4_out = ROOT / "Operating-Systems-Cover-LinkedIn.mp4"
 
-    # High-quality 256-color palette GIF via ffmpeg
+    # High-quality 256-color palette GIF via ffmpeg (< 2 MB with transdiff delta encoding)
     subprocess.run(
         [
             "ffmpeg", "-y", "-framerate", str(FPS),
             "-i", str(FRAMES_DIR / "frame_%03d.png"),
-            "-vf", "split[s0][s1];[s0]palettegen=max_colors=256:stats_mode=full[p];[s1][p]paletteuse=dither=sierra2_4a:diff_mode=rectangle",
+            "-vf", "split[s0][s1];[s0]palettegen=max_colors=256:stats_mode=single[p];[s1][p]paletteuse=dither=bayer:bayer_scale=5:diff_mode=rectangle",
+            "-gifflags", "+transdiff",
             str(gif_out),
         ],
         check=True,
