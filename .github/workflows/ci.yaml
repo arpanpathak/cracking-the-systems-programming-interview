@@ -27,7 +27,7 @@ jobs:
       - name: Generate manifests
         working-directory: operator
         run: |
-          go install sigs.k8s.io/controller-tools/cmd/controller-gen@latest
+          go install sigs.k8s.io/controller-tools/cmd/controller-gen@v0.22.0
           export PATH="$PATH:$(go env GOPATH)/bin"
           make generate manifests
           git diff --exit-code
