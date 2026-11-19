@@ -209,7 +209,7 @@ class Fig:
         self.parts = []
         self.problems = []
         self.title_lines = wrap(title, WIDTH - 2 * MARGIN, "title")
-        self.top = 34 + 24 * len(self.title_lines) + 6
+        self.top = 36 + 24 * len(self.title_lines) + 14
 
     # ---- primitives -------------------------------------------------
 
@@ -235,14 +235,18 @@ class Fig:
             attrs += f' transform="rotate({rotate} {x:.1f} {y - size * 0.35:.1f})"'
         self.add(f'<text x="{x:.1f}" y="{y:.1f}" class="{classes}"{attrs}>{escape(body)}</text>')
 
-    def lines(self, x, cy, items, anchor="middle", fit=None, tone=None):
-        """Stacks lines of text and centers the stack on `cy`."""
+    def lines(self, x, cy, items, anchor="middle", fit=None, tone=None, max_h=None):
+        """Stacks lines of text and centers the stack on `cy`, respecting `max_h`."""
         pairs = normalize(items)
-        total = sum(FONTS[cls][1] for _, cls in pairs)
+        raw_total = sum(FONTS[cls][1] for _, cls in pairs)
+        scale = 1.0
+        if max_h is not None and len(pairs) > 1 and raw_total > max_h:
+            scale = max(0.76, max_h / raw_total)
+        total = raw_total * scale
         cursor = cy - total / 2
         for body, cls in pairs:
-            size, line_height = FONTS[cls][0], FONTS[cls][1]
-            baseline = cursor + line_height / 2 + size * 0.35
+            size, line_height = FONTS[cls][0], FONTS[cls][1] * scale
+            baseline = cursor + line_height / 2 + size * 0.33
             line_tone = tone if cls in ("sub", "small", "body", "mono") and tone else None
             self.text(x, baseline, body, cls, anchor, tone=line_tone, fit=fit)
             cursor += line_height
@@ -282,24 +286,38 @@ class Fig:
         if kind == "mid":
             tile_fill = "card"
 
+        v_pad = 8.0 if h >= 38 else 5.5
+        avail_h = max(14.0, h - 2 * v_pad)
+
         if layout == "left":
             text_x = x + 14
             if icon:
-                self.tile(x + 12, box.cy - icon_size / 2, icon, tone, icon_size, tile_fill)
-                text_x = x + 12 + icon_size + 11
+                eff_icon = min(icon_size, max(20, h - 14))
+                self.tile(x + 12, box.cy - eff_icon / 2, icon, tone, eff_icon, tile_fill)
+                text_x = x + 12 + eff_icon + 11
             if items:
-                self.lines(text_x, box.cy, items, "start", fit=(text_x, box.r - 8), tone=text_tone)
+                self.lines(text_x, box.cy, items, "start", fit=(text_x, box.r - 8), tone=text_tone, max_h=avail_h)
             return box
 
         pairs = normalize(items)
-        text_height = sum(FONTS[cls][1] for _, cls in pairs)
-        stack = text_height + (icon_size + 6 if icon else 0)
+        raw_text_h = sum(FONTS[cls][1] for _, cls in pairs)
+        eff_icon = icon_size
+        icon_gap = 6.0 if icon else 0.0
+        if icon and (eff_icon + icon_gap + raw_text_h) > avail_h:
+            eff_icon = max(20, min(icon_size, round(avail_h * 0.30)))
+            icon_gap = 4.0
+        text_avail = max(12.0, avail_h - (eff_icon + icon_gap if icon else 0.0))
+        scale = 1.0
+        if len(pairs) > 1 and raw_text_h > text_avail:
+            scale = max(0.76, text_avail / raw_text_h)
+        text_height = raw_text_h * scale
+        stack = text_height + (eff_icon + icon_gap if icon else 0.0)
         cursor = box.cy - stack / 2
         if icon:
-            self.tile(box.cx - icon_size / 2, cursor, icon, tone, icon_size, tile_fill)
-            cursor += icon_size + 6
+            self.tile(box.cx - eff_icon / 2, cursor, icon, tone, eff_icon, tile_fill)
+            cursor += eff_icon + icon_gap
         if pairs:
-            self.lines(box.cx, cursor + text_height / 2, pairs, "middle", fit=(x + 5, box.r - 5), tone=text_tone)
+            self.lines(box.cx, cursor + text_height / 2, pairs, "middle", fit=(x + 5, box.r - 5), tone=text_tone, max_h=text_avail)
         return box
 
     def cell(self, x, y, w, h, tone, items=(), kind="mid", r=7, text_tone=None):
@@ -415,9 +433,9 @@ class Fig:
             note_lines.append(None)
         note_lines = note_lines[:-1] if note_lines else []
 
-        note_top = self.top + self.height + 20
-        note_height = sum(8 if line is None else 20 for line in note_lines) + 24 if note_lines else 0
-        total = note_top + note_height + (22 if note_lines else 4)
+        note_top = self.top + self.height + 22
+        note_height = sum(8 if line is None else 20 for line in note_lines) + 28 if note_lines else 0
+        total = note_top + note_height + (24 if note_lines else 18)
 
         out = [f'<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 {WIDTH} {total:.0f}" width="{WIDTH}" height="{total:.0f}">',
                style(theme),

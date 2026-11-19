@@ -80,6 +80,29 @@ def build_cover() -> str:
       <stop offset="50%" stop-color="#0F172A"/>
       <stop offset="100%" stop-color="#1E1B4B"/>
     </linearGradient>
+    <radialGradient id="crab-shell" cx="45%" cy="35%" r="65%">
+      <stop offset="0%" stop-color="#EA580C"/>
+      <stop offset="45%" stop-color="#C2410C"/>
+      <stop offset="80%" stop-color="#9A3412"/>
+      <stop offset="100%" stop-color="#431407"/>
+    </radialGradient>
+    <linearGradient id="crab-claw" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#F97316"/>
+      <stop offset="55%" stop-color="#B45309"/>
+      <stop offset="100%" stop-color="#7C2D12"/>
+    </linearGradient>
+    <linearGradient id="steel-base" x1="0" y1="0" x2="1" y2="0.3">
+      <stop offset="0%" stop-color="#94A3B8"/>
+      <stop offset="35%" stop-color="#64748B"/>
+      <stop offset="70%" stop-color="#475569"/>
+      <stop offset="100%" stop-color="#334155"/>
+    </linearGradient>
+    <linearGradient id="rust-streak" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#7F1D1D" stop-opacity="0.92"/>
+      <stop offset="45%" stop-color="#9A3412" stop-opacity="0.95"/>
+      <stop offset="80%" stop-color="#C2410C" stop-opacity="0.90"/>
+      <stop offset="100%" stop-color="#D97706" stop-opacity="0.85"/>
+    </linearGradient>
     <filter id="mat-shadow" x="-8%" y="-8%" width="116%" height="120%">
       <feDropShadow dx="0" dy="8" stdDeviation="10" flood-color="#020617" flood-opacity="0.55"/>
     </filter>
@@ -204,22 +227,22 @@ def build_cover() -> str:
     icon("bolt", 550, 500, 18, "#F59E0B")
     add('  <text x="574" y="514" class="mono" font-size="12" font-weight="600" fill="#FDE68A">kqueue · io_uring</text>')
 
-    # Left Console Pane: Interactive POSIX Shell Session
-    add('  <text x="88" y="560" class="mono" font-size="13" font-weight="700" fill="#34D399">arpan@darwin-xnu</text>')
+    # Left Console Pane: Interactive POSIX Shell Session (emma, adam, orphan)
+    add('  <text x="88" y="560" class="mono" font-size="13" font-weight="700" fill="#34D399">emma@darwin-xnu</text>')
     add('  <text x="226" y="560" class="mono" font-size="13" font-weight="600" fill="#94A3B8">~ $</text>')
     add('  <text x="260" y="560" class="mono" font-size="13" font-weight="700" fill="#F8FAFC">fork() &amp;&amp; execve("/bin/sh", argv, envp)</text>')
     add('  <text x="88" y="584" class="mono" font-size="12" font-weight="500" fill="#7DD3FC">├─ PID 1 (launchd) ──► PID 4280 (worker) · COW pages mapped</text>')
 
-    add('  <text x="88" y="618" class="mono" font-size="13" font-weight="700" fill="#34D399">arpan@darwin-xnu</text>')
+    add('  <text x="88" y="618" class="mono" font-size="13" font-weight="700" fill="#38BDF8">adam@darwin-xnu</text>')
     add('  <text x="226" y="618" class="mono" font-size="13" font-weight="600" fill="#94A3B8">~ $</text>')
     add('  <text x="260" y="618" class="mono" font-size="13" font-weight="700" fill="#F8FAFC">pagetable --walk 0x0000_7FFF_ABCD_EF01</text>')
     add('  <text x="88" y="642" class="mono" font-size="12" font-weight="500" fill="#C4B5FD">└─ CR3 0x1000_0000 → PML4[255] → PDPT[510] → PD[350] → PT[223]</text>')
     add('  <text x="88" y="664" class="mono" font-size="12" font-weight="700" fill="#FDE68A">   ✓ TLB Hit (PCID 4) · Physical Frame PA = 0x0000_0000_8A42_0F01</text>')
 
-    add('  <text x="88" y="698" class="mono" font-size="13" font-weight="700" fill="#34D399">arpan@darwin-xnu</text>')
-    add('  <text x="226" y="698" class="mono" font-size="13" font-weight="600" fill="#94A3B8">~ $</text>')
-    add('  <text x="260" y="698" class="mono" font-size="13" font-weight="700" fill="#F8FAFC">kevent(kq, EVFILT_READ | EVFILT_PROC)</text>')
-    add('  <rect x="572" y="685" width="9" height="16" rx="1.5" fill="#38BDF8"/>')
+    add('  <text x="88" y="698" class="mono" font-size="13" font-weight="700" fill="#F59E0B">orphan@darwin-xnu</text>')
+    add('  <text x="234" y="698" class="mono" font-size="13" font-weight="600" fill="#94A3B8">~ $</text>')
+    add('  <text x="268" y="698" class="mono" font-size="13" font-weight="700" fill="#F8FAFC">kevent(kq, EVFILT_READ | EVFILT_PROC)</text>')
+    add('  <rect x="580" y="685" width="9" height="16" rx="1.5" fill="#38BDF8"/>')
 
     # Bottom status strip inside shell
     add('  <rect x="84" y="724" width="510" height="42" rx="8" fill="#1E293B" stroke="#334155" stroke-width="1"/>')
@@ -320,38 +343,119 @@ def build_cover() -> str:
     add('  <text x="185" y="1072" text-anchor="middle" class="mono" font-size="11" font-weight="500" fill="#7DD3FC">fork · dup2 · waitpid · signals</text>')
 
     # -------------------------------------------------------------------------
-    # CHARACTER 2 (RIGHT): Ferris the Rust Systems Crab (x = 654..896, y = 852..1094)
+    # CHARACTER 2 (RIGHT): Realistic Armored Rust Crabbie with Weathered Rusty Blade
     # -------------------------------------------------------------------------
-    add('  <rect x="654" y="852" width="242" height="242" rx="16" fill="#0F172A" fill-opacity="0.85" stroke="#F97316" stroke-width="1.5" filter="url(#mat-shadow)"/>')
-    # Ferris Illustration (Geometric Material Vector)
-    add('  <g transform="translate(775 952)">')
-    # Crab legs
-    for lx in [-46, -32, 32, 46]:
-        add(f'    <path d="M {lx} 28 L {lx*1.25:.1f} 52" stroke="#EA580C" stroke-width="5" stroke-linecap="round"/>')
-    # Side claws raised holding a glowing 4 KiB Memory Page Frame
-    add('    <path d="M -42 0 C -62 -18 -58 -42 -36 -46" fill="none" stroke="#F97316" stroke-width="6" stroke-linecap="round"/>')
-    add('    <circle cx="-36" cy="-46" r="9" fill="#FB923C"/>')
-    add('    <path d="M 42 0 C 62 -18 58 -42 36 -46" fill="none" stroke="#F97316" stroke-width="6" stroke-linecap="round"/>')
-    add('    <circle cx="36" cy="-46" r="9" fill="#FB923C"/>')
-    # Glowing 4 KiB Page Frame held aloft between claws
-    add('    <rect x="-44" y="-68" width="88" height="24" rx="6" fill="#3B0764" stroke="#C084FC" stroke-width="1.6"/>')
-    add('    <text x="0" y="-52" text-anchor="middle" class="mono" font-size="10.5" font-weight="700" fill="#E9D5FF">4 KiB PTE</text>')
-    # Crab shell body with cute gear spikes
-    add('    <ellipse cx="0" cy="10" rx="48" ry="34" fill="#F97316" stroke="#FDBA74" stroke-width="1.5"/>')
-    add('    <ellipse cx="0" cy="18" rx="34" ry="20" fill="#FB923C"/>')
-    # Eye stalks
-    add('    <line x1="-16" y1="-20" x2="-16" y2="-32" stroke="#EA580C" stroke-width="4" stroke-linecap="round"/>')
-    add('    <line x1="16" y1="-20" x2="16" y2="-32" stroke="#EA580C" stroke-width="4" stroke-linecap="round"/>')
-    add('    <circle cx="-16" cy="-34" r="7" fill="#FFFFFF"/>')
-    add('    <circle cx="-16" cy="-34" r="3.5" fill="#0F172A"/>')
-    add('    <circle cx="16" cy="-34" r="7" fill="#FFFFFF"/>')
-    add('    <circle cx="16" cy="-34" r="3.5" fill="#0F172A"/>')
-    # Friendly smile & Send+Sync badge
-    add('    <path d="M -10 -2 Q 0 6 10 -2" fill="none" stroke="#7C2D12" stroke-width="2.5" stroke-linecap="round"/>')
-    add('    <rect x="-36" y="12" width="72" height="17" rx="5" fill="#0F172A"/>')
-    add('    <text x="0" y="24" text-anchor="middle" class="mono" font-size="9.8" font-weight="700" fill="#FDBA74">Send + Sync</text>')
+    add('  <rect x="654" y="852" width="242" height="242" rx="16" fill="#0F172A" fill-opacity="0.85" stroke="#EA580C" stroke-width="1.5" filter="url(#mat-shadow)"/>')
+    add('  <g transform="translate(772 958)">')
+
+    # 1. Articulated Segmented Walking Legs (3 pairs with coxa/merus/carpus/dactyl joints)
+    # Left walking legs
+    add('    <path d="M -34 10 L -60 12 L -74 34 L -80 50" fill="none" stroke="#9A3412" stroke-width="5.5" stroke-linecap="round" stroke-linejoin="round"/>')
+    add('    <path d="M -34 10 L -60 12 L -74 34" fill="none" stroke="#EA580C" stroke-width="2.5" stroke-linecap="round"/>')
+    add('    <path d="M -38 20 L -66 28 L -78 50 L -82 64" fill="none" stroke="#7C2D12" stroke-width="5" stroke-linecap="round" stroke-linejoin="round"/>')
+    add('    <path d="M -38 20 L -66 28 L -78 50" fill="none" stroke="#C2410C" stroke-width="2.2" stroke-linecap="round"/>')
+    add('    <path d="M -32 28 L -56 42 L -64 62 L -66 74" fill="none" stroke="#7C2D12" stroke-width="4.5" stroke-linecap="round" stroke-linejoin="round"/>')
+    # Right walking legs
+    add('    <path d="M 34 10 L 60 12 L 74 34 L 80 50" fill="none" stroke="#9A3412" stroke-width="5.5" stroke-linecap="round" stroke-linejoin="round"/>')
+    add('    <path d="M 34 10 L 60 12 L 74 34" fill="none" stroke="#EA580C" stroke-width="2.5" stroke-linecap="round"/>')
+    add('    <path d="M 38 20 L 66 28 L 78 50 L 82 64" fill="none" stroke="#7C2D12" stroke-width="5" stroke-linecap="round" stroke-linejoin="round"/>')
+    add('    <path d="M 38 20 L 66 28 L 78 50" fill="none" stroke="#C2410C" stroke-width="2.2" stroke-linecap="round"/>')
+    add('    <path d="M 32 28 L 56 42 L 64 62 L 66 74" fill="none" stroke="#7C2D12" stroke-width="4.5" stroke-linecap="round" stroke-linejoin="round"/>')
+
+    # 2. Left Cheliped (Armored Crusher Claw with serrated pincer teeth)
+    add('    <path d="M -36 -4 C -58 -14 -68 -36 -54 -52" fill="none" stroke="#9A3412" stroke-width="8" stroke-linecap="round"/>')
+    add('    <path d="M -36 -4 C -58 -14 -68 -36 -54 -52" fill="none" stroke="#EA580C" stroke-width="3.5" stroke-linecap="round"/>')
+    # Left Crusher Pincer (upper & lower dactyl with white calcified denticles)
+    add('    <path d="M -56 -48 C -72 -62 -64 -82 -42 -78 C -50 -70 -50 -62 -40 -58 Z" fill="url(#crab-claw)" stroke="#FDBA74" stroke-width="1"/>')
+    add('    <path d="M -52 -46 C -34 -44 -28 -60 -38 -70 C -44 -64 -44 -58 -48 -52 Z" fill="url(#crab-claw)" stroke="#FDBA74" stroke-width="1"/>')
+    add('    <circle cx="-45" cy="-68" r="1.6" fill="#FEF3C7"/>')
+    add('    <circle cx="-42" cy="-63" r="1.5" fill="#FEF3C7"/>')
+
+    # 3. Right Cheliped Arm gripping the Realistic Rusted Blade
+    add('    <path d="M 34 -4 C 48 -14 44 -32 24 -44" fill="none" stroke="#9A3412" stroke-width="8" stroke-linecap="round"/>')
+    add('    <path d="M 34 -4 C 48 -14 44 -32 24 -44" fill="none" stroke="#EA580C" stroke-width="3.5" stroke-linecap="round"/>')
+
+    # =========================================================================
+    # 4. REALISTIC WEATHERED & CORRODED RUSTY BLADE (held diagonally in right claw)
+    # =========================================================================
+    add('    <g transform="translate(22 -46) rotate(-34) scale(0.88)">')
+    # Pommel & Leather-wrapped Hilt with iron oxide corrosion
+    add('      <circle cx="-48" cy="0" r="6.5" fill="#78350F" stroke="#B45309" stroke-width="1.5"/>')
+    add('      <circle cx="-48" cy="0" r="2.5" fill="#9A3412"/>')
+    add('      <rect x="-42" y="-4.5" width="26" height="9" rx="2.5" fill="#451A03" stroke="#92400E" stroke-width="1.2"/>')
+    for hx in [-37, -31, -25, -19]:
+        add(f'      <line x1="{hx}" y1="-4.2" x2="{hx+3}" y2="4.2" stroke="#B45309" stroke-width="1.5"/>')
+    # Rusted Iron Crossguard (Tsuba / Quillons)
+    add('      <rect x="-16" y="-15" width="7" height="30" rx="2.5" fill="#78350F" stroke="#D97706" stroke-width="1.2"/>')
+    add('      <circle cx="-12.5" cy="-9" r="2.2" fill="#9A3412"/>')
+    add('      <circle cx="-12.5" cy="8" r="2.5" fill="#7F1D1D"/>')
+
+    # Forged Carbon-Steel Blade Body with Battle Nicks along the Spine & Keen Edge
+    # Main steel silhouette (length ~112px from x=-9 to x=103, with 3 battle chips cut into spine/edge)
+    add('      <path d="M -9 -8.5 L 18 -8.5 L 21 -5.2 L 24 -8.5 L 58 -8.0 L 61 -4.8 L 64 -7.8 L 88 -6.5 L 106 0 L 86 7.5 L 52 8.5 L 49 5.5 L 46 8.5 L -9 8.5 Z" fill="url(#steel-base)" stroke="#CBD5E1" stroke-width="0.9"/>')
+    # Metallic Bevel & Blood-Fuller Groove
+    add('      <path d="M -9 0 L 96 0 L 86 7.5 L 52 8.5 L 49 5.5 L 46 8.5 L -9 8.5 Z" fill="#334155" opacity="0.65"/>')
+    add('      <line x1="-4" y1="-2.2" x2="76" y2="-1.5" stroke="#1E293B" stroke-width="2.4" stroke-linecap="round"/>')
+    # Specular silver cutting-edge glint where steel peeks through the rust
+    add('      <path d="M -6 8.2 L 45 8.2 M 53 8.2 L 85 7.2 L 105 0" fill="none" stroke="#E2E8F0" stroke-width="1.1" stroke-opacity="0.8"/>')
+
+    # REALISTIC FERRIC-OXIDE RUST PATCHES, FLAKING CORROSION & DEEP PITTING SPECKLES
+    # Heavy base rust crust near the guard & tang
+    add('      <path d="M -9 -8.2 C 4 -8.5 14 -6 19 -1 C 22 3 12 8.2 -9 8.2 Z" fill="url(#rust-streak)"/>')
+    # Mid-blade irregular organic oxidation island (red-brown ferric oxide + orange goethite rim)
+    add('      <path d="M 25 -7.5 C 36 -8 48 -6 55 -1.5 C 58 2 47 7.8 33 7.5 C 24 6 20 0 25 -7.5 Z" fill="url(#rust-streak)"/>')
+    add('      <path d="M 29 -5.2 C 37 -5.5 45 -3.5 49 0 C 46 4 36 5.2 28 3.8 Z" fill="#7F1D1D" opacity="0.85"/>')
+    # Tip & upper-spine rust corrosion bloom
+    add('      <path d="M 65 -7.2 C 77 -6.8 89 -5.5 99 -1.5 C 91 3.5 78 6.5 67 4.8 C 61 2 62 -3 65 -7.2 Z" fill="url(#rust-streak)"/>')
+    # Bright orange-amber active rust oxidation veins & flaking spots
+    for rx, ry, rr, rcol in [
+        (-2, -3.5, 3.2, "#D97706"), (5, 2.8, 2.6, "#EA580C"), (12, -4.0, 2.2, "#B45309"),
+        (32, -2.5, 3.4, "#EA580C"), (41, 3.2, 2.8, "#D97706"), (47, -4.2, 2.1, "#9A3412"),
+        (59, 2.0, 2.5, "#C2410C"), (73, -2.8, 3.5, "#EA580C"), (82, 2.2, 2.7, "#D97706"),
+        (91, -1.0, 2.0, "#F97316"), (16, 4.5, 1.8, "#7F1D1D"), (53, -2.0, 1.9, "#7F1D1D"),
+    ]:
+        add(f'      <circle cx="{rx}" cy="{ry}" r="{rr}" fill="{rcol}" opacity="0.88"/>')
+    # Fine dark-brown micro-pitting speckles across the blade surface
+    for px, py in [
+        (0, 0), (8, -1), (15, 1), (22, -3), (28, 2), (35, 0), (43, -1),
+        (50, 3), (57, -3), (63, 1), (70, 0), (77, 3), (84, -2), (93, 1),
+    ]:
+        add(f'      <circle cx="{px}" cy="{py}" r="1.0" fill="#451A03" opacity="0.9"/>')
+    # Falling rust-oxide flakes / sparks beneath the blade
+    add('      <circle cx="38" cy="13" r="1.5" fill="#EA580C" opacity="0.8"/>')
+    add('      <circle cx="66" cy="12" r="1.2" fill="#D97706" opacity="0.75"/>')
+    add('      <circle cx="84" cy="11" r="1.4" fill="#C2410C" opacity="0.8"/>')
+    add('    </g>')
+
+    # Right Pincer Claw wrapped over the blade grip
+    add('    <path d="M 14 -40 C 16 -54 30 -58 36 -48 C 32 -40 22 -36 14 -40 Z" fill="url(#crab-claw)" stroke="#FDBA74" stroke-width="1.1"/>')
+    add('    <path d="M 16 -36 C 24 -30 36 -34 36 -44 C 28 -40 22 -38 16 -36 Z" fill="url(#crab-claw)" stroke="#FDBA74" stroke-width="1.1"/>')
+
+    # 5. Realistic Textured Crab Carapace (with anatomical lateral teeth & ferric rust patina)
+    add('    <path d="M -52 4 L -46 -10 L -38 -8 L -32 -18 L -22 -15 L -14 -22 L 0 -20 L 14 -22 L 22 -15 L 32 -18 L 38 -8 L 46 -10 L 52 4 C 54 28 34 44 0 44 C -34 44 -54 28 -52 4 Z" fill="url(#crab-shell)" stroke="#F97316" stroke-width="1.6"/>')
+    # Carapace anatomical grooves (gastric & cardiac regions) and rust texture spots
+    add('    <path d="M -26 0 C -18 14 18 14 26 0" fill="none" stroke="#7C2D12" stroke-width="2" stroke-linecap="round"/>')
+    add('    <path d="M -34 14 C -20 28 20 28 34 14" fill="none" stroke="#9A3412" stroke-width="1.6" stroke-linecap="round"/>')
+    add('    <circle cx="-28" cy="4" r="3.5" fill="#7C2D12" opacity="0.65"/>')
+    add('    <circle cx="26" cy="6" r="4.0" fill="#7C2D12" opacity="0.65"/>')
+    add('    <circle cx="-18" cy="-8" r="2.2" fill="#FDBA74" opacity="0.45"/>')
+
+    # Stalked Compound Eyes with Realistic Corneal Glint
+    add('    <path d="M -15 -19 L -18 -33" stroke="#9A3412" stroke-width="4.5" stroke-linecap="round"/>')
+    add('    <path d="M 15 -19 L 18 -33" stroke="#9A3412" stroke-width="4.5" stroke-linecap="round"/>')
+    add('    <circle cx="-18" cy="-35" r="6.5" fill="#111827" stroke="#F97316" stroke-width="1.4"/>')
+    add('    <circle cx="-20" cy="-37" r="2.2" fill="#FFFFFF"/>')
+    add('    <circle cx="18" cy="-35" r="6.5" fill="#111827" stroke="#F97316" stroke-width="1.4"/>')
+    add('    <circle cx="16" cy="-37" r="2.2" fill="#FFFFFF"/>')
+
+    # Mandibles & Weathered Riveted Iron Breastplate (`Send + Sync`)
+    add('    <path d="M -12 -5 Q 0 1 12 -5" fill="none" stroke="#431407" stroke-width="2.5" stroke-linecap="round"/>')
+    add('    <rect x="-38" y="13" width="76" height="19" rx="5" fill="#1C1917" stroke="#B45309" stroke-width="1.4"/>')
+    add('    <circle cx="-33" cy="22.5" r="1.5" fill="#D97706"/>')
+    add('    <circle cx="33" cy="22.5" r="1.5" fill="#D97706"/>')
+    add('    <text x="0" y="26" text-anchor="middle" class="mono" font-size="9.8" font-weight="700" fill="#FDBA74">Send + Sync</text>')
     add('  </g>')
-    add('  <text x="775" y="1052" text-anchor="middle" class="sans" font-size="13.5" font-weight="700" fill="#F8FAFC">Zero-Cost Memory Safety</text>')
+    add('  <text x="775" y="1052" text-anchor="middle" class="sans" font-size="13.5" font-weight="700" fill="#F8FAFC">Fearless Bare-Metal Rust</text>')
     add('  <text x="775" y="1072" text-anchor="middle" class="mono" font-size="11" font-weight="500" fill="#FDBA74">Arena LRU · Atomics · mmap</text>')
 
     # -------------------------------------------------------------------------

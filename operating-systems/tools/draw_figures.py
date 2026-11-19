@@ -368,60 +368,60 @@ def ch02_privilege():
 
 @figure
 def ch02_stack_frame():
-    fig = Fig("ch02_stack_frame", "Figure 2-3. Function Activation Record: Call Stack Frame Layout and Register Pointers", 380)
+    fig = Fig("ch02_stack_frame", "Figure 2-3. Function Activation Record: Call Stack Frame Layout and Register Pointers", 404)
 
     fig.text(28, 14, "high memory", "small")
-    fig.wire([(46, 22), (46, 354)], "gray", width=1.6)
-    fig.text(28, 372, "low memory", "small")
+    fig.wire([(46, 22), (46, 376)], "gray", width=1.6)
+    fig.text(28, 394, "low memory", "small")
 
     x, w = 104, 430
 
     # Caller Frame
-    fig.node(x, 12, w, 52, "gray", [
+    fig.node(x, 12, w, 54, "gray", [
         ("Caller Activation Record", "name"),
         ("caller local variables & saved registers", "small"),
     ], icon="layers", r=10)
 
-    fig.cell(x, 70, w, 34, "gray", [("Caller Outgoing Args (arg 7+, if beyond registers)", "sub")], kind="mid", r=7)
+    fig.cell(x, 72, w, 36, "gray", [("Caller Outgoing Args (arg 7+, if beyond registers)", "sub")], kind="mid", r=7)
 
     # Callee Frame boundary container
-    fig.node(x - 8, 112, w + 16, 206, "purple", kind="dashed", r=12)
+    fig.node(x - 8, 116, w + 16, 224, "purple", kind="dashed", r=12)
 
-    ret = fig.cell(x, 120, w, 38, "amber", [
+    ret = fig.cell(x, 124, w, 46, "amber", [
         ("Return Address (saved RIP / x30 LR)", "name"),
         ("pushed by CALL or saved in prologue", "small"),
     ], kind="mid", r=7)
 
-    fp = fig.cell(x, 164, w, 40, "blue", [
+    fp = fig.cell(x, 176, w, 46, "blue", [
         ("Saved Frame Pointer (old RBP / x29 FP)", "name"),
         ("points to caller's frame pointer base", "small"),
     ], kind="mid", r=7)
 
-    fig.cell(x, 210, w, 54, "purple", [
+    fig.cell(x, 228, w, 54, "purple", [
         ("Callee-Saved Registers & Local Variables", "name"),
         ("RBX, R12–R15 / x19–x28 · stack buffers [RBP - offset]", "small"),
     ], kind="card", r=7)
 
-    sp = fig.cell(x, 270, w, 40, "teal", [
+    sp = fig.cell(x, 288, w, 46, "teal", [
         ("Outgoing Parameter Area / Scratch Space", "name"),
         ("16-byte ABI stack alignment boundary", "small"),
     ], kind="mid", r=7)
 
-    redzone = fig.node(x, 326, w, 40, "red", kind="dashed", r=8)
+    redzone = fig.node(x, 348, w, 42, "red", kind="dashed", r=8)
     fig.text(redzone.cx, redzone.cy + 4.5, "Unallocated Stack / 128-Byte Red Zone (x86-64 leaf functions) ↓", "sub", "middle")
 
     # Register Pointers on the right
     fig.wire([(578, ret.cy), (ret.r + 3, ret.cy)], "amber", width=2.0)
-    fig.cell(582, ret.cy - 17, 190, 34, "amber", [("[RBP + 8] → Return PC", "mono")], kind="card", r=7)
+    fig.cell(582, ret.cy - 18, 190, 36, "amber", [("[RBP + 8] → Return PC", "mono")], kind="card", r=7)
 
     fig.wire([(578, fp.cy), (fp.r + 3, fp.cy)], "blue", width=2.2)
-    fig.cell(582, fp.cy - 18, 190, 36, "blue", [("FP (RBP / x29)", "monob"), ("invariant frame anchor", "small")], kind="card", r=7)
+    fig.cell(582, fp.cy - 22, 190, 44, "blue", [("FP (RBP / x29)", "monob"), ("invariant frame anchor", "small")], kind="card", r=7)
 
-    fig.wire([(578, sp.b - 6), (sp.r + 3, sp.b - 6)], "teal", width=2.2)
-    fig.cell(582, sp.b - 24, 190, 36, "teal", [("SP (RSP / SP_EL0)", "monob"), ("active top of stack", "small")], kind="card", r=7)
+    fig.wire([(578, sp.b - 8), (sp.r + 3, sp.b - 8)], "teal", width=2.2)
+    fig.cell(582, sp.b - 28, 190, 44, "teal", [("SP (RSP / SP_EL0)", "monob"), ("active top of stack", "small")], kind="card", r=7)
 
     # Frame pointer chain arc on the left
-    fig.wire([(x, fp.cy), (74, fp.cy), (74, 38), (x - 3, 38)], "blue", dash=True, width=1.8)
+    fig.wire([(x, fp.cy), (74, fp.cy), (74, 39), (x - 3, 39)], "blue", dash=True, width=1.8)
 
     fig.save([
         "The stack grows downward toward lower virtual addresses. Pushing decrements SP; popping increments SP.",
@@ -432,81 +432,81 @@ def ch02_stack_frame():
 
 @figure
 def ch02_interrupt_flow():
-    fig = Fig("ch02_interrupt_flow", "Figure 2-4. Asynchronous Hardware Interrupt Lifecycle: IRQ → APIC/GIC → IDT → Top/Bottom Half → EOI", 362)
+    fig = Fig("ch02_interrupt_flow", "Figure 2-4. Asynchronous Hardware Interrupt Lifecycle: IRQ → APIC/GIC → IDT → Top/Bottom Half → EOI", 384)
 
     # Top row: Hardware delivery pipeline
-    dev = fig.node(28, 16, 168, 92, "amber", [
+    dev = fig.node(28, 16, 168, 102, "amber", [
         ("1. Peripheral", "name"),
         ("NIC / NVMe / Timer", "small"),
         ("DMA done, raises IRQ", "small"),
     ], icon="lan", layout="center", icon_size=26, r=10)
 
-    apic = fig.node(220, 16, 172, 92, "red", [
+    apic = fig.node(220, 16, 172, 102, "red", [
         ("2. IRQ Controller", "name"),
         ("IO-APIC → Local APIC", "small"),
         ("(or ARM GICv3/v4)", "small"),
     ], icon="notifications_active", layout="center", icon_size=26, r=10)
 
-    cpu = fig.node(416, 16, 168, 92, "blue", [
+    cpu = fig.node(416, 16, 168, 102, "blue", [
         ("3. CPU Core Gate", "name"),
         ("Checks IF / DAIF mask", "small"),
         ("Switches Ring 3 → 0", "small"),
     ], icon="memory", layout="center", icon_size=26, r=10)
 
-    idt = fig.node(608, 16, 164, 92, "purple", [
+    idt = fig.node(608, 16, 164, 102, "purple", [
         ("4. Vector Table", "name"),
         ("IDT[vec] / VBAR_EL1", "mono"),
         ("Loads ISR entry PC", "small"),
     ], icon="table_rows", layout="center", icon_size=26, r=10)
 
-    fig.wire([(dev.r + 2, 62), (apic.x - 2, 62)], "amber", width=2.2)
-    fig.wire([(apic.r + 2, 62), (cpu.x - 2, 62)], "red", width=2.2)
-    fig.wire([(cpu.r + 2, 62), (idt.x - 2, 62)], "blue", width=2.2)
+    fig.wire([(dev.r + 2, 67), (apic.x - 2, 67)], "amber", width=2.2)
+    fig.wire([(apic.r + 2, 67), (cpu.x - 2, 67)], "red", width=2.2)
+    fig.wire([(cpu.r + 2, 67), (idt.x - 2, 67)], "blue", width=2.2)
 
     # Bottom row: Kernel execution & hardware trapframe
-    trap = fig.node(28, 148, 226, 194, "blue")
-    fig.tile(40, 160, "shield", "blue", 28)
-    fig.text(76, 180, "5. Context Save", "name", fit=(76, 246))
-    fig.text(40, 200, "Pushed to Kernel Stack (TSS.rsp0):", "small")
+    trap = fig.node(28, 158, 226, 206, "blue")
+    fig.tile(40, 170, "shield", "blue", 28)
+    fig.text(76, 190, "5. Context Save", "name", fit=(76, 246))
+    fig.text(40, 210, "Pushed to Kernel Stack (TSS.rsp0):", "small")
     for idx, reg in enumerate(["SS & User RSP (stack)", "RFLAGS / PSTATE (flags)", "CS & User RIP (return PC)", "Error Code / GP Registers"]):
-        fig.cell(40, 210 + idx * 31, 202, 26, "blue", [(reg, "mono")], kind="card", r=6)
+        fig.cell(40, 220 + idx * 33, 202, 28, "blue", [(reg, "mono")], kind="card", r=6)
 
-    top_half = fig.node(276, 148, 236, 194, "green")
-    fig.tile(288, 160, "bolt", "green", 28)
-    fig.text(324, 180, "6. Top-Half (hardirq)", "name", fit=(324, 504))
-    fig.cell(288, 196, 212, 42, "green", [
+    top_half = fig.node(276, 158, 236, 206, "green")
+    fig.tile(288, 170, "bolt", "green", 28)
+    fig.text(324, 190, "6. Top-Half (hardirq)", "name", fit=(324, 504))
+    fig.cell(288, 206, 212, 46, "green", [
         ("Interrupts Masked on Core", "body"),
         ("Zero blocking · Minimal latency", "small"),
     ], kind="card", r=7)
-    fig.cell(288, 244, 212, 42, "green", [
+    fig.cell(288, 258, 212, 46, "green", [
         ("Ack Device & Queue Work", "body"),
         ("Read MMIO status, raise softirq", "small"),
     ], kind="card", r=7)
-    eoi = fig.cell(288, 292, 212, 38, "red", [
+    eoi = fig.cell(288, 310, 212, 44, "red", [
         ("7. Write EOI to Local APIC", "name"),
         ("Unmasks controller for next IRQ", "small"),
     ], kind="mid", r=7)
 
-    bot_half = fig.node(534, 148, 238, 194, "teal")
-    fig.tile(546, 160, "schedule", "teal", 28)
-    fig.text(582, 180, "8. Bottom-Half & Exit", "name", fit=(582, 764))
-    fig.cell(546, 196, 214, 62, "teal", [
+    bot_half = fig.node(534, 158, 238, 206, "teal")
+    fig.tile(546, 170, "schedule", "teal", 28)
+    fig.text(582, 190, "8. Bottom-Half & Exit", "name", fit=(582, 764))
+    fig.cell(546, 206, 214, 68, "teal", [
         ("Deferred Execution (softirq)", "name"),
         ("IRQs enabled · TCP/IP stack,", "small"),
         ("block I/O completion, NAPI poll", "small"),
     ], kind="card", r=7)
-    fig.cell(546, 266, 214, 64, "purple", [
+    fig.cell(546, 282, 214, 70, "purple", [
         ("9. Return: IRETQ / ERET", "name"),
         ("Restores RIP, RSP, RFLAGS;", "small"),
         ("demotes CPL 0 → 3 (or preempts)", "small"),
     ], kind="card", r=7)
 
     # Connecting wires from top row to bottom row (routed strictly through empty corridors!)
-    fig.wire([(idt.cx, idt.b + 2), (idt.cx, 124), (141, 124), (141, trap.y - 2)], "purple", width=2.0)
-    fig.wire([(trap.r + 2, 245), (top_half.x - 2, 245)], "blue", width=2.2)
-    fig.wire([(top_half.r + 2, 227), (bot_half.x - 2, 227)], "green", width=2.2)
+    fig.wire([(idt.cx, idt.b + 2), (idt.cx, 134), (141, 134), (141, trap.y - 2)], "purple", width=2.0)
+    fig.wire([(trap.r + 2, 261), (top_half.x - 2, 261)], "blue", width=2.2)
+    fig.wire([(top_half.r + 2, 240), (bot_half.x - 2, 240)], "green", width=2.2)
     # Route EOI wire down, then up through the vertical gap x=265 between trap (r=254) and top_half (x=276)!
-    fig.wire([(eoi.cx, eoi.b + 12), (eoi.cx, 355), (265, 355), (265, 136), (306, 136), (306, apic.b + 2)], "red", dash=True, width=1.8)
+    fig.wire([(eoi.cx, eoi.b + 10), (eoi.cx, 374), (265, 374), (265, 144), (306, 144), (306, apic.b + 2)], "red", dash=True, width=1.8)
 
     fig.save([
         "Hardware saves the interrupted user context onto the per-CPU kernel stack before executing the first ISR instruction.",
@@ -601,73 +601,73 @@ def ch03_fork():
 
 @figure
 def ch03_process_lifecycle():
-    fig = Fig("ch03_process_lifecycle", "Figure 3-3. The Five-State Process Lifecycle Automaton: Kernel Scheduling, Blocking, and Reaping", 316)
+    fig = Fig("ch03_process_lifecycle", "Figure 3-3. The Five-State Process Lifecycle Automaton: Kernel Scheduling, Blocking, and Reaping", 332)
 
     # Top row: New -> Ready <-> Running -> Zombie -> Terminated
-    new_st = fig.node(28, 38, 126, 82, "purple", [
+    new_st = fig.node(28, 32, 126, 96, "purple", [
         ("New", "name"),
         ("fork / clone", "mono"),
         ("PCB allocated", "small"),
     ], icon="call_split", layout="center", icon_size=24, r=10)
 
-    ready_st = fig.node(196, 38, 144, 82, "blue", [
+    ready_st = fig.node(196, 32, 144, 96, "blue", [
         ("Ready", "name"),
         ("In CPU runqueue", "small"),
         ("(TASK_RUNNING)", "mono"),
     ], icon="view_week", layout="center", icon_size=24, r=10)
 
-    run_st = fig.node(416, 38, 144, 82, "green", [
+    run_st = fig.node(416, 32, 144, 96, "green", [
         ("Running", "name"),
         ("On physical core", "small"),
         ("PC/SP active", "mono"),
     ], icon="memory", layout="center", icon_size=24, r=10)
 
-    zombie_st = fig.node(614, 38, 158, 82, "red", [
+    zombie_st = fig.node(614, 32, 158, 96, "red", [
         ("Zombie", "name"),
         ("exit() / _exit()", "mono"),
         ("Awaits waitpid()", "small"),
     ], icon="pending", layout="center", icon_size=24, r=10)
 
     # Bottom row: Blocked and Reaped
-    block_st = fig.node(260, 206, 236, 86, "amber", [
+    block_st = fig.node(260, 214, 236, 98, "amber", [
         ("Blocked (Waiting)", "name"),
         ("read() / sleep / page fault", "mono"),
         ("Suspended in device wait queue", "small"),
     ], icon="hourglass_top", layout="center", icon_size=24, r=10)
 
-    reaped_st = fig.node(614, 206, 158, 86, "gray", [
+    reaped_st = fig.node(614, 214, 158, 98, "gray", [
         ("Reaped", "name"),
         ("Parent waitpid()", "mono"),
         ("PCB & PID freed", "small"),
     ], icon="close", layout="center", icon_size=24, r=10)
 
     # Transitions
-    fig.wire([(new_st.r + 2, 79), (ready_st.x - 2, 79)], "purple", width=2.2)
-    fig.label(175, 67, "admit", tone="purple", backed=False)
+    fig.wire([(new_st.r + 2, 80), (ready_st.x - 2, 80)], "purple", width=2.2)
+    fig.label(175, 68, "admit", tone="purple", backed=False)
 
     # Ready -> Running (dispatch)
     fig.wire([(ready_st.r + 2, 62), (run_st.x - 2, 62)], "green", width=2.2)
     fig.label(378, 50, "dispatch", tone="green", backed=False)
 
     # Running -> Ready (preempt)
-    fig.wire([(run_st.x - 2, 96), (ready_st.r + 2, 96)], "blue", dash=True, width=2.0)
-    fig.label(378, 114, "preempt", tone="blue", backed=False)
+    fig.wire([(run_st.x - 2, 98), (ready_st.r + 2, 98)], "blue", dash=True, width=2.0)
+    fig.label(378, 116, "preempt", tone="blue", backed=False)
 
     # Running -> Zombie (exit)
-    fig.wire([(run_st.r + 2, 79), (zombie_st.x - 2, 79)], "red", width=2.2)
-    fig.label(587, 67, "exit()", tone="red", backed=False)
+    fig.wire([(run_st.r + 2, 80), (zombie_st.x - 2, 80)], "red", width=2.2)
+    fig.label(587, 68, "exit()", tone="red", backed=False)
 
     # Zombie -> Reaped (waitpid)
     fig.wire([(zombie_st.cx, zombie_st.b + 2), (reaped_st.cx, reaped_st.y - 2)], "gray", width=2.2)
-    fig.label(693, 166, "SIGCHLD + waitpid()", tone="gray", backed=True)
+    fig.label(693, 174, "SIGCHLD + waitpid()", tone="gray", backed=True)
 
     # Running -> Blocked (straight vertical drop from x=454 into block_st top-right, label offset to right)
     fig.wire([(454, run_st.b + 2), (454, block_st.y - 2)], "amber", width=2.2)
-    fig.label(466, 166, "I/O or lock wait", tone="amber", anchor="start", backed=False)
+    fig.label(466, 174, "I/O or lock wait", tone="amber", anchor="start", backed=False)
 
     # Blocked -> Ready (straight vertical rise from x=302 into ready_st bottom-right, label offset to left)
     fig.wire([(302, block_st.y - 2), (302, ready_st.b + 2)], "blue", width=2.2)
-    fig.label(290, 166, "IRQ / wakeup", tone="blue", anchor="end", backed=False)
+    fig.label(290, 174, "IRQ / wakeup", tone="blue", anchor="end", backed=False)
 
     fig.save([
         "A blocked process consumes zero CPU cycles; the kernel removes its PCB from the scheduler runqueue until an interrupt wakes it.",
@@ -749,67 +749,67 @@ def ch04_race_timeline():
 
 @figure
 def ch04_thread_lifecycle():
-    fig = Fig("ch04_thread_lifecycle", "Figure 4-3. Thread Lifecycle State Machine: Creation, Synchronization Parking, Join, and Detach", 316)
+    fig = Fig("ch04_thread_lifecycle", "Figure 4-3. Thread Lifecycle State Machine: Creation, Synchronization Parking, Join, and Detach", 332)
 
-    init_st = fig.node(28, 38, 126, 82, "purple", [
+    init_st = fig.node(28, 32, 126, 96, "purple", [
         ("Spawned", "name"),
         ("pthread_create", "mono"),
         ("Stack + TCB init", "small"),
     ], icon="call_split", layout="center", icon_size=24, r=10)
 
-    runnable_st = fig.node(196, 38, 144, 82, "blue", [
+    runnable_st = fig.node(196, 32, 144, 96, "blue", [
         ("Runnable", "name"),
         ("In core runqueue", "small"),
         ("Ready to execute", "small"),
     ], icon="view_week", layout="center", icon_size=24, r=10)
 
-    active_st = fig.node(416, 38, 144, 82, "green", [
+    active_st = fig.node(416, 32, 144, 96, "green", [
         ("Running", "name"),
         ("Executing on core", "small"),
         ("Private PC & SP", "mono"),
     ], icon="memory", layout="center", icon_size=24, r=10)
 
-    term_st = fig.node(614, 38, 158, 82, "teal", [
+    term_st = fig.node(614, 32, 158, 96, "teal", [
         ("Terminated", "name"),
         ("Return / exit", "small"),
         ("Holds return value", "small"),
     ], icon="pending", layout="center", icon_size=24, r=10)
 
-    parked_st = fig.node(260, 206, 236, 86, "amber", [
+    parked_st = fig.node(260, 214, 236, 98, "amber", [
         ("Sleeping / Parked", "name"),
         ("Mutex / Condvar / Futex / I/O", "small"),
         ("Wait queue (0% CPU usage)", "small"),
     ], icon="lock", layout="center", icon_size=24, r=10)
 
-    reclaimed_st = fig.node(614, 206, 158, 86, "gray", [
+    reclaimed_st = fig.node(614, 214, 158, 98, "gray", [
         ("Reclaimed", "name"),
         ("join() or detached", "mono"),
         ("Stack & TCB unmapped", "small"),
     ], icon="close", layout="center", icon_size=24, r=10)
 
     # Wires
-    fig.wire([(init_st.r + 2, 79), (runnable_st.x - 2, 79)], "purple", width=2.2)
-    fig.label(175, 67, "admit", tone="purple", backed=False)
+    fig.wire([(init_st.r + 2, 80), (runnable_st.x - 2, 80)], "purple", width=2.2)
+    fig.label(175, 68, "admit", tone="purple", backed=False)
 
     fig.wire([(runnable_st.r + 2, 62), (active_st.x - 2, 62)], "green", width=2.2)
     fig.label(378, 50, "dispatch", tone="green", backed=False)
 
-    fig.wire([(active_st.x - 2, 96), (runnable_st.r + 2, 96)], "blue", dash=True, width=2.0)
-    fig.label(378, 114, "preempt", tone="blue", backed=False)
+    fig.wire([(active_st.x - 2, 98), (runnable_st.r + 2, 98)], "blue", dash=True, width=2.0)
+    fig.label(378, 116, "preempt", tone="blue", backed=False)
 
-    fig.wire([(active_st.r + 2, 79), (term_st.x - 2, 79)], "teal", width=2.2)
-    fig.label(587, 67, "return", tone="teal", backed=False)
+    fig.wire([(active_st.r + 2, 80), (term_st.x - 2, 80)], "teal", width=2.2)
+    fig.label(587, 68, "return", tone="teal", backed=False)
 
     fig.wire([(term_st.cx, term_st.b + 2), (reclaimed_st.cx, reclaimed_st.y - 2)], "gray", width=2.2)
-    fig.label(693, 166, "thread::join()", tone="gray", backed=True)
+    fig.label(693, 174, "thread::join()", tone="gray", backed=True)
 
     # Running -> Parked (straight vertical drop at x=454, label cleanly to the right)
     fig.wire([(454, active_st.b + 2), (454, parked_st.y - 2)], "amber", width=2.2)
-    fig.label(466, 166, "lock / cond.wait", tone="amber", anchor="start", backed=False)
+    fig.label(466, 174, "lock / cond.wait", tone="amber", anchor="start", backed=False)
 
     # Parked -> Runnable (straight vertical rise at x=302, label cleanly to the left)
     fig.wire([(302, parked_st.y - 2), (302, runnable_st.b + 2)], "blue", width=2.2)
-    fig.label(290, 166, "unlock / notify", tone="blue", anchor="end", backed=False)
+    fig.label(290, 174, "unlock / notify", tone="blue", anchor="end", backed=False)
 
     fig.save([
         "A joinable thread retains its Thread Control Block (TCB) and stack allocation after termination until another thread calls join().",
@@ -1068,7 +1068,7 @@ def ch07_pagewalk():
 
 @figure
 def ch07_canonical_va():
-    fig = Fig("ch07_canonical_va", "Figure 7-3. Canonical 48-Bit Virtual Address Decomposition and 64-Bit PTE Bit Layout", 368)
+    fig = Fig("ch07_canonical_va", "Figure 7-3. Canonical 48-Bit Virtual Address Decomposition and 64-Bit PTE Bit Layout", 386)
 
     # 1. Virtual address decomposition
     fig.text(28, 14, "1. Virtual Address Decomposition: VA = 0x0000_7FFF_ABCD_EF01 (48-bit Canonical Sign-Extended)", "name")
@@ -1089,7 +1089,7 @@ def ch07_canonical_va():
         ], kind="mid", r=7)
 
     # 2. Step-by-step radix walk formula box
-    fig.node(28, 106, 744, 114, "blue")
+    fig.node(28, 106, 744, 122, "blue")
     fig.tile(40, 118, "table_rows", "blue", 28)
     fig.text(76, 138, "2. Hardware MMU Radix Page Walk Arithmetic (8-Byte Entries, 512 Entries per 4 KiB Table)", "name")
 
@@ -1100,14 +1100,14 @@ def ch07_canonical_va():
         (586, "amber", "L1 Lookup (PTE)", "L1_Base + 223 × 8", "→ PFN 0x8A420"),
     ]
     for x, tone, title, expr, res in steps:
-        fig.cell(x, 150, 174, 58, tone, [
+        fig.cell(x, 150, 174, 66, tone, [
             (title, "name"),
             (expr, "mono"),
             (res, "monob"),
         ], kind="card", r=7)
 
     # 3. 64-bit Page Table Entry (PTE) bit layout
-    fig.text(28, 242, "3. 64-Bit Page Table Entry (PTE) Architectural Bit Layout & Final Physical Address Assembly", "name")
+    fig.text(28, 250, "3. 64-Bit Page Table Entry (PTE) Architectural Bit Layout & Final Physical Address Assembly", "name")
 
     pte_bits = [
         (28, 70, "red", "Bit 63", "NX / XD", "No-Exec"),
@@ -1124,9 +1124,9 @@ def ch07_canonical_va():
     ]
     for x, w, tone, b_range, sym, desc in pte_bits:
         items = [(b_range, "small"), (sym, "monob")] + ([(desc, "small")] if w >= 40 else [])
-        fig.cell(x, 252, w, 58, tone, items, kind="mid", r=6)
+        fig.cell(x, 260, w, 66, tone, items, kind="mid", r=6)
 
-    fig.node(28, 322, 744, 42, "green", [
+    fig.node(28, 338, 744, 44, "green", [
         ("Physical Address = (PFN << 12) | Offset = 0x8A_4200_00 | 0xF01 = 0x8A_420F_01", "monob"),
     ], icon="memory", layout="left", kind="tonal", icon_size=26, r=8)
 
@@ -1557,10 +1557,10 @@ def ch15_daemonize():
         ("edit_note", "green", "4. chdir(\"/\"), umask, stdio to log and /dev/null, write the pidfile, install handlers."),
     ]
     for index, (icon, tone, text) in enumerate(steps):
-        y = 122 + index * 46
-        fig.rect(28, y, 744, 38, f"c-{tone}", r=12)
-        fig.tile(44, y + 4, icon, tone, 30)
-        fig.text(88, y + 23.5, text, "body", fit=(88, 766))
+        y = 120 + index * 48
+        fig.rect(28, y, 744, 42, f"c-{tone}", r=12)
+        fig.tile(44, y + 8, icon, tone, 26)
+        fig.text(84, y + 25.5, text, "body", fit=(84, 766))
 
     fig.heading(28, 334, "after")
     session = fig.node(28, 346, 190, 66, "gray", [("session", "body"), "no terminal"], icon="block")
