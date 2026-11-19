@@ -1,6 +1,8 @@
 # 8. Memory Allocation and Management Strategies
 
-While the operating system manages memory in coarse-grained units, typically 4 KiB pages, application-level software requires a mechanism for managing objects of diverse and often much smaller sizes. A memory allocator bridges this granularity gap by requesting large, contiguous regions of memory from the kernel and subdividing them into smaller, appropriately sized blocks for the program.
+The operating system virtual-memory subsystem manages physical RAM at coarse page granularity—typically 4 KiB on x86-64 and 16 KiB on Apple Silicon ARM64. Application software, however, dynamically allocates and destroys millions of objects ranging from 16-byte linked-list nodes to multi-megabyte buffers with heterogeneous lifetimes. Issuing a kernel system call (`mmap` or `brk`) for every small object would impose prohibitive privilege-transition latency and waste nearly an entire 4 KiB page for a 24-byte struct.
+
+A user-space memory allocator bridges this granularity gap. It acquires large, contiguous virtual memory regions—**arenas**—from the operating system in bulk via `mmap`, subdivides those regions internally in Ring 3 according to alignment and reuse policies, and returns unneeded memory to the kernel only at coarse page boundaries.
 
 ## 8.1 The Allocator Interface and Efficiency Constraints
 
@@ -10,7 +12,7 @@ Allocators are distinguished by three architectural decisions: the placement str
 
 ### 8.1.1 Requesting Raw Arenas from the Kernel (`mmap`)
 
-Both allocators implemented in this chapter acquire their backing memory—an **arena**—directly from the kernel via the POSIX `mmap` system call rather than calling `malloc`:
+The low-level allocators in Sections 8.2.2 and 8.3 acquire their backing memory—an **arena**—directly from the kernel via the POSIX `mmap` system call rather than calling `malloc`:
 
 ```text
 mmap(nullptr, capacity_bytes, PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANON, -1, 0)
@@ -39,39 +41,94 @@ Because `A = 2^k`, `A - 1` has `k` trailing binary `1` bits, and `~(A - 1)` clea
 2. **`alloc(3, align=8)`:** Offset `8` is already 8-byte aligned (`(8 + 7) & ~7 = 8`). Occupies **bytes `8..10`**, advancing `next_offset` to **`11`**.
 3. **`alloc(16, align=16)`:** Offset `11` is not a multiple of 16. Rounding up yields `(11 + 15) & ~15 = 26 & ~15 = 16`. Bytes **`11..15` (5 bytes)** are skipped as **alignment padding** so the 16-byte block begins cleanly at **offset `16`** (**bytes `16..31`**), advancing `next_offset` to **`32`**.
 
-## 8.2 Arena Allocation: The Bump Allocator
+## 8.2 Arena Allocation: From Safe Index Pools to Raw Bump Allocators
 
-The bump allocator represents the simplest form of memory management. It maintains a single offset (`next_offset`) within a contiguous memory region, known as an **arena**. Allocation is performed by rounding `next_offset` upward to the required alignment, verifying sufficient remaining space (`aligned_offset + requested_bytes <= arena_capacity`), and advancing `next_offset` by the requested size.
+An **arena** groups objects with identical lifetimes—such as request-scoped records in a web server, frame state in a renderer, or nodes in a syntax tree—into a single contiguous region and reclaims all of them simultaneously. Rather than introducing raw pointer arithmetic immediately, we construct arena allocation in two progressive stages: a completely safe typed index pool requiring zero raw pointers, followed by a raw `mmap`-backed bump allocator.
 
-The computational complexity of allocation in a bump allocator is O(1), consisting of only a few arithmetic operations with zero per-object metadata overhead. However, this speed is traded for a lack of granularity in deallocation: the allocator cannot free individual objects. Instead, it provides a `reset` operation that rewinds `next_offset = 0` and clears the entire arena at once. This model is highly effective for **arena allocation**, where a group of objects with identical lifetimes (such as request-scoped objects in a web server or nodes in a parse tree) are allocated together and discarded as a single unit.
+### 8.2.1 Level 1: The Safe Index Arena (Zero `unsafe`)
 
-<figure>
-<img src="figures/ch08_bump.svg" alt="Bump allocator sequential byte layout showing 8-byte, 3-byte, 5-byte alignment padding, and 16-byte aligned allocations"/>
-</figure>
+When all arena-resident nodes share a single homogeneous type `T` (such as abstract syntax tree nodes, graph vertices, or linked-list entries), raw memory management is unnecessary. Placing every node inside one contiguous array (`std::vector<T>` in C++20 or `Vec<T>` in Rust 2024) and linking nodes via copyable integer indices (`NodeId`) yields four immediate engineering benefits:
+- **Memory safety without `unsafe`:** Indices remain valid even when the backing array reallocates to grow, eliminating dangling pointers and self-referential borrow-checker conflicts.
+- **Cache-line locality:** Nodes allocated sequentially occupy adjacent bytes in L1/L2 caches, removing the pointer-chasing stalls characteristic of per-node `malloc` / `Box::new` trees.
+- **Zero-cost bulk reclamation:** `reset()` calls `clear()`, reclaiming all nodes in O(1) while retaining the backing capacity for the next request or frame.
+- **Production adoption:** Compilers (including `rustc` and LLVM), query planners, and Entity Component Systems (ECS) rely heavily on index-addressed arenas for cyclic graphs and syntax trees.
 
-**Listing 8-1. A bump allocator with explicit alignment rounding (C++20).**
+**Listing 8-1. Level 1 arena: a safe, contiguous index pool allocating a 10,000-node list (C++20).**
 
 ```cpp
-{{#include ../code/ch08/bump.cpp}}
+{{#include ../code/ch08/index_arena.cpp}}
 ```
 
-**Output 8-1. Three allocations demonstrating 5 bytes of alignment padding, followed by an O(1) reset.**
+**Output 8-1. Verification of 10,000 contiguous arena nodes and O(1) bulk reset.**
 
 ```text
-{{#include ../code/out/ch08_bump.out}}
+{{#include ../code/out/ch08_index_arena.out}}
 ```
 
-**Listing 8-2. The same bump allocator in Rust.**
+**Listing 8-2. The same zero-`unsafe` index arena in Rust.**
 
 ```rust
-{{#include ../code/ch08/bump.rs}}
+{{#include ../code/ch08/index_arena.rs}}
 ```
 
 **Output 8-2.**
 
 ```text
+{{#include ../code/out/ch08_index_arena_rs.out}}
+```
+
+### 8.2.2 Level 2: The Raw Byte Bump Allocator (`mmap`-Backed)
+
+When an arena must store heterogeneous types of varying sizes and alignments—or return direct typed references rather than integer handles—the allocator operates over a raw byte buffer. A **bump allocator** maintains a single monotonic offset (`next_offset`) within its contiguous virtual region. Allocation rounds `next_offset` upward to the requested alignment, verifies sufficient remaining space (`aligned_offset + requested_bytes <= arena_capacity`), and advances `next_offset` by the requested size.
+
+The computational complexity of allocation in a bump allocator is O(1), consisting of only a few arithmetic operations with zero per-object metadata overhead. This speed is traded for coarse reclamation: individual objects cannot be freed, and `reset()` rewinds `next_offset = 0` to reclaim the entire arena at once.
+
+<figure>
+<img src="figures/ch08_bump.svg" alt="Bump allocator sequential byte layout showing 8-byte, 3-byte, 5-byte alignment padding, and 16-byte aligned allocations"/>
+</figure>
+
+**Listing 8-3. Level 2 arena: an `mmap`-backed bump allocator with explicit alignment rounding (C++20).**
+
+```cpp
+{{#include ../code/ch08/bump.cpp}}
+```
+
+**Output 8-3. Three allocations demonstrating 5 bytes of alignment padding, followed by an O(1) reset.**
+
+```text
+{{#include ../code/out/ch08_bump.out}}
+```
+
+**Listing 8-4. The same `mmap`-backed bump allocator in Rust.**
+
+```rust
+{{#include ../code/ch08/bump.rs}}
+```
+
+**Output 8-4.**
+
+```text
 {{#include ../code/out/ch08_bump_rs.out}}
 ```
+
+Extending a raw byte bump allocator into a production typed Rust arena (such as `bumpalo`) introduces three subtle language and memory-model invariants:
+- **Shared-borrow allocation (`&self` to `&'arena mut T`):** In Listing 8-4, `alloc(&mut self, ...)` requires exclusive access to the allocator, preventing callers from holding multiple live references returned by the same arena simultaneously. Production arenas wrap the bump cursor in interior mutability (`Cell<*mut u8>`) so `alloc<T>(&self, value: T) -> &mut T` accepts `&self`. Every returned reference carries the lifetime of `&self`, enabling arbitrary cross-referencing graphs while the borrow checker statically forbids any reference from outliving the arena; because `Cell` is neither `Send` nor `Sync`, single-threaded ownership is enforced at compile time.
+- **Pointer provenance:** Storing the active cursor as a typed raw pointer (`*mut u8`) and computing alignment via `ptr::align_offset` and `ptr::add`—rather than casting pointers to `usize` integers and back—preserves strict pointer provenance under Rust's Stacked/Tree Borrows models and verifies cleanly under Miri.
+- **Destructor omission:** Rewinding or unmapping a raw bump arena reclaims the backing bytes without executing per-object destructors (`Drop` in Rust, `~T()` in C++). Placing heap-owning types such as `Vec` or `String` inside a raw bump arena leaks their secondary heap allocations unless the arena records an explicit drop-function list (as in `typed-arena`) or restricts stored values to plain data and arena-scoped references.
+
+### 8.2.3 Backing Store Trade-Off: Global-Allocator Chunks (`malloc` / `std::alloc`) vs. Direct `mmap`
+
+Listings 8-3 and 8-4 call `mmap` directly to expose the exact OS boundary. In production systems, however, choosing between acquiring chunks from the global allocator (`malloc` / `std::alloc`) and mapping virtual memory directly with `mmap` depends on workload geometry:
+
+| Dimension | Global-Allocator Chunks (`malloc` / `std::alloc`, e.g., 64 KiB) | Direct `mmap` Virtual Reservation (`MAP_NORESERVE`) |
+| :--- | :--- | :--- |
+| **Syscall & page-fault overhead** | Amortized; small chunks (64 KiB) are served from warm, already-faulted user-space arenas with zero kernel traps. | Each new `mmap` invokes a kernel trap and triggers minor page faults upon first write to every freshly mapped page. |
+| **Contiguity & oversized requests** | Requires a chunk list (`Vec<(NonNull<u8>, Layout)>`) and a cold `grow()` path; leaves tail waste at chunk boundaries. | Single contiguous virtual range (e.g., 64 GiB reserved, committed lazily on demand); no chunk list and no relocation. |
+| **Reclamation on `reset()`** | Rewinding a chunked arena retains committed RAM in user space until the arena itself is dropped. | `madvise(base, used, MADV_DONTNEED)` returns physical frames to the kernel while keeping the virtual range mapped and zeroed on reuse. |
+| **Hardware page control** | Controlled indirectly by the global allocator. | Direct access to huge pages (`MAP_HUGETLB` / `MADV_HUGEPAGE`) and hardware guard pages (`mprotect(..., PROT_NONE)`). |
+| **Portability & tooling** | Fully portable across POSIX and Windows; automatically checked by AddressSanitizer, Valgrind, and Miri. | OS-specific (`mmap` vs. `VirtualAlloc(MEM_RESERVE)`); may fail under strict overcommit (`vm.overcommit_memory=2`) and requires manual ASan poisoning. |
+
+As a general rule, application-level arenas such as `bumpalo` allocate geometrically growing chunks (starting around 64 KiB) from `malloc` or `std::alloc`, avoiding syscall overhead and preserving sanitizer visibility. Direct `mmap` reserve-then-commit arenas are reserved for systems requiring single-span address stability, explicit huge-page or guard-page control, or immediate OS frame reclamation—most notably database buffer pools, JIT code heaps, and game-engine frame allocators.
 
 ## 8.3 Explicit Management: Free-List Allocation
 
@@ -98,25 +155,25 @@ The allocator's performance and fragmentation profile are governed by three poli
 <img src="figures/ch08_freelist.svg" alt="Free-list allocator unified trace showing initial allocations, block splitting of 200 B into 150 B plus 26 B, and coalescing back to 200 B"/>
 </figure>
 
-**Listing 8-3. A first-fit free-list allocator with splitting and coalescing (C++20).**
+**Listing 8-5. A first-fit free-list allocator with splitting and coalescing (C++20).**
 
 ```cpp
 {{#include ../code/ch08/free_list.cpp}}
 ```
 
-**Output 8-3. The block map after initial allocations, free, split reuse, and full coalescing.**
+**Output 8-5. The block map after initial allocations, free, split reuse, and full coalescing.**
 
 ```text
 {{#include ../code/out/ch08_free_list.out}}
 ```
 
-**Listing 8-4. The same free-list allocator in Rust.**
+**Listing 8-6. The same free-list allocator in Rust.**
 
 ```rust
 {{#include ../code/ch08/free_list.rs}}
 ```
 
-**Output 8-4.**
+**Output 8-6.**
 
 ```text
 {{#include ../code/out/ch08_free_list_rs.out}}
@@ -124,11 +181,11 @@ The allocator's performance and fragmentation profile are governed by three poli
 
 ## 8.4 Production Allocator Architecture: Boundary Tags, Size Classes, and `mmap`
 
-The educational free-list allocator in Listing 8-3 demonstrates core mechanics, yet exhibits three bottlenecks under multi-threaded production workloads: O(N) linear free-list search, O(N) coalescing traversal, and global lock contention across cores. Production allocators (`jemalloc`, `tcmalloc`, `mimalloc`, and `glibc ptmalloc2`) eliminate these bottlenecks through a three-tier hierarchy.
+The educational free-list allocator in Listing 8-5 demonstrates core mechanics, yet exhibits three bottlenecks under multi-threaded production workloads: O(N) linear free-list search, O(N) coalescing traversal, and global lock contention across cores. Production allocators (`jemalloc`, `tcmalloc`, `mimalloc`, and `glibc ptmalloc2`) eliminate these bottlenecks through a three-tier hierarchy.
 
 ### 8.4.1 Knuth's Boundary Tags for O(1) Bidirectional Coalescing
 
-In Listing 8-3, coalescing a freed block with its *preceding* physical neighbor required scanning the list from `head_block` in O(N) time because each header links only forward. Donald Knuth's **Boundary Tag** architecture eliminates linear scanning by replicating the 8-byte block descriptor (`payload_bytes | allocated_bit`, exploiting the fact that 16-byte aligned sizes leave the lowest 4 bits zero) as both a **Header** before the payload and a **Footer** immediately after the payload:
+In Listing 8-5, coalescing a freed block with its *preceding* physical neighbor required scanning the list from `head_block` in O(N) time because each header links only forward. Donald Knuth's **Boundary Tag** architecture eliminates linear scanning by replicating the 8-byte block descriptor (`payload_bytes | allocated_bit`, exploiting the fact that 16-byte aligned sizes leave the lowest 4 bits zero) as both a **Header** before the payload and a **Footer** immediately after the payload:
 - **Forward Coalescing (O(1)):** Add `current->size` to `current` to inspect the next physical block's Header directly.
 - **Backward Coalescing (O(1)):** Step backward 8 bytes prior to `current`'s Header to read the previous physical block's **Footer**. When the footer's allocated bit is `0`, subtract its encoded size to jump directly to the predecessor's Header and merge in constant time.
 
@@ -151,6 +208,6 @@ Sub-allocating small objects out of persistent arenas amortizes system-call over
 <div class="callout keyidea">
 <span class="label">Key idea</span>
 
-Memory allocators reconcile kernel page granularity with fine-grained object lifetimes: bump allocators trade individual deallocation for O(1) bulk resets, free-list allocators enforce splitting and coalescing via in-band headers, and production allocators achieve lock-free O(1) scaling via per-thread size-class caches, Knuth boundary tags, and direct `mmap` above 128 KiB.
+Memory allocators reconcile kernel page granularity with fine-grained object lifetimes: safe index pools and raw bump allocators trade individual deallocation for O(1) bulk resets, free-list allocators enforce splitting and coalescing via in-band headers, and production allocators achieve lock-free O(1) scaling via per-thread size-class caches, Knuth boundary tags, and direct `mmap` above 128 KiB.
 
 </div>

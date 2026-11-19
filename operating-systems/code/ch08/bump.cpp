@@ -3,6 +3,7 @@
 // and reset() reclaims the entire arena in O(1) time.
 #include <sys/mman.h>
 #include <unistd.h>
+#include <cassert>
 #include <cstdint>
 #include <cstdio>
 
@@ -59,6 +60,11 @@ int main() {
     //    then allocates 16 bytes at [16, 32), advancing next_offset to 32.
     void* aligned_block = allocator.alloc(16, 16);
 
+    assert(first_block == allocator.arena_base);
+    assert(small_block == allocator.arena_base + 8);
+    assert(aligned_block == allocator.arena_base + 16);
+    assert(allocator.next_offset == 32);
+
     printf("alloc(8,  align=8)  -> %p (offset 0,  bytes 0..7)\n", first_block);
     printf("alloc(3,  align=8)  -> %p (offset 8,  bytes 8..10)\n", small_block);
     printf("alloc(16, align=16) -> %p (offset 16, bytes 16..31 after 5B padding)\n", aligned_block);
@@ -67,8 +73,8 @@ int main() {
     // Resetting rewinds next_offset to 0 so the arena can be reused immediately.
     allocator.reset();
     void* reused_block = allocator.alloc(8, 8);
-    printf("after reset, alloc(8, align=8) -> %p (reuses offset 0: %s)\n",
-           reused_block, reused_block == first_block ? "yes" : "no");
+    assert(reused_block == first_block);
+    printf("after reset, alloc(8, align=8) -> %p (reuses offset 0: yes)\n", reused_block);
 
     allocator.destroy();
 }

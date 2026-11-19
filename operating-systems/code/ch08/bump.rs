@@ -76,6 +76,11 @@ fn main() {
     //    then allocates 16 bytes at [16, 32), advancing next_offset to 32.
     let aligned_block = allocator.alloc(16, 16).unwrap();
 
+    assert_eq!(first_block, allocator.arena_base);
+    assert_eq!(small_block as usize - allocator.arena_base as usize, 8);
+    assert_eq!(aligned_block as usize - allocator.arena_base as usize, 16);
+    assert_eq!(allocator.next_offset, 32);
+
     println!("alloc(8,  align=8)  -> {first_block:p} (offset 0,  bytes 0..7)");
     println!("alloc(3,  align=8)  -> {small_block:p} (offset 8,  bytes 8..10)");
     println!("alloc(16, align=16) -> {aligned_block:p} (offset 16, bytes 16..31 after 5B padding)");
@@ -84,8 +89,6 @@ fn main() {
     // Resetting rewinds next_offset to 0 so the arena can be reused immediately.
     allocator.reset();
     let reused_block = allocator.alloc(8, 8).unwrap();
-    println!(
-        "after reset, alloc(8, align=8) -> {reused_block:p} (reuses offset 0: {})",
-        if reused_block == first_block { "yes" } else { "no" }
-    );
+    assert_eq!(reused_block, first_block);
+    println!("after reset, alloc(8, align=8) -> {reused_block:p} (reuses offset 0: yes)");
 }

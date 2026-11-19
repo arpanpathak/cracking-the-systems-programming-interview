@@ -85,7 +85,10 @@
   - [8.1 The Allocator Interface and Efficiency Constraints](ch08-allocation.md#81-the-allocator-interface-and-efficiency-constraints)
     - [8.1.1 Requesting Raw Arenas from the Kernel (`mmap`)](ch08-allocation.md#811-requesting-raw-arenas-from-the-kernel-mmap)
     - [8.1.2 Hardware Alignment and Bitwise Rounding](ch08-allocation.md#812-hardware-alignment-and-bitwise-rounding)
-  - [8.2 Arena Allocation: The Bump Allocator](ch08-allocation.md#82-arena-allocation-the-bump-allocator)
+  - [8.2 Arena Allocation: From Safe Index Pools to Raw Bump Allocators](ch08-allocation.md#82-arena-allocation-from-safe-index-pools-to-raw-bump-allocators)
+    - [8.2.1 Level 1: The Safe Index Arena (Zero `unsafe`)](ch08-allocation.md#821-level-1-the-safe-index-arena-zero-unsafe)
+    - [8.2.2 Level 2: The Raw Byte Bump Allocator (`mmap`-Backed)](ch08-allocation.md#822-level-2-the-raw-byte-bump-allocator-mmap-backed)
+    - [8.2.3 Backing Store Trade-Off: Global-Allocator Chunks (`malloc` / `std::alloc`) vs. Direct `mmap`](ch08-allocation.md#823-backing-store-trade-off-global-allocator-chunks-malloc--stdalloc-vs-direct-mmap)
   - [8.3 Explicit Management: Free-List Allocation](ch08-allocation.md#83-explicit-management-free-list-allocation)
     - [8.3.1 First-Fit Search, Splitting, and Coalescing](ch08-allocation.md#831-first-fit-search-splitting-and-coalescing)
   - [8.4 Production Allocator Architecture: Boundary Tags, Size Classes, and `mmap`](ch08-allocation.md#84-production-allocator-architecture-boundary-tags-size-classes-and-mmap)
@@ -219,7 +222,7 @@ A thematic, alphabetical cross-reference linking systems topics directly to thei
   - Numerical Walkthrough & Invariants: [§7.2.2](ch07-virtual-memory.md#722-hand-calculated-4-level-address-translation-walkthrough)
 - **Anonymous Mapping (`MAP_ANON | MAP_PRIVATE`)** — Kernel allocation of zero-initialized demand pages unbacked by physical disk files.
   - Page Fault Dynamics: [§7.1](ch07-virtual-memory.md#71-page-based-abstraction-and-isolation)
-  - Heap Arena Construction: [§8.2](ch08-allocation.md#82-arena-allocation-the-bump-allocator), [§8.3](ch08-allocation.md#83-explicit-management-free-list-allocation)
+  - Heap Arena Construction: [§8.2.2](ch08-allocation.md#822-level-2-the-raw-byte-bump-allocator-mmap-backed), [§8.3](ch08-allocation.md#83-explicit-management-free-list-allocation)
 - **APIC / IO-APIC & ARM GIC (Interrupt Controllers)** — Two-tier hardware interrupt routing, Message Signaled Interrupts (MSI-X), and priority arbitration across multiprocessor cores.
   - Hardware Routing & EOI: [§2.4.1](ch02-the-machine.md#241-interrupt-controllers-apic-io-apic-msi-x-and-arm-gic)
 - **Apple Silicon Unified Memory (UMA)** — Shared physical memory substrate between CPU, GPU, and Neural Engine without PCIe bus serialization.
@@ -247,7 +250,7 @@ A thematic, alphabetical cross-reference linking systems topics directly to thei
 - **Buffered I/O (`BufWriter`)** — Amortizing the overhead of user-to-kernel context transitions via large user-space memory buffers.
   - System Call Trap Overhead: [§9.2](ch09-system-calls.md#92-performance-implications-and-optimization-via-buffering)
 - **Bump Allocator (Arena)** — Extreme high-throughput allocation strategy incrementing an offset pointer within contiguous memory.
-  - Design & Mathematical Alignment: [§8.2](ch08-allocation.md#82-arena-allocation-the-bump-allocator)
+  - Design & Mathematical Alignment: [§8.2](ch08-allocation.md#82-arena-allocation-from-safe-index-pools-to-raw-bump-allocators)
 
 ### C
 - **Cache Coherence Protocols (MESI / MOESI)** — Hardware protocols ensuring cache-line consistency across multi-core systems.
