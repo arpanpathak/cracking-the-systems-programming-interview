@@ -1,0 +1,45 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 720 280" font-family="Helvetica, Arial, sans-serif">
+  <defs>
+    <marker id="ar" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M 0 0 L 10 5 L 0 10 z" fill="#86868b"/>
+    </marker>
+  </defs>
+  <style>
+    .t { font-size: 13px; fill: #1d1d1f; }
+    .s { font-size: 11px; fill: #6e6e73; }
+    .line { fill: #f5f5f7; stroke: #86868b; stroke-width: 1.2; }
+    .hot { fill: #cfe4fb; stroke: #0071e3; }
+    .pad { fill: #ffffff; stroke: #248a3d; stroke-dasharray: 4 4; }
+    .ln { stroke: #c93400; stroke-width: 1.4; fill: none; marker-end: url(#ar); }
+  </style>
+
+  <text x="40" y="30" class="t" font-weight="bold">Figure 17-2. False sharing: two independent counters, one contested cache line.</text>
+
+  <text x="60" y="70" class="t" font-weight="bold">unpadded</text>
+  <rect x="40" y="80" width="300" height="60" rx="6" class="line"/>
+  <rect x="48" y="88" width="60" height="20" rx="4" class="hot"/>
+  <text x="78" y="102" class="s" text-anchor="middle">counter A</text>
+  <rect x="116" y="88" width="60" height="20" rx="4" class="hot"/>
+  <text x="146" y="102" class="s" text-anchor="middle">counter B</text>
+  <text x="190" y="128" class="s" text-anchor="middle">one 64-byte line holds both</text>
+  <line x1="120" y1="168" x2="260" y2="168" class="ln"/>
+  <line x1="260" y1="168" x2="120" y2="168" class="ln"/>
+  <text x="190" y="188" class="s" text-anchor="middle" fill="#c93400">the line bounces between cores on every write</text>
+
+  <text x="430" y="70" class="t" font-weight="bold">padded</text>
+  <rect x="400" y="80" width="130" height="60" rx="6" class="line"/>
+  <rect x="408" y="88" width="60" height="20" rx="4" class="hot"/>
+  <text x="438" y="102" class="s" text-anchor="middle">counter A</text>
+  <rect x="470" y="88" width="52" height="20" rx="4" class="pad"/>
+  <rect x="540" y="80" width="130" height="60" rx="6" class="line"/>
+  <rect x="548" y="88" width="60" height="20" rx="4" class="hot"/>
+  <text x="578" y="102" class="s" text-anchor="middle">counter B</text>
+  <rect x="510" y="88" width="52" height="20" rx="4" class="pad"/>
+  <text x="568" y="128" class="s" text-anchor="middle">each counter owns a line</text>
+  <line x1="470" y1="168" x2="470" y2="158" stroke="#248a3d" stroke-width="1.4"/>
+  <line x1="600" y1="168" x2="600" y2="158" stroke="#248a3d" stroke-width="1.4"/>
+  <text x="530" y="188" class="s" text-anchor="middle" fill="#248a3d">no sharing, no bounce, no slowdown</text>
+
+  <text x="40" y="240" class="s">The two counters are logically independent, yet the hardware serializes them: they share a coherence unit.</text>
+  <text x="40" y="258" class="s">Separating hot fields by a cache line is a layout decision, visible in the benchmark in Section 17.2.</text>
+</svg>

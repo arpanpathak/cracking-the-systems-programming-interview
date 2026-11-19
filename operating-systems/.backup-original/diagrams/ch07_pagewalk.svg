@@ -1,0 +1,78 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 720 360" font-family="Helvetica, Arial, sans-serif">
+  <defs>
+    <marker id="ar" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M 0 0 L 10 5 L 0 10 z" fill="#86868b"/>
+    </marker>
+  </defs>
+  <style>
+    .t { font-size: 13px; fill: #1d1d1f; }
+    .s { font-size: 11px; fill: #6e6e73; }
+    .va { fill: #eaf4ff; stroke: #0071e3; stroke-width: 1.5; }
+    .tbl { fill: #ffffff; stroke: #86868b; stroke-width: 1.2; }
+    .fr { fill: #eefaf1; stroke: #248a3d; stroke-width: 1.5; }
+    .ln { stroke: #86868b; stroke-width: 1.3; fill: none; marker-end: url(#ar); }
+  </style>
+
+  <text x="40" y="30" class="t" font-weight="bold">Figure 7-2. A four-level page table walk (x86-64, 4 KiB pages).</text>
+
+  <!-- virtual address -->
+  <text x="40" y="66" class="s">one virtual address, 48 meaningful bits</text>
+  <g class="va">
+    <rect x="40" y="74" width="100" height="40"/>
+    <rect x="140" y="74" width="110" height="40" fill="#cfe4fb"/>
+    <rect x="250" y="74" width="110" height="40"/>
+    <rect x="360" y="74" width="110" height="40"/>
+    <rect x="470" y="74" width="110" height="40"/>
+    <rect x="580" y="74" width="100" height="40"/>
+  </g>
+  <text x="90" y="98" class="s" text-anchor="middle">bits 63&#8211;48</text>
+  <text x="195" y="98" class="s" text-anchor="middle">L4 index (9)</text>
+  <text x="305" y="98" class="s" text-anchor="middle">L3 index (9)</text>
+  <text x="415" y="98" class="s" text-anchor="middle">L2 index (9)</text>
+  <text x="525" y="98" class="s" text-anchor="middle">L1 index (9)</text>
+  <text x="630" y="98" class="s" text-anchor="middle">offset (12)</text>
+
+  <!-- tables -->
+  <rect x="140" y="150" width="70" height="150" rx="4" class="tbl"/>
+  <text x="175" y="168" class="s" text-anchor="middle">L4 table</text>
+  <rect x="175" y="192" width="8" height="14" fill="#0071e3"/>
+  <line x1="179" y1="192" x2="179" y2="206" class="ln"/>
+
+  <rect x="250" y="150" width="70" height="150" rx="4" class="tbl"/>
+  <text x="285" y="168" class="s" text-anchor="middle">L3 table</text>
+  <rect x="285" y="192" width="8" height="14" fill="#0071e3"/>
+
+  <rect x="360" y="150" width="70" height="150" rx="4" class="tbl"/>
+  <text x="395" y="168" class="s" text-anchor="middle">L2 table</text>
+  <rect x="395" y="192" width="8" height="14" fill="#0071e3"/>
+
+  <rect x="470" y="150" width="70" height="150" rx="4" class="tbl"/>
+  <text x="505" y="168" class="s" text-anchor="middle">L1 table</text>
+  <rect x="505" y="192" width="8" height="14" fill="#0071e3"/>
+
+  <!-- frame -->
+  <rect x="580" y="150" width="100" height="150" rx="4" class="fr"/>
+  <text x="630" y="168" class="s" text-anchor="middle">page frame</text>
+  <text x="630" y="186" class="s" text-anchor="middle">4 KiB</text>
+  <rect x="630" y="192" width="8" height="14" fill="#248a3d"/>
+
+  <!-- walk arrows -->
+  <line x1="179" y1="206" x2="248" y2="190" class="ln"/>
+  <line x1="289" y1="206" x2="358" y2="190" class="ln"/>
+  <line x1="399" y1="206" x2="468" y2="190" class="ln"/>
+  <line x1="509" y1="206" x2="578" y2="190" class="ln"/>
+
+  <!-- cr3 -->
+  <rect x="120" y="220" width="0" height="0"/>
+  <path d="M 120 220 L 140 196" class="ln"/>
+  <text x="84" y="230" class="s" text-anchor="end">CR3 register</text>
+  <text x="116" y="244" class="s" text-anchor="end">points to the L4 table</text>
+
+  <!-- offset -->
+  <path d="M 630 132 L 630 148" class="ln"/>
+  <text x="716" y="136" class="s" text-anchor="end">offset selects the byte</text>
+  <text x="716" y="150" class="s" text-anchor="end">inside the frame</text>
+
+  <text x="40" y="330" class="s">Four memory reads per translation, on every access &#8212; unless the TLB already holds the answer.</text>
+  <text x="40" y="348" class="s">That is why TLB misses are expensive, and why the experiment in Section 7.4 shows latency steps.</text>
+</svg>

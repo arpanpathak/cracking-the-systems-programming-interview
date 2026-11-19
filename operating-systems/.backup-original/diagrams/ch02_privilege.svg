@@ -1,0 +1,52 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 720 320" font-family="Helvetica, Arial, sans-serif">
+  <defs>
+    <marker id="ar" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M 0 0 L 10 5 L 0 10 z" fill="#86868b"/>
+    </marker>
+  </defs>
+  <style>
+    .t { font-size: 13px; fill: #1d1d1f; }
+    .s { font-size: 11px; fill: #6e6e73; }
+    .user { fill: #eaf4ff; stroke: #0071e3; stroke-width: 1.5; }
+    .kern { fill: #eefaf1; stroke: #248a3d; stroke-width: 1.5; }
+    .ln { stroke: #86868b; stroke-width: 1.5; fill: none; marker-end: url(#ar); }
+    .lnb { stroke: #0071e3; stroke-width: 2; fill: none; marker-end: url(#ar); }
+    .lng { stroke: #248a3d; stroke-width: 2; fill: none; marker-end: url(#ar); }
+  </style>
+
+  <text x="40" y="30" class="t" font-weight="bold">Figure 2-2. Two privilege levels; every trap crosses the boundary.</text>
+
+  <!-- user mode -->
+  <rect x="40" y="50" width="640" height="100" rx="10" class="user"/>
+  <text x="56" y="76" class="t" font-weight="bold">User mode (ring 3)</text>
+  <rect x="56" y="88" width="140" height="44" rx="6" fill="#ffffff" stroke="#0071e3"/>
+  <text x="126" y="106" class="t" text-anchor="middle">process A</text>
+  <text x="126" y="122" class="s" text-anchor="middle">private address space</text>
+  <rect x="216" y="88" width="140" height="44" rx="6" fill="#ffffff" stroke="#0071e3"/>
+  <text x="286" y="106" class="t" text-anchor="middle">process B</text>
+  <text x="286" y="122" class="s" text-anchor="middle">private address space</text>
+  <text x="396" y="110" class="s">can only touch its own memory,</text>
+  <text x="396" y="128" class="s">and cannot execute privileged instructions</text>
+
+  <!-- boundary -->
+  <line x1="40" y1="170" x2="680" y2="170" stroke="#86868b" stroke-width="3"/>
+  <text x="690" y="156" class="s" text-anchor="end">privilege boundary</text>
+
+  <!-- kernel mode -->
+  <rect x="40" y="190" width="640" height="100" rx="10" class="kern"/>
+  <text x="56" y="216" class="t" font-weight="bold">Kernel mode (ring 0)</text>
+  <rect x="56" y="228" width="170" height="44" rx="6" fill="#ffffff" stroke="#248a3d"/>
+  <text x="141" y="246" class="t" text-anchor="middle">kernel code and data</text>
+  <text x="141" y="262" class="s" text-anchor="middle">mapped into every process</text>
+  <rect x="246" y="228" width="170" height="44" rx="6" fill="#ffffff" stroke="#248a3d"/>
+  <text x="331" y="246" class="t" text-anchor="middle">device registers</text>
+  <text x="331" y="262" class="s" text-anchor="middle">only the kernel touches them</text>
+  <text x="436" y="246" class="s">executes privileged instructions,</text>
+  <text x="436" y="264" class="s">handles traps and interrupts</text>
+
+  <!-- trap/return arrows -->
+  <line x1="180" y1="132" x2="180" y2="188" class="lnb"/>
+  <text x="192" y="156" class="s">system call (trap)</text>
+  <line x1="620" y1="188" x2="620" y2="132" class="lng"/>
+  <text x="632" y="156" class="s">return to user</text>
+</svg>

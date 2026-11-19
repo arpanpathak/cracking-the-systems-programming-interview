@@ -1,0 +1,240 @@
+/* ============================================================
+   Operating Systems: A Hands-On Approach — custom theme
+   Typography and layout tuned for long-form technical reading.
+   ============================================================ */
+
+:root {
+  --ink: #1d1d1f;
+  --ink-soft: #3a3a3c;
+  --muted: #6e6e73;
+  --faint: #86868b;
+  --accent: #0071e3;
+  --accent-ink: #005bb5;
+  --paper: #ffffff;
+  --wash: #f5f5f7;
+  --hairline: #d2d2d7;
+  --code-bg: #fafafc;
+  --key: #eaf4ff;
+  --key-edge: #0071e3;
+  --note: #f5f5f7;
+  --note-edge: #8e8e93;
+  --exp: #eefaf1;
+  --exp-edge: #248a3d;
+  --warn: #fff4e5;
+  --warn-edge: #c93400;
+  --sum: #f4f0fb;
+  --sum-edge: #5e5ce6;
+}
+
+html { font-size: 17px; }
+
+body {
+  font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI",
+    Roboto, "Helvetica Neue", Arial, sans-serif;
+  color: var(--ink);
+  background: var(--paper);
+}
+
+.content main {
+  line-height: 1.66;
+}
+
+/* ---------- Headings ---------- */
+
+.content h1 {
+  font-size: 2.1rem;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  margin: 0 0 0.6em;
+  padding-bottom: 0.25em;
+  border-bottom: 1px solid var(--hairline);
+}
+
+.content h2 {
+  font-size: 1.45rem;
+  font-weight: 650;
+  letter-spacing: -0.01em;
+  margin-top: 1.9em;
+  margin-bottom: 0.5em;
+}
+
+.content h3 {
+  font-size: 1.15rem;
+  font-weight: 600;
+  margin-top: 1.6em;
+  margin-bottom: 0.45em;
+}
+
+/* ---------- Body text ---------- */
+
+.content main p { margin: 0 0 1em; }
+
+.content main p, .content main li { max-width: 46em; }
+
+.content strong { color: var(--ink); }
+
+.content a { color: var(--accent); text-decoration: none; }
+.content a:hover { color: var(--accent-ink); text-decoration: underline; }
+
+.content blockquote {
+  border-left: 3px solid var(--hairline);
+  margin: 1.1em 0;
+  padding: 0.4em 1em;
+  color: var(--ink-soft);
+  background: var(--wash);
+  border-radius: 0 6px 6px 0;
+}
+
+/* ---------- Code ---------- */
+
+.content pre {
+  background: var(--code-bg);
+  border: 1px solid var(--hairline);
+  border-radius: 8px;
+  padding: 0.9em 1.1em;
+  line-height: 1.5;
+  font-size: 0.83rem;
+}
+
+.content code {
+  font-family: "SF Mono", SFMono-Regular, ui-monospace, Menlo, Consolas,
+    "Liberation Mono", monospace;
+  background: var(--wash);
+  border-radius: 4px;
+  padding: 0.1em 0.35em;
+  font-size: 0.85em;
+}
+
+.content pre code { background: transparent; padding: 0; font-size: 1em; }
+
+/* ---------- Figures ---------- */
+
+.content figure {
+  margin: 1.6em 0;
+  text-align: center;
+  page-break-inside: avoid;
+}
+
+.content figure img {
+  max-width: 100%;
+  border: 1px solid var(--hairline);
+  border-radius: 8px;
+  background: #ffffff;
+}
+
+.content figure figcaption {
+  margin-top: 0.55em;
+  font-size: 0.85rem;
+  color: var(--muted);
+  max-width: 42em;
+  margin-left: auto;
+  margin-right: auto;
+}
+
+/* ---------- Callouts ---------- */
+
+.callout {
+  border-radius: 10px;
+  padding: 0.9em 1.15em 0.85em;
+  margin: 1.35em 0;
+  font-size: 0.95rem;
+  page-break-inside: avoid;
+}
+
+.callout p { margin: 0.35em 0; }
+.callout p:first-child { margin-top: 0; }
+.callout p:last-child { margin-bottom: 0; }
+
+.callout .label {
+  display: block;
+  font-weight: 700;
+  font-size: 0.78rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  margin-bottom: 0.35em;
+}
+
+.keyidea { background: var(--key); border: 1px solid #bcd9f7; }
+.keyidea .label { color: var(--accent-ink); }
+
+.note { background: var(--note); border: 1px solid var(--hairline); }
+.note .label { color: var(--muted); }
+
+.experiment { background: var(--exp); border: 1px solid #b8e2c2; }
+.experiment .label { color: var(--exp-edge); }
+
+.caution { background: var(--warn); border: 1px solid #f5c08e; }
+.caution .label { color: var(--warn-edge); }
+
+.summary { background: var(--sum); border: 1px solid #c9c4ee; }
+.summary .label { color: var(--sum-edge); }
+
+.glance {
+  background: var(--wash);
+  border: 1px solid var(--hairline);
+}
+.glance .label { color: var(--muted); }
+.glance ul { margin: 0.2em 0 0; padding-left: 1.2em; }
+.glance li { margin: 0.18em 0; }
+
+/* ---------- Tables ---------- */
+
+.content table {
+  border-collapse: collapse;
+  margin: 1.3em 0;
+  font-size: 0.92rem;
+}
+
+.content table th, .content table td {
+  border: 1px solid var(--hairline);
+  padding: 0.45em 0.8em;
+  text-align: left;
+}
+
+.content table th { background: var(--wash); font-weight: 600; }
+
+/* ---------- Sidebar ---------- */
+
+.sidebar {
+  background: var(--wash);
+  border-right: 1px solid var(--hairline);
+  font-size: 0.9rem;
+}
+
+.chapter li.part-title { color: var(--muted); font-weight: 600; }
+.chapter li a:hover { color: var(--accent); }
+.chapter li a.active { color: var(--accent); font-weight: 600; }
+
+/* ---------- Print (used by the generated print.html and PDF) ---------- */
+
+@media print {
+  @page {
+    size: Letter;
+    margin: 16mm 15mm 18mm 15mm;
+  }
+
+  html { font-size: 10.5pt; }
+  body { color: #111; }
+
+  .content h1 { break-before: page; font-size: 20pt; }
+  .content main > h1:first-child { break-before: auto; }
+  .content h2 { font-size: 14pt; margin-top: 1.2em; }
+  .content h3 { font-size: 11.5pt; }
+
+  .content pre {
+    font-size: 8.6pt;
+    white-space: pre-wrap;
+    page-break-inside: avoid;
+  }
+
+  .content figure { page-break-inside: avoid; }
+  .content table { page-break-inside: avoid; }
+  .callout { page-break-inside: avoid; }
+
+  .sidebar, .menu-bar, .nav-chapters, #mdbook-help-container,
+  #mdbook-help-popup { display: none !important; }
+}
+
+@media print and (color) {
+  * { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+}

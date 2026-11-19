@@ -1,0 +1,57 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 720 400" font-family="Helvetica, Arial, sans-serif">
+  <defs>
+    <marker id="ar" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M 0 0 L 10 5 L 0 10 z" fill="#86868b"/>
+    </marker>
+  </defs>
+  <style>
+    .t { font-size: 13px; fill: #1d1d1f; }
+    .s { font-size: 11px; fill: #6e6e73; }
+    .proc { fill: #eaf4ff; stroke: #0071e3; stroke-width: 1.5; }
+    .mem { fill: #ffffff; stroke: #86868b; stroke-width: 1.2; }
+    .ln { stroke: #86868b; stroke-width: 1.5; fill: none; marker-end: url(#ar); }
+    .dash { stroke: #86868b; stroke-width: 1.2; stroke-dasharray: 5 4; fill: none; marker-end: url(#ar); }
+  </style>
+
+  <text x="40" y="30" class="t" font-weight="bold">Figure 3-2. fork() creates a second process that starts as a copy.</text>
+
+  <!-- before -->
+  <text x="60" y="64" class="t" font-weight="bold">before</text>
+  <rect x="60" y="76" width="200" height="60" rx="8" class="proc"/>
+  <text x="160" y="100" class="t" text-anchor="middle">process, PID 100</text>
+  <text x="160" y="118" class="s" text-anchor="middle">one address space</text>
+  <rect x="60" y="150" width="200" height="90" rx="4" class="mem"/>
+  <text x="160" y="188" class="s" text-anchor="middle">text + data + heap + stack</text>
+  <text x="160" y="206" class="s" text-anchor="middle">open files, cwd, signal masks</text>
+
+  <line x1="280" y1="180" x2="360" y2="180" class="ln"/>
+  <text x="320" y="172" class="s" text-anchor="middle">fork()</text>
+
+  <!-- after -->
+  <text x="410" y="64" class="t" font-weight="bold">after</text>
+  <rect x="390" y="76" width="140" height="60" rx="8" class="proc"/>
+  <text x="460" y="100" class="t" text-anchor="middle">PID 100 (parent)</text>
+  <text x="460" y="118" class="s" text-anchor="middle">fork() returned 200</text>
+  <rect x="560" y="76" width="140" height="60" rx="8" class="proc"/>
+  <text x="630" y="100" class="t" text-anchor="middle">PID 200 (child)</text>
+  <text x="630" y="118" class="s" text-anchor="middle">fork() returned 0</text>
+
+  <rect x="390" y="150" width="140" height="90" rx="4" class="mem"/>
+  <text x="460" y="180" class="s" text-anchor="middle">its own copy of</text>
+  <text x="460" y="198" class="s" text-anchor="middle">the address space</text>
+  <text x="460" y="216" class="s" text-anchor="middle">(copy-on-write)</text>
+  <rect x="560" y="150" width="140" height="90" rx="4" class="mem"/>
+  <text x="630" y="180" class="s" text-anchor="middle">its own copy of</text>
+  <text x="630" y="198" class="s" text-anchor="middle">the address space</text>
+  <text x="630" y="216" class="s" text-anchor="middle">(copy-on-write)</text>
+
+  <line x1="460" y1="132" x2="460" y2="148" class="ln"/>
+  <line x1="630" y1="132" x2="630" y2="148" class="ln"/>
+  <line x1="530" y1="90" x2="558" y2="90" class="dash"/>
+  <line x1="600" y1="106" x2="572" y2="106" class="dash"/>
+
+  <text x="60" y="280" class="s">Each process keeps its own PID, parent PID, and file table; the memory copy is lazy.</text>
+  <text x="60" y="300" class="s">The child begins executing at the instruction after fork(), in the same code, with the same variable values.</text>
+  <text x="60" y="330" class="t" font-weight="bold">The return value is the only reliable difference the program can observe.</text>
+  <text x="60" y="350" class="s">Parent sees the child&#8217;s PID (a positive number). Child sees 0. Error returns -1.</text>
+</svg>

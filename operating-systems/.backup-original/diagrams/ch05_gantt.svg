@@ -1,0 +1,54 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 720 340" font-family="Helvetica, Arial, sans-serif">
+  <style>
+    .t { font-size: 13px; fill: #1d1d1f; }
+    .s { font-size: 11px; fill: #6e6e73; }
+    .a { fill: #cfe4fb; stroke: #0071e3; }
+    .b { fill: #fde3c2; stroke: #c93400; }
+    .c { fill: #d4f0da; stroke: #248a3d; }
+    .tick { stroke: #d2d2d7; stroke-width: 1; }
+  </style>
+
+  <text x="40" y="30" class="t" font-weight="bold">Figure 5-2. Three policies, the same three jobs (A = 10, B = 5, C = 5).</text>
+
+  <!-- FCFS -->
+  <text x="40" y="70" class="t" font-weight="bold">FCFS</text>
+  <rect x="100" y="54" width="200" height="28" class="a"/><text x="200" y="72" class="s" text-anchor="middle">A (0&#8211;10)</text>
+  <rect x="300" y="54" width="100" height="28" class="b"/><text x="350" y="72" class="s" text-anchor="middle">B (10&#8211;15)</text>
+  <rect x="400" y="54" width="100" height="28" class="c"/><text x="450" y="72" class="s" text-anchor="middle">C (15&#8211;20)</text>
+  <text x="540" y="72" class="s">average turnaround 15</text>
+  <line x1="100" y1="82" x2="500" y2="82" stroke="#86868b" stroke-width="1.2"/>
+  <line x1="100" y1="78" x2="100" y2="86" class="tick"/><text x="100" y="98" class="s" text-anchor="middle">0</text>
+  <line x1="300" y1="78" x2="300" y2="86" class="tick"/><text x="300" y="98" class="s" text-anchor="middle">10</text>
+  <line x1="400" y1="78" x2="400" y2="86" class="tick"/><text x="400" y="98" class="s" text-anchor="middle">15</text>
+  <line x1="500" y1="78" x2="500" y2="86" class="tick"/><text x="500" y="98" class="s" text-anchor="middle">20</text>
+
+  <!-- SJF -->
+  <text x="40" y="140" class="t" font-weight="bold">SJF</text>
+  <rect x="100" y="124" width="100" height="28" class="b"/><text x="150" y="142" class="s" text-anchor="middle">B (0&#8211;5)</text>
+  <rect x="200" y="124" width="100" height="28" class="c"/><text x="250" y="142" class="s" text-anchor="middle">C (5&#8211;10)</text>
+  <rect x="300" y="124" width="200" height="28" class="a"/><text x="400" y="142" class="s" text-anchor="middle">A (10&#8211;20)</text>
+  <text x="540" y="142" class="s">average turnaround 11.7</text>
+  <line x1="100" y1="152" x2="500" y2="152" stroke="#86868b" stroke-width="1.2"/>
+  <line x1="100" y1="148" x2="100" y2="156" class="tick"/><text x="100" y="168" class="s" text-anchor="middle">0</text>
+  <line x1="200" y1="148" x2="200" y2="156" class="tick"/><text x="200" y="168" class="s" text-anchor="middle">5</text>
+  <line x1="300" y1="148" x2="300" y2="156" class="tick"/><text x="300" y="168" class="s" text-anchor="middle">10</text>
+  <line x1="500" y1="148" x2="500" y2="156" class="tick"/><text x="500" y="168" class="s" text-anchor="middle">20</text>
+
+  <!-- RR -->
+  <text x="40" y="210" class="t" font-weight="bold">RR, q = 5</text>
+  <rect x="100" y="194" width="100" height="28" class="a"/><text x="150" y="212" class="s" text-anchor="middle">A (0&#8211;5)</text>
+  <rect x="200" y="194" width="100" height="28" class="b"/><text x="250" y="212" class="s" text-anchor="middle">B (5&#8211;10)</text>
+  <rect x="300" y="194" width="100" height="28" class="c"/><text x="350" y="212" class="s" text-anchor="middle">C (10&#8211;15)</text>
+  <rect x="400" y="194" width="100" height="28" class="a"/><text x="450" y="212" class="s" text-anchor="middle">A (15&#8211;20)</text>
+  <text x="540" y="212" class="s">average turnaround 15</text>
+  <line x1="100" y1="222" x2="500" y2="222" stroke="#86868b" stroke-width="1.2"/>
+  <line x1="100" y1="218" x2="100" y2="226" class="tick"/><text x="100" y="238" class="s" text-anchor="middle">0</text>
+  <line x1="200" y1="218" x2="200" y2="226" class="tick"/><text x="200" y="238" class="s" text-anchor="middle">5</text>
+  <line x1="300" y1="218" x2="300" y2="226" class="tick"/><text x="300" y="238" class="s" text-anchor="middle">10</text>
+  <line x1="400" y1="218" x2="400" y2="226" class="tick"/><text x="400" y="238" class="s" text-anchor="middle">15</text>
+  <line x1="500" y1="218" x2="500" y2="226" class="tick"/><text x="500" y="238" class="s" text-anchor="middle">20</text>
+
+  <text x="40" y="280" class="s">FCFS is fair in arrival order and bad for short jobs stuck behind long ones.</text>
+  <text x="40" y="300" class="s">SJF minimizes average turnaround when all jobs are present, but needs the bursts to be known.</text>
+  <text x="40" y="320" class="s">RR trades total efficiency for responsiveness: every job gets a turn quickly.</text>
+</svg>

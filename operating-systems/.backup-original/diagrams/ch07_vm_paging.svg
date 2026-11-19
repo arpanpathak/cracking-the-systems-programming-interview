@@ -1,0 +1,72 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 720 430" font-family="Helvetica, Arial, sans-serif">
+  <defs>
+    <marker id="ar" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M 0 0 L 10 5 L 0 10 z" fill="#86868b"/>
+    </marker>
+    <marker id="arr" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M 0 0 L 10 5 L 0 10 z" fill="#c93400"/>
+    </marker>
+  </defs>
+  <style>
+    .t { font-size: 13px; fill: #1d1d1f; }
+    .s { font-size: 11px; fill: #6e6e73; }
+    .vp { fill: #eaf4ff; stroke: #0071e3; stroke-width: 1.5; }
+    .pp { fill: #eefaf1; stroke: #248a3d; stroke-width: 1.5; }
+    .pt { fill: #ffffff; stroke: #86868b; stroke-width: 1.2; }
+    .ln { stroke: #86868b; stroke-width: 1.3; fill: none; marker-end: url(#ar); }
+    .lnx { stroke: #c93400; stroke-width: 1.6; fill: none; marker-end: url(#arr); }
+  </style>
+
+  <text x="40" y="30" class="t" font-weight="bold">Figure 7-1. Each process sees a private, contiguous space; pages land anywhere in RAM.</text>
+
+  <!-- virtual space -->
+  <rect x="40" y="60" width="220" height="300" rx="10" class="vp"/>
+  <text x="150" y="84" class="t" text-anchor="middle" font-weight="bold">virtual address space</text>
+  <text x="150" y="100" class="s" text-anchor="middle">process A</text>
+
+  <rect x="58" y="114" width="184" height="34" class="pt"/><text x="150" y="135" class="s" text-anchor="middle">page 0</text>
+  <rect x="58" y="152" width="184" height="34" class="pt"/><text x="150" y="173" class="s" text-anchor="middle">page 1</text>
+  <rect x="58" y="190" width="184" height="34" class="pt"/><text x="150" y="211" class="s" text-anchor="middle">page 2</text>
+  <rect x="58" y="228" width="184" height="34" class="pt"/><text x="150" y="249" class="s" text-anchor="middle">page 3</text>
+  <rect x="58" y="266" width="184" height="34" class="pt"/><text x="150" y="287" class="s" text-anchor="middle">page 4</text>
+  <rect x="58" y="304" width="184" height="34" class="pt"/><text x="150" y="325" class="s" text-anchor="middle">page 5 (not yet used)</text>
+
+  <!-- page table -->
+  <rect x="330" y="130" width="120" height="170" rx="10" class="pt"/>
+  <text x="390" y="152" class="t" text-anchor="middle" font-weight="bold">page table</text>
+  <text x="390" y="168" class="s" text-anchor="middle">page 0 &#8594; frame 3</text>
+  <text x="390" y="186" class="s" text-anchor="middle">page 1 &#8594; frame 7</text>
+  <text x="390" y="204" class="s" text-anchor="middle">page 2 &#8594; frame 1</text>
+  <text x="390" y="222" class="s" text-anchor="middle">page 3 &#8594; frame 5</text>
+  <text x="390" y="240" class="s" text-anchor="middle">page 4 &#8594; frame 0</text>
+  <text x="390" y="258" class="s" text-anchor="middle">page 5 &#8594; invalid</text>
+
+  <!-- physical -->
+  <rect x="520" y="60" width="160" height="300" rx="10" class="pp"/>
+  <text x="600" y="84" class="t" text-anchor="middle" font-weight="bold">physical memory</text>
+  <text x="600" y="100" class="s" text-anchor="middle">frames, any order</text>
+
+  <rect x="536" y="114" width="128" height="28" class="pt"/><text x="600" y="132" class="s" text-anchor="middle">frame 0 &#8592; page 4</text>
+  <rect x="536" y="146" width="128" height="28" class="pt"/><text x="600" y="164" class="s" text-anchor="middle">frame 1 &#8592; page 2</text>
+  <rect x="536" y="178" width="128" height="28" fill="#f5f5f7"/><text x="600" y="196" class="s" text-anchor="middle">frame 2 (other process)</text>
+  <rect x="536" y="210" width="128" height="28" class="pt"/><text x="600" y="228" class="s" text-anchor="middle">frame 3 &#8592; page 0</text>
+  <rect x="536" y="242" width="128" height="28" fill="#f5f5f7"/><text x="600" y="260" class="s" text-anchor="middle">frame 4 (other process)</text>
+  <rect x="536" y="274" width="128" height="28" class="pt"/><text x="600" y="292" class="s" text-anchor="middle">frame 5 &#8592; page 3</text>
+  <rect x="536" y="306" width="128" height="28" fill="#f5f5f7"/><text x="600" y="324" class="s" text-anchor="middle">frame 6 (free)</text>
+  <rect x="536" y="338" width="128" height="28" class="pt"/><text x="600" y="356" class="s" text-anchor="middle">frame 7 &#8592; page 1</text>
+
+  <!-- arrows -->
+  <line x1="242" y1="131" x2="328" y2="148" class="ln"/>
+  <line x1="242" y1="169" x2="328" y2="182" class="ln"/>
+  <line x1="242" y1="207" x2="328" y2="216" class="ln"/>
+  <line x1="242" y1="245" x2="328" y2="250" class="ln"/>
+  <line x1="452" y1="148" x2="534" y2="131" class="ln"/>
+  <line x1="452" y1="182" x2="534" y2="163" class="ln"/>
+  <line x1="452" y1="216" x2="534" y2="227" class="ln"/>
+  <line x1="452" y1="250" x2="534" y2="291" class="ln"/>
+  <line x1="242" y1="321" x2="452" y2="252" class="lnx"/>
+  <text x="300" y="330" class="s" fill="#c93400">touch page 5 &#8594; fault</text>
+
+  <text x="40" y="402" class="s">Contiguity is an illusion maintained by the page table; the MMU walks it on every memory access.</text>
+  <text x="40" y="420" class="s">The operating system fills pages on demand: nothing is allocated until the program touches it.</text>
+</svg>

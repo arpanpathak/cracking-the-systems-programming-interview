@@ -1,0 +1,44 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 720 420" font-family="Helvetica, Arial, sans-serif">
+  <style>
+    .t { font-size: 13px; fill: #1d1d1f; }
+    .s { font-size: 11px; fill: #6e6e73; }
+    .l1 { fill: #cfe4fb; stroke: #0071e3; }
+    .l2 { fill: #d4f0da; stroke: #248a3d; }
+    .l3 { fill: #fde3c2; stroke: #c93400; }
+    .l4 { fill: #f4f0fb; stroke: #5e5ce6; }
+  </style>
+
+  <text x="40" y="30" class="t" font-weight="bold">Figure 18-1. The memory hierarchy: smaller and faster at the top.</text>
+
+  <!-- pyramid -->
+  <rect x="140" y="60" width="440" height="36" class="l1"/>
+  <text x="360" y="82" class="s" text-anchor="middle">registers</text>
+  <text x="600" y="82" class="s" text-anchor="middle">~1 ns &#183; ~1 KB</text>
+
+  <rect x="180" y="100" width="360" height="36" class="l1"/>
+  <text x="360" y="122" class="s" text-anchor="middle">L1 cache</text>
+  <text x="560" y="122" class="s" text-anchor="middle">~1 ns &#183; 32&#8211;64 KiB</text>
+
+  <rect x="220" y="140" width="280" height="36" class="l2"/>
+  <text x="360" y="162" class="s" text-anchor="middle">L2 cache</text>
+  <text x="520" y="162" class="s" text-anchor="middle">~3&#8211;4 ns &#183; 256 KiB&#8211;1 MiB</text>
+
+  <rect x="260" y="180" width="200" height="36" class="l2"/>
+  <text x="360" y="202" class="s" text-anchor="middle">L3 cache</text>
+  <text x="480" y="202" class="s" text-anchor="middle">~10 ns &#183; 4&#8211;32 MiB</text>
+
+  <rect x="300" y="220" width="120" height="36" class="l3"/>
+  <text x="360" y="242" class="s" text-anchor="middle">DRAM</text>
+  <text x="440" y="242" class="s" text-anchor="middle">~60&#8211;100 ns &#183; GBs</text>
+
+  <rect x="330" y="260" width="60" height="36" class="l4"/>
+  <text x="360" y="282" class="s" text-anchor="middle">SSD</text>
+  <text x="410" y="282" class="s" text-anchor="middle">~10&#8211;100 &#181;s</text>
+
+  <rect x="350" y="300" width="20" height="30" class="l4"/>
+  <text x="390" y="319" class="s" text-anchor="middle">disk &#183; network</text>
+
+  <text x="40" y="368" class="s">The steps are not smooth: each boundary is a cliff. Chapter 18 measures the cliffs on the machine in front of you.</text>
+  <text x="40" y="388" class="s">Numbers are orders of magnitude; exact values depend on the processor and generation. The shape is constant.</text>
+  <text x="40" y="406" class="s">Locality is the operating principle: reuse what you touched recently (time), and what sits next to it (space).</text>
+</svg>

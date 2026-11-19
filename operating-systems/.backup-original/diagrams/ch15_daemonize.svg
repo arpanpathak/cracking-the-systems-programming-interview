@@ -1,0 +1,50 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 720 420" font-family="Helvetica, Arial, sans-serif">
+  <defs>
+    <marker id="ar" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M 0 0 L 10 5 L 0 10 z" fill="#86868b"/>
+    </marker>
+  </defs>
+  <style>
+    .t { font-size: 13px; fill: #1d1d1f; }
+    .s { font-size: 11px; fill: #6e6e73; }
+    .box { fill: #f5f5f7; stroke: #86868b; stroke-width: 1.2; }
+    .act { fill: #eaf4ff; stroke: #0071e3; stroke-width: 1.5; }
+    .ln { stroke: #86868b; stroke-width: 1.4; fill: none; marker-end: url(#ar); }
+  </style>
+
+  <text x="40" y="30" class="t" font-weight="bold">Figure 15-1. Becoming a daemon: four steps to detach from the terminal.</text>
+
+  <!-- before -->
+  <text x="60" y="64" class="t" font-weight="bold">before</text>
+  <rect x="40" y="76" width="150" height="54" rx="8" class="box"/>
+  <text x="115" y="98" class="s" text-anchor="middle">shell (session leader)</text>
+  <text x="115" y="114" class="s" text-anchor="middle">controlling terminal</text>
+  <rect x="230" y="76" width="150" height="54" rx="8" class="act"/>
+  <text x="305" y="98" class="s" text-anchor="middle">daemon-to-be</text>
+  <text x="305" y="114" class="s" text-anchor="middle">child of the shell</text>
+  <line x1="190" y1="90" x2="228" y2="90" class="ln"/>
+  <line x1="305" y1="76" x2="305" y2="58" class="ln"/>
+  <rect x="240" y="30" width="130" height="26" rx="4" class="box"/>
+  <text x="305" y="47" class="s" text-anchor="middle">terminal</text>
+
+  <text x="60" y="172" class="s">1. fork: the parent exits; the daemon runs in the child.</text>
+  <text x="60" y="192" class="s">2. setsid: the child becomes leader of a new session, with no controlling terminal.</text>
+  <text x="60" y="212" class="s">3. fork again: the session leader exits, so no terminal can ever be acquired.</text>
+  <text x="60" y="232" class="s">4. chdir("/"), umask, stdio to log and /dev/null, write the pidfile, install handlers.</text>
+
+  <!-- after -->
+  <text x="60" y="280" class="t" font-weight="bold">after</text>
+  <rect x="40" y="294" width="150" height="54" rx="8" class="box"/>
+  <text x="115" y="316" class="s" text-anchor="middle">session</text>
+  <text x="115" y="332" class="s" text-anchor="middle">no terminal</text>
+  <rect x="230" y="294" width="150" height="54" rx="8" class="act"/>
+  <text x="305" y="316" class="s" text-anchor="middle">daemon</text>
+  <text x="305" y="332" class="s" text-anchor="middle">PID 1 reparented</text>
+  <line x1="190" y1="308" x2="228" y2="308" class="ln"/>
+  <rect x="420" y="294" width="260" height="54" rx="8" class="box"/>
+  <text x="550" y="312" class="s" text-anchor="middle">stdin &#8592; /dev/null</text>
+  <text x="550" y="328" class="s" text-anchor="middle">stdout/stderr &#8594; log file</text>
+
+  <text x="40" y="380" class="s">SIGHUP now means "reload configuration"; SIGTERM means "shut down gracefully" &#8212; both arrive from the supervisor,</text>
+  <text x="40" y="398" class="s">not the terminal. systemd and launchd supervise, restart, and log for the daemon; the daemon itself stays minimal.</text>
+</svg>

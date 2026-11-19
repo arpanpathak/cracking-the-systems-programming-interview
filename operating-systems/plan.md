@@ -62,13 +62,16 @@ filler_patterns = [
 ]
 
 errors = []
-for f in sorted(glob.glob("src/*.md")):
+for f in sorted(glob.glob("src/*.md") + glob.glob("code/ch*/*.cpp") + glob.glob("code/ch*/*.rs")):
     text = open(f).read()
     if "+---" in text or "┌──" in text or "|   |" in text:
         errors.append(f"{f}: ASCII art box detected!")
-    for pat in filler_patterns:
-        if re.search(pat, text, re.I):
-            errors.append(f"{f}: Casual filler pattern {pat} detected!")
+    if re.search(r"\$\$|\$[^$\n]+\$|\\text\{|\\frac\{|\\ge\b|\\le\b|\\times\b", text):
+        errors.append(f"{f}: Unrendered raw LaTeX delimiter/macro detected! Use HTML <sup>/<sub>/&times;/&ge; instead.")
+    if f.endswith(".md"):
+        for pat in filler_patterns:
+            if re.search(pat, text, re.I):
+                errors.append(f"{f}: Casual filler pattern {pat} detected!")
 
 for f in sorted(glob.glob("src/figures/*.svg")):
     tree = ET.parse(f)
@@ -120,7 +123,7 @@ else:
 - [x] **Verified Material SVGs**: `ch02_stack_frame.svg`, `ch02_interrupt_flow.svg`, `ch03_process_lifecycle.svg`, `ch04_thread_lifecycle.svg` (all visually audited via Headless Chrome).
 
 ### Phase 2: Virtual Memory & Hand-Calculated Translation (Chapter 7) — [COMPLETED & AUDITED]
-- [x] **Canonical Address & Radix Geometry**: Derivation of 48-bit canonical sign extension (`#GP(0)` on non-canonical fault) and $2^9 = 512$ 8-byte PTEs per 4 KiB page table.
+- [x] **Canonical Address & Radix Geometry**: Derivation of 48-bit canonical sign extension (`#GP(0)` on non-canonical fault) and 2<sup>9</sup> = 512 8-byte PTEs per 4 KiB page table.
 - [x] **Hand-Calculated 4-Level Page Walk**: Step-by-step bitwise and hexadecimal walkthrough of `0x0000_7FFF_ABCD_EF01` from `CR3 = 0x1000_0000` through PML4 (`255`), PDPT (`510`), PD (`350`), PT (`223`), and Offset (`0xF01`), plus full 64-bit PTE bit layout (`P`, `R/W`, `U/S`, `A`, `D`, `PS`, `G`, `PFN`, `NX`), TLB reach, Huge Pages (2 MiB / 1 GiB), `PCID`/`ASID`, and multi-core IPI TLB shootdowns.
 - [x] **Verified Material SVG**: `ch07_canonical_va.svg`.
 
@@ -146,11 +149,12 @@ Each of the following phases addresses a major systems gap identified in our arc
   - Derive **Virtual Runtime (`vruntime`)** weighted by nice value (`weight_0 / weight_i`), tracking physical execution time in nanoseconds.
   - Explain the **Red-Black Tree** runqueue (`rb_leftmost` O(1) cached minimum `vruntime` pointer), dynamic scheduling latency, and `min_granularity` preemption floor, plus the transition to **EEVDF** (Earliest Eligible Virtual Deadline First) for latency-critical tasks.
 - [ ] **Priority Inversion and Priority Inheritance / Ceiling Protocols**:
-  - Formalize the unbounded **Priority Inversion** hazard (the Mars Pathfinder failure mode: Low-priority thread $T_L$ holds mutex $M$; High-priority thread $T_H$ blocks on $M$; Medium-priority CPU-bound thread $T_M$ preempts $T_L$ indefinitely).
-  - Derive **Priority Inheritance** (`PTHREAD_PRIO_INHERIT`, boosting $T_L$ to $T_H$'s effective priority while holding $M$) and **Priority Ceiling** protocols.
+  - Formalize the unbounded **Priority Inversion** hazard (the Mars Pathfinder failure mode: Low-priority thread `T_L` holds mutex `M`; High-priority thread `T_H` blocks on `M`; Medium-priority CPU-bound thread `T_M` preempts `T_L` indefinitely).
+  - Derive **Priority Inheritance** (`PTHREAD_PRIO_INHERIT`, boosting `T_L` to `T_H`'s effective priority while holding `M`) and **Priority Ceiling** protocols.
 - [ ] **Multi-Core Load Balancing & Cache Affinity**:
   - Per-CPU runqueues, work-stealing migration costs (L1/L2 cache warmth loss vs. core idle utilization), and NUMA scheduling domains.
 - [ ] **Vector Diagram**: Implement `ch05_cfs_priority_inversion()` in `tools/draw_figures.py` showing the CFS Red-Black Tree `vruntime` timeline alongside a Priority Inversion / Priority Inheritance rescue timeline, and visually audit via Headless Chrome.
+- [ ] **Poorly Written Appendix:** Rewrite Appendices A & B in formal, high-quality Computer Science English.
 
 ### Phase 7: Synchronization Beneath the Primitives — Futexes, Seqlocks, and Hardware Litmus Tests (Chapter 6)
 - [ ] **Objective**: Reveal the kernel and microarchitectural mechanisms that implement user-space mutexes, reader-writer locks, and memory barriers in Chapter 6.
@@ -166,12 +170,12 @@ Each of the following phases addresses a major systems gap identified in our arc
 
 ### Phase 8: Production Allocator Architecture, `mmap` Thresholds, and Lock-Free Reclamation (Chapter 8)
 - [ ] **Objective**: Bridge the gap between Chapter 8's educational free-list allocator and production multi-threaded allocators (`jemalloc`, `tcmalloc`, `mimalloc`).
-- [ ] **Boundary Tags for $O(1)$ Bidirectional Coalescing**:
-  - Derive Knuth's **Boundary Tag** layout (header + footer size/status replication), enabling immediate $O(1)$ coalescing with both the physical predecessor and successor blocks without an $O(N)$ linear list traversal.
+- [ ] **Boundary Tags for O(1) Bidirectional Coalescing**:
+  - Derive Knuth's **Boundary Tag** layout (header + footer size/status replication), enabling immediate O(1) coalescing with both the physical predecessor and successor blocks without an O(N) linear list traversal.
 - [ ] **Segregated Size Classes, Slab Caches, and Thread-Local Caches (`tcache`)**:
   - Show how size-class bucketing (`16, 32, 48, 64 ... 4096` bytes) bounds internal fragmentation while eliminating search scans, and how per-thread caches (`tcache`) satisfy small allocations in Ring 3 without acquiring any global heap mutex.
 - [ ] **The `brk` vs. `mmap` Allocation Threshold (`M_MMAP_THRESHOLD`)**:
-  - Explain why allocators sub-allocate small objects from persistent arenas (`sbrk` / `mmap` pools) to avoid per-object syscall and TLB-shootdown costs, while routing large allocations ($\ge 128\text{ KiB}$) directly to standalone `mmap` regions so they can be returned immediately to the OS kernel via `munmap` upon `free()`.
+  - Explain why allocators sub-allocate small objects from persistent arenas (`sbrk` / `mmap` pools) to avoid per-object syscall and TLB-shootdown costs, while routing large allocations (&ge; 128 KiB) directly to standalone `mmap` regions so they can be returned immediately to the OS kernel via `munmap` upon `free()`.
 - [ ] **Vector Diagram**: Implement `ch08_allocator_hierarchy()` in `tools/draw_figures.py` showing thread-local `tcache` bins, central size-class arenas, boundary-tag blocks, and direct `mmap` huge allocations, and visually audit via Headless Chrome.
 
 ### Phase 9: Modern System Call Acceleration (`vDSO`) and Zero-Copy Data Paths (Chapters 9 & 11)
@@ -199,7 +203,7 @@ Each of the following phases addresses a major systems gap identified in our arc
 ### Phase 11: Edge-Triggered Event Loops (`epoll`/`kqueue`) and Completion-Driven Asynchronous I/O (`io_uring`) (Chapter 13)
 - [ ] **Objective**: Transform Chapter 13 into an authoritative guide on kernel event-multiplexing internals and modern completion-driven I/O rings.
 - [ ] **Internal Kernel Architecture of `epoll` and `kqueue`**:
-  - Contrast $O(N)$ linear descriptor scanning in `select`/`poll` against `epoll`/`kqueue`'s persistent kernel state: a **Red-Black Tree** (or hash table) storing registered interest items (`epitem` / `knote`) paired with a **Doubly Linked Readiness List (`rdllist`)** populated directly by NIC/pipe interrupt wakeup callbacks in $O(1)$ time, yielding $O(K_{\text{ready}})$ harvest complexity.
+  - Contrast O(N) linear descriptor scanning in `select`/`poll` against `epoll`/`kqueue`'s persistent kernel state: a **Red-Black Tree** (or hash table) storing registered interest items (`epitem` / `knote`) paired with a **Doubly Linked Readiness List (`rdllist`)** populated directly by NIC/pipe interrupt wakeup callbacks in O(1) time, yielding O(K<sub>ready</sub>) harvest complexity.
 - [ ] **Level-Triggered (LT) vs. Edge-Triggered (`EPOLLET` / `EV_CLEAR`) & Multi-Core Scaling**:
   - Derive the exact state transition difference: LT notifies continuously while buffer data remains unread; ET notifies **only on the state transition** from unready to ready.
   - Explain why an ET handler **must** loop over non-blocking `read()`/`accept()` until receiving `EAGAIN` / `EWOULDBLOCK` (otherwise remaining bytes stall the connection forever), and how **`EPOLLONESHOT`** and **`EPOLLEXCLUSIVE`** prevent multi-threaded race conditions and thundering-herd wakeups.
@@ -214,10 +218,10 @@ Each of the following phases addresses a major systems gap identified in our arc
   - Formalize the active/passive open (`SYN_SENT`, `SYN_RCVD`, `ESTABLISHED`) and 4-way FIN teardown states:
     - Active Closer: `FIN_WAIT_1` &rarr; `FIN_WAIT_2` &rarr; **`TIME_WAIT`** (or `CLOSING` on simultaneous close).
     - Passive Closer: **`CLOSE_WAIT`** &rarr; `LAST_ACK` &rarr; `CLOSED`.
-  - Derive the two mandatory roles of the **$2 \times \text{MSL}$ `TIME_WAIT` state** (preventing delayed duplicate segments from corrupting a reincarnated 4-tuple connection, and ensuring the remote peer receives the final `ACK`), and explain how a **`CLOSE_WAIT` accumulation leak** diagnoses a bug where the application read `0` (EOF) from the socket but failed to call `close(fd)`.
+  - Derive the two mandatory roles of the **2 &times; MSL `TIME_WAIT` state** (preventing delayed duplicate segments from corrupting a reincarnated 4-tuple connection, and ensuring the remote peer receives the final `ACK`), and explain how a **`CLOSE_WAIT` accumulation leak** diagnoses a bug where the application read `0` (EOF) from the socket but failed to call `close(fd)`.
 - [ ] **Production Socket Options & Transport Tuning (Ch 14)**:
   - **`TCP_NODELAY` vs. Nagle's Algorithm & Delayed ACKs** (why Nagle + Delayed ACK causes 40–200 ms tail-latency spikes in RPC protocols), **`SO_REUSEADDR` vs. `SO_REUSEPORT`** (kernel 4-tuple load distribution across multi-threaded accept queues), and **Bandwidth-Delay Product (BDP)** socket buffer sizing (`SO_SNDBUF` / `SO_RCVBUF`).
 - [ ] **Hardware Virtualization (`VMX` / `SVM`) and Two-Dimensional EPT/NPT Page Walks (Ch 16)**:
   - Detail hardware virtualization extensions: **VMX Root** vs. **VMX Non-Root** operation, the **Virtual Machine Control Structure (`VMCS`)**, **VM Exits** on privileged traps (`CPUID`, `HLT`, MMIO), and `virtio` paravirtualized I/O rings (`vring`).
-  - Derive the mathematics of **Two-Dimensional Address Translation** via **Extended Page Tables (`EPT` on Intel / `NPT` on AMD / Stage-2 MMU on ARM64)**: translating a Guest Virtual Address (`GVA`) to a Guest Physical Address (`GPA`) and then to a Host Physical Address (`HPA`). Show why a 4-level guest table over a 4-level host EPT turns a single TLB miss into a **2D page walk requiring up to $(4 + 1) \times 4 + 4 = 24$ memory accesses**, making 2 MiB / 1 GiB Huge Pages mandatory for hypervisor performance.
+  - Derive the mathematics of **Two-Dimensional Address Translation** via **Extended Page Tables (`EPT` on Intel / `NPT` on AMD / Stage-2 MMU on ARM64)**: translating a Guest Virtual Address (`GVA`) to a Guest Physical Address (`GPA`) and then to a Host Physical Address (`HPA`). Show why a 4-level guest table over a 4-level host EPT turns a single TLB miss into a **2D page walk requiring up to (4 + 1) &times; 4 + 4 = 24 memory accesses**, making 2 MiB / 1 GiB Huge Pages mandatory for hypervisor performance.
 - [ ] **Vector Diagrams**: Implement `ch14_tcp_state_machine()` and `ch16_ept_2d_walk()` in `tools/draw_figures.py`, and visually audit both via Headless Chrome.

@@ -1,0 +1,93 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 720 460" font-family="Helvetica, Arial, sans-serif">
+  <defs>
+    <marker id="ar" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M 0 0 L 10 5 L 0 10 z" fill="#86868b"/>
+    </marker>
+  </defs>
+  <style>
+    .t { font-size: 13px; fill: #1d1d1f; }
+    .s { font-size: 11px; fill: #6e6e73; }
+    .box { fill: #f5f5f7; stroke: #86868b; stroke-width: 1.5; }
+    .cpu { fill: #eaf4ff; stroke: #0071e3; stroke-width: 1.5; }
+    .mem { fill: #eefaf1; stroke: #248a3d; stroke-width: 1.5; }
+    .dev { fill: #fff4e5; stroke: #c93400; stroke-width: 1.5; }
+    .ln { stroke: #86868b; stroke-width: 1.5; fill: none; marker-end: url(#ar); }
+    .lnr { stroke: #c93400; stroke-width: 1.5; fill: none; marker-end: url(#ar); }
+  </style>
+
+  <text x="40" y="30" class="t" font-weight="bold">Figure 2-1. The machine model used throughout this book.</text>
+
+  <!-- CPU -->
+  <rect x="40" y="50" width="300" height="180" rx="10" class="cpu"/>
+  <text x="56" y="76" class="t" font-weight="bold">CPU core</text>
+
+  <!-- registers -->
+  <text x="56" y="100" class="s">registers</text>
+  <rect x="56" y="108" width="44" height="26" class="box"/><text x="78" y="125" class="s" text-anchor="middle">PC</text>
+  <rect x="106" y="108" width="44" height="26" class="box"/><text x="128" y="125" class="s" text-anchor="middle">SP</text>
+  <rect x="156" y="108" width="88" height="26" class="box"/><text x="200" y="125" class="s" text-anchor="middle">R0 &#8230; R15</text>
+  <rect x="250" y="108" width="74" height="26" class="box"/><text x="287" y="125" class="s" text-anchor="middle">flags</text>
+
+  <rect x="56" y="146" width="120" height="34" class="box"/><text x="116" y="167" class="t" text-anchor="middle">ALU</text>
+  <rect x="186" y="146" width="138" height="34" class="box"/><text x="255" y="162" class="t" text-anchor="middle">control unit</text>
+  <text x="255" y="174" class="s" text-anchor="middle">fetch &#183; decode &#183; execute</text>
+  <rect x="56" y="192" width="268" height="26" class="box"/><text x="190" y="209" class="s" text-anchor="middle">MMU: virtual &#8594; physical addresses</text>
+
+  <!-- caches -->
+  <rect x="380" y="50" width="140" height="56" rx="8" class="box"/>
+  <text x="450" y="73" class="t" text-anchor="middle">L1 I-cache / D-cache</text>
+  <text x="450" y="92" class="s" text-anchor="middle">32&#8211;64 KiB, &#8776;4 cycles</text>
+
+  <rect x="380" y="126" width="140" height="48" rx="8" class="box"/>
+  <text x="450" y="147" class="t" text-anchor="middle">L2 cache</text>
+  <text x="450" y="164" class="s" text-anchor="middle">256 KiB&#8211;1 MiB, &#8776;10 cycles</text>
+
+  <rect x="380" y="194" width="140" height="48" rx="8" class="box"/>
+  <text x="450" y="215" class="t" text-anchor="middle">L3 cache (shared)</text>
+  <text x="450" y="232" class="s" text-anchor="middle">4&#8211;32 MiB, &#8776;40 cycles</text>
+
+  <line x1="340" y1="90" x2="378" y2="78" class="ln"/>
+  <line x1="340" y1="160" x2="378" y2="150" class="ln"/>
+  <line x1="340" y1="220" x2="378" y2="218" class="ln"/>
+
+  <!-- memory controller + DRAM -->
+  <rect x="560" y="126" width="120" height="48" rx="8" class="box"/>
+  <text x="620" y="147" class="t" text-anchor="middle">memory</text>
+  <text x="620" y="161" class="t" text-anchor="middle">controller</text>
+  <rect x="560" y="194" width="120" height="48" rx="8" class="mem"/>
+  <text x="620" y="215" class="t" text-anchor="middle">DRAM</text>
+  <text x="620" y="232" class="s" text-anchor="middle">main memory</text>
+  <line x1="520" y1="150" x2="558" y2="150" class="ln"/>
+  <line x1="620" y1="174" x2="620" y2="192" class="ln"/>
+
+  <!-- interrupt controller -->
+  <rect x="560" y="50" width="120" height="48" rx="8" class="box"/>
+  <text x="620" y="72" class="t" text-anchor="middle">interrupt</text>
+  <text x="620" y="88" class="t" text-anchor="middle">controller</text>
+  <line x1="560" y1="74" x2="342" y2="74" class="lnr"/>
+  <text x="450" y="44" class="s" text-anchor="middle" fill="#c93400">interrupts pause the current instruction stream</text>
+
+  <!-- PCIe + devices -->
+  <line x1="40" y1="300" x2="680" y2="300" class="ln"/>
+  <text x="40" y="292" class="s">PCIe bus</text>
+  <rect x="60" y="320" width="130" height="56" rx="8" class="dev"/>
+  <text x="125" y="344" class="t" text-anchor="middle">NIC</text>
+  <text x="125" y="360" class="s" text-anchor="middle">network</text>
+  <rect x="230" y="320" width="130" height="56" rx="8" class="dev"/>
+  <text x="295" y="344" class="t" text-anchor="middle">SSD controller</text>
+  <text x="295" y="360" class="s" text-anchor="middle">storage</text>
+  <rect x="400" y="320" width="130" height="56" rx="8" class="dev"/>
+  <text x="465" y="344" class="t" text-anchor="middle">accelerator</text>
+  <text x="465" y="360" class="s" text-anchor="middle">GPU / ML silicon</text>
+  <rect x="570" y="320" width="110" height="56" rx="8" class="dev"/>
+  <text x="625" y="344" class="t" text-anchor="middle">timer</text>
+  <text x="625" y="360" class="s" text-anchor="middle">ticks for scheduling</text>
+
+  <line x1="125" y1="318" x2="125" y2="300" class="ln"/>
+  <line x1="295" y1="318" x2="295" y2="300" class="ln"/>
+  <line x1="465" y1="318" x2="465" y2="300" class="ln"/>
+  <line x1="625" y1="318" x2="625" y2="300" class="ln"/>
+
+  <text x="40" y="420" class="s">Every device reports completion, new data, or errors to the CPU through the interrupt controller.</text>
+  <text x="40" y="440" class="s">DMA lets devices copy data directly to and from DRAM while the CPU runs other work.</text>
+</svg>

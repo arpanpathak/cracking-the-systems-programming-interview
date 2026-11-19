@@ -1,0 +1,53 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 720 330" font-family="Helvetica, Arial, sans-serif">
+  <defs>
+    <marker id="ar" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M 0 0 L 10 5 L 0 10 z" fill="#86868b"/>
+    </marker>
+  </defs>
+  <style>
+    .t { font-size: 13px; fill: #1d1d1f; }
+    .s { font-size: 11px; fill: #6e6e73; }
+    .th { fill: #eaf4ff; stroke: #0071e3; stroke-width: 1.2; }
+    .mut { fill: #eefaf1; stroke: #248a3d; stroke-width: 1.5; }
+    .ln { stroke: #86868b; stroke-width: 1.4; fill: none; marker-end: url(#ar); }
+    .lnr { stroke: #c93400; stroke-width: 1.4; fill: none; marker-end: url(#ar); }
+    .lng { stroke: #248a3d; stroke-width: 1.4; fill: none; marker-end: url(#ar); }
+  </style>
+
+  <text x="40" y="30" class="t" font-weight="bold">Figure 6-1. A mutex: one owner, everyone else waits.</text>
+
+  <!-- mutex -->
+  <rect x="280" y="60" width="160" height="70" rx="10" class="mut"/>
+  <text x="360" y="86" class="t" text-anchor="middle" font-weight="bold">mutex</text>
+  <text x="360" y="106" class="t" text-anchor="middle">unlocked / locked</text>
+  <text x="360" y="122" class="s" text-anchor="middle">owner + wait queue</text>
+
+  <!-- thread 1 -->
+  <rect x="60" y="60" width="130" height="70" rx="8" class="th"/>
+  <text x="125" y="86" class="t" text-anchor="middle">thread 1</text>
+  <text x="125" y="106" class="s" text-anchor="middle">lock() succeeds</text>
+  <text x="125" y="122" class="s" text-anchor="middle">owns the mutex</text>
+  <line x1="190" y1="86" x2="278" y2="86" class="lng"/>
+
+  <!-- thread 2 -->
+  <rect x="60" y="180" width="130" height="70" rx="8" class="th"/>
+  <text x="125" y="206" class="t" text-anchor="middle">thread 2</text>
+  <text x="125" y="226" class="s" text-anchor="middle">lock() blocks</text>
+  <text x="125" y="242" class="s" text-anchor="middle">waits in the queue</text>
+  <line x1="190" y1="216" x2="278" y2="216" class="lnr"/>
+
+  <!-- unlock path -->
+  <line x1="360" y1="130" x2="360" y2="180" class="lng"/>
+  <text x="372" y="158" class="s" text-anchor="start">unlock(): owner releases;</text>
+  <text x="372" y="172" class="s" text-anchor="start">one waiter wakes and becomes owner</text>
+
+  <!-- protected region -->
+  <rect x="470" y="60" width="210" height="70" rx="8" fill="#ffffff" stroke="#86868b" stroke-dasharray="5 4"/>
+  <text x="575" y="86" class="t" text-anchor="middle" font-weight="bold">critical section</text>
+  <text x="575" y="106" class="s" text-anchor="middle">runs while the owner</text>
+  <text x="575" y="120" class="s" text-anchor="middle">holds the mutex</text>
+  <line x1="440" y1="95" x2="468" y2="95" class="ln"/>
+
+  <text x="40" y="290" class="s">The mutex turns three machine steps (load, add, store) into one protected region.</text>
+  <text x="40" y="310" class="s">It enforces mutual exclusion, not order; condition variables add order in Section 6.3.</text>
+</svg>

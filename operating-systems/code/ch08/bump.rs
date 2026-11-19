@@ -35,10 +35,10 @@ impl Bump {
 
     fn alloc(&mut self, n: usize, align: usize) -> Option<*mut u8> {
         // Mathematical Alignment Proof:
-        // Assuming `align` is a power of two ($2^k$), `align - 1` has its lowest $k$ bits set to 1.
-        // Adding `align - 1` rounds any unaligned offset up to or past the next multiple of $2^k$.
-        // Bitwise AND with `!(align - 1)` clears the lower $k$ bits, producing the exact minimal
-        // multiple of `align` that is $\ge \text{self.offset}$.
+        // Assuming `align` is a power of two (2^k), `align - 1` has its lowest k bits set to 1.
+        // Adding `align - 1` rounds any unaligned offset up to or past the next multiple of 2^k.
+        // Bitwise AND with `!(align - 1)` clears the lower k bits, producing the exact minimal
+        // multiple of `align` that is >= self.offset.
         let aligned = (self.offset + align - 1) & !(align - 1);
         if aligned + n > self.size {
             return None;

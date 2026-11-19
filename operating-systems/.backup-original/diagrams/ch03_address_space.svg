@@ -1,0 +1,67 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 720 560" font-family="Helvetica, Arial, sans-serif">
+  <defs>
+    <marker id="ar" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M 0 0 L 10 5 L 0 10 z" fill="#86868b"/>
+    </marker>
+  </defs>
+  <style>
+    .t { font-size: 13px; fill: #1d1d1f; }
+    .s { font-size: 11px; fill: #6e6e73; }
+    .seg { stroke: #86868b; stroke-width: 1.5; }
+    .ln { stroke: #86868b; stroke-width: 1.5; fill: none; marker-end: url(#ar); }
+    .addr { font-size: 11px; fill: #6e6e73; }
+  </style>
+
+  <text x="40" y="30" class="t" font-weight="bold">Figure 3-1. The address space of one process (64-bit, simplified).</text>
+
+  <!-- address column -->
+  <line x1="40" y1="50" x2="40" y2="520" class="seg"/>
+  <text x="42" y="46" class="addr">high addresses</text>
+  <text x="30" y="524" class="addr" text-anchor="end">0</text>
+
+  <!-- kernel -->
+  <rect x="52" y="50" width="560" height="56" fill="#f5f5f7" class="seg"/>
+  <text x="68" y="74" class="t" font-weight="bold">kernel</text>
+  <text x="68" y="92" class="s">mapped into every process; unreachable from user mode</text>
+
+  <!-- stack -->
+  <rect x="52" y="112" width="560" height="64" fill="#f4f0fb" stroke="#5e5ce6" class="seg"/>
+  <text x="68" y="136" class="t" font-weight="bold">stack</text>
+  <text x="68" y="154" class="s">local variables, call frames, return addresses</text>
+  <text x="596" y="136" class="s" text-anchor="end">grows down &#8595;</text>
+  <line x1="600" y1="170" x2="600" y2="186" class="ln"/>
+
+  <!-- gap -->
+  <rect x="52" y="192" width="560" height="40" fill="#ffffff" stroke="#d2d2d7" stroke-dasharray="4 4"/>
+  <text x="332" y="217" class="s" text-anchor="middle">unmapped region; shared libraries and mmap live here on Linux</text>
+
+  <!-- heap -->
+  <rect x="52" y="238" width="560" height="64" fill="#eefaf1" stroke="#248a3d" class="seg"/>
+  <text x="68" y="262" class="t" font-weight="bold">heap</text>
+  <text x="68" y="280" class="s">memory from malloc / new / Box &#8212; grows up &#8593;</text>
+  <line x1="600" y1="246" x2="600" y2="232" class="ln"/>
+
+  <!-- bss + data -->
+  <rect x="52" y="308" width="560" height="32" fill="#fff4e5" stroke="#c93400" class="seg"/>
+  <text x="68" y="328" class="t" font-weight="bold">BSS</text>
+  <text x="140" y="328" class="s">uninitialized globals (zero-filled)</text>
+  <rect x="52" y="344" width="560" height="32" fill="#ffedc2" stroke="#c93400" class="seg"/>
+  <text x="68" y="364" class="t" font-weight="bold">data</text>
+  <text x="140" y="364" class="s">initialized globals and statics</text>
+
+  <!-- text -->
+  <rect x="52" y="382" width="560" height="56" fill="#eaf4ff" stroke="#0071e3" class="seg"/>
+  <text x="68" y="406" class="t" font-weight="bold">text</text>
+  <text x="68" y="424" class="s">the machine code of your program; read-only, shared</text>
+
+  <!-- annotation arrows -->
+  <text x="596" y="88" class="s" text-anchor="end">stack pointer</text>
+  <text x="596" y="152" class="s" text-anchor="end">points here</text>
+  <line x1="600" y1="120" x2="646" y2="140" class="ln"/>
+  <text x="596" y="280" class="s" text-anchor="end">break pointer</text>
+  <line x1="600" y1="270" x2="646" y2="252" class="ln"/>
+
+  <text x="52" y="470" class="s">Run the listing in Section 3.3 and compare the printed addresses with this picture.</text>
+  <text x="52" y="490" class="s">macOS places the kernel above the stack and the heap in a separate region; the relative order is the same.</text>
+  <text x="52" y="510" class="s">Linux splits the kernel's share between the top and a guard band below it.</text>
+</svg>

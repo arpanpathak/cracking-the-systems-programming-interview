@@ -1,0 +1,60 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 720 400" font-family="Helvetica, Arial, sans-serif">
+  <defs>
+    <marker id="ar" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M 0 0 L 10 5 L 0 10 z" fill="#86868b"/>
+    </marker>
+  </defs>
+  <style>
+    .t { font-size: 13px; fill: #1d1d1f; }
+    .s { font-size: 11px; fill: #6e6e73; }
+    .user { fill: #eaf4ff; stroke: #0071e3; stroke-width: 1.5; }
+    .kern { fill: #eefaf1; stroke: #248a3d; stroke-width: 1.5; }
+    .step { fill: #ffffff; stroke: #86868b; stroke-width: 1.2; }
+    .ln { stroke: #86868b; stroke-width: 1.3; fill: none; marker-end: url(#ar); }
+    .lnb { stroke: #0071e3; stroke-width: 1.8; fill: none; marker-end: url(#ar); }
+    .lng { stroke: #248a3d; stroke-width: 1.8; fill: none; marker-end: url(#ar); }
+  </style>
+
+  <text x="40" y="30" class="t" font-weight="bold">Figure 9-1. One system call: six steps across the privilege boundary.</text>
+
+  <rect x="40" y="50" width="640" height="130" rx="10" class="user"/>
+  <text x="56" y="74" class="t" font-weight="bold">user mode</text>
+  <rect x="56" y="86" width="150" height="76" rx="6" class="step"/>
+  <text x="131" y="108" class="s" text-anchor="middle">1. program calls</text>
+  <text x="131" y="124" class="s" text-anchor="middle">getppid()</text>
+  <text x="131" y="142" class="s" text-anchor="middle">(libc stub)</text>
+  <rect x="226" y="86" width="150" height="76" rx="6" class="step"/>
+  <text x="301" y="108" class="s" text-anchor="middle">2. stub puts the syscall</text>
+  <text x="301" y="124" class="s" text-anchor="middle">number and arguments</text>
+  <text x="301" y="142" class="s" text-anchor="middle">in registers</text>
+  <rect x="500" y="86" width="164" height="76" rx="6" class="step"/>
+  <text x="582" y="108" class="s" text-anchor="middle">6. return value in a</text>
+  <text x="582" y="124" class="s" text-anchor="middle">register; program</text>
+  <text x="582" y="142" class="s" text-anchor="middle">resumes</text>
+
+  <line x1="40" y1="190" x2="680" y2="190" stroke="#86868b" stroke-width="3"/>
+  <text x="680" y="182" class="s" text-anchor="end">trap</text>
+
+  <rect x="40" y="210" width="640" height="150" rx="10" class="kern"/>
+  <text x="56" y="234" class="t" font-weight="bold">kernel mode</text>
+  <rect x="56" y="246" width="150" height="96" rx="6" class="step"/>
+  <text x="131" y="268" class="s" text-anchor="middle">3. CPU saves the</text>
+  <text x="131" y="284" class="s" text-anchor="middle">user registers,</text>
+  <text x="131" y="300" class="s" text-anchor="middle">switches rings</text>
+  <rect x="226" y="246" width="150" height="96" rx="6" class="step"/>
+  <text x="301" y="268" class="s" text-anchor="middle">4. syscall table</text>
+  <text x="301" y="284" class="s" text-anchor="middle">selects the handler</text>
+  <text x="301" y="300" class="s" text-anchor="middle">for number 110</text>
+  <rect x="396" y="246" width="150" height="96" rx="6" class="step"/>
+  <text x="471" y="268" class="s" text-anchor="middle">5. kernel reads the</text>
+  <text x="471" y="284" class="s" text-anchor="middle">parent PID from the</text>
+  <text x="471" y="300" class="s" text-anchor="middle">process table</text>
+  <rect x="566" y="246" width="98" height="96" rx="6" class="step"/>
+  <text x="615" y="284" class="s" text-anchor="middle">returns</text>
+  <text x="615" y="300" class="s" text-anchor="middle">to ring 3</text>
+
+  <line x1="300" y1="162" x2="300" y2="244" class="lnb"/>
+  <line x1="616" y1="244" x2="616" y2="162" class="lng"/>
+
+  <text x="40" y="386" class="s">The trap itself is the expensive part: registers must be saved, the ring switched, caches may be cold.</text>
+</svg>
