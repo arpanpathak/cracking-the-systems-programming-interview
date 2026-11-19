@@ -2385,8 +2385,63 @@ def ch19_bounded_queue():
 
 
 @figure
+def ch19_ring_variants():
+    fig = Fig(
+        "ch19_ring_variants",
+        "Figure 19-2. Hand-Rolled Ring Buffer (head + len) Wrap-Around Geometry and Backing-Store Trade-Offs.",
+        372,
+    )
+
+    # Top panel: Wrap-around ring array of 6 slots (head=4, len=3 -> tail=(4+3)%6=1)
+    ring_panel = fig.node(20, 18, 760, 174, "blue")
+    fig.tile(32, 30, "loop", "blue", 30)
+    fig.text(70, 50, "Fixed-Capacity Ring: Vec<Option<T>>  (cap = 6, head = 4, len = 3)", "name")
+    fig.text(70, 70, "tail = (head + len) % cap = (4 + 3) % 6 = 1  (no full-vs-empty ambiguity)", "mono", tone="blue")
+
+    slots = [
+        ("0", "Some(C)", "green"),
+        ("1", "None", "gray"),
+        ("2", "None", "gray"),
+        ("3", "None", "gray"),
+        ("4", "Some(A)", "green"),
+        ("5", "Some(B)", "green"),
+    ]
+    sx = 44
+    for idx_s, val_s, tone in slots:
+        fig.cell(sx, 86, 110, 52, tone, [(f"buf[{idx_s}]", "small"), (val_s, "monob")], kind="card", r=8)
+        sx += 120
+
+    # Pointers below slots: tail at slot 1 (cx = 44 + 120 + 55 = 219), head at slot 4 (cx = 44 + 4*120 + 55 = 579)
+    fig.wire([(219, 162), (219, 141)], "purple", width=2.0)
+    fig.label(219, 174, "tail = 1 (next push)", tone="purple", cls="monob")
+    fig.wire([(579, 162), (579, 141)], "blue", width=2.0)
+    fig.label(579, 174, "head = 4 (oldest -> pop)", tone="blue", cls="monob")
+
+    # Bottom row: 4 backing-store comparison cards
+    cards = [
+        (20, "green", "VecDeque<T>", "Interview Default", "O(1) push & pop", "Built-in MaybeUninit ring"),
+        (214, "blue", "Vec<Option<T>>", "Safe Hand-Rolled", "O(1) push & pop", "take() moves T; no unsafe"),
+        (408, "purple", "Box<[MaybeUninit]>", "Zero-Overhead Ring", "O(1) push & pop", "Zero tag; manual Drop"),
+        (602, "red", "Vec::remove(0)", "O(N) Red Flag", "Shifts all items", "2-stack Vec = amort. O(1)"),
+    ]
+    for cx, tone, title, tag, perf, note in cards:
+        fig.node(cx, 210, 178, 144, tone)
+        fig.text(cx + 89, 236, title, "monob", "middle", tone=tone, fit=(cx + 8, cx + 170))
+        fig.cell(cx + 12, 248, 154, 30, tone, [(tag, "small")], kind="card", r=6)
+        fig.lines(cx + 89, 314, [
+            (perf, "monob"),
+            (note, "sub"),
+        ], "middle", fit=(cx + 8, cx + 170))
+
+    fig.save([
+        "Tracking (head, len) instead of (head, tail) distinguishes empty (len == 0) from full (len == cap) without wasting a sentinel slot.",
+        "Option<T>::take() moves non-Copy items out of buf[head] safely while leaving None so Drop runs only on live elements.",
+    ])
+
+
+@figure
 def ch19_spsc_ring():
-    fig = Fig("ch19_spsc_ring", "Figure 19-2. Lock-free SPSC ring buffer: single-writer indices and cache line isolation.", 240)
+    fig = Fig("ch19_spsc_ring", "Figure 19-3. Lock-free SPSC ring buffer: single-writer indices and cache line isolation.", 240)
 
     p_box = fig.node(28, 20, 220, 190, "blue")
     fig.tile(42, 34, "developer_board", "blue", 34)
@@ -2419,7 +2474,7 @@ def ch19_spsc_ring():
 
 @figure
 def ch19_mini_pipeline():
-    fig = Fig("ch19_mini_pipeline", "Figure 19-3. Process pipeline: stdout-to-stdin redirection via a kernel pipe buffer.", 270)
+    fig = Fig("ch19_mini_pipeline", "Figure 19-4. Process pipeline: stdout-to-stdin redirection via a kernel pipe buffer.", 270)
 
     c1 = fig.node(28, 20, 210, 140, "blue")
     fig.tile(42, 34, "terminal", "blue", 34)
@@ -2455,7 +2510,7 @@ def ch19_mini_pipeline():
 
 @figure
 def ch19_lru_cache():
-    fig = Fig("ch19_lru_cache", "Figure 19-4. LRU cache: hash table indexing into a doubly linked recency chain.", 270)
+    fig = Fig("ch19_lru_cache", "Figure 19-5. LRU cache: hash table indexing into a doubly linked recency chain.", 270)
 
     h_box = fig.node(28, 16, 744, 76, "blue")
     fig.tile(42, 28, "table_rows", "blue", 34)

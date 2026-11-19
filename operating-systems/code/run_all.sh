@@ -50,7 +50,7 @@ for f in \
     ch15/daemon ch15/kqueue_supervisor \
     ch17/false_sharing \
     ch18/cache_bench \
-    ch19/bounded_queue ch19/free_list_allocator ch19/spsc_ring ch19/byte_routines ch19/lru_cache ch19/bit_tricks \
+    ch19/bounded_queue ch19/ring_buffer ch19/free_list_allocator ch19/spsc_ring ch19/byte_routines ch19/lru_cache ch19/bit_tricks \
     ch19/linked_list ch19/rw_lock ch19/thread_pool ch19/mini_pipeline; do
     cxx "$f.cpp"
 done
@@ -81,7 +81,7 @@ for f in \
     ch14/udp ch14/to_socket_addrs \
     ch17/false_sharing \
     ch18/cache_bench \
-    ch19/bounded_queue ch19/free_list_allocator ch19/spsc_ring ch19/byte_routines ch19/lru_cache \
+    ch19/bounded_queue ch19/ring_buffer ch19/free_list_allocator ch19/spsc_ring ch19/byte_routines ch19/lru_cache \
     ch19/bit_tricks ch19/linked_list ch19/rw_lock ch19/thread_pool; do
     rs_std "$f.rs"
 done
@@ -252,7 +252,7 @@ run out/cache_bench_rs.bin ch18_cache_bench_rs
 echo "== done: outputs in out/ =="
 
 # Chapter 19: interview problems
-for name in bounded_queue free_list_allocator spsc_ring byte_routines lru_cache bit_tricks linked_list rw_lock thread_pool mini_pipeline; do
+for name in bounded_queue ring_buffer free_list_allocator spsc_ring byte_routines lru_cache bit_tricks linked_list rw_lock thread_pool mini_pipeline; do
     run "out/$name.bin" "ch19_$name"
     run "out/${name}_rs.bin" "ch19_${name}_rs"
 done

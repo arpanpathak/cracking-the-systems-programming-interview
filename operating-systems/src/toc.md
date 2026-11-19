@@ -168,7 +168,8 @@
     - [19.2.1 Concurrency Model and Synchronization Primitives](ch19-interview-problems.md#1921-concurrency-model-and-synchronization-primitives)
     - [19.2.2 State Invariants and Predicate Verification](ch19-interview-problems.md#1922-state-invariants-and-predicate-verification)
     - [19.2.3 Reference Implementation (C++20 & Rust 2024)](ch19-interview-problems.md#1923-reference-implementation)
-    - [19.2.4 Systems Analysis: Spurious Wakeups & Thundering Herd](ch19-interview-problems.md#1924-systems-analysis-and-nuances)
+    - [19.2.4 Backing-Store Variants and Building the Ring Buffer by Hand](ch19-interview-problems.md#1924-backing-store-variants-and-building-the-ring-buffer-by-hand)
+    - [19.2.5 Systems Analysis and Concurrency Interview Follow-Ups](ch19-interview-problems.md#1925-systems-analysis-and-concurrency-interview-follow-ups)
   - [19.3 The Free-List Allocator](ch19-interview-problems.md#193-the-free-list-allocator)
     - [19.3.1 Memory Architecture and Layout Topology](ch19-interview-problems.md#1931-memory-architecture-and-layout-topology)
     - [19.3.2 Allocation and Reclamation Mechanics](ch19-interview-problems.md#1932-allocation-and-reclamation-mechanics)
@@ -282,7 +283,7 @@ A thematic, alphabetical cross-reference linking systems topics directly to thei
   - Technical Derivation: [§19.12.5](ch19-interview-problems.md#19125-deadlock-dynamics-coffman-conditions-and-prevention-strategies)
 - **Condition Variables**: Execution barriers enabling threads to sleep until notified of a state change under a controlling mutex.
   - Predicate Loop Requirement: [§6.2](ch06-synchronization.md#62-condition-variables-and-predicate-based-synchronization)
-  - Spurious Wakeup Verification: [§19.2.4](ch19-interview-problems.md#1924-systems-analysis-and-nuances)
+  - Spurious Wakeup Verification: [§19.2.5](ch19-interview-problems.md#1925-systems-analysis-and-concurrency-interview-follow-ups)
 - **Context Switch Overhead**: The microarchitectural penalty of saving CPU registers, swapping page tables, and invalidating pipeline state.
   - Hardware Control Transfers: [§2.4](ch02-the-machine.md#24-synchronous-traps-and-the-asynchronous-interrupt-subsystem)
   - Process versus Thread Transitions: [§3.1](ch03-processes.md#31-the-process-control-block-and-address-space-topology), [§19.12.2](ch19-interview-problems.md#19122-context-switch-mechanics-and-microarchitectural-overhead)
@@ -378,7 +379,7 @@ A thematic, alphabetical cross-reference linking systems topics directly to thei
 - **Sparse Files**: File system structures where unwritten data blocks are unallocated, saving physical storage.
   - Block Allocation Mechanics: [§12.3](ch12-filesystems.md#123-sparse-files-and-the-mechanics-of-durability)
 - **Spurious Wakeups**: Condition variable unblocking without explicit notification caused by kernel scheduler dynamics.
-  - Systems Nuances: [§19.2.4](ch19-interview-problems.md#1924-systems-analysis-and-nuances)
+  - Systems Nuances: [§19.2.5](ch19-interview-problems.md#1925-systems-analysis-and-concurrency-interview-follow-ups)
 - **Stack Pointer (SP / RSP / SP_EL0)**: Architectural register tracking the active boundary of the descending call stack.
   - Stack Frame Structure: [§2.1](ch02-the-machine.md#21-the-execution-model-and-the-atomicity-gap)
   - Kernel Stack Switching: [§2.4.2](ch02-the-machine.md#242-vector-tables-idt-vbar_el1-tssrsp0-and-hardware-trapframe-construction), [§9.1](ch09-system-calls.md#91-the-mechanics-of-the-system-call-interface)
@@ -394,7 +395,7 @@ A thematic, alphabetical cross-reference linking systems topics directly to thei
 - **Thread Pool**: Concurrency architecture amortizing thread creation costs across a fixed pool of persistent worker threads.
   - Implementation & RAII Shutdown: [§19.8](ch19-interview-problems.md#198-the-thread-pool)
 - **Thundering Herd Mitigation**: Preventing catastrophic CPU contention by waking single threads (`notify_one`) rather than all sleeping threads.
-  - Bounded Queue Optimization: [§19.2.4](ch19-interview-problems.md#1924-systems-analysis-and-nuances)
+  - Bounded Queue Optimization: [§19.2.5](ch19-interview-problems.md#1925-systems-analysis-and-concurrency-interview-follow-ups)
 - **TLB (Translation Lookaside Buffer)**: High-speed CPU hardware cache storing recent virtual-to-physical address translations.
   - Architecture & Invalidation: [§7.2](ch07-virtual-memory.md#72-hierarchical-translation-and-the-tlb)
 - **Virtual Memory Architecture**: Core isolation mechanism presenting processes with private, contiguous address spaces.

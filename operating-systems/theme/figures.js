@@ -71,7 +71,7 @@
     var firstStrong = nodes[0] && nodes[0].querySelector('strong');
     if (!firstStrong) return fallback;
     var raw = firstStrong.textContent.trim();
-    var m = raw.match(/^(Listing\s+[\d-]+)/i);
+    var m = raw.match(/^(Listing\s+[\d-]+[a-z]?)/i);
     return m ? m[1] : fallback;
   }
 
