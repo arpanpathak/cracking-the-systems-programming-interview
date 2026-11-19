@@ -1,0 +1,925 @@
+<!DOCTYPE HTML>
+<html lang="en" class="light sidebar-visible" dir="ltr">
+    <head>
+        <!-- Book generated using mdBook -->
+        <meta charset="UTF-8">
+        <title>Table of Contents &amp; Subject Index - Operating Systems: A Hands-On Approach</title>
+
+
+        <!-- Custom HTML head -->
+
+        <meta name="description" content="Operating system fundamentals built from first principles, with verified C++20 and Rust 2024 code.">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <meta name="theme-color" content="#ffffff">
+
+        <link rel="icon" href="favicon-de23e50b.svg">
+        <link rel="shortcut icon" href="favicon-8114d1fc.png">
+        <link rel="stylesheet" href="css/variables-8adf115d.css">
+        <link rel="stylesheet" href="css/general-e96d0476.css">
+        <link rel="stylesheet" href="css/chrome-d279d366.css">
+        <link rel="stylesheet" href="css/print-9e4910d8.css" media="print">
+
+        <!-- Fonts -->
+        <link rel="stylesheet" href="fonts/fonts-9644e21d.css">
+
+        <!-- Highlight.js Stylesheets -->
+        <link rel="stylesheet" id="mdbook-highlight-css" href="highlight-493f70e1.css">
+        <link rel="stylesheet" id="mdbook-tomorrow-night-css" href="tomorrow-night-4c0ae647.css">
+        <link rel="stylesheet" id="mdbook-ayu-highlight-css" href="ayu-highlight-3fdfc3ac.css">
+
+        <!-- Custom theme stylesheets -->
+        <link rel="stylesheet" href="theme/custom-e0671a52.css">
+
+        <!-- MathJax -->
+        <script async src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.1/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
+
+        <!-- Provide site root and default themes to javascript -->
+        <script>
+            const path_to_root = "";
+            const default_light_theme = "light";
+            const default_dark_theme = "navy";
+            window.path_to_searchindex_js = "searchindex-6aaf8639.js";
+        </script>
+        <!-- Start loading toc.js asap -->
+        <script src="toc-2b639993.js"></script>
+    </head>
+    <body>
+    <div id="mdbook-help-container">
+        <div id="mdbook-help-popup">
+            <h2 class="mdbook-help-title">Keyboard shortcuts</h2>
+            <div>
+                <p>Press <kbd>←</kbd> or <kbd>→</kbd> to navigate between chapters</p>
+                <p>Press <kbd>S</kbd> or <kbd>/</kbd> to search in the book</p>
+                <p>Press <kbd>?</kbd> to show this help</p>
+                <p>Press <kbd>Esc</kbd> to hide this help</p>
+            </div>
+        </div>
+    </div>
+    <div id="mdbook-body-container">
+        <!-- Work around some values being stored in localStorage wrapped in quotes -->
+        <script>
+            try {
+                let theme = localStorage.getItem('mdbook-theme');
+                let sidebar = localStorage.getItem('mdbook-sidebar');
+
+                if (theme.startsWith('"') && theme.endsWith('"')) {
+                    localStorage.setItem('mdbook-theme', theme.slice(1, theme.length - 1));
+                }
+
+                if (sidebar.startsWith('"') && sidebar.endsWith('"')) {
+                    localStorage.setItem('mdbook-sidebar', sidebar.slice(1, sidebar.length - 1));
+                }
+            } catch (e) { }
+        </script>
+
+        <!-- Set the theme before any content is loaded, prevents flash -->
+        <script>
+            const default_theme = window.matchMedia("(prefers-color-scheme: dark)").matches ? default_dark_theme : default_light_theme;
+            let theme;
+            try { theme = localStorage.getItem('mdbook-theme'); } catch(e) { }
+            if (theme === null || theme === undefined) { theme = default_theme; }
+            const html = document.documentElement;
+            html.classList.remove('light')
+            html.classList.add(theme);
+            html.classList.add("js");
+        </script>
+
+        <input type="checkbox" id="mdbook-sidebar-toggle-anchor" class="hidden">
+
+        <!-- Hide / unhide sidebar before it is displayed -->
+        <script>
+            let sidebar = null;
+            const sidebar_toggle = document.getElementById("mdbook-sidebar-toggle-anchor");
+            if (document.body.clientWidth >= 1080) {
+                try { sidebar = localStorage.getItem('mdbook-sidebar'); } catch(e) { }
+                sidebar = sidebar || 'visible';
+            } else {
+                sidebar = 'hidden';
+                sidebar_toggle.checked = false;
+            }
+            if (sidebar === 'visible') {
+                sidebar_toggle.checked = true;
+            } else {
+                html.classList.remove('sidebar-visible');
+            }
+        </script>
+
+        <nav id="mdbook-sidebar" class="sidebar" aria-label="Table of contents">
+            <!-- populated by js -->
+            <mdbook-sidebar-scrollbox class="sidebar-scrollbox"></mdbook-sidebar-scrollbox>
+            <noscript>
+                <iframe class="sidebar-iframe-outer" src="toc.html"></iframe>
+            </noscript>
+            <div id="mdbook-sidebar-resize-handle" class="sidebar-resize-handle">
+                <div class="sidebar-resize-indicator"></div>
+            </div>
+        </nav>
+
+        <div id="mdbook-page-wrapper" class="page-wrapper">
+
+            <div class="page">
+                <div id="mdbook-menu-bar-hover-placeholder"></div>
+                <div id="mdbook-menu-bar" class="menu-bar sticky">
+                    <div class="left-buttons">
+                        <label id="mdbook-sidebar-toggle" class="icon-button" for="mdbook-sidebar-toggle-anchor" title="Toggle Table of Contents" aria-label="Toggle Table of Contents" aria-controls="mdbook-sidebar">
+                            <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M0 96C0 78.3 14.3 64 32 64H416c17.7 0 32 14.3 32 32s-14.3 32-32 32H32C14.3 128 0 113.7 0 96zM0 256c0-17.7 14.3-32 32-32H416c17.7 0 32 14.3 32 32s-14.3 32-32 32H32c-17.7 0-32-14.3-32-32zM448 416c0 17.7-14.3 32-32 32H32c-17.7 0-32-14.3-32-32s14.3-32 32-32H416c17.7 0 32 14.3 32 32z"/></svg></span>
+                        </label>
+                        <button id="mdbook-theme-toggle" class="icon-button" type="button" title="Change theme" aria-label="Change theme" aria-haspopup="true" aria-expanded="false" aria-controls="mdbook-theme-list">
+                            <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 576 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M371.3 367.1c27.3-3.9 51.9-19.4 67.2-42.9L600.2 74.1c12.6-19.5 9.4-45.3-7.6-61.2S549.7-4.4 531.1 9.6L294.4 187.2c-24 18-38.2 46.1-38.4 76.1L371.3 367.1zm-19.6 25.4l-116-104.4C175.9 290.3 128 339.6 128 400c0 3.9 .2 7.8 .6 11.6c1.8 17.5-10.2 36.4-27.8 36.4H96c-17.7 0-32 14.3-32 32s14.3 32 32 32H240c61.9 0 112-50.1 112-112c0-2.5-.1-5-.2-7.5z"/></svg></span>
+                        </button>
+                        <ul id="mdbook-theme-list" class="theme-popup" aria-label="Themes" role="menu">
+                            <li role="none"><button role="menuitem" class="theme" id="mdbook-theme-default_theme">Auto</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="mdbook-theme-light">Light</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="mdbook-theme-rust">Rust</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="mdbook-theme-coal">Coal</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="mdbook-theme-navy">Navy</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="mdbook-theme-ayu">Ayu</button></li>
+                        </ul>
+                        <button id="mdbook-search-toggle" class="icon-button" type="button" title="Search (`/`)" aria-label="Toggle Searchbar" aria-expanded="false" aria-keyshortcuts="/ s" aria-controls="mdbook-searchbar">
+                            <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M416 208c0 45.9-14.9 88.3-40 122.7L502.6 457.4c12.5 12.5 12.5 32.8 0 45.3s-32.8 12.5-45.3 0L330.7 376c-34.4 25.2-76.8 40-122.7 40C93.1 416 0 322.9 0 208S93.1 0 208 0S416 93.1 416 208zM208 352c79.5 0 144-64.5 144-144s-64.5-144-144-144S64 128.5 64 208s64.5 144 144 144z"/></svg></span>
+                        </button>
+                    </div>
+
+                    <h1 class="menu-title">Operating Systems: A Hands-On Approach</h1>
+
+                    <div class="right-buttons">
+                        <a href="print.html" title="Print this book" aria-label="Print this book">
+                            <span class=fa-svg id="print-button"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M128 0C92.7 0 64 28.7 64 64v96h64V64H354.7L384 93.3V160h64V93.3c0-17-6.7-33.3-18.7-45.3L400 18.7C388 6.7 371.7 0 354.7 0H128zM384 352v32 64H128V384 368 352H384zm64 32h32c17.7 0 32-14.3 32-32V256c0-35.3-28.7-64-64-64H64c-35.3 0-64 28.7-64 64v96c0 17.7 14.3 32 32 32H64v64c0 35.3 28.7 64 64 64H384c35.3 0 64-28.7 64-64V384zm-16-88c-13.3 0-24-10.7-24-24s10.7-24 24-24s24 10.7 24 24s-10.7 24-24 24z"/></svg></span>
+                        </a>
+                        <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/tree/prep-v2/operating-systems" title="Git repository" aria-label="Git repository">
+                            <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 496 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M165.9 397.4c0 2-2.3 3.6-5.2 3.6-3.3.3-5.6-1.3-5.6-3.6 0-2 2.3-3.6 5.2-3.6 3-.3 5.6 1.3 5.6 3.6zm-31.1-4.5c-.7 2 1.3 4.3 4.3 4.9 2.6 1 5.6 0 6.2-2s-1.3-4.3-4.3-5.2c-2.6-.7-5.5.3-6.2 2.3zm44.2-1.7c-2.9.7-4.9 2.6-4.6 4.9.3 2 2.9 3.3 5.9 2.6 2.9-.7 4.9-2.6 4.6-4.6-.3-1.9-3-3.2-5.9-2.9zM244.8 8C106.1 8 0 113.3 0 252c0 110.9 69.8 205.8 169.5 239.2 12.8 2.3 17.3-5.6 17.3-12.1 0-6.2-.3-40.4-.3-61.4 0 0-70 15-84.7-29.8 0 0-11.4-29.1-27.8-36.6 0 0-22.9-15.7 1.6-15.4 0 0 24.9 2 38.6 25.8 21.9 38.6 58.6 27.5 72.9 20.9 2.3-16 8.8-27.1 16-33.7-55.9-6.2-112.3-14.3-112.3-110.5 0-27.5 7.6-41.3 23.6-58.9-2.6-6.5-11.1-33.3 2.6-67.9 20.9-6.5 69 27 69 27 20-5.6 41.5-8.5 62.8-8.5s42.8 2.9 62.8 8.5c0 0 48.1-33.6 69-27 13.7 34.7 5.2 61.4 2.6 67.9 16 17.7 25.8 31.5 25.8 58.9 0 96.5-58.9 104.2-114.8 110.5 9.2 7.9 17 22.9 17 46.4 0 33.7-.3 75.4-.3 83.6 0 6.5 4.6 14.4 17.3 12.1C428.2 457.8 496 362.9 496 252 496 113.3 383.5 8 244.8 8zM97.2 352.9c-1.3 1-1 3.3.7 5.2 1.6 1.6 3.9 2.3 5.2 1 1.3-1 1-3.3-.7-5.2-1.6-1.6-3.9-2.3-5.2-1zm-10.8-8.1c-.7 1.3.3 2.9 2.3 3.9 1.6 1 3.6.7 4.3-.7.7-1.3-.3-2.9-2.3-3.9-2-.6-3.6-.3-4.3.7zm32.4 35.6c-1.6 1.3-1 4.3 1.3 6.2 2.3 2.3 5.2 2.6 6.5 1 1.3-1.3.7-4.3-1.3-6.2-2.2-2.3-5.2-2.6-6.5-1zm-11.4-14.7c-1.6 1-1.6 3.6 0 5.9 1.6 2.3 4.3 3.3 5.6 2.3 1.6-1.3 1.6-3.9 0-6.2-1.4-2.3-4-3.3-5.6-2z"/></svg></span>
+                        </a>
+                        <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/edit/prep-v2/operating-systems/src/toc.md" title="Suggest an edit" aria-label="Suggest an edit" rel="edit">
+                            <span class=fa-svg id="git-edit-button"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M421.7 220.3l-11.3 11.3-22.6 22.6-205 205c-6.6 6.6-14.8 11.5-23.8 14.1L30.8 511c-8.4 2.5-17.5 .2-23.7-6.1S-1.5 489.7 1 481.2L38.7 353.1c2.6-9 7.5-17.2 14.1-23.8l205-205 22.6-22.6 11.3-11.3 33.9 33.9 62.1 62.1 33.9 33.9zM96 353.9l-9.3 9.3c-.9 .9-1.6 2.1-2 3.4l-25.3 86 86-25.3c1.3-.4 2.5-1.1 3.4-2l9.3-9.3H112c-8.8 0-16-7.2-16-16V353.9zM453.3 19.3l39.4 39.4c25 25 25 65.5 0 90.5l-14.5 14.5-22.6 22.6-11.3 11.3-33.9-33.9-62.1-62.1L314.3 67.7l11.3-11.3 22.6-22.6 14.5-14.5c25-25 65.5-25 90.5 0z"/></svg></span>
+                        </a>
+
+                    </div>
+                </div>
+
+                <div id="mdbook-search-wrapper" class="hidden">
+                    <form id="mdbook-searchbar-outer" class="searchbar-outer">
+                        <div class="search-wrapper">
+                            <input type="search" id="mdbook-searchbar" name="searchbar" placeholder="Search this book ..." aria-controls="mdbook-searchresults-outer" aria-describedby="searchresults-header">
+                            <div class="spinner-wrapper">
+                                <span class=fa-svg id="fa-spin"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M304 48c0-26.5-21.5-48-48-48s-48 21.5-48 48s21.5 48 48 48s48-21.5 48-48zm0 416c0-26.5-21.5-48-48-48s-48 21.5-48 48s21.5 48 48 48s48-21.5 48-48zM48 304c26.5 0 48-21.5 48-48s-21.5-48-48-48s-48 21.5-48 48s21.5 48 48 48zm464-48c0-26.5-21.5-48-48-48s-48 21.5-48 48s21.5 48 48 48s48-21.5 48-48zM142.9 437c18.7-18.7 18.7-49.1 0-67.9s-49.1-18.7-67.9 0s-18.7 49.1 0 67.9s49.1 18.7 67.9 0zm0-294.2c18.7-18.7 18.7-49.1 0-67.9S93.7 56.2 75 75s-18.7 49.1 0 67.9s49.1 18.7 67.9 0zM369.1 437c18.7 18.7 49.1 18.7 67.9 0s18.7-49.1 0-67.9s-49.1-18.7-67.9 0s-18.7 49.1 0 67.9z"/></svg></span>
+                            </div>
+                        </div>
+                    </form>
+                    <div id="mdbook-searchresults-outer" class="searchresults-outer hidden">
+                        <div id="mdbook-searchresults-header" class="searchresults-header"></div>
+                        <ul id="mdbook-searchresults">
+                        </ul>
+                    </div>
+                </div>
+
+                <!-- Apply ARIA attributes after the sidebar and the sidebar toggle button are added to the DOM -->
+                <script>
+                    document.getElementById('mdbook-sidebar-toggle').setAttribute('aria-expanded', sidebar === 'visible');
+                    document.getElementById('mdbook-sidebar').setAttribute('aria-hidden', sidebar !== 'visible');
+                    Array.from(document.querySelectorAll('#mdbook-sidebar a')).forEach(function(link) {
+                        link.setAttribute('tabIndex', sidebar === 'visible' ? 0 : -1);
+                    });
+                </script>
+
+                <div id="mdbook-content" class="content">
+                    <main>
+                        <h1 id="table-of-contents--subject-index"><a class="header" href="#table-of-contents--subject-index">Table of Contents &amp; Subject Index</a></h1>
+<blockquote class="blockquote-tag blockquote-tag-tip">
+<p class="blockquote-tag-title"><svg viewbox="0 0 16 16" width="18" height="18"><path d="M8 1.5c-2.363 0-4 1.69-4 3.75 0 .984.424 1.625.984 2.304l.214.253c.223.264.47.556.673.848.284.411.537.896.621 1.49a.75.75 0 0 1-1.484.211c-.04-.282-.163-.547-.37-.847a8.456 8.456 0 0 0-.542-.68c-.084-.1-.173-.205-.268-.32C3.201 7.75 2.5 6.766 2.5 5.25 2.5 2.31 4.863 0 8 0s5.5 2.31 5.5 5.25c0 1.516-.701 2.5-1.328 3.259-.095.115-.184.22-.268.319-.207.245-.383.453-.541.681-.208.3-.33.565-.37.847a.751.751 0 0 1-1.485-.212c.084-.593.337-1.078.621-1.489.203-.292.45-.584.673-.848.075-.088.147-.173.213-.253.561-.679.985-1.32.985-2.304 0-2.06-1.637-3.75-4-3.75ZM5.75 12h4.5a.75.75 0 0 1 0 1.5h-4.5a.75.75 0 0 1 0-1.5ZM6 15.25a.75.75 0 0 1 .75-.75h2.5a.75.75 0 0 1 0 1.5h-2.5a.75.75 0 0 1-.75-.75Z"></path></svg>Tip</p>
+<p><strong>Interactive Navigation:</strong> All chapter titles, section headers, and subject terms below are direct clickable hyperlinks. Click any entry to jump immediately to that topic in the text or generated PDF.</p>
+</blockquote>
+<hr>
+<h2 id="part-i-complete-navigable-directory"><a class="header" href="#part-i-complete-navigable-directory">Part I: Complete Navigable Directory</a></h2>
+<h3 id="front-matter"><a class="header" href="#front-matter">Front Matter</a></h3>
+<ul>
+<li><a href="preface.html#preface"><strong>Preface</strong></a>
+<ul>
+<li><a href="preface.html#the-philosophy-of-the-machine">The Philosophy of the Machine</a></li>
+<li><a href="preface.html#the-dual-language-paradigm-c20-and-rust-2024">The Dual-Language Paradigm: C++20 and Rust 2024</a></li>
+<li><a href="preface.html#the-anatomy-of-a-systems-engineering-interview">The Anatomy of a Systems Engineering Interview</a></li>
+<li><a href="preface.html#reading-pathways--curriculum-structure">Reading Pathways &amp; Curriculum Structure</a></li>
+<li><a href="preface.html#pedagogical-conventions">Pedagogical Conventions</a></li>
+<li><a href="preface.html#the-verification-covenant">The Verification Covenant</a></li>
+</ul>
+</li>
+<li><a href="toc.html#table-of-contents--subject-index"><strong>Table of Contents &amp; Subject Index</strong></a></li>
+</ul>
+<hr>
+<h3 id="foundations-architecture-processes--threads"><a class="header" href="#foundations-architecture-processes--threads">Foundations: Architecture, Processes &amp; Threads</a></h3>
+<ul>
+<li><a href="ch01-what-is-an-os.html#1-the-ontological-necessity-of-the-operating-system"><strong>1. The Ontological Necessity of the Operating System</strong></a>
+<ul>
+<li><a href="ch01-what-is-an-os.html#11-architectural-limitations-of-bare-metal-execution">1.1 Architectural Limitations of Bare-Metal Execution</a></li>
+<li><a href="ch01-what-is-an-os.html#12-axiomatic-roles-abstraction-isolation-and-resource-management">1.2 Axiomatic Roles: Abstraction, Isolation, and Resource Management</a></li>
+<li><a href="ch01-what-is-an-os.html#13-mechanism-versus-policy-separation">1.3 Mechanism versus Policy Separation</a></li>
+<li><a href="ch01-what-is-an-os.html#14-the-system-call-boundary-and-posix-standard-interface">1.4 The System Call Boundary and POSIX Standard Interface</a></li>
+</ul>
+</li>
+<li><a href="ch02-the-machine.html#2-the-architectural-substrate-and-execution-constraints"><strong>2. The Architectural Substrate and Execution Constraints</strong></a>
+<ul>
+<li><a href="ch02-the-machine.html#21-the-execution-model-and-the-atomicity-gap">2.1 The Execution Model and the Atomicity Gap</a>
+<ul>
+<li><a href="ch02-the-machine.html#211-the-fetch-decode-execute-datapath-and-function-activation-records">2.1.1 The Fetch-Decode-Execute Datapath and Function Activation Records</a></li>
+<li><a href="ch02-the-machine.html#212-formal-derivation-of-the-atomicity-gap">2.1.2 Formal Derivation of the Atomicity Gap</a></li>
+</ul>
+</li>
+<li><a href="ch02-the-machine.html#22-memory-hierarchy-and-locality-dynamics">2.2 Memory Hierarchy and Locality Dynamics</a></li>
+<li><a href="ch02-the-machine.html#23-privilege-domains-and-boundary-enforcement">2.3 Privilege Domains and Boundary Enforcement</a></li>
+<li><a href="ch02-the-machine.html#24-synchronous-traps-and-the-asynchronous-interrupt-subsystem">2.4 Synchronous Traps and the Asynchronous Interrupt Subsystem</a>
+<ul>
+<li><a href="ch02-the-machine.html#241-interrupt-controllers-apic-io-apic-msi-x-and-arm-gic">2.4.1 Interrupt Controllers: APIC, IO-APIC, MSI-X, and ARM GIC</a></li>
+<li><a href="ch02-the-machine.html#242-vector-tables-ivt-idt-vbar_el1-and-the-hardware-context-save-sequence">2.4.2 Vector Tables (IVT, IDT, VBAR_EL1) and the Hardware Context-Save Sequence</a></li>
+<li><a href="ch02-the-machine.html#243-top-half-hardirq-vs-bottom-half-softirq-split-and-eoi-lifecycle">2.4.3 Top-Half (<code>hardirq</code>) vs. Bottom-Half (<code>softirq</code>) Split and EOI Lifecycle</a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li><a href="ch03-processes.html#3-process-abstraction-and-lifecycle"><strong>3. Process Abstraction and Lifecycle</strong></a>
+<ul>
+<li><a href="ch03-processes.html#31-the-process-control-block-and-address-space-topology">3.1 The Process Control Block and Address Space Topology</a></li>
+<li><a href="ch03-processes.html#32-process-creation-and-the-mechanics-of-fork">3.2 Process Creation and the Mechanics of <code>fork</code></a></li>
+<li><a href="ch03-processes.html#33-lifecycle-management-state-automaton-and-termination">3.3 Lifecycle Management, State Automaton, and Termination</a>
+<ul>
+<li><a href="ch03-processes.html#331-the-five-state-process-lifecycle-automaton">3.3.1 The Five-State Process Lifecycle Automaton</a></li>
+<li><a href="ch03-processes.html#332-zombie-reaping-orphan-reparenting-and-execve-mechanics">3.3.2 Zombie Reaping, Orphan Reparenting, and <code>execve</code> Mechanics</a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li><a href="ch04-threads.html#4-threaded-execution-and-concurrency-hazards"><strong>4. Threaded Execution and Concurrency Hazards</strong></a>
+<ul>
+<li><a href="ch04-threads.html#41-shared-address-space-and-the-loss-of-intra-process-isolation">4.1 Shared Address Space and the Loss of Intra-Process Isolation</a></li>
+<li><a href="ch04-threads.html#42-atomicity-and-the-resolution-of-data-races">4.2 Atomicity and the Resolution of Data Races</a></li>
+<li><a href="ch04-threads.html#43-thread-lifecycle-state-transitions-and-language-level-safety">4.3 Thread Lifecycle, State Transitions, and Language-Level Safety</a>
+<ul>
+<li><a href="ch04-threads.html#431-the-thread-lifecycle-state-automaton">4.3.1 The Thread Lifecycle State Automaton</a></li>
+<li><a href="ch04-threads.html#432-language-level-thread-safety-c20-vs-rust-2024">4.3.2 Language-Level Thread Safety: C++20 vs. Rust 2024</a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li><a href="ch05-scheduling.html#5-scheduling-theory-and-policy"><strong>5. Scheduling Theory and Policy</strong></a>
+<ul>
+<li><a href="ch05-scheduling.html#51-scheduling-dynamics-and-performance-metrics">5.1 Scheduling Dynamics and Performance Metrics</a></li>
+<li><a href="ch05-scheduling.html#52-fundamental-scheduling-policies">5.2 Fundamental Scheduling Policies (FIFO, SJF, RR, MLFQ)</a></li>
+<li><a href="ch05-scheduling.html#53-advanced-heuristics-in-production-schedulers">5.3 Advanced Heuristics in Production Schedulers (CFS, Priority Inversion)</a></li>
+</ul>
+</li>
+<li><a href="ch06-synchronization.html#6-synchronization-and-memory-ordering"><strong>6. Synchronization and Memory Ordering</strong></a>
+<ul>
+<li><a href="ch06-synchronization.html#61-mutual-exclusion-and-critical-sections">6.1 Mutual Exclusion and Critical Sections</a></li>
+<li><a href="ch06-synchronization.html#62-condition-variables-and-predicate-based-synchronization">6.2 Condition Variables and Predicate-Based Synchronization</a></li>
+<li><a href="ch06-synchronization.html#63-deadlock-causes-and-prevention">6.3 Deadlock: Causes and Prevention (Coffman Conditions)</a></li>
+<li><a href="ch06-synchronization.html#64-memory-ordering-and-visibility">6.4 Memory Ordering and Visibility (Acquire/Release vs. SeqCst)</a></li>
+</ul>
+</li>
+</ul>
+<hr>
+<h3 id="memory-kernel-boundary--durability"><a class="header" href="#memory-kernel-boundary--durability">Memory, Kernel Boundary &amp; Durability</a></h3>
+<ul>
+<li><a href="ch07-virtual-memory.html#7-virtual-memory-and-the-architecture-of-address-translation"><strong>7. Virtual Memory and the Architecture of Address Translation</strong></a>
+<ul>
+<li><a href="ch07-virtual-memory.html#71-page-based-abstraction-and-isolation">7.1 Page-Based Abstraction and Isolation</a></li>
+<li><a href="ch07-virtual-memory.html#72-hierarchical-translation-and-the-tlb">7.2 Hierarchical Translation and the TLB</a>
+<ul>
+<li><a href="ch07-virtual-memory.html#721-canonical-addresses-and-multi-level-radix-decomposition">7.2.1 Canonical Addresses and Multi-Level Radix Decomposition</a></li>
+<li><a href="ch07-virtual-memory.html#722-hand-calculated-4-level-address-translation-walkthrough">7.2.2 Hand-Calculated 4-Level Address Translation Walkthrough</a></li>
+<li><a href="ch07-virtual-memory.html#723-the-translation-lookaside-buffer-tlb-huge-pages-and-shootdowns">7.2.3 The Translation Lookaside Buffer (TLB), Huge Pages, and Shootdowns</a></li>
+</ul>
+</li>
+<li><a href="ch07-virtual-memory.html#73-fault-handling-and-memory-management-strategies">7.3 Fault Handling and Memory Management Strategies</a></li>
+</ul>
+</li>
+<li><a href="ch08-allocation.html#8-memory-allocation-and-management-strategies"><strong>8. Memory Allocation and Management Strategies</strong></a>
+<ul>
+<li><a href="ch08-allocation.html#81-the-allocator-interface-and-efficiency-constraints">8.1 The Allocator Interface and Efficiency Constraints</a></li>
+<li><a href="ch08-allocation.html#82-arena-allocation-the-bump-allocator">8.2 Arena Allocation: The Bump Allocator</a></li>
+<li><a href="ch08-allocation.html#83-explicit-management-free-list-allocation">8.3 Explicit Management: Free-List Allocation</a></li>
+</ul>
+</li>
+<li><a href="ch09-system-calls.html#9-the-kernel-boundary-and-the-cost-of-system-calls"><strong>9. The Kernel Boundary and the Cost of System Calls</strong></a>
+<ul>
+<li><a href="ch09-system-calls.html#91-the-mechanics-of-the-system-call-interface">9.1 The Mechanics of the System Call Interface</a></li>
+<li><a href="ch09-system-calls.html#92-performance-implications-and-optimization-via-buffering">9.2 Performance Implications and Optimization via Buffering</a></li>
+</ul>
+</li>
+<li><a href="ch10-signals.html#10-asynchronous-notifications-and-signal-semantics"><strong>10. Asynchronous Notifications and Signal Semantics</strong></a>
+<ul>
+<li><a href="ch10-signals.html#101-the-signal-lifecycle-generation-pending-and-delivery">10.1 The Signal Lifecycle: Generation, Pending, and Delivery</a></li>
+<li><a href="ch10-signals.html#102-constraints-on-asynchronous-execution">10.2 Constraints on Asynchronous Execution and Async-Signal-Safety</a></li>
+<li><a href="ch10-signals.html#103-process-lifecycle-synchronization-sigchld-and-reaping">10.3 Process Lifecycle Synchronization: <code>SIGCHLD</code> and Reaping</a></li>
+</ul>
+</li>
+<li><a href="ch11-ipc.html#11-inter-process-communication-ipc"><strong>11. Inter-Process Communication (IPC)</strong></a>
+<ul>
+<li><a href="ch11-ipc.html#111-unidirectional-byte-streams-pipes">11.1 Unidirectional Byte Streams: Pipes</a></li>
+<li><a href="ch11-ipc.html#112-zero-copy-communication-shared-memory">11.2 Zero-Copy Communication: Shared Memory</a></li>
+<li><a href="ch11-ipc.html#113-bidirectional-channels-socket-pairs">11.3 Bidirectional Channels: Socket Pairs</a></li>
+<li><a href="ch11-ipc.html#114-comparative-analysis-of-ipc-mechanisms">11.4 Comparative Analysis of IPC Mechanisms</a></li>
+</ul>
+</li>
+<li><a href="ch12-filesystems.html#12-file-system-architecture-and-durability"><strong>12. File System Architecture and Durability</strong></a>
+<ul>
+<li><a href="ch12-filesystems.html#121-the-file-descriptor-and-the-open-file-description">12.1 The File Descriptor and the Open File Description</a></li>
+<li><a href="ch12-filesystems.html#122-on-disk-organization-and-inode-based-mapping">12.2 On-Disk Organization and Inode-Based Mapping</a></li>
+<li><a href="ch12-filesystems.html#123-sparse-files-and-the-mechanics-of-durability">12.3 Sparse Files and the Mechanics of Durability (<code>fsync</code>, Journaling)</a></li>
+</ul>
+</li>
+</ul>
+<hr>
+<h3 id="networking-daemons--scalable-systems"><a class="header" href="#networking-daemons--scalable-systems">Networking, Daemons &amp; Scalable Systems</a></h3>
+<ul>
+<li><a href="ch13-io-event-loops.html#13-io-multiplexing-and-the-event-loop"><strong>13. I/O Multiplexing and the Event Loop</strong></a>
+<ul>
+<li><a href="ch13-io-event-loops.html#131-the-scalability-limits-of-thread-per-connection">13.1 The Scalability Limits of Thread-Per-Connection</a></li>
+<li><a href="ch13-io-event-loops.html#132-event-driven-architecture-and-io-multiplexing">13.2 Event-Driven Architecture and I/O Multiplexing</a></li>
+<li><a href="ch13-io-event-loops.html#133-complexity-and-evolution-of-multiplexing-primitives">13.3 Complexity and Evolution of Multiplexing Primitives (<code>select</code>, <code>poll</code>, <code>epoll</code>, <code>kqueue</code>)</a></li>
+</ul>
+</li>
+<li><a href="ch14-networking.html#14-network-protocols-and-the-socket-interface"><strong>14. Network Protocols and the Socket Interface</strong></a>
+<ul>
+<li><a href="ch14-networking.html#141-the-transmission-control-protocol-tcp-reliable-byte-streams">14.1 The Transmission Control Protocol (TCP): Reliable Byte Streams</a></li>
+<li><a href="ch14-networking.html#142-the-user-datagram-protocol-udp-unreliable-message-delivery">14.2 The User Datagram Protocol (UDP): Unreliable Message Delivery</a></li>
+<li><a href="ch14-networking.html#143-name-resolution-and-addressing">14.3 Name Resolution and Addressing</a></li>
+</ul>
+</li>
+<li><a href="ch15-daemons.html#15-daemon-lifecycle-and-service-supervision"><strong>15. Daemon Lifecycle and Service Supervision</strong></a>
+<ul>
+<li><a href="ch15-daemons.html#151-the-ritual-of-detachment">15.1 The Ritual of Detachment (Double Fork, <code>setsid</code>, <code>umask</code>)</a></li>
+<li><a href="ch15-daemons.html#152-signal-driven-management-and-the-lifecycle-interface">15.2 Signal-Driven Management and the Lifecycle Interface</a></li>
+<li><a href="ch15-daemons.html#153-service-supervision-and-on-demand-activation-launchd-and-systemd">15.3 Service Supervision and On-Demand Activation: <code>launchd</code> and <code>systemd</code></a></li>
+<li><a href="ch15-daemons.html#154-asynchronous-fault-detection-and-process-monitoring-via-kqueue">15.4 Asynchronous Fault Detection and Process Monitoring via <code>kqueue</code></a></li>
+</ul>
+</li>
+<li><a href="ch16-virtualization.html#16-virtualization-and-containerization"><strong>16. Virtualization and Containerization</strong></a>
+<ul>
+<li><a href="ch16-virtualization.html#161-virtual-machines-and-hypervisor-orchestration">16.1 Virtual Machines and Hypervisor Orchestration</a></li>
+<li><a href="ch16-virtualization.html#162-containerization-namespace-and-resource-isolation">16.2 Containerization: Namespace and Resource Isolation</a></li>
+<li><a href="ch16-virtualization.html#163-architectural-synthesis-in-cloud-computing">16.3 Architectural Synthesis in Cloud Computing</a></li>
+</ul>
+</li>
+<li><a href="ch17-multiprocessors.html#17-multiprocessor-systems-and-hardware-accelerators"><strong>17. Multiprocessor Systems and Hardware Accelerators</strong></a>
+<ul>
+<li><a href="ch17-multiprocessors.html#171-numa-topologies-and-locality-optimization">17.1 NUMA Topologies and Locality Optimization</a></li>
+<li><a href="ch17-multiprocessors.html#172-cache-coherence-and-the-false-sharing-phenomenon">17.2 Cache Coherence and the False Sharing Phenomenon</a></li>
+<li><a href="ch17-multiprocessors.html#173-hardware-accelerators-discrete-architecture-vs-unified-memory-architecture-uma">17.3 Hardware Accelerators: Discrete Architecture vs. Unified Memory Architecture (UMA)</a></li>
+</ul>
+</li>
+<li><a href="ch18-performance.html#18-performance-analysis-and-observability"><strong>18. Performance Analysis and Observability</strong></a>
+<ul>
+<li><a href="ch18-performance.html#181-the-empirical-method-and-resource-bottlenecks">18.1 The Empirical Method and Resource Bottlenecks</a></li>
+<li><a href="ch18-performance.html#182-observability-profilers-tracers-and-visualizations">18.2 Observability: Profilers, Tracers, and Visualizations</a></li>
+<li><a href="ch18-performance.html#183-statistical-rigor-and-measurement-pitfalls">18.3 Statistical Rigor and Measurement Pitfalls</a></li>
+</ul>
+</li>
+</ul>
+<hr>
+<h3 id="interview-problems--reference-implementations"><a class="header" href="#interview-problems--reference-implementations">Interview Problems &amp; Reference Implementations</a></h3>
+<ul>
+<li><a href="ch19-interview-problems.html#19-systems-interview-problems-derivations-and-reference-implementations"><strong>19. Systems Interview Problems: Derivations and Reference Implementations</strong></a>
+<ul>
+<li><a href="ch19-interview-problems.html#191-architectural-framework-and-problem-solving-discipline">19.1 Architectural Framework and Problem-Solving Discipline</a></li>
+<li><a href="ch19-interview-problems.html#192-the-bounded-blocking-queue">19.2 The Bounded Blocking Queue</a>
+<ul>
+<li><a href="ch19-interview-problems.html#1921-concurrency-model-and-synchronization-primitives">19.2.1 Concurrency Model and Synchronization Primitives</a></li>
+<li><a href="ch19-interview-problems.html#1922-state-invariants-and-predicate-verification">19.2.2 State Invariants and Predicate Verification</a></li>
+<li><a href="ch19-interview-problems.html#1923-reference-implementation">19.2.3 Reference Implementation (C++20 &amp; Rust 2024)</a></li>
+<li><a href="ch19-interview-problems.html#1924-systems-analysis-and-nuances">19.2.4 Systems Analysis: Spurious Wakeups &amp; Thundering Herd</a></li>
+</ul>
+</li>
+<li><a href="ch19-interview-problems.html#193-the-free-list-allocator">19.3 The Free-List Allocator</a>
+<ul>
+<li><a href="ch19-interview-problems.html#1931-memory-architecture-and-layout-topology">19.3.1 Memory Architecture and Layout Topology</a></li>
+<li><a href="ch19-interview-problems.html#1932-allocation-and-reclamation-mechanics">19.3.2 Allocation and Reclamation Mechanics</a></li>
+<li><a href="ch19-interview-problems.html#1933-structural-invariants">19.3.3 Structural Invariants</a></li>
+<li><a href="ch19-interview-problems.html#1934-reference-implementation">19.3.4 Reference Implementation</a></li>
+</ul>
+</li>
+<li><a href="ch19-interview-problems.html#194-the-lock-free-single-producer-single-consumer-ring-buffer">19.4 The Lock-Free Single-Producer Single-Consumer (SPSC) Ring Buffer</a>
+<ul>
+<li><a href="ch19-interview-problems.html#1941-architectural-model-and-single-writer-principle">19.4.1 Architectural Model and Single-Writer Principle</a></li>
+<li><a href="ch19-interview-problems.html#1945-microarchitectural-optimization-and-false-sharing">19.4.5 Microarchitectural Optimization and False Sharing</a></li>
+<li><a href="ch19-interview-problems.html#1942-state-invariants-and-ring-wraparound">19.4.2 State Invariants and Ring Wraparound</a></li>
+<li><a href="ch19-interview-problems.html#1944-reference-implementation">19.4.4 Reference Implementation</a></li>
+</ul>
+</li>
+<li><a href="ch19-interview-problems.html#195-byte-routines-memmove-strlen-and-atoi">19.5 Byte Routines: <code>memmove</code>, <code>strlen</code> and <code>atoi</code></a>
+<ul>
+<li><a href="ch19-interview-problems.html#1951-the-memory-overlap-hazard-and-memmove">19.5.1 The Memory Overlap Hazard and </a></li>
+<li><a href="ch19-interview-problems.html#1952-string-bounds-and-nul-termination-in-strlen">19.5.2 String Bounds and NUL-Termination in </a></li>
+<li><a href="ch19-interview-problems.html#1953-robust-parsing-and-overflow-prevention-in-atoi">19.5.3 Robust Parsing and Overflow Prevention in </a></li>
+<li><a href="ch19-interview-problems.html#1954-reference-implementation">19.5.4 Reference Implementation</a></li>
+</ul>
+</li>
+<li><a href="ch19-interview-problems.html#196-the-lru-cache">19.6 The LRU Cache</a>
+<ul>
+<li><a href="ch19-interview-problems.html#1961-the-algorithmic-duality">19.6.1 The Algorithmic Duality</a></li>
+<li><a href="ch19-interview-problems.html#1962-state-invariants-and-access-dynamics">19.6.2 State Invariants and Access Dynamics</a></li>
+<li><a href="ch19-interview-problems.html#1963-reference-implementation">19.6.3 Reference Implementation</a></li>
+</ul>
+</li>
+<li><a href="ch19-interview-problems.html#197-the-reader-writer-lock">19.7 The Reader-Writer Lock</a>
+<ul>
+<li><a href="ch19-interview-problems.html#1971-concurrency-invariants-and-access-policies">19.7.1 Concurrency Invariants and Access Policies</a></li>
+<li><a href="ch19-interview-problems.html#1972-the-starvation-hazard-and-writer-preference-policy">19.7.2 The Starvation Hazard and Writer-Preference Policy</a></li>
+<li><a href="ch19-interview-problems.html#1973-reference-implementation">19.7.3 Reference Implementation</a></li>
+</ul>
+</li>
+<li><a href="ch19-interview-problems.html#198-the-thread-pool">19.8 The Thread Pool</a>
+<ul>
+<li><a href="ch19-interview-problems.html#1981-execution-architecture-and-lifecycle-states">19.8.1 Execution Architecture and Lifecycle States</a></li>
+<li><a href="ch19-interview-problems.html#1982-graceful-teardown-and-drain-invariants">19.8.2 Graceful Teardown and Drain Invariants</a></li>
+<li><a href="ch19-interview-problems.html#1983-reference-implementation">19.8.3 Reference Implementation</a></li>
+</ul>
+</li>
+<li><a href="ch19-interview-problems.html#199-the-process-pipeline-fork-exec-and-pipe">19.9 The Process Pipeline: <code>fork</code>, <code>exec</code> and <code>pipe</code></a>
+<ul>
+<li><a href="ch19-interview-problems.html#1991-kernel-file-descriptor-mechanics-and-redirection">19.9.1 Kernel File Descriptor Mechanics and Redirection</a></li>
+<li><a href="ch19-interview-problems.html#1992-the-pipeline-orchestration-sequence">19.9.2 The Pipeline Orchestration Sequence</a></li>
+<li><a href="ch19-interview-problems.html#1993-reference-implementation">19.9.3 Reference Implementation</a></li>
+<li><a href="ch19-interview-problems.html#1994-deadlock-hazards-and-process-isolation">19.9.4 Deadlock Hazards and Process Isolation</a></li>
+</ul>
+</li>
+<li><a href="ch19-interview-problems.html#1910-bit-manipulation">19.10 Bit Manipulation</a>
+<ul>
+<li><a href="ch19-interview-problems.html#19101-mathematical-principles-of-twos-complement-arithmetic">19.10.1 Two’s Complement Arithmetic &amp; Bit Smearing</a></li>
+<li><a href="ch19-interview-problems.html#19102-algorithmic-derivations">19.10.2 Algorithmic Derivations &amp; Power-of-Two Rounding</a></li>
+<li><a href="ch19-interview-problems.html#19103-reference-implementation">19.10.3 Reference Implementation</a></li>
+<li><a href="ch19-interview-problems.html#19104-microarchitectural-hardware-acceleration">19.10.4 Microarchitectural Hardware Acceleration (POPCNT, CLZ)</a></li>
+</ul>
+</li>
+<li><a href="ch19-interview-problems.html#1911-linked-list-operations">19.11 Linked List Operations</a>
+<ul>
+<li><a href="ch19-interview-problems.html#19111-in-place-list-inversion">19.11.1 In-Place List Inversion</a></li>
+<li><a href="ch19-interview-problems.html#19112-sorted-merging-and-sentinel-nodes">19.11.2 Sorted Merging and O(1) Splicing</a></li>
+<li><a href="ch19-interview-problems.html#19113-cycle-detection-floyds-tortoise-and-hare-algorithm">19.11.3 Cycle Detection: Floyd’s Tortoise and Hare Algorithm</a></li>
+<li><a href="ch19-interview-problems.html#19114-reference-implementation">19.11.4 Reference Implementation</a></li>
+</ul>
+</li>
+<li><a href="ch19-interview-problems.html#1912-operating-system-fundamentals-six-technical-derivations">19.12 Operating System Fundamentals: Six Technical Derivations</a>
+<ul>
+<li><a href="ch19-interview-problems.html#19121-process-isolation-vs-thread-concurrency-topology">19.12.1 Process Isolation vs. Thread Concurrency Topology</a></li>
+<li><a href="ch19-interview-problems.html#19122-context-switch-mechanics-and-microarchitectural-overhead">19.12.2 Context Switch Mechanics and Microarchitectural Overhead</a></li>
+<li><a href="ch19-interview-problems.html#19123-system-call-traps-and-privilege-boundary-enforcement">19.12.3 System Call Traps and Privilege Boundary Enforcement</a></li>
+<li><a href="ch19-interview-problems.html#19124-synchronization-taxonomy-mutex-spinlock-and-semaphore">19.12.4 Synchronization Taxonomy: Mutex, Spinlock, and Semaphore</a></li>
+<li><a href="ch19-interview-problems.html#19125-deadlock-dynamics-coffman-conditions-and-prevention-strategies">19.12.5 Deadlock Dynamics: Coffman Conditions and Prevention Strategies</a></li>
+<li><a href="ch19-interview-problems.html#19126-virtual-memory-architecture-and-page-fault-resolution">19.12.6 Virtual Memory Architecture and Page Fault Resolution</a></li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+<hr>
+<h3 id="appendices"><a class="header" href="#appendices">Appendices</a></h3>
+<ul>
+<li><a href="appendix-a-harness.html#appendix-a-the-verification-harness"><strong>Appendix A. The Verification Harness</strong></a>
+<ul>
+<li><a href="appendix-a-harness.html#a1-the-environment">A.1 The Environment</a></li>
+<li><a href="appendix-a-harness.html#a2-how-the-script-works">A.2 How the Script Works</a></li>
+<li><a href="appendix-a-harness.html#a3-running-the-listings">A.3 Running the Listings</a></li>
+<li><a href="appendix-a-harness.html#a4-inventory">A.4 Target Inventory</a></li>
+</ul>
+</li>
+<li><a href="appendix-b-reading.html#appendix-b-further-reading"><strong>Appendix B. Further Reading</strong></a></li>
+</ul>
+<hr>
+<h2 id="part-ii-systems-subject--keyword-index"><a class="header" href="#part-ii-systems-subject--keyword-index">Part II: Systems Subject &amp; Keyword Index</a></h2>
+<p>A thematic, alphabetical cross-reference linking systems topics directly to their foundational derivation and practical implementation.</p>
+<h3 id="a"><a class="header" href="#a">A</a></h3>
+<ul>
+<li><strong>Abstraction (Hardware Abstraction Layer)</strong> — The foundational operating system role mediating between complex physical hardware and uniform software primitives (files, sockets, processes).
+<ul>
+<li>Ontological Derivation: <a href="ch01-what-is-an-os.html#12-axiomatic-roles-abstraction-isolation-and-resource-management">§1.2</a></li>
+<li>Device Independence: <a href="ch01-what-is-an-os.html#11-architectural-limitations-of-bare-metal-execution">§1.1</a></li>
+</ul>
+</li>
+<li><strong>Acquire-Release Semantics</strong> — Synchronizes shared memory between threads without the heavy hardware penalty of full sequential consistency fences.
+<ul>
+<li>Theory &amp; Memory Models: <a href="ch06-synchronization.html#64-memory-ordering-and-visibility">§6.4</a></li>
+<li>Lock-Free SPSC Application: <a href="ch19-interview-problems.html#1941-architectural-model-and-single-writer-principle">§19.4.1</a></li>
+</ul>
+</li>
+<li><strong>Address Space Layout</strong> — Virtual memory organization across text, data, BSS, heap, memory-mapped regions, and user stack.
+<ul>
+<li>Process Memory Topology: <a href="ch03-processes.html#31-the-process-control-block-and-address-space-topology">§3.1</a></li>
+<li>Page-Based Isolation: <a href="ch07-virtual-memory.html#71-page-based-abstraction-and-isolation">§7.1</a></li>
+<li>Architectural Comparison: <a href="ch19-interview-problems.html#19121-process-isolation-vs-thread-concurrency-topology">§19.12.1</a></li>
+</ul>
+</li>
+<li><strong>Address Translation (Hand Calculation)</strong> — Complete step-by-step mathematical walk of a 48-bit canonical virtual address through PML4, PDPT, PD, and PT levels to physical address assembly.
+<ul>
+<li>Numerical Walkthrough &amp; Invariants: <a href="ch07-virtual-memory.html#722-hand-calculated-4-level-address-translation-walkthrough">§7.2.2</a></li>
+</ul>
+</li>
+<li><strong>Anonymous Mapping (<code>MAP_ANON | MAP_PRIVATE</code>)</strong> — Kernel allocation of zero-initialized demand pages unbacked by physical disk files.
+<ul>
+<li>Page Fault Dynamics: <a href="ch07-virtual-memory.html#71-page-based-abstraction-and-isolation">§7.1</a></li>
+<li>Heap Arena Construction: <a href="ch08-allocation.html#82-arena-allocation-the-bump-allocator">§8.2</a>, <a href="ch08-allocation.html#83-explicit-management-free-list-allocation">§8.3</a></li>
+</ul>
+</li>
+<li><strong>APIC / IO-APIC &amp; ARM GIC (Interrupt Controllers)</strong> — Two-tier hardware interrupt routing, Message Signaled Interrupts (MSI-X), and priority arbitration across multiprocessor cores.
+<ul>
+<li>Hardware Routing &amp; EOI: <a href="ch02-the-machine.html#241-interrupt-controllers-apic-io-apic-msi-x-and-arm-gic">§2.4.1</a></li>
+</ul>
+</li>
+<li><strong>Apple Silicon Unified Memory (UMA)</strong> — Shared physical memory substrate between CPU, GPU, and Neural Engine without PCIe bus serialization.
+<ul>
+<li>Architectural Analysis: <a href="ch17-multiprocessors.html#173-hardware-accelerators-discrete-architecture-vs-unified-memory-architecture-uma">§17.3</a></li>
+</ul>
+</li>
+<li><strong>Async-Signal-Safety</strong> — Functions safe to execute inside asynchronous signal handlers without corrupting thread stacks or deadlocking libc mutexes.
+<ul>
+<li>Re-entrancy Invariants: <a href="ch10-signals.html#102-constraints-on-asynchronous-execution">§10.2</a></li>
+<li>Atomic Handler Disposition: <a href="ch15-daemons.html#152-signal-driven-management-and-the-lifecycle-interface">§15.2</a></li>
+</ul>
+</li>
+<li><strong>Atomicity Gap</strong> — The structural discrepancy between high-level language expressions (<code>counter++</code>) and low-level load-modify-store sequences causing lost updates.
+<ul>
+<li>Architectural Analysis: <a href="ch02-the-machine.html#212-formal-derivation-of-the-atomicity-gap">§2.1.2</a></li>
+<li>Concurrency Hazards: <a href="ch04-threads.html#42-atomicity-and-the-resolution-of-data-races">§4.2</a></li>
+</ul>
+</li>
+<li><strong>Atomics (Memory Models)</strong> — Load and store instructions providing hardware memory synchronization guarantees.
+<ul>
+<li>Core Primitive Taxonomy: <a href="ch04-threads.html#42-atomicity-and-the-resolution-of-data-races">§4.2</a></li>
+<li>Memory Ordering Guarantees: <a href="ch06-synchronization.html#64-memory-ordering-and-visibility">§6.4</a></li>
+<li>Lock-Free Queue Invariants: <a href="ch19-interview-problems.html#194-the-lock-free-single-producer-single-consumer-ring-buffer">§19.4</a></li>
+</ul>
+</li>
+</ul>
+<h3 id="b"><a class="header" href="#b">B</a></h3>
+<ul>
+<li><strong>Bare-Metal Execution</strong> — The fundamental architectural limitations (no concurrency, no memory protection, no unified device drivers) of executing directly on raw hardware.
+<ul>
+<li>Architectural Invariants: <a href="ch01-what-is-an-os.html#11-architectural-limitations-of-bare-metal-execution">§1.1</a></li>
+</ul>
+</li>
+<li><strong>Bit Manipulation (Branchless)</strong> — Microarchitectural optimizations utilizing bit smearing and hardware popcount instructions.
+<ul>
+<li>Two’s Complement Principles: <a href="ch19-interview-problems.html#19101-mathematical-principles-of-twos-complement-arithmetic">§19.10.1</a></li>
+<li>Power-of-Two Rounding: <a href="ch19-interview-problems.html#19102-algorithmic-derivations">§19.10.2</a></li>
+</ul>
+</li>
+<li><strong>Bounded Blocking Queue</strong> — Multi-threaded queue that synchronizes producers and consumers under strict capacity limits.
+<ul>
+<li>Predicate Synchronization: <a href="ch06-synchronization.html#62-condition-variables-and-predicate-based-synchronization">§6.2</a></li>
+<li>Complete Derivation &amp; Code: <a href="ch19-interview-problems.html#192-the-bounded-blocking-queue">§19.2</a></li>
+</ul>
+</li>
+<li><strong>Buffered I/O (<code>BufWriter</code>)</strong> — Amortizing the overhead of user-to-kernel context transitions via large user-space memory buffers.
+<ul>
+<li>System Call Trap Overhead: <a href="ch09-system-calls.html#92-performance-implications-and-optimization-via-buffering">§9.2</a></li>
+</ul>
+</li>
+<li><strong>Bump Allocator (Arena)</strong> — Extreme high-throughput allocation strategy incrementing an offset pointer within contiguous memory.
+<ul>
+<li>Design &amp; Mathematical Alignment: <a href="ch08-allocation.html#82-arena-allocation-the-bump-allocator">§8.2</a></li>
+</ul>
+</li>
+</ul>
+<h3 id="c"><a class="header" href="#c">C</a></h3>
+<ul>
+<li><strong>Cache Coherence Protocols (MESI / MOESI)</strong> — Hardware protocols ensuring cache-line consistency across multi-core systems.
+<ul>
+<li>Memory Hierarchy Basics: <a href="ch02-the-machine.html#22-memory-hierarchy-and-locality-dynamics">§2.2</a></li>
+<li>Inter-Core Invalidation Overhead: <a href="ch17-multiprocessors.html#172-cache-coherence-and-the-false-sharing-phenomenon">§17.2</a></li>
+</ul>
+</li>
+<li><strong>Cache Lines (64-byte Granularity)</strong> — The atomic transfer unit between L1/L2/L3 caches and main memory.
+<ul>
+<li>Microarchitectural Substrate: <a href="ch02-the-machine.html#22-memory-hierarchy-and-locality-dynamics">§2.2</a></li>
+<li>False Sharing Prevention: <a href="ch17-multiprocessors.html#172-cache-coherence-and-the-false-sharing-phenomenon">§17.2</a>, <a href="ch19-interview-problems.html#1945-microarchitectural-optimization-and-false-sharing">§19.4.2</a></li>
+</ul>
+</li>
+<li><strong>Coffman Deadlock Conditions</strong> — The four axiomatic conditions required for a system to enter permanent deadlock.
+<ul>
+<li>Theoretical Analysis &amp; Prevention: <a href="ch06-synchronization.html#63-deadlock-causes-and-prevention">§6.3</a></li>
+<li>Technical Derivation: <a href="ch19-interview-problems.html#19125-deadlock-dynamics-coffman-conditions-and-prevention-strategies">§19.12.5</a></li>
+</ul>
+</li>
+<li><strong>Condition Variables</strong> — Execution barriers enabling threads to sleep until notified of a state change under a controlling mutex.
+<ul>
+<li>Predicate Loop Requirement: <a href="ch06-synchronization.html#62-condition-variables-and-predicate-based-synchronization">§6.2</a></li>
+<li>Spurious Wakeup Verification: <a href="ch19-interview-problems.html#1924-systems-analysis-and-nuances">§19.2.4</a></li>
+</ul>
+</li>
+<li><strong>Context Switch Overhead</strong> — The microarchitectural penalty of saving CPU registers, swapping page tables, and invalidating pipeline state.
+<ul>
+<li>Hardware Control Transfers: <a href="ch02-the-machine.html#24-synchronous-traps-and-the-asynchronous-interrupt-subsystem">§2.4</a></li>
+<li>Process versus Thread Transitions: <a href="ch03-processes.html#31-the-process-control-block-and-address-space-topology">§3.1</a>, <a href="ch19-interview-problems.html#19122-context-switch-mechanics-and-microarchitectural-overhead">§19.12.2</a></li>
+</ul>
+</li>
+<li><strong>Copy-on-Write (COW)</strong> — Memory optimization where physical frames are shared as read-only until mutated by child or parent.
+<ul>
+<li>Fork Optimization: <a href="ch03-processes.html#32-process-creation-and-the-mechanics-of-fork">§3.2</a></li>
+<li>Page Fault Resolution: <a href="ch07-virtual-memory.html#73-fault-handling-and-memory-management-strategies">§7.3</a></li>
+</ul>
+</li>
+</ul>
+<h3 id="d"><a class="header" href="#d">D</a></h3>
+<ul>
+<li><strong>Daemons &amp; Detachment Ritual</strong> — Creating autonomous background processes detached from terminals and session leaders.
+<ul>
+<li>The Double-Fork Idiom: <a href="ch15-daemons.html#151-the-ritual-of-detachment">§15.1</a></li>
+<li>Signal-Driven Supervision: <a href="ch15-daemons.html#152-signal-driven-management-and-the-lifecycle-interface">§15.2</a></li>
+</ul>
+</li>
+<li><strong>Data Races</strong> — Undefined behavior occurring when concurrent threads access identical memory without synchronization and at least one is a write.
+<ul>
+<li>Hazard Mechanics: <a href="ch04-threads.html#41-shared-address-space-and-the-loss-of-intra-process-isolation">§4.1</a>, <a href="ch04-threads.html#42-atomicity-and-the-resolution-of-data-races">§4.2</a></li>
+</ul>
+</li>
+<li><strong>Demand Paging</strong> — Memory virtualization where physical frames are allocated lazily upon page fault rather than reservation.
+<ul>
+<li>Page Table Mapping: <a href="ch07-virtual-memory.html#71-page-based-abstraction-and-isolation">§7.1</a></li>
+<li>Page Fault Resolution Path: <a href="ch07-virtual-memory.html#73-fault-handling-and-memory-management-strategies">§7.3</a>, <a href="ch19-interview-problems.html#19126-virtual-memory-architecture-and-page-fault-resolution">§19.12.6</a></li>
+</ul>
+</li>
+<li><strong>Dentry &amp; Inode Topology</strong> — The directory cache and file metadata structures governing VFS storage durability.
+<ul>
+<li>Inode Architecture: <a href="ch12-filesystems.html#122-on-disk-organization-and-inode-based-mapping">§12.2</a></li>
+</ul>
+</li>
+</ul>
+<h3 id="e---f"><a class="header" href="#e---f">E - F</a></h3>
+<ul>
+<li><strong>Edge-Triggered vs. Level-Triggered Multiplexing</strong> — Notification mechanics for ready file descriptors under high concurrency.
+<ul>
+<li>Multiplexing Scalability: <a href="ch13-io-event-loops.html#132-event-driven-architecture-and-io-multiplexing">§13.2</a>, <a href="ch13-io-event-loops.html#133-complexity-and-evolution-of-multiplexing-primitives">§13.3</a></li>
+</ul>
+</li>
+<li><strong>Event Loops (<code>kqueue</code> / <code>epoll</code> / <code>poll</code>)</strong> — Scalable single-threaded I/O engines multiplexing thousands of descriptors.
+<ul>
+<li>Architecture: <a href="ch13-io-event-loops.html#132-event-driven-architecture-and-io-multiplexing">§13.2</a></li>
+<li>Process Monitoring via <code>kqueue</code>: <a href="ch15-daemons.html#154-asynchronous-fault-detection-and-process-monitoring-via-kqueue">§15.4</a></li>
+</ul>
+</li>
+<li><strong>False Sharing</strong> — Severe performance degradation caused by distinct CPU cores mutating independent variables residing on the same cache line.
+<ul>
+<li>Microarchitectural Analysis: <a href="ch02-the-machine.html#22-memory-hierarchy-and-locality-dynamics">§2.3</a>, <a href="ch17-multiprocessors.html#172-cache-coherence-and-the-false-sharing-phenomenon">§17.2</a></li>
+<li>Cache Line Alignment Mitigation: <a href="ch19-interview-problems.html#1945-microarchitectural-optimization-and-false-sharing">§19.4.2</a></li>
+</ul>
+</li>
+<li><strong>File Descriptors</strong> — Per-process integer indices referencing open file descriptions and inodes in the kernel.
+<ul>
+<li>Process Management: <a href="ch12-filesystems.html#121-the-file-descriptor-and-the-open-file-description">§12.1</a></li>
+<li>Pipeline Redirection &amp; Leaks: <a href="ch19-interview-problems.html#1991-kernel-file-descriptor-mechanics-and-redirection">§19.9.1</a></li>
+</ul>
+</li>
+<li><strong>Frame Pointer (FP / RBP / x29)</strong> — Invariant structural anchor for function activation records, enabling debugger backtraces and call frame unwinding.
+<ul>
+<li>Architectural Function: <a href="ch02-the-machine.html#21-the-execution-model-and-the-atomicity-gap">§2.1</a></li>
+</ul>
+</li>
+<li><strong>Free-List Allocator</strong> — Explicit heap allocator with header metadata, block splitting, and contiguous coalescing.
+<ul>
+<li>Memory Management Foundations: <a href="ch08-allocation.html#83-explicit-management-free-list-allocation">§8.3</a></li>
+<li>Complete Systems Implementation: <a href="ch19-interview-problems.html#193-the-free-list-allocator">§19.3</a></li>
+</ul>
+</li>
+</ul>
+<h3 id="g---l"><a class="header" href="#g---l">G - L</a></h3>
+<ul>
+<li><strong>Guard Pages (<code>PROT_NONE</code>)</strong> — Virtual memory pages configured with zero permissions to detect stack overflows or buffer out-of-bounds accesses.
+<ul>
+<li>Protection Mechanics: <a href="ch07-virtual-memory.html#73-fault-handling-and-memory-management-strategies">§7.3</a></li>
+</ul>
+</li>
+<li><strong>Huge Pages</strong> — 2 MiB / 1 GiB virtual page translations designed to maximize TLB coverage and eliminate translation latency.
+<ul>
+<li>Hardware TLB Reach: <a href="ch07-virtual-memory.html#723-the-translation-lookaside-buffer-tlb-huge-pages-and-shootdowns">§7.2.3</a></li>
+</ul>
+</li>
+<li><strong>Interrupt Descriptor Table (IDT) &amp; Top/Bottom-Half Handlers</strong> — Hardware vector dispatch table, <code>TSS.rsp0</code> trapframe saving, <code>hardirq</code> masking, and <code>softirq</code> deferred execution.
+<ul>
+<li>Architectural Mechanics: <a href="ch02-the-machine.html#242-vector-tables-ivt-idt-vbar_el1-and-the-hardware-context-save-sequence">§2.4.2</a>, <a href="ch02-the-machine.html#243-top-half-hardirq-vs-bottom-half-softirq-split-and-eoi-lifecycle">§2.4.3</a></li>
+</ul>
+</li>
+<li><strong>Inter-Process Communication (IPC)</strong> — Exchanging state across hardware isolation boundaries via pipes, sockets, and shared memory.
+<ul>
+<li>IPC Taxonomy: <a href="ch11-ipc.html#111-unidirectional-byte-streams-pipes">§11.1</a>, <a href="ch11-ipc.html#112-zero-copy-communication-shared-memory">§11.2</a>, <a href="ch11-ipc.html#113-bidirectional-channels-socket-pairs">§11.3</a></li>
+</ul>
+</li>
+<li><strong>Isolation (Process Protection)</strong> — Hardware-enforced boundary preventing cross-process interference and securing kernel memory.
+<ul>
+<li>Ontological Necessity: <a href="ch01-what-is-an-os.html#12-axiomatic-roles-abstraction-isolation-and-resource-management">§1.2</a></li>
+<li>Address Space Separation: <a href="ch03-processes.html#31-the-process-control-block-and-address-space-topology">§3.1</a></li>
+</ul>
+</li>
+<li><strong>Lock-Free Programming</strong> — Concurrency without mutex barriers, relying on atomic instructions and hardware memory ordering guarantees.
+<ul>
+<li>SPSC Queue Derivation: <a href="ch19-interview-problems.html#194-the-lock-free-single-producer-single-consumer-ring-buffer">§19.4</a></li>
+</ul>
+</li>
+<li><strong>LRU Cache</strong> — High-performance eviction cache pairing an O(1) hash table with a doubly-linked list.
+<ul>
+<li>Zero-Allocation Splice Implementation: <a href="ch19-interview-problems.html#196-the-lru-cache">§19.6</a></li>
+</ul>
+</li>
+</ul>
+<h3 id="m---p"><a class="header" href="#m---p">M - P</a></h3>
+<ul>
+<li><strong>Mechanism versus Policy Separation</strong> — Foundational architectural principle decoupling invariant low-level hardware mechanisms from tunable high-level allocation algorithms.
+<ul>
+<li>Axiomatic Separation: <a href="ch01-what-is-an-os.html#13-mechanism-versus-policy-separation">§1.3</a></li>
+<li>Scheduling Dynamics: <a href="ch05-scheduling.html#51-scheduling-dynamics-and-performance-metrics">§5.1</a></li>
+</ul>
+</li>
+<li><strong>Memory Fences &amp; Ordering</strong> — CPU instructions constraining the reordering of loads and stores across memory buses.
+<ul>
+<li>Theoretical Derivation: <a href="ch06-synchronization.html#64-memory-ordering-and-visibility">§6.4</a></li>
+</ul>
+</li>
+<li><strong>Multi-Level Page Tables</strong> — Tree-structured hierarchical address translation enabling sparse virtual address spaces without wasting physical RAM.
+<ul>
+<li>Radix Tree Architecture: <a href="ch07-virtual-memory.html#72-hierarchical-translation-and-the-tlb">§7.2</a></li>
+<li>Page Fault Resolution: <a href="ch19-interview-problems.html#19126-virtual-memory-architecture-and-page-fault-resolution">§19.12.6</a></li>
+</ul>
+</li>
+<li><strong>Non-Blocking I/O (<code>O_NONBLOCK</code>)</strong> — System call semantics allowing asynchronous execution without thread suspension.
+<ul>
+<li>Event-Driven Architecture: <a href="ch13-io-event-loops.html#132-event-driven-architecture-and-io-multiplexing">§13.2</a></li>
+<li>Socket Multiplexing: <a href="ch14-networking.html#141-the-transmission-control-protocol-tcp-reliable-byte-streams">§14.1</a></li>
+</ul>
+</li>
+<li><strong>NUMA Topologies</strong> — Non-Uniform Memory Access architectures where latency depends on memory socket locality.
+<ul>
+<li>Optimization Strategies: <a href="ch17-multiprocessors.html#171-numa-topologies-and-locality-optimization">§17.1</a></li>
+</ul>
+</li>
+<li><strong>Page Map Level 4 (PML4)</strong> — The root table of the 4-level x86-64 page hierarchy loaded into the CR3 control register.
+<ul>
+<li>Translation Walk: <a href="ch07-virtual-memory.html#72-hierarchical-translation-and-the-tlb">§7.2</a></li>
+</ul>
+</li>
+<li><strong>Pipeline Deadlocks</strong> — Common concurrency pitfall where unclosed write descriptors prevent readers from observing EOF.
+<ul>
+<li>Descriptor Management &amp; Proof: <a href="ch19-interview-problems.html#1994-deadlock-hazards-and-process-isolation">§19.9.4</a></li>
+</ul>
+</li>
+<li><strong>POSIX Standard Interface</strong> — Standardized system call boundary unifying process management, file I/O, virtual memory, and IPC across UNIX-like systems.
+<ul>
+<li>Core API Taxonomy: <a href="ch01-what-is-an-os.html#14-the-system-call-boundary-and-posix-standard-interface">§1.4</a></li>
+</ul>
+</li>
+<li><strong>Priority Inversion</strong> — Scheduling hazard where a high-priority thread blocks on a resource held by a low-priority thread.
+<ul>
+<li>Priority Inheritance Solutions: <a href="ch05-scheduling.html#53-advanced-heuristics-in-production-schedulers">§5.3</a></li>
+</ul>
+</li>
+<li><strong>Process Control Block (PCB)</strong> — Kernel data structure maintaining architectural register state, page tables, and file descriptors.
+<ul>
+<li>Topology &amp; Management: <a href="ch03-processes.html#31-the-process-control-block-and-address-space-topology">§3.1</a></li>
+<li>Process Isolation: <a href="ch19-interview-problems.html#19121-process-isolation-vs-thread-concurrency-topology">§19.12.1</a></li>
+</ul>
+</li>
+<li><strong>Program Counter (PC / RIP / PC_EL0)</strong> — Microarchitectural register holding the linear virtual address of the next instruction to fetch.
+<ul>
+<li>Instruction Cycle &amp; Branching: <a href="ch02-the-machine.html#21-the-execution-model-and-the-atomicity-gap">§2.1</a></li>
+<li>Trapframe Preservation: <a href="ch02-the-machine.html#23-privilege-domains-and-boundary-enforcement">§2.4</a>, <a href="ch03-processes.html#31-the-process-control-block-and-address-space-topology">§3.1</a></li>
+</ul>
+</li>
+</ul>
+<h3 id="r---s"><a class="header" href="#r---s">R - S</a></h3>
+<ul>
+<li><strong>Reader-Writer Lock</strong> — Synchronization primitive permitting concurrent readers while restricting writers to exclusive access.
+<ul>
+<li>Writer-Preference Implementation: <a href="ch19-interview-problems.html#197-the-reader-writer-lock">§19.7</a></li>
+</ul>
+</li>
+<li><strong>Resource Management (Arbitration)</strong> — Operating system orchestration and time/space multiplexing of CPU cores, memory frames, and I/O bandwidth.
+<ul>
+<li>Ontological Necessity: <a href="ch01-what-is-an-os.html#12-axiomatic-roles-abstraction-isolation-and-resource-management">§1.2</a></li>
+</ul>
+</li>
+<li><strong>Shared Memory (<code>mmap</code> / POSIX <code>shm</code>)</strong> — Highest-throughput IPC mechanism bypassing the kernel during data exchange.
+<ul>
+<li>Zero-Copy Implementation: <a href="ch11-ipc.html#112-zero-copy-communication-shared-memory">§11.2</a></li>
+</ul>
+</li>
+<li><strong>Signal Coalescing &amp; Reaping</strong> — POSIX signal delivery property requiring non-blocking loops to prevent zombie leaks.
+<ul>
+<li><code>SIGCHLD</code> and <code>waitpid</code>: <a href="ch10-signals.html#103-process-lifecycle-synchronization-sigchld-and-reaping">§10.3</a></li>
+</ul>
+</li>
+<li><strong>Sparse Files</strong> — File system structures where unwritten data blocks are unallocated, saving physical storage.
+<ul>
+<li>Block Allocation Mechanics: <a href="ch12-filesystems.html#123-sparse-files-and-the-mechanics-of-durability">§12.3</a></li>
+</ul>
+</li>
+<li><strong>Spurious Wakeups</strong> — Condition variable unblocking without explicit notification caused by kernel scheduler dynamics.
+<ul>
+<li>Systems Nuances: <a href="ch19-interview-problems.html#1924-systems-analysis-and-nuances">§19.2.4</a></li>
+</ul>
+</li>
+<li><strong>Stack Pointer (SP / RSP / SP_EL0)</strong> — Architectural register tracking the active boundary of the descending call stack.
+<ul>
+<li>Stack Frame Structure: <a href="ch02-the-machine.html#21-the-execution-model-and-the-atomicity-gap">§2.1</a></li>
+<li>Kernel Stack Switching: <a href="ch02-the-machine.html#23-privilege-domains-and-boundary-enforcement">§2.4</a>, <a href="ch09-system-calls.html#91-the-mechanics-of-the-system-call-interface">§9.1</a></li>
+</ul>
+</li>
+<li><strong>Status Flags (FLAGS / RFLAGS / PSTATE)</strong> — CPU condition codes (ZF, CF, SF, OF) and interrupt mask control flags (IF).
+<ul>
+<li>Condition Evaluation: <a href="ch02-the-machine.html#21-the-execution-model-and-the-atomicity-gap">§2.1</a></li>
+</ul>
+</li>
+<li><strong>System Call Boundary</strong> — Hardware-supervised privilege gatekeeper transferring control from user mode to kernel mode.
+<ul>
+<li>Gatekeeper Role: <a href="ch01-what-is-an-os.html#14-the-system-call-boundary-and-posix-standard-interface">§1.4</a></li>
+<li>Traps &amp; Privilege Elevation: <a href="ch02-the-machine.html#23-privilege-domains-and-boundary-enforcement">§2.4</a>, <a href="ch09-system-calls.html#91-the-mechanics-of-the-system-call-interface">§9.1</a></li>
+</ul>
+</li>
+</ul>
+<h3 id="t---z"><a class="header" href="#t---z">T - Z</a></h3>
+<ul>
+<li><strong>TCP Protocols &amp; Sockets</strong> — Reliable, connection-oriented byte streams with flow control and congestion avoidance.
+<ul>
+<li>Socket Interface Mechanics: <a href="ch14-networking.html#141-the-transmission-control-protocol-tcp-reliable-byte-streams">§14.1</a></li>
+</ul>
+</li>
+<li><strong>Thread Pool</strong> — Concurrency architecture amortizing thread creation costs across a fixed pool of persistent worker threads.
+<ul>
+<li>Implementation &amp; RAII Shutdown: <a href="ch19-interview-problems.html#198-the-thread-pool">§19.8</a></li>
+</ul>
+</li>
+<li><strong>Thundering Herd Mitigation</strong> — Preventing catastrophic CPU contention by waking single threads (<code>notify_one</code>) rather than all sleeping threads.
+<ul>
+<li>Bounded Queue Optimization: <a href="ch19-interview-problems.html#1924-systems-analysis-and-nuances">§19.2.4</a></li>
+</ul>
+</li>
+<li><strong>TLB (Translation Lookaside Buffer)</strong> — High-speed CPU hardware cache storing recent virtual-to-physical address translations.
+<ul>
+<li>Architecture &amp; Invalidation: <a href="ch07-virtual-memory.html#72-hierarchical-translation-and-the-tlb">§7.2</a></li>
+</ul>
+</li>
+<li><strong>Virtual Memory Architecture</strong> — Core isolation mechanism presenting processes with private, contiguous address spaces.
+<ul>
+<li>Page Tables &amp; MMU: <a href="ch07-virtual-memory.html#71-page-based-abstraction-and-isolation">§7.1</a>, <a href="ch07-virtual-memory.html#72-hierarchical-translation-and-the-tlb">§7.2</a></li>
+<li>Architectural Derivation: <a href="ch19-interview-problems.html#19126-virtual-memory-architecture-and-page-fault-resolution">§19.12.6</a></li>
+</ul>
+</li>
+<li><strong>Zombie Processes</strong> — Terminated processes awaiting parent retrieval of exit status, retaining a PID table slot.
+<ul>
+<li>Process Reaping: <a href="ch03-processes.html#33-lifecycle-management-state-automaton-and-termination">§3.3</a>, <a href="ch10-signals.html#103-process-lifecycle-synchronization-sigchld-and-reaping">§10.3</a></li>
+</ul>
+</li>
+</ul>
+
+                    </main>
+
+                    <nav class="nav-wrapper" aria-label="Page navigation">
+                        <!-- Mobile navigation buttons -->
+                            <a rel="prev" href="preface.html" class="mobile-nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                                <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M41.4 233.4c-12.5 12.5-12.5 32.8 0 45.3l160 160c12.5 12.5 32.8 12.5 45.3 0s12.5-32.8 0-45.3L109.3 256 246.6 118.6c12.5-12.5 12.5-32.8 0-45.3s-32.8-12.5-45.3 0l-160 160z"/></svg></span>
+                            </a>
+
+                            <a rel="next prefetch" href="ch01-what-is-an-os.html" class="mobile-nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                                <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M278.6 233.4c12.5 12.5 12.5 32.8 0 45.3l-160 160c-12.5 12.5-32.8 12.5-45.3 0s-12.5-32.8 0-45.3L210.7 256 73.4 118.6c-12.5-12.5-12.5-32.8 0-45.3s32.8-12.5 45.3 0l160 160z"/></svg></span>
+                            </a>
+
+                        <div style="clear: both"></div>
+                    </nav>
+                </div>
+            </div>
+
+            <nav class="nav-wide-wrapper" aria-label="Page navigation">
+                    <a rel="prev" href="preface.html" class="nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                        <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M41.4 233.4c-12.5 12.5-12.5 32.8 0 45.3l160 160c12.5 12.5 32.8 12.5 45.3 0s12.5-32.8 0-45.3L109.3 256 246.6 118.6c12.5-12.5 12.5-32.8 0-45.3s-32.8-12.5-45.3 0l-160 160z"/></svg></span>
+                    </a>
+
+                    <a rel="next prefetch" href="ch01-what-is-an-os.html" class="nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                        <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M278.6 233.4c12.5 12.5 12.5 32.8 0 45.3l-160 160c-12.5 12.5-32.8 12.5-45.3 0s-12.5-32.8 0-45.3L210.7 256 73.4 118.6c-12.5-12.5-12.5-32.8 0-45.3s32.8-12.5 45.3 0l160 160z"/></svg></span>
+                    </a>
+            </nav>
+
+        </div>
+
+        <template id=fa-eye><span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 576 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M288 32c-80.8 0-145.5 36.8-192.6 80.6C48.6 156 17.3 208 2.5 243.7c-3.3 7.9-3.3 16.7 0 24.6C17.3 304 48.6 356 95.4 399.4C142.5 443.2 207.2 480 288 480s145.5-36.8 192.6-80.6c46.8-43.5 78.1-95.4 93-131.1c3.3-7.9 3.3-16.7 0-24.6c-14.9-35.7-46.2-87.7-93-131.1C433.5 68.8 368.8 32 288 32zM432 256c0 79.5-64.5 144-144 144s-144-64.5-144-144s64.5-144 144-144s144 64.5 144 144zM288 192c0 35.3-28.7 64-64 64c-11.5 0-22.3-3-31.6-8.4c-.2 2.8-.4 5.5-.4 8.4c0 53 43 96 96 96s96-43 96-96s-43-96-96-96c-2.8 0-5.6 .1-8.4 .4c5.3 9.3 8.4 20.1 8.4 31.6z"/></svg></span></template>
+        <template id=fa-eye-slash><span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M38.8 5.1C28.4-3.1 13.3-1.2 5.1 9.2S-1.2 34.7 9.2 42.9l592 464c10.4 8.2 25.5 6.3 33.7-4.1s6.3-25.5-4.1-33.7L525.6 386.7c39.6-40.6 66.4-86.1 79.9-118.4c3.3-7.9 3.3-16.7 0-24.6c-14.9-35.7-46.2-87.7-93-131.1C465.5 68.8 400.8 32 320 32c-68.2 0-125 26.3-169.3 60.8L38.8 5.1zM223.1 149.5C248.6 126.2 282.7 112 320 112c79.5 0 144 64.5 144 144c0 24.9-6.3 48.3-17.4 68.7L408 294.5c5.2-11.8 8-24.8 8-38.5c0-53-43-96-96-96c-2.8 0-5.6 .1-8.4 .4c5.3 9.3 8.4 20.1 8.4 31.6c0 10.2-2.4 19.8-6.6 28.3l-90.3-70.8zm223.1 298L373 389.9c-16.4 6.5-34.3 10.1-53 10.1c-79.5 0-144-64.5-144-144c0-6.9 .5-13.6 1.4-20.2L83.1 161.5C60.3 191.2 44 220.8 34.5 243.7c-3.3 7.9-3.3 16.7 0 24.6c14.9 35.7 46.2 87.7 93 131.1C174.5 443.2 239.2 480 320 480c47.8 0 89.9-12.9 126.2-32.5z"/></svg></span></template>
+        <template id=fa-copy><span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M502.6 70.63l-61.25-61.25C435.4 3.371 427.2 0 418.7 0H255.1c-35.35 0-64 28.66-64 64l.0195 256C192 355.4 220.7 384 256 384h192c35.2 0 64-28.8 64-64V93.25C512 84.77 508.6 76.63 502.6 70.63zM464 320c0 8.836-7.164 16-16 16H255.1c-8.838 0-16-7.164-16-16L239.1 64.13c0-8.836 7.164-16 16-16h128L384 96c0 17.67 14.33 32 32 32h47.1V320zM272 448c0 8.836-7.164 16-16 16H63.1c-8.838 0-16-7.164-16-16L47.98 192.1c0-8.836 7.164-16 16-16H160V128H63.99c-35.35 0-64 28.65-64 64l.0098 256C.002 483.3 28.66 512 64 512h192c35.2 0 64-28.8 64-64v-32h-47.1L272 448z"/></svg></span></template>
+        <template id=fa-play><span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 384 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M73 39c-14.8-9.1-33.4-9.4-48.5-.9S0 62.6 0 80V432c0 17.4 9.4 33.4 24.5 41.9s33.7 8.1 48.5-.9L361 297c14.3-8.7 23-24.2 23-41s-8.7-32.2-23-41L73 39z"/></svg></span></template>
+        <template id=fa-clock-rotate-left><span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M75 75L41 41C25.9 25.9 0 36.6 0 57.9V168c0 13.3 10.7 24 24 24H134.1c21.4 0 32.1-25.9 17-41l-30.8-30.8C155 85.5 203 64 256 64c106 0 192 86 192 192s-86 192-192 192c-40.8 0-78.6-12.7-109.7-34.4c-14.5-10.1-34.4-6.6-44.6 7.9s-6.6 34.4 7.9 44.6C151.2 495 201.7 512 256 512c141.4 0 256-114.6 256-256S397.4 0 256 0C185.3 0 121.3 28.7 75 75zm181 53c-13.3 0-24 10.7-24 24V256c0 6.4 2.5 12.5 7 17l72 72c9.4 9.4 24.6 9.4 33.9 0s9.4-24.6 0-33.9l-65-65V152c0-13.3-10.7-24-24-24z"/></svg></span></template>
+
+
+
+        <script>
+            window.playground_copyable = true;
+        </script>
+
+
+        <script src="elasticlunr-ef4e11c1.min.js"></script>
+        <script src="mark-09e88c2c.min.js"></script>
+        <script src="searcher-09f2665d.js"></script>
+
+        <script src="clipboard-1626706a.min.js"></script>
+        <script src="highlight-abc7f01d.js"></script>
+        <script src="book-609e4cb8.js"></script>
+
+        <!-- Custom JS scripts -->
+        <script src="theme/figures-7a3fdfc9.js"></script>
+
+
+
+    </div>
+    </body>
+</html>

@@ -1,0 +1,656 @@
+<!DOCTYPE HTML>
+<html lang="en" class="light sidebar-visible" dir="ltr">
+    <head>
+        <!-- Book generated using mdBook -->
+        <meta charset="UTF-8">
+        <title>15. Daemon Lifecycle and Service Supervision - Operating Systems: A Hands-On Approach</title>
+
+
+        <!-- Custom HTML head -->
+
+        <meta name="description" content="Operating system fundamentals built from first principles, with verified C++20 and Rust 2024 code.">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <meta name="theme-color" content="#ffffff">
+
+        <link rel="icon" href="favicon-de23e50b.svg">
+        <link rel="shortcut icon" href="favicon-8114d1fc.png">
+        <link rel="stylesheet" href="css/variables-8adf115d.css">
+        <link rel="stylesheet" href="css/general-e96d0476.css">
+        <link rel="stylesheet" href="css/chrome-d279d366.css">
+        <link rel="stylesheet" href="css/print-9e4910d8.css" media="print">
+
+        <!-- Fonts -->
+        <link rel="stylesheet" href="fonts/fonts-9644e21d.css">
+
+        <!-- Highlight.js Stylesheets -->
+        <link rel="stylesheet" id="mdbook-highlight-css" href="highlight-493f70e1.css">
+        <link rel="stylesheet" id="mdbook-tomorrow-night-css" href="tomorrow-night-4c0ae647.css">
+        <link rel="stylesheet" id="mdbook-ayu-highlight-css" href="ayu-highlight-3fdfc3ac.css">
+
+        <!-- Custom theme stylesheets -->
+        <link rel="stylesheet" href="theme/custom-e0671a52.css">
+
+        <!-- MathJax -->
+        <script async src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.1/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
+
+        <!-- Provide site root and default themes to javascript -->
+        <script>
+            const path_to_root = "";
+            const default_light_theme = "light";
+            const default_dark_theme = "navy";
+            window.path_to_searchindex_js = "searchindex-6aaf8639.js";
+        </script>
+        <!-- Start loading toc.js asap -->
+        <script src="toc-2b639993.js"></script>
+    </head>
+    <body>
+    <div id="mdbook-help-container">
+        <div id="mdbook-help-popup">
+            <h2 class="mdbook-help-title">Keyboard shortcuts</h2>
+            <div>
+                <p>Press <kbd>←</kbd> or <kbd>→</kbd> to navigate between chapters</p>
+                <p>Press <kbd>S</kbd> or <kbd>/</kbd> to search in the book</p>
+                <p>Press <kbd>?</kbd> to show this help</p>
+                <p>Press <kbd>Esc</kbd> to hide this help</p>
+            </div>
+        </div>
+    </div>
+    <div id="mdbook-body-container">
+        <!-- Work around some values being stored in localStorage wrapped in quotes -->
+        <script>
+            try {
+                let theme = localStorage.getItem('mdbook-theme');
+                let sidebar = localStorage.getItem('mdbook-sidebar');
+
+                if (theme.startsWith('"') && theme.endsWith('"')) {
+                    localStorage.setItem('mdbook-theme', theme.slice(1, theme.length - 1));
+                }
+
+                if (sidebar.startsWith('"') && sidebar.endsWith('"')) {
+                    localStorage.setItem('mdbook-sidebar', sidebar.slice(1, sidebar.length - 1));
+                }
+            } catch (e) { }
+        </script>
+
+        <!-- Set the theme before any content is loaded, prevents flash -->
+        <script>
+            const default_theme = window.matchMedia("(prefers-color-scheme: dark)").matches ? default_dark_theme : default_light_theme;
+            let theme;
+            try { theme = localStorage.getItem('mdbook-theme'); } catch(e) { }
+            if (theme === null || theme === undefined) { theme = default_theme; }
+            const html = document.documentElement;
+            html.classList.remove('light')
+            html.classList.add(theme);
+            html.classList.add("js");
+        </script>
+
+        <input type="checkbox" id="mdbook-sidebar-toggle-anchor" class="hidden">
+
+        <!-- Hide / unhide sidebar before it is displayed -->
+        <script>
+            let sidebar = null;
+            const sidebar_toggle = document.getElementById("mdbook-sidebar-toggle-anchor");
+            if (document.body.clientWidth >= 1080) {
+                try { sidebar = localStorage.getItem('mdbook-sidebar'); } catch(e) { }
+                sidebar = sidebar || 'visible';
+            } else {
+                sidebar = 'hidden';
+                sidebar_toggle.checked = false;
+            }
+            if (sidebar === 'visible') {
+                sidebar_toggle.checked = true;
+            } else {
+                html.classList.remove('sidebar-visible');
+            }
+        </script>
+
+        <nav id="mdbook-sidebar" class="sidebar" aria-label="Table of contents">
+            <!-- populated by js -->
+            <mdbook-sidebar-scrollbox class="sidebar-scrollbox"></mdbook-sidebar-scrollbox>
+            <noscript>
+                <iframe class="sidebar-iframe-outer" src="toc.html"></iframe>
+            </noscript>
+            <div id="mdbook-sidebar-resize-handle" class="sidebar-resize-handle">
+                <div class="sidebar-resize-indicator"></div>
+            </div>
+        </nav>
+
+        <div id="mdbook-page-wrapper" class="page-wrapper">
+
+            <div class="page">
+                <div id="mdbook-menu-bar-hover-placeholder"></div>
+                <div id="mdbook-menu-bar" class="menu-bar sticky">
+                    <div class="left-buttons">
+                        <label id="mdbook-sidebar-toggle" class="icon-button" for="mdbook-sidebar-toggle-anchor" title="Toggle Table of Contents" aria-label="Toggle Table of Contents" aria-controls="mdbook-sidebar">
+                            <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M0 96C0 78.3 14.3 64 32 64H416c17.7 0 32 14.3 32 32s-14.3 32-32 32H32C14.3 128 0 113.7 0 96zM0 256c0-17.7 14.3-32 32-32H416c17.7 0 32 14.3 32 32s-14.3 32-32 32H32c-17.7 0-32-14.3-32-32zM448 416c0 17.7-14.3 32-32 32H32c-17.7 0-32-14.3-32-32s14.3-32 32-32H416c17.7 0 32 14.3 32 32z"/></svg></span>
+                        </label>
+                        <button id="mdbook-theme-toggle" class="icon-button" type="button" title="Change theme" aria-label="Change theme" aria-haspopup="true" aria-expanded="false" aria-controls="mdbook-theme-list">
+                            <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 576 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M371.3 367.1c27.3-3.9 51.9-19.4 67.2-42.9L600.2 74.1c12.6-19.5 9.4-45.3-7.6-61.2S549.7-4.4 531.1 9.6L294.4 187.2c-24 18-38.2 46.1-38.4 76.1L371.3 367.1zm-19.6 25.4l-116-104.4C175.9 290.3 128 339.6 128 400c0 3.9 .2 7.8 .6 11.6c1.8 17.5-10.2 36.4-27.8 36.4H96c-17.7 0-32 14.3-32 32s14.3 32 32 32H240c61.9 0 112-50.1 112-112c0-2.5-.1-5-.2-7.5z"/></svg></span>
+                        </button>
+                        <ul id="mdbook-theme-list" class="theme-popup" aria-label="Themes" role="menu">
+                            <li role="none"><button role="menuitem" class="theme" id="mdbook-theme-default_theme">Auto</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="mdbook-theme-light">Light</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="mdbook-theme-rust">Rust</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="mdbook-theme-coal">Coal</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="mdbook-theme-navy">Navy</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="mdbook-theme-ayu">Ayu</button></li>
+                        </ul>
+                        <button id="mdbook-search-toggle" class="icon-button" type="button" title="Search (`/`)" aria-label="Toggle Searchbar" aria-expanded="false" aria-keyshortcuts="/ s" aria-controls="mdbook-searchbar">
+                            <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M416 208c0 45.9-14.9 88.3-40 122.7L502.6 457.4c12.5 12.5 12.5 32.8 0 45.3s-32.8 12.5-45.3 0L330.7 376c-34.4 25.2-76.8 40-122.7 40C93.1 416 0 322.9 0 208S93.1 0 208 0S416 93.1 416 208zM208 352c79.5 0 144-64.5 144-144s-64.5-144-144-144S64 128.5 64 208s64.5 144 144 144z"/></svg></span>
+                        </button>
+                    </div>
+
+                    <h1 class="menu-title">Operating Systems: A Hands-On Approach</h1>
+
+                    <div class="right-buttons">
+                        <a href="print.html" title="Print this book" aria-label="Print this book">
+                            <span class=fa-svg id="print-button"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M128 0C92.7 0 64 28.7 64 64v96h64V64H354.7L384 93.3V160h64V93.3c0-17-6.7-33.3-18.7-45.3L400 18.7C388 6.7 371.7 0 354.7 0H128zM384 352v32 64H128V384 368 352H384zm64 32h32c17.7 0 32-14.3 32-32V256c0-35.3-28.7-64-64-64H64c-35.3 0-64 28.7-64 64v96c0 17.7 14.3 32 32 32H64v64c0 35.3 28.7 64 64 64H384c35.3 0 64-28.7 64-64V384zm-16-88c-13.3 0-24-10.7-24-24s10.7-24 24-24s24 10.7 24 24s-10.7 24-24 24z"/></svg></span>
+                        </a>
+                        <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/tree/prep-v2/operating-systems" title="Git repository" aria-label="Git repository">
+                            <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 496 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M165.9 397.4c0 2-2.3 3.6-5.2 3.6-3.3.3-5.6-1.3-5.6-3.6 0-2 2.3-3.6 5.2-3.6 3-.3 5.6 1.3 5.6 3.6zm-31.1-4.5c-.7 2 1.3 4.3 4.3 4.9 2.6 1 5.6 0 6.2-2s-1.3-4.3-4.3-5.2c-2.6-.7-5.5.3-6.2 2.3zm44.2-1.7c-2.9.7-4.9 2.6-4.6 4.9.3 2 2.9 3.3 5.9 2.6 2.9-.7 4.9-2.6 4.6-4.6-.3-1.9-3-3.2-5.9-2.9zM244.8 8C106.1 8 0 113.3 0 252c0 110.9 69.8 205.8 169.5 239.2 12.8 2.3 17.3-5.6 17.3-12.1 0-6.2-.3-40.4-.3-61.4 0 0-70 15-84.7-29.8 0 0-11.4-29.1-27.8-36.6 0 0-22.9-15.7 1.6-15.4 0 0 24.9 2 38.6 25.8 21.9 38.6 58.6 27.5 72.9 20.9 2.3-16 8.8-27.1 16-33.7-55.9-6.2-112.3-14.3-112.3-110.5 0-27.5 7.6-41.3 23.6-58.9-2.6-6.5-11.1-33.3 2.6-67.9 20.9-6.5 69 27 69 27 20-5.6 41.5-8.5 62.8-8.5s42.8 2.9 62.8 8.5c0 0 48.1-33.6 69-27 13.7 34.7 5.2 61.4 2.6 67.9 16 17.7 25.8 31.5 25.8 58.9 0 96.5-58.9 104.2-114.8 110.5 9.2 7.9 17 22.9 17 46.4 0 33.7-.3 75.4-.3 83.6 0 6.5 4.6 14.4 17.3 12.1C428.2 457.8 496 362.9 496 252 496 113.3 383.5 8 244.8 8zM97.2 352.9c-1.3 1-1 3.3.7 5.2 1.6 1.6 3.9 2.3 5.2 1 1.3-1 1-3.3-.7-5.2-1.6-1.6-3.9-2.3-5.2-1zm-10.8-8.1c-.7 1.3.3 2.9 2.3 3.9 1.6 1 3.6.7 4.3-.7.7-1.3-.3-2.9-2.3-3.9-2-.6-3.6-.3-4.3.7zm32.4 35.6c-1.6 1.3-1 4.3 1.3 6.2 2.3 2.3 5.2 2.6 6.5 1 1.3-1.3.7-4.3-1.3-6.2-2.2-2.3-5.2-2.6-6.5-1zm-11.4-14.7c-1.6 1-1.6 3.6 0 5.9 1.6 2.3 4.3 3.3 5.6 2.3 1.6-1.3 1.6-3.9 0-6.2-1.4-2.3-4-3.3-5.6-2z"/></svg></span>
+                        </a>
+                        <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/edit/prep-v2/operating-systems/src/ch15-daemons.md" title="Suggest an edit" aria-label="Suggest an edit" rel="edit">
+                            <span class=fa-svg id="git-edit-button"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M421.7 220.3l-11.3 11.3-22.6 22.6-205 205c-6.6 6.6-14.8 11.5-23.8 14.1L30.8 511c-8.4 2.5-17.5 .2-23.7-6.1S-1.5 489.7 1 481.2L38.7 353.1c2.6-9 7.5-17.2 14.1-23.8l205-205 22.6-22.6 11.3-11.3 33.9 33.9 62.1 62.1 33.9 33.9zM96 353.9l-9.3 9.3c-.9 .9-1.6 2.1-2 3.4l-25.3 86 86-25.3c1.3-.4 2.5-1.1 3.4-2l9.3-9.3H112c-8.8 0-16-7.2-16-16V353.9zM453.3 19.3l39.4 39.4c25 25 25 65.5 0 90.5l-14.5 14.5-22.6 22.6-11.3 11.3-33.9-33.9-62.1-62.1L314.3 67.7l11.3-11.3 22.6-22.6 14.5-14.5c25-25 65.5-25 90.5 0z"/></svg></span>
+                        </a>
+
+                    </div>
+                </div>
+
+                <div id="mdbook-search-wrapper" class="hidden">
+                    <form id="mdbook-searchbar-outer" class="searchbar-outer">
+                        <div class="search-wrapper">
+                            <input type="search" id="mdbook-searchbar" name="searchbar" placeholder="Search this book ..." aria-controls="mdbook-searchresults-outer" aria-describedby="searchresults-header">
+                            <div class="spinner-wrapper">
+                                <span class=fa-svg id="fa-spin"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M304 48c0-26.5-21.5-48-48-48s-48 21.5-48 48s21.5 48 48 48s48-21.5 48-48zm0 416c0-26.5-21.5-48-48-48s-48 21.5-48 48s21.5 48 48 48s48-21.5 48-48zM48 304c26.5 0 48-21.5 48-48s-21.5-48-48-48s-48 21.5-48 48s21.5 48 48 48zm464-48c0-26.5-21.5-48-48-48s-48 21.5-48 48s21.5 48 48 48s48-21.5 48-48zM142.9 437c18.7-18.7 18.7-49.1 0-67.9s-49.1-18.7-67.9 0s-18.7 49.1 0 67.9s49.1 18.7 67.9 0zm0-294.2c18.7-18.7 18.7-49.1 0-67.9S93.7 56.2 75 75s-18.7 49.1 0 67.9s49.1 18.7 67.9 0zM369.1 437c18.7 18.7 49.1 18.7 67.9 0s18.7-49.1 0-67.9s-49.1-18.7-67.9 0s-18.7 49.1 0 67.9z"/></svg></span>
+                            </div>
+                        </div>
+                    </form>
+                    <div id="mdbook-searchresults-outer" class="searchresults-outer hidden">
+                        <div id="mdbook-searchresults-header" class="searchresults-header"></div>
+                        <ul id="mdbook-searchresults">
+                        </ul>
+                    </div>
+                </div>
+
+                <!-- Apply ARIA attributes after the sidebar and the sidebar toggle button are added to the DOM -->
+                <script>
+                    document.getElementById('mdbook-sidebar-toggle').setAttribute('aria-expanded', sidebar === 'visible');
+                    document.getElementById('mdbook-sidebar').setAttribute('aria-hidden', sidebar !== 'visible');
+                    Array.from(document.querySelectorAll('#mdbook-sidebar a')).forEach(function(link) {
+                        link.setAttribute('tabIndex', sidebar === 'visible' ? 0 : -1);
+                    });
+                </script>
+
+                <div id="mdbook-content" class="content">
+                    <main>
+                        <h1 id="15-daemon-lifecycle-and-service-supervision"><a class="header" href="#15-daemon-lifecycle-and-service-supervision">15. Daemon Lifecycle and Service Supervision</a></h1>
+<p>A daemon is a specialized process designed for long-running background execution, decoupled from any interactive terminal. While traditional daemons implement complex detachment rituals to ensure they are truly independent, modern operating systems have evolved toward a supervision-based model where central init systems—such as <code>launchd</code> on macOS and Darwin, or <code>systemd</code> on Linux—manage the lifecycle, socket activation, resource boundaries, and fault recovery of background services.</p>
+<h2 id="151-the-ritual-of-detachment"><a class="header" href="#151-the-ritual-of-detachment">15.1 The Ritual of Detachment</a></h2>
+<p>To transition from a terminal-bound process to a fully independent daemon in a standalone environment, a program must undergo a sequence of operations designed to sever all ties to the controlling session and its parent terminal. This “daemonization” process involves four critical stages:</p>
+<ol>
+<li><strong>Session Decoupling (First Fork):</strong> The process calls <code>fork</code>, allowing the parent to exit and returning control to the shell. This places the child in the background.</li>
+<li><strong>Session Leadership (setsid):</strong> The child invokes <code>setsid</code> to establish a new session. This creates a new session with the child as its leader and, crucially, detaches the process from its original controlling terminal.</li>
+<li><strong>Terminal Prevention (Second Fork):</strong> A second <code>fork</code> is performed to ensure the resulting grandchild is not a session leader. This prevents the process from inadvertently acquiring a new controlling terminal if it happens to open a terminal device.</li>
+<li><strong>Environment Sanitization:</strong> The process redirects its standard input, output, and error streams to <code>/dev/null</code> or a log file, changes its working directory to the root (<code>/</code>) to avoid pinning a mounted filesystem, and sets its <code>umask</code> to ensure predictable file permissions. Finally, it records its Process ID (PID) in a <strong>pidfile</strong> to facilitate external management.</li>
+</ol>
+<figure>
+<img src="figures/ch15_daemonize.svg" alt="The four daemonization steps: fork, setsid, fork again, redirect stdio and write the pidfile" />
+</figure>
+<h2 id="152-signal-driven-management-and-the-lifecycle-interface"><a class="header" href="#152-signal-driven-management-and-the-lifecycle-interface">15.2 Signal-Driven Management and the Lifecycle Interface</a></h2>
+<p>The primary interface for interacting with a standalone daemon is through signals and its associated pidfile. Standardized signals allow for controlled lifecycle transitions:</p>
+<ul>
+<li><strong><code>SIGHUP</code> (Signal Hangup):</strong> Conventionally repurposed to instruct the daemon to reload its configuration files and re-open log handles without dropping active connections.</li>
+<li><strong><code>SIGTERM</code> (Signal Terminate):</strong> Requests a graceful shutdown. The daemon finishes in-flight requests, flushes persistent state, unlinks its pidfile, and terminates cleanly.</li>
+<li><strong><code>SIGKILL</code> (Uncatchable Kill):</strong> Forcibly destroys the process image immediately, used by supervisors when a daemon fails to respond to <code>SIGTERM</code> within a specified grace period.</li>
+</ul>
+<p><strong>Listing 15-1. A daemon from start to shutdown (C++20).</strong></p>
+<pre><code class="language-cpp">// ch15/daemon.cpp: a complete daemon lifecycle in C++.
+// double fork, setsid, redirected stdio, pidfile, signal-driven shutdown.
+#include &lt;fcntl.h&gt;
+#include &lt;sys/stat.h&gt;
+#include &lt;sys/types.h&gt;
+#include &lt;unistd.h&gt;
+#include &lt;csignal&gt;
+#include &lt;cstdio&gt;
+
+static volatile sig_atomic_t g_reload = 0;
+static volatile sig_atomic_t g_stop = 0;
+
+static void on_hup(int) { g_reload = 1; }
+static void on_term(int) { g_stop = 1; }
+
+int main() {
+    const char* pidfile = "/tmp/osbook_daemon.pid";
+    const char* logfile = "/tmp/osbook_daemon.log";
+
+    pid_t pid = fork();
+    if (pid &lt; 0) return 1;
+    if (pid &gt; 0) _exit(0);          // first parent exits
+
+    setsid();                       // new session: no controlling terminal
+
+    pid = fork();
+    if (pid &gt; 0) _exit(0);          // session leader exits; terminal cannot return
+
+    umask(0027);
+    chdir("/");
+
+    // stdout/stderr to the log, stdin from /dev/null.
+    int fd = open(logfile, O_CREAT | O_WRONLY | O_APPEND, 0644);
+    if (fd &lt; 0) return 1;
+    dup2(fd, STDOUT_FILENO);
+    dup2(fd, STDERR_FILENO);
+    close(fd);
+
+    int devnull = open("/dev/null", O_RDONLY);
+    dup2(devnull, STDIN_FILENO);
+    close(devnull);
+
+    FILE* pf = fopen(pidfile, "w");
+    if (pf == nullptr) return 1;
+    fprintf(pf, "%d\n", getpid());
+    fclose(pf);
+
+    struct sigaction sa {};
+    sa.sa_handler = on_hup;
+    sigemptyset(&amp;sa.sa_mask);
+    sigaction(SIGHUP, &amp;sa, nullptr);
+
+    sa.sa_handler = on_term;
+    sigaction(SIGTERM, &amp;sa, nullptr);
+
+    printf("daemon %d started\n", getpid());
+    fflush(stdout);
+
+    int ticks = 0;
+    while (!g_stop) {
+        sleep(1);
+        ++ticks;
+
+        printf("tick %d\n", ticks);
+        fflush(stdout);
+
+        if (g_reload) {
+            g_reload = 0;
+            printf("reload requested\n");
+            fflush(stdout);
+        }
+    }
+
+    printf("stopping after %d ticks\n", ticks);
+    unlink(pidfile);
+    return 0;
+}
+</code></pre>
+<p><strong>Output 15-1. The C++ daemon.</strong></p>
+<pre><code class="language-text">harness: daemon running with pid 36079
+harness: process alive: yes
+harness: sent SIGHUP
+harness: sent SIGTERM
+harness: pidfile removed after SIGTERM: yes
+--- daemon log ---
+daemon 36079 started
+tick 1
+reload requested
+tick 2
+tick 3
+stopping after 3 ticks
+</code></pre>
+<p><strong>Listing 15-2. The same daemon in Rust.</strong></p>
+<pre class="playground"><code class="language-rust">// ch15/daemon.rs: the same lifecycle in Rust: double fork, setsid, pidfile,
+// and signal-driven shutdown through libc.
+use std::fs::OpenOptions;
+use std::io::Write;
+use std::sync::atomic::{AtomicBool, Ordering};
+use std::thread;
+use std::time::Duration;
+
+static RELOAD: AtomicBool = AtomicBool::new(false);
+static STOP: AtomicBool = AtomicBool::new(false);
+
+extern "C" fn on_hup(_: libc::c_int) {
+    RELOAD.store(true, Ordering::Relaxed);
+}
+
+extern "C" fn on_term(_: libc::c_int) {
+    STOP.store(true, Ordering::Relaxed);
+}
+
+fn main() {
+    // SAFETY: Classic UNIX Daemonization Invariants:
+    // 1. First `fork()`: Creates an asynchronous background child and terminates the parent,
+    //    guaranteeing the child is not a process group leader.
+    // 2. `setsid()`: Creates a new session and process group with no controlling terminal (tty).
+    // 3. Second `fork()`: Exits the session leader, ensuring the grandchild daemon can never
+    //    subsequently acquire a controlling terminal, even if it opens a tty device.
+    // 4. `umask(0o027)`: Restricts default file creation modes (no permissions for other, no write for group).
+    // 5. `chdir("/")`: Unmounts the current working directory, preventing the daemon from pinning a mounted filesystem.
+    unsafe {
+        let pid = libc::fork();
+        if pid &lt; 0 {
+            std::process::exit(1);
+        }
+        if pid &gt; 0 {
+            libc::_exit(0);        // first parent exits
+        }
+
+        libc::setsid();            // new session: no controlling terminal
+
+        let pid = libc::fork();
+        if pid &gt; 0 {
+            libc::_exit(0);        // session leader exits; terminal cannot return
+        }
+
+        libc::umask(0o027);
+        libc::chdir(b"/\0".as_ptr() as *const libc::c_char);
+    }
+
+    let pidfile = "/tmp/osbook_daemon_rs.pid";
+    let logfile = "/tmp/osbook_daemon_rs.log";
+
+    {
+        let mut pf = OpenOptions::new()
+            .create(true)
+            .write(true)
+            .truncate(true)
+            .open(pidfile)
+            .unwrap();
+        writeln!(pf, "{}", std::process::id()).unwrap();
+    }
+
+    let mut log = OpenOptions::new().create(true).append(true).open(logfile).unwrap();
+
+    // SAFETY: Registers signal handlers `on_hup` and `on_term` which strictly store to `AtomicBool`
+    // flags with `Ordering::Relaxed`. Atomic stores compile to single store instructions on x86/ARM,
+    // fulfilling the strict POSIX async-signal-safety specification.
+    unsafe {
+        let mut sa: libc::sigaction = std::mem::zeroed();
+        sa.sa_sigaction = on_hup as *const () as usize;
+        libc::sigemptyset(&amp;mut sa.sa_mask);
+        libc::sigaction(libc::SIGHUP, &amp;sa, std::ptr::null_mut());
+
+        sa.sa_sigaction = on_term as *const () as usize;
+        libc::sigaction(libc::SIGTERM, &amp;sa, std::ptr::null_mut());
+    }
+
+    writeln!(log, "daemon {} started", std::process::id()).unwrap();
+    log.flush().unwrap();
+
+    let mut ticks = 0;
+    while !STOP.load(Ordering::Relaxed) {
+        thread::sleep(Duration::from_secs(1));
+        ticks += 1;
+
+        writeln!(log, "tick {ticks}").unwrap();
+        log.flush().unwrap();
+
+        if RELOAD.swap(false, Ordering::Relaxed) {
+            writeln!(log, "reload requested").unwrap();
+            log.flush().unwrap();
+        }
+    }
+
+    writeln!(log, "stopping after {ticks} ticks").unwrap();
+    std::fs::remove_file(pidfile).unwrap();
+}</code></pre>
+<p><strong>Output 15-2. The Rust daemon.</strong></p>
+<pre><code class="language-text">harness: daemon running with pid 36093
+harness: process alive: yes
+harness: sent SIGHUP
+harness: sent SIGTERM
+harness: pidfile removed after SIGTERM: yes
+--- daemon log ---
+daemon 36093 started
+tick 1
+reload requested
+tick 2
+stopping after 2 ticks
+</code></pre>
+<div class="callout keyidea">
+<span class="label">Key idea</span>
+<p>A daemon’s interface is three artifacts: a pidfile that names it, a log that records it, and signal handlers that steer it. In standalone systems, the double-fork ritual is merely plumbing; the signal-driven lifecycle is the true contract.</p>
+</div>
+
+<h2 id="153-service-supervision-and-on-demand-activation-launchd-and-systemd"><a class="header" href="#153-service-supervision-and-on-demand-activation-launchd-and-systemd">15.3 Service Supervision and On-Demand Activation: <code>launchd</code> and <code>systemd</code></a></h2>
+<p>In modern production environments—particularly cloud server operating systems and Apple platforms—the manual detachment ritual is replaced by centralized <strong>service supervision</strong>. Central supervisors, such as Apple’s <code>launchd</code> and Linux’s <code>systemd</code>, operate as PID 1, managing daemons as managed child processes.</p>
+<h3 id="1531-the-foreground-daemon-model"><a class="header" href="#1531-the-foreground-daemon-model">15.3.1 The Foreground Daemon Model</a></h3>
+<p>Supervised services must run in the <strong>foreground</strong>:</p>
+<ul>
+<li>The daemon does not invoke <code>fork()</code> or <code>setsid()</code>.</li>
+<li>The daemon does not manage its own pidfile or redirect standard I/O to <code>/dev/null</code>.</li>
+<li>The supervisor starts the binary directly as an immediate child.</li>
+</ul>
+<p>If a daemon double-forks under a supervisor, it intentionally severs parentage, causing the supervisor to believe the process has terminated prematurely. By retaining parentage, the supervisor tracks the true PID directly, monitors exit status codes, bounds memory and CPU utilization via cgroups or task policies, and aggregates log streams written to <code>stdout</code>/<code>stderr</code>.</p>
+<h3 id="1532-socket-based-on-demand-activation"><a class="header" href="#1532-socket-based-on-demand-activation">15.3.2 Socket-Based On-Demand Activation</a></h3>
+<p>A major architectural innovation pioneered by Apple’s <code>launchd</code> (and subsequently adopted by <code>systemd</code>) is <strong>socket activation</strong>. Traditional init scripts enforce complex boot-order dependencies: a logging daemon must start before a database daemon, which must start before an application server. If one daemon delays or crashes, the entire dependency tree blocks.</p>
+<p>Under socket activation, <code>launchd</code> creates and binds the listening sockets (IPC Unix domain sockets or network TCP ports) <em>before</em> the daemon is ever launched:</p>
+<ol>
+<li><code>launchd</code> parses the service descriptor (<code>.plist</code> on Darwin) and binds listening sockets on designated ports or Mach port endpoints.</li>
+<li>When a client process issues a connection request, the kernel buffers the connection.</li>
+<li><code>launchd</code> detects readiness on the socket, spawns the daemon process, and passes the pre-allocated listening socket directly as an open file descriptor (typically file descriptor 3, or retrieved via <code>launch_activate_socket()</code>).</li>
+<li>The daemon calls <code>accept()</code> immediately without needing initialization races.</li>
+</ol>
+<p>Socket activation eliminates boot-time startup ordering issues: client connections simply buffer in the kernel while the receiving daemon initializes on demand.</p>
+<h2 id="154-asynchronous-fault-detection-and-process-monitoring-via-kqueue"><a class="header" href="#154-asynchronous-fault-detection-and-process-monitoring-via-kqueue">15.4 Asynchronous Fault Detection and Process Monitoring via <code>kqueue</code></a></h2>
+<p>In distributed infrastructure and cloud platforms, daemons frequently act as local supervisors—managing worker processes, telemetry sidecars, and hardware accelerators. A supervisor must detect worker crashes and hardware faults instantaneously.</p>
+<h3 id="1541-the-limits-of-signal-based-monitoring-sigchld"><a class="header" href="#1541-the-limits-of-signal-based-monitoring-sigchld">15.4.1 The Limits of Signal-Based Monitoring (<code>SIGCHLD</code>)</a></h3>
+<p>Traditional Unix process monitoring relies on the <code>SIGCHLD</code> signal and <code>waitpid()</code>. However, signal-based monitoring exhibits severe architectural flaws:</p>
+<ul>
+<li><strong>Signal Coalescence:</strong> POSIX signals do not queue. If multiple child processes terminate simultaneously, the kernel coalesces multiple <code>SIGCHLD</code> instances into a single signal, requiring non-blocking <code>waitpid(-1, &amp;status, WNOHANG)</code> loops to reap all children.</li>
+<li><strong>Async-Signal Safety Restrictions:</strong> Inside a signal handler, a process can only execute async-signal-safe functions. Allocating memory, acquiring standard mutexes, or writing to high-level logging libraries inside a <code>SIGCHLD</code> handler invokes undefined behavior.</li>
+</ul>
+<h3 id="1542-event-driven-supervision-with-evfilt_proc"><a class="header" href="#1542-event-driven-supervision-with-evfilt_proc">15.4.2 Event-Driven Supervision with <code>EVFILT_PROC</code></a></h3>
+<p>On Apple Darwin and BSD-derived kernels, the <strong><code>kqueue</code></strong> subsystem provides a robust, event-driven mechanism for process monitoring. Using the <code>EVFILT_PROC</code> filter, a supervisor registers an interest in specific process events directly with the kernel:</p>
+<ul>
+<li><strong><code>NOTE_EXIT</code>:</strong> Notifies the supervisor immediately when the monitored PID terminates.</li>
+<li><strong><code>NOTE_EXITSTATUS</code>:</strong> Delivers the child’s exit status code directly inside the <code>kevent</code> structure (<code>data</code> field).</li>
+<li><strong><code>NOTE_FORK</code> / <code>NOTE_EXEC</code>:</strong> Tracks child process forks and binary replacements.</li>
+</ul>
+<p>Crucially, <code>kqueue</code> delivers process termination events on the <strong>same asynchronous event loop</strong> used for network sockets, timers, and IPC descriptors. The supervisor handles child crashes synchronously in its main event dispatch loop without invoking signal handlers.</p>
+<p><strong>Listing 15-3. Process supervision via <code>kqueue</code> (C++20).</strong></p>
+<pre><code class="language-cpp">// ch15/kqueue_supervisor.cpp: process fault monitoring using kqueue on Darwin/BSD.
+#include &lt;sys/types.h&gt;
+#include &lt;sys/event.h&gt;
+#include &lt;sys/time.h&gt;
+#include &lt;sys/wait.h&gt;
+#include &lt;unistd.h&gt;
+#include &lt;iostream&gt;
+
+int main() {
+    int kq = kqueue();
+    if (kq &lt; 0) {
+        std::cerr &lt;&lt; "failed to create kqueue\n";
+        return 1;
+    }
+
+    pid_t pid = fork();
+    if (pid &lt; 0) return 1;
+
+    if (pid == 0) {
+        // Child: simulated worker daemon that performs work and exits
+        usleep(50000); // 50 ms
+        _exit(0);
+    }
+
+    // Supervisor monitors the child lifecycle directly via EVFILT_PROC
+    struct kevent change;
+    EV_SET(&amp;change, pid, EVFILT_PROC, EV_ADD | EV_ENABLE, NOTE_EXIT, 0, nullptr);
+
+    if (kevent(kq, &amp;change, 1, nullptr, 0, nullptr) &lt; 0) {
+        std::cerr &lt;&lt; "failed to register kevent\n";
+        return 1;
+    }
+
+    struct kevent event;
+    int nev = kevent(kq, nullptr, 0, &amp;event, 1, nullptr);
+    if (nev &gt; 0 &amp;&amp; (event.fflags &amp; NOTE_EXIT)) {
+        int status = 0;
+        waitpid(pid, &amp;status, WNOHANG);
+        std::cout &lt;&lt; "supervisor detected child " &lt;&lt; pid
+                  &lt;&lt; " termination, exit status: " &lt;&lt; WEXITSTATUS(status) &lt;&lt; "\n";
+    }
+
+    close(kq);
+    return 0;
+}
+</code></pre>
+<p><strong>Output 15-3. The C++ supervisor output.</strong></p>
+<pre><code class="language-text">supervisor detected child 36105 termination, exit status: 0
+</code></pre>
+<p><strong>Listing 15-4. The same supervisor in Rust.</strong></p>
+<pre class="playground"><code class="language-rust">// ch15/kqueue_supervisor.rs: process fault monitoring using kqueue in Rust.
+use std::process::{Command, Stdio};
+
+fn main() {
+    // SAFETY: Kernel Event Loop Supervision Invariants:
+    // 1. Descriptor Allocation: `kqueue()` allocates a kernel event notification queue and returns
+    //    a file descriptor into the calling process's file descriptor table. We assert `kq &gt;= 0`
+    //    to guarantee descriptor validity before registering filters.
+    // 2. Filter Registration (`EVFILT_PROC`): `&amp;change` is a valid, stack-allocated, properly
+    //    aligned `libc::kevent` struct referencing the live child `pid` spawned via `Command::spawn()`.
+    //    Passing `nchanges = 1` and `nevents = 0` registers the `NOTE_EXIT` kernel hook synchronously
+    //    without harvesting events. Because `EVFILT_PROC` attaches directly to the kernel `proc`
+    //    structure before or even as the child exits, it avoids the signal-coalescing and
+    //    async-signal-safety hazards of `SIGCHLD`.
+    // 3. Blocking Event Harvest: `event` is a stack-allocated `libc::kevent` initialized via
+    //    `std::mem::zeroed()` (all integer and pointer fields in `kevent` admit zero as a valid
+    //    bit representation). Passing `&amp;mut event` with `nevents = 1` and a null timeout pointer
+    //    parks the supervisor thread in the kernel wait queue until the child process terminates.
+    // 4. Resource Teardown: `child.wait()` reaps the terminated zombie PCB via `waitpid`, and
+    //    `libc::close(kq)` releases the kqueue file descriptor back to the kernel.
+    unsafe {
+        let kq = libc::kqueue();
+        assert!(kq &gt;= 0, "failed to create kqueue");
+
+        // Spawn a child process to supervise
+        let mut child = Command::new("sleep")
+            .arg("0.05")
+            .stdout(Stdio::null())
+            .spawn()
+            .expect("failed to spawn child");
+
+        let pid = child.id() as libc::pid_t;
+
+        // Register EVFILT_PROC to observe process termination
+        let change = libc::kevent {
+            ident: pid as usize,
+            filter: libc::EVFILT_PROC,
+            flags: libc::EV_ADD | libc::EV_ENABLE,
+            fflags: libc::NOTE_EXIT,
+            data: 0,
+            udata: std::ptr::null_mut(),
+        };
+
+        let ret = libc::kevent(kq, &amp;change, 1, std::ptr::null_mut(), 0, std::ptr::null());
+        assert!(ret &gt;= 0, "failed to register kevent");
+
+        // Block on the event queue until the process exits
+        let mut event = std::mem::zeroed();
+        let nev = libc::kevent(kq, std::ptr::null(), 0, &amp;mut event, 1, std::ptr::null());
+        assert!(nev &gt; 0, "kevent wait failed");
+
+        let status = child.wait().expect("failed to wait on child");
+        println!("supervisor detected child {} termination, success: {}", pid, status.success());
+
+        libc::close(kq);
+    }
+}</code></pre>
+<p><strong>Output 15-4. The Rust supervisor output.</strong></p>
+<pre><code class="language-text">supervisor detected child 36125 termination, success: true
+</code></pre>
+<h2 id="155-fault-recovery-policies-and-health-checks"><a class="header" href="#155-fault-recovery-policies-and-health-checks">15.5 Fault Recovery Policies and Health Checks</a></h2>
+<p>Detecting a failure is only the first half of high-availability systems software; the second half is executing a deterministic recovery policy.</p>
+<h3 id="1551-crash-loops-and-exponential-backoff"><a class="header" href="#1551-crash-loops-and-exponential-backoff">15.5.1 Crash Loops and Exponential Backoff</a></h3>
+<p>When a daemon crashes due to an unrecoverable condition (such as corrupted persistent state, a missing configuration file, or dead hardware), an unconstrained supervisor will repeatedly restart the process in an infinite tight loop. This “crash-loop” consumes 100% CPU capacity and fills storage disks with repetitive panic dumps.</p>
+<p>Production supervisors implement <strong>restart rate limiting</strong>:</p>
+<ul>
+<li><strong><code>launchd</code> <code>ThrottleInterval</code>:</strong> Enforces a minimum delay (defaulting to 10 seconds) between successive restarts of an exiting job.</li>
+<li><strong>Exponential Backoff:</strong> Each consecutive failure doubles the restart delay (1s → 2s → 4s → 8s…) up to a maximum threshold. If the service achieves steady-state operation for a configured duration, the failure counter resets.</li>
+</ul>
+<h3 id="1552-watchdog-timers-and-liveness-probing"><a class="header" href="#1552-watchdog-timers-and-liveness-probing">15.5.2 Watchdog Timers and Liveness Probing</a></h3>
+<p>A process failure does not always manifest as an abrupt crash. Daemons frequently succumb to deadlocks, infinite spin loops, or hung network I/O, where the process remains alive in the process table but stops serving requests.</p>
+<p>Supervisors resolve hung processes via <strong>watchdogs</strong>:</p>
+<ul>
+<li><strong>Software Watchdogs:</strong> The daemon must periodically ping the supervisor (e.g., via an IPC keepalive message or updating a shared memory timestamp) within a negotiated interval (e.g., every 5 seconds). If the daemon misses two consecutive heartbeats, the supervisor assumes a deadlock, collects a diagnostic backtrace, and issues <code>SIGABRT</code> or <code>SIGKILL</code>.</li>
+<li><strong>Hardware Watchdogs:</strong> For bare-metal hypervisors and low-level system controllers, the supervisor itself pets a hardware watchdog timer (<code>/dev/watchdog</code> or a microcontroller PMU register). If the entire kernel or root supervisor deadlocks, the hardware timer expires, triggering a physical machine reset.</li>
+</ul>
+<div class="callout caution">
+<span class="label">Watch out</span>
+<p>Three common daemon failure modes:</p>
+<ol>
+<li><strong>Double-daemonizing under a supervisor:</strong> Invoking <code>fork()</code> and <code>setsid()</code> inside a <code>launchd</code> or <code>systemd</code> unit causes the supervisor to track the short-lived parent, leaving the actual worker orphaned and unmanaged.</li>
+<li><strong>Blocking during <code>SIGTERM</code> cleanup:</strong> Handling <code>SIGTERM</code> by initiating network requests that block on remote services. When the supervisor’s grace period expires, <code>SIGKILL</code> forcibly kills the process, leaving intermediate state half-written.</li>
+<li><strong>Stale pidfiles:</strong> Relying on pidfiles without verifying process identity. If a crashed daemon leaves a stale pidfile, another unrelated process may later spawn with that reused PID, causing administrative scripts to kill innocent services.</li>
+</ol>
+</div>
+
+<div class="callout summary">
+<span class="label">Summary</span>
+<ul>
+<li>Standalone daemons isolate themselves via a 4-step detachment ritual, pidfiles, and signal handlers.</li>
+<li>Modern cloud and Apple OS architectures supervise daemons in the foreground, delegating process tracking, logging, and sandboxing to <code>launchd</code> or <code>systemd</code>.</li>
+<li>Socket activation decouples service boot ordering, allowing daemons to start lazily on demand.</li>
+<li>Event-driven monitoring via <code>kqueue</code> (<code>EVFILT_PROC</code>) delivers deterministic child exit notifications on the supervisor’s main event loop, bypassing the fragility of <code>SIGCHLD</code>.</li>
+<li>High-availability recovery relies on exponential backoff restart limits and watchdog heartbeats to resolve deadlocks.</li>
+</ul>
+</div>
+
+
+                    </main>
+
+                    <nav class="nav-wrapper" aria-label="Page navigation">
+                        <!-- Mobile navigation buttons -->
+                            <a rel="prev" href="ch14-networking.html" class="mobile-nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                                <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M41.4 233.4c-12.5 12.5-12.5 32.8 0 45.3l160 160c12.5 12.5 32.8 12.5 45.3 0s12.5-32.8 0-45.3L109.3 256 246.6 118.6c12.5-12.5 12.5-32.8 0-45.3s-32.8-12.5-45.3 0l-160 160z"/></svg></span>
+                            </a>
+
+                            <a rel="next prefetch" href="ch16-virtualization.html" class="mobile-nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                                <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M278.6 233.4c12.5 12.5 12.5 32.8 0 45.3l-160 160c-12.5 12.5-32.8 12.5-45.3 0s-12.5-32.8 0-45.3L210.7 256 73.4 118.6c-12.5-12.5-12.5-32.8 0-45.3s32.8-12.5 45.3 0l160 160z"/></svg></span>
+                            </a>
+
+                        <div style="clear: both"></div>
+                    </nav>
+                </div>
+            </div>
+
+            <nav class="nav-wide-wrapper" aria-label="Page navigation">
+                    <a rel="prev" href="ch14-networking.html" class="nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                        <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M41.4 233.4c-12.5 12.5-12.5 32.8 0 45.3l160 160c12.5 12.5 32.8 12.5 45.3 0s12.5-32.8 0-45.3L109.3 256 246.6 118.6c12.5-12.5 12.5-32.8 0-45.3s-32.8-12.5-45.3 0l-160 160z"/></svg></span>
+                    </a>
+
+                    <a rel="next prefetch" href="ch16-virtualization.html" class="nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                        <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M278.6 233.4c12.5 12.5 12.5 32.8 0 45.3l-160 160c-12.5 12.5-32.8 12.5-45.3 0s-12.5-32.8 0-45.3L210.7 256 73.4 118.6c-12.5-12.5-12.5-32.8 0-45.3s32.8-12.5 45.3 0l160 160z"/></svg></span>
+                    </a>
+            </nav>
+
+        </div>
+
+        <template id=fa-eye><span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 576 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M288 32c-80.8 0-145.5 36.8-192.6 80.6C48.6 156 17.3 208 2.5 243.7c-3.3 7.9-3.3 16.7 0 24.6C17.3 304 48.6 356 95.4 399.4C142.5 443.2 207.2 480 288 480s145.5-36.8 192.6-80.6c46.8-43.5 78.1-95.4 93-131.1c3.3-7.9 3.3-16.7 0-24.6c-14.9-35.7-46.2-87.7-93-131.1C433.5 68.8 368.8 32 288 32zM432 256c0 79.5-64.5 144-144 144s-144-64.5-144-144s64.5-144 144-144s144 64.5 144 144zM288 192c0 35.3-28.7 64-64 64c-11.5 0-22.3-3-31.6-8.4c-.2 2.8-.4 5.5-.4 8.4c0 53 43 96 96 96s96-43 96-96s-43-96-96-96c-2.8 0-5.6 .1-8.4 .4c5.3 9.3 8.4 20.1 8.4 31.6z"/></svg></span></template>
+        <template id=fa-eye-slash><span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M38.8 5.1C28.4-3.1 13.3-1.2 5.1 9.2S-1.2 34.7 9.2 42.9l592 464c10.4 8.2 25.5 6.3 33.7-4.1s6.3-25.5-4.1-33.7L525.6 386.7c39.6-40.6 66.4-86.1 79.9-118.4c3.3-7.9 3.3-16.7 0-24.6c-14.9-35.7-46.2-87.7-93-131.1C465.5 68.8 400.8 32 320 32c-68.2 0-125 26.3-169.3 60.8L38.8 5.1zM223.1 149.5C248.6 126.2 282.7 112 320 112c79.5 0 144 64.5 144 144c0 24.9-6.3 48.3-17.4 68.7L408 294.5c5.2-11.8 8-24.8 8-38.5c0-53-43-96-96-96c-2.8 0-5.6 .1-8.4 .4c5.3 9.3 8.4 20.1 8.4 31.6c0 10.2-2.4 19.8-6.6 28.3l-90.3-70.8zm223.1 298L373 389.9c-16.4 6.5-34.3 10.1-53 10.1c-79.5 0-144-64.5-144-144c0-6.9 .5-13.6 1.4-20.2L83.1 161.5C60.3 191.2 44 220.8 34.5 243.7c-3.3 7.9-3.3 16.7 0 24.6c14.9 35.7 46.2 87.7 93 131.1C174.5 443.2 239.2 480 320 480c47.8 0 89.9-12.9 126.2-32.5z"/></svg></span></template>
+        <template id=fa-copy><span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M502.6 70.63l-61.25-61.25C435.4 3.371 427.2 0 418.7 0H255.1c-35.35 0-64 28.66-64 64l.0195 256C192 355.4 220.7 384 256 384h192c35.2 0 64-28.8 64-64V93.25C512 84.77 508.6 76.63 502.6 70.63zM464 320c0 8.836-7.164 16-16 16H255.1c-8.838 0-16-7.164-16-16L239.1 64.13c0-8.836 7.164-16 16-16h128L384 96c0 17.67 14.33 32 32 32h47.1V320zM272 448c0 8.836-7.164 16-16 16H63.1c-8.838 0-16-7.164-16-16L47.98 192.1c0-8.836 7.164-16 16-16H160V128H63.99c-35.35 0-64 28.65-64 64l.0098 256C.002 483.3 28.66 512 64 512h192c35.2 0 64-28.8 64-64v-32h-47.1L272 448z"/></svg></span></template>
+        <template id=fa-play><span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 384 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M73 39c-14.8-9.1-33.4-9.4-48.5-.9S0 62.6 0 80V432c0 17.4 9.4 33.4 24.5 41.9s33.7 8.1 48.5-.9L361 297c14.3-8.7 23-24.2 23-41s-8.7-32.2-23-41L73 39z"/></svg></span></template>
+        <template id=fa-clock-rotate-left><span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M75 75L41 41C25.9 25.9 0 36.6 0 57.9V168c0 13.3 10.7 24 24 24H134.1c21.4 0 32.1-25.9 17-41l-30.8-30.8C155 85.5 203 64 256 64c106 0 192 86 192 192s-86 192-192 192c-40.8 0-78.6-12.7-109.7-34.4c-14.5-10.1-34.4-6.6-44.6 7.9s-6.6 34.4 7.9 44.6C151.2 495 201.7 512 256 512c141.4 0 256-114.6 256-256S397.4 0 256 0C185.3 0 121.3 28.7 75 75zm181 53c-13.3 0-24 10.7-24 24V256c0 6.4 2.5 12.5 7 17l72 72c9.4 9.4 24.6 9.4 33.9 0s9.4-24.6 0-33.9l-65-65V152c0-13.3-10.7-24-24-24z"/></svg></span></template>
+
+
+
+        <script>
+            window.playground_copyable = true;
+        </script>
+
+
+        <script src="elasticlunr-ef4e11c1.min.js"></script>
+        <script src="mark-09e88c2c.min.js"></script>
+        <script src="searcher-09f2665d.js"></script>
+
+        <script src="clipboard-1626706a.min.js"></script>
+        <script src="highlight-abc7f01d.js"></script>
+        <script src="book-609e4cb8.js"></script>
+
+        <!-- Custom JS scripts -->
+        <script src="theme/figures-7a3fdfc9.js"></script>
+
+
+
+    </div>
+    </body>
+</html>

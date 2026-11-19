@@ -1,0 +1,3178 @@
+<!DOCTYPE HTML>
+<html lang="en" class="light sidebar-visible" dir="ltr">
+    <head>
+        <!-- Book generated using mdBook -->
+        <meta charset="UTF-8">
+        <title>19. Systems Interview Problems: Derivations and Reference Implementations - Operating Systems: A Hands-On Approach</title>
+
+
+        <!-- Custom HTML head -->
+
+        <meta name="description" content="Operating system fundamentals built from first principles, with verified C++20 and Rust 2024 code.">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <meta name="theme-color" content="#ffffff">
+
+        <link rel="icon" href="favicon-de23e50b.svg">
+        <link rel="shortcut icon" href="favicon-8114d1fc.png">
+        <link rel="stylesheet" href="css/variables-8adf115d.css">
+        <link rel="stylesheet" href="css/general-e96d0476.css">
+        <link rel="stylesheet" href="css/chrome-d279d366.css">
+        <link rel="stylesheet" href="css/print-9e4910d8.css" media="print">
+
+        <!-- Fonts -->
+        <link rel="stylesheet" href="fonts/fonts-9644e21d.css">
+
+        <!-- Highlight.js Stylesheets -->
+        <link rel="stylesheet" id="mdbook-highlight-css" href="highlight-493f70e1.css">
+        <link rel="stylesheet" id="mdbook-tomorrow-night-css" href="tomorrow-night-4c0ae647.css">
+        <link rel="stylesheet" id="mdbook-ayu-highlight-css" href="ayu-highlight-3fdfc3ac.css">
+
+        <!-- Custom theme stylesheets -->
+        <link rel="stylesheet" href="theme/custom-e0671a52.css">
+
+        <!-- MathJax -->
+        <script async src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.1/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
+
+        <!-- Provide site root and default themes to javascript -->
+        <script>
+            const path_to_root = "";
+            const default_light_theme = "light";
+            const default_dark_theme = "navy";
+            window.path_to_searchindex_js = "searchindex-6aaf8639.js";
+        </script>
+        <!-- Start loading toc.js asap -->
+        <script src="toc-2b639993.js"></script>
+    </head>
+    <body>
+    <div id="mdbook-help-container">
+        <div id="mdbook-help-popup">
+            <h2 class="mdbook-help-title">Keyboard shortcuts</h2>
+            <div>
+                <p>Press <kbd>←</kbd> or <kbd>→</kbd> to navigate between chapters</p>
+                <p>Press <kbd>S</kbd> or <kbd>/</kbd> to search in the book</p>
+                <p>Press <kbd>?</kbd> to show this help</p>
+                <p>Press <kbd>Esc</kbd> to hide this help</p>
+            </div>
+        </div>
+    </div>
+    <div id="mdbook-body-container">
+        <!-- Work around some values being stored in localStorage wrapped in quotes -->
+        <script>
+            try {
+                let theme = localStorage.getItem('mdbook-theme');
+                let sidebar = localStorage.getItem('mdbook-sidebar');
+
+                if (theme.startsWith('"') && theme.endsWith('"')) {
+                    localStorage.setItem('mdbook-theme', theme.slice(1, theme.length - 1));
+                }
+
+                if (sidebar.startsWith('"') && sidebar.endsWith('"')) {
+                    localStorage.setItem('mdbook-sidebar', sidebar.slice(1, sidebar.length - 1));
+                }
+            } catch (e) { }
+        </script>
+
+        <!-- Set the theme before any content is loaded, prevents flash -->
+        <script>
+            const default_theme = window.matchMedia("(prefers-color-scheme: dark)").matches ? default_dark_theme : default_light_theme;
+            let theme;
+            try { theme = localStorage.getItem('mdbook-theme'); } catch(e) { }
+            if (theme === null || theme === undefined) { theme = default_theme; }
+            const html = document.documentElement;
+            html.classList.remove('light')
+            html.classList.add(theme);
+            html.classList.add("js");
+        </script>
+
+        <input type="checkbox" id="mdbook-sidebar-toggle-anchor" class="hidden">
+
+        <!-- Hide / unhide sidebar before it is displayed -->
+        <script>
+            let sidebar = null;
+            const sidebar_toggle = document.getElementById("mdbook-sidebar-toggle-anchor");
+            if (document.body.clientWidth >= 1080) {
+                try { sidebar = localStorage.getItem('mdbook-sidebar'); } catch(e) { }
+                sidebar = sidebar || 'visible';
+            } else {
+                sidebar = 'hidden';
+                sidebar_toggle.checked = false;
+            }
+            if (sidebar === 'visible') {
+                sidebar_toggle.checked = true;
+            } else {
+                html.classList.remove('sidebar-visible');
+            }
+        </script>
+
+        <nav id="mdbook-sidebar" class="sidebar" aria-label="Table of contents">
+            <!-- populated by js -->
+            <mdbook-sidebar-scrollbox class="sidebar-scrollbox"></mdbook-sidebar-scrollbox>
+            <noscript>
+                <iframe class="sidebar-iframe-outer" src="toc.html"></iframe>
+            </noscript>
+            <div id="mdbook-sidebar-resize-handle" class="sidebar-resize-handle">
+                <div class="sidebar-resize-indicator"></div>
+            </div>
+        </nav>
+
+        <div id="mdbook-page-wrapper" class="page-wrapper">
+
+            <div class="page">
+                <div id="mdbook-menu-bar-hover-placeholder"></div>
+                <div id="mdbook-menu-bar" class="menu-bar sticky">
+                    <div class="left-buttons">
+                        <label id="mdbook-sidebar-toggle" class="icon-button" for="mdbook-sidebar-toggle-anchor" title="Toggle Table of Contents" aria-label="Toggle Table of Contents" aria-controls="mdbook-sidebar">
+                            <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M0 96C0 78.3 14.3 64 32 64H416c17.7 0 32 14.3 32 32s-14.3 32-32 32H32C14.3 128 0 113.7 0 96zM0 256c0-17.7 14.3-32 32-32H416c17.7 0 32 14.3 32 32s-14.3 32-32 32H32c-17.7 0-32-14.3-32-32zM448 416c0 17.7-14.3 32-32 32H32c-17.7 0-32-14.3-32-32s14.3-32 32-32H416c17.7 0 32 14.3 32 32z"/></svg></span>
+                        </label>
+                        <button id="mdbook-theme-toggle" class="icon-button" type="button" title="Change theme" aria-label="Change theme" aria-haspopup="true" aria-expanded="false" aria-controls="mdbook-theme-list">
+                            <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 576 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M371.3 367.1c27.3-3.9 51.9-19.4 67.2-42.9L600.2 74.1c12.6-19.5 9.4-45.3-7.6-61.2S549.7-4.4 531.1 9.6L294.4 187.2c-24 18-38.2 46.1-38.4 76.1L371.3 367.1zm-19.6 25.4l-116-104.4C175.9 290.3 128 339.6 128 400c0 3.9 .2 7.8 .6 11.6c1.8 17.5-10.2 36.4-27.8 36.4H96c-17.7 0-32 14.3-32 32s14.3 32 32 32H240c61.9 0 112-50.1 112-112c0-2.5-.1-5-.2-7.5z"/></svg></span>
+                        </button>
+                        <ul id="mdbook-theme-list" class="theme-popup" aria-label="Themes" role="menu">
+                            <li role="none"><button role="menuitem" class="theme" id="mdbook-theme-default_theme">Auto</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="mdbook-theme-light">Light</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="mdbook-theme-rust">Rust</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="mdbook-theme-coal">Coal</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="mdbook-theme-navy">Navy</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="mdbook-theme-ayu">Ayu</button></li>
+                        </ul>
+                        <button id="mdbook-search-toggle" class="icon-button" type="button" title="Search (`/`)" aria-label="Toggle Searchbar" aria-expanded="false" aria-keyshortcuts="/ s" aria-controls="mdbook-searchbar">
+                            <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M416 208c0 45.9-14.9 88.3-40 122.7L502.6 457.4c12.5 12.5 12.5 32.8 0 45.3s-32.8 12.5-45.3 0L330.7 376c-34.4 25.2-76.8 40-122.7 40C93.1 416 0 322.9 0 208S93.1 0 208 0S416 93.1 416 208zM208 352c79.5 0 144-64.5 144-144s-64.5-144-144-144S64 128.5 64 208s64.5 144 144 144z"/></svg></span>
+                        </button>
+                    </div>
+
+                    <h1 class="menu-title">Operating Systems: A Hands-On Approach</h1>
+
+                    <div class="right-buttons">
+                        <a href="print.html" title="Print this book" aria-label="Print this book">
+                            <span class=fa-svg id="print-button"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M128 0C92.7 0 64 28.7 64 64v96h64V64H354.7L384 93.3V160h64V93.3c0-17-6.7-33.3-18.7-45.3L400 18.7C388 6.7 371.7 0 354.7 0H128zM384 352v32 64H128V384 368 352H384zm64 32h32c17.7 0 32-14.3 32-32V256c0-35.3-28.7-64-64-64H64c-35.3 0-64 28.7-64 64v96c0 17.7 14.3 32 32 32H64v64c0 35.3 28.7 64 64 64H384c35.3 0 64-28.7 64-64V384zm-16-88c-13.3 0-24-10.7-24-24s10.7-24 24-24s24 10.7 24 24s-10.7 24-24 24z"/></svg></span>
+                        </a>
+                        <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/tree/prep-v2/operating-systems" title="Git repository" aria-label="Git repository">
+                            <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 496 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M165.9 397.4c0 2-2.3 3.6-5.2 3.6-3.3.3-5.6-1.3-5.6-3.6 0-2 2.3-3.6 5.2-3.6 3-.3 5.6 1.3 5.6 3.6zm-31.1-4.5c-.7 2 1.3 4.3 4.3 4.9 2.6 1 5.6 0 6.2-2s-1.3-4.3-4.3-5.2c-2.6-.7-5.5.3-6.2 2.3zm44.2-1.7c-2.9.7-4.9 2.6-4.6 4.9.3 2 2.9 3.3 5.9 2.6 2.9-.7 4.9-2.6 4.6-4.6-.3-1.9-3-3.2-5.9-2.9zM244.8 8C106.1 8 0 113.3 0 252c0 110.9 69.8 205.8 169.5 239.2 12.8 2.3 17.3-5.6 17.3-12.1 0-6.2-.3-40.4-.3-61.4 0 0-70 15-84.7-29.8 0 0-11.4-29.1-27.8-36.6 0 0-22.9-15.7 1.6-15.4 0 0 24.9 2 38.6 25.8 21.9 38.6 58.6 27.5 72.9 20.9 2.3-16 8.8-27.1 16-33.7-55.9-6.2-112.3-14.3-112.3-110.5 0-27.5 7.6-41.3 23.6-58.9-2.6-6.5-11.1-33.3 2.6-67.9 20.9-6.5 69 27 69 27 20-5.6 41.5-8.5 62.8-8.5s42.8 2.9 62.8 8.5c0 0 48.1-33.6 69-27 13.7 34.7 5.2 61.4 2.6 67.9 16 17.7 25.8 31.5 25.8 58.9 0 96.5-58.9 104.2-114.8 110.5 9.2 7.9 17 22.9 17 46.4 0 33.7-.3 75.4-.3 83.6 0 6.5 4.6 14.4 17.3 12.1C428.2 457.8 496 362.9 496 252 496 113.3 383.5 8 244.8 8zM97.2 352.9c-1.3 1-1 3.3.7 5.2 1.6 1.6 3.9 2.3 5.2 1 1.3-1 1-3.3-.7-5.2-1.6-1.6-3.9-2.3-5.2-1zm-10.8-8.1c-.7 1.3.3 2.9 2.3 3.9 1.6 1 3.6.7 4.3-.7.7-1.3-.3-2.9-2.3-3.9-2-.6-3.6-.3-4.3.7zm32.4 35.6c-1.6 1.3-1 4.3 1.3 6.2 2.3 2.3 5.2 2.6 6.5 1 1.3-1.3.7-4.3-1.3-6.2-2.2-2.3-5.2-2.6-6.5-1zm-11.4-14.7c-1.6 1-1.6 3.6 0 5.9 1.6 2.3 4.3 3.3 5.6 2.3 1.6-1.3 1.6-3.9 0-6.2-1.4-2.3-4-3.3-5.6-2z"/></svg></span>
+                        </a>
+                        <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/edit/prep-v2/operating-systems/src/ch19-interview-problems.md" title="Suggest an edit" aria-label="Suggest an edit" rel="edit">
+                            <span class=fa-svg id="git-edit-button"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M421.7 220.3l-11.3 11.3-22.6 22.6-205 205c-6.6 6.6-14.8 11.5-23.8 14.1L30.8 511c-8.4 2.5-17.5 .2-23.7-6.1S-1.5 489.7 1 481.2L38.7 353.1c2.6-9 7.5-17.2 14.1-23.8l205-205 22.6-22.6 11.3-11.3 33.9 33.9 62.1 62.1 33.9 33.9zM96 353.9l-9.3 9.3c-.9 .9-1.6 2.1-2 3.4l-25.3 86 86-25.3c1.3-.4 2.5-1.1 3.4-2l9.3-9.3H112c-8.8 0-16-7.2-16-16V353.9zM453.3 19.3l39.4 39.4c25 25 25 65.5 0 90.5l-14.5 14.5-22.6 22.6-11.3 11.3-33.9-33.9-62.1-62.1L314.3 67.7l11.3-11.3 22.6-22.6 14.5-14.5c25-25 65.5-25 90.5 0z"/></svg></span>
+                        </a>
+
+                    </div>
+                </div>
+
+                <div id="mdbook-search-wrapper" class="hidden">
+                    <form id="mdbook-searchbar-outer" class="searchbar-outer">
+                        <div class="search-wrapper">
+                            <input type="search" id="mdbook-searchbar" name="searchbar" placeholder="Search this book ..." aria-controls="mdbook-searchresults-outer" aria-describedby="searchresults-header">
+                            <div class="spinner-wrapper">
+                                <span class=fa-svg id="fa-spin"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M304 48c0-26.5-21.5-48-48-48s-48 21.5-48 48s21.5 48 48 48s48-21.5 48-48zm0 416c0-26.5-21.5-48-48-48s-48 21.5-48 48s21.5 48 48 48s48-21.5 48-48zM48 304c26.5 0 48-21.5 48-48s-21.5-48-48-48s-48 21.5-48 48s21.5 48 48 48zm464-48c0-26.5-21.5-48-48-48s-48 21.5-48 48s21.5 48 48 48s48-21.5 48-48zM142.9 437c18.7-18.7 18.7-49.1 0-67.9s-49.1-18.7-67.9 0s-18.7 49.1 0 67.9s49.1 18.7 67.9 0zm0-294.2c18.7-18.7 18.7-49.1 0-67.9S93.7 56.2 75 75s-18.7 49.1 0 67.9s49.1 18.7 67.9 0zM369.1 437c18.7 18.7 49.1 18.7 67.9 0s18.7-49.1 0-67.9s-49.1-18.7-67.9 0s-18.7 49.1 0 67.9z"/></svg></span>
+                            </div>
+                        </div>
+                    </form>
+                    <div id="mdbook-searchresults-outer" class="searchresults-outer hidden">
+                        <div id="mdbook-searchresults-header" class="searchresults-header"></div>
+                        <ul id="mdbook-searchresults">
+                        </ul>
+                    </div>
+                </div>
+
+                <!-- Apply ARIA attributes after the sidebar and the sidebar toggle button are added to the DOM -->
+                <script>
+                    document.getElementById('mdbook-sidebar-toggle').setAttribute('aria-expanded', sidebar === 'visible');
+                    document.getElementById('mdbook-sidebar').setAttribute('aria-hidden', sidebar !== 'visible');
+                    Array.from(document.querySelectorAll('#mdbook-sidebar a')).forEach(function(link) {
+                        link.setAttribute('tabIndex', sidebar === 'visible' ? 0 : -1);
+                    });
+                </script>
+
+                <div id="mdbook-content" class="content">
+                    <main>
+                        <h1 id="19-systems-interview-problems-derivations-and-reference-implementations"><a class="header" href="#19-systems-interview-problems-derivations-and-reference-implementations">19. Systems Interview Problems: Derivations and Reference Implementations</a></h1>
+<p>The systems programming interview serves as an empirical evaluation of an engineer’s capacity to translate low-level hardware constraints into correct, deterministic software abstractions. While application-level engineering frequently abstracts away execution costs, systems engineering requires direct reasoning from first principles: the mechanics of cache coherence, memory ordering semantics, kernel privilege transitions, memory fragmentation, and atomic instruction guarantees.</p>
+<h2 id="191-architectural-framework-and-problem-solving-discipline"><a class="header" href="#191-architectural-framework-and-problem-solving-discipline">19.1 Architectural Framework and Problem-Solving Discipline</a></h2>
+<p>Every robust systems component is derived from three foundational tenets:</p>
+<ul>
+<li><strong>Formal Contract Specification:</strong> Defining explicit preconditions, postconditions, and resource ownership boundaries before writing code. This encompasses capacity limits, pointer ownership transfers, lifetime bounds, and the exact threading model.</li>
+<li><strong>State Invariant Formulation:</strong> Explicitly identifying the logical properties that must hold across all execution paths. In concurrent programming, this dictates the exact state protected by each mutex or synchronized via atomic variables.</li>
+<li><strong>Boundary and Interleaving Analysis:</strong> Rigorously tracing edge cases—such as queue saturation, memory depletion, cache line false sharing, and spurious wakeups—under arbitrary thread interleavings.</li>
+</ul>
+<p>This chapter presents ten canonical systems programming problems, followed by a rigorous examination of six fundamental operating system mechanisms. Each problem articulates the underlying systems model, establishes the mathematical and concurrency invariants, provides verified reference implementations in C++20 and Rust (2024 edition), and evaluates subtle hardware and language-level trade-offs.</p>
+<h2 id="192-the-bounded-blocking-queue"><a class="header" href="#192-the-bounded-blocking-queue">19.2 The Bounded Blocking Queue</a></h2>
+<p>A bounded blocking queue is the foundational synchronization primitive underpinning multi-threaded producer-consumer architectures. It provides a thread-safe FIFO buffer of fixed maximum capacity, decoupling production rates from consumption rates while preventing unbounded heap exhaustion.</p>
+<h3 id="1921-concurrency-model-and-synchronization-primitives"><a class="header" href="#1921-concurrency-model-and-synchronization-primitives">19.2.1 Concurrency Model and Synchronization Primitives</a></h3>
+<p>Managing a shared bounded buffer requires resolving two distinct concurrency hazards:</p>
+<ol>
+<li><strong>Mutual Exclusion:</strong> Concurrent threads must not mutate queue pointers, lengths, or ring indices simultaneously, which would induce data races and state corruption.</li>
+<li><strong>Predicate Coordination:</strong> When the queue reaches capacity, producer threads must suspend execution until space becomes available. Conversely, when the queue is empty, consumer threads must suspend until an item is enqueued.</li>
+</ol>
+<p>A <strong>mutex</strong> provides mutual exclusion but possesses no native mechanism for suspended waiting on arbitrary logical state. A thread that simply loops while checking queue occupancy (“busy-waiting”) wastes processor cycles and starves other threads contending for execution cores.</p>
+<p>To resolve this, the queue pairs a mutex with <strong>condition variables</strong>. A condition variable enables a thread to release its held mutex and enter a sleep state atomically in a single hardware-supervised step. The atomicity of this transition is essential: if releasing the lock and sleeping were separate operations, a competing thread could signal a state change in the intervening gap, causing the waiting thread to sleep indefinitely—a catastrophic concurrency failure known as a <strong>lost wakeup</strong>.</p>
+<p>Because the queue coordinates two opposing boundary states, it employs dual condition variables:</p>
+<ul>
+<li><strong><code>is_full</code>:</strong> Suspends producer threads while the queue is full (<code>size == capacity</code>).</li>
+<li><strong><code>is_empty</code>:</strong> Suspends consumer threads while the queue is empty (<code>size == 0</code>).</li>
+</ul>
+<figure>
+<img src="figures/ch19_bounded_queue.svg" alt="A bounded queue: coordinating producers and consumers via dual condition variables." />
+</figure>
+<h3 id="1922-state-invariants-and-predicate-verification"><a class="header" href="#1922-state-invariants-and-predicate-verification">19.2.2 State Invariants and Predicate Verification</a></h3>
+<p>The queue maintains the following fundamental invariant across all operations:</p>
+<pre><code class="language-text">∀ t under mutex lock:  0 ≤ size ≤ capacity
+</code></pre>
+<p>Every state modification adheres to strict pre- and post-conditions:</p>
+<ul>
+<li><strong><code>push(item)</code>:</strong> Evaluates <code>is_full()</code>. If true, the caller suspends on <code>is_full</code>. Once unblocked with <code>size &lt; capacity</code>, it appends the item, increments <code>size</code>, and signals <code>is_empty</code>.</li>
+<li><strong><code>pop()</code>:</strong> Evaluates <code>is_empty()</code>. If true, the caller suspends on <code>is_empty</code>. Once unblocked with <code>size &gt; 0</code>, it dequeues the front item, decrements <code>size</code>, and signals <code>is_full</code>.</li>
+</ul>
+<p>A critical requirement in predicate synchronization is the <strong>repeated evaluation loop</strong> (<code>while (is_full())</code> / <code>while (is_empty())</code>). When a thread is awakened, it is merely moved from the condition variable’s sleep queue to the mutex’s contention queue; it does not instantaneously resume execution with the lock. By the time the thread re-acquires the mutex, an intervening thread may have intercepted the vacancy or consumed the available item. Furthermore, POSIX and operating system schedulers permit <strong>spurious wakeups</strong>, where a waiting thread unblocks without any explicit notification. Encapsulating the wait operation within a predicate loop ensures that a thread never advances until the condition is verified under exclusive lock ownership.</p>
+<h3 id="1923-reference-implementation"><a class="header" href="#1923-reference-implementation">19.2.3 Reference Implementation</a></h3>
+<p><strong>Listing 19-1. A bounded blocking queue (C++20).</strong></p>
+<pre><code class="language-cpp">// ch19/bounded_queue.cpp: a blocking queue of fixed capacity.
+#include &lt;condition_variable&gt;
+#include &lt;cstdint&gt;
+#include &lt;deque&gt;
+#include &lt;iostream&gt;
+#include &lt;mutex&gt;
+#include &lt;thread&gt;
+#include &lt;vector&gt;
+
+/// A queue that blocks producers while it is full and consumers while it is empty.
+template &lt;typename T&gt;
+class BoundedQueue {
+public:
+    /// A capacity of 0 would block every push forever, so the minimum is 1.
+    explicit BoundedQueue(size_t capacity) : capacity_(capacity == 0 ? 1 : capacity) {}
+
+    /// Appends one item. Waits while the queue is full.
+    void push(T item) {
+        std::unique_lock&lt;std::mutex&gt; lock(mutex_);
+
+        while (is_full()) {
+            is_full_.wait(lock);
+        }
+
+        items_.push_back(std::move(item));
+        is_empty_.notify_one();
+    }
+
+    /// Removes the oldest item. Waits while the queue is empty.
+    T pop() {
+        std::unique_lock&lt;std::mutex&gt; lock(mutex_);
+
+        while (is_empty()) {
+            is_empty_.wait(lock);
+        }
+
+        T item = std::move(items_.front());
+        items_.pop_front();
+        is_full_.notify_one();
+
+        return item;
+    }
+
+private:
+    bool is_full() const { return items_.size() == capacity_; }
+
+    bool is_empty() const { return items_.empty(); }
+
+    const size_t capacity_;
+    std::deque&lt;T&gt; items_;
+    std::mutex mutex_;
+    std::condition_variable is_full_;    // producers sleep here while the queue is full
+    std::condition_variable is_empty_;   // consumers sleep here while the queue is empty
+};
+
+int main() {
+    constexpr uint64_t kItemsPerThread = 50'000;
+    constexpr uint64_t kThreadPairs = 2;
+
+    BoundedQueue&lt;uint64_t&gt; queue(8);
+    uint64_t consumed_sum[kThreadPairs] = {0, 0};
+    std::vector&lt;std::thread&gt; threads;
+
+    for (uint64_t producer = 0; producer &lt; kThreadPairs; ++producer) {
+        threads.emplace_back([&amp;queue, producer] {
+            uint64_t first = producer * kItemsPerThread + 1;
+
+            for (uint64_t value = first; value &lt; first + kItemsPerThread; ++value) {
+                queue.push(value);
+            }
+        });
+    }
+
+    for (uint64_t consumer = 0; consumer &lt; kThreadPairs; ++consumer) {
+        threads.emplace_back([&amp;queue, &amp;consumed_sum, consumer] {
+            for (uint64_t taken = 0; taken &lt; kItemsPerThread; ++taken) {
+                consumed_sum[consumer] += queue.pop();
+            }
+        });
+    }
+
+    for (std::thread&amp; thread : threads) {
+        thread.join();
+    }
+
+    uint64_t item_count = kThreadPairs * kItemsPerThread;
+    uint64_t expected = item_count * (item_count + 1) / 2;
+    uint64_t consumed = consumed_sum[0] + consumed_sum[1];
+
+    std::cout &lt;&lt; "expected sum " &lt;&lt; expected &lt;&lt; "\n"
+              &lt;&lt; "consumed sum " &lt;&lt; consumed &lt;&lt; "\n"
+              &lt;&lt; "match        " &lt;&lt; (expected == consumed ? "yes" : "NO") &lt;&lt; "\n";
+}
+</code></pre>
+<p><strong>Output 19-1.</strong></p>
+<pre><code class="language-text">expected sum 5000050000
+consumed sum 5000050000
+match        yes
+</code></pre>
+<p><strong>Listing 19-2. The same queue in Rust.</strong></p>
+<pre class="playground"><code class="language-rust">// ch19/bounded_queue.rs: a blocking queue of fixed capacity.
+use std::collections::VecDeque;
+use std::sync::{Arc, Condvar, Mutex};
+use std::thread;
+
+type QueueResult&lt;T&gt; = Result&lt;T, &amp;'static str&gt;;
+
+const POISONED: &amp;str = "a thread panicked while it held the queue mutex";
+const PANICKED: &amp;str = "a worker thread panicked";
+
+/// A queue that blocks producers while it is full and consumers while it is empty.
+struct BoundedQueue&lt;T&gt; {
+    capacity: usize,
+    items: Mutex&lt;VecDeque&lt;T&gt;&gt;,
+    is_full: Condvar,  // producers sleep here while the queue is full
+    is_empty: Condvar, // consumers sleep here while the queue is empty
+}
+
+impl&lt;T&gt; BoundedQueue&lt;T&gt; {
+    fn new(capacity: usize) -&gt; Self {
+        // A capacity of 0 would block every push forever, so the minimum is 1.
+        BoundedQueue {
+            capacity: capacity.max(1),
+            items: Mutex::new(VecDeque::new()),
+            is_full: Condvar::new(),
+            is_empty: Condvar::new(),
+        }
+    }
+
+    /// Appends one item. Waits while the queue is full.
+    fn push(&amp;self, item: T) -&gt; QueueResult&lt;()&gt; {
+        let items = self.items.lock().map_err(|_| POISONED)?;
+
+        let mut items = self
+            .is_full
+            .wait_while(items, |q| q.len() == self.capacity)
+            .map_err(|_| POISONED)?;
+
+        items.push_back(item);
+        self.is_empty.notify_one();
+
+        Ok(())
+    }
+
+    /// Removes the oldest item. Waits while the queue is empty.
+    fn pop(&amp;self) -&gt; QueueResult&lt;T&gt; {
+        let items = self.items.lock().map_err(|_| POISONED)?;
+
+        let mut items = self
+            .is_empty
+            .wait_while(items, |q| q.is_empty())
+            .map_err(|_| POISONED)?;
+
+        let item = items
+            .pop_front()
+            .ok_or("the queue was empty after the wait")?;
+
+        self.is_full.notify_one();
+
+        Ok(item)
+    }
+}
+
+fn main() -&gt; QueueResult&lt;()&gt; {
+    const ITEMS_PER_THREAD: u64 = 50_000;
+    const THREAD_PAIRS: u64 = 2;
+
+    let queue = Arc::new(BoundedQueue::new(8));
+    let mut producers = Vec::new();
+    let mut consumers = Vec::new();
+
+    for producer in 0..THREAD_PAIRS {
+        let queue = Arc::clone(&amp;queue);
+
+        producers.push(thread::spawn(move || -&gt; QueueResult&lt;()&gt; {
+            let first = producer * ITEMS_PER_THREAD + 1;
+
+            for value in first..first + ITEMS_PER_THREAD {
+                queue.push(value)?;
+            }
+
+            Ok(())
+        }));
+    }
+
+    for _ in 0..THREAD_PAIRS {
+        let queue = Arc::clone(&amp;queue);
+
+        consumers.push(thread::spawn(move || -&gt; QueueResult&lt;u64&gt; {
+            let mut sum = 0;
+
+            for _ in 0..ITEMS_PER_THREAD {
+                sum += queue.pop()?;
+            }
+
+            Ok(sum)
+        }));
+    }
+
+    for producer in producers {
+        let pushed = producer
+            .join()
+            .map_err(|_| PANICKED)?;
+
+        pushed?;
+    }
+
+    let mut consumed = 0;
+
+    for consumer in consumers {
+        let sum = consumer
+            .join()
+            .map_err(|_| PANICKED)?;
+
+        consumed += sum?;
+    }
+
+    let item_count = THREAD_PAIRS * ITEMS_PER_THREAD;
+    let expected = item_count * (item_count + 1) / 2;
+    let verdict = if expected == consumed { "yes" } else { "NO" };
+
+    println!("expected sum {expected}");
+    println!("consumed sum {consumed}");
+    println!("match        {verdict}");
+
+    Ok(())
+}</code></pre>
+<p><strong>Output 19-2.</strong></p>
+<pre><code class="language-text">expected sum 5000050000
+consumed sum 5000050000
+match        yes
+</code></pre>
+<p>The verification harness executes two concurrent producer threads and two concurrent consumer threads, processing 100,000 sequential integers (1 to 100,000). The mathematical sum of these values is:</p>
+<pre><code class="language-text">Sum = (100,000 × 100,001) / 2 = 5,000,050,000
+</code></pre>
+<p>The verified outputs confirm that the aggregate consumed sum exactly matches this expectation, demonstrating zero item loss, zero duplication, and strict FIFO integrity under heavy thread contention.</p>
+<p>In Rust, acquiring a mutex lock or waiting on a condition variable returns a <code>PoisonError</code> if another thread panicked while holding the guard. In the reference implementation, this error is converted into a structured message and propagated deterministically via the <code>?</code> operator.</p>
+<h3 id="1924-systems-analysis-and-nuances"><a class="header" href="#1924-systems-analysis-and-nuances">19.2.4 Systems Analysis and Nuances</a></h3>
+<ul>
+<li><strong>Notification Discipline (<code>notify_one</code> vs. <code>notify_all</code>):</strong> Because separate condition variables isolate producers from consumers, inserting a single item allows exactly one consumer to make forward progress. Therefore, <code>notify_one</code> is both sufficient and optimal, avoiding the performance degradation of the “thundering herd” problem where multiple threads awaken only for all but one to re-suspend. If a single shared condition variable were used for both predicates, <code>notify_all</code> would be mandatory; signaling only one thread could wake a producer when only consumers can proceed, precipitating permanent deadlock.</li>
+<li><strong>Signaling Outside the Lock:</strong> The condition variable notification can be dispatched either before or after releasing the mutex. Signaling while holding the mutex can induce a “hurry up and wait” condition: the awakened thread immediately attempts to acquire the mutex, finds it held by the signaler, and re-blocks. Releasing the mutex prior to signaling avoids this contention, though modern OS kernels optimize this via <em>wait morphing</em>, moving threads directly from the condition variable wait queue to the mutex queue without unblocking them in user space.</li>
+</ul>
+<div class="callout keyidea">
+<span class="label">Key idea</span>
+<p>A bounded blocking queue coordinates producers and consumers through dual condition variables. Under lock, the invariant <code>0 ≤ size ≤ capacity</code> must hold at all times. Evaluating predicates inside a <code>while</code> loop is mandatory to defend against spurious wakeups and post-wakeup race conditions.</p>
+</div>
+
+<div class="callout caution">
+<span class="label">Watch out</span>
+<p>Using <code>if (!is_full())</code> instead of <code>while (is_full())</code>: an awakened producer does not hold the lock immediately upon unblocking; another thread may acquire the mutex first and fill the queue, causing lost updates or buffer overflow.</p>
+</div>
+
+<h2 id="193-the-free-list-allocator"><a class="header" href="#193-the-free-list-allocator">19.3 The Free-List Allocator</a></h2>
+<p>While the operating system allocates memory in coarse, page-sized increments (typically 4 KiB), user-space applications require dynamic allocation for objects with arbitrary sizes and heterogeneous lifetimes. A memory allocator bridges this granularity gap by requesting a large contiguous memory region—an <strong>arena</strong>—from the kernel and managing sub-allocations internally.</p>
+<h3 id="1931-memory-architecture-and-layout-topology"><a class="header" href="#1931-memory-architecture-and-layout-topology">19.3.1 Memory Architecture and Layout Topology</a></h3>
+<p>A free-list allocator manages an arena as a continuous sequence of memory blocks without gaps. Every block consists of two distinct components:</p>
+<ul>
+<li><strong>Header:</strong> Embedded metadata stored immediately preceding the usable memory. The header encapsulates the total payload size, an allocation flag (indicating whether the block is free or active), and pointer linkages to adjacent blocks in address order.</li>
+<li><strong>Payload:</strong> The raw memory buffer returned to the client application.</li>
+</ul>
+<p>To support hardware vector extensions (e.g., SSE, AVX, NEON) and prevent unaligned memory penalties, the allocator enforces a strict <strong>16-byte alignment invariant</strong>: every returned payload address and payload size must be an exact multiple of 16 bytes. Given a 32-byte header (itself a multiple of 16), preserving payload alignment maintains complete alignment throughout the arena.</p>
+<h3 id="1932-allocation-and-reclamation-mechanics"><a class="header" href="#1932-allocation-and-reclamation-mechanics">19.3.2 Allocation and Reclamation Mechanics</a></h3>
+<p>The allocator’s efficiency and memory fragmentation profile are governed by three primary policies:</p>
+<ul>
+<li><strong>First-Fit Search:</strong> Upon receiving an allocation request of <code>n</code> bytes, the allocator rounds <code>n</code> up to the next 16-byte boundary. It then traverses the block list in address order and selects the first free block whose payload capacity meets or exceeds the aligned request.</li>
+<li><strong>Block Splitting:</strong> If the selected free block is significantly larger than the requested size, allocating the entire block causes excessive <strong>internal fragmentation</strong> (wasted capacity within an allocated block). If the excess capacity is sufficient to house a 32-byte header and at least a 16-byte payload (48 bytes minimum), the allocator splits the block: the front portion is assigned to the caller, and the remainder is formatted into a new free block linked into the arena.</li>
+<li><strong>Coalescing Upon Release:</strong> When <code>release(p)</code> is invoked, the allocator accesses the preceding header at <code>p - sizeof(Header)</code> and marks the block as free. If adjacent neighboring blocks in memory are also free, leaving them fragmented would prevent future large allocations even if total free capacity is sufficient—a condition known as <strong>external fragmentation</strong>. The allocator therefore coalesces adjacent free blocks into a single unified block, recovering the 32-byte overhead of the subsumed header and consolidating available memory.</li>
+</ul>
+<h3 id="1933-structural-invariants"><a class="header" href="#1933-structural-invariants">19.3.3 Structural Invariants</a></h3>
+<p>The allocator preserves the following invariants across every allocation and release cycle:</p>
+<ul>
+<li><strong>Exhaustive Arena Coverage:</strong> The linked list of blocks spans the entire arena continuously from start to finish, with zero unmapped gaps and zero overlapping regions.</li>
+<li><strong>Monotonic Address Ordering:</strong> Consecutive nodes in the linked list are strictly adjacent in physical memory.</li>
+<li><strong>Post-Release Coalescing Invariant:</strong> Upon the return of <code>release(p)</code>, no two adjacent blocks in the arena are both marked as free.</li>
+<li><strong>Alignment Invariant:</strong> For every active block, <code>address(payload) % 16 == 0</code> (aligned to a 16-byte boundary).</li>
+</ul>
+<h3 id="1934-reference-implementation"><a class="header" href="#1934-reference-implementation">19.3.4 Reference Implementation</a></h3>
+<p><strong>Listing 19-3. A first-fit allocator with splitting and coalescing (C++20).</strong></p>
+<pre><code class="language-cpp">// ch19/free_list_allocator.cpp: a first-fit allocator with splitting and coalescing.
+#include &lt;cstddef&gt;
+#include &lt;cstdint&gt;
+#include &lt;cstdio&gt;
+#include &lt;new&gt;
+
+constexpr size_t kAlignment = 16;
+constexpr size_t kArenaBytes = 1024;
+
+/// Stored immediately before every payload. The list links blocks in address order.
+struct alignas(kAlignment) BlockHeader {
+    size_t payload_bytes;
+    bool is_free;
+    BlockHeader* next;
+};
+
+constexpr size_t kHeaderBytes = sizeof(BlockHeader);
+constexpr size_t kMinimumSplitBytes = kHeaderBytes + kAlignment;
+
+/// Rounds `value` up to the next multiple of kAlignment.
+size_t align_up(size_t value) {
+    return (value + kAlignment - 1) &amp; ~(kAlignment - 1);
+}
+
+class FreeListAllocator {
+public:
+    FreeListAllocator() {
+        size_t payload_bytes = kArenaBytes - kHeaderBytes;
+
+        first_ = new (arena_) BlockHeader{payload_bytes, true, nullptr};
+    }
+
+    /// Returns a payload of at least `requested_bytes`, or nullptr when no block fits.
+    void* allocate(size_t requested_bytes) {
+        // A larger request can never fit, and rounding it up could overflow.
+        if (requested_bytes &gt; kArenaBytes) return nullptr;
+
+        size_t payload_bytes = align_up(requested_bytes);
+
+        BlockHeader* block = find_first_fit(payload_bytes);
+        if (block == nullptr) return nullptr;
+
+        split_if_large(block, payload_bytes);
+        block-&gt;is_free = false;
+
+        return payload_of(block);
+    }
+
+    /// Marks the block free and merges it with free neighbors.
+    void release(void* payload) {
+        if (payload == nullptr) return;
+
+        header_of(payload)-&gt;is_free = true;
+        coalesce();
+    }
+
+    void print_blocks(const char* title) const {
+        printf("%s\n", title);
+
+        for (const BlockHeader* block = first_; block != nullptr; block = block-&gt;next) {
+            size_t offset = reinterpret_cast&lt;const uint8_t*&gt;(block) - arena_;
+            const char* state = block-&gt;is_free ? "free" : "used";
+
+            size_t payload_bytes = block-&gt;payload_bytes;
+
+            printf("  offset %4zu  payload %4zu  %s\n", offset, payload_bytes, state);
+        }
+    }
+
+private:
+    static uint8_t* payload_of(BlockHeader* block) {
+        return reinterpret_cast&lt;uint8_t*&gt;(block) + kHeaderBytes;
+    }
+
+    static BlockHeader* header_of(void* payload) {
+        uint8_t* header_address = static_cast&lt;uint8_t*&gt;(payload) - kHeaderBytes;
+
+        return reinterpret_cast&lt;BlockHeader*&gt;(header_address);
+    }
+
+    BlockHeader* find_first_fit(size_t payload_bytes) const {
+        for (BlockHeader* block = first_; block != nullptr; block = block-&gt;next) {
+            if (block-&gt;is_free &amp;&amp; block-&gt;payload_bytes &gt;= payload_bytes) return block;
+        }
+
+        return nullptr;
+    }
+
+    /// Cuts the unused tail of `block` into a new free block, if the tail is large enough.
+    void split_if_large(BlockHeader* block, size_t payload_bytes) {
+        size_t spare_bytes = block-&gt;payload_bytes - payload_bytes;
+        if (spare_bytes &lt; kMinimumSplitBytes) return;
+
+        uint8_t* tail_address = payload_of(block) + payload_bytes;
+        size_t tail_payload_bytes = spare_bytes - kHeaderBytes;
+
+        BlockHeader* following = block-&gt;next;
+
+        BlockHeader* tail = new (tail_address) BlockHeader{tail_payload_bytes, true, following};
+
+        block-&gt;payload_bytes = payload_bytes;
+        block-&gt;next = tail;
+    }
+
+    /// Merges every pair of free blocks that are next to each other.
+    void coalesce() {
+        BlockHeader* block = first_;
+
+        while (block-&gt;next != nullptr) {
+            BlockHeader* following = block-&gt;next;
+
+            if (block-&gt;is_free &amp;&amp; following-&gt;is_free) {
+                block-&gt;payload_bytes += kHeaderBytes + following-&gt;payload_bytes;
+                block-&gt;next = following-&gt;next;
+                continue;
+            }
+
+            block = following;
+        }
+    }
+
+    alignas(kAlignment) uint8_t arena_[kArenaBytes];
+    BlockHeader* first_;
+};
+
+int main() {
+    FreeListAllocator heap;
+    printf("arena %zu bytes, header %zu bytes\n\n", kArenaBytes, kHeaderBytes);
+
+    void* first = heap.allocate(100);
+    void* second = heap.allocate(200);
+    void* third = heap.allocate(300);
+    heap.print_blocks("after allocate(100), allocate(200), allocate(300):");
+
+    heap.release(second);
+    heap.print_blocks("\nafter release(second):");
+
+    void* fourth = heap.allocate(150);
+    heap.print_blocks("\nafter allocate(150):");
+    printf("fourth reuses the block of second: %s\n", fourth == second ? "yes" : "no");
+
+    heap.release(first);
+    heap.release(fourth);
+    heap.release(third);
+    heap.print_blocks("\nafter releasing everything:");
+}
+</code></pre>
+<p><strong>Output 19-3.</strong></p>
+<pre><code class="language-text">arena 1024 bytes, header 32 bytes
+
+after allocate(100), allocate(200), allocate(300):
+  offset    0  payload  112  used
+  offset  144  payload  208  used
+  offset  384  payload  304  used
+  offset  720  payload  272  free
+
+after release(second):
+  offset    0  payload  112  used
+  offset  144  payload  208  free
+  offset  384  payload  304  used
+  offset  720  payload  272  free
+
+after allocate(150):
+  offset    0  payload  112  used
+  offset  144  payload  160  used
+  offset  336  payload   16  free
+  offset  384  payload  304  used
+  offset  720  payload  272  free
+fourth reuses the block of second: yes
+
+after releasing everything:
+  offset    0  payload  992  free
+</code></pre>
+<p><strong>Listing 19-4. The same allocator in Rust.</strong></p>
+<pre class="playground"><code class="language-rust">// ch19/free_list_allocator.rs: a first-fit allocator with splitting and coalescing.
+use std::alloc::{self, Layout};
+use std::ptr;
+
+const ALIGNMENT: usize = 16;
+const ARENA_BYTES: usize = 1024;
+const HEADER_BYTES: usize = size_of::&lt;BlockHeader&gt;();
+const MINIMUM_SPLIT_BYTES: usize = HEADER_BYTES + ALIGNMENT;
+
+/// Stored immediately before every payload. The list links blocks in address order.
+#[repr(C, align(16))]
+struct BlockHeader {
+    payload_bytes: usize,
+    is_free: bool,
+    next: *mut BlockHeader,
+}
+
+/// Rounds `value` up to the next multiple of ALIGNMENT.
+fn align_up(value: usize) -&gt; usize {
+    (value + ALIGNMENT - 1) &amp; !(ALIGNMENT - 1)
+}
+
+struct FreeListAllocator {
+    arena: *mut u8,
+    layout: Layout,
+    first: *mut BlockHeader,
+}
+
+impl FreeListAllocator {
+    /// Obtains the arena and makes it one free block.
+    /// Returns None if no memory is available.
+    fn new() -&gt; Option&lt;Self&gt; {
+        let layout = Layout::from_size_align(ARENA_BYTES, ALIGNMENT).ok()?;
+
+        // SAFETY: `Layout::from_size_align` verified `ARENA_BYTES &gt; 0` and `ALIGNMENT == 16`
+        // is a valid power of two. The global allocator returns a pointer aligned to 16 bytes.
+        let arena = unsafe { alloc::alloc(layout) };
+        if arena.is_null() {
+            return None;
+        }
+
+        let first = arena.cast::&lt;BlockHeader&gt;();
+        let whole_arena = BlockHeader {
+            payload_bytes: ARENA_BYTES - HEADER_BYTES,
+            is_free: true,
+            next: ptr::null_mut(),
+        };
+
+        // SAFETY: `first` is non-null, aligned to 16 bytes by `alloc::alloc`, and points to
+        // uninitialized memory of size `ARENA_BYTES &gt;= HEADER_BYTES`. Writing the root header
+        // establishes the base invariant for the intrusive free-list.
+        unsafe { first.write(whole_arena) };
+
+        Some(FreeListAllocator { arena, layout, first })
+    }
+
+    /// Returns a payload of at least `requested_bytes`, or None when no block fits.
+    fn allocate(&amp;mut self, requested_bytes: usize) -&gt; Option&lt;*mut u8&gt; {
+        // A larger request can never fit, and rounding it up could overflow.
+        if requested_bytes &gt; ARENA_BYTES {
+            return None;
+        }
+
+        let payload_bytes = align_up(requested_bytes);
+        let block = self.find_first_fit(payload_bytes)?;
+
+        // SAFETY:
+        // 1. `block` is guaranteed by `find_first_fit` to be a valid, aligned `BlockHeader`
+        //    with `payload_bytes &lt;= block.payload_bytes`.
+        // 2. `split_if_large` preserves the 16-byte alignment of any newly created tail block.
+        // 3. Adding `HEADER_BYTES` yields the start of the usable user payload, which is
+        //    strictly aligned to 16 bytes because `sizeof(BlockHeader) == 24` padded to 32 bytes (or multiple of 16).
+        unsafe {
+            Self::split_if_large(block, payload_bytes);
+            (*block).is_free = false;
+
+            Some(block.cast::&lt;u8&gt;().add(HEADER_BYTES))
+        }
+    }
+
+    /// Marks the block free and merges it with free neighbors.
+    ///
+    /// # Safety
+    /// `payload` must be a pointer that `allocate` returned on this allocator, and
+    /// it must not have been released since.
+    unsafe fn release(&amp;mut self, payload: *mut u8) {
+        // SAFETY: Invariant Contract:
+        // Because `payload` was generated by `allocate()`, the user payload is located
+        // exactly `HEADER_BYTES` past its controlling `BlockHeader`. Subtracting `HEADER_BYTES`
+        // reconstructs the original header address. Setting `is_free = true` re-enters this
+        // block into the pool of recyclable memory.
+        unsafe {
+            let block = payload.sub(HEADER_BYTES).cast::&lt;BlockHeader&gt;();
+            (*block).is_free = true;
+        }
+
+        self.coalesce();
+    }
+
+    fn find_first_fit(&amp;self, payload_bytes: usize) -&gt; Option&lt;*mut BlockHeader&gt; {
+        let mut block = self.first;
+
+        while !block.is_null() {
+            // SAFETY: Invariant Induction:
+            // Every non-null pointer in the intrusive list originated from the initial root header
+            // or a validated split/coalesce operation within the arena bounds.
+            let header = unsafe { &amp;*block };
+
+            if header.is_free &amp;&amp; header.payload_bytes &gt;= payload_bytes {
+                return Some(block);
+            }
+
+            block = header.next;
+        }
+
+        None
+    }
+
+    /// Merges every pair of free blocks that are next to each other.
+    fn coalesce(&amp;mut self) {
+        let mut block = self.first;
+
+        // SAFETY: Invariant Proof:
+        // `block` and `following` are live, initialized headers. Adjacency is verified by
+        // address ordering: because the list is sorted by physical address, two free blocks
+        // are physically contiguous if `block + HEADER_BYTES + payload_bytes == following`.
+        // Merging absorbs `following` into `block` by adding `HEADER_BYTES + following.payload_bytes`,
+        // perfectly conserving arena capacity without memory leaks.
+        unsafe {
+            while !(*block).next.is_null() {
+                let following = (*block).next;
+
+                if (*block).is_free &amp;&amp; (*following).is_free {
+                    (*block).payload_bytes += HEADER_BYTES + (*following).payload_bytes;
+                    (*block).next = (*following).next;
+                    continue;
+                }
+
+                block = following;
+            }
+        }
+    }
+
+    fn print_blocks(&amp;self, title: &amp;str) {
+        println!("{title}");
+
+        let mut block = self.first;
+
+        while !block.is_null() {
+            // SAFETY: Read-only traversal across non-null intrusive block pointers within the arena.
+            let header = unsafe { &amp;*block };
+
+            let offset = block as usize - self.arena as usize;
+            let state = if header.is_free { "free" } else { "used" };
+
+            println!("  offset {offset:4}  payload {:4}  {state}", header.payload_bytes);
+
+            block = header.next;
+        }
+    }
+
+    /// Cuts the unused tail of `block` into a new free block, if the tail is large enough.
+    ///
+    /// # Safety
+    /// `block` must be a live header whose payload holds at least `payload_bytes`.
+    unsafe fn split_if_large(block: *mut BlockHeader, payload_bytes: usize) {
+        // SAFETY: Splitting Invariant Proof:
+        // `spare_bytes &gt;= MINIMUM_SPLIT_BYTES` guarantees the remainder can house a full
+        // `BlockHeader` plus at least 16 bytes of aligned payload. The address
+        // `tail = block + HEADER_BYTES + payload_bytes` is a multiple of 16, ensuring proper
+        // alignment for the new header and preventing degenerate runt blocks.
+        unsafe {
+            let spare_bytes = (*block).payload_bytes - payload_bytes;
+            if spare_bytes &lt; MINIMUM_SPLIT_BYTES {
+                return;
+            }
+
+            let tail = block
+                .cast::&lt;u8&gt;()
+                .add(HEADER_BYTES + payload_bytes)
+                .cast::&lt;BlockHeader&gt;();
+
+            tail.write(BlockHeader {
+                payload_bytes: spare_bytes - HEADER_BYTES,
+                is_free: true,
+                next: (*block).next,
+            });
+
+            (*block).payload_bytes = payload_bytes;
+            (*block).next = tail;
+        }
+    }
+}
+
+impl Drop for FreeListAllocator {
+    fn drop(&amp;mut self) {
+        // SAFETY: Releases the backing heap buffer to the global allocator using the exact base
+        // pointer and layout descriptor supplied during `alloc::alloc`.
+        unsafe { alloc::dealloc(self.arena, self.layout) };
+    }
+}
+
+fn main() {
+    let Some(mut heap) = FreeListAllocator::new() else {
+        eprintln!("the arena could not be allocated");
+        return;
+    };
+
+    println!("arena {ARENA_BYTES} bytes, header {HEADER_BYTES} bytes\n");
+
+    let requests = (heap.allocate(100), heap.allocate(200), heap.allocate(300));
+    let (Some(first), Some(second), Some(third)) = requests else {
+        eprintln!("the arena is too small for the three requests");
+        return;
+    };
+
+    heap.print_blocks("after allocate(100), allocate(200), allocate(300):");
+
+    // SAFETY: Invariant Contract:
+    // `second` is an active allocation pointer returned by `allocate(200)` and has not
+    // been previously released, ensuring no double-free corruption of intrusive headers.
+    unsafe { heap.release(second) };
+    heap.print_blocks("\nafter release(second):");
+
+    let Some(fourth) = heap.allocate(150) else {
+        eprintln!("no block fits 150 bytes");
+        return;
+    };
+
+    heap.print_blocks("\nafter allocate(150):");
+
+    let reused = if fourth == second { "yes" } else { "no" };
+    println!("fourth reuses the block of second: {reused}");
+
+    // SAFETY: Lifetime &amp; Ownership Proof:
+    // Pointers `first`, `fourth`, and `third` are active allocations each released exactly once.
+    // Notice that `second` is not released here: its physical block was split and reallocated
+    // under exclusive ownership to `fourth`. Releasing `fourth` recycles that memory correctly.
+    unsafe {
+        heap.release(first);
+        heap.release(fourth);
+        heap.release(third);
+    }
+
+    heap.print_blocks("\nafter releasing everything:");
+}</code></pre>
+<p><strong>Output 19-4.</strong></p>
+<pre><code class="language-text">arena 1024 bytes, header 32 bytes
+
+after allocate(100), allocate(200), allocate(300):
+  offset    0  payload  112  used
+  offset  144  payload  208  used
+  offset  384  payload  304  used
+  offset  720  payload  272  free
+
+after release(second):
+  offset    0  payload  112  used
+  offset  144  payload  208  free
+  offset  384  payload  304  used
+  offset  720  payload  272  free
+
+after allocate(150):
+  offset    0  payload  112  used
+  offset  144  payload  160  used
+  offset  336  payload   16  free
+  offset  384  payload  304  used
+  offset  720  payload  272  free
+fourth reuses the block of second: yes
+
+after releasing everything:
+  offset    0  payload  992  free
+</code></pre>
+<p>The verification trace illustrates the deterministic state transitions within a 1,024-byte arena with a 32-byte header:</p>
+<ol>
+<li>An allocation request for 100 bytes is aligned up to 112 bytes. With the 32-byte header, the initial block spans offsets 0 to 143, with its payload residing at offsets 32–143. The remaining 880 bytes form a free block at offset 144.</li>
+<li>Subsequent requests for 200 bytes (aligned to 208 bytes) and 300 bytes (aligned to 304 bytes) carve additional blocks from the arena, leaving the final free block at offset 720 with a payload of <code>1,024 - 720 - 32 = 272</code> bytes.</li>
+<li>When the second allocation (208 bytes) is released, it creates an isolated free block. A subsequent allocation of 150 bytes (aligned to 160 bytes) fits within this 208-byte space. Because <code>208 - 160 = 48</code> bytes (matching the exact 32-byte header + 16-byte minimum payload threshold), the allocator successfully splits the block.</li>
+<li>When all blocks are released, coalescing recursively merges all adjacent segments back into a single unified free block with a payload of <code>1,024 - 32 = 992</code> bytes, completely eliminating external fragmentation.</li>
+</ol>
+<h3 id="1935-systems-analysis-and-production-considerations"><a class="header" href="#1935-systems-analysis-and-production-considerations">19.3.5 Systems Analysis and Production Considerations</a></h3>
+<ul>
+<li><strong>Boundary Tags and Asymptotic Complexity:</strong> In this reference design, traversal and linear coalescing operate in <code>O(N)</code> time relative to the number of blocks. Production allocators (such as Knuth’s boundary-tag design) store duplicate size and status metadata at both the head and tail of each block, enabling bidirectional neighbor inspection and <code>O(1)</code> constant-time coalescing.</li>
+<li><strong>Segregated Size Classes and Contention:</strong> General-purpose enterprise allocators (<code>jemalloc</code>, <code>tcmalloc</code>) bypass linear list searching by maintaining segregated free lists for discrete size classes (e.g., 16 B, 32 B, 64 B, up to multi-page spans). To eliminate multi-threaded lock contention, they assign independent thread-local arenas, falling back to global synchronization only when thread caches require replenishment.</li>
+<li><strong>Buffer Overrun Vulnerabilities:</strong> Because metadata is embedded in-band directly adjacent to user data, an out-of-bounds write corrupts the header of the successor block. This corrupts allocator state, precipitating segmentation faults or exploitable memory vulnerabilities during subsequent, unrelated allocation cycles.</li>
+</ul>
+<div class="callout keyidea">
+<span class="label">Key idea</span>
+<p>The free-list allocator bridges coarse virtual memory pages and fine-grained application objects. Enforcing 16-byte alignment via <code>(n + 15) &amp; ~15</code> guarantees SIMD safety; splitting suppresses internal fragmentation, and coalescing eliminates external fragmentation.</p>
+</div>
+
+<div class="callout caution">
+<span class="label">Watch out</span>
+<p>In-band metadata corruption: because block headers reside immediately before payloads, an off-by-one or buffer overflow corrupts the next block’s size and free flag. The program crashes not during the errant write, but on a subsequent, unrelated call to <code>allocate()</code> or <code>release()</code>.</p>
+</div>
+
+<h2 id="194-the-lock-free-single-producer-single-consumer-ring-buffer"><a class="header" href="#194-the-lock-free-single-producer-single-consumer-ring-buffer">19.4 The Lock-Free Single-Producer Single-Consumer Ring Buffer</a></h2>
+<p>In ultra-low-latency systems—such as high-frequency trading engines, audio processing graphs, and real-time network drivers—mutex-based queues introduce unacceptable jitter. Kernel-managed thread preemption, lock acquisition overhead, and priority inversions degrade deterministic throughput. A lock-free Single-Producer Single-Consumer (SPSC) ring buffer eliminates locks entirely, enabling safe, asynchronous communication across a dedicated producer and consumer thread using hardware-level memory ordering.</p>
+<h3 id="1941-architectural-model-and-single-writer-principle"><a class="header" href="#1941-architectural-model-and-single-writer-principle">19.4.1 Architectural Model and Single-Writer Principle</a></h3>
+<p>The ring buffer manages a fixed-size contiguous array of capacity C, accessed via two monotonically increasing 64-bit integer indices:</p>
+<ul>
+<li><strong><code>tail</code>:</strong> The write pointer, representing the cumulative count of inserted elements. Written exclusively by the producer thread.</li>
+<li><strong><code>head</code>:</strong> The read pointer, representing the cumulative count of extracted elements. Written exclusively by the consumer thread.</li>
+</ul>
+<figure>
+<img src="figures/ch19_spsc_ring.svg" alt="Lock-free SPSC ring buffer: single-writer indices and cache line isolation." />
+</figure>
+<p>The core principle establishing lock-free safety is the <strong>single-writer discipline</strong>: each mutable variable is modified by exactly one thread. The producer updates only <code>tail</code>, and the consumer updates only <code>head</code>. While each thread reads the other’s index to detect boundary conditions, stale reads never compromise memory safety:</p>
+<ul>
+<li>If the producer reads a stale (lagging) value of <code>head</code>, it perceives the buffer to have fewer free slots than actually exist. In the worst case, it observes a “false full” condition and backs off, retrying on the next iteration.</li>
+<li>If the consumer reads a stale value of <code>tail</code>, it perceives fewer available elements, observes a “false empty” condition, and retries.</li>
+</ul>
+<p>Under no interleaving can a stale read permit the producer to overwrite unread data, nor can it cause the consumer to read an uninitialized or previously consumed slot.</p>
+<h3 id="1942-state-invariants-and-ring-wraparound"><a class="header" href="#1942-state-invariants-and-ring-wraparound">19.4.2 State Invariants and Ring Wraparound</a></h3>
+<p>The indices maintain the fundamental queue invariant:</p>
+<pre><code class="language-text">0 ≤ tail - head ≤ capacity
+</code></pre>
+<p>The queue is empty when <code>head == tail</code>, and full when <code>tail - head == capacity</code>.</p>
+<p>Because <code>head</code> and <code>tail</code> are 64-bit unsigned integers incremented monotonically, they do not suffer from wraparound distortion over realistic execution horizons. The physical array slot corresponding to an index is computed via modular arithmetic:</p>
+<pre><code class="language-text">slot_index = index % capacity
+</code></pre>
+<p>When capacity is constrained to a power of two, the expensive modulo division is replaced by a single-cycle bitwise mask: <code>index &amp; (capacity - 1)</code>.</p>
+<h3 id="1943-memory-ordering-and-acquire-release-synchronization"><a class="header" href="#1943-memory-ordering-and-acquire-release-synchronization">19.4.3 Memory Ordering and Acquire-Release Synchronization</a></h3>
+<p>Ensuring data visibility across CPU cores requires strict memory ordering guarantees. Without explicit barriers, modern out-of-order processors and optimizing compilers can reorder stores and loads, exposing uninitialized data to the consumer.</p>
+<p>The SPSC ring buffer enforces an <strong>acquire-release synchronization pair</strong>:</p>
+<ol>
+<li>
+<p><strong>Producer Write:</strong> The producer writes the data payload into <code>slots[tail % capacity]</code> using standard memory operations. It then commits the updated index using a <strong>release store</strong>:</p>
+<pre><code class="language-text">tail.store(tail + 1, std::memory_order_release);
+</code></pre>
+<p>The release barrier guarantees that all preceding memory writes (the data payload) are globally visible to other cores before the updated <code>tail</code> becomes visible.</p>
+</li>
+<li>
+<p><strong>Consumer Read:</strong> The consumer inspects the write pointer using an <strong>acquire load</strong>:</p>
+<pre><code class="language-text">tail.load(std::memory_order_acquire);
+</code></pre>
+<p>The acquire barrier guarantees that subsequent reads (extracting the slot data) cannot be reordered ahead of the load. This establishes a formal <em>happens-before</em> relationship: once the consumer observes the incremented <code>tail</code>, it is guaranteed to observe the complete, valid payload written by the producer.</p>
+</li>
+</ol>
+<p>The symmetric acquire-release pair governs <code>head</code> updates, ensuring that the consumer finishes reading a slot before the producer observes the updated <code>head</code> and overwrites that memory.</p>
+<h3 id="1944-reference-implementation"><a class="header" href="#1944-reference-implementation">19.4.4 Reference Implementation</a></h3>
+<p><strong>Listing 19-5. A lock-free SPSC ring buffer (C++20).</strong></p>
+<pre><code class="language-cpp">// ch19/spsc_ring.cpp: a lock-free ring buffer for one producer and one consumer.
+#include &lt;array&gt;
+#include &lt;atomic&gt;
+#include &lt;cstdint&gt;
+#include &lt;iostream&gt;
+#include &lt;optional&gt;
+#include &lt;thread&gt;
+
+/// A ring buffer that one thread writes and one other thread reads, without locks.
+class SpscRing {
+public:
+    /// Stores a value. Returns false when the ring is full.
+    bool try_push(uint64_t value) {
+        size_t tail = tail_.load(std::memory_order_relaxed);
+        size_t head = head_.load(std::memory_order_acquire);
+
+        if (tail - head == kCapacity) return false;
+
+        slots_[tail % kCapacity] = value;
+        tail_.store(tail + 1, std::memory_order_release);
+        return true;
+    }
+
+    /// Takes the oldest value. Returns nothing when the ring is empty.
+    std::optional&lt;uint64_t&gt; try_pop() {
+        size_t head = head_.load(std::memory_order_relaxed);
+        size_t tail = tail_.load(std::memory_order_acquire);
+
+        if (head == tail) return std::nullopt;
+
+        uint64_t value = slots_[head % kCapacity];
+        head_.store(head + 1, std::memory_order_release);
+        return value;
+    }
+
+private:
+    static constexpr size_t kCapacity = 1024;
+
+    std::array&lt;uint64_t, kCapacity&gt; slots_{};
+    alignas(64) std::atomic&lt;size_t&gt; head_{0};   // written only by the consumer
+    alignas(64) std::atomic&lt;size_t&gt; tail_{0};   // written only by the producer
+};
+
+int main() {
+    constexpr uint64_t kItems = 1'000'000;
+    SpscRing ring;
+    uint64_t consumed_sum = 0;
+
+    std::thread producer([&amp;ring] {
+        for (uint64_t value = 1; value &lt;= kItems; ++value) {
+            while (!ring.try_push(value)) std::this_thread::yield();
+        }
+    });
+
+    std::thread consumer([&amp;ring, &amp;consumed_sum] {
+        uint64_t taken = 0;
+
+        while (taken &lt; kItems) {
+            std::optional&lt;uint64_t&gt; value = ring.try_pop();
+
+            if (!value) {
+                std::this_thread::yield();
+                continue;
+            }
+
+            consumed_sum += *value;
+            ++taken;
+        }
+    });
+
+    producer.join();
+    consumer.join();
+
+    uint64_t expected = kItems * (kItems + 1) / 2;
+
+    std::cout &lt;&lt; "expected sum " &lt;&lt; expected &lt;&lt; "\n"
+              &lt;&lt; "consumed sum " &lt;&lt; consumed_sum &lt;&lt; "\n"
+              &lt;&lt; "match        " &lt;&lt; (expected == consumed_sum ? "yes" : "NO") &lt;&lt; "\n";
+}
+</code></pre>
+<p><strong>Output 19-5.</strong></p>
+<pre><code class="language-text">expected sum 500000500000
+consumed sum 500000500000
+match        yes
+</code></pre>
+<p><strong>Listing 19-6. The same ring buffer in Rust, with atomic slots and no <code>unsafe</code>.</strong></p>
+<pre class="playground"><code class="language-rust">// ch19/spsc_ring.rs: a lock-free ring buffer for one producer and one consumer.
+use std::sync::Arc;
+use std::sync::atomic::{AtomicU64, AtomicUsize, Ordering};
+use std::thread;
+
+const CAPACITY: usize = 1024;
+
+/// A ring buffer that one thread writes and one other thread reads, without locks.
+/// Head and tail indices are isolated on separate 64-byte cache lines to eliminate
+/// false sharing between producer and consumer CPU cores.
+#[repr(C, align(64))]
+struct SpscRing {
+    head: AtomicUsize, // written only by the consumer
+    _pad: [u8; 56],    // 8 bytes head + 56 bytes padding = 64-byte cache line
+
+    tail: AtomicUsize, // written only by the producer
+    slots: Vec&lt;AtomicU64&gt;,
+}
+
+impl SpscRing {
+    fn new() -&gt; Self {
+        SpscRing {
+            head: AtomicUsize::new(0),
+            _pad: [0; 56],
+            tail: AtomicUsize::new(0),
+            slots: (0..CAPACITY)
+                .map(|_| AtomicU64::new(0))
+                .collect(),
+        }
+    }
+
+    /// Stores a value. Returns false when the ring is full.
+    fn try_push(&amp;self, value: u64) -&gt; bool {
+        // Memory Ordering Proof (Producer):
+        // 1. `self.tail` is owned and mutated exclusively by the producer thread; reading our own
+        //    latest write requires only `Ordering::Relaxed`.
+        // 2. `self.head` is mutated by the consumer thread. Loading `head` with `Ordering::Acquire`
+        //    synchronizes-with the consumer's `Ordering::Release` store in `try_pop()`, establishing
+        //    a happens-before edge that proves the consumer has finished reading `slots[tail % CAPACITY]`
+        //    before we overwrite it.
+        // 3. Storing `tail + 1` with `Ordering::Release` prevents the compiler and out-of-order CPU
+        //    store buffer from reordering the payload store (`slots[tail % CAPACITY]`) after the index
+        //    publication, guaranteeing the consumer never observes an incremented `tail` with stale slot data.
+        let tail = self.tail.load(Ordering::Relaxed);
+        let head = self.head.load(Ordering::Acquire);
+
+        if tail - head == CAPACITY {
+            return false;
+        }
+
+        self.slots[tail % CAPACITY].store(value, Ordering::Relaxed);
+        self.tail.store(tail + 1, Ordering::Release);
+        true
+    }
+
+    /// Takes the oldest value. Returns None when the ring is empty.
+    fn try_pop(&amp;self) -&gt; Option&lt;u64&gt; {
+        // Memory Ordering Proof (Consumer):
+        // 1. `self.head` is mutated exclusively by this consumer thread (`Ordering::Relaxed` load).
+        // 2. Loading `self.tail` with `Ordering::Acquire` pairs with the producer's `Ordering::Release`
+        //    store in `try_push()`, guaranteeing that the producer's payload write to `slots[head % CAPACITY]`
+        //    is globally visible in L1/L2 cache before we read the slot.
+        // 3. Publishing `head + 1` with `Ordering::Release` guarantees our read of `slots[head % CAPACITY]`
+        //    completes before the producer can observe the freed capacity and reuse the slot.
+        let head = self.head.load(Ordering::Relaxed);
+        let tail = self.tail.load(Ordering::Acquire);
+
+        if head == tail {
+            return None;
+        }
+
+        let value = self.slots[head % CAPACITY].load(Ordering::Relaxed);
+        self.head.store(head + 1, Ordering::Release);
+        Some(value)
+    }
+}
+
+fn main() -&gt; Result&lt;(), &amp;'static str&gt; {
+    const ITEMS: u64 = 1_000_000;
+    let ring = Arc::new(SpscRing::new());
+
+    let producer_ring = Arc::clone(&amp;ring);
+    let producer = thread::spawn(move || {
+        for value in 1..=ITEMS {
+            while !producer_ring.try_push(value) {
+                thread::yield_now();
+            }
+        }
+    });
+
+    let consumer_ring = Arc::clone(&amp;ring);
+    let consumer = thread::spawn(move || {
+        let mut consumed_sum = 0;
+        let mut taken = 0;
+
+        while taken &lt; ITEMS {
+            let Some(value) = consumer_ring.try_pop() else {
+                thread::yield_now();
+                continue;
+            };
+
+            consumed_sum += value;
+            taken += 1;
+        }
+
+        consumed_sum
+    });
+
+    producer
+        .join()
+        .map_err(|_| "the producer thread panicked")?;
+
+    let consumed_sum = consumer
+        .join()
+        .map_err(|_| "the consumer thread panicked")?;
+
+    let expected = ITEMS * (ITEMS + 1) / 2;
+    let verdict = if expected == consumed_sum { "yes" } else { "NO" };
+
+    println!("expected sum {expected}");
+    println!("consumed sum {consumed_sum}");
+    println!("match        {verdict}");
+
+    Ok(())
+}</code></pre>
+<p><strong>Output 19-6.</strong></p>
+<pre><code class="language-text">expected sum 500000500000
+consumed sum 500000500000
+match        yes
+</code></pre>
+<p>In the Rust implementation, lock-free safety is achieved entirely in safe code by wrapping slot values in <code>AtomicU64</code> types, demonstrating thread-safe interior mutability without invoking <code>unsafe</code> blocks.</p>
+<h3 id="1945-microarchitectural-optimization-and-false-sharing"><a class="header" href="#1945-microarchitectural-optimization-and-false-sharing">19.4.5 Microarchitectural Optimization and False Sharing</a></h3>
+<ul>
+<li><strong>Mitigating False Sharing:</strong> Because the producer and consumer execute on different physical CPU cores, independent updates to <code>head</code> and <code>tail</code> can introduce severe cache contention. If <code>head</code> and <code>tail</code> reside within the same 64-byte cache line, a write to <code>tail</code> invalidates the entire cache line in the consumer core’s L1/L2 cache, triggering continuous cache coherency bus traffic (“cache ping-ponging”). This hazard is mitigated by aligning each atomic variable to the hardware cache line boundary using <code>alignas(64)</code> in C++ or <code>#[repr(align(64))]</code> in Rust.</li>
+<li><strong>Multi-Producer Limitations:</strong> The SPSC architecture relies fundamentally on the single-writer invariant. If multiple producers attempt to push concurrently, reading and updating <code>tail</code> without synchronization causes race conditions where multiple producers overwrite the same slot. Extending this design to Multiple-Producer Multiple-Consumer (MPMC) topologies requires atomic Compare-And-Swap (CAS) loops or ticketed reservation counters.</li>
+</ul>
+<div class="callout keyidea">
+<span class="label">Key idea</span>
+<p>In a lock-free SPSC queue, the single-writer discipline ensures each index is mutated by exactly one thread. Acquire-release memory ordering guarantees that payload writes are globally visible across cores before the updated index is published.</p>
+</div>
+
+<div class="callout caution">
+<span class="label">Watch out</span>
+<p>Cache line false sharing on <code>head</code> and <code>tail</code>: because producer and consumer execute on different cores, placing both atomic indices in the same 64-byte cache line causes the hardware coherency protocol (MESI) to bounce the line between cores on every push and pop. Always separate cross-core indices with <code>alignas(64)</code>.</p>
+</div>
+
+<h2 id="195-byte-routines-memmove-strlen-and-atoi"><a class="header" href="#195-byte-routines-memmove-strlen-and-atoi">19.5 Byte Routines: <code>memmove</code>, <code>strlen</code> and <code>atoi</code></a></h2>
+<p>Low-level byte manipulation routines form the foundation of runtime environments, operating systems, and network protocol parsers. Implementing these routines correctly requires reasoning directly about contiguous byte streams, pointer arithmetic, buffer overlap, and numerical conversion limits.</p>
+<h3 id="1951-the-memory-overlap-hazard-and-memmove"><a class="header" href="#1951-the-memory-overlap-hazard-and-memmove">19.5.1 The Memory Overlap Hazard and <code>memmove</code></a></h3>
+<p>The POSIX specification establishes a critical distinction between <code>memcpy</code> and <code>memmove</code>:</p>
+<ul>
+<li><code>memcpy</code> assumes the source and destination memory buffers are strictly non-overlapping. Passing overlapping regions to <code>memcpy</code> invokes undefined behavior.</li>
+<li><code>memmove</code> guarantees correct copying regardless of whether the source and destination memory regions overlap.</li>
+</ul>
+<p>The necessity for directional copying arises when the destination buffer begins within the source buffer at a higher memory address (<code>dst &gt; src</code> and <code>dst &lt; src + count</code>). If a naive forward copy (index 0 to <code>count - 1</code>) is executed, writing to early destination offsets overwrites later source bytes before they have been read, destroying the source data.</p>
+<p>For example, shifting the string <code>"abcdef"</code> two bytes to the right (source offset 0, destination offset 2, length 4) via forward copying writes <code>'a'</code> to offset 2 and <code>'b'</code> to offset 3. When the copy reaches offset 2, it reads the newly written <code>'a'</code>, resulting in corrupted repetition (<code>"ababad"</code>).</p>
+<p>To guarantee correctness under all geometries, <code>memmove</code> evaluates pointer addresses:</p>
+<ul>
+<li><strong><code>dst &lt;= src</code>:</strong> The copy proceeds <strong>forward</strong>, from the lowest byte to the highest byte.</li>
+<li><strong><code>dst &gt; src</code>:</strong> The copy proceeds <strong>backward</strong>, from the highest byte (<code>count - 1</code>) down to the lowest byte (<code>0</code>).</li>
+</ul>
+<h3 id="1952-string-bounds-and-nul-termination-in-strlen"><a class="header" href="#1952-string-bounds-and-nul-termination-in-strlen">19.5.2 String Bounds and NUL-Termination in <code>strlen</code></a></h3>
+<p>The standard C string convention relies on sentinel-based termination: a string is a contiguous array of non-zero characters terminated by a null byte (<code>'\0'</code>). The <code>strlen</code> function iterates through memory, incrementing a counter until encountering the first zero byte.</p>
+<p>The primary hazard of <code>strlen</code> is the risk of an unbounded read: if a buffer lacks a null terminator, the function continues reading beyond allocated memory bounds until triggering a segmentation fault (<code>SIGSEGV</code>) or leaking adjacent private memory. In safe systems languages like Rust, strings and byte buffers are represented as explicit fat pointers (pointer plus length), precluding unbounded traversals.</p>
+<h3 id="1953-robust-parsing-and-overflow-prevention-in-atoi"><a class="header" href="#1953-robust-parsing-and-overflow-prevention-in-atoi">19.5.3 Robust Parsing and Overflow Prevention in <code>atoi</code></a></h3>
+<p>Converting an ASCII character sequence to a signed 32-bit integer requires managing four distinct phases:</p>
+<ol>
+<li><strong>Whitespace Truncation:</strong> Skipping leading whitespace characters (spaces, tabs).</li>
+<li><strong>Sign Determination:</strong> Parsing an optional leading <code>'+'</code> or <code>'-'</code> character.</li>
+<li><strong>Digit Accumulation:</strong> Iterating over sequential numeric characters (<code>'0'</code> through <code>'9'</code>) and accumulating the value using Horner’s method: <code>value = value * 10 + (char - '0')</code>.</li>
+<li><strong>Boundary Enforcement:</strong> Detecting integer overflow. A 32-bit signed integer spans the asymmetric range <code>[-2,147,483,648, 2,147,483,647]</code>. In C++, signed integer overflow invokes undefined behavior; therefore, accumulating directly in an <code>int32_t</code> is hazardous. The robust implementation accumulates intermediate values in a 64-bit integer (<code>int64_t</code>), applies the parsed sign, and clamps or reports an error if the magnitude exceeds the 32-bit bounds.</li>
+</ol>
+<h3 id="1954-reference-implementation"><a class="header" href="#1954-reference-implementation">19.5.4 Reference Implementation</a></h3>
+<p><strong>Listing 19-7. <code>memmove</code>, <code>strlen</code> and <code>atoi</code> (C++20).</strong></p>
+<pre><code class="language-cpp">// ch19/byte_routines.cpp: memmove, strlen, and atoi written by hand.
+#include &lt;climits&gt;
+#include &lt;cstddef&gt;
+#include &lt;cstdio&gt;
+#include &lt;cstring&gt;
+#include &lt;optional&gt;
+
+/// Copies `count` bytes from `source` to `destination`. The two ranges may overlap.
+void* move_bytes(void* destination, const void* source, size_t count) {
+    auto* to = static_cast&lt;unsigned char*&gt;(destination);
+    const auto* from = static_cast&lt;const unsigned char*&gt;(source);
+
+    if (to &lt; from) {
+        for (size_t index = 0; index &lt; count; ++index) to[index] = from[index];
+        return destination;
+    }
+
+    for (size_t index = count; index &gt; 0; --index) to[index - 1] = from[index - 1];
+    return destination;
+}
+
+/// Counts the characters before the terminating NUL.
+size_t string_length(const char* text) {
+    const char* cursor = text;
+
+    while (*cursor != '\0') ++cursor;
+
+    return static_cast&lt;size_t&gt;(cursor - text);
+}
+
+/// Parses an optional sign and decimal digits. Returns std::nullopt on overflow or invalid format.
+std::optional&lt;int&gt; parse_int(const char* text) {
+    if (text == nullptr || *text == '\0') {
+        return std::nullopt;
+    }
+
+    const char* cursor = text;
+    bool negative = (*cursor == '-');
+
+    if (*cursor == '-' || *cursor == '+') {
+        ++cursor;
+    }
+
+    if (*cursor &lt; '0' || *cursor &gt; '9') {
+        return std::nullopt;
+    }
+
+    long long value = 0;
+
+    for (; *cursor &gt;= '0' &amp;&amp; *cursor &lt;= '9'; ++cursor) {
+        value = value * 10 + (*cursor - '0');
+
+        if (value &gt; static_cast&lt;long long&gt;(INT_MAX) + 1) {
+            return std::nullopt;
+        }
+    }
+
+    if (*cursor != '\0') {
+        return std::nullopt;   // non-digit characters trailing the number
+    }
+
+    if (negative) {
+        value = -value;
+    }
+
+    if (value &gt; INT_MAX || value &lt; INT_MIN) {
+        return std::nullopt;
+    }
+
+    return static_cast&lt;int&gt;(value);
+}
+
+int main() {
+    char forward[] = "abcdefgh";
+    move_bytes(forward, forward + 2, 6);          // destination below source
+    printf("shift left : %s\n", forward);
+
+    char backward[] = "abcdefgh";
+    move_bytes(backward + 2, backward, 6);        // destination above source
+    printf("shift right: %s\n", backward);
+
+    printf("length     : %zu\n", string_length("operating"));
+
+    std::optional&lt;int&gt; parsed_min = parse_int("-2147483648");
+    if (parsed_min) {
+        printf("parse min  : ok %d\n", *parsed_min);
+    } else {
+        printf("parse min  : error\n");
+    }
+
+    std::optional&lt;int&gt; parsed_over = parse_int("2147483648");
+    if (parsed_over) {
+        printf("parse over : ok %d\n", *parsed_over);
+    } else {
+        printf("parse over : error\n");
+    }
+}
+</code></pre>
+<p><strong>Output 19-7.</strong></p>
+<pre><code class="language-text">shift left : cdefghgh
+shift right: ababcdef
+length     : 9
+parse min  : ok -2147483648
+parse over : error
+</code></pre>
+<p><strong>Listing 19-8. The same routines in Rust.</strong></p>
+<pre class="playground"><code class="language-rust">// ch19/byte_routines.rs: memmove, strlen, and atoi written by hand.
+
+/// Copies `count` bytes inside `buffer` from `source` to `destination`.
+/// The two ranges may overlap. Returns false if either range leaves the buffer.
+fn move_bytes(
+    buffer: &amp;mut [u8],
+    destination: usize,
+    source: usize,
+    count: usize,
+) -&gt; bool {
+    let length = buffer.len();
+
+    // The subtraction form cannot overflow, unlike `source + count &lt;= length`.
+    let source_fits = source &lt;= length &amp;&amp; count &lt;= length - source;
+    let destination_fits = destination &lt;= length &amp;&amp; count &lt;= length - destination;
+
+    if !source_fits || !destination_fits {
+        return false;
+    }
+
+    if destination &lt; source {
+        for index in 0..count {
+            buffer[destination + index] = buffer[source + index];
+        }
+
+        return true;
+    }
+
+    for index in (0..count).rev() {
+        buffer[destination + index] = buffer[source + index];
+    }
+
+    true
+}
+
+/// Counts the bytes before the first NUL, as C's strlen does.
+fn string_length(bytes: &amp;[u8]) -&gt; usize {
+    bytes
+        .iter()
+        .take_while(|&amp;&amp;byte| byte != 0)
+        .count()
+}
+
+/// Parses an optional sign and decimal digits. Returns None on overflow or no digits.
+fn parse_int(text: &amp;str) -&gt; Option&lt;i32&gt; {
+    let (negative, digits) = match text.as_bytes().first() {
+        Some(b'-') =&gt; (true, &amp;text[1..]),
+        Some(b'+') =&gt; (false, &amp;text[1..]),
+        _ =&gt; (false, text),
+    };
+
+    if digits.is_empty() {
+        return None;
+    }
+
+    let mut value: i64 = 0;
+
+    for byte in digits.bytes() {
+        let digit = (byte as char).to_digit(10)?;
+
+        value = value
+            .checked_mul(10)?
+            .checked_add(i64::from(digit))?;
+    }
+
+    let signed = if negative { -value } else { value };
+
+    i32::try_from(signed).ok()
+}
+
+fn main() {
+    let mut forward = *b"abcdefgh";
+    move_bytes(&amp;mut forward, 0, 2, 6); // destination below source
+    println!("shift left : {}", String::from_utf8_lossy(&amp;forward));
+
+    let mut backward = *b"abcdefgh";
+    move_bytes(&amp;mut backward, 2, 0, 6); // destination above source
+    println!("shift right: {}", String::from_utf8_lossy(&amp;backward));
+
+    println!("length     : {}", string_length(b"operating\0"));
+    println!("parse min  : {:?}", parse_int("-2147483648"));
+    println!("parse over : {:?}", parse_int("2147483648"));
+}</code></pre>
+<p><strong>Output 19-8.</strong></p>
+<pre><code class="language-text">shift left : cdefghgh
+shift right: ababcdef
+length     : 9
+parse min  : Some(-2147483648)
+parse over : None
+</code></pre>
+<h3 id="1955-systems-optimization-and-vectorization"><a class="header" href="#1955-systems-optimization-and-vectorization">19.5.5 Systems Optimization and Vectorization</a></h3>
+<ul>
+<li><strong>Vectorized Word Processing (SWAR and SIMD):</strong> Naive implementations process one byte per iteration. Production standard libraries (<code>glibc</code>, <code>musl</code>) achieve an order-of-magnitude higher throughput using SIMD vector instructions (AVX-512, ARM NEON) or SIMD Within A Register (SWAR) bit-tricks. For example, <code>strlen</code> tests 64 bytes simultaneously using vector mask instructions (<code>_mm512_cmpeq_epi8_mask</code>), identifying null bytes in a single processor cycle.</li>
+<li><strong>Relational Pointer Comparisons:</strong> The ISO C++ standard specifies that relational comparisons (<code>&lt;</code>, <code>&gt;</code>) between pointers are only well-defined when both pointers refer to elements of the same complete array object. For arbitrary pointers, <code>std::less</code> provides a total hardware-level address ordering. In systems programming where execution occurs on flat linear address spaces, direct relational comparisons correspond directly to unsigned integer address evaluations.</li>
+</ul>
+<div class="callout keyidea">
+<span class="label">Key idea</span>
+<p>Directional copying in <code>memmove</code> eliminates memory overlap corruption: copy forward when <code>dst &lt;= src</code>, and backward when <code>dst &gt; src</code>.</p>
+</div>
+
+<div class="callout caution">
+<span class="label">Watch out</span>
+<p>Signed integer overflow in <code>atoi</code>: in C and C++, signed 32-bit overflow invokes undefined behavior. Accumulate intermediate values in a 64-bit integer (<code>int64_t</code>) and validate against <code>INT_MIN</code> and <code>INT_MAX</code> before downcasting.</p>
+</div>
+
+<h2 id="196-the-lru-cache"><a class="header" href="#196-the-lru-cache">19.6 The LRU Cache</a></h2>
+<p>A Least Recently Used (LRU) cache is a foundational eviction mechanism used across operating system page replacement algorithms, database buffer pools, and web storage tiers. When the cache reaches its maximum capacity, subsequent insertions must evict the element that has remained unaccessed for the longest duration.</p>
+<h3 id="1961-the-algorithmic-duality"><a class="header" href="#1961-the-algorithmic-duality">19.6.1 The Algorithmic Duality</a></h3>
+<p>The central challenge of an LRU cache is achieving strict O(1) time complexity for both data retrieval (<code>get</code>) and insertion/eviction (<code>put</code>). Neither primitive data structure satisfies both constraints independently:</p>
+<ul>
+<li><strong>Hash Table:</strong> Provides expected O(1) key lookup and insertion, but maintains no sequential record of access history. Evicting the oldest key requires an O(N) linear scan of all entries.</li>
+<li><strong>Doubly Linked List:</strong> Preserves access history by maintaining elements in temporal order—most recently accessed at the head, least recently accessed at the tail. Splicing a known node to the head or removing the tail executes in O(1) time, but locating a specific key requires an O(N) linear traversal.</li>
+</ul>
+<figure>
+<img src="figures/ch19_lru_cache.svg" alt="LRU cache: hash table indexing into a doubly linked recency chain." />
+</figure>
+<p>The LRU cache resolves this tension through structural composition: a hash map whose values are direct pointers (or iterators) referencing nodes within a doubly linked list. The linked list stores the actual key-value pairs, while the hash map provides instantaneous O(1) index access into the list.</p>
+<h3 id="1962-state-invariants-and-access-dynamics"><a class="header" href="#1962-state-invariants-and-access-dynamics">19.6.2 State Invariants and Access Dynamics</a></h3>
+<p>The cache maintains the following structural invariants:</p>
+<ul>
+<li><strong>Set Equivalence:</strong> The set of keys present in the hash map is strictly identical to the set of keys contained within the doubly linked list:
+<pre><code class="language-text">Keys(HashMap) ≡ Keys(LinkedList)
+</code></pre>
+</li>
+<li><strong>Capacity Bound:</strong> The total count of elements never exceeds <code>capacity</code>:
+<pre><code class="language-text">0 ≤ |Keys| ≤ capacity
+</code></pre>
+</li>
+<li><strong>Temporal Ordering:</strong> Nodes are sequenced from head to tail in descending order of recency. The most recently used (MRU) node resides at the front; the least recently used (LRU) node resides at the back.</li>
+</ul>
+<p>Every operation preserves this topology:</p>
+<ul>
+<li><strong><code>get(key)</code>:</strong> Looks up <code>key</code> in the hash map. If absent, it returns a cache miss. If present, it retrieves the node pointer, splices the node to the head of the list in O(1) time, and returns the stored value.</li>
+<li><strong><code>put(key, value)</code>:</strong> If the key already exists, its value is updated and the node is spliced to the head. If the key is new and the cache is saturated (<code>|Keys| == capacity</code>), the tail node is extracted, its key is purged from the hash map, and the node is re-purposed or deallocated. The new key-value pair is inserted at the head and registered in the hash map.</li>
+</ul>
+<h3 id="1963-reference-implementation"><a class="header" href="#1963-reference-implementation">19.6.3 Reference Implementation</a></h3>
+<p><strong>Listing 19-9. An LRU cache built from a list and a hash map (C++20).</strong></p>
+<pre><code class="language-cpp">// ch19/lru_cache.cpp: a least-recently-used cache with O(1) get and put.
+#include &lt;iostream&gt;
+#include &lt;list&gt;
+#include &lt;optional&gt;
+#include &lt;unordered_map&gt;
+#include &lt;utility&gt;
+
+/// Keeps at most `capacity` entries and evicts the one used longest ago.
+class LruCache {
+public:
+    explicit LruCache(size_t capacity) : capacity_(capacity) {}
+
+    /// Returns the value for `key` and marks it as most recently used.
+    std::optional&lt;int&gt; get(int key) {
+        auto found = index_.find(key);
+        if (found == index_.end()) return std::nullopt;
+
+        entries_.splice(entries_.begin(), entries_, found-&gt;second);
+        return found-&gt;second-&gt;second;
+    }
+
+    /// Inserts or updates `key`, evicting the oldest entry when the cache is full.
+    void put(int key, int value) {
+        auto found = index_.find(key);
+
+        if (found != index_.end()) {
+            found-&gt;second-&gt;second = value;
+            entries_.splice(entries_.begin(), entries_, found-&gt;second);
+            return;
+        }
+
+        if (capacity_ == 0) return;   // a cache with no room stores nothing
+
+        if (entries_.size() == capacity_) evict_oldest();
+
+        entries_.emplace_front(key, value);
+        index_[key] = entries_.begin();
+    }
+
+private:
+    void evict_oldest() {
+        index_.erase(entries_.back().first);
+        entries_.pop_back();
+    }
+
+    size_t capacity_;
+    std::list&lt;std::pair&lt;int, int&gt;&gt; entries_;   // front = most recently used
+    std::unordered_map&lt;int, std::list&lt;std::pair&lt;int, int&gt;&gt;::iterator&gt; index_;
+};
+
+void show(const char* label, std::optional&lt;int&gt; value) {
+    std::cout &lt;&lt; label &lt;&lt; (value ? std::to_string(*value) : "miss") &lt;&lt; "\n";
+}
+
+int main() {
+    LruCache cache(2);
+
+    cache.put(1, 10);
+    cache.put(2, 20);
+    show("get 1 -&gt; ", cache.get(1));   // 1 becomes most recent
+
+    cache.put(3, 30);                  // evicts 2, the least recent
+    show("get 2 -&gt; ", cache.get(2));
+    show("get 3 -&gt; ", cache.get(3));
+
+    cache.put(4, 40);                  // evicts 1
+    show("get 1 -&gt; ", cache.get(1));
+    show("get 4 -&gt; ", cache.get(4));
+}
+</code></pre>
+<p><strong>Output 19-9.</strong></p>
+<pre><code class="language-text">get 1 -&gt; 10
+get 2 -&gt; miss
+get 3 -&gt; 30
+get 1 -&gt; miss
+get 4 -&gt; 40
+</code></pre>
+<p><strong>Listing 19-10. The same cache in Rust, with a list linked by index.</strong></p>
+<pre class="playground"><code class="language-rust">// ch19/lru_cache.rs: a fixed-capacity, generic LRU (Least Recently Used) cache.
+//!
+//! ## Design
+//!
+//! Two structures cooperate to give O(1) `get` and `put`:
+//!
+//! * `lookup_table: HashMap&lt;K, usize&gt;` — key → index into the arena.
+//! * `nodes: Vec&lt;Node&lt;K, V&gt;&gt;` — an **arena** of nodes; indices play the role
+//!   of pointers, sidestepping `Rc&lt;RefCell&lt;…&gt;&gt;` and its borrow-checker overhead.
+//!
+//! The arena is stitched into a doubly linked list through `head`/`tail`:
+//!
+//! ```text
+//!   MRU  →  head → … → tail  →  LRU
+//! ```
+//!
+//! On eviction we **reuse the tail slot** instead of removing it, so no node
+//! is ever deallocated mid-life. That keeps the arena dense and index-stable.
+
+use std::collections::HashMap;
+use std::fmt::Display;
+use std::hash::Hash;
+
+/// A single cache entry, linked into the recency list by index.
+struct Node&lt;K, V&gt; {
+    /// Retained so we can delete the corresponding map entry when evicting.
+    key: K,
+    value: V,
+    /// Neighbour closer to the MRU end (or `None` if this is `head`).
+    prev: Option&lt;usize&gt;,
+    /// Neighbour closer to the LRU end (or `None` if this is `tail`).
+    next: Option&lt;usize&gt;,
+}
+
+/// Fixed-capacity LRU cache.
+pub struct LruCache&lt;K, V&gt; {
+    /// Maximum number of entries; `&gt;= 1` (enforced by `new`).
+    cap: usize,
+    /// Key → arena index. The single source of truth for "is this key cached?".
+    lookup_table: HashMap&lt;K, usize&gt;,
+    /// Arena of nodes; indices are the "pointers" of the linked list.
+    nodes: Vec&lt;Node&lt;K, V&gt;&gt;,
+    /// Arena index of the most recently used entry.
+    head: Option&lt;usize&gt;,
+    /// Arena index of the least recently used entry (next to be evicted).
+    tail: Option&lt;usize&gt;,
+}
+
+impl&lt;K: Hash + Eq + Clone, V&gt; LruCache&lt;K, V&gt; {
+    /// Create a cache holding at most `cap` entries.
+    ///
+    /// # Panics
+    /// Panics if `cap == 0`, since a zero-capacity cache cannot store anything.
+    pub fn new(cap: usize) -&gt; Self {
+        assert!(cap &gt; 0, "capacity must be &gt; 0");
+        Self {
+            cap,
+            lookup_table: HashMap::with_capacity(cap),
+            nodes: Vec::with_capacity(cap),
+            head: None,
+            tail: None,
+        }
+    }
+
+    /// Unlink node `i` from the list. `i` must currently be linked.
+    fn detach(&amp;mut self, i: usize) {
+        let (prev, next) = (self.nodes[i].prev, self.nodes[i].next);
+        match prev {
+            Some(p) =&gt; self.nodes[p].next = next,
+            None =&gt; self.head = next,
+        }
+        match next {
+            Some(n) =&gt; self.nodes[n].prev = prev,
+            None =&gt; self.tail = prev,
+        }
+    }
+
+    /// Link node `i` in at the MRU end. `i` must currently be unlinked.
+    fn push_front(&amp;mut self, i: usize) {
+        self.nodes[i].prev = None;
+        self.nodes[i].next = self.head;
+        match self.head {
+            Some(h) =&gt; self.nodes[h].prev = Some(i),
+            None =&gt; self.tail = Some(i), // list was empty
+        }
+        self.head = Some(i);
+    }
+
+    /// Promote an already-linked node to MRU.
+    fn promote_to_front(&amp;mut self, i: usize) {
+        if self.head == Some(i) {
+            return; // already MRU
+        }
+        self.detach(i);
+        self.push_front(i);
+    }
+
+    /// Look up `key`, promoting it to MRU on a hit.
+    ///
+    /// Returns `None` if the key is not cached.
+    pub fn get(&amp;mut self, key: &amp;K) -&gt; Option&lt;&amp;V&gt; {
+        let i = *self.lookup_table.get(key)?;
+        self.promote_to_front(i);
+        Some(&amp;self.nodes[i].value)
+    }
+
+    /// Insert or update `key`. Promotes it to MRU. Evicts the LRU entry if
+    /// the cache is full.
+    pub fn put(&amp;mut self, key: K, value: V) {
+        // Case 1: key already present → update value, promote.
+        if let Some(&amp;i) = self.lookup_table.get(&amp;key) {
+            self.nodes[i].value = value;
+            self.promote_to_front(i);
+            return;
+        }
+
+        // Case 2: room to grow → append a fresh (unlinked) node.
+        if self.nodes.len() &lt; self.cap {
+            let i = self.nodes.len();
+            self.lookup_table.insert(key.clone(), i);
+            self.nodes.push(Node {
+                key,
+                value,
+                prev: None,
+                next: None,
+            });
+            self.push_front(i);
+            return;
+        }
+
+        // Case 3: at capacity → reuse the LRU slot.
+        // `tail` is guaranteed to be `Some` here because `cap &gt;= 1` and the
+        // arena is full, but we still handle `None` gracefully.
+        if let Some(i) = self.tail {
+            // Drop the evicted key from the map while the node still holds it.
+            self.lookup_table.remove(&amp;self.nodes[i].key);
+            // Unlink the slot, overwrite it with a fresh node, relink at MRU.
+            self.detach(i);
+            self.nodes[i] = Node {
+                key: key.clone(),
+                value,
+                prev: None,
+                next: None,
+            };
+            self.lookup_table.insert(key, i);
+            self.push_front(i);
+        }
+    }
+}
+
+fn show&lt;V: Display&gt;(label: &amp;str, value: Option&lt;&amp;V&gt;) {
+    match value {
+        Some(found) =&gt; println!("{label}{found}"),
+        None =&gt; println!("{label}miss"),
+    }
+}
+
+fn main() {
+    let mut cache = LruCache::new(2);
+
+    cache.put(1, 10);
+    cache.put(2, 20);
+    show("get 1 -&gt; ", cache.get(&amp;1)); // 1 becomes most recent
+
+    cache.put(3, 30); // evicts 2, the least recent
+    show("get 2 -&gt; ", cache.get(&amp;2));
+    show("get 3 -&gt; ", cache.get(&amp;3));
+
+    cache.put(4, 40); // evicts 1
+    show("get 1 -&gt; ", cache.get(&amp;1));
+    show("get 4 -&gt; ", cache.get(&amp;4));
+
+    // Works with any hashable key and any value type.
+    let mut names: LruCache&lt;String, Vec&lt;u8&gt;&gt; = LruCache::new(1);
+    names.put("a".to_string(), vec![1, 2, 3]);
+    names.put("b".to_string(), vec![4]); // evicts "a"
+    assert!(names.get(&amp;"a".to_string()).is_none());
+    assert_eq!(names.get(&amp;"b".to_string()), Some(&amp;vec![4]));
+}
+
+#[cfg(test)]
+mod tests_for_lru {
+    use super::*;
+
+    #[test]
+    fn basic_eviction() {
+        let mut c = LruCache::new(2);
+        c.put(1, 10);
+        c.put(2, 20);
+
+        assert_eq!(c.get(&amp;1), Some(&amp;10)); // 1 is now MRU
+        c.put(3, 30); // evicts 2
+
+        assert_eq!(c.get(&amp;2), None);
+        assert_eq!(c.get(&amp;1), Some(&amp;10));
+        assert_eq!(c.get(&amp;3), Some(&amp;30));
+    }
+
+    #[test]
+    fn updating_existing_key_keeps_it() {
+        let mut c = LruCache::new(2);
+        c.put(1, 10);
+        c.put(2, 20);
+
+        c.put(1, 100); // update 1, 1 becomes MRU
+        c.put(3, 30); // evicts 2
+
+        assert_eq!(c.get(&amp;1), Some(&amp;100));
+        assert_eq!(c.get(&amp;2), None);
+        assert_eq!(c.get(&amp;3), Some(&amp;30));
+    }
+
+    #[test]
+    fn get_refreshes_recency() {
+        let mut c = LruCache::new(2);
+        c.put(1, 10);
+        c.put(2, 20);
+
+        assert_eq!(c.get(&amp;1), Some(&amp;10)); // 1 refreshed
+        c.put(3, 30); // evicts 2
+
+        assert_eq!(c.get(&amp;2), None);
+        assert_eq!(c.get(&amp;1), Some(&amp;10));
+    }
+
+    #[test]
+    fn capacity_one() {
+        let mut c = LruCache::new(1);
+        c.put(1, 10);
+        c.put(2, 20); // evicts 1
+
+        assert_eq!(c.get(&amp;1), None);
+        assert_eq!(c.get(&amp;2), Some(&amp;20));
+    }
+
+    #[test]
+    fn missing_key_returns_none() {
+        let mut c: LruCache&lt;i32, i32&gt; = LruCache::new(2);
+        assert_eq!(c.get(&amp;42), None);
+    }
+
+    #[test]
+    fn non_copy_key_and_value() {
+        let mut c: LruCache&lt;String, String&gt; = LruCache::new(2);
+        c.put("a".into(), "alpha".into());
+        c.put("b".into(), "beta".into());
+        c.put("c".into(), "gamma".into()); // evicts "a"
+
+        assert_eq!(c.get(&amp;"a".to_string()), None);
+        assert_eq!(c.get(&amp;"b".to_string()).map(String::as_str), Some("beta"));
+        assert_eq!(c.get(&amp;"c".to_string()).map(String::as_str), Some("gamma"));
+    }
+
+    #[test]
+    #[should_panic(expected = "capacity must be &gt; 0")]
+    fn zero_capacity_panics() {
+        let _ = LruCache::&lt;i32, i32&gt;::new(0);
+    }
+}</code></pre>
+<p><strong>Output 19-10.</strong></p>
+<pre><code class="language-text">get 1 -&gt; 10
+get 2 -&gt; miss
+get 3 -&gt; 30
+get 1 -&gt; miss
+get 4 -&gt; 40
+</code></pre>
+<p>In the C++ implementation, <code>std::list::splice</code> transfers nodes between positions within the linked list by updating internal pointer links, guaranteeing that existing iterators remain valid and avoiding memory reallocation.</p>
+<p>In Rust, implementing doubly linked lists using raw pointers introduces aliasing hazards that run afoul of the borrow checker. The reference Rust implementation demonstrates an idiomatic systems approach: storing nodes within a contiguous <code>Vec&lt;Node&gt;</code> arena and linking them via array indices (<code>usize</code>). This achieves high cache locality, eliminates pointer indirection, and preserves complete memory safety without <code>unsafe</code> blocks.</p>
+<h3 id="1964-concurrency-and-partitioning-considerations"><a class="header" href="#1964-concurrency-and-partitioning-considerations">19.6.4 Concurrency and Partitioning Considerations</a></h3>
+<p>Because every <code>get</code> operation mutates the linked list to update access recency, <code>get</code> is fundamentally a write operation. Consequently, standard reader-writer locks (<code>std::shared_mutex</code>) offer no concurrency benefit, as read operations cannot run concurrently. In high-throughput multi-threaded environments, LRU contention is mitigated through:</p>
+<ul>
+<li><strong>Cache Striping:</strong> Partitioning the cache into K independent shards using a hash of the key, each protected by an isolated mutex.</li>
+<li><strong>Approximation Algorithms (CLOCK / Second Chance):</strong> Rather than moving nodes on every read, page eviction subsystems in operating systems employ circular buffers with reference bits, decoupling read tracking from synchronization locks.</li>
+</ul>
+<div class="callout keyidea">
+<span class="label">Key idea</span>
+<p>The LRU cache pairs an O(1) hash map with an O(1) doubly linked list. In C++, <code>std::list::splice</code> transfers nodes without reallocating memory or invalidating iterators; in safe Rust, an index-backed arena (<code>Vec&lt;Node&gt;</code>) achieves complete memory safety without <code>unsafe</code>.</p>
+</div>
+
+<div class="callout caution">
+<span class="label">Watch out</span>
+<p>In an LRU cache, <code>get()</code> is a mutating write operation: every hit splices the accessed node to the head of the list. A standard reader-writer lock cannot run concurrent readers without causing race conditions on pointer updates.</p>
+</div>
+
+<h2 id="197-the-reader-writer-lock"><a class="header" href="#197-the-reader-writer-lock">19.7 The Reader-Writer Lock</a></h2>
+<p>In concurrent systems, workloads frequently exhibit read-heavy asymmetry: many threads inspect shared data structures, while modifications occur infrequently. While a standard mutex guarantees safety by enforcing mutual exclusion across all callers, it serializes read operations unnecessarily, throttling multi-core throughput. A <strong>reader-writer lock</strong> relaxes this constraint by permitting concurrent shared read access while guaranteeing exclusive access for mutations.</p>
+<h3 id="1971-concurrency-invariants-and-access-policies"><a class="header" href="#1971-concurrency-invariants-and-access-policies">19.7.1 Concurrency Invariants and Access Policies</a></h3>
+<p>The synchronization contract of a reader-writer lock enforces two distinct access modes:</p>
+<ul>
+<li><strong>Shared Access (Read):</strong> Arbitrary numbers of reader threads may acquire the lock concurrently, provided no writer thread holds or is actively modifying the resource.</li>
+<li><strong>Exclusive Access (Write):</strong> Exactly one writer thread may hold the lock. While a writer is active, all other threads—both readers and writers—are precluded from entering.</li>
+</ul>
+<p>The internal state is mediated via three counters protected by an underlying mutex and coordinated via a condition variable:</p>
+<ul>
+<li><strong><code>readers_active</code>:</strong> Count of reader threads currently holding shared access.</li>
+<li><strong><code>writer_active</code>:</strong> Boolean flag indicating whether an exclusive writer currently holds the lock.</li>
+<li><strong><code>writers_waiting</code>:</strong> Count of writer threads queued awaiting exclusive access.</li>
+</ul>
+<p>The system upholds the fundamental mutual exclusion invariant:</p>
+<pre><code class="language-text">(writer_active =&gt; readers_active == 0) and (readers_active &gt; 0 =&gt; !writer_active)
+</code></pre>
+<h3 id="1972-the-starvation-hazard-and-writer-preference-policy"><a class="header" href="#1972-the-starvation-hazard-and-writer-preference-policy">19.7.2 The Starvation Hazard and Writer-Preference Policy</a></h3>
+<p>A naive reader-writer lock grants access to any arriving reader as long as <code>writer_active</code> is false. Under high read concurrency, new reader threads arrive before existing readers release the lock, causing <code>readers_active</code> to remain non-zero indefinitely. Under this “reader-preference” policy, waiting writers experience catastrophic <strong>writer starvation</strong>, blocked from updating state for unbounded durations.</p>
+<p>To prevent starvation, the lock implements a <strong>writer-preference policy</strong>: an arriving reader thread is forced to wait if <code>writer_active</code> is true <em>or</em> if <code>writers_waiting &gt; 0</code>. Prioritizing queued writers bounds write latency and ensures fair forward progress across both read and write operations.</p>
+<h3 id="1973-reference-implementation"><a class="header" href="#1973-reference-implementation">19.7.3 Reference Implementation</a></h3>
+<p><strong>Listing 19-11. A reader-writer lock with writer preference (C++20).</strong></p>
+<pre><code class="language-cpp">// ch19/rw_lock.cpp: a reader-writer lock built from a mutex and a condition variable.
+#include &lt;atomic&gt;
+#include &lt;condition_variable&gt;
+#include &lt;iostream&gt;
+#include &lt;mutex&gt;
+#include &lt;thread&gt;
+#include &lt;vector&gt;
+
+/// Many readers may hold the lock together. A writer holds it alone.
+class ReaderWriterLock {
+public:
+    void lock_shared() {
+        std::unique_lock&lt;std::mutex&gt; lock(mutex_);
+
+        while (reader_must_wait()) {
+            changed_.wait(lock);
+        }
+
+        ++readers_active_;
+    }
+
+    void unlock_shared() {
+        std::lock_guard&lt;std::mutex&gt; lock(mutex_);
+
+        --readers_active_;
+        if (readers_active_ == 0) changed_.notify_all();
+    }
+
+    void lock_exclusive() {
+        std::unique_lock&lt;std::mutex&gt; lock(mutex_);
+
+        ++writers_waiting_;   // new readers now queue behind this writer
+
+        while (writer_must_wait()) {
+            changed_.wait(lock);
+        }
+
+        --writers_waiting_;
+        writer_active_ = true;
+    }
+
+    void unlock_exclusive() {
+        std::lock_guard&lt;std::mutex&gt; lock(mutex_);
+
+        writer_active_ = false;
+        changed_.notify_all();
+    }
+
+private:
+    /// A reader waits for an active writer, and also lets waiting writers go first.
+    bool reader_must_wait() const { return writer_active_ || writers_waiting_ &gt; 0; }
+
+    /// A writer waits until nobody else is inside.
+    bool writer_must_wait() const { return writer_active_ || readers_active_ &gt; 0; }
+
+    std::mutex mutex_;
+    std::condition_variable changed_;
+    int readers_active_ = 0;
+    int writers_waiting_ = 0;
+    bool writer_active_ = false;
+};
+
+int main() {
+    constexpr int kWriters = 2;
+    constexpr int kReaders = 4;
+    constexpr int kRounds = 20'000;
+
+    ReaderWriterLock lock;
+    long balance_a = 1000;   // invariant: balance_a + balance_b == 1000
+    long balance_b = 0;
+    std::atomic&lt;long&gt; broken_reads{0};
+    std::vector&lt;std::thread&gt; threads;
+
+    for (int writer = 0; writer &lt; kWriters; ++writer) {
+        threads.emplace_back([&amp;] {
+            for (int round = 0; round &lt; kRounds; ++round) {
+                lock.lock_exclusive();
+                --balance_a;
+                ++balance_b;
+                lock.unlock_exclusive();
+            }
+        });
+    }
+
+    for (int reader = 0; reader &lt; kReaders; ++reader) {
+        threads.emplace_back([&amp;] {
+            for (int round = 0; round &lt; kRounds; ++round) {
+                lock.lock_shared();
+                bool consistent = (balance_a + balance_b == 1000);
+                lock.unlock_shared();
+
+                if (!consistent) ++broken_reads;
+            }
+        });
+    }
+
+    for (std::thread&amp; thread : threads) thread.join();
+
+    std::cout &lt;&lt; "transfers    " &lt;&lt; balance_b &lt;&lt; "\n"
+              &lt;&lt; "broken reads " &lt;&lt; broken_reads.load() &lt;&lt; "\n";
+}
+</code></pre>
+<p><strong>Output 19-11.</strong></p>
+<pre><code class="language-text">transfers    40000
+broken reads 0
+</code></pre>
+<p><strong>Listing 19-12. The same lock in Rust.</strong></p>
+<pre class="playground"><code class="language-rust">// ch19/rw_lock.rs: a reader-writer lock built from a mutex and a condition variable.
+use std::sync::atomic::{AtomicI64, AtomicU64, Ordering};
+use std::sync::{Arc, Condvar, Mutex};
+use std::thread;
+
+type LockResult&lt;T&gt; = Result&lt;T, &amp;'static str&gt;;
+
+const POISONED: &amp;str = "a thread panicked while it held the state mutex";
+const PANICKED: &amp;str = "a worker thread panicked";
+
+/// Who is inside the lock, and who is waiting to write.
+#[derive(Default)]
+struct LockState {
+    readers_active: u32,
+    writers_waiting: u32,
+    writer_active: bool,
+}
+
+impl LockState {
+    /// A reader waits for an active writer, and also lets waiting writers go first.
+    fn reader_must_wait(&amp;self) -&gt; bool {
+        self.writer_active || self.writers_waiting &gt; 0
+    }
+
+    /// A writer waits until nobody else is inside.
+    fn writer_must_wait(&amp;self) -&gt; bool {
+        self.writer_active || self.readers_active &gt; 0
+    }
+}
+
+/// Many readers may hold the lock together. A writer holds it alone.
+#[derive(Default)]
+struct ReaderWriterLock {
+    state: Mutex&lt;LockState&gt;,
+    changed: Condvar,
+}
+
+impl ReaderWriterLock {
+    fn lock_shared(&amp;self) -&gt; LockResult&lt;()&gt; {
+        let state = self
+            .state
+            .lock()
+            .map_err(|_| POISONED)?;
+
+        let mut state = self
+            .changed
+            .wait_while(state, |state| state.reader_must_wait())
+            .map_err(|_| POISONED)?;
+
+        state.readers_active += 1;
+
+        Ok(())
+    }
+
+    fn unlock_shared(&amp;self) -&gt; LockResult&lt;()&gt; {
+        let mut state = self
+            .state
+            .lock()
+            .map_err(|_| POISONED)?;
+
+        state.readers_active -= 1;
+
+        if state.readers_active == 0 {
+            self.changed.notify_all();
+        }
+
+        Ok(())
+    }
+
+    fn lock_exclusive(&amp;self) -&gt; LockResult&lt;()&gt; {
+        let mut state = self
+            .state
+            .lock()
+            .map_err(|_| POISONED)?;
+
+        state.writers_waiting += 1; // new readers now queue behind this writer
+
+        let mut state = self
+            .changed
+            .wait_while(state, |state| state.writer_must_wait())
+            .map_err(|_| POISONED)?;
+
+        state.writers_waiting -= 1;
+        state.writer_active = true;
+
+        Ok(())
+    }
+
+    fn unlock_exclusive(&amp;self) -&gt; LockResult&lt;()&gt; {
+        let mut state = self
+            .state
+            .lock()
+            .map_err(|_| POISONED)?;
+
+        state.writer_active = false;
+        self.changed.notify_all();
+
+        Ok(())
+    }
+}
+
+/// Two balances whose sum must stay 1000. Atomics make the fields shareable, and
+/// the reader-writer lock is what keeps the pair consistent.
+struct Accounts {
+    lock: ReaderWriterLock,
+    balance_a: AtomicI64,
+    balance_b: AtomicI64,
+    broken_reads: AtomicU64,
+}
+
+impl Accounts {
+    /// Moves one unit from A to B while holding the lock exclusively.
+    fn transfer_one(&amp;self) -&gt; LockResult&lt;()&gt; {
+        self.lock.lock_exclusive()?;
+
+        self.balance_a.fetch_sub(1, Ordering::Relaxed);
+        self.balance_b.fetch_add(1, Ordering::Relaxed);
+
+        self.lock.unlock_exclusive()
+    }
+
+    /// Reads both balances while holding the lock shared, and returns their sum.
+    fn read_sum(&amp;self) -&gt; LockResult&lt;i64&gt; {
+        self.lock.lock_shared()?;
+
+        let balance_a = self.balance_a.load(Ordering::Relaxed);
+        let balance_b = self.balance_b.load(Ordering::Relaxed);
+
+        self.lock.unlock_shared()?;
+
+        Ok(balance_a + balance_b)
+    }
+}
+
+fn main() -&gt; LockResult&lt;()&gt; {
+    const WRITERS: usize = 2;
+    const READERS: usize = 4;
+    const ROUNDS: usize = 20_000;
+
+    let accounts = Arc::new(Accounts {
+        lock: ReaderWriterLock::default(),
+        balance_a: AtomicI64::new(1000),
+        balance_b: AtomicI64::new(0),
+        broken_reads: AtomicU64::new(0),
+    });
+
+    let mut threads = Vec::new();
+
+    for _ in 0..WRITERS {
+        let accounts = Arc::clone(&amp;accounts);
+
+        threads.push(thread::spawn(move || -&gt; LockResult&lt;()&gt; {
+            for _ in 0..ROUNDS {
+                accounts.transfer_one()?;
+            }
+
+            Ok(())
+        }));
+    }
+
+    for _ in 0..READERS {
+        let accounts = Arc::clone(&amp;accounts);
+
+        threads.push(thread::spawn(move || -&gt; LockResult&lt;()&gt; {
+            for _ in 0..ROUNDS {
+                if accounts.read_sum()? != 1000 {
+                    accounts.broken_reads.fetch_add(1, Ordering::Relaxed);
+                }
+            }
+
+            Ok(())
+        }));
+    }
+
+    for handle in threads {
+        let finished = handle
+            .join()
+            .map_err(|_| PANICKED)?;
+
+        finished?;
+    }
+
+    let transfers = accounts.balance_b.load(Ordering::Relaxed);
+    let broken_reads = accounts.broken_reads.load(Ordering::Relaxed);
+
+    println!("transfers    {transfers}");
+    println!("broken reads {broken_reads}");
+
+    Ok(())
+}</code></pre>
+<p><strong>Output 19-12.</strong></p>
+<pre><code class="language-text">transfers    40000
+broken reads 0
+</code></pre>
+<p>The verification harness executes concurrent reader and writer threads simulating an invariant financial ledger. Two accounts share an aggregate balance of 1,000 units. Writer threads continuously transfer funds between the accounts, momentarily perturbing intermediate values. If a reader were permitted to execute concurrently with a writer, it would observe an inconsistent state (<code>balance_a + balance_b != 1,000</code>). The recorded output confirms zero “broken reads” across millions of operations, demonstrating absolute exclusive isolation.</p>
+<h3 id="1974-notification-dynamics-and-performance-nuances"><a class="header" href="#1974-notification-dynamics-and-performance-nuances">19.7.4 Notification Dynamics and Performance Nuances</a></h3>
+<ul>
+<li><strong>Broadcast Signaling (<code>notify_all</code>):</strong> When an exclusive writer completes its critical section and releases the lock, multiple queued reader threads may now proceed simultaneously. Signaling with <code>notify_one</code> would awaken only a single reader, degrading read concurrency. Thus, write releases must invoke <code>notify_all</code>.</li>
+<li><strong>Comparison with Counting Semaphores:</strong> A counting semaphore maintains an integer permit count, permitting up to N threads to proceed concurrently. However, a semaphore does not differentiate between shared inspection and exclusive mutation; an exclusive writer would require acquiring all N permits simultaneously, introducing deadlock hazards under contention.</li>
+<li><strong>Operating System Implementations:</strong> Standard libraries encapsulate these semantics via <code>std::shared_mutex</code> in C++ and <code>std::sync::RwLock</code> in Rust, typically mapped down to OS-level primitives like POSIX <code>pthread_rwlock_t</code>.</li>
+</ul>
+<div class="callout keyidea">
+<span class="label">Key idea</span>
+<p>Reader-writer locks maximize read throughput, but unmitigated reader preference causes writer starvation. Writer-preference policies guarantee that arriving readers wait if any writer is queued, bounding write latency.</p>
+</div>
+
+<div class="callout caution">
+<span class="label">Watch out</span>
+<p>Broadcast signaling on write release: when an exclusive writer finishes, multiple queued readers can proceed simultaneously. Notifications must use <code>notify_all()</code>; <code>notify_one()</code> awakens only a single reader, destroying read concurrency.</p>
+</div>
+
+<h2 id="198-the-thread-pool"><a class="header" href="#198-the-thread-pool">19.8 The Thread Pool</a></h2>
+<p>Operating system threads are resource-intensive abstractions. Creating a thread invokes kernel-level system calls, allocates per-thread execution stacks (typically 1–8 MiB of virtual address space), initializes hardware registers, and registers the thread with the kernel scheduler. Spawning and tearing down a thread for every brief, fine-grained task imposes severe CPU and memory allocation overhead. A <strong>thread pool</strong> amortizes these lifecycle costs by maintaining a static cohort of pre-spawned worker threads that execute tasks dispatched from a shared queue.</p>
+<h3 id="1981-execution-architecture-and-lifecycle-states"><a class="header" href="#1981-execution-architecture-and-lifecycle-states">19.8.1 Execution Architecture and Lifecycle States</a></h3>
+<p>A thread pool decouples task specification from execution mechanics. It operates as a multi-producer, multi-consumer system:</p>
+<ul>
+<li><strong>Submission (Producer):</strong> Client threads invoke <code>submit(task)</code>, packaging a closure or function pointer and enqueuing it onto an internal work queue.</li>
+<li><strong>Worker Execution (Consumer):</strong> Worker threads run a continuous event loop. When the work queue contains tasks, workers extract tasks and execute them. When the queue is empty, workers enter a suspended sleep state on a condition variable, consuming zero CPU cycles.</li>
+</ul>
+<h3 id="1982-graceful-teardown-and-drain-invariants"><a class="header" href="#1982-graceful-teardown-and-drain-invariants">19.8.2 Graceful Teardown and Drain Invariants</a></h3>
+<p>Tearing down a thread pool requires coordinating clean state transitions across all worker threads without dropping pending tasks or precipitating thread leaks. The shutdown sequence enforces two strict invariants:</p>
+<ul>
+<li><strong>Exhaustive Task Draining:</strong> Every task submitted prior to initiating shutdown must run to completion.</li>
+<li><strong>Deterministic Worker Termination:</strong> Every worker thread must break out of its execution loop and be joined by the parent thread, releasing all operating system resources.</li>
+</ul>
+<p>The shutdown protocol sets a <code>stopping</code> flag under the queue mutex and broadcasts a notification (<code>notify_all</code>) to all suspended workers. A worker thread exits its loop only when both of the following conditions are met:</p>
+<pre><code class="language-text">stopping == true  and  queue.empty() == true
+</code></pre>
+<p>If the queue still contains tasks when <code>stopping</code> is asserted, workers continue extracting and processing tasks until the queue is fully drained, after which they terminate cleanly.</p>
+<h3 id="1983-reference-implementation"><a class="header" href="#1983-reference-implementation">19.8.3 Reference Implementation</a></h3>
+<p><strong>Listing 19-13. A thread pool (C++20).</strong></p>
+<pre><code class="language-cpp">// ch19/thread_pool.cpp: a fixed set of worker threads that run queued tasks.
+#include &lt;atomic&gt;
+#include &lt;condition_variable&gt;
+#include &lt;cstdint&gt;
+#include &lt;functional&gt;
+#include &lt;iostream&gt;
+#include &lt;mutex&gt;
+#include &lt;queue&gt;
+#include &lt;thread&gt;
+#include &lt;vector&gt;
+
+/// Runs submitted tasks on `worker_count` threads. The destructor finishes all
+/// queued tasks and then joins the workers.
+class ThreadPool {
+public:
+    explicit ThreadPool(size_t worker_count) {
+        for (size_t worker = 0; worker &lt; worker_count; ++worker) {
+            workers_.emplace_back([this] { run_worker(); });
+        }
+    }
+
+    ~ThreadPool() {
+        {
+            std::lock_guard&lt;std::mutex&gt; lock(mutex_);
+            stopping_ = true;
+        }
+
+        task_ready_.notify_all();
+
+        for (std::thread&amp; worker : workers_) {
+            worker.join();
+        }
+    }
+
+    /// Queues one task and wakes one idle worker.
+    void submit(std::function&lt;void()&gt; task) {
+        {
+            std::lock_guard&lt;std::mutex&gt; lock(mutex_);
+            tasks_.push(std::move(task));
+        }
+
+        task_ready_.notify_one();
+    }
+
+private:
+    void run_worker() {
+        while (true) {
+            std::unique_lock&lt;std::mutex&gt; lock(mutex_);
+
+            while (must_wait()) {
+                task_ready_.wait(lock);
+            }
+
+            if (tasks_.empty()) return;   // stopping, and nothing left to run
+
+            std::function&lt;void()&gt; task = std::move(tasks_.front());
+            tasks_.pop();
+            lock.unlock();
+
+            task();                       // run without holding the lock
+        }
+    }
+
+    /// A worker sleeps only while there is no task and the pool is still open.
+    bool must_wait() const { return tasks_.empty() &amp;&amp; !stopping_; }
+
+    std::mutex mutex_;
+    std::condition_variable task_ready_;
+    std::queue&lt;std::function&lt;void()&gt;&gt; tasks_;
+    std::vector&lt;std::thread&gt; workers_;
+    bool stopping_ = false;
+};
+
+int main() {
+    constexpr uint64_t kTasks = 1000;
+    std::atomic&lt;uint64_t&gt; total{0};
+
+    {
+        ThreadPool pool(4);
+
+        for (uint64_t task = 1; task &lt;= kTasks; ++task) {
+            pool.submit([&amp;total, task] {
+                total.fetch_add(task, std::memory_order_relaxed);
+            });
+        }
+    }   // the destructor waits for every task here
+
+    std::cout &lt;&lt; "expected " &lt;&lt; kTasks * (kTasks + 1) / 2 &lt;&lt; "\n"
+              &lt;&lt; "total    " &lt;&lt; total.load() &lt;&lt; "\n";
+}
+</code></pre>
+<p><strong>Output 19-13.</strong></p>
+<pre><code class="language-text">expected 500500
+total    500500
+</code></pre>
+<p><strong>Listing 19-14. The same pool in Rust, built on a channel.</strong></p>
+<pre class="playground"><code class="language-rust">// ch19/thread_pool.rs: a fixed set of worker threads that run queued tasks.
+use std::sync::atomic::{AtomicU64, Ordering};
+use std::sync::mpsc::{self, Receiver, Sender};
+use std::sync::{Arc, Mutex};
+use std::thread::{self, JoinHandle};
+
+type Task = Box&lt;dyn FnOnce() + Send + 'static&gt;;
+
+/// Runs submitted tasks on a fixed number of threads. Dropping the pool finishes
+/// all queued tasks and then joins the workers.
+struct ThreadPool {
+    sender: Option&lt;Sender&lt;Task&gt;&gt;,
+    workers: Vec&lt;JoinHandle&lt;()&gt;&gt;,
+}
+
+impl ThreadPool {
+    fn new(worker_count: usize) -&gt; Self {
+        let (sender, receiver) = mpsc::channel::&lt;Task&gt;();
+        let receiver = Arc::new(Mutex::new(receiver));
+
+        let workers = (0..worker_count)
+            .map(|_| {
+                let receiver = Arc::clone(&amp;receiver);
+                thread::spawn(move || run_worker(&amp;receiver))
+            })
+            .collect();
+
+        ThreadPool {
+            sender: Some(sender),
+            workers,
+        }
+    }
+
+    /// Queues one task. A worker that is blocked in `recv` wakes up and runs it.
+    fn submit(&amp;self, task: impl FnOnce() + Send + 'static) {
+        let Some(sender) = &amp;self.sender else {
+            return;
+        };
+
+        let sent = sender.send(Box::new(task));
+
+        if sent.is_err() {
+            eprintln!("thread pool: all workers have exited");
+        }
+    }
+}
+
+/// Waits for the next task. Returns None when the channel is closed and empty.
+/// The mutex guard is dropped on return, so the caller runs the task unlocked.
+fn next_task(receiver: &amp;Mutex&lt;Receiver&lt;Task&gt;&gt;) -&gt; Option&lt;Task&gt; {
+    let receiver = receiver
+        .lock()
+        .ok()?;
+
+    receiver
+        .recv()
+        .ok()
+}
+
+/// Runs tasks until none remain and the pool has closed the channel.
+fn run_worker(receiver: &amp;Mutex&lt;Receiver&lt;Task&gt;&gt;) {
+    while let Some(task) = next_task(receiver) {
+        task();
+    }
+}
+
+impl Drop for ThreadPool {
+    fn drop(&amp;mut self) {
+        self.sender.take(); // closing the channel makes `recv` fail once it is empty
+
+        for worker in self.workers.drain(..) {
+            let joined = worker.join();
+
+            if joined.is_err() {
+                eprintln!("thread pool: a worker panicked");
+            }
+        }
+    }
+}
+
+fn main() {
+    const TASKS: u64 = 1000;
+    let total = Arc::new(AtomicU64::new(0));
+
+    {
+        let pool = ThreadPool::new(4);
+
+        for task in 1..=TASKS {
+            let total = Arc::clone(&amp;total);
+            pool.submit(move || {
+                total.fetch_add(task, Ordering::Relaxed);
+            });
+        }
+    } // dropping the pool waits for every task here
+
+    let expected = TASKS * (TASKS + 1) / 2;
+    let total = total.load(Ordering::Relaxed);
+
+    println!("expected {expected}");
+    println!("total    {total}");
+}</code></pre>
+<p><strong>Output 19-14.</strong></p>
+<pre><code class="language-text">expected 500500
+total    500500
+</code></pre>
+<p>In the Rust implementation, task coordination is built on standard library cross-thread channels (<code>std::sync::mpsc</code>). When the thread pool is dropped, the sender endpoint is closed. In accordance with channel semantics, when a channel disconnects and its buffer empties, subsequent <code>recv()</code> calls return <code>Err</code>, causing worker threads to terminate naturally without requiring manual condition variable management.</p>
+<h3 id="1984-systems-nuances-and-synchronization-hazards"><a class="header" href="#1984-systems-nuances-and-synchronization-hazards">19.8.4 Systems Nuances and Synchronization Hazards</a></h3>
+<ul>
+<li><strong>Task Execution Outside the Synchronization Lock:</strong> A critical bug in naive thread pool implementations is invoking the task closure while still holding the task queue mutex. This serializes task execution: only one worker can execute at any time, reducing the entire multi-core pool to a single-threaded bottleneck. The worker must extract the task from the queue, release the mutex, and execute the task completely unconstrained.</li>
+<li><strong>Lost Wakeups During Teardown:</strong> Updating the <code>stopping</code> flag without holding the mutex can trigger race conditions where a worker evaluates the predicate, finds no work, and prepares to sleep just as the shutdown signal is broadcast. Holding the mutex during the state update ensures that workers cannot enter the sleep state after shutdown has commenced.</li>
+<li><strong>Production Extensions:</strong> Enterprise thread pools (such as Rust’s Tokio or Go’s runtime scheduler) enhance this model with <strong>work stealing</strong>: each core maintains a local task deque, stealing tasks from remote queues only when local work is exhausted, thereby minimizing central lock contention.</li>
+</ul>
+<div class="callout keyidea">
+<span class="label">Key idea</span>
+<p>A thread pool decouples task submission from worker thread execution. Teardown requires setting <code>stopping</code> under the mutex and broadcasting a notification so that all queued tasks drain before workers join.</p>
+</div>
+
+<div class="callout caution">
+<span class="label">Watch out</span>
+<p>Executing tasks with the queue mutex held: worker threads must release the lock immediately after popping a task from the queue. Invoking the task closure while holding the mutex serializes execution across the entire pool into a single core.</p>
+</div>
+
+<h2 id="199-the-process-pipeline-fork-exec-and-pipe"><a class="header" href="#199-the-process-pipeline-fork-exec-and-pipe">19.9 The Process Pipeline: <code>fork</code>, <code>exec</code> and <code>pipe</code></a></h2>
+<p>The Unix architecture is distinguished by the philosophy of composing complex data processing workflows from small, specialized utilities connected via standardized byte streams. Constructing a process pipeline—such as piping the output of <code>echo hello</code> into <code>tr a-z A-Z</code>—requires orchestrating inter-process communication (IPC) through kernel file descriptors, process duplication, and address space replacement.</p>
+<h3 id="1991-kernel-file-descriptor-mechanics-and-redirection"><a class="header" href="#1991-kernel-file-descriptor-mechanics-and-redirection">19.9.1 Kernel File Descriptor Mechanics and Redirection</a></h3>
+<p>A running program interacts with input/output channels via integer file descriptors, which index into the process’s kernel-managed File Descriptor Table. Standard conventions establish descriptor 0 as standard input (<code>stdin</code>), descriptor 1 as standard output (<code>stdout</code>), and descriptor 2 as standard error (<code>stderr</code>).</p>
+<p>Crucially, user-space programs are decoupled from underlying device geometries: writing to descriptor 1 invokes the same <code>write()</code> system call regardless of whether the descriptor refers to a terminal display, a disk file, a network socket, or an IPC pipe. Constructing a pipeline exploits this indirection by remapping file descriptors before executing program binaries.</p>
+<h3 id="1992-the-pipeline-orchestration-sequence"><a class="header" href="#1992-the-pipeline-orchestration-sequence">19.9.2 The Pipeline Orchestration Sequence</a></h3>
+<p>Establishing a pipeline between two child processes proceeds through five deterministic steps:</p>
+<figure>
+<img src="figures/ch19_mini_pipeline.svg" alt="Process pipeline: stdout-to-stdin redirection via a kernel pipe buffer." />
+</figure>
+<ol>
+<li><strong>Pipe Creation:</strong> The parent process invokes <code>pipe(pipefd)</code>. The kernel allocates a unidirectional circular memory buffer and returns two new file descriptors: <code>pipefd[0]</code> for reading and <code>pipefd[1]</code> for writing.</li>
+<li><strong>Upstream Producer Spawning (<code>echo</code>):</strong> The parent calls <code>fork()</code>. In the child process:
+<ul>
+<li>It redirects standard output to the pipe via <code>dup2(pipefd[1], STDOUT_FILENO)</code>.</li>
+<li>It closes the unneeded read descriptor (<code>pipefd[0]</code>).</li>
+<li>It replaces its process image by calling <code>execvp("echo", ...)</code>.</li>
+</ul>
+</li>
+<li><strong>Downstream Consumer Spawning (<code>tr</code>):</strong> The parent calls <code>fork()</code> a second time. In this child process:
+<ul>
+<li>It redirects standard input from the pipe via <code>dup2(pipefd[0], STDIN_FILENO)</code>.</li>
+<li>It closes the unneeded write descriptor (<code>pipefd[1]</code>).</li>
+<li>It replaces its process image by calling <code>execvp("tr", ...)</code>.</li>
+</ul>
+</li>
+<li><strong>Parent Descriptor Teardown:</strong> The parent process must explicitly close both <code>pipefd[0]</code> and <code>pipefd[1]</code>.</li>
+<li><strong>Reaping Child Processes:</strong> The parent invokes <code>waitpid()</code> for both child PIDs, collecting their exit status codes and preventing zombie process accumulation.</li>
+</ol>
+<h3 id="1993-reference-implementation"><a class="header" href="#1993-reference-implementation">19.9.3 Reference Implementation</a></h3>
+<p><strong>Listing 19-15. A pipeline of two processes (C++20).</strong></p>
+<pre><code class="language-cpp">// ch19/mini_pipeline.cpp: what a shell does for `echo hello | tr a-z A-Z`.
+#include &lt;cstdio&gt;
+#include &lt;sys/wait.h&gt;
+#include &lt;unistd.h&gt;
+
+/// Forks a child whose stdin and stdout are replaced by the given descriptors,
+/// then replaces the child with `argv[0]`. Returns the child's PID to the parent.
+pid_t spawn(char* const argv[], int input_fd, int output_fd, int unused_fd) {
+    pid_t pid = fork();
+    if (pid != 0) {
+        return pid;            // parent, or fork failed (-1)
+    }
+
+    if (input_fd != STDIN_FILENO) {
+        dup2(input_fd, STDIN_FILENO);
+        close(input_fd);
+    }
+
+    if (output_fd != STDOUT_FILENO) {
+        dup2(output_fd, STDOUT_FILENO);
+        close(output_fd);
+    }
+
+    close(unused_fd);          // the pipe end this child does not use
+
+    execvp(argv[0], argv);
+    perror("execvp");          // reached only if exec failed
+    _exit(127);
+}
+
+int main() {
+    int pipe_fds[2];
+    if (pipe(pipe_fds) != 0) {
+        perror("pipe");
+        return 1;
+    }
+
+    char echo_word[] = "echo";
+    char hello_word[] = "hello";
+    char* const writer_argv[] = {echo_word, hello_word, nullptr};
+
+    char tr_word[] = "tr";
+    char lower_set[] = "a-z";
+    char upper_set[] = "A-Z";
+    char* const reader_argv[] = {tr_word, lower_set, upper_set, nullptr};
+
+    // Nothing buffered may be copied into the children.
+    fflush(stdout);
+
+    pid_t writer = spawn(writer_argv, STDIN_FILENO, pipe_fds[1], pipe_fds[0]);
+    pid_t reader = spawn(reader_argv, pipe_fds[0], STDOUT_FILENO, pipe_fds[1]);
+
+    close(pipe_fds[0]);                  // the parent must close both ends, or `tr`
+    close(pipe_fds[1]);                  // never sees end-of-file
+
+    int writer_status = 0;
+    int reader_status = 0;
+    waitpid(writer, &amp;writer_status, 0);
+    waitpid(reader, &amp;reader_status, 0);
+
+    printf("echo exited with %d, tr exited with %d\n",
+           WEXITSTATUS(writer_status), WEXITSTATUS(reader_status));
+}
+</code></pre>
+<p><strong>Output 19-15.</strong></p>
+<pre><code class="language-text">HELLO
+echo exited with 0, tr exited with 0
+</code></pre>
+<p><strong>Listing 19-16. The same pipeline in Rust, with the libc crate.</strong></p>
+<pre class="playground"><code class="language-rust">// ch19/mini_pipeline.rs: what a shell does for `echo hello | tr a-z A-Z`.
+use std::ffi::CString;
+use std::io::Write;
+
+/// Forks a child whose stdin and stdout are replaced by the given descriptors,
+/// then replaces the child with `words[0]`. Returns the child's PID to the parent.
+fn spawn(
+    words: &amp;[&amp;str],
+    input_fd: i32,
+    output_fd: i32,
+    unused_fd: i32,
+) -&gt; libc::pid_t {
+    let owned: Vec&lt;CString&gt; = words
+        .iter()
+        .filter_map(|word| CString::new(*word).ok())
+        .collect();
+
+    let mut argv: Vec&lt;*const libc::c_char&gt; = owned
+        .iter()
+        .map(|word| word.as_ptr())
+        .collect();
+
+    argv.push(std::ptr::null());
+
+    // SAFETY: Process is single-threaded at `fork()`, ensuring no inherited mutex locks are deadlocked in the child.
+    let pid = unsafe { libc::fork() };
+    if pid != 0 {
+        return pid; // parent, or fork failed (-1)
+    }
+
+    // SAFETY: Pipeline Redirection Proof:
+    // 1. `dup2` duplicates `input_fd` to STDIN and `output_fd` to STDOUT.
+    // 2. Crucial Cleanup Invariant: `input_fd` and `output_fd` are immediately closed once duplicated,
+    //    and `unused_fd` (the opposing pipe end) is closed. Failing to close `unused_fd` would leave
+    //    an unclosed writer open in the reader child, preventing the reader from ever detecting EOF.
+    // 3. `execvp`: `argv[0]` and `argv` are valid, null-terminated arrays of C-strings from `owned`.
+    unsafe {
+        if input_fd != libc::STDIN_FILENO {
+            libc::dup2(input_fd, libc::STDIN_FILENO);
+            libc::close(input_fd);
+        }
+        if output_fd != libc::STDOUT_FILENO {
+            libc::dup2(output_fd, libc::STDOUT_FILENO);
+            libc::close(output_fd);
+        }
+
+        libc::close(unused_fd); // the pipe end this child does not use
+
+        libc::execvp(argv[0], argv.as_ptr());
+        libc::_exit(127) // reached only if exec failed
+    }
+}
+
+fn main() {
+    let mut pipe_fds = [0; 2];
+
+    // SAFETY: `pipe_fds` is a stack array with capacity for two `c_int` descriptors.
+    if unsafe { libc::pipe(pipe_fds.as_mut_ptr()) } != 0 {
+        eprintln!("pipe failed");
+        return;
+    }
+
+    // Nothing buffered may be copied into the children.
+    let flushed = std::io::stdout().flush();
+
+    if flushed.is_err() {
+        eprintln!("flush failed");
+    }
+
+    let [read_end, write_end] = pipe_fds;
+
+    let writer = spawn(&amp;["echo", "hello"], libc::STDIN_FILENO, write_end, read_end);
+    let reader = spawn(&amp;["tr", "a-z", "A-Z"], read_end, libc::STDOUT_FILENO, write_end);
+
+    let mut writer_status = 0;
+    let mut reader_status = 0;
+
+    // SAFETY: Parent Pipeline Lifecycle Proof:
+    // The parent must close both `read_end` and `write_end` of the pipe. If the parent leaves
+    // `write_end` open, the kernel keeps the pipe's writer reference count &gt; 0 even after `echo`
+    // exits. Consequently, `tr` would block indefinitely in `read(2)` waiting for more input.
+    // Closing both descriptors in the parent allows `tr` to cleanly receive EOF and exit.
+    unsafe {
+        libc::close(read_end);
+        libc::close(write_end);
+
+        libc::waitpid(writer, &amp;mut writer_status, 0);
+        libc::waitpid(reader, &amp;mut reader_status, 0);
+    }
+
+    println!(
+        "echo exited with {}, tr exited with {}",
+        libc::WEXITSTATUS(writer_status),
+        libc::WEXITSTATUS(reader_status)
+    );
+}</code></pre>
+<p><strong>Output 19-16.</strong></p>
+<pre><code class="language-text">HELLO
+echo exited with 0, tr exited with 0
+</code></pre>
+<h3 id="1994-deadlock-hazards-and-process-isolation"><a class="header" href="#1994-deadlock-hazards-and-process-isolation">19.9.4 Deadlock Hazards and Process Isolation</a></h3>
+<ul>
+<li><strong>The Parent Write-End Deadlock:</strong> A process reading from a pipe encounters an End-Of-File (<code>EOF</code>, returning 0 bytes) only when <em>every</em> open file descriptor pointing to the pipe’s write end across the entire operating system has been closed. Because file descriptors are duplicated across <code>fork()</code>, the parent process retains an open copy of <code>pipefd[1]</code>. If the parent fails to close its copy, the downstream child (<code>tr</code>) will never observe EOF: after the upstream child (<code>echo</code>) terminates, <code>tr</code> remains blocked waiting for further input from the parent’s unclosed descriptor. Simultaneously, the parent blocks in <code>waitpid()</code> waiting for <code>tr</code> to exit, precipitating a permanent system deadlock.</li>
+<li><strong>Child Termination via <code>_exit</code>:</strong> If an <code>execvp</code> invocation fails (e.g., binary not found), the child process must terminate immediately using <code>_exit()</code> rather than standard <code>exit()</code>. Standard <code>exit()</code> flushes all user-space C stdio buffers and invokes exit handlers registered by the parent process. Because memory was cloned during <code>fork()</code>, flushing stdio buffers in the failed child can duplicate buffered parent output, corrupting log streams and output files.</li>
+<li><strong>Zombie Process Accumulation:</strong> When a child process terminates, the kernel preserves its exit status in the process table until the parent acknowledges it via <code>waitpid()</code>. Unreaped child processes remain as <strong>zombies</strong>, consuming kernel process table slots. If a parent continuously spawns children without reaping them, the system’s PID table becomes exhausted, preventing any new processes from spawning.</li>
+</ul>
+<div class="callout keyidea">
+<span class="label">Key idea</span>
+<p>A pipeline redirects standard input and output streams via <code>dup2()</code> before replacing process images with <code>execvp()</code>. The kernel pipe is a bounded byte buffer whose EOF is delivered only when all write-end copies across all processes are closed.</p>
+</div>
+
+<div class="callout caution">
+<span class="label">Watch out</span>
+<p>The parent write-end deadlock: if the parent process fails to close its inherited copy of <code>pipefd[1]</code>, the downstream consumer (<code>tr</code>) waits indefinitely for further input after the producer exits, completely freezing <code>waitpid()</code>.</p>
+</div>
+
+<h2 id="1910-bit-manipulation"><a class="header" href="#1910-bit-manipulation">19.10 Bit Manipulation</a></h2>
+<p>Operating systems and systems runtimes operate at the boundary between software and physical hardware. Memory allocators, virtual memory paging subsystems, network protocol decoders, and device drivers rely fundamentally on bit-level manipulation to enforce alignment constraints, calculate page offsets, and manage dense allocation bitmaps.</p>
+<h3 id="19101-mathematical-principles-of-twos-complement-arithmetic"><a class="header" href="#19101-mathematical-principles-of-twos-complement-arithmetic">19.10.1 Mathematical Principles of Two’s Complement Arithmetic</a></h3>
+<p>Low-level bit manipulation exploits the mathematical invariants of two’s complement integer representation. The most powerful identity is the subtraction property:</p>
+<pre><code class="language-text">In two's complement:  x - 1 = x + (~1 + 1)
+</code></pre>
+<p>Subtracting 1 from an integer <code>x</code> inverts the least significant set bit (the lowest 1 bit) and sets all lower-order bits (which were previously 0) to 1.
+For example, in binary:</p>
+<pre><code class="language-text">x           = 12_10 = 0000 1100_2
+x - 1       = 11_10 = 0000 1011_2
+x &amp; (x - 1) =  8_10 = 0000 1000_2
+</code></pre>
+<p>Computing the bitwise AND of <code>x</code> and <code>x - 1</code> clears the lowest set bit while leaving all higher-order bits unaltered.</p>
+<h3 id="19102-algorithmic-derivations"><a class="header" href="#19102-algorithmic-derivations">19.10.2 Algorithmic Derivations</a></h3>
+<ul>
+<li><strong>Population Count (<code>count_set_bits</code>):</strong> Brian Kernighan’s algorithm applies <code>x &amp; (x - 1)</code> iteratively. Each operation clears exactly one set bit. The algorithm terminates when <code>x</code> reaches 0, executing in <code>O(k)</code> operations where <code>k</code> is the number of set bits, significantly outperforming naive 64-step bit-shifting loops.</li>
+<li><strong>Power-of-Two Detection (<code>is_power_of_two</code>):</strong> A positive integer is an exact power of two if and only if its binary representation contains exactly one set bit. Testing whether <code>x &gt; 0</code> and <code>(x &amp; (x - 1)) == 0</code> establishes this in <code>O(1)</code> constant time without division or loops.</li>
+<li><strong>Power-of-Two Memory Alignment (<code>align_up</code>):</strong> System architectures require memory buffers to be aligned to powers of two (e.g., 16-byte cache line alignment, 4096-byte page alignment). For an alignment <code>A = 2^k</code>, the mask <code>A - 1</code> contains 1s in the lowest <code>k</code> bit positions. Rounding an address <code>x</code> up to the next multiple of <code>A</code> is computed as:
+<pre><code class="language-text">align_up(x, A) = (x + (A - 1)) &amp; ~(A - 1)
+</code></pre>
+Adding <code>A - 1</code> forces any non-zero offset in the lower <code>k</code> bits to carry into the <code>k</code>-th position; the subsequent bitwise AND clears the lower <code>k</code> bits, truncating to the aligned boundary.</li>
+<li><strong>Next Power of Two (<code>next_power_of_two</code>):</strong> Determines the smallest power of two ≥ x. In systems software, this is computed either via bit-smearing (propagating the highest set bit rightward across all lower positions and adding 1) or via the Count Leading Zeros (<code>CLZ</code>) hardware instruction.</li>
+</ul>
+<h3 id="19103-reference-implementation"><a class="header" href="#19103-reference-implementation">19.10.3 Reference Implementation</a></h3>
+<p><strong>Listing 19-17. Bit manipulation (C++20).</strong></p>
+<pre><code class="language-cpp">// ch19/bit_tricks.cpp: four bit manipulations that systems code uses daily.
+#include &lt;cinttypes&gt;
+#include &lt;cstdint&gt;
+#include &lt;cstdio&gt;
+
+/// Counts the 1 bits. Each iteration clears the lowest set bit.
+int count_set_bits(uint64_t value) {
+    int count = 0;
+
+    for (; value != 0; value &amp;= value - 1) ++count;
+
+    return count;
+}
+
+/// True when exactly one bit is set.
+bool is_power_of_two(uint64_t value) {
+    return value != 0 &amp;&amp; (value &amp; (value - 1)) == 0;
+}
+
+/// Rounds `value` up to the next multiple of `alignment`, which must be a power of two.
+uint64_t align_up(uint64_t value, uint64_t alignment) {
+    return (value + alignment - 1) &amp; ~(alignment - 1);
+}
+
+/// Smallest power of two that is greater than or equal to `value` (for value &gt;= 1).
+/// Uses O(1) bit-smearing without loops or branching.
+uint64_t next_power_of_two(uint64_t value) {
+    if (value &lt;= 1) {
+        return 1;
+    }
+
+    uint64_t v = value - 1;
+
+    v |= v &gt;&gt; 1;
+    v |= v &gt;&gt; 2;
+    v |= v &gt;&gt; 4;
+    v |= v &gt;&gt; 8;
+    v |= v &gt;&gt; 16;
+    v |= v &gt;&gt; 32;
+
+    return v + 1;
+}
+
+int main() {
+    printf("count_set_bits(0b1011)  = %d\n", count_set_bits(0b1011));
+    printf("is_power_of_two(64)     = %d\n", is_power_of_two(64));
+    printf("is_power_of_two(96)     = %d\n", is_power_of_two(96));
+    printf("align_up(11, 16)        = %" PRIu64 "\n", align_up(11, 16));
+    printf("align_up(4097, 4096)    = %" PRIu64 "\n", align_up(4097, 4096));
+    printf("next_power_of_two(1000) = %" PRIu64 "\n", next_power_of_two(1000));
+}
+</code></pre>
+<p><strong>Output 19-17.</strong></p>
+<pre><code class="language-text">count_set_bits(0b1011)  = 3
+is_power_of_two(64)     = 1
+is_power_of_two(96)     = 0
+align_up(11, 16)        = 16
+align_up(4097, 4096)    = 8192
+next_power_of_two(1000) = 1024
+</code></pre>
+<p><strong>Listing 19-18. The same functions in Rust.</strong></p>
+<pre class="playground"><code class="language-rust">// ch19/bit_tricks.rs: four bit manipulations that systems code uses daily.
+
+/// Counts the 1 bits. Each iteration clears the lowest set bit.
+fn count_set_bits(mut value: u64) -&gt; u32 {
+    let mut count = 0;
+
+    while value != 0 {
+        value &amp;= value - 1;
+        count += 1;
+    }
+
+    count
+}
+
+/// True when exactly one bit is set.
+fn is_power_of_two(value: u64) -&gt; bool {
+    value != 0 &amp;&amp; (value &amp; (value - 1)) == 0
+}
+
+/// Rounds `value` up to the next multiple of `alignment`, which must be a power of two.
+fn align_up(value: u64, alignment: u64) -&gt; u64 {
+    (value + alignment - 1) &amp; !(alignment - 1)
+}
+
+/// Smallest power of two that is greater than or equal to `value` (for value &gt;= 1).
+/// Uses O(1) bit-smearing without loops or branching.
+fn next_power_of_two(value: u64) -&gt; u64 {
+    if value &lt;= 1 {
+        return 1;
+    }
+
+    let mut v = value - 1;
+
+    v |= v &gt;&gt; 1;
+    v |= v &gt;&gt; 2;
+    v |= v &gt;&gt; 4;
+    v |= v &gt;&gt; 8;
+    v |= v &gt;&gt; 16;
+    v |= v &gt;&gt; 32;
+
+    v + 1
+}
+
+fn main() {
+    println!("count_set_bits(0b1011)  = {}", count_set_bits(0b1011));
+    println!("is_power_of_two(64)     = {}", is_power_of_two(64));
+    println!("is_power_of_two(96)     = {}", is_power_of_two(96));
+    println!("align_up(11, 16)        = {}", align_up(11, 16));
+    println!("align_up(4097, 4096)    = {}", align_up(4097, 4096));
+    println!("next_power_of_two(1000) = {}", next_power_of_two(1000));
+}</code></pre>
+<p><strong>Output 19-18.</strong></p>
+<pre><code class="language-text">count_set_bits(0b1011)  = 3
+is_power_of_two(64)     = true
+is_power_of_two(96)     = false
+align_up(11, 16)        = 16
+align_up(4097, 4096)    = 8192
+next_power_of_two(1000) = 1024
+</code></pre>
+<p>For example, <code>align_up(4097, 4096)</code> evaluates to 8,192, showing how a memory allocation request for 4,097 bytes must span two complete 4,096-byte virtual memory pages.</p>
+<h3 id="19104-microarchitectural-hardware-acceleration"><a class="header" href="#19104-microarchitectural-hardware-acceleration">19.10.4 Microarchitectural Hardware Acceleration</a></h3>
+<p>Modern CPU architectures provide dedicated hardware instructions that execute these bitwise primitives in a single clock cycle:</p>
+<ul>
+<li><code>POPCNT</code> on x86-64 and <code>CNT</code> on ARM NEON map directly to <code>std::popcount</code> in C++20 and <code>count_ones()</code> in Rust.</li>
+<li><code>LZCNT</code>/<code>BSR</code> on x86-64 and <code>CLZ</code> on ARM map to <code>std::bit_ceil</code> and <code>next_power_of_two()</code>.</li>
+</ul>
+<p>In performance-critical loops, compilers optimize high-level bitwise idioms directly into these single-cycle machine instructions.</p>
+<h2 id="1911-linked-list-operations"><a class="header" href="#1911-linked-list-operations">19.11 Linked List Operations</a></h2>
+<p>Pointer manipulation is a classical interview domain that directly evaluates an engineer’s mental model of memory addressing, pointer aliasing, and topological mutation. Performing in-place reversals, sorted merges, and cycle detections demonstrates the ability to reason about pointer graphs without introducing memory leaks or relying on heap allocation.</p>
+<h3 id="19111-in-place-list-inversion"><a class="header" href="#19111-in-place-list-inversion">19.11.1 In-Place List Inversion</a></h3>
+<p>Reversing a singly linked list in-place requires redirecting every node’s <code>next</code> pointer to reference its predecessor. The primary danger during inversion is pointer erasure: overwriting <code>curr-&gt;next</code> destroys the only reference to the unvisited remainder of the list.</p>
+<p>The algorithm maintains three pointers:</p>
+<ul>
+<li><strong><code>prev</code>:</strong> The head of the newly inverted list.</li>
+<li><strong><code>curr</code>:</strong> The active node undergoing pointer redirection.</li>
+<li><strong><code>next_temp</code>:</strong> A temporary holder preserving the reference to <code>curr-&gt;next</code> prior to mutation.</li>
+</ul>
+<p>Traversing the list once achieves O(N) linear time complexity while consuming O(1) auxiliary memory.</p>
+<h3 id="19112-sorted-merging-and-sentinel-nodes"><a class="header" href="#19112-sorted-merging-and-sentinel-nodes">19.11.2 Sorted Merging and Sentinel Nodes</a></h3>
+<p>Merging two sorted linked lists into a single consolidated chain requires repeatedly comparing the head elements of each list, detaching the smaller node, and appending it to the result.</p>
+<p>In naive implementations, initializing the result list requires special-case branching to establish the initial <code>head</code> pointer. In systems programming, this branching overhead is eliminated using a <strong>sentinel node</strong> (or dummy node): a temporary, stack-allocated node placed at the root of the chain. Subsequent appends link directly to <code>tail-&gt;next</code>, eliminating conditionals inside the loop. Once the merge completes, the true head is retrieved as <code>sentinel.next</code>. In Rust, <code>Option::insert</code> initializes the tail pointer in-place; once either list is exhausted, the entire remainder is spliced in O(1) constant time via <code>*tail = left.or(right)</code>.</p>
+<h3 id="19113-cycle-detection-floyds-tortoise-and-hare-algorithm"><a class="header" href="#19113-cycle-detection-floyds-tortoise-and-hare-algorithm">19.11.3 Cycle Detection: Floyd’s Tortoise and Hare Algorithm</a></h3>
+<p>Determining whether a linked list contains a cycle using O(1) auxiliary memory precludes the use of hash sets to record visited pointers. Instead, Floyd’s cycle detection algorithm employs two pointers traversing the list at different velocities:</p>
+<ul>
+<li><strong><code>slow</code>:</strong> Advances by one node per step.</li>
+<li><strong><code>fast</code>:</strong> Advances by two nodes per step.</li>
+</ul>
+<p>If the list is acyclic, <code>fast</code> reaches the null terminator in <code>O(N)</code> steps. If a cycle exists, both pointers eventually enter the cycle. Let the cycle length be <code>C</code>. Once both pointers circulate within the cycle, each step decreases the distance from <code>fast</code> to <code>slow</code> by exactly one node (2 - 1 = 1). Because relative distance decreases monotonically by 1 modulo <code>C</code>, <code>fast</code> is mathematically guaranteed to collide with <code>slow</code> within at most <code>C</code> iterations from the moment <code>slow</code> entered the cycle.</p>
+<h3 id="19114-reference-implementation"><a class="header" href="#19114-reference-implementation">19.11.4 Reference Implementation</a></h3>
+<p><strong>Listing 19-19. Reverse, merge and cycle detection (C++20).</strong></p>
+<pre><code class="language-cpp">// ch19/linked_list.cpp: reverse a list, merge two sorted lists, detect a cycle.
+#include &lt;cstdio&gt;
+
+struct Node {
+    int value;
+    Node* next;
+};
+
+/// Reverses the list in place and returns the new head.
+Node* reverse(Node* head) {
+    Node* reversed = nullptr;
+
+    while (head != nullptr) {
+        Node* rest = head-&gt;next;
+
+        head-&gt;next = reversed;
+        reversed = head;
+        head = rest;
+    }
+
+    return reversed;
+}
+
+/// Merges two ascending lists into one ascending list, reusing the nodes.
+Node* merge_sorted(Node* left, Node* right) {
+    Node anchor{0, nullptr};
+    Node* tail = &amp;anchor;
+
+    while (left != nullptr &amp;&amp; right != nullptr) {
+        Node*&amp; smaller = (left-&gt;value &lt;= right-&gt;value) ? left : right;
+
+        tail-&gt;next = smaller;
+        tail = smaller;
+        smaller = smaller-&gt;next;
+    }
+
+    tail-&gt;next = (left != nullptr) ? left : right;
+    return anchor.next;
+}
+
+/// Floyd's algorithm: a fast pointer catches a slow one only if the list loops.
+bool has_cycle(const Node* head) {
+    const Node* slow = head;
+    const Node* fast = head;
+
+    while (fast != nullptr &amp;&amp; fast-&gt;next != nullptr) {
+        slow = slow-&gt;next;
+        fast = fast-&gt;next-&gt;next;
+
+        if (slow == fast) return true;
+    }
+
+    return false;
+}
+
+void print_list(const char* label, const Node* head) {
+    printf("%s", label);
+
+    for (; head != nullptr; head = head-&gt;next) printf(" %d", head-&gt;value);
+
+    printf("\n");
+}
+
+int main() {
+    Node five{5, nullptr}, three{3, &amp;five}, one{1, &amp;three};
+    Node six{6, nullptr}, four{4, &amp;six}, two{2, &amp;four};
+
+    Node* merged = merge_sorted(&amp;one, &amp;two);
+    print_list("merged  :", merged);
+
+    Node* reversed = reverse(merged);
+    print_list("reversed:", reversed);
+
+    printf("cycle before: %s\n", has_cycle(reversed) ? "yes" : "no");
+
+    one.next = &amp;six;   // the last node now points back to the first
+    printf("cycle after : %s\n", has_cycle(reversed) ? "yes" : "no");
+}
+</code></pre>
+<p><strong>Output 19-19.</strong></p>
+<pre><code class="language-text">merged  : 1 2 3 4 5 6
+reversed: 6 5 4 3 2 1
+cycle before: no
+cycle after : yes
+</code></pre>
+<p><strong>Listing 19-20. The same operations in Rust.</strong></p>
+<pre class="playground"><code class="language-rust">// ch19/linked_list.rs: reverse a list, merge two sorted lists, detect a cycle.
+
+struct Node {
+    value: i32,
+    next: Option&lt;Box&lt;Node&gt;&gt;,
+}
+
+type List = Option&lt;Box&lt;Node&gt;&gt;;
+
+/// Builds a list from a slice, last element first, so that order is preserved.
+fn from_slice(values: &amp;[i32]) -&gt; List {
+    values
+        .iter()
+        .rev()
+        .fold(None, |next, &amp;value| Some(Box::new(Node { value, next })))
+}
+
+/// Reverses the list by moving each node to the front of a new list.
+fn reverse(mut head: List) -&gt; List {
+    let mut reversed = None;
+
+    while let Some(mut node) = head {
+        head = node.next.take();
+        node.next = reversed;
+        reversed = Some(node);
+    }
+
+    reversed
+}
+
+/// Merges two ascending lists into one ascending list, reusing the nodes.
+fn merge_sorted(mut left: List, mut right: List) -&gt; List {
+    let mut merged = None;
+    let mut tail = &amp;mut merged;
+
+    // While both chains contain nodes, detach the smaller head.
+    while let (Some(l), Some(r)) = (&amp;left, &amp;right) {
+        let take_left = l.value &lt;= r.value;
+        let source = if take_left { &amp;mut left } else { &amp;mut right };
+
+        if let Some(mut node) = source.take() {
+            *source = node.next.take();
+            tail = &amp;mut tail.insert(node).next;
+        }
+    }
+
+    // O(1) splice: directly attach whichever chain still has nodes.
+    *tail = left.or(right);
+
+    merged
+}
+
+/// Floyd's algorithm on index links. A `Box` list cannot contain a cycle, because
+/// each node has exactly one owner, so the cyclic case uses an array of next indices.
+fn has_cycle(next: &amp;[Option&lt;usize&gt;], head: usize) -&gt; bool {
+    let step = |position: Option&lt;usize&gt;| position.and_then(|index| next[index]);
+    let mut slow = Some(head);
+    let mut fast = Some(head);
+
+    loop {
+        slow = step(slow);
+        fast = step(step(fast));
+
+        if fast.is_none() {
+            return false;
+        }
+
+        if slow == fast {
+            return true;
+        }
+    }
+}
+
+fn print_list(label: &amp;str, mut head: &amp;List) {
+    print!("{label}");
+
+    while let Some(node) = head {
+        print!(" {}", node.value);
+        head = &amp;node.next;
+    }
+
+    println!();
+}
+
+fn main() {
+    let merged = merge_sorted(from_slice(&amp;[1, 3, 5]), from_slice(&amp;[2, 4, 6]));
+    print_list("merged  :", &amp;merged);
+
+    let reversed = reverse(merged);
+    print_list("reversed:", &amp;reversed);
+
+    let straight = [Some(1), Some(2), Some(3), None];
+    let looped = [Some(1), Some(2), Some(3), Some(1)];
+
+    let before = if has_cycle(&amp;straight, 0) { "yes" } else { "no" };
+    let after = if has_cycle(&amp;looped, 0) { "yes" } else { "no" };
+
+    println!("cycle before: {before}");
+    println!("cycle after : {after}");
+}</code></pre>
+<p><strong>Output 19-20.</strong></p>
+<pre><code class="language-text">merged  : 1 2 3 4 5 6
+reversed: 6 5 4 3 2 1
+cycle before: no
+cycle after : yes
+</code></pre>
+<h3 id="19115-rust-ownership-and-graph-topology"><a class="header" href="#19115-rust-ownership-and-graph-topology">19.11.5 Rust Ownership and Graph Topology</a></h3>
+<p>In Rust’s ownership model, standard <code>Box&lt;Node&gt;</code> pointers represent unique, non-aliased ownership. A cyclical data structure violates this model, as a cycle implies multiple incoming references to a single node. Consequently, constructing cycles with <code>Box</code> is impossible in safe Rust. The Rust reference implementation illustrates the idiomatic alternative: modeling the graph as an arena array where nodes are stored contiguously and linked via integer indices. Floyd’s algorithm executes identically over this array, demonstrating graph traversal within the bounds of safe, verified memory.</p>
+<h2 id="1912-operating-system-fundamentals-six-technical-derivations"><a class="header" href="#1912-operating-system-fundamentals-six-technical-derivations">19.12 Operating System Fundamentals: Six Technical Derivations</a></h2>
+<p>Beyond algorithmic implementations, systems engineering interviews evaluate conceptual mastery of kernel mechanics and hardware abstraction layers. The following six sections provide rigorous, first-principles derivations of the core concepts developed throughout Chapters 1 to 18.</p>
+<h3 id="19121-process-isolation-vs-thread-concurrency-topology"><a class="header" href="#19121-process-isolation-vs-thread-concurrency-topology">19.12.1 Process Isolation vs. Thread Concurrency Topology</a></h3>
+<p>The fundamental distinction between a process and a thread is defined by memory isolation and resource ownership:</p>
+<ul>
+<li><strong>Process Topology:</strong> A <strong>process</strong> is the operating system’s fundamental unit of isolation and resource allocation. It encapsulates a private virtual address space, an isolated page table hierarchy, environment variables, security credentials, and a File Descriptor Table. Hardware-level memory isolation is enforced by the Memory Management Unit (MMU): each process possesses its own page directory root register (<code>CR3</code> on x86-64, <code>TTBR0_EL1</code> on ARM64). A memory write in one process cannot access or corrupt physical memory allocated to another process without explicit inter-process shared memory mappings.</li>
+<li><strong>Thread Topology:</strong> A <strong>thread</strong> is the fundamental unit of CPU scheduling and execution. Multiple threads exist within the administrative domain of a single host process, sharing its complete address space, page tables, open file descriptors, and signal dispositions. Each thread possesses only its private architectural state: a dedicated Program Counter (PC), register set, and execution stack. Because threads share memory without hardware protection, concurrent mutations are susceptible to data races, requiring software synchronization primitives (see Chapters 3 and 4).</li>
+</ul>
+<h3 id="19122-context-switch-mechanics-and-microarchitectural-overhead"><a class="header" href="#19122-context-switch-mechanics-and-microarchitectural-overhead">19.12.2 Context Switch Mechanics and Microarchitectural Overhead</a></h3>
+<p>A context switch is the kernel-supervised procedure of pausing execution of an active thread and resuming another on a CPU core. The operation comprises two distinct phases:</p>
+<ol>
+<li><strong>Architectural State Preservation:</strong> The kernel traps execution into privileged mode, saving the CPU registers, program counter, and stack pointer of the outgoing thread into its Process Control Block (PCB) or Thread Control Block (TCB). The saved state of the incoming thread is then loaded into physical registers.</li>
+<li><strong>Address Space Reconfiguration (Cross-Process Only):</strong> If switching between threads of the same process, the virtual address space remains unchanged. If switching between distinct processes, the kernel reloads the hardware page table base register (<code>CR3</code>/<code>TTBR0</code>), reconfiguring virtual memory mapping.</li>
+</ol>
+<p>While saving and restoring registers requires only tens of nanoseconds, the dominant cost of a cross-process context switch is indirect microarchitectural disruption:</p>
+<ul>
+<li><strong>TLB Invalidation:</strong> Reloading the page directory root invalidates non-global entries in the Translation Lookaside Buffer (TLB). Subsequent memory accesses incur expensive multi-level page table walks until the TLB warms up. Modern architectures mitigate this using Process-Context Identifiers (PCID on x86-64, ASID on ARM).</li>
+<li><strong>Cache Pollution:</strong> The incoming process populates the L1/L2 caches with its own working set, evicting the cached data of the previous process and degrading memory throughput (see Chapters 2 and 5).</li>
+</ul>
+<h3 id="19123-system-call-traps-and-privilege-boundary-enforcement"><a class="header" href="#19123-system-call-traps-and-privilege-boundary-enforcement">19.12.3 System Call Traps and Privilege Boundary Enforcement</a></h3>
+<p>A system call provides a secure, hardware-supervised mechanism for user-mode applications to request privileged operating system services (e.g., file I/O, process creation, network transmission) without granting unrestricted access to hardware.</p>
+<p>The execution sequence proceeds across the privilege boundary:</p>
+<ol>
+<li><strong>User Mode Setup:</strong> The C runtime library places the system call number and parameters into designated CPU registers (e.g., <code>RAX</code>, <code>RDI</code>, <code>RSI</code> on x86-64; <code>X8</code>, <code>X0</code>–<code>X5</code> on ARM64).</li>
+<li><strong>Hardware Trap:</strong> The program executes a specialized trap instruction (<code>syscall</code> on x86-64, <code>svc</code> on ARM64). The CPU immediately elevates its privilege level from User Mode (Ring 3 / EL0) to Kernel Mode (Ring 0 / EL1).</li>
+<li><strong>Privilege Boundary Enforcement:</strong> The CPU switches from the user stack to a secure, kernel-allocated stack and jumps to a predefined kernel entry point specified in the architectural Model-Specific Registers (MSRs) or Exception Vector Tables.</li>
+<li><strong>Validation and Dispatch:</strong> The kernel validates all user pointers, verifying they reside within the calling process’s address space. It indexes into the system call dispatch table, executes the requested driver or filesystem routine, and returns execution to user mode via <code>sysret</code> or <code>eret</code>.</li>
+</ol>
+<p>On modern hardware, a standard function call executes in sub-nanosecond time (a few clock cycles), whereas a system call requires hundreds of nanoseconds due to pipeline flushes, privilege transitions, and security checks (see Chapters 1 and 9).</p>
+<h3 id="19124-synchronization-taxonomy-mutex-spinlock-and-semaphore"><a class="header" href="#19124-synchronization-taxonomy-mutex-spinlock-and-semaphore">19.12.4 Synchronization Taxonomy: Mutex, Spinlock, and Semaphore</a></h3>
+<p>Selecting appropriate synchronization primitives requires evaluating lock hold duration relative to operating system context switch latency:</p>
+<ul>
+<li><strong>Mutex (Mutual Exclusion):</strong> A sleep-lock primitive designed for general synchronization. When a thread attempts to acquire an already-held mutex, the kernel suspends the thread, placing it in a wait queue and scheduling another thread. A mutex is optimal when the critical section involves I/O, memory allocation, or variable durations exceeding the cost of two context switches (~2–5 µs).</li>
+<li><strong>Spinlock:</strong> A busy-waiting primitive implemented via atomic instructions (e.g., <code>test_and_set</code> or Compare-And-Swap). A contending thread loops continuously on the CPU core until the lock becomes free. Spinlocks are appropriate only in low-latency kernel code or interrupt handlers where thread suspension is forbidden and where the lock is guaranteed to be held for fewer cycles than a context switch. On single-core systems, uniprocessor spinlocks cause permanent priority inversion without preemption.</li>
+<li><strong>Counting Semaphore:</strong> A generalized signaling primitive that manages a pool of identical resources. A semaphore encapsulates an atomic integer counter. <code>acquire()</code> (or <code>sem_wait</code>) decrements the counter, suspending if the value is zero; <code>release()</code> (or <code>sem_post</code>) increments the counter and awakens a waiting thread. A binary semaphore (counter initialized to 1) resembles a mutex, but lacks the concept of ownership: any thread can release a semaphore, whereas a mutex must strictly be unlocked by the thread that acquired it (see Chapter 6).</li>
+</ul>
+<h3 id="19125-deadlock-dynamics-coffman-conditions-and-prevention-strategies"><a class="header" href="#19125-deadlock-dynamics-coffman-conditions-and-prevention-strategies">19.12.5 Deadlock Dynamics: Coffman Conditions and Prevention Strategies</a></h3>
+<p>A deadlock occurs when a set of concurrent processes are permanently blocked because each process holds a resource while awaiting another resource held by another process in the set.</p>
+<p>A deadlock can arise if and only if all four <strong>Coffman conditions</strong> hold simultaneously:</p>
+<ol>
+<li><strong>Mutual Exclusion:</strong> Resources cannot be shared; each resource is held by at most one thread at a time.</li>
+<li><strong>Hold and Wait:</strong> A thread currently holding allocated resources is permitted to request new resources without releasing its existing allocations.</li>
+<li><strong>No Preemption:</strong> Resources cannot be forcibly revoked from a thread; they must be released voluntarily upon task completion.</li>
+<li><strong>Circular Wait:</strong> A closed chain of threads exists such that each thread holds a resource requested by the next thread in the chain (T₁ → T₂ → … → Tₙ → T₁).</li>
+</ol>
+<p>Breaking any single Coffman condition mathematically precludes deadlock:</p>
+<ul>
+<li><strong>Lock Ordering (Breaking Circular Wait):</strong> The most common prevention strategy in software engineering. All system locks are assigned a strict global hierarchy. Every thread must acquire locks in strictly ascending numerical order. Because cycles cannot exist in a directed acyclic graph, circular wait is rendered impossible.</li>
+<li><strong>Non-Blocking Acquisition (Breaking Hold and Wait):</strong> Threads utilize <code>try_lock()</code> operations. If a thread cannot acquire all required locks, it immediately releases all previously acquired locks, backs off, and retries the entire sequence, eliminating the hold-and-wait condition (see Chapter 6).</li>
+</ul>
+<h3 id="19126-virtual-memory-architecture-and-page-fault-resolution"><a class="header" href="#19126-virtual-memory-architecture-and-page-fault-resolution">19.12.6 Virtual Memory Architecture and Page Fault Resolution</a></h3>
+<p>Virtual memory abstracts physical DRAM into a uniform, protected linear address space. The CPU’s Memory Management Unit (MMU) translates virtual addresses to physical addresses at hardware speeds using hierarchical page tables (typically 4 levels on 64-bit architectures).</p>
+<p>Recent translations are cached in the Translation Lookaside Buffer (TLB). When an instruction attempts to access a virtual address whose Page Table Entry (PTE) is marked invalid, the MMU halts execution and triggers a <strong>page fault</strong> hardware trap (<code>#PF</code>).</p>
+<p>The operating system kernel intercepts the trap and resolves the fault according to the memory region’s backing semantics:</p>
+<ul>
+<li><strong>Demand Paging (File-Backed):</strong> For program code (<code>.text</code>) or memory-mapped files (<code>mmap</code>), the kernel allocates a physical frame, reads the page data from storage into the page cache, updates the PTE with the physical frame address, and marks it valid.</li>
+<li><strong>Zero-Fill on Demand (Anonymous Memory):</strong> When a process requests heap (<code>brk</code>/<code>malloc</code>) or stack expansion, the kernel lazily allocates a physical page filled with zeros, avoiding the overhead of initializing memory until the first write occurs.</li>
+<li><strong>Copy-on-Write (COW):</strong> Following a <code>fork()</code> system call, the child and parent processes share physical frames marked read-only. When either process attempts to write to a shared page, the MMU triggers a protection fault. The kernel intercepts the write, duplicates the physical frame into a new private frame, assigns write permissions, and resumes execution.</li>
+<li><strong>Protection Violations:</strong> If an instruction violates permissions (e.g., attempting to execute code on a non-executable stack page, or writing to a read-only code segment) or accesses an unmapped virtual address, the kernel dispatches a fatal signal (<code>SIGSEGV</code> or <code>SIGBUS</code>), terminating the errant process (see Chapter 7).</li>
+</ul>
+<div class="callout summary">
+<span class="label">Summary</span>
+<ul>
+<li><strong>Contract, Invariants, and Failure Modes:</strong> Systems problem solving begins by specifying operational limits, verifying synchronization invariants, and tracing concurrency boundary states.</li>
+<li><strong>Synchronization Primitives:</strong> Condition variables enable atomic mutex release and sleep; predicate loops (<code>while</code>) prevent spurious wakeup corruption; writer-preference policies prevent writer starvation.</li>
+<li><strong>Lock-Free Concurrency:</strong> Single-writer invariants eliminate lock contention; acquire-release pairs establish cross-core happens-before visibility; 64-byte alignment (<code>alignas(64)</code>) eliminates false sharing.</li>
+<li><strong>Memory &amp; Allocation:</strong> 16-byte alignment satisfies vector SIMD constraints; block splitting and coalescing manage internal and external fragmentation.</li>
+<li><strong>Unix Process Orchestration:</strong> <code>pipe()</code>, <code>fork()</code>, and <code>dup2()</code> enable compositional pipelines; closing unused parent descriptors is mandatory to avoid EOF deadlocks.</li>
+<li><strong>First-Principles OS Mechanics:</strong> Understanding address space isolation (<code>CR3</code>/<code>TTBR0</code>), context switch microarchitectural penalties (TLB invalidation and cache pollution), kernel trap gates, Coffman deadlock conditions, and page fault resolution forms the bedrock of systems engineering.</li>
+</ul>
+</div>
+
+
+                    </main>
+
+                    <nav class="nav-wrapper" aria-label="Page navigation">
+                        <!-- Mobile navigation buttons -->
+                            <a rel="prev" href="ch18-performance.html" class="mobile-nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                                <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M41.4 233.4c-12.5 12.5-12.5 32.8 0 45.3l160 160c12.5 12.5 32.8 12.5 45.3 0s12.5-32.8 0-45.3L109.3 256 246.6 118.6c12.5-12.5 12.5-32.8 0-45.3s-32.8-12.5-45.3 0l-160 160z"/></svg></span>
+                            </a>
+
+                            <a rel="next prefetch" href="appendix-a-harness.html" class="mobile-nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                                <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M278.6 233.4c12.5 12.5 12.5 32.8 0 45.3l-160 160c-12.5 12.5-32.8 12.5-45.3 0s-12.5-32.8 0-45.3L210.7 256 73.4 118.6c-12.5-12.5-12.5-32.8 0-45.3s32.8-12.5 45.3 0l160 160z"/></svg></span>
+                            </a>
+
+                        <div style="clear: both"></div>
+                    </nav>
+                </div>
+            </div>
+
+            <nav class="nav-wide-wrapper" aria-label="Page navigation">
+                    <a rel="prev" href="ch18-performance.html" class="nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                        <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M41.4 233.4c-12.5 12.5-12.5 32.8 0 45.3l160 160c12.5 12.5 32.8 12.5 45.3 0s12.5-32.8 0-45.3L109.3 256 246.6 118.6c12.5-12.5 12.5-32.8 0-45.3s-32.8-12.5-45.3 0l-160 160z"/></svg></span>
+                    </a>
+
+                    <a rel="next prefetch" href="appendix-a-harness.html" class="nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                        <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M278.6 233.4c12.5 12.5 12.5 32.8 0 45.3l-160 160c-12.5 12.5-32.8 12.5-45.3 0s-12.5-32.8 0-45.3L210.7 256 73.4 118.6c-12.5-12.5-12.5-32.8 0-45.3s32.8-12.5 45.3 0l160 160z"/></svg></span>
+                    </a>
+            </nav>
+
+        </div>
+
+        <template id=fa-eye><span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 576 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M288 32c-80.8 0-145.5 36.8-192.6 80.6C48.6 156 17.3 208 2.5 243.7c-3.3 7.9-3.3 16.7 0 24.6C17.3 304 48.6 356 95.4 399.4C142.5 443.2 207.2 480 288 480s145.5-36.8 192.6-80.6c46.8-43.5 78.1-95.4 93-131.1c3.3-7.9 3.3-16.7 0-24.6c-14.9-35.7-46.2-87.7-93-131.1C433.5 68.8 368.8 32 288 32zM432 256c0 79.5-64.5 144-144 144s-144-64.5-144-144s64.5-144 144-144s144 64.5 144 144zM288 192c0 35.3-28.7 64-64 64c-11.5 0-22.3-3-31.6-8.4c-.2 2.8-.4 5.5-.4 8.4c0 53 43 96 96 96s96-43 96-96s-43-96-96-96c-2.8 0-5.6 .1-8.4 .4c5.3 9.3 8.4 20.1 8.4 31.6z"/></svg></span></template>
+        <template id=fa-eye-slash><span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M38.8 5.1C28.4-3.1 13.3-1.2 5.1 9.2S-1.2 34.7 9.2 42.9l592 464c10.4 8.2 25.5 6.3 33.7-4.1s6.3-25.5-4.1-33.7L525.6 386.7c39.6-40.6 66.4-86.1 79.9-118.4c3.3-7.9 3.3-16.7 0-24.6c-14.9-35.7-46.2-87.7-93-131.1C465.5 68.8 400.8 32 320 32c-68.2 0-125 26.3-169.3 60.8L38.8 5.1zM223.1 149.5C248.6 126.2 282.7 112 320 112c79.5 0 144 64.5 144 144c0 24.9-6.3 48.3-17.4 68.7L408 294.5c5.2-11.8 8-24.8 8-38.5c0-53-43-96-96-96c-2.8 0-5.6 .1-8.4 .4c5.3 9.3 8.4 20.1 8.4 31.6c0 10.2-2.4 19.8-6.6 28.3l-90.3-70.8zm223.1 298L373 389.9c-16.4 6.5-34.3 10.1-53 10.1c-79.5 0-144-64.5-144-144c0-6.9 .5-13.6 1.4-20.2L83.1 161.5C60.3 191.2 44 220.8 34.5 243.7c-3.3 7.9-3.3 16.7 0 24.6c14.9 35.7 46.2 87.7 93 131.1C174.5 443.2 239.2 480 320 480c47.8 0 89.9-12.9 126.2-32.5z"/></svg></span></template>
+        <template id=fa-copy><span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M502.6 70.63l-61.25-61.25C435.4 3.371 427.2 0 418.7 0H255.1c-35.35 0-64 28.66-64 64l.0195 256C192 355.4 220.7 384 256 384h192c35.2 0 64-28.8 64-64V93.25C512 84.77 508.6 76.63 502.6 70.63zM464 320c0 8.836-7.164 16-16 16H255.1c-8.838 0-16-7.164-16-16L239.1 64.13c0-8.836 7.164-16 16-16h128L384 96c0 17.67 14.33 32 32 32h47.1V320zM272 448c0 8.836-7.164 16-16 16H63.1c-8.838 0-16-7.164-16-16L47.98 192.1c0-8.836 7.164-16 16-16H160V128H63.99c-35.35 0-64 28.65-64 64l.0098 256C.002 483.3 28.66 512 64 512h192c35.2 0 64-28.8 64-64v-32h-47.1L272 448z"/></svg></span></template>
+        <template id=fa-play><span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 384 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M73 39c-14.8-9.1-33.4-9.4-48.5-.9S0 62.6 0 80V432c0 17.4 9.4 33.4 24.5 41.9s33.7 8.1 48.5-.9L361 297c14.3-8.7 23-24.2 23-41s-8.7-32.2-23-41L73 39z"/></svg></span></template>
+        <template id=fa-clock-rotate-left><span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M75 75L41 41C25.9 25.9 0 36.6 0 57.9V168c0 13.3 10.7 24 24 24H134.1c21.4 0 32.1-25.9 17-41l-30.8-30.8C155 85.5 203 64 256 64c106 0 192 86 192 192s-86 192-192 192c-40.8 0-78.6-12.7-109.7-34.4c-14.5-10.1-34.4-6.6-44.6 7.9s-6.6 34.4 7.9 44.6C151.2 495 201.7 512 256 512c141.4 0 256-114.6 256-256S397.4 0 256 0C185.3 0 121.3 28.7 75 75zm181 53c-13.3 0-24 10.7-24 24V256c0 6.4 2.5 12.5 7 17l72 72c9.4 9.4 24.6 9.4 33.9 0s9.4-24.6 0-33.9l-65-65V152c0-13.3-10.7-24-24-24z"/></svg></span></template>
+
+
+
+        <script>
+            window.playground_copyable = true;
+        </script>
+
+
+        <script src="elasticlunr-ef4e11c1.min.js"></script>
+        <script src="mark-09e88c2c.min.js"></script>
+        <script src="searcher-09f2665d.js"></script>
+
+        <script src="clipboard-1626706a.min.js"></script>
+        <script src="highlight-abc7f01d.js"></script>
+        <script src="book-609e4cb8.js"></script>
+
+        <!-- Custom JS scripts -->
+        <script src="theme/figures-7a3fdfc9.js"></script>
+
+
+
+    </div>
+    </body>
+</html>

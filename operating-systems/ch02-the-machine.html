@@ -1,0 +1,388 @@
+<!DOCTYPE HTML>
+<html lang="en" class="light sidebar-visible" dir="ltr">
+    <head>
+        <!-- Book generated using mdBook -->
+        <meta charset="UTF-8">
+        <title>2. The Architectural Substrate and Execution Constraints - Operating Systems: A Hands-On Approach</title>
+
+
+        <!-- Custom HTML head -->
+
+        <meta name="description" content="Operating system fundamentals built from first principles, with verified C++20 and Rust 2024 code.">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <meta name="theme-color" content="#ffffff">
+
+        <link rel="icon" href="favicon-de23e50b.svg">
+        <link rel="shortcut icon" href="favicon-8114d1fc.png">
+        <link rel="stylesheet" href="css/variables-8adf115d.css">
+        <link rel="stylesheet" href="css/general-e96d0476.css">
+        <link rel="stylesheet" href="css/chrome-d279d366.css">
+        <link rel="stylesheet" href="css/print-9e4910d8.css" media="print">
+
+        <!-- Fonts -->
+        <link rel="stylesheet" href="fonts/fonts-9644e21d.css">
+
+        <!-- Highlight.js Stylesheets -->
+        <link rel="stylesheet" id="mdbook-highlight-css" href="highlight-493f70e1.css">
+        <link rel="stylesheet" id="mdbook-tomorrow-night-css" href="tomorrow-night-4c0ae647.css">
+        <link rel="stylesheet" id="mdbook-ayu-highlight-css" href="ayu-highlight-3fdfc3ac.css">
+
+        <!-- Custom theme stylesheets -->
+        <link rel="stylesheet" href="theme/custom-e0671a52.css">
+
+        <!-- MathJax -->
+        <script async src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.1/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
+
+        <!-- Provide site root and default themes to javascript -->
+        <script>
+            const path_to_root = "";
+            const default_light_theme = "light";
+            const default_dark_theme = "navy";
+            window.path_to_searchindex_js = "searchindex-6aaf8639.js";
+        </script>
+        <!-- Start loading toc.js asap -->
+        <script src="toc-2b639993.js"></script>
+    </head>
+    <body>
+    <div id="mdbook-help-container">
+        <div id="mdbook-help-popup">
+            <h2 class="mdbook-help-title">Keyboard shortcuts</h2>
+            <div>
+                <p>Press <kbd>←</kbd> or <kbd>→</kbd> to navigate between chapters</p>
+                <p>Press <kbd>S</kbd> or <kbd>/</kbd> to search in the book</p>
+                <p>Press <kbd>?</kbd> to show this help</p>
+                <p>Press <kbd>Esc</kbd> to hide this help</p>
+            </div>
+        </div>
+    </div>
+    <div id="mdbook-body-container">
+        <!-- Work around some values being stored in localStorage wrapped in quotes -->
+        <script>
+            try {
+                let theme = localStorage.getItem('mdbook-theme');
+                let sidebar = localStorage.getItem('mdbook-sidebar');
+
+                if (theme.startsWith('"') && theme.endsWith('"')) {
+                    localStorage.setItem('mdbook-theme', theme.slice(1, theme.length - 1));
+                }
+
+                if (sidebar.startsWith('"') && sidebar.endsWith('"')) {
+                    localStorage.setItem('mdbook-sidebar', sidebar.slice(1, sidebar.length - 1));
+                }
+            } catch (e) { }
+        </script>
+
+        <!-- Set the theme before any content is loaded, prevents flash -->
+        <script>
+            const default_theme = window.matchMedia("(prefers-color-scheme: dark)").matches ? default_dark_theme : default_light_theme;
+            let theme;
+            try { theme = localStorage.getItem('mdbook-theme'); } catch(e) { }
+            if (theme === null || theme === undefined) { theme = default_theme; }
+            const html = document.documentElement;
+            html.classList.remove('light')
+            html.classList.add(theme);
+            html.classList.add("js");
+        </script>
+
+        <input type="checkbox" id="mdbook-sidebar-toggle-anchor" class="hidden">
+
+        <!-- Hide / unhide sidebar before it is displayed -->
+        <script>
+            let sidebar = null;
+            const sidebar_toggle = document.getElementById("mdbook-sidebar-toggle-anchor");
+            if (document.body.clientWidth >= 1080) {
+                try { sidebar = localStorage.getItem('mdbook-sidebar'); } catch(e) { }
+                sidebar = sidebar || 'visible';
+            } else {
+                sidebar = 'hidden';
+                sidebar_toggle.checked = false;
+            }
+            if (sidebar === 'visible') {
+                sidebar_toggle.checked = true;
+            } else {
+                html.classList.remove('sidebar-visible');
+            }
+        </script>
+
+        <nav id="mdbook-sidebar" class="sidebar" aria-label="Table of contents">
+            <!-- populated by js -->
+            <mdbook-sidebar-scrollbox class="sidebar-scrollbox"></mdbook-sidebar-scrollbox>
+            <noscript>
+                <iframe class="sidebar-iframe-outer" src="toc.html"></iframe>
+            </noscript>
+            <div id="mdbook-sidebar-resize-handle" class="sidebar-resize-handle">
+                <div class="sidebar-resize-indicator"></div>
+            </div>
+        </nav>
+
+        <div id="mdbook-page-wrapper" class="page-wrapper">
+
+            <div class="page">
+                <div id="mdbook-menu-bar-hover-placeholder"></div>
+                <div id="mdbook-menu-bar" class="menu-bar sticky">
+                    <div class="left-buttons">
+                        <label id="mdbook-sidebar-toggle" class="icon-button" for="mdbook-sidebar-toggle-anchor" title="Toggle Table of Contents" aria-label="Toggle Table of Contents" aria-controls="mdbook-sidebar">
+                            <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M0 96C0 78.3 14.3 64 32 64H416c17.7 0 32 14.3 32 32s-14.3 32-32 32H32C14.3 128 0 113.7 0 96zM0 256c0-17.7 14.3-32 32-32H416c17.7 0 32 14.3 32 32s-14.3 32-32 32H32c-17.7 0-32-14.3-32-32zM448 416c0 17.7-14.3 32-32 32H32c-17.7 0-32-14.3-32-32s14.3-32 32-32H416c17.7 0 32 14.3 32 32z"/></svg></span>
+                        </label>
+                        <button id="mdbook-theme-toggle" class="icon-button" type="button" title="Change theme" aria-label="Change theme" aria-haspopup="true" aria-expanded="false" aria-controls="mdbook-theme-list">
+                            <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 576 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M371.3 367.1c27.3-3.9 51.9-19.4 67.2-42.9L600.2 74.1c12.6-19.5 9.4-45.3-7.6-61.2S549.7-4.4 531.1 9.6L294.4 187.2c-24 18-38.2 46.1-38.4 76.1L371.3 367.1zm-19.6 25.4l-116-104.4C175.9 290.3 128 339.6 128 400c0 3.9 .2 7.8 .6 11.6c1.8 17.5-10.2 36.4-27.8 36.4H96c-17.7 0-32 14.3-32 32s14.3 32 32 32H240c61.9 0 112-50.1 112-112c0-2.5-.1-5-.2-7.5z"/></svg></span>
+                        </button>
+                        <ul id="mdbook-theme-list" class="theme-popup" aria-label="Themes" role="menu">
+                            <li role="none"><button role="menuitem" class="theme" id="mdbook-theme-default_theme">Auto</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="mdbook-theme-light">Light</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="mdbook-theme-rust">Rust</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="mdbook-theme-coal">Coal</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="mdbook-theme-navy">Navy</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="mdbook-theme-ayu">Ayu</button></li>
+                        </ul>
+                        <button id="mdbook-search-toggle" class="icon-button" type="button" title="Search (`/`)" aria-label="Toggle Searchbar" aria-expanded="false" aria-keyshortcuts="/ s" aria-controls="mdbook-searchbar">
+                            <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M416 208c0 45.9-14.9 88.3-40 122.7L502.6 457.4c12.5 12.5 12.5 32.8 0 45.3s-32.8 12.5-45.3 0L330.7 376c-34.4 25.2-76.8 40-122.7 40C93.1 416 0 322.9 0 208S93.1 0 208 0S416 93.1 416 208zM208 352c79.5 0 144-64.5 144-144s-64.5-144-144-144S64 128.5 64 208s64.5 144 144 144z"/></svg></span>
+                        </button>
+                    </div>
+
+                    <h1 class="menu-title">Operating Systems: A Hands-On Approach</h1>
+
+                    <div class="right-buttons">
+                        <a href="print.html" title="Print this book" aria-label="Print this book">
+                            <span class=fa-svg id="print-button"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M128 0C92.7 0 64 28.7 64 64v96h64V64H354.7L384 93.3V160h64V93.3c0-17-6.7-33.3-18.7-45.3L400 18.7C388 6.7 371.7 0 354.7 0H128zM384 352v32 64H128V384 368 352H384zm64 32h32c17.7 0 32-14.3 32-32V256c0-35.3-28.7-64-64-64H64c-35.3 0-64 28.7-64 64v96c0 17.7 14.3 32 32 32H64v64c0 35.3 28.7 64 64 64H384c35.3 0 64-28.7 64-64V384zm-16-88c-13.3 0-24-10.7-24-24s10.7-24 24-24s24 10.7 24 24s-10.7 24-24 24z"/></svg></span>
+                        </a>
+                        <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/tree/prep-v2/operating-systems" title="Git repository" aria-label="Git repository">
+                            <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 496 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M165.9 397.4c0 2-2.3 3.6-5.2 3.6-3.3.3-5.6-1.3-5.6-3.6 0-2 2.3-3.6 5.2-3.6 3-.3 5.6 1.3 5.6 3.6zm-31.1-4.5c-.7 2 1.3 4.3 4.3 4.9 2.6 1 5.6 0 6.2-2s-1.3-4.3-4.3-5.2c-2.6-.7-5.5.3-6.2 2.3zm44.2-1.7c-2.9.7-4.9 2.6-4.6 4.9.3 2 2.9 3.3 5.9 2.6 2.9-.7 4.9-2.6 4.6-4.6-.3-1.9-3-3.2-5.9-2.9zM244.8 8C106.1 8 0 113.3 0 252c0 110.9 69.8 205.8 169.5 239.2 12.8 2.3 17.3-5.6 17.3-12.1 0-6.2-.3-40.4-.3-61.4 0 0-70 15-84.7-29.8 0 0-11.4-29.1-27.8-36.6 0 0-22.9-15.7 1.6-15.4 0 0 24.9 2 38.6 25.8 21.9 38.6 58.6 27.5 72.9 20.9 2.3-16 8.8-27.1 16-33.7-55.9-6.2-112.3-14.3-112.3-110.5 0-27.5 7.6-41.3 23.6-58.9-2.6-6.5-11.1-33.3 2.6-67.9 20.9-6.5 69 27 69 27 20-5.6 41.5-8.5 62.8-8.5s42.8 2.9 62.8 8.5c0 0 48.1-33.6 69-27 13.7 34.7 5.2 61.4 2.6 67.9 16 17.7 25.8 31.5 25.8 58.9 0 96.5-58.9 104.2-114.8 110.5 9.2 7.9 17 22.9 17 46.4 0 33.7-.3 75.4-.3 83.6 0 6.5 4.6 14.4 17.3 12.1C428.2 457.8 496 362.9 496 252 496 113.3 383.5 8 244.8 8zM97.2 352.9c-1.3 1-1 3.3.7 5.2 1.6 1.6 3.9 2.3 5.2 1 1.3-1 1-3.3-.7-5.2-1.6-1.6-3.9-2.3-5.2-1zm-10.8-8.1c-.7 1.3.3 2.9 2.3 3.9 1.6 1 3.6.7 4.3-.7.7-1.3-.3-2.9-2.3-3.9-2-.6-3.6-.3-4.3.7zm32.4 35.6c-1.6 1.3-1 4.3 1.3 6.2 2.3 2.3 5.2 2.6 6.5 1 1.3-1.3.7-4.3-1.3-6.2-2.2-2.3-5.2-2.6-6.5-1zm-11.4-14.7c-1.6 1-1.6 3.6 0 5.9 1.6 2.3 4.3 3.3 5.6 2.3 1.6-1.3 1.6-3.9 0-6.2-1.4-2.3-4-3.3-5.6-2z"/></svg></span>
+                        </a>
+                        <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/edit/prep-v2/operating-systems/src/ch02-the-machine.md" title="Suggest an edit" aria-label="Suggest an edit" rel="edit">
+                            <span class=fa-svg id="git-edit-button"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M421.7 220.3l-11.3 11.3-22.6 22.6-205 205c-6.6 6.6-14.8 11.5-23.8 14.1L30.8 511c-8.4 2.5-17.5 .2-23.7-6.1S-1.5 489.7 1 481.2L38.7 353.1c2.6-9 7.5-17.2 14.1-23.8l205-205 22.6-22.6 11.3-11.3 33.9 33.9 62.1 62.1 33.9 33.9zM96 353.9l-9.3 9.3c-.9 .9-1.6 2.1-2 3.4l-25.3 86 86-25.3c1.3-.4 2.5-1.1 3.4-2l9.3-9.3H112c-8.8 0-16-7.2-16-16V353.9zM453.3 19.3l39.4 39.4c25 25 25 65.5 0 90.5l-14.5 14.5-22.6 22.6-11.3 11.3-33.9-33.9-62.1-62.1L314.3 67.7l11.3-11.3 22.6-22.6 14.5-14.5c25-25 65.5-25 90.5 0z"/></svg></span>
+                        </a>
+
+                    </div>
+                </div>
+
+                <div id="mdbook-search-wrapper" class="hidden">
+                    <form id="mdbook-searchbar-outer" class="searchbar-outer">
+                        <div class="search-wrapper">
+                            <input type="search" id="mdbook-searchbar" name="searchbar" placeholder="Search this book ..." aria-controls="mdbook-searchresults-outer" aria-describedby="searchresults-header">
+                            <div class="spinner-wrapper">
+                                <span class=fa-svg id="fa-spin"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M304 48c0-26.5-21.5-48-48-48s-48 21.5-48 48s21.5 48 48 48s48-21.5 48-48zm0 416c0-26.5-21.5-48-48-48s-48 21.5-48 48s21.5 48 48 48s48-21.5 48-48zM48 304c26.5 0 48-21.5 48-48s-21.5-48-48-48s-48 21.5-48 48s21.5 48 48 48zm464-48c0-26.5-21.5-48-48-48s-48 21.5-48 48s21.5 48 48 48s48-21.5 48-48zM142.9 437c18.7-18.7 18.7-49.1 0-67.9s-49.1-18.7-67.9 0s-18.7 49.1 0 67.9s49.1 18.7 67.9 0zm0-294.2c18.7-18.7 18.7-49.1 0-67.9S93.7 56.2 75 75s-18.7 49.1 0 67.9s49.1 18.7 67.9 0zM369.1 437c18.7 18.7 49.1 18.7 67.9 0s18.7-49.1 0-67.9s-49.1-18.7-67.9 0s-18.7 49.1 0 67.9z"/></svg></span>
+                            </div>
+                        </div>
+                    </form>
+                    <div id="mdbook-searchresults-outer" class="searchresults-outer hidden">
+                        <div id="mdbook-searchresults-header" class="searchresults-header"></div>
+                        <ul id="mdbook-searchresults">
+                        </ul>
+                    </div>
+                </div>
+
+                <!-- Apply ARIA attributes after the sidebar and the sidebar toggle button are added to the DOM -->
+                <script>
+                    document.getElementById('mdbook-sidebar-toggle').setAttribute('aria-expanded', sidebar === 'visible');
+                    document.getElementById('mdbook-sidebar').setAttribute('aria-hidden', sidebar !== 'visible');
+                    Array.from(document.querySelectorAll('#mdbook-sidebar a')).forEach(function(link) {
+                        link.setAttribute('tabIndex', sidebar === 'visible' ? 0 : -1);
+                    });
+                </script>
+
+                <div id="mdbook-content" class="content">
+                    <main>
+                        <h1 id="2-the-architectural-substrate-and-execution-constraints"><a class="header" href="#2-the-architectural-substrate-and-execution-constraints">2. The Architectural Substrate and Execution Constraints</a></h1>
+<p>The design and operational behavior of an operating system are fundamentally dictated by the invariant properties of the underlying hardware. Without a supervisory kernel arbitrating execution, a bare-metal processor provides no memory isolation, no concurrent time-multiplexing, and no protection against errant or malicious instruction streams. The microarchitectural substrate defines the physical boundaries of computation, the necessity of virtual memory management, and the hardware mechanisms required to enforce system integrity.</p>
+<h2 id="21-the-execution-model-and-the-atomicity-gap"><a class="header" href="#21-the-execution-model-and-the-atomicity-gap">2.1 The Execution Model and the Atomicity Gap</a></h2>
+<p>A processor core operates via a continuous fetch-decode-execute datapath cycle. At any discrete clock edge, the architectural state of an executing thread is encapsulated by its hardware register file. Across contemporary instruction set architectures—specifically x86-64 and ARM64 (AArch64)—this register complement is partitioned into control pointers, status flags, and general-purpose storage:</p>
+<ul>
+<li><strong>Program Counter (<code>PC</code> / <code>RIP</code> on x86-64 / <code>PC_EL0</code> on ARM64):</strong> Holds the 64-bit linear virtual address of the next instruction to be fetched from the L1 instruction cache (I-cache). During sequential execution, the control unit automatically increments the program counter by the byte length of the decoded instruction; control-flow transfers (branches, procedure calls, traps, and hardware interrupts) overwrite this register with a target address.</li>
+<li><strong>Stack Pointer (<code>SP</code> / <code>RSP</code> on x86-64 / <code>SP_EL0</code> on ARM64):</strong> Points to the active downward-growing boundary of the thread’s call stack in virtual memory. Stack allocations decrement the stack pointer, whereas frame deallocations increment it. Both the System V AMD64 ABI and the ARM64 Procedure Call Standard (AAPCS64) mandate that the stack pointer maintain 16-byte alignment at function call boundaries to satisfy vector SIMD load/store alignment constraints.</li>
+<li><strong>Frame Pointer (<code>FP</code> / <code>RBP</code> on x86-64 / <code>x29</code> on ARM64):</strong> Serves as an invariant base anchor within the current function activation record. While the stack pointer fluctuates dynamically during expression evaluation and outgoing parameter construction, the frame pointer remains fixed throughout the function’s lifetime. Compilers store the caller’s saved frame pointer at the base of the new frame (<code>[RBP]</code> or <code>[x29]</code>) and the return address immediately above it (<code>[RBP + 8]</code> or <code>[x29 + 8]</code>), establishing a contiguous, singly linked chain of activation records. Walking this frame-pointer chain enables debuggers, crash handlers, and kernel sampling profilers (<code>perf</code>, DTrace) to reconstruct full call stacks in <code>O(depth)</code> time without DWARF unwind tables.</li>
+<li><strong>Processor Status and Control Flags (<code>FLAGS</code> / <code>RFLAGS</code> on x86-64 / <code>PSTATE</code> on ARM64):</strong> Encapsulates arithmetic condition codes—Zero (<code>ZF</code>), Carry (<code>CF</code>), Sign/Negative (<code>SF</code>/<code>N</code>), and Overflow (<code>OF</code>/<code>V</code>)—alongside privileged execution controls. Most critically for operating system design, this register contains the hardware interrupt mask: the Interrupt Enable Flag (<code>IF</code>, bit 9 of <code>RFLAGS</code>) on x86-64 and the <code>DAIF</code> (Debug, SError, IRQ, FIQ) mask bits on ARM64.</li>
+<li><strong>General-Purpose Registers (GPRs):</strong> Provide sub-nanosecond, zero-cycle-Wait operand storage for arithmetic, bitwise logic, and memory addressing. On x86-64, the 16 GPRs (<code>RAX</code>, <code>RBX</code>, <code>RCX</code>, <code>RDX</code>, <code>RSI</code>, <code>RDI</code>, <code>RBP</code>, <code>RSP</code>, and <code>R8</code>–<code>R15</code>) are partitioned by ABI convention into caller-saved volatile registers (<code>RAX</code>, <code>RCX</code>, <code>RDX</code>, <code>RSI</code>, <code>RDI</code>, <code>R8</code>–<code>R11</code>, where <code>RDI</code>, <code>RSI</code>, <code>RDX</code>, <code>RCX</code>, <code>R8</code>, <code>R9</code> pass the first six integer arguments) and callee-saved non-volatile registers (<code>RBX</code>, <code>RBP</code>, <code>R12</code>–<code>R15</code>). On ARM64, the 31 64-bit registers (<code>x0</code>–<code>x30</code>) assign <code>x0</code>–<code>x7</code> to argument passing and return values, <code>x9</code>–<code>x15</code> to caller-saved temporaries, <code>x19</code>–<code>x28</code> to callee-saved state, <code>x29</code> to the Frame Pointer, and <code>x30</code> to the Link Register (<code>LR</code>), which captures the return address on a Branch-with-Link (<code>BL</code>) instruction.</li>
+</ul>
+<figure>
+<img src="figures/ch02_machine.svg" alt="Block diagram of a CPU core with registers, ALU, control unit, MMU, caches, DRAM, PCIe devices, timer, and interrupt controller" />
+</figure>
+<h3 id="211-the-fetch-decode-execute-datapath-and-function-activation-records"><a class="header" href="#211-the-fetch-decode-execute-datapath-and-function-activation-records">2.1.1 The Fetch-Decode-Execute Datapath and Function Activation Records</a></h3>
+<p>During each instruction cycle, the control unit coordinates four microarchitectural stages across the processor datapath:</p>
+<ol>
+<li><strong>Instruction Fetch (IF):</strong> The control unit presents the virtual address in <code>PC</code> (<code>RIP</code> / <code>PC_EL0</code>) to the Memory Management Unit (MMU) and L1 instruction cache, retrieving the instruction byte stream and advancing <code>PC</code>.</li>
+<li><strong>Instruction Decode &amp; Register Rename (ID):</strong> The decoder parses the opcode and operand specifiers, mapping architectural registers (<code>RAX</code>, <code>x0</code>) onto physical registers via the Register Alias Table (RAT) to eliminate false Write-After-Read (WAR) and Write-After-Write (WAW) hazards.</li>
+<li><strong>Execute &amp; Memory Access (EX/MEM):</strong> The Arithmetic Logic Unit (ALU) computes arithmetic or effective virtual addresses. Memory loads and stores query the Translation Lookaside Buffer (TLB) and L1 data cache (D-cache), buffering uncommitted writes inside the core’s hardware Store Buffer.</li>
+<li><strong>Commit / Write-Back (WB):</strong> The Reorder Buffer (ROB) retires instructions in strict program order, committing register updates and draining store-buffer entries to the coherent cache hierarchy.</li>
+</ol>
+<p>When a procedure is invoked (<code>CALL</code> on x86-64, <code>BL</code> on ARM64), the processor constructs a <strong>function activation record</strong> (stack frame) in virtual memory. The caller places up to six (x86-64) or eight (ARM64) arguments in registers and pushes any excess arguments onto the stack. The call instruction records the return address (<code>RIP + instr_len</code> pushed to <code>[RSP - 8]</code> on x86-64; <code>PC + 4</code> stored in <code>x30</code> on ARM64). The callee prologue then pushes the caller’s Frame Pointer (<code>push rbp; mov rbp, rsp</code> on x86-64, or <code>stp x29, x30, [sp, #-N]!; mov x29, sp</code> on ARM64), saves any modified callee-saved registers, and decrements <code>SP</code> to reserve space for local variables. On x86-64, the System V ABI additionally defines a 128-byte <strong>Red Zone</strong> immediately below <code>RSP</code> (<code>[RSP - 128, RSP)</code>), which leaf functions may utilize for temporary storage without adjusting <code>RSP</code>, provided asynchronous interrupts and signals use a separate stack.</p>
+<figure>
+<img src="figures/ch02_stack_frame.svg" alt="Function activation record layout showing caller frame, return address, saved frame pointer, local variables, stack pointer, and frame pointer chain" />
+</figure>
+<h3 id="212-formal-derivation-of-the-atomicity-gap"><a class="header" href="#212-formal-derivation-of-the-atomicity-gap">2.1.2 Formal Derivation of the Atomicity Gap</a></h3>
+<p>While the reorder buffer guarantees that a single core observes its own instructions retiring in sequential program order, the hardware datapath does not preserve atomicity across composite high-level language expressions. This discrepancy between source-level syntax and machine-level execution defines the <strong>atomicity gap</strong>.</p>
+<p>Consider a shared 64-bit integer counter incremented concurrently by two processor cores (<code>counter++</code>). Because RISC and CISC arithmetic units operate on registers rather than directly across coherent DRAM, the compiler decomposes the increment into a three-instruction Read-Modify-Write (RMW) sequence:</p>
+<pre><code class="language-text">// x86-64 Read-Modify-Write             // ARM64 Read-Modify-Write
+1. mov  rax, QWORD PTR [rip + counter]  1. ldr  x0, [x1]        // Load shared state into core register
+2. add  rax, 1                          2. add  x0, x0, #1      // Increment private register copy in ALU
+3. mov  QWORD PTR [rip + counter], rax  3. str  x0, [x1]        // Store updated value back to L1 D-cache
+</code></pre>
+<p>If Core 0 and Core 1 execute this sequence concurrently when <code>counter == 42</code>, their instruction streams interleave across the memory bus:</p>
+<ul>
+<li>Core 0 executes Step 1 (<code>mov</code>/<code>ldr</code>), loading <code>42</code> from its L1 D-cache into its private architectural register (<code>RAX_0 = 42</code>).</li>
+<li>Simultaneously, Core 1 executes Step 1, reading the identical shared cache line into its own register (<code>RAX_1 = 42</code>).</li>
+<li>Core 0 and Core 1 both execute Step 2 in their local ALUs, computing <code>43</code> in <code>RAX_0</code> and <code>RAX_1</code>.</li>
+<li>Core 0 executes Step 3, invalidating Core 1’s shared cache line via the hardware cache coherency protocol and writing <code>43</code>.</li>
+<li>Core 1 executes Step 3 immediately thereafter, overwriting the memory location with its own value of <code>43</code>.</li>
+</ul>
+<p>Although two distinct increments occurred, the final state in memory is <code>43</code> rather than <code>44</code>—a concurrency failure known as a <strong>lost update</strong>. Bridging this atomicity gap requires hardware-enforced atomic instructions (such as <code>lock xadd</code> on x86-64, which locks the cache line throughout the RMW cycle, or Load-Linked/Store-Conditional <code>ldxr</code>/<code>stxr</code> and Large System Extensions <code>ldaddal</code> on ARM64) coupled with kernel synchronization primitives.</p>
+<h2 id="22-memory-hierarchy-and-locality-dynamics"><a class="header" href="#22-memory-hierarchy-and-locality-dynamics">2.2 Memory Hierarchy and Locality Dynamics</a></h2>
+<p>The memory subsystem is architected as a tiered hierarchy that balances physical storage capacity against access latency. This hierarchy progresses from core-private registers (~0.3 ns, 1 cycle) through L1 instruction and data caches (32–64 KiB, ~1 ns, 3–4 cycles), unified L2 caches (256 KiB–1 MiB, ~3–4 ns, 10–12 cycles), and shared L3 / System-Level Caches (4–64 MiB, ~10–15 ns, 35–50 cycles) to main DRAM (gigabytes, ~60–100 ns, 200+ cycles).</p>
+<p>The throughput of this hierarchy relies on two empirical properties of program execution:</p>
+<ul>
+<li><strong>Temporal Locality:</strong> The tendency of an execution stream to access the same memory addresses repeatedly within a brief time window (e.g., loop counters, stack frame variables, hot lock words).</li>
+<li><strong>Spatial Locality:</strong> The tendency of an execution stream to access memory addresses within contiguous physical proximity of recently accessed locations (e.g., sequential array traversal, linear instruction fetching).</li>
+</ul>
+<p>Because hardware cache controllers transfer memory between DRAM and caches in fixed <strong>64-byte cache lines</strong> (or 128-byte lines on certain high-performance ARM64 SoCs), sequential memory traversal amortizes a single DRAM fetch across multiple subsequent loads, triggering the hardware spatial prefetcher. Conversely, pointer-chasing workloads over non-contiguous heap nodes defeat the prefetcher and stall the out-of-order execution engine on L3 cache misses. Furthermore, managing coherence at 64-byte cache-line granularity introduces <strong>false sharing</strong>: when two threads on distinct cores modify logically independent variables that reside within the same 64-byte cache line, the cache coherency protocol (MESI/MOESI) repeatedly invalidates and transfers the line across the inter-core interconnect, serializing parallel execution.</p>
+<h2 id="23-privilege-domains-and-boundary-enforcement"><a class="header" href="#23-privilege-domains-and-boundary-enforcement">2.3 Privilege Domains and Boundary Enforcement</a></h2>
+<p>To prevent user applications from corrupting kernel data structures, disabling hardware interrupts, or monopolizing I/O controllers, the processor enforces a hardware privilege bifurcation between <strong>User Mode</strong> (Ring 3 / Current Privilege Level <code>CPL = 3</code> on x86-64; Exception Level <code>EL0</code> on ARM64) and <strong>Kernel Mode</strong> (Ring 0 / <code>CPL = 0</code> on x86-64; <code>EL1</code> on ARM64). Above the operating system kernel, modern processors provide hypervisor privilege domains (<code>VMX Root</code> on x86-64; <code>EL2</code> on ARM64) and secure firmware monitors (<code>SMM</code> / <code>EL3</code>).</p>
+<p>When a core executes in User Mode (<code>CPL = 3</code> / <code>EL0</code>), the hardware control unit and MMU strictly enforce three boundary invariants:</p>
+<ol>
+<li><strong>Privileged Instruction Restriction:</strong> Any attempt to execute instructions that mutate control registers (<code>mov cr3</code>), alter interrupt masks (<code>cli</code>, <code>sti</code>, <code>msr daifset</code>), halt the core (<code>hlt</code>), or manipulate Model-Specific Registers (<code>wrmsr</code>) is blocked in silicon, immediately raising a synchronous General Protection Fault (<code>#GP</code> on x86-64) or Synchronous Exception (<code>EC_UNCATEGORIZED</code> on ARM64).</li>
+<li><strong>Page-Table Permission Enforcement:</strong> Every Page Table Entry (PTE) contains a User/Supervisor flag (<code>U/S</code>, bit 2 on x86-64; <code>AP[1]</code> on ARM64). While executing in User Mode, any load, store, or instruction fetch targeting a virtual page marked Supervisor-only triggers an immediate hardware Page Fault (<code>#PF</code> / Data Abort), trapping control into the kernel.</li>
+<li><strong>I/O Port and MMIO Isolation:</strong> Direct access to device I/O ports (<code>in</code>, <code>out</code>) and physical Memory-Mapped I/O (MMIO) control apertures is restricted exclusively to Ring 0 / <code>EL1</code>.</li>
+</ol>
+<p>To minimize the latency of kernel entry during system calls and interrupts, operating systems typically map the kernel’s virtual address range into the upper canonical half of every process’s page table (protected by Supervisor-only PTE bits). When a trap elevates the processor from Ring 3 to Ring 0, the kernel code and data are immediately addressable without reloading the page table root register (unless Kernel Page-Table Isolation, KPTI, is enabled to mitigate speculative execution side channels such as Meltdown). Consequently, the kernel must treat every pointer supplied by user space as untrusted, validating that the entire buffer range <code>[ptr, ptr + len)</code> resides strictly within the user canonical address boundary (<code>&lt; TASK_SIZE</code>) before dereferencing it, and utilizing specialized access routines (<code>copy_from_user</code>, <code>copy_to_user</code>) with hardware Supervisor Mode Access Prevention (<code>SMAP</code> on x86-64; Privileged Access Never <code>PAN</code> on ARM64).</p>
+<figure>
+<img src="figures/ch02_privilege.svg" alt="User mode and kernel mode separated by a privilege boundary, with system call and return arrows crossing it" />
+</figure>
+<h2 id="24-synchronous-traps-and-the-asynchronous-interrupt-subsystem"><a class="header" href="#24-synchronous-traps-and-the-asynchronous-interrupt-subsystem">2.4 Synchronous Traps and the Asynchronous Interrupt Subsystem</a></h2>
+<p>Control transfers across the privilege boundary from user mode (<code>Ring 3</code> / <code>EL0</code>) to kernel mode (<code>Ring 0</code> / <code>EL1</code>) are classified into two architectural categories based on their causal relationship to the executing instruction stream:</p>
+<ul>
+<li><strong>Synchronous Traps and Exceptions:</strong> Triggered deterministically as a direct result of executing a specific instruction on the local core. The processor cannot retire the instruction until the kernel intervenes. Synchronous events subdivide into deliberate <strong>system call traps</strong> (<code>syscall</code> on x86-64, <code>svc #0</code> on ARM64), recoverable <strong>faults</strong> (such as a minor Page Fault <code>#PF</code>, where the kernel allocates a frame and re-executes the faulting instruction), and unrecoverable <strong>aborts</strong> (such as hardware machine-check exceptions <code>#MC</code> or division by zero <code>#DE</code>).</li>
+<li><strong>Asynchronous Hardware Interrupts (IRQs):</strong> Triggered by external physical devices—such as a network interface card (NIC) completing a DMA packet transfer, an NVMe controller signaling I/O completion, or a hardware timer tick expiring. Asynchronous interrupts arrive at arbitrary clock cycles, completely independent of the instruction stream currently executing on the processor core.</li>
+</ul>
+<h3 id="241-interrupt-controllers-apic-io-apic-msi-x-and-arm-gic"><a class="header" href="#241-interrupt-controllers-apic-io-apic-msi-x-and-arm-gic">2.4.1 Interrupt Controllers: APIC, IO-APIC, MSI-X, and ARM GIC</a></h3>
+<p>In a multiprocessor system with dozens of CPU cores and hundreds of peripheral interrupt sources, devices do not wire directly to a single CPU pin. Instead, interrupt routing and prioritization are arbitrated by a two-tier hardware interrupt subsystem:</p>
+<ol>
+<li><strong>x86-64 Advanced Programmable Interrupt Controller (IO-APIC and Local APIC):</strong>
+<ul>
+<li><strong>IO-APIC:</strong> Resides on the system chipset and receives physical Interrupt Request Lines (IRQs) from legacy peripherals. The kernel programs the IO-APIC’s <strong>Redirection Table Entries (RTEs)</strong> to map each physical IRQ pin to an 8-bit <strong>Interrupt Vector Number</strong> (<code>32</code>–<code>255</code>, as vectors <code>0</code>–<code>31</code> are reserved by Intel/AMD for processor exceptions) and a target CPU core destination mask.</li>
+<li><strong>Message Signaled Interrupts (MSI / MSI-X):</strong> High-speed PCIe devices (NVMe drives, 100GbE NICs, GPUs) bypass physical IRQ pins and the IO-APIC entirely. With MSI-X, the device signals an interrupt by performing a standard PCIe DMA memory write of a vector payload directly to a dedicated physical MMIO address mapped to a target core’s Local APIC. This eliminates shared IRQ line contention and allows a multi-queue NIC to bind distinct receive queues to dedicated CPU cores.</li>
+<li><strong>Local APIC (LAPIC):</strong> Integrated directly onto every CPU core. The LAPIC receives interrupt messages from the IO-APIC, MSI-X PCIe writes, <strong>Inter-Processor Interrupts (IPIs)</strong> from sibling cores (used for cross-core TLB shootdowns and scheduler wakeups), and its own on-die <strong>APIC Timer</strong>. It Arbitrates priority between pending vectors in its Interrupt Request Register (IRR) and In-Service Register (ISR) before asserting an interrupt to the core’s control unit.</li>
+</ul>
+</li>
+<li><strong>ARM64 Generic Interrupt Controller (GICv3 / GICv4):</strong>
+<ul>
+<li><strong>Distributor (<code>GICD</code>):</strong> Centralizes interrupt prioritization and routing across the SoC for <strong>Shared Peripheral Interrupts (SPIs, IDs 32–1019)</strong>.</li>
+<li><strong>Redistributor (<code>GICR</code>):</strong> Managed per core, controlling <strong>Software Generated Interrupts (SGIs, IDs 0–15)</strong> used for inter-processor signaling, <strong>Private Peripheral Interrupts (PPIs, IDs 16–31)</strong> such as the per-core ARM Generic Timer, and <strong>Locality-Specific Peripheral Interrupts (LPIs, IDs 8192+)</strong> routed via GIC Interrupt Translation Services (ITS) from PCIe MSI-X writes.</li>
+<li><strong>CPU Interface (<code>ICC_*</code> system registers):</strong> Delivers the highest-priority pending interrupt ID directly to the ARM64 core.</li>
+</ul>
+</li>
+</ol>
+<h3 id="242-vector-tables-ivt-idt-vbar_el1-and-the-hardware-context-save-sequence"><a class="header" href="#242-vector-tables-ivt-idt-vbar_el1-and-the-hardware-context-save-sequence">2.4.2 Vector Tables (IVT, IDT, VBAR_EL1) and the Hardware Context-Save Sequence</a></h3>
+<p>When the Local APIC or GIC presents an unmasked interrupt vector <code>v</code> to a processor core, the hardware control unit suspends the instruction fetch pipeline at the next instruction boundary and executes an atomic, hardware-sequenced privilege and stack transition before executing a single line of kernel software:</p>
+<ol>
+<li><strong>Vector Table Lookup:</strong>
+<ul>
+<li>On x86-64 (Protected/Long Mode, which supersedes the legacy 16-bit Real Mode Interrupt Vector Table, IVT), the CPU reads the <strong>Interrupt Descriptor Table Register (<code>IDTR</code>)</strong>, which holds the physical/linear base address and limit of the <strong>Interrupt Descriptor Table (IDT)</strong>. The IDT is an array of 256 16-byte <strong>Gate Descriptors</strong>. The processor indexes <code>IDT[v]</code> to extract the target 64-bit Interrupt Service Routine (ISR) entry address, the target Code Segment selector (<code>CS</code>, specifying <code>CPL = 0</code>), the gate type (Interrupt Gate, which automatically clears <code>RFLAGS.IF</code> to mask further interrupts, vs. Trap Gate, which leaves <code>IF</code> unchanged), and an optional 3-bit <strong>Interrupt Stack Table (IST)</strong> index.</li>
+<li>On ARM64, the processor reads the <strong>Vector Base Address Register (<code>VBAR_EL1</code>)</strong>, which points to a 2 KiB-aligned table partitioned into 16 128-byte exception entry stubs grouped by exception type (Synchronous, IRQ, FIQ, SError) and source execution state (<code>EL0</code> vs. <code>EL1</code>).</li>
+</ul>
+</li>
+<li><strong>Privilege Elevation and Per-CPU Kernel Stack Switch:</strong>
+<ul>
+<li>The kernel can never trust the user-mode stack pointer (<code>RSP</code> / <code>SP_EL0</code>), which may be unaligned, exhausted, or pointing to unmapped memory. If the interrupted instruction was executing in Ring 3 (<code>CPL = 3</code>), the x86-64 processor queries the current core’s <strong>Task State Segment (TSS)</strong> and loads the privileged Ring 0 stack pointer from <code>TSS.rsp0</code> (or from <code>TSS.ist[n]</code> for critical faults like Double Fault <code>#DF</code> or Non-Maskable Interrupt <code>#NMI</code>). On ARM64, elevating from <code>EL0</code> to <code>EL1</code> automatically switches the active stack pointer register from <code>SP_EL0</code> to <code>SP_EL1</code> and masks IRQs by setting <code>PSTATE.I = 1</code>.</li>
+</ul>
+</li>
+<li><strong>Hardware Context Save (Trapframe Construction):</strong>
+<ul>
+<li>On x86-64, the CPU hardware pushes a 5-word (40-byte) interrupt frame directly onto the newly activated kernel stack (<code>TSS.rsp0</code>):
+<ol>
+<li>Interrupted Stack Segment (<code>SS</code>)</li>
+<li>Interrupted User Stack Pointer (<code>RSP</code>)</li>
+<li>Interrupted Processor Flags (<code>RFLAGS</code>)</li>
+<li>Interrupted Code Segment (<code>CS</code>, encoding the previous privilege ring <code>CPL = 3</code>)</li>
+<li>Interrupted Instruction Pointer (<code>RIP</code>)</li>
+<li><em>(For specific exceptions such as <code>#PF</code> or <code>#GP</code>, the hardware pushes a 6th 64-bit word: the architectural Error Code).</em></li>
+</ol>
+</li>
+<li>On ARM64, rather than pushing to memory in hardware, the core saves the interrupted program counter into the <strong>Exception Link Register (<code>ELR_EL1</code>)</strong>, the interrupted processor state into the <strong>Saved Program Status Register (<code>SPSR_EL1</code>)</strong>, and the fault syndrome into the <strong>Exception Syndrome Register (<code>ESR_EL1</code>)</strong>.</li>
+</ul>
+</li>
+<li><strong>Software Trapframe Completion:</strong>
+<ul>
+<li>The CPU loads <code>RIP</code> / <code>PC</code> with the ISR entry point. The kernel’s assembly entry stub immediately pushes all remaining general-purpose registers (<code>RAX</code>–<code>R15</code> or <code>x0</code>–<code>x30</code>) onto the kernel stack, completing the <strong>trapframe</strong> (<code>struct pt_regs</code>) so the interrupted thread’s exact register state can be restored later.</li>
+</ul>
+</li>
+</ol>
+<figure>
+<img src="figures/ch02_interrupt_flow.svg" alt="Asynchronous hardware interrupt lifecycle from device IRQ assertion through IO-APIC/GIC, IDT lookup, hardware context save, top-half hardirq, EOI, bottom-half softirq, and iretq return" />
+</figure>
+<h3 id="243-top-half-hardirq-vs-bottom-half-softirq-split-and-eoi-lifecycle"><a class="header" href="#243-top-half-hardirq-vs-bottom-half-softirq-split-and-eoi-lifecycle">2.4.3 Top-Half (<code>hardirq</code>) vs. Bottom-Half (<code>softirq</code>) Split and EOI Lifecycle</a></h3>
+<p>An Interrupt Service Routine (ISR) executes under severe architectural constraints: it runs in <strong>interrupt context</strong> rather than process context. Because an interrupt preempts whichever arbitrary process happened to be running on that core, the ISR has no Process Control Block (<code>current</code> points to the interrupted victim task) and <strong>cannot sleep, block on a mutex, or perform voluntary context switches</strong>. Furthermore, while executing with local interrupts masked (<code>RFLAGS.IF == 0</code> / <code>PSTATE.I == 1</code>), the core is deaf to subsequent hardware interrupts; prolonged execution in an ISR causes packet drops, timer drift, and I/O latency spikes.</p>
+<p>To resolve the tension between deterministic low latency and complex protocol processing, modern operating system kernels bifurcate interrupt handling into two distinct phases:</p>
+<ol>
+<li><strong>Top-Half (<code>hardirq</code> Context):</strong>
+<ul>
+<li>Executes immediately upon hardware vector dispatch with local interrupts disabled on the core.</li>
+<li>Performs only the minimum time-critical hardware interaction: reads the device’s MMIO interrupt status register to verify the interrupt source, clears the device-level interrupt line, unmaps or rotates DMA descriptor ring pointers, schedules deferred work, and writes an <strong>End of Interrupt (EOI)</strong> command to the Local APIC EOI register (or GIC <code>ICC_EOIR1_EL1</code>). Writing EOI informs the interrupt controller that the active priority level has completed, allowing delivery of queued interrupts.</li>
+</ul>
+</li>
+<li><strong>Bottom-Half (<code>softirq</code>, Tasklets, NAPI, and Threaded IRQs):</strong>
+<ul>
+<li>Executes after the top-half completes, with hardware interrupts <strong>re-enabled</strong> on the core (<code>RFLAGS.IF == 1</code>).</li>
+<li>Handles computationally intensive work: traversing the TCP/IP network protocol stack, reassembling fragmented packets, running NAPI (New API) network ring polling loops, validating filesystem checksums, and awakening blocked threads in wait queues.</li>
+<li>In Linux, static high-throughput subsystems (networking <code>NET_RX_SOFTIRQ</code>, block storage <code>BLOCK_SOFTIRQ</code>, timers <code>TIMER_SOFTIRQ</code>) execute as <strong><code>softirq</code></strong> vectors immediately upon exiting the outermost nested <code>hardirq</code> (or inside per-CPU <code>ksoftirqd/N</code> kernel threads under heavy interrupt storms), whereas work items requiring sleeping or mutex acquisition are delegated to <strong>workqueues</strong> (<code>kworker</code> kernel threads) or <strong>threaded IRQ handlers</strong> (<code>request_threaded_irq</code>).</li>
+</ul>
+</li>
+</ol>
+<p>Upon completing bottom-half processing, the kernel checks whether the interrupt awakened a higher-priority runnable thread (<code>TIF_NEED_RESCHED</code>). If preemption is required, the kernel invokes the scheduler to switch stacks to the newly selected thread; otherwise, it pops the saved general-purpose registers from the kernel stack and executes the privileged return instruction (<code>iretq</code> on x86-64; <code>eret</code> on ARM64), atomically restoring <code>RIP</code>/<code>ELR_EL1</code>, <code>RSP</code>/<code>SP_EL0</code>, and <code>RFLAGS</code>/<code>SPSR_EL1</code> while demoting the core back to User Mode (<code>Ring 3</code> / <code>EL0</code>).</p>
+
+                    </main>
+
+                    <nav class="nav-wrapper" aria-label="Page navigation">
+                        <!-- Mobile navigation buttons -->
+                            <a rel="prev" href="ch01-what-is-an-os.html" class="mobile-nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                                <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M41.4 233.4c-12.5 12.5-12.5 32.8 0 45.3l160 160c12.5 12.5 32.8 12.5 45.3 0s12.5-32.8 0-45.3L109.3 256 246.6 118.6c12.5-12.5 12.5-32.8 0-45.3s-32.8-12.5-45.3 0l-160 160z"/></svg></span>
+                            </a>
+
+                            <a rel="next prefetch" href="ch03-processes.html" class="mobile-nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                                <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M278.6 233.4c12.5 12.5 12.5 32.8 0 45.3l-160 160c-12.5 12.5-32.8 12.5-45.3 0s-12.5-32.8 0-45.3L210.7 256 73.4 118.6c-12.5-12.5-12.5-32.8 0-45.3s32.8-12.5 45.3 0l160 160z"/></svg></span>
+                            </a>
+
+                        <div style="clear: both"></div>
+                    </nav>
+                </div>
+            </div>
+
+            <nav class="nav-wide-wrapper" aria-label="Page navigation">
+                    <a rel="prev" href="ch01-what-is-an-os.html" class="nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                        <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M41.4 233.4c-12.5 12.5-12.5 32.8 0 45.3l160 160c12.5 12.5 32.8 12.5 45.3 0s12.5-32.8 0-45.3L109.3 256 246.6 118.6c12.5-12.5 12.5-32.8 0-45.3s-32.8-12.5-45.3 0l-160 160z"/></svg></span>
+                    </a>
+
+                    <a rel="next prefetch" href="ch03-processes.html" class="nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                        <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M278.6 233.4c12.5 12.5 12.5 32.8 0 45.3l-160 160c-12.5 12.5-32.8 12.5-45.3 0s-12.5-32.8 0-45.3L210.7 256 73.4 118.6c-12.5-12.5-12.5-32.8 0-45.3s32.8-12.5 45.3 0l160 160z"/></svg></span>
+                    </a>
+            </nav>
+
+        </div>
+
+        <template id=fa-eye><span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 576 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M288 32c-80.8 0-145.5 36.8-192.6 80.6C48.6 156 17.3 208 2.5 243.7c-3.3 7.9-3.3 16.7 0 24.6C17.3 304 48.6 356 95.4 399.4C142.5 443.2 207.2 480 288 480s145.5-36.8 192.6-80.6c46.8-43.5 78.1-95.4 93-131.1c3.3-7.9 3.3-16.7 0-24.6c-14.9-35.7-46.2-87.7-93-131.1C433.5 68.8 368.8 32 288 32zM432 256c0 79.5-64.5 144-144 144s-144-64.5-144-144s64.5-144 144-144s144 64.5 144 144zM288 192c0 35.3-28.7 64-64 64c-11.5 0-22.3-3-31.6-8.4c-.2 2.8-.4 5.5-.4 8.4c0 53 43 96 96 96s96-43 96-96s-43-96-96-96c-2.8 0-5.6 .1-8.4 .4c5.3 9.3 8.4 20.1 8.4 31.6z"/></svg></span></template>
+        <template id=fa-eye-slash><span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M38.8 5.1C28.4-3.1 13.3-1.2 5.1 9.2S-1.2 34.7 9.2 42.9l592 464c10.4 8.2 25.5 6.3 33.7-4.1s6.3-25.5-4.1-33.7L525.6 386.7c39.6-40.6 66.4-86.1 79.9-118.4c3.3-7.9 3.3-16.7 0-24.6c-14.9-35.7-46.2-87.7-93-131.1C465.5 68.8 400.8 32 320 32c-68.2 0-125 26.3-169.3 60.8L38.8 5.1zM223.1 149.5C248.6 126.2 282.7 112 320 112c79.5 0 144 64.5 144 144c0 24.9-6.3 48.3-17.4 68.7L408 294.5c5.2-11.8 8-24.8 8-38.5c0-53-43-96-96-96c-2.8 0-5.6 .1-8.4 .4c5.3 9.3 8.4 20.1 8.4 31.6c0 10.2-2.4 19.8-6.6 28.3l-90.3-70.8zm223.1 298L373 389.9c-16.4 6.5-34.3 10.1-53 10.1c-79.5 0-144-64.5-144-144c0-6.9 .5-13.6 1.4-20.2L83.1 161.5C60.3 191.2 44 220.8 34.5 243.7c-3.3 7.9-3.3 16.7 0 24.6c14.9 35.7 46.2 87.7 93 131.1C174.5 443.2 239.2 480 320 480c47.8 0 89.9-12.9 126.2-32.5z"/></svg></span></template>
+        <template id=fa-copy><span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M502.6 70.63l-61.25-61.25C435.4 3.371 427.2 0 418.7 0H255.1c-35.35 0-64 28.66-64 64l.0195 256C192 355.4 220.7 384 256 384h192c35.2 0 64-28.8 64-64V93.25C512 84.77 508.6 76.63 502.6 70.63zM464 320c0 8.836-7.164 16-16 16H255.1c-8.838 0-16-7.164-16-16L239.1 64.13c0-8.836 7.164-16 16-16h128L384 96c0 17.67 14.33 32 32 32h47.1V320zM272 448c0 8.836-7.164 16-16 16H63.1c-8.838 0-16-7.164-16-16L47.98 192.1c0-8.836 7.164-16 16-16H160V128H63.99c-35.35 0-64 28.65-64 64l.0098 256C.002 483.3 28.66 512 64 512h192c35.2 0 64-28.8 64-64v-32h-47.1L272 448z"/></svg></span></template>
+        <template id=fa-play><span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 384 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M73 39c-14.8-9.1-33.4-9.4-48.5-.9S0 62.6 0 80V432c0 17.4 9.4 33.4 24.5 41.9s33.7 8.1 48.5-.9L361 297c14.3-8.7 23-24.2 23-41s-8.7-32.2-23-41L73 39z"/></svg></span></template>
+        <template id=fa-clock-rotate-left><span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M75 75L41 41C25.9 25.9 0 36.6 0 57.9V168c0 13.3 10.7 24 24 24H134.1c21.4 0 32.1-25.9 17-41l-30.8-30.8C155 85.5 203 64 256 64c106 0 192 86 192 192s-86 192-192 192c-40.8 0-78.6-12.7-109.7-34.4c-14.5-10.1-34.4-6.6-44.6 7.9s-6.6 34.4 7.9 44.6C151.2 495 201.7 512 256 512c141.4 0 256-114.6 256-256S397.4 0 256 0C185.3 0 121.3 28.7 75 75zm181 53c-13.3 0-24 10.7-24 24V256c0 6.4 2.5 12.5 7 17l72 72c9.4 9.4 24.6 9.4 33.9 0s9.4-24.6 0-33.9l-65-65V152c0-13.3-10.7-24-24-24z"/></svg></span></template>
+
+
+
+        <script>
+            window.playground_copyable = true;
+        </script>
+
+
+        <script src="elasticlunr-ef4e11c1.min.js"></script>
+        <script src="mark-09e88c2c.min.js"></script>
+        <script src="searcher-09f2665d.js"></script>
+
+        <script src="clipboard-1626706a.min.js"></script>
+        <script src="highlight-abc7f01d.js"></script>
+        <script src="book-609e4cb8.js"></script>
+
+        <!-- Custom JS scripts -->
+        <script src="theme/figures-7a3fdfc9.js"></script>
+
+
+
+    </div>
+    </body>
+</html>
