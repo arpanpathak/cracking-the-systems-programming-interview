@@ -1,7 +1,7 @@
 // ch04/threads.rs: the same four threads in Rust.
 use std::thread;
 
-fn main() {
+fn main() -> Result<(), Box<dyn std::error::Error>> {
     let mut handles = Vec::new();
     for i in 0..4 {
         handles.push(thread::spawn(move || {
@@ -10,8 +10,9 @@ fn main() {
     }
 
     for h in handles {
-        h.join().unwrap();
+        h.join().map_err(|_| "worker thread panicked")?;
     }
 
     println!("all threads joined");
+    Ok(())
 }

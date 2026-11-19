@@ -27,7 +27,7 @@ fn main() {
         let me = unsafe { libc::getpid() };
         let parent = unsafe { libc::getppid() };
         println!("child : pid={me} parent={parent}");
-        std::io::stdout().flush().unwrap(); // _exit() skips stdio flushing
+        let _ = std::io::stdout().flush(); // _exit() skips stdio flushing
         // SAFETY: `_exit(2)` immediately terminates execution without running user-space `atexit`
         // handlers or flushing C stdio buffers. This prevents double-flushing data buffers that
         // were duplicated across the fork boundary into the child's address space.

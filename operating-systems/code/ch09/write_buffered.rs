@@ -6,7 +6,7 @@ use std::time::Instant;
 const N: usize = 200_000;
 const MSG: &[u8] = b"0123456789abcdef\n";   // 17 bytes
 
-fn main() {
+fn main() -> std::io::Result<()> {
     // SAFETY: The path string literal is static, null-terminated, and safely cast
     // to a C-compatible pointer. `O_WRONLY` is a valid POSIX file flag.
     let fd = unsafe {
@@ -45,14 +45,14 @@ fn main() {
     let raw_ms = t0.elapsed().as_secs_f64() * 1000.0;
 
     // Buffered: BufWriter accumulates in a 64 KiB buffer, then flushes once.
-    let f = File::create("/dev/null").unwrap();
+    let f = File::create("/dev/null")?;
     let mut w = BufWriter::with_capacity(64 * 1024, f);
 
     let t1 = Instant::now();
     for _ in 0..N {
-        w.write_all(MSG).unwrap();
+        w.write_all(MSG)?;
     }
-    w.flush().unwrap();
+    w.flush()?;
 
     let buf_ms = t1.elapsed().as_secs_f64() * 1000.0;
 
@@ -62,4 +62,5 @@ fn main() {
     // SAFETY: `fd` is a valid open file descriptor returned by `open()`. Closing it releases
     // the kernel file description ref-count and frees the file descriptor table entry.
     unsafe { libc::close(fd) };
+    Ok(())
 }

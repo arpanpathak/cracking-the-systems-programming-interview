@@ -2,7 +2,7 @@
 use std::sync::{Arc, Mutex};
 use std::thread;
 
-fn main() {
+fn main() -> Result<(), Box<dyn std::error::Error>> {
     const THREADS: usize = 8;
     const ITERS: u64 = 5_000_000;
 
@@ -13,18 +13,22 @@ fn main() {
         let c = Arc::clone(&counter);
         handles.push(thread::spawn(move || {
             for _ in 0..ITERS {
-                *c.lock().unwrap() += 1;
+                if let Ok(mut guard) = c.lock() {
+                    *guard += 1;
+                }
             }
         }));
     }
 
     for h in handles {
-        h.join().unwrap();
+        h.join().map_err(|_| "worker thread panicked")?;
     }
 
+    let guard = counter.lock().map_err(|_| "mutex poisoned")?;
     println!(
         "expected {}, observed {}",
         THREADS as u64 * ITERS,
-        *counter.lock().unwrap()
+        *guard
     );
+    Ok(())
 }

@@ -1,52 +1,50 @@
-// ch08/index_arena.cpp: Level 1 arena: a safe, zero-raw-pointer index pool.
-// All nodes live contiguously inside one std::vector; integer indices replace
-// raw pointers, eliminating dangling references and per-node heap allocations.
+// ch08/index_arena.cpp: Level 1 arena: a minimal, zero-raw-pointer index pool.
+// Nodes live contiguously inside one std::vector<T> and link via copyable Id handles.
 #include <cassert>
 #include <cstddef>
 #include <cstdio>
 #include <optional>
+#include <utility>
 #include <vector>
 
-struct NodeId {
+struct Id {
     size_t index;
 };
 
 template <typename T>
-class IndexArena {
+class Arena {
 public:
-    NodeId alloc(T value) {
-        size_t id = items_.size();
+    Id alloc(T value) {
         items_.push_back(std::move(value));
-        return NodeId{id};
+        return Id{items_.size() - 1};
     }
 
-    const T& get(NodeId id) const { return items_[id.index]; }
+    const T& get(Id id) const { return items_[id.index]; }
     size_t len() const { return items_.size(); }
-    void reset() { items_.clear(); }  // Reclaims all nodes while keeping backing capacity
+    void reset() { items_.clear(); }  // Reclaims all nodes while keeping capacity
 
 private:
     std::vector<T> items_;
 };
 
-struct ListNode {
+struct Node {
     int value;
-    std::optional<NodeId> next;
+    std::optional<Id> next;
 };
 
 int main() {
-    IndexArena<ListNode> arena;
-    std::optional<NodeId> head = std::nullopt;
+    Arena<Node> arena;
+    std::optional<Id> head = std::nullopt;
 
     for (int i = 0; i < 10'000; ++i) {
-        head = arena.alloc(ListNode{i, head});
+        head = arena.alloc(Node{i, head});
     }
 
-    // Walk the 10,000-node list stored contiguously inside the arena.
     long long sum = 0;
     size_t visited = 0;
-    std::optional<NodeId> cursor = head;
+    std::optional<Id> cursor = head;
     while (cursor.has_value()) {
-        const ListNode& node = arena.get(*cursor);
+        const Node& node = arena.get(*cursor);
         sum += node.value;
         ++visited;
         cursor = node.next;

@@ -1,7 +1,8 @@
 // ch11/pipe.rs: the same pipe between parent and child in Rust.
-use std::process::exit;
+use std::error::Error;
+use std::io;
 
-fn main() {
+fn main() -> Result<(), Box<dyn Error>> {
     let mut fds = [0; 2];
     // SAFETY:
     // 1. `pipe(2)` receives a valid mutable pointer to an array of two `c_int`s.
@@ -14,11 +15,13 @@ fn main() {
     //    than hanging forever in an unblocked sleep.
     unsafe {
         if libc::pipe(fds.as_mut_ptr()) != 0 {
-            eprintln!("pipe failed");
-            exit(1);
+            return Err(io::Error::last_os_error().into());
         }
 
         let pid = libc::fork();
+        if pid < 0 {
+            return Err(io::Error::last_os_error().into());
+        }
         if pid == 0 {
             libc::close(fds[0]);              // child keeps the write end
             let msg = b"hello from child";
@@ -32,8 +35,12 @@ fn main() {
         let mut buf = [0u8; 64];
         let n = libc::read(fds[0], buf.as_mut_ptr() as *mut libc::c_void, buf.len() - 1);
         libc::waitpid(pid, std::ptr::null_mut(), 0);
+        if n < 0 {
+            return Err(io::Error::last_os_error().into());
+        }
 
-        let s = std::str::from_utf8(&buf[..n as usize]).unwrap();
+        let s = std::str::from_utf8(&buf[..n as usize])?;
         println!("parent read {n} bytes: \"{s}\"");
     }
+    Ok(())
 }

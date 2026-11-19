@@ -6,7 +6,7 @@ use std::thread;
 
 static mut COUNTER: u64 = 0;
 
-fn main() {
+fn main() -> Result<(), Box<dyn std::error::Error>> {
     const THREADS: usize = 8;
     const ITERS: u64 = 20_000_000;
 
@@ -34,7 +34,7 @@ fn main() {
     }
 
     for h in handles {
-        h.join().unwrap();
+        h.join().map_err(|_| "worker thread panicked")?;
     }
 
     // SAFETY: Synchronization Barrier Proof:
@@ -44,4 +44,5 @@ fn main() {
     // final counter value.
     let observed = unsafe { read_volatile(addr_of!(COUNTER)) };
     println!("expected {}, observed {observed}", THREADS as u64 * ITERS);
+    Ok(())
 }

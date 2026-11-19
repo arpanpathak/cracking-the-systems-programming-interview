@@ -1,25 +1,23 @@
-// ch08/index_arena.rs: Level 1 arena: a completely safe, zero-unsafe index pool.
-// Nodes live contiguously inside one Vec<T> and reference each other via copyable
-// NodeId indices, avoiding raw pointers, self-referential lifetimes, and unsafe blocks.
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
-struct NodeId(usize);
-
-struct IndexArena<T> {
+// ch08/index_arena.rs: Level 1 arena: a minimal, zero-unsafe index pool.
+// Nodes live contiguously inside one Vec<T> and link via copyable Id(usize) handles.
+struct Arena<T> {
     items: Vec<T>,
 }
 
-impl<T> IndexArena<T> {
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+struct Id(usize);
+
+impl<T> Arena<T> {
     fn new() -> Self {
         Self { items: Vec::new() }
     }
 
-    fn alloc(&mut self, value: T) -> NodeId {
-        let id = self.items.len();
+    fn alloc(&mut self, value: T) -> Id {
         self.items.push(value);
-        NodeId(id)
+        Id(self.items.len() - 1)
     }
 
-    fn get(&self, id: NodeId) -> &T {
+    fn get(&self, id: Id) -> &T {
         &self.items[id.0]
     }
 
@@ -27,28 +25,27 @@ impl<T> IndexArena<T> {
         self.items.len()
     }
 
-    // Reclaims all nodes in O(1) while retaining the backing heap buffer for reuse.
+    // Reclaims all nodes in O(1) while retaining the backing capacity for reuse.
     fn reset(&mut self) {
         self.items.clear();
     }
 }
 
-struct ListNode {
+struct Node {
     value: i64,
-    next: Option<NodeId>,
+    next: Option<Id>,
 }
 
 fn main() {
-    let mut arena = IndexArena::new();
-    let mut head: Option<NodeId> = None;
+    let mut arena = Arena::new();
+    let mut head: Option<Id> = None;
 
     for i in 0..10_000_i64 {
-        head = Some(arena.alloc(ListNode { value: i, next: head }));
+        head = Some(arena.alloc(Node { value: i, next: head }));
     }
 
-    // Traverse the 10,000-node list stored contiguously inside the arena.
-    let mut sum: i64 = 0;
-    let mut visited: usize = 0;
+    let mut sum = 0_i64;
+    let mut visited = 0_usize;
     let mut cursor = head;
     while let Some(id) = cursor {
         let node = arena.get(id);

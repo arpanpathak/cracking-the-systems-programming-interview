@@ -17,7 +17,7 @@ extern "C" fn on_term(_: libc::c_int) {
     STOP.store(true, Ordering::Relaxed);
 }
 
-fn main() {
+fn main() -> std::io::Result<()> {
     // SAFETY: Classic UNIX Daemonization Invariants:
     // 1. First `fork()`: Creates an asynchronous background child and terminates the parent,
     //    guaranteeing the child is not a process group leader.
@@ -54,12 +54,11 @@ fn main() {
             .create(true)
             .write(true)
             .truncate(true)
-            .open(pidfile)
-            .unwrap();
-        writeln!(pf, "{}", std::process::id()).unwrap();
+            .open(pidfile)?;
+        writeln!(pf, "{}", std::process::id())?;
     }
 
-    let mut log = OpenOptions::new().create(true).append(true).open(logfile).unwrap();
+    let mut log = OpenOptions::new().create(true).append(true).open(logfile)?;
 
     // SAFETY: Registers signal handlers `on_hup` and `on_term` which strictly store to `AtomicBool`
     // flags with `Ordering::Relaxed`. Atomic stores compile to single store instructions on x86/ARM,
@@ -74,23 +73,24 @@ fn main() {
         libc::sigaction(libc::SIGTERM, &sa, std::ptr::null_mut());
     }
 
-    writeln!(log, "daemon {} started", std::process::id()).unwrap();
-    log.flush().unwrap();
+    writeln!(log, "daemon {} started", std::process::id())?;
+    log.flush()?;
 
     let mut ticks = 0;
     while !STOP.load(Ordering::Relaxed) {
         thread::sleep(Duration::from_secs(1));
         ticks += 1;
 
-        writeln!(log, "tick {ticks}").unwrap();
-        log.flush().unwrap();
+        writeln!(log, "tick {ticks}")?;
+        log.flush()?;
 
         if RELOAD.swap(false, Ordering::Relaxed) {
-            writeln!(log, "reload requested").unwrap();
-            log.flush().unwrap();
+            writeln!(log, "reload requested")?;
+            log.flush()?;
         }
     }
 
-    writeln!(log, "stopping after {ticks} ticks").unwrap();
-    std::fs::remove_file(pidfile).unwrap();
+    writeln!(log, "stopping after {ticks} ticks")?;
+    std::fs::remove_file(pidfile)?;
+    Ok(())
 }

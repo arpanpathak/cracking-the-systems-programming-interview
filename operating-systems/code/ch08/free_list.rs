@@ -1,7 +1,8 @@
 // ch08/free_list.rs: First-fit free-list allocator with in-band headers,
 // block splitting, and adjacent free-block coalescing in Rust.
 // Written with flat control flow (early returns and small helpers) to keep logic clear.
-use std::process::exit;
+use std::error::Error;
+use std::io;
 use std::ptr;
 
 #[derive(Clone, Copy)]
@@ -21,7 +22,7 @@ struct FreeListHeap {
 }
 
 impl FreeListHeap {
-    fn create(capacity_bytes: usize) -> FreeListHeap {
+    fn create(capacity_bytes: usize) -> io::Result<FreeListHeap> {
         // SAFETY: `mmap` allocates a page-aligned, zero-initialized anonymous region.
         // After verifying `mapped != MAP_FAILED`, we initialize a single root BlockHeader at offset 0.
         unsafe {
@@ -34,8 +35,7 @@ impl FreeListHeap {
                 0,
             );
             if mapped == libc::MAP_FAILED {
-                eprintln!("mmap failed");
-                exit(1);
+                return Err(io::Error::last_os_error());
             }
 
             let initial_header = mapped.cast::<BlockHeader>();
@@ -48,11 +48,11 @@ impl FreeListHeap {
                 },
             );
 
-            FreeListHeap {
+            Ok(FreeListHeap {
                 arena_base: mapped.cast::<u8>(),
                 arena_capacity: capacity_bytes,
                 head_block: initial_header,
-            }
+            })
         }
     }
 
@@ -169,16 +169,16 @@ impl Drop for FreeListHeap {
     }
 }
 
-fn main() {
-    let mut heap = FreeListHeap::create(256 * 1024);
+fn main() -> Result<(), Box<dyn Error>> {
+    let mut heap = FreeListHeap::create(256 * 1024)?;
     println!(
         "arena: {:p}, {} bytes, header {} bytes\n",
         heap.arena_base, heap.arena_capacity, HEADER_BYTES
     );
 
-    let block_a = heap.alloc(100).unwrap();
-    let block_b = heap.alloc(200).unwrap();
-    let block_c = heap.alloc(300).unwrap();
+    let block_a = heap.alloc(100).ok_or("heap exhausted on block_a")?;
+    let block_b = heap.alloc(200).ok_or("heap exhausted on block_b")?;
+    let block_c = heap.alloc(300).ok_or("heap exhausted on block_c")?;
 
     println!("after alloc(100), alloc(200), alloc(300):");
     heap.dump_block_map();
@@ -187,7 +187,7 @@ fn main() {
     println!("\nafter free(block_b):");
     heap.dump_block_map();
 
-    let block_d = heap.alloc(150).unwrap();
+    let block_d = heap.alloc(150).ok_or("heap exhausted on block_d")?;
     assert_eq!(block_d, block_b);
     println!("\nafter alloc(150) into block_b's hole:");
     heap.dump_block_map();
@@ -203,4 +203,5 @@ fn main() {
 
     println!("\nafter freeing all blocks (coalesced back to 1 free block):");
     heap.dump_block_map();
+    Ok(())
 }

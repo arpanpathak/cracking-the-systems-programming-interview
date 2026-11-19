@@ -11,7 +11,10 @@ fn handle(mut s: TcpStream, id: usize) {
         match s.read(&mut buf) {
             Ok(0) => break, // peer closed
             Ok(n) => {
-                s.write_all(&buf[..n]).unwrap();
+                if let Err(e) = s.write_all(&buf[..n]) {
+                    eprintln!("thread {id}: {e}");
+                    break;
+                }
                 println!("thread {id} echoed {n} bytes");
             }
             Err(e) => {
@@ -22,8 +25,8 @@ fn handle(mut s: TcpStream, id: usize) {
     }
 }
 
-fn main() {
-    let listener = TcpListener::bind("127.0.0.1:45679").unwrap();
+fn main() -> Result<(), Box<dyn std::error::Error>> {
+    let listener = TcpListener::bind("127.0.0.1:45679")?;
     println!("listening on 127.0.0.1:45679");
 
     let server = thread::spawn(move || {
@@ -48,17 +51,18 @@ fn main() {
     });
 
     for c in 0..2 {
-        let mut s = TcpStream::connect("127.0.0.1:45679").unwrap();
+        let mut s = TcpStream::connect("127.0.0.1:45679")?;
 
         for m in ["alpha", "beta", "gamma"] {
-            s.write_all(m.as_bytes()).unwrap();
+            s.write_all(m.as_bytes())?;
             let mut buf = [0u8; 64];
-            let n = s.read(&mut buf).unwrap();
+            let n = s.read(&mut buf)?;
             let got = String::from_utf8_lossy(&buf[..n]);
             println!("client {c} sent \"{m}\", got \"{got}\" (ok={})", got == m);
         }
     }
 
-    server.join().unwrap();
+    server.join().map_err(|_| "server thread panicked")?;
     println!("done");
+    Ok(())
 }

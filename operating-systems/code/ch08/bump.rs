@@ -1,5 +1,6 @@
 // ch08/bump.rs: A linear bump (arena) allocator with explicit power-of-two alignment.
-use std::process::exit;
+use std::error::Error;
+use std::io;
 use std::ptr;
 
 struct BumpAllocator {
@@ -9,7 +10,7 @@ struct BumpAllocator {
 }
 
 impl BumpAllocator {
-    fn create(capacity_bytes: usize) -> BumpAllocator {
+    fn create(capacity_bytes: usize) -> io::Result<BumpAllocator> {
         // SAFETY: `libc::mmap` with `MAP_PRIVATE | MAP_ANON` allocates a fresh,
         // zero-initialized anonymous virtual memory region of `capacity_bytes`.
         // Checking `mapped != libc::MAP_FAILED` guarantees a valid page-aligned base pointer.
@@ -23,15 +24,14 @@ impl BumpAllocator {
                 0,
             );
             if mapped == libc::MAP_FAILED {
-                eprintln!("mmap failed");
-                exit(1);
+                return Err(io::Error::last_os_error());
             }
 
-            BumpAllocator {
+            Ok(BumpAllocator {
                 arena_base: mapped.cast::<u8>(),
                 arena_capacity: capacity_bytes,
                 next_offset: 0,
-            }
+            })
         }
     }
 
@@ -64,17 +64,17 @@ impl Drop for BumpAllocator {
     }
 }
 
-fn main() {
-    let mut allocator = BumpAllocator::create(64 * 1024);
+fn main() -> Result<(), Box<dyn Error>> {
+    let mut allocator = BumpAllocator::create(64 * 1024)?;
     println!("arena: {:p}, {} bytes\n", allocator.arena_base, allocator.arena_capacity);
 
     // 1. Offset 0 is already 8-byte aligned -> occupies bytes [0, 8), next_offset becomes 8.
-    let first_block = allocator.alloc(8, 8).unwrap();
+    let first_block = allocator.alloc(8, 8).ok_or("arena exhausted on first_block")?;
     // 2. Offset 8 is already 8-byte aligned -> occupies bytes [8, 11), next_offset becomes 11.
-    let small_block = allocator.alloc(3, 8).unwrap();
+    let small_block = allocator.alloc(3, 8).ok_or("arena exhausted on small_block")?;
     // 3. Offset 11 is NOT 16-byte aligned -> inserts 5 bytes of padding [11, 16),
     //    then allocates 16 bytes at [16, 32), advancing next_offset to 32.
-    let aligned_block = allocator.alloc(16, 16).unwrap();
+    let aligned_block = allocator.alloc(16, 16).ok_or("arena exhausted on aligned_block")?;
 
     assert_eq!(first_block, allocator.arena_base);
     assert_eq!(small_block as usize - allocator.arena_base as usize, 8);
@@ -88,7 +88,8 @@ fn main() {
 
     // Resetting rewinds next_offset to 0 so the arena can be reused immediately.
     allocator.reset();
-    let reused_block = allocator.alloc(8, 8).unwrap();
+    let reused_block = allocator.alloc(8, 8).ok_or("arena exhausted after reset")?;
     assert_eq!(reused_block, first_block);
     println!("after reset, alloc(8, align=8) -> {reused_block:p} (reuses offset 0: yes)");
+    Ok(())
 }

@@ -47,7 +47,7 @@ An **arena** groups objects with identical lifetimes (such as request-scoped rec
 
 ### 8.2.1 Level 1: The Safe Index Arena (Zero `unsafe`)
 
-When all arena-resident nodes share a single homogeneous type `T` (such as abstract syntax tree nodes, graph vertices, or linked-list entries), raw memory management is unnecessary. Placing every node inside one contiguous array (`std::vector<T>` in C++20 or `Vec<T>` in Rust 2024) and linking nodes via copyable integer indices (`NodeId`) yields four immediate engineering benefits:
+When all arena-resident nodes share a single homogeneous type `T` (such as abstract syntax tree nodes, graph vertices, or linked-list entries), raw memory management is unnecessary. Placing every node inside one contiguous array (`std::vector<T>` in C++20 or `Vec<T>` in Rust 2024) wrapped in a minimal `Arena<T>` and linking nodes via copyable integer handles (`Id`) yields four immediate engineering benefits:
 - **Memory safety without `unsafe`:** Indices remain valid even when the backing array reallocates to grow, eliminating dangling pointers and self-referential borrow-checker conflicts.
 - **Cache-line locality:** Nodes allocated sequentially occupy adjacent bytes in L1/L2 caches, removing the pointer-chasing stalls characteristic of per-node `malloc` / `Box::new` trees.
 - **Zero-cost bulk reclamation:** `reset()` calls `clear()`, reclaiming all nodes in O(1) while retaining the backing capacity for the next request or frame.

@@ -4,7 +4,7 @@ use std::thread;
 
 static COUNTER: AtomicU64 = AtomicU64::new(0);
 
-fn main() {
+fn main() -> Result<(), Box<dyn std::error::Error>> {
     const THREADS: usize = 8;
     const ITERS: u64 = 5_000_000;
 
@@ -24,7 +24,7 @@ fn main() {
     }
 
     for h in handles {
-        h.join().unwrap();
+        h.join().map_err(|_| "worker thread panicked")?;
     }
 
     // Synchronization Proof: `JoinHandle::join()` provides an acquire-release synchronization barrier
@@ -34,4 +34,5 @@ fn main() {
         THREADS as u64 * ITERS,
         COUNTER.load(Ordering::Relaxed)
     );
+    Ok(())
 }
