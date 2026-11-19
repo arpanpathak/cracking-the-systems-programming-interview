@@ -1,0 +1,133 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 466" width="800" height="466">
+  <style>
+    text { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif; fill: #E8EAF0; }
+    .paper { fill: #1B1E26; }
+    .frame { fill: #1B1E26; stroke: #363C49; stroke-width: 1; }
+    .card { fill: #2B303B; }
+    .hair { stroke: #363C49; stroke-width: 1.2; fill: none; }
+    .muted { fill: #AEB6C3; }
+    .ink { fill: #E8EAF0; }
+    .title { font-size: 17.5px; font-weight: 650; }
+    .head { font-size: 15.5px; font-weight: 650; }
+    .name { font-size: 15px; font-weight: 650; }
+    .body { font-size: 13.5px; }
+    .sub { font-size: 13px; }
+    .mono { font-size: 12.5px; font-family: "SF Mono", SFMono-Regular, ui-monospace, Menlo, Consolas, monospace; }
+    .monob { font-size: 12.5px; font-weight: 650; font-family: "SF Mono", SFMono-Regular, ui-monospace, Menlo, Consolas, monospace; }
+    .small { font-size: 12px; }
+    .note { font-size: 13.5px; }
+    .noteb { font-size: 13.5px; font-weight: 650; }
+    .sub, .small, .note { fill: #AEB6C3; }
+    .c-blue { fill: #1E2D47; }
+    .m-blue { fill: #2C4674; }
+    .a-blue { fill: #8FB8FA; }
+    .t-blue { fill: #8FB8FA; }
+    .w-blue { stroke: #8FB8FA; fill: none; stroke-linecap: butt; stroke-linejoin: round; }
+    .o-blue { stroke: #8FB8FA; fill: none; stroke-width: 1.5; }
+    .h-blue { stroke: #8FB8FA; stroke-width: 1.4; }
+    .c-green { fill: #1B3426; }
+    .m-green { fill: #28553B; }
+    .a-green { fill: #82D69C; }
+    .t-green { fill: #82D69C; }
+    .w-green { stroke: #82D69C; fill: none; stroke-linecap: butt; stroke-linejoin: round; }
+    .o-green { stroke: #82D69C; fill: none; stroke-width: 1.5; }
+    .h-green { stroke: #82D69C; stroke-width: 1.4; }
+    .c-amber { fill: #3A2D14; }
+    .m-amber { fill: #5E471A; }
+    .a-amber { fill: #F3C06B; }
+    .t-amber { fill: #F3C06B; }
+    .w-amber { stroke: #F3C06B; fill: none; stroke-linecap: butt; stroke-linejoin: round; }
+    .o-amber { stroke: #F3C06B; fill: none; stroke-width: 1.5; }
+    .h-amber { stroke: #F3C06B; stroke-width: 1.4; }
+    .c-red { fill: #41221D; }
+    .m-red { fill: #69322B; }
+    .a-red { fill: #F59E8D; }
+    .t-red { fill: #F59E8D; }
+    .w-red { stroke: #F59E8D; fill: none; stroke-linecap: butt; stroke-linejoin: round; }
+    .o-red { stroke: #F59E8D; fill: none; stroke-width: 1.5; }
+    .h-red { stroke: #F59E8D; stroke-width: 1.4; }
+    .c-purple { fill: #2C2549; }
+    .m-purple { fill: #453978; }
+    .a-purple { fill: #BCA8F7; }
+    .t-purple { fill: #BCA8F7; }
+    .w-purple { stroke: #BCA8F7; fill: none; stroke-linecap: butt; stroke-linejoin: round; }
+    .o-purple { stroke: #BCA8F7; fill: none; stroke-width: 1.5; }
+    .h-purple { stroke: #BCA8F7; stroke-width: 1.4; }
+    .c-teal { fill: #15332F; }
+    .m-teal { fill: #1F514B; }
+    .a-teal { fill: #72D5CA; }
+    .t-teal { fill: #72D5CA; }
+    .w-teal { stroke: #72D5CA; fill: none; stroke-linecap: butt; stroke-linejoin: round; }
+    .o-teal { stroke: #72D5CA; fill: none; stroke-width: 1.5; }
+    .h-teal { stroke: #72D5CA; stroke-width: 1.4; }
+    .c-gray { fill: #272B34; }
+    .m-gray { fill: #3A404D; }
+    .a-gray { fill: #AEB6C3; }
+    .t-gray { fill: #AEB6C3; }
+    .w-gray { stroke: #AEB6C3; fill: none; stroke-linecap: butt; stroke-linejoin: round; }
+    .o-gray { stroke: #AEB6C3; fill: none; stroke-width: 1.5; }
+    .h-gray { stroke: #AEB6C3; stroke-width: 1.4; }
+    .c-wire { fill: #272B34; }
+    .m-wire { fill: #3A404D; }
+    .a-wire { fill: #A2ABB9; }
+    .t-wire { fill: #A2ABB9; }
+    .w-wire { stroke: #A2ABB9; fill: none; stroke-linecap: butt; stroke-linejoin: round; }
+    .o-wire { stroke: #A2ABB9; fill: none; stroke-width: 1.5; }
+    .h-wire { stroke: #A2ABB9; stroke-width: 1.4; }
+  </style>
+  <defs>
+    <filter id="lift" x="-10%" y="-15%" width="120%" height="140%">
+      <feDropShadow dx="0" dy="1" stdDeviation="1.2" flood-color="#000000" flood-opacity="0.45"/>
+      <feDropShadow dx="0" dy="3" stdDeviation="4" flood-color="#000000" flood-opacity="0.32"/>
+    </filter>
+  </defs>
+<rect x="0.5" y="0.5" width="799" height="465" rx="16" class="frame"/>
+<text x="28" y="44" class="title"><tspan class="t-blue">Figure 3-2.</tspan> fork() creates a second process that starts as a copy.</text>
+<g transform="translate(0 64)">
+<text x="28.0" y="16.0" class="head">before</text>
+<rect x="28.0" y="30.0" width="240.0" height="66.0" rx="14" class="c-blue"/>
+<rect x="40.0" y="46.0" width="34.0" height="34.0" rx="10" class="m-blue"/>
+<g transform="translate(46.5 52.5) scale(0.878)" class="a-blue"><path d="M20 4H4a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h16c1.1 0 2-.9 2-2V6a2 2 0 0 0-2-2zm0 14H4V8h16v10zm-8-2c0-.55.45-1 1-1h4c.55 0 1 .45 1 1s-.45 1-1 1h-4c-.55 0-1-.45-1-1zM6.79 9.71a.996.996 0 0 1 1.41 0l2.59 2.59c.39.39.39 1.02 0 1.41L8.2 16.3a.996.996 0 1 1-1.41-1.41L8.67 13l-1.88-1.88a.996.996 0 0 1 0-1.41z"/></g>
+<text x="85.0" y="59.5" class="name" data-fit="85.0,260.0">process, PID 100</text>
+<text x="85.0" y="77.5" class="sub" data-fit="85.0,260.0">one address space</text>
+<rect x="28.0" y="122.0" width="240.0" height="90.0" rx="10" class="card" filter="url(#lift)"/>
+<text x="148.0" y="162.8" class="sub" text-anchor="middle" data-fit="33.0,263.0">text + data + heap + stack</text>
+<text x="148.0" y="180.3" class="sub" text-anchor="middle" data-fit="33.0,263.0">open files, cwd, signal masks</text>
+<polygon points="148.0,120.0 143.8,110.1 148.0,112.9 152.2,110.1" class="a-wire"/>
+<path d="M148.0,98.0 L148.0,113.1" class="w-wire" stroke-width="1.8"/>
+<polygon points="372.0,121.0 362.0,125.2 364.8,121.0 362.0,116.8" class="a-blue"/>
+<path d="M284.0,121.0 L365.0,121.0" class="w-blue" stroke-width="2.4"/>
+<rect x="311.0" y="78.0" width="34.0" height="34.0" rx="10" class="m-blue"/>
+<g transform="translate(317.5 84.5) scale(0.878)" class="a-blue"><path d="m14.85 4.85 1.44 1.44-2.88 2.88 1.42 1.42 2.88-2.88 1.44 1.44a.5.5 0 0 0 .85-.36V4.5c0-.28-.22-.5-.5-.5h-4.29a.5.5 0 0 0-.36.85zM8.79 4H4.5c-.28 0-.5.22-.5.5v4.29c0 .45.54.67.85.35L6.29 7.7 11 12.4V19c0 .55.45 1 1 1s1-.45 1-1v-7c0-.26-.11-.52-.29-.71l-5-5.01 1.44-1.44c.31-.3.09-.84-.36-.84z"/></g>
+<text x="328.0" y="142.0" class="monob" text-anchor="middle">fork()</text>
+<text x="388.0" y="16.0" class="head">after</text>
+<rect x="388.0" y="30.0" width="180.0" height="66.0" rx="14" class="c-blue"/>
+<text x="478.0" y="59.5" class="name" text-anchor="middle" data-fit="393.0,563.0">PID 100 (parent)</text>
+<text x="478.0" y="77.4" class="mono" text-anchor="middle" data-fit="393.0,563.0">fork() returned 200</text>
+<rect x="388.0" y="122.0" width="180.0" height="90.0" rx="10" class="card" filter="url(#lift)"/>
+<text x="478.0" y="154.1" class="sub" text-anchor="middle" data-fit="393.0,563.0">its own copy of</text>
+<text x="478.0" y="171.6" class="sub" text-anchor="middle" data-fit="393.0,563.0">the address space</text>
+<text x="478.0" y="189.1" class="sub" text-anchor="middle" data-fit="393.0,563.0">(copy-on-write)</text>
+<polygon points="478.0,120.0 473.8,110.1 478.0,112.9 482.2,110.1" class="a-wire"/>
+<path d="M478.0,98.0 L478.0,113.1" class="w-wire" stroke-width="1.8"/>
+<rect x="592.0" y="30.0" width="180.0" height="66.0" rx="14" class="c-green"/>
+<text x="682.0" y="59.5" class="name" text-anchor="middle" data-fit="597.0,767.0">PID 200 (child)</text>
+<text x="682.0" y="77.4" class="mono" text-anchor="middle" data-fit="597.0,767.0">fork() returned 0</text>
+<rect x="592.0" y="122.0" width="180.0" height="90.0" rx="10" class="card" filter="url(#lift)"/>
+<text x="682.0" y="154.1" class="sub" text-anchor="middle" data-fit="597.0,767.0">its own copy of</text>
+<text x="682.0" y="171.6" class="sub" text-anchor="middle" data-fit="597.0,767.0">the address space</text>
+<text x="682.0" y="189.1" class="sub" text-anchor="middle" data-fit="597.0,767.0">(copy-on-write)</text>
+<polygon points="682.0,120.0 677.8,110.1 682.0,112.9 686.2,110.1" class="a-wire"/>
+<path d="M682.0,98.0 L682.0,113.1" class="w-wire" stroke-width="1.8"/>
+<polygon points="590.0,63.0 581.0,66.8 583.5,63.0 581.0,59.2" class="a-gray"/>
+<polygon points="570.0,63.0 576.2,60.4 574.4,63.0 576.2,65.6" class="a-gray"/>
+<path d="M574.3,63.0 L583.7,63.0" class="w-gray" stroke-width="1.5" stroke-dasharray="6 5"/>
+</g>
+<rect x="28" y="296" width="744" height="148" rx="12" class="c-gray"/>
+<g transform="translate(42 308) scale(0.833)" class="a-gray"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 15c-.55 0-1-.45-1-1v-4c0-.55.45-1 1-1s1 .45 1 1v4c0 .55-.45 1-1 1zm1-8h-2V7h2v2z"/></g>
+<text x="74" y="322.5" class="note" data-fit="74,760">Each process has its own PID, parent PID, and descriptor table.</text>
+<text x="74" y="342.5" class="note" data-fit="74,760">Memory is copied only when one of them writes to a page.</text>
+<text x="74" y="370.5" class="note" data-fit="74,760">The child continues at the instruction after fork(), with the same code and the same variable values.</text>
+<text x="74" y="398.5" class="noteb ink" data-fit="74,760">A program tells parent and child apart by the return value of fork().</text>
+<text x="74" y="426.5" class="note" data-fit="74,760">fork() returns the child’s PID in the parent, 0 in the child, and -1 on error.</text>
+</svg>

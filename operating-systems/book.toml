@@ -1,0 +1,28 @@
+[book]
+title = "Operating Systems: A Hands-On Approach"
+authors = ["Arpan Pathak"]
+description = "Operating system fundamentals built from first principles, with verified C++20 and Rust 2024 code."
+language = "en"
+src = "src"
+
+[build]
+build-dir = "book"
+create-missing = true
+
+[output.html]
+site-url = "/cracking-the-systems-programming-interview/operating-systems/"
+additional-css = ["theme/custom.css"]
+additional-js = ["theme/figures.js"]
+default-theme = "light"
+preferred-dark-theme = "navy"
+no-section-label = true
+mathjax-support = true
+git-repository-url = "https://github.com/arpanpathak/cracking-the-systems-programming-interview/tree/prep-v2/operating-systems"
+git-repository-icon = "fab-github"
+edit-url-template = "https://github.com/arpanpathak/cracking-the-systems-programming-interview/edit/prep-v2/operating-systems/{path}"
+
+[output.html.print]
+enable = true
+
+[output.html.fold]
+enable = false

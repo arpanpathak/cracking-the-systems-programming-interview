@@ -1,0 +1,24 @@
+arena 1024 bytes, header 32 bytes
+
+after allocate(100), allocate(200), allocate(300):
+  offset    0  payload  112  used
+  offset  144  payload  208  used
+  offset  384  payload  304  used
+  offset  720  payload  272  free
+
+after release(second):
+  offset    0  payload  112  used
+  offset  144  payload  208  free
+  offset  384  payload  304  used
+  offset  720  payload  272  free
+
+after allocate(150):
+  offset    0  payload  112  used
+  offset  144  payload  160  used
+  offset  336  payload   16  free
+  offset  384  payload  304  used
+  offset  720  payload  272  free
+fourth reuses the block of second: yes
+
+after releasing everything:
+  offset    0  payload  992  free

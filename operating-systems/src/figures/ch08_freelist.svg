@@ -1,0 +1,142 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 544" width="800" height="544">
+  <style>
+    text { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif; fill: #1B1F27; }
+    .paper { fill: #FFFFFF; }
+    .frame { fill: #FFFFFF; stroke: #DCE0E7; stroke-width: 1; }
+    .card { fill: #FFFFFF; }
+    .hair { stroke: #DCE0E7; stroke-width: 1.2; fill: none; }
+    .muted { fill: #566070; }
+    .ink { fill: #1B1F27; }
+    .title { font-size: 17.5px; font-weight: 650; }
+    .head { font-size: 15.5px; font-weight: 650; }
+    .name { font-size: 15px; font-weight: 650; }
+    .body { font-size: 13.5px; }
+    .sub { font-size: 13px; }
+    .mono { font-size: 12.5px; font-family: "SF Mono", SFMono-Regular, ui-monospace, Menlo, Consolas, monospace; }
+    .monob { font-size: 12.5px; font-weight: 650; font-family: "SF Mono", SFMono-Regular, ui-monospace, Menlo, Consolas, monospace; }
+    .small { font-size: 12px; }
+    .note { font-size: 13.5px; }
+    .noteb { font-size: 13.5px; font-weight: 650; }
+    .sub, .small, .note { fill: #566070; }
+    .c-blue { fill: #E6EFFD; }
+    .m-blue { fill: #C7DBFA; }
+    .a-blue { fill: #1A5FC4; }
+    .t-blue { fill: #1A5FC4; }
+    .w-blue { stroke: #1A5FC4; fill: none; stroke-linecap: butt; stroke-linejoin: round; }
+    .o-blue { stroke: #1A5FC4; fill: none; stroke-width: 1.5; }
+    .h-blue { stroke: #1A5FC4; stroke-width: 1.4; }
+    .c-green { fill: #E2F4E7; }
+    .m-green { fill: #BEE5C9; }
+    .a-green { fill: #1B7A3A; }
+    .t-green { fill: #1B7A3A; }
+    .w-green { stroke: #1B7A3A; fill: none; stroke-linecap: butt; stroke-linejoin: round; }
+    .o-green { stroke: #1B7A3A; fill: none; stroke-width: 1.5; }
+    .h-green { stroke: #1B7A3A; stroke-width: 1.4; }
+    .c-amber { fill: #FFF1D9; }
+    .m-amber { fill: #FFDDA1; }
+    .a-amber { fill: #9A5600; }
+    .t-amber { fill: #9A5600; }
+    .w-amber { stroke: #9A5600; fill: none; stroke-linecap: butt; stroke-linejoin: round; }
+    .o-amber { stroke: #9A5600; fill: none; stroke-width: 1.5; }
+    .h-amber { stroke: #9A5600; stroke-width: 1.4; }
+    .c-red { fill: #FDE8E4; }
+    .m-red { fill: #F8C8BF; }
+    .a-red { fill: #BF3620; }
+    .t-red { fill: #BF3620; }
+    .w-red { stroke: #BF3620; fill: none; stroke-linecap: butt; stroke-linejoin: round; }
+    .o-red { stroke: #BF3620; fill: none; stroke-width: 1.5; }
+    .h-red { stroke: #BF3620; stroke-width: 1.4; }
+    .c-purple { fill: #EFE9FC; }
+    .m-purple { fill: #D9CDF8; }
+    .a-purple { fill: #6240C4; }
+    .t-purple { fill: #6240C4; }
+    .w-purple { stroke: #6240C4; fill: none; stroke-linecap: butt; stroke-linejoin: round; }
+    .o-purple { stroke: #6240C4; fill: none; stroke-width: 1.5; }
+    .h-purple { stroke: #6240C4; stroke-width: 1.4; }
+    .c-teal { fill: #DDF3F1; }
+    .m-teal { fill: #B3E3DE; }
+    .a-teal { fill: #0E7168; }
+    .t-teal { fill: #0E7168; }
+    .w-teal { stroke: #0E7168; fill: none; stroke-linecap: butt; stroke-linejoin: round; }
+    .o-teal { stroke: #0E7168; fill: none; stroke-width: 1.5; }
+    .h-teal { stroke: #0E7168; stroke-width: 1.4; }
+    .c-gray { fill: #EEF0F4; }
+    .m-gray { fill: #D9DDE5; }
+    .a-gray { fill: #566070; }
+    .t-gray { fill: #566070; }
+    .w-gray { stroke: #566070; fill: none; stroke-linecap: butt; stroke-linejoin: round; }
+    .o-gray { stroke: #566070; fill: none; stroke-width: 1.5; }
+    .h-gray { stroke: #566070; stroke-width: 1.4; }
+    .c-wire { fill: #EEF0F4; }
+    .m-wire { fill: #D9DDE5; }
+    .a-wire { fill: #5B6676; }
+    .t-wire { fill: #5B6676; }
+    .w-wire { stroke: #5B6676; fill: none; stroke-linecap: butt; stroke-linejoin: round; }
+    .o-wire { stroke: #5B6676; fill: none; stroke-width: 1.5; }
+    .h-wire { stroke: #5B6676; stroke-width: 1.4; }
+  </style>
+  <defs>
+    <filter id="lift" x="-10%" y="-15%" width="120%" height="140%">
+      <feDropShadow dx="0" dy="1" stdDeviation="1.2" flood-color="#1B2430" flood-opacity="0.14"/>
+      <feDropShadow dx="0" dy="3" stdDeviation="4" flood-color="#1B2430" flood-opacity="0.10"/>
+    </filter>
+  </defs>
+<rect x="0.5" y="0.5" width="799" height="543" rx="16" class="frame"/>
+<text x="28" y="44" class="title"><tspan class="t-blue">Figure 8-2.</tspan> A free list: headers next to payloads, free blocks chained.</text>
+<g transform="translate(0 64)">
+<rect x="28.0" y="0.0" width="46.0" height="64.0" rx="7" class="m-amber"/>
+<text x="51.0" y="36.0" class="small" text-anchor="middle" transform="rotate(-90 51.0 31.8)">header</text>
+<rect x="77.0" y="0.0" width="150.0" height="64.0" rx="7" class="m-blue"/>
+<text x="152.0" y="36.7" class="body" text-anchor="middle" data-fit="82.0,222.0">payload A, 100</text>
+<rect x="230.0" y="0.0" width="46.0" height="64.0" rx="7" class="m-amber"/>
+<text x="253.0" y="36.0" class="small" text-anchor="middle" transform="rotate(-90 253.0 31.8)">header</text>
+<rect x="279.0" y="0.0" width="176.0" height="64.0" rx="7" class="m-purple"/>
+<text x="367.0" y="36.7" class="body" text-anchor="middle" data-fit="284.0,450.0">payload B, 200</text>
+<rect x="458.0" y="0.0" width="46.0" height="64.0" rx="7" class="m-amber"/>
+<text x="481.0" y="36.0" class="small" text-anchor="middle" transform="rotate(-90 481.0 31.8)">header</text>
+<rect x="507.0" y="0.0" width="176.0" height="64.0" rx="7" class="m-teal"/>
+<text x="595.0" y="36.7" class="body" text-anchor="middle" data-fit="512.0,678.0">payload C, 300</text>
+<rect x="686.0" y="0.0" width="46.0" height="64.0" rx="7" class="m-amber"/>
+<text x="709.0" y="36.0" class="small" text-anchor="middle" transform="rotate(-90 709.0 31.8)">header</text>
+<rect x="735.0" y="0.0" width="37.0" height="64.0" rx="7" class="c-gray"/>
+<clipPath id="clip-15"><rect x="735.0" y="0.0" width="37.0" height="64.0" rx="7"/></clipPath><g clip-path="url(#clip-15)"><line x1="671.0" y1="64.0" x2="735.0" y2="0.0" class="h-gray" opacity="0.45"/><line x1="680.0" y1="64.0" x2="744.0" y2="0.0" class="h-gray" opacity="0.45"/><line x1="689.0" y1="64.0" x2="753.0" y2="0.0" class="h-gray" opacity="0.45"/><line x1="698.0" y1="64.0" x2="762.0" y2="0.0" class="h-gray" opacity="0.45"/><line x1="707.0" y1="64.0" x2="771.0" y2="0.0" class="h-gray" opacity="0.45"/><line x1="716.0" y1="64.0" x2="780.0" y2="0.0" class="h-gray" opacity="0.45"/><line x1="725.0" y1="64.0" x2="789.0" y2="0.0" class="h-gray" opacity="0.45"/><line x1="734.0" y1="64.0" x2="798.0" y2="0.0" class="h-gray" opacity="0.45"/><line x1="743.0" y1="64.0" x2="807.0" y2="0.0" class="h-gray" opacity="0.45"/><line x1="752.0" y1="64.0" x2="816.0" y2="0.0" class="h-gray" opacity="0.45"/><line x1="761.0" y1="64.0" x2="825.0" y2="0.0" class="h-gray" opacity="0.45"/><line x1="770.0" y1="64.0" x2="834.0" y2="0.0" class="h-gray" opacity="0.45"/></g>
+<polygon points="247.0,68.0 250.8,77.0 247.0,74.5 243.2,77.0" class="a-amber"/>
+<path d="M51.0,67.0 C51.0,97.0 247.0,98.0 247.0,74.3" class="w-amber" stroke-width="1.6"/>
+<polygon points="475.0,68.0 478.8,77.0 475.0,74.5 471.2,77.0" class="a-amber"/>
+<path d="M253.0,67.0 C253.0,97.0 475.0,98.0 475.0,74.3" class="w-amber" stroke-width="1.6"/>
+<polygon points="703.0,68.0 706.8,77.0 703.0,74.5 699.2,77.0" class="a-amber"/>
+<path d="M481.0,67.0 C481.0,97.0 703.0,98.0 703.0,74.3" class="w-amber" stroke-width="1.6"/>
+<text x="152.0" y="106.0" class="sub t-amber" text-anchor="middle">next</text>
+<text x="28.0" y="132.0" class="sub">header fields: size · free/used · next pointer (24 bytes on this machine)</text>
+<text x="28.0" y="170.0" class="name">split: free(b), then alloc(150) into the hole</text>
+<rect x="28.0" y="184.0" width="199.0" height="64.0" rx="7" class="c-gray"/>
+<rect x="458.0" y="184.0" width="314.0" height="64.0" rx="7" class="c-gray"/>
+<rect x="230.0" y="184.0" width="46.0" height="64.0" rx="7" class="m-amber"/>
+<text x="253.0" y="220.0" class="small" text-anchor="middle" transform="rotate(-90 253.0 215.8)">header</text>
+<rect x="279.0" y="184.0" width="104.0" height="64.0" rx="7" class="m-green"/>
+<text x="331.0" y="220.2" class="small" text-anchor="middle" data-fit="284.0,378.0">payload d, 150</text>
+<rect x="386.0" y="184.0" width="46.0" height="64.0" rx="7" class="m-amber"/>
+<text x="409.0" y="220.0" class="small" text-anchor="middle" transform="rotate(-90 409.0 215.8)">header</text>
+<rect x="435.0" y="184.0" width="20.0" height="64.0" rx="5" class="m-gray"/>
+<text x="445.0" y="220.0" class="small" text-anchor="middle" transform="rotate(-90 445.0 215.8)">26 free</text>
+<text x="28.0" y="290.0" class="name">coalesce: adjacent free blocks merge</text>
+<rect x="28.0" y="304.0" width="46.0" height="56.0" rx="7" class="m-amber"/>
+<text x="51.0" y="336.0" class="small" text-anchor="middle" transform="rotate(-90 51.0 331.8)">header</text>
+<rect x="77.0" y="304.0" width="84.0" height="56.0" rx="7" class="o-gray" stroke-dasharray="6 5"/>
+<text x="119.0" y="336.5" class="sub" text-anchor="middle">40 free</text>
+<rect x="164.0" y="304.0" width="46.0" height="56.0" rx="7" class="m-amber"/>
+<text x="187.0" y="336.0" class="small" text-anchor="middle" transform="rotate(-90 187.0 331.8)">header</text>
+<rect x="213.0" y="304.0" width="76.0" height="56.0" rx="7" class="o-gray" stroke-dasharray="6 5"/>
+<text x="251.0" y="336.5" class="sub" text-anchor="middle">30 free</text>
+<polygon points="382.0,332.0 372.0,336.2 374.8,332.0 372.0,327.8" class="a-green"/>
+<path d="M306.0,332.0 L375.0,332.0" class="w-green" stroke-width="2.4"/>
+<rect x="398.0" y="304.0" width="46.0" height="56.0" rx="7" class="m-amber"/>
+<text x="421.0" y="336.0" class="small" text-anchor="middle" transform="rotate(-90 421.0 331.8)">header</text>
+<rect x="447.0" y="304.0" width="260.0" height="56.0" rx="7" class="o-green" stroke-dasharray="6 5"/>
+<text x="577.0" y="336.5" class="sub" text-anchor="middle" data-fit="451.0,703.0">one block, 40 + 24 + 30 = 94 free</text>
+</g>
+<rect x="28" y="450" width="744" height="72" rx="12" class="c-gray"/>
+<g transform="translate(42 462) scale(0.833)" class="a-gray"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 15c-.55 0-1-.45-1-1v-4c0-.55.45-1 1-1s1 .45 1 1v4c0 .55-.45 1-1 1zm1-8h-2V7h2v2z"/></g>
+<text x="74" y="476.5" class="note" data-fit="74,760">alloc takes the first free block that is large enough (first fit) and splits off the unused remainder.</text>
+<text x="74" y="504.5" class="note" data-fit="74,760">free marks the header and merges the block with a free neighbor. Listing 8-3 prints these steps.</text>
+</svg>
