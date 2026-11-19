@@ -40,7 +40,7 @@ for f in \
     ch05/sched_sim \
     ch06/mutex_counter ch06/prodcons ch06/deadlock ch06/trylock ch06/cas_ordering \
     ch07/pagesize ch07/mmap_file ch07/tlb \
-    ch08/index_arena ch08/bump ch08/free_list \
+    ch08/index_arena ch08/gen_arena ch08/bump ch08/free_list \
     ch09/syscall_cost ch09/write_buffered \
     ch10/signals ch10/sigchld \
     ch11/pipe ch11/shm_counter ch11/socketpair \
@@ -75,7 +75,7 @@ for f in \
     ch04/threads ch04/race ch04/race_atomic \
     ch05/sched_sim \
     ch06/mutex_counter ch06/prodcons ch06/deadlock ch06/trylock ch06/cas_ordering \
-    ch08/index_arena \
+    ch08/index_arena ch08/gen_arena \
     ch12/files ch12/sparse \
     ch13/thread_echo ch13/echo_client \
     ch14/udp ch14/to_socket_addrs \
@@ -144,6 +144,8 @@ run out/tlb_rs.bin ch07_tlb_rs
 
 run out/index_arena.bin ch08_index_arena
 run out/index_arena_rs.bin ch08_index_arena_rs
+run out/gen_arena.bin ch08_gen_arena
+run out/gen_arena_rs.bin ch08_gen_arena_rs
 run out/bump.bin ch08_bump
 run out/bump_rs.bin ch08_bump_rs
 run out/free_list.bin ch08_free_list

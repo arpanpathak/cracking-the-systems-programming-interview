@@ -89,8 +89,9 @@
     - [8.1.2 Hardware Alignment and Bitwise Rounding](ch08-allocation.md#812-hardware-alignment-and-bitwise-rounding)
   - [8.2 Arena Allocation: From Safe Index Pools to Raw Bump Allocators](ch08-allocation.md#82-arena-allocation-from-safe-index-pools-to-raw-bump-allocators)
     - [8.2.1 Level 1: The Safe Index Arena (Zero `unsafe`)](ch08-allocation.md#821-level-1-the-safe-index-arena-zero-unsafe)
-    - [8.2.2 Level 2: The Raw Byte Bump Allocator (`mmap`-Backed)](ch08-allocation.md#822-level-2-the-raw-byte-bump-allocator-mmap-backed)
-    - [8.2.3 Backing Store Trade-Off: Global-Allocator Chunks (`malloc` / `std::alloc`) vs. Direct `mmap`](ch08-allocation.md#823-backing-store-trade-off-global-allocator-chunks-malloc--stdalloc-vs-direct-mmap)
+    - [8.2.2 Level 2: The Generational Arena with an Intrusive Free List (Zero `unsafe`)](ch08-allocation.md#822-level-2-the-generational-arena-with-an-intrusive-free-list-zero-unsafe)
+    - [8.2.3 Level 3: The Raw Byte Bump Allocator (`mmap`-Backed)](ch08-allocation.md#823-level-3-the-raw-byte-bump-allocator-mmap-backed)
+    - [8.2.4 Backing Store Trade-Off: Global-Allocator Chunks (`malloc` / `std::alloc`) vs. Direct `mmap`](ch08-allocation.md#824-backing-store-trade-off-global-allocator-chunks-malloc--stdalloc-vs-direct-mmap)
   - [8.3 Explicit Management: Free-List Allocation](ch08-allocation.md#83-explicit-management-free-list-allocation)
     - [8.3.1 First-Fit Search, Splitting, and Coalescing](ch08-allocation.md#831-first-fit-search-splitting-and-coalescing)
   - [8.4 Production Allocator Architecture: Boundary Tags, Size Classes, and `mmap`](ch08-allocation.md#84-production-allocator-architecture-boundary-tags-size-classes-and-mmap)
@@ -242,7 +243,7 @@ A thematic, alphabetical cross-reference linking systems topics directly to thei
   - Numerical Walkthrough & Invariants: [§7.2.2](ch07-virtual-memory.md#722-hand-calculated-4-level-address-translation-walkthrough)
 - **Anonymous Mapping (`MAP_ANON | MAP_PRIVATE`)**: Kernel allocation of zero-initialized demand pages unbacked by physical disk files.
   - Page Fault Dynamics: [§7.1](ch07-virtual-memory.md#71-page-based-abstraction-and-isolation)
-  - Heap Arena Construction: [§8.2.2](ch08-allocation.md#822-level-2-the-raw-byte-bump-allocator-mmap-backed), [§8.3](ch08-allocation.md#83-explicit-management-free-list-allocation)
+  - Heap Arena Construction: [§8.2.3](ch08-allocation.md#823-level-3-the-raw-byte-bump-allocator-mmap-backed), [§8.3](ch08-allocation.md#83-explicit-management-free-list-allocation)
 - **APIC / IO-APIC & ARM GIC (Interrupt Controllers)**: Two-tier hardware interrupt routing, Message Signaled Interrupts (MSI-X), and priority arbitration across multiprocessor cores.
   - Hardware Routing & EOI: [§2.4.1](ch02-the-machine.md#241-why-interrupt-controllers-exist-from-one-copper-pin-to-multi-core-fabrics)
 - **Apple Silicon Unified Memory (UMA)**: Shared physical memory substrate between CPU, GPU, and Neural Engine without PCIe bus serialization.

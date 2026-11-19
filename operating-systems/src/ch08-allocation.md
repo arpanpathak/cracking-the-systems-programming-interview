@@ -12,7 +12,7 @@ Allocators are distinguished by three architectural decisions: the placement str
 
 ### 8.1.1 Requesting Raw Arenas from the Kernel (`mmap`)
 
-The low-level allocators in Sections 8.2.2 and 8.3 acquire their backing memory (an **arena**) directly from the kernel via the POSIX `mmap` system call rather than calling `malloc`:
+The low-level allocators in Sections 8.2.3 and 8.3 acquire their backing memory (an **arena**) directly from the kernel via the POSIX `mmap` system call rather than calling `malloc`:
 
 ```text
 mmap(nullptr, capacity_bytes, PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANON, -1, 0)
@@ -43,7 +43,7 @@ Because `A = 2^k`, `A - 1` has `k` trailing binary `1` bits, and `~(A - 1)` clea
 
 ## 8.2 Arena Allocation: From Safe Index Pools to Raw Bump Allocators
 
-An **arena** groups objects with identical lifetimes (such as request-scoped records in a web server, frame state in a renderer, or nodes in a syntax tree) into a single contiguous region and reclaims all of them simultaneously. Rather than introducing raw pointer arithmetic immediately, we construct arena allocation in two progressive stages: a completely safe typed index pool requiring zero raw pointers, followed by a raw `mmap`-backed bump allocator.
+An **arena** groups objects with identical lifetimes (such as request-scoped records in a web server, frame state in a renderer, or nodes in a syntax tree) into a single contiguous region and reclaims all of them simultaneously. Rather than introducing raw pointer arithmetic immediately, we construct arena allocation in three progressive stages: a minimal append-only index pool requiring zero raw pointers, a generational arena with an intrusive free list supporting O(1) individual deletion and stale-handle detection, and finally a raw `mmap`-backed bump allocator.
 
 ### 8.2.1 Level 1: The Safe Index Arena (Zero `unsafe`)
 
@@ -77,7 +77,46 @@ When all arena-resident nodes share a single homogeneous type `T` (such as abstr
 {{#include ../code/out/ch08_index_arena_rs.out}}
 ```
 
-### 8.2.2 Level 2: The Raw Byte Bump Allocator (`mmap`-Backed)
+### 8.2.2 Level 2: The Generational Arena with an Intrusive Free List (Zero `unsafe`)
+
+The Level 1 `Arena<T>` in Listing 8-2 supports O(1) bulk `reset()`, yet it cannot reclaim individual removed objects without leaking their slots. Supporting individual deletion brings two subtle systems design questions to the foreground:
+
+1. **Why avoid textbook `LinkedList<T>` while still using an intrusive free list?**
+   A textbook pointer-based linked list (such as `std::collections::LinkedList`) calls the global heap allocator once per node, scattering nodes across DRAM and causing a cache miss on every pointer hop. By contrast, an **intrusive free list** inside an arena allocates zero separate nodes: each empty slot inside the contiguous `Vec<Slot<T>>` stores `Entry::Free { next_free: Option<u32> }`, and the arena holds a single `free_head: Option<u32>` pointing to the most recently freed index. Inserting pops `free_head` in O(1); removing pushes the freed index onto `free_head` in O(1).
+   - **How this compares to the Linux kernel:** Linux itself combines both halves of this insight. Its primary kernel object allocator (**SLUB**) manages contiguous arenas (slabs) of fixed-size objects with an intrusive free list threaded directly through empty slots. Meanwhile, Linux's intrusive **`struct list_head`** embeds `prev`/`next` pointers directly inside kernel objects such as `task_struct` (allocating zero wrapper nodes), giving kernel code three capabilities a growable `Vec` cannot match: O(1) self-unlinking when you already hold a pointer to the object, simultaneous membership of one object in multiple lists (runqueue, parent's children list, and a wait queue), and stable physical addresses that never relocate.
+2. **The hidden hazard of plain indices: stale handles (logical use-after-free / ABA):**
+   Replacing raw pointers with `usize` indices eliminates segfaults and undefined behavior, yet an index is still a pointer the borrow checker cannot track. Suppose slot `0` holds `"alpha"`, someone keeps a copy of `Id(0)`, slot `0` is freed onto the free list, and `"gamma"` is inserted into recycled slot `0`. Dereferencing the stale `Id(0)` will not crash; it will silently return `"gamma"`, trading memory corruption for silent logical corruption.
+   - **The solution (generational indices):** Pair every slot index with a **generation counter** (`Handle { index: u32, generation: u32 }`), and store a matching `generation: u32` inside each `Slot<T>`. Every time a slot is freed, its `generation` increments by 1. On every `get()` or `remove()`, the arena verifies `slot.generation == handle.generation`; any stale handle from an earlier lifetime fails the check immediately and returns `None` (`nullptr` in C++). Production Rust crates such as `slotmap` and `generational-arena` use this exact design. (Note: in long-running processes where a hot slot might recycle `2^32` times, production implementations use 64-bit generations or retire saturated slots to prevent wraparound collisions.)
+
+<figure>
+<img src="figures/ch08_gen_arena.svg" alt="Generational arena with intrusive free list showing stale handle rejection versus textbook LinkedList and Linux intrusive list_head plus SLUB"/>
+</figure>
+
+**Listing 8-3. Level 2 arena: a generational arena with an intrusive free list (C++20).**
+
+```cpp
+{{#include ../code/ch08/gen_arena.cpp}}
+```
+
+**Output 8-3. O(1) slot recycling and deterministic rejection of stale handles.**
+
+```text
+{{#include ../code/out/ch08_gen_arena.out}}
+```
+
+**Listing 8-4. The same zero-`unsafe` generational arena with intrusive free list in Rust.**
+
+```rust
+{{#include ../code/ch08/gen_arena.rs}}
+```
+
+**Output 8-4.**
+
+```text
+{{#include ../code/out/ch08_gen_arena_rs.out}}
+```
+
+### 8.2.3 Level 3: The Raw Byte Bump Allocator (`mmap`-Backed)
 
 When an arena must store heterogeneous types of varying sizes and alignments, or return direct typed references rather than integer handles, the allocator operates over a raw byte buffer. A **bump allocator** maintains a single monotonic offset (`next_offset`) within its contiguous virtual region. Allocation rounds `next_offset` upward to the requested alignment, verifies sufficient remaining space (`aligned_offset + requested_bytes <= arena_capacity`), and advances `next_offset` by the requested size.
 
@@ -87,38 +126,38 @@ The computational complexity of allocation in a bump allocator is O(1), consisti
 <img src="figures/ch08_bump.svg" alt="Bump allocator sequential byte layout showing 8-byte, 3-byte, 5-byte alignment padding, and 16-byte aligned allocations"/>
 </figure>
 
-**Listing 8-3. Level 2 arena: an `mmap`-backed bump allocator with explicit alignment rounding (C++20).**
+**Listing 8-5. Level 3 arena: an `mmap`-backed bump allocator with explicit alignment rounding (C++20).**
 
 ```cpp
 {{#include ../code/ch08/bump.cpp}}
 ```
 
-**Output 8-3. Three allocations demonstrating 5 bytes of alignment padding, followed by an O(1) reset.**
+**Output 8-5. Three allocations demonstrating 5 bytes of alignment padding, followed by an O(1) reset.**
 
 ```text
 {{#include ../code/out/ch08_bump.out}}
 ```
 
-**Listing 8-4. The same `mmap`-backed bump allocator in Rust.**
+**Listing 8-6. The same `mmap`-backed bump allocator in Rust.**
 
 ```rust
 {{#include ../code/ch08/bump.rs}}
 ```
 
-**Output 8-4.**
+**Output 8-6.**
 
 ```text
 {{#include ../code/out/ch08_bump_rs.out}}
 ```
 
 Extending a raw byte bump allocator into a production typed Rust arena (such as `bumpalo`) introduces three subtle language and memory-model invariants:
-- **Shared-borrow allocation (`&self` to `&'arena mut T`):** In Listing 8-4, `alloc(&mut self, ...)` requires exclusive access to the allocator, preventing callers from holding multiple live references returned by the same arena simultaneously. Production arenas wrap the bump cursor in interior mutability (`Cell<*mut u8>`) so `alloc<T>(&self, value: T) -> &mut T` accepts `&self`. Every returned reference carries the lifetime of `&self`, enabling arbitrary cross-referencing graphs while the borrow checker statically forbids any reference from outliving the arena; because `Cell` is neither `Send` nor `Sync`, single-threaded ownership is enforced at compile time.
+- **Shared-borrow allocation (`&self` to `&'arena mut T`):** In Listing 8-6, `alloc(&mut self, ...)` requires exclusive access to the allocator, preventing callers from holding multiple live references returned by the same arena simultaneously. Production arenas wrap the bump cursor in interior mutability (`Cell<*mut u8>`) so `alloc<T>(&self, value: T) -> &mut T` accepts `&self`. Every returned reference carries the lifetime of `&self`, enabling arbitrary cross-referencing graphs while the borrow checker statically forbids any reference from outliving the arena; because `Cell` is neither `Send` nor `Sync`, single-threaded ownership is enforced at compile time.
 - **Pointer provenance:** Storing the active cursor as a typed raw pointer (`*mut u8`) and computing alignment via `ptr::align_offset` and `ptr::add`, rather than casting pointers to `usize` integers and back, preserves strict pointer provenance under Rust's Stacked/Tree Borrows models and verifies cleanly under Miri.
 - **Destructor omission:** Rewinding or unmapping a raw bump arena reclaims the backing bytes without executing per-object destructors (`Drop` in Rust, `~T()` in C++). Placing heap-owning types such as `Vec` or `String` inside a raw bump arena leaks their secondary heap allocations unless the arena records an explicit drop-function list (as in `typed-arena`) or restricts stored values to plain data and arena-scoped references.
 
-### 8.2.3 Backing Store Trade-Off: Global-Allocator Chunks (`malloc` / `std::alloc`) vs. Direct `mmap`
+### 8.2.4 Backing Store Trade-Off: Global-Allocator Chunks (`malloc` / `std::alloc`) vs. Direct `mmap`
 
-Listings 8-3 and 8-4 call `mmap` directly to expose the exact OS boundary. In production systems, however, choosing between acquiring chunks from the global allocator (`malloc` / `std::alloc`) and mapping virtual memory directly with `mmap` depends on workload geometry:
+Listings 8-5 and 8-6 call `mmap` directly to expose the exact OS boundary. In production systems, however, choosing between acquiring chunks from the global allocator (`malloc` / `std::alloc`) and mapping virtual memory directly with `mmap` depends on workload geometry:
 
 | Dimension | Global-Allocator Chunks (`malloc` / `std::alloc`, e.g., 64 KiB) | Direct `mmap` Virtual Reservation (`MAP_NORESERVE`) |
 | :--- | :--- | :--- |
@@ -155,25 +194,25 @@ The allocator's performance and fragmentation profile are governed by three poli
 <img src="figures/ch08_freelist.svg" alt="Free-list allocator unified trace showing initial allocations, block splitting of 200 B into 150 B plus 26 B, and coalescing back to 200 B"/>
 </figure>
 
-**Listing 8-5. A first-fit free-list allocator with splitting and coalescing (C++20).**
+**Listing 8-7. A first-fit free-list allocator with splitting and coalescing (C++20).**
 
 ```cpp
 {{#include ../code/ch08/free_list.cpp}}
 ```
 
-**Output 8-5. The block map after initial allocations, free, split reuse, and full coalescing.**
+**Output 8-7. The block map after initial allocations, free, split reuse, and full coalescing.**
 
 ```text
 {{#include ../code/out/ch08_free_list.out}}
 ```
 
-**Listing 8-6. The same free-list allocator in Rust.**
+**Listing 8-8. The same free-list allocator in Rust.**
 
 ```rust
 {{#include ../code/ch08/free_list.rs}}
 ```
 
-**Output 8-6.**
+**Output 8-8.**
 
 ```text
 {{#include ../code/out/ch08_free_list_rs.out}}
@@ -181,11 +220,11 @@ The allocator's performance and fragmentation profile are governed by three poli
 
 ## 8.4 Production Allocator Architecture: Boundary Tags, Size Classes, and `mmap`
 
-The educational free-list allocator in Listing 8-5 demonstrates core mechanics, yet exhibits three bottlenecks under multi-threaded production workloads: O(N) linear free-list search, O(N) coalescing traversal, and global lock contention across cores. Production allocators (`jemalloc`, `tcmalloc`, `mimalloc`, and `glibc ptmalloc2`) eliminate these bottlenecks through a three-tier hierarchy.
+The educational free-list allocator in Listing 8-7 demonstrates core mechanics, yet exhibits three bottlenecks under multi-threaded production workloads: O(N) linear free-list search, O(N) coalescing traversal, and global lock contention across cores. Production allocators (`jemalloc`, `tcmalloc`, `mimalloc`, and `glibc ptmalloc2`) eliminate these bottlenecks through a three-tier hierarchy.
 
 ### 8.4.1 Knuth's Boundary Tags for O(1) Bidirectional Coalescing
 
-In Listing 8-5, coalescing a freed block with its *preceding* physical neighbor required scanning the list from `head_block` in O(N) time because each header links only forward. Donald Knuth's **Boundary Tag** architecture eliminates linear scanning by replicating the 8-byte block descriptor (`payload_bytes | allocated_bit`, exploiting the fact that 16-byte aligned sizes leave the lowest 4 bits zero) as both a **Header** before the payload and a **Footer** immediately after the payload:
+In Listing 8-7, coalescing a freed block with its *preceding* physical neighbor required scanning the list from `head_block` in O(N) time because each header links only forward. Donald Knuth's **Boundary Tag** architecture eliminates linear scanning by replicating the 8-byte block descriptor (`payload_bytes | allocated_bit`, exploiting the fact that 16-byte aligned sizes leave the lowest 4 bits zero) as both a **Header** before the payload and a **Footer** immediately after the payload:
 - **Forward Coalescing (O(1)):** Add `current->size` to `current` to inspect the next physical block's Header directly.
 - **Backward Coalescing (O(1)):** Step backward 8 bytes prior to `current`'s Header to read the previous physical block's **Footer**. When the footer's allocated bit is `0`, subtract its encoded size to jump directly to the predecessor's Header and merge in constant time.
 

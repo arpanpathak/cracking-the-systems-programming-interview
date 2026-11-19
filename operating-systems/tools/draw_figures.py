@@ -1585,8 +1585,70 @@ def ch07_canonical_va():
 # ---------------------------------------------------------------- Chapter 8
 
 @figure
+def ch08_gen_arena():
+    fig = Fig(
+        "ch08_gen_arena",
+        "Figure 8-1. Generational Arena with Intrusive Free List: Stale-Handle Rejection vs. LinkedList and Linux Intrusive Lists.",
+        408,
+    )
+
+    # Top panel: Contiguous Vec<Slot<T>> + Intrusive Free List
+    top = fig.node(20, 18, 760, 224, "blue")
+    fig.tile(32, 30, "layers", "blue", 30)
+    fig.text(70, 50, "Contiguous Vec<Slot<T>>  +  Intrusive Free List (free_head = Some(2))", "name")
+    fig.text(70, 70, "Empty slots thread the free list directly inside the array; zero separate heap nodes", "sub")
+
+    slots = [
+        ("slot[0]  gen = 1", "Occupied(\"gamma\")", "green"),
+        ("slot[1]  gen = 0", "Occupied(\"beta\")", "green"),
+        ("slot[2]  gen = 2", "Free { next: 3 }", "amber"),
+        ("slot[3]  gen = 1", "Free { next: None }", "gray"),
+    ]
+    sx = 34
+    for hdr, body, tone in slots:
+        fig.cell(sx, 84, 174, 58, tone, [(hdr, "small"), (body, "monob")], kind="card", r=8)
+        sx += 186
+
+    # Intrusive free-list arrow from slot[2] -> slot[3]
+    fig.wire([(580, 113), (592, 113)], "amber", width=2.2)
+
+    # Stale vs. Live handle checks below slot[0]
+    fig.cell(34, 174, 344, 54, "red", [
+        ("Stale Handle { index: 0, gen: 0 }", "monob"),
+        ("0 != slot[0].gen (1)  ->  returns None (ABA blocked)", "small"),
+    ], kind="card", r=8)
+    fig.cell(404, 174, 360, 54, "green", [
+        ("Live Handle { index: 0, gen: 1 }", "monob"),
+        ("1 == slot[0].gen (1)  ->  returns Some(\"gamma\")", "small"),
+    ], kind="card", r=8)
+
+    fig.wire([(121, 172), (121, 144)], "red", dash=True, width=1.8)
+    fig.wire([(460, 172), (460, 158), (156, 158), (156, 144)], "green", width=1.8)
+
+    # Bottom row: 3 architectural comparison cards
+    cards = [
+        (20, "red", "Textbook LinkedList<T>", "1 heap alloc per node", "Scattered RAM; cache miss", "per pointer hop (avoid)"),
+        (280, "purple", "Linux list_head + SLUB", "Intrusive links in object", "Multi-list task_struct;", "stable addresses + slabs"),
+        (540, "green", "GenArena + Free List", "Contiguous Vec<Slot<T>>", "O(1) reuse, zero unsafe,", "stale handles caught"),
+    ]
+    for cx, tone, title, l1, l2, l3 in cards:
+        fig.node(cx, 258, 240, 134, tone)
+        fig.text(cx + 120, 284, title, "monob", "middle", tone=tone, fit=(cx + 8, cx + 232))
+        fig.lines(cx + 120, 342, [
+            (l1, "name"),
+            (l2, "sub"),
+            (l3, "sub"),
+        ], "middle", fit=(cx + 8, cx + 232))
+
+    fig.save([
+        "Freeing slot 0 increments its generation from 0 to 1 and pushes index 0 onto free_head; reusing slot 0 issues Handle(0, 1).",
+        "Any leftover Handle(0, 0) fails the generation check (0 != 1) and returns None instead of silently reading the new object.",
+    ])
+
+
+@figure
 def ch08_bump():
-    fig = Fig("ch08_bump", "Figure 8-1. Bump Allocator Layout: Sequential Offsets and Explicit 16-Byte Alignment Padding", 336)
+    fig = Fig("ch08_bump", "Figure 8-2. Bump Allocator Layout: Sequential Offsets and Explicit 16-Byte Alignment Padding", 336)
 
     # Top container: 64 KiB Arena Linear Byte Layout (y=12..166)
     fig.node(28, 12, 744, 152, "gray", kind="tonal", r=12)
@@ -1656,7 +1718,7 @@ def ch08_bump():
 
 @figure
 def ch08_freelist():
-    fig = Fig("ch08_freelist", "Figure 8-2. Free-List Allocator: Unified Trace of Header Layout, Block Splitting, and Coalescing", 414)
+    fig = Fig("ch08_freelist", "Figure 8-3. Free-List Allocator: Unified Trace of Header Layout, Block Splitting, and Coalescing", 414)
 
     # Band 1: Initial allocations A(100), B(200), C(300) (y=12..130)
     fig.node(28, 12, 744, 118, "blue", kind="tonal", r=12)
@@ -1750,7 +1812,7 @@ def ch08_freelist():
 
 @figure
 def ch08_allocator_hierarchy():
-    fig = Fig("ch08_allocator_hierarchy", "Figure 8-3. Production Allocator Architecture: Thread Caches, Boundary Tags, and mmap Threshold", 392)
+    fig = Fig("ch08_allocator_hierarchy", "Figure 8-4. Production Allocator Architecture: Thread Caches, Boundary Tags, and mmap Threshold", 392)
 
     # Tier 1: Thread-Local Cache (tcache) (y=12..126)
     fig.node(28, 12, 744, 114, "green", kind="tonal", r=12)
