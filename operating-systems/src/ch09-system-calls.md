@@ -22,7 +22,7 @@ Measuring the pure cost of a privilege transition requires invoking a minimal sy
 
 ## 9.2 Performance Implications and Optimization via Buffering
 
-Crossing the user/kernel privilege boundary is not a zero-cost abstraction. Saving and restoring architectural register state, validating security mitigations (such as Kernel Page Table Isolation, KPTI, which switches page tables on Meltdown-affected processors), and perturbing L1 instruction caches and branch predictors render a bare system call roughly two orders of magnitude slower than an ordinary user-mode function call.
+Crossing the user/kernel privilege boundary incurs substantial hardware overhead. Saving and restoring architectural register state, applying security mitigations (such as Kernel Page Table Isolation, KPTI, which switches page tables on Meltdown-affected processors), and perturbing L1 instruction caches and branch predictors render a bare system call roughly two orders of magnitude slower than an ordinary user-mode function call.
 
 To amortize this privilege-transition penalty across high-volume I/O workloads, runtime libraries employ **user-space buffering**. Rather than issuing a `write(2)` system call for every 17-byte log line, a buffered stream (C's `FILE*` with `fwrite`, C++'s `std::ostream`, or Rust's `BufWriter`) appends small writes into a contiguous user-space buffer (for example, 64 KiB). Only when the buffer fills, or when the caller explicitly invokes `fflush()` / `flush()`, does the library issue a single large `write(2)` system call to transfer all 64 KiB into the kernel at once.
 

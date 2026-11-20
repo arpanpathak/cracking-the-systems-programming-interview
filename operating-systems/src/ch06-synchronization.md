@@ -1,6 +1,6 @@
 # 6. Synchronization and Memory Ordering
 
-Chapter 4 established that a non-atomic Read-Modify-Write expression (`counter++`) decomposes into three discrete machine instructions (load, increment, and store), creating an **atomicity gap** through which concurrent threads lose updates. Single-word atomic instructions eliminate lost updates on isolated scalar variables. Systems software, however, routinely mutates composite data structures (linked lists, circular buffers, page-table hierarchies, file descriptor tables, and allocator free lists) whose structural invariants span multiple machine words and cache lines.
+As seen in Chapters 2 and 4, a non-atomic Read-Modify-Write expression (`counter++`) decomposes into three discrete machine instructions (load, increment, and store), creating an **atomicity gap** through which concurrent threads lose updates. Single-word atomic instructions eliminate lost updates on isolated scalar variables. Systems software, however, routinely mutates composite data structures (linked lists, circular buffers, page-table hierarchies, file descriptor tables, and allocator free lists) whose structural invariants span multiple machine words and cache lines.
 
 Preserving data integrity across concurrent threads requires enforcing two orthogonal properties:
 1. **Mutual Exclusion and Predicate Coordination:** Serializing multi-instruction critical sections and suspending threads passively when a required logical precondition is unsatisfied.

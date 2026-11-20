@@ -12,9 +12,9 @@ Most software engineers spend their careers insulated inside runtime environment
 In reality, computation is strictly governed by the physics of silicon and microarchitecture:
 - CPU cores communicate across shared memory buses arbitrated by cache coherence protocols (MESI/MOESI), where uncoordinated concurrent writes across the same 64-byte cache line trigger catastrophic bus traffic through **false sharing**.
 - Memory access latencies form a steep cliff: from sub-nanosecond L1 cache hits (4 cycles) to tens of nanoseconds for DRAM (hundreds of cycles), to hundreds of microseconds for NVMe storage devices.
-- System calls are not benign function calls; they are hardware privilege transitions (Ring 3 &rarr; Ring 0) that flush CPU pipeline state, switch execution stacks, and trigger TLB and cache evictions.
+- System calls perform hardware privilege transitions (Ring 3 &rarr; Ring 0) that serialize pipeline execution, switch execution stacks, and perturb TLB and cache locality, making them orders of magnitude more expensive than ordinary function calls.
 
-The operating system is not merely a library of convenient helper functions. It is the supervisory software foundation that enforces hardware privilege boundaries, orchestrates virtual memory address translation, multiplexes finite CPU time among contending execution streams, and guarantees fault isolation. To write high-performance, fault-tolerant infrastructure, one must understand how the operating system and the hardware collaborate from first principles.
+The operating system serves as the supervisory software foundation that enforces hardware privilege boundaries, orchestrates virtual memory address translation, multiplexes finite CPU time among contending execution streams, and guarantees fault isolation. Building high-performance, fault-tolerant infrastructure requires understanding how the operating system and underlying hardware collaborate from first principles.
 
 <figure>
   <img src="figures/preface_ring_transition.svg" alt="Hardware Privilege Transition: Ring 3 User Space to Ring 0 Kernel Space"/>
