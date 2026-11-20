@@ -38,7 +38,7 @@
             const path_to_root = "";
             const default_light_theme = "light";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "searchindex-58ab92a2.js";
+            window.path_to_searchindex_js = "searchindex-5affdc83.js";
         </script>
         <!-- Start loading toc.js asap -->
         <script src="toc-f3585118.js"></script>
@@ -224,16 +224,16 @@
 </ul>
 </li>
 <li><a href="ch02-the-machine.html#22-memory-hierarchy-and-locality-dynamics">2.2 Memory Hierarchy and Locality Dynamics</a></li>
-<li><a href="ch02-the-machine.html#23-privilege-domains-and-how-the-cpu-talks-to-hardware-devices">2.3 Privilege Domains and How the CPU Talks to Hardware Devices</a>
+<li><a href="ch02-the-machine.html#23-privilege-domains-and-boundary-enforcement">2.3 Privilege Domains and Boundary Enforcement</a>
 <ul>
-<li><a href="ch02-the-machine.html#231-two-physical-mechanisms-behind-every-device-mmio-and-dma">2.3.1 Two Physical Mechanisms Behind Every Device: MMIO and DMA</a></li>
+<li><a href="ch02-the-machine.html#231-device-communication-mechanisms-mmio-and-dma">2.3.1 Device Communication Mechanisms: MMIO and DMA</a></li>
 </ul>
 </li>
 <li><a href="ch02-the-machine.html#24-synchronous-traps-and-the-asynchronous-interrupt-subsystem">2.4 Synchronous Traps and the Asynchronous Interrupt Subsystem</a>
 <ul>
-<li><a href="ch02-the-machine.html#241-why-interrupt-controllers-exist-from-one-copper-pin-to-multi-core-fabrics">2.4.1 Why Interrupt Controllers Exist: From One Copper Pin to Multi-Core Fabrics</a></li>
-<li><a href="ch02-the-machine.html#242-vector-tables-idt-vbar_el1-tssrsp0-and-hardware-trapframe-construction">2.4.2 Vector Tables (<code>IDT</code>, <code>VBAR_EL1</code>), <code>TSS.rsp0</code>, and Hardware Trapframe Construction</a></li>
-<li><a href="ch02-the-machine.html#243-top-half-hardirq-vs-bottom-half-softirq-split-and-eoi-lifecycle">2.4.3 Top-Half (<code>hardirq</code>) vs. Bottom-Half (<code>softirq</code>) Split and EOI Lifecycle</a></li>
+<li><a href="ch02-the-machine.html#241-interrupt-controllers-and-routing-topologies-apic-and-gicv3">2.4.1 Interrupt Controllers and Routing Topologies (APIC and GICv3)</a></li>
+<li><a href="ch02-the-machine.html#242-vector-tables-kernel-stack-switching-and-trapframe-construction">2.4.2 Vector Tables, Kernel Stack Switching, and Trapframe Construction</a></li>
+<li><a href="ch02-the-machine.html#243-top-half-and-bottom-half-decomposition-and-eoi-lifecycle">2.4.3 Top-Half and Bottom-Half Decomposition and EOI Lifecycle</a></li>
 </ul>
 </li>
 </ul>
@@ -626,7 +626,7 @@
 </li>
 <li><strong>APIC / IO-APIC &amp; ARM GIC (Interrupt Controllers)</strong>: Two-tier hardware interrupt routing, Message Signaled Interrupts (MSI-X), and priority arbitration across multiprocessor cores.
 <ul>
-<li>Hardware Routing &amp; EOI: <a href="ch02-the-machine.html#241-why-interrupt-controllers-exist-from-one-copper-pin-to-multi-core-fabrics">§2.4.1</a></li>
+<li>Hardware Routing &amp; EOI: <a href="ch02-the-machine.html#241-interrupt-controllers-and-routing-topologies-apic-and-gicv3">§2.4.1</a></li>
 </ul>
 </li>
 <li><strong>Apple Silicon Unified Memory (UMA)</strong>: Shared physical memory substrate between CPU, GPU, and Neural Engine without PCIe bus serialization.
@@ -799,7 +799,7 @@
 </li>
 <li><strong>Interrupt Descriptor Table (IDT) &amp; Top/Bottom-Half Handlers</strong>: Hardware vector dispatch table, <code>TSS.rsp0</code> trapframe saving, <code>hardirq</code> masking, and <code>softirq</code> deferred execution.
 <ul>
-<li>Architectural Mechanics: <a href="ch02-the-machine.html#242-vector-tables-idt-vbar_el1-tssrsp0-and-hardware-trapframe-construction">§2.4.2</a>, <a href="ch02-the-machine.html#243-top-half-hardirq-vs-bottom-half-softirq-split-and-eoi-lifecycle">§2.4.3</a></li>
+<li>Architectural Mechanics: <a href="ch02-the-machine.html#242-vector-tables-kernel-stack-switching-and-trapframe-construction">§2.4.2</a>, <a href="ch02-the-machine.html#243-top-half-and-bottom-half-decomposition-and-eoi-lifecycle">§2.4.3</a></li>
 </ul>
 </li>
 <li><strong>Inter-Process Communication (IPC)</strong>: Exchanging state across hardware isolation boundaries via pipes, sockets, and shared memory.
@@ -883,7 +883,7 @@
 <li><strong>Program Counter (PC / RIP / PC_EL0)</strong>: Microarchitectural register holding the linear virtual address of the next instruction to fetch.
 <ul>
 <li>Instruction Cycle &amp; Branching: <a href="ch02-the-machine.html#21-the-execution-model-and-the-atomicity-gap">§2.1</a></li>
-<li>Trapframe Preservation: <a href="ch02-the-machine.html#242-vector-tables-idt-vbar_el1-tssrsp0-and-hardware-trapframe-construction">§2.4.2</a>, <a href="ch03-processes.html#31-the-process-control-block-and-address-space-topology">§3.1</a></li>
+<li>Trapframe Preservation: <a href="ch02-the-machine.html#242-vector-tables-kernel-stack-switching-and-trapframe-construction">§2.4.2</a>, <a href="ch03-processes.html#31-the-process-control-block-and-address-space-topology">§3.1</a></li>
 </ul>
 </li>
 </ul>
@@ -922,7 +922,7 @@
 <li><strong>Stack Pointer (SP / RSP / SP_EL0)</strong>: Architectural register tracking the active boundary of the descending call stack.
 <ul>
 <li>Stack Frame Structure: <a href="ch02-the-machine.html#21-the-execution-model-and-the-atomicity-gap">§2.1</a></li>
-<li>Kernel Stack Switching: <a href="ch02-the-machine.html#242-vector-tables-idt-vbar_el1-tssrsp0-and-hardware-trapframe-construction">§2.4.2</a>, <a href="ch09-system-calls.html#91-the-mechanics-of-the-system-call-interface">§9.1</a></li>
+<li>Kernel Stack Switching: <a href="ch02-the-machine.html#242-vector-tables-kernel-stack-switching-and-trapframe-construction">§2.4.2</a>, <a href="ch09-system-calls.html#91-the-mechanics-of-the-system-call-interface">§9.1</a></li>
 </ul>
 </li>
 <li><strong>Status Flags (FLAGS / RFLAGS / PSTATE)</strong>: CPU condition codes (ZF, CF, SF, OF) and interrupt mask control flags (IF).
@@ -933,7 +933,7 @@
 <li><strong>System Call Boundary</strong>: Hardware-supervised privilege gatekeeper transferring control from user mode to kernel mode.
 <ul>
 <li>Gatekeeper Role: <a href="ch01-what-is-an-os.html#14-the-system-call-boundary-and-posix-standard-interface">§1.4</a></li>
-<li>Traps &amp; Privilege Elevation: <a href="ch02-the-machine.html#23-privilege-domains-and-how-the-cpu-talks-to-hardware-devices">§2.3</a>, <a href="ch09-system-calls.html#91-the-mechanics-of-the-system-call-interface">§9.1</a></li>
+<li>Traps &amp; Privilege Elevation: <a href="ch02-the-machine.html#23-privilege-domains-and-boundary-enforcement">§2.3</a>, <a href="ch09-system-calls.html#91-the-mechanics-of-the-system-call-interface">§9.1</a></li>
 </ul>
 </li>
 </ul>
@@ -1007,22 +1007,6 @@
         <template id=fa-play><span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 384 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M73 39c-14.8-9.1-33.4-9.4-48.5-.9S0 62.6 0 80V432c0 17.4 9.4 33.4 24.5 41.9s33.7 8.1 48.5-.9L361 297c14.3-8.7 23-24.2 23-41s-8.7-32.2-23-41L73 39z"/></svg></span></template>
         <template id=fa-clock-rotate-left><span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M75 75L41 41C25.9 25.9 0 36.6 0 57.9V168c0 13.3 10.7 24 24 24H134.1c21.4 0 32.1-25.9 17-41l-30.8-30.8C155 85.5 203 64 256 64c106 0 192 86 192 192s-86 192-192 192c-40.8 0-78.6-12.7-109.7-34.4c-14.5-10.1-34.4-6.6-44.6 7.9s-6.6 34.4 7.9 44.6C151.2 495 201.7 512 256 512c141.4 0 256-114.6 256-256S397.4 0 256 0C185.3 0 121.3 28.7 75 75zm181 53c-13.3 0-24 10.7-24 24V256c0 6.4 2.5 12.5 7 17l72 72c9.4 9.4 24.6 9.4 33.9 0s9.4-24.6 0-33.9l-65-65V152c0-13.3-10.7-24-24-24z"/></svg></span></template>
 
-        <!-- Livereload script (if served using the cli tool) -->
-        <script>
-            const wsProtocol = location.protocol === 'https:' ? 'wss:' : 'ws:';
-            const wsAddress = wsProtocol + "//" + location.host + "/" + "__livereload";
-            const socket = new WebSocket(wsAddress);
-            socket.onmessage = function (event) {
-                if (event.data === "reload") {
-                    socket.close();
-                    location.reload();
-                }
-            };
-
-            window.onbeforeunload = function() {
-                socket.close();
-            }
-        </script>
 
 
         <script>
