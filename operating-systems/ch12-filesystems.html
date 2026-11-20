@@ -38,7 +38,7 @@
             const path_to_root = "";
             const default_light_theme = "light";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "searchindex-33552441.js";
+            window.path_to_searchindex_js = "searchindex-025a35ef.js";
         </script>
         <!-- Start loading toc.js asap -->
         <script src="toc-f3585118.js"></script>
@@ -337,7 +337,7 @@ inode 11420119, size 36 bytes, 8 blocks
 <li><strong>Inode Table:</strong> A fixed or dynamically allocated array of on-disk inode records indexed directly by inode number (<code>st_ino</code>).</li>
 <li><strong>Data Blocks:</strong> The bulk of the partition storing file payloads and directory entry tables.</li>
 </ul>
-<p>An <strong>inode</strong> is the authoritative descriptor for a file, recording its type, permissions, owner UID/GID, logical size, timestamps, hard-link count, and block-pointer table. Crucially, an inode does <strong>not</strong> store the file’s name. Names reside exclusively inside <strong>directories</strong>, which are specialized files mapping <code>(filename -&gt; inode_number)</code> pairs. Decoupling names from inodes makes <strong>hard links</strong> straightforward: multiple directory entries reference the same <code>st_ino</code>, incrementing <code>st_nlink</code>. To balance O(1) lookup for small files with multi-terabyte capacity for large files, classic inodes maintain twelve <strong>direct block pointers</strong>, followed by <strong>single indirect</strong>, <strong>double indirect</strong>, and <strong>triple indirect</strong> pointer trees (modern filesystems such as ext4, XFS, and APFS generalize this into <strong>extent trees</strong> recording contiguous <code>(logical_offset, physical_start, length)</code> ranges).</p>
+<p>An <strong>inode</strong> is the authoritative descriptor for a file, recording its type, permissions, owner UID/GID, logical size, timestamps, hard-link count, and block-pointer table. An inode does <strong>not</strong>, however, store the file’s name. Names reside exclusively inside <strong>directories</strong>, which are specialized files mapping <code>(filename -&gt; inode_number)</code> pairs. Decoupling names from inodes makes <strong>hard links</strong> straightforward: multiple directory entries reference the same <code>st_ino</code>, incrementing <code>st_nlink</code>. To balance O(1) lookup for small files with multi-terabyte capacity for large files, classic inodes maintain twelve <strong>direct block pointers</strong>, followed by <strong>single indirect</strong>, <strong>double indirect</strong>, and <strong>triple indirect</strong> pointer trees (modern filesystems such as ext4, XFS, and APFS generalize this into <strong>extent trees</strong> recording contiguous <code>(logical_offset, physical_start, length)</code> ranges).</p>
 <figure>
 <img src="figures/ch12_fs_layout.svg" alt="A file system&#39;s blocks: superblock, bitmaps, inode table, data blocks, with a directory resolving a name to an inode" />
 </figure>

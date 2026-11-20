@@ -38,7 +38,7 @@
             const path_to_root = "";
             const default_light_theme = "light";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "searchindex-33552441.js";
+            window.path_to_searchindex_js = "searchindex-025a35ef.js";
         </script>
         <!-- Start loading toc.js asap -->
         <script src="toc-f3585118.js"></script>
@@ -201,7 +201,7 @@
 <li><strong>Mutual Exclusion:</strong> Concurrent threads must not mutate queue pointers, lengths, or ring indices simultaneously, which would induce data races and state corruption.</li>
 <li><strong>Predicate Coordination:</strong> When the queue reaches capacity, producer threads must suspend execution until space becomes available. Conversely, when the queue is empty, consumer threads must suspend until an item is enqueued.</li>
 </ol>
-<p>A <strong>mutex</strong> provides mutual exclusion but possesses no native mechanism for suspended waiting on arbitrary logical state. A thread that simply loops while checking queue occupancy (“busy-waiting”) wastes processor cycles and starves other threads contending for execution cores.</p>
+<p>A <strong>mutex</strong> provides mutual exclusion but possesses no native mechanism for suspended waiting on arbitrary logical state. A thread that loops continuously while polling queue occupancy (“busy-waiting”) wastes processor cycles and starves other threads contending for execution cores.</p>
 <p>To resolve this, the queue pairs a mutex with <strong>condition variables</strong>. A condition variable enables a thread to release its held mutex and enter a sleep state atomically in a single hardware-supervised step. The atomicity of this transition is essential: if releasing the lock and sleeping were separate operations, a competing thread could signal a state change in the intervening gap, causing the waiting thread to sleep indefinitely, a catastrophic concurrency failure known as a <strong>lost wakeup</strong>.</p>
 <p>Because the queue coordinates two opposing boundary states, it employs dual condition variables:</p>
 <ul>
@@ -3082,7 +3082,7 @@ total    500500
 <p>The Unix architecture is distinguished by the philosophy of composing complex data processing workflows from small, specialized utilities connected via standardized byte streams. Constructing a process pipeline, such as piping the output of <code>echo hello</code> into <code>tr a-z A-Z</code>, requires orchestrating inter-process communication (IPC) through kernel file descriptors, process duplication, and address space replacement.</p>
 <h3 id="1991-kernel-file-descriptor-mechanics-and-redirection"><a class="header" href="#1991-kernel-file-descriptor-mechanics-and-redirection">19.9.1 Kernel File Descriptor Mechanics and Redirection</a></h3>
 <p>A running program interacts with input/output channels via integer file descriptors, which index into the process’s kernel-managed File Descriptor Table. Standard conventions establish descriptor 0 as standard input (<code>stdin</code>), descriptor 1 as standard output (<code>stdout</code>), and descriptor 2 as standard error (<code>stderr</code>).</p>
-<p>Crucially, user-space programs are decoupled from underlying device geometries: writing to descriptor 1 invokes the same <code>write()</code> system call regardless of whether the descriptor refers to a terminal display, a disk file, a network socket, or an IPC pipe. Constructing a pipeline exploits this indirection by remapping file descriptors before executing program binaries.</p>
+<p>User-space programs remain decoupled from underlying device geometries: writing to descriptor 1 invokes the same <code>write()</code> system call regardless of whether the descriptor refers to a terminal display, a disk file, a network socket, or an IPC pipe. Constructing a pipeline exploits this indirection by remapping file descriptors before executing program binaries.</p>
 <h3 id="1992-the-pipeline-orchestration-sequence"><a class="header" href="#1992-the-pipeline-orchestration-sequence">19.9.2 The Pipeline Orchestration Sequence</a></h3>
 <p>Establishing a pipeline between two child processes proceeds through five deterministic steps:</p>
 <figure>

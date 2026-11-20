@@ -38,7 +38,7 @@
             const path_to_root = "";
             const default_light_theme = "light";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "searchindex-33552441.js";
+            window.path_to_searchindex_js = "searchindex-025a35ef.js";
         </script>
         <!-- Start loading toc.js asap -->
         <script src="toc-f3585118.js"></script>
@@ -186,7 +186,7 @@
                         <h1 id="16-virtualization-and-containerization"><a class="header" href="#16-virtualization-and-containerization">16. Virtualization and Containerization</a></h1>
 <p>Modern cloud infrastructure packs dozens of mutually untrusted customer workloads onto a single physical server while preserving the illusion that each tenant owns a dedicated machine. Systems engineers achieve this multi-tenancy through two distinct architectural mechanisms: <strong>hardware virtual machines (VMs)</strong>, which virtualize the physical processor and memory controller beneath complete guest kernels, and <strong>containers</strong>, which partition visibility and resource quotas inside a single shared host kernel.</p>
 <h2 id="161-virtual-machines-and-hypervisor-orchestration"><a class="header" href="#161-virtual-machines-and-hypervisor-orchestration">16.1 Virtual Machines and Hypervisor Orchestration</a></h2>
-<p>A <strong>virtual machine</strong> executes an unmodified guest operating system (such as Linux or Windows) inside an isolated hardware environment synthesized by a <strong>hypervisor</strong> (such as Linux KVM, Xen, VMware ESXi, or Apple Virtualization.framework). Early software-only hypervisors faced a difficult architectural problem on x86: several sensitive instructions silently behaved differently in unprivileged rings instead of trapping, forcing complex binary translation.</p>
+<p>A <strong>virtual machine</strong> executes an unmodified guest operating system (such as Linux or Windows) inside an isolated hardware environment synthesized by a <strong>hypervisor</strong> (such as Linux KVM, Xen, VMware ESXi, or Apple Virtualization.framework). Early software-only hypervisors faced a difficult architectural problem on x86: several sensitive instructions behaved differently in unprivileged rings instead of trapping, forcing complex binary translation.</p>
 <p>Modern processors resolve this directly in silicon by introducing a dedicated hypervisor privilege tier orthogonal to Ring 0 through Ring 3:</p>
 <ul>
 <li><strong>On x86-64 (Intel VT-x / AMD-V):</strong> The CPU divides execution into <strong>VMX Root mode</strong> (where the host kernel and hypervisor run) and <strong>VMX Non-Root mode</strong> (where the guest kernel runs at guest Ring 0 and guest apps run at guest Ring 3). Each virtual CPU (vCPU) is backed by an in-memory <strong>Virtual Machine Control Structure (VMCS)</strong> storing guest registers, host registers, and an execution-control bitmap specifying which sensitive guest instructions (<code>cpuid</code>, <code>hlt</code>, <code>in</code>/<code>out</code>, <code>mov cr3</code>, EPT violations) trigger a hardware <strong>VM-Exit</strong> back into the hypervisor, and how <code>VMLAUNCH</code> / <code>VMRESUME</code> re-enters the guest (<strong>VM-Entry</strong>).</li>

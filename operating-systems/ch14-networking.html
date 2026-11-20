@@ -38,7 +38,7 @@
             const path_to_root = "";
             const default_light_theme = "light";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "searchindex-33552441.js";
+            window.path_to_searchindex_js = "searchindex-025a35ef.js";
         </script>
         <!-- Start loading toc.js asap -->
         <script src="toc-f3585118.js"></script>
@@ -197,7 +197,7 @@
 <img src="figures/ch14_tcp.svg" alt="The TCP handshake, data exchange with sequence numbers, and FIN teardown" />
 </figure>
 <h2 id="142-the-user-datagram-protocol-udp-unreliable-message-delivery"><a class="header" href="#142-the-user-datagram-protocol-udp-unreliable-message-delivery">14.2 The User Datagram Protocol (UDP): Unreliable Message Delivery</a></h2>
-<p>The <strong>User Datagram Protocol (UDP)</strong> strips away connection state, handshakes, retransmissions, and ordering guarantees, adding only 8 bytes of header (source port, destination port, length, and checksum) atop raw IP packets. Each UDP datagram is routed independently and may arrive out of order, arrive duplicated, or vanish silently in transit.</p>
+<p>The <strong>User Datagram Protocol (UDP)</strong> strips away connection state, handshakes, retransmissions, and ordering guarantees, adding only 8 bytes of header (source port, destination port, length, and checksum) atop raw IP packets. Each UDP datagram is routed independently and may arrive out of order, arrive duplicated, or be dropped in transit without notification.</p>
 <p>This minimal contract yields two major engineering properties:</p>
 <ul>
 <li><strong>Zero handshake latency and no head-of-line blocking:</strong> Sending the first payload incurs zero setup round trips, and losing one packet never stalls subsequent packets waiting behind it. Real-time voice/video pipelines, DNS resolvers, telemetry collectors, and modern QUIC (HTTP/3) transports build directly on UDP.</li>
@@ -217,7 +217,7 @@ ssize_t recvfrom(int sockfd, void *buf, size_t len, int flags,
 <li><strong><code>flags</code>:</strong> Per-operation bitmask (<code>0</code> for standard blocking transfer; <code>MSG_DONTWAIT</code> for non-blocking single-call I/O; <code>MSG_PEEK</code> to inspect a queued datagram without removing it from the receive buffer).</li>
 <li><strong><code>dest_addr</code> and <code>addrlen</code> (in <code>sendto</code>):</strong> Pointer to the destination <code>struct sockaddr_in</code> (or <code>sockaddr_in6</code>) and its exact byte size passed <strong>by value</strong> (<code>sizeof addr</code>).</li>
 <li><strong><code>src_addr</code> and <code>addrlen</code> (in <code>recvfrom</code>):</strong> Output parameters allowing the kernel to populate the sender’s IP address and port. Notice that <strong><code>addrlen</code> is passed by pointer (<code>socklen_t *</code>)</strong> as a value-result argument: the caller initializes <code>*addrlen</code> to the buffer capacity (for example, <code>sizeof(struct sockaddr_storage)</code>) before the call, and the kernel overwrites <code>*addrlen</code> with the actual address length written. Passing <code>nullptr, nullptr</code> (as in Listing 14-1) tells the kernel the caller does not need the sender’s address.</li>
-<li><strong>Return values and truncation hazard:</strong> Both functions return the signed number of bytes sent or received (<code>ssize_t &gt;= 0</code>), or <code>-1</code> on error (<code>EMSGSIZE</code> if a datagram exceeds the link MTU/limit, <code>EAGAIN</code> on non-blocking empty receive, <code>EINTR</code>). Crucially, if an arriving UDP datagram is larger than the <code>len</code> buffer supplied to <code>recvfrom()</code>, the kernel copies the first <code>len</code> bytes and <strong>silently discards the remaining tail of the datagram</strong> (unlike TCP <code>read()</code>, which leaves unread bytes queued for the next call).</li>
+<li><strong>Return values and truncation hazard:</strong> Both functions return the signed number of bytes sent or received (<code>ssize_t &gt;= 0</code>), or <code>-1</code> on error (<code>EMSGSIZE</code> if a datagram exceeds the link MTU/limit, <code>EAGAIN</code> on non-blocking empty receive, <code>EINTR</code>). If an arriving UDP datagram is larger than the <code>len</code> buffer supplied to <code>recvfrom()</code>, the kernel copies the first <code>len</code> bytes and <strong>discards the remaining tail of the datagram without signaling an error</strong> (unlike TCP <code>read()</code>, which leaves unread bytes queued for the next call).</li>
 </ul>
 <p><strong>Listing 14-1. Sending and receiving one datagram (C++20).</strong></p>
 <pre><code class="language-cpp">// ch14/udp.cpp: a datagram sent to the loopback address and read back.

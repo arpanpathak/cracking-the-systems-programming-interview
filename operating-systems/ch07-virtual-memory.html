@@ -38,7 +38,7 @@
             const path_to_root = "";
             const default_light_theme = "light";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "searchindex-33552441.js";
+            window.path_to_searchindex_js = "searchindex-025a35ef.js";
         </script>
         <!-- Start loading toc.js asap -->
         <script src="toc-f3585118.js"></script>
@@ -186,7 +186,7 @@
                         <h1 id="7-virtual-memory-and-the-architecture-of-address-translation"><a class="header" href="#7-virtual-memory-and-the-architecture-of-address-translation">7. Virtual Memory and the Architecture of Address Translation</a></h1>
 <p>Virtual memory provides a layer of indirection between a process’s perceived address space and the machine’s physical memory. By partitioning both into fixed-size blocks, <strong>pages</strong> in the virtual address space and <strong>frames</strong> in physical memory, the operating system can implement granular isolation, demand-driven resource allocation, and efficient memory sharing.</p>
 <h2 id="71-page-based-abstraction-and-isolation"><a class="header" href="#71-page-based-abstraction-and-isolation">7.1 Page-Based Abstraction and Isolation</a></h2>
-<p>The fundamental mechanism of virtual memory is the page table, a per-process data structure that maps virtual pages to physical frames. This mapping allows the OS to present a contiguous, linear address space to a program, even when the underlying physical memory is fragmented or non-contiguous. Crucially, each page table entry (PTE) includes permission bits that define the allowed operations (read, write, execute) for that page. This architecture enables hardware-enforced isolation: a process can only access the physical frames explicitly mapped in its own page table, and any violation of the programmed permissions triggers a hardware exception.</p>
+<p>The fundamental mechanism of virtual memory is the page table, a per-process data structure that maps virtual pages to physical frames. This mapping allows the OS to present a contiguous, linear address space to a program, even when the underlying physical memory is fragmented or non-contiguous. Each page table entry (PTE) also includes permission bits that define the allowed operations (read, write, execute) for that page. This architecture enables hardware-enforced isolation: a process can only access the physical frames explicitly mapped in its own page table, and any violation of the programmed permissions triggers a hardware exception.</p>
 <figure>
 <img src="figures/ch07_vm_paging.svg" alt="Virtual pages mapping through a page table to scattered physical frames" />
 </figure>

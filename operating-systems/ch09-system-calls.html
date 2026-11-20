@@ -38,7 +38,7 @@
             const path_to_root = "";
             const default_light_theme = "light";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "searchindex-33552441.js";
+            window.path_to_searchindex_js = "searchindex-025a35ef.js";
         </script>
         <!-- Start loading toc.js asap -->
         <script src="toc-f3585118.js"></script>
@@ -201,7 +201,7 @@
 <h2 id="92-performance-implications-and-optimization-via-buffering"><a class="header" href="#92-performance-implications-and-optimization-via-buffering">9.2 Performance Implications and Optimization via Buffering</a></h2>
 <p>Crossing the user/kernel privilege boundary incurs substantial hardware overhead. Saving and restoring architectural register state, applying security mitigations (such as Kernel Page Table Isolation, KPTI, which switches page tables on Meltdown-affected processors), and perturbing L1 instruction caches and branch predictors render a bare system call roughly two orders of magnitude slower than an ordinary user-mode function call.</p>
 <p>To amortize this privilege-transition penalty across high-volume I/O workloads, runtime libraries employ <strong>user-space buffering</strong>. Rather than issuing a <code>write(2)</code> system call for every 17-byte log line, a buffered stream (C’s <code>FILE*</code> with <code>fwrite</code>, C++’s <code>std::ostream</code>, or Rust’s <code>BufWriter</code>) appends small writes into a contiguous user-space buffer (for example, 64 KiB). Only when the buffer fills, or when the caller explicitly invokes <code>fflush()</code> / <code>flush()</code>, does the library issue a single large <code>write(2)</code> system call to transfer all 64 KiB into the kernel at once.</p>
-<p>Buffering trades immediate visibility for throughput. Bytes residing in a user-space buffer are invisible to the kernel and to other processes; if the process terminates abruptly via <code>SIGKILL</code>, <code>_exit()</code>, or a segmentation fault prior to flushing, buffered data is silently lost. Mixing raw file-descriptor writes (<code>write(fd, ...)</code>) with buffered library writes (<code>fwrite(..., f)</code>) on the same underlying descriptor also produces reordered output unless the user buffer is flushed before switching interfaces.</p>
+<p>Buffering trades immediate visibility for throughput. Bytes residing in a user-space buffer are invisible to the kernel and to other processes; if the process terminates abruptly via <code>SIGKILL</code>, <code>_exit()</code>, or a segmentation fault prior to flushing, buffered data is discarded without being written to disk. Mixing raw file-descriptor writes (<code>write(fd, ...)</code>) with buffered library writes (<code>fwrite(..., f)</code>) on the same underlying descriptor also produces reordered output unless the user buffer is flushed before switching interfaces.</p>
 <h3 id="921-the-posix-descriptor-io-interface-open-write-close-setvbuf"><a class="header" href="#921-the-posix-descriptor-io-interface-open-write-close-setvbuf">9.2.1 The POSIX Descriptor I/O Interface (<code>open</code>, <code>write</code>, <code>close</code>, <code>setvbuf</code>)</a></h3>
 <p>Listings 9-3 and 9-4 directly compare unbuffered kernel writes against 64 KiB user-space buffering using four standard interfaces:</p>
 <pre><code class="language-text">int     open(const char *pathname, int flags, ... /* mode_t mode */);
