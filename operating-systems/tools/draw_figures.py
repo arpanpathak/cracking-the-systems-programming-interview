@@ -517,8 +517,102 @@ def ch02_interrupt_flow():
 # ---------------------------------------------------------------- Chapter 3
 
 @figure
+def ch03_pcb_layout():
+    fig = Fig(
+        "ch03_pcb_layout",
+        "Figure 3-1. Internal Data Structure of the Process Control Block (Linux struct task_struct) and Indirect Kernel Subsystems.",
+        452,
+    )
+
+    # Left container: struct task_struct (PCB)
+    pcb = fig.node(20, 20, 324, 412, "blue")
+    fig.tile(32, 32, "layers", "blue", 28)
+    fig.text(68, 48, "Process Control Block", "name")
+    fig.text(68, 63, "struct task_struct (~6-10 KiB SLUB slab)", "small")
+
+    c_id = fig.cell(32, 76, 300, 50, "blue", [
+        ("Identity & Process Tree", "monob"),
+        ("pid, tgid, *parent, children/sibling", "small"),
+    ], kind="card", r=6)
+
+    c_sched = fig.cell(32, 134, 300, 50, "purple", [
+        ("Scheduling & Execution State", "monob"),
+        ("state, on_cpu, se (vruntime, weight)", "small"),
+    ], kind="card", r=6)
+
+    c_ctx = fig.cell(32, 192, 300, 50, "amber", [
+        ("Hardware Context & Kernel Stack", "monob"),
+        ("void *stack, thread_struct (SP, FPU, TLS)", "small"),
+    ], kind="card", r=6)
+
+    c_mm = fig.cell(32, 250, 300, 50, "teal", [
+        ("Memory Descriptor Pointer", "monob"),
+        ("struct mm_struct *mm  (refcounted)", "small"),
+    ], kind="card", r=6)
+
+    c_files = fig.cell(32, 308, 300, 50, "green", [
+        ("File & Filesystem Pointers", "monob"),
+        ("files_struct *files, fs_struct *fs", "small"),
+    ], kind="card", r=6)
+
+    c_sig = fig.cell(32, 366, 300, 50, "red", [
+        ("Signals & Security Credentials", "monob"),
+        ("*sighand, pending/blocked, *cred", "small"),
+    ], kind="card", r=6)
+
+    # Right column: referenced kernel subsystems
+    r_tree = fig.node(424, 24, 356, 72, "purple")
+    fig.tile(436, 36, "table_rows", "purple", 26)
+    fig.text(470, 52, "Intrusive Kernel Lists (list_head)", "name")
+    fig.lines(602, 78, [
+        ("Parent/children tree + Per-CPU CFS runqueue / wait queues", "small"),
+    ], "middle", fit=(432, 772))
+
+    r_kstack = fig.node(424, 110, 356, 72, "amber")
+    fig.tile(436, 122, "memory", "amber", 26)
+    fig.text(470, 138, "Kernel Stack (8-16 KiB per thread)", "name")
+    fig.lines(602, 164, [
+        ("Top: pt_regs trapframe (RIP, RSP)  |  Kernel frames below", "small"),
+    ], "middle", fit=(432, 772))
+
+    r_mm = fig.node(424, 196, 356, 72, "teal")
+    fig.tile(436, 208, "layers", "teal", 26)
+    fig.text(470, 224, "struct mm_struct (Shared by Threads)", "name")
+    fig.lines(602, 250, [
+        ("pgd -> CR3 / TTBR0_EL1 | VMA tree (text, heap, stack)", "small"),
+    ], "middle", fit=(432, 772))
+
+    r_files = fig.node(424, 282, 356, 72, "green")
+    fig.tile(436, 294, "folder", "green", 26)
+    fig.text(470, 310, "struct files_struct & struct fs_struct", "name")
+    fig.lines(602, 336, [
+        ("fd_array[0..N] -> struct file -> inode  |  pwd, root, cloexec", "small"),
+    ], "middle", fit=(432, 772))
+
+    r_sig = fig.node(424, 368, 356, 64, "red")
+    fig.tile(436, 380, "shield", "red", 26)
+    fig.text(470, 396, "Signal Table & RCU Credentials", "name")
+    fig.lines(602, 418, [
+        ("action[1..64] (sigaction)  |  Immutable UID, GID, capabilities", "small"),
+    ], "middle", fit=(432, 772))
+
+    # Wires connecting PCB fields to indirect kernel structures
+    fig.wire([(pcb.r + 2, 100), (382, 100), (382, 52), (r_tree.x - 2, 52)], "blue", width=1.8)
+    fig.wire([(pcb.r + 2, 158), (392, 158), (392, 68), (r_tree.x - 2, 68)], "purple", width=1.8)
+    fig.wire([(pcb.r + 2, 217), (386, 217), (386, 146), (r_kstack.x - 2, 146)], "amber", width=1.8)
+    fig.wire([(pcb.r + 2, 275), (392, 275), (392, 232), (r_mm.x - 2, 232)], "teal", width=1.8)
+    fig.wire([(pcb.r + 2, 333), (386, 333), (386, 318), (r_files.x - 2, 318)], "green", width=1.8)
+    fig.wire([(pcb.r + 2, 391), (r_sig.x - 2, 391)], "red", width=1.8)
+
+    fig.save([
+        "Storing mm, files, and sighand as reference-counted pointers lets clone() create threads by sharing tables rather than copying them.",
+        "Hot scheduling fields (state, kernel stack, sched_entity) are cache-line aligned near the start of task_struct to minimize context-switch misses.",
+    ])
+
+
+@figure
 def ch03_address_space():
-    fig = Fig("ch03_address_space", "Figure 3-1. The address space of one process (64-bit, simplified).", 446)
+    fig = Fig("ch03_address_space", "Figure 3-2. The address space of one process (64-bit, simplified).", 446)
 
     fig.text(28, 12, "high addresses", "small")
     fig.wire([(40, 440), (40, 22)], "gray", width=1.6)
@@ -563,7 +657,7 @@ def ch03_address_space():
 
 @figure
 def ch03_fork():
-    fig = Fig("ch03_fork", "Figure 3-2. fork() creates a second process that starts as a copy.", 212)
+    fig = Fig("ch03_fork", "Figure 3-3. fork() creates a second process that starts as a copy.", 212)
 
     fig.heading(28, 16, "before")
     before = fig.node(28, 30, 240, 66, "blue", ["process, PID 100", "one address space"], icon="terminal")
@@ -601,7 +695,7 @@ def ch03_fork():
 
 @figure
 def ch03_process_lifecycle():
-    fig = Fig("ch03_process_lifecycle", "Figure 3-3. The Five-State Process Lifecycle Automaton: Kernel Scheduling, Blocking, and Reaping", 332)
+    fig = Fig("ch03_process_lifecycle", "Figure 3-4. The Five-State Process Lifecycle Automaton: Kernel Scheduling, Blocking, and Reaping", 332)
 
     # Top row: New -> Ready <-> Running -> Zombie -> Terminated
     new_st = fig.node(28, 32, 126, 96, "purple", [

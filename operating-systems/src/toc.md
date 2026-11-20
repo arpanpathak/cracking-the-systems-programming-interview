@@ -38,6 +38,7 @@
     - [2.4.3 Top-Half and Bottom-Half Decomposition and EOI Lifecycle](ch02-the-machine.md#243-top-half-and-bottom-half-decomposition-and-eoi-lifecycle)
 - [**3. Process Abstraction and Lifecycle**](ch03-processes.md#3-process-abstraction-and-lifecycle)
   - [3.1 The Process Control Block and Address Space Topology](ch03-processes.md#31-the-process-control-block-and-address-space-topology)
+    - [3.1.1 Internal Data Structure of the Process Control Block](ch03-processes.md#311-internal-data-structure-of-the-process-control-block)
   - [3.2 Process Creation and the Mechanics of `fork`](ch03-processes.md#32-process-creation-and-the-mechanics-of-fork)
     - [3.2.1 The Process Creation and Reaping System Call Interface (`fork`, `_exit`, `waitpid`)](ch03-processes.md#321-the-process-creation-and-reaping-system-call-interface-fork-_exit-waitpid)
   - [3.3 Lifecycle Management, State Automaton, and Termination](ch03-processes.md#33-lifecycle-management-state-automaton-and-termination)
