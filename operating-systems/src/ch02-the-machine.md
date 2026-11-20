@@ -1,30 +1,28 @@
 # 2. The Architectural Substrate and Execution Constraints
 
-An operating system is not an arbitrary collection of software abstractions; every mechanism inside a kernel exists to answer a specific constraint of physical silicon. Understanding how a processor fetches instructions, how it talks to memory and external devices, why it separates user code from kernel code, and how hardware interrupts pause a running program gives you a permanent mental model for every chapter that follows.
+The design and operational behavior of an operating system are fundamentally dictated by the invariant properties of the underlying hardware. These architectural properties define the boundaries of sequential instruction execution, the necessity of virtual memory management, and the hardware mechanisms required to enforce system integrity and asynchronous I/O coordination.
 
-Throughout this chapter, we build each mechanism from first principles: first the concrete physical problem, then how hardware solves it, and finally the exact x86-64 and ARM64 register names summarized in reference tables rather than stacked into prose.
+To keep architectural concepts independent of vendor-specific mnemonics, each mechanism in this chapter is presented first in general hardware terms, followed by a consolidated reference mapping across x86-64 and ARM64 (AArch64) in Tables 2-1 and 2-2.
 
 ## 2.1 The Execution Model and the Atomicity Gap
 
-At its core, a processor executes a relentless loop: fetch the next machine instruction from memory, decode what operation it requests, execute that operation on values held in tiny on-chip storage slots called **registers**, and write the result back.
+A processor core operates via a continuous fetch-decode-execute cycle. At any discrete clock edge, the architectural state of an executing thread is encapsulated by its on-chip register file. Because registers reside directly within the execution pipeline, register access completes within a single clock cycle (approximately 0.3 nanoseconds), whereas off-chip main memory requires hundreds of cycles. Across contemporary 64-bit architectures, the register file is partitioned into five functional classes:
 
-Because registers live directly inside the processor's execution circuitry, reading a register takes roughly one clock cycle (about 0.3 nanoseconds), whereas reading main memory takes hundreds of cycles. Everything the processor needs to know about a running thread at any frozen instant fits inside five categories of registers:
-
-- **The Program Counter:** Holds the memory address of the next machine instruction to fetch. Normally, the processor advances this counter automatically after each instruction; branches, function calls, system calls, and interrupts change execution flow by overwriting this single register with a new target address.
-- **The Stack Pointer:** Points to the top (lowest active address) of the thread's call stack in memory. On both x86-64 and ARM64, the call stack grows downward toward smaller memory addresses: allocating local variables subtracts from the stack pointer, and returning from a function adds back to it. Modern calling conventions require the stack pointer to stay aligned to a 16-byte multiple at function call boundaries so wide vector loads and stores never straddle misaligned boundaries.
-- **The Frame Pointer:** Anchors the base of the current function's stack frame. While the stack pointer moves up and down as a function pushes temporary values, the frame pointer stays fixed from function entry until return. When function `A` calls function `B`, `B` saves `A`'s frame pointer on the stack right next to the return address and points its own frame pointer there. This creates a linked chain of saved frame pointers all the way back to `main()`, allowing debuggers and profilers to reconstruct a complete call stack in a few pointer hops.
-- **Processor Status Flags:** A compact register of single-bit flags recording outcomes of recent arithmetic instructions (such as whether the last subtraction produced zero, a negative result, or an overflow) alongside privileged control bits. The single most important control bit for operating systems is the **interrupt enable bit**: when cleared to `0`, the core temporarily defers external hardware interrupts until the kernel finishes a delicate state update.
-- **General-Purpose Registers:** Fast scratchpad registers (16 on x86-64; 31 on ARM64) used for arithmetic, pointers, and passing function arguments. By calling-convention agreement between the compiler and the operating system, some registers are **caller-saved** (a called function may overwrite them freely) and others are **callee-saved** (a called function must preserve their original values before returning).
+- **Program Counter:** Holds the virtual address of the next machine instruction to be fetched from the L1 instruction cache. During sequential execution, the control unit automatically advances the program counter by the length of the decoded instruction; control-flow transfers (branches, procedure calls, system calls, and hardware interrupts) overwrite this register with a new target address.
+- **Stack Pointer:** Points to the active downward-growing boundary of the thread's call stack in virtual memory. Allocating space for local variables decrements the stack pointer, whereas deallocating a stack frame increments it. Both the System V AMD64 ABI and the ARM64 Procedure Call Standard (AAPCS64) mandate 16-byte stack alignment at procedure call boundaries to satisfy vector load and store alignment requirements.
+- **Frame Pointer:** Anchors the invariant base of the current function's activation record. Although the stack pointer fluctuates as temporary operands are pushed and popped, the frame pointer remains fixed from function entry until return. Saving the caller's frame pointer adjacent to the return address creates a singly linked chain of activation records, enabling debuggers and kernel sampling profilers to reconstruct call stacks in `O(depth)` pointer dereferences.
+- **Processor Status and Control Flags:** Stores arithmetic condition codes (such as zero, carry, sign, and overflow) alongside privileged processor control bits. For operating system kernels, the critical control state is the hardware **interrupt mask**: clearing the interrupt-enable bit causes the core to defer external asynchronous interrupts while updating sensitive kernel structures.
+- **General-Purpose Registers:** Provide single-cycle operand storage for arithmetic, pointer manipulation, and argument passing (16 general-purpose registers on x86-64; 31 on ARM64). By calling-convention contract, these registers are partitioned into **caller-saved** (volatile) registers, which a callee may overwrite freely, and **callee-saved** (non-volatile) registers, whose prior values the callee must preserve before returning.
 
 **Table 2-1. Architectural register mapping across x86-64 and ARM64.**
 
-| Conceptual Role | x86-64 Register | ARM64 (AArch64) Register |
+| Functional Role | x86-64 Register | ARM64 (AArch64) Register |
 | :--- | :--- | :--- |
 | Program Counter | `RIP` | `PC` |
-| Stack Pointer | `RSP` | `SP` (`SP_EL0` in user mode, `SP_EL1` in kernel) |
+| Stack Pointer | `RSP` | `SP` (`SP_EL0` in user mode, `SP_EL1` in kernel mode) |
 | Frame Pointer | `RBP` | `x29` (`FP`) |
-| Return Address Storage | Pushed onto stack by `CALL` | Saved in Link Register `x30` (`LR`) by `BL` |
-| Status & Interrupt Mask | `RFLAGS` (Interrupt Flag `IF`, bit 9) | `PSTATE` (Interrupt mask bits `DAIF`) |
+| Return Address Storage | Pushed onto stack by `CALL` | Stored in Link Register `x30` (`LR`) by `BL` |
+| Status and Interrupt Mask | `RFLAGS` (Interrupt Flag `IF`, bit 9) | `PSTATE` (Interrupt mask bits `DAIF`) |
 | Integer Argument Registers | `RDI, RSI, RDX, RCX, R8, R9` (first 6) | `x0` through `x7` (first 8) |
 
 <figure>
@@ -33,13 +31,13 @@ Because registers live directly inside the processor's execution circuitry, read
 
 ### 2.1.1 The Fetch-Decode-Execute Datapath and Function Activation Records
 
-To hide memory latency and execute multiple instructions per clock cycle, a modern core organizes execution into four pipeline stages:
-1. **Fetch:** Read the next instruction bytes from the L1 instruction cache using the Program Counter.
-2. **Decode:** Interpret the instruction opcode and map its operand registers onto internal physical registers so independent instructions can execute concurrently out of order.
-3. **Execute and Memory Access:** Perform arithmetic in the Arithmetic Logic Unit (ALU) or compute a memory address, check the address translation cache (TLB) and L1 data cache, and place outgoing writes into a small hardware **store buffer** while awaiting cache ownership.
-4. **Retire (Commit):** Even though instructions execute out of order internally for speed, a hardware **reorder buffer** commits their results to visible registers and caches in strict original program order. If an earlier instruction faults (for example, dividing by zero or touching an unmapped page), all younger speculative instructions are cleanly discarded.
+To sustain high instruction throughput despite memory latency, a superscalar processor organizes execution into four microarchitectural stages:
+1. **Instruction Fetch:** Retrieve the next instruction bytes from the L1 instruction cache using the Program Counter.
+2. **Decode and Register Rename:** Parse instruction opcodes and map architectural register names onto internal physical registers so independent instructions can execute concurrently out of order without false write hazards.
+3. **Execute and Memory Access:** Compute arithmetic operations in the Arithmetic Logic Unit (ALU) or evaluate effective memory addresses, consulting the Translation Lookaside Buffer (TLB) and L1 data cache while buffering uncommitted writes in the core's hardware **store buffer**.
+4. **Commit (Retire):** Although execution proceeds out of order internally, the **reorder buffer** retires instructions in strict program order, committing architectural register updates and draining stores to the coherent cache hierarchy. If an instruction faults (for example, on an invalid memory reference or division by zero), all younger speculative instructions are discarded cleanly.
 
-Whenever a program calls a function, the caller and callee cooperate to construct a **stack frame** (activation record) in memory (Figure 2-3). First, the caller places integer arguments into the designated argument registers. Next, the call instruction records the return address (pushed onto the stack on x86-64; placed in the Link Register `x30` on ARM64) and jumps to the callee. The callee's prologue saves the caller's frame pointer, sets its own frame pointer to the base of the new frame, preserves any callee-saved registers it plans to modify, and subtracts from the stack pointer to carve out space for local variables. When the function returns, the epilogue reverses those exact steps and jumps back to the saved return address.
+Upon procedure invocation (`CALL` on x86-64; `BL` on ARM64), caller and callee cooperate to construct a **function activation record** (stack frame) in virtual memory (Figure 2-2). The caller places integer parameters in the designated argument registers and records the return address. The callee prologue saves the caller's frame pointer, anchors its own frame pointer to the base of the new frame, preserves any callee-saved registers it modifies, and decrements the stack pointer to reserve local storage. Upon function return, the epilogue reverses these operations and transfers control back to the saved return address.
 
 <figure>
 <img src="figures/ch02_stack_frame.svg" alt="Function activation record layout showing caller frame, return address, saved frame pointer, local variables, stack pointer, and frame pointer chain"/>
@@ -47,158 +45,149 @@ Whenever a program calls a function, the caller and callee cooperate to construc
 
 ### 2.1.2 Formal Derivation of the Atomicity Gap
 
-The hardware reorder buffer guarantees that a *single* core sees its own instructions take effect in program order. It makes **no** guarantee that a high-level language statement executes as one indivisible step across *multiple* cores. That mismatch defines the **atomicity gap**.
+Although the reorder buffer preserves sequential semantics within a single core, the processor datapath does not guarantee that a composite high-level language statement executes atomically across multiple cores. This discrepancy between source-level notation and machine-level execution defines the **atomicity gap**.
 
-Suppose two CPU cores concurrently execute `counter++` on a shared 64-bit integer currently holding `42`. A processor core cannot add `1` directly inside a DRAM chip; it must copy the number into a private register, increment the register, and store the new value back to memory. The compiler therefore emits three separate machine instructions:
+Consider a shared 64-bit integer counter incremented concurrently by two processor cores (`counter++`), with initial value `42`. Because arithmetic units operate on core-private registers rather than directly on main memory, the compiler lowers the increment into a three-instruction Read-Modify-Write (RMW) sequence:
 
 ```text
 // x86-64 Read-Modify-Write             // ARM64 Read-Modify-Write
-1. mov  rax, QWORD PTR [rip + counter]  1. ldr  x0, [x1]        // Load 42 into private register
-2. add  rax, 1                          2. add  x0, x0, #1      // Compute 43 inside local ALU
-3. mov  QWORD PTR [rip + counter], rax  3. str  x0, [x1]        // Store 43 back to shared cache line
+1. mov  rax, QWORD PTR [rip + counter]  1. ldr  x0, [x1]        // Load 42 into core-private register
+2. add  rax, 1                          2. add  x0, x0, #1      // Compute 43 in local ALU
+3. mov  QWORD PTR [rip + counter], rax  3. str  x0, [x1]        // Store 43 back to coherent cache line
 ```
 
-Because both cores run in parallel, their three steps interleave freely:
+Under concurrent execution, the two cores may interleave these instructions across the memory subsystem:
 1. Core 0 executes Step 1 and loads `42` into its private register.
-2. Core 1 executes Step 1 before Core 0 finishes, also loading `42`.
-3. Both cores compute `43` independently in their local ALUs.
-4. Core 0 executes Step 3 and stores `43` to memory.
-5. Core 1 executes Step 3 and overwrites memory with `43`.
+2. Core 1 executes Step 1 prior to Core 0's store, likewise loading `42`.
+3. Both cores independently evaluate Step 2 in their local ALUs, producing `43`.
+4. Core 0 executes Step 3, storing `43` to the shared cache line.
+5. Core 1 executes Step 3, overwriting the same location with `43`.
 
-Two increments ran, yet the counter advanced from `42` to `43` instead of `44`. One update vanished permanently, a failure called a **lost update**. Closing the atomicity gap requires either special hardware atomic instructions that lock a cache line across the entire read-modify-write cycle (`lock xadd` on x86-64; `ldaddal` or load-linked/store-conditional pairs on ARM64) or kernel-backed synchronization locks, both explored in Chapters 4 and 6.
+Despite two distinct increments, the final stored value is `43` rather than `44`, producing a concurrency anomaly termed a **lost update**. Eliminating the atomicity gap requires either hardware atomic instructions that maintain exclusive cache-line ownership across the entire Read-Modify-Write cycle (`lock xadd` on x86-64; `ldaddal` or load-linked/store-conditional pairs on ARM64) or kernel-coordinated synchronization primitives, examined in Chapters 4 and 6.
 
 ## 2.2 Memory Hierarchy and Locality Dynamics
 
-Main memory (DRAM) is huge and inexpensive, but physically slow compared to a multi-gigahertz processor core: waiting 70 to 100 nanoseconds for a single DRAM read stalls a 3 GHz core for more than 200 clock cycles. Hardware bridges this speed gap with a staircase of progressively smaller, faster on-chip SRAM **caches**:
-- **Registers:** ~0.3 ns (1 cycle), tens of words per core.
-- **L1 Cache (split instruction and data):** ~1 ns (3 to 4 cycles), 32 to 64 KiB private per core.
-- **L2 Cache:** ~3 to 5 ns (10 to 14 cycles), 256 KiB to 4 MiB private per core.
-- **L3 / System-Level Cache:** ~12 to 20 ns (35 to 55 cycles), 8 to 128 MiB shared across cores.
-- **Main DRAM:** ~60 to 100 ns (200+ cycles), gigabytes to terabytes.
+The memory subsystem is organized as a multi-tiered hierarchy balancing capacity against access latency. Waiting 60 to 100 nanoseconds for an off-chip DRAM read stalls a 3 GHz processor for more than 200 clock cycles. Hardware mitigates this disparity through progressively smaller, lower-latency on-chip SRAM caches:
+- **Registers:** Approximately 0.3 ns (1 cycle), private to each execution pipeline.
+- **L1 Cache (split instruction and data):** Approximately 1 ns (3 to 4 cycles), 32 to 64 KiB private per core.
+- **L2 Cache:** Approximately 3 to 5 ns (10 to 14 cycles), 256 KiB to 4 MiB private per core.
+- **L3 / System-Level Cache:** Approximately 12 to 20 ns (35 to 55 cycles), 8 to 128 MiB shared across cores.
+- **Main DRAM:** Approximately 60 to 100 ns (200+ cycles), gigabytes to terabytes of physical capacity.
 
-Caches work because real programs exhibit two empirical access patterns: **temporal locality** (an address accessed now, such as a loop variable or stack slot, is likely to be accessed again soon) and **spatial locality** (addresses near a recently accessed byte, such as consecutive array elements, are likely to be accessed next).
+The effectiveness of this hierarchy depends directly on two empirical properties of program memory access:
+- **Temporal Locality:** Recently referenced memory addresses (such as loop counters and active stack variables) exhibit a high probability of being referenced again in the near future.
+- **Spatial Locality:** Addresses contiguous to a recently referenced byte (such as sequential array elements) exhibit a high probability of subsequent access.
 
-To exploit spatial locality, hardware never fetches a single byte from DRAM. It transfers memory in fixed **64-byte cache lines** (128 bytes on some ARM64 processors). Walking sequentially through a contiguous array brings 8 consecutive 64-bit integers into L1 on the first miss, and the hardware prefetcher notices the pattern and fetches upcoming lines before the CPU asks for them. Conversely, chasing pointers across scattered heap objects defeats prefetching and stalls on DRAM repeatedly.
+To exploit spatial locality, the memory subsystem transfers data between DRAM and cache in fixed **64-byte cache lines** (128 bytes on certain ARM64 implementations). Sequential traversal over contiguous memory allows hardware stride prefetchers to fetch upcoming lines before demand loads arrive, whereas pointer chasing across scattered heap allocations incurs repeated DRAM stalls.
 
-Managing coherence at 64-byte granularity also creates a subtle multi-core hazard called **false sharing**: if Core 0 writes to `counter_a` and Core 1 writes to a completely unrelated `counter_b` that happens to sit inside the same 64-byte cache line, the hardware coherence protocol (MESI) must bounce exclusive ownership of that entire 64-byte line back and forth between cores on every write, collapsing parallel performance (measured empirically in Chapter 17).
+Maintaining cache coherence at 64-byte granularity introduces the multi-core pathology of **false sharing**. When Core 0 and Core 1 modify logically independent variables residing within the same 64-byte cache line, the hardware coherence protocol (such as MESI) must repeatedly transfer exclusive ownership of the entire line between cores, degrading parallel throughput (measured empirically in Chapter 17).
 
-## 2.3 Privilege Domains and How the CPU Talks to Hardware Devices
+## 2.3 Privilege Domains and Boundary Enforcement
 
-If every program could disable interrupts, reprogram page tables, or write directly to disk hardware, a single buggy application could destroy every other process on the machine. Processors prevent this by dividing execution into hardware-enforced **privilege levels**:
-- **User Mode (`Ring 3` on x86-64; `EL0` on ARM64):** Where normal applications run. The processor blocks privileged instructions, restricts memory accesses to pages marked user-accessible in the process's page table, and forbids direct access to hardware devices. Any violation triggers an immediate hardware trap into the kernel.
-- **Kernel Mode (`Ring 0` on x86-64; `EL1` on ARM64):** Where the operating system kernel runs with full control over page tables, interrupt controllers, timers, and I/O devices. Modern CPUs also add a higher hypervisor level (`VMX Root` on x86-64; `EL2` on ARM64, covered in Chapter 16) for running virtual machines.
+System integrity is enforced through the hardware-mediated bifurcation of execution into distinct **privilege levels**:
+- **User Mode (`Ring 3` on x86-64; `EL0` on ARM64):** The restricted execution domain for application processes. The processor prohibits privileged instructions (such as modifying page-table root registers, altering interrupt masks, or programming device controllers) and confines memory references to virtual pages marked user-accessible. Any violation raises an immediate hardware exception that transfers control to the kernel.
+- **Kernel Mode (`Ring 0` on x86-64; `EL1` on ARM64):** The privileged domain in which the operating system kernel executes with unrestricted access to memory-management hardware, timers, interrupt controllers, and I/O interfaces. Contemporary processors additionally define a hypervisor tier (`VMX Root` on x86-64; `EL2` on ARM64, detailed in Chapter 16) to isolate guest kernels.
+
+To reduce the latency of mode transitions, the kernel is commonly mapped into the upper portion of each process's virtual address space, marked accessible only in kernel privilege mode. While this shared mapping avoids a full page-table replacement on system call entry, it imposes a strict security invariant: the kernel must validate every user-supplied pointer and buffer length before dereferencing it.
 
 <figure>
 <img src="figures/ch02_privilege.svg" alt="User mode and kernel mode separated by a privilege boundary, with system call and return arrows crossing it"/>
 </figure>
 
-### 2.3.1 Two Physical Mechanisms Behind Every Device: MMIO and DMA
+### 2.3.1 Device Communication Mechanisms: MMIO and DMA
 
-Before studying how hardware devices interrupt the CPU, two deceptively simple hardware ideas must be crystal clear, because every disk driver, network card, and interrupt controller in the rest of this book is built on them:
+Interaction between the processor and external peripheral controllers relies on two complementary hardware mechanisms:
 
-1. **Memory-Mapped I/O (MMIO): How the CPU sends commands to a hardware device.**
-   A CPU core only knows how to execute load and store instructions against memory addresses. How, then, does the kernel tell an SSD controller to read sector 42, or tell an interrupt controller to mask a pin? Hardware designers carve out reserved ranges of the physical address space that are **not connected to DRAM chips**; instead, the motherboard's memory controller wires those physical addresses directly to control registers inside hardware devices. When the kernel (in Ring 0) writes a 32-bit command to physical address `0xFEE0_00B0`, no RAM chip is touched: the electrical write travels over the bus straight into a register inside the interrupt controller. Because user-mode page tables never map MMIO physical ranges, applications cannot touch hardware directly.
-2. **Direct Memory Access (DMA): How a hardware device moves bulk data without tying up the CPU.**
-   Suppose an application reads a 100 MiB file from an NVMe solid-state drive. If the CPU core had to copy all 100 million bytes one 8-byte register at a time from the drive into DRAM, the core would be completely paralyzed for the entire transfer. Instead, modern devices include a **DMA engine** that can read and write physical DRAM directly over the PCIe bus. The kernel places a descriptor in memory saying *"read 4 KiB from disk block 900 and write the bytes into physical DRAM address `0x1000_8000`,"* rings the drive's MMIO doorbell register once, and immediately switches the CPU core to run other user threads. While the CPU does useful work, the NVMe controller streams all 4,096 bytes straight into DRAM on its own. Once the final byte lands in DRAM, the drive needs one last thing: a way to tap the CPU on the shoulder and announce *"your 4 KiB block is ready."* That shoulder tap is a **hardware interrupt**.
+1. **Memory-Mapped I/O (MMIO):** Rather than requiring specialized I/O instructions for every peripheral, the platform reserves dedicated ranges of the physical address space and routes them not to DRAM chips, but to control and status registers inside hardware controllers (storage controllers, network interfaces, and interrupt controllers). When kernel code executes an ordinary store instruction to an MMIO physical address (for example, `0xFEE0_00B0` on x86-64), the interconnect delivers that write directly to the target device register. Because user-mode page tables omit MMIO physical ranges, unprivileged processes cannot access device registers directly.
+2. **Direct Memory Access (DMA):** Transferring bulk storage blocks or network packets via CPU-driven register loads and stores would consume processor cycles proportionally to I/O bandwidth. Modern peripheral controllers therefore incorporate a **DMA engine** capable of reading and writing physical DRAM directly over the PCIe bus independently of the CPU core. To initiate a transfer, the kernel constructs a descriptor in memory specifying the source, target physical DRAM address, and transfer length, notifies the controller via a single MMIO doorbell write, and schedules other runnable threads on the core. Once the DMA engine finishes writing the requested bytes into DRAM, the peripheral signals completion asynchronously by asserting a **hardware interrupt**.
 
 ## 2.4 Synchronous Traps and the Asynchronous Interrupt Subsystem
 
-Control transfers from User Mode into Kernel Mode fall into two fundamentally different categories depending on what caused them:
+Control transfers from user mode to kernel mode fall into two fundamental classes determined by their causal relationship to the executing instruction stream:
 
-- **Synchronous Traps and Exceptions:** Caused directly by the instruction the CPU core is executing right now. Because the event is tied to that exact instruction, it is deterministic and repeatable. Synchronous entries include intentional **system calls** (`syscall` / `svc #0`, Chapter 9), recoverable **faults** (such as a page fault when a program touches a valid but not-yet-loaded virtual page, where the kernel maps a frame and re-runs the exact same instruction), and fatal **exceptions** (such as dividing by zero or reading an invalid pointer).
-- **Asynchronous Hardware Interrupts:** Caused by an external physical event outside the CPU's instruction stream: an NVMe drive finishing a DMA block read, a network card receiving an Ethernet packet, a keyboard key press, or a hardware timer ticking down to zero. An asynchronous interrupt can arrive between *any* two instructions of whatever arbitrary user program happens to be running on that core.
+- **Synchronous Traps and Exceptions:** Events triggered directly by the currently executing instruction and therefore deterministic with respect to the instruction stream. This class comprises intentional **system calls** (`syscall` on x86-64; `svc #0` on ARM64, Chapter 9), recoverable **faults** (such as a page fault, where the kernel maps the missing physical frame and restarts the faulting instruction), and unrecoverable **exceptions** (such as integer division by zero or illegal instruction execution).
+- **Asynchronous Hardware Interrupts:** Signals originating outside the processor's instruction stream, such as a DMA transfer completion from an NVMe controller, packet arrival at a network interface, or expiration of a hardware timer. An asynchronous interrupt may arrive between any two instructions of whatever thread currently occupies the core.
 
-### 2.4.1 Why Interrupt Controllers Exist: From One Copper Pin to Multi-Core Fabrics
+### 2.4.1 Interrupt Controllers and Routing Topologies (APIC and GICv3)
 
-To build permanent intuition for modern interrupt controllers without memorizing disconnected acronyms, start from the physical wiring problem hardware architects faced as computers grew from 1 core to 64+ cores.
+Early uniprocessor systems multiplexed a small number of physical peripheral interrupt lines through a single programmable interrupt controller wired to one interrupt pin on the processor. Scaling to multi-core servers with high-throughput PCIe devices invalidates that single-wire topology for three structural reasons:
+1. **Pin scarcity and shared-line contention:** Physical interrupt wires cannot scale to hundreds of independent device queues; sharing a single line among multiple peripherals forces the kernel to poll every attached driver on each assertion.
+2. **Core affinity and cache locality:** Multi-queue network and storage controllers maintain distinct per-core submission and completion queues; directing Queue `k` completions specifically to Core `k` preserves L1/L2 cache locality and eliminates cross-core lock contention.
+3. **Inter-processor signaling:** Multi-core kernels require a low-latency hardware mechanism by which one core interrupts sibling cores to coordinate TLB invalidations (shootdowns) or scheduler wakeups.
 
-Early single-core PCs had literally **one** physical interrupt wire entering the CPU package. A small helper chip on the motherboard gathered eight physical copper wires from peripherals (timer, keyboard, disk, serial port), picked the highest-priority active wire, and raised that one wire into the CPU.
+Consequently, modern multi-core interrupt subsystems support four distinct signaling paths: shared legacy peripheral wires, message-based PCIe interrupts, per-core preemption timers, and inter-processor interrupts.
 
-Now imagine trying to scale that design to a modern 64-core server with an NVMe drive, a 100-gigabit network card, and a GPU completing millions of operations per second. Three physical walls immediately break the single-wire model:
-1. **Copper wire scarcity and shared-line storms:** You cannot run 500 physical copper interrupt pins across a motherboard. If four devices share one copper wire, the kernel has no idea which device raised the voltage and must wake all four drivers to check their status registers on every single interrupt.
-2. **Per-core routing (cache locality):** A modern network card maintains 16 separate receive queues so 16 CPU cores can process incoming packets in parallel without locks. You want Receive Queue 4 to interrupt **Core 4 specifically** (whose L1/L2 cache already holds Queue 4's data structures), not wake a random core.
-3. **Core-to-core doorbells:** CPU cores themselves need a way to interrupt each other directly in hardware, for example when Core 0 unmaps a shared memory page and must force Cores 1 through 63 to immediately discard stale cached address translations.
+#### x86-64 Interrupt Architecture (IO-APIC, MSI-X, and Local APIC)
 
-Once you see those three physical problems, every piece of both x86-64 and ARM64 interrupt hardware falls into place naturally. There are only **four kinds of interrupts** any multi-core chip needs to route:
-1. **Shared wired legacy devices** (a keyboard, serial console, or platform controller wired to the whole machine).
-2. **High-speed PCIe devices** (NVMe drives, 100GbE NICs, GPUs) needing dedicated, contention-free lanes directly to specific CPU cores.
-3. **Core-private timers** (each core needs its own private countdown clock so the OS scheduler can preempt threads on every core independently without fighting over one global timer).
-4. **Core-to-core doorbells** (one core sending an urgent signal to sibling cores for TLB flushes or scheduler wakeups).
-
-#### How x86-64 Implements These Four Paths (IO-APIC, MSI-X, and Local APIC)
-
-Intel and AMD split interrupt routing across the motherboard chipset and a small **Local Interrupt Controller (Local APIC)** built directly inside the silicon die of **every** CPU core (Figure 2-4).
+The x86-64 architecture distributes interrupt routing between the platform chipset and a dedicated **Local Advanced Programmable Interrupt Controller (Local APIC)** integrated onto the die of each CPU core (Figure 2-4).
 
 <figure>
 <img src="figures/ch02_x86_apic.svg" alt="x86-64 interrupt controller hardware topology showing legacy IO-APIC redirection table, PCIe MSI-X bypass DMA writes, and per-core Local APICs with IRR, ISR, APIC timer, EOI, and cross-core IPIs"/>
 </figure>
 
-1. **Routing legacy wired pins (the Chipset IO-APIC):** Legacy peripherals still connect via physical copper wires to a chipset component called the **IO-APIC** (Input/Output Advanced Programmable Interrupt Controller). Inside the IO-APIC sits a tiny programmable lookup table of 24 (or more) **Redirection Table Entries**. At boot, the OS writes one row per physical wire telling the IO-APIC two things: *"when wire `k` goes high, attach 8-bit interrupt number `v` (chosen from `32..255`, because numbers `0..31` are permanently reserved by the CPU for internal exceptions like divide-by-zero and page faults) and mail it over the bus to Core `N`."*
-2. **Deriving Message Signaled Interrupts (MSI-X) from DMA and MMIO:** Applying the two mechanisms from Section 2.3.1 eliminates physical interrupt wires completely. A modern PCIe NVMe drive can already write bytes to any physical address over the PCIe bus via **DMA**, and every CPU core's Local APIC already listens on a reserved physical **MMIO** address (`0xFEE0_0000`, encoding the target core ID in its upper address bits). Hardware designers realized that running copper interrupt wires from PCIe cards to the IO-APIC was unnecessary: the PCIe device signals an interrupt by performing a 4-byte DMA memory write straight to the target core's Local APIC MMIO address, carrying the interrupt vector number (`32..255`) as the 4-byte data value. This mechanism is called **MSI-X** (Message Signaled Interrupts Extended). It bypasses the chipset IO-APIC completely, supports up to 2,048 distinct vectors per PCIe card, eliminates shared-wire storms, and pins each NIC or NVMe queue directly to its own CPU core. Even better, because PCIe strictly orders DMA writes, the device's data bytes are guaranteed to have landed in DRAM before its 4-byte MSI-X write arrives at the Local APIC.
-3. **Inside every CPU core (the Local APIC, `IRR`, `ISR`, and `EOI`):** Every CPU core contains its own on-die **Local APIC** that receives all four interrupt feeds: routed messages from the IO-APIC, direct MSI-X writes from PCIe cards, **Inter-Processor Interrupts (IPIs)** mailed by sibling cores, and ticks from its own private **APIC Timer**.
-   - *Why does the Local APIC need two 256-bit bitmaps (`IRR` and `ISR`)?* Imagine an NVMe interrupt (`0x30`) arrives on Core 0 while Core 0 is already halfway through handling a lower-priority keyboard interrupt (`0x21`), and a third interrupt arrives a microsecond later. To track both what is *waiting* and what is *currently running* without losing a single signal, the Local APIC maintains two 256-bit registers (one bit per vector `0..255`):
-     - The **Pending Bitmap (Interrupt Request Register, `IRR`)** sets bit `v = 1` the instant vector `v` arrives at the core.
-     - The **Active Bitmap (In-Service Register, `ISR`)** records which vector's handler Core 0 is *currently executing*.
-   - Hardware continuously compares the highest-priority bit set in `IRR` against the highest bit set in `ISR`. Only when a waiting interrupt in `IRR` outranks the currently active interrupt in `ISR` (and the core's interrupt-enable flag is `1`) does the Local APIC move bit `v` from `IRR` to `ISR` and interrupt the core. Once the OS handler finishes talking to the device, it writes `0` to the Local APIC's **End-of-Interrupt (`EOI`)** MMIO register. That single write clears the active bit in `ISR`, signaling that Core 0 is ready for the next waiting interrupt from `IRR`.
+1. **Chipset IO-APIC (Legacy Wired Lines):** Legacy platform peripherals connect via physical lines to the chipset **IO-APIC**, which maintains a programmable table of 24 or more **Redirection Table Entries (RTEs)**. During initialization, the kernel programs each RTE to associate physical wire `k` with an 8-bit interrupt vector (`32..255`; vectors `0..31` are architecturally reserved for internal processor exceptions) and a destination Local APIC core identifier.
+2. **Message Signaled Interrupts (MSI-X):** Combining DMA and MMIO (Section 2.3.1) removes physical interrupt wiring for PCIe devices entirely. Because every core's Local APIC is mapped to a well-known physical MMIO region (`0xFEE0_0000`, with the destination core ID encoded in upper address bits), a PCIe controller signals an interrupt by issuing a 4-byte DMA write directly to that MMIO address, encoding the target vector (`32..255`) in the payload. **MSI-X** bypasses the chipset IO-APIC, provides up to 2,048 independent vectors per device, eliminates shared-line polling, and maps individual device queues directly to designated cores. Furthermore, PCIe write ordering guarantees that all preceding DMA data writes are globally visible in DRAM before the MSI-X interrupt write reaches the Local APIC.
+3. **Per-Core Local APIC Arbitration (`IRR`, `ISR`, and `EOI`):** Each core's Local APIC aggregates four inputs: routed IO-APIC messages, direct PCIe MSI-X writes, **Inter-Processor Interrupts (IPIs)** transmitted by peer cores, and local **APIC Timer** expirations. To arbitrate concurrent arrivals without dropping signals, the Local APIC maintains two 256-bit state registers (one bit per vector `0..255`):
+   - **Interrupt Request Register (`IRR`):** Records pending vectors received by the core that have not yet begun execution.
+   - **In-Service Register (`ISR`):** Records vectors whose handlers are currently executing on the core.
+   - When the highest-priority pending bit in `IRR` outranks the highest active bit in `ISR` (and `RFLAGS.IF == 1`), the Local APIC atomically clears the bit in `IRR`, sets the corresponding bit in `ISR`, and delivers the vector to the core. Upon completing the urgent device handshake, the kernel writes `0` to the Local APIC **End-of-Interrupt (`EOI`)** register, clearing the highest active bit in `ISR` and enabling delivery of subsequent pending vectors.
 
-#### How ARM64 Implements the Exact Same Four Paths (GICv3 / GICv4)
+#### ARM64 Interrupt Architecture (GICv3 / GICv4)
 
-ARM64 server and mobile chips solve the exact same four physical routing problems using the **Generic Interrupt Controller (GICv3 / GICv4)** (Figure 2-5). Instead of memorizing ARM acronyms in isolation, map each piece directly onto the four physical roles you already understand:
+ARM64 systems implement the identical four signaling paths through the **Generic Interrupt Controller (GICv3 / GICv4)** architecture (Figure 2-5):
 
 <figure>
 <img src="figures/ch02_arm_gic.svg" alt="ARM64 Generic Interrupt Controller GICv3 topology showing SoC peripherals through GICD Distributor, PCIe MSI-X through GIC ITS, per-core local SGI/PPI into GICR Redistributor, and Core N CPU Interface system registers"/>
 </figure>
 
-- **Chip-wide wired devices:** Routed by the central **Distributor (`GICD`)**, the ARM counterpart to x86-64's IO-APIC. ARM labels these wired chip-wide lines **Shared Peripheral Interrupts (`SPI`, IDs `32..1019`)**.
-- **High-speed PCIe MSI-X writes:** Translated by the **Interrupt Translation Service (`ITS`)**, which intercepts PCIe DMA doorbell writes and maps `(DeviceID, EventID)` to a scalable RAM-backed table of **Locality-Specific Peripheral Interrupts (`LPI`, IDs `8192+`)** targeting a chosen core.
-- **Per-core arbitration and private interrupts:** Every ARM64 core owns a private **Redistributor (`GICR`)** (analogous to per-core Local APIC state). Each Redistributor locally tracks core-private **Software Generated Interrupts (`SGI`, IDs `0..15`, ARM's name for cross-core IPIs)** and **Private Peripheral Interrupts (`PPI`, IDs `16..31`, such as each core's local ARM Generic Timer)**, merging them with incoming SPIs and LPIs for that core.
-- **Fast register handshake with the core:** Rather than forcing the kernel to do slower uncached MMIO reads on every interrupt, GICv3 exposes each core's **CPU Interface** as fast architectural system registers: the kernel reads **`ICC_IAR1_EL1`** to learn which interrupt ID won arbitration and writes **`ICC_EOIR1_EL1`** when finished to signal End of Interrupt.
+- **Distributor (`GICD`):** Centralizes configuration and routing for chip-wide wired lines, designated **Shared Peripheral Interrupts (`SPI`, IDs `32..1019`)**.
+- **Interrupt Translation Service (`ITS`):** Receives PCIe MSI-X DMA doorbell writes and translates `(DeviceID, EventID)` tuples via memory-resident tables into **Locality-Specific Peripheral Interrupts (`LPI`, IDs `8192+`)** routed to a designated core.
+- **Per-Core Redistributor (`GICR`):** Manages per-core arbitration and core-private sources: **Software Generated Interrupts (`SGI`, IDs `0..15`)** for cross-core signaling and **Private Peripheral Interrupts (`PPI`, IDs `16..31`)** for core-local sources such as the ARM Generic Timer.
+- **CPU Interface System Registers:** Rather than relying on uncached MMIO reads during interrupt entry, GICv3 exposes each core's interface through architectural system registers: the kernel reads **`ICC_IAR1_EL1`** to acknowledge the highest-priority pending interrupt ID and writes **`ICC_EOIR1_EL1`** to signal End of Interrupt.
 
-**Table 2-2. Side-by-side mental map: physical interrupt role to x86-64 and ARM64 hardware names.**
+**Table 2-2. Architectural correspondence between x86-64 APIC and ARM64 GICv3/GICv4 interrupt subsystems.**
 
-| Physical Hardware Need | x86-64 (APIC) | ARM64 (GICv3 / GICv4) |
+| Interrupt Function | x86-64 (APIC) | ARM64 (GICv3 / GICv4) |
 | :--- | :--- | :--- |
 | Shared wired peripheral lines | Chipset **IO-APIC** (`RTE` -> Vectors `32..255`) | **Distributor (`GICD`)** -> `SPI` (IDs `32..1019`) |
-| High-speed PCIe DMA interrupts | **MSI-X** write straight to core LAPIC MMIO | **ITS** translates DMA write -> `LPI` (IDs `8192+`) |
-| Core-private preemption timer | Per-core **Local APIC Timer** | Per-core **Redistributor (`GICR`)** `PPI` (IDs `16..31`) |
-| Core-to-core doorbell (TLB flush) | **IPI** (Inter-Processor Interrupt) | **SGI** (Software Generated Interrupt, IDs `0..15`) |
-| End-of-Interrupt handshake | Write `0` to Local APIC **EOI** register | Write winning ID to **`ICC_EOIR1_EL1`** register |
+| PCIe DMA message interrupts | **MSI-X** write to target Local APIC MMIO | **ITS** translation -> `LPI` (IDs `8192+`) |
+| Per-core preemption timer | Per-core **Local APIC Timer** | Per-core **Redistributor (`GICR`)** `PPI` (IDs `16..31`) |
+| Inter-core signaling (TLB flush) | **IPI** (Inter-Processor Interrupt) | **SGI** (Software Generated Interrupt, IDs `0..15`) |
+| End-of-Interrupt completion | Write `0` to Local APIC **EOI** register | Write acknowledged ID to **`ICC_EOIR1_EL1`** |
 
-### 2.4.2 Vector Tables (`IDT`, `VBAR_EL1`), `TSS.rsp0`, and Hardware Trapframe Construction
+### 2.4.2 Vector Tables, Kernel Stack Switching, and Trapframe Construction
 
-Now trace what happens on the exact clock cycle Core 0's Local APIC accepts Vector `0x30` (our NVMe disk completion) while Core 0 is executing a user application in Ring 3. Before a single line of C or Rust kernel code can run, CPU silicon must solve two concrete problems atomically:
-1. **Where is the kernel function that handles Vector `0x30`?**
-2. **Where can the CPU safely save the interrupted user program's registers so it can resume later without corrupting anything?**
+When an interrupt vector is accepted while a core executes in user mode, hardware must perform two operations atomically before fetching the first instruction of the kernel handler: locate the handler entry point and preserve the interrupted thread's architectural state on trusted kernel memory.
 
-Why can CPU silicon **never** push the interrupted user program's registers onto the application's own user stack? Because user-mode code controls the user stack pointer (`RSP`): a buggy or malicious program can set `RSP = 0`, point `RSP` into read-only memory, or point `RSP` directly into kernel memory. Attempting to push a hardware return frame onto an untrusted user stack would crash or compromise the kernel immediately. Hardware must therefore switch to a clean, kernel-owned stack first (Figure 2-6).
+Hardware cannot push the saved register frame onto the interrupted application's user stack because user-mode code controls the user stack pointer (`RSP` / `SP_EL0`); an invalid, unmapped, or kernel-pointing user stack pointer would immediately trigger a nested fault or corrupt kernel memory. Consequently, hardware switches to a pre-allocated, kernel-owned stack prior to saving state (Figure 2-6).
 
 <figure>
 <img src="figures/ch02_idt_trapframe.svg" alt="x86-64 hardware vector dispatch showing IDTR lookup into the 256-entry IDT, TSS.rsp0 kernel stack switch, hardware-pushed 5-word return frame, and software-pushed pt_regs"/>
 </figure>
 
-On **x86-64**, hardware executes four steps atomically before fetching the first instruction of the kernel handler:
-1. **Look up the handler in the Interrupt Descriptor Table (`IDT`):** During boot, the OS builds an array of 256 16-byte descriptors in kernel memory called the **IDT** and loads its address into the CPU's privileged **`IDTR`** register. When Vector `0x30` arrives, silicon reads entry `IDT[0x30]`, extracting the 64-bit kernel handler address, the target privilege level (`Ring 0`), and the gate type (an **Interrupt Gate** automatically clears the interrupt-enable flag `RFLAGS.IF = 0` so a second interrupt cannot disrupt entry while the frame is half-built).
-2. **Switch from the untrusted user stack to the thread's kernel stack (`TSS.rsp0`):** Seeing that Core 0 was running in Ring 3 while `IDT[0x30]` runs in Ring 0, silicon reads a small per-core kernel descriptor called the **Task State Segment (`TSS`)** and loads a trusted kernel stack pointer from **`TSS.rsp0`** (which the OS scheduler keeps pointed to the top of the current thread's private 8 to 16 KiB kernel stack). For emergency faults where even the regular kernel stack may have overflowed (such as a Double Fault `#DF` or Non-Maskable Interrupt `#NMI`), `IDT[v]` points to an isolated backup stack in **`TSS.ist[1..7]`**.
-3. **Push the 5-word hardware return frame onto the kernel stack:** Silicon automatically saves the five architectural values needed to resume the interrupted user thread later: User Stack Segment (`SS`), User Stack Pointer (`RSP`), Processor Flags (`RFLAGS`), Code Segment (`CS`, recording that the thread came from Ring 3), and the exact interrupted Instruction Pointer (`RIP`). For certain synchronous faults (such as a page fault `#PF`), silicon pushes a 6th word: an **Error Code** describing whether the fault was caused by a read, a write, or a permission check.
-4. **Save the remaining general-purpose registers in software (`struct pt_regs`):** Silicon jumps to the kernel assembly entry stub at `IDT[0x30]`, which pushes all general-purpose registers (`RAX` through `R15`) onto the kernel stack right below the hardware frame. That complete snapshot is the **trapframe** (`struct pt_regs`). Normal C or Rust kernel code can now execute freely using standard registers without disturbing a single bit of the user thread's saved state.
+On **x86-64**, interrupt entry proceeds through four deterministic steps:
+1. **Vector Dispatch via the Interrupt Descriptor Table (`IDT`):** During system initialization, the kernel populates a 256-entry table of 16-byte descriptors in memory and loads its base address into the privileged **`IDTR`** register. Upon receiving vector `v`, hardware indexes `IDT[v]` to obtain the 64-bit handler entry address, target privilege level (`Ring 0`), and gate type (an **Interrupt Gate** automatically clears `RFLAGS.IF = 0` to mask nested external interrupts during entry).
+2. **Privilege Transition and Kernel Stack Switch (`TSS.rsp0`):** Detecting a Ring 3 to Ring 0 elevation, hardware consults the per-core **Task State Segment (`TSS`)** and loads the trusted kernel stack pointer from **`TSS.rsp0`**, which the scheduler updates on every context switch to point to the current thread's dedicated 8 to 16 KiB kernel stack. For critical faults where the regular kernel stack itself may be exhausted (such as a Double Fault `#DF` or Non-Maskable Interrupt `#NMI`), `IDT[v]` selects an isolated emergency stack from the Interrupt Stack Table (**`TSS.ist[1..7]`**).
+3. **Hardware Return Frame Construction:** Hardware pushes a 5-word architectural frame onto the kernel stack consisting of the user Stack Segment (`SS`), user Stack Pointer (`RSP`), `RFLAGS`, Code Segment (`CS`), and interrupted Instruction Pointer (`RIP`). For specific synchronous exceptions (such as page fault `#PF`), hardware pushes a 6th word encoding the fault **Error Code**.
+4. **Software Trapframe Completion (`struct pt_regs`):** Execution transfers to the kernel assembly entry stub, which saves the remaining general-purpose registers (`RAX` through `R15`) onto the kernel stack directly beneath the hardware frame. The resulting contiguous structure constitutes the **trapframe** (`struct pt_regs`), allowing higher-level kernel code in C or Rust to execute safely without disturbing the interrupted thread's register context.
 
-On **ARM64**, silicon performs the exact same isolation using dedicated exception registers rather than pushing to memory in hardware: elevating from `EL0` to `EL1` automatically switches the stack pointer from `SP_EL0` to the kernel's `SP_EL1`, masks further IRQs, saves the interrupted program counter in **`ELR_EL1`** and flags in **`SPSR_EL1`**, records the cause in **`ESR_EL1`**, and jumps into a 128-byte vector slot inside the table pointed to by **`VBAR_EL1`**, where the kernel stub saves `x0` through `x30` onto `SP_EL1`.
+On **ARM64**, the processor achieves the same isolation through banked exception registers: transitioning from `EL0` to `EL1` switches the active stack pointer from `SP_EL0` to `SP_EL1`, sets the `DAIF` interrupt mask bits, captures the interrupted program counter in **`ELR_EL1`**, saves processor flags in **`SPSR_EL1`**, records exception syndrome metadata in **`ESR_EL1`**, and vectors execution into the 128-byte entry offset within the vector table referenced by **`VBAR_EL1`**, where the entry stub saves `x0` through `x30` onto `SP_EL1`.
 
-### 2.4.3 Top-Half (`hardirq`) vs. Bottom-Half (`softirq`) Split and EOI Lifecycle
+### 2.4.3 Top-Half and Bottom-Half Decomposition and EOI Lifecycle
 
-Once inside the kernel's interrupt handler, two hard constraints govern what the handler is allowed to do:
-1. **An interrupt handler can never sleep or wait on a mutex.** The interrupt preempted whatever innocent user thread happened to be running on Core 0 at that instant. Calling `sleep()` or blocking on a lock would put that unrelated user thread to sleep; even worse, if that exact interrupted thread *already held* that lock when the interrupt fired, Core 0 would deadlock with itself forever.
-2. **An interrupt handler must finish in a few microseconds.** While local interrupts are masked (`IF == 0`) and the vector's active bit sits in the Local APIC's `ISR`, Core 0 cannot service other incoming interrupts. Spending milliseconds walking TCP tables or checking filesystem metadata inside a masked handler causes dropped network packets, audio glitches, and missed timer ticks.
+Execution inside a hardware interrupt handler is governed by two strict operational invariants:
+1. **Non-blocking execution:** An interrupt handler executes in **interrupt context**, borrowing the kernel stack of whichever user thread happened to be active on that core. It possesses no independent process context and must never sleep or block on a sleeping mutex; attempting to acquire a lock already held by the interrupted thread on the same core would induce an immediate self-deadlock.
+2. **Bounded latency:** While local interrupts remain masked (`IF == 0`) and the vector's bit remains set in the Local APIC `ISR`, the core cannot service equal- or lower-priority interrupts. Prolonged execution inside a masked handler causes missed timer ticks and dropped network or storage completions.
 
-To resolve this conflict, every modern kernel splits interrupt work into two distinct phases (Figure 2-7):
+To reconcile low interrupt latency with complex protocol and filesystem processing, modern kernels partition interrupt servicing into two phases (Figure 2-7):
 
 <figure>
 <img src="figures/ch02_interrupt_flow.svg" alt="End-to-end hardware interrupt lifecycle from device signal through IO-APIC/GIC, IDT lookup, hardware context save, top-half hardirq, EOI, bottom-half softirq, and iretq return"/>
 </figure>
 
-1. **Top-Half (`hardirq`, Interrupts Masked, Microseconds):** Runs immediately upon vector dispatch and performs only the urgent hardware handshake that cannot wait: reads the device's status register, advances the hardware DMA ring pointers so the device can continue receiving packets or disk blocks, marks a deferred-work flag in kernel memory, and writes **End of Interrupt (EOI)** to the Local APIC (or `ICC_EOIR1_EL1` on ARM64). Writing EOI clears the active bit in `ISR` so the interrupt controller can immediately deliver new events.
-2. **Bottom-Half (`softirq`, NAPI, and Workqueues, Interrupts Re-Enabled):** Runs right after the top-half finishes, with hardware interrupts **turned back on** (`IF == 1`) so urgent hardware signals can preempt heavy software processing cleanly:
-   - **Deferred lock-free processing (`softirq` and NAPI):** In Linux, heavy non-blocking work such as TCP/IP packet parsing (`NET_RX_SOFTIRQ`), block storage completions (`BLOCK_SOFTIRQ`), and timer expirations (`TIMER_SOFTIRQ`) runs immediately before returning to user space (or spills onto per-CPU `ksoftirqd` kernel threads under heavy traffic storms). Under 100GbE packet rates, Linux **NAPI** intentionally switches a busy network card from one-interrupt-per-packet to batched polling inside `NET_RX_SOFTIRQ` so the core spends its cycles processing packets rather than drowning in interrupt entry overhead.
-   - **Work that needs to sleep (`workqueues` and Threaded IRQs):** Any driver task that must acquire sleeping mutexes or wait on secondary I/O is handed off to a normal schedulable kernel thread (`kworker` or a threaded IRQ handler), which has its own Process Control Block and can block safely.
+1. **Top-Half (`hardirq`, Interrupts Masked):** Executes immediately upon trapframe construction for a duration measured in microseconds. It performs only the minimal hardware-critical operations: reading device status registers, advancing DMA descriptor ring indices, marking a deferred-work indicator in kernel memory, and issuing **End of Interrupt (EOI)** to the Local APIC (or `ICC_EOIR1_EL1` on ARM64). Writing EOI clears the vector's active bit in `ISR` so the interrupt controller can deliver subsequent events.
+2. **Bottom-Half (`softirq`, NAPI, and Workqueues, Interrupts Enabled):** Executes after the top-half exits, with hardware interrupts re-enabled (`IF == 1`) so higher-priority hardware signals can preempt software processing:
+   - **Deferred non-blocking processing (`softirq` and NAPI):** In Linux, computationally intensive non-blocking tasks such as TCP/IP packet processing (`NET_RX_SOFTIRQ`), block I/O completion (`BLOCK_SOFTIRQ`), and timer callbacks (`TIMER_SOFTIRQ`) execute before returning to user mode, or offload to per-CPU `ksoftirqd` kernel threads under sustained load. Under high packet rates, Linux **NAPI** transitions a saturated network interface from per-packet interrupts to bounded polling within `NET_RX_SOFTIRQ`, amortizing interrupt entry overhead across batches of frames.
+   - **Blocking deferred execution (`workqueues` and Threaded IRQs):** Driver work that requires sleeping locks or secondary I/O is enqueued onto schedulable kernel threads (`kworker` pools or threaded IRQ handlers), each backed by a full Process Control Block capable of blocking safely.
 
-Finally, before leaving kernel mode, the exit path checks whether the interrupt woke up a higher-priority runnable thread (for example, a blocked web server whose network packet has arrived). If preemption is needed, the scheduler switches stacks to that thread. Otherwise, the exit stub restores `RAX..R15` from the trapframe and executes **`iretq`** (x86-64) or **`eret`** (ARM64), which atomically pops the saved `RIP`, `CS`, `RFLAGS`, `RSP`, and `SS`, re-enables interrupts, and resumes the interrupted user program at the exact instruction where it paused.
+Prior to returning to user mode, the kernel exit path inspects whether the interrupt awakened a higher-priority runnable thread. If preemption is required, the scheduler performs a context switch to that thread; otherwise, the exit stub restores all general-purpose registers from the trapframe and executes **`iretq`** (x86-64) or **`eret`** (ARM64), atomically restoring the saved instruction pointer, stack pointer, privilege level, and interrupt mask to resume the interrupted thread transparently.

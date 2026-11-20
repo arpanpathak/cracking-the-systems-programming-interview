@@ -30,12 +30,12 @@
     - [2.1.1 The Fetch-Decode-Execute Datapath and Function Activation Records](ch02-the-machine.md#211-the-fetch-decode-execute-datapath-and-function-activation-records)
     - [2.1.2 Formal Derivation of the Atomicity Gap](ch02-the-machine.md#212-formal-derivation-of-the-atomicity-gap)
   - [2.2 Memory Hierarchy and Locality Dynamics](ch02-the-machine.md#22-memory-hierarchy-and-locality-dynamics)
-  - [2.3 Privilege Domains and How the CPU Talks to Hardware Devices](ch02-the-machine.md#23-privilege-domains-and-how-the-cpu-talks-to-hardware-devices)
-    - [2.3.1 Two Physical Mechanisms Behind Every Device: MMIO and DMA](ch02-the-machine.md#231-two-physical-mechanisms-behind-every-device-mmio-and-dma)
+  - [2.3 Privilege Domains and Boundary Enforcement](ch02-the-machine.md#23-privilege-domains-and-boundary-enforcement)
+    - [2.3.1 Device Communication Mechanisms: MMIO and DMA](ch02-the-machine.md#231-device-communication-mechanisms-mmio-and-dma)
   - [2.4 Synchronous Traps and the Asynchronous Interrupt Subsystem](ch02-the-machine.md#24-synchronous-traps-and-the-asynchronous-interrupt-subsystem)
-    - [2.4.1 Why Interrupt Controllers Exist: From One Copper Pin to Multi-Core Fabrics](ch02-the-machine.md#241-why-interrupt-controllers-exist-from-one-copper-pin-to-multi-core-fabrics)
-    - [2.4.2 Vector Tables (`IDT`, `VBAR_EL1`), `TSS.rsp0`, and Hardware Trapframe Construction](ch02-the-machine.md#242-vector-tables-idt-vbar_el1-tssrsp0-and-hardware-trapframe-construction)
-    - [2.4.3 Top-Half (`hardirq`) vs. Bottom-Half (`softirq`) Split and EOI Lifecycle](ch02-the-machine.md#243-top-half-hardirq-vs-bottom-half-softirq-split-and-eoi-lifecycle)
+    - [2.4.1 Interrupt Controllers and Routing Topologies (APIC and GICv3)](ch02-the-machine.md#241-interrupt-controllers-and-routing-topologies-apic-and-gicv3)
+    - [2.4.2 Vector Tables, Kernel Stack Switching, and Trapframe Construction](ch02-the-machine.md#242-vector-tables-kernel-stack-switching-and-trapframe-construction)
+    - [2.4.3 Top-Half and Bottom-Half Decomposition and EOI Lifecycle](ch02-the-machine.md#243-top-half-and-bottom-half-decomposition-and-eoi-lifecycle)
 - [**3. Process Abstraction and Lifecycle**](ch03-processes.md#3-process-abstraction-and-lifecycle)
   - [3.1 The Process Control Block and Address Space Topology](ch03-processes.md#31-the-process-control-block-and-address-space-topology)
   - [3.2 Process Creation and the Mechanics of `fork`](ch03-processes.md#32-process-creation-and-the-mechanics-of-fork)
@@ -245,7 +245,7 @@ A thematic, alphabetical cross-reference linking systems topics directly to thei
   - Page Fault Dynamics: [§7.1](ch07-virtual-memory.md#71-page-based-abstraction-and-isolation)
   - Heap Arena Construction: [§8.2.3](ch08-allocation.md#823-level-3-the-raw-byte-bump-allocator-mmap-backed), [§8.3](ch08-allocation.md#83-explicit-management-free-list-allocation)
 - **APIC / IO-APIC & ARM GIC (Interrupt Controllers)**: Two-tier hardware interrupt routing, Message Signaled Interrupts (MSI-X), and priority arbitration across multiprocessor cores.
-  - Hardware Routing & EOI: [§2.4.1](ch02-the-machine.md#241-why-interrupt-controllers-exist-from-one-copper-pin-to-multi-core-fabrics)
+  - Hardware Routing & EOI: [§2.4.1](ch02-the-machine.md#241-interrupt-controllers-and-routing-topologies-apic-and-gicv3)
 - **Apple Silicon Unified Memory (UMA)**: Shared physical memory substrate between CPU, GPU, and Neural Engine without PCIe bus serialization.
   - Architectural Analysis: [§17.3](ch17-multiprocessors.md#173-hardware-accelerators-discrete-architecture-vs-unified-memory-architecture-uma)
 - **Async-Signal-Safety**: Functions safe to execute inside asynchronous signal handlers without corrupting thread stacks or deadlocking libc mutexes.
@@ -329,7 +329,7 @@ A thematic, alphabetical cross-reference linking systems topics directly to thei
 - **Huge Pages**: 2 MiB / 1 GiB virtual page translations designed to maximize TLB coverage and eliminate translation latency.
   - Hardware TLB Reach: [§7.2.3](ch07-virtual-memory.md#723-the-translation-lookaside-buffer-tlb-huge-pages-and-shootdowns)
 - **Interrupt Descriptor Table (IDT) & Top/Bottom-Half Handlers**: Hardware vector dispatch table, `TSS.rsp0` trapframe saving, `hardirq` masking, and `softirq` deferred execution.
-  - Architectural Mechanics: [§2.4.2](ch02-the-machine.md#242-vector-tables-idt-vbar_el1-tssrsp0-and-hardware-trapframe-construction), [§2.4.3](ch02-the-machine.md#243-top-half-hardirq-vs-bottom-half-softirq-split-and-eoi-lifecycle)
+  - Architectural Mechanics: [§2.4.2](ch02-the-machine.md#242-vector-tables-kernel-stack-switching-and-trapframe-construction), [§2.4.3](ch02-the-machine.md#243-top-half-and-bottom-half-decomposition-and-eoi-lifecycle)
 - **Inter-Process Communication (IPC)**: Exchanging state across hardware isolation boundaries via pipes, sockets, and shared memory.
   - IPC Taxonomy: [§11.1](ch11-ipc.md#111-unidirectional-byte-streams-pipes), [§11.2](ch11-ipc.md#112-zero-copy-communication-shared-memory), [§11.3](ch11-ipc.md#113-bidirectional-channels-socket-pairs)
 - **Isolation (Process Protection)**: Hardware-enforced boundary preventing cross-process interference and securing kernel memory.
@@ -367,7 +367,7 @@ A thematic, alphabetical cross-reference linking systems topics directly to thei
   - Process Isolation: [§19.12.1](ch19-interview-problems.md#19121-process-isolation-vs-thread-concurrency-topology)
 - **Program Counter (PC / RIP / PC_EL0)**: Microarchitectural register holding the linear virtual address of the next instruction to fetch.
   - Instruction Cycle & Branching: [§2.1](ch02-the-machine.md#21-the-execution-model-and-the-atomicity-gap)
-  - Trapframe Preservation: [§2.4.2](ch02-the-machine.md#242-vector-tables-idt-vbar_el1-tssrsp0-and-hardware-trapframe-construction), [§3.1](ch03-processes.md#31-the-process-control-block-and-address-space-topology)
+  - Trapframe Preservation: [§2.4.2](ch02-the-machine.md#242-vector-tables-kernel-stack-switching-and-trapframe-construction), [§3.1](ch03-processes.md#31-the-process-control-block-and-address-space-topology)
 
 ### R - S
 - **Reader-Writer Lock**: Synchronization primitive permitting concurrent readers while restricting writers to exclusive access.
@@ -384,12 +384,12 @@ A thematic, alphabetical cross-reference linking systems topics directly to thei
   - Systems Nuances: [§19.2.6](ch19-interview-problems.md#1926-systems-analysis-and-concurrency-interview-follow-ups)
 - **Stack Pointer (SP / RSP / SP_EL0)**: Architectural register tracking the active boundary of the descending call stack.
   - Stack Frame Structure: [§2.1](ch02-the-machine.md#21-the-execution-model-and-the-atomicity-gap)
-  - Kernel Stack Switching: [§2.4.2](ch02-the-machine.md#242-vector-tables-idt-vbar_el1-tssrsp0-and-hardware-trapframe-construction), [§9.1](ch09-system-calls.md#91-the-mechanics-of-the-system-call-interface)
+  - Kernel Stack Switching: [§2.4.2](ch02-the-machine.md#242-vector-tables-kernel-stack-switching-and-trapframe-construction), [§9.1](ch09-system-calls.md#91-the-mechanics-of-the-system-call-interface)
 - **Status Flags (FLAGS / RFLAGS / PSTATE)**: CPU condition codes (ZF, CF, SF, OF) and interrupt mask control flags (IF).
   - Condition Evaluation: [§2.1](ch02-the-machine.md#21-the-execution-model-and-the-atomicity-gap)
 - **System Call Boundary**: Hardware-supervised privilege gatekeeper transferring control from user mode to kernel mode.
   - Gatekeeper Role: [§1.4](ch01-what-is-an-os.md#14-the-system-call-boundary-and-posix-standard-interface)
-  - Traps & Privilege Elevation: [§2.3](ch02-the-machine.md#23-privilege-domains-and-how-the-cpu-talks-to-hardware-devices), [§9.1](ch09-system-calls.md#91-the-mechanics-of-the-system-call-interface)
+  - Traps & Privilege Elevation: [§2.3](ch02-the-machine.md#23-privilege-domains-and-boundary-enforcement), [§9.1](ch09-system-calls.md#91-the-mechanics-of-the-system-call-interface)
 
 ### T - Z
 - **TCP Protocols & Sockets**: Reliable, connection-oriented byte streams with flow control and congestion avoidance.
