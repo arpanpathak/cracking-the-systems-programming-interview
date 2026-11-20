@@ -18,7 +18,7 @@ Because TCP treats transmitted data as an unstructured sequence of bytes, it doe
 
 ## 14.2 The User Datagram Protocol (UDP): Unreliable Message Delivery
 
-The **User Datagram Protocol (UDP)** strips away connection state, handshakes, retransmissions, and ordering guarantees, adding only 8 bytes of header (source port, destination port, length, and checksum) atop raw IP packets. Each UDP datagram is routed independently and may arrive out of order, arrive duplicated, or vanish silently in transit.
+The **User Datagram Protocol (UDP)** strips away connection state, handshakes, retransmissions, and ordering guarantees, adding only 8 bytes of header (source port, destination port, length, and checksum) atop raw IP packets. Each UDP datagram is routed independently and may arrive out of order, arrive duplicated, or be dropped in transit without notification.
 
 This minimal contract yields two major engineering properties:
 - **Zero handshake latency and no head-of-line blocking:** Sending the first payload incurs zero setup round trips, and losing one packet never stalls subsequent packets waiting behind it. Real-time voice/video pipelines, DNS resolvers, telemetry collectors, and modern QUIC (HTTP/3) transports build directly on UDP.
@@ -41,7 +41,7 @@ ssize_t recvfrom(int sockfd, void *buf, size_t len, int flags,
 - **`flags`:** Per-operation bitmask (`0` for standard blocking transfer; `MSG_DONTWAIT` for non-blocking single-call I/O; `MSG_PEEK` to inspect a queued datagram without removing it from the receive buffer).
 - **`dest_addr` and `addrlen` (in `sendto`):** Pointer to the destination `struct sockaddr_in` (or `sockaddr_in6`) and its exact byte size passed **by value** (`sizeof addr`).
 - **`src_addr` and `addrlen` (in `recvfrom`):** Output parameters allowing the kernel to populate the sender's IP address and port. Notice that **`addrlen` is passed by pointer (`socklen_t *`)** as a value-result argument: the caller initializes `*addrlen` to the buffer capacity (for example, `sizeof(struct sockaddr_storage)`) before the call, and the kernel overwrites `*addrlen` with the actual address length written. Passing `nullptr, nullptr` (as in Listing 14-1) tells the kernel the caller does not need the sender's address.
-- **Return values and truncation hazard:** Both functions return the signed number of bytes sent or received (`ssize_t >= 0`), or `-1` on error (`EMSGSIZE` if a datagram exceeds the link MTU/limit, `EAGAIN` on non-blocking empty receive, `EINTR`). Crucially, if an arriving UDP datagram is larger than the `len` buffer supplied to `recvfrom()`, the kernel copies the first `len` bytes and **silently discards the remaining tail of the datagram** (unlike TCP `read()`, which leaves unread bytes queued for the next call).
+- **Return values and truncation hazard:** Both functions return the signed number of bytes sent or received (`ssize_t >= 0`), or `-1` on error (`EMSGSIZE` if a datagram exceeds the link MTU/limit, `EAGAIN` on non-blocking empty receive, `EINTR`). If an arriving UDP datagram is larger than the `len` buffer supplied to `recvfrom()`, the kernel copies the first `len` bytes and **discards the remaining tail of the datagram without signaling an error** (unlike TCP `read()`, which leaves unread bytes queued for the next call).
 
 **Listing 14-1. Sending and receiving one datagram (C++20).**
 

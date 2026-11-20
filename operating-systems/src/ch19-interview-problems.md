@@ -23,7 +23,7 @@ Managing a shared bounded buffer requires resolving two distinct concurrency haz
 1. **Mutual Exclusion:** Concurrent threads must not mutate queue pointers, lengths, or ring indices simultaneously, which would induce data races and state corruption.
 2. **Predicate Coordination:** When the queue reaches capacity, producer threads must suspend execution until space becomes available. Conversely, when the queue is empty, consumer threads must suspend until an item is enqueued.
 
-A **mutex** provides mutual exclusion but possesses no native mechanism for suspended waiting on arbitrary logical state. A thread that simply loops while checking queue occupancy ("busy-waiting") wastes processor cycles and starves other threads contending for execution cores.
+A **mutex** provides mutual exclusion but possesses no native mechanism for suspended waiting on arbitrary logical state. A thread that loops continuously while polling queue occupancy ("busy-waiting") wastes processor cycles and starves other threads contending for execution cores.
 
 To resolve this, the queue pairs a mutex with **condition variables**. A condition variable enables a thread to release its held mutex and enter a sleep state atomically in a single hardware-supervised step. The atomicity of this transition is essential: if releasing the lock and sleeping were separate operations, a competing thread could signal a state change in the intervening gap, causing the waiting thread to sleep indefinitely, a catastrophic concurrency failure known as a **lost wakeup**.
 
@@ -737,7 +737,7 @@ The Unix architecture is distinguished by the philosophy of composing complex da
 
 A running program interacts with input/output channels via integer file descriptors, which index into the process's kernel-managed File Descriptor Table. Standard conventions establish descriptor 0 as standard input (`stdin`), descriptor 1 as standard output (`stdout`), and descriptor 2 as standard error (`stderr`).
 
-Crucially, user-space programs are decoupled from underlying device geometries: writing to descriptor 1 invokes the same `write()` system call regardless of whether the descriptor refers to a terminal display, a disk file, a network socket, or an IPC pipe. Constructing a pipeline exploits this indirection by remapping file descriptors before executing program binaries.
+User-space programs remain decoupled from underlying device geometries: writing to descriptor 1 invokes the same `write()` system call regardless of whether the descriptor refers to a terminal display, a disk file, a network socket, or an IPC pipe. Constructing a pipeline exploits this indirection by remapping file descriptors before executing program binaries.
 
 ### 19.9.2 The Pipeline Orchestration Sequence
 
