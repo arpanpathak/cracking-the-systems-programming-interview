@@ -38,7 +38,7 @@
             const path_to_root = "";
             const default_light_theme = "light";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "searchindex-5affdc83.js";
+            window.path_to_searchindex_js = "searchindex-33552441.js";
         </script>
         <!-- Start loading toc.js asap -->
         <script src="toc-f3585118.js"></script>
@@ -195,9 +195,9 @@
 <ul>
 <li>CPU cores communicate across shared memory buses arbitrated by cache coherence protocols (MESI/MOESI), where uncoordinated concurrent writes across the same 64-byte cache line trigger catastrophic bus traffic through <strong>false sharing</strong>.</li>
 <li>Memory access latencies form a steep cliff: from sub-nanosecond L1 cache hits (4 cycles) to tens of nanoseconds for DRAM (hundreds of cycles), to hundreds of microseconds for NVMe storage devices.</li>
-<li>System calls are not benign function calls; they are hardware privilege transitions (Ring 3 → Ring 0) that flush CPU pipeline state, switch execution stacks, and trigger TLB and cache evictions.</li>
+<li>System calls perform hardware privilege transitions (Ring 3 → Ring 0) that serialize pipeline execution, switch execution stacks, and perturb TLB and cache locality, making them orders of magnitude more expensive than ordinary function calls.</li>
 </ul>
-<p>The operating system is not merely a library of convenient helper functions. It is the supervisory software foundation that enforces hardware privilege boundaries, orchestrates virtual memory address translation, multiplexes finite CPU time among contending execution streams, and guarantees fault isolation. To write high-performance, fault-tolerant infrastructure, one must understand how the operating system and the hardware collaborate from first principles.</p>
+<p>The operating system serves as the supervisory software foundation that enforces hardware privilege boundaries, orchestrates virtual memory address translation, multiplexes finite CPU time among contending execution streams, and guarantees fault isolation. Building high-performance, fault-tolerant infrastructure requires understanding how the operating system and underlying hardware collaborate from first principles.</p>
 <figure>
   <img src="figures/preface_ring_transition.svg" alt="Hardware Privilege Transition: Ring 3 User Space to Ring 0 Kernel Space" />
 </figure>
