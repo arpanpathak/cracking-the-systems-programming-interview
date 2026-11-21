@@ -1,0 +1,65 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 960 400" width="960" height="400" shape-rendering="geometricPrecision" text-rendering="geometricPrecision" role="img" aria-label="Chapter 6 abstract artwork: multiple concurrent write threads converging into a single batched NVMe fsync barrier.">
+  <style>
+    .sans { font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif; }
+    .mono { font-family: "SF Mono", SFMono-Regular, ui-monospace, Menlo, Consolas, monospace; }
+  </style>
+  <rect x="0.5" y="0.5" width="959" height="399" rx="14" fill="#F7F9FC" stroke="#D0DAE6" stroke-width="1"/>
+  <line x1="40" y1="1" x2="40" y2="399" stroke="#E3EAF4" stroke-width="0.75"/>
+  <line x1="80" y1="1" x2="80" y2="399" stroke="#E3EAF4" stroke-width="0.75"/>
+  <line x1="120" y1="1" x2="120" y2="399" stroke="#E3EAF4" stroke-width="0.75"/>
+  <line x1="160" y1="1" x2="160" y2="399" stroke="#E3EAF4" stroke-width="0.75"/>
+  <line x1="200" y1="1" x2="200" y2="399" stroke="#E3EAF4" stroke-width="0.75"/>
+  <line x1="240" y1="1" x2="240" y2="399" stroke="#E3EAF4" stroke-width="0.75"/>
+  <line x1="280" y1="1" x2="280" y2="399" stroke="#E3EAF4" stroke-width="0.75"/>
+  <line x1="320" y1="1" x2="320" y2="399" stroke="#E3EAF4" stroke-width="0.75"/>
+  <line x1="360" y1="1" x2="360" y2="399" stroke="#E3EAF4" stroke-width="0.75"/>
+  <line x1="400" y1="1" x2="400" y2="399" stroke="#E3EAF4" stroke-width="0.75"/>
+  <line x1="440" y1="1" x2="440" y2="399" stroke="#E3EAF4" stroke-width="0.75"/>
+  <line x1="480" y1="1" x2="480" y2="399" stroke="#E3EAF4" stroke-width="0.75"/>
+  <line x1="520" y1="1" x2="520" y2="399" stroke="#E3EAF4" stroke-width="0.75"/>
+  <line x1="560" y1="1" x2="560" y2="399" stroke="#E3EAF4" stroke-width="0.75"/>
+  <line x1="600" y1="1" x2="600" y2="399" stroke="#E3EAF4" stroke-width="0.75"/>
+  <line x1="640" y1="1" x2="640" y2="399" stroke="#E3EAF4" stroke-width="0.75"/>
+  <line x1="680" y1="1" x2="680" y2="399" stroke="#E3EAF4" stroke-width="0.75"/>
+  <line x1="720" y1="1" x2="720" y2="399" stroke="#E3EAF4" stroke-width="0.75"/>
+  <line x1="760" y1="1" x2="760" y2="399" stroke="#E3EAF4" stroke-width="0.75"/>
+  <line x1="800" y1="1" x2="800" y2="399" stroke="#E3EAF4" stroke-width="0.75"/>
+  <line x1="840" y1="1" x2="840" y2="399" stroke="#E3EAF4" stroke-width="0.75"/>
+  <line x1="880" y1="1" x2="880" y2="399" stroke="#E3EAF4" stroke-width="0.75"/>
+  <line x1="920" y1="1" x2="920" y2="399" stroke="#E3EAF4" stroke-width="0.75"/>
+  <line x1="1" y1="40" x2="959" y2="40" stroke="#E3EAF4" stroke-width="0.75"/>
+  <line x1="1" y1="80" x2="959" y2="80" stroke="#E3EAF4" stroke-width="0.75"/>
+  <line x1="1" y1="120" x2="959" y2="120" stroke="#E3EAF4" stroke-width="0.75"/>
+  <line x1="1" y1="160" x2="959" y2="160" stroke="#E3EAF4" stroke-width="0.75"/>
+  <line x1="1" y1="200" x2="959" y2="200" stroke="#E3EAF4" stroke-width="0.75"/>
+  <line x1="1" y1="240" x2="959" y2="240" stroke="#E3EAF4" stroke-width="0.75"/>
+  <line x1="1" y1="280" x2="959" y2="280" stroke="#E3EAF4" stroke-width="0.75"/>
+  <line x1="1" y1="320" x2="959" y2="320" stroke="#E3EAF4" stroke-width="0.75"/>
+  <line x1="1" y1="360" x2="959" y2="360" stroke="#E3EAF4" stroke-width="0.75"/>
+  <rect x="44" y="42" width="42" height="4" rx="2" fill="#D48806"/>
+  <text x="44" y="88" class="mono" font-size="38" font-weight="700" fill="#D48806" letter-spacing="-0.03em">06</text>
+  <text x="44" y="132" class="sans" font-size="25" font-weight="750" fill="#161B26" letter-spacing="-0.015em">Group Commit</text>
+  <text x="44" y="158" class="mono" font-size="11" font-weight="600" fill="#526075" letter-spacing="0.06em">BATCHED WAL FSYNC</text>
+  <text x="44" y="176" class="mono" font-size="11" font-weight="600" fill="#526075" letter-spacing="0.06em">AMORTIZED DISK BARRIER</text>
+  <line x1="44" y1="336" x2="296" y2="336" stroke="#D0DAE6" stroke-width="1"/>
+  <text x="44" y="358" class="mono" font-size="11" fill="#526075">N writes -> 1 fsync barrier</text>
+  <path d="M 366 86 C 470 86 500 198 584 198" fill="none" stroke="#1A5FC4" stroke-width="2.4" opacity="0.82"/>
+  <circle cx="366" cy="86" r="6.5" fill="#1A5FC4"/>
+  <path d="M 366 130 C 470 130 500 198 584 198" fill="none" stroke="#0E7168" stroke-width="2.4" opacity="0.82"/>
+  <circle cx="366" cy="130" r="6.5" fill="#0E7168"/>
+  <path d="M 366 174 C 470 174 500 198 584 198" fill="none" stroke="#1A5FC4" stroke-width="2.4" opacity="0.82"/>
+  <circle cx="366" cy="174" r="6.5" fill="#1A5FC4"/>
+  <path d="M 366 218 C 470 218 500 198 584 198" fill="none" stroke="#0E7168" stroke-width="2.4" opacity="0.82"/>
+  <circle cx="366" cy="218" r="6.5" fill="#0E7168"/>
+  <path d="M 366 262 C 470 262 500 198 584 198" fill="none" stroke="#1A5FC4" stroke-width="2.4" opacity="0.82"/>
+  <circle cx="366" cy="262" r="6.5" fill="#1A5FC4"/>
+  <path d="M 366 306 C 470 306 500 198 584 198" fill="none" stroke="#0E7168" stroke-width="2.4" opacity="0.82"/>
+  <circle cx="366" cy="306" r="6.5" fill="#0E7168"/>
+  <rect x="584" y="138" width="108" height="120" rx="12" fill="#FDF0D1" stroke="#D48806" stroke-width="2.4"/>
+  <text x="638" y="192" text-anchor="middle" class="mono" font-size="12" font-weight="700" fill="#D48806">BATCH</text>
+  <text x="638" y="212" text-anchor="middle" class="mono" font-size="10" fill="#526075">1 fsync()</text>
+  <line x1="692" y1="198" x2="758" y2="198" stroke="#D48806" stroke-width="3.2"/>
+  <circle cx="826" cy="198" r="68" fill="#D3EFEA" stroke="#0E7168" stroke-width="2.4"/>
+  <circle cx="826" cy="198" r="34" fill="#FFFFFF" stroke="#0E7168" stroke-width="1.8"/>
+  <text x="826" y="202" text-anchor="middle" class="mono" font-size="11" font-weight="700" fill="#0E7168">NVMe</text>
+</svg>

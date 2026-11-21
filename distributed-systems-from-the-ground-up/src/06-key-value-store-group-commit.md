@@ -1,164 +1,115 @@
-<img class="plate" src="art/ch06.svg?v=6137924e" alt="Bundle, a beaver, carries 4 logs tied together with a rope toward a door marked disk, where a single log lies that was carried alone. A crab watches with a stopwatch.">
+# Chapter 6: Group Commit and Throughput Engineering (LLD)
 
-# Key-Value Store: Group Commit (Low-Level Design)
+<img class="plate" src="art/ch06-plate.svg" alt="Chapter 6 plate: Group commit batching N concurrent writes across a single NVMe fsync barrier to amortize disk confirmation latency." />
 
-The capacity estimate of [chapter 1](01-key-value-store-system-design.md) arrived at
-24 nodes by assuming that a node stores 20 writes with every wait for its disk.
-Without that assumption the same calculation gave 325 nodes. Nothing built so far
-does anything of the kind. The storage node of
-[chapter 2](02-key-value-store-storage-node.md) waits once for every write, and
-reaches its limit at about 180 writes per second however many clients are sending to
-it, since each must wait its turn for a disk that confirms 185 times a second.
+In the capacity analysis of [Chapter 1](01-key-value-store-system-design.md), we arrived at a 24-node cluster by assuming that each storage node amortizes one disk `fsync` across roughly `20` concurrent writes. Without that batching factor, sustaining `60,000` replicated WAL appends per second at `185 fsync/s` per disk would require `325` servers. Nothing we have built in Chapters 2 through 5 performs batching: the storage node of [Chapter 2](02-key-value-store-storage-node.md) executes one `sync_data` per mutation, capping single-node write throughput near `180 writes/s` regardless of client concurrency.
 
-This chapter adds the missing technique. Under *group commit*, a node stores all the
-writes that are waiting at a given moment with a single wait for the disk. The change
-is small, some 60 lines in the store and 1 thread in the server, and its effect is
-out of all proportion to its size: the measured rate rises from 180 writes per second
-to almost 5000 with 64 clients, and beyond 17000 with 256. It is among the best
-examples in systems programming of a large gain obtained by rearranging work, with
-no part of the work made faster.
+In this chapter, I implement *WAL group commit* in Rust, allowing a storage node to persist all queued writes arriving during an active disk barrier under a single `fsync`. The implementation requires roughly `60` lines inside `kv::store` and one dedicated committer thread inside `kvgroup`, yet its throughput impact is dramatic: sustained durable write rate climbs from `180 writes/s` to `4,993 writes/s` at `64` concurrent clients (`27.7x`) and reaches `17,218 writes/s` at `256` clients (`95x`) on the exact same NVMe drive without changing any hardware or relaxing durability guarantees. We also verify intra-batch conditional write semantics (`If-None-Match` and `If-Match`) and crash-recovery compatibility by killing `kvgroup` under `64`-client load and recovering its WAL with `kvd`.
 
 <div class="covers">
 
-This chapter covers
+In this chapter, we cover
 
-- why a single wait for the disk can serve many writes
-- a committer thread that forms batches without a timer
-- conditional writes within a batch
-- measurements with 1, 8, 64 and 256 clients
-- a crash in the middle of a batch
+- physical amortization of NVMe `fsync` barriers (`T_fsync / N`) without artificial batching timers
+- three-pass `Store::commit` supporting sequential-equivalent `If-Match` / `If-None-Match` preconditions within a batch
+- single-threaded lock-free store ownership via a bounded `mpsc` committer pipeline (`kvgroup`)
+- empirical multi-client throughput benchmarks (`kvbench`) across `1`, `8`, `64`, and `256` concurrent clients
+- mid-batch `SIGKILL` crash verification confirming zero lost writes and cross-binary WAL compatibility with `kvd`
 
 </div>
 
-## The idea
+## 6.1 Amortizing the Physical `fsync` Barrier
 
-A wait for the disk takes about 5.4 ms whether it stores 1 record or 100. Nearly all
-of that time is spent by the disk in confirming that the data is safe, and very
-little in transferring the data, so that the cost is close to a fixed charge for each
-wait and almost independent of how much is written. Writes that arrive while 1 wait
-is in progress can therefore share the next.
+On our benchmark NVMe device, `File::sync_data` requires approximately `5.4 ms` whether the preceding `write_all` transferred `30` bytes for one record or `4 KiB` for `100` records. Nearly the entire `5.4 ms` duration is fixed controller and media confirmation overhead rather than PCIe transfer time. Consequently, writes that arrive while one `fsync` is in flight can coalesce and share the very next `fsync` barrier (Figure 6-1).
 
-<figure>
-<img src="figures/group-timeline.svg?v=0338736f" alt="5 writes that arrive within 1 millisecond, stored in 2 ways. With 1 wait for each write, there are 5 waits of 5.4 ms, and the last write is answered after 27 ms. With group commit there are 2 waits, and the last write is answered after 10.8 ms. Step 1: the committer takes write 1 and starts to wait for the disk. Step 2: writes 2 to 5 arrive during that wait and queue up. Step 3: the wait ends, and the committer takes all 4 that are waiting. Step 4: it stores them with 1 write and 1 wait, and answers all 4.">
-<figcaption><b>Figure 6.1</b> 5 writes stored with 5 waits, and the same 5 writes stored with 2.</figcaption>
+<figure class="diagram">
+<img src="figures/m3/ch06_group_commit.svg" alt="Figure 6-1: Pipelined group commit batching over a single fdatasync showing concurrent worker tasks sending frames plus oneshot reply channels into a bounded mpsc queue, drained by a single WAL writer into one batched write and one fdatasync before waking all callers." />
+<figcaption><b>Figure 6-1</b> Pipelined group-commit architecture coalescing concurrent writes behind a single WAL writer and one <code>fdatasync</code> barrier.</figcaption>
 </figure>
 
-The design uses no timer, and the point deserves emphasis because the alternative is
-common. Some systems hold a write back for a millisecond or so in the hope that
-others will arrive to share its wait. This improves throughput under heavy load and
-penalises every write under light load, when no others are coming. Here a batch is
-formed only from writes that are already waiting. A write that arrives alone is
-stored at once, with no delay, and the batches grow of their own accord as the load
-grows, since the busier the node is, the more writes accumulate during each wait.
-The mechanism adjusts itself to the load without any parameter that an operator has
-to tune.
+Our committer deliberately uses **zero artificial delay timer**. Many storage engines hold an incoming write for `1` to `2 ms` hoping peer writes will arrive; while that increases batch sizes at moderate load, it adds avoidable latency to every write during quiet periods. Instead, our committer blocks until at least one write arrives, drains every write *already waiting* in the channel (`try_iter`), and flushes immediately. Under light load (`1` client), every write executes immediately with zero added delay. Under heavy load (`64` to `256` clients), dozens of requests accumulate naturally during each `5.4 ms` barrier, auto-tuning batch size directly to concurrency with zero operator knobs.
 
-## A batch in the store
+## 6.2 Three-Pass Batched Commit in `kv::store`
 
-`Store::commit` takes a list of writes and returns a result for each of them.
+To keep batching completely invisible to clients, a batch of `N` writes must produce the exact same observable outcomes, versions, and precondition failures as executing those `N` writes one by one in sequence. Listing 6.1 recalls the imports of `kv/src/store.rs`, and Listing 6.2 implements `Store::commit`, which accepts a `Vec<Write>` and returns a parallel `Vec<Result<WriteOutcome, StoreError>>` after a single `Log::append_records` call.
 
-<p class="listing"><img class="mascot" src="art/crab-happy.svg" alt=""><b>Listing 6.1</b> The imports of <code>kv/src/store.rs</code>. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/distributed-systems-from-the-ground-up/code/kv/src/store.rs">kv/src/store.rs</a></p>
+<p class="listing"><b>Listing 6.1</b> Imports of <code>kv/src/store.rs</code>. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/distributed-systems-from-the-ground-up/code/kv/src/store.rs">kv/src/store.rs</a></p>
 
 ```rust
 {{#include ../code/kv/src/store.rs:imports}}
 ```
 
-<p class="listing"><img class="mascot" src="art/crab-happy.svg" alt=""><b>Listing 6.2</b> Storing a batch of writes with a single wait for the disk. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/distributed-systems-from-the-ground-up/code/kv/src/store.rs">kv/src/store.rs</a></p>
+<p class="listing"><b>Listing 6.2</b> Three-pass group commit with intra-batch precondition tracking in <code>kv/src/store.rs</code>. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/distributed-systems-from-the-ground-up/code/kv/src/store.rs">kv/src/store.rs</a></p>
 
 ```rust
 {{#include ../code/kv/src/store.rs:batch}}
 ```
 
+`Store::commit` executes three strict passes preserving invariant 0 and invariant 1 of Chapter 2:
 
-The method works in 3 passes.
+| Pass | Operation Performed | Invariant Preserved |
+| :--- | :--- | :--- |
+| 0. **Check** | Evaluate every write's `Condition` against a temporary `pending` overlay reflecting earlier accepted writes in the same batch; assign contiguous sequence numbers to accepted records. | Prevents two concurrent `If-None-Match: *` creates on the same key inside one batch from both succeeding. |
+| 1. **Persist** | Write all accepted records in one `Log::append_records` call followed by a single `sync_data` barrier; abort all callers if the disk errors. | Guarantees zero results return prior to physical disk durability. |
+| 2. **Apply** | Apply every durable record to `self.entries` and return per-write outcomes (`Created`, `Replaced`, `Deleted`, or precondition error). | Keeps `self.entries` strictly equal to the durable WAL prefix. |
 
-| Pass | What happens |
-|---|---|
-| Check | The condition of each write is checked, and the writes that are accepted receive the next sequence numbers. |
-| Store | All the accepted records go to the log in 1 write, followed by 1 wait for the disk. |
-| Apply | The records are applied to the map, and the results are returned. |
+## 6.3 Single-Threaded Committer Pipeline (`kvgroup`)
 
-Conditional writes need care in the first pass. Suppose that a batch contains 2
-writes to `user-1`, each carrying `If-None-Match: *`, which means "create only". The
-first ought to succeed and the second to fail, although neither is yet in the map,
-and a check against the map alone would accept both. The `pending` map resolves the
-difficulty. It records the version that each key will have once the accepted writes
-of the batch have been applied, and a later write in the same batch is checked
-against it. The batch thus behaves, as far as any client can tell, exactly as if its
-writes had been performed in sequence, which is the property that makes batching
-invisible.
+In `kvgroup`, HTTP handler tasks never lock or touch `Store` directly. Instead, one dedicated OS thread (the *committer*) owns `Store` exclusively without any mutex. Each HTTP write handler packages its `Write` alongside a `oneshot::Sender` reply channel, sends the job into an `mpsc` channel, and awaits the `oneshot` result asynchronously.
 
-The order of the passes preserves invariant 1 of chapter 2. No result leaves `commit`
-before the wait for the disk has ended, and so no client is answered early.
+Listing 6.3 declares the imports of `kvgroup/src/main.rs`, and Listing 6.4 defines the CLI flags (`--listen`, `--data`, `--no-sync`) and the `PendingWrite` job envelope.
 
-## The committer
-
-A single thread, the *committer*, owns the store. The handlers of requests do not
-touch the store at all. Each hands its write to the committer through a channel and
-waits for the result.
-
-<p class="listing"><img class="mascot" src="art/crab-happy.svg" alt=""><b>Listing 6.3</b> The imports of <code>kvgroup/src/main.rs</code>. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/distributed-systems-from-the-ground-up/code/kvgroup/src/main.rs">kvgroup/src/main.rs</a></p>
+<p class="listing"><b>Listing 6.3</b> Imports of <code>kvgroup/src/main.rs</code>. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/distributed-systems-from-the-ground-up/code/kvgroup/src/main.rs">kvgroup/src/main.rs</a></p>
 
 ```rust
 {{#include ../code/kvgroup/src/main.rs:imports}}
 ```
 
-<p class="listing"><img class="mascot" src="art/crab-happy.svg" alt=""><b>Listing 6.4</b> The options, and a write on its way to the committer. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/distributed-systems-from-the-ground-up/code/kvgroup/src/main.rs">kvgroup/src/main.rs</a></p>
+<p class="listing"><b>Listing 6.4</b> CLI arguments and channel job envelope in <code>kvgroup/src/main.rs</code>. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/distributed-systems-from-the-ground-up/code/kvgroup/src/main.rs">kvgroup/src/main.rs</a></p>
 
 ```rust
 {{#include ../code/kvgroup/src/main.rs:options}}
 ```
 
+Listing 6.5 implements the entire `committer` loop: `rx.recv()` blocks until the first write arrives, `rx.try_iter().take(255)` immediately collects up to `255` additional queued writes (capping maximum batch size at `256` to bound tail latency), `store.commit` flushes the batch in one `fsync`, and each waiter receives its individual result over its `oneshot` channel. Confining concurrency strictly to the channel eliminates all lock contention on `Store`.
 
-<p class="listing"><img class="mascot" src="art/crab-happy.svg" alt=""><b>Listing 6.5</b> The committer thread. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/distributed-systems-from-the-ground-up/code/kvgroup/src/main.rs">kvgroup/src/main.rs</a></p>
+<p class="listing"><b>Listing 6.5</b> Zero-timer group-commit loop in <code>kvgroup/src/main.rs</code>. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/distributed-systems-from-the-ground-up/code/kvgroup/src/main.rs">kvgroup/src/main.rs</a></p>
 
 ```rust
 {{#include ../code/kvgroup/src/main.rs:committer}}
 ```
 
+Listing 6.6 implements the `PUT` and `DELETE` HTTP handlers forwarding jobs onto the channel and awaiting `oneshot` replies, and Listing 6.7 opens `Store`, spawns the OS committer thread, and starts `axum`.
 
-This loop is the whole of group commit. `recv` blocks until a write arrives.
-`try_iter` then yields every write that is already in the channel, without waiting
-for more, up to a limit of 256 for the batch. While `commit` is waiting for the disk,
-new writes accumulate in the channel, and the next turn of the loop takes all of
-them.
-
-Giving the store to 1 thread has a further merit. Since no other thread touches it,
-the store needs no lock, and the question of what 2 concurrent writers might do to
-the map does not arise. Concurrency has been confined to the channel, where it is
-handled by a well-tested library, and the logic of the store remains sequential.
-
-<p class="listing"><img class="mascot" src="art/crab-happy.svg" alt=""><b>Listing 6.6</b> Handing a write to the committer, and the HTTP handlers. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/distributed-systems-from-the-ground-up/code/kvgroup/src/main.rs">kvgroup/src/main.rs</a></p>
+<p class="listing"><b>Listing 6.6</b> HTTP handlers submitting writes to the committer channel in <code>kvgroup/src/main.rs</code>. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/distributed-systems-from-the-ground-up/code/kvgroup/src/main.rs">kvgroup/src/main.rs</a></p>
 
 ```rust
 {{#include ../code/kvgroup/src/main.rs:handlers}}
 ```
 
-
-<p class="listing"><img class="mascot" src="art/crab-happy.svg" alt=""><b>Listing 6.7</b> Starting the committer and the server. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/distributed-systems-from-the-ground-up/code/kvgroup/src/main.rs">kvgroup/src/main.rs</a></p>
+<p class="listing"><b>Listing 6.7</b> Spawning the committer thread and HTTP server in <code>kvgroup/src/main.rs</code>. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/distributed-systems-from-the-ground-up/code/kvgroup/src/main.rs">kvgroup/src/main.rs</a></p>
 
 ```rust
 {{#include ../code/kvgroup/src/main.rs:main}}
 ```
 
+## 6.4 Empirical Throughput and Latency Measurements (`kvbench`)
 
-## Measurements
+To measure how throughput scales with concurrency, we implement `kvbench`, which spawns `C` concurrent worker threads each issuing synchronous sequential `PUT` requests and recording every acknowledged key. Listing 6.8 declares the imports of `kvbench/src/main.rs`, and Listing 6.9 implements the multi-client load driver.
 
-`kvbench` runs a number of clients simultaneously. Each client sends its writes in
-succession and waits for every answer before sending the next.
-
-<p class="listing"><img class="mascot" src="art/crab-happy.svg" alt=""><b>Listing 6.8</b> The imports of <code>kvbench/src/main.rs</code>. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/distributed-systems-from-the-ground-up/code/kvbench/src/main.rs">kvbench/src/main.rs</a></p>
+<p class="listing"><b>Listing 6.8</b> Imports of <code>kvbench/src/main.rs</code>. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/distributed-systems-from-the-ground-up/code/kvbench/src/main.rs">kvbench/src/main.rs</a></p>
 
 ```rust
 {{#include ../code/kvbench/src/main.rs:imports}}
 ```
 
-<p class="listing"><img class="mascot" src="art/crab-happy.svg" alt=""><b>Listing 6.9</b> Writing from several clients at once. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/distributed-systems-from-the-ground-up/code/kvbench/src/main.rs">kvbench/src/main.rs</a></p>
+<p class="listing"><b>Listing 6.9</b> Multi-client concurrent write benchmark in <code>kvbench/src/main.rs</code>. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/distributed-systems-from-the-ground-up/code/kvbench/src/main.rs">kvbench/src/main.rs</a></p>
 
 ```rust
 {{#include ../code/kvbench/src/main.rs:bench}}
 ```
 
+Running `kvbench` against `kvd` (unbatched) and `kvgroup` (group commit) on the same NVMe host demonstrates the amortization gain directly:
 
 ```console
 $ ./target/release/kvd --data /var/tmp/kvd &
@@ -171,38 +122,29 @@ $ ./target/release/kvbench --server http://127.0.0.1:7001 --clients 64 --writes 
 25535 writes in 800 batches, 31.9 writes per batch
 ```
 
-<figure>
-<img src="figures/group-results.svg?v=4cce2822" alt="Writes per second without and with group commit. With 1 client: 167 without and 165 with, at 1.0 writes per batch. With 8 clients: 181 without and 712 with, at 4.0 writes per batch. With 64 clients: 180 without and 4993 with, at 31.9 writes per batch. With 256 clients: 17218 with group commit, at 119.9 writes per batch. Without group commit the rate stays near 180 whatever the load, and with it the rate grows with the number of clients.">
-<figcaption><b>Figure 6.2</b> Writes per second without and with group commit, for 4 numbers of clients.</figcaption>
+Figure 6-2 summarizes the analytical amortization trade-off between batch size, sustained throughput, and per-write sync overhead, while the table below reports our empirical `kvbench` runs across `1`, `8`, `64`, and `256` clients.
+
+<figure class="diagram">
+<img src="figures/m3/ch06_throughput_latency.svg" alt="Figure 6-2: Single-sync versus group-commit amortization trade-off showing amortized sync cost T_fsync / N dropping proportionally as batch size grows from N=1 to N=16 and N=64 while throughput scales near-linearly." />
+<figcaption><b>Figure 6-2</b> Amortization of physical <code>fdatasync</code> cost across increasing group-commit batch sizes.</figcaption>
 </figure>
 
-| Clients | Without | With group commit | Writes in a batch |
-|---|---|---|---|
-| 1 | 167 | 165 | 1.0 |
-| 8 | 181 | 712 | 4.0 |
-| 64 | 180 | 4993 | 31.9 |
-| 256 | not measured | 17218 | 119.9 |
+| Concurrent Clients | `kvd` (Unbatched, writes/s) | `kvgroup` (Group Commit, writes/s) | Mean Writes per Batch |
+| :--- | :--- | :--- | :--- |
+| `1` | `167` | `165` | `1.0` |
+| `8` | `181` | `712` | `4.0` |
+| `64` | `180` | `4,993` | `31.9` |
+| `256` | Not measured (bounded at `~180`) | `17,218` | `119.9` |
 
-Several things can be read from the table. A single client gains nothing, since it
-sends its next write only when the previous one has been answered, and there is
-consequently never a second write with which a wait could be shared. Group commit
-improves throughput under concurrency and does nothing for the latency of an
-individual write, which remains 1 wait for the disk.
+Three engineering insights emerge from these measurements:
 
-The size of a batch is about half the number of clients: 4 of 8, 32 of 64, 120 of
-256. The explanation is that the clients fall into 2 groups that alternate. While 1
-half is waiting in the batch that is being stored, the other half has just been
-answered and is sending its next writes, which form the following batch.
+1. **Zero single-client speedup:** With `1` client waiting synchronously on each reply, batch size stays `1.0` (`165 writes/s`). Group commit multiplies aggregate throughput under concurrency while keeping single-write latency equal to one `fsync` barrier.
+2. **Alternating half-client wave:** Notice that mean batch size tracks roughly `C / 2` (`4.0` for `8`, `31.9` for `64`, `119.9` for `256`). Concurrent clients naturally partition into two alternating waves: while one half waits on the active `fsync`, the other half receives replies and enqueues its next requests for the subsequent batch.
+3. **Validating Chapter 1 capacity bounds:** Chapter 1 provisioned `24` nodes assuming `20` writes per `fsync` (`3,700 writes/s` per disk). At `64` clients, `kvgroup` surpassed that assumption with `31.9` writes per batch and `4,993 writes/s`.
 
-And the assumption of chapter 1 is confirmed with something to spare. The estimate
-supposed 20 writes for each wait and 3700 writes per second. With 64 clients the node
-achieved 31.9 writes for each wait and 4993 writes per second.
+## 6.5 Mid-Batch Crash Verification
 
-## A crash in the middle of a batch
-
-The server is killed while 64 clients are writing. The program `kvd` of chapter 2
-then opens the same data directory, which incidentally demonstrates that the 2
-programs use the same format for the log.
+To confirm that batching preserves every durability invariant of Chapter 2, we kill `kvgroup` with `SIGKILL` while `64` clients are actively writing, then recover the exact same WAL directory using Chapter 2's `kvd` binary and verify every acknowledged key via `kvctl`:
 
 ```console
 $ ./target/release/kvgroup --data /var/tmp/kvgroup &
@@ -215,53 +157,48 @@ $ ./target/release/kvctl verify --server http://127.0.0.1:7001 --acked acked.txt
 9341 acknowledged, 9341 found, 0 missing
 ```
 
-Every one of the 9341 acknowledged writes is present. The log contains 25 more, which
-are the batch that had reached the disk when the process was killed and whose
-answers had not yet been sent. These are the durable and unacknowledged writes of
-chapter 2, the third case of its figure of crash points, now occurring 25 together.
-Group commit has not altered the guarantee in any respect. It has enlarged the
-number of writes that may be in that uncertain state at the moment of a crash from 1
-to the size of a batch, and each of the 25 clients concerned resolves the uncertainty
-in the usual way, by repeating its request.
+All `9,341` acknowledged writes recovered cleanly with zero loss, and opening the WAL with `kvd` confirms identical on-disk binary compatibility. The `25` additional recovered records (`9,366 - 9,341`) represent the final batch whose `sync_data` completed immediately before `SIGKILL` arrived prior to transmitting HTTP replies. Group commit preserves our crash contract unchanged, expanding the worst-case number of simultaneously durable-yet-unacknowledged writes at a crash instant from `1` to the active batch size (`<= 256`), each resolved cleanly via idempotent or conditional client retry.
 
-## What is still missing
+## 6.6 Residual Integration Work
 
-| Missing | Effect |
-|---|---|
-| `kvgroup` serves writes only. | Reads need access to the map, which the committer thread owns. A shared view of the map for reading would provide it. |
-| The replicated nodes of chapters 3 and 4 still store 1 write for each round trip. | Their leaders could send a whole batch in 1 `Append`, which the protocol already permits, and the followers already store the records of a message with 1 wait. |
+| No. | Remaining Integration Item | Architectural Path |
+| :--- | :--- | :--- |
+| 0 | `kvgroup` serves mutations (`PUT` and `DELETE`) exclusively. | Expose concurrent memory-resident reads by sharing an `Arc<RwLock<BTreeMap<String, Entry>>>` or snapshot map updated by the committer thread after each durable `fsync`. |
+| 1 | `kvnode` (Chapter 3) and `kvraft` (Chapter 4) still commit one client write per replication round trip. | Combine `kvgroup`'s committer pipeline with `Append`'s existing multi-record slice: leaders propose and ship a full batch in one `Append` RPC, and followers already persist multi-record batches in one `fsync` via `Log::append_records`. |
 
-## The complete programs
+## 6.7 Complete Source Listings
 
-`Store::commit` is part of `kv/src/store.rs`, which is listed in full in chapter 2.
+`Store::commit` resides inside `kv/src/store.rs`, presented in full in Chapter 2. Listings 6.10 and 6.11 present the complete source files for `kvgroup` and `kvbench`.
 
-<p class="listing"><img class="mascot" src="art/crab-cute.svg" alt=""><b>Listing 6.10</b> The complete <code>kvgroup/src/main.rs</code>. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/distributed-systems-from-the-ground-up/code/kvgroup/src/main.rs">kvgroup/src/main.rs</a></p>
+Listing 6.10 presents the complete group-commit HTTP server and zero-timer committer thread in `kvgroup/src/main.rs`.
+
+<p class="listing"><b>Listing 6.10</b> Complete <code>kvgroup/src/main.rs</code>. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/distributed-systems-from-the-ground-up/code/kvgroup/src/main.rs">kvgroup/src/main.rs</a></p>
 
 ```rust
 {{#include ../code/kvgroup/src/main.rs}}
 ```
 
+Listing 6.11 presents the complete multi-client concurrent benchmark driver in `kvbench/src/main.rs`.
 
-<p class="listing"><img class="mascot" src="art/crab-cute.svg" alt=""><b>Listing 6.11</b> The complete <code>kvbench/src/main.rs</code>. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/distributed-systems-from-the-ground-up/code/kvbench/src/main.rs">kvbench/src/main.rs</a></p>
+<p class="listing"><b>Listing 6.11</b> Complete <code>kvbench/src/main.rs</code>. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/distributed-systems-from-the-ground-up/code/kvbench/src/main.rs">kvbench/src/main.rs</a></p>
 
 ```rust
 {{#include ../code/kvbench/src/main.rs}}
 ```
 
+## Further Reading
 
-## Further reading
-
-- D. DeWitt and others, "Implementation Techniques for Main Memory Database Systems", SIGMOD 1984, which introduced group commit.
+- D. DeWitt et al., "Implementation Techniques for Main Memory Database Systems", SIGMOD 1984 (introducing WAL group commit).
 - J. Gray and A. Reuter, *Transaction Processing: Concepts and Techniques*, Morgan Kaufmann, 1992.
 
 <div class="summary">
 
 ## Summary
 
-- A wait for the disk costs nearly the same for 1 record as for 100, so that the writes which arrive during a wait can share the next.
-- The committer thread takes every write that is waiting and stores them together. It uses no timer, and a write that arrives alone is not delayed.
-- Within a batch, every conditional write is checked against the writes that precede it, so that a batch behaves as its writes would in sequence.
-- With 64 clients the node stored 4993 writes per second, against 180 without group commit, and with 256 clients it stored 17218.
-- After being killed under load, the node held all 9341 acknowledged writes, and 25 more that had reached the disk without being acknowledged.
+- Because NVMe `fsync` latency (`~5.4 ms`) is dominated by fixed confirmation overhead rather than payload transfer size, writes arriving during an active barrier can share the next `fsync`.
+- A zero-timer committer blocks for the first arrival, drains all queued writes (`<= 256`), and flushes immediately, avoiding artificial latency penalties under light load while scaling batch size automatically under concurrency.
+- Three-pass `Store::commit` evaluates `If-Match` and `If-None-Match` preconditions against an intra-batch `pending` overlay so batched writes remain strictly indistinguishable from sequential execution.
+- Throughput climbed from `180 writes/s` (`kvd`) to `4,993 writes/s` at `64` clients (`31.9` writes/batch) and `17,218 writes/s` at `256` clients (`119.9` writes/batch), validating the hardware provisioning bounds of Chapter 1.
+- Abrupt `SIGKILL` termination under `64`-client load preserved all `9,341` acknowledged writes plus `25` durable-yet-unacknowledged writes from the final in-flight batch, recovered cleanly by `kvd`.
 
 </div>

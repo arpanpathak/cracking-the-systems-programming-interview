@@ -1,1106 +1,391 @@
-<img class="plate" src="art/ch07.svg?v=9f64176b" alt="Toll, a gnu, stands beside a sign that reads: 5 per second, burst of 10.">
+<img class="plate" src="art/ch07-plate.svg" alt="Chapter 7 plate: Toll the Gnu and Ferris the Rust Crab beside a glassmorphic GCRA rate-limiter telemetry console showing 5 req/s sustained, burst 10, green 200 OK tokens, and red 429 Retry-After rejections.">
 
-# Rate Limiter: System Design
+# 7. Rate Limiter: System Design
 
-A service that accepts requests from the outside world has no say in how many of them
-arrive. Its capacity is fixed by the machines it runs on, while the demand placed on it
-is decided by other people's programs, and whenever demand exceeds capacity for more
-than a moment the service fails in a way that does not distinguish between the guilty
-and the innocent: the requests of a well-behaved client wait in the same queue as the
-requests of the client that caused the overload, and they time out together. A *rate
-limiter* gives the service back some of the control it lacks. It attaches an allowance
-to each caller, counts what each caller sends, and refuses whatever exceeds the
-allowance before the service has spent any work on it, so that a problem which would
-have been shared by everybody becomes a refusal addressed to the caller responsible.
+A distributed rate limiter enforces explicit per-caller traffic budgets at the ingress boundary of an API platform. Without per-identity admission control, the availability of every tenant couples directly to the worst-behaved caller on the network: a single client running an unthrottled retry loop fills shared request queues, inflates latency for all neighboring tenants, and triggers cascading client timeouts that amplify the overload. By rejecting excess requests at the edge before application workers or databases allocate resources, a rate limiter converts a shared outage into an isolated refusal addressed exclusively to the offending caller.
 
-Stated like this, the idea seems to leave little to design, and yet 2 parts of it
-turn out to be subtle. The first is the meaning of the allowance itself, because a
-phrase such as "5 requests per second" admits several readings that differ sharply in
-what they let through, and each reading leads to a different algorithm. The second is
-the counting, which is trivial on 1 machine and becomes a small distributed systems
-problem as soon as the limiter runs on several machines that each see only a part of a
-caller's traffic. This chapter takes the 2 in that order. It examines 5 algorithms by
-following the same 11 requests through each of them, and then builds the system around
-the one we choose.
+Rate limiting operates alongside, rather than in place of, backend load shedding. Load shedding drops aggregate traffic reactively when a service approaches saturation regardless of caller identity, whereas a rate limiter enforces declared per-caller fairness, abuse, and cost budgets proactively even when backend capacity is idle.
 
 <div class="covers">
 
-This chapter covers
+In this chapter, we cover
 
-- why a service limits its callers, and what happens to a service that does not
-- the rate and the burst, which every limit contains whether or not it says so
-- 5 algorithms followed step by step on the same traffic: fixed window counter, sliding window log, sliding window counter, token bucket and leaky bucket
-- how the algorithms compare and how to choose between them
-- where a limiter runs, and whose requests it counts together
-- counting correctly when the limiter runs on many machines
-- what a refused caller should be told
-- what the limiter does when its own parts fail
+- actors, use cases, verifiable functional requirements, sub-millisecond latency SLOs, and memory and CPU capacity bounds
+- HTTP caller contracts (`429 Too Many Requests`, IETF `RateLimit-*` headers, jittered `Retry-After`), internal Envoy-style gRPC checks, and policy control APIs
+- separation of policy compilation (control plane) from sub-millisecond evaluation (data plane), including shadow-mode rollout
+- formal and empirical comparison of rate-limiting algorithms via `code/ratelimit` and interactive traces, culminating in the O(1) Generic Cell Rate Algorithm (GCRA) and its atomic Redis Lua implementation
+- distributed quota synchronization across single-region Redis Clusters, L1 local quota leasing for hot keys, and multi-region asynchronous convergence
+- defense-in-depth failure policies (fail-open versus fail-closed tiers), composite key selection, and backend adaptive load shedding (AIMD and CoDel)
+- operational SLIs, production architectures (Stripe, Cloudflare, Envoy, Kong), and verification
 
 </div>
 
-## Why a service limits its callers
+## 7.1 Requirements and Capacity Envelope
 
-Consider an API server that can answer 1000 requests per second and serves 200 clients,
-each of which normally sends a few requests per second. One day a client is released
-with a defect in its error handling, so that a failed call is retried immediately and
-without pause, and this single client begins to send 5000 requests per second. The
-server has no means of setting these requests aside, since it cannot know who sent a
-request until it has accepted the connection and read the request, and by then the
-cost has been paid. Its queue lengthens and the response time of every client grows
-with it. Some of the other clients, finding their calls slow, give up and try again,
-which adds to the queue the very requests that were already in it. Within a minute or
-so the 199 clients that did nothing wrong are receiving errors on account of the 1
-that did, and the operators of the service are looking at a failure whose cause lies
-in a program they do not own and cannot fix.
+### Actors and Use Cases
 
-With a rate limiter in front of the server, the same defect has a very different
-outcome. The limiter recognises the caller, finds that it has exhausted its allowance,
-and answers with a short refusal that costs a small fraction of what a real response
-would have cost. The defective client receives a great many refusals, which is an
-accurate reflection of its behaviour, and the remaining clients are served as usual
-and never learn that anything was wrong.
-
-Protection against overload is the best known reason for limiting callers, and there
-are 2 others that a design usually has to serve at the same time. One is fairness: a
-large customer running a nightly export may stay well within what the service can
-bear and still consume so much of it that smaller customers are crowded out, and an
-allowance per customer is the simplest way of dividing capacity among them. The other
-is the control of cost and abuse, where the concern is what each individual request
-makes possible. If every call costs money to answer, an unlimited caller is an
-unlimited bill, and if every call is a guess at a password, a login form that permits
-5 attempts per minute for an account turns guessing into a hopeless undertaking,
-whereas a form without a limit will patiently evaluate millions of guesses a day. In
-this last case the limit is a security control as much as a protection, a distinction
-that matters later when we decide how the limiter should behave when it breaks.
-
-It is worth separating the rate limiter from a neighbouring mechanism with which it is
-often confused. *Load shedding* is what a service does when it is close to overload and
-drops a share of its incoming requests, without regard to who sent them, in order to
-keep answering the rest. A rate limiter acts earlier and on different grounds, since it
-refuses a particular caller for exceeding that caller's own allowance, and it does so
-even when the service has capacity to spare. The 2 complement each other, and large
-systems generally have both.
-
-## What "5 requests per second" can mean
-
-The phrase "each client may send 5 requests per second" has the appearance of a
-complete specification, and the easiest way to see that it is incomplete is to imagine
-3 clients and to ask of each whether it has kept to the limit.
-
-| Client | What it sends |
-|---|---|
-| A | 1 request every 200 ms, for an hour |
-| B | nothing for 10 seconds, and then 5 requests within the same millisecond |
-| C | 5 requests at 0.9 s and 5 more at 1.1 s |
-
-Nobody would dispute that client A is within the limit. Client B has also sent 5
-requests in a second, and in fact far fewer than 5 per second on average, although the
-server received all 5 at the same instant and had to work on them concurrently. Client
-C sent 5 requests in the first second of the clock and 5 in the next, so that each
-calendar second contains exactly the permitted number, and nevertheless the server
-received 10 requests within 200 ms.
-
-Clients B and C expose 2 questions on which the phrase is silent. The first concerns
-the *burst*, by which we mean the number of requests that may arrive together. A limit
-of 5 per second does not say whether the 5 may come in the same instant or must be
-spread across the second, and there is no universally right answer, because services
-differ in what they can tolerate. A web API usually ought to permit short bursts,
-since that is how honest clients behave: a page is opened and issues 6 calls at once,
-and then nothing happens while a person reads. A service that feeds a device or a
-downstream system able to handle only one thing after another may need its requests
-evenly spaced, and would be harmed by exactly the burst that the web API welcomes.
-
-The second question concerns the second itself. "Per second" may refer to the seconds
-of the clock, each beginning when the previous one ends, or it may refer to every span
-of 1000 ms regardless of where the span begins. Client C satisfies the first reading
-and violates the second, and the difference between the 2 readings is a factor of 2
-in the load the server may have to carry.
-
-Each of the 5 algorithms that follow amounts to a particular pair of answers to these
-2 questions. They are best understood as different definitions of the limit that
-happen to be cheap to compute, and the reason no one of them has displaced the others
-is that the right definition depends on what is being protected.
-
-A limit also depends on a third thing, which the phrase names without defining, namely
-the client. The limiter must count requests under some identity, and the identity
-under which requests are added together is called the *key* of the limit. It may be an
-API key, a user id, an IP address, or some combination of these. The choice of key
-deserves a section of its own after the algorithms, because a poorly chosen key will
-undo the work of a well chosen algorithm.
-
-## The traffic used in this chapter
-
-So that the algorithms can be compared on equal terms, every one of them is given the
-same requests from a single client under the same limit of 5 requests per second. The
-client sends 11 requests within 650 ms, at the following times in milliseconds.
-
-| Request | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10 | 11 |
-|---|---|---|---|---|---|---|---|---|---|---|---|
-| Time | 600 | 700 | 800 | 900 | 950 | 1000 | 1050 | 1100 | 1150 | 1200 | 1250 |
-
-By any reading of the limit this client is sending too much, since it issues 11
-requests in well under a second where 5 are permitted. The times have been chosen so
-that the requests lie across the 1 second mark of the clock, with 5 before it and 6
-after it, because that is the arrangement on which the algorithms disagree most. One
-would expect a sound limiter to forward about 5 of the 11 and perhaps a few more as
-time goes by. The 5 algorithms forward 10, 5, 6, 8 and 9 of them respectively, and
-the reasons for these differences are the substance of the next 5 sections.
-
-Each algorithm is accompanied by a picture that proceeds in steps, one step for each
-arriving request. The Next button advances to the following request and shows what the
-limiter has stored and what it decides. In these pictures a green dot marks a request
-that was forwarded to the API and a red cross marks a request that was refused.
-
-## Algorithm 1: the fixed window counter
-
-The most direct way of enforcing 5 requests per second is to divide time into windows
-of 1 second, aligned with the clock, and to count the requests that arrive in the
-current window. The limiter then needs to remember only a single number for each
-client. Every forwarded request increases the number by 1, a request that finds the
-number already at 5 is refused, and when the clock passes into the next window the
-number begins again at 0.
-
-<figure class="steps" data-prefix="figures/steps-limiter-fixed" data-count="13" data-version="4f0b5cf9">
-<img src="figures/steps-limiter-fixed-01.svg?v=4f0b5cf9" alt="Fixed window counter, step 1 of 13. The limiter keeps 1 number for the client: how many requests it has forwarded in the current window. Windows are the seconds of the clock, and each starts with a count of 0.">
-<figcaption><b>Figure 7.1</b> The fixed window counter on the 11 requests. Use Next and Back to move through the 13 steps.</figcaption>
-</figure>
-
-At the end of the sequence 10 of the 11 requests have been forwarded. Requests 1 to 5
-arrived between 600 and 950 ms and were counted in window 0, which they filled. At
-1000 ms the clock moved into window 1, where the count stood at 0 again, so that
-requests 6 to 10 were forwarded as readily as the first 5 had been, and only request
-11 met a full count.
-
-The server therefore received 10 requests within 600 ms from a client whose limit is 5
-per second, and it is important to see that the algorithm did precisely what it was
-defined to do. Each window contains exactly 5 forwarded requests. The rule is
-expressed in terms of the seconds of the clock, the client's burst happened to fall
-across the boundary between 2 of them, and the rule has nothing to say about spans
-of time that do not coincide with its windows.
+We organize the rate limiter around three distinct actors (Figure 7-1).
 
 <figure>
-<img src="figures/limiter-boundary.svg?v=5c03e648" alt="A time axis with 2 windows of 1 second. 5 requests arrive in the last 100 ms of window 0 and 5 in the first 100 ms of window 1. Each window counts 5 of 5, so all 10 requests are forwarded within 180 ms.">
-<figcaption><b>Figure 7.2</b> 2 full windows meet at the boundary, and all 10 requests are forwarded.</figcaption>
+<img src="figures/m3/ch07_use_cases.svg" alt="Actors and Use Cases of the Distributed Rate Limiter: API Client invokes protected endpoints; Platform Operator authors quota policies and configures failure modes; Security and SRE Team runs shadow-mode evaluation and monitors throttles and hot keys.">
+<figcaption><b>Figure 7-1</b> Actors, system boundary, and core use cases of the distributed rate limiter.</figcaption>
 </figure>
 
-This behaviour is the defining weakness of the fixed window, and its extent can be
-stated exactly: a client can send up to twice the limit within an arbitrarily short
-span of time, by sending one full allowance at the end of a window and another at the
-start of the next. No ill intent is needed for this to occur. A great many programs do
-their work on a schedule, waking at the start of each minute or each hour, and a limit
-that is reset on the minute or the hour will meet such a program exactly at its
-boundary, day after day.
+| Actor | Operation | Concrete Scenario |
+| :--- | :--- | :--- |
+| **API Client** | Invoke protected endpoint (`GET /v1/orders`) | Request passes transparently with quota-status headers when within budget, or terminates at the gateway with `429` and `Retry-After` when throttled |
+| **Platform Operator** | Author and update per-tenant, per-route rules (`PUT /v1/policies/...`) | Increase an enterprise customer's sustained rate and burst allowance without restarting edge gateways |
+| **Security and Reliability Team** | Evaluate candidate rules in shadow mode and monitor throttle telemetry | Verify stricter authentication or scraping quotas against live production traffic prior to enforcement |
 
-The synchronised reset has a second consequence that is less often noticed. Because
-the counts of all clients return to 0 at the same instant, all the clients that had
-been refused and were retrying succeed together at the start of the next window, and
-the server experiences a surge of traffic at every boundary that the limiter itself
-has organised.
+### Functional Requirements
 
-These properties make the fixed window a poor choice for protecting a server against
-overload, since the boundary admits twice the load that the limit appears to promise.
-They matter much less when the window is long and the purpose is to meter usage, and
-this is where the algorithm is properly at home. Daily and monthly quotas are almost
-always fixed windows, for the good reason that customers readily understand a quota
-that "resets at midnight", and a doubling of the daily quota around midnight is spread
-over enough time to be harmless. The cost is as low as a limiter's can be: a count and
-the number of the window to which it belongs.
+| No. | Functional Requirement |
+| :--- | :--- |
+| 0 | The system enforces configurable sustained rates (`R` requests/s) and burst allowances (`B` requests) keyed by tenant or API key, user identifier, IP address, HTTP route, or weighted request cost (such as GraphQL query complexity or token count). |
+| 1 | A request within its applicable quota passes unchanged to upstream services, carrying standardized quota-status headers on the response. |
+| 2 | A request exceeding its quota is rejected at the edge with `429 Too Many Requests`, a jittered `Retry-After` interval, and an RFC 9457 error payload. |
+| 3 | Policy additions, updates, and emergency overrides propagate from the control plane to all edge gateways within `5 seconds` without process restarts. |
+| 4 | Every rule supports a non-blocking shadow mode (dry run) that evaluates live traffic and emits hypothetical throttle metrics without rejecting requests. |
+| 5 | Every route declares an explicit counter-store failure policy: either **fail-open** (availability-prioritized) or **fail-closed** (security- or cost-prioritized). |
 
-## Algorithm 2: the sliding window log
+### Non-Functional Requirements and SLOs
 
-The fixed window goes wrong because its windows are fastened to the clock, and the
-obvious remedy is to fasten the window to the request: when a request arrives,
-the limiter should look back exactly 1 second from that moment and count what it
-forwarded during that span, wherever the span happens to begin.
+| No. | Property | Target Specification | Architectural Consequence |
+| :--- | :--- | :--- | :--- |
+| 0 | **Added Latency** | `p50 <= 0.3 ms`, `p99 <= 1.0 ms`, `p999 <= 3.0 ms` (intra-region) | Eliminates disk-backed consensus and cross-region synchronous calls on the request path; mandates in-memory stores and L1 local quota leasing |
+| 1 | **Availability** | `99.99%` effective data-plane availability (`<= 4.3` minutes/month) | Active-active stateless gateways across three AZs; gateway circuit breakers engage local fallback buckets within `5 ms` on counter-store faults |
+| 2 | **Consistency** | Bounded eventual consistency (exact within a single region under synchronous Lua) | Cross-region strong consistency adds `60-150 ms` WAN RTT; accepting bounded overshoot (`<= 2-5%`) under concurrent bursts keeps protection cheaper than the API it guards |
+| 3 | **Scale** | `10,000,000` registered clients (`1,000,000` active concurrently), `50,000` sustained RPS (`250,000` peak burst RPS) | Requires `O(1)` per-key state (`8-64 bytes/key`) and horizontally sharded counter clusters |
+| 4 | **Hot-Key Resilience** | Absorb `100,000+` RPS targeting a single key without saturating a counter shard | Requires L1 gateway token leasing and short-TTL local negative caching after `429` verdicts |
 
-To do this the limiter has to know when each recent request arrived, and so it keeps a
-*log*, a list of the arrival times of the requests it has forwarded. On each new
-request it first discards the times that lie more than 1 second in the past. If fewer
-than 5 times then remain, the request is forwarded and its own arrival time is
-appended to the log, and otherwise the request is refused.
+Choosing bounded eventual consistency in non-functional requirement 2 reflects a deliberate risk asymmetry. Unlike a financial ledger, where an off-by-one anomaly loses real money, admitting `103` requests under a nominal `100` req/s ceiling during a brief network skew still shields upstream services from a `5,000` req/s flood while preserving sub-millisecond latency.
 
-<figure class="steps" data-prefix="figures/steps-limiter-log" data-count="13" data-version="b39732b1">
-<img src="figures/steps-limiter-log-01.svg?v=b39732b1" alt="Sliding window log, step 1 of 13. The limiter keeps a log: the arrival time of every request it forwarded during the last second. The log has room for 5 times, because the limit is 5.">
-<figcaption><b>Figure 7.3</b> The sliding window log on the same 11 requests. Use Next and Back to move through the 13 steps.</figcaption>
-</figure>
+### Capacity and Resource Envelope
 
-This time only 5 requests are forwarded. From 1000 ms onwards each arriving request
-looks back over the preceding second and finds the 5 entries from 600 to 950 ms still
-within it, and the fact that the clock has passed the 1 second mark is of no
-significance to the rule. The oldest entry, 600, leaves the log at 1600 ms, and until
-then nothing more can pass.
+Sizing memory and CPU upfront eliminates algorithms whose per-key storage grows linearly with traffic volume:
 
-The sliding window log is exact in a sense that none of the other algorithms can
-match. Whichever span of 1 second one chooses to examine, beginning at any instant
-whatever, it contains at most 5 forwarded requests, and this is surely what most
-people have in mind when they say "5 per second".
+| Resource Dimension | Derivation | Provisioned Bound |
+| :--- | :--- | :--- |
+| **Active Working Set** | `1,000,000` concurrently active `{tenant:route}` keys with TTL eviction | `10^6` live keys |
+| **GCRA Counter Memory** | `10^6 keys * (40 B key + 8 B TAT int64 + ~40 B Redis dict overhead)` | `~88 MB` total (`8 B` state payload/key) |
+| **Token Bucket Memory** | `10^6 keys * (40 B key + 16 B tokens/ts + ~64 B hash overhead)` | `~120 MB` total |
+| **Sliding Window Log (Rejected)** | `10^6 keys * 10,000 timestamps/hr * 8 B` | `~80 GB` (unviable memory footprint) |
+| **Rule Snapshot Memory** | `100,000` compiled rules `* 256 B` | `~25 MB` (fits entirely in every gateway's RAM) |
+| **Counter Cluster CPU** | `250,000` peak RPS; one Redis core sustains `~60,000-80,000` Lua `EVALSHA` ops/s | `6` Redis Cluster primaries plus `6` cross-AZ replicas (`~360k-480k` ops/s capacity) |
+| **Internal Network Fabric** | `250,000` peak ops/s `* ~250 B` request and reply | `~62.5 MB/s` (`0.5 Gbps`) |
 
-Exactness is paid for in memory. Where the fixed window stores 1 number for a client,
-the log stores a timestamp for every forwarded request up to the limit. For a limit of
-5 per second that is 5 timestamps and of no concern. For a limit of 10000 requests per
-hour it is as many as 10000 timestamps for a single client, about 80 KB, and for a
-million active clients about 80 GB. The cost thus rises in proportion to the size of
-the limit, with the awkward result that the most generous limits are the most
-expensive to enforce.
+Because `88 MB` of active state fits comfortably in RAM, the counter tier is **CPU- and hot-key-bound** rather than memory-bound. Sharding across six primary nodes supplies CPU headroom and limits blast radius, while L1 local quota leasing absorbs single-key floods that exceed one Redis core.
 
-The description above contains a decision that is easily overlooked, in the words "the
-requests it has forwarded". One has to decide whether a refused request should also be
-entered in the log. In the version shown it is left out, so that a client which keeps
-on sending is served again as soon as its old entries expire. Some implementations
-record refused requests as well, and under that rule a client that never stops sending
-is never served again, since its own refused requests keep the log permanently full.
-That is a much harsher policy, and occasionally it is the one intended, for instance
-as a defence against password guessing. What must be avoided is arriving at it
-unintentionally, which is what happens in an implementation that appends every request
-to the log first and checks the count afterwards.
+## 7.2 API, Wire Protocol, and Data Contracts
 
-The log is therefore the natural choice for limits that are small and must be strict,
-such as 5 login attempts per minute or 3 password resets per hour, where its memory
-cost is negligible and its exactness is valuable. It is a poor choice for large limits
-applied to a large number of clients.
+A rate limiting platform exposes an inline HTTP response contract to external API consumers, a binary gRPC evaluation contract between gateways and limiter services, and an administrative REST contract for policy management.
 
-## Algorithm 3: the sliding window counter
+### External Caller Contract
 
-We now have one algorithm that is cheap and wrong at the boundary and another that is
-exact and expensive, and it is natural to look for something between them. The sliding
-window counter keeps the 2 counts that a fixed window limiter would have kept for
-2 consecutive windows, and from them it estimates what the log would have reported.
+External callers never invoke the rate limiter directly; they observe its decisions through response status codes and standardized draft-IETF `RateLimit` headers. Before examining the transcripts below, note the contract of each header:
 
-The limiter stores the count of the current window and the count of the window before
-it. When a request arrives, the second that precedes it overlaps both windows: it
-includes the whole of the current window up to now, together with the final portion of
-the previous window. If the current window began 250 ms ago, the preceding second
-extends 750 ms back into the previous window and so covers 75% of it.
+- **`RateLimit-Limit`:** The maximum request allowance per window for the matched rule.
+- **`RateLimit-Remaining`:** The estimated number of remaining request slots available immediately before throttling engages, allowing well-behaved SDKs to self-pace smoothly.
+- **`RateLimit-Reset`:** The number of seconds until the caller's burst budget fully replenishes.
+- **`Retry-After` (on `429`):** The minimum wait duration in seconds before retrying. When thousands of callers exhaust a shared quota simultaneously, returning identical integer wait durations triggers a **synchronized retry storm** at the next second boundary. Gateways therefore inject small random jitter (`+0` to `250 ms` on sub-second resets or randomized backoff spreads) and client SDKs apply full-jitter exponential backoff.
 
-The limiter cannot know how the requests of the previous window were distributed
-within that window, having kept only their number, and so it makes the simplest
-assumption available, which is that they were spread evenly. On that assumption 75% of
-the window contains 75% of its requests, and the number of requests in the preceding
-second is estimated as
-
-estimate = previous count × share of the previous window still covered + current count
-
-<figure>
-<img src="figures/limiter-overlap.svg?v=4788c1cb" alt="A time axis with a previous window that counted 5 requests and a current window that has counted 0. At 1250 ms the last second covers 75% of the previous window and 25% of the current window. The estimate is 5 times 0.75 plus 0, which is 3.75, although all 5 requests lie inside the last second.">
-<figcaption><b>Figure 7.4</b> Seen from 1250 ms, the preceding second covers 75% of the previous window.</figcaption>
-</figure>
-
-A request is forwarded when the estimate, with the request itself included, does not
-exceed the limit.
-
-<figure class="steps" data-prefix="figures/steps-limiter-counter" data-count="13" data-version="6ead65b4">
-<img src="figures/steps-limiter-counter-01.svg?v=6ead65b4" alt="Sliding window counter, step 1 of 13. The limiter keeps 2 counts: the window before, and the current window. From them it estimates how many requests the last second contained.">
-<figcaption><b>Figure 7.5</b> The sliding window counter on the same 11 requests. Use Next and Back to move through the 13 steps.</figcaption>
-</figure>
-
-Requests 6 to 10 are refused, as they were by the log. Immediately after the boundary
-the preceding second still covers nearly all of the previous window, so that nearly
-all of its 5 requests are counted, and the burst that the fixed window admitted across
-the boundary does not get through.
-
-Request 11, at 1250 ms, is forwarded, and it is in this decision that the estimate
-shows what it is. The limiter calculates 5 × 0.75 + 0 = 3.75 and concludes that there
-is room for another request. In reality all 5 of the earlier requests arrived between
-600 and 950 ms and therefore lie entirely within the preceding second, so that the
-true count is 5, and the log, which knew this, refused the same request. The estimate
-came out too low because the requests were concentrated at the end of their window,
-while the formula took them to be evenly spread.
-
-The error can equally fall on the other side. When the requests of the previous window
-were concentrated at its beginning, the formula continues to count some of them after
-they have become more than 1 second old, and the limiter then refuses a request that
-the log would have forwarded. For traffic that is reasonably smooth the error is small
-in either direction, typically a few percent of the limit, and the worst case is the
-kind of burst at the very end of a window that we constructed deliberately. Even in
-the worst case the client gains a fraction of one allowance, where the fixed window
-would have given it a whole additional allowance.
-
-In exchange for this modest inaccuracy the algorithm needs 2 counts per client
-whatever the size of the limit. For a limit of 10000 per hour that is 2 numbers where
-the log requires up to 10000 timestamps, and this trade explains why the sliding
-window counter is so often chosen for public APIs with large limits and many clients.
-It should not be used where a small limit has to be enforced exactly.
-
-## Algorithm 4: the token bucket
-
-The 3 algorithms considered so far all count requests within a window, and they treat
-the burst only by implication. The remaining 2 start from a different picture, in which
-the burst is represented explicitly.
-
-Imagine a bucket that holds tokens, each token being a permission to send 1 request.
-Tokens are added to the bucket at a steady rate, which in our case is 1 every 200 ms
-or 5 per second. The bucket has a capacity, here 5 tokens, and a token that arrives
-when the bucket is already full is discarded. A request is forwarded if it can remove
-1 token from the bucket, and it is refused if the bucket is empty.
-
-<figure>
-<img src="figures/limiter-token-bucket.svg?v=3250482a" alt="A bucket that holds up to 5 tokens. A refill adds 1 token every 200 ms, and a token that arrives at a full bucket is thrown away. Each request takes 1 token from the bucket, and a request that finds no token is refused.">
-<figcaption><b>Figure 7.6</b> A token bucket is described by the rate at which tokens arrive and the number of tokens the bucket can hold.</figcaption>
-</figure>
-
-The 2 numbers that describe a token bucket correspond directly to the 2 questions
-that a limit has to answer. The rate determines how many requests per second a client
-can go on sending indefinitely, since over a long period it cannot spend tokens faster
-than they arrive. The capacity determines how many requests a client can send in the
-same instant after a period of quiet, since a client that has been silent finds the
-bucket full and is free to empty it at once. After such a burst the bucket is empty
-and the client is held to the rate until it pauses long enough for the bucket to fill
-again.
-
-That the rate and the capacity can be chosen independently is the particular strength
-of this algorithm. An API whose clients typically open a page with 20 calls and then
-fall silent can be given a rate of 5 per second and a capacity of 20, which serves
-those clients well and still bounds what they can sustain. A window counter has a
-single number at its disposal and cannot express such a limit.
-
-<figure class="steps" data-prefix="figures/steps-limiter-token" data-count="13" data-version="4309ceba">
-<img src="figures/steps-limiter-token-01.svg?v=4309ceba" alt="Token bucket, step 1 of 13. The limiter keeps a bucket of tokens for the client. The client has been quiet, so the bucket is full: 5 tokens. Every request must take 1 token, and 1 new token arrives every 200 ms.">
-<figcaption><b>Figure 7.7</b> The token bucket on the same 11 requests. Use Next and Back to move through the 13 steps.</figcaption>
-</figure>
-
-Here 8 requests are forwarded. The first 5 consume the contents of the full bucket.
-While they are arriving, and in the 300 ms that follow, 650 ms elapse in all, during
-which 3 further tokens are added, and requests 6, 7 and 10 each find one of them.
-
-This result repays some attention, because it regularly surprises people who have
-configured a token bucket and then measured it. The limit is described as "5 per
-second", and the limiter forwarded 8 requests in 600 ms. The explanation is that a
-token bucket with rate r and capacity b forwards at most b + r × t requests in any
-span of t seconds, namely the contents of the bucket together with whatever arrives
-during the span. Over 1 second, with the numbers used here, this comes to 5 + 5 = 10.
-Whoever sets the capacity equal to the rate and expects a strict limit of 5 in every
-second will therefore observe up to twice that number in the second following a quiet
-period. If the server truly cannot bear more than 5 requests in any second, then the
-capacity must be made smaller, or the rate lower, or the algorithm of the next section
-is the one to use.
-
-### How the bucket is stored
-
-The picture suggests a timer that drops a token into every bucket every 200 ms. For a
-million clients that would mean 5 million updates per second, almost all of them
-applied to the buckets of clients that are sending nothing at all, and no practical
-limiter works in this way.
-
-The timer can be dispensed with entirely. The limiter stores 2 numbers for each
-client: the number of tokens in the bucket, and the time at which that number was last
-brought up to date. When a request arrives, the limiter works out how much time has
-passed since that moment, adds the tokens that would have arrived in the interval, and
-caps the result at the capacity. It then removes 1 token if one is available and
-stores the new number together with the present time. The steps of the picture show
-this arithmetic in captions such as "50 ms have passed, which adds 0.25 tokens".
-
-The same captions show why the number of tokens has to be a fraction. A request that
-arrives 50 ms after its predecessor has earned a quarter of a token, and if that
-quarter were rounded down to nothing on every request, a client sending every 50 ms
-would never accumulate a token at all.
-
-Storing the bucket in this way has a welcome consequence for memory. A bucket that
-has not been touched for capacity ÷ rate seconds, which is 1 second in our example,
-must be full, and a full bucket is indistinguishable from a bucket that has never been
-used. The limiter may therefore delete the entry of any client that has been silent
-for that long and create a full bucket when the client next appears, so that memory is
-occupied only by the clients that are active at the moment.
-
-With 2 numbers of state, a few arithmetic operations per request and a burst that the
-operator sets directly, the token bucket is the usual choice for the general
-protection of an API. It is unsuitable only where the traffic reaching the service
-must be evenly spaced.
-
-## Algorithm 5: the leaky bucket
-
-The token bucket passes a burst through to the service, within the bound set by its
-capacity. The leaky bucket does the opposite: it accepts a burst and releases it
-slowly.
-
-The name comes from a bucket with a small hole in its base. However quickly water is
-poured in, it leaves through the hole at a constant rate, and if water continues to be
-poured in faster than it leaks, the bucket eventually fills and the excess runs over
-the side.
-
-Applied to requests, the bucket is a queue. An arriving request joins the back of the
-queue, and requests leave the front of it at a fixed pace, 1 every 200 ms, to be
-forwarded to the API. The queue has a fixed number of places, 5 in this example, and a
-request that arrives when all of them are occupied is refused.
-
-<figure class="steps" data-prefix="figures/steps-limiter-leaky" data-count="13" data-version="d4541bfc">
-<img src="figures/steps-limiter-leaky-01.svg?v=d4541bfc" alt="Leaky bucket, step 1 of 13. The limiter keeps a queue with 5 places. Requests leave the queue for the API at a fixed pace: 1 every 200 ms. A request that finds the queue full is refused.">
-<figcaption><b>Figure 7.8</b> The leaky bucket on the same 11 requests. The lower axis shows when each request leaves for the API. Use Next and Back to move through the 13 steps.</figcaption>
-</figure>
-
-The leaky bucket accepts 9 of the 11 requests, more than any algorithm except the
-fixed window, and yet it places a lighter burden on the API than any of the others.
-The lower axis of the picture explains the apparent paradox. The requests arrived
-bunched together within 650 ms, and they departed at intervals of 200 ms over a period
-of 1.6 seconds, so that the API at no time received 2 requests less than 200 ms apart.
-
-This is what the leaky bucket is for. The other 4 algorithms decide only whether a
-request is forwarded, and a request that is forwarded goes on its way at the instant
-of its arrival. The leaky bucket decides in addition when the request is forwarded,
-and in doing so it alters the shape of the traffic as well as its volume.
-
-<figure>
-<img src="figures/limiter-shapes.svg?v=2691c323" alt="3 time axes. On the first, 20 requests arrive in the same instant. On the second, a token bucket forwards 5 of them in that instant. On the third, a leaky bucket forwards 5 of them at 0, 200, 400, 600 and 800 ms.">
-<figcaption><b>Figure 7.9</b> 20 requests arrive together. Both buckets forward 5 of them, at different times.</figcaption>
-</figure>
-
-The smoothing has a price, and it is the client who pays it. A request that joins the
-queue behind 4 others waits 800 ms before it so much as reaches the API. For a person
-waiting on a web page such a delay is worse than a prompt refusal followed by a retry.
-For a background job that sends email through a provider which accepts exactly 5
-messages per second it is ideal, since nothing is refused, nothing has to be retried,
-and the provider's limit is observed to the letter.
-
-A queue of waiting requests also holds resources, because each waiting request keeps
-a connection open and occupies memory in the limiter. For this reason the leaky bucket
-is found more often inside a system, between a service and something slower that it
-feeds, than at the public edge of an API.
-
-### The leaky bucket as a meter
-
-The literature uses the name "leaky bucket" for a second algorithm as well, and the
-2 are frequently confused. In this other version nothing waits. The bucket has a
-level, which rises by 1 with each accepted request and falls at a constant rate, and a
-request that would raise the level above the capacity is refused, while every accepted
-request is forwarded immediately.
-
-This "leaky bucket as a meter" makes exactly the same decisions as a token bucket. The
-level of the water is the number of tokens missing from a full token bucket, and the
-one drains at the rate at which the other fills. When a document speaks of a leaky
-bucket and nothing is being queued, what it describes is a token bucket seen upside
-down, and everything said in the previous section applies to it, the burst included.
-
-### How the queue is stored
-
-The queueing version, too, needs less state than its picture suggests. Because
-requests depart at a fixed pace, the limiter does not have to consult a list of them
-in order to reach a decision. It is enough to keep 1 number, the time of the next free
-turn to depart. An arriving request is assigned that turn, and the number is advanced
-by 200 ms. If the turn lies 1 second or more in the future, then 5 requests must
-already be waiting, and the new arrival is refused. The captions of the picture report
-this number at each step, as in "the next free turn to leave is at 1400 ms".
-
-Deciding from a single stored time in this manner is an old technique. It was
-standardised in the 1990s for telephone and data networks under the name *generic cell
-rate algorithm*, usually abbreviated GCRA, and it is used in present-day rate limiters
-for the same reason it was attractive then, which is that it requires 1 number of
-state per client.
-
-## The algorithms compared
-
-The table below collects the results for the 11 requests of this chapter under the
-limit of 5 per second.
-
-| Algorithm | Forwarded | What the API received |
-|---|---|---|
-| Fixed window counter | 10 | 10 requests within 600 ms |
-| Sliding window log | 5 | 5 requests, then nothing until 1600 ms |
-| Sliding window counter | 6 | 5 requests, and a 6th at 1250 ms that an exact count would have refused |
-| Token bucket | 8 | 5 at once from the full bucket, then 1 for each 200 ms that passed |
-| Leaky bucket | 9 | 1 request every 200 ms for 1.6 seconds |
-
-The simulation in the book's repository sends 3 further kinds of traffic through the
-same 5 algorithms. In its results the column "most in any second" gives the largest
-number of requests that reached the API within any span of 1000 ms, which is the
-quantity the server actually has to withstand.
-
-| Traffic | Algorithm | Forwarded | Most in any second |
-|---|---|---|---|
-| 20 requests in the same instant | fixed window | 5 | 5 |
-| | sliding window log | 5 | 5 |
-| | sliding window counter | 5 | 5 |
-| | token bucket | 5 | 5 |
-| | leaky bucket | 5 | 5, spread over 800 ms |
-| 5 requests shortly before the 1 second mark and 5 shortly after | fixed window | 10 | 10 |
-| | sliding window log | 5 | 5 |
-| | sliding window counter | 5 | 5 |
-| | token bucket | 5 | 5 |
-| | leaky bucket | 6 | 5 |
-| 10 requests per second for 3 seconds | fixed window | 15 | 5 |
-| | sliding window log | 15 | 5 |
-| | sliding window counter | 13 | 5 |
-| | token bucket | 19 | 9 |
-| | leaky bucket | 20 | 5 |
-
-The first block of this table carries a warning for anyone who tests a limiter. A
-single burst does not distinguish the algorithms at all, since every one of them
-forwards 5 requests out of 20. Their differences emerge only when traffic continues
-for a while or crosses a boundary, and a limiter that has passed a quick test with one
-burst may therefore still behave quite differently from what its author expects once
-it is in production.
-
-The second and third blocks show, as measurements, the 2 effects described earlier.
-The fixed window alone admits 10 requests in a second when they are arranged around
-the boundary. The token bucket admits 9 in the first second of sustained traffic,
-which is its full bucket of 5 and the 4 tokens that arrived meanwhile. In the third
-block the sliding window counter forwards 13 requests where the exact log forwards 15,
-its estimate having erred on the strict side on this occasion.
-
-The properties of the 5 algorithms can be summarised as follows.
-
-| Algorithm | State per client | Burst | Accuracy | Typical use |
-|---|---|---|---|---|
-| Fixed window counter | 1 count | the limit at once, and twice the limit across a boundary | exact within a clock window only | long quotas, such as calls per day |
-| Sliding window log | 1 timestamp per request, up to the limit | the limit at once | exact over every window | small, strict limits, such as login attempts |
-| Sliding window counter | 2 counts | the limit at once | within a few percent | large limits on many clients |
-| Token bucket | 2 numbers | the capacity, chosen separately from the rate | exact for rate and capacity | general protection of an API |
-| Leaky bucket | 1 number, and the waiting requests | accepted and then spread out | output is evenly spaced | feeding something that needs a steady pace |
-
-In choosing among them it is usually enough to consider what the limit is for. If
-whatever stands behind the limiter can work only at a fixed pace, the leaky bucket is
-the appropriate choice, with the understanding that requests will wait. If the limit
-is small and has to be exact, as with a handful of attempts per minute on something
-sensitive, the sliding window log should be used, its memory cost being negligible at
-that size. If the limit is a long quota that customers read about in a price list, a
-fixed window that resets at a predictable time is both the simplest and the easiest to
-explain. For the general protection of an API, which is the commonest case, the choice
-lies between the token bucket, when clients are bursty and a bounded burst does no
-harm, and the sliding window counter, when the limit is meant to hold over every
-window to within a small error.
-
-The design in the remainder of this chapter uses a token bucket with a rate of 5 per
-second and a capacity of 10 for each client. This is the most widespread arrangement
-at an API gateway, being cheap, well suited to the way real clients behave, and
-equipped with a burst that the operator controls directly.
-
-## Use cases
-
-The limiter has 2 kinds of user. Clients encounter it on every call they make, usually
-without noticing, and operators set the limits it enforces.
-
-<figure>
-<img src="figures/limiter-use-cases.svg?v=ed442776" alt="A use case diagram of the rate limiter. Client: call the API (GET /v1/orders), be told to slow down (429, Retry-After: 2). Operator: set a client&#x27;s limit (PUT /v1/limits/{client}), read a client&#x27;s usage (GET /v1/limits/{client}).">
-<figcaption><b>Figure 7.10</b> The actors and what each of them does.</figcaption>
-</figure>
-
-## Functional requirements
-
-| No. | Functional requirement |
-|---|---|
-| 0 | Each client has a limit: a number of requests per second, and a burst it may send at once. |
-| 1 | A request within the limit passes to the API unchanged. |
-| 2 | A request over the limit is answered with `429 Too Many Requests` and the time to wait. |
-| 3 | An operator can change a client's limit without a restart. |
-| 4 | Different routes of the API can have different limits for the same client. |
-
-## Non-functional requirements
-
-| No. | Property | Non-functional requirement |
-|---|---|---|
-| 0 | Latency | The check adds less than 1 ms to a request. |
-| 1 | Availability | If the limiter cannot decide, requests pass. A broken limiter must not take the API down. |
-| 2 | Consistency | Eventual. A client may briefly exceed its limit by a few requests when limiter nodes disagree. |
-| 3 | Scale | 1 million clients and 50000 requests per second. |
-
-Non-functional requirement 2 calls for some justification, since in it we deliberately
-choose the weaker of the consistency models introduced in chapter 1. The limiter is a
-protective layer, and the consequences of its being slightly wrong are mild: if a
-limit of 100 requests per second occasionally admits 103, the API is still protected
-and no data anywhere is incorrect. To make every count exact, all the limiter nodes
-would have to agree on a client's count before any of them answered a request, and
-agreement of that kind is what chapters 3 and 4 obtain by means of a leader and a
-majority, at the cost of a disk write and a network round trip. Incurring that cost on
-every call to the API would make the protection more expensive than much of what it
-protects. We therefore accept counts that are slightly wrong for short periods, and
-concentrate on bounding how wrong they can be.
-
-Non-functional requirement 1 is likewise a decision that could have gone the other
-way, and for certain limits it does. The section on failures takes it up again.
-
-## Core entities
-
-<figure>
-<img src="figures/limiter-entities.svg?v=dbc0077a" alt="The core entities. Limit has the fields client string, capacity u32, rate per second. Bucket has the fields client string, tokens f64, updated time. A Limit is what the operator sets. A Bucket is the running state the limiter keeps for each client.">
-<figcaption><b>Figure 7.11</b> The core entities and their fields.</figcaption>
-</figure>
-
-The 2 entities differ in character, and the difference shapes the design. A Limit is
-configuration. It changes when an operator changes it, perhaps a few times a day, it
-must survive restarts, and it is read enormously more often than it is written, so
-each limiter node keeps a copy of the limits in memory and refreshes it periodically.
-A Bucket is running state that changes with every request and can be lost without
-real harm, since a bucket that has been lost is created again full, and the
-only effect is that 1 client is granted 1 additional burst.
-
-## Capacity estimate
-
-<div class="estimate">
-
-<img class="builder" src="art/crab-builder.svg" alt="A crab in a hard hat, in tears.">
-
-**Arithmetic ahead.** The buckets of 1 million clients need about 64 MB of memory. They fit on 1 node, and we run 3 for availability.
-
-<a class="skip" href="#high-level-design">Skip to the high-level design</a>
-
-<details>
-<summary>Show the calculation</summary>
-
-| Quantity | Calculation | Result |
-|---|---|---|
-| Memory per bucket | client id 40 bytes + tokens 8 + time 8 + overhead 8 | 64 bytes |
-| Memory for all clients | 1000000 × 64 bytes | 64 MB |
-| Checks per second | 1 per request | 50000 |
-| The same clients with a sliding window log and a limit of 10000 per hour | 1000000 × 10000 × 8 bytes | 80 GB |
-
-</details>
-
-</div>
-
-The last row of the calculation is included for contrast. It shows that the choice of
-algorithm can change the memory required by a factor of more than 1000.
-
-## The API
-
-A rate limiter offers clients no API of its own. It makes itself known through the
-responses of the API it protects, by means of 1 status code and a small number of
-headers.
-
-**A request within the limit**
+**Allowed response:**
 
 ```http
-GET /v1/orders HTTP/1.1
-Host: api.example
-Authorization: Bearer client-42
-```
-
-```http
-HTTP/1.1 200 OK
-RateLimit-Limit: 5
-RateLimit-Remaining: 3
+HTTP/2 200 OK
+RateLimit-Limit: 100
+RateLimit-Remaining: 42
 RateLimit-Reset: 1
 ```
 
-The 3 headers inform the client of its rate, of the number of requests it could still
-send at this moment, and of the number of seconds after which its allowance will be
-full again, so that a client which reads them can slow down before it is ever refused.
-The names of such headers differ from one API to another, and an API should document
-the ones it sends.
-
-**A request over the limit**
+**Throttled response (terminated at the gateway before reaching backend servers):**
 
 ```http
-GET /v1/orders HTTP/1.1
-Host: api.example
-Authorization: Bearer client-42
-```
-
-```http
-HTTP/1.1 429 Too Many Requests
+HTTP/2 429 Too Many Requests
 Retry-After: 2
+RateLimit-Limit: 100
+RateLimit-Remaining: 0
+RateLimit-Reset: 2
 Content-Type: application/problem+json
 
 {
-  "type": "/problems/rate-limited",
-  "title": "Too many requests",
+  "type": "/problems/rate-limit-exceeded",
+  "title": "Too Many Requests",
   "status": 429,
-  "detail": "5 requests per second are allowed"
+  "detail": "Quota of 100 requests/s (burst 200) exceeded for route GET /v1/orders."
 }
 ```
 
-`429 Too Many Requests` is the status code that HTTP provides for this situation, and
-`Retry-After` is the standard header for stating how many seconds the client should
-wait.
+### Internal Evaluation RPC and Policy Management API
 
-**An operator sets a limit**
+Gateways query the stateless Rate Limiter Service over persistent HTTP/2 gRPC channels (`ShouldRateLimitRequest` carrying typed descriptors such as `tenant=acct_42`, `route=GET:/v1/orders`, and `cost=1`, returning `{decision, remaining, reset_ms, leased_tokens}`).
 
-```http
-PUT /v1/limits/client-42 HTTP/1.1
-Host: limiter.internal
-Content-Type: application/json
-
-{ "rate": 5, "capacity": 10 }
-```
+Operators manage policies through an idempotent control-plane API backed by durable relational or etcd storage:
 
 ```http
-HTTP/1.1 200 OK
+PUT /v1/policies/acct_42/routes/orders HTTP/2
+Host: ratelimit-control.internal
 Content-Type: application/json
 
-{ "client": "client-42", "rate": 5, "capacity": 10 }
+{
+  "rate_per_second": 100,
+  "burst_capacity": 200,
+  "cost_unit": "requests",
+  "failure_mode": "fail_open",
+  "enforcement_mode": "enforce"
+}
 ```
 
-`PUT` replaces the whole limit of the named client, and repeating the request leaves
-the limit as it was after the first.
+Separating durable **Policy** configuration from ephemeral **QuotaState** counters is foundational. Policy records change rarely, must survive restarts, and are read millions of times per second from gateway RAM. QuotaState mutates on every request and carries an automatic expiration TTL (`ceil(burst / rate) + margin`): losing a counter shard resets active callers to a fresh burst without corrupting any persistent business state.
 
-## High-level design
+## 7.3 System Architecture: Control Plane vs. Data Plane
 
-<figure class="wide">
-<img src="figures/limiter-design.svg?v=1975781b" alt="A rate limiter in front of an API. The components are Clients, API gateway, API servers, Rate limiter, Counter store. Step 1: A client sends a request to the gateway. Step 2: The gateway asks the limiter about this client. Step 3: The limiter refills and updates the client&#x27;s bucket. Step 4: Allowed: the request goes on. Refused: 429.">
-<figcaption><b>Figure 7.12</b> The components and the path of a request. The steps are numbered.</figcaption>
-</figure>
-
-| Component | Role | State it holds | When 1 instance fails |
-|---|---|---|---|
-| API gateway | asks the limiter before it forwards a request | none | another gateway takes its traffic |
-| Rate limiter | determines the key, applies the token bucket rule and decides | a copy of the limits, in memory | requests pass unchecked until it returns |
-| Counter store | holds the buckets, shared by all limiter nodes | the buckets, in memory | limiters fall back to local buckets |
-
-### One request, step by step
-
-The steps follow the arrows of figure 7.12.
-
-1. A client sends `GET /v1/orders` with its credentials. The gateway verifies the credentials and obtains the client id, `client-42`, from them.
-2. The gateway asks the rate limiter whether `client-42` may make 1 request to this route now.
-3. The limiter finds the limit of `client-42` in its own memory. It then asks the counter store to bring the client's bucket up to date for the time that has passed and to remove 1 token, as a single operation, and the store replies with the decision and the number of tokens remaining.
-4. If a token was removed, the gateway forwards the request to an API server and adds the `RateLimit` headers to the response. If the bucket was empty, the gateway answers `429` itself, and the API servers never see the request.
-
-The order of the first 2 steps is deliberate. The gateway authenticates the caller
-before consulting the limiter because the limiter needs to know whose request it is
-counting. It follows that requests which fail authentication must be limited in some
-other way, usually by IP address, since otherwise an attacker could submit login
-attempts without limit and never come within reach of a limit that is keyed by client.
-
-## Where the limiter runs
-
-The design places the limiter at the gateway. A limiter can in fact run in any of 3
-places, and the 3 protect against different things.
-
-| Place | What it sees | What it is suited to | What it cannot do |
-|---|---|---|---|
-| In the client | the client's own outgoing calls | keeping a well-behaved client within a known limit, so that it is never refused | protect the service, since a defective or hostile client does not run it |
-| At the gateway | every request, before any service has worked on it | protecting all services with 1 set of rules and refusing cheaply | know what a request will cost once it is inside a service |
-| Inside a service | the requests to that service, in full detail | limits that depend on content, such as rows returned or money moved | refuse a request before it has consumed a connection and some processing |
-
-These are complements, and a mature system uses all of them. A carefully written
-client library paces its own calls with a leaky bucket so that it seldom sees a `429`.
-The gateway enforces the limit regardless, because a service cannot make its safety
-depend on the good conduct of its clients. And an expensive operation deep inside a
-service may carry a tighter limit of its own, based on knowledge that the gateway does
-not have.
-
-## Whose requests are counted together
-
-The key of a limit determines which requests are added up, and a badly chosen key
-causes the limiter to penalise the wrong people while leaving the intended target
-untouched.
-
-The IP address is the only identity available before a caller has authenticated, and
-it is a poor one in both directions. A university, a company or a mobile network may
-place thousands of people behind a single address, all of whom then share one
-allowance and are refused together when any one of them is busy. An attacker in
-control of 10000 addresses, on the other hand, enjoys 10000 allowances. A limit by IP
-address is therefore best kept generous and regarded as a coarse defence for
-unauthenticated traffic.
-
-Once the caller is known, an API key or a user id is a far better key, since it
-identifies the party actually responsible for the traffic. Combining it with the
-route gives finer control, at the cost of 1 bucket for every pair of client and route.
-A limit keyed on nothing at all, which counts every request to a service, protects the
-service's total capacity and provides no fairness whatever, because a single client is
-free to use it up.
-
-In practice several limits are applied to each request, and the request is forwarded
-only if every one of them permits it. A representative set is shown below.
-
-| Key | Limit | Purpose |
-|---|---|---|
-| IP address | 100 per second | coarse defence against unauthenticated abuse |
-| client id | 5 per second, burst 10 | fairness between clients |
-| client id and `POST /v1/exports` | 2 per minute | an expensive operation |
-| the whole service | 40000 per second | the real capacity of the service |
-
-Layered limits introduce a subtlety of their own. Suppose a request is admitted by the
-second limit and then refused by the third. A token has already been removed from the
-client's general bucket on behalf of a request that was never served, and a client
-that keeps running into the limit on exports will find that its general allowance
-drains away as well. The correct procedure is to examine all the applicable limits
-first and to remove tokens only when every one of them has room, which with a shared
-store means that all the buckets concerned are checked and updated within the same
-single operation.
-
-## Counting on many machines
-
-Everything said so far has assumed that 1 limiter sees all the requests of a client.
-At 50000 requests per second, and for the sake of availability, there will be several
-limiter nodes behind a load balancer, and the requests of `client-42` will be
-distributed among them. The question of where the buckets are to be kept has 3
-answers in common use.
-
-### Each node keeps its own buckets
-
-The simplest arrangement is for every limiter node to keep buckets in its own memory
-and to consult nobody. Nothing could be faster, and there is no dependency that might
-fail.
-
-The arrangement is also wrong by a constant factor. With 3 nodes and traffic spread
-evenly among them, each node sees a third of the client's requests and allows the full
-limit, so that the client obtains 3 times its allowance. One might give each node a
-third of the limit, but this is correct only for as long as the traffic is in fact
-evenly spread, which a load balancer does not undertake to ensure for any individual
-client: a client that keeps 1 connection open sends everything to 1 node and receives
-a third of what it is entitled to. The size of the error also changes whenever a node
-is added or removed.
-
-The load balancer can be instructed to send all the requests of a client to the same
-node, for instance by hashing the client id as chapter 1 hashes keys. Local buckets
-are then exact. The weakness shows itself when a node is added or fails, since the
-clients that are moved to another node begin there with a fresh and full bucket. For a
-coarse protective limit this is often acceptable, and a number of large systems
-operate in exactly this way.
-
-### A shared counter store
-
-In the second arrangement all the limiter nodes keep the buckets in 1 shared in-memory
-store, so that a request works on the same bucket whichever node it reaches. This is
-the arrangement our design adopts.
-
-It brings with it a problem that did not exist on a single machine. Updating a token
-bucket consists of 3 steps: reading the bucket, computing the new number of tokens,
-and writing the result back. When 2 limiter nodes carry out these steps for the same
-client at the same time, the steps of one may be interleaved with the steps of the
-other.
+We decouple rule authoring and compilation (control plane) from per-request quota enforcement (data plane) so that a control-plane database upgrade or outage never degrades hot-path latency or availability (Figure 7-2).
 
 <figure>
-<img src="figures/limiter-race.svg?v=4273cf87" alt="5 steps. Limiter node A reads the bucket and sees 1 token. Node B reads the bucket and sees the same token. Node A writes 0 tokens and forwards its request. Node B writes 0 tokens and forwards its request. 2 requests passed and 1 token was taken. The cure is for the store to refill and take the token in 1 operation.">
-<figcaption><b>Figure 7.13</b> Both nodes read the bucket before either has written it back.</figcaption>
+<img src="figures/m3/ch07_architecture.svg" alt="Control Plane and Data Plane Topology of a Distributed Rate Limiting Platform: Policy API, Rule Compiler xDS Push, and Shadow Telemetry sit in the Control Plane; API Gateway (Envoy), Stateless Rate Limiter Service, and Sharded Redis Cluster execute the sub-millisecond Data Plane.">
+<figcaption><b>Figure 7-2</b> Control-plane versus data-plane topology of the distributed rate limiting platform.</figcaption>
 </figure>
 
-Each node saw 1 token and forwarded a request, and the bucket lost only 1 token. No
-error is reported anywhere. The limit has been exceeded, and it will be
-exceeded more often the more traffic the client sends, so that the fault is at its
-worst in exactly the circumstances for which the limiter was installed.
+### Component Responsibilities and Failure Domains
 
-The remedy is to make the 3 steps indivisible. The limiter sends the store a single
-request whose meaning is "bring this bucket up to date, remove 1 token if there is
-one, and report the outcome", and the store carries out the whole of it before
-attending to any other request for the same bucket. In-memory stores provide for this
-in 2 ways: by executing a small script inside the store as one unit, or by offering
-a compare-and-set operation that writes a value only if it has not changed since it
-was read, as described in chapter 1. The fixed window is the easy case here, since
-its entire update is "add 1 and return the new value", which every store of this kind
-offers as a single operation.
+| Component | Plane | State Held | Failure Impact and Mitigation |
+| :--- | :--- | :--- | :--- |
+| **Policy API and Config DB** | Control | Authoritative versioned tenant and route rules | Data plane continues enforcing its last compiled snapshot indefinitely; only policy edits pause |
+| **Rule Compiler and xDS Push** | Control | Immutable compiled rule trie/hash bundles | Streams rule revisions to gateways over persistent gRPC/xDS connections with polling fallback |
+| **Shadow and Telemetry Pipeline** | Control | Sampled allow/deny counters and Count-Min Sketch heavy-hitter maps | Decoupled via non-blocking ring buffers; never delays request handling |
+| **API Gateway (Envoy)** | Data | AuthN verifier, compiled rules, L1 local quota leases, circuit breaker | Stateless multi-AZ fleet; rejects `429` traffic at ingress before upstream connection allocation |
+| **Rate Limiter Service (gRPC)** | Data | Stateless evaluator, Redis Cluster slot map, request coalescing buffers | Horizontally auto-scaled across three AZs; may also run embedded inside the gateway process |
+| **Sharded Redis Cluster (3 AZs)** | Data | Per-key GCRA `TAT` timestamps with TTL (`8 B` payload/key) | Six primaries plus six cross-AZ replicas; gateway circuit breaker triggers route fallback within `5 ms` on shard fault |
 
-The same reasoning extends to time. If every limiter node supplies its own clock
-reading with its request, then 2 nodes whose clocks differ by 20 ms will cause the
-recorded time of a bucket to jump backwards and forwards, and the refill calculation
-will sometimes be presented with a negative interval and sometimes credit the same 20
-ms twice. This is avoided by letting the store apply its own clock to every bucket, so
-that all the updates of a bucket are measured against a single clock.
+### Request Path Walkthrough
 
-What the shared store costs is 1 network round trip per request, well under 1 ms
-within a data centre, together with a new dependency, since the limiter can now do its
-work properly only while the store is reachable.
+1. **Pre-Authentication Coarse Filter:** Edge L4/L7 filters enforce generous per-IP/CIDR ceilings (via `eBPF/XDP` or gateway-local memory) to discard volumetric floods before JWT parsing or TLS handshake amplification consumes CPU.
+2. **Identity and Key Derivation:** The API Gateway authenticates the caller and constructs the canonical composite key (for example, `{acct_42}:GET:/v1/orders`).
+3. **L1 Local Quota Lease Check:** If the route permits local leasing and the gateway holds unexpired prefetched tokens in L1 RAM, it decrements atomically in `~10 microseconds` and forwards immediately, refilling asynchronously in the background.
+4. **Centralized Atomic Evaluation:** For strict single-region routes or on an L1 lease miss, the gateway issues `ShouldRateLimit` (gRPC) to the Rate Limiter Service, which executes a pre-loaded Redis Lua script (`EVALSHA`) against the owning Redis Cluster shard.
+5. **Enforcement and Response Headers:** On `ALLOW`, the gateway forwards the request upstream and injects `RateLimit-*` headers into the reply. On `DENY`, the gateway returns `429 Too Many Requests` immediately and optionally sets a short-TTL local negative cache entry if the caller is actively flooding.
 
-### Local tokens obtained in batches
+## 7.4 Rate-Limiting Algorithms and GCRA Formulation
 
-The third arrangement retains the shared store and avoids consulting it for every
-request. A limiter node asks the store for a batch of tokens on behalf of a client,
-say 10, and serves the next 10 requests of that client from its own memory, returning
-to the store only when the batch is spent.
+The natural-language specification "5 requests per second" admits multiple incompatible implementations until two degrees of freedom are fixed: **burst tolerance** (whether all 5 requests may arrive in the same millisecond or must be spaced evenly every `200 ms`) and **window alignment** (calendar-aligned clock seconds versus every rolling `1,000 ms` span).
 
-The number of calls to the store is thereby divided by the batch size, and the price
-is a loss of accuracy at the margins. Tokens lying unused in the memory of one node
-are unavailable to the others, so that a client may be refused at one node while
-another still holds tokens for it, and a node that crashes takes its unspent tokens
-with it. The larger the batch, the fewer the calls and the coarser the count.
+### Empirical Comparison of Classical Algorithms
 
-| | Local buckets | Shared store | Local batches |
-|---|---|---|---|
-| Calls to the store per request | 0 | 1 | 1 ÷ batch size |
-| Accuracy | wrong by up to the number of nodes | exact, provided the update is 1 operation | wrong by up to batch size × number of nodes |
-| If the store is down | unaffected | must fall back | continues until the batches are spent |
-| Typical use | coarse protection, or requests routed by client | most API gateways | very high request rates |
+The repository's `code/ratelimit` simulation subjects five classical algorithms to identical traffic at `5` requests/s (`20` simultaneous requests, `10` requests straddling the `1,000 ms` clock boundary, and `30` requests arriving at `10` req/s over `3` seconds):
 
-For this design we choose the shared store. A single in-memory store handles 50000
-checks per second comfortably, and non-functional requirement 0 leaves room for the
-round trip.
+```console
+$ cargo run --release -p ratelimit
+the limit for every algorithm: 5 requests per second
 
-## What a refused caller should be told
+20 requests in the same instant: 20 requests
+  algorithm               forwarded  most in any second  first 5 forwarded at (ms)
+  fixed window                    5                   5  0 0 0 0 0
+  sliding window log              5                   5  0 0 0 0 0
+  sliding window counter          5                   5  0 0 0 0 0
+  token bucket                    5                   5  0 0 0 0 0
+  leaky bucket                    5                   5  0 200 400 600 800
 
-A refusal is a message addressed to a program, and whether the limiter reduces the
-load on the system or multiplies it depends on what that program does next.
+5 requests before the 1 second mark and 5 after it: 10 requests
+  algorithm               forwarded  most in any second  first 5 forwarded at (ms)
+  fixed window                   10                  10  900 920 940 960 980
+  sliding window log              5                   5  900 920 940 960 980
+  sliding window counter          5                   5  900 920 940 960 980
+  token bucket                    5                   5  900 920 940 960 980
+  leaky bucket                    6                   5  900 1100 1300 1500 1700
 
-Consider a client that responds to `429` by retrying at once. It is refused again, and
-retries again, and the limiter finds itself answering many times more requests from
-this client than it did before the limit was reached. Each refusal is cheap, but the
-total is not negligible, and none of it is of any use. The `Retry-After` header exists
-to prevent this, by telling the client the earliest moment at which a further attempt
-can succeed. With a token bucket that moment is easily calculated, since the limiter
-knows how many tokens are lacking and how quickly they arrive.
+10 requests per second for 3 seconds: 30 requests
+  algorithm               forwarded  most in any second  first 5 forwarded at (ms)
+  fixed window                   15                   5  0 100 200 300 400
+  sliding window log             15                   5  0 100 200 300 400
+  sliding window counter         13                   5  0 100 200 300 400
+  token bucket                   19                   9  0 100 200 300 400
+  leaky bucket                   20                   5  0 200 400 600 800
+```
 
-A second effect arises when many clients are involved. Suppose that 1000 clients are
-refused within the same second, perhaps because a brief outage caused all of them to
-retry together, and that each is told `Retry-After: 2`. Exactly 2 seconds later 1000
-requests arrive at the same instant. This is known as a *thundering herd*, and the
-remedy lies with the clients, which should wait for the stated time and then for an
-additional random interval, called *jitter*, so that their retries are spread out.
-Retries, lengthening pauses and jitter are treated in detail in chapter 13.
+| Algorithm | Memory per Key | Boundary Doubling | Burst Behavior | Engineering Verdict |
+| :--- | :--- | :--- | :--- | :--- |
+| **Fixed Window Counter** | `8 B` | Admits up to `2x` limit across clock edges (`10` in `200 ms`) | Permits instant bursts | Unsuitable for strict backend protection; acceptable only for coarse usage analytics |
+| **Sliding Window Log** | `O(limit)` (`80 KB` at 10k/hr) | None (exact) | Permits bursts up to limit | Memory-prohibitive at high quotas |
+| **Sliding Window Counter** | `16 B` (two counters) | Bounded approximation (`~0.003%` empirical error per Cloudflare) | Permits smooth bursts | Strong choice for rolling-window HTTP quotas |
+| **Token Bucket** | `16-64 B` (`tokens`, `last_ts`) | None | Decouples burst `B` from sustained rate `R` | Industry standard for API gateways |
+| **Leaky Bucket (Queue)** | `O(queue_depth)` | None | Strictly smooths egress to exact `1 / R` pacing | Ideal for shaping downstream queues; adds queueing delay |
+| **GCRA (Chosen)** | `8 B` (single `TAT` int64) | None | Mathematically isomorphic to Token Bucket with half the state | Optimal production choice (Stripe, Envoy, `redis-cell`) |
 
-The limiter's own boundary can also be made less abrupt. Some systems maintain 2
-thresholds, adding a warning header to responses once the lower one is passed and
-refusing only at the higher. An operator who is about to introduce a new limit can
-first run it in a mode that merely records which requests it would have refused, and
-after a week the record will show whether the limit would have harmed legitimate
-clients, before any client has actually been turned away.
+### Interactive Step-by-Step Algorithm Walkthroughs
 
-## When the limiter itself fails
+Advancing through the interactive traces below illustrates how four algorithms respond to the same `11` requests arriving between `600 ms` and `1,250 ms` across the `1,000 ms` clock boundary under a `5` req/s quota:
 
-The limiter depends on the counter store, and the store may become unreachable. Each
-request then confronts the limiter with a decision for which no good answer exists: it
-cannot count, and it must nevertheless either forward the request or refuse it. To
-forward it is to *fail open*, which keeps the API available and leaves it unprotected
-for the duration. To refuse it is to *fail closed*, which keeps the API protected and
-makes it unavailable to everyone.
-
-For the general protection of an API we fail open. The limiter exists in order to keep
-the API available, and if a fault in the limiter's own store were to make the API
-unavailable, the limiter would have brought about the very outage it was installed to
-prevent. It should also be remembered that at most moments no client is misbehaving,
-so that an hour without limits will usually pass without incident.
-
-Failing open need not mean having no limit at all. When the store cannot be reached,
-each limiter node can fall back on buckets in its own memory, in the manner of the
-first arrangement above, with every node enforcing its share of each limit. The count
-is coarser than usual, and a client that goes badly wrong is still contained.
-
-For some limits the decision must be reversed. A limit on login attempts, on password
-resets, or on calls each of which costs money is a control on security or expenditure,
-and to forward requests without limit in those cases is worse than to refuse them.
-Such limits fail closed, and a sound design names them one by one, since a single switch
-for the whole limiter cannot serve both kinds.
-
-The store itself can be run as a leader with followers, as in chapter 3, so that the
-loss of 1 machine does not make it unreachable. After a change of leader the new
-leader may lack the most recent updates, because an in-memory store commonly
-replicates without waiting for a majority to confirm. For buckets this is harmless,
-amounting to a few extra tokens for a few clients, and it is the eventual consistency
-of non-functional requirement 2 as it appears in practice.
-
-## The design, deployed
-
-<figure class="wide">
-<img src="figures/limiter-deploy.svg?v=5481d1bc" alt="The rate limiter, deployed. Clients: Clients (50000 req/s), 1 million of them. Edge, in 3 zones: Load balancers (x 6), 1 pair in each zone, API gateways (x 30), authenticate and ask. Limiting, in 3 zones: Limiter nodes (x 9), token bucket rule, Counter store (x 3), 1 leader, 2 followers. The protected api: API servers (x 100), do the work.">
-<figcaption><b>Figure 7.14</b> The rate limiter as it is deployed, with the number of machines of each kind.</figcaption>
+<figure class="steps" data-prefix="figures/steps-limiter-fixed" data-count="13" data-version="4f0b5cf9">
+<img src="figures/steps-limiter-fixed-01.svg?v=4f0b5cf9" alt="Fixed window counter, step 1 of 13. The limiter keeps 1 number for the client: how many requests it has forwarded in the current window. Windows are the seconds of the clock, and each starts with a count of 0.">
+<figcaption><b>Interactive Trace 7.A</b> Fixed window counter: resets at <code>t = 1,000 ms</code>, admitting 10 requests in 650 ms (boundary doubling). Use Next and Back to step through.</figcaption>
 </figure>
 
-At 50000 requests per second, no component of the design is a single machine. Clients
-reach 1 of 3 zones, each with a pair of load balancers in front of 10 API gateways.
-Every gateway asks a limiter node in its own zone, and the 9 limiter nodes are
-interchangeable, since none of them holds a bucket. All of them read and update the
-buckets in a single counter store, which runs as a leader with 2 followers in the
-other zones. Only requests that pass reach the 100 API servers, which are the reason
-for the whole arrangement and by far the largest tier.
+<figure class="steps" data-prefix="figures/steps-limiter-counter" data-count="13" data-version="6ead65b4">
+<img src="figures/steps-limiter-counter-01.svg?v=6ead65b4" alt="Sliding window counter, step 1 of 13. The limiter keeps 2 counts: the window before, and the current window. From them it estimates how many requests the last second contained.">
+<figcaption><b>Interactive Trace 7.B</b> Sliding window counter: weights the preceding window by remaining overlap fraction, eliminating boundary doubling in O(1) space.</figcaption>
+</figure>
 
-## How real systems do it
+<figure class="steps" data-prefix="figures/steps-limiter-token" data-count="13" data-version="4309ceba">
+<img src="figures/steps-limiter-token-01.svg?v=4309ceba" alt="Token bucket, step 1 of 13. The limiter keeps a bucket of tokens for the client. The client has been quiet, so the bucket is full: 5 tokens. Every request must take 1 token, and 1 new token arrives every 200 ms.">
+<figcaption><b>Interactive Trace 7.C</b> Token bucket: accommodates an initial burst of 5 tokens, then admits 1 request per 200 ms refill interval.</figcaption>
+</figure>
 
-The algorithms of this chapter are all in production somewhere, and the published
-accounts agree closely with what was said of each.
+<figure class="steps" data-prefix="figures/steps-limiter-leaky" data-count="13" data-version="d4541bfc">
+<img src="figures/steps-limiter-leaky-01.svg?v=d4541bfc" alt="Leaky bucket, step 1 of 13. The limiter keeps a queue with 5 places. Requests leave the queue for the API at a fixed pace: 1 every 200 ms. A request that finds the queue full is refused.">
+<figcaption><b>Interactive Trace 7.D</b> Leaky bucket: queues arriving bursts and drains requests to upstream servers at a uniform 200 ms cadence.</figcaption>
+</figure>
 
-Stripe has described 4 limiters that it runs in front of its API. The most important
-is a request rate limiter for each user, built as a token bucket whose state is held
-in an in-memory store, as in this chapter. Beside it is a limiter on the number of
-requests a user may have in progress at once, which catches expensive requests that a
-rate alone would miss. The other 2 are load shedders, which act on the state of the
-whole system and reserve capacity for critical requests, and which are the load
-shedding that the opening section distinguished from rate limiting.
+### Formal Derivation: Generic Cell Rate Algorithm (GCRA)
 
-Cloudflare chose the sliding window counter for the limiter at its edge and published
-a measurement of its accuracy. Over 400 million requests from 270000 sources, the
-estimate from 2 counters wrongly allowed or refused 0.003% of requests, with an
-average difference of 6% between the estimated and the true rate. This supports the
-statement above that the error is small for real traffic, and it should be read with
-the caution that it describes 1 network's traffic.
+Standardized originally for Asynchronous Transfer Mode (ATM) networks, the **Generic Cell Rate Algorithm (GCRA)** is mathematically isomorphic to a continuous-refill token bucket while collapsing its two mutable variables (`tokens` and `last_refill_timestamp`) into a single 64-bit integer timestamp termed the **Theoretical Arrival Time (`TAT`)** (Figure 7-3).
 
-The generic cell rate algorithm comes from the standards for ATM networks of the
-1990s, and it is the basis of several widely used limiter libraries. Envoy, a proxy
-commonly used as a gateway, offers both arrangements described under counting on many
-machines: a token bucket local to each proxy, and a call to a shared rate limit
-service, and the 2 can be combined, with the local one as a first line of
-defence in front of the shared one. The response headers shown in the API section
-follow a draft of the IETF, which has changed between versions and is not yet a
-standard, whereas the status `429` and the header `Retry-After` are standardised.
+Given sustained rate `R` (requests/s) and burst capacity `B` (requests), we define the **emission interval** `tau = 1 / R` (the time required to earn one request slot) and the **burst tolerance** `T = B * tau` (when deducting `cost` prior to admission, or `(B - 1) * tau` when checking prior to incrementing). Intuitively, `TAT` records the instant at which the caller's bucket will next be completely full. When a request of weight `cost` arrives at time `t_now`:
 
-One technique in common use is missing from this chapter. A well-behaved client can
-limit itself adaptively, lowering its own rate when it sees refusals and raising it
-slowly when it does not, which the AWS client libraries do with a token bucket for
-retries. Chapter 13 describes the same idea from the side of the caller.
+1. **Initialization:** If no `TAT` exists (the caller has been idle longer than `T`), we initialize `TAT = t_now`.
+2. **Candidate Advance:** We compute `new_tat = max(t_now, TAT) + cost * tau` and the earliest admissible arrival time `allow_at = new_tat - T`.
+3. **Admission Decision:** We permit the request if and only if `t_now >= allow_at`. Upon admission, we persist `new_tat` with expiration TTL `new_tat - t_now`. Upon refusal, we leave `TAT` unchanged and return exact wait time `retry_after = allow_at - t_now`.
 
-## Mistakes to avoid
+<figure>
+<img src="figures/m3/ch07_gcra_state_machine.svg" alt="Generic Cell Rate Algorithm (GCRA) single-timestamp TAT state machine and memory footprint comparison against Token Bucket, Sliding Window Counter, and Sliding Window Log.">
+<figcaption><b>Figure 7-3</b> GCRA state evolution using a single 8-byte <code>TAT</code> integer and active memory comparison across 1,000,000 keys.</figcaption>
+</figure>
 
-| Mistake | What goes wrong | What to do |
-|---|---|---|
-| Using a fixed window to protect a server from overload | A client sends a full allowance on each side of a boundary, and the server receives twice the limit within moments. | Use a token bucket or a sliding window, and keep fixed windows for long quotas. |
-| Setting a token bucket's capacity equal to its rate and reading the result as a strict limit per second | After a quiet period the contents of the bucket and a second's refill pass together, up to twice the rate in 1 second. | Set the capacity to the burst that the server can really absorb. |
-| Reading and writing the bucket in separate steps | 2 limiter nodes read the same value and both forward a request. | Refill and remove the token in a single operation inside the store. |
-| Refilling every bucket from a timer | Millions of updates per second are spent on clients that send nothing. | Refill when a request arrives, from the time that has passed. |
-| Limiting by IP address alone | Thousands of users behind 1 address share an allowance, while an attacker with many addresses has many allowances. | Use the client id once the caller is authenticated, and the IP address only before that. |
-| Removing a token for one limit before checking the others | A request refused by a later limit has already consumed allowance. | Check all the limits, then remove tokens from all of them, in 1 operation. |
-| Letting each limiter node supply its own clock reading | Clocks that differ make the recorded time of a bucket run backwards. | Let the store's clock time every update. |
-| Refusing everything when the store is down | A fault in the protective layer takes the API down. | Fail open with local buckets, except for the limits identified as security controls. |
-| Answering `429` without `Retry-After` | Clients retry at once and add to the load. | State the time to wait, and ask the authors of clients to add jitter. |
-| Appending a request to the sliding window log before checking the count | A client that keeps sending is never served again. | Log only forwarded requests, unless a lasting block is intended. |
+#### Atomic Redis Lua Contract and Implementation
 
-## Failures
+Executing `GET`, computing `new_tat` inside a stateless gateway, and writing back via `SET` introduces a distributed **Read-Modify-Write (RMW) race**: two concurrent gateways reading an identical `TAT` both admit requests and overwrite one another's updates, doubling effective burst allowance under concurrency.
 
-| Failure | What users see | How the system recovers |
-|---|---|---|
-| The counter store is unreachable | nothing, since requests pass | limiter nodes use local buckets with a share of each limit until the store returns |
-| The leader of the counter store is replaced | a few clients are allowed a few extra requests | the new leader continues with buckets that are at most a moment out of date |
-| A limiter node stops | nothing | the gateway uses the other nodes, and the buckets are in the store |
-| A client ignores `429` and keeps sending | that client continues to receive `429` | each refusal costs 1 store operation and no work in the API |
-| An operator sets a limit far too low | many clients receive `429` | the record of the trial mode reveals the problem beforehand, and `PUT` restores the previous value |
+Embedding GCRA inside a pre-cached Redis Lua script (`EVALSHA`) eliminates the RMW race because Redis executes Lua scripts atomically on its single-threaded event loop in one network round trip. Before examining the script below, note its input and output contract:
 
-## Trade-offs
+- **`KEYS[1]`:** Composite key wrapped in a Redis Cluster hash tag (`{tenant_id:route_id}`) so multi-key policies hash to the exact same slot (`CRC16(tag) mod 16384`).
+- **`ARGV[1..3]`:** `emission_interval_us` (`tau` in microseconds), `burst_tolerance_us` (`T` in microseconds), and integer request `cost` (default `1`).
+- **Time Source:** Calling `redis.call("TIME")` reads the Redis server's clock directly, preventing NTP skew across gateway hosts from corrupting quotas.
+- **Return Tuple:** `{allowed (0|1), remaining_tokens, retry_after_us}`.
 
-| Decision | What it gains | What it costs |
-|---|---|---|
-| Token bucket | a rate and a burst that are set independently, in 2 numbers of state | up to capacity + rate requests in the first second after a silence |
-| Shared counter store | every node counts on the same bucket | 1 round trip per request, and a dependency |
-| Eventual consistency | no agreement protocol on the path of every request | a limit can be exceeded by a few requests |
-| Fail open | the API stays available when the store is down | weaker protection during that time |
-| Limiter at the gateway | 1 place for all rules, and cheap refusals | no knowledge of what a request costs inside a service |
+```lua
+local now_parts = redis.call("TIME")
+local now_us = tonumber(now_parts[1]) * 1000000 + tonumber(now_parts[2])
 
-## The simulation
+local tau   = tonumber(ARGV[1])
+local tol   = tonumber(ARGV[2])
+local cost  = tonumber(ARGV[3])
+local incr  = cost * tau
+
+local tat = tonumber(redis.call("GET", KEYS[1])) or now_us
+local new_tat = math.max(tat, now_us) + incr
+local allow_at = new_tat - tol
+
+if now_us < allow_at then
+    local retry_after_us = allow_at - now_us
+    return { 0, 0, retry_after_us }
+end
+
+local ttl_ms = math.max(1000, math.ceil((new_tat - now_us) / 1000))
+redis.call("PSETEX", KEYS[1], ttl_ms, new_tat)
+
+local remaining = math.floor((now_us - (new_tat - tol)) / tau)
+return { 1, remaining, 0 }
+```
+
+Self-cleaning TTLs via `PSETEX` ensure that idle keys disappear automatically once their burst capacity has replenished (`new_tat - now_us`), bounding Redis memory strictly to currently active callers.
+
+## 7.5 Distributed Synchronization, Hot Keys, and Multi-Region Scaling
+
+Synchronous Redis Lua evaluation satisfies `50,000-250,000` RPS within a single geographic region, but two operational regimes exceed its bounds: **extreme hot keys** (a single tenant driving `100,000+` RPS onto one Redis primary core) and **multi-region active-active deployments** (where synchronous cross-WAN RTT of `60-150 ms` breaks the `1 ms` latency SLO by two orders of magnitude). We select among three synchronization topologies by route tier (Figure 7-4).
+
+<figure>
+<img src="figures/m3/ch07_distributed_sync.svg" alt="Distributed Quota Synchronization Patterns comparing Synchronous Atomic Lua, Local Quota Leasing (Batch Prefetch), and Multi-Region Delta-CRDT Gossip Sync.">
+<figcaption><b>Figure 7-4</b> Trade-offs across synchronous Redis Lua, L1 local quota leasing, and multi-region asynchronous synchronization.</figcaption>
+</figure>
+
+### Local Quota Leasing (Batch Token Prefetching)
+
+Under **local quota leasing**, each gateway amortizes network round trips by reserving a small batch of `k` tokens (for example, `k = 50` or `1%` of the tenant's per-second quota, capped at a `100 ms` lease TTL) in one Redis Lua invocation (`cost = k`). Subsequent requests decrement a lock-free atomic counter (`AtomicI64`) in gateway RAM in `~10 microseconds`, triggering an asynchronous background refill when remaining local tokens fall below `20%`.
+
+This pattern reduces Redis QPS by `10x-50x` and lifts single-key ceilings into millions of RPS. Its cost is an explicit, mathematically bounded overshoot: if `N` gateways simultaneously hold unexpired leases of size `k`, instantaneous overshoot cannot exceed `N * k`. Gateways therefore adapt `k` dynamically from observed per-key QPS (`k = 1` for low-rate security endpoints, scaling upward only for hot public-API keys).
+
+### Multi-Region Global Quotas
+
+Active-active deployments across US-East, EU-West, and AP-Southeast execute all hot-path checks against regional Redis Clusters (`< 1 ms` RTT) and reconcile global usage off the request path through two mechanisms:
+
+1. **Asynchronous Delta-CRDT / Gossip Sync:** Each region broadcasts compact per-key usage deltas (`PN-Counter` or window increments) to peer regions every `100-500 ms`. Worst-case global overshoot during a simultaneous multi-region spike is bounded linearly by `R_burst * sync_interval`.
+2. **Dynamic Regional Quota Allocation:** A control-plane loop monitors each region's traffic proportion every few seconds and assigns proportional local sub-budgets (for example, `US: 60%`, `EU: 30%`, `AP: 10%`), rapidly shifting unused quota when traffic moves across continents.
+
+## 7.6 Defense-in-Depth: Failure Policies, Keying, and Load Shedding
+
+Rate limiting is one layer in a broader traffic-control hierarchy (Figure 7-5). Applying one blanket fallback rule to every endpoint, or expecting per-caller quotas to prevent aggregate overload, leads directly to avoidable outages.
+
+<figure>
+<img src="figures/m3/ch07_failure_defense.svg" alt="Defense-in-Depth Failure Modes: Edge L4/IP Coarse Filter feeding Policy-Tiered Rate Limiter (Fail-Open vs Fail-Closed) and Backend AIMD/CoDel Adaptive Load Shedding.">
+<figcaption><b>Figure 7-5</b> Defense-in-depth layering across edge IP filtering, tiered fail-open/fail-closed policies, and backend adaptive load shedding.</figcaption>
+</figure>
+
+### Tiered Failure Policies (Fail-Open vs. Fail-Closed)
+
+When a Redis shard becomes unreachable, the gateway circuit breaker opens within `5 ms` and executes the route's declared failure contract:
+
+- **Fail-Open with Local Fallback (General and Revenue APIs):** Catalog, search, and read endpoints continue serving traffic guarded by an in-process per-gateway local token bucket configured to `max(1, global_limit / active_gateway_count)`. A counter-store fault never disrupts normal business traffic.
+- **Fail-Closed (Security and High-Cost Endpoints):** Login, OTP verification, password reset, and high-cost compute or payment creation routes reject calls with `503 Service Unavailable` and `Retry-After` if global enforcement is blind, preventing credential-stuffing attacks or unbounded third-party billing.
+
+### Composite Key Selection
+
+Key design governs both fairness and abuse resistance. Keying exclusively by IP address fails in both directions: corporate proxies, universities, and carrier-grade NAT (CGNAT) aggregate thousands of legitimate users behind one IP address (causing widespread collateral refusals), whereas distributed botnets rotate across tens of thousands of residential IPs. Production gateways reserve IP-keyed limits strictly for coarse pre-authentication DDoS defense, authenticate callers first, and key primary quotas on `(tenant_id, route_group)` weighted by explicit request cost (`cost = 1` for a point lookup, `cost = 25` for a bulk export).
+
+### Rate Limiting vs. Adaptive Load Shedding
+
+Even if every tenant respects its individual quota, `10,000` legitimate tenants arriving concurrently during a global traffic spike can saturate a downstream database. Backend services therefore complement ingress rate limiting with **adaptive concurrency limiting** grounded in **Little's Law** (`L = lambda * W`, relating concurrency `L`, arrival rate `lambda`, and service time `W`):
+
+- **AIMD Concurrency Control:** Services continuously track baseline minimum latency (`RTT_noload`) against current queueing latency, increasing their in-flight concurrency ceiling additively while latency stays flat and reducing it multiplicatively as soon as queue depth builds.
+- **CoDel and Priority Shedding:** Controlled Delay (CoDel) monitors request sojourn time inside work queues and sheds queued work exceeding a latency threshold, prioritizing `P0` interactive checkout calls over `P3` batch exports and scrapers to bound `p999` tail latency.
+
+## 7.7 Failure Modes, Observability, Production Systems, and Verification
+
+### Failure and Recovery Matrix
+
+| Failure Mode | Operational Symptom | Automated Mitigation |
+| :--- | :--- | :--- |
+| **Redis Primary Node Crash** | Lua `EVALSHA` timeouts across one-sixth of keys | Gateway circuit breaker opens after `3` consecutive `5 ms` timeouts -> activates per-route local fallback or fail-closed; Redis Cluster promotes cross-AZ replica in `3-10 s` |
+| **Single Hot-Key Flood (`100k+` RPS)** | One Redis shard core saturates at `100%` CPU, elevating p99 for co-located tenants | Gateway activates L1 local quota leasing (`k = 50`) plus `500 ms` local negative caching on rejected keys, shielding the shard |
+| **Defective Policy Rollout (Quota = 0)** | Sudden spike in `429` refusals for healthy tenants | Shadow-mode dry-run validation catches regressions before enforcement; automated rollback triggers if global `429` rate jumps `> 5x` baseline within `60 s` |
+| **Control-Plane DB Outage** | Administrative `PUT /v1/policies/...` calls fail | Zero data-plane impact; gateways enforce immutable in-memory rule snapshots until the control plane recovers |
+| **Gateway NTP Clock Step** | Would skew gateway-timestamped windows | Eliminated structurally by sourcing timestamps inside Redis via `redis.call("TIME")` |
+
+### Observability: SLIs and Alerts
+
+Four operational signals govern day-two reliability: **hot-path latency SLI** (`p99` check duration alerted above `1.0 ms` for `5 minutes`), **circuit-breaker activation alerts** (`ratelimit_circuit_breaker_open_total > 0`, ensuring fail-open fallback never masks a prolonged counter outage), **per-route throttle ratios paired with a Count-Min Sketch** of top-throttled keys (distinguishing one runaway client from a misconfigured global rule), and **shadow-mode delta dashboards** verifying hypothetical `429` volume before promoting any policy from `shadow` to `enforce`.
+
+### How Production Systems Implement Rate Limiting
+
+| Production System | Core Algorithm | Counter Architecture | Architectural Distinction |
+| :--- | :--- | :--- | :--- |
+| **Stripe** | GCRA / Token Bucket plus Concurrency Limiter | Sharded Redis Cluster with atomic Lua | Layers four specialized limiters: Request Rate Limiter, Concurrent Request Limiter, Fleet Usage Load Shedder, and Worker Utilization Shedder |
+| **Cloudflare** | Sliding Window Counter | Per-PoP local RAM plus asynchronous global sync | Sustains microsecond overhead across `300+` edge PoPs with `~0.003%` empirical deviation from exact sliding logs |
+| **Envoy (`ratelimit`)** | Token / Fixed Bucket (`local` + `global`) | Local per-proxy filter plus external gRPC `ShouldRateLimit` -> Redis | Clean hierarchical descriptor matching separating L1 local protection from L2 global quotas |
+| **Kong / Redis-Cell** | GCRA (`CL.THROTTLE` native Redis module) | Native compiled Redis module executing GCRA in-memory | Single atomic Redis command returning `{denied, limit, remaining, retry_after, reset_after}` without Lua interpreter overhead |
+
+### Verification in the Repository
 
 <div class="simulation">
 
-**Simulation in the repository.** The program [`code/ratelimit`](https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/distributed-systems-from-the-ground-up/code/ratelimit/src/main.rs) simulates this design. To run it, clone the repository and type `cargo run --release -p ratelimit` in the `code` directory.
+**Run the algorithm comparison simulation.** Execute `cargo run --release -p ratelimit` in `code/` to reproduce the simultaneous-burst, boundary-straddling, and sustained-overload results across all five algorithms reported in Section 7.4.
 
 </div>
 
-## References
+### Engineering Glossary
 
-- P. Tarjan, "Scaling your API with rate limiters", Stripe engineering blog, 2017.
-- J. Desgats, "How we built rate limiting capable of scaling to millions of domains", Cloudflare blog, 2017.
-- ATM Forum, *Traffic Management Specification Version 4.0*, 1996, for the generic cell rate algorithm.
-- RFC 6585, *Additional HTTP Status Codes*, 2012, for status 429.
-- RFC 9110, *HTTP Semantics*, 2022, for `Retry-After`.
-- IETF HTTP API working group, "RateLimit header fields for HTTP", Internet-Draft.
-- Envoy proxy documentation, "Global rate limiting" and "Local rate limiting".
+| Term | Definition |
+| :--- | :--- |
+| **GCRA (Generic Cell Rate Algorithm)** | O(1)-space token-bucket equivalent representing quota state as a single Theoretical Arrival Time (`TAT`) timestamp per key. |
+| **Local Quota Leasing** | Prefetching a bounded batch of tokens from Redis into gateway L1 RAM to amortize network RTT and absorb hot-key traffic. |
+| **Fail-Open / Fail-Closed** | Per-route failure contract selecting either local-bucket pass-through (availability priority) or `503` rejection (security/cost priority) when the shared counter store is unreachable. |
+| **Shadow Mode (Dry Run)** | Evaluating candidate policies against live production traffic and recording hypothetical `429` telemetry without blocking callers. |
+| **Adaptive Load Shedding** | Backend concurrency control (AIMD and CoDel) grounded in Little's Law that sheds excess work based on live queue latency rather than per-caller quotas. |
 
-## Terms introduced in this chapter
+### References
 
-| Term | Meaning |
-|---|---|
-| Rate limiter | a component that refuses requests from a caller that has sent too many |
-| Rate | the number of requests per unit of time that a caller may send indefinitely |
-| Burst | a group of requests sent at the same moment, or the largest such group that is allowed |
-| Key | the identity under which requests are counted together, such as a client id |
-| Window | a span of time over which requests are counted |
-| Fixed window counter | a count for each clock window, beginning again at 0 in every window |
-| Sliding window log | a list of the arrival times of recent requests, counted exactly |
-| Sliding window counter | an estimate of the sliding count, made from the counts of 2 fixed windows |
-| Token bucket | a rule with a refill rate and a capacity, in which each request removes 1 token |
-| Leaky bucket | a queue that releases requests at a fixed pace |
-| GCRA | the generic cell rate algorithm, which decides from 1 stored time |
-| Load shedding | dropping requests, whoever sent them, when a service is close to overload |
-| `429 Too Many Requests` | the HTTP status for a request refused by a limit |
-| `Retry-After` | the HTTP header that states how long to wait before trying again |
-| Thundering herd | many clients retrying at the same moment |
-| Jitter | a random additional wait that spreads retries out |
-| Fail open | to let requests pass when the check itself cannot be made |
-| Fail closed | to refuse requests when the check itself cannot be made |
-
-<div class="summary">
-
-## Summary
-
-- Every limit contains a rate and a permitted burst, and the phrase "5 per second" specifies only the first.
-- The fixed window counter is the cheapest algorithm and admits twice the limit across a window boundary, which confines it to long quotas.
-- The sliding window log is exact and keeps a timestamp for every request, which suits it to small, strict limits.
-- The sliding window counter estimates the log from 2 counts, with a small error in either direction.
-- The token bucket sets rate and burst independently in 2 numbers of state, and forwards up to capacity + rate × time.
-- The leaky bucket queues requests and releases them at a fixed pace, shaping the traffic at the cost of waiting.
-- On many machines the buckets are kept in a shared store, and each update is a single indivisible operation timed by the store's clock.
-- A refusal carries `Retry-After`, and well-written clients add jitter before retrying.
-- General limits fail open with local buckets, and limits that act as security controls fail closed.
-
-</div>
+- P. Tarjan, "Scaling your API with rate limiters", Stripe Engineering Blog, 2017.
+- J. Graham-Cumming, "How we built rate limiting capable of scaling to millions of domains", Cloudflare Engineering Blog, 2017.
+- Brandur Leach, "Rate Limiting, Cells, and GCRA", brandur.org, 2017.
+- Envoy Proxy Documentation, "Global and Local Rate Limiting Architecture".
+- IETF HTTP Working Group, "RateLimit Header Fields for HTTP" (draft-ietf-httpapi-ratelimit-headers) and RFC 9457 ("Problem Details for HTTP APIs").
+- K. Nichols and V. Jacobson, "Controlling Queue Delay (CoDel)", ACM Queue, 2012.

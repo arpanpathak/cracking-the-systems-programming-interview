@@ -521,3 +521,544 @@ figure.steps > img { border: 1px solid #d5dbe3; border-radius: 10px; }
 }
 
 .navy .simulation, .coal .simulation, .ayu .simulation { background: #16302a; border-color: #2c6b5b; }
+
+/* ---- Material Design 3 Light & Material Deep Ocean Dark Theme ---- */
+:root {
+    --book-rust: #1A5FC4;
+    --m3-ink: #1B2230;
+    --m3-muted: #526075;
+    --m3-surface: #FFFFFF;
+    --m3-surface-tonal: #F3F7FC;
+    --m3-table-head-bg: #E6EFFD;
+    --m3-table-head-ink: #163E7A;
+    --m3-table-row-alt: #F8FAFD;
+    --m3-hairline: #DCE2EC;
+    --m3-accent: #1A5FC4;
+    --m3-cyan: #0E7168;
+    --m3-teal-bg: #E4F4EE;
+    --m3-teal-border: #1B7A58;
+    --m3-code-bg: #F4F7FB;
+}
+
+/* 1. Night Owl (default dark — rich blueish-dark #011627 from Dogeleena Neo) */
+html.navy {
+    --bg: #011627;
+    --fg: #D6DEEB;
+    --sidebar-bg: #01111D;
+    --sidebar-fg: #8BADC1;
+    --sidebar-non-existant: #4B6479;
+    --sidebar-active: #7FDBCA;
+    --sidebar-spacer: #122D42;
+    --scrollbar: #1D3B53;
+    --icons: #7E9CB2;
+    --icons-hover: #7FDBCA;
+    --links: #82AAFF;
+    --inline-code-color: #7FDBCA;
+    --theme-popup-bg: #071F33;
+    --theme-popup-border: #1D3B53;
+    --theme-hover: #0B2942;
+    --quote-bg: #071D30;
+    --quote-border: #7FDBCA;
+    --table-border-color: #16334B;
+    --table-header-bg: #0B2942;
+    --table-alternate-bg: #051B2E;
+    --searchbar-border-color: #1D3B53;
+    --searchbar-bg: #061D30;
+    --searchbar-fg: #D6DEEB;
+    --searchbar-shadow-color: #000B14;
+    --searchresults-header-fg: #7FDBCA;
+    --searchresults-border-color: #16334B;
+    --searchresults-li-bg: #071E32;
+    --search-mark-bg: #1D3B53;
+
+    --book-ink: #D6DEEB;
+    --book-pale: #071E32;
+    --book-navy: #82AAFF;
+    --book-rust: #7FDBCA;
+    --book-brass: #ECC48D;
+
+    --m3-ink: #D6DEEB;
+    --m3-muted: #8BADC1;
+    --m3-surface: #051B2E;
+    --m3-surface-tonal: #082238;
+    --m3-table-head-bg: #0B2942;
+    --m3-table-head-ink: #B7D7F5;
+    --m3-table-row-alt: #082035;
+    --m3-hairline: #173752;
+    --m3-accent: #82AAFF;
+    --m3-cyan: #7FDBCA;
+    --m3-teal-bg: #072630;
+    --m3-teal-border: #7FDBCA;
+    --m3-code-bg: #051A2B;
+}
+
+/* 2. Material Deep Ocean (coal — deep midnight blue-black #0F111A) */
+html.coal {
+    --bg: #0F111A;
+    --fg: #DCE6F7;
+    --sidebar-bg: #090B10;
+    --sidebar-fg: #8F93A2;
+    --sidebar-non-existant: #525975;
+    --sidebar-active: #82AAFF;
+    --sidebar-spacer: #1B1F30;
+    --scrollbar: #252C42;
+    --icons: #7D8CAE;
+    --icons-hover: #89DDFF;
+    --links: #82AAFF;
+    --inline-code-color: #89DDFF;
+    --theme-popup-bg: #151926;
+    --theme-popup-border: #252E45;
+    --theme-hover: #1E273D;
+    --quote-bg: #141926;
+    --quote-border: #82AAFF;
+    --table-border-color: #232B40;
+    --table-header-bg: #172033;
+    --table-alternate-bg: #131724;
+    --searchbar-border-color: #252E45;
+    --searchbar-bg: #141824;
+    --searchbar-fg: #DCE6F7;
+    --searchbar-shadow-color: #06080D;
+    --searchresults-header-fg: #82AAFF;
+    --searchresults-border-color: #232B40;
+    --searchresults-li-bg: #141824;
+    --search-mark-bg: #263A63;
+
+    --book-ink: #DCE6F7;
+    --book-pale: #151A28;
+    --book-navy: #82AAFF;
+    --book-rust: #89DDFF;
+    --book-brass: #F2CF88;
+
+    --m3-ink: #DCE6F7;
+    --m3-muted: #9AA8C4;
+    --m3-surface: #131724;
+    --m3-surface-tonal: #151B2B;
+    --m3-table-head-bg: #18233A;
+    --m3-table-head-ink: #B7D0FF;
+    --m3-table-row-alt: #161B2A;
+    --m3-hairline: #242E45;
+    --m3-accent: #82AAFF;
+    --m3-cyan: #89DDFF;
+    --m3-teal-bg: #122429;
+    --m3-teal-border: #89DDFF;
+    --m3-code-bg: #141826;
+}
+
+/* 3. Oceanic Next (ayu — calm deep teal-slate ocean #1B2B34) */
+html.ayu {
+    --bg: #1B2B34;
+    --fg: #D8DEE9;
+    --sidebar-bg: #142129;
+    --sidebar-fg: #A7ADBA;
+    --sidebar-non-existant: #65737E;
+    --sidebar-active: #5FB3B3;
+    --sidebar-spacer: #263A45;
+    --scrollbar: #344957;
+    --icons: #8FA3B0;
+    --icons-hover: #5FB3B3;
+    --links: #6699CC;
+    --inline-code-color: #5FB3B3;
+    --theme-popup-bg: #20333E;
+    --theme-popup-border: #344957;
+    --theme-hover: #29414F;
+    --quote-bg: #20333E;
+    --quote-border: #5FB3B3;
+    --table-border-color: #2E4654;
+    --table-header-bg: #233845;
+    --table-alternate-bg: #1F313B;
+    --searchbar-border-color: #344957;
+    --searchbar-bg: #17262E;
+    --searchbar-fg: #D8DEE9;
+    --searchbar-shadow-color: #0D171D;
+    --searchresults-header-fg: #5FB3B3;
+    --searchresults-border-color: #2E4654;
+    --searchresults-li-bg: #1F313B;
+    --search-mark-bg: #344E5E;
+
+    --book-ink: #D8DEE9;
+    --book-pale: #21343F;
+    --book-navy: #6699CC;
+    --book-rust: #5FB3B3;
+    --book-brass: #FAC863;
+
+    --m3-ink: #D8DEE9;
+    --m3-muted: #A3B3C0;
+    --m3-surface: #1E303A;
+    --m3-surface-tonal: #223642;
+    --m3-table-head-bg: #27404E;
+    --m3-table-head-ink: #CBE3F5;
+    --m3-table-row-alt: #21343F;
+    --m3-hairline: #324C5C;
+    --m3-accent: #6699CC;
+    --m3-cyan: #5FB3B3;
+    --m3-teal-bg: #1C363C;
+    --m3-teal-border: #5FB3B3;
+    --m3-code-bg: #17262E;
+}
+
+.navy ::selection { background: #1D3B53; color: #FFFFFF; }
+.coal ::selection { background: #364B75; color: #EEFFFF; }
+.ayu ::selection  { background: #3B5566; color: #FFFFFF; }
+
+.content main {
+    font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+    font-size: 1.72rem;
+    line-height: 1.68;
+    color: var(--m3-ink);
+}
+
+.content h1, .content h2, .content h3, .content h4 {
+    font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+    color: var(--m3-ink);
+    letter-spacing: -0.01em;
+}
+
+.navy .content h1, .coal .content h1, .ayu .content h1 {
+    color: #EEFFFF;
+}
+
+.navy .content h2, .coal .content h2, .ayu .content h2 {
+    color: #C7DCFF;
+}
+
+.navy .content h3, .coal .content h3, .ayu .content h3 {
+    color: #9EC5FF;
+}
+
+.content h2 {
+    border-bottom: 1px solid var(--m3-hairline);
+    padding-bottom: 0.25em;
+    margin-top: 2.1em;
+}
+
+.content a {
+    color: var(--m3-accent);
+}
+
+.content pre {
+    background: var(--m3-code-bg);
+    border: 1px solid var(--m3-hairline);
+    border-radius: 10px;
+}
+
+.content :not(pre) > code {
+    background: var(--m3-surface-tonal);
+    border: 1px solid var(--m3-hairline);
+    border-radius: 5px;
+    padding: 0.1em 0.36em;
+}
+
+.listing b, figcaption b {
+    color: var(--m3-accent);
+}
+
+.content blockquote {
+    border-left: 3px solid var(--m3-accent);
+    background: var(--m3-surface-tonal);
+    border-radius: 0 10px 10px 0;
+    padding: 0.6em 1.15em;
+    color: var(--m3-muted);
+}
+
+/* Material Design 3 Tonal Tables */
+.content table {
+    width: 100%;
+    border-collapse: separate;
+    border-spacing: 0;
+    margin: 1.5em 0;
+    font-size: 0.91em;
+    border: 1px solid var(--m3-hairline);
+    border-radius: 12px;
+    overflow: hidden;
+    background: var(--m3-surface);
+}
+
+.content table thead th {
+    background: var(--m3-table-head-bg) !important;
+    color: var(--m3-table-head-ink) !important;
+    font-weight: 650;
+    text-align: left;
+    padding: 0.65em 0.9em;
+    border: none;
+    border-bottom: 1px solid var(--m3-hairline);
+}
+
+.content table td {
+    padding: 0.6em 0.9em;
+    border: none;
+    border-bottom: 1px solid var(--m3-hairline);
+    vertical-align: top;
+    line-height: 1.5;
+}
+
+.content table tbody tr:last-child td {
+    border-bottom: none;
+}
+
+.content table tbody tr:nth-child(2n) {
+    background: var(--m3-table-row-alt);
+}
+
+/* Material Design 3 Tonal Scope & Simulation Cards */
+.covers {
+    background: var(--m3-surface-tonal);
+    border: 1px solid var(--m3-hairline);
+    border-left: 4px solid var(--m3-accent);
+    border-radius: 12px;
+    padding: 0.85em 1.3em 0.55em 1.3em;
+    margin: 1.3em 0 1.8em 0;
+}
+
+.covers > p:first-child {
+    color: var(--m3-accent);
+}
+
+.simulation {
+    border: 1px solid var(--m3-hairline);
+    border-left: 4px solid var(--m3-teal-border);
+    border-radius: 12px;
+    background: var(--m3-teal-bg);
+    padding: 0.5em 1.2em;
+    margin: 1.5em 0;
+}
+
+.navy .simulation, .coal .simulation, .ayu .simulation {
+    background: var(--m3-teal-bg);
+    border-color: var(--m3-hairline);
+    border-left-color: var(--m3-teal-border);
+}
+
+figure > img[src*="figures/m3/"] {
+    width: 100%;
+    max-width: 900px;
+    border-radius: 16px;
+    cursor: zoom-in;
+}
+
+.navy figure img[src*="figures/m3/"],
+.coal figure img[src*="figures/m3/"],
+.ayu figure img[src*="figures/m3/"] {
+    background: transparent;
+    padding: 0;
+    border-radius: 16px;
+}
+
+.figure-zoom img[src*="figures/m3/dark/"] {
+    background: #111420;
+}
+
+img.plate {
+    border-radius: 14px;
+    height: auto;
+    box-shadow: none;
+}
+
+img.cover {
+    border-radius: 14px;
+    box-shadow: none;
+    border: 1px solid var(--m3-hairline);
+}
+
+/* Calm styling for interactive step controls in Deep Ocean dark mode */
+.navy .steps-bar button, .coal .steps-bar button, .ayu .steps-bar button {
+    background: #161C2C;
+    border-color: #2A3652;
+    color: #DCE6F7;
+}
+.navy .steps-bar button:hover:not(:disabled),
+.coal .steps-bar button:hover:not(:disabled),
+.ayu .steps-bar button:hover:not(:disabled) {
+    border-color: #82AAFF;
+    color: #89DDFF;
+}
+
+/* Publication-grade Print / PDF stylesheet */
+@page {
+    size: letter;
+    margin: 0.5in 0.55in 0.55in 0.55in;
+    background: #ffffff;
+}
+
+@media print {
+    :root, html, body, html.navy, html.coal, html.ayu, html.rust, html.light,
+    #page-wrapper, .page-wrapper, .page, .content, main {
+        --bg: #ffffff !important;
+        --fg: #1b1f27 !important;
+        --links: #1a5fc4 !important;
+        --inline-code-color: #1b1f27 !important;
+        --m3-surface: #ffffff !important;
+        --m3-surface-tonal: #f6f8fc !important;
+        --m3-surface-card: #ffffff !important;
+        --m3-hairline: #dce0e7 !important;
+        --m3-ink: #1b1f27 !important;
+        --m3-muted: #566070 !important;
+        --m3-accent: #1a5fc4 !important;
+        --m3-table-head-bg: #eef4fe !important;
+        --m3-table-head-fg: #173d7a !important;
+        --m3-table-row-alt: #f9fbfe !important;
+        --m3-teal-bg: #eef8f6 !important;
+        --m3-teal-border: #0e7168 !important;
+        background: #ffffff !important;
+        background-color: #ffffff !important;
+        color: #1b1f27 !important;
+        -webkit-print-color-adjust: exact !important;
+        print-color-adjust: exact !important;
+    }
+
+    .page-wrapper, .page, .content, main {
+        max-width: 100% !important;
+        margin: 0 !important;
+        padding: 0 !important;
+        box-shadow: none !important;
+    }
+
+    #menu-bar, #sidebar, .nav-chapters, .nav-wrapper, .mobile-nav-chapters,
+    .steps-bar, .copy-button, .buttons, .fa, #cover {
+        display: none !important;
+    }
+
+    body, .content, .content p, .content li {
+        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif !important;
+        font-weight: 400 !important;
+        font-size: 9.3pt !important;
+        line-height: 1.46 !important;
+        color: #1b1f27 !important;
+    }
+
+    .content p { margin: 0.45em 0 !important; orphans: 3; widows: 3; }
+    .content ul, .content ol { margin: 0.4em 0 !important; }
+    .content li { margin: 0.2em 0 !important; }
+
+    .content h1 { font-size: 18pt !important; font-weight: 700 !important; margin: 0.2em 0 0.45em 0 !important; }
+    .content h2 { font-size: 13pt !important; font-weight: 700 !important; margin: 0.95em 0 0.35em 0 !important; }
+    .content h3 { font-size: 10.8pt !important; font-weight: 650 !important; margin: 0.75em 0 0.25em 0 !important; }
+    .content strong, .content b { font-weight: 650 !important; }
+
+    /* Full-page cover */
+    img.cover {
+        display: block;
+        max-height: 9.6in !important;
+        width: auto !important;
+        margin: 0 auto !important;
+        border: none !important;
+    }
+
+    img.plate {
+        width: 100% !important;
+        max-height: 2.05in !important;
+        object-fit: contain;
+        break-inside: avoid;
+        margin: 0 0 0.6em 0 !important;
+    }
+
+    h1, h2, h3, h4 {
+        color: #1b1f27 !important;
+        break-after: avoid;
+        page-break-after: avoid;
+    }
+
+    /* Keep diagrams atomic, but let multi-row tables, code listings, and callouts flow across pages cleanly */
+    figure {
+        break-inside: avoid;
+        page-break-inside: avoid;
+        margin: 0.65em 0 !important;
+    }
+
+    .covers, .simulation, table, pre, code, .content pre > code, .content pre > code.lined, blockquote {
+        break-inside: auto !important;
+        page-break-inside: auto !important;
+    }
+
+    .content pre > code {
+        display: block !important;
+        padding: 0 !important;
+        margin: 0 !important;
+    }
+
+    .content pre > code .line {
+        display: inline !important;
+        padding-left: 0 !important;
+        text-indent: 0 !important;
+    }
+
+    .covers {
+        padding: 0.55em 0.95em 0.4em 0.95em !important;
+        margin: 0.6em 0 0.9em 0 !important;
+    }
+
+    .simulation {
+        padding: 0.4em 0.85em !important;
+        margin: 0.7em 0 !important;
+    }
+
+    figure img, figure > img[src*="figures/m3/"] {
+        max-width: 100% !important;
+        max-height: 4.9in !important;
+        width: auto !important;
+        height: auto !important;
+        margin: 0 auto !important;
+        display: block;
+    }
+
+    figcaption {
+        font-size: 8.4pt !important;
+        margin-top: 0.25em !important;
+        padding-top: 0.25em !important;
+    }
+
+    pre, code {
+        background: #f6f8fc !important;
+        color: #1b1f27 !important;
+        border-color: #dce0e7 !important;
+        font-size: 7.9pt !important;
+        line-height: 1.38 !important;
+    }
+
+    pre {
+        border: 1px solid #dce0e7 !important;
+        border-radius: 6px !important;
+        padding: 0.5em 0.7em !important;
+        margin: 0.5em 0 !important;
+        white-space: pre-wrap !important;
+        word-break: break-word !important;
+    }
+
+    .content table {
+        font-size: 8.3pt !important;
+        width: 100% !important;
+        margin: 0.6em 0 !important;
+        background: #ffffff !important;
+        border-color: #dce0e7 !important;
+        border-collapse: collapse !important;
+        border-radius: 0 !important;
+        overflow: visible !important;
+        box-shadow: none !important;
+    }
+
+    .content table thead {
+        display: table-header-group !important;
+    }
+
+    .content table tr {
+        break-inside: avoid !important;
+        page-break-inside: avoid !important;
+    }
+
+    .content table thead, .content table thead tr {
+        background: #eef4fe !important;
+    }
+
+    .content table thead th {
+        background: #eef4fe !important;
+        color: #173d7a !important;
+        font-weight: 650 !important;
+        padding: 0.4em 0.65em !important;
+    }
+
+    .content table td {
+        color: #1b1f27 !important;
+        border-bottom-color: #dce0e7 !important;
+        padding: 0.36em 0.65em !important;
+        line-height: 1.38 !important;
+    }
+}

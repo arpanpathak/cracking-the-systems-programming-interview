@@ -1,542 +1,360 @@
-<img class="plate" src="art/ch15.svg?v=92a697af" alt="Echo, an owl, stands beside a sign that reads: copy on write, or collect on read.">
+<img class="plate" src="art/ch15-plate.svg" alt="Chapter 15 plate: Hybrid Fan-Out architecture combining push inboxes for ordinary accounts with pull-time K-way merge for celebrity authors into a ranked feed." />
 
-# News Feed: System Design
+# 15. News Feed: System Design
 
-A *news feed* is the page that a member of a social service sees on opening it: the
-recent posts of the accounts that the member follows, gathered into a single list with
-the newest at the top. Described as a query, it is brief. Take the accounts this
-member follows, take their posts, sort by time, and return the first 20.
+A social news feed aggregates recent posts published by the accounts a member follows into a single paginated stream ordered by recency or predicted relevance. Expressed as a relational query, a chronological feed requires joining a follow graph against a posts table and sorting by timestamp. At modest scale on a single database, that query executes cleanly. At tens of millions of members, however, the workload exhibits two hostile properties simultaneously: reads outnumber writes by an order of magnitude (`20:1` or higher), and the follower degree distribution follows a heavy power law in which most accounts have a few hundred followers while a small fraction have millions.
 
-The difficulty is that this query must be answered for every member, at every visit,
-within a fraction of a second, and that its cost grows with numbers which have no
-natural bound. A member may follow thousands of accounts, an account may be followed
-by millions of members, and a busy service receives far more requests to read feeds
-than to write posts. A naive evaluation of the query touches the posts of every
-followed account on every visit and cannot meet these demands. The standard remedy is
-to do the work in advance, at the moment a post is written, and this in turn becomes
-ruinously expensive for the small number of accounts that have a very large
-following. The design of a feed is a matter of choosing, for each post, when the work
-of delivering it should be done, and this chapter develops the 2 pure answers and the
-mixture that practical systems adopt.
+In this chapter, we design a distributed news feed service that resolves this asymmetry by shifting work dynamically between write time and read time. Precomputing follower timelines at publish time makes reads fast for ordinary accounts, whereas deferring assembly to read time prevents celebrity posts from triggering multi-million-write storms. Combining both paths behind a configurable follower threshold reduces total cluster work by roughly `50x` while preserving sub-200 ms feed latency.
 
 <div class="covers">
 
-This chapter covers
+In this chapter, we cover
 
-- the feed as a query, and why it cannot be evaluated as written
-- copying a post to every follower's list when it is written
-- collecting posts from every followed account when the feed is read
-- the account with millions of followers, and the mixture of both schemes
-- what a feed list contains, and how much of it is kept
-- reading a feed in pages, with a cursor
-- the delays and anomalies that members can see, and which of them matter
-- following, unfollowing, deleting, and ranking by something other than time
+- actors, use cases, functional requirements, latency and availability SLOs, explicit non-goals, and cache, storage, and fan-out capacity bounds
+- external HTTP/2 contracts for publishing, cursor-paginated feed retrieval, social-graph edges, and normalized storage schemas
+- separation of the control plane (ranking model registry, celebrity fan-out thresholds, social graph) from the asynchronous publish and read-assembly data plane
+- push fan-out on write, pull fan-out on read, and hybrid K-way merge backed by interactive traces and `code/feedsim` measurements
+- keyset cursor pagination, read-time hydration and safety filtering, multi-stage ML candidate ranking, hot-celebrity outbox caching, and author read-own-writes guarantees
+- failure-mode mitigation matrices, operational SLIs, production architectures (Twitter/X Home Timeline, Meta Multifeed and TAO, LinkedIn FollowFeed), and simulation verification
 
 </div>
 
-## The feed as a query
+## 15.1 Requirements, Actors, and Capacity Bounds
 
-Suppose that posts are kept in 1 table and the relation of who follows whom in
-another. The feed of a member is then the result of joining the 2: all posts whose
-author is among the accounts the member follows, ordered by time, newest first,
-limited to the first page.
+### Actors and Use Cases
 
-On a single database with a modest number of members, this query can be
-executed, and a service in its early days should do exactly that. Its cost is
-dominated by the number of accounts the member follows, since the recent posts of
-each have to be located before the newest overall can be chosen. For a member who
-follows 200 accounts this means 200 separate lookups in an index, or a scan that is
-equivalent to them, on every visit.
+We organize the news feed platform around three interacting actor groups (Figure 15-1).
 
-The arrangement breaks down as the service grows, for 2 reasons that reinforce each
-other. The data no longer fits on 1 machine, so that the posts of 200 authors lie on
-many different shards, and the query becomes 200 network requests whose results must
-be merged. And feeds are read very often. A member may publish 2 posts a day and open
-the feed 20 times, so that the expensive operation is also the frequent one. A design
-in which the common operation is costly and the rare one cheap has its costs the wrong
-way round, and the natural response is to move work from reading to writing.
-
-## Copying when a post is written
-
-In the first scheme, every member has a *feed list* that is stored and kept ready.
-The list contains references to the posts the member should see, in order, and reading
-the feed consists of nothing more than fetching this list. The work is done at the
-time of writing. When an author publishes a post, the service looks up the author's
-followers and adds a reference to the new post at the front of each follower's list.
-Delivering 1 post to many lists in this way is called *fan-out*, and this scheme is
-*fan-out on write*, or informally the push model.
-
-<figure class="steps" data-prefix="figures/steps-feed-push" data-count="5" data-version="a62e5f91">
-<img src="figures/steps-feed-push-01.svg?v=a62e5f91" alt="Copy on write, step 1 of 5. Every member has a feed list, kept ready in a cache. It holds the numbers of the posts that the member should see, newest first. Cy follows Dan and already has post 41.">
-<figcaption><b>Figure 15.1</b> A post is stored once and a reference to it is added to the list of each follower. Use Next and Back to move through the 5 steps.</figcaption>
+<figure class="diagram">
+<img src="figures/m3/ch15_use_cases.svg" alt="Actors and Use Cases of the Social News Feed Service: Post Author publishes and deletes posts; Feed Reader fetches cursor-paginated timelines and updates follow edges; Ranking and Safety configures scoring models and suppresses policy-violating content." />
+<figcaption><b>Figure 15-1</b> Actors, system boundary, and core use cases of the social news feed service.</figcaption>
 </figure>
 
-Reading under this scheme is as inexpensive as reading can be. A single lookup by the
-member's identifier returns a list that is already assembled and already sorted, and
-the feed service has only to fetch the posts it refers to. The feed can be served in
-a few milliseconds regardless of how many accounts the member follows.
+| Actor | Operation | Concrete Scenario |
+| :--- | :--- | :--- |
+| **Post Author** | Publish post (`POST /v1/posts`), delete post (`DELETE /v1/posts/{id}`) | Regular member or 10-million-follower celebrity publishes text and media attachments and expects immediate visibility in their own feed |
+| **Feed Reader** | Fetch paginated timeline (`GET /v1/feeds/{id}?cursor=c&limit=n`), follow or unfollow (`PUT / DELETE /v1/graph/{u}/follows/{v}`) | Mobile client opens the home feed, scrolls smoothly across multiple pages without duplicates, and unfollows an account with immediate suppression |
+| **Ranking and Safety Team** | Deploy ranking model weights, tune celebrity fan-out cutoffs, and apply moderation suppression | Trust engineering deploys a updated scoring model or hides a policy-violating post immediately across all active readers |
 
-The cost has been transferred to publishing, where it is proportional to the number
-of followers. For an author with 200 followers, a post gives rise to 200 small writes,
-which is perfectly acceptable. The copying is not done while the author waits. The
-post is stored, the author receives a reply, and a task describing the copying is
-placed in a message queue, from which workers perform it in the background, in the
-manner of chapters 11 and 12. A follower's list therefore receives the post some
-moments after it was published, and the feed is eventually consistent by construction.
+### Functional Requirements
 
-2 further costs are less conspicuous. Lists are maintained for all members,
-including those who have not opened the service in months, so that much of the copying
-is done for readers who will never see its result. And the lists occupy memory in
-proportion to the number of members, which obliges the service to bound the length of
-each.
+| No. | Functional Requirement |
+| :--- | :--- |
+| 0 | A member can publish a post containing text and media references and receive a monotonically time-ordered `post_id` within `250 ms`. |
+| 1 | A member can follow or unfollow another account; unfollowed, blocked, or deleted content disappears from the member's feed immediately on the next read. |
+| 2 | A member can fetch their home timeline in stable cursor-paginated pages (`limit` default `20`, maximum `100`) ordered chronologically or by ranked score. |
+| 3 | New posts from ordinary followed accounts appear in active followers' feeds within `5 seconds` (`p99`), and posts from celebrity accounts become visible immediately upon publish. |
+| 4 | An author observes their own newly published post immediately upon reloading their feed (author read-own-writes consistency). |
+| 5 | The feed pipeline supports pluggable read-time ranking and policy suppression without rewriting precomputed follower inboxes. |
 
-## Collecting when the feed is read
+### Non-Functional Requirements and SLOs
 
-The second scheme stores no feed lists at all. Each author's posts are kept together,
-indexed by author and time, and publishing a post is a single write to the author's
-own collection. The feed is assembled when it is requested: the service looks up the
-accounts the reader follows, fetches the recent posts of each, and merges the results
-by time. This is *fan-out on read*, or the pull model, and it is the query of the
-first section carried out against data arranged to make each of its parts efficient.
+| No. | Property | Target Specification | Architectural Consequence |
+| :--- | :--- | :--- | :--- |
+| 0 | **Feed Read Latency** | `p50 <= 50 ms`, `p99 <= 200 ms` (hydrated and ranked) | Prohibits arbitrary scatter-gather across hundreds of database shards on read; mandates precomputed in-memory inboxes plus bounded celebrity outbox merges |
+| 1 | **Publish Latency** | `p99 <= 250 ms` (durable post commit only) | Decouples follower fan-out from the synchronous publish HTTP response via Kafka |
+| 2 | **Availability** | `99.95%` for feed reads (`<= 21.6` minutes downtime/month) | Active-active stateless feed aggregators across three AZs; graceful degradation to chronological unranked feed if the ML ranker times out |
+| 3 | **Consistency** | Strong consistency for durable posts and follow edges; eventual consistency (`<= 5 s`) for fan-out inbox delivery | Feed caches are derived, disposable views that can be rebuilt on cache loss from durable post and graph stores |
+| 4 | **Scale** | `10,000,000` daily active members (`DAU`), `2` posts/member/day, `20` feed reads/member/day (`20:1` read-to-write ratio) | `20` million posts/day, `200` million feed reads/day (`~2,315` sustained read QPS, `~15,000` peak read QPS) |
 
-<figure class="steps" data-prefix="figures/steps-feed-pull" data-count="5" data-version="fd606b4a">
-<img src="figures/steps-feed-pull-01.svg?v=fd606b4a" alt="Collect on read, step 1 of 5. Under the other scheme no feed lists exist. Each author&#x27;s posts are kept together, and publishing a post adds 1 line to the author&#x27;s own list and does nothing else.">
-<figcaption><b>Figure 15.2</b> Nothing is prepared in advance, and the feed is assembled from the posts of each followed account. Use Next and Back to move through the 5 steps.</figcaption>
-</figure>
+### Non-Goals and Scope Boundaries
 
-Publishing is now trivially cheap and its cost is independent of the size of the
-author's following. No work is done on behalf of members who never read. A post is
-visible to its readers the instant it is stored, there being no copying to wait for.
-And when a member follows a new account or stops following one, the feed reflects the
-change immediately and without any repair, since it is computed afresh from the
-current list of followed accounts.
+We exclude the following adjacent subsystems so the design focuses on timeline assembly and fan-out mechanics:
 
-The cost is borne by every read, and is proportional to the number of accounts the
-reader follows. With 200 followed accounts, a visit to the feed requires 200 fetches,
-which can be issued in parallel and must nevertheless all be awaited, so that the
-response is as slow as the slowest of them. Since reads are far more numerous than
-writes, the total work is much greater than under the first scheme for a typical
-population of accounts.
+- **Direct messaging and real-time chat:** Bidirectional private conversations with strict per-channel sequence numbers are designed in Chapter 18.
+- **Media transcoding and CDN delivery:** Storing and streaming attached images and videos are handled by the object store (Chapter 16) and adaptive video streaming pipeline (Chapter 17); posts store only immutable media asset identifiers.
+- **Offline ML model training pipelines:** We cover online candidate retrieval and inference budgets on the read path, treating offline feature-store ETL and gradient training as upstream control-plane inputs.
 
-## The account with millions of followers
+### Back-of-the-Envelope Capacity Bounds
 
-The choice between the 2 schemes would be straightforward, in favour of copying on
-write, if all accounts resembled one another. They do not. In every social service the
-number of followers is distributed with extreme inequality: the great majority of
-accounts have a few hundred followers or fewer, and a small number have millions.
+We derive memory, storage, and QPS bounds for `10,000,000` active members (each following `200` accounts on average, including `5` celebrity accounts above the fan-out cutoff):
 
-For such an account, copying on write is a very different proposition. A single post
-by an account with 2 million followers gives rise to 2 million writes. Performed by a
-pool of workers at 10000 writes per second, this takes more than 3 minutes, during
-which some followers have the post and others do not, and the queue of copying tasks
-is occupied to the detriment of everybody else's posts. If several such accounts post
-at about the same time, as they tend to during events of general interest, the backlog
-grows to many minutes.
+| Resource Dimension | Arithmetic Derivation | Provisioned Bound |
+| :--- | :--- | :--- |
+| **Post Write Rate (Avg / Peak)** | `(10,000,000 * 2) / 86,400 s = 231.5` posts/s; `5x` peak | `232` posts/s avg, `1,160` posts/s peak |
+| **Feed Read Rate (Avg / Peak)** | `(10,000,000 * 20) / 86,400 s = 2,315` reads/s; `6x` peak | `2,315` reads/s avg, `14,000` reads/s peak |
+| **Fan-Out Write Ops (Hybrid)** | `232 posts/s * 200 avg followers` (excluding celebrities) | `~46,400` Redis `ZADD` ops/s avg (`~232,000` ops/s peak) |
+| **Precomputed Inbox Cache RAM** | `10,000,000 members * 500 entries * 16 B` (`8 B post_id + 8 B ts`) | `80 GB` raw (`~160 GB` with Redis `ZSET` overhead and `2x` replication across 12 cache nodes) |
+| **Celebrity Outbox Cache RAM** | `50,000 celebrities * 200 recent posts * 16 B` | `160 MB` (fits inside local L1 RAM and replicated Redis shards) |
+| **Post Content Storage (5 yr)** | `20,000,000 posts/day * 365 * 5 * 1 KB` avg post row | `36.5 TB` logical (`109.5 TB` raw at `3x` replication) |
+| **Follow Graph Storage** | `10,000,000 members * 200 edges * 24 B` (indexed both directions) | `96 GB` logical (`288 GB` raw across 9 replicated graph shards) |
 
-The simulation for this chapter makes the imbalance concrete. It models 1000 ordinary
-accounts, each with 200 followers, publishing 2 posts and reading the feed 20 times a
-day, together with a single account that has 2 million followers and publishes 10
-posts a day.
+Storing only 16-byte `(post_id, timestamp)` references inside follower inboxes keeps the entire `10`-million-member timeline cache inside `160 GB` of RAM, whereas storing full 1 KB post bodies inside every inbox would inflate cache memory by `64x` (`> 5 TB`) and make post edits or deletions unmanageable.
 
-<figure>
-<img src="figures/feed-cost.svg?v=98bf6514" alt="3 bars of work per day for 1000 ordinary accounts and 1 account with 2 million followers. Copy on write for everyone makes 20400000 copies. Collect on read for everyone makes 4000500 fetches. The mixture makes 400000 copies and 20005 fetches.">
-<figcaption><b>Figure 15.3</b> The work per day under each scheme for 1000 ordinary accounts and 1 very large one.</figcaption>
-</figure>
+## 15.2 External API and Data Contracts
 
-Under copying on write, the 1000 ordinary accounts cause 400000 copies a day between
-them, and the 1 large account causes 20 million. A single account is responsible for
-98% of all the work in the system. Under collecting on read, the total is about 4
-million fetches, nearly all of them attributable to the ordinary accounts' 20000 daily
-reads of 200 lists each.
+The service exposes RESTful JSON-over-HTTP/2 endpoints with explicit idempotency keys on mutations and opaque cursor tokens on timeline pagination.
 
-The figures suggest the remedy, which is to treat the 2 kinds of account differently.
-Posts by ordinary accounts are copied to their followers' lists on writing, as in the
-first scheme. Posts by accounts whose following exceeds some threshold, 10000 in the
-simulation, are not copied at all. When a member's feed is read, the service takes the
-member's stored list and merges into it the recent posts of the few large accounts
-that the member follows, which it fetches at that moment as in the second scheme. In
-the simulation this mixture requires 400000 copies and 20005 fetches a day, about a
-fiftieth of the work of either pure scheme.
+### External HTTP Contracts
 
-The mixture succeeds because it assigns each scheme to the case in which it is cheap.
-Copying on write costs in proportion to an author's followers, and is applied where
-followers are few. Collecting on read costs in proportion to the number of accounts
-fetched, and is applied to the handful of large accounts that any 1 member follows. It
-helps, too, that the recent posts of a very large account are requested by so many
-readers that they are almost always in a cache, so that the additional fetches at
-reading time are inexpensive.
-
-| | Copy on write | Collect on read | Mixture |
-|---|---|---|---|
-| Cost of publishing | 1 write per follower | 1 write | 1 write per follower, for ordinary authors only |
-| Cost of reading | 1 list | 1 fetch per followed account | 1 list, and 1 fetch per large account followed |
-| Delay before a post is visible | until the copying is done | none | none for large accounts, brief for others |
-| Work for inactive members | wasted | none | wasted for ordinary authors' posts only |
-| After following or unfollowing | the list has to be repaired | correct at once | partly repaired, partly correct at once |
-
-## What a feed list contains
-
-A feed list could in principle hold complete posts. It holds only references, each
-consisting of the identifier of a post and its time, about 16 bytes in all, and the
-posts themselves are stored once and fetched by identifier when a page of the feed is
-displayed. The reasons are those of any normalised design. A post with a million
-readers would otherwise exist in a million copies, and an edit or deletion would have
-to find and alter every one of them. With references, an edited post is changed in 1
-place, and a deleted post is found to be absent when the feed service tries to
-fetch it and is omitted from the page.
-
-The length of each list is bounded, commonly at a few hundred entries, the oldest
-being discarded as new ones arrive. Hardly any member scrolls back further than this,
-and for the rare one who does, the service falls back on collecting on read for the
-older portion. With 500 entries of 16 bytes for each of 10 million members, the lists
-occupy 80 GB, which is held in a cache spread over several nodes as described in
-chapter 9.
-
-Because the lists are held in a cache, outside durable storage, a list can be lost,
-through the failure of a cache node or through eviction. This is acceptable only
-because a list can always be reconstructed from the durable data, by running the
-collect-on-read procedure once for that member and storing the result. The lists of
-members who have been inactive for some weeks may deliberately be allowed to lapse and
-be rebuilt in this way on their return, which recovers much of the wasted work noted
-above.
-
-## Reading a feed in pages
-
-A feed is delivered in pages, and the method by which the client asks for the
-next page deserves more attention than it usually receives.
-
-The obvious method is by position: the first request asks for items 1 to 20 and the
-second for items 21 to 40. This fails in a characteristic way on any list to which
-items are being added at the front, which a feed always is.
-
-<figure class="steps" data-prefix="figures/steps-feed-page" data-count="4" data-version="b2de92bc">
-<img src="figures/steps-feed-page-01.svg?v=b2de92bc" alt="A new post arrives between 2 pages, step 1 of 4. A reader opens the feed and receives the first page, 2 items: posts 50 and 49.">
-<figcaption><b>Figure 15.4</b> A post is added while the reader is on the first page, and a request by position returns an item that was already shown. Use Next and Back to move through the 4 steps.</figcaption>
-</figure>
-
-Every insertion at the front shifts all existing items down by 1 position, so that the
-boundary between pages moves under the reader's feet and the second page begins with
-items from the end of the first. Deletions shift items the other way and cause items
-to be missed. The remedy is to ask for the next page by reference to an item,
-in the form "20 items older than the last one I have". The identifier of that last
-item, returned by the service with each page for use in the next request, is called a
-*cursor*. Since it denotes a fixed point in the sequence, insertions before it have no
-effect on what follows it. A request by cursor is also cheaper for the store to
-answer, since an ordered index can be entered directly at the cursor, whereas a
-request for position 10000 obliges the store to count past 10000 entries. Chapter 1
-used the same technique for listing keys.
-
-## What members can observe
-
-Since the feed is eventually consistent, members can observe states of affairs that a
-strongly consistent system would exclude, and it has to be decided which of these are
-tolerable.
-
-After publishing a post, an author expects to see it at once. Under copying on write,
-the author's own list is updated by the same background process as everyone else's,
-and a quick reload might not yet show the post, which authors interpret as its having
-been lost. The property that is wanted is called *read your own writes*, and it is
-usually secured for this 1 case by having the feed service add the author's own most
-recent posts to the author's feed at reading time, without waiting for the copying.
-
-Followers receive a post at slightly different moments, as the copying proceeds. This
-passes unnoticed in itself and becomes visible through replies: a member may be shown
-a reply to a post that has not yet reached the member's own list. Services deal with
-this by fetching the original together with any reply to it, so that the pair is
-always displayed together.
-
-A subtler requirement is that a member who has seen a post should not find it gone on
-the next reload. This can occur when 2 successive requests are answered by 2 cache
-replicas of which the second is behind the first. Directing all of a member's requests
-within a session to the same replica is generally sufficient to prevent it.
-
-None of these anomalies does lasting harm, and that is the justification for choosing
-eventual consistency here. A feed that is a few seconds stale is still a perfectly
-good feed, whereas a feed service that refused to respond until every replica agreed
-would be unavailable on many occasions when a slightly stale answer would have served.
-
-## Following, deleting and ranking
-
-Changes in who follows whom require the stored lists to be repaired. When a member
-follows a new account, that account's recent posts should appear in the member's
-feed, and so the service merges them into the member's list as a background task. When
-a member stops following an account, the posts of that account should disappear, and
-the simplest method is not to remove them from the list and to filter them out at
-reading time, by checking each entry against the member's current list of followed
-accounts.
-
-The same filtering at reading time disposes of several other cases at once: posts
-that have been deleted, authors whom the reader has blocked, and posts withdrawn by
-moderators. A design that depended on locating and removing every copy of a reference
-from millions of lists would be slow and unreliable, while a check at the moment of
-display is immediate and certain. The general principle is that anything which must
-take effect at once should be enforced when the feed is read, and the stored lists
-should be regarded as a hint about what to show, subject to verification.
-
-Finally, many services order the feed by an estimate of what the member will find
-interesting, and no longer strictly by time. This alters the pipeline less than might
-be supposed. The stored list becomes a pool of candidates, perhaps the 500 most recent
-references, and at reading time a ranking function assigns a score to each candidate
-and the highest are shown. Fan-out, storage and the treatment of large accounts are
-unchanged. What changes is that paging by cursor becomes harder, since the order is no
-longer fixed, and services commonly rank a batch of candidates once, at the start of a
-session, and page through that fixed result.
-
-## Use cases
-
-A member publishes posts, reads the feed, and chooses whom to follow.
-
-<figure>
-<img src="figures/feed-use-cases.svg?v=341e2b0c" alt="A use case diagram of the news feed. Member: publish a post (POST /v1/posts), read the feed (GET /v1/newsfeeds/{user}/posts), follow an account (PUT /v1/follows/{id}).">
-<figcaption><b>Figure 15.5</b> The actors and what each of them does.</figcaption>
-</figure>
-
-## Functional requirements
-
-| No. | Functional requirement |
-|---|---|
-| 0 | A member can publish a post. |
-| 1 | A member can follow and unfollow an account. |
-| 2 | A member can read a feed of recent posts from followed accounts, newest first, in pages. |
-| 3 | A new post appears in followers' feeds within 5 seconds. |
-
-## Non-functional requirements
-
-| No. | Property | Non-functional requirement |
-|---|---|---|
-| 0 | Latency | Reading a feed takes under 200 ms. |
-| 1 | Availability | 99.9% for reading feeds. |
-| 2 | Consistency | Eventual. Followers may see a post a few seconds apart, and in slightly different order. |
-| 3 | Scale | 10 million members, 20 feed reads for every post. |
-
-The feed is eventually consistent, and deliberately so. A post may take some seconds
-to reach all of its author's followers, and 2 followers may see it at different
-moments. The posts themselves and the relation of who follows whom are stored durably
-and consistently in a replicated store, and the feed lists are a derived and
-disposable view of that data, which can be rebuilt whenever they are lost.
-
-## Core entities
-
-<figure>
-<img src="figures/feed-entities.svg?v=feba5166" alt="The core entities. Post has the fields id u64, author string, body string, time time. Follow has the fields follower string, followed string. Feed item has the fields owner string, post u64, time time. A Feed item is a copy of a pointer to a post, kept for 1 reader. The post itself is stored once.">
-<figcaption><b>Figure 15.6</b> The core entities and their fields.</figcaption>
-</figure>
-
-## Capacity estimate
-
-<div class="estimate">
-
-<img class="builder" src="art/crab-builder.svg" alt="A crab in a hard hat, in tears.">
-
-**Arithmetic ahead.** A feed entry is 16 bytes, so the newest 500 entries for 10 million members are 80 GB of cache.
-
-<a class="skip" href="#high-level-design">Skip to the high-level design</a>
-
-<details>
-<summary>Show the calculation</summary>
-
-| Quantity | Calculation | Result |
-|---|---|---|
-| Feed entry | post id 8 bytes + time 8 bytes | 16 bytes |
-| Entries kept per member | the newest 500 | 500 |
-| Feed cache | 10000000 × 500 × 16 bytes | 80 GB |
-| Posts per day | 10000000 members × 2 | 20 million |
-
-</details>
-
-</div>
-
-## The API
-
-Publishing creates a post in the collection of posts. Every member has a news feed,
-so the feeds form a collection too, `/v1/newsfeeds`, in which a feed is identified
-by its owner, and reading a feed returns a page of its posts together with the cursor
-for the page that follows.
-
-**Publish a post**
+**Publish a post:**
 
 ```http
-POST /v1/posts HTTP/1.1
-Host: feed.example
-Content-Type: application/json
-
-{ "body": "Shipped the new release." }
-```
-
-```http
-HTTP/1.1 201 Created
-Location: /v1/posts/90210
-Content-Type: application/json
-
-{ "id": 90210, "time": "2026-10-14T09:00:00Z" }
-```
-
-We store the post before the response and copy it to followers afterwards.
-
-**Read a page of the feed**
-
-```http
-GET /v1/newsfeeds/ada/posts?limit=2 HTTP/1.1
-Host: feed.example
-```
-
-```http
-HTTP/1.1 200 OK
+POST /v1/posts HTTP/2
+Host: api.feed.example
+Authorization: Bearer <token>
+Idempotency-Key: 9b4e2f10-3c8a-4d7e-91c2-0a1b2c3d4e5f
 Content-Type: application/json
 
 {
-  "posts": [
-    { "id": 90210, "author": "ada", "body": "Shipped the new release." },
-    { "id": 90188, "author": "grace", "body": "Found the bug." }
-  ],
-  "next_after": "90188"
+  "body": "Shipped the new release with hybrid fan-out.",
+  "media_ids": ["obj_9a3f11c2"],
+  "visibility": "followers"
 }
 ```
 
-`next_after` is the id of the last post on the page.
+```http
+HTTP/2 201 Created
+Location: /v1/posts/726190441827532801
+Content-Type: application/json
 
-## High-level design
+{
+  "post_id": "726190441827532801",
+  "author_id": "u_ada",
+  "created_at": "2026-11-20T13:08:05.412Z"
+}
+```
 
-<figure class="wide">
-<img src="figures/feed-design.svg?v=e7ffe354" alt="A news feed. The components are Authors, Post service, Queue, Fan-out workers, Readers, Feed service, Feed cache. Step 1: An author publishes a post. Step 2: The post is stored, and a task is queued. Step 3: A worker takes the task. Step 4: It adds the post to each follower&#x27;s list. Step 5: A reader opens the feed. Step 6: The feed service reads the reader&#x27;s list.">
-<figcaption><b>Figure 15.7</b> The components and the path of a request. The steps are numbered.</figcaption>
+The `post_id` is a 64-bit time-ordered Snowflake identifier (Chapter 8), ensuring lexicographical and numerical ordering aligns with creation time without centralized clock locks.
+
+**Fetch a paginated home feed:**
+
+```http
+GET /v1/feeds/u_ada?limit=20&cursor=eyJ0cyI6MTc5NTE4MDA4NTQxMiwiaWQiOiI3MjYxOTA0NDE4Mjc1MzI4MDEifQ HTTP/2
+Host: api.feed.example
+Authorization: Bearer <token>
+```
+
+```http
+HTTP/2 200 OK
+Content-Type: application/json
+
+{
+  "items": [
+    {
+      "post_id": "726190441827532801",
+      "author_id": "u_grace",
+      "body": "Found the pagination boundary defect.",
+      "created_at": "2026-11-20T13:08:05.412Z",
+      "rank_score": 0.942
+    }
+  ],
+  "next_cursor": "eyJ0cyI6MTc5NTE3OTk0MTIwMCwiaWQiOiI3MjYxODk4MzU2MDExNDAyMjQifQ",
+  "has_more": true
+}
+```
+
+**Update social graph edges:**
+
+- `PUT /v1/graph/{follower_id}/follows/{followed_id}` returns `204 No Content` (idempotent follow edge creation; asynchronously triggers backfill of the followed account's recent posts into the follower's inbox if the followed account is below the celebrity threshold).
+- `DELETE /v1/graph/{follower_id}/follows/{followed_id}` returns `204 No Content` (marks edge deleted in the social graph; read-time filtering hides that author's posts immediately without scanning cached inboxes).
+
+### Storage Schemas and Cache Structures
+
+```sql
+-- Authoritative post content store (sharded by hash(author_id) for fast author outbox scans,
+-- with secondary lookup index or separate KV store keyed by post_id for hydration)
+CREATE TABLE posts (
+    post_id     BIGINT      PRIMARY KEY,    -- 64-bit Snowflake ID
+    author_id   BIGINT      NOT NULL,
+    body        TEXT        NOT NULL,
+    media_ids   JSONB       NOT NULL DEFAULT '[]',
+    deleted_at  TIMESTAMPTZ NULL,           -- Tombstone checked during read-time hydration
+    created_at  TIMESTAMPTZ NOT NULL
+);
+
+-- Bidirectional social graph (sharded by follower_id for read-time follow list,
+-- and replicated/inverted by followed_id for push fan-out follower iteration)
+CREATE TABLE follow_edges (
+    follower_id BIGINT      NOT NULL,
+    followed_id BIGINT      NOT NULL,
+    created_at  TIMESTAMPTZ NOT NULL,
+    PRIMARY KEY (follower_id, followed_id)
+);
+CREATE INDEX idx_follow_by_followed ON follow_edges (followed_id, follower_id);
+```
+
+In Redis, each member's precomputed inbox (`inbox:{user_id}`) and each celebrity's outbox (`outbox:{author_id}`) are stored as bounded Sorted Sets (`ZSET`) scored by `post_id` (encoding timestamp in the high bits) and trimmed on write via `ZREMRANGEBYRANK key 0 -501` so every list caps strictly at `500` entries.
+
+## 15.3 High-Level Architecture: Control Plane vs. Data Plane
+
+We decouple policy thresholds, ranking model distribution, and social-graph metadata (control plane) from the latency-sensitive publish and timeline-assembly paths (data plane) (Figure 15-2).
+
+<figure class="diagram">
+<img src="figures/m3/ch15_architecture.svg" alt="Control Plane and Data Plane Architecture of the Social News Feed Service: Control Plane holds Ranking Model Registry, Fan-Out Policy Config (celebrity cutoff greater than 100k), and Social Graph Service; Data Plane runs Post Service, Post Store, Kafka Topic, Fan-Out Workers, Feed Cache, and Feed Aggregator and Ranker." />
+<figcaption><b>Figure 15-2</b> Control-plane ranking models, fan-out cutoffs, and social graph separated from asynchronous publish fan-out and low-latency read assembly.</figcaption>
 </figure>
 
-| Component | Role | State it holds | When 1 instance fails |
-|---|---|---|---|
-| Post service | stores a post and queues the copying | posts, in the key-value store | another instance serves requests |
-| Fan-out workers | add a post to each follower's list | none | their tasks are delivered again, as in chapter 11 |
-| Feed cache | 1 list of recent post ids per member | lists, in memory | lists are rebuilt from the posts on the next read |
-| Feed service | reads a member's list and fetches the posts | none | another instance serves requests |
+### Component Responsibilities
 
-### One request, step by step
+| Component | Plane | State Held | Failure Impact and Mitigation |
+| :--- | :--- | :--- | :--- |
+| **Ranking Model Registry** | Control | Versioned ML scoring weights, feature schemas, safety suppression rules | Aggregators cache last known good model bundle in RAM; control-plane outage pauses model deploys without affecting reads |
+| **Fan-Out Policy Config** | Control | Dynamic follower threshold (`celebrity_cutoff`, e.g., `100,000`) and inactive-user TTL | Broadcast via configuration watch; workers continue using cached cutoff values |
+| **Social Graph Service** | Control / Data | Bidirectional follower/followed edge lists + cached per-user celebrity follow list | Sharded across 9 replicated nodes with read-through Redis caching (`TAO`-style graph cache) |
+| **Post Service and Post Store** | Data | Durable posts and `Idempotency-Key` records across `30` sharded DB nodes (`10 shards x 3 replicas`) | Writes commit synchronously to quorum and emit a Kafka event via transactional outbox before replying `201 Created` |
+| **Kafka Topic + Fan-Out Workers** | Data | Partitioned `post-created` event log; stateless worker pool (`60` workers) | Workers consume at-least-once and execute idempotent Redis `ZADD` operations; worker crash triggers partition rebalance with zero data loss |
+| **Feed Cache (Redis Cluster)** | Data | Bounded `500`-entry `ZSET` inboxes per active member + hot celebrity outboxes | Disposable derived cache; losing a shard triggers lazy collect-on-read reconstruction from durable Post and Graph stores |
+| **Feed Aggregator and Ranker** | Data | Stateless read orchestrator, local L1 celebrity outbox cache, embedded ML scorer | Auto-scaled across three AZs; falls back to reverse-chronological ordering if ML inference exceeds a `40 ms` deadline |
 
-The steps follow the arrows of figure 15.7.
+### Write and Read Lifecycles
 
-1. An author sends `POST /v1/posts`.
-2. The post service stores the post once and puts a small task on the queue: "post 90210 by ada".
-3. A fan-out worker takes the task and looks up ada's followers.
-4. For each follower, the worker adds the post's id to that follower's list in the feed cache.
-5. A reader sends `GET /v1/newsfeeds/{user}/posts`.
-6. The feed service reads the reader's list, merges in recent posts of any very large accounts the reader follows, and fetches the posts themselves.
+**Publish path (`POST /v1/posts`):**
+1. The Post Service authenticates the author, allocates a 64-bit Snowflake `post_id`, and writes the post row plus a `post-created` outbox event atomically to the durable Post Store.
+2. The Post Service appends the `post_id` synchronously to the author's own Redis outbox (`outbox:{author_id}`) and returns `201 Created` immediately so the author never waits on follower fan-out.
+3. The outbox relay publishes the `post-created` event to Kafka.
+4. A Fan-Out Worker reads the event, checks the author's follower count against the configured `celebrity_cutoff`:
+   - If `follower_count <= celebrity_cutoff` (normal account), the worker paginates the author's active followers from the Social Graph Service (skipping users inactive for more than `30 days`) and pipelines `ZADD inbox:{follower_id} <score> <post_id>` + `ZREMRANGEBYRANK` into the Feed Cache.
+   - If `follower_count > celebrity_cutoff` (celebrity account), the worker skips follower push entirely; the post is already live in `outbox:{author_id}` for read-time pull merging.
 
-For a reader who follows a very large account, the feed service adds 1 step to this
-path. Having read the stored list, it fetches the recent posts of each large account
-the reader follows, from a cache in which they are nearly always present, and merges
-them into the list by time before returning the page.
+**Read path (`GET /v1/feeds/{user_id}`):**
+1. The Feed Aggregator reads the member's precomputed `inbox:{user_id}` candidate IDs (up to `500` items) from the Feed Cache in one Redis pipeline call.
+2. Concurrently, it fetches the compact list of celebrity accounts followed by `user_id` (typically `0 to 15` accounts) plus `user_id`'s own recent outbox (guaranteeing author read-own-writes) and reads their latest post IDs from the hot celebrity outbox cache.
+3. The aggregator executes a **K-way merge** across the push inbox and the pulled celebrity outboxes, filtering out any author whom the member recently unfollowed or blocked.
+4. For ranked timelines, the aggregator scores candidates with the active ranking model within a strict `40 ms` budget; for chronological timelines, it slices directly by `(timestamp_ms, post_id)` cursor.
+5. Finally, the aggregator batch-hydrates full post bodies and author profiles from the Post Cache/Store for the top `limit` (`20`) post IDs, drops any post carrying a `deleted_at` tombstone or moderation flag, and returns the page alongside an encoded `next_cursor`.
 
-## The design, deployed
+## 15.4 Hybrid Fan-Out: Push Inboxes, Celebrity Pull Merge, and Threshold Calibration
 
-<figure class="wide">
-<img src="figures/feed-deploy.svg?v=a56764a6" alt="The news feed, deployed. Members: Members (10 million), post and read. Services, in 3 zones: Load balancers (x 4), by service, Post service (x 20), stores posts, Feed service (x 40), merges and filters. Data, in 3 zones: Feed cache (x 12), 1 list for each member, Post store (x 30), shards x 3 replicas, Follow store (x 9), who follows whom. Fan-out: Queue brokers (x 6), see chapter 11, Fan-out workers (x 60), copy to followers.">
-<figcaption><b>Figure 15.8</b> The news feed as it is deployed, with the fan-out workers as the only writers of the feed cache.</figcaption>
+### Pure Push (Fan-Out on Write)
+
+Under pure fan-out on write, every published post triggers background workers to insert a 16-byte pointer into every follower's cached inbox (Interactive Trace 15.A).
+
+<figure class="steps" data-prefix="figures/steps-feed-push" data-count="5" data-version="a62e5f91">
+<img src="figures/steps-feed-push-01.svg?v=a62e5f91" alt="Copy on write, step 1 of 5. Every member has a feed list, kept ready in a cache. It holds the numbers of the posts that the member should see, newest first. Cy follows Dan and already has post 41." />
+<figcaption><b>Interactive Trace 15.A</b> Fan-out on write (push): storing a post once and inserting a compact reference into each follower's cached inbox. Use Next and Back to step through all 5 stages.</figcaption>
 </figure>
 
-The feed service is the largest stateless tier, since reads dominate, and it stands
-with the post service behind load balancers in 3 zones. Below them are 3 stores of
-different kinds: the feed cache, in memory, holding 1 list for each member, and the
-post store and follow store, both sharded and replicated across the zones. The
-fan-out workers at the bottom take 1 task for each post from the queue and are the
-only component that writes to the feed cache, which keeps the read path free of any
-concern with copying.
+Pure push delivers `O(1)` feed read latency because the timeline is pre-sorted before the reader arrives. However, it suffers from three operational costs: write amplification scales linearly with follower count; background workers waste writes maintaining inboxes for dormant accounts that never log in; and a single celebrity post with `2,000,000` followers generates `2,000,000` cache writes. At `10,000` writes/s per worker pool, fanning out one celebrity post takes `200 seconds`, saturating Kafka consumer lag and delaying ordinary users' posts behind a head-of-line queue.
 
-## How real systems do it
+### Pure Pull (Fan-Out on Read)
 
-The best documented feed is Twitter's home timeline, described in a talk of 2012
-that is the source of the arrangement in this chapter. Twitter then had about 150
-million active users. Timelines were read some 300000 times per second and written
-a few thousand times per second, a ratio that settled the choice in favour of doing
-the work on writing. Every tweet was inserted, by its identifier, into a list held
-in an in-memory store for each follower, exactly as the feed lists here. The talk
-gives the aim of delivering a tweet to all followers within 5 seconds, and
-acknowledges that for accounts with tens of millions of followers this was not
-always achieved, and that the company was therefore moving to merge the tweets of
-such accounts at reading time, which is the mixture this chapter recommends.
+Under pure fan-out on read, publishing writes a single record to the author's own outbox. When a member opens their feed, the aggregator queries the recent posts of every followed account and merges them in memory (Interactive Trace 15.B).
 
-Facebook's news feed has taken the other course from the beginning. Its feed is
-assembled when it is requested, by aggregator servers that query a set of leaf
-servers holding recent activity and rank what they collect, which suits a feed that
-is ordered by predicted interest and drawn from many kinds of story. The social
-graph beneath it, who is connected to whom, is served by a system called TAO, a
-read-optimised cache over a sharded database, whose paper is the standard account
-of storing a graph of followers at scale.
+<figure class="steps" data-prefix="figures/steps-feed-pull" data-count="5" data-version="fd606b4a">
+<img src="figures/steps-feed-pull-01.svg?v=fd606b4a" alt="Collect on read, step 1 of 5. Under the other scheme no feed lists exist. Each author&#x27;s posts are kept together, and publishing a post adds 1 line to the author&#x27;s own list and does nothing else." />
+<figcaption><b>Interactive Trace 15.B</b> Fan-out on read (pull): zero precomputed inboxes; the aggregator fetches each followed author's recent posts and merges them on demand. Use Next and Back to step through all 5 stages.</figcaption>
+</figure>
 
-The 2 examples show that the choice between the schemes is not settled by size
-alone. Twitter's feed, chronological and with extremely skewed followings, favoured
-copying with an exception for the largest accounts. Facebook's, ranked and with
-bounded numbers of friends, favoured collecting. LinkedIn has described a feed for
-its own service that is likewise assembled at reading time.
+Pure pull eliminates write amplification and wasted work for inactive readers, and follow or unfollow changes reflect instantaneously. Its penalty is paid on the frequent read path: a member following `200` accounts triggers `200` parallel outbox fetches on every feed load, subjecting tail latency to the straggler distribution (`max` of `200` network RPCs).
 
-## Mistakes to avoid
+### Hybrid Fan-Out and Threshold Calibration
 
-| Mistake | What goes wrong | What to do |
-|---|---|---|
-| Evaluating the feed query on every visit | Each read touches every followed account and is slow at scale. | Keep a feed list per member, prepared when posts are written. |
-| Copying every post to every follower | 1 post by an account with millions of followers produces millions of writes and delays all other posts. | Above a threshold of followers, collect that author's posts at reading time. |
-| Copying while the author waits | Publishing takes as long as the copying. | Store the post, reply, and copy from a queue. |
-| Storing whole posts in the lists | Edits and deletions must find every copy. | Store references, and fetch posts by identifier. |
-| Lists of unlimited length | Memory grows without bound for entries nobody reads. | Keep the newest few hundred, and collect on read beyond that. |
-| Treating the lists as the only copy | A lost cache node loses feeds. | Rebuild a list from the durable posts and follows. |
-| Paging by position | A new post shifts everything, and the next page repeats an item. | Page with a cursor that names the last item seen. |
-| Removing references when a post is deleted or an account unfollowed | Millions of lists must be searched, slowly and unreliably. | Filter at reading time. |
-| The author's own post arriving with everyone else's | The author reloads and concludes the post was lost. | Add the author's recent posts to the author's own feed at reading time. |
-| Maintaining lists for members who never return | Most copying is done for nobody. | Let inactive members' lists lapse, and rebuild on return. |
+Real social graphs exhibit extreme degree skew: in `code/feedsim`, modeling `1,000` ordinary accounts (`200` followers each, `2` posts/day, `20` reads/day) alongside **one** celebrity account (`2,000,000` followers, `10` posts/day) reveals that the single celebrity generates `20,000,000` of the `20,400,000` daily push copies (`98.0%` of total write load). Conversely, pure pull executes `4,000,500` daily outbox fetches, `99.5%` of which come from ordinary accounts.
 
-## Failures
+Hybrid fan-out partitions authors by a follower threshold $T_{\text{celeb}}$ (`10,000` in the simulation, typically `50,000 to 100,000` in production systems such as Twitter/X) (Figure 15-3).
 
-| Failure | What users see | How the system recovers |
-|---|---|---|
-| Fan-out workers fall behind | posts appear in feeds late | the queue holds the tasks; more workers are added |
-| The feed cache is lost | the first read of each feed is slow | lists are rebuilt by collecting on read |
-| A member unfollows an account | old posts of that account may remain in the list briefly | they are filtered out when the feed is read |
+<figure class="diagram">
+<img src="figures/m3/ch15_hybrid_fanout.svg" alt="Hybrid Fan-Out combining Path A Push Fan-Out for accounts with at most 100k followers and Path B Pull Merge for celebrity accounts with over 100k followers, followed by Read-Time K-Way Merge and Cursor Pagination under 50 ms." />
+<figcaption><b>Figure 15-3</b> Hybrid fan-out: asynchronous push for ordinary accounts combined with read-time K-way merge of cached celebrity outboxes.</figcaption>
+</figure>
 
-## Trade-offs
+| Strategy | Publish Work | Read Work | Delivery Lag | Dormant-Member Overhead |
+| :--- | :--- | :--- | :--- | :--- |
+| **Pure Push (Fan-Out on Write)** | `O(followers)` per post | `1` inbox lookup | Proportional to fan-out queue depth (minutes for celebrities) | High unless inactive TTL eviction is enforced |
+| **Pure Pull (Fan-Out on Read)** | `O(1)` (`1` outbox append) | `O(followed_accounts)` parallel fetches | `0 ms` (immediate) | Zero |
+| **Hybrid (`T_celeb`, Chosen)** | `O(followers)` capped at `T_celeb`; `O(1)` above cutoff | `1` inbox lookup + `K` cached celebrity outboxes (`K <= 15`) | `< 5 s` normal; `0 ms` celebrity | Bounded by `30`-day active-user push filter |
 
-| Decision | What it gains | What it costs |
-|---|---|---|
-| Copy on write | reads are 1 lookup | an account with many followers makes writes expensive |
-| Collect on read | writes cost nothing extra | every read fetches from many accounts |
-| A mixture with a threshold | both costs stay small | 2 code paths, and a threshold to tune |
+**Calibrating $T_{\text{celeb}}$ mathematically:** An author with $F$ followers publishing $P$ posts/day and read by fraction $\alpha$ of active followers reading $R$ feeds/day costs $F \cdot P$ write operations under push versus $\alpha \cdot F \cdot R$ outbox reads under pull. Because celebrity outboxes sit in L1/Redis RAM (serving reads `10x` cheaper than cross-shard inbox writes), setting $T_{\text{celeb}}$ around `50,000 to 100,000` followers keeps worst-case single-post push latency under `2 seconds` while ensuring that `99.9%` of users follow fewer than `15` accounts above the cutoff.
 
-## The simulation
+**Hot-celebrity outbox protection:** When a mega-celebrity with `50` million followers posts during a breaking news event, hundreds of thousands of feed aggregators simultaneously read `outbox:{celeb_id}`. To prevent a single Redis shard from melting under hot-key read traffic, each Feed Aggregator maintains a **short-TTL (`2 to 5 s`) in-process L1 cache** of hot celebrity outboxes refreshed via singleflight coalescing, capping backend Redis QPS per celebrity strictly at `aggregator_count / TTL` regardless of reader concurrency.
+
+## 15.5 Cursor Pagination, Candidate Ranking, and Consistency Mechanics
+
+### Keyset Cursor Pagination vs. Offset Pagination
+
+Offset pagination (`OFFSET 20 LIMIT 20`) breaks structurally on live feeds where new posts are continuously prepended at the head of the timeline (Interactive Trace 15.C).
+
+<figure class="steps" data-prefix="figures/steps-feed-page" data-count="4" data-version="b2de92bc">
+<img src="figures/steps-feed-page-01.svg?v=b2de92bc" alt="A new post arrives between 2 pages, step 1 of 4. A reader opens the feed and receives the first page, 2 items: posts 50 and 49." />
+<figcaption><b>Interactive Trace 15.C</b> Offset pagination anomaly: inserting a new post shifts indices downward, causing the second page to repeat items already displayed on page 1. Use Next and Back to step through all 4 stages.</figcaption>
+</figure>
+
+Every new insertion shifts indices downward (causing duplicate posts on the next page), and every deletion shifts indices upward (omitting unseen posts without notice). Moreover, deep offsets force `O(offset)` scans in sorted indices. We replace positional offsets with an **opaque keyset cursor** encoding the `(created_at_ms, post_id)` pair of the last item returned on the preceding page. The next page queries `ZREVRANGEBYSCORE inbox:{user_id} (cursor_score -inf LIMIT 0 20` and fetches celebrity outbox entries strictly older than `cursor_score`, achieving `O(log N + limit)` seek performance with zero boundary drift.
+
+### Authoritative Read-Time Filtering and Multi-Stage Ranking
+
+Attempting to purge references from millions of follower inboxes whenever a post is deleted, moderated, or an author is unfollowed is slow and error-prone. We enforce a strict invariant: **precomputed inboxes are candidate hints, never authoritative visibility decisions.** During read-time hydration, the Feed Aggregator applies three deterministic filters in memory:
+1. Drop any post whose `author_id` is no longer in the reader's current follow set or appears in the reader's block/mute set.
+2. Drop any post whose hydrated record carries a non-null `deleted_at` tombstone or active trust-and-safety suppression flag.
+3. Attach parent posts alongside replies when the parent has not yet arrived in the reader's inbox, preventing orphaned reply anomalies.
+
+For engagement-ranked feeds (Meta Multifeed, LinkedIn FollowFeed, X Home), the hybrid inbox + celebrity merge supplies the **L0 candidate pool** (`~500` recent post IDs). A lightweight **L1 filter** prunes stale or seen candidates down to `~150` items using a per-user Bloom filter of recently impressed post IDs, and an **L2 ML scoring tier** predicts engagement probabilities (`P(click)`, `P(reply)`, `P(dwell)`) within a `40 ms` timeout budget. Because ranked order can change between requests, the aggregator freezes the top `100` scored `post_id`s in a short-lived session cache (`TTL = 10 min`) keyed by `session_id` and serves subsequent pages deterministically from that frozen snapshot.
+
+### Consistency Properties Visible to Members
+
+Even though feed delivery is eventually consistent, three user-facing invariants prevent jarring product defects:
+- **Author read-own-writes:** Because background Kafka fan-out can lag by `1 to 5 s`, the Feed Aggregator unconditionally merges the member's own `outbox:{user_id}` at read time, guaranteeing an author never reloads their timeline and thinks a newly published post disappeared.
+- **Monotonic reads within a session:** Consistent hashing of `user_id` onto a primary Redis cache replica prevents a reader from observing a post on replica A and seeing it vanish on a lagging replica B seconds later.
+- **Lazy inbox reconstruction on cache miss:** If a member's inbox is evicted after `30 days` of inactivity or lost during a Redis shard outage, the aggregator executes a one-time collect-on-read rebuild over the member's followed accounts, populates `inbox:{user_id}` asynchronously, and serves the first page immediately.
+
+## 15.6 Failure Modes, SLIs, and Production Systems
+
+### Failure Mode and Mitigation Matrix
+
+| Failure Mode | Blast Radius | Detection Signal | Automated Mitigation |
+| :--- | :--- | :--- | :--- |
+| **Feed Cache (Redis) Shard Loss** | Cache miss spike for `1/12` of members; elevated read latency (`50 ms` to `180 ms`) | Redis health check failure and cache hit-rate drop below `95%` | Aggregator falls back to collect-on-read rebuild from Post Store/Outbox cache with per-user singleflight lock; Redis replica promotes in `< 10 s` |
+| **Fan-Out Worker Lag / Kafka Backlog** | Ordinary posts appear late in followers' timelines (`> 5 s`); publishes and celebrity reads unaffected | Kafka consumer-group lag alert (`> 50,000` events or `> 5 s` age) | Horizontal worker auto-scaling; priority topic isolates low-follower accounts from medium-follower bursts; drop push for users inactive `> 7 days` under shed mode |
+| **ML Ranking Service Degradation** | Potential timeout on `GET /v1/feeds/{id}` | Ranker RPC `p99 > 40 ms` or error rate `> 1%` | Strict `40 ms` circuit breaker degrades gracefully to reverse-chronological ordering so feeds stay `99.95%` available |
+| **Celebrity Hot-Key Traffic Surge** | Single celebrity outbox key receives `100,000+` RPS | Redis per-key hot-slot CPU alert (`> 80%`) | Aggregator L1 in-process cache (`3 s` TTL) with singleflight coalescing absorbs `> 99%` of duplicate reads |
+| **Post Deletion / Moderation Delay** | Risk of displaying deleted or abusive content from stale cached inboxes | Moderation audit mismatch | Read-time hydration verifies `deleted_at` and policy flags against authoritative Post Store/Cache before serialization |
+
+### Operational SLIs, SLOs, and Alert Thresholds
+
+- **Feed Read Availability SLI:** Percentage of `GET /v1/feeds/{id}` calls returning `200 OK` (including graceful chronological fallback), targeting `99.95%` monthly; page when 5-minute error rate exceeds `0.5%`.
+- **Feed Read Latency SLI:** `p99 <= 200 ms`, `p50 <= 50 ms`; alert when `p99` exceeds `200 ms` for 5 consecutive minutes.
+- **Fan-Out Freshness SLI:** Elapsed time between post commit timestamp and Redis `ZADD` completion across `99%` of active followers, targeting `p99 <= 5 s`; alert above `10 s`.
+- **Empty-Feed / Hydration-Drop SLI:** Fraction of requests returning zero items for members with `>= 5` followed accounts; sudden spikes detect broken social-graph lookups or cache corruption.
+
+### Production Benchmarks
+
+| Production System | Fan-Out Topology | Storage & Graph Tier | Architectural Distinction |
+| :--- | :--- | :--- | :--- |
+| **Twitter / X Home Timeline** | Hybrid (push inboxes in Redis + pull merge for high-follower accounts) | Manhattan / Redis timeline cache + FlockDB social graph | Pioneered bounded `~800`-entry Redis timeline inboxes, `5 s` delivery SLA, and celebrity pull cutoffs after observing mega-account fan-out storms |
+| **Meta (Facebook) Multifeed** | Pull-dominant leaf aggregator tree | TAO read-optimized distributed graph cache over sharded MySQL | Because friend counts are bounded (`<= 5,000`) and ranking incorporates heterogeneous story types, leaf servers assemble and score candidates on read |
+| **LinkedIn FollowFeed** | Pull-oriented with inverted activity indices and multi-tier ranking | Espresso distributed document store + Venice derived feature store | Prioritizes heavy ML feature hydration and multi-pass candidate scoring over static chronological push inboxes |
+| **Instagram Home Feed** | Hybrid push inbox + pull for large creator accounts | Sharded PostgreSQL + Redis + Memcached TAO-derived graph | Separates lightweight timeline ID assembly from media CDN URL signing and multi-stage neural ranking |
+
+## 15.7 Simulation Verification
 
 <div class="simulation">
 
-**Simulation in the repository.** The program [`code/feedsim`](https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/distributed-systems-from-the-ground-up/code/feedsim/src/main.rs) simulates this design. To run it, clone the repository and type `cargo run --release -p feedsim` in the `code` directory.
+**Reproduce the push, pull, and hybrid fan-out cost benchmark.** Run `cargo run --release -p feedsim` inside `distributed-systems-from-the-ground-up/code/` to simulate `1,000` ordinary accounts (`200` followers each, `2` posts/day, `20` reads/day) alongside `1` celebrity account (`2,000,000` followers, `10` posts/day) under pure push, pure pull, and hybrid fan-out (`cutoff = 10,000`).
 
 </div>
 
-## References
+```console
+$ cargo run --release -p feedsim
+copy on write for every account:   20400000 copies per day
+collect on read for every account:  4000500 lists fetched per day
+mixture, copy unless the author has over 10000 followers:
+      400000 copies per day,    20005 lists fetched per day
+```
 
-- R. Krikorian, "Timelines at Scale", QCon San Francisco, 2012.
-- N. Bronson and others, "TAO: Facebook's Distributed Data Store for the Social Graph", USENIX ATC 2013.
-- Facebook engineering blog, "Serving Facebook Multifeed: Efficiency, performance gains through redesign", 2015.
-- LinkedIn engineering blog, "FollowFeed: LinkedIn's Feed Made Faster and Smarter", 2016.
+From these measurements, we observe the exact quantitative impact of the hybrid boundary:
 
-## Terms introduced in this chapter
+1. **Pure push blow-up:** `1,000` ordinary accounts generate `400,000` daily copies (`1,000 * 2 * 200`), while the **single** celebrity account generates `20,000,000` copies (`10 * 2,000,000`), accounting for **`98.04%`** of total system write work (`20,400,000` copies/day).
+2. **Pure pull read amplification:** Skipping precomputed inboxes forces `20,000` daily feed reads across `200` followed ordinary accounts plus `1` celebrity, totaling **`4,000,500`** outbox fetches per day.
+3. **Hybrid efficiency gain:** Applying the `10,000`-follower cutoff collapses total daily operations to **`400,000` push copies plus `20,005` celebrity outbox fetches** (`420,005` total operations), cutting total work by **`48.6x`** compared to pure push and **`9.5x`** compared to pure pull while eliminating celebrity head-of-line fan-out storms completely.
 
-| Term | Meaning |
-|---|---|
-| Feed | the recent posts of the accounts a member follows, newest first |
-| Follow | the relation between a member and an account whose posts the member wishes to see |
-| Feed list | a stored list of references to the posts 1 member should see |
-| Fan-out | delivering 1 post to many readers |
-| Fan-out on write | copying a reference to each follower's list when a post is published |
-| Fan-out on read | collecting posts from each followed account when the feed is requested |
-| Cursor | a reference to the last item seen, from which the next page continues |
-| Read your own writes | the property that a member sees the effect of their own actions at once |
-| Ranking | ordering the feed by an estimate of interest in place of time |
+## 15.8 Terminology and References
 
-<div class="summary">
+### Engineering Glossary
 
-## Summary
+| Term | Definition |
+| :--- | :--- |
+| **Fan-Out on Write (Push)** | Precomputing follower timelines asynchronously on post publication by inserting compact post references into each follower's cached inbox. |
+| **Fan-Out on Read (Pull)** | Assembling a reader's timeline dynamically at request time by fetching and merging recent posts from every followed author's outbox. |
+| **Hybrid Fan-Out** | Partitioning authors at a follower-count threshold so ordinary accounts push to follower inboxes while high-follower celebrity accounts merge on read via K-way merge. |
+| **Keyset Cursor Pagination** | Requesting the next page of a live stream relative to an immutable `(timestamp, post_id)` marker rather than a positional offset, preventing duplicates and skips under concurrent writes. |
+| **Read-Time Hydration and Filtering** | Resolving compact cached `post_id` references into full post objects on read while enforcing authoritative deletions, unfollows, blocks, and moderation rules. |
+| **Author Read-Own-Writes** | Guaranteeing an author immediately observes their newly published post on reload by merging their own outbox during read assembly regardless of background fan-out lag. |
 
-- A feed is a join of posts and follows that is too costly to evaluate on every visit once the data is spread over many machines.
-- Copying on write prepares a list for every member, so that reading is 1 lookup and publishing costs 1 write per follower.
-- Collecting on read prepares nothing, so that publishing is 1 write and reading costs 1 fetch per followed account.
-- An account with millions of followers makes copying on write impractical, and such accounts are few.
-- The mixture copies the posts of ordinary accounts and collects those of large accounts at reading time, at about a fiftieth of the work in the measured example.
-- Feed lists hold references, are bounded in length, live in a cache, and can be rebuilt from durable data.
-- Pages are requested by cursor, and deletions, blocks and unfollows are enforced by filtering when the feed is read.
+### References
 
-</div>
+- R. Krikorian, "Timelines at Scale", *QCon San Francisco*, 2012.
+- N. Bronson, Z. Amsden, G. Cabrera, P. Chakka, P. Dimov, H. Ding, J. Ferris, A. Giardullo, S. Kulkarni, H. Li, M. Marchukov, D. Petrov, L. Puzar, Y. J. Song, and V. Venkataramani, "TAO: Facebook's Distributed Data Store for the Social Graph", *USENIX ATC*, 2013.
+- Facebook Engineering, "Serving Facebook Multifeed: Efficiency and Performance Gains Through Redesign", 2015.
+- LinkedIn Engineering, "FollowFeed: LinkedIn's Feed Made Faster and Smarter", 2016.
+- Twitter Engineering, "The Infrastructure Behind Twitter: Scale", 2017.

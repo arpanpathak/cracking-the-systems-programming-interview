@@ -1,627 +1,357 @@
-<img class="plate" src="art/ch11.svg?v=6f305b4e" alt="2 pigeons stand beside a sign that lists offsets 0, 1 and 2, with a mark at the committed one.">
+# Chapter 11: Distributed Message Queue
 
-# Message Queue: System Design
+<img class="plate" src="art/ch11-plate.svg" alt="Chapter 11 architectural plate: Partitioned append-only commit logs across partitions 0, 1, and 2 with sequential offsets and consumer group offset replay tracking." />
 
-When one service needs another to do something, the direct course is to call it and
-wait for the answer. An order service that has accepted an order calls the billing
-service to issue an invoice, then the warehouse to reserve the goods, then the mail
-service to send a confirmation, and replies to the customer when all 3 have answered.
-This works, and it binds the 4 services together more tightly than is good for any of
-them. The order service is now as slow as the slowest of the 3 and as available as all
-of them together, so that an outage of the mail service, which is surely the least
-important of the 3, prevents customers from placing orders.
+When an order service calls billing, inventory, fraud scoring, and email delivery synchronously over RPC, its availability becomes the product of every downstream dependency and its tail latency becomes the sum of the slowest responders. A spike in checkout traffic overflows downstream worker pools, while a maintenance restart of a non-critical analytics service blocks customer purchases. Placing a durable, partitioned message queue between producers and consumers breaks temporal coupling, absorbs burst traffic into disk-backed backlogs, and enables independent downstream teams to consume the same event stream at their own pace.
 
-A *message queue* loosens this binding. The order service records the fact that an
-order was created by writing a short *message* to the queue, and its part is then
-finished. Billing, the warehouse and the mail service each read the message when they
-are able to, at their own pace, and a service that is down for an hour reads it an
-hour late and is otherwise none the worse. The sender and the receivers need not be
-running at the same time, need not be equally fast, and need not know of one
-another's existence.
-
-What the queue takes on in exchange is a set of promises that are easy to state and
-hard to keep: that a message once accepted is not lost, that it reaches every party
-entitled to it, that related messages arrive in the order in which they were sent, and
-that all of this continues to hold when machines fail in the middle of things. This
-chapter designs a queue of the kind that keeps its messages in a log, and most of it
-is devoted to stating exactly what can and what cannot be promised about delivery.
+In this chapter, I design a high-throughput, Kafka-style distributed commit-log message queue. We establish functional contracts, durability SLOs, and multi-terabyte storage bounds, specify producer and consumer wire protocols, and separate KRaft metadata coordination (control plane) from zero-copy partitioned log brokers (data plane). In the deep dives, we dissect sequential disk I/O and `sendfile()` page-cache mechanics, In-Sync Replica (`ISR`) replication with `acks=all`, cooperative sticky consumer group rebalancing, delivery semantics (at-most-once, at-least-once, and idempotent effectively-once), idempotent producers, and the transactional outbox pattern.
 
 <div class="covers">
 
-This chapter covers
+In this chapter, we cover
 
-- what a queue changes in the relationship between 2 services
-- 2 kinds of queue: one that hands out tasks, and one that keeps a log
-- partitions, keys, and what ordering a queue can preserve
-- consumer groups, and how partitions are shared and reassigned
-- at most once, at least once, and why "exactly once" needs the consumer's help
-- what a producer must do so that a retry does not duplicate a message
-- how a queue stays durable, using the replication of chapter 3
-- messages that can never be processed, consumers that fall behind, and publishing together with a database write
+- temporal decoupling, task queues versus durable commit logs, actors, durability SLOs, non-goals, and storage/broker capacity bounds
+- partitioned produce, long-poll fetch, idempotent offset commit, and consumer group coordination wire contracts
+- separation of KRaft metadata controller and group coordinator (control plane) from partitioned append-only brokers (data plane)
+- sequential log segments, OS page-cache zero-copy `sendfile()` transfers, key-based partition ordering, and log compaction
+- In-Sync Replica (`ISR`) replication, `acks=all`, `min.insync.replicas`, High Watermark (`HW`) visibility, and broker failover
+- cooperative sticky consumer group rebalancing (zero stop-the-world pauses), offset commit ordering, idempotent producers, transactional outbox, and dead-letter queues
+- operational failure modes, lag SLIs, production brokers (Apache Kafka, Apache Pulsar, Amazon SQS, RabbitMQ), and simulation verification
 
 </div>
 
-## What a queue changes
+## 11.1 Requirements, Actors, and Capacity Bounds
 
-A queue placed between 2 services alters their relationship in 3 respects, each of
-which is a reason for introducing one.
+### Task Queues vs. Partitioned Commit Logs
 
-It separates them in time. The sender, called the *producer*, hands its message to the
-queue and proceeds without waiting for anybody to act on it, and the receiver, called
-the *consumer*, takes the message whenever it is ready. Neither depends on the other
-being available at that moment, and the availability of the producer is no longer
-limited by that of its consumers.
+Two architectures share the label "message queue" while serving distinct workloads:
 
-It absorbs differences in speed. If orders arrive in a burst of 1000 per second for a
-minute while the billing service can process 200 per second, direct calls would
-overwhelm billing or force the order service to refuse customers. With a queue between
-them, the burst accumulates as a backlog of 48000 messages, which billing works
-through in the following 4 minutes. The queue has levelled the load, turning a peak
-that billing could not meet into a delay that it can.
+- **Task Queue (Amazon SQS, RabbitMQ):** Hands each message to one worker, hides it during a visibility timeout, and deletes it permanently upon acknowledgment. Independent consumers cannot replay historical events, and parallel workers scramble strict per-entity ordering.
+- **Partitioned Append-Only Log (Apache Kafka, Redpanda, Apache Pulsar):** Appends immutable records sequentially to partitioned disk segments identified by monotonic 64-bit offsets. Reading does not delete records; each consumer group tracks its own offset cursor independently, enabling multi-subscriber fan-out, deterministic replay after bug fixes, and strict per-key ordering within each partition.
 
-And it permits several independent receivers. The order service publishes a single
-message, "order 7 created", and has no need to know who is interested. A new service,
-written next year to compute sales statistics, can begin reading the same messages
-without any change to the producer.
+In this chapter, I design a **partitioned append-only commit log** because modern microservice platforms require durable multi-consumer fan-out, replayability, and ordered per-key event streams.
 
-These benefits come at a definite cost, which should be acknowledged at the outset.
-The producer no longer learns whether its message was acted upon, or when. Errors that
-a direct call would have reported immediately now occur later, in another service, and
-have to be found there. And the system as a whole has become *eventually consistent*
-in the sense of chapter 1: for some time after an order is accepted, no invoice exists
-for it, and every part of the system has to be designed in the knowledge that this
-interval exists and is sometimes long.
+### Actors and Use Cases
 
-## 2 kinds of queue
+We organize the message queue around three actors: producer services appending keyed batches, consumer groups polling ordered partitions and committing offsets, and platform operators managing topic partitions, replication factors, and retention policies (Figure 11-1).
 
-The word "queue" is applied to 2 designs that share the vocabulary of producers and
-consumers and differ in almost everything else.
-
-The older design, which we may call a *task queue*, treats a message as a piece of
-work to be done once. Consumers take messages from the front, and each message is
-given to exactly 1 of them. When the consumer reports that it has finished, by sending
-an *acknowledgement*, the queue deletes the message. If the consumer fails to
-acknowledge within a set time, the queue assumes it has crashed and makes the message
-available to another. The queue holds only what has not yet been done, and a message
-that has been processed is gone.
-
-The newer design is a *log*. Messages are appended to the end of a file and stay
-there, each identified by its position, which is called its *offset*. Reading a
-message does not remove it. A consumer keeps track of the offset it has reached, reads
-onward from there, and periodically records its position with the queue. Messages are
-deleted only when they exceed a configured age or the log exceeds a configured size,
-quite independently of whether anybody has read them.
-
-| | Task queue | Log |
-|---|---|---|
-| After a message is processed | it is deleted | it remains until it is old |
-| Several independent readers | each message goes to 1 of them | each reader sees every message |
-| Reading old messages again | impossible | start from an earlier offset |
-| What the queue tracks per consumer | which messages are outstanding | 1 number, the offset |
-| Order of processing | lost when consumers work in parallel | kept within a partition |
-| Typical use | distributing jobs among workers | publishing events to many services |
-
-The log has become the more common basis for communication between services, chiefly
-on account of the second and third rows. Because reading does not consume, any number
-of services can read the same messages, each at its own offset. Because messages are
-retained, a consumer that had a defect can be corrected and set back to reprocess the
-last day's messages, and a newly written service can begin from the start of the log
-and build its state from history. The log is also the structure this book already
-knows best: it is the append-only log of chapter 2, replicated as in chapter 3, and
-offered to other services as a product.
-
-The task queue remains the better choice for what its name describes, the distribution
-of independent jobs among a pool of workers, and it reappears in chapter 12. The
-remainder of this chapter concerns the log.
-
-## Partitions and order
-
-A single log has a single end to which every message is appended, and is therefore
-limited to the rate at which 1 machine can write and to the capacity of 1 disk. To go
-beyond that, a named stream of messages, called a *topic*, is divided into several
-logs, called *partitions*, which can be placed on different machines and written
-concurrently.
-
-Dividing the topic raises the matter of order. Within 1 partition, messages have a
-definite order, that of their offsets, and every consumer reads them in that order.
-Between partitions there is no order at all: if one message is in partition 0 and
-another in partition 1, nothing records which was published first, and 2 consumers may
-process them in either sequence.
-
-For many messages this is of no consequence. For some it matters a great deal. "Order
-7 created", "order 7 paid" and "order 7 shipped" must be processed in that order,
-while the order of "order 7 paid" relative to "order 8 created" is immaterial. The
-requirement, in other words, is for order among messages about the same thing, and
-the queue provides exactly this by means of a *key*. The producer attaches a key to
-each message, here the order number, and the queue chooses the partition by hashing
-the key, so that all messages with the same key are appended to the same partition,
-where their order is preserved.
-
-<figure>
-<img src="figures/queue-partitions.svg?v=bd8f4d4d" alt="5 messages in the order they were published: order 7 new, order 8 new, order 7 paid, order 9 new, order 7 sent. Partition 0 receives order 8 new. Partition 1 receives order 7 new, order 7 paid, order 9 new and order 7 sent, in that order.">
-<figcaption><b>Figure 11.1</b> Messages are distributed among partitions by key, so that every message about 1 order is in 1 partition.</figcaption>
+<figure class="diagram">
+<img src="figures/m3/ch11_use_cases.svg" alt="Actors and use cases of the distributed message queue: Producer Service appends partitioned batches with acks=all; Consumer Group polls ordered log segments, commits or seeks offsets, and joins cooperative sticky rebalances; Platform Operator manages topic partitions, replication factor 3, retention TTL, and log compaction." />
+<figcaption><b>Figure 11-1</b> Actors, system boundary, and core use cases of the distributed message queue.</figcaption>
 </figure>
 
-3 consequences of this arrangement tend to be discovered later than they should
-be. The first is that the choice of key is a design decision with lasting effects,
-since it fixes which messages are ordered relative to which. The second is that the
-number of partitions cannot be changed casually: the partition of a key is its hash
-modulo the number of partitions, so that adding partitions sends new messages for an
-existing key to a different partition from the old ones, and their order across the
-change is lost. The third is that a key which accounts for a large share of all
-messages, such as a single very large customer, makes its partition far busier than
-the others, and no number of additional partitions relieves it.
+| Actor | Operation | Concrete Scenario |
+| :--- | :--- | :--- |
+| **Producer Service** | Append keyed batch (`PRODUCE` with `acks=all`) | Publish `order-7:created`, `order-7:paid`, and `order-7:shipped` into the same partition with durable replication |
+| **Consumer Group** | Poll ordered segments (`FETCH`), commit offsets (`COMMIT`), join rebalance | Billing, warehouse, and analytics services each read the full `orders` topic independently at their own throughput |
+| **Platform Operator** | Provision topics, configure retention/compaction, monitor consumer lag | Set `RF=3`, `min.insync.replicas=2`, `7-day` retention, and expand partitions before consumer lag breaches retention |
 
-## Consumer groups
+### Functional Requirements
 
-A topic with 4 partitions can be read by 4 consumers working in parallel, and the
-mechanism that coordinates them is the *consumer group*. All instances of 1 service,
-for example the 4 running copies of the billing service, belong to 1 group, and the
-queue ensures that each partition is read by exactly 1 member of the group at any
-moment. Different services form different groups, and each group reads the whole
-topic independently, with its own offsets.
+| No. | Functional Requirement |
+| :--- | :--- |
+| 0 | Producers append messages to a named topic with an optional partition key; all records sharing a key land in the same partition and remain strictly ordered by monotonically increasing 64-bit offsets. |
+| 1 | Consumers pull batches sequentially from any offset within their assigned partitions and commit durable group offsets so restarted consumers resume without losing position. |
+| 2 | Multiple independent consumer groups read the same topic concurrently at independent offsets; within a single group, each partition is owned by at most one consumer at a time. |
+| 3 | Brokers retain committed messages durably for a configurable retention window (`7 days` default) or compact topics by key to preserve the latest value per key indefinitely. |
+| 4 | Producers support idempotent retries via sequence numbers so network timeouts never append duplicate records to a partition log. |
+
+### Non-Functional Requirements and SLOs
+
+| No. | Property | Target Specification | Architectural Consequence |
+| :--- | :--- | :--- | :--- |
+| 0 | **Throughput and Scale** | `100,000` messages/s sustained (`1 KB` average = `100 MB/s` ingress); `300,000` peak burst messages/s | Partitioned append-only logs using sequential disk I/O, producer batch compression (LZ4/Zstd), and zero-copy `sendfile()` reads |
+| 1 | **Durability** | Zero committed data loss across `1` broker or `1` full AZ failure (`RF = 3`, `min.insync.replicas = 2`) | Synchronous replication across `3` AZs with `acks=all`; consumers read only up to the committed High Watermark (`HW`) |
+| 2 | **Latency** | `p50 <= 5 ms`, `p99 <= 20 ms` end-to-end produce-to-consume under normal lag | Direct producer/consumer connections to partition leaders (zero central proxy hop) and long-polling fetches |
+| 3 | **Consistency and Ordering** | Strong total order within each partition; no global order across partitions | Every consumer observes identical records at identical offsets inside a partition; cross-partition ordering is explicitly omitted |
+| 4 | **Delivery Semantics** | At-least-once broker delivery; effectively-once end-to-end with idempotent producers and idempotent consumers | Brokers prioritize zero data loss over duplicate avoidance when consumers crash between work and offset commit |
+
+### Non-Goals and Scope Boundaries
+
+- **Global total ordering across partitions:** Enforcing total order across an entire topic collapses throughput to a single partition leader. Callers requiring strict ordering among related events must assign them the same partition key.
+- **Per-message arbitrary deletion or SQL querying:** Offsets advance monotonically; consumers cannot delete an individual message in the middle of a log segment.
+- **Broker-side push delivery:** Brokers never push messages to consumers; pull-based fetching lets each consumer apply natural backpressure matched to its own CPU and downstream database capacity.
+
+### Back-of-the-Envelope Capacity Bounds
+
+| Resource Dimension | Arithmetic Derivation | Provisioned Bound |
+| :--- | :--- | :--- |
+| **Ingress Write Rate** | `100,000` msg/s `* 1 KB` (`300,000` peak) | `100 MB/s` sustained (`300 MB/s` peak) |
+| **Daily Raw Storage (1 Copy)** | `100 MB/s * 86,400 s/day` | `8.64 TB/day` |
+| **7-Day Retention (RF = 3)** | `8.64 TB/day * 7 days * 3 replicas` | `181.44 TB` total raw replicated disk |
+| **Broker Fleet Sizing (Disk)** | `181.44 TB / (4 TB usable NVMe * 0.75 headroom)` = `60.5` -> provision `63` brokers (`21` per AZ) or `24` brokers with `12 TB` NVMe | `24` brokers (`8` per AZ, `12 TB` NVMe each = `288 TB` raw, `63%` steady disk occupancy) |
+| **Cluster Network Bandwidth** | `100 MB/s` ingress + `200 MB/s` inter-broker replication (`RF - 1`) + `300 MB/s` fan-out (`3` consumer groups) | `600 MB/s` (`4.8 Gbps` aggregate; `~200 Mbps` per broker on `25 Gbps` NICs) |
+| **OS Page-Cache RAM** | Buffer `10` to `15 minutes` of hot tail segments in RAM (`100 MB/s * 600 s * 3`) / `24` brokers | `~7.5 GB` hot tail per broker -> `64 GB` RAM/broker serves almost all real-time consumers from RAM at zero disk-read cost |
+
+## 11.2 External API and Data Contracts
+
+Production brokers speak a compact binary TCP protocol supporting pipelined batched frames, CRC32C checksums, and zero-copy disk slicing. Below we specify the semantic equivalents for produce, long-poll fetch, and idempotent offset commit.
+
+### Produce, Fetch, and Commit Contracts
+
+**Produce a keyed batch (`POST /v1/topics/{topic}/messages`):**
+
+Producers attach `(producer_id, producer_epoch, base_sequence)` so the partition leader detects and drops retried batches idempotently.
+
+```http
+POST /v1/topics/orders/messages HTTP/2
+Host: broker-04.internal
+Content-Type: application/json
+X-Producer-Id: 40912
+X-Producer-Epoch: 3
+X-Base-Sequence: 1088
+X-Acks: all
+
+{
+  "key": "order-7",
+  "records": [
+    { "event_type": "order_paid", "amount_cents": 4900 }
+  ]
+}
+```
+
+```http
+HTTP/2 201 Created
+Content-Type: application/json
+
+{
+  "topic": "orders",
+  "partition": 1,
+  "base_offset": 2,
+  "high_watermark": 2
+}
+```
+
+**Long-poll fetch from partition leader (`GET /v1/topics/{topic}/partitions/{p}/messages`):**
+
+To avoid busy-wait polling when a partition is quiet, the broker holds the fetch open up to `max_wait_ms` until at least `min_bytes` of committed data (`offset <= high_watermark`) become available.
+
+```http
+GET /v1/topics/orders/partitions/1/messages?offset=0&max_bytes=1048576&max_wait_ms=500 HTTP/2
+Host: broker-04.internal
+```
+
+```http
+HTTP/2 200 OK
+Content-Type: application/octet-stream
+X-High-Watermark: 6
+X-Next-Offset: 6
+```
+
+**Idempotent offset commit (`PUT /v1/topics/{topic}/partitions/{p}/offsets/{group}`):**
+
+```http
+PUT /v1/topics/orders/partitions/1/offsets/billing-service HTTP/2
+Host: group-coordinator.internal
+Content-Type: application/json
+
+{
+  "generation_id": 14,
+  "member_id": "billing-pod-02",
+  "committed_offset": 6
+}
+```
+
+```http
+HTTP/2 204 No Content
+```
+
+Validating `generation_id` acts as a fencing token against zombie consumers: if `billing-pod-02` stalled past its session timeout and lost partition `1` in generation `15`, the coordinator rejects its late offset commit with `409 Conflict`, preventing it from rewinding or overwriting the new owner's progress.
+
+### On-Disk Log Segment Schema
+
+Each partition directory on a broker consists of fixed-size rolling segments (for example, `1 GB` each) paired with sparse offset and timestamp indexes:
+
+```text
+/var/lib/queue/orders-1/
+  00000000000000000000.log       # Sequential append-only record batches (CRC32C, offset, ts, key, value)
+  00000000000000000000.index     # Sparse 8-byte (relative_offset: u32, file_position: u32) every 4 KB
+  00000000000000000000.timeindex # Sparse (timestamp_ms: u64, relative_offset: u32) for time-based seek
+```
+
+Retention cleanup deletes entire closed `.log` segments in `O(1)` `unlink()` calls rather than compacting individual records inside active files.
+
+## 11.3 High-Level Architecture: Control Plane vs. Data Plane
+
+We decouple cluster metadata consensus and consumer group coordination (control plane) from high-volume sequential log appends and zero-copy reads (data plane) so metadata churn never stalls broker disk I/O (Figure 11-2).
+
+<figure class="diagram">
+<img src="figures/m3/ch11_architecture.svg" alt="Architecture of the distributed message queue: KRaft 3-node metadata controller and group coordinator manage partition leaders, ISR membership, and __offsets in the control plane; partitioned brokers across three AZs execute sequential disk appends, ISR replication, and zero-copy sendfile() reads in the data plane." />
+<figcaption><b>Figure 11-2</b> KRaft metadata control plane, partitioned commit-log broker cluster, and consumer groups.</figcaption>
+</figure>
+
+### Component Responsibilities and Failure Domains
+
+| Component | Plane | State Held | Failure Impact and Mitigation |
+| :--- | :--- | :--- | :--- |
+| **KRaft Metadata Controller (3-node Raft)** | Control | Authoritative topic configs, partition leader epochs, and In-Sync Replica (`ISR`) lists | Replaces external ZooKeeper; tolerates `1` node loss with sub-second controller failover; running data plane caches partition leader map |
+| **Group Coordinator & `__offsets` Topic** | Control | Consumer group membership, generation IDs, partition assignments, and compacted committed offsets | Hosted on replicated internal partitions (`RF = 3`); failover triggers brief rebalance without losing committed offsets |
+| **Partitioned Broker Fleet (Multi-AZ)** | Data | Append-only `.log` segments, sparse indexes, OS page-cache hot tail, per-producer sequence table | Each partition has `1` leader and `2` followers across `3` AZs; losing one broker shifts leadership to an in-sync follower in `< 2 s` |
+| **Producers & Consumer Groups** | Data | Cached cluster metadata map, producer sequence numbers, local batch compression buffers | Connect directly to partition leaders; refresh metadata automatically upon `NOT_LEADER_FOR_PARTITION` responses |
+
+### Hot Data Path Walkthrough
+
+1. **Keyed Partition Routing:** A producer computes `partition = murmur2(key) mod P`, compresses a batch of records (for example, `16 KB` or `5 ms` linger), and transmits directly to the leader broker for that partition.
+2. **Leader Sequential Append:** The leader verifies `(producer_id, epoch, seq)` for duplicates, assigns consecutive offsets, and appends the batch sequentially to the active `.log` segment (landing directly in Linux page cache).
+3. **ISR Replication & High Watermark Advance:** Follower brokers continuously pull new batches from the leader. Once every replica in the current `ISR` (at least `min.insync.replicas = 2` across distinct AZs) has appended the offset, the leader advances the **High Watermark (`HW`)** and sends `201 Created` (`acks=all`).
+4. **Zero-Copy Consumer Fetch:** A consumer polls the leader from its committed offset. The broker locates the byte range via binary search on the `.index` file and invokes `sendfile()` so the kernel transfers bytes directly from the OS page cache to the NIC socket buffer via DMA, bypassing user-space copies entirely.
+5. **Offset Commit:** After processing the batch, the consumer commits `next_offset` with its fenced `generation_id` to the Group Coordinator.
+
+## 11.4 Storage Mechanics, Replication (`ISR`), and Cooperative Rebalancing
+
+### Why Sequential Logs and Zero-Copy `sendfile()` Deliver High Throughput
+
+Random disk writes require seek overhead and fragmented flash translation updates, whereas modern NVMe drives and even spinning disks sustain sequential appends at hundreds of megabytes to gigabytes per second. By writing strictly to the end of active `.log` segments and relying on the OS page cache rather than duplicating buffers inside application heap memory, brokers avoid GC overhead and cache cold starts across process restarts.
+
+On the read path, a conventional read-then-write loop copies each byte four times (disk -> kernel page cache -> user-space buffer -> kernel socket buffer -> NIC). Invoking Linux `sendfile()` collapses this into a **zero-copy DMA path**: the kernel streams pages directly from the page cache to the network interface card with zero user-space context copies, saturating `25 Gbps` links with minimal CPU usage.
+
+### In-Sync Replicas (`ISR`), `acks=all`, and High Watermark Visibility
+
+A pure Raft quorum requires `2f + 1` replicas to tolerate `f` failures (`3` replicas for `1` failure, `5` replicas for `2` failures). For multi-hundred-terabyte event logs, storing `5` copies is expensive. Kafka-style brokers use an **In-Sync Replica (`ISR`)** protocol coordinated by the KRaft controller:
+
+- A partition configures `RF = 3` (one replica in each AZ) and `min.insync.replicas = 2`.
+- Every follower that stays caught up within `replica.lag.time.max.ms` (for example, `10 s`) remains in the `ISR`. A stalled follower is removed from `ISR` by the leader via the KRaft controller so one slow disk does not halt the entire partition.
+- With `acks=all`, the leader confirms a write only after **all replicas currently in the `ISR`** replicate it, and refuses writes (`NOT_ENOUGH_REPLICAS`) if `|ISR| < min.insync.replicas`. This guarantees every acknowledged message exists on at least `2` failure domains before the producer sees success.
+- **High Watermark (`HW`) Isolation:** Consumers may fetch records strictly up to `offset <= HW`. Never exposing uncommitted leader-only entries prevents consumers from acting on phantom messages that disappear if the leader crashes before replication completes.
+
+### Consumer Groups and Cooperative Sticky Rebalancing
+
+Within a consumer group, each partition belongs to exactly one consumer instance, preserving strict per-key processing order and capping effective parallelism at the partition count `P`. Interactive Trace 11.A walks through partition ownership across joins and departures:
 
 <figure class="steps" data-prefix="figures/steps-queue-group" data-count="5" data-version="c6e3444c">
 <img src="figures/steps-queue-group-01.svg?v=c6e3444c" alt="A consumer group shares the partitions, step 1 of 5. A topic with 4 partitions and a consumer group with 1 member. That member reads all 4 partitions.">
-<figcaption><b>Figure 11.2</b> Consumers join and leave a group, and the partitions are divided among the members. Use Next and Back to move through the 5 steps.</figcaption>
+<figcaption><b>Interactive Trace 11.A</b> Consumer group partition distribution as members join and leave; a fifth member remains idle on a four-partition topic. Use Next and Back to step through.</figcaption>
 </figure>
 
-Confining each partition to 1 reader per group is what preserves order during
-processing. If 2 members of the same group read the same partition, one might process
-"order 7 paid" before the other had finished with "order 7 created". The rule has the
-further consequence, shown in the fourth step, that the number of partitions is an
-upper limit on parallelism. A fifth consumer in a group that reads 4 partitions has
-nothing to do.
+Historically, eager rebalancing stopped the entire consumer group whenever any single pod restarted or scaled out: every member revoked all its partitions simultaneously, waited for everyone to rejoin, and then received a fresh assignment (**stop-the-world rebalance pause**). On large groups with `500` partitions, rolling deployments caused cascading minutes of lag.
 
-The redistribution of partitions when a member joins or leaves is called a
-*rebalance*, and it is a regular source of trouble in operation. The group detects a
-failed member by the absence of its periodic *heartbeat*, a short message that says
-only "I am alive". While a rebalance is in progress, the partitions being moved are
-read by nobody. A consumer that is merely slow, taking longer over a batch of messages
-than the heartbeat timeout allows, is declared dead, loses its partitions, and
-rejoins, which triggers another rebalance, and a group can spend a large part of its
-time rebalancing in this way without any member having actually failed. The remedies
-are to send heartbeats from a thread separate from the one doing the work, and to
-limit the number of messages fetched at once so that a batch is always finished well
-within the timeout.
+Modern brokers eliminate this pause using **Incremental Cooperative Sticky Rebalancing** (Figure 11-3):
 
-## What "delivered" can mean
+<figure class="diagram">
+<img src="figures/m3/ch11_partition_rebalance.svg" alt="Incremental cooperative sticky rebalance: when Consumer C3 joins a group holding P0..P3, C1 keeps P0 and P1 running uninterrupted while C2 selectively commits and revokes only P3 for handoff to C3 with zero stop-the-world pause." />
+<figcaption><b>Figure 11-3</b> Cooperative sticky consumer group rebalancing eliminating stop-the-world pauses across unaffected partitions.</figcaption>
+</figure>
 
-A consumer that handles a message does 2 things: it performs the work that the message
-calls for, and it records with the queue that the message has been dealt with, which
-in a log is done by *committing* an offset. These are separate operations on separate
-systems, and a consumer can crash between them. The order in which it performs them
-determines what the system guarantees, and there are only 2 orders to choose from.
+1. **Stage 1 (Join Without Global Revoke):** When Consumer `C3` joins, existing consumers `C1 ({P0, P1})` and `C2 ({P2, P3})` keep processing their current partitions uninterrupted.
+2. **Stage 2 (Selective Revocation):** The coordinator computes the minimal delta needed to balance the group (`C2` should transfer only `P3` to `C3`). `C2` finishes its current batch on `P3`, commits its offset, and revokes `P3` while `P0`, `P1`, and `P2` experience zero pause.
+3. **Stage 3 (Incremental Handoff):** On the second micro-rebalance round, the coordinator assigns freed `P3` to `C3`. Combined with a dedicated background heartbeat thread (separated from the processing thread so a slow batch does not expire the session) and static group membership (`group.instance.id`), rolling restarts avoid rebalance storms altogether.
 
-If the consumer does the work first and commits afterwards, a crash between the 2
-leaves the work done and the offset not advanced.
+## 11.5 Delivery Semantics, Idempotent Producers, and Transactional Outbox
+
+### At-Least-Once vs. At-Most-Once Offset Ordering
+
+A consumer performs two non-atomic side effects across two independent systems: executing business work (writing to a database or calling an API) and committing its new offset to the queue. Because the consumer can crash between those two steps, only two execution orders exist:
+
+1. **Work First, Commit Second (At-Least-Once):** Demonstrated in Interactive Trace 11.B. If the consumer crashes after billing an order and before committing offset `0`, its replacement re-reads from offset `0` and processes the message again. Zero messages are lost; duplicates must be handled idempotently.
 
 <figure class="steps" data-prefix="figures/steps-queue-after" data-count="6" data-version="dbf1d568">
 <img src="figures/steps-queue-after-01.svg?v=dbf1d568" alt="Commit after the work: at least once, step 1 of 6. A consumer of the group billing starts. The committed offset is 0, so it begins with the message at offset 0. Its job is to send an invoice for each created order.">
-<figcaption><b>Figure 11.3</b> The consumer works first and commits afterwards, and crashes in between. Use Next and Back to move through the 6 steps.</figcaption>
+<figcaption><b>Interactive Trace 11.B</b> At-least-once delivery: processing before committing guarantees zero lost messages at the cost of redelivery after a crash. Use Next and Back to step through.</figcaption>
 </figure>
 
-The replacement consumer begins from the last committed offset and repeats work that
-was already done. No message is ever skipped, and some are processed more than once.
-This guarantee is called *at least once*.
-
-If the consumer commits first and does the work afterwards, a crash between the 2
-leaves the offset advanced and the work not done.
+2. **Commit First, Work Second (At-Most-Once):** Demonstrated in Interactive Trace 11.C. If the consumer crashes after committing offset `1` and before processing it, the replacement begins at offset `2` and the message is lost permanently. Appropriate only for ephemeral telemetry or sensor metrics where dropping an occasional reading is harmless.
 
 <figure class="steps" data-prefix="figures/steps-queue-before" data-count="6" data-version="8e5f2c39">
 <img src="figures/steps-queue-before-01.svg?v=8e5f2c39" alt="Commit before the work: at most once, step 1 of 6. The same consumer, with the 2 steps in the other order: it will commit first and do the work afterwards.">
-<figcaption><b>Figure 11.4</b> The consumer commits first and works afterwards, and crashes in between. Use Next and Back to move through the 6 steps.</figcaption>
+<figcaption><b>Interactive Trace 11.C</b> At-most-once delivery: committing before work eliminates duplicates at the cost of permanent message loss on crash. Use Next and Back to step through.</figcaption>
 </figure>
 
-Now the replacement begins after the message that was never processed, and that
-message is lost for good. Nothing is processed twice, and some messages are not
-processed at all. This guarantee is called *at most once*.
+**Achieving Effectively-Once Side Effects:** No broker can make an external email or payment API transactional with its offset store. Production systems obtain **effectively-once processing** by pairing **at-least-once delivery** with **idempotent consumers**: the consumer records `(topic, partition, offset)` or a business `event_id` inside the exact same ACID database transaction as its business update (`INSERT INTO processed_events(event_id) ... ON CONFLICT DO NOTHING`). A redelivered message hits the uniqueness constraint and becomes a no-op.
 
-There is no third order, and it follows that a queue cannot on its own deliver each
-message *exactly once*. One naturally asks whether the work and the commit could be
-made a single atomic step, and in general they cannot, because they affect different
-systems: the invoice is sent by a mail server, and the offset is stored by the queue.
-Making 2 independent systems change together or not at all is the hard problem of
-distributed transactions, and for something like sending an email it is
-impossible, since an email cannot be unsent.
+### Idempotent Producers and the Transactional Outbox
 
-What can be achieved, and what careful systems mean when they speak of exactly-once
-processing, is an *effect* that occurs exactly once. The queue delivers at least once,
-and the consumer is built so that processing a message a second time changes nothing.
-An operation with this property is *idempotent*, and there are 2 standard ways of
-obtaining it. Some operations are idempotent by nature: "set the status of order 7 to
-paid" may be applied any number of times with the same result, whereas "add 1 to the
-count of paid orders" may not. For the others, the consumer records the identifier of
-every message it has processed, in the same database transaction as the effect of the
-message, and on receiving a message it has already recorded it does nothing. The
-simulation for this chapter uses this second method: a consumer crashes after acting
-on 6 messages and before committing, its successor is given the same 6 messages
-again, recognises each of them, and the total number of actions taken remains 6.
+Two additional seams require care on the producer side:
 
-The choice between the 2 guarantees should be made by asking which failure is the
-more tolerable. For most business events it is plainly better to risk a duplicate,
-which idempotency can neutralise, than a loss, which nothing can repair, and at least
-once with idempotent consumers is the standard combination. At most once is
-appropriate where a late or repeated message is worthless or harmful, such as a
-reading from a sensor that will be superseded by the next reading a second later.
+- **Idempotent Producer Retries:** If a producer times out waiting for `acks=all`, the broker may have committed the batch and lost only the network ACK. With idempotence enabled (`enable.idempotence=true`), the broker assigns each producer a unique `producer_id (PID)` and tracks the last `5` committed sequence numbers per `(PID, partition)`. A retried batch with an already-seen sequence number returns `201` immediately without appending a duplicate record.
+- **Dual-Write Atomicity via Transactional Outbox:** An order service that writes to PostgreSQL and then calls `PRODUCE` can crash between the two calls, leaving an orphan database row with no event (or an orphan event if published first and the DB rolls back). With the **transactional outbox**, the service writes both the domain row (`orders`) and the serialized event row (`outbox_events`) inside a single local ACID database transaction. A Change Data Capture (CDC) relay (such as Debezium tailing PostgreSQL WAL) streams committed outbox rows to the message queue at-least-once, where idempotent consumers complete the end-to-end guarantee.
+- **Poison Pills, DLQ, and Log Compaction:** A permanently malformed message causes infinite retry loops that stall its entire partition. After `N` bounded attempts (for example, `5`), the consumer routes the payload plus error metadata to a **Dead-Letter Queue (`DLQ`)** topic and advances the offset (accepting a localized ordering break for that single key unless the topic halts deliberately). For state-snapshot topics (such as latest user addresses), **log compaction** retains the newest record per key indefinitely while garbage-collecting superseded older values.
 
-## The producer's side
+## 11.6 Failure Modes, SLIs, and Production Systems
 
-The same difficulty exists on the producing side, where it is less often noticed. A
-producer sends a message and waits for the queue to confirm that it has been stored.
-If no confirmation arrives within the expected time, the producer cannot tell whether
-the message was lost on the way to the queue or stored successfully with only the
-confirmation lost on the way back. If it does not send again, the message may be
-lost, and if it does, the message may be stored twice.
+### Failure and Recovery Matrix
 
-The solution again consists in making the repetition harmless. Each producer is given
-an identity by the queue, and numbers its messages to each partition consecutively.
-The partition remembers the highest number it has stored for each producer and
-discards any message whose number it has already seen. A producer can then resend
-without hesitation, and the log contains each message once.
+| Failure Mode | Operational Symptom | Automated Mitigation |
+| :--- | :--- | :--- |
+| **Partition Leader Broker Crash** | `1` to `2 s` write pause on partitions led by dead broker | KRaft controller promotes an in-sync follower (`ISR`) to leader; producers/consumers refresh metadata and resume cleanly with zero data loss |
+| **Slow Follower Falls Out of `ISR`** | Under-replicated partition (`URP > 0`) metric rises | Leader shrinks `ISR` after `replica.lag.time.max.ms` so writes continue uninterrupted on remaining `2` AZs; alert triggers operator disk check |
+| **Consumer Crash Before Offset Commit** | Brief lag bump on owned partitions during cooperative rebalance | Group coordinator reassigns partitions; successor replays from last committed offset and idempotent consumer skips already-applied `event_id`s |
+| **Poison Pill Message** | Partition lag climbs continuously while consumer throws repeated exceptions | Consumer retries `5` times with backoff, then emits payload + stack trace to `<topic>.dlq` and commits past the poison offset |
+| **Hot Partition Key Skew** | One partition lags heavily while sibling partitions remain idle | Identify skew via per-partition lag metrics; split hot keys with explicit sub-key salting (`tenant#0..7`) if cross-subkey ordering is unneeded |
+| **Retention Overflow on Sustained Lag** | Consumer lag approaches `7-day` retention boundary; imminent data loss | Page on-call at `50%` retention age; scale consumer instances up to partition count `P` or temporarily extend topic retention TTL |
 
-The producer also decides how much durability to wait for, by choosing what
-constitutes a confirmation. It may send without waiting for any confirmation, which is
-fastest and loses messages whenever a machine fails. It may wait until the leader of
-the partition has written the message, in which case a message is lost if the leader
-fails before its followers have copied it. Or it may wait until the message is stored
-on a majority of the replicas, which is the rule of chapter 3 and the only setting
-under which a confirmed message survives the failure of a machine. Our design uses the
-third.
+### Key SLIs and Operational Alerts
 
-## Durability and replication
+- **Consumer Group Lag (Messages and Time-Lag Seconds):** Alert when time-lag exceeds SLO (for example, `> 60 s` for real-time billing) or approaches `25%` of topic retention age.
+- **Under-Replicated Partitions (`URP`):** Alert if `URP > 0` for more than `5 minutes` (signals loss of redundancy ahead of a second failure).
+- **Offline Partitions (`offline_partitions_count`):** Immediate P0 page whenever `> 0` (indicates a partition has zero available `ISR` replicas).
+- **Produce `p99` Latency and `acks=all` Error Rate:** Alert if `p99 > 50 ms` or `NOT_ENOUGH_REPLICAS` errors occur.
 
-Each partition is a log, and it is kept durable and available by precisely the means
-that chapter 3 applied to the log of a key-value shard. One of the machines that hold
-a copy of the partition, the machines being called *brokers*, is its leader and
-receives all appends. The others are followers, which copy the leader's log, and a
-message counts as stored when a majority holds it. If the leader fails, a follower
-that holds every stored message is elected in its place, by the procedure of chapter
-4.
+### Real-World Production Systems
 
-Consumers are permitted to read a message only once it is stored on a majority. The
-reason is the one given in chapter 3 for not applying a record before it is
-committed. If a consumer were allowed to read a message that existed on the leader
-alone, and the leader then failed, the new leader's log would not contain that
-message, and the consumer would have acted on something that, as far as the queue is
-concerned, never happened.
+| Production System | Storage Model | Replication & Consensus | Architectural Distinction |
+| :--- | :--- | :--- | :--- |
+| **Apache Kafka (KRaft)** | Partitioned local NVMe commit logs + OS page cache (`sendfile`) | `ISR` per partition + Raft-based KRaft metadata controller | Industry standard for ultra-high-throughput partitioned event streaming, log compaction, and cooperative rebalancing |
+| **Apache Pulsar** | Tiered separation: stateless Brokers + Apache BookKeeper storage | BookKeeper ensemble quorum writes (segment-level striping) | Decouples serving from storage so scaling brokers or adding partitions requires zero partition-data rebalancing |
+| **Amazon SQS (Standard & FIFO)** | Managed multi-AZ task queue | Managed synchronous multi-AZ replication | Serverless pull-based task queue with per-message visibility timeouts, native DLQ redrive, and zero broker ops |
+| **RabbitMQ (Quorum Queues)** | Exchange routing + Raft-backed Quorum Queues | Raft consensus per queue | Rich AMQP routing topologies (fanout, topic wildcards, headers) suited for complex workflow routing |
 
-The committed offsets of consumer groups are themselves data that must survive
-failures, since losing them would cause every group to reprocess its entire topic.
-They are small and frequently updated, and are kept in a replicated store of their
-own, shown in the design as the offset store.
+## 11.7 Simulation Verification
 
-## Difficulties in operation
+To verify partition-key ordering, at-least-once crash recovery, and idempotent consumer deduplication, we execute the repository's `queuesim` simulation (`code/queuesim/src/main.rs`). Six order lifecycle events append sequentially into partition `1` (offsets `0` through `5`). The consumer processes all `6` events and crashes right before committing its offset; upon restarting from committed offset `0`, it replays all `6` records, recognizes each previously processed event ID, and skips duplicate side effects before committing offset `6`:
 
-### Messages that cannot be processed
-
-Suppose a message is malformed in a way the consumer does not anticipate, so that
-every attempt to process it raises an error. Under at least once delivery the consumer
-does not commit past it, and so it receives the same message again, fails again, and
-continues to do so indefinitely. A single such message, known as a *poison message*,
-halts its entire partition, since no later message in the partition can be reached.
-
-The remedy is to limit the number of attempts. After a message has failed a set number
-of times, 5 for example, the consumer publishes it to a separate topic reserved for
-failures, called a *dead-letter queue*, commits past it, and continues. An alert draws
-an engineer's attention to the dead-letter queue, where the message can be examined
-and, once the defect is corrected, published again. The cost is that the failed
-message has been overtaken by its successors, so that the order within its key is
-broken, and whether that is acceptable has to be decided for each topic.
-
-### Consumers that fall behind
-
-The difference between the offset of the newest message in a partition and the offset
-that a group has committed is the group's *lag*. It is the most informative single
-measurement in the operation of a queue, because it states directly how far a
-consumer is behind its producers. A lag that fluctuates around a small value indicates
-health. A lag that rises steadily indicates that messages arrive faster than they are
-consumed, and since messages are retained only for a limited period, a lag that
-continues to rise ends with the oldest unread messages being deleted before the
-consumer has reached them, which is a loss of data that no setting on the producer can
-prevent.
-
-### Publishing together with a database write
-
-A service very often needs to do 2 things in response to 1 request: change its own
-database and publish a message announcing the change. The order service inserts an
-order and publishes "order 7 created". Performed as 2 separate operations, these can
-come apart. If the service writes the database and crashes before publishing, an order
-exists of which no other service will ever hear. If it publishes first and the
-database write then fails, other services act on an order that does not exist.
-
-The *outbox* pattern makes the 2 operations one. The service writes the message, as an
-ordinary row, into a table of its own database called the outbox, in the same
-transaction as the order itself, so that the database guarantees that both are written
-or neither is. A separate process then reads the outbox and publishes its rows to the
-queue.
-
-<figure>
-<img src="figures/queue-outbox.svg?v=1398f421" alt="5 steps. The service opens 1 database transaction. It writes the order into the orders table. It writes the message into an outbox table as an ordinary row. The transaction commits, so the order and the message exist together. A relay reads the outbox, publishes the message and marks the row as published.">
-<figcaption><b>Figure 11.5</b> The order and its message are written in 1 transaction, and a relay publishes the message afterwards.</figcaption>
-</figure>
-
-The relay may crash between publishing a row and marking it as published, and will in
-that case publish it again on restarting. The pattern therefore delivers at least
-once, which returns us to the idempotent consumer, and it will be noticed how many of
-the questions in this chapter have ended at that same answer.
-
-### Keeping the latest value only
-
-Retaining messages for a fixed period suits a stream of events. Some topics, however,
-carry the current state of things, each message being the latest value for its key,
-such as a customer's current address. For these, old values are of no interest and
-the latest must be kept however old it is. A log can be *compacted* for this purpose:
-a background process rewrites it, keeping for every key only the most recent message.
-A new consumer reading a compacted topic from the beginning thereby obtains the
-current value of every key, and can construct a complete copy of the data from the
-topic alone.
-
-## Use cases
-
-Producers publish, consumers fetch and commit, and operators decide how many
-partitions a topic has.
-
-<figure>
-<img src="figures/queue-use-cases.svg?v=b15cee94" alt="A use case diagram of the message queue. Producer: publish a message (POST /v1/topics/{t}/messages). Consumer: fetch messages (GET ...?offset=42), commit an offset (PUT .../offsets/{group}). Operator: add a partition (more consumers in parallel).">
-<figcaption><b>Figure 11.6</b> The actors and what each of them does.</figcaption>
-</figure>
-
-## Functional requirements
-
-| No. | Functional requirement |
-|---|---|
-| 0 | A producer can publish a message to a topic. Messages with the same key are delivered in the order they were published. |
-| 1 | A consumer can fetch messages starting from an offset. |
-| 2 | A group of consumers shares a topic: each message goes to 1 member of the group. |
-| 3 | A consumer can commit an offset, and after a restart it continues from the committed offset. |
-| 4 | Messages are kept for 7 days, whether or not they were read. |
-
-## Non-functional requirements
-
-| No. | Property | Non-functional requirement |
-|---|---|---|
-| 0 | Durability | A published message survives the loss of 1 broker. |
-| 1 | Consistency | Strong within a partition: every consumer sees the same messages in the same order. |
-| 2 | Delivery | At least once. A message can be delivered again after a consumer crash. |
-| 3 | Scale | 100000 messages per second of 1 KB each. |
-
-The queue is strongly consistent within a partition, which means that all consumers
-see the same messages at the same offsets, and that a message which has been confirmed
-to its producer will be seen by every consumer. It makes no promise about the relative
-order of messages in different partitions. The system built from the queue and its
-consumers is eventually consistent, as the opening section explained, since a consumer
-acts on a message some time after it was published.
-
-## Core entities
-
-<figure>
-<img src="figures/queue-entities.svg?v=958b9419" alt="The core entities. Message has the fields offset u64, key string, body bytes, time time. Partition has the fields topic string, number u32, leader broker. Offset has the fields group string, partition u32, committed u64. A Partition is an append-only log, like the log of chapter 2. An Offset records how far a group of consumers has read.">
-<figcaption><b>Figure 11.7</b> The core entities and their fields.</figcaption>
-</figure>
-
-## Capacity estimate
-
-<div class="estimate">
-
-<img class="builder" src="art/crab-builder.svg" alt="A crab in a hard hat, in tears.">
-
-**Arithmetic ahead.** 7 days of messages are 60 TB for 1 copy and 181 TB for 3, about 46 brokers with 4 TB disks.
-
-<a class="skip" href="#high-level-design">Skip to the high-level design</a>
-
-<details>
-<summary>Show the calculation</summary>
-
-| Quantity | Calculation | Result |
-|---|---|---|
-| Bytes per day | 100000 × 1 KB × 86400 s | 8.64 TB |
-| 7 days, 1 copy | 8.64 × 7 | 60.5 TB |
-| 3 copies | 60.5 × 3 | 181 TB |
-| Brokers with 4 TB disks | 181 ÷ 4 | 45.4, so 46 |
-
-</details>
-
-</div>
-
-## The API
-
-Publishing creates a message within a topic. Fetching reads from a partition, starting
-at an offset. Committing replaces the stored offset of a group.
-
-**Publish a message**
-
-```http
-POST /v1/topics/orders/messages HTTP/1.1
-Host: queue.example
-Content-Type: application/json
-
-{ "key": "order-7", "body": "paid" }
+```console
+$ cargo run --release -p queuesim
+produced order-7 created: partition 1, offset 0
+produced order-8 created: partition 1, offset 1
+produced order-7 paid: partition 1, offset 2
+produced order-9 created: partition 1, offset 3
+produced order-7 shipped: partition 1, offset 4
+the consumer reads partition 1 and crashes before it commits
+  offset 0: order-7 created -> acted on
+  offset 1: order-8 created -> acted on
+  offset 2: order-7 paid -> acted on
+  offset 3: order-9 created -> acted on
+  offset 4: order-7 shipped -> acted on
+  offset 5: order-7 delivered -> acted on
+it restarts and reads from the committed offset, which is still 0
+  offset 0: order-7 created -> seen before, skipped
+  offset 1: order-8 created -> seen before, skipped
+  offset 2: order-7 paid -> seen before, skipped
+  offset 3: order-9 created -> seen before, skipped
+  offset 4: order-7 shipped -> seen before, skipped
+  offset 5: order-7 delivered -> seen before, skipped
+messages in the partition: 6, actions taken: 6, committed offset: 6
 ```
 
-```http
-HTTP/1.1 201 Created
-Content-Type: application/json
-
-{ "partition": 1, "offset": 2 }
-```
-
-Its key chooses the partition, and the response says where the message now lives.
-
-**Commit an offset**
-
-```http
-PUT /v1/topics/orders/partitions/1/offsets/billing HTTP/1.1
-Host: queue.example
-Content-Type: application/json
-
-{ "committed": 6 }
-```
-
-```http
-HTTP/1.1 204 No Content
-```
-
-`PUT` is idempotent, so committing the same offset twice is harmless.
-
-Consumers fetch messages, and the queue does not push them. This allows each consumer
-to proceed at its own pace and to ask for as many messages as it can handle, where a
-queue that pushed would have to guess at the capacity of every consumer. So that an
-idle consumer does not issue requests continuously, a fetch that finds no new messages
-is held open by the broker for a short time and answered as soon as a message arrives.
-
-## High-level design
-
-<figure class="wide">
-<img src="figures/queue-design.svg?v=36ec4caf" alt="A message queue. The components are Producers, Broker 1, Broker 2, Consumers, Offset store. Step 1: A producer sends a message with a key. Step 2: The leader appends it and copies it to a follower. Step 3: A consumer fetches from its committed offset. Step 4: After acting on them, it commits the new offset.">
-<figcaption><b>Figure 11.8</b> The components and the path of a request. The steps are numbered.</figcaption>
-</figure>
-
-| Component | Role | State it holds | When 1 instance fails |
-|---|---|---|---|
-| Broker | stores partitions as logs and serves fetches | the logs | a follower of each partition it led takes over |
-| Consumer | fetches, acts, commits | none that must survive | another member of its group takes over its partitions |
-| Offset store | remembers each group's committed offsets | the offsets, replicated | consumers keep working and commit later |
-
-### One request, step by step
-
-The steps follow the arrows of figure 11.8.
-
-1. A producer sends a message with the key `order-7`. A hash of the key picks partition 0, and the request goes to the broker that leads it.
-2. The leader appends the message to the partition's log and copies it to a follower, as in chapter 3. Then it answers with the offset.
-3. A consumer asks the leader for messages from its committed offset onward.
-4. The consumer acts on each message. When the batch is done, it stores the new offset in the offset store.
-
-## The design, deployed
-
-<figure class="wide">
-<img src="figures/queue-deploy.svg?v=71d89ed5" alt="The message queue, deployed. Producers: Producing services (x 200), publish events. Brokers, in 3 zones: Brokers (x 4), zone a, Brokers (x 4), zone b, Brokers (x 4), zone c. Consumers: Consumer groups (x 30), 1 group for each service, Offset store (x 3), committed offsets.">
-<figcaption><b>Figure 11.9</b> The message queue as it is deployed: 12 brokers in 3 zones between the producers and the consumer groups.</figcaption>
-</figure>
-
-The 12 brokers are divided among 3 zones, and each partition has 1 replica in each
-zone. Leadership is spread evenly, so that every broker leads roughly a third of the
-partitions it holds, and the failure of a broker moves the leadership of only those.
-Producers and consumers hold a list of the brokers and connect directly to the
-leader of each partition they use, so that here too there is no load balancer on the
-path of the data. The offsets of the consumer groups are kept in a small replicated
-store of their own.
-
-## How real systems do it
-
-The log-structured queue of this chapter is Kafka, which LinkedIn described in 2011.
-The partitioned log, the offset kept by the consumer, the consumer group and the
-retention of messages by age all come from that design, as do the compaction of a
-log by key and the producer that numbers its messages so that a retry is not stored
-twice, which was added in 2017 together with transactions.
-
-In 1 respect Kafka differs from this chapter, and the difference is instructive.
-This chapter replicates a partition as chapter 3 does, confirming a message when a
-majority of replicas hold it. Kafka uses a different rule. The leader keeps a list
-of the replicas that are fully caught up, the *in-sync replicas*, and confirms a
-message when every one of them has it. A replica that falls behind is removed from
-the list, and the partition continues with those that remain. With this rule, f + 1
-replicas tolerate f failures, where a majority rule needs 2f + 1, which matters for
-a system that stores a great deal of data. The cost is that the list itself must be
-agreed upon by some other means, for which Kafka relied on ZooKeeper and now on a
-Raft-based controller of its own, and that a setting for the smallest permitted size
-of the list has to be chosen with care, since a list that has shrunk to the leader
-alone confirms messages that exist on 1 machine.
-
-The task queue described at the start of the chapter is the model of Amazon's SQS,
-whose *visibility timeout* is the period after which an unacknowledged message is
-given to another consumer, and of RabbitMQ. Pulsar separates the brokers, which
-serve requests, from the storage of the log, which is delegated to a separate
-replicated service. And the outbox pattern is commonly implemented without a relay
-process, by reading the database's own log of changes and publishing from that, a
-technique called change data capture.
-
-## Mistakes to avoid
-
-| Mistake | What goes wrong | What to do |
-|---|---|---|
-| Expecting each message to arrive exactly once | A consumer that crashes before committing receives its messages again and repeats their effects. | Deliver at least once and make the consumer idempotent. |
-| Committing before the work | A crash after the commit loses the message. | Do the work, then commit, unless losing messages is acceptable. |
-| Publishing without a key, or with a random one | Messages about the same thing land in different partitions and are processed out of order. | Use as the key the thing whose messages must stay in order. |
-| Adding partitions to a topic in use | New messages for a key go to a different partition from the old ones. | Choose the number of partitions generously at the start. |
-| More consumers than partitions | The extra consumers receive nothing. | Size the partitions for the parallelism that will be needed. |
-| Retrying a failing message without limit | 1 message stops its whole partition. | After a fixed number of attempts, move it to a dead-letter queue. |
-| Writing the database and publishing as 2 steps | A crash between them leaves the 2 in disagreement. | Write the message to an outbox in the same transaction. |
-| Waiting only for the leader's confirmation | A message is lost when the leader fails before its followers have it. | Wait for a majority. |
-| Heartbeats from the thread that does the work | A slow batch is taken for a crash, and the group rebalances repeatedly. | Send heartbeats separately, and fetch small batches. |
-| Not watching lag | A consumer falls so far behind that unread messages are deleted. | Raise an alert when lag grows steadily. |
-| Processing 1 partition with several threads | Messages of the same key are handled out of order. | Use 1 thread per partition, or distribute within the consumer by key. |
-
-## Failures
-
-| Failure | What users see | How the system recovers |
-|---|---|---|
-| A consumer crashes before it commits | nothing, if the consumer ignores repeats | its messages are delivered again |
-| A broker is lost | a pause of about 1 second for its partitions | followers are elected leaders, as in chapter 4 |
-| A consumer is too slow | its messages wait longer | more partitions and more group members; the log holds the backlog |
-
-## Trade-offs
-
-| Decision | What it gains | What it costs |
-|---|---|---|
-| Partitions | parallel consumers and more throughput | no order across partitions |
-| Offsets kept by position | the broker stores 1 number per group | a consumer cannot skip 1 bad message without moving past it |
-| At-least-once delivery | no message is lost | consumers must tolerate repeats |
-
-## The simulation
+The final summary confirms end-to-end effectively-once semantics under a crash right before offset commit: `messages in the partition: 6`, `actions taken: 6`, and `committed offset: 6`.
 
 <div class="simulation">
 
-**Simulation in the repository.** The program [`code/queuesim`](https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/distributed-systems-from-the-ground-up/code/queuesim/src/main.rs) simulates this design. To run it, clone the repository and type `cargo run --release -p queuesim` in the `code` directory.
+**Run the partitioned message queue simulation.** Execute `cargo run --release -p queuesim` in `code/` ([`code/queuesim/src/main.rs`](https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/distributed-systems-from-the-ground-up/code/queuesim/src/main.rs)) to reproduce ordered partition appends, consumer crash redelivery, and idempotent deduplication.
 
 </div>
 
-## References
+## 11.8 Terminology and References
 
-- J. Kreps, N. Narkhede and J. Rao, "Kafka: a Distributed Messaging System for Log Processing", NetDB 2011.
-- J. Kreps, "The Log: What every software engineer should know about real-time data's unifying abstraction", LinkedIn engineering blog, 2013.
-- Apache Kafka documentation, "Replication", on in-sync replicas.
-- Apache Kafka, KIP-98, "Exactly Once Delivery and Transactional Messaging", 2017.
-- Amazon SQS documentation, "Visibility timeout".
-- C. Richardson, *Microservices Patterns*, Manning, 2018, for the transactional outbox.
+### Engineering Glossary
 
-## Terms introduced in this chapter
+| Term | Definition |
+| :--- | :--- |
+| **Partitioned Commit Log** | A topic split into multiple independent append-only ordered log files distributed across brokers for horizontal write and read parallelism. |
+| **Offset** | A monotonically increasing 64-bit integer uniquely identifying a record's sequential position inside its partition. |
+| **In-Sync Replicas (`ISR`)** | The dynamic set of partition replicas caught up with the leader within the configured lag threshold; `acks=all` waits for every replica in the `ISR`. |
+| **High Watermark (`HW`)** | The highest offset replicated across all in-sync replicas; consumers are permitted to read strictly up to `HW`. |
+| **Zero-Copy (`sendfile()`)** | An OS kernel system call transferring log segment bytes directly from page cache to the network card via DMA without copying through user space. |
+| **Cooperative Sticky Rebalance** | An incremental consumer-group rebalance protocol that revokes and transfers only the minimal subset of partitions needed, avoiding stop-the-world pauses. |
+| **Transactional Outbox** | Writing domain state changes and outbound event rows in one local ACID database transaction, followed by asynchronous CDC relay publishing to the queue. |
+| **Dead-Letter Queue (`DLQ`)** | A quarantine topic receiving poison messages that repeatedly fail processing so they do not stall healthy partition traffic. |
+| **Log Compaction** | Background retention mode rewriting closed log segments to retain at least the latest record per unique key indefinitely. |
 
-| Term | Meaning |
-|---|---|
-| Message | a small record of something that happened, or of work to be done |
-| Producer, consumer | the service that publishes a message, and a service that reads it |
-| Task queue | a queue that gives each message to 1 consumer and deletes it when acknowledged |
-| Log | a queue that appends messages and keeps them, read by offset |
-| Topic | a named stream of messages |
-| Partition | 1 of the logs into which a topic is divided |
-| Offset | the position of a message in its partition |
-| Key | the part of a message that decides its partition |
-| Consumer group | the instances of 1 service, which share the partitions of a topic among themselves |
-| Rebalance | redistributing partitions when a member joins or leaves a group |
-| Heartbeat | a periodic message by which a consumer shows that it is alive |
-| Commit | recording the offset up to which a group has processed a partition |
-| At most once | a guarantee under which a message may be lost and is not repeated |
-| At least once | a guarantee under which a message may be repeated and is not lost |
-| Idempotent | having the same effect whether performed once or several times |
-| Broker | a machine of the queue, which stores partitions |
-| Poison message | a message whose processing always fails |
-| Dead-letter queue | a topic to which messages are moved after repeated failure |
-| Lag | how many messages a group is behind the end of a partition |
-| Outbox | a database table of messages, written in the same transaction as the data they announce |
-| Compaction | rewriting a log to keep only the latest message for each key |
+### References
 
-<div class="summary">
-
-## Summary
-
-- A queue separates services in time, absorbs bursts, and lets any number of services read the same messages, and the system becomes eventually consistent in return.
-- A task queue deletes a message once it is processed, and a log keeps messages and lets each reader hold its own offset.
-- Order exists within a partition only, and the key of a message decides which messages are ordered relative to each other.
-- A consumer group gives each partition to 1 of its members, so the number of partitions limits parallelism.
-- Working before committing gives at least once, committing before working gives at most once, and there is no other order.
-- An effect that happens exactly once is obtained by delivering at least once to an idempotent consumer.
-- A producer waits for a majority and numbers its messages, so that a confirmed message survives a failure and a retry is not stored twice.
-- A database write and a message are made 1 step by writing the message to an outbox in the same transaction.
-
-</div>
+- J. Kreps, N. Narkhede, and J. Rao, "Kafka: A Distributed Messaging System for Log Processing", NetDB, 2011.
+- J. Kreps, "The Log: What Every Software Engineer Should Know About Real-Time Data's Unifying Abstraction", LinkedIn Engineering Blog, 2013.
+- Apache Kafka Improvement Proposals: KIP-98 ("Exactly Once Delivery and Transactional Messaging"), KIP-429 ("Kafka Consumer Incremental Rebalance Protocol"), and KIP-500 ("Replace ZooKeeper with a Self-Managed Metadata Quorum").
+- C. Richardson, *Microservices Patterns*, Manning Publications, 2018 (Transactional Outbox Pattern).
+- Amazon SQS Documentation, "Visibility Timeout and Dead-Letter Queues".
+- Apache Pulsar Documentation, "Tiered Storage and BookKeeper Architecture".

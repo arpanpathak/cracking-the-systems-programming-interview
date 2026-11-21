@@ -1,589 +1,383 @@
-<img class="plate" src="art/ch08.svg?v=9e4d4f6b" alt="Stamp, a squirrel, stands beside a sign that reads: time, node, counter.">
+# Chapter 8: Unique ID Generator
 
-# Unique ID Generator: System Design
+<img class="plate" src="art/ch08-plate.svg" alt="Chapter 8 architectural plate: 64-bit Snowflake layout dividing 1 sign bit, 41 millisecond timestamp bits spanning 69 years, 10 node bits for 1,024 hosts, and 12 sequence bits yielding 4,096 IDs per millisecond per node with zero central coordination." />
 
-Almost every record that a system stores needs a name by which the rest of the system
-can refer to it. An order is mentioned in an invoice, a message in a reply, a user in a
-thousand other rows, and each of these references works only if the name it uses
-belongs to exactly 1 record and will never belong to another. Such a name is an
-*identifier*, or id, and for as long as a system consists of a single database the
-question of where ids come from hardly arises, because the database keeps a counter and
-hands out the next number with every insert.
+Nearly every record in a distributed storage system requires an unambiguous primary key so that orders, invoices, ledger entries, and foreign-key indexes reference exactly one entity across the lifetime of the platform. On a single relational database, a monotonic `BIGSERIAL` or `AUTO_INCREMENT` sequence satisfies uniqueness, compactness, and chronological sort order in one atomic page increment. Once we shard writes across dozens of database nodes and multiple availability zones, routing every record creation through one central sequence reintroduces both a throughput bottleneck and a single point of failure.
 
-The question becomes interesting when records are created on many machines at once.
-The counter that served 1 database so well now has to be shared, and a shared counter
-is a place where every creation of every record in the system must queue, and a
-machine whose failure stops all of them. This chapter is about producing identifiers
-without that shared point. We examine 4 ways of doing it, of which the last, an id
-composed of a timestamp, a node number and a counter, is the one we then design in
-full, and we give particular attention to the ways in which each scheme can quietly
-produce the same id twice.
+In this chapter, I design a distributed 64-bit unique identifier generator that produces roughly time-ordered keys without cross-node coordination on the request path. We begin by establishing requirements, actors, and capacity bounds, then specify wire contracts and separate Raft-backed worker-ID leasing (control plane) from lock-free local generation (data plane). In the deep dives, we derive the 64-bit Snowflake bit budget, compare it against ticket servers, range-block allocators, and UUIDv7, and harden the generator against NTP backward clock steps, leap seconds, and crash-restart reuse using monotonic guards, disk epoch checkpoints, and Hybrid Logical Clocks (HLC).
 
 <div class="covers">
 
-This chapter covers
+In this chapter, we cover
 
-- what an identifier is required to do, beyond being unique
-- a counter in 1 database, and what it costs at scale
-- random identifiers, the probability that 2 of them collide, and their effect on an index
-- blocks of numbers handed out by a coordinator
-- identifiers composed of time, node number and counter
-- clocks that run backwards, restarts, and node numbers given out twice
-- what an id reveals to the people who see it
-- why the order of ids from different nodes is only approximate
+- actors, functional contracts, sub-millisecond latency SLOs, non-goals, and arithmetic capacity bounds
+- HTTP/gRPC single and batched allocation contracts, 64-bit integer string encoding for JSON safety, and lease schemas
+- separation of consensus-backed worker-ID leasing (control plane) from shared-nothing local generation (data plane)
+- comparative analysis of database counters, multi-master ticket servers, range-block allocators, UUIDv4, UUIDv7, and 64-bit Snowflake layouts
+- bit-level Snowflake allocation, per-millisecond sequence exhaustion, B-tree append locality, and range-sharded hotspot trade-offs
+- defenses against NTP clock regressions, leap seconds, VM restarts, and worker-ID collisions via epoch checkpoints and Hybrid Logical Clocks
+- operational failure modes, SLIs, production deployments (Twitter Snowflake, Instagram, Discord, Sonyflake), and simulation verification
 
 </div>
 
-## What an identifier has to do
+## 8.1 Requirements, Actors, and Capacity Bounds
 
-Uniqueness is the one property that cannot be compromised, and it is worth being
-precise about its scope. An id has to differ from every other id of the same kind that
-has ever been issued or ever will be, on any machine, including machines that have
-since been replaced and machines that were restarted a moment ago and have forgotten
-what they did before. Most of the difficulties in this chapter come from that last
-clause, since it is easy to design a generator that never repeats itself while it is
-running and considerably harder to design one that does not repeat itself after it has
-lost its memory.
+### Actors and Use Cases
 
-Several further properties are desirable, and the 4 schemes differ mainly in which of
-them they provide. An id should be small, because it is stored not only in its own
-record but in every record that refers to it and in every index over those references,
-so that the difference between 8 bytes and 16 is multiplied many times over. It should
-be obtainable without a network call, since a call adds latency to every insert and a
-dependency that may be unavailable. And it is very useful if ids increase with time,
-so that an id issued later is larger than one issued earlier.
+We organize the unique ID generator around three operational actors: application services requesting identifiers on the hot write path, generator nodes leasing exclusive worker slots during startup, and platform operators auditing clock skew and sequence saturation (Figure 8-1).
 
-This last property deserves an explanation, because its value is not obvious until one
-considers how a database stores an index. An index keeps its entries in sorted order,
-divided among pages of fixed size, and an insert has to write the page into which the
-new entry falls. If new ids are always larger than existing ones, every insert falls
-on the last page, which is therefore the only page that needs to be in memory, and
-the index grows by appending. If new ids are scattered at random across the whole
-range, each insert falls on a different page, nearly every page of the index is being
-modified at any moment, and once the index has outgrown memory each insert costs a
-read from disk.
-
-<figure>
-<img src="figures/idgen-locality.svg?v=bdaf1687" alt="2 rows of 8 index pages. With random ids, inserts land on 6 different pages scattered across the index. With time-ordered ids, every insert lands on the last page.">
-<figcaption><b>Figure 8.1</b> Inserts with random ids touch pages throughout the index, while inserts with time-ordered ids touch only the last page.</figcaption>
+<figure class="diagram">
+<img src="figures/m3/ch08_use_cases.svg" alt="Actors and use cases of the distributed unique ID generator: Application Service requests single or batched 64-bit IDs and decodes embedded metadata; Generator Node leases and reclaims a 10-bit worker ID; Platform Operator monitors NTP clock drift and sequence exhaustion." />
+<figcaption><b>Figure 8-1</b> Actors, system boundary, and core use cases of the distributed unique ID generator.</figcaption>
 </figure>
 
-Time-ordered ids bring smaller conveniences as well. Sorting by id is sorting by age,
-so that "the newest 20 orders" can be read from the end of the primary index without a
-separate index on the creation time, and an engineer looking at 2 ids in a log can
-tell at a glance which came first.
+| Actor | Operation | Concrete Scenario |
+| :--- | :--- | :--- |
+| **Application Service** | Request single ID (`GET /v1/ids/next`) or batch (`POST /v1/ids/batch`) | Mint primary keys for newly created orders, chat messages, or telemetry events across sharded databases |
+| **Application Service** | Decode embedded metadata | Extract creation timestamp and originating node bits during incident triage or time-range log correlation |
+| **Generator Node** | Lease and renew a 10-bit `worker_id` (`0` to `1023`) | Acquire an exclusive worker slot from the etcd control plane at process startup and checkpoint its high-water timestamp |
+| **Platform Operator** | Monitor clock drift, sequence exhaustion, and lease churn | Detect NTP stepping faults or approaching sequence saturation before client requests experience wait delays |
 
-## A counter in 1 database
+### Functional Requirements
 
-The traditional source of ids is a counter kept by the database, usually called an
-auto-increment column or a sequence. Its ids are as small as ids can be, they are
-strictly increasing, and uniqueness is guaranteed by the simplest possible argument,
-namely that 1 component gives out each number once.
+| No. | Functional Requirement |
+| :--- | :--- |
+| 0 | We guarantee global uniqueness across all active, retired, and restarted generator nodes for the entire operational lifetime of the system. |
+| 1 | Every generated identifier fits inside a signed 64-bit integer (`int64`, non-negative `0` to `2^63 - 1`) so it maps natively to relational `BIGINT` primary keys and compact B-tree indexes. |
+| 2 | Identifiers are roughly time-ordered (k-sortable): an ID minted later sorts numerically greater than an ID minted earlier whenever their creation times differ by more than the maximum inter-node clock skew. |
+| 3 | The service supports both single-ID allocation and batched block allocation (`count` up to `4,096` per call) over HTTP/2 and gRPC, as well as an embeddable in-process library mode. |
+| 4 | Any node can decode the creation timestamp (millisecond precision), datacenter/worker identifier, and per-millisecond sequence number directly from an ID without external lookups. |
 
-The cost lies entirely in the phrase "1 component". Every insert anywhere in the
-system must reach that database, which bounds the rate at which the whole system can
-create records by what 1 machine can do, and adds a network round trip for every
-service that is not in the same data centre. If the database is unavailable, nothing
-can be created at all. A system that has divided its data among many shards, as the
-key-value store of chapter 1 does, would be reintroducing through its ids the single
-point of failure that sharding was meant to remove.
+### Non-Functional Requirements and SLOs
 
-A well-known refinement keeps the counter and removes some of the dependence on 1
-machine. 2 databases each maintain a counter, the first giving out odd numbers and
-the second even numbers, so that either can serve requests when the other is down and
-their ids never coincide. The idea extends to n databases, each stepping by n from a
-different starting point. Its weakness is rigidity. The number of databases is built
-into every id that has been issued, and to add a third database to a pair one must
-change the step on machines that are in service, without ever letting 2 of them issue
-the same number during the change. The ids are also no longer ordered in time, since
-one database may be far ahead of the other.
+| No. | Property | Target Specification | Architectural Consequence |
+| :--- | :--- | :--- | :--- |
+| 0 | **Latency** | `p50 <= 0.2 ms`, `p99 <= 1.0 ms` over local-AZ RPC; `< 1 microsecond` embedded in-process | Prohibits cross-node consensus or database round trips on the generation path; generation uses strictly local memory and atomic instructions |
+| 1 | **Availability** | `99.999%` data-plane availability (`<= 5.26` minutes/year downtime) | Shared-nothing fleet across three availability zones; an active generator continues minting IDs even if the control plane and all peer generators fail |
+| 2 | **Throughput and Scale** | Sustained `1,000,000` IDs/s cluster-wide; peak `4,096,000` IDs/s per generator node across up to `1,024` nodes | Requires a 12-bit per-millisecond sequence counter (`2^12 = 4,096` IDs/ms/node) and a 10-bit worker address space |
+| 3 | **Uniqueness Consistency** | Absolute (zero duplicates under crashes, restarts, and NTP regressions) | Requires linearizable Raft-backed `worker_id` leasing at startup, monotonic clock guards in RAM, and durable high-water timestamp checkpoints |
+| 4 | **Ordering Consistency** | Approximate across hosts (bounded by inter-node NTP skew, typically `2` to `20 ms`); strict within one node | Callers requiring causal or total order across nodes must obtain sequence numbers from a consensus log rather than inferring causality from IDs |
 
-## Random identifiers
+### Non-Goals and Scope Boundaries
 
-At the opposite extreme is the idea of using no coordination whatsoever. Each machine
-picks a number at random from a range so large that 2 machines are extremely
-unlikely ever to pick the same one. The best-known form is the *universally unique
-identifier*, or UUID, a 128-bit value, and in its version 4 all but 6 of those bits
-are random, which leaves 122 random bits.
+To keep the generation path fast and verifiable, we exclude the following properties from this system:
 
-Whether "extremely unlikely" is unlikely enough can be calculated. Among n ids drawn
-at random from 2 to the power 122 possible values, the probability that at least 2 are
-equal is approximately n squared divided by 2 to the power 123. A system that
-generates a million ids every second for 30 years produces about 10 to the power 15
-ids, and the probability of a single collision among all of them comes to roughly 1 in
-10 million. For nearly every purpose this is as good as certainty, provided the random
-numbers are truly random. That proviso is the practical risk of the scheme: a
-generator seeded from the clock, or 2 virtual machines cloned from the same image
-with the same internal state, will produce identical "random" ids with a probability
-that has nothing to do with the calculation above.
+- **Strict gap-free sequentiality:** Sequence numbers reset to `0` on every millisecond tick, and idle milliseconds produce numeric gaps. Callers must never subtract two IDs to count records.
+- **Cryptographic unpredictability:** Time-prefixed IDs are enumerable and expose millisecond creation timestamps. Authentication tokens, password-reset links, and public unguessable slugs require a separate CSPRNG token generator (at least 128 random bits).
+- **Cross-node causal ordering:** Physical clocks drift across hosts. We do not attempt to use ID comparisons as a substitute for vector clocks, Lamport timestamps, or database transaction commit order.
+- **Dynamic bit-field resizing after launch:** Reassigning bit widths between timestamp, worker, and sequence fields after issuing production IDs risks overlapping numeric ranges.
 
-Random ids have 2 real costs. They occupy 16 bytes where a counter needs 8, and that
-is paid again in every reference and every index. And they are scattered uniformly
-over their range, which is the worst case for index locality shown in the figure
-above. Many teams have adopted random UUIDs as primary keys while their tables were
-small and have discovered the second cost only when the index no longer fitted in
-memory and insert throughput fell sharply.
+### Back-of-the-Envelope Capacity Bounds
 
-The response to this has been to give up some random bits in exchange for order.
-Version 7 of the UUID standard places a 48-bit timestamp in milliseconds at the front
-and fills the rest with random bits, so that ids generated later sort after ids
-generated earlier, to the precision of a millisecond, while 2 ids from the same
-millisecond are distinguished by 74 random bits. This keeps the great advantage of
-random ids, which is that a machine needs nothing from anybody in order to make one,
-and removes the scattered inserts. What it cannot remove is the size, and if ids must
-fit in 64 bits, as they must wherever they are to be stored as an ordinary integer
-column, there is not enough room for both a useful timestamp and enough random bits to
-make collisions negligible.
+We size the bit budget, throughput ceiling, network bandwidth, and control-plane state from first principles before writing a schema:
 
-## Blocks of numbers
+| Resource Dimension | Arithmetic Derivation | Provisioned Bound |
+| :--- | :--- | :--- |
+| **Timestamp Horizon (41 bits)** | `2^41 ms / (1,000 * 60 * 60 * 24 * 365.25)` | `69.73 years` from custom epoch (for example, `2025-01-01T00:00:00Z` lasts until `2094`) |
+| **Per-Node Peak Rate (12 bits)** | `2^12 = 4,096 IDs/ms * 1,000 ms/s` | `4,096,000 IDs/s` per generator node |
+| **Cluster Maximum Rate (10 bits)** | `2^10 = 1,024 nodes * 4,096,000 IDs/s` | `4.19 billion IDs/s` theoretical ceiling |
+| **Baseline Fleet Sizing** | `1,000,000` IDs/s target at `<= 25%` per-node capacity load across 3 AZs | `12` generator nodes (`4` per AZ, `~83,333` IDs/s/node; `~2%` of 4.09M ceiling, leaving huge burst headroom) |
+| **RPC Network Bandwidth** | `1,000,000` single calls/s `* 128 B` gRPC frame (or `10,000` batches of `100` IDs `* 1 KB`) | `128 MB/s` (`1.02 Gbps`) single-call; `10 MB/s` (`80 Mbps`) batched |
+| **Control-Plane Lease State** | `1,024` worker lease records `* 256 B` (owner, TTL, `max_ts` checkpoint) | `256 KB` total in a 3-node etcd quorum (trivial memory footprint) |
 
-A third scheme returns to the counter and reduces the cost of sharing it. A
-coordinator holds a single durable counter. A node that needs ids asks the coordinator
-for a block of them, 1000 at once for example, upon which the coordinator advances its
-counter by 1000 and the node gives out the numbers of its block one by one from
-memory. The node contacts the coordinator again only when the block is used up.
+Even `12` lightweight generator instances sustain an order of magnitude above our `1,000,000` IDs/s baseline while leaving over `1,000` worker slots spare for rolling deployments, canary instances, and cooldown quarantine windows.
 
-<figure>
-<img src="figures/idgen-ranges.svg?v=7f031431" alt="5 steps. The coordinator&#x27;s counter stands at 1. Node A asks for a block and receives 1 to 1000. Node B asks for a block and receives 1001 to 2000. Both nodes give out ids from memory. Node A crashes after giving out 37 ids, and the numbers 38 to 1000 are never used.">
-<figcaption><b>Figure 8.2</b> 2 nodes take blocks from a coordinator and give out the numbers locally.</figcaption>
+## 8.2 External API and Data Contracts
+
+We expose a binary gRPC interface for internal microservices, an HTTP/2 REST API for language-agnostic clients, and an embeddable library interface for ultra-low-latency callers that register directly as leased workers.
+
+### External HTTP/2 and gRPC Contracts
+
+Whenever an ID travels over JSON, we serialize the 64-bit integer as a decimal string. IEEE 754 double-precision floating-point numbers used by JavaScript engines and many JSON parsers represent integers exactly only up to `2^53 - 1` (`9,007,199,254,740,991`). Returning a raw 64-bit JSON number causes browsers to round distinct IDs to the same value, corrupting client-side state.
+
+**Single ID allocation (`GET /v1/ids/next`):**
+
+```http
+GET /v1/ids/next HTTP/2
+Host: idgen.internal
+Accept: application/json
+```
+
+```http
+HTTP/2 200 OK
+Content-Type: application/json
+X-Worker-Id: 7
+
+{
+  "id": "8388636672",
+  "timestamp_ms": 2000,
+  "worker_id": 7,
+  "sequence": 0
+}
+```
+
+**Batched ID allocation (`POST /v1/ids/batch`):**
+
+Batching amortizes network round trips and allows callers to keep a small local buffer without maintaining their own etcd lease. An `Idempotency-Key` header prevents retries from double-charging accounting quotas, though minting a fresh unused ID is harmless for uniqueness.
+
+```http
+POST /v1/ids/batch HTTP/2
+Host: idgen.internal
+Content-Type: application/json
+Idempotency-Key: checkout-pod-19-batch-402
+
+{
+  "count": 100
+}
+```
+
+```http
+HTTP/2 201 Created
+Content-Type: application/json
+
+{
+  "ids": ["8388636672", "8388636673"],
+  "count": 100,
+  "worker_id": 7
+}
+```
+
+When a generator node detects a severe backward clock jump exceeding its safe wait threshold (for example, `> 15 ms`), it rejects requests immediately with `503 Service Unavailable` and `Retry-After: 1` while removing itself from load-balancer health checks so local-AZ routers fail over to healthy peers.
+
+**Internal gRPC contract (Protocol Buffers):**
+
+```protobuf
+syntax = "proto3";
+package idgen.v1;
+
+service IdGeneratorService {
+  rpc NextId(NextIdRequest) returns (NextIdResponse);
+  rpc NextBatch(NextBatchRequest) returns (NextBatchResponse);
+}
+
+message NextIdRequest {}
+message NextIdResponse {
+  int64 id = 1; // Wire-encoded as varint/fixed64; zero precision loss in gRPC
+}
+
+message NextBatchRequest {
+  uint32 count = 1; // Bounded to [1, 4096]
+}
+message NextBatchResponse {
+  repeated int64 ids = 1;
+}
+```
+
+### Control-Plane Lease and Checkpoint Schema
+
+In the etcd control plane, we maintain two key namespaces per worker slot `w` in `[0, 1023]`:
+
+```text
+/idgen/workers/{worker_id}/lease      -> { "host": "az-a-node-04", "lease_id": 918273, "started_at_ms": 1763612000000 }  [TTL = 30s]
+/idgen/workers/{worker_id}/checkpoint -> { "max_ts_ms": 1763612045000, "retired_at_ms": 0 }                                [Persistent]
+```
+
+The `/lease` key is attached to an etcd ephemeral lease (`TTL = 30 s`, renewed every `10 s`). The `/checkpoint` key persists indefinitely so that no future host acquiring `worker_id` can ever mint an ID at a millisecond earlier than `max_ts_ms`.
+
+## 8.3 High-Level Architecture: Control Plane vs. Data Plane
+
+We decouple worker-ID assignment and high-water epoch persistence (control plane) from per-request identifier generation (data plane). Once a generator node holds a valid 10-bit worker ID, it performs zero network I/O to produce identifiers (Figure 8-2).
+
+<figure class="diagram">
+<img src="figures/m3/ch08_architecture.svg" alt="Control plane and data plane architecture of the unique ID generator: 3-node etcd quorum leases unique 10-bit worker IDs and stores max_ts checkpoints in the control plane; local-AZ edge routers forward requests to shared-nothing Snowflake generator nodes across availability zones in the data plane." />
+<figcaption><b>Figure 8-2</b> Control-plane worker-ID leasing and zero-coordination data-plane ID generation topology.</figcaption>
 </figure>
 
-Uniqueness follows from the fact that no number belongs to 2 blocks, and the
-coordinator is consulted once per 1000 ids, so that its load and its influence on
-latency are a thousandth of what they were with a plain shared counter. If the
-coordinator fails, every node can continue until its current block is exhausted, which
-with a suitable block size gives operators ample time to restore it.
+### Component Responsibilities and Failure Domains
 
-2 properties are lost. The ids contain gaps, because a node that crashes or is
-restarted discards the unused remainder of its block, and anyone who assumed that ids
-are consecutive, for instance in order to count records by subtracting one id from
-another, will be misled. And the ids are no longer ordered in time across nodes, since
-a slow node may still be giving out numbers from an old block long after a busy node
-has moved on to much larger ones. Where neither property is needed, this is a simple
-and dependable scheme, and it yields the smallest ids of any distributed method.
+| Component | Plane | State Held | Failure Impact and Mitigation |
+| :--- | :--- | :--- | :--- |
+| **Worker-ID Lease Coordinator (3-node etcd)** | Control | Authoritative map of leased `worker_id` slots (`0` to `1023`) and durable `max_ts_ms` checkpoints | Tolerates `1` node failure transparently. If quorum is lost, running generators continue minting IDs uninterrupted; only new node startups pause until quorum returns |
+| **Epoch Checkpoint Store** | Control | Highest timestamp horizon promised by each worker slot, updated asynchronously every `2` to `5 s` | Prevents a restarted or reassigned worker from reusing timestamps after a backward NTP correction |
+| **Zone-Aware Edge Router (L7 Proxy)** | Data | Stateless routing table with local-AZ affinity and active health probes | Keeps caller RTT below `0.5 ms` by preferring same-AZ generators; automatically drains any node reporting clock regression (`503`) |
+| **Snowflake Generator Fleet (Multi-AZ)** | Data | Leased 10-bit `worker_id`, atomic `(last_ms, sequence)` 64-bit state word, local disk checkpoint file | Shared-nothing across nodes. Losing one node reduces fleet capacity by `1/N` with zero coordination overhead and zero lost uniqueness |
 
-## Time, node number and counter
+### Hot Data Path Walkthrough
 
-The fourth scheme obtains uniqueness without any communication while a node is
-running, keeps the id within 64 bits, and preserves the order of time. It does so by
-composing each id from 3 numbers that the node already has at hand: the current time
-in milliseconds, the node's own number, and a counter of the ids the node has made in
-the current millisecond. The arrangement became widely known through a generator that
-a large social network published in 2010 under the name Snowflake, and ids of this
-form are often called by that name.
+1. **Startup Lease Acquisition (Off Hot Path):** When a generator starts, it runs a compare-and-swap transaction in etcd to claim an unleased `worker_id` whose quarantine cooldown (`retired_at_ms + 60,000 ms`) has elapsed. It reads `checkpoint.max_ts_ms` and refuses to mark itself healthy until its local wall clock strictly exceeds `max_ts_ms`.
+2. **Zone-Local Request Routing:** An application service sends `NextId` or `NextBatch` over a persistent HTTP/2 gRPC channel to a same-AZ generator (or calls the in-process library directly).
+3. **Lock-Free Bit Packing:** The generator reads its wall clock and monotonic clock delta, verifies the timestamp has not regressed below `last_ms`, increments `sequence` (wrapping and awaiting the next millisecond if `sequence == 4096`), and packs the 64-bit integer in nanoseconds.
+4. **Periodic Horizon Checkpointing (Background):** A background thread writes `now_ms + 5,000 ms` to local disk and etcd every `2` seconds. If the process crashes and restarts within `5` seconds on a drifted clock, startup recovery waits until the clock clears the persisted horizon.
 
-<figure>
-<img src="figures/idgen-layout.svg?v=f5bb385b" alt="A 64-bit id divided into 4 fields from the most significant bit: 1 bit that is always 0, 41 bits of time in milliseconds, 10 bits for the number of the node, and 12 bits for a counter. An example with time 1000, node 1 and counter 2 gives the id 4194308098.">
-<figcaption><b>Figure 8.3</b> The 3 fields of an id and the unused first bit.</figcaption>
+## 8.4 Comparative Design Space and 64-Bit Snowflake Layout
+
+Before committing to a composite time-worker-sequence layout, we evaluate the four classical families of distributed ID generation against our requirements.
+
+### Comparing the Four Classical Approaches
+
+1. **Single Database Sequence (`AUTO_INCREMENT`):** Produces compact, gap-free 64-bit integers with exact global ordering. However, every write across the entire platform must serialize on one primary database instance, turning ID generation into a global availability bottleneck.
+2. **Multi-Master Ticket Servers (Flickr Pattern):** Deploying `N` databases where server `i` starts at `i` and steps by `N` (`1, 3, 5...` and `2, 4, 6...`) removes the single point of failure. Its operational weakness is rigidity: changing `N` online requires coordinated step reconfiguration without range overlap, and cross-node time order disappears as traffic skews between masters.
+3. **Coordinator Range-Block Allocator (Segment Mode):** A durable coordinator hands out blocks of `1,000` to `10,000` contiguous integers to each worker, reducing coordinator RPCs by three to four orders of magnitude. Double-buffering (prefetching the next block at `20%` remaining) hides network stalls. However, worker crashes discard unused block tails, and IDs from slow workers lag far behind busy workers, destroying chronological ordering.
+4. **Random and Time-Prefixed 128-Bit UUIDs (UUIDv4 and UUIDv7):**
+   - **UUIDv4** uses `122` random bits and requires zero coordination. By the birthday paradox, generating `10^15` IDs (`1,000,000` IDs/s for `31.7` years) yields a collision probability of roughly `n^2 / 2^123`, or `~1 in 10,000,000`. Its practical costs are double storage overhead (`16 bytes` in every primary key, foreign key, and secondary index) and uniform random distribution across B-tree leaf pages. Once an index outgrows RAM, random primary-key inserts trigger a disk read and dirty-page eviction on nearly every write.
+   - **UUIDv7 (RFC 9562, 2024)** places a 48-bit Unix millisecond timestamp in the most significant bits followed by `4` version bits, `12` sub-millisecond/counter bits, `2` variant bits, and `62` random bits. UUIDv7 restores B-tree append locality while keeping zero startup coordination. Its sole drawback for our contract is size: `128 bits` cannot fit in a 64-bit `BIGINT` column.
+
+| Dimension | Single DB Sequence | Ticket Servers (`step = N`) | Range Blocks (Segment) | UUIDv4 (128-bit) | UUIDv7 (128-bit) | 64-Bit Snowflake (Chosen) |
+| :--- | :--- | :--- | :--- | :--- | :--- | :--- |
+| **Width** | `64 bits` | `64 bits` | `64 bits` | `128 bits` | `128 bits` | `64 bits` |
+| **Hot-Path Network I/O** | `1` RTT per ID | `1` RTT per ID | `1` RTT per block | None | None | None |
+| **Time Ordering** | Exact | None | None | None | K-sorted (ms) | K-sorted (ms) |
+| **B-Tree Index Locality** | Sequential append | Sequential per shard | Fragmented by worker | Random page thrashing | Sequential append | Sequential append |
+| **Control-Plane Outage** | Total outage | Survives `N - 1` loss | Continues until block empties | Unaffected | Unaffected | Running nodes unaffected |
+| **Primary Failure Hazard** | SPOF bottleneck | Rigid cluster resizing | Gaps and cross-node skew | Cloned PRNG seed; index bloat | `16 B` key footprint | Duplicate `worker_id` or clock rollback |
+
+We choose the **64-bit Snowflake layout** because requirement 1 mandates a 64-bit integer key, requirement 2 demands k-sortable B-tree locality, and non-functional requirement 1 demands zero hot-path network coordination.
+
+### 64-Bit Field Layout and Uniqueness Proof
+
+Figure 8-3 details the bit allocation across the 64-bit signed big-endian integer:
+
+- **Bit `63` (1 bit, sign):** Permanently `0` so the value stays non-negative across signed 64-bit integer types in Java, PostgreSQL (`BIGINT`), and Go (`int64`).
+- **Bits `62..22` (41 bits, timestamp):** Milliseconds elapsed since a custom system epoch (`epoch_ms`). Placing the timestamp in the most significant bits ensures that ordinary integer comparison orders IDs chronologically.
+- **Bits `21..12` (10 bits, datacenter and worker ID):** Uniquely identifies up to `1,024` concurrent generator instances (commonly split into `3` to `5` bits for datacenter/AZ and `5` to `7` bits for host slot so operators can identify the originating zone by bitmasking).
+- **Bits `11..0` (12 bits, per-millisecond sequence):** Monotonically increments from `0` to `4,095` within each millisecond on a given node and resets to `0` on the next millisecond tick.
+
+```text
+id = ((timestamp_ms - epoch_ms) << 22) | (worker_id << 12) | sequence
+```
+
+<figure class="diagram">
+<img src="figures/m3/ch08_clock_drift.svg" alt="64-bit Snowflake integer layout showing 1 sign bit, 41 millisecond timestamp bits, 10 datacenter and worker ID bits, and 12 sequence bits, alongside monotonic clock-regression defense." />
+<figcaption><b>Figure 8-3</b> 64-bit Snowflake bit budget and monotonic clock-regression handling.</figcaption>
 </figure>
 
-The argument for uniqueness considers the ways in which 2 ids might be related, and
-shows that in each case they differ in at least 1 field. If they were made by
-different nodes, they differ in the node number, provided every node has a number of
-its own. If they were made by the same node in different milliseconds, they differ in
-the time, provided the node's clock does not return to a millisecond it has already
-used. And if they were made by the same node in the same millisecond, they differ in
-the counter, provided the node does not issue more ids in a millisecond than the
-counter can count. The 3 provisos are the whole of the engineering problem. Each
-corresponds to a way in which the scheme fails if it is neglected, and the 3 sections
-after the next deal with them in turn.
+Uniqueness follows by case analysis on any two identifiers `A` and `B`:
+
+1. If `A` and `B` are generated by different nodes, they differ in bits `21..12`, provided **Invariant 1** holds: no two active generators share the same `worker_id` within the same clock window.
+2. If `A` and `B` are generated by the same node in different milliseconds, they differ in bits `62..22`, provided **Invariant 2** holds: the node's emitted timestamp never returns to a millisecond it has already used.
+3. If `A` and `B` are generated by the same node in the same millisecond, they differ in bits `11..0`, provided **Invariant 3** holds: the node never lets the 12-bit sequence overflow into the adjacent `worker_id` bits.
+
+Advancing through Interactive Trace 8.A demonstrates two independent nodes minting six globally unique, roughly time-ordered IDs with zero inter-node communication:
 
 <figure class="steps" data-prefix="figures/steps-idgen-make" data-count="8" data-version="471267fc">
 <img src="figures/steps-idgen-make-01.svg?v=471267fc" alt="Ids from 2 nodes, step 1 of 8. 2 nodes, each with its own number. Neither will ever send the other a message. Each remembers the millisecond of the last id it made and a counter within that millisecond.">
-<figcaption><b>Figure 8.4</b> 2 nodes make 6 ids without exchanging a message. Use Next and Back to move through the 8 steps.</figcaption>
+<figcaption><b>Interactive Trace 8.A</b> Two generator nodes mint six unique IDs independently from local time, node ID, and sequence state. Use Next and Back to step through.</figcaption>
 </figure>
 
-The order of the fields within the id is what makes ids sortable by time. Because the
-time occupies the most significant bits, comparing 2 ids as integers compares their
-times first, and only when the times are equal does the comparison fall through to
-the node number and the counter.
+When a busy node exhausts all `4,096` sequence values in a single millisecond, letting the 12-bit counter wrap or carry into bit `12` would corrupt the `worker_id` field without warning and impersonate a neighboring node. Instead, the generator spins or yields until the clock advances to `last_ms + 1` and resets `sequence = 0`, bounding caller delay to under `1 ms`.
 
-The sizes of the fields are a budget of 63 bits to be divided, and the division shown
-is the common one. 41 bits of milliseconds last for 69 years, counted from a starting
-date that the service chooses for itself, and choosing a recent date in place of the
-conventional 1970 gives the scheme its full 69 years from the day it goes into
-service. 10 bits allow 1024 nodes. 12 bits allow each node 4096 ids per millisecond,
-or about 4 million per second. A system with few nodes and a very high rate might
-prefer 8 bits of node and 14 of counter, and a system spread over many small machines
-the reverse, and the only firm rule is that the division must be fixed before the
-first id is issued, since ids made under 2 different divisions cannot safely coexist.
+### Storage Engine Trade-Off: B-Tree Locality vs. Range-Partitioned Hotspots
 
-### When a millisecond is full
+On single-primary or hash-sharded databases backed by B-trees (PostgreSQL, MySQL InnoDB, RocksDB memtables), time-prefixed Snowflake keys append exclusively to the rightmost leaf page. The working set of dirty index pages stays compact in RAM, avoiding random disk I/O.
 
-A node that has issued 4096 ids within 1 millisecond has no counter values left for
-that millisecond. The correct response is to wait until the clock has advanced and to
-continue with a counter of 0, which delays the caller by less than a millisecond. In
-the simulation for this chapter, 3 nodes are each asked for 5000 ids in every one of
-100 milliseconds, and each makes exactly 4096 per millisecond, so that 1228800 ids are
-made in all, every one of them different, and 271200 requests have to wait.
+In range-partitioned distributed databases such as Google Cloud Spanner, CockroachDB, and Bigtable, monotonically increasing primary keys create the opposite pathology: every write across the entire cluster targets the single rightmost tablet range, saturating one storage server while all other tablets sit idle. For range-partitioned stores, engineers either prepend a shard hash prefix (`hash(tenant_id) mod S`), composite-key on `(tenant_id, snowflake_id)`, or bit-reverse the timestamp prefix to scatter inserts evenly across tablets.
 
-The response to avoid is letting the counter overflow. An overflowing counter carries
-into the adjacent field, which in this layout is the node number, and the node then
-issues ids that appear to come from its neighbour and may coincide with ids that the
-neighbour has really made.
+## 8.5 Clock Regression, Crash Recovery, and Worker-ID Safety
 
-## The clock
+Because Snowflake trades network coordination for local invariants, violating Invariant 1 or Invariant 2 causes duplicate IDs without triggering any runtime exception inside the generator. Production systems harden all three failure surfaces systematically.
 
-The second proviso, that a node's clock never returns to a millisecond it has already
-used, is not one that a computer's clock satisfies without help. The clock of a
-machine drifts, by an amount that is typically some tens of milliseconds a day, and a
-time service corrects it periodically by comparison with better clocks. When the
-machine's clock is found to be ahead, the correction may set it back, and for a brief
-period afterwards the clock shows times that it has shown before.
+### Handling NTP Backward Steps and Leap Seconds
+
+Hardware quartz oscillators drift by `10` to `100` parts per million (`~1` to `8 seconds` per day). Time synchronization daemons (`chronyd`, `ntpd`) correct drift either by **slewing** (adjusting clock frequency smoothly without jumping backward) or by **stepping** (jumping `CLOCK_REALTIME` backward abruptly when offset exceeds a threshold, or during an unsmeared POSIX leap second).
+
+Interactive Trace 8.B walks through a `3 ms` backward wall-clock jump and the generator's refusal to reuse millisecond `2000`:
 
 <figure class="steps" data-prefix="figures/steps-idgen-clock" data-count="6" data-version="2b4efd8c">
 <img src="figures/steps-idgen-clock-01.svg?v=2b4efd8c" alt="A clock that is set back, step 1 of 6. The node makes an id at 2000 ms and remembers that time.">
-<figcaption><b>Figure 8.5</b> The clock is set back by 3 ms, and the node refuses to make ids until the clock has passed the time of its last id. Use Next and Back to move through the 6 steps.</figcaption>
+<figcaption><b>Interactive Trace 8.B</b> Monotonic guard refusing ID allocation across a 3 ms wall-clock regression until physical time overtakes the last emitted millisecond. Use Next and Back to step through.</figcaption>
 </figure>
 
-The defence shown in these steps is for the node to remember the time of the last id
-it issued and to refuse to issue an id for any earlier time. A step backwards of a few
-milliseconds is then waited out. A step of seconds or minutes indicates that
-something is wrong with the machine or its time service, and it is better for the
-node to report itself unhealthy, so that callers go elsewhere and an operator is
-alerted, than to stall silently for as long as the step lasts.
+We implement a tiered clock-regression policy using both `CLOCK_REALTIME` (for epoch alignment) and `CLOCK_MONOTONIC` (which the OS kernel guarantees never moves backward):
 
-This defence depends on the node's memory of its last id, and that memory is lost
-when the node restarts. Consider a node that issues an id at a time its clock calls
-5000, crashes, and is running again 20 ms later with a clock that has meanwhile been
-corrected backwards by 50 ms. The restarted node remembers nothing, reads 4970 from
-its clock, and issues ids for milliseconds that its former self has already used. 2
-precautions are taken against this. The node can record on disk, every few seconds, a
-time somewhat in the future before which it promises not to issue ids after a restart,
-and on starting it waits until its clock has passed the recorded time. Alternatively,
-or in addition, a starting node can wait for longer than the largest clock
-correction that is considered possible before it issues its first id. Both cost a
-short delay at startup and nothing afterwards.
+1. **Zero-Regression Normal Operation via Monotonic Anchoring:** At startup, the generator anchors `(anchor_wall_ms, anchor_mono)` once. During operation, it advances timestamps via `anchor_wall_ms + elapsed(anchor_mono)`, slewing gently toward `CLOCK_REALTIME` only when wall time moves ahead. Small backward NTP steps on `CLOCK_REALTIME` never cause the emitted timestamp to step backward.
+2. **Tier 1 Small Drift (`delta <= 15 ms`):** If a raw wall-clock check detects a small regression (`now_ms < last_ms` by `<= 15 ms`), the generator waits `2 * delta` milliseconds for physical time to catch up before issuing the next ID.
+3. **Tier 2 Medium Drift (`15 ms < delta <= 500 ms`) via Hybrid Logical Clock (HLC) Borrowing:** Rather than stalling callers, an HLC-enhanced generator keeps its logical timestamp pinned at `last_ms` and continues incrementing the 12-bit sequence (or borrows `1 ms` forward) up to a strict drift ceiling (`500 ms`), emitting an urgent metric so operators inspect NTP health.
+4. **Tier 3 Severe Drift (`delta > 500 ms`):** The node fails its readiness probe, rejects requests with `503 Service Unavailable`, and alerts SRE immediately. Accepting multi-second future drift risks breaking k-ordering guarantees and exhausting timestamp headroom.
+5. **Leap-Second Smearing:** Fleet NTP servers must run uniform leap-second smearing (spreading the extra second over `24 hours`, as practiced by Google and AWS Time Sync Service) so `CLOCK_REALTIME` never repeats a full second.
 
-It is tempting to avoid the problem by using the machine's monotonic clock, which the
-operating system guarantees never to run backwards. That clock, however, measures time
-from an arbitrary starting point, commonly the moment the machine was switched on, and
-its readings are therefore meaningless on any other machine and after any reboot. It
-can serve to detect that the wall clock has jumped, by comparing the progress of the
-2, and it cannot replace the wall clock as the source of the timestamp.
+### Surviving Restarts and Preventing Worker-ID Collisions
 
-## The node number
+In-memory `last_ms` state vanishes on a crash or container restart. Consider a generator that mints an ID at `t = 5000 ms`, crashes, suffers a `50 ms` backward NTP step during host reboot, and restarts at `t = 4970 ms`. Without durable state, it would reissue IDs for milliseconds `4970` through `5000`.
 
-The first proviso requires that no 2 nodes that are making ids ever hold the same
-number. Of the 3 provisos it is the one whose violation is most damaging, because 2
-nodes with the same number and reasonably accurate clocks produce identical ids
-continuously, and nothing in an id or in either node can reveal that this is
-happening. The duplicates surface later and elsewhere, as rejected inserts if the ids
-are primary keys with a uniqueness constraint, or as 2 different records answering to
-1 name if they are not.
+We close this window with three coordinated mechanisms:
 
-Node numbers therefore need an authority. The usual arrangement is the one of our
-design, in which a starting node obtains its number from a coordinator of the kind
-described in chapter 1, which records the numbers in use and gives each to 1 node
-only. The alternatives are to write the numbers into the configuration of each
-machine, which is workable for a handful of machines administered by hand and
-dangerous wherever machines are created from a common image, or to derive the number
-from something assumed to be unique to the machine, such as part of its network
-address, which holds only as long as the assumption does.
+1. **Future-Horizon Checkpointing:** Every `2 seconds`, each generator asynchronously persists `horizon_ms = now_ms + 5,000 ms` to local NVMe and to its etcd `/checkpoint` record. On startup, the node reads `max(local_horizon, etcd_horizon)` and sleeps until its clock exceeds that horizon (or fails startup if the delta exceeds `10 seconds`).
+2. **Lease-Backed Exclusive `worker_id` Ownership:** We never derive `worker_id` from ephemeral IP octets or static VM templates that can be cloned. Instead, each generator acquires an ephemeral etcd lease (`TTL = 30 s`, renewed every `10 s`). If the node loses lease connectivity and cannot renew within `20 s` (before the `30 s` server expiry), it **self-fences** immediately and stops issuing IDs, eliminating split-brain dual ownership.
+3. **Quarantine Cooldown on Slot Reuse:** When a worker lease expires or releases cleanly, the control plane marks `retired_at_ms = now_ms` and forbids reassigning that `worker_id` to any other host for `60 seconds` (far exceeding maximum inter-node NTP skew). With `1,024` slots and `12` to `100` active nodes, plenty of fresh slots remain available for immediate replacement startups.
 
-Reusing a number requires care for the same reason that restarting a node does. When
-a node has been retired and its number is given to a new node, the new node must not
-issue ids for any millisecond that the old one used, and since the 2 clocks may
-disagree, the coordinator should withhold a released number for longer than the
-largest clock difference that is thought possible. With 1024 numbers available and
-far fewer nodes in service, there is rarely any pressure to reuse a number quickly.
+### Security, Privacy, and Information Leakage
 
-## What an id reveals
+Because Snowflake IDs encode creation time and worker origin in plaintext, external clients can inspect traffic volume and record creation times. Where business confidentiality forbids exposing timestamps or insertion volume (for example, external invoice URLs or tenant counts), we keep Snowflake as the internal `BIGINT` clustered primary key for database speed and map it at the API boundary through either a format-preserving cipher (such as Feistel permutation over 64 bits) or a separate random public UUID column. Regardless of ID format, endpoints must always enforce explicit authorization checks and never treat an identifier as a capability secret.
 
-An id that is handed to the outside world, in a URL or an API response, tells its
-recipient whatever its construction encodes, and it is as well to decide in advance
-whether that is acceptable.
+## 8.6 Failure Modes, SLIs, and Production Systems
 
-An id of the time, node and counter form discloses exactly when the record was
-created, to the millisecond, to anyone who knows the layout, and the layout of such
-ids is common knowledge. For a public post this hardly matters, while for a medical
-record or an account it may. Sequential ids from a counter disclose something of
-commercial interest: a competitor who places an order today and another a
-week later, and subtracts the 2 order numbers, learns how many orders the business
-took in that week.
+### Failure and Recovery Matrix
 
-Ordered ids are also guessable. Given one valid id, neighbouring values are likely to
-be valid as well, and a service that returns a record to anyone presenting its id,
-without checking that the caller is entitled to see it, can be read from end to end by
-counting. The proper remedy is the authorisation check, and an id should never be
-relied upon as a secret. Where an unguessable reference is truly required, as in a
-link for resetting a password, it should be a separate random token, kept apart from the id of
-the record.
+| Failure Mode | Operational Symptom | Automated Mitigation |
+| :--- | :--- | :--- |
+| **Small NTP Backward Step (`<= 15 ms`)** | Brief `1` to `15 ms` tail latency bump on affected node | Monotonic clock anchoring prevents timestamp rollback; fallback wait loop pauses until `now_ms > last_ms` |
+| **Severe Clock Jump (`> 500 ms`)** | Node returns `503 Service Unavailable` and logs clock-fault alert | Readiness probe fails within `2 s`; local-AZ proxy shifts traffic to healthy peers; operator repairs `chronyd` |
+| **Control-Plane (etcd) Quorum Loss** | New generator pods block in startup; existing fleet latency unaffected | Active generators keep serving from local memory while leases remain valid; alerts page on-call to restore etcd before lease expiry |
+| **Per-Millisecond Sequence Exhaustion (`> 4,096/ms`)** | Micro-burst callers experience `< 1 ms` wait on one node | Sequence overflow check blocks until next millisecond tick; autoscaler adds generator pods if `sequence_high_water > 3,000` |
+| **Generator Crash and Rapid Restart** | Brief pod restart; risk of clock overlap with prior process | Startup checks persisted `horizon_ms` checkpoint and sleeps until clock clears the high-water mark before accepting traffic |
+| **Split-Brain Worker Lease Expiry** | Network partition isolates a generator from etcd | Generator self-fences after `20 s` without renewal (`10 s` safety margin before `30 s` lease expiry); control plane quarantines slot for `60 s` |
 
-## The order of ids is approximate
+### Key SLIs and Operational Alerts
 
-Since the time is the leading field, it is natural to read the order of 2 ids as the
-order in which 2 events occurred, and within a single node that reading is correct.
-Between nodes it holds only to the accuracy of their clocks. If the clock of node 1 is
-15 ms ahead of the clock of node 2, an id that node 2 makes now is smaller than an id
-that node 1 made 10 ms ago, although it was made later.
+We monitor four production signals continuously:
 
-Ids of this kind are accordingly described as *roughly sorted*: any 2 ids made further
-apart in time than the largest difference between clocks are in the right order, and
-ids made closer together than that may be in either order. This is entirely adequate
-for the purposes mentioned at the start of the chapter, such as index locality and
-listing recent records. It is inadequate as evidence that one event caused or preceded
-another. A system that needs to know the true order of 2 writes, for example in order
-to decide which of them should prevail, must obtain that order from a mechanism that
-establishes it, such as the sequence numbers that a leader assigns in chapter 3, and
-must not infer it from identifiers.
+- **Generation Latency SLI:** `p99 <= 1.0 ms` over local-AZ gRPC (`alert` if `p99 > 2.0 ms` for `5 minutes`).
+- **Clock Skew and Regression Counter:** `idgen_clock_backward_ms_total` and host NTP offset (`alert` if NTP offset exceeds `10 ms` or any backward step `> 5 ms` occurs).
+- **Sequence Saturation Ratio:** `max(sequence_per_ms) / 4096` per node (`page` at `> 75%` sustained so we scale out before microsecond throttling begins).
+- **Lease Renewal Headroom:** `lease_ttl_remaining_seconds` (`alert` if any active generator drops below `15 s`, well ahead of its `10 s` self-fencing cutoff).
 
-## The 4 schemes compared
+### Real-World Production Systems
 
-| | Counter in 1 database | Random (UUID version 4) | Blocks of numbers | Time, node, counter |
-|---|---|---|---|---|
-| Size | 64 bits | 128 bits | 64 bits | 64 bits |
-| Network call | 1 per id | none | 1 per block | none, after startup |
-| Ordered by time | exactly | no | no | roughly |
-| What uniqueness rests on | 1 machine | the quality of random numbers | the coordinator's counter | distinct node numbers and a clock that does not repeat |
-| Fails silently when | it does not | random state is cloned | it does not | 2 nodes share a number, or a clock repeats |
-| When the shared component is down | no ids | not applicable | ids until blocks run out | running nodes are unaffected |
+| Production System | Bit Layout / Format | Worker Assignment | Architectural Distinction |
+| :--- | :--- | :--- | :--- |
+| **Twitter Snowflake (2010)** | `1` sign + `41` ms + `10` worker + `12` seq (`64-bit`) | ZooKeeper coordinated worker IDs | Established the canonical k-sortable 64-bit layout for sharded timelines |
+| **Instagram Sharded IDs (2012)** | `41` ms + `13` logical shard + `10` seq (`64-bit`) | Embedded PostgreSQL PL/pgSQL function per logical shard | Zero external ID service; database shards mint IDs directly inside `INSERT` triggers |
+| **Discord Snowflake** | `42` ms (epoch `2015-01-01`) + `5` worker + `5` process + `12` seq | Cluster configuration and process manager | Embeds worker and process identity for tracing across Elixir/Rust message pipelines |
+| **Sonyflake (Sony)** | `39` bits (`10 ms` units, `174` yr) + `8` seq + `16` machine (`64-bit`) | Lower `16` bits of private IPv4 (or custom callback) | Trades per-ms burst capacity (`256 / 10 ms`) for `65,536` machines and a `174-year` lifetime |
+| **Meituan Leaf (Segment + Snowflake)** | Dual mode: DB range blocks and ZooKeeper Snowflake | ZooKeeper persistent sequential nodes + local disk cache | Combines future-timestamp checkpointing with dual-buffer segment caching for heterogeneous workloads |
 
-The row on silent failure explains why the last scheme, for all its advantages, asks
-for more care than the others. The counter and the block schemes derive uniqueness
-from a single durable number and cannot produce a duplicate without losing that
-number. The schemes that need no coordination purchase their independence with
-assumptions about the environment, and when an assumption fails, no component is in a
-position to notice.
+## 8.7 Simulation Verification
 
-Our design uses time, node number and counter, because the requirements below ask for
-64-bit ids, rough ordering by time, and continued operation when every other
-component is down, and no other scheme provides all 3.
+To validate per-millisecond sequence exhaustion, global uniqueness across independent nodes, chronological ordering, and backward clock-step refusal, we execute the repository's `idgen` simulation (`code/idgen/src/main.rs`). The test drives `3` independent generator nodes, requesting `5,000` IDs per node across `100` milliseconds (`1,500,000` total requests), and then injects a `2 ms` backward clock jump on node `7`:
 
-## Use cases
-
-Services ask for ids, at a very high rate and with no interest in how they are made.
-Operators have a single duty, which is to see that every node receives a number of
-its own.
-
-<figure>
-<img src="figures/idgen-use-cases.svg?v=50a0004f" alt="A use case diagram of the id generator. Service: get a new id (POST /v1/ids), read the time of an id (the top 41 bits). Operator: give a node its number (0 to 1023, no 2 alike).">
-<figcaption><b>Figure 8.6</b> The actors and what each of them does.</figcaption>
-</figure>
-
-## Functional requirements
-
-| No. | Functional requirement |
-|---|---|
-| 0 | Each caller receives an id that no other caller has received or will receive. |
-| 1 | Ids fit in 64 bits, so that they can be database keys. |
-| 2 | An id made later is larger than an id made earlier, to within a few milliseconds. |
-
-## Non-functional requirements
-
-| No. | Property | Non-functional requirement |
-|---|---|---|
-| 0 | Availability | Any node can make ids while every other node is down. |
-| 1 | Latency | Making an id takes microseconds and involves no network call. |
-| 2 | Consistency | Uniqueness is absolute. Order between nodes is approximate, limited by how far their clocks differ. |
-| 3 | Scale | Up to 1024 nodes, each making 4 million ids per second. |
-
-The consistency models of chapter 1 do not apply to this design in the ordinary
-sense, because the nodes share no data that could be consistent or inconsistent. The
-uniqueness of ids follows from their layout. The only fact that nodes must agree on is
-which number belongs to which node, and that fact is established once, at startup, by
-a coordinator that is strongly consistent.
-
-## Core entities
-
-<figure>
-<img src="figures/idgen-entities.svg?v=039c9560" alt="The core entities. Id: 64 bits has the fields time 41 bits, ms, node 10 bits, counter 12 bits. Node has the fields number 0 to 1023, last time, ms, counter 0 to 4095. An id is 3 numbers packed into 64 bits. Because the time is at the top, ids sort in the order they were made.">
-<figcaption><b>Figure 8.7</b> The core entities and their fields.</figcaption>
-</figure>
-
-## Capacity estimate
-
-<div class="estimate">
-
-<img class="builder" src="art/crab-builder.svg" alt="A crab in a hard hat, in tears.">
-
-**Arithmetic ahead.** 1 node can make 4096 ids per millisecond, and the 41 bits of time last 69 years.
-
-<a class="skip" href="#high-level-design">Skip to the high-level design</a>
-
-<details>
-<summary>Show the calculation</summary>
-
-| Quantity | Calculation | Result |
-|---|---|---|
-| Ids per node per millisecond | 2 to the power 12 | 4096 |
-| Ids per node per second | 4096 × 1000 | 4096000 |
-| Nodes | 2 to the power 10 | 1024 |
-| Years of time | 2 to the power 41 ms ÷ (1000 × 60 × 60 × 24 × 365) | 69.7 |
-
-</details>
-
-</div>
-
-## The API
-
-The service has a single operation. Callers that need ids in very large numbers often
-link the generator into their own process as a library, each such process being a
-node with its own number, and thereby avoid the network altogether.
-
-**Get an id**
-
-```http
-POST /v1/ids HTTP/1.1
-Host: ids.example
+```console
+$ cargo run --release -p idgen
+ids made: 1228800, different ids: 1228800
+requests refused because a millisecond was full: 271200
+node 7 at time 2000: Some(8388636672), then Some(8388636673)
+node 7 at time 2001: Some(8392830976)
+node 7 at time 1999, after its clock went back: None
+ids sort by time: true
 ```
 
-```http
-HTTP/1.1 201 Created
-Content-Type: application/json
+Three exact invariants emerge from the observed output:
 
-{ "id": "8388636672" }
-```
-
-We send the id as a string, because JSON numbers lose precision above 2 to the power 53.
-
-The id is returned as a string for a reason that has caught many APIs unprepared. JSON
-itself places no limit on the size of a number, but the most widely used JSON parsers,
-those of web browsers, read every number as a 64-bit floating-point value, which
-represents integers exactly only up to 2 to the power 53. A larger id is silently
-rounded to a nearby value, so that 2 different ids can arrive in the browser as the
-same number.
-
-## High-level design
-
-<figure class="wide">
-<img src="figures/idgen-design.svg?v=2b7ac33b" alt="Ids without a shared counter. The components are Services, Id node 1, Id node 2, Coordinator. Step 1: At startup, each node receives its own number. Step 2: A service asks any node for an id. Step 3: The node joins the time, its number and a counter. Step 4: No node talks to another node to make an id.">
-<figcaption><b>Figure 8.8</b> The components and the path of a request. The steps are numbered.</figcaption>
-</figure>
-
-| Component | Role | State it holds | When 1 instance fails |
-|---|---|---|---|
-| Id node | makes ids from its clock, its number and a counter | its number and the time of its last id | the others carry on; its number is not reused while it may return |
-| Coordinator | gives each starting node a number that no other node holds | the numbers in use | running nodes are unaffected; new nodes cannot start |
-
-### One request, step by step
-
-The steps follow the arrows of figure 8.8.
-
-1. When an id node starts, it asks the coordinator for a node number. The coordinator gives out each number once. This is the only time a node needs anyone else.
-2. A service sends `POST /v1/ids` to any id node. The node reads its clock, takes the next counter value for that millisecond, and joins time, node number and counter into 1 number.
-
-It is the absence of arrows between the id nodes that characterises this design. Once
-a node holds its number, it needs nothing from the coordinator or from any other node,
-and the availability of the service as a whole is that of whichever single node a
-caller manages to reach.
-
-## The design, deployed
-
-<figure class="wide">
-<img src="figures/idgen-deploy.svg?v=5c07a3ba" alt="The id generator, deployed. Callers: Services (1 million ids/s), need ids for new records. Edge: Load balancers (x 2), any id node will do. Id nodes, in 3 zones: Id nodes (x 4), zone a, numbers 0-99, Id nodes (x 4), zone b, numbers 100-199, Id nodes (x 4), zone c, numbers 200-299. Control: Coordinator (x 3), gives out node numbers.">
-<figcaption><b>Figure 8.9</b> The id generator as it is deployed: 12 nodes in 3 zones, each with its own number.</figcaption>
-</figure>
-
-The id nodes are spread over 3 zones and placed behind a load balancer only as a
-convenience for callers, since any node can answer any request. Each zone is given a
-range of node numbers, so that the number in an id also says where the id was made,
-which helps when a duplicate has to be traced. The coordinator is consulted when a
-node starts and at no other time. Callers with very high rates do not use the
-network at all: they link the generator into their own processes, each of which then
-holds a node number of its own.
-
-## How real systems do it
-
-The scheme of time, node number and counter is the one that Twitter announced in June
-2010 under the name Snowflake, with exactly the division used here: 1 unused bit, 41
-bits of milliseconds, 10 bits for the machine and 12 for a sequence. Twitter adopted
-it when it moved its tweets from a single database to a sharded store and could no
-longer rely on the database's counter. The layout has been widely copied with
-different divisions. Instagram described a variant in 2012 with 41 bits of time, 13
-bits for the logical shard and 10 for a sequence, generated inside the database
-itself, so that no separate service is needed. Discord uses the original layout with
-its own starting date.
-
-The counter in a pair of databases, stepping by 2, is the scheme that Flickr published
-as its ticket servers. Blocks of numbers handed out by a coordinator are how many
-database sequences are cached in practice.
-
-Version 7 of the UUID, with a millisecond timestamp in its first 48 bits, was
-standardised in RFC 9562 in 2024, and it exists because of the problem of index
-locality described at the start of this chapter.
-
-There is an important case in which the advice of this chapter is reversed. In a
-store that partitions its data by ranges of keys, as Spanner, CockroachDB and Bigtable
-do, keys that increase with time send every insert to the last range, and that 1
-range and the machines holding it become a bottleneck however large the cluster. The
-documentation of such stores warns against time-ordered primary keys for exactly this
-reason, and recommends keys whose leading bits are spread out, by a hash or by
-reversing the bits of a sequence. The locality that helps an index on 1 machine
-becomes a hot spot on many, and which of the 2 effects governs depends on how the
-store beneath partitions its keys.
-
-## Mistakes to avoid
-
-| Mistake | What goes wrong | What to do |
-|---|---|---|
-| Giving 2 nodes the same number | Both issue identical ids for as long as they run, and nothing reports it. | Let 1 coordinator assign the numbers, and hold a released number back before reusing it. |
-| Trusting the clock to move forwards | After a correction backwards, a node repeats ids it has already issued. | Remember the time of the last id and refuse to issue one for an earlier time. |
-| Forgetting the last time on restart | A restarted node with a corrected clock reuses milliseconds from before the crash. | Record a time on disk before which no id will be issued, or wait at startup for longer than any possible correction. |
-| Letting the counter overflow | The overflow carries into the node number, and the ids collide with another node's. | Wait for the next millisecond when the counter is used up. |
-| Sending ids as JSON numbers | Browsers round integers above 2 to the power 53, and 2 ids become equal. | Send ids as strings. |
-| Using random ids as the key of a large table | Inserts are scattered over the whole index, which must then stay in memory. | Use ids that begin with a timestamp. |
-| Treating an id as a secret | Neighbouring ids are valid and can be guessed. | Check on every request that the caller may see the record. |
-| Reading the order of ids as the order of events | Ids from 2 nodes can be out of order by the difference between their clocks. | Take the order of events from a log's sequence numbers. |
-| Changing the sizes of the fields after launch | Ids made under the old and the new layout can coincide. | Fix the layout before the first id is issued. |
-
-## Failures
-
-| Failure | What users see | How the system recovers |
-|---|---|---|
-| A node's clock steps back | that node answers `503` for the length of the step | the caller asks another node |
-| 2 nodes are given the same number | duplicate ids, silently | prevented by the coordinator; nothing in the id can detect it afterwards |
-| The coordinator is down | nothing | running nodes keep their numbers |
-
-## Trade-offs
-
-| Decision | What it gains | What it costs |
-|---|---|---|
-| Ids from local state only | no network call, no single point of failure | order between nodes is only as good as the clocks |
-| 41 bits of time | ids sort by creation time | the scheme ends after 69 years |
-| 12 bits of counter | 4096 ids per millisecond per node | a busier caller has to wait for the next millisecond |
-
-## The simulation
+1. **Zero Collisions Under Exhaustion:** `3 nodes * 100 ms * 4,096 IDs/ms = 1,228,800` minted IDs, with `1,228,800` distinct values (`0` duplicates). The excess `3 * 100 * (5,000 - 4,096) = 271,200` calls are cleanly refused rather than overflowing into the worker-ID bits.
+2. **Bit-Exact Encoding:** At `t = 2000 ms`, `worker_id = 7`, `seq = 0`, `(2000 << 22) | (7 << 12) | 0 = 8,388,608,000 + 28,672 = 8,388,636,672`, followed by `8,388,636,673` for `seq = 1`, and `8,392,830,976` at `t = 2001 ms`.
+3. **Strict Monotonic Guard:** When node `7` observes `t = 1999 ms` after already emitting at `t = 2001 ms`, it returns `None` instead of reissuing IDs from a past millisecond.
 
 <div class="simulation">
 
-**Simulation in the repository.** The program [`code/idgen`](https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/distributed-systems-from-the-ground-up/code/idgen/src/main.rs) simulates this design. To run it, clone the repository and type `cargo run --release -p idgen` in the `code` directory.
+**Run the unique ID generator simulation.** Execute `cargo run --release -p idgen` in `code/` ([`code/idgen/src/main.rs`](https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/distributed-systems-from-the-ground-up/code/idgen/src/main.rs)) to reproduce the 1,228,800-ID uniqueness, sequence-exhaustion, and clock-regression checks above.
 
 </div>
 
-## References
+## 8.8 Terminology and References
 
-- R. King, "Announcing Snowflake", Twitter engineering blog, 2010.
-- Instagram engineering blog, "Sharding & IDs at Instagram", 2012.
-- K. Elliott-McCrea, "Ticket Servers: Distributed Unique Primary Keys on the Cheap", Flickr code blog, 2010.
-- RFC 9562, *Universally Unique IDentifiers (UUIDs)*, 2024.
-- Google Cloud Spanner documentation, "Schema design best practices", on avoiding monotonically increasing keys.
+### Engineering Glossary
 
-## Terms introduced in this chapter
+| Term | Definition |
+| :--- | :--- |
+| **Snowflake ID** | A 64-bit composite integer concatenating a sign bit (`0`), a millisecond timestamp, a unique node/worker identifier, and a per-millisecond sequence counter. |
+| **K-Sortable (Roughly Time-Ordered)** | An ordering property where any two identifiers separated by more than the maximum inter-node clock skew sort in true chronological order. |
+| **Monotonic Clock (`CLOCK_MONOTONIC`)** | An OS-provided elapsed-time counter guaranteed never to step backward, used to measure elapsed duration safely across NTP adjustments. |
+| **Hybrid Logical Clock (HLC)** | A timestamp mechanism combining physical wall time with a logical counter so timestamps remain monotonic and close to physical time even across small clock regressions. |
+| **Self-Fencing** | A generator node voluntarily halting ID allocation before its control-plane lease expires when heartbeat renewal fails, preventing dual worker-ID ownership. |
+| **Epoch Checkpoint** | A durably persisted high-water timestamp horizon that prevents a crashed and restarted node from emitting IDs earlier than timestamps used before the crash. |
+| **UUIDv7 (RFC 9562)** | A 128-bit universally unique identifier embedding a 48-bit Unix millisecond timestamp in its leading bits to preserve B-tree index locality. |
+| **Leap-Second Smearing** | Gradually slewing NTP clock frequency over hours to absorb an inserted leap second without repeating a second on `CLOCK_REALTIME`. |
 
-| Term | Meaning |
-|---|---|
-| Identifier, id | a value that names 1 record and no other |
-| Sequence | a counter kept by a database that gives out the next number on request |
-| UUID | a 128-bit identifier, of which version 4 is random and version 7 begins with a timestamp |
-| Collision | 2 records receiving the same id |
-| Block | a range of consecutive numbers given to 1 node to hand out |
-| Node number | a small number that belongs to exactly 1 generator node |
-| Counter | the count of ids that a node has made in the current millisecond |
-| Clock correction | an adjustment of a machine's clock by a time service, possibly backwards |
-| Monotonic clock | a clock that never runs backwards and has no meaning outside its own machine |
-| Roughly sorted | in the right order except among ids made within a short time of each other |
+### References
 
-<div class="summary">
-
-## Summary
-
-- An id must be unique across every machine and every restart, and it is the restarts that make this hard.
-- A counter in 1 database is exact and small, and makes every insert depend on 1 machine.
-- Random 128-bit ids need no coordination and collide with negligible probability, at the cost of size and of scattered inserts unless they begin with a timestamp.
-- Blocks of numbers reduce a shared counter to 1 call per block, and give up consecutive numbers and order in time.
-- An id composed of time, node number and counter fits in 64 bits, needs no communication, and sorts roughly by time.
-- That scheme is correct only if node numbers are distinct, the clock never repeats a millisecond, and the counter does not overflow, and it fails silently when one of these does not hold.
-- The order of ids from different nodes is accurate only to the difference between their clocks.
-
-</div>
+- R. King, "Announcing Snowflake", Twitter Engineering Blog, 2010.
+- Instagram Engineering, "Sharding and IDs at Instagram", 2012.
+- K. Elliott-McCrea, "Ticket Servers: Distributed Unique Primary Keys on the Cheap", Flickr Code Blog, 2010.
+- K. Davis, B. Peabody, and P. Leach, RFC 9562, *Universally Unique IDentifiers (UUIDs)*, IETF, 2024.
+- S. Kulkarni, M. Demirbas, D. Madeppa, B. Avva, and M. Leone, "Logical Physical Clocks and Consistent Snapshots in Globally Distributed Databases", OPODIS, 2014.
+- Google Cloud Spanner Documentation, "Schema Design Best Practices: Choosing a Primary Key to Prevent Hotspots".
+- Meituan Tech Team, "Leaf: Distributed ID Generation Service at Meituan", 2017.

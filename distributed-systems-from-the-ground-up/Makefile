@@ -1,6 +1,7 @@
 # Build the browser edition of the book.
 #
 #   make               art, figures, chapters and HTML
+#   make pdf           the PDF edition, with the clickable Index and Subject Index
 #   make serve         serve the HTML edition on http://localhost:3000
 #   make check         check the printed parts of the programs, and run the simulations
 #
@@ -10,25 +11,38 @@
 MDBOOK ?= mdbook
 PYTHON ?= python3
 
-.PHONY: all art figures chapters html serve check clean
+.PHONY: all m3-plates m3-figures art figures legacy-chapters html pdf serve check clean
 
-all: art figures chapters html
+all: m3-plates m3-figures html
 
-## The cover and the chapter plates, drawn by tools/art.py to src/art/*.svg
+## Programmatic Material Design 3 SVG chapter plates, written to src/art/ch*-plate.svg
+m3-plates:
+	$(PYTHON) tools/draw_m3_plates.py
+
+## Material Design 3 light+dark SVG diagrams, written to src/figures/m3/
+m3-figures:
+	$(PYTHON) tools/draw_m3_figures.py
+
+## Legacy cover and chapter plates, drawn by tools/art.py to src/art/*.svg
 art:
 	$(PYTHON) tools/art.py
 
-## Every diagram, drawn by tools/draw_figures.py to src/figures/*.svg
+## Legacy diagrams, drawn by tools/draw_figures.py to src/figures/*.svg
 figures:
 	$(PYTHON) tools/draw_figures.py
 
-## The chapters, expanded from tools/chapters/*.txt to src/*.md
-chapters:
+## Legacy chapter generator (deprecated: src/*.md is now the direct source of truth)
+legacy-chapters:
 	tools/chapters/build.sh
 
 ## The browser edition, written to book/
 html:
 	$(MDBOOK) build
+
+## The PDF edition, written to Distributed-Systems-from-the-Ground-Up.pdf.
+## Needs Google Chrome, Ghostscript and PyMuPDF; takes about ten minutes.
+pdf: html
+	$(PYTHON) tools/build_pdf.py
 
 serve:
 	$(MDBOOK) serve --open

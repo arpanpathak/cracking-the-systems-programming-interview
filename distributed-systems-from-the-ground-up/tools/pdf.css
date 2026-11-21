@@ -1,0 +1,253 @@
+/* Print edition: Material Design 3 styling for the PDF.
+   tools/build_pdf.py injects this after theme/custom.css, so it wins over the
+   flat @media print block there. It brings the browser edition's tonal tables,
+   cards, chips, and accent hierarchy onto paper. */
+
+:root {
+    --pdf-ink: #1b2230;
+    --pdf-muted: #526075;
+    --pdf-accent: #1a5fc4;
+    --pdf-accent-deep: #163e7a;
+    --pdf-tonal: #f3f7fc;
+    --pdf-tonal-strong: #e6effd;
+    --pdf-row-alt: #f8fafd;
+    --pdf-hairline: #dce2ec;
+    --pdf-code-bg: #f6f8fc;
+    --pdf-chip-bg: #eef3fa;
+    --pdf-chip-ink: #0b4f9c;
+    --pdf-teal: #1b7a58;
+    --pdf-teal-bg: #e4f4ee;
+    --pdf-amber: #b26a00;
+    --pdf-amber-bg: #fff4e0;
+    --pdf-red: #b3261e;
+    --pdf-red-bg: #fdecea;
+    --pdf-sans: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+    --pdf-mono: "SF Mono", "JetBrains Mono", Menlo, Consolas, monospace;
+}
+
+* {
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+}
+
+/* ---------- Body text ---------- */
+.content main {
+    font-family: var(--pdf-sans) !important;
+    font-size: 9.5pt !important;
+    line-height: 1.56 !important;
+    color: var(--pdf-ink) !important;
+}
+
+.content p { margin: 0.45em 0 !important; }
+.content a, .content a:visited { color: var(--pdf-accent) !important; text-decoration: none !important; }
+.content strong, .content b { color: #111827 !important; }
+
+/* ---------- Heading hierarchy ---------- */
+.content h1, .content h2, .content h3, .content h4 {
+    font-family: var(--pdf-sans) !important;
+    letter-spacing: -0.01em !important;
+}
+.content h1 a.header, .content h2 a.header, .content h3 a.header, .content h4 a.header {
+    color: inherit !important;
+}
+
+.content h1 {
+    font-size: 21pt !important;
+    font-weight: 750 !important;
+    color: #0f1b2d !important;
+    margin: 0.15em 0 0.6em 0 !important;
+    padding-bottom: 0.3em !important;
+    border-bottom: 3px solid var(--pdf-accent) !important;
+}
+
+.content h2 {
+    font-size: 13pt !important;
+    font-weight: 700 !important;
+    color: var(--pdf-accent-deep) !important;
+    background: var(--pdf-tonal) !important;
+    border: none !important;
+    border-left: 4px solid var(--pdf-accent) !important;
+    border-radius: 0 8px 8px 0 !important;
+    padding: 0.32em 0.7em !important;
+    margin: 1.2em 0 0.55em 0 !important;
+}
+
+.content h3 {
+    font-size: 10.8pt !important;
+    font-weight: 680 !important;
+    color: var(--pdf-accent) !important;
+    margin: 0.95em 0 0.3em 0 !important;
+    padding-bottom: 0.12em !important;
+    border-bottom: 1px solid var(--pdf-hairline) !important;
+}
+
+.content h4 {
+    font-size: 9.8pt !important;
+    font-weight: 650 !important;
+    color: var(--pdf-muted) !important;
+    text-transform: uppercase !important;
+    letter-spacing: 0.04em !important;
+    margin: 0.8em 0 0.25em 0 !important;
+}
+
+/* ---------- Inline code chips ---------- */
+.content :not(pre) > code {
+    font-family: var(--pdf-mono) !important;
+    font-size: 0.84em !important;
+    background: var(--pdf-chip-bg) !important;
+    color: var(--pdf-chip-ink) !important;
+    border: none !important;
+    border-radius: 4px !important;
+    padding: 0.06em 0.32em !important;
+    white-space: normal !important;
+    overflow-wrap: anywhere;
+    -webkit-box-decoration-break: clone;
+    box-decoration-break: clone;
+}
+
+/* ---------- Code listings ---------- */
+.content pre {
+    background: var(--pdf-code-bg) !important;
+    border: 1px solid var(--pdf-hairline) !important;
+    border-left: 3px solid var(--pdf-accent) !important;
+    border-radius: 8px !important;
+    padding: 0.65em 0.85em !important;
+    margin: 0.6em 0 0.8em 0 !important;
+    box-shadow: none !important;
+}
+.content pre > code, .content pre > code.hljs {
+    background: transparent !important;
+    font-family: var(--pdf-mono) !important;
+    font-size: 7.8pt !important;
+    line-height: 1.45 !important;
+    color: #24292f !important;
+}
+
+/* GitHub-light syntax palette, readable in print */
+.hljs-keyword, .hljs-selector-tag, .hljs-built_in, .hljs-type { color: #8250df !important; }
+.hljs-string, .hljs-attr-value, .hljs-template-string { color: #0a3069 !important; }
+.hljs-number, .hljs-literal { color: #0550ae !important; }
+.hljs-comment, .hljs-quote { color: #6e7781 !important; font-style: italic; }
+.hljs-title, .hljs-title.function_, .hljs-section { color: #6639ba !important; }
+.hljs-attr, .hljs-attribute, .hljs-variable, .hljs-property { color: #0550ae !important; }
+.hljs-meta, .hljs-symbol { color: #953800 !important; }
+
+.listing {
+    font-family: var(--pdf-sans) !important;
+    font-size: 8.2pt !important;
+    color: var(--pdf-muted) !important;
+    border-bottom: none !important;
+    margin: 1em 0 0.15em 0 !important;
+    padding: 0 !important;
+}
+.listing b, figcaption b { color: var(--pdf-accent) !important; }
+
+/* ---------- Material Design 3 tonal tables ---------- */
+.content table {
+    width: 100% !important;
+    border-collapse: separate !important;
+    border-spacing: 0 !important;
+    /* No outer frame: when Chrome moves a row to the next page, a framed table
+       leaves an empty bordered box behind. Tonal header + hairline rows instead. */
+    border: none !important;
+    border-radius: 0 !important;
+    overflow: visible !important;
+    background: transparent !important;
+    border-bottom: 2px solid #c5d6f2 !important;
+    margin: 0.75em 0 1em 0 !important;
+    font-family: var(--pdf-sans) !important;
+    font-size: 8.2pt !important;
+    line-height: 1.42 !important;
+}
+.content table thead th:first-child { border-top-left-radius: 8px !important; }
+.content table thead th:last-child { border-top-right-radius: 8px !important; }
+.content table thead { display: table-header-group !important; }
+.content table thead tr, .content table thead { background: var(--pdf-tonal-strong) !important; }
+.content table thead th {
+    background: var(--pdf-tonal-strong) !important;
+    color: var(--pdf-accent-deep) !important;
+    font-size: 7.4pt !important;
+    font-weight: 700 !important;
+    text-transform: uppercase !important;
+    letter-spacing: 0.05em !important;
+    text-align: left !important;
+    padding: 0.55em 0.75em !important;
+    border: none !important;
+    border-bottom: 1.5px solid #c5d6f2 !important;
+    vertical-align: bottom !important;
+}
+.content table td {
+    color: var(--pdf-ink) !important;
+    padding: 0.45em 0.75em !important;
+    border: none !important;
+    border-bottom: 1px solid var(--pdf-hairline) !important;
+    vertical-align: top !important;
+}
+.content table tbody tr { background: #ffffff !important; break-inside: avoid !important; }
+.content table tbody tr:nth-child(2n) { background: var(--pdf-row-alt) !important; }
+.content table tbody tr:last-child td { border-bottom: none !important; }
+.content table td:first-child { font-weight: 600 !important; color: #111827 !important; }
+/* Code inside tables reads as tinted mono text, not stacked chips */
+.content table :not(pre) > code {
+    background: transparent !important;
+    padding: 0 !important;
+    font-size: 0.92em !important;
+    color: var(--pdf-chip-ink) !important;
+}
+
+/* ---------- Cards: callouts, covers, sidebars, simulations ---------- */
+.content blockquote {
+    background: var(--pdf-tonal) !important;
+    border: none !important;
+    border-left: 4px solid var(--pdf-accent) !important;
+    border-radius: 0 10px 10px 0 !important;
+    padding: 0.55em 1em !important;
+    margin: 0.8em 0 !important;
+    color: #334155 !important;
+}
+
+.callout, .covers, .sidebar, .simulation, .estimate {
+    background: var(--pdf-tonal) !important;
+    border: 1px solid var(--pdf-hairline) !important;
+    border-left: 4px solid var(--pdf-accent) !important;
+    border-radius: 10px !important;
+    padding: 0.6em 1em !important;
+    margin: 0.8em 0 !important;
+    box-shadow: none !important;
+}
+.callout.tip, .simulation { background: var(--pdf-teal-bg) !important; border-left-color: var(--pdf-teal) !important; }
+.callout.warning { background: var(--pdf-amber-bg) !important; border-left-color: var(--pdf-amber) !important; }
+.callout.danger, .callout.caution { background: var(--pdf-red-bg) !important; border-left-color: var(--pdf-red) !important; }
+.covers > p:first-child {
+    font-size: 7.6pt !important;
+    font-weight: 700 !important;
+    letter-spacing: 0.08em !important;
+    text-transform: uppercase !important;
+    color: var(--pdf-accent) !important;
+}
+
+/* ---------- Figures ---------- */
+figure {
+    background: #ffffff !important;
+    border: 1px solid var(--pdf-hairline) !important;
+    border-radius: 10px !important;
+    padding: 0.6em 0.7em 0.45em 0.7em !important;
+    margin: 0.8em 0 !important;
+}
+figure img { background: transparent !important; padding: 0 !important; border: none !important; }
+figcaption {
+    font-family: var(--pdf-sans) !important;
+    color: var(--pdf-muted) !important;
+    border-top: 1px solid var(--pdf-hairline) !important;
+    font-size: 8.2pt !important;
+    margin-top: 0.4em !important;
+    padding-top: 0.35em !important;
+}
+
+/* ---------- Lists, rules ---------- */
+.content ul li::marker { color: var(--pdf-accent); }
+.content ol li::marker { color: var(--pdf-accent); font-weight: 650; }
+.content hr { border: none !important; border-top: 1px solid var(--pdf-hairline) !important; margin: 1.2em 0 !important; }
+
+/* Interactive-only widgets have no meaning on paper */
+.steps-bar, .motion-bar, .buttons, .clip-button, .play-button { display: none !important; }

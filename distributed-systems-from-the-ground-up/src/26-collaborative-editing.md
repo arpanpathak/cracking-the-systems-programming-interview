@@ -1,590 +1,424 @@
-<img class="plate" src="art/ch26.svg?v=8495e880" alt="2 penguins stand beside a sign that reads: cat, chat, cats, chats.">
+# Chapter 26: Collaborative Editing
 
-# Collaborative Editing: System Design
+<img class="plate" src="art/ch26-plate.svg" alt="Chapter 26 plate: Collaborative Editing illustrating convergent CRDT merges, causal ordering, and commutativity across concurrent author operations." />
 
-In a collaborative editor, several people work on the same document at once. Each
-sees the others' changes appear as they are made, character by character, with a
-coloured cursor marking where each person is typing, and nobody has to save, send or
-merge anything. The experience is that of several pens writing on a single sheet of
-paper.
-
-The previous chapter dealt with 2 devices that had changed the same file, and
-resolved the matter by keeping both versions and asking the user to choose. In an
-editor that answer is not available. Conflicting changes are here the ordinary
-condition, by no means an occasional accident: whenever 2 people type within the same
-fraction of a second, each has changed the document without knowledge of the other's
-change, and this happens many times a minute. The editor cannot present a conflict
-for a human to settle on every keystroke. It has to combine concurrent changes
-automatically, in a way that keeps every participant's intention, and it has to do
-so in such a manner that everybody ends with exactly the same document.
-
-That last requirement, known as *convergence*, is the difficult one. Each person's
-own keystrokes must appear on their own screen at once, since nobody will tolerate
-typing into an editor that waits for a server before showing a letter. Every
-participant therefore applies their own changes first and the others' afterwards,
-which means that different participants apply the same changes in different orders,
-and the result must nevertheless be identical for all of them. This chapter explains
-why the obvious representation of a change fails that test, and then the 2 families
-of solution that are in use.
+A real-time collaborative document editor allows dozens of authors to modify the same text simultaneously, rendering each author's own keystrokes instantaneously while streaming remote edits and live cursor positions across all participants within a fraction of a second. In Chapter 25, we handled concurrent offline edits to opaque files by branching a conflict copy and deferring resolution to a human user. In a live co-editing session, concurrent edits occur dozens of times per minute whenever two authors type within one network round-trip time of each other. Presenting manual conflict copies on every keystroke is unworkable; the editor must merge concurrent operations automatically while preserving every participant's intent and guaranteeing that every replica converges to the exact same byte sequence. In this chapter, I design a collaborative editing architecture built around local-first execution, Operational Transformation and Sequence CRDTs, sticky document gateways, and snapshot-compacted operation logs.
 
 <div class="covers">
 
-This chapter covers
+In this chapter, we cover
 
-- why each person's changes must take effect at once on their own screen
-- changes described by position, and how 2 of them go wrong
-- operational transformation, which adjusts a change for what its author had not seen
-- the role of a central server in ordering changes
-- conflict-free replicated data types, which give every character a name
-- deleting, and why deleted characters cannot disappear
-- cursors, presence and working offline
-- storing a document as a log of operations with snapshots
+- actors, use cases, functional and non-functional requirements, non-goals, and multi-million-session capacity bounds
+- document hydration APIs, WebSocket operation and state-vector sync protocols, ACL enforcement, and append-only operation log schemas
+- control-plane session coordination and fencing epochs separated from sticky collaboration gateways, presence buses, and snapshot compaction
+- positional divergence, Jupiter server-serialized Operational Transformation, and causal Sequence CRDTs (RGA, YATA, and Fugue) versus fractional indexing
+- tombstone retention, epoch-based garbage collection, server-compacted snapshots with operation log tails, ephemeral carets, and selective local undo
+- failure recovery matrices, convergence SLIs, production architectures (Google Docs, Figma, Yjs, Automerge), and simulation verification via `code/editsim`
 
 </div>
 
-## Changes that take effect at once
+## 26.1 Requirements, Actors, and Capacity Bounds
 
-The simplest way of building a shared editor would be to treat the document as a
-value in a strongly consistent store. A keystroke would be sent to the server, the
-server would apply it, and the new document would be returned to everybody. All
-participants would see the same thing, because there would be only 1 copy.
+Building a responsive collaborative editor creates an unavoidable distributed systems tension. Human perception detects typing lag above `16 to 50 ms`, which forbids waiting for a `50 to 200 ms` wide-area round trip to a central coordinator before painting a character on screen. Every client must therefore apply local edits immediately to its own in-memory replica and propagate deltas asynchronously. Once every client accepts uncoordinated writes, replicas apply the same set of operations in different arrival orders. The central engineering invariant is **Strong Eventual Consistency (SEC)**: any two replicas that have received the same set of operations must hold identical document state, regardless of delivery order or duplicate transmission.
 
-It would also be unusable. Every character would appear on the typist's own screen
-only after a round trip to the server, some 50 to 200 ms later, and on a poor
-connection later still. People notice a delay of that size in their own typing
-within a few characters, and find it intolerable.
+### Actors and Use Cases
 
-An editor therefore applies each change to the local copy of the document
-immediately, and sends it to the others afterwards. This is the same decision that
-chapter 18 took when it displayed a sent message before the server had confirmed it,
-and it has a far-reaching consequence. Each participant now holds a copy of the
-document that is momentarily ahead of everyone else's in respect of their own
-changes, and behind in respect of the others'. The copies are replicas in the full
-sense, every one of them accepts writes, and the system is one of replication with
-many writers and no possibility of coordination before a write.
+Three actor roles interact across the collaborative editing boundary (Figure 26-1).
 
-## 2 changes by position
+<figure class="diagram">
+<img src="figures/m3/ch26_use_cases.svg" alt="Actors and Use Cases of the Real-Time Collaborative Document Editor: Co-Author Browsers apply concurrent CRDT edits and broadcast presence cursors; Offline Mobile Editors buffer local operations and reconcile via state vectors; Document Admins enforce sharing ACLs and restore historical snapshots." />
+<figcaption><b>Figure 26-1</b> Actors, system boundary, and core use cases of the real-time collaborative document editor.</figcaption>
+</figure>
 
-A change to a text is most naturally described as an *operation* on a position:
-insert this character at position 5, or delete the character at position 9. This is
-how a single-user editor works internally, and it is entirely adequate so long as
-every operation is applied to the same text that its author was looking at.
+| Actor | Operation | Concrete Scenario |
+| :--- | :--- | :--- |
+| **Co-Author Browser** | Apply concurrent edits (`WS /v1/docs/{id}/ops`) and stream ephemeral presence | Two engineers edit separate paragraphs of a design doc while seeing each other's colored carets and selections move live |
+| **Offline Mobile Editor** | Buffer local edits offline and reconcile on reconnect | A reviewer edits a document on a commuter train for 40 minutes, then exchanges a compact state vector on reconnect to merge missed remote ops |
+| **Document Admin** | Enforce sharing ACLs (`PATCH /v1/docs/{id}/permissions`) and restore historical snapshots | An owner revokes write access from a former contractor mid-session and rolls a corrupted section back to revision `4400` |
 
-With 2 people editing concurrently, that condition fails, and the consequences can
-be followed in a small example.
+### Functional Requirements
+
+| No. | Functional Requirement |
+| :--- | :--- |
+| 0 | Up to `100` concurrent authors can edit the same document simultaneously without locking paragraphs or manually merging conflicts. |
+| 1 | Each author's own keystrokes render locally in under `16 ms` without waiting for server acknowledgement. |
+| 2 | Edits committed by one online author propagate and render on all other connected authors' screens within `200 ms`. |
+| 3 | Once all operations are delivered, every participant's replica converges to an identical document state regardless of arrival order. |
+| 4 | Connected authors observe live remote cursor positions, text selections, and active collaborator presence. |
+| 5 | An author working offline can continue editing uninterrupted and automatically merge buffered local operations upon reconnection. |
+| 6 | Authorized users can inspect immutable document revision history and restore any prior snapshot cleanly. |
+
+### Non-Functional Requirements and SLOs
+
+| No. | Property | Target Specification | Architectural Consequence |
+| :--- | :--- | :--- | :--- |
+| 0 | **Convergence** | Strong Eventual Consistency (SEC) across all replicas with zero permanent state divergence | Mathematical commutativity and idempotency via Sequence CRDTs (or server-serialized Jupiter OT) |
+| 1 | **Durability** | Zero loss of any server-acknowledged operation under single-node or AZ failure | Append-only operation log replicated synchronously across `3` AZs before acknowledging to the sender |
+| 2 | **Consistency** | Eventual between client replicas; linearizable for server log ordering, ACL revocations, and gateway ownership leases | Sticky document ownership fenced by monotonic lease epochs from a consensus-backed Session Coordinator |
+| 3 | **Latency** | Local apply `< 16 ms` (`60 Hz` frame budget); remote fanout `p99 <= 200 ms`; cold document open `p99 <= 400 ms` | Sticky in-memory gateway pods eliminate cross-pod hops; periodic binary snapshots cap cold-open replay length |
+| 4 | **Scale** | `10M` concurrently open documents, `20M` open WebSocket sessions, up to `100` co-authors per document | Partitioned WebSocket gateways + sticky `doc_id` routing + client-side `50 to 100 ms` micro-batching of keystrokes |
+
+### Non-Goals and Out-of-Scope Boundaries
+
+We exclude four concerns from the scope of this architecture:
+
+- **Arbitrary opaque binary synchronization:** Large media files, archives, and disk images lack fine-grained merge semantics and belong to the content-addressed chunk sync pipeline in Chapter 25.
+- **Serverless peer-to-peer WebRTC mesh topology:** Pure client-to-client synchronization without a server authority complicates corporate RBAC enforcement, instant permission revocation, and durable cloud backup.
+- **Multi-document ACID transactions:** Atomic edits spanning multiple distinct documents simultaneously are excluded; each document is an independent concurrency and consistency domain.
+- **Real-time audio and video calling:** Media streams use separate RTP/WebRTC SFU infrastructure outside the document operation pipeline.
+
+### Back-of-the-Envelope Capacity Bounds
+
+Collaborative editing is bounded by **in-memory working sets across sticky session servers, WebSocket fanout bandwidth, and sustained append throughput to the operation log**.
+
+| Resource Dimension | Derivation | Provisioned Bound |
+| :--- | :--- | :--- |
+| **Concurrent WebSocket Sessions** | `10M` open docs `* 2` average connected authors | `20M` open sockets (`~200` edge/gateway pods at `100k` sockets/pod) |
+| **Raw Keystroke Generation Rate** | `20M` authors `* 10%` actively typing `* 5` keystrokes/s | `10M` raw character edits/s at global peak |
+| **Batched Wire Operation Rate** | Client batches keystrokes over `100 ms` windows (`~5` chars/batch) | `~2M` WebSocket operation frames/s across the fleet |
+| **Operation Log Write Bandwidth** | `10M` raw ops/s `* 30 B` (compressed run-length batches reduce to `~60 B` per `5`-op frame) | `~120 to 300 MB/s` sustained append across `32` log shards (`~4 to 10 MB/s` per shard) |
+| **In-Memory Working Set** | `10M` open docs `* 50 KB` average in-RAM CRDT/text + metadata | `500 GB` aggregate RAM (`~300` sticky gateway pods with `4 GB` doc heap each, keeping `< 50%` headroom) |
+| **Daily Operation Storage** | `120 MB/s` avg `* 86,400 s` (assuming `40%` daily utilization factor) | `~4.1 TB/day` raw op log; compacted snapshots prune stale op tails after retention policy |
+
+## 26.2 External API and Data Contracts
+
+A client opens a document through an HTTP/2 hydration endpoint to fetch the latest compacted snapshot plus the operation tail, then upgrades to a persistent bidirectional WebSocket connection routed to the sticky gateway shard owning that `doc_id`.
+
+### Document Hydration and History Endpoints
+
+```http
+GET /v1/docs/doc_8812 HTTP/2
+Host: docs.example
+Authorization: Bearer tok_author_ada
+```
+
+```http
+HTTP/2 200 OK
+Content-Type: application/json
+
+{
+  "doc_id": "doc_8812",
+  "doc_epoch": 12,
+  "snapshot_seq": 4400,
+  "head_seq": 4410,
+  "state_vector": { "site_1": 1902, "site_2": 2508 },
+  "snapshot_b64": "AQIDBAUG...",
+  "tail_ops_b64": ["CgsMDQ4P...", "ERITFBUW..."],
+  "gateway_ws_url": "wss://gw-shard-07.docs.example/v1/docs/doc_8812/ops?epoch=12"
+}
+```
+
+To inspect historical versions or audit authorship, clients query paginated revisions:
+
+```http
+GET /v1/docs/doc_8812/operations?after_seq=4400&limit=100 HTTP/2
+Host: docs.example
+Authorization: Bearer tok_author_ada
+```
+
+```http
+PATCH /v1/docs/doc_8812/permissions HTTP/2
+Host: docs.example
+Authorization: Bearer tok_admin_ada
+Content-Type: application/json
+
+{
+  "principal_id": "user_bob",
+  "role": "VIEWER"
+}
+```
+
+### Bidirectional WebSocket Sync Protocol
+
+Once connected to `wss://gw-shard-07.docs.example/v1/docs/doc_8812/ops`, clients and the sticky gateway exchange framed binary (Protobuf or compact varint) messages represented below in JSON for clarity.
+
+**1. Offline Reconnection Handshake (State-Vector Exchange):**
+
+```json
+{
+  "type": "SYNC_STEP_1",
+  "doc_id": "doc_8812",
+  "doc_epoch": 12,
+  "state_vector": { "site_1": 1902, "site_2": 2490 }
+}
+```
+
+The gateway computes the exact set difference between its current state vector and the client's vector, streaming only missing operations in `SYNC_STEP_2`. If the client's `doc_epoch` predates a mandatory tombstone garbage-collection epoch (`client_epoch < server_min_epoch`), the gateway responds with `EPOCH_EXPIRED`, directing the client to download the latest compacted snapshot and rebase its unacked local edits cleanly.
+
+**2. Operation Delta Submission and Idempotent Acknowledgement:**
+
+```json
+{
+  "type": "OP_BATCH",
+  "doc_id": "doc_8812",
+  "client_op_id": "site_1:1903",
+  "doc_epoch": 12,
+  "ops": [
+    { "kind": "INS", "id": [1903, 1], "origin_left": [1, 1], "origin_right": [2, 1], "text": "h" }
+  ]
+}
+```
+
+```json
+{
+  "type": "OP_ACK",
+  "doc_id": "doc_8812",
+  "client_op_id": "site_1:1903",
+  "server_seq": 4412
+}
+```
+
+Because every CRDT operation carries a globally unique `(lamport_clock, site_id)` identifier (`client_op_id`), retrying an `OP_BATCH` after a transient socket drop is strictly idempotent: both the gateway's in-memory CRDT state and the durable operation log ignore already-applied identifiers and replay the matching `OP_ACK`.
+
+**3. Ephemeral Presence and Cursor Update:**
+
+```json
+{
+  "type": "PRESENCE",
+  "author_id": "user_ada",
+  "anchor_id": [1903, 1],
+  "head_id": [1903, 1],
+  "color": "#2563eb"
+}
+```
+
+Presence frames bypass the durable operation log entirely and are fanned out in memory to peer sockets with throttling (`<= 10 Hz` per client).
+
+### Durable Storage Schema
+
+We separate high-frequency sequential appends (`doc_operations`) from periodic compressed checkpoints (`doc_snapshots`) and access control rules (`doc_acls`).
+
+```sql
+CREATE TABLE documents (
+    doc_id             TEXT        PRIMARY KEY,
+    doc_epoch          BIGINT      NOT NULL DEFAULT 1,
+    min_valid_epoch    BIGINT      NOT NULL DEFAULT 1,
+    latest_snapshot_seq BIGINT     NOT NULL DEFAULT 0,
+    head_seq           BIGINT      NOT NULL DEFAULT 0,
+    updated_at         TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+CREATE TABLE doc_operations (
+    doc_id             TEXT        NOT NULL,
+    server_seq         BIGINT      NOT NULL,
+    client_op_id       TEXT        NOT NULL,
+    author_id          TEXT        NOT NULL,
+    payload_bytes      BYTEA       NOT NULL,
+    created_at         TIMESTAMPTZ NOT NULL DEFAULT now(),
+    PRIMARY KEY (doc_id, server_seq),
+    UNIQUE (doc_id, client_op_id)
+);
+
+CREATE TABLE doc_snapshots (
+    doc_id             TEXT        NOT NULL,
+    snapshot_seq       BIGINT      NOT NULL,
+    doc_epoch          BIGINT      NOT NULL,
+    state_vector_json  JSONB       NOT NULL,
+    object_store_uri   TEXT        NOT NULL,
+    byte_size          INT         NOT NULL,
+    created_at         TIMESTAMPTZ NOT NULL DEFAULT now(),
+    PRIMARY KEY (doc_id, snapshot_seq)
+);
+
+CREATE TABLE doc_acls (
+    doc_id             TEXT        NOT NULL,
+    principal_id       TEXT        NOT NULL,
+    role               TEXT        NOT NULL, -- 'OWNER' | 'EDITOR' | 'VIEWER'
+    acl_version        BIGINT      NOT NULL DEFAULT 1,
+    PRIMARY KEY (doc_id, principal_id)
+);
+```
+
+## 26.3 High-Level Architecture: Control Plane vs. Data Plane
+
+To keep remote edit fanout under `200 ms` while enforcing live access control and durable persistence, we divide the platform into a consensus-backed **Control Plane** managing ownership leases and permissions, and a sticky, memory-first **Data Plane** executing delta merges and fanout (Figure 26-2).
+
+<figure class="diagram">
+<img src="figures/m3/ch26_architecture.svg" alt="Collaborative Editing Architecture separating Control Plane (Session Coordinator and ACL/Auth Service) from Sticky Collaboration Gateways partitioned by doc_id, Ephemeral Presence Bus, Append-Only Operation Log, Async Snapshot Compactor, and Snapshot Object Store." />
+<figcaption><b>Figure 26-2</b> Sticky collaboration gateway architecture separating control-plane session leases and ACLs from hot data-plane delta fanout and durable log compaction.</figcaption>
+</figure>
+
+### Component Responsibilities and Failure Domains
+
+| Component | Plane | State Held | Failure Impact and Recovery |
+| :--- | :--- | :--- | :--- |
+| **Local CRDT Client Engine** | Edge | Full document CRDT state, local undo stack, IndexedDB offline op queue | Browser crash or network drop preserves unsent edits in IndexedDB; reconnect triggers state-vector sync |
+| **Session Coordinator** | Control | Consistent hash ring + consensus-backed `doc_id -> (gateway_pod, lease_epoch)` map | Replicated across 3 AZs (etcd/Consul/ZooKeeper); revokes expired gateway heartbeats within `5 s` and assigns a new fenced owner |
+| **ACL and Auth Service** | Control | `doc_acls` table and permission invalidation topic | Live role downgrade (`EDITOR -> VIEWER`) pushes an immediate revocation event to the owning gateway pod to reject further write frames |
+| **Sticky Collaboration Gateways** | Data | In-memory merged CRDT state and open WebSockets for assigned `doc_id`s | Pod crash drops sockets for its assigned documents; clients reconnect (`1 to 3 s`) to the newly elected owner pod hydrated from snapshot + op-log tail |
+| **Presence and Pub/Sub Bus** | Data | Ephemeral caret, selection, and cross-AZ relay subscriptions (no disk persistence) | Pod loss drops transient cursor frames; clients re-emit presence automatically on the next heartbeat or pointer move |
+| **Append-Only Operation Log** | Data | Durable `doc_operations` partitioned by `doc_id` across 3-AZ synchronous replicas | Primary log shard failover takes `1 to 3 s` with zero loss of acknowledged edits; lease fencing tokens block stale gateway writes |
+| **Snapshot Compactor & Object Store** | Data | Periodic compressed CRDT snapshots (`doc_snapshots` + S3/GCS blobs) | Stateless background workers resume compaction from `latest_snapshot_seq`; failure only increases tail replay length temporarily |
+
+### End-to-End Operation Path
+
+1. **Zero-Latency Local Apply:** Author A types `h`. The client CRDT engine inserts the character locally in `< 1 ms`, renders the frame within the `16 ms` budget, buffers the delta in IndexedDB, and flushes an `OP_BATCH` over its open WebSocket to the sticky gateway owning `doc_8812`.
+2. **ACL Check and Lease-Fenced Durability:** Gateway Pod A verifies Author A's live `EDITOR` role, merges the delta into its in-memory CRDT state, and appends the payload to the 3-AZ `doc_operations` log tagged with its active `lease_epoch` fencing token.
+3. **Acknowledgement and Low-Latency Fanout:** Once the 3-AZ log confirms durability, Gateway Pod A returns `OP_ACK` to Author A and immediately broadcasts the delta over in-memory WebSockets to Author B and all other connected editors on the same shard.
+4. **Asynchronous Compaction:** After `500` new operations (or `60 s` of active editing), the Snapshot Compactor folds the latest snapshot plus the op-log tail into a new binary checkpoint in object storage and advances `latest_snapshot_seq`.
+
+## 26.4 Why Positional Edits Diverge: Operational Transformation vs. Sequence CRDTs
+
+Representing a document edit by an integer array index (`insert('h', 1)` or `delete(3)`) works only inside a single-writer editor where no concurrent operation can shift indices while an edit is in flight. When two co-authors edit concurrently without coordination, integer indices go stale immediately. Advance through Interactive Trace 26.A to observe how concurrent positional edits by Ada and Bob against `"cat"` diverge permanently into `"chast"` and `"chats"`.
 
 <figure class="steps" data-prefix="figures/steps-edit-positions" data-count="5" data-version="92325ab8">
 <img src="figures/steps-edit-positions-01.svg?v=92325ab8" alt="2 changes by position, step 1 of 5. Ada and Bob are both looking at the text &#x27;cat&#x27;. Positions are counted from 0: c is at 0, a at 1, t at 2, and position 3 is the end.">
 <figcaption><b>Figure 26.1</b> Ada and Bob each insert a character into "cat" at the same moment, and applying the changes by position gives different results. Use Next and Back to move through the 5 steps.</figcaption>
 </figure>
 
-Ada inserted an `h` at position 1, and Bob an `s` at position 3, which at the time
-was the end of the word. When Bob's operation reaches Ada, her text has already
-changed: her own `h` has moved every later character 1 place to the right, and
-position 3 no longer means what it meant to Bob. The operation is applied faithfully
-and lands in the wrong place. Ada's operation, arriving at Bob's copy, is unaffected,
-since nothing before position 1 has moved. The 2 copies now read `chast` and
-`chats`.
+Two distinct algorithmic families resolve positional divergence: **Operational Transformation (OT)**, which keeps integer indices and rewrites incoming operations to compensate for concurrent shifts, and **Sequence CRDTs**, which replace mutable integer indices with immutable globally ordered identifiers.
 
-The simulation for this chapter runs exactly this case and prints the 2 different
-results. The copies have *diverged*, and the fault will never correct itself, since
-each later operation is applied to 2 different texts and can only compound the
-difference.
+### Operational Transformation and the Jupiter Architecture
 
-The root of the trouble is that a position is not a stable way of referring to a
-place in a text. It is meaningful only relative to a particular state of the
-document, and an operation that travels to another replica arrives at a different
-state. The 2 families of solution correspond to the 2 possible remedies. One may
-keep positions and correct them on arrival, or one may abandon positions for
-something that does not go out of date.
+In OT, a transformation function `T(op_a, op_b) -> op_a'` adjusts `op_a` so that applying `op_a'` *after* `op_b` produces the same document state as applying `op_b'` *after* `op_a`. In the `"cat"` trace, transforming Bob's `Ins('s', 3)` against Ada's concurrent `Ins('h', 1)` shifts Bob's target index right by `1` to `Ins('s', 4)`, yielding `"chats"` on both replicas.
 
-## Adjusting a change for what its author had not seen
+Ensuring convergence across arbitrary peer-to-peer networks requires every transformation pair to satisfy two mathematical laws:
 
-The first remedy is called *operational transformation*, usually abbreviated OT.
-Before an operation that was made concurrently with others is applied, it is
-transformed so as to take account of them.
+- **TP1 (Convergence Property 1):** Applying `op_a` followed by `T(op_b, op_a)` produces the exact same state as applying `op_b` followed by `T(op_a, op_b)`.
+- **TP2 (Convergence Property 2):** Transforming a third operation `op_c` against `(op_a, T(op_b, op_a))` yields the exact same transformed operation as transforming `op_c` against `(op_b, T(op_a, op_b))`.
 
-In the example, Bob's insertion at position 3 was made without knowledge of Ada's
-insertion at position 1. Ada's character was placed before position 3 and so
-displaced it by 1. The transformed operation is therefore an insertion at position
-4, and applied to Ada's text it yields `chats`. Ada's operation is transformed
-against Bob's in turn. Bob's character was placed after position 1 and displaced
-nothing before it, so Ada's operation is unchanged, and Bob's text becomes `chats` as
-well. The last step of the picture above shows the outcome, and the simulation
-confirms it.
+Designing rich-text OT functions that satisfy TP2 across arbitrary deletion ranges, formatting spans, and table mutations proved notoriously error-prone; formal model checkers later uncovered subtle divergence bugs in multiple published decentralized OT algorithms.
 
-For insertions the rule is short. An insertion is moved 1 place to the right for
-every concurrent insertion that was made at an earlier position. A further rule is
-needed for the case in which 2 people insert at the very same position, where some
-fixed convention, such as giving precedence to the participant with the smaller
-identifier, must decide which character comes first, and must decide it identically
-on every replica.
+Production OT systems (beginning with Xerox PARC's **Jupiter** in 1995 and adopted by **Google Docs**) bypass TP2 entirely through an architectural constraint: **every operation routes through a single central server that fixes a linear total order**. Each client synchronizes exclusively with the server rather than directly with peers, maintaining at most one unacknowledged operation batch in flight while buffering subsequent keystrokes locally. Because transformations occur strictly along a 2-dimensional client-versus-server grid, only TP1 is required. The trade-off is structural: OT depends on the central server to serialize revisions and requires re-transforming every queued edit against the entire missed server log when an offline client reconnects.
 
-Deletions add further cases. An insertion after a concurrently deleted character
-moves 1 place to the left. 2 participants who both delete the same character must
-between them delete it once. An insertion in the middle of a range that somebody
-else is deleting must survive. For each pair of kinds of operation there is a
-transformation, and the difficulty of OT lies in the number of these cases and in
-the requirement that they agree with one another: whichever order a replica happens
-to receive 2 concurrent operations in, transforming and applying them must lead to
-the same text. Published algorithms have been found, years afterwards, to violate
-this requirement in obscure combinations.
+### Sequence CRDTs: Immutable Identifiers and Causal Broadcast
 
-### What a central server contributes
-
-The difficulty is greatly reduced by a decision about architecture. If participants
-exchanged operations directly with one another, each might see the operations in a
-different order, and the transformations would have to be correct for every possible
-order among any number of participants. Nearly all practical systems avoid this by
-routing every operation through a central server.
-
-The server gives the document a single, agreed history. It maintains a *revision*
-number, which counts the operations applied so far. A participant sends each
-operation together with the revision of the document on which it was based. The
-server compares that revision with its current one. If others have been applied
-since, the server transforms the incoming operation against each of them in order,
-applies the result, assigns it the next revision number, and sends the transformed
-operation to all the other participants. Each participant, meanwhile, transforms the
-operations it receives from the server against any of its own that the server has
-not yet acknowledged.
-
-With this arrangement, every transformation involves only 2 sequences: what the
-server has applied, and what 1 client has pending. The server is the single place at
-which order is decided, exactly as the leader of a shard was in chapter 3 and the
-message store was in chapter 18, and the general lesson holds here too, that a
-problem of ordering among many parties becomes tractable when 1 of them is appointed
-to decide the order.
-
-The price is the usual one. The server must be reachable for collaboration to
-proceed. A participant who is offline can continue to type, and the operations
-accumulate locally, but they are merged only on reconnection, by transformation
-against everything that has happened in the meantime.
-
-## A name for every character
-
-The second remedy removes the cause of the trouble. If positions go out of date,
-characters can be referred to by something that does not.
-
-In this approach every character is given, at the moment it is typed, a unique
-identifier that it keeps for ever. The identifiers are chosen so that they can be
-ordered, and the text is defined as the characters arranged in the order of their
-identifiers. An insertion no longer says "at position 3". It says "a new character
-with this identifier", and the identifier is chosen to fall between those of the 2
-characters where the author placed it.
+**Conflict-Free Replicated Data Types (CRDTs)** eliminate transformation functions altogether by replacing volatile array offsets with immutable, globally unique character identifiers. Because an insertion references immutable identifiers rather than mutable integer positions, concurrent insertions commute natively: applying `op_1` then `op_2` yields the exact same sequence as applying `op_2` then `op_1`. Step through Interactive Trace 26.B to see how immutable character names remove position drift.
 
 <figure class="steps" data-prefix="figures/steps-edit-names" data-count="4" data-version="9b47c6d9">
 <img src="figures/steps-edit-names-01.svg?v=9b47c6d9" alt="A name for every character, step 1 of 4. In the second approach, a character is never referred to by its position. Each has a name of its own, a number that does not change, and the text is the characters in the order of their names.">
 <figcaption><b>Figure 26.2</b> Every character has an identifier that fixes its place, so that insertions can be applied in any order. Use Next and Back to move through the 4 steps.</figcaption>
 </figure>
 
-An operation of this form has a remarkable property. It refers to nothing that
-another operation can alter, and applying it consists merely in adding 1 element to
-a sorted collection. 2 such operations can be applied in either order with the same
-result, and an operation applied twice has the same effect as once. No
-transformation is required, and no server is needed to decide an order, since order
-is irrelevant.
+While the intuition of assigning dense numeric keys between neighbors is clear, production Sequence CRDTs diverge sharply in how they construct identifiers. Comparing **fractional indexing** against **causal position identifiers** exposes two critical production pathologies:
 
-A data structure whose operations can be applied in any order, any number of times,
-with every replica arriving at the same state, is called a *conflict-free replicated
-data type*, or CRDT. In the simulation, the same 2 insertions are applied in both
-orders to a text represented in this way, and both replicas read `chats`. When both
-participants insert at the same place, the identifiers are distinguished by the
-identity of the device, and both replicas read `carnt`, with the characters in the
-same order on each.
+1. **Fractional Indexing (Logoot / LSEQ / Treedoc):** Assigns each character a variable-length path drawn from a dense totally ordered space (for example, inserting between `10` and `20` picks `15`; inserting between `15` and `16` appends another digit level `15.5`). Two weaknesses limit fractional indexing in long-lived text documents:
+   - *Unbounded Identifier Growth:* Repeated insertions at the same cursor (such as prepending lines at the top of a log) deepen path arrays linearly with edit count, inflating per-character metadata.
+   - *Character Interleaving Anomaly:* As demonstrated by Kleppmann et al. (PaPoC 2019), if Ada types `"hello"` and Bob concurrently types `"world"` at the exact same position in a fractional-indexing CRDT, their independently chosen fractional keys can fall between each other, garbling the converged text into `"hweolrllod"`.
+2. **Causal Position Identifiers (RGA, YATA, and Fugue):** Instead of dense numerical coordinates, modern Sequence CRDTs identify every character by a fixed-size Lamport pair `(lamport_clock, site_id)` and specify its position by referencing immutable **causal anchors**: the existing character immediately to its left (`origin_left`), and in YATA and Fugue, the character immediately to its right (`origin_right`) at the moment of insertion (Figure 26-3).
 
-The identifiers have to satisfy 2 conditions. They must be unique, which is arranged
-by including the identity of the device in each. And it must always be possible to
-create a new identifier between any 2 existing ones, however close together. Whole
-numbers do not suffice, since nothing lies between 1500 and 1501. Practical schemes
-use sequences of numbers of variable length, compared as the entries of a dictionary
-are, so that between any 2 a longer one can be found, or else define each character's
-place by reference to the identifier of the character it was typed after.
-
-### The cost of a name
-
-The simplicity of the operations is bought with metadata. A plain text of 10000
-characters occupies 10000 bytes. The same text as a CRDT carries an identifier for
-every character, which may be 10 or 20 times the size of the character itself, and
-identifiers of the dictionary kind grow longer wherever a great deal of text has
-been inserted in the same place. Much of the engineering in CRDT libraries is
-devoted to compressing this, for instance by storing a run of characters typed in
-succession by 1 person as a single unit with 1 identifier and a length.
-
-Automatic merging has a further limit, which applies to both families and which no
-algorithm can remove. Convergence guarantees that all replicas end with the same
-text. It does not guarantee that the text is what anybody meant. If 2 people correct
-the same misspelt word simultaneously, each by deleting it and typing it again, the
-merged document contains the corrected word twice. The result is consistent and
-wrong, and what collaborative editors rely upon in practice is that people can see
-each other's cursors, and tend not to edit the same word at the same moment.
-
-## Deleting
-
-Deletion presents a difficulty of its own in a CRDT. Suppose that Ada deletes a
-character at the same moment that Bob inserts a new one immediately after it, his
-operation saying in effect "after the character with identifier 2000". If Ada's
-replica had removed that character altogether, Bob's operation would arrive
-referring to something that no longer exists there.
-
-A deleted character is therefore not removed. It is marked as deleted and hidden
-from view, and its identifier remains in the structure to serve as a point of
-reference. Such a marker is the *tombstone* of chapter 25. The consequence is that a
-document which has been heavily edited contains far more tombstones than visible
-characters, and they can be discarded only when it is certain that no replica
-anywhere still holds an operation that refers to them, which, with participants who
-may be offline for weeks, is difficult to establish.
-
-## The 2 approaches compared
-
-| | Operational transformation | CRDT |
-|---|---|---|
-| How an operation refers to a place | by position | by the identifier of a character |
-| What makes replicas converge | transforming operations against concurrent ones | operations that give the same result in any order |
-| Central server | required, to fix the order | not required |
-| Working offline, or peer to peer | awkward: everything is transformed on return | natural: operations are merged whenever they meet |
-| Size of the document | close to the plain text | several times the plain text, with tombstones |
-| Where the complexity lies | in the transformation rules | in the identifiers and their compaction |
-
-Services in which a server is always in the path, and in which documents are large
-and long-lived, have mostly used operational transformation. Applications that must
-work offline for long periods, or without any central server, have mostly used
-CRDTs. The design in the remainder of this chapter uses a central server with
-operational transformation.
-
-## Around the text
-
-A collaborative editor conveys more than the text. Each participant sees where the
-others' cursors and selections are, and who is present in the document. This
-information is *ephemeral*: it is forwarded to the other participants as it changes
-and is stored nowhere, since a cursor position that is lost is replaced by the next
-one a moment later. It is the presence of chapter 18, with the same loose
-guarantees.
-
-Cursors are nonetheless subject to the central problem of this chapter. A cursor is
-a position in the text, and when another participant inserts characters before it,
-it has to move. A cursor is therefore transformed against incoming operations in
-the way that an operation would be, or, in a CRDT, is attached to the
-identifier of a character, which does not move.
-
-Undo also needs rethinking. In an editor for 1 person, undo reverses the most recent
-change. In a shared document the most recent change may be somebody else's, and to
-reverse it would be bewildering. Undo is accordingly made to reverse the most recent
-change of the person who invokes it, which requires the inverse of an operation that
-is no longer the latest and has to be transformed against everything that came
-after.
-
-## Storing the document
-
-The server retains every operation, in order, in a log, each with its revision
-number. The document at any revision is the result of applying the operations up to
-that point, so that the log is the authoritative record and the current text is
-derived from it. This is the relation between records and entries from chapter 1,
-and it yields the complete history of the document, by which an author can see what
-it contained at any earlier moment and who changed what.
-
-To replay the whole log each time a document is opened would grow slower with every
-keystroke ever made. The server therefore saves a *snapshot* of the text at
-intervals, every few hundred operations, and a document is opened by loading the
-latest snapshot and applying the operations that follow it. The operations before a
-snapshot are kept as long as history is wanted and are not needed for opening.
-
-Each document is served, at any moment, by a single server process, which holds its
-current text in memory and decides the order of its operations. Documents are
-assigned to servers by hashing their identifiers, and every participant in a
-document is connected, through a gateway of the kind described in chapter 18, to
-that document's server. The operation is appended to the log before it is
-acknowledged and broadcast, so that if the process fails, another can take over the
-document from the log without losing anything that was confirmed.
-
-## Use cases
-
-An author types in a shared document, sees what the others type, and may continue
-while offline.
-
-<figure>
-<img src="figures/edit-use-cases.svg?v=0353eb6a" alt="A use case diagram of the editing service. Author: change the text (an operation, over an open connection), see what others type (their operations, pushed), continue offline (operations wait, then are sent).">
-<figcaption><b>Figure 26.3</b> The actor and what it does.</figcaption>
+<figure class="diagram">
+<img src="figures/m3/ch26_crdt_convergence.svg" alt="Sequence CRDT Convergence via Immutable Anchor Identifiers and Causal Broadcast: Replicas A and B concurrently insert B and X after (1,1) A, apply deterministic tie-breaking on (lamport_clock, site_id), and converge identically to AXBC regardless of arrival order." />
+<figcaption><b>Figure 26-3</b> Concurrent insertions converging deterministically via causal anchor identifiers <code>(lamport_clock, site_id)</code> and causal broadcast.</figcaption>
 </figure>
 
-## Functional requirements
+In **RGA** (Replicated Growable Array), concurrent siblings sharing the same `origin_left` are ordered in descending `(lamport_clock, site_id)` order. Because each author's sequential keystrokes chain off their own preceding character (`'e'` anchors after `'h'`, `'l'` after `'e'`), typing `"hello"` and `"world"` concurrently keeps each author's contiguous run intact (`"worldhello"` or `"helloworld"`). **YATA** (used in Yjs) adds `origin_right` to eliminate additional edge cases, and **Fugue** (Weidner and Kleppmann, 2023) extends the tree-based left/right origin rule to eliminate *backward* interleaving (when authors type right-to-left or insert at the start of a paragraph) as well as forward interleaving.
 
-| No. | Functional requirement |
-|---|---|
-| 0 | Several authors can edit the same document at the same moment. |
-| 1 | An author's own change appears on their screen immediately. |
-| 2 | A change by another author appears within 200 ms. |
-| 3 | When all changes have been delivered, every author sees the same document. |
-| 4 | An author sees the cursors of the other authors. |
-| 5 | An author who is offline can continue to edit, and the changes are merged on reconnection. |
-| 6 | The history of a document can be viewed, and an earlier state restored. |
+Causal Sequence CRDTs require **causal delivery**: an insertion referencing `origin_left = (1, 1)` cannot be integrated until `(1, 1)` exists locally. The client engine enforces this via per-site **state vectors** (`{ site_1: max_clock_1, site_2: max_clock_2 }`), buffering any out-of-order delta in a small pending queue until its causal predecessor arrives. Furthermore, to avoid storing `24 to 32 bytes` of metadata per 1-byte ASCII character, production engines (**Yjs** and **Automerge**) apply **run-length encoding**: a contiguous burst of 80 characters typed sequentially by one author is stored as a single struct with one starting `(clock, site_id)`, one `origin_left`, and a string length of `80`, splitting the block only if a later edit inserts or deletes inside the middle of the run.
 
-## Non-functional requirements
+### Comparing Central-Server OT and Causal Sequence CRDTs
 
-| No. | Property | Non-functional requirement |
-|---|---|---|
-| 0 | Convergence | All replicas reach the same state once every operation has been delivered, in whatever order they were applied locally. |
-| 1 | Durability | An operation that the server has acknowledged is not lost. |
-| 2 | Consistency | Eventual between authors. Strong for the order of operations in the server's log. |
-| 3 | Latency | A local change takes effect in under 16 ms, and a remote one within 200 ms. |
-| 4 | Scale | 10 million documents open at once, with up to 100 authors in a document. |
+| Architectural Dimension | Central-Server OT (Jupiter) | Causal Sequence CRDT (YATA / Fugue) |
+| :--- | :--- | :--- |
+| **Position Addressing** | Volatile integer offsets adjusted on arrival | Immutable causal anchors `(lamport_clock, site_id)` |
+| **Convergence Mechanism** | Server total order + TP1 transformation pairs | Commutative, associative, idempotent merge rules |
+| **Offline & Local-First Ergonomics** | Hard: long offline queues require expensive server-side re-transformation on reconnect | Native: offline edits merge cleanly in any order via compact state-vector sync |
+| **Memory & Metadata Footprint** | Very low (`~1x` raw text size; no tombstones required in live state) | Moderate (`~1.5x to 3x` raw text with run-length encoding; grows with tombstones) |
+| **Core Engineering Complexity** | Proving TP1 correctness across rich-text formatting, tables, and undo | Tombstone garbage collection, columnar binary compaction, and causal buffering |
+| **Typical Production Fit** | Always-online web suites with complex rich-text schemas (Google Docs) | Offline-capable local-first apps, developer tools, and distributed workspaces (Yjs, Linear, Zed, Automerge) |
 
-Non-functional requirement 2 has the form that has now appeared in several chapters.
-The replicas that people look at are eventually consistent, each running ahead with
-its own changes. At the centre is a log whose order is strongly consistent and never
-in dispute, and the eventual consistency of the edges is made safe by the certainty
-of the centre. Convergence, non-functional requirement 0, is the precise statement
-of what "eventual" promises here.
+## 26.5 Tombstones, Garbage Collection Epochs, Presence, Undo, and Log Compaction
 
-## Core entities
+Operating a Sequence CRDT across millions of long-lived documents requires solving four lifecycle problems beyond initial convergence.
 
-<figure>
-<img src="figures/edit-entities.svg?v=98f0a9d2" alt="The core entities. Document has the fields id u64, revision u64, text at that revision. Operation has the fields document u64, author string, based_on revision, change insert|delete. An Operation says what was changed and which revision its author was looking at. The revision counts operations applied.">
-<figcaption><b>Figure 26.4</b> The core entities and their fields.</figcaption>
-</figure>
+### Tombstones and Server-Coordinated GC Epochs
 
-## Capacity estimate
+When Author A deletes character `(1, 1)` concurrently while offline Author B inserts `(5, 2)` with `origin_left = (1, 1)`, physically removing `(1, 1)` from Author A's memory would leave Author B's incoming operation referencing a nonexistent anchor and break convergence. A CRDT therefore marks deleted characters as **tombstones**: hidden from the visible text buffer, yet retained in the structural index (often stripped of their character payload so only `(id, length, deleted=true)` metadata remains).
 
-<div class="estimate">
+Over months of heavy editing in a living engineering specification, tombstones can outnumber visible characters by `10x` to `50x`, inflating memory consumption and document load times. In a purely peer-to-peer system where an unknown offline device might reappear two years later, safe tombstone deletion is undecidable without global causal stability tracking. Because our architecture uses a **central sticky gateway and durable log**, we bound tombstone growth cleanly using **GC Epochs**:
 
-<img class="builder" src="art/crab-builder.svg" alt="A crab in a hard hat, in tears.">
+1. During periodic snapshot compaction, the Snapshot Compactor identifies tombstones older than a configured retention horizon (for example, `30 days`) whose causal dependencies are fully closed across all non-deleted siblings.
+2. The Compactor writes a new compacted snapshot stripping those expired tombstones, bumps `doc_epoch` (`12 -> 13`), and advances `min_valid_epoch` once all active gateways roll over.
+3. Any mobile client reconnecting after `45 days` offline sends `doc_epoch = 11 < min_valid_epoch`. The gateway rejects direct delta merge with `EPOCH_EXPIRED`, transmits the fresh `epoch = 13` snapshot, and the client computes a deterministic diff of its unacknowledged offline edits against the fresh snapshot before submitting them as fresh `epoch = 13` operations.
 
-**Arithmetic ahead.** 10 million open documents with 2 authors typing in each produce about 10 million operations per second at the peak, and far fewer in practice, since people pause.
+### Snapshot Compaction and Operation Log Tail
 
-<a class="skip" href="#high-level-design">Skip to the high-level design</a>
+Replaying `500,000` individual keystrokes every time a user opens a mature document violates the `400 ms` cold-open SLO. We combine an **immutable append-only operation log** (for zero-loss durability and complete revision history) with **periodic binary snapshots** stored in object storage:
 
-<details>
-<summary>Show the calculation</summary>
+- Every `500` appended operations (or after `60 s` of active mutations), the Snapshot Compactor hydrates the prior snapshot, applies the incremental tail, serializes the resulting CRDT state using columnar run-length delta encoding (where clocks, site IDs, lengths, and UTF-8 text sit in separate compressed byte streams), and writes the checkpoint to S3/GCS.
+- Opening a document requires exactly one object-store fetch plus replaying at most `500` recent operations (`< 20 ms` CPU time), keeping cold-open latency constant regardless of total document age.
 
-| Quantity | Calculation | Result |
-|---|---|---|
-| Authors typing at any moment | 10 million documents × 2 authors × 10% actually typing | 2 million |
-| Operations per second | 2 million × 5 keystrokes per second | 10 million |
-| Size of an operation in the log | document, author, revision, position, character | about 30 bytes |
-| Log growth | 10 million × 30 bytes | 300 MB per second at the peak |
-| Memory for open documents | 10 million × 50 KB | 500 GB, across the session servers |
+### Ephemeral Presence, Selective Local Undo, and Semantic Limits
 
-</details>
+Three user-facing mechanics require specialized treatment in multi-author sessions:
 
-</div>
+1. **Anchored Ephemeral Carets:** Caret and selection updates are transient and never written to disk; losing a cursor update matters for `50 ms` until the next pointer event arrives. Each remote caret binds to an immutable CRDT character identifier `(clock, site_id)` rather than a raw integer offset so concurrent insertions upstream never misplace another author's visible cursor.
+2. **Selective Local Undo:** Reversing the globally most recent operation in a shared document would undo a teammate's typing unexpectedly. Each client therefore maintains a **per-author undo stack** recording only its own operations. Invoking Undo on a CRDT does not delete history; it emits a new compensating operation (marking the author's previously inserted range as tombstoned, or re-inserting previously deleted content at its original causal anchors) while preserving intervening edits made by peers.
+3. **Convergence Is Syntactic, Not Semantic:** Mathematical convergence guarantees that every replica ends with identical bytes, not that the combined prose matches human intent. If Ada and Bob simultaneously fix the typo `"teh"` by deleting it and retyping `"the"`, both replicas converge cleanly to `"thethe"`. Collaborative editors rely on low-latency colored presence carets as a social coordination layer so co-authors naturally avoid editing the exact same word at the exact same instant.
 
-In practice operations are sent in small batches, several keystrokes together, which
-reduces the number of messages by a large factor without any perceptible delay.
+## 26.6 Failure Modes, SLIs, and Production Systems
 
-## The API
+### Failure and Recovery Matrix
 
-A document is opened with an ordinary request, which returns the text and its
-revision. From then on, operations travel in both directions over an open
-connection.
+| Failure Scenario | Blast Radius | Automated Recovery and Preserved Invariant |
+| :--- | :--- | :--- |
+| **Sticky Gateway Pod Crash** | Active sessions on `~33k` documents for `1 to 3 s` | Session Coordinator expires the lease after heartbeat timeout, assigns a new pod with `lease_epoch + 1`, hydrates state from snapshot + op-log tail, and clients auto-reconnect with state-vector sync |
+| **Split-Brain Gateway (GC Pause / Partition)** | Single document | Append-only `doc_operations` store enforces a monotonic `lease_epoch` fencing check on every write, rejecting stale writes from the paused zombie pod |
+| **Client Disconnects for 24 Hours** | Single client device | Unsent keystrokes persist in local IndexedDB; on reconnect, `SYNC_STEP_1` exchanges state vectors and merges all missed server and client ops automatically |
+| **Duplicate `OP_BATCH` Delivery** | Single operation batch | Unique `(doc_id, client_op_id)` constraint in `doc_operations` and CRDT idempotency discard the duplicate cleanly and replay `OP_ACK` |
+| **Live ACL Revocation (`EDITOR -> VIEWER`)** | Single revoked user | ACL Service publishes immediate invalidation to the owning gateway pod, which terminates write privileges in RAM and drops subsequent `OP_BATCH` frames with `403` |
+| **Unbounded Tombstone Accumulation** | Long-lived active document | Server-coordinated GC Epoch compaction strips aged tombstones during snapshot generation and forces stale-epoch clients to rebase cleanly |
+| **Hot Document (`100` Active Co-Authors)** | Single sticky gateway shard | Gateway offloads presence fanout to dedicated pub/sub edge relays and enforces `100 ms` client micro-batching so fanout stays within per-core network budgets |
 
-**Open a document**
+### Collaborative Editing SLIs and SLOs
 
-```http
-GET /v1/documents/8812 HTTP/1.1
-Host: docs.example
+1. **Local Input-to-Paint Latency:** `p99 <= 16 ms` measured via browser `PerformanceObserver` around local CRDT apply and DOM layout.
+2. **Remote Edit Fanout Latency (`E2E`):** Measured from Author A's WebSocket send timestamp to Author B's remote render timestamp across regions; SLO: `p99 <= 200 ms`.
+3. **Document Hydration Latency:** Time from `GET /v1/docs/{id}` to interactive editable state; SLO: `p99 <= 400 ms` (alerts if average uncompacted op-log tail exceeds `1,000` ops).
+4. **Replica Convergence Integrity Check:** Gateways periodically broadcast a lightweight rolling state hash (Merkle/XOR checksum of visible text) alongside heartbeat frames; any client whose quiescent text hash disagrees with the gateway triggers an immediate telemetry alert and automated state-vector resync.
+
+### How Production Systems Implement Collaborative Editing
+
+| Production System | Core Concurrency Model | Architectural Distinction |
+| :--- | :--- | :--- |
+| **Google Docs** | Central-server **Jupiter OT** | Single revision authority per document with at most one unacked client batch in flight; supports deeply structured rich-text mutations (tables, comments, suggestions) with low memory overhead |
+| **Figma** | Central-server sequencer + **LWW property registers** + fractional child ordering | Exploits the fact that a design canvas is a tree of objects with independent scalar properties rather than a flat character array; avoids full text-CRDT/OT complexity except inside text nodes |
+| **Yjs (Used by Linear, JupyterLab, Proton)** | **YATA** Sequence CRDT with run-length `Item` structs and binary state vectors | Ultra-compact binary wire format (`lib0` varint encoding) supporting both offline local-first IndexedDB persistence and server-compacted synchronization |
+| **Automerge** | **RGA**-derived JSON & text CRDT with columnar compressed storage | Stores full causal history in an immutable columnar binary format (`Automerge2`) achieving storage sizes close to gzipped plain text while supporting full branch/merge and time-travel |
+
+## 26.7 Simulation Verification
+
+Running `code/editsim` directly compares unadjusted positional edits against Operational Transformation and CRDT identifier ordering on the canonical `"cat"` concurrent-edit workload (`ada` inserts `h` at `1`; `bob` inserts `s` at `3`), followed by a concurrent same-position insertion tie-break test.
+
+```console
+$ cargo run --release -p editsim
+both start from "cat". ada puts h at 1, bob puts s at 3
+changes applied as they are:     ada sees "chast", bob sees "chats"
+positions adjusted:              ada sees "chats", bob sees "chats"
+a name for every character:      ada sees "chats", bob sees "chats"
+both type between a and t:       ada sees "carnt", bob sees "carnt"
 ```
 
-```http
-HTTP/1.1 200 OK
-Content-Type: application/json
-
-{ "id": 8812, "revision": 4410, "text": "cat" }
-```
-
-**An operation sent by a client, over the open connection**
-
-```json
-{ "document": 8812, "client_id": "ada-17", "based_on": 4410, "insert": { "at": 1, "text": "h" } }
-```
-
-`based_on` is the revision that the author was looking at. `client_id` identifies
-the operation, so that if it is sent a second time after a lost acknowledgement, the
-server recognises it.
-
-**The server's acknowledgement to the sender**
-
-```json
-{ "document": 8812, "client_id": "ada-17", "revision": 4412 }
-```
-
-**The same operation as broadcast to the other authors**
-
-```json
-{ "document": 8812, "author": "ada", "revision": 4412, "insert": { "at": 1, "text": "h" } }
-```
-
-The operation broadcast is the transformed one, and its revision is the position it
-was given in the log. Revision 4411 belonged to an operation by another author that
-reached the server first.
-
-**Read the history of a document**
-
-```http
-GET /v1/documents/8812/operations?after=4400&limit=100 HTTP/1.1
-Host: docs.example
-```
-
-```http
-HTTP/1.1 200 OK
-Content-Type: application/json
-
-{
-  "operations": [
-    { "revision": 4411, "author": "bob", "insert": { "at": 3, "text": "s" } },
-    { "revision": 4412, "author": "ada", "insert": { "at": 1, "text": "h" } }
-  ],
-  "next_after": 4412
-}
-```
-
-## High-level design
-
-<figure class="wide">
-<img src="figures/edit-design.svg?v=79da8749" alt="2 authors in 1 document. The components are Author A, Session server, Operation log, Author B, Snapshots. Step 1: An author&#x27;s change travels to the session server. Step 2: The server adjusts it, numbers it and logs it. Step 3: The adjusted change is sent to every other author. Step 4: The text is saved now and then, to shorten the log.">
-<figcaption><b>Figure 26.5</b> The components and the path of an operation. The steps are numbered.</figcaption>
-</figure>
-
-| Component | Role | State it holds | When 1 instance fails |
-|---|---|---|---|
-| Client | applies the author's changes at once, and transforms incoming ones | its copy of the document, and operations not yet acknowledged | it reopens the document and sends its pending operations again |
-| Session server | orders the operations of a document, transforms them, and broadcasts | the current text of each of its documents, in memory | another server loads the document from its snapshot and log |
-| Operation log | every operation of every document, in order | the log, replicated | a follower is elected |
-| Snapshots | the text of a document at intervals | snapshots, in an object store | as in chapter 16 |
-
-### One operation, step by step
-
-The steps follow the arrows of figure 26.5.
-
-1. Author A types a character. The client applies it to its own copy at once, and sends the operation to the session server with the revision on which it was based.
-2. The session server transforms the operation against every operation applied since that revision, appends the result to the log under the next revision number, and acknowledges it to A.
-3. The server sends the transformed operation to author B, whose client transforms it against any operations of its own that the server has not yet acknowledged, and applies it.
-4. Every few hundred operations, the current text is saved as a snapshot.
-
-## The design, deployed
-
-<figure class="wide">
-<img src="figures/edit-deploy.svg?v=c827b2d1" alt="The editing service, deployed. Authors: Authors (20 million), 1 open connection each. Connections, in 3 zones: Load balancers (x 8), by connection, Gateways (x 100), route by document. Sessions: Session servers (x 300), 1 owner per document, Document directory (x 3), which server owns what. Storage: Operation log (x 30), shards x 3 replicas, Snapshot store (chapter 16), an object store.">
-<figcaption><b>Figure 26.6</b> The editing service as it is deployed, with every document owned by 1 session server.</figcaption>
-</figure>
-
-Authors hold connections to gateways, as in the chat service. What is particular to
-this system is the tier below. Each open document is owned by exactly 1 of the 300
-session servers, which holds its text in memory and decides the order of its
-operations, and a small directory records which server owns which document, so that
-the gateways can route every author of a document to the same place. The session
-servers are therefore not interchangeable in the way that stateless servers are. If
-1 fails, each of its documents is taken over by another server, which loads the
-latest snapshot and replays the log from there.
-
-## How real systems do it
-
-Operational transformation was introduced in 1989, in a paper on a group editor
-that exchanged operations directly among its participants. The arrangement with a
-central server, in which each client synchronises with the server alone and the
-server fixes the order, is that of the Jupiter system of 1995, and it is the form
-that Google adopted for its collaborative documents. Its attraction is the one
-given in this chapter: with a server in the middle, the transformation functions
-have to satisfy only the simpler of the 2 correctness conditions that the general
-case requires. The warning that published algorithms have been found faulty refers
-to the other condition, needed when there is no server, for which several
-algorithms were shown by formal analysis to diverge in particular cases, years
-after they were published.
-
-Conflict-free replicated data types were given their name and a systematic theory
-in 2011. For text, the scheme of this chapter, in which each character has a
-position drawn from a dense ordered set, is that of a family of early designs. It
-has a defect that should be mentioned, since the simulation does not show it. When 2
-people type whole words at the same place at the same time, their characters can
-become interleaved letter by letter, because the positions that each chooses fall
-among the other's. Designs in which a new character names the character it was
-typed after, and ties are broken consistently, keep each person's run together, and
-the libraries in common use today work in that way.
-
-Not every collaborative product uses either method in its pure form. The makers of
-Figma have described a design in which a central server orders changes, as with
-operational transformation, while each property of each object is a simple register
-in which the last write prevails, as in a basic CRDT. Their argument is that a
-design tool's documents are trees of objects with properties, for which that is
-enough, and that the full generality of either method serves the editing of long
-texts and is not needed elsewhere.
-
-## Mistakes to avoid
-
-| Mistake | What goes wrong | What to do |
-|---|---|---|
-| Waiting for the server before showing a keystroke | Typing feels delayed and becomes unusable on a slow connection. | Apply every local change at once, and reconcile afterwards. |
-| Applying operations by position as they arrive | Replicas diverge, and never recover. | Transform them, or use identifiers in place of positions. |
-| Exchanging operations between clients directly | Every client sees a different order, and the transformations must be right for all of them. | Route every operation through a server that fixes the order. |
-| No fixed rule for 2 insertions at the same place | Replicas order the 2 characters differently. | Break the tie by a rule that every replica applies alike. |
-| Removing deleted characters from a CRDT | A concurrent operation refers to a character that is gone. | Keep a tombstone. |
-| Acknowledging an operation before logging it | A crash loses an edit that the author believes is saved. | Append to the log first. |
-| Replaying the whole log to open a document | Opening grows slower with every edit ever made. | Save snapshots, and replay from the latest. |
-| Storing cursors durably | A flood of writes for information that is worthless a second later. | Forward cursors, and store nothing. |
-| Undo that reverses the latest operation | An author undoes somebody else's work. | Undo the author's own latest operation, transformed against what followed. |
-| Assuming that convergence means correctness | 2 simultaneous corrections of 1 word leave it doubled. | Show cursors, so that people avoid editing the same place. |
-
-## Failures
-
-| Failure | What authors see | How the system recovers |
-|---|---|---|
-| An author's connection drops | their own typing continues, and others' changes stop arriving | on reconnection, pending operations are sent and missed ones fetched from the log |
-| The acknowledgement of an operation is lost | nothing | the client sends it again, and the server recognises its identifier |
-| A session server fails | a pause of a second or 2 | another server loads the snapshot and the log, and the clients reconnect to it |
-| An author is offline for a day | their copy and the shared one differ | every local operation is transformed against the day's operations and merged |
-| 2 authors edit the same word | a result that neither intended, the same on both screens | the authors see it and correct it |
-
-## Trade-offs
-
-| Decision | What it gains | What it costs |
-|---|---|---|
-| Local changes applied at once | typing with no delay | replicas that differ for a moment, and the whole problem of merging |
-| A central server | a single order, and far simpler transformation | no collaboration without the server |
-| Operational transformation | documents close to the size of their text | intricate rules that are hard to get right |
-| A log with snapshots | full history, and fast opening | storage that grows with every keystroke |
-| Automatic merging | no conflict is ever put to the author | results that are consistent and sometimes unintended |
-
-## The simulation
+The simulation transcript confirms three exact properties: applying raw positional offsets without coordination causes permanent replica divergence (`"chast"` vs. `"chats"`); transforming concurrent indices (OT) and assigning immutable character identifiers (CRDT) both achieve exact convergence to `"chats"` regardless of delivery order; and deterministic `(clock, site_id)` tie-breaking resolves concurrent insertions at the exact same boundary identically (`"carnt"`) on every replica.
 
 <div class="simulation">
 
-**Simulation in the repository.** The program [`code/editsim`](https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/distributed-systems-from-the-ground-up/code/editsim/src/main.rs) simulates this design. To run it, clone the repository and type `cargo run --release -p editsim` in the `code` directory.
+**Run the collaborative editing simulation.** Execute `cargo run --release -p editsim` in `code/` to verify raw positional divergence (`chast` vs. `chats`), Operational Transformation convergence, Sequence CRDT commutativity, and deterministic tie-breaking (`carnt`).
 
 </div>
 
-## References
+## 26.8 Terminology and References
 
-- C. Ellis and S. Gibbs, "Concurrency Control in Groupware Systems", SIGMOD 1989.
-- D. Nichols and others, "High-Latency, Low-Bandwidth Windowing in the Jupiter Collaboration System", UIST 1995.
-- M. Shapiro, N. Preguica, C. Baquero and M. Zawirski, "Conflict-free Replicated Data Types", SSS 2011.
-- M. Kleppmann and others, "Interleaving Anomalies in Collaborative Text Editors", PaPoC 2019.
-- E. Wallace, "How Figma's multiplayer technology works", Figma blog, 2019.
-- M. Kleppmann and others, "Local-First Software: You Own Your Data, in Spite of the Cloud", Onward! 2019.
+### Engineering Glossary
 
-## Terms introduced in this chapter
+| Term | Definition |
+| :--- | :--- |
+| **Strong Eventual Consistency (SEC)** | Convergence guarantee stating that any two replicas having received the same set of operations hold identical state, regardless of arrival order or duplicates. |
+| **Operational Transformation (OT)** | Concurrency control technique that rewrites incoming positional operations against concurrent intervening edits before applying them. |
+| **Jupiter Protocol** | Client-server OT architecture in which a central server fixes a single total revision order, eliminating the need for decentralized TP2 transformations. |
+| **Sequence CRDT** | Conflict-free replicated list data structure whose insert and delete operations commute natively using immutable identifiers rather than mutable array indices. |
+| **RGA / YATA / Fugue** | Causal Sequence CRDT algorithms anchoring each inserted element to immutable neighbor identifiers `(lamport_clock, site_id)` to prevent character interleaving. |
+| **State Vector** | Compact map `{ site_id -> max_clock }` summarizing all causal operations observed by a replica, used to compute minimal delta diffs on reconnection. |
+| **Tombstone** | Hidden deletion marker preserved in a CRDT structure so concurrent operations referencing the deleted element's identifier can still locate their anchor. |
+| **GC Epoch** | Monotonic server-managed compaction generation allowing expired tombstones to be stripped safely while forcing ancient offline clients to rebase cleanly. |
 
-| Term | Meaning |
-|---|---|
-| Operation | a description of 1 change to a document |
-| Concurrent | made without knowledge of each other |
-| Convergence | all replicas reaching the same state once every operation has been delivered |
-| Divergence | replicas that hold different states and will not come together |
-| Operational transformation, OT | adjusting an operation to take account of concurrent ones |
-| Revision | the number of operations that the server has applied to a document |
-| Conflict-free replicated data type, CRDT | a data structure whose operations give the same result in any order |
-| Tombstone | a deleted element that is kept, hidden, as a point of reference |
-| Ephemeral | forwarded and not stored |
-| Snapshot | the state of a document at 1 revision, saved so that earlier operations need not be replayed |
+### References
 
-<div class="summary">
-
-## Summary
-
-- Each author's changes are applied to their own copy at once, so that every copy is a replica that accepts writes without coordination.
-- An operation described by position is wrong on a replica where earlier concurrent changes have moved the text, and the replicas diverge.
-- Operational transformation adjusts each operation for the concurrent ones its author had not seen.
-- A central server fixes a single order of operations, which reduces transformation to a manageable problem.
-- A CRDT gives every character an unchanging identifier, so that operations can be applied in any order and no server is needed.
-- Deleted characters are kept as tombstones, since concurrent operations may refer to them.
-- Convergence makes all copies equal, and does not make the result what anybody intended.
-- The document is a log of operations with periodic snapshots, served for each document by a single process.
-
-</div>
+- C. A. Ellis and S. J. Gibbs, "Concurrency Control in Groupware Systems", *ACM SIGMOD*, 1989.
+- D. A. Nichols, P. Curtis, M. Dixon, and J. Lamping, "High-Latency, Low-Bandwidth Windowing in the Jupiter Collaboration System", *ACM UIST*, 1995.
+- M. Shapiro, N. Preguica, C. Baquero, and M. Zawirski, "Conflict-Free Replicated Data Types", *SSS*, 2011.
+- H.-G. Roh, M. Jeon, J.-S. Kim, and J. Lee, "Replicated Abstract Data Types: Building Blocks for Collaborative Applications (RGA)", *JPDC*, 2011.
+- P. Nicolaescu, K. Jahns, M. Derntl, and R. Klamma, "Near Real-Time Peer-to-Peer Shared Editing on Extensible Data Types (YATA / Yjs)", *ACM GROUP*, 2016.
+- M. Kleppmann, V. B. F. Gomes, D. P. Mulligan, and A. R. Beresford, "Interleaving Anomalies in Collaborative Text Editors", *ACM PaPoC*, 2019.
+- M. Weidner and M. Kleppmann, "The Art of the Fugue: Minimizing Interleaving in Collaborative Text Editing", *arXiv:2305.00583*, 2023.
+- E. Wallace, "How Figma's Multiplayer Technology Works", Figma Engineering Blog, 2019.

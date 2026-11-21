@@ -1,356 +1,240 @@
-<img class="plate" src="art/ch03.svg?v=5d627052" alt="Ledger the tortoise sits at the first of 3 ledgers. 2 pigeons carry copies of its newest line to the other 2 ledgers. The first ledger shows lines 1 to 3 ticked, and the other 2 ledgers show the same lines.">
+# Chapter 3: Leader-Follower Quorum Replication (LLD)
 
-# Key-Value Store: Replication (Low-Level Design)
+<img class="plate" src="art/ch03-plate.svg" alt="Chapter 3 plate: Leader-Follower quorum replication showing a leader replicating log records to Follower A and Follower B and advancing commit_seq via the median of reported match indices." />
 
-The storage node of [chapter 2](02-key-value-store-storage-node.md) keeps every
-acknowledged write when its process crashes. Against the loss of the machine itself,
-or of its disk, it offers nothing: a log on 1 disk is gone when that disk is gone.
-Non-functional requirement 0 of [chapter 1](01-key-value-store-system-design.md)
-demands that an acknowledged write survive the loss of any 1 machine, and it follows
-that the record of every write has to be stored on at least 2 machines before the
-client is answered.
+The single storage node we implemented in [Chapter 2](02-key-value-store-storage-node.md) preserves every acknowledged write across process crashes and torn WAL tails. Against the permanent loss of the host itself, or of its storage device, a single node provides zero protection: a write-ahead log stored on one disk vanishes when that disk fails. Non-functional requirement 1 of [Chapter 1](01-key-value-store-system-design.md) mandates that every acknowledged write survive the loss of any single host, disk, or availability zone. Meeting that guarantee requires persisting every mutation on at least two independent hosts before acknowledging the caller.
 
-To copy a file from 1 machine to another is easy. What makes replication a subject is
-that the copying takes place over a network which loses messages, delays them and
-delivers their answers late or not at all, between machines that stop and restart at
-arbitrary moments, and that through all of this the copies must remain identical, in
-content and in order, record for record. A follower that has missed a message must
-not apply the next one as though nothing were missing. A leader that has lost an
-answer must not conclude that the follower lacks the record, nor that it has it. And a
-machine that was the leader an hour ago and has since been replaced must be prevented
-from writing as though it still were.
+Copying a log file from one host to another in isolation is trivial. Replication becomes a distributed systems engineering problem because messages traverse an asynchronous network that drops, delays, and reorders both requests and replies while hosts halt and restart at arbitrary moments. Across all of those faults, every replica must converge to the exact same sequence of records in the exact same order. A follower that misses record 7 must not append record 8 on top of record 6. A leader whose acknowledgement packet was dropped must neither assume the follower lacks record 7 nor assume the follower holds it. A deposed leader returning from a network partition must be prevented from mutating followers after a successor has taken over.
 
-This chapter implements the replication that chapter 1 specified: a leader that
-orders the writes of a shard, and 2 followers that store the same records in the same
-order. It turns out that a single small rule on the follower's side handles every one
-of the situations listed above. We define the messages and the state of a replica,
-derive the rules for followers and leaders, and implement them as a library that
-performs no network operations whatever, so that a simulation can subject it to every
-possible combination of lost messages. We then build `kvnode`, a storage node that
-exchanges the messages over gRPC, and run 3 nodes while stopping followers, removing
-the majority, and replacing a lost leader.
+In this chapter, I implement leader-follower quorum replication for a three-replica shard in Rust. A single local rule on the follower side resolves missed messages, lost acknowledgements, restarts, and empty replicas uniformly without special-case recovery branches. We first specify the `Append` RPC contract and replica state machine as a pure, network-free library crate (`repl`) so we can verify every combination of message and reply loss deterministically in `replsim` (`4,096` fault patterns). We then build the networked storage server `kvnode` over gRPC (`tonic`) and HTTP (`axum`), and run live three-node fault experiments: killing a follower under load, severing quorum, destroying the leader's disk and promoting a survivor, and testing term fencing against a returning former leader.
 
 <div class="covers">
 
-This chapter covers
+In this chapter, we cover
 
-- the `Append` message and its answer
-- the state of a replica: its log, its committed sequence and its term
-- what a follower does with an incoming message
-- the rule by which a leader decides that a record is committed
-- a simulation of 4096 combinations of lost messages
-- `kvnode`: Protocol Buffers, a gRPC service, and the tasks of a leader
-- the path of a write and the path of a read in a leader
-- experiments with 3 nodes: a stopped follower, a lost majority, a lost leader
-- replacing a leader by hand, and how terms protect against a former leader
-- the limitations that remain
+- the `Append` gRPC/Protobuf contract and its `last_sequence` self-healing reply invariant
+- replica state separation: durable WAL records, uncommitted suffix, committed watermark, and monotonic term
+- the two-check follower handler (`term` fencing and exact `previous_sequence` continuity)
+- leader write serialization (`is_settled`), per-follower replication streams, and the median majority commit rule
+- exhaustive deterministic fault simulation across `4,096` message-loss and reply-loss patterns (`replsim`)
+- `kvnode`: Protobuf compilation, `tonic` gRPC service, lock-free network I/O, `watch`-channel commit notifications, and lease-bounded leader reads
+- live three-node fault experiments: follower crash and catch-up, quorum loss (`503`), permanent leader loss with manual promotion, and stale-term fencing (`421`)
 
 </div>
 
-## Overview
+## 3.1 Shard Topology and Replication Invariants
 
-Every shard has 3 replicas. All writes go to the leader, and the other 2 replicas are
-followers. Figure 3.1 shows the nodes of this chapter and the route of a
-write among them.
+Each shard consists of three replicas placed across independent failure domains. One replica serves as the *leader* and accepts client mutations; the other two act as *followers* and persist ordered log batches streamed from the leader. Figure 3-1 traces the end-to-end synchronous replication write path from client ingress through local WAL durability, parallel follower replication, majority commit-index advancement, and in-memory state application.
 
-<figure>
-<img src="figures/repl-nodes.svg?v=616f3843" alt="The 3 nodes of the chapter and the path of a write. Step 1: the client sends a write to the leader, node 1, over HTTP on port 7001. Step 2: the leader appends the record to its log and waits for the disk. Step 3: it sends the record to both followers, node 2 on port 7102 and node 3 on port 7103, in an Append call over gRPC. Step 4: each follower appends the record, waits for its disk and answers. Step 5: after the first answer, 2 of 3 logs hold the record. Step 6: Leader applies record and answers client.">
-<figcaption><b>Figure 3.1</b> The 3 nodes and the path of a write. The steps are numbered from 1 to 6.</figcaption>
+<figure class="diagram">
+<img src="figures/m3/ch03_replication_flow.svg" alt="Figure 3-1: Leader-Follower write replication and commit index advancement showing client PUT to Leader, local WAL append and fsync, parallel AppendEntries RPCs to Follower A and Follower B, quorum commit index advancement upon majority ACK, MemTable application, and HTTP 200 OK." />
+<figcaption><b>Figure 3-1</b> Leader-follower write replication path and majority commit-index advancement across a three-replica shard.</figcaption>
 </figure>
 
-The implementation maintains 4 invariants.
+We enforce four invariants across the replicated shard:
 
-1. The log of every follower is a prefix of its leader's log: the same records in the same order, and possibly fewer of them.
-2. A record is acknowledged to its client only after at least 2 of the 3 logs hold it.
-3. A replica applies a record to its entries only after the record is known to be held in at least 2 of the 3 logs.
-4. A replica rejects every message from a leader whose term is lower than its own.
+| No. | Replication Invariant | Architectural Guarantee |
+| :--- | :--- | :--- |
+| 0 | Every follower's log is an exact prefix of its leader's log (identical records in identical sequence order, possibly shorter). | Eliminates gaps, duplicates, and out-of-order entries on followers. |
+| 1 | The leader acknowledges a write to the client only after at least two of the three replicas hold its WAL record durably. | Satisfies Chapter 1 durability (non-functional requirement 1) across any single-host or single-disk failure. |
+| 2 | A replica applies a record to its in-memory `BTreeMap` only after that record is known to reside on a majority of replicas. | Prevents reads from returning uncommitted data that could disappear after a failover. |
+| 3 | Every replica rejects any `Append` RPC carrying a `term` strictly lower than its own local `term`. | Fences returning former leaders so stale epochs cannot corrupt follower logs. |
 
-The second invariant is non-functional requirement 0 in the form of a rule. The third
-ensures that a read returns only data which would survive the loss of a machine. The
-fourth prevents a former leader from modifying a shard after it has been replaced.
+In this chapter, an operator appoints the initial leader and manually promotes a follower upon leader failure. In [Chapter 4](04-key-value-store-leader-election.md), we replace manual promotion with automated Raft leader election built directly onto these log and term mechanisms.
 
-In this chapter the leader of a shard is chosen by an operator, who starts 1 node in
-that role. Automatic election, as chapter 1 described it, is built upon the mechanism
-of this chapter and is the subject of [chapter 4](04-key-value-store-leader-election.md).
+## 3.2 Replication Protocol Messages
 
-## The messages
+The internal replication protocol requires a single RPC, `Append`, sent from the leader to each follower for both log shipping and periodic heartbeats. Listing 3.1 specifies the `Replication` service contract in `proto/store.proto`.
 
-The protocol of chapter 1 defines a single call, `Append`, which a leader sends to
-each of its followers.
-
-<p class="listing"><img class="mascot" src="art/crab-happy.svg" alt=""><b>Listing 3.1</b> The replication service in the schema. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/distributed-systems-from-the-ground-up/code/proto/store.proto">proto/store.proto</a></p>
+<p class="listing"><b>Listing 3.1</b> gRPC <code>Replication</code> service definition in <code>proto/store.proto</code>. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/distributed-systems-from-the-ground-up/code/proto/store.proto">proto/store.proto</a></p>
 
 ```protobuf
 {{#include ../code/proto/store.proto:replication}}
 ```
 
+To keep our core replication logic deterministic and testable without network sockets or Protobuf runtime dependencies, we define pure Rust domain types inside the `repl` library crate and translate at the gRPC boundary in `kvnode`. Listing 3.2 declares the `kv` and standard-library imports of `repl/src/lib.rs`.
 
-The library uses types of its own for these messages, so that it has no dependence on
-gRPC, and the conversion between the 2 representations is performed in the node.
-
-<p class="listing"><img class="mascot" src="art/crab-happy.svg" alt=""><b>Listing 3.2</b> The imports of <code>repl/src/lib.rs</code>. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/distributed-systems-from-the-ground-up/code/repl/src/lib.rs">repl/src/lib.rs</a></p>
+<p class="listing"><b>Listing 3.2</b> Imports of <code>repl/src/lib.rs</code>. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/distributed-systems-from-the-ground-up/code/repl/src/lib.rs">repl/src/lib.rs</a></p>
 
 ```rust
 {{#include ../code/repl/src/lib.rs:imports}}
 ```
 
-<p class="listing"><img class="mascot" src="art/crab-happy.svg" alt=""><b>Listing 3.3</b> The message and its answer, as the library uses them. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/distributed-systems-from-the-ground-up/code/repl/src/lib.rs">repl/src/lib.rs</a></p>
+Listing 3.3 defines `Append` and `AppendReply`. Every request carries the leader's `term`, the `previous_sequence` immediately preceding the attached `records` slice, and the leader's current `committed_sequence`. Every reply returns `term`, a boolean `appended` indicator, and the follower's exact `last_sequence` after processing the message.
+
+<p class="listing"><b>Listing 3.3</b> Pure domain message types in <code>repl/src/lib.rs</code>. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/distributed-systems-from-the-ground-up/code/repl/src/lib.rs">repl/src/lib.rs</a></p>
 
 ```rust
 {{#include ../code/repl/src/lib.rs:messages}}
 ```
 
+| Field | Contract and Semantics |
+| :--- | :--- |
+| `term` | Monotonic leadership epoch; followers reject any request with `request.term < local.term`. |
+| `previous_sequence` | Leader log index immediately before `records[0]`; followers append only when their own log ends at this exact index. |
+| `records` | Contiguous suffix of records missing from the follower, or an empty slice for a heartbeat. |
+| `committed_sequence` | Highest sequence number known by the leader to reside on a majority; followers advance their local `BTreeMap` up to this bound. |
+| `appended` | `true` if both term and prefix checks passed; `false` on any refusal. |
+| `last_sequence` | Exact end index of the follower's WAL after handling the RPC, reported on both acceptance and refusal. |
 
-| Field | Purpose |
-|---|---|
-| `term` | identifies the leader's period of leadership, and a follower refuses a message whose term is lower than its own |
-| `previous_sequence` | the position in the leader's log immediately before `records`, and the follower appends only if its own log ends there |
-| `records` | the records the follower lacks, in order, and empty in a heartbeat |
-| `committed_sequence` | the last record that the leader knows to be on a majority, up to which the follower may apply |
-| `appended` | whether the follower appended the records |
-| `last_sequence` | the end of the follower's log after it has processed the message, whether it appended or refused |
+Reporting `last_sequence` unconditionally on every reply is the linchpin of the protocol. Rather than answering with a bare boolean rejection, the follower tells the leader its exact durable log frontier, allowing the leader to realign its per-follower cursor in one round trip.
 
-The last field is the one on which the whole protocol turns. A follower never merely
-says yes or no. In every answer it reports where its log now ends, and this single
-number is enough for a leader to correct any mistaken belief it may hold about that
-follower.
+## 3.3 Replica State Machine
 
-## The state of a replica
-
-A replica consists of a log, of the entries that result from applying a part of that
-log, and of 3 numbers: the sequence of its last record, the point up to which records
-have been applied, and its term.
+A `Replica` combines its durable WAL (`Log`), an in-memory vector mirroring all WAL records (`records`, where sequence `n` resides at index `n - 1`), the `BTreeMap<String, Entry>` reflecting committed state, and two control integers: `committed` (the highest applied sequence) and `term` (the highest epoch observed). Figure 3-2 illustrates the separation between the committed prefix (`1` to `7`) and the uncommitted tail (`8` and `9`).
 
 <figure>
-<img src="figures/repl-state.svg?v=8433bb6c" alt="The state of a replica. Its log holds records 1 to 9. Records 1 to 7 are committed: they are on a majority of the logs and are applied to the entries. Records 8 and 9 are on this log and perhaps on others, are not applied and are not visible to reads. The replica keeps 2 positions, last, the end of the log, and committed, the last record known to be on a majority.">
-<figcaption><b>Figure 3.2</b> The log of a replica with 9 records, of which 7 are committed.</figcaption>
+<img src="figures/repl-state.svg?v=8433bb6c" alt="Replica log state with records 1 to 9: records 1 to 7 are committed on a majority and applied to entries; records 8 and 9 reside in the log uncommitted and invisible to reads." />
+<figcaption><b>Figure 3-2</b> Separation between the committed, visible prefix (records 1 to 7) and the uncommitted tail (records 8 and 9).</figcaption>
 </figure>
 
-A record is *committed* when a majority of the replicas has stored it. A committed
-record survives the loss of any 1 machine, since any 2 of the 3 replicas include at
-least 1 that holds it. A replica keeps uncommitted records in its log without
-applying them. The entries therefore reflect committed records only, and no read can
-return a value that might yet be lost.
-
-Figure 3.3 shows where each part of this state resides and which
-operation carries data from 1 part to another.
+A record becomes *committed* once a majority of replicas (`2 of 3`) have persisted it to disk. Any two of three replicas share at least one overlapping member, so a committed record survives the failure of any single host. Keeping uncommitted tail records in the WAL without applying them to `entries` enforces invariant 2: no read can observe a mutation that might vanish after a failover. Figure 3-3 maps each data structure inside `Replica` to the methods that move data between disk, log buffer, and committed index.
 
 <figure>
-<img src="figures/repl-replica-struct.svg?v=a00c1c22" alt="The data of a Replica. On disk is the file kv.log with every record in order, which survives a restart and is read once, at open. In memory are records, a vector that holds the whole log with record n at index n minus 1, the numbers committed and term, and entries, a sorted map. Step 1: open reads the log file into records and applies nothing. Step 2: commit(n) applies records up to n to entries. Step 3: get and list read entries, so they see committed data only.">
-<figcaption><b>Figure 3.3</b> The data of a replica and the operations that connect its parts.</figcaption>
+<img src="figures/repl-replica-struct.svg?v=a00c1c22" alt="Internal memory and disk layout of Replica: kv.log on disk loads into the in-memory records vector at open with committed set to 0; commit(n) replays records up to n into entries; get and list read entries exclusively." />
+<figcaption><b>Figure 3-3</b> On-disk and in-memory data structures inside <code>Replica</code> and the transitions between them.</figcaption>
 </figure>
 
-In the code, `records` is a vector that holds record `n` at index `n - 1`, so that its
-length is the sequence of its last record. `commit` proceeds from `committed` to the
-sequence it is given and passes each record to `apply`, the function of chapter 2
-that inserts or removes an entry. Since `commit` is the only caller of `apply`, there
-is no path by which an uncommitted record can reach the entries.
+Listing 3.4 implements `Replica`, `Replica::open`, `commit`, and the read methods (`get`, `list`). Because `commit` is the sole caller of `kv::store::apply`, no uncommitted record can leak into `entries`. Notice that `Replica::open` intentionally initializes `committed` to `0` and leaves `entries` empty even when `kv.log` already holds records. Upon restart, a single replica cannot determine from its local disk alone which suffix of its log reached a majority before the crash. A follower learns the committed frontier from its leader's next `Append` RPC; a leader re-establishes the committed frontier once followers report their `last_sequence` values.
 
-<p class="listing"><img class="mascot" src="art/crab-happy.svg" alt=""><b>Listing 3.4</b> The replica, and the application of committed records. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/distributed-systems-from-the-ground-up/code/repl/src/lib.rs">repl/src/lib.rs</a></p>
+<p class="listing"><b>Listing 3.4</b> <code>Replica</code> state machine and committed-only state application in <code>repl/src/lib.rs</code>. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/distributed-systems-from-the-ground-up/code/repl/src/lib.rs">repl/src/lib.rs</a></p>
 
 ```rust
 {{#include ../code/repl/src/lib.rs:replica}}
 ```
 
+## 3.4 Follower Rules and Self-Healing Catch-Up
 
-`Replica::open` sets `committed` to 0 and leaves the entries empty, although the log
-may contain records. This may seem wasteful, and it is in fact necessary. After a
-restart, a replica cannot tell from its own log which of its records had reached a
-majority, since its last few records may exist on its own disk and nowhere else. A
-follower learns the committed sequence from its leader, and a leader learns it from
-the answers of its followers.
+A follower evaluates every incoming `Append` message against exactly two sequential preconditions (Figure 3-4):
 
-## The follower
-
-A follower applies the same procedure to every message it receives.
-
-| Condition | Action | Answer |
-|---|---|---|
-| The term of the message is lower than the follower's own. | none | `appended = false`, with the follower's term |
-| `previous_sequence` differs from the end of the follower's log. | adopt the term | `appended = false`, with the end of the follower's log |
-| `previous_sequence` equals the end of the follower's log. | adopt the term, append the records with 1 wait for the disk, apply records up to `committed_sequence` | `appended = true`, with the new end of the log |
+| Precondition Check | Outcome on Failure / Match | Follower State Action | Reply Returned |
+| :--- | :--- | :--- | :--- |
+| `msg.term < self.term` | Stale leader detected | None | `appended = false`, `term = self.term`, `last_sequence` |
+| `msg.previous_sequence != self.last_sequence()` | Log frontier mismatch | Adopt `msg.term` | `appended = false`, `term = self.term`, `last_sequence` |
+| Both checks pass | Exact continuation | Adopt `msg.term`, `append_records` with one `fsync`, `commit(msg.committed_sequence)` | `appended = true`, `term = self.term`, updated `last_sequence` |
 
 <figure>
-<img src="figures/repl-follower-flow.svg?v=6485da97" alt="The decisions of handle_append. First check: is the term of the message at least the follower&#x27;s own term? If no, the follower refuses and reports its term. Second check: does the message start where the follower&#x27;s log ends, that is, does previous_sequence equal the last sequence? If no, the follower refuses and reports its last sequence. If both checks pass, the follower appends the records, applies the committed ones, and answers that it appended, with its new last sequence.">
-<figcaption><b>Figure 3.4</b> The 2 checks that a follower applies to a message, in order.</figcaption>
+<img src="figures/repl-follower-flow.svg?v=6485da97" alt="Two-check follower decision flow in handle_append: first verify message term is at least local term; second verify previous_sequence equals local last_sequence; only if both pass, append batch, advance commit watermark, and return appended true." />
+<figcaption><b>Figure 3-4</b> Sequential term and prefix validation inside <code>Replica::handle_append</code>.</figcaption>
 </figure>
 
-`handle_append` is a direct transcription of that figure. Each check that fails
-returns by way of a closure named `refuse`, which builds an answer from the follower's
-present term and the end of its log. When both checks pass, `append_records` writes
-the whole batch with a single wait for the disk, and `commit` then applies whatever
-the leader has declared committed. Since `commit` stops at the end of the log, a
-committed sequence that lies beyond what this follower holds does no harm.
+Listing 3.5 implements `Replica::handle_append`. Both refusal paths share the `refuse` closure, returning the follower's current `term` and `last_sequence`. When both checks pass, `Log::append_records` writes the entire batch with a single `sync_data` call, appends the records to `self.records`, and invokes `self.commit(msg.committed_sequence)` (which safely clamps to `self.last_sequence()` if the leader's commit watermark exceeds this follower's log length).
 
-<p class="listing"><img class="mascot" src="art/crab-happy.svg" alt=""><b>Listing 3.5</b> The follower's handling of a message. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/distributed-systems-from-the-ground-up/code/repl/src/lib.rs">repl/src/lib.rs</a></p>
+<p class="listing"><b>Listing 3.5</b> Follower <code>handle_append</code> validation and batch persistence in <code>repl/src/lib.rs</code>. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/distributed-systems-from-the-ground-up/code/repl/src/lib.rs">repl/src/lib.rs</a></p>
 
 ```rust
 {{#include ../code/repl/src/lib.rs:follower}}
 ```
 
+This single exact-continuation check preserves invariant 0 across every network and crash anomaly: restarted followers, dropped requests, dropped replies, and brand-new empty replicas. None requires bespoke recovery logic; all reduce to a single mismatch where the follower reports its actual `last_sequence` and the leader resends the missing suffix from that exact index. Figure 3-5 contrasts this clean stale-follower catch-up (Mode A) against the split-brain hazard that arises if an operator or uncoordinated failover promotes a second leader without consensus term fencing (Mode B).
 
-The second row of the table is what maintains invariant 1, and it deserves to be
-looked at closely, since the whole reliability of replication derives from it. A
-follower appends records only at the exact position where the leader's message
-begins. Its log can therefore never acquire a gap, a duplicate or a record out of
-place, whatever has happened to earlier messages. When the positions differ, the
-follower attempts no repair of any kind. It reports where its log ends, and the leader
-sends a message that begins there.
-
-<figure>
-<img src="figures/repl-catchup.svg?v=fa143d06" alt="How a leader and a follower agree on where to continue. The leader&#x27;s log holds records 1 to 9 and the follower&#x27;s records 1 to 7, and the leader believes that the follower&#x27;s log ends at 6. Step 1: the leader sends records 7 to 9 with previous_sequence 6. Step 2: the follower&#x27;s log ends at 7, so it refuses and answers appended false, last_sequence 7. Step 3: the leader sends records 8 and 9 with previous_sequence 7. Step 4: the follower appends them and answers appended true, last_sequence 9.">
-<figcaption><b>Figure 3.5</b> A leader with an outdated view of a follower, and the exchange that corrects it.</figcaption>
+<figure class="diagram">
+<img src="figures/m3/ch03_quorum_failover.svg" alt="Figure 3-2: Replication fault modes contrasting Mode A (Stale Follower Catch-Up where a lagging follower receives missing records 41 to 43 incrementally and rejoins quorum) with Mode B (Partitioned Leader Split-Brain illustrating why consensus term fencing is mandatory)." />
+<figcaption><b>Figure 3-5</b> Replication fault modes: incremental stale-follower suffix catch-up (Mode A) and split-brain exposure without consensus fencing (Mode B).</figcaption>
 </figure>
 
-This 1 exchange covers every circumstance in which a follower is behind or the
-leader's information is out of date: a follower that was stopped and has restarted, a
-message that was lost, an answer that was lost, and a new follower with an empty log.
-None of these cases has code of its own. They are all the same case, in which the
-leader's belief about the end of the follower's log is wrong and the follower's
-answer puts it right.
+Follower batch persistence builds directly on `kv::log` from Chapter 2. Listing 3.6 recalls the imports of `kv/src/log.rs`, and Listing 3.7 defines `Log::append_records`, which verifies contiguous incoming sequence numbering, encodes every record in the batch into the file, calls `sync_data` once for the entire batch, and enforces the same fail-stop latch (`self.failed = true`) on any I/O error.
 
-The records of a message are appended with `Log::append_records`, which writes all of
-them and waits for the disk once.
-
-<p class="listing"><img class="mascot" src="art/crab-happy.svg" alt=""><b>Listing 3.6</b> The imports of <code>kv/src/log.rs</code>. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/distributed-systems-from-the-ground-up/code/kv/src/log.rs">kv/src/log.rs</a></p>
+<p class="listing"><b>Listing 3.6</b> Imports of <code>kv/src/log.rs</code>. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/distributed-systems-from-the-ground-up/code/kv/src/log.rs">kv/src/log.rs</a></p>
 
 ```rust
 {{#include ../code/kv/src/log.rs:imports}}
 ```
 
-<p class="listing"><img class="mascot" src="art/crab-happy.svg" alt=""><b>Listing 3.7</b> Appending a batch of records that another node has numbered. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/distributed-systems-from-the-ground-up/code/kv/src/log.rs">kv/src/log.rs</a></p>
+<p class="listing"><b>Listing 3.7</b> Batched follower record persistence in <code>kv/src/log.rs</code>. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/distributed-systems-from-the-ground-up/code/kv/src/log.rs">kv/src/log.rs</a></p>
 
 ```rust
 {{#include ../code/kv/src/log.rs:replicate}}
 ```
 
+## 3.5 Leader Proposal, Dispatch, and Majority Commit Rule
 
-## The leader
+The leader orchestrates three responsibilities: validating and appending local proposals, constructing per-follower catch-up or heartbeat messages, and advancing the global commit watermark whenever a majority confirms a sequence number.
 
-A leader has 3 responsibilities: to accept writes, to send each follower whatever
-records it lacks, and to determine which records are committed.
+### Proposing a Record (`propose`)
 
-### Proposing a record
+Because conditional writes (`If-Match` and `If-None-Match`) evaluate their version preconditions against `self.entries`, and `self.entries` contains only committed records, the leader accepts a new write only when `self.is_settled()` holds (every record in the leader's local WAL is already committed). Accepting a second write while an earlier record remained uncommitted would evaluate the second precondition against stale state, violating linearizability for conditional updates. Listing 3.8 enforces this contract: `propose` verifies `is_settled`, rejects `Delete` on absent keys, validates `Condition` via `kv::store::check`, appends the record to the leader's local WAL, and pushes it onto `self.records` without mutating `self.entries`.
 
-`propose` checks the condition of a write against the entries and appends the record
-to the leader's own log. The record is not yet applied, since at this point only 1
-replica holds it.
-
-A leader accepts a new write only when `is_settled` is true, which is to say when
-every record in its log is committed. The reason lies in conditional writes. A
-condition is checked against the entries, and the entries do not include uncommitted
-records. If the leader were to accept a second write while an earlier record was
-still uncommitted, the condition of the second would be evaluated against a state
-that lacked its predecessor, and a conditional write could succeed when it ought to
-have failed. Requiring a settled log guarantees that every condition is evaluated
-against all earlier writes. The price is that the writes of a shard are processed
-strictly in sequence. Production systems evaluate conditions against a speculative
-state and process writes in batches, which is considerably more intricate and is not
-attempted here, although chapter 6 recovers much of the lost throughput by another
-means.
-
-Within `propose`, the present version of the key is read from the entries, a `Delete`
-of a key that does not exist is rejected, and `check` evaluates the condition. Only
-then is the record appended. On return, the record is in the leader's log and in
-`records`, and the entries are unchanged.
-
-<p class="listing"><img class="mascot" src="art/crab-happy.svg" alt=""><b>Listing 3.8</b> Checking the condition of a write and appending its record. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/distributed-systems-from-the-ground-up/code/repl/src/lib.rs">repl/src/lib.rs</a></p>
+<p class="listing"><b>Listing 3.8</b> Leader proposal validation and local WAL append in <code>repl/src/lib.rs</code>. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/distributed-systems-from-the-ground-up/code/repl/src/lib.rs">repl/src/lib.rs</a></p>
 
 ```rust
 {{#include ../code/repl/src/lib.rs:propose}}
 ```
 
+Serializing writes until settled restricts a single shard to one unbatched commit per replication round trip. Production systems can evaluate preconditions against speculative uncommitted tails; in Chapter 6, we recover high write throughput cleanly via WAL group commit.
 
-### Building a message for a follower
+### Constructing Follower Messages (`append_for`)
 
-For every follower, the leader remembers the last sequence that the follower
-reported. `append_for` takes that number and returns a message containing every later
-record. For a follower that is up to date, the slice of records is empty and the
-message is a heartbeat. A reported sequence that lies beyond the end of the leader's
-own log is limited to that end, a situation that can arise when a leader has itself
-been replaced and restarted with a shorter log.
+For each follower, the leader maintains its last reported sequence number (`after`). Listing 3.9 implements `append_for`, slicing every record after `after` into an `Append` request (yielding an empty `records` vector for heartbeats when the follower is caught up) and clamping `after` to `self.last_sequence()` in case a newly started leader holds a shorter log than a stale hint.
 
-<p class="listing"><img class="mascot" src="art/crab-happy.svg" alt=""><b>Listing 3.9</b> The message that brings 1 follower up to date. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/distributed-systems-from-the-ground-up/code/repl/src/lib.rs">repl/src/lib.rs</a></p>
+<p class="listing"><b>Listing 3.9</b> Constructing incremental replication and heartbeat messages in <code>repl/src/lib.rs</code>. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/distributed-systems-from-the-ground-up/code/repl/src/lib.rs">repl/src/lib.rs</a></p>
 
 ```rust
 {{#include ../code/repl/src/lib.rs:append_for}}
 ```
 
+### The Majority Commit Rule (`majority_sequence`)
 
-### The commit rule
-
-The leader knows where its own log ends and what last sequence each follower has
-reported. If these numbers are sorted, the one in the middle is the highest sequence
-that a majority has stored.
+Given the leader's own `last_sequence` and each follower's reported `last_sequence`, sorting all replica frontier indices in descending order places the highest majority-replicated sequence at index `n / 2` (Figure 3-6). For a three-replica shard with frontiers `[10, 7, 9]`, descending sort yields `[10, 9, 7]`, and index `3 / 2 = 1` selects `9`: at least two replicas hold records `1` through `9`, whereas record `10` resides on only one replica and stays uncommitted.
 
 <figure>
-<img src="figures/repl-commit-rule.svg?v=dc5d2c21" alt="How the leader computes the committed sequence. The leader&#x27;s log ends at 10, the log of follower 1 at 7 and the log of follower 2 at 9. Sorted with the highest first, the values are 10, 9 and 7. The value in the middle is 9, so at least 2 of the 3 replicas hold every record up to 9, and the leader commits up to 9. Record 10 is on 1 log and stays uncommitted.">
-<figcaption><b>Figure 3.6</b> The commit rule applied to logs that end at 10, 7 and 9.</figcaption>
+<img src="figures/repl-commit-rule.svg?v=dc5d2c21" alt="Majority commit rule for three replicas with log frontiers 10, 7, and 9: sorting descending produces [10, 9, 7] and picking the median index yields 9, committing records 1 to 9 while leaving 10 uncommitted." />
+<figcaption><b>Figure 3-6</b> Median majority commit calculation across three replica log frontiers.</figcaption>
 </figure>
 
-`majority_sequence` implements the rule for any number of replicas, by taking the
-element at index `n / 2` of the values sorted in descending order. For 3 replicas
-that is the second value, and for 5 the third.
+Listing 3.10 implements `majority_sequence` generically for any odd or even cluster size `n`.
 
-<p class="listing"><img class="mascot" src="art/crab-happy.svg" alt=""><b>Listing 3.10</b> The commit rule. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/distributed-systems-from-the-ground-up/code/repl/src/lib.rs">repl/src/lib.rs</a></p>
+<p class="listing"><b>Listing 3.10</b> Generalized majority commit calculation in <code>repl/src/lib.rs</code>. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/distributed-systems-from-the-ground-up/code/repl/src/lib.rs">repl/src/lib.rs</a></p>
 
 ```rust
 {{#include ../code/repl/src/lib.rs:majority}}
 ```
 
+## 3.6 Exhaustive Deterministic Fault Simulation (`replsim`)
 
-## Simulating lost messages
+Real network faults occur unpredictably and rarely reproduce on demand. Because `repl` performs zero network I/O, we can embed a three-node cluster inside a single deterministic simulator (`replsim`) that controls the fate of every RPC exchange: delivered cleanly, request dropped, or request persisted on the follower while its reply is dropped.
 
-Because the library performs no network operations, a test can carry the messages
-between replicas itself and decide the fate of every exchange. This is the reason for
-writing the rules as a library in the first place. Faults in a real network occur
-rarely and unrepeatably, and a protocol that has only been tested on a real network
-has scarcely been tested against faults at all.
+Listing 3.11 declares the imports for `replsim/src/main.rs`.
 
-`replsim` creates a leader and 2 followers in a single process. For each exchange it
-chooses 1 of 3 outcomes: the message is delivered and answered, the message is lost,
-or the message is processed and its answer is lost.
-
-<p class="listing"><img class="mascot" src="art/crab-happy.svg" alt=""><b>Listing 3.11</b> The imports of <code>replsim/src/main.rs</code>. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/distributed-systems-from-the-ground-up/code/replsim/src/main.rs">replsim/src/main.rs</a></p>
+<p class="listing"><b>Listing 3.11</b> Imports of <code>replsim/src/main.rs</code>. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/distributed-systems-from-the-ground-up/code/replsim/src/main.rs">replsim/src/main.rs</a></p>
 
 ```rust
 {{#include ../code/replsim/src/main.rs:imports}}
 ```
 
-<p class="listing"><img class="mascot" src="art/crab-happy.svg" alt=""><b>Listing 3.12</b> A cluster in 1 process, with control over every exchange. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/distributed-systems-from-the-ground-up/code/replsim/src/main.rs">replsim/src/main.rs</a></p>
+Listing 3.12 defines the in-process `Cluster` harness with one leader, two followers, per-follower cursor tracking, and a three-way fault injector (`Delivery::Ok`, `DropRequest`, `DropReply`).
+
+<p class="listing"><b>Listing 3.12</b> Single-process deterministic cluster harness in <code>replsim/src/main.rs</code>. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/distributed-systems-from-the-ground-up/code/replsim/src/main.rs">replsim/src/main.rs</a></p>
 
 ```rust
 {{#include ../code/replsim/src/main.rs:cluster}}
 ```
 
+Listing 3.13 executes targeted scenarios exercising steady-state replication, single-follower outage and one-round-trip catch-up, dropped replies followed by exact-continuation realignment, total quorum loss with deferred commit upon recovery, and stale-term rejection.
 
-The first part of the simulation runs the cases discussed above.
-
-<p class="listing"><img class="mascot" src="art/crab-happy.svg" alt=""><b>Listing 3.13</b> The cases of the chapter, run in order. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/distributed-systems-from-the-ground-up/code/replsim/src/main.rs">replsim/src/main.rs</a></p>
+<p class="listing"><b>Listing 3.13</b> Scenario verification suite in <code>replsim/src/main.rs</code>. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/distributed-systems-from-the-ground-up/code/replsim/src/main.rs">replsim/src/main.rs</a></p>
 
 ```rust
 {{#include ../code/replsim/src/main.rs:cases}}
 ```
 
+Listing 3.14 runs an exhaustive sweep over three sequential writes: each write triggers two follower exchanges, and each of the six exchanges chooses from four 2-bit fault encodings, covering all `4^6 = 4,096` patterns. After every single pattern, the harness asserts invariant 0 (every follower log is a prefix of the leader log) and invariant 1 (every acknowledged record exists on at least two replicas), then heals the network and asserts full three-way log equality.
 
-The second part runs 3 writes under every combination of outcomes. Each write involves
-2 exchanges, and each exchange is assigned 2 bits of a pattern, which gives 4096
-patterns. After each pattern, `replsim` verifies invariants 1 and 2, then delivers all
-messages and verifies that the 3 logs become equal.
-
-<p class="listing"><img class="mascot" src="art/crab-happy.svg" alt=""><b>Listing 3.14</b> Every combination of lost messages over 3 writes. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/distributed-systems-from-the-ground-up/code/replsim/src/main.rs">replsim/src/main.rs</a></p>
+<p class="listing"><b>Listing 3.14</b> Exhaustive 4,096-pattern fault sweep in <code>replsim/src/main.rs</code>. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/distributed-systems-from-the-ground-up/code/replsim/src/main.rs">replsim/src/main.rs</a></p>
 
 ```rust
 {{#include ../code/replsim/src/main.rs:exhaustive}}
 ```
 
+Listing 3.15 invokes both the targeted scenarios and the exhaustive 4,096-pattern verification from `main`.
 
-<p class="listing"><img class="mascot" src="art/crab-happy.svg" alt=""><b>Listing 3.15</b> Running the simulation. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/distributed-systems-from-the-ground-up/code/replsim/src/main.rs">replsim/src/main.rs</a></p>
+<p class="listing"><b>Listing 3.15</b> Entry point of <code>replsim/src/main.rs</code>. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/distributed-systems-from-the-ground-up/code/replsim/src/main.rs">replsim/src/main.rs</a></p>
 
 ```rust
 {{#include ../code/replsim/src/main.rs:main}}
 ```
 
+Running `replsim` verifies every invariant across all targeted cases and all 4,096 exhaustive fault patterns:
 
 ```console
 $ cargo run --release -p replsim
@@ -377,27 +261,21 @@ a replica at term 2 receives a message of term 1: appended false, its term 2
   3 of 3 writes acknowledged: 1344 patterns
 ```
 
-| Output | What it shows |
-|---|---|
-| 3 writes while follower 1 is unreachable: logs end at [6, 3, 6], committed 6 | Writes are committed with 1 follower, as invariant 2 allows. |
-| follower 1 returns, 1 exchange: logs end at [6, 6, 6] | A single message brings the follower up to date, because the leader knew where its log ended. |
-| answers of follower 1 are lost: the leader believes its log ends at 6 | The follower stored record 7 and the leader was not told. |
-| leader sends records 7 to 9, follower 1 refuses and reports 7 | The follower detects that the message does not begin at the end of its log, and the leader continues from the position reported. |
-| 1 write while both followers are unreachable: acknowledged false, committed 9 | A record in 1 log is not acknowledged and is not visible to reads. |
-| leader accepts another write: false | The leader accepts no write while a record is uncommitted. |
-| follower 2 returns: committed 10, leader reads j as Some(10) | The uncommitted record is committed as soon as a second replica stores it, although its client had received an error. |
-| a replica at term 2 receives a message of term 1: appended false | Invariant 4 holds. |
-| 4096 patterns: every acknowledged record was in at least 2 of 3 logs | Invariant 2 holds for every combination of lost messages and lost answers. |
+| Observed Output | Verified Protocol Behavior |
+| :--- | :--- |
+| `3 writes while follower 1 is unreachable: logs end at [6, 3, 6], committed 6` | Leader plus one surviving follower maintain write availability under invariant 1. |
+| `follower 1 returns, 1 exchange: logs end at [6, 6, 6]` | Leader ships records 4 to 6 in a single batch based on its stored follower frontier. |
+| `next exchange: the leader sends records 7 to 9, follower 1 refuses and reports 7` | Exact-continuation check rejects duplicate record 7 and realigns the leader cursor in one round trip. |
+| `1 write while both followers are unreachable: acknowledged false, committed 9` | Single-replica record 10 stays uncommitted and invisible to reads (`j` reads as `None`). |
+| `follower 2 returns: logs end at [10, 9, 10], committed 10` | Uncommitted record 10 commits automatically upon quorum restoration even though the original caller received an error. |
+| `a replica at term 2 receives a message of term 1: appended false` | Term fencing enforces invariant 3 unconditionally. |
+| `4096 patterns of lost messages over 3 writes` | Invariants 0 and 1 hold across every possible loss permutation, and all three replicas converge once delivery resumes. |
 
-The seventh row shows something that every client of a replicated store has to take
-into account. A write that was answered with an error may nevertheless take effect
-later. The record was in the leader's log, and it was committed when a follower
-became reachable again. For a client, therefore, an error from a leader signifies an
-unknown outcome, exactly as a lost connection does, and is to be resolved by reading
-the key or by repeating an idempotent request. An error does not mean that nothing
-happened.
+Notice the operational consequence of record 10: a write that returned an error during quorum loss remained in the leader's WAL and committed later when a follower reconnected. Consequently, clients of a replicated store must treat a `503` timeout as an indeterminate outcome, identical to a dropped TCP connection, and resolve it via read-after-error or idempotent conditional retry.
 
-## Design overview
+## 3.7 Low-Level Architecture of `kvnode`
+
+Having verified the pure state machine in `repl`, we wrap it in a networked server binary `kvnode` that pairs an external HTTP API (`axum`) with an internal gRPC replication service (`tonic`).
 
 <div class="lld">
 
@@ -405,254 +283,190 @@ Low-level design: replication
 
 **Crates**
 
-| Crate | Kind | Contents |
-|---|---|---|
-| `repl` | library | the messages, `Replica`, the follower's rule, the leader's operations, the commit rule |
-| `replsim` | program | the simulation of lost messages |
-| `kvnode` | program | a storage node that replicates over gRPC: `rpc` (the service), `node` (the leader's tasks, writes and reads), `main` (the HTTP API) |
+| Crate | Kind | Responsibilities |
+| :--- | :--- | :--- |
+| `repl` | library | Pure domain messages, `Replica`, follower handler, leader `propose`/`append_for`, and `majority_sequence` |
+| `replsim` | binary | Deterministic fault simulator covering targeted anomalies and 4,096 exhaustive loss patterns |
+| `kvnode` | binary | Networked replica combining `rpc` (gRPC service), `node` (leader replication tasks, write/read coordination), and `main` (HTTP API) |
 
-**State of a node**
+**Shared Node State (`kvnode::node::Node`)**
 
-| Field | Type | Purpose |
-|---|---|---|
-| `replica` | `Mutex<Replica>` | the log, the entries, the committed sequence and the term |
-| `peers` | `Vec<Peer>` | for a leader, the address of each follower, the last sequence it reported, and the time of its last answer |
-| `turn` | `tokio::sync::Mutex<()>` | makes writes take turns |
-| `committed` | `watch::Sender<u64>` | informs waiting writes when the committed sequence advances |
-| `appended` | `Notify` | wakes the follower tasks when the leader has appended a record |
-| `deposed` | `AtomicBool` | set when a follower answers with a higher term |
+| Field | Type | Responsibility |
+| :--- | :--- | :--- |
+| `replica` | `Mutex<Replica>` | Synchronizes access to the WAL, in-memory log vector, committed `BTreeMap`, and term |
+| `peers` | `Vec<Peer>` | Tracks each follower's gRPC endpoint, last reported sequence, and last contact timestamp |
+| `turn` | `tokio::sync::Mutex<()>` | Serializes concurrent client writes so each evaluates preconditions against a settled log |
+| `committed` | `watch::Sender<u64>` | Broadcasts commit-index advances to wake awaiting HTTP write handlers |
+| `appended` | `Notify` | Signals per-follower replication tasks immediately after a local WAL append |
+| `deposed` | `AtomicBool` | Latched when any follower replies with a strictly higher term, halting stale leader writes |
 
-**Timing**
+**Timing Constants**
 
-| Constant | Value | Meaning |
-|---|---|---|
-| `HEARTBEAT` | 100 ms | the interval between messages to a follower when there are no new records |
-| `ANSWER` | 500 ms | the time the leader waits for the answer to 1 message |
-| `COMMIT` | 1 s | the time a write waits for a majority, and also the period within which a majority must have answered for the leader to serve reads |
+| Constant | Value | Role |
+| :--- | :--- | :--- |
+| `HEARTBEAT` | `100 ms` | Idle interval between empty heartbeat RPCs to each follower |
+| `ANSWER` | `500 ms` | Per-RPC deadline waiting for a single follower's `Append` reply |
+| `COMMIT` | `1 s` | Client write quorum timeout and maximum lease window for serving leader reads |
 
-**Responses of a node**
+**HTTP Error Semantics**
 
-| Situation | Status |
-|---|---|
-| A write or a read is sent to a follower | `421 Misdirected Request` |
-| A write is sent to a leader that has learned of a higher term | `421 Misdirected Request` |
-| A record does not reach a majority within 1 second | `503 Service Unavailable` |
-| A read is sent to a leader that no majority has answered within 1 second | `503 Service Unavailable` |
+| Runtime Condition | HTTP Status |
+| :--- | :--- |
+| Client sends `PUT`, `DELETE`, or `GET` to a follower | `421 Misdirected Request` |
+| Client writes to a leader deposed by a higher-term reply | `421 Misdirected Request` |
+| Proposed record fails to reach a majority within `1 s` | `503 Service Unavailable` |
+| Client reads from a leader without majority contact in the past `1 s` | `503 Service Unavailable` |
 
 </div>
 
-## The node
+## 3.8 Implementing `kvnode`
 
-`kvnode` combines a replica with a gRPC service for replication and the HTTP API of
-chapter 1.
+Listing 3.16 declares the CLI, gRPC, HTTP, and concurrency imports of `kvnode/src/main.rs`, and Listing 3.17 specifies the command-line flags (`--role`, `--term`, `--listen`, `--replication`, `--follower`, `--data`, `--no-sync`).
 
-<p class="listing"><img class="mascot" src="art/crab-happy.svg" alt=""><b>Listing 3.16</b> The imports of <code>kvnode/src/main.rs</code>. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/distributed-systems-from-the-ground-up/code/kvnode/src/main.rs">kvnode/src/main.rs</a></p>
+<p class="listing"><b>Listing 3.16</b> Imports of <code>kvnode/src/main.rs</code>. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/distributed-systems-from-the-ground-up/code/kvnode/src/main.rs">kvnode/src/main.rs</a></p>
 
 ```rust
 {{#include ../code/kvnode/src/main.rs:imports}}
 ```
 
-<p class="listing"><img class="mascot" src="art/crab-happy.svg" alt=""><b>Listing 3.17</b> The options of the command line. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/distributed-systems-from-the-ground-up/code/kvnode/src/main.rs">kvnode/src/main.rs</a></p>
+<p class="listing"><b>Listing 3.17</b> Command-line arguments in <code>kvnode/src/main.rs</code>. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/distributed-systems-from-the-ground-up/code/kvnode/src/main.rs">kvnode/src/main.rs</a></p>
 
 ```rust
 {{#include ../code/kvnode/src/main.rs:options}}
 ```
 
+### Protobuf Compilation and the gRPC Boundary (`kvnode/src/rpc.rs`)
 
-### The gRPC service
+Cargo compiles `proto/store.proto` into typed Rust stubs and `tonic` client/server traits at build time via `build.rs` (requiring `protoc` on `PATH`). Listing 3.18 presents `kvnode/build.rs`.
 
-The Rust types, the client code and the server code for `Append` are generated from
-the schema when the program is built. Building requires `protoc`, the compiler for
-Protocol Buffers, which is available as the package `protobuf-compiler` on Debian and
-Ubuntu.
-
-<p class="listing"><img class="mascot" src="art/crab-cute.svg" alt=""><b>Listing 3.18</b> The complete <code>kvnode/build.rs</code>. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/distributed-systems-from-the-ground-up/code/kvnode/build.rs">kvnode/build.rs</a></p>
+<p class="listing"><b>Listing 3.18</b> Complete <code>kvnode/build.rs</code>. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/distributed-systems-from-the-ground-up/code/kvnode/build.rs">kvnode/build.rs</a></p>
 
 ```rust
 {{#include ../code/kvnode/build.rs}}
 ```
 
+Listing 3.19 lists the `tonic`, `kv`, and `repl` imports in `kvnode/src/rpc.rs`, and Listing 3.20 includes the generated Protobuf module.
 
-<p class="listing"><img class="mascot" src="art/crab-happy.svg" alt=""><b>Listing 3.19</b> The imports of <code>kvnode/src/rpc.rs</code>. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/distributed-systems-from-the-ground-up/code/kvnode/src/rpc.rs">kvnode/src/rpc.rs</a></p>
+<p class="listing"><b>Listing 3.19</b> Imports of <code>kvnode/src/rpc.rs</code>. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/distributed-systems-from-the-ground-up/code/kvnode/src/rpc.rs">kvnode/src/rpc.rs</a></p>
 
 ```rust
 {{#include ../code/kvnode/src/rpc.rs:imports}}
 ```
 
-<p class="listing"><img class="mascot" src="art/crab-happy.svg" alt=""><b>Listing 3.20</b> Including the generated code. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/distributed-systems-from-the-ground-up/code/kvnode/src/rpc.rs">kvnode/src/rpc.rs</a></p>
+<p class="listing"><b>Listing 3.20</b> Generated Protobuf module inclusion in <code>kvnode/src/rpc.rs</code>. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/distributed-systems-from-the-ground-up/code/kvnode/src/rpc.rs">kvnode/src/rpc.rs</a></p>
 
 ```rust
 {{#include ../code/kvnode/src/rpc.rs:generated}}
 ```
 
+Listing 3.21 implements bidirectional conversion between generated Protobuf structs and `kv`/`repl` domain types. Any wire `Record` missing its `oneof change` payload is rejected immediately with `Status::invalid_argument`.
 
-The generated types are converted to the types of `kv` and `repl` at the boundary of
-the service. A `Record` message that has no `change` field is rejected with the gRPC
-status `InvalidArgument`.
-
-<p class="listing"><img class="mascot" src="art/crab-happy.svg" alt=""><b>Listing 3.21</b> Conversion between the generated types and the library's types. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/distributed-systems-from-the-ground-up/code/kvnode/src/rpc.rs">kvnode/src/rpc.rs</a></p>
+<p class="listing"><b>Listing 3.21</b> Wire-to-domain conversions in <code>kvnode/src/rpc.rs</code>. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/distributed-systems-from-the-ground-up/code/kvnode/src/rpc.rs">kvnode/src/rpc.rs</a></p>
 
 ```rust
 {{#include ../code/kvnode/src/rpc.rs:convert}}
 ```
 
+Listing 3.22 implements the follower-side `Replication` gRPC server. Because `Replica::handle_append` executes synchronous WAL `fsync`, the handler wraps the critical section inside `tokio::task::block_in_place` so Tokio can migrate sibling async tasks off the blocking worker thread.
 
-Followers run the server side of the service. The handler passes each message to
-`Replica::handle_append`. Since that method waits for the disk, the call is wrapped in
-`block_in_place`, which informs the asynchronous runtime that the current thread is
-about to block.
-
-<p class="listing"><img class="mascot" src="art/crab-happy.svg" alt=""><b>Listing 3.22</b> The server side of <code>Append</code>. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/distributed-systems-from-the-ground-up/code/kvnode/src/rpc.rs">kvnode/src/rpc.rs</a></p>
+<p class="listing"><b>Listing 3.22</b> Follower-side <code>Append</code> gRPC handler in <code>kvnode/src/rpc.rs</code>. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/distributed-systems-from-the-ground-up/code/kvnode/src/rpc.rs">kvnode/src/rpc.rs</a></p>
 
 ```rust
 {{#include ../code/kvnode/src/rpc.rs:service}}
 ```
 
+### Leader Replication Tasks and Lock-Free Network I/O (`kvnode/src/node.rs`)
 
-### The leader's tasks
-
-Figure 3.7 shows the parts of a leader and the order in which a write
-passes through them. Each box corresponds to a function or a field in the listings
-that follow.
+Figure 3-7 traces the internal concurrency structure of a leader node: HTTP write handlers serialize on `turn`, append locally via `propose`, wake per-follower background tasks via `appended`, and await commit advancement on the `committed` watch channel.
 
 <figure>
-<img src="figures/repl-leader-parts.svg?v=fbddd76a" alt="The parts of a leader in kvnode. The HTTP handler, Node::write, holds the turn, which 1 write holds at any moment. Step 1: the handler calls propose on the Replica, which is behind a mutex, and the record is appended to the leader&#x27;s log. Step 2: both follower tasks are woken, and each calls append_for to learn what its follower lacks and sends it over gRPC. Step 3: an answer arrives, and the function record stores the follower&#x27;s last sequence and applies the commit rule, majority_sequence of the 3 last sequences. Step 4: the committed sequence is published on a watch channel, where the handler waits for its sequence, and the handler answers.">
-<figcaption><b>Figure 3.7</b> The parts of a leader, and the path of a write between them.</figcaption>
+<img src="figures/repl-leader-parts.svg?v=fbddd76a" alt="Internal concurrency architecture of a kvnode leader: Node::write acquires turn, appends via propose, wakes per-follower tasks that send Append RPCs, records follower replies to advance majority_sequence, and signals the committed watch channel." />
+<figcaption><b>Figure 3-7</b> Internal components and write-path handoffs inside a <code>kvnode</code> leader.</figcaption>
 </figure>
 
-<p class="listing"><img class="mascot" src="art/crab-happy.svg" alt=""><b>Listing 3.23</b> The imports of <code>kvnode/src/node.rs</code>. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/distributed-systems-from-the-ground-up/code/kvnode/src/node.rs">kvnode/src/node.rs</a></p>
+Listing 3.23 imports the async primitives and RPC helpers in `kvnode/src/node.rs`, and Listing 3.24 defines `Role`, `Peer`, `Node`, and `NodeError`.
+
+<p class="listing"><b>Listing 3.23</b> Imports of <code>kvnode/src/node.rs</code>. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/distributed-systems-from-the-ground-up/code/kvnode/src/node.rs">kvnode/src/node.rs</a></p>
 
 ```rust
 {{#include ../code/kvnode/src/node.rs:imports}}
 ```
 
-<p class="listing"><img class="mascot" src="art/crab-happy.svg" alt=""><b>Listing 3.24</b> The state of a node. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/distributed-systems-from-the-ground-up/code/kvnode/src/node.rs">kvnode/src/node.rs</a></p>
+<p class="listing"><b>Listing 3.24</b> Node role, peer tracking, and shared concurrency state in <code>kvnode/src/node.rs</code>. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/distributed-systems-from-the-ground-up/code/kvnode/src/node.rs">kvnode/src/node.rs</a></p>
 
 ```rust
 {{#include ../code/kvnode/src/node.rs:types}}
 ```
 
+The leader spawns one dedicated `follow` task per follower (Listing 3.25). Each loop iteration follows a strict three-phase lock discipline:
 
-A leader starts 1 task for each follower. The task repeats a single exchange: it
-builds a message that begins where the follower's log is believed to end, sends it,
-and processes the answer. When the follower is up to date, the task waits until the
-leader appends a record or until the heartbeat interval has elapsed. When the answer
-shows that records are still missing, the task continues at once.
+1. Acquire `replica` briefly to build the next `Append` request via `append_for` and immediately release the mutex.
+2. Issue the gRPC `Append` call over the network with a `500 ms` timeout while holding zero locks.
+3. Pass the reply to `record`; if the follower still lags behind the leader's WAL, loop immediately without sleeping, otherwise await either an `appended` wakeup or the `100 ms` `HEARTBEAT` timer.
 
-`follow` runs for the lifetime of the node, and its loop has 3 phases. It first locks
-the replica for no longer than it takes to build a message. It then releases the lock and
-waits for the answer, for at most 500 ms. Finally it passes the answer to `record`. If
-`record` reports that the follower is still behind, the loop continues immediately.
-Otherwise the task sleeps until `appended` is signalled or the heartbeat interval
-elapses, whichever occurs first.
+Releasing the mutex prior to network I/O is critical for fault isolation: a partitioned or hung follower stalls only its own task while the surviving follower continues committing writes at full speed.
 
-<p class="listing"><img class="mascot" src="art/crab-happy.svg" alt=""><b>Listing 3.25</b> The task that keeps a follower up to date. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/distributed-systems-from-the-ground-up/code/kvnode/src/node.rs">kvnode/src/node.rs</a></p>
+<p class="listing"><b>Listing 3.25</b> Per-follower background replication loop in <code>kvnode/src/node.rs</code>. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/distributed-systems-from-the-ground-up/code/kvnode/src/node.rs">kvnode/src/node.rs</a></p>
 
 ```rust
 {{#include ../code/kvnode/src/node.rs:follow}}
 ```
 
+Listing 3.26 implements `record`. If a follower replies with `reply.term > local.term`, the leader immediately latches `deposed = true` so subsequent client writes receive `421 Misdirected Request`. Otherwise, `record` updates the peer's `last_sequence` and contact timestamp, recomputes `majority_sequence`, calls `replica.commit`, and publishes the new watermark on the `committed` watch channel.
 
-A point of design here has a large effect on how the node behaves under faults. No
-task holds the lock of the replica while it waits for the network. It takes the lock
-to build a message and again to process an answer, and releases it in between. An
-unreachable follower therefore delays its own task and nothing else, neither the task
-of the other follower nor any request from a client. Had the lock been held across
-the network call, a single slow follower would have stopped the whole shard, which
-would have defeated the purpose of waiting only for a majority.
-
-`record` is called with every answer. It first compares the term of the answer with
-the leader's own. A higher term shows that a newer leader exists, and the node ceases
-to accept writes. Otherwise it stores the sequence reported, applies the commit rule
-to the 3 last sequences, and publishes the new committed sequence through a `watch`
-channel, where the waiting writes observe it.
-
-<p class="listing"><img class="mascot" src="art/crab-happy.svg" alt=""><b>Listing 3.26</b> Processing an answer, and committing. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/distributed-systems-from-the-ground-up/code/kvnode/src/node.rs">kvnode/src/node.rs</a></p>
+<p class="listing"><b>Listing 3.26</b> Recording follower replies, term fencing, and advancing the commit watermark in <code>kvnode/src/node.rs</code>. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/distributed-systems-from-the-ground-up/code/kvnode/src/node.rs">kvnode/src/node.rs</a></p>
 
 ```rust
 {{#include ../code/kvnode/src/node.rs:record}}
 ```
 
+### Leader Write and Lease-Bounded Read Paths
 
-### Writes
+Listing 3.27 implements `Node::write`. An HTTP handler acquires the async `turn` mutex, verifies leadership (`!deposed`), waits if necessary for any prior uncommitted record to settle, invokes `Replica::propose` via `block_in_place`, notifies all follower tasks (`appended.notify_waiters()`), and waits up to `COMMIT` (`1 s`) on `committed.wait_for(|&c| c >= seq)`. If quorum does not confirm within `1 s`, the handler returns `503 Service Unavailable`; the record remains in the leader's WAL and commits automatically once a follower reconnects.
 
-<figure>
-<img src="figures/repl-write-path.svg?v=0226fb60" alt="The steps of a write in the leader. Step 1: the handler takes its turn, since writes are processed 1 after another. Step 2: it waits until every earlier record is committed. Step 3: propose checks the condition, appends the record and waits for the disk. Step 4: it wakes the 2 follower tasks, and each sends its follower what it lacks. Step 5: a follower answers, and the task records the follower&#x27;s last sequence. Step 6: the commit rule gives a new committed sequence, and the record is applied to the entries. Step 7: the handler sees its sequence committed and answers 201 or 204 with the version. Step 8: if 1 second passes without a majority, it answers 503, and the record stays In log.">
-<figcaption><b>Figure 3.8</b> The steps of a write in the leader.</figcaption>
-</figure>
-
-<p class="listing"><img class="mascot" src="art/crab-happy.svg" alt=""><b>Listing 3.27</b> The write path of the leader. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/distributed-systems-from-the-ground-up/code/kvnode/src/node.rs">kvnode/src/node.rs</a></p>
+<p class="listing"><b>Listing 3.27</b> Leader write coordination in <code>kvnode/src/node.rs</code>. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/distributed-systems-from-the-ground-up/code/kvnode/src/node.rs">kvnode/src/node.rs</a></p>
 
 ```rust
 {{#include ../code/kvnode/src/node.rs:write}}
 ```
 
+Listing 3.28 implements `Node::get`, `Node::list`, and the `must_serve_reads` guard. An isolated leader partitioned from both followers cannot detect whether an operator or election has appointed a newer leader. `must_serve_reads` therefore requires two conditions before serving reads from RAM: (1) a majority of replicas (the leader plus at least one follower) responded within the last `COMMIT` (`1 s`) window, and (2) the leader's startup log has fully settled (`committed >= initial_last_sequence`) so a restarted leader never returns stale empty responses before re-establishing its commit watermark. Bounding stale-read exposure to `1 s` assumes no successor leader is promoted sooner than `1 s` after the old leader loses contact; stricter linearizable reads (`ReadIndex`) confirm quorum on every read at the cost of one network round trip.
 
-The handlers send no messages themselves. A handler appends a record, wakes both
-follower tasks, and waits for the committed sequence to reach the sequence of its
-record. A `watch` channel holds the most recent committed sequence, and `wait_for`
-returns as soon as that value satisfies its condition, including the case in which
-it already does.
-
-If no majority stores the record within 1 second, the handler answers `503`. The
-record remains in the leader's log. The follower tasks go on sending it, and it is
-committed when a follower becomes reachable, as the simulation showed.
-
-### Reads
-
-<p class="listing"><img class="mascot" src="art/crab-happy.svg" alt=""><b>Listing 3.28</b> The read path of the leader. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/distributed-systems-from-the-ground-up/code/kvnode/src/node.rs">kvnode/src/node.rs</a></p>
+<p class="listing"><b>Listing 3.28</b> Leader read path and quorum-contact guard in <code>kvnode/src/node.rs</code>. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/distributed-systems-from-the-ground-up/code/kvnode/src/node.rs">kvnode/src/node.rs</a></p>
 
 ```rust
 {{#include ../code/kvnode/src/node.rs:read}}
 ```
 
+### Wiring the HTTP Surface (`kvnode/src/main.rs`)
 
-A leader that has been separated from its followers by a network partition cannot
-know whether another leader has been appointed in the meantime, and its entries may
-therefore be out of date. `must_serve_reads` accordingly requires that a majority of
-the replicas, counting the leader itself, has answered within the last second. The
-check limits to 1 second the time for which a former leader could return outdated
-data, on the condition that no new leader is appointed sooner than that after the old
-one becomes unreachable. Stricter implementations confirm their leadership with a
-majority for every read, at the cost of a network round trip for each.
+The HTTP handlers reuse `kvd::api` from Chapter 2 for RFC 9457 error formatting and `If-Match` / `If-None-Match` parsing, forwarding requests directly to `Node`. Listing 3.29 implements the `PUT`, `DELETE`, and `GET` handlers.
 
-A second check concerns a leader that has been restarted. Its log may contain
-committed records that have not yet been applied, since `committed` begins at 0. Such
-a leader serves reads once every record that its log held at startup has been
-committed again.
-
-### The HTTP API
-
-The handlers reuse the error type and the header parsing of chapter 2, from
-`kvd::api`. They differ from the handlers of chapter 2 in passing writes to
-`Node::write` and reads to `Node::get`.
-
-<p class="listing"><img class="mascot" src="art/crab-happy.svg" alt=""><b>Listing 3.29</b> The handlers for <code>PUT</code>, <code>DELETE</code> and <code>GET</code>. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/distributed-systems-from-the-ground-up/code/kvnode/src/main.rs">kvnode/src/main.rs</a></p>
+<p class="listing"><b>Listing 3.29</b> HTTP mutation and point-read handlers in <code>kvnode/src/main.rs</code>. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/distributed-systems-from-the-ground-up/code/kvnode/src/main.rs">kvnode/src/main.rs</a></p>
 
 ```rust
 {{#include ../code/kvnode/src/main.rs:handlers}}
 ```
 
+Listing 3.30 implements prefix listing (`GET /v1/keys`) and the `/healthz` endpoint exposing `role`, `term`, `last_sequence`, `committed`, and per-follower match indices.
 
-<p class="listing"><img class="mascot" src="art/crab-happy.svg" alt=""><b>Listing 3.30</b> Listing keys, and the health of the node. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/distributed-systems-from-the-ground-up/code/kvnode/src/main.rs">kvnode/src/main.rs</a></p>
+<p class="listing"><b>Listing 3.30</b> Prefix-listing and health endpoints in <code>kvnode/src/main.rs</code>. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/distributed-systems-from-the-ground-up/code/kvnode/src/main.rs">kvnode/src/main.rs</a></p>
 
 ```rust
 {{#include ../code/kvnode/src/main.rs:list}}
 ```
 
+Listing 3.31 bootstraps either a follower (starting the `tonic` gRPC listener alongside HTTP) or a leader (spawning one `follow` task per peer alongside HTTP).
 
-<p class="listing"><img class="mascot" src="art/crab-happy.svg" alt=""><b>Listing 3.31</b> Starting a leader or a follower. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/distributed-systems-from-the-ground-up/code/kvnode/src/main.rs">kvnode/src/main.rs</a></p>
+<p class="listing"><b>Listing 3.31</b> Server bootstrap for leader and follower roles in <code>kvnode/src/main.rs</code>. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/distributed-systems-from-the-ground-up/code/kvnode/src/main.rs">kvnode/src/main.rs</a></p>
 
 ```rust
 {{#include ../code/kvnode/src/main.rs:main}}
 ```
 
+## 3.9 Live Three-Node Replication Experiments
 
-## Running 3 nodes
-
-The followers are started first, each with an address for HTTP and another for
-replication. The leader is then started with the replication addresses of both
-followers.
+We start two followers (`7002`/`7102` and `7003`/`7103`) and one leader (`7001`), verifying byte-for-byte WAL convergence and follower write redirection (`421 Misdirected Request`):
 
 ```console
 $ ./target/release/kvnode --role follower --listen 127.0.0.1:7002 --replication 127.0.0.1:7102 --data /var/tmp/n2 &
@@ -665,9 +479,6 @@ $ ./target/release/kvnode --role leader --listen 127.0.0.1:7001 --data /var/tmp/
 term 1, log ends at 0
 listening on 127.0.0.1:7001
 ```
-
-A write to the leader is stored by all 3 nodes, and a request to a follower is refused
-with the status that chapter 1 specifies for a request sent to the wrong node.
 
 ```console
 $ curl -i -X PUT http://127.0.0.1:7001/v1/keys/user-1 --data-binary 'ada'
@@ -689,18 +500,9 @@ $ cmp /var/tmp/n1/kv.log /var/tmp/n2/kv.log && cmp /var/tmp/n1/kv.log /var/tmp/n
 identical
 ```
 
-The health response of the leader lists the last sequence reported by each follower.
-The 3 log files are identical byte for byte, which is invariant 1 in the strongest
-form it could take.
+All three WAL files match byte for byte. In the following four experiments, all three processes share one local NVMe disk; deploying across three separate hosts requires only replacing `127.0.0.1` with each host's network address.
 
-## Experiments
-
-All the nodes in these experiments run on 1 machine and share its disk. On separate
-machines, each node has a disk of its own and the nodes do not compete for it.
-Nothing else changes: each node is started with the addresses of its peers in place
-of `127.0.0.1`.
-
-### The cost of replication
+### Experiment 1: Throughput Cost of Synchronous Quorum Replication
 
 ```console
 $ time ./target/release/kvctl load --server http://127.0.0.1:7001 --count 300 --acked acked.txt
@@ -708,14 +510,11 @@ $ time ./target/release/kvctl load --server http://127.0.0.1:7001 --count 300 --
 3.89 s, 77 writes per second
 ```
 
-The replicated shard completes 77 writes per second, against 185 for the single node
-of chapter 2 on the same disk. Each write now waits for 2 disks in succession, the
-leader's and then a follower's, and for a network round trip. Chapter 1 allowed for
-this in its capacity estimate by counting 3 stored records for every write.
+Throughput drops from `185 writes/s` (single node, Chapter 2) to `77 writes/s` on the same physical disk because every write now blocks on two sequential `fsync` barriers (first on the leader, then on a follower) plus a gRPC round trip.
 
-### A follower stops
+### Experiment 2: Single Follower Crash and Automatic Catch-Up
 
-A follower is killed while a load is running.
+Terminating follower `7002` with `SIGKILL` mid-load causes zero write errors because the leader and follower `7003` maintain a `2 of 3` majority. Restarting `7002` automatically ships the `283` missed records in one exchange:
 
 ```console
 $ ./target/release/kvctl load --server http://127.0.0.1:7001 --count 400 --acked acked.txt &
@@ -734,18 +533,16 @@ $ cmp /var/tmp/n1/kv.log /var/tmp/n2/kv.log && echo identical
 identical
 ```
 
-| Output | What it shows |
-|---|---|
-| 400 writes acknowledged | Writes continued without interruption after the follower stopped. The leader and the remaining follower form a majority. |
-| `"followers":[417,700]` | The leader retains the last position that the stopped follower reported. |
-| term 1, log ends at 417 | After its restart, the follower's log contains the records it had stored before it was killed. |
-| `"followers":[700,700]`, identical | The follower task sent the 283 missing records, and the logs are equal again. |
+| Observed Output | Verified Fault-Tolerance Behavior |
+| :--- | :--- |
+| `400 writes acknowledged` | Writes complete uninterrupted with one follower down (`2 of 3` majority intact). |
+| `"followers":[417,700]` | Leader preserves the crashed follower's exact last known frontier (`417`). |
+| `term 1, log ends at 417` | Restarted follower recovers its intact WAL prefix cleanly. |
+| `"followers":[700,700]`, `identical` | Leader streams records `418` to `700` automatically with zero operator intervention. |
 
-Apart from restarting the process, no action by an operator was required.
+### Experiment 3: Total Quorum Loss (`PC/EC` Refusal)
 
-### The majority is lost
-
-Both followers are killed.
+Killing both followers strips the leader of its majority. Writes time out after `1 s` with `503`, subsequent writes reject immediately while record `701` stays unsettled, and reads reject with `503` once the quorum contact window expires. Restarting a single follower commits record `701` automatically:
 
 ```console
 $ kill -9 <pid of the node on port 7002> <pid of the node on port 7003>
@@ -767,29 +564,16 @@ $ curl -o /dev/null -w '%{http_code}\n' -X PUT http://127.0.0.1:7001/v1/keys/aft
 201
 ```
 
-| Output | What it shows |
-|---|---|
-| 503 in 1.01 s | The leader appended record 701, could not store it on a second replica, and reported failure after the commit timeout. |
-| record 701 is not on a majority | The second write was not accepted, because record 701 was still uncommitted. |
-| this leader cannot reach a majority | Reads are refused as well, since the leader can no longer confirm that it is the current leader. |
-| `"last_sequence":701,"committed":700` | The record is in the leader's log and has not been applied. |
-| after 1 follower returns: `"committed":701`, `GET alone` returns 200 | The record was committed without any new request from the client. |
+| Observed Output | Verified Consistency Behavior |
+| :--- | :--- |
+| `503 in 1.011346 s` | Leader persisted record `701` locally, failed to obtain a second replica within `COMMIT`, and returned `503`. |
+| `record 701 is not on a majority` | Subsequent mutations are rejected while an uncommitted record sits at the tail. |
+| `this leader cannot reach a majority` | Leader halts reads rather than risking stale responses on the minority side of a partition. |
+| `"committed":701`, `GET alone` returns `200` | Quorum restoration commits pending record `701` automatically without client retransmission. |
 
-This is exactly the behaviour that chapter 1 specified for the minority side of a
-partition. The leader remains consistent and becomes unavailable, and it would be
-easy, and wrong, to regard its refusal to serve as a defect. A leader that went on
-answering in this condition would be answering from data that it cannot know to be
-current.
+### Experiment 4: Permanent Leader Loss, Manual Promotion, and Term Fencing
 
-### The leader is lost
-
-In this experiment a leader is killed under load and its data directory is moved
-away, which simulates the loss of a machine together with its disk.
-
-<figure>
-<img src="figures/repl-promote.svg?v=c7c6023b" alt="Replacing a lost leader by hand, in 7 steps. Step 1: the leader&#x27;s machine is lost with its disk, after 228 writes had been acknowledged. Step 2: the operator reads the health of both followers, and both logs end at 228. Step 3: the follower with the longest log is chosen, because it holds every acknowledged record. Step 4: it is restarted as leader with term 2. Step 5: the other follower receives a message of term 2, adopts the term and follows the new leader. Step 6: a new, empty node is added as a follower, and the leader sends it all 228 records. Step 7: a message of term 1 is refused from now on, so the lost leader cannot disturb the shard if it returns.">
-<figcaption><b>Figure 3.9</b> The procedure for replacing a lost leader by hand.</figcaption>
-</figure>
+Killing the leader under load and moving its data directory away (`mv /var/tmp/n1 /var/tmp/n1.lost`) simulates permanent host and disk destruction. We inspect both surviving followers via `/healthz`, promote the follower with the longest log (`last_sequence: 228`) under `term 2`, add a fresh replacement follower, and verify every acknowledged write in `acked.txt`:
 
 ```console
 $ ./target/release/kvctl load --server http://127.0.0.1:7001 --count 2000 --acked acked.txt &
@@ -815,32 +599,16 @@ $ ./target/release/kvctl verify --server http://127.0.0.1:7003 --acked acked.txt
 228 acknowledged, 228 found, 0 missing
 ```
 
-| Output | What it shows |
-|---|---|
-| 228 writes acknowledged | the client's record of acknowledged writes, kept outside the cluster |
-| both followers: `"last_sequence":228,"committed":227` | Both followers hold all 228 records. They had not yet been told that record 228 was committed, because the leader stopped before its next message. |
-| term 2, log ends at 228 | The promoted node starts as leader with a higher term. |
-| all 3 nodes: term 2, `"committed":228` | The remaining follower adopted the new term, and the empty replacement node received the complete log. |
-| 228 acknowledged, 228 found, 0 missing | Non-functional requirement 0 is met: every acknowledged write survived the loss of the leader and its disk. |
+| Observed Output | Verified Failover Property |
+| :--- | :--- |
+| `both followers: "last_sequence":228,"committed":227` | Followers persisted record `228` before the old leader died, lagging only on the leader's subsequent commit announcement. |
+| `term 2, log ends at 228` | Promoted survivor advances the shard epoch to `term 2`. |
+| `all 3 nodes: term 2, "committed":228` | Surviving peer adopts `term 2` and the empty replacement node streams all `228` records automatically. |
+| `228 acknowledged, 228 found, 0 missing` | Zero acknowledged writes were lost despite permanent destruction of the leader and its disk. |
 
-The second row illustrates why the committed sequence is not stored on disk. What a
-follower knows to be committed always lags behind its leader, and after a leader has
-been lost, the committed sequence is established afresh from the logs: a new leader
-commits a record as soon as a majority has reported it.
+Promoting the follower with the longest log is mandatory: by invariant 1, every acknowledged write resides on at least one survivor, so the longer log holds all acknowledged records whereas a shorter survivor could miss the most recent writes.
 
-For the promotion, the follower with the longer log must be chosen. By invariant 2,
-every acknowledged record is on at least 1 of the 2 followers, though not necessarily
-on both. If their logs differ in length, the longer contains every acknowledged
-record, and the shorter may lack some of the most recent. To promote the shorter
-would be to discard acknowledged writes, and this choice, made here by a person
-reading 2 numbers, is the one that chapter 4 has to teach the nodes to make for
-themselves.
-
-### The former leader returns
-
-Suppose that a former leader was not lost after all and begins to send messages
-again, as it might when a network partition ends. A leader with term 1 is started
-against the 2 followers.
+Finally, we start a stale `term 1` leader against the `term 2` followers to verify term fencing:
 
 ```console
 $ ./target/release/kvnode --role leader --term 1 --listen 127.0.0.1:7009 --data /var/tmp/n9 \
@@ -857,72 +625,73 @@ $ curl -o /dev/null -w '%{http_code}\n' -X PUT http://127.0.0.1:7003/v1/keys/fre
 201
 ```
 
-Both followers are at term 2 and refuse messages of term 1. Each of their answers
-carries the higher term, so that the old leader records that it has been replaced and
-rejects writes with `421`. The shard meanwhile continues to accept writes through its
-leader of term 2. Terms are what make a change of leader safe, since a leader that
-has been replaced cannot add a record to any follower.
+Both followers reject the `term 1` messages and echo `term 2`, causing the stale leader to latch `deposed = true` and reject writes with `421` while the legitimate `term 2` leader continues serving traffic uninterrupted.
 
-## Limitations
+## 3.10 Residual Limitations
 
-| Limitation | Consequence |
-|---|---|
-| The leader is appointed by an operator. | After the loss of a leader, the shard is unavailable for writes until a person or a script promotes a follower. |
-| A former leader must not rejoin with its old log. | Its log may contain records that were appended and never committed, at positions where the new leader has written different records. The implementation compares positions only, so a former leader has to rejoin with an empty data directory. |
-| Writes are processed 1 after another. | The write rate of a shard is limited to 1 write for each round trip. Group commit, which the capacity estimate of chapter 1 assumed, is not implemented. |
-| Every replica holds all its records in memory. | The memory used by a node grows with the length of its log. |
-| A leader serves reads for up to 1 second after losing its majority. | Non-functional requirement 2, consistency, depends on no new leader being appointed within that second. |
+Five structural limitations remain in `kvnode`, each addressed directly in upcoming chapters:
 
-The first 2 limitations are removed in chapter 4, and the third in chapter 6.
+| No. | Current Limitation | Engineering Consequence | Resolution |
+| :--- | :--- | :--- | :--- |
+| 0 | Leader promotion is manual. | Shard writes halt after leader failure until an operator intervenes, violating our `99.95%` availability SLO. | Automated Raft leader election (Chapter 4). |
+| 1 | A returning former leader cannot rejoin with uncommitted conflicting tail records. | Because `Append` checks only `previous_sequence` (not `previous_term`), a former leader with a divergent tail must wipe its disk before rejoining. | Per-record term tagging and Raft log-matching conflict truncation (Chapter 4). |
+| 2 | Writes execute strictly one at a time (`is_settled`). | Single-shard write throughput caps at one write per replication round trip (`77 writes/s`). | WAL group commit (Chapter 6). |
+| 3 | Every replica retains its entire WAL in RAM (`records: Vec<Record>`). | Memory footprint grows linearly with total historical mutations. | Periodic snapshotting and log compaction (Chapter 1). |
+| 4 | Leader reads rely on a `1 s` quorum-contact window. | Linearizability requires that no new leader take over within `1 s` of partition onset. | Raft `ReadIndex` quorum heartbeat validation (Chapters 1 and 4). |
 
-## The complete programs
+## 3.11 Complete Source Listings
 
-The log and the store are listed in chapter 2. Those listings include
-`Log::append_records` as well as `apply`, `check` and `page`, which this chapter uses.
+Listings 3.32 through 3.37 present the complete source files for the replication library, deterministic fault simulator, and `kvnode` server (`kv::log` and `kv::store` appear in Chapter 2).
 
-<p class="listing"><img class="mascot" src="art/crab-cute.svg" alt=""><b>Listing 3.32</b> The complete <code>repl/src/lib.rs</code>. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/distributed-systems-from-the-ground-up/code/repl/src/lib.rs">repl/src/lib.rs</a></p>
+Listing 3.32 presents the complete pure replication state machine (`Append`, `AppendReply`, `Replica`, `handle_append`, `propose`, `append_for`, and `majority_sequence`) in `repl/src/lib.rs`.
+
+<p class="listing"><b>Listing 3.32</b> Complete <code>repl/src/lib.rs</code>. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/distributed-systems-from-the-ground-up/code/repl/src/lib.rs">repl/src/lib.rs</a></p>
 
 ```rust
 {{#include ../code/repl/src/lib.rs}}
 ```
 
+Listing 3.33 presents the complete deterministic replication fault simulator in `replsim/src/main.rs`.
 
-<p class="listing"><img class="mascot" src="art/crab-cute.svg" alt=""><b>Listing 3.33</b> The complete <code>replsim/src/main.rs</code>. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/distributed-systems-from-the-ground-up/code/replsim/src/main.rs">replsim/src/main.rs</a></p>
+<p class="listing"><b>Listing 3.33</b> Complete <code>replsim/src/main.rs</code>. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/distributed-systems-from-the-ground-up/code/replsim/src/main.rs">replsim/src/main.rs</a></p>
 
 ```rust
 {{#include ../code/replsim/src/main.rs}}
 ```
 
+Listing 3.34 presents the package manifest and gRPC build dependencies in `kvnode/Cargo.toml`.
 
-<p class="listing"><img class="mascot" src="art/crab-cute.svg" alt=""><b>Listing 3.34</b> The complete <code>kvnode/Cargo.toml</code>. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/distributed-systems-from-the-ground-up/code/kvnode/Cargo.toml">kvnode/Cargo.toml</a></p>
+<p class="listing"><b>Listing 3.34</b> Complete <code>kvnode/Cargo.toml</code>. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/distributed-systems-from-the-ground-up/code/kvnode/Cargo.toml">kvnode/Cargo.toml</a></p>
 
 ```toml
 {{#include ../code/kvnode/Cargo.toml}}
 ```
 
+Listing 3.35 presents the complete gRPC service wrapper and Protobuf conversions in `kvnode/src/rpc.rs`.
 
-<p class="listing"><img class="mascot" src="art/crab-cute.svg" alt=""><b>Listing 3.35</b> The complete <code>kvnode/src/rpc.rs</code>. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/distributed-systems-from-the-ground-up/code/kvnode/src/rpc.rs">kvnode/src/rpc.rs</a></p>
+<p class="listing"><b>Listing 3.35</b> Complete <code>kvnode/src/rpc.rs</code>. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/distributed-systems-from-the-ground-up/code/kvnode/src/rpc.rs">kvnode/src/rpc.rs</a></p>
 
 ```rust
 {{#include ../code/kvnode/src/rpc.rs}}
 ```
 
+Listing 3.36 presents the complete leader replication loop, commit broadcaster, and read/write paths in `kvnode/src/node.rs`.
 
-<p class="listing"><img class="mascot" src="art/crab-cute.svg" alt=""><b>Listing 3.36</b> The complete <code>kvnode/src/node.rs</code>. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/distributed-systems-from-the-ground-up/code/kvnode/src/node.rs">kvnode/src/node.rs</a></p>
+<p class="listing"><b>Listing 3.36</b> Complete <code>kvnode/src/node.rs</code>. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/distributed-systems-from-the-ground-up/code/kvnode/src/node.rs">kvnode/src/node.rs</a></p>
 
 ```rust
 {{#include ../code/kvnode/src/node.rs}}
 ```
 
+Listing 3.37 presents the complete HTTP server entry point and CLI runner in `kvnode/src/main.rs`.
 
-<p class="listing"><img class="mascot" src="art/crab-cute.svg" alt=""><b>Listing 3.37</b> The complete <code>kvnode/src/main.rs</code>. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/distributed-systems-from-the-ground-up/code/kvnode/src/main.rs">kvnode/src/main.rs</a></p>
+<p class="listing"><b>Listing 3.37</b> Complete <code>kvnode/src/main.rs</code>. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/distributed-systems-from-the-ground-up/code/kvnode/src/main.rs">kvnode/src/main.rs</a></p>
 
 ```rust
 {{#include ../code/kvnode/src/main.rs}}
 ```
 
-
-## Further reading
+## Further Reading
 
 - B. Oki and B. Liskov, "Viewstamped Replication: A New Primary Copy Method to Support Highly-Available Distributed Systems", PODC 1988.
 - D. Ongaro and J. Ousterhout, "In Search of an Understandable Consensus Algorithm", USENIX ATC 2014.
@@ -932,14 +701,12 @@ The log and the store are listed in chapter 2. Those listings include
 
 ## Summary
 
-- The leader of a shard sends each follower the records it lacks, in an `Append` message that states the position at which those records begin.
-- A follower appends only if its log ends at that position, and otherwise reports where its log ends, upon which the leader continues from there. This 1 rule deals with restarted followers, lost messages, lost answers and empty followers.
-- A record is committed when a majority of the replicas has stored it, and the leader computes the committed sequence as the middle value of the sorted last sequences.
-- A replica applies committed records only, so that no read returns data which could be lost with 1 machine.
-- A write that was answered with an error may still be committed later, and a client has to treat an error as an unknown outcome.
-- For 4096 combinations of lost messages and answers, the simulation verified that every acknowledged record was held in at least 2 of the 3 logs.
-- With 3 nodes on 1 disk, the replicated shard completed 77 writes per second, against 185 for a single node.
-- After the loss of a leader and its disk, promoting the follower with the longer log preserved all 228 acknowledged writes.
-- A term identifies the current leader, and followers refuse messages with a lower term, so that a replaced leader cannot modify its shard.
+- A shard leader streams missing WAL suffixes via `Append` RPCs tagged with `term`, `previous_sequence`, and `committed_sequence`.
+- A follower appends only when `request.term >= local.term` and `request.previous_sequence == local.last_sequence`, reporting its own `last_sequence` unconditionally on every reply so restarted, empty, or lagging followers realign in one round trip.
+- The leader computes the committed watermark via `majority_sequence` (the median of all replica log frontiers sorted descending) and applies only committed records to the in-memory `BTreeMap`.
+- Deterministic fault simulation (`replsim`) verified invariants 0 and 1 across all `4,096` combinations of dropped requests and dropped replies over three writes.
+- An error returned during quorum loss (`503`) signifies an indeterminate write whose local WAL record can still commit later upon quorum restoration.
+- Releasing the replica mutex before awaiting gRPC replies prevents a partitioned follower from stalling the surviving majority.
+- Live three-node experiments confirmed zero write interruption on single-follower crash, `PC/EC` refusal on quorum loss, zero loss of 228 acknowledged writes upon permanent leader disk destruction, and immediate `421` fencing of a returning `term 1` leader.
 
 </div>

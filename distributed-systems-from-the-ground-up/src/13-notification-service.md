@@ -1,581 +1,324 @@
-<img class="plate" src="art/ch13.svg?v=e0d20260" alt="Chime, a penguin, stands beside a sign that lists pauses of 1, 2, 4 and 8 seconds.">
+# Chapter 13: Multi-Channel Notification Service
 
-# Notification Service: System Design
+<img class="plate" src="art/ch13-plate.svg" alt="Chapter 13 architectural plate: Multi-channel notification fanout hub isolating P0 OTP SMS and push traffic from P3 promotional email campaigns via dedicated priority lanes, exponential backoff, and per-provider circuit breakers." />
 
-Nearly every service in a large system has occasion to tell a person something. The
-order service wishes to say that a parcel has been shipped, the security service that
-a login was attempted from a new device, the billing service that a payment has
-failed. If each of these services dealt with email, text messages and push
-notifications for itself, each would need to know the user's preferred channel and
-language, to hold credentials for the outside companies that carry the messages, to
-handle their failures, and to refrain from disturbing the user at 3 in the morning.
-A *notification service* gathers all of this into 1 place. Other services tell it
-what should be said and to whom, and it sees to the saying.
+Nearly every product service needs to notify users across push notifications (APNs, FCM), SMS carriers (Twilio, Vonage), email relays (Amazon SES, SendGrid), and customer webhooks. If checkout, authentication, billing, and marketing services each integrate directly with external providers, every team duplicates credential management, localization templates, legal opt-out checks, quiet-hour scheduling, and retry logic. Worse, when an external SMS gateway slows to `15 seconds` per call, synchronous callers inherit that latency directly.
 
-The peculiar character of this system comes from the fact that its most important
-work is done by parties it does not control. An email is delivered by an email
-provider, a text message by a telephone network, a push notification by the company
-that makes the phone's operating system. These *providers* are slow at some times and
-unavailable at others, they impose limits on how fast they may be called, and they
-reply to a request in ways that leave real doubt about what has happened. The design
-of a notification service is therefore, to a large extent, a study in calling an
-unreliable dependency well: when to try again and how long to wait, when to stop
-trying, how to avoid sending the same message twice, and how to avoid making a
-struggling provider's condition worse.
+The defining engineering challenge of a notification platform is that its final delivery step leaves our trust boundary and runs on unreliable third-party infrastructure with strict rate ceilings, partial timeouts, and asynchronous delivery receipts. In this chapter, I design a high-throughput, multi-channel notification platform. We specify requirements, actors, and capacity bounds, design an idempotent `202 Accepted` ingestion contract, separate preference/template policy management (control plane) from priority-isolated fan-out and provider dispatch (data plane), and engineer full-jitter exponential backoff, per-provider token buckets and circuit breakers, bounce suppression, and batched campaign fan-out.
 
 <div class="covers">
 
-This chapter covers
+In this chapter, we cover
 
-- the path of a notification, from a request to a phone
-- why a request is accepted first and sent later
-- repeated requests, and the key that identifies them
-- failures that will pass and failures that will not
-- retries with pauses that double, and why the pauses are made random
-- the circuit breaker, which stops calling a provider that is down
-- the limits that providers impose, and a second provider as a fallback
-- the difference between sent and delivered
-- preferences, quiet hours, priorities, and sending to millions at once
+- actors, priority tiers (`P0` OTP versus `P3` marketing), functional contracts, latency SLOs, non-goals, and daily volume capacity bounds
+- idempotent `202 Accepted` ingestion API, user preference and quiet-hour schemas, and asynchronous provider webhook contracts
+- separation of template, preference, and provider routing policy (control plane) from deduplication, priority queues, and sender bulkheads (data plane)
+- priority lane isolation eliminating head-of-line blocking, per-provider leaky-bucket pacing, and active-passive multi-provider failover
+- transient versus permanent provider error taxonomy, exponential backoff with full jitter, retry budgets, and three-state circuit breakers
+- user preferences, legal opt-out and bounce suppression lists, frequency capping, quiet-hour deferral, and two-stage batched fan-out for 10M+ campaigns
+- operational failure modes, SLIs, production architectures (Amazon SNS/Pinpoint, Courier, Knock), and simulation verification
 
 </div>
 
-## The path of a notification
+## 13.1 Requirements, Actors, and Capacity Bounds
 
-A notification passes through a sequence of decisions before anything is sent, and
-laying them out in order shows where the service's responsibilities lie.
+### Actors and Use Cases
 
-A calling service submits a request that names a user, a kind of message and the data
-to be inserted into it, for example "tell user 42 that order 7 has shipped". The
-notification service first establishes that it has not already received this request.
-It then consults the user's preferences to learn whether the user wishes to receive
-messages of this kind at all and by which channel. It finds the address for that
-channel, which may be an email address, a telephone number, or the *device token* by
-which a push provider identifies a particular installation of an app on a particular
-phone. It selects the template for this kind of message in the user's language and
-fills in the data. Only then is there something to send, and it is placed in a queue
-from which a pool of *senders* takes messages and hands them to the appropriate
-provider.
+We organize the notification service around four actors: upstream product services emitting notification events, end users managing channel opt-outs and Do-Not-Disturb (DND) quiet hours, external delivery providers (APNs, FCM, SES, Twilio) accepting outbound sends and returning asynchronous delivery webhooks, and platform operators configuring templates and provider failover weights (Figure 13-1).
 
-The division into a part that accepts requests and a part that sends them, with a
-queue between, is the central structural decision, and it follows from the first
-section of chapter 11. A provider may take several seconds to answer, or may not
-answer at all. If the calling service had to wait for the provider, an outage at a
-text message provider would make the order service slow, which is exactly the coupling
-a notification service exists to remove. The service therefore answers the caller as
-soon as the request has been stored durably, with the status `202 Accepted`, whose
-meaning in HTTP is precisely "received, and not yet acted upon", and does the sending
-afterwards.
-
-## The same request twice
-
-The calling service is itself a distributed program and will sometimes send the same
-request more than once. It may time out while waiting for the `202` and try again, or
-it may be a consumer of a message queue that, as chapter 11 explained, delivers its
-messages at least once. From the user's side the result of treating both requests as
-new would be 2 identical text messages, which is a visible defect and, for some kinds
-of message, an alarming one.
-
-The notification service cannot recognise a repeat by comparing contents, since 2
-separate and legitimate notifications may have identical text. The caller must
-therefore say which requests are the same, and does so by attaching an *idempotency
-key*, a name of the caller's own choosing that identifies the event being reported,
-such as `order-7-shipped`. The service records every key it has accepted, and when a
-request arrives with a key that is already recorded, it returns the original response
-and sends nothing.
-
-The recording of the key and the placing of the message in the queue must succeed or
-fail together. If the key were recorded and the service then crashed before queueing
-the message, the caller's retry would be dismissed as a repeat and the notification
-would never be sent. This is the problem of writing to a database and publishing a
-message as 1 step, and the outbox of chapter 11 solves it here as it did there. Keys
-need not be kept for ever. A retry arrives within seconds or minutes of the original,
-and a key that is retained for a day covers every realistic case.
-
-## Failures that pass and failures that do not
-
-When a sender hands a message to a provider, the provider's reply falls into 1 of 3
-classes, and the proper response is different for each.
-
-The provider may accept the message. The sender records the fact and is finished.
-
-The provider may refuse the message for a reason that is permanent. The telephone
-number does not exist, the email address is malformed, or the device token belongs to
-an app that the user has since removed. Sending the same request again will yield the
-same refusal, so the sender must not retry. It should record the failure and, in the
-case of an invalid address or token, mark it so that no further notifications are
-attempted there. Continuing to send to dead addresses is more than wasteful: providers
-of email in particular observe what proportion of a sender's messages are
-undeliverable and begin to treat a sender with a high proportion as a source of
-unwanted mail, to the detriment of its deliverable messages.
-
-Or the provider may fail in a way that is probably temporary. It answers that it is
-overloaded, or that the sender has exceeded its permitted rate, or it does not answer
-within the time allowed. These are the cases for trying again, and they include the
-1 that is most awkward. When a request times out, the sender does not know whether the
-provider never received it or received it, sent the message, and lost only the reply.
-A retry in the second case sends the user a duplicate. Where the provider's API accepts
-an idempotency key of its own, the sender should supply one, so that the provider can
-recognise the retry, and where it does not, an occasional duplicate after a timeout is
-a risk that has to be accepted, since the alternative is an occasional message that is
-never sent.
-
-| The provider's reply | What it means | What the sender does |
-|---|---|---|
-| Accepted | the provider has taken the message | records success |
-| Refused: invalid address, unknown token, malformed request | repeating the request cannot help | records failure, marks the address, does not retry |
-| Overloaded, rate exceeded, internal error | the condition will probably pass | retries after a pause |
-| No reply in time | unknown: the message may or may not have gone | retries after a pause, with the provider's own idempotency key if it has one |
-
-## Retrying with pauses that double
-
-Having decided to retry, the sender must decide when. The answer that comes first to
-mind, immediately, is the worst available.
-
-A provider that reports overload is receiving more requests than it can handle. A
-sender that responds by repeating its request at once has increased the load on a
-system that has just said it has too much, and if a thousand senders do the same, the
-provider is held in its overloaded condition by the very traffic that its failures
-generate. Systems have been kept down for hours in this way after the original cause
-of the trouble had gone.
-
-The sender should therefore wait, and the question of how long is settled by the
-observation that each successive failure is evidence that the previous wait was too
-short. The wait is accordingly doubled after every failure: 1 second, then 2, then 4,
-then 8. This is *exponential backoff*. It has the property that a brief disturbance is
-overcome quickly, by the first or second retry, while in a prolonged outage the
-sender's requests become rapidly less frequent and soon impose almost no load.
-
-<figure class="steps" data-prefix="figures/steps-notify-backoff" data-count="6" data-version="7b8f8080">
-<img src="figures/steps-notify-backoff-01.svg?v=7b8f8080" alt="A longer pause after each failure, step 1 of 6. The sender hands the notification to the provider, and the provider answers that it is overloaded. This is a failure that may pass, so the sender will try again.">
-<figcaption><b>Figure 13.1</b> A notification fails 4 times and succeeds on the fifth try, 15 seconds after the first. Use Next and Back to move through the 6 steps.</figcaption>
+<figure class="diagram">
+<img src="figures/m3/ch13_use_cases.svg" alt="Actors and use cases of the multi-channel notification service: Product Service submits notification requests with priority and dedup_id; End User manages opt-outs, quiet hours, and daily caps; External Providers receive multi-channel dispatches and return delivery receipts and bounces; Operator manages localized templates and routing SLAs." />
+<figcaption><b>Figure 13-1</b> Actors, system boundary, and core use cases of the multi-channel notification service.</figcaption>
 </figure>
 
-The simulation for this chapter sends 5 notifications to a provider that fails a set
-number of times for each. One succeeds at the first try. One fails twice and is sent
-on the third try, 3 seconds after the first, and one fails 4 times and is sent on the
-fifth, after 15 seconds, as in the picture. One fails every time and is set aside
-after 5 tries. The remaining request carries a key that has been seen before and
-causes nothing to be sent.
+| Actor | Operation | Concrete Scenario |
+| :--- | :--- | :--- |
+| **Product Service** | Submit notification (`POST /v1/notify` with `dedup_id` and `priority`) | Trigger a `P0` login OTP SMS within `2 s`, a `P1` order-shipped email, or a `P3` promotional push campaign |
+| **End User** | Configure channel opt-outs, locale, and quiet hours (`PUT /v1/users/{id}/preferences`) | Mute promotional pushes between `22:00` and `08:00` local time while keeping security alerts enabled |
+| **External Provider** | Accept outbound API sends; emit asynchronous delivery/bounce webhooks | Apple APNs, Google FCM, Amazon SES, and Twilio report delivered, bounced, or unregistered device tokens |
+| **Platform Operator** | Author versioned i18n templates; tune provider weights and circuit thresholds | Shift SMS traffic from degraded primary carrier to backup carrier without redeploying application services |
 
-2 limits complete the scheme. The pause is capped at some maximum, a minute for
-instance, so that it does not grow to absurd lengths. And the number of tries is
-bounded, so that a notification which can never be sent leaves the system. What should
-be done with a notification that has exhausted its tries depends on its kind. A code
-for logging in is worthless after a few minutes and may be dropped, whereas a notice
-that a payment has failed should be set aside, in the manner of the dead-letter queue
-of chapter 11, and looked at by a person.
+### Functional Requirements
 
-### Why the pauses are made random
+| No. | Functional Requirement |
+| :--- | :--- |
+| 0 | Product services submit notifications targeting a `user_id` (or bulk audience segment) with a template ID, template parameters, priority class (`P0` critical, `P1` transactional, `P2` lifecycle, `P3` promotional), and mandatory `Idempotency-Key` (`dedup_id`). |
+| 1 | The ingestion tier deduplicates repeated requests carrying the same `dedup_id` within a `24-hour` window, returning the original tracking ID without queueing a duplicate send. |
+| 2 | Before dispatch, the service centrally enforces user opt-out preferences, legal unsubscribe/bounce suppression lists, local quiet hours (deferring non-`P0` messages until morning), and daily promotional frequency caps (`<= 3` promos/user/day). |
+| 3 | The dispatch tier routes notifications to isolated per-priority, per-channel queues, paces outbound calls within each provider's rate limit, retries transient failures with jittered exponential backoff up to `5` attempts, and quarantines exhausted sends to a Dead-Letter Queue (`DLQ`). |
+| 4 | The service exposes an idempotent webhook endpoint ingesting provider delivery receipts, hard bounces, and invalid push tokens to update delivery state and maintain suppression lists automatically. |
 
-Doubling the pause protects a provider from a single sender. It does not protect the
-provider from many senders that failed at the same moment, which is the usual
-situation, since a provider's difficulty affects all of its callers together.
+### Non-Functional Requirements and SLOs
 
-Suppose that 1000 notifications fail in the same second. All 1000 wait 1 second and
-return together, and if the provider has not recovered they fail together, wait 2
-seconds, and return together again. The doubling has spaced the waves further apart
-and has done nothing to diminish them: each wave strikes the provider with the full
-1000 requests, and a provider that is on the point of recovering is knocked down
-afresh by each.
+| No. | Property | Target Specification | Architectural Consequence |
+| :--- | :--- | :--- | :--- |
+| 0 | **Ingestion Availability & Latency** | `99.99%` availability; `p99 <= 25 ms` to return `202 Accepted` | Strict asynchronous decoupling: ingestion validates, deduplicates, and writes to durable queues via transactional outbox; never calls external providers inline |
+| 1 | **End-to-End Dispatch Latency** | `P0` (OTP/security): `p99 <= 3 s`; `P1` (transactional): `p99 <= 15 s`; `P3` (marketing): minutes to hours | Physically separate priority topics and dedicated sender worker pools (**bulkheads**) prevent a 10M-user campaign from delaying login codes |
+| 2 | **Consistency** | Strongly consistent deduplication store (`SETNX` / unique index) and opt-out enforcement; eventually consistent delivery status | Two API nodes must agree strictly on whether `dedup_id` was seen; provider delivery receipts arrive asynchronously out of order via webhooks |
+| 3 | **Delivery Guarantee** | At-least-once to external providers; at-most-once acceptance per `dedup_id` from caller perspective | Propagate `dedup_id` to providers supporting idempotency keys; accept rare duplicates after provider timeouts rather than dropping OTPs unnoticed |
+| 4 | **Scale** | `50,000,000` notifications/day (`579` avg/s; `5,790` sustained peak/s; `50,000` burst campaign fan-out/s) | Sharded Redis/SQL dedup store, partitioned Kafka priority queues, and auto-scaled stateless channel sender pools |
 
-<figure>
-<img src="figures/notify-jitter.svg?v=f1444456" alt="2 time axes of retries by many senders that failed together. With the same pauses for everyone, the retries arrive in 3 tall spikes at 1, 3 and 7 seconds. With a random pause, the retries are spread evenly along the axis.">
-<figcaption><b>Figure 13.2</b> Retries with equal pauses arrive in waves, and retries with random pauses arrive as a trickle.</figcaption>
-</figure>
+### Non-Goals and Scope Boundaries
 
-The remedy is to make each sender's pause random, which is called *jitter*. In the
-simplest effective form, where the plain scheme would wait 4 seconds, the sender waits
-for a time chosen at random between 0 and 4 seconds. The 1000 retries are then spread
-evenly over the interval and reach the provider as a steady flow of about 250 per
-second. The average wait has been halved, and the peak load on the provider has been
-reduced by a far larger factor. This thundering herd and its cure appeared in chapter
-7 from the other side, as the advice a rate limiter gives its clients.
+- **Guaranteed human readership:** A provider returning `200 OK` confirms only handoff to the carrier, never that a user saw or read the message. Critical incident escalation (such as on-call paging) requires explicit human acknowledgment loops with automated escalation timers outside this service.
+- **Synchronous delivery confirmation in `POST /v1/notify`:** Callers receive `202 Accepted` and poll `GET /v1/notifications/{id}` or subscribe to status events rather than holding open HTTP connections while SMTP or SMS networks negotiate.
+- **Unthrottled instant campaign blasts:** Dispatching `10,000,000` push notifications in `10 seconds` violates provider quotas and triggers a self-inflicted traffic storm when millions of users open the app simultaneously. Bulk campaigns are always paced over minutes or hours.
 
-## The circuit breaker
+### Back-of-the-Envelope Capacity Bounds
 
-Backoff governs the retries of a single notification. It leaves untouched a further
-problem, which arises when a provider is not merely slow but down. Every new
-notification that arrives is then tried for the first time, and each such first try
-waits for the full length of the timeout before failing. Senders are occupied with
-calls that cannot succeed, the queue lengthens behind them, and notifications for
-other channels, whose providers are perfectly healthy, are delayed because all the
-senders are waiting on the provider that is not.
+| Resource Dimension | Arithmetic Derivation | Provisioned Bound |
+| :--- | :--- | :--- |
+| **Daily / Peak Send Rate** | `50,000,000 / 86,400 s` = `578.7` avg/s; `10x` transactional peak | `579` avg/s; `5,790` peak/s (split roughly `60%` Push, `30%` Email, `10%` SMS) |
+| **24-Hour Dedup Store RAM** | `50,000,000` active keys/day `* (48 B key + 32 B value + 40 B Redis overhead)` | `~6.0 GB` RAM across a 3-shard replicated Redis Cluster (`24h` TTL auto-eviction) |
+| **Sender Worker Pool Sizing** | At `50` outbound async HTTP/2 sends/s per worker pod (`~200 ms` avg provider RTT, `10` concurrent streams/pod): `5,790 / 50` | `116` total sender pods partitioned into isolated pools (`30` P0, `40` P1, `46` P2/P3 across APNs/FCM/SES/SMS) |
+| **30-Day Audit & Receipt Log** | `50,000,000` records/day `* 30 days * 512 B` compressed | `~768 GB` in partitioned time-series/SQL audit store |
+| **Preference & Token Cache** | `10,000,000` active users `* 256 B` (opt-outs, timezone, device tokens, daily promo counter) | `~2.56 GB` (fits comfortably in regional Redis cache ahead of durable SQL) |
 
-A *circuit breaker* is a small mechanism that remembers the recent behaviour of a
-dependency and, when the dependency is plainly failing, stops calling it for a time.
-It takes its name from the electrical device that cuts off a circuit in which too much
-current is flowing.
+## 13.2 External API and Data Contracts
 
-<figure class="steps" data-prefix="figures/steps-notify-breaker" data-count="6" data-version="07ad94bb">
-<img src="figures/steps-notify-breaker-01.svg?v=07ad94bb" alt="A circuit breaker before a provider, step 1 of 6. A circuit breaker stands between the senders and a provider and counts failures. While it is closed, every notification is passed on to the provider. This is the normal state.">
-<figcaption><b>Figure 13.3</b> A circuit breaker opens after 5 failures in a row, refuses calls for 30 seconds, and closes again after a successful trial. Use Next and Back to move through the 6 steps.</figcaption>
-</figure>
+### Asynchronous Ingestion and Preference Contracts
 
-The breaker has 3 states. While it is *closed*, calls pass through to the provider and
-the breaker counts consecutive failures. When the count reaches a threshold, the
-breaker becomes *open*, and in that state it rejects every call at once without
-contacting the provider. After a set interval it becomes *half open* and admits a
-single trial call. If the trial succeeds, the breaker closes and normal operation
-resumes, and if the trial fails, the breaker opens again for another interval.
+**Submit notification (`POST /v1/notify`):**
 
-2 benefits follow. The senders fail fast, in microseconds, where they would
-otherwise have waited out a timeout of many seconds, and so remain free to serve the
-other channels. And the failing provider is relieved of all traffic but the occasional
-trial, which gives it the best chance of recovering. A notification rejected by an
-open breaker has not been lost. It returns to the queue to be tried later, or is
-directed to another provider.
-
-## Providers' limits and a second provider
-
-Providers restrict the rate at which they may be called, and a sender that exceeds the
-permitted rate is refused, usually with the status `429` that chapter 7 described. A
-well-behaved notification service does not discover the limit by running into it. It
-paces its own calls to each provider slightly below that provider's limit, using the
-leaky bucket of chapter 7, which is the algorithm designed for exactly this purpose of
-feeding a consumer at a steady rate. Notifications that arrive faster than the
-provider will take them wait in the queue, which is what the queue is for.
-
-For channels on which delivery matters greatly, such as the text messages that carry
-login codes, a service commonly holds accounts with 2 providers. When the circuit
-breaker for the first is open, messages are directed to the second. This raises the
-availability of the channel considerably and brings a small complication with it: a
-message that timed out at the first provider and was then sent through the second may
-arrive twice, since the 2 providers know nothing of each other and cannot recognise
-the duplicate.
-
-## Sent is not delivered
-
-When a provider accepts a message, it has undertaken to try to deliver it, and nothing
-more. The email may yet be rejected by the recipient's mail server, the text message
-may wait for a phone that is switched off, and the push notification may be addressed
-to an app that was removed last week. None of this is known at the moment the provider
-replies to the sender.
-
-<figure>
-<img src="figures/notify-stages.svg?v=a74870ce" alt="5 stages of a notification: accepted, when the service has stored the request and answered 202; queued, waiting for a sender; handed to the provider; delivered, when the provider reports later that the phone or mailbox has it; and opened, which is known only for some channels.">
-<figcaption><b>Figure 13.4</b> The stages through which a notification passes, of which the service observes only the first 3 directly.</figcaption>
-</figure>
-
-Providers report the later fate of a message after the event, by calling an address
-that the notification service has registered with them. Such a call from a provider
-back to its customer is known as a *webhook*. The service must be prepared to receive
-these reports at any time, in any order, and more than once, and uses them to bring
-the recorded state of each notification up to date. They are also the principal means
-by which the service learns that an address has gone bad, so that it can stop sending
-to it.
-
-The practical consequence is that a notification service should be careful in what it
-claims. It can truthfully state that a message was handed to a provider. Whether the
-message was delivered is known only later and only for some channels, and whether it
-was read is hardly ever known. A system that requires certainty that a person has
-seen something, such as an alert to an engineer on call, cannot rely on a notification
-alone. It must require an explicit acknowledgement from the person and escalate to
-someone else when none arrives.
-
-## Preferences, quiet hours and priorities
-
-Not every notification that is requested ought to be sent, and the service is the
-place where this is decided.
-
-Users choose which kinds of message they wish to receive and by which channels, and in
-many countries the law requires that every promotional message offer a means of
-refusing further ones and that the refusal be honoured. The check against preferences
-belongs in the notification service itself, where no calling service can omit it by
-oversight. Users may also set hours during which they are not to be disturbed, and a
-message that falls within them is held and released when they end, unless it is of a
-kind, such as a security alert, that overrides them.
-
-A limit on frequency protects users from the combined enthusiasm of many calling
-services, each of which considers its own messages important. A user who receives 30
-notifications in a day will turn all of them off, the important ones included, and so
-the service limits the number of non-urgent notifications per user per day and
-discards or combines the excess.
-
-Notifications differ enormously in urgency. A login code is useless unless it arrives
-within seconds, and a weekly digest may arrive at any time today. If both wait in the
-same queue, a campaign that addresses 10 million users will delay every login code
-until it has been worked through. The service therefore keeps separate queues for
-separate priorities, each with senders of its own, so that the bulk traffic cannot
-occupy the capacity on which urgent traffic depends.
-
-## Sending to very many users
-
-A single request sometimes asks that millions of users be notified, of a change to the
-terms of service for example. Treated naively as 1 unit of work, it would occupy a
-sender for hours and would have to begin again from the start if that sender failed.
-
-The request is *fanned out*. A first stage divides the list of recipients into
-batches of perhaps 1000 and places 1 message per batch in the queue, and a second
-stage expands each batch into individual notifications. The work is thereby spread
-across all the senders, a failure affects 1 batch only, and the progress of the whole
-is the number of batches completed. Each individual notification is given an
-idempotency key derived from the campaign and the user, so that a batch which is
-processed twice does not send anything twice. Such campaigns are sent at low priority
-and paced over minutes or hours, both to respect the providers' limits and because a
-notification that brings a million users to the app within the same minute is an
-overload of one's own making.
-
-## Use cases
-
-Other services ask for notifications to be sent. Users decide which they are willing
-to receive.
-
-<figure>
-<img src="figures/notify-use-cases.svg?v=2ade166d" alt="A use case diagram of the notification service. Service: send a notification (POST /v1/notifications), read its state (GET /v1/notifications/{id}). User: choose channels (PUT /v1/users/{id}/channels).">
-<figcaption><b>Figure 13.5</b> The actors and what each of them does.</figcaption>
-</figure>
-
-## Functional requirements
-
-| No. | Functional requirement |
-|---|---|
-| 0 | A service can ask for a notification to a user on a channel: email, text message or push. |
-| 1 | A request carries a key. A second request with the same key sends nothing. |
-| 2 | A failed send is tried again, up to 5 times, with a longer pause each time. |
-| 3 | A notification that fails 5 times is set aside and reported. |
-| 4 | A user's choice of channels is respected. |
-
-## Non-functional requirements
-
-| No. | Property | Non-functional requirement |
-|---|---|---|
-| 0 | Delivery | At least once to the provider, and once per key from the caller's point of view. |
-| 1 | Latency | A notification leaves within 5 seconds of the request when the provider is healthy. |
-| 2 | Consistency | Strong for the set of keys already seen. Eventual for delivery state. |
-| 3 | Scale | 50 million notifications per day. |
-
-The guarantee offered to callers is that an accepted request leads to at least 1
-attempt to hand the message to a provider, and that a request repeated with the same
-key leads to no more than the first one did. The record of keys must be strongly
-consistent, since 2 nodes that disagreed about whether a key had been seen would
-between them send a duplicate. The state of a notification, by contrast, is eventually
-consistent with reality, since delivery is learned of after the fact, from the
-provider's reports.
-
-## Core entities
-
-<figure>
-<img src="figures/notify-entities.svg?v=ef63ffdf" alt="The core entities. Notification has the fields id u64, user string, channel email|sms|push, body string, key string. Attempt has the fields notification u64, try 1 to 5, result ok|error. The key is chosen by the caller. A second request with the same key is recognised and sends nothing.">
-<figcaption><b>Figure 13.6</b> The core entities and their fields.</figcaption>
-</figure>
-
-## Capacity estimate
-
-<div class="estimate">
-
-<img class="builder" src="art/crab-builder.svg" alt="A crab in a hard hat, in tears.">
-
-**Arithmetic ahead.** 50 million notifications per day are 580 per second on average, and the queue absorbs peaks of 10 times that.
-
-<a class="skip" href="#high-level-design">Skip to the high-level design</a>
-
-<details>
-<summary>Show the calculation</summary>
-
-| Quantity | Calculation | Result |
-|---|---|---|
-| Per second, average | 50000000 ÷ 86400 | 579 |
-| Per second, peak | 579 × 10 | 5790 |
-| Senders, at 50 sends per second each | 5790 ÷ 50 | 116 |
-
-</details>
-
-</div>
-
-## The API
-
-A request creates a notification. The reply does not say that anything was sent, only
-that the request has been stored and will be acted upon.
-
-**Send a notification**
+Returning `202 Accepted` signals durable intake without waiting for third-party providers. If the caller retries with the identical `Idempotency-Key`, the API returns `200 OK` with the existing `notification_id` and schedules no duplicate send.
 
 ```http
-POST /v1/notifications HTTP/1.1
-Host: notify.example
-Idempotency-Key: order-7-shipped
+POST /v1/notify HTTP/2
+Host: notify.internal
 Content-Type: application/json
+Idempotency-Key: order-7-shipped
 
-{ "user": "user-42", "channel": "email", "body": "Your order has shipped." }
+{
+  "user_id": "user-42",
+  "priority": "P1",
+  "template_id": "order_shipped_v2",
+  "channels": ["push", "email"],
+  "variables": { "order_id": "order-7", "carrier": "UPS" }
+}
 ```
 
 ```http
-HTTP/1.1 202 Accepted
+HTTP/2 202 Accepted
 Location: /v1/notifications/5512
 Content-Type: application/json
 
-{ "id": 5512, "state": "queued" }
+{
+  "notification_id": "5512",
+  "dedup_id": "order-7-shipped",
+  "state": "QUEUED"
+}
 ```
 
-`202 Accepted` says that the request was taken and the work will happen later.
-
-**The same request again**
+**Update user preferences and quiet hours (`PUT /v1/users/{user_id}/preferences`):**
 
 ```http
-POST /v1/notifications HTTP/1.1
-Host: notify.example
-Idempotency-Key: order-7-shipped
+PUT /v1/users/user-42/preferences HTTP/2
+Host: notify.internal
 Content-Type: application/json
 
-{ "user": "user-42", "channel": "email", "body": "Your order has shipped." }
+{
+  "locale": "en-US",
+  "timezone": "America/New_York",
+  "channels": {
+    "transactional": ["push", "email"],
+    "promotional": ["email"]
+  },
+  "quiet_hours": {
+    "enabled": true,
+    "start_local": "22:00",
+    "end_local": "08:00"
+  }
+}
 ```
 
-```http
-HTTP/1.1 200 OK
-Content-Type: application/json
+### Preference, Suppression, and Delivery State Schema
 
-{ "id": 5512, "state": "sent" }
+```sql
+CREATE TABLE user_notification_prefs (
+    user_id            TEXT PRIMARY KEY,
+    locale             TEXT NOT NULL DEFAULT 'en-US',
+    timezone           TEXT NOT NULL DEFAULT 'UTC',
+    promo_opt_in       BOOLEAN NOT NULL DEFAULT FALSE,
+    quiet_start_minute SMALLINT,     -- Minutes past midnight local time (e.g., 1320 = 22:00)
+    quiet_end_minute   SMALLINT,     -- e.g., 480 = 08:00
+    updated_at         TIMESTAMPTZ NOT NULL
+);
+
+CREATE TABLE address_suppression_list (
+    channel            TEXT NOT NULL, -- email | sms | apns | fcm
+    destination_hash   TEXT NOT NULL, -- SHA-256 of normalized email/phone/device token
+    reason             TEXT NOT NULL, -- HARD_BOUNCE | SPAM_COMPLAINT | UNREGISTERED_TOKEN | STOP_SMS
+    suppressed_at      TIMESTAMPTZ NOT NULL,
+    PRIMARY KEY (channel, destination_hash)
+);
 ```
 
-Our service returns the same id and sends nothing.
+## 13.3 High-Level Architecture: Control Plane vs. Data Plane
 
-## High-level design
+We decouple template authoring, user preference configuration, and provider SLA routing policy (control plane) from high-volume ingestion, deduplication, priority queuing, and provider dispatch (data plane) (Figure 13-2).
 
-<figure class="wide">
-<img src="figures/notify-design.svg?v=15cc7de9" alt="A notification service. The components are Services, API, Queue, Senders, Provider, Set aside. Step 1: A service asks for a notification, with a key. Step 2: The API drops a repeat and queues the rest. Step 3: A sender takes a message from the queue. Step 4: It calls the provider, and tries again on failure. Step 5: After 5 failed tries the message is set aside.">
-<figcaption><b>Figure 13.7</b> The components and the path of a request. The steps are numbered.</figcaption>
+<figure class="diagram">
+<img src="figures/m3/ch13_architecture.svg" alt="Architecture of the multi-channel notification service: Control Plane manages preference/cap stores and localized template/routing policies cached in Redis; Data Plane runs the Notification Ingestion API with SETNX deduplication, priority-isolated queues, per-channel sender pools with circuit breakers, external provider gateways (APNs, FCM, SES, Twilio), and asynchronous webhook receipt ingestion." />
+<figcaption><b>Figure 13-2</b> Control-plane preferences/templates and data-plane priority-isolated multi-channel dispatch topology.</figcaption>
 </figure>
 
-| Component | Role | State it holds | When 1 instance fails |
-|---|---|---|---|
-| API | accepts requests and drops repeats by key | the keys seen, replicated | another API node serves requests |
-| Queue | holds notifications until a sender takes them | the messages, as in chapter 11 | a follower broker takes over |
-| Sender | calls the provider and retries | none | its message is delivered again to another sender |
-| Provider | an outside email, text or push service | outside our control | senders retry, then set the message aside |
+### Component Responsibilities and Failure Domains
 
-### One request, step by step
+| Component | Plane | State Held | Failure Impact and Mitigation |
+| :--- | :--- | :--- | :--- |
+| **Preference & Suppression Store** | Control | Authoritative user opt-outs, quiet hours, frequency caps, and bounce suppression lists (SQL + Redis cache) | Cache miss falls back to SQL; fail-closed on promotional opt-out uncertainty (never violate legal unsubscribe rules), fail-open for `P0` security OTPs |
+| **Template & Routing Policy DB** | Control | Versioned i18n message templates and per-channel provider health/weight tables | Compiled templates cached in API/sender RAM; control-plane outage pauses edits while live sending continues uninterrupted |
+| **Notification Ingestion API** | Data | Stateless validators + strongly consistent `dedup_id` outbox store (`24 h` TTL) | Multi-AZ stateless fleet; writes `dedup_id` and outbox event atomically so crashes never drop accepted requests |
+| **Priority-Isolated Queues (Kafka)** | Data | Dedicated topics per `(priority, channel)` pair (`notify.p0.sms`, `notify.p3.email`, etc.) | Buffers hours of backlog during third-party outages; prevents bulk traffic from blocking urgent OTPs |
+| **Channel Sender Bulkheads** | Data | Per-provider leaky-bucket rate limiters, three-state circuit breakers, HTTP/2 connection pools | Isolated per channel and priority so a dead SMS carrier cannot exhaust threads needed by APNs or SES |
+| **Webhook Receipt Ingestor** | Data | Idempotent callback verifier (HMAC signature validation) updating audit logs and suppression list | Retried by providers for hours; updates `HANDED_TO_PROVIDER -> DELIVERED | BOUNCED` asynchronously |
 
-The steps follow the arrows of figure 13.7.
+### Request Path Walkthrough
 
-1. A service sends `POST /v1/notifications` with the header `Idempotency-Key: order-7-shipped`.
-2. The API looks the key up. A key it has seen gets the earlier answer and nothing else happens. A new key is recorded, and the notification goes into the queue.
-3. A sender takes the notification from the queue.
-4. The sender calls the provider. On failure it waits and tries again, with a pause that doubles.
-5. After 5 failed tries the sender moves the notification to a separate list for a person to look at.
+1. **Atomic Deduplication & Outbox Intake:** The Ingestion API checks `dedup:{id}` atomically (persisting key + outbox row in one transaction so a crash never records a key without enqueuing the send) and returns `202 Accepted` in `< 25 ms`.
+2. **Policy, Preference, and Cap Gate:** The enrichment stage checks the user's opt-outs, hard-bounce suppression list, daily promotional frequency cap (`INCR freq:{user}:{yyyy-mm-dd}`), and local quiet hours. `P0` security/OTP alerts bypass quiet hours and frequency caps; `P2`/`P3` messages arriving during quiet hours are deferred via the delayed job scheduler (Chapter 12) until `08:00` local time.
+3. **Localized Template Rendering & Priority Routing:** The worker renders the versioned template in the user's locale and publishes the concrete channel payload onto the matching priority topic (`P0`, `P1`, `P2`, or `P3`).
+4. **Paced Provider Dispatch:** A dedicated sender from that lane's bulkhead consumes the message, acquires a token from the provider's leaky-bucket pacer, verifies the provider's circuit breaker is `Closed`, and transmits over HTTP/2.
+5. **Asynchronous Delivery Verification:** Provider webhooks later update the notification record from `SENT_TO_PROVIDER` to `DELIVERED` or `HARD_BOUNCED` (automatically adding invalid emails or unregistered APNs/FCM tokens to `address_suppression_list`).
 
-## The design, deployed
+## 13.4 Priority Lane Isolation, Provider Pacing, and Circuit Breakers
 
-<figure class="wide">
-<img src="figures/notify-deploy.svg?v=4f8e9ac4" alt="The notification service, deployed. Callers: Calling services (580 req/s), report events. Api, in 3 zones: Load balancers (x 2), any API node, API nodes (x 8), check key, preferences, Key store (x 3), keys seen, with outbox. Queues and senders: Queue brokers (x 6), 1 queue per priority, Senders (x 40), a pool for each channel. Outside: Email provider (x 1), outside our control, SMS providers (x 2), a second as fallback, Push providers (x 2), 1 per phone system.">
-<figcaption><b>Figure 13.8</b> The notification service as it is deployed, from the calling services to the outside providers.</figcaption>
+### Eliminating Head-of-Line Blocking with Priority Lanes and Bulkheads
+
+A single shared queue fails catastrophically as soon as marketing triggers a `10,000,000`-user announcement: every `P0` two-factor login SMS lands behind millions of promotional jobs and arrives `40 minutes` late, locking users out of their accounts. Figure 13-3 illustrates our three-stage isolation pipeline:
+
+<figure class="diagram">
+<img src="figures/m3/ch13_priority_fanout.svg" alt="Three-stage notification fanout defense: Dedup and Policy Gate (24h SETNX, opt-out suppression, quiet hours, <=3 promos/day cap), physically isolated Priority Lanes (P0 OTP vs P1/P2/P3), and per-provider token buckets with three-state circuit breakers and automatic secondary failover." />
+<figcaption><b>Figure 13-3</b> Deduplication and policy gating, isolated priority lanes, and per-provider circuit-breaker failover.</figcaption>
 </figure>
 
-The deployment falls into 2 halves joined by queues. The upper half, the API nodes
-with their key store, must always be available, since it is what the calling
-services depend on, and it does very little. The lower half, the senders, is where
-the slow and uncertain work is done, and it is divided into separate pools for each
-channel and each priority, so that a pool blocked on a failing provider cannot
-starve the others. The providers at the bottom are outside the system, and for the
-channel that matters most there are 2 of them.
+- **Dedicated Topics and Worker Bulkheads:** `P0` (OTP, fraud, password reset), `P1` (order confirmations, receipts), and `P2`/`P3` (digests, promotions) run on physically separate queue topics, separate thread pools, and separate provider sub-accounts (so marketing email reputation never contaminates transactional IP reputation).
+- **Per-Provider Leaky-Bucket Pacing:** External providers enforce strict rate limits (for example, `500` SMS/s on Twilio or `1,000` emails/s on SES) and return `429 Too Many Requests` when exceeded. Rather than colliding with provider `429` walls, senders pace outbound calls slightly below contracted limits (`90%` ceiling) using a distributed leaky bucket (Chapter 7), letting excess volume sit safely inside Kafka partitions.
+- **Two-Stage Batched Campaign Fan-Out:** A `10,000,000`-user broadcast never executes as one giant loop. Stage 1 chunks the audience query into `10,000` batch jobs of `1,000` users each (each checkpointed independently). Stage 2 workers expand each batch into individual `P3` notifications carrying deterministic idempotency keys (`campaign:{camp_id}:user:{uid}`) paced over a configured rollout window (`30` to `120 minutes`), protecting both provider limits and our own app servers from a click-through stampede.
 
-## How real systems do it
+### Three-State Circuit Breakers and Multi-Provider Failover
 
-The treatment of retries in this chapter follows an article from Amazon that has
-become the standard reference. It simulates many clients contending for a resource
-and compares several ways of randomising the pause. The form used in this chapter,
-a random time between 0 and the full exponential value, is the one the article calls
-full jitter, and it found that this did the least total work, with a variant that
-keeps half of the pause fixed close behind and a third variant, in which each pause
-is derived from the previous one, somewhat worse. The author has since added the
-caution that backoff and jitter spread a burst of load out and do not reduce a
-sustained overload, for which the load itself must be reduced.
+When an external provider hangs instead of returning fast errors, every sender thread blocks for the full `10-second` socket timeout, starving healthy traffic and cascading timeouts upstream. Placing a **three-state circuit breaker** in front of each provider isolates outages in microseconds, as traced in Interactive Trace 13.A:
 
-That further step is the *retry budget*. Google's book on site reliability
-engineering recommends that a client limit its retries to a fixed proportion of its
-ordinary requests, 10% for example, in addition to a limit for each request, so that
-when a dependency is failing completely, the retries add a tenth to the load, where
-unlimited retries would multiply it. A circuit breaker achieves a similar end by different means.
+<figure class="steps" data-prefix="figures/steps-notify-breaker" data-count="6" data-version="07ad94bb">
+<img src="figures/steps-notify-breaker-01.svg?v=07ad94bb" alt="A circuit breaker before a provider, step 1 of 6. A circuit breaker stands between the senders and a provider and counts failures. While it is closed, every notification is passed on to the provider. This is the normal state.">
+<figcaption><b>Interactive Trace 13.A</b> Three-state circuit breaker transitioning from Closed to Open after 5 consecutive failures, failing fast for 30 seconds, and probing via Half-Open. Use Next and Back to step through.</figcaption>
+</figure>
 
-The circuit breaker was described by Michael Nygard in his book on production
-failures and was made widely known by a library from Netflix. The same book treats
-its companions, the timeout and the *bulkhead*, which is the separation of pools
-used in the deployment above.
+- **Closed:** All calls flow through while tracking rolling error rate and consecutive timeouts. Crossing the threshold (for example, `5` consecutive timeouts or `> 50%` 5xx over `20` requests) trips the breaker to **Open**.
+- **Open:** All calls fail fast in microseconds without opening sockets to the dead provider, protecting sender threads and giving the provider room to recover. For `P0` SMS OTPs, an open primary-carrier breaker automatically routes traffic to a pre-warmed **secondary SMS carrier** (active-passive failover).
+- **Half-Open:** After a `30-second` cooldown, the breaker admits a small probe (`1` to `3` trial sends). Success resets the breaker to **Closed**; failure re-opens it for another cooldown window.
 
-For push notifications, the providers are Apple's and Google's services, each of
-which reports a token that is no longer valid in its reply to a send, so that
-sending is also the means by which dead tokens are discovered. Most providers of
-email and text messages report delivery by webhook, and they retry their webhooks
-for hours when the receiver is down, so that the receiver must be idempotent, in a
-reversal of the usual roles.
+## 13.5 Error Taxonomy, Full-Jitter Exponential Backoff, and Delivery Truth
 
-## Mistakes to avoid
+### Permanent vs. Transient Provider Failures
 
-| Mistake | What goes wrong | What to do |
-|---|---|---|
-| Calling the provider while the caller waits | A slow provider makes every calling service slow. | Store the request, answer `202`, and send from a queue. |
-| No idempotency key | A caller's retry sends the user the same message twice. | Require a key and record the keys accepted. |
-| Recording the key and queueing the message as 2 steps | A crash between them loses the notification, and the retry is dismissed as a repeat. | Do both in 1 transaction, through an outbox. |
-| Retrying every failure | Invalid addresses are tried again and again, and the sender's reputation suffers. | Retry only failures that may pass, and mark addresses that are permanently refused. |
-| Retrying at once | Retries keep an overloaded provider overloaded. | Double the pause after each failure. |
-| The same pauses for everyone | Senders that failed together return together, in waves. | Choose each pause at random within its range. |
-| Retrying without limit | A notification that can never be sent circulates for ever. | Stop after a fixed number of tries and set it aside. |
-| No circuit breaker | Senders wait out timeouts on a dead provider, and healthy channels are delayed. | Stop calling a provider after repeated failures, and test it with single trial calls. |
-| Reporting "delivered" when the provider accepts | Users are told of messages that never arrived. | Record "handed to the provider", and update from the provider's reports. |
-| 1 queue for everything | A large campaign delays login codes. | Keep separate queues and senders for each priority. |
-| Checking preferences in each calling service | A service forgets, and a user who refused messages receives them. | Check preferences in the notification service. |
-| Sending a campaign as fast as possible | The providers refuse the excess, and the users who respond overload the app. | Pace campaigns over time at low priority. |
+Retrying every error damages both sender throughput and external deliverability reputation. Senders classify every provider response strictly into four actions:
 
-## Failures
+| Provider Response | Classification | Sender Action |
+| :--- | :--- | :--- |
+| **`200` / `202` Accepted** | Accepted for relay | Mark `HANDED_TO_PROVIDER`, store `provider_message_id`, await webhook receipt |
+| **Invalid Email, Hard Bounce, APNs `410 Unregistered`, FCM `UNREGISTERED`, SMS `STOP`** | **Permanent Failure** | Zero retries; mark `FAILED_PERMANENT`; write destination to `address_suppression_list` immediately to protect sender IP reputation |
+| **`429 Too Many Requests`, `500`/`502`/`503`/`504`, Connection Reset** | **Transient Failure** | Schedule retry via exponential backoff with full jitter (respecting `Retry-After` if larger) up to `max_attempts = 5` |
+| **Client Read Timeout (Ambiguous Outcome)** | **Ambiguous Transient** | Retry with backoff, passing provider-side idempotency header where supported; accept rare duplicate over silent OTP loss |
 
-| Failure | What users see | How the system recovers |
-|---|---|---|
-| The provider is down | notifications arrive late | senders retry with growing pauses; the queue holds the backlog |
-| A sender crashes after the provider accepted a message | the user may get that message twice | the queue redelivers; providers that accept a key drop the repeat |
-| A caller retries its request | nothing | the idempotency key identifies the repeat |
+### Exponential Backoff with Full Jitter and Retry Budgets
 
-## Trade-offs
+Immediate retries keep an overloaded provider pinned at `100%` saturation. Doubling the wait after each failure (`1 s -> 2 s -> 4 s -> 8 s -> 16 s`, capped at `60 s`) lets brief blips recover on attempt `2` while shedding load rapidly during long outages, as demonstrated in Interactive Trace 13.B:
 
-| Decision | What it gains | What it costs |
-|---|---|---|
-| A queue between API and provider | callers are not slowed by the provider | delivery is no longer immediate |
-| Retries | brief failures are invisible | a message can be sent twice without a key on the provider's side |
-| Setting aside after 5 tries | a bad message does not block the others | someone has to look at what was set aside |
+<figure class="steps" data-prefix="figures/steps-notify-backoff" data-count="6" data-version="7b8f8080">
+<img src="figures/steps-notify-backoff-01.svg?v=7b8f8080" alt="A longer pause after each failure, step 1 of 6. The sender hands the notification to the provider, and the provider answers that it is overloaded. This is a failure that may pass, so the sender will try again.">
+<figcaption><b>Interactive Trace 13.B</b> Exponential backoff doubling waits (1, 2, 4, 8 s) across four transient failures before succeeding on try 5 at t = 15 s. Use Next and Back to step through.</figcaption>
+</figure>
 
-## The simulation
+Deterministic doubling alone still synchronizes retries across thousands of senders that failed during the same second, striking a recovering provider with periodic thundering-herd waves. Following Marc Brooker's AWS simulation analysis, we apply **Full Jitter**:
+
+```text
+sleep_seconds = random_uniform(0, min(cap_seconds, base_seconds * 2^(attempt - 1)))
+```
+
+Full jitter flattens synchronized spikes into a smooth trickle while halving mean retry wait time. To protect against prolonged brownouts where retries still multiply steady-state traffic, we pair full jitter with a **per-provider retry budget** (Google SRE practice): total retry requests across a sender pool may never exceed `10%` of normal first-attempt traffic. Exhausted notifications enter the **Dead-Letter Queue (`DLQ`)** (or expire automatically when their business validity TTL elapses, as with a 5-minute OTP code that would confuse a user if delivered two hours late).
+
+### Separating "Sent" from "Delivered"
+
+Accepting a `200 OK` from SES, APNs, or Twilio means only that the provider accepted responsibility to attempt delivery. Actual inbox placement, carrier handset delivery, or soft/hard bounces arrive seconds to hours later via asynchronous **webhooks** (`POST /v1/webhooks/{provider}`). Because providers retry webhooks at-least-once and out of order, our webhook handler verifies cryptographic signatures (`HMAC-SHA256`), enforces monotonic state transitions (`QUEUED -> SENT_TO_PROVIDER -> DELIVERED | BOUNCED`), and updates suppression lists idempotently.
+
+## 13.6 Failure Modes, SLIs, and Production Systems
+
+### Failure and Recovery Matrix
+
+| Failure Mode | Operational Symptom | Automated Mitigation |
+| :--- | :--- | :--- |
+| **Primary SMS Carrier Outage** | Consecutive timeouts / `503` on SMS sender pool | Circuit breaker opens after `5` consecutive failures; `P0` SMS pool fails over immediately to pre-warmed secondary SMS carrier |
+| **10M-User Marketing Campaign Launch** | `P3` queue depth surges to millions | Dedicated `P0`/`P1` topics and sender bulkheads keep OTP latency `< 3 s`; `P3` campaign paces smoothly over `60 minutes` |
+| **Caller Retries `POST /v1/notify` After Timeout** | Duplicate HTTP requests arrive with identical `Idempotency-Key` | Atomic `SETNX` / outbox uniqueness constraint returns existing `notification_id` (`200 OK`) and emits zero duplicate sends |
+| **High Email Hard-Bounce Spike** | SES bounce rate rises toward `5%` suspension threshold | Webhook ingestor auto-suppresses bounced addresses immediately; alert triggers at `2%` bounce rate to halt defective list uploads |
+| **Push Device Token Churn (Uninstalled Apps)** | APNs `410` / FCM `UNREGISTERED` errors on push sends | Senders treat as permanent failure (zero retries) and deactivate stale device token in preference store asynchronously |
+| **Stale `P0` OTP Delayed by Prolonged Outage** | OTP arrives `15 minutes` late, confusing user | Every message carries a business `valid_until` deadline; senders drop expired OTPs cleanly instead of delivering stale codes |
+
+### Key SLIs and Operational Alerts
+
+- **End-to-End Dispatch Latency by Priority (`p99`):** `P0 <= 3 s` (page immediately at `> 5 s`), `P1 <= 15 s`, `P3 <= 30 minutes`.
+- **Provider Circuit-Breaker State (`provider_breaker_open`):** Immediate alert whenever any primary provider circuit opens or failover engages.
+- **Email Bounce and Spam-Complaint Rates:** Page if hard bounce rate exceeds `2.0%` or complaint rate exceeds `0.08%` (well below ISP/SES suspension limits of `5%` and `0.1%`).
+- **DLQ Volume and Dedup Conflict Rate:** Alert on rising DLQ entries (broken template variables or invalid provider credentials) and monitor dedup hit rate for upstream retry loops.
+
+### Real-World Production Systems
+
+| Production System | Architecture Pattern | Multi-Channel & Policy Features | Architectural Distinction |
+| :--- | :--- | :--- | :--- |
+| **Amazon SNS + Pinpoint** | Managed pub/sub fan-out + channel endpoints | Push (APNs/FCM), SMS, email, campaign segmentation, quiet hours | Massive horizontal fan-out with built-in provider delivery status logging and topic-level DLQs |
+| **Airbnb / Uber Notification Platforms** | Kafka priority lanes + centralized preference/cap service | Strict `P0` vs marketing isolation, multi-vendor SMS routing, user fatigue caps | Enforces global per-user daily frequency budgets centrally so independent product teams cannot spam users |
+| **Courier / Knock / Novu** | Unified routing API + workflow state engine | Visual template i18n, provider fallback chains, batch/digest aggregation | Abstracts multi-vendor failover, digest batching ("3 people liked this"), and cross-channel read receipts |
+| **Apple APNs & Google FCM (HTTP/2)** | Persistent multiplexed HTTP/2 / TLS streams | Immediate token-invalidation status codes (`410 Unregistered`) | Requires long-lived HTTP/2 connection pooling rather than per-send TLS handshakes to sustain high throughput |
+
+## 13.7 Simulation Verification
+
+To verify caller idempotency deduplication, exponential retry pacing, and bounded DLQ quarantine, we execute the repository's `notifysim` simulation (`code/notifysim/src/main.rs`). Five requests enter the notification service against a simulated provider configured with distinct transient failure counts per key:
+
+```console
+$ cargo run --release -p notifysim
+order-7-shipped   sent on try 1, 0 seconds after the first try
+order-8-shipped   sent on try 3, 3 seconds after the first try
+order-7-shipped   submitted before: not sent again
+order-9-shipped   sent on try 5, 15 seconds after the first try
+order-10-shipped  failed 5 times: set aside for a person to look at
+```
+
+Every core delivery invariant appears in the five-line trace:
+
+1. **Immediate Healthy Path:** `order-7-shipped` succeeds on try `1` at `t = 0 s`.
+2. **Idempotent Deduplication:** Submitting `order-7-shipped` a second time is recognized by its idempotency key and suppressed (`not sent again`).
+3. **Exponential Backoff Timing:** `order-8-shipped` fails twice and succeeds on try `3` after `1 + 2 = 3 s`; `order-9-shipped` fails four times and succeeds on try `5` after `1 + 2 + 4 + 8 = 15 s`.
+4. **Bounded Retry Quarantine (DLQ):** `order-10-shipped` fails all `5` permitted attempts and moves to the dead-letter set for human inspection rather than looping indefinitely.
 
 <div class="simulation">
 
-**Simulation in the repository.** The program [`code/notifysim`](https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/distributed-systems-from-the-ground-up/code/notifysim/src/main.rs) simulates this design. To run it, clone the repository and type `cargo run --release -p notifysim` in the `code` directory.
+**Run the notification delivery simulation.** Execute `cargo run --release -p notifysim` in `code/` ([`code/notifysim/src/main.rs`](https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/distributed-systems-from-the-ground-up/code/notifysim/src/main.rs)) to reproduce idempotency suppression, exponential backoff schedules, and five-try dead-letter isolation above.
 
 </div>
 
-## References
+## 13.8 Terminology and References
 
-- M. Brooker, "Exponential Backoff And Jitter", AWS Architecture Blog, 2015.
-- M. Brooker, "Timeouts, retries, and backoff with jitter", Amazon Builders' Library.
-- B. Beyer and others (editors), *Site Reliability Engineering*, O'Reilly, 2016, chapter 22, "Addressing Cascading Failures".
-- M. Nygard, *Release It!*, Pragmatic Bookshelf, second edition, 2018.
-- RFC 9110, *HTTP Semantics*, 2022, for status 202.
+### Engineering Glossary
 
-## Terms introduced in this chapter
+| Term | Definition |
+| :--- | :--- |
+| **`202 Accepted`** | HTTP status code confirming a notification request is durably stored and queued for asynchronous delivery without waiting for external providers. |
+| **Priority Lane Isolation (Bulkhead)** | Physically separating queues, worker pools, and provider quotas across priority tiers (`P0` OTP vs `P3` marketing) to eliminate head-of-line blocking. |
+| **Full-Jitter Exponential Backoff** | Choosing each retry delay uniformly at random in `[0, min(cap, base * 2^(attempt - 1))]`, eliminating synchronized retry waves. |
+| **Circuit Breaker** | A three-state (`Closed`, `Open`, `Half-Open`) guard that stops sending traffic to a failing external provider, failing fast or triggering failover until trial probes succeed. |
+| **Retry Budget** | A global cap limiting retry volume to a small percentage (for example, `10%`) of healthy first-attempt traffic to prevent cascading overload. |
+| **Suppression List** | A durable opt-out and hard-bounce registry preventing further sends to unsubscribed users, invalid addresses, or uninstalled device tokens. |
+| **Quiet Hours (Do Not Disturb)** | User-configured local time windows during which non-critical notifications are deferred until morning while `P0` security alerts still pass through. |
+| **Webhook Receipt** | An asynchronous HTTP callback sent by an external provider reporting downstream delivery, bounce, or spam complaint events. |
 
-| Term | Meaning |
-|---|---|
-| Notification | a message from a system to a person |
-| Channel | the means of delivery: email, text message or push notification |
-| Provider | an outside company that carries messages on a channel |
-| Device token | the identifier by which a push provider addresses 1 installation of an app |
-| Template | the text of a kind of message, with places for data to be inserted |
-| `202 Accepted` | the HTTP status for a request that has been received and not yet acted upon |
-| Idempotency key | a name the caller gives a request, so that a repeat is recognised |
-| Exponential backoff | waiting twice as long after each successive failure |
-| Jitter | making each pause random, so that retries do not coincide |
-| Circuit breaker | a mechanism that stops calls to a failing dependency for a time |
-| Closed, open, half open | the breaker's states: passing calls, refusing calls, and admitting 1 trial |
-| Webhook | a call from a provider back to its customer to report an event |
-| Fan-out | turning 1 request into many individual messages |
-| Quiet hours | a period in which a user is not to be disturbed |
+### References
 
-<div class="summary">
-
-## Summary
-
-- A notification service accepts a request, stores it, answers `202`, and sends from a queue, so that slow providers do not slow down the callers.
-- A caller identifies each request with an idempotency key, and a repeated key sends nothing.
-- A provider's refusal is either permanent, in which case retrying is harmful, or temporary, in which case the sender tries again.
-- The pause before each retry doubles, so that a failing provider receives less and less traffic.
-- The pauses are random, so that senders which failed together do not return together.
-- A circuit breaker stops calls to a provider that is down and tests it with single trial calls.
-- Acceptance by a provider is not delivery, which is learned of later from the provider's reports.
-- Preferences, limits on frequency and priorities are enforced in the service, and very large sends are fanned out in batches and paced.
-
-</div>
+- M. Brooker, "Exponential Backoff and Jitter", AWS Architecture Blog, 2015.
+- M. Brooker, "Timeouts, Retries, and Backoff with Jitter", Amazon Builders' Library.
+- B. Beyer, C. Jones, J. Petoff, and N. R. Murphy (editors), *Site Reliability Engineering*, O'Reilly Media, 2016, Chapter 22 ("Addressing Cascading Failures").
+- M. Nygard, *Release It* (2nd edition), Pragmatic Bookshelf, 2018 (Circuit Breakers, Timeouts, and Bulkheads).
+- R. Fielding, M. Nottingham, and J. Reschke, RFC 9110, *HTTP Semantics*, IETF, 2022 (`202 Accepted` and `Retry-After`).
+- Apple Developer Documentation, "Sending Notification Requests to APNs (HTTP/2 Provider API)".
+- Firebase Cloud Messaging Documentation, "FCM HTTP v1 API and Best Practices for Registration Token Management".

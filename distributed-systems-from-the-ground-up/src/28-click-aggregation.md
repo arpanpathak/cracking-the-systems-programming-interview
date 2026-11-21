@@ -1,558 +1,362 @@
-<img class="plate" src="art/ch28.svg?v=a4f03ad7" alt="A hare stands beside a sign that reads: happened at 7, arrived at 13, counted at 7.">
+# Chapter 28: Click Aggregation
 
-# Click Aggregation: System Design
+<img class="plate" src="art/ch28-plate.svg" alt="Chapter 28 plate: Click Aggregation depicting event-time tumbling windows, progressing heuristic watermarks, and late-event side outputs." />
 
-An advertiser pays for each click on an advertisement, and wishes to know, minute by
-minute, how many clicks there have been. A system that answers this question takes
-in a stream of events, each recording that somebody clicked on something at some
-moment, and turns it continuously into counts: 412 clicks on advertisement 7 between
-10:00 and 10:01, 398 in the minute after. The counts feed dashboards that people
-watch, budgets that stop an advertisement when its money is spent, and, at the end
-of the month, invoices.
-
-Counting sounds like the easiest task a computer could be given, and for events that
-arrived promptly, once each and in order, it would be. The events of a real system
-do none of those things. A click is recorded on a phone that may be in a tunnel, and
-reaches the service seconds or hours after it happened. Events that were sent in 1
-order arrive in another. A browser that received no acknowledgement sends the same
-click again. And the machines that do the counting fail in the middle of their work,
-after they have counted some events and before they have recorded that they did so.
-Since money changes hands on the strength of the totals, a count that is 2% too high
-is an advertiser overcharged, and one that is 2% too low is revenue lost.
-
-A system that computes results continuously from an unending stream of events is
-said to do *stream processing*, and the counting of clicks is its standard example.
-The ideas of this chapter apply equally to counting page views, summing sales,
-detecting fraud and computing the metrics of chapter 24.
+Online advertising platforms bill advertisers per valid click while simultaneously driving live campaign dashboards and real-time budget pacing. Counting clicks over a clean, ordered, finite file in an overnight batch job is elementary, yet running once per day leaves advertisers blind for 24 hours and allows exhausted budgets to overspend for hours. Real-time click streams invert every assumption of batch processing: mobile devices buffer clicks inside tunnels and flush them minutes or hours late, network packets arrive out of order, browsers retry unacknowledged beacons and create duplicates, and stream processors crash mid-window while holding partial aggregates in memory. Because advertisers pay real money per aggregated click, overcounting by `2%` triggers billing disputes and undercounting by `2%` forfeits revenue directly. In this chapter, I design a distributed real-time click aggregation pipeline combining stateless high-availability ingestion, event-time tumbling windows with heuristic watermarks, Chandy-Lamport asynchronous checkpointing, hot-ad two-stage pre-aggregation, and audit-grade batch reconciliation.
 
 <div class="covers">
 
-This chapter covers
+In this chapter, we cover
 
-- counting once a day, and why that is too slow
-- the 2 times of every event: when it happened, and when it arrived
-- windows, and which window an event belongs to
-- watermarks, which decide when a window is finished
-- events that arrive after their window has been closed
-- counting each click once, although it is delivered more than once
-- recovering from a failure without counting anything twice
-- keeping every raw event, so that the counts can be made again
-- a key that receives far more events than the others
+- actors, use cases, verifiable functional and non-functional requirements, non-goals, and billion-click capacity bounds
+- high-availability click ingestion endpoints, live OLAP count/Top-K APIs, Avro event envelopes, and idempotent ReplacingMergeTree schemas
+- control-plane stream orchestration and schema management separated from the speed-layer streaming path and immutable archive reconciliation path
+- event-time versus processing-time semantics, client clock-skew clamping, heuristic watermarks with idle-partition handling, allowed lateness, and late-event side outputs
+- Chandy-Lamport asynchronous barrier snapshots for effectively-once state recovery, hot-ad salting with two-stage pre-aggregation, HyperLogLog distinct counts, and click-fraud deduplication
+- failure recovery matrices, streaming SLIs, production architectures (Apache Flink, Google MillWheel and Photon, Meta Scuba), and simulation verification via `code/clicksim`
 
 </div>
 
-## Counting once a day
+## 28.1 Requirements, Actors, and Capacity Bounds
 
-The oldest way of producing such counts makes no attempt at continuity. Every click
-is appended to a file, and once a day a job reads the day's file from beginning to
-end, counts the clicks for each advertisement, and writes the totals. This is *batch
-processing*, and it has virtues that should not be underrated. It is simple. It sees
-all the data at once, so that late and disordered events present no difficulty
-provided they arrived before the job ran. And if the job is found to contain a
-defect, it is corrected and run again on the same file.
+Click aggregation bridges two conflicting operational demands: **sub-minute freshness** for live advertiser dashboards and budget pacing, and **exact financial completeness** for end-of-month invoicing. No unbounded streaming system can guarantee both instantaneous emission and `100%` completeness simultaneously because an arbitrary offline device can always deliver an older click later. We resolve this fundamental tension explicitly by publishing two clearly labeled grades of results: fast **provisional** counts emitted from the real-time stream within seconds, and immutable **final** counts produced after reconciling stragglers from an immutable raw-event archive.
 
-Its failing is delay. The count for a click made just after midnight is available
-some 24 hours later. An advertiser cannot see during the day how a campaign is
-performing, and a budget of 1000 that was exhausted by 9 in the morning goes on
-being spent until the following night.
+### Actors and Use Cases
 
-Stream processing aims to produce the same counts within seconds, by processing each
-event as it arrives. Nearly everything that makes it difficult comes from having
-given up the 2 comforts of the batch job, namely that all the data was present
-before the work began, and that the whole job could be run again.
+Three external actors interact across the ad-click aggregation boundary (Figure 28-1).
 
-## The 2 times of an event
+<figure class="diagram">
+<img src="figures/m3/ch28_use_cases.svg" alt="Actors and Use Cases of the Real-Time Ad-Click Aggregation Pipeline: Visitor Browsers submit click telemetry beacons; Advertiser Dashboards query 1-minute event-time counts and Top-K campaigns; Billing and Fraud Engines deduplicate bots and reconcile immutable raw archives into final invoices." />
+<figcaption><b>Figure 28-1</b> Actors, system boundary, and core use cases of the real-time ad-click aggregation pipeline.</figcaption>
+</figure>
 
-Every event has 2 times associated with it, and to confuse them is the most common
-single error in the processing of streams.
+| Actor | Operation | Concrete Scenario |
+| :--- | :--- | :--- |
+| **Visitor Browser / SDK** | Report raw ad-click telemetry (`POST /v1/clicks`) | Mobile SDK emits a signed click beacon carrying a client-generated `click_id` and `event_ts`, retrying automatically on transient network timeouts |
+| **Advertiser Dashboard** | Query live 1-minute counts and Top-K campaigns (`GET /v1/ads/{id}/clicks`) | A marketing analyst tracks campaign clicks minute-by-minute within `30 s` of occurrence and watches real-time Top-K trending ads |
+| **Billing and Fraud Engine** | Filter invalid bot traffic and compute final invoices | Fraud pipeline drops forged or high-velocity bot clicks; nightly reconciliation computes exact immutable daily totals for advertiser billing |
 
-The *event time* is the moment at which the thing happened: the instant at which the
-visitor's finger touched the advertisement, as recorded by the visitor's device. The
-*processing time* is the moment at which the event reaches the system that counts
-it. The 2 differ by the time the event spent in transit, which is usually a fraction
-of a second and occasionally very much more. A phone without a connection holds its
-events until the connection returns. A collector that is restarted delivers a
-backlog when it comes back.
+### Functional Requirements
 
-The question an advertiser is asking concerns event time. "How many clicks between
-10:00 and 10:01" means clicks that were made in that minute, wherever they have been
-since. A system that counts by processing time answers a different question, how
-many clicks happened to reach the counter in that minute, and its answers are wrong
-whenever anything is delayed. Should the collectors be down for 5 minutes and then
-deliver everything together, counting by processing time shows 5 minutes with no
-clicks followed by 1 minute with 6 times the usual number, and an advertiser whose
-campaign ended at 10:03 is charged for clicks made before the end and delivered
-after it.
+| No. | Functional Requirement |
+| :--- | :--- |
+| 0 | Every click beacon submitted by an authorized browser or mobile SDK is accepted with minimal latency and persisted durably with both its client `event_ts` and collector `ingest_ts`. |
+| 1 | The system aggregates valid clicks per advertisement into 1-minute **event-time** tumbling windows and exposes provisional counts within `30 s` of each window's close. |
+| 2 | Clicks delayed in transit are attributed to the exact minute in which they occurred (`event_ts`), rather than the minute in which they reached the server (`ingest_ts`). |
+| 3 | Duplicate click deliveries caused by client retries or at-least-once broker redelivery are deduplicated by `click_id` and counted at most once. |
+| 4 | The system exposes live Top-K advertisement rankings over recent sliding or tumbling windows and explicitly labels every returned count as `PROVISIONAL` or `FINAL`. |
+| 5 | Every raw click is retained immutably in long-term object storage so nightly reconciliation produces exact `FINAL` billing counts and historical bugs or fraud-rule updates can be reprocessed cleanly. |
 
-## Windows
+### Non-Functional Requirements and SLOs
 
-A stream has no end, and a count is of a finite set. The stream is therefore divided
-into *windows*, finite spans of time, and a count is produced for each. The simplest
-kind, the *tumbling window*, divides time into consecutive intervals of equal length
-that do not overlap: 10:00 to 10:01, 10:01 to 10:02, and so on. Each event belongs
-to exactly 1 window, the one that contains its event time.
+| No. | Property | Target Specification | Architectural Consequence |
+| :--- | :--- | :--- | :--- |
+| 0 | **Accuracy** | `FINAL` billing counts exact (`0%` drift from raw archive after fraud filter); `PROVISIONAL` counts within `1%` of `FINAL` | Event-time watermarking + allowed-lateness upserts paired with immutable raw Parquet archive reconciliation |
+| 1 | **Freshness** | Provisional 1-minute window counts visible in OLAP within `30 s` (`p99`) of window end | Continuous stateful stream processing (Flink) with tuned watermark lag (`10 to 15 s`) and streaming OLAP ingestion |
+| 2 | **Ingestion Availability** | `99.99%` availability for `POST /v1/clicks` (strictly prioritized over dashboard query availability) | Stateless edge collectors perform minimal validation and append directly to a 3-AZ Kafka log with zero synchronous dependency on downstream processors |
+| 3 | **Durability** | Zero loss of any `202 Accepted` click across single broker or AZ failure | Kafka `acks=all` across `3` replicas (`min.insync.replicas=2`) plus continuous archival to erasure-coded object storage |
+| 4 | **Consistency** | Eventual and revisable for `PROVISIONAL` counts; immutable and strongly consistent once marked `FINAL` | Idempotent keyed upserts in OLAP (`ReplacingMergeTree` / upsert primary key) with explicit finality flag |
+| 5 | **Scale** | `1B` clicks/day (`~11.6k` avg/s), `100,000` peak clicks/s, `1M` active advertisements | Partitioned Kafka log, parallel stateful Flink subtasks with hot-ad salting, and distributed columnar OLAP |
 
-Other shapes serve other questions. A *sliding window* covers a fixed span and
-advances by a smaller step, as in "the clicks of the last 5 minutes, recomputed
-every minute", so that each event belongs to several windows. A *session window*
-groups the events of 1 user that follow one another closely, and ends when the user
-has been inactive for some time. This chapter uses tumbling windows, which are
-sufficient to exhibit every difficulty.
+Observe the deliberate availability asymmetry in Requirement 2: a dashboard outage lasting `60 seconds` is a temporary annoyance whose data remains intact, whereas a dropped `POST /v1/clicks` request destroys billable revenue permanently because the visitor will not click again. Decoupling stateless collectors behind a durable partitioned log isolates revenue-critical ingestion from downstream processing bugs or OLAP maintenance.
 
-To assign an event to its window by event time is easy: the window is determined by
-the timestamp. The hard question is a different one. Since events arrive late and
-out of order, the system needs to know when it has received all the events of a
-window, so that it may declare the count final and publish it. At 10:01:00 by the
-clock, the window from 10:00 to 10:01 is over, in the sense that no more clicks will
-be made in it. But clicks that were made in it may still be on their way.
+### Non-Goals and Out-of-Scope Boundaries
 
-## Watermarks
+Four surrounding ad-tech systems sit outside this aggregation pipeline:
 
-There is no certain answer to that question, since an event can in principle be
-delayed without limit. The system has to make a judgement, and the device by which
-the judgement is expressed is the *watermark*.
+- **Real-time bidding (RTB) ad selection:** Serving auctions and ranking candidate ads within `< 50 ms` happens upstream before an impression or click token is minted.
+- **Multi-day cross-device conversion attribution:** Joining clicks against offline store purchases or 30-day app installs runs on offline data warehouses rather than sub-minute window operators.
+- **Advertiser payment settlement and ledger accounting:** Generating credit-card charges and double-entry merchant receivables belongs to the payment ledger architecture in Chapter 19.
+- **Ad-hoc arbitrary BI SQL queries over raw logs:** Interactive multi-terabyte scans execute over the Parquet/Iceberg lakehouse outside the latency-sensitive live OLAP serving tier.
 
-A watermark is a statement by the system about its own progress through event time:
-"I believe I have now received every event that happened before time T". It is an
-estimate, derived from the events that have been seen. A simple and common rule
-takes the largest event time observed so far and subtracts a fixed allowance for
-lateness. If the newest event seen happened at 10:01:09 and the allowance is 5
-seconds, the watermark stands at 10:01:04, and the system proceeds on the
-assumption that nothing earlier than that is still to come.
+### Back-of-the-Envelope Capacity Bounds
 
-A window is declared finished when the watermark passes its end. Until then it is
-kept open, and events that belong to it are added to its count although they arrive
-after the clock has moved past it.
+Click aggregation is constrained by **peak ingestion spikes, stateful per-window deduplication memory in RocksDB, hot-key partition skew, and multi-year raw archive retention**.
+
+| Resource Dimension | Derivation | Provisioned Bound |
+| :--- | :--- | :--- |
+| **Click Ingestion Rate** | `1B clicks/day / 86,400 s`; `~9x` peak burst during live broadcasts | `~11,575` avg clicks/s; `100,000` peak clicks/s |
+| **Raw Click Archive Growth** | `1B clicks/day * 200 B` (enriched Avro/Parquet record) | `200 GB/day` (`~73 TB/year` uncompressed; `~20 TB/year` Zstd Parquet) |
+| **Kafka Retention Footprint** | `200 GB/day * 7 days` replay buffer `* 3` replicas | `~4.2 TB` NVMe across `12` Kafka brokers (`64` partitions) |
+| **Daily Aggregated OLAP Rows** | `1M ads * 1,440 min/day * 10%` active minutes | `144M` aggregate rows/day (`~4.6 GB/day` at `32 B`/row) |
+| **Stateful Operator Dedup RAM / RocksDB** | `100,000 peak clicks/s * 90 s` active open+lateness window `* 16 B` (`click_id` + overhead) | `~144 MB` active dedup working set (`~6 MB` per task across `24` Flink subtasks; fits easily in RAM/RocksDB block cache) |
+| **Hot-Ad Peak Single-Key Load** | Single championship broadcast ad receiving `25%` of peak traffic | `25,000` clicks/s on one `ad_id` -> requires `K=16` salting (`~1,560` clicks/s per subtask) |
+
+## 28.2 External API and Data Contracts
+
+Every click carries a client-generated unique `click_id` (UUIDv7/ULID), an HMAC-signed `impression_token` minted when the ad was served (preventing forged click floods), and the client occurrence timestamp `event_ts`.
+
+### High-Availability Click Ingestion Endpoint
+
+```http
+POST /v1/clicks HTTP/2
+Host: clicks.example
+Content-Type: application/json
+
+{
+  "click_id": "0199f2a8-c110-7b2e-9a41-3f9c01e4b821",
+  "ad_id": 7,
+  "campaign_id": 402,
+  "impression_token": "imp_v1.eyJhZCI6NywiaXAiOi...sig_8f2a",
+  "event_ts": "2026-10-14T10:00:07.412Z"
+}
+```
+
+```http
+HTTP/2 202 Accepted
+```
+
+The collector returns `202 Accepted` immediately once Kafka acknowledges replication (`acks=all`), confirming durable receipt without waiting for window aggregation.
+
+### Live Campaign Counts and Top-K Query API
+
+```http
+GET /v1/ads/7/clicks?from=2026-10-14T10:00:00Z&to=2026-10-14T10:03:00Z&window=1m HTTP/2
+Host: clicks.example
+Authorization: Bearer tok_advertiser_402
+```
+
+```http
+HTTP/2 200 OK
+Content-Type: application/json
+
+{
+  "ad_id": 7,
+  "window_seconds": 60,
+  "watermark_ts": "2026-10-14T10:02:18Z",
+  "buckets": [
+    { "window_start": "2026-10-14T10:00:00Z", "count": 412, "unique_users_est": 389, "status": "FINAL" },
+    { "window_start": "2026-10-14T10:01:00Z", "count": 398, "unique_users_est": 374, "status": "PROVISIONAL" },
+    { "window_start": "2026-10-14T10:02:00Z", "count": 87,  "unique_users_est": 84,  "status": "PROVISIONAL" }
+  ]
+}
+```
+
+```http
+GET /v1/campaigns/top?window=1m&at=2026-10-14T10:01:00Z&limit=10 HTTP/2
+Host: clicks.example
+Authorization: Bearer tok_advertiser_402
+```
+
+Every bucket declares `status: "PROVISIONAL"` or `"FINAL"` alongside the current pipeline `watermark_ts`. Live dashboards plot both grades for low-latency visibility, whereas billing jobs filter strictly on `status = "FINAL"`.
+
+### Event Log Envelope and Idempotent OLAP Schema
+
+Inside Kafka, enriched click records follow a compact Avro/Protobuf schema registered in the Schema Registry:
+
+```json
+{
+  "click_id": "0199f2a8-c110-7b2e-9a41-3f9c01e4b821",
+  "ad_id": 7,
+  "campaign_id": 402,
+  "event_ts_ms": 1760436007412,
+  "ingest_ts_ms": 1760436007890,
+  "client_ip_hash": "a49f12c0e8b1...",
+  "user_agent_hash": "7b22d10a91f4...",
+  "is_valid_token": true
+}
+```
+
+In the OLAP serving store (ClickHouse or Apache Pinot), window counts are stored as **idempotent keyed replacements**, never blind `UPDATE counts SET c = c + delta` increments. If a stream processor crashes after publishing a window count and replays the last checkpoint interval upon recovery, re-writing the exact computed total under the composite key `(ad_id, window_start, window_sec)` with a monotonic `revision` overwrites the row cleanly with zero double-counting:
+
+```sql
+CREATE TABLE ad_click_counts (
+    ad_id            UInt64,
+    campaign_id      UInt64,
+    window_start     DateTime,
+    window_sec       UInt16,
+    click_count      UInt64,
+    unique_users_est UInt64,
+    status           Enum8('PROVISIONAL' = 1, 'FINAL' = 2),
+    revision         UInt64,
+    updated_at       DateTime64(3)
+)
+ENGINE = ReplacingMergeTree(revision)
+PARTITION BY toYYYYMMDD(window_start)
+ORDER BY (ad_id, window_sec, window_start);
+```
+
+## 28.3 High-Level Architecture: Control Plane vs. Data Plane
+
+We structure the aggregation platform around a clear split between **Control Plane** orchestration (schema enforcement, topic partitioning, Chandy-Lamport checkpoint coordination, and watermark management) and a dual-path **Data Plane** combining a low-latency streaming speed layer with an immutable raw-archive reconciliation tier (Figure 28-2).
+
+<figure class="diagram">
+<img src="figures/m3/ch28_architecture.svg" alt="Click Aggregation Architecture separating Control Plane (Schema and Broker Control, Stream Job Manager) from the Speed Layer Data Plane (Click Collectors, Kafka Event Log, Stateful Flink Engine with RocksDB, OLAP Store) and the Immutable Raw Click Archive, Nightly Batch Reconciler, and Serving/Billing API." />
+<figcaption><b>Figure 28-2</b> Control-plane orchestration separated from the real-time streaming aggregation path and immutable raw-archive batch reconciliation tier.</figcaption>
+</figure>
+
+### Component Responsibilities and Failure Domains
+
+| Component | Plane | State Held | Failure Impact and Recovery |
+| :--- | :--- | :--- | :--- |
+| **Schema and Broker Control** | Control | Avro/Protobuf schema versions, Kafka partition assignments, topic ACLs | Stateless control APIs backed by consensus metadata; prevents schema-breaking collector deploys from poisoning stream jobs |
+| **Stream Job Manager (Flink)** | Control | Task graph topology, checkpoint barrier coordinator, latest completed checkpoint metadata | Active-passive HA JobManager backed by ZooKeeper/Kubernetes leases; restarts failed tasks from last completed checkpoint in S3/GCS |
+| **Click Collectors (x40)** | Data (Speed) | Stateless (HMAC token verification, clock-skew clamping, IP hashing, Kafka producer batching) | Edge L7 LB routes around failed collectors immediately; zero lost requests |
+| **Kafka Event Log (x12)** | Data (Speed) | 7-day partitioned raw click log across 3 AZs (`64` partitions) | Broker failure promotes an in-sync replica in seconds with zero committed click loss (`min.insync.replicas=2`) |
+| **Stateful Stream Engine (x24)** | Data (Speed) | Per-window counts, `click_id` dedup sets, HLL sketches, watermark trackers in local NVMe RocksDB | Task crash restores incremental RocksDB snapshot + Kafka offsets atomically from object storage; effectively-once counts preserved |
+| **OLAP Serving Store (Pinot / ClickHouse)** | Data (Speed) | Partitioned columnar window counts (`ReplacingMergeTree` / upsert tables) | Replicated shards absorb single-node failure without query downtime; idempotent upserts survive stream replay cleanly |
+| **Raw Click Archive & Nightly Batch** | Data (Batch) | Immutable Zstd Parquet files on S3/GCS (`73 TB/year`) + Spark/Flink batch reconciler | Stateless batch jobs re-read immutable Parquet partitions on failure to produce authoritative `FINAL` billing rows |
+
+### End-to-End Click Path Walkthrough
+
+1. **Stateless Edge Ingestion:** A visitor clicks an advertisement. The browser or mobile SDK posts `POST /v1/clicks` to a stateless Collector. The Collector verifies the HMAC `impression_token`, stamps `ingest_ts`, clamps implausible client `event_ts` values, appends the Avro record to Kafka keyed by `ad_id` (or salted `ad_id#salt` for hot campaigns), and returns `202 Accepted`.
+2. **Parallel Archival:** An independent Kafka Connect / Sink consumer streams every raw partition continuously into immutable hourly Zstd Parquet files in S3/GCS, establishing the permanent replayable source of truth.
+3. **Stateful Event-Time Processing:** Flink subtasks consume Kafka partitions, check `click_id` against local RocksDB dedup state, drop duplicates and high-velocity bot bursts, assign valid clicks to their 1-minute event-time tumbling window, and advance per-partition watermarks.
+4. **Provisional Emission and Allowed Lateness:** When the global watermark passes a window's end boundary, the operator emits an idempotent `PROVISIONAL` count row to ClickHouse/Pinot. Late clicks arriving within the allowed-lateness grace period update RocksDB state and emit updated revisions; extreme stragglers route to a late-event side output.
+5. **Final Billing Reconciliation:** After a configured reconciliation cutoff (for example, `T+2 hours` or nightly at `02:00 UTC`), the Batch Reconciler reads the complete raw Parquet partitions (or executes unified Kappa replay using identical Flink SQL/DataStream logic over historical storage), incorporates every late straggler and offline fraud classifier verdict, and upserts immutable `status = 'FINAL'` rows for invoicing.
+
+## 28.4 Event-Time Semantics, Heuristic Watermarks, Windows, and Late-Event Handling
+
+Every click event carries two distinct timestamps: **event time** (`event_ts`, when the visitor actually clicked on their device) and **processing time** (`ingest_ts` / processor wall clock, when the server received it). Aggregating by processing time answers the wrong business question ("how many beacons reached our servers during minute `10:01`") and corrupts reporting whenever a mobile carrier lags or a collector experiences a 5-minute pause, producing five empty minutes followed by an artificial `6x` spike that bills an expired campaign.
+
+### Defending Against Malicious or Drifted Client Clocks
+
+Relying blindly on raw device timestamps introduces its own hazard: a smartphone whose local clock is misconfigured to `1970` or `2031` would inject clicks into decades-old or far-future windows, inflating state or poisoning watermarks. Collectors enforce a **clock-skew hygiene contract** at ingestion:
+- Compute `skew = client_send_ts - ingest_ts` whenever the SDK reports its local transmission time alongside `event_ts`, correcting systematic device clock offsets via `adjusted_event_ts = event_ts - skew`.
+- Clamp future timestamps (`adjusted_event_ts > ingest_ts + 5 s`) down to `ingest_ts`, and flag or route clicks older than `7 days` directly to an audit dead-letter archive so a corrupt device cannot stall watermark math.
+
+### Heuristic Watermarks and Idle-Partition Alignment
+
+Dividing an infinite stream into finite **tumbling windows** (`[12:00, 12:01)`, `[12:01, 12:02)`), **sliding windows** (5-minute span sliding every 1 minute for live Top-K trends), or **session windows** (grouping bursts per user separated by an inactivity gap) requires deciding *when* a window has received enough out-of-order events to close.
+
+A **heuristic watermark** `W(t)` expresses the stream engine's estimate of event-time completeness: `"the processor assumes no further non-late events with event_ts < W(t) will arrive."` Under a **bounded-out-of-orderness** generator with lag allowance `L` (for example, `L = 10 s`), each partition tracks:
+
+```text
+partition_watermark = max_event_ts_observed_in_partition - L
+```
+
+When a downstream operator reads from `P` parallel upstream partitions, its combined watermark must equal **`min(partition_watermark_1, ..., partition_watermark_P)`** so a fast partition does not prematurely close windows for a slightly lagging partition. A subtle production pitfall arises when one partition receives zero clicks for several minutes (for example, a quiet geographic shard at 03:00 local time): its `max_event_ts` freezes, pinning `min(...)` and halting *every* window across the entire cluster. Production Flink deployments eliminate this stall by configuring an **idle-source timeout** (`withIdleness(Duration.ofSeconds(15))`), temporarily excluding quiet partitions from the minimum calculation until traffic resumes.
+
+Advance through Interactive Trace 28.A to observe out-of-order arrivals, duplicate suppression, watermark window closure, and a one-minute late straggler on a `10`-second tumbling window with `5`-second watermark lag.
 
 <figure class="steps" data-prefix="figures/steps-click-watermark" data-count="6" data-version="6aec362f">
 <img src="figures/steps-click-watermark-01.svg?v=6aec362f" alt="Windows, late clicks and a watermark, step 1 of 6. Clicks are counted in windows of 10 seconds, by the time at which they happened. 6 clicks of the first window have arrived. The watermark is the newest event time, 9, minus 5: the counter still expects clicks from after 4 s.">
 <figcaption><b>Figure 28.1</b> Clicks arrive late, out of order and twice, and a watermark decides when each window is finished. Use Next and Back to move through the 6 steps.</figcaption>
 </figure>
 
-In these steps the windows are 10 seconds long and the allowance is 5 seconds. A
-click that happened at 7 seconds and arrived at 13 is counted in the first window,
-where it belongs, since the watermark had not yet passed the end of that window.
-When events from 19 seconds appear, the watermark reaches 14, and the first window
-is closed with a count of 7.
+### Allowed Lateness and Late-Event Side Outputs
 
-The simulation for this chapter runs the same stream through 2 counters. Counting by
-arrival time gives 7, 5, 1 and 1 for 4 windows, which is wrong in every window, and
-its first figure is right in size only by coincidence, since it includes a duplicate
-and omits 2 late clicks. Counting by event time with a watermark gives 7 and 4 for
-the first 2 windows, against a truth of 8 and 4.
+Choosing the watermark lag `L` exposes an unavoidable latency-completeness trade-off: larger `L` captures more out-of-order mobile clicks before initial emission but delays dashboards by `L` seconds. Following the **Google Dataflow / Apache Beam** window lifecycle model, we decouple fast provisional emission from state retention using a three-stage policy (Figure 28-3).
 
-The size of the allowance is the central parameter of the design, and it expresses a
-compromise that cannot be avoided. A generous allowance waits longer, catches more
-of the late events, and delays every result by as much. A small allowance publishes
-promptly and misses more. Results cannot be both immediate and complete, since
-completeness is only known in retrospect, and the choice of where to stand between
-the 2 depends on what the counts are used for.
-
-## Events that are later still
-
-Whatever the allowance, some events will arrive after their window has been
-declared finished. In the steps above, a click made at 2 seconds arrives a minute
-late, long after the first window was closed with a count of 7. The true count for
-that window was 8.
-
-There are 3 things that can be done with such an event. It can be discarded, which
-is simple and makes the published counts slightly too low for ever. It can be used
-to revise the count, with the window's result published a second time as 8, which
-requires everything downstream to be able to accept a correction to a figure it has
-already received. Or it can be set aside in a separate stream of late events, to be
-taken into account by a later and more leisurely process.
-
-For data on which invoices are based, discarding is unacceptable, and the usual
-design distinguishes 2 grades of result. The counts published within seconds are
-labelled provisional. They drive the dashboards and the budgets, where promptness
-matters more than the last fraction of a percent. A final count for each window is
-computed later, when even very late events have had time to arrive, and it is the
-final counts that are billed. The system states openly which of its figures are of
-which grade, and does not present an estimate as though it were settled.
-
-## Counting each click once
-
-The message queue that carries the clicks delivers at least once, as chapter 11
-explained, and the devices that send them retry when no acknowledgement comes. The
-same click may therefore reach the counter 2 or 3 times, and a counter that counted
-every delivery would overcharge the advertiser by the rate of retries.
-
-The remedy is the one that has served throughout this book. Every click is given a
-unique identifier at its origin, by the visitor's device, and the counter keeps a
-record of the identifiers it has counted, declining to count any that it has seen
-before. In the steps above, the second delivery of click 3 is recognised and
-ignored.
-
-The set of identifiers seen cannot be allowed to grow for ever, and here the
-watermark gives a second service. An identifier needs to be remembered only for as
-long as a duplicate of it could still arrive and be counted, which is as long as its
-window remains open. When a window is closed, the identifiers that belong to it can
-be discarded, since any later duplicate will be classed as a late event and dealt
-with by that path.
-
-## Recovering without counting twice
-
-The processor holds state in its memory: the partial counts of the windows that are
-open, the identifiers it has seen, and the position it has reached in the log of
-clicks. When it fails, a replacement has to continue, and the manner in which it
-continues determines whether the counts are right.
-
-If the replacement started with empty state from the present position in the log,
-the partial counts of the open windows would be lost, and those windows would be
-published too low. If it started with empty state from an earlier position, it would
-count again events whose windows had already been published. The difficulty is that
-of chapter 11, the gap between doing work and recording that it was done, with the
-addition that the work now accumulates in memory over the life of a window.
-
-The solution is to save the state and the position together. At regular intervals
-the processor writes a *checkpoint*, which consists of its entire state and the
-position in the log up to which that state reflects the input. The essential
-property is that the 2 are saved as a unit, so that the state corresponds exactly to
-the position. On recovery, the replacement loads the latest checkpoint and resumes
-reading from the recorded position. Every event before that position is reflected in
-the restored state and is not read again, and every event after it is absent from
-the restored state and is read. Each event affects the state exactly once.
-
-There remains the output. Between the last checkpoint and the failure, the processor
-may have published the results of some windows, and after recovery it will compute
-and publish those windows again. The results must therefore be written in such a way
-that writing them twice is harmless. A count is stored under a key formed from the
-advertisement and the start of the window, and writing the same count under the same
-key a second time merely replaces a value with an equal one. This is an idempotent
-write, and it completes the chain. With a log that can be read again from any
-position, a checkpoint that pairs state with position, and output that may safely be
-repeated, each click contributes to the published totals exactly once, although
-individual steps along the way may be performed more than once. This is the
-"effectively once" of chapter 11, extended to a computation that keeps state.
-
-## Keeping the raw events
-
-However carefully the stream processor is built, the time will come when its results
-are found to be wrong. A defect in the code will have miscounted for a week, or a
-definition will change, as when clicks from automated programs, hitherto counted,
-are to be excluded. The counts must then be made again, and that is possible only if
-the original events still exist.
-
-Every click is therefore retained in its raw form, in the log for some days and in
-an archive in the object store of chapter 16 for much longer. The archive is the
-authority, and every count is derived from it. A corrected version of the computation
-can be run over the archived events to produce corrected counts, which replace the
-old ones under the same keys.
-
-This arrangement also provides the final counts mentioned earlier. A batch job run
-each night over the complete events of the previous day sees every late arrival,
-needs no watermark, and produces figures that are definitive. The stream gives the
-prompt, provisional answer, and the batch job gives the slow, exact one. Many
-systems run both for this reason, and the chief burden of doing so is that the same
-logic has to be maintained in 2 places and kept in agreement. Where the stream
-processor can itself reread old events from the log, the reprocessing can be done by
-running the same code over the retained log from an earlier position, and the second
-implementation is avoided.
-
-## A key with too many events
-
-For the sake of throughput, the stream is divided among several processors, each
-handling the events of some of the advertisements. The division is made by hashing
-the identifier of the advertisement, as chapter 11 divided messages by key, so that
-all the clicks on 1 advertisement go to the same processor and can be counted
-together.
-
-Advertisements are very unequal. A single campaign shown during a major sporting
-event may receive more clicks than all the others together, and every one of them is
-directed to the same processor, which falls behind while its neighbours are idle.
-This is the *hot key* of chapters 9 and 11 in yet another setting.
-
-The usual remedy divides the work into 2 stages. In the first, the events of the
-busy advertisement are spread across several processors, by adding a small random
-number to the key, and each processor counts its share for each window. In the
-second, a single processor adds the partial counts together. The second stage
-receives 1 small message from each first-stage processor for each window, in place
-of every event, and is easily able to keep up. Since addition gives the same result
-in whatever grouping it is performed, the total is unaffected.
-
-## Use cases
-
-A visitor's click is recorded. An advertiser sees the counts, and is billed on the
-final ones.
-
-<figure>
-<img src="figures/click-use-cases.svg?v=b8a69dfb" alt="A use case diagram of the click counter. Visitor: a click is recorded (POST /v1/clicks). Advertiser: see clicks per minute (GET /v1/ads/{id}/counts?from=&amp;to=), receive the invoice (from the final counts).">
-<figcaption><b>Figure 28.2</b> The actors and what each of them does.</figcaption>
+<figure class="diagram">
+<img src="figures/m3/ch28_watermark_window.svg" alt="Event-Time Watermarks, Allowed Lateness Windows, and Late-Event Side Outputs: Window [12:00, 12:01) emits its initial provisional count when W(t) reaches 12:01:00, accepts incremental retractions and upserts during the +20 s allowed lateness grace period in RocksDB, and routes extreme stragglers after purge to a side output for batch reconciliation." />
+<figcaption><b>Figure 28-3</b> Three-stage event-time window lifecycle separating fast watermark triggers, bounded allowed-lateness upserts, and late-event side outputs.</figcaption>
 </figure>
 
-## Functional requirements
+1. **Watermark Trigger (`W(t) >= 12:01:00`):** As soon as `W(t)` crosses the window end (`12:01:00`), the operator emits the initial `PROVISIONAL` count (`revision = 1`) to ClickHouse/Pinot, keeping dashboard latency under `15 to 30 s`.
+2. **Allowed Lateness Window (`12:01:00 < W(t) <= 12:01:20`):** Rather than purging RocksDB state immediately at `12:01:00`, the operator retains the window counter and `click_id` dedup set for a bounded grace period (for example, `+20 s` in Figure 28-3, or `+5 min` for mobile-heavy ad networks). Each late click arriving inside this grace window updates the state and emits a higher-revision idempotent upsert (`revision = 2, 3, ...`) that refines the live OLAP count cleanly.
+3. **State Purge and Late-Event Side Output (`W(t) > 12:01:20`):** Once the watermark exceeds `window_end + allowed_lateness`, the operator purges both the window counter and its `click_id` dedup set from RocksDB so state memory stays strictly bounded (`~144 MB` total). Any extreme straggler arriving hours later routes cleanly into a dedicated **Late-Event Side Output** stream, alerting operators if late-event volume spikes and ensuring the nightly `FINAL` reconciliation job captures every billable click.
 
-| No. | Functional requirement |
-|---|---|
-| 0 | Every click on an advertisement is recorded, with the time at which it happened. |
-| 1 | The number of clicks on each advertisement in each minute is available within 30 seconds of the end of that minute. |
-| 2 | Clicks are counted in the minute in which they happened, whenever they arrive. |
-| 3 | A click that is delivered more than once is counted once. |
-| 4 | Final counts for each day are produced, which include clicks that arrived late. |
-| 5 | Counts can be computed again from the recorded clicks. |
+## 28.5 Chandy-Lamport Asynchronous Barrier Snapshots, Hot-Ad Salting, and Click-Fraud Deduplication
 
-## Non-functional requirements
+Three internal stream-processing mechanisms separate an academic prototype from a production billion-click billing pipeline: fault-tolerant checkpointing, skew elimination, and multi-tier deduplication.
 
-| No. | Property | Non-functional requirement |
-|---|---|---|
-| 0 | Accuracy | Final counts are exact. Provisional counts are within 1% of the final ones. |
-| 1 | Freshness | Provisional counts appear within 30 seconds. |
-| 2 | Durability | A click that was accepted is not lost. |
-| 3 | Consistency | Eventual for provisional counts, which may be revised. Final counts do not change. |
-| 4 | Scale | 1 billion clicks per day, with peaks of 100000 per second. |
-| 5 | Availability | 99.9% for accepting clicks, which matters more than availability for reading counts. |
+### Exactly-Once Stateful Recovery via Asynchronous Barrier Snapshots
 
-The last requirement reflects an asymmetry that is typical of systems of this kind.
-A dashboard that is unavailable for a minute is an inconvenience, and its figures
-are there when it returns. A click that is not accepted is lost for good, since the
-visitor will not make it again. The collectors that accept clicks are therefore kept
-as simple as possible, doing nothing beyond appending each click to a durable log,
-so that they remain available whatever is happening to the more elaborate machinery
-downstream.
+A stateful stream operator holds three tightly coupled pieces of state in memory and local NVMe RocksDB: its current Kafka partition offsets, open window partial counts, and seen `click_id` sets. If the processor persists Kafka offsets independently from its RocksDB state and crashes between the two writes, recovery either drops uncheckpointed clicks (underbilling) or replays already-counted clicks into stale counters (overbilling).
 
-## Core entities
+Apache Flink solves distributed stateful recovery without halting stream throughput using **Asynchronous Barrier Snapshots (ABS)** (Carbone et al., 2015), a streaming adaptation of the classical **Chandy-Lamport distributed snapshot algorithm** (1985):
 
-<figure>
-<img src="figures/click-entities.svg?v=ad25fbca" alt="The core entities. Click has the fields id u64, ad u64, happened time, arrived time. Window count has the fields ad u64, window start time, count u32, final yes|no. A Click carries the time it happened on the visitor&#x27;s device. A Window count is final once no more clicks are expected.">
-<figcaption><b>Figure 28.3</b> The core entities and their fields.</figcaption>
-</figure>
+1. **Barrier Injection:** Every `30 to 60 seconds`, the JobManager instructs every Kafka source subtask to record its current partition offset and inject an in-band **checkpoint barrier** (`barrier_id = k`) directly into the event stream alongside regular click records.
+2. **Barrier Alignment:** When a downstream stateful operator receives `barrier_id = k` on input channel `A`, it pauses processing further records from channel `A` (buffering them briefly) while continuing to drain channel `B` until `barrier_id = k` arrives on *all* input channels. This alignment defines an exact consistent cut across the entire distributed dataflow graph: every event before `barrier_id = k` is reflected in state, and every event after `barrier_id = k` belongs to checkpoint `k + 1`. (Under heavy backpressure, Flink can switch to **unaligned checkpoints** that snapshot in-flight channel buffers immediately to keep checkpoint duration bounded.)
+3. **Asynchronous Incremental RocksDB Upload:** Once aligned, the operator takes an instantaneous copy-on-write RocksDB checkpoint (hard-linking immutable local SSTable files in milliseconds), resumes processing clicks immediately, and uploads only newly generated SSTable deltas asynchronously to S3/GCS.
+4. **End-to-End Effectively-Once Guarantee:** When all operators acknowledge `barrier_id = k`, the JobManager commits checkpoint `k` atomically. On crash, every subtask restores its exact RocksDB state and rewinds its Kafka consumer to the exact paired offsets from checkpoint `k`. Any window already emitted between checkpoint `k` and the crash is recomputed identically and written to ClickHouse/Pinot via **idempotent keyed upsert** (`ReplacingMergeTree`), achieving end-to-end effectively-once aggregation.
 
-## Capacity estimate
+### Hot-Ad Salting, Two-Stage Pre-Aggregation, and HyperLogLog
 
-<div class="estimate">
+Partitioning Kafka and Flink strictly by `hash(ad_id)` breaks down during major live events (a championship broadcast or flash sale), where one flagship advertisement can generate `25%` of total platform clicks (`25,000+` clicks/s). That single `ad_id` maps to one Flink subtask, saturating its CPU, blowing up backpressure, and freezing the global watermark while the other `23` subtasks sit largely idle.
 
-<img class="builder" src="art/crab-builder.svg" alt="A crab in a hard hat, in tears.">
+Because addition is **associative and commutative**, we eliminate hot-ad skew with **Two-Stage Salted Pre-Aggregation**:
 
-**Arithmetic ahead.** 1 billion clicks a day of 200 bytes each are 200 GB of raw events a day, while the counts for a million advertisements are a few gigabytes.
+- **Stage 1 (Salted Local Pre-Aggregation):** For normal ads, events hash by `ad_id`. For hot ads (detected dynamically via a lightweight Count-Min Sketch or campaign tier flag), the upstream partitioner appends a deterministic or random salt `(ad_id, salt)` where `salt in 0..15` (`K = 16`). Sixteen parallel Stage-1 subtasks each process `~1,560` clicks/s and emit only **one compact partial sum per window** (`16` messages/minute total).
+- **Stage 2 (Global Window Rollup):** A downstream operator strips the salt, re-keys strictly by `(ad_id, window_start)`, and sums the `16` partial aggregates into the exact global count in microseconds.
 
-<a class="skip" href="#high-level-design">Skip to the high-level design</a>
+Note a critical mathematical caveat when computing **distinct clicking users** (`unique_users_est`): unlike total click sums, exact unique counts cannot be added across salted partitions because the same user may land in both `salt=3` and `salt=11`. Instead, each Stage-1 subtask populates a compact **HyperLogLog (HLL)** probabilistic sketch (`12 KB` per window for `< 1%` standard error), and Stage 2 merges the `16` HLL byte arrays associatively via element-wise `max(reg_a[i], reg_b[i])` to produce an accurate global distinct-user estimate in constant memory.
 
-<details>
-<summary>Show the calculation</summary>
+### Click-Fraud Filtering and Multi-Tier Deduplication
 
-| Quantity | Calculation | Result |
-|---|---|---|
-| Clicks per second, on average | 1 billion ÷ 86400 | about 11600 |
-| Raw events per day | 1 billion × 200 bytes | 200 GB |
-| Raw events per year, in the archive | 200 GB × 365 | 73 TB |
-| Count rows per day | 1 million advertisements × 1440 minutes, of which 10% have any clicks | 144 million |
-| Size of the counts per day | 144 million × 24 bytes | about 3.5 GB |
-| State of the processors | identifiers of clicks in open windows: 100000 per second × 90 s × 8 bytes | about 72 MB |
+Ad-click pipelines are constant targets for automated click-fraud botnets attempting to drain competitors' daily budgets. We defend accuracy across three layers:
 
-</details>
+1. **Cryptographic Impression Tokens:** Every ad render mints a short-lived HMAC-signed `impression_token` encoding `(impression_id, ad_id, expiry_ts, publisher_id)`. Stateless collectors reject forged beacons lacking a valid signature or expired beyond `30 minutes` before they ever enter Kafka.
+2. **Window-Bounded `click_id` Deduplication:** Stateful operators store seen `click_id` keys inside RocksDB scoped to each window and automatically purge them when the watermark passes `window_end + allowed_lateness`, preventing unbounded dedup-table memory growth. For multi-datacenter active-active billing pipelines (such as Google Photon), cross-DC deduplication writes processed `click_id` records to a Paxos-replicated global key-value store to guarantee at-most-once billing even during full datacenter failovers.
+3. **Streaming Velocity and Offline Fraud Classification:** A lightweight Flink velocity filter flags abnormal click bursts (`> 20` clicks/minute from one `(client_ip_hash, user_agent_hash)` fingerprint) into a `suspected_fraud` side output so live budgets pause safely, while heavier graph-based bot detectors run offline before finalizing `FINAL` nightly billing invoices.
 
-</div>
+## 28.6 Failure Modes, SLIs, and Production Systems
 
-## The API
+### Failure and Recovery Matrix
 
-A click is reported by the visitor's browser, with an identifier that the browser
-generates and the time at which the click was made. An advertiser reads counts for a
-range of time.
+| Failure Scenario | Blast Radius | Automated Recovery and Preserved Invariant |
+| :--- | :--- | :--- |
+| **Flink TaskManager Host Crash** | `1/24` of partitions pause `5 to 15 s` | JobManager restarts affected tasks from latest incremental RocksDB checkpoint + paired Kafka offsets; idempotent OLAP upserts yield zero double-counting |
+| **Idle Kafka Partition Stalls Watermark** | Global provisional window emissions stall | Source idleness timeout (`15 s`) temporarily excludes quiet partitions from `min(partition_watermarks)`, resuming window closure immediately |
+| **Mobile Device Offline for 2 Hours** | Single delayed click batch | Watermark already purged the window; late clicks route cleanly to the Late-Event Side Output and are folded into `FINAL` billing counts by the nightly reconciler |
+| **Client Retry / Broker Redelivery Storm** | Duplicate click beacons | Window-scoped RocksDB `click_id` dedup set drops duplicates inside open/lateness windows; batch reconciler deduplicates globally by `click_id` |
+| **Viral Broadcast Ad Overwhelms One Subtask** | Single hot `ad_id` partition | Two-stage salted pre-aggregation (`K=16`) spreads Stage-1 load evenly across subtasks while preserving exact Stage-2 totals |
+| **Buggy Aggregation Code Deployed for 48 Hours** | Corrupted provisional/final counts | Engineers deploy patched logic and reprocess the immutable S3/GCS raw Parquet archive (or 7-day Kafka log), overwriting affected keys in OLAP via higher `revision` |
+| **OLAP Serving Store Outage** | Live dashboards degraded | Stateless Collectors continue returning `202 Accepted` into Kafka uninterrupted; Flink checkpoints buffer safely and drain backlog once OLAP recovers |
 
-**Report a click**
+### Streaming Observability: SLIs and SLOs
 
-```http
-POST /v1/clicks HTTP/1.1
-Host: clicks.example
-Content-Type: application/json
+1. **Collector Ingestion Success Rate:** Percentage of valid `POST /v1/clicks` requests durably committed to Kafka with `202 Accepted`. SLO: `>= 99.99%` (`SEV-1` page if `< 99.95%` over `2 minutes`).
+2. **End-to-End Provisional Freshness Lag:** `olap_emit_ts - window_end_ts` measured per minute across all partitions. SLO: `p99 <= 30 s`.
+3. **Watermark Lag and Partition Skew:** `current_wall_clock - global_watermark` and `max(partition_wm) - min(partition_wm)`. Rising skew immediately exposes a stuck partition, hot ad key, or broken idle-source configuration.
+4. **Provisional-to-Final Billing Drift:** Daily automated audit comparing `SUM(PROVISIONAL)` against `SUM(FINAL)` per campaign. SLO: `< 1.0%` drift; sudden drift spikes signal excessive mobile lateness, bot waves, or miscalibrated watermark lag `L`.
+5. **Checkpoint Duration and Alignment Buffer Size:** Alert if asynchronous RocksDB snapshot completion approaches `50%` of the checkpoint interval (`> 30 s`), preventing cascading backpressure before recovery time degrades.
 
-{ "id": "c-7f3a91", "ad": 7, "happened": "2026-10-14T10:00:07Z" }
+### How Production Systems Implement Click Aggregation
+
+| Production System | Core Architecture | Architectural Distinction |
+| :--- | :--- | :--- |
+| **Apache Flink** | Distributed stateful dataflow with Chandy-Lamport Asynchronous Barrier Snapshots + incremental RocksDB state | Industry standard for unified event-time stream and batch processing (Kappa architecture) with native watermarks, allowed lateness, and side outputs |
+| **Google MillWheel & Dataflow** | Per-key persistent state, low-watermark propagation, programmable Triggers + Accumulation modes | Formalized the Dataflow Model separating *what* is computed (transformations), *where* in event time (windows), *when* in processing time (watermarks/triggers), and *how* refinements relate (retract/accumulate) |
+| **Google Photon** | Multi-datacenter active-active streaming click-impression join backed by Paxos-replicated `IdRegistry` | Guarantees at-most-once and eventually-exactly-once ad billing across entire datacenter outages without stalling live processing |
+| **Meta Scuba / Apache Pinot / ClickHouse** | Real-time distributed columnar OLAP ingesting streaming upserts with sub-second Top-K aggregation | Decouples high-cardinality interactive advertiser dashboard queries from stateful stream aggregation workloads |
+
+## 28.7 Simulation Verification
+
+Running `code/clicksim` feeds an identical stream of out-of-order, duplicated, and late-arriving ad clicks through both a processing-time (arrival-time) counter and an event-time watermarked counter (`10 s` tumbling windows, `5 s` watermark lag allowance) and compares both against ground truth.
+
+```console
+$ cargo run --release -p clicksim
+what happened:              0-10 s: 8, 10-20 s: 4, 20-30 s: 1
+counted by arrival time:    0-10 s: 7, 10-20 s: 5, 20-30 s: 1, 60-70 s: 1
+counted by event time:      0-10 s: 7, 10-20 s: 4
+still open:                 20-30 s: 1
+clicks received twice: 1, clicks too late for their window: 1
 ```
 
-```http
-HTTP/1.1 202 Accepted
-```
-
-The status is `202`, since the click has been stored and has not yet been counted.
-The identifier allows a repeated report to be recognised.
-
-**Read the counts of an advertisement**
-
-```http
-GET /v1/ads/7/counts?from=2026-10-14T10:00:00Z&to=2026-10-14T10:03:00Z HTTP/1.1
-Host: clicks.example
-```
-
-```http
-HTTP/1.1 200 OK
-Content-Type: application/json
-
-{
-  "ad": 7,
-  "window_seconds": 60,
-  "counts": [
-    { "start": "2026-10-14T10:00:00Z", "count": 412, "final": true },
-    { "start": "2026-10-14T10:01:00Z", "count": 398, "final": false },
-    { "start": "2026-10-14T10:02:00Z", "count": 87, "final": false }
-  ]
-}
-```
-
-Every count states whether it is final. A caller that draws a graph may use them
-all, and a caller that computes an invoice uses only those marked as final.
-
-## High-level design
-
-<figure class="wide">
-<img src="figures/click-design.svg?v=79399384" alt="Counting clicks in windows. The components are Visitors, Collectors, Click log, Stream processor, Archive, Count store. Step 1: A visitor&#x27;s browser reports a click. Step 2: The collector appends it to the log. Step 3: The processor counts clicks in windows by event time. Step 4: The log is also kept, so that counts can be made again. Step 5: Finished windows are written to the count store.">
-<figcaption><b>Figure 28.4</b> The components and the path of a click. The steps are numbered.</figcaption>
-</figure>
-
-| Component | Role | State it holds | When 1 instance fails |
-|---|---|---|---|
-| Collector | accepts clicks and appends them to the log | none | another collector accepts |
-| Click log | holds every click, in partitions by advertisement | the log, replicated, as in chapter 11 | a follower is elected |
-| Stream processor | assigns clicks to windows, removes repeats, and counts | open windows, identifiers seen, and its position, saved in checkpoints | a replacement resumes from the latest checkpoint |
-| Count store | holds the count for each advertisement and window | the counts, replicated | a follower is elected |
-| Archive | keeps every raw click | the clicks, in an object store | as in chapter 16 |
-
-### One click, step by step
-
-The steps follow the arrows of figure 28.4.
-
-1. A visitor clicks, and the browser reports the click with an identifier and the time.
-2. A collector appends the click to the log, in the partition chosen by the advertisement, and answers `202`.
-3. The stream processor reads the click from the log. If it has seen the identifier, it does nothing. Otherwise it adds 1 to the open window that contains the click's event time, and moves the watermark forward if the click is the newest it has seen.
-4. The log is also copied to the archive, from which counts can later be made again.
-5. When the watermark passes the end of a window, the processor writes that window's count to the count store, under a key formed from the advertisement and the start of the window.
-
-## The design, deployed
-
-<figure class="wide">
-<img src="figures/click-deploy.svg?v=05190817" alt="The click counter, deployed. Browsers: Browsers (100000 clicks/s), report each click. Collection, in 3 zones: Load balancers (x 4), any collector, Collectors (x 40), append, and nothing else. The log: Click log (x 12), brokers, chapter 11, Archive (73 TB a year), every raw click. Counting: Stream processors (x 24), state in checkpoints, Nightly batch (from the archive), final counts. Serving: Count store (x 9), by ad and window, Counts API (x 8), dashboards, invoices.">
-<figcaption><b>Figure 28.5</b> The click counter as it is deployed, from the collectors down to the store that serves the counts.</figcaption>
-</figure>
-
-The tiers follow the path of a click. The collectors are a large and deliberately
-simple stateless tier, since their availability is what matters most. The click log
-of 12 brokers is the point at which the system changes character: above it,
-everything must be available at every moment, and below it, everything can be
-stopped, corrected and run again from a position in the log. The 24 stream
-processors hold their state in checkpoints, and the nightly batch reads the archive.
-At the bottom, a small serving tier answers dashboards and the billing system from
-the count store.
-
-## How real systems do it
-
-The vocabulary of this chapter, event time and processing time, windows, watermarks
-and late data, was fixed by a paper from Google in 2015 that presents the Dataflow
-model. The paper's central argument is the one made here, that a stream is
-unbounded and its completeness is never known, so that a system must offer the
-means to trade correctness, delay and cost against one another explicitly. It adds
-a concept that this chapter touched on without naming, the *trigger*, which says
-when the result of a window is to be emitted: early and provisionally, at the
-watermark, and again for each late arrival. The earlier MillWheel paper describes
-the system beneath, including low watermarks and the removal of duplicate records
-by recording the identifiers of those processed.
-
-Apache Flink is the open implementation in widest use, and its checkpoints are the
-ones described here. They are taken without stopping the stream, by passing markers
-through it that tell each operator when to record its state, a method derived from
-a classical algorithm for taking a consistent snapshot of a distributed system.
-
-The problem of this very chapter, the joining and counting of clicks for billing,
-is the subject of a paper on Photon, the system that Google built for its
-advertising business. Photon runs in several data centres at once, so that the loss
-of 1 does not delay the counts, and it prevents a click from being processed twice
-by recording the identifier of every processed click in a store that is replicated
-between the data centres by Paxos. A click is thereby counted at most once at all
-times and exactly once eventually, which is the guarantee sought here, obtained
-across data centres.
-
-The practice of running a stream and a batch side by side was named the lambda
-architecture. The objection that the same logic then exists twice, and the proposal
-to reprocess by running the stream code again over a retained log, were made in an
-article by an author of Kafka. And for counting the number of distinct visitors,
-which cannot be done by adding partial counts, the standard tool is a sketch that
-estimates the number from a few kilobytes of state.
-
-## Mistakes to avoid
-
-| Mistake | What goes wrong | What to do |
-|---|---|---|
-| Counting by the time of arrival | Delayed clicks are counted in the wrong minute, and an outage produces an empty stretch followed by a spike. | Count by the time at which the click happened. |
-| Closing a window when the clock passes its end | Every click still in transit is missed. | Close a window when the watermark passes its end. |
-| Discarding late clicks silently | Billed counts are always slightly too low. | Record late clicks, and include them in the final counts. |
-| Presenting provisional counts as final | A figure that has already been billed changes afterwards. | Mark every count as provisional or final. |
-| Counting every delivery | Retries and redeliveries inflate the counts. | Give every click an identifier, and count each identifier once. |
-| Remembering every identifier for ever | Memory grows without limit. | Forget the identifiers of a window when it closes. |
-| Saving state and position separately | After a failure, clicks are counted twice or not at all. | Save them together, in a checkpoint. |
-| Writing results by adding to a stored count | A result written twice after a recovery is added twice. | Write the count of a window under its own key, replacing whatever is there. |
-| Keeping only the counts | A defect or a change of definition cannot be corrected. | Keep every raw click. |
-| Trusting the timestamp of the visitor's device entirely | A device with a wrong clock places its clicks in the wrong day. | Record the time of arrival too, and reject event times that are impossibly far from it. |
-| Sending all the clicks of a busy advertisement to 1 processor | That processor falls behind while the others are idle. | Count in 2 stages, spreading the busy key in the first. |
-| Doing work in the collector | Clicks are lost when the downstream machinery is slow. | Let the collector append to the log and nothing else. |
-
-## Failures
-
-| Failure | What users see | How the system recovers |
-|---|---|---|
-| A stream processor fails | counts stop advancing for some seconds | a replacement loads the latest checkpoint and resumes from its position |
-| The collectors are unreachable for a time | no new counts, then counts for the missed minutes | browsers retry, and the clicks are counted in the minutes in which they happened |
-| A click arrives after its window was closed | the provisional count is slightly low | the final count includes it |
-| A click is delivered twice | nothing | its identifier is recognised |
-| A window's result is written twice | nothing | the second write replaces the first with the same value |
-| The counts are found to be wrong | corrected figures | the computation is run again over the archive |
-
-## Trade-offs
-
-| Decision | What it gains | What it costs |
-|---|---|---|
-| Counting by event time | counts that answer the question asked | windows have to be kept open, and a watermark maintained |
-| A larger allowance for lateness | more complete provisional counts | every result is published later |
-| Provisional and final counts | prompt figures and exact invoices | 2 grades of result that callers must distinguish |
-| Checkpoints | recovery with each click counted once | periodic pauses to save state, and reprocessing since the last checkpoint |
-| Keeping raw events | counts can always be made again | 73 TB a year of storage |
-| A stream and a nightly batch | speed and exactness together | the same logic in 2 places |
-
-## The simulation
+Inspect every metric confirmed by the simulation output:
+- **Processing-Time Distortion:** Counting by arrival time misattributes delayed clicks across buckets (`10-20 s` inflated to `5` instead of `4`), fabricates a phantom `60-70 s: 1` bucket for a click that occurred in `0-10 s`, and only lands on `7` for `0-10 s` accidentally because a duplicate click partially cancels out two delayed arrivals.
+- **Event-Time Watermark Accuracy:** Counting by event time with deduplication drops the `1` duplicate click cleanly, attributes the `7 s` delayed click correctly to `0-10 s`, produces exact `10-20 s: 4`, keeps `20-30 s: 1` open pending watermark advancement, and explicitly flags the `1` extreme straggler (`clicks too late for their window: 1`) so downstream late-event side outputs and nightly batch reconciliation restore the exact `0-10 s` total of `8`.
 
 <div class="simulation">
 
-**Simulation in the repository.** The program [`code/clicksim`](https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/distributed-systems-from-the-ground-up/code/clicksim/src/main.rs) simulates this design. To run it, clone the repository and type `cargo run --release -p clicksim` in the `code` directory.
+**Run the streaming click aggregation simulation.** Execute `cargo run --release -p clicksim` in `code/` to observe processing-time distortion versus event-time watermarked windows, duplicate suppression (`1` duplicate dropped), open-window buffering (`20-30 s: 1`), and late-straggler detection (`1` late click).
 
 </div>
 
-## References
+## 28.8 Terminology and References
 
-- T. Akidau and others, "The Dataflow Model: A Practical Approach to Balancing Correctness, Latency, and Cost in Massive-Scale, Unbounded, Out-of-Order Data Processing", VLDB 2015.
-- T. Akidau and others, "MillWheel: Fault-Tolerant Stream Processing at Internet Scale", VLDB 2013.
-- R. Ananthanarayanan and others, "Photon: Fault-tolerant and Scalable Joining of Continuous Data Streams", SIGMOD 2013.
-- P. Carbone and others, "Lightweight Asynchronous Snapshots for Distributed Dataflows", 2015.
-- K. Chandy and L. Lamport, "Distributed Snapshots: Determining Global States of Distributed Systems", ACM Transactions on Computer Systems, 1985.
+### Engineering Glossary
+
+| Term | Definition |
+| :--- | :--- |
+| **Event Time vs. Processing Time** | Event time is the instant an action occurred on the origin device; processing time is the wall-clock instant the server ingested or processed that event. |
+| **Tumbling / Sliding / Session Window** | Finite event-time groupings: non-overlapping fixed intervals (tumbling), overlapping fixed-span intervals advancing by a shorter slide (sliding), and inactivity-delimited user bursts (session). |
+| **Heuristic Watermark** | Monotonic progress timestamp `W(t)` estimating the event-time boundary before which the stream engine expects all non-late events to have arrived. |
+| **Allowed Lateness & Side Output** | Bounded post-watermark grace period retaining window state for incremental updates, after which extreme stragglers route to a separate side-output stream for batch reconciliation. |
+| **Asynchronous Barrier Snapshot (ABS)** | Flink's Chandy-Lamport adaptation that aligns in-band stream barriers across input channels and snapshots RocksDB state plus Kafka offsets asynchronously without pausing ingestion. |
+| **Two-Stage Salted Pre-Aggregation** | Spreading a hot key across `K` salted subtasks in Stage 1 to compute partial window sums, then folding only `K` compact summaries in Stage 2 to eliminate skew. |
+| **HyperLogLog (HLL)** | Probabilistic cardinality sketch estimating distinct counts within `< 1%` error using `~12 KB` of associatively mergeable memory per window. |
+| **Lambda vs. Kappa Architecture** | Lambda pairs a real-time speed layer with a separate nightly batch layer; Kappa uses one unified streaming codebase capable of replaying an immutable historical log to recompute results. |
+
+### References
+
+- T. Akidau, R. Bradshaw, C. Chambers, S. Chernyak, R. J. Fernandez-Moctezuma, R. Lax, S. McVeety, D. Mills, F. Perry, E. Schmidt, and S. Whittle, "The Dataflow Model: A Practical Approach to Balancing Correctness, Latency, and Cost in Massive-Scale, Unbounded, Out-of-Order Data Processing", *PVLDB*, 2015.
+- T. Akidau, A. Balikov, K. Bekiroglu, S. Chernyak, J. Haberman, R. Lax, S. McVeety, D. Mills, P. Nordstrom, and S. Whittle, "MillWheel: Fault-Tolerant Stream Processing at Internet Scale", *PVLDB*, 2013.
+- R. Ananthanarayanan, V. Basker, S. Das, A. Gupta, H. Jiang, T. Qiu, A. Reznichenko, D. Ryabkov, M. Singh, and S. Venkataraman, "Photon: Fault-Tolerant and Scalable Joining of Continuous Data Streams", *ACM SIGMOD*, 2013.
+- P. Carbone, G. Fora, S. Ewen, S. Haridi, and K. Tzoumas, "Lightweight Asynchronous Snapshots for Distributed Dataflows", *arXiv:1506.08603*, 2015.
+- K. M. Chandy and L. Lamport, "Distributed Snapshots: Determining Global States of Distributed Systems", *ACM Transactions on Computer Systems (TOCS)*, 1985.
 - J. Kreps, "Questioning the Lambda Architecture", O'Reilly Radar, 2014.
-- P. Flajolet and others, "HyperLogLog: the analysis of a near-optimal cardinality estimation algorithm", AofA 2007.
-
-## Terms introduced in this chapter
-
-| Term | Meaning |
-|---|---|
-| Stream processing | computing results continuously from an unending sequence of events |
-| Batch processing | computing results from a complete, finite set of data |
-| Event time | the time at which an event happened |
-| Processing time | the time at which an event reaches the system that processes it |
-| Window | a finite span of time over which events are aggregated |
-| Tumbling window | 1 of a series of consecutive windows of equal length that do not overlap |
-| Sliding window | a window of fixed length that advances by a smaller step |
-| Session window | the events of 1 user that follow one another closely |
-| Watermark | the system's estimate of the event time before which everything has arrived |
-| Allowed lateness | how long the system waits for older events |
-| Late event | an event that arrives after its window was declared finished |
-| Provisional, final | a count that may still be revised, and one that will not |
-| Checkpoint | the state of a processor saved together with its position in the input |
-| Reprocessing | computing results again from the original events |
-
-<div class="summary">
-
-## Summary
-
-- Counting events once a day is simple and exact, and its results come a day late.
-- Every event has the time it happened and the time it arrived, and counts must go by the first.
-- A stream is divided into windows, and the hard question is when a window has received all its events.
-- A watermark estimates how far the system has progressed through event time, and a window is finished when the watermark passes its end.
-- Events later than that are recorded and included in final counts, which are distinguished from the provisional ones published at once.
-- Every click carries an identifier, and is counted once however often it is delivered.
-- A checkpoint saves the processor's state together with its position in the log, and results are written under keys that make a repeated write harmless.
-- The raw events are kept, so that every count can be computed again.
-
-</div>
+- P. Flajolet, E. Fusy, O. Gandouet, and F. Meunier, "HyperLogLog: The Analysis of a Near-Optimal Cardinality Estimation Algorithm", *AofA*, 2007.
+- L. Abraham, J. Allen, O. Barykin, V. Borkar, B. Chopra, C. Gerea, D. Merl, J. Metzler, D. Reiss, S. Subramanian, J. L. Wiener, and O. Zed, "Scuba: Diving into Data at Facebook", *PVLDB*, 2013.

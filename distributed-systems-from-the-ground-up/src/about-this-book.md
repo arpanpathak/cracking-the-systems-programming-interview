@@ -1,52 +1,37 @@
-# About this book
+# Preface
 
-A distributed system is a set of programs on separate machines that work together
-over a network and present themselves to their users as a single service. The
-machines are not reliable. Any of them may stop at any moment, a disk may be lost, and
-a message may arrive late, twice, or not at all. This book is about designing services
-that keep their promises while such things are happening, and about understanding
-exactly which promises can be kept.
+Distributed systems engineering operates under physical and theoretical constraints that single-node abstractions conceal: asynchronous message delivery, unbounded network delay, independent component crashes, clock drift across unsynchronized oscillators, and volatile kernel page caches. Designing reliable infrastructure requires deriving architectures directly from explicit safety and liveness invariants, fault boundaries, and quantitative resource limits rather than informal component sketches.
 
-It has 2 parts, of different character.
+In this book, I examine the architecture of fault-tolerant distributed systems from first principles. For every system, I establish the actors, verifiable functional contracts, explicit latency and availability Service Level Objectives (SLOs), and storage, compute, and bandwidth envelopes prior to introducing algorithms, wire protocols, or deployment topologies.
 
-The first part designs and builds a single system from its foundations, a key-value
-store that runs on many machines. Chapter 1 is its system design: the requirements,
-the interfaces, the components, and the reasoning about sharding, replication and
-failure. Chapters 2 to 6 are its low-level design, in which each component is written
-in Rust, measured, and subjected to the failures it is claimed to survive. These are
-the chapters that print code. The ideas established here, the log, the majority, the
-leader, the lease and the conditional write, are the vocabulary of everything that
-follows.
+## Organization of the Text
 
-The second part consists of system designs, each complete in itself: a rate limiter,
-a cache, a message queue, a payment system, a chat service, an exchange and others.
-Each begins from what the system is for, considers the algorithms and arrangements
-that could serve, and explains why one is chosen and what it costs. Where an
-algorithm proceeds in steps, a picture shows it step by step, at the reader's own
-pace. These chapters print no code. Every one of them has a small simulation in the
-book's repository, which produced the figures the chapter quotes, and which the
-reader is encouraged to run and to alter.
+The twenty-eight chapters are grouped into six thematic parts:
 
-## Running the code
+- **Part I (Chapters 1 to 6): Distributed Key-Value Store.** In Chapter 1, I specify the system architecture, consistency model, partitioning scheme, and failure-handling contracts of a strongly consistent key-value store. In Chapters 2 to 6, I detail the low-level design and empirical verification of its core mechanisms: durable write-ahead logging, leader-follower quorum replication, Raft leader election with monotonic term fencing, consistent-hash request routing, and group commit.
+- **Part II (Chapters 7 to 13): Core Infrastructure Primitives.** I analyze foundational platform services that enforce fairness, ordering, caching, coordination, and asynchronous decoupling: distributed rate limiting, unique identifier generation, distributed caching, distributed locking, partitioned message queues, job scheduling, and notification delivery.
+- **Part III (Chapters 14 to 18): Content, Media, and Communication Systems.** I analyze read-intensive and media-delivery architectures: URL shortening, social news feeds, chunked object storage, adaptive video streaming, and real-time messaging.
+- **Part IV (Chapters 19 to 21): Transactional and Marketplace Systems.** I analyze domains governed by strict transactional integrity, concurrency control, and real-time spatial state: payment processing with double-entry ledgers, high-contention ticket booking, and geospatial ride-hailing dispatch.
+- **Part V (Chapters 22 to 24): Search, Indexing, and Observability.** I analyze low-latency prefix indexing, polite distributed web crawling, and high-cardinality metrics ingestion and monitoring.
+- **Part VI (Chapters 25 to 28): Synchronization and Low-Latency Streaming.** I analyze conflict resolution, operational convergence, deterministic execution, and stream processing: file synchronization, collaborative editing, a single-threaded stock exchange matching engine, and click aggregation.
 
-The programs are in `code/`, a Cargo workspace. They use the Rust 2024 edition and are
-built with Rust 1.99.0, which `code/rust-toolchain.toml` selects.
+## Architectural Methodology
 
-```console
-$ cd code
-$ cargo build --release
-$ cargo run -p crashsim
-$ cargo run -p ratelimit
-```
+Across every system design chapter, I adhere to an explicit engineering progression aligned with formal systems documentation standards (ISO/IEC/IEEE 26514):
 
-The programs run on any Linux machine. A single small board is enough for all of
-them, and 2 or 3 boards or cloud machines on a network make it possible to stop a
-real machine and watch the system continue. The measurements quoted in the book were
-taken on an NVMe disk, and timings on other machines will differ.
+1. **Requirements and Capacity Bounds:** I specify actors, use-case boundaries, numbered functional and non-functional requirements, and order-of-magnitude storage, throughput, and memory calculations upfront.
+2. **External and Internal Interface Contracts:** I define HTTP/2 or gRPC endpoints, preconditions, idempotency semantics, error payloads, and storage schemas before examining internal optimizations.
+3. **Control-Plane and Data-Plane Separation:** I isolate low-frequency metadata management, topology coordination, and policy compilation from the latency-critical request path.
+4. **Failure Modes, Tail Latency, and Observability:** I evaluate network partitions, hot-key skew, lock contention, and gray failures, specifying automated recovery invariants and Service Level Indicators (SLIs) for each failure domain.
 
-## What we assume
+## Companion Implementations and Prerequisites
 
-We assume that the reader has used a Linux shell, `curl` and HTTP. The first part
-assumes in addition that the reader can read Rust. Every other term is explained
-where it first appears, and each chapter ends with a table of the terms it
-introduced.
+The companion `code/` directory contains the runnable Part I storage subsystems and the workload simulations cited across Parts II to VI, allowing readers to reproduce the throughput measurements, skew distributions, and crash-recovery experiments reported in the text.
+
+For the system design chapters, I assume foundational knowledge of HTTP semantics, relational databases, data structures, and TCP/IP networking. For the low-level implementation chapters in Part I, I additionally assume reading familiarity with Rust. Every distributed systems primitive is derived when first introduced and consolidated in each chapter's engineering glossary.
+
+## References and Provenance
+
+The protocols and trade-offs presented in this volume draw upon primary distributed systems literature and published production engineering reports, including work on Raft consensus, Dynamo, Spanner, CockroachDB, Stripe's atomic-phase idempotency and GCRA rate-limiting systems, and classical transaction-processing theory. Full bibliographic citations appear at the close of each chapter.
+
+*Arpan Pathak*

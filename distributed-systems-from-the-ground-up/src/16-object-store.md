@@ -1,595 +1,327 @@
-<img class="plate" src="art/ch16.svg?v=f7336a1f" alt="Crate, a gopher, stands beside a sign that reads: 10 MB, 3 chunks, 3 copies of each.">
+<img class="plate" src="art/ch16-plate.svg" alt="Chapter 16 plate: Erasure-coded object storage using Reed-Solomon RS(6, 3) stripes across 9 disks with 1.5x storage overhead, tolerating any 3 simultaneous shard losses." />
 
-# Object Store: System Design
+# 16. Object Store: System Design
 
-An *object store* keeps files of any size, from a thumbnail of a few kilobytes to a
-video of many gigabytes, and returns them on request by name. Photographs, backups,
-logs, the trained weights of machine learning models and the videos of chapter 17 all
-end up in a system of this kind, and a large one holds hundreds of petabytes on tens
-of thousands of disks.
+A distributed object store persists immutable binary blobs ranging from kilobyte thumbnails to multi-terabyte archival datasets and serves them by flat key within a bucket over HTTP. At exabyte scale spanning tens of thousands of spinning disks and NVMe drives, hardware failure ceases to be an anomaly and becomes a continuous background process: with a `2%` annual drive failure rate across `20,000` disks, roughly one drive fails every single day, while firmware defects and magnetic decay introduce unannounced silent bit corruption.
 
-At that scale the governing fact is that hardware fails continuously. A disk drive
-has perhaps a 2% chance of failing in any given year, so that among 20000 disks about
-1 fails every day, as a matter of routine. Disks also fail in a quieter and more
-dangerous manner, by returning data that differs from what was written without
-reporting any error. A system that is to keep data for decades on such components
-cannot treat failure as an exceptional event to be handled when it occurs. It has to
-be built so that the loss of any disk, or any machine, or any rack of machines, at any
-moment, destroys nothing, and so that the damage is repaired automatically before a
-second failure can compound the first. This chapter is chiefly about how that is
-arranged, and about the related question of how to keep track of where everything is.
+In this chapter, we design an S3-compatible distributed object store that converts fragile commodity hardware into eleven-nines durability (`99.999999999%` annual object survival). By restricting the data model to immutable whole-object replacement rather than POSIX random-access file mutation, we separate strongly consistent object metadata from erasure-coded chunk storage, eliminate in-place update divergence, and execute continuous background checksum scrubbing and prioritized repair before correlated failures can exhaust redundancy.
 
 <div class="covers">
 
-This chapter covers
+In this chapter, we cover
 
-- what distinguishes an object store from a file system
-- keeping the names of objects apart from their bytes
-- cutting objects into chunks, and naming a chunk by its contents
-- surviving lost disks with copies, and with parity at less than half the space
-- where copies are placed, and why it matters as much as how many there are
-- silent damage, checksums, and the scrubber that looks for it
-- repair, and why its speed decides how durable the store is
-- uploading very large objects in parts
-- deleting, and collecting the chunks that nothing uses any more
+- actors, use cases, functional requirements, durability and read-after-write consistency SLOs, explicit non-goals, and petabyte-scale disk and metadata capacity bounds
+- S3-style HTTP/2 object contracts (`PUT`, `GET`, `Range` partial reads, multipart upload lifecycle, presigned capability URLs) and metadata manifest schemas
+- separation of the control plane (metadata cluster, failure-domain placement controller, background scrubber and garbage collector) from the stateless chunking and erasure-coding data plane
+- Reed-Solomon `RS(6, 3)` coding over `GF(2^8)`, failure-domain placement across three availability zones, Copyset correlation control, continuous bit-rot scrubbing, and MTTR-driven durability
+- write-chunks-first atomic metadata commits, resumable multipart sealing, small-object Haystack packing, versioning, and grace-period garbage collection
+- failure-mode mitigation matrices, operational SLIs, production architectures (Amazon S3, Ceph RADOS, Facebook Haystack and f4, Azure Storage LRC), and verification via `code/objectsim`
 
 </div>
 
-## What an object store is
+## 16.1 Requirements, Actors, and Capacity Bounds
 
-It is easiest to say what an object store is by contrast with the file system that
-every reader has used. A file system offers a tree of directories, files that can be
-opened and modified at any position, appended to, renamed and locked, and it is
-expected to make all of these operations consistent with one another. These features
-are costly to provide across many machines, and most large collections of data do not
-need them.
+### Actors and Use Cases
 
-An object store offers much less and can therefore scale much further. An *object* is
-a sequence of bytes with a name, held in a container called a *bucket*. The name is a
-plain string. It may contain slashes, as in `2026/10/holiday.mp4`, and tools display
-such names as if they were folders, yet the store itself knows of no directories and
-treats the name as a single key. An object is written whole and read whole or in
-ranges, and it is never modified in place: to change an object, one uploads a
-replacement under the same name. There is no appending, no partial overwriting and no
-renaming other than by copying.
+We organize the object storage boundary around three actor groups (Figure 16-1).
 
-| | File system | Object store |
-|---|---|---|
-| Names | a tree of directories | a flat key within a bucket |
-| Changing part of a file | supported | not possible: the whole object is replaced |
-| Renaming a directory | 1 operation | a copy of every object beneath it |
-| Typical size of a deployment | 1 machine, or a few | thousands of machines |
-| Access | system calls on an open file | HTTP requests for a whole object or a range |
-
-The restriction to whole, immutable objects is what makes the rest of the design
-tractable. Data that never changes after it is written can be copied freely to several
-places without any risk of the copies diverging, can be verified against a checksum
-computed once, and can be cached anywhere.
-
-## Names in one place, bytes in another
-
-An object store has 2 quite different things to remember about every object: what it
-is called and where its bytes are, which together are its *metadata*, and the bytes
-themselves. The 2 kinds of information have such different characteristics that they
-are kept in separate systems.
-
-Metadata is small, a few hundred bytes per object, and is needed for every operation.
-It is updated when objects are created and deleted, it must be listed in the order of
-names, and it has to be strongly consistent, since an application that has just
-uploaded an object and been told so must find it when it asks. These are the
-requirements of a database, and the metadata is kept in a replicated, sharded
-key-value store of the kind built in chapters 1 to 6, keyed by bucket and object name.
-
-The bytes are large, are written once and never altered, and are read sequentially.
-They need no ordering, no transactions and no queries. What they require is a great
-deal of cheap disk space and protection against the loss of disks. They are kept on
-*storage nodes*, which are machines with many disks and very simple software that
-stores and returns pieces of data by identifier.
-
-This separation has a practical consequence for every request. A download first asks
-the metadata store where the pieces of the object are, and then fetches the pieces
-from storage nodes. An upload proceeds in the opposite order, writing the pieces to
-storage nodes first and recording the object in the metadata store last. The order of
-an upload is deliberate. The metadata entry is the single point at which an object
-comes into existence, and it is created only when all the bytes are safely stored, so
-that an upload interrupted in the middle leaves behind some unreferenced pieces, to be
-cleaned up later, and never an object that claims to exist and cannot be read.
-
-## Chunks
-
-Objects range in size over 9 orders of magnitude, and it is impractical to handle a
-5 TB object as 1 unit: it would not fit on a single disk together with others, could
-not be read in parallel, and would have to be copied in its entirety to repair the
-loss of any part. Objects are therefore cut into *chunks* of a fixed maximum size, a
-few megabytes, and each chunk is stored and protected independently. The metadata of
-an object lists its chunks in order.
-
-A chunk needs an identifier under which storage nodes can keep it, and a particularly
-useful choice is to name each chunk by a hash of its contents. Naming data by its own
-hash is called *content addressing*, and it has 2 valuable consequences. The first is
-that integrity can be checked by anyone at any time: whoever holds a chunk can
-recompute the hash and compare it with the name, and a mismatch proves that the bytes
-have been altered. The second is that identical chunks receive identical names and so
-are stored only once, however many objects contain them, which is called
-*deduplication*.
-
-The simulation for this chapter uploads a file of 10 MB, which is cut into 3 chunks of
-at most 4 MB, each stored on 3 of 6 nodes. It then uploads the same bytes again under
-another name, and the second upload writes no chunks at all, the 3 it needs being
-already present. The store holds 2 objects and the bytes of 1.
-
-Content addressing demands a hash function for which it is not feasible to find 2
-different inputs with the same output, since 2 different chunks with the same name
-would be treated as the same chunk and 1 of them would be lost. The simulation uses a
-short checksum for brevity, and a real store uses a cryptographic hash of 256 bits.
-
-## Surviving the loss of disks
-
-Every chunk must survive the failure of the disks that hold it, and there are 2 ways
-of arranging this.
-
-### Copies
-
-The simple way is *replication*: each chunk is stored in full on 3 different storage
-nodes. Any 1 of the copies suffices to read the chunk, so that the chunk survives the
-loss of any 2 nodes. Reading is fast, since any copy will serve, and repairing a lost
-copy consists of reading 1 of the survivors and writing it elsewhere. The cost is
-space. Every terabyte of objects occupies 3 terabytes of disk, and at 100 petabytes
-this overhead is 200 petabytes of disks that hold nothing but duplicates.
-
-### Parity
-
-The economical way stores extra information from which lost pieces can be
-recomputed, in place of whole copies. The principle can be shown with ordinary
-addition.
-
-<figure class="steps" data-prefix="figures/steps-obj-parity" data-count="5" data-version="8a34afed">
-<img src="figures/steps-obj-parity-01.svg?v=8a34afed" alt="Rebuilding a lost piece from a sum, step 1 of 5. An object is cut into 3 pieces, which for this picture are the numbers 5, 3 and 9. Each piece goes to a different disk.">
-<figcaption><b>Figure 16.1</b> 3 pieces of data and their sum are stored on 4 disks, and a lost piece is recomputed from the others. Use Next and Back to move through the 5 steps.</figcaption>
+<figure class="diagram">
+<img src="figures/m3/ch16_use_cases.svg" alt="Actors and Use Cases of the Distributed Object Store: Application Client uploads, downloads, executes multipart transfers, and lists bucket prefixes; Bucket Owner configures versioning, lifecycle, and access policy; Storage Operator runs checksum scrubbing, Reed-Solomon repair, and garbage collection." />
+<figcaption><b>Figure 16-1</b> Actors, system boundary, and core use cases of the distributed object store.</figcaption>
 </figure>
 
-In this small example, 4 disks protect 3 disks' worth of data against the loss of any
-1 disk. To protect the same data against 1 loss by replication would require 2 full
-copies and therefore 6 disks.
+| Actor | Operation | Concrete Scenario |
+| :--- | :--- | :--- |
+| **Application Client** | Upload/download object (`PUT / GET /v1/buckets/{b}/{key}`), multipart upload (`Init -> UploadPart -> Complete`), list prefix (`GET /v1/buckets/{b}?prefix=p`) | Media pipeline uploads a 50 GB master video in parallel 64 MB parts and video players stream arbitrary byte ranges via presigned URLs |
+| **Bucket Owner** | Configure versioning, lifecycle tiering, and bucket IAM policy; delete objects (`DELETE /v1/buckets/{b}/{key}`) | Compliance team enables immutable versioning to prevent accidental overwrites and transitions objects older than 30 days to erasure-coded cold storage |
+| **Storage Operator** | Manage hardware decommissioning, monitor bit-rot scrubbers, tune repair bandwidth, and verify garbage collection | Automated fleet orchestration drains a failing rack and verifies Reed-Solomon reconstruction completes within target MTTR |
 
-Practical systems extend the idea to tolerate several losses. A chunk is divided into
-k data pieces, and m additional *parity* pieces are computed from them, each by a
-different combination, in such a way that any k of the k + m pieces are sufficient to
-reconstruct the original. The technique is called *erasure coding*. Its arithmetic is
-carried out in a number system devised so that the necessary equations can always be
-solved, which is more elaborate than addition and rests on the same idea. A common
-choice is 10 data pieces and 4 parity pieces, stored on 14 different nodes.
+### Functional Requirements
 
-<figure>
-<img src="figures/obj-overhead.svg?v=107e8d93" alt="2 bars of the disk space used for every 1 TB of objects. 3 full copies use 3.0 TB and survive the loss of 2 copies. 10 data pieces with 4 parity pieces use 1.4 TB and survive the loss of any 4 pieces.">
-<figcaption><b>Figure 16.2</b> The disk space needed by 3 copies and by 10 data pieces with 4 parity pieces.</figcaption>
-</figure>
+| No. | Functional Requirement |
+| :--- | :--- |
+| 0 | An application can upload an immutable object from `0 bytes` up to `5 TB` under a flat string key inside a named bucket (using single-request `PUT` up to `5 GB` and resumable multipart upload up to `5 TB`). |
+| 1 | An application can download an entire object or an arbitrary byte interval via HTTP `Range` requests (`206 Partial Content`). |
+| 2 | An application can list keys within a bucket in lexicographical order by prefix with cursor pagination. |
+| 3 | Every returned byte is verified end-to-end against cryptographic or CRC32C checksums; corrupted data is repaired transparently from surviving redundancy or rejected with an explicit error rather than returned without warning. |
+| 4 | Applications can issue time-bounded HMAC-signed presigned URLs authorizing direct browser or device transfers against the object gateway. |
+| 5 | Buckets support optional object versioning and safe deletion with asynchronous reclamation of unreferenced storage chunks. |
 
-The comparison is striking. The coded chunk occupies 1.4 times its own size where
-replication occupies 3 times, and it survives the loss of any 4 pieces where
-replication survives the loss of 2. At 100 petabytes of objects, the difference is 160
-petabytes of disks.
+### Non-Functional Requirements and SLOs
 
-Erasure coding exacts its price elsewhere. Computing parity takes processor time on
-every write. Reading normally touches only the data pieces, and when 1 of them is
-unavailable the reader must fetch 10 other pieces and compute the missing one, which
-makes reads of damaged chunks slow. Repair is costlier in the same way: to rebuild a
-single lost piece, 10 pieces must be read over the network, where replication reads 1.
-And the scheme is unsuitable for small objects, for which the fixed work of dealing
-with 14 nodes outweighs the saving in space.
+| No. | Property | Target Specification | Architectural Consequence |
+| :--- | :--- | :--- | :--- |
+| 0 | **Durability** | `99.999999999%` (`11` nines) annual object survival across single-disk, node, rack, and single-AZ outages | `RS(6, 3)` erasure coding spread evenly across 3 AZs (`3` shards per AZ) plus continuous bit-rot scrubbing and prioritized `< 1 hour` MTTR repair |
+| 1 | **Consistency** | Strong read-after-write consistency for all `PUT`, `DELETE`, and `LIST` metadata operations (`PC/EC` quorum commit) | Metadata resides in a Raft-replicated sharded key-value cluster; chunk bytes are immutable and content-addressed, eliminating version skew |
+| 2 | **Availability** | `99.95%` regional API availability (`<= 21.6` minutes/month) | Stateless API gateways across three AZs; `RS(6, 3)` serves reads even if an entire AZ (`3` shards) is offline simultaneously |
+| 3 | **Latency** | Time-to-first-byte `p50 <= 25 ms`, `p99 <= 100 ms` (metadata lookup + parallel shard read) | Decouples metadata index from sequential disk I/O; replicates small hot objects (`< 1 MB`) 3 ways to avoid erasure-coding fan-out overhead |
+| 4 | **Scale** | `1,000,000,000` (`1 billion`) objects totaling `100 PB` logical data | Demands `1.5x` erasure-coded overhead (`150 PB` raw) instead of `3.0x` replication (`300 PB` raw), saving `150 PB` of physical drives |
 
-Large stores accordingly use both. Small objects and recently written, frequently read
-data are replicated, for speed. Large objects, and data that has grown cold, are
-erasure coded, for economy, and a background process converts data from the first
-form to the second as it ages.
+### Non-Goals and Scope Boundaries
 
-### Where the copies go
+Object stores achieve petabyte scale specifically by omitting expensive POSIX file-system guarantees:
 
-The number of copies is only half of durability. Their placement is the other half.
-3 copies on 3 disks of the same machine are all lost when that machine's power supply
-fails, and 3 copies on 3 machines in the same rack are all unreachable when the
-rack's network switch fails. Failures of this kind, in which many components go down
-together for a common reason, are called *correlated*, and they are far more common
-than a calculation that treats disks as independent would suggest.
+- **No in-place partial overwrites or appends:** Modifying a single byte requires uploading a new immutable object version; POSIX byte-range locking and random writes belong to block stores or distributed file systems.
+- **No atomic directory renames:** Slashes inside keys (such as `2026/11/video.mp4`) are visual prefix conventions only; renaming a prefix requires copying each underlying object metadata entry.
+- **No cross-tenant deduplication:** Although content-addressed chunks support deduplication within a single tenant or backup domain (as demonstrated in `code/objectsim`), public multi-tenant stores prohibit cross-customer deduplication because timing side channels would allow one tenant to probe whether another tenant holds a specific file.
 
-A group of components that may fail together is called a *failure domain*, and the
-rule for placement is that the copies or pieces of a chunk are spread over as many
-failure domains as possible: on different machines, in different racks, and for the
-most valuable data in different buildings. The system must know the physical
-arrangement of its machines in order to apply this rule, and the rule has to be
-reapplied whenever data is moved for repair or rebalancing.
+### Back-of-the-Envelope Capacity Bounds
 
-## Silent damage
+We contrast raw hardware requirements for `100 PB` of logical customer data (`1 billion` objects) under 3-way replication versus `RS(6, 3)` erasure coding:
 
-The failures discussed so far announce themselves. A dead disk returns errors, and a
-dead machine does not respond. A more insidious failure is the disk that works and
-returns the wrong bytes. Magnetic media decay, firmware has defects, and a write is
-occasionally directed to the wrong place. The rate of such events is low for any 1
-disk and, across tens of thousands of disks and many years, they are a certainty.
-Because the disk reports success, nothing prompts anybody to look, and the damage lies
-undiscovered until the data is next read, which for an archive may be years later.
+| Resource Dimension | Arithmetic Derivation | Provisioned Bound |
+| :--- | :--- | :--- |
+| **Raw Storage (3-Way Replication)** | `100 PB * 3.0` copies | `300 PB` raw (`20,834` drives of `16 TB` at `90%` fill) |
+| **Raw Storage (`RS(6, 3)` Chosen)** | `100 PB * (9 / 6) = 100 PB * 1.5` overhead | `150 PB` raw (`10,417` drives of `16 TB` at `90%` fill, saving `10,417` drives) |
+| **Logical Chunks (`64 MB` / `4 MB`)** | `100 PB / 64 MB = 1.56 billion` chunks (`25 billion` at `4 MB`) | `1.56 billion` 64 MB chunks (`~14.0 billion` RS shards) |
+| **Metadata Store Capacity** | `1,000,000,000 objects * 1 KB` avg manifest + index | `1.0 TB` logical (`3.0 TB` raw across `20` Raft shards x `3` replicas) |
+| **Storage Node Fleet (`RS(6, 3)`)** | `10,417 disks / 36 disks per dense storage chassis` | `~290` dense storage nodes (`~97` nodes per AZ across 3 AZs) |
+| **Daily Expected Disk Failures** | `10,417 disks * 2% AFR / 365 days` | `~0.57` failed disks per day (roughly `4` drive replacements per week) |
+| **Scrubbing Read Bandwidth** | Full `150 PB` scrub every `14 days`: `150 PB / (14 * 86,400 s)` | `124 GB/s` cluster-wide (`~12 MB/s` sequential background read per disk) |
 
-The defence has 2 parts. Every chunk is stored together with a checksum of its
-contents, and every read verifies the bytes against the checksum before returning
-them, so that damaged data is never served to a client. This alone is insufficient,
-since it finds damage only in data that happens to be read. The second part is
-therefore a background process, the *scrubber*, which reads every chunk on every disk
-in rotation, verifies it, and arranges for the repair of any that fails.
+Sizing the background scrubber at `~12 MB/s` per drive consumes under `8%` of a modern `16 TB` HDD's `180 MB/s` sequential throughput while guaranteeing every byte on disk is checksum-verified every two weeks.
 
-<figure class="steps" data-prefix="figures/steps-obj-scrub" data-count="5" data-version="de6807ac">
-<img src="figures/steps-obj-scrub-01.svg?v=de6807ac" alt="A damaged copy is found and repaired, step 1 of 5. A chunk is stored on 3 nodes. With each copy the node keeps the checksum that the bytes had when they were written.">
-<figcaption><b>Figure 16.3</b> A bit changes on 1 disk without any error, the scrubber detects it by checksum, and the copy is replaced from a good one. Use Next and Back to move through the 5 steps.</figcaption>
-</figure>
+## 16.2 External API and Data Contracts
 
-The simulation damages a single byte in 1 copy of 1 chunk and then reads the object.
-The read detects the mismatch, takes the chunk from another node, returns the correct
-10485760 bytes, and repairs the damaged copy in passing.
+The gateway exposes an HTTP/2 REST interface patterned after Amazon S3, carrying content integrity digests in headers and isolating binary payload streaming from metadata coordination.
 
-The importance of scrubbing lies in the timing. A chunk with 3 copies survives the
-corruption of 1 or 2 of them provided the damage is found and repaired while a good
-copy still exists. If nothing looks for years, the damage accumulates unobserved, and
-the day arrives on which the last good copy of some chunk is found to be bad as well.
-Redundancy protects data only for as long as lost redundancy is promptly restored.
+### External HTTP Contracts
 
-## Repair
-
-When a disk or node fails, every chunk that had a copy there is left with 1 copy
-fewer than it should have. A *repair* process detects this, from the absence of the
-node's heartbeats or from the scrubber's reports, and creates new copies on other
-nodes from those that remain.
-
-The durability of the whole store depends more on the speed of repair than on any
-other single factor. A chunk with 3 copies is lost only if all 3 fail, and what
-matters is the length of the interval during which it is exposed. If a failed copy is
-replaced within an hour, the chunk is lost only if 2 further specific disks fail
-within that hour, which is extraordinarily improbable. If replacement takes a week,
-the window is 168 times longer and the probability of loss correspondingly greater.
-The remarkable durability figures quoted for large object stores are obtained less by
-keeping many copies than by repairing quickly.
-
-Repair nevertheless has to be restrained in 2 respects. A node that has merely been
-restarted for maintenance will return in a few minutes with its data intact, and to
-begin copying terabytes the instant it disappears would be wasted effort, so repair
-waits for a short period before acting. And when an entire rack fails, the repair of
-all its chunks at once could saturate the network and disturb the service to clients,
-so repair is rate limited and proceeds in order of urgency, attending first to the
-chunks that have the fewest surviving copies.
-
-## Very large objects
-
-An object of 50 GB cannot sensibly be uploaded in a single HTTP request, since any
-interruption in several hours of transfer would oblige the client to begin again.
-Object stores therefore offer *multipart upload*. The client announces that it intends
-to upload a large object and receives an identifier for the upload. It then sends the
-object in numbered parts of some tens of megabytes each, in any order and several in
-parallel, and a part that fails is sent again by itself. When every part has arrived,
-the client sends a final request listing them, and the store assembles the object by
-writing a metadata entry that refers to the chunks of all the parts in sequence.
-
-Until that final request, the object does not exist as far as readers are concerned,
-which preserves the rule that an object appears whole or not at all. Uploads that are
-begun and never completed leave their parts behind, and a store needs a policy for
-discarding them after a time, since they would otherwise accumulate invisibly and be
-charged for.
-
-Downloads have a corresponding facility in the range request, by which a client asks
-for a stated range of bytes within an object. The store determines from the metadata
-which chunks cover the range and fetches only those. A video player uses this to jump
-to the middle of a film without downloading what precedes it, and an interrupted
-download can be resumed from the point it had reached.
-
-## Deleting, and collecting unused chunks
-
-Deleting an object removes its metadata entry, upon which the object ceases to exist
-for clients at once. Its chunks cannot be deleted at the same moment, for 2
-reasons. With deduplication, a chunk may also belong to other objects. And the
-deletion of chunks on many nodes is slow work that should not hold up the client's
-request.
-
-Chunks that are no longer referred to by any object are therefore removed afterwards,
-by a background process of *garbage collection*. It determines which chunks are in
-use, by examining the metadata, and deletes those on the storage nodes that are not.
-This process contains a race that has cost real systems real data.
-
-<figure>
-<img src="figures/obj-collect.svg?v=4469fe55" alt="5 steps. The collector lists the chunks that no object uses, among them chunk c9. An upload arrives that contains chunk c9. The server sees that c9 is already stored and records the new object as using it. The collector deletes c9, acting on a list that is out of date. The new object refers to a chunk that is gone. The cure is to delete only chunks that have been unused for a day.">
-<figcaption><b>Figure 16.4</b> The collector decides that a chunk is unused, an upload reuses the chunk, and the collector then deletes it.</figcaption>
-</figure>
-
-The collector's knowledge of what is unused is necessarily a little out of date, and
-an upload that arrives in the meantime may rely on a chunk that the collector has
-already condemned. The standard protection is a period of grace. A chunk is deleted
-only when it has been unreferenced continuously for a substantial time, a day for
-example, and an upload that reuses an existing chunk records the fact in a way that
-restarts the period. The store thus retains some garbage for a day longer than
-strictly necessary, which is a trivial price for the assurance that nothing in use is
-ever removed.
-
-Many stores also offer *versioning*, under which replacing or deleting an object
-retains the previous version, the latest version being what a
-plain request returns. This protects against deletion by mistake and against software
-that overwrites good data with bad, and it is among the few defences against an
-operator's or a program's own errors, which replication does nothing to prevent, since
-a mistaken deletion is replicated as faithfully as anything else.
-
-## Use cases
-
-Applications upload, download and list objects. Operators replace failed hardware,
-which in a store of this size is a daily task.
-
-<figure>
-<img src="figures/objects-use-cases.svg?v=83cc2262" alt="A use case diagram of the object store. Application: upload an object (PUT /v1/buckets/{b}/{key}), download an object (GET /v1/buckets/{b}/{key}), list a bucket (GET /v1/buckets/{b}?prefix=). Operator: replace a failed node (copies are made again).">
-<figcaption><b>Figure 16.5</b> The actors and what each of them does.</figcaption>
-</figure>
-
-## Functional requirements
-
-| No. | Functional requirement |
-|---|---|
-| 0 | An application can upload an object of up to 5 TB under a name in a bucket. |
-| 1 | An application can download an object, or a range of its bytes. |
-| 2 | An application can list the objects of a bucket by prefix. |
-| 3 | An object that was stored is returned unchanged, or the store reports an error. It does not return damaged bytes. |
-
-## Non-functional requirements
-
-| No. | Property | Non-functional requirement |
-|---|---|---|
-| 0 | Durability | An object survives the loss of any 2 of the 3 nodes that hold a chunk, and damage on a disk. |
-| 1 | Availability | 99.9% for uploads and downloads. |
-| 2 | Consistency | Strong for names: after an upload completes, a download returns the new object. Chunks do not change at all. |
-| 3 | Scale | 1 billion objects and 100 PB of data. |
-
-The store combines 2 consistency models. Metadata is strongly consistent: once an
-upload has been confirmed, every subsequent request for that name finds the new
-object, and a listing of the bucket includes it. This property, known as
-*read-after-write consistency*, is what applications expect, and its absence from
-some early object stores was a persistent source of defects in the software built on
-them. The chunks need no consistency model in the usual sense, because they are
-immutable. A chunk either exists under its name with the correct contents, or it does
-not exist, and no reader can ever observe an out-of-date version of one.
-
-## Core entities
-
-<figure>
-<img src="figures/objects-entities.svg?v=9f37974b" alt="The core entities. Object has the fields bucket string, key string, size u64, chunks checksum[]. Chunk has the fields checksum u32, size up to 4 MB, nodes 3 nodes. An Object is a list of chunks. A Chunk is named by the checksum of its bytes, so equal chunks are stored once.">
-<figcaption><b>Figure 16.6</b> The core entities and their fields.</figcaption>
-</figure>
-
-## Capacity estimate
-
-<div class="estimate">
-
-<img class="builder" src="art/crab-builder.svg" alt="A crab in a hard hat, in tears.">
-
-**Arithmetic ahead.** 100 PB in 3 copies is 300 PB, about 21000 disks of 16 TB, with 25 billion chunks to keep track of.
-
-<a class="skip" href="#high-level-design">Skip to the high-level design</a>
-
-<details>
-<summary>Show the calculation</summary>
-
-| Quantity | Calculation | Result |
-|---|---|---|
-| Raw storage | 100 PB × 3 copies | 300 PB |
-| Disks of 16 TB, 90% full | 300 PB ÷ 14.4 TB | 20834 |
-| Chunks of 4 MB | 100 PB ÷ 4 MB | 25 billion |
-| Metadata | 1 billion objects × 1 KB | 1 TB |
-
-</details>
-
-</div>
-
-## The API
-
-The API is that of HTTP applied directly to objects. `PUT` stores an object under a
-name, `GET` retrieves it, and `DELETE` removes it.
-
-**Upload an object**
+**Single-request object upload (`<= 5 GB`):**
 
 ```http
-PUT /v1/buckets/holiday/video.mp4 HTTP/1.1
+PUT /v1/buckets/holiday/2026/video.mp4 HTTP/2
 Host: objects.example
+Authorization: AWS4-HMAC-SHA256 Credential=...
 Content-Type: video/mp4
 Content-Length: 10485760
+x-amz-checksum-crc32c: 9a3f11c2
 
-(10485760 bytes)
+<10485760 raw bytes>
 ```
 
 ```http
-HTTP/1.1 201 Created
-ETag: "crc32:9a3f11c2-3"
+HTTP/2 201 Created
+ETag: "sha256:4f8d2e1c9a3f11c2-3"
+x-amz-version-id: v_01JDCX9M8K2N4P6Q7R8S
 ```
 
-Clients can compare the `ETag`, which names the content, with their own checksum.
-
-**Download part of an object**
+**Byte-range download (`206 Partial Content`):**
 
 ```http
-GET /v1/buckets/holiday/video.mp4 HTTP/1.1
+GET /v1/buckets/holiday/2026/video.mp4 HTTP/2
 Host: objects.example
 Range: bytes=0-1048575
 ```
 
 ```http
-HTTP/1.1 206 Partial Content
+HTTP/2 206 Partial Content
 Content-Range: bytes 0-1048575/10485760
 Content-Length: 1048576
+ETag: "sha256:4f8d2e1c9a3f11c2-3"
+Accept-Ranges: bytes
 
-(1048576 bytes)
+<1048576 raw bytes>
 ```
 
-With a range, a video player fetches only the part it is about to show.
+**Multipart upload lifecycle (objects `> 100 MB` up to `5 TB`):**
+1. `POST /v1/buckets/{b}/{key}?uploads` allocates an `upload_id` in the Multipart Coordinator (`200 OK`).
+2. `PUT /v1/buckets/{b}/{key}?partNumber=1&uploadId={id}` streams each `64 MB` part independently in parallel and returns a verified per-part `ETag` (`200 OK`). Failed parts retry independently without restarting the entire transfer.
+3. `POST /v1/buckets/{b}/{key}?uploadId={id}` submits the ordered list of `(part_number, etag)` pairs; the coordinator atomically commits the final object manifest into the Metadata Cluster (`200 OK`). Until step 3 commits, no reader observes the object.
 
-Applications frequently wish to let a user's browser upload or download an object
-directly, without the bytes passing through the application's own servers. For this
-the application generates a *presigned URL*: an ordinary address for the object that
-carries an expiry time and a signature computed with the application's secret key.
-Anyone holding the address may perform the 1 operation it describes until it expires,
-and the store verifies the signature without needing to consult the application.
+### Metadata and Chunk Placement Schemas
 
-## High-level design
+```sql
+-- Strongly consistent sharded metadata store (range-partitioned on (bucket_id, object_key)
+-- to support lexicographical prefix listing, with prefix-hash salting on hot buckets)
+CREATE TABLE object_manifests (
+    bucket_id        BIGINT        NOT NULL,
+    object_key       VARCHAR(1024) NOT NULL,
+    version_id       UUID          NOT NULL,
+    is_latest        BOOLEAN       NOT NULL DEFAULT TRUE,
+    is_delete_marker BOOLEAN       NOT NULL DEFAULT FALSE,
+    size_bytes       BIGINT        NOT NULL,
+    etag             VARCHAR(128)  NOT NULL,
+    storage_class    SMALLINT      NOT NULL, -- 1=REPLICATED_3X, 2=RS_6_3, 3=RS_10_4
+    chunks_json      JSONB         NOT NULL, -- Ordered [{chunk_id, offset, length, pg_id, crc32c}]
+    created_at       TIMESTAMPTZ   NOT NULL,
+    PRIMARY KEY (bucket_id, object_key, version_id)
+);
 
-<figure class="wide">
-<img src="figures/objects-design.svg?v=fcd508f9" alt="An object store. The components are Applications, API servers, Metadata store, Storage nodes, Repair worker. Step 1: An application uploads an object. Step 2: The server stores each chunk on 3 nodes. Step 3: It records the object&#x27;s chunk list. Step 4: A repair worker replaces copies that are lost.">
-<figcaption><b>Figure 16.7</b> The components and the path of a request. The steps are numbered.</figcaption>
+-- Placement group directory maintained by the Placement Controller
+CREATE TABLE placement_groups (
+    pg_id            BIGINT        PRIMARY KEY,
+    coding_scheme    VARCHAR(16)   NOT NULL, -- 'RS_6_3' or 'REP_3'
+    shard_nodes      JSONB         NOT NULL, -- 9 ordered (az_id, rack_id, node_id, disk_id) tuples
+    epoch            BIGINT        NOT NULL, -- Monotonic fencing epoch on membership change
+    state            VARCHAR(16)   NOT NULL  -- 'HEALTHY', 'DEGRADED', 'RECOVERING'
+);
+```
+
+## 16.3 High-Level Architecture: Control Plane vs. Data Plane
+
+We isolate namespace metadata, failure-domain topology management, and background durability maintenance inside the control plane while keeping the high-throughput byte-streaming path stateless and horizontally scalable (Figure 16-2).
+
+<figure class="diagram">
+<img src="figures/m3/ch16_architecture.svg" alt="Control Plane and Data Plane Architecture of the Distributed Object Store: Control Plane holds Metadata Cluster, Placement Controller (AZ and rack failure map), and Scrubber and GC Tier; Data Plane runs Object API Gateway (auth, 64 MB chunker, CRC32C), RS(6, 3) stripe encoder and decoder, Multipart Coordinator, and Erasure-Coded Chunk Storage Nodes." />
+<figcaption><b>Figure 16-2</b> Control-plane metadata namespace, failure-domain placement controller, and scrubbing tier decoupled from the erasure-coded data plane.</figcaption>
 </figure>
 
-| Component | Role | State it holds | When 1 instance fails |
-|---|---|---|---|
-| API server | cuts uploads into chunks and puts downloads together | none | another API server is used |
-| Metadata store | maps an object's name to its chunks | the names, replicated | a follower takes over, as in chapter 4 |
-| Storage node | keeps chunks on its disks | chunks | every chunk it held has 2 other copies |
-| Repair worker | finds chunks with fewer than 3 good copies | none | repairs wait for the next run |
+### Component Responsibilities
 
-### One request, step by step
+| Component | Plane | State Held | Failure Impact and Mitigation |
+| :--- | :--- | :--- | :--- |
+| **Metadata Cluster (`20` Raft shards x `3` replicas)** | Control | Authoritative `(bucket, key, version) -> chunk_manifest` table and multipart upload state | Leader failure triggers Raft election in `1 to 3 s`; synchronous 3-AZ quorum ensures strict read-after-write visibility |
+| **Placement Controller** | Control | Cluster hardware topology (`AZ -> Rack -> Host -> Disk`), active placement groups (`pg_id`), epoch fencing | Gateways cache placement maps locally with epoch verification; brief controller outage pauses rebalancing without halting reads or writes |
+| **Scrubber, Repair, and GC Tier** | Control | Disk scan watermarks, degraded placement-group priority queue, unreferenced-chunk grace table | Runs continuously off the request path; rate-limited to protect foreground client IOPS |
+| **Object API Gateway (`200` stateless hosts)** | Data | Request authentication, presigned-URL verifier, `64 MB` streaming chunker, SIMD `RS(6, 3)` codec, CRC32C verifier | Auto-scaled across three AZs; losing a host mid-upload leaves unreferenced staging chunks reclaimed by GC without corrupting metadata |
+| **Multipart Coordinator** | Data | In-flight staging manifests for large multi-part uploads | Persists part commits to Metadata Cluster; background reaper expires incomplete uploads after `7 days` |
+| **Storage Nodes (`290` dense hosts)** | Data | Immutable content-addressed shard blobs and per-shard CRC32C metadata on raw disks | Loss of any disk, host, rack, or entire AZ (`<= 3` shards per stripe) is masked transparently by `RS(6, 3)` reconstruction |
 
-The steps follow the arrows of figure 16.7.
+### Write and Read Lifecycles
 
-1. An application sends `PUT /v1/buckets/holiday/video.mp4` with the file as the body.
-2. The API server reads the body 4 MB at a time. It computes each chunk's checksum and stores the chunk on 3 storage nodes.
-3. When every chunk is stored, the API server writes 1 record to the metadata store: the object's name and its list of chunk names.
-4. In the background, the repair worker checks that every chunk still has 3 good copies, and makes a new copy where 1 is missing.
+**Write path (`PUT /v1/buckets/{b}/{key}`):**
+1. The Object API Gateway verifies caller credentials (or presigned HMAC token + expiration), validates bucket policy, and streams incoming bytes in `64 MB` chunks (`4 MB` in `code/objectsim`).
+2. For each chunk, the gateway computes its cryptographic content hash (`SHA-256`) and hardware-accelerated `CRC32C`. For small hot objects (`< 1 MB`), it selects a 3-way replicated placement group; for large objects (`>= 1 MB`), it splits the `64 MB` chunk into `6` equal `10.67 MB` data shards and computes `3` Reed-Solomon parity shards via SIMD `GF(2^8)` arithmetic.
+3. The gateway writes all `9` shards concurrently to the `9` distinct disks assigned to the chosen Placement Group (`3` shards in AZ-1, `3` in AZ-2, `3` in AZ-3). A chunk write succeeds once at least `8` of `9` shards acknowledge durable `fsync` (strict quorum with immediate asynchronous repair of the 9th shard if one disk is transiently slow), or all `9` under strict full-stripe durability mode.
+4. **Atomic metadata commit (last step):** Only after every chunk of the object is durably persisted on storage nodes does the gateway write the single `object_manifests` row to the Metadata Cluster and return `201 Created`. An interrupted upload never exposes a half-written or dangling object name.
 
-## The design, deployed
+**Read path (`GET /v1/buckets/{b}/{key}` with optional `Range`):**
+1. The gateway queries the Metadata Cluster for the object's latest manifest (or explicit `version_id`) and determines the exact subset of chunks intersecting the requested byte range `[start, end]`.
+2. For each required chunk, the gateway reads the `6` primary data shards in parallel from the Placement Group's storage nodes (preferring AZ-local replicas when reading replicated hot chunks) and verifies every shard's `CRC32C` on arrival.
+3. If any data shard fails its checksum or times out (hedged tail request after `20 ms`), the gateway fetches parity shards from surviving nodes, reconstructs the missing data shard in memory via `RS(6, 3)` matrix inversion, streams the verified byte slice to the client, and enqueues an asynchronous repair event for the corrupt shard.
 
-<figure class="wide">
-<img src="figures/objects-deploy.svg?v=7bb77468" alt="The object store, deployed. Applications: Applications (100 PB stored), upload and download. Front end, in 3 zones: Load balancers (x 6), any API server, API servers (x 200), chunk, place, assemble. Storage, in 3 zones: Metadata store (x 60), 20 shards x 3 replicas, Storage nodes (x 600), 36 disks in each. Background: Scrubbers (on each node), verify every chunk, Repair workers (x 20), replace lost copies, Garbage collector (x 4), after a day of grace.">
-<figcaption><b>Figure 16.8</b> The object store as it is deployed, with the background tier that scrubs, repairs and collects.</figcaption>
+## 16.4 Durability Engineering: Reed-Solomon Erasure Coding, Placement, and Scrubbing
+
+### From Parity Addition to Reed-Solomon `RS(6, 3)` over `GF(2^8)`
+
+3-way replication provides simple, fast reads and 1-to-1 repair, yet wastes `200 PB` of raw capacity for every `100 PB` of stored data. Erasure coding eliminates most of that overhead by storing computed parity shards instead of full duplicates. Interactive Trace 16.A builds intuition using ordinary arithmetic addition over 3 data values and 1 sum.
+
+<figure class="steps" data-prefix="figures/steps-obj-parity" data-count="5" data-version="8a34afed">
+<img src="figures/steps-obj-parity-01.svg?v=8a34afed" alt="Rebuilding a lost piece from a sum, step 1 of 5. An object is cut into 3 pieces, which for this picture are the numbers 5, 3 and 9. Each piece goes to a different disk." />
+<figcaption><b>Interactive Trace 16.A</b> Single-parity erasure reconstruction: storing 3 data blocks plus 1 parity sum across 4 disks tolerates any 1 disk loss at 1.33x overhead. Use Next and Back to step through all 5 stages.</figcaption>
 </figure>
 
-The front end is a large stateless tier of API servers behind load balancers. Below
-it the 2 kinds of storage are plainly separate: 60 machines of the metadata store,
-which is 20 shards of 3 replicas each, and 600 storage nodes with some 36 disks
-apiece, which hold the bytes. The bottom tier is peculiar to storage systems. It
-serves no request, and it runs all the time: a scrubber on every node reading its
-disks in rotation, a pool of repair workers, and the garbage collector. A store of
-this size loses a disk on most days, and this tier is what turns that from an event
-into routine.
+To tolerate $m > 1$ simultaneous failures without integer overflow, production object stores execute **Reed-Solomon `RS(k, m)` coding** over the finite Galois Field $\text{GF}(2^8)$, where every byte is a polynomial element of degree at most 7, addition is bitwise `XOR`, and multiplication executes modulo an irreducible degree-8 polynomial (`0x11d`). Given $k = 6$ data shards arranged as a vector $\mathbf{d}$, multiplying by a $9 \times 6$ systematic Cauchy generator matrix $\mathbf{G}$ (whose top $6 \times 6$ submatrix is the identity matrix $\mathbf{I}_6$) produces the $6$ unaltered data shards plus $3$ parity shards (`P1`, `P2`, `P3`). Because every $6 \times 6$ submatrix of a Cauchy matrix is guaranteed invertible over $\text{GF}(2^8)$, **any 6 surviving shards out of 9** uniquely recover all 6 original data shards via $\mathbf{d} = \mathbf{G}_{\text{surv}}^{-1} \mathbf{y}_{\text{surv}}$.
 
-## How real systems do it
+Modern CPUs execute `GF(2^8)` multiply-accumulate via 4-bit nibble lookup tables using AVX2/AVX-512 `VPSHUFB` (or ARM NEON `VTBL`) instructions at **`> 10 GB/s` per core**, making CPU encoding overhead negligible compared to disk and network bandwidth.
 
-The published designs of large stores show a clear progression, and this chapter
-compresses several generations into 1.
+| Durability Scheme | Storage Overhead | Fault Tolerance (`f`) | Normal Read Fan-Out | Single-Shard Repair Read Cost | Primary Use Case |
+| :--- | :--- | :--- | :--- | :--- | :--- |
+| **3-Way Replication** | `3.00x` (`300 PB` / `100 PB`) | Any `2` losses | `1` shard (lowest latency) | `1` shard read | Small objects (`< 1 MB`), metadata, ultra-hot blobs |
+| **Reed-Solomon `RS(6, 3)` (Chosen)** | `1.50x` (`150 PB` / `100 PB`) | Any `3` losses (full AZ outage) | `6` parallel shards | `6` shards read | Warm and standard multi-AZ objects (`>= 1 MB`) |
+| **Reed-Solomon `RS(10, 4)`** | `1.40x` (`140 PB` / `100 PB`) | Any `4` losses | `10` parallel shards | `10` shards read | Cold archival blobs (Facebook `f4`) |
+| **Azure LRC `(12, 2, 2)`** | `1.33x` (`133 PB` / `100 PB`) | Any `3` losses (most `4`-loss patterns) | `12` parallel shards | `6` shards read (half local group) | Cloud cold storage minimizing cross-rack repair traffic |
 
-The Google File System of 2003 established the pattern of a metadata service and
-many chunk servers, with chunks of 64 MB kept in 3 copies. Facebook's Haystack, in
-2010, addressed a problem that this chapter passes over: a store of billions of small
-photographs spends most of its disk operations on locating files and very few on
-reading them, and Haystack packed many photographs into each large file with an
-index held in memory, so that a read needs a single disk operation. Any store of
-small objects has to do something of the kind, and a design that kept every object
-as a separate file would not survive.
+### Failure-Domain Placement, Copysets, and Background Scrubbing
 
-For data that is seldom read, Facebook then built f4, which replaces copies by
-erasure coding with exactly the scheme of this chapter, 10 data blocks and 4 parity
-blocks, at 1.4 times the size of the data within a data centre. The paper gives the
-effective overhead of Haystack as 3.6, since it kept 3 copies on disks that were
-themselves in redundant arrays, and that of f4 as 2.1 once a further coding across
-data centres is included. Microsoft's storage system uses a variant, local
-reconstruction codes, which adds parity blocks that each cover half of the data
-blocks, so that the common case of a single lost block is repaired by reading 6
-blocks where the plain scheme reads 10 or more.
+Redundancy count alone guarantees nothing if shards share a correlated failure domain: placing all 9 shards in the same rack loses the entire object when one top-of-rack switch fails. Our Placement Controller maps every `RS(6, 3)` stripe strictly across **9 distinct disks, 9 distinct hosts, and 3 distinct Availability Zones** (`3` shards per AZ: `{D1, D2, P1}` in AZ-1, `{D3, D4, P2}` in AZ-2, `{D5, D6, P3}` in AZ-3) (Figure 16-3).
 
-On placement, a paper from Stanford made precise the danger of correlated failures.
-When replicas are placed on nodes chosen at random, almost any simultaneous loss of 3
-nodes in a large cluster destroys some chunk, because nearly every combination of 3
-nodes holds the replicas of something. Restricting placement to a limited number of
-fixed groups of nodes makes a simultaneous loss far less likely to hit all copies of
-anything, at the cost of losing more when it does.
+<figure class="diagram">
+<img src="figures/m3/ch16_erasure_coding.svg" alt="Reed-Solomon RS(6, 3) Stripe Layout Across 9 Disks in 3 Availability Zones: 6 data shards and 3 parity shards achieve 1.5x storage overhead while tolerating any 3 simultaneous shard losses across AZ-1, AZ-2, and AZ-3, paired with continuous CRC32C background scrubbing." />
+<figcaption><b>Figure 16-3</b> Reed-Solomon <code>RS(6, 3)</code> placement across three availability zones with continuous CRC32C bit-rot detection and reconstruction.</figcaption>
+</figure>
 
-The deduplication of identical chunks described in this chapter is characteristic of
-backup and file synchronisation systems, and public object stores generally do not
-practise it across customers, in part because it lets 1 customer discover whether
-another holds a given file. And the consistency that this chapter requires of
-metadata was for many years not provided by the largest public store, Amazon's S3,
-which offered it only from the end of 2020.
+This topology ensures that even if an entire Availability Zone goes offline (`3` shards unreachable simultaneously), the `6` surviving shards across the remaining two AZs satisfy `k = 6`, preserving both zero data loss and full read availability without interruption. Furthermore, following the **Copysets** analysis (Cidon et al. 2013), rather than picking 9 random nodes from 290 hosts per chunk (which spreads combinations across nearly every possible 4-node subset so any correlated 4-node power failure destroys *some* chunk), we constrain shards onto fixed **Placement Groups** (`PGs`) of 9 nodes. Copysets dramatically lower the probability of data loss during correlated cluster-wide power outages while bounding repair coordination state.
 
-## Mistakes to avoid
+To defeat silent bit corruption on cold archive drives that applications may not read for years, every storage node runs a rate-limited **local bit-rot scrubber** that sweeps every disk sector every 14 days, verifying stored bytes against each shard's recorded `CRC32C` and content hash (Interactive Trace 16.B).
 
-| Mistake | What goes wrong | What to do |
-|---|---|---|
-| Recording the object before its bytes are stored | A crash leaves an object that exists by name and cannot be read. | Write the chunks first and the metadata last. |
-| Counting copies without regard to placement | A rack or a machine fails and takes every copy of some chunks with it. | Spread the copies over different failure domains. |
-| Verifying data only when it is read | Damage in rarely read data goes unnoticed until every copy is bad. | Scrub all chunks continuously in the background. |
-| Slow or unprioritised repair | Chunks remain exposed for days, and a second failure destroys them. | Repair promptly, the chunks with fewest copies first. |
-| Repairing the instant a node disappears | Terabytes are copied for a node that was only restarting. | Wait a short period before starting repair. |
-| Erasure coding everything | Small objects and reads of damaged chunks become slow. | Replicate small and hot data, and code large and cold data. |
-| Deleting chunks as soon as an object is deleted | A chunk shared through deduplication, or just reused by an upload, is destroyed. | Collect garbage later, after a period of grace. |
-| A weak hash for content addressing | 2 different chunks receive the same name, and 1 is lost. | Use a cryptographic hash. |
-| Uploading huge objects in 1 request | Any interruption restarts the entire transfer. | Upload in parts that can be retried separately. |
-| Never discarding unfinished uploads | Their parts occupy space indefinitely. | Expire incomplete multipart uploads. |
-| Relying on replication against mistakes | A mistaken deletion or overwrite is replicated faithfully. | Keep earlier versions of objects. |
-| Names with a common prefix written in order | All new objects fall on the same shard of the metadata store. | Spread names by a hash, or shard by a hash of the name. |
+<figure class="steps" data-prefix="figures/steps-obj-scrub" data-count="5" data-version="de6807ac">
+<img src="figures/steps-obj-scrub-01.svg?v=de6807ac" alt="A damaged copy is found and repaired, step 1 of 5. A chunk is stored on 3 nodes. With each copy the node keeps the checksum that the bytes had when they were written." />
+<figcaption><b>Interactive Trace 16.B</b> Silent bit-rot detection and self-healing: checksum verification catches a corrupted disk byte, reads cleanly from a healthy peer, and replaces the damaged copy. Use Next and Back to step through all 5 stages.</figcaption>
+</figure>
 
-## Failures
+**Why MTTR governs eleven-nines durability:** Durability is governed by the race between **Mean Time To Repair (`MTTR`)** and subsequent independent failures inside the exposure window. Under `RS(6, 3)`, losing 1 shard triggers prioritized reconstruction onto a healthy replacement disk in the same AZ. Shrinking `MTTR` from `1 week` (`168 hours`) down to `1 hour` shrinks the exposure window for compound failures by orders of magnitude. To balance stability against speed, the Placement Controller applies a **`10`-minute grace delay** before starting repair on an unreachable host (avoiding terabyte storms during rolling OS reboots) and schedules repairs in strict **deficit priority** (stripes missing `2` shards jump ahead of stripes missing `1` shard), throttled below `20%` of inter-rack bandwidth.
 
-| Failure | What users see | How the system recovers |
-|---|---|---|
-| A disk returns damaged bytes | nothing | the checksum fails, another copy is used, and the bad copy is replaced |
-| A storage node is lost | nothing | the repair worker makes a third copy of each of its chunks on other nodes |
-| An upload stops half way | the object does not appear | its chunks have no name pointing at them and are removed later |
+## 16.5 Small-Object Packing, Multipart Sealing, and Safe Garbage Collection
 
-## Trade-offs
+### Small-Object Packing (Haystack Pattern)
 
-| Decision | What it gains | What it costs |
-|---|---|---|
-| 3 copies of every chunk | simple, and fast to repair | 3 times the disk space; erasure coding needs about half of that |
-| Chunks named by checksum | damage is detected, and equal data is stored once | a chunk cannot be changed in place |
-| Names in a separate store | listing and renaming are cheap | 2 systems to keep in step |
+Erasure coding a `20 KB` thumbnail across 9 disks in 3 AZs wastes 9 network RPCs, 9 disk seeks, and metadata space exceeding the object payload itself. Following Facebook's **Haystack** design, storage nodes pack millions of small objects (`< 1 MB`) sequentially into large append-only `64 GB` **volume files** (`3`-way replicated across 3 AZs) accompanied by a compact in-memory `(chunk_id -> volume_id, offset, length)` index. Serving a small object therefore requires **one single disk seek** with zero filesystem directory or inode traversal overhead. As objects age into cold tiers, an offline compaction worker aggregates thousands of immutable small objects into `64 MB` packed containers and erasure-codes the resulting container with `RS(6, 3)`.
 
-## The simulation
+### Versioning and Grace-Period Garbage Collection
+
+Replication and erasure coding protect against hardware failure, never against software defects or accidental operator `DELETE` commands, because a mistaken deletion is faithfully committed to the metadata quorum. Enabling **bucket versioning** converts every `DELETE` into an append-only `is_delete_marker = TRUE` metadata record and retains prior `version_id` manifests until lifecycle rules explicitly expire them.
+
+When an object version is permanently expired, its metadata entry disappears immediately, while physical shard deletion runs asynchronously in the background **Garbage Collector (GC)**. Deleting chunks immediately creates a notorious data-loss race under content addressing or concurrent multipart commits:
+1. The GC scans metadata at time $t_0$ and marks chunk `c9` as unreferenced.
+2. At time $t_1$, a concurrent upload produces identical chunk `c9`, sees `c9` already exists on storage nodes, and commits a new manifest referencing `c9`.
+3. At time $t_2$, the GC deletes `c9` from its stale $t_0$ candidate list, permanently corrupting the newly uploaded object.
+
+We eliminate this race with a **two-phase mark-and-grace protocol**: the GC only reclaims chunks that have remained unreferenced continuously for a `24-hour` grace window (`t_now - last_referenced_at > 24 h`) and acquires an epoch-fenced tombstone lock before reclaiming storage blocks, while any upload reusing an existing chunk refreshes `last_referenced_at` atomically prior to manifest commit.
+
+## 16.6 Failure Modes, SLIs, and Production Systems
+
+### Failure Mode and Mitigation Matrix
+
+| Failure Mode | Blast Radius | Detection Signal | Automated Mitigation |
+| :--- | :--- | :--- | :--- |
+| **Single HDD / NVMe Drive Failure** | `1` shard degraded per hosted Placement Group; zero client errors | SMART I/O error or storage-node health report | Immediate degraded read via surviving shards (`RS(6, 3)` reconstructs transparently); Placement Controller schedules prioritized rebuild onto spare drive within `1 hour` |
+| **Entire Availability Zone Outage** | `3` of `9` shards unreachable per stripe; zero data loss | Cross-AZ heartbeat quorum loss | Gateways read remaining `6` shards across the `2` healthy AZs; new writes spill onto temporary 2-AZ/3-rack placement groups and rebalance automatically after AZ recovery |
+| **Silent Disk Bit Rot** | `1` corrupt shard returns altered bytes without OS error | Read-path `CRC32C` mismatch or 14-day background scrubber failure | Gateway rejects bad shard, reconstructs clean data from parity, serves verified bytes to client, and overwrites bad shard on disk |
+| **Abandoned Multipart Upload Leak** | Orphaned staging chunks accumulate without visibility on storage nodes | Uncommitted staging byte quota alert (`> 2%` cluster raw capacity) | Lifecycle reaper automatically aborts and deletes staging parts older than `7 days` |
+| **Metadata Prefix Hotspot** | Sequential keys (`logs/2026-11-20/00001...`) concentrate writes on one metadata Raft shard | Per-shard write latency `p99 > 50 ms` | Dynamic range splitting splits hot key ranges automatically across metadata shards within minutes |
+
+### Operational SLIs, SLOs, and Alert Thresholds
+
+- **Data Integrity SLI:** Zero unrecoverable `CRC32C` or `SHA-256` checksum failures served to clients (`target = 0`); any unrecoverable stripe (`>= 4` simultaneous shard losses) triggers an immediate Sev-1 durability incident.
+- **Under-Replicated Stripe Age SLI:** Maximum age of any Placement Group with `>= 2` missing shards must stay below `30 minutes`; alert if repair backlog exceeds `1%` of total stripes.
+- **Read-After-Write Availability and TTFB SLI:** `99.95%` success rate on `PUT`/`GET`; `p99` time-to-first-byte `<= 100 ms` for regional reads.
+- **Scrubbing Coverage SLI:** `100%` of active disks must complete a full checksum scrub within every `14-day` rolling window; alert on any node whose last scrub timestamp exceeds `16 days`.
+
+### Production Benchmarks
+
+| Production System | Durability Scheme | Metadata & Placement Engine | Architectural Distinction |
+| :--- | :--- | :--- | :--- |
+| **Amazon S3** | Multi-AZ erasure coding across `>= 3` AZs (`11` nines durability) | Sharded strong read-after-write key-index (launched Dec 2020) | Supports `5 TB` objects, strong read-after-write consistency across all operations, and `ShardStore` Rust-based formally verified storage nodes |
+| **Ceph RADOS** | Configurable `3x` replication or `RS(k, m)` per pool | CRUSH deterministic pseudo-random placement algorithm across Placement Groups | Eliminates central lookup table on data path; clients compute exact OSD targets from compact cluster map + `CRUSH(pg_id)` |
+| **Facebook Haystack & f4** | Haystack `3.6x` effective (hot photos); `f4` `RS(10, 4)` `1.4x` intra-DC + XOR geo-parity (`2.1x` total) | Append-only needle volumes + in-memory index | Proved single-seek volume packing for billions of small photos and tiered warm-blob erasure coding |
+| **Microsoft Azure Storage** | Local Reconstruction Codes `LRC(12, 2, 2)` (`1.33x` overhead) | Paxos-replicated Stream Layer + Partition Layer | Adds local parity blocks covering half-groups so single-shard repair reads `6` fragments instead of `12` |
+
+## 16.7 Simulation Verification
 
 <div class="simulation">
 
-**Simulation in the repository.** The program [`code/objectsim`](https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/distributed-systems-from-the-ground-up/code/objectsim/src/main.rs) simulates this design. To run it, clone the repository and type `cargo run --release -p objectsim` in the `code` directory.
+**Reproduce content-addressed chunking, deduplication, and silent bit-rot repair.** Run `cargo run --release -p objectsim` inside `distributed-systems-from-the-ground-up/code/` to split a `10 MB` blob into `4 MB` content-addressed chunks replicated across `6` storage nodes, verify zero-write deduplication on an identical upload, inject a `1`-byte bit flip on `node 4`, and verify transparent checksum detection and automated self-healing on read.
 
 </div>
 
-## References
+```console
+$ cargo run --release -p objectsim
+video.mp4, 10 MB: 3 chunks written, 0 already there
+copy-of-video.mp4, the same bytes: 0 chunks written, 3 already there
+chunks on each of the 6 nodes: 2 1 0 1 2 3
+1 byte is damaged in the copy of chunk 1 on node 4
+video.mp4 read back: 10485760 bytes, equal to the original: true, copies repaired: 1
+```
 
-- S. Ghemawat, H. Gobioff and S. Leung, "The Google File System", SOSP 2003.
-- D. Beaver and others, "Finding a Needle in Haystack: Facebook's Photo Storage", OSDI 2010.
-- S. Muralidhar and others, "f4: Facebook's Warm BLOB Storage System", OSDI 2014.
-- C. Huang and others, "Erasure Coding in Windows Azure Storage", USENIX ATC 2012.
-- A. Cidon and others, "Copysets: Reducing the Frequency of Data Loss in Cloud Storage", USENIX ATC 2013.
-- B. Calder and others, "Windows Azure Storage: A Highly Available Cloud Storage Service with Strong Consistency", SOSP 2011.
-- Amazon Web Services, "Amazon S3 Update: Strong Read-After-Write Consistency", 2020.
+From this execution transcript, we verify three core invariants of the storage engine:
 
-## Terms introduced in this chapter
+1. **Chunking and deduplication:** Splitting `video.mp4` (`10,485,760` bytes) at a `4 MB` boundary produced `3` chunks replicated `3` times across `6` nodes (`9` total copies distributed as `2 1 0 1 2 3`). Re-uploading identical bytes under `copy-of-video.mp4` wrote **`0` new chunks**, reusing all `3` existing content-addressed chunks while adding only a second metadata entry.
+2. **End-to-end corruption detection:** Injecting a single-byte silent corruption into chunk `1` on `node 4` did not leak altered bytes to the reader; checksum verification caught the mismatch immediately during `GET`.
+3. **Read-repair self-healing:** The reader fell back to a healthy replica, returned all **`10,485,760` bytes bit-for-bit identical** (`equal to the original: true`), and restored full redundancy (`copies repaired: 1`).
 
-| Term | Meaning |
-|---|---|
-| Object | a sequence of bytes stored whole under a name |
-| Bucket | a container for objects with its own space of names |
-| Metadata | what the store records about an object: its name, its size and where its chunks are |
-| Storage node | a machine with many disks that stores chunks |
-| Chunk | a piece of an object, of a few megabytes at most |
-| Content addressing | naming a piece of data by a hash of its contents |
-| Deduplication | storing identical data once |
-| Replication | keeping several full copies |
-| Parity | extra data computed from other pieces, from which a lost piece can be rebuilt |
-| Erasure coding | dividing data into k pieces and adding m parity pieces, such that any k rebuild the whole |
-| Failure domain | a group of components that can fail together |
-| Scrubber | a background process that reads all data and verifies its checksums |
-| Repair | making new copies or pieces to replace those that were lost |
-| Multipart upload | uploading a large object in separately sent parts |
-| Garbage collection | removing chunks that no object refers to |
-| Versioning | keeping the earlier versions of an object when it is replaced or deleted |
-| Read-after-write consistency | the property that an object can be read as soon as its upload is confirmed |
-| Presigned URL | an address that grants 1 operation on 1 object for a limited time |
+## 16.8 Terminology and References
 
-<div class="summary">
+### Engineering Glossary
 
-## Summary
+| Term | Definition |
+| :--- | :--- |
+| **Content Addressing** | Naming immutable data chunks by a cryptographic hash of their byte payload, enabling intrinsic integrity checks and deduplication. |
+| **Reed-Solomon `RS(k, m)`** | Maximum-distance separable erasure coding over `GF(2^8)` splitting data into `k` data shards and `m` parity shards so any `k` of `k + m` shards reconstruct the original data. |
+| **Failure Domain** | A physical or logical boundary (disk, server, rack power supply, availability zone) whose components can fail simultaneously due to a shared fault. |
+| **Placement Group (Copyset)** | A fixed group of storage disks spanning distinct failure domains that hosts stripes together, bounding correlated multi-node data-loss probability. |
+| **Bit-Rot Scrubbing** | Continuous background verification reading every chunk on every disk in rotation against stored checksums to detect silent media corruption before redundancy expires. |
+| **Multipart Upload** | A three-phase protocol (`Init`, parallel `UploadPart`, atomic `Complete`) allowing multi-terabyte objects to transfer resumable parts while exposing the final object atomically. |
+| **Presigned URL** | A time-limited HMAC-authenticated HTTP URL delegating one specific object operation directly to a client without proxying bytes through application servers. |
 
-- An object store keeps whole, immutable objects under flat names, and gains its scale from offering so little.
-- Names and locations are kept in a strongly consistent metadata store, and bytes on simple storage nodes, written first and recorded last.
-- Objects are cut into chunks named by a hash of their contents, so that damage is detectable and identical chunks are stored once.
-- 3 copies survive 2 losses at 3 times the space, and 10 data pieces with 4 parity pieces survive 4 losses at 1.4 times.
-- Copies are spread over failure domains, since components fail together more often than independence would predict.
-- A scrubber verifies every chunk in rotation, because disks return wrong data without reporting it.
-- Durability depends above all on repairing quickly, so that a chunk is exposed only briefly after a loss.
-- Chunks are deleted by garbage collection after a period of grace, so that a chunk being reused is not removed.
+### References
 
-</div>
+- S. Ghemawat, H. Gobioff, and S. Leung, "The Google File System", *ACM SOSP*, 2003.
+- D. Beaver, S. Kumar, H. C. Li, J. Sobel, and P. Vajgel, "Finding a Needle in Haystack: Facebook's Photo Storage", *USENIX OSDI*, 2010.
+- B. Calder et al., "Windows Azure Storage: A Highly Available Cloud Storage Service with Strong Consistency", *ACM SOSP*, 2011.
+- C. Huang, H. Simitci, Y. Xu, A. Ogus, B. Calder, P. Gopalan, J. Li, and S. Yekhanin, "Erasure Coding in Windows Azure Storage", *USENIX ATC*, 2012.
+- A. Cidon, S. Rumble, R. Stutsman, S. Katti, J. Ousterhout, and M. Rosenblum, "Copysets: Reducing the Frequency of Data Loss in Cloud Storage", *USENIX ATC*, 2013.
+- S. Muralidhar et al., "f4: Facebook's Warm BLOB Storage System", *USENIX OSDI*, 2014.
+- S. A. Weil, S. A. Brandt, E. L. Miller, and C. Maltzahn, "CRUSH: Controlled, Scalable, Decentralized Placement of Replicated Data", *SC '06*, 2006.
+- J. Bornholt et al., "Using Lightweight Formal Methods to Validate a Key-Value Storage Node in Amazon S3 (ShardStore)", *ACM SOSP*, 2021.

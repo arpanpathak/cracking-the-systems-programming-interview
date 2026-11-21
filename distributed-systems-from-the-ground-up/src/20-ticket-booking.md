@@ -1,642 +1,475 @@
-<img class="plate" src="art/ch20.svg?v=c8923e56" alt="A cat sits in a box numbered 12 beside a sign that reads: held for 5 minutes, then sold or free.">
+# Chapter 20: Ticket Booking: System Design
 
-# Ticket Booking: System Design
+<img class="plate" src="art/ch20-plate.svg" alt="Chapter 20 plate illustrating a high-contention ticket booking architecture with a virtual waiting room, event-sharded seat inventory, and atomic compare-and-swap seat holds." />
 
-A booking system sells things of which there is a fixed and usually small supply: the
-seats of a cinema for a particular showing, the rooms of a hotel for a particular
-night, the places on a particular flight. Each such thing can be sold once, and the
-entire purpose of the system is to see that it is not sold twice. 2 travellers who
-arrive at the airport holding confirmations for seat 14C on the same flight have been
-failed by the airline's booking system in the most direct way possible, and no
-apology alters the fact that 1 of them will not be sitting there.
-
-The requirement sounds elementary, and on a single machine serving 1 customer after
-another it is. It becomes difficult under the conditions in which booking systems in
-fact operate. Many customers act at the same time, on many servers, and 2 of them will
-sooner or later choose the same seat in the same instant. A customer who has chosen a
-seat needs some minutes in which to pay, and may abandon the purchase without saying
-so. And demand is sometimes of a different order from supply, as when the tickets for
-a concert go on sale and 2 million people arrive within a minute to compete for 50000
-seats. This chapter is about keeping the 1 essential promise, that a seat belongs to
-at most 1 buyer, under each of these conditions in turn.
+A high-contention ticket booking platform sells finite, non-fungible inventory, such as stadium seats, cinema seats, or airline cabins, where each seat can belong to at most one confirmed buyer. While this invariant is trivial under sequential single-node execution, real ticket drops combine extreme ingress bursts (millions of concurrent buyers arriving within seconds of an on-sale opening) with long, unreliable checkout phases spanning external payment authorization. In this chapter, I design a distributed booking architecture that enforces zero double-selling through event-sharded relational state machines and atomic compare-and-swap holds, while absorbing flash-sale demand behind a cryptographically gated virtual waiting room.
 
 <div class="covers">
 
-This chapter covers
+In this chapter, we cover
 
-- the promise that a seat is sold at most once, and where it has to be enforced
-- 2 buyers choosing the same seat at the same moment
-- 3 ways of making the sale of a seat atomic
-- holding a seat while its buyer pays, and what happens when the buyer does not
-- a payment that arrives after its hold has run out
-- booking several seats together
-- a seat map that is allowed to be slightly wrong
-- selling a number of places without numbered seats
-- a sale for which far more buyers arrive than there are seats
+- actors, use cases, verifiable functional requirements, strong-consistency SLOs, explicit non-goals, and flash-sale capacity bounds
+- idempotent HTTP/2 seat-map, hold, and booking APIs, HMAC admission tokens, and relational DDL for seat inventory and booking uniqueness
+- control-plane vs. data-plane separation across the virtual waiting room, event-sharded inventory tier, seat-map cache, and payment saga engine
+- flash-sale admission control with randomized pre-sale lottery pools, HMAC-signed pass tokens, and layered anti-bot rate limits
+- per-seat state machine (`AVAILABLE -> HELD -> BOOKED`), conditional CAS SQL predicates, multi-seat deadlock-free locking, and compensating payment sagas
+- failure matrices, booking SLIs/SLOs, production architectures (Ticketmaster, Stripe, Cloudflare Waiting Room), and verification via `code/bookingsim`
 
 </div>
 
-## The promise
+## 20.1 Requirements, Actors, and Capacity Bounds
 
-It is useful to state exactly what the system promises before considering how. The
-promise is an *invariant*, a condition that must hold at every moment and that no
-sequence of events may be allowed to violate: every seat of every showing is in
-exactly 1 of the states free, held or sold, and when it is held or sold, it is held by
-or sold to exactly 1 buyer.
+Every ticket purchase crosses two distinct operational regimes. Before checkout, millions of prospective buyers browse venue layouts and wait for a sale to open; this traffic is overwhelmingly read-heavy and tolerates bounded staleness of one to two seconds. Once a buyer selects seats and enters payment details, the platform enters a strict transactional regime where every state transition on a seat must serialize across concurrent callers and survive orchestrator crashes or delayed payment network replies.
 
-Everything else in the system is permitted to be approximate. The picture of the
-auditorium that a customer sees may be a few seconds out of date. The count of
-remaining seats shown on the event's page may be slightly wrong. The confirmation
-email may arrive a minute late. None of these does lasting harm, and each can
-therefore be served from caches and queues by the methods of earlier chapters. The
-state of each seat cannot be approximate, and so the design begins by identifying the
-single place in which that state is kept and making sure that every change to it
-passes through an operation that cannot break the invariant.
+### Actors and Use Cases
 
-That place is the *seat store*, and it is strongly consistent in the sense of chapter
-1. It is replicated by the leader and majority method of chapters 3 and 4, so that a
-change to a seat is confirmed only when a majority of replicas hold it and no 2
-replicas can disagree about who owns a seat.
+Three external actor classes interact across the boundary of the ticket booking platform, as illustrated in Figure 20-1.
 
-## 2 buyers and 1 seat
+<figure class="diagram">
+<img src="figures/m3/ch20_use_cases.svg" alt="Actors and Use Cases of the High-Contention Ticket Booking System: Ticket Buyer joins the admission queue, views cached seat maps, places timed seat holds, and confirms bookings; Event Organizer configures venue layouts and admission rates; Payment Processor delivers asynchronous settlement webhooks." />
+<figcaption><b>Figure 20-1</b> Actors, system boundary, and core use cases of the high-contention ticket booking platform.</figcaption>
+</figure>
 
-The simplest implementation of a purchase reads the seat, checks that it is free, and
-writes the buyer's name against it. Between the reading and the writing there is an
-interval, and the entire difficulty of concurrent booking lies in that interval.
+| Actor | Operation | Concrete Scenario |
+| :--- | :--- | :--- |
+| **Ticket Buyer** | Join queue, inspect seat map (`GET /v1/shows/{id}/seats`), place timed hold (`POST /v1/shows/{id}/holds`), and confirm booking (`POST /v1/bookings`) | Wait in a virtual queue during a stadium concert drop, reserve two adjacent seats for 10 minutes, and complete checkout idempotently |
+| **Event Organizer** | Configure venue layout, seat pricing tiers, and admission pacing (`PUT /v1/shows/{id}/layout`) | Publish a 50,000-seat stadium manifest and throttle checkout ingress to 500 admitted buyers per second |
+| **Payment Processor** | Authorize, capture, refund, and deliver signed settlement webhooks (`POST /v1/webhooks/payment-settled`) | Confirm card capture asynchronously or execute an automated compensating refund if a seat lease expired |
+
+### Functional Requirements
+
+| No. | Functional Requirement |
+| :--- | :--- |
+| 0 | A buyer can view a showing's seat map reflecting each seat's current status (`AVAILABLE`, `HELD`, or `BOOKED`) with bounded staleness. |
+| 1 | A buyer holding a valid admission token can place a timed hold on one or more seats for a configurable TTL (5 to 10 minutes). |
+| 2 | A multi-seat hold request executes atomically: the buyer receives all requested seats or none. |
+| 3 | At any instant, each seat of a showing is held by or booked to at most one buyer; expired holds become immediately claimable without waiting for background cleanup. |
+| 4 | A buyer can confirm a held booking by supplying a payment token and an `Idempotency-Key`; duplicate submissions return the original confirmation without double-charging. |
+| 5 | If payment succeeds after the seat lease has expired and another buyer has claimed the seat, the system rejects the booking and triggers an automatic compensating refund. |
+| 6 | During flash sales, the system queues excess arrivals in a virtual waiting room and admits buyers into the booking tier at a controlled rate. |
+
+### Non-Functional Requirements and SLOs
+
+| No. | Property | Target Specification | Architectural Consequence |
+| :--- | :--- | :--- | :--- |
+| 0 | **Consistency** | Strict ACID Serializability / Linearizability for seat holds and booking confirmations; eventual consistency (`<= 2 s` lag) for seat-map reads | Event-sharded 3-AZ synchronous quorum relational database (`PC/EC`) for seat inventory; CDN and read-through cache for seat maps |
+| 1 | **Availability** | `99.95%` booking API availability (`<= 21.6` minutes/month); fail closed on inventory quorum loss | Refuse new holds if a shard loses majority quorum rather than risking split-brain double sales |
+| 2 | **Latency** | Seat-map read `p99 <= 50 ms`; seat-hold CAS `p99 <= 150 ms`; booking confirmation orchestration overhead `p99 <= 200 ms` (excluding external PSP RTT) | Single-shard local ACID transactions with zero database locks held during external payment network calls |
+| 3 | **Flash-Sale Scale** | `100,000` active showings; `2,000,000` buyer arrivals within 60 seconds (`~33,333` arrivals/s) for a single flagship event | Edge-hosted virtual waiting room absorbs arrival spikes and caps core booking ingress to `500` admitted buyers/s per event shard |
+| 4 | **Abuse Resistance** | Bounded holds per buyer account/session (`<= 6` seats) and cryptographic enforcement of queue order | HMAC-signed short-lived admission tokens validated at the Booking API gateway; layered IP, device, and account rate limits |
+
+### Non-Goals and Explicit Scope Boundaries
+
+To focus on inventory correctness and flash-sale stability, we explicitly exclude the following concerns from this design:
+
+- **Secondary ticket resale and peer-to-peer transfers:** Transferring issued barcodes between accounts introduces escrow and ticket-reissuance workflows outside primary inventory allocation.
+- **Airline revenue management and dynamic overbooking optimization:** Deliberately overselling physical capacity relies on historical no-show statistical models; our inventory invariant enforces exact configured capacity limits.
+- **Full card-network PCI-DSS tokenization internals:** We rely on opaque payment tokens (`tok_*`) and the idempotent payment platform architecture designed in Chapter 19 rather than handling raw PANs inside the booking core.
+- **Venue physical turnstile validation:** Offline barcode scanning at stadium gates consumes issued ticket manifests asynchronously and operates independently of online seat locking.
+
+### Back-of-the-Envelope Capacity Bounds
+
+Ticket booking storage requirements are modest compared to media or telemetry platforms; the binding engineering constraints are **flash-sale ingress burst absorption** and **per-row write contention** on desirable seats.
+
+| Resource Dimension | Derivation | Provisioned Bound |
+| :--- | :--- | :--- |
+| **Active Seat Inventory** | `100,000` active showings `* 300` average seats/showing | `30,000,000` seat rows |
+| **Seat Table Storage (Hot NVMe)** | `30M` rows `* 180 B` (tuple, version, lease fields, primary + secondary indexes) | `~5.4 GB` active working set (fits entirely in database buffer pool RAM) |
+| **Annual Confirmed Bookings** | `50M` bookings/year `* 350 B` (booking + saga journal rows) | `~17.5 GB/year` |
+| **Peak Flash-Sale Arrival Rate** | `2,000,000` arrivals `/ 60 s` at on-sale opening | `~33,333` queue-join req/s handled at CDN edge |
+| **Waiting-Room Polling Bandwidth** | `2,000,000` queued clients polling every `10 s` `* 512 B` JSON payload | `200,000` req/s; `~820 Mbit/s` edge egress |
+| **Core Inventory Admitted Write Rate** | Pacing controller admits `500` buyers/s per flagship show shard `* 2` CAS writes (hold + confirm) | `1,000` ACID tx/s per shard; `50,000` stadium seats clear in `~100 to 180 s` |
+| **Cached Seat-Map Read Traffic** | `5,000` concurrent admitted browsers refreshing every `2 s` | `2,500` req/s absorbed by `2 s` TTL edge/Redis cache (`0.5` origin queries/s per showing) |
+
+## 20.2 External API and Data Contracts
+
+All mutating endpoints accept HTTP/2 JSON payloads, require a valid bearer identity, and enforce a caller-supplied `Idempotency-Key` header. During gated flash sales, callers must also present the signed `X-Admission-Token` header issued by the virtual waiting room; requests lacking a valid, unexpired signature fail fast at the API gateway with `403 Forbidden`.
+
+### Seat-Map Read Endpoint
+
+```http
+GET /v1/shows/881/seats HTTP/2
+Host: tickets.example
+Authorization: Bearer usr_eyJhbGci...
+X-Admission-Token: v1.show881.usr42.1760436600.9f8e7d6c...
+```
+
+```http
+HTTP/2 200 OK
+Content-Type: application/json
+Cache-Control: public, max-age=2
+ETag: "show881-v40912"
+
+{
+  "show_id": 881,
+  "snapshot_at": "2026-10-14T10:00:00Z",
+  "seats": [
+    { "seat_id": "A1", "tier": "orchestra", "price_minor": 12500, "state": "AVAILABLE", "version": 4 },
+    { "seat_id": "A2", "tier": "orchestra", "price_minor": 12500, "state": "HELD", "version": 7 },
+    { "seat_id": "A3", "tier": "orchestra", "price_minor": 12500, "state": "BOOKED", "version": 9 }
+  ]
+}
+```
+
+The `Cache-Control: public, max-age=2` header declares that the seat map is advisory and may lag the authoritative seat store by up to two seconds. Clients pass the returned `version` (or allow the server to evaluate current state directly) when attempting a hold.
+
+### Atomic Multi-Seat Hold Endpoint
+
+```http
+POST /v1/shows/881/holds HTTP/2
+Host: tickets.example
+Authorization: Bearer usr_eyJhbGci...
+X-Admission-Token: v1.show881.usr42.1760436600.9f8e7d6c...
+Idempotency-Key: 5d1c-hold-1
+Content-Type: application/json
+
+{
+  "seat_ids": ["A1", "A4"]
+}
+```
+
+```http
+HTTP/2 201 Created
+Location: /v1/shows/881/holds/hld_7730
+Content-Type: application/json
+
+{
+  "hold_id": "hld_7730",
+  "show_id": 881,
+  "seat_ids": ["A1", "A4"],
+  "expires_at": "2026-10-14T10:10:00Z",
+  "total_minor": 25000,
+  "currency": "USD"
+}
+```
+
+If any requested seat is already held (with an unexpired lease) or booked, the transaction rolls back all seats in the batch and returns `409 Conflict` with an RFC 9457 `application/problem+json` body identifying the contested seat IDs:
+
+```http
+HTTP/2 409 Conflict
+Content-Type: application/problem+json
+
+{
+  "type": "/problems/seat-unavailable",
+  "title": "One or more requested seats are no longer available",
+  "status": 409,
+  "unavailable_seats": ["A1"]
+}
+```
+
+### Idempotent Booking Confirmation Endpoint
+
+```http
+POST /v1/bookings HTTP/2
+Host: tickets.example
+Authorization: Bearer usr_eyJhbGci...
+Idempotency-Key: 5d1c-book-1
+Content-Type: application/json
+
+{
+  "hold_id": "hld_7730",
+  "show_id": 881,
+  "payment_token": "tok_83hf91a"
+}
+```
+
+```http
+HTTP/2 201 Created
+Location: /v1/bookings/bkg_55102
+Content-Type: application/json
+
+{
+  "booking_id": "bkg_55102",
+  "show_id": 881,
+  "seat_ids": ["A1", "A4"],
+  "state": "CONFIRMED",
+  "payment_id": "pay_9001"
+}
+```
+
+If the buyer's hold expired prior to payment submission, the endpoint returns `410 Gone` before invoking the payment processor. If a network retry repeats `Idempotency-Key: 5d1c-book-1` after a lost response, the service returns the persisted `201 Created` confirmation without issuing a second charge.
+
+### Relational Inventory and Booking Schema
+
+All seats belonging to a single `show_id` reside on the same relational shard so multi-seat holds execute inside a local ACID transaction without distributed two-phase commit (`2PC`). Two structural defenses protect the invariant: every seat row carries a monotonic `version` and `hold_expires_at` timestamp, and the `booking_seats` table enforces a `UNIQUE (show_id, seat_id)` constraint as an application-independent database backstop.
+
+```sql
+CREATE TABLE seats (
+    show_id         BIGINT      NOT NULL,
+    seat_id         TEXT        NOT NULL,
+    tier            TEXT        NOT NULL,
+    price_minor     BIGINT      NOT NULL CHECK (price_minor > 0),
+    state           TEXT        NOT NULL CHECK (state IN ('AVAILABLE', 'HELD', 'BOOKED')),
+    hold_id         TEXT,
+    holder_user_id  TEXT,
+    hold_expires_at TIMESTAMPTZ,
+    booking_id      TEXT,
+    version         BIGINT      NOT NULL DEFAULT 1,
+    PRIMARY KEY (show_id, seat_id)
+);
+
+CREATE INDEX idx_seats_active_holds
+    ON seats (show_id, hold_expires_at)
+    WHERE state = 'HELD';
+
+CREATE TABLE bookings (
+    booking_id      TEXT        PRIMARY KEY,
+    show_id         BIGINT      NOT NULL,
+    user_id         TEXT        NOT NULL,
+    hold_id         TEXT        NOT NULL UNIQUE,
+    idem_key        TEXT        NOT NULL,
+    payment_id      TEXT        UNIQUE,
+    state           TEXT        NOT NULL CHECK (state IN ('PENDING_PAYMENT', 'CONFIRMED', 'COMPENSATED', 'FAILED')),
+    created_at      TIMESTAMPTZ NOT NULL DEFAULT now(),
+    UNIQUE (user_id, idem_key)
+);
+
+CREATE TABLE booking_seats (
+    show_id         BIGINT      NOT NULL,
+    seat_id         TEXT        NOT NULL,
+    booking_id      TEXT        NOT NULL REFERENCES bookings(booking_id),
+    PRIMARY KEY (show_id, seat_id) -- Second line of defense against double booking
+);
+```
+
+## 20.3 High-Level Architecture: Control Plane vs. Data Plane
+
+We isolate flash-sale crowd management and operational configuration from the synchronous transactional seat path by splitting the platform into a **Control Plane** and a **Data Plane**, as depicted in Figure 20-2.
+
+<figure class="diagram">
+<img src="figures/m3/ch20_architecture.svg" alt="High-Level Architecture showing Control Plane (Queue Pacing Controller, Event Shard Directory, Lease Sweeper Worker) and Data Plane (Virtual Waiting Room, Booking API, Seat Map CDN, Inventory Service, Payment Saga Engine, Event-Sharded Seat DB, Saga Outbox, Ticket Issuance Store)." />
+<figcaption><b>Figure 20-2</b> Control plane and data plane separation across the virtual waiting room, event-sharded inventory service, and payment saga.</figcaption>
+</figure>
+
+### Control Plane Responsibilities
+
+The control plane governs traffic shaping, shard routing, and asynchronous housekeeping without sitting on the critical per-seat checkout path:
+
+- **Queue Pacing Controller:** Computes the admission release rate per showing (`tokens/s`) by monitoring inventory database CPU, lock-wait latency, and remaining seat counts. When a showing sells out, the controller flips the waiting-room state to `SOLD_OUT`, immediately terminating polling for millions of queued browsers.
+- **Event Shard Directory:** Maintains the mapping from `show_id` to its assigned 3-AZ synchronous relational shard. High-demand stadium shows receive dedicated shards prior to on-sale openings so a flagship concert drop cannot degrade latency for concurrent theater or cinema shows.
+- **Lease Sweeper Worker:** Periodically scans `idx_seats_active_holds` to reset expired `HELD` rows back to `AVAILABLE` and invalidate cached seat maps. Correctness never depends on sweeper punctuality because the hot-path SQL predicates treat any row with `hold_expires_at < now()` as available immediately.
+
+### Data Plane Responsibilities
+
+The data plane executes the synchronous buyer journey across four decoupled tiers:
+
+| Component | State Held | Failure Impact and Mitigation |
+| :--- | :--- | :--- |
+| **Virtual Waiting Room (Edge)** | Queue positions, randomized lottery ranks, HMAC signing keys | Runs across CDN edge PoPs; node failure reconstructs queue rank from signed client queue cookies; already admitted buyers retain valid pass tokens |
+| **Seat Map CDN and Cache** | Eventual read-only seat availability snapshots (`2 s` TTL) | Cache miss or Redis outage falls back to a single coalesced read replica query per showing per 2 seconds (singleflight) |
+| **Booking API and Inventory Service** | Stateless (`X-Admission-Token` verification, CAS SQL, idempotency) | Multi-AZ stateless pods; pod crash mid-request allows safe client retry via `Idempotency-Key` |
+| **Event-Sharded Seat DB** | `seats`, `bookings`, `booking_seats`, `outbox_events` (3-AZ sync quorum) | Primary crash promotes synchronous standby within `1 to 3 s` with zero RPO (`0` lost bookings); writes pause until quorum recovers |
+| **Payment Saga Engine** | Durable saga journal and transactional outbox | Resumes interrupted payment confirmations or issues compensating refunds via Chapter 19 idempotent payment calls |
+
+## 20.4 Deep Dive: Flash-Sale Virtual Waiting Room and Admission Control
+
+When 2,000,000 buyers arrive within 60 seconds for 50,000 stadium seats, 97.5% of arrivals cannot end in a purchase. Exposing the inventory database directly to `33,333` concurrent hold requests per second saturates database connection pools, triggers massive row-lock thrashing on front-row seats, and collapses throughput for everyone.
+
+### Pre-Sale Lottery Pool and FIFO Pacing
+
+If queue order were determined strictly by arrival timestamp at `10:00:00.000 UTC`, automated ticket bots colocated near edge PoPs with sub-millisecond jitter would capture the entire front of the queue. Instead, we divide admission into two phases:
+
+1. **Pre-Sale Lobby (`T - 30 min` to `T = 0`):** Every authenticated buyer arriving before the opening enters an unordered lobby pool. At `T = 0`, the waiting room applies a cryptographically seeded permutation (Fisher-Yates shuffle or HMAC-derived sort key over `(show_id, user_id, epoch_secret)`) to assign each lobby participant a uniform random queue rank. Buyers arriving after `T = 0` append strictly in FIFO order behind the randomized lobby cohort.
+2. **Controlled Token Release:** Each second, the Queue Pacing Controller advances a monotonic `admitted_rank_watermark` in edge KV storage by `R` slots (for example, `R = 500` buyers/s). Queued clients poll a lightweight edge endpoint every `10 seconds` displaying their remaining offset (`rank - watermark`).
+
+### Cryptographically Signed HMAC Admission Tokens
+
+Once a client's `rank <= admitted_rank_watermark`, the edge waiting room mints a stateless, short-lived admission token signed with HMAC-SHA256 using a key rotated every hour via KMS:
+
+```text
+payload   = base64url("v1|" + show_id + "|" + user_id + "|" + issued_at + "|" + expires_at + "|" + nonce)
+signature = HMAC_SHA256(edge_signing_key, payload)
+token     = payload + "." + base64url(signature)
+```
+
+Every call to `POST /v1/shows/{id}/holds` must include `X-Admission-Token`. The Booking API verifies three conditions in constant time without calling the waiting room: (1) valid HMAC signature, (2) `show_id` and `user_id` match the authenticated caller and path, and (3) `now() < expires_at` (typically a 15-minute shopping window). Direct API scraping attempts that bypass the waiting room fail at ingress in under `1 ms` without touching the inventory database.
+
+### Layered Anti-Bot and Hold-Hoarding Defenses
+
+Malicious resellers often attempt **inventory hoarding**: holding hundreds of seats across automated sessions without paying to starve legitimate buyers and force resale demand. We counter this at three layers:
+
+1. **Waiting-Room Gate:** Requires account verification (phone or payment-instrument history) and adaptive proof-of-interaction challenges before issuing a lottery rank.
+2. **Per-Account Hold Quotas:** Enforces a strict cap (such as at most 6 held or booked seats per `(show_id, user_id)`) inside the Inventory Service transaction and tracks abandoned-hold velocity per account and IP subnet using sliding-window rate limiters (Chapter 7).
+3. **General Admission Counter Sharding:** For unnumbered standing-room events (such as 5,000 floor tickets), updating a single `remaining_count` row serializes all concurrent buyers on one database lock. We pre-split capacity into `K = 50` sub-counters of `100` places each, routing buyers to `hash(user_id) % K` and probing adjacent non-empty shards only as buckets approach zero.
+
+## 20.5 Deep Dive: Seat State Machine, Conditional CAS, and Payment Sagas
+
+At the core of the Inventory Service lies the race condition that breaks unsynchronized read-modify-write implementations. If two servers read seat `12`, observe `state = 'AVAILABLE'`, and independently write their respective buyers' IDs, both buyers receive confirmation for the same seat. Advance through the interactive trace below to inspect how separating the read from the write permits double booking, and how a conditional write eliminates the race.
 
 <figure class="steps" data-prefix="figures/steps-booking-race" data-count="6" data-version="5ad509b8">
 <img src="figures/steps-booking-race-01.svg?v=5ad509b8" alt="2 buyers and 1 seat, step 1 of 6. Seat 12 is free. Ada and Bob both press &#x27;buy&#x27; on it within the same few milliseconds, and their requests reach 2 different servers.">
 <figcaption><b>Figure 20.1</b> 2 requests read the same free seat, and both write, unless the write is made conditional on the seat still being free. Use Next and Back to move through the 6 steps.</figcaption>
 </figure>
 
-Each request, taken alone, behaved correctly. It read the seat, found it free, and
-wrote. The fault lies in the combination, in which the second request's decision was
-based on a reading that the first request's write had already made obsolete. This is
-the same race that produced 2 leases for 1 job in chapter 12 and 2 forwarded requests
-for 1 token in chapter 7, and it will arise in any design that separates a decision
-from the reading on which the decision rests.
+### Per-Seat State Machine and Conditional CAS SQL
 
-It is also far from rare. The seats in a hall are not chosen uniformly: everybody
-wants the middle of the front rows, and on the first morning of a popular sale,
-hundreds of buyers are looking at the same few dozen seats.
+We model every numbered seat as a three-state machine (`AVAILABLE -> HELD -> BOOKED`) guarded by monotonic `version` fencing and explicit `hold_expires_at` timestamps, as shown in Figure 20-3.
 
-## Making the sale atomic
+<figure class="diagram">
+<img src="figures/m3/ch20_seat_hold_cas.svg" alt="Per-Seat State Machine showing AVAILABLE, HELD with TTL lease, and CONFIRMED states, single-row atomic conditional CAS SQL predicate, and late-payment fencing triggering automatic refund." />
+<figcaption><b>Figure 20-3</b> Seat state machine with conditional compare-and-swap holds, lease expiry reclamation, and fenced booking confirmation.</figcaption>
+</figure>
 
-The reading and the writing must be joined into a single step that the store carries
-out in its entirety before attending to anything else. There are 3 established ways
-of doing so.
+To acquire a single seat without holding long pessimistic locks, the Inventory Service executes a single atomic conditional `UPDATE` that treats expired holds as immediately available:
 
-The first is a *lock taken in advance*. The transaction that handles a purchase asks
-the database to lock the row of the seat before reading it. A second transaction that
-wants the same row has to wait until the first has finished, by which time the seat
-is taken, and the second, reading it now, finds it so. This approach, in which a lock
-is taken on the assumption that a conflict is likely, is called *pessimistic*. It is
-straightforward and correct, and its cost is that buyers queue behind one another for
-popular seats, each holding a database connection while it waits. If the holder of a
-lock is slow, everyone behind it is slow as well.
+```sql
+UPDATE seats
+SET state           = 'HELD',
+    hold_id         = $1,
+    holder_user_id  = $2,
+    hold_expires_at = now() + INTERVAL '10 minutes',
+    version         = version + 1
+WHERE show_id = $3
+  AND seat_id = $4
+  AND (
+      state = 'AVAILABLE'
+      OR (state = 'HELD' AND hold_expires_at < now())
+  )
+RETURNING seat_id, version, hold_expires_at;
+```
 
-The second is a *conditional write*. The request does not lock anything. It issues a
-single statement of the form "set this seat to held by Ada, provided that it is
-currently free", and the store reports whether the condition was met. Of 2
-simultaneous statements for the same seat, the store executes one first, which
-succeeds, and then the other, whose condition is now false and which therefore changes
-nothing. This is the compare-and-set of chapter 1, and it is called *optimistic*,
-since it proceeds on the assumption that conflicts are unusual and merely detects them
-when they occur. Nobody waits. A buyer who loses the race is told immediately and
-chooses again.
+If the database returns `1` row, the caller holds an exclusive lease on the seat. If `0` rows match, another transaction already won the race (or the seat is `BOOKED`), and the API immediately returns `409 Conflict` with zero lock queuing.
 
-The third relies on a *uniqueness constraint*. Bookings are kept in a table of their
-own, and the database is instructed that no 2 rows of that table may have the same
-showing and seat. A purchase is then an attempt to insert a row, and of 2
-simultaneous attempts for the same seat the database accepts 1 and rejects the other
-as a violation of the constraint. The invariant is thereby enforced by the database
-itself, independently of the application's logic, and it continues to hold even if
-some future code path forgets to check.
+### Multi-Seat Atomicity and Deadlock Prevention
 
-| | Lock in advance | Conditional write | Uniqueness constraint |
-|---|---|---|---|
-| What a losing buyer experiences | waits, then is refused | is refused at once | is refused at once |
-| Database connections held while waiting | yes | no | no |
-| Behaviour when many want 1 seat | a queue forms | 1 wins, the rest retry elsewhere | 1 wins, the rest retry elsewhere |
-| Protection if application code is wrong | none | none | the database still refuses |
+When a group requests multiple seats (`["A1", "A4", "A2"]`), the Inventory Service sorts the requested `seat_ids` lexicographically (`["A1", "A2", "A4"]`) before executing the batch `UPDATE` inside one shard-local ACID transaction:
 
-Our design uses the conditional write for changes of a seat's state and, in addition,
-a uniqueness constraint on confirmed bookings, as a second line of defence that does
-not depend on every part of the application being correct.
+```sql
+UPDATE seats
+SET state           = 'HELD',
+    hold_id         = $1,
+    holder_user_id  = $2,
+    hold_expires_at = now() + INTERVAL '10 minutes',
+    version         = version + 1
+WHERE show_id = $3
+  AND seat_id = ANY($4::text[]) -- pre-sorted lexicographically
+  AND (
+      state = 'AVAILABLE'
+      OR (state = 'HELD' AND hold_expires_at < now())
+  )
+RETURNING seat_id;
+```
 
-## Holding a seat while the buyer pays
+Sorting `seat_ids` establishes a strict global lock-acquisition order across concurrent transactions, making circular wait (deadlock) structurally impossible. If the count of returned rows is strictly less than `array_length($4, 1)`, the service issues `ROLLBACK`, releasing every partial hold atomically and returning `409 Conflict` listing the contested seats.
 
-A purchase is not instantaneous. The buyer selects a seat, then enters the details of
-a card, and the payment itself takes some seconds to be authorised, as chapter 19
-described. During this time the seat must not be sold to anyone else, since it would
-be intolerable to take a buyer's payment and then report that the seat has gone. Yet
-the seat cannot be marked as sold either, since the buyer may never complete the
-payment.
+### Comparing Concurrency Control Strategies
 
-The seat is therefore given an intermediate state, *held*. A *hold* reserves the seat
-for 1 buyer for a limited period, commonly between 5 and 15 minutes. If the buyer
-pays within that period, the seat becomes sold. If not, the hold lapses and the seat
-is available again. A hold is a lease in the sense of chapter 10, granted on a seat.
+| Mechanism | Contention Behavior | DB Connections Held While Waiting | Application-Bug Safety |
+| :--- | :--- | :--- | :--- |
+| **Pessimistic Lock (`SELECT ... FOR UPDATE`)** | Losing callers block in a row-lock queue until the holder commits | Yes; slow holders stall pool capacity | None if a code path omits `FOR UPDATE` |
+| **Optimistic Conditional CAS (`UPDATE ... WHERE`)** | One caller wins immediately; losers fail fast with `409 Conflict` | No; zero waiting across transactions | Relies on predicate discipline on every mutation |
+| **Database Uniqueness Constraint (`PRIMARY KEY (show_id, seat_id)`)** | Second insert into `booking_seats` fails with unique-violation error | No | Enforced by storage engine regardless of application bugs |
+
+Our architecture combines **Conditional CAS** on `seats` for fast contention resolution with the **`booking_seats` primary key constraint** as an unbypassable final invariant check.
+
+### Lease Expiry, Late-Payment Races, and Saga Compensation
+
+Because checkout requires a buyer to enter payment credentials and await external card-network authorization (`200 ms to 15 s`), a hold can expire while payment is in flight. Step through the interactive trace below to observe how an expired hold allows a second buyer to acquire the seat cleanly and how the system rejects the first buyer's late confirmation.
 
 <figure class="steps" data-prefix="figures/steps-booking-hold" data-count="6" data-version="09c68547">
 <img src="figures/steps-booking-hold-01.svg?v=09c68547" alt="A hold that runs out, step 1 of 6. Ada chooses seat 1. The seat is not sold to her yet. It is held in her name for 5 minutes, which gives her time to pay and keeps everyone else away from it meanwhile.">
 <figcaption><b>Figure 20.2</b> Ada holds a seat and does not pay, the hold runs out, Bob takes the seat, and Ada's late payment is refused. Use Next and Back to move through the 6 steps.</figcaption>
 </figure>
 
-The simulation for this chapter plays out these events on a hall of 3 seats and ends
-with seat 1 sold to Bob, Ada's late attempt to pay having been refused.
+Following the atomic-phase pattern from Chapter 19, we never hold a database transaction open while invoking the external payment service. Instead, the **Payment Saga Engine** executes three short local phases around the payment RPC:
 
-The time limit is what prevents a seat from being lost to sale. Without it, every
-buyer who closed the browser in the middle of a purchase would leave a seat
-permanently reserved, and within a few hours of a busy sale the hall would appear
-full while a large part of it had been paid for by nobody. The hold must carry its
-expiry time within itself, as a field of the seat's record, so that its validity can
-be judged by anyone who reads the record, at any time, by a comparison with the
-clock.
+1. **Phase 1: Conditional Grace-Window Extension (Local ACID, `< 5 ms`):** Before charging the card, the saga atomically verifies the hold is still owned by the caller and extends `hold_expires_at` by a 60-second payment grace buffer while inserting a `PENDING_PAYMENT` row in `bookings` and a durable saga journal step:
+   ```sql
+   UPDATE seats
+   SET hold_expires_at = now() + INTERVAL '60 seconds',
+       version         = version + 1
+   WHERE show_id = $1 AND hold_id = $2 AND holder_user_id = $3
+     AND state = 'HELD' AND hold_expires_at >= now();
+   ```
+   If `0` rows update, the hold already lapsed; the saga aborts with `410 Gone` and zero card charge occurs.
+2. **Phase 2: External Payment Capture (No DB Locks Held):** The saga invokes the Payment Platform (`POST /v1/payments`) using `Idempotency-Key = hold_id`, guaranteeing at most one card charge across orchestrator retries.
+3. **Phase 3: Fenced Booking Confirmation or Automatic Compensation (Local ACID, `< 5 ms`):** Upon payment approval, the saga conditionally transitions the seats to `BOOKED` and inserts rows into `booking_seats`:
+   ```sql
+   UPDATE seats
+   SET state = 'BOOKED', booking_id = $1, version = version + 1
+   WHERE show_id = $2 AND hold_id = $3 AND holder_user_id = $4 AND state = 'HELD';
+   ```
+   In the extreme case where an external payment took longer than the 60-second grace buffer and another buyer claimed the seat in the meantime, the fenced `UPDATE` returns `0` rows (or `booking_seats` raises a uniqueness violation). The saga never overrides the inventory invariant: it marks the booking `COMPENSATED`, writes an outbox event triggering an idempotent full refund (`POST /v1/payments/{id}/refunds`), and informs the buyer.
 
-This last point determines how expiry is implemented. One possibility is a background
-process, sometimes called a reaper, that periodically searches for holds whose time
-has passed and sets those seats back to free. The simpler and more dependable method
-requires no such process for correctness. A held seat whose expiry time has passed is
-treated as free by every operation that examines it, so that the conditional write
-for a new hold reads "set this seat to held by Bob, provided that it is free or that
-its hold has run out". The seat becomes available at the exact moment of expiry
-without anything having to happen at that moment. A background process may still tidy
-the records, and nothing depends on its punctuality.
+## 20.6 Failure Modes, SLIs, and Production Systems
 
-The length of the hold is a compromise between 2 kinds of loss. A long hold gives
-buyers ample time and keeps abandoned seats out of circulation for longer, which in a
-sale that will sell out matters a great deal. A short hold returns seats quickly and
-causes more buyers to lose their seat while they are still typing. Systems commonly
-display the remaining time to the buyer, which both informs and hurries.
+### Failure and Recovery Matrix
 
-A further abuse must be anticipated. Someone who wishes to disrupt a sale, or to
-reserve seats for resale, can request holds on a great many seats with no intention
-of paying, and so remove them from sale for the duration of each hold. Holds are
-therefore limited in number for each account and each session, and repeated
-abandonment by the same party is noticed and restricted.
+| Failure Scenario | Blast Radius | Automated Recovery and Preserved Invariant |
+| :--- | :--- | :--- |
+| **Buyer Abandons Checkout Mid-Hold** | Held seats unavailable for up to `10 min` | `hold_expires_at < now()` predicate immediately releases seats to subsequent CAS callers at exact expiry |
+| **Payment Gateway Latency Spike (`> 60 s`)** | Single checkout session | Phase 1 grace extension absorbs typical slowness; if lease still expires and another buyer claims the seat, Phase 3 fencing fails and triggers automatic compensating refund |
+| **Client Retries `POST /v1/bookings` After Dropped Reply** | Single booking | `UNIQUE (user_id, idem_key)` replays original `201 Created` confirmation without double-charging or failing on the consumed hold |
+| **Event Shard Primary Crash or AZ Outage** | Single event shard for `1 to 3 s` | 3-AZ synchronous Raft/PostgreSQL standby promotes with zero RPO; callers receive `503 Service Unavailable` during election and retry safely |
+| **Seat Map Cache Outage** | Read latency rises briefly | Singleflight coalescing reconstructs showing snapshots from read replicas at `<= 1` query per showing per 2 seconds |
+| **Flash-Sale Bot Storm (`33k+` req/s)** | Waiting-room ingress tier | Edge PoPs absorb queue joins; Booking API rejects forged or missing HMAC admission tokens in `< 1 ms` without hitting the database |
 
-## Payment and the hold
+### Operational SLIs and SLOs
 
-The hold and the payment are separate operations in separate systems, and the
-interval between them contains a case that has to be decided in advance.
+We monitor four domain-specific Service Level Indicators alongside standard HTTP saturation metrics:
 
-Suppose a buyer submits payment 10 seconds before the hold is due to expire, and the
-authorisation takes 15 seconds. When the payment system reports success, the hold has
-lapsed, and the seat may already have been taken by somebody else. The booking system
-now holds a successful payment for a seat it can no longer deliver.
+1. **Inventory Conservation Invariant (Zero-Tolerance Audit):** Continuous background verification asserting zero duplicate `(show_id, seat_id)` rows in `booking_seats` and zero seats marked `BOOKED` without a matching `CONFIRMED` booking (`SEV-1` page on any non-zero violation).
+2. **Hold Contention Ratio (`409 / total hold attempts`):** Normal values sit below `15%`; spikes above `60%` signal stale seat-map caching or excessive admission pacing (`R` set too high relative to remaining seats).
+3. **Late-Payment Compensation Rate:** Fraction of authorized payments requiring automatic refund due to lease expiration (`SLO < 0.01%`). Elevated rates indicate payment gateway latency approaching the Phase 1 grace window.
+4. **Waiting-Room Pacing Stability:** Difference between configured target admission rate `R` and observed Booking API hold-attempt rate, ensuring admission tokens are neither hoarded nor bypassed.
 
-2 measures deal with this, and a careful system uses both. When the buyer submits
-payment, the hold is first extended by an amount comfortably longer than a payment
-can take, in a conditional write that succeeds only if the hold is still valid and
-still belongs to this buyer. If the extension fails, the buyer is told that the seat
-is gone and no payment is attempted. And when the payment succeeds, the conversion of
-the hold into a sale is itself conditional on the seat's still being held by this
-buyer. In the rare case that this last write fails nonetheless, the system refunds
-the payment at once, by the procedure of chapter 19, and informs the buyer. The
-invariant is never sacrificed to complete a payment: it is always the money that is
-returned and never the seat that is double-sold.
+### How Production Systems Implement Ticket Booking
 
-The whole exchange must also be idempotent, for the reasons given at length in
-chapter 19. The request that confirms a booking carries a key, and a repetition of it,
-after a lost reply, returns the original booking and neither charges again nor fails
-for want of a hold that the first attempt already consumed.
+| Production System | Core Architecture | Architectural Distinction |
+| :--- | :--- | :--- |
+| **Ticketmaster (Smart Queue and Inventory Core)** | Edge virtual waiting room with randomized pre-sale lobby, event-partitioned inventory services, verified-fan account gating | Isolates stadium on-sale bursts behind multi-layered bot scoring and randomized lobby ranking before admitting buyers to strongly consistent seat locks |
+| **Cloudflare Waiting Room** | Edge-native FIFO and random-lottery queue running on globally distributed PoPs with signed admission cookies | Keeps millions of polling browsers completely off origin infrastructure while dynamically adjusting admission rates based on active checkout sessions |
+| **Stripe Checkout and Payment Intents** | Atomic-phase idempotency keys paired with `PaymentIntent` state machines and webhook settlement | Provides the external compensating-refund and idempotent capture substrate required by booking sagas to guarantee zero double charges |
+| **Alibaba / JD Flash-Sale Inventory Engines** | Pre-sharded in-memory Lua atomic counter decrements (Redis/Tair) backed by asynchronous durable order queues | Trades per-seat numbering for extreme throughput (`100,000+` stock decrements/s) on fungible SKU counts, followed by asynchronous database reconciliation |
 
-## Several seats together
+## 20.7 Simulation Verification
 
-A family books 4 seats and wishes to have all 4 or none. A booking that secured 2 of
-them and then failed on the third would leave the family with 2 seats it does not
-want and 2 other buyers refused for no purpose.
+To verify conditional seat holds, contention rejection, lease expiry without a background reaper, and late-payment fencing, run the `bookingsim` crate in the repository's `code/` workspace:
 
-The seats of a single showing normally reside in the same shard of the seat store,
-and the 4 conditional writes can then be made within 1 transaction, which succeeds
-only if every one of them does. Where a database with locks is used, a hazard arises
-that is worth describing because it recurs wherever several locks are taken. If 1
-request locks seat 5 and then asks for seat 6, while another locks seat 6 and then
-asks for seat 5, each waits for the other indefinitely. This is a *deadlock*, and the
-customary prevention is for every request to take its locks in the same fixed order,
-by seat number for example, so that no such cycle can form.
-
-## The seat map
-
-Before choosing, a buyer looks at a picture of the hall showing which seats are free.
-This picture is requested far more often than seats are bought, since every buyer
-looks, most look several times, and many look without buying.
-
-To assemble the picture from the seat store on every request would place the heaviest
-load on the 1 component that must remain fast and correct for the sake of the sales
-themselves. The seat map is therefore served from a cache, of the kind described in
-chapter 9, which is refreshed every second or 2 or updated by messages announcing each
-change of a seat's state.
-
-The map is consequently eventually consistent. A buyer may be shown a seat as free
-that was taken half a second earlier. This is entirely acceptable, and the reason
-should be clearly understood, since it illustrates a principle of wide application.
-The map is advisory. It influences which seat a buyer attempts to take, and it decides
-nothing. The decision is made by the conditional write to the seat store, which is
-always correct, and a buyer who acts on stale information is refused and shown a
-fresh map. An approximate display backed by an exact transaction is a combination
-that appears throughout well-designed systems. It would be a serious error to reverse
-the roles, allowing a sale to proceed because a cached map showed the seat as free.
-
-## Places without numbers
-
-Many events sell admission without assigning seats: 5000 places on the floor of a
-concert hall, any of which is as good as any other. The inventory is then a count,
-with no distinct seats, and the invariant becomes that the number sold shall
-never exceed the capacity.
-
-The same reasoning applies in a simpler form. To read the count, check that it is
-below the capacity, and write it back increased by 1 is the race already described,
-and would oversell. The sale must be a conditional update, "increase the number sold
-by 2, provided that the result does not exceed 5000", which the store applies
-atomically.
-
-A single counter for a popular event is, however, a single row that every purchase
-must modify, and under very heavy demand it becomes a point of contention, the hot key
-of earlier chapters. A common remedy divides the inventory in advance into several
-portions, 50 portions of 100 places for example, each a separate counter, and directs
-each buyer to a portion chosen at random. Purchases then contend only within a
-portion. The portions empty at different rates, so that a buyer may occasionally be
-refused by an exhausted portion while places remain in others and must be redirected,
-and this complication is the price of removing the bottleneck.
-
-It should be mentioned that some businesses sell more places than they possess, by
-policy. Airlines know from experience that a certain proportion of passengers do not
-appear, and sell a correspondingly greater number of tickets than there are seats.
-The invariant has not failed in such a case. It is a different invariant, with a capacity
-set above the physical number, and the system enforces the limit it is given exactly
-as before.
-
-## A sale with far more buyers than seats
-
-When the tickets for a greatly anticipated event are released, the load on the system
-bears no relation to anything it experiences at other times. 2 million people may
-arrive in the first minute for 50000 seats. Of all those requests, at most 50000 can
-end in a sale, and the remaining 1950000 are certain to be disappointed. The task of
-the system is to conduct the 50000 sales correctly and to disappoint the others
-cheaply, without the weight of the crowd bringing down the machinery on which the
-sales depend.
-
-No amount of capacity in the booking system itself is a satisfactory answer, since
-the seat store's rate of work is limited by the need for strong consistency, and
-provisioning for a peak that lasts for minutes and occurs a few times a year is
-wasteful. The crowd is therefore kept away from the booking system altogether.
-
-<figure>
-<img src="figures/booking-room.svg?v=6affd940" alt="5 steps. 2 million people arrive at 10:00 for 50000 seats. Each is given a place in a waiting room. 5000 at once are admitted to the seat map. As buyers finish, more are admitted in the order of their places. When the seats are gone, the rest are told, without having reached the booking system.">
-<figcaption><b>Figure 20.3</b> Arrivals are placed in a waiting room and admitted to the booking system at the rate it can serve.</figcaption>
-</figure>
-
-A *waiting room* is a very simple service placed in front of the sale. Each person
-who arrives is assigned a position in a queue and shown a page that reports the
-position and refreshes occasionally. Serving this page requires almost no work and
-can be done from the edge servers of chapter 17. People are admitted from the queue to
-the booking system proper at a controlled rate, matched to what that system can serve
-comfortably, and each person admitted receives a signed token, valid for a limited
-time, without which the booking system accepts no request. The token is what makes the
-arrangement enforceable, since a person cannot skip the queue by addressing the
-booking system directly.
-
-The effect is to convert a peak that the booking system could not survive into a
-steady load that it handles with ease, the excess being absorbed by a component
-designed for nothing else. It is the load levelling that chapter 11 attributed to
-queues, applied to people. It also restores a measure of fairness, since admission
-follows the order of the queue, where it would otherwise fall to whoever's request
-happened to get through an overloaded server.
-
-Whether the order of the queue should be the order of arrival is itself a question of
-policy. When a sale opens at a known moment, the people who arrive in the first second
-are separated by network delays and nothing else, and strict order of arrival rewards
-those with the fastest connections and, above all, automated programs. Many systems
-therefore gather everyone who arrives before the opening into a pool and assign their
-positions at random when the sale begins.
-
-Automated purchasing is the abiding adversary of such sales. Programs operated by
-resellers can submit requests faster than any person and from thousands of addresses.
-The defences are layered and none is complete: rate limits for each account and each
-address, as in chapter 7; a limit on the number of tickets for each buyer; challenges
-that are easy for people and costly for programs; and the requirement of an account
-with some history. The waiting room is where most of these checks are applied, before
-a request has cost the booking system anything.
-
-## Use cases
-
-A buyer looks at the seats of a showing, holds one, and pays for it.
-
-<figure>
-<img src="figures/booking-use-cases.svg?v=1e8300a2" alt="A use case diagram of the booking system. Buyer: see which seats are free (GET /v1/shows/{id}/seats), hold a seat (POST /v1/shows/{id}/holds), pay for a held seat (POST /v1/bookings).">
-<figcaption><b>Figure 20.4</b> The actor and what it does.</figcaption>
-</figure>
-
-## Functional requirements
-
-| No. | Functional requirement |
-|---|---|
-| 0 | A buyer can see which seats of a showing are free. |
-| 1 | A buyer can hold a free seat for 5 minutes. |
-| 2 | A buyer can pay for a seat that they hold, upon which the seat is sold to them. |
-| 3 | A hold that is not paid for within its time ends, and the seat is free again. |
-| 4 | A seat is held by, or sold to, at most 1 buyer at any moment. |
-| 5 | A buyer can book several seats together, receiving all of them or none. |
-
-## Non-functional requirements
-
-| No. | Property | Non-functional requirement |
-|---|---|---|
-| 0 | Consistency | Strong for the state of every seat. Eventual for the seat map. |
-| 1 | Availability | 99.95% for booking. When the seat store cannot reach a majority, sales stop. |
-| 2 | Latency | A hold is granted or refused within 200 ms. |
-| 3 | Scale | 100000 showings on sale, and a peak of 2 million arrivals in a minute for a single showing. |
-
-Non-functional requirements 0 and 1 belong together. The state of a seat is the 1
-thing in this system that may never be wrong, and the design accordingly accepts that
-when the seat store has lost its majority, no seats can be sold until it is restored.
-An hour without sales is a loss of revenue. A hall with 2 buyers for 1 seat is a loss
-of the customers' trust, and cannot be repaired by restarting anything.
-
-## Core entities
-
-<figure>
-<img src="figures/booking-entities.svg?v=ed1f3bfb" alt="The core entities. Seat has the fields show u64, label string, state free|held|sold. Hold has the fields seat string, buyer string, expires time. Booking has the fields id u64, seat string, buyer string, payment u64. A Hold reserves a seat for a few minutes. A Booking is made from a hold that is still valid when the payment succeeds.">
-<figcaption><b>Figure 20.5</b> The core entities and their fields.</figcaption>
-</figure>
-
-## Capacity estimate
-
-<div class="estimate">
-
-<img class="builder" src="art/crab-builder.svg" alt="A crab in a hard hat, in tears.">
-
-**Arithmetic ahead.** The seats of 100000 showings fit in a few gigabytes. The difficulty of this system lies in the peak of arrivals. The volume of data is small.
-
-<a class="skip" href="#high-level-design">Skip to the high-level design</a>
-
-<details>
-<summary>Show the calculation</summary>
-
-| Quantity | Calculation | Result |
-|---|---|---|
-| Seats on sale | 100000 showings × 300 seats | 30 million |
-| Storage for seats | 30 million × 100 bytes | 3 GB |
-| Arrivals at the peak | 2000000 ÷ 60 seconds | 33000 per second |
-| Admitted to booking | chosen to suit the seat store | 500 per second |
-| Time to sell 50000 seats | 50000 ÷ 500 per second | 100 seconds |
-
-</details>
-
-</div>
-
-## The API
-
-A hold is a resource created within a showing, and a booking is a resource created
-from a hold. Both are created with `POST`, and both carry an idempotency key.
-
-**See which seats are free**
-
-```http
-GET /v1/shows/881/seats HTTP/1.1
-Host: tickets.example
+```console
+$ cargo run --release -p bookingsim
+minute 0: ada holds seat 1: true
+minute 1: bob holds seat 1: false
+minute 1: bob holds seat 2: true
+minute 3: bob pays for seat 2: true
+minute 6: ada's hold has run out. bob holds seat 1: true
+minute 7: ada pays for seat 1: false
+minute 8: bob pays for seat 1: true
+seat 0: Free
+seat 1: Sold { buyer: "bob" }
+seat 2: Sold { buyer: "bob" }
 ```
 
-```http
-HTTP/1.1 200 OK
-Content-Type: application/json
-Cache-Control: max-age=2
-
-{
-  "seats": [
-    { "label": "A1", "state": "free" },
-    { "label": "A2", "state": "held" },
-    { "label": "A3", "state": "sold" }
-  ]
-}
-```
-
-The header `Cache-Control` permits this answer to be reused for 2 seconds, which
-states openly that the map may be that much out of date.
-
-**Hold a seat**
-
-```http
-POST /v1/shows/881/holds HTTP/1.1
-Host: tickets.example
-Idempotency-Key: 5d1c-hold-1
-Content-Type: application/json
-
-{ "seats": ["A1"] }
-```
-
-```http
-HTTP/1.1 201 Created
-Location: /v1/shows/881/holds/7730
-Content-Type: application/json
-
-{ "id": 7730, "seats": ["A1"], "expires": "2026-10-14T10:05:00Z" }
-```
-
-**Hold a seat that somebody else has taken**
-
-```http
-POST /v1/shows/881/holds HTTP/1.1
-Host: tickets.example
-Idempotency-Key: 9a2e-hold-1
-Content-Type: application/json
-
-{ "seats": ["A1"] }
-```
-
-```http
-HTTP/1.1 409 Conflict
-Content-Type: application/problem+json
-
-{
-  "type": "/problems/seat-taken",
-  "title": "The seat is no longer available",
-  "status": 409,
-  "seats": ["A1"]
-}
-```
-
-`409 Conflict` is the status for a request that is valid in itself and cannot be
-carried out because of the present state of the resource.
-
-**Pay for a held seat**
-
-```http
-POST /v1/bookings HTTP/1.1
-Host: tickets.example
-Idempotency-Key: 5d1c-book-1
-Content-Type: application/json
-
-{ "hold": 7730, "payment_token": "tok_83hf" }
-```
-
-```http
-HTTP/1.1 201 Created
-Location: /v1/bookings/55102
-Content-Type: application/json
-
-{ "id": 55102, "show": 881, "seats": ["A1"], "state": "confirmed" }
-```
-
-The payment token stands for the buyer's card, as chapter 19 explained, so that the
-booking system never handles a card number.
-
-## High-level design
-
-<figure class="wide">
-<img src="figures/booking-design.svg?v=7a047cb0" alt="Booking a seat. The components are Buyer, Booking API, Seat store, Payment system, Hold reaper. Step 1: A buyer asks to hold seat 12. Step 2: The API writes the hold only if the seat is free. Step 3: The buyer pays, and the hold becomes a booking. Step 4: Holds that are not paid in time are released.">
-<figcaption><b>Figure 20.6</b> The components and the path of a request. The steps are numbered.</figcaption>
-</figure>
-
-| Component | Role | State it holds | When 1 instance fails |
-|---|---|---|---|
-| Waiting room | admits buyers at a rate the booking system can serve | queue positions, in memory | positions are assigned again, and those already admitted keep their tokens |
-| Booking API | turns requests into conditional writes | none | another instance serves the request |
-| Seat store | holds the state of every seat | seats, holds and bookings, replicated | a follower is elected, and sales pause for about a second |
-| Seat map cache | serves the picture of the hall | a copy, up to 2 seconds old | the map is rebuilt from the seat store |
-| Payment system | charges the buyer | see chapter 19 | holds are extended, and bookings wait |
-
-### One request, step by step
-
-The steps follow the arrows of figure 20.6.
-
-1. A buyer asks to hold seat A1 of showing 881.
-2. The booking API sends the seat store 1 conditional write: set A1 to held by this buyer until 10:05, provided that A1 is free or its hold has run out. The store answers that the write was applied, and the API returns the hold. Had the condition been false, the API would have answered `409`.
-3. The buyer submits payment. The API first extends the hold, conditionally, and then asks the payment system to charge the buyer. When the charge succeeds, the API sends a second conditional write: set A1 to sold to this buyer, provided that it is still held by them.
-4. Independently of any request, holds whose time has passed are cleared from the records. No sale depends on this, since an expired hold is already treated as free.
-
-## The design, deployed
-
-<figure class="wide">
-<img src="figures/booking-deploy.svg?v=5d0e03a6" alt="The booking system, deployed. Buyers: Buyers (33000 arrivals/s), at the opening of a sale. In front of the sale: Edge servers (x 100s), serve the waiting page, Waiting room (x 6), positions and tokens. Booking, in 3 zones: Load balancers (x 2), any API node, Booking API (x 20), conditional writes, Seat map cache (x 4), up to 2 s old. State: Seat store (x 9), by show, x 3 replicas, Payment system (its own tier), see chapter 19.">
-<figcaption><b>Figure 20.7</b> The booking system as it is deployed, with the waiting room holding the crowd above the booking tier.</figcaption>
-</figure>
-
-The figure shows where the load goes. At the opening of a great sale, 33000 people
-arrive each second, and they are met by the edge servers and the waiting room, which
-do almost no work for each of them. Only 500 a second pass through to the booking
-tier, which is an ordinary arrangement of load balancers, stateless API servers and
-a cache for the seat map. The seat store at the bottom, 3 replicas of each shard
-with shards assigned by showing, therefore sees a load that it can serve with strong
-consistency. The numbers of machines in the lower tiers do not change between an
-ordinary day and the largest sale.
-
-## How real systems do it
-
-The mechanisms of this chapter are those of database practice more than of any 1
-published system, and the references are accordingly to the foundations.
-
-Optimistic concurrency control, the method of proceeding without locks and checking
-at the moment of writing whether anything has changed, was set out in a paper of
-1981 that also states the condition for preferring it, which is that conflicts be
-rare. A sale in which hundreds of buyers want the same seat does not meet that
-condition for the popular seats, and the consequence is the one this chapter
-accepts: most of those buyers are refused and choose again. Systems that cannot
-accept this lock in advance, or avoid the contention altogether by assigning seats
-to buyers, on the principle of "best available", so that buyers do not choose.
-
-For sales in which stock is a count, a pattern often described for the largest
-shopping events takes the deduction out of the database altogether during the peak.
-The remaining stock of each item is held in an in-memory store, a purchase is a
-small script that checks and decrements it atomically, and the orders are written to
-the database afterwards from a queue. This is the conditional update of this
-chapter, moved to a faster store, at the cost of a period in which the 2 stores have
-to be reconciled.
-
-The waiting room is offered as a product by several content delivery networks, and
-their descriptions match the design here: a queue held at the edge, a signed cookie
-or token for those admitted, a controlled rate of admission, and a choice between
-admitting in order of arrival and admitting at random from those present when the
-sale opens. The random choice exists for the reason given above, that order of
-arrival in the first second measures the speed of connections and of programs.
-
-Deliberate overbooking is studied under the name of revenue management, and the
-airlines' practice rests on decades of statistics about how many passengers fail to
-appear on each route.
-
-## Mistakes to avoid
-
-| Mistake | What goes wrong | What to do |
-|---|---|---|
-| Reading a seat and then writing it | 2 buyers both find it free and both are sold it. | Make the write conditional on the seat's state. |
-| Trusting the seat map to decide a sale | A stale map sells a seat that is already taken. | Let the map advise, and the conditional write decide. |
-| Selling a seat as soon as it is chosen | Buyers who never pay keep seats for ever. | Hold the seat for a limited time, and sell it on payment. |
-| Holds without an expiry time in the record | Expiry depends on a background process being punctual. | Store the expiry time, and treat an expired hold as free. |
-| Taking payment without checking the hold | A buyer pays for a seat that has since gone to someone else. | Extend the hold conditionally before charging. |
-| Keeping the money when the final write fails | The buyer has paid and has no seat. | Refund at once, and never double-sell to save a payment. |
-| A booking request without an idempotency key | A retry charges twice, or fails because the hold is already used. | Require a key, and return the first result for a repeat. |
-| Booking several seats in separate steps | A buyer is left with some of the seats they wanted. | Write all of them in 1 transaction. |
-| Locking seats in whatever order they were requested | 2 requests wait for each other indefinitely. | Take locks in a fixed order. |
-| 1 counter for a very popular event | Every purchase contends on the same row. | Divide the places into portions with separate counters. |
-| Letting the whole crowd reach the booking system | The seat store is overwhelmed, and the sales themselves fail. | Admit buyers from a waiting room at a controlled rate. |
-| Unlimited holds for each account | 1 party removes many seats from sale without paying. | Limit the holds of each account and session. |
-
-## Failures
-
-| Failure | What users see | How the system recovers |
-|---|---|---|
-| A buyer abandons a purchase | the seat appears as held for up to 5 minutes | the hold runs out, and the seat is free |
-| The payment is slow | the buyer waits | the hold was extended before charging, so the seat is kept |
-| The payment succeeds and the seat is gone | the buyer is told, and refunded | the refund is issued automatically |
-| The reply to a booking is lost | the buyer's app tries again | the key returns the booking already made |
-| The seat store's leader fails | holds and bookings fail for about 1 second | a follower is elected, as in chapter 4 |
-| The seat map cache is lost | the map loads more slowly for a moment | it is rebuilt from the seat store |
-| A sale opens to an enormous crowd | most people wait in the queue | the waiting room admits them at the rate the system can serve |
-
-## Trade-offs
-
-| Decision | What it gains | What it costs |
-|---|---|---|
-| Strong consistency for seats | a seat is never sold twice | no sales while the seat store lacks a majority |
-| Conditional writes | no buyer waits behind another | a buyer who loses a race has to choose again |
-| Holds with a time limit | abandoned seats return to sale | a slow buyer can lose a seat |
-| A cached seat map | the seat store is spared most of the reads | the map can show a seat that has just been taken |
-| A waiting room | the booking system works at a steady load | buyers wait, and may wait for nothing |
-
-## The simulation
+The observed transcript confirms four invariants on a three-seat hall with a 5-minute hold TTL:
+- At minute `1`, Bob's attempt to hold seat `1` fails (`false`) because Ada holds an active lease; Bob successfully acquires seat `2` and confirms it at minute `3`.
+- At minute `6`, after Ada's 5-minute lease expires, Bob's conditional hold on seat `1` succeeds immediately (`true`) without requiring a background sweeper.
+- At minute `7`, Ada's delayed payment attempt for seat `1` is fenced out (`false`), preserving single-owner exclusivity so Bob completes the purchase at minute `8`.
 
 <div class="simulation">
 
-**Simulation in the repository.** The program [`code/bookingsim`](https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/distributed-systems-from-the-ground-up/code/bookingsim/src/main.rs) simulates this design. To run it, clone the repository and type `cargo run --release -p bookingsim` in the `code` directory.
+**Run the ticket booking simulation.** Execute `cargo run --release -p bookingsim` in [`code/bookingsim`](https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/distributed-systems-from-the-ground-up/code/bookingsim/src/main.rs) to reproduce conditional CAS holds, automatic lease expiration, and fenced late-payment rejection.
 
 </div>
 
-## References
+## 20.8 Terminology and References
 
-- H. Kung and J. Robinson, "On Optimistic Methods for Concurrency Control", ACM Transactions on Database Systems, 1981.
-- PostgreSQL documentation, "Explicit Locking", on `SELECT ... FOR UPDATE`.
-- Cloudflare documentation, "Waiting Room", on queueing methods.
-- K. Talluri and G. van Ryzin, *The Theory and Practice of Revenue Management*, Springer, 2004.
-- RFC 9110, *HTTP Semantics*, 2022, for status 409.
+### Engineering Glossary
 
-## Terms introduced in this chapter
+| Term | Definition |
+| :--- | :--- |
+| **Compare-and-Swap (CAS) Hold** | An atomic conditional database update that transitions a seat to `HELD` only if it is currently `AVAILABLE` or its existing `hold_expires_at` timestamp has passed. |
+| **Fencing Predicate** | A conditional check (`WHERE hold_id = $2 AND state = 'HELD'`) on booking confirmation that rejects delayed payment completions after lease expiry. |
+| **HMAC Admission Token** | A cryptographically signed, short-lived pass minted by the virtual waiting room and verified statelessly at the Booking API to enforce queue pacing. |
+| **Inventory Hoarding** | Automated abuse in which bots reserve large blocks of seats with no intention of paying, countered by per-account hold caps and waiting-room vetting. |
+| **Payment Saga Compensation** | An automated idempotent refund triggered when an external payment succeeds after the corresponding seat lease has already been reclaimed by another buyer. |
+| **Virtual Waiting Room** | An edge-hosted queueing and randomized lottery tier that absorbs flash-sale bursts and meters buyer ingress to match core database throughput. |
 
-| Term | Meaning |
-|---|---|
-| Invariant | a condition that must hold at every moment |
-| Seat store | the strongly consistent store of the state of every seat |
-| Pessimistic locking | locking a record before reading it, on the assumption that a conflict is likely |
-| Optimistic concurrency | writing on condition that the record is unchanged, and retrying when it is not |
-| Uniqueness constraint | a rule, enforced by the database, that no 2 rows may share certain values |
-| Hold | the reservation of a seat for 1 buyer for a limited time |
-| Deadlock | 2 requests each waiting for a lock that the other holds |
-| Seat map | the picture of which seats are free, held and sold |
-| Overbooking | deliberately selling more places than physically exist |
-| Waiting room | a queue in front of a sale, from which buyers are admitted at a controlled rate |
-| `409 Conflict` | the HTTP status for a request that the present state of the resource does not allow |
+### References
 
-<div class="summary">
-
-## Summary
-
-- The 1 promise of a booking system is that a seat is held by or sold to at most 1 buyer, and everything else may be approximate.
-- Reading a seat and then writing it lets 2 buyers take the same seat, so the write is made conditional on the seat's state.
-- A seat is held for a limited time while its buyer pays, and an expired hold is treated as free without anything having to act.
-- Before charging, the hold is extended, and if the seat is lost in spite of that, the payment is refunded.
-- The seat map is served from a cache and may be stale, because it advises and the conditional write decides.
-- Places without numbers are sold by a conditional update of a count, divided into portions when demand is extreme.
-- When far more buyers arrive than there are seats, a waiting room admits them at the rate the system can serve.
-
-</div>
+- H. T. Kung and J. T. Robinson, "On Optimistic Methods for Concurrency Control", *ACM Transactions on Database Systems*, vol. 6, no. 2, 1981.
+- H. Garcia-Molina and K. Salem, "Sagas", *Proceedings of ACM SIGMOD*, 1987.
+- PostgreSQL Global Development Group, "Explicit Locking and Concurrency Control", PostgreSQL Documentation.
+- Cloudflare Engineering, "Waiting Room Architecture: Edge Queueing and Cryptographic Admission Tokens", Cloudflare Docs.
+- Stripe Engineering, "Designing Robust and Predictable APIs with Idempotency", 2017.
+- RFC 9110, *HTTP Semantics*, IETF, 2022 (status codes `409 Conflict` and `410 Gone`).
+- RFC 9457, *Problem Details for HTTP APIs*, IETF, 2023.

@@ -1,544 +1,358 @@
-<img class="plate" src="art/ch10.svg?v=ca32d83d" alt="Latch, a hermit crab, stands beside a sign that reads: token 1, token 2, the lower one is refused.">
+# Chapter 10: Distributed Lock Service
 
-# Distributed Lock: System Design
+<img class="plate" src="art/ch10-plate.svg" alt="Chapter 10 architectural plate: Distributed lock leases and monotonic fencing token barrier at the storage layer rejecting stale token 33 after token 34 has been accepted." />
 
-Some operations must be performed by 1 party only. A nightly billing run that charges
-every customer should execute once, on 1 machine, a file that
-is being rewritten should not be rewritten by 2 processes whose changes would
-interleave, and of the replicas of a database exactly 1 should accept writes. Within a
-single process this need is met by a *lock*, an object that 1 thread holds while it
-works and that makes every other thread wait, and the operating system guarantees that
-the lock behaves as advertised.
+Inside a single operating-system process, a mutex guarantees mutual exclusion because the kernel mediates both thread scheduling and shared memory access. Across a distributed network, no global kernel exists. A worker holding a lock may crash without releasing it, stall for tens of seconds during a stop-the-world garbage collection pause or VM live migration, or lose network connectivity while continuing to send buffered packets toward shared storage. Observers on the network cannot distinguish a dead holder from a slow or paused holder.
 
-A *distributed lock* attempts to offer the same service to processes on different
-machines, and it has to do so under conditions that a lock inside 1 process is spared.
-The holder of a distributed lock may crash without releasing it. It may be cut off
-from the network and continue working in the belief that it still holds the lock. It
-may stop for a while, through no fault of its own, and resume later with no
-awareness that time has passed. In each case the other participants can observe only
-that the holder has fallen silent, and they cannot tell which of these things has
-happened. The central result of this chapter is that under these conditions a lock
-service cannot, by itself, guarantee that only 1 process acts at any moment, however
-carefully it is built, and that the guarantee has to be completed by the resource
-which the lock protects.
+In this chapter, I design a linearizable distributed lock service modeled on Google Chubby, Apache ZooKeeper, and etcd. We first separate locks taken for efficiency from locks required for correctness, then establish requirements, capacity bounds, and lease APIs. After detailing a five-node Raft consensus architecture across three availability zones, we examine why time-bounded leases alone cannot guarantee mutual exclusion, evaluate Martin Kleppmann's critique of Redlock, and complete the safety proof by enforcing monotonic **fencing tokens** directly at the protected storage layer.
 
 <div class="covers">
 
-This chapter covers
+In this chapter, we cover
 
-- the 2 purposes of a lock, and why they call for different amounts of care
-- a lock as an entry in a shared store, and why it has to expire
-- the paused holder, which no lease can exclude
-- fencing tokens, by which the protected resource rejects a late holder
-- releasing a lock safely, and renewing a lease
-- why the lock service itself must store each lock on a majority
-- waiting for a lock without a stampede
-- when a lock is the wrong tool
+- efficiency locks versus correctness locks, actors, functional contracts, linearizability SLOs, non-goals, and state sizing
+- HTTP/gRPC lease acquisition, heartbeat keepalive, conditional release, and storage-layer fencing DDL contracts
+- five-node Raft consensus control plane, monotonic Raft-index token generation, and watch-stream session management
+- why process pauses, VM migrations, and clock skew break lease-only mutual exclusion and why Redlock cannot guarantee correctness
+- end-to-end fencing token enforcement at the storage layer, conditional release/renewal races, and progress-coupled keepalives
+- fair waiter queues (ephemeral sequential watch chains) that eliminate release thundering herds, and when optimistic concurrency replaces locking
+- failure modes, SLIs, production coordination services (Chubby, ZooKeeper, etcd, DynamoDB Lock Client), and simulation verification
 
 </div>
 
-## What a lock is for
+## 10.1 Requirements, Actors, and Capacity Bounds
 
-Locks are taken for 2 quite different reasons, and it is necessary to know which one
-applies before deciding how much machinery a lock deserves.
+### Efficiency Locks vs. Correctness Locks
 
-In the first case the lock serves *efficiency*. Its purpose is to avoid doing the same
-work twice: sending a reminder email from 2 machines, or having 5 servers recompute
-the same expensive report. If the lock occasionally fails and 2 processes do proceed
-together, the consequence is some wasted effort or a duplicated email, which is
-regrettable and nothing more. A lock of this kind may be simple and may be wrong once
-in a long while.
+Before provisioning consensus hardware, we distinguish two fundamentally different uses of mutual exclusion:
 
-In the second case the lock serves *correctness*. Here 2 processes acting together
-would corrupt something: a file written by both, an account debited twice, 2 database
-nodes both accepting writes as leader. When such a lock fails, the result is lost or
-damaged data, and "once in a long while" is not an acceptable frequency.
+- **Locks for Efficiency:** Prevent redundant work (for example, avoiding duplicate cache recomputations or running an idempotent analytics summary twice). If a lock occasionally fails under a network partition, the cost is extra compute rather than corrupted state.
+- **Locks for Correctness:** Prevent concurrent mutations that corrupt persistent data (for example, two database primaries accepting conflicting writes, or two billing workers double-charging a ledger). An occasional mutual-exclusion failure causes permanent data loss or financial inconsistency.
 
-Much of the confusion surrounding distributed locks arises from applying a mechanism
-that is adequate for the first purpose to the second. The simple designs described in
-the next 2 sections are perfectly serviceable for efficiency. The remainder of the
-chapter concerns what must be added for correctness, and it turns out to be a good
-deal.
+In this chapter, we design for **correctness**, which requires both strongly consistent consensus inside the lock service and monotonic fencing enforcement inside the protected resource.
 
-## A lock as an entry in a store
+### Actors and Use Cases
 
-The basic construction requires nothing more than a store that all the parties can
-reach and that offers 1 atomic operation: create this key, provided it does not
-already exist. To acquire the lock named `nightly-billing`, a worker asks the store to
-create that key with the worker's own name as its value. If the creation succeeds, the
-worker holds the lock. If the key already exists, another worker holds it, and the
-creation fails. To release the lock, the holder deletes the key.
+We organize the lock service around three actors: distributed workers contending for exclusive leases, downstream storage systems validating monotonic fencing tokens on every write, and platform operators auditing Raft quorum health and active lease holders (Figure 10-1).
 
-The atomicity of "create if absent" is what makes this a lock. Were the worker to read
-the key first and create it afterwards, in 2 separate operations, 2 workers could both
-read that the key was absent and both proceed to create it, which is the same race
-that chapter 7 found between 2 rate limiter nodes sharing a bucket.
-
-This lock has an obvious and fatal defect. If the worker that holds it crashes, or
-loses its network connection, the key is never deleted, and the lock remains taken
-for ever. Every other worker waits indefinitely on a holder that no longer exists.
-
-## Leases
-
-The remedy is to let the lock expire. The key is created with a time limit, 10
-seconds for example, and the store deletes it automatically when that time has passed.
-A lock that expires in this way is called a *lease*. A worker that needs the lock for
-longer than the lease must *renew* it periodically, by asking the store to extend the
-time limit while the worker's name is still on the key, and a worker that crashes
-ceases to renew, so that its lease runs out and the lock becomes available to
-others.
-
-The lease repairs the defect of the previous section and in doing so introduces the
-difficulty that occupies the rest of this chapter. The lock can now pass to a second
-worker without the first having agreed to give it up. Whenever a lease ends, there are
-2 possibilities which the store cannot distinguish: the holder is dead, in which case
-handing the lock to someone else is exactly right, or the holder is alive and has
-merely been prevented from renewing, in which case there will shortly be 2 workers
-that each consider themselves the holder.
-
-The duration of the lease expresses a trade between these cases. A short lease means
-that a crashed holder is replaced quickly and that a slow or briefly disconnected
-holder is more often presumed dead. A long lease means the opposite. No duration
-makes the second case impossible.
-
-## The holder that pauses
-
-It might seem that a careful worker could protect itself against the second case. It
-knows when its lease ends, so it could check the clock before each step of its work
-and stop if the lease has run out.
-
-This fails, and the reason is fundamental. No amount of careful programming
-removes it. Between the moment at which the worker checks its lease and the moment at
-which the effect of its next action reaches the protected resource, an arbitrary
-amount of time can pass without the worker being aware of it. The process may be
-suspended by its runtime in order to reclaim memory, which in some languages can take
-seconds. The virtual machine in which it runs may be paused by its host, for instance
-while being moved to another physical machine. The operating system may be short of
-memory and spend a long time reading the process's pages back from disk. Or the
-worker's write may be on its way through a congested network, delayed in a buffer for
-longer than the lease has left to run. In every one of these cases the worker
-performed its check correctly, found the lease valid, and acted in good faith, and
-the action took effect after the lease had ended and the lock had been given to
-someone else.
-
-Nor can the worker rely on its clock to notice. A lease is measured on the clock of
-the lock service, while the worker reads its own, and chapter 8 has already shown
-that the clocks of 2 machines differ and that either may be corrected at any moment.
-
-The conclusion has to be stated without qualification. A worker can never be certain,
-at the instant its action takes effect, that it still holds the lock. Any design in
-which correctness depends on that certainty is unsound, and the degree of unsoundness
-is merely a question of how often pauses of sufficient length occur.
-
-## Fencing tokens
-
-Since the lock service cannot prevent a late holder from acting, and the holder cannot
-detect its own lateness, the only remaining party that can intervene is the resource
-being protected. It needs some means of recognising that a request comes from a holder
-whose lease has been superseded, and the lock service can supply that means at very
-small cost.
-
-Each time the service grants the lock, it also issues a number that is larger than
-any it has issued before. This number is the *fencing token*. The holder attaches its
-token to every request it sends to the protected resource, and the resource remembers
-the highest token it has seen and refuses any request that carries a lower one.
-
-<figure class="steps" data-prefix="figures/steps-lock-fencing" data-count="7" data-version="80f21130">
-<img src="figures/steps-lock-fencing-01.svg?v=80f21130" alt="A paused worker and a fencing token, step 1 of 7. Worker A asks for the lock and receives it for 10 seconds, together with the token 1. The token is a number that the lock service raises by 1 each time it grants the lock.">
-<figcaption><b>Figure 10.1</b> Worker A pauses while holding the lock, and its late write is refused because worker B has since presented a higher token. Use Next and Back to move through the 7 steps.</figcaption>
+<figure class="diagram">
+<img src="figures/m3/ch10_use_cases.svg" alt="Actors and use cases of the distributed lock service: Worker acquires exclusive lease, renews active lease heartbeat, and releases lock voluntarily; Protected Storage validates monotonic fencing tokens and rejects writes with stale tokens; Platform Operator audits Raft quorum term, leader, and active lease holders." />
+<figcaption><b>Figure 10-1</b> Actors, system boundary, and core use cases of the distributed lock service.</figcaption>
 </figure>
 
-The picture follows the scenario of the previous section to its end. Worker A was
-suspended, its lease expired, B was granted the lock with token 2 and wrote, and A
-then resumed and attempted to write with token 1. The storage refused, on the simple
-ground that 1 is less than 2. Nothing in this depends on clocks, on the length of the
-pause, or on A's noticing anything.
+| Actor | Operation | Concrete Scenario |
+| :--- | :--- | :--- |
+| **Worker / Application** | Acquire lease (`POST /v1/locks/{k}`), renew (`PUT /v1/leases/{id}/keepalive`), release (`DELETE`) | Elect a single active leader for a sharded database partition or serialize a nightly settlement batch |
+| **Protected Storage Resource** | Validate monotonic fencing token (`token >= max_seen_token`) | Reject delayed writes arriving from a paused worker whose lease already expired |
+| **Platform Operator** | Audit Raft leader, term, quorum latency, and lock wait queues | Detect network partitions, stalled holders renewing indefinitely, or excessive fine-grained lock contention |
 
-The token changes the nature of what the lock service provides. Without tokens, the
-service is asked to guarantee that 2 workers never act together, which it cannot. With
-tokens, it is asked only to issue increasing numbers and to grant the lock to 1
-worker per number, which it can, and the exclusion is enforced at the 1 place where it
-can be enforced, namely the resource itself.
+### Functional Requirements
 
-There is a requirement hidden in this arrangement, and it is the reason fencing is
-used less often than it should be. The protected resource must take part. It has to
-accept a token with each request, store the highest, and compare. A database can do
-this readily, by keeping the token in a column and making each write conditional on
-the token's being no lower than the stored one, which is the compare-and-set operation
-of chapter 1. A resource that cannot be made to check tokens, such as a third-party
-API that merely accepts requests, cannot be protected for correctness by any
-distributed lock at all, and in that case one must either accept the risk or redesign
-the operation so that performing it twice does no harm.
+| No. | Functional Requirement |
+| :--- | :--- |
+| 0 | A worker can attempt to acquire an exclusive lease on a named lock key; at most one worker holds an active lease for that key at any point in linearizable history. |
+| 1 | Every granted lease carries a bounded server-enforced Time-To-Live (TTL) and a globally strictly increasing 64-bit **fencing token** (`token_new > token_prev`). |
+| 2 | A lease holder can extend its active lease via conditional heartbeat keepalive (`PUT /v1/leases/{id}/keepalive`) and release it voluntarily only if it still owns the matching lease token. |
+| 3 | Waiting workers can subscribe to ordered watch notifications so lock handoff wakes exactly the next waiter in FIFO order without polling or thundering-herd contention. |
+| 4 | Once a lease expires or is released, another worker can acquire the lock with a strictly higher fencing token. |
 
-## Releasing and renewing
+### Non-Functional Requirements and SLOs
 
-Releasing a lock looks like the simplest of the operations and conceals a well-known
-error. A worker that releases by deleting the key, without regard to its contents, may
-delete a lock that it no longer holds.
+| No. | Property | Target Specification | Architectural Consequence |
+| :--- | :--- | :--- | :--- |
+| 0 | **Consistency** | Strictly linearizable (`CP` under CAP) for lock acquisition, lease expiration, and monotonic token assignment | Mandates quorum consensus (5-node Raft group committing every grant and token increment to `3` of `5` nodes before returning) |
+| 1 | **Availability** | `99.99%` across three availability zones; tolerates `2` simultaneous node failures (or `1` full AZ loss + `1` rolling restart) | Five-node Raft cluster placed `2 + 2 + 1` across three AZs; minority partition refuses grants rather than risking split-brain |
+| 2 | **Latency** | `p50 <= 4 ms`, `p99 <= 15 ms` for acquire/release (`1` cross-AZ Raft quorum round trip plus WAL `fsync`) | Coarse-grained locks held for seconds to hours; unsuitable for microsecond per-row hot-path locking |
+| 3 | **Scale** | Up to `1,000,000` active locks (`~100 MB` RAM) and `10,000` lock ops/s | Entire active lock table fits inside Raft state-machine RAM backed by NVMe WAL and periodic snapshots |
 
-<figure class="steps" data-prefix="figures/steps-lock-release" data-count="6" data-version="80d86a10">
-<img src="figures/steps-lock-release-01.svg?v=80d86a10" alt="Releasing another worker&#x27;s lock, step 1 of 6. Worker A holds the lock with a lease of 10 seconds and begins a piece of work that it expects to take 5.">
-<figcaption><b>Figure 10.2</b> A worker whose lease has ended deletes the lock that another worker has meanwhile acquired. Use Next and Back to move through the 6 steps.</figcaption>
-</figure>
+### Non-Goals and Scope Boundaries
 
-The correct release is conditional: delete the key only if its value is still my
-name. The comparison and the deletion have to be a single atomic operation in the
-store, for the usual reason that the lock might change hands between a separate read
-and delete. The same condition applies to renewal, which must extend the lease only
-if the caller is still the holder.
+- **Fine-grained, high-frequency per-row locking:** Calling a Raft consensus group `500,000` times per second on every HTTP request saturates leader WAL `fsync` bandwidth. Per-record concurrency belongs in database row locks or optimistic compare-and-set.
+- **Correctness without storage-layer cooperation:** No lock service can prevent an already-transmitted TCP packet from a paused client from reaching an unfenced third-party API. If the downstream resource cannot check fencing tokens, callers must redesign mutations to be idempotent.
+- **Unbounded eternal locks:** Every lock must attach to a bounded lease so a permanently crashed worker never deadlocks the cluster.
 
-Renewal raises a question of timing. A worker normally renews at intervals of about a
-third of the lease, so that 2 consecutive renewals may be lost before the lease is in
-danger. The renewing is commonly done by a separate thread, so that the work itself
-need not be interrupted, and this has a hazard of its own. If the working thread
-becomes stuck while the renewing thread continues happily, the lock is held for ever
-by a worker that is accomplishing nothing, which is the original defect returned by
-another route. A sound implementation ties the 2 together, for example by renewing
-only while the work reports progress.
+### Back-of-the-Envelope Capacity Bounds
 
-## The lock service must not lose locks
+| Resource Dimension | Arithmetic Derivation | Provisioned Bound |
+| :--- | :--- | :--- |
+| **Per-Lock Memory** | `50 B` key + `30 B` holder ID + `8 B` fencing token + `8 B` expiry + `32 B` index/watch overhead | `~128 B` per active lock |
+| **Active State Footprint** | `1,000,000` concurrent locks `* 128 B` | `~128 MB` RAM (fits entirely in Raft state-machine memory) |
+| **Quorum Write Throughput** | `10,000` acquires/renewals/s; batched Raft WAL commits sustain `20,000` to `40,000` ops/s on NVMe | `5` Raft nodes (`4` vCPU, `8 GB` RAM, dedicated NVMe WAL volume) |
+| **Heartbeat Bandwidth** | `100,000` active sessions renewing every `10 s` = `10,000` keepalives/s `* 128 B` | `1.28 MB/s` (`~10 Mbps` total; negligible network cost) |
+| **Raft Snapshot Size** | `128 MB` compressed with LZ4 | `~40 MB` snapshot written asynchronously every `100,000` log entries |
 
-Everything so far has treated the store that holds the lock as reliable, and a lock
-service on a single machine is as reliable as that machine. For availability the
-service is therefore replicated, and how it is replicated matters a great deal.
+## 10.2 External API and Data Contracts
 
-Many in-memory stores replicate in the manner that chapter 3 called asynchronous: the
-leader confirms a write to the client at once and forwards it to its followers
-afterwards. For a cache this is a sensible choice. For a lock it is a flaw.
+Every mutation carries explicit identity and fencing metadata so retries and late requests remain safe.
 
-<figure>
-<img src="figures/lock-failover.svg?v=56718abf" alt="5 steps. Worker A acquires the lock on the leader, which confirms at once. The leader fails before it has copied the lock to its follower. The follower becomes the leader, and in its copy the lock is free. Worker B acquires the same lock from the new leader. A and B both hold the lock. The cure is to confirm a lock only when a majority has stored it.">
-<figcaption><b>Figure 10.3</b> The leader fails after confirming a lock and before copying it, and the new leader grants the same lock again.</figcaption>
-</figure>
+### Lock Service HTTP/gRPC Contracts
 
-The lock service is the 1 component in this design that requires strong consistency
-in the full sense of chapter 1. A granted lock has to survive the failure of any
-single node, which means that it has to be stored on a majority of nodes before it is
-confirmed, exactly as chapter 3 stores a record and chapter 4 elects a leader. Token
-numbers must likewise come from the replicated log, so that a new leader continues
-from the highest token ever issued and does not start again from a lower one. In
-practice this means building the lock service on a consensus system of the kind
-developed in chapters 3 and 4, and the coordinator of chapter 1 is such a system and
-commonly offers locks as one of its services.
+**Acquire exclusive lease (`POST /v1/locks/{key}`):**
 
-An alternative that is sometimes proposed avoids consensus by using several
-independent stores. The worker attempts to create the lock on each of 5 unrelated
-nodes and regards itself as the holder if it succeeds on at least 3 within a short
-time. This is more dependable than a single node, since no 1 failure loses the lock. Its
-safety, however, rests on assumptions about time: that the clocks of the 5 nodes
-advance at nearly the same rate, and that the worker is not paused between acquiring
-the lock and using it. The previous sections have shown that neither assumption can be
-relied upon, and so this approach is suitable for locks taken for efficiency and
-should be combined with fencing, like any other, when correctness is at stake. It
-cannot itself supply fencing tokens, since 5 independent nodes have no common counter.
-
-## Waiting for a lock
-
-A worker that fails to acquire a lock generally wishes to obtain it as soon as it is
-free. The crude method is to try again at intervals, which either wastes requests if
-the interval is short or wastes time if it is long.
-
-Lock services therefore let a worker *watch* a key and be notified when it is deleted.
-The naive use of this facility has a defect at scale. If 100 workers are all watching
-the same lock, its release wakes all 100, all of them attempt to acquire it, 1
-succeeds, and 99 resume watching, so that every release costs 100 notifications and
-100 attempts. This is the thundering herd that chapter 7 met among retrying clients.
-
-The established remedy arranges the waiters in a queue. Each worker, on arriving,
-creates an entry of its own that the service numbers in order of arrival. The worker
-whose entry bears the lowest number holds the lock. Every other worker watches only
-the entry immediately ahead of its own. When the holder finishes and deletes its
-entry, exactly 1 worker is notified, the next in line, and it becomes the holder. The
-entries are tied to the sessions of their workers, so that the entry of a worker that
-crashes is removed by the service and the queue closes up behind it. As well as
-avoiding the herd, this arrangement is fair, since the lock is granted in the order in
-which it was requested.
-
-## When a lock is the wrong tool
-
-A distributed lock used for correctness requires a consensus system, fencing tokens,
-and the cooperation of the protected resource. It is worth asking, before paying that
-price, whether the problem can be solved without mutual exclusion.
-
-Often it can. If the operation can be made *idempotent*, so that performing it twice
-has the same effect as performing it once, then 2 workers doing it together is
-harmless and no lock is needed: chapter 19 uses this approach for payments. If the
-operation is an update to a single record, a conditional write expresses "change this
-only if nobody else has changed it since I read it" directly, and the loser of a race
-reads again and retries, which is the compare-and-set of chapter 1 and is
-called *optimistic concurrency*. And if work can be partitioned so that each item has
-exactly 1 owner, as the message queue of chapter 11 assigns each partition to 1
-consumer, then exclusion is achieved by the assignment and need not be negotiated for
-each item.
-
-It will be observed that fencing is itself a conditional write, and this is no
-coincidence. In a correct design the resource's own check does the real work of
-protection, and the lock in front of it serves chiefly to keep workers from wasting
-effort on attempts that would be refused. Seen in this light, a lock is an
-optimisation layered over a conditional write, and a design that has the conditional
-write may find that it needs the lock less than it supposed.
-
-## Use cases
-
-The lock service has a single kind of user, a worker that must be alone during some
-critical step.
-
-<figure>
-<img src="figures/lock-use-cases.svg?v=271b60ce" alt="A use case diagram of the lock service. Worker: acquire a lock (POST /v1/locks/{name}), renew its lease (PUT /v1/locks/{name}), release the lock (DELETE /v1/locks/{name}).">
-<figcaption><b>Figure 10.4</b> The actors and what each of them does.</figcaption>
-</figure>
-
-## Functional requirements
-
-| No. | Functional requirement |
-|---|---|
-| 0 | A worker can acquire a named lock. At most 1 worker holds a lock at any time. |
-| 1 | A lock is held for a limited time, a *lease*, and the holder can renew it. |
-| 2 | A lock whose lease has ended can be acquired by another worker. |
-| 3 | Every lease comes with a token that is larger than the token of every earlier lease. |
-
-## Non-functional requirements
-
-| No. | Property | Non-functional requirement |
-|---|---|---|
-| 0 | Consistency | Strong. At any moment, the lock service grants a lock to at most 1 worker. |
-| 1 | Availability | The service survives the loss of 1 of its 3 nodes. |
-| 2 | Latency | Acquiring a lock takes 1 round trip to a majority, a few milliseconds. |
-
-This is one of the few designs in the book that demands strong consistency without
-reservation. A cache may be stale and a rate limiter may be off by a few requests, but
-a lock service that grants 1 lock to 2 holders has failed at the only thing it is for.
-The lock and its token are therefore stored on a majority of the service's nodes
-before a grant is confirmed, and when a majority cannot be reached the service
-refuses to grant locks at all, preferring unavailability to error.
-
-## Core entities
-
-<figure>
-<img src="figures/lock-entities.svg?v=5f9196fa" alt="The core entities. Lock has the fields name string, holder string, token u64, expires time. Protected write has the fields token u64, data bytes. The token grows by 1 with every lease. The storage that the lock protects checks the token on every write.">
-<figcaption><b>Figure 10.5</b> The core entities and their fields.</figcaption>
-</figure>
-
-## Capacity estimate
-
-<div class="estimate">
-
-<img class="builder" src="art/crab-builder.svg" alt="A crab in a hard hat, in tears.">
-
-**Arithmetic ahead.** A lock is about 100 bytes, so a million locks fit in 100 MB, and 3 small nodes are enough.
-
-<a class="skip" href="#high-level-design">Skip to the high-level design</a>
-
-<details>
-<summary>Show the calculation</summary>
-
-| Quantity | Calculation | Result |
-|---|---|---|
-| Memory per lock | name 50 bytes + holder 30 + token 8 + expiry 8 | about 100 bytes |
-| Memory for 1 million locks | 1000000 × 100 bytes | 100 MB |
-
-</details>
-
-</div>
-
-## The API
-
-A lock is a resource with a name. Acquiring it creates the resource, renewing it
-replaces the expiry, and releasing it deletes the resource.
-
-**Acquire a lock for 10 seconds**
+Supplying `Idempotency-Key` guarantees that if the response to a granted lock is dropped on the network, the same worker retrying receives its existing lease and fencing token rather than failing with `409 Conflict`.
 
 ```http
-POST /v1/locks/nightly-billing HTTP/1.1
-Host: locks.example
+POST /v1/locks/nightly-billing HTTP/2
+Host: locks.internal
 Content-Type: application/json
+Idempotency-Key: worker-a-session-9102
 
-{ "holder": "worker-a", "seconds": 10 }
+{
+  "holder": "worker-a",
+  "ttl_seconds": 30
+}
 ```
 
 ```http
-HTTP/1.1 201 Created
+HTTP/2 201 Created
 Content-Type: application/json
 
-{ "token": 1, "expires_in": 10 }
+{
+  "lock_key": "nightly-billing",
+  "lease_id": 42,
+  "fencing_token": 34,
+  "expires_in_seconds": 30
+}
 ```
 
-Workers have to pass the token on to whatever the lock protects.
-
-**Acquire a lock that is held**
+If another worker already holds an active lease, the service responds with `409 Conflict` and an RFC 9457 error payload (or blocks via a streaming gRPC watch queue if `wait=true` is specified):
 
 ```http
-POST /v1/locks/nightly-billing HTTP/1.1
-Host: locks.example
-Content-Type: application/json
-
-{ "holder": "worker-b", "seconds": 10 }
-```
-
-```http
-HTTP/1.1 409 Conflict
+HTTP/2 409 Conflict
 Content-Type: application/problem+json
 
 {
   "type": "/problems/lock-held",
-  "title": "The lock is held",
+  "title": "Lock Currently Held",
   "status": 409,
-  "detail": "held for 9 more seconds"
+  "detail": "Lock nightly-billing is held under fencing_token 34; retry or attach a watch."
 }
 ```
 
-`409 Conflict` is the status for a request that is valid but cannot be carried out in the current state.
+**Renew lease heartbeat (`PUT /v1/leases/{lease_id}/keepalive`):**
 
-## High-level design
+```http
+PUT /v1/leases/42/keepalive HTTP/2
+Host: locks.internal
+Content-Type: application/json
 
-<figure>
-<img src="figures/lock-design.svg?v=34a61d57" alt="A lock service with fencing tokens. The components are Worker, Lock service, Storage. Step 1: The worker asks for the lock and receives a token. Step 2: It sends the token with every write to the storage. Step 3: The storage refuses a token lower than the last one. Step 4: A worker with an old lease can therefore do no harm.">
-<figcaption><b>Figure 10.6</b> The components and the path of a request. The steps are numbered.</figcaption>
+{
+  "holder": "worker-a",
+  "fencing_token": 34,
+  "extend_seconds": 30
+}
+```
+
+```http
+HTTP/2 200 OK
+Content-Type: application/json
+
+{
+  "lease_id": 42,
+  "fencing_token": 34,
+  "expires_in_seconds": 30
+}
+```
+
+**Conditional release (`DELETE /v1/locks/{key}?token={fencing_token}`):**
+
+The Raft state machine deletes the lock key if and only if the currently stored `fencing_token` equals the query parameter (`34`). A stale holder presenting token `33` receives `412 Precondition Failed` instead of deleting its successor's lock.
+
+### Protected Storage Fencing Contract (SQL / KV DDL)
+
+To complete end-to-end correctness, every table or object protected by a distributed lock stores the highest accepted `fence_token` and validates it atomically on every mutation:
+
+```sql
+CREATE TABLE billing_ledger_state (
+    partition_id   BIGINT PRIMARY KEY,
+    last_fence_tok BIGINT NOT NULL DEFAULT 0,
+    payload        BYTEA  NOT NULL,
+    updated_at     TIMESTAMPTZ NOT NULL
+);
+
+-- Atomic fenced update executed by the lock holder:
+UPDATE billing_ledger_state
+   SET payload        = $1,
+       last_fence_tok = $2,
+       updated_at     = NOW()
+ WHERE partition_id   = $3
+   AND last_fence_tok <= $2;
+```
+
+If the `UPDATE` affects `0` rows because another worker already committed with a higher token (`last_fence_tok > $2`), the storage layer has safely fenced off the stale holder, and the worker aborts its batch immediately.
+
+## 10.3 High-Level Architecture: Consensus Plane and Fenced Data Path
+
+Unlike a stateless cache or rate limiter, the lock service cannot run with asynchronous replication. If a primary confirms a lock grant and crashes before replicating that entry to a follower, the newly promoted leader sees the lock as free and grants it to a second worker simultaneously. We therefore build the lock service on a five-node **Raft consensus group** spread across three availability zones, while keeping the protected storage tier completely off the consensus data path except for token validation (Figure 10-2).
+
+<figure class="diagram">
+<img src="figures/m3/ch10_architecture.svg" alt="Architecture of the Raft-backed lock service: Clients A and B maintain session keepalives and watches against a 5-node Raft lock service across three AZs where the Raft leader issues monotonic Raft log indexes as fencing tokens; workers write directly to fenced storage which enforces token monotonicity." />
+<figcaption><b>Figure 10-2</b> Five-node Raft lock service, lease expiry wheel, watch stream, and storage fencing data path.</figcaption>
 </figure>
 
-| Component | Role | State it holds | When 1 instance fails |
-|---|---|---|---|
-| Worker | acquires the lock, then does its work | the token of its lease | its lease runs out, and another worker can acquire the lock |
-| Lock service | grants leases and counts tokens | the locks, replicated on 3 nodes | the other 2 nodes continue |
-| Storage | the thing the lock protects; checks the token | the highest token it has accepted | outside the scope of the lock service |
+### Component Responsibilities and Failure Domains
 
-### One request, step by step
+| Component | Plane | State Held | Failure Impact and Mitigation |
+| :--- | :--- | :--- | :--- |
+| **Raft Leader (1 of 5 nodes)** | Consensus / Control | Authoritative lock table, active lease expiry wheel, monotonic Raft log index counter | Commits every acquire, renew, expire, and release to a quorum (`3` of `5`) before replying. On crash, surviving majority elects a new leader within `1` to `3 s` with zero lost locks |
+| **Raft Followers (4 nodes across 3 AZs)** | Consensus / Control | Replicated WAL + lock state machine + read-only watch proxies | Tolerate up to `2` node crashes simultaneously while maintaining quorum; minority nodes reject all lock writes |
+| **Lease Expiry Wheel & Watch Stream** | Consensus / Control | Hierarchical timer wheel tracking lease deadlines and FIFO watch queues per lock key | When a lease deadline passes, the leader commits an explicit `EXPIRE` log entry through Raft and notifies exactly the head waiter |
+| **Protected Storage Layer** | Data | Business records plus `last_fence_tok` column per protected resource | Enforces `incoming_token >= last_fence_tok` atomically on every write; completely eliminates split-brain corruption |
 
-The steps follow the arrows of figure 10.6.
+### Request Path Walkthrough
 
-1. A worker sends `POST /v1/locks/nightly-billing`. The lock service, a group of 3 nodes that agree by majority, records the worker as holder for 10 seconds and returns token 1.
-2. The worker does its protected work and sends token 1 with every write to the storage. The storage compares the token with the highest it has accepted.
+1. **Quorum Lock Acquisition:** Worker A sends `POST /v1/locks/nightly-billing` to the Raft leader. The leader checks that the lock is unheld, appends `(ACQUIRE, key="nightly-billing", holder="worker-a", ttl=30s)` to the Raft log at log index `34`, replicates to at least two followers, and commits.
+2. **Monotonic Token Assignment:** Because every committed Raft log entry has a globally unique, strictly increasing 64-bit log index (or key `create_revision` in etcd), the leader returns `fencing_token = 34` directly from the replicated log without any external sequence generator.
+3. **Periodic Lease Keepalive:** Every `10 s` (one-third of the `30 s` lease TTL), Worker A sends a keepalive tied to active work progress so two dropped network packets do not trigger premature expiration.
+4. **Fenced Storage Writes:** Worker A attaches `fencing_token = 34` to every write sent directly to the protected database or object store. The storage layer persists `last_fence_tok = 34` and refuses any write carrying a token `< 34`.
+5. **Conditional Release and Ordered Handoff:** When finished, Worker A sends `DELETE /v1/locks/nightly-billing?token=34`. The leader commits the release through Raft and pushes a single watch event to the next queued waiter.
 
-## The scenario, simulated
+## 10.4 Process Pauses, Fencing Tokens, and the Redlock Critique
 
-The simulation for this chapter plays out the paused holder with and without help
-from the storage. Its output for the fenced case reads as follows.
+### Why Time-Bounded Leases Cannot Guarantee Mutual Exclusion
 
-| Time | Event | Result |
-|---|---|---|
-| 0 s | worker A acquires the lock | token 1, lease until 10 s |
-| 1 s | worker B asks for the lock | refused |
-| 2 s | worker A is paused for 15 seconds | |
-| 12 s | the lease has ended, and worker B acquires the lock | token 2 |
-| 13 s | worker B writes with token 2 | accepted |
-| 17 s | worker A resumes and writes with token 1 | refused |
+A common design mistake assumes that a worker can guarantee safety by checking its local clock right before writing: "My lease expires at `t = 30 s`, my clock currently reads `t = 12 s`, therefore I still hold the lock." That check is structurally unsound in any asynchronous system.
 
-At the end the storage holds what worker B wrote.
+Between the line of code that checks the lease expiration and the moment the resulting network packet arrives at the storage engine, an unbounded pause can occur without the worker's knowledge:
 
-## The design, deployed
+- **Stop-the-World Garbage Collection:** A JVM or Go GC pause can freeze all application threads for `10` to `45 seconds` right after the check passes.
+- **Hypervisor / VM Live Migration or CPU Starvation:** A cloud host migrating a virtual machine or swapping memory pages stalls execution invisibly.
+- **Network Buffer Delay:** A TCP packet already emitted by the kernel can sit queued inside a congested switch or retransmitted over a flapping link for longer than the remaining lease TTL.
 
-<figure class="wide">
-<img src="figures/lock-deploy.svg?v=6624d339" alt="The lock service, deployed. Workers: Workers (x 1000), must be alone in a step. Lock service, 1 node in each zone: Lock node (x 1), zone a, the leader, Lock node (x 1), zone b, a follower, Lock node (x 1), zone c, a follower. What the lock protects: Storage (replicated), checks the token.">
-<figcaption><b>Figure 10.7</b> The lock service as it is deployed: 3 nodes in 3 zones, and the storage that checks the tokens.</figcaption>
+During that pause, the lock service's lease timer expires and legitimately grants the lock to Worker B. When Worker A resumes, both workers believe they hold exclusive access. As Figure 10-3 and Interactive Trace 10.A demonstrate, only a monotonic **fencing token** checked at the storage boundary closes this failure mode completely.
+
+<figure class="diagram">
+<img src="figures/m3/ch10_fencing_tokens.svg" alt="Sequence timeline showing Client 1 acquiring token 33, freezing during a 45-second stop-the-world GC pause while its lease expires, Client 2 acquiring token 34 and writing successfully, and the storage engine rejecting Client 1's delayed write carrying token 33." />
+<figcaption><b>Figure 10-3</b> Monotonic fencing tokens preventing stale-lease corruption after a 45-second GC pause.</figcaption>
 </figure>
 
-The lock service is small. It has 3 nodes, 1 in each zone, which form a single
-consensus group of the kind built in chapter 4, and workers reach whichever of them
-is the leader. It needs no more machines than this, because a well-designed system
-takes locks rarely and holds them for long periods, so that the rate of requests is
-low. What the figure is chiefly meant to show is the second arrow. The workers write
-to the protected storage directly, and the lock service is not on that path at all,
-which is why the last line of defence has to be in the storage.
+<figure class="steps" data-prefix="figures/steps-lock-fencing" data-count="7" data-version="80f21130">
+<img src="figures/steps-lock-fencing-01.svg?v=80f21130" alt="A paused worker and a fencing token, step 1 of 7. Worker A asks for the lock and receives it for 10 seconds, together with the token 1. The token is a number that the lock service raises by 1 each time it grants the lock.">
+<figcaption><b>Interactive Trace 10.A</b> Worker A pauses past its 10-second lease; storage accepts Worker B's write with token 2 and rejects Worker A's late write with token 1. Use Next and Back to step through.</figcaption>
+</figure>
 
-## How real systems do it
+Note what fencing tokens change structurally: we no longer require the lock service to solve the impossible problem of preventing two clients from running concurrently across asynchronous pauses. We require the lock service only to issue strictly increasing numbers through Raft consensus, and we enforce mutual exclusion at the single point where mutations become durable: the storage engine itself.
 
-The lock service of this chapter is modelled on Chubby, which Google described in
-2006 and which is the origin of most of the vocabulary. Chubby is a small replicated
-store whose locks are leases renewed by periodic messages, and its paper makes 2
-observations that bear directly on this chapter. It introduces the *sequencer*, a
-token obtained with a lock that the holder passes to the servers it uses and that
-they check, which is the fencing token under its original name. And it reports that
-the service was designed for coarse locks held for hours or days, chiefly for
-electing leaders, and that using it for fine-grained locking is discouraged.
+### Evaluating Redlock and Martin Kleppmann's Critique
 
-ZooKeeper provides the queue of waiters described above as a standard recipe. Each
-waiter creates a node that is numbered in sequence and tied to its session, and
-watches only the node immediately before its own. In etcd, a lock is a key attached
-to a lease, and the revision number at which the key was created, which increases
-with every change to the store, serves as a fencing token.
+Because running a dedicated Raft cluster adds operational footprint, Salvatore Sanfilippo proposed **Redlock**, an algorithm attempting distributed locking over `N = 5` completely independent, non-replicated Redis nodes:
 
-The approach of acquiring a lock on a majority of independent in-memory stores is
-the Redlock algorithm proposed by the author of Redis. Martin Kleppmann's analysis
-of it in 2016 set out the argument of this chapter: that a pause of the process or a
-jump of a clock can leave 2 clients each believing that it holds the lock, that no
-lease-based lock can prevent this, and that safety therefore requires fencing, which
-Redlock does not provide since it has no source of increasing numbers. The author of
-Redis replied in defence of the algorithm, and the exchange remains the clearest
-public discussion of what a distributed lock can and cannot promise.
+1. A client records its local start time `T1` and attempts `SET resource_key random_value NX PX ttl` sequentially on all `5` independent Redis instances with short per-node timeouts.
+2. The client computes elapsed time `elapsed = T2 - T1` and considers the lock acquired if it succeeded on a majority (`>= 3` nodes) and `elapsed < ttl`, setting effective validity time to `ttl - elapsed - clock_drift`.
 
-## Mistakes to avoid
+In his 2016 formal analysis, **Martin Kleppmann** demonstrated two fundamental defects that make Redlock unsafe for correctness locks:
 
-| Mistake | What goes wrong | What to do |
-|---|---|---|
-| A lock without a time limit | A holder that crashes keeps the lock for ever. | Make every lock a lease. |
-| Believing that a lease guarantees 1 holder | A paused or delayed holder acts after its lease has ended. | Have the protected resource check a fencing token. |
-| Checking the lease and then writing | The pause can fall between the check and the write. | Let the resource decide, on the token, at the moment of the write. |
-| Releasing by deleting the key unconditionally | A late holder deletes the lock of its successor. | Delete only if the key still carries the caller's name, in 1 operation. |
-| Reading the key and then creating it | 2 workers both find it absent and both create it. | Use the store's atomic create-if-absent. |
-| A lock store that confirms before replicating | A failover forgets the lock, and it is granted twice. | Store each lock on a majority before confirming. |
-| Renewing from a thread that ignores the work | A stuck worker holds the lock indefinitely. | Renew only while the work makes progress. |
-| Every waiter watching the lock itself | Each release wakes all of them. | Queue the waiters, each watching the one ahead. |
-| A lease shorter than the usual length of the work | The lock changes hands in the middle of ordinary runs. | Set the lease well above the normal duration, and renew. |
-| Taking a lock where a conditional write would do | Machinery and a dependency that add no safety. | Use compare-and-set or an idempotent operation. |
+1. **Dependence on Bounded Timing and Synchronized Clocks:** Redlock assumes bounded network delays, bounded process pauses, and bounded clock drift rates across all five independent nodes. If Node C experiences a forward NTP clock jump that expires its key early, a second client can acquire the lock on Nodes `{C, D, E}` while the first client still believes its lock is valid on `{A, B, C}`. Even without clock jumps, a GC pause on Client 1 right after acquiring the majority leaves both clients active simultaneously.
+2. **Absence of a Monotonic Fencing Token Generator:** Because the five Redis instances are independent and run no consensus protocol, no single node knows the highest token issued by other majorities. Redlock therefore cannot generate globally monotonic fencing tokens, leaving storage engines unable to distinguish stale holders from current holders.
 
-## Failures
+Sanfilippo countered that monotonic clocks (`CLOCK_MONOTONIC`) avoid NTP step jumps on Redis TTLs and that delayed restarts can prevent crash-recovery loss of lock state. Nevertheless, the core systems conclusion stands: **Redlock is acceptable for efficiency locks** (deduplicating best-effort work), whereas **correctness locks require a consensus-backed lock service (Chubby, ZooKeeper, etcd) paired with storage-layer fencing tokens**.
 
-| Failure | What users see | How the system recovers |
-|---|---|---|
-| A worker crashes while holding a lock | the lock is unavailable until the lease ends | another worker acquires it afterwards |
-| A worker pauses for longer than its lease | nothing wrong: its late writes are refused | the worker sees the refusal and stops |
-| A lock service node is lost | nothing | the remaining 2 nodes form a majority |
+## 10.5 Safe Release, Progress-Coupled Renewal, and Fair Waiter Queues
 
-## Trade-offs
+### Conditional Release and Progress-Coupled Keepalives
 
-| Decision | What it gains | What it costs |
-|---|---|---|
-| Leases | a crashed holder cannot block others for ever | work that takes longer than a lease needs renewals |
-| Fencing tokens | a late holder cannot cause damage | the protected resource has to check tokens |
-| A majority of 3 nodes | at most 1 holder per lock | acquiring a lock costs a round trip |
+Releasing a lock by issuing an unconditional `DELETE key` introduces a classic concurrency bug illustrated in Interactive Trace 10.B: Worker A stalls past its lease deadline, Worker B acquires the lock, and Worker A wakes up and deletes Worker B's active lock, allowing Worker C to enter immediately while Worker B is still running.
 
-## The simulation
+<figure class="steps" data-prefix="figures/steps-lock-release" data-count="6" data-version="80d86a10">
+<img src="figures/steps-lock-release-01.svg?v=80d86a10" alt="Releasing another worker&#x27;s lock, step 1 of 6. Worker A holds the lock with a lease of 10 seconds and begins a piece of work that it expects to take 5.">
+<figcaption><b>Interactive Trace 10.B</b> An unconditional release by a delayed worker deletes its successor's active lock. Use Next and Back to step through.</figcaption>
+</figure>
+
+We prevent this by requiring every `DELETE` and every `keepalive` renewal to execute an atomic compare-and-delete (`DELETE IF current_token == T`) inside the Raft state machine (or inside a Redis Lua script for efficiency locks).
+
+A subtle liveness hazard also arises with **background lease-renewal threads**. If an SDK spawns an independent daemon thread that renews a lease every `10 s` unconditionally while the main worker thread deadlocks on a mutex or stalls on an infinite loop, the deadlocked worker holds the lock forever, reintroducing the original infinite-lock defect. Production lock clients tie renewal strictly to explicit **work-progress heartbeats** (the renewal loop extends the lease only if the worker updated a monotonic progress counter within the last lease window) and cap maximum total lease hold duration.
+
+### Eliminating the Release Herd with Ephemeral Sequential Queues
+
+If `200` workers watch a single lock key directly, releasing that key broadcasts `200` watch notifications simultaneously. All `200` workers stampede the Raft leader with `POST /v1/locks/{k}` requests, `1` succeeds, and `199` fail and re-register watches (`O(N^2)` network messages to drain `N` waiters).
+
+ZooKeeper and etcd solve this with **ephemeral sequential waiter chains** (`O(N)` total messages, strict FIFO fairness):
+
+1. Every contending worker creates an ephemeral key tied to its active session lease under a prefix with a monotonically assigned Raft sequence suffix: `/locks/nightly-billing/0000000101`, `/0000000102`, `/0000000103`.
+2. The worker lists children under `/locks/nightly-billing/`. If its sequence number is the smallest, it holds the lock (using its sequence number as the fencing token).
+3. Otherwise, the worker places a watch strictly on the **single immediate predecessor** (`0000000102` watches only `0000000101`).
+4. When `0000000101` finishes (or its session expires after a crash), the lock service notifies exactly `0000000102`, waking one worker per transition with zero contention spikes.
+
+### When to Avoid Distributed Locks Entirely
+
+Because correctness locking requires Raft quorum latency, fencing-token plumbing, and lease lifecycle management, we evaluate three lighter primitives before introducing a distributed lock:
+
+- **Idempotent Mutations:** If processing a payment or webhook twice produces the exact same durable state via an idempotency key (Chapter 13 and Chapter 19), mutual exclusion is unnecessary.
+- **Optimistic Concurrency Control (CAS):** For single-row or single-document updates, `UPDATE items SET qty = qty - 1, version = version + 1 WHERE id = $1 AND version = $v` achieves linearizable safety in one database round trip with zero lock service dependency.
+- **Deterministic Ownership Partitioning:** Assigning each key partition to one active consumer or shard leader (Chapter 11) provides exclusive ownership structurally without per-item lock negotiation.
+
+## 10.6 Failure Modes, SLIs, and Production Systems
+
+### Failure and Recovery Matrix
+
+| Failure Mode | Operational Symptom | Automated Mitigation |
+| :--- | :--- | :--- |
+| **Worker Crashes While Holding Lock** | Work stalls until lease TTL elapses (`<= 30 s`) | Raft leader expiry wheel commits `EXPIRE` at deadline and notifies next queued waiter with `token + 1` |
+| **Worker Suffers 45 s GC Pause** | Lease expires and transfers to Worker B; Worker A resumes late | Worker A's stale writes carry `token 33 < 34` and are rejected by storage fencing; Worker A detects `412` / `0 rows updated` and halts |
+| **Single Raft Node or Entire AZ Fails** | Brief `1` to `3 s` leader election if leader was in failed AZ | Remaining `3` or `4` nodes preserve quorum (`3` of `5`) across surviving AZs with zero lost locks or token regressions |
+| **Minority Network Partition Isolates Leader** | Isolated leader cannot commit keepalives or new acquires | Raft ReadIndex / leader lease check fails; partitioned leader steps down and refuses lock grants, preventing split-brain |
+| **Deadlocked Worker with Background Renewer** | Lock held indefinitely with zero output progress | Progress-coupled keepalive stops renewing when work heartbeat stalls; maximum lease duration cap forces eventual reclamation |
+| **Lock Key Contention Spike (`1,000` waiters)** | Elevated CPU on lock service if polling or broadcast watching | Ephemeral sequential watch chain ensures `1` notification per release (`O(1)` wakeups) |
+
+### Key SLIs and Operational Alerts
+
+- **Quorum Commit Latency (`p99`):** Alert if Raft `fsync` + quorum append `p99 > 25 ms` for `2 minutes` (disk latency spikes cause false session expirations across the fleet).
+- **Raft Leader Elections per Hour:** Alert immediately on `> 1` unexpected leader election per hour (signals network instability or disk I/O stalls).
+- **Fencing Rejection Rate (`storage_fence_rejections_total`):** Every rejected stale token proves the safety net worked, but a sudden spike indicates fleet-wide GC pauses, undersized lease TTLs, or network jitter.
+- **Lease Hold Duration (`p99`):** Alert when active leases approach their maximum hold threshold, surfacing stuck workers early.
+
+### Real-World Production Systems
+
+| Production System | Consensus Protocol | Fencing Token Primitive | Architectural Distinction |
+| :--- | :--- | :--- | :--- |
+| **Google Chubby (2006)** | Multi-Paxos (5 replicas) | **Sequencer** (`{lock_name, mode, generation_number}`) | Pioneered coarse-grained advisory locks, keepalive leases, and client-side read caching with invalidations |
+| **Apache ZooKeeper** | Zab (ZooKeeper Atomic Broadcast) | Ephemeral sequential `zxid` / node sequence number | Wait-free FIFO lock recipes using predecessor-only watches to prevent herd wakeups |
+| **etcd (Kubernetes Control Plane)** | Raft (3 or 5 nodes) | MVCC `create_revision` (globally monotonic 64-bit integer) | Native `LeaseGrant` / `LeaseKeepAlive` streams and transactional `Txn(If(CreateRevision == 0))` primitives |
+| **AWS DynamoDB Lock Client** | DynamoDB strongly consistent conditional writes (`Paxos`) | Version `recordVersionNumber` / monotonic counter attribute | Serverless managed alternative where applications pay per-request without operating a dedicated Raft cluster |
+
+## 10.7 Simulation Verification
+
+To verify end-to-end fencing safety under a long process pause, we execute the repository's `locksim` simulation (`code/locksim/src/main.rs`). In this trace, `client-a` acquires the lock at `t = 0` with a `10 s` lease and fencing token `1`, then freezes for `15 seconds` at `t = 2`. At `t = 12`, after the lease expires, `client-b` acquires the lock with token `2` and writes to storage at `t = 13`. When `client-a` wakes at `t = 17` and attempts to write with token `1`, the storage engine rejects the stale write:
+
+```console
+$ cargo run --release -p locksim
+t=0   client-a acquires the lock: token Some(1), lease until t=10
+t=1   client-b asks for the lock: None
+t=2   client-a stops for 15 seconds (a long pause of its process)
+t=12  the lease has ended. client-b acquires the lock: token Some(2)
+t=13  client-b writes with token 2: accepted true
+t=17  client-a wakes up, still believes it holds the lock, writes with token 1: accepted false
+the storage holds: written by client-b
+```
+
+Without storage-layer token verification, `client-a`'s write at `t = 17` would overwrite `client-b`'s committed data without detection. With monotonic fencing enforced at storage, `1 < 2` triggers an unconditional refusal (`accepted false`), preserving `written by client-b` regardless of pause duration or clock skew.
 
 <div class="simulation">
 
-**Simulation in the repository.** The program [`code/locksim`](https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/distributed-systems-from-the-ground-up/code/locksim/src/main.rs) simulates this design. To run it, clone the repository and type `cargo run --release -p locksim` in the `code` directory.
+**Run the distributed lock and fencing simulation.** Execute `cargo run --release -p locksim` in `code/` ([`code/locksim/src/main.rs`](https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/distributed-systems-from-the-ground-up/code/locksim/src/main.rs)) to reproduce the 15-second pause, lease transfer, and storage-layer token rejection trace above.
 
 </div>
 
-## References
+## 10.8 Terminology and References
 
-- M. Burrows, "The Chubby Lock Service for Loosely-Coupled Distributed Systems", OSDI 2006.
-- P. Hunt and others, "ZooKeeper: Wait-free Coordination for Internet-scale Systems", USENIX ATC 2010.
-- M. Kleppmann, "How to do distributed locking", 2016.
-- S. Sanfilippo, "Is Redlock safe?", 2016.
-- C. Gray and D. Cheriton, "Leases: An Efficient Fault-Tolerant Mechanism for Distributed File Cache Consistency", SOSP 1989.
+### Engineering Glossary
 
-## Terms introduced in this chapter
+| Term | Definition |
+| :--- | :--- |
+| **Lease** | A time-bounded lock that expires automatically if its holder fails to renew it before the deadline, preventing deadlocks after worker crashes. |
+| **Fencing Token** | A strictly monotonic integer issued by a consensus-backed lock service on every grant and validated by the protected storage layer to reject delayed writes from expired holders. |
+| **Process Pause** | Any involuntary suspension of worker execution (GC stop-the-world, VM migration, OS page fault, or network buffering) during which a lease can expire without the worker's knowledge. |
+| **Linearizability** | The strongest single-object consistency guarantee, ensuring every lock acquisition, expiration, and release appears to take effect atomically at a single point in real time. |
+| **Redlock** | An algorithm acquiring locks across a majority of independent Redis nodes without consensus; relies on timing assumptions and cannot generate monotonic fencing tokens. |
+| **Ephemeral Sequential Watch Chain** | A FIFO queue of session-bound numbered keys where each waiter watches only its immediate predecessor, eliminating release thundering herds. |
+| **Optimistic Concurrency Control (CAS)** | Conditional state updates (`WHERE version = expected`) that detect concurrent writes at commit time without acquiring an external distributed lock. |
 
-| Term | Meaning |
-|---|---|
-| Lock | a right, held by 1 party, to act alone on something |
-| Mutual exclusion | the property that at most 1 party acts at any moment |
-| Lease | a lock that expires unless its holder renews it |
-| Renewal | extending a lease before it expires |
-| Process pause | a period in which a process does not run and is unaware of it |
-| Fencing token | a number, larger with every grant of a lock, that the protected resource checks |
-| Watch | a request to be notified when a key changes or is deleted |
-| Session | the connection between a worker and the lock service, whose end removes the worker's entries |
-| Idempotent | having the same effect whether performed once or several times |
-| Optimistic concurrency | writing on condition that nobody else has written since the data was read |
+### References
 
-<div class="summary">
-
-## Summary
-
-- A lock taken for efficiency may occasionally fail, and a lock taken for correctness may not, and the 2 need very different designs.
-- A lock in a shared store has to be a lease, since a holder that crashes would otherwise keep it for ever.
-- A lease can end while its holder is paused or delayed, and the holder cannot detect this, so a lease alone does not guarantee 1 holder.
-- A fencing token, which grows with every grant and is checked by the protected resource, rejects the late holder.
-- Release and renewal must be conditional on the caller still being the holder.
-- The lock service stores each lock and token on a majority, because a lock forgotten in a failover is a lock granted twice.
-- Waiters are queued so that a release notifies 1 of them.
-- Idempotent operations and conditional writes often remove the need for a lock.
-
-</div>
+- M. Burrows, "The Chubby Lock Service for Loosely-Coupled Distributed Systems", USENIX OSDI, 2006.
+- P. Hunt, M. Konar, F. P. Junqueira, and B. Reed, "ZooKeeper: Wait-free Coordination for Internet-scale Systems", USENIX ATC, 2010.
+- D. Ongaro and J. Ousterhout, "In Search of an Understandable Consensus Algorithm (Raft)", USENIX ATC, 2014.
+- M. Kleppmann, "How to Do Distributed Locking", martin.kleppmann.com, 2016.
+- S. Sanfilippo, "Is Redlock Safe?", antirez.com, 2016.
+- C. Gray and D. Cheriton, "Leases: An Efficient Fault-Tolerant Mechanism for Distributed File Cache Consistency", ACM SOSP, 1989.
+- etcd Documentation, "Concurrency and Distributed Locks (Lease and MVCC Revision Semantics)".
