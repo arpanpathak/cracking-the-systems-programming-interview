@@ -1,0 +1,155 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 712" width="800" height="712">
+  <style>
+    text { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif; fill: #E8EAF0; }
+    .paper { fill: #1B1E26; }
+    .frame { fill: #1B1E26; stroke: #363C49; stroke-width: 1; }
+    .card { fill: #2B303B; }
+    .hair { stroke: #363C49; stroke-width: 1.2; fill: none; }
+    .muted { fill: #AEB6C3; }
+    .ink { fill: #E8EAF0; }
+    .title { font-size: 17.5px; font-weight: 650; }
+    .head { font-size: 15.5px; font-weight: 650; }
+    .name { font-size: 15px; font-weight: 650; }
+    .body { font-size: 13.5px; }
+    .sub { font-size: 13px; }
+    .mono { font-size: 12.5px; font-family: "SF Mono", SFMono-Regular, ui-monospace, Menlo, Consolas, monospace; }
+    .monob { font-size: 12.5px; font-weight: 650; font-family: "SF Mono", SFMono-Regular, ui-monospace, Menlo, Consolas, monospace; }
+    .small { font-size: 12px; }
+    .note { font-size: 13.5px; }
+    .noteb { font-size: 13.5px; font-weight: 650; }
+    .sub, .small, .note { fill: #AEB6C3; }
+    .c-blue { fill: #1E2D47; }
+    .m-blue { fill: #2C4674; }
+    .a-blue { fill: #8FB8FA; }
+    .t-blue { fill: #8FB8FA; }
+    .w-blue { stroke: #8FB8FA; fill: none; stroke-linecap: butt; stroke-linejoin: round; }
+    .o-blue { stroke: #8FB8FA; fill: none; stroke-width: 1.5; }
+    .h-blue { stroke: #8FB8FA; stroke-width: 1.4; }
+    .c-green { fill: #1B3426; }
+    .m-green { fill: #28553B; }
+    .a-green { fill: #82D69C; }
+    .t-green { fill: #82D69C; }
+    .w-green { stroke: #82D69C; fill: none; stroke-linecap: butt; stroke-linejoin: round; }
+    .o-green { stroke: #82D69C; fill: none; stroke-width: 1.5; }
+    .h-green { stroke: #82D69C; stroke-width: 1.4; }
+    .c-amber { fill: #3A2D14; }
+    .m-amber { fill: #5E471A; }
+    .a-amber { fill: #F3C06B; }
+    .t-amber { fill: #F3C06B; }
+    .w-amber { stroke: #F3C06B; fill: none; stroke-linecap: butt; stroke-linejoin: round; }
+    .o-amber { stroke: #F3C06B; fill: none; stroke-width: 1.5; }
+    .h-amber { stroke: #F3C06B; stroke-width: 1.4; }
+    .c-red { fill: #41221D; }
+    .m-red { fill: #69322B; }
+    .a-red { fill: #F59E8D; }
+    .t-red { fill: #F59E8D; }
+    .w-red { stroke: #F59E8D; fill: none; stroke-linecap: butt; stroke-linejoin: round; }
+    .o-red { stroke: #F59E8D; fill: none; stroke-width: 1.5; }
+    .h-red { stroke: #F59E8D; stroke-width: 1.4; }
+    .c-purple { fill: #2C2549; }
+    .m-purple { fill: #453978; }
+    .a-purple { fill: #BCA8F7; }
+    .t-purple { fill: #BCA8F7; }
+    .w-purple { stroke: #BCA8F7; fill: none; stroke-linecap: butt; stroke-linejoin: round; }
+    .o-purple { stroke: #BCA8F7; fill: none; stroke-width: 1.5; }
+    .h-purple { stroke: #BCA8F7; stroke-width: 1.4; }
+    .c-teal { fill: #15332F; }
+    .m-teal { fill: #1F514B; }
+    .a-teal { fill: #72D5CA; }
+    .t-teal { fill: #72D5CA; }
+    .w-teal { stroke: #72D5CA; fill: none; stroke-linecap: butt; stroke-linejoin: round; }
+    .o-teal { stroke: #72D5CA; fill: none; stroke-width: 1.5; }
+    .h-teal { stroke: #72D5CA; stroke-width: 1.4; }
+    .c-gray { fill: #272B34; }
+    .m-gray { fill: #3A404D; }
+    .a-gray { fill: #AEB6C3; }
+    .t-gray { fill: #AEB6C3; }
+    .w-gray { stroke: #AEB6C3; fill: none; stroke-linecap: butt; stroke-linejoin: round; }
+    .o-gray { stroke: #AEB6C3; fill: none; stroke-width: 1.5; }
+    .h-gray { stroke: #AEB6C3; stroke-width: 1.4; }
+    .c-wire { fill: #272B34; }
+    .m-wire { fill: #3A404D; }
+    .a-wire { fill: #A2ABB9; }
+    .t-wire { fill: #A2ABB9; }
+    .w-wire { stroke: #A2ABB9; fill: none; stroke-linecap: butt; stroke-linejoin: round; }
+    .o-wire { stroke: #A2ABB9; fill: none; stroke-width: 1.5; }
+    .h-wire { stroke: #A2ABB9; stroke-width: 1.4; }
+  </style>
+  <defs>
+    <filter id="lift" x="-10%" y="-15%" width="120%" height="140%">
+      <feDropShadow dx="0" dy="1" stdDeviation="1.2" flood-color="#000000" flood-opacity="0.45"/>
+      <feDropShadow dx="0" dy="3" stdDeviation="4" flood-color="#000000" flood-opacity="0.32"/>
+    </filter>
+  </defs>
+<rect x="0.5" y="0.5" width="799" height="711" rx="16" class="frame"/>
+<text x="28" y="44" class="title"><tspan class="t-blue">Figure 3-1.</tspan> Internal Data Structure of the Process Control Block</text>
+<text x="28" y="68" class="title">(Linux struct task_struct) and Indirect Kernel Subsystems.</text>
+<g transform="translate(0 98)">
+<rect x="20.0" y="20.0" width="324.0" height="412.0" rx="14" class="c-blue"/>
+<rect x="32.0" y="32.0" width="28.0" height="28.0" rx="8" class="m-blue"/>
+<g transform="translate(37.3 37.3) scale(0.723)" class="a-blue"><path d="M12.6 18.06c-.36.28-.87.28-1.23 0l-6.15-4.78a.991.991 0 0 0-1.22 0 .997.997 0 0 0 0 1.57l6.76 5.26c.72.56 1.73.56 2.46 0l6.76-5.26c.51-.4.51-1.17 0-1.57l-.01-.01a.991.991 0 0 0-1.22 0l-6.15 4.79zm.63-3.02 6.76-5.26c.51-.4.51-1.18 0-1.58l-6.76-5.26c-.72-.56-1.73-.56-2.46 0L4.01 8.21c-.51.4-.51 1.18 0 1.58l6.76 5.26c.72.56 1.74.56 2.46-.01z"/></g>
+<text x="68.0" y="48.0" class="name">Process Control Block</text>
+<text x="68.0" y="63.0" class="small">struct task_struct (~6-10 KiB SLUB slab)</text>
+<rect x="32.0" y="76.0" width="300.0" height="50.0" rx="6" class="card" filter="url(#lift)"/>
+<text x="182.0" y="97.1" class="monob" text-anchor="middle" data-fit="37.0,327.0">Identity &amp; Process Tree</text>
+<text x="182.0" y="113.7" class="small" text-anchor="middle" data-fit="37.0,327.0">pid, tgid, *parent, children/sibling</text>
+<rect x="32.0" y="134.0" width="300.0" height="50.0" rx="6" class="card" filter="url(#lift)"/>
+<text x="182.0" y="155.1" class="monob" text-anchor="middle" data-fit="37.0,327.0">Scheduling &amp; Execution State</text>
+<text x="182.0" y="171.7" class="small" text-anchor="middle" data-fit="37.0,327.0">state, on_cpu, se (vruntime, weight)</text>
+<rect x="32.0" y="192.0" width="300.0" height="50.0" rx="6" class="card" filter="url(#lift)"/>
+<text x="182.0" y="213.1" class="monob" text-anchor="middle" data-fit="37.0,327.0">Hardware Context &amp; Kernel Stack</text>
+<text x="182.0" y="229.7" class="small" text-anchor="middle" data-fit="37.0,327.0">void *stack, thread_struct (SP, FPU, TLS)</text>
+<rect x="32.0" y="250.0" width="300.0" height="50.0" rx="6" class="card" filter="url(#lift)"/>
+<text x="182.0" y="271.1" class="monob" text-anchor="middle" data-fit="37.0,327.0">Memory Descriptor Pointer</text>
+<text x="182.0" y="287.7" class="small" text-anchor="middle" data-fit="37.0,327.0">struct mm_struct *mm  (refcounted)</text>
+<rect x="32.0" y="308.0" width="300.0" height="50.0" rx="6" class="card" filter="url(#lift)"/>
+<text x="182.0" y="329.1" class="monob" text-anchor="middle" data-fit="37.0,327.0">File &amp; Filesystem Pointers</text>
+<text x="182.0" y="345.7" class="small" text-anchor="middle" data-fit="37.0,327.0">files_struct *files, fs_struct *fs</text>
+<rect x="32.0" y="366.0" width="300.0" height="50.0" rx="6" class="card" filter="url(#lift)"/>
+<text x="182.0" y="387.1" class="monob" text-anchor="middle" data-fit="37.0,327.0">Signals &amp; Security Credentials</text>
+<text x="182.0" y="403.7" class="small" text-anchor="middle" data-fit="37.0,327.0">*sighand, pending/blocked, *cred</text>
+<rect x="424.0" y="24.0" width="356.0" height="72.0" rx="14" class="c-purple"/>
+<rect x="436.0" y="36.0" width="26.0" height="26.0" rx="8" class="m-purple"/>
+<g transform="translate(440.9 40.9) scale(0.672)" class="a-purple"><path d="M19 8H5c-1.1 0-2-.9-2-2s.9-2 2-2h14c1.1 0 2 .9 2 2s-.9 2-2 2zm0 2H5c-1.1 0-2 .9-2 2s.9 2 2 2h14c1.1 0 2-.9 2-2s-.9-2-2-2zm0 6H5c-1.1 0-2 .9-2 2s.9 2 2 2h14c1.1 0 2-.9 2-2s-.9-2-2-2z"/></g>
+<text x="470.0" y="52.0" class="name">Intrusive Kernel Lists (list_head)</text>
+<text x="602.0" y="82.0" class="small" text-anchor="middle" data-fit="432.0,772.0">Parent/children tree + Per-CPU CFS runqueue / wait queues</text>
+<rect x="424.0" y="110.0" width="356.0" height="72.0" rx="14" class="c-amber"/>
+<rect x="436.0" y="122.0" width="26.0" height="26.0" rx="8" class="m-amber"/>
+<g transform="translate(440.9 126.9) scale(0.672)" class="a-amber"><path d="M14 9h-4c-.55 0-1 .45-1 1v4c0 .55.45 1 1 1h4c.55 0 1-.45 1-1v-4c0-.55-.45-1-1-1zm-1 4h-2v-2h2v2zm8-3c0-.55-.45-1-1-1h-1V7c0-1.1-.9-2-2-2h-2V4c0-.55-.45-1-1-1s-1 .45-1 1v1h-2V4c0-.55-.45-1-1-1s-1 .45-1 1v1H7c-1.1 0-2 .9-2 2v2H4c-.55 0-1 .45-1 1s.45 1 1 1h1v2H4c-.55 0-1 .45-1 1s.45 1 1 1h1v2c0 1.1.9 2 2 2h2v1c0 .55.45 1 1 1s1-.45 1-1v-1h2v1c0 .55.45 1 1 1s1-.45 1-1v-1h2c1.1 0 2-.9 2-2v-2h1c.55 0 1-.45 1-1s-.45-1-1-1h-1v-2h1c.55 0 1-.45 1-1zm-5 7H8c-.55 0-1-.45-1-1V8c0-.55.45-1 1-1h8c.55 0 1 .45 1 1v8c0 .55-.45 1-1 1z"/></g>
+<text x="470.0" y="138.0" class="name">Kernel Stack (8-16 KiB per thread)</text>
+<text x="602.0" y="168.0" class="small" text-anchor="middle" data-fit="432.0,772.0">Top: pt_regs trapframe (RIP, RSP)  |  Kernel frames below</text>
+<rect x="424.0" y="196.0" width="356.0" height="72.0" rx="14" class="c-teal"/>
+<rect x="436.0" y="208.0" width="26.0" height="26.0" rx="8" class="m-teal"/>
+<g transform="translate(440.9 212.9) scale(0.672)" class="a-teal"><path d="M12.6 18.06c-.36.28-.87.28-1.23 0l-6.15-4.78a.991.991 0 0 0-1.22 0 .997.997 0 0 0 0 1.57l6.76 5.26c.72.56 1.73.56 2.46 0l6.76-5.26c.51-.4.51-1.17 0-1.57l-.01-.01a.991.991 0 0 0-1.22 0l-6.15 4.79zm.63-3.02 6.76-5.26c.51-.4.51-1.18 0-1.58l-6.76-5.26c-.72-.56-1.73-.56-2.46 0L4.01 8.21c-.51.4-.51 1.18 0 1.58l6.76 5.26c.72.56 1.74.56 2.46-.01z"/></g>
+<text x="470.0" y="224.0" class="name">struct mm_struct (Shared by Threads)</text>
+<text x="602.0" y="254.0" class="small" text-anchor="middle" data-fit="432.0,772.0">pgd -&gt; CR3 / TTBR0_EL1 | VMA tree (text, heap, stack)</text>
+<rect x="424.0" y="282.0" width="356.0" height="72.0" rx="14" class="c-green"/>
+<rect x="436.0" y="294.0" width="26.0" height="26.0" rx="8" class="m-green"/>
+<g transform="translate(440.9 298.9) scale(0.672)" class="a-green"><path d="M10.59 4.59C10.21 4.21 9.7 4 9.17 4H4c-1.1 0-1.99.9-1.99 2L2 18c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V8c0-1.1-.9-2-2-2h-8l-1.41-1.41z"/></g>
+<text x="470.0" y="310.0" class="name">struct files_struct &amp; struct fs_struct</text>
+<text x="602.0" y="340.0" class="small" text-anchor="middle" data-fit="432.0,772.0">fd_array[0..N] -&gt; struct file -&gt; inode  |  pwd, root, cloexec</text>
+<rect x="424.0" y="368.0" width="356.0" height="64.0" rx="14" class="c-red"/>
+<rect x="436.0" y="380.0" width="26.0" height="26.0" rx="8" class="m-red"/>
+<g transform="translate(440.9 384.9) scale(0.672)" class="a-red"><path d="m11.3 2.26-6 2.25C4.52 4.81 4 5.55 4 6.39v4.7c0 4.83 3.13 9.37 7.43 10.75.37.12.77.12 1.14 0 4.3-1.38 7.43-5.91 7.43-10.75v-4.7a2 2 0 0 0-1.3-1.87l-6-2.25c-.45-.18-.95-.18-1.4-.01z"/></g>
+<text x="470.0" y="396.0" class="name">Signal Table &amp; RCU Credentials</text>
+<text x="602.0" y="422.0" class="small" text-anchor="middle" data-fit="432.0,772.0">action[1..64] (sigaction)  |  Immutable UID, GID, capabilities</text>
+<polygon points="422.0,52.0 412.0,56.2 414.8,52.0 412.0,47.8" class="a-blue"/>
+<path d="M346.0,100.0 L374.0,100.0 Q382.0,100.0 382.0,92.0 L382.0,60.0 Q382.0,52.0 390.0,52.0 L415.0,52.0" class="w-blue" stroke-width="1.8"/>
+<polygon points="422.0,68.0 412.0,72.2 414.8,68.0 412.0,63.8" class="a-purple"/>
+<path d="M346.0,158.0 L384.0,158.0 Q392.0,158.0 392.0,150.0 L392.0,76.0 Q392.0,68.0 400.0,68.0 L415.0,68.0" class="w-purple" stroke-width="1.8"/>
+<polygon points="422.0,146.0 412.0,150.2 414.8,146.0 412.0,141.8" class="a-amber"/>
+<path d="M346.0,217.0 L378.0,217.0 Q386.0,217.0 386.0,209.0 L386.0,154.0 Q386.0,146.0 394.0,146.0 L415.0,146.0" class="w-amber" stroke-width="1.8"/>
+<polygon points="422.0,232.0 412.0,236.2 414.8,232.0 412.0,227.8" class="a-teal"/>
+<path d="M346.0,275.0 L384.0,275.0 Q392.0,275.0 392.0,267.0 L392.0,240.0 Q392.0,232.0 400.0,232.0 L415.0,232.0" class="w-teal" stroke-width="1.8"/>
+<polygon points="422.0,318.0 412.0,322.2 414.8,318.0 412.0,313.8" class="a-green"/>
+<path d="M346.0,333.0 L378.5,333.0 Q386.0,333.0 386.0,325.5 L386.0,325.5 Q386.0,318.0 393.5,318.0 L415.0,318.0" class="w-green" stroke-width="1.8"/>
+<polygon points="422.0,391.0 412.0,395.2 414.8,391.0 412.0,386.8" class="a-red"/>
+<path d="M346.0,391.0 L415.0,391.0" class="w-red" stroke-width="1.8"/>
+</g>
+<rect x="28" y="572" width="744" height="116" rx="12" class="c-gray"/>
+<g transform="translate(42 584) scale(0.833)" class="a-gray"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 15c-.55 0-1-.45-1-1v-4c0-.55.45-1 1-1s1 .45 1 1v4c0 .55-.45 1-1 1zm1-8h-2V7h2v2z"/></g>
+<text x="74" y="598.5" class="note" data-fit="74,760">Storing mm, files, and sighand as reference-counted pointers lets</text>
+<text x="74" y="618.5" class="note" data-fit="74,760">clone() create threads by sharing tables rather than copying them.</text>
+<text x="74" y="646.5" class="note" data-fit="74,760">Hot scheduling fields (state, kernel stack, sched_entity) are cache-line</text>
+<text x="74" y="666.5" class="note" data-fit="74,760">aligned near the start of task_struct to minimize context-switch misses.</text>
+</svg>

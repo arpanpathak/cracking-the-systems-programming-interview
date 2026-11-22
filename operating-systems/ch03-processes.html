@@ -38,10 +38,10 @@
             const path_to_root = "";
             const default_light_theme = "light";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "searchindex-025a35ef.js";
+            window.path_to_searchindex_js = "searchindex-bf4ff113.js";
         </script>
         <!-- Start loading toc.js asap -->
-        <script src="toc-f3585118.js"></script>
+        <script src="toc-da5a69c8.js"></script>
     </head>
     <body>
     <div id="mdbook-help-container">
@@ -187,6 +187,70 @@
 <p>A program is a static sequence of instructions; it becomes a process only when the operating system instantiates it into an active execution environment. A process is defined by its execution state, its resource ownership, and its isolated address space.</p>
 <h2 id="31-the-process-control-block-and-address-space-topology"><a class="header" href="#31-the-process-control-block-and-address-space-topology">3.1 The Process Control Block and Address Space Topology</a></h2>
 <p>To manage multiple concurrent executions, the kernel maintains a Process Control Block (PCB) for every active process. The PCB serves as the primary vehicle for context switching, storing the process’s unique identifier (PID), its lineage, its current execution state (running, ready, or blocked), and the precise architectural state, including registers and the program counter, required to resume execution. Beyond execution state, the PCB tracks the process’s environmental resources, including its page tables for memory isolation, its file descriptor table, and its signal configuration.</p>
+<h3 id="311-internal-data-structure-of-the-process-control-block"><a class="header" href="#311-internal-data-structure-of-the-process-control-block">3.1.1 Internal Data Structure of the Process Control Block</a></h3>
+<p>In production kernels, the PCB is a large, cache-line-aligned kernel structure allocated from a dedicated slab cache (<code>task_struct_cachep</code> under Linux SLUB, Chapter 8). Rather than embedding every kernel subsystem inline, the PCB holds hot scheduling and context-switch fields directly at the front of the struct and references heavier resource tables through reference-counted pointers (Figure 3-1).</p>
+<figure>
+<img src="figures/ch03_pcb_layout.svg" alt="Internal data structure of the Process Control Block showing struct task_struct fields for identity, scheduling, kernel stack, and pointers to mm_struct, files_struct, signal handlers, and RCU credentials" />
+</figure>
+<p>The following simplified C layout captures the six functional groups present in Linux’s <code>struct task_struct</code> (which spans approximately 6 to 10 KiB in modern kernels):</p>
+<pre><code class="language-c">struct pcb {
+    /* 1. Scheduling and execution state (cache-hot on every context switch) */
+    volatile unsigned int   state;          /* TASK_RUNNING, INTERRUPTIBLE, ZOMBIE */
+    void                   *kstack;         /* Base of 8-16 KiB per-thread kernel stack */
+    int                     on_cpu;         /* Currently executing CPU core index */
+    struct sched_entity     se;             /* CFS vruntime, weight, red-black tree node */
+    struct list_head        run_node;       /* Intrusive link into runqueue or wait queue */
+
+    /* 2. Identity and process hierarchy */
+    pid_t                   pid;            /* Unique kernel thread ID (TID) */
+    pid_t                   tgid;           /* Thread group ID (POSIX PID seen in user space) */
+    struct pcb             *parent;         /* Parent process notified by SIGCHLD */
+    struct list_head        children;       /* Head of this process's child list */
+    struct list_head        sibling;        /* Link into parent-&gt;children */
+    int                     exit_code;      /* Packed exit status retained for waitpid() */
+
+    /* 3. Saved hardware execution context */
+    struct thread_struct    thread;         /* Kernel SP, callee-saved regs, FPU/SIMD, TLS */
+
+    /* 4. Virtual memory descriptor (shared across threads of one process) */
+    struct mm_struct       *mm;             /* Page-table root (pgd -&gt; CR3) and VMA tree */
+
+    /* 5. File descriptors and filesystem namespace */
+    struct files_struct    *files;          /* fd_array[0..N] -&gt; struct file, cloexec mask */
+    struct fs_struct       *fs;             /* Current working directory (pwd) and root */
+
+    /* 6. Signal dispositions and security credentials */
+    struct sighand_struct  *sighand;        /* Signal handler table (action[1..64]) */
+    sigset_t                blocked;        /* Currently masked signals (sigprocmask) */
+    sigset_t                pending;        /* Signals generated but awaiting delivery */
+    const struct cred      *cred;           /* Immutable UID, GID, and capability bitmasks */
+};
+</code></pre>
+<p>Each group inside the PCB reflects a specific operating system invariant:</p>
+<ol>
+<li><strong>Scheduling and Execution State (<code>state</code>, <code>kstack</code>, <code>se</code>):</strong> Fields touched on every timer tick and context switch are placed near the beginning of the structure (separated from read-mostly fields by cache-line alignment boundaries to prevent false sharing). Embedding intrusive <code>struct list_head</code> pointers directly inside the PCB allows a single process to belong simultaneously to the parent-child tree, a scheduler runqueue, or a futex wait queue with zero separate heap node allocations (Section 8.2.2).</li>
+<li><strong>Identity and Lineage (<code>pid</code>, <code>tgid</code>, <code>parent</code>, <code>children</code>, <code>exit_code</code>):</strong> On Linux, every kernel-scheduled execution context has its own <code>task_struct</code>. All threads belonging to the same POSIX process share a common <strong>Thread Group Identifier (<code>tgid</code>)</strong>, which is the value returned by <code>getpid()</code>, while each thread owns a distinct kernel <code>pid</code> (returned by <code>gettid()</code>). When a child terminates, <code>exit_code</code> preserves its 8-bit exit status or terminating signal number inside the zombie PCB until the parent reclaims it via <code>waitpid()</code>.</li>
+<li><strong>Hardware Execution Context and Kernel Stack (<code>kstack</code>, <code>thread</code>):</strong> Whenever the CPU traps from user mode into kernel mode on a system call or hardware interrupt, silicon switches to the thread’s private 8 to 16 KiB kernel stack (<code>kstack</code>) and records the user-mode register snapshot (<code>struct pt_regs</code>, Section 2.4.2) at the top of that stack. During an in-kernel context switch (<code>switch_to</code>), the scheduler saves the remaining kernel-mode callee-saved registers, kernel stack pointer, floating-point/SIMD register bank (<code>XMM</code>/<code>YMM</code>/<code>NEON</code>), and Thread-Local Storage base register (<code>FS_BASE</code> on x86-64; <code>TPIDR_EL0</code> on ARM64) inside <code>thread_struct</code>.</li>
+<li><strong>Virtual Memory Descriptor (<code>struct mm_struct *mm</code>):</strong> The <code>mm_struct</code> holds the physical address of the top-level page directory (<code>pgd</code>, loaded into <code>CR3</code> or <code>TTBR0_EL1</code> during context switch) alongside the balanced tree of <strong>Virtual Memory Areas (<code>vm_area_struct</code>, VMAs)</strong> describing every valid segment (text, data, heap, <code>mmap</code> regions, and stack) and its read/write/execute permissions. Storing <code>mm</code> as a reference-counted pointer rather than inline allows <code>clone(CLONE_VM)</code> to spawn threads that share one address space by incrementing <code>mm_users</code>, whereas <code>fork()</code> allocates a new <code>mm_struct</code> with copy-on-write page-table entries.</li>
+<li><strong>File Descriptor Table and Filesystem Context (<code>*files</code>, <code>*fs</code>):</strong> <code>files_struct</code> contains the integer-indexed array mapping process file descriptors (<code>0, 1, 2, ...</code>) to kernel <code>struct file</code> open file descriptions (Section 12.1), together with the per-descriptor <code>close_on_exec</code> bitmask inspected by <code>execve()</code>. Separating <code>fs_struct</code> (<code>pwd</code>, <code>root</code>, and <code>umask</code>) enables threads to share a working directory by default while permitting containers to isolate filesystem roots independently.</li>
+<li><strong>Signal State and Security Credentials (<code>*sighand</code>, <code>blocked</code>, <code>pending</code>, <code>*cred</code>):</strong> Signal handler dispositions (<code>sighand_struct</code>) are process-wide, whereas the signal mask (<code>blocked</code>) is per-thread so individual threads can control asynchronous delivery independently (Chapter 10). Security credentials (<code>cred</code>: real, effective, and saved UID/GID plus Linux capability sets) are stored as immutable structures replaced via copy-on-write and Read-Copy-Update (RCU), allowing permission checks on every <code>open()</code> or <code>kill()</code> system call to execute without locking.</li>
+</ol>
+<p>Kernels differ in whether they unify processes and threads into one PCB structure or split resource ownership from execution state (Table 3-1).</p>
+<p><strong>Table 3-1. Kernel PCB representation across Linux and macOS/Darwin (XNU).</strong></p>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th style="text-align: left">PCB Subsystem</th><th style="text-align: left">Linux (<code>struct task_struct</code>)</th><th style="text-align: left">macOS / Darwin XNU (<code>proc</code> + <code>task</code> + <code>thread</code>)</th></tr>
+</thead>
+<tbody>
+<tr><td style="text-align: left">Process identity &amp; POSIX state</td><td style="text-align: left"><code>task_struct</code> (<code>tgid</code>, <code>parent</code>, <code>children</code>)</td><td style="text-align: left">BSD layer <code>struct proc</code> (<code>p_pid</code>, <code>p_pptr</code>, <code>p_children</code>)</td></tr>
+<tr><td style="text-align: left">Address space &amp; Mach ports</td><td style="text-align: left"><code>task_struct-&gt;mm</code> (<code>struct mm_struct</code>)</td><td style="text-align: left">Mach layer <code>struct task</code> (<code>vm_map_t map</code>, IPC port space)</td></tr>
+<tr><td style="text-align: left">Schedulable execution context</td><td style="text-align: left"><code>task_struct</code> (<code>pid</code>, <code>se</code>, <code>kstack</code>, <code>thread</code>)</td><td style="text-align: left">Mach layer <code>struct thread</code> (kernel stack, saved registers, runqueue)</td></tr>
+<tr><td style="text-align: left">Open file descriptors</td><td style="text-align: left"><code>task_struct-&gt;files</code> (<code>struct files_struct</code>)</td><td style="text-align: left"><code>proc-&gt;p_fd</code> (<code>struct filedesc</code>)</td></tr>
+<tr><td style="text-align: left">Credentials &amp; signals</td><td style="text-align: left"><code>task_struct-&gt;cred</code>, <code>task_struct-&gt;sighand</code></td><td style="text-align: left"><code>proc-&gt;p_ucred</code> (<code>kauth_cred_t</code>), <code>proc-&gt;p_sigacts</code></td></tr>
+</tbody>
+</table>
+</div>
 <p>The process’s memory is organized into a structured address space, which provides a consistent view of memory regardless of the underlying physical allocation. This topology typically includes:</p>
 <ul>
 <li><strong>Text Segment:</strong> The read-only machine code of the program, which can be shared across multiple processes to conserve physical memory.</li>
