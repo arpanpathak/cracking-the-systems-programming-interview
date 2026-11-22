@@ -38,10 +38,10 @@
             const path_to_root = "";
             const default_light_theme = "light";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "searchindex-bf4ff113.js";
+            window.path_to_searchindex_js = "searchindex-025a35ef.js";
         </script>
         <!-- Start loading toc.js asap -->
-        <script src="toc-da5a69c8.js"></script>
+        <script src="toc-f3585118.js"></script>
     </head>
     <body>
     <div id="mdbook-help-container">
@@ -240,11 +240,7 @@
 </li>
 <li><a href="ch03-processes.html#3-process-abstraction-and-lifecycle"><strong>3. Process Abstraction and Lifecycle</strong></a>
 <ul>
-<li><a href="ch03-processes.html#31-the-process-control-block-and-address-space-topology">3.1 The Process Control Block and Address Space Topology</a>
-<ul>
-<li><a href="ch03-processes.html#311-internal-data-structure-of-the-process-control-block">3.1.1 Internal Data Structure of the Process Control Block</a></li>
-</ul>
-</li>
+<li><a href="ch03-processes.html#31-the-process-control-block-and-address-space-topology">3.1 The Process Control Block and Address Space Topology</a></li>
 <li><a href="ch03-processes.html#32-process-creation-and-the-mechanics-of-fork">3.2 Process Creation and the Mechanics of <code>fork</code></a>
 <ul>
 <li><a href="ch03-processes.html#321-the-process-creation-and-reaping-system-call-interface-fork-_exit-waitpid">3.2.1 The Process Creation and Reaping System Call Interface (<code>fork</code>, <code>_exit</code>, <code>waitpid</code>)</a></li>
@@ -594,41 +590,6 @@
 </li>
 </ul>
 <hr>
-<h3 id="appendix"><a class="header" href="#appendix">Appendix</a></h3>
-<ul>
-<li><a href="appendix-bonus-chapter.html#bonus-additional-chapter-address-translation-arithmetic-set-associative-caches-and-the-register-file"><strong>Bonus Additional Chapter: Address Translation Arithmetic, Set-Associative Caches, and the Register File</strong></a>
-<ul>
-<li><a href="appendix-bonus-chapter.html#a1-the-bit-field-model-of-an-address">A.1 The Bit-Field Model of an Address</a></li>
-<li><a href="appendix-bonus-chapter.html#a2-virtual-to-physical-translation-as-arithmetic">A.2 Virtual-to-Physical Translation as Arithmetic</a>
-<ul>
-<li><a href="appendix-bonus-chapter.html#a21-the-single-level-case">A.2.1 The Single-Level Case</a></li>
-<li><a href="appendix-bonus-chapter.html#a22-deriving-the-radix-geometry-from-the-granule">A.2.2 Deriving the Radix Geometry from the Granule</a></li>
-<li><a href="appendix-bonus-chapter.html#a23-a-software-model-of-the-walk">A.2.3 A Software Model of the Walk</a></li>
-</ul>
-</li>
-<li><a href="appendix-bonus-chapter.html#a3-set-associative-caches">A.3 Set-Associative Caches</a>
-<ul>
-<li><a href="appendix-bonus-chapter.html#a31-cache-geometry-and-the-lookup-procedure">A.3.1 Cache Geometry and the Lookup Procedure</a></li>
-<li><a href="appendix-bonus-chapter.html#a32-the-associativity-spectrum-and-the-classification-of-misses">A.3.2 The Associativity Spectrum and the Classification of Misses</a></li>
-<li><a href="appendix-bonus-chapter.html#a33-separating-the-three-miss-classes-by-simulation">A.3.3 Separating the Three Miss Classes by Simulation</a></li>
-<li><a href="appendix-bonus-chapter.html#a34-reading-the-geometry-of-a-real-processor">A.3.4 Reading the Geometry of a Real Processor</a></li>
-<li><a href="appendix-bonus-chapter.html#a35-the-coupling-between-page-size-and-first-level-cache-geometry">A.3.5 The Coupling between Page Size and First-Level Cache Geometry</a></li>
-<li><a href="appendix-bonus-chapter.html#a36-consequences-for-systems-software">A.3.6 Consequences for Systems Software</a></li>
-</ul>
-</li>
-<li><a href="appendix-bonus-chapter.html#a4-the-register-file-classified-by-preservation-contract">A.4 The Register File, Classified by Preservation Contract</a>
-<ul>
-<li><a href="appendix-bonus-chapter.html#a41-the-procedure-call-contract">A.4.1 The Procedure-Call Contract</a></li>
-<li><a href="appendix-bonus-chapter.html#a42-system-registers-of-translation-and-exception-handling">A.4.2 System Registers of Translation and Exception Handling</a></li>
-<li><a href="appendix-bonus-chapter.html#a43-the-registers-of-one-translation-fault">A.4.3 The Registers of One Translation Fault</a></li>
-<li><a href="appendix-bonus-chapter.html#a44-three-preservation-contracts-compared">A.4.4 Three Preservation Contracts Compared</a></li>
-</ul>
-</li>
-<li><a href="appendix-bonus-chapter.html#a5-worked-review-problems">A.5 Worked Review Problems</a></li>
-</ul>
-</li>
-</ul>
-<hr>
 <h2 id="part-ii-systems-subject--keyword-index"><a class="header" href="#part-ii-systems-subject--keyword-index">Part II: Systems Subject &amp; Keyword Index</a></h2>
 <p>A thematic, alphabetical cross-reference linking systems topics directly to their foundational derivation and practical implementation.</p>
 <h3 id="a"><a class="header" href="#a">A</a></h3>
@@ -725,12 +686,6 @@
 </ul>
 <h3 id="c"><a class="header" href="#c">C</a></h3>
 <ul>
-<li><strong>Cache Associativity (Sets, Ways, Tag / Index / Offset)</strong>: Organization of a cache into sets of <code>W</code> lines, with the set selected by address bits and the way by the replacement policy.
-<ul>
-<li>Geometry &amp; Lookup Procedure: <a href="appendix-bonus-chapter.html#a31-cache-geometry-and-the-lookup-procedure">§A.3.1</a></li>
-<li>Compulsory, Capacity &amp; Conflict Misses: <a href="appendix-bonus-chapter.html#a32-the-associativity-spectrum-and-the-classification-of-misses">§A.3.2</a>, <a href="appendix-bonus-chapter.html#a33-separating-the-three-miss-classes-by-simulation">§A.3.3</a></li>
-</ul>
-</li>
 <li><strong>Cache Coherence Protocols (MESI / MOESI)</strong>: Hardware protocols ensuring cache-line consistency across multi-core systems.
 <ul>
 <li>Memory Hierarchy Basics: <a href="ch02-the-machine.html#22-memory-hierarchy-and-locality-dynamics">§2.2</a></li>
@@ -776,12 +731,6 @@
 <li>Signal-Driven Supervision: <a href="ch15-daemons.html#152-signal-driven-management-and-the-lifecycle-interface">§15.2</a></li>
 </ul>
 </li>
-<li><strong>Calling Conventions (AAPCS64 / System V AMD64)</strong>: ABI contracts assigning argument, return, caller-saved, and callee-saved roles to the general-purpose registers.
-<ul>
-<li>Register Roles &amp; Annotated Prologue: <a href="appendix-bonus-chapter.html#a41-the-procedure-call-contract">§A.4.1</a></li>
-<li>Preservation at Calls, Exceptions &amp; Context Switches: <a href="appendix-bonus-chapter.html#a44-three-preservation-contracts-compared">§A.4.4</a></li>
-</ul>
-</li>
 <li><strong>Data Races</strong>: Undefined behavior occurring when concurrent threads access identical memory without synchronization and at least one is a write.
 <ul>
 <li>Hazard Mechanics: <a href="ch04-threads.html#41-shared-address-space-and-the-loss-of-intra-process-isolation">§4.1</a>, <a href="ch04-threads.html#42-atomicity-and-the-resolution-of-data-races">§4.2</a></li>
@@ -810,12 +759,6 @@
 <ul>
 <li>Architecture: <a href="ch13-io-event-loops.html#132-event-driven-architecture-and-io-multiplexing">§13.2</a></li>
 <li>Process Monitoring via <code>kqueue</code>: <a href="ch15-daemons.html#154-asynchronous-fault-detection-and-process-monitoring-via-kqueue">§15.4</a></li>
-</ul>
-</li>
-<li><strong>Exception Syndrome Registers (<code>ESR_EL1</code> / <code>FAR_EL1</code> / <code>ELR_EL1</code> / <code>CR2</code>)</strong>: System registers recording the cause, address, and resumption point of a fault.
-<ul>
-<li>Register Mapping: <a href="appendix-bonus-chapter.html#a42-system-registers-of-translation-and-exception-handling">§A.4.2</a></li>
-<li>Page Fault Register Trace: <a href="appendix-bonus-chapter.html#a43-the-registers-of-one-translation-fault">§A.4.3</a></li>
 </ul>
 </li>
 <li><strong>False Sharing</strong>: Severe performance degradation caused by distinct CPU cores mutating independent variables residing on the same cache line.
@@ -1014,17 +957,6 @@
 <li><strong>TLB (Translation Lookaside Buffer)</strong>: High-speed CPU hardware cache storing recent virtual-to-physical address translations.
 <ul>
 <li>Architecture &amp; Invalidation: <a href="ch07-virtual-memory.html#72-hierarchical-translation-and-the-tlb">§7.2</a></li>
-</ul>
-</li>
-<li><strong>Translation Granule (4 KiB / 16 KiB / 64 KiB)</strong>: The page size from which index width, level count, and block-mapping sizes are derived.
-<ul>
-<li>Radix Geometry Derivation: <a href="appendix-bonus-chapter.html#a22-deriving-the-radix-geometry-from-the-granule">§A.2.2</a></li>
-<li>Parameterized Walk Implementation: <a href="appendix-bonus-chapter.html#a23-a-software-model-of-the-walk">§A.2.3</a></li>
-</ul>
-</li>
-<li><strong>Virtually Indexed, Physically Tagged (VIPT) Caches</strong>: First-level cache organization whose way size is bounded by the page size.
-<ul>
-<li>Page Size &amp; L1 Geometry: <a href="appendix-bonus-chapter.html#a35-the-coupling-between-page-size-and-first-level-cache-geometry">§A.3.5</a></li>
 </ul>
 </li>
 <li><strong>Virtual Memory Architecture</strong>: Core isolation mechanism presenting processes with private, contiguous address spaces.
