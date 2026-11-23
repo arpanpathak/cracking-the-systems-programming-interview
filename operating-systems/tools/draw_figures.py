@@ -1546,24 +1546,110 @@ def ch07_vm_paging():
     fig.text(354, 351, "access page 5 → fault", "sub", tone="red")
 
     fig.save([
-        "A process uses consecutive virtual addresses, and the MMU finds the frame for each one in the page table.",
+        "A process uses consecutive virtual addresses, and the Memory Management Unit finds the frame for each one in the page table.",
         "The kernel allocates a frame for a page only when the program first accesses that page.",
     ])
 
 
 @figure
-def ch07_pagewalk():
-    fig = Fig("ch07_pagewalk", "Figure 7-2. A four-level page table walk (x86-64, 4 KiB pages).", 300)
+def ch07_mmu_architecture():
+    fig = Fig("ch07_mmu_architecture", "Figure 7-2. Virtual-to-physical address translation: the VPN maps to a PFN while the page-offset bits pass through unmodified.", 378)
 
-    fig.text(28, 12, "one virtual address, 48 meaningful bits", "sub")
+    def bit_strip(x, y, h, cells, tone):
+        """Draws a contiguous register strip of | cell | cell | ... | boxes."""
+        total_w = sum(w for _, w in cells)
+        fig.rect(x, y, total_w, h, f"m-{tone}", r=7)
+        cx = x
+        for idx, (label, w) in enumerate(cells):
+            if idx > 0:
+                fig.rule(cx, y + 3, cx, y + h - 3, tone, width=1.1)
+            cls = "monob" if "·" not in label else "sub"
+            fig.text(cx + w / 2, y + h / 2 + 4.5, label, cls, "middle", fit=(cx - 2, cx + w + 2))
+            cx += w
+        return (x + total_w / 2, y + h)
+
+    # Top: Virtual Address bit-cell strip with group renaming brackets above
+    fig.lines(122, 62, [("Virtual", "name"), ("Address", "name")], "end", fit=(24, 126))
+
+    # Top group brackets
+    fig.rule(136, 30, 480, 30, "blue", width=1.4)
+    fig.rule(136, 30, 136, 36, "blue", width=1.4)
+    fig.rule(480, 30, 480, 36, "blue", width=1.4)
+    fig.label(308, 22, "Virtual Page Number (VPN) · 36 bits", tone="blue", cls="small")
+
+    fig.rule(488, 30, 668, 30, "green", width=1.4)
+    fig.rule(488, 30, 488, 36, "green", width=1.4)
+    fig.rule(668, 30, 668, 36, "green", width=1.4)
+    fig.label(578, 22, "Page Offset · 12 bits", tone="green", cls="small")
+
+    vpn_cells = [("b47", 44), ("b46", 44), ("b45", 44), ("· · ·", 80), ("b14", 44), ("b13", 44), ("b12", 44)]
+    off_cells = [("b11", 34), ("b10", 34), ("· · ·", 44), ("b1", 34), ("b0", 34)]
+    _, vpn_b = bit_strip(136, 42, 40, vpn_cells, "blue")
+    off_cx, off_b = bit_strip(488, 42, 40, off_cells, "green")
+
+    # Middle: TLB (fast path) and Page Table Walk (miss path)
+    tlb_box = fig.node(136, 130, 160, 88, "purple", [
+        ("TLB Cache", "name"),
+        ("VPN → PFN", "monob"),
+        ("~1 cycle hit", "small"),
+    ], layout="center", kind="card", r=10)
+
+    pt_box = fig.node(320, 130, 160, 88, "amber", [
+        ("Page Table (CR3)", "name"),
+        ("4-level radix walk", "sub"),
+        ("checks P, R/W, U/S, NX", "small"),
+    ], layout="center", kind="card", r=10)
+
+    # Wires: VPN -> TLB -> (miss) -> Page Table -> PFN
+    fig.wire([(tlb_box.cx, vpn_b + 2), (tlb_box.cx, tlb_box.y - 2)], "blue", width=2.0)
+    fig.wire([(tlb_box.r + 2, tlb_box.cy), (pt_box.x - 2, pt_box.cy)], "amber", dash=True, width=1.8)
+    fig.text((tlb_box.r + pt_box.x) / 2, tlb_box.cy - 10, "miss", "small", "middle", tone="amber")
+
+    fig.wire([(tlb_box.cx, tlb_box.b + 2), (tlb_box.cx, 240), (308, 240), (308, 266)], "teal", width=2.0)
+    fig.wire([(pt_box.cx, pt_box.b + 2), (pt_box.cx, 240), (308, 240)], "teal", head=False, width=2.0)
+    fig.label(216, 234, "hit", tone="teal", cls="small")
+
+    # Straight pass-through for Page Offset bits b11..b0
+    fig.wire([(off_cx, off_b + 2), (off_cx, 266)], "green", width=2.2)
+    fig.label(off_cx, 174, "copied bit-for-bit (2^12 B = 4 KiB)", tone="green", cls="small")
+
+    # Bottom: Physical Address bit-cell strip with group renaming brackets below
+    fig.lines(122, 288, [("Physical", "name"), ("Address", "name")], "end", fit=(24, 126))
+    pfn_cells = [("p51", 44), ("p50", 44), ("p49", 44), ("· · ·", 80), ("p14", 44), ("p13", 44), ("p12", 44)]
+    bit_strip(136, 268, 40, pfn_cells, "teal")
+    bit_strip(488, 268, 40, off_cells, "green")
+
+    fig.rule(136, 320, 480, 320, "teal", width=1.4)
+    fig.rule(136, 314, 136, 320, "teal", width=1.4)
+    fig.rule(480, 314, 480, 320, "teal", width=1.4)
+    fig.label(308, 336, "Physical Frame Number (PFN) · 40 bits", tone="teal", cls="small")
+
+    fig.rule(488, 320, 668, 320, "green", width=1.4)
+    fig.rule(488, 314, 488, 320, "green", width=1.4)
+    fig.rule(668, 314, 668, 320, "green", width=1.4)
+    fig.label(578, 336, "Page Offset · 12 bits", tone="green", cls="small")
+
+    fig.text(402, 366, "PA = (PFN << 12) | Offset", "monob", "middle", tone="teal")
+
+    fig.save([
+        "Bits b11..b0 pass straight from the Virtual Address into the Physical Address unchanged because pages and frames share an identical 4 KiB (2^12-byte) alignment.",
+        "Only bits b47..b12 (VPN) are translated through the Translation Lookaside Buffer (TLB) or page table rooted at Control Register 3 (CR3) to produce p51..p12 (PFN).",
+    ])
+
+
+@figure
+def ch07_pagewalk():
+    fig = Fig("ch07_pagewalk", "Figure 7-3. Four-level hierarchical radix page-table walk (x86-64, 4 KiB pages).", 300)
+
+    fig.text(28, 12, "48-bit canonical virtual address (bits 47:0)", "sub")
 
     fields = [
-        (28, 112, "gray", "bits 63–48"),
-        (142, 124, "blue", "L4 index (9)"),
-        (268, 124, "purple", "L3 index (9)"),
-        (394, 124, "teal", "L2 index (9)"),
-        (520, 124, "amber", "L1 index (9)"),
-        (646, 126, "green", "offset (12)"),
+        (28, 112, "gray", "bits 63:48"),
+        (142, 124, "blue", "PML4 (9)"),
+        (268, 124, "purple", "PDPT (9)"),
+        (394, 124, "teal", "PD (9)"),
+        (520, 124, "amber", "PT (9)"),
+        (646, 126, "green", "Offset (12)"),
     ]
     centers = []
     for x, width, tone, text in fields:
@@ -1571,12 +1657,13 @@ def ch07_pagewalk():
         centers.append(box.cx)
 
     table_tones = ["blue", "purple", "teal", "amber"]
+    table_names = ["L4 PML4", "L3 PDPT", "L2 PD", "L1 PT"]
     entry_y = 176
     tables = []
-    for level, tone in zip((4, 3, 2, 1), table_tones):
-        cx = centers[5 - level]
+    for name, tone in zip(table_names, table_tones):
+        cx = centers[1 + len(tables)]
         table = fig.node(cx - 40, 108, 80, 150, tone, r=10)
-        fig.text(cx, 127, f"L{level} table", "small", "middle", fit=(cx - 38, cx + 38))
+        fig.text(cx, 127, name, "small", "middle", fit=(cx - 38, cx + 38))
         for row in range(5):
             y = 138 + row * 23
             fig.rect(cx - 30, y, 60, 18, "card" if row != 1 else f"a-{tone}", r=4)
@@ -1585,7 +1672,7 @@ def ch07_pagewalk():
 
     frame_cx = centers[5]
     frame = fig.node(frame_cx - 52, 108, 104, 150, "green", r=10)
-    fig.lines(frame_cx, 136, [("page frame", "name"), ("4 KiB", "sub")], "middle", fit=(frame.x + 3, frame.r - 3))
+    fig.lines(frame_cx, 136, [("Page Frame", "name"), ("4 KiB", "sub")], "middle", fit=(frame.x + 3, frame.r - 3))
     fig.rect(frame_cx - 38, 164, 76, 78, "card", r=6)
     fig.rect(frame_cx - 9, 198, 18, 12, "a-green", r=3)
     fig.wire([(frame_cx, 68), (frame_cx, 106)], "green", width=1.8)
@@ -1594,85 +1681,303 @@ def ch07_pagewalk():
     for table, target, tone in zip(tables, targets, table_tones):
         fig.wire([(table.cx + 30, entry_y + 0.5), (target.x - 2, entry_y + 0.5)], tone, width=1.8)
 
-    fig.node(28, 142, 118, 70, "gray", [("CR3 register", "name"), ("points to the", "small"), ("L4 table", "small")],
+    fig.node(28, 142, 118, 70, "gray", [("CR3 Register", "name"), ("physical base", "small"), ("of L4 PML4", "small")],
              layout="center", kind="card", r=10)
     fig.wire([(148, 177), (tables[0].x - 2, 177)], "wire", width=1.8)
 
-    fig.lines(772, 282, [("offset selects the byte", "sub"), ("inside the frame", "sub")], "end", fit=(600, 776))
+    fig.lines(772, 282, [("offset selects the byte", "sub"), ("inside the 4 KiB frame", "sub")], "end", fit=(580, 776))
 
     fig.save([
-        "Each translation takes four memory reads, unless the TLB already holds the answer.",
-        "Section 7.4 measures how access time grows when the TLB no longer holds every translation.",
+        "A TLB miss requires four sequential 8-byte memory reads across the radix hierarchy before the target byte is accessed.",
+        "Section 7.2.4 quantifies how access latency rises once the working set exceeds TLB reach.",
     ])
 
 
 @figure
 def ch07_canonical_va():
-    fig = Fig("ch07_canonical_va", "Figure 7-3. Canonical 48-Bit Virtual Address Decomposition and 64-Bit PTE Bit Layout", 386)
+    fig = Fig("ch07_canonical_va", "Figure 7-4. Bit-level 9-9-9-9-12 decomposition of 0x0000_7FFF_ABCD_EF01 and canonical 64-bit address space.", 392)
 
-    # 1. Virtual address decomposition
-    fig.text(28, 14, "1. Virtual Address Decomposition: VA = 0x0000_7FFF_ABCD_EF01 (48-bit Canonical Sign-Extended)", "name")
+    # Panel 1: Exact | | | | bit cells for VA = 0x0000_7FFF_ABCD_EF01
+    fig.heading(28, 16, "1. bit-level slicing of VA = 0x0000_7FFF_ABCD_EF01 (bits 63..0)")
 
-    va_fields = [
-        (28, 128, "gray", "Bits 63:48 (16b)", "Sign Ext (bit 47)", "0x0000 (User)"),
-        (159, 120, "blue", "Bits 47:39 (9b)", "PML4 (L4)", "0x0FF (255)"),
-        (282, 120, "purple", "Bits 38:30 (9b)", "PDPT (L3)", "0x3FE (510)"),
-        (405, 120, "teal", "Bits 29:21 (9b)", "PD Index (L2)", "0x15E (350)"),
-        (528, 120, "amber", "Bits 20:12 (9b)", "PT Index (L1)", "0x0DF (223)"),
-        (651, 121, "green", "Bits 11:0 (12b)", "Page Offset", "0xF01 (3841)"),
+    # Sign-ext bits [63:48] compressed as | 0 | 0 | ·· | 0 | (width 68 at x=28..96)
+    sign_cells = [("0", 15), ("0", 15), ("··", 23), ("0", 15)]
+    sx = 28
+    fig.text(sx + 2, 42, "63", "small", "start")
+    fig.text(sx + 66, 42, "48", "small", "end")
+    fig.rect(sx, 48, 68, 34, "m-gray", r=5)
+    cx = sx
+    for idx, (lbl, w) in enumerate(sign_cells):
+        if idx > 0:
+            fig.rule(cx, 50, cx, 80, "gray", width=1.0)
+        fig.text(cx + w / 2, 69, lbl, "mono" if lbl != "··" else "small", "middle", fit=(cx - 2, cx + w + 2))
+        cx += w
+
+    # Group bracket & renamed label under Sign Ext
+    fig.rule(28, 92, 96, 92, "gray", width=1.3)
+    fig.rule(28, 86, 28, 92, "gray", width=1.3)
+    fig.rule(96, 86, 96, 92, "gray", width=1.3)
+    fig.cell(28, 100, 68, 56, "gray", [
+        ("Sign Ext", "small"),
+        ("16 bits", "small"),
+        ("0x0000", "monob"),
+    ], kind="card", r=6)
+
+    # Active 48 bits [47:0] = 0x7FFF_ABCD_EF01 in binary, grouped into 9-9-9-9-12
+    # 7    F    F    F    A    B    C    D    E    F    0    1
+    # 0111 1111 1111 1111 1010 1011 1100 1101 1110 1111 0000 0001
+    groups = [
+        ("PML4 (L4)", "blue",   "47", "39", "011111111", "0x0FF (255)"),
+        ("PDPT (L3)", "purple", "38", "30", "111111110", "0x1FE (510)"),
+        ("PD (L2)",   "teal",   "29", "21", "101011110", "0x15E (350)"),
+        ("PT (L1)",   "amber",  "20", "12", "011011111", "0x0DF (223)"),
+        ("Offset",    "green",  "11", "0",  "111100000001", "0xF01 (3,841)"),
     ]
-    for x, w, tone, bits, label_txt, val in va_fields:
-        fig.cell(x, 24, w, 66, tone, [
-            (bits, "small"),
-            (label_txt, "name"),
-            (val, "monob"),
-        ], kind="mid", r=7)
+    bw = 13.5
+    gap = 6.0
+    gx = 100.0
+    for name, tone, hi, lo, bits_str, val_str in groups:
+        gw = len(bits_str) * bw
+        fig.text(gx + 1, 42, hi, "small", "start")
+        fig.text(gx + gw - 1, 42, lo, "small", "end")
+        fig.rect(gx, 48, gw, 34, f"m-{tone}", r=5)
+        for i, ch in enumerate(bits_str):
+            bx = gx + i * bw
+            if i > 0:
+                fig.rule(bx, 50, bx, 80, tone, width=0.9)
+            fig.text(bx + bw / 2, 69, ch, "mono", "middle", fit=(bx - 2, bx + bw + 2))
+        # Group-renaming bracket and card below
+        fig.rule(gx, 92, gx + gw, 92, tone, width=1.4)
+        fig.rule(gx, 86, gx, 92, tone, width=1.4)
+        fig.rule(gx + gw, 86, gx + gw, 92, tone, width=1.4)
+        fig.cell(gx, 100, gw, 56, tone, [
+            (f"{name} ({len(bits_str)}b)", "small"),
+            (val_str, "monob"),
+        ], kind="card", r=6)
+        gx += gw + gap
 
-    # 2. Step-by-step radix walk formula box
-    fig.node(28, 106, 744, 122, "blue")
-    fig.tile(40, 118, "table_rows", "blue", 28)
-    fig.text(76, 138, "2. Hardware MMU Radix Page Walk Arithmetic (8-Byte Entries, 512 Entries per 4 KiB Table)", "name")
+    # Span annotation for 36-bit VPN vs 12-bit Offset
+    fig.rule(100, 174, 604, 174, "blue", width=1.4)
+    fig.rule(100, 168, 100, 174, "blue", width=1.4)
+    fig.rule(604, 168, 604, 174, "blue", width=1.4)
+    fig.label(352, 178, "36-bit Virtual Page Number (VPN = 0x7FFF_ABCDE)", tone="blue", cls="small")
 
-    steps = [
-        (40, "blue", "L4 Lookup (PML4E)", "CR3 + 255 × 8", "→ 0x1000_07F8"),
-        (222, "purple", "L3 Lookup (PDPTE)", "L3_Base + 510 × 8", "→ 0x2040_0FF0"),
-        (404, "teal", "L2 Lookup (PDE)", "L2_Base + 350 × 8", "→ 0x3080_0AF0"),
-        (586, "amber", "L1 Lookup (PTE)", "L1_Base + 223 × 8", "→ PFN 0x8A420"),
-    ]
-    for x, tone, title, expr, res in steps:
-        fig.cell(x, 150, 174, 66, tone, [
-            (title, "name"),
-            (expr, "mono"),
-            (res, "monob"),
-        ], kind="card", r=7)
+    fig.rule(610, 174, 772, 174, "green", width=1.4)
+    fig.rule(610, 168, 610, 174, "green", width=1.4)
+    fig.rule(772, 168, 772, 174, "green", width=1.4)
+    fig.label(691, 178, "12-bit Offset (F01)", tone="green", cls="small")
 
-    # 3. 64-bit Page Table Entry (PTE) bit layout
-    fig.text(28, 250, "3. 64-Bit Page Table Entry (PTE) Architectural Bit Layout & Final Physical Address Assembly", "name")
+    # Panel 2: Canonical Address Space Map
+    fig.heading(28, 224, "2. 64-bit canonical address space (bits 63:48 replicate bit 47)")
 
-    pte_bits = [
-        (28, 70, "red", "Bit 63", "NX / XD", "No-Exec"),
-        (101, 96, "gray", "Bits 62:52", "PK / OS", "Prot Key"),
-        (200, 224, "green", "Bits 51:12 (40 bits)", "Physical Frame Number (PFN)", "0x0000_008A_4200_00 >> 12"),
-        (427, 82, "gray", "Bits 11:9", "AVL", "OS Avail"),
-        (512, 42, "teal", "8", "G", "Glob"),
-        (557, 42, "amber", "7", "PS", "Size"),
-        (602, 42, "purple", "6", "D", "Dirty"),
-        (647, 42, "purple", "5", "A", "Acc"),
-        (692, 25, "blue", "2", "U", "Usr"),
-        (720, 25, "amber", "1", "W", "RW"),
-        (748, 24, "green", "0", "P", "1"),
-    ]
-    for x, w, tone, b_range, sym, desc in pte_bits:
-        items = [(b_range, "small"), (sym, "monob")] + ([(desc, "small")] if w >= 40 else [])
-        fig.cell(x, 260, w, 66, tone, items, kind="mid", r=6)
+    fig.cell(28, 240, 260, 88, "blue", [
+        ("User Canonical Space (128 TiB)", "name"),
+        ("0x0000_0000_0000_0000", "mono"),
+        ("to 0x0000_7FFF_FFFF_FFFF", "mono"),
+        ("bit 47 = 0 · bits 63:48 = 0x0000", "small"),
+    ], kind="tonal", r=10)
 
-    fig.node(28, 338, 744, 44, "green", [
-        ("Physical Address = (PFN << 12) | Offset = 0x8A_4200_00 | 0xF01 = 0x8A_420F_01", "monob"),
-    ], icon="memory", layout="left", kind="tonal", icon_size=26, r=8)
+    fig.hatch(296, 240, 208, 88, "red", r=10)
+    fig.cell(316, 258, 168, 52, "red", [
+        ("Non-Canonical Hole", "name"),
+        ("raises #GP(0) fault", "small"),
+    ], kind="card", r=8, text_tone="red")
+
+    fig.cell(512, 240, 260, 88, "purple", [
+        ("Kernel Canonical Space (128 TiB)", "name"),
+        ("0xFFFF_8000_0000_0000", "mono"),
+        ("to 0xFFFF_FFFF_FFFF_FFFF", "mono"),
+        ("bit 47 = 1 · bits 63:48 = 0xFFFF", "small"),
+    ], kind="tonal", r=10)
+
+    fig.text(400, 358, "4,096 B table frame ÷ 8 B/PTE = 512 entries (2^9 → 9-bit index per level); 4,096 B page = 2^12 → 12-bit offset", "sub", "middle")
 
     fig.save([
-        "Canonical addresses mandate that bits 63:48 replicate bit 47 (0x0000 for user space, 0xFFFF for kernel space); non-canonical addresses fault (#GP).",
-        "Each 4 KiB page table holds 512 8-byte entries (2^9 = 512), explaining why each radix level consumes exactly 9 virtual address bits.",
+        "Every active bit of 0x0000_7FFF_ABCD_EF01 is drawn in its own cell: the 12-bit offset aligns cleanly with the last three hex digits (F01), while 9-bit indices straddle 4-bit hex nibbles.",
+        "Bits 63:48 must copy bit 47 (0x0000 for user space, 0xFFFF for kernel space); any non-canonical pointer triggers a General Protection Fault (#GP) before a page walk.",
+    ])
+
+
+@figure
+def ch07_radix_walk_trace():
+    fig = Fig("ch07_radix_walk_trace", "Figure 7-5. Four-level hardware page walk for 0x0000_7FFF_ABCD_EF01 and complete 64-bit x86-64 leaf PTE bit layout.", 382)
+
+    # Panel 1: 4-hop walk + Physical Address composition
+    fig.heading(28, 16, "1. four-level physical memory walk (CR3 = 0x1000_0000; Entry PA = Base + Index × 8)")
+
+    hops = [
+        (28,  "blue",   "L4: PML4", "0x1000_0000", "+ 255 × 8", "→ 0x2040_0000"),
+        (178, "purple", "L3: PDPT", "0x2040_0000", "+ 510 × 8", "→ 0x3080_0000"),
+        (328, "teal",   "L2: PD",   "0x3080_0000", "+ 350 × 8", "→ 0x40C0_0000"),
+        (478, "amber",  "L1: PT",   "0x40C0_0000", "+ 223 × 8", "→ PFN 0x8A420"),
+    ]
+    boxes = []
+    for x, tone, title, base, idx, out in hops:
+        b = fig.node(x, 34, 136, 114, tone, [
+            (title, "name"),
+            (base, "mono"),
+            (idx, "mono"),
+            (out, "monob"),
+        ], layout="center", kind="card", r=10)
+        boxes.append(b)
+
+    final_pa = fig.node(628, 34, 144, 114, "green", [
+        ("Physical Addr", "name"),
+        ("0x8A42_0000", "mono"),
+        ("| offset 0xF01", "mono"),
+        ("= 0x8A42_0F01", "monob"),
+    ], layout="center", kind="mid", r=10)
+
+    for left_b, right_b, tone in zip(boxes, boxes[1:] + [final_pa], ["blue", "purple", "teal", "amber"]):
+        fig.wire([(left_b.r + 2, left_b.cy), (right_b.x - 2, right_b.cy)], tone, width=2.0)
+
+    # Panel 2: Complete 64-bit Leaf PTE Register Bit-Field Layout with | | | | bit cells & ·· ellipsis
+    fig.heading(28, 184, "2. complete 64-bit x86-64 leaf PTE bit layout (PTE = 0x8000_0000_8A42_0067)")
+
+    # Each entry: (width, tone, kind, bits_hdr, subcells_list, group_label)
+    pte_fields = [
+        (40,  "red",    "mid",   "63",    ["1"],                           "NX"),
+        (74,  "gray",   "tonal", "62:52", ["0", "··", "0"],                "Ign / PK"),
+        (228, "green",  "mid",   "51:12", ["0", "··", "0x000_8A420", "··", "0"], "Physical Frame Number (40b)"),
+        (56,  "gray",   "tonal", "11:9",  ["0", "0", "0"],                 "AVL"),
+        (34,  "teal",   "tonal", "8",     ["0"],                           "G"),
+        (40,  "amber",  "tonal", "7",     ["0"],                           "PAT"),
+        (36,  "purple", "mid",   "6",     ["1"],                           "D"),
+        (36,  "purple", "mid",   "5",     ["1"],                           "A"),
+        (58,  "gray",   "tonal", "4:3",   ["0", "0"],                      "PCD/WT"),
+        (42,  "blue",   "mid",   "2",     ["1"],                           "U/S"),
+        (42,  "blue",   "mid",   "1",     ["1"],                           "R/W"),
+        (36,  "teal",   "mid",   "0",     ["1"],                           "P"),
+    ]
+    # Check sum: 40+74+228+56+34+40+36+36+58+42+42+36 + 11*2 = 722 + 22 = 744!
+    cx = 28
+    for w, tone, kind, bits_hdr, subcells, grp_lbl in pte_fields:
+        fig.text(cx + w / 2, 214, bits_hdr, "small", "middle", fit=(cx - 2, cx + w + 2))
+        fill_cls = f"m-{tone}" if kind == "mid" else f"c-{tone}"
+        fig.rect(cx, 222, w, 36, fill_cls, r=5)
+        # Allocate subcell widths proportionally (wider for 0x000_8A420)
+        if len(subcells) == 5:
+            sws = [22, 26, 132, 26, 22]
+        elif len(subcells) == 3 and "··" in subcells:
+            sws = [22, 30, 22]
+        else:
+            sws = [w / len(subcells)] * len(subcells)
+        scx = cx
+        for idx, (slbl, sw) in enumerate(zip(subcells, sws)):
+            if idx > 0:
+                fig.rule(scx, 225, scx, 255, tone, width=0.9)
+            scls = "monob" if slbl != "··" else "small"
+            fig.text(scx + sw / 2, 244, slbl, scls, "middle", fit=(scx - 2, scx + sw + 2))
+            scx += sw
+        # Group bracket + name below
+        fig.rule(cx, 268, cx + w, 268, tone, width=1.2)
+        fig.rule(cx, 263, cx, 268, tone, width=1.2)
+        fig.rule(cx + w, 263, cx + w, 268, tone, width=1.2)
+        fig.text(cx + w / 2, 285, grp_lbl, "small", "middle", tone=tone if kind == "mid" else None, fit=(cx - 4, cx + w + 4))
+        cx += w + 2
+
+    fig.text(400, 324, "Low 12 bits = 0x067 (P=1, R/W=1, U/S=1, A=1, D=1)  ·  Bit 63 = 1 (NX)  ·  Frame Base = PTE & 0x000F_FFFF_FFFF_F000", "sub", "middle")
+    fig.text(400, 348, "Every 4 KiB-aligned table base ends in 0x000, so bits [11:0] store flags while Index × 8 fits directly into those low three hex digits.", "small", "middle")
+
+    fig.save([
+        "All 64 bits of the leaf Page Table Entry (PTE) are shown: bits 51:12 store the 40-bit Physical Frame Number (0x8A420), bits 11:0 encode permissions and activity flags, and bit 63 enforces No-Execute.",
+        "Concatenating the masked frame base (0x8A42_0000) with the unmodified 12-bit offset (0xF01) yields physical address 0x0000_0000_8A42_0F01.",
+    ])
+
+
+@figure
+def ch07_tlb_reach():
+    fig = Fig("ch07_tlb_reach", "Figure 7-6. Measured memory access latency versus working-set size (Listing 7-5) and huge-page TLB reach.", 396)
+
+    # Panel 1: Quantitative Horizontal Bar Chart from code/out/ch07_tlb.out
+    fig.heading(28, 16, "1. measured latency per page-strided access (Listing 7-5, 4 KiB pages)")
+
+    rows = [
+        ("1 page (4 KiB)",        1.7,  "green", "L1 dTLB hit"),
+        ("16 pages (64 KiB)",     1.7,  "green", None),
+        ("64 pages (256 KiB)",    1.8,  "green", None),
+        ("256 pages (1 MiB)",     2.5,  "blue",  "L2 STLB hit"),
+        ("1,024 pages (4 MiB)",   4.7,  "blue",  None),
+        ("4,096 pages (16 MiB)",  8.9,  "amber", "Page walk (L1/L2 cache)"),
+        ("16,384 pages (64 MiB)", 10.6, "amber", None),
+        ("65,536 pages (256 MiB)",13.4, "red",   "Page walk (DRAM miss)"),
+    ]
+    x0 = 204
+    plot_w = 356
+    max_ns = 15.0
+
+    # Grid lines at 0, 5, 10, 15 ns
+    for tick in (0, 5, 10, 15):
+        gx = x0 + (tick / max_ns) * plot_w
+        fig.rule(gx, 32, gx, 240, "gray", width=1.0, dash="3 3" if tick > 0 else None)
+        fig.text(gx, 255, f"{tick} ns", "small", "middle")
+
+    for i, (label, ns, tone, regime) in enumerate(rows):
+        y = 36 + i * 25
+        fig.text(x0 - 10, y + 13, label, "small", "end", fit=(24, x0 - 6))
+        bw = (ns / max_ns) * plot_w
+        fig.rect(x0, y, bw, 18, f"a-{tone}", r=4)
+        fig.text(x0 + bw + 8, y + 13, f"{ns:.1f} ns", "monob", "start", tone=tone)
+        if regime:
+            fig.text(770, y + 13, regime, "small", "end", tone=tone, fit=(600, 774))
+
+    # Panel 2: 4 KiB vs 2 MiB Huge Pages
+    fig.heading(28, 286, "2. expanding TLB reach with 2 MiB huge pages (PDE.PS = 1)")
+
+    fig.node(28, 302, 358, 84, "amber", [
+        ("4 KiB pages (4-level walk)", "name"),
+        ("PML4 → PDPT → PD → PT (12-bit offset)", "small"),
+        ("1,536 × 4 KiB = 6 MiB reach", "monob"),
+    ], icon="table_rows", kind="tonal", r=12, icon_size=30)
+
+    fig.node(414, 302, 358, 84, "green", [
+        ("2 MiB huge pages (3-level walk)", "name"),
+        ("PML4 → PDPT → PD (21-bit offset, skips PT)", "small"),
+        ("1,536 × 2 MiB = 3 GiB reach (512×)", "monob"),
+    ], icon="bolt", kind="tonal", r=12, icon_size=30)
+
+    fig.save([
+        "Access latency remains flat (~1.7 ns) within L1 dTLB reach, climbs through L2 STLB capacity, and jumps above 8.9 ns once 4-level walks dominate.",
+        "Setting PDE.PS = 1 maps 2 MiB huge pages, eliminating the L1 PT lookup and increasing L2 STLB coverage by 512× (from 6 MiB to 3 GiB).",
+    ])
+
+
+@figure
+def ch07_page_fault_handling():
+    fig = Fig("ch07_page_fault_handling", "Figure 7-7. Page-fault exception path and kernel VMA resolution dispositions.", 336)
+
+    # Top: Hardware Fault Trigger
+    trigger = fig.node(28, 12, 744, 78, "red", [
+        ("MMU Exception (#PF): PTE.Present == 0 or Permission Violation (R/W, U/S, NX)", "name"),
+        ("Hardware latches faulting VA in CR2 (FAR_EL1 on ARM64), pushes error code, and traps to kernel", "sub"),
+    ], icon="warning", kind="tonal", r=12, icon_size=34)
+
+    vma_check = fig.node(160, 116, 480, 56, "blue", [
+        ("Kernel VMA Tree Lookup (current->mm)", "name"),
+        ("classify faulting VA against registered vm_area_struct intervals", "sub"),
+    ], icon="table_rows", kind="card", r=10, icon_size=28)
+
+    fig.wire([(trigger.cx, trigger.b + 2), (vma_check.cx, vma_check.y - 2)], "red", width=2.2)
+
+    # Bottom: Four Formal Kernel Dispositions
+    outcomes = [
+        (28,  "green",  "1. Zero-Fill",         "valid anonymous VMA",   "allocate & zero 4 KiB", "P = 1, retry"),
+        (218, "blue",   "2. Demand Paging",     "valid file-backed VMA", "read page from disk",   "P = 1, retry"),
+        (408, "purple", "3. Copy-on-Write",     "shared VMA, R/W = 0",   "copy to private frame", "R/W = 1, retry"),
+        (598, "red",    "4. Protection Fault",  "unmapped or PROT_NONE", "illegal access / guard","SIGSEGV / SIGBUS"),
+    ]
+    for x, tone, title, l1, l2, l3 in outcomes:
+        box = fig.cell(x, 206, 174, 112, tone, [
+            (title, "name"),
+            (l1, "small"),
+            (l2, "small"),
+            (l3, "monob"),
+        ], kind="tonal" if tone != "red" else "mid", r=10)
+        fig.wire([(vma_check.cx, vma_check.b + 2), (vma_check.cx, 188), (box.cx, 188), (box.cx, box.y - 2)], tone, width=1.8)
+
+    fig.save([
+        "Dispositions 1 through 3 resolve faults transparently by attaching or duplicating a physical frame and restarting the faulting instruction.",
+        "Disposition 4 occurs on unmapped addresses, permission violations, or PROT_NONE guard pages, terminating the process via SIGSEGV (Linux) or SIGBUS (macOS).",
     ])
 
 

@@ -79,9 +79,10 @@
 - [**7. Virtual Memory and the Architecture of Address Translation**](ch07-virtual-memory.md#7-virtual-memory-and-the-architecture-of-address-translation)
   - [7.1 Page-Based Abstraction and Isolation](ch07-virtual-memory.md#71-page-based-abstraction-and-isolation)
   - [7.2 Hierarchical Translation and the TLB](ch07-virtual-memory.md#72-hierarchical-translation-and-the-tlb)
-    - [7.2.1 Canonical Addresses and Multi-Level Radix Decomposition](ch07-virtual-memory.md#721-canonical-addresses-and-multi-level-radix-decomposition)
-    - [7.2.2 Hand-Calculated 4-Level Address Translation Walkthrough](ch07-virtual-memory.md#722-hand-calculated-4-level-address-translation-walkthrough)
-    - [7.2.3 The Translation Lookaside Buffer (TLB), Huge Pages, and Shootdowns](ch07-virtual-memory.md#723-the-translation-lookaside-buffer-tlb-huge-pages-and-shootdowns)
+    - [7.2.1 Address Decomposition and Hardware Translation](ch07-virtual-memory.md#721-address-decomposition-and-hardware-translation)
+    - [7.2.2 Multi-Level Radix Page Tables and Canonical Addressing](ch07-virtual-memory.md#722-multi-level-radix-page-tables-and-canonical-addressing)
+    - [7.2.3 Worked 4-Level Address Translation Walkthrough](ch07-virtual-memory.md#723-worked-4-level-address-translation-walkthrough)
+    - [7.2.4 The Translation Lookaside Buffer, Huge Pages, and Shootdowns](ch07-virtual-memory.md#724-the-translation-lookaside-buffer-huge-pages-and-shootdowns)
   - [7.3 Fault Handling and Memory Management Strategies](ch07-virtual-memory.md#73-fault-handling-and-memory-management-strategies)
     - [7.3.1 The `mmap` and `mprotect` System Call Interface](ch07-virtual-memory.md#731-the-mmap-and-mprotect-system-call-interface)
 - [**8. Memory Allocation and Management Strategies**](ch08-allocation.md#8-memory-allocation-and-management-strategies)
@@ -241,7 +242,7 @@ A thematic, alphabetical cross-reference linking systems topics directly to thei
   - Page-Based Isolation: [§7.1](ch07-virtual-memory.md#71-page-based-abstraction-and-isolation)
   - Architectural Comparison: [§19.12.1](ch19-interview-problems.md#19121-process-isolation-vs-thread-concurrency-topology)
 - **Address Translation (Hand Calculation)**: Complete step-by-step mathematical walk of a 48-bit canonical virtual address through PML4, PDPT, PD, and PT levels to physical address assembly.
-  - Numerical Walkthrough & Invariants: [§7.2.2](ch07-virtual-memory.md#722-hand-calculated-4-level-address-translation-walkthrough)
+  - Numerical Walkthrough & Invariants: [§7.2.3](ch07-virtual-memory.md#723-worked-4-level-address-translation-walkthrough)
 - **Anonymous Mapping (`MAP_ANON | MAP_PRIVATE`)**: Kernel allocation of zero-initialized demand pages unbacked by physical disk files.
   - Page Fault Dynamics: [§7.1](ch07-virtual-memory.md#71-page-based-abstraction-and-isolation)
   - Heap Arena Construction: [§8.2.3](ch08-allocation.md#823-level-3-the-raw-byte-bump-allocator-mmap-backed), [§8.3](ch08-allocation.md#83-explicit-management-free-list-allocation)
@@ -328,7 +329,7 @@ A thematic, alphabetical cross-reference linking systems topics directly to thei
 - **Guard Pages (`PROT_NONE`)**: Virtual memory pages configured with zero permissions to detect stack overflows or buffer out-of-bounds accesses.
   - Protection Mechanics: [§7.3](ch07-virtual-memory.md#73-fault-handling-and-memory-management-strategies)
 - **Huge Pages**: 2 MiB / 1 GiB virtual page translations designed to maximize TLB coverage and eliminate translation latency.
-  - Hardware TLB Reach: [§7.2.3](ch07-virtual-memory.md#723-the-translation-lookaside-buffer-tlb-huge-pages-and-shootdowns)
+  - Hardware TLB Reach: [§7.2.4](ch07-virtual-memory.md#724-the-translation-lookaside-buffer-huge-pages-and-shootdowns)
 - **Interrupt Descriptor Table (IDT) & Top/Bottom-Half Handlers**: Hardware vector dispatch table, `TSS.rsp0` trapframe saving, `hardirq` masking, and `softirq` deferred execution.
   - Architectural Mechanics: [§2.4.2](ch02-the-machine.md#242-vector-tables-kernel-stack-switching-and-trapframe-construction), [§2.4.3](ch02-the-machine.md#243-top-half-and-bottom-half-decomposition-and-eoi-lifecycle)
 - **Inter-Process Communication (IPC)**: Exchanging state across hardware isolation boundaries via pipes, sockets, and shared memory.
