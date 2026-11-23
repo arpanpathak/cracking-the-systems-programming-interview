@@ -335,7 +335,7 @@ def ch02_machine():
 
 @figure
 def ch02_privilege():
-    fig = Fig("ch02_privilege", "Figure 2-2. Two privilege levels; every trap crosses the boundary.", 300)
+    fig = Fig("ch02_privilege", "Figure 2-4. Two privilege levels; every trap crosses the boundary.", 300)
 
     fig.node(28, 0, 744, 120, "blue")
     fig.tile(44, 12, "person", "blue", 28)
@@ -368,7 +368,7 @@ def ch02_privilege():
 
 @figure
 def ch02_stack_frame():
-    fig = Fig("ch02_stack_frame", "Figure 2-3. Function Activation Record: Call Stack Frame Layout and Register Pointers", 404)
+    fig = Fig("ch02_stack_frame", "Figure 2-2. Function Activation Record: Call Stack Frame Layout and Register Pointers", 404)
 
     fig.text(28, 14, "high memory", "small")
     fig.wire([(46, 22), (46, 376)], "gray", width=1.6)
@@ -432,7 +432,7 @@ def ch02_stack_frame():
 
 @figure
 def ch02_interrupt_flow():
-    fig = Fig("ch02_interrupt_flow", "Figure 2-7. End-to-End Hardware Interrupt Lifecycle: Device Signal, Top-Half hardirq, EOI, and Bottom-Half softirq.", 384)
+    fig = Fig("ch02_interrupt_flow", "Figure 2-8. End-to-End Hardware Interrupt Lifecycle: Device Signal, Top-Half hardirq, EOI, and Bottom-Half softirq.", 384)
 
     # Top row: Hardware delivery pipeline
     dev = fig.node(28, 16, 168, 102, "amber", [
@@ -2741,7 +2741,7 @@ def ch17_numa():
 
 @figure
 def ch17_false_sharing():
-    fig = Fig("ch17_false_sharing", "Figure 17-2. False sharing: two independent counters, one contested cache line.", 198)
+    fig = Fig("ch17_false_sharing", "Figure 17-3. False sharing: two independent counters, one contested cache line.", 198)
 
     fig.heading(28, 16, "unpadded")
     fig.rect(28, 28, 352, 58, "c-red", r=12)
@@ -3061,7 +3061,7 @@ def ch19_lru_cache():
 def ch02_x86_apic():
     fig = Fig(
         "ch02_x86_apic",
-        "Figure 2-4. x86-64 Interrupt Controller Hardware Topology: Legacy IO-APIC, PCIe MSI-X Bypass, and Per-Core Local APICs.",
+        "Figure 2-5. x86-64 Interrupt Controller Hardware Topology: Legacy IO-APIC, PCIe MSI-X Bypass, and Per-Core Local APICs.",
         396,
     )
 
@@ -3160,7 +3160,7 @@ def ch02_x86_apic():
 def ch02_arm_gic():
     fig = Fig(
         "ch02_arm_gic",
-        "Figure 2-5. ARM64 Generic Interrupt Controller (GICv3 / GICv4): Distributor, ITS, Per-Core Redistributor, and CPU Interface.",
+        "Figure 2-6. ARM64 Generic Interrupt Controller (GICv3 / GICv4): Distributor, ITS, Per-Core Redistributor, and CPU Interface.",
         366,
     )
 
@@ -3262,7 +3262,7 @@ def ch02_arm_gic():
 def ch02_idt_trapframe():
     fig = Fig(
         "ch02_idt_trapframe",
-        "Figure 2-6. x86-64 Hardware Vector Dispatch: IDTR Lookup, TSS Kernel Stack Switch, and Trapframe Construction.",
+        "Figure 2-7. x86-64 Hardware Vector Dispatch: IDTR Lookup, TSS Kernel Stack Switch, and Trapframe Construction.",
         396,
     )
 
@@ -3394,6 +3394,416 @@ def ch16_ept_walk():
     fig.save([
         "A cold nested page walk multiplies 4 guest levels by 4 EPT levels plus 4 EPT lookups for the final data frame (up to 24 DRAM reads vs. 4 native).",
         "Using 2 MiB huge pages in both guest and host EPT collapses the 2D walk drastically and expands TLB coverage.",
+    ])
+
+
+@figure
+def ch10_signal_masks():
+    fig = Fig("ch10_signal_masks", "Figure 10-2. Per-thread pending and blocked signal bitmasks: deliverable = pending & ~blocked.", 316)
+
+    # Bit-cell helper for 32-bit standard POSIX signal mask
+    cols = [
+        ("1",  "HUP",  "0", "0", "0", 52),
+        ("2",  "INT",  "1", "0", "1", 52),
+        ("9",  "KILL", "0", "0", "0", 52),
+        ("10", "USR1", "1", "1", "0", 54),
+        ("15", "TERM", "0", "0", "0", 54),
+        ("17", "CHLD", "1", "0", "1", 54),
+        ("19", "STOP", "0", "0", "0", 54),
+        ("··", "··",   "··","··","··", 62),
+        ("31", "SYS",  "0", "0", "0", 52),
+    ]
+    x0 = 266
+    # Column headers (signal numbers & names)
+    cx = x0
+    for num, name, _, _, _, w in cols:
+        fig.text(cx + w / 2, 18, num, "small", "middle", fit=(cx - 2, cx + w + 2))
+        fig.text(cx + w / 2, 34, name, "small", "middle", tone="red" if name in ("KILL", "STOP") else None, fit=(cx - 2, cx + w + 2))
+        cx += w
+
+    def draw_row(y, title, sub, tone, idx_in_col):
+        fig.lines(x0 - 14, y + 20, [(title, "name"), (sub, "small")], "end", fit=(24, x0 - 10))
+        total_w = sum(c[5] for c in cols)
+        fig.rect(x0, y, total_w, 40, f"c-{tone}", r=7)
+        cx = x0
+        for i, col in enumerate(cols):
+            val, w = col[idx_in_col], col[5]
+            if i > 0:
+                fig.rule(cx, y + 3, cx, y + 37, tone, width=1.0)
+            if val == "1":
+                fig.rect(cx + 3, y + 3, w - 6, 34, f"m-{tone}", r=5)
+            fig.text(cx + w / 2, y + 24, val, "monob" if val != "··" else "small", "middle",
+                     tone=tone if val == "1" else None, fit=(cx - 2, cx + w + 2))
+            cx += w
+
+    draw_row(48,  "pending",     "set on arrival",    "amber", 2)
+    draw_row(106, "blocked",     "sigprocmask()",     "purple", 3)
+    fig.rule(x0, 160, x0 + sum(c[5] for c in cols), 160, "gray", width=1.4)
+    draw_row(172, "deliverable", "pending & ~blocked","green", 4)
+
+    # Callout strip explaining coalescing & uncatchable signals
+    fig.node(28, 232, 360, 74, "amber", [
+        ("Coalescing (1 bit per signal)", "name"),
+        ("5 SIGCHLD arrivals still set one bit (17 = 1);", "small"),
+        ("handler must loop waitpid(-1, ..., WNOHANG).", "small"),
+    ], kind="tonal", r=10)
+
+    fig.node(412, 232, 360, 74, "red", [
+        ("SIGKILL (9) & SIGSTOP (19)", "name"),
+        ("Kernel ignores attempts to set bits 9 or 19", "small"),
+        ("in blocked; process control stays unconditional.", "small"),
+    ], kind="tonal", r=10)
+
+    fig.save([
+        "Standard POSIX signals (1..31) use a single bit per signal number rather than a queue, so repeated arrivals coalesce into one pending bit.",
+        "Here SIGUSR1 (10) is pending but deferred because bit 10 is masked in blocked; SIGINT (2) and SIGCHLD (17) are deliverable on return to Ring 3.",
+    ])
+
+
+@figure
+def ch12_durability_path():
+    fig = Fig("ch12_durability_path", "Figure 12-3. Write-to-durability path across volatile RAM and the 4-step crash-safe atomic rename protocol.", 352)
+
+    # Top panel: Volatile vs Non-Volatile write path
+    fig.heading(28, 16, "1. write() returns at volatile RAM; only fsync() flushes to stable media")
+
+    b1 = fig.node(28, 34, 152, 92, "blue", [
+        ("User Buffer", "name"),
+        ("write(fd, buf, n)", "mono"),
+        ("returns here", "small"),
+    ], layout="center", kind="card", r=10)
+
+    b2 = fig.node(214, 34, 186, 92, "amber", [
+        ("Kernel Page Cache", "name"),
+        ("volatile DRAM", "sub"),
+        ("lost on power cut", "small"),
+    ], layout="center", kind="tonal", r=10)
+
+    b3 = fig.node(434, 34, 156, 92, "purple", [
+        ("Metadata Journal", "name"),
+        ("write-ahead log", "sub"),
+        ("fsync() barrier", "small"),
+    ], layout="center", kind="card", r=10)
+
+    b4 = fig.node(624, 34, 148, 92, "green", [
+        ("NVMe / SSD", "name"),
+        ("stable media", "sub"),
+        ("flush ACK", "small"),
+    ], layout="center", kind="mid", r=10)
+
+    fig.wire([(b1.r + 2, b1.cy), (b2.x - 2, b2.cy)], "blue", width=2.0)
+    fig.wire([(b2.r + 2, b2.cy), (b3.x - 2, b3.cy)], "purple", width=2.0)
+    fig.wire([(b3.r + 2, b3.cy), (b4.x - 2, b4.cy)], "green", width=2.0)
+
+    # Dashed boundary separating volatile RAM from durable storage
+    fig.rule(417, 26, 417, 138, "red", width=1.6, dash="5 4")
+    fig.text(417, 154, "power-loss boundary (fsync required to cross)", "small", "middle", tone="red")
+
+    # Bottom panel: 4-step crash-safe atomic file replacement
+    fig.heading(28, 196, "2. crash-safe atomic file replacement protocol")
+
+    steps = [
+        (28,  "blue",   "1. write temp",  "write(tmp_fd, ...)",  "new payload in", "config.tmp"),
+        (218, "purple", "2. fsync temp",  "fsync(tmp_fd)",       "flush data &",   "temp inode"),
+        (408, "teal",   "3. rename()",    "rename(tmp, cfg)",    "atomic swap of", "directory entry"),
+        (598, "green",  "4. fsync dir",   "fsync(dir_fd)",       "persist updated","parent directory"),
+    ]
+    s_boxes = []
+    for x, tone, title, call, l1, l2 in steps:
+        sb = fig.cell(x, 214, 174, 114, tone, [
+            (title, "name"),
+            (call, "mono"),
+            (l1, "small"),
+            (l2, "small"),
+        ], kind="tonal" if tone != "green" else "mid", r=10)
+        s_boxes.append(sb)
+
+    for lb, rb, tone in zip(s_boxes[:-1], s_boxes[1:], ["blue", "purple", "teal"]):
+        fig.wire([(lb.r + 2, lb.cy), (rb.x - 2, rb.cy)], tone, width=2.0)
+
+    fig.save([
+        "A successful write(2) only copies bytes into the kernel page cache in volatile DRAM; fsync(2) flushes dirty data and metadata across the power-loss boundary.",
+        "Crash-safe updates must fsync the temporary file before atomic rename() and then fsync the parent directory so the new directory entry survives a crash.",
+    ])
+
+
+@figure
+def ch13_poll_vs_epoll():
+    fig = Fig("ch13_poll_vs_epoll", "Figure 13-2. Stateless poll() O(N) full-array scan versus stateful epoll / kqueue O(K) ready-queue delivery.", 348)
+
+    # Left column: poll() O(N)
+    fig.node(28, 10, 358, 326, "amber", kind="tonal", r=12)
+    fig.text(207, 34, "stateless: poll() · O(N) per wait", "name", "middle", tone="amber")
+
+    p1 = fig.node(46, 52, 322, 68, "amber", [
+        ("User Space: pollfd[N] array", "name"),
+        ("copy all N descriptors into Ring 0 on every call", "small"),
+    ], layout="center", kind="card", r=8)
+
+    p2 = fig.node(46, 148, 322, 74, "amber", [
+        ("Kernel: linear scan of all N sockets", "name"),
+        ("poll each fd; register wait-queue hooks", "small"),
+        ("N = 50,000 idle sockets scanned every loop", "small"),
+    ], layout="center", kind="card", r=8)
+
+    p3 = fig.node(46, 250, 322, 68, "red", [
+        ("User Space: scan all N revents", "name"),
+        ("walk 50,000 entries to find K = 10 active", "small"),
+    ], layout="center", kind="card", r=8, text_tone="red")
+
+    fig.wire([(p1.cx, p1.b + 2), (p2.cx, p2.y - 2)], "amber", width=2.0)
+    fig.wire([(p2.cx, p2.b + 2), (p3.cx, p3.y - 2)], "red", width=2.0)
+
+    # Right column: epoll / kqueue O(K)
+    fig.node(414, 10, 358, 326, "green", kind="tonal", r=12)
+    fig.text(593, 34, "stateful: epoll / kqueue · O(K) ready", "name", "middle", tone="green")
+
+    e1 = fig.node(432, 52, 322, 68, "blue", [
+        ("Register once: epoll_ctl() / kevent()", "name"),
+        ("kernel stores N sockets in red-black tree", "small"),
+    ], layout="center", kind="card", r=8)
+
+    e2 = fig.node(432, 148, 322, 74, "teal", [
+        ("NIC Interrupt → O(1) Ready List", "name"),
+        ("packet arrival appends active socket directly", "small"),
+        ("idle sockets are never scanned", "small"),
+    ], layout="center", kind="card", r=8)
+
+    e3 = fig.node(432, 250, 322, 68, "green", [
+        ("epoll_wait() returns K ready events", "name"),
+        ("copies & dispatches only K = 10 active fds", "small"),
+    ], layout="center", kind="mid", r=8)
+
+    fig.wire([(e1.cx, e1.b + 2), (e2.cx, e2.y - 2)], "blue", width=2.0)
+    fig.wire([(e2.cx, e2.b + 2), (e3.cx, e3.y - 2)], "green", width=2.0)
+
+    fig.save([
+        "Because poll() is stateless, both user space and the kernel pay O(N) work proportional to total open connections on every iteration.",
+        "Stateful epoll and kqueue keep the N-descriptor interest set inside the kernel and wake the loop with only the K sockets that actually received events.",
+    ])
+
+
+@figure
+def ch15_session_hierarchy():
+    fig = Fig("ch15_session_hierarchy", "Figure 15-2. Unix session, process group, and controlling terminal hierarchy before and after detachment.", 316)
+
+    # Left: Before detachment (attached to interactive shell session)
+    fig.node(28, 10, 358, 294, "amber", kind="tonal", r=12)
+    fig.text(207, 34, "before: interactive shell session", "name", "middle", tone="amber")
+
+    tty = fig.node(48, 52, 318, 48, "red", [
+        ("Controlling Terminal (/dev/ttys001)", "name"),
+        ("sends SIGHUP on logout, SIGINT on Ctrl-C", "small"),
+    ], layout="center", kind="card", r=8, text_tone="red")
+
+    s1 = fig.node(48, 122, 318, 164, "amber", kind="card", r=10)
+    fig.text(207, 144, "Session SID = 100 (leader: bash)", "name", "middle", tone="amber")
+    fig.cell(64, 160, 136, 108, "gray", [
+        ("PGID 100", "name"),
+        ("PID 100", "mono"),
+        ("bash shell", "small"),
+    ], kind="tonal", r=8)
+    fig.cell(214, 160, 136, 108, "amber", [
+        ("PGID 200", "name"),
+        ("PID 200", "mono"),
+        ("launched proc", "small"),
+    ], kind="mid", r=8)
+    fig.wire([(tty.cx, tty.b + 2), (s1.cx, s1.y - 2)], "red", width=2.0)
+
+    # Right: After fork -> setsid -> fork
+    fig.node(414, 10, 358, 294, "green", kind="tonal", r=12)
+    fig.text(593, 34, "after: fork() → setsid() → fork()", "name", "middle", tone="green")
+
+    notty = fig.node(434, 52, 318, 48, "gray", [
+        ("No Controlling Terminal", "name"),
+        ("isolated from shell SIGHUP / SIGINT", "small"),
+    ], layout="center", kind="dashed", r=8)
+
+    s2 = fig.node(434, 122, 318, 164, "green", kind="card", r=10)
+    fig.text(593, 144, "New Session SID = 201 · PGID = 201", "name", "middle", tone="green")
+    fig.cell(450, 160, 136, 108, "gray", [
+        ("PID 201", "mono"),
+        ("session leader", "small"),
+        ("(exits)", "small"),
+    ], kind="dashed", r=8)
+    fig.cell(600, 160, 136, 108, "green", [
+        ("PID 202", "monob"),
+        ("daemon", "name"),
+        ("non-leader", "small"),
+    ], kind="mid", r=8)
+    fig.wire([(588, 214), (598, 214)], "green", width=1.8)
+
+    fig.save([
+        "The first fork() ensures the child is not a process group leader so setsid() succeeds and creates a new session with no controlling terminal.",
+        "The second fork() exits session leader PID 201 so the daemon (PID 202) can never inadvertently re-acquire a controlling terminal by opening a TTY.",
+    ])
+
+
+@figure
+def ch17_mesi_states():
+    fig = Fig("ch17_mesi_states", "Figure 17-2. MESI cache-coherency four-state protocol per 64-byte cache line.", 312)
+
+    m_box = fig.node(54,  28,  296, 106, "red", [
+        ("M · Modified", "name"),
+        ("dirty copy, owned exclusively", "sub"),
+        ("DRAM is stale; must write back", "small"),
+    ], icon="edit_note", kind="tonal", r=12, icon_size=30)
+
+    e_box = fig.node(450, 28,  296, 106, "green", [
+        ("E · Exclusive", "name"),
+        ("clean copy, owned exclusively", "sub"),
+        ("local store upgrades E → M silently", "small"),
+    ], icon="lock", kind="tonal", r=12, icon_size=30)
+
+    s_box = fig.node(450, 186, 296, 106, "blue", [
+        ("S · Shared", "name"),
+        ("clean copy in 1+ sibling caches", "sub"),
+        ("store requires RFO invalidation", "small"),
+    ], icon="layers", kind="tonal", r=12, icon_size=30)
+
+    i_box = fig.node(54,  186, 296, 106, "gray", [
+        ("I · Invalid", "name"),
+        ("line absent or invalidated", "sub"),
+        ("next access misses to bus / DRAM", "small"),
+    ], icon="block", kind="card", r=12, icon_size=30)
+
+    # Clean transitions without overlap
+    fig.wire([(e_box.x - 2, 74), (m_box.r + 2, 74)], "red", width=2.0)
+    fig.label(400, 62, "local write", tone="red", cls="small")
+
+    fig.wire([(i_box.r + 2, 238), (s_box.x - 2, 238)], "blue", width=2.0)
+    fig.label(400, 226, "read (shared)", tone="blue", cls="small")
+
+    fig.wire([(s_box.x - 2, 206), (m_box.r + 2, 114)], "amber", width=2.0)
+    fig.label(400, 158, "write (RFO inv)", tone="amber", cls="small")
+
+    fig.wire([(m_box.cx, m_box.b + 2), (i_box.cx, i_box.y - 2)], "gray", dash=True, width=1.8)
+    fig.label(m_box.cx, 160, "remote RFO", tone="gray", cls="small")
+
+    fig.wire([(e_box.cx, e_box.b + 2), (s_box.cx, s_box.y - 2)], "blue", dash=True, width=1.8)
+    fig.label(e_box.cx, 160, "remote read", tone="blue", cls="small")
+
+    fig.save([
+        "Writing to a Shared (S) cache line forces a Read-For-Ownership (RFO) broadcast across the interconnect to transition every sibling core's copy to Invalid (I).",
+        "Under false sharing, two cores alternate RFO invalidations on the same 64-byte line, bouncing it continuously between Modified (M) and Invalid (I).",
+    ])
+
+
+@figure
+def ch18_flamegraph():
+    fig = Fig("ch18_flamegraph", "Figure 18-2. Anatomy of a CPU flame graph: Y-axis is call-stack depth; X-axis is sample proportion.", 316)
+
+    # Y-axis arrow on left
+    fig.wire([(46, 268), (46, 42)], "gray", width=1.8)
+    fig.text(32, 155, "stack depth (Y)", "small", "middle", rotate=-90)
+
+    # Flame graph stacked horizontal bars (bottom = main, top = leaf on-CPU)
+    # Row 0 (bottom): main() 100% (x=76..768, w=692)
+    fig.cell(76, 232, 692, 34, "gray", [("main() · 100% of samples", "monob")], kind="tonal", r=5)
+
+    # Row 1: handle_request() 76% (w=526) | background_gc() 24% (w=162)
+    fig.cell(76, 194, 526, 34, "blue", [("handle_request() · 76%", "monob")], kind="mid", r=5)
+    fig.cell(606, 194, 162, 34, "teal", [("bg_flush() · 24%", "mono")], kind="mid", r=5)
+
+    # Row 2: parse_json() 46% (w=318) | query_index() 30% (w=204) | write() 24% (w=162)
+    fig.cell(76, 156, 318, 34, "amber", [("parse_json() · 46%", "monob")], kind="mid", r=5)
+    fig.cell(398, 156, 204, 34, "purple", [("query_index() · 30%", "mono")], kind="mid", r=5)
+    fig.cell(606, 156, 162, 34, "teal", [("fsync() · 24%", "mono")], kind="tonal", r=5)
+
+    # Row 3 (top plateaus = hot leaf functions): utf8_validate() 38% (w=262) | alloc() 8% (w=52) | btree_probe() 26% (w=178)
+    fig.cell(76, 118, 262, 34, "red", [("utf8_validate() · 38%", "monob")], kind="mid", r=5)
+    fig.cell(342, 118, 52, 34, "amber", [("alloc", "small")], kind="tonal", r=5)
+    fig.cell(398, 118, 178, 34, "purple", [("btree_probe() · 26%", "mono")], kind="tonal", r=5)
+
+    # Callout pointing to the wide hot plateau
+    fig.node(100, 26, 368, 56, "red", [
+        ("wide flat top plateau = primary CPU bottleneck", "name"),
+        ("utf8_validate() runs directly on-CPU in 38% of samples", "small"),
+    ], layout="center", kind="card", r=8, text_tone="red")
+    fig.wire([(207, 84), (207, 116)], "red", width=2.0)
+
+    # X-axis arrow at bottom
+    fig.wire([(76, 286), (768, 286)], "gray", width=1.8)
+    fig.text(422, 304, "proportion of total profiler samples (sorted alphabetically, not chronological time)", "small", "middle")
+
+    fig.save([
+        "Read a flame graph from bottom to top to trace callers, and scan the top edges for wide plateaus representing leaf functions consuming the most CPU cycles.",
+        "Because frames are merged alphabetically by function name, horizontal width measures total CPU share rather than execution order.",
+    ])
+
+
+@figure
+def ch02_cache_blocks():
+    fig = Fig("ch02_cache_blocks", "Figure 2-3. Multi-core cache hierarchy and inside a 64-byte set-associative cache line block.", 396)
+
+    # Panel 1: Multi-Core Cache Hierarchy (Core 0 + Core 1 -> Shared L3 -> DRAM)
+    fig.heading(28, 16, "1. multi-core cache hierarchy (private L1/L2 per core, shared L3, off-chip DRAM)")
+
+    # Core 0
+    fig.node(28, 30, 356, 118, "blue", kind="tonal", r=10)
+    fig.text(206, 48, "Core 0 (private caches)", "name", "middle", tone="blue")
+    fig.cell(42, 58, 158, 34, "blue", [("L1i · 32 KiB (~1 ns)", "small")], kind="card", r=6)
+    fig.cell(212, 58, 158, 34, "blue", [("L1d · 32 KiB (~1 ns)", "small")], kind="card", r=6)
+    fig.cell(42, 102, 328, 34, "purple", [("L2 Unified · 512 KiB–2 MiB (~4 ns)", "small")], kind="mid", r=6)
+
+    # Core 1
+    fig.node(416, 30, 356, 118, "teal", kind="tonal", r=10)
+    fig.text(594, 48, "Core 1 (private caches)", "name", "middle", tone="teal")
+    fig.cell(430, 58, 158, 34, "teal", [("L1i · 32 KiB (~1 ns)", "small")], kind="card", r=6)
+    fig.cell(600, 58, 158, 34, "teal", [("L1d · 32 KiB (~1 ns)", "small")], kind="card", r=6)
+    fig.cell(430, 102, 328, 34, "purple", [("L2 Unified · 512 KiB–2 MiB (~4 ns)", "small")], kind="mid", r=6)
+
+    # Shared L3 + DRAM strip
+    l3 = fig.cell(28, 174, 444, 40, "amber", [("Shared L3 / Last-Level Cache (16–128 MiB · ~15 ns)", "body")], kind="mid", r=8)
+    dram = fig.cell(506, 174, 266, 40, "red", [("Main DRAM (64+ GiB · ~80 ns)", "body")], kind="mid", r=8)
+
+    fig.wire([(206, 150), (206, 172)], "purple", width=2.0)
+    fig.wire([(594, 150), (594, 162), (380, 162), (380, 172)], "purple", width=2.0)
+    fig.wire([(l3.r + 2, l3.cy), (dram.x - 2, dram.cy)], "red", width=2.0)
+
+    # Panel 2: Physical Address Split + Real 64-Byte Cache Line Blocks
+    fig.heading(28, 246, "2. inside an L1d cache set: physical address indexing into 64-byte cache line blocks")
+
+    # Address bit-cell bar: | Tag [51:12] | Set Index [11:6] | Offset [5:0] |
+    fig.cell(28, 262, 336, 36, "blue", [("Tag · bits [51:12] (identifies line)", "small")], kind="mid", r=6)
+    fig.cell(370, 262, 198, 36, "purple", [("Set Index · bits [11:6]", "small")], kind="mid", r=6)
+    fig.cell(574, 262, 198, 36, "green", [("Byte Offset · bits [5:0] (64 B)", "small")], kind="mid", r=6)
+
+    # Concrete Cache Line Block drawn with | V | D | Tag | B0 | B1 | B2 | ··· | B62 | B63 |
+    cells = [
+        ("V", 32, "teal"),
+        ("D", 32, "amber"),
+        ("Tag (40b)", 116, "blue"),
+        ("B0", 54, "green"),
+        ("B1", 54, "green"),
+        ("B2", 54, "green"),
+        ("B3", 54, "green"),
+        ("· · · 64-byte cache line · · ·", 240, "green"),
+        ("B62", 54, "green"),
+        ("B63", 54, "green"),
+    ]
+    # Check width: 32+32+116+54*6+240 = 180 + 324 + 240 = 744! Exact (28..772)!
+    cx = 28
+    y_blk = 324
+    fig.rect(28, y_blk, 744, 42, "c-green", r=7)
+    for idx, (lbl, w, tone) in enumerate(cells):
+        if idx < 3:
+            fig.rect(cx, y_blk, w, 42, f"m-{tone}", r=6 if idx == 0 else 0)
+        if idx > 0:
+            fig.rule(cx, y_blk + 3, cx, y_blk + 39, tone, width=1.1)
+        cls = "monob" if "·" not in lbl else "small"
+        fig.text(cx + w / 2, y_blk + 25, lbl, cls, "middle", fit=(cx - 2, cx + w + 2))
+        cx += w
+
+    fig.wire([(196, 300), (196, 322)], "blue", width=1.8)
+    fig.wire([(469, 300), (469, 322)], "purple", width=1.8)
+    fig.wire([(673, 300), (673, 322)], "green", width=1.8)
+
+    fig.text(400, 386, "Every DRAM miss fetches all 64 contiguous bytes (B0..B63) together; 6 offset bits (2^6 = 64) select the target byte.", "small", "middle")
+
+    fig.save([
+        "Hardware transfers memory in 64-byte cache lines (B0..B63), tagged with Valid (V), Dirty (D), and upper Tag bits inside each set-associative cache way.",
+        "Sequential array scans hit B1..B63 in L1 (~1 ns) after one miss; concurrent writes by two cores to bytes inside the same 64-byte block trigger false sharing.",
     ])
 
 

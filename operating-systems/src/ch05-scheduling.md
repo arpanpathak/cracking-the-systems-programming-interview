@@ -133,9 +133,23 @@ In symmetric multiprocessing (SMP) and Non-Uniform Memory Access (NUMA) architec
 
 Modern kernels resolve this contention by partitioning scheduling state into **per-CPU runqueues** managed by a topology-aware load balancer:
 
-- **Cache Affinity:** While a thread executes on Core 2, its active working set populates Core 2's private L1/L2 caches and TLBs. Dispatching that thread back onto Core 2 following a brief blocking interval eliminates cold cache refills and cross-core MESI coherence invalidations. Schedulers enforce **soft affinity** automatically by biasing wakeups toward the thread's previous core, while providing explicit pinning interfaces (`sched_setaffinity`) for **hard affinity** in deterministic latency-critical deployments.
+- **Cache Affinity:** While a thread executes on Core 2, its active working set populates Core 2's private L1/L2 caches and TLBs. Dispatching that thread back onto Core 2 following a brief blocking interval eliminates cold cache refills and cross-core **Modified-Exclusive-Shared-Invalid (`MESI`)** coherence invalidations. Schedulers enforce **soft affinity** automatically by biasing wakeups toward the thread's previous core, while providing explicit pinning interfaces (`sched_setaffinity`) for **hard affinity** in deterministic latency-critical deployments.
 - **Work-Stealing Load Balancing:** Partitioned runqueues permit transient imbalance in which one core holds multiple queued threads while a sibling core becomes idle. Upon emptying its local runqueue, or at periodic load-balancing ticks, an idle core invokes **work stealing**, migrating a cache-cold runnable thread from an overloaded sibling runqueue.
 - **Hierarchical Scheduling Domains and NUMA Awareness:** The kernel encodes physical hardware topology as a hierarchy of **scheduling domains**:
-  1. **SMT / Hyperthread Siblings:** Hardware threads sharing a physical core and L1/L2 caches (minimal migration cost).
+  1. **Simultaneous Multithreading (`SMT`) / Hyperthread Siblings:** Hardware threads sharing a physical core and L1/L2 caches (minimal migration cost).
   2. **Core / Last-Level Cache (LLC) Domain:** Distinct cores sharing a unified L3 cache (moderate migration cost limited to L1/L2 warm-up).
-  3. **NUMA Socket Domain:** Independent processor sockets connected across inter-socket links (Intel UPI, AMD Infinity Fabric) with local DRAM controllers. Migrating a thread across NUMA boundaries decouples it from its locally allocated physical DRAM pages, increasing remote memory latency by 30–100%. Load balancers therefore equalize queue depth within an LLC domain first and migrate threads across NUMA nodes only when load imbalance exceeds the remote-memory access penalty.
+  3. **NUMA Socket Domain:** Independent processor sockets connected across inter-socket links (Intel **Ultra Path Interconnect (`UPI`)**, AMD Infinity Fabric) with local **Dynamic Random-Access Memory (`DRAM`)** controllers. Migrating a thread across NUMA boundaries decouples it from its locally allocated physical `DRAM` pages, increasing remote memory latency by 30–100%. Load balancers therefore equalize queue depth within an LLC domain first and migrate threads across NUMA nodes only when load imbalance exceeds the remote-memory access penalty.
+
+<div class="callout experiment">
+<span class="label">Experiment</span>
+
+Modify Listing 5-1 (`code/ch05/sched.cpp`) to add one long-running 500 ms CPU-bound job at `t = 0` ahead of five 5 ms interactive jobs. Compare the average response time under First-Come, First-Served (`FCFS`) versus Round-Robin (`RR`) with a 10 ms quantum to observe the convoy effect directly.
+
+</div>
+
+<div class="callout caution">
+<span class="label">Common Pitfall</span>
+
+Treating `nice` values or thread priorities as hard real-time guarantees. Under proportional-share schedulers (`CFS` / `EEVDF`), a low-priority background thread still receives non-zero CPU share, and priority inversion can stall a high-priority thread indefinitely unless priority inheritance is enabled on the contended mutex.
+
+</div>

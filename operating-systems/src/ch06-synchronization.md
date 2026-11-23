@@ -56,7 +56,7 @@ Atomicity across these two steps eliminates the **lost-wakeup hazard**. If relea
 <span class="label">Watch out</span>
 
 Every condition-variable wait must be enclosed within a **`while (!predicate)` loop** (or Rust's `Condvar::wait_while`), never a single `if (!predicate)` branch. Two distinct mechanisms invalidate a non-looping check:
-1. **Spurious Wakeups:** POSIX (`pthread_cond_wait`) and operating system kernels permit a waiting thread to return from `wait` without a corresponding notification event.
+1. **Spurious Wakeups:** **Portable Operating System Interface (`POSIX`)** (`pthread_cond_wait`) and operating system kernels permit a waiting thread to return from `wait` without a corresponding notification event.
 2. **Post-Wakeup State Interception:** Returning from a condition wait moves the thread from the condition variable queue to the mutex acquisition queue rather than granting immediate ownership. An intervening thread may acquire the mutex first and invalidate the predicate before the awakened thread obtains lock ownership.
 
 </div>
@@ -355,5 +355,12 @@ Because readers issue exclusively read transactions, all processor cores simulta
 <span class="label">Key idea</span>
 
 Production synchronization integrates three architectural layers: `compare_exchange_weak` drives lock-free retry loops and uncontended Ring 3 fast paths (~5 ns), `Release`/`Acquire` barriers enforce cross-core visibility across private Store Buffers without `SeqCst` pipeline drains, and `futex` / `__ulock` parks contended threads in Ring 0 only when exclusive ownership fails.
+
+</div>
+
+<div class="callout experiment">
+<span class="label">Experiment</span>
+
+In Listing 6-9 (`code/ch06/cas_ordering.cpp`), weaken the producer's `memory_order_release` store and consumer's `memory_order_acquire` load to `memory_order_relaxed` on an ARM64 machine (Apple Silicon or AWS Graviton) and run 10 million iterations to observe weakly ordered hardware reordering payload stores past the ready flag.
 
 </div>

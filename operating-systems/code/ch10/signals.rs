@@ -1,4 +1,6 @@
 // ch10/signals.rs: the same block-then-deliver sequence in Rust.
+use std::mem;
+use std::ptr;
 use std::sync::atomic::{AtomicBool, Ordering};
 
 static GOT_USR1: AtomicBool = AtomicBool::new(false);
@@ -21,17 +23,17 @@ fn main() {
     // 3. Mask Consistency: `sigprocmask` safely alternates the thread's signal disposition
     //    between blocked and unblocked states using valid stack-allocated `sigset_t` bitmasks.
     unsafe {
-        let mut sa: libc::sigaction = std::mem::zeroed();
+        let mut sa: libc::sigaction = mem::zeroed();
         sa.sa_sigaction = on_usr1 as *const () as usize;
         libc::sigemptyset(&mut sa.sa_mask);
-        libc::sigaction(libc::SIGUSR1, &sa, std::ptr::null_mut());
+        libc::sigaction(libc::SIGUSR1, &sa, ptr::null_mut());
 
         sa.sa_sigaction = on_int as *const () as usize;
-        libc::sigaction(libc::SIGINT, &sa, std::ptr::null_mut());
+        libc::sigaction(libc::SIGINT, &sa, ptr::null_mut());
 
         // Block SIGUSR1, send it to ourselves, and observe that it stays pending.
-        let mut set: libc::sigset_t = std::mem::zeroed();
-        let mut oldset: libc::sigset_t = std::mem::zeroed();
+        let mut set: libc::sigset_t = mem::zeroed();
+        let mut oldset: libc::sigset_t = mem::zeroed();
         libc::sigemptyset(&mut set);
         libc::sigaddset(&mut set, libc::SIGUSR1);
         libc::sigprocmask(libc::SIG_BLOCK, &set, &mut oldset);
@@ -42,12 +44,12 @@ fn main() {
             GOT_USR1.load(Ordering::Relaxed)
         );
 
-        libc::sigprocmask(libc::SIG_UNBLOCK, &set, std::ptr::null_mut()); // delivery here
+        libc::sigprocmask(libc::SIG_UNBLOCK, &set, ptr::null_mut()); // delivery here
         println!("after unblock: handled={}", GOT_USR1.load(Ordering::Relaxed));
 
         libc::raise(libc::SIGINT);    // delivered immediately
         println!("after SIGINT: handled={}", GOT_INT.load(Ordering::Relaxed));
 
-        libc::sigprocmask(libc::SIG_SETMASK, &oldset, std::ptr::null_mut());
+        libc::sigprocmask(libc::SIG_SETMASK, &oldset, ptr::null_mut());
     }
 }

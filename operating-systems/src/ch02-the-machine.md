@@ -67,7 +67,7 @@ Despite two distinct increments, the final stored value is `43` rather than `44`
 
 ## 2.2 Memory Hierarchy and Locality Dynamics
 
-The memory subsystem is organized as a multi-tiered hierarchy balancing capacity against access latency. Waiting 60 to 100 nanoseconds for an off-chip DRAM read stalls a 3 GHz processor for more than 200 clock cycles. Hardware mitigates this disparity through progressively smaller, lower-latency on-chip SRAM caches:
+The memory subsystem is organized as a multi-tiered hierarchy balancing capacity against access latency. Waiting 60 to 100 nanoseconds for an off-chip **Dynamic Random-Access Memory (`DRAM`)** read stalls a 3 GHz processor for more than 200 clock cycles. Hardware mitigates this disparity through progressively smaller, lower-latency on-chip **Static Random-Access Memory (`SRAM`)** caches:
 - **Registers:** Approximately 0.3 ns (1 cycle), private to each execution pipeline.
 - **L1 Cache (split instruction and data):** Approximately 1 ns (3 to 4 cycles), 32 to 64 KiB private per core.
 - **L2 Cache:** Approximately 3 to 5 ns (10 to 14 cycles), 256 KiB to 4 MiB private per core.
@@ -80,7 +80,11 @@ The effectiveness of this hierarchy depends directly on two empirical properties
 
 To exploit spatial locality, the memory subsystem transfers data between DRAM and cache in fixed **64-byte cache lines** (128 bytes on certain ARM64 implementations). Sequential traversal over contiguous memory allows hardware stride prefetchers to fetch upcoming lines before demand loads arrive, whereas pointer chasing across scattered heap allocations incurs repeated DRAM stalls.
 
-Maintaining cache coherence at 64-byte granularity introduces the multi-core pathology of **false sharing**. When Core 0 and Core 1 modify logically independent variables residing within the same 64-byte cache line, the hardware coherence protocol (such as MESI) must repeatedly transfer exclusive ownership of the entire line between cores, degrading parallel throughput (measured empirically in Chapter 17).
+Maintaining cache coherence at 64-byte granularity introduces the multi-core pathology of **false sharing**. When Core 0 and Core 1 modify logically independent variables residing within the same 64-byte cache line, the hardware coherence protocol (such as **Modified-Exclusive-Shared-Invalid (`MESI`)**) must repeatedly transfer exclusive ownership of the entire line between cores, degrading parallel throughput (measured empirically in Chapter 17).
+
+<figure>
+<img src="figures/ch02_cache_blocks.svg" alt="Multi-core cache hierarchy (L1i, L1d, L2, Shared L3, DRAM) and inside a 64-byte set-associative cache line block with Valid, Dirty, Tag, and B0..B63 byte cells"/>
+</figure>
 
 ## 2.3 Privilege Domains and Boundary Enforcement
 
@@ -119,7 +123,7 @@ Consequently, modern multi-core interrupt subsystems support four distinct signa
 
 #### x86-64 Interrupt Architecture (IO-APIC, MSI-X, and Local APIC)
 
-The x86-64 architecture distributes interrupt routing between the platform chipset and a dedicated **Local Advanced Programmable Interrupt Controller (Local APIC)** integrated onto the die of each CPU core (Figure 2-4).
+The x86-64 architecture distributes interrupt routing between the platform chipset and a dedicated **Local Advanced Programmable Interrupt Controller (Local APIC)** integrated onto the die of each CPU core (Figure 2-5).
 
 <figure>
 <img src="figures/ch02_x86_apic.svg" alt="x86-64 interrupt controller hardware topology showing legacy IO-APIC redirection table, PCIe MSI-X bypass DMA writes, and per-core Local APICs with IRR, ISR, APIC timer, EOI, and cross-core IPIs"/>
@@ -134,7 +138,7 @@ The x86-64 architecture distributes interrupt routing between the platform chips
 
 #### ARM64 Interrupt Architecture (GICv3 / GICv4)
 
-ARM64 systems implement the identical four signaling paths through the **Generic Interrupt Controller (GICv3 / GICv4)** architecture (Figure 2-5):
+ARM64 systems implement the identical four signaling paths through the **Generic Interrupt Controller (GICv3 / GICv4)** architecture (Figure 2-6):
 
 <figure>
 <img src="figures/ch02_arm_gic.svg" alt="ARM64 Generic Interrupt Controller GICv3 topology showing SoC peripherals through GICD Distributor, PCIe MSI-X through GIC ITS, per-core local SGI/PPI into GICR Redistributor, and Core N CPU Interface system registers"/>
@@ -159,7 +163,7 @@ ARM64 systems implement the identical four signaling paths through the **Generic
 
 When an interrupt vector is accepted while a core executes in user mode, hardware must perform two operations atomically before fetching the first instruction of the kernel handler: locate the handler entry point and preserve the interrupted thread's architectural state on trusted kernel memory.
 
-Hardware cannot push the saved register frame onto the interrupted application's user stack because user-mode code controls the user stack pointer (`RSP` / `SP_EL0`); an invalid, unmapped, or kernel-pointing user stack pointer would immediately trigger a nested fault or corrupt kernel memory. Consequently, hardware switches to a pre-allocated, kernel-owned stack prior to saving state (Figure 2-6).
+Hardware cannot push the saved register frame onto the interrupted application's user stack because user-mode code controls the user stack pointer (`RSP` / `SP_EL0`); an invalid, unmapped, or kernel-pointing user stack pointer would immediately trigger a nested fault or corrupt kernel memory. Consequently, hardware switches to a pre-allocated, kernel-owned stack prior to saving state (Figure 2-7).
 
 <figure>
 <img src="figures/ch02_idt_trapframe.svg" alt="x86-64 hardware vector dispatch showing IDTR lookup into the 256-entry IDT, TSS.rsp0 kernel stack switch, hardware-pushed 5-word return frame, and software-pushed pt_regs"/>
@@ -179,7 +183,7 @@ Execution inside a hardware interrupt handler is governed by two strict operatio
 1. **Non-blocking execution:** An interrupt handler executes in **interrupt context**, borrowing the kernel stack of whichever user thread happened to be active on that core. It possesses no independent process context and must never sleep or block on a sleeping mutex; attempting to acquire a lock already held by the interrupted thread on the same core would induce an immediate self-deadlock.
 2. **Bounded latency:** While local interrupts remain masked (`IF == 0`) and the vector's bit remains set in the Local APIC `ISR`, the core cannot service equal- or lower-priority interrupts. Prolonged execution inside a masked handler causes missed timer ticks and dropped network or storage completions.
 
-To reconcile low interrupt latency with complex protocol and filesystem processing, modern kernels partition interrupt servicing into two phases (Figure 2-7):
+To reconcile low interrupt latency with complex protocol and filesystem processing, modern kernels partition interrupt servicing into two phases (Figure 2-8):
 
 <figure>
 <img src="figures/ch02_interrupt_flow.svg" alt="End-to-end hardware interrupt lifecycle from device signal through IO-APIC/GIC, IDT lookup, hardware context save, top-half hardirq, EOI, bottom-half softirq, and iretq return"/>
@@ -187,7 +191,28 @@ To reconcile low interrupt latency with complex protocol and filesystem processi
 
 1. **Top-Half (`hardirq`, Interrupts Masked):** Executes immediately upon trapframe construction for a duration measured in microseconds. It performs only the minimal hardware-critical operations: reading device status registers, advancing DMA descriptor ring indices, marking a deferred-work indicator in kernel memory, and issuing **End of Interrupt (EOI)** to the Local APIC (or `ICC_EOIR1_EL1` on ARM64). Writing EOI clears the vector's active bit in `ISR` so the interrupt controller can deliver subsequent events.
 2. **Bottom-Half (`softirq`, NAPI, and Workqueues, Interrupts Enabled):** Executes after the top-half exits, with hardware interrupts re-enabled (`IF == 1`) so higher-priority hardware signals can preempt software processing:
-   - **Deferred non-blocking processing (`softirq` and NAPI):** In Linux, computationally intensive non-blocking tasks such as TCP/IP packet processing (`NET_RX_SOFTIRQ`), block I/O completion (`BLOCK_SOFTIRQ`), and timer callbacks (`TIMER_SOFTIRQ`) execute before returning to user mode, or offload to per-CPU `ksoftirqd` kernel threads under sustained load. Under high packet rates, Linux **NAPI** transitions a saturated network interface from per-packet interrupts to bounded polling within `NET_RX_SOFTIRQ`, amortizing interrupt entry overhead across batches of frames.
-   - **Blocking deferred execution (`workqueues` and Threaded IRQs):** Driver work that requires sleeping locks or secondary I/O is enqueued onto schedulable kernel threads (`kworker` pools or threaded IRQ handlers), each backed by a full Process Control Block capable of blocking safely.
+   - **Deferred non-blocking processing (`softirq` and **New API (`NAPI`)**):** In Linux, computationally intensive non-blocking tasks such as **Transmission Control Protocol / Internet Protocol (`TCP`/`IP`)** packet processing (`NET_RX_SOFTIRQ`), block I/O completion (`BLOCK_SOFTIRQ`), and timer callbacks (`TIMER_SOFTIRQ`) execute before returning to user mode, or offload to per-CPU `ksoftirqd` kernel threads under sustained load. Under high packet rates, Linux `NAPI` transitions a saturated network interface from per-packet interrupts to bounded polling within `NET_RX_SOFTIRQ`, amortizing interrupt entry overhead across batches of frames.
+   - **Blocking deferred execution (`workqueues` and Threaded **Interrupt Requests (`IRQ`s)**):** Driver work that requires sleeping locks or secondary I/O is enqueued onto schedulable kernel threads (`kworker` pools or threaded `IRQ` handlers), each backed by a full Process Control Block capable of blocking safely.
 
 Prior to returning to user mode, the kernel exit path inspects whether the interrupt awakened a higher-priority runnable thread. If preemption is required, the scheduler performs a context switch to that thread; otherwise, the exit stub restores all general-purpose registers from the trapframe and executes **`iretq`** (x86-64) or **`eret`** (ARM64), atomically restoring the saved instruction pointer, stack pointer, privilege level, and interrupt mask to resume the interrupted thread transparently.
+
+<div class="callout keyidea">
+<span class="label">Key idea</span>
+
+Hardware privilege rings (`Ring 3`/`Ring 0`, `EL0`/`EL1`) and interrupt dispatch tables (`IDT`, `VBAR_EL1`) are what turn a general-purpose processor into a multi-tenant operating system. Without timer interrupts and hardware-enforced traps, a single infinite loop in user code could monopolize the machine indefinitely.
+
+</div>
+
+<div class="callout experiment">
+<span class="label">Experiment</span>
+
+On Linux, inspect `/proc/interrupts` twice separated by one second (`cat /proc/interrupts; sleep 1; cat /proc/interrupts`) to observe per-core Local `APIC` timer ticks (`LOC`) and `NVMe` or `NIC` `MSI-X` interrupt counters incrementing in real time across physical cores.
+
+</div>
+
+<div class="callout caution">
+<span class="label">Common Pitfall</span>
+
+Performing blocking allocations (`kmalloc(..., GFP_KERNEL)`) or acquiring sleeping mutexes inside a top-half `hardirq` handler deadlocks the core because hardware interrupts are masked and no process context exists to schedule back onto the CPU. Blocking work belongs strictly in bottom-half workqueues or threaded `IRQ` handlers.
+
+</div>

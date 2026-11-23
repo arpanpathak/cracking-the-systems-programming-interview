@@ -255,3 +255,24 @@ The parameters of `mmap(addr, length, prot, flags, fd, offset)` and `mprotect(ad
 ```text
 {{#include ../code/out/ch07_tlb_rs.out}}
 ```
+
+<div class="callout keyidea">
+<span class="label">Key idea</span>
+
+Virtual memory is a hardware-software co-design: the kernel defines policy by populating sparse 4-level radix page tables and servicing `#PF` faults lazily, while the `MMU` and `TLB` execute translation in ~1 cycle on the fast path, keeping the 12-bit page offset invariant under 4 KiB frame relocation.
+
+</div>
+
+<div class="callout experiment">
+<span class="label">Experiment</span>
+
+Run Listing 7-5 (`code/ch07/tlb.cpp`) on a local machine and inspect where per-access latency steps upward sharply (at ~64 pages for `L1 dTLB` overflow and ~1,024 to 4,096 pages for `L2 STLB` overflow). On Linux, add `madvise(buf, size, MADV_HUGEPAGE)` after `mmap()` to observe 2 MiB huge pages flattening the 16 MiB to 256 MiB cliff.
+
+</div>
+
+<div class="callout caution">
+<span class="label">Common Pitfall</span>
+
+Checking `mmap()` failure against `nullptr` instead of `MAP_FAILED` (`(void*)-1`). A failed `mmap()` returns `(void*)-1`, which evaluates as truthy in C and C++, causing the very next memory dereference to trigger an immediate `SIGSEGV` at address `0xFFFF_FFFF_FFFF_FFFF`.
+
+</div>

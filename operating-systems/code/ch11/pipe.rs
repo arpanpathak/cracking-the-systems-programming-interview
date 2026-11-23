@@ -1,6 +1,8 @@
 // ch11/pipe.rs: the same pipe between parent and child in Rust.
 use std::error::Error;
 use std::io;
+use std::ptr;
+use std::str;
 
 fn main() -> Result<(), Box<dyn Error>> {
     let mut fds = [0; 2];
@@ -34,12 +36,12 @@ fn main() -> Result<(), Box<dyn Error>> {
 
         let mut buf = [0u8; 64];
         let n = libc::read(fds[0], buf.as_mut_ptr() as *mut libc::c_void, buf.len() - 1);
-        libc::waitpid(pid, std::ptr::null_mut(), 0);
+        libc::waitpid(pid, ptr::null_mut(), 0);
         if n < 0 {
             return Err(io::Error::last_os_error().into());
         }
 
-        let s = std::str::from_utf8(&buf[..n as usize])?;
+        let s = str::from_utf8(&buf[..n as usize])?;
         println!("parent read {n} bytes: \"{s}\"");
     }
     Ok(())

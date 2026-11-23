@@ -1,14 +1,12 @@
 # 17. Multiprocessor Systems and Hardware Accelerators
 
-As computing scale increases, the idealized model of a single, uniform pool of memory and a set of identical cores gives way to more complex architectures. Large-scale systems are characterized by Non-Uniform Memory Access (NUMA) topologies, complex cache coherency protocols, and the tight integration of specialized hardware accelerators for machine learning (ML) and high-performance computing (HPC). These hardware realities impose unique constraints on operating system design, runtime libraries, and systems software.
+As computing scale increases, the idealized model of a single, uniform pool of memory and a set of identical cores gives way to more complex architectures. Large-scale systems are characterized by **Non-Uniform Memory Access (`NUMA`)** topologies, complex cache coherency protocols, and the tight integration of specialized hardware accelerators for **Machine Learning (`ML`)** and **High-Performance Computing (`HPC`)**. These hardware realities impose unique constraints on operating system design, runtime libraries, and systems software.
 
-## 17.1 NUMA Topologies and Locality Optimization
+## 17.1 `NUMA` Topologies and Locality Optimization
 
-In a Non-Uniform Memory Access (NUMA) architecture, the system is composed of multiple processor sockets or chiplets, each possessing its own local memory controller and associated DRAM. While any core can access any memory address in the physical address space, the latency and bandwidth of an access depend heavily on the physical distance between the executing core and the target memory chip. Accessing memory local to a socket is fast, whereas accessing memory across the inter-socket interconnect (e.g., UPI on Intel, Infinity Fabric on AMD, or UltraFusion on Apple Silicon) incurs a measurable latency penalty.
+In a `NUMA` architecture, the system is composed of multiple processor sockets or chiplets, each possessing its own local memory controller and associated **Dynamic Random-Access Memory (`DRAM`)** (Figure 17-1). While any core can access any physical address, latency and bandwidth depend strongly on physical distance between the executing core and the target memory controller. Accessing local `DRAM` is fast, whereas traversing the inter-socket interconnect (such as Intel **Ultra Path Interconnect (`UPI`)**, AMD Infinity Fabric, or Apple UltraFusion) incurs a measurable latency and bandwidth penalty.
 
-To mitigate performance degradation caused by remote memory access, the operating system employs two primary strategies:
-- **Processor Affinity:** The scheduler attempts to maintain thread-to-socket locality by scheduling threads on the cores of the socket that currently holds their most frequently accessed data.
-- **First-Touch Placement:** The kernel optimizes initial memory allocation by mapping a virtual page to a physical frame on the socket where the thread that first writes to that page is currently executing. This ensures that the data and the thread that uses it are co-located from the outset.
+To preserve locality, operating systems combine two policies: **processor affinity** (scheduling threads onto cores belonging to the socket that holds their working set) and **first-touch placement** (allocating physical frames on the socket of the thread that first faults and writes a newly mapped page, rather than the thread that merely called `mmap()`).
 
 <figure>
 <img src="figures/ch17_numa.svg" alt="Two sockets, each with cores and local DRAM, connected by an interconnect"/>
@@ -16,9 +14,13 @@ To mitigate performance degradation caused by remote memory access, the operatin
 
 ## 17.2 Cache Coherence and the False Sharing Phenomenon
 
-The complexity of modern multiprocessor systems is further compounded by the requirement for hardware-level **cache coherence**. To ensure that all cores perceive a consistent view of memory, the hardware must manage the movement and invalidation of cache lines across the various levels of the cache hierarchy (typically via variants of the MESI/MOESI protocol). When a core writes to a memory location, it must obtain exclusive ownership of the corresponding 64-byte cache line, which necessitates invalidating any existing copies of that line in the caches of all other cores.
+Hardware-level **cache coherence** guarantees that all cores observe a consistent value for every memory address, typically via variants of the **Modified-Exclusive-Shared-Invalid (`MESI`)** or **Modified-Owned-Exclusive-Shared-Invalid (`MOESI`)** state machine (Figure 17-2). Each 64-byte cache line in a core's private cache carries a coherence state: `Invalid` (not present), `Shared` (clean copy potentially held by multiple cores), `Exclusive` (clean copy held by this core alone), or `Modified` (dirty copy owned exclusively by this core). Before a core can write to a `Shared` line, it must broadcast a **Read-For-Ownership (`RFO`)** invalidation across the interconnect, forcing every sibling core to mark its copy `Invalid`.
 
-This mechanism introduces the performance hazard known as **false sharing**. False sharing occurs when two or more threads, which are logically operating on independent variables, happen to access data that resides within the same 64-byte cache line. Because the hardware manages coherence at the granularity of the cache line, the threads inadvertently trigger a continuous "ping-pong" effect, where the cache line is repeatedly transferred between cores. This results in massive, unintended synchronization overhead and can degrade performance by an order of magnitude. The remedy is to use architectural alignment (e.g., `alignas(64)`) to ensure that frequently written, independent variables reside on distinct cache lines.
+This cache-line granularity creates **false sharing** (Figure 17-3): when two threads update logically independent variables that happen to reside within the same 64-byte cache line, every store invalidates the peer core's cache line, causing the line to bounce continuously across the interconnect and degrading throughput by an order of magnitude. Padding concurrently written fields to cache-line boundaries (`alignas(64)` in C++20; `#[repr(align(64))]` in Rust) eliminates the contention completely, as verified in Listings 17-1 and 17-2.
+
+<figure>
+<img src="figures/ch17_mesi_states.svg" alt="MESI cache-coherency four-state protocol showing Modified, Exclusive, Shared, and Invalid transitions"/>
+</figure>
 
 <figure>
 <img src="figures/ch17_false_sharing.svg" alt="Two counters in one cache line bouncing between cores, versus two padded counters in separate lines"/>
@@ -55,46 +57,28 @@ Hardware cache coherence guarantees correctness, not performance. Independent va
 
 </div>
 
-## 17.3 Hardware Accelerators: Discrete Architecture vs. Unified Memory Architecture (UMA)
+<div class="callout experiment">
+<span class="label">Experiment</span>
 
-Beyond general-purpose CPUs, modern servers increasingly rely on specialized hardware accelerators, such as GPUs, Neural Processing Units (NPUs), and cryptographic ASICs, to handle computationally intensive ML and HPC workloads.
+Run Listing 17-1 (`code/ch17/false_sharing.cpp`) or Listing 17-2 (`code/ch17/false_sharing.rs`) and compare elapsed time between the packed struct (both counters on one 64-byte cache line) and the `alignas(64)` padded struct. Notice how separating the two counters by 64 bytes eliminates `MESI` `RFO` ping-ponging and speeds up execution several-fold.
 
-The operating system and runtime libraries manage accelerators across two fundamentally distinct memory architectures:
+</div>
 
-### 17.3.1 The Discrete Accelerator Model (PCIe + Dedicated VRAM)
+## 17.3 Hardware Accelerators: Discrete Architecture vs. Unified Memory Architecture (`UMA`)
 
-In traditional enterprise servers (such as x86 hosts paired with discrete PCIe GPUs), the host CPU and the accelerator inhabit completely separate physical memory domains:
-- **Host Memory:** General-purpose DDR4/DDR5 DRAM attached to the CPU sockets.
-- **Device Memory:** High-bandwidth memory (HBM or GDDR) soldered directly onto the accelerator card.
+Beyond general-purpose processors, modern servers increasingly rely on specialized hardware accelerators (such as **Graphics Processing Units (`GPU`s)**, **Neural Processing Units (`NPU`s)**, and cryptographic **Application-Specific Integrated Circuits (`ASIC`s)**) to execute `ML` and `HPC` workloads across two distinct memory architectures.
 
-To execute an ML workload, data must traverse the peripheral PCIe bus via Direct Memory Access (DMA):
-1. **Memory Pinning:** The operating system must "pin" the host memory pages (`mlock` or kernel-level page pinning) so that the virtual memory subsystem does not page out or relocate the physical frames during the asynchronous DMA transfer.
-2. **PCIe Transfer:** Data is copied over the PCIe bus into accelerator VRAM. PCIe bandwidth (typically 32–64 GB/s on PCIe 4.0/5.0) forms a severe throughput bottleneck compared to on-die memory buses.
-3. **Execution & Return:** The accelerator processes the workload in its private VRAM and copies the result back across PCIe to host DRAM.
+### 17.3.1 The Discrete Accelerator Model (`PCIe` + Dedicated `VRAM`)
 
-### 17.3.2 Unified Memory Architecture (UMA) on Apple Silicon
+In traditional enterprise servers (such as x86 hosts paired with discrete **Peripheral Component Interconnect Express (`PCIe`)** `GPU`s), the host processor and accelerator inhabit separate physical memory domains: general-purpose **Double Data Rate (`DDR4`/`DDR5`)** `DRAM` on the host, and **High Bandwidth Memory (`HBM`)** or **Graphics Double Data Rate (`GDDR`)** **Video Random-Access Memory (`VRAM`)** soldered onto the accelerator card. Executing a workload requires **Direct Memory Access (`DMA`)** transfers across `PCIe`: the operating system pins host pages (`mlock` or kernel page pinning) so the virtual memory subsystem cannot relocate frames mid-transfer, copies inputs across the `PCIe` bus (32 to 64 GB/s on `PCIe` 4.0/5.0, far slower than on-die memory), runs the kernel on the `GPU`, and copies results back to host `DRAM`.
 
-Apple Silicon servers and high-performance Systems-on-Chip (SoCs) employ a fundamentally different paradigm: **Unified Memory Architecture (UMA)**.
+### 17.3.2 **Unified Memory Architecture (`UMA`)** on Apple Silicon
 
-In a UMA system, the CPU cores, high-performance GPU cores, Neural Engine (NPU), and media engines are integrated onto the same physical silicon package, sharing a single, wide, high-bandwidth memory pool (reaching 800+ GB/s on Ultra-tier processors).
-
-This architecture transforms system software design:
-- **Zero-Copy Data Pipelines:** Because the CPU and accelerators share physical memory addresses, data transfers over PCIe are eliminated. An operating system daemon can allocate a buffer, ingest raw network or sensor packets via the CPU, and pass the buffer pointer directly to the GPU or Neural Engine without copying a single byte.
-- **Elimination of Host Pinning Latency:** Accelerators access physical pages directly via the shared System Level Cache (SLC) and unified memory controllers, dramatically reducing dispatch latency for small, frequent ML inference tasks.
+Apple Silicon servers and high-performance **Systems-on-Chip (`SoC`s)** integrate CPU cores, `GPU` cores, Neural Engine (`NPU`), and media engines onto a single silicon package sharing one wide memory pool (exceeding 800 GB/s on Ultra-tier parts). Because every compute unit addresses the same physical memory through a shared **System Level Cache (`SLC`)**, `PCIe` copies and host pinning vanish: a daemon can ingest network packets on the CPU and pass the buffer pointer directly to the `GPU` or `NPU` with sub-microsecond dispatch latency.
 
 ### 17.3.3 Heterogeneous Cache Coherency and Memory Barriers
 
-While UMA eliminates physical memory copies, it introduces a critical systems software responsibility: **managing cache coherency across heterogeneous compute units**.
-
-CPUs and accelerators prioritize fundamentally different memory access patterns:
-- CPU cores utilize deep, strongly coherent L1/L2 caches optimized for ultra-low latency.
-- GPU cores and NPUs utilize massive parallel write-combining buffers and specialized tile caches optimized for streaming throughput.
-
-If a CPU thread writes an ML input tensor into a unified buffer and immediately signals the accelerator to begin execution, the accelerator may read stale data if the CPU's updates still reside in dirty L1/L2 cache lines. Conversely, when the accelerator finishes writing results, the CPU may read stale data from its own cache if lines are not explicitly invalidated.
-
-Consequently, systems runtimes on UMA platforms must manage explicit synchronization:
-- **Cache Flushing & Invalidation:** Forcing dirty CPU cache lines out to the shared physical memory (or SLC) before accelerator dispatch, and invalidating CPU caches before reading accelerator outputs.
-- **Memory Fences & Command Queues:** Using hardware fences and completion events (such as Apple Metal command buffers and shared event primitives) to establish strict *happens-before* relationships between heterogeneous processors.
+While `UMA` eliminates physical memory copies, CPUs and accelerators maintain distinct local caches: CPUs optimize for low-latency coherent Level 1/Level 2 caches, whereas `GPU`s and `NPU`s rely on wide streaming write-combining buffers and tile caches. Without explicit synchronization, an accelerator can read stale data still sitting in dirty CPU cache lines, or the CPU can read stale cached bytes after the accelerator finishes. Systems runtimes on `UMA` platforms therefore enforce explicit **cache flushes and invalidations** alongside hardware **memory fences and command-queue completion events** (such as Apple Metal command buffers and shared events) to establish strict *happens-before* visibility across heterogeneous compute units.
 
 <div class="callout caution">
 <span class="label">Watch out</span>

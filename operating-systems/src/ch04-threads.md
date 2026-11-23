@@ -82,7 +82,7 @@ From creation to memory reclamation, a kernel-scheduled thread (allocated via `c
 
 1. **Spawned (Initialized):** The runtime library (`pthread_create`, `std::thread::spawn`) allocates a contiguous user-mode virtual memory region for the thread's execution stack (typically 2–8 MiB, guarded at its lower boundary by a `PROT_NONE` guard page to trap stack overflows) alongside its Thread-Local Storage (TLS) block. The kernel initializes a TCB pointing its saved `PC` to the thread entry trampoline and its saved `SP` to the top of the newly mapped stack, then admits the TCB into a core's runqueue.
 2. **Runnable (Ready):** The thread is eligible for execution and resides in a processor core's scheduling runqueue, awaiting dispatch.
-3. **Running:** The thread is actively executing instructions on a physical CPU core. Because all sibling threads share the same virtual address space, context-switching between two threads of the same process requires saving and restoring only the TCB register file and TLS base pointer; the hardware page table root register (`CR3` / `TTBR0_EL1`) remains unchanged, avoiding costly TLB flushes.
+3. **Running:** The thread is actively executing instructions on a physical CPU core. Because all sibling threads share the same virtual address space, context-switching between two threads of the same process requires saving and restoring only the TCB register file and TLS base pointer; the hardware page table root register (`CR3` / `TTBR0_EL1`) remains unchanged, avoiding costly **Translation Lookaside Buffer (`TLB`)** flushes.
 4. **Sleeping / Parked (Blocked):** The thread has suspended execution waiting for an intra-process synchronization primitive (such as a contended mutex via `futex(FUTEX_WAIT)`, a condition variable `wait`, or an I/O readiness event). The kernel removes the TCB from the runqueue and parks it on the synchronization object's wait queue, where it consumes zero processor cycles until a peer thread invokes `futex(FUTEX_WAKE)` or an interrupt handler signals completion.
 5. **Terminated and Reclaimed (`join` vs. `detach`):** When the thread's entry function returns (or invokes `pthread_exit`), the thread ceases execution. How its stack and TCB are reclaimed depends on its detachment contract:
    - **Joinable Threads:** By default, a thread is *joinable*. Upon termination, its user-space stack virtual memory mapping and TCB metadata remain allocated so that another thread can invoke `pthread_join` (or `JoinHandle::join`), which synchronizes on thread completion, extracts the thread's return value (or panic payload), and unmaps the thread's stack and TCB. Failing to join or detach a terminated joinable thread leaks its virtual stack mapping and TCB, which is the thread-level equivalent of a zombie process.
@@ -96,7 +96,7 @@ From creation to memory reclamation, a kernel-scheduled thread (allocated via `c
 
 Different systems programming languages enforce starkly different invariants across the thread lifecycle boundary:
 
-- **C++20 (`std::thread` and `std::jthread`):** In C++11, if a `std::thread` object is destroyed while still `joinable()` (neither `.join()` nor `.detach()` was called), its destructor immediately invokes `std::terminate()`, aborting the entire process to prevent silent stack-reference corruption. C++20 introduced `std::jthread`, which adheres to strict RAII semantics by automatically requesting cooperative cancellation (`std::stop_token`) and invoking `.join()` inside its destructor. However, the C++ type system does not prevent threads from capturing raw pointers or references to a caller's stack frame that may expire before a detached thread finishes, nor does it statically reject unsynchronized concurrent mutations of shared state.
+- **C++20 (`std::thread` and `std::jthread`):** In C++11, if a `std::thread` object is destroyed while still `joinable()` (neither `.join()` nor `.detach()` was called), its destructor immediately invokes `std::terminate()`, aborting the entire process to prevent silent stack-reference corruption. C++20 introduced `std::jthread`, which adheres to strict **Resource Acquisition Is Initialization (`RAII`)** semantics by automatically requesting cooperative cancellation (`std::stop_token`) and invoking `.join()` inside its destructor. However, the C++ type system does not prevent threads from capturing raw pointers or references to a caller's stack frame that may expire before a detached thread finishes, nor does it statically reject unsynchronized concurrent mutations of shared state.
 - **Rust 2024 (`std::thread::spawn`, `Send`, and `Sync`):** Rust's `std::thread::spawn` returns a `JoinHandle<T>`. Unlike C++ `std::thread`, dropping a `JoinHandle` in Rust safely *detaches* the background thread without aborting the process. To guarantee that a detached thread can never access dangling stack pointers from its creator, `std::thread::spawn` enforces a `'static` lifetime bound on its closure (unless `std::thread::scope` is used, which statically guarantees that all scoped threads are joined before the scope block exits). Furthermore, Rust's compiler enforces compile-time data-race freedom via two auto-traits:
   - **`Send`:** Certifies that ownership of a type may be safely transferred across thread boundaries (precluding thread-pinned types such as non-atomic reference counters `Rc<T>` or raw pointers).
   - **`Sync`:** Certifies that a type may be safely referenced concurrently by multiple threads via shared immutable references (`T: Sync` if and only if `&T: Send`). Shared mutation across threads is statically rejected unless mediated by types implementing thread-safe interior mutability, such as atomic primitives (`AtomicU64`) or synchronization guards (`Arc<Mutex<T>>`).
@@ -124,3 +124,24 @@ Different systems programming languages enforce starkly different invariants acr
 ```text
 {{#include ../code/out/ch04_threads_rs.out}}
 ```
+
+<div class="callout keyidea">
+<span class="label">Key idea</span>
+
+Threads share code, heap, and file descriptors through one `mm_struct` (avoiding `CR3` reloads and `TLB` flushes on context switch), yet each thread owns a private execution stack and register file. That shared-memory speed is precisely what exposes multi-instruction Read-Modify-Write sequences to data races.
+
+</div>
+
+<div class="callout experiment">
+<span class="label">Experiment</span>
+
+Compile Listing 4-1 (`code/ch04/race.cpp`) with `-fsanitize=thread` (`clang++ -std=c++20 -O2 -fsanitize=thread code/ch04/race.cpp -o /tmp/race && /tmp/race`) and observe ThreadSanitizer pinpointing the exact conflicting unsynchronized store instructions across threads. Compare its report against Listing 4-3 (`race_atomic.cpp`).
+
+</div>
+
+<div class="callout caution">
+<span class="label">Common Pitfall</span>
+
+Assuming `volatile` in C or C++ makes a counter thread-safe. `volatile` prevents compiler register caching (needed for `MMIO` registers and `sig_atomic_t`), yet emits plain non-atomic load/add/store instructions that still lose updates across CPU cores; always use `std::atomic<T>` or Rust's `Atomic*` types for cross-thread synchronization.
+
+</div>

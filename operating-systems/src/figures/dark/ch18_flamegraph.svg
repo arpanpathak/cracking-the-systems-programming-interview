@@ -1,0 +1,124 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 576" width="800" height="576">
+  <style>
+    text { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif; fill: #F8FAFC; }
+    .paper { fill: #12161F; }
+    .frame { fill: #12161F; stroke: #3E4C66; stroke-width: 1.2; }
+    .card { fill: #1E2636; stroke: #4E6080; stroke-width: 1; }
+    .hair { stroke: #3E4C66; stroke-width: 1.2; fill: none; }
+    .muted { fill: #D8E0EE; }
+    .ink { fill: #F8FAFC; }
+    .title { font-size: 17.5px; font-weight: 650; }
+    .head { font-size: 15.5px; font-weight: 650; }
+    .name { font-size: 15px; font-weight: 650; }
+    .body { font-size: 13.5px; }
+    .sub { font-size: 13px; }
+    .mono { font-size: 12.5px; font-family: "SF Mono", SFMono-Regular, ui-monospace, Menlo, Consolas, monospace; }
+    .monob { font-size: 12.5px; font-weight: 650; font-family: "SF Mono", SFMono-Regular, ui-monospace, Menlo, Consolas, monospace; }
+    .small { font-size: 12px; }
+    .note { font-size: 13.5px; }
+    .noteb { font-size: 13.5px; font-weight: 650; }
+    .sub, .small, .note { fill: #D8E0EE; }
+    .c-blue { fill: #182B49; stroke: #93C5FD; stroke-opacity: 0.48; stroke-width: 1.2; }
+    .m-blue { fill: #1E3A63; stroke: #93C5FD; stroke-opacity: 0.78; stroke-width: 1.2; }
+    .a-blue { fill: #93C5FD; }
+    .t-blue { fill: #93C5FD; }
+    .w-blue { stroke: #93C5FD; fill: none; stroke-linecap: butt; stroke-linejoin: round; }
+    .o-blue { stroke: #93C5FD; fill: none; stroke-width: 1.5; }
+    .h-blue { stroke: #93C5FD; stroke-width: 1.4; }
+    .c-green { fill: #133328; stroke: #86EFAC; stroke-opacity: 0.48; stroke-width: 1.2; }
+    .m-green { fill: #184D3B; stroke: #86EFAC; stroke-opacity: 0.78; stroke-width: 1.2; }
+    .a-green { fill: #86EFAC; }
+    .t-green { fill: #86EFAC; }
+    .w-green { stroke: #86EFAC; fill: none; stroke-linecap: butt; stroke-linejoin: round; }
+    .o-green { stroke: #86EFAC; fill: none; stroke-width: 1.5; }
+    .h-green { stroke: #86EFAC; stroke-width: 1.4; }
+    .c-amber { fill: #34250F; stroke: #FDE078; stroke-opacity: 0.48; stroke-width: 1.2; }
+    .m-amber { fill: #4F3814; stroke: #FDE078; stroke-opacity: 0.78; stroke-width: 1.2; }
+    .a-amber { fill: #FDE078; }
+    .t-amber { fill: #FDE078; }
+    .w-amber { stroke: #FDE078; fill: none; stroke-linecap: butt; stroke-linejoin: round; }
+    .o-amber { stroke: #FDE078; fill: none; stroke-width: 1.5; }
+    .h-amber { stroke: #FDE078; stroke-width: 1.4; }
+    .c-red { fill: #3A1B23; stroke: #FDA4AF; stroke-opacity: 0.48; stroke-width: 1.2; }
+    .m-red { fill: #582430; stroke: #FDA4AF; stroke-opacity: 0.78; stroke-width: 1.2; }
+    .a-red { fill: #FDA4AF; }
+    .t-red { fill: #FDA4AF; }
+    .w-red { stroke: #FDA4AF; fill: none; stroke-linecap: butt; stroke-linejoin: round; }
+    .o-red { stroke: #FDA4AF; fill: none; stroke-width: 1.5; }
+    .h-red { stroke: #FDA4AF; stroke-width: 1.4; }
+    .c-purple { fill: #261E47; stroke: #DDD6FE; stroke-opacity: 0.48; stroke-width: 1.2; }
+    .m-purple { fill: #382B6B; stroke: #DDD6FE; stroke-opacity: 0.78; stroke-width: 1.2; }
+    .a-purple { fill: #DDD6FE; }
+    .t-purple { fill: #DDD6FE; }
+    .w-purple { stroke: #DDD6FE; fill: none; stroke-linecap: butt; stroke-linejoin: round; }
+    .o-purple { stroke: #DDD6FE; fill: none; stroke-width: 1.5; }
+    .h-purple { stroke: #DDD6FE; stroke-width: 1.4; }
+    .c-teal { fill: #113136; stroke: #5EEAD4; stroke-opacity: 0.48; stroke-width: 1.2; }
+    .m-teal { fill: #164A52; stroke: #5EEAD4; stroke-opacity: 0.78; stroke-width: 1.2; }
+    .a-teal { fill: #5EEAD4; }
+    .t-teal { fill: #5EEAD4; }
+    .w-teal { stroke: #5EEAD4; fill: none; stroke-linecap: butt; stroke-linejoin: round; }
+    .o-teal { stroke: #5EEAD4; fill: none; stroke-width: 1.5; }
+    .h-teal { stroke: #5EEAD4; stroke-width: 1.4; }
+    .c-gray { fill: #1E2534; stroke: #D8E0EE; stroke-opacity: 0.48; stroke-width: 1.2; }
+    .m-gray { fill: #2C364A; stroke: #D8E0EE; stroke-opacity: 0.78; stroke-width: 1.2; }
+    .a-gray { fill: #D8E0EE; }
+    .t-gray { fill: #D8E0EE; }
+    .w-gray { stroke: #D8E0EE; fill: none; stroke-linecap: butt; stroke-linejoin: round; }
+    .o-gray { stroke: #D8E0EE; fill: none; stroke-width: 1.5; }
+    .h-gray { stroke: #D8E0EE; stroke-width: 1.4; }
+    .c-wire { fill: #1E2534; }
+    .m-wire { fill: #2C364A; }
+    .a-wire { fill: #CBD5E1; }
+    .t-wire { fill: #CBD5E1; }
+    .w-wire { stroke: #CBD5E1; fill: none; stroke-linecap: butt; stroke-linejoin: round; }
+    .o-wire { stroke: #CBD5E1; fill: none; stroke-width: 1.5; }
+    .h-wire { stroke: #CBD5E1; stroke-width: 1.4; }
+  </style>
+  <defs>
+    <filter id="lift" x="-10%" y="-15%" width="120%" height="140%">
+      <feDropShadow dx="0" dy="1" stdDeviation="1.2" flood-color="#000000" flood-opacity="0.35"/>
+      <feDropShadow dx="0" dy="3" stdDeviation="4" flood-color="#000000" flood-opacity="0.24"/>
+    </filter>
+  </defs>
+<rect x="0.5" y="0.5" width="799" height="575" rx="16" class="frame"/>
+<text x="28" y="44" class="title"><tspan class="t-blue">Figure 18-2.</tspan> Anatomy of a CPU flame graph: Y-axis</text>
+<text x="28" y="68" class="title">is call-stack depth; X-axis is sample proportion.</text>
+<g transform="translate(0 98)">
+<polygon points="46.0,42.0 50.2,52.0 46.0,49.2 41.8,52.0" class="a-gray"/>
+<path d="M46.0,268.0 L46.0,49.0" class="w-gray" stroke-width="1.8"/>
+<text x="32.0" y="155.0" class="small" text-anchor="middle" transform="rotate(-90 32.0 150.8)">stack depth (Y)</text>
+<rect x="76.0" y="232.0" width="692.0" height="34.0" rx="5" class="c-gray"/>
+<text x="422.0" y="253.1" class="monob" text-anchor="middle" data-fit="81.0,763.0">main() · 100% of samples</text>
+<rect x="76.0" y="194.0" width="526.0" height="34.0" rx="5" class="m-blue"/>
+<text x="339.0" y="215.1" class="monob" text-anchor="middle" data-fit="81.0,597.0">handle_request() · 76%</text>
+<rect x="606.0" y="194.0" width="162.0" height="34.0" rx="5" class="m-teal"/>
+<text x="687.0" y="215.1" class="mono" text-anchor="middle" data-fit="611.0,763.0">bg_flush() · 24%</text>
+<rect x="76.0" y="156.0" width="318.0" height="34.0" rx="5" class="m-amber"/>
+<text x="235.0" y="177.1" class="monob" text-anchor="middle" data-fit="81.0,389.0">parse_json() · 46%</text>
+<rect x="398.0" y="156.0" width="204.0" height="34.0" rx="5" class="m-purple"/>
+<text x="500.0" y="177.1" class="mono" text-anchor="middle" data-fit="403.0,597.0">query_index() · 30%</text>
+<rect x="606.0" y="156.0" width="162.0" height="34.0" rx="5" class="c-teal"/>
+<text x="687.0" y="177.1" class="mono" text-anchor="middle" data-fit="611.0,763.0">fsync() · 24%</text>
+<rect x="76.0" y="118.0" width="262.0" height="34.0" rx="5" class="m-red"/>
+<text x="207.0" y="139.1" class="monob" text-anchor="middle" data-fit="81.0,333.0">utf8_validate() · 38%</text>
+<rect x="342.0" y="118.0" width="52.0" height="34.0" rx="5" class="c-amber"/>
+<text x="368.0" y="139.0" class="small" text-anchor="middle" data-fit="347.0,389.0">alloc</text>
+<rect x="398.0" y="118.0" width="178.0" height="34.0" rx="5" class="c-purple"/>
+<text x="487.0" y="139.1" class="mono" text-anchor="middle" data-fit="403.0,571.0">btree_probe() · 26%</text>
+<rect x="100.0" y="26.0" width="368.0" height="56.0" rx="8" class="card" filter="url(#lift)"/>
+<text x="284.0" y="51.0" class="name" text-anchor="middle" data-fit="105.0,463.0">wide flat top plateau = primary CPU bottleneck</text>
+<text x="284.0" y="68.0" class="small t-red" text-anchor="middle" data-fit="105.0,463.0">utf8_validate() runs directly on-CPU in 38% of samples</text>
+<polygon points="207.0,116.0 202.8,106.0 207.0,108.8 211.2,106.0" class="a-red"/>
+<path d="M207.0,84.0 L207.0,109.0" class="w-red" stroke-width="2.0"/>
+<polygon points="768.0,286.0 758.0,290.2 760.8,286.0 758.0,281.8" class="a-gray"/>
+<path d="M76.0,286.0 L761.0,286.0" class="w-gray" stroke-width="1.8"/>
+<text x="422.0" y="304.0" class="small" text-anchor="middle">proportion of total profiler samples (sorted alphabetically, not chronological time)</text>
+</g>
+<rect x="28" y="436" width="744" height="116" rx="12" class="c-gray"/>
+<g transform="translate(42 448) scale(0.833)" class="a-gray"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 15c-.55 0-1-.45-1-1v-4c0-.55.45-1 1-1s1 .45 1 1v4c0 .55-.45 1-1 1zm1-8h-2V7h2v2z"/></g>
+<text x="74" y="462.5" class="note" data-fit="74,760">Read a flame graph from bottom to top to trace callers, and scan the top edges</text>
+<text x="74" y="482.5" class="note" data-fit="74,760">for wide plateaus representing leaf functions consuming the most CPU cycles.</text>
+<text x="74" y="510.5" class="note" data-fit="74,760">Because frames are merged alphabetically by function name, horizontal</text>
+<text x="74" y="530.5" class="note" data-fit="74,760">width measures total CPU share rather than execution order.</text>
+</svg>

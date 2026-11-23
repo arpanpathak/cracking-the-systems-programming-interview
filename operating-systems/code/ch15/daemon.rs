@@ -1,7 +1,10 @@
 // ch15/daemon.rs: the same lifecycle in Rust: double fork, setsid, pidfile,
 // and signal-driven shutdown through libc.
-use std::fs::OpenOptions;
-use std::io::Write;
+use std::fs::{self, OpenOptions};
+use std::io::{self, Write};
+use std::mem;
+use std::process;
+use std::ptr;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::thread;
 use std::time::Duration;
@@ -17,7 +20,7 @@ extern "C" fn on_term(_: libc::c_int) {
     STOP.store(true, Ordering::Relaxed);
 }
 
-fn main() -> std::io::Result<()> {
+fn main() -> io::Result<()> {
     // SAFETY: Classic UNIX Daemonization Invariants:
     // 1. First `fork()`: Creates an asynchronous background child and terminates the parent,
     //    guaranteeing the child is not a process group leader.
@@ -29,7 +32,7 @@ fn main() -> std::io::Result<()> {
     unsafe {
         let pid = libc::fork();
         if pid < 0 {
-            std::process::exit(1);
+            process::exit(1);
         }
         if pid > 0 {
             libc::_exit(0);        // first parent exits
@@ -55,7 +58,7 @@ fn main() -> std::io::Result<()> {
             .write(true)
             .truncate(true)
             .open(pidfile)?;
-        writeln!(pf, "{}", std::process::id())?;
+        writeln!(pf, "{}", process::id())?;
     }
 
     let mut log = OpenOptions::new().create(true).append(true).open(logfile)?;
@@ -64,16 +67,16 @@ fn main() -> std::io::Result<()> {
     // flags with `Ordering::Relaxed`. Atomic stores compile to single store instructions on x86/ARM,
     // fulfilling the strict POSIX async-signal-safety specification.
     unsafe {
-        let mut sa: libc::sigaction = std::mem::zeroed();
+        let mut sa: libc::sigaction = mem::zeroed();
         sa.sa_sigaction = on_hup as *const () as usize;
         libc::sigemptyset(&mut sa.sa_mask);
-        libc::sigaction(libc::SIGHUP, &sa, std::ptr::null_mut());
+        libc::sigaction(libc::SIGHUP, &sa, ptr::null_mut());
 
         sa.sa_sigaction = on_term as *const () as usize;
-        libc::sigaction(libc::SIGTERM, &sa, std::ptr::null_mut());
+        libc::sigaction(libc::SIGTERM, &sa, ptr::null_mut());
     }
 
-    writeln!(log, "daemon {} started", std::process::id())?;
+    writeln!(log, "daemon {} started", process::id())?;
     log.flush()?;
 
     let mut ticks = 0;
@@ -91,6 +94,6 @@ fn main() -> std::io::Result<()> {
     }
 
     writeln!(log, "stopping after {ticks} ticks")?;
-    std::fs::remove_file(pidfile)?;
+    fs::remove_file(pidfile)?;
     Ok(())
 }

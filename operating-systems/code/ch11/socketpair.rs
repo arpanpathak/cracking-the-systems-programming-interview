@@ -3,6 +3,7 @@ extern crate libc;
 
 use std::io::{self, Write};
 use std::ptr;
+use std::str;
 
 fn main() {
     let mut sv = [0 as libc::c_int; 2];
@@ -25,7 +26,7 @@ fn main() {
 
             let mut buf = [0_u8; 64];
             let n = libc::read(sv[1], buf.as_mut_ptr() as *mut libc::c_void, buf.len() - 1);
-            let text = std::str::from_utf8(&buf[..n.max(0) as usize]).unwrap_or("");
+            let text = str::from_utf8(&buf[..n.max(0) as usize]).unwrap_or("");
             println!("child  received: \"{text}\"");
             let _ = io::stdout().flush();
             libc::close(sv[1]);
@@ -39,7 +40,7 @@ fn main() {
         libc::close(sv[1]);
         let mut buf = [0_u8; 64];
         let n = libc::read(sv[0], buf.as_mut_ptr() as *mut libc::c_void, buf.len() - 1);
-        let text = std::str::from_utf8(&buf[..n.max(0) as usize]).unwrap_or("");
+        let text = str::from_utf8(&buf[..n.max(0) as usize]).unwrap_or("");
         println!("parent received: \"{text}\"");
 
         let reply = b"pong from parent";

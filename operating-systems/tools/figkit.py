@@ -38,17 +38,19 @@ LIGHT = {
 }
 
 DARK = {
-    "paper": "#1B1E26", "card": "#2B303B", "ink": "#E8EAF0", "muted": "#AEB6C3",
-    "hair": "#363C49", "shadow": "#000000", "shadow_opacity": "0.45",
+    "is_dark": True,
+    "paper": "#12161F", "card": "#1E2636", "card_stroke": "#4E6080",
+    "ink": "#F8FAFC", "muted": "#D8E0EE",
+    "hair": "#3E4C66", "shadow": "#000000", "shadow_opacity": "0.35",
     "tones": {
-        "blue": ("#1E2D47", "#2C4674", "#8FB8FA"),
-        "green": ("#1B3426", "#28553B", "#82D69C"),
-        "amber": ("#3A2D14", "#5E471A", "#F3C06B"),
-        "red": ("#41221D", "#69322B", "#F59E8D"),
-        "purple": ("#2C2549", "#453978", "#BCA8F7"),
-        "teal": ("#15332F", "#1F514B", "#72D5CA"),
-        "gray": ("#272B34", "#3A404D", "#AEB6C3"),
-        "wire": ("#272B34", "#3A404D", "#A2ABB9"),
+        "blue":   ("#182B49", "#1E3A63", "#93C5FD"),
+        "green":  ("#133328", "#184D3B", "#86EFAC"),
+        "amber":  ("#34250F", "#4F3814", "#FDE078"),
+        "red":    ("#3A1B23", "#582430", "#FDA4AF"),
+        "purple": ("#261E47", "#382B6B", "#DDD6FE"),
+        "teal":   ("#113136", "#164A52", "#5EEAD4"),
+        "gray":   ("#1E2534", "#2C364A", "#D8E0EE"),
+        "wire":   ("#1E2534", "#2C364A", "#CBD5E1"),
     },
 }
 
@@ -72,11 +74,13 @@ FONTS = {
 
 def style(theme):
     """The style sheet and shared definitions for one theme."""
+    is_dark = theme.get("is_dark", False)
+    card_stroke = f" stroke: {theme['card_stroke']}; stroke-width: 1;" if is_dark else ""
     rules = [
         f"text {{ font-family: {SANS}; fill: {theme['ink']}; }}",
         f".paper {{ fill: {theme['paper']}; }}",
-        f".frame {{ fill: {theme['paper']}; stroke: {theme['hair']}; stroke-width: 1; }}",
-        f".card {{ fill: {theme['card']}; }}",
+        f".frame {{ fill: {theme['paper']}; stroke: {theme['hair']}; stroke-width: 1.2; }}",
+        f".card {{ fill: {theme['card']};{card_stroke} }}",
         f".hair {{ stroke: {theme['hair']}; stroke-width: 1.2; fill: none; }}",
         f".muted {{ fill: {theme['muted']}; }}",
         f".ink {{ fill: {theme['ink']}; }}",
@@ -87,8 +91,12 @@ def style(theme):
         rules.append(f".{cls} {{ font-size: {size}px;{weight}{family} }}")
     rules.append(f".sub, .small, .note {{ fill: {theme['muted']}; }}")
     for tone, (container, mid, accent) in theme["tones"].items():
-        rules.append(f".c-{tone} {{ fill: {container}; }}")
-        rules.append(f".m-{tone} {{ fill: {mid}; }}")
+        if is_dark and tone not in ("wire",):
+            rules.append(f".c-{tone} {{ fill: {container}; stroke: {accent}; stroke-opacity: 0.48; stroke-width: 1.2; }}")
+            rules.append(f".m-{tone} {{ fill: {mid}; stroke: {accent}; stroke-opacity: 0.78; stroke-width: 1.2; }}")
+        else:
+            rules.append(f".c-{tone} {{ fill: {container}; }}")
+            rules.append(f".m-{tone} {{ fill: {mid}; }}")
         rules.append(f".a-{tone} {{ fill: {accent}; }}")
         rules.append(f".t-{tone} {{ fill: {accent}; }}")
         rules.append(f".w-{tone} {{ stroke: {accent}; fill: none; stroke-linecap: butt; stroke-linejoin: round; }}")

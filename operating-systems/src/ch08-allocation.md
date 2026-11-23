@@ -12,23 +12,17 @@ Allocators are distinguished by three architectural decisions: the placement str
 
 ### 8.1.1 Requesting Raw Arenas from the Kernel (`mmap`)
 
-The low-level allocators in Sections 8.2.3 and 8.3 acquire their backing memory (an **arena**) directly from the kernel via the POSIX `mmap` system call rather than calling `malloc`:
+The low-level allocators in Sections 8.2.3 and 8.3 acquire their backing memory (an **arena**) directly from the kernel via the **Portable Operating System Interface (`POSIX`)** `mmap` system call rather than calling `malloc`:
 
 ```text
 mmap(nullptr, capacity_bytes, PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANON, -1, 0)
 ```
 
-Each argument encodes a specific architectural contract with the kernel virtual-memory manager (detailed in Section 7.3.1):
-- **`nullptr` (`ptr::null_mut()`):** Delegates virtual base-address selection to the kernel, guaranteeing a page-aligned starting address.
-- **`capacity_bytes`:** Total contiguous virtual reservation requested (rounded upward by the kernel to whole hardware pages).
-- **`PROT_READ | PROT_WRITE`:** Programs the hardware Page Table Entry (PTE) permission bits so the process can both load from and store into the arena while preserving non-executable (`NX = 1`) protection.
-- **`MAP_PRIVATE | MAP_ANON`:** Allocates private, zero-initialized anonymous RAM unbacked by any disk file (`MAP_ANON`), ensuring modifications remain strictly isolated to this process (`MAP_PRIVATE`).
-- **`-1, 0`:** Because `MAP_ANON` specifies no backing file, POSIX requires passing `-1` as the file descriptor and `0` as the file offset.
-- **Error Check and Release:** `mmap` returns the sentinel `MAP_FAILED` (`(void*)-1`) on failure rather than `nullptr`. When the arena is destroyed, `munmap(arena_base, arena_capacity)` unmaps the virtual pages and returns their physical frames to the operating system.
+Passing `nullptr` (`ptr::null_mut()` in Rust) lets the kernel select a page-aligned virtual base address, while `capacity_bytes` is rounded upward to whole hardware pages. Setting `PROT_READ | PROT_WRITE` programs each leaf **Page Table Entry (`PTE`)** for readable, writable, non-executable (`NX = 1`) memory, and `MAP_PRIVATE | MAP_ANON` allocates private, zero-initialized anonymous memory unbacked by any file (for which `POSIX` requires `fd = -1` and `offset = 0`, as detailed in Section 7.3.1). On failure `mmap` returns `MAP_FAILED` (`(void*)-1`); when the arena is destroyed, `munmap(arena_base, arena_capacity)` returns its physical frames to the operating system.
 
 ### 8.1.2 Hardware Alignment and Bitwise Rounding
 
-Before subdividing an arena into individual objects, an allocator must enforce **memory alignment**. Modern 64-bit processors transfer data between caches and registers in aligned 8-byte words, 16-byte SIMD vectors, and 64-byte cache lines. A type requiring alignment `A` (always a power of two: 1, 2, 4, 8, 16, or 64 bytes) must start at an address divisible by `A` (`address % A == 0`); unaligned accesses split across cache-line boundaries, break single-line hardware atomicity, or trigger hardware alignment faults (`#AC` / `SIGBUS`). Both the System V AMD64 ABI and ARM64 AAPCS64 therefore require **16-byte alignment** for general-purpose heap allocations.
+Before subdividing an arena into individual objects, an allocator must enforce **memory alignment**. Modern 64-bit processors transfer data between caches and registers in aligned 8-byte words, 16-byte **Single Instruction, Multiple Data (`SIMD`)** vectors, and 64-byte cache lines. A type requiring alignment `A` (always a power of two: 1, 2, 4, 8, 16, or 64 bytes) must start at an address divisible by `A` (`address % A == 0`); unaligned accesses split across cache-line boundaries, break single-line hardware atomicity, or trigger hardware alignment faults (`#AC` / `SIGBUS`). Both the System V AMD64 **Application Binary Interface (`ABI`)** and ARM64 AAPCS64 therefore require **16-byte alignment** for general-purpose heap allocations.
 
 Given a current cursor `next_offset` and a power-of-two alignment `A = 2^k`, the smallest multiple of `A` greater than or equal to `next_offset` is computed in two instructions:
 
@@ -82,9 +76,9 @@ When all arena-resident nodes share a single homogeneous type `T` (such as abstr
 The Level 1 `Arena<T>` in Listing 8-2 supports O(1) bulk `reset()`, yet it cannot reclaim individual removed objects without leaking their slots. Supporting individual deletion brings two subtle systems design questions to the foreground:
 
 1. **Why avoid textbook `LinkedList<T>` while still using an intrusive free list?**
-   A textbook pointer-based linked list (such as `std::collections::LinkedList`) calls the global heap allocator once per node, scattering nodes across DRAM and causing a cache miss on every pointer hop. By contrast, an **intrusive free list** inside an arena allocates zero separate nodes: each empty slot inside the contiguous `Vec<Slot<T>>` stores `Entry::Free { next_free: Option<u32> }`, and the arena holds a single `free_head: Option<u32>` pointing to the most recently freed index. Inserting pops `free_head` in O(1); removing pushes the freed index onto `free_head` in O(1).
-   - **How this compares to the Linux kernel:** Linux itself combines both halves of this insight. Its primary kernel object allocator (**SLUB**) manages contiguous arenas (slabs) of fixed-size objects with an intrusive free list threaded directly through empty slots. Meanwhile, Linux's intrusive **`struct list_head`** embeds `prev`/`next` pointers directly inside kernel objects such as `task_struct` (allocating zero wrapper nodes), giving kernel code three capabilities a growable `Vec` cannot match: O(1) self-unlinking given an existing pointer to the object, simultaneous membership of one object in multiple lists (runqueue, parent's children list, and a wait queue), and stable physical addresses that never relocate.
-2. **The hidden hazard of plain indices: stale handles (logical use-after-free / ABA):**
+   A textbook pointer-based linked list (such as `std::collections::LinkedList`) calls the global heap allocator once per node, scattering nodes across **Dynamic Random-Access Memory (`DRAM`)** and causing a cache miss on every pointer hop. By contrast, an **intrusive free list** inside an arena allocates zero separate nodes: each empty slot inside the contiguous `Vec<Slot<T>>` stores `Entry::Free { next_free: Option<u32> }`, and the arena holds a single `free_head: Option<u32>` pointing to the most recently freed index. Inserting pops `free_head` in O(1); removing pushes the freed index onto `free_head` in O(1).
+   - **How this compares to the Linux kernel:** Linux itself combines both halves of this insight. Its primary kernel object allocator (**Unqueued Slab Allocator (`SLUB`)**) manages contiguous arenas (slabs) of fixed-size objects with an intrusive free list threaded directly through empty slots. Meanwhile, Linux's intrusive **`struct list_head`** embeds `prev`/`next` pointers directly inside kernel objects such as `task_struct` (allocating zero wrapper nodes), giving kernel code three capabilities a growable `Vec` cannot match: O(1) self-unlinking given an existing pointer to the object, simultaneous membership of one object in multiple lists (runqueue, parent's children list, and a wait queue), and stable physical addresses that never relocate.
+2. **The hidden hazard of plain indices: stale handles (logical use-after-free / ABA problem):**
    Replacing raw pointers with `usize` indices eliminates segfaults and undefined behavior, yet an index is still a pointer the borrow checker cannot track. Suppose slot `0` holds `"alpha"`, someone keeps a copy of `Id(0)`, slot `0` is freed onto the free list, and `"gamma"` is inserted into recycled slot `0`. Dereferencing the stale `Id(0)` will not crash; it will return `"gamma"` without error, trading memory corruption for undetected logical corruption.
    - **The solution (generational indices):** Pair every slot index with a **generation counter** (`Handle { index: u32, generation: u32 }`), and store a matching `generation: u32` inside each `Slot<T>`. Every time a slot is freed, its `generation` increments by 1. On every `get()` or `remove()`, the arena verifies `slot.generation == handle.generation`; any stale handle from an earlier lifetime fails the check immediately and returns `None` (`nullptr` in C++). Production Rust crates such as `slotmap` and `generational-arena` use this exact design. (Note: in long-running processes where a hot slot might recycle `2^32` times, production implementations use 64-bit generations or retire saturated slots to prevent wraparound collisions.)
 
@@ -248,5 +242,19 @@ Sub-allocating small objects out of persistent arenas amortizes system-call over
 <span class="label">Key idea</span>
 
 Memory allocators reconcile kernel page granularity with fine-grained object lifetimes: safe index pools and raw bump allocators trade individual deallocation for O(1) bulk resets, free-list allocators enforce splitting and coalescing via in-band headers, and production allocators achieve lock-free O(1) scaling via per-thread size-class caches, Knuth boundary tags, and direct `mmap` above 128 KiB.
+
+</div>
+
+<div class="callout experiment">
+<span class="label">Experiment</span>
+
+In Listing 8-4 (`code/ch08/gen_arena.rs`), comment out the `slot.generation += 1` increment inside `remove()` and re-run. Observe how the stale `alpha` handle returns `"gamma"` without error from the recycled slot instead of `None`, demonstrating the logical ABA hazard of plain integer indices.
+
+</div>
+
+<div class="callout caution">
+<span class="label">Common Pitfall</span>
+
+Returning unaligned pointers from a custom bump or free-list allocator. Omitting power-of-two rounding (`(offset + A - 1) & ~(A - 1)`) violates the 16-byte `ABI` alignment invariant, triggering undefined behavior in C++ and Rust and hardware alignment faults (`SIGBUS`) on strict `SIMD` vector loads.
 
 </div>

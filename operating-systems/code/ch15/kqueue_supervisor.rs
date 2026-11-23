@@ -1,5 +1,7 @@
 // ch15/kqueue_supervisor.rs: process fault monitoring using kqueue in Rust.
+use std::mem;
 use std::process::{Command, Stdio};
+use std::ptr;
 
 fn main() {
     // SAFETY: Kernel Event Loop Supervision Invariants:
@@ -38,15 +40,15 @@ fn main() {
             flags: libc::EV_ADD | libc::EV_ENABLE,
             fflags: libc::NOTE_EXIT,
             data: 0,
-            udata: std::ptr::null_mut(),
+            udata: ptr::null_mut(),
         };
 
-        let ret = libc::kevent(kq, &change, 1, std::ptr::null_mut(), 0, std::ptr::null());
+        let ret = libc::kevent(kq, &change, 1, ptr::null_mut(), 0, ptr::null());
         assert!(ret >= 0, "failed to register kevent");
 
         // Block on the event queue until the process exits
-        let mut event = std::mem::zeroed();
-        let nev = libc::kevent(kq, std::ptr::null(), 0, &mut event, 1, std::ptr::null());
+        let mut event = mem::zeroed();
+        let nev = libc::kevent(kq, ptr::null(), 0, &mut event, 1, ptr::null());
         assert!(nev > 0, "kevent wait failed");
 
         let status = child.wait().expect("failed to wait on child");

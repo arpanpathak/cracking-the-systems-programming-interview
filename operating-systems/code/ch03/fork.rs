@@ -1,5 +1,5 @@
 // ch03/fork.rs: the same fork/wait sequence through Rust's libc bindings.
-use std::io::Write;
+use std::io::{self, Write};
 use std::process::exit;
 
 fn main() {
@@ -27,7 +27,7 @@ fn main() {
         let me = unsafe { libc::getpid() };
         let parent = unsafe { libc::getppid() };
         println!("child : pid={me} parent={parent}");
-        let _ = std::io::stdout().flush(); // _exit() skips stdio flushing
+        let _ = io::stdout().flush(); // _exit() skips stdio flushing
         // SAFETY: `_exit(2)` immediately terminates execution without running user-space `atexit`
         // handlers or flushing C stdio buffers. This prevents double-flushing data buffers that
         // were duplicated across the fork boundary into the child's address space.

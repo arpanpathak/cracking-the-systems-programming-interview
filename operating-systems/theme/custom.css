@@ -39,6 +39,13 @@
   --sum: #f4f0fb;
   --sum-line: #c9c4ee;
   --sum-ink: #4b49c8;
+
+  /* Material Design 3 Tonal Table tokens (matching Distributed Systems edition) */
+  --m3-surface: #ffffff;
+  --m3-table-head-bg: #e6effd;
+  --m3-table-head-ink: #163e7a;
+  --m3-table-row-alt: #f8fafd;
+  --m3-hairline: #dce2ec;
 }
 
 html.coal, html.navy, html.ayu {
@@ -48,8 +55,8 @@ html.coal, html.navy, html.ayu {
   --accent: #8ab4f8;
   --accent-ink: #b3cffb;
   --paper: var(--bg);
-  --wash: rgba(255, 255, 255, 0.07);
-  --hairline: rgba(255, 255, 255, 0.16);
+  --wash: rgba(255, 255, 255, 0.06);
+  --hairline: rgba(255, 255, 255, 0.14);
   --code-bg: rgba(255, 255, 255, 0.05);
   --sidebar-surface: var(--sidebar-bg);
 
@@ -68,6 +75,28 @@ html.coal, html.navy, html.ayu {
   --sum: rgba(150, 125, 250, 0.15);
   --sum-line: rgba(180, 160, 250, 0.42);
   --sum-ink: #c0aef8;
+
+  --m3-surface: #131724;
+  --m3-table-head-bg: #18233a;
+  --m3-table-head-ink: #b7d0ff;
+  --m3-table-row-alt: #161b2a;
+  --m3-hairline: #242e45;
+}
+
+html.navy {
+  --m3-surface: #051b2e;
+  --m3-table-head-bg: #0b2942;
+  --m3-table-head-ink: #b7d7f5;
+  --m3-table-row-alt: #082035;
+  --m3-hairline: #173752;
+}
+
+html.ayu {
+  --m3-surface: #1e303a;
+  --m3-table-head-bg: #27404e;
+  --m3-table-head-ink: #cbe3f5;
+  --m3-table-row-alt: #21343f;
+  --m3-hairline: #324c5c;
 }
 
 html.rust {
@@ -202,71 +231,140 @@ body {
   max-width: 42em;
 }
 
-/* ---------- Callouts ---------- */
+/* ---------- Material Design 3 Callout Cards with Icons & Elevation ---------- */
 
 .callout {
   border-radius: 12px;
   border: 1px solid var(--note-line);
-  padding: 0.95em 1.2em 0.9em;
-  margin: 1.4em 0;
+  border-left: 4px solid var(--note-ink);
+  padding: 1.05em 1.25em 1em;
+  margin: 1.5em 0;
   font-size: 0.96em;
+  box-shadow: 0 2px 10px rgba(27, 36, 48, 0.07), 0 1px 2px rgba(27, 36, 48, 0.04);
   page-break-inside: avoid;
 }
 
-.callout p { margin: 0.4em 0; }
+html.coal .callout,
+html.navy .callout,
+html.ayu .callout {
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.34);
+}
+
+.callout p { margin: 0.45em 0; }
 .callout p:first-child { margin-top: 0; }
 .callout p:last-child { margin-bottom: 0; }
 
 .callout .label {
-  display: block;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5em;
   font-weight: 700;
   font-size: 0.8em;
   letter-spacing: 0.06em;
   text-transform: uppercase;
-  margin-bottom: 0.4em;
+  margin-bottom: 0.55em;
 }
 
-.keyidea { background: var(--key); border-color: var(--key-line); }
+.callout .label::before {
+  content: "";
+  display: inline-block;
+  width: 18px;
+  height: 18px;
+  flex-shrink: 0;
+  background-color: currentColor;
+  -webkit-mask-size: contain;
+  mask-size: contain;
+  -webkit-mask-repeat: no-repeat;
+  mask-repeat: no-repeat;
+  -webkit-mask-position: center;
+  mask-position: center;
+}
+
+.keyidea { background: var(--key); border-color: var(--key-line); border-left-color: var(--key-ink); }
 .keyidea .label { color: var(--key-ink); }
+.keyidea .label::before {
+  -webkit-mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='M9 21c0 .55.45 1 1 1h4c.55 0 1-.45 1-1v-1H9v1zm3-19C8.14 2 5 5.14 5 9c0 2.38 1.19 4.47 3 5.74V17c0 .55.45 1 1 1h6c.55 0 1-.45 1-1v-2.26c1.81-1.27 3-3.36 3-5.74 0-3.86-3.14-7-7-7z'/%3E%3C/svg%3E");
+  mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='M9 21c0 .55.45 1 1 1h4c.55 0 1-.45 1-1v-1H9v1zm3-19C8.14 2 5 5.14 5 9c0 2.38 1.19 4.47 3 5.74V17c0 .55.45 1 1 1h6c.55 0 1-.45 1-1v-2.26c1.81-1.27 3-3.36 3-5.74 0-3.86-3.14-7-7-7z'/%3E%3C/svg%3E");
+}
 
-.note { background: var(--note); border-color: var(--note-line); }
+.note { background: var(--note); border-color: var(--note-line); border-left-color: var(--note-ink); }
 .note .label { color: var(--note-ink); }
+.note .label::before {
+  -webkit-mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-6h2v6zm0-8h-2V7h2v2z'/%3E%3C/svg%3E");
+  mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-6h2v6zm0-8h-2V7h2v2z'/%3E%3C/svg%3E");
+}
 
-.experiment { background: var(--exp); border-color: var(--exp-line); }
+.experiment { background: var(--exp); border-color: var(--exp-line); border-left-color: var(--exp-ink); }
 .experiment .label { color: var(--exp-ink); }
+.experiment .label::before {
+  -webkit-mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='M19.8 18.4L14 10.67V6.5l1.35-1.69c.26-.33.03-.81-.39-.81H9.04c-.42 0-.65.48-.39.81L10 6.5v4.17L4.2 18.4c-.49.66-.02 1.6.8 1.6h14c.82 0 1.29-.94.8-1.6z'/%3E%3C/svg%3E");
+  mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='M19.8 18.4L14 10.67V6.5l1.35-1.69c.26-.33.03-.81-.39-.81H9.04c-.42 0-.65.48-.39.81L10 6.5v4.17L4.2 18.4c-.49.66-.02 1.6.8 1.6h14c.82 0 1.29-.94.8-1.6z'/%3E%3C/svg%3E");
+}
 
-.caution { background: var(--warn); border-color: var(--warn-line); }
+.caution { background: var(--warn); border-color: var(--warn-line); border-left-color: var(--warn-ink); }
 .caution .label { color: var(--warn-ink); }
+.caution .label::before {
+  -webkit-mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='M1 21h22L12 2 1 21zm12-3h-2v-2h2v2zm0-4h-2v-4h2v4z'/%3E%3C/svg%3E");
+  mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='M1 21h22L12 2 1 21zm12-3h-2v-2h2v2zm0-4h-2v-4h2v4z'/%3E%3C/svg%3E");
+}
 
-.summary { background: var(--sum); border-color: var(--sum-line); }
+.summary { background: var(--sum); border-color: var(--sum-line); border-left-color: var(--sum-ink); }
 .summary .label { color: var(--sum-ink); }
+.summary .label::before {
+  -webkit-mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z'/%3E%3C/svg%3E");
+  mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z'/%3E%3C/svg%3E");
+}
 
 .glance { background: var(--note); border-color: var(--note-line); }
 .glance .label { color: var(--note-ink); }
 .glance ul { margin: 0.2em 0 0; padding-left: 1.2em; }
 .glance li { margin: 0.2em 0; }
 
-/* ---------- Tables ---------- */
+/* ---------- Material Design 3 Tonal Data Tables (matching Distributed Systems) ---------- */
 
 .content table {
-  border-collapse: collapse;
-  margin: 1.3em 0;
-  font-size: 0.94em;
+  width: 100%;
+  border-collapse: separate;
+  border-spacing: 0;
+  margin: 1.5em 0;
+  font-size: 0.91em;
+  background: var(--m3-surface);
+  border: 1px solid var(--m3-hairline);
+  border-radius: 12px;
+  overflow: hidden;
+  box-shadow: 0 2px 8px rgba(27, 36, 48, 0.05);
 }
 
-.content table th, .content table td {
-  border: 1px solid var(--hairline);
-  padding: 0.5em 0.85em;
+html.coal .content table,
+html.navy .content table,
+html.ayu .content table {
+  box-shadow: 0 3px 14px rgba(0, 0, 0, 0.3);
+}
+
+.content table thead th {
+  background: var(--m3-table-head-bg) !important;
+  color: var(--m3-table-head-ink) !important;
+  font-weight: 650;
   text-align: left;
+  padding: 0.65em 0.9em;
+  border: none;
+  border-bottom: 1px solid var(--m3-hairline);
 }
 
-.content table thead, .content table th {
-  background: var(--wash);
-  font-weight: 600;
+.content table td {
+  padding: 0.6em 0.9em;
+  border: none;
+  border-bottom: 1px solid var(--m3-hairline);
+  vertical-align: top;
+  line-height: 1.5;
 }
 
-.content table tbody tr, .content table tbody tr:nth-child(2n) {
-  background: transparent;
+.content table tbody tr:last-child td {
+  border-bottom: none;
+}
+
+.content table tbody tr:nth-child(2n) {
+  background: var(--m3-table-row-alt);
 }
 
 /* ---------- Material Design Code Tabs (C++20 | Rust 2024 | Split) ---------- */
@@ -443,6 +541,106 @@ html.ayu .md-lang-chip.split {
   .md-code-tabs.is-split .md-code-panel:first-child {
     border-right: none;
   }
+}
+
+/* ---------- Clickable Abbreviation Glossary Links & Tooltips ---------- */
+
+.content a.md-abbr-link {
+  color: inherit;
+  border-bottom: 1.5px dotted var(--accent);
+  text-decoration: none;
+  border-radius: 2px;
+  padding: 0 1px;
+  transition: background-color 0.14s ease, color 0.14s ease;
+}
+
+.content a.md-abbr-link:hover {
+  background: var(--key);
+  color: var(--key-ink);
+  text-decoration: none;
+}
+
+.content code > a.md-abbr-link.md-abbr-code {
+  border-bottom: 1.5px dotted var(--accent);
+  color: inherit;
+}
+
+/* ---------- Glossary Page Grid & Target Highlight ---------- */
+
+.md-glossary-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+  margin: 1.4em 0;
+}
+
+@media (max-width: 760px) {
+  .md-glossary-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.md-glossary-card {
+  background: var(--wash);
+  border: 1px solid var(--hairline);
+  border-left: 3.5px solid var(--accent);
+  border-radius: 12px;
+  padding: 15px 18px;
+  font-size: 0.93em;
+  line-height: 1.58;
+  scroll-margin-top: 72px;
+  transition: background-color 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.md-glossary-card .md-term-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 8px;
+  margin-bottom: 0.45em;
+}
+
+.md-glossary-card .md-term-chip {
+  display: inline-block;
+  padding: 2px 9px;
+  border-radius: 999px;
+  background: var(--key);
+  color: var(--key-ink);
+  border: 1px solid var(--key-line);
+  font-family: "SF Mono", SFMono-Regular, ui-monospace, Menlo, Consolas, monospace;
+  font-size: 0.85em;
+  font-weight: 700;
+}
+
+.md-glossary-card .md-term-full {
+  color: var(--ink);
+  font-weight: 650;
+  font-size: 1.02em;
+}
+
+.md-glossary-card p {
+  margin: 0.35em 0 0 !important;
+  color: var(--ink-soft);
+}
+
+.md-glossary-card .md-term-rust {
+  margin-top: 0.65em;
+  padding: 8px 11px;
+  border-radius: 8px;
+  background: var(--code-bg);
+  border: 1px solid var(--hairline);
+  font-family: "SF Mono", SFMono-Regular, ui-monospace, Menlo, Consolas, monospace;
+  font-size: 0.8em;
+  line-height: 1.45;
+  overflow-x: auto;
+  white-space: pre;
+  color: var(--ink);
+}
+
+.md-glossary-card:target {
+  background: var(--key);
+  border-color: var(--accent);
+  box-shadow: 0 0 0 2px var(--key-line);
 }
 
 /* ---------- Sidebar ---------- */
@@ -704,5 +902,10 @@ html.ayu .md-lang-chip.split {
     display: block !important;
     padding: 0 !important;
     margin: 0.5em 0 !important;
+  }
+
+  .content a.md-abbr-link {
+    border-bottom: none !important;
+    color: inherit !important;
   }
 }

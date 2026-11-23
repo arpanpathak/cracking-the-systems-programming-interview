@@ -18,7 +18,7 @@ The implementation of these roles relies on the distinction between mechanism an
 
 ## 1.4 The System Call Boundary and POSIX Standard Interface
 
-The boundary between the kernel (which executes in a privileged mode with unrestricted instruction access) and user-mode applications is mediated through the system call interface. A system call provides a hardware-supervised, deterministic transfer of control, allowing a program to request kernel services without compromising the integrity of the kernel's own address space. This transition, while computationally expensive compared to standard function calls, serves as the essential gatekeeper for system security and stability.
+The boundary between the kernel (which executes in a privileged mode with unrestricted instruction access) and user-mode applications is mediated through the **Portable Operating System Interface (`POSIX`)** system call interface. A system call provides a hardware-supervised, deterministic transfer of control, allowing a program to request kernel services without compromising the integrity of the kernel's own address space. This transition, while computationally expensive compared to standard function calls, serves as the essential gatekeeper for system security and stability.
 
 **Table 1-1. POSIX calls in this book.**
 
@@ -32,3 +32,10 @@ The boundary between the kernel (which executes in a privileged mode with unrest
 | `sigaction` / `sigprocmask` | install and mask signal handlers | 10 |
 | `bind` / `listen` / `accept` / `connect` | establish network connections | 14 |
 | `setsid` / `umask` / `chdir` | detach a daemon from its terminal | 15 |
+
+<div class="callout keyidea">
+<span class="label">Key idea</span>
+
+Every operating system balances two competing goals: **virtualization** (giving each program the illusion of a private processor, flat memory, and durable files) and **isolation** (preventing any faulty or adversarial program from corrupting sibling processes or the kernel). Separating unchanging hardware mechanisms from tunable kernel policies makes both possible.
+
+</div>

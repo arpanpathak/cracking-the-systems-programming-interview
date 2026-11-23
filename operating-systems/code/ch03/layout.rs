@@ -1,9 +1,10 @@
 // ch03/layout.rs: the same address-space regions, observed from Rust.
 use std::ptr::addr_of;
+use std::sync::atomic::AtomicI32;
 
 fn anchor() {}
 
-static G_INITIALIZED: std::sync::atomic::AtomicI32 = std::sync::atomic::AtomicI32::new(42);
+static G_INITIALIZED: AtomicI32 = AtomicI32::new(42);
 static mut G_UNINITIALIZED: i32 = 0;
 
 fn main() {

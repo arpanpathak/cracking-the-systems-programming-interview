@@ -23,3 +23,4 @@
 - [17. Multiprocessor Systems and Hardware Accelerators](ch17-multiprocessors.md)
 - [18. Performance Analysis and Observability](ch18-performance.md)
 - [19. Systems Interview Problems: Derivations and Reference Implementations](ch19-interview-problems.md)
+- [Glossary of Architectural Terms & Abbreviations](glossary.md)
