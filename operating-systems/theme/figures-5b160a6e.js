@@ -10,8 +10,13 @@
     return DARK_THEMES.some(function (name) { return classes.contains(name); });
   }
 
+  function isPrintPage() {
+    return /print\.html$/i.test(window.location.pathname) ||
+      (window.matchMedia && window.matchMedia('print').matches);
+  }
+
   function applyFigures(forceLight) {
-    var dark = !forceLight && isDark();
+    var dark = !forceLight && !isPrintPage() && isDark();
     document.querySelectorAll('img[src*="figures/"]').forEach(function (img) {
       var current = img.getAttribute('src');
       var light = current.replace('figures/dark/', 'figures/');
