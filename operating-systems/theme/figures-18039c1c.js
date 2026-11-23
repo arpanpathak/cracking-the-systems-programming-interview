@@ -20,7 +20,7 @@
     });
     document.querySelectorAll('img[src*="art/"]').forEach(function (img) {
       var current = img.getAttribute('src');
-      if (current.indexOf('plate') === -1) return;
+      if (current.indexOf('plate') === -1 && current.indexOf('cover.svg') === -1) return;
       var light = current.replace('art/dark/', 'art/');
       var wanted = dark ? light.replace('art/', 'art/dark/') : light;
       if (wanted !== current) img.setAttribute('src', wanted);

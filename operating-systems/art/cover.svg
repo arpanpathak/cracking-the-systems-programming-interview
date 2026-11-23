@@ -1,365 +1,161 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 960 1280" width="100%" height="100%" role="img" aria-label="Operating Systems: A Hands-On Approach — Front Cover">
-  <defs>
-    <!-- Sky & Horizon Gradients -->
-    <linearGradient id="sky-grad" x1="0" y1="0" x2="0" y2="1">
-      <stop offset="0%" stop-color="#091024"/>
-      <stop offset="35%" stop-color="#132247"/>
-      <stop offset="68%" stop-color="#1F3B6D"/>
-      <stop offset="88%" stop-color="#3B5284"/>
-      <stop offset="100%" stop-color="#F59E0B" stop-opacity="0.55"/>
-    </linearGradient>
-    <radialGradient id="sun-glow" cx="50%" cy="46%" r="45%">
-      <stop offset="0%" stop-color="#FDE68A" stop-opacity="0.75"/>
-      <stop offset="35%" stop-color="#F59E0B" stop-opacity="0.32"/>
-      <stop offset="70%" stop-color="#38BDF8" stop-opacity="0.10"/>
-      <stop offset="100%" stop-color="#091024" stop-opacity="0"/>
-    </radialGradient>
-    <linearGradient id="mtn-far-l" x1="0" y1="0" x2="0" y2="1">
-      <stop offset="0%" stop-color="#60A5FA"/>
-      <stop offset="100%" stop-color="#1E3A8A"/>
-    </linearGradient>
-    <linearGradient id="mtn-far-r" x1="0" y1="0" x2="0" y2="1">
-      <stop offset="0%" stop-color="#2563EB"/>
-      <stop offset="100%" stop-color="#172554"/>
-    </linearGradient>
-    <linearGradient id="mtn-mid-l" x1="0" y1="0" x2="0" y2="1">
-      <stop offset="0%" stop-color="#14B8A6"/>
-      <stop offset="100%" stop-color="#115E59"/>
-    </linearGradient>
-    <linearGradient id="mtn-mid-r" x1="0" y1="0" x2="0" y2="1">
-      <stop offset="0%" stop-color="#0D9488"/>
-      <stop offset="100%" stop-color="#0F172A"/>
-    </linearGradient>
-    <linearGradient id="ground-grad" x1="0" y1="0" x2="0" y2="1">
-      <stop offset="0%" stop-color="#0F172A"/>
-      <stop offset="40%" stop-color="#0B1325"/>
-      <stop offset="100%" stop-color="#070C18"/>
-    </linearGradient>
-    <linearGradient id="shell-bg" x1="0" y1="0" x2="0" y2="1">
-      <stop offset="0%" stop-color="#111827" stop-opacity="0.96"/>
-      <stop offset="100%" stop-color="#0B1120" stop-opacity="0.98"/>
-    </linearGradient>
-    <linearGradient id="die-grad" x1="0" y1="0" x2="1" y2="1">
-      <stop offset="0%" stop-color="#1E293B"/>
-      <stop offset="50%" stop-color="#0F172A"/>
-      <stop offset="100%" stop-color="#1E1B4B"/>
-    </linearGradient>
-    <radialGradient id="crab-shell" cx="45%" cy="35%" r="65%">
-      <stop offset="0%" stop-color="#EA580C"/>
-      <stop offset="45%" stop-color="#C2410C"/>
-      <stop offset="80%" stop-color="#9A3412"/>
-      <stop offset="100%" stop-color="#431407"/>
-    </radialGradient>
-    <linearGradient id="crab-claw" x1="0" y1="0" x2="1" y2="1">
-      <stop offset="0%" stop-color="#F97316"/>
-      <stop offset="55%" stop-color="#B45309"/>
-      <stop offset="100%" stop-color="#7C2D12"/>
-    </linearGradient>
-    <linearGradient id="steel-base" x1="0" y1="0" x2="1" y2="0.3">
-      <stop offset="0%" stop-color="#94A3B8"/>
-      <stop offset="35%" stop-color="#64748B"/>
-      <stop offset="70%" stop-color="#475569"/>
-      <stop offset="100%" stop-color="#334155"/>
-    </linearGradient>
-    <linearGradient id="rust-streak" x1="0" y1="0" x2="1" y2="1">
-      <stop offset="0%" stop-color="#7F1D1D" stop-opacity="0.92"/>
-      <stop offset="45%" stop-color="#9A3412" stop-opacity="0.95"/>
-      <stop offset="80%" stop-color="#C2410C" stop-opacity="0.90"/>
-      <stop offset="100%" stop-color="#D97706" stop-opacity="0.85"/>
-    </linearGradient>
-    <filter id="mat-shadow" x="-8%" y="-8%" width="116%" height="120%">
-      <feDropShadow dx="0" dy="8" stdDeviation="10" flood-color="#020617" flood-opacity="0.55"/>
-    </filter>
-    <filter id="soft-glow" x="-20%" y="-20%" width="140%" height="140%">
-      <feGaussianBlur stdDeviation="3.5" result="b"/>
-      <feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge>
-    </filter>
-  </defs>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 900 1240" width="900" height="1240" shape-rendering="geometricPrecision" text-rendering="geometricPrecision" role="img" aria-label="Cover of Operating Systems: A Hands-On Approach by Arpan Pathak: a Swiss-Modernist abstract geometric composition depicting concentric Ring 3 and Ring 0 hardware privilege boundaries, a central SYSCALL trap gate, user-space processes, and a four-pillar kernel and silicon substrate.">
   <style>
-    .sans { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif; }
+    .sans { font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif; }
+    .serif { font-family: Georgia, "Iowan Old Style", "Times New Roman", serif; }
     .mono { font-family: "SF Mono", SFMono-Regular, ui-monospace, Menlo, Consolas, monospace; }
   </style>
-
-  <rect width="960" height="1280" rx="16" fill="#070C18"/>
-  <rect width="960" height="660" rx="16" fill="url(#sky-grad)"/>
-  <rect width="960" height="660" fill="url(#sun-glow)"/>
-  <circle cx="78" cy="52" r="1.5" fill="#E0F2FE" opacity="0.75"/>
-  <circle cx="164" cy="38" r="1.2" fill="#E0F2FE" opacity="0.75"/>
-  <circle cx="285" cy="62" r="1.6" fill="#E0F2FE" opacity="0.75"/>
-  <circle cx="412" cy="40" r="1.3" fill="#E0F2FE" opacity="0.75"/>
-  <circle cx="560" cy="48" r="1.8" fill="#E0F2FE" opacity="0.75"/>
-  <circle cx="690" cy="36" r="1.4" fill="#E0F2FE" opacity="0.75"/>
-  <circle cx="825" cy="58" r="1.6" fill="#E0F2FE" opacity="0.75"/>
-  <circle cx="895" cy="42" r="1.2" fill="#E0F2FE" opacity="0.75"/>
-  <circle cx="110" cy="118" r="1.2" fill="#E0F2FE" opacity="0.75"/>
-  <circle cx="860" cy="112" r="1.5" fill="#E0F2FE" opacity="0.75"/>
-  <circle cx="65" cy="195" r="1.4" fill="#E0F2FE" opacity="0.75"/>
-  <circle cx="902" cy="185" r="1.3" fill="#E0F2FE" opacity="0.75"/>
-  <circle cx="140" cy="250" r="1.2" fill="#E0F2FE" opacity="0.75"/>
-  <circle cx="830" cy="240" r="1.5" fill="#E0F2FE" opacity="0.75"/>
-  <circle cx="480" cy="435" r="78" fill="#FDE68A" opacity="0.22"/>
-  <circle cx="480" cy="435" r="46" fill="#FEF08A" opacity="0.55"/>
-  <rect x="290" y="50" width="380" height="32" rx="16" fill="#0F172A" fill-opacity="0.72" stroke="#38BDF8" stroke-width="1.2"/>
-  <circle cx="312" cy="66" r="4.5" fill="#34D399"/>
-  <text x="490" y="71" text-anchor="middle" class="mono" font-size="12.5" font-weight="700" letter-spacing="1.4" fill="#E0F2FE">C++20 · RUST 2024 · x86-64 &amp; ARM64</text>
-  <text x="480" y="152" text-anchor="middle" class="sans" font-size="68" font-weight="800" letter-spacing="-1.2" fill="#FFFFFF" filter="url(#mat-shadow)">Operating Systems</text>
-  <text x="480" y="198" text-anchor="middle" class="sans" font-size="27" font-weight="500" letter-spacing="0.4" fill="#7DD3FC">A Hands-On Approach</text>
-  <line x1="270" y1="220" x2="690" y2="220" stroke="#F59E0B" stroke-width="1.8" stroke-opacity="0.75"/>
-  <circle cx="480" cy="220" r="4" fill="#FDE68A"/>
-  <text x="480" y="248" text-anchor="middle" class="sans" font-size="15.5" font-weight="500" fill="#E2E8F0">From Silicon Microarchitecture &amp; Kernel Internals to Shells, Event Loops &amp; Daemons</text>
-  <polygon points="0,540 0,430 115,355 235,288 375,445 440,540" fill="url(#mtn-far-l)"/>
-  <polygon points="235,288 375,445 440,540 270,540 218,395" fill="url(#mtn-far-r)"/>
-  <polygon points="235,288 184,321 206,338 224,324 239,344 268,325" fill="#E0F2FE" opacity="0.92"/>
-  <polygon points="470,540 595,365 725,276 865,390 960,445 960,540" fill="url(#mtn-far-l)"/>
-  <polygon points="725,276 865,390 960,445 960,540 705,540 695,382" fill="url(#mtn-far-r)"/>
-  <polygon points="725,276 676,313 698,329 718,314 736,336 772,316" fill="#E0F2FE" opacity="0.92"/>
-  <polygon points="330,540 480,348 630,540" fill="#1E3A8A" opacity="0.85"/>
-  <polygon points="480,348 630,540 495,540" fill="#172554" opacity="0.9"/>
-  <polygon points="480,348 448,386 468,396 482,382 498,398 512,386" fill="#FDE68A" opacity="0.85"/>
-  <polygon points="0,565 0,468 155,398 335,488 510,425 685,485 835,402 960,465 960,565" fill="url(#mtn-mid-l)"/>
-  <polygon points="155,398 335,488 335,565 140,565" fill="url(#mtn-mid-r)" opacity="0.55"/>
-  <polygon points="510,425 685,485 685,565 495,565" fill="url(#mtn-mid-r)" opacity="0.55"/>
-  <polygon points="835,402 960,465 960,565 815,565" fill="url(#mtn-mid-r)" opacity="0.55"/>
-  <path d="M 40 495 L 155 445 L 260 495 L 390 495" fill="none" stroke="#38BDF8" stroke-width="1.5" stroke-opacity="0.45"/>
-  <circle cx="155" cy="445" r="3.5" fill="#38BDF8" opacity="0.75"/>
-  <path d="M 570 495 L 710 495 L 835 442 L 920 482" fill="none" stroke="#34D399" stroke-width="1.5" stroke-opacity="0.45"/>
-  <circle cx="835" cy="442" r="3.5" fill="#34D399" opacity="0.75"/>
-  <rect x="0" y="535" width="960" height="745" fill="url(#ground-grad)"/>
-  <line x1="80" y1="790" x2="-60.0" y2="1150" stroke="#1E293B" stroke-width="1"/>
-  <line x1="160" y1="790" x2="48.0" y2="1150" stroke="#1E293B" stroke-width="1"/>
-  <line x1="240" y1="790" x2="156.0" y2="1150" stroke="#1E293B" stroke-width="1"/>
-  <line x1="320" y1="790" x2="264.0" y2="1150" stroke="#1E293B" stroke-width="1"/>
-  <line x1="400" y1="790" x2="372.0" y2="1150" stroke="#1E293B" stroke-width="1"/>
-  <line x1="480" y1="790" x2="480.0" y2="1150" stroke="#1E293B" stroke-width="1"/>
-  <line x1="560" y1="790" x2="588.0" y2="1150" stroke="#1E293B" stroke-width="1"/>
-  <line x1="640" y1="790" x2="696.0" y2="1150" stroke="#1E293B" stroke-width="1"/>
-  <line x1="720" y1="790" x2="804.0" y2="1150" stroke="#1E293B" stroke-width="1"/>
-  <line x1="800" y1="790" x2="912.0" y2="1150" stroke="#1E293B" stroke-width="1"/>
-  <line x1="880" y1="790" x2="1020.0" y2="1150" stroke="#1E293B" stroke-width="1"/>
-  <line x1="36" y1="820" x2="924" y2="820" stroke="#1E293B" stroke-width="1"/>
-  <line x1="36" y1="875" x2="924" y2="875" stroke="#1E293B" stroke-width="1"/>
-  <line x1="36" y1="935" x2="924" y2="935" stroke="#1E293B" stroke-width="1"/>
-  <line x1="36" y1="1000" x2="924" y2="1000" stroke="#1E293B" stroke-width="1"/>
-  <line x1="36" y1="1070" x2="924" y2="1070" stroke="#1E293B" stroke-width="1"/>
-  <line x1="36" y1="1145" x2="924" y2="1145" stroke="#1E293B" stroke-width="1"/>
-  <rect x="64" y="488" width="832" height="296" rx="14" fill="url(#shell-bg)" stroke="#38BDF8" stroke-width="1.8" filter="url(#mat-shadow)"/>
-  <path d="M 64 502 Q 64 488 78 488 L 882 488 Q 896 488 896 502 L 896 530 L 64 530 Z" fill="#1E293B"/>
-  <line x1="64" y1="530" x2="896" y2="530" stroke="#334155" stroke-width="1.2"/>
-  <circle cx="90" cy="509" r="6" fill="#EF4444"/>
-  <circle cx="110" cy="509" r="6" fill="#F59E0B"/>
-  <circle cx="130" cy="509" r="6" fill="#10B981"/>
-  <rect x="160" y="495" width="182" height="28" rx="6" fill="#0F172A" stroke="#38BDF8" stroke-width="1"/>
-  <g transform="translate(170.0 500.0) scale(0.7500)" fill="#38BDF8"><path d="M20 4H4a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h16c1.1 0 2-.9 2-2V6a2 2 0 0 0-2-2zm0 14H4V8h16v10zm-8-2c0-.55.45-1 1-1h4c.55 0 1 .45 1 1s-.45 1-1 1h-4c-.55 0-1-.45-1-1zM6.79 9.71a.996.996 0 0 1 1.41 0l2.59 2.59c.39.39.39 1.02 0 1.41L8.2 16.3a.996.996 0 1 1-1.41-1.41L8.67 13l-1.88-1.88a.996.996 0 0 1 0-1.41z"/></g>
-  <text x="194" y="514" class="mono" font-size="12" font-weight="700" fill="#E0F2FE">zsh · tty0 (Ring 3)</text>
-  <rect x="352" y="495" width="178" height="28" rx="6" fill="#1E293B" stroke="#475569" stroke-width="1"/>
-  <g transform="translate(362.0 500.0) scale(0.7500)" fill="#94A3B8"><path d="M14 9h-4c-.55 0-1 .45-1 1v4c0 .55.45 1 1 1h4c.55 0 1-.45 1-1v-4c0-.55-.45-1-1-1zm-1 4h-2v-2h2v2zm8-3c0-.55-.45-1-1-1h-1V7c0-1.1-.9-2-2-2h-2V4c0-.55-.45-1-1-1s-1 .45-1 1v1h-2V4c0-.55-.45-1-1-1s-1 .45-1 1v1H7c-1.1 0-2 .9-2 2v2H4c-.55 0-1 .45-1 1s.45 1 1 1h1v2H4c-.55 0-1 .45-1 1s.45 1 1 1h1v2c0 1.1.9 2 2 2h2v1c0 .55.45 1 1 1s1-.45 1-1v-1h2v1c0 .55.45 1 1 1s1-.45 1-1v-1h2c1.1 0 2-.9 2-2v-2h1c.55 0 1-.45 1-1s-.45-1-1-1h-1v-2h1c.55 0 1-.45 1-1zm-5 7H8c-.55 0-1-.45-1-1V8c0-.55.45-1 1-1h8c.55 0 1 .45 1 1v8c0 .55-.45 1-1 1z"/></g>
-  <text x="386" y="514" class="mono" font-size="12" font-weight="600" fill="#94A3B8">vm_map · 4-Level PT</text>
-  <rect x="540" y="495" width="178" height="28" rx="6" fill="#1E293B" stroke="#475569" stroke-width="1"/>
-  <g transform="translate(550.0 500.0) scale(0.7500)" fill="#F59E0B"><path d="M10.67 21c-.35 0-.62-.31-.57-.66L11 14H7.5c-.88 0-.33-.75-.31-.78 1.26-2.23 3.15-5.53 5.65-9.93a.577.577 0 0 1 1.07.37l-.9 6.34h3.51c.4 0 .62.19.4.66-3.29 5.74-5.2 9.09-5.75 10.05-.1.18-.29.29-.5.29z"/></g>
-  <text x="574" y="514" class="mono" font-size="12" font-weight="600" fill="#FDE68A">kqueue · io_uring</text>
-  <text x="88" y="560" class="mono" font-size="13" font-weight="700" fill="#34D399">emma@darwin-xnu</text>
-  <text x="226" y="560" class="mono" font-size="13" font-weight="600" fill="#94A3B8">~ $</text>
-  <text x="260" y="560" class="mono" font-size="13" font-weight="700" fill="#F8FAFC">fork() &amp;&amp; execve("/bin/sh", argv, envp)</text>
-  <text x="88" y="584" class="mono" font-size="12" font-weight="500" fill="#7DD3FC">├─ PID 1 (launchd) ──► PID 4280 (worker) · COW pages mapped</text>
-  <text x="88" y="618" class="mono" font-size="13" font-weight="700" fill="#38BDF8">adam@darwin-xnu</text>
-  <text x="226" y="618" class="mono" font-size="13" font-weight="600" fill="#94A3B8">~ $</text>
-  <text x="260" y="618" class="mono" font-size="13" font-weight="700" fill="#F8FAFC">pagetable --walk 0x0000_7FFF_ABCD_EF01</text>
-  <text x="88" y="642" class="mono" font-size="12" font-weight="500" fill="#C4B5FD">└─ CR3 0x1000_0000 → PML4[255] → PDPT[510] → PD[350] → PT[223]</text>
-  <text x="88" y="664" class="mono" font-size="12" font-weight="700" fill="#FDE68A">   ✓ TLB Hit (PCID 4) · Physical Frame PA = 0x0000_0000_8A42_0F01</text>
-  <text x="88" y="698" class="mono" font-size="13" font-weight="700" fill="#F59E0B">orphan@darwin-xnu</text>
-  <text x="234" y="698" class="mono" font-size="13" font-weight="600" fill="#94A3B8">~ $</text>
-  <text x="268" y="698" class="mono" font-size="13" font-weight="700" fill="#F8FAFC">kevent(kq, EVFILT_READ | EVFILT_PROC)</text>
-  <rect x="580" y="685" width="9" height="16" rx="1.5" fill="#38BDF8"/>
-  <rect x="84" y="724" width="510" height="42" rx="8" fill="#1E293B" stroke="#334155" stroke-width="1"/>
-  <g transform="translate(96.0 735.0) scale(0.8333)" fill="#F59E0B"><path d="m11.3 2.26-6 2.25C4.52 4.81 4 5.55 4 6.39v4.7c0 4.83 3.13 9.37 7.43 10.75.37.12.77.12 1.14 0 4.3-1.38 7.43-5.91 7.43-10.75v-4.7a2 2 0 0 0-1.3-1.87l-6-2.25c-.45-.18-.95-.18-1.4-.01z"/></g>
-  <text x="124" y="742" class="sans" font-size="11.5" font-weight="700" fill="#FDE68A">TRAP GATE · SYSCALL / SVC #0 · RING 3 → RING 0</text>
-  <text x="124" y="758" class="mono" font-size="11" font-weight="500" fill="#94A3B8">Saves RIP/RFLAGS to TSS.rsp0 · Dispatches IDT / VBAR_EL1</text>
-  <line x1="612" y1="544" x2="612" y2="766" stroke="#1E293B" stroke-width="1.5"/>
-  <rect x="628" y="548" width="248" height="62" rx="8" fill="#1E293B" stroke="#34D399" stroke-width="1.2"/>
-  <rect x="640" y="561" width="36" height="36" rx="8" fill="#064E3B"/>
-  <g transform="translate(646.0 567.0) scale(1.0000)" fill="#34D399"><path d="M11.99 2C6.47 2 2 6.48 2 12s4.47 10 9.99 10C17.52 22 22 17.52 22 12S17.52 2 11.99 2zM12 20c-4.42 0-8-3.58-8-8s3.58-8 8-8 8 3.58 8 8-3.58 8-8 8zm-.22-13h-.06c-.4 0-.72.32-.72.72v4.72c0 .35.18.68.49.86l4.15 2.49c.34.2.78.1.98-.24a.71.71 0 0 0-.25-.99l-3.87-2.3V7.72c0-.4-.32-.72-.72-.72z"/></g>
-  <text x="688" y="575" class="sans" font-size="13" font-weight="700" fill="#F8FAFC">CFS / EEVDF Scheduler</text>
-  <text x="688" y="594" class="mono" font-size="11.2" font-weight="500" fill="#34D399">vruntime RB-Tree · Futex</text>
-  <rect x="628" y="622" width="248" height="62" rx="8" fill="#1E293B" stroke="#38BDF8" stroke-width="1.2"/>
-  <rect x="640" y="635" width="36" height="36" rx="8" fill="#0C4A6E"/>
-  <g transform="translate(646.0 641.0) scale(1.0000)" fill="#38BDF8"><path d="M14.67 6v4.5c0 .55-.45 1-1 1h-3.33c-.55 0-1-.45-1-1V6c0-.55.45-1 1-1h3.33c.55 0 1 .45 1 1zm2 5.5H20c.55 0 1-.45 1-1V6c0-.55-.45-1-1-1h-3.33c-.55 0-1 .45-1 1v4.5c0 .55.44 1 1 1zm-2 6.5v-4.5c0-.55-.45-1-1-1h-3.33c-.55 0-1 .45-1 1V18c0 .55.45 1 1 1h3.33c.55 0 1-.45 1-1zm1-4.5V18c0 .55.45 1 1 1H20c.55 0 1-.45 1-1v-4.5c0-.55-.45-1-1-1h-3.33c-.56 0-1 .45-1 1zm-8.34-1H4c-.55 0-1 .45-1 1V18c0 .55.45 1 1 1h3.33c.55 0 1-.45 1-1v-4.5c0-.55-.44-1-1-1zm1-2V6c0-.55-.45-1-1-1H4c-.55 0-1 .45-1 1v4.5c0 .55.45 1 1 1h3.33c.56 0 1-.45 1-1z"/></g>
-  <text x="688" y="649" class="sans" font-size="13" font-weight="700" fill="#F8FAFC">Arena &amp; Lock-Free Ring</text>
-  <text x="688" y="668" class="mono" font-size="11.2" font-weight="500" fill="#38BDF8">LruCache&lt;K,V&gt; · SPSC 64B</text>
-  <rect x="628" y="696" width="248" height="62" rx="8" fill="#1E293B" stroke="#C084FC" stroke-width="1.2"/>
-  <rect x="640" y="709" width="36" height="36" rx="8" fill="#3B0764"/>
-  <g transform="translate(646.0 715.0) scale(1.0000)" fill="#C084FC"><path d="M15 22h4c1.1 0 2-.9 2-2v-3c0-1.1-.9-2-2-2h-1v-2c0-1.1-.9-2-2-2h-3V9h1c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2h-4c-1.1 0-2 .9-2 2v3c0 1.1.9 2 2 2h1v2H8c-1.1 0-2 .9-2 2v2H5c-1.1 0-2 .9-2 2v3c0 1.1.9 2 2 2h4c1.1 0 2-.9 2-2v-3c0-1.1-.9-2-2-2H8v-2h8v2h-1c-1.1 0-2 .9-2 2v3c0 1.1.9 2 2 2z"/></g>
-  <text x="688" y="723" class="sans" font-size="13" font-weight="700" fill="#F8FAFC">VFS &amp; Zero-Copy I/O</text>
-  <text x="688" y="742" class="mono" font-size="11.2" font-weight="500" fill="#C084FC">Page Cache · WAL · DMA</text>
-  <path d="M 480 784 L 480 838" fill="none" stroke="#F59E0B" stroke-width="3" filter="url(#soft-glow)"/>
-  <path d="M 330 784 L 330 816 L 410 816 L 410 838" fill="none" stroke="#38BDF8" stroke-width="2.2"/>
-  <path d="M 630 784 L 630 816 L 550 816 L 550 838" fill="none" stroke="#34D399" stroke-width="2.2"/>
-  <path d="M 255 965 L 348 965" fill="none" stroke="#38BDF8" stroke-width="3" stroke-dasharray="6 4"/>
-  <path d="M 612 965 L 705 965" fill="none" stroke="#F97316" stroke-width="3" stroke-dasharray="6 4"/>
-  <rect x="348" y="838" width="264" height="256" rx="16" fill="url(#die-grad)" stroke="#F59E0B" stroke-width="2.2" filter="url(#mat-shadow)"/>
-  <rect x="376" y="829" width="12" height="9" rx="2" fill="#F59E0B"/>
-  <rect x="376" y="1094" width="12" height="9" rx="2" fill="#F59E0B"/>
-  <rect x="410" y="829" width="12" height="9" rx="2" fill="#F59E0B"/>
-  <rect x="410" y="1094" width="12" height="9" rx="2" fill="#F59E0B"/>
-  <rect x="444" y="829" width="12" height="9" rx="2" fill="#F59E0B"/>
-  <rect x="444" y="1094" width="12" height="9" rx="2" fill="#F59E0B"/>
-  <rect x="478" y="829" width="12" height="9" rx="2" fill="#F59E0B"/>
-  <rect x="478" y="1094" width="12" height="9" rx="2" fill="#F59E0B"/>
-  <rect x="512" y="829" width="12" height="9" rx="2" fill="#F59E0B"/>
-  <rect x="512" y="1094" width="12" height="9" rx="2" fill="#F59E0B"/>
-  <rect x="546" y="829" width="12" height="9" rx="2" fill="#F59E0B"/>
-  <rect x="546" y="1094" width="12" height="9" rx="2" fill="#F59E0B"/>
-  <rect x="580" y="829" width="12" height="9" rx="2" fill="#F59E0B"/>
-  <rect x="580" y="1094" width="12" height="9" rx="2" fill="#F59E0B"/>
-  <rect x="339" y="866" width="9" height="12" rx="2" fill="#F59E0B"/>
-  <rect x="612" y="866" width="9" height="12" rx="2" fill="#F59E0B"/>
-  <rect x="339" y="902" width="9" height="12" rx="2" fill="#F59E0B"/>
-  <rect x="612" y="902" width="9" height="12" rx="2" fill="#F59E0B"/>
-  <rect x="339" y="938" width="9" height="12" rx="2" fill="#F59E0B"/>
-  <rect x="612" y="938" width="9" height="12" rx="2" fill="#F59E0B"/>
-  <rect x="339" y="974" width="9" height="12" rx="2" fill="#F59E0B"/>
-  <rect x="612" y="974" width="9" height="12" rx="2" fill="#F59E0B"/>
-  <rect x="339" y="1010" width="9" height="12" rx="2" fill="#F59E0B"/>
-  <rect x="612" y="1010" width="9" height="12" rx="2" fill="#F59E0B"/>
-  <rect x="339" y="1046" width="9" height="12" rx="2" fill="#F59E0B"/>
-  <rect x="612" y="1046" width="9" height="12" rx="2" fill="#F59E0B"/>
-  <text x="480" y="864" text-anchor="middle" class="sans" font-size="12" font-weight="800" letter-spacing="1.4" fill="#FDE68A">UNIFIED SILICON &amp; RING 0 DIE</text>
-  <rect x="368" y="878" width="106" height="64" rx="8" fill="#0C4A6E" stroke="#38BDF8" stroke-width="1.4"/>
-  <text x="421" y="905" text-anchor="middle" class="mono" font-size="11.5" font-weight="700" fill="#FFFFFF">CORE 0 · SMP</text>
-  <text x="421" y="925" text-anchor="middle" class="sans" font-size="10.5" font-weight="500" fill="#38BDF8">Out-of-Order ALU</text>
-  <rect x="486" y="878" width="106" height="64" rx="8" fill="#0C4A6E" stroke="#38BDF8" stroke-width="1.4"/>
-  <text x="539" y="905" text-anchor="middle" class="mono" font-size="11.5" font-weight="700" fill="#FFFFFF">CORE 1 · SMP</text>
-  <text x="539" y="925" text-anchor="middle" class="sans" font-size="10.5" font-weight="500" fill="#38BDF8">MESI L1d / L2</text>
-  <rect x="368" y="954" width="106" height="64" rx="8" fill="#064E3B" stroke="#34D399" stroke-width="1.4"/>
-  <text x="421" y="981" text-anchor="middle" class="mono" font-size="11.5" font-weight="700" fill="#FFFFFF">MMU &amp; TLB</text>
-  <text x="421" y="1001" text-anchor="middle" class="sans" font-size="10.5" font-weight="500" fill="#34D399">4-Level Radix PT</text>
-  <rect x="486" y="954" width="106" height="64" rx="8" fill="#3B0764" stroke="#C084FC" stroke-width="1.4"/>
-  <text x="539" y="981" text-anchor="middle" class="mono" font-size="11.5" font-weight="700" fill="#FFFFFF">UMA · GPU/NPU</text>
-  <text x="539" y="1001" text-anchor="middle" class="sans" font-size="10.5" font-weight="500" fill="#C084FC">Zero-Copy Fabric</text>
-  <rect x="368" y="1032" width="224" height="44" rx="8" fill="#0F172A" stroke="#F59E0B" stroke-width="1.2"/>
-  <text x="480" y="1051" text-anchor="middle" class="mono" font-size="11" font-weight="700" fill="#FDE68A">COHERENT FABRIC · IO-APIC / GICv4</text>
-  <text x="480" y="1068" text-anchor="middle" class="mono" font-size="10.2" font-weight="500" fill="#94A3B8">64B Cache Lines · NVMe &amp; NIC DMA</text>
-  <rect x="64" y="852" width="242" height="242" rx="16" fill="#0F172A" fill-opacity="0.85" stroke="#38BDF8" stroke-width="1.5" filter="url(#mat-shadow)"/>
-  <g transform="translate(185 955)">
-    <ellipse cx="-24" cy="64" rx="18" ry="8" fill="#F59E0B"/>
-    <ellipse cx="24" cy="64" rx="18" ry="8" fill="#F59E0B"/>
-    <ellipse cx="0" cy="14" rx="46" ry="52" fill="#1E293B" stroke="#475569" stroke-width="1.5"/>
-    <ellipse cx="0" cy="20" rx="31" ry="40" fill="#F8FAFC"/>
-    <circle cx="0" cy="-38" r="32" fill="#1E293B" stroke="#475569" stroke-width="1.5"/>
-    <rect x="-24" y="-48" width="48" height="16" rx="8" fill="#0284C7" stroke="#7DD3FC" stroke-width="1.5"/>
-    <circle cx="-10" cy="-40" r="3.5" fill="#E0F2FE"/>
-    <circle cx="10" cy="-40" r="3.5" fill="#E0F2FE"/>
-    <polygon points="-9,-29 9,-29 0,-18" fill="#F59E0B"/>
-    <ellipse cx="-44" cy="12" rx="11" ry="26" transform="rotate(18 -44 12)" fill="#1E293B"/>
-    <ellipse cx="44" cy="12" rx="11" ry="26" transform="rotate(-18 44 12)" fill="#1E293B"/>
-    <rect x="-36" y="18" width="72" height="18" rx="9" fill="#064E3B" stroke="#34D399" stroke-width="1.6"/>
-    <text x="0" y="31" text-anchor="middle" class="mono" font-size="10" font-weight="700" fill="#6EE7B7">pipe(fd)</text>
-  </g>
-  <text x="185" y="1052" text-anchor="middle" class="sans" font-size="13.5" font-weight="700" fill="#F8FAFC">Kernel &amp; POSIX Pipelines</text>
-  <text x="185" y="1072" text-anchor="middle" class="mono" font-size="11" font-weight="500" fill="#7DD3FC">fork · dup2 · waitpid · signals</text>
-  <rect x="654" y="852" width="242" height="242" rx="16" fill="#0F172A" fill-opacity="0.85" stroke="#EA580C" stroke-width="1.5" filter="url(#mat-shadow)"/>
-  <g transform="translate(772 958)">
-    <path d="M -34 10 L -60 12 L -74 34 L -80 50" fill="none" stroke="#9A3412" stroke-width="5.5" stroke-linecap="round" stroke-linejoin="round"/>
-    <path d="M -34 10 L -60 12 L -74 34" fill="none" stroke="#EA580C" stroke-width="2.5" stroke-linecap="round"/>
-    <path d="M -38 20 L -66 28 L -78 50 L -82 64" fill="none" stroke="#7C2D12" stroke-width="5" stroke-linecap="round" stroke-linejoin="round"/>
-    <path d="M -38 20 L -66 28 L -78 50" fill="none" stroke="#C2410C" stroke-width="2.2" stroke-linecap="round"/>
-    <path d="M -32 28 L -56 42 L -64 62 L -66 74" fill="none" stroke="#7C2D12" stroke-width="4.5" stroke-linecap="round" stroke-linejoin="round"/>
-    <path d="M 34 10 L 60 12 L 74 34 L 80 50" fill="none" stroke="#9A3412" stroke-width="5.5" stroke-linecap="round" stroke-linejoin="round"/>
-    <path d="M 34 10 L 60 12 L 74 34" fill="none" stroke="#EA580C" stroke-width="2.5" stroke-linecap="round"/>
-    <path d="M 38 20 L 66 28 L 78 50 L 82 64" fill="none" stroke="#7C2D12" stroke-width="5" stroke-linecap="round" stroke-linejoin="round"/>
-    <path d="M 38 20 L 66 28 L 78 50" fill="none" stroke="#C2410C" stroke-width="2.2" stroke-linecap="round"/>
-    <path d="M 32 28 L 56 42 L 64 62 L 66 74" fill="none" stroke="#7C2D12" stroke-width="4.5" stroke-linecap="round" stroke-linejoin="round"/>
-    <path d="M -36 -4 C -58 -14 -68 -36 -54 -52" fill="none" stroke="#9A3412" stroke-width="8" stroke-linecap="round"/>
-    <path d="M -36 -4 C -58 -14 -68 -36 -54 -52" fill="none" stroke="#EA580C" stroke-width="3.5" stroke-linecap="round"/>
-    <path d="M -56 -48 C -72 -62 -64 -82 -42 -78 C -50 -70 -50 -62 -40 -58 Z" fill="url(#crab-claw)" stroke="#FDBA74" stroke-width="1"/>
-    <path d="M -52 -46 C -34 -44 -28 -60 -38 -70 C -44 -64 -44 -58 -48 -52 Z" fill="url(#crab-claw)" stroke="#FDBA74" stroke-width="1"/>
-    <circle cx="-45" cy="-68" r="1.6" fill="#FEF3C7"/>
-    <circle cx="-42" cy="-63" r="1.5" fill="#FEF3C7"/>
-    <path d="M 34 -4 C 48 -14 44 -32 24 -44" fill="none" stroke="#9A3412" stroke-width="8" stroke-linecap="round"/>
-    <path d="M 34 -4 C 48 -14 44 -32 24 -44" fill="none" stroke="#EA580C" stroke-width="3.5" stroke-linecap="round"/>
-    <g transform="translate(22 -46) rotate(-34) scale(0.88)">
-      <circle cx="-48" cy="0" r="6.5" fill="#78350F" stroke="#B45309" stroke-width="1.5"/>
-      <circle cx="-48" cy="0" r="2.5" fill="#9A3412"/>
-      <rect x="-42" y="-4.5" width="26" height="9" rx="2.5" fill="#451A03" stroke="#92400E" stroke-width="1.2"/>
-      <line x1="-37" y1="-4.2" x2="-34" y2="4.2" stroke="#B45309" stroke-width="1.5"/>
-      <line x1="-31" y1="-4.2" x2="-28" y2="4.2" stroke="#B45309" stroke-width="1.5"/>
-      <line x1="-25" y1="-4.2" x2="-22" y2="4.2" stroke="#B45309" stroke-width="1.5"/>
-      <line x1="-19" y1="-4.2" x2="-16" y2="4.2" stroke="#B45309" stroke-width="1.5"/>
-      <rect x="-16" y="-15" width="7" height="30" rx="2.5" fill="#78350F" stroke="#D97706" stroke-width="1.2"/>
-      <circle cx="-12.5" cy="-9" r="2.2" fill="#9A3412"/>
-      <circle cx="-12.5" cy="8" r="2.5" fill="#7F1D1D"/>
-      <path d="M -9 -8.5 L 18 -8.5 L 21 -5.2 L 24 -8.5 L 58 -8.0 L 61 -4.8 L 64 -7.8 L 88 -6.5 L 106 0 L 86 7.5 L 52 8.5 L 49 5.5 L 46 8.5 L -9 8.5 Z" fill="url(#steel-base)" stroke="#CBD5E1" stroke-width="0.9"/>
-      <path d="M -9 0 L 96 0 L 86 7.5 L 52 8.5 L 49 5.5 L 46 8.5 L -9 8.5 Z" fill="#334155" opacity="0.65"/>
-      <line x1="-4" y1="-2.2" x2="76" y2="-1.5" stroke="#1E293B" stroke-width="2.4" stroke-linecap="round"/>
-      <path d="M -6 8.2 L 45 8.2 M 53 8.2 L 85 7.2 L 105 0" fill="none" stroke="#E2E8F0" stroke-width="1.1" stroke-opacity="0.8"/>
-      <path d="M -9 -8.2 C 4 -8.5 14 -6 19 -1 C 22 3 12 8.2 -9 8.2 Z" fill="url(#rust-streak)"/>
-      <path d="M 25 -7.5 C 36 -8 48 -6 55 -1.5 C 58 2 47 7.8 33 7.5 C 24 6 20 0 25 -7.5 Z" fill="url(#rust-streak)"/>
-      <path d="M 29 -5.2 C 37 -5.5 45 -3.5 49 0 C 46 4 36 5.2 28 3.8 Z" fill="#7F1D1D" opacity="0.85"/>
-      <path d="M 65 -7.2 C 77 -6.8 89 -5.5 99 -1.5 C 91 3.5 78 6.5 67 4.8 C 61 2 62 -3 65 -7.2 Z" fill="url(#rust-streak)"/>
-      <circle cx="-2" cy="-3.5" r="3.2" fill="#D97706" opacity="0.88"/>
-      <circle cx="5" cy="2.8" r="2.6" fill="#EA580C" opacity="0.88"/>
-      <circle cx="12" cy="-4.0" r="2.2" fill="#B45309" opacity="0.88"/>
-      <circle cx="32" cy="-2.5" r="3.4" fill="#EA580C" opacity="0.88"/>
-      <circle cx="41" cy="3.2" r="2.8" fill="#D97706" opacity="0.88"/>
-      <circle cx="47" cy="-4.2" r="2.1" fill="#9A3412" opacity="0.88"/>
-      <circle cx="59" cy="2.0" r="2.5" fill="#C2410C" opacity="0.88"/>
-      <circle cx="73" cy="-2.8" r="3.5" fill="#EA580C" opacity="0.88"/>
-      <circle cx="82" cy="2.2" r="2.7" fill="#D97706" opacity="0.88"/>
-      <circle cx="91" cy="-1.0" r="2.0" fill="#F97316" opacity="0.88"/>
-      <circle cx="16" cy="4.5" r="1.8" fill="#7F1D1D" opacity="0.88"/>
-      <circle cx="53" cy="-2.0" r="1.9" fill="#7F1D1D" opacity="0.88"/>
-      <circle cx="0" cy="0" r="1.0" fill="#451A03" opacity="0.9"/>
-      <circle cx="8" cy="-1" r="1.0" fill="#451A03" opacity="0.9"/>
-      <circle cx="15" cy="1" r="1.0" fill="#451A03" opacity="0.9"/>
-      <circle cx="22" cy="-3" r="1.0" fill="#451A03" opacity="0.9"/>
-      <circle cx="28" cy="2" r="1.0" fill="#451A03" opacity="0.9"/>
-      <circle cx="35" cy="0" r="1.0" fill="#451A03" opacity="0.9"/>
-      <circle cx="43" cy="-1" r="1.0" fill="#451A03" opacity="0.9"/>
-      <circle cx="50" cy="3" r="1.0" fill="#451A03" opacity="0.9"/>
-      <circle cx="57" cy="-3" r="1.0" fill="#451A03" opacity="0.9"/>
-      <circle cx="63" cy="1" r="1.0" fill="#451A03" opacity="0.9"/>
-      <circle cx="70" cy="0" r="1.0" fill="#451A03" opacity="0.9"/>
-      <circle cx="77" cy="3" r="1.0" fill="#451A03" opacity="0.9"/>
-      <circle cx="84" cy="-2" r="1.0" fill="#451A03" opacity="0.9"/>
-      <circle cx="93" cy="1" r="1.0" fill="#451A03" opacity="0.9"/>
-      <circle cx="38" cy="13" r="1.5" fill="#EA580C" opacity="0.8"/>
-      <circle cx="66" cy="12" r="1.2" fill="#D97706" opacity="0.75"/>
-      <circle cx="84" cy="11" r="1.4" fill="#C2410C" opacity="0.8"/>
-    </g>
-    <path d="M 14 -40 C 16 -54 30 -58 36 -48 C 32 -40 22 -36 14 -40 Z" fill="url(#crab-claw)" stroke="#FDBA74" stroke-width="1.1"/>
-    <path d="M 16 -36 C 24 -30 36 -34 36 -44 C 28 -40 22 -38 16 -36 Z" fill="url(#crab-claw)" stroke="#FDBA74" stroke-width="1.1"/>
-    <path d="M -52 4 L -46 -10 L -38 -8 L -32 -18 L -22 -15 L -14 -22 L 0 -20 L 14 -22 L 22 -15 L 32 -18 L 38 -8 L 46 -10 L 52 4 C 54 28 34 44 0 44 C -34 44 -54 28 -52 4 Z" fill="url(#crab-shell)" stroke="#F97316" stroke-width="1.6"/>
-    <path d="M -26 0 C -18 14 18 14 26 0" fill="none" stroke="#7C2D12" stroke-width="2" stroke-linecap="round"/>
-    <path d="M -34 14 C -20 28 20 28 34 14" fill="none" stroke="#9A3412" stroke-width="1.6" stroke-linecap="round"/>
-    <circle cx="-28" cy="4" r="3.5" fill="#7C2D12" opacity="0.65"/>
-    <circle cx="26" cy="6" r="4.0" fill="#7C2D12" opacity="0.65"/>
-    <circle cx="-18" cy="-8" r="2.2" fill="#FDBA74" opacity="0.45"/>
-    <path d="M -15 -19 L -18 -33" stroke="#9A3412" stroke-width="4.5" stroke-linecap="round"/>
-    <path d="M 15 -19 L 18 -33" stroke="#9A3412" stroke-width="4.5" stroke-linecap="round"/>
-    <circle cx="-18" cy="-35" r="6.5" fill="#111827" stroke="#F97316" stroke-width="1.4"/>
-    <circle cx="-20" cy="-37" r="2.2" fill="#FFFFFF"/>
-    <circle cx="18" cy="-35" r="6.5" fill="#111827" stroke="#F97316" stroke-width="1.4"/>
-    <circle cx="16" cy="-37" r="2.2" fill="#FFFFFF"/>
-    <path d="M -12 -5 Q 0 1 12 -5" fill="none" stroke="#431407" stroke-width="2.5" stroke-linecap="round"/>
-    <rect x="-38" y="13" width="76" height="19" rx="5" fill="#1C1917" stroke="#B45309" stroke-width="1.4"/>
-    <circle cx="-33" cy="22.5" r="1.5" fill="#D97706"/>
-    <circle cx="33" cy="22.5" r="1.5" fill="#D97706"/>
-    <text x="0" y="26" text-anchor="middle" class="mono" font-size="9.8" font-weight="700" fill="#FDBA74">Send + Sync</text>
-  </g>
-  <text x="775" y="1052" text-anchor="middle" class="sans" font-size="13.5" font-weight="700" fill="#F8FAFC">Fearless Bare-Metal Rust</text>
-  <text x="775" y="1072" text-anchor="middle" class="mono" font-size="11" font-weight="500" fill="#FDBA74">Arena LRU · Atomics · mmap</text>
-  <g transform="translate(838 470)">
-    <line x1="0" y1="-26" x2="0" y2="-38" stroke="#F59E0B" stroke-width="2.5"/>
-    <circle cx="0" cy="-41" r="4.5" fill="#34D399" filter="url(#soft-glow)"/>
-    <rect x="-24" y="-26" width="48" height="32" rx="10" fill="#1E293B" stroke="#F59E0B" stroke-width="1.8"/>
-    <circle cx="-9" cy="-12" r="4" fill="#38BDF8"/>
-    <circle cx="9" cy="-12" r="4" fill="#38BDF8"/>
-    <rect x="-14" y="-2" width="28" height="4" rx="2" fill="#34D399"/>
-  </g>
-  <rect x="64" y="1148" width="832" height="84" rx="14" fill="#0F172A" stroke="#334155" stroke-width="1.5" filter="url(#mat-shadow)"/>
-  <rect x="64" y="1148" width="8" height="84" rx="4" fill="#38BDF8"/>
-  <text x="92" y="1177" class="sans" font-size="11" font-weight="700" letter-spacing="2" fill="#7DD3FC">AUTHOR</text>
-  <text x="92" y="1208" class="sans" font-size="24" font-weight="800" letter-spacing="0.8" fill="#FFFFFF">ARPAN PATHAK</text>
-  <line x1="304" y1="1164" x2="304" y2="1216" stroke="#1E293B" stroke-width="1.5"/>
-  <text x="326" y="1181" class="sans" font-size="14" font-weight="700" fill="#F8FAFC">19 Chapters · 54 Verified C++20 &amp; Rust 2024 Programs · 41 Vector Diagrams</text>
-  <text x="326" y="1205" class="mono" font-size="11.2" font-weight="500" fill="#94A3B8">Processes · Concurrency · Virtual Memory · File Systems · Networking · Daemons</text>
+  <rect x="0.5" y="0.5" width="899" height="1239" rx="12" fill="#FBF9F4" stroke="#D0DAE6" stroke-width="1.2"/>
+  <line x1="40" y1="1" x2="40" y2="1239" stroke="#EAE5DA" stroke-width="0.75"/>
+  <line x1="80" y1="1" x2="80" y2="1239" stroke="#EAE5DA" stroke-width="0.75"/>
+  <line x1="120" y1="1" x2="120" y2="1239" stroke="#EAE5DA" stroke-width="0.75"/>
+  <line x1="160" y1="1" x2="160" y2="1239" stroke="#EAE5DA" stroke-width="0.75"/>
+  <line x1="200" y1="1" x2="200" y2="1239" stroke="#EAE5DA" stroke-width="0.75"/>
+  <line x1="240" y1="1" x2="240" y2="1239" stroke="#EAE5DA" stroke-width="0.75"/>
+  <line x1="280" y1="1" x2="280" y2="1239" stroke="#EAE5DA" stroke-width="0.75"/>
+  <line x1="320" y1="1" x2="320" y2="1239" stroke="#EAE5DA" stroke-width="0.75"/>
+  <line x1="360" y1="1" x2="360" y2="1239" stroke="#EAE5DA" stroke-width="0.75"/>
+  <line x1="400" y1="1" x2="400" y2="1239" stroke="#EAE5DA" stroke-width="0.75"/>
+  <line x1="440" y1="1" x2="440" y2="1239" stroke="#EAE5DA" stroke-width="0.75"/>
+  <line x1="480" y1="1" x2="480" y2="1239" stroke="#EAE5DA" stroke-width="0.75"/>
+  <line x1="520" y1="1" x2="520" y2="1239" stroke="#EAE5DA" stroke-width="0.75"/>
+  <line x1="560" y1="1" x2="560" y2="1239" stroke="#EAE5DA" stroke-width="0.75"/>
+  <line x1="600" y1="1" x2="600" y2="1239" stroke="#EAE5DA" stroke-width="0.75"/>
+  <line x1="640" y1="1" x2="640" y2="1239" stroke="#EAE5DA" stroke-width="0.75"/>
+  <line x1="680" y1="1" x2="680" y2="1239" stroke="#EAE5DA" stroke-width="0.75"/>
+  <line x1="720" y1="1" x2="720" y2="1239" stroke="#EAE5DA" stroke-width="0.75"/>
+  <line x1="760" y1="1" x2="760" y2="1239" stroke="#EAE5DA" stroke-width="0.75"/>
+  <line x1="800" y1="1" x2="800" y2="1239" stroke="#EAE5DA" stroke-width="0.75"/>
+  <line x1="840" y1="1" x2="840" y2="1239" stroke="#EAE5DA" stroke-width="0.75"/>
+  <line x1="880" y1="1" x2="880" y2="1239" stroke="#EAE5DA" stroke-width="0.75"/>
+  <line x1="1" y1="40" x2="899" y2="40" stroke="#EAE5DA" stroke-width="0.75"/>
+  <line x1="1" y1="80" x2="899" y2="80" stroke="#EAE5DA" stroke-width="0.75"/>
+  <line x1="1" y1="120" x2="899" y2="120" stroke="#EAE5DA" stroke-width="0.75"/>
+  <line x1="1" y1="160" x2="899" y2="160" stroke="#EAE5DA" stroke-width="0.75"/>
+  <line x1="1" y1="200" x2="899" y2="200" stroke="#EAE5DA" stroke-width="0.75"/>
+  <line x1="1" y1="240" x2="899" y2="240" stroke="#EAE5DA" stroke-width="0.75"/>
+  <line x1="1" y1="280" x2="899" y2="280" stroke="#EAE5DA" stroke-width="0.75"/>
+  <line x1="1" y1="320" x2="899" y2="320" stroke="#EAE5DA" stroke-width="0.75"/>
+  <line x1="1" y1="360" x2="899" y2="360" stroke="#EAE5DA" stroke-width="0.75"/>
+  <line x1="1" y1="400" x2="899" y2="400" stroke="#EAE5DA" stroke-width="0.75"/>
+  <line x1="1" y1="440" x2="899" y2="440" stroke="#EAE5DA" stroke-width="0.75"/>
+  <line x1="1" y1="480" x2="899" y2="480" stroke="#EAE5DA" stroke-width="0.75"/>
+  <line x1="1" y1="520" x2="899" y2="520" stroke="#EAE5DA" stroke-width="0.75"/>
+  <line x1="1" y1="560" x2="899" y2="560" stroke="#EAE5DA" stroke-width="0.75"/>
+  <line x1="1" y1="600" x2="899" y2="600" stroke="#EAE5DA" stroke-width="0.75"/>
+  <line x1="1" y1="640" x2="899" y2="640" stroke="#EAE5DA" stroke-width="0.75"/>
+  <line x1="1" y1="680" x2="899" y2="680" stroke="#EAE5DA" stroke-width="0.75"/>
+  <line x1="1" y1="720" x2="899" y2="720" stroke="#EAE5DA" stroke-width="0.75"/>
+  <line x1="1" y1="760" x2="899" y2="760" stroke="#EAE5DA" stroke-width="0.75"/>
+  <line x1="1" y1="800" x2="899" y2="800" stroke="#EAE5DA" stroke-width="0.75"/>
+  <line x1="1" y1="840" x2="899" y2="840" stroke="#EAE5DA" stroke-width="0.75"/>
+  <line x1="1" y1="880" x2="899" y2="880" stroke="#EAE5DA" stroke-width="0.75"/>
+  <line x1="1" y1="920" x2="899" y2="920" stroke="#EAE5DA" stroke-width="0.75"/>
+  <line x1="1" y1="960" x2="899" y2="960" stroke="#EAE5DA" stroke-width="0.75"/>
+  <line x1="1" y1="1000" x2="899" y2="1000" stroke="#EAE5DA" stroke-width="0.75"/>
+  <line x1="1" y1="1040" x2="899" y2="1040" stroke="#EAE5DA" stroke-width="0.75"/>
+  <line x1="1" y1="1080" x2="899" y2="1080" stroke="#EAE5DA" stroke-width="0.75"/>
+  <line x1="1" y1="1120" x2="899" y2="1120" stroke="#EAE5DA" stroke-width="0.75"/>
+  <line x1="1" y1="1160" x2="899" y2="1160" stroke="#EAE5DA" stroke-width="0.75"/>
+  <line x1="1" y1="1200" x2="899" y2="1200" stroke="#EAE5DA" stroke-width="0.75"/>
+  <rect x="34" y="34" width="832" height="1172" rx="8" fill="none" stroke="#D0DAE6" stroke-width="1.1"/>
+  <rect x="70" y="76" width="64" height="5" rx="2.5" fill="#CC5328"/>
+  <text x="70" y="110" class="mono" font-size="12.5" font-weight="700" fill="#526075" letter-spacing="0.12em">SYSTEMS ARCHITECTURE MONOGRAPH  ·  C++20 &amp; RUST 2024  ·  19 CHAPTERS</text>
+  <text x="70" y="182" class="sans" font-size="60" font-weight="800" fill="#161B26" letter-spacing="-0.025em">Operating Systems</text>
+  <text x="70" y="238" class="serif" font-size="40" font-style="italic" fill="#1A5FC4" letter-spacing="-0.01em">A Hands-On Approach</text>
+  <text x="70" y="282" class="sans" font-size="17" font-weight="500" fill="#526075">Kernel Internals, Virtual Memory, Concurrency, and Modern I/O Architecture</text>
+  <line x1="70" y1="312" x2="830" y2="312" stroke="#D0DAE6" stroke-width="1.2"/>
+  <rect x="96" y="370" width="240" height="310" rx="6" fill="#DCE9FD" opacity="0.52"/>
+  <rect x="564" y="692" width="240" height="296" rx="6" fill="#D3EFEA" opacity="0.52"/>
+  <circle cx="678" cy="482" r="108" fill="#FDF0D1" opacity="0.58"/>
+  <line x1="70" y1="692" x2="830" y2="692" stroke="#CC5328" stroke-width="1.6" stroke-dasharray="8 6" opacity="0.72"/>
+  <line x1="450" y1="346" x2="450" y2="1038" stroke="#161B26" stroke-width="1.0" opacity="0.16" stroke-dasharray="4 6"/>
+  <circle cx="450" cy="692" r="298" fill="none" stroke="#D0DAE6" stroke-width="1.2" stroke-dasharray="4 6"/>
+  <path d="M 215.14 567.12 A 266.00 266.00 0 0 1 684.86 567.12" fill="none" stroke="#1A5FC4" stroke-width="22"/>
+  <path d="M 689.08 808.61 A 266.00 266.00 0 0 1 367.80 944.98" fill="none" stroke="#0E7168" stroke-width="22"/>
+  <path d="M 309.04 917.58 A 266.00 266.00 0 0 1 203.37 791.65" fill="none" stroke="#D48806" stroke-width="22"/>
+  <line x1="662.0" y1="692.0" x2="694.0" y2="692.0" stroke="#1A5FC4" stroke-width="2.0" opacity="0.72"/>
+  <line x1="670.6" y1="730.9" x2="690.3" y2="734.4" stroke="#0E7168" stroke-width="1.0" opacity="0.72"/>
+  <line x1="660.5" y1="768.6" x2="679.3" y2="775.5" stroke="#D48806" stroke-width="1.0" opacity="0.72"/>
+  <line x1="633.6" y1="798.0" x2="661.3" y2="814.0" stroke="#CC5328" stroke-width="2.0" opacity="0.72"/>
+  <line x1="621.6" y1="836.0" x2="636.9" y2="848.8" stroke="#1A5FC4" stroke-width="1.0" opacity="0.72"/>
+  <line x1="594.0" y1="863.6" x2="606.8" y2="878.9" stroke="#0E7168" stroke-width="1.0" opacity="0.72"/>
+  <line x1="556.0" y1="875.6" x2="572.0" y2="903.3" stroke="#D48806" stroke-width="2.0" opacity="0.72"/>
+  <line x1="526.6" y1="902.5" x2="533.5" y2="921.3" stroke="#CC5328" stroke-width="1.0" opacity="0.72"/>
+  <line x1="488.9" y1="912.6" x2="492.4" y2="932.3" stroke="#1A5FC4" stroke-width="1.0" opacity="0.72"/>
+  <line x1="450.0" y1="904.0" x2="450.0" y2="936.0" stroke="#0E7168" stroke-width="2.0" opacity="0.72"/>
+  <line x1="411.1" y1="912.6" x2="407.6" y2="932.3" stroke="#D48806" stroke-width="1.0" opacity="0.72"/>
+  <line x1="373.4" y1="902.5" x2="366.5" y2="921.3" stroke="#CC5328" stroke-width="1.0" opacity="0.72"/>
+  <line x1="344.0" y1="875.6" x2="328.0" y2="903.3" stroke="#1A5FC4" stroke-width="2.0" opacity="0.72"/>
+  <line x1="306.0" y1="863.6" x2="293.2" y2="878.9" stroke="#0E7168" stroke-width="1.0" opacity="0.72"/>
+  <line x1="278.4" y1="836.0" x2="263.1" y2="848.8" stroke="#D48806" stroke-width="1.0" opacity="0.72"/>
+  <line x1="266.4" y1="798.0" x2="238.7" y2="814.0" stroke="#CC5328" stroke-width="2.0" opacity="0.72"/>
+  <line x1="239.5" y1="768.6" x2="220.7" y2="775.5" stroke="#1A5FC4" stroke-width="1.0" opacity="0.72"/>
+  <line x1="229.4" y1="730.9" x2="209.7" y2="734.4" stroke="#0E7168" stroke-width="1.0" opacity="0.72"/>
+  <line x1="238.0" y1="692.0" x2="206.0" y2="692.0" stroke="#D48806" stroke-width="2.0" opacity="0.72"/>
+  <line x1="229.4" y1="653.1" x2="209.7" y2="649.6" stroke="#CC5328" stroke-width="1.0" opacity="0.72"/>
+  <line x1="239.5" y1="615.4" x2="220.7" y2="608.5" stroke="#1A5FC4" stroke-width="1.0" opacity="0.72"/>
+  <line x1="266.4" y1="586.0" x2="238.7" y2="570.0" stroke="#0E7168" stroke-width="2.0" opacity="0.72"/>
+  <line x1="278.4" y1="548.0" x2="263.1" y2="535.2" stroke="#D48806" stroke-width="1.0" opacity="0.72"/>
+  <line x1="306.0" y1="520.4" x2="293.2" y2="505.1" stroke="#CC5328" stroke-width="1.0" opacity="0.72"/>
+  <line x1="344.0" y1="508.4" x2="328.0" y2="480.7" stroke="#1A5FC4" stroke-width="2.0" opacity="0.72"/>
+  <line x1="373.4" y1="481.5" x2="366.5" y2="462.7" stroke="#0E7168" stroke-width="1.0" opacity="0.72"/>
+  <line x1="411.1" y1="471.4" x2="407.6" y2="451.7" stroke="#D48806" stroke-width="1.0" opacity="0.72"/>
+  <line x1="450.0" y1="480.0" x2="450.0" y2="448.0" stroke="#CC5328" stroke-width="2.0" opacity="0.72"/>
+  <line x1="488.9" y1="471.4" x2="492.4" y2="451.7" stroke="#1A5FC4" stroke-width="1.0" opacity="0.72"/>
+  <line x1="526.6" y1="481.5" x2="533.5" y2="462.7" stroke="#0E7168" stroke-width="1.0" opacity="0.72"/>
+  <line x1="556.0" y1="508.4" x2="572.0" y2="480.7" stroke="#D48806" stroke-width="2.0" opacity="0.72"/>
+  <line x1="594.0" y1="520.4" x2="606.8" y2="505.1" stroke="#CC5328" stroke-width="1.0" opacity="0.72"/>
+  <line x1="621.6" y1="548.0" x2="636.9" y2="535.2" stroke="#1A5FC4" stroke-width="1.0" opacity="0.72"/>
+  <line x1="633.6" y1="586.0" x2="661.3" y2="570.0" stroke="#0E7168" stroke-width="2.0" opacity="0.72"/>
+  <line x1="660.5" y1="615.4" x2="679.3" y2="608.5" stroke="#D48806" stroke-width="1.0" opacity="0.72"/>
+  <line x1="670.6" y1="653.1" x2="690.3" y2="649.6" stroke="#CC5328" stroke-width="1.0" opacity="0.72"/>
+  <circle cx="450" cy="692" r="178" fill="#FFFFFF" fill-opacity="0.88" stroke="#D0DAE6" stroke-width="1.4"/>
+  <path d="M 272 692 A 178 178 0 0 0 628 692 Z" fill="#DCE9FD" fill-opacity="0.45"/>
+  <path d="M 356 624 L 356 644 L 450 644" fill="none" stroke="#1A5FC4" stroke-width="2.2" opacity="0.85"/>
+  <path d="M 544 624 L 544 644 L 450 644" fill="none" stroke="#0E7168" stroke-width="2.2" opacity="0.85"/>
+  <line x1="450" y1="594" x2="450" y2="658" stroke="#4F46E5" stroke-width="2.4" opacity="0.9"/>
+  <circle cx="356" cy="608" r="19" fill="#FFFFFF" stroke="#1A5FC4" stroke-width="3.6"/>
+  <text x="356" y="612" text-anchor="middle" class="mono" font-size="11.5" font-weight="700" fill="#1A5FC4">P1</text>
+  <circle cx="450" cy="578" r="19" fill="#FFFFFF" stroke="#4F46E5" stroke-width="3.6"/>
+  <text x="450" y="582" text-anchor="middle" class="mono" font-size="11.5" font-weight="700" fill="#4F46E5">P2</text>
+  <circle cx="544" cy="608" r="19" fill="#FFFFFF" stroke="#0E7168" stroke-width="3.6"/>
+  <text x="544" y="612" text-anchor="middle" class="mono" font-size="11.5" font-weight="700" fill="#0E7168">P3</text>
+  <line x1="450" y1="726" x2="450" y2="744" stroke="#CC5328" stroke-width="2.4"/>
+  <line x1="348" y1="744" x2="552" y2="744" stroke="#161B26" stroke-width="2.0" opacity="0.55"/>
+  <line x1="348" y1="744" x2="348" y2="764" stroke="#1A5FC4" stroke-width="2.2"/>
+  <rect x="322" y="764" width="52" height="40" rx="8" fill="#DCE9FD" stroke="#1A5FC4" stroke-width="2.2"/>
+  <text x="348" y="788" text-anchor="middle" class="mono" font-size="11.5" font-weight="700" fill="#1A5FC4">CPU</text>
+  <line x1="416" y1="744" x2="416" y2="764" stroke="#D48806" stroke-width="2.2"/>
+  <rect x="390" y="764" width="52" height="40" rx="8" fill="#FDF0D1" stroke="#D48806" stroke-width="2.2"/>
+  <text x="416" y="788" text-anchor="middle" class="mono" font-size="11.5" font-weight="700" fill="#D48806">MMU</text>
+  <line x1="484" y1="744" x2="484" y2="764" stroke="#0E7168" stroke-width="2.2"/>
+  <rect x="458" y="764" width="52" height="40" rx="8" fill="#D3EFEA" stroke="#0E7168" stroke-width="2.2"/>
+  <text x="484" y="788" text-anchor="middle" class="mono" font-size="11.5" font-weight="700" fill="#0E7168">VFS</text>
+  <line x1="552" y1="744" x2="552" y2="764" stroke="#CC5328" stroke-width="2.2"/>
+  <rect x="526" y="764" width="52" height="40" rx="8" fill="#FBE3DA" stroke="#CC5328" stroke-width="2.2"/>
+  <text x="552" y="788" text-anchor="middle" class="mono" font-size="11.5" font-weight="700" fill="#CC5328">I/O</text>
+  <line x1="348" y1="820" x2="552" y2="820" stroke="#D48806" stroke-width="3.2" stroke-linecap="round"/>
+  <line x1="348" y1="804" x2="348" y2="820" stroke="#1A5FC4" stroke-width="1.8" opacity="0.75"/>
+  <circle cx="348" cy="820" r="4" fill="#1A5FC4"/>
+  <line x1="416" y1="804" x2="416" y2="820" stroke="#D48806" stroke-width="1.8" opacity="0.75"/>
+  <circle cx="416" cy="820" r="4" fill="#D48806"/>
+  <line x1="484" y1="804" x2="484" y2="820" stroke="#0E7168" stroke-width="1.8" opacity="0.75"/>
+  <circle cx="484" cy="820" r="4" fill="#0E7168"/>
+  <line x1="552" y1="804" x2="552" y2="820" stroke="#CC5328" stroke-width="1.8" opacity="0.75"/>
+  <circle cx="552" cy="820" r="4" fill="#CC5328"/>
+  <polygon points="450,658 484,692 450,726 416,692" fill="#CC5328"/>
+  <circle cx="450" cy="692" r="12" fill="#FFFFFF"/>
+  <circle cx="450" cy="692" r="5" fill="#D48806"/>
+  <text x="72" y="680" class="mono" font-size="11" font-weight="700" fill="#1A5FC4">RING 3 · USER</text>
+  <text x="72" y="714" class="mono" font-size="11" font-weight="700" fill="#CC5328">RING 0 · KERNEL</text>
+  <text x="828" y="680" text-anchor="end" class="mono" font-size="11" font-weight="700" fill="#0E7168">SYSCALL / SYSRET</text>
+  <text x="828" y="714" text-anchor="end" class="mono" font-size="11" font-weight="700" fill="#D48806">4-LEVEL MMU · DMA</text>
+  <text x="96" y="1028" class="mono" font-size="11.5" font-weight="700" fill="#1A5FC4">RING 3 -&gt; RING 0  ·  POSIX / IO_URING / MMU</text>
+  <text x="804" y="1028" text-anchor="end" class="mono" font-size="11.5" font-weight="700" fill="#CC5328">x86-64 &amp; ARM64</text>
+  <line x1="70" y1="1084" x2="830" y2="1084" stroke="#161B26" stroke-width="1.6"/>
+  <text x="70" y="1136" class="sans" font-size="26" font-weight="800" fill="#161B26" letter-spacing="0.06em">ARPAN PATHAK</text>
+  <text x="70" y="1168" class="mono" font-size="12" font-weight="600" fill="#526075" letter-spacing="0.05em">PROCESSES  ·  VIRTUAL MEMORY  ·  SYNCHRONIZATION  ·  FILE SYSTEMS  ·  EVENT LOOPS</text>
+  <rect x="778" y="1112" width="52" height="52" rx="8" fill="#DCE9FD" stroke="#1A5FC4" stroke-width="1.8"/>
+  <rect x="791" y="1125" width="26" height="26" rx="4" fill="none" stroke="#1A5FC4" stroke-width="2.2"/>
+  <circle cx="804" cy="1138" r="5" fill="#CC5328"/>
 </svg>
