@@ -18,9 +18,16 @@ vm.runInContext(hljsCode, context);
 const hljs = context.hljs;
 console.log('Loaded Highlight.js with languages:', hljs.listLanguages().length);
 
-// 2. Read print.html
+// 2. Read print.html and force crisp Light print theme (never coal/dark in PDF!)
 const printHtmlPath = path.join(bookDir, 'print.html');
 let html = fs.readFileSync(printHtmlPath, 'utf8');
+
+html = html
+    .replace(/<html([^>]*?)class="[^"]*"/, '<html$1class="light"')
+    .replace(/const default_dark_theme = [^;]+;/g, 'const default_dark_theme = "light";')
+    .replace(/const default_light_theme = [^;]+;/g, 'const default_light_theme = "light";')
+    .replace(/const default_theme = [^;]+;/g, 'const default_theme = "light";')
+    .replace(/<h1 id="cover">[\s\S]*?<\/h1>/, '');
 
 function unescapeHtml(str) {
     return str
