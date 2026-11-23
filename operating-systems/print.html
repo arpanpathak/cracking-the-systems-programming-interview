@@ -1,5 +1,5 @@
 <!DOCTYPE HTML>
-<html lang="en" class="light sidebar-visible" dir="ltr">
+<html lang="en" class="coal sidebar-visible" dir="ltr">
     <head>
         <!-- Book generated using mdBook -->
         <meta charset="UTF-8">
@@ -29,7 +29,7 @@
         <link rel="stylesheet" id="mdbook-ayu-highlight-css" href="ayu-highlight-3fdfc3ac.css">
 
         <!-- Custom theme stylesheets -->
-        <link rel="stylesheet" href="theme/custom-3c3d4beb.css">
+        <link rel="stylesheet" href="theme/custom-af5dee75.css">
 
         <!-- MathJax -->
         <script async src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.1/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
@@ -37,8 +37,8 @@
         <!-- Provide site root and default themes to javascript -->
         <script>
             const path_to_root = "";
-            const default_light_theme = "light";
-            const default_dark_theme = "navy";
+            const default_light_theme = "coal";
+            const default_dark_theme = "coal";
             window.path_to_searchindex_js = "searchindex-e451f97a.js";
         </script>
         <!-- Start loading toc.js asap -->
@@ -80,7 +80,7 @@
             try { theme = localStorage.getItem('mdbook-theme'); } catch(e) { }
             if (theme === null || theme === undefined) { theme = default_theme; }
             const html = document.documentElement;
-            html.classList.remove('light')
+            html.classList.remove('coal')
             html.classList.add(theme);
             html.classList.add("js");
         </script>
@@ -1052,6 +1052,7 @@
 </ul>
 <div style="break-before: page; page-break-before: always;"></div>
 <h1 id="1-the-ontological-necessity-of-the-operating-system"><a class="header" href="#1-the-ontological-necessity-of-the-operating-system">1. The Ontological Necessity of the Operating System</a></h1>
+<img class="plate" src="art/ch01-plate.svg" alt="Chapter 01: The Operating System — privilege rings and multiplexed hardware pillars">
 <h2 id="11-architectural-limitations-of-bare-metal-execution"><a class="header" href="#11-architectural-limitations-of-bare-metal-execution">1.1 Architectural Limitations of Bare-Metal Execution</a></h2>
 <p>The requirement for an operating system is fundamentally predicated on the inherent architectural limitations of bare-metal execution. In a primitive hardware environment, a single processor core is constrained by a solitary program counter, which effectively precludes multi-program concurrency by capturing the instruction stream. Furthermore, the absence of a supervisory layer leaves the system without mechanisms for memory protection or instruction restriction, rendering any program capable of unmitigated interference with the hardware or other co-resident software. Finally, the lack of unified device drivers necessitates that every application manage its own hardware-specific communication, a process that is both inefficient and prone to catastrophic resource contention.</p>
 <h2 id="12-axiomatic-roles-abstraction-isolation-and-resource-management"><a class="header" href="#12-axiomatic-roles-abstraction-isolation-and-resource-management">1.2 Axiomatic Roles: Abstraction, Isolation, and Resource Management</a></h2>
@@ -1088,6 +1089,7 @@
 
 <div style="break-before: page; page-break-before: always;"></div>
 <h1 id="2-the-architectural-substrate-and-execution-constraints"><a class="header" href="#2-the-architectural-substrate-and-execution-constraints">2. The Architectural Substrate and Execution Constraints</a></h1>
+<img class="plate" src="art/ch02-plate.svg" alt="Chapter 02: The Machine — CPU pipeline, latency pyramid, and 64-byte cache line">
 <p>The design and operational behavior of an operating system are fundamentally dictated by the invariant properties of the underlying hardware. These architectural properties define the boundaries of sequential instruction execution, the necessity of virtual memory management, and the hardware mechanisms required to enforce system integrity and asynchronous I/O coordination.</p>
 <p>To keep architectural concepts independent of vendor-specific mnemonics, each mechanism in this chapter is presented first in general hardware terms, followed by a consolidated reference mapping across x86-64 and ARM64 (AArch64) in Tables 2-1 and 2-2.</p>
 <h2 id="21-the-execution-model-and-the-atomicity-gap"><a class="header" href="#21-the-execution-model-and-the-atomicity-gap">2.1 The Execution Model and the Atomicity Gap</a></h2>
@@ -1289,6 +1291,7 @@
 
 <div style="break-before: page; page-break-before: always;"></div>
 <h1 id="3-process-abstraction-and-lifecycle"><a class="header" href="#3-process-abstraction-and-lifecycle">3. Process Abstraction and Lifecycle</a></h1>
+<img class="plate" src="art/ch03-plate.svg" alt="Chapter 03: Processes — process state FSM and fork() hierarchy">
 <p>A program is a static sequence of instructions; it becomes a process only when the operating system instantiates it into an active execution environment. A process is defined by its execution state, its resource ownership, and its isolated address space.</p>
 <h2 id="31-the-process-control-block-and-address-space-topology"><a class="header" href="#31-the-process-control-block-and-address-space-topology">3.1 The Process Control Block and Address Space Topology</a></h2>
 <p>To manage multiple concurrent executions, the kernel maintains a Process Control Block (PCB) for every active process. The PCB serves as the primary vehicle for context switching, storing the process’s unique identifier (PID), its lineage, its current execution state (running, ready, or blocked), and the precise architectural state, including registers and the program counter, required to resume execution. Beyond execution state, the PCB tracks the process’s environmental resources, including its page tables for memory isolation, its file descriptor table, and its signal configuration.</p>
@@ -1589,6 +1592,7 @@ parent: child 65090 exited with status 7
 
 <div style="break-before: page; page-break-before: always;"></div>
 <h1 id="4-threaded-execution-and-concurrency-hazards"><a class="header" href="#4-threaded-execution-and-concurrency-hazards">4. Threaded Execution and Concurrency Hazards</a></h1>
+<img class="plate" src="art/ch04-plate.svg" alt="Chapter 04: Threads — shared address space, private stacks, and interleaved timeline">
 <p>While a process provides a fundamental unit of isolation, it is often insufficient for expressing fine-grained parallelism. To achieve concurrency within a single execution context, a process employs threads, independent sequences of instructions that operate within the same administrative boundaries.</p>
 <h2 id="41-shared-address-space-and-the-loss-of-intra-process-isolation"><a class="header" href="#41-shared-address-space-and-the-loss-of-intra-process-isolation">4.1 Shared Address Space and the Loss of Intra-Process Isolation</a></h2>
 <p>A thread is characterized by a dual nature: it possesses a private architectural state, including a unique program counter, register set, and stack, yet it operates within the shared address space of its parent process. This architecture allows threads to communicate via shared memory, allowing one thread to observe the updates of another via ordinary loads and stores, without the overhead of inter-process communication (IPC) or expensive system calls.</p>
@@ -1865,6 +1869,7 @@ all threads joined
 
 <div style="break-before: page; page-break-before: always;"></div>
 <h1 id="5-scheduling-theory-and-policy"><a class="header" href="#5-scheduling-theory-and-policy">5. Scheduling Theory and Policy</a></h1>
+<img class="plate" src="art/ch05-plate.svg" alt="Chapter 05: Scheduling — CFS red-black vruntime tree and multi-core quantum slices">
 <p>A bare-metal multiprocessor provides a fixed number of physical CPU cores, each capable of advancing a single hardware instruction stream on any clock cycle. When the number of runnable threads exceeds the available core count, the hardware itself has no mechanism to enforce proportional fairness, bounded interactive latency, or priority arbitration. Without supervisory intervention, the first thread dispatched onto a core would retain control of the fetch-decode-execute pipeline until it halted or terminated, starving all other workloads on the machine.</p>
 <p>The <strong>kernel scheduler</strong> resolves this physical contention by time-multiplexing hardware cores across competing execution contexts. Consistent with the architectural principle established in Section 1.3, the scheduling subsystem strictly separates hardware-enforced <strong>mechanism</strong> from kernel <strong>policy</strong>:</p>
 <ul>
@@ -2251,6 +2256,7 @@ RR   (quantum 5)
 
 <div style="break-before: page; page-break-before: always;"></div>
 <h1 id="6-synchronization-and-memory-ordering"><a class="header" href="#6-synchronization-and-memory-ordering">6. Synchronization and Memory Ordering</a></h1>
+<img class="plate" src="art/ch06-plate.svg" alt="Chapter 06: Synchronization — atomic CAS and release-acquire memory barrier">
 <p>As seen in Chapters 2 and 4, a non-atomic Read-Modify-Write expression (<code>counter++</code>) decomposes into three discrete machine instructions (load, increment, and store), creating an <strong>atomicity gap</strong> through which concurrent threads lose updates. Single-word atomic instructions eliminate lost updates on isolated scalar variables. Systems software, however, routinely mutates composite data structures (linked lists, circular buffers, page-table hierarchies, file descriptor tables, and allocator free lists) whose structural invariants span multiple machine words and cache lines.</p>
 <p>Preserving data integrity across concurrent threads requires enforcing two orthogonal properties:</p>
 <ol>
@@ -3236,6 +3242,7 @@ seqlock torn     : 0
 
 <div style="break-before: page; page-break-before: always;"></div>
 <h1 id="7-virtual-memory-and-the-architecture-of-address-translation"><a class="header" href="#7-virtual-memory-and-the-architecture-of-address-translation">7. Virtual Memory and the Architecture of Address Translation</a></h1>
+<img class="plate" src="art/ch07-plate.svg" alt="Chapter 07: Virtual Memory — 4-level radix page table walk and TLB hit fast-path">
 <p>Virtual memory provides a layer of indirection between a process’s perceived address space and the machine’s physical memory. Without this indirection, processes executing directly against physical main memory (Dynamic Random-Access Memory) would share a single flat namespace: any process could read or overwrite the memory of any other process or the kernel itself, programs would have to be relocated to non-overlapping physical ranges before loading, and allocating contiguous physical regions for growing heaps and stacks would rapidly fragment main memory into unusable gaps.</p>
 <p>To resolve these constraints while maintaining native execution speed, the operating system and processor implement <strong>address translation</strong> around three architectural objectives: <strong>transparency</strong>, so each process perceives a private, contiguous linear address space starting at a predictable base regardless of where its bytes reside in physical memory; <strong>efficiency</strong>, so translation neither adds prohibitive latency to instruction execution nor consumes excessive physical memory for metadata; and <strong>protection</strong>, so a process cannot read, modify, or execute memory outside its authorized domain. By partitioning both the virtual address space into fixed-size <strong>pages</strong> and physical memory into fixed-size <strong>frames</strong> of identical width, the operating system achieves granular hardware-enforced isolation, demand-driven resource allocation, and zero-copy memory sharing.</p>
 <h2 id="71-page-based-abstraction-and-isolation"><a class="header" href="#71-page-based-abstraction-and-isolation">7.1 Page-Based Abstraction and Isolation</a></h2>
@@ -3874,6 +3881,7 @@ fn main() {
 
 <div style="break-before: page; page-break-before: always;"></div>
 <h1 id="8-memory-allocation-and-management-strategies"><a class="header" href="#8-memory-allocation-and-management-strategies">8. Memory Allocation and Management Strategies</a></h1>
+<img class="plate" src="art/ch08-plate.svg" alt="Chapter 08: Memory Allocation — buddy power-of-2 splits, coalescing, and slab cache">
 <p>The operating system virtual-memory subsystem manages physical RAM at coarse page granularity (typically 4 KiB on x86-64 and 16 KiB on Apple Silicon ARM64). Application software, however, dynamically allocates and deallocates millions of objects ranging from 16-byte linked-list nodes to multi-megabyte buffers with heterogeneous lifetimes. Issuing a kernel system call (<code>mmap</code> or <code>brk</code>) for every small object would impose prohibitive privilege-transition latency and waste nearly an entire 4 KiB page for a 24-byte struct.</p>
 <p>A user-space memory allocator bridges this granularity gap. It acquires large, contiguous virtual memory regions (termed <strong>arenas</strong>) from the operating system in bulk via <code>mmap</code>, subdivides those regions internally in Ring 3 according to alignment and reuse policies, and returns unneeded memory to the kernel only at coarse page boundaries.</p>
 <h2 id="81-the-allocator-interface-and-efficiency-constraints"><a class="header" href="#81-the-allocator-interface-and-efficiency-constraints">8.1 The Allocator Interface and Efficiency Constraints</a></h2>
@@ -5067,6 +5075,7 @@ after freeing all blocks (coalesced back to 1 free block):
 
 <div style="break-before: page; page-break-before: always;"></div>
 <h1 id="9-the-kernel-boundary-and-the-cost-of-system-calls"><a class="header" href="#9-the-kernel-boundary-and-the-cost-of-system-calls">9. The Kernel Boundary and the Cost of System Calls</a></h1>
+<img class="plate" src="art/ch09-plate.svg" alt="Chapter 09: System Calls — SYSCALL/SYSRET privilege trap gate and MSR dispatch">
 <p>The system call represents the formal interface between user-mode application logic and the privileged operations of the operating system. It serves as the single, controlled gateway through which a process requests services, such as file <strong>Input/Output (<code>I/O</code>)</strong>, process management, or network communication, that require hardware access or kernel-level authority.</p>
 <h2 id="91-the-mechanics-of-the-system-call-interface"><a class="header" href="#91-the-mechanics-of-the-system-call-interface">9.1 The Mechanics of the System Call Interface</a></h2>
 <p>A system call is initiated via a specialized trap instruction executed by a user-mode C library wrapper (<code>syscall</code> on x86-64; <code>svc #0</code> on ARM64). Unlike an ordinary function call, which pushes a return address onto the user stack and branches within the same privilege ring, a system call must cross the hardware isolation boundary separating Ring 3 (User Mode) from Ring 0 (Kernel Mode). The wrapper places a numeric system call identifier into a designated register (<code>rax</code> on x86-64 Linux; <code>x8</code> on ARM64 Linux; <code>x16</code> on Apple Silicon Darwin) and loads up to six arguments into fixed argument registers (<code>rdi</code>, <code>rsi</code>, <code>rdx</code>, <code>r10</code>, <code>r8</code>, <code>r9</code> on x86-64; <code>x0</code> through <code>x5</code> on ARM64) before executing the trap instruction.</p>
@@ -5331,6 +5340,7 @@ BufWriter,     200000 x 17 bytes         :     0.6 ms
 
 <div style="break-before: page; page-break-before: always;"></div>
 <h1 id="10-asynchronous-notifications-and-signal-semantics"><a class="header" href="#10-asynchronous-notifications-and-signal-semantics">10. Asynchronous Notifications and Signal Semantics</a></h1>
+<img class="plate" src="art/ch10-plate.svg" alt="Chapter 10: Signals — async signal bitmask interrupting PC into handler frame">
 <p>A signal serves as the primary mechanism for asynchronous notification within a process, acting as the software analogue to a hardware interrupt. Generated by hardware exceptions (<strong>Segmentation Violation (<code>SIGSEGV</code>)</strong>, <strong>Floating-Point Exception (<code>SIGFPE</code>)</strong>), terminal controls (<strong>Interrupt (<code>SIGINT</code>)</strong>, <strong>Terminal Stop (<code>SIGTSTP</code>)</strong>), child lifecycle events (<strong>Child Status Changed (<code>SIGCHLD</code>)</strong>), or explicit inter-process signaling (<strong>User-Defined Signal 1 (<code>SIGUSR1</code>)</strong>, <strong>Terminate (<code>SIGTERM</code>)</strong>), a signal compels the kernel to suspend the target thread’s normal instruction stream and divert execution to a designated disposition.</p>
 <h2 id="101-the-signal-lifecycle-generation-pending-and-delivery"><a class="header" href="#101-the-signal-lifecycle-generation-pending-and-delivery">10.1 The Signal Lifecycle: Generation, Pending, and Delivery</a></h2>
 <p>The lifecycle of every standard <strong>Portable Operating System Interface (<code>POSIX</code>)</strong> signal progresses through three ordered phases (Figure 10-1):</p>
@@ -5625,6 +5635,7 @@ after handler: waitpid(WNOHANG) -&gt; -1 (-1 = already reaped)
 
 <div style="break-before: page; page-break-before: always;"></div>
 <h1 id="11-inter-process-communication-ipc"><a class="header" href="#11-inter-process-communication-ipc">11. Inter-Process Communication (IPC)</a></h1>
+<img class="plate" src="art/ch11-plate.svg" alt="Chapter 11: Inter-Process Communication — pipe ring, mmap shared memory, and Unix domain socket">
 <p>While threads within a single process share an address space and coordinate directly through memory and synchronization primitives, processes are isolated by hardware page tables. <strong>Inter-Process Communication (<code>IPC</code>)</strong> provides controlled kernel-mediated channels through which isolated processes exchange data and synchronize execution without sacrificing memory protection.</p>
 <h2 id="111-unidirectional-byte-streams-pipes"><a class="header" href="#111-unidirectional-byte-streams-pipes">11.1 Unidirectional Byte Streams: Pipes</a></h2>
 <p>A <strong>pipe</strong> is a unidirectional, kernel-resident ring buffer (typically 64 KiB on Linux and 16 to 64 KiB on macOS) exposed to user space as a pair of ordinary file descriptors. Because file descriptors are inherited across <code>fork()</code>, a parent process can create a pipe before forking and establish an immediate communication channel with its child (Figure 11-1).</p>
@@ -6025,6 +6036,7 @@ child  received: "pong from parent"
 
 <div style="break-before: page; page-break-before: always;"></div>
 <h1 id="12-file-system-architecture-and-durability"><a class="header" href="#12-file-system-architecture-and-durability">12. File System Architecture and Durability</a></h1>
+<img class="plate" src="art/ch12-plate.svg" alt="Chapter 12: File Systems — inode block pointers and WAL journal commit barrier">
 <p>A file system provides a persistent, named abstraction for data stored on a block device. It organizes storage into structured entities, files and directories, and manages the mapping between human-readable hierarchical paths and physical disk blocks while surviving power loss and abrupt system crashes.</p>
 <h2 id="121-the-file-descriptor-and-the-open-file-description"><a class="header" href="#121-the-file-descriptor-and-the-open-file-description">12.1 The File Descriptor and the Open File Description</a></h2>
 <p>The kernel mediates every file operation through three distinct layers of indirection:</p>
@@ -6290,6 +6302,7 @@ hole at 2 MiB reads back 16 bytes, all zero: yes
 
 <div style="break-before: page; page-break-before: always;"></div>
 <h1 id="13-io-multiplexing-and-the-event-loop"><a class="header" href="#13-io-multiplexing-and-the-event-loop">13. I/O Multiplexing and the Event Loop</a></h1>
+<img class="plate" src="art/ch13-plate.svg" alt="Chapter 13: I/O &amp; Event Loops — epoll red-black tree and io_uring SQ/CQ rings">
 <p>The central engineering challenge of high-concurrency network servers, historically framed as the <strong>C10K problem</strong>, is sustaining tens of thousands of simultaneous client connections when the vast majority remain idle waiting for network packets at any given instant. Choosing between a thread-per-connection architecture and an event-driven <strong>Input/Output (<code>I/O</code>)</strong> multiplexing loop directly governs memory consumption, cache locality, and scheduler overhead.</p>
 <h2 id="131-the-scalability-limits-of-thread-per-connection"><a class="header" href="#131-the-scalability-limits-of-thread-per-connection">13.1 The Scalability Limits of Thread-Per-Connection</a></h2>
 <p>Assigning one operating-system thread to every accepted <strong>Transmission Control Protocol (<code>TCP</code>)</strong> connection allows handlers to be written as straightforward sequential blocking code (<code>read()</code>, process, <code>write()</code>). While intuitive for low-concurrency services, this model encounters three scaling ceilings as connection counts grow into the tens of thousands. First, every thread reserves a dedicated user-space stack (commonly 1 to 8 MiB of virtual space and tens of kilobytes of resident pages) plus a kernel stack (8 to 16 KiB) and scheduling metadata. Second, waking thousands of threads across bursts of short packets triggers frequent scheduler invocations, register-state saves, Level 1/Level 2 cache eviction, and <strong>Translation Lookaside Buffer (<code>TLB</code>)</strong> pressure. Third, sharing mutable session tables or metrics across thousands of concurrent threads introduces heavy lock contention.</p>
@@ -6680,6 +6693,7 @@ done
 
 <div style="break-before: page; page-break-before: always;"></div>
 <h1 id="14-network-protocols-and-the-socket-interface"><a class="header" href="#14-network-protocols-and-the-socket-interface">14. Network Protocols and the Socket Interface</a></h1>
+<img class="plate" src="art/ch14-plate.svg" alt="Chapter 14: Networking — TCP 3-way handshake, packet headers, and cwnd sawtooth">
 <p>Network communication is abstracted through the <strong>Berkeley Software Distribution (<code>BSD</code>)</strong> socket interface, which exposes transport protocols through ordinary file descriptors while letting applications choose between fundamentally different delivery contracts: reliable, ordered byte streams (<strong>Transmission Control Protocol (<code>TCP</code>)</strong>) and connectionless, boundary-preserving datagrams (<strong>User Datagram Protocol (<code>UDP</code>)</strong>).</p>
 <h2 id="141-the-transmission-control-protocol-tcp-reliable-byte-streams"><a class="header" href="#141-the-transmission-control-protocol-tcp-reliable-byte-streams">14.1 The Transmission Control Protocol (<code>TCP</code>): Reliable Byte Streams</a></h2>
 <p><code>TCP</code> provides a connection-oriented, reliable, full-duplex byte stream over an inherently unreliable packet-switched <strong>Internet Protocol (<code>IP</code>)</strong> network that can drop, duplicate, reorder, or corrupt packets. <code>TCP</code> enforces reliability through cumulative byte <strong>sequence numbers</strong>, receiver <strong>Acknowledgments (<code>ACK</code>s)</strong>, retransmission timers, sliding-window <strong>flow control</strong> (preventing a fast sender from overflowing a slow receiver’s kernel buffer), and <strong>congestion control</strong> (adapting transmission rate to bottleneck link capacity).</p>
@@ -6860,6 +6874,7 @@ fn main() -&gt; std::io::Result&lt;()&gt; {
 
 <div style="break-before: page; page-break-before: always;"></div>
 <h1 id="15-daemon-lifecycle-and-service-supervision"><a class="header" href="#15-daemon-lifecycle-and-service-supervision">15. Daemon Lifecycle and Service Supervision</a></h1>
+<img class="plate" src="art/ch15-plate.svg" alt="Chapter 15: Daemons &amp; Supervision — PID 1 supervision tree, cgroups, and watchdog">
 <p>A daemon is a specialized process designed for long-running background execution, decoupled from any interactive terminal. While traditional daemons implement explicit detachment rituals to sever ties with their launching shell, modern operating systems have evolved toward a supervision-based model where central init systems (such as <code>launchd</code> on macOS and Darwin, or <code>systemd</code> on Linux) manage the lifecycle, socket activation, resource boundaries, and fault recovery of background services.</p>
 <h2 id="151-the-ritual-of-detachment"><a class="header" href="#151-the-ritual-of-detachment">15.1 The Ritual of Detachment</a></h2>
 <p>To transition from a terminal-bound process to a fully independent daemon in a standalone environment, a program undergoes four ordered stages designed to sever every kernel linkage to the launching session and controlling terminal (Figures 15-1 and 15-2):</p>
@@ -7277,6 +7292,7 @@ fn main() {
 
 <div style="break-before: page; page-break-before: always;"></div>
 <h1 id="16-virtualization-and-containerization"><a class="header" href="#16-virtualization-and-containerization">16. Virtualization and Containerization</a></h1>
+<img class="plate" src="art/ch16-plate.svg" alt="Chapter 16: Virtualization — VMX hypervisor rings and container namespace isolation cells">
 <p>Modern cloud infrastructure packs dozens of mutually untrusted customer workloads onto a single physical server while preserving the illusion that each tenant owns a dedicated machine. Systems engineers achieve this multi-tenancy through two distinct architectural mechanisms: <strong>hardware Virtual Machines (<code>VM</code>s)</strong>, which virtualize the physical processor and memory controller beneath complete guest kernels, and <strong>containers</strong>, which partition visibility and resource quotas inside a single shared host kernel.</p>
 <h2 id="161-virtual-machines-and-hypervisor-orchestration"><a class="header" href="#161-virtual-machines-and-hypervisor-orchestration">16.1 Virtual Machines and Hypervisor Orchestration</a></h2>
 <p>A <strong>virtual machine</strong> executes an unmodified guest operating system (such as Linux or Windows) inside an isolated hardware environment synthesized by a <strong>hypervisor</strong> (such as Linux <strong>Kernel-based Virtual Machine (<code>KVM</code>)</strong>, Xen, VMware ESXi, or Apple Virtualization.framework). Early software-only hypervisors faced a difficult architectural problem on x86: several sensitive instructions behaved differently in unprivileged rings instead of trapping, forcing complex binary translation.</p>
@@ -7349,6 +7365,7 @@ fn main() {
 
 <div style="break-before: page; page-break-before: always;"></div>
 <h1 id="17-multiprocessor-systems-and-hardware-accelerators"><a class="header" href="#17-multiprocessor-systems-and-hardware-accelerators">17. Multiprocessor Systems and Hardware Accelerators</a></h1>
+<img class="plate" src="art/ch17-plate.svg" alt="Chapter 17: Multiprocessors — dual-socket NUMA interconnect and MESI cache coherence">
 <p>As computing scale increases, the idealized model of a single, uniform pool of memory and a set of identical cores gives way to more complex architectures. Large-scale systems are characterized by <strong>Non-Uniform Memory Access (<code>NUMA</code>)</strong> topologies, complex cache coherency protocols, and the tight integration of specialized hardware accelerators for <strong>Machine Learning (<code>ML</code>)</strong> and <strong>High-Performance Computing (<code>HPC</code>)</strong>. These hardware realities impose unique constraints on operating system design, runtime libraries, and systems software.</p>
 <h2 id="171-numa-topologies-and-locality-optimization"><a class="header" href="#171-numa-topologies-and-locality-optimization">17.1 <code>NUMA</code> Topologies and Locality Optimization</a></h2>
 <p>In a <code>NUMA</code> architecture, the system is composed of multiple processor sockets or chiplets, each possessing its own local memory controller and associated <strong>Dynamic Random-Access Memory (<code>DRAM</code>)</strong> (Figure 17-1). While any core can access any physical address, latency and bandwidth depend strongly on physical distance between the executing core and the target memory controller. Accessing local <code>DRAM</code> is fast, whereas traversing the inter-socket interconnect (such as Intel <strong>Ultra Path Interconnect (<code>UPI</code>)</strong>, AMD Infinity Fabric, or Apple UltraFusion) incurs a measurable latency and bandwidth penalty.</p>
@@ -7533,6 +7550,7 @@ ratio                 :  5.18x
 
 <div style="break-before: page; page-break-before: always;"></div>
 <h1 id="18-performance-analysis-and-observability"><a class="header" href="#18-performance-analysis-and-observability">18. Performance Analysis and Observability</a></h1>
+<img class="plate" src="art/ch18-plate.svg" alt="Chapter 18: Performance — CPU flame graph, eBPF probes, and p50/p99 latency histogram">
 <p>Systems performance optimization is an empirical engineering discipline. Intuition about why a program is slow is routinely wrong on modern out-of-order superscalar processors with multi-level caches, hardware prefetchers, and complex kernel <strong>Input/Output (<code>I/O</code>)</strong> stacks. Rigorous diagnosis follows a closed scientific loop: characterize which physical resource bounds throughput or latency (execution pipeline, memory hierarchy, lock contention, storage, or network), instrument the live system with low-overhead observability tools, hypothesize a single structural change, and verify the improvement under controlled statistical measurements.</p>
 <h2 id="181-the-empirical-method-and-the-memory-latency-hierarchy"><a class="header" href="#181-the-empirical-method-and-the-memory-latency-hierarchy">18.1 The Empirical Method and the Memory Latency Hierarchy</a></h2>
 <p>Performance triage begins by classifying whether a workload is <strong>on-CPU</strong> (compute-bound or stalled on cache or <strong>Translation Lookaside Buffer (<code>TLB</code>)</strong> misses while holding a core) or <strong>off-CPU</strong> (blocked in kernel wait queues awaiting <strong>Solid-State Drive (<code>SSD</code>)</strong> <code>I/O</code>, network packets, or contended mutexes).</p>
@@ -7689,6 +7707,7 @@ fn main() {
 
 <div style="break-before: page; page-break-before: always;"></div>
 <h1 id="19-systems-interview-problems-derivations-and-reference-implementations"><a class="header" href="#19-systems-interview-problems-derivations-and-reference-implementations">19. Systems Interview Problems: Derivations and Reference Implementations</a></h1>
+<img class="plate" src="art/ch19-plate.svg" alt="Chapter 19: Interview Problems — blueprint grid of classic OS primitives">
 <p>The systems programming interview serves as an empirical evaluation of an engineer’s capacity to translate low-level hardware constraints into correct, deterministic software abstractions. While application-level engineering frequently abstracts away execution costs, systems engineering requires direct reasoning from first principles: the mechanics of cache coherence, memory ordering semantics, kernel privilege transitions, memory fragmentation, and atomic instruction guarantees.</p>
 <h2 id="191-architectural-framework-and-problem-solving-discipline"><a class="header" href="#191-architectural-framework-and-problem-solving-discipline">19.1 Architectural Framework and Problem-Solving Discipline</a></h2>
 <p>Every robust systems component is derived from three foundational tenets:</p>
@@ -12519,7 +12538,7 @@ freelist.push(slot); let hot_slot = freelist.pop();
         <script src="book-609e4cb8.js"></script>
 
         <!-- Custom JS scripts -->
-        <script src="theme/figures-fd5ff574.js"></script>
+        <script src="theme/figures-76d3d8f0.js"></script>
 
         <script>
         window.addEventListener('load', function() {

@@ -1,5 +1,5 @@
 <!DOCTYPE HTML>
-<html lang="en" class="navy sidebar-visible" dir="ltr">
+<html lang="en" class="coal sidebar-visible" dir="ltr">
     <head>
         <!-- Book generated using mdBook -->
         <meta charset="UTF-8">
@@ -28,18 +28,18 @@
         <link rel="stylesheet" id="mdbook-ayu-highlight-css" href="ayu-highlight-3fdfc3ac.css">
 
         <!-- Custom theme stylesheets -->
-        <link rel="stylesheet" href="theme/custom-59beaf6d.css">
+        <link rel="stylesheet" href="theme/custom-3b357368.css">
 
 
         <!-- Provide site root and default themes to javascript -->
         <script>
             const path_to_root = "";
-            const default_light_theme = "navy";
-            const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "searchindex-5d54d4b4.js";
+            const default_light_theme = "coal";
+            const default_dark_theme = "coal";
+            window.path_to_searchindex_js = "searchindex-38bda414.js";
         </script>
         <!-- Start loading toc.js asap -->
-        <script src="toc-ef51d47d.js"></script>
+        <script src="toc-00f6d8fe.js"></script>
     </head>
     <body>
     <div id="mdbook-help-container">
@@ -77,7 +77,7 @@
             try { theme = localStorage.getItem('mdbook-theme'); } catch(e) { }
             if (theme === null || theme === undefined) { theme = default_theme; }
             const html = document.documentElement;
-            html.classList.remove('navy')
+            html.classList.remove('coal')
             html.classList.add(theme);
             html.classList.add("js");
         </script>
@@ -218,7 +218,7 @@
 <tr><th style="text-align: left">Actor</th><th style="text-align: left">Operation</th><th style="text-align: left">Concrete Scenario</th></tr>
 </thead>
 <tbody>
-<tr><td style="text-align: left"><strong>Worker / Application</strong></td><td style="text-align: left">Acquire lease (<code>POST /v1/locks/{k}</code>), renew (<code>PUT /v1/leases/{id}/keepalive</code>), release (<code>DELETE</code>)</td><td style="text-align: left">Elect a single active leader for a sharded database partition or serialize a nightly settlement batch</td></tr>
+<tr><td style="text-align: left"><strong>Worker / Application</strong></td><td style="text-align: left">Acquire lease (<code>POST /v1/locks/{k}</code>), renew (<code>POST /v1/leases/{id}:renew</code>), release (<code>DELETE</code>)</td><td style="text-align: left">Elect a single active leader for a sharded database partition or serialize a nightly settlement batch</td></tr>
 <tr><td style="text-align: left"><strong>Protected Storage Resource</strong></td><td style="text-align: left">Validate monotonic fencing token (<code>token &gt;= max_seen_token</code>)</td><td style="text-align: left">Reject delayed writes arriving from a paused worker whose lease already expired</td></tr>
 <tr><td style="text-align: left"><strong>Platform Operator</strong></td><td style="text-align: left">Audit Raft leader, term, quorum latency, and lock wait queues</td><td style="text-align: left">Detect network partitions, stalled holders renewing indefinitely, or excessive fine-grained lock contention</td></tr>
 </tbody>
@@ -233,7 +233,7 @@
 <tbody>
 <tr><td style="text-align: left">0</td><td style="text-align: left">A worker can attempt to acquire an exclusive lease on a named lock key; at most one worker holds an active lease for that key at any point in linearizable history.</td></tr>
 <tr><td style="text-align: left">1</td><td style="text-align: left">Every granted lease carries a bounded server-enforced Time-To-Live (TTL) and a globally strictly increasing 64-bit <strong>fencing token</strong> (<code>token_new &gt; token_prev</code>).</td></tr>
-<tr><td style="text-align: left">2</td><td style="text-align: left">A lease holder can extend its active lease via conditional heartbeat keepalive (<code>PUT /v1/leases/{id}/keepalive</code>) and release it voluntarily only if it still owns the matching lease token.</td></tr>
+<tr><td style="text-align: left">2</td><td style="text-align: left">A lease holder can extend its active lease via conditional heartbeat keepalive (<code>POST /v1/leases/{id}:renew</code>) and release it voluntarily only if it still owns the matching lease token.</td></tr>
 <tr><td style="text-align: left">3</td><td style="text-align: left">Waiting workers can subscribe to ordered watch notifications so lock handoff wakes exactly the next waiter in FIFO order without polling or thundering-herd contention.</td></tr>
 <tr><td style="text-align: left">4</td><td style="text-align: left">Once a lease expires or is released, another worker can acquire the lock with a strictly higher fencing token.</td></tr>
 </tbody>
@@ -310,8 +310,8 @@ Content-Type: application/problem+json
   "detail": "Lock nightly-billing is held under fencing_token 34; retry or attach a watch."
 }
 </code></pre>
-<p><strong>Renew lease heartbeat (<code>PUT /v1/leases/{lease_id}/keepalive</code>):</strong></p>
-<pre><code class="language-http">PUT /v1/leases/42/keepalive HTTP/2
+<p><strong>Renew lease heartbeat (<code>POST /v1/leases/{lease_id}:renew</code>):</strong></p>
+<pre><code class="language-http">POST /v1/leases/42:renew HTTP/2
 Host: locks.internal
 Content-Type: application/json
 
@@ -506,6 +506,35 @@ the storage holds: written by client-b
 </tbody>
 </table>
 </div>
+<h3 id="end-to-end-request-lifecycle-and-hop-by-hop-latency-budget"><a class="header" href="#end-to-end-request-lifecycle-and-hop-by-hop-latency-budget">End-to-End Request Lifecycle and Hop-by-Hop Latency Budget</a></h3>
+<p>Acquiring a linearizable distributed lock and executing a fenced write spans two planes: a quorum-replicated lease acquisition in the consensus plane, followed by a monotonic token check on the storage plane.</p>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th style="text-align: left">Hop</th><th style="text-align: left">Boundary</th><th style="text-align: left">Protocol and Operation</th><th style="text-align: left">Typical <code>p50</code></th><th style="text-align: left">Tail <code>p99</code></th></tr>
+</thead>
+<tbody>
+<tr><td style="text-align: left">1</td><td style="text-align: left">Worker Service to Consensus Leader</td><td style="text-align: left">Persistent gRPC/TLS stream (<code>AcquireLock</code> / <code>Txn</code> compare-and-swap)</td><td style="text-align: left"><code>0.40 ms</code></td><td style="text-align: left"><code>1.20 ms</code></td></tr>
+<tr><td style="text-align: left">2</td><td style="text-align: left">Leader to Majority Followers (<code>Raft</code> / <code>Zab</code>)</td><td style="text-align: left"><code>AppendEntries</code> RPC across 3 AZs plus <code>fsync</code> of WAL entry on quorum (<code>2/3</code>)</td><td style="text-align: left"><code>2.80 ms</code></td><td style="text-align: left"><code>9.50 ms</code></td></tr>
+<tr><td style="text-align: left">3</td><td style="text-align: left">Leader Commit and Token Return</td><td style="text-align: left">Apply committed lease entry and return monotonic 64-bit <code>fencing_token</code></td><td style="text-align: left"><code>0.30 ms</code></td><td style="text-align: left"><code>0.90 ms</code></td></tr>
+<tr><td style="text-align: left">4</td><td style="text-align: left">Worker to Fenced Storage Service</td><td style="text-align: left">Data-plane RPC carrying <code>fencing_token</code> in request header</td><td style="text-align: left"><code>0.50 ms</code></td><td style="text-align: left"><code>1.50 ms</code></td></tr>
+<tr><td style="text-align: left">5</td><td style="text-align: left">Storage Engine Token Validation and Commit</td><td style="text-align: left">Atomic conditional write (<code>WHERE last_token &lt; :token</code>) rejecting stale holders</td><td style="text-align: left"><code>1.20 ms</code></td><td style="text-align: left"><code>4.80 ms</code></td></tr>
+<tr><td style="text-align: left"><strong>Total</strong></td><td style="text-align: left"><strong>End-to-End Fenced Acquisition and Write</strong></td><td style="text-align: left"><strong>Linearizable mutual exclusion with storage-enforced safety</strong></td><td style="text-align: left"><strong><code>5.20 ms</code></strong></td><td style="text-align: left"><strong><code>17.90 ms</code></strong></td></tr>
+</tbody>
+</table>
+</div>
+<h3 id="production-case-studies-and-open-source-comparisons"><a class="header" href="#production-case-studies-and-open-source-comparisons">Production Case Studies and Open-Source Comparisons</a></h3>
+<ul>
+<li><strong>Google Chubby:</strong> Chubby provides coarse-grained advisory locks and small-file storage for systems such as GFS and Bigtable, running 5-replica Paxos cells where a single master serves leases (<code>12 s</code> default KeepAlive interval) and issues monotonically increasing sequencers. Clients cache lock state locally and invalidate leases synchronously via master keepalive responses, allowing a single cell to serve tens of thousands of clients without overwhelming the Paxos log.</li>
+<li><strong>Apache ZooKeeper (Ephemeral Sequential Znodes):</strong> ZooKeeper implements fair distributed locks via a parent znode containing <code>EPHEMERAL_SEQUENTIAL</code> children created by each contender. A client holds the lock when its sequence number is the minimum; every other contender registers a one-shot watch exclusively on its immediate predecessor, reducing release notifications from <code>O(N)</code> thundering herds to <code>O(1)</code> wakeups and automatically releasing locks if a client session times out.</li>
+<li><strong>etcd (Lease-Backed Revisions and Fencing):</strong> etcd pairs a Raft-replicated MVCC key-value store with time-bounded leases and a cluster-wide monotonic <code>mod_revision</code> counter. Clients acquire a lock via an atomic transaction (<code>If(create_revision == 0).Then(Put(key, val, lease))</code>), using the returned <code>create_revision</code> directly as a fencing token while a background keepalive stream renews the lease before TTL expiration.</li>
+</ul>
+<div class="callout keyidea"><span class="label">Key idea</span>A distributed lock service provides liveness and coordination, whereas the storage tier enforces safety: without monotonic fencing tokens validated on every write, a GC pause or network delay can allow a zombie holder to corrupt state.</div>
+
+<div class="callout experiment"><span class="label">Experiment</span>Acquire a 5-second lease from a worker process, suspend that process for 8 seconds with `SIGSTOP`, let a second worker acquire the lock and write with token `N + 1`, and resume the first worker with `SIGCONT`. Verify that the storage engine rejects the resumed worker's stale write carrying token `N`.</div>
+
+<div class="callout caution"><span class="label">Common pitfall</span>Using wall-clock TTL leases across independent non-consensus nodes (such as uncoordinated cache primaries) assumes bounded clock drift and bounded process pauses. Whenever mutual exclusion protects financial state or metadata integrity, back the lock with a consensus store and verify monotonic fencing tokens at the data sink.</div>
+
 <h3 id="references"><a class="header" href="#references">References</a></h3>
 <ul>
 <li>M. Burrows, “The Chubby Lock Service for Loosely-Coupled Distributed Systems”, USENIX OSDI, 2006.</li>
@@ -552,6 +581,22 @@ the storage holds: written by client-b
         <template id=fa-play><span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 384 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M73 39c-14.8-9.1-33.4-9.4-48.5-.9S0 62.6 0 80V432c0 17.4 9.4 33.4 24.5 41.9s33.7 8.1 48.5-.9L361 297c14.3-8.7 23-24.2 23-41s-8.7-32.2-23-41L73 39z"/></svg></span></template>
         <template id=fa-clock-rotate-left><span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M75 75L41 41C25.9 25.9 0 36.6 0 57.9V168c0 13.3 10.7 24 24 24H134.1c21.4 0 32.1-25.9 17-41l-30.8-30.8C155 85.5 203 64 256 64c106 0 192 86 192 192s-86 192-192 192c-40.8 0-78.6-12.7-109.7-34.4c-14.5-10.1-34.4-6.6-44.6 7.9s-6.6 34.4 7.9 44.6C151.2 495 201.7 512 256 512c141.4 0 256-114.6 256-256S397.4 0 256 0C185.3 0 121.3 28.7 75 75zm181 53c-13.3 0-24 10.7-24 24V256c0 6.4 2.5 12.5 7 17l72 72c9.4 9.4 24.6 9.4 33.9 0s9.4-24.6 0-33.9l-65-65V152c0-13.3-10.7-24-24-24z"/></svg></span></template>
 
+        <!-- Livereload script (if served using the cli tool) -->
+        <script>
+            const wsProtocol = location.protocol === 'https:' ? 'wss:' : 'ws:';
+            const wsAddress = wsProtocol + "//" + location.host + "/" + "__livereload";
+            const socket = new WebSocket(wsAddress);
+            socket.onmessage = function (event) {
+                if (event.data === "reload") {
+                    socket.close();
+                    location.reload();
+                }
+            };
+
+            window.onbeforeunload = function() {
+                socket.close();
+            }
+        </script>
 
 
         <script>
@@ -568,7 +613,7 @@ the storage holds: written by client-b
         <script src="book-609e4cb8.js"></script>
 
         <!-- Custom JS scripts -->
-        <script src="theme/figures-9c14cb1c.js"></script>
+        <script src="theme/figures-1bd27a95.js"></script>
         <script src="theme/proto-326509cd.js"></script>
         <script src="theme/code-67e9caaf.js"></script>
         <script src="theme/tables-9fb295e8.js"></script>

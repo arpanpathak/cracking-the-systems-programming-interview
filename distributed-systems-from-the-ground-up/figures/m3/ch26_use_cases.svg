@@ -2,7 +2,7 @@
   <style>
     text { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif; fill: #1B1F27; }
     .paper { fill: #FFFFFF; }
-    .frame { fill: #FFFFFF; stroke: #DCE0E7; stroke-width: 1; }
+    .frame { fill: #FFFFFF; stroke: #DCE0E7; stroke-width: 1.2; }
     .card { fill: #FFFFFF; }
     .hair { stroke: #DCE0E7; stroke-width: 1.2; fill: none; }
     .muted { fill: #566070; }
@@ -95,7 +95,7 @@
 <rect x="382.0" y="84.0" width="26.0" height="26.0" rx="8" class="c-blue"/>
 <g transform="translate(386.9 88.9) scale(0.672)" class="a-blue"><path d="M14 11c0 .55-.45 1-1 1H4c-.55 0-1-.45-1-1s.45-1 1-1h9c.55 0 1 .45 1 1zM3 7c0 .55.45 1 1 1h9c.55 0 1-.45 1-1s-.45-1-1-1H4c-.55 0-1 .45-1 1zm7 8c0-.55-.45-1-1-1H4c-.55 0-1 .45-1 1s.45 1 1 1h5c.55 0 1-.45 1-1zm8.01-2.13.71-.71a.996.996 0 0 1 1.41 0l.71.71c.39.39.39 1.02 0 1.41l-.71.71-2.12-2.12zm-.71.71-5.16 5.16c-.09.09-.14.21-.14.35v1.41c0 .28.22.5.5.5h1.41c.13 0 .26-.05.35-.15l5.16-5.16-2.12-2.11z"/></g>
 <text x="420.0" y="93.4" class="name" data-fit="420.0,854.0">Apply Concurrent Text Edits</text>
-<text x="420.0" y="110.4" class="mono" data-fit="420.0,854.0">WS /v1/docs/{id}/ops (CRDT delta)</text>
+<text x="420.0" y="110.4" class="mono" data-fit="420.0,854.0">WS /v1/documents/{id}/operations (CRDT delta)</text>
 <rect x="368.0" y="142.0" width="498.0" height="58.0" rx="12" class="card" filter="url(#lift)"/>
 <rect x="382.0" y="158.0" width="26.0" height="26.0" rx="8" class="c-teal"/>
 <g transform="translate(386.9 162.9) scale(0.672)" class="a-teal"><path d="M18 16v-5c0-3.07-1.64-5.64-4.5-6.32V4c0-.83-.68-1.5-1.51-1.5S10.5 3.17 10.5 4v.68C7.63 5.36 6 7.92 6 11v5l-1.3 1.29c-.63.63-.19 1.71.7 1.71h13.17c.89 0 1.34-1.08.71-1.71L18 16zm-6.01 6c1.1 0 2-.9 2-2h-4a2 2 0 0 0 2 2zM6.77 4.73c.42-.38.43-1.03.03-1.43a1 1 0 0 0-1.39-.02 10.424 10.424 0 0 0-3.27 6.06c-.09.61.38 1.16 1 1.16.48 0 .9-.35.98-.83a8.44 8.44 0 0 1 2.65-4.94zM18.6 3.28c-.4-.37-1.02-.36-1.4.02-.4.4-.38 1.04.03 1.42 1.38 1.27 2.35 3 2.65 4.94.07.48.49.83.98.83.61 0 1.09-.55.99-1.16-.38-2.37-1.55-4.48-3.25-6.05z"/></g>
@@ -110,41 +110,47 @@
 <rect x="382.0" y="306.0" width="26.0" height="26.0" rx="8" class="c-green"/>
 <g transform="translate(386.9 310.9) scale(0.672)" class="a-green"><path d="M11.99 2C6.47 2 2 6.48 2 12s4.47 10 9.99 10C17.52 22 22 17.52 22 12S17.52 2 11.99 2zM12 20c-4.42 0-8-3.58-8-8s3.58-8 8-8 8 3.58 8 8-3.58 8-8 8zm-.22-13h-.06c-.4 0-.72.32-.72.72v4.72c0 .35.18.68.49.86l4.15 2.49c.34.2.78.1.98-.24a.71.71 0 0 0-.25-.99l-3.87-2.3V7.72c0-.4-.32-.72-.72-.72z"/></g>
 <text x="420.0" y="315.4" class="name" data-fit="420.0,854.0">Restore Historical Snapshot</text>
-<text x="420.0" y="332.4" class="mono" data-fit="420.0,854.0">GET /v1/docs/{id}/revisions/{ver}</text>
+<text x="420.0" y="332.4" class="mono" data-fit="420.0,854.0">GET /v1/documents/{id}/revisions/{ver}</text>
 <rect x="368.0" y="364.0" width="498.0" height="58.0" rx="12" class="card" filter="url(#lift)"/>
 <rect x="382.0" y="380.0" width="26.0" height="26.0" rx="8" class="c-purple"/>
 <g transform="translate(386.9 384.9) scale(0.672)" class="a-purple"><path d="M18 8h-1V6c0-2.76-2.24-5-5-5S7 3.24 7 6v2H6c-1.1 0-2 .9-2 2v10c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V10c0-1.1-.9-2-2-2zm-6 9c-1.1 0-2-.9-2-2s.9-2 2-2 2 .9 2 2-.9 2-2 2zM9 8V6c0-1.66 1.34-3 3-3s3 1.34 3 3v2H9z"/></g>
 <text x="420.0" y="389.4" class="name" data-fit="420.0,854.0">Enforce Sharing &amp; Role ACLs</text>
-<text x="420.0" y="406.4" class="mono" data-fit="420.0,854.0">PATCH /v1/docs/{id}/permissions</text>
-<rect x="32.0" y="14.0" width="248.0" height="84.0" rx="12" class="card" filter="url(#lift)"/>
-<rect x="46.0" y="42.0" width="28.0" height="28.0" rx="8" class="c-blue"/>
-<g transform="translate(51.3 47.3) scale(0.723)" class="a-blue"><path d="M20 18c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2H4c-1.1 0-2 .9-2 2v10c0 1.1.9 2 2 2H1c-.55 0-1 .45-1 1s.45 1 1 1h22c.55 0 1-.45 1-1s-.45-1-1-1h-3zM5 6h14c.55 0 1 .45 1 1v8c0 .55-.45 1-1 1H5c-.55 0-1-.45-1-1V7c0-.55.45-1 1-1z"/></g>
-<text x="86.0" y="52.4" class="name" data-fit="86.0,268.0">Co-Author Browser</text>
-<text x="86.0" y="69.5" class="sub" data-fit="86.0,268.0">Local CRDT state &amp; cursor</text>
-<rect x="32.0" y="186.0" width="248.0" height="84.0" rx="12" class="card" filter="url(#lift)"/>
-<rect x="46.0" y="214.0" width="28.0" height="28.0" rx="8" class="c-amber"/>
-<g transform="translate(51.3 219.3) scale(0.723)" class="a-amber"><path d="M14 11c0 .55-.45 1-1 1H4c-.55 0-1-.45-1-1s.45-1 1-1h9c.55 0 1 .45 1 1zM3 7c0 .55.45 1 1 1h9c.55 0 1-.45 1-1s-.45-1-1-1H4c-.55 0-1 .45-1 1zm7 8c0-.55-.45-1-1-1H4c-.55 0-1 .45-1 1s.45 1 1 1h5c.55 0 1-.45 1-1zm8.01-2.13.71-.71a.996.996 0 0 1 1.41 0l.71.71c.39.39.39 1.02 0 1.41l-.71.71-2.12-2.12zm-.71.71-5.16 5.16c-.09.09-.14.21-.14.35v1.41c0 .28.22.5.5.5h1.41c.13 0 .26-.05.35-.15l5.16-5.16-2.12-2.11z"/></g>
-<text x="86.0" y="224.4" class="name" data-fit="86.0,268.0">Offline Mobile Editor</text>
-<text x="86.0" y="241.5" class="sub" data-fit="86.0,268.0">Buffered local op queue</text>
-<rect x="32.0" y="358.0" width="248.0" height="84.0" rx="12" class="card" filter="url(#lift)"/>
-<rect x="46.0" y="386.0" width="28.0" height="28.0" rx="8" class="c-purple"/>
-<g transform="translate(51.3 391.3) scale(0.723)" class="a-purple"><path d="m11.3 2.26-6 2.25C4.52 4.81 4 5.55 4 6.39v4.7c0 4.83 3.13 9.37 7.43 10.75.37.12.77.12 1.14 0 4.3-1.38 7.43-5.91 7.43-10.75v-4.7a2 2 0 0 0-1.3-1.87l-6-2.25c-.45-.18-.95-.18-1.4-.01z"/></g>
-<text x="86.0" y="396.4" class="name" data-fit="86.0,268.0">Document Admin</text>
-<text x="86.0" y="413.5" class="sub" data-fit="86.0,268.0">ACL, audit &amp; restore</text>
+<text x="420.0" y="406.4" class="mono" data-fit="420.0,854.0">PATCH /v1/documents/{id}/permissions</text>
+<rect x="32.0" y="164.7" width="248.0" height="62.0" rx="12" class="card" filter="url(#lift)"/>
+<rect x="46.0" y="181.7" width="28.0" height="28.0" rx="8" class="c-blue"/>
+<g transform="translate(51.3 187.0) scale(0.723)" class="a-blue"><path d="M20 18c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2H4c-1.1 0-2 .9-2 2v10c0 1.1.9 2 2 2H1c-.55 0-1 .45-1 1s.45 1 1 1h22c.55 0 1-.45 1-1s-.45-1-1-1h-3zM5 6h14c.55 0 1 .45 1 1v8c0 .55-.45 1-1 1H5c-.55 0-1-.45-1-1V7c0-.55.45-1 1-1z"/></g>
+<text x="86.0" y="192.0" class="name" data-fit="86.0,268.0">Co-Author Browser</text>
+<text x="86.0" y="209.2" class="sub" data-fit="86.0,268.0">Local CRDT state &amp; cursor</text>
+<rect x="32.0" y="236.7" width="248.0" height="62.0" rx="12" class="card" filter="url(#lift)"/>
+<rect x="46.0" y="253.7" width="28.0" height="28.0" rx="8" class="c-amber"/>
+<g transform="translate(51.3 259.0) scale(0.723)" class="a-amber"><path d="M14 11c0 .55-.45 1-1 1H4c-.55 0-1-.45-1-1s.45-1 1-1h9c.55 0 1 .45 1 1zM3 7c0 .55.45 1 1 1h9c.55 0 1-.45 1-1s-.45-1-1-1H4c-.55 0-1 .45-1 1zm7 8c0-.55-.45-1-1-1H4c-.55 0-1 .45-1 1s.45 1 1 1h5c.55 0 1-.45 1-1zm8.01-2.13.71-.71a.996.996 0 0 1 1.41 0l.71.71c.39.39.39 1.02 0 1.41l-.71.71-2.12-2.12zm-.71.71-5.16 5.16c-.09.09-.14.21-.14.35v1.41c0 .28.22.5.5.5h1.41c.13 0 .26-.05.35-.15l5.16-5.16-2.12-2.11z"/></g>
+<text x="86.0" y="264.0" class="name" data-fit="86.0,268.0">Offline Mobile Editor</text>
+<text x="86.0" y="281.2" class="sub" data-fit="86.0,268.0">Buffered local op queue</text>
+<rect x="32.0" y="325.0" width="248.0" height="62.0" rx="12" class="card" filter="url(#lift)"/>
+<rect x="46.0" y="342.0" width="28.0" height="28.0" rx="8" class="c-purple"/>
+<g transform="translate(51.3 347.3) scale(0.723)" class="a-purple"><path d="m11.3 2.26-6 2.25C4.52 4.81 4 5.55 4 6.39v4.7c0 4.83 3.13 9.37 7.43 10.75.37.12.77.12 1.14 0 4.3-1.38 7.43-5.91 7.43-10.75v-4.7a2 2 0 0 0-1.3-1.87l-6-2.25c-.45-.18-.95-.18-1.4-.01z"/></g>
+<text x="86.0" y="352.4" class="name" data-fit="86.0,268.0">Document Admin</text>
+<text x="86.0" y="369.5" class="sub" data-fit="86.0,268.0">ACL, audit &amp; restore</text>
+<path d="M280.0,195.7 L324.0,195.7" class="w-blue" stroke-width="1.9"/>
+<path d="M324.0,97.0 L324.0,319.0" class="w-blue" stroke-width="1.9"/>
 <polygon points="368.0,97.0 358.5,101.0 361.2,97.0 358.5,93.0" class="a-blue"/>
-<path d="M280.0,56.0 L289.0,56.0 Q296.0,56.0 296.0,63.0 L296.0,90.0 Q296.0,97.0 303.0,97.0 L361.4,97.0" class="w-blue" stroke-width="1.8"/>
+<path d="M324.0,97.0 L361.4,97.0" class="w-blue" stroke-width="1.9"/>
 <polygon points="368.0,171.0 358.5,175.0 361.2,171.0 358.5,167.0" class="a-blue"/>
-<path d="M280.0,56.0 L289.0,56.0 Q296.0,56.0 296.0,63.0 L296.0,164.0 Q296.0,171.0 303.0,171.0 L361.4,171.0" class="w-blue" stroke-width="1.8"/>
+<path d="M324.0,171.0 L361.4,171.0" class="w-blue" stroke-width="1.9"/>
 <polygon points="368.0,319.0 358.5,323.0 361.2,319.0 358.5,315.0" class="a-blue"/>
-<path d="M280.0,56.0 L289.0,56.0 Q296.0,56.0 296.0,63.0 L296.0,312.0 Q296.0,319.0 303.0,319.0 L361.4,319.0" class="w-blue" stroke-width="1.8"/>
+<path d="M324.0,319.0 L361.4,319.0" class="w-blue" stroke-width="1.9"/>
+<path d="M280.0,267.7 L324.0,267.7" class="w-amber" stroke-width="1.9"/>
+<path d="M324.0,97.0 L324.0,267.7" class="w-amber" stroke-width="1.9"/>
 <polygon points="368.0,97.0 358.5,101.0 361.2,97.0 358.5,93.0" class="a-amber"/>
-<path d="M280.0,228.0 L305.0,228.0 Q312.0,228.0 312.0,221.0 L312.0,104.0 Q312.0,97.0 319.0,97.0 L361.4,97.0" class="w-amber" stroke-width="1.8"/>
+<path d="M324.0,97.0 L361.4,97.0" class="w-amber" stroke-width="1.9"/>
 <polygon points="368.0,245.0 358.5,249.0 361.2,245.0 358.5,241.0" class="a-amber"/>
-<path d="M280.0,228.0 L305.0,228.0 Q312.0,228.0 312.0,235.0 L312.0,238.0 Q312.0,245.0 319.0,245.0 L361.4,245.0" class="w-amber" stroke-width="1.8"/>
+<path d="M324.0,245.0 L361.4,245.0" class="w-amber" stroke-width="1.9"/>
+<path d="M280.0,356.0 L324.0,356.0" class="w-purple" stroke-width="1.9"/>
+<path d="M324.0,319.0 L324.0,393.0" class="w-purple" stroke-width="1.9"/>
 <polygon points="368.0,319.0 358.5,323.0 361.2,319.0 358.5,315.0" class="a-purple"/>
-<path d="M280.0,400.0 L321.0,400.0 Q328.0,400.0 328.0,393.0 L328.0,326.0 Q328.0,319.0 335.0,319.0 L361.4,319.0" class="w-purple" stroke-width="1.8"/>
+<path d="M324.0,319.0 L361.4,319.0" class="w-purple" stroke-width="1.9"/>
 <polygon points="368.0,393.0 358.5,397.0 361.2,393.0 358.5,389.0" class="a-purple"/>
-<path d="M280.0,400.0 L324.5,400.0 Q328.0,400.0 328.0,396.5 L328.0,396.5 Q328.0,393.0 331.5,393.0 L361.4,393.0" class="w-purple" stroke-width="1.8"/>
+<path d="M324.0,393.0 L361.4,393.0" class="w-purple" stroke-width="1.9"/>
 </g>
 <rect x="32" y="543" width="856" height="109" rx="12" class="c-gray"/>
 <g transform="translate(46 554) scale(0.833)" class="a-gray"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 15c-.55 0-1-.45-1-1v-4c0-.55.45-1 1-1s1 .45 1 1v4c0 .55-.45 1-1 1zm1-8h-2V7h2v2z"/></g>

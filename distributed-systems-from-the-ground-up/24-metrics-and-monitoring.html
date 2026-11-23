@@ -1,5 +1,5 @@
 <!DOCTYPE HTML>
-<html lang="en" class="navy sidebar-visible" dir="ltr">
+<html lang="en" class="coal sidebar-visible" dir="ltr">
     <head>
         <!-- Book generated using mdBook -->
         <meta charset="UTF-8">
@@ -28,18 +28,18 @@
         <link rel="stylesheet" id="mdbook-ayu-highlight-css" href="ayu-highlight-3fdfc3ac.css">
 
         <!-- Custom theme stylesheets -->
-        <link rel="stylesheet" href="theme/custom-59beaf6d.css">
+        <link rel="stylesheet" href="theme/custom-3b357368.css">
 
 
         <!-- Provide site root and default themes to javascript -->
         <script>
             const path_to_root = "";
-            const default_light_theme = "navy";
-            const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "searchindex-5d54d4b4.js";
+            const default_light_theme = "coal";
+            const default_dark_theme = "coal";
+            window.path_to_searchindex_js = "searchindex-38bda414.js";
         </script>
         <!-- Start loading toc.js asap -->
-        <script src="toc-ef51d47d.js"></script>
+        <script src="toc-00f6d8fe.js"></script>
     </head>
     <body>
     <div id="mdbook-help-container">
@@ -77,7 +77,7 @@
             try { theme = localStorage.getItem('mdbook-theme'); } catch(e) { }
             if (theme === null || theme === undefined) { theme = default_theme; }
             const html = document.documentElement;
-            html.classList.remove('navy')
+            html.classList.remove('coal')
             html.classList.add(theme);
             html.classList.add("js");
         </script>
@@ -210,7 +210,7 @@
 <tr><th style="text-align: left">Actor</th><th style="text-align: left">Operation</th><th style="text-align: left">Concrete Scenario</th></tr>
 </thead>
 <tbody>
-<tr><td style="text-align: left"><strong>Instrumented Service</strong></td><td style="text-align: left">Expose <code>/metrics</code> for pull scraping or transmit Remote Write batches (<code>POST /api/v1/write</code>)</td><td style="text-align: left">Report request counters, latency histogram buckets, and memory gauges every 10 seconds across 100,000 service instances</td></tr>
+<tr><td style="text-align: left"><strong>Instrumented Service</strong></td><td style="text-align: left">Expose <code>/metrics</code> for pull scraping or transmit Remote Write batches (<code>POST /v1/series:batchWrite</code>)</td><td style="text-align: left">Report request counters, latency histogram buckets, and memory gauges every 10 seconds across 100,000 service instances</td></tr>
 <tr><td style="text-align: left"><strong>SRE / On-Call Engineer</strong></td><td style="text-align: left">Execute range queries (<code>GET /v1/series?query=...</code>) and register alert expressions (<code>PUT /v1/alerts/{name}</code>)</td><td style="text-align: left">Inspect 6-hour <code>p99</code> checkout latency across availability zones and configure a 5-minute burn-rate error alert</td></tr>
 <tr><td style="text-align: left"><strong>Incident Pager</strong></td><td style="text-align: left">Receive grouped firing alerts and periodic dead-man’s switch heartbeats</td><td style="text-align: left">Deduplicate cascading dependency alarms into one actionable page and trigger escalation if the monitoring pipeline stalls</td></tr>
 </tbody>
@@ -387,12 +387,16 @@ Content-Type: application/json
 </tbody>
 </table>
 </div>
-<p>Production platforms combine both models cleanly: regional Collection Agents <strong>pull</strong> from long-lived services every 10 seconds to obtain free health checks (<code>up == 1</code>) and centrally paced load, while ephemeral batch jobs and edge clients <strong>push</strong> via protobuf Remote Write (<code>POST /api/v1/write</code>) into the Write Distributor.</p>
+<p>Production platforms combine both models cleanly: regional Collection Agents <strong>pull</strong> from long-lived services every 10 seconds to obtain free health checks (<code>up == 1</code>) and centrally paced load, while ephemeral batch jobs and edge clients <strong>push</strong> via protobuf Remote Write (<code>POST /v1/series:batchWrite</code>) into the Write Distributor.</p>
 <h3 id="gorilla-delta-of-delta-timestamp-and-xor-value-compression"><a class="header" href="#gorilla-delta-of-delta-timestamp-and-xor-value-compression">Gorilla Delta-of-Delta Timestamp and XOR Value Compression</a></h3>
 <p>Storing raw <code>(int64 timestamp, float64 value)</code> pairs consumes <code>16 bytes/sample</code>, requiring <code>1.38 TB/day</code> at <code>1M</code> samples/s. Because consecutive samples in a time series arrive at regular scrape intervals (<code>10 s</code>) and vary gradually, we apply the <strong>Gorilla</strong> bit-level streaming encoder inside every 2-hour chunk, as depicted in Figure 24-3.</p>
 <figure class="diagram">
+<img src="figures/m3/ch24_distributed_agents.svg" alt="Distributed Host Fleet and Local Collection Agents showing Service Discovery streaming target lists to sharded Pull Scrapers (scraping /metrics on Hosts 1 and 2 via symmetric bus) and Push/OTLP Gateway (receiving short-lived batch jobs from Host 3), forwarding Snappy Remote Write batches to an isolated TSDB Ingester Quorum and Alert Evaluator." />
+<figcaption><b>Figure 24-3</b> Distributed host fleet, local collection agents, service discovery, and pull vs. push metric ingestion into an isolated TSDB plane.</figcaption>
+</figure>
+<figure class="diagram">
 <img src="figures/m3/ch24_tsdb_ingestion.svg" alt="Gorilla Compression Pipeline showing Delta-of-Delta timestamp bit packing (D=0 emitted as 1 bit &#39;0&#39;, small jitter in 9 to 12 bits) and IEEE-754 float64 bitwise XOR window encoding (identical values in 1 bit, narrow XOR windows sharing prior leading/trailing zeros)." />
-<figcaption><b>Figure 24-3</b> Gorilla delta-of-delta timestamp packing and IEEE-754 float64 bitwise XOR window compression.</figcaption>
+<figcaption><b>Figure 24-4</b> Gorilla delta-of-delta timestamp packing and IEEE-754 float64 bitwise XOR window compression.</figcaption>
 </figure>
 <ol>
 <li><strong>Timestamp Delta-of-Delta (DoD) Packing:</strong> For sample <code>n</code>, compute the first delta <code>dt_n = t_n - t_(n-1)</code> and the second-order difference <code>D = dt_n - dt_(n-1)</code>. On a regular 10-second scrape cadence (<code>t = 100, 110, 120</code>), <code>dt_1 = 10</code>, <code>dt_2 = 10</code>, and <code>D = 0</code>. Gorilla encodes <code>D</code> using variable-length bit prefixes:
@@ -502,6 +506,42 @@ minute 20, kept as its largest value: 900 ms
 <p><strong>Run the metrics compression and rollup simulation.</strong> Execute <code>cargo run --release -p metricsim</code> in <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/distributed-systems-from-the-ground-up/code/metricsim/src/main.rs"><code>code/metricsim</code></a> to reproduce the <code>8x</code> delta compression reduction (<code>57,600</code> to <code>7,223</code> bytes) and verify how <code>max</code> rollups preserve the <code>900 ms</code> spike that an <code>83 ms</code> average hides.</p>
 </div>
 
+<h3 id="end-to-end-request-lifecycle-and-hop-by-hop-latency-budget"><a class="header" href="#end-to-end-request-lifecycle-and-hop-by-hop-latency-budget">End-to-End Request Lifecycle and Hop-by-Hop Latency Budget</a></h3>
+<p>The metrics write and alert-evaluation path separates high-throughput sample ingestion from columnar block compaction and PromQL query fan-out.</p>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th style="text-align: left">Hop</th><th style="text-align: left">Component</th><th style="text-align: left">Operation</th><th style="text-align: left">P50</th><th style="text-align: left">P99</th></tr>
+</thead>
+<tbody>
+<tr><td style="text-align: left">1</td><td style="text-align: left">Agent / Scraper</td><td style="text-align: left">Scrape <code>/metrics</code> or batch <code>remote_write</code> Snappy-compressed protobuf payload</td><td style="text-align: left">2 ms</td><td style="text-align: left">10 ms</td></tr>
+<tr><td style="text-align: left">2</td><td style="text-align: left">Ingestion Gateway (L7)</td><td style="text-align: left">Tenant authentication, label cardinality guard, and consistent-hash series routing</td><td style="text-align: left">1 ms</td><td style="text-align: left">4 ms</td></tr>
+<tr><td style="text-align: left">3</td><td style="text-align: left">TSDB Head Block &amp; WAL</td><td style="text-align: left">Append sample batch to local WAL and update in-memory XOR-compressed chunk</td><td style="text-align: left">0.8 ms</td><td style="text-align: left">5 ms</td></tr>
+<tr><td style="text-align: left">4</td><td style="text-align: left">Compactor / Object Store</td><td style="text-align: left">Flush immutable 2-hour TSDB blocks and inverted label indexes to durable object storage</td><td style="text-align: left">45 ms</td><td style="text-align: left">180 ms</td></tr>
+<tr><td style="text-align: left">5</td><td style="text-align: left">Query &amp; Alert Evaluator</td><td style="text-align: left">Merge head-block and object-store chunks, evaluate <code>max</code>/<code>P99</code> rollups, apply alert hysteresis</td><td style="text-align: left">18 ms</td><td style="text-align: left">140 ms</td></tr>
+</tbody>
+</table>
+</div>
+<h3 id="production-case-studies-and-open-source-comparisons"><a class="header" href="#production-case-studies-and-open-source-comparisons">Production Case Studies and Open-Source Comparisons</a></h3>
+<p>Prometheus stores active time series in an in-memory head block backed by a write-ahead log (WAL) and periodically compacts 2-hour immutable blocks indexed by an inverted posting list over metric labels. Meta Gorilla introduced delta-of-delta timestamp encoding paired with XOR floating-point value compression, shrinking typical 16-byte raw samples to roughly 1.37 bytes so weeks of operational telemetry fit in RAM. To scale beyond a single Prometheus node, Thanos, Grafana Mimir, and VictoriaMetrics offload compacted blocks to object storage and distribute PromQL query execution across stateless queriers, trading slight cross-node coordination overhead for multi-year retention and horizontal write scaling.</p>
+<div class="callout keyidea">
+<span class="label">Key idea</span>
+<p>Because scrape intervals are nearly regular and metric values change gradually, delta-of-delta timestamps and XOR value encoding achieve an order-of-magnitude storage reduction while preserving exact lossless fidelity for recent operational windows.</p>
+
+</div>
+
+<div class="callout experiment">
+<span class="label">Experiment</span>
+<p>Run <code>cargo run --release -p metricsim</code> and compare the compressed byte count against raw 16-byte samples alongside the <code>avg</code> versus <code>max</code> rollup outputs. Observe how an <code>83 ms</code> mean conceals a <code>900 ms</code> latency spike that a <code>max</code> rollup preserves intact.</p>
+
+</div>
+
+<div class="callout caution">
+<span class="label">Common pitfall</span>
+<p>Placing unbounded identifiers such as <code>user_id</code>, <code>request_id</code>, or raw URL paths into metric labels triggers a cardinality explosion that exhausts TSDB inverted-index RAM and stalls ingestion for unrelated services on the same shard.</p>
+
+</div>
+
 <h2 id="248-terminology-and-references"><a class="header" href="#248-terminology-and-references">24.8 Terminology and References</a></h2>
 <h3 id="engineering-glossary"><a class="header" href="#engineering-glossary">Engineering Glossary</a></h3>
 <div class="table-wrapper">
@@ -566,6 +606,22 @@ minute 20, kept as its largest value: 900 ms
         <template id=fa-play><span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 384 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M73 39c-14.8-9.1-33.4-9.4-48.5-.9S0 62.6 0 80V432c0 17.4 9.4 33.4 24.5 41.9s33.7 8.1 48.5-.9L361 297c14.3-8.7 23-24.2 23-41s-8.7-32.2-23-41L73 39z"/></svg></span></template>
         <template id=fa-clock-rotate-left><span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M75 75L41 41C25.9 25.9 0 36.6 0 57.9V168c0 13.3 10.7 24 24 24H134.1c21.4 0 32.1-25.9 17-41l-30.8-30.8C155 85.5 203 64 256 64c106 0 192 86 192 192s-86 192-192 192c-40.8 0-78.6-12.7-109.7-34.4c-14.5-10.1-34.4-6.6-44.6 7.9s-6.6 34.4 7.9 44.6C151.2 495 201.7 512 256 512c141.4 0 256-114.6 256-256S397.4 0 256 0C185.3 0 121.3 28.7 75 75zm181 53c-13.3 0-24 10.7-24 24V256c0 6.4 2.5 12.5 7 17l72 72c9.4 9.4 24.6 9.4 33.9 0s9.4-24.6 0-33.9l-65-65V152c0-13.3-10.7-24-24-24z"/></svg></span></template>
 
+        <!-- Livereload script (if served using the cli tool) -->
+        <script>
+            const wsProtocol = location.protocol === 'https:' ? 'wss:' : 'ws:';
+            const wsAddress = wsProtocol + "//" + location.host + "/" + "__livereload";
+            const socket = new WebSocket(wsAddress);
+            socket.onmessage = function (event) {
+                if (event.data === "reload") {
+                    socket.close();
+                    location.reload();
+                }
+            };
+
+            window.onbeforeunload = function() {
+                socket.close();
+            }
+        </script>
 
 
         <script>
@@ -582,7 +638,7 @@ minute 20, kept as its largest value: 900 ms
         <script src="book-609e4cb8.js"></script>
 
         <!-- Custom JS scripts -->
-        <script src="theme/figures-9c14cb1c.js"></script>
+        <script src="theme/figures-1bd27a95.js"></script>
         <script src="theme/proto-326509cd.js"></script>
         <script src="theme/code-67e9caaf.js"></script>
         <script src="theme/tables-9fb295e8.js"></script>

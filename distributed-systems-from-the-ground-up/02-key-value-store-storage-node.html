@@ -1,5 +1,5 @@
 <!DOCTYPE HTML>
-<html lang="en" class="navy sidebar-visible" dir="ltr">
+<html lang="en" class="coal sidebar-visible" dir="ltr">
     <head>
         <!-- Book generated using mdBook -->
         <meta charset="UTF-8">
@@ -28,18 +28,18 @@
         <link rel="stylesheet" id="mdbook-ayu-highlight-css" href="ayu-highlight-3fdfc3ac.css">
 
         <!-- Custom theme stylesheets -->
-        <link rel="stylesheet" href="theme/custom-59beaf6d.css">
+        <link rel="stylesheet" href="theme/custom-3b357368.css">
 
 
         <!-- Provide site root and default themes to javascript -->
         <script>
             const path_to_root = "";
-            const default_light_theme = "navy";
-            const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "searchindex-5d54d4b4.js";
+            const default_light_theme = "coal";
+            const default_dark_theme = "coal";
+            window.path_to_searchindex_js = "searchindex-38bda414.js";
         </script>
         <!-- Start loading toc.js asap -->
-        <script src="toc-ef51d47d.js"></script>
+        <script src="toc-00f6d8fe.js"></script>
     </head>
     <body>
     <div id="mdbook-help-container">
@@ -77,7 +77,7 @@
             try { theme = localStorage.getItem('mdbook-theme'); } catch(e) { }
             if (theme === null || theme === undefined) { theme = default_theme; }
             const html = document.documentElement;
-            html.classList.remove('navy')
+            html.classList.remove('coal')
             html.classList.add(theme);
             html.classList.add("js");
         </script>
@@ -221,7 +221,7 @@
 <h2 id="22-crash-points-during-a-write"><a class="header" href="#22-crash-points-during-a-write">2.2 Crash Points During a Write</a></h2>
 <p>Because invariant 0 and invariant 1 impose a strict total order on the write path (encode frame, append to WAL, call <code>fsync</code>, apply to <code>BTreeMap</code>, send HTTP response), we can enumerate the exact recovery state for a crash at every stage of a mutation (Figure 2-1).</p>
 <figure>
-<img src="figures/crash-points.svg?v=254c7a72" alt="The four crash points during a write: before WAL write (not on disk, no reply, absent on restart); mid-record write (partial bytes on disk, no reply, truncated on restart); after fsync before HTTP reply (complete record on disk, no reply, present on restart); after HTTP reply (complete record on disk, client received 201 or 204, present on restart)." />
+<img src="figures/m3/ch02_crash_points.svg" alt="The four crash points during a write: before WAL write (not on disk, no reply, absent on restart); mid-record write (partial bytes on disk, no reply, truncated on restart); after fsync before HTTP reply (complete record on disk, no reply, present on restart); after HTTP reply (complete record on disk, client received 201 or 204, present on restart)." />
 <figcaption><b>Figure 2-1</b> The four execution points at which a crash can occur during a write, and the resulting state after restart.</figcaption>
 </figure>
 <p>The third case merits explicit analysis. When the node completes <code>fsync</code> and terminates before writing the HTTP response socket, the record survives recovery even though the caller received a connection reset rather than a <code>201 Created</code> or <code>204 No Content</code>. This outcome satisfies invariant 0: durability binds acknowledged writes and makes no promise that an unacknowledged write did not commit. From the caller’s perspective, the outcome is indeterminate. As we established in Chapter 1, the caller resolves indeterminate writes safely by retrying with an idempotent <code>PUT</code> or a conditional <code>If-Match</code> version check. We trigger and observe this exact third case experimentally in Section 2.8.</p>
@@ -371,7 +371,7 @@ fn parse(payload: &amp;[u8]) -&gt; Option&lt;Record&gt; {
 <h2 id="24-measuring-the-physical-cost-of-fsync"><a class="header" href="#24-measuring-the-physical-cost-of-fsync">2.4 Measuring the Physical Cost of <code>fsync</code></a></h2>
 <p>Invariant 0 requires confirmation from non-volatile storage before replying to a client. Issuing a <code>write</code> system call alone does not satisfy this requirement. <code>write</code> copies bytes from user-space memory into the operating system kernel’s page cache and returns immediately; the kernel flushes dirty pages asynchronously on its own schedule. Calling <code>fsync</code> (or <code>fdatasync</code>, invoked in Rust via <code>File::sync_data</code>) forces the kernel to flush all buffered bytes for that file descriptor to the storage controller and blocks until the device reports completion.</p>
 <figure>
-<img src="figures/survives.svg?v=66f2d30b" alt="Comparison of process crash versus power loss: killing a process loses only in-process RAM while kernel page-cache writes survive; power failure loses both in-process RAM and un-synced page-cache writes, leaving only fsync-confirmed records intact." />
+<img src="figures/m3/ch02_survives.svg" alt="Comparison of process crash versus power loss: killing a process loses only in-process RAM while kernel page-cache writes survive; power failure loses both in-process RAM and un-synced page-cache writes, leaving only fsync-confirmed records intact." />
 <figcaption><b>Figure 2-3</b> Durability boundaries across process termination versus host power failure.</figcaption>
 </figure>
 <p>To quantify this durability barrier on real hardware, we build the <code>synccost</code> microbenchmark. Listing 2.5 imports the filesystem, timing, and record types used by <code>synccost</code>.</p>
@@ -431,7 +431,7 @@ without fsync: 500 records in      1.4 ms, 0.003 ms per record, 366991 records p
 with fsync   : 500 records in   2697.5 ms, 5.395 ms per record,    185 records per second
 </code></pre>
 <figure>
-<img src="figures/sync-cost.svg?v=0bf92cb7" alt="NVMe sync latency comparison to scale: write only averages 0.003 ms per record (366,991 records/s) versus write plus fsync at 5.395 ms per record (185 records/s)." />
+<img src="figures/m3/ch02_sync_cost.svg" alt="NVMe sync latency comparison to scale: write only averages 0.003 ms per record (366,991 records/s) versus write plus fsync at 5.395 ms per record (185 records/s)." />
 <figcaption><b>Figure 2-4</b> Empirical NVMe latency of buffered writes versus `fsync`-confirmed appends, drawn to scale.</figcaption>
 </figure>
 <p>Each durable append costs <code>5.4 ms</code>, roughly 1,900 times longer than copying into the kernel page cache, capping an unbatched single-writer disk at <code>185 records/s</code>. This measurement anchors the hardware provisioning analysis we established in Chapter 1 and motivates the group-commit batching optimization we implement in Chapter 6. Because durability versus throughput is an explicit operational trade-off, <code>kvd</code> exposes an optional <code>--no-sync</code> flag that skips <code>sync_data</code>. Under <code>--no-sync</code>, acknowledged writes survive a process crash (<code>SIGKILL</code>) via the kernel page cache, yet recent writes can disappear upon host power loss. Defaulting to durable <code>fsync</code> ensures that no operator trades away power-loss safety without an explicit configuration flag.</p>
@@ -1147,7 +1147,7 @@ async fn delete_key(
     Ok(StatusCode::NO_CONTENT)
 }</code></pre>
 <h3 id="memory-resident-read-and-health-handlers"><a class="header" href="#memory-resident-read-and-health-handlers">Memory-Resident Read and Health Handlers</a></h3>
-<p>Because <code>Store::get</code> acquires the mutex only long enough to clone an in-memory entry and performs zero disk I/O, it runs directly on the async worker thread without thread-pool handoff overhead. Listing 2.24 implements the <code>GET /v1/keys/:key</code> handler, including <code>304 Not Modified</code> short-circuiting when <code>If-None-Match</code> matches the current <code>ETag</code>.</p>
+<p>Because <code>Store::get</code> acquires the mutex only long enough to clone an in-memory entry and performs zero disk I/O, it runs directly on the async worker thread without thread-pool handoff overhead. Listing 2.24 implements the <code>GET /v1/keys/{key}</code> handler, including <code>304 Not Modified</code> short-circuiting when <code>If-None-Match</code> matches the current <code>ETag</code>.</p>
 <p class="listing"><b>Listing 2.24</b> Point-read handler in <code>kvd/src/main.rs</code>. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/distributed-systems-from-the-ground-up/code/kvd/src/main.rs">kvd/src/main.rs</a></p>
 
 <pre><code class="language-rust">async fn get_key(
@@ -1551,7 +1551,7 @@ fn load(agent: &amp;Agent, server: &amp;str, count: u32, acked: &amp;PathBuf) -&
 
     Ok(())
 }</code></pre>
-<p>Listing 2.35 implements <code>verify</code>, which iterates over every line in <code>acked.txt</code>, executes <code>GET /v1/keys/:key</code>, checks exact value equality, and reports any missing or mismatched keys.</p>
+<p>Listing 2.35 implements <code>verify</code>, which iterates over every line in <code>acked.txt</code>, executes <code>GET /v1/keys/{key}</code>, checks exact value equality, and reports any missing or mismatched keys.</p>
 <p class="listing"><b>Listing 2.35</b> Post-recovery durability verifier in <code>kvctl/src/main.rs</code>. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/distributed-systems-from-the-ground-up/code/kvctl/src/main.rs">kvctl/src/main.rs</a></p>
 
 <pre><code class="language-rust">/// Reads every acknowledged key and compares the value with the one that
@@ -1629,7 +1629,7 @@ $ ./target/release/kvctl verify --server http://127.0.0.1:7001 --acked acked.txt
 <h3 id="running-the-crash-verification-across-two-network-hosts"><a class="header" href="#running-the-crash-verification-across-two-network-hosts">Running the Crash Verification Across Two Network Hosts</a></h3>
 <p>Because <code>kvd</code> and <code>kvctl</code> communicate strictly over HTTP, we can separate the fault domain of the server from the external oracle by running <code>kvd</code> on host <code>node-b</code> (<code>10.0.0.2</code>) and <code>kvctl</code> on host <code>node-a</code> (Figure 2-6).</p>
 <figure>
-<img src="figures/two-machines.svg?v=073ee750" alt="Two-host crash verification topology: kvctl on node-a sends HTTP PUT traffic and logs acknowledged keys locally to acked.txt while kvd runs on node-b writing kv.log; after SIGKILL and restart on node-b, kvctl verifies all 1,107 acknowledged keys." />
+<img src="figures/m3/ch02_two_machines.svg" alt="Two-host crash verification topology: kvctl on node-a sends HTTP PUT traffic and logs acknowledged keys locally to acked.txt while kvd runs on node-b writing kv.log; after SIGKILL and restart on node-b, kvctl verifies all 1,107 acknowledged keys." />
 <figcaption><b>Figure 2-6</b> Separating the external verification client (`node-a`) from the storage node under test (`node-b`).</figcaption>
 </figure>
 <pre><code class="language-console">node-a$ scp target/release/kvd node-b:/tmp/kvd
@@ -3055,6 +3055,54 @@ fn main() -&gt; Result&lt;(), Box&lt;dyn Error&gt;&gt; {
 
     Ok(())
 }</code></pre>
+<h2 id="213-end-to-end-write-lifecycle-and-storage-stack-latency-budget"><a class="header" href="#213-end-to-end-write-lifecycle-and-storage-stack-latency-budget">2.13 End-to-End Write Lifecycle and Storage-Stack Latency Budget</a></h2>
+<p>A single-node <code>PUT /v1/keys/session:901</code> request traverses seven software and hardware boundaries inside <code>kvd</code> before the client receives <code>201 Created</code>:</p>
+<ol>
+<li><strong>Client to HTTP Ingress (<code>axum</code> / Tokio):</strong> The client transmits the HTTP/1.1 or HTTP/2 request over loopback or intra-AZ Ethernet. The Tokio runtime reads the socket via <code>epoll</code>/<code>kqueue</code> and parses the key, headers (<code>If-Match</code>), and body bytes.</li>
+<li><strong>Async-to-Blocking Pool Handoff:</strong> Because <code>fdatasync(2)</code> blocks the calling OS thread for several milliseconds, <code>kvd</code> dispatches the storage operation onto Tokio’s dedicated blocking thread pool (<code>spawn_blocking</code>), preventing reactor starvation for concurrent readers.</li>
+<li><strong>Mutex Acquisition and Precondition Check:</strong> The worker acquires the <code>Store</code> mutex, verifies any <code>If-Match</code> or <code>If-None-Match</code> guard against the in-memory <code>BTreeMap</code>, and assigns the next monotonic <code>sequence</code>.</li>
+<li><strong>Record Encoding and CRC-32 Computation:</strong> <code>kv::record</code> serializes the length prefix, CRC-32 checksum, sequence number, operation tag, key, and value into a contiguous stack or heap buffer.</li>
+<li><strong>Kernel Page Cache Write (<code>write(2)</code>):</strong> The process copies the framed record across the user-kernel boundary into the OS page cache (<code>~0.003 ms</code>). At this instant, the bytes reside solely in volatile DRAM.</li>
+<li><strong>Durable Storage Barrier (<code>fdatasync(2)</code>):</strong> The filesystem flushes dirty WAL blocks and any required extent metadata through the block layer into the NVMe submission queue, issuing a Force Unit Access (FUA) or volatile write-cache flush command to the SSD controller (<code>~1.0</code> to <code>5.4 ms</code>).</li>
+<li><strong>In-Memory Index Update and HTTP Reply:</strong> Only after <code>fdatasync(2)</code> returns <code>0</code> does <code>kvd</code> insert the entry into <code>BTreeMap</code>, release the mutex, and serialize the <code>201 Created</code> response with <code>ETag: "&lt;sequence&gt;"</code>.</li>
+</ol>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th style="text-align: left">Hop</th><th style="text-align: left">Subsystem / Boundary</th><th style="text-align: left">Typical <code>p50</code></th><th style="text-align: left">Tail <code>p99</code></th><th style="text-align: left">Primary Source of Tail Latency</th></tr>
+</thead>
+<tbody>
+<tr><td style="text-align: left">1</td><td style="text-align: left">Client -&gt; TCP/HTTP Parse (<code>axum</code>)</td><td style="text-align: left"><code>0.08 ms</code></td><td style="text-align: left"><code>0.35 ms</code></td><td style="text-align: left">Kernel TCP buffer contention, HTTP header allocation</td></tr>
+<tr><td style="text-align: left">2</td><td style="text-align: left">Tokio <code>spawn_blocking</code> Dispatch</td><td style="text-align: left"><code>0.02 ms</code></td><td style="text-align: left"><code>0.20 ms</code></td><td style="text-align: left">Blocking thread-pool saturation under high concurrency</td></tr>
+<tr><td style="text-align: left">3</td><td style="text-align: left"><code>Store</code> Mutex + <code>BTreeMap</code> Check</td><td style="text-align: left"><code>0.005 ms</code></td><td style="text-align: left"><code>0.05 ms</code></td><td style="text-align: left">Queueing behind an active writer holding the mutex during <code>fsync</code></td></tr>
+<tr><td style="text-align: left">4</td><td style="text-align: left">Binary Codec + CRC-32 Checksum</td><td style="text-align: left"><code>0.004 ms</code></td><td style="text-align: left"><code>0.02 ms</code></td><td style="text-align: left">Large value payloads exceeding L1/L2 CPU cache</td></tr>
+<tr><td style="text-align: left">5</td><td style="text-align: left"><code>write(2)</code> into Kernel Page Cache</td><td style="text-align: left"><code>0.003 ms</code></td><td style="text-align: left"><code>0.04 ms</code></td><td style="text-align: left">Dirty-page throttling (<code>vm.dirty_ratio</code>) during memory pressure</td></tr>
+<tr><td style="text-align: left">6</td><td style="text-align: left"><code>fdatasync(2)</code> -&gt; Filesystem -&gt; NVMe NAND</td><td style="text-align: left"><code>1.40 ms</code></td><td style="text-align: left"><code>5.80 ms</code></td><td style="text-align: left">SSD garbage collection, metadata journal commits, queue depth spikes</td></tr>
+<tr><td style="text-align: left">7</td><td style="text-align: left"><code>BTreeMap</code> Insert + TCP Response Write</td><td style="text-align: left"><code>0.05 ms</code></td><td style="text-align: left"><code>0.25 ms</code></td><td style="text-align: left">Nagle/delayed-ACK interaction if <code>TCP_NODELAY</code> is unset</td></tr>
+<tr><td style="text-align: left"><strong>Total</strong></td><td style="text-align: left"><strong>Single-Node Durable <code>PUT</code></strong></td><td style="text-align: left"><strong><code>1.56 ms</code></strong></td><td style="text-align: left"><strong><code>6.71 ms</code></strong></td><td style="text-align: left"><strong>Physical media flush barrier (<code>&gt; 85%</code> of total latency)</strong></td></tr>
+</tbody>
+</table>
+</div>
+<h2 id="214-production-storage-engine-case-studies"><a class="header" href="#214-production-storage-engine-case-studies">2.14 Production Storage-Engine Case Studies</a></h2>
+<p>Production storage nodes extend the single-file WAL and in-memory index architecture of <code>kvd</code> to handle terabyte-scale datasets and bounded recovery times:</p>
+<ul>
+<li><strong>RocksDB (Meta / TiKV / CockroachDB):</strong> RocksDB pairs an append-only WAL with an in-memory <strong>MemTable</strong> (skip list) and immutable sorted disk files (<strong>SSTables</strong>) organized into an LSM-tree. By default, callers choose per-write durability via <code>WriteOptions::sync</code>: enabling <code>sync = true</code> flushes the WAL on every commit (matching <code>kvd</code>), whereas buffered WAL mode achieves <code>10x</code> to <code>50x</code> higher throughput at the risk of losing recent writes on power failure. RocksDB bounds startup recovery time by rotating WAL files whenever a MemTable flushes to Level-0 SSTables, and uses CRC-32C hardware instructions (<code>SSE4.2</code> / <code>ARMv8 CRC</code>) to detect torn tails.</li>
+<li><strong>SQLite WAL Mode:</strong> Traditional SQLite rollback journals overwrite database pages in place after copying originals out, requiring two <code>fsync</code> barriers per transaction. In WAL mode (<code>PRAGMA journal_mode = WAL</code>), SQLite appends modified pages sequentially to a <code>-wal</code> file while indexing page offsets in a memory-mapped <code>-shm</code> file. Under <code>PRAGMA synchronous = FULL</code>, every commit invokes <code>fsync</code> on the <code>-wal</code> file; periodic <strong>checkpoints</strong> copy committed frames back into the main B-tree file and reset the WAL offset to zero.</li>
+<li><strong>BoltDB (<code>bbolt</code>, used by etcd):</strong> Rather than mutating B+Tree pages in place with a separate WAL, <code>bbolt</code> uses <strong>copy-on-write (CoW) shadow paging</strong>. Every write transaction allocates fresh pages from a freelist, writes the modified tree path, calls <code>fdatasync(2)</code> on the data pages, and then atomically flips one of two alternating root meta pages (<code>meta0</code> / <code>meta1</code>) protected by FNV-1a checksums and a second <code>fdatasync(2)</code>. Crash recovery requires zero log replay because the previous meta page remains intact until the new root is durable.</li>
+<li><strong>PostgreSQL WAL and Full-Page Writes:</strong> PostgreSQL writes <code>8 KiB</code> heap pages on top of filesystems and block devices whose atomic sector size is <code>512 B</code> or <code>4 KiB</code>. A power loss mid-flush can tear an <code>8 KiB</code> data page in half, leaving an invalid checksum. PostgreSQL prevents torn-page corruption by enabling <code>full_page_writes = on</code>, logging the complete <code>8 KiB</code> image of a page to the WAL the first time it is modified after a checkpoint so crash recovery restores the whole page before replaying incremental deltas.</li>
+</ul>
+<div class="callout keyidea"><span class="label">Key idea</span>
+<p><strong><code>fdatasync(2)</code> outperforms <code>fsync(2)</code> on preallocated append-only logs.</strong> Calling <code>fsync(2)</code> forces the filesystem to flush non-essential inode metadata such as modification timestamps (<code>mtime</code>) on every write. When a WAL file is preallocated or grown in fixed extents, <code>fdatasync(2)</code> flushes only file data and size-critical metadata, cutting per-commit NVMe I/O operations by up to half on ext4 and XFS.</p>
+</div>
+
+<div class="callout experiment"><span class="label">Experiment</span>
+<p><strong>Measure buffered vs. durable throughput on local storage.</strong> Execute <code>cargo run --release -p synccost</code> in <code>code/</code> with default record sizes and again with <code>4 KiB</code> and <code>64 KiB</code> payloads. Compare the throughput ratio between <code>write(2)</code> alone and <code>write(2)</code> followed by <code>sync_data()</code>; observe that fixed flush latency dominates small writes until payload sizes exceed several hundred kilobytes.</p>
+</div>
+
+<div class="callout caution"><span class="label">Common pitfall</span>
+<p><strong>Retrying <code>fsync(2)</code> after an <code>EIO</code> failure on Linux.</strong> Starting with Linux kernel <code>4.13</code>, a failed <code>fsync(2)</code> clears the dirty bits on affected page-cache pages and reports the error once per open file description. A second <code>fsync(2)</code> call on the same file descriptor can return <code>0</code> even though the data never reached disk. Storage engines must latch a fail-stop error state on the first <code>write</code> or <code>fsync</code> error, as implemented in <code>kv::log</code>, and halt further mutations immediately.</p>
+</div>
+
 <h2 id="further-reading"><a class="header" href="#further-reading">Further Reading</a></h2>
 <ul>
 <li>T. Pillai et al., “All File Systems Are Not Created Equal: On the Complexity of Crafting Crash-Consistent Applications”, OSDI 2014.</li>
@@ -3112,6 +3160,22 @@ fn main() -&gt; Result&lt;(), Box&lt;dyn Error&gt;&gt; {
         <template id=fa-play><span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 384 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M73 39c-14.8-9.1-33.4-9.4-48.5-.9S0 62.6 0 80V432c0 17.4 9.4 33.4 24.5 41.9s33.7 8.1 48.5-.9L361 297c14.3-8.7 23-24.2 23-41s-8.7-32.2-23-41L73 39z"/></svg></span></template>
         <template id=fa-clock-rotate-left><span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M75 75L41 41C25.9 25.9 0 36.6 0 57.9V168c0 13.3 10.7 24 24 24H134.1c21.4 0 32.1-25.9 17-41l-30.8-30.8C155 85.5 203 64 256 64c106 0 192 86 192 192s-86 192-192 192c-40.8 0-78.6-12.7-109.7-34.4c-14.5-10.1-34.4-6.6-44.6 7.9s-6.6 34.4 7.9 44.6C151.2 495 201.7 512 256 512c141.4 0 256-114.6 256-256S397.4 0 256 0C185.3 0 121.3 28.7 75 75zm181 53c-13.3 0-24 10.7-24 24V256c0 6.4 2.5 12.5 7 17l72 72c9.4 9.4 24.6 9.4 33.9 0s9.4-24.6 0-33.9l-65-65V152c0-13.3-10.7-24-24-24z"/></svg></span></template>
 
+        <!-- Livereload script (if served using the cli tool) -->
+        <script>
+            const wsProtocol = location.protocol === 'https:' ? 'wss:' : 'ws:';
+            const wsAddress = wsProtocol + "//" + location.host + "/" + "__livereload";
+            const socket = new WebSocket(wsAddress);
+            socket.onmessage = function (event) {
+                if (event.data === "reload") {
+                    socket.close();
+                    location.reload();
+                }
+            };
+
+            window.onbeforeunload = function() {
+                socket.close();
+            }
+        </script>
 
 
         <script>
@@ -3128,7 +3192,7 @@ fn main() -&gt; Result&lt;(), Box&lt;dyn Error&gt;&gt; {
         <script src="book-609e4cb8.js"></script>
 
         <!-- Custom JS scripts -->
-        <script src="theme/figures-9c14cb1c.js"></script>
+        <script src="theme/figures-1bd27a95.js"></script>
         <script src="theme/proto-326509cd.js"></script>
         <script src="theme/code-67e9caaf.js"></script>
         <script src="theme/tables-9fb295e8.js"></script>

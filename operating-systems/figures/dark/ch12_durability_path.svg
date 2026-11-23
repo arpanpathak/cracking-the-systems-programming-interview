@@ -1,12 +1,12 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 612" width="800" height="612">
   <style>
-    text { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif; fill: #F8FAFC; }
-    .paper { fill: #12161F; }
-    .frame { fill: #12161F; stroke: #3E4C66; stroke-width: 1.2; }
-    .card { fill: #1E2636; stroke: #4E6080; stroke-width: 1; }
-    .hair { stroke: #3E4C66; stroke-width: 1.2; fill: none; }
-    .muted { fill: #D8E0EE; }
-    .ink { fill: #F8FAFC; }
+    text { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif; fill: #F2F6FC; }
+    .paper { fill: #121722; }
+    .frame { fill: rgba(0, 0, 0, 0.22); stroke: rgba(226, 232, 240, 0.18); stroke-width: 1.2; }
+    .card { fill: rgba(13, 18, 28, 0.80); stroke: rgba(203, 213, 225, 0.24); stroke-width: 1; }
+    .hair { stroke: rgba(226, 232, 240, 0.18); stroke-width: 1.2; fill: none; }
+    .muted { fill: #D0DAE8; }
+    .ink { fill: #F2F6FC; }
     .title { font-size: 17.5px; font-weight: 650; }
     .head { font-size: 15.5px; font-weight: 650; }
     .name { font-size: 15px; font-weight: 650; }
@@ -17,68 +17,68 @@
     .small { font-size: 12px; }
     .note { font-size: 13.5px; }
     .noteb { font-size: 13.5px; font-weight: 650; }
-    .sub, .small, .note { fill: #D8E0EE; }
-    .c-blue { fill: #182B49; stroke: #93C5FD; stroke-opacity: 0.48; stroke-width: 1.2; }
-    .m-blue { fill: #1E3A63; stroke: #93C5FD; stroke-opacity: 0.78; stroke-width: 1.2; }
-    .a-blue { fill: #93C5FD; }
-    .t-blue { fill: #93C5FD; }
-    .w-blue { stroke: #93C5FD; fill: none; stroke-linecap: butt; stroke-linejoin: round; }
-    .o-blue { stroke: #93C5FD; fill: none; stroke-width: 1.5; }
-    .h-blue { stroke: #93C5FD; stroke-width: 1.4; }
-    .c-green { fill: #133328; stroke: #86EFAC; stroke-opacity: 0.48; stroke-width: 1.2; }
-    .m-green { fill: #184D3B; stroke: #86EFAC; stroke-opacity: 0.78; stroke-width: 1.2; }
-    .a-green { fill: #86EFAC; }
-    .t-green { fill: #86EFAC; }
-    .w-green { stroke: #86EFAC; fill: none; stroke-linecap: butt; stroke-linejoin: round; }
-    .o-green { stroke: #86EFAC; fill: none; stroke-width: 1.5; }
-    .h-green { stroke: #86EFAC; stroke-width: 1.4; }
-    .c-amber { fill: #34250F; stroke: #FDE078; stroke-opacity: 0.48; stroke-width: 1.2; }
-    .m-amber { fill: #4F3814; stroke: #FDE078; stroke-opacity: 0.78; stroke-width: 1.2; }
-    .a-amber { fill: #FDE078; }
-    .t-amber { fill: #FDE078; }
-    .w-amber { stroke: #FDE078; fill: none; stroke-linecap: butt; stroke-linejoin: round; }
-    .o-amber { stroke: #FDE078; fill: none; stroke-width: 1.5; }
-    .h-amber { stroke: #FDE078; stroke-width: 1.4; }
-    .c-red { fill: #3A1B23; stroke: #FDA4AF; stroke-opacity: 0.48; stroke-width: 1.2; }
-    .m-red { fill: #582430; stroke: #FDA4AF; stroke-opacity: 0.78; stroke-width: 1.2; }
-    .a-red { fill: #FDA4AF; }
-    .t-red { fill: #FDA4AF; }
-    .w-red { stroke: #FDA4AF; fill: none; stroke-linecap: butt; stroke-linejoin: round; }
-    .o-red { stroke: #FDA4AF; fill: none; stroke-width: 1.5; }
-    .h-red { stroke: #FDA4AF; stroke-width: 1.4; }
-    .c-purple { fill: #261E47; stroke: #DDD6FE; stroke-opacity: 0.48; stroke-width: 1.2; }
-    .m-purple { fill: #382B6B; stroke: #DDD6FE; stroke-opacity: 0.78; stroke-width: 1.2; }
-    .a-purple { fill: #DDD6FE; }
-    .t-purple { fill: #DDD6FE; }
-    .w-purple { stroke: #DDD6FE; fill: none; stroke-linecap: butt; stroke-linejoin: round; }
-    .o-purple { stroke: #DDD6FE; fill: none; stroke-width: 1.5; }
-    .h-purple { stroke: #DDD6FE; stroke-width: 1.4; }
-    .c-teal { fill: #113136; stroke: #5EEAD4; stroke-opacity: 0.48; stroke-width: 1.2; }
-    .m-teal { fill: #164A52; stroke: #5EEAD4; stroke-opacity: 0.78; stroke-width: 1.2; }
-    .a-teal { fill: #5EEAD4; }
-    .t-teal { fill: #5EEAD4; }
-    .w-teal { stroke: #5EEAD4; fill: none; stroke-linecap: butt; stroke-linejoin: round; }
-    .o-teal { stroke: #5EEAD4; fill: none; stroke-width: 1.5; }
-    .h-teal { stroke: #5EEAD4; stroke-width: 1.4; }
-    .c-gray { fill: #1E2534; stroke: #D8E0EE; stroke-opacity: 0.48; stroke-width: 1.2; }
-    .m-gray { fill: #2C364A; stroke: #D8E0EE; stroke-opacity: 0.78; stroke-width: 1.2; }
-    .a-gray { fill: #D8E0EE; }
-    .t-gray { fill: #D8E0EE; }
-    .w-gray { stroke: #D8E0EE; fill: none; stroke-linecap: butt; stroke-linejoin: round; }
-    .o-gray { stroke: #D8E0EE; fill: none; stroke-width: 1.5; }
-    .h-gray { stroke: #D8E0EE; stroke-width: 1.4; }
-    .c-wire { fill: #1E2534; }
-    .m-wire { fill: #2C364A; }
-    .a-wire { fill: #CBD5E1; }
-    .t-wire { fill: #CBD5E1; }
-    .w-wire { stroke: #CBD5E1; fill: none; stroke-linecap: butt; stroke-linejoin: round; }
-    .o-wire { stroke: #CBD5E1; fill: none; stroke-width: 1.5; }
-    .h-wire { stroke: #CBD5E1; stroke-width: 1.4; }
+    .sub, .small, .note { fill: #D0DAE8; }
+    .c-blue { fill: rgba(137, 180, 250, 0.08); stroke: #89B4FA; stroke-opacity: 0.48; stroke-width: 1.2; }
+    .m-blue { fill: rgba(137, 180, 250, 0.16); stroke: #89B4FA; stroke-opacity: 0.78; stroke-width: 1.2; }
+    .a-blue { fill: #89B4FA; }
+    .t-blue { fill: #89B4FA; }
+    .w-blue { stroke: #89B4FA; fill: none; stroke-linecap: butt; stroke-linejoin: round; }
+    .o-blue { stroke: #89B4FA; fill: none; stroke-width: 1.5; }
+    .h-blue { stroke: #89B4FA; stroke-width: 1.4; }
+    .c-green { fill: rgba(166, 227, 161, 0.08); stroke: #A6E3A1; stroke-opacity: 0.48; stroke-width: 1.2; }
+    .m-green { fill: rgba(166, 227, 161, 0.15); stroke: #A6E3A1; stroke-opacity: 0.78; stroke-width: 1.2; }
+    .a-green { fill: #A6E3A1; }
+    .t-green { fill: #A6E3A1; }
+    .w-green { stroke: #A6E3A1; fill: none; stroke-linecap: butt; stroke-linejoin: round; }
+    .o-green { stroke: #A6E3A1; fill: none; stroke-width: 1.5; }
+    .h-green { stroke: #A6E3A1; stroke-width: 1.4; }
+    .c-amber { fill: rgba(242, 201, 138, 0.08); stroke: #F2C98A; stroke-opacity: 0.48; stroke-width: 1.2; }
+    .m-amber { fill: rgba(242, 201, 138, 0.16); stroke: #F2C98A; stroke-opacity: 0.78; stroke-width: 1.2; }
+    .a-amber { fill: #F2C98A; }
+    .t-amber { fill: #F2C98A; }
+    .w-amber { stroke: #F2C98A; fill: none; stroke-linecap: butt; stroke-linejoin: round; }
+    .o-amber { stroke: #F2C98A; fill: none; stroke-width: 1.5; }
+    .h-amber { stroke: #F2C98A; stroke-width: 1.4; }
+    .c-red { fill: rgba(243, 166, 178, 0.08); stroke: #F3A6B2; stroke-opacity: 0.48; stroke-width: 1.2; }
+    .m-red { fill: rgba(243, 166, 178, 0.16); stroke: #F3A6B2; stroke-opacity: 0.78; stroke-width: 1.2; }
+    .a-red { fill: #F3A6B2; }
+    .t-red { fill: #F3A6B2; }
+    .w-red { stroke: #F3A6B2; fill: none; stroke-linecap: butt; stroke-linejoin: round; }
+    .o-red { stroke: #F3A6B2; fill: none; stroke-width: 1.5; }
+    .h-red { stroke: #F3A6B2; stroke-width: 1.4; }
+    .c-purple { fill: rgba(200, 182, 255, 0.08); stroke: #C8B6FF; stroke-opacity: 0.48; stroke-width: 1.2; }
+    .m-purple { fill: rgba(200, 182, 255, 0.16); stroke: #C8B6FF; stroke-opacity: 0.78; stroke-width: 1.2; }
+    .a-purple { fill: #C8B6FF; }
+    .t-purple { fill: #C8B6FF; }
+    .w-purple { stroke: #C8B6FF; fill: none; stroke-linecap: butt; stroke-linejoin: round; }
+    .o-purple { stroke: #C8B6FF; fill: none; stroke-width: 1.5; }
+    .h-purple { stroke: #C8B6FF; stroke-width: 1.4; }
+    .c-teal { fill: rgba(137, 216, 211, 0.08); stroke: #89D8D3; stroke-opacity: 0.48; stroke-width: 1.2; }
+    .m-teal { fill: rgba(137, 216, 211, 0.15); stroke: #89D8D3; stroke-opacity: 0.78; stroke-width: 1.2; }
+    .a-teal { fill: #89D8D3; }
+    .t-teal { fill: #89D8D3; }
+    .w-teal { stroke: #89D8D3; fill: none; stroke-linecap: butt; stroke-linejoin: round; }
+    .o-teal { stroke: #89D8D3; fill: none; stroke-width: 1.5; }
+    .h-teal { stroke: #89D8D3; stroke-width: 1.4; }
+    .c-gray { fill: rgba(226, 232, 240, 0.04); stroke: #CBD5E4; stroke-opacity: 0.48; stroke-width: 1.2; }
+    .m-gray { fill: rgba(226, 232, 240, 0.10); stroke: #CBD5E4; stroke-opacity: 0.78; stroke-width: 1.2; }
+    .a-gray { fill: #CBD5E4; }
+    .t-gray { fill: #CBD5E4; }
+    .w-gray { stroke: #CBD5E4; fill: none; stroke-linecap: butt; stroke-linejoin: round; }
+    .o-gray { stroke: #CBD5E4; fill: none; stroke-width: 1.5; }
+    .h-gray { stroke: #CBD5E4; stroke-width: 1.4; }
+    .c-wire { fill: rgba(226, 232, 240, 0.04); }
+    .m-wire { fill: rgba(226, 232, 240, 0.10); }
+    .a-wire { fill: #AAB7C9; }
+    .t-wire { fill: #AAB7C9; }
+    .w-wire { stroke: #AAB7C9; fill: none; stroke-linecap: butt; stroke-linejoin: round; }
+    .o-wire { stroke: #AAB7C9; fill: none; stroke-width: 1.5; }
+    .h-wire { stroke: #AAB7C9; stroke-width: 1.4; }
   </style>
   <defs>
     <filter id="lift" x="-10%" y="-15%" width="120%" height="140%">
-      <feDropShadow dx="0" dy="1" stdDeviation="1.2" flood-color="#000000" flood-opacity="0.35"/>
-      <feDropShadow dx="0" dy="3" stdDeviation="4" flood-color="#000000" flood-opacity="0.24"/>
+      <feDropShadow dx="0" dy="1" stdDeviation="1.2" flood-color="#000000" flood-opacity="0.0"/>
+      <feDropShadow dx="0" dy="3" stdDeviation="4" flood-color="#000000" flood-opacity="0.00"/>
     </filter>
   </defs>
 <rect x="0.5" y="0.5" width="799" height="611" rx="16" class="frame"/>

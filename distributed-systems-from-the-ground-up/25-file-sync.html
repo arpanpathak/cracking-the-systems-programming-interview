@@ -1,5 +1,5 @@
 <!DOCTYPE HTML>
-<html lang="en" class="navy sidebar-visible" dir="ltr">
+<html lang="en" class="coal sidebar-visible" dir="ltr">
     <head>
         <!-- Book generated using mdBook -->
         <meta charset="UTF-8">
@@ -28,18 +28,18 @@
         <link rel="stylesheet" id="mdbook-ayu-highlight-css" href="ayu-highlight-3fdfc3ac.css">
 
         <!-- Custom theme stylesheets -->
-        <link rel="stylesheet" href="theme/custom-59beaf6d.css">
+        <link rel="stylesheet" href="theme/custom-3b357368.css">
 
 
         <!-- Provide site root and default themes to javascript -->
         <script>
             const path_to_root = "";
-            const default_light_theme = "navy";
-            const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "searchindex-5d54d4b4.js";
+            const default_light_theme = "coal";
+            const default_dark_theme = "coal";
+            window.path_to_searchindex_js = "searchindex-38bda414.js";
         </script>
         <!-- Start loading toc.js asap -->
-        <script src="toc-ef51d47d.js"></script>
+        <script src="toc-00f6d8fe.js"></script>
     </head>
     <body>
     <div id="mdbook-help-container">
@@ -77,7 +77,7 @@
             try { theme = localStorage.getItem('mdbook-theme'); } catch(e) { }
             if (theme === null || theme === undefined) { theme = default_theme; }
             const html = document.documentElement;
-            html.classList.remove('navy')
+            html.classList.remove('coal')
             html.classList.add(theme);
             html.classList.add("js");
         </script>
@@ -591,6 +591,42 @@ phone uploads, based on version 3: conflict: the server is at version 4, written
 <p><strong>Run the file synchronization simulation.</strong> Execute <code>cargo run --release -p syncsim</code> in <code>code/</code> to reproduce the fixed-block vs. content-defined chunking comparison (<code>65/65</code> vs. <code>1/62</code> dirty chunks) and the offline version-3 optimistic concurrency conflict trace.</p>
 </div>
 
+<h3 id="end-to-end-request-lifecycle-and-hop-by-hop-latency-budget"><a class="header" href="#end-to-end-request-lifecycle-and-hop-by-hop-latency-budget">End-to-End Request Lifecycle and Hop-by-Hop Latency Budget</a></h3>
+<p>A file edit propagates through local content-defined chunking, delta-only blob upload, optimistic metadata commit, and push notification to peer devices.</p>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th style="text-align: left">Hop</th><th style="text-align: left">Component</th><th style="text-align: left">Operation</th><th style="text-align: left">P50</th><th style="text-align: left">P99</th></tr>
+</thead>
+<tbody>
+<tr><td style="text-align: left">1</td><td style="text-align: left">Sync Client Daemon</td><td style="text-align: left">Detect filesystem event, run rolling-hash CDC, compute SHA-256 chunk digests</td><td style="text-align: left">6 ms</td><td style="text-align: left">28 ms</td></tr>
+<tr><td style="text-align: left">2</td><td style="text-align: left">Edge / L7 Load Balancer</td><td style="text-align: left">Terminate HTTP/2 or QUIC connection and route to regional block-sync gateway</td><td style="text-align: left">8 ms</td><td style="text-align: left">30 ms</td></tr>
+<tr><td style="text-align: left">3</td><td style="text-align: left">Block Service &amp; Dedup Index</td><td style="text-align: left">Check chunk-hash existence and upload only missing compressed encrypted chunks</td><td style="text-align: left">25 ms</td><td style="text-align: left">160 ms</td></tr>
+<tr><td style="text-align: left">4</td><td style="text-align: left">Metadata Service (SQL)</td><td style="text-align: left">Atomic CAS commit (<code>WHERE rev = expected_rev</code>) updating file manifest and Merkle root</td><td style="text-align: left">4 ms</td><td style="text-align: left">22 ms</td></tr>
+<tr><td style="text-align: left">5</td><td style="text-align: left">Notification &amp; Object Store</td><td style="text-align: left">Persist erasure-coded chunks and fan out long-poll/WebSocket delta notices to peers</td><td style="text-align: left">12 ms</td><td style="text-align: left">65 ms</td></tr>
+</tbody>
+</table>
+</div>
+<h3 id="production-case-studies-and-open-source-comparisons"><a class="header" href="#production-case-studies-and-open-source-comparisons">Production Case Studies and Open-Source Comparisons</a></h3>
+<p>Dropbox built Magic Pocket, a custom exabyte-scale immutable block store using erasure coding across geographically separated storage vaults, paired with client-side content-defined chunking (CDC) so inserting bytes at the start of a multi-gigabyte file uploads only the single modified chunk. Google Drive separates structured document models (stored as operational logs) from binary blob storage backed by Colossus, relying on centralized change feeds to drive incremental client synchronization. Classic <code>rsync</code> solves single-pair delta transfer using a rolling Adler-32 checksum and strong hash verification over a direct network stream, whereas cloud sync services generalize that principle into content-addressed immutable chunks shared across devices, revisions, and deduplicated user accounts.</p>
+<div class="callout keyidea">
+<span class="label">Key idea</span>
+<p>Content-defined chunking anchors block boundaries on data-dependent rolling-hash markers rather than fixed byte offsets. Inserting or deleting bytes shifts only the immediately affected chunk while leaving all subsequent chunk hashes identical for zero-cost deduplication.</p>
+
+</div>
+
+<div class="callout experiment">
+<span class="label">Experiment</span>
+<p>Execute <code>cargo run --release -p syncsim</code> and compare the dirty-chunk ratio after a single-byte prepend: fixed-size blocks invalidate <code>65/65</code> chunks whereas content-defined chunking invalidates <code>1/62</code>. Also trace how the offline version-3 write triggers a deterministic conflict branch instead of overwriting newer state.</p>
+
+</div>
+
+<div class="callout caution">
+<span class="label">Common pitfall</span>
+<p>Running asynchronous chunk garbage collection without a grace period or reference-count barrier can delete a newly uploaded chunk whose metadata manifest has not yet committed, causing permanent data loss on concurrent syncs.</p>
+
+</div>
+
 <h2 id="258-terminology-and-references"><a class="header" href="#258-terminology-and-references">25.8 Terminology and References</a></h2>
 <h3 id="engineering-glossary"><a class="header" href="#engineering-glossary">Engineering Glossary</a></h3>
 <div class="table-wrapper">
@@ -656,6 +692,22 @@ phone uploads, based on version 3: conflict: the server is at version 4, written
         <template id=fa-play><span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 384 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M73 39c-14.8-9.1-33.4-9.4-48.5-.9S0 62.6 0 80V432c0 17.4 9.4 33.4 24.5 41.9s33.7 8.1 48.5-.9L361 297c14.3-8.7 23-24.2 23-41s-8.7-32.2-23-41L73 39z"/></svg></span></template>
         <template id=fa-clock-rotate-left><span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M75 75L41 41C25.9 25.9 0 36.6 0 57.9V168c0 13.3 10.7 24 24 24H134.1c21.4 0 32.1-25.9 17-41l-30.8-30.8C155 85.5 203 64 256 64c106 0 192 86 192 192s-86 192-192 192c-40.8 0-78.6-12.7-109.7-34.4c-14.5-10.1-34.4-6.6-44.6 7.9s-6.6 34.4 7.9 44.6C151.2 495 201.7 512 256 512c141.4 0 256-114.6 256-256S397.4 0 256 0C185.3 0 121.3 28.7 75 75zm181 53c-13.3 0-24 10.7-24 24V256c0 6.4 2.5 12.5 7 17l72 72c9.4 9.4 24.6 9.4 33.9 0s9.4-24.6 0-33.9l-65-65V152c0-13.3-10.7-24-24-24z"/></svg></span></template>
 
+        <!-- Livereload script (if served using the cli tool) -->
+        <script>
+            const wsProtocol = location.protocol === 'https:' ? 'wss:' : 'ws:';
+            const wsAddress = wsProtocol + "//" + location.host + "/" + "__livereload";
+            const socket = new WebSocket(wsAddress);
+            socket.onmessage = function (event) {
+                if (event.data === "reload") {
+                    socket.close();
+                    location.reload();
+                }
+            };
+
+            window.onbeforeunload = function() {
+                socket.close();
+            }
+        </script>
 
 
         <script>
@@ -672,7 +724,7 @@ phone uploads, based on version 3: conflict: the server is at version 4, written
         <script src="book-609e4cb8.js"></script>
 
         <!-- Custom JS scripts -->
-        <script src="theme/figures-9c14cb1c.js"></script>
+        <script src="theme/figures-1bd27a95.js"></script>
         <script src="theme/proto-326509cd.js"></script>
         <script src="theme/code-67e9caaf.js"></script>
         <script src="theme/tables-9fb295e8.js"></script>

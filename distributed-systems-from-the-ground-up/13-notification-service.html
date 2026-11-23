@@ -1,5 +1,5 @@
 <!DOCTYPE HTML>
-<html lang="en" class="navy sidebar-visible" dir="ltr">
+<html lang="en" class="coal sidebar-visible" dir="ltr">
     <head>
         <!-- Book generated using mdBook -->
         <meta charset="UTF-8">
@@ -28,18 +28,18 @@
         <link rel="stylesheet" id="mdbook-ayu-highlight-css" href="ayu-highlight-3fdfc3ac.css">
 
         <!-- Custom theme stylesheets -->
-        <link rel="stylesheet" href="theme/custom-59beaf6d.css">
+        <link rel="stylesheet" href="theme/custom-3b357368.css">
 
 
         <!-- Provide site root and default themes to javascript -->
         <script>
             const path_to_root = "";
-            const default_light_theme = "navy";
-            const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "searchindex-5d54d4b4.js";
+            const default_light_theme = "coal";
+            const default_dark_theme = "coal";
+            window.path_to_searchindex_js = "searchindex-38bda414.js";
         </script>
         <!-- Start loading toc.js asap -->
-        <script src="toc-ef51d47d.js"></script>
+        <script src="toc-00f6d8fe.js"></script>
     </head>
     <body>
     <div id="mdbook-help-container">
@@ -77,7 +77,7 @@
             try { theme = localStorage.getItem('mdbook-theme'); } catch(e) { }
             if (theme === null || theme === undefined) { theme = default_theme; }
             const html = document.documentElement;
-            html.classList.remove('navy')
+            html.classList.remove('coal')
             html.classList.add(theme);
             html.classList.add("js");
         </script>
@@ -211,7 +211,7 @@
 <tr><th style="text-align: left">Actor</th><th style="text-align: left">Operation</th><th style="text-align: left">Concrete Scenario</th></tr>
 </thead>
 <tbody>
-<tr><td style="text-align: left"><strong>Product Service</strong></td><td style="text-align: left">Submit notification (<code>POST /v1/notify</code> with <code>dedup_id</code> and <code>priority</code>)</td><td style="text-align: left">Trigger a <code>P0</code> login OTP SMS within <code>2 s</code>, a <code>P1</code> order-shipped email, or a <code>P3</code> promotional push campaign</td></tr>
+<tr><td style="text-align: left"><strong>Product Service</strong></td><td style="text-align: left">Submit notification (<code>POST /v1/notifications</code> with <code>dedup_id</code> and <code>priority</code>)</td><td style="text-align: left">Trigger a <code>P0</code> login OTP SMS within <code>2 s</code>, a <code>P1</code> order-shipped email, or a <code>P3</code> promotional push campaign</td></tr>
 <tr><td style="text-align: left"><strong>End User</strong></td><td style="text-align: left">Configure channel opt-outs, locale, and quiet hours (<code>PUT /v1/users/{id}/preferences</code>)</td><td style="text-align: left">Mute promotional pushes between <code>22:00</code> and <code>08:00</code> local time while keeping security alerts enabled</td></tr>
 <tr><td style="text-align: left"><strong>External Provider</strong></td><td style="text-align: left">Accept outbound API sends; emit asynchronous delivery/bounce webhooks</td><td style="text-align: left">Apple APNs, Google FCM, Amazon SES, and Twilio report delivered, bounced, or unregistered device tokens</td></tr>
 <tr><td style="text-align: left"><strong>Platform Operator</strong></td><td style="text-align: left">Author versioned i18n templates; tune provider weights and circuit thresholds</td><td style="text-align: left">Shift SMS traffic from degraded primary carrier to backup carrier without redeploying application services</td></tr>
@@ -251,7 +251,7 @@
 <h3 id="non-goals-and-scope-boundaries"><a class="header" href="#non-goals-and-scope-boundaries">Non-Goals and Scope Boundaries</a></h3>
 <ul>
 <li><strong>Guaranteed human readership:</strong> A provider returning <code>200 OK</code> confirms only handoff to the carrier, never that a user saw or read the message. Critical incident escalation (such as on-call paging) requires explicit human acknowledgment loops with automated escalation timers outside this service.</li>
-<li><strong>Synchronous delivery confirmation in <code>POST /v1/notify</code>:</strong> Callers receive <code>202 Accepted</code> and poll <code>GET /v1/notifications/{id}</code> or subscribe to status events rather than holding open HTTP connections while SMTP or SMS networks negotiate.</li>
+<li><strong>Synchronous delivery confirmation in <code>POST /v1/notifications</code>:</strong> Callers receive <code>202 Accepted</code> and poll <code>GET /v1/notifications/{id}</code> or subscribe to status events rather than holding open HTTP connections while SMTP or SMS networks negotiate.</li>
 <li><strong>Unthrottled instant campaign blasts:</strong> Dispatching <code>10,000,000</code> push notifications in <code>10 seconds</code> violates provider quotas and triggers a self-inflicted traffic storm when millions of users open the app simultaneously. Bulk campaigns are always paced over minutes or hours.</li>
 </ul>
 <h3 id="back-of-the-envelope-capacity-bounds"><a class="header" href="#back-of-the-envelope-capacity-bounds">Back-of-the-Envelope Capacity Bounds</a></h3>
@@ -271,9 +271,9 @@
 </div>
 <h2 id="132-external-api-and-data-contracts"><a class="header" href="#132-external-api-and-data-contracts">13.2 External API and Data Contracts</a></h2>
 <h3 id="asynchronous-ingestion-and-preference-contracts"><a class="header" href="#asynchronous-ingestion-and-preference-contracts">Asynchronous Ingestion and Preference Contracts</a></h3>
-<p><strong>Submit notification (<code>POST /v1/notify</code>):</strong></p>
+<p><strong>Submit notification (<code>POST /v1/notifications</code>):</strong></p>
 <p>Returning <code>202 Accepted</code> signals durable intake without waiting for third-party providers. If the caller retries with the identical <code>Idempotency-Key</code>, the API returns <code>200 OK</code> with the existing <code>notification_id</code> and schedules no duplicate send.</p>
-<pre><code class="language-http">POST /v1/notify HTTP/2
+<pre><code class="language-http">POST /v1/notifications HTTP/2
 Host: notify.internal
 Content-Type: application/json
 Idempotency-Key: order-7-shipped
@@ -425,7 +425,7 @@ CREATE TABLE address_suppression_list (
 <tbody>
 <tr><td style="text-align: left"><strong>Primary SMS Carrier Outage</strong></td><td style="text-align: left">Consecutive timeouts / <code>503</code> on SMS sender pool</td><td style="text-align: left">Circuit breaker opens after <code>5</code> consecutive failures; <code>P0</code> SMS pool fails over immediately to pre-warmed secondary SMS carrier</td></tr>
 <tr><td style="text-align: left"><strong>10M-User Marketing Campaign Launch</strong></td><td style="text-align: left"><code>P3</code> queue depth surges to millions</td><td style="text-align: left">Dedicated <code>P0</code>/<code>P1</code> topics and sender bulkheads keep OTP latency <code>&lt; 3 s</code>; <code>P3</code> campaign paces smoothly over <code>60 minutes</code></td></tr>
-<tr><td style="text-align: left"><strong>Caller Retries <code>POST /v1/notify</code> After Timeout</strong></td><td style="text-align: left">Duplicate HTTP requests arrive with identical <code>Idempotency-Key</code></td><td style="text-align: left">Atomic <code>SETNX</code> / outbox uniqueness constraint returns existing <code>notification_id</code> (<code>200 OK</code>) and emits zero duplicate sends</td></tr>
+<tr><td style="text-align: left"><strong>Caller Retries <code>POST /v1/notifications</code> After Timeout</strong></td><td style="text-align: left">Duplicate HTTP requests arrive with identical <code>Idempotency-Key</code></td><td style="text-align: left">Atomic <code>SETNX</code> / outbox uniqueness constraint returns existing <code>notification_id</code> (<code>200 OK</code>) and emits zero duplicate sends</td></tr>
 <tr><td style="text-align: left"><strong>High Email Hard-Bounce Spike</strong></td><td style="text-align: left">SES bounce rate rises toward <code>5%</code> suspension threshold</td><td style="text-align: left">Webhook ingestor auto-suppresses bounced addresses immediately; alert triggers at <code>2%</code> bounce rate to halt defective list uploads</td></tr>
 <tr><td style="text-align: left"><strong>Push Device Token Churn (Uninstalled Apps)</strong></td><td style="text-align: left">APNs <code>410</code> / FCM <code>UNREGISTERED</code> errors on push sends</td><td style="text-align: left">Senders treat as permanent failure (zero retries) and deactivate stale device token in preference store asynchronously</td></tr>
 <tr><td style="text-align: left"><strong>Stale <code>P0</code> OTP Delayed by Prolonged Outage</strong></td><td style="text-align: left">OTP arrives <code>15 minutes</code> late, confusing user</td><td style="text-align: left">Every message carries a business <code>valid_until</code> deadline; senders drop expired OTPs cleanly instead of delivering stale codes</td></tr>
@@ -492,6 +492,35 @@ order-10-shipped  failed 5 times: set aside for a person to look at
 </tbody>
 </table>
 </div>
+<h3 id="end-to-end-request-lifecycle-and-hop-by-hop-latency-budget"><a class="header" href="#end-to-end-request-lifecycle-and-hop-by-hop-latency-budget">End-to-End Request Lifecycle and Hop-by-Hop Latency Budget</a></h3>
+<p>A high-priority <code>P0</code> transactional notification (such as a two-factor authentication code) bypasses promotional queues entirely, completing ingestion, policy validation, and external provider handoff in under <code>350 ms</code> at <code>p99</code>.</p>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th style="text-align: left">Hop</th><th style="text-align: left">Boundary</th><th style="text-align: left">Protocol and Operation</th><th style="text-align: left">Typical <code>p50</code></th><th style="text-align: left">Tail <code>p99</code></th></tr>
+</thead>
+<tbody>
+<tr><td style="text-align: left">1</td><td style="text-align: left">Upstream Producer to Notification API</td><td style="text-align: left">TLS HTTP/2 <code>POST /v1/notifications</code> returning <code>202 Accepted</code> with <code>message_id</code></td><td style="text-align: left"><code>1.50 ms</code></td><td style="text-align: left"><code>4.50 ms</code></td></tr>
+<tr><td style="text-align: left">2</td><td style="text-align: left">Ingestion Service to Priority Topic (<code>P0</code>)</td><td style="text-align: left">Durable publish to dedicated Kafka <code>P0</code> lane (<code>acks = all</code>)</td><td style="text-align: left"><code>3.20 ms</code></td><td style="text-align: left"><code>11.00 ms</code></td></tr>
+<tr><td style="text-align: left">3</td><td style="text-align: left">Policy, Preference, and Suppression Lookup</td><td style="text-align: left">Regional Redis cache read for opt-out list, quiet hours, and rate caps</td><td style="text-align: left"><code>0.90 ms</code></td><td style="text-align: left"><code>3.50 ms</code></td></tr>
+<tr><td style="text-align: left">4</td><td style="text-align: left">Template Render and Channel Worker Handoff</td><td style="text-align: left">In-memory i18n template substitution and token-bucket provider pacing</td><td style="text-align: left"><code>1.10 ms</code></td><td style="text-align: left"><code>4.00 ms</code></td></tr>
+<tr><td style="text-align: left">5</td><td style="text-align: left">Channel Worker to External Provider (APNs/FCM/SMS)</td><td style="text-align: left">Persistent multiplexed HTTP/2 TLS stream to external gateway</td><td style="text-align: left"><code>65.00 ms</code></td><td style="text-align: left"><code>290.00 ms</code></td></tr>
+<tr><td style="text-align: left"><strong>Total</strong></td><td style="text-align: left"><strong>End-to-End <code>P0</code> Provider Acceptance</strong></td><td style="text-align: left"><strong>External gateway dominates tail latency; internal path stays under 25 ms</strong></td><td style="text-align: left"><strong><code>71.70 ms</code></strong></td><td style="text-align: left"><strong><code>313.00 ms</code></strong></td></tr>
+</tbody>
+</table>
+</div>
+<h3 id="production-case-studies-and-open-source-comparisons"><a class="header" href="#production-case-studies-and-open-source-comparisons">Production Case Studies and Open-Source Comparisons</a></h3>
+<ul>
+<li><strong>Apple APNs (HTTP/2 Provider API):</strong> APNs requires persistent, multiplexed HTTP/2 connections authenticated via JWT tokens or TLS certificates, supporting hundreds of concurrent in-flight streams per TCP connection to avoid per-send TLS handshake overhead. APNs returns synchronous per-stream status codes (<code>200 OK</code>, <code>410 Unregistered</code>, <code>429 Too Many Requests</code>), enabling workers to purge stale device tokens immediately without waiting for asynchronous feedback queues.</li>
+<li><strong>Firebase Cloud Messaging (FCM HTTP v1):</strong> FCM routes Android and cross-platform push payloads over OAuth 2.0-authenticated HTTP/2 connections with per-project quota buckets and topic fan-out primitives. Production senders maintain connection pools per region, honor <code>Retry-After</code> headers on <code>429</code> responses, and prune registration tokens that return <code>UNREGISTERED</code> or remain inactive beyond <code>270</code> days.</li>
+<li><strong>Slack and Airbnb Priority Pipelines:</strong> Both Slack and Airbnb isolate real-time transactional notifications (<code>P0</code> mentions, OTPs, booking confirmations) from bulk digest and marketing campaigns (<code>P2</code>/<code>P3</code>) using dedicated Kafka topics, separate worker autoscaling groups, and a centralized user-fatigue budget service. Enforcing global per-user daily caps and quiet-hour deferral centrally prevents independent product teams from saturating provider quotas or degrading user trust.</li>
+</ul>
+<div class="callout keyidea"><span class="label">Key idea</span>Physical lane isolation (separate topics, worker pools, and provider connection pools per priority class) ensures that a `10`-million-message marketing blast cannot add even one millisecond of head-of-line queuing delay to a `P0` security alert.</div>
+
+<div class="callout experiment"><span class="label">Experiment</span>Simulate an upstream SMS provider degrading to `50%` HTTP `503` failures while injecting `1,000` req/s. Compare fixed-interval retries against full-jitter exponential backoff paired with a `10%` global retry budget, measuring queue depth and recovery time after the provider stabilizes.</div>
+
+<div class="callout caution"><span class="label">Common pitfall</span>Treating HTTP `200 OK` from an SMS or email gateway as proof of end-user delivery hides carrier filtering, hard bounces, and uninstalled device tokens. Always ingest asynchronous provider webhooks to update delivery state and populate the suppression list automatically.</div>
+
 <h3 id="references"><a class="header" href="#references">References</a></h3>
 <ul>
 <li>M. Brooker, “Exponential Backoff and Jitter”, AWS Architecture Blog, 2015.</li>
@@ -538,6 +567,22 @@ order-10-shipped  failed 5 times: set aside for a person to look at
         <template id=fa-play><span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 384 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M73 39c-14.8-9.1-33.4-9.4-48.5-.9S0 62.6 0 80V432c0 17.4 9.4 33.4 24.5 41.9s33.7 8.1 48.5-.9L361 297c14.3-8.7 23-24.2 23-41s-8.7-32.2-23-41L73 39z"/></svg></span></template>
         <template id=fa-clock-rotate-left><span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M75 75L41 41C25.9 25.9 0 36.6 0 57.9V168c0 13.3 10.7 24 24 24H134.1c21.4 0 32.1-25.9 17-41l-30.8-30.8C155 85.5 203 64 256 64c106 0 192 86 192 192s-86 192-192 192c-40.8 0-78.6-12.7-109.7-34.4c-14.5-10.1-34.4-6.6-44.6 7.9s-6.6 34.4 7.9 44.6C151.2 495 201.7 512 256 512c141.4 0 256-114.6 256-256S397.4 0 256 0C185.3 0 121.3 28.7 75 75zm181 53c-13.3 0-24 10.7-24 24V256c0 6.4 2.5 12.5 7 17l72 72c9.4 9.4 24.6 9.4 33.9 0s9.4-24.6 0-33.9l-65-65V152c0-13.3-10.7-24-24-24z"/></svg></span></template>
 
+        <!-- Livereload script (if served using the cli tool) -->
+        <script>
+            const wsProtocol = location.protocol === 'https:' ? 'wss:' : 'ws:';
+            const wsAddress = wsProtocol + "//" + location.host + "/" + "__livereload";
+            const socket = new WebSocket(wsAddress);
+            socket.onmessage = function (event) {
+                if (event.data === "reload") {
+                    socket.close();
+                    location.reload();
+                }
+            };
+
+            window.onbeforeunload = function() {
+                socket.close();
+            }
+        </script>
 
 
         <script>
@@ -554,7 +599,7 @@ order-10-shipped  failed 5 times: set aside for a person to look at
         <script src="book-609e4cb8.js"></script>
 
         <!-- Custom JS scripts -->
-        <script src="theme/figures-9c14cb1c.js"></script>
+        <script src="theme/figures-1bd27a95.js"></script>
         <script src="theme/proto-326509cd.js"></script>
         <script src="theme/code-67e9caaf.js"></script>
         <script src="theme/tables-9fb295e8.js"></script>

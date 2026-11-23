@@ -1,5 +1,5 @@
 <!DOCTYPE HTML>
-<html lang="en" class="navy sidebar-visible" dir="ltr">
+<html lang="en" class="coal sidebar-visible" dir="ltr">
     <head>
         <!-- Book generated using mdBook -->
         <meta charset="UTF-8">
@@ -28,18 +28,18 @@
         <link rel="stylesheet" id="mdbook-ayu-highlight-css" href="ayu-highlight-3fdfc3ac.css">
 
         <!-- Custom theme stylesheets -->
-        <link rel="stylesheet" href="theme/custom-59beaf6d.css">
+        <link rel="stylesheet" href="theme/custom-3b357368.css">
 
 
         <!-- Provide site root and default themes to javascript -->
         <script>
             const path_to_root = "";
-            const default_light_theme = "navy";
-            const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "searchindex-5d54d4b4.js";
+            const default_light_theme = "coal";
+            const default_dark_theme = "coal";
+            window.path_to_searchindex_js = "searchindex-38bda414.js";
         </script>
         <!-- Start loading toc.js asap -->
-        <script src="toc-ef51d47d.js"></script>
+        <script src="toc-00f6d8fe.js"></script>
     </head>
     <body>
     <div id="mdbook-help-container">
@@ -77,7 +77,7 @@
             try { theme = localStorage.getItem('mdbook-theme'); } catch(e) { }
             if (theme === null || theme === undefined) { theme = default_theme; }
             const html = document.documentElement;
-            html.classList.remove('navy')
+            html.classList.remove('coal')
             html.classList.add(theme);
             html.classList.add("js");
         </script>
@@ -211,7 +211,7 @@
 <tr><th style="text-align: left">Actor</th><th style="text-align: left">Operation</th><th style="text-align: left">Concrete Scenario</th></tr>
 </thead>
 <tbody>
-<tr><td style="text-align: left"><strong>Application Service</strong></td><td style="text-align: left">Request single ID (<code>GET /v1/ids/next</code>) or batch (<code>POST /v1/ids/batch</code>)</td><td style="text-align: left">Mint primary keys for newly created orders, chat messages, or telemetry events across sharded databases</td></tr>
+<tr><td style="text-align: left"><strong>Application Service</strong></td><td style="text-align: left">Request single ID (<code>POST /v1/ids:allocate</code>) or batch (<code>POST /v1/ids:batchAllocate</code>)</td><td style="text-align: left">Mint primary keys for newly created orders, chat messages, or telemetry events across sharded databases</td></tr>
 <tr><td style="text-align: left"><strong>Application Service</strong></td><td style="text-align: left">Decode embedded metadata</td><td style="text-align: left">Extract creation timestamp and originating node bits during incident triage or time-range log correlation</td></tr>
 <tr><td style="text-align: left"><strong>Generator Node</strong></td><td style="text-align: left">Lease and renew a 10-bit <code>worker_id</code> (<code>0</code> to <code>1023</code>)</td><td style="text-align: left">Acquire an exclusive worker slot from the etcd control plane at process startup and checkpoint its high-water timestamp</td></tr>
 <tr><td style="text-align: left"><strong>Platform Operator</strong></td><td style="text-align: left">Monitor clock drift, sequence exhaustion, and lease churn</td><td style="text-align: left">Detect NTP stepping faults or approaching sequence saturation before client requests experience wait delays</td></tr>
@@ -278,8 +278,8 @@
 <p>We expose a binary gRPC interface for internal microservices, an HTTP/2 REST API for language-agnostic clients, and an embeddable library interface for ultra-low-latency callers that register directly as leased workers.</p>
 <h3 id="external-http2-and-grpc-contracts"><a class="header" href="#external-http2-and-grpc-contracts">External HTTP/2 and gRPC Contracts</a></h3>
 <p>Whenever an ID travels over JSON, we serialize the 64-bit integer as a decimal string. IEEE 754 double-precision floating-point numbers used by JavaScript engines and many JSON parsers represent integers exactly only up to <code>2^53 - 1</code> (<code>9,007,199,254,740,991</code>). Returning a raw 64-bit JSON number causes browsers to round distinct IDs to the same value, corrupting client-side state.</p>
-<p><strong>Single ID allocation (<code>GET /v1/ids/next</code>):</strong></p>
-<pre><code class="language-http">GET /v1/ids/next HTTP/2
+<p><strong>Single ID allocation (<code>POST /v1/ids:allocate</code>):</strong></p>
+<pre><code class="language-http">POST /v1/ids:allocate HTTP/2
 Host: idgen.internal
 Accept: application/json
 </code></pre>
@@ -294,9 +294,9 @@ X-Worker-Id: 7
   "sequence": 0
 }
 </code></pre>
-<p><strong>Batched ID allocation (<code>POST /v1/ids/batch</code>):</strong></p>
+<p><strong>Batched ID allocation (<code>POST /v1/ids:batchAllocate</code>):</strong></p>
 <p>Batching amortizes network round trips and allows callers to keep a small local buffer without maintaining their own etcd lease. An <code>Idempotency-Key</code> header prevents retries from double-charging accounting quotas, though minting a fresh unused ID is harmless for uniqueness.</p>
-<pre><code class="language-http">POST /v1/ids/batch HTTP/2
+<pre><code class="language-http">POST /v1/ids:batchAllocate HTTP/2
 Host: idgen.internal
 Content-Type: application/json
 Idempotency-Key: checkout-pod-19-batch-402
@@ -398,7 +398,7 @@ message NextBatchResponse {
 </tbody>
 </table>
 </div>
-<p>We choose the <strong>64-bit Snowflake layout</strong> because requirement 1 mandates a 64-bit integer key, requirement 2 demands k-sortable B-tree locality, and non-functional requirement 1 demands zero hot-path network coordination.</p>
+<p>The design adopts the <strong>64-bit Snowflake layout</strong> to fit within a single 64-bit integer key, preserve k-sortable B-tree locality, and eliminate hot-path network coordination.</p>
 <h3 id="64-bit-field-layout-and-uniqueness-proof"><a class="header" href="#64-bit-field-layout-and-uniqueness-proof">64-Bit Field Layout and Uniqueness Proof</a></h3>
 <p>Figure 8-3 details the bit allocation across the 64-bit signed big-endian integer:</p>
 <ul>
@@ -534,6 +534,36 @@ ids sort by time: true
 </tbody>
 </table>
 </div>
+<h3 id="end-to-end-request-lifecycle-and-hop-by-hop-latency-budget"><a class="header" href="#end-to-end-request-lifecycle-and-hop-by-hop-latency-budget">End-to-End Request Lifecycle and Hop-by-Hop Latency Budget</a></h3>
+<p>A write-heavy microservice requesting a batch of 64-bit Snowflake identifiers traverses five network and execution boundaries. Keeping the hot path completely free of synchronous disk writes and cross-AZ consensus calls holds end-to-end <code>p99</code> generation latency under <code>1.0 ms</code>.</p>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th style="text-align: left">Hop</th><th style="text-align: left">Boundary</th><th style="text-align: left">Protocol and Operation</th><th style="text-align: left">Typical <code>p50</code></th><th style="text-align: left">Tail <code>p99</code></th></tr>
+</thead>
+<tbody>
+<tr><td style="text-align: left">1</td><td style="text-align: left">Caller Service to Local Envoy Sidecar</td><td style="text-align: left">HTTP/2 over localhost Unix socket or loopback (<code>gRPC</code> unary <code>NextBatch</code>)</td><td style="text-align: left"><code>0.06 ms</code></td><td style="text-align: left"><code>0.15 ms</code></td></tr>
+<tr><td style="text-align: left">2</td><td style="text-align: left">Envoy Sidecar to Local-AZ L4/L7 Load Balancer</td><td style="text-align: left">Persistent mTLS HTTP/2 stream, zone-aware least-request routing</td><td style="text-align: left"><code>0.18 ms</code></td><td style="text-align: left"><code>0.40 ms</code></td></tr>
+<tr><td style="text-align: left">3</td><td style="text-align: left">Generator Pod Allocation Path</td><td style="text-align: left">In-memory atomic compare-and-swap on <code>(timestamp_ms, sequence)</code> anchored to <code>CLOCK_MONOTONIC</code></td><td style="text-align: left"><code>0.002 ms</code></td><td style="text-align: left"><code>0.05 ms</code></td></tr>
+<tr><td style="text-align: left">4</td><td style="text-align: left">Background Control Plane (Off Critical Path)</td><td style="text-align: left">Asynchronous <code>etcd</code> lease keepalive every <code>10 s</code> and periodic <code>horizon_ms</code> checkpoint</td><td style="text-align: left"><code>0 ms</code> (async)</td><td style="text-align: left"><code>0 ms</code> (async)</td></tr>
+<tr><td style="text-align: left">5</td><td style="text-align: left">Response Return to Caller Application</td><td style="text-align: left">gRPC protobuf decode of 64-bit integer array and return to caller thread</td><td style="text-align: left"><code>0.15 ms</code></td><td style="text-align: left"><code>0.35 ms</code></td></tr>
+<tr><td style="text-align: left"><strong>Total</strong></td><td style="text-align: left"><strong>End-to-End Local-AZ Batch Mint</strong></td><td style="text-align: left"><strong>Zero synchronous storage or consensus round trips</strong></td><td style="text-align: left"><strong><code>0.39 ms</code></strong></td><td style="text-align: left"><strong><code>0.95 ms</code></strong></td></tr>
+</tbody>
+</table>
+</div>
+<h3 id="production-case-studies-and-open-source-comparisons"><a class="header" href="#production-case-studies-and-open-source-comparisons">Production Case Studies and Open-Source Comparisons</a></h3>
+<ul>
+<li><strong>Twitter Snowflake:</strong> Twitter deployed Snowflake in 2010 to replace MySQL auto-increment keys across sharded tweet timelines, allocating 41 timestamp bits (<code>69.7</code> years), 10 worker bits (<code>1,024</code> nodes coordinated via Apache ZooKeeper), and 12 sequence bits (<code>4,096</code> IDs per millisecond per node, exceeding <code>4.19</code> million IDs/s per cluster). Nodes remained stateless on the hot path and refused allocation if NTP stepped backward beyond tolerance.</li>
+<li><strong>Sonyflake:</strong> Sony’s open-source Go implementation shifts bit density to 39 timestamp bits in <code>10 ms</code> ticks (<code>174</code> years of epoch runway), 8 sequence bits (<code>256</code> IDs per <code>10 ms</code>, or <code>25,600</code> IDs/s per machine), and 16 machine-ID bits derived from the lower 16 bits of the private IPv4 address. This layout favors fleets up to <code>65,536</code> nodes where moderate per-host throughput is sufficient and external ZooKeeper coordination is undesirable.</li>
+<li><strong>Instagram PostgreSQL Sharded IDs:</strong> Instagram avoided a dedicated ID microservice by embedding a PL/pgSQL function inside each of its <code>8,192</code> logical PostgreSQL shards (41 timestamp bits, 13 logical-shard bits, and 10 sequence bits backed by a local <code>SEQUENCE</code> modulo <code>1,024</code>). Because each logical shard lives on a physical database host, primary-key generation incurs zero extra network hops while remaining k-sortable across shard migrations.</li>
+<li><strong>Flickr Ticket Servers:</strong> Flickr operated two redundant MySQL servers configured with <code>auto_increment_increment = 2</code> and offsets <code>1</code> and <code>2</code>, executing <code>REPLACE INTO Tickets64 (stub) VALUES ('a')</code> to mint monotonically increasing 64-bit integers. The design requires no specialized daemon and survives single-host failure, though its write throughput is bounded by single-row MySQL durability (<code>~5,000</code> to <code>15,000</code> IDs/s) and cross-server ordering can drift slightly under uneven load.</li>
+</ul>
+<div class="callout keyidea"><span class="label">Key idea</span>Decoupling worker-ID ownership (slow control plane) from per-millisecond sequence minting (lock-free data plane) eliminates consensus latency from every ID request while preserving global uniqueness.</div>
+
+<div class="callout experiment"><span class="label">Experiment</span>Inject a `20 ms` backward wall-clock jump on a single generator node using `date` or a mock clock provider while driving `10,000` IDs/s. Observe that `CLOCK_MONOTONIC` anchoring prevents duplicate timestamps, while a process restart without a persisted `horizon_ms` checkpoint immediately reproduces duplicate IDs.</div>
+
+<div class="callout caution"><span class="label">Common pitfall</span>Treating `CLOCK_REALTIME` as monotonic during NTP step adjustments or leap seconds causes silent bit-level collisions across restarts. Always anchor elapsed time to `CLOCK_MONOTONIC`, persist a high-water epoch checkpoint, and self-fence before control-plane lease expiry.</div>
+
 <h3 id="references"><a class="header" href="#references">References</a></h3>
 <ul>
 <li>R. King, “Announcing Snowflake”, Twitter Engineering Blog, 2010.</li>
@@ -580,6 +610,22 @@ ids sort by time: true
         <template id=fa-play><span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 384 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M73 39c-14.8-9.1-33.4-9.4-48.5-.9S0 62.6 0 80V432c0 17.4 9.4 33.4 24.5 41.9s33.7 8.1 48.5-.9L361 297c14.3-8.7 23-24.2 23-41s-8.7-32.2-23-41L73 39z"/></svg></span></template>
         <template id=fa-clock-rotate-left><span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M75 75L41 41C25.9 25.9 0 36.6 0 57.9V168c0 13.3 10.7 24 24 24H134.1c21.4 0 32.1-25.9 17-41l-30.8-30.8C155 85.5 203 64 256 64c106 0 192 86 192 192s-86 192-192 192c-40.8 0-78.6-12.7-109.7-34.4c-14.5-10.1-34.4-6.6-44.6 7.9s-6.6 34.4 7.9 44.6C151.2 495 201.7 512 256 512c141.4 0 256-114.6 256-256S397.4 0 256 0C185.3 0 121.3 28.7 75 75zm181 53c-13.3 0-24 10.7-24 24V256c0 6.4 2.5 12.5 7 17l72 72c9.4 9.4 24.6 9.4 33.9 0s9.4-24.6 0-33.9l-65-65V152c0-13.3-10.7-24-24-24z"/></svg></span></template>
 
+        <!-- Livereload script (if served using the cli tool) -->
+        <script>
+            const wsProtocol = location.protocol === 'https:' ? 'wss:' : 'ws:';
+            const wsAddress = wsProtocol + "//" + location.host + "/" + "__livereload";
+            const socket = new WebSocket(wsAddress);
+            socket.onmessage = function (event) {
+                if (event.data === "reload") {
+                    socket.close();
+                    location.reload();
+                }
+            };
+
+            window.onbeforeunload = function() {
+                socket.close();
+            }
+        </script>
 
 
         <script>
@@ -596,7 +642,7 @@ ids sort by time: true
         <script src="book-609e4cb8.js"></script>
 
         <!-- Custom JS scripts -->
-        <script src="theme/figures-9c14cb1c.js"></script>
+        <script src="theme/figures-1bd27a95.js"></script>
         <script src="theme/proto-326509cd.js"></script>
         <script src="theme/code-67e9caaf.js"></script>
         <script src="theme/tables-9fb295e8.js"></script>

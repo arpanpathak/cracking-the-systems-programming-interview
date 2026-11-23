@@ -1,5 +1,5 @@
 <!DOCTYPE HTML>
-<html lang="en" class="navy sidebar-visible" dir="ltr">
+<html lang="en" class="coal sidebar-visible" dir="ltr">
     <head>
         <!-- Book generated using mdBook -->
         <meta charset="UTF-8">
@@ -28,18 +28,18 @@
         <link rel="stylesheet" id="mdbook-ayu-highlight-css" href="ayu-highlight-3fdfc3ac.css">
 
         <!-- Custom theme stylesheets -->
-        <link rel="stylesheet" href="theme/custom-59beaf6d.css">
+        <link rel="stylesheet" href="theme/custom-3b357368.css">
 
 
         <!-- Provide site root and default themes to javascript -->
         <script>
             const path_to_root = "";
-            const default_light_theme = "navy";
-            const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "searchindex-5d54d4b4.js";
+            const default_light_theme = "coal";
+            const default_dark_theme = "coal";
+            window.path_to_searchindex_js = "searchindex-38bda414.js";
         </script>
         <!-- Start loading toc.js asap -->
-        <script src="toc-ef51d47d.js"></script>
+        <script src="toc-00f6d8fe.js"></script>
     </head>
     <body>
     <div id="mdbook-help-container">
@@ -77,7 +77,7 @@
             try { theme = localStorage.getItem('mdbook-theme'); } catch(e) { }
             if (theme === null || theme === undefined) { theme = default_theme; }
             const html = document.documentElement;
-            html.classList.remove('navy')
+            html.classList.remove('coal')
             html.classList.add(theme);
             html.classList.add("js");
         </script>
@@ -212,7 +212,7 @@
 <tbody>
 <tr><td style="text-align: left"><strong>Link Author</strong></td><td style="text-align: left">Create short link (<code>POST /v1/links</code>), update expiry or alias (<code>PATCH / DELETE /v1/links/{code}</code>), query analytics (<code>GET /v1/links/{code}/stats</code>)</td><td style="text-align: left">Marketing team or API client shortens a parameterized campaign URL with a 90-day expiry and inspects daily click totals</td></tr>
 <tr><td style="text-align: left"><strong>Link Visitor</strong></td><td style="text-align: left">Resolve and follow short link (<code>GET /{code}</code>)</td><td style="text-align: left">Browser or mobile application opens a shared short link and receives a sub-10 ms HTTP redirect to the destination URL</td></tr>
-<tr><td style="text-align: left"><strong>Trust and Analytics Team</strong></td><td style="text-align: left">Quarantine abusive link (<code>POST /v1/admin/block/{code}</code>) and inspect domain threat telemetry</td><td style="text-align: left">Safety automation detects a phishing destination and blocks resolution across regional caches and CDN edges within seconds</td></tr>
+<tr><td style="text-align: left"><strong>Trust and Analytics Team</strong></td><td style="text-align: left">Quarantine abusive link (<code>POST /v1/links/{code}:block</code>) and inspect domain threat telemetry</td><td style="text-align: left">Safety automation detects a phishing destination and blocks resolution across regional caches and CDN edges within seconds</td></tr>
 </tbody>
 </table>
 </div>
@@ -316,7 +316,7 @@ X-Content-Type-Options: nosniff
 </code></pre>
 <p>For expired or quarantined codes, the service returns <code>410 Gone</code> with <code>Cache-Control: public, max-age=3600</code> so intermediate caches stop forwarding repeated traffic for revoked links. Unknown codes return <code>404 Not Found</code> with a short negative cache header (<code>max-age=60</code>).</p>
 <p><strong>Quarantine an abusive link (control plane):</strong></p>
-<pre><code class="language-http">POST /v1/admin/block/a9K4x7Q HTTP/2
+<pre><code class="language-http">POST /v1/links/a9K4x7Q:block HTTP/2
 Host: control.sho.rt
 Authorization: Bearer &lt;admin-token&gt;
 Content-Type: application/json
@@ -481,7 +481,7 @@ fn scramble_id(counter: u64, round_keys: &amp;[u64; 4]) -&gt; u64 {
 </ol>
 <h3 id="asynchronous-click-analytics-and-abuse-controls"><a class="header" href="#asynchronous-click-analytics-and-abuse-controls">Asynchronous Click Analytics and Abuse Controls</a></h3>
 <p>Incrementing a relational counter row on every redirect would convert a <code>3,900</code> to <code>39,000</code> QPS read workload into a write-contended hotspot on popular rows. Instead, Redirect Services and CDN edge log collectors emit compact 64-byte click events (<code>code</code>, <code>timestamp_ms</code>, <code>country_iso</code>, <code>referrer_hash</code>) into a partitioned Kafka topic via non-blocking ring buffers. Stream consumers aggregate counts in 1-minute tumbling windows in memory and flush bulk batches into ClickHouse (<code>SummingMergeTree</code>), reducing persistent write volume by over <code>1,000x</code> for viral links while isolating redirect latency completely from analytics pipeline backpressure.</p>
-<p>Public redirectors are primary targets for phishing concealment. Three layered safeguards protect domain reputation: synchronous URL inspection against local threat feeds (such as Google Safe Browsing prefix lists) at link creation, periodic background re-scanning of active high-click destinations to catch delayed page swaps, and an instant quarantine endpoint (<code>POST /v1/admin/block/{code}</code>) that marks <code>status = 3</code> in L3, broadcasts an L2 Redis invalidation, and triggers a CDN purge API call so malicious links return <code>410 Gone</code> globally within <code>5 seconds</code>.</p>
+<p>Public redirectors are primary targets for phishing concealment. Three layered safeguards protect domain reputation: synchronous URL inspection against local threat feeds (such as Google Safe Browsing prefix lists) at link creation, periodic background re-scanning of active high-click destinations to catch delayed page swaps, and an instant quarantine endpoint (<code>POST /v1/links/{code}:block</code>) that marks <code>status = 3</code> in L3, broadcasts an L2 Redis invalidation, and triggers a CDN purge API call so malicious links return <code>410 Gone</code> globally within <code>5 seconds</code>.</p>
 <h2 id="146-failure-modes-slis-and-production-systems"><a class="header" href="#146-failure-modes-slis-and-production-systems">14.6 Failure Modes, SLIs, and Production Systems</a></h2>
 <h3 id="failure-mode-and-mitigation-matrix"><a class="header" href="#failure-mode-and-mitigation-matrix">Failure Mode and Mitigation Matrix</a></h3>
 <div class="table-wrapper">
@@ -503,7 +503,7 @@ fn scramble_id(counter: u64, round_keys: &amp;[u64; 4]) -&gt; u64 {
 <li><strong>Redirect Availability SLI:</strong> Fraction of valid <code>GET /{code}</code> requests returning <code>301</code>/<code>302</code> (excluding client <code>4xx</code> errors), targeting <code>99.99%</code> over a 30-day rolling window; page on-call when 5-minute error burn exceeds <code>14.4x</code> budget.</li>
 <li><strong>Origin Redirect Latency SLI:</strong> <code>p99 &lt;= 15 ms</code> for L2 hits and <code>p999 &lt;= 40 ms</code> for L3 misses; alert when <code>p99</code> exceeds <code>25 ms</code> for 5 minutes.</li>
 <li><strong>Cache Efficiency and Penetration SLI:</strong> Combined L1 + L2 hit ratio <code>&gt;= 97%</code> and L3 negative-miss rate <code>&lt;= 0.5%</code> of total traffic; alert if Bloom filter false-positive rate drifts above <code>2%</code> (indicating scheduled filter rebuild is overdue).</li>
-<li><strong>Quarantine Propagation SLI:</strong> End-to-end elapsed time from <code>POST /v1/admin/block/{code}</code> to global CDN <code>410 Gone</code> enforcement, targeting <code>p99 &lt;= 10 s</code>.</li>
+<li><strong>Quarantine Propagation SLI:</strong> End-to-end elapsed time from <code>POST /v1/links/{code}:block</code> to global CDN <code>410 Gone</code> enforcement, targeting <code>p99 &lt;= 10 s</code>.</li>
 </ul>
 <h3 id="production-benchmarks"><a class="header" href="#production-benchmarks">Production Benchmarks</a></h3>
 <div class="table-wrapper">
@@ -557,6 +557,35 @@ codes of 7 characters: 3521614606208 possible
 </tbody>
 </table>
 </div>
+<h3 id="end-to-end-request-lifecycle-and-hop-by-hop-latency-budget"><a class="header" href="#end-to-end-request-lifecycle-and-hop-by-hop-latency-budget">End-to-End Request Lifecycle and Hop-by-Hop Latency Budget</a></h3>
+<p>URL shortening is strongly read-dominated (<code>100:1</code> to <code>1,000:1</code>). Pushing hot short codes to CDN edge caches keeps <code>p99</code> global redirect latency under <code>25 ms</code>, while origin misses resolve through a Bloom-filter-guarded regional cache and key-value store.</p>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th style="text-align: left">Hop</th><th style="text-align: left">Boundary</th><th style="text-align: left">Protocol and Operation</th><th style="text-align: left">Edge Hit <code>p99</code></th><th style="text-align: left">Origin Miss <code>p99</code></th></tr>
+</thead>
+<tbody>
+<tr><td style="text-align: left">1</td><td style="text-align: left">Browser / Mobile Client to Anycast CDN PoP</td><td style="text-align: left">DNS lookup (cached) plus TLS 1.3 HTTP/2 <code>GET /{code}</code></td><td style="text-align: left"><code>14.00 ms</code></td><td style="text-align: left"><code>14.00 ms</code></td></tr>
+<tr><td style="text-align: left">2</td><td style="text-align: left">CDN Edge PoP Cache Lookup</td><td style="text-align: left">Edge KV / cache hit returning <code>301</code>/<code>302</code> with <code>Location</code> header</td><td style="text-align: left"><code>1.50 ms</code></td><td style="text-align: left"><code>2.00 ms</code></td></tr>
+<tr><td style="text-align: left">3</td><td style="text-align: left">CDN Origin Shield to Regional Redirect Service</td><td style="text-align: left">Persistent mTLS HTTP/2 backhaul; in-memory Bloom filter drops invalid codes</td><td style="text-align: left"><code>0 ms</code></td><td style="text-align: left"><code>8.50 ms</code></td></tr>
+<tr><td style="text-align: left">4</td><td style="text-align: left">Redirect Service to L2 Redis and L3 KV Store</td><td style="text-align: left">L2 Redis miss (<code>0.8 ms</code>) followed by L3 primary-key lookup (<code>8.5 ms</code>)</td><td style="text-align: left"><code>0 ms</code></td><td style="text-align: left"><code>9.30 ms</code></td></tr>
+<tr><td style="text-align: left">5</td><td style="text-align: left">Async Click Telemetry Emission</td><td style="text-align: left">Non-blocking ring-buffer enqueue to Kafka analytics topic</td><td style="text-align: left"><code>0 ms</code> (async)</td><td style="text-align: left"><code>0.05 ms</code></td></tr>
+<tr><td style="text-align: left"><strong>Total</strong></td><td style="text-align: left"><strong>End-to-End Global Redirect Latency</strong></td><td style="text-align: left"><strong>Edge hits finish in ~15 ms; origin misses stay under 35 ms</strong></td><td style="text-align: left"><strong><code>15.50 ms</code></strong></td><td style="text-align: left"><strong><code>33.85 ms</code></strong></td></tr>
+</tbody>
+</table>
+</div>
+<h3 id="production-case-studies-and-open-source-comparisons"><a class="header" href="#production-case-studies-and-open-source-comparisons">Production Case Studies and Open-Source Comparisons</a></h3>
+<ul>
+<li><strong>Bitly:</strong> Bitly processes billions of monthly clicks across 7-character Base-62 codes and custom branded domains, routing redirect traffic through a global edge tier backed by regionally replicated key-value stores. Click telemetry is decoupled from the redirect path via asynchronous streaming pipelines, while continuous threat-intelligence scanning allows the control plane to quarantine malicious links and propagate edge invalidations globally within seconds.</li>
+<li><strong>TinyURL:</strong> TinyURL pairs compact alphanumeric generated keys with a user-defined custom-alias namespace, prioritizing permanent link durability and backward compatibility across decades of published URLs. Separating custom-alias uniqueness validation from generated-key allocation allows standard shortening writes to remain fast while protecting reserved aliases from collisions.</li>
+<li><strong>Cloudflare Workers KV Edge Redirects:</strong> Cloudflare Workers KV stores short-code mappings in central durable storage and caches reads automatically across <code>300+</code> global edge PoPs. Redirect logic executes inside V8 isolates at the nearest edge location with cold starts under <code>5 ms</code>, serving hot links with single-digit millisecond server latency and zero origin round trips while accepting eventual consistency (<code>&lt;= 60 s</code> propagation) for newly created or updated links.</li>
+</ul>
+<div class="callout keyidea"><span class="label">Key idea</span>Combining disjoint range leasing with a bijective Format-Preserving Encryption (Feistel) permutation gives the write path zero-collision, coordination-free key minting while preventing adversaries from enumerating sequential short URLs.</div>
+
+<div class="callout experiment"><span class="label">Experiment</span>Direct a synthetic flood of `20,000` req/s containing nonexistent random 7-character codes at the Redirect Service with and without a `1%` false-positive Bloom filter and `30 s` negative caching. Measure L3 database read IOPS and `p99` latency for legitimate concurrent redirects.</div>
+
+<div class="callout caution"><span class="label">Common pitfall</span>Serving permanent `301 Moved Permanently` redirects for links that require real-time click analytics or rapid phishing takedown causes browsers to bypass the redirect service entirely on repeat visits. Use `302 Found` with bounded `Cache-Control` freshness headers whenever analytics accuracy or rapid revocation is required.</div>
+
 <h3 id="references"><a class="header" href="#references">References</a></h3>
 <ul>
 <li>IETF, RFC 9110, <em>HTTP Semantics</em>, Sections 15.4.2 to 15.4.9 (status codes <code>301</code>, <code>302</code>, <code>307</code>, and <code>308</code>), 2022.</li>
@@ -602,6 +631,22 @@ codes of 7 characters: 3521614606208 possible
         <template id=fa-play><span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 384 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M73 39c-14.8-9.1-33.4-9.4-48.5-.9S0 62.6 0 80V432c0 17.4 9.4 33.4 24.5 41.9s33.7 8.1 48.5-.9L361 297c14.3-8.7 23-24.2 23-41s-8.7-32.2-23-41L73 39z"/></svg></span></template>
         <template id=fa-clock-rotate-left><span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M75 75L41 41C25.9 25.9 0 36.6 0 57.9V168c0 13.3 10.7 24 24 24H134.1c21.4 0 32.1-25.9 17-41l-30.8-30.8C155 85.5 203 64 256 64c106 0 192 86 192 192s-86 192-192 192c-40.8 0-78.6-12.7-109.7-34.4c-14.5-10.1-34.4-6.6-44.6 7.9s-6.6 34.4 7.9 44.6C151.2 495 201.7 512 256 512c141.4 0 256-114.6 256-256S397.4 0 256 0C185.3 0 121.3 28.7 75 75zm181 53c-13.3 0-24 10.7-24 24V256c0 6.4 2.5 12.5 7 17l72 72c9.4 9.4 24.6 9.4 33.9 0s9.4-24.6 0-33.9l-65-65V152c0-13.3-10.7-24-24-24z"/></svg></span></template>
 
+        <!-- Livereload script (if served using the cli tool) -->
+        <script>
+            const wsProtocol = location.protocol === 'https:' ? 'wss:' : 'ws:';
+            const wsAddress = wsProtocol + "//" + location.host + "/" + "__livereload";
+            const socket = new WebSocket(wsAddress);
+            socket.onmessage = function (event) {
+                if (event.data === "reload") {
+                    socket.close();
+                    location.reload();
+                }
+            };
+
+            window.onbeforeunload = function() {
+                socket.close();
+            }
+        </script>
 
 
         <script>
@@ -618,7 +663,7 @@ codes of 7 characters: 3521614606208 possible
         <script src="book-609e4cb8.js"></script>
 
         <!-- Custom JS scripts -->
-        <script src="theme/figures-9c14cb1c.js"></script>
+        <script src="theme/figures-1bd27a95.js"></script>
         <script src="theme/proto-326509cd.js"></script>
         <script src="theme/code-67e9caaf.js"></script>
         <script src="theme/tables-9fb295e8.js"></script>

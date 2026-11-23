@@ -1,5 +1,5 @@
 <!DOCTYPE HTML>
-<html lang="en" class="navy sidebar-visible" dir="ltr">
+<html lang="en" class="coal sidebar-visible" dir="ltr">
     <head>
         <!-- Book generated using mdBook -->
         <meta charset="UTF-8">
@@ -28,18 +28,18 @@
         <link rel="stylesheet" id="mdbook-ayu-highlight-css" href="ayu-highlight-3fdfc3ac.css">
 
         <!-- Custom theme stylesheets -->
-        <link rel="stylesheet" href="theme/custom-59beaf6d.css">
+        <link rel="stylesheet" href="theme/custom-3b357368.css">
 
 
         <!-- Provide site root and default themes to javascript -->
         <script>
             const path_to_root = "";
-            const default_light_theme = "navy";
-            const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "searchindex-5d54d4b4.js";
+            const default_light_theme = "coal";
+            const default_dark_theme = "coal";
+            window.path_to_searchindex_js = "searchindex-38bda414.js";
         </script>
         <!-- Start loading toc.js asap -->
-        <script src="toc-ef51d47d.js"></script>
+        <script src="toc-00f6d8fe.js"></script>
     </head>
     <body>
     <div id="mdbook-help-container">
@@ -77,7 +77,7 @@
             try { theme = localStorage.getItem('mdbook-theme'); } catch(e) { }
             if (theme === null || theme === undefined) { theme = default_theme; }
             const html = document.documentElement;
-            html.classList.remove('navy')
+            html.classList.remove('coal')
             html.classList.add(theme);
             html.classList.add("js");
         </script>
@@ -211,7 +211,7 @@
 </thead>
 <tbody>
 <tr><td style="text-align: left"><strong>Post Author</strong></td><td style="text-align: left">Publish post (<code>POST /v1/posts</code>), delete post (<code>DELETE /v1/posts/{id}</code>)</td><td style="text-align: left">Regular member or 10-million-follower celebrity publishes text and media attachments and expects immediate visibility in their own feed</td></tr>
-<tr><td style="text-align: left"><strong>Feed Reader</strong></td><td style="text-align: left">Fetch paginated timeline (<code>GET /v1/feeds/{id}?cursor=c&amp;limit=n</code>), follow or unfollow (<code>PUT / DELETE /v1/graph/{u}/follows/{v}</code>)</td><td style="text-align: left">Mobile client opens the home feed, scrolls smoothly across multiple pages without duplicates, and unfollows an account with immediate suppression</td></tr>
+<tr><td style="text-align: left"><strong>Feed Reader</strong></td><td style="text-align: left">Fetch paginated timeline (<code>GET /v1/feeds/{id}?cursor=c&amp;limit=n</code>), follow or unfollow (<code>PUT / DELETE /v1/users/{u}/following/{v}</code>)</td><td style="text-align: left">Mobile client opens the home feed, scrolls smoothly across multiple pages without duplicates, and unfollows an account with immediate suppression</td></tr>
 <tr><td style="text-align: left"><strong>Ranking and Safety Team</strong></td><td style="text-align: left">Deploy ranking model weights, tune celebrity fan-out cutoffs, and apply moderation suppression</td><td style="text-align: left">Trust engineering deploys a updated scoring model or hides a policy-violating post immediately across all active readers</td></tr>
 </tbody>
 </table>
@@ -324,8 +324,8 @@ Content-Type: application/json
 </code></pre>
 <p><strong>Update social graph edges:</strong></p>
 <ul>
-<li><code>PUT /v1/graph/{follower_id}/follows/{followed_id}</code> returns <code>204 No Content</code> (idempotent follow edge creation; asynchronously triggers backfill of the followed account’s recent posts into the follower’s inbox if the followed account is below the celebrity threshold).</li>
-<li><code>DELETE /v1/graph/{follower_id}/follows/{followed_id}</code> returns <code>204 No Content</code> (marks edge deleted in the social graph; read-time filtering hides that author’s posts immediately without scanning cached inboxes).</li>
+<li><code>PUT /v1/users/{follower_id}/following/{followed_id}</code> returns <code>204 No Content</code> (idempotent follow edge creation; asynchronously triggers backfill of the followed account’s recent posts into the follower’s inbox if the followed account is below the celebrity threshold).</li>
+<li><code>DELETE /v1/users/{follower_id}/following/{followed_id}</code> returns <code>204 No Content</code> (marks edge deleted in the social graph; read-time filtering hides that author’s posts immediately without scanning cached inboxes).</li>
 </ul>
 <h3 id="storage-schemas-and-cache-structures"><a class="header" href="#storage-schemas-and-cache-structures">Storage Schemas and Cache Structures</a></h3>
 <pre><code class="language-sql">-- Authoritative post content store (sharded by hash(author_id) for fast author outbox scans,
@@ -532,6 +532,33 @@ mixture, copy unless the author has over 10000 followers:
 <li>LinkedIn Engineering, “FollowFeed: LinkedIn’s Feed Made Faster and Smarter”, 2016.</li>
 <li>Twitter Engineering, “The Infrastructure Behind Twitter: Scale”, 2017.</li>
 </ul>
+<h2 id="159-end-to-end-request-lifecycle-and-production-case-studies"><a class="header" href="#159-end-to-end-request-lifecycle-and-production-case-studies">15.9 End-to-End Request Lifecycle and Production Case Studies</a></h2>
+<h3 id="hop-by-hop-request-lifecycle-and-latency-budget"><a class="header" href="#hop-by-hop-request-lifecycle-and-latency-budget">Hop-by-Hop Request Lifecycle and Latency Budget</a></h3>
+<p>A <code>GET /v1/feeds/home</code> request traverses six network and storage boundaries from a mobile client to hydrated timeline items, targeting a <code>p99</code> end-to-end budget of <code>180 ms</code>.</p>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th style="text-align: left">Hop</th><th style="text-align: left">Boundary Payload</th><th style="text-align: left">Typical Latency Budget</th></tr>
+</thead>
+<tbody>
+<tr><td style="text-align: left"><strong>1. Mobile / Browser to Edge PoP (Anycast TLS)</strong></td><td style="text-align: left">HTTP/3 <code>GET</code> with bearer JWT, <code>cursor=(ts, post_id)</code>, and <code>limit=20</code>; terminates TLS 1.3 at the nearest edge PoP</td><td style="text-align: left"><code>15 to 30 ms</code> (WAN RTT)</td></tr>
+<tr><td style="text-align: left"><strong>2. Edge PoP to L4/L7 Load Balancer</strong></td><td style="text-align: left">Reused persistent HTTP/2 connection carrying validated session headers and regional routing tags</td><td style="text-align: left"><code>5 to 12 ms</code> (backbone)</td></tr>
+<tr><td style="text-align: left"><strong>3. L7 LB to Feed API Gateway</strong></td><td style="text-align: left">Authenticated gRPC request enforcing per-member rate limits and extracting viewer locale and experiment cohorts</td><td style="text-align: left"><code>2 to 5 ms</code></td></tr>
+<tr><td style="text-align: left"><strong>4. Feed Gateway to Timeline Aggregator</strong></td><td style="text-align: left">Fan-in RPC requesting precomputed inbox IDs (<code>ZREVRANGE</code>) plus parallel celebrity outbox pulls and L1 singleflight lookups</td><td style="text-align: left"><code>8 to 18 ms</code></td></tr>
+<tr><td style="text-align: left"><strong>5. Aggregator to ML Ranker and Post Hydration Store</strong></td><td style="text-align: left">Batch of <code>200</code> candidate <code>(post_id, author_id, feature_vec)</code> tuples scored under a <code>40 ms</code> deadline, followed by batched <code>MGET</code> hydration for the top <code>20</code> items</td><td style="text-align: left"><code>25 to 45 ms</code></td></tr>
+<tr><td style="text-align: left"><strong>6. Hydration Store to Client Serialization</strong></td><td style="text-align: left">Filtered JSON or Protobuf payload with signed CDN media URLs and an opaque next-page cursor streamed back over the edge connection</td><td style="text-align: left"><code>10 to 20 ms</code></td></tr>
+</tbody>
+</table>
+</div>
+<h3 id="production-case-studies-and-open-source-comparisons"><a class="header" href="#production-case-studies-and-open-source-comparisons">Production Case Studies and Open-Source Comparisons</a></h3>
+<p><strong>X (Twitter) Home Timeline Hybrid Fan-Out.</strong> Production telemetry published by Twitter engineering documented a <code>~800</code>-entry per-user Redis timeline cache backed by asynchronous fan-out workers delivering ordinary posts within a <code>5 s</code> SLA. High-follower accounts exceeding the celebrity threshold bypass write-time fan-out altogether and merge at read time via an in-memory outbox cache, avoiding multi-minute Redis write queues when accounts with tens of millions of followers publish simultaneously.</p>
+<p><strong>Meta TAO and Multifeed.</strong> Meta serves home feeds through a pull-dominant leaf-aggregator tree sitting above TAO, a read-optimized distributed graph cache layered over sharded MySQL. TAO handles billions of reads per second at <code>99.9%</code> cache hit rates by partitioning social-graph edges across follower-tier caches and routing writes synchronously through leader tiers; because personal friend counts stay bounded (at or below <code>5,000</code>), Multifeed leaf nodes can gather recent candidate stories on read and apply deep neural ranking without maintaining static push inboxes for every member.</p>
+<div class="callout keyidea"><span class="label">Key idea</span> Hybrid fan-out decouples write amplification from read amplification by placing a follower-count threshold between two complementary storage paths. Ordinary accounts pay a small asynchronous write cost to keep reads sub-50 ms, while celebrity accounts absorb zero fan-out storms by deferring merge work to read-time cached outboxes.</div>
+
+<div class="callout experiment"><span class="label">Experiment</span> In `code/feedsim`, raise the celebrity cutoff from `10,000` to `5,000,000` and compare daily copy volume against the default hybrid configuration. Observe how a single high-follower author shifts `98%` of total cluster write traffic back onto the fan-out workers while barely changing read-side list fetches.</div>
+
+<div class="callout caution"><span class="label">Common pitfall</span> Caching full post bodies inside every follower's Redis inbox multiplies memory footprint by average follower count and makes edits, deletions, and moderation takedowns eventually inconsistent. Store compact `(timestamp, post_id)` references in the inbox and hydrate authoritative content and visibility flags once at read time.</div>
+
 
                     </main>
 
@@ -568,6 +595,22 @@ mixture, copy unless the author has over 10000 followers:
         <template id=fa-play><span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 384 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M73 39c-14.8-9.1-33.4-9.4-48.5-.9S0 62.6 0 80V432c0 17.4 9.4 33.4 24.5 41.9s33.7 8.1 48.5-.9L361 297c14.3-8.7 23-24.2 23-41s-8.7-32.2-23-41L73 39z"/></svg></span></template>
         <template id=fa-clock-rotate-left><span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M75 75L41 41C25.9 25.9 0 36.6 0 57.9V168c0 13.3 10.7 24 24 24H134.1c21.4 0 32.1-25.9 17-41l-30.8-30.8C155 85.5 203 64 256 64c106 0 192 86 192 192s-86 192-192 192c-40.8 0-78.6-12.7-109.7-34.4c-14.5-10.1-34.4-6.6-44.6 7.9s-6.6 34.4 7.9 44.6C151.2 495 201.7 512 256 512c141.4 0 256-114.6 256-256S397.4 0 256 0C185.3 0 121.3 28.7 75 75zm181 53c-13.3 0-24 10.7-24 24V256c0 6.4 2.5 12.5 7 17l72 72c9.4 9.4 24.6 9.4 33.9 0s9.4-24.6 0-33.9l-65-65V152c0-13.3-10.7-24-24-24z"/></svg></span></template>
 
+        <!-- Livereload script (if served using the cli tool) -->
+        <script>
+            const wsProtocol = location.protocol === 'https:' ? 'wss:' : 'ws:';
+            const wsAddress = wsProtocol + "//" + location.host + "/" + "__livereload";
+            const socket = new WebSocket(wsAddress);
+            socket.onmessage = function (event) {
+                if (event.data === "reload") {
+                    socket.close();
+                    location.reload();
+                }
+            };
+
+            window.onbeforeunload = function() {
+                socket.close();
+            }
+        </script>
 
 
         <script>
@@ -584,7 +627,7 @@ mixture, copy unless the author has over 10000 followers:
         <script src="book-609e4cb8.js"></script>
 
         <!-- Custom JS scripts -->
-        <script src="theme/figures-9c14cb1c.js"></script>
+        <script src="theme/figures-1bd27a95.js"></script>
         <script src="theme/proto-326509cd.js"></script>
         <script src="theme/code-67e9caaf.js"></script>
         <script src="theme/tables-9fb295e8.js"></script>

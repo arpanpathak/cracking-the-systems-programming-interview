@@ -1,5 +1,5 @@
 <!DOCTYPE HTML>
-<html lang="en" class="navy sidebar-visible" dir="ltr">
+<html lang="en" class="coal sidebar-visible" dir="ltr">
     <head>
         <!-- Book generated using mdBook -->
         <meta charset="UTF-8">
@@ -28,18 +28,18 @@
         <link rel="stylesheet" id="mdbook-ayu-highlight-css" href="ayu-highlight-3fdfc3ac.css">
 
         <!-- Custom theme stylesheets -->
-        <link rel="stylesheet" href="theme/custom-59beaf6d.css">
+        <link rel="stylesheet" href="theme/custom-3b357368.css">
 
 
         <!-- Provide site root and default themes to javascript -->
         <script>
             const path_to_root = "";
-            const default_light_theme = "navy";
-            const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "searchindex-5d54d4b4.js";
+            const default_light_theme = "coal";
+            const default_dark_theme = "coal";
+            window.path_to_searchindex_js = "searchindex-38bda414.js";
         </script>
         <!-- Start loading toc.js asap -->
-        <script src="toc-ef51d47d.js"></script>
+        <script src="toc-00f6d8fe.js"></script>
     </head>
     <body>
     <div id="mdbook-help-container">
@@ -77,7 +77,7 @@
             try { theme = localStorage.getItem('mdbook-theme'); } catch(e) { }
             if (theme === null || theme === undefined) { theme = default_theme; }
             const html = document.documentElement;
-            html.classList.remove('navy')
+            html.classList.remove('coal')
             html.classList.add(theme);
             html.classList.add("js");
         </script>
@@ -864,6 +864,49 @@ fn main() -&gt; Result&lt;(), Box&lt;dyn Error&gt;&gt; {
 
     Ok(())
 }</code></pre>
+<h2 id="68-end-to-end-group-commit-pipeline-lifecycle-and-latency-budget"><a class="header" href="#68-end-to-end-group-commit-pipeline-lifecycle-and-latency-budget">6.8 End-to-End Group-Commit Pipeline Lifecycle and Latency Budget</a></h2>
+<p>Under group commit (<code>kvgroup</code>), concurrent client writes share a single physical NVMe flush barrier rather than serializing one <code>fdatasync(2)</code> per request. Tracing <code>64</code> concurrent <code>PUT</code> requests through the pipeline exposes how queueing latency trades off against throughput:</p>
+<ol>
+<li><strong>Client to Async Ingress (<code>axum</code>):</strong> Each client handler parses the HTTP request, creates a <code>oneshot</code> reply channel, and enqueues its mutation into the bounded MPSC channel (<code>capacity = 256</code>).</li>
+<li><strong>Wave Queueing (Zero-Timer Wait):</strong> Requests arriving while the committer thread executes <code>fdatasync(2)</code> for batch <code>N</code> accumulate in the channel with zero artificial sleep timer.</li>
+<li><strong>Batch Drain and Three-Pass Precondition Evaluation:</strong> Immediately upon finishing batch <code>N</code>, the committer drains up to <code>256</code> queued writes, validates <code>If-Match</code> / <code>If-None-Match</code> sequentially against an intra-batch <code>pending</code> overlay, and encodes all accepted records into one contiguous WAL buffer.</li>
+<li><strong>Coalesced <code>write_all</code> and Single NVMe <code>fdatasync(2)</code>:</strong> One <code>write(2)</code> syscall and one <code>fdatasync(2)</code> persist the entire batch (<code>32</code> to <code>120</code> records) in a single media barrier (<code>~5.4 ms</code>).</li>
+<li><strong>State Application and Fan-Out Replies:</strong> The committer applies all durable records to <code>BTreeMap</code> and sends <code>201 Created</code> (or <code>412 Precondition Failed</code>) on every <code>oneshot</code> channel simultaneously.</li>
+</ol>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th style="text-align: left">Hop</th><th style="text-align: left">Device / Subsystem</th><th style="text-align: left">Typical <code>p50</code> (<code>64</code> clients)</th><th style="text-align: left">Tail <code>p99</code> (<code>64</code> clients)</th><th style="text-align: left">Primary Source of Tail Latency</th></tr>
+</thead>
+<tbody>
+<tr><td style="text-align: left">1</td><td style="text-align: left">Client -&gt; <code>axum</code> Parse + MPSC Enqueue</td><td style="text-align: left"><code>0.15 ms</code></td><td style="text-align: left"><code>0.60 ms</code></td><td style="text-align: left">Channel backpressure when queue nears <code>256</code> slots</td></tr>
+<tr><td style="text-align: left">2</td><td style="text-align: left">Wait Behind Active Batch <code>N</code> <code>fsync</code></td><td style="text-align: left"><code>2.70 ms</code></td><td style="text-align: left"><code>6.20 ms</code></td><td style="text-align: left">Arriving immediately after batch <code>N</code> begins flushing</td></tr>
+<tr><td style="text-align: left">3</td><td style="text-align: left">Three-Pass Validation + WAL Buffer Encode</td><td style="text-align: left"><code>0.12 ms</code></td><td style="text-align: left"><code>0.45 ms</code></td><td style="text-align: left">Large batch payload sizes (<code>&gt; 128 KiB</code>)</td></tr>
+<tr><td style="text-align: left">4</td><td style="text-align: left">Single Coalesced <code>write_all</code> + NVMe <code>fdatasync</code></td><td style="text-align: left"><code>5.40 ms</code></td><td style="text-align: left"><code>11.50 ms</code></td><td style="text-align: left">SSD internal garbage collection, write-cache flush spikes</td></tr>
+<tr><td style="text-align: left">5</td><td style="text-align: left"><code>BTreeMap</code> Apply + Oneshot Fan-Out + HTTP Reply</td><td style="text-align: left"><code>0.25 ms</code></td><td style="text-align: left"><code>0.90 ms</code></td><td style="text-align: left">Concurrent socket writes waking <code>64</code> Tokio tasks at once</td></tr>
+<tr><td style="text-align: left"><strong>Total</strong></td><td style="text-align: left"><strong>Batched Durable <code>PUT</code> (<code>31.9</code> writes/batch)</strong></td><td style="text-align: left"><strong><code>8.62 ms</code></strong></td><td style="text-align: left"><strong><code>19.65 ms</code></strong></td><td style="text-align: left"><strong>One to two <code>fsync</code> cycles (average <code>1.5x</code> barrier time)</strong></td></tr>
+</tbody>
+</table>
+</div>
+<h2 id="69-production-group-commit-case-studies"><a class="header" href="#69-production-group-commit-case-studies">6.9 Production Group-Commit Case Studies</a></h2>
+<p>Every high-throughput durable database relies on WAL group commit to break the single-disk <code>fsync</code> ceiling:</p>
+<ul>
+<li><strong>RocksDB <code>WriteThread</code> and Pipelined Writes:</strong> RocksDB links concurrent writer threads into a lock-free queue where the first arrival becomes the <strong>batch leader</strong>, merges waiting <code>WriteBatch</code> payloads into one WAL write, and invokes <code>fdatasync(2)</code> once for the entire group. Enabling <code>enable_pipelined_write</code> splits WAL flushing and MemTable insertion into two concurrent stages so batch <code>N + 1</code> flushes to disk while batch <code>N</code> inserts into the MemTable, boosting multi-threaded write throughput by <code>20%</code> to <code>35%</code>.</li>
+<li><strong>PostgreSQL Group Commit (<code>commit_delay</code> and <code>commit_siblings</code>):</strong> In PostgreSQL’s <code>XLogFlush</code>, the first committing backend flushes the WAL up to its LSN while concurrent committers wait on a lightweight lock; once the flush finishes, every waiting backend whose LSN is already durable wakes immediately. Operators can configure <code>commit_delay</code> (typically <code>10</code> to <code>100 us</code>) gated by <code>commit_siblings</code> (minimum concurrent active transactions) to collect larger batches without penalizing single-client latency.</li>
+<li><strong>MySQL InnoDB Binary Log Group Commit (BLGC):</strong> When both InnoDB redo logging and replication binary logging are durable (<code>sync_binlog = 1</code>, <code>innodb_flush_log_at_trx_commit = 1</code>), MySQL coordinates two-phase commit across three ordered leader-follower queues (<strong>Flush</strong>, <strong>Sync</strong>, and <strong>Commit</strong>), amortizing both <code>fsync</code> barriers across all concurrent transactions in a single group.</li>
+</ul>
+<div class="callout keyidea"><span class="label">Key idea</span>
+<p><strong>Zero-timer group commit achieves automatic latency-throughput adaptation.</strong> Blocking only for the first arrival and draining whatever queued during the previous <code>fdatasync(2)</code> adds zero delay under single-client load while scaling batch size naturally to <code>~C / 2</code> under <code>C</code> concurrent writers.</p>
+</div>
+
+<div class="callout experiment"><span class="label">Experiment</span>
+<p><strong>Compare unbatched and batched throughput curves.</strong> Run <code>kvbench</code> against <code>kvd</code> and <code>kvgroup</code> at <code>--clients 1</code>, <code>8</code>, <code>64</code>, and <code>256</code>. Verify that single-client throughput stays identical (<code>~165 writes/s</code>), whereas <code>256</code> concurrent clients push <code>kvgroup</code> past <code>17,000 writes/s</code> with mean batch size <code>~120</code>.</p>
+</div>
+
+<div class="callout caution"><span class="label">Common pitfall</span>
+<p><strong>Evaluating conditional writes against stale pre-batch state.</strong> If two writes to the same key carrying <code>If-Match: "1"</code> land in the same batch and both check the committed <code>BTreeMap</code> independently, both appear valid and corrupt optimistic concurrency semantics. Evaluating preconditions sequentially against an intra-batch <code>pending</code> overlay preserves strict serializability within every batch.</p>
+</div>
+
 <h2 id="further-reading"><a class="header" href="#further-reading">Further Reading</a></h2>
 <ul>
 <li>D. DeWitt et al., “Implementation Techniques for Main Memory Database Systems”, SIGMOD 1984 (introducing WAL group commit).</li>
@@ -916,6 +959,22 @@ fn main() -&gt; Result&lt;(), Box&lt;dyn Error&gt;&gt; {
         <template id=fa-play><span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 384 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M73 39c-14.8-9.1-33.4-9.4-48.5-.9S0 62.6 0 80V432c0 17.4 9.4 33.4 24.5 41.9s33.7 8.1 48.5-.9L361 297c14.3-8.7 23-24.2 23-41s-8.7-32.2-23-41L73 39z"/></svg></span></template>
         <template id=fa-clock-rotate-left><span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M75 75L41 41C25.9 25.9 0 36.6 0 57.9V168c0 13.3 10.7 24 24 24H134.1c21.4 0 32.1-25.9 17-41l-30.8-30.8C155 85.5 203 64 256 64c106 0 192 86 192 192s-86 192-192 192c-40.8 0-78.6-12.7-109.7-34.4c-14.5-10.1-34.4-6.6-44.6 7.9s-6.6 34.4 7.9 44.6C151.2 495 201.7 512 256 512c141.4 0 256-114.6 256-256S397.4 0 256 0C185.3 0 121.3 28.7 75 75zm181 53c-13.3 0-24 10.7-24 24V256c0 6.4 2.5 12.5 7 17l72 72c9.4 9.4 24.6 9.4 33.9 0s9.4-24.6 0-33.9l-65-65V152c0-13.3-10.7-24-24-24z"/></svg></span></template>
 
+        <!-- Livereload script (if served using the cli tool) -->
+        <script>
+            const wsProtocol = location.protocol === 'https:' ? 'wss:' : 'ws:';
+            const wsAddress = wsProtocol + "//" + location.host + "/" + "__livereload";
+            const socket = new WebSocket(wsAddress);
+            socket.onmessage = function (event) {
+                if (event.data === "reload") {
+                    socket.close();
+                    location.reload();
+                }
+            };
+
+            window.onbeforeunload = function() {
+                socket.close();
+            }
+        </script>
 
 
         <script>
@@ -932,7 +991,7 @@ fn main() -&gt; Result&lt;(), Box&lt;dyn Error&gt;&gt; {
         <script src="book-609e4cb8.js"></script>
 
         <!-- Custom JS scripts -->
-        <script src="theme/figures-9c14cb1c.js"></script>
+        <script src="theme/figures-1bd27a95.js"></script>
         <script src="theme/proto-326509cd.js"></script>
         <script src="theme/code-67e9caaf.js"></script>
         <script src="theme/tables-9fb295e8.js"></script>

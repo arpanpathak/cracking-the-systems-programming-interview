@@ -1,5 +1,5 @@
 <!DOCTYPE HTML>
-<html lang="en" class="navy sidebar-visible" dir="ltr">
+<html lang="en" class="coal sidebar-visible" dir="ltr">
     <head>
         <!-- Book generated using mdBook -->
         <meta charset="UTF-8">
@@ -28,18 +28,18 @@
         <link rel="stylesheet" id="mdbook-ayu-highlight-css" href="ayu-highlight-3fdfc3ac.css">
 
         <!-- Custom theme stylesheets -->
-        <link rel="stylesheet" href="theme/custom-59beaf6d.css">
+        <link rel="stylesheet" href="theme/custom-3b357368.css">
 
 
         <!-- Provide site root and default themes to javascript -->
         <script>
             const path_to_root = "";
-            const default_light_theme = "navy";
-            const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "searchindex-5d54d4b4.js";
+            const default_light_theme = "coal";
+            const default_dark_theme = "coal";
+            window.path_to_searchindex_js = "searchindex-38bda414.js";
         </script>
         <!-- Start loading toc.js asap -->
-        <script src="toc-ef51d47d.js"></script>
+        <script src="toc-00f6d8fe.js"></script>
     </head>
     <body>
     <div id="mdbook-help-container">
@@ -77,7 +77,7 @@
             try { theme = localStorage.getItem('mdbook-theme'); } catch(e) { }
             if (theme === null || theme === undefined) { theme = default_theme; }
             const html = document.documentElement;
-            html.classList.remove('navy')
+            html.classList.remove('coal')
             html.classList.add(theme);
             html.classList.add("js");
         </script>
@@ -951,6 +951,49 @@ async fn main() -&gt; Result&lt;(), Box&lt;dyn Error&gt;&gt; {
 
     Ok(())
 }</code></pre>
+<h2 id="57-end-to-end-routed-request-lifecycle-and-hop-latency-budget"><a class="header" href="#57-end-to-end-routed-request-lifecycle-and-hop-latency-budget">5.7 End-to-End Routed Request Lifecycle and Hop Latency Budget</a></h2>
+<p>Adding <code>kvrouter</code> inserts one stateless network hop in front of every shard while shielding clients from cluster topology and leader churn. A routed <code>PUT /v1/keys/user:4210</code> traverses five stages:</p>
+<ol>
+<li><strong>Client to L7 Load Balancer / Stateless Router:</strong> The client sends the request over a pooled HTTP/2 connection to any active-active <code>kvrouter</code> instance.</li>
+<li><strong>Consistent-Hash Ring Lookup (<code>O(log V)</code>):</strong> The router hashes the key with <code>FNV-1a</code> or <code>xxHash</code>, binary-searches the sorted virtual-node table in RAM (<code>&lt; 1 us</code>), and reads the shard’s cached leader index atomically.</li>
+<li><strong>Router to Shard Leader (Pooled HTTP/gRPC):</strong> The router forwards the payload over a persistent connection pool to the cached leader. On a stale hint, the contacted follower replies <code>421 Misdirected Request</code> with the active leader hint, and the router updates its atomic cache and retries safely.</li>
+<li><strong>Shard Quorum Commit:</strong> The shard leader executes local WAL <code>fdatasync(2)</code> and cross-AZ quorum replication.</li>
+<li><strong>Response Relay:</strong> The router streams <code>201 Created</code> and <code>ETag</code> back to the client with zero extra disk I/O.</li>
+</ol>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th style="text-align: left">Hop</th><th style="text-align: left">Device / Subsystem</th><th style="text-align: left">Typical <code>p50</code></th><th style="text-align: left">Tail <code>p99</code></th><th style="text-align: left">Primary Source of Tail Latency</th></tr>
+</thead>
+<tbody>
+<tr><td style="text-align: left">1</td><td style="text-align: left">Client -&gt; TLS/L7 LB -&gt; <code>kvrouter</code></td><td style="text-align: left"><code>0.45 ms</code></td><td style="text-align: left"><code>1.50 ms</code></td><td style="text-align: left">Load-balancer queueing, TLS handshake on cold connections</td></tr>
+<tr><td style="text-align: left">2</td><td style="text-align: left"><code>kvrouter</code> Ring Binary Search + Leader Hint Load</td><td style="text-align: left"><code>0.01 ms</code></td><td style="text-align: left"><code>0.05 ms</code></td><td style="text-align: left">CPU scheduler preemption under high connection counts</td></tr>
+<tr><td style="text-align: left">3</td><td style="text-align: left"><code>kvrouter</code> -&gt; Shard Leader Forward (fast path)</td><td style="text-align: left"><code>0.25 ms</code></td><td style="text-align: left"><code>1.10 ms</code></td><td style="text-align: left">Stale leader hint incurring one <code>421</code> redirect (<code>+0.8 ms</code>)</td></tr>
+<tr><td style="text-align: left">4</td><td style="text-align: left">Shard Leader Quorum Write (WAL + Cross-AZ)</td><td style="text-align: left"><code>4.50 ms</code></td><td style="text-align: left"><code>16.00 ms</code></td><td style="text-align: left">NVMe <code>fsync</code> stalls, leader election pause (<code>~1.0 s</code>)</td></tr>
+<tr><td style="text-align: left">5</td><td style="text-align: left"><code>kvrouter</code> -&gt; Client Response Relay</td><td style="text-align: left"><code>0.20 ms</code></td><td style="text-align: left"><code>0.60 ms</code></td><td style="text-align: left">Upstream socket buffer backpressure</td></tr>
+<tr><td style="text-align: left"><strong>Total</strong></td><td style="text-align: left"><strong>End-to-End Routed <code>PUT</code></strong></td><td style="text-align: left"><strong><code>5.41 ms</code></strong></td><td style="text-align: left"><strong><code>19.25 ms</code></strong></td><td style="text-align: left"><strong>Shard quorum flush; router adds <code>&lt; 0.5 ms</code> steady-state overhead</strong></td></tr>
+</tbody>
+</table>
+</div>
+<h2 id="58-production-request-routing-case-studies"><a class="header" href="#58-production-request-routing-case-studies">5.8 Production Request-Routing Case Studies</a></h2>
+<p>Production distributed stores choose between stateless proxy fleets and topology-aware smart clients depending on language heterogeneity and latency budgets:</p>
+<ul>
+<li><strong>Amazon DynamoDB Request Routers:</strong> DynamoDB routes every API call through a horizontally scaled fleet of stateless Request Routers that terminate TLS, authenticate IAM signatures, and consult an in-memory partition metadata cache (<strong>MemDS</strong>) with a <code>&gt; 99.99%</code> hit rate. Decoupling routing from storage lets DynamoDB split hot partitions and migrate replicas transparently across tens of thousands of storage hosts without exposing topology changes to SDKs.</li>
+<li><strong>TiKV Placement Driver (PD) and Smart-Client Routing:</strong> TiKV eliminates the extra proxy hop by caching region-to-leader mappings inside the client SDK. When a region splits or elects a new leader, the contacted TiKV node returns <code>NotLeader</code> or <code>EpochNotMatch</code>, prompting the client to refresh only the stale region entry from PD and retry automatically.</li>
+<li><strong>Redis Cluster and Envoy Proxy:</strong> Redis Cluster partitions the keyspace into <code>16,384</code> CRC-16 hash slots and distinguishes permanent ownership changes (<code>MOVED</code> redirect) from live slot migrations (<code>ASK</code> one-shot redirect). Organizations supporting polyglot clients often place <strong>Envoy</strong>’s Redis proxy filter in front of the cluster, trading <code>~0.3 ms</code> of proxy latency for centralized connection pooling and zero client-side cluster logic.</li>
+</ul>
+<div class="callout keyidea"><span class="label">Key idea</span>
+<p><strong>Stateless routers trade sub-millisecond forwarding overhead for complete topology isolation.</strong> Keeping zero authoritative state on <code>kvrouter</code> allows operators to scale the routing tier horizontally behind any L4/L7 load balancer and absorb shard leader failovers without modifying client applications.</p>
+</div>
+
+<div class="callout experiment"><span class="label">Experiment</span>
+<p><strong>Observe zero-error failover behind <code>kvrouter</code>.</strong> Launch two three-node <code>kvraft</code> shards behind <code>kvrouter</code>, run <code>probe --seconds 12 --server http://127.0.0.1:7000</code>, and terminate <code>shard-a</code>’s leader mid-run with <code>SIGKILL</code>. Confirm that client-visible refusals drop from <code>51</code> (direct client probing) to <code>0</code>, while <code>GET /healthz</code> updates <code>shard-a</code>’s leader hint automatically.</p>
+</div>
+
+<div class="callout caution"><span class="label">Common pitfall</span>
+<p><strong>Retrying ambiguous <code>503</code> or connection-reset errors on non-idempotent writes.</strong> A router may retry automatically only after guaranteed zero-effect failures (<code>421 Misdirected Request</code>, <code>503 no-leader</code>, or TCP connection refused). Retrying after a post-append timeout risks executing a mutation twice if the first attempt committed before the connection dropped; propagating <code>503</code> leaves conditional retry (<code>If-Match</code>) to the caller.</p>
+</div>
+
 <div class="summary">
 <h2 id="summary"><a class="header" href="#summary">Summary</a></h2>
 <ul>
@@ -999,6 +1042,22 @@ async fn main() -&gt; Result&lt;(), Box&lt;dyn Error&gt;&gt; {
         <template id=fa-play><span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 384 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M73 39c-14.8-9.1-33.4-9.4-48.5-.9S0 62.6 0 80V432c0 17.4 9.4 33.4 24.5 41.9s33.7 8.1 48.5-.9L361 297c14.3-8.7 23-24.2 23-41s-8.7-32.2-23-41L73 39z"/></svg></span></template>
         <template id=fa-clock-rotate-left><span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M75 75L41 41C25.9 25.9 0 36.6 0 57.9V168c0 13.3 10.7 24 24 24H134.1c21.4 0 32.1-25.9 17-41l-30.8-30.8C155 85.5 203 64 256 64c106 0 192 86 192 192s-86 192-192 192c-40.8 0-78.6-12.7-109.7-34.4c-14.5-10.1-34.4-6.6-44.6 7.9s-6.6 34.4 7.9 44.6C151.2 495 201.7 512 256 512c141.4 0 256-114.6 256-256S397.4 0 256 0C185.3 0 121.3 28.7 75 75zm181 53c-13.3 0-24 10.7-24 24V256c0 6.4 2.5 12.5 7 17l72 72c9.4 9.4 24.6 9.4 33.9 0s9.4-24.6 0-33.9l-65-65V152c0-13.3-10.7-24-24-24z"/></svg></span></template>
 
+        <!-- Livereload script (if served using the cli tool) -->
+        <script>
+            const wsProtocol = location.protocol === 'https:' ? 'wss:' : 'ws:';
+            const wsAddress = wsProtocol + "//" + location.host + "/" + "__livereload";
+            const socket = new WebSocket(wsAddress);
+            socket.onmessage = function (event) {
+                if (event.data === "reload") {
+                    socket.close();
+                    location.reload();
+                }
+            };
+
+            window.onbeforeunload = function() {
+                socket.close();
+            }
+        </script>
 
 
         <script>
@@ -1015,7 +1074,7 @@ async fn main() -&gt; Result&lt;(), Box&lt;dyn Error&gt;&gt; {
         <script src="book-609e4cb8.js"></script>
 
         <!-- Custom JS scripts -->
-        <script src="theme/figures-9c14cb1c.js"></script>
+        <script src="theme/figures-1bd27a95.js"></script>
         <script src="theme/proto-326509cd.js"></script>
         <script src="theme/code-67e9caaf.js"></script>
         <script src="theme/tables-9fb295e8.js"></script>

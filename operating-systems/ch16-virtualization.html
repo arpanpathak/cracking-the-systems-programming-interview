@@ -1,5 +1,5 @@
 <!DOCTYPE HTML>
-<html lang="en" class="light sidebar-visible" dir="ltr">
+<html lang="en" class="coal sidebar-visible" dir="ltr">
     <head>
         <!-- Book generated using mdBook -->
         <meta charset="UTF-8">
@@ -28,7 +28,7 @@
         <link rel="stylesheet" id="mdbook-ayu-highlight-css" href="ayu-highlight-3fdfc3ac.css">
 
         <!-- Custom theme stylesheets -->
-        <link rel="stylesheet" href="theme/custom-3c3d4beb.css">
+        <link rel="stylesheet" href="theme/custom-af5dee75.css">
 
         <!-- MathJax -->
         <script async src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.1/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
@@ -36,8 +36,8 @@
         <!-- Provide site root and default themes to javascript -->
         <script>
             const path_to_root = "";
-            const default_light_theme = "light";
-            const default_dark_theme = "navy";
+            const default_light_theme = "coal";
+            const default_dark_theme = "coal";
             window.path_to_searchindex_js = "searchindex-e451f97a.js";
         </script>
         <!-- Start loading toc.js asap -->
@@ -79,7 +79,7 @@
             try { theme = localStorage.getItem('mdbook-theme'); } catch(e) { }
             if (theme === null || theme === undefined) { theme = default_theme; }
             const html = document.documentElement;
-            html.classList.remove('light')
+            html.classList.remove('coal')
             html.classList.add(theme);
             html.classList.add("js");
         </script>
@@ -184,6 +184,7 @@
                 <div id="mdbook-content" class="content">
                     <main>
                         <h1 id="16-virtualization-and-containerization"><a class="header" href="#16-virtualization-and-containerization">16. Virtualization and Containerization</a></h1>
+<img class="plate" src="art/ch16-plate.svg" alt="Chapter 16: Virtualization — VMX hypervisor rings and container namespace isolation cells">
 <p>Modern cloud infrastructure packs dozens of mutually untrusted customer workloads onto a single physical server while preserving the illusion that each tenant owns a dedicated machine. Systems engineers achieve this multi-tenancy through two distinct architectural mechanisms: <strong>hardware Virtual Machines (<code>VM</code>s)</strong>, which virtualize the physical processor and memory controller beneath complete guest kernels, and <strong>containers</strong>, which partition visibility and resource quotas inside a single shared host kernel.</p>
 <h2 id="161-virtual-machines-and-hypervisor-orchestration"><a class="header" href="#161-virtual-machines-and-hypervisor-orchestration">16.1 Virtual Machines and Hypervisor Orchestration</a></h2>
 <p>A <strong>virtual machine</strong> executes an unmodified guest operating system (such as Linux or Windows) inside an isolated hardware environment synthesized by a <strong>hypervisor</strong> (such as Linux <strong>Kernel-based Virtual Machine (<code>KVM</code>)</strong>, Xen, VMware ESXi, or Apple Virtualization.framework). Early software-only hypervisors faced a difficult architectural problem on x86: several sensitive instructions behaved differently in unprivileged rings instead of trapping, forcing complex binary translation.</p>
@@ -306,7 +307,7 @@
         <script src="book-609e4cb8.js"></script>
 
         <!-- Custom JS scripts -->
-        <script src="theme/figures-fd5ff574.js"></script>
+        <script src="theme/figures-76d3d8f0.js"></script>
 
 
 

@@ -1,32 +1,1727 @@
 <!DOCTYPE HTML>
-<html lang="en" class="navy" dir="ltr">
+<html lang="en" class="coal sidebar-visible" dir="ltr">
     <head>
-        <!-- sidebar iframe generated using mdBook
-
-        This is a frame, and not included directly in the page, to control the total size of the
-        book. The TOC contains an entry for each page, so if each page includes a copy of the TOC,
-        the total size of the page becomes O(n**2).
-
-        The frame is only used as a fallback when JS is turned off. When it's on, the sidebar is
-        instead added to the main page by `toc.js` instead. The JavaScript mode is better
-        because, when running in a `file:///` URL, the iframed page would not be Same-Origin as
-        the rest of the page, so the sidebar and the main page theme would fall out of sync.
-        -->
+        <!-- Book generated using mdBook -->
         <meta charset="UTF-8">
-        <meta name="robots" content="noindex">
+        <title>Table of Contents - Distributed Systems from the Ground Up</title>
+
+
         <!-- Custom HTML head -->
+
+        <meta name="description" content="System design and low-level design of resilient, fault-tolerant distributed systems, with code in Rust">
         <meta name="viewport" content="width=device-width, initial-scale=1">
         <meta name="theme-color" content="#ffffff">
+
+        <link rel="icon" href="favicon-de23e50b.svg">
+        <link rel="shortcut icon" href="favicon-8114d1fc.png">
         <link rel="stylesheet" href="css/variables-8adf115d.css">
         <link rel="stylesheet" href="css/general-e96d0476.css">
         <link rel="stylesheet" href="css/chrome-d279d366.css">
         <link rel="stylesheet" href="css/print-9e4910d8.css" media="print">
+
         <!-- Fonts -->
         <link rel="stylesheet" href="fonts/fonts-9644e21d.css">
+
+        <!-- Highlight.js Stylesheets -->
+        <link rel="stylesheet" id="mdbook-highlight-css" href="highlight-493f70e1.css">
+        <link rel="stylesheet" id="mdbook-tomorrow-night-css" href="tomorrow-night-4c0ae647.css">
+        <link rel="stylesheet" id="mdbook-ayu-highlight-css" href="ayu-highlight-3fdfc3ac.css">
+
         <!-- Custom theme stylesheets -->
-        <link rel="stylesheet" href="theme/custom-59beaf6d.css">
+        <link rel="stylesheet" href="theme/custom-3b357368.css">
+
+
+        <!-- Provide site root and default themes to javascript -->
+        <script>
+            const path_to_root = "";
+            const default_light_theme = "coal";
+            const default_dark_theme = "coal";
+            window.path_to_searchindex_js = "searchindex-38bda414.js";
+        </script>
+        <!-- Start loading toc.js asap -->
+        <script src="toc-00f6d8fe.js"></script>
     </head>
-    <body class="sidebar-iframe-inner">
-        <ol class="chapter"><li class="chapter-item expanded "><span class="chapter-link-wrapper"><a href="cover.html" target="_parent">Cover</a></span></li><li class="chapter-item expanded "><span class="chapter-link-wrapper"><a href="about-this-book.html" target="_parent">Preface</a></span></li><li class="chapter-item expanded "><li class="part-title">Part I: Distributed Key-Value Store (System and Low-Level Design)</li></li><li class="chapter-item expanded "><span class="chapter-link-wrapper"><a href="01-key-value-store-system-design.html" target="_parent">1. Key-Value Store: System Design</a></span></li><li class="chapter-item expanded "><span class="chapter-link-wrapper"><a href="02-key-value-store-storage-node.html" target="_parent">2. Storage Node and Write-Ahead Logging (LLD)</a></span></li><li class="chapter-item expanded "><span class="chapter-link-wrapper"><a href="03-key-value-store-replication.html" target="_parent">3. Leader-Follower Quorum Replication (LLD)</a></span></li><li class="chapter-item expanded "><span class="chapter-link-wrapper"><a href="04-key-value-store-leader-election.html" target="_parent">4. Raft Leader Election and Fencing (LLD)</a></span></li><li class="chapter-item expanded "><span class="chapter-link-wrapper"><a href="05-key-value-store-router.html" target="_parent">5. Consistent-Hash Request Router (LLD)</a></span></li><li class="chapter-item expanded "><span class="chapter-link-wrapper"><a href="06-key-value-store-group-commit.html" target="_parent">6. Group Commit and Throughput Engineering (LLD)</a></span></li><li class="chapter-item expanded "><li class="part-title">Part II: Core Infrastructure Primitives</li></li><li class="chapter-item expanded "><span class="chapter-link-wrapper"><a href="07-rate-limiter.html" target="_parent">7. Rate Limiter</a></span></li><li class="chapter-item expanded "><span class="chapter-link-wrapper"><a href="08-unique-id-generator.html" target="_parent">8. Unique ID Generator</a></span></li><li class="chapter-item expanded "><span class="chapter-link-wrapper"><a href="09-distributed-cache.html" target="_parent">9. Distributed Cache</a></span></li><li class="chapter-item expanded "><span class="chapter-link-wrapper"><a href="10-distributed-lock.html" target="_parent">10. Distributed Lock Service</a></span></li><li class="chapter-item expanded "><span class="chapter-link-wrapper"><a href="11-message-queue.html" target="_parent">11. Distributed Message Queue</a></span></li><li class="chapter-item expanded "><span class="chapter-link-wrapper"><a href="12-job-scheduler.html" target="_parent">12. Distributed Job Scheduler</a></span></li><li class="chapter-item expanded "><span class="chapter-link-wrapper"><a href="13-notification-service.html" target="_parent">13. Notification Service</a></span></li><li class="chapter-item expanded "><li class="part-title">Part III: Content, Media, and Communication</li></li><li class="chapter-item expanded "><span class="chapter-link-wrapper"><a href="14-url-shortener.html" target="_parent">14. URL Shortener</a></span></li><li class="chapter-item expanded "><span class="chapter-link-wrapper"><a href="15-news-feed.html" target="_parent">15. News Feed</a></span></li><li class="chapter-item expanded "><span class="chapter-link-wrapper"><a href="16-object-store.html" target="_parent">16. Object Store</a></span></li><li class="chapter-item expanded "><span class="chapter-link-wrapper"><a href="17-video-streaming.html" target="_parent">17. Video Streaming Platform</a></span></li><li class="chapter-item expanded "><span class="chapter-link-wrapper"><a href="18-chat.html" target="_parent">18. Real-Time Chat System</a></span></li><li class="chapter-item expanded "><li class="part-title">Part IV: Transactional and Marketplace Systems</li></li><li class="chapter-item expanded "><span class="chapter-link-wrapper"><a href="19-payment-system.html" target="_parent">19. Payment System</a></span></li><li class="chapter-item expanded "><span class="chapter-link-wrapper"><a href="20-ticket-booking.html" target="_parent">20. Ticket Booking System</a></span></li><li class="chapter-item expanded "><span class="chapter-link-wrapper"><a href="21-ride-hailing.html" target="_parent">21. Ride Hailing Dispatch</a></span></li><li class="chapter-item expanded "><li class="part-title">Part V: Search, Indexing, and Observability</li></li><li class="chapter-item expanded "><span class="chapter-link-wrapper"><a href="22-search-autocomplete.html" target="_parent">22. Search Autocomplete</a></span></li><li class="chapter-item expanded "><span class="chapter-link-wrapper"><a href="23-web-crawler.html" target="_parent">23. Web Crawler</a></span></li><li class="chapter-item expanded "><span class="chapter-link-wrapper"><a href="24-metrics-and-monitoring.html" target="_parent">24. Metrics and Monitoring Platform</a></span></li><li class="chapter-item expanded "><li class="part-title">Part VI: Collaboration and Low-Latency Streaming</li></li><li class="chapter-item expanded "><span class="chapter-link-wrapper"><a href="25-file-sync.html" target="_parent">25. File Synchronization Service</a></span></li><li class="chapter-item expanded "><span class="chapter-link-wrapper"><a href="26-collaborative-editing.html" target="_parent">26. Collaborative Editing</a></span></li><li class="chapter-item expanded "><span class="chapter-link-wrapper"><a href="27-stock-exchange.html" target="_parent">27. Stock Exchange Matching Engine</a></span></li><li class="chapter-item expanded "><span class="chapter-link-wrapper"><a href="28-click-aggregation.html" target="_parent">28. Ad Click Aggregation Pipeline</a></span></li></ol>
+    <body>
+    <div id="mdbook-help-container">
+        <div id="mdbook-help-popup">
+            <h2 class="mdbook-help-title">Keyboard shortcuts</h2>
+            <div>
+                <p>Press <kbd>←</kbd> or <kbd>→</kbd> to navigate between chapters</p>
+                <p>Press <kbd>S</kbd> or <kbd>/</kbd> to search in the book</p>
+                <p>Press <kbd>?</kbd> to show this help</p>
+                <p>Press <kbd>Esc</kbd> to hide this help</p>
+            </div>
+        </div>
+    </div>
+    <div id="mdbook-body-container">
+        <!-- Work around some values being stored in localStorage wrapped in quotes -->
+        <script>
+            try {
+                let theme = localStorage.getItem('mdbook-theme');
+                let sidebar = localStorage.getItem('mdbook-sidebar');
+
+                if (theme.startsWith('"') && theme.endsWith('"')) {
+                    localStorage.setItem('mdbook-theme', theme.slice(1, theme.length - 1));
+                }
+
+                if (sidebar.startsWith('"') && sidebar.endsWith('"')) {
+                    localStorage.setItem('mdbook-sidebar', sidebar.slice(1, sidebar.length - 1));
+                }
+            } catch (e) { }
+        </script>
+
+        <!-- Set the theme before any content is loaded, prevents flash -->
+        <script>
+            const default_theme = window.matchMedia("(prefers-color-scheme: dark)").matches ? default_dark_theme : default_light_theme;
+            let theme;
+            try { theme = localStorage.getItem('mdbook-theme'); } catch(e) { }
+            if (theme === null || theme === undefined) { theme = default_theme; }
+            const html = document.documentElement;
+            html.classList.remove('coal')
+            html.classList.add(theme);
+            html.classList.add("js");
+        </script>
+
+        <input type="checkbox" id="mdbook-sidebar-toggle-anchor" class="hidden">
+
+        <!-- Hide / unhide sidebar before it is displayed -->
+        <script>
+            let sidebar = null;
+            const sidebar_toggle = document.getElementById("mdbook-sidebar-toggle-anchor");
+            if (document.body.clientWidth >= 1080) {
+                try { sidebar = localStorage.getItem('mdbook-sidebar'); } catch(e) { }
+                sidebar = sidebar || 'visible';
+            } else {
+                sidebar = 'hidden';
+                sidebar_toggle.checked = false;
+            }
+            if (sidebar === 'visible') {
+                sidebar_toggle.checked = true;
+            } else {
+                html.classList.remove('sidebar-visible');
+            }
+        </script>
+
+        <nav id="mdbook-sidebar" class="sidebar" aria-label="Table of contents">
+            <!-- populated by js -->
+            <mdbook-sidebar-scrollbox class="sidebar-scrollbox"></mdbook-sidebar-scrollbox>
+            <noscript>
+                <iframe class="sidebar-iframe-outer" src="toc.html"></iframe>
+            </noscript>
+            <div id="mdbook-sidebar-resize-handle" class="sidebar-resize-handle">
+                <div class="sidebar-resize-indicator"></div>
+            </div>
+        </nav>
+
+        <div id="mdbook-page-wrapper" class="page-wrapper">
+
+            <div class="page">
+                <div id="mdbook-menu-bar-hover-placeholder"></div>
+                <div id="mdbook-menu-bar" class="menu-bar sticky">
+                    <div class="left-buttons">
+                        <label id="mdbook-sidebar-toggle" class="icon-button" for="mdbook-sidebar-toggle-anchor" title="Toggle Table of Contents" aria-label="Toggle Table of Contents" aria-controls="mdbook-sidebar">
+                            <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M0 96C0 78.3 14.3 64 32 64H416c17.7 0 32 14.3 32 32s-14.3 32-32 32H32C14.3 128 0 113.7 0 96zM0 256c0-17.7 14.3-32 32-32H416c17.7 0 32 14.3 32 32s-14.3 32-32 32H32c-17.7 0-32-14.3-32-32zM448 416c0 17.7-14.3 32-32 32H32c-17.7 0-32-14.3-32-32s14.3-32 32-32H416c17.7 0 32 14.3 32 32z"/></svg></span>
+                        </label>
+                        <button id="mdbook-theme-toggle" class="icon-button" type="button" title="Change theme" aria-label="Change theme" aria-haspopup="true" aria-expanded="false" aria-controls="mdbook-theme-list">
+                            <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 576 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M371.3 367.1c27.3-3.9 51.9-19.4 67.2-42.9L600.2 74.1c12.6-19.5 9.4-45.3-7.6-61.2S549.7-4.4 531.1 9.6L294.4 187.2c-24 18-38.2 46.1-38.4 76.1L371.3 367.1zm-19.6 25.4l-116-104.4C175.9 290.3 128 339.6 128 400c0 3.9 .2 7.8 .6 11.6c1.8 17.5-10.2 36.4-27.8 36.4H96c-17.7 0-32 14.3-32 32s14.3 32 32 32H240c61.9 0 112-50.1 112-112c0-2.5-.1-5-.2-7.5z"/></svg></span>
+                        </button>
+                        <ul id="mdbook-theme-list" class="theme-popup" aria-label="Themes" role="menu">
+                            <li role="none"><button role="menuitem" class="theme" id="mdbook-theme-default_theme">Auto</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="mdbook-theme-light">Light</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="mdbook-theme-rust">Rust</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="mdbook-theme-coal">Coal</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="mdbook-theme-navy">Navy</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="mdbook-theme-ayu">Ayu</button></li>
+                        </ul>
+                        <button id="mdbook-search-toggle" class="icon-button" type="button" title="Search (`/`)" aria-label="Toggle Searchbar" aria-expanded="false" aria-keyshortcuts="/ s" aria-controls="mdbook-searchbar">
+                            <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M416 208c0 45.9-14.9 88.3-40 122.7L502.6 457.4c12.5 12.5 12.5 32.8 0 45.3s-32.8 12.5-45.3 0L330.7 376c-34.4 25.2-76.8 40-122.7 40C93.1 416 0 322.9 0 208S93.1 0 208 0S416 93.1 416 208zM208 352c79.5 0 144-64.5 144-144s-64.5-144-144-144S64 128.5 64 208s64.5 144 144 144z"/></svg></span>
+                        </button>
+                    </div>
+
+                    <h1 class="menu-title">Distributed Systems from the Ground Up</h1>
+
+                    <div class="right-buttons">
+                        <a href="print.html" title="Print this book" aria-label="Print this book">
+                            <span class=fa-svg id="print-button"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M128 0C92.7 0 64 28.7 64 64v96h64V64H354.7L384 93.3V160h64V93.3c0-17-6.7-33.3-18.7-45.3L400 18.7C388 6.7 371.7 0 354.7 0H128zM384 352v32 64H128V384 368 352H384zm64 32h32c17.7 0 32-14.3 32-32V256c0-35.3-28.7-64-64-64H64c-35.3 0-64 28.7-64 64v96c0 17.7 14.3 32 32 32H64v64c0 35.3 28.7 64 64 64H384c35.3 0 64-28.7 64-64V384zm-16-88c-13.3 0-24-10.7-24-24s10.7-24 24-24s24 10.7 24 24s-10.7 24-24 24z"/></svg></span>
+                        </a>
+                        <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/tree/prep-v2/distributed-systems-from-the-ground-up" title="Git repository" aria-label="Git repository">
+                            <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 496 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M165.9 397.4c0 2-2.3 3.6-5.2 3.6-3.3.3-5.6-1.3-5.6-3.6 0-2 2.3-3.6 5.2-3.6 3-.3 5.6 1.3 5.6 3.6zm-31.1-4.5c-.7 2 1.3 4.3 4.3 4.9 2.6 1 5.6 0 6.2-2s-1.3-4.3-4.3-5.2c-2.6-.7-5.5.3-6.2 2.3zm44.2-1.7c-2.9.7-4.9 2.6-4.6 4.9.3 2 2.9 3.3 5.9 2.6 2.9-.7 4.9-2.6 4.6-4.6-.3-1.9-3-3.2-5.9-2.9zM244.8 8C106.1 8 0 113.3 0 252c0 110.9 69.8 205.8 169.5 239.2 12.8 2.3 17.3-5.6 17.3-12.1 0-6.2-.3-40.4-.3-61.4 0 0-70 15-84.7-29.8 0 0-11.4-29.1-27.8-36.6 0 0-22.9-15.7 1.6-15.4 0 0 24.9 2 38.6 25.8 21.9 38.6 58.6 27.5 72.9 20.9 2.3-16 8.8-27.1 16-33.7-55.9-6.2-112.3-14.3-112.3-110.5 0-27.5 7.6-41.3 23.6-58.9-2.6-6.5-11.1-33.3 2.6-67.9 20.9-6.5 69 27 69 27 20-5.6 41.5-8.5 62.8-8.5s42.8 2.9 62.8 8.5c0 0 48.1-33.6 69-27 13.7 34.7 5.2 61.4 2.6 67.9 16 17.7 25.8 31.5 25.8 58.9 0 96.5-58.9 104.2-114.8 110.5 9.2 7.9 17 22.9 17 46.4 0 33.7-.3 75.4-.3 83.6 0 6.5 4.6 14.4 17.3 12.1C428.2 457.8 496 362.9 496 252 496 113.3 383.5 8 244.8 8zM97.2 352.9c-1.3 1-1 3.3.7 5.2 1.6 1.6 3.9 2.3 5.2 1 1.3-1 1-3.3-.7-5.2-1.6-1.6-3.9-2.3-5.2-1zm-10.8-8.1c-.7 1.3.3 2.9 2.3 3.9 1.6 1 3.6.7 4.3-.7.7-1.3-.3-2.9-2.3-3.9-2-.6-3.6-.3-4.3.7zm32.4 35.6c-1.6 1.3-1 4.3 1.3 6.2 2.3 2.3 5.2 2.6 6.5 1 1.3-1.3.7-4.3-1.3-6.2-2.2-2.3-5.2-2.6-6.5-1zm-11.4-14.7c-1.6 1-1.6 3.6 0 5.9 1.6 2.3 4.3 3.3 5.6 2.3 1.6-1.3 1.6-3.9 0-6.2-1.4-2.3-4-3.3-5.6-2z"/></svg></span>
+                        </a>
+                        <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/edit/prep-v2/distributed-systems-from-the-ground-up/src/toc.md" title="Suggest an edit" aria-label="Suggest an edit" rel="edit">
+                            <span class=fa-svg id="git-edit-button"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M421.7 220.3l-11.3 11.3-22.6 22.6-205 205c-6.6 6.6-14.8 11.5-23.8 14.1L30.8 511c-8.4 2.5-17.5 .2-23.7-6.1S-1.5 489.7 1 481.2L38.7 353.1c2.6-9 7.5-17.2 14.1-23.8l205-205 22.6-22.6 11.3-11.3 33.9 33.9 62.1 62.1 33.9 33.9zM96 353.9l-9.3 9.3c-.9 .9-1.6 2.1-2 3.4l-25.3 86 86-25.3c1.3-.4 2.5-1.1 3.4-2l9.3-9.3H112c-8.8 0-16-7.2-16-16V353.9zM453.3 19.3l39.4 39.4c25 25 25 65.5 0 90.5l-14.5 14.5-22.6 22.6-11.3 11.3-33.9-33.9-62.1-62.1L314.3 67.7l11.3-11.3 22.6-22.6 14.5-14.5c25-25 65.5-25 90.5 0z"/></svg></span>
+                        </a>
+
+                    </div>
+                </div>
+
+                <div id="mdbook-search-wrapper" class="hidden">
+                    <form id="mdbook-searchbar-outer" class="searchbar-outer">
+                        <div class="search-wrapper">
+                            <input type="search" id="mdbook-searchbar" name="searchbar" placeholder="Search this book ..." aria-controls="mdbook-searchresults-outer" aria-describedby="searchresults-header">
+                            <div class="spinner-wrapper">
+                                <span class=fa-svg id="fa-spin"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M304 48c0-26.5-21.5-48-48-48s-48 21.5-48 48s21.5 48 48 48s48-21.5 48-48zm0 416c0-26.5-21.5-48-48-48s-48 21.5-48 48s21.5 48 48 48s48-21.5 48-48zM48 304c26.5 0 48-21.5 48-48s-21.5-48-48-48s-48 21.5-48 48s21.5 48 48 48zm464-48c0-26.5-21.5-48-48-48s-48 21.5-48 48s21.5 48 48 48s48-21.5 48-48zM142.9 437c18.7-18.7 18.7-49.1 0-67.9s-49.1-18.7-67.9 0s-18.7 49.1 0 67.9s49.1 18.7 67.9 0zm0-294.2c18.7-18.7 18.7-49.1 0-67.9S93.7 56.2 75 75s-18.7 49.1 0 67.9s49.1 18.7 67.9 0zM369.1 437c18.7 18.7 49.1 18.7 67.9 0s18.7-49.1 0-67.9s-49.1-18.7-67.9 0s-18.7 49.1 0 67.9z"/></svg></span>
+                            </div>
+                        </div>
+                    </form>
+                    <div id="mdbook-searchresults-outer" class="searchresults-outer hidden">
+                        <div id="mdbook-searchresults-header" class="searchresults-header"></div>
+                        <ul id="mdbook-searchresults">
+                        </ul>
+                    </div>
+                </div>
+
+                <!-- Apply ARIA attributes after the sidebar and the sidebar toggle button are added to the DOM -->
+                <script>
+                    document.getElementById('mdbook-sidebar-toggle').setAttribute('aria-expanded', sidebar === 'visible');
+                    document.getElementById('mdbook-sidebar').setAttribute('aria-hidden', sidebar !== 'visible');
+                    Array.from(document.querySelectorAll('#mdbook-sidebar a')).forEach(function(link) {
+                        link.setAttribute('tabIndex', sidebar === 'visible' ? 0 : -1);
+                    });
+                </script>
+
+                <div id="mdbook-content" class="content">
+                    <main>
+                        <h1 id="table-of-contents"><a class="header" href="#table-of-contents">Table of Contents</a></h1>
+<p>Complete navigable index of all 28 chapters, sections, and subsections across <em>Distributed Systems from the Ground Up</em>. Every heading links directly to its exact anchor.</p>
+<h2 id="part-i-distributed-key-value-store-system-and-low-level-design"><a class="header" href="#part-i-distributed-key-value-store-system-and-low-level-design">Part I: Distributed Key-Value Store (System and Low-Level Design)</a></h2>
+<h3 id="1-key-value-store-system-design"><a class="header" href="#1-key-value-store-system-design"><a href="01-key-value-store-system-design.html">1. Key-Value Store: System Design</a></a></h3>
+<ul>
+<li><a href="01-key-value-store-system-design.html#11-requirements-and-capacity-envelope">1.1 Requirements and Capacity Envelope</a>
+<ul>
+<li><a href="01-key-value-store-system-design.html#actors-and-use-cases">Actors and Use Cases</a></li>
+<li><a href="01-key-value-store-system-design.html#functional-requirements">Functional Requirements</a></li>
+<li><a href="01-key-value-store-system-design.html#non-functional-requirements-and-slos">Non-Functional Requirements and SLOs</a></li>
+<li><a href="01-key-value-store-system-design.html#capacity-and-resource-envelope">Capacity and Resource Envelope</a></li>
+</ul>
+</li>
+<li><a href="01-key-value-store-system-design.html#12-external-api-wire-protocol-and-data-contracts">1.2 External API, Wire Protocol, and Data Contracts</a>
+<ul>
+<li><a href="01-key-value-store-system-design.html#client-facing-http2-interface">Client-Facing HTTP/2 Interface</a></li>
+<li><a href="01-key-value-store-system-design.html#internal-replication-and-topology-protocol-grpc-protobuf">Internal Replication and Topology Protocol (gRPC / Protobuf)</a></li>
+</ul>
+</li>
+<li><a href="01-key-value-store-system-design.html#13-system-architecture-control-plane-vs-data-plane">1.3 System Architecture: Control Plane vs. Data Plane</a>
+<ul>
+<li><a href="01-key-value-store-system-design.html#component-responsibilities-and-failure-domains">Component Responsibilities and Failure Domains</a></li>
+<li><a href="01-key-value-store-system-design.html#end-to-end-request-lifecycle">End-to-End Request Lifecycle</a></li>
+</ul>
+</li>
+<li><a href="01-key-value-store-system-design.html#14-consistency-semantics-and-trade-offs">1.4 Consistency Semantics and Trade-Offs</a>
+<ul>
+<li><a href="01-key-value-store-system-design.html#why-quorum-intersection-r-w-n-alone-does-not-guarantee-linearizability">Why Quorum Intersection (<code>R + W &gt; N</code>) Alone Does Not Guarantee Linearizability</a></li>
+</ul>
+</li>
+<li><a href="01-key-value-store-system-design.html#15-partitioning-consistent-hashing-virtual-nodes-and-range-splits">1.5 Partitioning: Consistent Hashing, Virtual Nodes, and Range Splits</a>
+<ul>
+<li><a href="01-key-value-store-system-design.html#consistent-hashing-and-empirical-virtual-node-variance">Consistent Hashing and Empirical Virtual-Node Variance</a></li>
+<li><a href="01-key-value-store-system-design.html#architectural-trade-off-consistent-hashing-vs-range-partitioning">Architectural Trade-Off: Consistent Hashing vs. Range Partitioning</a></li>
+<li><a href="01-key-value-store-system-design.html#hot-key-skew-mitigation">Hot-Key Skew Mitigation</a></li>
+</ul>
+</li>
+<li><a href="01-key-value-store-system-design.html#16-replication-linearizable-reads-and-split-brain-fencing">1.6 Replication, Linearizable Reads, and Split-Brain Fencing</a>
+<ul>
+<li><a href="01-key-value-store-system-design.html#quorum-intersection-and-term-fencing">Quorum Intersection and Term Fencing</a></li>
+<li><a href="01-key-value-store-system-design.html#linearizable-reads-without-disk-writes-readindex-vs-leader-leases">Linearizable Reads Without Disk Writes (<code>ReadIndex</code> vs. Leader Leases)</a></li>
+<li><a href="01-key-value-store-system-design.html#storage-engine-internals-and-online-membership-changes">Storage Engine Internals and Online Membership Changes</a></li>
+</ul>
+</li>
+<li><a href="01-key-value-store-system-design.html#17-failure-modes-tail-latency-and-observability">1.7 Failure Modes, Tail Latency, and Observability</a>
+<ul>
+<li><a href="01-key-value-store-system-design.html#failure-and-recovery-matrix">Failure and Recovery Matrix</a></li>
+<li><a href="01-key-value-store-system-design.html#tail-latency-engineering">Tail-Latency Engineering</a></li>
+<li><a href="01-key-value-store-system-design.html#observability-slis-slos-and-operational-alerts">Observability: SLIs, SLOs, and Operational Alerts</a></li>
+</ul>
+</li>
+<li><a href="01-key-value-store-system-design.html#18-production-systems-case-studies-and-verification">1.8 Production Systems Case Studies and Verification</a>
+<ul>
+<li><a href="01-key-value-store-system-design.html#verification-in-the-repository">Verification in the Repository</a></li>
+<li><a href="01-key-value-store-system-design.html#engineering-glossary">Engineering Glossary</a></li>
+<li><a href="01-key-value-store-system-design.html#end-to-end-request-lifecycle-and-hardwarenetwork-hop-breakdown">End-to-End Request Lifecycle and Hardware/Network Hop Breakdown</a></li>
+<li><a href="01-key-value-store-system-design.html#deep-dive-production-case-studies">Deep-Dive Production Case Studies</a></li>
+<li><a href="01-key-value-store-system-design.html#references">References</a></li>
+</ul>
+</li>
+</ul>
+<h3 id="chapter-2-storage-node-and-write-ahead-logging-lld"><a class="header" href="#chapter-2-storage-node-and-write-ahead-logging-lld"><a href="02-key-value-store-storage-node.html">Chapter 2: Storage Node and Write-Ahead Logging (LLD)</a></a></h3>
+<ul>
+<li><a href="02-key-value-store-storage-node.html#21-durable-storage-and-write-ahead-logging">2.1 Durable Storage and Write-Ahead Logging</a></li>
+<li><a href="02-key-value-store-storage-node.html#22-crash-points-during-a-write">2.2 Crash Points During a Write</a></li>
+<li><a href="02-key-value-store-storage-node.html#23-on-disk-wal-record-format">2.3 On-Disk WAL Record Format</a></li>
+<li><a href="02-key-value-store-storage-node.html#24-measuring-the-physical-cost-of-fsync">2.4 Measuring the Physical Cost of <code>fsync</code></a></li>
+<li><a href="02-key-value-store-storage-node.html#25-low-level-architecture-and-workspace-layout">2.5 Low-Level Architecture and Workspace Layout</a></li>
+<li><a href="02-key-value-store-storage-node.html#26-the-write-ahead-log-kvlog">2.6 The Write-Ahead Log (<code>kv::log</code>)</a>
+<ul>
+<li><a href="02-key-value-store-storage-node.html#startup-scan-and-torn-tail-truncation">Startup Scan and Torn-Tail Truncation</a></li>
+<li><a href="02-key-value-store-storage-node.html#durable-appends-and-fail-stop-error-handling">Durable Appends and Fail-Stop Error Handling</a></li>
+</ul>
+</li>
+<li><a href="02-key-value-store-storage-node.html#27-the-in-memory-store-kvstore">2.7 The In-Memory Store (<code>kv::store</code>)</a></li>
+<li><a href="02-key-value-store-storage-node.html#28-the-http-server-kvd">2.8 The HTTP Server (<code>kvd</code>)</a>
+<ul>
+<li><a href="02-key-value-store-storage-node.html#typed-errors-and-precondition-header-parsing">Typed Errors and Precondition Header Parsing</a></li>
+<li><a href="02-key-value-store-storage-node.html#offloading-blocking-fsync-from-the-async-executor">Offloading Blocking <code>fsync</code> from the Async Executor</a></li>
+<li><a href="02-key-value-store-storage-node.html#memory-resident-read-and-health-handlers">Memory-Resident Read and Health Handlers</a></li>
+<li><a href="02-key-value-store-storage-node.html#exercising-the-running-node">Exercising the Running Node</a></li>
+</ul>
+</li>
+<li><a href="02-key-value-store-storage-node.html#29-exhaustive-crash-simulation-crashsim">2.9 Exhaustive Crash Simulation (<code>crashsim</code>)</a></li>
+<li><a href="02-key-value-store-storage-node.html#210-live-crash-testing-under-load-kvctl">2.10 Live Crash Testing Under Load (<code>kvctl</code>)</a>
+<ul>
+<li><a href="02-key-value-store-storage-node.html#why-process-kill-tests-cannot-validate-power-loss-durability">Why Process-Kill Tests Cannot Validate Power-Loss Durability</a></li>
+<li><a href="02-key-value-store-storage-node.html#running-the-crash-verification-across-two-network-hosts">Running the Crash Verification Across Two Network Hosts</a></li>
+</ul>
+</li>
+<li><a href="02-key-value-store-storage-node.html#211-residual-limitations-of-a-single-storage-node">2.11 Residual Limitations of a Single Storage Node</a></li>
+<li><a href="02-key-value-store-storage-node.html#212-complete-source-listings">2.12 Complete Source Listings</a></li>
+<li><a href="02-key-value-store-storage-node.html#213-end-to-end-write-lifecycle-and-storage-stack-latency-budget">2.13 End-to-End Write Lifecycle and Storage-Stack Latency Budget</a></li>
+<li><a href="02-key-value-store-storage-node.html#214-production-storage-engine-case-studies">2.14 Production Storage-Engine Case Studies</a></li>
+<li><a href="02-key-value-store-storage-node.html#further-reading">Further Reading</a></li>
+<li><a href="02-key-value-store-storage-node.html#summary">Summary</a></li>
+</ul>
+<h3 id="chapter-3-leader-follower-quorum-replication-lld"><a class="header" href="#chapter-3-leader-follower-quorum-replication-lld"><a href="03-key-value-store-replication.html">Chapter 3: Leader-Follower Quorum Replication (LLD)</a></a></h3>
+<ul>
+<li><a href="03-key-value-store-replication.html#31-shard-topology-and-replication-invariants">3.1 Shard Topology and Replication Invariants</a></li>
+<li><a href="03-key-value-store-replication.html#32-replication-protocol-messages">3.2 Replication Protocol Messages</a></li>
+<li><a href="03-key-value-store-replication.html#33-replica-state-machine">3.3 Replica State Machine</a></li>
+<li><a href="03-key-value-store-replication.html#34-follower-rules-and-self-healing-catch-up">3.4 Follower Rules and Self-Healing Catch-Up</a></li>
+<li><a href="03-key-value-store-replication.html#35-leader-proposal-dispatch-and-majority-commit-rule">3.5 Leader Proposal, Dispatch, and Majority Commit Rule</a>
+<ul>
+<li><a href="03-key-value-store-replication.html#proposing-a-record-propose">Proposing a Record (<code>propose</code>)</a></li>
+<li><a href="03-key-value-store-replication.html#constructing-follower-messages-append_for">Constructing Follower Messages (<code>append_for</code>)</a></li>
+<li><a href="03-key-value-store-replication.html#the-majority-commit-rule-majority_sequence">The Majority Commit Rule (<code>majority_sequence</code>)</a></li>
+</ul>
+</li>
+<li><a href="03-key-value-store-replication.html#36-exhaustive-deterministic-fault-simulation-replsim">3.6 Exhaustive Deterministic Fault Simulation (<code>replsim</code>)</a></li>
+<li><a href="03-key-value-store-replication.html#37-low-level-architecture-of-kvnode">3.7 Low-Level Architecture of <code>kvnode</code></a></li>
+<li><a href="03-key-value-store-replication.html#38-implementing-kvnode">3.8 Implementing <code>kvnode</code></a>
+<ul>
+<li><a href="03-key-value-store-replication.html#protobuf-compilation-and-the-grpc-boundary-kvnodesrcrpcrs">Protobuf Compilation and the gRPC Boundary (<code>kvnode/src/rpc.rs</code>)</a></li>
+<li><a href="03-key-value-store-replication.html#leader-replication-tasks-and-lock-free-network-io-kvnodesrcnoders">Leader Replication Tasks and Lock-Free Network I/O (<code>kvnode/src/node.rs</code>)</a></li>
+<li><a href="03-key-value-store-replication.html#leader-write-and-lease-bounded-read-paths">Leader Write and Lease-Bounded Read Paths</a></li>
+<li><a href="03-key-value-store-replication.html#wiring-the-http-surface-kvnodesrcmainrs">Wiring the HTTP Surface (<code>kvnode/src/main.rs</code>)</a></li>
+</ul>
+</li>
+<li><a href="03-key-value-store-replication.html#39-live-three-node-replication-experiments">3.9 Live Three-Node Replication Experiments</a>
+<ul>
+<li><a href="03-key-value-store-replication.html#experiment-1-throughput-cost-of-synchronous-quorum-replication">Experiment 1: Throughput Cost of Synchronous Quorum Replication</a></li>
+<li><a href="03-key-value-store-replication.html#experiment-2-single-follower-crash-and-automatic-catch-up">Experiment 2: Single Follower Crash and Automatic Catch-Up</a></li>
+<li><a href="03-key-value-store-replication.html#experiment-3-total-quorum-loss-pcec-refusal">Experiment 3: Total Quorum Loss (<code>PC/EC</code> Refusal)</a></li>
+<li><a href="03-key-value-store-replication.html#experiment-4-permanent-leader-loss-manual-promotion-and-term-fencing">Experiment 4: Permanent Leader Loss, Manual Promotion, and Term Fencing</a></li>
+</ul>
+</li>
+<li><a href="03-key-value-store-replication.html#310-residual-limitations">3.10 Residual Limitations</a></li>
+<li><a href="03-key-value-store-replication.html#311-complete-source-listings">3.11 Complete Source Listings</a></li>
+<li><a href="03-key-value-store-replication.html#312-end-to-end-quorum-write-lifecycle-and-cross-az-hop-breakdown">3.12 End-to-End Quorum Write Lifecycle and Cross-AZ Hop Breakdown</a></li>
+<li><a href="03-key-value-store-replication.html#313-production-replication-case-studies">3.13 Production Replication Case Studies</a></li>
+<li><a href="03-key-value-store-replication.html#further-reading">Further Reading</a></li>
+<li><a href="03-key-value-store-replication.html#summary">Summary</a></li>
+</ul>
+<h3 id="chapter-4-raft-leader-election-and-fencing-lld"><a class="header" href="#chapter-4-raft-leader-election-and-fencing-lld"><a href="04-key-value-store-leader-election.html">Chapter 4: Raft Leader Election and Fencing (LLD)</a></a></h3>
+<ul>
+<li><a href="04-key-value-store-leader-election.html#41-server-roles-terms-and-consensus-invariants">4.1 Server Roles, Terms, and Consensus Invariants</a></li>
+<li><a href="04-key-value-store-leader-election.html#42-protocol-extension-requestvote-and-previous_term">4.2 Protocol Extension: <code>RequestVote</code> and <code>previous_term</code></a></li>
+<li><a href="04-key-value-store-leader-election.html#43-persistent-versus-volatile-member-state">4.3 Persistent Versus Volatile Member State</a>
+<ul>
+<li><a href="04-key-value-store-leader-election.html#encoding-record-terms-without-changing-the-wal-format">Encoding Record Terms Without Changing the WAL Format</a></li>
+</ul>
+</li>
+<li><a href="04-key-value-store-leader-election.html#44-elections-voting-safety-and-stepping-down">4.4 Elections, Voting Safety, and Stepping Down</a>
+<ul>
+<li><a href="04-key-value-store-leader-election.html#deterministic-staggered-election-timeouts">Deterministic Staggered Election Timeouts</a></li>
+<li><a href="04-key-value-store-leader-election.html#the-three-part-voting-rule">The Three-Part Voting Rule</a></li>
+<li><a href="04-key-value-store-leader-election.html#ascending-to-leadership-and-stepping-down">Ascending to Leadership and Stepping Down</a></li>
+</ul>
+</li>
+<li><a href="04-key-value-store-leader-election.html#45-log-matching-and-conflicting-tail-repair">4.5 Log Matching and Conflicting-Tail Repair</a>
+<ul>
+<li><a href="04-key-value-store-leader-election.html#leader-per-follower-progress-next-and-matched">Leader Per-Follower Progress (<code>next</code> and <code>matched</code>)</a></li>
+</ul>
+</li>
+<li><a href="04-key-value-store-leader-election.html#46-current-term-commit-rule-and-pure-event-loop">4.6 Current-Term Commit Rule and Pure Event Loop</a></li>
+<li><a href="04-key-value-store-leader-election.html#47-deterministic-randomized-simulation-raftsim">4.7 Deterministic Randomized Simulation (<code>raftsim</code>)</a>
+<ul>
+<li><a href="04-key-value-store-leader-election.html#mutation-testing-the-simulator-itself">Mutation Testing the Simulator Itself</a></li>
+</ul>
+</li>
+<li><a href="04-key-value-store-leader-election.html#48-low-level-architecture-of-kvraft">4.8 Low-Level Architecture of <code>kvraft</code></a></li>
+<li><a href="04-key-value-store-leader-election.html#49-implementing-kvraft">4.9 Implementing <code>kvraft</code></a>
+<ul>
+<li><a href="04-key-value-store-leader-election.html#driving-the-pure-state-machine-kvraftsrcnoders">Driving the Pure State Machine (<code>kvraft/src/node.rs</code>)</a></li>
+</ul>
+</li>
+<li><a href="04-key-value-store-leader-election.html#410-live-three-node-consensus-experiments">4.10 Live Three-Node Consensus Experiments</a>
+<ul>
+<li><a href="04-key-value-store-leader-election.html#measuring-failover-pause-under-continuous-load-probe">Measuring Failover Pause Under Continuous Load (<code>probe</code>)</a></li>
+<li><a href="04-key-value-store-leader-election.html#former-leader-rejoining-intact-and-minority-isolation">Former Leader Rejoining Intact and Minority Isolation</a></li>
+</ul>
+</li>
+<li><a href="04-key-value-store-leader-election.html#411-residual-limitations">4.11 Residual Limitations</a></li>
+<li><a href="04-key-value-store-leader-election.html#412-complete-source-listings">4.12 Complete Source Listings</a></li>
+<li><a href="04-key-value-store-leader-election.html#413-end-to-end-failover-and-consensus-request-lifecycle">4.13 End-to-End Failover and Consensus Request Lifecycle</a></li>
+<li><a href="04-key-value-store-leader-election.html#414-production-consensus-case-studies">4.14 Production Consensus Case Studies</a></li>
+<li><a href="04-key-value-store-leader-election.html#further-reading">Further Reading</a></li>
+<li><a href="04-key-value-store-leader-election.html#summary">Summary</a></li>
+</ul>
+<h3 id="chapter-5-consistent-hash-request-router-lld"><a class="header" href="#chapter-5-consistent-hash-request-router-lld"><a href="05-key-value-store-router.html">Chapter 5: Consistent-Hash Request Router (LLD)</a></a></h3>
+<ul>
+<li><a href="05-key-value-store-router.html#51-stateless-routing-topology">5.1 Stateless Routing Topology</a></li>
+<li><a href="05-key-value-store-router.html#52-topology-configuration-and-olog-v-ring-lookup">5.2 Topology Configuration and <code>O(log V)</code> Ring Lookup</a></li>
+<li><a href="05-key-value-store-router.html#53-leader-redirection-and-the-safe-retry-invariant">5.3 Leader Redirection and the Safe-Retry Invariant</a></li>
+<li><a href="05-key-value-store-router.html#54-multi-shard-and-failover-experiments">5.4 Multi-Shard and Failover Experiments</a>
+<ul>
+<li><a href="05-key-value-store-router.html#experiment-1-two-three-node-shards-behind-one-router">Experiment 1: Two Three-Node Shards Behind One Router</a></li>
+<li><a href="05-key-value-store-router.html#experiment-2-killing-a-shard-leader-behind-the-router">Experiment 2: Killing a Shard Leader Behind the Router</a></li>
+</ul>
+</li>
+<li><a href="05-key-value-store-router.html#55-residual-limitations">5.5 Residual Limitations</a></li>
+<li><a href="05-key-value-store-router.html#56-complete-source-listings">5.6 Complete Source Listings</a></li>
+<li><a href="05-key-value-store-router.html#57-end-to-end-routed-request-lifecycle-and-hop-latency-budget">5.7 End-to-End Routed Request Lifecycle and Hop Latency Budget</a></li>
+<li><a href="05-key-value-store-router.html#58-production-request-routing-case-studies">5.8 Production Request-Routing Case Studies</a></li>
+<li><a href="05-key-value-store-router.html#summary">Summary</a></li>
+</ul>
+<h3 id="chapter-6-group-commit-and-throughput-engineering-lld"><a class="header" href="#chapter-6-group-commit-and-throughput-engineering-lld"><a href="06-key-value-store-group-commit.html">Chapter 6: Group Commit and Throughput Engineering (LLD)</a></a></h3>
+<ul>
+<li><a href="06-key-value-store-group-commit.html#61-amortizing-the-physical-fsync-barrier">6.1 Amortizing the Physical <code>fsync</code> Barrier</a></li>
+<li><a href="06-key-value-store-group-commit.html#62-three-pass-batched-commit-in-kvstore">6.2 Three-Pass Batched Commit in <code>kv::store</code></a></li>
+<li><a href="06-key-value-store-group-commit.html#63-single-threaded-committer-pipeline-kvgroup">6.3 Single-Threaded Committer Pipeline (<code>kvgroup</code>)</a></li>
+<li><a href="06-key-value-store-group-commit.html#64-empirical-throughput-and-latency-measurements-kvbench">6.4 Empirical Throughput and Latency Measurements (<code>kvbench</code>)</a></li>
+<li><a href="06-key-value-store-group-commit.html#65-mid-batch-crash-verification">6.5 Mid-Batch Crash Verification</a></li>
+<li><a href="06-key-value-store-group-commit.html#66-residual-integration-work">6.6 Residual Integration Work</a></li>
+<li><a href="06-key-value-store-group-commit.html#67-complete-source-listings">6.7 Complete Source Listings</a></li>
+<li><a href="06-key-value-store-group-commit.html#68-end-to-end-group-commit-pipeline-lifecycle-and-latency-budget">6.8 End-to-End Group-Commit Pipeline Lifecycle and Latency Budget</a></li>
+<li><a href="06-key-value-store-group-commit.html#69-production-group-commit-case-studies">6.9 Production Group-Commit Case Studies</a></li>
+<li><a href="06-key-value-store-group-commit.html#further-reading">Further Reading</a></li>
+<li><a href="06-key-value-store-group-commit.html#summary">Summary</a></li>
+</ul>
+<h2 id="part-ii-core-infrastructure-primitives"><a class="header" href="#part-ii-core-infrastructure-primitives">Part II: Core Infrastructure Primitives</a></h2>
+<h3 id="7-rate-limiter-system-design"><a class="header" href="#7-rate-limiter-system-design"><a href="07-rate-limiter.html">7. Rate Limiter: System Design</a></a></h3>
+<ul>
+<li><a href="07-rate-limiter.html#71-requirements-and-capacity-envelope">7.1 Requirements and Capacity Envelope</a>
+<ul>
+<li><a href="07-rate-limiter.html#actors-and-use-cases">Actors and Use Cases</a></li>
+<li><a href="07-rate-limiter.html#functional-requirements">Functional Requirements</a></li>
+<li><a href="07-rate-limiter.html#non-functional-requirements-and-slos">Non-Functional Requirements and SLOs</a></li>
+<li><a href="07-rate-limiter.html#capacity-and-resource-envelope">Capacity and Resource Envelope</a></li>
+</ul>
+</li>
+<li><a href="07-rate-limiter.html#72-api-wire-protocol-and-data-contracts">7.2 API, Wire Protocol, and Data Contracts</a>
+<ul>
+<li><a href="07-rate-limiter.html#external-caller-contract">External Caller Contract</a></li>
+<li><a href="07-rate-limiter.html#internal-evaluation-rpc-and-policy-management-api">Internal Evaluation RPC and Policy Management API</a></li>
+</ul>
+</li>
+<li><a href="07-rate-limiter.html#73-system-architecture-control-plane-vs-data-plane">7.3 System Architecture: Control Plane vs. Data Plane</a>
+<ul>
+<li><a href="07-rate-limiter.html#component-responsibilities-and-failure-domains">Component Responsibilities and Failure Domains</a></li>
+<li><a href="07-rate-limiter.html#request-path-walkthrough">Request Path Walkthrough</a></li>
+</ul>
+</li>
+<li><a href="07-rate-limiter.html#74-rate-limiting-algorithms-and-gcra-formulation">7.4 Rate-Limiting Algorithms and GCRA Formulation</a>
+<ul>
+<li><a href="07-rate-limiter.html#empirical-comparison-of-classical-algorithms">Empirical Comparison of Classical Algorithms</a></li>
+<li><a href="07-rate-limiter.html#interactive-step-by-step-algorithm-walkthroughs">Interactive Step-by-Step Algorithm Walkthroughs</a></li>
+<li><a href="07-rate-limiter.html#formal-derivation-generic-cell-rate-algorithm-gcra">Formal Derivation: Generic Cell Rate Algorithm (GCRA)</a></li>
+</ul>
+</li>
+<li><a href="07-rate-limiter.html#75-distributed-synchronization-hot-keys-and-multi-region-scaling">7.5 Distributed Synchronization, Hot Keys, and Multi-Region Scaling</a>
+<ul>
+<li><a href="07-rate-limiter.html#local-quota-leasing-batch-token-prefetching">Local Quota Leasing (Batch Token Prefetching)</a></li>
+<li><a href="07-rate-limiter.html#multi-region-global-quotas">Multi-Region Global Quotas</a></li>
+</ul>
+</li>
+<li><a href="07-rate-limiter.html#76-defense-in-depth-failure-policies-keying-and-load-shedding">7.6 Defense-in-Depth: Failure Policies, Keying, and Load Shedding</a>
+<ul>
+<li><a href="07-rate-limiter.html#tiered-failure-policies-fail-open-vs-fail-closed">Tiered Failure Policies (Fail-Open vs. Fail-Closed)</a></li>
+<li><a href="07-rate-limiter.html#composite-key-selection">Composite Key Selection</a></li>
+<li><a href="07-rate-limiter.html#rate-limiting-vs-adaptive-load-shedding">Rate Limiting vs. Adaptive Load Shedding</a></li>
+</ul>
+</li>
+<li><a href="07-rate-limiter.html#77-failure-modes-observability-production-systems-and-verification">7.7 Failure Modes, Observability, Production Systems, and Verification</a>
+<ul>
+<li><a href="07-rate-limiter.html#failure-and-recovery-matrix">Failure and Recovery Matrix</a></li>
+<li><a href="07-rate-limiter.html#observability-slis-and-alerts">Observability: SLIs and Alerts</a></li>
+<li><a href="07-rate-limiter.html#how-production-systems-implement-rate-limiting">How Production Systems Implement Rate Limiting</a></li>
+<li><a href="07-rate-limiter.html#verification-in-the-repository">Verification in the Repository</a></li>
+<li><a href="07-rate-limiter.html#engineering-glossary">Engineering Glossary</a></li>
+<li><a href="07-rate-limiter.html#end-to-end-rate-check-request-lifecycle-and-latency-budget">End-to-End Rate-Check Request Lifecycle and Latency Budget</a></li>
+<li><a href="07-rate-limiter.html#deep-dive-production-rate-limiting-case-studies">Deep-Dive Production Rate-Limiting Case Studies</a></li>
+<li><a href="07-rate-limiter.html#references">References</a></li>
+</ul>
+</li>
+</ul>
+<h3 id="chapter-8-unique-id-generator"><a class="header" href="#chapter-8-unique-id-generator"><a href="08-unique-id-generator.html">Chapter 8: Unique ID Generator</a></a></h3>
+<ul>
+<li><a href="08-unique-id-generator.html#81-requirements-actors-and-capacity-bounds">8.1 Requirements, Actors, and Capacity Bounds</a>
+<ul>
+<li><a href="08-unique-id-generator.html#actors-and-use-cases">Actors and Use Cases</a></li>
+<li><a href="08-unique-id-generator.html#functional-requirements">Functional Requirements</a></li>
+<li><a href="08-unique-id-generator.html#non-functional-requirements-and-slos">Non-Functional Requirements and SLOs</a></li>
+<li><a href="08-unique-id-generator.html#non-goals-and-scope-boundaries">Non-Goals and Scope Boundaries</a></li>
+<li><a href="08-unique-id-generator.html#back-of-the-envelope-capacity-bounds">Back-of-the-Envelope Capacity Bounds</a></li>
+</ul>
+</li>
+<li><a href="08-unique-id-generator.html#82-external-api-and-data-contracts">8.2 External API and Data Contracts</a>
+<ul>
+<li><a href="08-unique-id-generator.html#external-http2-and-grpc-contracts">External HTTP/2 and gRPC Contracts</a></li>
+<li><a href="08-unique-id-generator.html#control-plane-lease-and-checkpoint-schema">Control-Plane Lease and Checkpoint Schema</a></li>
+</ul>
+</li>
+<li><a href="08-unique-id-generator.html#83-high-level-architecture-control-plane-vs-data-plane">8.3 High-Level Architecture: Control Plane vs. Data Plane</a>
+<ul>
+<li><a href="08-unique-id-generator.html#component-responsibilities-and-failure-domains">Component Responsibilities and Failure Domains</a></li>
+<li><a href="08-unique-id-generator.html#hot-data-path-walkthrough">Hot Data Path Walkthrough</a></li>
+</ul>
+</li>
+<li><a href="08-unique-id-generator.html#84-comparative-design-space-and-64-bit-snowflake-layout">8.4 Comparative Design Space and 64-Bit Snowflake Layout</a>
+<ul>
+<li><a href="08-unique-id-generator.html#comparing-the-four-classical-approaches">Comparing the Four Classical Approaches</a></li>
+<li><a href="08-unique-id-generator.html#64-bit-field-layout-and-uniqueness-proof">64-Bit Field Layout and Uniqueness Proof</a></li>
+<li><a href="08-unique-id-generator.html#storage-engine-trade-off-b-tree-locality-vs-range-partitioned-hotspots">Storage Engine Trade-Off: B-Tree Locality vs. Range-Partitioned Hotspots</a></li>
+</ul>
+</li>
+<li><a href="08-unique-id-generator.html#85-clock-regression-crash-recovery-and-worker-id-safety">8.5 Clock Regression, Crash Recovery, and Worker-ID Safety</a>
+<ul>
+<li><a href="08-unique-id-generator.html#handling-ntp-backward-steps-and-leap-seconds">Handling NTP Backward Steps and Leap Seconds</a></li>
+<li><a href="08-unique-id-generator.html#surviving-restarts-and-preventing-worker-id-collisions">Surviving Restarts and Preventing Worker-ID Collisions</a></li>
+<li><a href="08-unique-id-generator.html#security-privacy-and-information-leakage">Security, Privacy, and Information Leakage</a></li>
+</ul>
+</li>
+<li><a href="08-unique-id-generator.html#86-failure-modes-slis-and-production-systems">8.6 Failure Modes, SLIs, and Production Systems</a>
+<ul>
+<li><a href="08-unique-id-generator.html#failure-and-recovery-matrix">Failure and Recovery Matrix</a></li>
+<li><a href="08-unique-id-generator.html#key-slis-and-operational-alerts">Key SLIs and Operational Alerts</a></li>
+<li><a href="08-unique-id-generator.html#real-world-production-systems">Real-World Production Systems</a></li>
+</ul>
+</li>
+<li><a href="08-unique-id-generator.html#87-simulation-verification">8.7 Simulation Verification</a></li>
+<li><a href="08-unique-id-generator.html#88-terminology-and-references">8.8 Terminology and References</a>
+<ul>
+<li><a href="08-unique-id-generator.html#engineering-glossary">Engineering Glossary</a></li>
+<li><a href="08-unique-id-generator.html#end-to-end-request-lifecycle-and-hop-by-hop-latency-budget">End-to-End Request Lifecycle and Hop-by-Hop Latency Budget</a></li>
+<li><a href="08-unique-id-generator.html#production-case-studies-and-open-source-comparisons">Production Case Studies and Open-Source Comparisons</a></li>
+<li><a href="08-unique-id-generator.html#references">References</a></li>
+</ul>
+</li>
+</ul>
+<h3 id="chapter-9-distributed-cache"><a class="header" href="#chapter-9-distributed-cache"><a href="09-distributed-cache.html">Chapter 9: Distributed Cache</a></a></h3>
+<ul>
+<li><a href="09-distributed-cache.html#91-requirements-actors-and-capacity-bounds">9.1 Requirements, Actors, and Capacity Bounds</a>
+<ul>
+<li><a href="09-distributed-cache.html#actors-and-use-cases">Actors and Use Cases</a></li>
+<li><a href="09-distributed-cache.html#functional-requirements">Functional Requirements</a></li>
+<li><a href="09-distributed-cache.html#non-functional-requirements-and-slos">Non-Functional Requirements and SLOs</a></li>
+<li><a href="09-distributed-cache.html#non-goals-and-scope-boundaries">Non-Goals and Scope Boundaries</a></li>
+<li><a href="09-distributed-cache.html#hit-ratio-arithmetic-and-back-of-the-envelope-capacity-bounds">Hit-Ratio Arithmetic and Back-of-the-Envelope Capacity Bounds</a></li>
+</ul>
+</li>
+<li><a href="09-distributed-cache.html#92-external-api-and-data-contracts">9.2 External API and Data Contracts</a>
+<ul>
+<li><a href="09-distributed-cache.html#lookup-lease-guarded-fill-and-invalidation-contracts">Lookup, Lease-Guarded Fill, and Invalidation Contracts</a></li>
+<li><a href="09-distributed-cache.html#in-memory-entry-metadata-layout">In-Memory Entry Metadata Layout</a></li>
+</ul>
+</li>
+<li><a href="09-distributed-cache.html#93-high-level-architecture-control-plane-vs-data-plane">9.3 High-Level Architecture: Control Plane vs. Data Plane</a>
+<ul>
+<li><a href="09-distributed-cache.html#component-responsibilities-and-failure-domains">Component Responsibilities and Failure Domains</a></li>
+<li><a href="09-distributed-cache.html#read-and-write-path-walkthrough">Read and Write Path Walkthrough</a></li>
+</ul>
+</li>
+<li><a href="09-distributed-cache.html#94-cache-topologies-eviction-policies-and-sharding-mechanics">9.4 Cache Topologies, Eviction Policies, and Sharding Mechanics</a>
+<ul>
+<li><a href="09-distributed-cache.html#choosing-cache-aside-over-write-through-and-write-behind">Choosing Cache-Aside Over Write-Through and Write-Behind</a></li>
+<li><a href="09-distributed-cache.html#eviction-policies-from-lru-and-lfu-to-w-tinylfu">Eviction Policies: From LRU and LFU to W-TinyLFU</a></li>
+<li><a href="09-distributed-cache.html#consistent-hashing-with-virtual-nodes-and-bounded-loads">Consistent Hashing with Virtual Nodes and Bounded Loads</a></li>
+</ul>
+</li>
+<li><a href="09-distributed-cache.html#95-consistency-races-stampedes-penetration-and-avalanches">9.5 Consistency Races, Stampedes, Penetration, and Avalanches</a>
+<ul>
+<li><a href="09-distributed-cache.html#closing-the-cache-aside-stale-value-race">Closing the Cache-Aside Stale-Value Race</a></li>
+<li><a href="09-distributed-cache.html#defending-against-cache-stampedes-thundering-herd">Defending Against Cache Stampedes (Thundering Herd)</a></li>
+<li><a href="09-distributed-cache.html#defending-against-penetration-and-avalanches">Defending Against Penetration and Avalanches</a></li>
+</ul>
+</li>
+<li><a href="09-distributed-cache.html#96-failure-modes-slis-and-production-systems">9.6 Failure Modes, SLIs, and Production Systems</a>
+<ul>
+<li><a href="09-distributed-cache.html#failure-and-recovery-matrix">Failure and Recovery Matrix</a></li>
+<li><a href="09-distributed-cache.html#key-slis-and-operational-alerts">Key SLIs and Operational Alerts</a></li>
+<li><a href="09-distributed-cache.html#real-world-production-systems">Real-World Production Systems</a></li>
+</ul>
+</li>
+<li><a href="09-distributed-cache.html#97-simulation-verification">9.7 Simulation Verification</a></li>
+<li><a href="09-distributed-cache.html#98-terminology-and-references">9.8 Terminology and References</a>
+<ul>
+<li><a href="09-distributed-cache.html#engineering-glossary">Engineering Glossary</a></li>
+<li><a href="09-distributed-cache.html#end-to-end-request-lifecycle-and-hop-by-hop-latency-budget">End-to-End Request Lifecycle and Hop-by-Hop Latency Budget</a></li>
+<li><a href="09-distributed-cache.html#production-case-studies-and-open-source-comparisons">Production Case Studies and Open-Source Comparisons</a></li>
+<li><a href="09-distributed-cache.html#references">References</a></li>
+</ul>
+</li>
+</ul>
+<h3 id="chapter-10-distributed-lock-service"><a class="header" href="#chapter-10-distributed-lock-service"><a href="10-distributed-lock.html">Chapter 10: Distributed Lock Service</a></a></h3>
+<ul>
+<li><a href="10-distributed-lock.html#101-requirements-actors-and-capacity-bounds">10.1 Requirements, Actors, and Capacity Bounds</a>
+<ul>
+<li><a href="10-distributed-lock.html#efficiency-locks-vs-correctness-locks">Efficiency Locks vs. Correctness Locks</a></li>
+<li><a href="10-distributed-lock.html#actors-and-use-cases">Actors and Use Cases</a></li>
+<li><a href="10-distributed-lock.html#functional-requirements">Functional Requirements</a></li>
+<li><a href="10-distributed-lock.html#non-functional-requirements-and-slos">Non-Functional Requirements and SLOs</a></li>
+<li><a href="10-distributed-lock.html#non-goals-and-scope-boundaries">Non-Goals and Scope Boundaries</a></li>
+<li><a href="10-distributed-lock.html#back-of-the-envelope-capacity-bounds">Back-of-the-Envelope Capacity Bounds</a></li>
+</ul>
+</li>
+<li><a href="10-distributed-lock.html#102-external-api-and-data-contracts">10.2 External API and Data Contracts</a>
+<ul>
+<li><a href="10-distributed-lock.html#lock-service-httpgrpc-contracts">Lock Service HTTP/gRPC Contracts</a></li>
+<li><a href="10-distributed-lock.html#protected-storage-fencing-contract-sql-kv-ddl">Protected Storage Fencing Contract (SQL / KV DDL)</a></li>
+</ul>
+</li>
+<li><a href="10-distributed-lock.html#103-high-level-architecture-consensus-plane-and-fenced-data-path">10.3 High-Level Architecture: Consensus Plane and Fenced Data Path</a>
+<ul>
+<li><a href="10-distributed-lock.html#component-responsibilities-and-failure-domains">Component Responsibilities and Failure Domains</a></li>
+<li><a href="10-distributed-lock.html#request-path-walkthrough">Request Path Walkthrough</a></li>
+</ul>
+</li>
+<li><a href="10-distributed-lock.html#104-process-pauses-fencing-tokens-and-the-redlock-critique">10.4 Process Pauses, Fencing Tokens, and the Redlock Critique</a>
+<ul>
+<li><a href="10-distributed-lock.html#why-time-bounded-leases-cannot-guarantee-mutual-exclusion">Why Time-Bounded Leases Cannot Guarantee Mutual Exclusion</a></li>
+<li><a href="10-distributed-lock.html#evaluating-redlock-and-martin-kleppmanns-critique">Evaluating Redlock and Martin Kleppmann’s Critique</a></li>
+</ul>
+</li>
+<li><a href="10-distributed-lock.html#105-safe-release-progress-coupled-renewal-and-fair-waiter-queues">10.5 Safe Release, Progress-Coupled Renewal, and Fair Waiter Queues</a>
+<ul>
+<li><a href="10-distributed-lock.html#conditional-release-and-progress-coupled-keepalives">Conditional Release and Progress-Coupled Keepalives</a></li>
+<li><a href="10-distributed-lock.html#eliminating-the-release-herd-with-ephemeral-sequential-queues">Eliminating the Release Herd with Ephemeral Sequential Queues</a></li>
+<li><a href="10-distributed-lock.html#when-to-avoid-distributed-locks-entirely">When to Avoid Distributed Locks Entirely</a></li>
+</ul>
+</li>
+<li><a href="10-distributed-lock.html#106-failure-modes-slis-and-production-systems">10.6 Failure Modes, SLIs, and Production Systems</a>
+<ul>
+<li><a href="10-distributed-lock.html#failure-and-recovery-matrix">Failure and Recovery Matrix</a></li>
+<li><a href="10-distributed-lock.html#key-slis-and-operational-alerts">Key SLIs and Operational Alerts</a></li>
+<li><a href="10-distributed-lock.html#real-world-production-systems">Real-World Production Systems</a></li>
+</ul>
+</li>
+<li><a href="10-distributed-lock.html#107-simulation-verification">10.7 Simulation Verification</a></li>
+<li><a href="10-distributed-lock.html#108-terminology-and-references">10.8 Terminology and References</a>
+<ul>
+<li><a href="10-distributed-lock.html#engineering-glossary">Engineering Glossary</a></li>
+<li><a href="10-distributed-lock.html#end-to-end-request-lifecycle-and-hop-by-hop-latency-budget">End-to-End Request Lifecycle and Hop-by-Hop Latency Budget</a></li>
+<li><a href="10-distributed-lock.html#production-case-studies-and-open-source-comparisons">Production Case Studies and Open-Source Comparisons</a></li>
+<li><a href="10-distributed-lock.html#references">References</a></li>
+</ul>
+</li>
+</ul>
+<h3 id="chapter-11-distributed-message-queue"><a class="header" href="#chapter-11-distributed-message-queue"><a href="11-message-queue.html">Chapter 11: Distributed Message Queue</a></a></h3>
+<ul>
+<li><a href="11-message-queue.html#111-requirements-actors-and-capacity-bounds">11.1 Requirements, Actors, and Capacity Bounds</a>
+<ul>
+<li><a href="11-message-queue.html#task-queues-vs-partitioned-commit-logs">Task Queues vs. Partitioned Commit Logs</a></li>
+<li><a href="11-message-queue.html#actors-and-use-cases">Actors and Use Cases</a></li>
+<li><a href="11-message-queue.html#functional-requirements">Functional Requirements</a></li>
+<li><a href="11-message-queue.html#non-functional-requirements-and-slos">Non-Functional Requirements and SLOs</a></li>
+<li><a href="11-message-queue.html#non-goals-and-scope-boundaries">Non-Goals and Scope Boundaries</a></li>
+<li><a href="11-message-queue.html#back-of-the-envelope-capacity-bounds">Back-of-the-Envelope Capacity Bounds</a></li>
+</ul>
+</li>
+<li><a href="11-message-queue.html#112-external-api-and-data-contracts">11.2 External API and Data Contracts</a>
+<ul>
+<li><a href="11-message-queue.html#produce-fetch-and-commit-contracts">Produce, Fetch, and Commit Contracts</a></li>
+<li><a href="11-message-queue.html#on-disk-log-segment-schema">On-Disk Log Segment Schema</a></li>
+</ul>
+</li>
+<li><a href="11-message-queue.html#113-high-level-architecture-control-plane-vs-data-plane">11.3 High-Level Architecture: Control Plane vs. Data Plane</a>
+<ul>
+<li><a href="11-message-queue.html#component-responsibilities-and-failure-domains">Component Responsibilities and Failure Domains</a></li>
+<li><a href="11-message-queue.html#hot-data-path-walkthrough">Hot Data Path Walkthrough</a></li>
+</ul>
+</li>
+<li><a href="11-message-queue.html#114-storage-mechanics-replication-isr-and-cooperative-rebalancing">11.4 Storage Mechanics, Replication (<code>ISR</code>), and Cooperative Rebalancing</a>
+<ul>
+<li><a href="11-message-queue.html#why-sequential-logs-and-zero-copy-sendfile-deliver-high-throughput">Why Sequential Logs and Zero-Copy <code>sendfile()</code> Deliver High Throughput</a></li>
+<li><a href="11-message-queue.html#in-sync-replicas-isr-acksall-and-high-watermark-visibility">In-Sync Replicas (<code>ISR</code>), <code>acks=all</code>, and High Watermark Visibility</a></li>
+<li><a href="11-message-queue.html#consumer-groups-and-cooperative-sticky-rebalancing">Consumer Groups and Cooperative Sticky Rebalancing</a></li>
+</ul>
+</li>
+<li><a href="11-message-queue.html#115-delivery-semantics-idempotent-producers-and-transactional-outbox">11.5 Delivery Semantics, Idempotent Producers, and Transactional Outbox</a>
+<ul>
+<li><a href="11-message-queue.html#at-least-once-vs-at-most-once-offset-ordering">At-Least-Once vs. At-Most-Once Offset Ordering</a></li>
+<li><a href="11-message-queue.html#idempotent-producers-and-the-transactional-outbox">Idempotent Producers and the Transactional Outbox</a></li>
+</ul>
+</li>
+<li><a href="11-message-queue.html#116-failure-modes-slis-and-production-systems">11.6 Failure Modes, SLIs, and Production Systems</a>
+<ul>
+<li><a href="11-message-queue.html#failure-and-recovery-matrix">Failure and Recovery Matrix</a></li>
+<li><a href="11-message-queue.html#key-slis-and-operational-alerts">Key SLIs and Operational Alerts</a></li>
+<li><a href="11-message-queue.html#real-world-production-systems">Real-World Production Systems</a></li>
+</ul>
+</li>
+<li><a href="11-message-queue.html#117-simulation-verification">11.7 Simulation Verification</a></li>
+<li><a href="11-message-queue.html#118-terminology-and-references">11.8 Terminology and References</a>
+<ul>
+<li><a href="11-message-queue.html#engineering-glossary">Engineering Glossary</a></li>
+<li><a href="11-message-queue.html#end-to-end-request-lifecycle-and-hop-by-hop-latency-budget">End-to-End Request Lifecycle and Hop-by-Hop Latency Budget</a></li>
+<li><a href="11-message-queue.html#production-case-studies-and-open-source-comparisons">Production Case Studies and Open-Source Comparisons</a></li>
+<li><a href="11-message-queue.html#references">References</a></li>
+</ul>
+</li>
+</ul>
+<h3 id="chapter-12-distributed-job-scheduler"><a class="header" href="#chapter-12-distributed-job-scheduler"><a href="12-job-scheduler.html">Chapter 12: Distributed Job Scheduler</a></a></h3>
+<ul>
+<li><a href="12-job-scheduler.html#121-requirements-actors-and-capacity-bounds">12.1 Requirements, Actors, and Capacity Bounds</a>
+<ul>
+<li><a href="12-job-scheduler.html#actors-and-use-cases">Actors and Use Cases</a></li>
+<li><a href="12-job-scheduler.html#functional-requirements">Functional Requirements</a></li>
+<li><a href="12-job-scheduler.html#non-functional-requirements-and-slos">Non-Functional Requirements and SLOs</a></li>
+<li><a href="12-job-scheduler.html#non-goals-and-scope-boundaries">Non-Goals and Scope Boundaries</a></li>
+<li><a href="12-job-scheduler.html#back-of-the-envelope-capacity-bounds">Back-of-the-Envelope Capacity Bounds</a></li>
+</ul>
+</li>
+<li><a href="12-job-scheduler.html#122-external-api-and-data-contracts">12.2 External API and Data Contracts</a>
+<ul>
+<li><a href="12-job-scheduler.html#submission-lease-claim-heartbeat-and-fenced-result-apis">Submission, Lease Claim, Heartbeat, and Fenced Result APIs</a></li>
+<li><a href="12-job-scheduler.html#relational-job-run-schema-and-atomic-claim-query">Relational Job-Run Schema and Atomic Claim Query</a></li>
+</ul>
+</li>
+<li><a href="12-job-scheduler.html#123-high-level-architecture-control-plane-vs-data-plane">12.3 High-Level Architecture: Control Plane vs. Data Plane</a>
+<ul>
+<li><a href="12-job-scheduler.html#component-responsibilities-and-failure-domains">Component Responsibilities and Failure Domains</a></li>
+<li><a href="12-job-scheduler.html#hot-data-path-walkthrough">Hot Data Path Walkthrough</a></li>
+</ul>
+</li>
+<li><a href="12-job-scheduler.html#124-scheduling-engines-hierarchical-timing-wheels-vs-skip-locked-polling">12.4 Scheduling Engines: Hierarchical Timing Wheels vs. <code>SKIP LOCKED</code> Polling</a>
+<ul>
+<li><a href="12-job-scheduler.html#scaling-delayed-execution-with-hierarchical-timing-wheels">Scaling Delayed Execution with Hierarchical Timing Wheels</a></li>
+<li><a href="12-job-scheduler.html#lock-free-worker-claiming-with-select-for-update-skip-locked">Lock-Free Worker Claiming with <code>SELECT ... FOR UPDATE SKIP LOCKED</code></a></li>
+</ul>
+</li>
+<li><a href="12-job-scheduler.html#125-leases-attempt-fencing-cron-hazards-and-multi-tenant-fairness">12.5 Leases, Attempt Fencing, Cron Hazards, and Multi-Tenant Fairness</a>
+<ul>
+<li><a href="12-job-scheduler.html#lease-reclamation-and-monotonic-attempt_id-fencing">Lease Reclamation and Monotonic <code>attempt_id</code> Fencing</a></li>
+<li><a href="12-job-scheduler.html#recurring-cron-jobs-idempotency-utc-vs-dst-and-missed-run-policies">Recurring Cron Jobs: Idempotency, UTC vs. DST, and Missed-Run Policies</a></li>
+<li><a href="12-job-scheduler.html#priority-aging-and-per-tenant-fair-queuing">Priority Aging and Per-Tenant Fair Queuing</a></li>
+</ul>
+</li>
+<li><a href="12-job-scheduler.html#126-failure-modes-slis-and-production-systems">12.6 Failure Modes, SLIs, and Production Systems</a>
+<ul>
+<li><a href="12-job-scheduler.html#failure-and-recovery-matrix">Failure and Recovery Matrix</a></li>
+<li><a href="12-job-scheduler.html#key-slis-and-operational-alerts">Key SLIs and Operational Alerts</a></li>
+<li><a href="12-job-scheduler.html#real-world-production-systems">Real-World Production Systems</a></li>
+</ul>
+</li>
+<li><a href="12-job-scheduler.html#127-simulation-verification">12.7 Simulation Verification</a></li>
+<li><a href="12-job-scheduler.html#128-terminology-and-references">12.8 Terminology and References</a>
+<ul>
+<li><a href="12-job-scheduler.html#engineering-glossary">Engineering Glossary</a></li>
+<li><a href="12-job-scheduler.html#end-to-end-request-lifecycle-and-hop-by-hop-latency-budget">End-to-End Request Lifecycle and Hop-by-Hop Latency Budget</a></li>
+<li><a href="12-job-scheduler.html#production-case-studies-and-open-source-comparisons">Production Case Studies and Open-Source Comparisons</a></li>
+<li><a href="12-job-scheduler.html#references">References</a></li>
+</ul>
+</li>
+</ul>
+<h3 id="chapter-13-multi-channel-notification-service"><a class="header" href="#chapter-13-multi-channel-notification-service"><a href="13-notification-service.html">Chapter 13: Multi-Channel Notification Service</a></a></h3>
+<ul>
+<li><a href="13-notification-service.html#131-requirements-actors-and-capacity-bounds">13.1 Requirements, Actors, and Capacity Bounds</a>
+<ul>
+<li><a href="13-notification-service.html#actors-and-use-cases">Actors and Use Cases</a></li>
+<li><a href="13-notification-service.html#functional-requirements">Functional Requirements</a></li>
+<li><a href="13-notification-service.html#non-functional-requirements-and-slos">Non-Functional Requirements and SLOs</a></li>
+<li><a href="13-notification-service.html#non-goals-and-scope-boundaries">Non-Goals and Scope Boundaries</a></li>
+<li><a href="13-notification-service.html#back-of-the-envelope-capacity-bounds">Back-of-the-Envelope Capacity Bounds</a></li>
+</ul>
+</li>
+<li><a href="13-notification-service.html#132-external-api-and-data-contracts">13.2 External API and Data Contracts</a>
+<ul>
+<li><a href="13-notification-service.html#asynchronous-ingestion-and-preference-contracts">Asynchronous Ingestion and Preference Contracts</a></li>
+<li><a href="13-notification-service.html#preference-suppression-and-delivery-state-schema">Preference, Suppression, and Delivery State Schema</a></li>
+</ul>
+</li>
+<li><a href="13-notification-service.html#133-high-level-architecture-control-plane-vs-data-plane">13.3 High-Level Architecture: Control Plane vs. Data Plane</a>
+<ul>
+<li><a href="13-notification-service.html#component-responsibilities-and-failure-domains">Component Responsibilities and Failure Domains</a></li>
+<li><a href="13-notification-service.html#request-path-walkthrough">Request Path Walkthrough</a></li>
+</ul>
+</li>
+<li><a href="13-notification-service.html#134-priority-lane-isolation-provider-pacing-and-circuit-breakers">13.4 Priority Lane Isolation, Provider Pacing, and Circuit Breakers</a>
+<ul>
+<li><a href="13-notification-service.html#eliminating-head-of-line-blocking-with-priority-lanes-and-bulkheads">Eliminating Head-of-Line Blocking with Priority Lanes and Bulkheads</a></li>
+<li><a href="13-notification-service.html#three-state-circuit-breakers-and-multi-provider-failover">Three-State Circuit Breakers and Multi-Provider Failover</a></li>
+</ul>
+</li>
+<li><a href="13-notification-service.html#135-error-taxonomy-full-jitter-exponential-backoff-and-delivery-truth">13.5 Error Taxonomy, Full-Jitter Exponential Backoff, and Delivery Truth</a>
+<ul>
+<li><a href="13-notification-service.html#permanent-vs-transient-provider-failures">Permanent vs. Transient Provider Failures</a></li>
+<li><a href="13-notification-service.html#exponential-backoff-with-full-jitter-and-retry-budgets">Exponential Backoff with Full Jitter and Retry Budgets</a></li>
+<li><a href="13-notification-service.html#separating-sent-from-delivered">Separating “Sent” from “Delivered”</a></li>
+</ul>
+</li>
+<li><a href="13-notification-service.html#136-failure-modes-slis-and-production-systems">13.6 Failure Modes, SLIs, and Production Systems</a>
+<ul>
+<li><a href="13-notification-service.html#failure-and-recovery-matrix">Failure and Recovery Matrix</a></li>
+<li><a href="13-notification-service.html#key-slis-and-operational-alerts">Key SLIs and Operational Alerts</a></li>
+<li><a href="13-notification-service.html#real-world-production-systems">Real-World Production Systems</a></li>
+</ul>
+</li>
+<li><a href="13-notification-service.html#137-simulation-verification">13.7 Simulation Verification</a></li>
+<li><a href="13-notification-service.html#138-terminology-and-references">13.8 Terminology and References</a>
+<ul>
+<li><a href="13-notification-service.html#engineering-glossary">Engineering Glossary</a></li>
+<li><a href="13-notification-service.html#end-to-end-request-lifecycle-and-hop-by-hop-latency-budget">End-to-End Request Lifecycle and Hop-by-Hop Latency Budget</a></li>
+<li><a href="13-notification-service.html#production-case-studies-and-open-source-comparisons">Production Case Studies and Open-Source Comparisons</a></li>
+<li><a href="13-notification-service.html#references">References</a></li>
+</ul>
+</li>
+</ul>
+<h2 id="part-iii-content-media-and-communication"><a class="header" href="#part-iii-content-media-and-communication">Part III: Content, Media, and Communication</a></h2>
+<h3 id="14-url-shortener-system-design"><a class="header" href="#14-url-shortener-system-design"><a href="14-url-shortener.html">14. URL Shortener: System Design</a></a></h3>
+<ul>
+<li><a href="14-url-shortener.html#141-requirements-actors-and-capacity-bounds">14.1 Requirements, Actors, and Capacity Bounds</a>
+<ul>
+<li><a href="14-url-shortener.html#actors-and-use-cases">Actors and Use Cases</a></li>
+<li><a href="14-url-shortener.html#functional-requirements">Functional Requirements</a></li>
+<li><a href="14-url-shortener.html#non-functional-requirements-and-slos">Non-Functional Requirements and SLOs</a></li>
+<li><a href="14-url-shortener.html#non-goals-and-scope-boundaries">Non-Goals and Scope Boundaries</a></li>
+<li><a href="14-url-shortener.html#back-of-the-envelope-capacity-bounds">Back-of-the-Envelope Capacity Bounds</a></li>
+</ul>
+</li>
+<li><a href="14-url-shortener.html#142-external-api-and-data-contracts">14.2 External API and Data Contracts</a>
+<ul>
+<li><a href="14-url-shortener.html#external-http-contracts">External HTTP Contracts</a></li>
+<li><a href="14-url-shortener.html#storage-schemas">Storage Schemas</a></li>
+</ul>
+</li>
+<li><a href="14-url-shortener.html#143-high-level-architecture-control-plane-vs-data-plane">14.3 High-Level Architecture: Control Plane vs. Data Plane</a>
+<ul>
+<li><a href="14-url-shortener.html#component-responsibilities">Component Responsibilities</a></li>
+<li><a href="14-url-shortener.html#write-and-read-lifecycles">Write and Read Lifecycles</a></li>
+</ul>
+</li>
+<li><a href="14-url-shortener.html#144-key-allocation-range-leasing-base-62-bijection-and-scrambling">14.4 Key Allocation: Range Leasing, Base-62 Bijection, and Scrambling</a>
+<ul>
+<li><a href="14-url-shortener.html#alphabet-size-and-code-length">Alphabet Size and Code Length</a></li>
+<li><a href="14-url-shortener.html#comparing-three-code-generation-strategies">Comparing Three Code-Generation Strategies</a></li>
+<li><a href="14-url-shortener.html#base-62-encoding-step-by-step">Base-62 Encoding Step by Step</a></li>
+<li><a href="14-url-shortener.html#preventing-enumeration-with-format-preserving-encryption">Preventing Enumeration with Format-Preserving Encryption</a></li>
+</ul>
+</li>
+<li><a href="14-url-shortener.html#145-read-path-optimization-redirects-multi-tier-caching-and-analytics">14.5 Read-Path Optimization: Redirects, Multi-Tier Caching, and Analytics</a>
+<ul>
+<li><a href="14-url-shortener.html#http-redirect-semantics-301-vs-302-vs-307308">HTTP Redirect Semantics: <code>301</code> vs. <code>302</code> vs. <code>307</code>/<code>308</code></a></li>
+<li><a href="14-url-shortener.html#multi-tier-cache-cascade-and-bloom-filter-defense">Multi-Tier Cache Cascade and Bloom Filter Defense</a></li>
+<li><a href="14-url-shortener.html#asynchronous-click-analytics-and-abuse-controls">Asynchronous Click Analytics and Abuse Controls</a></li>
+</ul>
+</li>
+<li><a href="14-url-shortener.html#146-failure-modes-slis-and-production-systems">14.6 Failure Modes, SLIs, and Production Systems</a>
+<ul>
+<li><a href="14-url-shortener.html#failure-mode-and-mitigation-matrix">Failure Mode and Mitigation Matrix</a></li>
+<li><a href="14-url-shortener.html#operational-slis-slos-and-alert-thresholds">Operational SLIs, SLOs, and Alert Thresholds</a></li>
+<li><a href="14-url-shortener.html#production-benchmarks">Production Benchmarks</a></li>
+</ul>
+</li>
+<li><a href="14-url-shortener.html#147-simulation-verification">14.7 Simulation Verification</a></li>
+<li><a href="14-url-shortener.html#148-terminology-and-references">14.8 Terminology and References</a>
+<ul>
+<li><a href="14-url-shortener.html#engineering-glossary">Engineering Glossary</a></li>
+<li><a href="14-url-shortener.html#end-to-end-request-lifecycle-and-hop-by-hop-latency-budget">End-to-End Request Lifecycle and Hop-by-Hop Latency Budget</a></li>
+<li><a href="14-url-shortener.html#production-case-studies-and-open-source-comparisons">Production Case Studies and Open-Source Comparisons</a></li>
+<li><a href="14-url-shortener.html#references">References</a></li>
+</ul>
+</li>
+</ul>
+<h3 id="15-news-feed-system-design"><a class="header" href="#15-news-feed-system-design"><a href="15-news-feed.html">15. News Feed: System Design</a></a></h3>
+<ul>
+<li><a href="15-news-feed.html#151-requirements-actors-and-capacity-bounds">15.1 Requirements, Actors, and Capacity Bounds</a>
+<ul>
+<li><a href="15-news-feed.html#actors-and-use-cases">Actors and Use Cases</a></li>
+<li><a href="15-news-feed.html#functional-requirements">Functional Requirements</a></li>
+<li><a href="15-news-feed.html#non-functional-requirements-and-slos">Non-Functional Requirements and SLOs</a></li>
+<li><a href="15-news-feed.html#non-goals-and-scope-boundaries">Non-Goals and Scope Boundaries</a></li>
+<li><a href="15-news-feed.html#back-of-the-envelope-capacity-bounds">Back-of-the-Envelope Capacity Bounds</a></li>
+</ul>
+</li>
+<li><a href="15-news-feed.html#152-external-api-and-data-contracts">15.2 External API and Data Contracts</a>
+<ul>
+<li><a href="15-news-feed.html#external-http-contracts">External HTTP Contracts</a></li>
+<li><a href="15-news-feed.html#storage-schemas-and-cache-structures">Storage Schemas and Cache Structures</a></li>
+</ul>
+</li>
+<li><a href="15-news-feed.html#153-high-level-architecture-control-plane-vs-data-plane">15.3 High-Level Architecture: Control Plane vs. Data Plane</a>
+<ul>
+<li><a href="15-news-feed.html#component-responsibilities">Component Responsibilities</a></li>
+<li><a href="15-news-feed.html#write-and-read-lifecycles">Write and Read Lifecycles</a></li>
+</ul>
+</li>
+<li><a href="15-news-feed.html#154-hybrid-fan-out-push-inboxes-celebrity-pull-merge-and-threshold-calibration">15.4 Hybrid Fan-Out: Push Inboxes, Celebrity Pull Merge, and Threshold Calibration</a>
+<ul>
+<li><a href="15-news-feed.html#pure-push-fan-out-on-write">Pure Push (Fan-Out on Write)</a></li>
+<li><a href="15-news-feed.html#pure-pull-fan-out-on-read">Pure Pull (Fan-Out on Read)</a></li>
+<li><a href="15-news-feed.html#hybrid-fan-out-and-threshold-calibration">Hybrid Fan-Out and Threshold Calibration</a></li>
+</ul>
+</li>
+<li><a href="15-news-feed.html#155-cursor-pagination-candidate-ranking-and-consistency-mechanics">15.5 Cursor Pagination, Candidate Ranking, and Consistency Mechanics</a>
+<ul>
+<li><a href="15-news-feed.html#keyset-cursor-pagination-vs-offset-pagination">Keyset Cursor Pagination vs. Offset Pagination</a></li>
+<li><a href="15-news-feed.html#authoritative-read-time-filtering-and-multi-stage-ranking">Authoritative Read-Time Filtering and Multi-Stage Ranking</a></li>
+<li><a href="15-news-feed.html#consistency-properties-visible-to-members">Consistency Properties Visible to Members</a></li>
+</ul>
+</li>
+<li><a href="15-news-feed.html#156-failure-modes-slis-and-production-systems">15.6 Failure Modes, SLIs, and Production Systems</a>
+<ul>
+<li><a href="15-news-feed.html#failure-mode-and-mitigation-matrix">Failure Mode and Mitigation Matrix</a></li>
+<li><a href="15-news-feed.html#operational-slis-slos-and-alert-thresholds">Operational SLIs, SLOs, and Alert Thresholds</a></li>
+<li><a href="15-news-feed.html#production-benchmarks">Production Benchmarks</a></li>
+</ul>
+</li>
+<li><a href="15-news-feed.html#157-simulation-verification">15.7 Simulation Verification</a></li>
+<li><a href="15-news-feed.html#158-terminology-and-references">15.8 Terminology and References</a>
+<ul>
+<li><a href="15-news-feed.html#engineering-glossary">Engineering Glossary</a></li>
+<li><a href="15-news-feed.html#references">References</a></li>
+</ul>
+</li>
+<li><a href="15-news-feed.html#159-end-to-end-request-lifecycle-and-production-case-studies">15.9 End-to-End Request Lifecycle and Production Case Studies</a>
+<ul>
+<li><a href="15-news-feed.html#hop-by-hop-request-lifecycle-and-latency-budget">Hop-by-Hop Request Lifecycle and Latency Budget</a></li>
+<li><a href="15-news-feed.html#production-case-studies-and-open-source-comparisons">Production Case Studies and Open-Source Comparisons</a></li>
+</ul>
+</li>
+</ul>
+<h3 id="16-object-store-system-design"><a class="header" href="#16-object-store-system-design"><a href="16-object-store.html">16. Object Store: System Design</a></a></h3>
+<ul>
+<li><a href="16-object-store.html#161-requirements-actors-and-capacity-bounds">16.1 Requirements, Actors, and Capacity Bounds</a>
+<ul>
+<li><a href="16-object-store.html#actors-and-use-cases">Actors and Use Cases</a></li>
+<li><a href="16-object-store.html#functional-requirements">Functional Requirements</a></li>
+<li><a href="16-object-store.html#non-functional-requirements-and-slos">Non-Functional Requirements and SLOs</a></li>
+<li><a href="16-object-store.html#non-goals-and-scope-boundaries">Non-Goals and Scope Boundaries</a></li>
+<li><a href="16-object-store.html#back-of-the-envelope-capacity-bounds">Back-of-the-Envelope Capacity Bounds</a></li>
+</ul>
+</li>
+<li><a href="16-object-store.html#162-external-api-and-data-contracts">16.2 External API and Data Contracts</a>
+<ul>
+<li><a href="16-object-store.html#external-http-contracts">External HTTP Contracts</a></li>
+<li><a href="16-object-store.html#metadata-and-chunk-placement-schemas">Metadata and Chunk Placement Schemas</a></li>
+</ul>
+</li>
+<li><a href="16-object-store.html#163-high-level-architecture-control-plane-vs-data-plane">16.3 High-Level Architecture: Control Plane vs. Data Plane</a>
+<ul>
+<li><a href="16-object-store.html#component-responsibilities">Component Responsibilities</a></li>
+<li><a href="16-object-store.html#write-and-read-lifecycles">Write and Read Lifecycles</a></li>
+</ul>
+</li>
+<li><a href="16-object-store.html#164-durability-engineering-reed-solomon-erasure-coding-placement-and-scrubbing">16.4 Durability Engineering: Reed-Solomon Erasure Coding, Placement, and Scrubbing</a>
+<ul>
+<li><a href="16-object-store.html#from-parity-addition-to-reed-solomon-rs6-3-over-gf28">From Parity Addition to Reed-Solomon <code>RS(6, 3)</code> over <code>GF(2^8)</code></a></li>
+<li><a href="16-object-store.html#failure-domain-placement-copysets-and-background-scrubbing">Failure-Domain Placement, Copysets, and Background Scrubbing</a></li>
+</ul>
+</li>
+<li><a href="16-object-store.html#165-small-object-packing-multipart-sealing-and-safe-garbage-collection">16.5 Small-Object Packing, Multipart Sealing, and Safe Garbage Collection</a>
+<ul>
+<li><a href="16-object-store.html#small-object-packing-haystack-pattern">Small-Object Packing (Haystack Pattern)</a></li>
+<li><a href="16-object-store.html#versioning-and-grace-period-garbage-collection">Versioning and Grace-Period Garbage Collection</a></li>
+</ul>
+</li>
+<li><a href="16-object-store.html#166-failure-modes-slis-and-production-systems">16.6 Failure Modes, SLIs, and Production Systems</a>
+<ul>
+<li><a href="16-object-store.html#failure-mode-and-mitigation-matrix">Failure Mode and Mitigation Matrix</a></li>
+<li><a href="16-object-store.html#operational-slis-slos-and-alert-thresholds">Operational SLIs, SLOs, and Alert Thresholds</a></li>
+<li><a href="16-object-store.html#production-benchmarks">Production Benchmarks</a></li>
+</ul>
+</li>
+<li><a href="16-object-store.html#167-simulation-verification">16.7 Simulation Verification</a></li>
+<li><a href="16-object-store.html#168-terminology-and-references">16.8 Terminology and References</a>
+<ul>
+<li><a href="16-object-store.html#engineering-glossary">Engineering Glossary</a></li>
+<li><a href="16-object-store.html#references">References</a></li>
+</ul>
+</li>
+<li><a href="16-object-store.html#169-end-to-end-request-lifecycle-and-production-case-studies">16.9 End-to-End Request Lifecycle and Production Case Studies</a>
+<ul>
+<li><a href="16-object-store.html#hop-by-hop-request-lifecycle-and-latency-budget">Hop-by-Hop Request Lifecycle and Latency Budget</a></li>
+<li><a href="16-object-store.html#production-case-studies-and-open-source-comparisons">Production Case Studies and Open-Source Comparisons</a></li>
+</ul>
+</li>
+</ul>
+<h3 id="17-video-streaming-platform-system-design"><a class="header" href="#17-video-streaming-platform-system-design"><a href="17-video-streaming.html">17. Video Streaming Platform: System Design</a></a></h3>
+<ul>
+<li><a href="17-video-streaming.html#171-requirements-actors-and-capacity-bounds">17.1 Requirements, Actors, and Capacity Bounds</a>
+<ul>
+<li><a href="17-video-streaming.html#actors-and-use-cases">Actors and Use Cases</a></li>
+<li><a href="17-video-streaming.html#functional-requirements">Functional Requirements</a></li>
+<li><a href="17-video-streaming.html#non-functional-requirements-and-slos">Non-Functional Requirements and SLOs</a></li>
+<li><a href="17-video-streaming.html#non-goals-and-scope-boundaries">Non-Goals and Scope Boundaries</a></li>
+<li><a href="17-video-streaming.html#back-of-the-envelope-capacity-bounds">Back-of-the-Envelope Capacity Bounds</a></li>
+</ul>
+</li>
+<li><a href="17-video-streaming.html#172-external-api-and-data-contracts">17.2 External API and Data Contracts</a>
+<ul>
+<li><a href="17-video-streaming.html#external-http-contracts">External HTTP Contracts</a></li>
+<li><a href="17-video-streaming.html#catalogue-and-transcode-job-schemas">Catalogue and Transcode Job Schemas</a></li>
+</ul>
+</li>
+<li><a href="17-video-streaming.html#173-high-level-architecture-control-plane-vs-data-plane">17.3 High-Level Architecture: Control Plane vs. Data Plane</a>
+<ul>
+<li><a href="17-video-streaming.html#component-responsibilities">Component Responsibilities</a></li>
+<li><a href="17-video-streaming.html#ingest-to-playback-lifecycles">Ingest-to-Playback Lifecycles</a></li>
+</ul>
+</li>
+<li><a href="17-video-streaming.html#174-chunked-parallel-dag-transcoding-and-unified-cmaf-packaging">17.4 Chunked Parallel DAG Transcoding and Unified CMAF Packaging</a>
+<ul>
+<li><a href="17-video-streaming.html#parallel-gop-level-transcoding-and-per-title-optimization">Parallel GOP-Level Transcoding and Per-Title Optimization</a></li>
+<li><a href="17-video-streaming.html#unified-cmaf-packaging-hls-dash-deduplication">Unified CMAF Packaging (HLS + DASH Deduplication)</a></li>
+</ul>
+</li>
+<li><a href="17-video-streaming.html#175-client-side-abr-control-cdn-origin-shielding-and-live-streaming">17.5 Client-Side ABR Control, CDN Origin Shielding, and Live Streaming</a>
+<ul>
+<li><a href="17-video-streaming.html#client-side-adaptive-bitrate-abr-control-theory">Client-Side Adaptive Bitrate (ABR) Control Theory</a></li>
+<li><a href="17-video-streaming.html#multi-tier-cdn-architecture-and-origin-shielding">Multi-Tier CDN Architecture and Origin Shielding</a></li>
+<li><a href="17-video-streaming.html#live-streaming-and-low-latency-cmaf-extensions">Live Streaming and Low-Latency CMAF Extensions</a></li>
+</ul>
+</li>
+<li><a href="17-video-streaming.html#176-failure-modes-slis-and-production-systems">17.6 Failure Modes, SLIs, and Production Systems</a>
+<ul>
+<li><a href="17-video-streaming.html#failure-mode-and-mitigation-matrix">Failure Mode and Mitigation Matrix</a></li>
+<li><a href="17-video-streaming.html#operational-slis-slos-and-alert-thresholds">Operational SLIs, SLOs, and Alert Thresholds</a></li>
+<li><a href="17-video-streaming.html#production-benchmarks">Production Benchmarks</a></li>
+</ul>
+</li>
+<li><a href="17-video-streaming.html#177-simulation-verification">17.7 Simulation Verification</a></li>
+<li><a href="17-video-streaming.html#178-terminology-and-references">17.8 Terminology and References</a>
+<ul>
+<li><a href="17-video-streaming.html#engineering-glossary">Engineering Glossary</a></li>
+<li><a href="17-video-streaming.html#references">References</a></li>
+</ul>
+</li>
+<li><a href="17-video-streaming.html#179-end-to-end-request-lifecycle-and-production-case-studies">17.9 End-to-End Request Lifecycle and Production Case Studies</a>
+<ul>
+<li><a href="17-video-streaming.html#hop-by-hop-request-lifecycle-and-latency-budget">Hop-by-Hop Request Lifecycle and Latency Budget</a></li>
+<li><a href="17-video-streaming.html#production-case-studies-and-open-source-comparisons">Production Case Studies and Open-Source Comparisons</a></li>
+</ul>
+</li>
+</ul>
+<h3 id="18-real-time-chat-system-design"><a class="header" href="#18-real-time-chat-system-design"><a href="18-chat.html">18. Real-Time Chat: System Design</a></a></h3>
+<ul>
+<li><a href="18-chat.html#181-requirements-actors-and-capacity-bounds">18.1 Requirements, Actors, and Capacity Bounds</a>
+<ul>
+<li><a href="18-chat.html#actors-and-use-cases">Actors and Use Cases</a></li>
+<li><a href="18-chat.html#functional-requirements">Functional Requirements</a></li>
+<li><a href="18-chat.html#non-functional-requirements-and-slos">Non-Functional Requirements and SLOs</a></li>
+<li><a href="18-chat.html#non-goals-and-scope-boundaries">Non-Goals and Scope Boundaries</a></li>
+<li><a href="18-chat.html#back-of-the-envelope-capacity-bounds">Back-of-the-Envelope Capacity Bounds</a></li>
+</ul>
+</li>
+<li><a href="18-chat.html#182-external-api-and-data-contracts">18.2 External API and Data Contracts</a>
+<ul>
+<li><a href="18-chat.html#external-wire-and-http-contracts">External Wire and HTTP Contracts</a></li>
+<li><a href="18-chat.html#partitioned-message-store-schema-scylladb-cassandra-layout">Partitioned Message Store Schema (ScyllaDB / Cassandra Layout)</a></li>
+</ul>
+</li>
+<li><a href="18-chat.html#183-high-level-architecture-control-plane-vs-data-plane">18.3 High-Level Architecture: Control Plane vs. Data Plane</a>
+<ul>
+<li><a href="18-chat.html#component-responsibilities">Component Responsibilities</a></li>
+<li><a href="18-chat.html#end-to-end-message-lifecycle">End-to-End Message Lifecycle</a></li>
+</ul>
+</li>
+<li><a href="18-chat.html#184-stateful-gateways-sequencing-idempotency-and-offline-catch-up">18.4 Stateful Gateways, Sequencing, Idempotency, and Offline Catch-Up</a>
+<ul>
+<li><a href="18-chat.html#transport-comparison-why-persistent-websockets-win">Transport Comparison: Why Persistent WebSockets Win</a></li>
+<li><a href="18-chat.html#isolating-stateful-gateways-and-preventing-reconnect-storms">Isolating Stateful Gateways and Preventing Reconnect Storms</a></li>
+<li><a href="18-chat.html#idempotent-send-and-per-conversation-cursor-recovery">Idempotent Send and Per-Conversation Cursor Recovery</a></li>
+</ul>
+</li>
+<li><a href="18-chat.html#185-group-fan-out-presence-control-hot-channels-and-e2ee">18.5 Group Fan-Out, Presence Control, Hot Channels, and E2EE</a>
+<ul>
+<li><a href="18-chat.html#11-vs-large-group-fan-out-and-multi-device-sync">1:1 vs. Large-Group Fan-Out and Multi-Device Sync</a></li>
+<li><a href="18-chat.html#controlling-presence-fan-out-and-hot-channels">Controlling Presence Fan-Out and Hot Channels</a></li>
+<li><a href="18-chat.html#end-to-end-encryption-e2ee-architectural-consequences">End-to-End Encryption (E2EE) Architectural Consequences</a></li>
+</ul>
+</li>
+<li><a href="18-chat.html#186-failure-modes-slis-and-production-systems">18.6 Failure Modes, SLIs, and Production Systems</a>
+<ul>
+<li><a href="18-chat.html#failure-mode-and-mitigation-matrix">Failure Mode and Mitigation Matrix</a></li>
+<li><a href="18-chat.html#operational-slis-slos-and-alert-thresholds">Operational SLIs, SLOs, and Alert Thresholds</a></li>
+<li><a href="18-chat.html#production-benchmarks">Production Benchmarks</a></li>
+</ul>
+</li>
+<li><a href="18-chat.html#187-simulation-verification">18.7 Simulation Verification</a></li>
+<li><a href="18-chat.html#188-terminology-and-references">18.8 Terminology and References</a>
+<ul>
+<li><a href="18-chat.html#engineering-glossary">Engineering Glossary</a></li>
+<li><a href="18-chat.html#references">References</a></li>
+</ul>
+</li>
+<li><a href="18-chat.html#189-end-to-end-request-lifecycle-and-production-case-studies">18.9 End-to-End Request Lifecycle and Production Case Studies</a>
+<ul>
+<li><a href="18-chat.html#hop-by-hop-request-lifecycle-and-latency-budget">Hop-by-Hop Request Lifecycle and Latency Budget</a></li>
+<li><a href="18-chat.html#production-case-studies-and-open-source-comparisons">Production Case Studies and Open-Source Comparisons</a></li>
+</ul>
+</li>
+</ul>
+<h2 id="part-iv-transactional-and-marketplace-systems"><a class="header" href="#part-iv-transactional-and-marketplace-systems">Part IV: Transactional and Marketplace Systems</a></h2>
+<h3 id="19-payment-system-system-design"><a class="header" href="#19-payment-system-system-design"><a href="19-payment-system.html">19. Payment System: System Design</a></a></h3>
+<ul>
+<li><a href="19-payment-system.html#191-requirements-and-capacity-envelope">19.1 Requirements and Capacity Envelope</a>
+<ul>
+<li><a href="19-payment-system.html#actors-and-use-cases">Actors and Use Cases</a></li>
+<li><a href="19-payment-system.html#functional-requirements">Functional Requirements</a></li>
+<li><a href="19-payment-system.html#non-functional-requirements-and-slos">Non-Functional Requirements and SLOs</a></li>
+<li><a href="19-payment-system.html#capacity-and-resource-envelope">Capacity and Resource Envelope</a></li>
+</ul>
+</li>
+<li><a href="19-payment-system.html#192-external-api-state-machine-and-data-contracts">19.2 External API, State Machine, and Data Contracts</a>
+<ul>
+<li><a href="19-payment-system.html#idempotent-http2-payment-api">Idempotent HTTP/2 Payment API</a></li>
+<li><a href="19-payment-system.html#strict-payment-state-machine-and-relational-schema">Strict Payment State Machine and Relational Schema</a></li>
+</ul>
+</li>
+<li><a href="19-payment-system.html#193-system-architecture-pci-dss-isolation-and-async-clearing">19.3 System Architecture: PCI-DSS Isolation and Async Clearing</a>
+<ul>
+<li><a href="19-payment-system.html#component-responsibilities-and-failure-domains">Component Responsibilities and Failure Domains</a></li>
+</ul>
+</li>
+<li><a href="19-payment-system.html#194-atomic-phase-idempotency-and-unknown-outcomes">19.4 Atomic-Phase Idempotency and Unknown Outcomes</a>
+<ul>
+<li><a href="19-payment-system.html#treating-unknown-as-a-first-class-durable-state">Treating <code>UNKNOWN</code> as a First-Class Durable State</a></li>
+</ul>
+</li>
+<li><a href="19-payment-system.html#195-immutable-double-entry-ledger-and-hot-account-sharding">19.5 Immutable Double-Entry Ledger and Hot-Account Sharding</a>
+<ul>
+<li><a href="19-payment-system.html#exact-monetary-arithmetic-and-deterministic-rounding">Exact Monetary Arithmetic and Deterministic Rounding</a></li>
+<li><a href="19-payment-system.html#eliminating-hot-account-row-lock-serialization">Eliminating Hot-Account Row-Lock Serialization</a></li>
+<li><a href="19-payment-system.html#cross-service-consistency-transactional-outbox-and-sagas">Cross-Service Consistency: Transactional Outbox and Sagas</a></li>
+</ul>
+</li>
+<li><a href="19-payment-system.html#196-three-way-reconciliation-and-multi-currency-fx">19.6 Three-Way Reconciliation and Multi-Currency FX</a>
+<ul>
+<li><a href="19-payment-system.html#clearing-suspense-accounts-and-multi-currency-conservation">Clearing Suspense Accounts and Multi-Currency Conservation</a></li>
+</ul>
+</li>
+<li><a href="19-payment-system.html#197-security-failure-modes-production-systems-and-verification">19.7 Security, Failure Modes, Production Systems, and Verification</a>
+<ul>
+<li><a href="19-payment-system.html#pci-dss-scope-minimization-and-network-tokenization">PCI-DSS Scope Minimization and Network Tokenization</a></li>
+<li><a href="19-payment-system.html#failure-and-recovery-matrix">Failure and Recovery Matrix</a></li>
+<li><a href="19-payment-system.html#financial-observability-slis-and-alerts">Financial Observability: SLIs and Alerts</a></li>
+<li><a href="19-payment-system.html#how-production-systems-implement-payments">How Production Systems Implement Payments</a></li>
+<li><a href="19-payment-system.html#verification-in-the-repository">Verification in the Repository</a></li>
+<li><a href="19-payment-system.html#engineering-glossary">Engineering Glossary</a></li>
+<li><a href="19-payment-system.html#references">References</a></li>
+</ul>
+</li>
+<li><a href="19-payment-system.html#198-end-to-end-request-lifecycle-and-production-case-studies">19.8 End-to-End Request Lifecycle and Production Case Studies</a>
+<ul>
+<li><a href="19-payment-system.html#hop-by-hop-request-lifecycle-and-latency-budget">Hop-by-Hop Request Lifecycle and Latency Budget</a></li>
+<li><a href="19-payment-system.html#production-case-studies-and-open-source-comparisons">Production Case Studies and Open-Source Comparisons</a></li>
+</ul>
+</li>
+</ul>
+<h3 id="chapter-20-ticket-booking-system-design"><a class="header" href="#chapter-20-ticket-booking-system-design"><a href="20-ticket-booking.html">Chapter 20: Ticket Booking: System Design</a></a></h3>
+<ul>
+<li><a href="20-ticket-booking.html#201-requirements-actors-and-capacity-bounds">20.1 Requirements, Actors, and Capacity Bounds</a>
+<ul>
+<li><a href="20-ticket-booking.html#actors-and-use-cases">Actors and Use Cases</a></li>
+<li><a href="20-ticket-booking.html#functional-requirements">Functional Requirements</a></li>
+<li><a href="20-ticket-booking.html#non-functional-requirements-and-slos">Non-Functional Requirements and SLOs</a></li>
+<li><a href="20-ticket-booking.html#non-goals-and-explicit-scope-boundaries">Non-Goals and Explicit Scope Boundaries</a></li>
+<li><a href="20-ticket-booking.html#back-of-the-envelope-capacity-bounds">Back-of-the-Envelope Capacity Bounds</a></li>
+</ul>
+</li>
+<li><a href="20-ticket-booking.html#202-external-api-and-data-contracts">20.2 External API and Data Contracts</a>
+<ul>
+<li><a href="20-ticket-booking.html#seat-map-read-endpoint">Seat-Map Read Endpoint</a></li>
+<li><a href="20-ticket-booking.html#atomic-multi-seat-hold-endpoint">Atomic Multi-Seat Hold Endpoint</a></li>
+<li><a href="20-ticket-booking.html#idempotent-booking-confirmation-endpoint">Idempotent Booking Confirmation Endpoint</a></li>
+<li><a href="20-ticket-booking.html#relational-inventory-and-booking-schema">Relational Inventory and Booking Schema</a></li>
+</ul>
+</li>
+<li><a href="20-ticket-booking.html#203-high-level-architecture-control-plane-vs-data-plane">20.3 High-Level Architecture: Control Plane vs. Data Plane</a>
+<ul>
+<li><a href="20-ticket-booking.html#control-plane-responsibilities">Control Plane Responsibilities</a></li>
+<li><a href="20-ticket-booking.html#data-plane-responsibilities">Data Plane Responsibilities</a></li>
+</ul>
+</li>
+<li><a href="20-ticket-booking.html#204-deep-dive-flash-sale-virtual-waiting-room-and-admission-control">20.4 Deep Dive: Flash-Sale Virtual Waiting Room and Admission Control</a>
+<ul>
+<li><a href="20-ticket-booking.html#pre-sale-lottery-pool-and-fifo-pacing">Pre-Sale Lottery Pool and FIFO Pacing</a></li>
+<li><a href="20-ticket-booking.html#cryptographically-signed-hmac-admission-tokens">Cryptographically Signed HMAC Admission Tokens</a></li>
+<li><a href="20-ticket-booking.html#layered-anti-bot-and-hold-hoarding-defenses">Layered Anti-Bot and Hold-Hoarding Defenses</a></li>
+</ul>
+</li>
+<li><a href="20-ticket-booking.html#205-deep-dive-seat-state-machine-conditional-cas-and-payment-sagas">20.5 Deep Dive: Seat State Machine, Conditional CAS, and Payment Sagas</a>
+<ul>
+<li><a href="20-ticket-booking.html#per-seat-state-machine-and-conditional-cas-sql">Per-Seat State Machine and Conditional CAS SQL</a></li>
+<li><a href="20-ticket-booking.html#multi-seat-atomicity-and-deadlock-prevention">Multi-Seat Atomicity and Deadlock Prevention</a></li>
+<li><a href="20-ticket-booking.html#comparing-concurrency-control-strategies">Comparing Concurrency Control Strategies</a></li>
+<li><a href="20-ticket-booking.html#lease-expiry-late-payment-races-and-saga-compensation">Lease Expiry, Late-Payment Races, and Saga Compensation</a></li>
+</ul>
+</li>
+<li><a href="20-ticket-booking.html#206-failure-modes-slis-and-production-systems">20.6 Failure Modes, SLIs, and Production Systems</a>
+<ul>
+<li><a href="20-ticket-booking.html#failure-and-recovery-matrix">Failure and Recovery Matrix</a></li>
+<li><a href="20-ticket-booking.html#operational-slis-and-slos">Operational SLIs and SLOs</a></li>
+<li><a href="20-ticket-booking.html#how-production-systems-implement-ticket-booking">How Production Systems Implement Ticket Booking</a></li>
+</ul>
+</li>
+<li><a href="20-ticket-booking.html#207-simulation-verification">20.7 Simulation Verification</a></li>
+<li><a href="20-ticket-booking.html#208-terminology-and-references">20.8 Terminology and References</a>
+<ul>
+<li><a href="20-ticket-booking.html#engineering-glossary">Engineering Glossary</a></li>
+<li><a href="20-ticket-booking.html#references">References</a></li>
+</ul>
+</li>
+<li><a href="20-ticket-booking.html#209-end-to-end-request-lifecycle-and-production-case-studies">20.9 End-to-End Request Lifecycle and Production Case Studies</a>
+<ul>
+<li><a href="20-ticket-booking.html#hop-by-hop-request-lifecycle-and-latency-budget">Hop-by-Hop Request Lifecycle and Latency Budget</a></li>
+<li><a href="20-ticket-booking.html#production-case-studies-and-open-source-comparisons">Production Case Studies and Open-Source Comparisons</a></li>
+</ul>
+</li>
+</ul>
+<h3 id="chapter-21-ride-hailing-system-design"><a class="header" href="#chapter-21-ride-hailing-system-design"><a href="21-ride-hailing.html">Chapter 21: Ride Hailing: System Design</a></a></h3>
+<ul>
+<li><a href="21-ride-hailing.html#211-requirements-actors-and-capacity-bounds">21.1 Requirements, Actors, and Capacity Bounds</a>
+<ul>
+<li><a href="21-ride-hailing.html#actors-and-use-cases">Actors and Use Cases</a></li>
+<li><a href="21-ride-hailing.html#functional-requirements">Functional Requirements</a></li>
+<li><a href="21-ride-hailing.html#non-functional-requirements-and-slos">Non-Functional Requirements and SLOs</a></li>
+<li><a href="21-ride-hailing.html#non-goals-and-explicit-scope-boundaries">Non-Goals and Explicit Scope Boundaries</a></li>
+<li><a href="21-ride-hailing.html#back-of-the-envelope-capacity-bounds">Back-of-the-Envelope Capacity Bounds</a></li>
+</ul>
+</li>
+<li><a href="21-ride-hailing.html#212-external-api-and-data-contracts">21.2 External API and Data Contracts</a>
+<ul>
+<li><a href="21-ride-hailing.html#driver-location-heartbeat-contract">Driver Location Heartbeat Contract</a></li>
+<li><a href="21-ride-hailing.html#idempotent-ride-request-endpoint">Idempotent Ride Request Endpoint</a></li>
+<li><a href="21-ride-hailing.html#exclusive-driver-offer-acceptance-endpoint">Exclusive Driver Offer Acceptance Endpoint</a></li>
+<li><a href="21-ride-hailing.html#active-trip-telemetry-stream">Active Trip Telemetry Stream</a></li>
+<li><a href="21-ride-hailing.html#durable-trip-store-schema">Durable Trip Store Schema</a></li>
+</ul>
+</li>
+<li><a href="21-ride-hailing.html#213-high-level-architecture-control-plane-vs-data-plane">21.3 High-Level Architecture: Control Plane vs. Data Plane</a>
+<ul>
+<li><a href="21-ride-hailing.html#control-plane-responsibilities">Control Plane Responsibilities</a></li>
+<li><a href="21-ride-hailing.html#data-plane-responsibilities">Data Plane Responsibilities</a></li>
+</ul>
+</li>
+<li><a href="21-ride-hailing.html#214-deep-dive-spatial-indexing-h3-s2-geohash-and-heartbeat-ingestion">21.4 Deep Dive: Spatial Indexing (H3, S2, Geohash) and Heartbeat Ingestion</a>
+<ul>
+<li><a href="21-ride-hailing.html#comparing-geohash-google-s2-and-uber-h3">Comparing Geohash, Google S2, and Uber H3</a></li>
+<li><a href="21-ride-hailing.html#high-throughput-driver-heartbeat-write-path">High-Throughput Driver Heartbeat Write Path</a></li>
+</ul>
+</li>
+<li><a href="21-ride-hailing.html#215-deep-dive-k-ring-expansion-eta-ranking-exclusive-dispatch-and-surge-aggregation">21.5 Deep Dive: k-Ring Expansion, ETA Ranking, Exclusive Dispatch, and Surge Aggregation</a>
+<ul>
+<li><a href="21-ride-hailing.html#adaptive-k-ring-expansion-and-road-graph-eta-ranking">Adaptive k-Ring Expansion and Road-Graph ETA Ranking</a></li>
+<li><a href="21-ride-hailing.html#exclusive-single-driver-offer-protocol-and-cas-assignment">Exclusive Single-Driver Offer Protocol and CAS Assignment</a></li>
+<li><a href="21-ride-hailing.html#batch-matching-and-cell-level-surge-pricing-aggregation">Batch Matching and Cell-Level Surge Pricing Aggregation</a></li>
+</ul>
+</li>
+<li><a href="21-ride-hailing.html#216-failure-modes-slis-and-production-systems">21.6 Failure Modes, SLIs, and Production Systems</a>
+<ul>
+<li><a href="21-ride-hailing.html#failure-and-recovery-matrix">Failure and Recovery Matrix</a></li>
+<li><a href="21-ride-hailing.html#operational-slis-and-slos">Operational SLIs and SLOs</a></li>
+<li><a href="21-ride-hailing.html#how-production-systems-implement-ride-hailing">How Production Systems Implement Ride Hailing</a></li>
+</ul>
+</li>
+<li><a href="21-ride-hailing.html#217-simulation-verification">21.7 Simulation Verification</a></li>
+<li><a href="21-ride-hailing.html#218-terminology-and-references">21.8 Terminology and References</a>
+<ul>
+<li><a href="21-ride-hailing.html#engineering-glossary">Engineering Glossary</a></li>
+<li><a href="21-ride-hailing.html#references">References</a></li>
+</ul>
+</li>
+<li><a href="21-ride-hailing.html#219-end-to-end-request-lifecycle-and-production-case-studies">21.9 End-to-End Request Lifecycle and Production Case Studies</a>
+<ul>
+<li><a href="21-ride-hailing.html#hop-by-hop-request-lifecycle-and-latency-budget">Hop-by-Hop Request Lifecycle and Latency Budget</a></li>
+<li><a href="21-ride-hailing.html#production-case-studies-and-open-source-comparisons">Production Case Studies and Open-Source Comparisons</a></li>
+</ul>
+</li>
+</ul>
+<h2 id="part-v-search-indexing-and-observability"><a class="header" href="#part-v-search-indexing-and-observability">Part V: Search, Indexing, and Observability</a></h2>
+<h3 id="chapter-22-search-autocomplete-system-design"><a class="header" href="#chapter-22-search-autocomplete-system-design"><a href="22-search-autocomplete.html">Chapter 22: Search Autocomplete: System Design</a></a></h3>
+<ul>
+<li><a href="22-search-autocomplete.html#221-requirements-actors-and-capacity-bounds">22.1 Requirements, Actors, and Capacity Bounds</a>
+<ul>
+<li><a href="22-search-autocomplete.html#actors-and-use-cases">Actors and Use Cases</a></li>
+<li><a href="22-search-autocomplete.html#functional-requirements">Functional Requirements</a></li>
+<li><a href="22-search-autocomplete.html#non-functional-requirements-and-slos">Non-Functional Requirements and SLOs</a></li>
+<li><a href="22-search-autocomplete.html#non-goals-and-explicit-scope-boundaries">Non-Goals and Explicit Scope Boundaries</a></li>
+<li><a href="22-search-autocomplete.html#back-of-the-envelope-capacity-bounds">Back-of-the-Envelope Capacity Bounds</a></li>
+</ul>
+</li>
+<li><a href="22-search-autocomplete.html#222-external-api-and-data-contracts">22.2 External API and Data Contracts</a>
+<ul>
+<li><a href="22-search-autocomplete.html#prefix-suggestion-lookup-endpoint">Prefix Suggestion Lookup Endpoint</a></li>
+<li><a href="22-search-autocomplete.html#emergency-blocklist-control-endpoint">Emergency Blocklist Control Endpoint</a></li>
+<li><a href="22-search-autocomplete.html#compact-immutable-trie-snapshot-schema">Compact Immutable Trie Snapshot Schema</a></li>
+</ul>
+</li>
+<li><a href="22-search-autocomplete.html#223-high-level-architecture-control-plane-vs-data-plane">22.3 High-Level Architecture: Control Plane vs. Data Plane</a>
+<ul>
+<li><a href="22-search-autocomplete.html#control-and-offline-build-plane">Control and Offline Build Plane</a></li>
+<li><a href="22-search-autocomplete.html#online-data-plane">Online Data Plane</a></li>
+</ul>
+</li>
+<li><a href="22-search-autocomplete.html#224-deep-dive-precomputed-top-k-trie-exponential-decay-and-atomic-snapshot-swap">22.4 Deep Dive: Precomputed Top-K Trie, Exponential Decay, and Atomic Snapshot Swap</a>
+<ul>
+<li><a href="22-search-autocomplete.html#precomputed-top-k-nodes-achieving-ol-lookup">Precomputed Top-K Nodes Achieving <code>O(L)</code> Lookup</a></li>
+<li><a href="22-search-autocomplete.html#exponential-frequency-decay-and-fast-lane-trending-overlay">Exponential Frequency Decay and Fast-Lane Trending Overlay</a></li>
+<li><a href="22-search-autocomplete.html#lock-free-double-buffered-blue-green-snapshot-swap">Lock-Free Double-Buffered Blue-Green Snapshot Swap</a></li>
+</ul>
+</li>
+<li><a href="22-search-autocomplete.html#225-deep-dive-prefix-sharding-caching-and-safetyprivacy-controls">22.5 Deep Dive: Prefix Sharding, Caching, and Safety/Privacy Controls</a>
+<ul>
+<li><a href="22-search-autocomplete.html#frequency-balanced-prefix-range-sharding">Frequency-Balanced Prefix Range Sharding</a></li>
+<li><a href="22-search-autocomplete.html#pii-scrubbing-k-anonymity-and-moderation-hygiene">PII Scrubbing, <code>k</code>-Anonymity, and Moderation Hygiene</a></li>
+</ul>
+</li>
+<li><a href="22-search-autocomplete.html#226-failure-modes-slis-and-production-systems">22.6 Failure Modes, SLIs, and Production Systems</a>
+<ul>
+<li><a href="22-search-autocomplete.html#failure-and-recovery-matrix">Failure and Recovery Matrix</a></li>
+<li><a href="22-search-autocomplete.html#operational-slis-and-slos">Operational SLIs and SLOs</a></li>
+<li><a href="22-search-autocomplete.html#how-production-systems-implement-search-autocomplete">How Production Systems Implement Search Autocomplete</a></li>
+</ul>
+</li>
+<li><a href="22-search-autocomplete.html#227-simulation-verification">22.7 Simulation Verification</a>
+<ul>
+<li><a href="22-search-autocomplete.html#end-to-end-request-lifecycle-and-hop-by-hop-latency-budget">End-to-End Request Lifecycle and Hop-by-Hop Latency Budget</a></li>
+<li><a href="22-search-autocomplete.html#production-case-studies-and-open-source-comparisons">Production Case Studies and Open-Source Comparisons</a></li>
+</ul>
+</li>
+<li><a href="22-search-autocomplete.html#228-terminology-and-references">22.8 Terminology and References</a>
+<ul>
+<li><a href="22-search-autocomplete.html#engineering-glossary">Engineering Glossary</a></li>
+<li><a href="22-search-autocomplete.html#references">References</a></li>
+</ul>
+</li>
+</ul>
+<h3 id="chapter-23-web-crawler-system-design"><a class="header" href="#chapter-23-web-crawler-system-design"><a href="23-web-crawler.html">Chapter 23: Web Crawler: System Design</a></a></h3>
+<ul>
+<li><a href="23-web-crawler.html#231-requirements-actors-and-capacity-bounds">23.1 Requirements, Actors, and Capacity Bounds</a>
+<ul>
+<li><a href="23-web-crawler.html#actors-and-use-cases">Actors and Use Cases</a></li>
+<li><a href="23-web-crawler.html#functional-requirements">Functional Requirements</a></li>
+<li><a href="23-web-crawler.html#non-functional-requirements-and-slos">Non-Functional Requirements and SLOs</a></li>
+<li><a href="23-web-crawler.html#non-goals-and-explicit-scope-boundaries">Non-Goals and Explicit Scope Boundaries</a></li>
+<li><a href="23-web-crawler.html#back-of-the-envelope-capacity-bounds">Back-of-the-Envelope Capacity Bounds</a></li>
+</ul>
+</li>
+<li><a href="23-web-crawler.html#232-external-api-and-data-contracts">23.2 External API and Data Contracts</a>
+<ul>
+<li><a href="23-web-crawler.html#seed-injection-endpoint">Seed Injection Endpoint</a></li>
+<li><a href="23-web-crawler.html#host-politeness-and-trap-guard-policy-override">Host Politeness and Trap-Guard Policy Override</a></li>
+<li><a href="23-web-crawler.html#downstream-deduplicated-page-feed-endpoint">Downstream Deduplicated Page Feed Endpoint</a></li>
+<li><a href="23-web-crawler.html#frontier-host-metadata-and-seen-set-schema">Frontier Host Metadata and Seen-Set Schema</a></li>
+</ul>
+</li>
+<li><a href="23-web-crawler.html#233-high-level-architecture-control-plane-vs-data-plane">23.3 High-Level Architecture: Control Plane vs. Data Plane</a>
+<ul>
+<li><a href="23-web-crawler.html#control-plane-responsibilities">Control Plane Responsibilities</a></li>
+<li><a href="23-web-crawler.html#data-plane-responsibilities">Data Plane Responsibilities</a></li>
+</ul>
+</li>
+<li><a href="23-web-crawler.html#234-deep-dive-mercator-two-stage-politeness-frontier-and-robotstxt-compliance">23.4 Deep Dive: Mercator Two-Stage Politeness Frontier and <code>robots.txt</code> Compliance</a>
+<ul>
+<li><a href="23-web-crawler.html#mercator-two-stage-frontier-architecture">Mercator Two-Stage Frontier Architecture</a></li>
+<li><a href="23-web-crawler.html#host-ownership-sharding-and-robotstxt-compliance">Host-Ownership Sharding and <code>robots.txt</code> Compliance</a></li>
+</ul>
+</li>
+<li><a href="23-web-crawler.html#235-deep-dive-url-deduplication-simhash-near-duplicates-and-spider-trap-defenses">23.5 Deep Dive: URL Deduplication, SimHash Near-Duplicates, and Spider-Trap Defenses</a>
+<ul>
+<li><a href="23-web-crawler.html#url-canonicalization-and-hybrid-bloom-filter-rocksdb-seen-set">URL Canonicalization and Hybrid Bloom Filter + RocksDB Seen Set</a></li>
+<li><a href="23-web-crawler.html#exact-checksums-and-64-bit-simhash-near-duplicate-detection">Exact Checksums and 64-Bit SimHash Near-Duplicate Detection</a></li>
+<li><a href="23-web-crawler.html#spider-trap-containment-and-adaptive-revisit-scheduling">Spider-Trap Containment and Adaptive Revisit Scheduling</a></li>
+</ul>
+</li>
+<li><a href="23-web-crawler.html#236-failure-modes-slis-and-production-systems">23.6 Failure Modes, SLIs, and Production Systems</a>
+<ul>
+<li><a href="23-web-crawler.html#failure-and-recovery-matrix">Failure and Recovery Matrix</a></li>
+<li><a href="23-web-crawler.html#operational-slis-and-slos">Operational SLIs and SLOs</a></li>
+<li><a href="23-web-crawler.html#how-production-systems-implement-web-crawling">How Production Systems Implement Web Crawling</a></li>
+</ul>
+</li>
+<li><a href="23-web-crawler.html#237-simulation-verification">23.7 Simulation Verification</a>
+<ul>
+<li><a href="23-web-crawler.html#end-to-end-request-lifecycle-and-hop-by-hop-latency-budget">End-to-End Request Lifecycle and Hop-by-Hop Latency Budget</a></li>
+<li><a href="23-web-crawler.html#production-case-studies-and-open-source-comparisons">Production Case Studies and Open-Source Comparisons</a></li>
+</ul>
+</li>
+<li><a href="23-web-crawler.html#238-terminology-and-references">23.8 Terminology and References</a>
+<ul>
+<li><a href="23-web-crawler.html#engineering-glossary">Engineering Glossary</a></li>
+<li><a href="23-web-crawler.html#references">References</a></li>
+</ul>
+</li>
+</ul>
+<h3 id="chapter-24-metrics-and-monitoring-system-design"><a class="header" href="#chapter-24-metrics-and-monitoring-system-design"><a href="24-metrics-and-monitoring.html">Chapter 24: Metrics and Monitoring: System Design</a></a></h3>
+<ul>
+<li><a href="24-metrics-and-monitoring.html#241-requirements-actors-and-capacity-bounds">24.1 Requirements, Actors, and Capacity Bounds</a>
+<ul>
+<li><a href="24-metrics-and-monitoring.html#actors-and-use-cases">Actors and Use Cases</a></li>
+<li><a href="24-metrics-and-monitoring.html#functional-requirements">Functional Requirements</a></li>
+<li><a href="24-metrics-and-monitoring.html#non-functional-requirements-and-slos">Non-Functional Requirements and SLOs</a></li>
+<li><a href="24-metrics-and-monitoring.html#non-goals-and-explicit-scope-boundaries">Non-Goals and Explicit Scope Boundaries</a></li>
+<li><a href="24-metrics-and-monitoring.html#back-of-the-envelope-capacity-bounds">Back-of-the-Envelope Capacity Bounds</a></li>
+</ul>
+</li>
+<li><a href="24-metrics-and-monitoring.html#242-external-api-and-data-contracts">24.2 External API and Data Contracts</a>
+<ul>
+<li><a href="24-metrics-and-monitoring.html#target-pull-exposition-format-openmetrics-prometheus">Target Pull Exposition Format (OpenMetrics / Prometheus)</a></li>
+<li><a href="24-metrics-and-monitoring.html#promql-range-query-endpoint">PromQL Range Query Endpoint</a></li>
+<li><a href="24-metrics-and-monitoring.html#alert-rule-configuration-endpoint">Alert Rule Configuration Endpoint</a></li>
+<li><a href="24-metrics-and-monitoring.html#on-disk-immutable-tsdb-block-layout">On-Disk Immutable TSDB Block Layout</a></li>
+</ul>
+</li>
+<li><a href="24-metrics-and-monitoring.html#243-high-level-architecture-control-plane-vs-data-plane">24.3 High-Level Architecture: Control Plane vs. Data Plane</a>
+<ul>
+<li><a href="24-metrics-and-monitoring.html#control-plane-responsibilities">Control Plane Responsibilities</a></li>
+<li><a href="24-metrics-and-monitoring.html#data-plane-responsibilities">Data Plane Responsibilities</a></li>
+</ul>
+</li>
+<li><a href="24-metrics-and-monitoring.html#244-deep-dive-pull-vs-push-ingestion-gorilla-compression-and-cardinality-defense">24.4 Deep Dive: Pull vs. Push Ingestion, Gorilla Compression, and Cardinality Defense</a>
+<ul>
+<li><a href="24-metrics-and-monitoring.html#pull-vs-push-ingestion-trade-offs">Pull vs. Push Ingestion Trade-Offs</a></li>
+<li><a href="24-metrics-and-monitoring.html#gorilla-delta-of-delta-timestamp-and-xor-value-compression">Gorilla Delta-of-Delta Timestamp and XOR Value Compression</a></li>
+<li><a href="24-metrics-and-monitoring.html#inverted-label-index-and-cardinality-explosion-defense">Inverted Label Index and Cardinality Explosion Defense</a></li>
+</ul>
+</li>
+<li><a href="24-metrics-and-monitoring.html#245-deep-dive-block-compaction-spike-preserving-rollups-and-alert-hysteresis">24.5 Deep Dive: Block Compaction, Spike-Preserving Rollups, and Alert Hysteresis</a>
+<ul>
+<li><a href="24-metrics-and-monitoring.html#two-hour-wal-head-blocks-and-immutable-object-store-compaction">Two-Hour WAL Head Blocks and Immutable Object-Store Compaction</a></li>
+<li><a href="24-metrics-and-monitoring.html#why-averages-mislead-and-spike-preserving-rollups">Why Averages Mislead and Spike-Preserving Rollups</a></li>
+<li><a href="24-metrics-and-monitoring.html#multi-window-alert-evaluation-with-hysteresis">Multi-Window Alert Evaluation with Hysteresis</a></li>
+</ul>
+</li>
+<li><a href="24-metrics-and-monitoring.html#246-failure-modes-slis-and-production-systems">24.6 Failure Modes, SLIs, and Production Systems</a>
+<ul>
+<li><a href="24-metrics-and-monitoring.html#failure-and-recovery-matrix">Failure and Recovery Matrix</a></li>
+<li><a href="24-metrics-and-monitoring.html#operational-slis-and-slos">Operational SLIs and SLOs</a></li>
+<li><a href="24-metrics-and-monitoring.html#how-production-systems-implement-metrics-and-monitoring">How Production Systems Implement Metrics and Monitoring</a></li>
+</ul>
+</li>
+<li><a href="24-metrics-and-monitoring.html#247-simulation-verification">24.7 Simulation Verification</a>
+<ul>
+<li><a href="24-metrics-and-monitoring.html#end-to-end-request-lifecycle-and-hop-by-hop-latency-budget">End-to-End Request Lifecycle and Hop-by-Hop Latency Budget</a></li>
+<li><a href="24-metrics-and-monitoring.html#production-case-studies-and-open-source-comparisons">Production Case Studies and Open-Source Comparisons</a></li>
+</ul>
+</li>
+<li><a href="24-metrics-and-monitoring.html#248-terminology-and-references">24.8 Terminology and References</a>
+<ul>
+<li><a href="24-metrics-and-monitoring.html#engineering-glossary">Engineering Glossary</a></li>
+<li><a href="24-metrics-and-monitoring.html#references">References</a></li>
+</ul>
+</li>
+</ul>
+<h2 id="part-vi-collaboration-and-low-latency-streaming"><a class="header" href="#part-vi-collaboration-and-low-latency-streaming">Part VI: Collaboration and Low-Latency Streaming</a></h2>
+<h3 id="chapter-25-file-synchronization"><a class="header" href="#chapter-25-file-synchronization"><a href="25-file-sync.html">Chapter 25: File Synchronization</a></a></h3>
+<ul>
+<li><a href="25-file-sync.html#251-requirements-actors-and-capacity-bounds">25.1 Requirements, Actors, and Capacity Bounds</a>
+<ul>
+<li><a href="25-file-sync.html#actors-and-use-cases">Actors and Use Cases</a></li>
+<li><a href="25-file-sync.html#functional-requirements">Functional Requirements</a></li>
+<li><a href="25-file-sync.html#non-functional-requirements-and-slos">Non-Functional Requirements and SLOs</a></li>
+<li><a href="25-file-sync.html#non-goals-and-out-of-scope-boundaries">Non-Goals and Out-of-Scope Boundaries</a></li>
+<li><a href="25-file-sync.html#back-of-the-envelope-capacity-bounds">Back-of-the-Envelope Capacity Bounds</a></li>
+</ul>
+</li>
+<li><a href="25-file-sync.html#252-external-api-and-data-contracts">25.2 External API and Data Contracts</a>
+<ul>
+<li><a href="25-file-sync.html#chunk-existence-and-direct-block-upload">Chunk Existence and Direct Block Upload</a></li>
+<li><a href="25-file-sync.html#conditional-manifest-commit-and-idempotent-retries">Conditional Manifest Commit and Idempotent Retries</a></li>
+<li><a href="25-file-sync.html#cursor-based-delta-change-feed">Cursor-Based Delta Change Feed</a></li>
+<li><a href="25-file-sync.html#relational-metadata-schema">Relational Metadata Schema</a></li>
+</ul>
+</li>
+<li><a href="25-file-sync.html#253-high-level-architecture-control-plane-vs-data-plane">25.3 High-Level Architecture: Control Plane vs. Data Plane</a>
+<ul>
+<li><a href="25-file-sync.html#component-responsibilities-and-failure-domains">Component Responsibilities and Failure Domains</a></li>
+<li><a href="25-file-sync.html#end-to-end-change-propagation-walkthrough">End-to-End Change Propagation Walkthrough</a></li>
+</ul>
+</li>
+<li><a href="25-file-sync.html#254-content-defined-chunking-deduplication-and-merkle-tree-diffing">25.4 Content-Defined Chunking, Deduplication, and Merkle Tree Diffing</a>
+<ul>
+<li><a href="25-file-sync.html#defeating-fixed-block-boundary-shifts-with-fastcdc">Defeating Fixed-Block Boundary Shifts with FastCDC</a></li>
+<li><a href="25-file-sync.html#deduplication-scope-and-side-channel-security">Deduplication Scope and Side-Channel Security</a></li>
+<li><a href="25-file-sync.html#merkle-directory-tree-diffing-for-reconnection-and-audits">Merkle Directory Tree Diffing for Reconnection and Audits</a></li>
+</ul>
+</li>
+<li><a href="25-file-sync.html#255-optimistic-concurrency-conflict-branching-tombstones-and-garbage-collection">25.5 Optimistic Concurrency, Conflict Branching, Tombstones, and Garbage Collection</a>
+<ul>
+<li><a href="25-file-sync.html#optimistic-concurrency-and-conflict-copy-branching">Optimistic Concurrency and Conflict-Copy Branching</a></li>
+<li><a href="25-file-sync.html#local-client-reconciliation-tombstones-renames-and-os-quirks">Local Client Reconciliation: Tombstones, Renames, and OS Quirks</a></li>
+<li><a href="25-file-sync.html#notification-hints-paired-with-durable-cursors">Notification Hints Paired with Durable Cursors</a></li>
+<li><a href="25-file-sync.html#epoch-safe-garbage-collection-for-unreferenced-chunks">Epoch-Safe Garbage Collection for Unreferenced Chunks</a></li>
+</ul>
+</li>
+<li><a href="25-file-sync.html#256-failure-modes-slis-and-production-systems">25.6 Failure Modes, SLIs, and Production Systems</a>
+<ul>
+<li><a href="25-file-sync.html#failure-and-recovery-matrix">Failure and Recovery Matrix</a></li>
+<li><a href="25-file-sync.html#synchronization-slis-and-slos">Synchronization SLIs and SLOs</a></li>
+<li><a href="25-file-sync.html#how-production-systems-implement-file-synchronization">How Production Systems Implement File Synchronization</a></li>
+</ul>
+</li>
+<li><a href="25-file-sync.html#257-simulation-verification">25.7 Simulation Verification</a>
+<ul>
+<li><a href="25-file-sync.html#end-to-end-request-lifecycle-and-hop-by-hop-latency-budget">End-to-End Request Lifecycle and Hop-by-Hop Latency Budget</a></li>
+<li><a href="25-file-sync.html#production-case-studies-and-open-source-comparisons">Production Case Studies and Open-Source Comparisons</a></li>
+</ul>
+</li>
+<li><a href="25-file-sync.html#258-terminology-and-references">25.8 Terminology and References</a>
+<ul>
+<li><a href="25-file-sync.html#engineering-glossary">Engineering Glossary</a></li>
+<li><a href="25-file-sync.html#references">References</a></li>
+</ul>
+</li>
+</ul>
+<h3 id="chapter-26-collaborative-editing"><a class="header" href="#chapter-26-collaborative-editing"><a href="26-collaborative-editing.html">Chapter 26: Collaborative Editing</a></a></h3>
+<ul>
+<li><a href="26-collaborative-editing.html#261-requirements-actors-and-capacity-bounds">26.1 Requirements, Actors, and Capacity Bounds</a>
+<ul>
+<li><a href="26-collaborative-editing.html#actors-and-use-cases">Actors and Use Cases</a></li>
+<li><a href="26-collaborative-editing.html#functional-requirements">Functional Requirements</a></li>
+<li><a href="26-collaborative-editing.html#non-functional-requirements-and-slos">Non-Functional Requirements and SLOs</a></li>
+<li><a href="26-collaborative-editing.html#non-goals-and-out-of-scope-boundaries">Non-Goals and Out-of-Scope Boundaries</a></li>
+<li><a href="26-collaborative-editing.html#back-of-the-envelope-capacity-bounds">Back-of-the-Envelope Capacity Bounds</a></li>
+</ul>
+</li>
+<li><a href="26-collaborative-editing.html#262-external-api-and-data-contracts">26.2 External API and Data Contracts</a>
+<ul>
+<li><a href="26-collaborative-editing.html#document-hydration-and-history-endpoints">Document Hydration and History Endpoints</a></li>
+<li><a href="26-collaborative-editing.html#bidirectional-websocket-sync-protocol">Bidirectional WebSocket Sync Protocol</a></li>
+<li><a href="26-collaborative-editing.html#durable-storage-schema">Durable Storage Schema</a></li>
+</ul>
+</li>
+<li><a href="26-collaborative-editing.html#263-high-level-architecture-control-plane-vs-data-plane">26.3 High-Level Architecture: Control Plane vs. Data Plane</a>
+<ul>
+<li><a href="26-collaborative-editing.html#component-responsibilities-and-failure-domains">Component Responsibilities and Failure Domains</a></li>
+<li><a href="26-collaborative-editing.html#end-to-end-operation-path">End-to-End Operation Path</a></li>
+</ul>
+</li>
+<li><a href="26-collaborative-editing.html#264-why-positional-edits-diverge-operational-transformation-vs-sequence-crdts">26.4 Why Positional Edits Diverge: Operational Transformation vs. Sequence CRDTs</a>
+<ul>
+<li><a href="26-collaborative-editing.html#operational-transformation-and-the-jupiter-architecture">Operational Transformation and the Jupiter Architecture</a></li>
+<li><a href="26-collaborative-editing.html#sequence-crdts-immutable-identifiers-and-causal-broadcast">Sequence CRDTs: Immutable Identifiers and Causal Broadcast</a></li>
+<li><a href="26-collaborative-editing.html#comparing-central-server-ot-and-causal-sequence-crdts">Comparing Central-Server OT and Causal Sequence CRDTs</a></li>
+</ul>
+</li>
+<li><a href="26-collaborative-editing.html#265-tombstones-garbage-collection-epochs-presence-undo-and-log-compaction">26.5 Tombstones, Garbage Collection Epochs, Presence, Undo, and Log Compaction</a>
+<ul>
+<li><a href="26-collaborative-editing.html#tombstones-and-server-coordinated-gc-epochs">Tombstones and Server-Coordinated GC Epochs</a></li>
+<li><a href="26-collaborative-editing.html#snapshot-compaction-and-operation-log-tail">Snapshot Compaction and Operation Log Tail</a></li>
+<li><a href="26-collaborative-editing.html#ephemeral-presence-selective-local-undo-and-semantic-limits">Ephemeral Presence, Selective Local Undo, and Semantic Limits</a></li>
+</ul>
+</li>
+<li><a href="26-collaborative-editing.html#266-failure-modes-slis-and-production-systems">26.6 Failure Modes, SLIs, and Production Systems</a>
+<ul>
+<li><a href="26-collaborative-editing.html#failure-and-recovery-matrix">Failure and Recovery Matrix</a></li>
+<li><a href="26-collaborative-editing.html#collaborative-editing-slis-and-slos">Collaborative Editing SLIs and SLOs</a></li>
+<li><a href="26-collaborative-editing.html#how-production-systems-implement-collaborative-editing">How Production Systems Implement Collaborative Editing</a></li>
+</ul>
+</li>
+<li><a href="26-collaborative-editing.html#267-simulation-verification">26.7 Simulation Verification</a>
+<ul>
+<li><a href="26-collaborative-editing.html#end-to-end-request-lifecycle-and-hop-by-hop-latency-budget">End-to-End Request Lifecycle and Hop-by-Hop Latency Budget</a></li>
+<li><a href="26-collaborative-editing.html#production-case-studies-and-open-source-comparisons">Production Case Studies and Open-Source Comparisons</a></li>
+</ul>
+</li>
+<li><a href="26-collaborative-editing.html#268-terminology-and-references">26.8 Terminology and References</a>
+<ul>
+<li><a href="26-collaborative-editing.html#engineering-glossary">Engineering Glossary</a></li>
+<li><a href="26-collaborative-editing.html#references">References</a></li>
+</ul>
+</li>
+</ul>
+<h3 id="chapter-27-stock-exchange"><a class="header" href="#chapter-27-stock-exchange"><a href="27-stock-exchange.html">Chapter 27: Stock Exchange</a></a></h3>
+<ul>
+<li><a href="27-stock-exchange.html#271-requirements-actors-and-capacity-bounds">27.1 Requirements, Actors, and Capacity Bounds</a>
+<ul>
+<li><a href="27-stock-exchange.html#actors-and-use-cases">Actors and Use Cases</a></li>
+<li><a href="27-stock-exchange.html#functional-requirements">Functional Requirements</a></li>
+<li><a href="27-stock-exchange.html#non-functional-requirements-and-slos">Non-Functional Requirements and SLOs</a></li>
+<li><a href="27-stock-exchange.html#non-goals-and-out-of-scope-boundaries">Non-Goals and Out-of-Scope Boundaries</a></li>
+<li><a href="27-stock-exchange.html#back-of-the-envelope-capacity-bounds">Back-of-the-Envelope Capacity Bounds</a></li>
+</ul>
+</li>
+<li><a href="27-stock-exchange.html#272-external-api-and-data-contracts">27.2 External API and Data Contracts</a>
+<ul>
+<li><a href="27-stock-exchange.html#hot-path-binary-wire-contracts-sbe-ouch-style">Hot-Path Binary Wire Contracts (SBE / OUCH Style)</a></li>
+<li><a href="27-stock-exchange.html#order-idempotency-and-session-recovery-contract">Order Idempotency and Session Recovery Contract</a></li>
+<li><a href="27-stock-exchange.html#control-plane-risk-and-surveillance-api">Control-Plane Risk and Surveillance API</a></li>
+</ul>
+</li>
+<li><a href="27-stock-exchange.html#273-high-level-architecture-control-plane-vs-data-plane">27.3 High-Level Architecture: Control Plane vs. Data Plane</a>
+<ul>
+<li><a href="27-stock-exchange.html#component-responsibilities-and-failure-domains">Component Responsibilities and Failure Domains</a></li>
+<li><a href="27-stock-exchange.html#microsecond-tail-latency-budget">Microsecond Tail-Latency Budget</a></li>
+</ul>
+</li>
+<li><a href="27-stock-exchange.html#274-price-time-priority-limit-order-book-and-intrusive-o1-data-structures">27.4 Price-Time Priority Limit Order Book and Intrusive <code>O(1)</code> Data Structures</a>
+<ul>
+<li><a href="27-stock-exchange.html#designing-for-90-cancellations-with-zero-heap-allocation">Designing for <code>90%</code> Cancellations with Zero Heap Allocation</a></li>
+</ul>
+</li>
+<li><a href="27-stock-exchange.html#275-single-threaded-determinism-lmax-disruptor-pre-trade-risk-and-active-passive-standby">27.5 Single-Threaded Determinism, LMAX Disruptor, Pre-Trade Risk, and Active-Passive Standby</a>
+<ul>
+<li><a href="27-stock-exchange.html#mechanical-sympathy-and-the-lmax-disruptor-ring-buffer">Mechanical Sympathy and the LMAX Disruptor Ring Buffer</a></li>
+<li><a href="27-stock-exchange.html#pre-trade-risk-controls-and-determinism-discipline">Pre-Trade Risk Controls and Determinism Discipline</a></li>
+<li><a href="27-stock-exchange.html#deterministic-active-passive-standby-and-market-data-fanout">Deterministic Active-Passive Standby and Market Data Fanout</a></li>
+</ul>
+</li>
+<li><a href="27-stock-exchange.html#276-failure-modes-slis-and-production-systems">27.6 Failure Modes, SLIs, and Production Systems</a>
+<ul>
+<li><a href="27-stock-exchange.html#failure-and-recovery-matrix">Failure and Recovery Matrix</a></li>
+<li><a href="27-stock-exchange.html#exchange-observability-slis-and-slos">Exchange Observability: SLIs and SLOs</a></li>
+<li><a href="27-stock-exchange.html#how-production-systems-implement-electronic-exchanges">How Production Systems Implement Electronic Exchanges</a></li>
+</ul>
+</li>
+<li><a href="27-stock-exchange.html#277-simulation-verification">27.7 Simulation Verification</a>
+<ul>
+<li><a href="27-stock-exchange.html#end-to-end-request-lifecycle-and-hop-by-hop-latency-budget">End-to-End Request Lifecycle and Hop-by-Hop Latency Budget</a></li>
+<li><a href="27-stock-exchange.html#production-case-studies-and-open-source-comparisons">Production Case Studies and Open-Source Comparisons</a></li>
+</ul>
+</li>
+<li><a href="27-stock-exchange.html#278-terminology-and-references">27.8 Terminology and References</a>
+<ul>
+<li><a href="27-stock-exchange.html#engineering-glossary">Engineering Glossary</a></li>
+<li><a href="27-stock-exchange.html#references">References</a></li>
+</ul>
+</li>
+</ul>
+<h3 id="chapter-28-click-aggregation"><a class="header" href="#chapter-28-click-aggregation"><a href="28-click-aggregation.html">Chapter 28: Click Aggregation</a></a></h3>
+<ul>
+<li><a href="28-click-aggregation.html#281-requirements-actors-and-capacity-bounds">28.1 Requirements, Actors, and Capacity Bounds</a>
+<ul>
+<li><a href="28-click-aggregation.html#actors-and-use-cases">Actors and Use Cases</a></li>
+<li><a href="28-click-aggregation.html#functional-requirements">Functional Requirements</a></li>
+<li><a href="28-click-aggregation.html#non-functional-requirements-and-slos">Non-Functional Requirements and SLOs</a></li>
+<li><a href="28-click-aggregation.html#non-goals-and-out-of-scope-boundaries">Non-Goals and Out-of-Scope Boundaries</a></li>
+<li><a href="28-click-aggregation.html#back-of-the-envelope-capacity-bounds">Back-of-the-Envelope Capacity Bounds</a></li>
+</ul>
+</li>
+<li><a href="28-click-aggregation.html#282-external-api-and-data-contracts">28.2 External API and Data Contracts</a>
+<ul>
+<li><a href="28-click-aggregation.html#high-availability-click-ingestion-endpoint">High-Availability Click Ingestion Endpoint</a></li>
+<li><a href="28-click-aggregation.html#live-campaign-counts-and-top-k-query-api">Live Campaign Counts and Top-K Query API</a></li>
+<li><a href="28-click-aggregation.html#event-log-envelope-and-idempotent-olap-schema">Event Log Envelope and Idempotent OLAP Schema</a></li>
+</ul>
+</li>
+<li><a href="28-click-aggregation.html#283-high-level-architecture-control-plane-vs-data-plane">28.3 High-Level Architecture: Control Plane vs. Data Plane</a>
+<ul>
+<li><a href="28-click-aggregation.html#component-responsibilities-and-failure-domains">Component Responsibilities and Failure Domains</a></li>
+<li><a href="28-click-aggregation.html#end-to-end-click-path-walkthrough">End-to-End Click Path Walkthrough</a></li>
+</ul>
+</li>
+<li><a href="28-click-aggregation.html#284-event-time-semantics-heuristic-watermarks-windows-and-late-event-handling">28.4 Event-Time Semantics, Heuristic Watermarks, Windows, and Late-Event Handling</a>
+<ul>
+<li><a href="28-click-aggregation.html#defending-against-malicious-or-drifted-client-clocks">Defending Against Malicious or Drifted Client Clocks</a></li>
+<li><a href="28-click-aggregation.html#heuristic-watermarks-and-idle-partition-alignment">Heuristic Watermarks and Idle-Partition Alignment</a></li>
+<li><a href="28-click-aggregation.html#allowed-lateness-and-late-event-side-outputs">Allowed Lateness and Late-Event Side Outputs</a></li>
+</ul>
+</li>
+<li><a href="28-click-aggregation.html#285-chandy-lamport-asynchronous-barrier-snapshots-hot-ad-salting-and-click-fraud-deduplication">28.5 Chandy-Lamport Asynchronous Barrier Snapshots, Hot-Ad Salting, and Click-Fraud Deduplication</a>
+<ul>
+<li><a href="28-click-aggregation.html#exactly-once-stateful-recovery-via-asynchronous-barrier-snapshots">Exactly-Once Stateful Recovery via Asynchronous Barrier Snapshots</a></li>
+<li><a href="28-click-aggregation.html#hot-ad-salting-two-stage-pre-aggregation-and-hyperloglog">Hot-Ad Salting, Two-Stage Pre-Aggregation, and HyperLogLog</a></li>
+<li><a href="28-click-aggregation.html#click-fraud-filtering-and-multi-tier-deduplication">Click-Fraud Filtering and Multi-Tier Deduplication</a></li>
+</ul>
+</li>
+<li><a href="28-click-aggregation.html#286-failure-modes-slis-and-production-systems">28.6 Failure Modes, SLIs, and Production Systems</a>
+<ul>
+<li><a href="28-click-aggregation.html#failure-and-recovery-matrix">Failure and Recovery Matrix</a></li>
+<li><a href="28-click-aggregation.html#streaming-observability-slis-and-slos">Streaming Observability: SLIs and SLOs</a></li>
+<li><a href="28-click-aggregation.html#how-production-systems-implement-click-aggregation">How Production Systems Implement Click Aggregation</a></li>
+</ul>
+</li>
+<li><a href="28-click-aggregation.html#287-simulation-verification">28.7 Simulation Verification</a>
+<ul>
+<li><a href="28-click-aggregation.html#end-to-end-request-lifecycle-and-hop-by-hop-latency-budget">End-to-End Request Lifecycle and Hop-by-Hop Latency Budget</a></li>
+<li><a href="28-click-aggregation.html#production-case-studies-and-open-source-comparisons">Production Case Studies and Open-Source Comparisons</a></li>
+</ul>
+</li>
+<li><a href="28-click-aggregation.html#288-terminology-and-references">28.8 Terminology and References</a>
+<ul>
+<li><a href="28-click-aggregation.html#engineering-glossary">Engineering Glossary</a></li>
+<li><a href="28-click-aggregation.html#references">References</a></li>
+</ul>
+</li>
+</ul>
+<h2 id="reference"><a class="header" href="#reference">Reference</a></h2>
+<ul>
+<li><a href="glossary.html">Glossary of Distributed Systems Terms</a></li>
+</ul>
+
+                    </main>
+
+                    <nav class="nav-wrapper" aria-label="Page navigation">
+                        <!-- Mobile navigation buttons -->
+                            <a rel="prev" href="about-this-book.html" class="mobile-nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                                <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M41.4 233.4c-12.5 12.5-12.5 32.8 0 45.3l160 160c12.5 12.5 32.8 12.5 45.3 0s12.5-32.8 0-45.3L109.3 256 246.6 118.6c12.5-12.5 12.5-32.8 0-45.3s-32.8-12.5-45.3 0l-160 160z"/></svg></span>
+                            </a>
+
+                            <a rel="next prefetch" href="01-key-value-store-system-design.html" class="mobile-nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                                <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M278.6 233.4c12.5 12.5 12.5 32.8 0 45.3l-160 160c-12.5 12.5-32.8 12.5-45.3 0s-12.5-32.8 0-45.3L210.7 256 73.4 118.6c-12.5-12.5-12.5-32.8 0-45.3s32.8-12.5 45.3 0l160 160z"/></svg></span>
+                            </a>
+
+                        <div style="clear: both"></div>
+                    </nav>
+                </div>
+            </div>
+
+            <nav class="nav-wide-wrapper" aria-label="Page navigation">
+                    <a rel="prev" href="about-this-book.html" class="nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                        <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M41.4 233.4c-12.5 12.5-12.5 32.8 0 45.3l160 160c12.5 12.5 32.8 12.5 45.3 0s12.5-32.8 0-45.3L109.3 256 246.6 118.6c12.5-12.5 12.5-32.8 0-45.3s-32.8-12.5-45.3 0l-160 160z"/></svg></span>
+                    </a>
+
+                    <a rel="next prefetch" href="01-key-value-store-system-design.html" class="nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                        <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M278.6 233.4c12.5 12.5 12.5 32.8 0 45.3l-160 160c-12.5 12.5-32.8 12.5-45.3 0s-12.5-32.8 0-45.3L210.7 256 73.4 118.6c-12.5-12.5-12.5-32.8 0-45.3s32.8-12.5 45.3 0l160 160z"/></svg></span>
+                    </a>
+            </nav>
+
+        </div>
+
+        <template id=fa-eye><span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 576 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M288 32c-80.8 0-145.5 36.8-192.6 80.6C48.6 156 17.3 208 2.5 243.7c-3.3 7.9-3.3 16.7 0 24.6C17.3 304 48.6 356 95.4 399.4C142.5 443.2 207.2 480 288 480s145.5-36.8 192.6-80.6c46.8-43.5 78.1-95.4 93-131.1c3.3-7.9 3.3-16.7 0-24.6c-14.9-35.7-46.2-87.7-93-131.1C433.5 68.8 368.8 32 288 32zM432 256c0 79.5-64.5 144-144 144s-144-64.5-144-144s64.5-144 144-144s144 64.5 144 144zM288 192c0 35.3-28.7 64-64 64c-11.5 0-22.3-3-31.6-8.4c-.2 2.8-.4 5.5-.4 8.4c0 53 43 96 96 96s96-43 96-96s-43-96-96-96c-2.8 0-5.6 .1-8.4 .4c5.3 9.3 8.4 20.1 8.4 31.6z"/></svg></span></template>
+        <template id=fa-eye-slash><span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M38.8 5.1C28.4-3.1 13.3-1.2 5.1 9.2S-1.2 34.7 9.2 42.9l592 464c10.4 8.2 25.5 6.3 33.7-4.1s6.3-25.5-4.1-33.7L525.6 386.7c39.6-40.6 66.4-86.1 79.9-118.4c3.3-7.9 3.3-16.7 0-24.6c-14.9-35.7-46.2-87.7-93-131.1C465.5 68.8 400.8 32 320 32c-68.2 0-125 26.3-169.3 60.8L38.8 5.1zM223.1 149.5C248.6 126.2 282.7 112 320 112c79.5 0 144 64.5 144 144c0 24.9-6.3 48.3-17.4 68.7L408 294.5c5.2-11.8 8-24.8 8-38.5c0-53-43-96-96-96c-2.8 0-5.6 .1-8.4 .4c5.3 9.3 8.4 20.1 8.4 31.6c0 10.2-2.4 19.8-6.6 28.3l-90.3-70.8zm223.1 298L373 389.9c-16.4 6.5-34.3 10.1-53 10.1c-79.5 0-144-64.5-144-144c0-6.9 .5-13.6 1.4-20.2L83.1 161.5C60.3 191.2 44 220.8 34.5 243.7c-3.3 7.9-3.3 16.7 0 24.6c14.9 35.7 46.2 87.7 93 131.1C174.5 443.2 239.2 480 320 480c47.8 0 89.9-12.9 126.2-32.5z"/></svg></span></template>
+        <template id=fa-copy><span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M502.6 70.63l-61.25-61.25C435.4 3.371 427.2 0 418.7 0H255.1c-35.35 0-64 28.66-64 64l.0195 256C192 355.4 220.7 384 256 384h192c35.2 0 64-28.8 64-64V93.25C512 84.77 508.6 76.63 502.6 70.63zM464 320c0 8.836-7.164 16-16 16H255.1c-8.838 0-16-7.164-16-16L239.1 64.13c0-8.836 7.164-16 16-16h128L384 96c0 17.67 14.33 32 32 32h47.1V320zM272 448c0 8.836-7.164 16-16 16H63.1c-8.838 0-16-7.164-16-16L47.98 192.1c0-8.836 7.164-16 16-16H160V128H63.99c-35.35 0-64 28.65-64 64l.0098 256C.002 483.3 28.66 512 64 512h192c35.2 0 64-28.8 64-64v-32h-47.1L272 448z"/></svg></span></template>
+        <template id=fa-play><span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 384 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M73 39c-14.8-9.1-33.4-9.4-48.5-.9S0 62.6 0 80V432c0 17.4 9.4 33.4 24.5 41.9s33.7 8.1 48.5-.9L361 297c14.3-8.7 23-24.2 23-41s-8.7-32.2-23-41L73 39z"/></svg></span></template>
+        <template id=fa-clock-rotate-left><span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M75 75L41 41C25.9 25.9 0 36.6 0 57.9V168c0 13.3 10.7 24 24 24H134.1c21.4 0 32.1-25.9 17-41l-30.8-30.8C155 85.5 203 64 256 64c106 0 192 86 192 192s-86 192-192 192c-40.8 0-78.6-12.7-109.7-34.4c-14.5-10.1-34.4-6.6-44.6 7.9s-6.6 34.4 7.9 44.6C151.2 495 201.7 512 256 512c141.4 0 256-114.6 256-256S397.4 0 256 0C185.3 0 121.3 28.7 75 75zm181 53c-13.3 0-24 10.7-24 24V256c0 6.4 2.5 12.5 7 17l72 72c9.4 9.4 24.6 9.4 33.9 0s9.4-24.6 0-33.9l-65-65V152c0-13.3-10.7-24-24-24z"/></svg></span></template>
+
+        <!-- Livereload script (if served using the cli tool) -->
+        <script>
+            const wsProtocol = location.protocol === 'https:' ? 'wss:' : 'ws:';
+            const wsAddress = wsProtocol + "//" + location.host + "/" + "__livereload";
+            const socket = new WebSocket(wsAddress);
+            socket.onmessage = function (event) {
+                if (event.data === "reload") {
+                    socket.close();
+                    location.reload();
+                }
+            };
+
+            window.onbeforeunload = function() {
+                socket.close();
+            }
+        </script>
+
+
+        <script>
+            window.playground_copyable = true;
+        </script>
+
+
+        <script src="elasticlunr-ef4e11c1.min.js"></script>
+        <script src="mark-09e88c2c.min.js"></script>
+        <script src="searcher-09f2665d.js"></script>
+
+        <script src="clipboard-1626706a.min.js"></script>
+        <script src="highlight-abc7f01d.js"></script>
+        <script src="book-609e4cb8.js"></script>
+
+        <!-- Custom JS scripts -->
+        <script src="theme/figures-1bd27a95.js"></script>
+        <script src="theme/proto-326509cd.js"></script>
+        <script src="theme/code-67e9caaf.js"></script>
+        <script src="theme/tables-9fb295e8.js"></script>
+        <script src="theme/steps-77f22afb.js"></script>
+
+
+
+    </div>
     </body>
 </html>

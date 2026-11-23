@@ -1,0 +1,523 @@
+<!DOCTYPE HTML>
+<html lang="en" class="coal sidebar-visible" dir="ltr">
+    <head>
+        <!-- Book generated using mdBook -->
+        <meta charset="UTF-8">
+        <title>Glossary of Distributed Systems Terms - Distributed Systems from the Ground Up</title>
+
+
+        <!-- Custom HTML head -->
+
+        <meta name="description" content="System design and low-level design of resilient, fault-tolerant distributed systems, with code in Rust">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <meta name="theme-color" content="#ffffff">
+
+        <link rel="icon" href="favicon-de23e50b.svg">
+        <link rel="shortcut icon" href="favicon-8114d1fc.png">
+        <link rel="stylesheet" href="css/variables-8adf115d.css">
+        <link rel="stylesheet" href="css/general-e96d0476.css">
+        <link rel="stylesheet" href="css/chrome-d279d366.css">
+        <link rel="stylesheet" href="css/print-9e4910d8.css" media="print">
+
+        <!-- Fonts -->
+        <link rel="stylesheet" href="fonts/fonts-9644e21d.css">
+
+        <!-- Highlight.js Stylesheets -->
+        <link rel="stylesheet" id="mdbook-highlight-css" href="highlight-493f70e1.css">
+        <link rel="stylesheet" id="mdbook-tomorrow-night-css" href="tomorrow-night-4c0ae647.css">
+        <link rel="stylesheet" id="mdbook-ayu-highlight-css" href="ayu-highlight-3fdfc3ac.css">
+
+        <!-- Custom theme stylesheets -->
+        <link rel="stylesheet" href="theme/custom-3b357368.css">
+
+
+        <!-- Provide site root and default themes to javascript -->
+        <script>
+            const path_to_root = "";
+            const default_light_theme = "coal";
+            const default_dark_theme = "coal";
+            window.path_to_searchindex_js = "searchindex-38bda414.js";
+        </script>
+        <!-- Start loading toc.js asap -->
+        <script src="toc-00f6d8fe.js"></script>
+    </head>
+    <body>
+    <div id="mdbook-help-container">
+        <div id="mdbook-help-popup">
+            <h2 class="mdbook-help-title">Keyboard shortcuts</h2>
+            <div>
+                <p>Press <kbd>←</kbd> or <kbd>→</kbd> to navigate between chapters</p>
+                <p>Press <kbd>S</kbd> or <kbd>/</kbd> to search in the book</p>
+                <p>Press <kbd>?</kbd> to show this help</p>
+                <p>Press <kbd>Esc</kbd> to hide this help</p>
+            </div>
+        </div>
+    </div>
+    <div id="mdbook-body-container">
+        <!-- Work around some values being stored in localStorage wrapped in quotes -->
+        <script>
+            try {
+                let theme = localStorage.getItem('mdbook-theme');
+                let sidebar = localStorage.getItem('mdbook-sidebar');
+
+                if (theme.startsWith('"') && theme.endsWith('"')) {
+                    localStorage.setItem('mdbook-theme', theme.slice(1, theme.length - 1));
+                }
+
+                if (sidebar.startsWith('"') && sidebar.endsWith('"')) {
+                    localStorage.setItem('mdbook-sidebar', sidebar.slice(1, sidebar.length - 1));
+                }
+            } catch (e) { }
+        </script>
+
+        <!-- Set the theme before any content is loaded, prevents flash -->
+        <script>
+            const default_theme = window.matchMedia("(prefers-color-scheme: dark)").matches ? default_dark_theme : default_light_theme;
+            let theme;
+            try { theme = localStorage.getItem('mdbook-theme'); } catch(e) { }
+            if (theme === null || theme === undefined) { theme = default_theme; }
+            const html = document.documentElement;
+            html.classList.remove('coal')
+            html.classList.add(theme);
+            html.classList.add("js");
+        </script>
+
+        <input type="checkbox" id="mdbook-sidebar-toggle-anchor" class="hidden">
+
+        <!-- Hide / unhide sidebar before it is displayed -->
+        <script>
+            let sidebar = null;
+            const sidebar_toggle = document.getElementById("mdbook-sidebar-toggle-anchor");
+            if (document.body.clientWidth >= 1080) {
+                try { sidebar = localStorage.getItem('mdbook-sidebar'); } catch(e) { }
+                sidebar = sidebar || 'visible';
+            } else {
+                sidebar = 'hidden';
+                sidebar_toggle.checked = false;
+            }
+            if (sidebar === 'visible') {
+                sidebar_toggle.checked = true;
+            } else {
+                html.classList.remove('sidebar-visible');
+            }
+        </script>
+
+        <nav id="mdbook-sidebar" class="sidebar" aria-label="Table of contents">
+            <!-- populated by js -->
+            <mdbook-sidebar-scrollbox class="sidebar-scrollbox"></mdbook-sidebar-scrollbox>
+            <noscript>
+                <iframe class="sidebar-iframe-outer" src="toc.html"></iframe>
+            </noscript>
+            <div id="mdbook-sidebar-resize-handle" class="sidebar-resize-handle">
+                <div class="sidebar-resize-indicator"></div>
+            </div>
+        </nav>
+
+        <div id="mdbook-page-wrapper" class="page-wrapper">
+
+            <div class="page">
+                <div id="mdbook-menu-bar-hover-placeholder"></div>
+                <div id="mdbook-menu-bar" class="menu-bar sticky">
+                    <div class="left-buttons">
+                        <label id="mdbook-sidebar-toggle" class="icon-button" for="mdbook-sidebar-toggle-anchor" title="Toggle Table of Contents" aria-label="Toggle Table of Contents" aria-controls="mdbook-sidebar">
+                            <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M0 96C0 78.3 14.3 64 32 64H416c17.7 0 32 14.3 32 32s-14.3 32-32 32H32C14.3 128 0 113.7 0 96zM0 256c0-17.7 14.3-32 32-32H416c17.7 0 32 14.3 32 32s-14.3 32-32 32H32c-17.7 0-32-14.3-32-32zM448 416c0 17.7-14.3 32-32 32H32c-17.7 0-32-14.3-32-32s14.3-32 32-32H416c17.7 0 32 14.3 32 32z"/></svg></span>
+                        </label>
+                        <button id="mdbook-theme-toggle" class="icon-button" type="button" title="Change theme" aria-label="Change theme" aria-haspopup="true" aria-expanded="false" aria-controls="mdbook-theme-list">
+                            <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 576 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M371.3 367.1c27.3-3.9 51.9-19.4 67.2-42.9L600.2 74.1c12.6-19.5 9.4-45.3-7.6-61.2S549.7-4.4 531.1 9.6L294.4 187.2c-24 18-38.2 46.1-38.4 76.1L371.3 367.1zm-19.6 25.4l-116-104.4C175.9 290.3 128 339.6 128 400c0 3.9 .2 7.8 .6 11.6c1.8 17.5-10.2 36.4-27.8 36.4H96c-17.7 0-32 14.3-32 32s14.3 32 32 32H240c61.9 0 112-50.1 112-112c0-2.5-.1-5-.2-7.5z"/></svg></span>
+                        </button>
+                        <ul id="mdbook-theme-list" class="theme-popup" aria-label="Themes" role="menu">
+                            <li role="none"><button role="menuitem" class="theme" id="mdbook-theme-default_theme">Auto</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="mdbook-theme-light">Light</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="mdbook-theme-rust">Rust</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="mdbook-theme-coal">Coal</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="mdbook-theme-navy">Navy</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="mdbook-theme-ayu">Ayu</button></li>
+                        </ul>
+                        <button id="mdbook-search-toggle" class="icon-button" type="button" title="Search (`/`)" aria-label="Toggle Searchbar" aria-expanded="false" aria-keyshortcuts="/ s" aria-controls="mdbook-searchbar">
+                            <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M416 208c0 45.9-14.9 88.3-40 122.7L502.6 457.4c12.5 12.5 12.5 32.8 0 45.3s-32.8 12.5-45.3 0L330.7 376c-34.4 25.2-76.8 40-122.7 40C93.1 416 0 322.9 0 208S93.1 0 208 0S416 93.1 416 208zM208 352c79.5 0 144-64.5 144-144s-64.5-144-144-144S64 128.5 64 208s64.5 144 144 144z"/></svg></span>
+                        </button>
+                    </div>
+
+                    <h1 class="menu-title">Distributed Systems from the Ground Up</h1>
+
+                    <div class="right-buttons">
+                        <a href="print.html" title="Print this book" aria-label="Print this book">
+                            <span class=fa-svg id="print-button"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M128 0C92.7 0 64 28.7 64 64v96h64V64H354.7L384 93.3V160h64V93.3c0-17-6.7-33.3-18.7-45.3L400 18.7C388 6.7 371.7 0 354.7 0H128zM384 352v32 64H128V384 368 352H384zm64 32h32c17.7 0 32-14.3 32-32V256c0-35.3-28.7-64-64-64H64c-35.3 0-64 28.7-64 64v96c0 17.7 14.3 32 32 32H64v64c0 35.3 28.7 64 64 64H384c35.3 0 64-28.7 64-64V384zm-16-88c-13.3 0-24-10.7-24-24s10.7-24 24-24s24 10.7 24 24s-10.7 24-24 24z"/></svg></span>
+                        </a>
+                        <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/tree/prep-v2/distributed-systems-from-the-ground-up" title="Git repository" aria-label="Git repository">
+                            <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 496 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M165.9 397.4c0 2-2.3 3.6-5.2 3.6-3.3.3-5.6-1.3-5.6-3.6 0-2 2.3-3.6 5.2-3.6 3-.3 5.6 1.3 5.6 3.6zm-31.1-4.5c-.7 2 1.3 4.3 4.3 4.9 2.6 1 5.6 0 6.2-2s-1.3-4.3-4.3-5.2c-2.6-.7-5.5.3-6.2 2.3zm44.2-1.7c-2.9.7-4.9 2.6-4.6 4.9.3 2 2.9 3.3 5.9 2.6 2.9-.7 4.9-2.6 4.6-4.6-.3-1.9-3-3.2-5.9-2.9zM244.8 8C106.1 8 0 113.3 0 252c0 110.9 69.8 205.8 169.5 239.2 12.8 2.3 17.3-5.6 17.3-12.1 0-6.2-.3-40.4-.3-61.4 0 0-70 15-84.7-29.8 0 0-11.4-29.1-27.8-36.6 0 0-22.9-15.7 1.6-15.4 0 0 24.9 2 38.6 25.8 21.9 38.6 58.6 27.5 72.9 20.9 2.3-16 8.8-27.1 16-33.7-55.9-6.2-112.3-14.3-112.3-110.5 0-27.5 7.6-41.3 23.6-58.9-2.6-6.5-11.1-33.3 2.6-67.9 20.9-6.5 69 27 69 27 20-5.6 41.5-8.5 62.8-8.5s42.8 2.9 62.8 8.5c0 0 48.1-33.6 69-27 13.7 34.7 5.2 61.4 2.6 67.9 16 17.7 25.8 31.5 25.8 58.9 0 96.5-58.9 104.2-114.8 110.5 9.2 7.9 17 22.9 17 46.4 0 33.7-.3 75.4-.3 83.6 0 6.5 4.6 14.4 17.3 12.1C428.2 457.8 496 362.9 496 252 496 113.3 383.5 8 244.8 8zM97.2 352.9c-1.3 1-1 3.3.7 5.2 1.6 1.6 3.9 2.3 5.2 1 1.3-1 1-3.3-.7-5.2-1.6-1.6-3.9-2.3-5.2-1zm-10.8-8.1c-.7 1.3.3 2.9 2.3 3.9 1.6 1 3.6.7 4.3-.7.7-1.3-.3-2.9-2.3-3.9-2-.6-3.6-.3-4.3.7zm32.4 35.6c-1.6 1.3-1 4.3 1.3 6.2 2.3 2.3 5.2 2.6 6.5 1 1.3-1.3.7-4.3-1.3-6.2-2.2-2.3-5.2-2.6-6.5-1zm-11.4-14.7c-1.6 1-1.6 3.6 0 5.9 1.6 2.3 4.3 3.3 5.6 2.3 1.6-1.3 1.6-3.9 0-6.2-1.4-2.3-4-3.3-5.6-2z"/></svg></span>
+                        </a>
+                        <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/edit/prep-v2/distributed-systems-from-the-ground-up/src/glossary.md" title="Suggest an edit" aria-label="Suggest an edit" rel="edit">
+                            <span class=fa-svg id="git-edit-button"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M421.7 220.3l-11.3 11.3-22.6 22.6-205 205c-6.6 6.6-14.8 11.5-23.8 14.1L30.8 511c-8.4 2.5-17.5 .2-23.7-6.1S-1.5 489.7 1 481.2L38.7 353.1c2.6-9 7.5-17.2 14.1-23.8l205-205 22.6-22.6 11.3-11.3 33.9 33.9 62.1 62.1 33.9 33.9zM96 353.9l-9.3 9.3c-.9 .9-1.6 2.1-2 3.4l-25.3 86 86-25.3c1.3-.4 2.5-1.1 3.4-2l9.3-9.3H112c-8.8 0-16-7.2-16-16V353.9zM453.3 19.3l39.4 39.4c25 25 25 65.5 0 90.5l-14.5 14.5-22.6 22.6-11.3 11.3-33.9-33.9-62.1-62.1L314.3 67.7l11.3-11.3 22.6-22.6 14.5-14.5c25-25 65.5-25 90.5 0z"/></svg></span>
+                        </a>
+
+                    </div>
+                </div>
+
+                <div id="mdbook-search-wrapper" class="hidden">
+                    <form id="mdbook-searchbar-outer" class="searchbar-outer">
+                        <div class="search-wrapper">
+                            <input type="search" id="mdbook-searchbar" name="searchbar" placeholder="Search this book ..." aria-controls="mdbook-searchresults-outer" aria-describedby="searchresults-header">
+                            <div class="spinner-wrapper">
+                                <span class=fa-svg id="fa-spin"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M304 48c0-26.5-21.5-48-48-48s-48 21.5-48 48s21.5 48 48 48s48-21.5 48-48zm0 416c0-26.5-21.5-48-48-48s-48 21.5-48 48s21.5 48 48 48s48-21.5 48-48zM48 304c26.5 0 48-21.5 48-48s-21.5-48-48-48s-48 21.5-48 48s21.5 48 48 48zm464-48c0-26.5-21.5-48-48-48s-48 21.5-48 48s21.5 48 48 48s48-21.5 48-48zM142.9 437c18.7-18.7 18.7-49.1 0-67.9s-49.1-18.7-67.9 0s-18.7 49.1 0 67.9s49.1 18.7 67.9 0zm0-294.2c18.7-18.7 18.7-49.1 0-67.9S93.7 56.2 75 75s-18.7 49.1 0 67.9s49.1 18.7 67.9 0zM369.1 437c18.7 18.7 49.1 18.7 67.9 0s18.7-49.1 0-67.9s-49.1-18.7-67.9 0s-18.7 49.1 0 67.9z"/></svg></span>
+                            </div>
+                        </div>
+                    </form>
+                    <div id="mdbook-searchresults-outer" class="searchresults-outer hidden">
+                        <div id="mdbook-searchresults-header" class="searchresults-header"></div>
+                        <ul id="mdbook-searchresults">
+                        </ul>
+                    </div>
+                </div>
+
+                <!-- Apply ARIA attributes after the sidebar and the sidebar toggle button are added to the DOM -->
+                <script>
+                    document.getElementById('mdbook-sidebar-toggle').setAttribute('aria-expanded', sidebar === 'visible');
+                    document.getElementById('mdbook-sidebar').setAttribute('aria-hidden', sidebar !== 'visible');
+                    Array.from(document.querySelectorAll('#mdbook-sidebar a')).forEach(function(link) {
+                        link.setAttribute('tabIndex', sidebar === 'visible' ? 0 : -1);
+                    });
+                </script>
+
+                <div id="mdbook-content" class="content">
+                    <main>
+                        <h1 id="glossary-of-distributed-systems-terms"><a class="header" href="#glossary-of-distributed-systems-terms">Glossary of Distributed Systems Terms</a></h1>
+<p>Every distributed systems abbreviation and architectural term across the book links directly to its definition below. Each entry states the physical or consistency constraint that motivates the mechanism, its role in production infrastructure, and (where applicable) a concise Rust snippet illustrating the pattern.</p>
+<h3 id="term-2pc"><a class="header" href="#term-2pc"><code>2PC</code>: Two-Phase Commit</a></h3>
+<p>Atomic commitment protocol across distributed participants split into a prepare phase (every participant durably logs intent and votes) and a commit phase (coordinator finalizes once all votes succeed). Blocking occurs if the coordinator crashes after participants have voted <code>YES</code>, holding locks until recovery.</p>
+<pre><code class="language-rust">enum Vote { Prepared, Abort }
+enum Decision { Commit, Abort }</code></pre>
+<h3 id="term-abr"><a class="header" href="#term-abr"><code>ABR</code>: Adaptive Bitrate Streaming</a></h3>
+<p>Client-driven video delivery technique that dynamically switches between encoded bitrate renditions on segment boundaries based on measured throughput and playback buffer occupancy, preventing rebuffering stalls under variable wireless bandwidth.</p>
+<h3 id="term-acid"><a class="header" href="#term-acid"><code>ACID</code>: Atomicity, Consistency, Isolation, Durability</a></h3>
+<p>Transactional guarantee set for database systems: all-or-nothing execution (atomicity), invariant preservation (consistency), concurrency control equivalent to a serial schedule (isolation), and survival across crashes via non-volatile storage (durability).</p>
+<h3 id="term-anycast"><a class="header" href="#term-anycast"><code>Anycast</code>: BGP Anycast Routing</a></h3>
+<p>Network addressing scheme advertising the same IP prefix from multiple globally distributed Points of Presence via BGP so internet routers direct each client packet to the topologically nearest healthy edge location.</p>
+<h3 id="term-apns"><a class="header" href="#term-apns"><code>APNs</code>: Apple Push Notification Service</a></h3>
+<p>Persistent HTTP/2 push gateway operated by Apple that multiplexes wake-up notifications over a single battery-efficient TCP connection to iOS and macOS devices when background applications are suspended.</p>
+<h3 id="term-az"><a class="header" href="#term-az"><code>AZ</code>: Availability Zone</a></h3>
+<p>Physically isolated datacenter facility within a cloud region equipped with independent power, cooling, and network uplinks, typically separated by 0.5 to 2 ms RTT to support synchronous quorum replication across failure domains.</p>
+<h3 id="term-backpressure"><a class="header" href="#term-backpressure"><code>Backpressure</code>: End-to-End Flow Control</a></h3>
+<p>Feedback mechanism allowing a slower downstream consumer to throttle an upstream producer via bounded queues, TCP receive-window shrinkage, or HTTP/2 stream credits so memory stays bounded under overload.</p>
+<pre><code class="language-rust">// Bounded channel exerts backpressure when full
+let (tx, rx) = tokio::sync::mpsc::channel::&lt;Event&gt;(1024);
+tx.send(event).await?;</code></pre>
+<h3 id="term-base"><a class="header" href="#term-base"><code>BASE</code>: Availability-First Soft-State Eventual Consistency</a></h3>
+<p>Availability-first consistency model (<code>Basically Available, Soft State, Eventual Consistency</code>) contrasting with ACID: systems continue serving reads and writes during partitions, tolerate transient state divergence, and converge asynchronously once communication heals.</p>
+<h3 id="term-bdp"><a class="header" href="#term-bdp"><code>BDP</code>: Bandwidth-Delay Product</a></h3>
+<p>Product of link bandwidth and round-trip latency (<code>B * RTT</code>), quantifying the bytes that must remain in flight to saturate a network path. Socket buffers smaller than the BDP starve throughput even on uncongested links.</p>
+<pre><code class="language-rust">// 10 Gbps link with 20 ms RTT requires 25 MiB in flight
+let bdp_bytes: u64 = (10_000_000_000 / 8) * 20 / 1_000;</code></pre>
+<h3 id="term-bgp"><a class="header" href="#term-bgp"><code>BGP</code>: Border Gateway Protocol</a></h3>
+<p>Inter-domain path-vector routing protocol exchanging IP prefix reachability across Autonomous Systems on the public internet, underpinning global traffic engineering and Anycast edge failover.</p>
+<h3 id="term-bloom-filter"><a class="header" href="#term-bloom-filter"><code>Bloom Filter</code>: Probabilistic Set Membership Structure</a></h3>
+<p>Compact bit-array structure using <code>k</code> independent hash functions (<code>~10 bits</code> per element for 1% false positives) with zero false negatives. Storage engines and crawlers query Bloom filters in RAM to avoid expensive disk seeks for absent keys.</p>
+<pre><code class="language-rust">fn might_contain(bits: &amp;[u64], hashes: &amp;[u64]) -&gt; bool {
+    hashes.iter().all(|&amp;h| {
+        let idx = (h as usize) % (bits.len() * 64);
+        (bits[idx / 64] &amp; (1u64 &lt;&lt; (idx % 64))) != 0
+    })
+}</code></pre>
+<h3 id="term-bulkhead"><a class="header" href="#term-bulkhead"><code>Bulkhead</code>: Fault-Isolation Partitioning</a></h3>
+<p>Resilience pattern that isolates thread pools, connection pools, or memory quotas per tenant or downstream dependency so a slow or failing subsystem cannot exhaust shared resources for unrelated requests.</p>
+<h3 id="term-cap"><a class="header" href="#term-cap"><code>CAP</code>: Consistency, Availability, Partition Tolerance</a></h3>
+<p>Theorem proving that during a network partition, a distributed data store must choose between linearizable consistency (rejecting writes on the minority side) and full availability (serving potentially stale or divergent state).</p>
+<h3 id="term-cas"><a class="header" href="#term-cas"><code>CAS</code>: Compare-And-Swap</a></h3>
+<p>Atomic read-modify-write primitive that updates a memory word or database row if and only if its current value matches an expected version, forming the foundation of lock-free structures and optimistic concurrency control.</p>
+<pre><code class="language-rust">state.compare_exchange_weak(
+    expected,
+    next,
+    Ordering::AcqRel,
+    Ordering::Acquire,
+)</code></pre>
+<h3 id="term-cdc"><a class="header" href="#term-cdc"><code>CDC</code>: Change Data Capture / Content-Defined Chunking</a></h3>
+<p>In databases, CDC streams committed row mutations from the write-ahead log into downstream queues or caches without dual-write races. In file synchronization, content-defined chunking uses a rolling hash to anchor variable-size block boundaries on content patterns so insertions preserve downstream chunk hashes.</p>
+<h3 id="term-cde"><a class="header" href="#term-cde"><code>CDE</code>: Cardholder Data Environment</a></h3>
+<p>Network-segmented infrastructure scope storing, processing, or transmitting raw payment card numbers under PCI-DSS, minimized by replacing Primary Account Numbers with opaque vault tokens at the edge.</p>
+<h3 id="term-cdn"><a class="header" href="#term-cdn"><code>CDN</code>: Content Delivery Network</a></h3>
+<p>Globally distributed hierarchy of edge caching proxies that terminate TLS near end users and serve static assets, media segments, and cacheable API responses without traversing backhaul links to the origin datacenter.</p>
+<h3 id="term-circuit-breaker"><a class="header" href="#term-circuit-breaker"><code>Circuit Breaker</code>: Fail-Fast Overload Protection</a></h3>
+<p>State machine (<code>Closed -&gt; Open -&gt; Half-Open</code>) wrapping remote RPC calls that trips open when downstream error rates or timeouts breach a threshold, rejecting traffic immediately to prevent cascading thread exhaustion and allow recovery.</p>
+<h3 id="term-consistent-hashing"><a class="header" href="#term-consistent-hashing"><code>Consistent Hashing</code>: Minimal-Movement Key Partitioning</a></h3>
+<p>Ring-based partitioning scheme mapping both keys and server virtual nodes onto a circular hash space so adding or removing a storage node relocates only <code>1/N</code> of keys rather than rehashing the entire dataset.</p>
+<h3 id="term-crdt"><a class="header" href="#term-crdt"><code>CRDT</code>: Conflict-Free Replicated Data Type</a></h3>
+<p>Data structure whose state merges or operations are mathematically associative, commutative, and idempotent, guaranteeing strong eventual consistency across replicas without a central locking coordinator.</p>
+<h3 id="term-dash"><a class="header" href="#term-dash"><code>DASH</code>: Dynamic Adaptive Streaming over HTTP</a></h3>
+<p>Open ISO standard for adaptive bitrate media delivery using XML Media Presentation Description (MPD) manifests and chunked HTTP byte-range or segment requests compatible with standard CDN caches.</p>
+<h3 id="term-dns"><a class="header" href="#term-dns"><code>DNS</code>: Domain Name System</a></h3>
+<p>Hierarchical distributed directory translating human-readable hostnames into IPv4/IPv6 addresses and service records, also leveraged for geographic traffic steering and coarse load balancing with TTL-governed caching.</p>
+<h3 id="term-ecmp"><a class="header" href="#term-ecmp"><code>ECMP</code>: Equal-Cost Multi-Path Routing</a></h3>
+<p>Stateless L3/L4 router hashing over the packet 5-tuple (source/destination IP, ports, protocol) that spreads flows evenly across multiple equal-cost next-hop load balancers without per-connection router state.</p>
+<h3 id="term-epoch"><a class="header" href="#term-epoch"><code>Epoch</code>: Monotonic Generation Counter</a></h3>
+<p>Strictly increasing logical version number incremented on leadership changes, membership reconfigurations, or garbage-collection barriers to order concurrent events and fence stale nodes.</p>
+<h3 id="term-erasure-coding"><a class="header" href="#term-erasure-coding"><code>Erasure Coding</code>: Parity-Based Storage Redundancy</a></h3>
+<p>Reed-Solomon encoding that splits an object into <code>k</code> data shards and <code>m</code> parity shards so any <code>k</code> of <code>k + m</code> shards reconstruct the original data, achieving higher durability than 3-way replication at roughly <code>1.3x to 1.5x</code> storage overhead.</p>
+<h3 id="term-eventual-consistency"><a class="header" href="#term-eventual-consistency"><code>Eventual Consistency</code>: Asynchronous Convergence Model</a></h3>
+<p>Weak consistency guarantee ensuring that if no new updates arrive for a given key, all replicas eventually converge to the identical value, trading immediate read freshness for low latency and partition availability.</p>
+<h3 id="term-fcm"><a class="header" href="#term-fcm"><code>FCM</code>: Firebase Cloud Messaging</a></h3>
+<p>Cross-platform push notification gateway operated by Google that maintains persistent multiplexed connections to Android and web clients for low-power asynchronous message delivery.</p>
+<h3 id="term-fencing-token"><a class="header" href="#term-fencing-token"><code>Fencing Token</code>: Monotonic Lease Authority Guard</a></h3>
+<p>Strictly increasing integer issued by a lock service or consensus leader on every lease acquisition; storage servers reject any write carrying a token lower than the highest token already observed, preventing zombie leaders from corrupting state after GC pauses.</p>
+<pre><code class="language-rust">fn write_guarded(store: &amp;mut Store, token: u64, key: &amp;str, val: &amp;[u8]) -&gt; Result&lt;(), Error&gt; {
+    if token &lt; store.max_seen_token {
+        return Err(Error::StaleFencingToken);
+    }
+    store.max_seen_token = token;
+    store.put(key, val)
+}</code></pre>
+<h3 id="term-fix"><a class="header" href="#term-fix"><code>FIX</code>: Financial Information eXchange Protocol</a></h3>
+<p>Standardized session and application messaging protocol used by institutional trading firms and brokerages to submit orders and receive execution reports, often paired with binary SBE payloads on low-latency venues.</p>
+<h3 id="term-fst"><a class="header" href="#term-fst"><code>FST</code>: Finite State Transducer</a></h3>
+<p>Immutable directed acyclic automaton that shares both common prefixes and common suffixes across sorted keys while attaching numeric weights or output offsets, powering compact off-heap autocomplete and search indexes.</p>
+<h3 id="term-gcra"><a class="header" href="#term-gcra"><code>GCRA</code>: Generic Cell Rate Algorithm</a></h3>
+<p>Single-variable leaky-bucket rate limiter tracking a Theoretical Arrival Time (<code>TAT</code>) per key, enforcing exact smooth pacing and burst allowance using one atomic 64-bit timestamp instead of per-request lists.</p>
+<pre><code class="language-rust">fn allow_gcra(tat_ns: &amp;mut u64, now_ns: u64, emission_ns: u64, burst_ns: u64) -&gt; bool {
+    let allow_at = tat_ns.saturating_sub(burst_ns);
+    if now_ns &lt; allow_at {
+        return false;
+    }
+    *tat_ns = (*tat_ns).max(now_ns) + emission_ns;
+    true
+}</code></pre>
+<h3 id="term-group-commit"><a class="header" href="#term-group-commit"><code>Group Commit</code>: Amortized Write-Ahead Log Flushing</a></h3>
+<p>Storage optimization that batches concurrent transactions arriving during an active <code>fsync</code> into a single sequential WAL flush, multiplying write throughput while preserving strict durability for every acknowledged request.</p>
+<h3 id="term-grpc"><a class="header" href="#term-grpc"><code>gRPC</code>: High-Performance Remote Procedure Call Framework</a></h3>
+<p>RPC framework layered over HTTP/2 and Protocol Buffers supporting multiplexed bidirectional streaming, deadline propagation, typed code generation, and pluggable client-side load balancing.</p>
+<h3 id="term-h3"><a class="header" href="#term-h3"><code>H3</code>: Hexagonal Hierarchical Spatial Index</a></h3>
+<p>Geospatial indexing system developed by Uber that partitions the globe into hierarchical hexagonal cells, offering uniform neighbor distances (unlike rectangular grids) for low-latency nearby-driver and spatial proximity queries.</p>
+<h3 id="term-hedged-request"><a class="header" href="#term-hedged-request"><code>Hedged Request</code>: Tail-Latency Duplicate Dispatch</a></h3>
+<p>Technique that dispatches a secondary read request to another replica if the primary request exceeds a short delay threshold (such as the P95 latency), cancelling the slower response to cut P99 tail latency with modest extra load.</p>
+<h3 id="term-hlc"><a class="header" href="#term-hlc"><code>HLC</code>: Hybrid Logical Clock</a></h3>
+<p>Timestamp combining physical wall-clock time (<code>pt</code>) with a logical counter (<code>lc</code>) so events stay closely bounded to NTP/PTP physical time while strictly capturing causal happens-before ordering across distributed nodes.</p>
+<h3 id="term-hll"><a class="header" href="#term-hll"><code>HLL</code>: HyperLogLog Cardinality Sketch</a></h3>
+<p>Probabilistic register array estimating distinct element counts within <code>&lt; 1%</code> standard error using roughly <code>12 KiB</code> of associatively mergeable memory, widely used for unique-visitor and ad-click counting.</p>
+<h3 id="term-hls"><a class="header" href="#term-hls"><code>HLS</code>: HTTP Live Streaming</a></h3>
+<p>Apple-originated adaptive media protocol dividing audio/video streams into short immutable segments (<code>.ts</code> or <code>.m4s</code>) referenced by <code>.m3u8</code> playlists served over standard HTTP CDNs.</p>
+<h3 id="term-hsm"><a class="header" href="#term-hsm"><code>HSM</code>: Hardware Security Module</a></h3>
+<p>Tamper-resistant physical cryptographic appliance that generates, stores, and applies encryption and signing keys inside dedicated silicon so raw key material never enters host RAM.</p>
+<h3 id="term-http-2"><a class="header" href="#term-http-2"><code>HTTP/2</code>: Multiplexed Binary HTTP Protocol</a></h3>
+<p>Binary framing revision of HTTP supporting concurrent multiplexed streams over a single TCP connection, HPACK header compression, and stream prioritization, though still subject to TCP-level head-of-line blocking on packet loss.</p>
+<h3 id="term-http-3"><a class="header" href="#term-http-3"><code>HTTP/3</code>: QUIC-Based HTTP Protocol</a></h3>
+<p>Latest HTTP specification running over UDP-based QUIC so independent logical streams recover from packet loss without stalling sibling streams, while integrating TLS 1.3 into a 1-RTT or 0-RTT handshake.</p>
+<h3 id="term-idempotency"><a class="header" href="#term-idempotency"><code>Idempotency</code>: Safe Retry Invariance</a></h3>
+<p>Property guaranteeing that applying the same operation multiple times produces the identical system state as applying it once, enforced in distributed APIs via client-generated idempotency keys persisted atomically with the business mutation.</p>
+<h3 id="term-iops"><a class="header" href="#term-iops"><code>IOPS</code>: Input/Output Operations Per Second</a></h3>
+<p>Storage device throughput metric counting discrete random read or write operations completed per second, distinguishing random-access NVMe SSD capacity from sequential bandwidth limits.</p>
+<h3 id="term-itch"><a class="header" href="#term-itch"><code>ITCH</code>: Market Data Dissemination Protocol</a></h3>
+<p>Ultra-low-latency binary multicast feed protocol (pioneered by NASDAQ) broadcasting every order addition, modification, cancellation, and trade tick so subscribers can reconstruct an exact limit order book locally.</p>
+<h3 id="term-json"><a class="header" href="#term-json"><code>JSON</code>: JavaScript Object Notation</a></h3>
+<p>Human-readable UTF-8 text interchange format standard for public REST APIs, trading higher CPU parsing cost and wire verbosity for universal debuggability compared to binary schemas like Protobuf.</p>
+<h3 id="term-kraft"><a class="header" href="#term-kraft"><code>KRaft</code>: Kafka Raft Metadata Mode</a></h3>
+<p>Native Raft-based metadata consensus quorum built directly into Apache Kafka, replacing external ZooKeeper clusters so partition leadership elections and metadata recovery scale to millions of partitions.</p>
+<h3 id="term-l4"><a class="header" href="#term-l4"><code>L4</code>: Layer-4 Transport Load Balancer</a></h3>
+<p>High-throughput packet-level load balancer routing TCP/UDP flows using IP addresses and ports without terminating TLS or inspecting HTTP payloads, often paired with Direct Server Return (DSR).</p>
+<h3 id="term-l7"><a class="header" href="#term-l7"><code>L7</code>: Layer-7 Application Load Balancer</a></h3>
+<p>Reverse proxy terminating TLS and parsing HTTP/gRPC headers to perform path-based routing, prefix sharding, authentication, rate limiting, and connection pooling toward backend services.</p>
+<h3 id="term-lfu"><a class="header" href="#term-lfu"><code>LFU</code>: Least Frequently Used Eviction Policy</a></h3>
+<p>Cache eviction strategy discarding items with the lowest historical access count (often decayed via TinyLFU sketches) to protect hot working sets from one-time scan pollution.</p>
+<h3 id="term-linearizability"><a class="header" href="#term-linearizability"><code>Linearizability</code>: Strong Single-Copy Consistency</a></h3>
+<p>Strongest single-object consistency model requiring every operation to appear to take effect atomically at a single point in real time between its invocation and response, matching the illusion of one sequential machine.</p>
+<h3 id="term-lru"><a class="header" href="#term-lru"><code>LRU</code>: Least Recently Used Eviction Policy</a></h3>
+<p>Cache eviction algorithm combining a hash map with a doubly linked list to evict the entry untouched for the longest interval in <code>O(1)</code> time, well suited to workloads with strong temporal locality.</p>
+<h3 id="term-lsm"><a class="header" href="#term-lsm"><code>LSM</code>: Log-Structured Merge-Tree</a></h3>
+<p>Write-optimized storage engine converting random mutations into sequential appends across an in-memory MemTable, a durable WAL, and immutable sorted disk levels (SSTables) merged asynchronously via background compaction.</p>
+<h3 id="term-merkle-tree"><a class="header" href="#term-merkle-tree"><code>Merkle Tree</code>: Hierarchical Cryptographic Hash Tree</a></h3>
+<p>Binary or n-ary tree in which each leaf hashes a data block or key range and each internal node hashes its children’s digests, allowing two replicas to pinpoint divergent ranges in <code>O(log N)</code> network round trips.</p>
+<h3 id="term-mtls"><a class="header" href="#term-mtls"><code>mTLS</code>: Mutual Transport Layer Security</a></h3>
+<p>Cryptographic authentication mode in which both client and server present and verify X.509 certificates during the TLS handshake, enforcing zero-trust service-to-service identity inside microservices meshes.</p>
+<h3 id="term-mvcc"><a class="header" href="#term-mvcc"><code>MVCC</code>: Multi-Version Concurrency Control</a></h3>
+<p>Database concurrency technique retaining timestamped versions of modified rows so snapshot readers observe a consistent historical view without blocking concurrent writers or taking read locks.</p>
+<h3 id="term-ntp"><a class="header" href="#term-ntp"><code>NTP</code>: Network Time Protocol</a></h3>
+<p>Packet-exchange protocol synchronizing host system clocks against stratum time servers over commodity networks, typically bounded within 1 to 50 ms of UTC and vulnerable to backward step adjustments.</p>
+<h3 id="term-nvme"><a class="header" href="#term-nvme"><code>NVMe</code>: Non-Volatile Memory Express</a></h3>
+<p>High-concurrency PCIe storage interface offering thousands of parallel submission and completion queues directly attached to flash controllers, delivering sub-100-microsecond random access and millions of IOPS.</p>
+<h3 id="term-olap"><a class="header" href="#term-olap"><code>OLAP</code>: Online Analytical Processing</a></h3>
+<p>Columnar query workload optimized for scanning, filtering, and aggregating millions of historical rows (such as ClickHouse, Pinot, or Scuba) rather than single-row transactional updates.</p>
+<h3 id="term-oltp"><a class="header" href="#term-oltp"><code>OLTP</code>: Online Transactional Processing</a></h3>
+<p>Row-oriented database workload serving high volumes of short, indexed, ACID point reads and writes (such as payments, bookings, and metadata commits) with strict millisecond latency targets.</p>
+<h3 id="term-ot"><a class="header" href="#term-ot"><code>OT</code>: Operational Transformation</a></h3>
+<p>Collaborative editing algorithm that rewrites incoming positional operations against concurrent edits already applied on a canonical server timeline so all editors converge to identical document text.</p>
+<h3 id="term-ouch"><a class="header" href="#term-ouch"><code>OUCH</code>: Low-Latency Order Entry Protocol</a></h3>
+<p>Minimalist fixed-width binary TCP protocol used on electronic stock exchanges to submit, replace, and cancel orders with deterministic microsecond parsing overhead and zero variable-length text tags.</p>
+<h3 id="term-outbox"><a class="header" href="#term-outbox"><code>Outbox</code>: Transactional Outbox Pattern</a></h3>
+<p>Reliability pattern writing domain state changes and outbound event records in the same local ACID database transaction, allowing an asynchronous relay or CDC tailer to publish events to Kafka with at-least-once certainty.</p>
+<pre><code class="language-rust">// Atomic SQL transaction writes both ledger row and outbox event
+tx.execute("INSERT INTO payments (id, cents) VALUES ($1, $2)", &amp;[&amp;id, &amp;cents])?;
+tx.execute("INSERT INTO outbox (event_id, payload) VALUES ($1, $2)", &amp;[&amp;ev_id, &amp;blob])?;
+tx.commit()?;</code></pre>
+<h3 id="term-p99"><a class="header" href="#term-p99"><code>P99</code>: 99th Percentile Tail Latency</a></h3>
+<p>Latency threshold below which 99% of observed requests complete. In fan-out architectures querying 50 backend shards in parallel, a 1% per-shard slowdown affects nearly 40% of end-user requests, making P99 more informative than mean latency.</p>
+<h3 id="term-pacelc"><a class="header" href="#term-pacelc"><code>PACELC</code>: Partition-Availability-Consistency / Else-Latency-Consistency</a></h3>
+<p>Extension of CAP stating that during a network partition (<code>P</code>) a system trades off availability (<code>A</code>) versus consistency (<code>C</code>), and even during normal operation (<code>E</code>) it still trades off low latency (<code>L</code>) versus strong consistency (<code>C</code>).</p>
+<h3 id="term-paxos"><a class="header" href="#term-paxos"><code>Paxos</code>: Fault-Tolerant Consensus Protocol</a></h3>
+<p>Foundational distributed consensus family guaranteeing safety (a single agreed value per slot) across asynchronous networks with crash failures as long as a strict majority quorum (<code>f + 1</code> of <code>2f + 1</code>) remains reachable.</p>
+<h3 id="term-pci-dss"><a class="header" href="#term-pci-dss"><code>PCI-DSS</code>: Payment Card Industry Data Security Standard</a></h3>
+<p>Compliance and security framework mandating encryption, network isolation, strict access controls, and immutable audit logging for any system storing, processing, or transmitting payment cardholder data.</p>
+<h3 id="term-pop"><a class="header" href="#term-pop"><code>PoP</code>: Point of Presence</a></h3>
+<p>Regional edge facility hosting CDN caches, Anycast routers, and TLS termination proxies close to end-user ISPs to cut round-trip latency and absorb volumetric traffic before it reaches core datacenters.</p>
+<h3 id="term-protobuf"><a class="header" href="#term-protobuf"><code>Protobuf</code>: Protocol Buffers</a></h3>
+<p>Compact, schema-driven binary serialization format using numeric field tags and varint encoding, enabling backward-compatible API evolution and fast zero-allocation parsing in high-throughput RPC pipelines.</p>
+<h3 id="term-psp"><a class="header" href="#term-psp"><code>PSP</code>: Payment Service Provider</a></h3>
+<p>External financial gateway (such as Stripe or Adyen) connecting merchant payment services to card networks and acquiring banks, introducing asynchronous settlement webhooks and external timeout failure modes.</p>
+<h3 id="term-ptp"><a class="header" href="#term-ptp"><code>PTP</code>: Precision Time Protocol</a></h3>
+<p>IEEE 1588 hardware-timestamped clock synchronization protocol achieving sub-microsecond accuracy across datacenter racks, essential for financial exchange telemetry and tight distributed commit ordering.</p>
+<h3 id="term-quic"><a class="header" href="#term-quic"><code>QUIC</code>: Quick UDP Internet Connections</a></h3>
+<p>Encrypted, multiplexed transport protocol built over UDP with connection migration (surviving Wi-Fi to cellular handoffs), integrated TLS 1.3 handshakes, and independent per-stream loss recovery.</p>
+<h3 id="term-quorum"><a class="header" href="#term-quorum"><code>Quorum</code>: Majority Intersection Set</a></h3>
+<p>Subset of replicas satisfying <code>W + R &gt; N</code> (and <code>2W &gt; N</code> for leader election) so every read quorum intersects the latest write quorum on at least one up-to-date node, tolerating up to <code>floor((N - 1) / 2)</code> node failures.</p>
+<h3 id="term-raft"><a class="header" href="#term-raft"><code>RAFT</code>: Understandable Replicated State Machine Consensus</a></h3>
+<p>Leader-based consensus protocol decomposing replication into leader election (with monotonic terms), log replication, and safety invariants so a cluster of <code>2f + 1</code> nodes executes an identical deterministic command log despite <code>f</code> crashes.</p>
+<pre><code class="language-rust">struct AppendEntriesReq {
+    term: u64,
+    leader_id: u32,
+    prev_log_index: u64,
+    prev_log_term: u64,
+    leader_commit: u64,
+}</code></pre>
+<h3 id="term-raid"><a class="header" href="#term-raid"><code>RAID</code>: Redundant Array of Independent Disks</a></h3>
+<p>Local disk striping and mirroring/parity organization improving single-host I/O bandwidth or tolerating individual drive failures, though distributed cloud systems increasingly prefer cross-host replication or erasure coding.</p>
+<h3 id="term-ryw"><a class="header" href="#term-ryw"><code>Read-Your-Writes</code>: Session Consistency Guarantee</a></h3>
+<p>Guarantee ensuring that once a client commits a write, subsequent reads within that same session observe the written value (or a newer one), implemented by pinning post-write reads to the leader or tracking a session commit watermark.</p>
+<h3 id="term-replication-lag"><a class="header" href="#term-replication-lag"><code>Replication Lag</code>: Primary-to-Follower Delay</a></h3>
+<p>Elapsed time or log-offset distance between a write committing on the primary node and becoming visible on an asynchronous read replica, governing stale-read risk and failover RPO exposure.</p>
+<h3 id="term-rpo"><a class="header" href="#term-rpo"><code>RPO</code>: Recovery Point Objective</a></h3>
+<p>Maximum acceptable age of data lost during a catastrophic failure, measured in time or transactions (for example, <code>RPO = 0</code> demands synchronous quorum durability before acknowledging writes).</p>
+<h3 id="term-rto"><a class="header" href="#term-rto"><code>RTO</code>: Recovery Time Objective</a></h3>
+<p>Maximum acceptable duration of service unavailability during failover or disaster recovery, bounded by failure-detection timeouts, leader election latency, and standby state-replay time.</p>
+<h3 id="term-rtt"><a class="header" href="#term-rtt"><code>RTT</code>: Round-Trip Time</a></h3>
+<p>Elapsed network transit time for a packet to travel from sender to receiver and return, establishing the physical lower bound on synchronous consensus commits, TCP/TLS handshakes, and cross-region RPCs.</p>
+<h3 id="term-saga"><a class="header" href="#term-saga"><code>SAGA</code>: Long-Running Compensating Transaction Pattern</a></h3>
+<p>Coordination pattern replacing distributed 2PC locks with a sequence of local ACID transactions where each step publishes an event or invokes the next service, and any failure triggers explicit compensating actions in reverse order.</p>
+<h3 id="term-sbe"><a class="header" href="#term-sbe"><code>SBE</code>: Simple Binary Encoding</a></h3>
+<p>Zero-copy, fixed-offset binary wire format standardized by the FIX Trading Community so financial matching engines encode and decode market orders directly from network ring buffers without heap allocation.</p>
+<h3 id="term-sharding"><a class="header" href="#term-sharding"><code>Sharding</code>: Horizontal Data Partitioning</a></h3>
+<p>Splitting a dataset across independent storage nodes by hash, key range, or geographic cell so write throughput, RAM footprint, and blast radius scale horizontally beyond a single machine.</p>
+<h3 id="term-simhash"><a class="header" href="#term-simhash"><code>SimHash</code>: Locality-Sensitive Document Fingerprint</a></h3>
+<p>64-bit weighted feature hash in which near-duplicate web pages differ in only a few bits (small Hamming distance), allowing web crawlers to detect mirrors and template copies in <code>O(1)</code> lookup tables.</p>
+<h3 id="term-sla"><a class="header" href="#term-sla"><code>SLA</code>: Service Level Agreement</a></h3>
+<p>Legally or contractually binding reliability commitment to external customers specifying uptime or latency thresholds alongside financial credit penalties when breached.</p>
+<h3 id="term-sli"><a class="header" href="#term-sli"><code>SLI</code>: Service Level Indicator</a></h3>
+<p>Quantitative runtime metric measuring user-facing service health, such as the ratio of successful HTTP requests completing under 100 ms over a rolling 5-minute window.</p>
+<h3 id="term-slo"><a class="header" href="#term-slo"><code>SLO</code>: Service Level Objective</a></h3>
+<p>Internal engineering reliability target over an SLI (for example, 99.95% availability over 30 days), defining an explicit error budget that balances feature velocity against operational stability.</p>
+<h3 id="term-split-brain"><a class="header" href="#term-split-brain"><code>Split-Brain</code>: Dual-Leader Partition Hazard</a></h3>
+<p>Failure state in which a network partition causes two isolated subsets of nodes to believe they each hold exclusive leadership and accept conflicting writes simultaneously, prevented by strict majority quorums and fencing tokens.</p>
+<h3 id="term-sql"><a class="header" href="#term-sql"><code>SQL</code>: Structured Query Language</a></h3>
+<p>Declarative relational query language backed by B-tree/MVCC engines providing ACID transactions, secondary indexes, and schema constraints for metadata, ledgers, and booking inventories.</p>
+<h3 id="term-ssd"><a class="header" href="#term-ssd"><code>SSD</code>: Solid-State Drive</a></h3>
+<p>Flash-based non-volatile storage device delivering orders-of-magnitude lower random read/write latency than spinning disks, managed internally by a Flash Translation Layer that performs wear leveling and garbage collection.</p>
+<h3 id="term-sse"><a class="header" href="#term-sse"><code>SSE</code>: Server-Sent Events</a></h3>
+<p>Unidirectional HTTP streaming protocol pushing UTF-8 event frames from server to browser over a persistent connection with automatic reconnection and <code>Last-Event-ID</code> resume semantics.</p>
+<h3 id="term-sstable"><a class="header" href="#term-sstable"><code>SSTable</code>: Sorted String Table</a></h3>
+<p>Immutable, key-sorted on-disk file produced when an LSM MemTable flushes to storage, paired with sparse index blocks and Bloom filters to serve point lookups and range scans sequentially.</p>
+<h3 id="term-tail-latency"><a class="header" href="#term-tail-latency"><code>Tail Latency</code>: High-Percentile Response Delay</a></h3>
+<p>Slowest 1% to 0.1% of requests (P99/P99.9) caused by garbage collection pauses, queue buildup, disk compaction, or packet retransmissions; tail latency compounds multiplicatively across microservice fan-outs.</p>
+<h3 id="term-tcp"><a class="header" href="#term-tcp"><code>TCP</code>: Transmission Control Protocol</a></h3>
+<p>Connection-oriented, byte-stream transport protocol providing reliable ordered delivery, sliding-window flow control, and congestion control at the cost of handshake RTT and head-of-line blocking under packet loss.</p>
+<h3 id="term-tls"><a class="header" href="#term-tls"><code>TLS</code>: Transport Layer Security</a></h3>
+<p>Cryptographic transport protocol (currently TLS 1.3) providing confidentiality, integrity, and server/client authentication over TCP or QUIC with forward secrecy and 1-RTT connection establishment.</p>
+<h3 id="term-tombstone"><a class="header" href="#term-tombstone"><code>Tombstone</code>: Logical Deletion Marker</a></h3>
+<p>Special marker record written instead of immediately erasing bytes in LSM storage engines, distributed sync logs, and Sequence CRDTs so deletions propagate reliably to offline replicas before epoch-gated garbage collection.</p>
+<h3 id="term-truetime"><a class="header" href="#term-truetime"><code>TrueTime</code>: Bounded-Uncertainty Distributed Clock API</a></h3>
+<p>Google Spanner clock service backed by GPS receivers and atomic clocks that exposes an explicit uncertainty interval <code>[earliest, latest]</code> (<code>~1 to 7 ms</code>), enabling external consistency by waiting out the uncertainty bound before commit (<code>commit-wait</code>).</p>
+<h3 id="term-tsdb"><a class="header" href="#term-tsdb"><code>TSDB</code>: Time-Series Database</a></h3>
+<p>Storage engine optimized for append-heavy timestamped metric streams, combining inverted label indexes with delta-of-delta timestamp and XOR floating-point compression for high-ratio telemetry retention.</p>
+<h3 id="term-ttl"><a class="header" href="#term-ttl"><code>TTL</code>: Time To Live</a></h3>
+<p>Expiration duration attached to cache entries, DNS records, distributed leases, or storage objects so stale state is automatically invalidated and bounded without manual cleanup.</p>
+<h3 id="term-udp"><a class="header" href="#term-udp"><code>UDP</code>: User Datagram Protocol</a></h3>
+<p>Minimal connectionless datagram transport adding only port multiplexing and checksums over IP, serving as the substrate for QUIC, DNS, VoIP, and multicast exchange market-data feeds (MoldUDP64).</p>
+<h3 id="term-vector-clock"><a class="header" href="#term-vector-clock"><code>Vector Clock</code>: Partial-Order Causality Tracker</a></h3>
+<p>Array of logical counters indexed by replica ID that captures exact causal happens-before relationships and detects concurrent conflicting writes when neither vector dominates the other.</p>
+<pre><code class="language-rust">fn happens_before(a: &amp;[u64], b: &amp;[u64]) -&gt; bool {
+    let all_le = a.iter().zip(b).all(|(x, y)| x &lt;= y);
+    let any_lt = a.iter().zip(b).any(|(x, y)| x &lt; y);
+    all_le &amp;&amp; any_lt
+}</code></pre>
+<h3 id="term-vnode"><a class="header" href="#term-vnode"><code>VNode</code>: Virtual Node</a></h3>
+<p>Logical shard token placed at multiple positions on a consistent-hashing ring per physical server, smoothing key distribution variance and allowing heterogeneous hardware capacities to take proportional load.</p>
+<h3 id="term-wal"><a class="header" href="#term-wal"><code>WAL</code>: Write-Ahead Log</a></h3>
+<p>Append-only sequential disk log recording every state mutation before modifying in-memory indexes or data pages, guaranteeing crash atomicity and durability via ordered <code>fsync</code> replay on restart.</p>
+<pre><code class="language-rust">// Append length-prefixed framed record and sync before acknowledging client
+wal_file.write_all(&amp;frame)?;
+wal_file.sync_data()?;</code></pre>
+<h3 id="term-warc"><a class="header" href="#term-warc"><code>WARC</code>: Web ARChive Format</a></h3>
+<p>ISO 28500 container format concatenating raw HTTP request/response headers, payloads, and crawl metadata into large compressed archive segments for web crawlers such as Common Crawl.</p>
+<h3 id="term-watermark"><a class="header" href="#term-watermark"><code>Watermark</code>: Event-Time Progress Frontier</a></h3>
+<p>Monotonic timestamp <code>W(t)</code> propagated through a streaming dataflow asserting that the engine expects no further non-late events with event time earlier than <code>W(t)</code>, triggering window emission and bounding state retention.</p>
+<h3 id="term-websocket"><a class="header" href="#term-websocket"><code>WebSocket</code>: Full-Duplex Persistent Framing Protocol</a></h3>
+<p>Stateful bidirectional messaging protocol upgraded from HTTP/1.1 over a single long-lived TCP connection, eliminating polling overhead for real-time chat, collaborative editing, and live ticker feeds.</p>
+<h3 id="term-zero-copy"><a class="header" href="#term-zero-copy"><code>Zero-Copy</code>: Direct Kernel-to-NIC Data Transfer</a></h3>
+<p>I/O technique (<code>sendfile</code>, <code>splice</code>, or kernel-bypass ring buffers) transferring bytes directly between page cache or preallocated buffers and network hardware without redundant user-space copies.</p>
+
+                    </main>
+
+                    <nav class="nav-wrapper" aria-label="Page navigation">
+                        <!-- Mobile navigation buttons -->
+                            <a rel="prev" href="28-click-aggregation.html" class="mobile-nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                                <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M41.4 233.4c-12.5 12.5-12.5 32.8 0 45.3l160 160c12.5 12.5 32.8 12.5 45.3 0s12.5-32.8 0-45.3L109.3 256 246.6 118.6c12.5-12.5 12.5-32.8 0-45.3s-32.8-12.5-45.3 0l-160 160z"/></svg></span>
+                            </a>
+
+
+                        <div style="clear: both"></div>
+                    </nav>
+                </div>
+            </div>
+
+            <nav class="nav-wide-wrapper" aria-label="Page navigation">
+                    <a rel="prev" href="28-click-aggregation.html" class="nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                        <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M41.4 233.4c-12.5 12.5-12.5 32.8 0 45.3l160 160c12.5 12.5 32.8 12.5 45.3 0s12.5-32.8 0-45.3L109.3 256 246.6 118.6c12.5-12.5 12.5-32.8 0-45.3s-32.8-12.5-45.3 0l-160 160z"/></svg></span>
+                    </a>
+
+            </nav>
+
+        </div>
+
+        <template id=fa-eye><span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 576 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M288 32c-80.8 0-145.5 36.8-192.6 80.6C48.6 156 17.3 208 2.5 243.7c-3.3 7.9-3.3 16.7 0 24.6C17.3 304 48.6 356 95.4 399.4C142.5 443.2 207.2 480 288 480s145.5-36.8 192.6-80.6c46.8-43.5 78.1-95.4 93-131.1c3.3-7.9 3.3-16.7 0-24.6c-14.9-35.7-46.2-87.7-93-131.1C433.5 68.8 368.8 32 288 32zM432 256c0 79.5-64.5 144-144 144s-144-64.5-144-144s64.5-144 144-144s144 64.5 144 144zM288 192c0 35.3-28.7 64-64 64c-11.5 0-22.3-3-31.6-8.4c-.2 2.8-.4 5.5-.4 8.4c0 53 43 96 96 96s96-43 96-96s-43-96-96-96c-2.8 0-5.6 .1-8.4 .4c5.3 9.3 8.4 20.1 8.4 31.6z"/></svg></span></template>
+        <template id=fa-eye-slash><span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M38.8 5.1C28.4-3.1 13.3-1.2 5.1 9.2S-1.2 34.7 9.2 42.9l592 464c10.4 8.2 25.5 6.3 33.7-4.1s6.3-25.5-4.1-33.7L525.6 386.7c39.6-40.6 66.4-86.1 79.9-118.4c3.3-7.9 3.3-16.7 0-24.6c-14.9-35.7-46.2-87.7-93-131.1C465.5 68.8 400.8 32 320 32c-68.2 0-125 26.3-169.3 60.8L38.8 5.1zM223.1 149.5C248.6 126.2 282.7 112 320 112c79.5 0 144 64.5 144 144c0 24.9-6.3 48.3-17.4 68.7L408 294.5c5.2-11.8 8-24.8 8-38.5c0-53-43-96-96-96c-2.8 0-5.6 .1-8.4 .4c5.3 9.3 8.4 20.1 8.4 31.6c0 10.2-2.4 19.8-6.6 28.3l-90.3-70.8zm223.1 298L373 389.9c-16.4 6.5-34.3 10.1-53 10.1c-79.5 0-144-64.5-144-144c0-6.9 .5-13.6 1.4-20.2L83.1 161.5C60.3 191.2 44 220.8 34.5 243.7c-3.3 7.9-3.3 16.7 0 24.6c14.9 35.7 46.2 87.7 93 131.1C174.5 443.2 239.2 480 320 480c47.8 0 89.9-12.9 126.2-32.5z"/></svg></span></template>
+        <template id=fa-copy><span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M502.6 70.63l-61.25-61.25C435.4 3.371 427.2 0 418.7 0H255.1c-35.35 0-64 28.66-64 64l.0195 256C192 355.4 220.7 384 256 384h192c35.2 0 64-28.8 64-64V93.25C512 84.77 508.6 76.63 502.6 70.63zM464 320c0 8.836-7.164 16-16 16H255.1c-8.838 0-16-7.164-16-16L239.1 64.13c0-8.836 7.164-16 16-16h128L384 96c0 17.67 14.33 32 32 32h47.1V320zM272 448c0 8.836-7.164 16-16 16H63.1c-8.838 0-16-7.164-16-16L47.98 192.1c0-8.836 7.164-16 16-16H160V128H63.99c-35.35 0-64 28.65-64 64l.0098 256C.002 483.3 28.66 512 64 512h192c35.2 0 64-28.8 64-64v-32h-47.1L272 448z"/></svg></span></template>
+        <template id=fa-play><span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 384 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M73 39c-14.8-9.1-33.4-9.4-48.5-.9S0 62.6 0 80V432c0 17.4 9.4 33.4 24.5 41.9s33.7 8.1 48.5-.9L361 297c14.3-8.7 23-24.2 23-41s-8.7-32.2-23-41L73 39z"/></svg></span></template>
+        <template id=fa-clock-rotate-left><span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M75 75L41 41C25.9 25.9 0 36.6 0 57.9V168c0 13.3 10.7 24 24 24H134.1c21.4 0 32.1-25.9 17-41l-30.8-30.8C155 85.5 203 64 256 64c106 0 192 86 192 192s-86 192-192 192c-40.8 0-78.6-12.7-109.7-34.4c-14.5-10.1-34.4-6.6-44.6 7.9s-6.6 34.4 7.9 44.6C151.2 495 201.7 512 256 512c141.4 0 256-114.6 256-256S397.4 0 256 0C185.3 0 121.3 28.7 75 75zm181 53c-13.3 0-24 10.7-24 24V256c0 6.4 2.5 12.5 7 17l72 72c9.4 9.4 24.6 9.4 33.9 0s9.4-24.6 0-33.9l-65-65V152c0-13.3-10.7-24-24-24z"/></svg></span></template>
+
+        <!-- Livereload script (if served using the cli tool) -->
+        <script>
+            const wsProtocol = location.protocol === 'https:' ? 'wss:' : 'ws:';
+            const wsAddress = wsProtocol + "//" + location.host + "/" + "__livereload";
+            const socket = new WebSocket(wsAddress);
+            socket.onmessage = function (event) {
+                if (event.data === "reload") {
+                    socket.close();
+                    location.reload();
+                }
+            };
+
+            window.onbeforeunload = function() {
+                socket.close();
+            }
+        </script>
+
+
+        <script>
+            window.playground_copyable = true;
+        </script>
+
+
+        <script src="elasticlunr-ef4e11c1.min.js"></script>
+        <script src="mark-09e88c2c.min.js"></script>
+        <script src="searcher-09f2665d.js"></script>
+
+        <script src="clipboard-1626706a.min.js"></script>
+        <script src="highlight-abc7f01d.js"></script>
+        <script src="book-609e4cb8.js"></script>
+
+        <!-- Custom JS scripts -->
+        <script src="theme/figures-1bd27a95.js"></script>
+        <script src="theme/proto-326509cd.js"></script>
+        <script src="theme/code-67e9caaf.js"></script>
+        <script src="theme/tables-9fb295e8.js"></script>
+        <script src="theme/steps-77f22afb.js"></script>
+
+
+
+    </div>
+    </body>
+</html>

@@ -1,5 +1,5 @@
 <!DOCTYPE HTML>
-<html lang="en" class="navy sidebar-visible" dir="ltr">
+<html lang="en" class="coal sidebar-visible" dir="ltr">
     <head>
         <!-- Book generated using mdBook -->
         <meta charset="UTF-8">
@@ -28,18 +28,18 @@
         <link rel="stylesheet" id="mdbook-ayu-highlight-css" href="ayu-highlight-3fdfc3ac.css">
 
         <!-- Custom theme stylesheets -->
-        <link rel="stylesheet" href="theme/custom-59beaf6d.css">
+        <link rel="stylesheet" href="theme/custom-3b357368.css">
 
 
         <!-- Provide site root and default themes to javascript -->
         <script>
             const path_to_root = "";
-            const default_light_theme = "navy";
-            const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "searchindex-5d54d4b4.js";
+            const default_light_theme = "coal";
+            const default_dark_theme = "coal";
+            window.path_to_searchindex_js = "searchindex-38bda414.js";
         </script>
         <!-- Start loading toc.js asap -->
-        <script src="toc-ef51d47d.js"></script>
+        <script src="toc-00f6d8fe.js"></script>
     </head>
     <body>
     <div id="mdbook-help-container">
@@ -77,7 +77,7 @@
             try { theme = localStorage.getItem('mdbook-theme'); } catch(e) { }
             if (theme === null || theme === undefined) { theme = default_theme; }
             const html = document.documentElement;
-            html.classList.remove('navy')
+            html.classList.remove('coal')
             html.classList.add(theme);
             html.classList.add("js");
         </script>
@@ -467,6 +467,42 @@ x    -&gt; no suggestion
 <p><strong>Run the search autocomplete simulation.</strong> Execute <code>cargo run --release -p typeahead</code> in <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/distributed-systems-from-the-ground-up/code/typeahead/src/main.rs"><code>code/typeahead</code></a> to reproduce top-K prefix ranking across progressively narrowed prefixes and verify empty-prefix handling.</p>
 </div>
 
+<h3 id="end-to-end-request-lifecycle-and-hop-by-hop-latency-budget"><a class="header" href="#end-to-end-request-lifecycle-and-hop-by-hop-latency-budget">End-to-End Request Lifecycle and Hop-by-Hop Latency Budget</a></h3>
+<p>A debounced prefix lookup traverses five bounded stages from browser keystroke to immutable trie read, targeting a P99 end-to-end budget under 60 ms.</p>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th style="text-align: left">Hop</th><th style="text-align: left">Component</th><th style="text-align: left">Operation</th><th style="text-align: left">P50</th><th style="text-align: left">P99</th></tr>
+</thead>
+<tbody>
+<tr><td style="text-align: left">1</td><td style="text-align: left">Client / Edge PoP</td><td style="text-align: left">Debounce (50 ms client-side), TLS 1.3 session reuse, CDN edge cache check</td><td style="text-align: left">6 ms</td><td style="text-align: left">18 ms</td></tr>
+<tr><td style="text-align: left">2</td><td style="text-align: left">L7 Load Balancer</td><td style="text-align: left">Prefix-hash routing (<code>prefix[0..2]</code>) to a sticky regional trie shard</td><td style="text-align: left">1 ms</td><td style="text-align: left">3 ms</td></tr>
+<tr><td style="text-align: left">3</td><td style="text-align: left">Typeahead Service</td><td style="text-align: left">Unicode normalization, locale extraction, and safety-filter policy check</td><td style="text-align: left">0.5 ms</td><td style="text-align: left">2 ms</td></tr>
+<tr><td style="text-align: left">4</td><td style="text-align: left">In-Memory Trie / FST</td><td style="text-align: left">Lock-free <code>ArcSwap</code> pointer load and <code>O(L)</code> prefix traversal to precomputed top-K list</td><td style="text-align: left">0.1 ms</td><td style="text-align: left">0.8 ms</td></tr>
+<tr><td style="text-align: left">5</td><td style="text-align: left">Async Log Pipeline</td><td style="text-align: left">Non-blocking ring-buffer enqueue of query telemetry to Kafka for offline aggregation</td><td style="text-align: left">0.2 ms</td><td style="text-align: left">1 ms</td></tr>
+</tbody>
+</table>
+</div>
+<h3 id="production-case-studies-and-open-source-comparisons"><a class="header" href="#production-case-studies-and-open-source-comparisons">Production Case Studies and Open-Source Comparisons</a></h3>
+<p>Google Suggest partitions its global query corpus by prefix range across geographically replicated in-memory trees, pairing offline decayed-frequency builds with a streaming trending overlay so breaking news surfaces within minutes while policy classifiers filter unsafe completions before publication. Elasticsearch’s Completion Suggester encodes weighted phrases into an immutable Lucene Finite State Transducer (FST) loaded directly into off-heap memory, compressing shared prefixes and suffixes into a compact automaton that serves microsecond lookups without per-node top-K duplication. Both designs decouple online serving from index construction: readers traverse immutable snapshots lock-free while background pipelines rebuild and atomically swap updated structures.</p>
+<div class="callout keyidea">
+<span class="label">Key idea</span>
+<p>Precomputing top-K lists at every internal trie node trades offline build compute and extra RAM for deterministic <code>O(L)</code> read latency that stays flat regardless of subtree size. Double-buffered atomic pointer swaps eliminate reader-writer lock contention during snapshot refreshes.</p>
+
+</div>
+
+<div class="callout experiment">
+<span class="label">Experiment</span>
+<p>Run <code>cargo run --release -p typeahead</code> and insert a high-frequency query with a shared 2-character prefix such as <code>ka</code>. Observe how narrowing from <code>k</code> to <code>ka</code> and <code>kaf</code> prunes candidates strictly by descending decayed score while returning a cacheable empty result for unmatched prefixes.</p>
+
+</div>
+
+<div class="callout caution">
+<span class="label">Common pitfall</span>
+<p>Omitting monotonic client sequence numbers (<code>seq</code>) allows an earlier slow response for <code>k</code> to overwrite a faster response for <code>kaf</code> in the UI dropdown. Dropping any response whose <code>seq</code> trails the latest keystroke prevents visual flicker and stale suggestions.</p>
+
+</div>
+
 <h2 id="228-terminology-and-references"><a class="header" href="#228-terminology-and-references">22.8 Terminology and References</a></h2>
 <h3 id="engineering-glossary"><a class="header" href="#engineering-glossary">Engineering Glossary</a></h3>
 <div class="table-wrapper">
@@ -530,6 +566,22 @@ x    -&gt; no suggestion
         <template id=fa-play><span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 384 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M73 39c-14.8-9.1-33.4-9.4-48.5-.9S0 62.6 0 80V432c0 17.4 9.4 33.4 24.5 41.9s33.7 8.1 48.5-.9L361 297c14.3-8.7 23-24.2 23-41s-8.7-32.2-23-41L73 39z"/></svg></span></template>
         <template id=fa-clock-rotate-left><span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M75 75L41 41C25.9 25.9 0 36.6 0 57.9V168c0 13.3 10.7 24 24 24H134.1c21.4 0 32.1-25.9 17-41l-30.8-30.8C155 85.5 203 64 256 64c106 0 192 86 192 192s-86 192-192 192c-40.8 0-78.6-12.7-109.7-34.4c-14.5-10.1-34.4-6.6-44.6 7.9s-6.6 34.4 7.9 44.6C151.2 495 201.7 512 256 512c141.4 0 256-114.6 256-256S397.4 0 256 0C185.3 0 121.3 28.7 75 75zm181 53c-13.3 0-24 10.7-24 24V256c0 6.4 2.5 12.5 7 17l72 72c9.4 9.4 24.6 9.4 33.9 0s9.4-24.6 0-33.9l-65-65V152c0-13.3-10.7-24-24-24z"/></svg></span></template>
 
+        <!-- Livereload script (if served using the cli tool) -->
+        <script>
+            const wsProtocol = location.protocol === 'https:' ? 'wss:' : 'ws:';
+            const wsAddress = wsProtocol + "//" + location.host + "/" + "__livereload";
+            const socket = new WebSocket(wsAddress);
+            socket.onmessage = function (event) {
+                if (event.data === "reload") {
+                    socket.close();
+                    location.reload();
+                }
+            };
+
+            window.onbeforeunload = function() {
+                socket.close();
+            }
+        </script>
 
 
         <script>
@@ -546,7 +598,7 @@ x    -&gt; no suggestion
         <script src="book-609e4cb8.js"></script>
 
         <!-- Custom JS scripts -->
-        <script src="theme/figures-9c14cb1c.js"></script>
+        <script src="theme/figures-1bd27a95.js"></script>
         <script src="theme/proto-326509cd.js"></script>
         <script src="theme/code-67e9caaf.js"></script>
         <script src="theme/tables-9fb295e8.js"></script>

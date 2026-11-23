@@ -1,5 +1,5 @@
 <!DOCTYPE HTML>
-<html lang="en" class="navy sidebar-visible" dir="ltr">
+<html lang="en" class="coal sidebar-visible" dir="ltr">
     <head>
         <!-- Book generated using mdBook -->
         <meta charset="UTF-8">
@@ -28,18 +28,18 @@
         <link rel="stylesheet" id="mdbook-ayu-highlight-css" href="ayu-highlight-3fdfc3ac.css">
 
         <!-- Custom theme stylesheets -->
-        <link rel="stylesheet" href="theme/custom-59beaf6d.css">
+        <link rel="stylesheet" href="theme/custom-3b357368.css">
 
 
         <!-- Provide site root and default themes to javascript -->
         <script>
             const path_to_root = "";
-            const default_light_theme = "navy";
-            const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "searchindex-5d54d4b4.js";
+            const default_light_theme = "coal";
+            const default_dark_theme = "coal";
+            window.path_to_searchindex_js = "searchindex-38bda414.js";
         </script>
         <!-- Start loading toc.js asap -->
-        <script src="toc-ef51d47d.js"></script>
+        <script src="toc-00f6d8fe.js"></script>
     </head>
     <body>
     <div id="mdbook-help-container">
@@ -77,7 +77,7 @@
             try { theme = localStorage.getItem('mdbook-theme'); } catch(e) { }
             if (theme === null || theme === undefined) { theme = default_theme; }
             const html = document.documentElement;
-            html.classList.remove('navy')
+            html.classList.remove('coal')
             html.classList.add(theme);
             html.classList.add("js");
         </script>
@@ -183,7 +183,7 @@
                     <main>
                         <h1 id="chapter-3-leader-follower-quorum-replication-lld"><a class="header" href="#chapter-3-leader-follower-quorum-replication-lld">Chapter 3: Leader-Follower Quorum Replication (LLD)</a></h1>
 <img class="plate" src="art/ch03-plate.svg" alt="Chapter 3 plate: Leader-Follower quorum replication showing a leader replicating log records to Follower A and Follower B and advancing commit_seq via the median of reported match indices." />
-<p>The single storage node we implemented in <a href="02-key-value-store-storage-node.html">Chapter 2</a> preserves every acknowledged write across process crashes and torn WAL tails. Against the permanent loss of the host itself, or of its storage device, a single node provides zero protection: a write-ahead log stored on one disk vanishes when that disk fails. Non-functional requirement 1 of <a href="01-key-value-store-system-design.html">Chapter 1</a> mandates that every acknowledged write survive the loss of any single host, disk, or availability zone. Meeting that guarantee requires persisting every mutation on at least two independent hosts before acknowledging the caller.</p>
+<p>The single storage node we implemented in <a href="02-key-value-store-storage-node.html">Chapter 2</a> preserves every acknowledged write across process crashes and torn WAL tails. Against the permanent loss of the host itself, or of its storage device, a single node provides zero protection: a write-ahead log stored on one disk vanishes when that disk fails. As specified in <a href="01-key-value-store-system-design.html">Chapter 1</a>, surviving the loss of any single host, disk, or availability zone requires persisting every acknowledged mutation on at least two independent hosts before replying to the caller.</p>
 <p>Copying a log file from one host to another in isolation is trivial. Replication becomes a distributed systems engineering problem because messages traverse an asynchronous network that drops, delays, and reorders both requests and replies while hosts halt and restart at arbitrary moments. Across all of those faults, every replica must converge to the exact same sequence of records in the exact same order. A follower that misses record 7 must not append record 8 on top of record 6. A leader whose acknowledgement packet was dropped must neither assume the follower lacks record 7 nor assume the follower holds it. A deposed leader returning from a network partition must be prevented from mutating followers after a successor has taken over.</p>
 <p>In this chapter, I implement leader-follower quorum replication for a three-replica shard in Rust. A single local rule on the follower side resolves missed messages, lost acknowledgements, restarts, and empty replicas uniformly without special-case recovery branches. We first specify the <code>Append</code> RPC contract and replica state machine as a pure, network-free library crate (<code>repl</code>) so we can verify every combination of message and reply loss deterministically in <code>replsim</code> (<code>4,096</code> fault patterns). We then build the networked storage server <code>kvnode</code> over gRPC (<code>tonic</code>) and HTTP (<code>axum</code>), and run live three-node fault experiments: killing a follower under load, severing quorum, destroying the leader’s disk and promoting a survivor, and testing term fencing against a returning former leader.</p>
 <div class="covers">
@@ -213,7 +213,7 @@
 </thead>
 <tbody>
 <tr><td style="text-align: left">0</td><td style="text-align: left">Every follower’s log is an exact prefix of its leader’s log (identical records in identical sequence order, possibly shorter).</td><td style="text-align: left">Eliminates gaps, duplicates, and out-of-order entries on followers.</td></tr>
-<tr><td style="text-align: left">1</td><td style="text-align: left">The leader acknowledges a write to the client only after at least two of the three replicas hold its WAL record durably.</td><td style="text-align: left">Satisfies Chapter 1 durability (non-functional requirement 1) across any single-host or single-disk failure.</td></tr>
+<tr><td style="text-align: left">1</td><td style="text-align: left">The leader acknowledges a write to the client only after at least two of the three replicas hold its WAL record durably.</td><td style="text-align: left">Preserves every acknowledged write across any single-host or single-disk failure.</td></tr>
 <tr><td style="text-align: left">2</td><td style="text-align: left">A replica applies a record to its in-memory <code>BTreeMap</code> only after that record is known to reside on a majority of replicas.</td><td style="text-align: left">Prevents reads from returning uncommitted data that could disappear after a failover.</td></tr>
 <tr><td style="text-align: left">3</td><td style="text-align: left">Every replica rejects any <code>Append</code> RPC carrying a <code>term</code> strictly lower than its own local <code>term</code>.</td><td style="text-align: left">Fences returning former leaders so stale epochs cannot corrupt follower logs.</td></tr>
 </tbody>
@@ -307,12 +307,12 @@ pub struct Appended {
 <h2 id="33-replica-state-machine"><a class="header" href="#33-replica-state-machine">3.3 Replica State Machine</a></h2>
 <p>A <code>Replica</code> combines its durable WAL (<code>Log</code>), an in-memory vector mirroring all WAL records (<code>records</code>, where sequence <code>n</code> resides at index <code>n - 1</code>), the <code>BTreeMap&lt;String, Entry&gt;</code> reflecting committed state, and two control integers: <code>committed</code> (the highest applied sequence) and <code>term</code> (the highest epoch observed). Figure 3-2 illustrates the separation between the committed prefix (<code>1</code> to <code>7</code>) and the uncommitted tail (<code>8</code> and <code>9</code>).</p>
 <figure>
-<img src="figures/repl-state.svg?v=8433bb6c" alt="Replica log state with records 1 to 9: records 1 to 7 are committed on a majority and applied to entries; records 8 and 9 reside in the log uncommitted and invisible to reads." />
+<img src="figures/m3/ch03_repl_state.svg" alt="Replica log state with records 1 to 9: records 1 to 7 are committed on a majority and applied to entries; records 8 and 9 reside in the log uncommitted and invisible to reads." />
 <figcaption><b>Figure 3-2</b> Separation between the committed, visible prefix (records 1 to 7) and the uncommitted tail (records 8 and 9).</figcaption>
 </figure>
 <p>A record becomes <em>committed</em> once a majority of replicas (<code>2 of 3</code>) have persisted it to disk. Any two of three replicas share at least one overlapping member, so a committed record survives the failure of any single host. Keeping uncommitted tail records in the WAL without applying them to <code>entries</code> enforces invariant 2: no read can observe a mutation that might vanish after a failover. Figure 3-3 maps each data structure inside <code>Replica</code> to the methods that move data between disk, log buffer, and committed index.</p>
 <figure>
-<img src="figures/repl-replica-struct.svg?v=a00c1c22" alt="Internal memory and disk layout of Replica: kv.log on disk loads into the in-memory records vector at open with committed set to 0; commit(n) replays records up to n into entries; get and list read entries exclusively." />
+<img src="figures/m3/ch03_repl_replica_struct.svg" alt="Internal memory and disk layout of Replica: kv.log on disk loads into the in-memory records vector at open with committed set to 0; commit(n) replays records up to n into entries; get and list read entries exclusively." />
 <figcaption><b>Figure 3-3</b> On-disk and in-memory data structures inside <code>Replica</code> and the transitions between them.</figcaption>
 </figure>
 <p>Listing 3.4 implements <code>Replica</code>, <code>Replica::open</code>, <code>commit</code>, and the read methods (<code>get</code>, <code>list</code>). Because <code>commit</code> is the sole caller of <code>kv::store::apply</code>, no uncommitted record can leak into <code>entries</code>. Notice that <code>Replica::open</code> intentionally initializes <code>committed</code> to <code>0</code> and leaves <code>entries</code> empty even when <code>kv.log</code> already holds records. Upon restart, a single replica cannot determine from its local disk alone which suffix of its log reached a majority before the crash. A follower learns the committed frontier from its leader’s next <code>Append</code> RPC; a leader re-establishes the committed frontier once followers report their <code>last_sequence</code> values.</p>
@@ -399,7 +399,7 @@ impl Replica {
 </table>
 </div>
 <figure>
-<img src="figures/repl-follower-flow.svg?v=6485da97" alt="Two-check follower decision flow in handle_append: first verify message term is at least local term; second verify previous_sequence equals local last_sequence; only if both pass, append batch, advance commit watermark, and return appended true." />
+<img src="figures/m3/ch03_repl_follower_flow.svg" alt="Two-check follower decision flow in handle_append: first verify message term is at least local term; second verify previous_sequence equals local last_sequence; only if both pass, append batch, advance commit watermark, and return appended true." />
 <figcaption><b>Figure 3-4</b> Sequential term and prefix validation inside <code>Replica::handle_append</code>.</figcaption>
 </figure>
 <p>Listing 3.5 implements <code>Replica::handle_append</code>. Both refusal paths share the <code>refuse</code> closure, returning the follower’s current <code>term</code> and <code>last_sequence</code>. When both checks pass, <code>Log::append_records</code> writes the entire batch with a single <code>sync_data</code> call, appends the records to <code>self.records</code>, and invokes <code>self.commit(msg.committed_sequence)</code> (which safely clamps to <code>self.last_sequence()</code> if the leader’s commit watermark exceeds this follower’s log length).</p>
@@ -553,7 +553,7 @@ use crate::record::{Change, Decoded, Record};</code></pre>
 <h3 id="the-majority-commit-rule-majority_sequence"><a class="header" href="#the-majority-commit-rule-majority_sequence">The Majority Commit Rule (<code>majority_sequence</code>)</a></h3>
 <p>Given the leader’s own <code>last_sequence</code> and each follower’s reported <code>last_sequence</code>, sorting all replica frontier indices in descending order places the highest majority-replicated sequence at index <code>n / 2</code> (Figure 3-6). For a three-replica shard with frontiers <code>[10, 7, 9]</code>, descending sort yields <code>[10, 9, 7]</code>, and index <code>3 / 2 = 1</code> selects <code>9</code>: at least two replicas hold records <code>1</code> through <code>9</code>, whereas record <code>10</code> resides on only one replica and stays uncommitted.</p>
 <figure>
-<img src="figures/repl-commit-rule.svg?v=dc5d2c21" alt="Majority commit rule for three replicas with log frontiers 10, 7, and 9: sorting descending produces [10, 9, 7] and picking the median index yields 9, committing records 1 to 9 while leaving 10 uncommitted." />
+<img src="figures/m3/ch03_repl_commit_rule.svg" alt="Majority commit rule for three replicas with log frontiers 10, 7, and 9: sorting descending produces [10, 9, 7] and picking the median index yields 9, committing records 1 to 9 while leaving 10 uncommitted." />
 <figcaption><b>Figure 3-6</b> Median majority commit calculation across three replica log frontiers.</figcaption>
 </figure>
 <p>Listing 3.10 implements <code>majority_sequence</code> generically for any odd or even cluster size <code>n</code>.</p>
@@ -1195,7 +1195,7 @@ impl Replication for Follower {
 <h3 id="leader-replication-tasks-and-lock-free-network-io-kvnodesrcnoders"><a class="header" href="#leader-replication-tasks-and-lock-free-network-io-kvnodesrcnoders">Leader Replication Tasks and Lock-Free Network I/O (<code>kvnode/src/node.rs</code>)</a></h3>
 <p>Figure 3-7 traces the internal concurrency structure of a leader node: HTTP write handlers serialize on <code>turn</code>, append locally via <code>propose</code>, wake per-follower background tasks via <code>appended</code>, and await commit advancement on the <code>committed</code> watch channel.</p>
 <figure>
-<img src="figures/repl-leader-parts.svg?v=fbddd76a" alt="Internal concurrency architecture of a kvnode leader: Node::write acquires turn, appends via propose, wakes per-follower tasks that send Append RPCs, records follower replies to advance majority_sequence, and signals the committed watch channel." />
+<img src="figures/m3/ch03_repl_leader_parts.svg" alt="Internal concurrency architecture of a kvnode leader: Node::write acquires turn, appends via propose, wakes per-follower tasks that send Append RPCs, records follower replies to advance majority_sequence, and signals the committed watch channel." />
 <figcaption><b>Figure 3-7</b> Internal components and write-path handoffs inside a <code>kvnode</code> leader.</figcaption>
 </figure>
 <p>Listing 3.23 imports the async primitives and RPC helpers in <code>kvnode/src/node.rs</code>, and Listing 3.24 defines <code>Role</code>, <code>Peer</code>, <code>Node</code>, and <code>NodeError</code>.</p>
@@ -3081,6 +3081,51 @@ async fn main() -&gt; Result&lt;(), Box&lt;dyn Error&gt;&gt; {
 
     Ok(())
 }</code></pre>
+<h2 id="312-end-to-end-quorum-write-lifecycle-and-cross-az-hop-breakdown"><a class="header" href="#312-end-to-end-quorum-write-lifecycle-and-cross-az-hop-breakdown">3.12 End-to-End Quorum Write Lifecycle and Cross-AZ Hop Breakdown</a></h2>
+<p>Adding three-way leader-follower replication transforms a single-host <code>PUT</code> into a coordinated multi-AZ distributed transaction. Tracing a <code>PUT /v1/keys/acct:774</code> through <code>kvnode</code> exposes each network and storage hop on the critical path:</p>
+<ol>
+<li><strong>Client to Shard Leader HTTP Ingress:</strong> The client submits the write over a persistent TCP/HTTP connection to the leader in AZ-1.</li>
+<li><strong>Leader Local WAL Append and <code>fsync</code>:</strong> The leader checks <code>is_settled</code>, validates preconditions, assigns <code>sequence = N</code>, appends the record to its local WAL, and calls <code>fdatasync(2)</code>.</li>
+<li><strong>Parallel Cross-AZ gRPC <code>Append</code> Fan-Out:</strong> The leader releases its replica mutex and dispatches <code>Append</code> RPCs concurrently over persistent HTTP/2 gRPC channels to Follower A (AZ-2) and Follower B (AZ-3).</li>
+<li><strong>Follower Validation, WAL Append, and <code>fsync</code>:</strong> Each follower verifies <code>request.term &gt;= local.term</code> and <code>request.previous_sequence == local.last_sequence</code>, appends the record slice to its local WAL, invokes <code>fdatasync(2)</code>, and replies with its updated <code>last_sequence</code>.</li>
+<li><strong>Quorum Convergence (<code>majority_sequence</code>):</strong> As soon as the <em>first</em> follower reply arrives (yielding <code>2 of 3</code> durable copies: leader plus fastest follower), the leader computes <code>majority_sequence</code>, advances <code>committed_sequence</code>, applies record <code>N</code> to its in-memory <code>BTreeMap</code>, and transmits <code>201 Created</code> to the client.</li>
+<li><strong>Asynchronous Commit Broadcast:</strong> The leader’s next heartbeat or subsequent <code>Append</code> carries the updated <code>committed_sequence</code>, instructing followers to apply record <code>N</code> to their local <code>BTreeMap</code> instances off the client’s critical path.</li>
+</ol>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th style="text-align: left">Hop</th><th style="text-align: left">Device / Network Segment</th><th style="text-align: left">Typical <code>p50</code></th><th style="text-align: left">Tail <code>p99</code></th><th style="text-align: left">Primary Source of Tail Latency</th></tr>
+</thead>
+<tbody>
+<tr><td style="text-align: left">1</td><td style="text-align: left">Client -&gt; Leader HTTP/gRPC Ingress</td><td style="text-align: left"><code>0.35 ms</code></td><td style="text-align: left"><code>1.20 ms</code></td><td style="text-align: left">Connection pool exhaustion, TLS record framing</td></tr>
+<tr><td style="text-align: left">2</td><td style="text-align: left">Leader Local WAL <code>write</code> + <code>fdatasync</code></td><td style="text-align: left"><code>1.40 ms</code></td><td style="text-align: left"><code>5.80 ms</code></td><td style="text-align: left">Leader NVMe write-amplification or GC stall</td></tr>
+<tr><td style="text-align: left">3</td><td style="text-align: left">Leader (AZ-1) -&gt; Followers (AZ-2, AZ-3) gRPC Send</td><td style="text-align: left"><code>0.60 ms</code></td><td style="text-align: left"><code>1.80 ms</code></td><td style="text-align: left">Cross-AZ optical fiber jitter, TCP congestion window backoff</td></tr>
+<tr><td style="text-align: left">4</td><td style="text-align: left">Fastest Follower <code>fdatasync</code> + <code>AppendReply</code> Return</td><td style="text-align: left"><code>2.00 ms</code></td><td style="text-align: left"><code>6.40 ms</code></td><td style="text-align: left">Correlated SSD latency across two AZs simultaneously</td></tr>
+<tr><td style="text-align: left">5</td><td style="text-align: left">Leader <code>majority_sequence</code> + <code>BTreeMap</code> Apply + Reply</td><td style="text-align: left"><code>0.25 ms</code></td><td style="text-align: left"><code>0.80 ms</code></td><td style="text-align: left">Replica mutex contention during bursty read traffic</td></tr>
+<tr><td style="text-align: left"><strong>Total</strong></td><td style="text-align: left"><strong>Three-Way Quorum Durable <code>PUT</code></strong></td><td style="text-align: left"><strong><code>4.60 ms</code></strong></td><td style="text-align: left"><strong><code>16.00 ms</code></strong></td><td style="text-align: left"><strong>Serial leader <code>fsync</code> + cross-AZ RTT + follower <code>fsync</code></strong></td></tr>
+</tbody>
+</table>
+</div>
+<p>Note that in <code>kvnode</code>, the leader performs its local <code>fsync</code> before shipping <code>Append</code> RPCs; production Raft implementations pipeline these steps by dispatching <code>AppendEntries</code> to followers in parallel with the leader’s local <code>fdatasync(2)</code>, overlapping both disk barriers and shaving <code>1.4 ms</code> to <code>5.0 ms</code> off end-to-end write latency.</p>
+<h2 id="313-production-replication-case-studies"><a class="header" href="#313-production-replication-case-studies">3.13 Production Replication Case Studies</a></h2>
+<p>Real-world distributed databases adapt quorum log replication to balance write latency, bandwidth consumption, and read scalability:</p>
+<ul>
+<li><strong>Apache Kafka (ISR and KRaft Replication):</strong> Each partition maintains an <strong>In-Sync Replica (ISR)</strong> set tracked by the leader. Producers configured with <code>acks=all</code> block until every replica currently in the ISR appends the batch to its local log segment, advancing the partition’s <strong>High Watermark</strong> (equivalent to <code>committed_sequence</code>). To guard against log divergence after rapid leader changes, Kafka tags every message batch with a monotonic <strong>Leader Epoch</strong> (analogous to Raft <code>term</code>), allowing recovering followers to truncate uncommitted tails safely via <code>OffsetsForLeaderEpoch</code> RPCs.</li>
+<li><strong>Amazon Aurora (Decoupled Quorum Storage):</strong> Aurora replaces traditional primary-to-replica physical page shipping with a distributed storage layer spanning six copies across three AZs. Compute instances ship only compact <strong>redo log records</strong> (rather than full <code>8 KiB</code> or <code>16 KiB</code> data pages) and commit as soon as <code>4 of 6</code> storage nodes acknowledge durability (<code>V_w = 4</code>, <code>V_r = 3</code>, satisfying <code>V_w + V_r &gt; 6</code>). This architecture tolerates an entire AZ outage plus one additional node failure without losing write availability and reduces inter-node network traffic by roughly an order of magnitude compared to MySQL replication.</li>
+<li><strong>MySQL Semi-Synchronous Replication (<code>AFTER_SYNC</code>):</strong> Standard asynchronous MySQL replication risks losing committed transactions if the primary crashes before binlog events leave the host. Semi-synchronous replication configured with <code>rpl_semi_sync_master_wait_point = AFTER_SYNC</code> waits for at least one replica to persist the binlog event to its relay log <em>before</em> committing inside InnoDB and acknowledging the client, preventing other sessions from observing uncommitted phantom reads during a primary crash.</li>
+</ul>
+<div class="callout keyidea"><span class="label">Key idea</span>
+<p><strong>Parallelizing leader <code>fsync</code> with follower replication cuts write latency nearly in half.</strong> Because the leader’s WAL write and each follower’s WAL write execute on independent disks in separate Availability Zones, dispatching <code>Append</code> RPCs immediately after writing to the leader’s kernel page cache (while invoking the leader’s <code>fdatasync(2)</code> concurrently) turns two sequential <code>5 ms</code> disk barriers into a single overlapped <code>~6 ms</code> barrier without weakening quorum durability.</p>
+</div>
+
+<div class="callout experiment"><span class="label">Experiment</span>
+<p><strong>Exhaustively verify quorum invariants under packet loss.</strong> Run <code>cargo run --release -p replsim</code> in <code>code/</code> to exercise all <code>4,096</code> combinations of dropped <code>Append</code> requests and dropped <code>AppendReply</code> messages across three sequential writes. Verify that invariants 0 (log prefix agreement) and 1 (every acknowledged record persists on a majority) hold across every single schedule.</p>
+</div>
+
+<div class="callout caution"><span class="label">Common pitfall</span>
+<p><strong>Holding the replica state mutex across network I/O.</strong> If a leader keeps its <code>Mutex&lt;Replica&gt;</code> locked while awaiting gRPC <code>AppendReply</code> responses, a single partitioned or slow follower stalls every read, every write, and every health check on the leader until the RPC timeout fires. Releasing the lock before network dispatch and re-acquiring it to merge replies ensures that <code>2 of 3</code> healthy replicas proceed at full speed regardless of the third replica’s state.</p>
+</div>
+
 <h2 id="further-reading"><a class="header" href="#further-reading">Further Reading</a></h2>
 <ul>
 <li>B. Oki and B. Liskov, “Viewstamped Replication: A New Primary Copy Method to Support Highly-Available Distributed Systems”, PODC 1988.</li>
@@ -3136,6 +3181,22 @@ async fn main() -&gt; Result&lt;(), Box&lt;dyn Error&gt;&gt; {
         <template id=fa-play><span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 384 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M73 39c-14.8-9.1-33.4-9.4-48.5-.9S0 62.6 0 80V432c0 17.4 9.4 33.4 24.5 41.9s33.7 8.1 48.5-.9L361 297c14.3-8.7 23-24.2 23-41s-8.7-32.2-23-41L73 39z"/></svg></span></template>
         <template id=fa-clock-rotate-left><span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M75 75L41 41C25.9 25.9 0 36.6 0 57.9V168c0 13.3 10.7 24 24 24H134.1c21.4 0 32.1-25.9 17-41l-30.8-30.8C155 85.5 203 64 256 64c106 0 192 86 192 192s-86 192-192 192c-40.8 0-78.6-12.7-109.7-34.4c-14.5-10.1-34.4-6.6-44.6 7.9s-6.6 34.4 7.9 44.6C151.2 495 201.7 512 256 512c141.4 0 256-114.6 256-256S397.4 0 256 0C185.3 0 121.3 28.7 75 75zm181 53c-13.3 0-24 10.7-24 24V256c0 6.4 2.5 12.5 7 17l72 72c9.4 9.4 24.6 9.4 33.9 0s9.4-24.6 0-33.9l-65-65V152c0-13.3-10.7-24-24-24z"/></svg></span></template>
 
+        <!-- Livereload script (if served using the cli tool) -->
+        <script>
+            const wsProtocol = location.protocol === 'https:' ? 'wss:' : 'ws:';
+            const wsAddress = wsProtocol + "//" + location.host + "/" + "__livereload";
+            const socket = new WebSocket(wsAddress);
+            socket.onmessage = function (event) {
+                if (event.data === "reload") {
+                    socket.close();
+                    location.reload();
+                }
+            };
+
+            window.onbeforeunload = function() {
+                socket.close();
+            }
+        </script>
 
 
         <script>
@@ -3152,7 +3213,7 @@ async fn main() -&gt; Result&lt;(), Box&lt;dyn Error&gt;&gt; {
         <script src="book-609e4cb8.js"></script>
 
         <!-- Custom JS scripts -->
-        <script src="theme/figures-9c14cb1c.js"></script>
+        <script src="theme/figures-1bd27a95.js"></script>
         <script src="theme/proto-326509cd.js"></script>
         <script src="theme/code-67e9caaf.js"></script>
         <script src="theme/tables-9fb295e8.js"></script>

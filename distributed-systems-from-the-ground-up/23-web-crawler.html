@@ -1,5 +1,5 @@
 <!DOCTYPE HTML>
-<html lang="en" class="navy sidebar-visible" dir="ltr">
+<html lang="en" class="coal sidebar-visible" dir="ltr">
     <head>
         <!-- Book generated using mdBook -->
         <meta charset="UTF-8">
@@ -28,18 +28,18 @@
         <link rel="stylesheet" id="mdbook-ayu-highlight-css" href="ayu-highlight-3fdfc3ac.css">
 
         <!-- Custom theme stylesheets -->
-        <link rel="stylesheet" href="theme/custom-59beaf6d.css">
+        <link rel="stylesheet" href="theme/custom-3b357368.css">
 
 
         <!-- Provide site root and default themes to javascript -->
         <script>
             const path_to_root = "";
-            const default_light_theme = "navy";
-            const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "searchindex-5d54d4b4.js";
+            const default_light_theme = "coal";
+            const default_dark_theme = "coal";
+            window.path_to_searchindex_js = "searchindex-38bda414.js";
         </script>
         <!-- Start loading toc.js asap -->
-        <script src="toc-ef51d47d.js"></script>
+        <script src="toc-00f6d8fe.js"></script>
     </head>
     <body>
     <div id="mdbook-help-container">
@@ -77,7 +77,7 @@
             try { theme = localStorage.getItem('mdbook-theme'); } catch(e) { }
             if (theme === null || theme === undefined) { theme = default_theme; }
             const html = document.documentElement;
-            html.classList.remove('navy')
+            html.classList.remove('coal')
             html.classList.add(theme);
             html.classList.add("js");
         </script>
@@ -508,6 +508,42 @@ links not followed because a host had given 4 pages: 1
 <p><strong>Run the web crawler simulation.</strong> Execute <code>cargo run --release -p crawlsim</code> in <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/distributed-systems-from-the-ground-up/code/crawlsim/src/main.rs"><code>code/crawlsim</code></a> to reproduce per-host 2-second politeness scheduling, URL deduplication (<code>7</code> duplicates filtered), and infinite calendar trap termination at 4 pages.</p>
 </div>
 
+<h3 id="end-to-end-request-lifecycle-and-hop-by-hop-latency-budget"><a class="header" href="#end-to-end-request-lifecycle-and-hop-by-hop-latency-budget">End-to-End Request Lifecycle and Hop-by-Hop Latency Budget</a></h3>
+<p>A single crawl cycle spans frontier dequeue, politeness-gated HTTP retrieval, content deduplication, and durable archival; network RTT to external origin servers dominates the latency budget.</p>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th style="text-align: left">Hop</th><th style="text-align: left">Component</th><th style="text-align: left">Operation</th><th style="text-align: left">P50</th><th style="text-align: left">P99</th></tr>
+</thead>
+<tbody>
+<tr><td style="text-align: left">1</td><td style="text-align: left">Mercator Frontier</td><td style="text-align: left">Pop ready host from min-heap and dequeue next canonical URL from per-host back queue</td><td style="text-align: left">0.4 ms</td><td style="text-align: left">2 ms</td></tr>
+<tr><td style="text-align: left">2</td><td style="text-align: left">Local DNS &amp; <code>robots.txt</code> Cache</td><td style="text-align: left">Resolve host IP and verify RFC 9309 allow/disallow rules from in-memory cache</td><td style="text-align: left">0.5 ms</td><td style="text-align: left">15 ms</td></tr>
+<tr><td style="text-align: left">3</td><td style="text-align: left">Async Fetcher Pool</td><td style="text-align: left">HTTP/1.1 or HTTP/2 GET with connect/read timeouts and streaming body cap (2 MiB)</td><td style="text-align: left">120 ms</td><td style="text-align: left">1,800 ms</td></tr>
+<tr><td style="text-align: left">4</td><td style="text-align: left">Parser &amp; Deduplicator</td><td style="text-align: left">HTML link extraction, URL canonicalization, Bloom filter check, and 64-bit SimHash lookup</td><td style="text-align: left">2 ms</td><td style="text-align: left">12 ms</td></tr>
+<tr><td style="text-align: left">5</td><td style="text-align: left">Durable Object Store</td><td style="text-align: left">Batch append compressed response payload into WARC segment and flush frontier WAL</td><td style="text-align: left">8 ms</td><td style="text-align: left">35 ms</td></tr>
+</tbody>
+</table>
+</div>
+<h3 id="production-case-studies-and-open-source-comparisons"><a class="header" href="#production-case-studies-and-open-source-comparisons">Production Case Studies and Open-Source Comparisons</a></h3>
+<p>Googlebot popularized the Mercator two-stage frontier architecture, separating priority front queues (which rank crawl importance by PageRank and change frequency) from host-pinned back queues governed by a next-fetch min-heap so thousands of concurrent fetchers respect per-domain politeness delays. Common Crawl operates an open-source distributed pipeline built on Apache Nutch and StormCrawler, partitioning hosts consistently across workers and publishing monthly petabyte-scale WARC archives on object storage with strict <code>robots.txt</code> compliance. Whereas Apache Nutch traditionally executes MapReduce batch crawl cycles with high disk I/O between phases, StormCrawler and modern Rust async fetchers stream URLs continuously through in-memory politeness queues to sustain high link utilization without batch-boundary stalls.</p>
+<div class="callout keyidea">
+<span class="label">Key idea</span>
+<p>Separating crawl priority from host politeness via Mercator front and back queues lets a distributed crawler maximize global throughput across millions of domains while guaranteeing at most one in-flight request per origin host.</p>
+
+</div>
+
+<div class="callout experiment">
+<span class="label">Experiment</span>
+<p>Execute <code>cargo run --release -p crawlsim</code> and inspect the timestamps for <code>news</code>, <code>calendar</code>, and <code>shop</code>. Notice how interleaved scheduling keeps the fetcher busy every tick while strictly enforcing the 2-second per-host cooldown and capping the infinite calendar trap at 4 pages.</p>
+
+</div>
+
+<div class="callout caution">
+<span class="label">Common pitfall</span>
+<p>Relying on an unbounded in-memory hash set for URL deduplication exhausts RAM within hours at web scale, while omitting per-host depth and page budgets lets dynamic calendar or faceted-search traps consume the entire crawl quota.</p>
+
+</div>
+
 <h2 id="238-terminology-and-references"><a class="header" href="#238-terminology-and-references">23.8 Terminology and References</a></h2>
 <h3 id="engineering-glossary"><a class="header" href="#engineering-glossary">Engineering Glossary</a></h3>
 <div class="table-wrapper">
@@ -572,6 +608,22 @@ links not followed because a host had given 4 pages: 1
         <template id=fa-play><span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 384 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M73 39c-14.8-9.1-33.4-9.4-48.5-.9S0 62.6 0 80V432c0 17.4 9.4 33.4 24.5 41.9s33.7 8.1 48.5-.9L361 297c14.3-8.7 23-24.2 23-41s-8.7-32.2-23-41L73 39z"/></svg></span></template>
         <template id=fa-clock-rotate-left><span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M75 75L41 41C25.9 25.9 0 36.6 0 57.9V168c0 13.3 10.7 24 24 24H134.1c21.4 0 32.1-25.9 17-41l-30.8-30.8C155 85.5 203 64 256 64c106 0 192 86 192 192s-86 192-192 192c-40.8 0-78.6-12.7-109.7-34.4c-14.5-10.1-34.4-6.6-44.6 7.9s-6.6 34.4 7.9 44.6C151.2 495 201.7 512 256 512c141.4 0 256-114.6 256-256S397.4 0 256 0C185.3 0 121.3 28.7 75 75zm181 53c-13.3 0-24 10.7-24 24V256c0 6.4 2.5 12.5 7 17l72 72c9.4 9.4 24.6 9.4 33.9 0s9.4-24.6 0-33.9l-65-65V152c0-13.3-10.7-24-24-24z"/></svg></span></template>
 
+        <!-- Livereload script (if served using the cli tool) -->
+        <script>
+            const wsProtocol = location.protocol === 'https:' ? 'wss:' : 'ws:';
+            const wsAddress = wsProtocol + "//" + location.host + "/" + "__livereload";
+            const socket = new WebSocket(wsAddress);
+            socket.onmessage = function (event) {
+                if (event.data === "reload") {
+                    socket.close();
+                    location.reload();
+                }
+            };
+
+            window.onbeforeunload = function() {
+                socket.close();
+            }
+        </script>
 
 
         <script>
@@ -588,7 +640,7 @@ links not followed because a host had given 4 pages: 1
         <script src="book-609e4cb8.js"></script>
 
         <!-- Custom JS scripts -->
-        <script src="theme/figures-9c14cb1c.js"></script>
+        <script src="theme/figures-1bd27a95.js"></script>
         <script src="theme/proto-326509cd.js"></script>
         <script src="theme/code-67e9caaf.js"></script>
         <script src="theme/tables-9fb295e8.js"></script>

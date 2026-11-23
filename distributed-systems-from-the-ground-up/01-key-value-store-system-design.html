@@ -1,5 +1,5 @@
 <!DOCTYPE HTML>
-<html lang="en" class="navy sidebar-visible" dir="ltr">
+<html lang="en" class="coal sidebar-visible" dir="ltr">
     <head>
         <!-- Book generated using mdBook -->
         <meta charset="UTF-8">
@@ -28,18 +28,18 @@
         <link rel="stylesheet" id="mdbook-ayu-highlight-css" href="ayu-highlight-3fdfc3ac.css">
 
         <!-- Custom theme stylesheets -->
-        <link rel="stylesheet" href="theme/custom-59beaf6d.css">
+        <link rel="stylesheet" href="theme/custom-3b357368.css">
 
 
         <!-- Provide site root and default themes to javascript -->
         <script>
             const path_to_root = "";
-            const default_light_theme = "navy";
-            const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "searchindex-5d54d4b4.js";
+            const default_light_theme = "coal";
+            const default_dark_theme = "coal";
+            window.path_to_searchindex_js = "searchindex-38bda414.js";
         </script>
         <!-- Start loading toc.js asap -->
-        <script src="toc-ef51d47d.js"></script>
+        <script src="toc-00f6d8fe.js"></script>
     </head>
     <body>
     <div id="mdbook-help-container">
@@ -77,7 +77,7 @@
             try { theme = localStorage.getItem('mdbook-theme'); } catch(e) { }
             if (theme === null || theme === undefined) { theme = default_theme; }
             const html = document.documentElement;
-            html.classList.remove('navy')
+            html.classList.remove('coal')
             html.classList.add(theme);
             html.classList.add("js");
         </script>
@@ -239,7 +239,6 @@
 </table>
 </div>
 <h3 id="non-functional-requirements-and-slos"><a class="header" href="#non-functional-requirements-and-slos">Non-Functional Requirements and SLOs</a></h3>
-<p>A single-host process with one log file satisfies functional requirements 0 through 4 in full yet fails nearly every operational constraint of production infrastructure. The non-functional bounds below dictate the distributed architecture:</p>
 <div class="table-wrapper">
 <table>
 <thead>
@@ -457,7 +456,7 @@ message Shard {
 <li><strong>Non-Monotonic Concurrent Reads:</strong> While a write of <code>v2</code> has reached Replica 1 but not yet Replicas 2 and 3, Reader A querying <code>{R1, R2}</code> observes <code>v2</code>. A later Reader B querying <code>{R2, R3}</code> observes <code>v1</code>, violating real-time linearizability unless Reader A synchronously repairs <code>R2</code> before returning <code>v2</code> to its caller.</li>
 <li><strong>Physical-Clock Last-Write-Wins (LWW):</strong> Ordering concurrent writes with wall-clock timestamps drops valid updates without detection whenever NTP clock drift exceeds the interval between writes.</li>
 </ol>
-<p>Because functional requirement 3 mandates atomic compare-and-swap (<code>If-Match</code>), we adopt <strong>leader-based Raft linearizability</strong> per shard. Serializing every mutation for a key through a single term-fenced leader eliminates concurrent write divergence altogether.</p>
+<p>To support atomic compare-and-swap (<code>If-Match</code>) without concurrent write divergence, each shard adopts <strong>leader-based Raft linearizability</strong>, serializing every mutation for a key through a single term-fenced leader.</p>
 <h2 id="15-partitioning-consistent-hashing-virtual-nodes-and-range-splits"><a class="header" href="#15-partitioning-consistent-hashing-virtual-nodes-and-range-splits">1.5 Partitioning: Consistent Hashing, Virtual Nodes, and Range Splits</a></h2>
 <p>A single Raft consensus group hits a hard vertical ceiling at the <code>fsync</code> throughput and network capacity of its leader (<code>5,000</code> to <code>15,000</code> writes/s even with group commit). To sustain <code>20,000</code> writes/s and <code>100,000</code> reads/s across <code>5.2 TB</code> of replicated storage, the key space is partitioned into hundreds of independent 3-replica Raft groups (<strong>Multi-Raft</strong>) distributed across the 24 physical nodes. Each host acts as leader for a balanced fraction of shards and follower for others, utilizing all 24 NVMe drives and network interfaces concurrently.</p>
 <h3 id="consistent-hashing-and-empirical-virtual-node-variance"><a class="header" href="#consistent-hashing-and-empirical-virtual-node-variance">Consistent Hashing and Empirical Virtual-Node Variance</a></h3>
@@ -482,7 +481,7 @@ position of user-1: 0x7c7615c11438e5c9
 <figcaption><b>Figure 1-4</b> Consistent hash ring topology, empirical load-skew reduction from <code>ringsim</code>, and hash versus range partitioning trade-offs.</figcaption>
 </figure>
 <h3 id="architectural-trade-off-consistent-hashing-vs-range-partitioning"><a class="header" href="#architectural-trade-off-consistent-hashing-vs-range-partitioning">Architectural Trade-Off: Consistent Hashing vs. Range Partitioning</a></h3>
-<p>Hash partitioning creates a structural tension with <strong>functional requirement 4 (lexicographic prefix listing)</strong>. Because hashing scatters lexicographically adjacent keys (<code>user:7:sess1</code> and <code>user:7:sess2</code>) across unrelated shards, answering <code>GET /v1/keys?prefix=user:7:</code> requires a <strong>scatter-gather</strong> fan-out across every shard followed by a <code>K</code>-way merge at the router. Tail latency then degrades to the slowest shard in the fleet (<code>p99_total ≈ 1 - (1 - p99_shard)^S</code>), making broad scans expensive at large cluster sizes.</p>
+<p>Hash partitioning creates a structural tension with <strong>lexicographic prefix listing</strong>. Because hashing scatters lexicographically adjacent keys (<code>user:7:sess1</code> and <code>user:7:sess2</code>) across unrelated shards, answering <code>GET /v1/keys?prefix=user:7:</code> requires a <strong>scatter-gather</strong> fan-out across every shard followed by a <code>K</code>-way merge at the router. Tail latency then degrades to the slowest shard in the fleet (<code>p99_total ≈ 1 - (1 - p99_shard)^S</code>), making broad scans expensive at large cluster sizes.</p>
 <p><strong>Range partitioning</strong> (used by CockroachDB, TiKV, and Google Spanner) keeps keys sorted lexicographically across contiguous ranges so prefix scans execute on a single shard in <code>O(log N + K)</code> time. The corresponding liability is write hot-spotting: monotonically increasing keys (timestamps or sequential identifiers) funnel every write onto the rightmost range until the placement controller executes an automated <strong>dynamic range split</strong> once a shard exceeds <code>64 MiB</code> or a QPS threshold. Production systems frequently adopt <strong>compound keys</strong> (Amazon DynamoDB style), hashing the tenant or entity partition key for uniform write spread while sorting sub-keys lexicographically within the shard so tenant-scoped prefix scans remain single-shard operations.</p>
 <h3 id="hot-key-skew-mitigation"><a class="header" href="#hot-key-skew-mitigation">Hot-Key Skew Mitigation</a></h3>
 <p>Even with uniform hash distribution, real workloads follow Zipfian popularity curves where a single viral configuration key or celebrity profile attracts <code>30,000</code> reads/s on one shard leader. Mitigating hot keys requires explicit workload isolation: read-heavy keys that tolerate milliseconds of staleness can opt into short-TTL router caching or AZ-local <strong>follower reads</strong> (bounded by a Raft safe-timestamp watermark), while hot write keys are bounded by per-key router admission control so one saturated key cannot starve neighboring keys sharing the same Raft log.</p>
@@ -572,6 +571,52 @@ position of user-1: 0x7c7615c11438e5c9
 </tbody>
 </table>
 </div>
+<h3 id="end-to-end-request-lifecycle-and-hardwarenetwork-hop-breakdown"><a class="header" href="#end-to-end-request-lifecycle-and-hardwarenetwork-hop-breakdown">End-to-End Request Lifecycle and Hardware/Network Hop Breakdown</a></h3>
+<p>To ground the <code>p99 &lt;= 5 ms</code> read SLO and <code>p99 &lt;= 20 ms</code> write SLO in physical hardware, consider a client issuing <code>PUT /v1/keys/order:48192</code> with a <code>4 KiB</code> payload to a three-AZ production deployment. Every hop introduces a distinct median cost and tail-latency risk:</p>
+<ol>
+<li><strong>Client to L7 Load Balancer (TLS Termination):</strong> The client reuses a pooled HTTP/2 connection over TLS 1.3 to the nearest regional L7 load balancer, avoiding the <code>1</code> to <code>2</code> RTT handshake penalty.</li>
+<li><strong>L7 Load Balancer to Stateless Router:</strong> The load balancer forwards the stream over intra-AZ Ethernet to a stateless request router, which executes an <code>O(log V)</code> consistent-hash lookup in RAM (<code>&lt; 1 us</code>) and resolves the shard’s cached Raft leader address.</li>
+<li><strong>Stateless Router to Shard Leader:</strong> The router forwards the RPC over a persistent gRPC/HTTP/2 channel to the shard leader, tagging the request with <code>ring_version</code> and remaining <code>grpc-timeout</code> deadline.</li>
+<li><strong>Shard Leader WAL Append and NVMe <code>fsync</code>:</strong> The leader validates any <code>If-Match</code> precondition, appends the serialized record to its local WAL, and invokes <code>fdatasync(2)</code> (amortized across concurrent writers via group commit).</li>
+<li><strong>Cross-AZ Quorum Replication:</strong> Concurrently with local persistence, the leader dispatches <code>AppendEntries</code> RPCs to both followers located in separate Availability Zones (<code>0.4</code> to <code>1.2 ms</code> one-way intra-region RTT). Each follower writes and <code>fdatasync</code>s its local WAL.</li>
+<li><strong>Quorum Commit and Response:</strong> Once the leader plus the faster follower confirm durability (<code>2 of 3</code>), the leader advances <code>committed_index</code>, applies the mutation to its in-memory index or LSM MemTable, and returns <code>201 Created</code> with the new <code>ETag</code> back through the router and load balancer.</li>
+</ol>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th style="text-align: left">Hop</th><th style="text-align: left">Device / Subsystem</th><th style="text-align: left">Typical <code>p50</code></th><th style="text-align: left">Tail <code>p99</code></th><th style="text-align: left">Primary Source of Tail Latency</th></tr>
+</thead>
+<tbody>
+<tr><td style="text-align: left">1</td><td style="text-align: left">Client -&gt; TLS/L7 Load Balancer (reused conn)</td><td style="text-align: left"><code>0.40 ms</code></td><td style="text-align: left"><code>1.50 ms</code></td><td style="text-align: left">TCP retransmissions, TLS session ticket misses, LB CPU queuing</td></tr>
+<tr><td style="text-align: left">2</td><td style="text-align: left">L7 Load Balancer -&gt; Stateless Router</td><td style="text-align: left"><code>0.15 ms</code></td><td style="text-align: left"><code>0.45 ms</code></td><td style="text-align: left">Intra-AZ top-of-rack switch microbursts, epoll wakeup jitter</td></tr>
+<tr><td style="text-align: left">3</td><td style="text-align: left">Stateless Router -&gt; Shard Leader (gRPC)</td><td style="text-align: left"><code>0.25 ms</code></td><td style="text-align: left"><code>1.20 ms</code></td><td style="text-align: left">Stale leader hint triggering one <code>421</code> redirect round trip</td></tr>
+<tr><td style="text-align: left">4</td><td style="text-align: left">Leader Kernel Page Cache + NVMe <code>fsync</code></td><td style="text-align: left"><code>1.20 ms</code></td><td style="text-align: left"><code>5.80 ms</code></td><td style="text-align: left">NVMe SSD internal garbage collection, ext4/XFS journal contention</td></tr>
+<tr><td style="text-align: left">5</td><td style="text-align: left">Cross-AZ Quorum (<code>AppendEntries</code> + Follower <code>fsync</code>)</td><td style="text-align: left"><code>2.10 ms</code></td><td style="text-align: left"><code>7.50 ms</code></td><td style="text-align: left">Cross-AZ fiber jitter, slow follower disk (masked by 2-of-3 quorum)</td></tr>
+<tr><td style="text-align: left">6</td><td style="text-align: left">Apply to State Machine + Return Path</td><td style="text-align: left"><code>0.35 ms</code></td><td style="text-align: left"><code>1.05 ms</code></td><td style="text-align: left">Lock contention on MemTable, kernel socket buffer drain</td></tr>
+<tr><td style="text-align: left"><strong>Total</strong></td><td style="text-align: left"><strong>End-to-End Durable <code>PUT</code></strong></td><td style="text-align: left"><strong><code>4.45 ms</code></strong></td><td style="text-align: left"><strong><code>17.50 ms</code></strong></td><td style="text-align: left"><strong>NVMe flush stalls and cross-AZ tail outliers</strong></td></tr>
+</tbody>
+</table>
+</div>
+<p>For a linearizable <code>GET</code> using <code>ReadIndex</code>, steps 4 and 5 replace disk writes with a single zero-disk cross-AZ heartbeat round trip (<code>~1.0 ms</code> p50, <code>~3.2 ms</code> p99), keeping total read <code>p99</code> under <code>5 ms</code>.</p>
+<h3 id="deep-dive-production-case-studies"><a class="header" href="#deep-dive-production-case-studies">Deep-Dive Production Case Studies</a></h3>
+<p>Beyond the summary comparison above, three production architectures illustrate how hardware constraints shape real-world key-value designs:</p>
+<ul>
+<li><strong>Amazon DynamoDB (USENIX ATC 2022):</strong> DynamoDB separates a fleet of stateless <strong>Request Routers</strong> from storage nodes organized into three-way Multi-Paxos replication groups across three AZs. Routers cache partition-to-replica mappings in an in-memory <strong>Storage Metadata Service (MemDS)</strong> with a hit rate exceeding <code>99.99%</code>, preventing control-plane lookups on the hot path. To sustain predictable single-digit millisecond <code>p99</code> latency at millions of requests per second, DynamoDB decouples storage allocation from throughput allocation via <strong>Global Admission Control (GAC)</strong> and <strong>adaptive capacity</strong>, splitting hot partitions dynamically when skewed keys exceed single-partition IOPS ceilings.</li>
+<li><strong>Google Spanner and Bigtable:</strong> Bigtable separates tablet servers from a distributed file system (Colossus/GFS) and relies on Chubby for root tablet location and master election, prioritizing high write throughput via LSM-tree SSTables. Spanner extends this foundation with Multi-Paxos groups per tablet and hardware-assisted <strong>TrueTime</strong> clocks (GPS plus atomic oscillators) whose bounded uncertainty interval (<code>epsilon</code>, typically <code>1</code> to <code>7 ms</code>) enables external consistency (strict serializability) via a short commit wait (<code>2 * epsilon</code>) without blocking read-only transactions on cross-datacenter locks.</li>
+<li><strong>CockroachDB and TiKV:</strong> Both open-source engines implement <strong>Multi-Raft</strong>, multiplexing thousands of <code>64</code> to <code>512 MiB</code> lexicographic ranges per physical node over LSM-tree storage (Pebble in CockroachDB, RocksDB in TiKV). To prevent idle Raft heartbeats from saturating CPU and network bandwidth, CockroachDB coalesces heartbeats across all ranges shared between any pair of nodes, while TiKV places inactive regions into a hibernated state until a client request arrives.</li>
+</ul>
+<div class="callout keyidea"><span class="label">Key idea</span>
+<p><strong>Quorum writes mask single-node tail latency automatically.</strong> In a three-replica shard spread across three Availability Zones, a write completes as soon as the leader and the <em>faster</em> of the two followers finish <code>fdatasync(2)</code>. Even if one follower experiences a <code>40 ms</code> NVMe garbage-collection pause, the quorum response time remains governed by the second-fastest replica rather than the slowest.</p>
+</div>
+
+<div class="callout experiment"><span class="label">Experiment</span>
+<p><strong>Quantify hot-key variance before sizing shards.</strong> Run <code>cargo run --release -p ringsim</code> in <code>code/</code> and compare the maximum-to-mean shard load ratio at <code>1</code>, <code>8</code>, <code>64</code>, and <code>256</code> virtual nodes. Observe how increasing virtual nodes from <code>1</code> to <code>256</code> compresses standard deviation by more than an order of magnitude while keeping lookup complexity at <code>O(log V)</code> (fewer than <code>14</code> binary-search comparisons for <code>24</code> nodes).</p>
+</div>
+
+<div class="callout caution"><span class="label">Common pitfall</span>
+<p><strong>Treating <code>p99</code> as additive across independent hops.</strong> Summing the <code>p99</code> latencies of six serial components overestimates steady-state <code>p99</code> when hops are independent, yet underestimates true tail latency during correlated failures such as an AZ-wide network brownout or synchronized LSM compaction storms. Always measure end-to-end latency distributions under synthetic disk and network fault injection rather than relying solely on component-level averages.</p>
+</div>
+
 <h3 id="references"><a class="header" href="#references">References</a></h3>
 <ul>
 <li>D. Ongaro and J. Ousterhout, “In Search of an Understandable Consensus Algorithm (Extended Version)”, USENIX ATC, 2014.</li>
@@ -587,7 +632,7 @@ position of user-1: 0x7c7615c11438e5c9
 
                     <nav class="nav-wrapper" aria-label="Page navigation">
                         <!-- Mobile navigation buttons -->
-                            <a rel="prev" href="about-this-book.html" class="mobile-nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                            <a rel="prev" href="toc.html" class="mobile-nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
                                 <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M41.4 233.4c-12.5 12.5-12.5 32.8 0 45.3l160 160c12.5 12.5 32.8 12.5 45.3 0s12.5-32.8 0-45.3L109.3 256 246.6 118.6c12.5-12.5 12.5-32.8 0-45.3s-32.8-12.5-45.3 0l-160 160z"/></svg></span>
                             </a>
 
@@ -601,7 +646,7 @@ position of user-1: 0x7c7615c11438e5c9
             </div>
 
             <nav class="nav-wide-wrapper" aria-label="Page navigation">
-                    <a rel="prev" href="about-this-book.html" class="nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                    <a rel="prev" href="toc.html" class="nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
                         <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M41.4 233.4c-12.5 12.5-12.5 32.8 0 45.3l160 160c12.5 12.5 32.8 12.5 45.3 0s12.5-32.8 0-45.3L109.3 256 246.6 118.6c12.5-12.5 12.5-32.8 0-45.3s-32.8-12.5-45.3 0l-160 160z"/></svg></span>
                     </a>
 
@@ -618,6 +663,22 @@ position of user-1: 0x7c7615c11438e5c9
         <template id=fa-play><span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 384 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M73 39c-14.8-9.1-33.4-9.4-48.5-.9S0 62.6 0 80V432c0 17.4 9.4 33.4 24.5 41.9s33.7 8.1 48.5-.9L361 297c14.3-8.7 23-24.2 23-41s-8.7-32.2-23-41L73 39z"/></svg></span></template>
         <template id=fa-clock-rotate-left><span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M75 75L41 41C25.9 25.9 0 36.6 0 57.9V168c0 13.3 10.7 24 24 24H134.1c21.4 0 32.1-25.9 17-41l-30.8-30.8C155 85.5 203 64 256 64c106 0 192 86 192 192s-86 192-192 192c-40.8 0-78.6-12.7-109.7-34.4c-14.5-10.1-34.4-6.6-44.6 7.9s-6.6 34.4 7.9 44.6C151.2 495 201.7 512 256 512c141.4 0 256-114.6 256-256S397.4 0 256 0C185.3 0 121.3 28.7 75 75zm181 53c-13.3 0-24 10.7-24 24V256c0 6.4 2.5 12.5 7 17l72 72c9.4 9.4 24.6 9.4 33.9 0s9.4-24.6 0-33.9l-65-65V152c0-13.3-10.7-24-24-24z"/></svg></span></template>
 
+        <!-- Livereload script (if served using the cli tool) -->
+        <script>
+            const wsProtocol = location.protocol === 'https:' ? 'wss:' : 'ws:';
+            const wsAddress = wsProtocol + "//" + location.host + "/" + "__livereload";
+            const socket = new WebSocket(wsAddress);
+            socket.onmessage = function (event) {
+                if (event.data === "reload") {
+                    socket.close();
+                    location.reload();
+                }
+            };
+
+            window.onbeforeunload = function() {
+                socket.close();
+            }
+        </script>
 
 
         <script>
@@ -634,7 +695,7 @@ position of user-1: 0x7c7615c11438e5c9
         <script src="book-609e4cb8.js"></script>
 
         <!-- Custom JS scripts -->
-        <script src="theme/figures-9c14cb1c.js"></script>
+        <script src="theme/figures-1bd27a95.js"></script>
         <script src="theme/proto-326509cd.js"></script>
         <script src="theme/code-67e9caaf.js"></script>
         <script src="theme/tables-9fb295e8.js"></script>

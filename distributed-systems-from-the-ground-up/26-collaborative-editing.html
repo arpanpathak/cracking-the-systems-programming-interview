@@ -1,5 +1,5 @@
 <!DOCTYPE HTML>
-<html lang="en" class="navy sidebar-visible" dir="ltr">
+<html lang="en" class="coal sidebar-visible" dir="ltr">
     <head>
         <!-- Book generated using mdBook -->
         <meta charset="UTF-8">
@@ -28,18 +28,18 @@
         <link rel="stylesheet" id="mdbook-ayu-highlight-css" href="ayu-highlight-3fdfc3ac.css">
 
         <!-- Custom theme stylesheets -->
-        <link rel="stylesheet" href="theme/custom-59beaf6d.css">
+        <link rel="stylesheet" href="theme/custom-3b357368.css">
 
 
         <!-- Provide site root and default themes to javascript -->
         <script>
             const path_to_root = "";
-            const default_light_theme = "navy";
-            const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "searchindex-5d54d4b4.js";
+            const default_light_theme = "coal";
+            const default_dark_theme = "coal";
+            window.path_to_searchindex_js = "searchindex-38bda414.js";
         </script>
         <!-- Start loading toc.js asap -->
-        <script src="toc-ef51d47d.js"></script>
+        <script src="toc-00f6d8fe.js"></script>
     </head>
     <body>
     <div id="mdbook-help-container">
@@ -77,7 +77,7 @@
             try { theme = localStorage.getItem('mdbook-theme'); } catch(e) { }
             if (theme === null || theme === undefined) { theme = default_theme; }
             const html = document.documentElement;
-            html.classList.remove('navy')
+            html.classList.remove('coal')
             html.classList.add(theme);
             html.classList.add("js");
         </script>
@@ -210,9 +210,9 @@
 <tr><th style="text-align: left">Actor</th><th style="text-align: left">Operation</th><th style="text-align: left">Concrete Scenario</th></tr>
 </thead>
 <tbody>
-<tr><td style="text-align: left"><strong>Co-Author Browser</strong></td><td style="text-align: left">Apply concurrent edits (<code>WS /v1/docs/{id}/ops</code>) and stream ephemeral presence</td><td style="text-align: left">Two engineers edit separate paragraphs of a design doc while seeing each other’s colored carets and selections move live</td></tr>
+<tr><td style="text-align: left"><strong>Co-Author Browser</strong></td><td style="text-align: left">Apply concurrent edits (<code>WS /v1/documents/{id}/operations</code>) and stream ephemeral presence</td><td style="text-align: left">Two engineers edit separate paragraphs of a design doc while seeing each other’s colored carets and selections move live</td></tr>
 <tr><td style="text-align: left"><strong>Offline Mobile Editor</strong></td><td style="text-align: left">Buffer local edits offline and reconcile on reconnect</td><td style="text-align: left">A reviewer edits a document on a commuter train for 40 minutes, then exchanges a compact state vector on reconnect to merge missed remote ops</td></tr>
-<tr><td style="text-align: left"><strong>Document Admin</strong></td><td style="text-align: left">Enforce sharing ACLs (<code>PATCH /v1/docs/{id}/permissions</code>) and restore historical snapshots</td><td style="text-align: left">An owner revokes write access from a former contractor mid-session and rolls a corrupted section back to revision <code>4400</code></td></tr>
+<tr><td style="text-align: left"><strong>Document Admin</strong></td><td style="text-align: left">Enforce sharing ACLs (<code>PATCH /v1/documents/{id}/permissions</code>) and restore historical snapshots</td><td style="text-align: left">An owner revokes write access from a former contractor mid-session and rolls a corrupted section back to revision <code>4400</code></td></tr>
 </tbody>
 </table>
 </div>
@@ -276,7 +276,7 @@
 <h2 id="262-external-api-and-data-contracts"><a class="header" href="#262-external-api-and-data-contracts">26.2 External API and Data Contracts</a></h2>
 <p>A client opens a document through an HTTP/2 hydration endpoint to fetch the latest compacted snapshot plus the operation tail, then upgrades to a persistent bidirectional WebSocket connection routed to the sticky gateway shard owning that <code>doc_id</code>.</p>
 <h3 id="document-hydration-and-history-endpoints"><a class="header" href="#document-hydration-and-history-endpoints">Document Hydration and History Endpoints</a></h3>
-<pre><code class="language-http">GET /v1/docs/doc_8812 HTTP/2
+<pre><code class="language-http">GET /v1/documents/doc_8812 HTTP/2
 Host: docs.example
 Authorization: Bearer tok_author_ada
 </code></pre>
@@ -295,11 +295,11 @@ Content-Type: application/json
 }
 </code></pre>
 <p>To inspect historical versions or audit authorship, clients query paginated revisions:</p>
-<pre><code class="language-http">GET /v1/docs/doc_8812/operations?after_seq=4400&amp;limit=100 HTTP/2
+<pre><code class="language-http">GET /v1/documents/doc_8812/operations?after_seq=4400&amp;limit=100 HTTP/2
 Host: docs.example
 Authorization: Bearer tok_author_ada
 </code></pre>
-<pre><code class="language-http">PATCH /v1/docs/doc_8812/permissions HTTP/2
+<pre><code class="language-http">PATCH /v1/documents/doc_8812/permissions HTTP/2
 Host: docs.example
 Authorization: Bearer tok_admin_ada
 Content-Type: application/json
@@ -519,7 +519,7 @@ CREATE TABLE doc_acls (
 <ol>
 <li><strong>Local Input-to-Paint Latency:</strong> <code>p99 &lt;= 16 ms</code> measured via browser <code>PerformanceObserver</code> around local CRDT apply and DOM layout.</li>
 <li><strong>Remote Edit Fanout Latency (<code>E2E</code>):</strong> Measured from Author A’s WebSocket send timestamp to Author B’s remote render timestamp across regions; SLO: <code>p99 &lt;= 200 ms</code>.</li>
-<li><strong>Document Hydration Latency:</strong> Time from <code>GET /v1/docs/{id}</code> to interactive editable state; SLO: <code>p99 &lt;= 400 ms</code> (alerts if average uncompacted op-log tail exceeds <code>1,000</code> ops).</li>
+<li><strong>Document Hydration Latency:</strong> Time from <code>GET /v1/documents/{id}</code> to interactive editable state; SLO: <code>p99 &lt;= 400 ms</code> (alerts if average uncompacted op-log tail exceeds <code>1,000</code> ops).</li>
 <li><strong>Replica Convergence Integrity Check:</strong> Gateways periodically broadcast a lightweight rolling state hash (Merkle/XOR checksum of visible text) alongside heartbeat frames; any client whose quiescent text hash disagrees with the gateway triggers an immediate telemetry alert and automated state-vector resync.</li>
 </ol>
 <h3 id="how-production-systems-implement-collaborative-editing"><a class="header" href="#how-production-systems-implement-collaborative-editing">How Production Systems Implement Collaborative Editing</a></h3>
@@ -548,6 +548,42 @@ both type between a and t:       ada sees "carnt", bob sees "carnt"
 <p>The simulation transcript confirms three exact properties: applying raw positional offsets without coordination causes permanent replica divergence (<code>"chast"</code> vs. <code>"chats"</code>); transforming concurrent indices (OT) and assigning immutable character identifiers (CRDT) both achieve exact convergence to <code>"chats"</code> regardless of delivery order; and deterministic <code>(clock, site_id)</code> tie-breaking resolves concurrent insertions at the exact same boundary identically (<code>"carnt"</code>) on every replica.</p>
 <div class="simulation">
 <p><strong>Run the collaborative editing simulation.</strong> Execute <code>cargo run --release -p editsim</code> in <code>code/</code> to verify raw positional divergence (<code>chast</code> vs. <code>chats</code>), Operational Transformation convergence, Sequence CRDT commutativity, and deterministic tie-breaking (<code>carnt</code>).</p>
+</div>
+
+<h3 id="end-to-end-request-lifecycle-and-hop-by-hop-latency-budget"><a class="header" href="#end-to-end-request-lifecycle-and-hop-by-hop-latency-budget">End-to-End Request Lifecycle and Hop-by-Hop Latency Budget</a></h3>
+<p>Collaborative editing hides network latency through optimistic local application while broadcasting compact operations over persistent WebSocket sessions.</p>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th style="text-align: left">Hop</th><th style="text-align: left">Component</th><th style="text-align: left">Operation</th><th style="text-align: left">P50</th><th style="text-align: left">P99</th></tr>
+</thead>
+<tbody>
+<tr><td style="text-align: left">1</td><td style="text-align: left">Local Editor Client</td><td style="text-align: left">Apply keystroke optimistically to local CRDT/OT state and render frame</td><td style="text-align: left">0.5 ms</td><td style="text-align: left">3 ms</td></tr>
+<tr><td style="text-align: left">2</td><td style="text-align: left">Edge / WebSocket Gateway</td><td style="text-align: left">Transmit framed binary delta over persistent TLS/WebSocket connection</td><td style="text-align: left">14 ms</td><td style="text-align: left">55 ms</td></tr>
+<tr><td style="text-align: left">3</td><td style="text-align: left">Document Room Server</td><td style="text-align: left">Validate session auth, transform (OT) or merge (CRDT), and assign sequence epoch</td><td style="text-align: left">0.8 ms</td><td style="text-align: left">4 ms</td></tr>
+<tr><td style="text-align: left">4</td><td style="text-align: left">Durable Op-Log Store</td><td style="text-align: left">Append operation batch to partitioned WAL and trigger periodic snapshot compaction</td><td style="text-align: left">3 ms</td><td style="text-align: left">16 ms</td></tr>
+<tr><td style="text-align: left">5</td><td style="text-align: left">Peer Broadcast Fan-Out</td><td style="text-align: left">Deliver delta and ephemeral cursor presence to all connected room collaborators</td><td style="text-align: left">15 ms</td><td style="text-align: left">65 ms</td></tr>
+</tbody>
+</table>
+</div>
+<h3 id="production-case-studies-and-open-source-comparisons"><a class="header" href="#production-case-studies-and-open-source-comparisons">Production Case Studies and Open-Source Comparisons</a></h3>
+<p>Google Docs uses a centralized Operational Transformation (OT) server that serializes concurrent edits against a canonical revision history, keeping document memory compact at the cost of requiring a single authoritative ordering coordinator per active document. Figma adopts a multiplayer property-map CRDT combined with fractional indexing for ordered scene-graph layers, allowing clients to merge concurrent vector edits deterministically and reconnect cleanly after offline periods without complex transformation matrices. Open-source libraries such as Yjs (implementing YATA with doubly linked character blocks and run-length compression) and Automerge (using a columnar binary encoding of RGA/JSON CRDTs) bring decentralized, peer-to-peer convergence to browser and Rust applications while bounding tombstone overhead through periodic document compaction.</p>
+<div class="callout keyidea">
+<span class="label">Key idea</span>
+<p>Raw integer array indices diverge whenever concurrent insertions shift character offsets. Sequence CRDTs achieve strong eventual consistency without a central lock by assigning every character a globally unique, immutable identifier whose deterministic total order guarantees identical convergence across all replicas.</p>
+
+</div>
+
+<div class="callout experiment">
+<span class="label">Experiment</span>
+<p>Run <code>cargo run --release -p editsim</code> to observe two peers editing the same word concurrently: raw positional indices diverge into <code>chast</code> versus <code>chats</code>, whereas both Operational Transformation and the Sequence CRDT converge deterministically to the same final string.</p>
+
+</div>
+
+<div class="callout caution">
+<span class="label">Common pitfall</span>
+<p>Retaining deleted-character tombstones indefinitely causes document RAM and initial load latency to grow monotonically with total edit history rather than visible document length. Safe tombstone reclamation requires an epoch watermark confirming every active replica has observed the deletion.</p>
+
 </div>
 
 <h2 id="268-terminology-and-references"><a class="header" href="#268-terminology-and-references">26.8 Terminology and References</a></h2>
@@ -616,6 +652,22 @@ both type between a and t:       ada sees "carnt", bob sees "carnt"
         <template id=fa-play><span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 384 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M73 39c-14.8-9.1-33.4-9.4-48.5-.9S0 62.6 0 80V432c0 17.4 9.4 33.4 24.5 41.9s33.7 8.1 48.5-.9L361 297c14.3-8.7 23-24.2 23-41s-8.7-32.2-23-41L73 39z"/></svg></span></template>
         <template id=fa-clock-rotate-left><span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M75 75L41 41C25.9 25.9 0 36.6 0 57.9V168c0 13.3 10.7 24 24 24H134.1c21.4 0 32.1-25.9 17-41l-30.8-30.8C155 85.5 203 64 256 64c106 0 192 86 192 192s-86 192-192 192c-40.8 0-78.6-12.7-109.7-34.4c-14.5-10.1-34.4-6.6-44.6 7.9s-6.6 34.4 7.9 44.6C151.2 495 201.7 512 256 512c141.4 0 256-114.6 256-256S397.4 0 256 0C185.3 0 121.3 28.7 75 75zm181 53c-13.3 0-24 10.7-24 24V256c0 6.4 2.5 12.5 7 17l72 72c9.4 9.4 24.6 9.4 33.9 0s9.4-24.6 0-33.9l-65-65V152c0-13.3-10.7-24-24-24z"/></svg></span></template>
 
+        <!-- Livereload script (if served using the cli tool) -->
+        <script>
+            const wsProtocol = location.protocol === 'https:' ? 'wss:' : 'ws:';
+            const wsAddress = wsProtocol + "//" + location.host + "/" + "__livereload";
+            const socket = new WebSocket(wsAddress);
+            socket.onmessage = function (event) {
+                if (event.data === "reload") {
+                    socket.close();
+                    location.reload();
+                }
+            };
+
+            window.onbeforeunload = function() {
+                socket.close();
+            }
+        </script>
 
 
         <script>
@@ -632,7 +684,7 @@ both type between a and t:       ada sees "carnt", bob sees "carnt"
         <script src="book-609e4cb8.js"></script>
 
         <!-- Custom JS scripts -->
-        <script src="theme/figures-9c14cb1c.js"></script>
+        <script src="theme/figures-1bd27a95.js"></script>
         <script src="theme/proto-326509cd.js"></script>
         <script src="theme/code-67e9caaf.js"></script>
         <script src="theme/tables-9fb295e8.js"></script>

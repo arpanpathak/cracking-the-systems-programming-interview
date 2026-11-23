@@ -1,5 +1,5 @@
 <!DOCTYPE HTML>
-<html lang="en" class="navy sidebar-visible" dir="ltr">
+<html lang="en" class="coal sidebar-visible" dir="ltr">
     <head>
         <!-- Book generated using mdBook -->
         <meta charset="UTF-8">
@@ -28,18 +28,18 @@
         <link rel="stylesheet" id="mdbook-ayu-highlight-css" href="ayu-highlight-3fdfc3ac.css">
 
         <!-- Custom theme stylesheets -->
-        <link rel="stylesheet" href="theme/custom-59beaf6d.css">
+        <link rel="stylesheet" href="theme/custom-3b357368.css">
 
 
         <!-- Provide site root and default themes to javascript -->
         <script>
             const path_to_root = "";
-            const default_light_theme = "navy";
-            const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "searchindex-5d54d4b4.js";
+            const default_light_theme = "coal";
+            const default_dark_theme = "coal";
+            window.path_to_searchindex_js = "searchindex-38bda414.js";
         </script>
         <!-- Start loading toc.js asap -->
-        <script src="toc-ef51d47d.js"></script>
+        <script src="toc-00f6d8fe.js"></script>
     </head>
     <body>
     <div id="mdbook-help-container">
@@ -77,7 +77,7 @@
             try { theme = localStorage.getItem('mdbook-theme'); } catch(e) { }
             if (theme === null || theme === undefined) { theme = default_theme; }
             const html = document.documentElement;
-            html.classList.remove('navy')
+            html.classList.remove('coal')
             html.classList.add(theme);
             html.classList.add("js");
         </script>
@@ -499,6 +499,34 @@ end: {"ada": 0, "shop": 10000}, total 10000
 <li>H. Garcia-Molina and K. Salem, “Sagas”, ACM SIGMOD, 1987.</li>
 <li>J. Gray and A. Reuter, <em>Transaction Processing: Concepts and Techniques</em>, Morgan Kaufmann, 1992.</li>
 </ul>
+<h2 id="198-end-to-end-request-lifecycle-and-production-case-studies"><a class="header" href="#198-end-to-end-request-lifecycle-and-production-case-studies">19.8 End-to-End Request Lifecycle and Production Case Studies</a></h2>
+<h3 id="hop-by-hop-request-lifecycle-and-latency-budget"><a class="header" href="#hop-by-hop-request-lifecycle-and-latency-budget">Hop-by-Hop Request Lifecycle and Latency Budget</a></h3>
+<p>An online card charge (<code>POST /v1/payments</code>) spans six strict isolation boundaries, separating fast local ACID state transitions from slow external card-network authorization RPCs within a <code>p99</code> end-to-end latency budget of <code>800 to 1,500 ms</code> (dominated by the issuing bank).</p>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th style="text-align: left">Hop</th><th style="text-align: left">Boundary Payload</th><th style="text-align: left">Typical Latency Budget</th></tr>
+</thead>
+<tbody>
+<tr><td style="text-align: left"><strong>1. Checkout Client to PCI Vault / Edge Tokenization</strong></td><td style="text-align: left">Browser or SDK posts raw PAN directly to the isolated PCI-DSS CDE vault over TLS 1.3 and receives an opaque <code>tok_...</code> surrogate token</td><td style="text-align: left"><code>40 to 90 ms</code></td></tr>
+<tr><td style="text-align: left"><strong>2. Merchant Backend to Payment API Gateway</strong></td><td style="text-align: left">Signed HTTPS <code>POST</code> carrying <code>Idempotency-Key</code>, <code>amount_minor</code>, <code>currency</code>, and <code>tok_...</code> (zero raw card data crosses the core API)</td><td style="text-align: left"><code>15 to 35 ms</code></td></tr>
+<tr><td style="text-align: left"><strong>3. Payment Orchestrator to Ledger DB (Atomic Phase 1)</strong></td><td style="text-align: left">Short local ACID transaction inserting the idempotency lock (<code>IN_PROGRESS</code>) and validating payload fingerprint before releasing DB locks</td><td style="text-align: left"><code>8 to 20 ms</code></td></tr>
+<tr><td style="text-align: left"><strong>4. Payment Orchestrator to External Acquirer / Card Network</strong></td><td style="text-align: left">ISO 8583 or REST authorization request forwarded through the acquiring bank and Visa/Mastercard switch to the cardholder’s issuing bank</td><td style="text-align: left"><code>350 to 900 ms</code> (external)</td></tr>
+<tr><td style="text-align: left"><strong>5. Orchestrator to Double-Entry Ledger DB (Atomic Phase 2)</strong></td><td style="text-align: left">ACID commit appending balanced debit/credit journal entries, updating payment state to <code>CAPTURED</code>, and recording the outbox event</td><td style="text-align: left"><code>10 to 25 ms</code></td></tr>
+<tr><td style="text-align: left"><strong>6. Outbox Relay to Webhook / Settlement Pipeline</strong></td><td style="text-align: left">Asynchronous WAL CDC delivery notifying the merchant webhook endpoint and queueing the <code>T+1</code> clearing batch for three-way reconciliation</td><td style="text-align: left"><code>50 to 200 ms</code> (async)</td></tr>
+</tbody>
+</table>
+</div>
+<h3 id="production-case-studies-and-open-source-comparisons"><a class="header" href="#production-case-studies-and-open-source-comparisons">Production Case Studies and Open-Source Comparisons</a></h3>
+<p><strong>Stripe Idempotency Keys and Ledger Immutability.</strong> Stripe formalized recovery-point idempotency by persisting atomic phase transitions around every external acquirer call: each client-supplied <code>Idempotency-Key</code> binds to a request-parameter hash for <code>24 hours</code>, ensuring network retries replay the exact stored response rather than charging a card twice. Internally, Stripe maintains an immutable double-entry ledger that continuously reconciles every balance movement against bank settlement files, surfacing sub-cent discrepancies automatically before payout batches execute.</p>
+<p><strong>Adyen Unified Direct-to-Scheme Architecture.</strong> Adyen eliminates intermediate payment-gateway hops by connecting its single processing platform directly to Visa, Mastercard, and local payment schemes across global regions. Direct acquiring reduces network round trips, exposes granular issuer decline codes for automated smart retries, and unifies authorization, capture, and <code>T+1</code> settlement data inside one reconciliation pipeline.</p>
+<p><strong>Square Books Double-Entry Ledger.</strong> Square built Books, a globally distributed, strongly consistent double-entry accounting service backed by Google Cloud Spanner to record immutable financial journal entries across Cash App and merchant payouts. Every transaction enforces strict zero-sum balance invariants per currency and supports idempotent append-only corrections (reversing entries rather than in-place <code>UPDATE</code> mutations) so auditors can reconstruct exact historical balances at any timestamp.</p>
+<div class="callout keyidea"><span class="label">Key idea</span> Holding an open relational database transaction across an external acquiring-bank RPC exhausts connection pools whenever a downstream bank slows down. Split each payment into short local ACID recovery phases separated by lock-free external network calls so retries resume deterministically without wedging the ledger.</div>
+
+<div class="callout experiment"><span class="label">Experiment</span> In `code/paysim`, replay the identical `order-7` idempotency key three times in succession and inspect the resulting ledger journal. Confirm that the sum of all debit entries equals the sum of all credit entries strictly to zero and that the customer balance decrements once rather than three times.</div>
+
+<div class="callout caution"><span class="label">Common pitfall</span> Treating a client-side HTTP timeout during an external PSP call as a confirmed payment failure causes automatic retries to double-charge cardholders when the issuer actually approved the first request. Transition timed-out charges into an `UNKNOWN` reconciliation state and query the PSP's status API with the same idempotency key before issuing a retry or refund.</div>
+
 
                     </main>
 
@@ -535,6 +563,22 @@ end: {"ada": 0, "shop": 10000}, total 10000
         <template id=fa-play><span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 384 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M73 39c-14.8-9.1-33.4-9.4-48.5-.9S0 62.6 0 80V432c0 17.4 9.4 33.4 24.5 41.9s33.7 8.1 48.5-.9L361 297c14.3-8.7 23-24.2 23-41s-8.7-32.2-23-41L73 39z"/></svg></span></template>
         <template id=fa-clock-rotate-left><span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M75 75L41 41C25.9 25.9 0 36.6 0 57.9V168c0 13.3 10.7 24 24 24H134.1c21.4 0 32.1-25.9 17-41l-30.8-30.8C155 85.5 203 64 256 64c106 0 192 86 192 192s-86 192-192 192c-40.8 0-78.6-12.7-109.7-34.4c-14.5-10.1-34.4-6.6-44.6 7.9s-6.6 34.4 7.9 44.6C151.2 495 201.7 512 256 512c141.4 0 256-114.6 256-256S397.4 0 256 0C185.3 0 121.3 28.7 75 75zm181 53c-13.3 0-24 10.7-24 24V256c0 6.4 2.5 12.5 7 17l72 72c9.4 9.4 24.6 9.4 33.9 0s9.4-24.6 0-33.9l-65-65V152c0-13.3-10.7-24-24-24z"/></svg></span></template>
 
+        <!-- Livereload script (if served using the cli tool) -->
+        <script>
+            const wsProtocol = location.protocol === 'https:' ? 'wss:' : 'ws:';
+            const wsAddress = wsProtocol + "//" + location.host + "/" + "__livereload";
+            const socket = new WebSocket(wsAddress);
+            socket.onmessage = function (event) {
+                if (event.data === "reload") {
+                    socket.close();
+                    location.reload();
+                }
+            };
+
+            window.onbeforeunload = function() {
+                socket.close();
+            }
+        </script>
 
 
         <script>
@@ -551,7 +595,7 @@ end: {"ada": 0, "shop": 10000}, total 10000
         <script src="book-609e4cb8.js"></script>
 
         <!-- Custom JS scripts -->
-        <script src="theme/figures-9c14cb1c.js"></script>
+        <script src="theme/figures-1bd27a95.js"></script>
         <script src="theme/proto-326509cd.js"></script>
         <script src="theme/code-67e9caaf.js"></script>
         <script src="theme/tables-9fb295e8.js"></script>
