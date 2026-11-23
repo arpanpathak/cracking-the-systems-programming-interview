@@ -24,28 +24,31 @@
   --code-bg: #f7f7fa;
   --sidebar-surface: #f5f5f7;
 
-  --key: #eaf4ff;
-  --key-line: #bcd9f7;
-  --key-ink: #004f9e;
-  --note: #f5f5f7;
-  --note-line: #d2d2d7;
-  --note-ink: #5f6368;
-  --exp: #eefaf1;
-  --exp-line: #b8e2c2;
-  --exp-ink: #1c7533;
-  --warn: #fff4e5;
-  --warn-line: #f5c08e;
-  --warn-ink: #b02e00;
-  --sum: #f4f0fb;
-  --sum-line: #c9c4ee;
-  --sum-ink: #4b49c8;
+  --key: #f8fafc;
+  --key-line: #e2e8f0;
+  --key-ink: #1d4ed8;
+  --note: #f8fafc;
+  --note-line: #e2e8f0;
+  --note-ink: #475569;
+  --exp: #f8fafc;
+  --exp-line: #e2e8f0;
+  --exp-ink: #0f766e;
+  --warn: #fffbf5;
+  --warn-line: #eadbc8;
+  --warn-ink: #b45309;
+  --sum: #f8fafc;
+  --sum-line: #e2e8f0;
+  --sum-ink: #4338ca;
 
-  /* Material Design 3 Tonal Table tokens (matching Distributed Systems edition) */
+  /* Material Design 3 Tonal Table tokens (calm, neutral elevation) */
   --m3-surface: #ffffff;
-  --m3-table-head-bg: #e6effd;
-  --m3-table-head-ink: #163e7a;
-  --m3-table-row-alt: #f8fafd;
-  --m3-hairline: #dce2ec;
+  --m3-table-head-bg: #f1f5f9;
+  --m3-table-head-ink: #0f172a;
+  --m3-table-row-alt: #f8fafc;
+  --m3-hairline: #e2e8f0;
+  --table-border-color: #e2e8f0;
+  --table-header-bg: #f1f5f9;
+  --table-alternate-bg: #f8fafc;
 }
 
 html.coal, html.navy, html.ayu {
@@ -55,48 +58,36 @@ html.coal, html.navy, html.ayu {
   --accent: #8ab4f8;
   --accent-ink: #b3cffb;
   --paper: var(--bg);
-  --wash: rgba(255, 255, 255, 0.06);
-  --hairline: rgba(255, 255, 255, 0.14);
-  --code-bg: rgba(255, 255, 255, 0.05);
+  --wash: rgba(255, 255, 255, 0.055);
+  --hairline: rgba(255, 255, 255, 0.12);
+  --code-bg: rgba(255, 255, 255, 0.045);
   --sidebar-surface: var(--sidebar-bg);
 
-  --key: rgba(90, 150, 255, 0.14);
-  --key-line: rgba(120, 170, 255, 0.42);
-  --key-ink: #9cc0fb;
-  --note: rgba(255, 255, 255, 0.06);
-  --note-line: rgba(255, 255, 255, 0.18);
+  --key: rgba(255, 255, 255, 0.035);
+  --key-line: rgba(255, 255, 255, 0.11);
+  --key-ink: #7cb3ff;
+  --note: rgba(255, 255, 255, 0.035);
+  --note-line: rgba(255, 255, 255, 0.11);
   --note-ink: #b4bccb;
-  --exp: rgba(70, 190, 110, 0.13);
-  --exp-line: rgba(110, 210, 140, 0.4);
-  --exp-ink: #86d9a0;
-  --warn: rgba(245, 160, 60, 0.13);
-  --warn-line: rgba(245, 180, 90, 0.42);
-  --warn-ink: #f5c06e;
-  --sum: rgba(150, 125, 250, 0.15);
-  --sum-line: rgba(180, 160, 250, 0.42);
-  --sum-ink: #c0aef8;
+  --exp: rgba(255, 255, 255, 0.035);
+  --exp-line: rgba(255, 255, 255, 0.11);
+  --exp-ink: #5eead4;
+  --warn: rgba(255, 255, 255, 0.035);
+  --warn-line: rgba(255, 255, 255, 0.11);
+  --warn-ink: #fbbf24;
+  --sum: rgba(255, 255, 255, 0.035);
+  --sum-line: rgba(255, 255, 255, 0.11);
+  --sum-ink: #a5b4fc;
 
-  --m3-surface: #131724;
-  --m3-table-head-bg: #18233a;
-  --m3-table-head-ink: #b7d0ff;
-  --m3-table-row-alt: #161b2a;
-  --m3-hairline: #242e45;
-}
-
-html.navy {
-  --m3-surface: #051b2e;
-  --m3-table-head-bg: #0b2942;
-  --m3-table-head-ink: #b7d7f5;
-  --m3-table-row-alt: #082035;
-  --m3-hairline: #173752;
-}
-
-html.ayu {
-  --m3-surface: #1e303a;
-  --m3-table-head-bg: #27404e;
-  --m3-table-head-ink: #cbe3f5;
-  --m3-table-row-alt: #21343f;
-  --m3-hairline: #324c5c;
+  /* Harmonized with every dark theme's native --bg (coal, navy, ayu) */
+  --m3-surface: rgba(255, 255, 255, 0.025);
+  --m3-table-head-bg: rgba(255, 255, 255, 0.075);
+  --m3-table-head-ink: #f1f5f9;
+  --m3-table-row-alt: rgba(255, 255, 255, 0.03);
+  --m3-hairline: rgba(255, 255, 255, 0.11);
+  --table-border-color: rgba(255, 255, 255, 0.11);
+  --table-header-bg: rgba(255, 255, 255, 0.075);
+  --table-alternate-bg: rgba(255, 255, 255, 0.03);
 }
 
 html.rust {
@@ -143,6 +134,34 @@ body {
   line-height: 1.35;
   margin-top: 1.6em;
   margin-bottom: 0.45em;
+}
+
+/* Clean Material chevron list markers (only for remaining short reference/exercise lists) */
+.content main ul {
+  list-style: none;
+  padding-left: 1.55em;
+}
+
+.content main ul > li {
+  position: relative;
+  margin: 0.5em 0;
+}
+
+.content main ul > li::before {
+  content: "";
+  position: absolute;
+  left: -1.35em;
+  top: 0.34em;
+  width: 1em;
+  height: 1em;
+  background-color: var(--accent);
+  opacity: 0.82;
+  -webkit-mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='M10 6L8.59 7.41 13.17 12l-4.58 4.59L10 18l6-6z'/%3E%3C/svg%3E");
+  mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='M10 6L8.59 7.41 13.17 12l-4.58 4.59L10 18l6-6z'/%3E%3C/svg%3E");
+  -webkit-mask-size: contain;
+  mask-size: contain;
+  -webkit-mask-repeat: no-repeat;
+  mask-repeat: no-repeat;
 }
 
 .content h1, .content h2, .content h3, .content h4 { color: var(--ink); }
@@ -364,7 +383,11 @@ html.ayu .content table {
 }
 
 .content table tbody tr:nth-child(2n) {
-  background: var(--m3-table-row-alt);
+  background: var(--m3-table-row-alt) !important;
+}
+
+.content table tbody tr:nth-child(2n+1) {
+  background: transparent !important;
 }
 
 /* ---------- Material Design Code Tabs (C++20 | Rust 2024 | Split) ---------- */
@@ -565,82 +588,54 @@ html.ayu .md-lang-chip.split {
   color: inherit;
 }
 
-/* ---------- Glossary Page Grid & Target Highlight ---------- */
+/* ---------- Textbook Glossary Typography (Clean, Single-Column, Syntax-Highlighted) ---------- */
 
-.md-glossary-grid {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 12px;
-  margin: 1.4em 0;
+.md-glossary-term {
+  padding: 1.15em 0 1.25em;
+  border-bottom: 1px solid var(--hairline);
+  scroll-margin-top: 76px;
 }
 
-@media (max-width: 760px) {
-  .md-glossary-grid {
-    grid-template-columns: 1fr;
-  }
-}
-
-.md-glossary-card {
+.md-glossary-term:target {
   background: var(--wash);
-  border: 1px solid var(--hairline);
-  border-left: 3.5px solid var(--accent);
-  border-radius: 12px;
-  padding: 15px 18px;
-  font-size: 0.93em;
-  line-height: 1.58;
-  scroll-margin-top: 72px;
-  transition: background-color 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease;
+  padding: 1.15em 1.1em 1.25em;
+  margin: 0 -1.1em;
+  border-radius: 8px;
+  border-left: 3px solid var(--accent);
 }
 
-.md-glossary-card .md-term-head {
+.md-glossary-term h3 {
+  margin: 0 0 0.45em !important;
+  font-size: 1.12em;
   display: flex;
   flex-wrap: wrap;
   align-items: baseline;
-  gap: 8px;
-  margin-bottom: 0.45em;
+  gap: 0.55em;
 }
 
-.md-glossary-card .md-term-chip {
-  display: inline-block;
-  padding: 2px 9px;
-  border-radius: 999px;
-  background: var(--key);
-  color: var(--key-ink);
-  border: 1px solid var(--key-line);
+.md-glossary-term .md-term-chip {
   font-family: "SF Mono", SFMono-Regular, ui-monospace, Menlo, Consolas, monospace;
-  font-size: 0.85em;
+  font-size: 0.84em;
   font-weight: 700;
+  color: var(--accent);
+  background: var(--wash);
+  border: 1px solid var(--hairline);
+  padding: 2px 8px;
+  border-radius: 5px;
 }
 
-.md-glossary-card .md-term-full {
-  color: var(--ink);
+.md-glossary-term .md-term-full {
   font-weight: 650;
-  font-size: 1.02em;
+  color: var(--ink);
 }
 
-.md-glossary-card p {
-  margin: 0.35em 0 0 !important;
+.md-glossary-term p {
+  margin: 0.35em 0 0.7em !important;
   color: var(--ink-soft);
 }
 
-.md-glossary-card .md-term-rust {
-  margin-top: 0.65em;
-  padding: 8px 11px;
-  border-radius: 8px;
-  background: var(--code-bg);
-  border: 1px solid var(--hairline);
-  font-family: "SF Mono", SFMono-Regular, ui-monospace, Menlo, Consolas, monospace;
-  font-size: 0.8em;
-  line-height: 1.45;
-  overflow-x: auto;
-  white-space: pre;
-  color: var(--ink);
-}
-
-.md-glossary-card:target {
-  background: var(--key);
-  border-color: var(--accent);
-  box-shadow: 0 0 0 2px var(--key-line);
+.md-glossary-term pre {
+  margin: 0.5em 0 0 !important;
 }
 
 /* ---------- Sidebar ---------- */

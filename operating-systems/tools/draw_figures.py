@@ -1349,7 +1349,7 @@ def ch06_store_buffer_litmus():
 
 @figure
 def ch06_futex_automaton():
-    fig = Fig("ch06_futex_automaton", "Figure 6-5. Fast Userspace Mutex (futex / __ulock): Ring 3 Fast Path vs. Ring 0 Wait-Queue Parking", 364)
+    fig = Fig("ch06_futex_automaton", "Figure 6-6. Fast Userspace Mutex (futex / __ulock): Ring 3 Fast Path vs. Ring 0 Wait-Queue Parking", 364)
 
     # Ring 3 User Mode band (y=12..196)
     fig.node(28, 12, 744, 184, "blue", kind="tonal", r=12)
@@ -1415,7 +1415,7 @@ def ch06_futex_automaton():
 
 @figure
 def ch06_seqlock():
-    fig = Fig("ch06_seqlock", "Figure 6-6. Lock-Free Sequence Lock (Seqlock): Zero-Write Reader Scaling and Torn-Read Retry", 358)
+    fig = Fig("ch06_seqlock", "Figure 6-7. Lock-Free Sequence Lock (Seqlock): Zero-Write Reader Scaling and Torn-Read Retry", 358)
 
     # Top lane: Writer (y=12..118)
     fig.node(28, 12, 744, 102, "purple", kind="tonal", r=12)
@@ -3804,6 +3804,123 @@ def ch02_cache_blocks():
     fig.save([
         "Hardware transfers memory in 64-byte cache lines (B0..B63), tagged with Valid (V), Dirty (D), and upper Tag bits inside each set-associative cache way.",
         "Sequential array scans hit B1..B63 in L1 (~1 ns) after one miss; concurrent writes by two cores to bytes inside the same 64-byte block trigger false sharing.",
+    ])
+
+
+@figure
+def ch06_memory_orderings():
+    """Figure 6-5. Visual intuition for atomic memory orderings: reordering walls & x86-64/ARM64 instructions."""
+    fig = Fig(
+        "ch06_memory_orderings",
+        "Figure 6-5. Atomic memory orderings: reordering barriers and emitted x86-64 / ARM64 instructions.",
+        402,
+    )
+
+    cols = [
+        {
+            "x": 20, "tone": "gray", "name": "Relaxed",
+            "sub": "Atomicity only",
+            "above": "prior load / store",
+            "op": "fetch_add(Relaxed)",
+            "below": "later load / store",
+            "wall": "none",
+            "rule": "Ops move freely",
+            "x86": "x86: MOV / LOCK XADD",
+            "arm": "ARM: LDR / STR / LDADD",
+        },
+        {
+            "x": 212, "tone": "blue", "name": "Acquire (Load)",
+            "sub": "One-way floor",
+            "above": "prior ops (may sink)",
+            "op": "load(Acquire)",
+            "below": "BLOCKED from hoisting",
+            "wall": "below",
+            "rule": "Nothing floats UP",
+            "x86": "x86: plain MOV (TSO)",
+            "arm": "ARM: LDAR",
+        },
+        {
+            "x": 404, "tone": "green", "name": "Release (Store)",
+            "sub": "One-way ceiling",
+            "above": "BLOCKED from sinking",
+            "op": "store(1, Release)",
+            "below": "later ops (may hoist)",
+            "wall": "above",
+            "rule": "Nothing sinks DOWN",
+            "x86": "x86: plain MOV (TSO)",
+            "arm": "ARM: STLR",
+        },
+        {
+            "x": 596, "tone": "purple", "name": "SeqCst",
+            "sub": "Global total order",
+            "above": "BLOCKED both ways",
+            "op": "store(1, SeqCst)",
+            "below": "Drains Store Buffer",
+            "wall": "both",
+            "rule": "Full 2-way fence",
+            "x86": "x86: XCHG / MFENCE",
+            "arm": "ARM: STLR + LDAR",
+        },
+    ]
+
+    w = 184
+    for c in cols:
+        x = c["x"]
+        t = c["tone"]
+        fig.rect(x, 12, w, 298, f"c-{t}", r=10)
+        fig.rect(x + 8, 20, w - 16, 40, f"m-{t}", r=7)
+        fig.text(x + w / 2, 37, c["name"], "name", "middle", fit=(x + 12, x + w - 12))
+        fig.text(x + w / 2, 52, c["sub"], "small", "middle", fit=(x + 12, x + w - 12))
+
+        # Prior ops box
+        fig.rect(x + 12, 68, w - 24, 28, "card", r=6)
+        fig.text(x + w / 2, 86, c["above"], "small", "middle", fit=(x + 16, x + w - 16))
+
+        # Atomic op bar in middle
+        fig.rect(x + 10, 128, w - 20, 32, f"m-{t}", r=6)
+        fig.text(x + w / 2, 148, c["op"], "monob", "middle", fit=(x + 14, x + w - 14))
+
+        # Later ops box
+        fig.rect(x + 12, 192, w - 24, 28, "card", r=6)
+        fig.text(x + w / 2, 210, c["below"], "small", "middle", fit=(x + 16, x + w - 16))
+
+        # Visual barrier walls & reordering arrows
+        if c["wall"] == "none":
+            fig.wire([(x + 56, 99), (x + 56, 124)], "green", width=1.6, dash="3,2")
+            fig.wire([(x + 128, 189), (x + 128, 164)], "green", width=1.6, dash="3,2")
+        elif c["wall"] == "below":
+            fig.wire([(x + 56, 99), (x + 56, 124)], "green", width=1.6, dash="3,2")
+            fig.rule(x + 14, 170, x + w - 14, 170, "red", width=3.2)
+            fig.text(x + w / 2, 184, "BARRIER (no hoist)", "small", "middle", fit=(x + 14, x + w - 14))
+        elif c["wall"] == "above":
+            fig.rule(x + 14, 118, x + w - 14, 118, "red", width=3.2)
+            fig.text(x + w / 2, 111, "BARRIER (no sink)", "small", "middle", fit=(x + 14, x + w - 14))
+            fig.wire([(x + 128, 189), (x + 128, 164)], "green", width=1.6, dash="3,2")
+        else:
+            fig.rule(x + 14, 118, x + w - 14, 118, "red", width=3.2)
+            fig.rule(x + 14, 170, x + w - 14, 170, "red", width=3.2)
+            fig.text(x + w / 2, 111, "NO SINK", "small", "middle", fit=(x + 14, x + w - 14))
+            fig.text(x + w / 2, 184, "NO HOIST", "small", "middle", fit=(x + 14, x + w - 14))
+
+        # Rule + ISA instruction strip
+        fig.text(x + w / 2, 240, c["rule"], "name", "middle", fit=(x + 12, x + w - 12))
+        fig.rect(x + 10, 252, w - 20, 48, "card", r=6)
+        fig.text(x + w / 2, 271, c["x86"], "small", "middle", fit=(x + 12, x + w - 12))
+        fig.text(x + w / 2, 290, c["arm"], "small", "middle", fit=(x + 12, x + w - 12))
+
+    # Bottom handshake strip: Release -> Acquire synchronizes-with
+    fig.rect(20, 324, 760, 58, "c-amber", r=10)
+    fig.text(400, 341, "Release-Acquire Handshake: How Two Cores Publish Data Safely Without SeqCst", "name", "middle")
+    fig.rect(34, 350, 286, 24, "m-green", r=5)
+    fig.text(177, 366, "Core 0: data=42; ready.store(1, Release)", "small", "middle", fit=(38, 316))
+    fig.rect(468, 350, 298, 24, "m-blue", r=5)
+    fig.text(617, 366, "Core 1: while !ready.load(Acquire){}; read(data)", "small", "middle", fit=(472, 762))
+    fig.wire([(324, 362), (464, 362)], "amber", width=2.4)
+    fig.text(394, 358, "synchronizes-with", "small", "middle", fit=(326, 462))
+
+    fig.save([
+        "Acquire acts as a one-way floor (later reads cannot hoist above it); Release acts as a one-way ceiling (prior writes cannot sink below it); SeqCst imposes both walls plus a Store-Buffer drain.",
+        "On x86-64 TSO, Acquire and Release compile to plain MOV instructions, whereas ARM64 emits explicit LDAR and STLR barriers.",
     ])
 
 
