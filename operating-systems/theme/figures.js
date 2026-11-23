@@ -565,7 +565,70 @@
     textNodes.forEach(function (tNode) { linkTextNode(tNode, null); });
   }
 
+  // 4. Thoughtful, OS-domain-accurate Material Design SVG icons for chapter h2 sections
+  var OS_ICONS = {
+    cpu: '<path d="M9 2v2H7a2 2 0 0 0-2 2v2H3v2h2v4H3v2h2v2a2 2 0 0 0 2 2h2v2h2v-2h2v2h2v-2h2a2 2 0 0 0 2-2v-2h2v-2h-2v-4h2V8h-2V6a2 2 0 0 0-2-2h-2V2h-2v2h-2V2H9zm0 6h6v8H9V8z"/>',
+    cache: '<path d="M19 8l-4 4h3c0 3.31-2.69 6-6 6-1.01 0-1.97-.25-2.8-.7l-1.46 1.46C8.97 19.54 10.43 20 12 20c4.42 0 8-3.58 8-8h3l-4-4zM6 12c0-3.31 2.69-6 6-6 1.01 0 1.97.25 2.8.7l1.46-1.46C15.03 4.46 13.57 4 12 4c-4.42 0-8 3.58-8 8H1l4 4 4-4H6z"/>',
+    layers: '<path d="M11.99 18.54l-7.37-5.73L3 14.07l9 7 9-7-1.63-1.27-7.38 5.74zM12 16l7.36-5.73L21 9l-9-7-9 7 1.63 1.27L12 16z"/>',
+    heap: '<path d="M3 5v14h18V5H3zm4 12H5v-4h2v4zm0-6H5V7h2v4zm6 6H9v-4h4v4zm0-6H9V7h4v4zm6 6h-4v-4h4v4zm0-6h-4V7h4v4z"/>',
+    schedule: '<path d="M11.99 2C6.47 2 2 6.48 2 12s4.47 10 9.99 10C17.52 22 22 17.52 22 12S17.52 2 11.99 2zM12 20c-4.42 0-8-3.58-8-8s3.58-8 8-8 8 3.58 8 8-3.58 8-8 8zm.5-13H11v6l5.25 3.15.75-1.23-4.5-2.67V7z"/>',
+    lock: '<path d="M18 8h-1V6c0-2.76-2.24-5-5-5S7 3.24 7 6v2H6c-1.1 0-2 .9-2 2v10c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V10c0-1.1-.9-2-2-2zm-6 9c-1.1 0-2-.9-2-2s.9-2 2-2 2 .9 2 2-.9 2-2 2zm3.1-9H8.9V6c0-1.71 1.39-3.1 3.1-3.1 1.71 0 3.1 1.39 3.1 3.1v2z"/>',
+    threads: '<path d="M16 11c1.66 0 2.99-1.34 2.99-3S17.66 5 16 5c-1.66 0-3 1.34-3 3s1.34 3 3 3zm-8 0c1.66 0 2.99-1.34 2.99-3S9.66 5 8 5C6.34 5 5 6.34 5 8s1.34 3 3 3zm0 2c-2.33 0-7 1.17-7 3.5V19h14v-2.5c0-2.33-4.67-3.5-7-3.5zm8 0c-.29 0-.62.02-.97.05 1.16.84 1.97 1.97 1.97 3.45V19h6v-2.5c0-2.33-4.67-3.5-7-3.5z"/>',
+    fork: '<path d="M14 4l2.29 2.29-2.88 2.88 1.42 1.42 2.88-2.88L20 10V4h-6zm-4 0H4v6l2.29-2.29 4.71 4.7V20h2v-8.41l-5.29-5.3L10 4z"/>',
+    signal: '<path d="M12 22c1.1 0 2-.9 2-2h-4c0 1.1.9 2 2 2zm6-6v-5c0-3.07-1.63-5.64-4.5-6.32V4c0-.83-.67-1.5-1.5-1.5s-1.5.67-1.5 1.5v.68C7.64 5.36 6 7.92 6 11v5l-2 2v1h16v-1l-2-2z"/>',
+    syscall: '<path d="M20 4H4a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h16c1.1 0 2-.9 2-2V6a2 2 0 0 0-2-2zm0 14H4V8h16v10zm-2-1h-6v-2h6v2zM7.5 17l-1.41-1.41L8.67 13l-2.59-2.59L7.5 9l4 4-4 4z"/>',
+    ipc: '<path d="M9.01 14H2v2h7.01v3L13 15l-3.99-4v3zm5.98-1v-3H22V8h-7.01V5L11 9l3.99 4z"/>',
+    folder: '<path d="M10 4H4c-1.1 0-1.99.9-1.99 2L2 18c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V8c0-1.1-.9-2-2-2h-8l-2-2z"/>',
+    storage: '<path d="M2 20h20v-4H2v4zm2-3h2v2H4v-2zM2 4v4h20V4H2zm4 3H4V5h2v2zm-4 7h20v-4H2v4zm2-3h2v2H4v-2z"/>',
+    eventloop: '<path d="M12 6v3l4-4-4-4v3c-4.42 0-8 3.58-8 8 0 1.57.46 3.03 1.24 4.26L6.7 14.8c-.45-.83-.7-1.79-.7-2.8 0-3.31 2.69-6 6-6zm6.76 1.74L17.3 9.2c.44.84.7 1.79.7 2.8 0 3.31-2.69 6-6 6v-3l-4 4 4 4v-3c4.42 0 8-3.58 8-8 0-1.57-.46-3.03-1.24-4.26z"/>',
+    network: '<path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-1 17.93c-3.95-.49-7-3.85-7-7.93 0-.62.08-1.21.21-1.79L9 15v1c0 1.1.9 2 2 2v1.93zm6.9-2.54c-.26-.81-1-1.39-1.9-1.39h-1v-3c0-.55-.45-1-1-1H8v-2h2c.55 0 1-.45 1-1V7h2c1.1 0 2-.9 2-2v-.41c2.93 1.19 5 4.06 5 7.41 0 2.08-.8 3.97-2.1 5.39z"/>',
+    daemon: '<path d="M19.14 12.94c.04-.31.06-.63.06-.94 0-.31-.02-.63-.06-.94l2.03-1.58a.49.49 0 0 0 .12-.61l-1.92-3.32a.49.49 0 0 0-.59-.22l-2.39.96a7.03 7.03 0 0 0-1.62-.94l-.36-2.54a.48.48 0 0 0-.48-.41h-3.84a.48.48 0 0 0-.48.41l-.36 2.54c-.59.24-1.13.57-1.62.94l-2.39-.96a.49.49 0 0 0-.59.22L2.74 8.87a.48.48 0 0 0 .12.61l2.03 1.58c-.05.31-.07.63-.07.94s.02.63.07.94l-2.03 1.58a.49.49 0 0 0-.12.61l1.92 3.32c.12.22.37.29.59.22l2.39-.96c.5.38 1.03.7 1.62.94l.36 2.54c.05.24.24.41.48.41h3.84c.24 0 .44-.17.48-.41l.36-2.54c.59-.24 1.13-.56 1.62-.94l2.39.96c.22.08.47 0 .59-.22l1.92-3.32c.12-.22.07-.47-.12-.61l-2.01-1.58zM12 15.6A3.6 3.6 0 1 1 12 8.4a3.6 3.6 0 0 1 0 7.2z"/>',
+    grid: '<path d="M3 3v8h8V3H3zm6 6H5V5h4v4zm-6 4v8h8v-8H3zm6 6H5v-4h4v4zm4-16v8h8V3h-8zm6 6h-4V5h4v4zm-6 4v8h8v-8h-8zm6 6h-4v-4h4v4z"/>',
+    speed: '<path d="M20.38 8.57l-1.23 1.85a8 8 0 0 1-.22 7.58H5.07A8 8 0 0 1 15.58 6.85l1.85-1.23A10 10 0 0 0 3.35 19a2 2 0 0 0 1.72 1h13.85a2 2 0 0 0 1.74-1 10 10 0 0 0-.27-10.44zm-9.79 6.84a2 2 0 0 0 2.83 0l5.66-8.49-8.49 5.66a2 2 0 0 0 0 2.83z"/>',
+    quiz: '<path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm-5 14H7v-2h7v2zm3-4H7v-2h10v2zm0-4H7V7h10v2z"/>'
+  };
+
+  function pickOSIcon(headingText) {
+    var t = (headingText || '').toLowerCase();
+    if (/interview|problem|ring buffer|lru|arena|bounded|pool|barrier|mini/.test(t)) return OS_ICONS.quiz;
+    if (/cache|tlb|mesi|coheren|false sharing/.test(t)) return OS_ICONS.cache;
+    if (/virtual memory|paging|page table|address space|mmu|fault|mmap/.test(t)) return OS_ICONS.layers;
+    if (/alloc|heap|free|slab|bump|fragment|garbage/.test(t)) return OS_ICONS.heap;
+    if (/sched|cfs|eevdf|mlfq|quantum|priority|turnaround|fair/.test(t)) return OS_ICONS.schedule;
+    if (/mutex|lock|deadlock|atomic|order|futex|seqlock|sync|race|guard|seccomp|privilege/.test(t)) return OS_ICONS.lock;
+    if (/thread|concurren|tls/.test(t)) return OS_ICONS.threads;
+    if (/process|fork|exec|wait|zombie|lifecycle|limited direct/.test(t)) return OS_ICONS.fork;
+    if (/signal|interrupt|apic|gic|trap|exception|sig/.test(t)) return OS_ICONS.signal;
+    if (/syscall|system call|abi|vdso|buffer|stdio|boundary/.test(t)) return OS_ICONS.syscall;
+    if (/pipe|ipc|shared memory|shm|unix domain|scm_rights/.test(t)) return OS_ICONS.ipc;
+    if (/file|vfs|inode|directory|link|path|ext4|ffs/.test(t)) return OS_ICONS.folder;
+    if (/journal|crash|durab|fsync|ssd|nvme|flash|ftl|persist|storage|disk|raid|cow/.test(t)) return OS_ICONS.storage;
+    if (/event loop|epoll|kqueue|io_uring|select|poll|non-blocking|c10k|c10m|multiplex/.test(t)) return OS_ICONS.eventloop;
+    if (/net|tcp|udp|socket|packet|congestion|nagle|zero-copy|http|dns|nic/.test(t)) return OS_ICONS.network;
+    if (/daemon|systemd|session|tty|supervisor|reaper|launchd/.test(t)) return OS_ICONS.daemon;
+    if (/virt|hypervisor|vm|container|namespace|cgroup|ept|vt-x|virtio/.test(t)) return OS_ICONS.storage;
+    if (/numa|smp|multiprocessor|rcu|work-stealing|sqms|mqms|multi-core/.test(t)) return OS_ICONS.grid;
+    if (/perf|bench|flame|ebpf|pmu|profile|latency|queueing|little|use method|top-down/.test(t)) return OS_ICONS.speed;
+    return OS_ICONS.cpu;
+  }
+
+  function initMaterialSectionIcons() {
+    var path = window.location.pathname || '';
+    if (/\/(toc|cover)\.html$/.test(path)) return;
+    var main = document.querySelector('.content main');
+    if (!main) return;
+    main.querySelectorAll('h2').forEach(function (h) {
+      if (h.querySelector('.md-sec-icon')) return;
+      var span = document.createElement('span');
+      span.className = 'md-sec-icon';
+      span.setAttribute('aria-hidden', 'true');
+      span.innerHTML = '<svg viewBox="0 0 24 24">' + pickOSIcon(h.textContent) + '</svg>';
+      h.insertBefore(span, h.firstChild);
+    });
+  }
+
   function initAll() {
+    initMaterialSectionIcons();
     initMaterialCodeTabs();
     initGlossaryLinks();
   }
