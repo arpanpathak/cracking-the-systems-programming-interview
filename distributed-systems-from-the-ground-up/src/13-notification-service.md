@@ -33,7 +33,7 @@ We organize the notification service around four actors: upstream product servic
 
 | Actor | Operation | Concrete Scenario |
 | :--- | :--- | :--- |
-| **Product Service** | Submit notification (`POST /v1/notify` with `dedup_id` and `priority`) | Trigger a `P0` login OTP SMS within `2 s`, a `P1` order-shipped email, or a `P3` promotional push campaign |
+| **Product Service** | Submit notification (`POST /v1/notifications` with `dedup_id` and `priority`) | Trigger a `P0` login OTP SMS within `2 s`, a `P1` order-shipped email, or a `P3` promotional push campaign |
 | **End User** | Configure channel opt-outs, locale, and quiet hours (`PUT /v1/users/{id}/preferences`) | Mute promotional pushes between `22:00` and `08:00` local time while keeping security alerts enabled |
 | **External Provider** | Accept outbound API sends; emit asynchronous delivery/bounce webhooks | Apple APNs, Google FCM, Amazon SES, and Twilio report delivered, bounced, or unregistered device tokens |
 | **Platform Operator** | Author versioned i18n templates; tune provider weights and circuit thresholds | Shift SMS traffic from degraded primary carrier to backup carrier without redeploying application services |
@@ -61,7 +61,7 @@ We organize the notification service around four actors: upstream product servic
 ### Non-Goals and Scope Boundaries
 
 - **Guaranteed human readership:** A provider returning `200 OK` confirms only handoff to the carrier, never that a user saw or read the message. Critical incident escalation (such as on-call paging) requires explicit human acknowledgment loops with automated escalation timers outside this service.
-- **Synchronous delivery confirmation in `POST /v1/notify`:** Callers receive `202 Accepted` and poll `GET /v1/notifications/{id}` or subscribe to status events rather than holding open HTTP connections while SMTP or SMS networks negotiate.
+- **Synchronous delivery confirmation in `POST /v1/notifications`:** Callers receive `202 Accepted` and poll `GET /v1/notifications/{id}` or subscribe to status events rather than holding open HTTP connections while SMTP or SMS networks negotiate.
 - **Unthrottled instant campaign blasts:** Dispatching `10,000,000` push notifications in `10 seconds` violates provider quotas and triggers a self-inflicted traffic storm when millions of users open the app simultaneously. Bulk campaigns are always paced over minutes or hours.
 
 ### Back-of-the-Envelope Capacity Bounds
@@ -78,12 +78,12 @@ We organize the notification service around four actors: upstream product servic
 
 ### Asynchronous Ingestion and Preference Contracts
 
-**Submit notification (`POST /v1/notify`):**
+**Submit notification (`POST /v1/notifications`):**
 
 Returning `202 Accepted` signals durable intake without waiting for third-party providers. If the caller retries with the identical `Idempotency-Key`, the API returns `200 OK` with the existing `notification_id` and schedules no duplicate send.
 
 ```http
-POST /v1/notify HTTP/2
+POST /v1/notifications HTTP/2
 Host: notify.internal
 Content-Type: application/json
 Idempotency-Key: order-7-shipped
@@ -251,7 +251,7 @@ Accepting a `200 OK` from SES, APNs, or Twilio means only that the provider acce
 | :--- | :--- | :--- |
 | **Primary SMS Carrier Outage** | Consecutive timeouts / `503` on SMS sender pool | Circuit breaker opens after `5` consecutive failures; `P0` SMS pool fails over immediately to pre-warmed secondary SMS carrier |
 | **10M-User Marketing Campaign Launch** | `P3` queue depth surges to millions | Dedicated `P0`/`P1` topics and sender bulkheads keep OTP latency `< 3 s`; `P3` campaign paces smoothly over `60 minutes` |
-| **Caller Retries `POST /v1/notify` After Timeout** | Duplicate HTTP requests arrive with identical `Idempotency-Key` | Atomic `SETNX` / outbox uniqueness constraint returns existing `notification_id` (`200 OK`) and emits zero duplicate sends |
+| **Caller Retries `POST /v1/notifications` After Timeout** | Duplicate HTTP requests arrive with identical `Idempotency-Key` | Atomic `SETNX` / outbox uniqueness constraint returns existing `notification_id` (`200 OK`) and emits zero duplicate sends |
 | **High Email Hard-Bounce Spike** | SES bounce rate rises toward `5%` suspension threshold | Webhook ingestor auto-suppresses bounced addresses immediately; alert triggers at `2%` bounce rate to halt defective list uploads |
 | **Push Device Token Churn (Uninstalled Apps)** | APNs `410` / FCM `UNREGISTERED` errors on push sends | Senders treat as permanent failure (zero retries) and deactivate stale device token in preference store asynchronously |
 | **Stale `P0` OTP Delayed by Prolonged Outage** | OTP arrives `15 minutes` late, confusing user | Every message carries a business `valid_until` deadline; senders drop expired OTPs cleanly instead of delivering stale codes |
@@ -312,6 +312,31 @@ Every core delivery invariant appears in the five-line trace:
 | **Suppression List** | A durable opt-out and hard-bounce registry preventing further sends to unsubscribed users, invalid addresses, or uninstalled device tokens. |
 | **Quiet Hours (Do Not Disturb)** | User-configured local time windows during which non-critical notifications are deferred until morning while `P0` security alerts still pass through. |
 | **Webhook Receipt** | An asynchronous HTTP callback sent by an external provider reporting downstream delivery, bounce, or spam complaint events. |
+
+### End-to-End Request Lifecycle and Hop-by-Hop Latency Budget
+
+A high-priority `P0` transactional notification (such as a two-factor authentication code) bypasses promotional queues entirely, completing ingestion, policy validation, and external provider handoff in under `350 ms` at `p99`.
+
+| Hop | Boundary | Protocol and Operation | Typical `p50` | Tail `p99` |
+| :--- | :--- | :--- | :--- | :--- |
+| 1 | Upstream Producer to Notification API | TLS HTTP/2 `POST /v1/notifications` returning `202 Accepted` with `message_id` | `1.50 ms` | `4.50 ms` |
+| 2 | Ingestion Service to Priority Topic (`P0`) | Durable publish to dedicated Kafka `P0` lane (`acks = all`) | `3.20 ms` | `11.00 ms` |
+| 3 | Policy, Preference, and Suppression Lookup | Regional Redis cache read for opt-out list, quiet hours, and rate caps | `0.90 ms` | `3.50 ms` |
+| 4 | Template Render and Channel Worker Handoff | In-memory i18n template substitution and token-bucket provider pacing | `1.10 ms` | `4.00 ms` |
+| 5 | Channel Worker to External Provider (APNs/FCM/SMS) | Persistent multiplexed HTTP/2 TLS stream to external gateway | `65.00 ms` | `290.00 ms` |
+| **Total** | **End-to-End `P0` Provider Acceptance** | **External gateway dominates tail latency; internal path stays under 25 ms** | **`71.70 ms`** | **`313.00 ms`** |
+
+### Production Case Studies and Open-Source Comparisons
+
+- **Apple APNs (HTTP/2 Provider API):** APNs requires persistent, multiplexed HTTP/2 connections authenticated via JWT tokens or TLS certificates, supporting hundreds of concurrent in-flight streams per TCP connection to avoid per-send TLS handshake overhead. APNs returns synchronous per-stream status codes (`200 OK`, `410 Unregistered`, `429 Too Many Requests`), enabling workers to purge stale device tokens immediately without waiting for asynchronous feedback queues.
+- **Firebase Cloud Messaging (FCM HTTP v1):** FCM routes Android and cross-platform push payloads over OAuth 2.0-authenticated HTTP/2 connections with per-project quota buckets and topic fan-out primitives. Production senders maintain connection pools per region, honor `Retry-After` headers on `429` responses, and prune registration tokens that return `UNREGISTERED` or remain inactive beyond `270` days.
+- **Slack and Airbnb Priority Pipelines:** Both Slack and Airbnb isolate real-time transactional notifications (`P0` mentions, OTPs, booking confirmations) from bulk digest and marketing campaigns (`P2`/`P3`) using dedicated Kafka topics, separate worker autoscaling groups, and a centralized user-fatigue budget service. Enforcing global per-user daily caps and quiet-hour deferral centrally prevents independent product teams from saturating provider quotas or degrading user trust.
+
+<div class="callout keyidea"><span class="label">Key idea</span>Physical lane isolation (separate topics, worker pools, and provider connection pools per priority class) ensures that a `10`-million-message marketing blast cannot add even one millisecond of head-of-line queuing delay to a `P0` security alert.</div>
+
+<div class="callout experiment"><span class="label">Experiment</span>Simulate an upstream SMS provider degrading to `50%` HTTP `503` failures while injecting `1,000` req/s. Compare fixed-interval retries against full-jitter exponential backoff paired with a `10%` global retry budget, measuring queue depth and recovery time after the provider stabilizes.</div>
+
+<div class="callout caution"><span class="label">Common pitfall</span>Treating HTTP `200 OK` from an SMS or email gateway as proof of end-user delivery hides carrier filtering, hard bounces, and uninstalled device tokens. Always ingest asynchronous provider webhooks to update delivery state and populate the suppression list automatically.</div>
 
 ### References
 

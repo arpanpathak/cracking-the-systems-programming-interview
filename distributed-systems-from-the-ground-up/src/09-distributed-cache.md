@@ -332,6 +332,31 @@ Holding `25%` of the keyspace (`25,000` keys) absorbs `72.7%` of all requests, c
 | **Cache Avalanche** | A sudden fleet-wide collapse in hit ratio caused by synchronized TTL expiry or shard failure; mitigated by TTL jitter, gutter pools, and origin load shedding. |
 | **Gutter Pool** | A small standby cluster that absorbs misses for a failed cache shard with short TTLs, protecting the database without overloading healthy cache primaries. |
 
+### End-to-End Request Lifecycle and Hop-by-Hop Latency Budget
+
+A cache-aside read from an application service resolves inside `1.5 ms` on a regional cache hit, whereas a cold miss adds a singleflight-coalesced database round trip and an asynchronous cache fill.
+
+| Hop | Boundary | Protocol and Operation | Hit `p99` | Miss `p99` |
+| :--- | :--- | :--- | :--- | :--- |
+| 1 | Client Edge to API Gateway / L7 LB | TLS 1.3 HTTP/2 request routed to local-AZ stateless service | `0.60 ms` | `0.60 ms` |
+| 2 | Stateless Service to Local L1 Process Cache | In-process lock-free lookup (small hot-key `W-TinyLFU` cache) | `0.01 ms` | `0.01 ms` |
+| 3 | Service to Regional Cache Proxy (`mcrouter` / Envoy) | Persistent TCP or UDP connection with consistent-hash shard selection | `0.25 ms` | `0.25 ms` |
+| 4 | Cache Shard Lookup (`GET` with Lease Token) | In-memory hash table probe; returns payload on hit or 64-bit lease token on miss | `0.45 ms` | `0.50 ms` |
+| 5 | Origin Store Read and Lease-Checked `SET` (Miss Path) | Singleflight-coalesced SQL/NoSQL read followed by conditional `SET` | `0 ms` | `12.50 ms` |
+| **Total** | **End-to-End Read Path (Intra-Region)** | **Sub-2 ms on regional hit; bounded origin fan-out on miss** | **`1.31 ms`** | **`13.86 ms`** |
+
+### Production Case Studies and Open-Source Comparisons
+
+- **Meta Memcache (Regional Pools and Gutter):** Meta scales Memcached to billions of requests per second by organizing servers into dedicated regional pools (for example, separating small high-churn keys from large low-churn objects) behind `mcrouter` proxies. When a cache server fails, clients redirect misses to a small standby Gutter pool occupying roughly `1%` of cluster capacity with short TTLs; Gutter absorbs up to `99%` of failure-induced database load without mutating the consistent-hash ring or triggering cache-invalidation storms.
+- **Dragonfly:** Dragonfly replaces single-threaded event loops with a shared-nothing, thread-per-core architecture built on Linux `io_uring` and a custom `Dash` hash table. By pinning each keyspace partition to one CPU core without global locks, a single `64`-vCPU Dragonfly instance sustains over `3.8` million ops/s and up to `25x` higher throughput than a single-threaded Redis process while maintaining wire-protocol compatibility with Redis and Memcached clients.
+- **Redis Cluster:** Redis Cluster partitions the keyspace into `16,384` deterministic hash slots (`CRC16(key) mod 16384`) distributed across primary-replica shard groups without an external coordinator. Clients cache the slot-to-node topology and redirect directly upon receiving `MOVED` or `ASK` responses, achieving sub-millisecond reads at scale while requiring hash tags (`{user:42}`) whenever multi-key commands must co-locate on one shard.
+
+<div class="callout keyidea"><span class="label">Key idea</span>Cache leases solve two distinct production hazards with one 64-bit token: throttling concurrent thundering-herd misses to a single origin query and rejecting stale `SET` operations invalidated by an intervening `DELETE`.</div>
+
+<div class="callout experiment"><span class="label">Experiment</span>Expire a single hot key receiving `5,000` req/s under three configurations: raw cache-aside, singleflight coalescing, and probabilistic early expiration (`XFetch`). Measure origin database QPS spikes and `p99` read latency across all three runs.</div>
+
+<div class="callout caution"><span class="label">Common pitfall</span>Assigning identical fixed TTLs during bulk cache warming creates a synchronized expiration wave that turns a minor traffic increase into a fleet-wide cache avalanche. Always apply `10%` to `20%` random TTL jitter and enforce per-key singleflight coalescing.</div>
+
 ### References
 
 - R. Nishtala, H. Fugal, S. Grimm, M. Kwiatkowski, H. Lee, H. C. Li, R. McElroy, M. Paleczny, D. Peek, P. Saab, D. Stafford, T. Tung, and V. Venkataramani, "Scaling Memcache at Facebook", USENIX NSDI, 2013.

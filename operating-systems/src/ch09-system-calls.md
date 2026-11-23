@@ -1,5 +1,7 @@
 # 9. The Kernel Boundary and the Cost of System Calls
 
+<img class="plate" src="art/ch09-plate.svg" alt="Chapter 09: System Calls — SYSCALL/SYSRET privilege trap gate and MSR dispatch">
+
 The system call represents the formal interface between user-mode application logic and the privileged operations of the operating system. It serves as the single, controlled gateway through which a process requests services, such as file **Input/Output (`I/O`)**, process management, or network communication, that require hardware access or kernel-level authority.
 
 ## 9.1 The Mechanics of the System Call Interface

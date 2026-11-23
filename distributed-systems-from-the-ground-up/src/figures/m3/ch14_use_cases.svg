@@ -2,7 +2,7 @@
   <style>
     text { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif; fill: #1B1F27; }
     .paper { fill: #FFFFFF; }
-    .frame { fill: #FFFFFF; stroke: #DCE0E7; stroke-width: 1; }
+    .frame { fill: #FFFFFF; stroke: #DCE0E7; stroke-width: 1.2; }
     .card { fill: #FFFFFF; }
     .hair { stroke: #DCE0E7; stroke-width: 1.2; fill: none; }
     .muted { fill: #566070; }
@@ -115,34 +115,38 @@
 <rect x="382.0" y="380.0" width="26.0" height="26.0" rx="8" class="c-red"/>
 <g transform="translate(386.9 384.9) scale(0.672)" class="a-red"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zM4 12c0-4.42 3.58-8 8-8 1.85 0 3.55.63 4.9 1.69L5.69 16.9A7.902 7.902 0 0 1 4 12zm8 8c-1.85 0-3.55-.63-4.9-1.69L18.31 7.1A7.902 7.902 0 0 1 20 12c0 4.42-3.58 8-8 8z"/></g>
 <text x="420.0" y="389.4" class="name" data-fit="420.0,854.0">Quarantine Abusive Link</text>
-<text x="420.0" y="406.4" class="mono" data-fit="420.0,854.0">POST /v1/admin/block/{code}</text>
-<rect x="32.0" y="14.0" width="248.0" height="84.0" rx="12" class="card" filter="url(#lift)"/>
-<rect x="46.0" y="42.0" width="28.0" height="28.0" rx="8" class="c-blue"/>
-<g transform="translate(51.3 47.3) scale(0.723)" class="a-blue"><path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v1c0 .55.45 1 1 1h14c.55 0 1-.45 1-1v-1c0-2.66-5.33-4-8-4z"/></g>
-<text x="86.0" y="52.4" class="name" data-fit="86.0,268.0">Link Author</text>
-<text x="86.0" y="69.5" class="sub" data-fit="86.0,268.0">Web console &amp; API clients</text>
-<rect x="32.0" y="186.0" width="248.0" height="84.0" rx="12" class="card" filter="url(#lift)"/>
-<rect x="46.0" y="214.0" width="28.0" height="28.0" rx="8" class="c-teal"/>
-<g transform="translate(51.3 219.3) scale(0.723)" class="a-teal"><path d="M20 18c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2H4c-1.1 0-2 .9-2 2v10c0 1.1.9 2 2 2H1c-.55 0-1 .45-1 1s.45 1 1 1h22c.55 0 1-.45 1-1s-.45-1-1-1h-3zM5 6h14c.55 0 1 .45 1 1v8c0 .55-.45 1-1 1H5c-.55 0-1-.45-1-1V7c0-.55.45-1 1-1z"/></g>
-<text x="86.0" y="224.4" class="name" data-fit="86.0,268.0">Link Visitor</text>
-<text x="86.0" y="241.5" class="sub" data-fit="86.0,268.0">Browsers &amp; mobile apps</text>
-<rect x="32.0" y="358.0" width="248.0" height="84.0" rx="12" class="card" filter="url(#lift)"/>
-<rect x="46.0" y="386.0" width="28.0" height="28.0" rx="8" class="c-purple"/>
-<g transform="translate(51.3 391.3) scale(0.723)" class="a-purple"><path d="m11.3 2.26-6 2.25C4.52 4.81 4 5.55 4 6.39v4.7c0 4.83 3.13 9.37 7.43 10.75.37.12.77.12 1.14 0 4.3-1.38 7.43-5.91 7.43-10.75v-4.7a2 2 0 0 0-1.3-1.87l-6-2.25c-.45-.18-.95-.18-1.4-.01z"/></g>
-<text x="86.0" y="396.4" class="name" data-fit="86.0,268.0">Trust &amp; Analytics</text>
-<text x="86.0" y="413.5" class="sub" data-fit="86.0,268.0">Abuse filter &amp; click jobs</text>
+<text x="420.0" y="406.4" class="mono" data-fit="420.0,854.0">POST /v1/links/{code}:block</text>
+<rect x="32.0" y="189.3" width="248.0" height="62.0" rx="12" class="card" filter="url(#lift)"/>
+<rect x="46.0" y="206.3" width="28.0" height="28.0" rx="8" class="c-blue"/>
+<g transform="translate(51.3 211.7) scale(0.723)" class="a-blue"><path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v1c0 .55.45 1 1 1h14c.55 0 1-.45 1-1v-1c0-2.66-5.33-4-8-4z"/></g>
+<text x="86.0" y="216.7" class="name" data-fit="86.0,268.0">Link Author</text>
+<text x="86.0" y="233.9" class="sub" data-fit="86.0,268.0">Web console &amp; API clients</text>
+<rect x="32.0" y="261.3" width="248.0" height="62.0" rx="12" class="card" filter="url(#lift)"/>
+<rect x="46.0" y="278.3" width="28.0" height="28.0" rx="8" class="c-teal"/>
+<g transform="translate(51.3 283.7) scale(0.723)" class="a-teal"><path d="M20 18c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2H4c-1.1 0-2 .9-2 2v10c0 1.1.9 2 2 2H1c-.55 0-1 .45-1 1s.45 1 1 1h22c.55 0 1-.45 1-1s-.45-1-1-1h-3zM5 6h14c.55 0 1 .45 1 1v8c0 .55-.45 1-1 1H5c-.55 0-1-.45-1-1V7c0-.55.45-1 1-1z"/></g>
+<text x="86.0" y="288.7" class="name" data-fit="86.0,268.0">Link Visitor</text>
+<text x="86.0" y="305.9" class="sub" data-fit="86.0,268.0">Browsers &amp; mobile apps</text>
+<rect x="32.0" y="333.3" width="248.0" height="62.0" rx="12" class="card" filter="url(#lift)"/>
+<rect x="46.0" y="350.3" width="28.0" height="28.0" rx="8" class="c-purple"/>
+<g transform="translate(51.3 355.7) scale(0.723)" class="a-purple"><path d="m11.3 2.26-6 2.25C4.52 4.81 4 5.55 4 6.39v4.7c0 4.83 3.13 9.37 7.43 10.75.37.12.77.12 1.14 0 4.3-1.38 7.43-5.91 7.43-10.75v-4.7a2 2 0 0 0-1.3-1.87l-6-2.25c-.45-.18-.95-.18-1.4-.01z"/></g>
+<text x="86.0" y="360.7" class="name" data-fit="86.0,268.0">Trust &amp; Analytics</text>
+<text x="86.0" y="377.9" class="sub" data-fit="86.0,268.0">Abuse filter &amp; click jobs</text>
+<path d="M280.0,220.3 L324.0,220.3" class="w-blue" stroke-width="1.9"/>
+<path d="M324.0,97.0 L324.0,319.0" class="w-blue" stroke-width="1.9"/>
 <polygon points="368.0,97.0 358.5,101.0 361.2,97.0 358.5,93.0" class="a-blue"/>
-<path d="M280.0,56.0 L289.0,56.0 Q296.0,56.0 296.0,63.0 L296.0,90.0 Q296.0,97.0 303.0,97.0 L361.4,97.0" class="w-blue" stroke-width="1.8"/>
+<path d="M324.0,97.0 L361.4,97.0" class="w-blue" stroke-width="1.9"/>
 <polygon points="368.0,245.0 358.5,249.0 361.2,245.0 358.5,241.0" class="a-blue"/>
-<path d="M280.0,56.0 L289.0,56.0 Q296.0,56.0 296.0,63.0 L296.0,238.0 Q296.0,245.0 303.0,245.0 L361.4,245.0" class="w-blue" stroke-width="1.8"/>
+<path d="M324.0,245.0 L361.4,245.0" class="w-blue" stroke-width="1.9"/>
 <polygon points="368.0,319.0 358.5,323.0 361.2,319.0 358.5,315.0" class="a-blue"/>
-<path d="M280.0,56.0 L289.0,56.0 Q296.0,56.0 296.0,63.0 L296.0,312.0 Q296.0,319.0 303.0,319.0 L361.4,319.0" class="w-blue" stroke-width="1.8"/>
+<path d="M324.0,319.0 L361.4,319.0" class="w-blue" stroke-width="1.9"/>
 <polygon points="368.0,171.0 358.5,175.0 361.2,171.0 358.5,167.0" class="a-teal"/>
-<path d="M280.0,228.0 L305.0,228.0 Q312.0,228.0 312.0,221.0 L312.0,178.0 Q312.0,171.0 319.0,171.0 L361.4,171.0" class="w-teal" stroke-width="1.8"/>
+<path d="M280.0,292.3 L317.0,292.3 Q324.0,292.3 324.0,285.3 L324.0,178.0 Q324.0,171.0 331.0,171.0 L361.4,171.0" class="w-teal" stroke-width="1.9"/>
+<path d="M280.0,364.3 L324.0,364.3" class="w-purple" stroke-width="1.9"/>
+<path d="M324.0,319.0 L324.0,393.0" class="w-purple" stroke-width="1.9"/>
 <polygon points="368.0,319.0 358.5,323.0 361.2,319.0 358.5,315.0" class="a-purple"/>
-<path d="M280.0,400.0 L321.0,400.0 Q328.0,400.0 328.0,393.0 L328.0,326.0 Q328.0,319.0 335.0,319.0 L361.4,319.0" class="w-purple" stroke-width="1.8"/>
+<path d="M324.0,319.0 L361.4,319.0" class="w-purple" stroke-width="1.9"/>
 <polygon points="368.0,393.0 358.5,397.0 361.2,393.0 358.5,389.0" class="a-purple"/>
-<path d="M280.0,400.0 L324.5,400.0 Q328.0,400.0 328.0,396.5 L328.0,396.5 Q328.0,393.0 331.5,393.0 L361.4,393.0" class="w-purple" stroke-width="1.8"/>
+<path d="M324.0,393.0 L361.4,393.0" class="w-purple" stroke-width="1.9"/>
 </g>
 <rect x="32" y="543" width="856" height="90" rx="12" class="c-gray"/>
 <g transform="translate(46 554) scale(0.833)" class="a-gray"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 15c-.55 0-1-.45-1-1v-4c0-.55.45-1 1-1s1 .45 1 1v4c0 .55-.45 1-1 1zm1-8h-2V7h2v2z"/></g>

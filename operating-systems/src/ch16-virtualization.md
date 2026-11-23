@@ -1,5 +1,7 @@
 # 16. Virtualization and Containerization
 
+<img class="plate" src="art/ch16-plate.svg" alt="Chapter 16: Virtualization — VMX hypervisor rings and container namespace isolation cells">
+
 Modern cloud infrastructure packs dozens of mutually untrusted customer workloads onto a single physical server while preserving the illusion that each tenant owns a dedicated machine. Systems engineers achieve this multi-tenancy through two distinct architectural mechanisms: **hardware Virtual Machines (`VM`s)**, which virtualize the physical processor and memory controller beneath complete guest kernels, and **containers**, which partition visibility and resource quotas inside a single shared host kernel.
 
 ## 16.1 Virtual Machines and Hypervisor Orchestration

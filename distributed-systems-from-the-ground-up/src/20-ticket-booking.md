@@ -34,7 +34,7 @@ Three external actor classes interact across the boundary of the ticket booking 
 | :--- | :--- | :--- |
 | **Ticket Buyer** | Join queue, inspect seat map (`GET /v1/shows/{id}/seats`), place timed hold (`POST /v1/shows/{id}/holds`), and confirm booking (`POST /v1/bookings`) | Wait in a virtual queue during a stadium concert drop, reserve two adjacent seats for 10 minutes, and complete checkout idempotently |
 | **Event Organizer** | Configure venue layout, seat pricing tiers, and admission pacing (`PUT /v1/shows/{id}/layout`) | Publish a 50,000-seat stadium manifest and throttle checkout ingress to 500 admitted buyers per second |
-| **Payment Processor** | Authorize, capture, refund, and deliver signed settlement webhooks (`POST /v1/webhooks/payment-settled`) | Confirm card capture asynchronously or execute an automated compensating refund if a seat lease expired |
+| **Payment Processor** | Authorize, capture, refund, and deliver signed settlement webhooks (`POST /v1/webhooks/payments`) | Confirm card capture asynchronously or execute an automated compensating refund if a seat lease expired |
 
 ### Functional Requirements
 
@@ -473,3 +473,35 @@ The observed transcript confirms four invariants on a three-seat hall with a 5-m
 - Stripe Engineering, "Designing Robust and Predictable APIs with Idempotency", 2017.
 - RFC 9110, *HTTP Semantics*, IETF, 2022 (status codes `409 Conflict` and `410 Gone`).
 - RFC 9457, *Problem Details for HTTP APIs*, IETF, 2023.
+
+## 20.9 End-to-End Request Lifecycle and Production Case Studies
+
+### Hop-by-Hop Request Lifecycle and Latency Budget
+
+During a high-demand concert on-sale, a buyer's seat reservation (`POST /v1/events/{id}/holds`) passes through an edge admission tier before touching the strongly consistent inventory database, keeping core hold-acquisition latency under `80 ms` even when millions of fans queue simultaneously.
+
+| Hop | Boundary Payload | Typical Latency Budget |
+| :--- | :--- | :--- |
+| **1. Buyer Browser to Edge Virtual Waiting Room** | HTTPS queue check-in issuing a randomized lottery position and polling until the edge mints a short-lived HMAC admission token | `15 to 30 ms` (edge PoP) |
+| **2. Edge CDN to L7 Booking API Gateway** | `POST /v1/events/{id}/holds` carrying `X-Admission-Token`, `Idempotency-Key`, and requested `seat_ids`; gateway verifies HMAC statelessly | `5 to 12 ms` |
+| **3. Booking Service to Seat-Map Read Replica / Cache** | Pre-checkout interactive map fetches (`GET /v1/events/{id}/seats`) served from a `1 to 2 s` cached projection to keep browse load off the primary | `4 to 10 ms` (browse path) |
+| **4. Booking Service to Inventory Primary (CAS Hold)** | Single conditional `UPDATE seats SET state = 'HELD', hold_id = $1, hold_expires_at = now() + interval '5 min' WHERE seat_id = $2 AND (state = 'AVAILABLE' OR hold_expires_at < now())` | `8 to 25 ms` (primary write) |
+| **5. Checkout Service to External PSP (Payment Phase)** | Off-database card authorization with the buyer's `hold_id` attached as metadata while the 5-minute lease ticks independently | `350 to 800 ms` (external) |
+| **6. Booking Service to Inventory Primary (Fenced Confirm)** | Conditional `UPDATE seats SET state = 'SOLD' WHERE seat_id = $1 AND hold_id = $2 AND state = 'HELD'`; zero rows updated triggers an idempotent refund saga | `8 to 20 ms` |
+
+### Production Case Studies and Open-Source Comparisons
+
+**Ticketmaster Virtual Waiting Room and Seat-Hold TTLs.** Ticketmaster absorbs flash-sale surges exceeding millions of concurrent fans by fronting venue on-sales with a Smart Queue virtual waiting room that authenticates accounts, scores bot telemetry before queue placement, and meters admitted buyers to match downstream inventory-shard capacity. Once admitted, seat selections acquire bounded `5 to 8 minute` checkout timers backed by conditional database leases; if a buyer abandons checkout or a payment callback arrives after expiry, the seat returns to the available pool automatically without manual intervention.
+
+**SeatGeek Inventory Aggregation and Real-Time Pricing.** SeatGeek operates both primary box-office ticketing (SeatGeek Enterprise) and a secondary resale marketplace, ingesting continuous listing updates from hundreds of partner feeds into a normalized section-and-row seat-map index. To prevent double-selling across primary and secondary channels, SeatGeek enforces atomic hold locks on the authoritative venue inventory service before rendering final checkout totals and relies on optimistic version checks to reject stale listing confirmations immediately.
+
+<div class="callout keyidea"><span class="label">Key idea</span> Separating browse-path seat-map reads from write-path conditional CAS holds keeps `99%` of flash-sale traffic on edge caches and read replicas while preserving strict single-buyer exclusivity on the primary inventory shard.</div>
+
+<div class="callout experiment"><span class="label">Experiment</span> In `code/bookingsim`, advance the simulated payment callback for `ada` from minute `7` to minute `4` (inside the 5-minute lease window) and re-run the trace. Observe how the fencing predicate (`hold_id` plus `state = 'HELD'`) confirms `ada` before expiry while rejecting late arrivals once `bob` acquires the reclaimed seat.</div>
+
+<div class="callout caution">
+<span class="label">Common pitfall</span>
+
+Relying solely on a background cron reaper to release expired seat holds creates a race window where stale `HELD` seats remain unbookable until the next sweep or get double-allocated during reaper lag. Embed the expiration predicate (`OR hold_expires_at < now()`) directly inside the atomic CAS `UPDATE` so expiration takes effect instantaneously at the exact microsecond the lease lapses.
+
+</div>

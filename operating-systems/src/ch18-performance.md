@@ -1,5 +1,7 @@
 # 18. Performance Analysis and Observability
 
+<img class="plate" src="art/ch18-plate.svg" alt="Chapter 18: Performance — CPU flame graph, eBPF probes, and p50/p99 latency histogram">
+
 Systems performance optimization is an empirical engineering discipline. Intuition about why a program is slow is routinely wrong on modern out-of-order superscalar processors with multi-level caches, hardware prefetchers, and complex kernel **Input/Output (`I/O`)** stacks. Rigorous diagnosis follows a closed scientific loop: characterize which physical resource bounds throughput or latency (execution pipeline, memory hierarchy, lock contention, storage, or network), instrument the live system with low-overhead observability tools, hypothesize a single structural change, and verify the improvement under controlled statistical measurements.
 
 ## 18.1 The Empirical Method and the Memory Latency Hierarchy

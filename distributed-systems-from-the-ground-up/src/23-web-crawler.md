@@ -345,6 +345,37 @@ The observed transcript confirms all three core crawler invariants across three 
 
 </div>
 
+### End-to-End Request Lifecycle and Hop-by-Hop Latency Budget
+
+A single crawl cycle spans frontier dequeue, politeness-gated HTTP retrieval, content deduplication, and durable archival; network RTT to external origin servers dominates the latency budget.
+
+| Hop | Component | Operation | P50 | P99 |
+| :--- | :--- | :--- | :--- | :--- |
+| 1 | Mercator Frontier | Pop ready host from min-heap and dequeue next canonical URL from per-host back queue | 0.4 ms | 2 ms |
+| 2 | Local DNS & `robots.txt` Cache | Resolve host IP and verify RFC 9309 allow/disallow rules from in-memory cache | 0.5 ms | 15 ms |
+| 3 | Async Fetcher Pool | HTTP/1.1 or HTTP/2 GET with connect/read timeouts and streaming body cap (2 MiB) | 120 ms | 1,800 ms |
+| 4 | Parser & Deduplicator | HTML link extraction, URL canonicalization, Bloom filter check, and 64-bit SimHash lookup | 2 ms | 12 ms |
+| 5 | Durable Object Store | Batch append compressed response payload into WARC segment and flush frontier WAL | 8 ms | 35 ms |
+
+### Production Case Studies and Open-Source Comparisons
+
+Googlebot popularized the Mercator two-stage frontier architecture, separating priority front queues (which rank crawl importance by PageRank and change frequency) from host-pinned back queues governed by a next-fetch min-heap so thousands of concurrent fetchers respect per-domain politeness delays. Common Crawl operates an open-source distributed pipeline built on Apache Nutch and StormCrawler, partitioning hosts consistently across workers and publishing monthly petabyte-scale WARC archives on object storage with strict `robots.txt` compliance. Whereas Apache Nutch traditionally executes MapReduce batch crawl cycles with high disk I/O between phases, StormCrawler and modern Rust async fetchers stream URLs continuously through in-memory politeness queues to sustain high link utilization without batch-boundary stalls.
+
+<div class="callout keyidea">
+<span class="label">Key idea</span>
+<p>Separating crawl priority from host politeness via Mercator front and back queues lets a distributed crawler maximize global throughput across millions of domains while guaranteeing at most one in-flight request per origin host.</p>
+</div>
+
+<div class="callout experiment">
+<span class="label">Experiment</span>
+<p>Execute <code>cargo run --release -p crawlsim</code> and inspect the timestamps for <code>news</code>, <code>calendar</code>, and <code>shop</code>. Notice how interleaved scheduling keeps the fetcher busy every tick while strictly enforcing the 2-second per-host cooldown and capping the infinite calendar trap at 4 pages.</p>
+</div>
+
+<div class="callout caution">
+<span class="label">Common pitfall</span>
+<p>Relying on an unbounded in-memory hash set for URL deduplication exhausts RAM within hours at web scale, while omitting per-host depth and page budgets lets dynamic calendar or faceted-search traps consume the entire crawl quota.</p>
+</div>
+
 ## 23.8 Terminology and References
 
 ### Engineering Glossary

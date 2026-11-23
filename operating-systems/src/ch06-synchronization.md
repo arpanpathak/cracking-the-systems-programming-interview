@@ -1,5 +1,7 @@
 # 6. Synchronization and Memory Ordering
 
+<img class="plate" src="art/ch06-plate.svg" alt="Chapter 06: Synchronization — atomic CAS and release-acquire memory barrier">
+
 As seen in Chapters 2 and 4, a non-atomic Read-Modify-Write expression (`counter++`) decomposes into three discrete machine instructions (load, increment, and store), creating an **atomicity gap** through which concurrent threads lose updates. Single-word atomic instructions eliminate lost updates on isolated scalar variables. Systems software, however, routinely mutates composite data structures (linked lists, circular buffers, page-table hierarchies, file descriptor tables, and allocator free lists) whose structural invariants span multiple machine words and cache lines.
 
 Preserving data integrity across concurrent threads requires enforcing two orthogonal properties:

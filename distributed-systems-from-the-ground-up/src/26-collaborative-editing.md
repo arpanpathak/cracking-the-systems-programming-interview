@@ -32,9 +32,9 @@ Three actor roles interact across the collaborative editing boundary (Figure 26-
 
 | Actor | Operation | Concrete Scenario |
 | :--- | :--- | :--- |
-| **Co-Author Browser** | Apply concurrent edits (`WS /v1/docs/{id}/ops`) and stream ephemeral presence | Two engineers edit separate paragraphs of a design doc while seeing each other's colored carets and selections move live |
+| **Co-Author Browser** | Apply concurrent edits (`WS /v1/documents/{id}/operations`) and stream ephemeral presence | Two engineers edit separate paragraphs of a design doc while seeing each other's colored carets and selections move live |
 | **Offline Mobile Editor** | Buffer local edits offline and reconcile on reconnect | A reviewer edits a document on a commuter train for 40 minutes, then exchanges a compact state vector on reconnect to merge missed remote ops |
-| **Document Admin** | Enforce sharing ACLs (`PATCH /v1/docs/{id}/permissions`) and restore historical snapshots | An owner revokes write access from a former contractor mid-session and rolls a corrupted section back to revision `4400` |
+| **Document Admin** | Enforce sharing ACLs (`PATCH /v1/documents/{id}/permissions`) and restore historical snapshots | An owner revokes write access from a former contractor mid-session and rolls a corrupted section back to revision `4400` |
 
 ### Functional Requirements
 
@@ -87,7 +87,7 @@ A client opens a document through an HTTP/2 hydration endpoint to fetch the late
 ### Document Hydration and History Endpoints
 
 ```http
-GET /v1/docs/doc_8812 HTTP/2
+GET /v1/documents/doc_8812 HTTP/2
 Host: docs.example
 Authorization: Bearer tok_author_ada
 ```
@@ -111,13 +111,13 @@ Content-Type: application/json
 To inspect historical versions or audit authorship, clients query paginated revisions:
 
 ```http
-GET /v1/docs/doc_8812/operations?after_seq=4400&limit=100 HTTP/2
+GET /v1/documents/doc_8812/operations?after_seq=4400&limit=100 HTTP/2
 Host: docs.example
 Authorization: Bearer tok_author_ada
 ```
 
 ```http
-PATCH /v1/docs/doc_8812/permissions HTTP/2
+PATCH /v1/documents/doc_8812/permissions HTTP/2
 Host: docs.example
 Authorization: Bearer tok_admin_ada
 Content-Type: application/json
@@ -364,7 +364,7 @@ Three user-facing mechanics require specialized treatment in multi-author sessio
 
 1. **Local Input-to-Paint Latency:** `p99 <= 16 ms` measured via browser `PerformanceObserver` around local CRDT apply and DOM layout.
 2. **Remote Edit Fanout Latency (`E2E`):** Measured from Author A's WebSocket send timestamp to Author B's remote render timestamp across regions; SLO: `p99 <= 200 ms`.
-3. **Document Hydration Latency:** Time from `GET /v1/docs/{id}` to interactive editable state; SLO: `p99 <= 400 ms` (alerts if average uncompacted op-log tail exceeds `1,000` ops).
+3. **Document Hydration Latency:** Time from `GET /v1/documents/{id}` to interactive editable state; SLO: `p99 <= 400 ms` (alerts if average uncompacted op-log tail exceeds `1,000` ops).
 4. **Replica Convergence Integrity Check:** Gateways periodically broadcast a lightweight rolling state hash (Merkle/XOR checksum of visible text) alongside heartbeat frames; any client whose quiescent text hash disagrees with the gateway triggers an immediate telemetry alert and automated state-vector resync.
 
 ### How Production Systems Implement Collaborative Editing
@@ -395,6 +395,37 @@ The simulation transcript confirms three exact properties: applying raw position
 
 **Run the collaborative editing simulation.** Execute `cargo run --release -p editsim` in `code/` to verify raw positional divergence (`chast` vs. `chats`), Operational Transformation convergence, Sequence CRDT commutativity, and deterministic tie-breaking (`carnt`).
 
+</div>
+
+### End-to-End Request Lifecycle and Hop-by-Hop Latency Budget
+
+Collaborative editing hides network latency through optimistic local application while broadcasting compact operations over persistent WebSocket sessions.
+
+| Hop | Component | Operation | P50 | P99 |
+| :--- | :--- | :--- | :--- | :--- |
+| 1 | Local Editor Client | Apply keystroke optimistically to local CRDT/OT state and render frame | 0.5 ms | 3 ms |
+| 2 | Edge / WebSocket Gateway | Transmit framed binary delta over persistent TLS/WebSocket connection | 14 ms | 55 ms |
+| 3 | Document Room Server | Validate session auth, transform (OT) or merge (CRDT), and assign sequence epoch | 0.8 ms | 4 ms |
+| 4 | Durable Op-Log Store | Append operation batch to partitioned WAL and trigger periodic snapshot compaction | 3 ms | 16 ms |
+| 5 | Peer Broadcast Fan-Out | Deliver delta and ephemeral cursor presence to all connected room collaborators | 15 ms | 65 ms |
+
+### Production Case Studies and Open-Source Comparisons
+
+Google Docs uses a centralized Operational Transformation (OT) server that serializes concurrent edits against a canonical revision history, keeping document memory compact at the cost of requiring a single authoritative ordering coordinator per active document. Figma adopts a multiplayer property-map CRDT combined with fractional indexing for ordered scene-graph layers, allowing clients to merge concurrent vector edits deterministically and reconnect cleanly after offline periods without complex transformation matrices. Open-source libraries such as Yjs (implementing YATA with doubly linked character blocks and run-length compression) and Automerge (using a columnar binary encoding of RGA/JSON CRDTs) bring decentralized, peer-to-peer convergence to browser and Rust applications while bounding tombstone overhead through periodic document compaction.
+
+<div class="callout keyidea">
+<span class="label">Key idea</span>
+<p>Raw integer array indices diverge whenever concurrent insertions shift character offsets. Sequence CRDTs achieve strong eventual consistency without a central lock by assigning every character a globally unique, immutable identifier whose deterministic total order guarantees identical convergence across all replicas.</p>
+</div>
+
+<div class="callout experiment">
+<span class="label">Experiment</span>
+<p>Run <code>cargo run --release -p editsim</code> to observe two peers editing the same word concurrently: raw positional indices diverge into <code>chast</code> versus <code>chats</code>, whereas both Operational Transformation and the Sequence CRDT converge deterministically to the same final string.</p>
+</div>
+
+<div class="callout caution">
+<span class="label">Common pitfall</span>
+<p>Retaining deleted-character tombstones indefinitely causes document RAM and initial load latency to grow monotonically with total edit history rather than visible document length. Safe tombstone reclamation requires an epoch watermark confirming every active replica has observed the deletion.</p>
 </div>
 
 ## 26.8 Terminology and References

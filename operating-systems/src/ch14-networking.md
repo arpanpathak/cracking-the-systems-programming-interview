@@ -1,5 +1,7 @@
 # 14. Network Protocols and the Socket Interface
 
+<img class="plate" src="art/ch14-plate.svg" alt="Chapter 14: Networking — TCP 3-way handshake, packet headers, and cwnd sawtooth">
+
 Network communication is abstracted through the **Berkeley Software Distribution (`BSD`)** socket interface, which exposes transport protocols through ordinary file descriptors while letting applications choose between fundamentally different delivery contracts: reliable, ordered byte streams (**Transmission Control Protocol (`TCP`)**) and connectionless, boundary-preserving datagrams (**User Datagram Protocol (`UDP`)**).
 
 ## 14.1 The Transmission Control Protocol (`TCP`): Reliable Byte Streams

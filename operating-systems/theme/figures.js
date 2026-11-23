@@ -18,6 +18,13 @@
       var wanted = dark ? light.replace('figures/', 'figures/dark/') : light;
       if (wanted !== current) img.setAttribute('src', wanted);
     });
+    document.querySelectorAll('img[src*="art/"]').forEach(function (img) {
+      var current = img.getAttribute('src');
+      if (current.indexOf('plate') === -1) return;
+      var light = current.replace('art/dark/', 'art/');
+      var wanted = dark ? light.replace('art/', 'art/dark/') : light;
+      if (wanted !== current) img.setAttribute('src', wanted);
+    });
   }
 
   function isListingHeader(el) {

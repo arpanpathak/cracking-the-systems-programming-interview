@@ -45,7 +45,7 @@ We enforce four strict invariants on every storage node, regardless of request i
 Because invariant 0 and invariant 1 impose a strict total order on the write path (encode frame, append to WAL, call `fsync`, apply to `BTreeMap`, send HTTP response), we can enumerate the exact recovery state for a crash at every stage of a mutation (Figure 2-1).
 
 <figure>
-<img src="figures/crash-points.svg?v=254c7a72" alt="The four crash points during a write: before WAL write (not on disk, no reply, absent on restart); mid-record write (partial bytes on disk, no reply, truncated on restart); after fsync before HTTP reply (complete record on disk, no reply, present on restart); after HTTP reply (complete record on disk, client received 201 or 204, present on restart)." />
+<img src="figures/m3/ch02_crash_points.svg" alt="The four crash points during a write: before WAL write (not on disk, no reply, absent on restart); mid-record write (partial bytes on disk, no reply, truncated on restart); after fsync before HTTP reply (complete record on disk, no reply, present on restart); after HTTP reply (complete record on disk, client received 201 or 204, present on restart)." />
 <figcaption><b>Figure 2-1</b> The four execution points at which a crash can occur during a write, and the resulting state after restart.</figcaption>
 </figure>
 
@@ -111,7 +111,7 @@ Listing 2.4 implements the inverse contract, `Record::decode`. It parses a byte 
 Invariant 0 requires confirmation from non-volatile storage before replying to a client. Issuing a `write` system call alone does not satisfy this requirement. `write` copies bytes from user-space memory into the operating system kernel's page cache and returns immediately; the kernel flushes dirty pages asynchronously on its own schedule. Calling `fsync` (or `fdatasync`, invoked in Rust via `File::sync_data`) forces the kernel to flush all buffered bytes for that file descriptor to the storage controller and blocks until the device reports completion.
 
 <figure>
-<img src="figures/survives.svg?v=66f2d30b" alt="Comparison of process crash versus power loss: killing a process loses only in-process RAM while kernel page-cache writes survive; power failure loses both in-process RAM and un-synced page-cache writes, leaving only fsync-confirmed records intact." />
+<img src="figures/m3/ch02_survives.svg" alt="Comparison of process crash versus power loss: killing a process loses only in-process RAM while kernel page-cache writes survive; power failure loses both in-process RAM and un-synced page-cache writes, leaving only fsync-confirmed records intact." />
 <figcaption><b>Figure 2-3</b> Durability boundaries across process termination versus host power failure.</figcaption>
 </figure>
 
@@ -140,7 +140,7 @@ with fsync   : 500 records in   2697.5 ms, 5.395 ms per record,    185 records p
 ```
 
 <figure>
-<img src="figures/sync-cost.svg?v=0bf92cb7" alt="NVMe sync latency comparison to scale: write only averages 0.003 ms per record (366,991 records/s) versus write plus fsync at 5.395 ms per record (185 records/s)." />
+<img src="figures/m3/ch02_sync_cost.svg" alt="NVMe sync latency comparison to scale: write only averages 0.003 ms per record (366,991 records/s) versus write plus fsync at 5.395 ms per record (185 records/s)." />
 <figcaption><b>Figure 2-4</b> Empirical NVMe latency of buffered writes versus `fsync`-confirmed appends, drawn to scale.</figcaption>
 </figure>
 
@@ -378,7 +378,7 @@ Listing 2.23 implements the `PUT` and `DELETE` HTTP handlers. Both validate the 
 
 ### Memory-Resident Read and Health Handlers
 
-Because `Store::get` acquires the mutex only long enough to clone an in-memory entry and performs zero disk I/O, it runs directly on the async worker thread without thread-pool handoff overhead. Listing 2.24 implements the `GET /v1/keys/:key` handler, including `304 Not Modified` short-circuiting when `If-None-Match` matches the current `ETag`.
+Because `Store::get` acquires the mutex only long enough to clone an in-memory entry and performs zero disk I/O, it runs directly on the async worker thread without thread-pool handoff overhead. Listing 2.24 implements the `GET /v1/keys/{key}` handler, including `304 Not Modified` short-circuiting when `If-None-Match` matches the current `ETag`.
 
 <p class="listing"><b>Listing 2.24</b> Point-read handler in <code>kvd/src/main.rs</code>. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/distributed-systems-from-the-ground-up/code/kvd/src/main.rs">kvd/src/main.rs</a></p>
 
@@ -540,7 +540,7 @@ Listing 2.34 implements `load`, which writes keys sequentially, records every ac
 {{#include ../code/kvctl/src/main.rs:load}}
 ```
 
-Listing 2.35 implements `verify`, which iterates over every line in `acked.txt`, executes `GET /v1/keys/:key`, checks exact value equality, and reports any missing or mismatched keys.
+Listing 2.35 implements `verify`, which iterates over every line in `acked.txt`, executes `GET /v1/keys/{key}`, checks exact value equality, and reports any missing or mismatched keys.
 
 <p class="listing"><b>Listing 2.35</b> Post-recovery durability verifier in <code>kvctl/src/main.rs</code>. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/distributed-systems-from-the-ground-up/code/kvctl/src/main.rs">kvctl/src/main.rs</a></p>
 
@@ -596,7 +596,7 @@ Concluding from this output that `fsync` is unnecessary would be a grave enginee
 Because `kvd` and `kvctl` communicate strictly over HTTP, we can separate the fault domain of the server from the external oracle by running `kvd` on host `node-b` (`10.0.0.2`) and `kvctl` on host `node-a` (Figure 2-6).
 
 <figure>
-<img src="figures/two-machines.svg?v=073ee750" alt="Two-host crash verification topology: kvctl on node-a sends HTTP PUT traffic and logs acknowledged keys locally to acked.txt while kvd runs on node-b writing kv.log; after SIGKILL and restart on node-b, kvctl verifies all 1,107 acknowledged keys." />
+<img src="figures/m3/ch02_two_machines.svg" alt="Two-host crash verification topology: kvctl on node-a sends HTTP PUT traffic and logs acknowledged keys locally to acked.txt while kvd runs on node-b writing kv.log; after SIGKILL and restart on node-b, kvctl verifies all 1,107 acknowledged keys." />
 <figcaption><b>Figure 2-6</b> Separating the external verification client (`node-a`) from the storage node under test (`node-b`).</figcaption>
 </figure>
 
@@ -724,6 +724,56 @@ Listing 2.45 presents the complete `write` versus `fsync` microbenchmark in `syn
 ```rust
 {{#include ../code/synccost/src/main.rs}}
 ```
+
+## 2.13 End-to-End Write Lifecycle and Storage-Stack Latency Budget
+
+A single-node `PUT /v1/keys/session:901` request traverses seven software and hardware boundaries inside `kvd` before the client receives `201 Created`:
+
+1. **Client to HTTP Ingress (`axum` / Tokio):** The client transmits the HTTP/1.1 or HTTP/2 request over loopback or intra-AZ Ethernet. The Tokio runtime reads the socket via `epoll`/`kqueue` and parses the key, headers (`If-Match`), and body bytes.
+2. **Async-to-Blocking Pool Handoff:** Because `fdatasync(2)` blocks the calling OS thread for several milliseconds, `kvd` dispatches the storage operation onto Tokio's dedicated blocking thread pool (`spawn_blocking`), preventing reactor starvation for concurrent readers.
+3. **Mutex Acquisition and Precondition Check:** The worker acquires the `Store` mutex, verifies any `If-Match` or `If-None-Match` guard against the in-memory `BTreeMap`, and assigns the next monotonic `sequence`.
+4. **Record Encoding and CRC-32 Computation:** `kv::record` serializes the length prefix, CRC-32 checksum, sequence number, operation tag, key, and value into a contiguous stack or heap buffer.
+5. **Kernel Page Cache Write (`write(2)`):** The process copies the framed record across the user-kernel boundary into the OS page cache (`~0.003 ms`). At this instant, the bytes reside solely in volatile DRAM.
+6. **Durable Storage Barrier (`fdatasync(2)`):** The filesystem flushes dirty WAL blocks and any required extent metadata through the block layer into the NVMe submission queue, issuing a Force Unit Access (FUA) or volatile write-cache flush command to the SSD controller (`~1.0` to `5.4 ms`).
+7. **In-Memory Index Update and HTTP Reply:** Only after `fdatasync(2)` returns `0` does `kvd` insert the entry into `BTreeMap`, release the mutex, and serialize the `201 Created` response with `ETag: "<sequence>"`.
+
+| Hop | Subsystem / Boundary | Typical `p50` | Tail `p99` | Primary Source of Tail Latency |
+| :--- | :--- | :--- | :--- | :--- |
+| 1 | Client -> TCP/HTTP Parse (`axum`) | `0.08 ms` | `0.35 ms` | Kernel TCP buffer contention, HTTP header allocation |
+| 2 | Tokio `spawn_blocking` Dispatch | `0.02 ms` | `0.20 ms` | Blocking thread-pool saturation under high concurrency |
+| 3 | `Store` Mutex + `BTreeMap` Check | `0.005 ms` | `0.05 ms` | Queueing behind an active writer holding the mutex during `fsync` |
+| 4 | Binary Codec + CRC-32 Checksum | `0.004 ms` | `0.02 ms` | Large value payloads exceeding L1/L2 CPU cache |
+| 5 | `write(2)` into Kernel Page Cache | `0.003 ms` | `0.04 ms` | Dirty-page throttling (`vm.dirty_ratio`) during memory pressure |
+| 6 | `fdatasync(2)` -> Filesystem -> NVMe NAND | `1.40 ms` | `5.80 ms` | SSD garbage collection, metadata journal commits, queue depth spikes |
+| 7 | `BTreeMap` Insert + TCP Response Write | `0.05 ms` | `0.25 ms` | Nagle/delayed-ACK interaction if `TCP_NODELAY` is unset |
+| **Total** | **Single-Node Durable `PUT`** | **`1.56 ms`** | **`6.71 ms`** | **Physical media flush barrier (`> 85%` of total latency)** |
+
+## 2.14 Production Storage-Engine Case Studies
+
+Production storage nodes extend the single-file WAL and in-memory index architecture of `kvd` to handle terabyte-scale datasets and bounded recovery times:
+
+- **RocksDB (Meta / TiKV / CockroachDB):** RocksDB pairs an append-only WAL with an in-memory **MemTable** (skip list) and immutable sorted disk files (**SSTables**) organized into an LSM-tree. By default, callers choose per-write durability via `WriteOptions::sync`: enabling `sync = true` flushes the WAL on every commit (matching `kvd`), whereas buffered WAL mode achieves `10x` to `50x` higher throughput at the risk of losing recent writes on power failure. RocksDB bounds startup recovery time by rotating WAL files whenever a MemTable flushes to Level-0 SSTables, and uses CRC-32C hardware instructions (`SSE4.2` / `ARMv8 CRC`) to detect torn tails.
+- **SQLite WAL Mode:** Traditional SQLite rollback journals overwrite database pages in place after copying originals out, requiring two `fsync` barriers per transaction. In WAL mode (`PRAGMA journal_mode = WAL`), SQLite appends modified pages sequentially to a `-wal` file while indexing page offsets in a memory-mapped `-shm` file. Under `PRAGMA synchronous = FULL`, every commit invokes `fsync` on the `-wal` file; periodic **checkpoints** copy committed frames back into the main B-tree file and reset the WAL offset to zero.
+- **BoltDB (`bbolt`, used by etcd):** Rather than mutating B+Tree pages in place with a separate WAL, `bbolt` uses **copy-on-write (CoW) shadow paging**. Every write transaction allocates fresh pages from a freelist, writes the modified tree path, calls `fdatasync(2)` on the data pages, and then atomically flips one of two alternating root meta pages (`meta0` / `meta1`) protected by FNV-1a checksums and a second `fdatasync(2)`. Crash recovery requires zero log replay because the previous meta page remains intact until the new root is durable.
+- **PostgreSQL WAL and Full-Page Writes:** PostgreSQL writes `8 KiB` heap pages on top of filesystems and block devices whose atomic sector size is `512 B` or `4 KiB`. A power loss mid-flush can tear an `8 KiB` data page in half, leaving an invalid checksum. PostgreSQL prevents torn-page corruption by enabling `full_page_writes = on`, logging the complete `8 KiB` image of a page to the WAL the first time it is modified after a checkpoint so crash recovery restores the whole page before replaying incremental deltas.
+
+<div class="callout keyidea"><span class="label">Key idea</span>
+
+**`fdatasync(2)` outperforms `fsync(2)` on preallocated append-only logs.** Calling `fsync(2)` forces the filesystem to flush non-essential inode metadata such as modification timestamps (`mtime`) on every write. When a WAL file is preallocated or grown in fixed extents, `fdatasync(2)` flushes only file data and size-critical metadata, cutting per-commit NVMe I/O operations by up to half on ext4 and XFS.
+
+</div>
+
+<div class="callout experiment"><span class="label">Experiment</span>
+
+**Measure buffered vs. durable throughput on local storage.** Execute `cargo run --release -p synccost` in `code/` with default record sizes and again with `4 KiB` and `64 KiB` payloads. Compare the throughput ratio between `write(2)` alone and `write(2)` followed by `sync_data()`; observe that fixed flush latency dominates small writes until payload sizes exceed several hundred kilobytes.
+
+</div>
+
+<div class="callout caution"><span class="label">Common pitfall</span>
+
+**Retrying `fsync(2)` after an `EIO` failure on Linux.** Starting with Linux kernel `4.13`, a failed `fsync(2)` clears the dirty bits on affected page-cache pages and reports the error once per open file description. A second `fsync(2)` call on the same file descriptor can return `0` even though the data never reached disk. Storage engines must latch a fail-stop error state on the first `write` or `fsync` error, as implemented in `kv::log`, and halt further mutations immediately.
+
+</div>
 
 ## Further Reading
 

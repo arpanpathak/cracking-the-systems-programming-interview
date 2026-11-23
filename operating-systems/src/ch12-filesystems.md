@@ -1,5 +1,7 @@
 # 12. File System Architecture and Durability
 
+<img class="plate" src="art/ch12-plate.svg" alt="Chapter 12: File Systems — inode block pointers and WAL journal commit barrier">
+
 A file system provides a persistent, named abstraction for data stored on a block device. It organizes storage into structured entities, files and directories, and manages the mapping between human-readable hierarchical paths and physical disk blocks while surviving power loss and abrupt system crashes.
 
 ## 12.1 The File Descriptor and the Open File Description

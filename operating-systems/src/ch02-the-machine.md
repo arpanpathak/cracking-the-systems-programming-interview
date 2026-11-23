@@ -1,5 +1,7 @@
 # 2. The Architectural Substrate and Execution Constraints
 
+<img class="plate" src="art/ch02-plate.svg" alt="Chapter 02: The Machine — CPU pipeline, latency pyramid, and 64-byte cache line">
+
 The design and operational behavior of an operating system are fundamentally dictated by the invariant properties of the underlying hardware. These architectural properties define the boundaries of sequential instruction execution, the necessity of virtual memory management, and the hardware mechanisms required to enforce system integrity and asynchronous I/O coordination.
 
 To keep architectural concepts independent of vendor-specific mnemonics, each mechanism in this chapter is presented first in general hardware terms, followed by a consolidated reference mapping across x86-64 and ARM64 (AArch64) in Tables 2-1 and 2-2.

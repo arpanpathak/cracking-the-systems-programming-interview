@@ -1,5 +1,7 @@
 # 4. Threaded Execution and Concurrency Hazards
 
+<img class="plate" src="art/ch04-plate.svg" alt="Chapter 04: Threads — shared address space, private stacks, and interleaved timeline">
+
 While a process provides a fundamental unit of isolation, it is often insufficient for expressing fine-grained parallelism. To achieve concurrency within a single execution context, a process employs threads, independent sequences of instructions that operate within the same administrative boundaries.
 
 ## 4.1 Shared Address Space and the Loss of Intra-Process Isolation

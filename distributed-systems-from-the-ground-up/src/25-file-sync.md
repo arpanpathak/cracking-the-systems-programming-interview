@@ -451,6 +451,37 @@ Inspect the observed ratio directly: prepending `1` byte invalidates `65 / 65` (
 
 </div>
 
+### End-to-End Request Lifecycle and Hop-by-Hop Latency Budget
+
+A file edit propagates through local content-defined chunking, delta-only blob upload, optimistic metadata commit, and push notification to peer devices.
+
+| Hop | Component | Operation | P50 | P99 |
+| :--- | :--- | :--- | :--- | :--- |
+| 1 | Sync Client Daemon | Detect filesystem event, run rolling-hash CDC, compute SHA-256 chunk digests | 6 ms | 28 ms |
+| 2 | Edge / L7 Load Balancer | Terminate HTTP/2 or QUIC connection and route to regional block-sync gateway | 8 ms | 30 ms |
+| 3 | Block Service & Dedup Index | Check chunk-hash existence and upload only missing compressed encrypted chunks | 25 ms | 160 ms |
+| 4 | Metadata Service (SQL) | Atomic CAS commit (`WHERE rev = expected_rev`) updating file manifest and Merkle root | 4 ms | 22 ms |
+| 5 | Notification & Object Store | Persist erasure-coded chunks and fan out long-poll/WebSocket delta notices to peers | 12 ms | 65 ms |
+
+### Production Case Studies and Open-Source Comparisons
+
+Dropbox built Magic Pocket, a custom exabyte-scale immutable block store using erasure coding across geographically separated storage vaults, paired with client-side content-defined chunking (CDC) so inserting bytes at the start of a multi-gigabyte file uploads only the single modified chunk. Google Drive separates structured document models (stored as operational logs) from binary blob storage backed by Colossus, relying on centralized change feeds to drive incremental client synchronization. Classic `rsync` solves single-pair delta transfer using a rolling Adler-32 checksum and strong hash verification over a direct network stream, whereas cloud sync services generalize that principle into content-addressed immutable chunks shared across devices, revisions, and deduplicated user accounts.
+
+<div class="callout keyidea">
+<span class="label">Key idea</span>
+<p>Content-defined chunking anchors block boundaries on data-dependent rolling-hash markers rather than fixed byte offsets. Inserting or deleting bytes shifts only the immediately affected chunk while leaving all subsequent chunk hashes identical for zero-cost deduplication.</p>
+</div>
+
+<div class="callout experiment">
+<span class="label">Experiment</span>
+<p>Execute <code>cargo run --release -p syncsim</code> and compare the dirty-chunk ratio after a single-byte prepend: fixed-size blocks invalidate <code>65/65</code> chunks whereas content-defined chunking invalidates <code>1/62</code>. Also trace how the offline version-3 write triggers a deterministic conflict branch instead of overwriting newer state.</p>
+</div>
+
+<div class="callout caution">
+<span class="label">Common pitfall</span>
+<p>Running asynchronous chunk garbage collection without a grace period or reference-count barrier can delete a newly uploaded chunk whose metadata manifest has not yet committed, causing permanent data loss on concurrent syncs.</p>
+</div>
+
 ## 25.8 Terminology and References
 
 ### Engineering Glossary

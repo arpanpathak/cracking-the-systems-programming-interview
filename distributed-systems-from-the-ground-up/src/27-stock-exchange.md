@@ -159,7 +159,7 @@ Content-Type: application/json
 ```
 
 ```http
-POST /v1/risk/firms/firm_22/kill-switch HTTP/2
+POST /v1/risk/firms/firm_22:halt HTTP/2
 Host: ctrl.exchange.example
 Authorization: Bearer tok_risk_ops
 Content-Type: application/json
@@ -280,7 +280,7 @@ To disseminate market data fairly without allowing a slow TCP subscriber to stal
 | **Order Gateway Host Crash** | Firms connected to that gateway (`1/16` of sessions) | Firms fail over to backup gateway; optional Cancel-on-Disconnect (CoD) injects deterministic cancel commands into sequencer for disconnected market makers |
 | **Lost TCP `ExecutionReport` Reply** | Single trading firm session | Firm reconnects and reconciles via FIX/OUCH sequence recovery; duplicate `cl_ord_id` submission replays original fill without re-matching |
 | **UDP Multicast Packet Drop** | Affected subscriber(s) on Feed A | Subscriber pulls packet simultaneously from redundant Feed B or requests gap replay `[seq_a..seq_b]` from TCP retransmission server |
-| **Runaway Trading Algorithm / Fat-Finger Storm** | Single firm or symbol | Pre-trade rate limiter, fat-finger price collar, and operator Kill Switch (`POST /kill-switch`) cancel all resting firm orders deterministically |
+| **Runaway Trading Algorithm / Fat-Finger Storm** | Single firm or symbol | Pre-trade rate limiter, fat-finger price collar, and operator Kill Switch (`POST /v1/risk/firms/{firm_id}:halt`) cancel all resting firm orders deterministically |
 | **Software Defect Discovered Mid-Session** | Single symbol partition | Surveillance halts symbol, replays immutable sequencer journal through patched engine binary, and verifies exact fill audit trail for regulators |
 
 ### Exchange Observability: SLIs and SLOs
@@ -332,6 +332,37 @@ Verify every invariant directly from the transcript:
 
 **Run the deterministic matching engine simulation.** Execute `cargo run --release -p matchsim` in `code/` to verify price-time FIFO ordering, passive price execution, multi-level sweeps, and share conservation (`200` shares traded, `10` remaining at `1000`).
 
+</div>
+
+### End-to-End Request Lifecycle and Hop-by-Hop Latency Budget
+
+An electronic exchange achieves single-digit-microsecond matching by pinning each stage to an isolated CPU core, bypassing the kernel network stack, and eliminating locks on the hot path.
+
+| Hop | Component | Operation | P50 | P99 |
+| :--- | :--- | :--- | :--- | :--- |
+| 1 | Order Gateway (FIX/OUCH) | Kernel-bypass NIC poll, SBE/OUCH binary decode, session validation | 1.8 us | 6.5 us |
+| 2 | Deterministic Sequencer | Assign monotonic global sequence ID and write to replicated Raft/Aeron journal | 3.5 us | 14 us |
+| 3 | Pre-Trade Risk Engine | In-RAM fat-finger price collar, position limit, and firm kill-switch checks | 0.4 us | 1.2 us |
+| 4 | Matching Engine Core | Single-threaded intrusive `O(1)` limit order book match and fill generation | 0.6 us | 2.5 us |
+| 5 | Market Data Publisher | Multicast ITCH/MoldUDP64 tick broadcast and OUCH execution report egress | 1.5 us | 5.5 us |
+
+### Production Case Studies and Open-Source Comparisons
+
+The LMAX Disruptor demonstrated that a single thread consuming events from a cache-line-padded, preallocated ring buffer outperforms multi-threaded lock-based queues by orders of magnitude because it eliminates mutex contention, context switches, and garbage-collection pauses. NASDAQ separates binary order entry (OUCH) from UDP multicast market-data dissemination (TotalView-ITCH over MoldUDP64), enabling colocated participants to reconstruct the full limit order book deterministically from sequenced event streams. CME Globex relies on a deterministic sequencer feeding active and passive standby matching engines in lockstep; because every state transition depends strictly on the sequenced input log, failover to a hot standby completes in milliseconds with zero lost fills or order-book divergence.
+
+<div class="callout keyidea">
+<span class="label">Key idea</span>
+<p>Single-threaded deterministic event processing over a preallocated ring buffer avoids locks, atomic contention, and cache-line bouncing on the critical matching path, while turning fault tolerance into exact state-machine replication of the sequenced input log.</p>
+</div>
+
+<div class="callout experiment">
+<span class="label">Experiment</span>
+<p>Execute <code>cargo run --release -p matchsim</code> and trace <code>order 5</code>, <code>order 6</code>, and <code>order 7</code>. Confirm that resting orders at the same price execute in strict FIFO arrival order, incoming crossing orders receive passive price improvement, and total traded plus resting shares conserve the exact submitted volume.</p>
+</div>
+
+<div class="callout caution">
+<span class="label">Common pitfall</span>
+<p>Using floating-point types (<code>f64</code>) for prices or wall-clock timestamps inside the matching core introduces rounding drift and nondeterminism between primary and standby replicas. Prices must use fixed-point integer ticks, and all time-dependent expirations must derive from sequencer-stamped logical timestamps.</p>
 </div>
 
 ## 27.8 Terminology and References

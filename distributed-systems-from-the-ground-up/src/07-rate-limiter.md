@@ -58,7 +58,7 @@ We organize the rate limiter around three distinct actors (Figure 7-1).
 | 3 | **Scale** | `10,000,000` registered clients (`1,000,000` active concurrently), `50,000` sustained RPS (`250,000` peak burst RPS) | Requires `O(1)` per-key state (`8-64 bytes/key`) and horizontally sharded counter clusters |
 | 4 | **Hot-Key Resilience** | Absorb `100,000+` RPS targeting a single key without saturating a counter shard | Requires L1 gateway token leasing and short-TTL local negative caching after `429` verdicts |
 
-Choosing bounded eventual consistency in non-functional requirement 2 reflects a deliberate risk asymmetry. Unlike a financial ledger, where an off-by-one anomaly loses real money, admitting `103` requests under a nominal `100` req/s ceiling during a brief network skew still shields upstream services from a `5,000` req/s flood while preserving sub-millisecond latency.
+Choosing bounded eventual consistency reflects a deliberate risk asymmetry. Unlike a financial ledger, where an off-by-one anomaly loses real money, admitting `103` requests under a nominal `100` req/s ceiling during a brief network skew still shields upstream services from a `5,000` req/s flood while preserving sub-millisecond latency.
 
 ### Capacity and Resource Envelope
 
@@ -380,6 +380,51 @@ Four operational signals govern day-two reliability: **hot-path latency SLI** (`
 | **Fail-Open / Fail-Closed** | Per-route failure contract selecting either local-bucket pass-through (availability priority) or `503` rejection (security/cost priority) when the shared counter store is unreachable. |
 | **Shadow Mode (Dry Run)** | Evaluating candidate policies against live production traffic and recording hypothetical `429` telemetry without blocking callers. |
 | **Adaptive Load Shedding** | Backend concurrency control (AIMD and CoDel) grounded in Little's Law that sheds excess work based on live queue latency rather than per-caller quotas. |
+
+### End-to-End Rate-Check Request Lifecycle and Latency Budget
+
+Keeping the global rate-limit check under `p99 <= 1.0 ms` requires minimizing network hops and executing quota math atomically inside in-memory storage. Tracing an API call `POST /v1/payments` through the gateway illustrates both the L1 lease fast path and the L2 Redis synchronization path:
+
+1. **Client to Edge / API Gateway (TLS Termination):** The caller submits an authenticated HTTP/2 request. The gateway extracts `(tenant_id, route_group)` and looks up the immutable in-memory rule snapshot (`< 1 us`).
+2. **L1 Local Quota Lease Check:** If the gateway holds prefetched tokens in local RAM for a hot key, it decrements its atomic counter (`~0.01 ms`) and forwards the request upstream immediately with zero network RTT.
+3. **L2 Regional Redis Cluster `EVALSHA` (On Lease Miss or Exact Quota):** On a lease miss or strict global quota, the gateway hashes the composite key to one Redis Cluster slot and sends a pipelined `EVALSHA` over a persistent intra-AZ TCP connection.
+4. **Single-Threaded Redis Lua GCRA Execution:** Redis reads its local clock (`redis.call("TIME")`), computes the updated Theoretical Arrival Time (`TAT`), sets the key TTL, and returns `{allowed, remaining, retry_after}` in `~0.08 ms` with zero disk `fsync`.
+5. **Enforcement Decision:** The gateway either proxies the call to the upstream service (attaching `RateLimit-*` headers) or short-circuits with `429 Too Many Requests` and `Retry-After`, protecting backend capacity before application workers touch the request.
+
+| Hop | Device / Subsystem | Typical `p50` | Tail `p99` | Primary Source of Tail Latency |
+| :--- | :--- | :--- | :--- | :--- |
+| 1 | Gateway Policy Lookup + Key Extraction | `0.02 ms` | `0.08 ms` | Regex route matching, JWT claim parsing |
+| 2 | L1 Local Lease Check (hot-key fast path) | `0.01 ms` | `0.03 ms` | Atomic cache-line contention on extreme hot keys |
+| 3 | Gateway -> Regional Redis Cluster TCP RTT | `0.25 ms` | `0.65 ms` | Intra-AZ switch microbursts, connection pool queueing |
+| 4 | Redis Single-Threaded Lua `EVALSHA` (GCRA) | `0.08 ms` | `0.22 ms` | Co-located slow commands (`KEYS`, large Lua loops), AOF rewrite forks |
+| 5 | Header Injection + Upstream Forward / `429` | `0.04 ms` | `0.12 ms` | Response serialization, circuit-breaker state transition |
+| **Total** | **L2 Synchronized Rate Check** | **`0.40 ms`** | **`1.10 ms`** | **Intra-AZ network jitter and Redis single-core queuing** |
+
+### Deep-Dive Production Rate-Limiting Case Studies
+
+Expanding on the summary table above, three production deployments highlight the operational trade-offs behind global rate limiting:
+
+- **Stripe (Four-Layer Defense):** Stripe combines Redis-backed GCRA request rate limiters with a **Concurrent Request Limiter** (tracking in-flight requests per API key so slow endpoints cannot exhaust worker pools), a **Fleet Usage Load Shedder** (reserving capacity for critical payment traffic over lower-priority test-mode calls), and a **Worker Utilization Shedder** driven by live queue depth. Layering quota enforcement with adaptive load shedding keeps core payment endpoints above `99.99%` availability during sudden merchant flash sales.
+- **Cloudflare (Edge Sliding-Window Counters):** Operating across `300+` global edge Points of Presence (PoPs), Cloudflare avoids cross-region synchronous round trips by maintaining compact sliding-window counters in each PoP's local RAM and synchronizing aggregates asynchronously. Empirical measurements on production HTTP traffic showed that the weighted sliding-window approximation diverges from an exact sliding log by only `~0.003%` while sustaining microsecond per-request overhead.
+- **Envoy Global Rate Limit (`envoyproxy/ratelimit`):** Envoy splits rate limiting into an in-process **Local Rate Limit** token-bucket filter (absorbing volumetric floods with zero network hops) and an external gRPC `ShouldRateLimit` service backed by Redis. Envoy defaults to `failure_mode_deny: false` (fail-open) so a Redis outage degrades quota precision rather than causing a site-wide API blackout, while allowing security-sensitive routes such as authentication endpoints to override the policy to fail-closed.
+
+<div class="callout keyidea"><span class="label">Key idea</span>
+
+**GCRA reduces exact leaky-bucket rate limiting to a single timestamp per key.** Storing only the Theoretical Arrival Time (`TAT`, `8` bytes) instead of a timestamp log eliminates `O(N)` memory growth under high request rates while enforcing exact burst and steady-state emission intervals in one atomic Redis Lua script.
+
+</div>
+
+<div class="callout experiment"><span class="label">Experiment</span>
+
+**Expose fixed-window boundary bursts empirically.** Execute `cargo run --release -p ratelimit` in `code/` to replay identical burst and boundary-straddling workloads against Fixed Window, Sliding Log, Sliding Counter, Token Bucket, and GCRA. Verify that Fixed Window admits `2x` the configured quota across a window boundary, whereas GCRA bounds both instantaneous burst and sustained rate cleanly.
+
+</div>
+
+<div class="callout caution"><span class="label">Common pitfall</span>
+
+**Stamping rate-limit windows with API gateway wall clocks.** Under even `50` to `200 ms` of NTP clock skew across a fleet of stateless gateways, one gateway can overwrite a newer `TAT` or extend a bucket's expiry inconsistently. Sourcing timestamps exclusively inside Redis via `redis.call("TIME")` eliminates inter-gateway clock skew at zero additional network cost.
+
+</div>
 
 ### References
 

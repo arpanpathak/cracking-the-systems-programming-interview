@@ -42,7 +42,7 @@ We organize the lock service around three actors: distributed workers contending
 
 | Actor | Operation | Concrete Scenario |
 | :--- | :--- | :--- |
-| **Worker / Application** | Acquire lease (`POST /v1/locks/{k}`), renew (`PUT /v1/leases/{id}/keepalive`), release (`DELETE`) | Elect a single active leader for a sharded database partition or serialize a nightly settlement batch |
+| **Worker / Application** | Acquire lease (`POST /v1/locks/{k}`), renew (`POST /v1/leases/{id}:renew`), release (`DELETE`) | Elect a single active leader for a sharded database partition or serialize a nightly settlement batch |
 | **Protected Storage Resource** | Validate monotonic fencing token (`token >= max_seen_token`) | Reject delayed writes arriving from a paused worker whose lease already expired |
 | **Platform Operator** | Audit Raft leader, term, quorum latency, and lock wait queues | Detect network partitions, stalled holders renewing indefinitely, or excessive fine-grained lock contention |
 
@@ -52,7 +52,7 @@ We organize the lock service around three actors: distributed workers contending
 | :--- | :--- |
 | 0 | A worker can attempt to acquire an exclusive lease on a named lock key; at most one worker holds an active lease for that key at any point in linearizable history. |
 | 1 | Every granted lease carries a bounded server-enforced Time-To-Live (TTL) and a globally strictly increasing 64-bit **fencing token** (`token_new > token_prev`). |
-| 2 | A lease holder can extend its active lease via conditional heartbeat keepalive (`PUT /v1/leases/{id}/keepalive`) and release it voluntarily only if it still owns the matching lease token. |
+| 2 | A lease holder can extend its active lease via conditional heartbeat keepalive (`POST /v1/leases/{id}:renew`) and release it voluntarily only if it still owns the matching lease token. |
 | 3 | Waiting workers can subscribe to ordered watch notifications so lock handoff wakes exactly the next waiter in FIFO order without polling or thundering-herd contention. |
 | 4 | Once a lease expires or is released, another worker can acquire the lock with a strictly higher fencing token. |
 
@@ -129,10 +129,10 @@ Content-Type: application/problem+json
 }
 ```
 
-**Renew lease heartbeat (`PUT /v1/leases/{lease_id}/keepalive`):**
+**Renew lease heartbeat (`POST /v1/leases/{lease_id}:renew`):**
 
 ```http
-PUT /v1/leases/42/keepalive HTTP/2
+POST /v1/leases/42:renew HTTP/2
 Host: locks.internal
 Content-Type: application/json
 
@@ -346,6 +346,31 @@ Without storage-layer token verification, `client-a`'s write at `t = 17` would o
 | **Redlock** | An algorithm acquiring locks across a majority of independent Redis nodes without consensus; relies on timing assumptions and cannot generate monotonic fencing tokens. |
 | **Ephemeral Sequential Watch Chain** | A FIFO queue of session-bound numbered keys where each waiter watches only its immediate predecessor, eliminating release thundering herds. |
 | **Optimistic Concurrency Control (CAS)** | Conditional state updates (`WHERE version = expected`) that detect concurrent writes at commit time without acquiring an external distributed lock. |
+
+### End-to-End Request Lifecycle and Hop-by-Hop Latency Budget
+
+Acquiring a linearizable distributed lock and executing a fenced write spans two planes: a quorum-replicated lease acquisition in the consensus plane, followed by a monotonic token check on the storage plane.
+
+| Hop | Boundary | Protocol and Operation | Typical `p50` | Tail `p99` |
+| :--- | :--- | :--- | :--- | :--- |
+| 1 | Worker Service to Consensus Leader | Persistent gRPC/TLS stream (`AcquireLock` / `Txn` compare-and-swap) | `0.40 ms` | `1.20 ms` |
+| 2 | Leader to Majority Followers (`Raft` / `Zab`) | `AppendEntries` RPC across 3 AZs plus `fsync` of WAL entry on quorum (`2/3`) | `2.80 ms` | `9.50 ms` |
+| 3 | Leader Commit and Token Return | Apply committed lease entry and return monotonic 64-bit `fencing_token` | `0.30 ms` | `0.90 ms` |
+| 4 | Worker to Fenced Storage Service | Data-plane RPC carrying `fencing_token` in request header | `0.50 ms` | `1.50 ms` |
+| 5 | Storage Engine Token Validation and Commit | Atomic conditional write (`WHERE last_token < :token`) rejecting stale holders | `1.20 ms` | `4.80 ms` |
+| **Total** | **End-to-End Fenced Acquisition and Write** | **Linearizable mutual exclusion with storage-enforced safety** | **`5.20 ms`** | **`17.90 ms`** |
+
+### Production Case Studies and Open-Source Comparisons
+
+- **Google Chubby:** Chubby provides coarse-grained advisory locks and small-file storage for systems such as GFS and Bigtable, running 5-replica Paxos cells where a single master serves leases (`12 s` default KeepAlive interval) and issues monotonically increasing sequencers. Clients cache lock state locally and invalidate leases synchronously via master keepalive responses, allowing a single cell to serve tens of thousands of clients without overwhelming the Paxos log.
+- **Apache ZooKeeper (Ephemeral Sequential Znodes):** ZooKeeper implements fair distributed locks via a parent znode containing `EPHEMERAL_SEQUENTIAL` children created by each contender. A client holds the lock when its sequence number is the minimum; every other contender registers a one-shot watch exclusively on its immediate predecessor, reducing release notifications from `O(N)` thundering herds to `O(1)` wakeups and automatically releasing locks if a client session times out.
+- **etcd (Lease-Backed Revisions and Fencing):** etcd pairs a Raft-replicated MVCC key-value store with time-bounded leases and a cluster-wide monotonic `mod_revision` counter. Clients acquire a lock via an atomic transaction (`If(create_revision == 0).Then(Put(key, val, lease))`), using the returned `create_revision` directly as a fencing token while a background keepalive stream renews the lease before TTL expiration.
+
+<div class="callout keyidea"><span class="label">Key idea</span>A distributed lock service provides liveness and coordination, whereas the storage tier enforces safety: without monotonic fencing tokens validated on every write, a GC pause or network delay can allow a zombie holder to corrupt state.</div>
+
+<div class="callout experiment"><span class="label">Experiment</span>Acquire a 5-second lease from a worker process, suspend that process for 8 seconds with `SIGSTOP`, let a second worker acquire the lock and write with token `N + 1`, and resume the first worker with `SIGCONT`. Verify that the storage engine rejects the resumed worker's stale write carrying token `N`.</div>
+
+<div class="callout caution"><span class="label">Common pitfall</span>Using wall-clock TTL leases across independent non-consensus nodes (such as uncoordinated cache primaries) assumes bounded clock drift and bounded process pauses. Whenever mutual exclusion protects financial state or metadata integrity, back the lock with a consensus store and verify monotonic fencing tokens at the data sink.</div>
 
 ### References
 

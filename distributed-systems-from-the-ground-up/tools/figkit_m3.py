@@ -35,20 +35,30 @@ LIGHT = {
     },
 }
 
-# Night Owl / Deep Ocean blue-dark palette (harmonizes cleanly across Night Owl #011627,
-# Material Deep Ocean #0F111A, and Oceanic Next #1B2B34 — zero harsh orange-red glare)
+# Adaptive, soothing, high-contrast dark palette:
+# Uses a translucent outer canvas (.frame) and translucent hue-coded containers so every
+# diagram harmonizes natively with Night Owl (#011627), Deep Ocean (#0F111A), and
+# Oceanic Next (#1B2B34), with Material 3 tonal elevation instead of muddy drop shadows.
+# Perceptually calibrated (APCA / OKLCH) dark palette:
+# Avoids pure #FFFFFF halation and neon chroma vibration; uses calm off-white ink (#E4E9F2,
+# APCA Lc ~86), legible secondary text (#B4C0D2, Lc ~66), and desaturated pastel accents
+# (OKLCH L~0.79, C~0.10) over a gently elevated translucent surface that adapts to coal,
+# navy, and ayu with zero eye strain.
 DARK = {
-    "paper": "#091929", "card": "#10243A", "ink": "#E2ECF7", "muted": "#92B0C9",
-    "hair": "#1D3B56", "shadow": "#010A14", "shadow_opacity": "0.45",
+    "is_dark": True,
+    "paper": "#121722", "frame_fill": "rgba(0, 0, 0, 0.22)",
+    "card": "rgba(13, 18, 28, 0.80)", "card_stroke": "rgba(203, 213, 225, 0.24)",
+    "ink": "#F2F6FC", "muted": "#D0DAE8",
+    "hair": "rgba(226, 232, 240, 0.18)", "shadow": "#000000", "shadow_opacity": "0.0",
     "tones": {
-        "blue": ("#0D243C", "#16385B", "#82AAFF"),
-        "green": ("#0C272B", "#153F44", "#ADDB67"),
-        "amber": ("#13263B", "#1F3B58", "#ECC48D"),
-        "red": ("#211B2D", "#342742", "#F29CA3"),
-        "purple": ("#13223D", "#1E355E", "#9EC5FF"),
-        "teal": ("#0A2633", "#133E52", "#7FDBCA"),
-        "gray": ("#0E2034", "#1A324D", "#92B0C9"),
-        "wire": ("#0E2034", "#1A324D", "#789BB8"),
+        "blue":   ("rgba(137, 180, 250, 0.08)", "rgba(137, 180, 250, 0.16)", "#89B4FA"),
+        "green":  ("rgba(166, 227, 161, 0.08)", "rgba(166, 227, 161, 0.15)", "#A6E3A1"),
+        "amber":  ("rgba(242, 201, 138, 0.08)", "rgba(242, 201, 138, 0.16)", "#F2C98A"),
+        "red":    ("rgba(243, 166, 178, 0.08)", "rgba(243, 166, 178, 0.16)", "#F3A6B2"),
+        "purple": ("rgba(200, 182, 255, 0.08)", "rgba(200, 182, 255, 0.16)", "#C8B6FF"),
+        "teal":   ("rgba(137, 216, 211, 0.08)", "rgba(137, 216, 211, 0.15)", "#89D8D3"),
+        "gray":   ("rgba(226, 232, 240, 0.04)", "rgba(226, 232, 240, 0.10)", "#CBD5E4"),
+        "wire":   ("rgba(226, 232, 240, 0.04)", "rgba(226, 232, 240, 0.10)", "#AAB7C9"),
     },
 }
 
@@ -73,11 +83,14 @@ FONTS = {
 
 def style(theme):
     """The style sheet and shared definitions for one theme."""
+    is_dark = theme.get("is_dark", False)
+    frame_fill = theme.get("frame_fill", theme["paper"])
+    card_stroke = f" stroke: {theme['card_stroke']}; stroke-width: 1;" if is_dark else ""
     rules = [
         f"text {{ font-family: {SANS}; fill: {theme['ink']}; }}",
         f".paper {{ fill: {theme['paper']}; }}",
-        f".frame {{ fill: {theme['paper']}; stroke: {theme['hair']}; stroke-width: 1; }}",
-        f".card {{ fill: {theme['card']}; }}",
+        f".frame {{ fill: {frame_fill}; stroke: {theme['hair']}; stroke-width: 1.2; }}",
+        f".card {{ fill: {theme['card']};{card_stroke} }}",
         f".hair {{ stroke: {theme['hair']}; stroke-width: 1.2; fill: none; }}",
         f".muted {{ fill: {theme['muted']}; }}",
         f".ink {{ fill: {theme['ink']}; }}",
@@ -88,8 +101,12 @@ def style(theme):
         rules.append(f".{cls} {{ font-size: {size}px;{weight}{family} }}")
     rules.append(f".sub, .small, .note {{ fill: {theme['muted']}; }}")
     for tone, (container, mid, accent) in theme["tones"].items():
-        rules.append(f".c-{tone} {{ fill: {container}; }}")
-        rules.append(f".m-{tone} {{ fill: {mid}; }}")
+        if is_dark and tone not in ("wire",):
+            rules.append(f".c-{tone} {{ fill: {container}; stroke: {accent}; stroke-opacity: 0.48; stroke-width: 1.2; }}")
+            rules.append(f".m-{tone} {{ fill: {mid}; stroke: {accent}; stroke-opacity: 0.78; stroke-width: 1.2; }}")
+        else:
+            rules.append(f".c-{tone} {{ fill: {container}; }}")
+            rules.append(f".m-{tone} {{ fill: {mid}; }}")
         rules.append(f".a-{tone} {{ fill: {accent}; }}")
         rules.append(f".t-{tone} {{ fill: {accent}; }}")
         rules.append(f".w-{tone} {{ stroke: {accent}; fill: none; stroke-linecap: butt; stroke-linejoin: round; }}")
@@ -256,13 +273,29 @@ class Fig:
         self.icon(x + (size - glyph) / 2, y + (size - glyph) / 2, name, tone, glyph)
         return Box(x, y, size, size)
 
-    def zone(self, x, y, w, h, tone, title, subtitle=None, icon=None, dashed=False):
+    def zone(self, x, y, w, h, tone, title, subtitle=None, icon=None, dashed=False, title_align="left"):
         """A tonal grouping container (e.g., Control Plane, Data Plane, PCI CDE, AZ)."""
         if dashed:
             self.rect(x, y, w, h, f"c-{tone}", r=16)
             self.rect(x, y, w, h, f"o-{tone}", r=16, extra=' stroke-dasharray="6 5"')
         else:
             self.rect(x, y, w, h, f"c-{tone}", r=16)
+        if title_align == "center":
+            cx = x + w / 2
+            if subtitle:
+                self.text(cx, y + 23, title, "head", "middle", tone=tone, fit=(x + 12, x + w - 12))
+                self.text(cx, y + 38, subtitle, "small", "middle", fit=(x + 12, x + w - 12))
+            else:
+                self.text(cx, y + 28, title, "head", "middle", tone=tone, fit=(x + 12, x + w - 12))
+            return Box(x, y, w, h)
+        if title_align == "right":
+            rx = x + w - 14
+            if subtitle:
+                self.text(rx, y + 23, title, "head", "end", tone=tone, fit=(x + 12, rx))
+                self.text(rx, y + 38, subtitle, "small", "end", fit=(x + 12, rx))
+            else:
+                self.text(rx, y + 28, title, "head", "end", tone=tone, fit=(x + 12, rx))
+            return Box(x, y, w, h)
         tx = x + 14
         if icon:
             self.tile(x + 12, y + 10, icon, tone, 28, f"m-{tone}")
@@ -478,21 +511,54 @@ def build_use_case_fig(name, title, boundary_title, boundary_sub, actors, cases,
         case_boxes.append(box)
 
     n_act = len(actors)
-    act_h = 84
-    act_span = (total_h - 24) - n_act * act_h
-    act_gap = act_span / max(1, n_act - 1) if n_act > 1 else 0
+    act_h = 62
+    # Align each actor vertically to the exact centroid of its linked use-case cards
+    # so 1-to-1 links are dead-straight horizontal arrows and 1-to-N splits are symmetric
+    # with ZERO wire crossings.
+    target_ys = []
+    link_map = {act_idx: uc_indices for act_idx, uc_indices, _ in links}
+    for idx in range(n_act):
+        ucs = link_map.get(idx, [])
+        if ucs:
+            mean_cy = sum(case_boxes[u].cy for u in ucs) / len(ucs)
+            target_ys.append(mean_cy - act_h / 2)
+        else:
+            target_ys.append(68 + idx * (act_h + 16))
+
+    min_gap = 10
+    ys = list(target_ys)
+    for i in range(1, n_act):
+        if ys[i] < ys[i - 1] + act_h + min_gap:
+            ys[i] = ys[i - 1] + act_h + min_gap
+    max_y = total_h - 14 - act_h
+    if n_act > 0 and ys[-1] > max_y:
+        ys[-1] = max_y
+        for i in range(n_act - 2, -1, -1):
+            if ys[i] > ys[i + 1] - act_h - min_gap:
+                ys[i] = ys[i + 1] - act_h - min_gap
+
     act_boxes = []
     for idx, (a_title, a_sub, tone, ic) in enumerate(actors):
-        ay = 14 + idx * (act_h + act_gap)
-        box = f.node(MARGIN, ay, 248, act_h, tone, [(a_title, "name"), (a_sub, "sub")], icon=ic, kind="card", icon_size=28)
+        box = f.node(MARGIN, ys[idx], 248, act_h, tone, [(a_title, "name"), (a_sub, "sub")], icon=ic, kind="card", icon_size=28)
         act_boxes.append(box)
 
-    bus_xs = [296 + i * 16 for i in range(n_act)]
+    # Exact symmetric midpoint corridor between actor right edge (280) and case left edge (368)
+    bus_x = (MARGIN + 248 + bx + 22) / 2  # 324.0
     for act_idx, uc_indices, tone in links:
         ab = act_boxes[act_idx]
-        bus_x = bus_xs[act_idx]
-        for uc_idx in uc_indices:
-            cb = case_boxes[uc_idx]
-            f.wire([ab.right(0), (bus_x, ab.cy), (bus_x, cb.cy), cb.left(0)], tone=tone, width=1.8, radius=7)
+        if len(uc_indices) == 1:
+            cb = case_boxes[uc_indices[0]]
+            if abs(ab.cy - cb.cy) <= 1.5:
+                f.wire([ab.right(0), cb.left(0)], tone=tone, width=1.9)
+            else:
+                f.wire([ab.right(0), (bus_x, ab.cy), (bus_x, cb.cy), cb.left(0)], tone=tone, width=1.9, radius=7)
+        elif len(uc_indices) > 1:
+            cys = [case_boxes[u].cy for u in uc_indices]
+            y_min, y_max = min(cys), max(cys)
+            f.wire([ab.right(0), (bus_x, ab.cy)], tone=tone, width=1.9, head=False)
+            f.wire([(bus_x, min(y_min, ab.cy)), (bus_x, max(y_max, ab.cy))], tone=tone, width=1.9, head=False)
+            for u in uc_indices:
+                cb = case_boxes[u]
+                f.wire([(bus_x, cb.cy), cb.left(0)], tone=tone, width=1.9)
 
     return f.save(notes)

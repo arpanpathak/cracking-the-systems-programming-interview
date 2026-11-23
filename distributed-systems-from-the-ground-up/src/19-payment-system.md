@@ -337,3 +337,32 @@ Four specialized signals monitor financial integrity beyond standard HTTP metric
 - TigerBeetle Architecture Documentation, "Strict Serializability and Double-Entry Accounting at Scale".
 - H. Garcia-Molina and K. Salem, "Sagas", ACM SIGMOD, 1987.
 - J. Gray and A. Reuter, *Transaction Processing: Concepts and Techniques*, Morgan Kaufmann, 1992.
+
+## 19.8 End-to-End Request Lifecycle and Production Case Studies
+
+### Hop-by-Hop Request Lifecycle and Latency Budget
+
+An online card charge (`POST /v1/payments`) spans six strict isolation boundaries, separating fast local ACID state transitions from slow external card-network authorization RPCs within a `p99` end-to-end latency budget of `800 to 1,500 ms` (dominated by the issuing bank).
+
+| Hop | Boundary Payload | Typical Latency Budget |
+| :--- | :--- | :--- |
+| **1. Checkout Client to PCI Vault / Edge Tokenization** | Browser or SDK posts raw PAN directly to the isolated PCI-DSS CDE vault over TLS 1.3 and receives an opaque `tok_...` surrogate token | `40 to 90 ms` |
+| **2. Merchant Backend to Payment API Gateway** | Signed HTTPS `POST` carrying `Idempotency-Key`, `amount_minor`, `currency`, and `tok_...` (zero raw card data crosses the core API) | `15 to 35 ms` |
+| **3. Payment Orchestrator to Ledger DB (Atomic Phase 1)** | Short local ACID transaction inserting the idempotency lock (`IN_PROGRESS`) and validating payload fingerprint before releasing DB locks | `8 to 20 ms` |
+| **4. Payment Orchestrator to External Acquirer / Card Network** | ISO 8583 or REST authorization request forwarded through the acquiring bank and Visa/Mastercard switch to the cardholder's issuing bank | `350 to 900 ms` (external) |
+| **5. Orchestrator to Double-Entry Ledger DB (Atomic Phase 2)** | ACID commit appending balanced debit/credit journal entries, updating payment state to `CAPTURED`, and recording the outbox event | `10 to 25 ms` |
+| **6. Outbox Relay to Webhook / Settlement Pipeline** | Asynchronous WAL CDC delivery notifying the merchant webhook endpoint and queueing the `T+1` clearing batch for three-way reconciliation | `50 to 200 ms` (async) |
+
+### Production Case Studies and Open-Source Comparisons
+
+**Stripe Idempotency Keys and Ledger Immutability.** Stripe formalized recovery-point idempotency by persisting atomic phase transitions around every external acquirer call: each client-supplied `Idempotency-Key` binds to a request-parameter hash for `24 hours`, ensuring network retries replay the exact stored response rather than charging a card twice. Internally, Stripe maintains an immutable double-entry ledger that continuously reconciles every balance movement against bank settlement files, surfacing sub-cent discrepancies automatically before payout batches execute.
+
+**Adyen Unified Direct-to-Scheme Architecture.** Adyen eliminates intermediate payment-gateway hops by connecting its single processing platform directly to Visa, Mastercard, and local payment schemes across global regions. Direct acquiring reduces network round trips, exposes granular issuer decline codes for automated smart retries, and unifies authorization, capture, and `T+1` settlement data inside one reconciliation pipeline.
+
+**Square Books Double-Entry Ledger.** Square built Books, a globally distributed, strongly consistent double-entry accounting service backed by Google Cloud Spanner to record immutable financial journal entries across Cash App and merchant payouts. Every transaction enforces strict zero-sum balance invariants per currency and supports idempotent append-only corrections (reversing entries rather than in-place `UPDATE` mutations) so auditors can reconstruct exact historical balances at any timestamp.
+
+<div class="callout keyidea"><span class="label">Key idea</span> Holding an open relational database transaction across an external acquiring-bank RPC exhausts connection pools whenever a downstream bank slows down. Split each payment into short local ACID recovery phases separated by lock-free external network calls so retries resume deterministically without wedging the ledger.</div>
+
+<div class="callout experiment"><span class="label">Experiment</span> In `code/paysim`, replay the identical `order-7` idempotency key three times in succession and inspect the resulting ledger journal. Confirm that the sum of all debit entries equals the sum of all credit entries strictly to zero and that the customer balance decrements once rather than three times.</div>
+
+<div class="callout caution"><span class="label">Common pitfall</span> Treating a client-side HTTP timeout during an external PSP call as a confirmed payment failure causes automatic retries to double-charge cardholders when the issuer actually approved the first request. Transition timed-out charges into an `UNKNOWN` reconciliation state and query the PSP's status API with the same idempotency key before issuing a retry or refund.</div>

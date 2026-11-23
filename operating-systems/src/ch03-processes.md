@@ -1,5 +1,7 @@
 # 3. Process Abstraction and Lifecycle
 
+<img class="plate" src="art/ch03-plate.svg" alt="Chapter 03: Processes — process state FSM and fork() hierarchy">
+
 A program is a static sequence of instructions; it becomes a process only when the operating system instantiates it into an active execution environment. A process is defined by its execution state, its resource ownership, and its isolated address space.
 
 ## 3.1 The Process Control Block and Address Space Topology

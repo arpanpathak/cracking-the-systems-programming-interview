@@ -57,8 +57,6 @@ Each functional requirement defines a deterministic contract verifiable by autom
 
 ### Non-Functional Requirements and SLOs
 
-A single-host process with one log file satisfies functional requirements 0 through 4 in full yet fails nearly every operational constraint of production infrastructure. The non-functional bounds below dictate the distributed architecture:
-
 | No. | Property | Target Specification | Architectural Consequence |
 | :--- | :--- | :--- | :--- |
 | 0 | **Consistency** | Linearizable (strong consistency) per key | Every `GET` invoked after an acknowledged `PUT` returns that write or a newer one; enforced via Raft quorum commit and `ReadIndex` |
@@ -210,7 +208,7 @@ In leaderless Dynamo-style stores, engineers frequently assume that configuring 
 2. **Non-Monotonic Concurrent Reads:** While a write of `v2` has reached Replica 1 but not yet Replicas 2 and 3, Reader A querying `{R1, R2}` observes `v2`. A later Reader B querying `{R2, R3}` observes `v1`, violating real-time linearizability unless Reader A synchronously repairs `R2` before returning `v2` to its caller.
 3. **Physical-Clock Last-Write-Wins (LWW):** Ordering concurrent writes with wall-clock timestamps drops valid updates without detection whenever NTP clock drift exceeds the interval between writes.
 
-Because functional requirement 3 mandates atomic compare-and-swap (`If-Match`), we adopt **leader-based Raft linearizability** per shard. Serializing every mutation for a key through a single term-fenced leader eliminates concurrent write divergence altogether.
+To support atomic compare-and-swap (`If-Match`) without concurrent write divergence, each shard adopts **leader-based Raft linearizability**, serializing every mutation for a key through a single term-fenced leader.
 
 ## 1.5 Partitioning: Consistent Hashing, Virtual Nodes, and Range Splits
 
@@ -247,7 +245,7 @@ With a single token per node, the fullest machine absorbs `2.7x` its ideal share
 
 ### Architectural Trade-Off: Consistent Hashing vs. Range Partitioning
 
-Hash partitioning creates a structural tension with **functional requirement 4 (lexicographic prefix listing)**. Because hashing scatters lexicographically adjacent keys (`user:7:sess1` and `user:7:sess2`) across unrelated shards, answering `GET /v1/keys?prefix=user:7:` requires a **scatter-gather** fan-out across every shard followed by a `K`-way merge at the router. Tail latency then degrades to the slowest shard in the fleet (`p99_total ≈ 1 - (1 - p99_shard)^S`), making broad scans expensive at large cluster sizes.
+Hash partitioning creates a structural tension with **lexicographic prefix listing**. Because hashing scatters lexicographically adjacent keys (`user:7:sess1` and `user:7:sess2`) across unrelated shards, answering `GET /v1/keys?prefix=user:7:` requires a **scatter-gather** fan-out across every shard followed by a `K`-way merge at the router. Tail latency then degrades to the slowest shard in the fleet (`p99_total ≈ 1 - (1 - p99_shard)^S`), making broad scans expensive at large cluster sizes.
 
 **Range partitioning** (used by CockroachDB, TiKV, and Google Spanner) keeps keys sorted lexicographically across contiguous ranges so prefix scans execute on a single shard in `O(log N + K)` time. The corresponding liability is write hot-spotting: monotonically increasing keys (timestamps or sequential identifiers) funnel every write onto the rightmost range until the placement controller executes an automated **dynamic range split** once a shard exceeds `64 MiB` or a QPS threshold. Production systems frequently adopt **compound keys** (Amazon DynamoDB style), hashing the tenant or entity partition key for uniform write spread while sorting sub-keys lexicographically within the shard so tenant-scoped prefix scans remain single-shard operations.
 
@@ -336,6 +334,55 @@ At `100,000` reads/s, a `0.1%` tail anomaly affects `100` operations every secon
 | **Term Fencing** | Rejecting any RPC or mutation tagged with a Raft `term` lower than the receiver's observed term, preventing partitioned former leaders from corrupting committed state. |
 | **Virtual Node (VNode)** | Assigning multiple ring tokens per physical server to compress key-distribution variance via statistical averaging. |
 | **Group Commit** | Amortizing a single WAL `fsync` across multiple concurrent write requests within a tight batch window to multiply durable write throughput. |
+
+### End-to-End Request Lifecycle and Hardware/Network Hop Breakdown
+
+To ground the `p99 <= 5 ms` read SLO and `p99 <= 20 ms` write SLO in physical hardware, consider a client issuing `PUT /v1/keys/order:48192` with a `4 KiB` payload to a three-AZ production deployment. Every hop introduces a distinct median cost and tail-latency risk:
+
+1. **Client to L7 Load Balancer (TLS Termination):** The client reuses a pooled HTTP/2 connection over TLS 1.3 to the nearest regional L7 load balancer, avoiding the `1` to `2` RTT handshake penalty.
+2. **L7 Load Balancer to Stateless Router:** The load balancer forwards the stream over intra-AZ Ethernet to a stateless request router, which executes an `O(log V)` consistent-hash lookup in RAM (`< 1 us`) and resolves the shard's cached Raft leader address.
+3. **Stateless Router to Shard Leader:** The router forwards the RPC over a persistent gRPC/HTTP/2 channel to the shard leader, tagging the request with `ring_version` and remaining `grpc-timeout` deadline.
+4. **Shard Leader WAL Append and NVMe `fsync`:** The leader validates any `If-Match` precondition, appends the serialized record to its local WAL, and invokes `fdatasync(2)` (amortized across concurrent writers via group commit).
+5. **Cross-AZ Quorum Replication:** Concurrently with local persistence, the leader dispatches `AppendEntries` RPCs to both followers located in separate Availability Zones (`0.4` to `1.2 ms` one-way intra-region RTT). Each follower writes and `fdatasync`s its local WAL.
+6. **Quorum Commit and Response:** Once the leader plus the faster follower confirm durability (`2 of 3`), the leader advances `committed_index`, applies the mutation to its in-memory index or LSM MemTable, and returns `201 Created` with the new `ETag` back through the router and load balancer.
+
+| Hop | Device / Subsystem | Typical `p50` | Tail `p99` | Primary Source of Tail Latency |
+| :--- | :--- | :--- | :--- | :--- |
+| 1 | Client -> TLS/L7 Load Balancer (reused conn) | `0.40 ms` | `1.50 ms` | TCP retransmissions, TLS session ticket misses, LB CPU queuing |
+| 2 | L7 Load Balancer -> Stateless Router | `0.15 ms` | `0.45 ms` | Intra-AZ top-of-rack switch microbursts, epoll wakeup jitter |
+| 3 | Stateless Router -> Shard Leader (gRPC) | `0.25 ms` | `1.20 ms` | Stale leader hint triggering one `421` redirect round trip |
+| 4 | Leader Kernel Page Cache + NVMe `fsync` | `1.20 ms` | `5.80 ms` | NVMe SSD internal garbage collection, ext4/XFS journal contention |
+| 5 | Cross-AZ Quorum (`AppendEntries` + Follower `fsync`) | `2.10 ms` | `7.50 ms` | Cross-AZ fiber jitter, slow follower disk (masked by 2-of-3 quorum) |
+| 6 | Apply to State Machine + Return Path | `0.35 ms` | `1.05 ms` | Lock contention on MemTable, kernel socket buffer drain |
+| **Total** | **End-to-End Durable `PUT`** | **`4.45 ms`** | **`17.50 ms`** | **NVMe flush stalls and cross-AZ tail outliers** |
+
+For a linearizable `GET` using `ReadIndex`, steps 4 and 5 replace disk writes with a single zero-disk cross-AZ heartbeat round trip (`~1.0 ms` p50, `~3.2 ms` p99), keeping total read `p99` under `5 ms`.
+
+### Deep-Dive Production Case Studies
+
+Beyond the summary comparison above, three production architectures illustrate how hardware constraints shape real-world key-value designs:
+
+- **Amazon DynamoDB (USENIX ATC 2022):** DynamoDB separates a fleet of stateless **Request Routers** from storage nodes organized into three-way Multi-Paxos replication groups across three AZs. Routers cache partition-to-replica mappings in an in-memory **Storage Metadata Service (MemDS)** with a hit rate exceeding `99.99%`, preventing control-plane lookups on the hot path. To sustain predictable single-digit millisecond `p99` latency at millions of requests per second, DynamoDB decouples storage allocation from throughput allocation via **Global Admission Control (GAC)** and **adaptive capacity**, splitting hot partitions dynamically when skewed keys exceed single-partition IOPS ceilings.
+- **Google Spanner and Bigtable:** Bigtable separates tablet servers from a distributed file system (Colossus/GFS) and relies on Chubby for root tablet location and master election, prioritizing high write throughput via LSM-tree SSTables. Spanner extends this foundation with Multi-Paxos groups per tablet and hardware-assisted **TrueTime** clocks (GPS plus atomic oscillators) whose bounded uncertainty interval (`epsilon`, typically `1` to `7 ms`) enables external consistency (strict serializability) via a short commit wait (`2 * epsilon`) without blocking read-only transactions on cross-datacenter locks.
+- **CockroachDB and TiKV:** Both open-source engines implement **Multi-Raft**, multiplexing thousands of `64` to `512 MiB` lexicographic ranges per physical node over LSM-tree storage (Pebble in CockroachDB, RocksDB in TiKV). To prevent idle Raft heartbeats from saturating CPU and network bandwidth, CockroachDB coalesces heartbeats across all ranges shared between any pair of nodes, while TiKV places inactive regions into a hibernated state until a client request arrives.
+
+<div class="callout keyidea"><span class="label">Key idea</span>
+
+**Quorum writes mask single-node tail latency automatically.** In a three-replica shard spread across three Availability Zones, a write completes as soon as the leader and the *faster* of the two followers finish `fdatasync(2)`. Even if one follower experiences a `40 ms` NVMe garbage-collection pause, the quorum response time remains governed by the second-fastest replica rather than the slowest.
+
+</div>
+
+<div class="callout experiment"><span class="label">Experiment</span>
+
+**Quantify hot-key variance before sizing shards.** Run `cargo run --release -p ringsim` in `code/` and compare the maximum-to-mean shard load ratio at `1`, `8`, `64`, and `256` virtual nodes. Observe how increasing virtual nodes from `1` to `256` compresses standard deviation by more than an order of magnitude while keeping lookup complexity at `O(log V)` (fewer than `14` binary-search comparisons for `24` nodes).
+
+</div>
+
+<div class="callout caution"><span class="label">Common pitfall</span>
+
+**Treating `p99` as additive across independent hops.** Summing the `p99` latencies of six serial components overestimates steady-state `p99` when hops are independent, yet underestimates true tail latency during correlated failures such as an AZ-wide network brownout or synchronized LSM compaction storms. Always measure end-to-end latency distributions under synthetic disk and network fault injection rather than relying solely on component-level averages.
+
+</div>
 
 ### References
 

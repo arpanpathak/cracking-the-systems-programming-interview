@@ -2,7 +2,7 @@
 
 <img class="plate" src="art/ch04-plate.svg" alt="Chapter 4 plate: Raft consensus and monotonic term fencing illustrating Term 3, Term 4, and Term 5 quorum election barriers where term T+1 fences stale term T." />
 
-In [Chapter 3](03-key-value-store-replication.md), an operator appointed each shard's leader manually, and when a leader failed the shard rejected every write until someone inspected follower health endpoints and promoted a survivor by hand. Non-functional requirement 2 of [Chapter 1](01-key-value-store-system-design.md) permits at most `21.6` minutes of unavailability per 30-day month (`99.95%` availability). No manual incident-response workflow can stay within that budget across dozens of shards. The replicas of a shard must elect their own leader automatically.
+In [Chapter 3](03-key-value-store-replication.md), an operator appointed each shard's leader manually, and when a leader failed the shard rejected every write until someone inspected follower health endpoints and promoted a survivor by hand. Meeting a `99.95%` availability target permits at most `21.6` minutes of unavailability per 30-day month. No manual incident-response workflow can stay within that budget across dozens of shards. The replicas of a shard must elect their own leader automatically.
 
 Stated concisely, automated failover sounds modest; in practice, it is the hardest algorithmic problem in this book. The members of a shard must converge on a single leader even though they communicate solely over an asynchronous network that drops and delays messages, any replica may crash and restart with only its persisted disk state, and no replica can distinguish a crashed peer from a slow or partitioned peer. Two members must never lead the same term concurrently, because split leadership would allow divergent writes. Moreover, every elected leader must already hold every write acknowledged in earlier terms so that new writes never overwrite durable client state. Reaching agreement under these fault assumptions is the problem of distributed *consensus*.
 
@@ -84,7 +84,7 @@ Correct crash recovery in Raft depends on strictly separating state that must su
 Figure 4-2 partitions `Member` fields into on-disk durable files (`kv.log` and `state`) versus volatile runtime memory rebuilt after every restart.
 
 <figure>
-<img src="figures/elect-disk-memory.svg?v=9964293d" alt="Partition of Raft Member state between disk and RAM: kv.log (records and term markers) and state (current term and voted_for) persist on disk; records, terms, entries, committed, role, and leader are reconstructed in memory on boot." />
+<img src="figures/m3/ch04_elect_disk_memory.svg" alt="Partition of Raft Member state between disk and RAM: kv.log (records and term markers) and state (current term and voted_for) persist on disk; records, terms, entries, committed, role, and leader are reconstructed in memory on boot." />
 <figcaption><b>Figure 4-2</b> Durable on-disk files versus volatile in-memory state inside a Raft member.</figcaption>
 </figure>
 
@@ -137,7 +137,7 @@ Listing 4.9 implements `Member::stand`, which increments `term`, records a self-
 Figure 4-3 traces an eight-step initial shard election from cold start (`term 0`) through member 3's timeout, disk-backed vote grants, term-1 marker commitment, and the first client write at sequence `2`.
 
 <figure>
-<img src="figures/elect-steps.svg?v=302a35e4" alt="Eight-step cold-start Raft election: members 1, 2, and 3 boot in term 0 with timeouts 17, 14, and 11 ticks; member 3 times out first, persists term 1 self-vote, gathers persisted votes from members 1 and 2, commits term-1 marker as record 1, and serves client write as record 2." />
+<img src="figures/m3/ch04_elect_steps.svg" alt="Eight-step cold-start Raft election: members 1, 2, and 3 boot in term 0 with timeouts 17, 14, and 11 ticks; member 3 times out first, persists term 1 self-vote, gathers persisted votes from members 1 and 2, commits term-1 marker as record 1, and serves client write as record 2." />
 <figcaption><b>Figure 4-3</b> Initial eight-step election of a three-member shard from boot through term-marker commitment.</figcaption>
 </figure>
 
@@ -162,7 +162,7 @@ Listing 4.10 implements `on_vote` (persisting the vote before returning `Voted {
 Figure 4-4 demonstrates why term takes precedence over sequence length: member 2 holds a record from term `2` (reflecting progress from a later leader) and therefore defeats any isolated member that accumulated longer uncommitted logs from term `1`.
 
 <figure>
-<img src="figures/elect-vote-rule.svg?v=6889a6eb" alt="Raft voting freshness comparison across three members: member 1 ends at (term 1, seq 4), member 2 ends at (term 2, seq 5), and member 3 ends at (term 1, seq 3); member 2 receives all votes, member 1 receives only member 3's vote, and member 3 receives none." />
+<img src="figures/m3/ch04_elect_vote_rule.svg" alt="Raft voting freshness comparison across three members: member 1 ends at (term 1, seq 4), member 2 ends at (term 2, seq 5), and member 3 ends at (term 1, seq 3); member 2 receives all votes, member 1 receives only member 3's vote, and member 3 receives none." />
 <figcaption><b>Figure 4-4</b> Log-freshness comparison across three replicas comparing final term before final sequence.</figcaption>
 </figure>
 
@@ -202,7 +202,7 @@ A follower validates every incoming `Append` against three sequential checks (Fi
 3. Does the follower's record at `msg.previous_sequence` have term equal to `msg.previous_term`? If not, refuse and report `msg.previous_sequence - 1` so the leader steps backward by one index until reaching the highest matching prefix.
 
 <figure>
-<img src="figures/elect-append-flow.svg?v=21d1107d" alt="Three-check decision tree inside on_append: verify term >= local term, verify log contains previous_sequence, verify term at previous_sequence equals previous_term; passing check 1 resets election timeout and records leader id." />
+<img src="figures/m3/ch04_elect_append_flow.svg" alt="Three-check decision tree inside on_append: verify term >= local term, verify log contains previous_sequence, verify term at previous_sequence equals previous_term; passing check 1 resets election timeout and records leader id." />
 <figcaption><b>Figure 4-6</b> Three-check validation inside <code>Member::on_append</code>.</figcaption>
 </figure>
 
@@ -217,7 +217,7 @@ Listing 4.13 implements `Member::on_append`, resetting the election timer upon a
 Once all three checks pass, both logs agree up to `previous_sequence`. Listing 4.14 (`store`) walks incoming records forward: identical entries (matching both term and payload) are skipped idempotently; at the first diverging index, `truncate` removes the conflicting tail from memory and disk, and the remaining leader suffix is appended in a single batched `fsync` (Figure 4-7).
 
 <figure>
-<img src="figures/elect-store-example.svg?v=b7fb4e60" alt="Example of Member::store reconciling a divergent tail: follower holds (d, e, x, y) at indices 4 to 7 while leader sends (e, f, g, h) after index 4; record 5 matches and is skipped, conflicting tail (x, y) is truncated, and (f, g, h) are appended in one write." />
+<img src="figures/m3/ch04_elect_store_example.svg" alt="Example of Member::store reconciling a divergent tail: follower holds (d, e, x, y) at indices 4 to 7 while leader sends (e, f, g, h) after index 4; record 5 matches and is skipped, conflicting tail (x, y) is truncated, and (f, g, h) are appended in one write." />
 <figcaption><b>Figure 4-7</b> Idempotent prefix skipping, conflict truncation, and batched suffix append inside <code>Member::store</code>.</figcaption>
 </figure>
 
@@ -471,7 +471,7 @@ Listing 4.32 lists the imports of `kvraft/src/rpc.rs`, Listing 4.33 converts bet
 Figure 4-8 illustrates the asynchronous event loop surrounding `Mutex<Member>`: the `100 ms` clock task, incoming gRPC handlers, and client HTTP handlers all invoke `Member` under a brief lock, collect the returned outbound `Envelope` vector, release the lock, and spawn concurrent `500 ms`-bounded gRPC tasks whose replies feed back into `Member::handle`.
 
 <figure>
-<img src="figures/elect-node-loop.svg?v=4f8fba54" alt="Async event loop driving Raft Member in kvraft: clock task (100 ms) and HTTP write handlers invoke Member under mutex, collect outbound Envelope messages, release mutex, dispatch concurrent 500 ms-bounded gRPC calls, and feed replies back into Member." />
+<img src="figures/m3/ch04_elect_node_loop.svg" alt="Async event loop driving Raft Member in kvraft: clock task (100 ms) and HTTP write handlers invoke Member under mutex, collect outbound Envelope messages, release mutex, dispatch concurrent 500 ms-bounded gRPC calls, and feed replies back into Member." />
 <figcaption><b>Figure 4-8</b> Asynchronous event loop connecting <code>raft::Member</code> to the logical clock, gRPC peers, and HTTP handlers.</figcaption>
 </figure>
 
@@ -599,7 +599,7 @@ $ ./target/release/kvctl verify --server http://127.0.0.1:7001 --acked acked.txt
 ```
 
 <figure>
-<img src="figures/elect-probe.svg?v=10430968" alt="20-second continuous write timeline across three Raft nodes: leader killed at 6.0 s, new leader elected and writes resume at 7.1 s (1.05 s maximum pause), all 1,443 acknowledged writes verified intact." />
+<img src="figures/m3/ch04_elect_probe.svg" alt="20-second continuous write timeline across three Raft nodes: leader killed at 6.0 s, new leader elected and writes resume at 7.1 s (1.05 s maximum pause), all 1,443 acknowledged writes verified intact." />
 <figcaption><b>Figure 4-9</b> Empirical 20-second failover timeline showing a 1.05 s election pause and zero lost writes.</figcaption>
 </figure>
 
@@ -717,6 +717,52 @@ Listing 4.51 presents the complete continuous availability and failover-pause me
 ```rust
 {{#include ../code/probe/src/main.rs}}
 ```
+
+## 4.13 End-to-End Failover and Consensus Request Lifecycle
+
+Under Raft consensus (`kvraft`), steady-state writes follow the quorum path of Chapter 3, whereas a leader crash triggers a multi-phase election lifecycle spanning timers, durable vote persistence, and term-marker commitment:
+
+1. **Leader Crash Detection (Election Timeout):** Followers stop receiving periodic `Append` heartbeats (`150 ms` interval). After a randomized election timeout (`600` to `1,200 ms` in `kvraft`), the earliest-expiring follower transitions to `Candidate`.
+2. **Durable Vote Persistence:** The candidate increments `current_term`, sets `voted_for = self`, writes the updated `(term, voted_for)` tuple to `state.tmp`, calls `fdatasync(2)` on the temporary file, atomically `rename(2)`s it over `state`, and calls `fsync(2)` on the parent directory (`~2` to `8 ms`).
+3. **Cross-AZ `RequestVote` Round Trip:** The candidate broadcasts `RequestVote(term, last_log_term, last_log_sequence)` over gRPC to all peers. Each peer validates term monotonicity and log up-to-dateness, persists its own `(term, voted_for)` via atomic write-and-rename, and replies.
+4. **Leadership Acquisition and Term-Marker Commit:** Upon receiving a majority of votes (`2 of 3`), the new leader appends an empty-key **term marker** to its local WAL and replicates it via `Append`. Once a majority persists the marker, all inherited prior-term entries become committed and safe to serve.
+5. **Client Reconnection and Write Resumption:** Clients or routers probing the dead leader observe TCP `RST` or connection refused, retry against surviving peers, receive `421` redirects pointing to the new leader, and resume normal quorum writes.
+
+| Path / Phase | Device / Subsystem | Typical `p50` | Tail `p99` | Primary Source of Tail Latency |
+| :--- | :--- | :--- | :--- | :--- |
+| Steady-State `PUT` | Leader + Cross-AZ Quorum WAL `fsync` | `4.80 ms` | `16.50 ms` | NVMe flush spikes, cross-AZ packet retransmissions |
+| Failover Phase 1 | Follower Election Timeout Expiry | `750 ms` | `1,180 ms` | Randomized timeout spread (`[T, 2T]`), split-vote re-election |
+| Failover Phase 2 | Candidate Atomic `state` Persist (`2x fsync`) | `3.20 ms` | `12.00 ms` | Directory metadata `fsync` contention on ext4/XFS |
+| Failover Phase 3 | Cross-AZ `RequestVote` + Peer `state` Persist | `4.50 ms` | `15.00 ms` | Peer disk flush latency, cross-AZ RTT |
+| Failover Phase 4 | Term-Marker Quorum Replication (`Append`) | `4.80 ms` | `16.50 ms` | Divergent uncommitted tail rollback on lagging follower |
+| **Total Failover** | **Leader `SIGKILL` to First New-Term Write** | **`~765 ms`** | **`~1,225 ms`** | **Dominated (`> 95%`) by election timeout window** |
+
+## 4.14 Production Consensus Case Studies
+
+Production consensus engines harden textbook Raft and Multi-Paxos against split-brain disruptions, disk stalls, and Multi-Raft scaling bottlenecks:
+
+- **etcd (Kubernetes Control Plane):** etcd runs a single Raft group over `bbolt` with default `heartbeat_interval = 100 ms` and `election_timeout = 1,000 ms`, enabling sub-second failover across three AZs. To eliminate disruptive re-elections when a partitioned node reconnects with an inflated term, etcd enables Raft **Pre-Vote** (requiring a majority pre-check before incrementing `term`) and **CheckQuorum** (stepping down an isolated leader automatically). Linearizable reads use `ReadIndex`, batching concurrent `GET` requests behind a single quorum heartbeat round trip (`~1` to `2 ms` p99).
+- **CockroachDB (Multi-Raft with Range Leases):** A single CockroachDB node hosts thousands of `512 MiB` ranges, each backed by its own Raft group. Running independent `100 ms` heartbeat timers per range would consume entire CPU cores; CockroachDB therefore **coalesces heartbeats** per peer node into one RPC per tick. Furthermore, CockroachDB decouples the **Raft leader** from the **range leaseholder** (a time- or epoch-based lease recorded inside the Raft log), allowing the leaseholder to serve linearizable reads locally from RAM with zero network round trips while its lease remains valid.
+- **TiKV (`raft-rs` and Hibernated Regions):** TiKV separates Raft log storage from user key-value storage across two dedicated RocksDB instances (or its custom **Raft Engine** append-only log) so heavy user-data LSM compactions never stall consensus heartbeats. Regions that receive zero writes for a configurable idle window enter a **hibernated** state, suspending periodic heartbeats entirely and reducing idle CPU utilization by `> 60%` on large clusters with hundreds of thousands of regions.
+- **Google Chubby and Spanner (Multi-Paxos):** Chubby and Spanner implement Multi-Paxos with **master leases** (typically `10 s` in Spanner) that allow the Paxos leader to serve linearizable reads locally without a quorum round trip. When a leader fails, Spanner's Paxos group cannot elect a new leader until the old leader's lease expires unless the old leader explicitly relinquishes it, trading a bounded failover window for zero-RTT local reads in steady state.
+
+<div class="callout keyidea"><span class="label">Key idea</span>
+
+**Separating the pure consensus state machine from clocks and sockets makes safety bugs reproducible.** By structuring `raft::Node` as a deterministic, allocation-light state machine driven by explicit `Tick` and RPC messages, `raftsim` explores hundreds of network partitions, crashes, and message reorderings in seconds on a single core, reproducing any invariant violation deterministically from one 64-bit RNG seed.
+
+</div>
+
+<div class="callout experiment"><span class="label">Experiment</span>
+
+**Trigger randomized elections and verify Election Safety.** Execute `cargo run --release -p raftsim` in `code/` to run 200 randomized three-node fault schedules. Inspect the summary counters for elections held, acknowledged writes preserved, and conflicting uncommitted tails truncated, then deliberately disable durable `voted_for` persistence in a local branch to watch the simulator catch a dual-leader safety violation immediately.
+
+</div>
+
+<div class="callout caution"><span class="label">Common pitfall</span>
+
+**Deploying Raft without Pre-Vote on wide-area or flaky networks.** Without the Pre-Vote extension, a single partitioned follower increments its `term` on every election timeout (`term + 1, term + 2, ...`). The instant the network partition heals, its first message carries a higher term that forces the healthy leader to step down immediately, causing an avoidable cluster-wide write pause even though the reconnecting node's log is stale and cannot win the election.
+
+</div>
 
 ## Further Reading
 

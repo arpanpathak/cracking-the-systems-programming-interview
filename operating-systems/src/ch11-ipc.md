@@ -1,5 +1,7 @@
 # 11. Inter-Process Communication (IPC)
 
+<img class="plate" src="art/ch11-plate.svg" alt="Chapter 11: Inter-Process Communication — pipe ring, mmap shared memory, and Unix domain socket">
+
 While threads within a single process share an address space and coordinate directly through memory and synchronization primitives, processes are isolated by hardware page tables. **Inter-Process Communication (`IPC`)** provides controlled kernel-mediated channels through which isolated processes exchange data and synchronize execution without sacrificing memory protection.
 
 ## 11.1 Unidirectional Byte Streams: Pipes

@@ -39,18 +39,19 @@ LIGHT = {
 
 DARK = {
     "is_dark": True,
-    "paper": "#12161F", "card": "#1E2636", "card_stroke": "#4E6080",
-    "ink": "#F8FAFC", "muted": "#D8E0EE",
-    "hair": "#3E4C66", "shadow": "#000000", "shadow_opacity": "0.35",
+    "paper": "#121722", "frame_fill": "rgba(0, 0, 0, 0.22)",
+    "card": "rgba(13, 18, 28, 0.80)", "card_stroke": "rgba(203, 213, 225, 0.24)",
+    "ink": "#F2F6FC", "muted": "#D0DAE8",
+    "hair": "rgba(226, 232, 240, 0.18)", "shadow": "#000000", "shadow_opacity": "0.0",
     "tones": {
-        "blue":   ("#182B49", "#1E3A63", "#93C5FD"),
-        "green":  ("#133328", "#184D3B", "#86EFAC"),
-        "amber":  ("#34250F", "#4F3814", "#FDE078"),
-        "red":    ("#3A1B23", "#582430", "#FDA4AF"),
-        "purple": ("#261E47", "#382B6B", "#DDD6FE"),
-        "teal":   ("#113136", "#164A52", "#5EEAD4"),
-        "gray":   ("#1E2534", "#2C364A", "#D8E0EE"),
-        "wire":   ("#1E2534", "#2C364A", "#CBD5E1"),
+        "blue":   ("rgba(137, 180, 250, 0.08)", "rgba(137, 180, 250, 0.16)", "#89B4FA"),
+        "green":  ("rgba(166, 227, 161, 0.08)", "rgba(166, 227, 161, 0.15)", "#A6E3A1"),
+        "amber":  ("rgba(242, 201, 138, 0.08)", "rgba(242, 201, 138, 0.16)", "#F2C98A"),
+        "red":    ("rgba(243, 166, 178, 0.08)", "rgba(243, 166, 178, 0.16)", "#F3A6B2"),
+        "purple": ("rgba(200, 182, 255, 0.08)", "rgba(200, 182, 255, 0.16)", "#C8B6FF"),
+        "teal":   ("rgba(137, 216, 211, 0.08)", "rgba(137, 216, 211, 0.15)", "#89D8D3"),
+        "gray":   ("rgba(226, 232, 240, 0.04)", "rgba(226, 232, 240, 0.10)", "#CBD5E4"),
+        "wire":   ("rgba(226, 232, 240, 0.04)", "rgba(226, 232, 240, 0.10)", "#AAB7C9"),
     },
 }
 
@@ -75,11 +76,12 @@ FONTS = {
 def style(theme):
     """The style sheet and shared definitions for one theme."""
     is_dark = theme.get("is_dark", False)
+    frame_fill = theme.get("frame_fill", theme["paper"])
     card_stroke = f" stroke: {theme['card_stroke']}; stroke-width: 1;" if is_dark else ""
     rules = [
         f"text {{ font-family: {SANS}; fill: {theme['ink']}; }}",
         f".paper {{ fill: {theme['paper']}; }}",
-        f".frame {{ fill: {theme['paper']}; stroke: {theme['hair']}; stroke-width: 1.2; }}",
+        f".frame {{ fill: {frame_fill}; stroke: {theme['hair']}; stroke-width: 1.2; }}",
         f".card {{ fill: {theme['card']};{card_stroke} }}",
         f".hair {{ stroke: {theme['hair']}; stroke-width: 1.2; fill: none; }}",
         f".muted {{ fill: {theme['muted']}; }}",

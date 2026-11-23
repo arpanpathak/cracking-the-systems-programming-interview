@@ -32,7 +32,7 @@ Three external actor classes interact across the boundary of the metrics and ale
 
 | Actor | Operation | Concrete Scenario |
 | :--- | :--- | :--- |
-| **Instrumented Service** | Expose `/metrics` for pull scraping or transmit Remote Write batches (`POST /api/v1/write`) | Report request counters, latency histogram buckets, and memory gauges every 10 seconds across 100,000 service instances |
+| **Instrumented Service** | Expose `/metrics` for pull scraping or transmit Remote Write batches (`POST /v1/series:batchWrite`) | Report request counters, latency histogram buckets, and memory gauges every 10 seconds across 100,000 service instances |
 | **SRE / On-Call Engineer** | Execute range queries (`GET /v1/series?query=...`) and register alert expressions (`PUT /v1/alerts/{name}`) | Inspect 6-hour `p99` checkout latency across availability zones and configure a 5-minute burn-rate error alert |
 | **Incident Pager** | Receive grouped firing alerts and periodic dead-man's switch heartbeats | Deduplicate cascading dependency alarms into one actionable page and trigger escalation if the monitoring pipeline stalls |
 
@@ -209,15 +209,20 @@ To protect alert delivery and telemetry durability during production incidents, 
 | **Short-Lived Batch Jobs** | Cron or Lambda jobs finishing in 3 seconds exit before the 10-second scrape arrives | Jobs push final counters cleanly before process termination |
 | **Network Topology** | Requires collector-to-service reachability across VPC/NAT boundaries | Services behind restrictive firewalls push outbound over TLS |
 
-Production platforms combine both models cleanly: regional Collection Agents **pull** from long-lived services every 10 seconds to obtain free health checks (`up == 1`) and centrally paced load, while ephemeral batch jobs and edge clients **push** via protobuf Remote Write (`POST /api/v1/write`) into the Write Distributor.
+Production platforms combine both models cleanly: regional Collection Agents **pull** from long-lived services every 10 seconds to obtain free health checks (`up == 1`) and centrally paced load, while ephemeral batch jobs and edge clients **push** via protobuf Remote Write (`POST /v1/series:batchWrite`) into the Write Distributor.
 
 ### Gorilla Delta-of-Delta Timestamp and XOR Value Compression
 
 Storing raw `(int64 timestamp, float64 value)` pairs consumes `16 bytes/sample`, requiring `1.38 TB/day` at `1M` samples/s. Because consecutive samples in a time series arrive at regular scrape intervals (`10 s`) and vary gradually, we apply the **Gorilla** bit-level streaming encoder inside every 2-hour chunk, as depicted in Figure 24-3.
 
 <figure class="diagram">
+<img src="figures/m3/ch24_distributed_agents.svg" alt="Distributed Host Fleet and Local Collection Agents showing Service Discovery streaming target lists to sharded Pull Scrapers (scraping /metrics on Hosts 1 and 2 via symmetric bus) and Push/OTLP Gateway (receiving short-lived batch jobs from Host 3), forwarding Snappy Remote Write batches to an isolated TSDB Ingester Quorum and Alert Evaluator." />
+<figcaption><b>Figure 24-3</b> Distributed host fleet, local collection agents, service discovery, and pull vs. push metric ingestion into an isolated TSDB plane.</figcaption>
+</figure>
+
+<figure class="diagram">
 <img src="figures/m3/ch24_tsdb_ingestion.svg" alt="Gorilla Compression Pipeline showing Delta-of-Delta timestamp bit packing (D=0 emitted as 1 bit '0', small jitter in 9 to 12 bits) and IEEE-754 float64 bitwise XOR window encoding (identical values in 1 bit, narrow XOR windows sharing prior leading/trailing zeros)." />
-<figcaption><b>Figure 24-3</b> Gorilla delta-of-delta timestamp packing and IEEE-754 float64 bitwise XOR window compression.</figcaption>
+<figcaption><b>Figure 24-4</b> Gorilla delta-of-delta timestamp packing and IEEE-754 float64 bitwise XOR window compression.</figcaption>
 </figure>
 
 1. **Timestamp Delta-of-Delta (DoD) Packing:** For sample `n`, compute the first delta `dt_n = t_n - t_(n-1)` and the second-order difference `D = dt_n - dt_(n-1)`. On a regular 10-second scrape cadence (`t = 100, 110, 120`), `dt_1 = 10`, `dt_2 = 10`, and `D = 0`. Gorilla encodes `D` using variable-length bit prefixes:
@@ -327,6 +332,37 @@ The observed output validates two core TSDB mechanics over 3,600 one-second resp
 
 **Run the metrics compression and rollup simulation.** Execute `cargo run --release -p metricsim` in [`code/metricsim`](https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/distributed-systems-from-the-ground-up/code/metricsim/src/main.rs) to reproduce the `8x` delta compression reduction (`57,600` to `7,223` bytes) and verify how `max` rollups preserve the `900 ms` spike that an `83 ms` average hides.
 
+</div>
+
+### End-to-End Request Lifecycle and Hop-by-Hop Latency Budget
+
+The metrics write and alert-evaluation path separates high-throughput sample ingestion from columnar block compaction and PromQL query fan-out.
+
+| Hop | Component | Operation | P50 | P99 |
+| :--- | :--- | :--- | :--- | :--- |
+| 1 | Agent / Scraper | Scrape `/metrics` or batch `remote_write` Snappy-compressed protobuf payload | 2 ms | 10 ms |
+| 2 | Ingestion Gateway (L7) | Tenant authentication, label cardinality guard, and consistent-hash series routing | 1 ms | 4 ms |
+| 3 | TSDB Head Block & WAL | Append sample batch to local WAL and update in-memory XOR-compressed chunk | 0.8 ms | 5 ms |
+| 4 | Compactor / Object Store | Flush immutable 2-hour TSDB blocks and inverted label indexes to durable object storage | 45 ms | 180 ms |
+| 5 | Query & Alert Evaluator | Merge head-block and object-store chunks, evaluate `max`/`P99` rollups, apply alert hysteresis | 18 ms | 140 ms |
+
+### Production Case Studies and Open-Source Comparisons
+
+Prometheus stores active time series in an in-memory head block backed by a write-ahead log (WAL) and periodically compacts 2-hour immutable blocks indexed by an inverted posting list over metric labels. Meta Gorilla introduced delta-of-delta timestamp encoding paired with XOR floating-point value compression, shrinking typical 16-byte raw samples to roughly 1.37 bytes so weeks of operational telemetry fit in RAM. To scale beyond a single Prometheus node, Thanos, Grafana Mimir, and VictoriaMetrics offload compacted blocks to object storage and distribute PromQL query execution across stateless queriers, trading slight cross-node coordination overhead for multi-year retention and horizontal write scaling.
+
+<div class="callout keyidea">
+<span class="label">Key idea</span>
+<p>Because scrape intervals are nearly regular and metric values change gradually, delta-of-delta timestamps and XOR value encoding achieve an order-of-magnitude storage reduction while preserving exact lossless fidelity for recent operational windows.</p>
+</div>
+
+<div class="callout experiment">
+<span class="label">Experiment</span>
+<p>Run <code>cargo run --release -p metricsim</code> and compare the compressed byte count against raw 16-byte samples alongside the <code>avg</code> versus <code>max</code> rollup outputs. Observe how an <code>83 ms</code> mean conceals a <code>900 ms</code> latency spike that a <code>max</code> rollup preserves intact.</p>
+</div>
+
+<div class="callout caution">
+<span class="label">Common pitfall</span>
+<p>Placing unbounded identifiers such as <code>user_id</code>, <code>request_id</code>, or raw URL paths into metric labels triggers a cardinality explosion that exhausts TSDB inverted-index RAM and stalls ingestion for unrelated services on the same shard.</p>
 </div>
 
 ## 24.8 Terminology and References

@@ -1,0 +1,108 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 960 400" width="960" height="400" shape-rendering="geometricPrecision" text-rendering="geometricPrecision" role="img" aria-label="Chapter 7 geometric artwork: a 48-bit virtual address driving a 4-level radix page table walk from CR3 through PGD, PUD, PMD, and PTE to a 4KB physical frame, with a glowing TLB hit fast-path bypass.">
+  <style>
+    .sans { font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif; }
+    .mono { font-family: "SF Mono", SFMono-Regular, ui-monospace, Menlo, Consolas, monospace; }
+  </style>
+  <rect x="0.5" y="0.5" width="959" height="399" rx="14" fill="#F7F9FC" stroke="#D0DAE6" stroke-width="1"/>
+  <line x1="40" y1="1" x2="40" y2="399" stroke="#E3EAF4" stroke-width="0.75"/>
+  <line x1="80" y1="1" x2="80" y2="399" stroke="#E3EAF4" stroke-width="0.75"/>
+  <line x1="120" y1="1" x2="120" y2="399" stroke="#E3EAF4" stroke-width="0.75"/>
+  <line x1="160" y1="1" x2="160" y2="399" stroke="#E3EAF4" stroke-width="0.75"/>
+  <line x1="200" y1="1" x2="200" y2="399" stroke="#E3EAF4" stroke-width="0.75"/>
+  <line x1="240" y1="1" x2="240" y2="399" stroke="#E3EAF4" stroke-width="0.75"/>
+  <line x1="280" y1="1" x2="280" y2="399" stroke="#E3EAF4" stroke-width="0.75"/>
+  <line x1="320" y1="1" x2="320" y2="399" stroke="#E3EAF4" stroke-width="0.75"/>
+  <line x1="360" y1="1" x2="360" y2="399" stroke="#E3EAF4" stroke-width="0.75"/>
+  <line x1="400" y1="1" x2="400" y2="399" stroke="#E3EAF4" stroke-width="0.75"/>
+  <line x1="440" y1="1" x2="440" y2="399" stroke="#E3EAF4" stroke-width="0.75"/>
+  <line x1="480" y1="1" x2="480" y2="399" stroke="#E3EAF4" stroke-width="0.75"/>
+  <line x1="520" y1="1" x2="520" y2="399" stroke="#E3EAF4" stroke-width="0.75"/>
+  <line x1="560" y1="1" x2="560" y2="399" stroke="#E3EAF4" stroke-width="0.75"/>
+  <line x1="600" y1="1" x2="600" y2="399" stroke="#E3EAF4" stroke-width="0.75"/>
+  <line x1="640" y1="1" x2="640" y2="399" stroke="#E3EAF4" stroke-width="0.75"/>
+  <line x1="680" y1="1" x2="680" y2="399" stroke="#E3EAF4" stroke-width="0.75"/>
+  <line x1="720" y1="1" x2="720" y2="399" stroke="#E3EAF4" stroke-width="0.75"/>
+  <line x1="760" y1="1" x2="760" y2="399" stroke="#E3EAF4" stroke-width="0.75"/>
+  <line x1="800" y1="1" x2="800" y2="399" stroke="#E3EAF4" stroke-width="0.75"/>
+  <line x1="840" y1="1" x2="840" y2="399" stroke="#E3EAF4" stroke-width="0.75"/>
+  <line x1="880" y1="1" x2="880" y2="399" stroke="#E3EAF4" stroke-width="0.75"/>
+  <line x1="920" y1="1" x2="920" y2="399" stroke="#E3EAF4" stroke-width="0.75"/>
+  <line x1="1" y1="40" x2="959" y2="40" stroke="#E3EAF4" stroke-width="0.75"/>
+  <line x1="1" y1="80" x2="959" y2="80" stroke="#E3EAF4" stroke-width="0.75"/>
+  <line x1="1" y1="120" x2="959" y2="120" stroke="#E3EAF4" stroke-width="0.75"/>
+  <line x1="1" y1="160" x2="959" y2="160" stroke="#E3EAF4" stroke-width="0.75"/>
+  <line x1="1" y1="200" x2="959" y2="200" stroke="#E3EAF4" stroke-width="0.75"/>
+  <line x1="1" y1="240" x2="959" y2="240" stroke="#E3EAF4" stroke-width="0.75"/>
+  <line x1="1" y1="280" x2="959" y2="280" stroke="#E3EAF4" stroke-width="0.75"/>
+  <line x1="1" y1="320" x2="959" y2="320" stroke="#E3EAF4" stroke-width="0.75"/>
+  <line x1="1" y1="360" x2="959" y2="360" stroke="#E3EAF4" stroke-width="0.75"/>
+  <rect x="44" y="42" width="42" height="4" rx="2" fill="#1A5FC4"/>
+  <text x="44" y="88" class="mono" font-size="38" font-weight="700" fill="#1A5FC4" letter-spacing="-0.03em">07</text>
+  <text x="44" y="132" class="sans" font-size="25" font-weight="750" fill="#161B26" letter-spacing="-0.015em">Virtual Memory</text>
+  <text x="44" y="158" class="mono" font-size="11" font-weight="600" fill="#526075" letter-spacing="0.06em">4-LEVEL RADIX PAGE WALK</text>
+  <text x="44" y="176" class="mono" font-size="11" font-weight="600" fill="#526075" letter-spacing="0.06em">TLB FAST-PATH · MMU</text>
+  <line x1="44" y1="336" x2="304" y2="336" stroke="#D0DAE6" stroke-width="1"/>
+  <text x="44" y="358" class="mono" font-size="10.5" fill="#526075">VA -&gt; CR3 -&gt; PGD..PTE -&gt; PA</text>
+  <text x="360" y="64" class="mono" font-size="10" font-weight="700" fill="#1A5FC4">48-BIT VIRTUAL ADDRESS</text>
+  <rect x="360" y="74" width="96" height="34" rx="6" fill="#DCE9FD" stroke="#1A5FC4" stroke-width="1.8"/>
+  <text x="408.0" y="95" text-anchor="middle" class="mono" font-size="10" font-weight="700" fill="#1A5FC4">PGD · 9b</text>
+  <rect x="462" y="74" width="96" height="34" rx="6" fill="#E5E4FC" stroke="#4F46E5" stroke-width="1.8"/>
+  <text x="510.0" y="95" text-anchor="middle" class="mono" font-size="10" font-weight="700" fill="#4F46E5">PUD · 9b</text>
+  <rect x="564" y="74" width="96" height="34" rx="6" fill="#D3EFEA" stroke="#0E7168" stroke-width="1.8"/>
+  <text x="612.0" y="95" text-anchor="middle" class="mono" font-size="10" font-weight="700" fill="#0E7168">PMD · 9b</text>
+  <rect x="666" y="74" width="96" height="34" rx="6" fill="#FDF0D1" stroke="#D48806" stroke-width="1.8"/>
+  <text x="714.0" y="95" text-anchor="middle" class="mono" font-size="10" font-weight="700" fill="#D48806">PTE · 9b</text>
+  <rect x="768" y="74" width="146" height="34" rx="6" fill="#FBE3DA" stroke="#CC5328" stroke-width="1.8"/>
+  <text x="841.0" y="95" text-anchor="middle" class="mono" font-size="10" font-weight="700" fill="#CC5328">OFFSET · 12b</text>
+  <rect x="360" y="168" width="58" height="44" rx="8" fill="#FFFFFF" stroke="#161B26" stroke-width="2"/>
+  <text x="389" y="194" text-anchor="middle" class="mono" font-size="11" font-weight="700" fill="#161B26">CR3</text>
+  <line x1="418" y1="190" x2="440" y2="190" stroke="#161B26" stroke-width="1.8"/>
+  <polygon points="442.0,190.0 437.2,192.8 437.2,187.2" fill="#161B26"/>
+  <rect x="444" y="142" width="66" height="96" rx="8" fill="#FFFFFF" stroke="#1A5FC4" stroke-width="2"/>
+  <rect x="444" y="142" width="66" height="22" rx="8" fill="#1A5FC4"/>
+  <text x="477" y="157" text-anchor="middle" class="mono" font-size="9.5" font-weight="700" fill="#FFFFFF">PGD</text>
+  <rect x="452" y="172" width="50" height="14" rx="3" fill="none" stroke="#1A5FC4" stroke-width="0.8" opacity="0.45"/>
+  <rect x="452" y="192" width="50" height="14" rx="3" fill="#DCE9FD" stroke="#1A5FC4" stroke-width="1.6" opacity="1.0"/>
+  <rect x="452" y="212" width="50" height="14" rx="3" fill="none" stroke="#1A5FC4" stroke-width="0.8" opacity="0.45"/>
+  <line x1="408" y1="108" x2="477" y2="140" stroke="#1A5FC4" stroke-width="1.3" stroke-dasharray="3 3"/>
+  <path d="M 502 199 C 522 199 522 190 532 190" fill="none" stroke="#1A5FC4" stroke-width="2"/>
+  <polygon points="534.0,190.0 529.2,192.8 529.2,187.2" fill="#1A5FC4"/>
+  <rect x="536" y="142" width="66" height="96" rx="8" fill="#FFFFFF" stroke="#4F46E5" stroke-width="2"/>
+  <rect x="536" y="142" width="66" height="22" rx="8" fill="#4F46E5"/>
+  <text x="569" y="157" text-anchor="middle" class="mono" font-size="9.5" font-weight="700" fill="#FFFFFF">PUD</text>
+  <rect x="544" y="172" width="50" height="14" rx="3" fill="none" stroke="#4F46E5" stroke-width="0.8" opacity="0.45"/>
+  <rect x="544" y="192" width="50" height="14" rx="3" fill="none" stroke="#4F46E5" stroke-width="0.8" opacity="0.45"/>
+  <rect x="544" y="212" width="50" height="14" rx="3" fill="#E5E4FC" stroke="#4F46E5" stroke-width="1.6" opacity="1.0"/>
+  <line x1="510" y1="108" x2="569" y2="140" stroke="#4F46E5" stroke-width="1.3" stroke-dasharray="3 3"/>
+  <path d="M 594 219 C 614 219 614 190 624 190" fill="none" stroke="#4F46E5" stroke-width="2"/>
+  <polygon points="626.0,190.0 621.2,192.8 621.2,187.2" fill="#4F46E5"/>
+  <rect x="628" y="142" width="66" height="96" rx="8" fill="#FFFFFF" stroke="#0E7168" stroke-width="2"/>
+  <rect x="628" y="142" width="66" height="22" rx="8" fill="#0E7168"/>
+  <text x="661" y="157" text-anchor="middle" class="mono" font-size="9.5" font-weight="700" fill="#FFFFFF">PMD</text>
+  <rect x="636" y="172" width="50" height="14" rx="3" fill="#D3EFEA" stroke="#0E7168" stroke-width="1.6" opacity="1.0"/>
+  <rect x="636" y="192" width="50" height="14" rx="3" fill="none" stroke="#0E7168" stroke-width="0.8" opacity="0.45"/>
+  <rect x="636" y="212" width="50" height="14" rx="3" fill="none" stroke="#0E7168" stroke-width="0.8" opacity="0.45"/>
+  <line x1="612" y1="108" x2="661" y2="140" stroke="#0E7168" stroke-width="1.3" stroke-dasharray="3 3"/>
+  <path d="M 686 179 C 706 179 706 190 716 190" fill="none" stroke="#0E7168" stroke-width="2"/>
+  <polygon points="718.0,190.0 713.2,192.8 713.2,187.2" fill="#0E7168"/>
+  <rect x="720" y="142" width="66" height="96" rx="8" fill="#FFFFFF" stroke="#D48806" stroke-width="2"/>
+  <rect x="720" y="142" width="66" height="22" rx="8" fill="#D48806"/>
+  <text x="753" y="157" text-anchor="middle" class="mono" font-size="9.5" font-weight="700" fill="#FFFFFF">PTE</text>
+  <rect x="728" y="172" width="50" height="14" rx="3" fill="none" stroke="#D48806" stroke-width="0.8" opacity="0.45"/>
+  <rect x="728" y="192" width="50" height="14" rx="3" fill="none" stroke="#D48806" stroke-width="0.8" opacity="0.45"/>
+  <rect x="728" y="212" width="50" height="14" rx="3" fill="#FDF0D1" stroke="#D48806" stroke-width="1.6" opacity="1.0"/>
+  <line x1="714" y1="108" x2="753" y2="140" stroke="#D48806" stroke-width="1.3" stroke-dasharray="3 3"/>
+  <path d="M 778 219 C 798 219 808 190 818 190" fill="none" stroke="#D48806" stroke-width="2"/>
+  <polygon points="820.0,190.0 815.2,192.8 815.2,187.2" fill="#D48806"/>
+  <rect x="822" y="142" width="92" height="96" rx="10" fill="#FBE3DA" stroke="#CC5328" stroke-width="2.4"/>
+  <text x="868" y="182" text-anchor="middle" class="mono" font-size="11" font-weight="700" fill="#CC5328">4 KB</text>
+  <text x="868" y="200" text-anchor="middle" class="mono" font-size="10" font-weight="700" fill="#CC5328">FRAME</text>
+  <text x="868" y="220" text-anchor="middle" class="mono" font-size="9" fill="#526075">PHYS RAM</text>
+  <rect x="444" y="282" width="242" height="48" rx="24" fill="#D3EFEA" stroke="#0E7168" stroke-width="2.4"/>
+  <text x="565" y="304" text-anchor="middle" class="mono" font-size="11.5" font-weight="700" fill="#0E7168">TLB HIT FAST-PATH</text>
+  <text x="565" y="320" text-anchor="middle" class="mono" font-size="9.5" fill="#526075">VPN -&gt; PFN IN 1 CYCLE</text>
+  <path d="M 389 212 L 389 306 L 440 306" fill="none" stroke="#0E7168" stroke-width="2.4"/>
+  <polygon points="442.0,306.0 436.8,309.0 436.8,303.0" fill="#0E7168"/>
+  <path d="M 686 306 L 868 306 L 868 242" fill="none" stroke="#0E7168" stroke-width="2.4"/>
+  <polygon points="868.0,240.0 871.0,245.2 865.0,245.2" fill="#0E7168"/>
+</svg>

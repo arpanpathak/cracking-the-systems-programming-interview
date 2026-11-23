@@ -33,7 +33,7 @@ We organize the news feed platform around three interacting actor groups (Figure
 | Actor | Operation | Concrete Scenario |
 | :--- | :--- | :--- |
 | **Post Author** | Publish post (`POST /v1/posts`), delete post (`DELETE /v1/posts/{id}`) | Regular member or 10-million-follower celebrity publishes text and media attachments and expects immediate visibility in their own feed |
-| **Feed Reader** | Fetch paginated timeline (`GET /v1/feeds/{id}?cursor=c&limit=n`), follow or unfollow (`PUT / DELETE /v1/graph/{u}/follows/{v}`) | Mobile client opens the home feed, scrolls smoothly across multiple pages without duplicates, and unfollows an account with immediate suppression |
+| **Feed Reader** | Fetch paginated timeline (`GET /v1/feeds/{id}?cursor=c&limit=n`), follow or unfollow (`PUT / DELETE /v1/users/{u}/following/{v}`) | Mobile client opens the home feed, scrolls smoothly across multiple pages without duplicates, and unfollows an account with immediate suppression |
 | **Ranking and Safety Team** | Deploy ranking model weights, tune celebrity fan-out cutoffs, and apply moderation suppression | Trust engineering deploys a updated scoring model or hides a policy-violating post immediately across all active readers |
 
 ### Functional Requirements
@@ -146,8 +146,8 @@ Content-Type: application/json
 
 **Update social graph edges:**
 
-- `PUT /v1/graph/{follower_id}/follows/{followed_id}` returns `204 No Content` (idempotent follow edge creation; asynchronously triggers backfill of the followed account's recent posts into the follower's inbox if the followed account is below the celebrity threshold).
-- `DELETE /v1/graph/{follower_id}/follows/{followed_id}` returns `204 No Content` (marks edge deleted in the social graph; read-time filtering hides that author's posts immediately without scanning cached inboxes).
+- `PUT /v1/users/{follower_id}/following/{followed_id}` returns `204 No Content` (idempotent follow edge creation; asynchronously triggers backfill of the followed account's recent posts into the follower's inbox if the followed account is below the celebrity threshold).
+- `DELETE /v1/users/{follower_id}/following/{followed_id}` returns `204 No Content` (marks edge deleted in the social graph; read-time filtering hides that author's posts immediately without scanning cached inboxes).
 
 ### Storage Schemas and Cache Structures
 
@@ -358,3 +358,30 @@ From these measurements, we observe the exact quantitative impact of the hybrid 
 - Facebook Engineering, "Serving Facebook Multifeed: Efficiency and Performance Gains Through Redesign", 2015.
 - LinkedIn Engineering, "FollowFeed: LinkedIn's Feed Made Faster and Smarter", 2016.
 - Twitter Engineering, "The Infrastructure Behind Twitter: Scale", 2017.
+
+## 15.9 End-to-End Request Lifecycle and Production Case Studies
+
+### Hop-by-Hop Request Lifecycle and Latency Budget
+
+A `GET /v1/feeds/home` request traverses six network and storage boundaries from a mobile client to hydrated timeline items, targeting a `p99` end-to-end budget of `180 ms`.
+
+| Hop | Boundary Payload | Typical Latency Budget |
+| :--- | :--- | :--- |
+| **1. Mobile / Browser to Edge PoP (Anycast TLS)** | HTTP/3 `GET` with bearer JWT, `cursor=(ts, post_id)`, and `limit=20`; terminates TLS 1.3 at the nearest edge PoP | `15 to 30 ms` (WAN RTT) |
+| **2. Edge PoP to L4/L7 Load Balancer** | Reused persistent HTTP/2 connection carrying validated session headers and regional routing tags | `5 to 12 ms` (backbone) |
+| **3. L7 LB to Feed API Gateway** | Authenticated gRPC request enforcing per-member rate limits and extracting viewer locale and experiment cohorts | `2 to 5 ms` |
+| **4. Feed Gateway to Timeline Aggregator** | Fan-in RPC requesting precomputed inbox IDs (`ZREVRANGE`) plus parallel celebrity outbox pulls and L1 singleflight lookups | `8 to 18 ms` |
+| **5. Aggregator to ML Ranker and Post Hydration Store** | Batch of `200` candidate `(post_id, author_id, feature_vec)` tuples scored under a `40 ms` deadline, followed by batched `MGET` hydration for the top `20` items | `25 to 45 ms` |
+| **6. Hydration Store to Client Serialization** | Filtered JSON or Protobuf payload with signed CDN media URLs and an opaque next-page cursor streamed back over the edge connection | `10 to 20 ms` |
+
+### Production Case Studies and Open-Source Comparisons
+
+**X (Twitter) Home Timeline Hybrid Fan-Out.** Production telemetry published by Twitter engineering documented a `~800`-entry per-user Redis timeline cache backed by asynchronous fan-out workers delivering ordinary posts within a `5 s` SLA. High-follower accounts exceeding the celebrity threshold bypass write-time fan-out altogether and merge at read time via an in-memory outbox cache, avoiding multi-minute Redis write queues when accounts with tens of millions of followers publish simultaneously.
+
+**Meta TAO and Multifeed.** Meta serves home feeds through a pull-dominant leaf-aggregator tree sitting above TAO, a read-optimized distributed graph cache layered over sharded MySQL. TAO handles billions of reads per second at `99.9%` cache hit rates by partitioning social-graph edges across follower-tier caches and routing writes synchronously through leader tiers; because personal friend counts stay bounded (at or below `5,000`), Multifeed leaf nodes can gather recent candidate stories on read and apply deep neural ranking without maintaining static push inboxes for every member.
+
+<div class="callout keyidea"><span class="label">Key idea</span> Hybrid fan-out decouples write amplification from read amplification by placing a follower-count threshold between two complementary storage paths. Ordinary accounts pay a small asynchronous write cost to keep reads sub-50 ms, while celebrity accounts absorb zero fan-out storms by deferring merge work to read-time cached outboxes.</div>
+
+<div class="callout experiment"><span class="label">Experiment</span> In `code/feedsim`, raise the celebrity cutoff from `10,000` to `5,000,000` and compare daily copy volume against the default hybrid configuration. Observe how a single high-follower author shifts `98%` of total cluster write traffic back onto the fan-out workers while barely changing read-side list fetches.</div>
+
+<div class="callout caution"><span class="label">Common pitfall</span> Caching full post bodies inside every follower's Redis inbox multiplies memory footprint by average follower count and makes edits, deletions, and moderation takedowns eventually inconsistent. Store compact `(timestamp, post_id)` references in the inbox and hydrate authoritative content and visibility flags once at read time.</div>

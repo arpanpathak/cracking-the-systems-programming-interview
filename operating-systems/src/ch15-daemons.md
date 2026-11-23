@@ -1,5 +1,7 @@
 # 15. Daemon Lifecycle and Service Supervision
 
+<img class="plate" src="art/ch15-plate.svg" alt="Chapter 15: Daemons & Supervision — PID 1 supervision tree, cgroups, and watchdog">
+
 A daemon is a specialized process designed for long-running background execution, decoupled from any interactive terminal. While traditional daemons implement explicit detachment rituals to sever ties with their launching shell, modern operating systems have evolved toward a supervision-based model where central init systems (such as `launchd` on macOS and Darwin, or `systemd` on Linux) manage the lifecycle, socket activation, resource boundaries, and fault recovery of background services.
 
 ## 15.1 The Ritual of Detachment

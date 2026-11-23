@@ -34,7 +34,7 @@ We partition the URL shortener boundary around three external actor groups (Figu
 | :--- | :--- | :--- |
 | **Link Author** | Create short link (`POST /v1/links`), update expiry or alias (`PATCH / DELETE /v1/links/{code}`), query analytics (`GET /v1/links/{code}/stats`) | Marketing team or API client shortens a parameterized campaign URL with a 90-day expiry and inspects daily click totals |
 | **Link Visitor** | Resolve and follow short link (`GET /{code}`) | Browser or mobile application opens a shared short link and receives a sub-10 ms HTTP redirect to the destination URL |
-| **Trust and Analytics Team** | Quarantine abusive link (`POST /v1/admin/block/{code}`) and inspect domain threat telemetry | Safety automation detects a phishing destination and blocks resolution across regional caches and CDN edges within seconds |
+| **Trust and Analytics Team** | Quarantine abusive link (`POST /v1/links/{code}:block`) and inspect domain threat telemetry | Safety automation detects a phishing destination and blocks resolution across regional caches and CDN edges within seconds |
 
 ### Functional Requirements
 
@@ -141,7 +141,7 @@ For expired or quarantined codes, the service returns `410 Gone` with `Cache-Con
 **Quarantine an abusive link (control plane):**
 
 ```http
-POST /v1/admin/block/a9K4x7Q HTTP/2
+POST /v1/links/a9K4x7Q:block HTTP/2
 Host: control.sho.rt
 Authorization: Bearer <admin-token>
 Content-Type: application/json
@@ -321,7 +321,7 @@ Short-link traffic follows a steep Zipf distribution in which fewer than `1%` of
 
 Incrementing a relational counter row on every redirect would convert a `3,900` to `39,000` QPS read workload into a write-contended hotspot on popular rows. Instead, Redirect Services and CDN edge log collectors emit compact 64-byte click events (`code`, `timestamp_ms`, `country_iso`, `referrer_hash`) into a partitioned Kafka topic via non-blocking ring buffers. Stream consumers aggregate counts in 1-minute tumbling windows in memory and flush bulk batches into ClickHouse (`SummingMergeTree`), reducing persistent write volume by over `1,000x` for viral links while isolating redirect latency completely from analytics pipeline backpressure.
 
-Public redirectors are primary targets for phishing concealment. Three layered safeguards protect domain reputation: synchronous URL inspection against local threat feeds (such as Google Safe Browsing prefix lists) at link creation, periodic background re-scanning of active high-click destinations to catch delayed page swaps, and an instant quarantine endpoint (`POST /v1/admin/block/{code}`) that marks `status = 3` in L3, broadcasts an L2 Redis invalidation, and triggers a CDN purge API call so malicious links return `410 Gone` globally within `5 seconds`.
+Public redirectors are primary targets for phishing concealment. Three layered safeguards protect domain reputation: synchronous URL inspection against local threat feeds (such as Google Safe Browsing prefix lists) at link creation, periodic background re-scanning of active high-click destinations to catch delayed page swaps, and an instant quarantine endpoint (`POST /v1/links/{code}:block`) that marks `status = 3` in L3, broadcasts an L2 Redis invalidation, and triggers a CDN purge API call so malicious links return `410 Gone` globally within `5 seconds`.
 
 ## 14.6 Failure Modes, SLIs, and Production Systems
 
@@ -340,7 +340,7 @@ Public redirectors are primary targets for phishing concealment. Three layered s
 - **Redirect Availability SLI:** Fraction of valid `GET /{code}` requests returning `301`/`302` (excluding client `4xx` errors), targeting `99.99%` over a 30-day rolling window; page on-call when 5-minute error burn exceeds `14.4x` budget.
 - **Origin Redirect Latency SLI:** `p99 <= 15 ms` for L2 hits and `p999 <= 40 ms` for L3 misses; alert when `p99` exceeds `25 ms` for 5 minutes.
 - **Cache Efficiency and Penetration SLI:** Combined L1 + L2 hit ratio `>= 97%` and L3 negative-miss rate `<= 0.5%` of total traffic; alert if Bloom filter false-positive rate drifts above `2%` (indicating scheduled filter rebuild is overdue).
-- **Quarantine Propagation SLI:** End-to-end elapsed time from `POST /v1/admin/block/{code}` to global CDN `410 Gone` enforcement, targeting `p99 <= 10 s`.
+- **Quarantine Propagation SLI:** End-to-end elapsed time from `POST /v1/links/{code}:block` to global CDN `410 Gone` enforcement, targeting `p99 <= 10 s`.
 
 ### Production Benchmarks
 
@@ -389,6 +389,31 @@ From this benchmark output, we verify three quantitative properties of our desig
 | **Cache Penetration** | A workload pattern in which requests for nonexistent keys bypass caches repeatedly and strike persistent storage directly, mitigated by Bloom filters and short-TTL negative caching. |
 | **`301` vs. `302` Redirect** | HTTP status codes signaling permanent (`301`, aggressively browser-cached) versus temporary (`302`, controlled by explicit `Cache-Control` freshness headers) redirection. |
 | **Surrogate-Key Purge** | A CDN invalidation mechanism allowing the control plane to evict a quarantined short link from global edge PoPs within seconds. |
+
+### End-to-End Request Lifecycle and Hop-by-Hop Latency Budget
+
+URL shortening is strongly read-dominated (`100:1` to `1,000:1`). Pushing hot short codes to CDN edge caches keeps `p99` global redirect latency under `25 ms`, while origin misses resolve through a Bloom-filter-guarded regional cache and key-value store.
+
+| Hop | Boundary | Protocol and Operation | Edge Hit `p99` | Origin Miss `p99` |
+| :--- | :--- | :--- | :--- | :--- |
+| 1 | Browser / Mobile Client to Anycast CDN PoP | DNS lookup (cached) plus TLS 1.3 HTTP/2 `GET /{code}` | `14.00 ms` | `14.00 ms` |
+| 2 | CDN Edge PoP Cache Lookup | Edge KV / cache hit returning `301`/`302` with `Location` header | `1.50 ms` | `2.00 ms` |
+| 3 | CDN Origin Shield to Regional Redirect Service | Persistent mTLS HTTP/2 backhaul; in-memory Bloom filter drops invalid codes | `0 ms` | `8.50 ms` |
+| 4 | Redirect Service to L2 Redis and L3 KV Store | L2 Redis miss (`0.8 ms`) followed by L3 primary-key lookup (`8.5 ms`) | `0 ms` | `9.30 ms` |
+| 5 | Async Click Telemetry Emission | Non-blocking ring-buffer enqueue to Kafka analytics topic | `0 ms` (async) | `0.05 ms` |
+| **Total** | **End-to-End Global Redirect Latency** | **Edge hits finish in ~15 ms; origin misses stay under 35 ms** | **`15.50 ms`** | **`33.85 ms`** |
+
+### Production Case Studies and Open-Source Comparisons
+
+- **Bitly:** Bitly processes billions of monthly clicks across 7-character Base-62 codes and custom branded domains, routing redirect traffic through a global edge tier backed by regionally replicated key-value stores. Click telemetry is decoupled from the redirect path via asynchronous streaming pipelines, while continuous threat-intelligence scanning allows the control plane to quarantine malicious links and propagate edge invalidations globally within seconds.
+- **TinyURL:** TinyURL pairs compact alphanumeric generated keys with a user-defined custom-alias namespace, prioritizing permanent link durability and backward compatibility across decades of published URLs. Separating custom-alias uniqueness validation from generated-key allocation allows standard shortening writes to remain fast while protecting reserved aliases from collisions.
+- **Cloudflare Workers KV Edge Redirects:** Cloudflare Workers KV stores short-code mappings in central durable storage and caches reads automatically across `300+` global edge PoPs. Redirect logic executes inside V8 isolates at the nearest edge location with cold starts under `5 ms`, serving hot links with single-digit millisecond server latency and zero origin round trips while accepting eventual consistency (`<= 60 s` propagation) for newly created or updated links.
+
+<div class="callout keyidea"><span class="label">Key idea</span>Combining disjoint range leasing with a bijective Format-Preserving Encryption (Feistel) permutation gives the write path zero-collision, coordination-free key minting while preventing adversaries from enumerating sequential short URLs.</div>
+
+<div class="callout experiment"><span class="label">Experiment</span>Direct a synthetic flood of `20,000` req/s containing nonexistent random 7-character codes at the Redirect Service with and without a `1%` false-positive Bloom filter and `30 s` negative caching. Measure L3 database read IOPS and `p99` latency for legitimate concurrent redirects.</div>
+
+<div class="callout caution"><span class="label">Common pitfall</span>Serving permanent `301 Moved Permanently` redirects for links that require real-time click analytics or rapid phishing takedown causes browsers to bypass the redirect service entirely on repeat visits. Use `302 Found` with bounded `Cache-Control` freshness headers whenever analytics accuracy or rapid revocation is required.</div>
 
 ### References
 

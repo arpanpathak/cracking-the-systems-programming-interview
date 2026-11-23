@@ -33,7 +33,7 @@ We organize the unique ID generator around three operational actors: application
 
 | Actor | Operation | Concrete Scenario |
 | :--- | :--- | :--- |
-| **Application Service** | Request single ID (`GET /v1/ids/next`) or batch (`POST /v1/ids/batch`) | Mint primary keys for newly created orders, chat messages, or telemetry events across sharded databases |
+| **Application Service** | Request single ID (`POST /v1/ids:allocate`) or batch (`POST /v1/ids:batchAllocate`) | Mint primary keys for newly created orders, chat messages, or telemetry events across sharded databases |
 | **Application Service** | Decode embedded metadata | Extract creation timestamp and originating node bits during incident triage or time-range log correlation |
 | **Generator Node** | Lease and renew a 10-bit `worker_id` (`0` to `1023`) | Acquire an exclusive worker slot from the etcd control plane at process startup and checkpoint its high-water timestamp |
 | **Platform Operator** | Monitor clock drift, sequence exhaustion, and lease churn | Detect NTP stepping faults or approaching sequence saturation before client requests experience wait delays |
@@ -90,10 +90,10 @@ We expose a binary gRPC interface for internal microservices, an HTTP/2 REST API
 
 Whenever an ID travels over JSON, we serialize the 64-bit integer as a decimal string. IEEE 754 double-precision floating-point numbers used by JavaScript engines and many JSON parsers represent integers exactly only up to `2^53 - 1` (`9,007,199,254,740,991`). Returning a raw 64-bit JSON number causes browsers to round distinct IDs to the same value, corrupting client-side state.
 
-**Single ID allocation (`GET /v1/ids/next`):**
+**Single ID allocation (`POST /v1/ids:allocate`):**
 
 ```http
-GET /v1/ids/next HTTP/2
+POST /v1/ids:allocate HTTP/2
 Host: idgen.internal
 Accept: application/json
 ```
@@ -111,12 +111,12 @@ X-Worker-Id: 7
 }
 ```
 
-**Batched ID allocation (`POST /v1/ids/batch`):**
+**Batched ID allocation (`POST /v1/ids:batchAllocate`):**
 
 Batching amortizes network round trips and allows callers to keep a small local buffer without maintaining their own etcd lease. An `Idempotency-Key` header prevents retries from double-charging accounting quotas, though minting a fresh unused ID is harmless for uniqueness.
 
 ```http
-POST /v1/ids/batch HTTP/2
+POST /v1/ids:batchAllocate HTTP/2
 Host: idgen.internal
 Content-Type: application/json
 Idempotency-Key: checkout-pod-19-batch-402
@@ -221,7 +221,7 @@ Before committing to a composite time-worker-sequence layout, we evaluate the fo
 | **Control-Plane Outage** | Total outage | Survives `N - 1` loss | Continues until block empties | Unaffected | Unaffected | Running nodes unaffected |
 | **Primary Failure Hazard** | SPOF bottleneck | Rigid cluster resizing | Gaps and cross-node skew | Cloned PRNG seed; index bloat | `16 B` key footprint | Duplicate `worker_id` or clock rollback |
 
-We choose the **64-bit Snowflake layout** because requirement 1 mandates a 64-bit integer key, requirement 2 demands k-sortable B-tree locality, and non-functional requirement 1 demands zero hot-path network coordination.
+The design adopts the **64-bit Snowflake layout** to fit within a single 64-bit integer key, preserve k-sortable B-tree locality, and eliminate hot-path network coordination.
 
 ### 64-Bit Field Layout and Uniqueness Proof
 
@@ -371,6 +371,32 @@ Three exact invariants emerge from the observed output:
 | **Epoch Checkpoint** | A durably persisted high-water timestamp horizon that prevents a crashed and restarted node from emitting IDs earlier than timestamps used before the crash. |
 | **UUIDv7 (RFC 9562)** | A 128-bit universally unique identifier embedding a 48-bit Unix millisecond timestamp in its leading bits to preserve B-tree index locality. |
 | **Leap-Second Smearing** | Gradually slewing NTP clock frequency over hours to absorb an inserted leap second without repeating a second on `CLOCK_REALTIME`. |
+
+### End-to-End Request Lifecycle and Hop-by-Hop Latency Budget
+
+A write-heavy microservice requesting a batch of 64-bit Snowflake identifiers traverses five network and execution boundaries. Keeping the hot path completely free of synchronous disk writes and cross-AZ consensus calls holds end-to-end `p99` generation latency under `1.0 ms`.
+
+| Hop | Boundary | Protocol and Operation | Typical `p50` | Tail `p99` |
+| :--- | :--- | :--- | :--- | :--- |
+| 1 | Caller Service to Local Envoy Sidecar | HTTP/2 over localhost Unix socket or loopback (`gRPC` unary `NextBatch`) | `0.06 ms` | `0.15 ms` |
+| 2 | Envoy Sidecar to Local-AZ L4/L7 Load Balancer | Persistent mTLS HTTP/2 stream, zone-aware least-request routing | `0.18 ms` | `0.40 ms` |
+| 3 | Generator Pod Allocation Path | In-memory atomic compare-and-swap on `(timestamp_ms, sequence)` anchored to `CLOCK_MONOTONIC` | `0.002 ms` | `0.05 ms` |
+| 4 | Background Control Plane (Off Critical Path) | Asynchronous `etcd` lease keepalive every `10 s` and periodic `horizon_ms` checkpoint | `0 ms` (async) | `0 ms` (async) |
+| 5 | Response Return to Caller Application | gRPC protobuf decode of 64-bit integer array and return to caller thread | `0.15 ms` | `0.35 ms` |
+| **Total** | **End-to-End Local-AZ Batch Mint** | **Zero synchronous storage or consensus round trips** | **`0.39 ms`** | **`0.95 ms`** |
+
+### Production Case Studies and Open-Source Comparisons
+
+- **Twitter Snowflake:** Twitter deployed Snowflake in 2010 to replace MySQL auto-increment keys across sharded tweet timelines, allocating 41 timestamp bits (`69.7` years), 10 worker bits (`1,024` nodes coordinated via Apache ZooKeeper), and 12 sequence bits (`4,096` IDs per millisecond per node, exceeding `4.19` million IDs/s per cluster). Nodes remained stateless on the hot path and refused allocation if NTP stepped backward beyond tolerance.
+- **Sonyflake:** Sony's open-source Go implementation shifts bit density to 39 timestamp bits in `10 ms` ticks (`174` years of epoch runway), 8 sequence bits (`256` IDs per `10 ms`, or `25,600` IDs/s per machine), and 16 machine-ID bits derived from the lower 16 bits of the private IPv4 address. This layout favors fleets up to `65,536` nodes where moderate per-host throughput is sufficient and external ZooKeeper coordination is undesirable.
+- **Instagram PostgreSQL Sharded IDs:** Instagram avoided a dedicated ID microservice by embedding a PL/pgSQL function inside each of its `8,192` logical PostgreSQL shards (41 timestamp bits, 13 logical-shard bits, and 10 sequence bits backed by a local `SEQUENCE` modulo `1,024`). Because each logical shard lives on a physical database host, primary-key generation incurs zero extra network hops while remaining k-sortable across shard migrations.
+- **Flickr Ticket Servers:** Flickr operated two redundant MySQL servers configured with `auto_increment_increment = 2` and offsets `1` and `2`, executing `REPLACE INTO Tickets64 (stub) VALUES ('a')` to mint monotonically increasing 64-bit integers. The design requires no specialized daemon and survives single-host failure, though its write throughput is bounded by single-row MySQL durability (`~5,000` to `15,000` IDs/s) and cross-server ordering can drift slightly under uneven load.
+
+<div class="callout keyidea"><span class="label">Key idea</span>Decoupling worker-ID ownership (slow control plane) from per-millisecond sequence minting (lock-free data plane) eliminates consensus latency from every ID request while preserving global uniqueness.</div>
+
+<div class="callout experiment"><span class="label">Experiment</span>Inject a `20 ms` backward wall-clock jump on a single generator node using `date` or a mock clock provider while driving `10,000` IDs/s. Observe that `CLOCK_MONOTONIC` anchoring prevents duplicate timestamps, while a process restart without a persisted `horizon_ms` checkpoint immediately reproduces duplicate IDs.</div>
+
+<div class="callout caution"><span class="label">Common pitfall</span>Treating `CLOCK_REALTIME` as monotonic during NTP step adjustments or leap seconds causes silent bit-level collisions across restarts. Always anchor elapsed time to `CLOCK_MONOTONIC`, persist a high-water epoch checkpoint, and self-fence before control-plane lease expiry.</div>
 
 ### References
 

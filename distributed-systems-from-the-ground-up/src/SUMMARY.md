@@ -2,6 +2,7 @@
 
 [Cover](cover.md)
 [Preface](about-this-book.md)
+[Table of Contents](toc.md)
 
 # Part I: Distributed Key-Value Store (System and Low-Level Design)
 
@@ -48,3 +49,7 @@
 - [26. Collaborative Editing](26-collaborative-editing.md)
 - [27. Stock Exchange Matching Engine](27-stock-exchange.md)
 - [28. Ad Click Aggregation Pipeline](28-click-aggregation.md)
+
+---
+
+- [Glossary of Distributed Systems Terms](glossary.md)

@@ -9,6 +9,24 @@ from figkit_m3 import Fig, WIDTH, MARGIN, build_use_case_fig
 INNER = WIDTH - 2 * MARGIN  # 856px usable width
 
 
+def step_badge(f, cx, cy, num, tone="blue"):
+    """Draw a crisp circular numbered step badge with paper halo (light + dark safe)."""
+    f.add(
+        f'<circle cx="{cx:.1f}" cy="{cy:.1f}" r="11.5" class="paper"/>'
+        f'<circle cx="{cx:.1f}" cy="{cy:.1f}" r="9.5" class="a-{tone}"/>'
+        f'<text x="{cx:.1f}" y="{cy + 3.8:.1f}" text-anchor="middle" class="badge paper">{num}</text>'
+    )
+
+
+def seg_mid(a, b, head=True, tail=False):
+    """Exact visual midpoint of a wire segment a -> b accounting for 9px arrowheads."""
+    if head and not tail:
+        return (a + b - 9) / 2 if b > a else (a + b + 9) / 2
+    if tail and not head:
+        return (a + b + 9) / 2 if b > a else (a + b - 9) / 2
+    return (a + b) / 2
+
+
 # =============================================================================
 # CHAPTER 25: CLOUD FILE SYNCHRONIZATION SERVICE
 # =============================================================================
@@ -47,128 +65,112 @@ def ch25_architecture():
     f = Fig(
         "ch25_architecture",
         "Figure 25-2. Sync Metadata Service, Content-Addressed Block Store, and Delta Notification Bus.",
-        544,
+        548,
     )
-    # Top-left: Sync Clients
-    cli_zone = f.zone(
-        MARGIN, 0, 264, 152, "blue",
-        "Client Sync Agents",
-        "Desktop & mobile watchers",
-        icon="laptop",
-    )
+    # Top-left: Physical Client Devices (aligned to gw.cx = 156)
     cli = f.node(
-        MARGIN + 16, 60, 232, 76, "blue",
-        [("CDC & Merkle Agent", "name"), ("Watch FS · Diff chunks", "sub")],
-        icon="folder", kind="card", icon_size=26,
+        MARGIN, 14, 248, 124, "blue",
+        [("Desktop & Mobile Agents", "name"), ("Local FS watch · FastCDC", "sub"), ("Merkle diff · Chunk queue", "small")],
+        icon="laptop", kind="card", icon_size=26,
     )
 
     # Top-right: Control Plane
-    cp_x = 338
-    cp_w = WIDTH - MARGIN - cp_x  # 550
+    cp_x = 324
+    cp_w = WIDTH - MARGIN - cp_x  # 564
     f.zone(
-        cp_x, 0, cp_w, 152, "purple",
+        cp_x, 0, cp_w, 148, "purple",
         "Control Plane (Metadata, CAS & Garbage Collection)",
         "Namespace authority · Optimistic version checks · Block reference counting",
         icon="settings_suggest", dashed=True,
     )
     meta_api = f.node(
-        cp_x + 16, 60, 250, 76, "purple",
+        cp_x + 16, 58, 256, 74, "purple",
         [("Metadata & CAS API", "name"), ("Manifest commits · ACLs", "sub")],
         icon="dns", kind="card", icon_size=26,
     )
     gc_ctrl = f.node(
-        cp_x + 284, 60, 250, 76, "purple",
+        cp_x + 292, 58, 256, 74, "purple",
         [("GC & Quota Sweeper", "name"), ("Mark-and-sweep orphans", "sub")],
         icon="tune", kind="card", icon_size=26,
     )
 
-    # Middle Row: Block Gateway, Delta Notification Bus, Metadata Store
-    gw_zone = f.zone(
-        MARGIN, 194, 264, 140, "teal",
-        "Data Plane: Block Gateway",
-        "SHA-256 verify · Deduplication",
-        icon="swap_horiz",
-    )
+    # Middle Row: Block Gateway, Delta Notification Bus, Metadata Store (48px gap bus<->mdb)
     gw = f.node(
-        MARGIN + 16, 252, 232, 66, "teal",
-        [("Chunk Ingress Tier", "name"), ("Pre-signed PUT / GET", "sub")],
-        icon="bolt", kind="card", icon_size=24,
-    )
-
-    bus_zone = f.zone(
-        338, 194, 264, 140, "amber",
-        "Delta Notification Bus",
-        "Per-folder cursor fanout",
-        icon="notifications_active",
+        MARGIN, 194, 248, 96, "teal",
+        [("Block Gateway", "name"), ("SHA-256 verify · Dedup", "sub"), ("Pre-signed PUT / GET", "small")],
+        icon="swap_horiz", kind="card", icon_size=26,
     )
     bus = f.node(
-        354, 252, 232, 66, "amber",
-        [("Push & Long-Poll Edge", "name"), ("Wake subscribed devices", "sub")],
-        icon="lan", kind="card", icon_size=24,
-    )
-
-    mdb_zone = f.zone(
-        624, 194, 264, 140, "purple",
-        "Metadata Store (3-AZ)",
-        "Serializable ACID quorum",
-        icon="table_rows",
+        324, 194, 248, 96, "amber",
+        [("Delta Notification Bus", "name"), ("Push & long-poll edge", "sub"), ("Per-folder cursor fanout", "small")],
+        icon="notifications_active", kind="card", icon_size=26,
     )
     mdb = f.node(
-        640, 252, 232, 66, "purple",
-        [("Files & Change Cursors", "name"), ("files · chunks · seq_log", "mono")],
-        kind="card",
+        620, 194, 268, 96, "purple",
+        [("Metadata Store (3-AZ)", "name"), ("Serializable ACID quorum", "sub"), ("files · chunks · seq_log", "mono")],
+        icon="table_rows", kind="card", icon_size=26,
     )
 
-    # Bottom Row: Content-Addressed Block Store
-    store_zone = f.zone(
-        MARGIN, 374, INNER, 162, "blue",
-        "Data Plane: Content-Addressed Block Store (Multi-AZ Object Storage)",
-        "Immutable chunk payloads keyed by SHA-256 digest enable global deduplication and lock-free retries",
+    # Bottom Row: Content-Addressed Block Store (concise header leaves x >= 320 clear)
+    f.zone(
+        MARGIN, 344, INNER, 196, "blue",
+        "Content-Addressed Block Store",
+        "Immutable SHA-256 · Global dedup",
         icon="layers",
     )
-    f.node(
-        MARGIN + 16, 434, 260, 84, "blue",
-        [("Immutable Chunk Store", "name"), ("key = sha256(bytes)", "mono"), ("Erasure-coded across AZs", "small")],
-        icon="inventory_2", kind="card", icon_size=26,
-    )
-    f.node(
-        MARGIN + 298, 434, 260, 84, "teal",
+    ecache = f.node(
+        MARGIN + 16, 412, 256, 104, "teal",
         [("Edge Download Cache", "name"), ("Hot shared file blocks", "sub"), ("Zero-copy range reads", "small")],
         icon="memory", kind="card", icon_size=26,
     )
-    f.node(
-        MARGIN + 580, 434, 260, 84, "gray",
+    chunks = f.node(
+        MARGIN + 300, 412, 256, 104, "blue",
+        [("Immutable Chunk Store", "name"), ("key = sha256(bytes)", "mono"), ("Erasure-coded across AZs", "small")],
+        icon="inventory_2", kind="card", icon_size=26,
+    )
+    archive = f.node(
+        MARGIN + 584, 412, 256, 104, "gray",
         [("Delayed Sweep Archive", "name"), ("Unreferenced > 30 days", "sub"), ("Safe tombstone retention", "small")],
         icon="schedule", kind="card", icon_size=26,
     )
 
-    # Orthogonal wires (zero crossings)
-    f.wire([cli_zone.bottom(-40), (cli_zone.cx - 40, gw_zone.y)], tone="blue", width=2.0, tail=True)
-    f.label(cli_zone.cx - 40, 178, "Chunk PUT / GET", tone="blue", cls="small")
+    # Synchronous critical path wires (solid, card-to-card, symmetric)
+    f.wire([cli.bottom(-24), gw.top(-24)], tone="blue", width=2.0, tail=True)
+    f.label(gw.cx - 86, 168, "Chunk PUT/GET", tone="blue", cls="small")
 
-    f.wire([cli.right(0), meta_api.left(0)], tone="purple", width=1.9, tail=True)
-    f.label(318, 86, "CAS", tone="purple", cls="small")
+    f.wire([gw.bottom(0), (gw.cx, 320), (chunks.cx, 320), chunks.top(0)], tone="teal", width=2.0, tail=True)
+    f.label(258, 318, "SHA-256 blocks", tone="teal", cls="small")
 
-    f.wire([meta_api.bottom(40), (meta_api.cx + 40, 174), (mdb_zone.cx - 42, 174), (mdb_zone.cx - 42, mdb_zone.y)],
-           tone="purple", width=1.8, tail=True)
+    f.wire([cli.right(19), meta_api.left(0)], tone="purple", width=1.9, tail=True)
+    f.label(300, 74, "CAS", tone="purple", cls="small")
 
-    f.wire([gc_ctrl.bottom(42), (gc_ctrl.cx + 42, mdb_zone.y)], tone="purple", dash=True, width=1.6, tail=True)
+    f.wire([meta_api.bottom(0), (meta_api.cx, 166), (mdb.cx - 32, 166), mdb.top(-32)],
+           tone="purple", width=1.9, tail=True)
 
-    f.wire([mdb_zone.left(0), bus_zone.right(0)], tone="amber", width=1.9)
+    f.wire([mdb.left(0), bus.right(0)], tone="amber", width=1.9)
 
-    f.wire([bus_zone.top(-46), (bus_zone.cx - 46, 174), (cli_zone.cx + 58, 174), (cli_zone.cx + 58, cli_zone.b)],
+    # Async / control-plane wires (dashed, symmetric)
+    f.wire([gc_ctrl.bottom(0), (gc_ctrl.cx, 166), (mdb.cx + 32, 166), mdb.top(32)],
+           tone="purple", dash=True, width=1.6, tail=True)
+    f.wire([bus.top(0), (bus.cx, 170), (cli.cx + 24, 170), cli.bottom(24)],
            tone="amber", dash=True, width=1.8)
-    f.label(342, 178, "Delta wake", tone="amber", cls="small")
+    f.label((cli.cx + 24 + bus.cx) / 2, 154, "Delta wake", tone="amber", cls="small")
 
-    f.wire([gw_zone.bottom(0), (gw_zone.cx, store_zone.y)], tone="teal", width=2.0, tail=True)
-    f.label(gw_zone.cx + 68, 358, "SHA-256 blocks", tone="teal", cls="small")
+    f.wire([chunks.left(0), ecache.right(0)], tone="teal", dash=True, width=1.6)
+    f.wire([mdb.bottom(0), (mdb.cx, 320), (archive.cx, 320), archive.top(0)], tone="purple", dash=True, width=1.6)
+    f.label(archive.cx - 72, 320, "Orphan sweep", tone="purple", cls="small")
 
-    f.wire([mdb_zone.bottom(0), (mdb_zone.cx, store_zone.y)], tone="purple", dash=True, width=1.6)
-    f.label(mdb_zone.cx - 72, 358, "Orphan sweep", tone="purple", cls="small")
+    # Symmetrically centered numbered step badges (1-6, zero border collisions)
+    step_badge(f, gw.cx - 24, seg_mid(cli.b, gw.y, head=True, tail=True), 1, "blue")
+    step_badge(f, chunks.cx, seg_mid(320, chunks.y, head=True), 2, "teal")
+    step_badge(f, 300, 95, 3, "purple")
+    step_badge(f, seg_mid(meta_api.cx, mdb.cx - 32, head=False), 166, 4, "purple")
+    step_badge(f, seg_mid(mdb.x, bus.r, head=True), bus.cy, 5, "amber")
+    step_badge(f, seg_mid(bus.cx, cli.cx + 24, head=False), 170, 6, "amber")
 
     return f.save([
-        ("Separating metadata CAS commits (control plane) from immutable SHA-256 block transfers (data plane) keeps storage horizontally scalable.", "noteb"),
-        "Clients upload missing chunks directly to the block gateway, then issue a single conditional metadata commit that appends a monotonic entry to the delta notification bus.",
+        ("Solid wires trace the synchronous chunk-upload and CAS-commit path (steps 1-5); dashed wires carry async delta notifications (6), edge cache fills, and GC sweeps.", "noteb"),
+        "Separating metadata CAS commits (control plane) from immutable SHA-256 block transfers (data plane) keeps storage horizontally scalable.",
     ])
 
 
@@ -176,11 +178,11 @@ def ch25_merkle_cdc():
     f = Fig(
         "ch25_merkle_cdc",
         "Figure 25-3. Content-Defined Chunking (CDC), Merkle Tree Diffing, and Conflict Branching.",
-        430,
+        462,
     )
     # Top Band: Fixed vs Content-Defined Chunking
     f.zone(
-        MARGIN, 0, INNER, 178, "teal",
+        MARGIN, 0, INNER, 176, "teal",
         "1. Content-Defined Chunking (Rolling Hash Prevents Boundary Shifts)",
         "Inserting 1 byte at offset 0 shifts every fixed-size block but alters only the first CDC chunk",
         icon="view_week",
@@ -192,10 +194,10 @@ def ch25_merkle_cdc():
     for i, (lbl, tone) in enumerate(fixed_labels):
         cx = MARGIN + 18 + i * 100
         f.cell(cx, 78, 92, 46, tone, [(lbl, "monob"), ("Re-upload", "small")], kind="mid", r=8)
-    f.text(MARGIN + 18, 152, "100% bandwidth re-transmitted on prepend", "small", "start", tone="red")
+    f.text(MARGIN + 18, 150, "100% bandwidth re-transmitted on prepend", "small", "start", tone="red")
 
     # Divider
-    f.rule(460, 56, 460, 166, tone="gray", width=1.2, dash="4 4")
+    f.rule(460, 56, 460, 164, tone="gray", width=1.2, dash="4 4")
 
     # Right half: Content-Defined Cuts
     f.text(478, 66, "FastCDC Cuts (hash mod 2^13 == 0): 1 of 4 dirty", "name", "start", tone="green", fit=(474, WIDTH - MARGIN - 10))
@@ -208,52 +210,64 @@ def ch25_merkle_cdc():
     for i, (lbl, sub, tone, knd) in enumerate(cdc_labels):
         cx = 478 + i * 98
         f.cell(cx, 78, 90, 46, tone, [(lbl, "monob"), (sub, "small")], kind=knd, r=8)
-    f.text(478, 152, "Anchor bytes restore alignment; 75% skipped", "small", "start", tone="green")
+    f.text(478, 150, "Anchor bytes restore alignment; 75% skipped", "small", "start", tone="green")
 
-    # Bottom-left: Merkle Tree Diffing
+    # Bottom-left: Merkle Tree Diffing (symmetric 1-to-2 vertical splits + badges 1, 2)
     f.zone(
-        MARGIN, 198, 416, 224, "blue",
+        MARGIN, 196, 416, 258, "blue",
         "2. Merkle Tree Diffing (O(log N) Sync)",
         "Prune matching subtrees; transfer only changed leaves",
         icon="call_split",
     )
-    root = f.cell(174, 256, 132, 34, "amber", [("Root v4 != v3", "monob")], kind="mid", r=8)
-    h01 = f.cell(62, 314, 152, 36, "green", [("H(C1,C2) Match", "monob")], kind="card", r=8)
-    h23 = f.cell(264, 314, 154, 36, "amber", [("H(C3',C4) Diff", "monob")], kind="mid", r=8)
-    c3 = f.cell(240, 374, 98, 34, "red", [("C3' Upload", "monob")], kind="mid", r=8)
-    c4 = f.cell(346, 374, 88, 34, "green", [("C4 Same", "monob")], kind="card", r=8)
-    f.pill(138, 379, "Subtree skipped", tone="green", anchor="middle")
+    root = f.cell(174, 252, 132, 34, "amber", [("Root v4 != v3", "monob")], kind="mid", r=8)
+    h01 = f.cell(62, 326, 152, 36, "green", [("H(C1,C2) Match", "monob")], kind="card", r=8)
+    h23 = f.cell(264, 326, 154, 36, "amber", [("H(C3',C4) Diff", "monob")], kind="mid", r=8)
+    c3 = f.cell(236, 404, 98, 34, "red", [("C3' Upload", "monob")], kind="mid", r=8)
+    c4 = f.cell(346, 404, 88, 34, "green", [("C4 Same", "monob")], kind="card", r=8)
+    f.pill(138, 410, "Subtree skipped", tone="green", anchor="middle")
 
-    f.wire([root.bottom(-24), (216, 302), (h01.cx, 302), h01.top(0)], tone="green", width=1.6)
-    f.wire([root.bottom(24), (264, 302), (h23.cx, 302), h23.top(0)], tone="amber", width=1.6)
-    f.wire([h23.bottom(-24), (317, 362), (c3.cx, 362), c3.top(0)], tone="red", width=1.6)
-    f.wire([h23.bottom(24), (365, 362), (c4.cx, 362), c4.top(0)], tone="green", width=1.6)
+    y_m1 = (root.b + h01.y) / 2  # 306.0
+    f.wire([root.bottom(0), (root.cx, y_m1)], tone="amber", head=False, width=1.7)
+    f.wire([(root.cx, y_m1), (h01.cx, y_m1), h01.top(0)], tone="green", width=1.7)
+    f.wire([(root.cx, y_m1), (h23.cx, y_m1), h23.top(0)], tone="amber", width=1.8)
+    step_badge(f, seg_mid(root.cx, h23.cx, head=False), y_m1, 1, "amber")
 
-    # Bottom-right: Conflict Branching
+    y_m2 = (h23.b + c3.y) / 2  # 383.0
+    f.wire([h23.bottom(0), (h23.cx, y_m2)], tone="amber", head=False, width=1.7)
+    f.wire([(h23.cx, y_m2), (c3.cx, y_m2), c3.top(0)], tone="red", width=1.8)
+    f.wire([(h23.cx, y_m2), (c4.cx, y_m2), c4.top(0)], tone="green", width=1.7)
+    step_badge(f, seg_mid(h23.cx, c3.cx, head=False), y_m2, 2, "red")
+
+    # Bottom-right: Conflict Branching (symmetric 1-to-2 horizontal split + badges 3, 4)
     rx = 472
     rw = WIDTH - MARGIN - rx  # 416
     f.zone(
-        rx, 198, rw, 224, "amber",
+        rx, 196, rw, 258, "amber",
         "3. Offline Conflict Branching (Zero Loss)",
         "Optimistic CAS rejects stale parent version cleanly",
         icon="warning",
     )
-    base = f.cell(rx + 18, 294, 108, 62, "blue", [("Base v3", "name"), ("Shared", "small")], kind="card", r=10)
-    win = f.node(rx + 158, 258, 240, 62, "green", [
+    win = f.node(rx + 172, 260, 230, 64, "green", [
         ("Laptop CAS(v3 -> v4)", "monob"),
         ("200 OK · Mainline v4", "small"),
     ], kind="card", r=10)
-    lose = f.node(rx + 158, 338, 240, 68, "red", [
+    lose = f.node(rx + 172, 368, 230, 64, "red", [
         ("Phone CAS(v3 -> v4)", "monob"),
         ("409 Conflict -> Fork copy", "small"),
     ], kind="mid", r=10)
+    mid_y = (win.cy + lose.cy) / 2  # 346.0
+    base = f.cell(rx + 14, mid_y - 31, 102, 62, "blue", [("Base v3", "name"), ("Shared", "small")], kind="card", r=10)
 
-    f.wire([base.right(-14), (rx + 142, base.cy - 14), (rx + 142, win.cy), win.left(0)], tone="green", width=1.8)
-    f.wire([base.right(14), (rx + 142, base.cy + 14), (rx + 142, lose.cy), lose.left(0)], tone="red", width=1.8)
+    x_mid = (base.r + win.x) / 2  # exact midpoint of 56px gap
+    f.wire([base.right(0), (x_mid, base.cy)], tone="blue", head=False, width=1.8)
+    f.wire([(x_mid, base.cy), (x_mid, win.cy), win.left(0)], tone="green", width=1.8)
+    f.wire([(x_mid, base.cy), (x_mid, lose.cy), lose.left(0)], tone="red", width=1.8)
+    step_badge(f, x_mid, seg_mid(base.cy, win.cy, head=False), 3, "green")
+    step_badge(f, x_mid, seg_mid(base.cy, lose.cy, head=False), 4, "red")
 
     return f.save([
         ("Content-defined chunking aligns boundaries to local byte patterns rather than fixed offsets, preventing cascading re-uploads after small insertions.", "noteb"),
-        "Merkle tree comparison isolates modified blocks in logarithmic round trips, while optimistic CAS converts concurrent offline edits into explicit conflict copies.",
+        "Merkle tree comparison isolates modified blocks in logarithmic round trips (steps 1-2), while optimistic CAS converts concurrent offline edits into explicit conflict copies (steps 3-4).",
     ])
 
 
@@ -273,11 +287,11 @@ def ch26_use_cases():
             ("Document Admin", "ACL, audit & restore", "purple", "shield"),
         ],
         cases=[
-            ("Apply Concurrent Text Edits", "WS /v1/docs/{id}/ops (CRDT delta)", "blue", "edit_note"),
+            ("Apply Concurrent Text Edits", "WS /v1/documents/{id}/operations (CRDT delta)", "blue", "edit_note"),
             ("Broadcast Presence & Cursors", "Ephemeral selection & caret state", "teal", "notifications_active"),
             ("Reconnect & Reconcile Offline Ops", "Exchange state vector & missing ops", "amber", "loop"),
-            ("Restore Historical Snapshot", "GET /v1/docs/{id}/revisions/{ver}", "green", "schedule"),
-            ("Enforce Sharing & Role ACLs", "PATCH /v1/docs/{id}/permissions", "purple", "lock"),
+            ("Restore Historical Snapshot", "GET /v1/documents/{id}/revisions/{ver}", "green", "schedule"),
+            ("Enforce Sharing & Role ACLs", "PATCH /v1/documents/{id}/permissions", "purple", "lock"),
         ],
         links=[
             (0, [0, 1, 3], "blue"),
@@ -295,112 +309,119 @@ def ch26_architecture():
     f = Fig(
         "ch26_architecture",
         "Figure 26-2. Session Coordinator, Collaboration Gateways, Operation Log, and Snapshot Store.",
-        544,
+        548,
     )
-    # Top-left: Co-Author Clients
-    cli_zone = f.zone(
-        MARGIN, 0, 264, 150, "blue",
-        "Co-Author Clients",
-        "Browser & mobile CRDT replicas",
-        icon="laptop",
-    )
+    # Top-left: Physical Co-Author Devices (centered over pod_a.cx = 168)
     cli = f.node(
-        MARGIN + 16, 58, 232, 76, "blue",
-        [("Local CRDT Engine", "name"), ("0 ms local apply · Queue", "sub")],
-        icon="edit_note", kind="card", icon_size=26,
+        40, 14, 256, 124, "blue",
+        [("Co-Author Browsers", "name"), ("Local CRDT · 0 ms apply", "sub"), ("Mobile offline op queue", "small")],
+        icon="laptop", kind="card", icon_size=26,
     )
 
     # Top-right: Control Plane
-    cp_x = 338
-    cp_w = WIDTH - MARGIN - cp_x  # 550
+    cp_x = 324
+    cp_w = WIDTH - MARGIN - cp_x  # 564
     f.zone(
-        cp_x, 0, cp_w, 150, "purple",
+        cp_x, 0, cp_w, 148, "purple",
         "Control Plane (Session Routing & Access Control)",
         "Sticky document-to-gateway placement · Fencing epochs · Live ACL revocation",
         icon="settings_suggest", dashed=True,
     )
     coord = f.node(
-        cp_x + 16, 58, 250, 76, "purple",
+        cp_x + 16, 58, 256, 74, "purple",
         [("Session Coordinator", "name"), ("Consistent doc_id lease", "sub")],
         icon="dns", kind="card", icon_size=26,
     )
     acl = f.node(
-        cp_x + 284, 58, 250, 76, "purple",
+        cp_x + 292, 58, 256, 74, "purple",
         [("ACL & Auth Service", "name"), ("RBAC scopes · Revoke", "sub")],
         icon="shield", kind="card", icon_size=26,
     )
 
-    # Middle Tier: Collaboration Gateways
-    gw_zone = f.zone(
-        MARGIN, 192, INNER, 150, "teal",
-        "Data Plane: Sticky Collaboration Gateways (Partitioned by doc_id)",
-        "All active editors of a document converge on a single gateway shard for low-latency delta fanout",
-        icon="swap_horiz",
+    # Middle Tier: Collaboration Gateways (title right-aligned over pres so left/mid wires stay unobstructed)
+    f.zone(
+        MARGIN, 194, INNER, 150, "teal",
+        "Sticky Gateways",
+        "Partitioned by doc_id",
+        title_align="right",
     )
     pod_a = f.node(
-        MARGIN + 16, 250, 258, 76, "teal",
+        MARGIN + 14, 252, 244, 76, "teal",
         [("Gateway Pod A (doc_42)", "name"), ("WS fanout · Op buffer", "sub")],
-        icon="bolt", kind="card", icon_size=26,
+        icon="bolt", kind="card", icon_size=24,
     )
     pod_b = f.node(
-        MARGIN + 298, 250, 258, 76, "teal",
+        MARGIN + 306, 252, 244, 76, "teal",
         [("Gateway Pod B (doc_99)", "name"), ("In-RAM CRDT merge", "sub")],
-        icon="memory", kind="card", icon_size=26,
+        icon="memory", kind="card", icon_size=24,
     )
     pres = f.node(
-        MARGIN + 580, 250, 260, 76, "amber",
+        MARGIN + 598, 252, 244, 76, "amber",
         [("Presence & Pub/Sub Bus", "name"), ("Cursors · Cross-AZ relay", "sub")],
-        icon="notifications_active", kind="card", icon_size=26,
+        icon="notifications_active", kind="card", icon_size=24,
     )
 
-    # Bottom Tier: Durable Operation Log & Snapshot Store
-    dur_zone = f.zone(
-        MARGIN, 384, INNER, 152, "blue",
-        "Data Plane: Durable Operation Log and Snapshot Compaction Tier",
-        "Appends every CRDT delta durably before compaction folds long histories into fast-loading checkpoints",
-        icon="layers",
+    # Bottom Tier: Durable Operation Log & Snapshot Store (title centered over comp)
+    f.zone(
+        MARGIN, 386, INNER, 154, "blue",
+        "Durable Log & Snapshots",
+        "3-AZ op log · Compaction",
+        title_align="center",
     )
     oplog = f.node(
-        MARGIN + 16, 442, 258, 76, "amber",
+        MARGIN + 14, 444, 244, 76, "amber",
         [("Append-Only Op Log", "name"), ("Keyed by doc_id · 3-AZ", "sub")],
-        icon="table_rows", kind="card", icon_size=26,
+        icon="table_rows", kind="card", icon_size=24,
     )
     comp = f.node(
-        MARGIN + 298, 442, 258, 76, "green",
+        MARGIN + 306, 444, 244, 76, "green",
         [("Snapshot Compactor", "name"), ("Async fold every N ops", "sub")],
-        icon="loop", kind="card", icon_size=26,
+        icon="loop", kind="card", icon_size=24,
     )
     snap = f.node(
-        MARGIN + 580, 442, 260, 76, "blue",
+        MARGIN + 598, 444, 244, 76, "blue",
         [("Snapshot Object Store", "name"), ("Compressed CRDT state", "sub")],
-        icon="inventory_2", kind="card", icon_size=26,
+        icon="inventory_2", kind="card", icon_size=24,
     )
 
-    # Clean orthogonal wires (zero crossings)
-    f.wire([cli_zone.bottom(0), (cli_zone.cx, gw_zone.y)], tone="blue", width=2.0, tail=True)
-    f.label(cli_zone.cx + 76, 174, "WS deltas + carets", tone="blue", cls="small")
+    # Synchronous & primary wires (100% centered card-to-card, zero border collisions!)
+    f.wire([cli.bottom(0), pod_a.top(0)], tone="blue", width=2.0, tail=True)
+    f.label(cli.cx - 72, 168, "WS deltas + carets", tone="blue", cls="small")
 
-    f.wire([cli.right(0), coord.left(0)], tone="purple", dash=True, width=1.7, tail=True)
-    f.label(318, 86, "Route", tone="purple", cls="small")
+    f.wire([cli.right(19), coord.left(0)], tone="purple", dash=True, width=1.7, tail=True)
+    f.label(312, 76, "Route", tone="purple", cls="small")
 
-    f.wire([coord.bottom(0), (coord.cx, gw_zone.y)], tone="purple", dash=True, width=1.7)
-    f.label(coord.cx + 66, 174, "Pod lease", tone="purple", cls="small")
+    f.wire([coord.bottom(0), (coord.cx, 170), (pod_b.cx - 32, 170), pod_b.top(-32)],
+           tone="purple", dash=True, width=1.7)
+    f.label(362, 168, "Pod lease", tone="purple", cls="small")
 
-    f.wire([acl.bottom(0), (acl.cx, gw_zone.y)], tone="purple", dash=True, width=1.7)
-    f.label(acl.cx - 64, 174, "ACL revoke", tone="purple", cls="small")
+    f.wire([acl.bottom(0), (acl.cx, 170), (pod_b.cx + 32, 170), pod_b.top(32)],
+           tone="purple", dash=True, width=1.7)
+    f.label(614, 168, "ACL revoke", tone="purple", cls="small")
 
-    f.wire([pod_a.bottom(0), (pod_a.cx, dur_zone.y)], tone="amber", width=2.0)
-    f.label(pod_a.cx + 76, 366, "Persist op delta", tone="amber", cls="small")
+    f.wire([pod_b.right(0), pres.left(0)], tone="amber", dash=True, width=1.8, tail=True)
 
-    f.wire([oplog.right(0), comp.left(0)], tone="amber", width=1.8)
-    f.wire([comp.right(0), snap.left(0)], tone="green", width=1.8)
+    f.wire([pod_a.bottom(0), oplog.top(0)], tone="amber", width=2.0)
+    f.label(pod_a.cx + 58, 365, "Persist op", tone="amber", cls="small")
 
-    f.wire([(snap.cx, dur_zone.y), (snap.cx, gw_zone.b)], tone="teal", dash=True, width=1.8)
-    f.label(snap.cx - 76, 366, "Cold doc hydrate", tone="teal", cls="small")
+    f.wire([oplog.right(0), comp.left(0)], tone="amber", dash=True, width=1.8)
+    f.wire([comp.right(0), snap.left(0)], tone="green", dash=True, width=1.8)
+
+    f.wire([snap.top(0), (snap.cx, 365), (pod_b.cx, 365), pod_b.bottom(0)],
+           tone="teal", dash=True, width=1.8)
+    f.label(502, 365, "Cold doc hydrate", tone="teal", cls="small")
+
+    # Symmetrically centered numbered step badges (1-6, zero border collisions)
+    step_badge(f, pod_a.cx, 166, 1, "blue")
+    step_badge(f, seg_mid(pod_b.r, pres.x, head=True, tail=True), pod_b.cy, 2, "amber")
+    step_badge(f, pod_a.cx, 365, 3, "amber")
+    step_badge(f, seg_mid(oplog.r, comp.x, head=True), oplog.cy, 4, "amber")
+    step_badge(f, seg_mid(comp.r, snap.x, head=True), comp.cy, 5, "green")
+    step_badge(f, 646, 365, 6, "teal")
 
     return f.save([
-        ("Pinning active document sessions to a sticky collaboration gateway minimizes fanout hops while keeping ephemeral presence out of durable storage.", "noteb"),
-        "On cold open or failover, a gateway hydrates the latest compressed snapshot from object storage and replays only the trailing tail of the append-only operation log.",
+        ("Solid wires trace the synchronous WS delta ingest and durable op-log append (steps 1, 3); dashed wires mark ephemeral presence (2), async compaction (4-5), and cold hydration (6).", "noteb"),
+        "Pinning active document sessions to a sticky collaboration gateway minimizes fanout hops while keeping ephemeral presence out of durable storage.",
     ])
 
 
@@ -408,7 +429,7 @@ def ch26_crdt_convergence():
     f = Fig(
         "ch26_crdt_convergence",
         "Figure 26-3. Concurrent Edits Converging via Sequence CRDT Identifiers and Causal Broadcast.",
-        466,
+        494,
     )
     # Top Band: Initial Shared State
     f.zone(
@@ -432,49 +453,57 @@ def ch26_crdt_convergence():
     # Middle Band: Two Concurrent Replicas with Causal Broadcast in Center
     lw = 384
     rx = WIDTH - MARGIN - lw  # 504
-    f.zone(
+    za = f.zone(
         MARGIN, 112, lw, 208, "teal",
         "2a. Replica A (site_id = 1)",
         "Inserts 'B' after (1,1) while offline",
         icon="laptop",
     )
-    a1 = f.node(MARGIN + 16, 170, lw - 32, 58, "green", [
+    f.node(MARGIN + 16, 170, lw - 32, 58, "green", [
         ("Local op1: Ins('B', after=(1,1))", "monob"),
         ("Assigned id = (3, 1) -> \"ABC\"", "small"),
     ], kind="card", r=10)
-    a2 = f.node(MARGIN + 16, 244, lw - 32, 60, "amber", [
+    f.node(MARGIN + 16, 244, lw - 32, 60, "amber", [
         ("Receive op2: id = (3, 2) 'X'", "monob"),
         ("Tie-break (3,2) > (3,1) -> \"AXBC\"", "small"),
     ], kind="card", r=10)
 
-    f.zone(
+    zb = f.zone(
         rx, 112, lw, 208, "purple",
         "2b. Replica B (site_id = 2)",
         "Concurrently inserts 'X' after (1,1)",
         icon="laptop",
     )
-    b1 = f.node(rx + 16, 170, lw - 32, 58, "amber", [
+    f.node(rx + 16, 170, lw - 32, 58, "amber", [
         ("Local op2: Ins('X', after=(1,1))", "monob"),
         ("Assigned id = (3, 2) -> \"AXC\"", "small"),
     ], kind="card", r=10)
-    b2 = f.node(rx + 16, 244, lw - 32, 60, "green", [
+    f.node(rx + 16, 244, lw - 32, 60, "green", [
         ("Receive op1: id = (3, 1) 'B'", "monob"),
         ("Tie-break (3,2) > (3,1) -> \"AXBC\"", "small"),
     ], kind="card", r=10)
 
     # Non-crossing causal broadcast wires in the 88px center corridor (x=416..504)
-    f.wire([(MARGIN + lw, 198), (rx, 198)], tone="green", dash=True, width=1.8)
-    f.label(460, 190, "op1 (3,1)", tone="green", cls="small")
-    f.wire([(rx, 274), (MARGIN + lw, 274)], tone="amber", dash=True, width=1.8)
-    f.label(460, 266, "op2 (3,2)", tone="amber", cls="small")
+    f.wire([(MARGIN + lw, 198), (rx, 198)], tone="green", dash=True, width=1.9)
+    f.label(460, 182, "op1 (3,1)", tone="green", cls="small")
+    step_badge(f, seg_mid(MARGIN + lw, rx, head=True), 198, 1, "green")
 
-    # Bottom Band: Converged State
-    f.zone(
-        MARGIN, 340, INNER, 118, "green",
+    f.wire([(rx, 274), (MARGIN + lw, 274)], tone="amber", dash=True, width=1.9)
+    f.label(460, 258, "op2 (3,2)", tone="amber", cls="small")
+    step_badge(f, seg_mid(rx, MARGIN + lw, head=True), 274, 2, "amber")
+
+    # Bottom Band: Converged State (48px below Middle Band for steps 3 & 4)
+    conv = f.zone(
+        MARGIN, 368, INNER, 118, "green",
         "3. Converged Sequence State on Both Replicas (Strong Eventual Consistency)",
         "Deterministic total order on (clock, site_id) guarantees identical \"AXBC\" regardless of arrival order",
         icon="play_arrow",
     )
+    f.wire([(za.cx, za.b), (za.cx, conv.y)], tone="teal", width=1.9)
+    step_badge(f, za.cx, seg_mid(za.b, conv.y, head=True), 3, "teal")
+    f.wire([(zb.cx, zb.b), (zb.cx, conv.y)], tone="purple", width=1.9)
+    step_badge(f, zb.cx, seg_mid(zb.b, conv.y, head=True), 4, "purple")
+
     final_cells = [
         ("HEAD", "gray", "tonal"),
         ("(1,1) 'A'", "blue", "card"),
@@ -487,15 +516,15 @@ def ch26_crdt_convergence():
     cw = 118
     fgap = 22
     for idx, (lbl, tone, knd) in enumerate(final_cells):
-        c = f.cell(fx + idx * (cw + fgap), 396, cw, 38, tone, [(lbl, "monob")], kind=knd, r=8)
+        c = f.cell(fx + idx * (cw + fgap), 424, cw, 38, tone, [(lbl, "monob")], kind=knd, r=8)
         if idx < len(final_cells) - 1:
             f.wire([c.right(0), (fx + (idx + 1) * (cw + fgap), c.cy)], tone="green", width=1.6)
 
-    f.pill(WIDTH - MARGIN - 16, 352, "Commutative · Idempotent", tone="green", anchor="end")
+    f.pill(WIDTH - MARGIN - 16, 380, "Commutative · Idempotent", tone="green", anchor="end")
 
     return f.save([
-        ("Because sequence CRDT operations reference immutable anchor identifiers rather than volatile integer offsets, concurrent insertions never corrupt sibling positions.", "noteb"),
-        "Causal broadcast guarantees that every referenced parent anchor arrives before its dependent insertion, while deletions mark tombstones to preserve downstream references.",
+        ("Because sequence CRDT operations reference immutable anchor identifiers rather than volatile integer offsets, concurrent insertions never corrupt sibling positions (steps 1-2).", "noteb"),
+        "Causal broadcast guarantees that every referenced parent anchor arrives before its dependent insertion, converging both replicas to identical order (steps 3-4).",
     ])
 
 
@@ -537,18 +566,18 @@ def ch27_architecture():
     f = Fig(
         "ch27_architecture",
         "Figure 27-2. Order Gateway, Risk Check, Deterministic Sequencer, and Partitioned Matching Engines.",
-        544,
+        548,
     )
-    # Top-left: Trading Firms
+    # Top-left: Physical Trading Firm Clients (centered over s1.cx = 131.5)
     firms = f.node(
-        MARGIN, 18, 224, 92, "blue",
+        MARGIN, 18, 199, 92, "blue",
         [("Trading Firms", "name"), ("Co-located FIX / SBE", "sub"), ("Kernel-bypass TCP", "small")],
-        icon="laptop", kind="card", icon_size=26,
+        icon="laptop", kind="card", icon_size=24,
     )
 
     # Top-right: Control Plane
-    cp_x = 286
-    cp_w = WIDTH - MARGIN - cp_x  # 602
+    cp_x = 272
+    cp_w = WIDTH - MARGIN - cp_x  # 616
     f.zone(
         cp_x, 0, cp_w, 148, "purple",
         "Control Plane (Risk Rules, Symbol Map & Market Surveillance)",
@@ -556,43 +585,43 @@ def ch27_architecture():
         icon="settings_suggest", dashed=True,
     )
     risk_ctrl = f.node(
-        cp_x + 16, 58, 276, 74, "purple",
+        cp_x + 16, 58, 282, 74, "purple",
         [("Risk & Limit Manager", "name"), ("Credit caps · Price collars", "sub")],
         icon="shield", kind="card", icon_size=26,
     )
     surv = f.node(
-        cp_x + 310, 58, 276, 74, "purple",
+        cp_x + 318, 58, 282, 74, "purple",
         [("Surveillance & Halts", "name"), ("Symbol routing · Kill switch", "sub")],
         icon="warning", kind="card", icon_size=26,
     )
 
-    # Middle Tier: Deterministic Order Pipeline
-    pipe = f.zone(
-        MARGIN, 190, INNER, 158, "teal",
-        "Data Plane: Deterministic Order Matching Pipeline (< 100 us p99)",
-        "Zero-allocation binary path across kernel-bypass NICs, in-RAM risk checks, global sequencer, and pinned matching cores",
-        icon="bolt",
+    # Middle Tier: Deterministic Order Pipeline (title centered over s2/s3 gap, clear of all vertical wires)
+    f.zone(
+        MARGIN, 192, INNER, 156, "teal",
+        "Matching Pipeline",
+        "< 100 us p99 · Pinned",
+        title_align="center",
     )
-    st_w = 186
-    st_gap = 26
-    sx = [MARGIN + 17 + i * (st_w + st_gap) for i in range(4)]
+    st_w = 171
+    st_gap = 48
+    sx = [MARGIN + 14 + i * (st_w + st_gap) for i in range(4)]
     s1 = f.node(sx[0], 250, st_w, 80, "blue", [
-        ("1. Order Gateway", "name"),
+        ("Order Gateway", "name"),
         ("Decode SBE · Auth", "sub"),
         ("Rate & session ID", "small"),
     ], layout="center", kind="card")
     s2 = f.node(sx[1], 250, st_w, 80, "amber", [
-        ("2. Pre-Trade Risk", "name"),
+        ("Pre-Trade Risk", "name"),
         ("In-RAM limits", "sub"),
         ("Fat-finger check", "small"),
     ], layout="center", kind="card")
     s3 = f.node(sx[2], 250, st_w, 80, "purple", [
-        ("3. Sequencer", "name"),
+        ("Sequencer", "name"),
         ("Total seq_id", "sub"),
         ("Append journal", "small"),
     ], layout="center", kind="card")
     s4 = f.node(sx[3], 250, st_w, 80, "green", [
-        ("4. Matching Core", "name"),
+        ("Matching Core", "name"),
         ("Sharded by symbol", "sub"),
         ("Price-time FIFO", "small"),
     ], layout="center", kind="card")
@@ -601,48 +630,57 @@ def ch27_architecture():
     f.wire([s2.right(0), s3.left(0)], tone="amber", width=1.9)
     f.wire([s3.right(0), s4.left(0)], tone="purple", width=1.9)
 
-    # Bottom Tier: Outputs, Standby Replay & Market Data
-    out_zone = f.zone(
-        MARGIN, 388, INNER, 148, "blue",
-        "Data Plane: Execution Drop Copy, Deterministic Standby, and Market Data Feeds",
-        "Downstream consumers subscribe to the sequenced journal and matching outputs without blocking the matching loop",
-        icon="layers",
+    # Bottom Tier: Outputs, Standby Replay & Market Data (compact left header ends before o1.cx = 177)
+    f.zone(
+        MARGIN, 390, INNER, 150, "blue",
+        "Outputs",
+        "Fills · Replay · L2/L3",
     )
-    o1 = f.node(MARGIN + 16, 446, 258, 72, "green", [
+    o1 = f.node(MARGIN + 16, 448, 258, 72, "green", [
         ("Drop Copy & Clearing", "name"),
         ("Exec reports · T+1 DTCC", "sub"),
     ], icon="library_books", kind="card", icon_size=24)
-    o2 = f.node(MARGIN + 298, 446, 258, 72, "amber", [
+    o2 = f.node(MARGIN + 298, 448, 258, 72, "amber", [
         ("Hot Standby Shards", "name"),
         ("Deterministic journal replay", "sub"),
     ], icon="loop", kind="card", icon_size=24)
-    o3 = f.node(MARGIN + 580, 446, 260, 72, "teal", [
+    o3 = f.node(MARGIN + 580, 448, 260, 72, "teal", [
         ("Market Data Publisher", "name"),
         ("UDP multicast L2 / L3", "sub"),
     ], icon="lan", kind="card", icon_size=24)
 
-    # Clean orthogonal wires (zero crossings)
-    f.wire([firms.bottom(0), (firms.cx, pipe.y)], tone="blue", width=2.0, tail=True)
-    f.label(firms.cx + 76, 170, "Orders / ExecReports", tone="blue", cls="small")
+    # Card-to-card orthogonal wires (100% centered exits & entries, zero border collisions!)
+    f.wire([firms.bottom(0), s1.top(0)], tone="blue", width=2.0, tail=True)
+    f.label(216, 152, "Orders / ExecReports", tone="blue", cls="small")
 
-    f.wire([risk_ctrl.bottom(-86), (s2.cx, pipe.y)], tone="purple", dash=True, width=1.7)
-    f.label(s2.cx + 52, 170, "Risk limits", tone="purple", cls="small")
+    f.wire([risk_ctrl.bottom(0), (risk_ctrl.cx, 168), (s2.cx, 168), s2.top(0)],
+           tone="purple", dash=True, width=1.7)
+    f.label(392, 155, "Risk limits", tone="purple", cls="small")
 
-    f.wire([surv.bottom(44), (s4.cx, pipe.y)], tone="purple", dash=True, width=1.7)
-    f.label(s4.cx - 64, 170, "Halt / kill switch", tone="purple", cls="small")
+    f.wire([surv.bottom(0), (surv.cx, 168), (s4.cx, 168), s4.top(0)],
+           tone="purple", dash=True, width=1.7)
+    f.label(668, 168, "Halt / kill switch", tone="purple", cls="small")
 
-    f.wire([(s1.cx, pipe.b), (s1.cx, out_zone.y)], tone="green", width=1.8, tail=True)
-    f.label(s1.cx + 68, 370, "Fills & audit", tone="green", cls="small")
+    f.wire([s1.bottom(0), (s1.cx, 369), (o1.cx, 369), o1.top(0)], tone="green", width=1.8, tail=True)
+    f.label(238, 369, "Fills & audit", tone="green", cls="small")
 
-    f.wire([(s3.cx, pipe.b), (s3.cx, 370), (o2.cx, 370), (o2.cx, out_zone.y)], tone="amber", dash=True, width=1.8)
-    f.label(486, 366, "Seq stream", tone="amber", cls="small")
+    f.wire([s3.bottom(0), (s3.cx, 369), (o2.cx, 369), o2.top(0)], tone="amber", dash=True, width=1.8)
+    f.label(400, 369, "Seq stream", tone="amber", cls="small")
 
-    f.wire([(s4.cx, pipe.b), (s4.cx, out_zone.y)], tone="teal", width=2.0)
-    f.label(s4.cx - 72, 370, "Book deltas", tone="teal", cls="small")
+    f.wire([s4.bottom(0), (s4.cx, 369), (o3.cx, 369), o3.top(0)], tone="teal", width=2.0)
+    f.label(684, 369, "Book deltas", tone="teal", cls="small")
+
+    # Symmetrically centered numbered step badges (1-6, zero border collisions)
+    step_badge(f, s1.cx, 151, 1, "blue")
+    step_badge(f, seg_mid(s1.r, s2.x, head=True), s1.cy, 2, "blue")
+    step_badge(f, seg_mid(s2.r, s3.x, head=True), s2.cy, 3, "amber")
+    step_badge(f, seg_mid(s3.r, s4.x, head=True), s3.cy, 4, "purple")
+    step_badge(f, (s4.cx + o3.cx) / 2, 369, 5, "teal")
+    step_badge(f, (s3.cx + o2.cx) / 2, 369, 6, "amber")
 
     return f.save([
-        ("Assigning a strict total order in the sequencer before matching allows partitioned symbol engines to execute deterministically without cross-core locks.", "noteb"),
-        "Hot-standby engines consume the identical sequenced input stream in parallel, eliminating synchronous replication pauses from the critical order-to-fill path.",
+        ("Solid wires trace the < 100 us deterministic order-to-match-and-publish path (steps 1-5); dashed wires carry control-plane limits, kill switches, and standby replay (6).", "noteb"),
+        "Assigning a strict total order in the sequencer before matching allows partitioned symbol engines to execute deterministically without cross-core locks.",
     ])
 
 
@@ -650,7 +688,7 @@ def ch27_lmax_pipeline():
     f = Fig(
         "ch27_lmax_pipeline",
         "Figure 27-3. Single-Threaded LMAX Ring-Buffer Matching Loop and Deterministic Replicated Standby.",
-        472,
+        492,
     )
     # Top Band: Primary LMAX Ring Buffer + Single-Threaded Matching Loop
     f.zone(
@@ -660,10 +698,10 @@ def ch27_lmax_pipeline():
         icon="developer_board",
     )
 
-    # Ring Buffer visualization on left
+    # Ring Buffer visualization on left (6 slots: 366px total, right edge = 418)
     f.text(MARGIN + 20, 68, "Inbound Disruptor Ring Buffer (Power-of-2 Slots)", "name", "start", tone="blue")
-    slot_w = 62
-    slot_gap = 8
+    slot_w = 56
+    slot_gap = 6
     sx0 = MARGIN + 20
     slots = [
         ("#101", "Done", "gray", "tonal"),
@@ -676,63 +714,70 @@ def ch27_lmax_pipeline():
     for i, (num, st, tone, knd) in enumerate(slots):
         x = sx0 + i * (slot_w + slot_gap)
         f.cell(x, 82, slot_w, 56, tone, [(num, "monob"), (st, "small")], kind=knd, r=8)
+    ring_r = sx0 + 6 * slot_w + 5 * slot_gap  # 418
 
     # Cursor pills beneath slots
-    f.pill(sx0 + 2 * 70 + 31, 148, "Match Cursor", tone="green", anchor="middle")
-    f.pill(sx0 + 5 * 70 + 31, 148, "Prod Cursor", tone="amber", anchor="middle")
+    f.pill(sx0 + 2 * (slot_w + slot_gap) + slot_w / 2, 148, "Match Cursor", tone="green", anchor="middle")
+    f.pill(sx0 + 5 * (slot_w + slot_gap) + slot_w / 2, 148, "Prod Cursor", tone="amber", anchor="middle")
 
     # Key properties box under ring buffer
-    f.node(MARGIN + 20, 182, 412, 62, "teal", [
+    f.node(MARGIN + 20, 182, 366, 62, "teal", [
         ("Mechanical Sympathy Guarantees", "name"),
-        ("Single-writer seq · L1/L2 prefetch · Busy-spin poll", "sub"),
-    ], icon="memory", kind="card", icon_size=24)
+        ("Single-writer seq · L1/L2 prefetch · Busy-spin", "sub"),
+    ], icon="memory", kind="card", icon_size=22)
 
-    # Right side: Single-Threaded Matching Loop
-    lx = 486
-    lw = WIDTH - MARGIN - lx - 16  # 386
+    # Right side: Single-Threaded Matching Loop (54px gap from Ring Buffer; 47px badged gaps inside)
+    lx = 472
+    lw = WIDTH - MARGIN - lx - 16  # 400
     f.zone(lx, 56, lw, 188, "green", "Single-Threaded Matching Loop", "No mutexes · No context switches", icon="play_arrow")
-    l1 = f.node(lx + 14, 114, 110, 114, "blue", [("1. Poll", "name"), ("Read #103", "mono"), ("0 alloc", "small")], layout="center", kind="card")
-    l2 = f.node(lx + 138, 114, 110, 114, "green", [("2. Match", "name"), ("L3 book", "mono"), ("FIFO fill", "small")], layout="center", kind="card")
-    l3 = f.node(lx + 262, 114, 110, 114, "teal", [("3. Emit", "name"), ("Out ring", "mono"), ("L2 delta", "small")], layout="center", kind="card")
-    f.wire([l1.right(0), l2.left(0)], tone="green", width=1.6)
-    f.wire([l2.right(0), l3.left(0)], tone="green", width=1.6)
+    l1 = f.node(lx + 12, 114, 94, 114, "blue", [("1. Poll", "name"), ("Read #103", "mono"), ("0 alloc", "small")], layout="center", kind="card")
+    l2 = f.node(lx + 153, 114, 94, 114, "green", [("2. Match", "name"), ("L3 book", "mono"), ("FIFO fill", "small")], layout="center", kind="card")
+    l3 = f.node(lx + 294, 114, 94, 114, "teal", [("3. Emit", "name"), ("Out ring", "mono"), ("L2 delta", "small")], layout="center", kind="card")
+    f.wire([l1.right(0), l2.left(0)], tone="green", width=1.8)
+    f.wire([l2.right(0), l3.left(0)], tone="green", width=1.8)
 
-    # Wire from Ring Buffer to Loop
-    f.wire([(sx0 + 6 * 70 - 8, 110), (lx, 110)], tone="blue", width=1.9)
+    # Wire from Ring Buffer to Loop (54px long) + badges 1, 2, 3
+    f.wire([(ring_r, 110), (lx, 110)], tone="blue", width=1.9)
+    step_badge(f, seg_mid(ring_r, lx, head=True), 110, 1, "blue")
+    step_badge(f, seg_mid(l1.r, l2.x, head=True), l1.cy, 2, "green")
+    step_badge(f, seg_mid(l2.r, l3.x, head=True), l2.cy, 3, "green")
 
-    # Bottom Band: Deterministic Replicated Standby
+    # Bottom Band: Deterministic Replicated Standby (52px below Primary for step 4; 48px gaps for 5 & 6)
     stb = f.zone(
-        MARGIN, 294, INNER, 168, "amber",
+        MARGIN, 312, INNER, 170, "amber",
         "Deterministic Replicated Standby (State Machine Replication)",
         "Replays the exact same sequenced input events on an isolated host for sub-50 ms failover",
         icon="loop", dashed=True,
     )
-    b1 = f.node(MARGIN + 18, 356, 250, 86, "purple", [
+    b1 = f.node(MARGIN + 14, 374, 244, 86, "purple", [
         ("1. Sequenced Journal", "name"),
         ("Identical #101..#106", "mono"),
         ("Kernel-bypass multicast", "small"),
-    ], icon="table_rows", kind="card", icon_size=24)
-    b2 = f.node(MARGIN + 302, 356, 252, 86, "amber", [
+    ], icon="table_rows", kind="card", icon_size=22)
+    b2 = f.node(MARGIN + 306, 374, 244, 86, "amber", [
         ("2. Standby Loop", "name"),
         ("Pure deterministic fn", "mono"),
         ("No wall-clock calls", "small"),
-    ], icon="developer_board", kind="card", icon_size=24)
-    b3 = f.node(MARGIN + 588, 356, 250, 86, "green", [
+    ], icon="developer_board", kind="card", icon_size=22)
+    b3 = f.node(MARGIN + 598, 374, 244, 86, "green", [
         ("3. Warm Shadow Book", "name"),
         ("Bit-identical state", "mono"),
         ("Outputs muted until cutover", "small"),
-    ], icon="shield", kind="card", icon_size=24)
+    ], icon="shield", kind="card", icon_size=22)
 
     f.wire([b1.right(0), b2.left(0)], tone="amber", width=1.9)
     f.wire([b2.right(0), b3.left(0)], tone="green", width=1.9)
 
-    # Vertical replication wire from Primary to Standby
+    # Vertical replication wire from Primary to Standby (52px long) + badges 4, 5, 6
     f.wire([(175, 260), (175, stb.y)], tone="purple", dash=True, width=1.9)
-    f.label(270, 279, "Ordered event stream (#101..#106)", tone="purple", cls="small")
+    f.label(296, 288, "Ordered event stream (#101..#106)", tone="purple", cls="small")
+    step_badge(f, 175, seg_mid(260, stb.y, head=True), 4, "purple")
+    step_badge(f, seg_mid(b1.r, b2.x, head=True), b1.cy, 5, "amber")
+    step_badge(f, seg_mid(b2.r, b3.x, head=True), b2.cy, 6, "green")
 
     return f.save([
-        ("Running the order book on a single pinned CPU core eliminates lock contention and cache-line bouncing, sustaining over one million orders per second per shard.", "noteb"),
-        "Because every state transition depends solely on the sequenced input stream and never on local wall-clock time or randomness, the standby replica stays bit-for-bit identical.",
+        ("Running the order book on a single pinned CPU core (steps 1-3) eliminates lock contention and cache-line bouncing, sustaining over one million orders per second per shard.", "noteb"),
+        "Because every state transition depends solely on the sequenced input stream (steps 4-6) and never on local wall-clock time or randomness, the standby replica stays bit-for-bit identical.",
     ])
 
 
@@ -774,18 +819,18 @@ def ch28_architecture():
     f = Fig(
         "ch28_architecture",
         "Figure 28-2. Click Collectors, Partitioned Event Log, Stateful Stream Processors, and OLAP Store.",
-        544,
+        548,
     )
-    # Top-left: Browsers / SDKs
+    # Top-left: Physical Visitor Browsers / SDKs (centered over c1.cx = 131.5)
     browsers = f.node(
-        MARGIN, 18, 256, 92, "blue",
-        [("Visitor Browsers & SDKs", "name"), ("100k+ clicks/s · Edge L7 LB", "sub"), ("POST /v1/clicks", "mono")],
-        icon="laptop", kind="card", icon_size=26,
+        MARGIN, 18, 199, 92, "blue",
+        [("Browsers & SDKs", "name"), ("100k+ clicks/s · LB", "sub"), ("POST /v1/clicks", "mono")],
+        icon="laptop", kind="card", icon_size=24,
     )
 
     # Top-right: Control Plane
-    cp_x = 326
-    cp_w = WIDTH - MARGIN - cp_x  # 562
+    cp_x = 272
+    cp_w = WIDTH - MARGIN - cp_x  # 616
     f.zone(
         cp_x, 0, cp_w, 148, "purple",
         "Control Plane (Stream Orchestration, Checkpoints & Schema)",
@@ -793,43 +838,43 @@ def ch28_architecture():
         icon="settings_suggest", dashed=True,
     )
     schema_ctrl = f.node(
-        cp_x + 16, 58, 256, 74, "purple",
+        cp_x + 16, 58, 282, 74, "purple",
         [("Schema & Broker Ctrl", "name"), ("Topic partitions · ACLs", "sub")],
         icon="dns", kind="card", icon_size=26,
     )
     flink_ctrl = f.node(
-        cp_x + 290, 58, 256, 74, "purple",
+        cp_x + 318, 58, 282, 74, "purple",
         [("Stream Job Manager", "name"), ("Checkpoints · Watermarks", "sub")],
         icon="tune", kind="card", icon_size=26,
     )
 
-    # Middle Tier: Real-Time Streaming Path
-    stream = f.zone(
-        MARGIN, 190, INNER, 158, "teal",
-        "Data Plane: Real-Time Streaming Aggregation Path (Speed Layer)",
-        "Stateless ingestion -> partitioned Kafka log -> stateful Flink event-time windows -> low-latency OLAP store",
-        icon="bolt",
+    # Middle Tier: Real-Time Streaming Path (title right-aligned over c4, clear of all incoming wires!)
+    f.zone(
+        MARGIN, 192, INNER, 156, "teal",
+        "Speed Layer",
+        "Real-time streaming path",
+        title_align="right",
     )
-    st_w = 186
-    st_gap = 26
-    sx = [MARGIN + 17 + i * (st_w + st_gap) for i in range(4)]
+    st_w = 171
+    st_gap = 48
+    sx = [MARGIN + 14 + i * (st_w + st_gap) for i in range(4)]
     c1 = f.node(sx[0], 250, st_w, 80, "blue", [
-        ("1. Click Collectors", "name"),
+        ("Click Collectors", "name"),
         ("Validate · Enrich", "sub"),
         ("Fast 202 ACK", "small"),
     ], layout="center", kind="card")
     c2 = f.node(sx[1], 250, st_w, 80, "amber", [
-        ("2. Event Log", "name"),
+        ("Event Log", "name"),
         ("Kafka · by ad_id", "sub"),
         ("3-AZ replication", "small"),
     ], layout="center", kind="card")
     c3 = f.node(sx[2], 250, st_w, 80, "teal", [
-        ("3. Stream Engine", "name"),
+        ("Stream Engine", "name"),
         ("Dedup + Windows", "sub"),
         ("RocksDB state", "small"),
     ], layout="center", kind="card")
     c4 = f.node(sx[3], 250, st_w, 80, "green", [
-        ("4. OLAP Store", "name"),
+        ("OLAP Store", "name"),
         ("Pinot / ClickHouse", "sub"),
         ("Live Top-K reads", "small"),
     ], layout="center", kind="card")
@@ -838,50 +883,58 @@ def ch28_architecture():
     f.wire([c2.right(0), c3.left(0)], tone="amber", width=1.9)
     f.wire([c3.right(0), c4.left(0)], tone="teal", width=1.9)
 
-    # Bottom Tier: Raw Archive, Nightly Batch & Serving API
-    batch = f.zone(
-        MARGIN, 388, INNER, 148, "blue",
-        "Data Plane: Immutable Raw Archive, Batch Reconciliation, and Serving API",
-        "Preserves every raw click so nightly batch jobs correct stragglers and produce audit-grade advertiser invoices",
-        icon="layers",
+    # Bottom Tier: Raw Archive, Nightly Batch & Serving API (title centered over b2, clear of b1 & b3 wires!)
+    f.zone(
+        MARGIN, 390, INNER, 150, "blue",
+        "Batch & Serving Tier",
+        "Raw archive · Nightly recon",
+        title_align="center",
     )
-    b1 = f.node(MARGIN + 16, 446, 258, 72, "purple", [
+    b1 = f.node(MARGIN + 16, 448, 258, 72, "purple", [
         ("Raw Click Archive", "name"),
         ("Parquet on S3 · 73 TB/yr", "sub"),
     ], icon="inventory_2", kind="card", icon_size=24)
-    b2 = f.node(MARGIN + 298, 446, 258, 72, "amber", [
+    b2 = f.node(MARGIN + 298, 448, 258, 72, "amber", [
         ("Nightly Batch Reconciler", "name"),
         ("Re-aggregates late clicks", "sub"),
     ], icon="loop", kind="card", icon_size=24)
-    b3 = f.node(MARGIN + 580, 446, 260, 72, "green", [
+    b3 = f.node(MARGIN + 580, 448, 260, 72, "green", [
         ("Counts API & Billing", "name"),
         ("Dashboards + final bills", "sub"),
     ], icon="table_rows", kind="card", icon_size=24)
 
-    f.wire([b1.right(0), b2.left(0)], tone="purple", width=1.8)
-    f.wire([b2.right(0), b3.left(0)], tone="amber", width=1.8)
+    f.wire([b1.right(0), b2.left(0)], tone="purple", dash=True, width=1.8)
+    f.wire([b2.right(0), b3.left(0)], tone="amber", dash=True, width=1.8)
 
-    # Clean orthogonal wires (zero crossings)
-    f.wire([browsers.bottom(-18), (c1.cx, stream.y)], tone="blue", width=2.0)
-    f.label(c1.cx + 68, 170, "Click beacons", tone="blue", cls="small")
+    # Card-to-card orthogonal wires (100% centered exits & entries, zero border collisions!)
+    f.wire([browsers.bottom(0), c1.top(0)], tone="blue", width=2.0)
+    f.label(204, 152, "Click beacons", tone="blue", cls="small")
 
-    f.wire([schema_ctrl.bottom(-40), (schema_ctrl.cx - 40, 170), (c2.cx, 170), (c2.cx, stream.y)],
+    f.wire([schema_ctrl.bottom(0), (schema_ctrl.cx, 168), (c2.cx, 168), c2.top(0)],
            tone="purple", dash=True, width=1.7)
-    f.label(396, 166, "Schema", tone="purple", cls="small")
+    f.label(390, 155, "Schema", tone="purple", cls="small")
 
-    f.wire([flink_ctrl.bottom(-40), (flink_ctrl.cx - 40, 170), (c3.cx, 170), (c3.cx, stream.y)],
+    f.wire([flink_ctrl.bottom(0), (flink_ctrl.cx, 168), (c3.cx, 168), c3.top(0)],
            tone="purple", dash=True, width=1.7)
-    f.label(638, 166, "Checkpoints", tone="purple", cls="small")
+    f.label(650, 155, "Checkpoints", tone="purple", cls="small")
 
-    f.wire([(c2.cx, stream.b), (c2.cx, 370), (b1.cx, 370), (b1.cx, batch.y)], tone="purple", width=1.9)
-    f.label(268, 366, "Raw sink (Parquet)", tone="purple", cls="small")
+    f.wire([c2.bottom(0), (c2.cx, 369), (b1.cx, 369), b1.top(0)], tone="purple", dash=True, width=1.8)
+    f.label(426, 369, "Raw sink (Parquet)", tone="purple", cls="small")
 
-    f.wire([(c4.cx, stream.b), (c4.cx, batch.y)], tone="green", width=2.0)
-    f.label(c4.cx - 72, 370, "Live window counts", tone="green", cls="small")
+    f.wire([c4.bottom(0), (c4.cx, 369), (b3.cx, 369), b3.top(0)], tone="green", width=2.0)
+    f.label(686, 369, "Live counts", tone="green", cls="small")
+
+    # Symmetrically centered numbered step badges (1-6, zero border collisions)
+    step_badge(f, c1.cx, 151, 1, "blue")
+    step_badge(f, seg_mid(c1.r, c2.x, head=True), c1.cy, 2, "blue")
+    step_badge(f, seg_mid(c2.r, c3.x, head=True), c2.cy, 3, "amber")
+    step_badge(f, seg_mid(c3.r, c4.x, head=True), c3.cy, 4, "teal")
+    step_badge(f, (c2.cx + b1.cx) / 2, 369, 5, "purple")
+    step_badge(f, (c4.cx + b3.cx) / 2, 369, 6, "green")
 
     return f.save([
-        ("Partitioning the event log by ad_id colocalizes all clicks for a campaign on one stateful stream processor, avoiding costly distributed shuffles.", "noteb"),
-        "Sinking the immutable event log to cold Parquet storage enables full deterministic recomputation whenever late mobile beacons arrive or fraud rules change.",
+        ("Solid wires trace the low-latency streaming aggregation path (steps 1-4, 6); dashed wires mark control-plane schemas/checkpoints, raw Parquet archiving (5), and nightly batch reconciliation.", "noteb"),
+        "Partitioning the event log by ad_id colocalizes all clicks for a campaign on one stateful stream processor, avoiding costly distributed shuffles.",
     ])
 
 
@@ -915,13 +968,13 @@ def ch28_watermark_window():
         f.text(tx, ay + 18, cap, "small", "middle", tone=tone)
 
     # Three event bands on timeline
-    e1 = f.node(ax1 + 32, 114, 268, 42, "green", [
+    f.node(ax1 + 32, 114, 268, 42, "green", [
         ("On-Time (ev 12:00:12..58)", "monob"),
     ], layout="center", kind="card", r=8)
-    e2 = f.node(ax1 + 320, 162, 210, 42, "amber", [
+    f.node(ax1 + 320, 162, 210, 42, "amber", [
         ("Late Click (ev 12:00:55)", "monob"),
     ], layout="center", kind="mid", r=8)
-    e3 = f.node(ax1 + 550, 206, 216, 42, "red", [
+    f.node(ax1 + 550, 206, 216, 42, "red", [
         ("Straggler (ev 12:00:40)", "monob"),
     ], layout="center", kind="mid", r=8)
 
@@ -929,35 +982,37 @@ def ch28_watermark_window():
     f.pill(ax1 + 430, 125, "Included in initial emit", tone="green", anchor="start")
     f.pill(ax1 + 550, 173, "Updates window + retract", tone="amber", anchor="start")
 
-    # Bottom Band: 3-Stage Window Lifecycle
+    # Bottom Band: 3-Stage Window Lifecycle (48px badged horizontal gaps)
     f.zone(
         MARGIN, 290, INNER, 172, "teal",
         "Window State Lifecycle and Late-Event Routing Policy",
         "Separates fast provisional results from bounded in-memory corrections and unbounded archive recovery",
         icon="rule",
     )
-    s1 = f.node(MARGIN + 18, 352, 252, 92, "green", [
+    s1 = f.node(MARGIN + 14, 352, 244, 92, "green", [
         ("1. Watermark Trigger", "name"),
         ("W(t) >= 12:01:00", "monob"),
         ("Emit initial count to OLAP", "small"),
-    ], icon="play_arrow", kind="card", icon_size=24)
-    s2 = f.node(MARGIN + 302, 352, 252, 92, "amber", [
+    ], icon="play_arrow", kind="card", icon_size=22)
+    s2 = f.node(MARGIN + 306, 352, 244, 92, "amber", [
         ("2. Allowed Lateness", "name"),
-        ("12:01:00 < W <= 12:01:20", "monob"),
-        ("Retain RocksDB · Upsert delta", "small"),
-    ], icon="hourglass_top", kind="card", icon_size=24)
-    s3 = f.node(MARGIN + 586, 352, 252, 92, "red", [
+        ("12:01 < W <= 12:01:20", "monob"),
+        ("Retain RocksDB · Upsert", "small"),
+    ], icon="hourglass_top", kind="card", icon_size=22)
+    s3 = f.node(MARGIN + 598, 352, 244, 92, "red", [
         ("3. Side Output & Purge", "name"),
         ("W(t) > 12:01:20", "monob"),
         ("Free RAM · Route to batch", "small"),
-    ], icon="warning", kind="mid", icon_size=24)
+    ], icon="warning", kind="mid", icon_size=22)
 
     f.wire([s1.right(0), s2.left(0)], tone="amber", width=1.9)
     f.wire([s2.right(0), s3.left(0)], tone="red", width=1.9)
+    step_badge(f, seg_mid(s1.r, s2.x, head=True), s1.cy, 1, "amber")
+    step_badge(f, seg_mid(s2.r, s3.x, head=True), s2.cy, 2, "red")
 
     return f.save([
         ("Watermarks formalize the latency-completeness trade-off: a longer watermark lag captures more out-of-order mobile clicks before emitting, at the cost of higher dashboard delay.", "noteb"),
-        "Allowed lateness keeps window state in RocksDB for a bounded grace period to emit incremental retractions, after which stragglers route to a side output for batch reconciliation.",
+        "Allowed lateness keeps window state in RocksDB for a bounded grace period to emit incremental retractions (step 1), after which stragglers route to a side output for batch reconciliation (step 2).",
     ])
 
 

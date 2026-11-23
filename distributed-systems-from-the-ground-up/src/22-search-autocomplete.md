@@ -303,6 +303,37 @@ The observed output validates the precomputed prefix-table behavior across six r
 
 </div>
 
+### End-to-End Request Lifecycle and Hop-by-Hop Latency Budget
+
+A debounced prefix lookup traverses five bounded stages from browser keystroke to immutable trie read, targeting a P99 end-to-end budget under 60 ms.
+
+| Hop | Component | Operation | P50 | P99 |
+| :--- | :--- | :--- | :--- | :--- |
+| 1 | Client / Edge PoP | Debounce (50 ms client-side), TLS 1.3 session reuse, CDN edge cache check | 6 ms | 18 ms |
+| 2 | L7 Load Balancer | Prefix-hash routing (`prefix[0..2]`) to a sticky regional trie shard | 1 ms | 3 ms |
+| 3 | Typeahead Service | Unicode normalization, locale extraction, and safety-filter policy check | 0.5 ms | 2 ms |
+| 4 | In-Memory Trie / FST | Lock-free `ArcSwap` pointer load and `O(L)` prefix traversal to precomputed top-K list | 0.1 ms | 0.8 ms |
+| 5 | Async Log Pipeline | Non-blocking ring-buffer enqueue of query telemetry to Kafka for offline aggregation | 0.2 ms | 1 ms |
+
+### Production Case Studies and Open-Source Comparisons
+
+Google Suggest partitions its global query corpus by prefix range across geographically replicated in-memory trees, pairing offline decayed-frequency builds with a streaming trending overlay so breaking news surfaces within minutes while policy classifiers filter unsafe completions before publication. Elasticsearch's Completion Suggester encodes weighted phrases into an immutable Lucene Finite State Transducer (FST) loaded directly into off-heap memory, compressing shared prefixes and suffixes into a compact automaton that serves microsecond lookups without per-node top-K duplication. Both designs decouple online serving from index construction: readers traverse immutable snapshots lock-free while background pipelines rebuild and atomically swap updated structures.
+
+<div class="callout keyidea">
+<span class="label">Key idea</span>
+<p>Precomputing top-K lists at every internal trie node trades offline build compute and extra RAM for deterministic <code>O(L)</code> read latency that stays flat regardless of subtree size. Double-buffered atomic pointer swaps eliminate reader-writer lock contention during snapshot refreshes.</p>
+</div>
+
+<div class="callout experiment">
+<span class="label">Experiment</span>
+<p>Run <code>cargo run --release -p typeahead</code> and insert a high-frequency query with a shared 2-character prefix such as <code>ka</code>. Observe how narrowing from <code>k</code> to <code>ka</code> and <code>kaf</code> prunes candidates strictly by descending decayed score while returning a cacheable empty result for unmatched prefixes.</p>
+</div>
+
+<div class="callout caution">
+<span class="label">Common pitfall</span>
+<p>Omitting monotonic client sequence numbers (<code>seq</code>) allows an earlier slow response for <code>k</code> to overwrite a faster response for <code>kaf</code> in the UI dropdown. Dropping any response whose <code>seq</code> trails the latest keystroke prevents visual flicker and stale suggestions.</p>
+</div>
+
 ## 22.8 Terminology and References
 
 ### Engineering Glossary

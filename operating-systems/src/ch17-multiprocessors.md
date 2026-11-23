@@ -1,5 +1,7 @@
 # 17. Multiprocessor Systems and Hardware Accelerators
 
+<img class="plate" src="art/ch17-plate.svg" alt="Chapter 17: Multiprocessors — dual-socket NUMA interconnect and MESI cache coherence">
+
 As computing scale increases, the idealized model of a single, uniform pool of memory and a set of identical cores gives way to more complex architectures. Large-scale systems are characterized by **Non-Uniform Memory Access (`NUMA`)** topologies, complex cache coherency protocols, and the tight integration of specialized hardware accelerators for **Machine Learning (`ML`)** and **High-Performance Computing (`HPC`)**. These hardware realities impose unique constraints on operating system design, runtime libraries, and systems software.
 
 ## 17.1 `NUMA` Topologies and Locality Optimization

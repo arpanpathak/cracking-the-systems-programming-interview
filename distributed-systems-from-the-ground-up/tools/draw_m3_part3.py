@@ -9,6 +9,23 @@ from figkit_m3 import Fig, WIDTH, MARGIN, build_use_case_fig
 INNER = WIDTH - 2 * MARGIN  # 856px usable width
 
 
+def step_badge(f, cx, cy, num, tone="blue", ring="paper"):
+    """Draw a high-contrast circular step badge (r=10 + 3px halo) for light & dark modes."""
+    f.add(f'<circle cx="{cx:.1f}" cy="{cy:.1f}" r="13.0" class="{ring}"/>')
+    f.add(f'<circle cx="{cx:.1f}" cy="{cy:.1f}" r="10.0" class="a-{tone}"/>')
+    f.add(f'<text x="{cx:.1f}" y="{cy + 3.7:.1f}" text-anchor="middle" class="badge paper">{num}</text>')
+
+
+def path_legend(f, y, sync_text="Solid: Sync data path (1->5)", async_text="Dashed: Async / control plane"):
+    """Draw a compact legend strip distinguishing synchronous data vs async/control wires."""
+    f.rect(MARGIN, y, INNER, 28, "c-gray", r=8)
+    f.wire([(MARGIN + 18, y + 14), (MARGIN + 52, y + 14)], tone="blue", width=2.0)
+    f.text(MARGIN + 60, y + 18, sync_text, "small", "start", tone="blue")
+    mid = MARGIN + INNER / 2 + 12
+    f.wire([(mid, y + 14), (mid + 34, y + 14)], tone="purple", dash=True, width=1.7)
+    f.text(mid + 42, y + 18, async_text, "small", "start", tone="purple")
+
+
 # =============================================================================
 # CHAPTER 14: URL SHORTENER
 # =============================================================================
@@ -29,7 +46,7 @@ def ch14_use_cases():
             ("Resolve & Redirect", "GET /{code}  ->  302 Location", "teal", "bolt"),
             ("Manage Alias & Expiry", "PATCH / DELETE /v1/links/{code}", "amber", "schedule"),
             ("Query Click Analytics", "GET /v1/links/{code}/stats", "green", "table_rows"),
-            ("Quarantine Abusive Link", "POST /v1/admin/block/{code}", "red", "block"),
+            ("Quarantine Abusive Link", "POST /v1/links/{code}:block", "red", "block"),
         ],
         links=[
             (0, [0, 2, 3], "blue"),
@@ -47,7 +64,7 @@ def ch14_architecture():
     f = Fig(
         "ch14_architecture",
         "Figure 14-2. Control Plane Range Allocator and Read-Optimized Edge Redirect Plane.",
-        536,
+        578,
     )
 
     # Top: Control Plane
@@ -58,92 +75,109 @@ def ch14_architecture():
         icon="settings_suggest", dashed=True,
     )
     c_abuse = f.node(
-        MARGIN + 18, 60, 256, 70, "red",
+        MARGIN + 18, 60, 270, 70, "red",
         [("Abuse & Blocklist Push", "name"), ("Phishing & spam filters", "sub")],
         icon="shield", kind="card", icon_size=26,
     )
     c_click = f.node(
-        MARGIN + 298, 60, 260, 70, "teal",
+        MARGIN + 308, 60, 310, 70, "teal",
         [("Click Stream & OLAP", "name"), ("Kafka -> ClickHouse", "sub")],
         icon="table_rows", kind="card", icon_size=26,
     )
     c_range = f.node(
-        MARGIN + 582, 60, 256, 70, "purple",
-        [("Range Allocator (etcd)", "name"), ("Disjoint 100k ID blocks", "sub")],
+        MARGIN + 638, 60, 200, 70, "purple",
+        [("Range Allocator", "name"), ("100k blocks (etcd)", "sub")],
         icon="dns", kind="card", icon_size=26,
     )
 
-    # Bottom: Data Plane
+    # Bottom: Data Plane (concise header leaves x >= 450 completely clear for control wires)
     f.zone(
-        MARGIN, 178, INNER, 348, "blue",
-        "Data Plane (Global Edge Redirect Tier & Sharded Mapping Store)",
-        "Edge L1 cache -> Stateless redirect tier -> Regional Redis + Bloom filter -> Sharded DB",
+        MARGIN, 178, INNER, 352, "blue",
+        "Data Plane (Edge Redirect & Mapping Store)",
+        "L1 CDN -> Redirect -> Redis + Bloom -> Sharded DB",
         icon="layers",
     )
 
-    # Row 1 inside Data Plane (y=240, h=86)
+    # Row 1 inside Data Plane (y=240, h=86; badged gaps = 48px >= 46px; wrt.cx == c_range.cx == 770)
     vis = f.node(
-        MARGIN + 18, 240, 156, 86, "blue",
-        [("Visitors", "name"), ("GET /{code}", "mono")],
+        MARGIN + 18, 240, 148, 86, "blue",
+        [("App / Web", "name"), ("GET /{code}", "mono")],
         icon="laptop", kind="card", icon_size=24,
     )
     cdn = f.node(
-        MARGIN + 196, 240, 192, 86, "teal",
+        MARGIN + 214, 240, 172, 86, "teal",
         [("CDN Edge PoP", "name"), ("L1 cache · 302", "sub")],
         icon="bolt", kind="card", icon_size=24,
     )
     rds = f.node(
-        MARGIN + 410, 240, 204, 86, "blue",
+        MARGIN + 434, 240, 184, 86, "blue",
         [("Redirect Service", "name"), ("Stateless lookup", "sub")],
         icon="swap_horiz", kind="card", icon_size=24,
     )
     wrt = f.node(
-        MARGIN + 636, 240, 202, 86, "amber",
+        MARGIN + 638, 240, 200, 86, "amber",
         [("Write API", "name"), ("Base62 encoder", "sub")],
         icon="edit_note", kind="card", icon_size=24,
     )
 
-    # Row 2 inside Data Plane (y=396, h=106)
+    # Row 2 inside Data Plane (y=406, h=102; db.cx = 664 = midpoint(rds.cx=558, wrt.cx=770))
     rcache = f.node(
-        MARGIN + 18, 396, 384, 106, "teal",
+        MARGIN + 18, 406, 384, 102, "teal",
         [("Regional Redis Cluster", "name"), ("Hot code -> URL mappings (LRU)", "sub"), ("In-memory Bloom filter for 404 shield", "small")],
         icon="memory", kind="card", icon_size=28,
     )
     db = f.node(
-        MARGIN + 444, 396, 394, 106, "blue",
+        MARGIN + 426, 406, 412, 102, "blue",
         [("Sharded Mapping Store (3 AZs)", "name"), ("Hash-partitioned by short code", "sub"), ("Primary writes · Read replicas", "small")],
         icon="save", kind="card", icon_size=28,
     )
 
-    # Data plane wires
+    # Data plane wires (equal shaft clearance on both sides of every badge)
     f.wire([vis.right(0), cdn.left(0)], tone="blue", width=2.0)
+    step_badge(f, (vis.r + cdn.x - 9) / 2, vis.cy, "1", "blue", ring="c-blue")
+
     f.wire([cdn.right(0), rds.left(0)], tone="teal", width=2.0)
-    f.label(431, 232, "Miss", tone="teal", cls="badge", back_cls="c-blue")
+    f.label((cdn.r + rds.x - 9) / 2, cdn.cy - 22, "Miss", tone="teal", cls="badge", back_cls="c-blue")
+    step_badge(f, (cdn.r + rds.x - 9) / 2, cdn.cy, "2", "teal", ring="c-blue")
 
-    # Redirect Service -> Redis and DB
-    f.wire([rds.bottom(-36), (rds.cx - 36, 358), (rcache.cx, 358), rcache.top(0)], tone="teal", width=1.9, tail=True)
-    f.label(358, 349, "L2 lookup + Bloom", tone="teal", cls="small", back_cls="c-blue")
+    # Redirect Service centered exit -> clean split at y=354 to Redis (center) & dead-straight DB (-106)
+    db_dx = wrt.cx - db.cx  # +106.0 (exact mirror of rds.cx - db.cx = -106.0)
+    f.wire([rds.bottom(0), (rds.cx, 354)], tone="teal", head=False, width=1.9)
+    f.wire([(rds.cx, 354), (rcache.cx, 354), rcache.top(0)], tone="teal", width=1.9)
+    f.label((rcache.cx + rds.cx) / 2, 382, "L2 lookup + Bloom", tone="teal", cls="small", back_cls="c-blue")
+    step_badge(f, (rcache.cx + rds.cx) / 2, 354, "3", "teal", ring="c-blue")
 
-    f.wire([rds.bottom(36), (rds.cx + 36, 358), (db.cx - 60, 358), db.top(-60)], tone="blue", width=1.9)
-    f.label(566, 349, "Cold miss", tone="blue", cls="small", back_cls="c-blue")
+    # Redirect Service -> DB (dead-straight vertical into db.top(-106))
+    f.wire([(rds.cx, 354), db.top(-db_dx)], tone="blue", width=1.9)
+    f.label(rds.cx + 48, 382, "Cold miss", tone="blue", cls="small", back_cls="c-blue")
+    step_badge(f, rds.cx, (354 + db.y - 9) / 2, "4", "blue", ring="c-blue")
 
-    # Write API -> DB
-    f.wire([wrt.bottom(0), (wrt.cx, 396)], tone="amber", width=2.0)
-    f.label(wrt.cx, 360, "PUT mapping", tone="amber", cls="small", back_cls="c-blue")
+    # Write API -> DB (dead-straight vertical into db.top(+106))
+    f.wire([wrt.bottom(0), db.top(db_dx)], tone="amber", width=2.0)
+    f.label(wrt.cx - 48, (wrt.b + db.y - 9) / 2 + 4, "PUT map", tone="amber", cls="small", back_cls="c-blue")
+    step_badge(f, wrt.cx, (wrt.b + db.y - 9) / 2, "5", "amber", ring="c-blue")
 
-    # Control plane dashed wires
-    f.wire([c_abuse.bottom(40), (c_abuse.cx + 40, 162), (cdn.cx, 162), cdn.top(0)], tone="red", dash=True, width=1.6)
-    f.label(212, 164, "Blocklist sync", tone="red", cls="small")
+    # Control plane dashed wires — ZERO header or wire crossings!
+    # Blocklist sync routed cleanly via outer left gutter (x=16) to y=344 -> cdn.bottom(0)
+    f.wire([c_abuse.left(0), (16, c_abuse.cy), (16, 344), (cdn.cx, 344), cdn.bottom(0)], tone="red", dash=True, width=1.6)
+    f.label(144, 348, "Blocklist sync", tone="red", cls="small", back_cls="c-blue")
 
+    # Async clicks & ID range lease (dead-straight vertical at x=760)
     f.wire([rds.top(0), (rds.cx, 162), (c_click.cx, 162), c_click.bottom(0)], tone="teal", dash=True, width=1.6)
-    f.label(540, 164, "Async clicks", tone="teal", cls="small")
+    f.label(536, 164, "Async clicks", tone="teal", cls="small")
 
-    f.wire([c_range.bottom(0), (c_range.cx, 162), (wrt.cx, 162), wrt.top(0)], tone="purple", dash=True, width=1.6)
-    f.label(742, 164, "ID range lease", tone="purple", cls="small")
+    f.wire([c_range.bottom(0), wrt.top(0)], tone="purple", dash=True, width=1.6)
+    f.label(c_range.cx - 64, 164, "ID range lease", tone="purple", cls="small")
+
+    path_legend(
+        f, 542,
+        "Solid: Sync redirect & write (1 Device -> 2 CDN -> 3 Redis -> 4-5 DB)",
+        "Dashed: Blocklist push, async clicks & ID range lease",
+    )
 
     return f.save([
-        ("Range leasing eliminates cross-host write coordination while keeping short codes collision-free across regions.", "noteb"),
-        "Write servers pre-allocate disjoint 100,000-ID ranges from etcd and encode each value with a Feistel permutation before Base62 formatting to prevent sequential enumeration.",
+        ("Range leasing eliminates cross-host write coordination while keeping short codes collision-free across regions (5).", "noteb"),
+        "Write servers pre-allocate disjoint 100,000-ID ranges from etcd and encode each value with a Feistel permutation before Base62 formatting; redirect traffic resolves via L1 CDN and L2 Redis + Bloom (1-4).",
     ])
 
 
@@ -151,10 +185,10 @@ def ch14_redirect_cache():
     f = Fig(
         "ch14_redirect_cache",
         "Figure 14-3. Multi-Tier Redirect Cache Hierarchy and Bloom-Filter Negative Lookup Defense.",
-        468,
+        492,
     )
 
-    # Top Zone: Multi-tier read cascade
+    # Top Zone: Multi-tier read cascade (50px badged gaps)
     f.zone(
         MARGIN, 0, INNER, 196, "blue",
         "Multi-Tier Redirect Cache Cascade (99.8% of Lookups Resolved Before Storage)",
@@ -167,11 +201,12 @@ def ch14_redirect_cache():
         ("Bloom Filter Gate", "< 0.2 ms · O(k)", "Blocks 404 scans", "amber", "shield"),
         ("L3: Sharded Store", "~12 ms · < 2%", "Cold long-tail", "blue", "save"),
     ]
-    tw = 186
-    tgap = 24
+    tw = 168
+    tgap = 50
     tboxes = []
+    badge_tones = ["green", "teal", "amber"]
     for i, (t_hdr, t_stat, t_sub, tone, ic) in enumerate(tiers):
-        tx = MARGIN + 20 + i * (tw + tgap)
+        tx = MARGIN + 17 + i * (tw + tgap)
         box = f.node(
             tx, 66, tw, 108, tone,
             [(t_hdr, "name"), (t_stat, "monob"), (t_sub, "small")],
@@ -179,59 +214,68 @@ def ch14_redirect_cache():
         )
         tboxes.append(box)
         if i < 3:
-            f.wire([box.right(0), (tx + tw + tgap, box.cy)], tone="wire", width=1.8)
+            a, b = box.r, tx + tw + tgap
+            f.wire([box.right(0), (b, box.cy)], tone=badge_tones[i], width=1.9)
+            cx = (a + b - 9) / 2
             lbl = "Miss" if i < 2 else "Maybe"
-            f.label(tx + tw + tgap / 2, box.cy - 14, lbl, tone="gray", cls="badge", back_cls="c-blue")
+            f.label(cx, box.cy - 22, lbl, tone=badge_tones[i], cls="badge", back_cls="c-blue")
+            step_badge(f, cx, box.cy, str(i + 1), badge_tones[i], ring="c-blue")
 
     # Bottom Left: Bloom Filter Defense
     lw = 416
     f.zone(
-        MARGIN, 218, lw, 240, "amber",
+        MARGIN, 218, lw, 264, "amber",
         "Bloom-Filter Negative Lookup Defense",
         "Stops random code enumeration from exhausting DB IOPS",
         icon="shield",
     )
     bf1 = f.node(
-        MARGIN + 18, 282, 174, 72, "red",
+        MARGIN + 18, 280, 164, 64, "red",
         [("Unknown Code", "name"), ("GET /x9Z2q1", "mono")],
         layout="center", kind="mid", r=10,
     )
     bf2 = f.node(
-        MARGIN + 224, 282, 174, 72, "amber",
+        MARGIN + 234, 280, 164, 64, "amber",
         [("k=7 Hash Bits", "name"), ("Bit[h_i] == 0?", "mono")],
         layout="center", kind="card", r=10,
     )
-    f.wire([bf1.right(0), bf2.left(0)], tone="amber", width=1.8)
+    f.wire([bf1.right(0), bf2.left(0)], tone="amber", width=1.9)
+    step_badge(f, (bf1.r + bf2.x - 9) / 2, bf1.cy, "4", "amber", ring="c-amber")
 
     bf3 = f.node(
-        MARGIN + 18, 376, 178, 64, "green",
+        MARGIN + 18, 404, 178, 64, "green",
         [("Any Bit = 0", "monob"), ("Instant 404 (0 DB reads)", "small")],
         layout="center", kind="card", r=10,
     )
     bf4 = f.node(
-        MARGIN + 216, 376, 182, 64, "blue",
+        MARGIN + 220, 404, 178, 64, "blue",
         [("All Bits = 1", "monob"), ("Query DB (~1% FP rate)", "small")],
         layout="center", kind="card", r=10,
     )
-    f.wire([bf2.bottom(-30), (bf2.cx - 30, 365), (bf3.cx, 365), bf3.top(0)], tone="green", width=1.6)
-    f.wire([bf2.bottom(30), (bf2.cx + 30, 365), (bf4.cx, 365), bf4.top(0)], tone="blue", width=1.6)
+    # Clean orthogonal split bus at y=374 (exact vertical midpoint between 344 and 404)
+    bus_y = 374
+    f.wire([bf2.bottom(0), (bf2.cx, bus_y)], tone="amber", head=False, width=1.8)
+    f.rule(bf3.cx, bus_y, bf2.cx, bus_y, tone="amber", width=1.8)
+    f.wire([(bf3.cx, bus_y), bf3.top(0)], tone="green", width=1.8)
+    f.wire([(bf4.cx, bus_y), bf4.top(0)], tone="blue", width=1.8)
+    step_badge(f, (bf3.cx + bf2.cx) / 2, bus_y, "5", "purple", ring="c-amber")
 
     # Bottom Right: 301 vs 302 Trade-Off
     rx = MARGIN + lw + 24
     rw = INNER - lw - 24
     f.zone(
-        rx, 218, rw, 240, "purple",
+        rx, 218, rw, 264, "purple",
         "HTTP 301 vs. 302 Redirect Trade-Off",
         "Balancing origin load against telemetry and revocation",
         icon="tune",
     )
     f.node(
-        rx + 18, 282, rw - 36, 72, "gray",
+        rx + 18, 286, rw - 36, 76, "gray",
         [("301 Moved Permanently", "name"), ("Browser caches target · Bypasses click count", "sub")],
         icon="schedule", kind="card", icon_size=24,
     )
     f.node(
-        rx + 18, 370, rw - 36, 72, "green",
+        rx + 18, 384, rw - 36, 76, "green",
         [("302 Found (Chosen Default)", "name"), ("Revalidates at edge · Instant link revocation", "sub")],
         icon="play_arrow", kind="card", icon_size=24,
     )
@@ -260,7 +304,7 @@ def ch15_use_cases():
         cases=[
             ("Publish Post & Media", "POST /v1/posts  ->  201 {post_id}", "blue", "edit_note"),
             ("Fetch Ranked Timeline", "GET /v1/feeds/{id}?cursor=c&limit=n", "teal", "view_week"),
-            ("Follow or Unfollow", "PUT / DELETE /v1/graph/{u}/follows/{v}", "amber", "handshake"),
+            ("Follow or Unfollow", "PUT / DELETE /v1/users/{u}/following/{v}", "amber", "handshake"),
             ("Delete or Hide Post", "DELETE /v1/posts/{id}", "red", "close"),
             ("Rank & Filter Candidates", "Score top-K + policy suppression", "purple", "settings_suggest"),
         ],
@@ -280,14 +324,14 @@ def ch15_architecture():
     f = Fig(
         "ch15_architecture",
         "Figure 15-2. Publish Pipeline, Social Graph Service, Timeline Store, and Ranking Path.",
-        540,
+        594,
     )
 
-    # Top: Control Plane
+    # Top: Control Plane (ordered ML | Graph | Policy so all 3 outer-gutter routes have ZERO crossings)
     f.zone(
         MARGIN, 0, INNER, 146, "purple",
-        "Control Plane (Ranking Models, Fan-Out Thresholds & Social Graph)",
-        "Feature weights · Celebrity fan-out cutoff · Sharded follower edge lists",
+        "Control Plane (Ranking Models, Social Graph & Fan-Out Thresholds)",
+        "Feature weights · Sharded follower edge lists · Celebrity fan-out cutoff (> 100k)",
         icon="settings_suggest", dashed=True,
     )
     c_ml = f.node(
@@ -295,94 +339,111 @@ def ch15_architecture():
         [("Ranking Model Registry", "name"), ("Weights & safety rules", "sub")],
         icon="developer_board", kind="card", icon_size=26,
     )
-    c_pol = f.node(
-        MARGIN + 298, 60, 260, 70, "amber",
-        [("Fan-Out Policy Config", "name"), ("Celebrity cutoff > 100k", "sub")],
-        icon="tune", kind="card", icon_size=26,
-    )
     c_graph = f.node(
-        MARGIN + 582, 60, 256, 70, "purple",
+        MARGIN + 298, 60, 260, 70, "purple",
         [("Social Graph Service", "name"), ("Sharded follower lists", "sub")],
         icon="lan", kind="card", icon_size=26,
+    )
+    c_pol = f.node(
+        MARGIN + 582, 60, 256, 70, "amber",
+        [("Fan-Out Policy Config", "name"), ("Celebrity cutoff > 100k", "sub")],
+        icon="tune", kind="card", icon_size=26,
     )
 
     # Bottom: Data Plane
     f.zone(
-        MARGIN, 178, INNER, 352, "blue",
-        "Data Plane (Asynchronous Publish Fan-Out and Low-Latency Read Assembly)",
-        "Top lane: durable publish and fan-out   |   Bottom lane: serpentine read merge and ranking",
+        MARGIN, 178, INNER, 346, "blue",
+        "Data Plane (Publish Fan-Out & Low-Latency Feed Read Assembly)",
+        "Top lane: author device -> durable publish -> fan-out   |   Bottom lane: merge -> rank -> reader device",
         icon="layers",
     )
 
-    # Write Lane (Left -> Right, y=242, h=84)
+    # Write Lane (Left -> Right, y=242, h=84; badged gaps = 48px >= 46px; fw.cx == tcache.cx == 776)
     pub = f.node(
-        MARGIN + 18, 242, 182, 84, "blue",
-        [("Post Service", "name"), ("POST /v1/posts", "mono")],
+        MARGIN + 18, 242, 174, 84, "blue",
+        [("Post API", "name"), ("App / Web POST", "mono")],
         icon="edit_note", kind="card", icon_size=24,
     )
     pstore = f.node(
-        MARGIN + 224, 242, 182, 84, "blue",
+        MARGIN + 240, 242, 178, 84, "blue",
         [("Post Store (DB)", "name"), ("Durable content", "sub")],
         icon="save", kind="card", icon_size=24,
     )
     mq = f.node(
-        MARGIN + 430, 242, 182, 84, "amber",
-        [("Kafka Topic", "name"), ("Post-created log", "sub")],
+        MARGIN + 466, 242, 152, 84, "amber",
+        [("Kafka Topic", "name"), ("Publish log", "sub")],
         icon="swap_horiz", kind="card", icon_size=24,
     )
     fw = f.node(
-        MARGIN + 636, 242, 202, 84, "teal",
+        MARGIN + 650, 242, 188, 84, "teal",
         [("Fan-Out Workers", "name"), ("Push normal IDs", "sub")],
         icon="bolt", kind="card", icon_size=24,
     )
 
-    # Read Lane (Right -> Left serpentine, y=402, h=106)
+    # Read Lane (Right -> Left serpentine, y=402, h=106; badged gaps = 50px >= 46px)
     rank = f.node(
-        MARGIN + 18, 402, 246, 106, "green",
-        [("Ranking & Filter Svc", "name"), ("Score top-K candidates", "sub"), ("Return paged JSON", "small")],
+        MARGIN + 18, 402, 238, 106, "green",
+        [("Ranker -> Reader App", "name"), ("Score top-K candidates", "sub"), ("Paged JSON to Mobile/Web", "small")],
         icon="play_arrow", kind="card", icon_size=26,
     )
     agg = f.node(
-        MARGIN + 300, 402, 256, 106, "blue",
+        MARGIN + 306, 402, 294, 106, "blue",
         [("Feed Aggregator", "name"), ("Merge inbox + celebrity", "sub"), ("Hydrate post bodies", "small")],
         icon="view_week", kind="card", icon_size=26,
     )
     tcache = f.node(
-        MARGIN + 592, 402, 246, 106, "teal",
-        [("Timeline Store (Redis)", "name"), ("Per-user sorted sets", "sub"), ("Top 800 post IDs", "small")],
-        icon="memory", kind="card", icon_size=26,
+        MARGIN + 650, 402, 188, 106, "teal",
+        [("Timeline Store", "name"), ("Redis ZSETs", "sub"), ("Top 800 IDs", "small")],
+        icon="memory", kind="card", icon_size=24,
     )
 
-    # Write lane wires
+    # Write lane wires (equal shaft clearance on both sides of every badge)
     f.wire([pub.right(0), pstore.left(0)], tone="blue", width=1.9)
+    step_badge(f, (pub.r + pstore.x - 9) / 2, pub.cy, "1", "blue", ring="c-blue")
+
     f.wire([pstore.right(0), mq.left(0)], tone="amber", width=1.9)
-    f.wire([mq.right(0), fw.left(0)], tone="amber", width=1.9)
+    step_badge(f, (pstore.r + mq.x - 9) / 2, pstore.cy, "2", "amber", ring="c-blue")
 
-    # Serpentine drop: Fan-Out Workers -> Timeline Store
-    f.wire([fw.bottom(0), (fw.cx, tcache.y)], tone="teal", width=2.0)
-    f.label(fw.cx - 4, 366, "ZADD post_id", tone="teal", cls="mono", back_cls="c-blue")
+    f.wire([mq.right(0), fw.left(0)], tone="amber", dash=True, width=1.8)
 
-    # Read lane wires (Right -> Left)
+    # Serpentine drop: Fan-Out Workers -> Timeline Store (76px vertical arrow)
+    f.wire([fw.bottom(0), (fw.cx, tcache.y)], tone="teal", dash=True, width=1.9)
+    f.label(fw.cx - 64, (fw.b + tcache.y - 9) / 2 + 4, "ZADD post_id", tone="teal", cls="mono", back_cls="c-blue")
+    step_badge(f, fw.cx, (fw.b + tcache.y - 9) / 2, "3", "teal", ring="c-blue")
+
+    # Read lane wires (Right -> Left; left-pointing single arrows -> +9/2)
     f.wire([tcache.left(0), agg.right(0)], tone="teal", width=2.0)
+    step_badge(f, (agg.r + tcache.x + 9) / 2, agg.cy, "4", "teal", ring="c-blue")
+
     f.wire([agg.left(0), rank.right(0)], tone="green", width=2.0)
+    step_badge(f, (rank.r + agg.x + 9) / 2, agg.cy, "5", "green", ring="c-blue")
 
-    # Hydrate post store -> Feed Aggregator
-    f.wire([pstore.bottom(20), (pstore.cx + 20, 364), (agg.cx - 60, 364), agg.top(-60)], tone="blue", dash=True, width=1.6, tail=True)
-    f.label(358, 355, "Hydrate", tone="blue", cls="small", back_cls="c-blue")
+    # Hydrate post store -> Feed Aggregator (clean inner channel, centered endpoints, zero crossings)
+    f.wire([pstore.bottom(0), (pstore.cx, 364), (agg.cx, 364), agg.top(0)], tone="blue", dash=True, width=1.6, tail=True)
+    f.label((pstore.cx + agg.cx) / 2, 354, "Hydrate", tone="blue", cls="small", back_cls="c-blue")
 
-    # Control plane dashed wires
-    f.wire([c_ml.bottom(-60), (c_ml.cx - 60, 162), (MARGIN + 10, 162), (MARGIN + 10, rank.cy), rank.left(0)], tone="teal", dash=True, width=1.5)
-    f.label(144, 164, "Model push", tone="teal", cls="small")
+    # Control plane dashed wires — dedicated outer left, right-inner, and right-outer/bottom gutters (ZERO crossings!)
+    # 1. Model push: left outer gutter x=16 -> bottom gutter y=540 -> rank.bottom(0)
+    f.wire([c_ml.left(0), (16, c_ml.cy), (16, 540), (rank.cx, 540), rank.bottom(0)], tone="teal", dash=True, width=1.6)
+    f.label(270, 542, "Model push (left gutter)", tone="teal", cls="small")
 
-    f.wire([c_pol.bottom(0), (c_pol.cx, 162), (450, 162), (450, agg.y)], tone="amber", dash=True, width=1.5)
-    f.label(486, 164, "Cutoff policy", tone="amber", cls="small")
+    # 2. Follower lookup: top corridor y=160 -> right inner gutter x=896 -> fw.right(0)
+    f.wire([c_graph.bottom(0), (c_graph.cx, 160), (896, 160), (896, fw.cy), fw.right(0)], tone="purple", dash=True, width=1.6, tail=True)
+    f.label(660, 162, "Follower lookup", tone="purple", cls="small")
 
-    f.wire([c_graph.bottom(0), (c_graph.cx, 162), (fw.cx, 162), fw.top(0)], tone="purple", dash=True, width=1.6, tail=True)
-    f.label(756, 164, "Follower lookup", tone="purple", cls="small")
+    # 3. Cutoff policy: right outer gutter x=908 -> bottom gutter y=540 -> agg.bottom(0)
+    f.wire([c_pol.right(0), (908, c_pol.cy), (908, 540), (agg.cx, 540), agg.bottom(0)], tone="amber", dash=True, width=1.6)
+    f.label(684, 542, "Cutoff policy (> 100k -> pull merge)", tone="amber", cls="small")
+
+    path_legend(
+        f, 558,
+        "Solid: Sync publish & read assembly (1-2 Publish, 4-5 Merge & Rank)",
+        "Dashed: Async Kafka fan-out (3), hydrate & control gutters",
+    )
 
     return f.save([
         ("Timeline entries store compact 8-byte post IDs rather than full payloads so active feeds remain memory-resident in Redis.", "noteb"),
-        "Fan-out workers act as the sole writers to user timelines, preventing write contention while allowing the feed aggregator to hydrate and rank candidates on read.",
+        "Fan-out workers act as the sole asynchronous writers to user timelines (3), preventing write contention while allowing the feed aggregator to hydrate and rank candidates on read (4-5).",
     ])
 
 
@@ -393,86 +454,91 @@ def ch15_hybrid_fanout():
         476,
     )
 
-    lw = 414
-    rx = MARGIN + lw + 28
-    rw = INNER - lw - 28
-
-    # Left Zone: Push (Normal accounts)
+    # Top Zone: Symmetric 1-to-2 Fan-Out Split by Follower Threshold
     f.zone(
-        MARGIN, 0, lw, 286, "teal",
-        "Path A: Push Fan-Out (<= 100k Followers)",
-        "Precomputes follower timelines asynchronously on publish",
-        icon="bolt",
-    )
-    a1 = f.node(
-        MARGIN + 18, 62, lw - 36, 60, "blue",
-        [("Normal Author (500 followers)", "name"), ("Writes post once -> Kafka event", "sub")],
-        icon="person", kind="card", icon_size=24,
-    )
-    a2 = f.node(
-        MARGIN + 18, 144, lw - 36, 60, "teal",
-        [("Fan-Out Workers Push IDs", "name"), ("500 async Redis ZADD calls", "sub")],
-        icon="swap_horiz", kind="card", icon_size=24,
-    )
-    a3 = f.node(
-        MARGIN + 18, 222, lw - 36, 48, "green",
-        [("O(1) read latency · Bounded write amplification", "small")],
-        layout="center", kind="mid", r=8,
-    )
-    f.wire([a1.bottom(0), a2.top(0)], tone="teal", width=1.8)
-
-    # Right Zone: Pull (Celebrity accounts)
-    f.zone(
-        rx, 0, rw, 286, "amber",
-        "Path B: Pull Merge (> 100k Followers)",
-        "Skips follower push to prevent multi-million write storms",
+        MARGIN, 0, INNER, 256, "purple",
+        "Publish Path: Follower-Threshold Split (<= 100k Push vs. > 100k Pull)",
+        "Routes normal accounts to async inbox push and celebrity accounts to single-write outbox cache",
         icon="call_split",
     )
+    pub_node = f.node(
+        MARGIN + 18, 108, 168, 86, "blue",
+        [("New Post Publish", "name"), ("Check follower count", "sub"), ("Threshold = 100k", "small")],
+        icon="edit_note", layout="center", kind="card", icon_size=24,
+    )
+
+    # Path A (Normal <= 100k): cy = 98
+    a1 = f.node(
+        MARGIN + 282, 60, 254, 76, "teal",
+        [("Path A: Normal (<= 100k)", "name"), ("Push post IDs via Kafka", "sub"), ("500 async Redis ZADD", "small")],
+        icon="bolt", kind="card", icon_size=24,
+    )
+    a2 = f.node(
+        MARGIN + 588, 60, 250, 76, "green",
+        [("Follower Inbox ZSET", "name"), ("O(1) read latency", "sub"), ("Bounded write work", "small")],
+        icon="memory", kind="card", icon_size=24,
+    )
+
+    # Path B (Celebrity > 100k): cy = 204
     b1 = f.node(
-        rx + 18, 62, rw - 36, 60, "amber",
-        [("Celebrity Author (10M followers)", "name"), ("Appends to own outbox only", "sub")],
+        MARGIN + 282, 166, 254, 76, "amber",
+        [("Path B: Celebrity (> 100k)", "name"), ("Skip follower push", "sub"), ("Append to own outbox", "small")],
         icon="person", kind="card", icon_size=24,
     )
     b2 = f.node(
-        rx + 18, 144, rw - 36, 60, "purple",
-        [("Author Outbox Cache (1 Write)", "name"), ("Latest posts kept hot in Redis", "sub")],
-        icon="memory", kind="card", icon_size=24,
+        MARGIN + 588, 166, 250, 76, "purple",
+        [("Author Outbox Cache", "name"), ("1 write · Zero storm", "sub"), ("Merged on active read", "small")],
+        icon="save", kind="card", icon_size=24,
     )
-    b3 = f.node(
-        rx + 18, 222, rw - 36, 48, "amber",
-        [("Zero write storm · Merged only for active readers", "small")],
-        layout="center", kind="mid", r=8,
-    )
-    f.wire([b1.bottom(0), b2.top(0)], tone="amber", width=1.8)
 
-    # Bottom Zone: Read-time K-way merge
+    # Symmetric 1-to-2 split: exact midpoint x_mid = (pub_node.r + a1.x) / 2 = 266
+    x_mid = (pub_node.r + a1.x) / 2
+    f.wire([pub_node.right(0), (x_mid, pub_node.cy)], tone="blue", head=False, width=2.0)
+    f.rule(x_mid, a1.cy, x_mid, b1.cy, tone="blue", width=2.0)
+    f.wire([(x_mid, a1.cy), a1.left(0)], tone="teal", width=2.0)
+    f.wire([(x_mid, b1.cy), b1.left(0)], tone="amber", width=2.0)
+    f.label((x_mid + a1.x) / 2, a1.cy - 14, "<= 100k", tone="teal", cls="badge", back_cls="c-purple")
+    f.label((x_mid + b1.x) / 2, b1.cy + 20, "> 100k", tone="amber", cls="badge", back_cls="c-purple")
+    step_badge(f, (pub_node.r + x_mid) / 2, pub_node.cy, "1", "blue", ring="c-purple")
+
+    # Path A & B horizontal arrows (52px >= 46px)
+    f.wire([a1.right(0), a2.left(0)], tone="teal", width=2.0)
+    step_badge(f, (a1.r + a2.x - 9) / 2, a1.cy, "2", "teal", ring="c-purple")
+
+    f.wire([b1.right(0), b2.left(0)], tone="amber", width=2.0)
+    step_badge(f, (b1.r + b2.x - 9) / 2, b1.cy, "3", "amber", ring="c-purple")
+
+    # Centered transition connector between Publish and Read-Time Merge zones
+    f.wire([(WIDTH / 2, 256), (WIDTH / 2, 304)], tone="blue", dash=True, width=1.9)
+    f.label(WIDTH / 2 + 88, 284, "On reader timeline fetch", tone="blue", cls="small")
+
+    # Bottom Zone: Read-time K-way merge (52px badged gaps)
     f.zone(
-        MARGIN, 316, INNER, 150, "blue",
+        MARGIN, 304, INNER, 162, "blue",
         "Read-Time K-Way Merge & Cursor Pagination (Feed Aggregator)",
         "Combines precomputed normal inbox with followed celebrity outboxes in under 50 ms",
         icon="view_week",
     )
     m1 = f.node(
-        MARGIN + 18, 378, 246, 70, "teal",
-        [("1. Fetch Normal Inbox", "name"), ("Precomputed Redis ZSET", "sub")],
+        MARGIN + 18, 368, 238, 76, "teal",
+        [("Fetch Normal Inbox", "name"), ("Precomputed Redis ZSET", "sub")],
         icon="memory", kind="card", icon_size=24,
     )
     m2 = f.node(
-        MARGIN + 304, 378, 248, 70, "blue",
-        [("2. K-Way Heap Merge", "name"), ("Add celebrity outboxes", "sub")],
+        MARGIN + 308, 368, 240, 76, "blue",
+        [("K-Way Heap Merge", "name"), ("Add celebrity outboxes", "sub")],
         icon="layers", kind="card", icon_size=24,
     )
     m3 = f.node(
-        MARGIN + 592, 378, 246, 70, "green",
-        [("3. Rank & Return Page", "name"), ("?cursor=last_post_id", "mono")],
+        MARGIN + 600, 368, 238, 76, "green",
+        [("Rank & Return Page", "name"), ("?cursor=last_post_id", "mono")],
         icon="play_arrow", kind="card", icon_size=24,
     )
-    f.wire([m1.right(0), m2.left(0)], tone="blue", width=1.9)
-    f.wire([m2.right(0), m3.left(0)], tone="green", width=1.9)
+    f.wire([m1.right(0), m2.left(0)], tone="blue", width=2.0)
+    step_badge(f, (m1.r + m2.x - 9) / 2, m1.cy, "4", "blue", ring="c-blue")
 
-    # Vertical wires joining top zones to bottom merge zone
-    f.wire([(MARGIN + 141, 286), (MARGIN + 141, 316)], tone="teal", width=2.0)
-    f.wire([(rx + rw / 2, 286), (rx + rw / 2, 302), (m2.cx, 302), (m2.cx, 316)], tone="amber", width=2.0)
+    f.wire([m2.right(0), m3.left(0)], tone="green", width=2.0)
+    step_badge(f, (m2.r + m3.x - 9) / 2, m2.cy, "5", "green", ring="c-blue")
 
     return f.save([
         ("Pure push collapses when a 10-million-follower account publishes, whereas pure pull creates slow fan-in queries for every reader.", "noteb"),
@@ -518,7 +584,7 @@ def ch16_architecture():
     f = Fig(
         "ch16_architecture",
         "Figure 16-2. Metadata Control Plane, API Gateway, and Erasure-Coded Chunk Storage Nodes.",
-        542,
+        596,
     )
 
     # Top: Control Plane
@@ -546,30 +612,30 @@ def ch16_architecture():
 
     # Bottom: Data Plane
     f.zone(
-        MARGIN, 180, INNER, 352, "blue",
+        MARGIN, 180, INNER, 368, "blue",
         "Data Plane (Stateless Object Gateways & Erasure-Coded Chunk Nodes)",
         "Objects split into 64 MB immutable chunks encoded as RS(6, 3) stripes across 3 AZs",
         icon="layers",
     )
 
-    # Row 1: Ingress and Gateway
+    # Row 1: Ingress and Gateway (strictly symmetric around x=460; badged gaps = 50px >= 46px)
     app = f.node(
-        MARGIN + 18, 240, 174, 86, "blue",
-        [("Applications", "name"), ("PUT / GET blobs", "sub")],
+        MARGIN + 18, 240, 216, 86, "blue",
+        [("Clients / SDKs", "name"), ("Mobile · Web · S3", "sub")],
         icon="laptop", kind="card", icon_size=24,
     )
     gw = f.node(
-        MARGIN + 224, 240, 316, 86, "teal",
-        [("Object API Gateway", "name"), ("Auth · 64 MB chunker · CRC32C", "sub"), ("RS(6, 3) stripe encoder/decoder", "small")],
+        MARGIN + 284, 240, 288, 86, "teal",
+        [("Object API Gateway", "name"), ("Auth · 64 MB chunk · CRC32C", "sub"), ("RS(6, 3) stripe encoder/decoder", "small")],
         icon="swap_horiz", kind="card", icon_size=26,
     )
     mp = f.node(
-        MARGIN + 572, 240, 266, 86, "amber",
-        [("Multipart Coordinator", "name"), ("Stage parts · Atomic seal", "sub")],
+        MARGIN + 622, 240, 216, 86, "amber",
+        [("Multipart Manager", "name"), ("Stage · Atomic seal", "sub")],
         icon="inventory_2", kind="card", icon_size=24,
     )
 
-    # Row 2: 3 Failure Domains
+    # Row 2: 3 Failure Domains (az_boxes[1].cx == gw.cx == 460)
     az_w = 258
     az_gap = 22
     az_xs = [MARGIN + 19 + i * (az_w + az_gap) for i in range(3)]
@@ -581,37 +647,51 @@ def ch16_architecture():
     az_boxes = []
     for i, (t1, t2, t3, tone) in enumerate(az_specs):
         box = f.node(
-            az_xs[i], 392, az_w, 120, tone,
+            az_xs[i], 414, az_w, 114, tone,
             [(t1, "name"), (t2, "monob"), (t3, "small")],
             icon="save", layout="center", kind="card", icon_size=26,
         )
         az_boxes.append(box)
 
-    # Data plane wires
+    # Data plane wires (equal shaft clearance on both sides of every badge)
     f.wire([app.right(0), gw.left(0)], tone="blue", width=2.0)
-    f.wire([gw.right(0), mp.left(0)], tone="amber", width=1.8, tail=True)
+    step_badge(f, (app.r + gw.x - 9) / 2, app.cy, "1", "blue", ring="c-blue")
 
-    # Gateway -> 3 AZs fan-out bus
-    bus_y = 358
+    f.wire([gw.right(0), mp.left(0)], tone="amber", width=1.8, tail=True)
+    step_badge(f, (gw.r + mp.x) / 2, gw.cy, "2", "amber", ring="c-blue")
+
+    # Symmetric 1-to-3 Gateway -> 3 AZs fan-out bus (trunk=50px, equal branches=38px)
+    bus_y = 376
     f.wire([gw.bottom(0), (gw.cx, bus_y)], tone="teal", head=False, width=2.0)
     f.rule(az_boxes[0].cx, bus_y, az_boxes[2].cx, bus_y, tone="teal", width=2.0)
     for b in az_boxes:
         f.wire([(b.cx, bus_y), b.top(0)], tone="teal", width=2.0)
-    f.label(gw.cx + 128, bus_y - 10, "Parallel shard write / read", tone="teal", cls="small", back_cls="c-blue")
+    f.label(gw.cx + 140, bus_y + 18, "Parallel RS(6, 3) shard write / read", tone="teal", cls="small", back_cls="c-blue")
+    step_badge(f, gw.cx, (gw.b + bus_y) / 2, "3", "teal", ring="c-blue")
 
-    # Control plane dashed wires
-    f.wire([c_meta.bottom(40), (c_meta.cx + 40, 164), (gw.cx - 80, 164), gw.top(-80)], tone="purple", dash=True, width=1.6, tail=True)
-    f.label(270, 166, "Manifest commit", tone="purple", cls="small")
+    # Control plane dashed wires — ZERO header or wire crossings!
+    # 1. Manifest commit: left outer gutter x=16 -> y=348 -> gw.bottom(-96)
+    f.wire([c_meta.left(0), (16, c_meta.cy), (16, 348), (gw.cx - 96, 348), gw.bottom(-96)], tone="purple", dash=True, width=1.6, tail=True)
+    f.label(162, 352, "Manifest commit", tone="purple", cls="small", back_cls="c-blue")
+    step_badge(f, 16, (c_meta.cy + 348) / 2, "4", "purple")
 
-    f.wire([c_map.bottom(0), (c_map.cx, 164), (gw.cx + 40, 164), gw.top(40)], tone="amber", dash=True, width=1.6)
-    f.label(476, 166, "Placement map", tone="amber", cls="small")
+    # 2. Placement map: top corridor y=162 -> right inner gutter x=896 -> y=348 -> gw.bottom(96)
+    f.wire([c_map.bottom(0), (c_map.cx, 162), (896, 162), (896, 348), (gw.cx + 96, 348), gw.bottom(96)], tone="amber", dash=True, width=1.6)
+    f.label(664, 164, "Placement map", tone="amber", cls="small")
 
-    f.wire([c_scrub.bottom(60), (c_scrub.cx + 60, 164), (WIDTH - MARGIN - 8, 164), (WIDTH - MARGIN - 8, az_boxes[2].cy), az_boxes[2].right(0)], tone="teal", dash=True, width=1.6, tail=True)
-    f.label(752, 166, "Scrub & rebuild", tone="teal", cls="small")
+    # 3. Scrub & rebuild: right outer gutter x=908 -> az_boxes[2].right(0)
+    f.wire([c_scrub.right(0), (908, c_scrub.cy), (908, az_boxes[2].cy), az_boxes[2].right(0)], tone="teal", dash=True, width=1.6, tail=True)
+    step_badge(f, 908, (c_scrub.cy + az_boxes[2].cy) / 2, "5", "teal")
+
+    path_legend(
+        f, 560,
+        "Solid: Sync blob upload (1 PUT -> 2 Stage -> 3 RS(6,3) stripe)",
+        "Dashed: Manifest commit (4), placement map & async scrub (5)",
+    )
 
     return f.save([
-        ("Chunks are immutable and written before the metadata manifest commits, so aborted uploads never expose partial objects.", "noteb"),
-        "Spreading the nine shards of an RS(6, 3) stripe evenly across three availability zones lets the store survive an entire AZ outage without data loss.",
+        ("Chunks are immutable and written across 3 AZs (1-3) before the metadata manifest commits (4), so aborted uploads never expose partial objects.", "noteb"),
+        "Spreading the nine shards of an RS(6, 3) stripe evenly across three availability zones lets the store survive an entire AZ outage while background scrubbers (5) repair silent bit-rot.",
     ])
 
 
@@ -658,22 +738,25 @@ def ch16_erasure_coding():
         icon="shield",
     )
     steps = [
-        ("1. Periodic Scrub", "Read shard + CRC32C", "Detects bit-rot on D4", "teal", "schedule"),
-        ("2. Quarantine D4", "Mark shard offline", "Route reads via RS", "red", "warning"),
-        ("3. RS(6, 3) Rebuild", "Read any 6 healthy", "Recompute D4 in RAM", "amber", "developer_board"),
-        ("4. Atomic Swap", "Write D4 to spare", "Update chunk map", "green", "save"),
+        ("Periodic Scrub", "Read shard + CRC32C", "Detects bit-rot on D4", "teal", "schedule"),
+        ("Quarantine D4", "Mark shard offline", "Route reads via RS", "red", "warning"),
+        ("RS(6, 3) Rebuild", "Read any 6 healthy", "Recompute D4 in RAM", "amber", "developer_board"),
+        ("Atomic Swap", "Write D4 to spare", "Update chunk map", "green", "save"),
     ]
-    cw = 188
-    cgap = 21
+    cw = 168
+    cgap = 50
+    step_tones = ["red", "amber", "green"]
     for i, (hdr, sub1, sub2, tone, ic) in enumerate(steps):
-        cx = MARGIN + 20 + i * (cw + cgap)
+        cx = MARGIN + 17 + i * (cw + cgap)
         box = f.node(
             cx, 288, cw, 114, tone,
             [(hdr, "name"), (sub1, "small"), (sub2, "small")],
             icon=ic, layout="center", kind="card" if tone != "red" else "mid", icon_size=24,
         )
         if i < 3:
-            f.wire([box.right(0), (cx + cw + cgap, box.cy)], tone="wire", width=1.8)
+            a, b = box.r, cx + cw + cgap
+            f.wire([box.right(0), (b, box.cy)], tone=step_tones[i], width=1.9)
+            step_badge(f, (a + b - 9) / 2, box.cy, str(i + 1), step_tones[i], ring="c-teal")
 
     # Summary comparison bar at bottom of zone
     f.cell(
@@ -731,7 +814,7 @@ def ch17_architecture():
     f = Fig(
         "ch17_architecture",
         "Figure 17-2. Ingest Control Plane, Distributed Transcode Pipeline, and Multi-Tier CDN Playback.",
-        546,
+        598,
     )
 
     # Top: Control Plane
@@ -757,75 +840,91 @@ def ch17_architecture():
         icon="lock", kind="card", icon_size=26,
     )
 
-    # Middle: Offline Media Plane
+    # Middle: Offline Media Plane (concise header leaves x >= 450 completely clear)
     f.zone(
         MARGIN, 178, INNER, 148, "amber",
-        "Offline Media Plane (Distributed Transcode Pipeline & Origin Store)",
-        "Parallel GOP-level encoding turns a 60-minute master into an ABR ladder in minutes",
+        "Offline Media Plane (Transcode & Origin)",
+        "Parallel GOP encoding -> 4 s ABR segments",
         icon="developer_board",
     )
     raw = f.node(
-        MARGIN + 18, 240, 246, 70, "gray",
+        MARGIN + 18, 240, 238, 70, "gray",
         [("Raw Object Store", "name"), ("Master mezzanine file", "sub")],
         icon="folder", kind="card", icon_size=26,
     )
     enc = f.node(
-        MARGIN + 304, 240, 248, 70, "amber",
+        MARGIN + 306, 240, 244, 70, "amber",
         [("Transcode Workers", "name"), ("Parallel H.264 / AV1", "sub")],
         icon="widgets", kind="card", icon_size=26,
     )
     orig = f.node(
-        MARGIN + 592, 240, 246, 70, "blue",
+        MARGIN + 600, 240, 238, 70, "blue",
         [("Packaged Origin Store", "name"), ("Immutable 4 s segments", "sub")],
         icon="inventory_2", kind="card", icon_size=26,
     )
 
-    # Bottom: Playback Data Plane
+    # Bottom: Playback Data Plane (concise header leaves x >= 560 clear for Origin -> Shield)
     f.zone(
-        MARGIN, 358, INNER, 178, "blue",
-        "Playback Data Plane (Multi-Tier CDN Shield, Edge PoPs & ABR Players)",
-        "Read path serves immutable segments over HTTP/3 from edge PoPs nearest the viewer",
+        MARGIN, 358, INNER, 172, "blue",
+        "Playback Data Plane (CDN Shield, Edge & ABR)",
+        "HTTP/3 immutable segment delivery from nearest PoP",
         icon="play_arrow",
     )
     player = f.node(
-        MARGIN + 18, 424, 246, 92, "blue",
-        [("Client ABR Players", "name"), ("HLS / DASH buffer loop", "sub"), ("Dynamic bitrate choice", "small")],
+        MARGIN + 18, 422, 238, 92, "blue",
+        [("TV / Mobile Players", "name"), ("HLS / DASH ABR buffer", "sub"), ("Dynamic bitrate choice", "small")],
         icon="laptop", kind="card", icon_size=26,
     )
     edge = f.node(
-        MARGIN + 304, 424, 248, 92, "green",
+        MARGIN + 306, 422, 244, 92, "green",
         [("Global CDN Edge PoPs", "name"), ("95%+ hit · < 20 ms RTT", "sub"), ("Immutable cache TTL", "small")],
         icon="bolt", kind="card", icon_size=26,
     )
     shield = f.node(
-        MARGIN + 592, 424, 246, 92, "teal",
+        MARGIN + 600, 422, 238, 92, "teal",
         [("Origin Shield Cache", "name"), ("Collapses edge misses", "sub"), ("Protects origin egress", "small")],
         icon="shield", kind="card", icon_size=26,
     )
 
-    # Middle pipeline wires (Left -> Right)
+    # Middle pipeline wires (Left -> Right; 50px gaps, equal shaft clearance)
     f.wire([raw.right(0), enc.left(0)], tone="amber", width=1.9)
-    f.wire([enc.right(0), orig.left(0)], tone="blue", width=1.9)
+    step_badge(f, (raw.r + enc.x - 9) / 2, raw.cy, "1", "amber", ring="c-amber")
 
-    # Serpentine drop: Origin -> Origin Shield -> Edge -> Player (Right -> Left)
+    f.wire([enc.right(0), orig.left(0)], tone="blue", width=1.9)
+    step_badge(f, (enc.r + orig.x - 9) / 2, enc.cy, "2", "blue", ring="c-amber")
+
+    # Serpentine drop: Origin -> Origin Shield (112px downward arrow; badge cleanly inside Playback zone at y=390)
     f.wire([orig.bottom(0), (orig.cx, shield.y)], tone="teal", width=2.0)
-    f.label(orig.cx - 58, 342, "Cache fill", tone="teal", cls="small")
+    f.label(orig.cx - 58, 394, "Cache fill", tone="teal", cls="small", back_cls="c-blue")
+    step_badge(f, orig.cx, 390, "3", "teal", ring="c-blue")
 
     f.wire([shield.left(0), edge.right(0)], tone="green", width=2.0)
+    step_badge(f, (edge.r + shield.x + 9) / 2, edge.cy, "4", "green", ring="c-blue")
+
     f.wire([edge.left(0), player.right(0)], tone="blue", width=2.0)
+    step_badge(f, (player.r + edge.x + 9) / 2, player.cy, "5", "blue", ring="c-blue")
 
-    # Control plane dashed wires
-    f.wire([c_ing.bottom(0), (c_ing.cx, raw.y)], tone="purple", dash=True, width=1.6)
-    f.label(c_ing.cx + 52, 162, "Write master", tone="purple", cls="small")
+    # Control plane dashed wires — ZERO header or wire crossings!
+    # 1. Write master: left outer gutter x=16 -> inter-zone gap y=342 -> raw.bottom(0)
+    f.wire([c_ing.left(0), (16, c_ing.cy), (16, 342), (raw.cx, 342), raw.bottom(0)], tone="purple", dash=True, width=1.6)
+    f.label(250, 345, "Write master (left)", tone="purple", cls="small")
 
+    # 2. Dispatch GOPs: straight down at x=460 (well right of Offline Media Plane header)
     f.wire([c_dag.bottom(0), (c_dag.cx, enc.y)], tone="amber", dash=True, width=1.6)
-    f.label(c_dag.cx + 54, 162, "Dispatch GOPs", tone="amber", cls="small")
+    f.label(c_dag.cx + 58, 162, "Dispatch GOPs", tone="amber", cls="small")
 
-    f.wire([c_man.right(0), (WIDTH - MARGIN - 6, c_man.cy), (WIDTH - MARGIN - 6, 342), (player.cx, 342), player.top(0)], tone="teal", dash=True, width=1.5)
-    f.label(450, 342, "Manifest & DRM keys (control fetch)", tone="teal", cls="small")
+    # 3. Manifest & DRM keys: right outer gutter x=904 -> bottom gutter y=546 -> player.bottom(0)
+    f.wire([c_man.right(0), (904, c_man.cy), (904, 546), (player.cx, 546), player.bottom(0)], tone="teal", dash=True, width=1.6)
+    f.label(530, 548, "Manifest & DRM keys (control fetch via outer gutter)", tone="teal", cls="small")
+
+    path_legend(
+        f, 562,
+        "Solid: Media & playback path (1-2 Transcode -> 3 Shield -> 4 Edge -> 5 Player)",
+        "Dashed: Ingest, GOP dispatch & DRM manifest",
+    )
 
     return f.save([
-        ("Origin shielding collapses concurrent cache misses from hundreds of edge PoPs into a single upstream fetch per segment.", "noteb"),
+        ("Origin shielding collapses concurrent cache misses from hundreds of edge PoPs into a single upstream fetch per segment (3-5).", "noteb"),
         "Separating manifest and DRM authorization from static media delivery allows global CDN PoPs to cache encrypted segments indefinitely.",
     ])
 
@@ -834,34 +933,34 @@ def ch17_transcode_abr():
     f = Fig(
         "ch17_transcode_abr",
         "Figure 17-3. Chunked DAG Transcoding Ladder and Client-Side ABR Buffer Selection.",
-        476,
+        486,
     )
 
-    # Top Zone: Chunked DAG Transcoding Ladder
+    # Top Zone: Chunked DAG Transcoding Ladder (symmetric 1-to-3 fan-out & 3-to-1 fan-in)
     f.zone(
-        MARGIN, 0, INNER, 210, "amber",
+        MARGIN, 0, INNER, 220, "amber",
         "Chunked Parallel Transcoding DAG (Aligned 4-Second GOP Segments)",
         "Master video is split at keyframes so independent workers encode all bitrate rungs in parallel",
         icon="developer_board",
     )
     m_in = f.node(
-        MARGIN + 18, 92, 166, 86, "gray",
+        MARGIN + 18, 92, 142, 86, "gray",
         [("Master File", "name"), ("60 min · 4K raw", "sub")],
         icon="folder", layout="center", kind="card", icon_size=24,
     )
     splitter = f.node(
-        MARGIN + 214, 92, 162, 86, "amber",
+        MARGIN + 208, 92, 142, 86, "amber",
         [("GOP Splitter", "name"), ("4 s keyframes", "sub")],
         icon="call_split", layout="center", kind="card", icon_size=24,
     )
 
-    # 3 Parallel Bitrate Rungs
-    rx = MARGIN + 416
-    rw = 204
+    # 3 Parallel Bitrate Rungs (cy = 83, 135, 187 — symmetric around 135)
+    rx = MARGIN + 442
+    rw = 160
     rungs = [
-        ("1080p · 5.0 Mbps", "High motion HD", "green", 58),
-        ("720p · 2.5 Mbps", "Balanced mobile", "teal", 108),
-        ("480p · 1.0 Mbps", "Constrained link", "amber", 158),
+        ("1080p · 5.0 Mbps", "High motion HD", "green", 62),
+        ("720p · 2.5 Mbps", "Balanced mobile", "teal", 114),
+        ("480p · 1.0 Mbps", "Constrained link", "amber", 166),
     ]
     rboxes = []
     for lbl, sub, tone, ry in rungs:
@@ -869,19 +968,34 @@ def ch17_transcode_abr():
         rboxes.append(rb)
 
     pkg = f.node(
-        MARGIN + 660, 92, 178, 86, "blue",
+        MARGIN + 694, 92, 144, 86, "blue",
         [("CMAF Packager", "name"), ("HLS + DASH index", "sub")],
         icon="inventory_2", layout="center", kind="card", icon_size=24,
     )
 
-    f.wire([m_in.right(0), splitter.left(0)], tone="wire", width=1.8)
-    for rb in rboxes:
-        f.wire([splitter.right(0), (rx - 20, splitter.cy), (rx - 20, rb.cy), rb.left(0)], tone="amber", width=1.6, radius=6)
-        f.wire([rb.right(0), (pkg.x - 20, rb.cy), (pkg.x - 20, pkg.cy), pkg.left(0)], tone="blue", width=1.6, radius=6)
+    # Step 1: Master File -> GOP Splitter (48px gap)
+    f.wire([m_in.right(0), splitter.left(0)], tone="amber", width=1.9)
+    step_badge(f, (m_in.r + splitter.x - 9) / 2, m_in.cy, "1", "amber", ring="c-amber")
 
-    # Bottom Zone: Client-Side ABR Selection Timeline
+    # Step 2: Symmetric 1-to-3 Fan-Out (x_mid_1 = (382 + 474) / 2 = 428; trunk=46px, branches=46px)
+    x_mid_1 = (splitter.r + rx) / 2
+    f.wire([splitter.right(0), (x_mid_1, splitter.cy)], tone="amber", head=False, width=1.9)
+    f.rule(x_mid_1, rboxes[0].cy, x_mid_1, rboxes[2].cy, tone="amber", width=1.9)
+    for rb in rboxes:
+        f.wire([(x_mid_1, rb.cy), rb.left(0)], tone="amber", width=1.9)
+    step_badge(f, (splitter.r + x_mid_1) / 2, splitter.cy, "2", "amber", ring="c-amber")
+
+    # Step 3: Symmetric 3-to-1 Fan-In (x_mid_2 = (634 + 726) / 2 = 680; feeds=46px, trunk=46px)
+    x_mid_2 = (rboxes[0].r + pkg.x) / 2
+    for rb in rboxes:
+        f.wire([rb.right(0), (x_mid_2, rb.cy)], tone="blue", head=False, width=1.9)
+    f.rule(x_mid_2, rboxes[0].cy, x_mid_2, rboxes[2].cy, tone="blue", width=1.9)
+    f.wire([(x_mid_2, pkg.cy), pkg.left(0)], tone="blue", width=1.9)
+    step_badge(f, (x_mid_2 + pkg.x - 9) / 2, pkg.cy, "3", "blue", ring="c-amber")
+
+    # Bottom Zone: Client-Side ABR Selection Timeline (50px badged gaps)
     f.zone(
-        MARGIN, 234, INNER, 232, "blue",
+        MARGIN, 244, INNER, 232, "blue",
         "Client-Side Adaptive Bitrate (ABR) Selection Across Bandwidth Fluctuations",
         "Player monitors throughput and buffer occupancy to switch rungs at segment boundaries without stalling",
         icon="play_arrow",
@@ -892,18 +1006,21 @@ def ch17_transcode_abr():
         ("Seg 5-6 · Drop", "BW: 1.1 Mbps", "Drop 480p (1M)", "Buffer: 6 s", "red"),
         ("Seg 7-8 · Recover", "BW: 4.5 Mbps", "Step 720p (2.5M)", "Buffer: 12 s", "teal"),
     ]
-    sw = 188
-    sgap = 21
+    sw = 168
+    sgap = 50
+    abr_tones = ["amber", "red", "teal"]
     for i, (s_hdr, s_bw, s_pick, s_buf, tone) in enumerate(segs):
-        sx = MARGIN + 20 + i * (sw + sgap)
+        sx = MARGIN + 17 + i * (sw + sgap)
         box = f.node(
-            sx, 300, sw, 144, tone,
+            sx, 310, sw, 144, tone,
             [(s_hdr, "name"), (s_bw, "small"), (s_pick, "monob"), (s_buf, "badge")],
             layout="center", kind="card" if tone != "red" else "mid", r=10,
             text_tone=tone if tone == "red" else None,
         )
         if i < 3:
-            f.wire([box.right(0), (sx + sw + sgap, box.cy)], tone="wire", width=1.8)
+            a, b = box.r, sx + sw + sgap
+            f.wire([box.right(0), (b, box.cy)], tone=abr_tones[i], width=1.9)
+            step_badge(f, (a + b - 9) / 2, box.cy, str(i + 4), abr_tones[i], ring="c-blue")
 
     return f.save([
         ("Splitting uploads at Group-of-Pictures (GOP) boundaries reduces end-to-end transcoding latency from hours to a few minutes.", "noteb"),
@@ -928,8 +1045,8 @@ def ch18_use_cases():
         ],
         cases=[
             ("Maintain Live Session", "WSS /v1/ws + heartbeat presence", "teal", "lan"),
-            ("Send Message (Idempotent)", "POST /v1/conv/{id}/messages + client_id", "blue", "edit_note"),
-            ("Sync Missed Messages", "GET /v1/conv/{id}/messages?after=seq", "green", "loop"),
+            ("Send Message (Idempotent)", "POST /v1/conversations/{id}/messages + client_id", "blue", "edit_note"),
+            ("Sync Missed Messages", "GET /v1/conversations/{id}/messages?after=seq", "green", "loop"),
             ("Delivery & Read Receipts", "ACK delivered / read watermarks", "purple", "handshake"),
             ("Offline Push Alert", "Wake idle device via APNs / FCM", "amber", "notifications_active"),
         ],
@@ -949,7 +1066,7 @@ def ch18_architecture():
     f = Fig(
         "ch18_architecture",
         "Figure 18-2. Presence Directory, Stateful WebSocket Gateways, and Partitioned Message Store.",
-        544,
+        584,
     )
 
     # Top: Control Plane
@@ -975,11 +1092,11 @@ def ch18_architecture():
         icon="notifications_active", kind="card", icon_size=26,
     )
 
-    # Bottom: Data Plane
+    # Bottom: Data Plane (concise header leaves x >= 390 completely clear for symmetric control wires)
     f.zone(
         MARGIN, 178, INNER, 356, "blue",
-        "Data Plane (500 Stateful WebSocket Gateways & Partitioned Message Store)",
-        "Durable commit precedes live delivery; 100k concurrent TLS sockets per gateway host",
+        "Data Plane (WSS Gateways & Store)",
+        "Durable commit before push · 100k/host",
         icon="layers",
     )
 
@@ -1002,47 +1119,61 @@ def ch18_architecture():
 
     # Row 2: Clients on sides, Partitioned Message Store in center
     sender = f.node(
-        MARGIN + 18, 412, 212, 96, "blue",
-        [("Sender Device", "name"), ("WSS send + retry UUID", "sub")],
+        MARGIN + 18, 412, 232, 96, "blue",
+        [("Sender (Mobile / Web)", "name"), ("WSS send + retry UUID", "sub")],
         icon="laptop", kind="card", icon_size=24,
     )
     mstore = f.node(
-        MARGIN + 266, 412, 324, 96, "amber",
-        [("Partitioned Message Store", "name"), ("Sharded by conv_id · Ordered seq", "sub"), ("Multi-AZ WAL + cursor index", "small")],
+        MARGIN + 286, 412, 284, 96, "amber",
+        [("Partitioned Message Store", "name"), ("Sharded by conv_id · seq", "sub"), ("Multi-AZ WAL + cursor", "small")],
         icon="save", kind="card", icon_size=26,
     )
     recip = f.node(
-        MARGIN + 626, 412, 212, 96, "green",
-        [("Recipient Devices", "name"), ("Live push or sync pull", "sub")],
+        MARGIN + 606, 412, 232, 96, "green",
+        [("Recipient Devices", "name"), ("Mobile/Web · Live push", "sub")],
         icon="laptop", kind="card", icon_size=24,
     )
 
-    # Data plane wires
-    f.wire([sender.top(0), (sender.cx, gw_a.b)], tone="blue", width=2.0)
-    f.label(sender.cx + 52, 374, "Send frame", tone="blue", cls="small", back_cls="c-blue")
+    # Data plane wires (equal shaft clearance on both sides of every badge)
+    f.wire([sender.top(0), gw_a.bottom(0)], tone="blue", width=2.0)
+    f.label(sender.cx + 56, (gw_a.b + sender.y + 9) / 2 + 4, "Send frame", tone="blue", cls="small", back_cls="c-blue")
+    step_badge(f, sender.cx, (gw_a.b + sender.y + 9) / 2, "1", "blue", ring="c-blue")
 
     f.wire([gw_a.right(0), router.left(0)], tone="blue", width=2.0)
+    step_badge(f, (gw_a.r + router.x - 9) / 2, gw_a.cy, "2", "blue", ring="c-blue")
+
+    # Router <-> Message Store (durable write before push; bidirectional -> (a+b)/2)
+    f.wire([router.bottom(0), mstore.top(0)], tone="amber", width=2.0, tail=True)
+    f.label(router.cx + 70, (router.b + mstore.y) / 2 + 4, "Persist seq=42", tone="amber", cls="mono", back_cls="c-blue")
+    step_badge(f, router.cx, (router.b + mstore.y) / 2, "3", "amber", ring="c-blue")
+
     f.wire([router.right(0), gw_b.left(0)], tone="teal", width=2.0)
+    step_badge(f, (router.r + gw_b.x - 9) / 2, router.cy, "4", "teal", ring="c-blue")
 
-    f.wire([gw_b.bottom(0), (gw_b.cx, recip.y)], tone="green", width=2.0)
-    f.label(gw_b.cx - 48, 374, "Live push", tone="green", cls="small", back_cls="c-blue")
+    f.wire([gw_b.bottom(0), recip.top(0)], tone="green", width=2.0)
+    f.label(gw_b.cx - 52, (gw_b.b + recip.y - 9) / 2 + 4, "Live push", tone="green", cls="small", back_cls="c-blue")
+    step_badge(f, gw_b.cx, (gw_b.b + recip.y - 9) / 2, "5", "green", ring="c-blue")
 
-    # Router <-> Message Store (durable write before push)
-    f.wire([router.bottom(0), (router.cx, mstore.y)], tone="amber", width=2.0, tail=True)
-    f.label(router.cx + 76, 374, "Persist seq=42", tone="amber", cls="mono", back_cls="c-blue")
+    # Control plane dashed wires — ZERO header or wire crossings!
+    # 1. Heartbeats: left outer gutter x=16 -> inter-zone corridor y=162 -> c_pres.bottom(0)
+    f.wire([gw_a.left(0), (16, gw_a.cy), (16, 162), (c_pres.cx, 162), c_pres.bottom(0)], tone="teal", dash=True, width=1.6)
+    f.label(96, 162, "Heartbeats", tone="teal", cls="small")
 
-    # Control plane dashed wires
-    f.wire([gw_a.top(0), (gw_a.cx, 162), (c_pres.cx, 162), c_pres.bottom(0)], tone="teal", dash=True, width=1.6)
-    f.label(166, 164, "Heartbeats", tone="teal", cls="small")
+    # 2. Session Directory lookup & 3. Offline wakeup: symmetric (-44 / +44) on router.top
+    f.wire([router.top(-44), (router.cx - 44, 162), (c_dir.cx, 162), c_dir.bottom(0)], tone="purple", dash=True, width=1.6, tail=True)
+    f.label(354, 162, "Lookup GW", tone="purple", cls="small")
 
-    f.wire([router.top(0), (router.cx, c_dir.b)], tone="purple", dash=True, width=1.6, tail=True)
-    f.label(router.cx + 68, 164, "Lookup GW", tone="purple", cls="small")
+    f.wire([router.top(44), (router.cx + 44, 162), (c_push.cx, 162), c_push.bottom(0)], tone="amber", dash=True, width=1.6)
+    f.label(623, 162, "Offline wakeup", tone="amber", cls="small")
 
-    f.wire([router.top(80), (router.cx + 80, 162), (c_push.cx, 162), c_push.bottom(0)], tone="amber", dash=True, width=1.6)
-    f.label(666, 164, "Offline wakeup", tone="amber", cls="small")
+    path_legend(
+        f, 548,
+        "Solid: Sync messaging path (1 Send -> 2 Route -> 3 Persist -> 4-5 Push)",
+        "Dashed: Heartbeats, GW lookup & offline push",
+    )
 
     return f.save([
-        ("Persisting the message and assigning its per-conversation sequence number before pushing ensures recipients never observe unrecoverable frames.", "noteb"),
+        ("Persisting the message and assigning its per-conversation sequence number (3) before pushing (4-5) ensures recipients never observe unrecoverable frames.", "noteb"),
         "Stateless routers look up recipient gateway bindings in Redis, forwarding live frames to online sockets or dispatching APNs/FCM wakeups for offline devices.",
     ])
 
@@ -1051,58 +1182,103 @@ def ch18_delivery_flow():
     f = Fig(
         "ch18_delivery_flow",
         "Figure 18-3. End-to-End Message Sequencing, Online Push, and Offline Cursor Catch-Up.",
-        476,
+        486,
     )
 
-    # Top Zone: Online Write, Dedup, Sequence, and Push
+    # Top Zone: Sequencing & Symmetric 1-to-2 Presence Split (Online vs. Offline)
     f.zone(
-        MARGIN, 0, INNER, 206, "blue",
-        "Online Path: Idempotent Write, Per-Conversation Sequencing, and Push Delivery",
+        MARGIN, 0, INNER, 256, "blue",
+        "Online Sequencing & Presence-Based Delivery Split (Live Push vs. Offline Wakeup)",
         "Each conversation maintains a monotonic sequence counter; retries deduplicate on client_id",
         icon="bolt",
     )
-    online_steps = [
-        ("1. Client Send", "client_id = u9a1", "Retries reuse UUID", "blue", "edit_note"),
-        ("2. Dedup & Seq", "Assign conv seq=42", "Durable WAL commit", "amber", "lock"),
-        ("3. Route & Push", "Lookup -> GW B", "Deliver frame seq=42", "teal", "lan"),
-        ("4. Delivery ACK", "Watermark -> 42", "Update sender state", "green", "handshake"),
-    ]
-    sw = 188
-    sgap = 21
-    for i, (hdr, sub1, sub2, tone, ic) in enumerate(online_steps):
-        sx = MARGIN + 20 + i * (sw + sgap)
-        box = f.node(
-            sx, 66, sw, 118, tone,
-            [(hdr, "name"), (sub1, "mono"), (sub2, "small")],
-            icon=ic, layout="center", kind="card", icon_size=24,
-        )
-        if i < 3:
-            f.wire([box.right(0), (sx + sw + sgap, box.cy)], tone="wire", width=1.8)
+    s1 = f.node(
+        MARGIN + 18, 108, 142, 86, "blue",
+        [("Client Send", "name"), ("client_id=u9a1", "mono"), ("Retries reuse ID", "small")],
+        icon="edit_note", layout="center", kind="card", icon_size=24,
+    )
+    s2 = f.node(
+        MARGIN + 208, 108, 150, 86, "amber",
+        [("Dedup & Seq", "name"), ("Assign seq=42", "mono"), ("Durable WAL", "small")],
+        icon="lock", layout="center", kind="card", icon_size=24,
+    )
 
-    # Bottom Zone: Gap Detection and Offline Cursor Catch-Up
+    # Online branch (cy = 98)
+    on1 = f.node(
+        MARGIN + 450, 60, 166, 76, "teal",
+        [("GW B Live Push", "name"), ("WSS frame seq=42", "mono")],
+        icon="lan", layout="center", kind="card", icon_size=22,
+    )
+    on2 = f.node(
+        MARGIN + 666, 60, 172, 76, "green",
+        [("Delivery ACK", "name"), ("Watermark -> 42", "mono")],
+        icon="handshake", layout="center", kind="card", icon_size=22,
+    )
+
+    # Offline branch (cy = 204)
+    off1 = f.node(
+        MARGIN + 450, 166, 166, 76, "amber",
+        [("APNs / FCM Alert", "name"), ("Wake idle device", "small")],
+        icon="notifications_active", layout="center", kind="card", icon_size=22,
+    )
+    off2 = f.node(
+        MARGIN + 666, 166, 172, 76, "purple",
+        [("Pending Catch-Up", "name"), ("Client cursor=40", "mono")],
+        icon="schedule", layout="center", kind="card", icon_size=22,
+    )
+
+    # Step 1: Client Send -> Dedup & Seq (48px gap)
+    f.wire([s1.right(0), s2.left(0)], tone="blue", width=2.0)
+    step_badge(f, (s1.r + s2.x - 9) / 2, s1.cy, "1", "blue", ring="c-blue")
+
+    # Step 2: Symmetric 1-to-2 Split (x_mid = (390 + 482) / 2 = 436; trunk=46px, branches=46px)
+    x_mid = (s2.r + on1.x) / 2
+    f.wire([s2.right(0), (x_mid, s2.cy)], tone="amber", head=False, width=2.0)
+    f.rule(x_mid, on1.cy, x_mid, off1.cy, tone="amber", width=2.0)
+    f.wire([(x_mid, on1.cy), on1.left(0)], tone="teal", width=2.0)
+    f.wire([(x_mid, off1.cy), off1.left(0)], tone="amber", width=2.0)
+    f.label((x_mid + on1.x) / 2, on1.cy - 14, "Online", tone="teal", cls="badge", back_cls="c-blue")
+    f.label((x_mid + off1.x) / 2, off1.cy + 20, "Offline", tone="amber", cls="badge", back_cls="c-blue")
+    step_badge(f, (s2.r + x_mid) / 2, s2.cy, "2", "amber", ring="c-blue")
+
+    # Step 3 & Step 4: Branch horizontal arrows (50px gaps)
+    f.wire([on1.right(0), on2.left(0)], tone="green", width=2.0)
+    step_badge(f, (on1.r + on2.x - 9) / 2, on1.cy, "3", "green", ring="c-blue")
+
+    f.wire([off1.right(0), off2.left(0)], tone="purple", width=2.0)
+    step_badge(f, (off1.r + off2.x - 9) / 2, off1.cy, "4", "purple", ring="c-blue")
+
+    # Connector from Offline Pending Catch-Up -> Offline Recovery Zone
+    f.wire([(off2.cx, 256), (off2.cx, 294)], tone="purple", dash=True, width=1.9)
+    f.label(off2.cx - 64, 279, "On reconnect", tone="purple", cls="small")
+
+    # Bottom Zone: Gap Detection and Offline Cursor Catch-Up (52px badged gaps)
     f.zone(
-        MARGIN, 230, INNER, 236, "purple",
+        MARGIN, 294, INNER, 182, "purple",
         "Offline Recovery: Sequence Gap Detection and Multi-Device Cursor Catch-Up",
         "Reconnecting devices pull missed ranges deterministically by sequence number rather than wall-clock time",
         icon="loop",
     )
     o1 = f.node(
-        MARGIN + 20, 296, 250, 146, "red",
-        [("1. Disconnect Window", "name"), ("Last local cursor: seq=40", "mono"), ("Misses seq 41, 42, 43", "small"), ("APNs/FCM wakes client", "small")],
+        MARGIN + 18, 356, 238, 102, "red",
+        [("Disconnect Window", "name"), ("Local cursor: seq=40", "mono"), ("Misses seq 41, 42, 43", "small")],
         icon="warning", layout="center", kind="mid", icon_size=24,
     )
     o2 = f.node(
-        MARGIN + 303, 296, 250, 146, "purple",
-        [("2. Cursor Sync Query", "name"), ("GET /messages?after=40", "mono"), ("Sequential shard range scan", "small"), ("Bounded page limit (100)", "small")],
+        MARGIN + 308, 356, 240, 102, "purple",
+        [("Cursor Sync Query", "name"), ("GET /v1/conversations/{id}", "mono"), ("Shard range scan (100)", "small")],
         icon="table_rows", layout="center", kind="card", icon_size=24,
     )
     o3 = f.node(
-        MARGIN + 586, 296, 250, 146, "green",
-        [("3. Ordered Reconcile", "name"), ("Applies seq 41, 42, 43", "mono"), ("Advances cursor -> 43", "small"), ("Resumes live WSS push", "small")],
+        MARGIN + 600, 356, 238, 102, "green",
+        [("Ordered Reconcile", "name"), ("Apply seq 41, 42, 43", "mono"), ("Cursor -> 43 · Live WSS", "small")],
         icon="play_arrow", layout="center", kind="card", icon_size=24,
     )
-    f.wire([o1.right(0), o2.left(0)], tone="purple", width=1.9)
-    f.wire([o2.right(0), o3.left(0)], tone="green", width=1.9)
+    f.wire([o1.right(0), o2.left(0)], tone="purple", width=2.0)
+    step_badge(f, (o1.r + o2.x - 9) / 2, o1.cy, "5", "purple", ring="c-purple")
+
+    f.wire([o2.right(0), o3.left(0)], tone="green", width=2.0)
+    step_badge(f, (o2.r + o3.x - 9) / 2, o2.cy, "6", "green", ring="c-purple")
 
     return f.save([
         ("Per-conversation monotonic sequence numbers allow any client to detect dropped or out-of-order frames immediately upon seeing a gap.", "noteb"),

@@ -325,3 +325,32 @@ From this execution transcript, we verify three core invariants of the storage e
 - S. Muralidhar et al., "f4: Facebook's Warm BLOB Storage System", *USENIX OSDI*, 2014.
 - S. A. Weil, S. A. Brandt, E. L. Miller, and C. Maltzahn, "CRUSH: Controlled, Scalable, Decentralized Placement of Replicated Data", *SC '06*, 2006.
 - J. Bornholt et al., "Using Lightweight Formal Methods to Validate a Key-Value Storage Node in Amazon S3 (ShardStore)", *ACM SOSP*, 2021.
+
+## 16.9 End-to-End Request Lifecycle and Production Case Studies
+
+### Hop-by-Hop Request Lifecycle and Latency Budget
+
+A single-part `PUT /v1/buckets/{b}/objects/{k}` of a `4 MB` payload traverses six hops from client TLS termination to durable quorum persistence across independent failure domains, targeting a `p99` completion budget of `120 ms` inside a single region.
+
+| Hop | Boundary Payload | Typical Latency Budget |
+| :--- | :--- | :--- |
+| **1. Client SDK to Regional Edge / Anycast VIP** | HTTP/2 `PUT` carrying SigV4 HMAC authorization headers, `Content-MD5` or `SHA-256` digest, and streamed body bytes | `8 to 20 ms` (client RTT) |
+| **2. L4 Maglev / ECMP LB to L7 Front-End Proxy** | Stateless TCP flow routed via consistent-hash L4 VIP to a TLS-terminating L7 proxy that validates signatures and bucket ACLs | `2 to 5 ms` |
+| **3. L7 Proxy to Metadata Router / Placement Service** | Control-plane lookup mapping `(bucket, key)` to a target placement group spanning distinct racks and availability zones | `3 to 8 ms` |
+| **4. L7 Proxy to Erasure-Coding Data Gateway** | Streamed `4 MB` payload split into `k` data shards and `m` Reed-Solomon parity shards with per-shard CRC32C checksums | `4 to 10 ms` (compute + IPC) |
+| **5. Data Gateway to Storage Nodes (Quorum Write)** | Parallel RPCs persisting `k + m` shards across independent racks with `fsync` or journaled NVMe commit before acknowledgement | `15 to 40 ms` (tail disk I/O) |
+| **6. Metadata Index Commit and Client Response** | Atomic conditional commit recording `(object_key, version_id, shard_map, etag)` in the consensus-backed metadata store, returning `200 OK` | `8 to 20 ms` |
+
+### Production Case Studies and Open-Source Comparisons
+
+**Amazon S3 Strong Consistency and ShardStore.** In December 2020, Amazon S3 upgraded its metadata layer to provide strong read-after-write consistency for all `PUT` and `DELETE` operations without sacrificing throughput or availability, eliminating stale list and overwrite anomalies across hundreds of trillions of objects. At the storage-node tier, AWS deployed ShardStore, a Rust-based key-value storage engine validated with lightweight formal methods and property-based crash-consistency testing to verify durability invariants across power-loss and disk-corruption faults.
+
+**Ceph RADOS and CRUSH.** Ceph eliminates centralized block-location lookup tables through CRUSH, a deterministic pseudo-random placement function that maps any object's Placement Group identifier directly to an ordered list of Object Storage Daemons (OSDs) across racks and power domains. Because clients and OSDs compute identical placement maps locally from a compact cluster map, Ceph scales linearly to exabyte clusters while supporting both 3-way replication and configurable `RS(k, m)` erasure-coded pools.
+
+**MinIO Erasure Coding.** MinIO implements an S3-compatible object store in Go with SIMD-accelerated (AVX-512 and NEON) Reed-Solomon erasure coding organized into fixed erasure sets of `4` to `16` drives. Inline HighwayHash bit-rot checksums verify every block on read, allowing a `16`-drive set with `4` parity drives (`EC:4`) to sustain four simultaneous drive losses while maintaining `1.33x` storage overhead.
+
+<div class="callout keyidea"><span class="label">Key idea</span> Separating the mutable metadata index from immutable content-addressed erasure stripes allows an object store to achieve strong read-after-write consistency on small metadata transactions while streaming multi-gigabyte payloads directly across parallel storage nodes.</div>
+
+<div class="callout experiment"><span class="label">Experiment</span> In `code/blobs`, corrupt two different chunks on distinct storage nodes before reading `video.mp4` and inspect the repair counter. Verify that checksum validation intercepts every corrupted shard before returning payload bytes to the caller and restores redundancy automatically.</div>
+
+<div class="callout caution"><span class="label">Common pitfall</span> Spreading `k + m` erasure-coded shards across random disks inside a single rack exposes the entire stripe to simultaneous loss during a top-of-rack switch or power-distribution outage. Enforce rack-aware and availability-zone-aware placement domains so no single infrastructure fault can disable more than one shard of a stripe.</div>

@@ -186,6 +186,51 @@ Listing 6.11 presents the complete multi-client concurrent benchmark driver in `
 {{#include ../code/kvbench/src/main.rs}}
 ```
 
+## 6.8 End-to-End Group-Commit Pipeline Lifecycle and Latency Budget
+
+Under group commit (`kvgroup`), concurrent client writes share a single physical NVMe flush barrier rather than serializing one `fdatasync(2)` per request. Tracing `64` concurrent `PUT` requests through the pipeline exposes how queueing latency trades off against throughput:
+
+1. **Client to Async Ingress (`axum`):** Each client handler parses the HTTP request, creates a `oneshot` reply channel, and enqueues its mutation into the bounded MPSC channel (`capacity = 256`).
+2. **Wave Queueing (Zero-Timer Wait):** Requests arriving while the committer thread executes `fdatasync(2)` for batch `N` accumulate in the channel with zero artificial sleep timer.
+3. **Batch Drain and Three-Pass Precondition Evaluation:** Immediately upon finishing batch `N`, the committer drains up to `256` queued writes, validates `If-Match` / `If-None-Match` sequentially against an intra-batch `pending` overlay, and encodes all accepted records into one contiguous WAL buffer.
+4. **Coalesced `write_all` and Single NVMe `fdatasync(2)`:** One `write(2)` syscall and one `fdatasync(2)` persist the entire batch (`32` to `120` records) in a single media barrier (`~5.4 ms`).
+5. **State Application and Fan-Out Replies:** The committer applies all durable records to `BTreeMap` and sends `201 Created` (or `412 Precondition Failed`) on every `oneshot` channel simultaneously.
+
+| Hop | Device / Subsystem | Typical `p50` (`64` clients) | Tail `p99` (`64` clients) | Primary Source of Tail Latency |
+| :--- | :--- | :--- | :--- | :--- |
+| 1 | Client -> `axum` Parse + MPSC Enqueue | `0.15 ms` | `0.60 ms` | Channel backpressure when queue nears `256` slots |
+| 2 | Wait Behind Active Batch `N` `fsync` | `2.70 ms` | `6.20 ms` | Arriving immediately after batch `N` begins flushing |
+| 3 | Three-Pass Validation + WAL Buffer Encode | `0.12 ms` | `0.45 ms` | Large batch payload sizes (`> 128 KiB`) |
+| 4 | Single Coalesced `write_all` + NVMe `fdatasync` | `5.40 ms` | `11.50 ms` | SSD internal garbage collection, write-cache flush spikes |
+| 5 | `BTreeMap` Apply + Oneshot Fan-Out + HTTP Reply | `0.25 ms` | `0.90 ms` | Concurrent socket writes waking `64` Tokio tasks at once |
+| **Total** | **Batched Durable `PUT` (`31.9` writes/batch)** | **`8.62 ms`** | **`19.65 ms`** | **One to two `fsync` cycles (average `1.5x` barrier time)** |
+
+## 6.9 Production Group-Commit Case Studies
+
+Every high-throughput durable database relies on WAL group commit to break the single-disk `fsync` ceiling:
+
+- **RocksDB `WriteThread` and Pipelined Writes:** RocksDB links concurrent writer threads into a lock-free queue where the first arrival becomes the **batch leader**, merges waiting `WriteBatch` payloads into one WAL write, and invokes `fdatasync(2)` once for the entire group. Enabling `enable_pipelined_write` splits WAL flushing and MemTable insertion into two concurrent stages so batch `N + 1` flushes to disk while batch `N` inserts into the MemTable, boosting multi-threaded write throughput by `20%` to `35%`.
+- **PostgreSQL Group Commit (`commit_delay` and `commit_siblings`):** In PostgreSQL's `XLogFlush`, the first committing backend flushes the WAL up to its LSN while concurrent committers wait on a lightweight lock; once the flush finishes, every waiting backend whose LSN is already durable wakes immediately. Operators can configure `commit_delay` (typically `10` to `100 us`) gated by `commit_siblings` (minimum concurrent active transactions) to collect larger batches without penalizing single-client latency.
+- **MySQL InnoDB Binary Log Group Commit (BLGC):** When both InnoDB redo logging and replication binary logging are durable (`sync_binlog = 1`, `innodb_flush_log_at_trx_commit = 1`), MySQL coordinates two-phase commit across three ordered leader-follower queues (**Flush**, **Sync**, and **Commit**), amortizing both `fsync` barriers across all concurrent transactions in a single group.
+
+<div class="callout keyidea"><span class="label">Key idea</span>
+
+**Zero-timer group commit achieves automatic latency-throughput adaptation.** Blocking only for the first arrival and draining whatever queued during the previous `fdatasync(2)` adds zero delay under single-client load while scaling batch size naturally to `~C / 2` under `C` concurrent writers.
+
+</div>
+
+<div class="callout experiment"><span class="label">Experiment</span>
+
+**Compare unbatched and batched throughput curves.** Run `kvbench` against `kvd` and `kvgroup` at `--clients 1`, `8`, `64`, and `256`. Verify that single-client throughput stays identical (`~165 writes/s`), whereas `256` concurrent clients push `kvgroup` past `17,000 writes/s` with mean batch size `~120`.
+
+</div>
+
+<div class="callout caution"><span class="label">Common pitfall</span>
+
+**Evaluating conditional writes against stale pre-batch state.** If two writes to the same key carrying `If-Match: "1"` land in the same batch and both check the committed `BTreeMap` independently, both appear valid and corrupt optimistic concurrency semantics. Evaluating preconditions sequentially against an intra-batch `pending` overlay preserves strict serializability within every batch.
+
+</div>
+
 ## Further Reading
 
 - D. DeWitt et al., "Implementation Techniques for Main Memory Database Systems", SIGMOD 1984 (introducing WAL group commit).

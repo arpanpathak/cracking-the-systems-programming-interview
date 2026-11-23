@@ -347,6 +347,31 @@ The final summary confirms end-to-end effectively-once semantics under a crash r
 | **Dead-Letter Queue (`DLQ`)** | A quarantine topic receiving poison messages that repeatedly fail processing so they do not stall healthy partition traffic. |
 | **Log Compaction** | Background retention mode rewriting closed log segments to retain at least the latest record per unique key indefinitely. |
 
+### End-to-End Request Lifecycle and Hop-by-Hop Latency Budget
+
+A durable publish-and-consume cycle with `acks = all` and `min.insync.replicas = 2` balances sequential disk I/O, kernel page-cache zero-copy transfers, and cross-AZ replication to sustain millions of messages per second at low millisecond latency.
+
+| Hop | Boundary | Protocol and Operation | Typical `p50` | Tail `p99` |
+| :--- | :--- | :--- | :--- | :--- |
+| 1 | Producer Batcher to Partition Leader | Binary TCP (`ProduceRequest`) after micro-batch linger (`linger.ms = 2`) | `2.30 ms` | `4.50 ms` |
+| 2 | Partition Leader Local Log Append | Sequential append to active segment file in OS page cache | `0.15 ms` | `0.80 ms` |
+| 3 | Leader to In-Sync Followers (`ISR`) | Parallel `Fetch` replication across AZs; high-watermark advances on quorum | `1.40 ms` | `5.20 ms` |
+| 4 | Leader to Consumer Group Member | `FetchResponse` via zero-copy `sendfile` directly from page cache to NIC | `0.60 ms` | `2.10 ms` |
+| 5 | Consumer Processing and Offset Commit | Business handler execution plus asynchronous `__consumer_offsets` commit | `1.80 ms` | `6.40 ms` |
+| **Total** | **End-to-End Produce-to-Consume Latency** | **Durable replicated delivery with zero-copy read amplification** | **`6.25 ms`** | **`19.00 ms`** |
+
+### Production Case Studies and Open-Source Comparisons
+
+- **Apache Kafka (KRaft and Zero-Copy `sendfile`):** Modern Kafka replaces external ZooKeeper clusters with KRaft, an internal Raft metadata quorum supporting millions of partitions with sub-second controller failover. On the data path, Kafka appends records sequentially to disk segments and serves consumers via Linux `sendfile`, moving bytes directly from the kernel page cache to the network interface controller with zero user-space copies and saturating `10 Gbps` to `40 Gbps` links per broker.
+- **Redpanda (Thread-per-Core C++):** Redpanda implements the Kafka wire protocol on top of the Seastar C++ framework, pinning one shard per physical CPU core and bypassing the kernel page cache via Direct I/O (`O_DIRECT`) and Raft per partition. Eliminating JVM garbage-collection pauses and cross-core lock contention yields `p99.9` publish latencies roughly `5x` to `10x` lower than tuned JVM brokers under heavy compaction and NVMe saturation.
+- **Apache Pulsar (Stateless Brokers and BookKeeper):** Pulsar decouples message serving from durable storage by running stateless brokers in front of Apache BookKeeper storage nodes (`bookies`). Because ledgers are striped into immutable segments across bookies, adding a broker or recovering a failed partition requires zero data rebalancing across disks, simplifying multi-tenant isolation and tiered cold-storage offloading to object stores.
+
+<div class="callout keyidea"><span class="label">Key idea</span>Treating the message broker as an immutable, partitioned append-only log converts random I/O into sequential disk bandwidth and enables independent consumer groups to replay historical streams without duplicating storage.</div>
+
+<div class="callout experiment"><span class="label">Experiment</span>Measure broker CPU utilization and `p99` fetch latency while serving 5 independent consumer groups reading the same `500 MB/s` topic from the tail (page-cache hit) versus from `12` hours in the past (cold disk read). Observe how tail reads remain memory-bound while historical catch-up competes for NVMe IOPS.</div>
+
+<div class="callout caution"><span class="label">Common pitfall</span>Configuring `acks = 1` with unclean leader election enabled drops acknowledged messages without producer notification whenever a partition leader crashes before followers replicate the latest offset. For financial or state-transition pipelines, pair `acks = all` and `min.insync.replicas = 2` with idempotent consumers keyed by message ID.</div>
+
 ### References
 
 - J. Kreps, N. Narkhede, and J. Rao, "Kafka: A Distributed Messaging System for Log Processing", NetDB, 2011.

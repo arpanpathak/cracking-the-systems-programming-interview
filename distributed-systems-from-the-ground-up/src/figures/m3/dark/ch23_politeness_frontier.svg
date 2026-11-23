@@ -1,12 +1,12 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 920 694" width="920" height="694">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 920 722" width="920" height="722">
   <style>
-    text { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif; fill: #E2ECF7; }
-    .paper { fill: #091929; }
-    .frame { fill: #091929; stroke: #1D3B56; stroke-width: 1; }
-    .card { fill: #10243A; }
-    .hair { stroke: #1D3B56; stroke-width: 1.2; fill: none; }
-    .muted { fill: #92B0C9; }
-    .ink { fill: #E2ECF7; }
+    text { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif; fill: #F2F6FC; }
+    .paper { fill: #121722; }
+    .frame { fill: rgba(0, 0, 0, 0.22); stroke: rgba(226, 232, 240, 0.18); stroke-width: 1.2; }
+    .card { fill: rgba(13, 18, 28, 0.80); stroke: rgba(203, 213, 225, 0.24); stroke-width: 1; }
+    .hair { stroke: rgba(226, 232, 240, 0.18); stroke-width: 1.2; fill: none; }
+    .muted { fill: #D0DAE8; }
+    .ink { fill: #F2F6FC; }
     .title { font-size: 17.0px; font-weight: 650; }
     .head { font-size: 14.5px; font-weight: 650; }
     .name { font-size: 14.0px; font-weight: 650; }
@@ -18,156 +18,163 @@
     .badge { font-size: 10.5px; font-weight: 650; }
     .note { font-size: 12.8px; }
     .noteb { font-size: 12.8px; font-weight: 650; }
-    .sub, .small, .note { fill: #92B0C9; }
-    .c-blue { fill: #0D243C; }
-    .m-blue { fill: #16385B; }
-    .a-blue { fill: #82AAFF; }
-    .t-blue { fill: #82AAFF; }
-    .w-blue { stroke: #82AAFF; fill: none; stroke-linecap: butt; stroke-linejoin: round; }
-    .o-blue { stroke: #82AAFF; fill: none; stroke-width: 1.5; }
-    .h-blue { stroke: #82AAFF; stroke-width: 1.4; }
-    .c-green { fill: #0C272B; }
-    .m-green { fill: #153F44; }
-    .a-green { fill: #ADDB67; }
-    .t-green { fill: #ADDB67; }
-    .w-green { stroke: #ADDB67; fill: none; stroke-linecap: butt; stroke-linejoin: round; }
-    .o-green { stroke: #ADDB67; fill: none; stroke-width: 1.5; }
-    .h-green { stroke: #ADDB67; stroke-width: 1.4; }
-    .c-amber { fill: #13263B; }
-    .m-amber { fill: #1F3B58; }
-    .a-amber { fill: #ECC48D; }
-    .t-amber { fill: #ECC48D; }
-    .w-amber { stroke: #ECC48D; fill: none; stroke-linecap: butt; stroke-linejoin: round; }
-    .o-amber { stroke: #ECC48D; fill: none; stroke-width: 1.5; }
-    .h-amber { stroke: #ECC48D; stroke-width: 1.4; }
-    .c-red { fill: #211B2D; }
-    .m-red { fill: #342742; }
-    .a-red { fill: #F29CA3; }
-    .t-red { fill: #F29CA3; }
-    .w-red { stroke: #F29CA3; fill: none; stroke-linecap: butt; stroke-linejoin: round; }
-    .o-red { stroke: #F29CA3; fill: none; stroke-width: 1.5; }
-    .h-red { stroke: #F29CA3; stroke-width: 1.4; }
-    .c-purple { fill: #13223D; }
-    .m-purple { fill: #1E355E; }
-    .a-purple { fill: #9EC5FF; }
-    .t-purple { fill: #9EC5FF; }
-    .w-purple { stroke: #9EC5FF; fill: none; stroke-linecap: butt; stroke-linejoin: round; }
-    .o-purple { stroke: #9EC5FF; fill: none; stroke-width: 1.5; }
-    .h-purple { stroke: #9EC5FF; stroke-width: 1.4; }
-    .c-teal { fill: #0A2633; }
-    .m-teal { fill: #133E52; }
-    .a-teal { fill: #7FDBCA; }
-    .t-teal { fill: #7FDBCA; }
-    .w-teal { stroke: #7FDBCA; fill: none; stroke-linecap: butt; stroke-linejoin: round; }
-    .o-teal { stroke: #7FDBCA; fill: none; stroke-width: 1.5; }
-    .h-teal { stroke: #7FDBCA; stroke-width: 1.4; }
-    .c-gray { fill: #0E2034; }
-    .m-gray { fill: #1A324D; }
-    .a-gray { fill: #92B0C9; }
-    .t-gray { fill: #92B0C9; }
-    .w-gray { stroke: #92B0C9; fill: none; stroke-linecap: butt; stroke-linejoin: round; }
-    .o-gray { stroke: #92B0C9; fill: none; stroke-width: 1.5; }
-    .h-gray { stroke: #92B0C9; stroke-width: 1.4; }
-    .c-wire { fill: #0E2034; }
-    .m-wire { fill: #1A324D; }
-    .a-wire { fill: #789BB8; }
-    .t-wire { fill: #789BB8; }
-    .w-wire { stroke: #789BB8; fill: none; stroke-linecap: butt; stroke-linejoin: round; }
-    .o-wire { stroke: #789BB8; fill: none; stroke-width: 1.5; }
-    .h-wire { stroke: #789BB8; stroke-width: 1.4; }
+    .sub, .small, .note { fill: #D0DAE8; }
+    .c-blue { fill: rgba(137, 180, 250, 0.08); stroke: #89B4FA; stroke-opacity: 0.48; stroke-width: 1.2; }
+    .m-blue { fill: rgba(137, 180, 250, 0.16); stroke: #89B4FA; stroke-opacity: 0.78; stroke-width: 1.2; }
+    .a-blue { fill: #89B4FA; }
+    .t-blue { fill: #89B4FA; }
+    .w-blue { stroke: #89B4FA; fill: none; stroke-linecap: butt; stroke-linejoin: round; }
+    .o-blue { stroke: #89B4FA; fill: none; stroke-width: 1.5; }
+    .h-blue { stroke: #89B4FA; stroke-width: 1.4; }
+    .c-green { fill: rgba(166, 227, 161, 0.08); stroke: #A6E3A1; stroke-opacity: 0.48; stroke-width: 1.2; }
+    .m-green { fill: rgba(166, 227, 161, 0.15); stroke: #A6E3A1; stroke-opacity: 0.78; stroke-width: 1.2; }
+    .a-green { fill: #A6E3A1; }
+    .t-green { fill: #A6E3A1; }
+    .w-green { stroke: #A6E3A1; fill: none; stroke-linecap: butt; stroke-linejoin: round; }
+    .o-green { stroke: #A6E3A1; fill: none; stroke-width: 1.5; }
+    .h-green { stroke: #A6E3A1; stroke-width: 1.4; }
+    .c-amber { fill: rgba(242, 201, 138, 0.08); stroke: #F2C98A; stroke-opacity: 0.48; stroke-width: 1.2; }
+    .m-amber { fill: rgba(242, 201, 138, 0.16); stroke: #F2C98A; stroke-opacity: 0.78; stroke-width: 1.2; }
+    .a-amber { fill: #F2C98A; }
+    .t-amber { fill: #F2C98A; }
+    .w-amber { stroke: #F2C98A; fill: none; stroke-linecap: butt; stroke-linejoin: round; }
+    .o-amber { stroke: #F2C98A; fill: none; stroke-width: 1.5; }
+    .h-amber { stroke: #F2C98A; stroke-width: 1.4; }
+    .c-red { fill: rgba(243, 166, 178, 0.08); stroke: #F3A6B2; stroke-opacity: 0.48; stroke-width: 1.2; }
+    .m-red { fill: rgba(243, 166, 178, 0.16); stroke: #F3A6B2; stroke-opacity: 0.78; stroke-width: 1.2; }
+    .a-red { fill: #F3A6B2; }
+    .t-red { fill: #F3A6B2; }
+    .w-red { stroke: #F3A6B2; fill: none; stroke-linecap: butt; stroke-linejoin: round; }
+    .o-red { stroke: #F3A6B2; fill: none; stroke-width: 1.5; }
+    .h-red { stroke: #F3A6B2; stroke-width: 1.4; }
+    .c-purple { fill: rgba(200, 182, 255, 0.08); stroke: #C8B6FF; stroke-opacity: 0.48; stroke-width: 1.2; }
+    .m-purple { fill: rgba(200, 182, 255, 0.16); stroke: #C8B6FF; stroke-opacity: 0.78; stroke-width: 1.2; }
+    .a-purple { fill: #C8B6FF; }
+    .t-purple { fill: #C8B6FF; }
+    .w-purple { stroke: #C8B6FF; fill: none; stroke-linecap: butt; stroke-linejoin: round; }
+    .o-purple { stroke: #C8B6FF; fill: none; stroke-width: 1.5; }
+    .h-purple { stroke: #C8B6FF; stroke-width: 1.4; }
+    .c-teal { fill: rgba(137, 216, 211, 0.08); stroke: #89D8D3; stroke-opacity: 0.48; stroke-width: 1.2; }
+    .m-teal { fill: rgba(137, 216, 211, 0.15); stroke: #89D8D3; stroke-opacity: 0.78; stroke-width: 1.2; }
+    .a-teal { fill: #89D8D3; }
+    .t-teal { fill: #89D8D3; }
+    .w-teal { stroke: #89D8D3; fill: none; stroke-linecap: butt; stroke-linejoin: round; }
+    .o-teal { stroke: #89D8D3; fill: none; stroke-width: 1.5; }
+    .h-teal { stroke: #89D8D3; stroke-width: 1.4; }
+    .c-gray { fill: rgba(226, 232, 240, 0.04); stroke: #CBD5E4; stroke-opacity: 0.48; stroke-width: 1.2; }
+    .m-gray { fill: rgba(226, 232, 240, 0.10); stroke: #CBD5E4; stroke-opacity: 0.78; stroke-width: 1.2; }
+    .a-gray { fill: #CBD5E4; }
+    .t-gray { fill: #CBD5E4; }
+    .w-gray { stroke: #CBD5E4; fill: none; stroke-linecap: butt; stroke-linejoin: round; }
+    .o-gray { stroke: #CBD5E4; fill: none; stroke-width: 1.5; }
+    .h-gray { stroke: #CBD5E4; stroke-width: 1.4; }
+    .c-wire { fill: rgba(226, 232, 240, 0.04); }
+    .m-wire { fill: rgba(226, 232, 240, 0.10); }
+    .a-wire { fill: #AAB7C9; }
+    .t-wire { fill: #AAB7C9; }
+    .w-wire { stroke: #AAB7C9; fill: none; stroke-linecap: butt; stroke-linejoin: round; }
+    .o-wire { stroke: #AAB7C9; fill: none; stroke-width: 1.5; }
+    .h-wire { stroke: #AAB7C9; stroke-width: 1.4; }
   </style>
   <defs>
     <filter id="lift" x="-10%" y="-15%" width="120%" height="140%">
-      <feDropShadow dx="0" dy="1" stdDeviation="1.2" flood-color="#010A14" flood-opacity="0.45"/>
-      <feDropShadow dx="0" dy="3" stdDeviation="4" flood-color="#010A14" flood-opacity="0.32"/>
+      <feDropShadow dx="0" dy="1" stdDeviation="1.2" flood-color="#000000" flood-opacity="0.0"/>
+      <feDropShadow dx="0" dy="3" stdDeviation="4" flood-color="#000000" flood-opacity="0.00"/>
     </filter>
   </defs>
-<rect x="0.5" y="0.5" width="919" height="693" rx="16" class="frame"/>
+<rect x="0.5" y="0.5" width="919" height="721" rx="16" class="frame"/>
 <text x="32" y="42" class="title"><tspan class="t-blue">Figure 23-3.</tspan> Mercator Two-Stage Frontier: Priority Front Queues and Per-Host Back Queues.</text>
 <g transform="translate(0 71)">
-<rect x="32.0" y="0.0" width="248.0" height="464.0" rx="16" class="c-purple"/>
+<rect x="32.0" y="0.0" width="244.0" height="492.0" rx="16" class="c-purple"/>
 <rect x="44.0" y="10.0" width="28.0" height="28.0" rx="8" class="m-purple"/>
 <g transform="translate(49.3 15.3) scale(0.723)" class="a-purple"><path d="M3 18c0 .55.45 1 1 1h5v-2H4c-.55 0-1 .45-1 1zM3 6c0 .55.45 1 1 1h9V5H4c-.55 0-1 .45-1 1zm10 14v-1h7c.55 0 1-.45 1-1s-.45-1-1-1h-7v-1c0-.55-.45-1-1-1s-1 .45-1 1v4c0 .55.45 1 1 1s1-.45 1-1zM7 10v1H4c-.55 0-1 .45-1 1s.45 1 1 1h3v1c0 .55.45 1 1 1s1-.45 1-1v-4c0-.55-.45-1-1-1s-1 .45-1 1zm14 2c0-.55-.45-1-1-1h-9v2h9c.55 0 1-.45 1-1zm-5-3c.55 0 1-.45 1-1V7h3c.55 0 1-.45 1-1s-.45-1-1-1h-3V4c0-.55-.45-1-1-1s-1 .45-1 1v4c0 .55.45 1 1 1z"/></g>
-<text x="80.0" y="23.0" class="head t-purple" data-fit="80.0,270.0">Stage 1: Front Queues</text>
-<text x="80.0" y="38.0" class="small" data-fit="80.0,270.0">Orders URLs by importance</text>
-<rect x="48.0" y="62.0" width="216.0" height="66.0" rx="12" class="card" filter="url(#lift)"/>
-<rect x="62.0" y="83.0" width="24.0" height="24.0" rx="7" class="c-blue"/>
-<g transform="translate(66.6 87.6) scale(0.620)" class="a-blue"><path d="M10.67 21c-.35 0-.62-.31-.57-.66L11 14H7.5c-.88 0-.33-.75-.31-.78 1.26-2.23 3.15-5.53 5.65-9.93a.577.577 0 0 1 1.07.37l-.9 6.34h3.51c.4 0 .62.19.4.66-3.29 5.74-5.2 9.09-5.75 10.05-.1.18-.29.29-.5.29z"/></g>
-<text x="98.0" y="91.4" class="name" data-fit="98.0,252.0">URL Prioritizer</text>
-<text x="98.0" y="108.5" class="sub" data-fit="98.0,252.0">PageRank &amp; freshness</text>
-<rect x="48.0" y="154.0" width="216.0" height="54.0" rx="9" class="card" filter="url(#lift)"/>
-<text x="156.0" y="177.4" class="monob" text-anchor="middle" data-fit="58.0,254.0">Front Queue P1 (High)</text>
-<text x="156.0" y="192.9" class="small" text-anchor="middle" data-fit="58.0,254.0">News &amp; root pages</text>
-<rect x="48.0" y="224.0" width="216.0" height="54.0" rx="9" class="card" filter="url(#lift)"/>
-<text x="156.0" y="247.4" class="monob" text-anchor="middle" data-fit="58.0,254.0">Front Queue P2 (Med)</text>
-<text x="156.0" y="262.9" class="small" text-anchor="middle" data-fit="58.0,254.0">Standard articles</text>
-<rect x="48.0" y="294.0" width="216.0" height="54.0" rx="9" class="c-gray"/>
-<text x="156.0" y="317.4" class="monob" text-anchor="middle" data-fit="58.0,254.0">Front Queue P3 (Low)</text>
-<text x="156.0" y="332.9" class="small" text-anchor="middle" data-fit="58.0,254.0">Deep archive links</text>
-<rect x="48.0" y="376.0" width="216.0" height="68.0" rx="12" class="m-purple"/>
-<rect x="62.0" y="398.0" width="24.0" height="24.0" rx="7" class="card"/>
-<g transform="translate(66.6 402.6) scale(0.620)" class="a-purple"><path d="m14.85 4.85 1.44 1.44-2.88 2.88 1.42 1.42 2.88-2.88 1.44 1.44a.5.5 0 0 0 .85-.36V4.5c0-.28-.22-.5-.5-.5h-4.29a.5.5 0 0 0-.36.85zM8.79 4H4.5c-.28 0-.5.22-.5.5v4.29c0 .45.54.67.85.35L6.29 7.7 11 12.4V19c0 .55.45 1 1 1s1-.45 1-1v-7c0-.26-.11-.52-.29-.71l-5-5.01 1.44-1.44c.31-.3.09-.84-.36-.84z"/></g>
-<text x="98.0" y="406.4" class="name" data-fit="98.0,252.0">Biased Selector</text>
-<text x="98.0" y="423.5" class="sub" data-fit="98.0,252.0">Draws P1 more often</text>
-<polygon points="156.0,154.0 152.0,144.5 156.0,147.2 160.0,144.5" class="a-purple"/>
-<path d="M156.0,128.0 L156.0,147.3" class="w-purple" stroke-width="1.7"/>
-<polygon points="156.0,376.0 152.0,366.5 156.0,369.2 160.0,366.5" class="a-purple"/>
-<path d="M156.0,348.0 L156.0,369.4" class="w-purple" stroke-width="1.7"/>
-<rect x="312.0" y="0.0" width="576.0" height="464.0" rx="16" class="c-amber"/>
-<rect x="324.0" y="10.0" width="28.0" height="28.0" rx="8" class="m-amber"/>
-<g transform="translate(329.3 15.3) scale(0.723)" class="a-amber"><path d="M11.99 2C6.47 2 2 6.48 2 12s4.47 10 9.99 10C17.52 22 22 17.52 22 12S17.52 2 11.99 2zM12 20c-4.42 0-8-3.58-8-8s3.58-8 8-8 8 3.58 8 8-3.58 8-8 8zm-.22-13h-.06c-.4 0-.72.32-.72.72v4.72c0 .35.18.68.49.86l4.15 2.49c.34.2.78.1.98-.24a.71.71 0 0 0-.25-.99l-3.87-2.3V7.72c0-.4-.32-.72-.72-.72z"/></g>
-<text x="360.0" y="23.0" class="head t-amber" data-fit="360.0,878.0">Stage 2: Per-Host Back Queues &amp; Politeness Min-Heap</text>
-<text x="360.0" y="38.0" class="small" data-fit="360.0,878.0">Invariant: every back queue holds URLs for exactly one origin host</text>
-<rect x="332.0" y="66.0" width="248.0" height="60.0" rx="9" class="card" filter="url(#lift)"/>
-<text x="456.0" y="92.4" class="monob" text-anchor="middle" data-fit="342.0,570.0">Back Queue B1</text>
-<text x="456.0" y="107.9" class="small" text-anchor="middle" data-fit="342.0,570.0">news.example (4 URLs)</text>
-<rect x="332.0" y="144.0" width="248.0" height="60.0" rx="9" class="card" filter="url(#lift)"/>
-<text x="456.0" y="170.4" class="monob" text-anchor="middle" data-fit="342.0,570.0">Back Queue B2</text>
-<text x="456.0" y="185.9" class="small" text-anchor="middle" data-fit="342.0,570.0">wiki.example (7 URLs)</text>
-<rect x="332.0" y="222.0" width="248.0" height="60.0" rx="9" class="card" filter="url(#lift)"/>
-<text x="456.0" y="248.4" class="monob" text-anchor="middle" data-fit="342.0,570.0">Back Queue B3</text>
-<text x="456.0" y="263.9" class="small" text-anchor="middle" data-fit="342.0,570.0">docs.example (2 URLs)</text>
-<rect x="332.0" y="316.0" width="248.0" height="128.0" rx="10" class="card" filter="url(#lift)"/>
-<text x="348.0" y="359.9" class="name" data-fit="348.0,568.0">Host-to-Queue Table</text>
-<text x="348.0" y="376.9" class="mono" data-fit="348.0,568.0">news.example -&gt; B1</text>
-<text x="348.0" y="393.4" class="mono" data-fit="348.0,568.0">wiki.example -&gt; B2</text>
-<text x="348.0" y="409.9" class="mono" data-fit="348.0,568.0">docs.example -&gt; B3</text>
-<rect x="616.0" y="66.0" width="252.0" height="128.0" rx="12" class="card" filter="url(#lift)"/>
-<rect x="616.0" y="66.0" width="252.0" height="30.0" rx="10" class="m-amber"/>
-<text x="628.0" y="86.0" class="monob t-amber" data-fit="624.0,860.0">Min-Heap (Next Fetch Time)</text>
-<text x="630.0" y="116.0" class="monob t-green" data-fit="626.0,858.0">root -&gt; B1  (t = 10.0s)</text>
-<text x="630.0" y="140.0" class="mono" data-fit="626.0,858.0">next -&gt; B2  (t = 11.5s)</text>
-<text x="630.0" y="164.0" class="mono" data-fit="626.0,858.0">next -&gt; B3  (t = 14.2s)</text>
-<rect x="616.0" y="224.0" width="252.0" height="82.0" rx="12" class="card" filter="url(#lift)"/>
-<rect x="630.0" y="253.0" width="24.0" height="24.0" rx="7" class="c-green"/>
-<g transform="translate(634.6 257.6) scale(0.620)" class="a-green"><path d="M8 6.82v10.36c0 .79.87 1.27 1.54.84l8.14-5.18a1 1 0 0 0 0-1.69L9.54 5.98A.998.998 0 0 0 8 6.82z"/></g>
-<text x="666.0" y="261.4" class="name" data-fit="666.0,856.0">Fetcher Worker Pop</text>
-<text x="666.0" y="278.5" class="sub" data-fit="666.0,856.0">Wait until now &gt;= t_min</text>
-<rect x="616.0" y="342.0" width="252.0" height="102.0" rx="12" class="m-amber"/>
-<rect x="630.0" y="381.0" width="24.0" height="24.0" rx="7" class="card"/>
-<g transform="translate(634.6 385.6) scale(0.620)" class="a-amber"><path d="M10 3h4c.55 0 1-.45 1-1s-.45-1-1-1h-4c-.55 0-1 .45-1 1s.45 1 1 1zm9.03 4.39.75-.75a.993.993 0 0 0 0-1.4l-.01-.01a.993.993 0 0 0-1.4 0l-.75.75A8.962 8.962 0 0 0 12 4c-4.8 0-8.88 3.96-9 8.76A8.998 8.998 0 0 0 12 22a8.994 8.994 0 0 0 7.03-14.61zM13 13c0 .55-.45 1-1 1s-1-.45-1-1V9c0-.55.45-1 1-1s1 .45 1 1v4z"/></g>
-<text x="666.0" y="381.9" class="name" data-fit="666.0,856.0">Politeness Re-Insert</text>
-<text x="666.0" y="398.9" class="mono" data-fit="666.0,856.0">t_next = now + delay</text>
-<text x="666.0" y="414.4" class="small" data-fit="666.0,856.0">Refill B1 if empty</text>
-<polygon points="332.0,380.0 322.5,384.0 325.2,380.0 322.5,376.0" class="a-purple"/>
-<path d="M264.0,410.0 L288.0,410.0 Q296.0,410.0 296.0,402.0 L296.0,388.0 Q296.0,380.0 304.0,380.0 L325.4,380.0" class="w-purple" stroke-width="1.9"/>
-<polygon points="456.0,282.0 460.0,291.5 456.0,288.8 452.0,291.5" class="a-purple"/>
-<path d="M456.0,316.0 L456.0,288.6" class="w-purple" stroke-width="1.6" stroke-dasharray="6 4"/>
-<polygon points="616.0,96.0 606.5,100.0 609.2,96.0 606.5,92.0" class="a-blue"/>
-<path d="M580.0,96.0 L609.4,96.0" class="w-blue" stroke-width="1.8"/>
-<polygon points="616.0,174.0 606.5,178.0 609.2,174.0 606.5,170.0" class="a-teal"/>
-<path d="M580.0,174.0 L609.4,174.0" class="w-teal" stroke-width="1.8"/>
-<polygon points="742.0,224.0 738.0,214.5 742.0,217.2 746.0,214.5" class="a-green"/>
-<path d="M742.0,194.0 L742.0,217.3" class="w-green" stroke-width="1.9"/>
-<polygon points="742.0,342.0 738.0,332.5 742.0,335.2 746.0,332.5" class="a-amber"/>
-<path d="M742.0,306.0 L742.0,335.4" class="w-amber" stroke-width="1.9"/>
-<polygon points="868.0,128.0 873.5,125.7 872.0,128.0 873.5,130.3" class="a-amber"/>
-<path d="M868.0,393.0 L874.0,393.0 Q880.0,393.0 880.0,387.0 L880.0,132.1 Q880.0,128.0 875.9,128.0 L871.9,128.0" class="w-amber" stroke-width="1.7" stroke-dasharray="6 4"/>
+<text x="80.0" y="23.0" class="head t-purple" data-fit="80.0,266.0">Stage 1: Front Queues</text>
+<text x="80.0" y="38.0" class="small" data-fit="80.0,266.0">Orders URLs by importance</text>
+<rect x="46.0" y="58.0" width="216.0" height="58.0" rx="12" class="card" filter="url(#lift)"/>
+<rect x="60.0" y="76.0" width="22.0" height="22.0" rx="7" class="c-blue"/>
+<g transform="translate(64.2 80.2) scale(0.568)" class="a-blue"><path d="M10.67 21c-.35 0-.62-.31-.57-.66L11 14H7.5c-.88 0-.33-.75-.31-.78 1.26-2.23 3.15-5.53 5.65-9.93a.577.577 0 0 1 1.07.37l-.9 6.34h3.51c.4 0 .62.19.4.66-3.29 5.74-5.2 9.09-5.75 10.05-.1.18-.29.29-.5.29z"/></g>
+<text x="94.0" y="83.4" class="name" data-fit="94.0,250.0">URL Prioritizer</text>
+<text x="94.0" y="100.5" class="sub" data-fit="94.0,250.0">PageRank &amp; age</text>
+<rect x="46.0" y="162.0" width="216.0" height="48.0" rx="9" class="card" filter="url(#lift)"/>
+<text x="154.0" y="183.2" class="monob" text-anchor="middle" data-fit="56.0,252.0">Front Queue P1 (High)</text>
+<text x="154.0" y="197.0" class="small" text-anchor="middle" data-fit="56.0,252.0">News &amp; root pages</text>
+<rect x="46.0" y="220.0" width="216.0" height="48.0" rx="9" class="card" filter="url(#lift)"/>
+<text x="154.0" y="241.2" class="monob" text-anchor="middle" data-fit="56.0,252.0">Front Queue P2 (Med)</text>
+<text x="154.0" y="255.0" class="small" text-anchor="middle" data-fit="56.0,252.0">Standard articles</text>
+<rect x="46.0" y="278.0" width="216.0" height="48.0" rx="9" class="c-gray"/>
+<text x="154.0" y="299.2" class="monob" text-anchor="middle" data-fit="56.0,252.0">Front Queue P3 (Low)</text>
+<text x="154.0" y="313.0" class="small" text-anchor="middle" data-fit="56.0,252.0">Deep archive links</text>
+<rect x="46.0" y="372.0" width="216.0" height="68.0" rx="12" class="m-purple"/>
+<rect x="60.0" y="395.0" width="22.0" height="22.0" rx="7" class="card"/>
+<g transform="translate(64.2 399.2) scale(0.568)" class="a-purple"><path d="m14.85 4.85 1.44 1.44-2.88 2.88 1.42 1.42 2.88-2.88 1.44 1.44a.5.5 0 0 0 .85-.36V4.5c0-.28-.22-.5-.5-.5h-4.29a.5.5 0 0 0-.36.85zM8.79 4H4.5c-.28 0-.5.22-.5.5v4.29c0 .45.54.67.85.35L6.29 7.7 11 12.4V19c0 .55.45 1 1 1s1-.45 1-1v-7c0-.26-.11-.52-.29-.71l-5-5.01 1.44-1.44c.31-.3.09-.84-.36-.84z"/></g>
+<text x="94.0" y="402.4" class="name" data-fit="94.0,250.0">Biased Selector</text>
+<text x="94.0" y="419.5" class="sub" data-fit="94.0,250.0">Draws P1 more often</text>
+<polygon points="154.0,162.0 150.0,152.5 154.0,155.2 158.0,152.5" class="a-purple"/>
+<path d="M154.0,116.0 L154.0,155.3" class="w-purple" stroke-width="1.8"/>
+<polygon points="154.0,372.0 150.0,362.5 154.0,365.2 158.0,362.5" class="a-purple"/>
+<path d="M154.0,326.0 L154.0,365.4" class="w-purple" stroke-width="1.8"/>
+<rect x="308.0" y="0.0" width="580.0" height="492.0" rx="16" class="c-amber"/>
+<rect x="320.0" y="10.0" width="28.0" height="28.0" rx="8" class="m-amber"/>
+<g transform="translate(325.3 15.3) scale(0.723)" class="a-amber"><path d="M11.99 2C6.47 2 2 6.48 2 12s4.47 10 9.99 10C17.52 22 22 17.52 22 12S17.52 2 11.99 2zM12 20c-4.42 0-8-3.58-8-8s3.58-8 8-8 8 3.58 8 8-3.58 8-8 8zm-.22-13h-.06c-.4 0-.72.32-.72.72v4.72c0 .35.18.68.49.86l4.15 2.49c.34.2.78.1.98-.24a.71.71 0 0 0-.25-.99l-3.87-2.3V7.72c0-.4-.32-.72-.72-.72z"/></g>
+<text x="356.0" y="23.0" class="head t-amber" data-fit="356.0,878.0">Stage 2: Per-Host Back Queues &amp; Politeness Min-Heap</text>
+<text x="356.0" y="38.0" class="small" data-fit="356.0,878.0">Invariant: every back queue holds URLs for exactly one origin host</text>
+<rect x="328.0" y="62.0" width="240.0" height="60.0" rx="9" class="card" filter="url(#lift)"/>
+<text x="448.0" y="88.4" class="monob" text-anchor="middle" data-fit="338.0,558.0">Back Queue B1</text>
+<text x="448.0" y="103.9" class="small" text-anchor="middle" data-fit="338.0,558.0">news.example (4 URLs)</text>
+<rect x="328.0" y="142.0" width="240.0" height="60.0" rx="9" class="card" filter="url(#lift)"/>
+<text x="448.0" y="168.4" class="monob" text-anchor="middle" data-fit="338.0,558.0">Back Queue B2</text>
+<text x="448.0" y="183.9" class="small" text-anchor="middle" data-fit="338.0,558.0">wiki.example (7 URLs)</text>
+<rect x="328.0" y="222.0" width="240.0" height="60.0" rx="9" class="card" filter="url(#lift)"/>
+<text x="448.0" y="248.4" class="monob" text-anchor="middle" data-fit="338.0,558.0">Back Queue B3</text>
+<text x="448.0" y="263.9" class="small" text-anchor="middle" data-fit="338.0,558.0">docs.example (2 URLs)</text>
+<rect x="328.0" y="344.0" width="240.0" height="124.0" rx="10" class="card" filter="url(#lift)"/>
+<text x="344.0" y="385.9" class="name" data-fit="344.0,556.0">Host-to-Queue Table</text>
+<text x="344.0" y="402.9" class="mono" data-fit="344.0,556.0">news.example -&gt; B1</text>
+<text x="344.0" y="419.4" class="mono" data-fit="344.0,556.0">wiki.example -&gt; B2</text>
+<text x="344.0" y="435.9" class="mono" data-fit="344.0,556.0">docs.example -&gt; B3</text>
+<rect x="616.0" y="62.0" width="252.0" height="126.0" rx="12" class="card" filter="url(#lift)"/>
+<rect x="616.0" y="62.0" width="252.0" height="30.0" rx="10" class="m-amber"/>
+<text x="628.0" y="82.0" class="monob t-amber" data-fit="624.0,860.0">Min-Heap (Next Fetch Time)</text>
+<text x="630.0" y="112.0" class="monob t-green" data-fit="626.0,858.0">root -&gt; B1  (t = 10.0s)</text>
+<text x="630.0" y="136.0" class="mono" data-fit="626.0,858.0">next -&gt; B2  (t = 11.5s)</text>
+<text x="630.0" y="160.0" class="mono" data-fit="626.0,858.0">next -&gt; B3  (t = 14.2s)</text>
+<rect x="616.0" y="236.0" width="252.0" height="78.0" rx="12" class="card" filter="url(#lift)"/>
+<rect x="630.0" y="263.0" width="24.0" height="24.0" rx="7" class="c-green"/>
+<g transform="translate(634.6 267.6) scale(0.620)" class="a-green"><path d="M8 6.82v10.36c0 .79.87 1.27 1.54.84l8.14-5.18a1 1 0 0 0 0-1.69L9.54 5.98A.998.998 0 0 0 8 6.82z"/></g>
+<text x="666.0" y="271.4" class="name" data-fit="666.0,856.0">Fetcher Worker Pop</text>
+<text x="666.0" y="288.5" class="sub" data-fit="666.0,856.0">Wait until now &gt;= t_min</text>
+<rect x="616.0" y="362.0" width="252.0" height="106.0" rx="12" class="m-amber"/>
+<rect x="630.0" y="403.0" width="24.0" height="24.0" rx="7" class="card"/>
+<g transform="translate(634.6 407.6) scale(0.620)" class="a-amber"><path d="M10 3h4c.55 0 1-.45 1-1s-.45-1-1-1h-4c-.55 0-1 .45-1 1s.45 1 1 1zm9.03 4.39.75-.75a.993.993 0 0 0 0-1.4l-.01-.01a.993.993 0 0 0-1.4 0l-.75.75A8.962 8.962 0 0 0 12 4c-4.8 0-8.88 3.96-9 8.76A8.998 8.998 0 0 0 12 22a8.994 8.994 0 0 0 7.03-14.61zM13 13c0 .55-.45 1-1 1s-1-.45-1-1V9c0-.55.45-1 1-1s1 .45 1 1v4z"/></g>
+<text x="666.0" y="403.9" class="name" data-fit="666.0,856.0">Politeness Re-Insert</text>
+<text x="666.0" y="420.9" class="mono" data-fit="666.0,856.0">t_next = now + delay</text>
+<text x="666.0" y="436.4" class="small" data-fit="666.0,856.0">Refill B1 if empty</text>
+<polygon points="328.0,406.0 318.5,410.0 321.2,406.0 318.5,402.0" class="a-purple"/>
+<path d="M262.0,406.0 L321.4,406.0" class="w-purple" stroke-width="1.9"/>
+<polygon points="448.0,282.0 452.0,291.5 448.0,288.8 444.0,291.5" class="a-purple"/>
+<path d="M448.0,344.0 L448.0,288.6" class="w-purple" stroke-width="1.8" stroke-dasharray="6 4"/>
+<polygon points="616.0,92.0 606.5,96.0 609.2,92.0 606.5,88.0" class="a-blue"/>
+<path d="M568.0,92.0 L609.4,92.0" class="w-blue" stroke-width="1.8"/>
+<polygon points="616.0,172.0 606.5,176.0 609.2,172.0 606.5,168.0" class="a-teal"/>
+<path d="M568.0,172.0 L609.4,172.0" class="w-teal" stroke-width="1.8"/>
+<polygon points="742.0,236.0 738.0,226.5 742.0,229.2 746.0,226.5" class="a-green"/>
+<path d="M742.0,188.0 L742.0,229.3" class="w-green" stroke-width="1.9"/>
+<polygon points="742.0,362.0 738.0,352.5 742.0,355.2 746.0,352.5" class="a-amber"/>
+<path d="M742.0,314.0 L742.0,355.4" class="w-amber" stroke-width="1.9"/>
+<polygon points="868.0,125.0 873.5,122.7 872.0,125.0 873.5,127.3" class="a-amber"/>
+<path d="M868.0,415.0 L874.0,415.0 Q880.0,415.0 880.0,409.0 L880.0,129.1 Q880.0,125.0 875.9,125.0 L871.9,125.0" class="w-amber" stroke-width="1.7" stroke-dasharray="6 4"/>
+<circle cx="154.0" cy="134.5" r="11.5" class="paper"/><circle cx="154.0" cy="134.5" r="9.5" class="a-purple"/><text x="154.0" y="138.3" text-anchor="middle" class="badge paper">1</text>
+<circle cx="154.0" cy="344.5" r="11.5" class="paper"/><circle cx="154.0" cy="344.5" r="9.5" class="a-purple"/><text x="154.0" y="348.3" text-anchor="middle" class="badge paper">2</text>
+<circle cx="290.5" cy="406.0" r="11.5" class="paper"/><circle cx="290.5" cy="406.0" r="9.5" class="a-purple"/><text x="290.5" y="409.8" text-anchor="middle" class="badge paper">3</text>
+<circle cx="448.0" cy="317.5" r="11.5" class="paper"/><circle cx="448.0" cy="317.5" r="9.5" class="a-purple"/><text x="448.0" y="321.3" text-anchor="middle" class="badge paper">4</text>
+<circle cx="587.5" cy="92.0" r="11.5" class="paper"/><circle cx="587.5" cy="92.0" r="9.5" class="a-blue"/><text x="587.5" y="95.8" text-anchor="middle" class="badge paper">5</text>
+<circle cx="742.0" cy="207.5" r="11.5" class="paper"/><circle cx="742.0" cy="207.5" r="9.5" class="a-green"/><text x="742.0" y="211.3" text-anchor="middle" class="badge paper">6</text>
+<circle cx="742.0" cy="333.5" r="11.5" class="paper"/><circle cx="742.0" cy="333.5" r="9.5" class="a-amber"/><text x="742.0" y="337.3" text-anchor="middle" class="badge paper">7</text>
 </g>
-<rect x="32" y="563" width="856" height="109" rx="12" class="c-gray"/>
-<g transform="translate(46 574) scale(0.833)" class="a-gray"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 15c-.55 0-1-.45-1-1v-4c0-.55.45-1 1-1s1 .45 1 1v4c0 .55-.45 1-1 1zm1-8h-2V7h2v2z"/></g>
-<text x="78" y="588.0" class="noteb ink" data-fit="78,876">Separating priority front queues from per-host back queues resolves the conflict</text>
-<text x="78" y="607.0" class="noteb ink" data-fit="78,876">between crawling high-value pages first and respecting per-host politeness.</text>
-<text x="78" y="633.0" class="note" data-fit="78,876">A min-heap keyed by each back queue&#x27;s earliest permissible fetch timestamp</text>
-<text x="78" y="652.0" class="note" data-fit="78,876">guarantees at most one concurrent request per host without scanning idle queues.</text>
+<rect x="32" y="591" width="856" height="109" rx="12" class="c-gray"/>
+<g transform="translate(46 602) scale(0.833)" class="a-gray"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 15c-.55 0-1-.45-1-1v-4c0-.55.45-1 1-1s1 .45 1 1v4c0 .55-.45 1-1 1zm1-8h-2V7h2v2z"/></g>
+<text x="78" y="616.0" class="noteb ink" data-fit="78,876">Separating priority front queues (steps 1-3) from per-host back queues (4-5) resolves</text>
+<text x="78" y="635.0" class="noteb ink" data-fit="78,876">the conflict between crawling high-value pages first and respecting per-host politeness.</text>
+<text x="78" y="661.0" class="note" data-fit="78,876">A min-heap keyed by each back queue&#x27;s earliest permissible fetch timestamp (steps</text>
+<text x="78" y="680.0" class="note" data-fit="78,876">6-7) guarantees at most one concurrent request per host without scanning idle queues.</text>
 </svg>

@@ -1,5 +1,7 @@
 # 13. I/O Multiplexing and the Event Loop
 
+<img class="plate" src="art/ch13-plate.svg" alt="Chapter 13: I/O & Event Loops — epoll red-black tree and io_uring SQ/CQ rings">
+
 The central engineering challenge of high-concurrency network servers, historically framed as the **C10K problem**, is sustaining tens of thousands of simultaneous client connections when the vast majority remain idle waiting for network packets at any given instant. Choosing between a thread-per-connection architecture and an event-driven **Input/Output (`I/O`)** multiplexing loop directly governs memory consumption, cache locality, and scheduler overhead.
 
 ## 13.1 The Scalability Limits of Thread-Per-Connection

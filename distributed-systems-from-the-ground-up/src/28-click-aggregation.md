@@ -133,7 +133,7 @@ Content-Type: application/json
 ```
 
 ```http
-GET /v1/campaigns/top?window=1m&at=2026-10-14T10:01:00Z&limit=10 HTTP/2
+GET /v1/campaigns:top?window=1m&at=2026-10-14T10:01:00Z&limit=10 HTTP/2
 Host: clicks.example
 Authorization: Bearer tok_advertiser_402
 ```
@@ -333,6 +333,37 @@ Inspect every metric confirmed by the simulation output:
 
 **Run the streaming click aggregation simulation.** Execute `cargo run --release -p clicksim` in `code/` to observe processing-time distortion versus event-time watermarked windows, duplicate suppression (`1` duplicate dropped), open-window buffering (`20-30 s: 1`), and late-straggler detection (`1` late click).
 
+</div>
+
+### End-to-End Request Lifecycle and Hop-by-Hop Latency Budget
+
+An ad click flows from edge capture through partitioned durable logs, stateful event-time windowing, and columnar OLAP ingestion for sub-second advertiser queries.
+
+| Hop | Component | Operation | P50 | P99 |
+| :--- | :--- | :--- | :--- | :--- |
+| 1 | Edge Collector (PoP) | Validate click signature, emit HTTP `302` redirect, enqueue event asynchronously | 4 ms | 18 ms |
+| 2 | Ingestion Log (Kafka) | Append partitioned click batch (`acks=all`) keyed by salted `ad_id` | 6 ms | 28 ms |
+| 3 | Stream Processor (Flink) | Deduplicate `click_id`, update local RocksDB event-time window, advance watermark | 12 ms | 65 ms |
+| 4 | Checkpoint Coordinator | Chandy-Lamport asynchronous barrier alignment and incremental RocksDB snapshot to object store | 90 ms | 450 ms |
+| 5 | Columnar OLAP Store | Upsert materialized 1-minute window aggregates and serve top-K dashboard queries | 35 ms | 180 ms |
+
+### Production Case Studies and Open-Source Comparisons
+
+Apache Flink pairs heuristic event-time watermarks with incremental RocksDB local state and Chandy-Lamport Asynchronous Barrier Snapshots (ABS), delivering exact windowing and exactly-once sink semantics across millions of events per second without pausing live ingestion. ClickHouse complements stateful stream aggregators with MergeTree columnar storage and vectorized SIMD execution, ingesting compacted per-minute rollups to answer interactive multi-dimensional advertiser queries in milliseconds. Meta Scuba takes an in-memory distributed columnar approach with aggressive time-based data expiration, trading long-term historical retention for sub-second ad-hoc drilldowns across high-cardinality operational and click-telemetry dimensions.
+
+<div class="callout keyidea">
+<span class="label">Key idea</span>
+<p>Event-time windowing guided by monotonic heuristic watermarks decouples billing accuracy from network jitter and mobile offline delays. Pairing a bounded allowed-lateness grace period with a late-event side output keeps live dashboards fast while guaranteeing exact financial reconciliation.</p>
+</div>
+
+<div class="callout experiment">
+<span class="label">Experiment</span>
+<p>Run <code>cargo run --release -p clicksim</code> and compare the <code>counted by arrival time</code> row against <code>counted by event time</code>. Observe how arrival-time bucketing fabricates a phantom <code>60-70 s</code> bucket and distorts <code>10-20 s</code>, whereas event-time watermarking deduplicates the retry and isolates the single extreme straggler cleanly.</p>
+</div>
+
+<div class="callout caution">
+<span class="label">Common pitfall</span>
+<p>Keying a stateful stream aggregation directly by raw <code>ad_id</code> allows a single viral campaign to saturate one partition worker while sibling subtasks sit idle. Two-stage salted pre-aggregation spreads hot-key load across <code>K</code> parallel subtasks before folding compact partial sums.</p>
 </div>
 
 ## 28.8 Terminology and References

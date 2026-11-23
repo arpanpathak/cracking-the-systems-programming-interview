@@ -142,7 +142,7 @@ Content-Type: application/json
 }
 ```
 
-**Extend lease heartbeat (`PUT /v1/leases/{lease_id}/heartbeat`) and Report fenced outcome (`PUT /v1/jobs/{job_id}/results/{attempt_id}`):**
+**Extend lease heartbeat (`POST /v1/leases/{lease_id}:renew`) and Report fenced outcome (`PUT /v1/jobs/{job_id}/results/{attempt_id}`):**
 
 ```http
 PUT /v1/jobs/8231/results/1 HTTP/2
@@ -386,6 +386,31 @@ All `6` of `6` jobs finish cleanly despite the mid-flight worker failure, with `
 | **Misfire Policy** | Explicit behavior (`RUN_ONCE`, `SKIP`, or `CATCH_UP`) governing how a recurring cron schedule handles ticks missed during an outage. |
 | **Priority Aging** | Gradually increasing a waiting job's effective priority over time to prevent low-priority starvation under sustained high-priority load. |
 | **Dead-Letter Queue (`DEAD` State)** | Terminal quarantine state holding jobs that exhausted retry limits or encountered permanent errors, preserving error traces for manual replay. |
+
+### End-to-End Request Lifecycle and Hop-by-Hop Latency Budget
+
+The lifecycle of a scheduled execution separates durable submission from time-triggered dispatch. Once a job's `next_run_at` horizon arrives, the scheduler claims a fenced lease and dispatches the payload to a stateless worker pool within tens of milliseconds.
+
+| Hop | Boundary | Protocol and Operation | Typical `p50` | Tail `p99` |
+| :--- | :--- | :--- | :--- | :--- |
+| 1 | Client to Scheduler API (Submission Path) | TLS HTTP/2 `POST /v1/jobs` with idempotency key and cron or delay spec | `0.80 ms` | `2.50 ms` |
+| 2 | API to Durable Schedule Store | Transactional `INSERT` into time-partitioned schedule table (`WAL` synced) | `2.40 ms` | `8.00 ms` |
+| 3 | Due-Job Partition Claim (Dispatch Path) | `SELECT ... FOR UPDATE SKIP LOCKED` or timing-wheel bucket pop with lease token | `3.50 ms` | `15.00 ms` |
+| 4 | Dispatcher to Worker Execution Queue | gRPC push or partitioned queue enqueue carrying `(job_id, attempt_id, lease_token)` | `1.20 ms` | `4.20 ms` |
+| 5 | Worker Execution, Heartbeat, and Completion | Periodic lease extension and fenced state transition (`RUNNING -> SUCCEEDED`) | `1.50 ms` | `5.50 ms` |
+| **Total** | **Dispatch Trigger-to-Worker Start Drift** | **Bounded dispatch lag with atomic lease ownership** | **`6.20 ms`** | **`24.70 ms`** |
+
+### Production Case Studies and Open-Source Comparisons
+
+- **Google Borg:** Borg manages hundreds of thousands of jobs across cells of up to `10,000+` machines using a Paxos-replicated `Borgmaster` and a decoupled asynchronous scheduler. To avoid scheduling bottlenecks at cell scale, Borg uses score caching, equivalence classes for identical tasks, and relaxed randomization (evaluating a random subset of candidate machines rather than all `10,000`), packing batch and latency-sensitive workloads onto shared hosts with cgroup isolation.
+- **Temporal (Durable Workflow History):** Temporal models long-running jobs as deterministic event-sourced workflows backed by Cassandra, MySQL, or PostgreSQL shards. Matching services route tasks through partitioned task queues while workers execute arbitrary code and persist every state transition as an immutable history event; if a worker crashes mid-execution, another worker replays the event history to reconstruct exact in-memory state without repeating completed side effects.
+- **Kubernetes `kube-scheduler`:** `kube-scheduler` watches unscheduled pods from the `etcd`-backed API server and executes a two-phase plugin pipeline: Filtering (eliminating nodes violating CPU, memory, affinity, or taint predicates) followed by Scoring (ranking feasible nodes). By decoupling cluster state in `etcd` from stateless binding calls and supporting configurable preemption, a single control plane schedules `100` to `150` pods per second across `5,000`-node clusters.
+
+<div class="callout keyidea"><span class="label">Key idea</span>Separating durable schedule storage from lease-fenced dispatch allows schedulers to recover cleanly from node crashes while guaranteeing that delayed workers cannot overwrite outcomes produced by newer retry attempts.</div>
+
+<div class="callout experiment"><span class="label">Experiment</span>Schedule `50,000` jobs to fire at the exact same second (`00:00:00 UTC`) across a `10`-partition database using `FOR UPDATE SKIP LOCKED` versus a hash-partitioned hierarchical timing wheel. Compare database CPU saturation, lock-wait time, and `p99` dispatch jitter.</div>
+
+<div class="callout caution"><span class="label">Common pitfall</span>Evaluating recurring cron schedules in local time zones without explicit DST transition policies causes jobs scheduled at `02:30` either to vanish during spring-forward or to execute twice during fall-back. Store next-fire timestamps in UTC and compute each subsequent occurrence deterministically from the prior scheduled slot.</div>
 
 ### References
 

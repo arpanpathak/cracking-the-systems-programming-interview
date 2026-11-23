@@ -34,7 +34,7 @@ Three external actor classes interact across the boundary of the ride-hailing pl
 | :--- | :--- | :--- |
 | **Driver Client** | Stream GPS heartbeats (`POST /v1/drivers/{id}/positions` or persistent binary stream) and accept/decline offers (`PUT /v1/rides/{id}/assignments/{drv}`) | Broadcast `(lat, lon, heading, speed)` every 3 to 4 seconds while online and accept a 15-second dispatch offer |
 | **Rider Client** | Request ride (`POST /v1/rides`) and follow approaching vehicle (`WS /v1/rides/{id}/stream`) | Submit pickup and dropoff coordinates with an `Idempotency-Key`, view ETA, and watch live vehicle telemetry |
-| **City Operations** | Configure regional dispatch policy and surge caps (`PUT /v1/regions/{city}/policy`) | Adjust ring search radius, offer TTL, and dynamic pricing thresholds during concerts, storms, or airport surges |
+| **City Operations** | Configure regional dispatch policy and surge caps (`PUT /v1/regions/{city}/policies`) | Adjust ring search radius, offer TTL, and dynamic pricing thresholds during concerts, storms, or airport surges |
 
 ### Functional Requirements
 
@@ -385,3 +385,30 @@ On a `100 x 100` unit map containing `20,000` uniformly placed drivers:
 - A. Guttman, "R-Trees: A Dynamic Index Structure for Spatial Searching", *Proceedings of ACM SIGMOD*, 1984.
 - Uber Engineering, "Ringpop: Scalable, Fault-Tolerant Application-Layer Sharding", Uber Engineering Blog, 2016.
 - L. Zhang et al., "A Taxi Order Dispatch Model Based On Combinatorial Optimization", *Proceedings of ACM KDD*, 2017.
+
+## 21.9 End-to-End Request Lifecycle and Production Case Studies
+
+### Hop-by-Hop Request Lifecycle and Latency Budget
+
+Matching a rider's `POST /v1/rides` request to the nearest available driver spans six hops from mobile GPS ingestion through spatial k-ring lookup and road-graph ETA ranking to an exclusive driver offer lock, targeting a `p99` time-to-first-offer budget of `250 ms` (excluding human driver reaction time).
+
+| Hop | Boundary Payload | Typical Latency Budget |
+| :--- | :--- | :--- |
+| **1. Rider App to Regional Edge / API Gateway** | HTTPS `POST /v1/rides` carrying pickup/dropoff coordinates, `Idempotency-Key`, and fare quote token over TLS 1.3 | `20 to 45 ms` (cellular RTT) |
+| **2. API Gateway to Trip Service (Idempotent Create)** | Persists `REQUESTED` trip record with `UNIQUE (rider_id, idem_key)` in the regional 3-AZ Raft-replicated Trip Store | `10 to 25 ms` |
+| **3. Dispatch Engine to Spatial Index Shard** | Converts pickup `(lat, lon)` to an H3 resolution-9 cell (`~0.1 km^2`) and fetches idle drivers across `k = 1` or `k = 2` concentric rings | `3 to 8 ms` (in-memory) |
+| **4. Dispatch Engine to Road-Graph ETA Service** | Batched Contraction Hierarchies shortest-path query computing real-time traffic-weighted pickup ETAs for the top `20` candidate drivers | `8 to 20 ms` |
+| **5. Dispatch Engine to Exclusive Offer Lock Store** | Atomic `SET driver_lock:{id} ride_501 NX PX 15000` (or conditional SQL CAS) binding the winning driver to one pending offer | `4 to 10 ms` |
+| **6. Dispatch Gateway to Driver App (WebSocket Push)** | Persistent WebSocket dispatch frame delivering pickup location, ETA, and `15 s` offer countdown to the selected driver's device | `25 to 60 ms` (cellular push) |
+
+### Production Case Studies and Open-Source Comparisons
+
+**Uber H3 Hexagonal Index and DISCO.** Uber engineered DISCO (Dispatch Optimization) over H3, an open-source aperture-7 hexagonal hierarchical spatial index tiling the Earth into resolution-0 through resolution-15 cells. Because every hexagon shares six equidistant neighbors with zero diagonal distortion, Uber computes `k`-ring driver discovery, surge-pricing supply-demand ratios, and batched bipartite matching (evaluating pools of nearby riders and drivers every few seconds rather than greedily matching one request at a time) across stateful city shards coordinated via consistent hashing and SWIM gossip membership (Ringpop).
+
+**Lyft Regional Dispatch and Trajectory-Aware ETA.** Lyft pairs Google S2 spherical geometry cells with regional dispatch microservices that continuously ingest `3 to 4 s` driver GPS heartbeats and live road-segment speed estimates. Rather than matching strictly on instantaneous straight-line proximity, Lyft's dispatch solver incorporates vehicle heading, upcoming drop-off locations of nearly completed rides (chained dispatch), and dynamic batch windows to minimize fleet-wide pickup ETAs and driver deadhead mileage.
+
+<div class="callout keyidea"><span class="label">Key idea</span> Hexagonal spatial indexing (`H3`) eliminates the corner-neighbor distance distortion of square grids and geohashes, allowing `k`-ring neighbor queries and surge-pricing heatmaps to operate with uniform isotropic geometry across any urban area.</div>
+
+<div class="callout experiment"><span class="label">Experiment</span> In `code/nearbysim`, increase the fleet size from `20,000` to `200,000` drivers while keeping the cell size proportional to local density, and compare candidate distance evaluations against a full-fleet scan. Verify that grid-indexed lookup remains `O(1)` in local neighborhood density while linear scanning grows `10x` slower.</div>
+
+<div class="callout caution"><span class="label">Common pitfall</span> Persisting every `4 s` driver GPS heartbeat to a relational disk database creates millions of needless write IOPS per city for ephemeral coordinates that expire in `15 s`. Keep live driver locations inside an in-memory TTL-indexed spatial shard that self-heals within one heartbeat interval after any pod restart, reserving durable consensus storage strictly for trip state transitions and billing milestones.</div>

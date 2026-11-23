@@ -32,7 +32,7 @@ We organize the real-time messaging boundary around three external actor groups 
 
 | Actor | Operation | Concrete Scenario |
 | :--- | :--- | :--- |
-| **Chat Member** | Maintain WebSocket (`WSS /v1/ws`), send message (`POST /v1/conv/{id}/messages`), sync cursor (`GET /v1/conv/{id}/messages?after=seq`), send read/delivery watermarks | Mobile or desktop client sends messages reliably across elevator disconnects and synchronizes state consistently across phone, tablet, and laptop |
+| **Chat Member** | Maintain WebSocket (`WSS /v1/ws`), send message (`POST /v1/conversations/{id}/messages`), sync cursor (`GET /v1/conversations/{id}/messages?after=seq`), send read/delivery watermarks | Mobile or desktop client sends messages reliably across elevator disconnects and synchronizes state consistently across phone, tablet, and laptop |
 | **External Push Relay (APNs / FCM)** | Dispatch wake-up notification for offline devices | Operating system wakes a suspended background application or renders an alert when a message commits while the recipient has no open WebSocket |
 | **Platform Operations** | Orchestrate rolling gateway drains, scale hot-channel partitions, and monitor delivery latency | SRE drains stateful gateway hosts in small batches so reconnecting phones spread TLS handshakes cleanly across healthy gateways |
 
@@ -89,7 +89,7 @@ Clients maintain one persistent TLS-encrypted WebSocket (`WSS /v1/ws`) for low-l
 **Send a message (idempotent via `Idempotency-Key` / `client_id`):**
 
 ```http
-POST /v1/conv/301/messages HTTP/2
+POST /v1/conversations/301/messages HTTP/2
 Host: api.chat.example
 Authorization: Bearer <token>
 Idempotency-Key: u9a1-phone-a-000512
@@ -114,10 +114,10 @@ Content-Type: application/json
 }
 ```
 
-**Catch up after disconnection (`GET /v1/conv/{id}/messages?after=seq`):**
+**Catch up after disconnection (`GET /v1/conversations/{id}/messages?after=seq`):**
 
 ```http
-GET /v1/conv/301/messages?after=1&limit=100 HTTP/2
+GET /v1/conversations/301/messages?after=1&limit=100 HTTP/2
 Host: api.chat.example
 Authorization: Bearer <token>
 ```
@@ -200,7 +200,7 @@ We isolate session discovery, presence liveness, and offline push notification d
 
 ### End-to-End Message Lifecycle
 
-1. **Client Submit:** Sender's device generates a random UUID `client_id` (`u9a1`), renders the message optimistically as *pending* in the local UI, and sends it over its open WebSocket to **Gateway A** (or via `POST /v1/conv/{id}/messages`).
+1. **Client Submit:** Sender's device generates a random UUID `client_id` (`u9a1`), renders the message optimistically as *pending* in the local UI, and sends it over its open WebSocket to **Gateway A** (or via `POST /v1/conversations/{id}/messages`).
 2. **Deduplication and Sequencing:** Gateway A forwards the frame to the owning **Chat Router and Sequencer** for `conversation_id = 301`. The sequencer checks `(conversation_id, sender_id, client_id)` against its deduplication store. If seen previously, it returns the original `seq` without writing; otherwise it assigns the next monotonic `seq = 42` and commits durably to the **Partitioned Message Store** quorum.
 3. **Sender `sent` ACK:** Immediately upon durable quorum commit, the sequencer replies `{seq: 42}` to Gateway A -> Sender's device, which transitions the UI message from *pending* to *sent* and slots it at position `42`.
 4. **Live Push or Offline Wakeup:** The Chat Router queries the **Session Directory** for every recipient's active `(device_id -> gateway_id)` mappings (plus the sender's *other* logged-in devices). For every online device (for example, Receiver on **Gateway B**), the router pushes `{conv: 301, seq: 42, payload}` over an internal gRPC stream to Gateway B, which writes the WebSocket frame down the recipient's socket. For recipients with no active session, the router enqueues a wake-up alert to the **Offline Push Relay** (APNs/FCM).
@@ -235,7 +235,7 @@ Mobile links drop acknowledgements routinely. Without deduplication, retrying an
 
 On the receiving side, wall-clock timestamps fail because phone clocks skew by seconds or minutes, placing replies ahead of questions. Assigning strict gapless integers (`1, 2, 3, ...`) per conversation at the shard leader enables every recipient device to maintain one integer cursor (`last_displayed_seq`) and enforce a deterministic three-branch state machine on every incoming frame `m`:
 - **`m.seq == cursor + 1`:** Display `m` immediately and advance `cursor = m.seq`.
-- **`m.seq > cursor + 1` (Gap detected):** Do not display `m` out of order (optionally buffer in memory); immediately issue `GET /v1/conv/{id}/messages?after={cursor}` to fetch the missing interval cleanly.
+- **`m.seq > cursor + 1` (Gap detected):** Do not display `m` out of order (optionally buffer in memory); immediately issue `GET /v1/conversations/{id}/messages?after={cursor}` to fetch the missing interval cleanly.
 - **`m.seq <= cursor` (Duplicate):** Discard `m` without modifying UI state.
 
 Interactive Trace 18.B steps through all three faults (disconnect gap, out-of-order frame arrival, and duplicate redelivery) on a single mobile phone.
@@ -292,9 +292,9 @@ Enabling E2EE via the **Signal Double Ratchet** protocol preserves the entire me
 ### Operational SLIs, SLOs, and Alert Thresholds
 
 - **End-to-End Online Delivery Latency SLI:** Elapsed time from server commit to recipient device `delivery_ack` on online 1:1 sessions, targeting `p99 <= 500 ms` (intra-region); alert if `p99 > 800 ms` for 5 minutes.
-- **Message Commit Availability & Durability SLI:** `99.95%` write success rate on `POST /v1/conv/{id}/messages` with zero sequence gaps (`max_seq - count == 0` per conversation audit).
+- **Message Commit Availability & Durability SLI:** `99.95%` write success rate on `POST /v1/conversations/{id}/messages` with zero sequence gaps (`max_seq - count == 0` per conversation audit).
 - **Gateway Connection Churn SLI:** Rolling 1-minute disconnect rate across the gateway fleet; spikes above `3%` per minute indicate network brownouts or accidental simultaneous gateway restarts.
-- **Cursor Catch-Up Latency SLI:** `p99 <= 150 ms` for `GET /v1/conv/{id}/messages?after=seq` (100-message page), ensuring snappy conversation recovery immediately after subway or tunnel reconnects.
+- **Cursor Catch-Up Latency SLI:** `p99 <= 150 ms` for `GET /v1/conversations/{id}/messages?after=seq` (100-message page), ensuring snappy conversation recovery immediately after subway or tunnel reconnects.
 
 ### Production Benchmarks
 
@@ -361,3 +361,32 @@ From this execution transcript, we validate all three invariants of the per-conv
 - M. Marlinspike and T. Perrin, "The Double Ratchet Algorithm", *Signal Specifications*, 2016.
 - IETF RFC 9420, *The Messaging Layer Security (MLS) Protocol*, 2023.
 - L. Zhang, "Building Facebook Messenger", *Facebook Engineering Blog*, 2011.
+
+## 18.9 End-to-End Request Lifecycle and Production Case Studies
+
+### Hop-by-Hop Request Lifecycle and Latency Budget
+
+Delivering a live chat message from a sender's mobile device to an online recipient's screen traverses six hops across persistent stateful connections and partitioned message storage, targeting a `p99` end-to-end delivery budget of `150 ms` within a continental region.
+
+| Hop | Boundary Payload | Typical Latency Budget |
+| :--- | :--- | :--- |
+| **1. Sender Client to Edge L4 Load Balancer** | Encrypted WebSocket frame carrying `(conversation_id, client_msg_id, ciphertext)` over an already-established TLS 1.3 TCP/QUIC socket | `15 to 30 ms` (client RTT) |
+| **2. Edge LB to Sender Stateful Chat Gateway** | L4 DSR or persistent tunnel forwarding the frame to the exact gateway worker holding the sender's file descriptor | `2 to 5 ms` |
+| **3. Chat Gateway to Conversation Shard Leader** | Internal RPC validating membership, deduplicating `client_msg_id`, and assigning the next gapless `seq_id` | `4 to 10 ms` |
+| **4. Shard Leader to Message Store (Quorum Commit)** | Append of `(conversation_id, seq_id, sender_id, payload)` to partitioned ScyllaDB or Raft-replicated log before sender `ACK` | `6 to 15 ms` |
+| **5. Fan-Out Router to Session Directory and Recipient Gateway** | Lookup of `(recipient_id, device_id) -> gateway_id` lease followed by an internal gRPC push to each active recipient gateway | `5 to 12 ms` |
+| **6. Recipient Gateway to Recipient Client (or APNs/FCM)** | WebSocket push frame over the recipient's persistent socket, or fallback mobile push notification if the session lease expired | `15 to 35 ms` |
+
+### Production Case Studies and Open-Source Comparisons
+
+**Discord Elixir/Rust Gateways and ScyllaDB Migration.** Discord coordinates millions of concurrent guilds using Elixir (BEAM) processes for stateful WebSocket fan-out while offloading CPU-intensive hot-path state structures (such as Sorted Sets for large member lists) to Rust NIFs. At the persistence layer, Discord migrated trillions of historical messages from Apache Cassandra to ScyllaDB, a C++ shard-per-core rewrite of Cassandra, cutting `p99` read latency from `40 to 125 ms` down to `15 ms` and eliminating JVM garbage-collection pauses while reducing cluster node count from `177` Cassandra nodes to `72` ScyllaDB nodes.
+
+**WhatsApp Erlang BEAM Architecture.** WhatsApp engineered its connection tier on Erlang/OTP running over tuned FreeBSD kernels, sustaining over `2 million` concurrent persistent TCP connections on a single server through lightweight BEAM processes (`~2 KB` initial heap) and lock-free message passing. By restricting server-side storage to transient offline queues purged upon delivery receipt and encrypting payloads end-to-end with the Signal Double Ratchet protocol, WhatsApp keeps per-message storage and compute costs minimal.
+
+**Slack Edge Cache (Flannel).** Slack introduced Flannel, an application-level edge caching layer deployed in geographically distributed PoPs between desktop clients and central workspace shards. Flannel terminates WebSocket connections close to users, serves workspace metadata and channel-membership lookups from local memory, and coalesces reconnect storms after network blips so central database shards avoid thundering-herd bootstrap queries.
+
+<div class="callout keyidea"><span class="label">Key idea</span> Treating the persistent WebSocket gateway as a replaceable delivery hint while anchoring canonical ordering to a per-conversation sequence number (`seq_id`) guarantees exact gapless history recovery even when connections drop mid-flight.</div>
+
+<div class="callout experiment"><span class="label">Experiment</span> In `code/chatsim`, simulate a recipient disconnecting for `20` messages while two other participants interleave sends, then reconnect with the stale cursor. Verify that cursor-based range sync (`seq > last_seen`) reconstructs the identical total order on every device without duplicating previously delivered messages.</div>
+
+<div class="callout caution"><span class="label">Common pitfall</span> Broadcasting presence transitions (online, typing, idle) eagerly to every member of a `100,000`-user channel generates quadratic fan-out traffic that starves actual message delivery. Scope presence updates strictly to active viewport subscribers and throttle heartbeat refreshes to `30 to 60 s` intervals.</div>

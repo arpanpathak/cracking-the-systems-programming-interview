@@ -2,7 +2,7 @@
 
 <img class="plate" src="art/ch03-plate.svg" alt="Chapter 3 plate: Leader-Follower quorum replication showing a leader replicating log records to Follower A and Follower B and advancing commit_seq via the median of reported match indices." />
 
-The single storage node we implemented in [Chapter 2](02-key-value-store-storage-node.md) preserves every acknowledged write across process crashes and torn WAL tails. Against the permanent loss of the host itself, or of its storage device, a single node provides zero protection: a write-ahead log stored on one disk vanishes when that disk fails. Non-functional requirement 1 of [Chapter 1](01-key-value-store-system-design.md) mandates that every acknowledged write survive the loss of any single host, disk, or availability zone. Meeting that guarantee requires persisting every mutation on at least two independent hosts before acknowledging the caller.
+The single storage node we implemented in [Chapter 2](02-key-value-store-storage-node.md) preserves every acknowledged write across process crashes and torn WAL tails. Against the permanent loss of the host itself, or of its storage device, a single node provides zero protection: a write-ahead log stored on one disk vanishes when that disk fails. As specified in [Chapter 1](01-key-value-store-system-design.md), surviving the loss of any single host, disk, or availability zone requires persisting every acknowledged mutation on at least two independent hosts before replying to the caller.
 
 Copying a log file from one host to another in isolation is trivial. Replication becomes a distributed systems engineering problem because messages traverse an asynchronous network that drops, delays, and reorders both requests and replies while hosts halt and restart at arbitrary moments. Across all of those faults, every replica must converge to the exact same sequence of records in the exact same order. A follower that misses record 7 must not append record 8 on top of record 6. A leader whose acknowledgement packet was dropped must neither assume the follower lacks record 7 nor assume the follower holds it. A deposed leader returning from a network partition must be prevented from mutating followers after a successor has taken over.
 
@@ -36,7 +36,7 @@ We enforce four invariants across the replicated shard:
 | No. | Replication Invariant | Architectural Guarantee |
 | :--- | :--- | :--- |
 | 0 | Every follower's log is an exact prefix of its leader's log (identical records in identical sequence order, possibly shorter). | Eliminates gaps, duplicates, and out-of-order entries on followers. |
-| 1 | The leader acknowledges a write to the client only after at least two of the three replicas hold its WAL record durably. | Satisfies Chapter 1 durability (non-functional requirement 1) across any single-host or single-disk failure. |
+| 1 | The leader acknowledges a write to the client only after at least two of the three replicas hold its WAL record durably. | Preserves every acknowledged write across any single-host or single-disk failure. |
 | 2 | A replica applies a record to its in-memory `BTreeMap` only after that record is known to reside on a majority of replicas. | Prevents reads from returning uncommitted data that could disappear after a failover. |
 | 3 | Every replica rejects any `Append` RPC carrying a `term` strictly lower than its own local `term`. | Fences returning former leaders so stale epochs cannot corrupt follower logs. |
 
@@ -84,14 +84,14 @@ Reporting `last_sequence` unconditionally on every reply is the linchpin of the 
 A `Replica` combines its durable WAL (`Log`), an in-memory vector mirroring all WAL records (`records`, where sequence `n` resides at index `n - 1`), the `BTreeMap<String, Entry>` reflecting committed state, and two control integers: `committed` (the highest applied sequence) and `term` (the highest epoch observed). Figure 3-2 illustrates the separation between the committed prefix (`1` to `7`) and the uncommitted tail (`8` and `9`).
 
 <figure>
-<img src="figures/repl-state.svg?v=8433bb6c" alt="Replica log state with records 1 to 9: records 1 to 7 are committed on a majority and applied to entries; records 8 and 9 reside in the log uncommitted and invisible to reads." />
+<img src="figures/m3/ch03_repl_state.svg" alt="Replica log state with records 1 to 9: records 1 to 7 are committed on a majority and applied to entries; records 8 and 9 reside in the log uncommitted and invisible to reads." />
 <figcaption><b>Figure 3-2</b> Separation between the committed, visible prefix (records 1 to 7) and the uncommitted tail (records 8 and 9).</figcaption>
 </figure>
 
 A record becomes *committed* once a majority of replicas (`2 of 3`) have persisted it to disk. Any two of three replicas share at least one overlapping member, so a committed record survives the failure of any single host. Keeping uncommitted tail records in the WAL without applying them to `entries` enforces invariant 2: no read can observe a mutation that might vanish after a failover. Figure 3-3 maps each data structure inside `Replica` to the methods that move data between disk, log buffer, and committed index.
 
 <figure>
-<img src="figures/repl-replica-struct.svg?v=a00c1c22" alt="Internal memory and disk layout of Replica: kv.log on disk loads into the in-memory records vector at open with committed set to 0; commit(n) replays records up to n into entries; get and list read entries exclusively." />
+<img src="figures/m3/ch03_repl_replica_struct.svg" alt="Internal memory and disk layout of Replica: kv.log on disk loads into the in-memory records vector at open with committed set to 0; commit(n) replays records up to n into entries; get and list read entries exclusively." />
 <figcaption><b>Figure 3-3</b> On-disk and in-memory data structures inside <code>Replica</code> and the transitions between them.</figcaption>
 </figure>
 
@@ -114,7 +114,7 @@ A follower evaluates every incoming `Append` message against exactly two sequent
 | Both checks pass | Exact continuation | Adopt `msg.term`, `append_records` with one `fsync`, `commit(msg.committed_sequence)` | `appended = true`, `term = self.term`, updated `last_sequence` |
 
 <figure>
-<img src="figures/repl-follower-flow.svg?v=6485da97" alt="Two-check follower decision flow in handle_append: first verify message term is at least local term; second verify previous_sequence equals local last_sequence; only if both pass, append batch, advance commit watermark, and return appended true." />
+<img src="figures/m3/ch03_repl_follower_flow.svg" alt="Two-check follower decision flow in handle_append: first verify message term is at least local term; second verify previous_sequence equals local last_sequence; only if both pass, append batch, advance commit watermark, and return appended true." />
 <figcaption><b>Figure 3-4</b> Sequential term and prefix validation inside <code>Replica::handle_append</code>.</figcaption>
 </figure>
 
@@ -178,7 +178,7 @@ For each follower, the leader maintains its last reported sequence number (`afte
 Given the leader's own `last_sequence` and each follower's reported `last_sequence`, sorting all replica frontier indices in descending order places the highest majority-replicated sequence at index `n / 2` (Figure 3-6). For a three-replica shard with frontiers `[10, 7, 9]`, descending sort yields `[10, 9, 7]`, and index `3 / 2 = 1` selects `9`: at least two replicas hold records `1` through `9`, whereas record `10` resides on only one replica and stays uncommitted.
 
 <figure>
-<img src="figures/repl-commit-rule.svg?v=dc5d2c21" alt="Majority commit rule for three replicas with log frontiers 10, 7, and 9: sorting descending produces [10, 9, 7] and picking the median index yields 9, committing records 1 to 9 while leaving 10 uncommitted." />
+<img src="figures/m3/ch03_repl_commit_rule.svg" alt="Majority commit rule for three replicas with log frontiers 10, 7, and 9: sorting descending produces [10, 9, 7] and picking the median index yields 9, committing records 1 to 9 while leaving 10 uncommitted." />
 <figcaption><b>Figure 3-6</b> Median majority commit calculation across three replica log frontiers.</figcaption>
 </figure>
 
@@ -380,7 +380,7 @@ Listing 3.22 implements the follower-side `Replication` gRPC server. Because `Re
 Figure 3-7 traces the internal concurrency structure of a leader node: HTTP write handlers serialize on `turn`, append locally via `propose`, wake per-follower background tasks via `appended`, and await commit advancement on the `committed` watch channel.
 
 <figure>
-<img src="figures/repl-leader-parts.svg?v=fbddd76a" alt="Internal concurrency architecture of a kvnode leader: Node::write acquires turn, appends via propose, wakes per-follower tasks that send Append RPCs, records follower replies to advance majority_sequence, and signals the committed watch channel." />
+<img src="figures/m3/ch03_repl_leader_parts.svg" alt="Internal concurrency architecture of a kvnode leader: Node::write acquires turn, appends via propose, wakes per-follower tasks that send Append RPCs, records follower replies to advance majority_sequence, and signals the committed watch channel." />
 <figcaption><b>Figure 3-7</b> Internal components and write-path handoffs inside a <code>kvnode</code> leader.</figcaption>
 </figure>
 
@@ -690,6 +690,54 @@ Listing 3.37 presents the complete HTTP server entry point and CLI runner in `kv
 ```rust
 {{#include ../code/kvnode/src/main.rs}}
 ```
+
+## 3.12 End-to-End Quorum Write Lifecycle and Cross-AZ Hop Breakdown
+
+Adding three-way leader-follower replication transforms a single-host `PUT` into a coordinated multi-AZ distributed transaction. Tracing a `PUT /v1/keys/acct:774` through `kvnode` exposes each network and storage hop on the critical path:
+
+1. **Client to Shard Leader HTTP Ingress:** The client submits the write over a persistent TCP/HTTP connection to the leader in AZ-1.
+2. **Leader Local WAL Append and `fsync`:** The leader checks `is_settled`, validates preconditions, assigns `sequence = N`, appends the record to its local WAL, and calls `fdatasync(2)`.
+3. **Parallel Cross-AZ gRPC `Append` Fan-Out:** The leader releases its replica mutex and dispatches `Append` RPCs concurrently over persistent HTTP/2 gRPC channels to Follower A (AZ-2) and Follower B (AZ-3).
+4. **Follower Validation, WAL Append, and `fsync`:** Each follower verifies `request.term >= local.term` and `request.previous_sequence == local.last_sequence`, appends the record slice to its local WAL, invokes `fdatasync(2)`, and replies with its updated `last_sequence`.
+5. **Quorum Convergence (`majority_sequence`):** As soon as the *first* follower reply arrives (yielding `2 of 3` durable copies: leader plus fastest follower), the leader computes `majority_sequence`, advances `committed_sequence`, applies record `N` to its in-memory `BTreeMap`, and transmits `201 Created` to the client.
+6. **Asynchronous Commit Broadcast:** The leader's next heartbeat or subsequent `Append` carries the updated `committed_sequence`, instructing followers to apply record `N` to their local `BTreeMap` instances off the client's critical path.
+
+| Hop | Device / Network Segment | Typical `p50` | Tail `p99` | Primary Source of Tail Latency |
+| :--- | :--- | :--- | :--- | :--- |
+| 1 | Client -> Leader HTTP/gRPC Ingress | `0.35 ms` | `1.20 ms` | Connection pool exhaustion, TLS record framing |
+| 2 | Leader Local WAL `write` + `fdatasync` | `1.40 ms` | `5.80 ms` | Leader NVMe write-amplification or GC stall |
+| 3 | Leader (AZ-1) -> Followers (AZ-2, AZ-3) gRPC Send | `0.60 ms` | `1.80 ms` | Cross-AZ optical fiber jitter, TCP congestion window backoff |
+| 4 | Fastest Follower `fdatasync` + `AppendReply` Return | `2.00 ms` | `6.40 ms` | Correlated SSD latency across two AZs simultaneously |
+| 5 | Leader `majority_sequence` + `BTreeMap` Apply + Reply | `0.25 ms` | `0.80 ms` | Replica mutex contention during bursty read traffic |
+| **Total** | **Three-Way Quorum Durable `PUT`** | **`4.60 ms`** | **`16.00 ms`** | **Serial leader `fsync` + cross-AZ RTT + follower `fsync`** |
+
+Note that in `kvnode`, the leader performs its local `fsync` before shipping `Append` RPCs; production Raft implementations pipeline these steps by dispatching `AppendEntries` to followers in parallel with the leader's local `fdatasync(2)`, overlapping both disk barriers and shaving `1.4 ms` to `5.0 ms` off end-to-end write latency.
+
+## 3.13 Production Replication Case Studies
+
+Real-world distributed databases adapt quorum log replication to balance write latency, bandwidth consumption, and read scalability:
+
+- **Apache Kafka (ISR and KRaft Replication):** Each partition maintains an **In-Sync Replica (ISR)** set tracked by the leader. Producers configured with `acks=all` block until every replica currently in the ISR appends the batch to its local log segment, advancing the partition's **High Watermark** (equivalent to `committed_sequence`). To guard against log divergence after rapid leader changes, Kafka tags every message batch with a monotonic **Leader Epoch** (analogous to Raft `term`), allowing recovering followers to truncate uncommitted tails safely via `OffsetsForLeaderEpoch` RPCs.
+- **Amazon Aurora (Decoupled Quorum Storage):** Aurora replaces traditional primary-to-replica physical page shipping with a distributed storage layer spanning six copies across three AZs. Compute instances ship only compact **redo log records** (rather than full `8 KiB` or `16 KiB` data pages) and commit as soon as `4 of 6` storage nodes acknowledge durability (`V_w = 4`, `V_r = 3`, satisfying `V_w + V_r > 6`). This architecture tolerates an entire AZ outage plus one additional node failure without losing write availability and reduces inter-node network traffic by roughly an order of magnitude compared to MySQL replication.
+- **MySQL Semi-Synchronous Replication (`AFTER_SYNC`):** Standard asynchronous MySQL replication risks losing committed transactions if the primary crashes before binlog events leave the host. Semi-synchronous replication configured with `rpl_semi_sync_master_wait_point = AFTER_SYNC` waits for at least one replica to persist the binlog event to its relay log *before* committing inside InnoDB and acknowledging the client, preventing other sessions from observing uncommitted phantom reads during a primary crash.
+
+<div class="callout keyidea"><span class="label">Key idea</span>
+
+**Parallelizing leader `fsync` with follower replication cuts write latency nearly in half.** Because the leader's WAL write and each follower's WAL write execute on independent disks in separate Availability Zones, dispatching `Append` RPCs immediately after writing to the leader's kernel page cache (while invoking the leader's `fdatasync(2)` concurrently) turns two sequential `5 ms` disk barriers into a single overlapped `~6 ms` barrier without weakening quorum durability.
+
+</div>
+
+<div class="callout experiment"><span class="label">Experiment</span>
+
+**Exhaustively verify quorum invariants under packet loss.** Run `cargo run --release -p replsim` in `code/` to exercise all `4,096` combinations of dropped `Append` requests and dropped `AppendReply` messages across three sequential writes. Verify that invariants 0 (log prefix agreement) and 1 (every acknowledged record persists on a majority) hold across every single schedule.
+
+</div>
+
+<div class="callout caution"><span class="label">Common pitfall</span>
+
+**Holding the replica state mutex across network I/O.** If a leader keeps its `Mutex<Replica>` locked while awaiting gRPC `AppendReply` responses, a single partitioned or slow follower stalls every read, every write, and every health check on the leader until the RPC timeout fires. Releasing the lock before network dispatch and re-acquiring it to merge replies ensures that `2 of 3` healthy replicas proceed at full speed regardless of the third replica's state.
+
+</div>
 
 ## Further Reading
 

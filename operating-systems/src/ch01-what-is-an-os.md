@@ -1,5 +1,7 @@
 # 1. The Ontological Necessity of the Operating System
 
+<img class="plate" src="art/ch01-plate.svg" alt="Chapter 01: The Operating System — privilege rings and multiplexed hardware pillars">
+
 ## 1.1 Architectural Limitations of Bare-Metal Execution
 
 The requirement for an operating system is fundamentally predicated on the inherent architectural limitations of bare-metal execution. In a primitive hardware environment, a single processor core is constrained by a solitary program counter, which effectively precludes multi-program concurrency by capturing the instruction stream. Furthermore, the absence of a supervisory layer leaves the system without mechanisms for memory protection or instruction restriction, rendering any program capable of unmitigated interference with the hardware or other co-resident software. Finally, the lack of unified device drivers necessitates that every application manage its own hardware-specific communication, a process that is both inefficient and prone to catastrophic resource contention.

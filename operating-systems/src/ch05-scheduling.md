@@ -1,5 +1,7 @@
 # 5. Scheduling Theory and Policy
 
+<img class="plate" src="art/ch05-plate.svg" alt="Chapter 05: Scheduling — CFS red-black vruntime tree and multi-core quantum slices">
+
 A bare-metal multiprocessor provides a fixed number of physical CPU cores, each capable of advancing a single hardware instruction stream on any clock cycle. When the number of runnable threads exceeds the available core count, the hardware itself has no mechanism to enforce proportional fairness, bounded interactive latency, or priority arbitration. Without supervisory intervention, the first thread dispatched onto a core would retain control of the fetch-decode-execute pipeline until it halted or terminated, starving all other workloads on the machine.
 
 The **kernel scheduler** resolves this physical contention by time-multiplexing hardware cores across competing execution contexts. Consistent with the architectural principle established in Section 1.3, the scheduling subsystem strictly separates hardware-enforced **mechanism** from kernel **policy**:

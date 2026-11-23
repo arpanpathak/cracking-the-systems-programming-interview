@@ -331,3 +331,30 @@ From this simulation transcript, we quantify three critical dynamics of adaptive
 - K. Spiteri, R. Urgaonkar, and R. K. Sitaraman, "BOLA: Near-Optimal Bitrate Adaptation for Online Videos", *IEEE INFOCOM*, 2016.
 - H. Mao, R. Netravali, and M. Alizadeh, "Neural Adaptive Video Streaming with Pensieve", *ACM SIGCOMM*, 2017.
 - Netflix Technology Blog, "Per-Title Encode Optimization", 2015, and "High Quality Video Encoding at Scale", 2015.
+
+## 17.9 End-to-End Request Lifecycle and Production Case Studies
+
+### Hop-by-Hop Request Lifecycle and Latency Budget
+
+Starting playback of a VoD stream requires a short control-plane handshake followed by a continuous data-plane loop fetching `2 to 4 s` CMAF segments. Targeting a time-to-first-frame (TTFF) under `600 ms` depends on keeping segment fetches entirely inside ISP edge caches.
+
+| Hop | Boundary Payload | Typical Latency Budget |
+| :--- | :--- | :--- |
+| **1. Player App to Playback Control API** | Authenticated HTTPS `POST /v1/playback-sessions` returning DRM license URL, CDN steering list, and signed master manifest URL | `30 to 70 ms` |
+| **2. Player to Edge CDN PoP (Manifest Fetch)** | HTTP/3 `GET` for HLS `.m3u8` or DASH `.mpd` listing available bitrate rungs, codecs (`AV1`, `HEVC`, `H.264`), and segment URLs | `10 to 25 ms` (cache hit) |
+| **3. Player ABR Controller to Edge CDN (Segment Fetch)** | Byte-range or discrete `GET` for the initial low-bitrate `2 s` CMAF segment (`400 kbps`, `~100 KB`) to populate the decode buffer rapidly | `20 to 60 ms` (edge hit) |
+| **4. Edge PoP to Regional Origin Shield (Cache Miss)** | Collapsed-forwarding singleflight request coalescing concurrent viewer misses for the same long-tail segment into one upstream fetch | `25 to 55 ms` (on miss) |
+| **5. Origin Shield to Object Store (Cold Catalog)** | Parallel range read retrieving immutable `.m4s` segment bytes from multi-AZ object storage and caching at both shield and edge tiers | `30 to 80 ms` (cold miss) |
+| **6. Client Demuxer and Hardware Decoder** | Hardware-accelerated decode of the initial IDR keyframe and audio sync to display the first rendered frame | `40 to 90 ms` (device) |
+
+### Production Case Studies and Open-Source Comparisons
+
+**Netflix Open Connect and Per-Title Encoding.** Netflix serves more than `95%` of its global video traffic through Open Connect Appliances (OCAs), custom FreeBSD servers embedded directly inside partner ISP networks. Popular catalog titles are proactively pushed to ISP appliances during off-peak overnight hours, while per-title and shot-based encoding constructs a custom convex-hull bitrate ladder for each scene so simple animation streams at `1080p` under `1.5 Mbps` whereas complex action sequences allocate higher bitrates without wasting backbone capacity.
+
+**YouTube HLS and DASH Adaptive Streaming.** YouTube ingests hundreds of hours of user-uploaded video per minute into a distributed chunked transcoding pipeline that splits source files at GOP boundaries for parallel encoding across `H.264`, `VP9`, and `AV1` ladders. Playback clients run a hybrid throughput-and-buffer ABR controller over DASH and HLS manifests, pairing QUIC (HTTP/3) transport with Google Global Cache (GGC) edge nodes to reduce rebuffer ratios on high-loss cellular networks.
+
+<div class="callout keyidea"><span class="label">Key idea</span> Aligning keyframes (IDR frames) across every bitrate rung in unified CMAF segments enables stateless HTTP switching between resolutions at segment boundaries while letting a single cached byte stream serve both HLS and DASH clients.</div>
+
+<div class="callout experiment"><span class="label">Experiment</span> In `code/abrsys`, lower the safety margin from `20%` to `0%` and re-run the bandwidth-drop trace (`6,000` to `700 kbps`). Measure how removing the conservative throughput buffer causes aggressive rung selection and multiplies total rebuffer stall duration during sudden cellular fade-outs.</div>
+
+<div class="callout caution"><span class="label">Common pitfall</span> Omitting collapsed forwarding (request coalescing) on CDN origin shields allows a live event or viral release to forward thousands of simultaneous cache misses for the exact same `2 s` segment directly to object storage. Enable origin shielding with singleflight request collapsing so each cold segment traverses the backbone at most once per region.</div>

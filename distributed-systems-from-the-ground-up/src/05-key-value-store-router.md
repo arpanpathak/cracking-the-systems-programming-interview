@@ -198,6 +198,51 @@ Listing 5.9 presents the complete stateless consistent-hash request router imple
 {{#include ../code/kvrouter/src/main.rs}}
 ```
 
+## 5.7 End-to-End Routed Request Lifecycle and Hop Latency Budget
+
+Adding `kvrouter` inserts one stateless network hop in front of every shard while shielding clients from cluster topology and leader churn. A routed `PUT /v1/keys/user:4210` traverses five stages:
+
+1. **Client to L7 Load Balancer / Stateless Router:** The client sends the request over a pooled HTTP/2 connection to any active-active `kvrouter` instance.
+2. **Consistent-Hash Ring Lookup (`O(log V)`):** The router hashes the key with `FNV-1a` or `xxHash`, binary-searches the sorted virtual-node table in RAM (`< 1 us`), and reads the shard's cached leader index atomically.
+3. **Router to Shard Leader (Pooled HTTP/gRPC):** The router forwards the payload over a persistent connection pool to the cached leader. On a stale hint, the contacted follower replies `421 Misdirected Request` with the active leader hint, and the router updates its atomic cache and retries safely.
+4. **Shard Quorum Commit:** The shard leader executes local WAL `fdatasync(2)` and cross-AZ quorum replication.
+5. **Response Relay:** The router streams `201 Created` and `ETag` back to the client with zero extra disk I/O.
+
+| Hop | Device / Subsystem | Typical `p50` | Tail `p99` | Primary Source of Tail Latency |
+| :--- | :--- | :--- | :--- | :--- |
+| 1 | Client -> TLS/L7 LB -> `kvrouter` | `0.45 ms` | `1.50 ms` | Load-balancer queueing, TLS handshake on cold connections |
+| 2 | `kvrouter` Ring Binary Search + Leader Hint Load | `0.01 ms` | `0.05 ms` | CPU scheduler preemption under high connection counts |
+| 3 | `kvrouter` -> Shard Leader Forward (fast path) | `0.25 ms` | `1.10 ms` | Stale leader hint incurring one `421` redirect (`+0.8 ms`) |
+| 4 | Shard Leader Quorum Write (WAL + Cross-AZ) | `4.50 ms` | `16.00 ms` | NVMe `fsync` stalls, leader election pause (`~1.0 s`) |
+| 5 | `kvrouter` -> Client Response Relay | `0.20 ms` | `0.60 ms` | Upstream socket buffer backpressure |
+| **Total** | **End-to-End Routed `PUT`** | **`5.41 ms`** | **`19.25 ms`** | **Shard quorum flush; router adds `< 0.5 ms` steady-state overhead** |
+
+## 5.8 Production Request-Routing Case Studies
+
+Production distributed stores choose between stateless proxy fleets and topology-aware smart clients depending on language heterogeneity and latency budgets:
+
+- **Amazon DynamoDB Request Routers:** DynamoDB routes every API call through a horizontally scaled fleet of stateless Request Routers that terminate TLS, authenticate IAM signatures, and consult an in-memory partition metadata cache (**MemDS**) with a `> 99.99%` hit rate. Decoupling routing from storage lets DynamoDB split hot partitions and migrate replicas transparently across tens of thousands of storage hosts without exposing topology changes to SDKs.
+- **TiKV Placement Driver (PD) and Smart-Client Routing:** TiKV eliminates the extra proxy hop by caching region-to-leader mappings inside the client SDK. When a region splits or elects a new leader, the contacted TiKV node returns `NotLeader` or `EpochNotMatch`, prompting the client to refresh only the stale region entry from PD and retry automatically.
+- **Redis Cluster and Envoy Proxy:** Redis Cluster partitions the keyspace into `16,384` CRC-16 hash slots and distinguishes permanent ownership changes (`MOVED` redirect) from live slot migrations (`ASK` one-shot redirect). Organizations supporting polyglot clients often place **Envoy**'s Redis proxy filter in front of the cluster, trading `~0.3 ms` of proxy latency for centralized connection pooling and zero client-side cluster logic.
+
+<div class="callout keyidea"><span class="label">Key idea</span>
+
+**Stateless routers trade sub-millisecond forwarding overhead for complete topology isolation.** Keeping zero authoritative state on `kvrouter` allows operators to scale the routing tier horizontally behind any L4/L7 load balancer and absorb shard leader failovers without modifying client applications.
+
+</div>
+
+<div class="callout experiment"><span class="label">Experiment</span>
+
+**Observe zero-error failover behind `kvrouter`.** Launch two three-node `kvraft` shards behind `kvrouter`, run `probe --seconds 12 --server http://127.0.0.1:7000`, and terminate `shard-a`'s leader mid-run with `SIGKILL`. Confirm that client-visible refusals drop from `51` (direct client probing) to `0`, while `GET /healthz` updates `shard-a`'s leader hint automatically.
+
+</div>
+
+<div class="callout caution"><span class="label">Common pitfall</span>
+
+**Retrying ambiguous `503` or connection-reset errors on non-idempotent writes.** A router may retry automatically only after guaranteed zero-effect failures (`421 Misdirected Request`, `503 no-leader`, or TCP connection refused). Retrying after a post-append timeout risks executing a mutation twice if the first attempt committed before the connection dropped; propagating `503` leaves conditional retry (`If-Match`) to the caller.
+
+</div>
+
 <div class="summary">
 
 ## Summary

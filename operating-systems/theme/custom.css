@@ -51,43 +51,188 @@
   --table-alternate-bg: #f8fafc;
 }
 
-html.coal, html.navy, html.ayu {
-  --ink: #e9ebf2;
-  --ink-soft: #c9cedb;
-  --muted: #a3acbd;
-  --accent: #8ab4f8;
-  --accent-ink: #b3cffb;
-  --paper: var(--bg);
-  --wash: rgba(255, 255, 255, 0.055);
-  --hairline: rgba(255, 255, 255, 0.12);
-  --code-bg: rgba(255, 255, 255, 0.045);
-  --sidebar-surface: var(--sidebar-bg);
+/* 1. Night Owl (navy — rich deep midnight blue #011627) */
+html.navy {
+  --bg: #011627;
+  --fg: #EDF2FA;
+  --sidebar-bg: #01111D;
+  --sidebar-fg: #9EB9CC;
+  --sidebar-non-existant: #567085;
+  --sidebar-active: #89D8D3;
+  --sidebar-spacer: #122D42;
+  --scrollbar: #1D3B53;
+  --icons: #8AA7BC;
+  --icons-hover: #89D8D3;
+  --links: #89B4FA;
+  --inline-code-color: #89D8D3;
+  --theme-popup-bg: #071F33;
+  --theme-popup-border: #1D3B53;
+  --theme-hover: #0B2942;
+  --quote-bg: #071D30;
+  --quote-border: #89D8D3;
 
-  --key: rgba(255, 255, 255, 0.035);
-  --key-line: rgba(255, 255, 255, 0.11);
-  --key-ink: #7cb3ff;
-  --note: rgba(255, 255, 255, 0.035);
-  --note-line: rgba(255, 255, 255, 0.11);
-  --note-ink: #b4bccb;
-  --exp: rgba(255, 255, 255, 0.035);
-  --exp-line: rgba(255, 255, 255, 0.11);
-  --exp-ink: #5eead4;
-  --warn: rgba(255, 255, 255, 0.035);
-  --warn-line: rgba(255, 255, 255, 0.11);
-  --warn-ink: #fbbf24;
-  --sum: rgba(255, 255, 255, 0.035);
-  --sum-line: rgba(255, 255, 255, 0.11);
-  --sum-ink: #a5b4fc;
+  --ink: #EDF2FA;
+  --ink-soft: #D5DFEE;
+  --muted: #C0CCDE;
+  --accent: #89B4FA;
+  --accent-ink: #B7D2FC;
+  --paper: #011627;
+  --wash: rgba(137, 180, 250, 0.065);
+  --hairline: #173752;
+  --code-bg: #051A2B;
+  --sidebar-surface: #01111D;
 
-  /* Harmonized with every dark theme's native --bg (coal, navy, ayu) */
-  --m3-surface: rgba(255, 255, 255, 0.025);
-  --m3-table-head-bg: rgba(255, 255, 255, 0.075);
-  --m3-table-head-ink: #f1f5f9;
-  --m3-table-row-alt: rgba(255, 255, 255, 0.03);
-  --m3-hairline: rgba(255, 255, 255, 0.11);
-  --table-border-color: rgba(255, 255, 255, 0.11);
-  --table-header-bg: rgba(255, 255, 255, 0.075);
-  --table-alternate-bg: rgba(255, 255, 255, 0.03);
+  --key: rgba(137, 180, 250, 0.06);
+  --key-line: #173752;
+  --key-ink: #89B4FA;
+  --note: rgba(226, 232, 240, 0.045);
+  --note-line: #173752;
+  --note-ink: #C0CCDE;
+  --exp: rgba(137, 216, 211, 0.06);
+  --exp-line: #173752;
+  --exp-ink: #89D8D3;
+  --warn: rgba(242, 201, 138, 0.06);
+  --warn-line: #173752;
+  --warn-ink: #F2C98A;
+  --sum: rgba(200, 182, 255, 0.06);
+  --sum-line: #173752;
+  --sum-ink: #C8B6FF;
+
+  --m3-surface: #051B2E;
+  --m3-table-head-bg: #0B2942;
+  --m3-table-head-ink: #D8E8FC;
+  --m3-table-row-alt: #082035;
+  --m3-hairline: #173752;
+  --table-border-color: #173752;
+  --table-header-bg: #0B2942;
+  --table-alternate-bg: #082035;
+}
+
+/* 2. Material Deep Ocean (coal — default dark #0F111A) */
+html.coal {
+  --bg: #0F111A;
+  --fg: #EDF2FA;
+  --sidebar-bg: #090B10;
+  --sidebar-fg: #A1A9BC;
+  --sidebar-non-existant: #5A627D;
+  --sidebar-active: #89B4FA;
+  --sidebar-spacer: #1B1F30;
+  --scrollbar: #252C42;
+  --icons: #8C9AB8;
+  --icons-hover: #89D8D3;
+  --links: #89B4FA;
+  --inline-code-color: #89D8D3;
+  --theme-popup-bg: #151926;
+  --theme-popup-border: #252E45;
+  --theme-hover: #1E273D;
+  --quote-bg: #141926;
+  --quote-border: #89B4FA;
+
+  --ink: #EDF2FA;
+  --ink-soft: #D5DFEE;
+  --muted: #C0CCDE;
+  --accent: #89B4FA;
+  --accent-ink: #B7D2FC;
+  --paper: #0F111A;
+  --wash: rgba(137, 180, 250, 0.06);
+  --hairline: #242E45;
+  --code-bg: #141826;
+  --sidebar-surface: #090B10;
+
+  --key: rgba(137, 180, 250, 0.055);
+  --key-line: #242E45;
+  --key-ink: #89B4FA;
+  --note: rgba(226, 232, 240, 0.04);
+  --note-line: #242E45;
+  --note-ink: #C0CCDE;
+  --exp: rgba(137, 216, 211, 0.055);
+  --exp-line: #242E45;
+  --exp-ink: #89D8D3;
+  --warn: rgba(242, 201, 138, 0.055);
+  --warn-line: #242E45;
+  --warn-ink: #F2C98A;
+  --sum: rgba(200, 182, 255, 0.055);
+  --sum-line: #242E45;
+  --sum-ink: #C8B6FF;
+
+  --m3-surface: #131724;
+  --m3-table-head-bg: #18233A;
+  --m3-table-head-ink: #D8E8FC;
+  --m3-table-row-alt: #161B2A;
+  --m3-hairline: #242E45;
+  --table-border-color: #242E45;
+  --table-header-bg: #18233A;
+  --table-alternate-bg: #161B2A;
+}
+
+/* 3. Oceanic Next (ayu — calm deep teal-slate ocean #1B2B34) */
+html.ayu {
+  --bg: #1B2B34;
+  --fg: #EDF2FA;
+  --sidebar-bg: #142129;
+  --sidebar-fg: #B0BDC7;
+  --sidebar-non-existant: #6B7B87;
+  --sidebar-active: #89D8D3;
+  --sidebar-spacer: #263A45;
+  --scrollbar: #344957;
+  --icons: #97ACB8;
+  --icons-hover: #89D8D3;
+  --links: #89B4FA;
+  --inline-code-color: #89D8D3;
+  --theme-popup-bg: #20333E;
+  --theme-popup-border: #344957;
+  --theme-hover: #29414F;
+  --quote-bg: #20333E;
+  --quote-border: #89D8D3;
+
+  --ink: #EDF2FA;
+  --ink-soft: #D5DFEE;
+  --muted: #C0CCDE;
+  --accent: #89B4FA;
+  --accent-ink: #B7D2FC;
+  --paper: #1B2B34;
+  --wash: rgba(137, 216, 211, 0.065);
+  --hairline: #324C5C;
+  --code-bg: #17262E;
+  --sidebar-surface: #142129;
+
+  --key: rgba(137, 180, 250, 0.06);
+  --key-line: #324C5C;
+  --key-ink: #89B4FA;
+  --note: rgba(226, 232, 240, 0.045);
+  --note-line: #324C5C;
+  --note-ink: #C0CCDE;
+  --exp: rgba(137, 216, 211, 0.06);
+  --exp-line: #324C5C;
+  --exp-ink: #89D8D3;
+  --warn: rgba(242, 201, 138, 0.06);
+  --warn-line: #324C5C;
+  --warn-ink: #F2C98A;
+  --sum: rgba(200, 182, 255, 0.06);
+  --sum-line: #324C5C;
+  --sum-ink: #C8B6FF;
+
+  --m3-surface: #1E303A;
+  --m3-table-head-bg: #27404E;
+  --m3-table-head-ink: #D8E8FC;
+  --m3-table-row-alt: #21343F;
+  --m3-hairline: #324C5C;
+  --table-border-color: #324C5C;
+  --table-header-bg: #27404E;
+  --table-alternate-bg: #21343F;
+}
+
+html.coal .content h1, html.navy .content h1, html.ayu .content h1 { color: #F4F8FF; }
+html.coal .content h2, html.navy .content h2, html.ayu .content h2 { color: #D4E4FF; }
+html.coal .content h3, html.navy .content h3, html.ayu .content h3 { color: #A9CBFF; }
+
+.content img.plate {
+  display: block;
+  width: 100%;
+  height: auto;
+  border-radius: 14px;
+  margin: 0.6em 0 1.4em 0;
+  box-shadow: none;
 }
 
 html.rust {
@@ -120,9 +265,6 @@ body {
 }
 
 .content h2 {
-  display: flex;
-  align-items: center;
-  gap: 0.48em;
   font-size: 1.45em;
   font-weight: 650;
   line-height: 1.3;
@@ -135,18 +277,20 @@ body {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  flex-shrink: 0;
-  width: 1.25em;
-  height: 1.25em;
-  border-radius: 8px;
+  vertical-align: middle;
+  transform: translateY(-0.08em);
+  margin-right: 0.38em;
+  width: 1.12em;
+  height: 1.12em;
+  border-radius: 6px;
   background: var(--wash);
   color: var(--accent);
   border: 1px solid var(--hairline);
 }
 
 .content h2 .md-sec-icon svg {
-  width: 0.78em;
-  height: 0.78em;
+  width: 0.72em;
+  height: 0.72em;
   fill: currentColor;
 }
 
@@ -296,7 +440,7 @@ html.ayu .callout {
 .callout p:last-child { margin-bottom: 0; }
 
 .callout .label {
-  display: inline-flex;
+  display: flex;
   align-items: center;
   gap: 0.5em;
   font-weight: 700;
@@ -393,11 +537,15 @@ html.ayu .content table {
 }
 
 .content table td {
-  padding: 0.6em 0.9em;
+  padding: 0.62em 0.9em;
   border: none;
   border-bottom: 1px solid var(--m3-hairline);
-  vertical-align: top;
-  line-height: 1.5;
+  vertical-align: baseline;
+  line-height: 1.55;
+}
+
+.content table td:first-child {
+  font-variant-numeric: tabular-nums;
 }
 
 .content table tbody tr:last-child td {

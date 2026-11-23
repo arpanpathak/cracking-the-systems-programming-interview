@@ -1,5 +1,7 @@
 # 19. Systems Interview Problems: Derivations and Reference Implementations
 
+<img class="plate" src="art/ch19-plate.svg" alt="Chapter 19: Interview Problems — blueprint grid of classic OS primitives">
+
 The systems programming interview serves as an empirical evaluation of an engineer's capacity to translate low-level hardware constraints into correct, deterministic software abstractions. While application-level engineering frequently abstracts away execution costs, systems engineering requires direct reasoning from first principles: the mechanics of cache coherence, memory ordering semantics, kernel privilege transitions, memory fragmentation, and atomic instruction guarantees.
 
 ## 19.1 Architectural Framework and Problem-Solving Discipline
