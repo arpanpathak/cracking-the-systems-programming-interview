@@ -1,9 +1,9 @@
 <!DOCTYPE HTML>
-<html lang="en" class="light sidebar-visible" dir="ltr">
+<html lang="en" class="navy sidebar-visible" dir="ltr">
     <head>
         <!-- Book generated using mdBook -->
         <meta charset="UTF-8">
-        <title>Ride Hailing - Distributed Systems from the Ground Up</title>
+        <title>21. Ride Hailing Dispatch - Distributed Systems from the Ground Up</title>
 
 
         <!-- Custom HTML head -->
@@ -28,20 +28,18 @@
         <link rel="stylesheet" id="mdbook-ayu-highlight-css" href="ayu-highlight-3fdfc3ac.css">
 
         <!-- Custom theme stylesheets -->
-        <link rel="stylesheet" href="theme/custom-8a495b63.css">
-        <link rel="stylesheet" href="theme/formal-05bd78f0.css">
-        <link rel="stylesheet" href="theme/layout-0a0c0003.css">
+        <link rel="stylesheet" href="theme/custom-59beaf6d.css">
 
 
         <!-- Provide site root and default themes to javascript -->
         <script>
             const path_to_root = "";
-            const default_light_theme = "light";
+            const default_light_theme = "navy";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "searchindex-25bb747f.js";
+            window.path_to_searchindex_js = "searchindex-5d54d4b4.js";
         </script>
         <!-- Start loading toc.js asap -->
-        <script src="toc-cc887274.js"></script>
+        <script src="toc-ef51d47d.js"></script>
     </head>
     <body>
     <div id="mdbook-help-container">
@@ -79,7 +77,7 @@
             try { theme = localStorage.getItem('mdbook-theme'); } catch(e) { }
             if (theme === null || theme === undefined) { theme = default_theme; }
             const html = document.documentElement;
-            html.classList.remove('light')
+            html.classList.remove('navy')
             html.classList.add(theme);
             html.classList.add("js");
         </script>
@@ -183,577 +181,379 @@
 
                 <div id="mdbook-content" class="content">
                     <main>
-                        <img class="plate" src="art/ch21.svg?v=9982c8ba" alt="A hare stands beside a sign that shows a grid of 9 squares with the middle one marked.">
-<h1 id="ride-hailing-system-design"><a class="header" href="#ride-hailing-system-design">Ride Hailing: System Design</a></h1>
-<p>A ride hailing service brings together 2 people who are moving about a city: a rider
-who wants to travel from 1 place to another, and a driver who is somewhere nearby and
-free to take them. The rider opens an application, states a destination, and within a
-few seconds is told that a particular car will arrive in 4 minutes. Behind that brief
-exchange the service has had to determine which of the tens of thousands of drivers at
-present on the road are close to this rider.</p>
-<p>The question is unusual because it is about position, and position does not submit to
-the methods on which the rest of this book has relied. A key-value store finds a
-record by its exact key, and an ordered index finds the records whose keys lie in a
-range. Neither is of any direct use for finding the points that lie near a given
-point, since nearness involves 2 coordinates at once and no ordering of points along a
-single line keeps neighbours together. The data, moreover, will not keep still. Every
-driver’s position changes continually and is reported every few seconds, so that the
-service receives far more writes than reads, and each of those writes makes its
-predecessor worthless. This chapter develops an index for moving points, and then
-turns to the second problem that a ride presents, which is to give each ride to
-exactly 1 driver.</p>
+                        <h1 id="chapter-21-ride-hailing-system-design"><a class="header" href="#chapter-21-ride-hailing-system-design">Chapter 21: Ride Hailing: System Design</a></h1>
+<img class="plate" src="art/ch21-plate.svg" alt="Chapter 21 plate illustrating a geospatial ride-hailing platform with hexagonal spatial indexing, high-rate GPS heartbeat ingestion, and exclusive trip dispatch." />
+<p>A ride-hailing platform matches moving passengers with nearby idle drivers under two opposing data-management constraints. Driver coordinates arrive continuously at hundreds of thousands to millions of updates per second, yet every coordinate becomes obsolete within three to four seconds and requires zero disk durability for live matching. Trip lifecycles, by contrast, carry binding financial and physical invariants: a ride must be assigned to at most one driver, a driver must hold at most one active ride, and every state transition must survive process crashes. In this chapter, I design a geographically partitioned architecture that splits ephemeral in-memory spatial indexing from strongly consistent trip state management, combining H3/S2 spatial indexing, road-network ETA ranking, exclusive dispatch offer locks, and cell-level surge aggregation.</p>
 <div class="covers">
-<p>This chapter covers</p>
+<p>In this chapter, we cover</p>
 <ul>
-<li>why finding nearby points is unlike any lookup met so far</li>
-<li>dividing a map into squares, and searching a square together with its neighbours</li>
-<li>choosing the size of the squares, and what goes wrong at either extreme</li>
-<li>squares within squares, for cities whose density varies</li>
-<li>storing positions that are replaced every few seconds</li>
-<li>drivers who disappear without saying so</li>
-<li>offering a ride to drivers in turn, and assigning it to exactly 1</li>
-<li>the states of a ride, and where strong consistency is needed</li>
-<li>estimating a time of arrival, and dividing the world among servers</li>
+<li>actors, use cases, verifiable functional requirements, split-consistency SLOs, explicit non-goals, and GPS ingestion capacity bounds</li>
+<li>HTTP/2 and WebSocket APIs for GPS heartbeats, idempotent ride requests, exclusive driver acceptance, and live trip tracking, alongside relational trip DDL</li>
+<li>control-plane vs. data-plane separation across region partitioning, cell-sharded RAM indexes, road-graph ETA engines, and Raft-backed trip stores</li>
+<li>H3 hexagonal and S2 Hilbert-curve spatial indexing compared with geohash boundary distortion, plus TTL-leased driver heartbeat ingestion</li>
+<li>adaptive k-ring cell expansion, Contraction Hierarchies ETA ranking, serialized 15-second exclusive offer locks, and H3 cell-level surge pricing aggregation</li>
+<li>failure matrices, dispatch SLIs/SLOs, production architectures (Uber H3/DISCO, Lyft, Google S2), and verification via <code>code/nearbysim</code></li>
 </ul>
 </div>
 
-<h2 id="why-nearness-is-hard"><a class="header" href="#why-nearness-is-hard">Why nearness is hard</a></h2>
-<p>Suppose the service keeps the latitude and longitude of 20000 drivers and wishes to
-find the 3 nearest to a rider. The plain method is to compute the distance from the
-rider to each of the 20000 and to choose the 3 smallest. This is correct, and it costs
-20000 calculations for a single request, a cost that grows in proportion to the
-number of drivers and has to be paid again for every rider who opens the application.
-At 1000 requests per second it amounts to 20 million distance calculations a second,
-nearly all of them for drivers who are on the other side of the city and could have
-been excluded at a glance.</p>
-<p>The ordinary remedy for a slow search is an index, and it is instructive to see why
-the ordinary index fails. An index on latitude can find, very quickly, all the drivers
-within a narrow band of latitude around the rider. That band, however, extends right
-round the world, and within a city it runs the full width of the city from east to
-west and contains thousands of drivers, nearly all of them distant. An index on
-longitude has the same defect in the other direction. A database can use the 2
-together only by retrieving both bands and intersecting them, which examines far more
-entries than it finally keeps. The root of the difficulty is that an index orders its
-entries along 1 dimension, whereas nearness on a map is a property of 2.</p>
-<p>What is required is some means of naming regions of the map, such that points which
-are near each other usually bear the same name or closely related ones. A lookup by
-name, which every store performs well, would then serve as a search by position.</p>
-<h2 id="dividing-the-map-into-squares"><a class="header" href="#dividing-the-map-into-squares">Dividing the map into squares</a></h2>
-<p>The simplest such scheme lays a grid of equal squares over the map. Every position
-falls in exactly 1 square, and the square can be computed from the coordinates by a
-division: if squares are 1 km on a side, a point 42.5 km east and 17.5 km north of the
-map’s origin lies in the square numbered 42 in 1 direction and 17 in the other. The
-service keeps, for each square, the list of drivers currently within it, in an
-ordinary table keyed by the square’s number.</p>
-<p>To find drivers near a rider, the service computes the rider’s square and retrieves
-the drivers listed there. Only these few need have their distances measured. The
-remainder of the city is never examined.</p>
-<p>This is very nearly sufficient, and it has 1 flaw that must be corrected.</p>
-<figure>
-<img src="figures/nearby-edge.svg?v=b9a929b0" alt="2 copies of a map of 4 squares with a rider near the corner of 1 square and the nearest driver just across the border in the next square. On the left only the rider&#39;s square is searched, and the nearest driver is missed. On the right the neighbouring squares are searched as well, and the driver is found.">
-<figcaption><b>Figure 21.1</b> A driver just across the border of the rider's square is missed unless the neighbouring squares are searched as well.</figcaption>
+<h2 id="211-requirements-actors-and-capacity-bounds"><a class="header" href="#211-requirements-actors-and-capacity-bounds">21.1 Requirements, Actors, and Capacity Bounds</a></h2>
+<p>One-dimensional B-tree indexes order records along a single key and cannot efficiently answer two-dimensional proximity queries: intersecting a latitude range scan with a longitude range scan examines thousands of irrelevant drivers across an entire city. To reduce candidate lookup time from <code>O(N)</code> across the entire fleet to <code>O(K)</code> local candidates, we project spherical coordinates onto discrete hierarchical spatial cells and pair that volatile read/write tier with a durable state machine for trip assignments.</p>
+<h3 id="actors-and-use-cases"><a class="header" href="#actors-and-use-cases">Actors and Use Cases</a></h3>
+<p>Three external actor classes interact across the boundary of the ride-hailing platform, as illustrated in Figure 21-1.</p>
+<figure class="diagram">
+<img src="figures/m3/ch21_use_cases.svg" alt="Actors and Use Cases of the Geospatial Ride-Hailing Platform: Driver streams 3-second GPS positions and accepts or declines offers; Rider requests a ride, views ETA, and tracks active trip updates over WebSocket; City Operations configures regional cell policies and surge parameters." />
+<figcaption><b>Figure 21-1</b> Actors, system boundary, and core use cases of the geospatial ride-hailing platform.</figcaption>
 </figure>
-<p>A rider who stands close to the edge of a square may have a driver a few metres away
-on the other side of the edge, in the adjoining square, and a search confined to the
-rider’s own square would overlook that driver and return another who is a kilometre
-off. The search must accordingly include the 8 squares that surround the rider’s, 9
-squares in all. Any driver within the length of 1 side of the rider is then certain to
-be among those examined, wherever in the square the rider happens to be.</p>
-<figure>
-<img src="figures/nearby-grid.svg?v=98bca965" alt="A square map divided into 36 squares, with 60 drivers scattered over it and a rider. The square that contains the rider and the 8 squares around it are shaded. Only the drivers in those 9 squares are considered.">
-<figcaption><b>Figure 21.2</b> The rider's square and its 8 neighbours contain the only drivers whose distances are measured.</figcaption>
-</figure>
-<p>The simulation for this chapter places 20000 drivers at random on a map of 100 by 100
-units, with squares of 1 unit, and looks for the 3 nearest to a rider by both methods.
-Measuring every driver takes 20000 distance calculations. The grid takes 15, that
-being the number of drivers in the rider’s 9 squares, and both methods return the same
-3 drivers, at distances of 0.19, 0.84 and 0.85 units. The work has been reduced by a
-factor of more than 1000, and it no longer depends on the total number of drivers,
-only on how many are in the vicinity.</p>
-<h2 id="choosing-the-size-of-the-squares"><a class="header" href="#choosing-the-size-of-the-squares">Choosing the size of the squares</a></h2>
-<p>The size of the squares is the 1 parameter of this index, and the index performs
-badly when it is wrong in either direction.</p>
-<p>If the squares are too large, each holds many drivers, and the 9 squares of a search
-return hundreds or thousands of candidates whose distances must all be computed. The
-index has excluded little, and in the limit of 1 square covering the whole city it
-excludes nothing.</p>
-<p>If the squares are too small, most are empty. A search of 9 tiny squares commonly
-finds no driver, and the service must widen it to the next ring of 16 squares and then
-to the ring beyond, issuing many lookups to collect a handful of drivers.</p>
-<p>The suitable size is of the order of the distance over which a match is useful. If a
-driver more than 2 km away is too far to be worth offering, squares of about 1 km give
-a search area of 3 km by 3 km, which covers the range of interest with a single round
-of lookups.</p>
-<p>No single size, however, suits a whole city. In the centre at midday a square of 1 km
-may contain 300 drivers, while on the outskirts at night an area of 25 square
-kilometres may contain 2. A grid fine enough for the centre is nearly empty at the
-edge, and a grid coarse enough for the edge is crowded in the centre.</p>
-<h2 id="squares-within-squares"><a class="header" href="#squares-within-squares">Squares within squares</a></h2>
-<p>The difficulty of uneven density is met by making the grid hierarchical. The whole map
-is taken as 1 square and divided into 4. Each of these is divided into 4 again, and
-the division is repeated to whatever depth is required, so that every square of 1
-level contains exactly 4 squares of the next level down, each with half its side.</p>
-<p>The squares of such a hierarchy can be given names with a most convenient property.
-The 4 quarters of the map are named 0, 1, 2 and 3. The quarters of square 2 are named
-20, 21, 22 and 23, and so on, each level adding 1 digit. The name of a square then
-begins with the name of every larger square that contains it. A position can be
-described by a single name of, say, 15 digits, denoting a very small square, and its
-first 10 digits name the larger square containing it, and its first 6 a larger one
-still.</p>
-<p>Several consequences follow. Drivers are stored under their full, fine names in a
-store that keeps its keys in order, such as the key-value store of chapter 1 with its
-sorted index. All the drivers within any larger square then have names beginning with
-that square’s name, and since names with a common beginning are adjacent in sorted
-order, they can be retrieved by a single scan of a range of keys. A search for nearby
-points has thus been converted into a search by prefix, which is precisely the
-operation an ordered index is built for.</p>
-<p>The level at which to search can be chosen at the moment of searching. In a dense
-district the service searches small squares, and in a sparse one it searches the
-larger squares that contain them, by using a shorter prefix, with no change to
-the stored data. A search may begin fine and move to a coarser level until it has
-found enough candidates.</p>
-<p>One caution applies to every scheme of this family. 2 points whose names share a
-long prefix are certainly close together, and the converse does not hold. 2 points
-that are very close may lie on either side of a boundary between 2 large squares and
-have names that differ from the first digit. The neighbouring squares must therefore
-still be searched, exactly as with the plain grid, and the neighbours of a square are
-computed by arithmetic on its position and never by supposing that their names
-resemble its own.</p>
-<p>The squares of such schemes are in practice not always square. Some systems divide the
-globe into cells bounded by lines of latitude and longitude, which are simple to
-compute and become narrower towards the poles. Others cover the globe with hexagons,
-which have the merit that all 6 neighbours of a cell are at the same distance from its
-centre, whereas a square has 4 near neighbours and 4 that are further off at the
-corners. The principle is the same in each case: to name regions so that position
-becomes a key.</p>
-<h2 id="positions-that-are-replaced-every-few-seconds"><a class="header" href="#positions-that-are-replaced-every-few-seconds">Positions that are replaced every few seconds</a></h2>
-<p>Each driver’s application reports its position every 4 seconds or so. With 500000
-drivers on the road, that is 125000 updates per second, considerably more than the
-rate of requests from riders, and each update supersedes the last. This pattern of
-load is very different from that of the stores in earlier chapters, and it justifies a
-different treatment of durability.</p>
-<p>In chapter 2 every write was forced to disk before it was acknowledged, since an
-acknowledged write that was subsequently lost would have been a broken promise. A
-driver’s position carries no such obligation. It will be replaced by a fresh report
-within 4 seconds, and nobody will ever wish to know where a driver was 10 seconds ago
-for the purpose of matching. Were the entire index of positions to be lost, it would
-rebuild itself in 4 seconds as the drivers reported again. The index is therefore kept
-in memory only, without any log on disk and without waiting for copies to be
-confirmed, and this is what allows it to absorb 125000 writes a second on modest
-hardware. To have given it the durability of chapter 2 would have multiplied its cost
-many times and purchased nothing.</p>
-<p>An update consists of 2 small steps. The driver’s new position is recorded, and if the
-driver has crossed into a different square, the driver is removed from the list of the
-old square and added to that of the new. Most updates find the driver in the same
-square as before and alter only the stored coordinates.</p>
-<p>Positions that must be kept are a separate matter and take a separate path. The route
-actually driven during a ride is needed in order to calculate the fare and to settle
-any later dispute, and it is appended to a durable log, through the message queue of
-chapter 11, apart from the live index.</p>
-<h3 id="drivers-who-disappear"><a class="header" href="#drivers-who-disappear">Drivers who disappear</a></h3>
-<p>A driver may cease to be available without informing the service. The phone’s battery
-is exhausted, the car enters a tunnel, the application is closed. If nothing were
-done, the driver’s last known position would remain in the index indefinitely, and
-the service would go on offering rides to a car that is no longer there.</p>
-<p>The remedy is the lease, which has now appeared in nearly every chapter. Each
-position is stored with a time limit of some 15 seconds, several times the interval
-between reports. Every report renews it, and a driver who stops reporting vanishes
-from the index when the limit expires. Nothing has to detect the departure, since an
-entry that is not renewed lapses of its own accord.</p>
-<h2 id="giving-a-ride-to-exactly-1-driver"><a class="header" href="#giving-a-ride-to-exactly-1-driver">Giving a ride to exactly 1 driver</a></h2>
-<p>To find nearby drivers is half of the task. The other half is to assign the ride to 1
-of them, and here the considerations are of a different kind, since an error is no
-longer a slightly worse match and becomes 2 cars arriving for 1 rider, or a rider left
-waiting for a car that is not coming.</p>
-<p>The nearest driver in a straight line is not necessarily the best choice. A driver 300
-metres away on the far side of a river, or heading in the opposite direction along a
-road with a central barrier, may need 10 minutes to arrive, while another 800 metres
-off reaches the rider in 3. Having obtained a short list of candidates from the index,
-the matching service therefore ranks them by estimated time of arrival along the road
-network, a calculation discussed further on.</p>
-<p>The ride is then offered to the drivers in turn.</p>
-<figure class="steps" data-prefix="figures/steps-nearby-match" data-count="6" data-version="656e8bbd">
-<img src="figures/steps-nearby-match-01.svg?v=656e8bbd" alt="A ride offered to drivers in turn, step 1 of 6. A rider requests a ride. The matching service finds the nearest free drivers from the grid and ranks them by distance.">
-<figcaption><b>Figure 21.3</b> A ride is offered to the nearest driver, who does not answer, and then to the next, who accepts, after which the first driver's late acceptance is refused. Use Next and Back to move through the 6 steps.</figcaption>
-</figure>
-<p>2 decisions embodied in these steps merit comment.</p>
-<p>The ride is offered to 1 driver and, only if that driver declines or fails to answer
-in time, to the next. The alternative, to offer it to several at once and take the
-first acceptance, would assign rides sooner and would leave every driver but 1 having
-responded to an offer that was then withdrawn, which drivers reasonably resent. An
-offer has a time limit and is in effect a lease on the ride, so that a driver who does
-not respond cannot hold it up for more than a few seconds.</p>
-<p>The assignment itself is a conditional write to a strongly consistent store, of the
-form “set the driver of this ride to 7056, provided that it has no driver”. This is
-the operation that guarantees a ride at most 1 driver. In the last step, a late
-acceptance from the first driver arrives after the second has been assigned, and the
-identical conditional write, finding the ride already assigned, is refused. The same
-operation marks the driver as busy, so that a driver cannot be assigned to 2 rides.
-It will be recognised as the conditional write that sold a seat to 1 buyer in chapter
-20 and gave a job to 1 worker in chapter 12.</p>
-<p>In a busy area, to match each ride at the instant it is requested does not give the
-best result overall. If 2 riders make requests within a second of each other and 2
-drivers are nearby, giving the first rider the nearest driver may leave the second
-rider with a long wait, where the other pairing would have served both tolerably.
-Services therefore sometimes collect the requests of a small area for a second or 2
-and assign the whole batch together, so as to minimise the total waiting time of all
-the riders concerned.</p>
-<h2 id="the-states-of-a-ride"><a class="header" href="#the-states-of-a-ride">The states of a ride</a></h2>
-<p>A ride, like the payment of chapter 19 and the job of chapter 12, is an object that
-passes through a series of states: requested, offered, accepted, driver arriving, in
-progress, completed, and paid, with cancellation possible from several of them. Each
-transition is caused by an event from the rider’s application, the driver’s
-application, or the service itself, and each is recorded durably.</p>
-<p>This record requires the strong consistency that the index of positions was able to
-do without. Money depends on it, since the fare is calculated from the recorded
-beginning and end of the ride, and both parties must be shown the same state, since a
-rider who is shown “driver arriving” while the driver is shown “cancelled” has been
-badly served. The ride store is accordingly a replicated database of the kind
-described in chapters 3 and 4, in which each transition is a conditional write that
-verifies the current state before altering it, so that a ride cannot, for example, be
-both cancelled and started.</p>
-<p>The design thus contains 2 stores at opposite ends of the range of consistency, each
-suited to what it holds.</p>
 <div class="table-wrapper">
 <table>
 <thead>
-<tr><th></th><th>Index of positions</th><th>Ride store</th></tr>
+<tr><th style="text-align: left">Actor</th><th style="text-align: left">Operation</th><th style="text-align: left">Concrete Scenario</th></tr>
 </thead>
 <tbody>
-<tr><td>Contents</td><td>where each driver is at present</td><td>the state and history of every ride</td></tr>
-<tr><td>Writes</td><td>125000 per second, each superseding the last</td><td>a few per ride</td></tr>
-<tr><td>Durability</td><td>none: in memory, and rebuilt in 4 seconds</td><td>full: stored on a majority</td></tr>
-<tr><td>Consistency</td><td>eventual, and stale by up to 4 seconds</td><td>strong</td></tr>
-<tr><td>If it is lost</td><td>matching pauses for a few seconds</td><td>not permitted</td></tr>
+<tr><td style="text-align: left"><strong>Driver Client</strong></td><td style="text-align: left">Stream GPS heartbeats (<code>POST /v1/drivers/{id}/positions</code> or persistent binary stream) and accept/decline offers (<code>PUT /v1/rides/{id}/assignments/{drv}</code>)</td><td style="text-align: left">Broadcast <code>(lat, lon, heading, speed)</code> every 3 to 4 seconds while online and accept a 15-second dispatch offer</td></tr>
+<tr><td style="text-align: left"><strong>Rider Client</strong></td><td style="text-align: left">Request ride (<code>POST /v1/rides</code>) and follow approaching vehicle (<code>WS /v1/rides/{id}/stream</code>)</td><td style="text-align: left">Submit pickup and dropoff coordinates with an <code>Idempotency-Key</code>, view ETA, and watch live vehicle telemetry</td></tr>
+<tr><td style="text-align: left"><strong>City Operations</strong></td><td style="text-align: left">Configure regional dispatch policy and surge caps (<code>PUT /v1/regions/{city}/policy</code>)</td><td style="text-align: left">Adjust ring search radius, offer TTL, and dynamic pricing thresholds during concerts, storms, or airport surges</td></tr>
 </tbody>
 </table>
 </div>
-<p>Once a ride has been accepted, the rider wishes to watch the car approach on a map.
-The driver’s position must then be conveyed to 1 particular rider every few seconds,
-which is the delivery problem of chapter 18. The rider’s application holds a
-connection open, and the service forwards on it the positions of the assigned driver.</p>
-<h2 id="estimating-the-time-of-arrival"><a class="header" href="#estimating-the-time-of-arrival">Estimating the time of arrival</a></h2>
-<p>The figure that riders care most about is the number of minutes until the car
-arrives, and the distance in a straight line is a poor guide to it. The estimate
-requires a model of the road network, represented as a graph in which the junctions
-are nodes and the stretches of road between them are edges, each edge carrying the
-time presently needed to drive along it. The estimated time of arrival is the length
-of the shortest path through this graph from the driver to the rider.</p>
-<p>To compute shortest paths on the road graph of an entire country for every candidate
-driver of every request would be far too slow by the textbook method, which examines a
-large part of the graph for each query. Practical systems carry out a great deal of
-the work beforehand. They identify in advance the major roads that long journeys
-almost always use and compute the times between the points where such roads meet, so
-that a query has only to find its way from each end to the nearest major road and
-then consult a table. The travel times on the edges are revised continually from the
-movements of the very drivers that the service is tracking, which makes the stream of
-position reports serve a second purpose as a measurement of traffic.</p>
-<h2 id="dividing-the-world"><a class="header" href="#dividing-the-world">Dividing the world</a></h2>
-<p>Rides are local. A rider in 1 city is never matched with a driver in another, and
-this affords a natural way of dividing the system among machines, by geography. The
-map is partitioned into regions, each consisting of a set of the squares described
-earlier, and each region’s index of positions and matching are served by their own
-group of servers.</p>
-<p>Partitioning by position has the same hazard as partitioning by any other key, namely
-that the load is unevenly distributed. The centre of a great city on a Friday evening
-has many times the activity of a rural region, so that regions are made small where
-the density is high and large where it is low, which the hierarchical naming of
-squares makes straightforward. Riders and drivers close to the boundary between 2
-regions need the search to extend across it, which is once again the matter of
-neighbouring squares, between servers this time.</p>
-<p>Demand also moves in ways that can to some degree be foreseen. When a concert ends or
-rain begins, requests in a district may increase fivefold within minutes, more
-quickly than drivers are able to get there. The service has accordingly to guard its
-own components against such surges, using the rate limiting of chapter 7, and many
-services raise the price in the affected district for the time being, so as to attract
-drivers to it and to moderate the demand.</p>
-<h2 id="use-cases"><a class="header" href="#use-cases">Use cases</a></h2>
-<p>A rider requests a ride and watches the car approach. A driver reports a position
-every few seconds and accepts rides.</p>
-<figure>
-<img src="figures/nearby-use-cases.svg?v=3f254e0c" alt="A use case diagram of the ride service. Rider: request a ride (POST /v1/rides), watch the driver approach (GET /v1/rides/{id}). Driver: report a position (POST /v1/drivers/{id}/positions), accept a ride (PUT /v1/rides/{id}/assignments/{driver}).">
-<figcaption><b>Figure 21.4</b> The actors and what each of them does.</figcaption>
-</figure>
-<h2 id="functional-requirements"><a class="header" href="#functional-requirements">Functional requirements</a></h2>
+<h3 id="functional-requirements"><a class="header" href="#functional-requirements">Functional Requirements</a></h3>
 <div class="table-wrapper">
 <table>
 <thead>
-<tr><th>No.</th><th>Functional requirement</th></tr>
+<tr><th style="text-align: left">No.</th><th style="text-align: left">Functional Requirement</th></tr>
 </thead>
 <tbody>
-<tr><td>0</td><td>A driver’s application reports the driver’s position every 4 seconds.</td></tr>
-<tr><td>1</td><td>A rider can request a ride from a position to a destination.</td></tr>
-<tr><td>2</td><td>The service finds free drivers near the rider and offers the ride to them in turn.</td></tr>
-<tr><td>3</td><td>A ride is assigned to at most 1 driver, and a driver to at most 1 ride.</td></tr>
-<tr><td>4</td><td>The rider can follow the position of the assigned driver.</td></tr>
-<tr><td>5</td><td>Every change in the state of a ride is recorded.</td></tr>
+<tr><td style="text-align: left">0</td><td style="text-align: left">Online drivers transmit GPS coordinates every 3 to 4 seconds; drivers who cease reporting automatically vanish from active matching within 15 seconds.</td></tr>
+<tr><td style="text-align: left">1</td><td style="text-align: left">A rider can request a ride specifying pickup and dropoff coordinates with a caller-supplied <code>Idempotency-Key</code> so retries never summon two vehicles.</td></tr>
+<tr><td style="text-align: left">2</td><td style="text-align: left">The platform discovers nearby available drivers via spatial cell indexing, ranks candidates by road-network Estimated Time of Arrival (ETA), and offers the ride sequentially.</td></tr>
+<tr><td style="text-align: left">3</td><td style="text-align: left">Each ride is assigned to at most one driver, and each driver is concurrently offered or assigned to at most one ride.</td></tr>
+<tr><td style="text-align: left">4</td><td style="text-align: left">Once assigned, the rider receives real-time location updates of the approaching driver and durable state transitions across the trip lifecycle (<code>REQUESTED -&gt; OFFERED -&gt; ACCEPTED -&gt; ARRIVING -&gt; IN_PROGRESS -&gt; COMPLETED</code>).</td></tr>
+<tr><td style="text-align: left">5</td><td style="text-align: left">The system continuously aggregates real-time rider demand and idle driver supply per spatial cell to compute dynamic surge pricing multipliers.</td></tr>
 </tbody>
 </table>
 </div>
-<h2 id="non-functional-requirements"><a class="header" href="#non-functional-requirements">Non-functional requirements</a></h2>
+<h3 id="non-functional-requirements-and-slos"><a class="header" href="#non-functional-requirements-and-slos">Non-Functional Requirements and SLOs</a></h3>
 <div class="table-wrapper">
 <table>
 <thead>
-<tr><th>No.</th><th>Property</th><th>Non-functional requirement</th></tr>
+<tr><th style="text-align: left">No.</th><th style="text-align: left">Property</th><th style="text-align: left">Target Specification</th><th style="text-align: left">Architectural Consequence</th></tr>
 </thead>
 <tbody>
-<tr><td>0</td><td>Latency</td><td>Nearby drivers are found within 100 ms.</td></tr>
-<tr><td>1</td><td>Consistency</td><td>Strong for rides and their assignment. Eventual for positions, which may be 4 seconds old.</td></tr>
-<tr><td>2</td><td>Availability</td><td>99.95% for requesting a ride.</td></tr>
-<tr><td>3</td><td>Durability</td><td>The record of a ride is not lost. A driver’s current position need not survive a failure.</td></tr>
-<tr><td>4</td><td>Scale</td><td>500000 drivers on the road, 125000 position reports per second, and 1000 ride requests per second.</td></tr>
+<tr><td style="text-align: left">0</td><td style="text-align: left"><strong>Spatial Lookup Latency</strong></td><td style="text-align: left">Nearby candidate discovery + ETA ranking <code>p99 &lt;= 100 ms</code>; full end-to-end match initiation <code>&lt;= 250 ms</code></td><td style="text-align: left">Lock-free or fine-grained sharded in-memory spatial index co-located with precomputed Contraction Hierarchies road graphs</td></tr>
+<tr><td style="text-align: left">1</td><td style="text-align: left"><strong>Split Consistency</strong></td><td style="text-align: left">Eventual consistency (<code>&lt;= 4 s</code> staleness) for live driver coordinates; strict ACID Linearizability for trip state and driver assignment</td><td style="text-align: left">Dual storage architecture: volatile RAM spatial index for heartbeats (<code>AP</code>), 3-AZ Raft-replicated relational/KV store for trips (<code>CP</code>)</td></tr>
+<tr><td style="text-align: left">2</td><td style="text-align: left"><strong>Availability</strong></td><td style="text-align: left"><code>99.95%</code> ride request availability per metro region (<code>&lt;= 21.6</code> minutes/month)</td><td style="text-align: left">Independent regional deployments (a failure in London never impacts Tokyo); volatile location index rebuilds automatically in 4 seconds</td></tr>
+<tr><td style="text-align: left">3</td><td style="text-align: left"><strong>Split Durability</strong></td><td style="text-align: left">Zero durability required for live driver matching index; zero RPO (<code>0</code> lost trips) for ride states and billing GPS bread-crumb logs</td><td style="text-align: left">Live coordinates remain in RAM without <code>fsync</code>; active-trip route points stream asynchronously to a durable Kafka/object-store billing log</td></tr>
+<tr><td style="text-align: left">4</td><td style="text-align: left"><strong>Scale</strong></td><td style="text-align: left"><code>500,000</code> active drivers (<code>125,000 to 167,000</code> GPS writes/s globally; up to <code>1,000,000+</code> writes/s at global peak) and <code>1,000</code> ride requests/s peak per large region</td><td style="text-align: left">Consistent-hash cell sharding across in-memory location nodes; binary gRPC/WebSocket framing to minimize connection overhead</td></tr>
 </tbody>
 </table>
 </div>
-<p>Non-functional requirements 1 and 3 state the division that runs through this whole
-design. To hold positions to the standard appropriate to rides would make the index
-many times more expensive and no more useful, and to hold rides to the standard
-appropriate to positions would lose customers’ money. The skill lies in recognising
-which of the system’s data is of which kind.</p>
-<h2 id="core-entities"><a class="header" href="#core-entities">Core entities</a></h2>
-<figure>
-<img src="figures/nearby-entities.svg?v=1327cb82" alt="The core entities. Driver has the fields id string, position x, y, square column, row, state free|busy. Ride has the fields id u64, rider string, driver string, state requested|.... A driver&#39;s square is computed from the position. The service keeps, for every square, the list of drivers inside it.">
-<figcaption><b>Figure 21.5</b> The core entities and their fields.</figcaption>
-</figure>
-<h2 id="capacity-estimate"><a class="header" href="#capacity-estimate">Capacity estimate</a></h2>
-<div class="estimate">
-<img class="builder" src="art/crab-builder.svg" alt="A crab in a hard hat, in tears.">
-<p><strong>Arithmetic ahead.</strong> The positions of 500000 drivers occupy about 50 MB of memory. The quantity that matters is the rate of updates, 125000 per second.</p>
-<p><a class="skip" href="#high-level-design">Skip to the high-level design</a></p>
-<details>
-<summary>Show the calculation</summary>
+<h3 id="non-goals-and-explicit-scope-boundaries"><a class="header" href="#non-goals-and-explicit-scope-boundaries">Non-Goals and Explicit Scope Boundaries</a></h3>
+<p>To keep our architectural focus on real-time spatial matching and dispatch exclusivity, we exclude the following concerns:</p>
+<ul>
+<li><strong>Turn-by-turn navigation and map-tile rendering:</strong> Client map SDKs render vector tiles and compute voice navigation instructions independently of backend dispatch.</li>
+<li><strong>Multi-passenger pooled carpooling optimization (Ride-Share Routing):</strong> Dynamic vehicle-routing with time windows (VRPTW) for shared trips extends the single-rider matching problem with combinatorial detour constraints.</li>
+<li><strong>Driver background verification, payout disbursements, and tax reporting:</strong> Offline compliance workflows and settlement payouts build on the payment ledger architecture in Chapter 19.</li>
+<li><strong>Offline map-data ingestion from OpenStreetMap or satellite imagery:</strong> Road-graph compilation runs in batch map-engineering pipelines outside the real-time dispatch plane.</li>
+</ul>
+<h3 id="back-of-the-envelope-capacity-bounds"><a class="header" href="#back-of-the-envelope-capacity-bounds">Back-of-the-Envelope Capacity Bounds</a></h3>
+<p>In ride hailing, <strong>write throughput on driver heartbeats</strong> exceeds rider matching reads by more than two orders of magnitude, while the total memory footprint of all live driver positions fits comfortably in RAM.</p>
 <div class="table-wrapper">
 <table>
 <thead>
-<tr><th>Quantity</th><th>Calculation</th><th>Result</th></tr>
+<tr><th style="text-align: left">Resource Dimension</th><th style="text-align: left">Derivation</th><th style="text-align: left">Provisioned Bound</th></tr>
 </thead>
 <tbody>
-<tr><td>Position reports</td><td>500000 drivers ÷ 4 seconds</td><td>125000 per second</td></tr>
-<tr><td>Memory per driver</td><td>id, position, square, state, expiry</td><td>about 100 bytes</td></tr>
-<tr><td>Memory for all drivers</td><td>500000 × 100 bytes</td><td>50 MB</td></tr>
-<tr><td>Drivers in a search</td><td>9 squares × about 20 drivers</td><td>about 180</td></tr>
-<tr><td>Rides per day</td><td>1000 per second at the peak, a third of that on average</td><td>about 30 million</td></tr>
+<tr><td style="text-align: left"><strong>Sustained GPS Write Rate</strong></td><td style="text-align: left"><code>500,000</code> active drivers <code>/ 4 s</code> interval (or <code>/ 3 s</code> in dense metros)</td><td style="text-align: left"><code>125,000 to 167,000</code> updates/s (<code>~1M</code> updates/s at global mega-scale)</td></tr>
+<tr><td style="text-align: left"><strong>In-Memory Driver State</strong></td><td style="text-align: left"><code>500,000</code> drivers <code>* 128 B</code> (<code>driver_id</code>, <code>lat</code>, <code>lon</code>, <code>h3_cell</code>, <code>status</code>, <code>expires_at</code>, heading)</td><td style="text-align: left"><code>~64 MB</code> raw state (<code>~256 MB</code> with hash-table and cell-set overhead)</td></tr>
+<tr><td style="text-align: left"><strong>GPS Ingress Bandwidth</strong></td><td style="text-align: left"><code>167,000</code> updates/s <code>* 64 B</code> compact protobuf/binary frame</td><td style="text-align: left"><code>~10.7 MB/s</code> (<code>~86 Mbit/s</code>) per mega-region</td></tr>
+<tr><td style="text-align: left"><strong>Spatial Search Candidate Fan-Out</strong></td><td style="text-align: left">Center cell + 1-ring (<code>7</code> H3 hexagons or <code>9</code> S2 squares) <code>* ~20</code> idle drivers/cell</td><td style="text-align: left"><code>~140 to 180</code> candidate drivers filtered to top <code>10 to 20</code> for road-graph ETA</td></tr>
+<tr><td style="text-align: left"><strong>Daily Completed Trips</strong></td><td style="text-align: left"><code>1,000</code> peak req/s <code>* 0.35</code> average utilization <code>* 86,400 s</code></td><td style="text-align: left"><code>~30,000,000</code> rides/day</td></tr>
+<tr><td style="text-align: left"><strong>Active Trip Route Telemetry</strong></td><td style="text-align: left"><code>150,000</code> concurrent in-trip cars <code>* 1</code> point/<code>4 s</code> <code>* 40 B</code> <code>* 86,400 s</code></td><td style="text-align: left"><code>~130 GB/day</code> compressed billing breadcrumb log in object storage</td></tr>
 </tbody>
 </table>
 </div>
-</details>
-</div>
-
-<h2 id="the-api"><a class="header" href="#the-api">The API</a></h2>
-<p>Every report of a position creates a new position in the collection of that driver’s
-positions, with <code>POST</code>. A ride is created with <code>POST</code> as well. A driver accepts by
-writing the assignment of that driver to the ride, with <code>PUT</code>, so that repeating the
-request has no further effect.</p>
-<p><strong>A driver reports a position</strong></p>
-<pre><code class="language-http">POST /v1/drivers/7056/positions HTTP/1.1
+<h2 id="212-external-api-and-data-contracts"><a class="header" href="#212-external-api-and-data-contracts">21.2 External API and Data Contracts</a></h2>
+<p>Driver telemetry runs over persistent bidirectional HTTP/2 (gRPC) or WebSocket connections using compact binary payloads, while trip creation and offer acceptance expose explicit idempotent REST semantics.</p>
+<h3 id="driver-location-heartbeat-contract"><a class="header" href="#driver-location-heartbeat-contract">Driver Location Heartbeat Contract</a></h3>
+<pre><code class="language-http">POST /v1/drivers/7056/positions HTTP/2
 Host: rides.example
+Authorization: Bearer drv_eyJhbGci...
 Content-Type: application/json
 
-{ "latitude": 38.7223, "longitude": -9.1393, "heading": 270 }
+{
+  "latitude": 38.7223,
+  "longitude": -9.1393,
+  "heading_deg": 270,
+  "speed_mps": 8.4,
+  "status": "AVAILABLE",
+  "client_ts_ms": 1760436004120
+}
 </code></pre>
-<pre><code class="language-http">HTTP/1.1 201 Created
+<pre><code class="language-http">HTTP/2 204 No Content
 </code></pre>
-<p>Reports are sent so frequently that many services convey them over an open connection
-in a compact binary form, without a separate HTTP request for each. The meaning is unchanged.</p>
-<p><strong>A rider requests a ride</strong></p>
-<pre><code class="language-http">POST /v1/rides HTTP/1.1
+<p>In production mobile clients, the same logical payload serializes into a <code>48</code> to <code>64</code> byte Protocol Buffers message pushed over a long-lived TLS stream so cellular radios avoid repeated TCP/TLS handshakes.</p>
+<h3 id="idempotent-ride-request-endpoint"><a class="header" href="#idempotent-ride-request-endpoint">Idempotent Ride Request Endpoint</a></h3>
+<pre><code class="language-http">POST /v1/rides HTTP/2
 Host: rides.example
+Authorization: Bearer rdr_eyJhbGci...
 Idempotency-Key: 3f7a-ride-1
 Content-Type: application/json
 
 {
-  "from": { "latitude": 38.7169, "longitude": -9.1399 },
-  "to": { "latitude": 38.7742, "longitude": -9.1342 }
+  "pickup":  { "latitude": 38.7169, "longitude": -9.1399 },
+  "dropoff": { "latitude": 38.7742, "longitude": -9.1342 },
+  "product_tier": "standard",
+  "quoted_surge_multiplier": 1.4
 }
 </code></pre>
-<pre><code class="language-http">HTTP/1.1 201 Created
-Location: /v1/rides/501
+<pre><code class="language-http">HTTP/2 201 Created
+Location: /v1/rides/ride_501
 Content-Type: application/json
 
-{ "id": 501, "state": "requested" }
+{
+  "ride_id": "ride_501",
+  "state": "REQUESTED",
+  "pickup_h3_cell": "88392a4945fffff",
+  "estimated_pickup_sec": 240
+}
 </code></pre>
-<p>The key ensures that a rider whose application retries after a lost reply does not
-summon 2 cars.</p>
-<p><strong>A driver accepts</strong></p>
-<pre><code class="language-http">PUT /v1/rides/501/assignments/7056 HTTP/1.1
+<h3 id="exclusive-driver-offer-acceptance-endpoint"><a class="header" href="#exclusive-driver-offer-acceptance-endpoint">Exclusive Driver Offer Acceptance Endpoint</a></h3>
+<pre><code class="language-http">PUT /v1/rides/ride_501/assignments/7056 HTTP/2
 Host: rides.example
-</code></pre>
-<pre><code class="language-http">HTTP/1.1 200 OK
+Authorization: Bearer drv_eyJhbGci...
 Content-Type: application/json
 
-{ "id": 501, "state": "accepted", "driver": 7056 }
+{
+  "offer_id": "off_9912",
+  "offer_version": 3
+}
 </code></pre>
-<p>A driver whose offer has ended, or who accepts after another driver has been assigned,
-receives <code>409 Conflict</code>.</p>
-<h2 id="high-level-design"><a class="header" href="#high-level-design">High-level design</a></h2>
-<figure class="wide">
-<img src="figures/nearby-design.svg?v=94deaf32" alt="Finding a driver for a rider. The components are Drivers, Location service, Grid index, Rider, Matching service, Ride store. Step 1: Every driver reports its position. Step 2: The location service files it under a grid square. Step 3: A rider requests a ride from a position. Step 4: The matcher reads 9 squares and records the ride.">
-<figcaption><b>Figure 21.6</b> The components and the path of a request. The steps are numbered.</figcaption>
+<pre><code class="language-http">HTTP/2 200 OK
+Content-Type: application/json
+
+{
+  "ride_id": "ride_501",
+  "driver_id": "7056",
+  "state": "ACCEPTED",
+  "version": 4
+}
+</code></pre>
+<p>Using <code>PUT</code> on a driver-scoped assignment URI makes retries by the accepted driver naturally idempotent. If the 15-second offer lease has expired or another driver has already accepted, the endpoint returns <code>409 Conflict</code>.</p>
+<h3 id="active-trip-telemetry-stream"><a class="header" href="#active-trip-telemetry-stream">Active Trip Telemetry Stream</a></h3>
+<p>Once <code>state = 'ACCEPTED'</code>, the rider client opens <code>GET /v1/rides/ride_501/stream</code> (<code>Upgrade: websocket</code>). The Location Gateway fans out the assigned driver’s GPS heartbeats directly onto the rider’s socket (using the session routing model from Chapter 18) until the trip reaches <code>COMPLETED</code> or <code>CANCELLED</code>.</p>
+<h3 id="durable-trip-store-schema"><a class="header" href="#durable-trip-store-schema">Durable Trip Store Schema</a></h3>
+<p>The volatile spatial index holds only RAM structs, whereas the strongly consistent Trip Store persists every trip state transition and active offer lease:</p>
+<pre><code class="language-sql">CREATE TABLE rides (
+    ride_id          TEXT             PRIMARY KEY,
+    city_id          TEXT             NOT NULL,
+    rider_id         TEXT             NOT NULL,
+    idem_key         TEXT             NOT NULL,
+    driver_id        TEXT,
+    pickup_lat       DOUBLE PRECISION NOT NULL,
+    pickup_lon       DOUBLE PRECISION NOT NULL,
+    pickup_h3_cell   BIGINT           NOT NULL,
+    dropoff_lat      DOUBLE PRECISION NOT NULL,
+    dropoff_lon      DOUBLE PRECISION NOT NULL,
+    surge_multiplier NUMERIC(4,2)     NOT NULL DEFAULT 1.00,
+    state            TEXT             NOT NULL CHECK (state IN (
+                         'REQUESTED', 'OFFERED', 'ACCEPTED', 'ARRIVING',
+                         'IN_PROGRESS', 'COMPLETED', 'CANCELLED', 'NO_DRIVER'
+                     )),
+    active_offer_id  TEXT,
+    offer_expires_at TIMESTAMPTZ,
+    version          BIGINT           NOT NULL DEFAULT 1,
+    created_at       TIMESTAMPTZ      NOT NULL DEFAULT now(),
+    UNIQUE (rider_id, idem_key)
+);
+
+CREATE TABLE driver_active_locks (
+    driver_id        TEXT        PRIMARY KEY,
+    ride_id          TEXT        NOT NULL UNIQUE REFERENCES rides(ride_id),
+    lock_type        TEXT        NOT NULL CHECK (lock_type IN ('OFFER', 'TRIP')),
+    expires_at       TIMESTAMPTZ -- NULL once transitioned to active TRIP
+);
+</code></pre>
+<h2 id="213-high-level-architecture-control-plane-vs-data-plane"><a class="header" href="#213-high-level-architecture-control-plane-vs-data-plane">21.3 High-Level Architecture: Control Plane vs. Data Plane</a></h2>
+<p>Because rides never cross geographic continents, we deploy independent regional cells per metropolitan area (or metro cluster) and separate operational policy management from real-time telemetry ingestion and dispatch, as shown in Figure 21-2.</p>
+<figure class="diagram">
+<img src="figures/m3/ch21_architecture.svg" alt="High-Level Architecture showing Control Plane (Cell Partition Map, Dispatch Policy Store, Surge and Supply Monitor) and Data Plane (Location Gateway, Cell-Sharded Spatial Index in RAM, Dispatch Engine, Offer Lock, Raft-backed Trip Store, and Road-Graph Routing and ETA Engine)." />
+<figcaption><b>Figure 21-2</b> Control plane and data plane separation across regional cell partitioning, ephemeral location ingestion, and durable trip dispatch.</figcaption>
 </figure>
+<h3 id="control-plane-responsibilities"><a class="header" href="#control-plane-responsibilities">Control Plane Responsibilities</a></h3>
+<ul>
+<li><strong>Cell Partition Map:</strong> Assigns coarse parent H3/S2 spatial regions to specific shards of the Cell-Sharded Spatial Index using consistent hashing (Chapter 1) with dynamic splitting in high-density urban cores.</li>
+<li><strong>Dispatch Policy Store:</strong> Publishes per-city parameters (default H3 search resolution, maximum k-ring escalation depth, 15-second offer TTL, and batch-matching window duration) to stateless Dispatch Engine nodes.</li>
+<li><strong>Surge and Supply Monitor:</strong> Consumes cell-level counts of <code>AVAILABLE</code> drivers and incoming <code>REQUESTED</code> rides over sliding 60-second windows, publishing smoothed surge multipliers per H3 resolution-7/8 hexagon.</li>
+</ul>
+<h3 id="data-plane-responsibilities"><a class="header" href="#data-plane-responsibilities">Data Plane Responsibilities</a></h3>
+<p>The data plane deliberately combines two storage tiers at opposite ends of the consistency-durability spectrum:</p>
 <div class="table-wrapper">
 <table>
 <thead>
-<tr><th>Component</th><th>Role</th><th>State it holds</th><th>When 1 instance fails</th></tr>
+<tr><th style="text-align: left">Component</th><th style="text-align: left">Storage Engine &amp; Consistency</th><th style="text-align: left">Failure Impact and Mitigation</th></tr>
 </thead>
 <tbody>
-<tr><td>Location service</td><td>receives position reports and files each driver under a square</td><td>none</td><td>another instance receives the reports</td></tr>
-<tr><td>Grid index</td><td>holds the drivers of each square</td><td>positions, in memory, with a lease</td><td>it is rebuilt from reports within 4 seconds</td></tr>
-<tr><td>Matching service</td><td>finds candidates, ranks them, and offers the ride in turn</td><td>none</td><td>another instance continues from the ride’s recorded state</td></tr>
-<tr><td>Ride store</td><td>holds every ride and its state</td><td>rides, replicated</td><td>a follower is elected, as in chapter 4</td></tr>
+<tr><td style="text-align: left"><strong>Location Gateway</strong></td><td style="text-align: left">Stateless persistent TLS/WebSocket terminators</td><td style="text-align: left">Driver mobile SDKs reconnect automatically to healthy gateways within <code>1 to 3 s</code></td></tr>
+<tr><td style="text-align: left"><strong>Cell-Sharded Spatial Index</strong></td><td style="text-align: left">Ephemeral in-memory hash maps partitioned by parent cell ID (Eventual, zero disk <code>fsync</code>)</td><td style="text-align: left">Node crash loses one city partition’s live positions; incoming 3 to 4 second driver heartbeats rebuild the index completely within 4 seconds</td></tr>
+<tr><td style="text-align: left"><strong>Road-Graph Routing and ETA Engine</strong></td><td style="text-align: left">In-memory Contraction Hierarchies road graph with live edge-weight updates from GPS stream</td><td style="text-align: left">Stateless replicas per region; fallback to straight-line Haversine distance multiplied by historical city speed if traffic feed lags</td></tr>
+<tr><td style="text-align: left"><strong>Dispatch Engine and Offer Lock</strong></td><td style="text-align: left">Stateless matching coordinator + atomic single-driver lease store</td><td style="text-align: left">Crash mid-offer leaves durable <code>OFFERED</code> state and <code>offer_expires_at</code> in Trip Store; another coordinator resumes immediately upon TTL expiry</td></tr>
+<tr><td style="text-align: left"><strong>Trip Store</strong></td><td style="text-align: left">3-AZ Raft-replicated relational/KV database (Strict Linearizability, full durability)</td><td style="text-align: left">Leader crash promotes synchronous follower in <code>1 to 3 s</code> with zero lost trips</td></tr>
 </tbody>
 </table>
 </div>
-<h3 id="one-request-step-by-step"><a class="header" href="#one-request-step-by-step">One request, step by step</a></h3>
-<p>The steps follow the arrows of figure 21.6.</p>
+<h2 id="214-deep-dive-spatial-indexing-h3-s2-geohash-and-heartbeat-ingestion"><a class="header" href="#214-deep-dive-spatial-indexing-h3-s2-geohash-and-heartbeat-ingestion">21.4 Deep Dive: Spatial Indexing (H3, S2, Geohash) and Heartbeat Ingestion</a></h2>
+<p>Choosing the spatial cell geometry directly determines boundary edge cases, neighbor-lookup arithmetic, and surge-pricing uniformity.</p>
+<h3 id="comparing-geohash-google-s2-and-uber-h3"><a class="header" href="#comparing-geohash-google-s2-and-uber-h3">Comparing Geohash, Google S2, and Uber H3</a></h3>
 <ol>
-<li>Every driver’s application reports its position every 4 seconds.</li>
-<li>The location service computes the square of the position and updates the grid index, moving the driver from 1 square’s list to another’s when a border has been crossed and renewing the driver’s lease.</li>
-<li>A rider requests a ride. The matching service computes the rider’s square, reads the drivers of that square and its 8 neighbours from the grid index, and ranks the free ones by estimated time of arrival.</li>
-<li>The matching service offers the ride to the first of them. When a driver accepts, it writes the assignment to the ride store as a conditional write, which succeeds for 1 driver only.</li>
+<li><strong>Geohash (Latitude/Longitude Rectangles):</strong> Interleaves quantized latitude and longitude bits into a base-32 string where longer shared prefixes denote finer nested rectangles. Although simple to compute, geohash suffers from severe <strong>latitude distortion</strong> (cells narrow dramatically toward the poles) and <strong>edge discontinuity</strong> (two points separated by 10 meters across the equator or prime meridian share zero prefix characters). Furthermore, every rectangular cell has two distinct neighbor distances: 4 edge-adjacent neighbors at distance <code>d</code> and 4 corner-adjacent neighbors at distance <code>sqrt(2) * d</code>.</li>
+<li><strong>Google S2 (Cube-Projected Hilbert Curve):</strong> Projects the Earth’s sphere onto six cube faces and enumerates hierarchical quadtree cells along a <strong>Hilbert space-filling curve</strong> into 64-bit unsigned integers (<code>S2CellId</code>). The Hilbert curve preserves locality far better than Z-order curves (used by geohash), enabling arbitrary geographic regions to be covered by a small union of contiguous 64-bit integer intervals. S2 cells remain square-like and still have 8 neighbors at two distinct center-to-center distances.</li>
+<li><strong>Uber H3 (Hierarchical Hexagonal Grid):</strong> Projects the Earth onto an icosahedron and tiles each face with regular hexagons across 16 resolutions (each parent hexagon contains approximately 7 child hexagons, plus exactly 12 pentagons globally placed over ocean areas). Hexagons provide a decisive mathematical advantage for mobility platforms: <strong>every hexagon has exactly 6 neighbors whose centers lie at the exact same Euclidean distance</strong> from the center cell. This symmetry eliminates diagonal corner bias during k-ring radius searches, smooths gradient calculations for surge pricing, and guarantees uniform area across latitudes.</li>
 </ol>
-<h2 id="the-design-deployed"><a class="header" href="#the-design-deployed">The design, deployed</a></h2>
-<figure class="wide">
-<img src="figures/nearby-deploy.svg?v=4c9cf5e5" alt="The ride service, deployed. Phones: Drivers (500000), report every 4 s, Riders (1000 req/s), request rides. Edge, in each region: Load balancers (x 8), by connection, Gateways (x 40), open connections, Location service (x 20), position to square. Matching, in each region: Grid index (x 30), in memory, by region, Matching service (x 20), rank and offer. Durable state: Ride store (x 9), shards x 3 replicas, Position log (x 6), routes, for fares.">
-<figcaption><b>Figure 21.7</b> The ride service as it is deployed, with the grid index in memory and the ride store replicated.</figcaption>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th style="text-align: left">Property</th><th style="text-align: left">Geohash</th><th style="text-align: left">Google S2</th><th style="text-align: left">Uber H3</th></tr>
+</thead>
+<tbody>
+<tr><td style="text-align: left"><strong>Cell Shape</strong></td><td style="text-align: left">Rectangle (lat/lon aligned)</td><td style="text-align: left">Spherical quadrilateral</td><td style="text-align: left">Regular hexagon (+ 12 pentagons)</td></tr>
+<tr><td style="text-align: left"><strong>Neighbor Center Distances</strong></td><td style="text-align: left">2 distinct distances (<code>d</code> and <code>1.414 d</code>)</td><td style="text-align: left">2 distinct distances (<code>d</code> and <code>1.414 d</code>)</td><td style="text-align: left">1 uniform distance across all 6 neighbors</td></tr>
+<tr><td style="text-align: left"><strong>Area Distortion Across Globe</strong></td><td style="text-align: left">Severe near poles</td><td style="text-align: left">Low (quadratic projection)</td><td style="text-align: left">Minimal (gnomonic icosahedron projection)</td></tr>
+<tr><td style="text-align: left"><strong>Exact Parent-Child Containment</strong></td><td style="text-align: left">Exact (<code>1 -&gt; 32</code> or <code>1 -&gt; 4</code>)</td><td style="text-align: left">Exact (<code>1 -&gt; 4</code> quadtree)</td><td style="text-align: left">Approximate (<code>1 -&gt; 7</code> aperture-7 tiling)</td></tr>
+<tr><td style="text-align: left"><strong>Primary Strength</strong></td><td style="text-align: left">Zero-dependency string prefixing</td><td style="text-align: left">Exact polygon containment and range scans</td><td style="text-align: left">Uniform k-ring search and smooth surge spatial aggregation</td></tr>
+</tbody>
+</table>
+</div>
+<h3 id="high-throughput-driver-heartbeat-write-path"><a class="header" href="#high-throughput-driver-heartbeat-write-path">High-Throughput Driver Heartbeat Write Path</a></h3>
+<p>When a driver’s client transmits <code>(driver_id, lat, lon, ts)</code> every 3 to 4 seconds, the Location Gateway computes the driver’s target H3 index at the city’s matching resolution (typically <strong>H3 Resolution 8</strong>, edge length <code>~461 m</code>, area <code>~0.74 km^2</code>, or <strong>Resolution 9</strong>, edge length <code>~174 m</code>) and routes the update to the owning Spatial Index shard via the Cell Partition Map:</p>
+<ol>
+<li><strong>In-Place Same-Cell Update (Common Path, <code>&gt; 90%</code> of Heartbeats):</strong> The shard looks up <code>driver_id</code> in its local <code>DriverMap</code>. If <code>new_cell == old_cell</code>, it overwrites <code>(lat, lon, heading, expires_at = now + 15 s)</code> in place with zero structural allocations.</li>
+<li><strong>Cell-Boundary Crossing:</strong> If <code>new_cell != old_cell</code>, the shard removes <code>driver_id</code> from <code>CellMap[old_cell]</code> and inserts it into <code>CellMap[new_cell]</code>. If <code>new_cell</code> belongs to a neighboring index shard, the gateway sends an asynchronous remove to the old shard and an upsert to the new shard; even if the remove drops, the <code>15 s</code> TTL lease evicts the stale ghost entry automatically.</li>
+<li><strong>Silent Offline Eviction via TTL Leases:</strong> When a driver enters a tunnel, kills the app, or loses battery, no disconnect packet arrives. Because every entry carries <code>expires_at = last_seen + 15 s</code>, both read-time filtering (<code>entry.expires_at &gt; now</code>) and a lightweight periodic bucket sweep remove silent drivers without distributed failure detectors.</li>
+<li><strong>Dual-Path Billing Persistence:</strong> For drivers currently in state <code>IN_PROGRESS</code>, the Location Gateway asynchronously forks the GPS coordinate onto a partitioned Kafka topic (<code>trip-breadcrumbs</code>) so fare reconciliation and dispute resolution have durable history without adding disk latency to the matching RAM index.</li>
+</ol>
+<h2 id="215-deep-dive-k-ring-expansion-eta-ranking-exclusive-dispatch-and-surge-aggregation"><a class="header" href="#215-deep-dive-k-ring-expansion-eta-ranking-exclusive-dispatch-and-surge-aggregation">21.5 Deep Dive: k-Ring Expansion, ETA Ranking, Exclusive Dispatch, and Surge Aggregation</a></h2>
+<p>Finding candidate drivers and assigning exactly one car to one rider requires uniting spatial retrieval, road-network graph routing, and strongly consistent distributed locking, as depicted in Figure 21-3.</p>
+<figure class="diagram">
+<img src="figures/m3/ch21_spatial_dispatch.svg" alt="Hierarchical Spatial Cell Ring Expansion (Center cell plus neighbors and Ring 2 escalation) and Exclusive Driver Offer Protocol ranking top-K candidates by road ETA with serialized 15-second leases." />
+<figcaption><b>Figure 21-3</b> Adaptive spatial ring expansion and exclusive serialized driver offer protocol.</figcaption>
 </figure>
-<p>The system is deployed separately in each region of the world, since no ride crosses
-between them, and the figure shows 1 region. Drivers and riders hold connections to
-gateways, as the phones of chapter 18 do. The location service is stateless and
-turns each of the 125000 reports per second into an update of the grid index, which
-is divided among 30 machines by area and kept in memory only. The matching service
-reads the index and writes assignments to the ride store, which is the 1 component
-here with replicas in 3 zones and durable storage. The picture makes visible the
-division that the chapter insisted upon, between data that is rebuilt in seconds and
-data that must not be lost.</p>
-<h2 id="how-real-systems-do-it"><a class="header" href="#how-real-systems-do-it">How real systems do it</a></h2>
-<p>The grid of this chapter corresponds to 3 schemes that are in wide use, and they
-differ in the shape of the cell and in how the cells are named.</p>
-<p>The <em>geohash</em> divides the world by latitude and longitude, halving alternately in
-each direction, and writes the result as a short string in which every further
-character selects a smaller cell within the last. It is the hierarchy of names with
-shared prefixes described above, and several in-memory stores offer queries by
-radius that are built on it. Its cells are rectangles whose width varies with
-latitude.</p>
-<p>Google’s S2 library projects the sphere onto the faces of a cube and numbers the
-cells along a space-filling curve, so that a cell is a 64-bit integer and cells that
-are close on the curve are close on the ground. A region is covered by a small set
-of cells of mixed sizes, and a search becomes a few scans of ranges of integers.</p>
-<p>Uber developed H3, which it published in 2018, and which uses hexagons. The stated
-reason is the one given above: the centres of all 6 neighbours of a hexagon are at
-the same distance, which makes it natural to reason about rings of cells around a
-point and about movement between adjacent cells, where a square has neighbours at 2
-different distances. H3 has 16 levels of resolution, each cell containing 7 of the
-next, and since hexagons do not divide exactly into smaller hexagons, a child cell
-is only approximately contained in its parent. The surface of a sphere cannot be
-covered by hexagons alone, and every level contains exactly 12 pentagons, placed
-where they are least likely to matter.</p>
-<p>For the estimate of arrival time, the technique of computing in advance along the
-important roads is known as contraction hierarchies, and it answers a query on the
-road network of a continent in about a millisecond. And Uber has described assigning
-the work for each area to particular servers with a ring of consistent hashing whose
-membership spreads by gossip, which is the alternative to a coordinator that chapter
-1 described.</p>
-<h2 id="mistakes-to-avoid"><a class="header" href="#mistakes-to-avoid">Mistakes to avoid</a></h2>
+<h3 id="adaptive-k-ring-expansion-and-road-graph-eta-ranking"><a class="header" href="#adaptive-k-ring-expansion-and-road-graph-eta-ranking">Adaptive k-Ring Expansion and Road-Graph ETA Ranking</a></h3>
+<p>Querying only the rider’s single cell misses an idle driver parked 30 meters away on the opposite side of a cell boundary. The Dispatch Engine therefore executes an <strong>adaptive k-ring search</strong>:</p>
+<ol>
+<li><strong>Ring 1 Lookup (<code>k = 1</code>):</strong> Computes the rider’s H3 cell and fetches <code>gridDisk(center_cell, 1)</code> (the center cell plus its 6 surrounding hexagons, or 9 squares in an S2/Cartesian grid), issuing parallel in-memory scatter reads to the owning shards (typically 1 shard, or 2 shards near a partition border).</li>
+<li><strong>Ring Escalation (<code>k = 2</code> or Coarser Parent):</strong> In dense downtown cores, Ring 1 yields 50 to 200 idle drivers immediately. In sparse suburbs at 03:00 local time, if Ring 1 returns fewer than <code>K_min = 10</code> free drivers, the engine expands to Ring 2 (<code>19</code> H3 cells or <code>25</code> squares) and up to a configurable city radius cap (for example, <code>5 km</code>) before returning <code>NO_DRIVER</code>.</li>
+<li><strong>Road-Network ETA Ranking via Contraction Hierarchies:</strong> Euclidean straight-line distance misleads whenever rivers, highways, medians, or one-way streets separate driver and rider. The Dispatch Engine passes the top <code>20 to 30</code> spatially closest candidates to the <strong>Routing and ETA Engine</strong>. Running textbook Dijkstra on a continental road graph per request is far too slow; instead, the engine precomputes <strong>Contraction Hierarchies (CH)</strong> (or Customizable Contraction Hierarchies, CCH) over arterial shortcuts, answering exact shortest-path drive times in under <code>1 ms</code> per candidate while continuously updating road-segment travel speeds from the fleet’s own GPS telemetry stream.</li>
+</ol>
+<h3 id="exclusive-single-driver-offer-protocol-and-cas-assignment"><a class="header" href="#exclusive-single-driver-offer-protocol-and-cas-assignment">Exclusive Single-Driver Offer Protocol and CAS Assignment</a></h3>
+<p>Broadcasting a ride offer simultaneously to five drivers minimizes dispatch latency but forces four drivers who tapped “Accept” to see a withdrawn offer, degrading driver retention and triggering race storms. Instead, we execute an <strong>exclusive serialized offer protocol</strong> with bounded 15-second leases. Advance through the interactive trace below to observe how sequential offers, offer expiry, and conditional writes prevent double assignment even when an earlier driver’s acceptance arrives late.</p>
+<figure class="steps" data-prefix="figures/steps-nearby-match" data-count="6" data-version="656e8bbd">
+<img src="figures/steps-nearby-match-01.svg?v=656e8bbd" alt="A ride offered to drivers in turn, step 1 of 6. A rider requests a ride. The matching service finds the nearest free drivers from the grid and ranks them by distance.">
+<figcaption><b>Figure 21.3</b> A ride is offered to the nearest driver, who does not answer, and then to the next, who accepts, after which the first driver's late acceptance is refused. Use Next and Back to move through the 6 steps.</figcaption>
+</figure>
+<p>Two atomic database invariants enforce strict one-to-one exclusivity inside the Trip Store:</p>
+<ol>
+<li><strong>Acquiring an Exclusive Offer Lease:</strong> Before pushing an offer notification to driver <code>D1</code>, the Dispatch Engine atomically claims <code>D1</code> in <code>driver_active_locks</code> (succeeding only if <code>D1</code> has no unexpired <code>OFFER</code> or <code>TRIP</code> lock) and transitions the ride to <code>OFFERED</code> with <code>active_offer_id = off_1</code> and <code>offer_expires_at = now() + INTERVAL '15 seconds'</code>. This guarantees <code>D1</code> never receives overlapping offers from two simultaneous riders.</li>
+<li><strong>Conditional CAS Acceptance:</strong> When driver <code>D2</code> responds <code>PUT /v1/rides/ride_501/assignments/7056</code>, the Trip Store executes a single ACID transaction:
+<pre><code class="language-sql">UPDATE rides
+SET state           = 'ACCEPTED',
+    driver_id       = $1,
+    active_offer_id = NULL,
+    version         = version + 1
+WHERE ride_id         = $2
+  AND state           = 'OFFERED'
+  AND active_offer_id = $3
+  AND offer_expires_at &gt;= now()
+RETURNING ride_id, version;
+</code></pre>
+Alongside upgrading <code>driver_active_locks.lock_type</code> from <code>'OFFER'</code> to <code>'TRIP'</code> (<code>expires_at = NULL</code>). If <code>D1</code>’s delayed acceptance arrives after <code>off_1</code> expired and <code>off_2</code> was accepted by <code>D2</code>, the predicate <code>active_offer_id = $3</code> matches <code>0</code> rows and returns <code>409 Conflict</code>.</li>
+</ol>
+<h3 id="batch-matching-and-cell-level-surge-pricing-aggregation"><a class="header" href="#batch-matching-and-cell-level-surge-pricing-aggregation">Batch Matching and Cell-Level Surge Pricing Aggregation</a></h3>
+<p>Greedy first-come-first-served matching can produce globally suboptimal pairings when two nearby riders request trips within 1 second of each other. In dense urban zones, the Dispatch Engine buffers incoming requests within an H3 resolution-6 region for a short batch window (<code>2 to 5 seconds</code>) and solves a <strong>minimum-weight bipartite matching</strong> (Hungarian algorithm or min-cost max-flow) over the <code>(riders x candidate_drivers)</code> ETA matrix, reducing aggregate pickup wait times across the city by 15% to 25%.</p>
+<p>Simultaneously, the <strong>Surge and Supply Monitor</strong> aggregates real-time <code>demand_count</code> (unmatched ride requests and fare-estimate views) and <code>supply_count</code> (idle drivers with valid leases) inside each H3 resolution-7/8 hexagon every <code>30 seconds</code>. Because hexagons share identical edge-to-edge neighbor geometry, applying a spatial smoothing kernel across each cell and its 6 neighbors eliminates sharp price cliffs across street boundaries where walking 20 meters would otherwise drop a fare by half.</p>
+<h2 id="216-failure-modes-slis-and-production-systems"><a class="header" href="#216-failure-modes-slis-and-production-systems">21.6 Failure Modes, SLIs, and Production Systems</a></h2>
+<h3 id="failure-and-recovery-matrix"><a class="header" href="#failure-and-recovery-matrix">Failure and Recovery Matrix</a></h3>
 <div class="table-wrapper">
 <table>
 <thead>
-<tr><th>Mistake</th><th>What goes wrong</th><th>What to do</th></tr>
+<tr><th style="text-align: left">Failure Scenario</th><th style="text-align: left">Blast Radius</th><th style="text-align: left">Automated Recovery and Preserved Invariant</th></tr>
 </thead>
 <tbody>
-<tr><td>Measuring the distance to every driver</td><td>The cost of each request grows with the size of the whole fleet.</td><td>Index drivers by the square they are in.</td></tr>
-<tr><td>Searching only the rider’s square</td><td>A driver just across the border is missed.</td><td>Search the 8 neighbouring squares as well.</td></tr>
-<tr><td>A single size of square for everything</td><td>The centre is crowded, and the outskirts are empty.</td><td>Use a hierarchy of squares, and choose the level when searching.</td></tr>
-<tr><td>Supposing that neighbouring squares have similar names</td><td>2 nearby points on either side of a major boundary are treated as distant.</td><td>Compute the neighbours of a square, and search them.</td></tr>
-<tr><td>Storing live positions durably</td><td>Every 1 of 125000 writes a second waits for a disk, to no purpose.</td><td>Keep positions in memory, where they rebuild themselves.</td></tr>
-<tr><td>Positions without a time limit</td><td>Drivers who have gone offline are still offered rides.</td><td>Store each position with a lease that its reports renew.</td></tr>
-<tr><td>Ranking by distance in a straight line</td><td>The nearest driver is across a river and 10 minutes away.</td><td>Rank by estimated time along the roads.</td></tr>
-<tr><td>Offering a ride to many drivers at once</td><td>All but 1 respond to an offer that is then withdrawn.</td><td>Offer to 1 driver, and move to the next after a time limit.</td></tr>
-<tr><td>Assigning a ride by reading and then writing</td><td>2 drivers are assigned to 1 ride.</td><td>Assign with a conditional write that requires the ride to have no driver.</td></tr>
-<tr><td>Keeping rides in the store used for positions</td><td>The record of a ride is lost in a restart.</td><td>Keep rides in a durable, strongly consistent store.</td></tr>
-<tr><td>Requesting a ride without an idempotency key</td><td>A retry summons a second car.</td><td>Require a key on the request.</td></tr>
+<tr><td style="text-align: left"><strong>Driver Phone Enters Tunnel or Crashes</strong></td><td style="text-align: left">Single driver</td><td style="text-align: left">15-second TTL lease expires automatically; driver leaves spatial index without sending a disconnect message</td></tr>
+<tr><td style="text-align: left"><strong>Spatial Index Shard Crash</strong></td><td style="text-align: left">One geographic sub-region for <code>&lt;= 4 s</code></td><td style="text-align: left">Replacement shard starts empty; incoming 3 to 4 second GPS heartbeats reconstruct full fleet visibility automatically</td></tr>
+<tr><td style="text-align: left"><strong>Driver Ignores or Drops Offer</strong></td><td style="text-align: left">Single ride delayed by <code>15 s</code></td><td style="text-align: left"><code>offer_expires_at</code> lapses; Dispatch Engine releases driver lock and offers to next lowest-ETA candidate</td></tr>
+<tr><td style="text-align: left"><strong>Two Drivers Send Concurrent Acceptances</strong></td><td style="text-align: left">Single ride</td><td style="text-align: left"><code>WHERE state = 'OFFERED' AND active_offer_id = $3</code> CAS accepts exactly the active offer holder; late caller receives <code>409 Conflict</code></td></tr>
+<tr><td style="text-align: left"><strong>Rider Client Retries After Network Timeout</strong></td><td style="text-align: left">Single ride</td><td style="text-align: left"><code>UNIQUE (rider_id, idem_key)</code> returns existing <code>ride_501</code> without dispatching a duplicate vehicle</td></tr>
+<tr><td style="text-align: left"><strong>Routing / ETA Engine Outage</strong></td><td style="text-align: left">Single region ETA accuracy degrades</td><td style="text-align: left">Dispatch Engine degrades gracefully to Haversine straight-line distance divided by historical zone speed until routing pods recover</td></tr>
+<tr><td style="text-align: left"><strong>Trip Store Shard Leader Failure</strong></td><td style="text-align: left">New trip transitions pause <code>1 to 3 s</code></td><td style="text-align: left">3-AZ Raft consensus elects synchronous follower with zero lost committed trips; in-flight clients retry safely</td></tr>
 </tbody>
 </table>
 </div>
-<h2 id="failures"><a class="header" href="#failures">Failures</a></h2>
+<h3 id="operational-slis-and-slos"><a class="header" href="#operational-slis-and-slos">Operational SLIs and SLOs</a></h3>
+<p>Four domain-specific Service Level Indicators track dispatch health beyond raw HTTP error rates:</p>
+<ol>
+<li><strong>Spatial Index Freshness (<code>p99</code> Heartbeat Ingestion Lag):</strong> Measures time from client GPS timestamp to Spatial Index visibility (<code>SLO &lt;= 500 ms</code>); rising lag indicates gateway saturation or GC pauses.</li>
+<li><strong>Time to First Offer and Match Completion Rate:</strong> Tracks <code>p95</code> elapsed seconds from <code>POST /v1/rides</code> to driver <code>ACCEPTED</code> (<code>SLO &lt;= 30 s</code>) and percentage of requests reaching <code>NO_DRIVER</code>.</li>
+<li><strong>ETA Prediction Error (MAE):</strong> Compares predicted pickup ETA at dispatch against actual driver arrival timestamp; persistent positive drift alerts to stale road-graph traffic edge weights.</li>
+<li><strong>Exclusivity Audit Invariant:</strong> Continuous background verifier confirming zero active rides share a <code>driver_id</code> and zero <code>ACCEPTED</code> rides lack a matching <code>driver_active_locks</code> entry (<code>SEV-1</code> on any non-zero violation).</li>
+</ol>
+<h3 id="how-production-systems-implement-ride-hailing"><a class="header" href="#how-production-systems-implement-ride-hailing">How Production Systems Implement Ride Hailing</a></h3>
 <div class="table-wrapper">
 <table>
 <thead>
-<tr><th>Failure</th><th>What users see</th><th>How the system recovers</th></tr>
+<tr><th style="text-align: left">Production System</th><th style="text-align: left">Core Architecture</th><th style="text-align: left">Architectural Distinction</th></tr>
 </thead>
 <tbody>
-<tr><td>A driver’s phone loses its connection</td><td>that driver receives no offers</td><td>the lease on the position runs out, and the driver leaves the index</td></tr>
-<tr><td>The grid index is lost</td><td>matching pauses for a few seconds</td><td>drivers’ next reports rebuild it</td></tr>
-<tr><td>A driver does not answer an offer</td><td>the rider waits 15 seconds longer</td><td>the offer ends, and the next driver is asked</td></tr>
-<tr><td>2 drivers accept the same ride</td><td>the later driver is told that the ride is taken</td><td>the conditional write accepts only the first</td></tr>
-<tr><td>The reply to a ride request is lost</td><td>the rider’s application tries again</td><td>the key returns the ride already created</td></tr>
-<tr><td>The ride store’s leader fails</td><td>requests fail for about 1 second</td><td>a follower is elected</td></tr>
-<tr><td>No driver is nearby</td><td>the rider is told so, or the search is widened</td><td>the search moves to a coarser level of squares</td></tr>
+<tr><td style="text-align: left"><strong>Uber (DISCO, H3, and Ringpop)</strong></td><td style="text-align: left">H3 hexagonal spatial index sharded across stateful dispatch workers via consistent hashing and SWIM gossip membership</td><td style="text-align: left">Pioneered H3 aperture-7 hexagonal tiling to eliminate diagonal neighbor distortion in k-ring matching and surge smoothing, paired with batched bipartite dispatch</td></tr>
+<tr><td style="text-align: left"><strong>Lyft (Dispatch and ETA Platform)</strong></td><td style="text-align: left">S2 hierarchical spatial indexing combined with regional dispatch microservices and real-time road-graph traffic estimation</td><td style="text-align: left">Uses dynamic batch windows to optimize global driver utilization and integrates driver heading and multi-stop trajectories directly into ETA ranking</td></tr>
+<tr><td style="text-align: left"><strong>Google Maps / S2 Geometry</strong></td><td style="text-align: left">Cube-projected Hilbert-curve 64-bit <code>S2CellId</code> hierarchy paired with Contraction Hierarchies routing</td><td style="text-align: left">Enables compact range-scan covering of arbitrary city polygons and sub-millisecond continental shortest-path queries</td></tr>
+<tr><td style="text-align: left"><strong>Didi Chuxing</strong></td><td style="text-align: left">Reinforcement-learning assisted batched bipartite dispatch over hexagonal urban grids</td><td style="text-align: left">Extends short-horizon ETA minimization to multi-minute repositioning value, balancing immediate pickup time against future zone liquidity</td></tr>
 </tbody>
 </table>
 </div>
-<h2 id="trade-offs"><a class="header" href="#trade-offs">Trade-offs</a></h2>
-<div class="table-wrapper">
-<table>
-<thead>
-<tr><th>Decision</th><th>What it gains</th><th>What it costs</th></tr>
-</thead>
-<tbody>
-<tr><td>Positions in memory only</td><td>125000 updates per second on modest hardware</td><td>a failure empties the index for a few seconds</td></tr>
-<tr><td>A grid in place of exact search</td><td>the work depends only on the drivers nearby</td><td>borders must be handled by searching neighbours</td></tr>
-<tr><td>Offers in turn</td><td>no driver has an accepted offer withdrawn</td><td>assignment is slower when drivers do not answer</td></tr>
-<tr><td>Strong consistency for rides</td><td>a ride has 1 driver and 1 state</td><td>a brief pause in new rides when a leader fails</td></tr>
-<tr><td>Regions by geography</td><td>each city is served independently</td><td>busy districts need smaller regions</td></tr>
-</tbody>
-</table>
-</div>
-<h2 id="the-simulation"><a class="header" href="#the-simulation">The simulation</a></h2>
+<h2 id="217-simulation-verification"><a class="header" href="#217-simulation-verification">21.7 Simulation Verification</a></h2>
+<p>To verify the asymptotic speedup and exact equivalence of spatial grid indexing versus full-fleet scanning, execute the <code>nearbysim</code> crate in the repository’s <code>code/</code> workspace:</p>
+<pre><code class="language-console">$ cargo run --release -p nearbysim
+20000 drivers on a map of 100 by 100 units
+measuring every driver: 20000 distances, nearest: driver 19862 at 0.19, driver 7056 at 0.84, driver 17908 at 0.85
+using the grid: 15 distances, nearest: driver 19862 at 0.19, driver 7056 at 0.84, driver 17908 at 0.85
+</code></pre>
+<p>On a <code>100 x 100</code> unit map containing <code>20,000</code> uniformly placed drivers:</p>
+<ul>
+<li>Scanning the full fleet requires <code>20,000</code> distance computations per rider query.</li>
+<li>Querying the rider’s cell plus its 8 immediate neighbors evaluates only <code>15</code> distance calculations, a <code>1,333x</code> reduction in work, while returning the exact same three nearest drivers (<code>driver 19862</code> at <code>0.19</code>, <code>driver 7056</code> at <code>0.84</code>, and <code>driver 17908</code> at <code>0.85</code>).</li>
+</ul>
 <div class="simulation">
-<p><strong>Simulation in the repository.</strong> The program <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/distributed-systems-from-the-ground-up/code/nearbysim/src/main.rs"><code>code/nearbysim</code></a> simulates this design. To run it, clone the repository and type <code>cargo run --release -p nearbysim</code> in the <code>code</code> directory.</p>
+<p><strong>Run the spatial indexing simulation.</strong> Execute <code>cargo run --release -p nearbysim</code> in <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/distributed-systems-from-the-ground-up/code/nearbysim/src/main.rs"><code>code/nearbysim</code></a> to verify exact top-3 driver equivalence and the <code>1,333x</code> reduction in candidate distance evaluations using a neighbor-aware spatial grid.</p>
 </div>
 
-<h2 id="references"><a class="header" href="#references">References</a></h2>
-<ul>
-<li>I. Brodsky, “H3: Uber’s Hexagonal Hierarchical Spatial Index”, Uber engineering blog, 2018.</li>
-<li>Google, S2 Geometry Library documentation, “S2 Cells”.</li>
-<li>G. Niemeyer, “geohash.org”, 2008.</li>
-<li>R. Geisberger and others, “Contraction Hierarchies: Faster and Simpler Hierarchical Routing in Road Networks”, WEA 2008.</li>
-<li>A. Guttman, “R-Trees: A Dynamic Index Structure for Spatial Searching”, SIGMOD 1984.</li>
-<li>Uber engineering blog, “How Ringpop from Uber Engineering Helps Distribute Your Application”, 2016.</li>
-</ul>
-<h2 id="terms-introduced-in-this-chapter"><a class="header" href="#terms-introduced-in-this-chapter">Terms introduced in this chapter</a></h2>
+<h2 id="218-terminology-and-references"><a class="header" href="#218-terminology-and-references">21.8 Terminology and References</a></h2>
+<h3 id="engineering-glossary"><a class="header" href="#engineering-glossary">Engineering Glossary</a></h3>
 <div class="table-wrapper">
 <table>
 <thead>
-<tr><th>Term</th><th>Meaning</th></tr>
+<tr><th style="text-align: left">Term</th><th style="text-align: left">Definition</th></tr>
 </thead>
 <tbody>
-<tr><td>Spatial index</td><td>a structure that finds the points near a given point without examining them all</td></tr>
-<tr><td>Grid</td><td>a division of the map into equal squares</td></tr>
-<tr><td>Square, cell</td><td>1 region of such a division, which serves as a key</td></tr>
-<tr><td>Neighbouring squares</td><td>the 8 squares that touch a given square</td></tr>
-<tr><td>Hierarchical grid</td><td>squares divided into 4 smaller squares, repeatedly</td></tr>
-<tr><td>Prefix</td><td>the first digits of a square’s name, which name a larger square that contains it</td></tr>
-<tr><td>Position report</td><td>a message from a driver’s application that gives the driver’s position</td></tr>
-<tr><td>Matching</td><td>choosing a driver for a ride</td></tr>
-<tr><td>Offer</td><td>a proposal of a ride to 1 driver, valid for a limited time</td></tr>
-<tr><td>Estimated time of arrival</td><td>the predicted time until the driver reaches the rider, along the roads</td></tr>
-<tr><td>Road graph</td><td>the road network as junctions joined by stretches of road, each with a travel time</td></tr>
+<tr><td style="text-align: left"><strong>Contraction Hierarchies (CH)</strong></td><td style="text-align: left">A road-graph preprocessing technique that inserts shortcut edges along major arterial corridors, accelerating shortest-path ETA queries to under one millisecond.</td></tr>
+<tr><td style="text-align: left"><strong>Exclusive Offer Lock</strong></td><td style="text-align: left">A time-bounded lease (<code>15 s</code>) binding one candidate driver to at most one pending ride offer so concurrent matchers cannot double-offer the same vehicle.</td></tr>
+<tr><td style="text-align: left"><strong>Geohash</strong></td><td style="text-align: left">A base-32 spatial encoding formed by interleaving quantized latitude and longitude bits; suffers from polar area distortion and edge prefix discontinuities.</td></tr>
+<tr><td style="text-align: left"><strong>H3 Hexagonal Index</strong></td><td style="text-align: left">Uber’s open-source hierarchical spatial index tiling the sphere with aperture-7 regular hexagons where all six neighbors lie at equal center-to-center distances.</td></tr>
+<tr><td style="text-align: left"><strong>k-Ring Expansion</strong></td><td style="text-align: left">Searching a center spatial cell together with concentric rings of neighboring cells (<code>k = 1, 2, ...</code>) to capture cross-border drivers and handle sparse suburbs.</td></tr>
+<tr><td style="text-align: left"><strong>S2 Geometry</strong></td><td style="text-align: left">Google’s spherical geometry library mapping six cube faces along a Hilbert space-filling curve into locality-preserving 64-bit integer cell identifiers.</td></tr>
+<tr><td style="text-align: left"><strong>Surge Pricing Aggregation</strong></td><td style="text-align: left">Computing smoothed real-time ratios of rider demand to idle driver supply across hexagonal cells to balance marketplace liquidity.</td></tr>
 </tbody>
 </table>
 </div>
-<div class="summary">
-<h2 id="summary"><a class="header" href="#summary">Summary</a></h2>
+<h3 id="references"><a class="header" href="#references">References</a></h3>
 <ul>
-<li>Finding nearby points is hard for ordinary indexes, which order their entries along 1 dimension.</li>
-<li>A grid names each region of the map, so that a lookup by square replaces a comparison with every driver.</li>
-<li>A search covers the rider’s square and its 8 neighbours, since the nearest driver may be just across a border.</li>
-<li>A hierarchy of squares whose names share prefixes allows the size to be chosen for each search and turns nearness into a scan of a range of keys.</li>
-<li>Positions are replaced every few seconds and are kept in memory with a lease, since losing them costs 4 seconds.</li>
-<li>A ride is offered to drivers in turn and assigned by a conditional write, so that it has at most 1 driver.</li>
-<li>Rides are kept in a durable, strongly consistent store, at the opposite extreme from the index of positions.</li>
+<li>I. Brodsky, “H3: Uber’s Hexagonal Hierarchical Spatial Index”, Uber Engineering Blog, 2018.</li>
+<li>Google, “S2 Geometry Library: S2 Cells and Space-Filling Curves”, s2geometry.io Documentation.</li>
+<li>R. Geisberger, P. Sanders, D. Schultes, and D. Delling, “Contraction Hierarchies: Faster and Simpler Hierarchical Routing in Road Networks”, <em>Workshop on Experimental Algorithms (WEA)</em>, 2008.</li>
+<li>G. Niemeyer, “Geohash Encoding Specification”, geohash.org, 2008.</li>
+<li>A. Guttman, “R-Trees: A Dynamic Index Structure for Spatial Searching”, <em>Proceedings of ACM SIGMOD</em>, 1984.</li>
+<li>Uber Engineering, “Ringpop: Scalable, Fault-Tolerant Application-Layer Sharding”, Uber Engineering Blog, 2016.</li>
+<li>L. Zhang et al., “A Taxi Order Dispatch Model Based On Combinatorial Optimization”, <em>Proceedings of ACM KDD</em>, 2017.</li>
 </ul>
-</div>
-
 
                     </main>
 
@@ -806,7 +606,7 @@ membership spreads by gossip, which is the alternative to a coordinator that cha
         <script src="book-609e4cb8.js"></script>
 
         <!-- Custom JS scripts -->
-        <script src="theme/figures-47b15f7f.js"></script>
+        <script src="theme/figures-9c14cb1c.js"></script>
         <script src="theme/proto-326509cd.js"></script>
         <script src="theme/code-67e9caaf.js"></script>
         <script src="theme/tables-9fb295e8.js"></script>

@@ -1,9 +1,9 @@
 <!DOCTYPE HTML>
-<html lang="en" class="light sidebar-visible" dir="ltr">
+<html lang="en" class="navy sidebar-visible" dir="ltr">
     <head>
         <!-- Book generated using mdBook -->
         <meta charset="UTF-8">
-        <title>Search Autocomplete - Distributed Systems from the Ground Up</title>
+        <title>22. Search Autocomplete - Distributed Systems from the Ground Up</title>
 
 
         <!-- Custom HTML head -->
@@ -28,20 +28,18 @@
         <link rel="stylesheet" id="mdbook-ayu-highlight-css" href="ayu-highlight-3fdfc3ac.css">
 
         <!-- Custom theme stylesheets -->
-        <link rel="stylesheet" href="theme/custom-8a495b63.css">
-        <link rel="stylesheet" href="theme/formal-05bd78f0.css">
-        <link rel="stylesheet" href="theme/layout-0a0c0003.css">
+        <link rel="stylesheet" href="theme/custom-59beaf6d.css">
 
 
         <!-- Provide site root and default themes to javascript -->
         <script>
             const path_to_root = "";
-            const default_light_theme = "light";
+            const default_light_theme = "navy";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "searchindex-25bb747f.js";
+            window.path_to_searchindex_js = "searchindex-5d54d4b4.js";
         </script>
         <!-- Start loading toc.js asap -->
-        <script src="toc-cc887274.js"></script>
+        <script src="toc-ef51d47d.js"></script>
     </head>
     <body>
     <div id="mdbook-help-container">
@@ -79,7 +77,7 @@
             try { theme = localStorage.getItem('mdbook-theme'); } catch(e) { }
             if (theme === null || theme === undefined) { theme = default_theme; }
             const html = document.documentElement;
-            html.classList.remove('light')
+            html.classList.remove('navy')
             html.classList.add(theme);
             html.classList.add("js");
         </script>
@@ -183,549 +181,319 @@
 
                 <div id="mdbook-content" class="content">
                     <main>
-                        <img class="plate" src="art/ch22.svg?v=69a52589" alt="An owl stands beside a sign that reads: ka, then kafka, karaoke, kayak.">
-<h1 id="search-autocomplete-system-design"><a class="header" href="#search-autocomplete-system-design">Search Autocomplete: System Design</a></h1>
-<p>When a person begins to type into a search box, a short list of suggestions appears
-beneath it, and the list changes with every letter. Typing <code>ka</code> produces “kafka”,
-“karaoke near me” and “kayak”, and the addition of an <code>f</code> reduces the list to “kafka”
-and “kafka vs rabbitmq”. The feature is called <em>autocomplete</em> or <em>typeahead</em>, and it
-spares the user some typing, corrects spelling before it has gone wrong, and shows
-what other people have looked for.</p>
-<p>2 characteristics set this feature apart from the search that it accompanies. It is
-invoked far more often, once for every letter typed where a search is made once, so
-that a service handling 100000 searches a second may receive a million requests for
-suggestions in the same second. And it must be very much faster. A page of search
-results that takes half a second to appear is acceptable, whereas suggestions that
-arrive half a second after a keystroke are useless, since the user has by then typed
-2 further letters and the suggestions refer to text that is no longer in the box. The
-practical limit is about 100 ms from the keystroke to the display, of which the
-network consumes the greater part.</p>
-<p>There is no possibility of computing anything substantial within such a limit, and
-the design is governed by that fact. Whatever can be computed in advance is computed
-in advance, so that answering a request amounts to a single lookup, and whatever can
-be answered without reaching the service at all is answered nearer to the user. The
-interest of the design lies in the question of what exactly should be prepared
-beforehand, in how the prepared data is kept reasonably up to date, and in a small
-number of ways in which a feature that looks harmless can cause real embarrassment.</p>
+                        <h1 id="chapter-22-search-autocomplete-system-design"><a class="header" href="#chapter-22-search-autocomplete-system-design">Chapter 22: Search Autocomplete: System Design</a></h1>
+<img class="plate" src="art/ch22-plate.svg" alt="Chapter 22 plate illustrating a real-time search autocomplete system with precomputed top-K prefix trie snapshots, exponential decay scoring, and sub-20 millisecond edge serving." />
+<p>A real-time search autocomplete (typeahead) service proposes complete queries as a user types each character into a search input. Compared with full-text search, autocomplete amplifies request volume by an order of magnitude (emitting up to one request per keystroke rather than one per submitted query) while enforcing an end-to-end latency budget under 100 milliseconds, of which network round-trip time consumes the majority. Because server-side execution must finish within 10 to 20 milliseconds at <code>p99</code>, any design that scans or ranks matching queries online collapses on short prefixes such as <code>a</code> or <code>k</code>. In this chapter, I design a read-only, edge-cached serving architecture backed by precomputed top-K prefix trie snapshots, offline MapReduce and Flink exponential-decay aggregation, lock-free blue-green snapshot swaps, frequency-balanced prefix sharding, and layered safety and privacy filtering.</p>
 <div class="covers">
-<p>This chapter covers</p>
+<p>In this chapter, we cover</p>
 <ul>
-<li>what a suggestion is, and where the candidates come from</li>
-<li>finding the searches that begin with a prefix: a sorted list, and a tree of letters</li>
-<li>why the answers are computed before anyone asks</li>
-<li>how much data that requires, and how it is rebuilt</li>
-<li>counting what people search for</li>
-<li>searches that became popular within the last hour</li>
-<li>what the browser must do: waiting, discarding late answers, and caching</li>
-<li>suggestions that must not be shown</li>
-<li>dividing the data among servers</li>
+<li>actors, use cases, verifiable functional requirements, sub-20 ms server SLOs, explicit non-goals, and keystroke QPS and RAM capacity bounds</li>
+<li>cacheable HTTP/2 <code>GET</code> suggestion APIs, client out-of-order sequence guards, blocklist moderation contracts, and compact immutable trie snapshot schemas</li>
+<li>control-plane and offline build pipeline separation from the lock-free, read-only online serving data plane</li>
+<li>precomputed top-K prefix trie nodes achieving <code>O(L)</code> lookup, exponential frequency decay, fast-lane Flink trending overlays, and double-buffered atomic snapshot swaps</li>
+<li>load-balanced prefix range sharding across serving nodes, client debouncing, CDN caching trade-offs, k-anonymity privacy gates, and PII/profanity filtering</li>
+<li>failure matrices, typeahead SLIs/SLOs, production architectures (Google Suggest, Elasticsearch FST, Meta Typeahead, Microsoft Top-k Completion), and verification via <code>code/typeahead</code></li>
 </ul>
 </div>
 
-<h2 id="what-a-suggestion-is"><a class="header" href="#what-a-suggestion-is">What a suggestion is</a></h2>
-<p>A suggestion is a complete search that begins with what the user has typed so far. The
-text already typed is called the <em>prefix</em>, and the suggestions are <em>completions</em> of it.</p>
-<p>The candidates are, for the most part, searches that other people have made. A search
-engine keeps a record of the searches submitted to it, and the completions of <code>ka</code> are
-drawn from the searches in that record which begin with <code>ka</code>. There are generally far
-more of these than can be displayed, since thousands of distinct searches begin with
-any short prefix, and so they have to be ranked and only the first few shown.</p>
-<p>The basic ranking is by frequency. A search that has been made 900 times is preferred
-to one that has been made 300 times, on the reasoning that what many people have
-looked for is what the next person is most likely to want. Frequency alone is a
-serviceable beginning, and the later sections refine it.</p>
-<p>The problem can therefore be stated precisely. Given a prefix, return the k most
-frequent searches that begin with it, where k is a small number such as 5 and the
-answer is required within a few milliseconds.</p>
-<h2 id="finding-the-searches-that-begin-with-a-prefix"><a class="header" href="#finding-the-searches-that-begin-with-a-prefix">Finding the searches that begin with a prefix</a></h2>
-<h3 id="a-sorted-list"><a class="header" href="#a-sorted-list">A sorted list</a></h3>
-<p>The most direct structure is a list of all known searches in alphabetical order, each
-accompanied by its count. In such a list, all the searches that begin with a given
-prefix stand together, since alphabetical order groups words by their initial letters.
-The first of them can be found by binary search, or in an ordered index of the kind
-used throughout this book, and the remainder follow immediately after it.</p>
-<p>The simulation for this chapter is built in this way, with 10 searches held in an
-ordered map. For the prefix <code>ka</code> it locates the first entry not less than <code>ka</code>, reads
-forward for as long as the entries begin with <code>ka</code>, which yields kafka, kafka vs
-rabbitmq, karaoke near me and kayak, sorts these 4 by count, and returns the first 3.</p>
-<p>The method is correct and, for long prefixes, perfectly adequate. Its weakness lies in
-the short prefixes, which are the ones most often requested, since every search begins
-with a single letter. The number of entries beginning with <code>k</code> may run to millions,
-and all of them must be read and ranked in order to discover the 5 best. The cost of a
-request is proportional to the number of matches, and the number of matches is
-greatest for exactly those requests that are most numerous.</p>
-<h3 id="a-tree-of-letters"><a class="header" href="#a-tree-of-letters">A tree of letters</a></h3>
-<p>The traditional structure for prefixes is a tree in which each edge is labelled with a
-letter and the path from the root to any node spells out a prefix. It is called a
-<em>trie</em>, or a prefix tree.</p>
-<figure>
-<img src="figures/type-trie.svg?v=f403aa27" alt="A tree of letters. From the top, branches lead to k and r. Below k are a, e and u. Below ka are f, r and y, which lead to kafka, karaoke and kayak. The path from the top through k to a is marked, and every search that begins with ka lies below it.">
-<figcaption><b>Figure 22.1</b> A tree in which the path from the top to a node spells a prefix, with the path for 'ka' marked.</figcaption>
+<h2 id="221-requirements-actors-and-capacity-bounds"><a class="header" href="#221-requirements-actors-and-capacity-bounds">22.1 Requirements, Actors, and Capacity Bounds</a></h2>
+<p>Autocomplete is an advisory acceleration layer whose failure must never block core search submission. This asymmetry permits aggressive offline precomputation, multi-tier HTTP caching, and eventual consistency (minutes to hours for the global corpus, under one minute for breaking trends) in exchange for predictable sub-20 ms server tail latency at 1,000,000+ global requests per second.</p>
+<h3 id="actors-and-use-cases"><a class="header" href="#actors-and-use-cases">Actors and Use Cases</a></h3>
+<p>Three external actor classes interact across the boundary of the search autocomplete service, as illustrated in Figure 22-1.</p>
+<figure class="diagram">
+<img src="figures/m3/ch22_use_cases.svg" alt="Actors and Use Cases of the Real-Time Search Autocomplete Service: Searcher fetches top-K suggestions per keystroke; Search Backend emits completed search events to the query log stream for offline aggregation and snapshot rollout; Trust and Safety Ops manages real-time safety blocklists." />
+<figcaption><b>Figure 22-1</b> Actors, system boundary, and core use cases of the real-time search autocomplete service.</figcaption>
 </figure>
-<p>To find the completions of <code>ka</code>, one starts at the root, follows the edge labelled <code>k</code>
-and then the edge labelled <code>a</code>, and arrives at a node beneath which lie all the
-searches that begin with <code>ka</code> and no others. Reaching that node takes as many steps as
-the prefix has letters, 2 in this case, however many millions of searches the tree
-contains.</p>
-<p>The trie makes the node easy to find and leaves the main difficulty where it was. The
-completions lie somewhere in the subtree below the node, and to determine the 5 most
-frequent it is still necessary to visit the whole subtree, which for a short prefix is
-a large part of the entire tree. The structure has shortened the search for the
-beginning of the answer and has done nothing to shorten the collection of the answer
-itself.</p>
-<h2 id="computing-the-answers-before-anyone-asks"><a class="header" href="#computing-the-answers-before-anyone-asks">Computing the answers before anyone asks</a></h2>
-<p>The observation that resolves the difficulty is that the question “which are the 5
-most frequent searches beginning with <code>ka</code>” has the same answer whoever asks it and
-whenever, until the underlying counts change. There is consequently no reason to work
-it out at the time of the request. It can be worked out once, in advance, for every
-prefix, and the results stored.</p>
-<p>In terms of the trie, this means that every node carries, in addition to its children,
-a short list of the best completions that lie beneath it. In terms of a plain table,
-it means a row for every prefix, containing that prefix’s best completions.</p>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th style="text-align: left">Actor</th><th style="text-align: left">Operation</th><th style="text-align: left">Concrete Scenario</th></tr>
+</thead>
+<tbody>
+<tr><td style="text-align: left"><strong>Searcher (Browser / Mobile Client)</strong></td><td style="text-align: left">Fetch top-K completions (<code>GET /v1/suggestions?q={prefix}</code>)</td><td style="text-align: left">Type <code>ka</code> with client debouncing and receive <code>["kafka", "karaoke near me", "kayak"]</code> within 100 ms end-to-end</td></tr>
+<tr><td style="text-align: left"><strong>Search Backend</strong></td><td style="text-align: left">Emit completed query events asynchronously to the Query Log Stream</td><td style="text-align: left">Log normalized submitted searches (never raw partial prefixes) for offline MapReduce decay and real-time Flink trend detection</td></tr>
+<tr><td style="text-align: left"><strong>Trust and Safety Operations</strong></td><td style="text-align: left">Publish moderation exclusions (<code>PUT /v1/blocklist</code>)</td><td style="text-align: left">Remove defamatory, violent, or leaked PII completions across all edge serving replicas within minutes</td></tr>
+</tbody>
+</table>
+</div>
+<h3 id="functional-requirements"><a class="header" href="#functional-requirements">Functional Requirements</a></h3>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th style="text-align: left">No.</th><th style="text-align: left">Functional Requirement</th></tr>
+</thead>
+<tbody>
+<tr><td style="text-align: left">0</td><td style="text-align: left">Given a normalized UTF-8 prefix string <code>q</code> (1 to 20 characters), the service returns up to <code>K = 5</code> (configurable up to <code>10</code>) highest-ranked matching query completions.</td></tr>
+<tr><td style="text-align: left">1</td><td style="text-align: left">Suggestions are ranked by time-decayed historical search frequency so recent sustained interest outranks stale multi-year totals.</td></tr>
+<tr><td style="text-align: left">2</td><td style="text-align: left">Breaking queries that surge dramatically within the last 60 minutes appear in suggestions within 1 to 2 minutes without waiting for a full batch rebuild.</td></tr>
+<tr><td style="text-align: left">3</td><td style="text-align: left">Every candidate query must satisfy a minimum distinct-user privacy threshold (<code>k</code>-anonymity) before entering any suggestion snapshot.</td></tr>
+<tr><td style="text-align: left">4</td><td style="text-align: left">Automated policy filters scrub PII patterns and prohibited terms during offline trie builds, and an emergency edge blocklist suppresses reported suggestions within minutes.</td></tr>
+<tr><td style="text-align: left">5</td><td style="text-align: left">The service degrades gracefully: if the autocomplete tier is unreachable or slow, the client allows uninterrupted typing and search submission.</td></tr>
+</tbody>
+</table>
+</div>
+<h3 id="non-functional-requirements-and-slos"><a class="header" href="#non-functional-requirements-and-slos">Non-Functional Requirements and SLOs</a></h3>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th style="text-align: left">No.</th><th style="text-align: left">Property</th><th style="text-align: left">Target Specification</th><th style="text-align: left">Architectural Consequence</th></tr>
+</thead>
+<tbody>
+<tr><td style="text-align: left">0</td><td style="text-align: left"><strong>Latency</strong></td><td style="text-align: left">End-to-end keystroke-to-display <code>&lt;= 100 ms</code>; origin server <code>p99 &lt;= 20 ms</code> (<code>p50 &lt;= 3 ms</code>)</td><td style="text-align: left">Zero online subtree traversal or sorting; all top-K lists precomputed at every trie node and held entirely in RAM</td></tr>
+<tr><td style="text-align: left">1</td><td style="text-align: left"><strong>Availability</strong></td><td style="text-align: left"><code>99.9%</code> (<code>&lt;= 43.2</code> minutes/month) for autocomplete; <code>100%</code> fault isolation from core search</td><td style="text-align: left">Stateless read-only serving replicas behind CDN edge caches; browser enforces strict <code>80 ms</code> request timeouts</td></tr>
+<tr><td style="text-align: left">2</td><td style="text-align: left"><strong>Consistency</strong></td><td style="text-align: left">Eventual consistency: <code>1 to 24 hours</code> for the main corpus snapshot; <code>&lt;= 60 s</code> for trending overlay; <code>&lt;= 5 min</code> for emergency blocklist propagation</td><td style="text-align: left">Decouples write-heavy counting completely from read-only edge serving via versioned immutable snapshot artifacts</td></tr>
+<tr><td style="text-align: left">3</td><td style="text-align: left"><strong>Scale</strong></td><td style="text-align: left"><code>1,000,000</code> peak keystroke requests/s globally (<code>100,000</code> submitted searches/s <code>* ~10</code> keystrokes/search); <code>100,000,000</code> distinct eligible queries</td><td style="text-align: left">Browser + CDN caching absorbs <code>~80%</code> of traffic (especially hot 1 to 2 character prefixes); origin serving tier handles <code>200,000</code> req/s</td></tr>
+<tr><td style="text-align: left">4</td><td style="text-align: left"><strong>Safety and Privacy</strong></td><td style="text-align: left">Zero exposure of single-user private queries; rapid removal of abusive completions</td><td style="text-align: left">Distinct-user HyperLogLog / count threshold (<code>&gt;= 100</code> distinct users) plus dual-stage offline and online blocklist enforcement</td></tr>
+</tbody>
+</table>
+</div>
+<h3 id="non-goals-and-explicit-scope-boundaries"><a class="header" href="#non-goals-and-explicit-scope-boundaries">Non-Goals and Explicit Scope Boundaries</a></h3>
+<p>To focus on low-latency prefix indexing and snapshot distribution, we exclude the following extensions from the base architecture:</p>
+<ul>
+<li><strong>Per-user personalized search history ranking:</strong> Personal history completions are typically stored locally in browser IndexedDB or fetched from a small per-user cache and merged client-side ahead of global typeahead results.</li>
+<li><strong>Full-text fuzzy edit-distance spelling correction:</strong> Supporting Levenshtein edit distance <code>&gt;= 2</code> across arbitrary mid-word typos requires phonetic/BK-tree or trigram indexes rather than strict prefix tries.</li>
+<li><strong>Multi-language morphology and CJK input-method composition (IME):</strong> Character composition states prior to word commit require locale-specific tokenizers outside standard prefix lookup.</li>
+</ul>
+<h3 id="back-of-the-envelope-capacity-bounds"><a class="header" href="#back-of-the-envelope-capacity-bounds">Back-of-the-Envelope Capacity Bounds</a></h3>
+<p>Autocomplete is constrained by <strong>tail latency on hot short prefixes</strong> and <strong>in-memory working set size</strong> across prefix shards.</p>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th style="text-align: left">Resource Dimension</th><th style="text-align: left">Derivation</th><th style="text-align: left">Provisioned Bound</th></tr>
+</thead>
+<tbody>
+<tr><td style="text-align: left"><strong>Global Keystroke QPS</strong></td><td style="text-align: left"><code>100,000</code> searches/s <code>* 10</code> keystrokes/search (reduced ~50% by debouncing, offset by editing)</td><td style="text-align: left"><code>~1,000,000</code> req/s gross</td></tr>
+<tr><td style="text-align: left"><strong>Origin Serving QPS</strong></td><td style="text-align: left"><code>1,000,000</code> req/s <code>* 20%</code> cache miss rate past browser + CDN edge (<code>max-age=300</code>)</td><td style="text-align: left"><code>~200,000</code> req/s at origin</td></tr>
+<tr><td style="text-align: left"><strong>Distinct Eligible Queries</strong></td><td style="text-align: left">Filtered to queries issued by <code>&gt;= 100</code> distinct users over 30 days</td><td style="text-align: left"><code>100,000,000</code> unique strings</td></tr>
+<tr><td style="text-align: left"><strong>Indexed Prefix Nodes</strong></td><td style="text-align: left">Prefix length capped at <code>L &lt;= 20</code> chars; shared prefixes collapse ~4x</td><td style="text-align: left"><code>~500,000,000</code> distinct prefix nodes</td></tr>
+<tr><td style="text-align: left"><strong>Precomputed Snapshot RAM</strong></td><td style="text-align: left"><code>500M</code> nodes <code>* ~50 B</code> (compact node header + 5 integer string-table IDs) + <code>100M * 25 B</code> string pool</td><td style="text-align: left"><code>~27.5 GB</code> total immutable snapshot (<code>~32 GB</code> per shard group with index metadata)</td></tr>
+<tr><td style="text-align: left"><strong>Daily Raw Query Log</strong></td><td style="text-align: left"><code>100,000</code> searches/s <code>* 86,400 s</code> <code>* 40 B</code> (sampled <code>10%</code> to <code>100%</code>)</td><td style="text-align: left"><code>~345 GB/day</code> unsampled (<code>~35 GB/day</code> at 10% uniform sampling)</td></tr>
+<tr><td style="text-align: left"><strong>Origin Egress Bandwidth</strong></td><td style="text-align: left"><code>200,000</code> req/s <code>* 256 B</code> average JSON response</td><td style="text-align: left"><code>~51 MB/s</code> (<code>~410 Mbit/s</code>)</td></tr>
+</tbody>
+</table>
+</div>
+<h2 id="222-external-api-and-data-contracts"><a class="header" href="#222-external-api-and-data-contracts">22.2 External API and Data Contracts</a></h2>
+<p>Because global suggestions for a given normalized prefix are identical across users within a locale, the read endpoint uses a cacheable HTTP/2 <code>GET</code> with explicit <code>Cache-Control</code> headers so both browsers and CDN edge PoPs absorb the majority of short-prefix load.</p>
+<h3 id="prefix-suggestion-lookup-endpoint"><a class="header" href="#prefix-suggestion-lookup-endpoint">Prefix Suggestion Lookup Endpoint</a></h3>
+<pre><code class="language-http">GET /v1/suggestions?q=ka&amp;locale=en-US&amp;limit=5&amp;seq=14 HTTP/2
+Host: search.example
+Accept: application/json
+</code></pre>
+<pre><code class="language-http">HTTP/2 200 OK
+Content-Type: application/json
+Cache-Control: public, max-age=300, stale-while-revalidate=60
+X-Snapshot-Version: v108
+
+{
+  "prefix": "ka",
+  "seq": 14,
+  "suggestions": [
+    { "text": "kafka", "score": 900, "source": "main" },
+    { "text": "karaoke near me", "score": 800, "source": "main" },
+    { "text": "kayak", "score": 450, "source": "main" }
+  ]
+}
+</code></pre>
+<p>Three contract details govern client correctness and caching efficiency:</p>
+<ol>
+<li><strong>Prefix Echo and Sequence Guard (<code>seq</code>):</strong> Network replies can arrive out of order: a slow reply for <code>ka</code> (<code>seq=14</code>) may arrive after a fast reply for <code>kaf</code> (<code>seq=15</code>). The browser discards any response whose <code>seq &lt; latest_sent_seq</code> or whose echoed <code>prefix</code> no longer matches the active input box, and aborts superseded in-flight HTTP requests via <code>AbortController</code>.</li>
+<li><strong>Caching Empty Results:</strong> A prefix with zero completions (such as <code>q=kafx</code>) still returns <code>200 OK</code> with <code>"suggestions": []</code> and <code>Cache-Control: public, max-age=300</code>, protecting origin shards against repeated cache-penetration misses on typos.</li>
+<li><strong>Cache TTL vs. Takedown Latency Trade-Off:</strong> Setting <code>max-age=300</code> (5 minutes) rather than 5 hours bounds the maximum time a newly blocklisted offensive term can linger in downstream browser or edge caches.</li>
+</ol>
+<h3 id="emergency-blocklist-control-endpoint"><a class="header" href="#emergency-blocklist-control-endpoint">Emergency Blocklist Control Endpoint</a></h3>
+<pre><code class="language-http">PUT /v1/blocklist/terms HTTP/2
+Host: admin.search.example
+Authorization: Bearer ops_eyJhbGci...
+Content-Type: application/json
+
+{
+  "locale": "en-US",
+  "action": "DENY_EXACT_OR_SUBSTRING",
+  "pattern": "redacted-harmful-phrase",
+  "reason": "policy-ticket-4921"
+}
+</code></pre>
+<pre><code class="language-http">HTTP/2 202 Accepted
+Content-Type: application/json
+
+{
+  "blocklist_version": 841,
+  "propagation_slo_sec": 60
+}
+</code></pre>
+<h3 id="compact-immutable-trie-snapshot-schema"><a class="header" href="#compact-immutable-trie-snapshot-schema">Compact Immutable Trie Snapshot Schema</a></h3>
+<p>Rather than storing pointer-heavy heap objects or repeating full query strings across millions of ancestor nodes, the offline builder serializes each shard snapshot into two contiguous memory-mapped (<code>mmap</code>) binary arrays:</p>
+<pre><code class="language-text">1. String Pool (arena.bin):
+   Contiguous UTF-8 bytes of all distinct eligible completions, addressed by u32 offset + u16 len.
+
+2. Trie Node Array (trie_shard_k.bin):
+   struct TrieNode {
+       char_code:       u16,       // UTF-16 / compressed byte edge label
+       first_child_idx: u32,       // Contiguous child slice start (binary-searched)
+       child_count:     u16,       // Number of outgoing edges
+       top_k_ids:       [u32; 5],  // Indexes into String Pool, pre-sorted by score
+       top_k_scores:    [u32; 5],  // Fixed-point decayed scores for merge with trending overlay
+   }
+</code></pre>
+<p>Storing integer <code>string_pool</code> offsets instead of duplicated text cuts RAM consumption by 4x to 6x, eliminates garbage-collection pause spikes, and enables instant zero-parse loading via <code>mmap</code>.</p>
+<h2 id="223-high-level-architecture-control-plane-vs-data-plane"><a class="header" href="#223-high-level-architecture-control-plane-vs-data-plane">22.3 High-Level Architecture: Control Plane vs. Data Plane</a></h2>
+<p>We strictly decouple asynchronous query aggregation and snapshot compilation from the read-only serving path, as illustrated in Figure 22-2.</p>
+<figure class="diagram">
+<img src="figures/m3/ch22_architecture.svg" alt="High-Level Architecture showing Control and Offline Build Plane (Query Log, Aggregator with decay, Trie Builder, Safety Filter, Immutable Snapshot Store, Snapshot Rollout Controller) pushing versioned snapshots via atomic blue-green pointer swap to the Online Data Plane (Browser Client with debounce and seq guard, CDN Edge Cache, Prefix Router, In-Memory Trie)." />
+<figcaption><b>Figure 22-2</b> Offline aggregation and snapshot rollout control plane decoupled from the read-only online edge query path.</figcaption>
+</figure>
+<h3 id="control-and-offline-build-plane"><a class="header" href="#control-and-offline-build-plane">Control and Offline Build Plane</a></h3>
+<p>No online request ever writes to a serving trie. Instead, an offline pipeline compiles immutable versioned artifacts:</p>
+<ul>
+<li><strong>Query Log Stream (Kafka):</strong> Receives completed search submissions (sampled uniformly at 10% to 100%) asynchronously from the Search Backend, adding zero latency to search execution.</li>
+<li><strong>Batch Aggregator (Spark / MapReduce) and Fast-Lane Streamer (Flink):</strong> Normalizes query strings (Unicode NFKC, lowercase, whitespace collapsing), tracks distinct-user counts via HyperLogLog sketches, applies exponential frequency decay, and emits two outputs: hourly/daily global scores and 1-minute breaking-trend deltas.</li>
+<li><strong>Safety Filter and Trie Builder:</strong> Scrubs PII (email addresses, phone numbers, national IDs via regex and NER classifiers) and policy-prohibited phrases, then constructs per-shard precomputed top-K trie binary blobs (<code>v108</code>) stored in immutable object storage.</li>
+<li><strong>Snapshot Rollout Controller:</strong> Validates candidate snapshots against canary prefix regression suites (verifying non-empty top queries, bounded size delta, and zero blocklist leaks) before orchestrating a staggered push to serving replicas.</li>
+</ul>
+<h3 id="online-data-plane"><a class="header" href="#online-data-plane">Online Data Plane</a></h3>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th style="text-align: left">Component</th><th style="text-align: left">State Held</th><th style="text-align: left">Failure Impact and Mitigation</th></tr>
+</thead>
+<tbody>
+<tr><td style="text-align: left"><strong>Browser Client</strong></td><td style="text-align: left">In-memory prefix cache, debounce timer (<code>50 to 100 ms</code>), monotonic <code>seq</code> counter</td><td style="text-align: left">Caches recent prefix replies locally so backspace is instantaneous; aborts slow requests after <code>80 ms</code> so search stays unaffected</td></tr>
+<tr><td style="text-align: left"><strong>CDN Edge Cache</strong></td><td style="text-align: left">Public HTTP cache keyed by <code>(locale, normalized_prefix)</code> (<code>300 s</code> TTL)</td><td style="text-align: left">Absorbs <code>~80%</code> of global volume, especially single-character and two-character prefixes; serves stale-while-revalidate during brief origin blips</td></tr>
+<tr><td style="text-align: left"><strong>Prefix Router (L7 LB)</strong></td><td style="text-align: left">Prefix range partition map (<code>aa..ap -&gt; shard 0</code>, …)</td><td style="text-align: left">Stateless routing across 3 AZs; retries read-only <code>GET</code> idempotently on another shard replica on timeout</td></tr>
+<tr><td style="text-align: left"><strong>In-Memory Trie Replicas</strong></td><td style="text-align: left">Read-only <code>mmap</code> trie snapshot (<code>v108</code>), tiny trending hash map (<code>&lt; 50 MB</code>), and hot blocklist set (<code>&lt; 10 MB</code>)</td><td style="text-align: left">Zero write locks; every replica within a shard holds an identical immutable snapshot and serves reads concurrently</td></tr>
+</tbody>
+</table>
+</div>
+<h2 id="224-deep-dive-precomputed-top-k-trie-exponential-decay-and-atomic-snapshot-swap"><a class="header" href="#224-deep-dive-precomputed-top-k-trie-exponential-decay-and-atomic-snapshot-swap">22.4 Deep Dive: Precomputed Top-K Trie, Exponential Decay, and Atomic Snapshot Swap</a></h2>
+<p>A sorted array or uncached prefix trie finds the starting node for prefix <code>ka</code> in <code>O(log N)</code> or <code>O(L)</code> time, yet still must enumerate and sort every completion in the subtree beneath <code>ka</code>. On short prefixes such as <code>k</code> or <code>s</code>, that subtree holds millions of queries, making online sorting incompatible with a 10 to 20 ms server budget.</p>
+<h3 id="precomputed-top-k-nodes-achieving-ol-lookup"><a class="header" href="#precomputed-top-k-nodes-achieving-ol-lookup">Precomputed Top-K Nodes Achieving <code>O(L)</code> Lookup</a></h3>
+<p>Because the top 5 completions of any prefix <code>p</code> depend only on the query corpus and remain invariant across callers between rebuilds, we compute them bottom-up once during the offline build and store the sorted top-K list directly inside every trie node, as depicted in Figure 22-3.</p>
+<figure class="diagram">
+<img src="figures/m3/ch22_trie_pipeline.svg" alt="Precomputed Top-K Prefix Trie storing sorted Top-K completions at every node for O(L) pointer hops with zero subtree scan, paired with Exponential Frequency Decay S(t) = a * C(t) + (1 - a) * S(t-1)." />
+<figcaption><b>Figure 22-3</b> Precomputed top-K prefix trie nodes achieving <code>O(L)</code> lookup and exponential frequency decay scoring.</figcaption>
+</figure>
+<p>During offline assembly, a single post-order traversal computes each node’s top-K list by merging the top-K lists of its immediate children plus any query terminating at the node itself. For an alphabet of 26 lowercase characters and <code>K = 5</code>, each node evaluates at most <code>26 * 5 + 1 = 131</code> entries, yielding total build complexity linear in the number of trie nodes (<code>O(N_nodes * K)</code>). At query time, traversing a prefix of length <code>L &lt;= 20</code> requires at most <code>L</code> pointer or array hops and zero subtree scanning. Advance through the interactive trace below to follow how each keystroke resolves in a single precomputed lookup.</p>
 <figure class="steps" data-prefix="figures/steps-type-lists" data-count="5" data-version="96e5e89e">
 <img src="figures/steps-type-lists-01.svg?v=96e5e89e" alt="1 lookup for each letter typed, step 1 of 5. For every prefix that occurs, the 3 most frequent searches that begin with it have been worked out in advance and stored. Answering is then a matter of looking up 1 row.">
 <figcaption><b>Figure 22.2</b> Each keystroke is answered by reading the row that was prepared for the prefix. Use Next and Back to move through the 5 steps.</figcaption>
 </figure>
-<p>With such a table, a request is a single lookup by key, of the kind that a key-value
-store or a cache performs in well under a millisecond. Its cost does not depend on the
-length of the prefix, on the number of searches that match it, or on the size of the
-collection. The simulation prints the rows of this table for the prefixes of its
-example: for <code>k</code>, kubernetes with 950, kafka with 900 and karaoke near me with 800;
-for <code>ka</code>, kafka, karaoke near me and kayak; for <code>kaf</code>, the 2 searches about kafka; and
-for <code>x</code>, nothing.</p>
-<p>Once the answers have been computed in advance, the trie is no longer indispensable.
-A flat table that maps each prefix, as a string, to its list does everything required
-and can be held in any key-value store. The trie continues to be of use in building
-the lists, as will be seen, and in memory it is the more compact representation, since
-prefixes that share their opening letters share the corresponding nodes. As far as
-serving is concerned, however, the design has reduced a search problem to a lookup
-problem, and has done so by the same exchange that chapter 15 made for the news feed,
-in which work was moved from the moment of reading to the moment of writing.</p>
-<h3 id="what-this-costs"><a class="header" href="#what-this-costs">What this costs</a></h3>
-<p>The cost is storage and the labour of construction. Every search of n letters has n
-prefixes, so that a collection of 100 million distinct searches of 20 letters on
-average gives rise to as many as 2 billion prefixes. In practice the number is much
-smaller, since a great many searches share their prefixes and there is only 1 row for
-<code>k</code>, shared by every search that begins with that letter. It can be reduced further by
-2 simple rules. Prefixes beyond a certain length, 20 letters for example, are not
-stored, since by that point so few searches match that they can be found directly. And
-searches that have been made only a few times are excluded from the collection
-altogether, which, as a later section explains, is also required for reasons that have
-nothing to do with storage.</p>
-<p>A row holds 5 completions, which can be stored as references to the searches and need
-not be full copies. A few hundred million rows of some tens of bytes each come to tens
-of gigabytes, an amount that can be held in the memory of a small number of machines.</p>
-<h3 id="building-the-lists"><a class="header" href="#building-the-lists">Building the lists</a></h3>
-<p>The lists are built from the bottom of the trie upwards. The list for a node is the
-best 5 drawn from the lists of its children, together with the search that ends at the
-node itself, if there is one. Since each child’s list contains at most 5 entries, a
-node with 26 children has to consider at most 131 candidates, and the entire trie is
-processed in a single pass whose cost is proportional to the number of nodes.</p>
-<p>The same property makes it possible to bring the lists up to date without rebuilding
-everything. When the count of a single search changes, only the lists on the path from
-that search up to the root can be affected, which for a search of 20 letters is 20
-nodes. In practice, most services nevertheless rebuild the whole table at intervals,
-hourly or daily, from the latest counts, and replace the old table with the new one in
-a single step. A complete rebuild is simpler to make correct, is done by a batch job
-that places no load on the servers answering requests, and has the considerable
-advantage that the previous table remains at hand and can be reinstated at once if the
-new one proves to be faulty.</p>
-<h2 id="counting-what-people-search-for"><a class="header" href="#counting-what-people-search-for">Counting what people search for</a></h2>
-<p>The counts from which the lists are built come from the record of searches. Every
-search that is actually submitted, as distinct from every prefix that is typed, is
-appended to a log, by way of the message queue of chapter 11, so that the recording
-adds nothing to the time taken by the search itself.</p>
-<p>A batch job reads this log at intervals and produces, for every distinct search, the
-number of times it was made within some recent period. 3 aspects of this counting
-call for care.</p>
-<p>The text of a search has to be <em>normalised</em> before it is counted, since “Kafka”,
-“kafka” and “ kafka “ are the same search to the person who typed them and would
-otherwise be counted as 3 separate ones, each with a third of the proper weight.
-Normalisation ordinarily converts the text to small letters, removes superfluous
-spaces, and brings accented characters to a standard form. The same normalisation
-must be applied to the prefix when a request for suggestions arrives, or the lookup
-will fail to find a row that exists.</p>
-<p>Not every search need be counted. At a high volume, a random sample of 1 search in 10
-or 1 in 100 yields counts that are proportionally accurate for everything popular
-enough to appear in a list of suggestions, at a tenth or a hundredth of the work.
-Sampling loses precision only for rare searches, which are not going to be suggested
-in any case.</p>
-<p>And the counts should favour what is recent. A search that was made a million times 3
-years ago and has scarcely been made since ought not to rank above one that has been
-made 100000 times this week. A common method reduces older counts by a constant factor
-at each period, halving the weight of every search’s history each week for example, so
-that popularity has to be sustained in order to be retained. This is the decay that
-chapter 9 applied to the counts of the least frequently used rule, and it is applied
-here for the same reason.</p>
-<h2 id="what-became-popular-within-the-hour"><a class="header" href="#what-became-popular-within-the-hour">What became popular within the hour</a></h2>
-<p>A table rebuilt once a day cannot know of anything that happened today. When news
-breaks and a million people begin to search for a name that nobody had searched for
-the day before, suggestions built from yesterday’s counts will not include it, and the
-feature appears conspicuously out of touch at exactly the moment when attention is
-greatest.</p>
-<p>The usual remedy is to maintain a second, much smaller collection alongside the main
-table. A stream processor reads the log of searches as they arrive and keeps counts
-over a short sliding window, the last hour for instance, using the windowed counting
-of chapter 7. Searches whose recent rate far exceeds their historical rate are
-recognised as <em>trending</em> and placed in a small table of their own, which is brought up
-to date every minute or so. When a request arrives, the service consults both the main
-table and the small one and merges the 2 lists.</p>
-<p>The division gives each part the method that suits it. The great mass of suggestions
-changes slowly and is rebuilt at leisure, in bulk, with every opportunity for
-checking. The few that change quickly are handled by a mechanism that is fast because
-it is small.</p>
-<h2 id="what-the-browser-must-do"><a class="header" href="#what-the-browser-must-do">What the browser must do</a></h2>
-<p>Much of the performance of autocomplete depends on the behaviour of the client, and a
-well-constructed service can be made to seem slow and erratic by a carelessly written
-one.</p>
-<p>A user who types quickly produces a keystroke every 100 ms or less. A request sent on
-every keystroke is mostly wasted, since its answer will be out of date before it has
-arrived. The client therefore waits for a brief pause in the typing, of perhaps 50 to
-100 ms, before sending a request, a technique known as <em>debouncing</em>. A user who types
-5 letters in rapid succession and then stops causes 1 request where there would have been 5. Requests are
-likewise withheld until at least 1 or 2 letters have been typed, according to the
-language, since the suggestions for a single letter are seldom of any use and such
-prefixes account for a large share of the load.</p>
-<p>A second matter concerns the order in which answers arrive, and it is the source of a
-defect that is frequently seen.</p>
-<figure>
-<img src="figures/type-stale.svg?v=7c128e1b" alt="5 steps. The searcher types ka, and request 1 is sent and is slow. The searcher types kaf, and request 2 is sent and is fast. The answer to request 2 arrives and is shown. The answer to request 1 arrives late and replaces it. The suggestions no longer match the text in the box. The cure is to show an answer only if it is for the text now in the box.">
-<figcaption><b>Figure 22.3</b> The answer to an earlier request arrives after the answer to a later one and replaces it.</figcaption>
-</figure>
-<p>Requests travel independently over the network and may be answered in an order
-different from that in which they were sent. If the client displays every answer as it
-arrives, a slow answer for <code>ka</code> can overwrite the correct answer for <code>kaf</code>, and the
-user is shown suggestions that do not correspond to the text in the box. The client
-must therefore remember which prefix each request was for, and display an answer only
-if that prefix is still the text in the box. Requests that have been overtaken should
-also be cancelled, which saves the work of answering them.</p>
-<p>The third matter is caching, for which autocomplete is exceptionally well suited. The
-answer for a given prefix is the same for every user, in the absence of
-personalisation, and remains valid for minutes or hours. It can therefore be cached at
-every level, with the methods of chapter 9. The browser keeps the answers it has
-already received, so that a user who deletes a letter sees the previous suggestions
-again instantly, with no request. The edge servers of a content delivery network, as
-described in chapter 17, keep the answers for common prefixes close to users, and
-since requests are heavily concentrated on a small number of short prefixes, a large
-proportion of them never reach the service. For this to work, a request for
-suggestions must be an ordinary <code>GET</code> with the prefix in its address, and the reply
-must state for how long it may be reused.</p>
-<h2 id="suggestions-that-must-not-be-shown"><a class="header" href="#suggestions-that-must-not-be-shown">Suggestions that must not be shown</a></h2>
-<p>Autocomplete presents text that the service did not write, taken from what other
-people have typed, directly beneath the service’s own name. It has in consequence 2
-ways of causing harm that are not apparent from the engineering alone.</p>
-<p>The first concerns offensive or damaging suggestions. If a sufficient number of people
-search for a person’s name together with an accusation, the plain frequency ranking
-will propose that accusation to everybody who starts to type the name, and so lends
-the authority of the service to a rumour. Suggestions may equally promote abuse,
-dangerous activity or unlawful content, for no better reason than that many people
-have searched for it. The service therefore passes candidates through a filter before
-they enter the table, composed of lists of terms and categories that are never to be
-suggested, and provides a means by which any particular suggestion can be removed
-promptly once it has been reported. Because the table is built in advance, the filter
-is applied during the build and costs nothing when requests are answered, and an
-urgent removal is effected by a small list of exclusions that is checked as answers
-are served.</p>
-<p>The second concerns privacy. A search may contain a person’s name, an address, a
-telephone number or a medical question. If a search that only 1 person ever made were
-to be offered as a suggestion, that person’s private search would be shown to
-strangers who chanced to type the same opening letters. A search is therefore admitted
-as a candidate only when it has been made by a sufficient number of different people,
-some hundreds for example, so that no suggestion can be traced to an individual. This
-threshold, which was mentioned earlier as a means of saving storage, is in fact
-required on grounds of privacy, and the number to be counted is that of distinct
-people, whatever the number of searches, since 1 person may make the same search a great many
-times.</p>
-<h2 id="dividing-the-data-among-servers"><a class="header" href="#dividing-the-data-among-servers">Dividing the data among servers</a></h2>
-<p>The table of prefixes is too large for 1 machine in a big service and has to be
-divided. The natural key for the division is the prefix itself.</p>
-<p>It is tempting to assign prefixes to servers by their first letter, and this
-distributes the load poorly. Far more searches begin with <code>s</code> than with <code>x</code>, so that
-some servers would be overloaded and others nearly idle. The division is better based
-on measured load: the ranges of prefixes are chosen so that each receives roughly the
-same number of requests, with the consequence that a common letter is spread over
-several servers by its second letter and several rare letters share 1 server. As an
-alternative, prefixes may be distributed by a hash, with the consistent hashing of
-chapter 1, which balances the load without any measurement and gives up the property
-that neighbouring prefixes reside on the same server.</p>
-<p>Since the table is read-only between rebuilds, replicating it is uncomplicated. Every
-replica of a shard holds an identical copy of the same immutable file, and any of them
-may answer any request. There is no leader and no question of consistency among the
-replicas, apart from the short interval during which a new table is being distributed
-and some replicas have it while others still serve the old one. A user may notice a
-small change in the suggestions if 2 successive requests fall on either side of that
-interval, and this is harmless.</p>
-<h2 id="use-cases"><a class="header" href="#use-cases">Use cases</a></h2>
-<p>A person types into a search box, and the service proposes completions.</p>
-<figure>
-<img src="figures/typeahead-use-cases.svg?v=7d81dcdf" alt="A use case diagram of the suggestion service. Searcher: get suggestions (GET /v1/suggestions?q=ka), run the search (GET /v1/search?q=kafka).">
-<figcaption><b>Figure 22.4</b> The actor and what it does.</figcaption>
-</figure>
-<h2 id="functional-requirements"><a class="header" href="#functional-requirements">Functional requirements</a></h2>
-<div class="table-wrapper">
-<table>
-<thead>
-<tr><th>No.</th><th>Functional requirement</th></tr>
-</thead>
-<tbody>
-<tr><td>0</td><td>For the text typed so far, the service returns up to 5 searches that begin with it.</td></tr>
-<tr><td>1</td><td>Suggestions are ordered by how often they have recently been searched for.</td></tr>
-<tr><td>2</td><td>Searches that have become popular within the last hour appear among the suggestions.</td></tr>
-<tr><td>3</td><td>A suggestion that has been reported can be removed within minutes.</td></tr>
-<tr><td>4</td><td>No suggestion is shown that fewer than a set number of different people have searched for.</td></tr>
-</tbody>
-</table>
-</div>
-<h2 id="non-functional-requirements"><a class="header" href="#non-functional-requirements">Non-functional requirements</a></h2>
-<div class="table-wrapper">
-<table>
-<thead>
-<tr><th>No.</th><th>Property</th><th>Non-functional requirement</th></tr>
-</thead>
-<tbody>
-<tr><td>0</td><td>Latency</td><td>Suggestions are displayed within 100 ms of a keystroke, and the service itself answers within 10 ms.</td></tr>
-<tr><td>1</td><td>Availability</td><td>99.9%. If suggestions are unavailable, searching still works.</td></tr>
-<tr><td>2</td><td>Consistency</td><td>Eventual. Suggestions reflect counts that are up to a day old, or up to a minute old for trending searches.</td></tr>
-<tr><td>3</td><td>Scale</td><td>1 million requests per second, and 100 million distinct searches.</td></tr>
-</tbody>
-</table>
-</div>
-<p>Autocomplete is an aid, and nothing else depends on it, which is
-reflected in non-functional requirements 1 and 2. A search box with no suggestions is
-merely a search box, and suggestions computed from yesterday’s counts are nearly as
-good as suggestions computed from this minute’s. Both facts are used to the full. The
-table is built offline and is allowed to be stale, and the client is written so that a
-slow or failed request for suggestions leaves the user free to type and to search
-without hindrance.</p>
-<h2 id="core-entities"><a class="header" href="#core-entities">Core entities</a></h2>
-<figure>
-<img src="figures/typeahead-entities.svg?v=0037c210" alt="The core entities. Search count has the fields text string, count u32, per week. Suggestion list has the fields prefix string, top 5 searches. Counts are collected from the searches people run. Lists are computed from the counts ahead of time, 1 for each prefix.">
-<figcaption><b>Figure 22.5</b> The core entities and their fields.</figcaption>
-</figure>
-<h2 id="capacity-estimate"><a class="header" href="#capacity-estimate">Capacity estimate</a></h2>
-<div class="estimate">
-<img class="builder" src="art/crab-builder.svg" alt="A crab in a hard hat, in tears.">
-<p><strong>Arithmetic ahead.</strong> The table of prefixes occupies about 25 GB, which is held in memory on a few machines, and most requests are answered by caches before they reach those machines.</p>
-<p><a class="skip" href="#high-level-design">Skip to the high-level design</a></p>
-<details>
-<summary>Show the calculation</summary>
-<div class="table-wrapper">
-<table>
-<thead>
-<tr><th>Quantity</th><th>Calculation</th><th>Result</th></tr>
-</thead>
-<tbody>
-<tr><td>Requests per second</td><td>100000 searches × about 10 letters typed</td><td>1 million</td></tr>
-<tr><td>Requests that reach the service</td><td>1 million × 20% not answered by caches</td><td>200000 per second</td></tr>
-<tr><td>Rows in the table</td><td>distinct prefixes, after the rules on length and popularity</td><td>about 500 million</td></tr>
-<tr><td>Size of a row</td><td>prefix 12 bytes + 5 references of 8 bytes</td><td>about 50 bytes</td></tr>
-<tr><td>Size of the table</td><td>500 million × 50 bytes</td><td>25 GB</td></tr>
-</tbody>
-</table>
-</div>
-</details>
-</div>
-
-<h2 id="the-api"><a class="header" href="#the-api">The API</a></h2>
-<p>Suggestions are a resource addressed by the prefix, which is passed as a parameter of
-the query. The request is a plain <code>GET</code>, so that every cache between the user and the
-service is able to store the answer.</p>
-<p><strong>Suggestions for a prefix</strong></p>
-<pre><code class="language-http">GET /v1/suggestions?q=ka HTTP/1.1
-Host: search.example
+<h3 id="exponential-frequency-decay-and-fast-lane-trending-overlay"><a class="header" href="#exponential-frequency-decay-and-fast-lane-trending-overlay">Exponential Frequency Decay and Fast-Lane Trending Overlay</a></h3>
+<p>Raw cumulative counts freeze past events at the top of suggestions indefinitely. To balance historical stability with recency, the batch aggregator computes an exponentially weighted moving score at every time bucket <code>t</code> (hourly or daily):</p>
+<pre><code class="language-text">S(t) = alpha * C(t) + (1 - alpha) * S(t - 1)
 </code></pre>
-<pre><code class="language-http">HTTP/1.1 200 OK
-Content-Type: application/json
-Cache-Control: public, max-age=300
-
-{
-  "prefix": "ka",
-  "suggestions": ["kafka", "karaoke near me", "kayak"]
-}
-</code></pre>
-<p>The reply repeats the prefix so that the client can verify that the answer belongs to
-the text now in the box. <code>Cache-Control</code> permits browsers and edge servers to reuse
-the answer for 5 minutes.</p>
-<p><strong>A prefix with no completions</strong></p>
-<pre><code class="language-http">GET /v1/suggestions?q=kafx HTTP/1.1
-Host: search.example
-</code></pre>
-<pre><code class="language-http">HTTP/1.1 200 OK
-Content-Type: application/json
-Cache-Control: public, max-age=300
-
-{ "prefix": "kafx", "suggestions": [] }
-</code></pre>
-<p>An empty list is a successful answer and is returned with <code>200</code>. It is cached like any
-other, which protects the service against repeated requests for prefixes that lead
-nowhere.</p>
-<h2 id="high-level-design"><a class="header" href="#high-level-design">High-level design</a></h2>
-<figure class="wide">
-<img src="figures/typeahead-design.svg?v=7cca881d" alt="Suggestions while typing. The components are Searcher, Suggestion API, Prefix lists, Search log, Counting job, Search counts. Step 1: After each letter, the browser asks for suggestions. Step 2: The API returns the stored list for that prefix. Step 3: Every search that is run is written to a log. Step 4: A job counts the searches of the last week. Step 5: New lists are built from the counts.">
-<figcaption><b>Figure 22.6</b> The components and the path of a request. The steps are numbered.</figcaption>
-</figure>
-<div class="table-wrapper">
-<table>
-<thead>
-<tr><th>Component</th><th>Role</th><th>State it holds</th><th>When 1 instance fails</th></tr>
-</thead>
-<tbody>
-<tr><td>Suggestion API</td><td>looks up the list for a prefix and applies the list of exclusions</td><td>a copy of the table, in memory</td><td>another replica answers</td></tr>
-<tr><td>Prefix lists</td><td>the table of the best completions for every prefix</td><td>an immutable file, replaced at each rebuild</td><td>every replica holds the same file</td></tr>
-<tr><td>Search log</td><td>records every search that is submitted</td><td>the log, in a message queue</td><td>as in chapter 11</td></tr>
-<tr><td>Counting job</td><td>counts searches, with decay, at intervals</td><td>none between runs</td><td>the job is run again</td></tr>
-<tr><td>Search counts</td><td>the count of every distinct search</td><td>counts, in a store</td><td>the previous counts are still available</td></tr>
-</tbody>
-</table>
-</div>
-<h3 id="one-request-step-by-step"><a class="header" href="#one-request-step-by-step">One request, step by step</a></h3>
-<p>The steps follow the arrows of figure 22.6.</p>
+<p>With an hourly decay factor <code>alpha = 0.35</code>, the weight of a query’s volume from <code>h</code> hours ago decays geometrically by <code>(1 - alpha)^h = 0.65^h</code>, ensuring that sustained current demand smoothly overtakes stale peaks without abrupt cliff effects at midnight boundaries.</p>
+<p>Because a full global trie rebuild takes 15 to 45 minutes in MapReduce/Spark, breaking news queries (such as an unexpected sports result or major outage) would otherwise lag by an hour. We close this freshness gap with a <strong>two-tier hybrid serving lookup</strong>:</p>
 <ol>
-<li>After a pause in the typing, the browser asks for suggestions for the text in the box, unless it already holds the answer.</li>
-<li>The suggestion API, if no cache has answered first, normalises the prefix, reads the row for it from the table in its memory, removes any excluded entries, and returns the list.</li>
-<li>Independently of this, every search that a user submits is appended to the search log.</li>
-<li>At intervals, the counting job reads the log and brings the count of every search up to date, reducing older counts.</li>
-<li>A new table of prefix lists is built from the counts, checked, and distributed to the replicas, which begin serving it in place of the old one.</li>
+<li><strong>Main Immutable Trie (<code>~32 GB</code> per cluster, rebuilt hourly):</strong> Covers the entire 100M-query corpus with decayed scores.</li>
+<li><strong>Trending Overlay Table (<code>&lt; 50 MB</code>, updated every 60 s by Apache Flink):</strong> Consumes the live Kafka query stream over a 15-minute sliding window, computing z-score velocity <code>(recent_rate - baseline_rate) / stddev</code>. Only queries exceeding a surge threshold (and passing distinct-user <code>k</code>-anonymity and safety filters) enter the tiny trending prefix map.</li>
+<li><strong>Online Merge (<code>&lt; 0.2 ms</code>):</strong> Each serving replica looks up prefix <code>p</code> in both the main trie and the small trending map, merges the two sorted top-5 lists by boosted score, strips any terms present in the hot emergency blocklist, and returns the final 5 suggestions.</li>
 </ol>
-<h2 id="the-design-deployed"><a class="header" href="#the-design-deployed">The design, deployed</a></h2>
-<figure class="wide">
-<img src="figures/typeahead-deploy.svg?v=0a7a695f" alt="The suggestion service, deployed. Browsers: Browsers (1 million req/s), keep answers they had. Near the users: Edge servers (x 100s), cache by prefix, 5 min. Serving, in 3 zones: Load balancers (x 4), by range of prefixes, Suggestion API (x 24), whole table in memory. Building, offline: Search log (x 6), every search made, Counting job (batch), normalise, count, decay, Trending processor (x 4), the last hour.">
-<figcaption><b>Figure 22.7</b> The suggestion service as it is deployed: caches in front, a serving tier that only reads, and an offline build behind.</figcaption>
-</figure>
-<p>Most of the million requests per second are answered before they reach this
-system, by the browser’s own memory of earlier answers and by edge servers that
-cache each prefix for 5 minutes. The serving tier receives about a fifth of them. It
-consists of 24 machines, each holding a part of the table in memory, behind load
-balancers that route by the range of the prefix. Nothing in the serving tier ever
-writes. The table is produced by the build tier below, from the log of searches, and
-handed upwards once an hour as a finished file, so that a fault in the building can
-at worst leave the serving tier with an old table.</p>
-<h2 id="how-real-systems-do-it"><a class="header" href="#how-real-systems-do-it">How real systems do it</a></h2>
-<p>Facebook published an early and clear account of a typeahead in 2010, for the search
-box that suggests people and pages. Its design starts in the browser, which is
-loaded with the user’s own friends and pages before a letter is typed and answers
-from that list first, and which caches every reply so that deleting a letter costs
-nothing. Only then is the service asked, and the service is a set of indexes, 1 for
-each kind of result, queried in parallel and merged by an aggregator. The emphasis
-on the client is the same as in this chapter, and the personal first stage is a
-form of the personalisation that this chapter mentions only in passing.</p>
-<p>The data structure for the general problem, the most frequent completions of a
-prefix, has been studied as <em>top-k completion</em>. A paper from Microsoft compares
-several structures and shows that a trie which stores at each node the best score
-beneath it can find the best completions without visiting the whole subtree, in
-space close to that of the compressed strings. This is a middle way between the 2
-extremes of this chapter, the trie that must be searched and the table that stores
-every answer, and it is what a system uses when the table would be too large. Search
-libraries commonly implement completion with a compact automaton that shares both
-the prefixes and the suffixes of the stored strings.</p>
-<p>On what must not be shown, the operators of the large search engines publish
-policies stating which kinds of prediction they remove, covering violence, sexually
-explicit and hateful predictions and those that make damaging statements about
-named people, together with a means of reporting. The existence of these policies
-is the practical evidence for the section on suggestions that must not be shown.
-The threshold of distinct users is an application of the idea of k-anonymity, that
-no released item should be traceable to fewer than k people.</p>
-<h2 id="mistakes-to-avoid"><a class="header" href="#mistakes-to-avoid">Mistakes to avoid</a></h2>
+<h3 id="lock-free-double-buffered-blue-green-snapshot-swap"><a class="header" href="#lock-free-double-buffered-blue-green-snapshot-swap">Lock-Free Double-Buffered Blue-Green Snapshot Swap</a></h3>
+<p>Updating a live trie in place under <code>200,000</code> concurrent reads/s introduces reader-writer lock contention, memory fragmentation, and partial-update inconsistency. Instead, every serving node performs a <strong>double-buffered atomic pointer swap</strong>:</p>
+<ol>
+<li>While serving traffic from <code>Arc&lt;TrieSnapshot&gt;</code> (<code>v107</code>), a background loader downloads <code>v108</code> from object storage, verifies its SHA-256 checksum, maps it into memory (<code>mmap</code>), and warms critical top-level pages (<code>L &lt;= 3</code>) via synthetic prefix probes.</li>
+<li>Once warmed and verified, the loader executes a single atomic pointer swap (<code>atomic_ptr.store(v108, Ordering::Release)</code>).</li>
+<li>In-flight requests holding references to <code>v107</code> complete without interruption; once the reference count of <code>v107</code> drops to zero, the process unmaps <code>v107</code>. If canary metrics detect an anomaly in <code>v108</code>, the Rollout Controller reverts the pointer back to <code>v107</code> in under one second.</li>
+</ol>
+<h2 id="225-deep-dive-prefix-sharding-caching-and-safetyprivacy-controls"><a class="header" href="#225-deep-dive-prefix-sharding-caching-and-safetyprivacy-controls">22.5 Deep Dive: Prefix Sharding, Caching, and Safety/Privacy Controls</a></h2>
+<h3 id="frequency-balanced-prefix-range-sharding"><a class="header" href="#frequency-balanced-prefix-range-sharding">Frequency-Balanced Prefix Range Sharding</a></h3>
+<p>Partitioning the <code>27.5 GB</code> trie directly by the first ASCII letter (<code>a</code> through <code>z</code> across 26 shards) creates extreme load skew: English queries starting with <code>s</code>, <code>c</code>, or <code>p</code> carry more than 20 times the volume of <code>x</code>, <code>q</code>, or <code>z</code>. We compare two production sharding schemes:</p>
+<ul>
+<li><strong>Measured-Load Prefix Range Sharding (Preferred for Locality):</strong> The offline Trie Builder inspects observed query-frequency histograms and computes variable-length lexicographic boundaries so every shard carries roughly equal RAM and QPS (for example, <code>aa..an</code> on Shard 0, <code>ao..az</code> on Shard 1, while <code>w..z</code> share Shard 15). Prefix routing requires a tiny in-memory boundary table at the L7 router and keeps consecutive prefixes co-located on the same shard for warm CPU L2/L3 cache locality during multi-keystroke typing sessions.</li>
+<li><strong>Consistent Hashing by Prefix String:</strong> Hashes every full prefix string uniformly across shards. This eliminates range-rebalancing logic automatically when storing flat prefix-to-top-K tables, at the cost of splitting a single user’s typing sequence (<code>k</code>, <code>ka</code>, <code>kaf</code>) across different machines and losing shared trie-node prefix compression.</li>
+</ul>
+<h3 id="pii-scrubbing-k-anonymity-and-moderation-hygiene"><a class="header" href="#pii-scrubbing-k-anonymity-and-moderation-hygiene">PII Scrubbing, <code>k</code>-Anonymity, and Moderation Hygiene</a></h3>
+<p>Because autocomplete surfaces crowd-sourced text directly beneath the search bar, two classes of failures carry severe legal and reputational risk:</p>
+<ol>
+<li><strong>Private Data Leakage (<code>k</code>-Anonymity Gate):</strong> A user accidentally pasting a Social Security number, street address, or medical record into a search box must never expose that string to strangers typing the same opening characters. The aggregator enforces strict <strong>distinct-user <code>k</code>-anonymity</strong> (requiring at least <code>k = 100</code> distinct authenticated users or unique IP/cookie HyperLogLog estimates across multiple days, never raw query count, since one user can repeat a private query 500 times) combined with deterministic regex scrubbing for digits resembling credit cards, phones, and emails.</li>
+<li><strong>Defamatory, Hateful, and Unsafe Completions:</strong> High search volume around an unverified rumor or harmful query can elevate it into top-K predictions. Defense operates in depth: (a) deterministic blocklists and ML safety classifiers filter candidates during offline snapshot assembly at zero online latency cost, and (b) an in-memory <strong>Emergency Exclusion Set</strong> pushed to all serving nodes within 60 seconds strips newly reported terms on the read path immediately without waiting for the next hourly snapshot build.</li>
+</ol>
+<h2 id="226-failure-modes-slis-and-production-systems"><a class="header" href="#226-failure-modes-slis-and-production-systems">22.6 Failure Modes, SLIs, and Production Systems</a></h2>
+<h3 id="failure-and-recovery-matrix"><a class="header" href="#failure-and-recovery-matrix">Failure and Recovery Matrix</a></h3>
 <div class="table-wrapper">
 <table>
 <thead>
-<tr><th>Mistake</th><th>What goes wrong</th><th>What to do</th></tr>
+<tr><th style="text-align: left">Failure Scenario</th><th style="text-align: left">Blast Radius</th><th style="text-align: left">Automated Recovery and Preserved Invariant</th></tr>
 </thead>
 <tbody>
-<tr><td>Ranking the matches while the user waits</td><td>Short prefixes match millions of searches and cannot be ranked in time.</td><td>Compute the best completions for every prefix in advance.</td></tr>
-<tr><td>Updating the table on every search</td><td>The serving path carries a constant load of writes.</td><td>Rebuild in batches, and keep a small separate table for what is trending.</td></tr>
-<tr><td>A request on every keystroke</td><td>Most answers are out of date on arrival.</td><td>Wait for a brief pause in the typing before asking.</td></tr>
-<tr><td>Displaying every answer as it arrives</td><td>A slow answer for an earlier prefix overwrites the right one.</td><td>Display an answer only if it is for the text now in the box.</td></tr>
-<tr><td>Requests that caches cannot store</td><td>Every keystroke of every user reaches the service.</td><td>Use <code>GET</code> with the prefix in the address, and state how long the answer may be reused.</td></tr>
-<tr><td>Counting searches without normalising</td><td>The same search is divided among several spellings.</td><td>Normalise the text before counting and before looking up.</td></tr>
-<tr><td>Counts that never decay</td><td>Searches that were popular years ago keep their places.</td><td>Reduce older counts at each period.</td></tr>
-<tr><td>Suggesting anything that is frequent</td><td>Offensive or defamatory suggestions appear under the service’s name.</td><td>Filter candidates during the build, and allow prompt removal.</td></tr>
-<tr><td>Suggesting rare searches</td><td>1 person’s private search is shown to strangers.</td><td>Admit a search only when enough different people have made it.</td></tr>
-<tr><td>Dividing by first letter</td><td>Servers for common letters are overloaded.</td><td>Divide by measured load, or by a hash.</td></tr>
-<tr><td>Making search depend on suggestions</td><td>A failure of suggestions blocks the search box.</td><td>Let the user type and search whether or not suggestions arrive.</td></tr>
+<tr><td style="text-align: left"><strong>Origin Serving Tier Outage</strong></td><td style="text-align: left">Uncached long prefixes (<code>L &gt;= 3</code>) return empty suggestions</td><td style="text-align: left">CDN edge continues serving cached hot prefixes (<code>stale-while-revalidate</code>); browser timeout (<code>80 ms</code>) ensures core search submission works uninterrupted</td></tr>
+<tr><td style="text-align: left"><strong>Corrupted or Empty Trie Snapshot (<code>v108</code>)</strong></td><td style="text-align: left">Canary shard only</td><td style="text-align: left">Rollout Controller canary gate aborts promotion; if already promoted, instant atomic pointer rollback reinstates <code>v107</code> in <code>&lt; 1 s</code></td></tr>
+<tr><td style="text-align: left"><strong>Offline Batch Aggregator Fails</strong></td><td style="text-align: left">Global corpus freshness lags past 1 hour</td><td style="text-align: left">Serving replicas continue serving <code>v107</code> indefinitely without downtime; Flink trending overlay keeps breaking news current</td></tr>
+<tr><td style="text-align: left"><strong>Out-of-Order Network Replies at Client</strong></td><td style="text-align: left">Single user’s dropdown flicker</td><td style="text-align: left">Client checks <code>response.seq &gt;= latest_seq</code> and <code>response.prefix == input_box</code>, discarding stale late responses cleanly</td></tr>
+<tr><td style="text-align: left"><strong>Newly Reported Harmful Suggestion</strong></td><td style="text-align: left">Visible up to <code>5 min</code> edge cache TTL</td><td style="text-align: left">Ops publishes entry to Emergency Blocklist (<code>&lt; 60 s</code> to origin) and triggers targeted CDN surrogate-key purge for affected prefixes</td></tr>
+<tr><td style="text-align: left"><strong>Hot Single-Letter Prefix Burst (<code>q=a</code>)</strong></td><td style="text-align: left">Edge PoP only</td><td style="text-align: left"><code>Cache-Control: public, max-age=300</code> absorbs <code>99.9%+</code> of hot short-prefix bursts at CDN edge; origin sees near-zero traffic</td></tr>
 </tbody>
 </table>
 </div>
-<h2 id="failures"><a class="header" href="#failures">Failures</a></h2>
+<h3 id="operational-slis-and-slos"><a class="header" href="#operational-slis-and-slos">Operational SLIs and SLOs</a></h3>
+<p>Four domain-specific Service Level Indicators track autocomplete quality and responsiveness:</p>
+<ol>
+<li><strong>Origin Lookup Latency (<code>p99 &lt;= 20 ms</code>, <code>p50 &lt;= 3 ms</code>):</strong> Monitored per prefix shard to detect memory-page faults after snapshot swaps or GC jitter.</li>
+<li><strong>Client-Observed End-to-End Latency and Timeout Drop Rate:</strong> Telemetry from browsers measuring actual keystroke-to-render duration (<code>p95 &lt;= 100 ms</code>) and percentage of requests cancelled or timed out.</li>
+<li><strong>Suggestion Click-Through Rate (CTR) and Mean Reciprocal Rank (MRR):</strong> Measures ranking quality; a sudden CTR drop after a <code>v108</code> rollout signals normalization mismatch or broken decay weights.</li>
+<li><strong>Snapshot Staleness and Blocklist Propagation Lag:</strong> Alerts if the active serving snapshot age exceeds <code>2 hours</code> or if any replica lags the latest <code>blocklist_version</code> by more than <code>60 seconds</code>.</li>
+</ol>
+<h3 id="how-production-systems-implement-search-autocomplete"><a class="header" href="#how-production-systems-implement-search-autocomplete">How Production Systems Implement Search Autocomplete</a></h3>
 <div class="table-wrapper">
 <table>
 <thead>
-<tr><th>Failure</th><th>What users see</th><th>How the system recovers</th></tr>
+<tr><th style="text-align: left">Production System</th><th style="text-align: left">Core Architecture</th><th style="text-align: left">Architectural Distinction</th></tr>
 </thead>
 <tbody>
-<tr><td>The suggestion service is unreachable</td><td>no suggestions, and search works as usual</td><td>caches continue to answer common prefixes, and the service returns</td></tr>
-<tr><td>A newly built table is faulty</td><td>strange or missing suggestions</td><td>the previous table is reinstated in 1 step</td></tr>
-<tr><td>The counting job fails</td><td>suggestions grow slowly out of date</td><td>the job is run again, and the previous table serves meanwhile</td></tr>
-<tr><td>An offensive suggestion is reported</td><td>it disappears within minutes</td><td>it is added to the exclusions, and the filter is corrected for the next build</td></tr>
-<tr><td>An answer is lost or late</td><td>the list fails to update for 1 keystroke</td><td>the next keystroke sends a new request</td></tr>
+<tr><td style="text-align: left"><strong>Google Suggest</strong></td><td style="text-align: left">Globally distributed prefix-sharded in-memory trees, real-time trending pipelines, strict policy/safety classifiers, and locale-aware ranking</td><td style="text-align: left">Combines global decayed volume with geographic locality, fresh breaking-event overlays, and automated enforcement of published prediction safety policies</td></tr>
+<tr><td style="text-align: left"><strong>Elasticsearch Completion Suggester</strong></td><td style="text-align: left">Finite State Transducer (FST) stored in Lucene segment files and loaded directly into off-heap memory</td><td style="text-align: left">Compresses both shared prefixes and shared suffixes into a deterministic weighted automaton, answering top-K prefix queries in microseconds with minimal RAM</td></tr>
+<tr><td style="text-align: left"><strong>Meta (Facebook) Typeahead</strong></td><td style="text-align: left">Browser-side bootstrapped personal graph + parallel backend type-specific indexes merged by a stateless aggregator</td><td style="text-align: left">Preloads a user’s immediate social connections into browser RAM before the first keystroke so personal queries resolve in <code>&lt; 1 ms</code> with zero network RTT</td></tr>
+<tr><td style="text-align: left"><strong>Microsoft Top-k Completion (RMQ / Path-Compressed Trie)</strong></td><td style="text-align: left">Space-efficient path-compressed trie annotating internal nodes with max-subtree scores and priority-queue traversal</td><td style="text-align: left">Avoids storing redundant top-K lists at every node when memory budgets are tight, achieving near-optimal space with bounded top-K extraction time</td></tr>
 </tbody>
 </table>
 </div>
-<h2 id="trade-offs"><a class="header" href="#trade-offs">Trade-offs</a></h2>
-<div class="table-wrapper">
-<table>
-<thead>
-<tr><th>Decision</th><th>What it gains</th><th>What it costs</th></tr>
-</thead>
-<tbody>
-<tr><td>Answers computed in advance</td><td>1 lookup per request, whatever the prefix</td><td>storage for every prefix, and staleness between rebuilds</td></tr>
-<tr><td>Rebuilding in batches</td><td>simple, verifiable, and easy to reverse</td><td>new searches appear late, without the trending table</td></tr>
-<tr><td>A separate trending table</td><td>fresh suggestions within a minute</td><td>a second mechanism to operate</td></tr>
-<tr><td>Caching at the edge and in the browser</td><td>most requests never reach the service</td><td>a removed suggestion lingers until the caches expire</td></tr>
-<tr><td>A threshold of distinct people</td><td>privacy, and a smaller table</td><td>rare searches that would be legitimate are never suggested</td></tr>
-</tbody>
-</table>
-</div>
-<p>The fourth row conceals a tension that deserves to be noticed. The longer the answers
-may be cached, the lighter the load, and the longer a suggestion that has been removed
-continues to be shown from caches that the service cannot reach. The period for which
-answers are cached is therefore chosen with removals in mind, and it is the reason why
-5 minutes is a more usual figure than 5 hours.</p>
-<h2 id="the-simulation"><a class="header" href="#the-simulation">The simulation</a></h2>
+<h2 id="227-simulation-verification"><a class="header" href="#227-simulation-verification">22.7 Simulation Verification</a></h2>
+<p>To verify prefix lookup, frequency-ordered top-K ranking, and empty-prefix handling, execute the <code>typeahead</code> crate in the repository’s <code>code/</code> workspace:</p>
+<pre><code class="language-console">$ cargo run --release -p typeahead
+k    -&gt; kubernetes (950), kafka (900), karaoke near me (800)
+ka   -&gt; kafka (900), karaoke near me (800), kayak (450)
+kaf  -&gt; kafka (900), kafka vs rabbitmq (300)
+ke   -&gt; key value store (700), keyboard (650)
+ra   -&gt; raft (600), rate limiter (500)
+x    -&gt; no suggestion
+</code></pre>
+<p>The observed output validates the precomputed prefix-table behavior across six representative prefixes:</p>
+<ul>
+<li>Short prefix <code>k</code> immediately returns the top 3 completions across the entire <code>k*</code> subtree (<code>kubernetes (950)</code>, <code>kafka (900)</code>, <code>karaoke near me (800)</code>) ordered strictly by descending score.</li>
+<li>Narrowing from <code>k</code> to <code>ka</code> and <code>kaf</code> progressively refines the candidate set down to <code>kafka (900)</code> and <code>kafka vs rabbitmq (300)</code>.</li>
+<li>Prefix <code>x</code> returns an explicit empty result (<code>no suggestion</code>), matching our API contract for cacheable empty <code>200 OK</code> responses.</li>
+</ul>
 <div class="simulation">
-<p><strong>Simulation in the repository.</strong> The program <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/distributed-systems-from-the-ground-up/code/typeahead/src/main.rs"><code>code/typeahead</code></a> simulates this design. To run it, clone the repository and type <code>cargo run --release -p typeahead</code> in the <code>code</code> directory.</p>
+<p><strong>Run the search autocomplete simulation.</strong> Execute <code>cargo run --release -p typeahead</code> in <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/distributed-systems-from-the-ground-up/code/typeahead/src/main.rs"><code>code/typeahead</code></a> to reproduce top-K prefix ranking across progressively narrowed prefixes and verify empty-prefix handling.</p>
 </div>
 
-<h2 id="references"><a class="header" href="#references">References</a></h2>
-<ul>
-<li>Facebook engineering blog, “The Life of a Typeahead Query”, 2010.</li>
-<li>B. Hsu and G. Ottaviano, “Space-Efficient Data Structures for Top-k Completion”, WWW 2013.</li>
-<li>Google Search Help, “How Google autocomplete predictions work”.</li>
-<li>L. Sweeney, “k-Anonymity: A Model for Protecting Privacy”, International Journal of Uncertainty, Fuzziness and Knowledge-Based Systems, 2002.</li>
-</ul>
-<h2 id="terms-introduced-in-this-chapter"><a class="header" href="#terms-introduced-in-this-chapter">Terms introduced in this chapter</a></h2>
+<h2 id="228-terminology-and-references"><a class="header" href="#228-terminology-and-references">22.8 Terminology and References</a></h2>
+<h3 id="engineering-glossary"><a class="header" href="#engineering-glossary">Engineering Glossary</a></h3>
 <div class="table-wrapper">
 <table>
 <thead>
-<tr><th>Term</th><th>Meaning</th></tr>
+<tr><th style="text-align: left">Term</th><th style="text-align: left">Definition</th></tr>
 </thead>
 <tbody>
-<tr><td>Autocomplete, typeahead</td><td>proposing complete searches for the text typed so far</td></tr>
-<tr><td>Prefix</td><td>the text that has been typed so far</td></tr>
-<tr><td>Completion</td><td>a search that begins with the prefix</td></tr>
-<tr><td>Trie, prefix tree</td><td>a tree in which the path to each node spells a prefix</td></tr>
-<tr><td>Top k</td><td>the k best items by some measure, here the k most frequent</td></tr>
-<tr><td>Normalisation</td><td>bringing text to a standard form before comparing or counting it</td></tr>
-<tr><td>Decay</td><td>reducing the weight of older counts</td></tr>
-<tr><td>Trending</td><td>recently far more frequent than in the past</td></tr>
-<tr><td>Debouncing</td><td>waiting for a pause in the typing before sending a request</td></tr>
-<tr><td>Sampling</td><td>counting a random fraction of events in place of all of them</td></tr>
+<tr><td style="text-align: left"><strong>Debouncing</strong></td><td style="text-align: left">Delaying outgoing autocomplete requests by a short quiet window (<code>50 to 100 ms</code>) after each keystroke to avoid wasting bandwidth on intermediate letters while typing rapidly.</td></tr>
+<tr><td style="text-align: left"><strong>Double-Buffered Snapshot Swap</strong></td><td style="text-align: left">Loading a new immutable trie version alongside the active snapshot and flipping a single atomic read pointer lock-free so zero online queries stall during updates.</td></tr>
+<tr><td style="text-align: left"><strong>Exponential Frequency Decay</strong></td><td style="text-align: left">Weighting historical query counts via <code>S(t) = alpha * C(t) + (1 - alpha) * S(t - 1)</code> so recent popularity outranks outdated cumulative volume.</td></tr>
+<tr><td style="text-align: left"><strong>Finite State Transducer (FST)</strong></td><td style="text-align: left">A compact directed acyclic automaton that shares both common prefixes and common suffixes across keys while associating numeric weights with paths.</td></tr>
+<tr><td style="text-align: left"><strong><code>k</code>-Anonymity Threshold</strong></td><td style="text-align: left">Admitting a query into autocomplete only after at least <code>k</code> distinct users have issued it, preventing private single-user searches from leaking to strangers.</td></tr>
+<tr><td style="text-align: left"><strong>Precomputed Top-K Trie</strong></td><td style="text-align: left">A prefix tree in which every internal node stores the pre-sorted top-K completions of its entire subtree, reducing lookup complexity to <code>O(L)</code> pointer hops.</td></tr>
+<tr><td style="text-align: left"><strong>Sequence-ID Out-of-Order Guard</strong></td><td style="text-align: left">Tagging each client request with a monotonic integer <code>seq</code> and discarding late responses whose <code>seq</code> trails a newer keystroke.</td></tr>
 </tbody>
 </table>
 </div>
-<div class="summary">
-<h2 id="summary"><a class="header" href="#summary">Summary</a></h2>
+<h3 id="references"><a class="header" href="#references">References</a></h3>
 <ul>
-<li>Autocomplete is requested for every keystroke and must answer within about 100 ms, which leaves no time to compute anything.</li>
-<li>A sorted list or a trie finds the searches that begin with a prefix quickly, and ranking them still costs in proportion to their number.</li>
-<li>The best completions of every prefix are therefore computed in advance, so that a request is a single lookup.</li>
-<li>The table is rebuilt in batches from counts of submitted searches, normalised, sampled and weighted towards the recent.</li>
-<li>A small table of trending searches, brought up to date every minute, supplies what the daily rebuild cannot.</li>
-<li>The client waits for a pause before asking, discards answers that arrive late, and reuses answers it already has.</li>
-<li>Candidates are filtered for offensive content, and a search is suggested only if enough different people have made it.</li>
+<li>B. J. Hsu and G. Ottaviano, “Space-Efficient Data Structures for Top-k Completion”, <em>Proceedings of the 22nd International World Wide Web Conference (WWW)</em>, 2013.</li>
+<li>Facebook Engineering, “The Life of a Typeahead Query”, Meta Engineering Blog, 2010.</li>
+<li>Elastic NV, “Completion Suggester and Finite State Transducers”, Elasticsearch Documentation.</li>
+<li>Google Search Help, “How Google Autocomplete Predictions Work and Autocomplete Policies”.</li>
+<li>L. Sweeney, “k-Anonymity: A Model for Protecting Privacy”, <em>International Journal of Uncertainty, Fuzziness and Knowledge-Based Systems</em>, vol. 10, no. 5, 2002.</li>
+<li>RFC 9111, <em>HTTP Caching</em>, IETF, 2022 (<code>Cache-Control: public, max-age, stale-while-revalidate</code>).</li>
 </ul>
-</div>
-
 
                     </main>
 
@@ -778,7 +546,7 @@ answers are cached is therefore chosen with removals in mind, and it is the reas
         <script src="book-609e4cb8.js"></script>
 
         <!-- Custom JS scripts -->
-        <script src="theme/figures-47b15f7f.js"></script>
+        <script src="theme/figures-9c14cb1c.js"></script>
         <script src="theme/proto-326509cd.js"></script>
         <script src="theme/code-67e9caaf.js"></script>
         <script src="theme/tables-9fb295e8.js"></script>

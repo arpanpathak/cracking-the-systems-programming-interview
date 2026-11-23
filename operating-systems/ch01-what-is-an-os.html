@@ -28,7 +28,7 @@
         <link rel="stylesheet" id="mdbook-ayu-highlight-css" href="ayu-highlight-3fdfc3ac.css">
 
         <!-- Custom theme stylesheets -->
-        <link rel="stylesheet" href="theme/custom-9125cc61.css">
+        <link rel="stylesheet" href="theme/custom-3c3d4beb.css">
 
         <!-- MathJax -->
         <script async src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.1/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
@@ -38,10 +38,10 @@
             const path_to_root = "";
             const default_light_theme = "light";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "searchindex-025a35ef.js";
+            window.path_to_searchindex_js = "searchindex-e451f97a.js";
         </script>
         <!-- Start loading toc.js asap -->
-        <script src="toc-f3585118.js"></script>
+        <script src="toc-1a401835.js"></script>
     </head>
     <body>
     <div id="mdbook-help-container">
@@ -194,7 +194,7 @@
 <h2 id="13-mechanism-versus-policy-separation"><a class="header" href="#13-mechanism-versus-policy-separation">1.3 Mechanism versus Policy Separation</a></h2>
 <p>The implementation of these roles relies on the distinction between mechanism and policy. Mechanisms, the low-level primitives provided by the hardware, such as context switching or page table walks, remain constant across architectural iterations, while policies, the logic governing which process to schedule or which page to evict, are tuned to specific system requirements.</p>
 <h2 id="14-the-system-call-boundary-and-posix-standard-interface"><a class="header" href="#14-the-system-call-boundary-and-posix-standard-interface">1.4 The System Call Boundary and POSIX Standard Interface</a></h2>
-<p>The boundary between the kernel (which executes in a privileged mode with unrestricted instruction access) and user-mode applications is mediated through the system call interface. A system call provides a hardware-supervised, deterministic transfer of control, allowing a program to request kernel services without compromising the integrity of the kernel’s own address space. This transition, while computationally expensive compared to standard function calls, serves as the essential gatekeeper for system security and stability.</p>
+<p>The boundary between the kernel (which executes in a privileged mode with unrestricted instruction access) and user-mode applications is mediated through the <strong>Portable Operating System Interface (<code>POSIX</code>)</strong> system call interface. A system call provides a hardware-supervised, deterministic transfer of control, allowing a program to request kernel services without compromising the integrity of the kernel’s own address space. This transition, while computationally expensive compared to standard function calls, serves as the essential gatekeeper for system security and stability.</p>
 <p><strong>Table 1-1. POSIX calls in this book.</strong></p>
 <div class="table-wrapper">
 <table>
@@ -213,6 +213,11 @@
 </tbody>
 </table>
 </div>
+<div class="callout keyidea">
+<span class="label">Key idea</span>
+<p>Every operating system balances two competing goals: <strong>virtualization</strong> (giving each program the illusion of a private processor, flat memory, and durable files) and <strong>isolation</strong> (preventing any faulty or adversarial program from corrupting sibling processes or the kernel). Separating unchanging hardware mechanisms from tunable kernel policies makes both possible.</p>
+</div>
+
 
                     </main>
 
@@ -265,7 +270,7 @@
         <script src="book-609e4cb8.js"></script>
 
         <!-- Custom JS scripts -->
-        <script src="theme/figures-f1be29a8.js"></script>
+        <script src="theme/figures-fd5ff574.js"></script>
 
 
 

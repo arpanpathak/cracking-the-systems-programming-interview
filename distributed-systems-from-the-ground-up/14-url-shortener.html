@@ -1,9 +1,9 @@
 <!DOCTYPE HTML>
-<html lang="en" class="light sidebar-visible" dir="ltr">
+<html lang="en" class="navy sidebar-visible" dir="ltr">
     <head>
         <!-- Book generated using mdBook -->
         <meta charset="UTF-8">
-        <title>URL Shortener - Distributed Systems from the Ground Up</title>
+        <title>14. URL Shortener - Distributed Systems from the Ground Up</title>
 
 
         <!-- Custom HTML head -->
@@ -28,20 +28,18 @@
         <link rel="stylesheet" id="mdbook-ayu-highlight-css" href="ayu-highlight-3fdfc3ac.css">
 
         <!-- Custom theme stylesheets -->
-        <link rel="stylesheet" href="theme/custom-8a495b63.css">
-        <link rel="stylesheet" href="theme/formal-05bd78f0.css">
-        <link rel="stylesheet" href="theme/layout-0a0c0003.css">
+        <link rel="stylesheet" href="theme/custom-59beaf6d.css">
 
 
         <!-- Provide site root and default themes to javascript -->
         <script>
             const path_to_root = "";
-            const default_light_theme = "light";
+            const default_light_theme = "navy";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "searchindex-25bb747f.js";
+            window.path_to_searchindex_js = "searchindex-5d54d4b4.js";
         </script>
         <!-- Start loading toc.js asap -->
-        <script src="toc-cc887274.js"></script>
+        <script src="toc-ef51d47d.js"></script>
     </head>
     <body>
     <div id="mdbook-help-container">
@@ -79,7 +77,7 @@
             try { theme = localStorage.getItem('mdbook-theme'); } catch(e) { }
             if (theme === null || theme === undefined) { theme = default_theme; }
             const html = document.documentElement;
-            html.classList.remove('light')
+            html.classList.remove('navy')
             html.classList.add(theme);
             html.classList.add("js");
         </script>
@@ -183,527 +181,391 @@
 
                 <div id="mdbook-content" class="content">
                     <main>
-                        <img class="plate" src="art/ch14.svg?v=f194620c" alt="Dash, a hare, stands beside a sign that reads: 1000000 becomes 4C92.">
-<h1 id="url-shortener-system-design"><a class="header" href="#url-shortener-system-design">URL Shortener: System Design</a></h1>
-<p>A URL shortener accepts a long web address and returns a short one, such as
-<code>sho.rt/4C92</code>, which leads to the same place. Anyone who opens the short address is
-redirected to the long one. The service does 2 things only, creating a link and
-following a link, and its data is a single table with 2 columns. It is nevertheless a
-standard exercise in system design, and deservedly so, because within that small
-compass it raises several questions that recur in much larger systems: how to generate
-identifiers that are short, unique and hard to guess; how to serve a load that
-consists almost entirely of reads; how to count events without slowing down the
-operation being counted; and how to run a public service that people will certainly
-try to misuse.</p>
-<p>The quantities involved shape every decision. Links are created at a modest rate and
-followed at a far higher one, typically a hundred times higher, and a link once
-created is never changed. A system with these characteristics is designed around its
-read path, which must be fast and must stay available, while the write path may be
-slower and may, if necessary, be briefly unavailable without great harm. A link that
-fails to open is a failure visible to everyone who was sent it, and a link that cannot
-be created for a minute inconveniences 1 person.</p>
+                        <img class="plate" src="art/ch14-plate.svg" alt="Chapter 14 plate: Base-62 bijection encoding a 64-bit integer into a 7-character short code across 62^7 = 3.52 trillion codes with 301/302 edge redirects." />
+<h1 id="14-url-shortener-system-design"><a class="header" href="#14-url-shortener-system-design">14. URL Shortener: System Design</a></h1>
+<p>A global URL shortener maps an arbitrary target web address to a compact alias, such as <code>sho.rt/4C92a7Q</code>, and redirects every incoming visitor to the original destination within milliseconds. Although the core data model fits into a single key-value relation, operating a public redirect service at internet scale exposes foundational distributed systems tensions: generating short, collision-free, non-enumerable identifiers without cross-node write contention; serving a 100:1 read-heavy workload under extreme Zipfian skew; recording high-volume click analytics without introducing write amplification on the redirect path; and revoking malicious links promptly across globally distributed caches.</p>
+<p>In this chapter, we design a globally distributed URL shortener anchored around a strict asymmetry between writes and reads. Creating a link happens at a modest rate and tolerates tens of milliseconds of latency, whereas following a link happens two orders of magnitude more frequently and sits directly on the critical path of every user clicking a link in an email, message, or web page. A brief pause in link creation inconveniences one author; a failed redirect breaks published links for millions of visitors simultaneously.</p>
 <div class="covers">
-<p>This chapter covers</p>
+<p>In this chapter, we cover</p>
 <ul>
-<li>how long a code has to be</li>
-<li>3 ways of making a code: from a hash, at random, and from a counter</li>
-<li>writing a number in base 62, step by step</li>
-<li>why codes from a counter can be guessed, and how to prevent it</li>
-<li>the 2 kinds of redirect, and what each means for speed and for counting</li>
-<li>a read path built from a cache and a key-value store</li>
-<li>counting clicks without writing on every redirect</li>
-<li>custom names, expiry, and the same address submitted twice</li>
-<li>the misuse of a public redirect service</li>
+<li>actors, use cases, functional requirements, sub-10 ms redirect SLOs, explicit non-goals, and 5-year capacity bounds</li>
+<li>external HTTP/2 contracts for link creation, <code>301</code>/<code>302</code> redirection, alias management, abuse quarantine, and relational and key-value schemas</li>
+<li>separation of the control plane (range allocation, blocklist propagation, click analytics) from the read-optimized data plane</li>
+<li>key allocation strategies comparing truncated cryptographic hashes, random generation, and disjoint counter range leasing with Base-62 bijection and Feistel scrambling</li>
+<li>multi-tier redirect caching (CDN edge, regional Redis, Bloom filter negative-lookup defense), <code>301</code> versus <code>302</code> revocation trade-offs, and asynchronous click pipelines</li>
+<li>failure-mode mitigation matrices, operational SLIs, production benchmarks (Bitly, TinyURL, Flickr Base58), and verification via <code>code/shortener</code></li>
 </ul>
 </div>
 
-<h2 id="how-long-a-code-must-be"><a class="header" href="#how-long-a-code-must-be">How long a code must be</a></h2>
-<p>The code is the part of the short address that follows the domain, and its length is
-the first thing to be settled, since shortness is the product.</p>
-<p>A code is a string over some alphabet, and the number of distinct codes of a given
-length is the size of the alphabet raised to that length. The customary alphabet
-consists of the 10 digits, the 26 capital letters and the 26 small letters, 62
-characters in all, each of which may appear in a web address without special
-encoding. With 62 characters, codes of length 6 number about 57 billion and codes of
-length 7 about 3.5 trillion.</p>
-<p>The service of this chapter expects 100 million new links per month, or 6 billion in 5
-years. Codes of 6 characters would suffice for that in principle, with about 10 times
-as many codes as links. We choose 7, which provides nearly 600 times as many, for 2
-reasons. The service should not approach exhaustion within its lifetime, since
-lengthening the codes later is disruptive. And, as will appear below, a code space
-that is sparsely occupied is considerably harder to explore by guessing.</p>
-<p>Some alphabets omit characters that are easily confused in print or over the
-telephone, such as the digit 0 and the capital O, or the digit 1 and the small l. This
-reduces the alphabet to 58 or fewer characters and the number of codes accordingly. It
-is worth doing where links are likely to be read aloud or copied by hand.</p>
-<h2 id="making-a-code"><a class="header" href="#making-a-code">Making a code</a></h2>
-<p>A code must be unique, because a code that referred to 2 addresses would send some
-visitors to the wrong one. There are 3 established ways of producing codes, and they
-differ in how uniqueness is obtained and in what the codes reveal.</p>
-<h3 id="from-a-hash-of-the-address"><a class="header" href="#from-a-hash-of-the-address">From a hash of the address</a></h3>
-<p>The first idea is to compute a hash of the long address and take its first 7
-characters. The method has the attraction of needing no state at all: the code is a
-function of the address, and any server can compute it.</p>
-<p>Its defect is that 2 different addresses can produce the same 7 characters. This is
-the collision that chapter 8 calculated for random identifiers, and the same
-arithmetic applies: among n codes drawn from N possibilities, the expected number of
-colliding pairs is about n squared divided by twice N. The simulation for this chapter
-shortened 2 million addresses to 6 characters of a hash, a form that allows about 20
-billion different codes, and 97 of the addresses received a code that another address
-already had.</p>
-<figure>
-<img src="figures/short-collide.svg?v=8bce771b" alt="2 million addresses are each given a code. With codes from a counter, no 2 addresses share a code. With codes made of 6 characters of a hash, 97 addresses share a code with another address.">
-<figcaption><b>Figure 14.1</b> Codes from a counter never coincide, while codes cut from a hash coincide once there are enough of them.</figcaption>
+<h2 id="141-requirements-actors-and-capacity-bounds"><a class="header" href="#141-requirements-actors-and-capacity-bounds">14.1 Requirements, Actors, and Capacity Bounds</a></h2>
+<h3 id="actors-and-use-cases"><a class="header" href="#actors-and-use-cases">Actors and Use Cases</a></h3>
+<p>We partition the URL shortener boundary around three external actor groups (Figure 14-1).</p>
+<figure class="diagram">
+<img src="figures/m3/ch14_use_cases.svg" alt="Actors and Use Cases of the Global URL Shortener: Link Author creates short URLs, manages aliases and expiry, and queries click analytics; Link Visitor resolves short codes via HTTP redirect; Trust and Analytics quarantines abusive links." />
+<figcaption><b>Figure 14-1</b> Actors, system boundary, and core use cases of the global URL shortener.</figcaption>
 </figure>
-<p>A collision rate of 97 in 2 million sounds small, and a service cannot send even 1
-visitor in 20000 to the wrong destination. Every newly computed code must therefore be
-checked against the store, and when it is found to be taken by a different address,
-the service must derive another, for instance by appending a counter to the address
-and hashing again. The method thus requires a read before every write and a loop for
-retries, and the collisions become more frequent as the store fills.</p>
-<p>Deriving the code from the address has a further consequence that is sometimes wanted
-and sometimes not. The same address always yields the same code, so that 2 people who
-shorten the same address receive the same link, and neither can have statistics or an
-expiry date of their own.</p>
-<h3 id="at-random"><a class="header" href="#at-random">At random</a></h3>
-<p>The second method draws 7 characters at random and checks whether the resulting code
-is already in use, drawing again if it is. As with the hash, a check before each write
-is unavoidable. With 6 billion links among 3.5 trillion codes, about 1 draw in 600
-finds its code taken, so the retries are rare and remain rare for the life of the
-service.</p>
-<p>Random codes have an important virtue, which is that they disclose nothing. A code
-says nothing about when its link was created or how many others exist, and knowing 1
-valid code is of no help in finding another. The cost is the check, which on a
-replicated store must be an atomic “create if absent” of the kind described in
-chapter 10, since 2 servers might otherwise draw the same code at the same moment and
-both find it free.</p>
-<h3 id="from-a-counter"><a class="header" href="#from-a-counter">From a counter</a></h3>
-<p>The third method abandons chance. Each new link is assigned the next number from a
-counter, and the code is that number written in a compact notation. Since no 2 links
-are given the same number, no 2 receive the same code, and uniqueness requires no
-check and no retry.</p>
-<p>The compact notation is base 62, which uses the 62 characters of the alphabet as
-digits in the way that decimal notation uses 10.</p>
-<figure class="steps" data-prefix="figures/steps-short-encode" data-count="6" data-version="d0e5eca4">
-<img src="figures/steps-short-encode-01.svg?v=d0e5eca4" alt="Writing a number in base 62, step 1 of 6. The link is number 1000000 from the counter. To write it as a code, we divide by 62 again and again. Each remainder is 1 digit of the code, starting from the right.">
-<figcaption><b>Figure 14.2</b> The number 1000000 is written in base 62 by repeated division. Use Next and Back to move through the 6 steps.</figcaption>
-</figure>
-<p>The simulation confirms the round trip for a selection of numbers: 0 is written as
-<code>0</code>, 61 as <code>z</code>, 62 as <code>10</code>, a million as <code>4C92</code>, and the largest number that fits in 7
-characters, 3521614606207, as <code>zzzzzzz</code>, and each code reads back as the number from
-which it came. It also shortens 2 million addresses by counter and finds no collision
-among them, as must be the case.</p>
-<p>The counter itself must be shared by all the servers that create links, and chapter 8
-was devoted to that problem. The method of blocks suits this service well. Each web
-server obtains a block of, say, 1000 consecutive numbers from the counter and assigns
-them from memory, returning for another block when the first is used up. The counter
-is consulted once per 1000 links, and the numbers lost when a server restarts in the
-middle of a block are of no consequence when 3.5 trillion are available.</p>
-<h3 id="what-a-counter-gives-away"><a class="header" href="#what-a-counter-gives-away">What a counter gives away</a></h3>
-<p>Codes that are consecutive numbers have a property that is unacceptable in a public
-service. They can be guessed.</p>
-<figure>
-<img src="figures/short-guess.svg?v=d7f03fb4" alt="4 steps. An author creates a link and receives the code 4C92, which leads to a private document. A stranger tries the neighbouring codes 4C91, 4C93 and 4C94. Each neighbour is somebody&#39;s link, because codes come from a counter. The stranger reads documents meant for others. The cure is to scramble the number before writing it in base 62.">
-<figcaption><b>Figure 14.3</b> The codes next to a known code are valid links belonging to other people.</figcaption>
-</figure>
-<p>Anyone who holds 1 link can obtain others by adding or subtracting 1, and can walk
-through the entire collection in order. Short links are routinely created for
-addresses that carry a secret within them, such as a shared document that anyone with
-the link may read or a page for resetting a password, on the assumption that the
-address cannot be found by a stranger. Sequential codes destroy that assumption. They
-also reveal the volume of the business, since the difference between a code created
-today and one created a week ago is the number of links made in the week.</p>
-<p>The remedy keeps the counter and conceals its order. Before the number is written in
-base 62, it is passed through a fixed scrambling function that maps each number below
-62 to the power 7 to a different number in the same range. Because the mapping sends
-distinct inputs to distinct outputs, the codes remain unique without any check, and
-because it is designed so that neighbouring inputs give unrelated outputs, consecutive
-links receive codes with no visible relation to one another. Such a function is in
-effect a small cipher with a secret key, and anyone without the key cannot recover the
-sequence.</p>
-<p>Even with scrambled or random codes, a stranger can still try codes blindly, and the
-fraction of attempts that succeed equals the fraction of the code space in use. This
-is the second reason for preferring 7 characters to 6. With 6 billion links in 57
-billion codes, 1 guess in 10 would find a link. With 3.5 trillion codes, 1 guess in
-600 does, and a rate limit on requests for codes that do not exist, of the kind
-described in chapter 7, makes systematic exploration impractical.</p>
 <div class="table-wrapper">
 <table>
 <thead>
-<tr><th></th><th>From a hash</th><th>At random</th><th>From a counter, scrambled</th></tr>
+<tr><th style="text-align: left">Actor</th><th style="text-align: left">Operation</th><th style="text-align: left">Concrete Scenario</th></tr>
 </thead>
 <tbody>
-<tr><td>Uniqueness</td><td>by check and retry</td><td>by check and retry</td><td>by construction</td></tr>
-<tr><td>A read before each write</td><td>yes</td><td>yes</td><td>no</td></tr>
-<tr><td>Shared state</td><td>none</td><td>none</td><td>a counter, consulted once per block</td></tr>
-<tr><td>The same address twice</td><td>the same code</td><td>different codes</td><td>different codes</td></tr>
-<tr><td>Can codes be guessed</td><td>no</td><td>no</td><td>no, while the key is secret</td></tr>
+<tr><td style="text-align: left"><strong>Link Author</strong></td><td style="text-align: left">Create short link (<code>POST /v1/links</code>), update expiry or alias (<code>PATCH / DELETE /v1/links/{code}</code>), query analytics (<code>GET /v1/links/{code}/stats</code>)</td><td style="text-align: left">Marketing team or API client shortens a parameterized campaign URL with a 90-day expiry and inspects daily click totals</td></tr>
+<tr><td style="text-align: left"><strong>Link Visitor</strong></td><td style="text-align: left">Resolve and follow short link (<code>GET /{code}</code>)</td><td style="text-align: left">Browser or mobile application opens a shared short link and receives a sub-10 ms HTTP redirect to the destination URL</td></tr>
+<tr><td style="text-align: left"><strong>Trust and Analytics Team</strong></td><td style="text-align: left">Quarantine abusive link (<code>POST /v1/admin/block/{code}</code>) and inspect domain threat telemetry</td><td style="text-align: left">Safety automation detects a phishing destination and blocks resolution across regional caches and CDN edges within seconds</td></tr>
 </tbody>
 </table>
 </div>
-<p>The design of this chapter uses a counter with blocks and a scrambling step. It avoids
-the read before each write, and it never has to retry.</p>
-<h2 id="following-a-link"><a class="header" href="#following-a-link">Following a link</a></h2>
-<p>When a visitor’s browser requests <code>sho.rt/4C92</code>, the service looks up the code and
-replies with a <em>redirect</em>, a response that carries no page and names another
-address to which the browser should go. HTTP provides 2 principal kinds, and the
-choice between them is a real design decision with consequences for load and for
-measurement.</p>
-<p>A reply with status <code>301 Moved Permanently</code> tells the browser that the short address
-has been replaced by the long one for good. Browsers are entitled to remember this,
-and they do: the next time the same person opens the same short link, the browser goes
-directly to the long address without contacting the shortener at all. A reply with
-status <code>302 Found</code> states that the redirect is temporary, and the browser asks the
-shortener again on each occasion.</p>
+<h3 id="functional-requirements"><a class="header" href="#functional-requirements">Functional Requirements</a></h3>
 <div class="table-wrapper">
 <table>
 <thead>
-<tr><th></th><th><code>301 Moved Permanently</code></th><th><code>302 Found</code></th></tr>
+<tr><th style="text-align: left">No.</th><th style="text-align: left">Functional Requirement</th></tr>
 </thead>
 <tbody>
-<tr><td>Repeat visits by the same browser</td><td>go straight to the destination</td><td>return to the shortener each time</td></tr>
-<tr><td>Load on the shortener</td><td>lower</td><td>higher</td></tr>
-<tr><td>Click counts</td><td>count each browser once</td><td>count every visit</td></tr>
-<tr><td>Changing or disabling the link later</td><td>does not reach browsers that remembered it</td><td>takes effect immediately</td></tr>
+<tr><td style="text-align: left">0</td><td style="text-align: left">An authenticated author submits a valid <code>http</code> or <code>https</code> URL (up to 4,096 bytes) and receives a unique 7-character Base-62 short code, with optional caller-supplied expiry timestamp and idempotency key.</td></tr>
+<tr><td style="text-align: left">1</td><td style="text-align: left">A visitor requesting <code>GET /{code}</code> receives an HTTP redirect (<code>302 Found</code> or bounded-TTL <code>301 Moved Permanently</code>) carrying the canonical target URL in the <code>Location</code> header, or <code>404 Not Found</code> / <code>410 Gone</code> if the code is absent, expired, or quarantined.</td></tr>
+<tr><td style="text-align: left">2</td><td style="text-align: left">An author can reserve an optional custom alias (distinguished structurally from generated 7-character codes) using atomic create-if-absent semantics.</td></tr>
+<tr><td style="text-align: left">3</td><td style="text-align: left">Once assigned to a URL, a generated short code never maps to a different target URL, and expired or deleted codes are never recycled.</td></tr>
+<tr><td style="text-align: left">4</td><td style="text-align: left">Authors can query time-bucketed click statistics (total clicks, hourly rollups, top referrers) without adding synchronous write latency to redirects.</td></tr>
+<tr><td style="text-align: left">5</td><td style="text-align: left">The platform screens destination URLs against phishing and malware blocklists on creation and periodically thereafter, refuses self-domain redirect loops, and supports rapid administrative quarantine.</td></tr>
 </tbody>
 </table>
 </div>
-<p>The last row is the one most often overlooked. A link that has been served with <code>301</code>
-cannot reliably be withdrawn, because browsers that have stored the redirect will
-continue to follow it. A service that must be able to disable links, which, as the
-section on misuse explains, every public shortener must, should prefer <code>302</code>, or
-should send <code>301</code> with a short limit on how long it may be remembered. Our design
-sends <code>301</code> together with a header that limits the browser’s memory of it to a day,
-which removes most repeat requests while ensuring that a disabled link stops working
-within 24 hours.</p>
-<h2 id="the-read-path"><a class="header" href="#the-read-path">The read path</a></h2>
-<p>Redirects outnumber creations by a hundred to 1 and must be answered in a few
-milliseconds, so the read path is built for speed in layers.</p>
-<p>The mapping from code to address is a pure lookup by key, with no queries by any
-other attribute, and it is therefore kept in a key-value store of the kind built in
-chapters 1 to 6, divided among shards by a hash of the code. At 6 billion links of
-about 500 bytes each, the data amounts to 3 TB, which is too much for 1 machine and
-entirely ordinary for a sharded store.</p>
-<p>In front of the store stands a cache, as described in chapter 9. Traffic to short
-links is extremely uneven: a link shared by a popular account may be opened a million
-times in an hour, while most links are opened a few times in their whole existence. A
-cache holding a small fraction of the links therefore answers the great majority of
-requests. Links are also the ideal content for a cache, because a link is never
-modified after creation, so that the problem of stale entries, which occupied much of
-chapter 9, scarcely arises. The 1 change that can occur is the disabling of a link,
-and it is handled by deleting the cache entry at that moment.</p>
-<p>Requests for codes that do not exist deserve attention, since they are what an
-exploring stranger or a mistyped address produces. As chapter 9 explained under the
-name of cache penetration, such requests pass straight through an ordinary cache to
-the store. The service therefore caches the fact that a code is absent, for a short
-time, and limits the rate at which any 1 client may request absent codes.</p>
-<p>The web servers themselves hold no data. Each request can be served by any of them,
-and the load balancer in front distributes requests without regard to who is asking.
-Servers can accordingly be added and removed freely, and the failure of 1 is of no
-consequence to visitors.</p>
-<h2 id="counting-clicks"><a class="header" href="#counting-clicks">Counting clicks</a></h2>
-<p>Authors wish to know how often their links are followed. The obvious implementation,
-incrementing a counter in the database on every redirect, would convert the read path
-into a write path. Every redirect would cost a durable write, a hundred times more
-writes than link creation produces, all contending on the rows of the popular links.</p>
-<p>The redirect and the count are therefore separated. On each redirect the web server
-appends a small record, consisting of the code and the time, to a message queue of the
-kind described in chapter 11, and replies to the visitor without waiting for anything
-further. A separate consumer reads these records and maintains the counts, typically
-adding up the clicks for each link over a minute and applying the sum in a single
-write. The visitor’s redirect is delayed by nothing, the store receives 1 write per
-link per minute in place of 1 per click, and if the counting consumer fails, redirects
-continue undisturbed and the counts are brought up to date when it returns.</p>
-<p>The price is that the counts are eventually consistent. They lag behind reality by up
-to a minute, and since the queue delivers at least once, a consumer that crashes and
-repeats a batch may count some clicks twice unless it records which batches it has
-applied. For a statistic shown on a dashboard this is entirely acceptable. It would
-not be acceptable if clicks were being billed for, in which case each click record
-would need an identifier and the counting would have to be made idempotent in the
-manner of chapter 11.</p>
-<h2 id="further-features"><a class="header" href="#further-features">Further features</a></h2>
-<p>Authors sometimes wish to choose the code themselves, as in <code>sho.rt/spring-sale</code>. A
-<em>custom name</em> is stored in the same table as a generated code and must be reserved
-with an atomic “create if absent”, since 2 authors may ask for the same name at the
-same moment. Custom names and generated codes have to be kept from colliding, which is
-most arranged by making them differ in form: generated codes are exactly 7
-characters, and custom names are required to be longer or to contain a hyphen.</p>
-<p>A link may be given an <em>expiry</em>, after which it ceases to work. The expiry time is
-stored with the link, and the web server compares it with the clock on each redirect,
-so that an expired link is refused from the correct moment even though its row has not
-yet been removed. A periodic job deletes expired rows later, at leisure. Codes of
-expired links should not be given to new links, since old messages and documents
-containing the code would then lead to an unrelated destination.</p>
-<p>When the same long address is submitted twice, the service may return the existing
-link or create a new one. Returning the existing link saves storage and requires an
-additional index from addresses to codes, and it means that the 2 submitters share 1
-link, with shared statistics. Most services create a new link each time, on the
-grounds that links belong to their authors and that storage is the cheaper resource.</p>
-<h2 id="misuse"><a class="header" href="#misuse">Misuse</a></h2>
-<p>A service that will redirect anyone to anywhere is useful to people with bad
-intentions, and a design that ignores this will not survive contact with the public.</p>
-<p>The principal abuse is concealment. A short link hides its destination, and so it is
-used to disguise addresses that the recipient would not knowingly open: pages that
-imitate a bank’s login form, or downloads of harmful software. Mail filters and
-messaging services respond by treating all links of a shortener that carries much of
-this as suspect, at which point the legitimate links of the service stop working in
-practice. A public shortener therefore checks each submitted address against lists of
-known harmful sites when the link is created, checks again periodically, since a
-destination may turn harmful after the link was made, and provides a means of
-reporting links. A link found to be harmful is disabled, and this is the reason the
-service must retain the ability to disable a link promptly, which the earlier
-discussion of <code>301</code> and <code>302</code> turned upon.</p>
-<p>Creation must be rate limited, per account and per network address, to prevent a
-single party from generating links by the million. And the service must refuse to
-shorten its own short links, since chains of redirects are used to defeat the checks
-just described and a link that redirects to itself would loop.</p>
-<h2 id="use-cases"><a class="header" href="#use-cases">Use cases</a></h2>
-<p>Authors create links and read their statistics. Visitors follow links, in far greater
-numbers.</p>
-<figure>
-<img src="figures/shortener-use-cases.svg?v=d0ea3d7d" alt="A use case diagram of the URL shortener. Author: shorten a URL (POST /v1/links), read the click count (GET /v1/links/{code}). Visitor: open a short link (GET /{code}, then 301).">
-<figcaption><b>Figure 14.4</b> The actors and what each of them does.</figcaption>
-</figure>
-<h2 id="functional-requirements"><a class="header" href="#functional-requirements">Functional requirements</a></h2>
+<h3 id="non-functional-requirements-and-slos"><a class="header" href="#non-functional-requirements-and-slos">Non-Functional Requirements and SLOs</a></h3>
 <div class="table-wrapper">
 <table>
 <thead>
-<tr><th>No.</th><th>Functional requirement</th></tr>
+<tr><th style="text-align: left">No.</th><th style="text-align: left">Property</th><th style="text-align: left">Target Specification</th><th style="text-align: left">Architectural Consequence</th></tr>
 </thead>
 <tbody>
-<tr><td>0</td><td>An author can create a short link for a URL and receives a code of 7 characters.</td></tr>
-<tr><td>1</td><td>Opening a short link redirects the visitor to the URL.</td></tr>
-<tr><td>2</td><td>A code, once given out, always leads to the same URL.</td></tr>
-<tr><td>3</td><td>An author can read how often a link was opened.</td></tr>
+<tr><td style="text-align: left">0</td><td style="text-align: left"><strong>Redirect Availability</strong></td><td style="text-align: left"><code>99.99%</code> global availability (<code>&lt;= 4.3</code> minutes downtime per month)</td><td style="text-align: left">Active-active stateless redirect fleets across multiple regions behind Anycast CDN edge caches</td></tr>
+<tr><td style="text-align: left">1</td><td style="text-align: left"><strong>Redirect Latency</strong></td><td style="text-align: left"><code>p50 &lt;= 5 ms</code> (edge hit), <code>p99 &lt;= 15 ms</code> (regional L2 hit), <code>p999 &lt;= 40 ms</code> (origin miss)</td><td style="text-align: left">Eliminates synchronous disk writes, analytics updates, and cross-region consensus from the <code>GET /{code}</code> critical path</td></tr>
+<tr><td style="text-align: left">2</td><td style="text-align: left"><strong>Consistency</strong></td><td style="text-align: left">Strong read-after-write consistency for link creation (<code>PC/EC</code> quorum commit); eventual consistency (<code>&lt;= 60 s</code> lag) for click counts</td><td style="text-align: left">Authors share links immediately after <code>201 Created</code>, so mappings require quorum visibility; click dashboards tolerate 1-minute rollup delay</td></tr>
+<tr><td style="text-align: left">3</td><td style="text-align: left"><strong>Unpredictability</strong></td><td style="text-align: left">Sequential link creation reveals neither business volume nor neighboring valid codes</td><td style="text-align: left">Counter values pass through a keyed format-preserving Feistel bijection before Base-62 encoding</td></tr>
+<tr><td style="text-align: left">4</td><td style="text-align: left"><strong>Scale</strong></td><td style="text-align: left"><code>100,000,000</code> new links per month (<code>6</code> billion over 5 years) at a <code>100:1</code> read-to-write ratio</td><td style="text-align: left">Requires <code>3.52</code> trillion code capacity (<code>62^7</code>), horizontally sharded mapping storage, and multi-tier caching</td></tr>
 </tbody>
 </table>
 </div>
-<h2 id="non-functional-requirements"><a class="header" href="#non-functional-requirements">Non-functional requirements</a></h2>
+<h3 id="non-goals-and-scope-boundaries"><a class="header" href="#non-goals-and-scope-boundaries">Non-Goals and Scope Boundaries</a></h3>
+<p>To keep the architecture focused on core redirect mechanics, we exclude the following capabilities from this design:</p>
+<ul>
+<li><strong>Arbitrary destination mutation:</strong> Generated links are immutable after creation (excluding expiry and administrative quarantine); mutable dynamic routing tables belong to an enterprise link-management product rather than the core shortener.</li>
+<li><strong>Per-click financial billing:</strong> Click telemetry uses at-least-once batched aggregation with minute-level eventual consistency; monetized pay-per-click accounting requires exact per-event deduplication and double-entry ledger reconciliation (Chapter 19).</li>
+<li><strong>Full-page destination proxying or web archiving:</strong> The service issues HTTP redirects and never proxies or caches the HTML body of destination sites.</li>
+</ul>
+<h3 id="back-of-the-envelope-capacity-bounds"><a class="header" href="#back-of-the-envelope-capacity-bounds">Back-of-the-Envelope Capacity Bounds</a></h3>
+<p>We size write QPS, read QPS, 5-year storage, cache memory, and egress bandwidth from the baseline of <code>100</code> million new links per month and a <code>100:1</code> read-to-write ratio:</p>
 <div class="table-wrapper">
 <table>
 <thead>
-<tr><th>No.</th><th>Property</th><th>Non-functional requirement</th></tr>
+<tr><th style="text-align: left">Resource Dimension</th><th style="text-align: left">Arithmetic Derivation</th><th style="text-align: left">Provisioned Bound</th></tr>
 </thead>
 <tbody>
-<tr><td>0</td><td>Availability</td><td>99.99% for redirects. A link that does not open is the worst failure.</td></tr>
-<tr><td>1</td><td>Latency</td><td>A redirect takes under 10 ms.</td></tr>
-<tr><td>2</td><td>Consistency</td><td>Strong for creating a link: each code belongs to exactly 1 URL. Eventual for click counts.</td></tr>
-<tr><td>3</td><td>Scale</td><td>100 million new links per month, and 100 redirects for every new link.</td></tr>
+<tr><td style="text-align: left"><strong>Total Links (5 Years)</strong></td><td style="text-align: left"><code>100,000,000 links/mo * 12 mo/yr * 5 yr</code></td><td style="text-align: left"><code>6,000,000,000</code> links (<code>6 billion</code>)</td></tr>
+<tr><td style="text-align: left"><strong>7-Character Base-62 Space</strong></td><td style="text-align: left"><code>62^7</code> distinct strings (<code>0-9</code>, <code>A-Z</code>, <code>a-z</code>)</td><td style="text-align: left"><code>3,521,614,606,208</code> codes (<code>~3.52 trillion</code>, <code>&lt; 0.17%</code> utilization in 5 years)</td></tr>
+<tr><td style="text-align: left"><strong>Write Rate (Sustained / Peak)</strong></td><td style="text-align: left"><code>100,000,000 / (30 * 86,400 s) = 38.6</code> writes/s; <code>5x</code> peak burst</td><td style="text-align: left"><code>39</code> writes/s sustained, <code>200</code> writes/s peak</td></tr>
+<tr><td style="text-align: left"><strong>Redirect Rate (Sustained / Peak)</strong></td><td style="text-align: left"><code>39 * 100 = 3,900</code> reads/s sustained; <code>10x</code> viral event spike</td><td style="text-align: left"><code>3,900</code> reads/s sustained, <code>39,000</code> reads/s peak</td></tr>
+<tr><td style="text-align: left"><strong>Primary Mapping Storage (5 yr)</strong></td><td style="text-align: left"><code>6 * 10^9 links * 500 B/row</code> (code, URL, metadata, index overhead)</td><td style="text-align: left"><code>3.0 TB</code> logical (<code>9.0 TB</code> raw with <code>3x</code> replication)</td></tr>
+<tr><td style="text-align: left"><strong>Regional L2 Redis Cache (Hot 5%)</strong></td><td style="text-align: left"><code>5% * 6 * 10^9 = 300M</code> hot rows; working daily set (<code>20M</code> active links <code>* 500 B</code>)</td><td style="text-align: left"><code>10 GB</code> active daily working set (<code>64 GB</code> provisioned per region for headroom)</td></tr>
+<tr><td style="text-align: left"><strong>Bloom Filter RAM (All 6B Keys)</strong></td><td style="text-align: left"><code>m = -n ln(p) / (ln 2)^2</code> at <code>n = 6 * 10^9</code>, <code>p = 0.01</code> (<code>9.58</code> bits/key)</td><td style="text-align: left"><code>~7.2 GB</code> aggregate (<code>~900 MB</code> per shard across 8 shards)</td></tr>
+<tr><td style="text-align: left"><strong>Redirect Egress Bandwidth</strong></td><td style="text-align: left"><code>39,000 peak req/s * 600 B</code> HTTP redirect headers</td><td style="text-align: left"><code>23.4 MB/s</code> (<code>~187 Mbps</code> peak aggregate)</td></tr>
+<tr><td style="text-align: left"><strong>Click Event Stream (5 yr raw)</strong></td><td style="text-align: left"><code>3,900 clicks/s * 64 B</code> compact event (<code>code</code>, <code>ts</code>, <code>country</code>, <code>ref_hash</code>)</td><td style="text-align: left"><code>250 KB/s</code> (<code>~21.6 GB/day</code> raw; <code>&lt; 2 GB/day</code> after 1-minute OLAP rollup)</td></tr>
 </tbody>
 </table>
 </div>
-<p>The mapping from a code to its address must be strongly consistent in 1 specific
-respect: once a link has been created and its code returned to the author, every
-subsequent lookup must find it, since the author will share the code immediately. The
-key-value store provides this by confirming a write only when a majority holds it.
-Click counts, by contrast, are eventually consistent by design, as the section on
-counting explained.</p>
-<h2 id="core-entities"><a class="header" href="#core-entities">Core entities</a></h2>
-<figure>
-<img src="figures/shortener-entities.svg?v=8a5ba436" alt="The core entities. Link has the fields code 7 characters, url string, owner string, created time. Click has the fields code 7 characters, at time. A Link is written once and read many times. Clicks are counted apart from links, so that reading a link stays cheap.">
-<figcaption><b>Figure 14.5</b> The core entities and their fields.</figcaption>
-</figure>
-<h2 id="capacity-estimate"><a class="header" href="#capacity-estimate">Capacity estimate</a></h2>
-<div class="estimate">
-<img class="builder" src="art/crab-builder.svg" alt="A crab in a hard hat, in tears.">
-<p><strong>Arithmetic ahead.</strong> 5 years of links are 6 billion codes and 3 TB, and redirects average 3900 per second.</p>
-<p><a class="skip" href="#high-level-design">Skip to the high-level design</a></p>
-<details>
-<summary>Show the calculation</summary>
-<div class="table-wrapper">
-<table>
-<thead>
-<tr><th>Quantity</th><th>Calculation</th><th>Result</th></tr>
-</thead>
-<tbody>
-<tr><td>Links in 5 years</td><td>100000000 × 12 × 5</td><td>6 billion</td></tr>
-<tr><td>Codes of 7 characters</td><td>62 to the power 7</td><td>3.5 trillion</td></tr>
-<tr><td>Storage for links</td><td>6 billion × 500 bytes</td><td>3 TB</td></tr>
-<tr><td>New links per second</td><td>100000000 ÷ (30 × 86400)</td><td>39</td></tr>
-<tr><td>Redirects per second</td><td>39 × 100</td><td>3900</td></tr>
-</tbody>
-</table>
-</div>
-</details>
-</div>
-
-<h2 id="the-api"><a class="header" href="#the-api">The API</a></h2>
-<p>Creating a link is an ordinary <code>POST</code> to the collection of links. Following one is a
-<code>GET</code> on the shortest path the service can offer, the code itself.</p>
-<p><strong>Create a link</strong></p>
-<pre><code class="language-http">POST /v1/links HTTP/1.1
-Host: sho.rt
+<p>Because <code>3.0 TB</code> of mapping data and <code>10 GB</code> of daily hot links are modest by modern server standards, the system is bounded primarily by <strong>tail latency under extreme hot-key skew</strong> (millions of clicks per hour on a single viral link) and <strong>negative-lookup abuse</strong> (scanners probing random 7-character codes to overwhelm storage).</p>
+<h2 id="142-external-api-and-data-contracts"><a class="header" href="#142-external-api-and-data-contracts">14.2 External API and Data Contracts</a></h2>
+<p>The platform exposes a JSON-over-HTTP/2 control API for link management and a minimal-overhead HTTP redirect interface at the root path.</p>
+<h3 id="external-http-contracts"><a class="header" href="#external-http-contracts">External HTTP Contracts</a></h3>
+<p><strong>Create a short link (idempotent via <code>Idempotency-Key</code>):</strong></p>
+<pre><code class="language-http">POST /v1/links HTTP/2
+Host: api.sho.rt
+Authorization: Bearer &lt;token&gt;
+Idempotency-Key: 7f3c9b12-8a40-4e92-b831-1e2d3f4a5b6c
 Content-Type: application/json
 
-{ "url": "https://example.com/a/very/long/address?with=parameters" }
+{
+  "url": "https://example.org/docs/systems/design?ref=2026&amp;id=9812",
+  "custom_alias": null,
+  "expires_at": "2027-11-20T00:00:00Z",
+  "redirect_mode": "302"
+}
 </code></pre>
-<pre><code class="language-http">HTTP/1.1 201 Created
-Location: /v1/links/4C92
+<pre><code class="language-http">HTTP/2 201 Created
+Location: /v1/links/a9K4x7Q
 Content-Type: application/json
 
-{ "code": "4C92", "short_url": "https://sho.rt/4C92" }
+{
+  "code": "a9K4x7Q",
+  "short_url": "https://sho.rt/a9K4x7Q",
+  "target_url": "https://example.org/docs/systems/design?ref=2026&amp;id=9812",
+  "expires_at": "2027-11-20T00:00:00Z",
+  "created_at": "2026-11-20T13:08:05Z"
+}
 </code></pre>
-<p>Its code is the base 62 form of the link’s id.</p>
-<p><strong>Open a link</strong></p>
-<pre><code class="language-http">GET /4C92 HTTP/1.1
+<p>Status codes follow strict contract semantics: <code>201 Created</code> on first allocation (or replay with identical <code>Idempotency-Key</code> and payload), <code>400 Bad Request</code> for malformed schemes or self-domain loops (<code>sho.rt</code>), <code>409 Conflict</code> when a requested <code>custom_alias</code> already exists, <code>422 Unprocessable Content</code> if a destination matches the threat blocklist, and <code>429 Too Many Requests</code> when caller creation quotas are exceeded (Chapter 7).</p>
+<p><strong>Resolve and redirect a short link:</strong></p>
+<pre><code class="language-http">GET /a9K4x7Q HTTP/2
 Host: sho.rt
 </code></pre>
-<pre><code class="language-http">HTTP/1.1 301 Moved Permanently
-Location: https://example.com/a/very/long/address?with=parameters
-Cache-Control: max-age=86400
+<pre><code class="language-http">HTTP/2 302 Found
+Location: https://example.org/docs/systems/design?ref=2026&amp;id=9812
+Cache-Control: public, max-age=300, s-maxage=3600
+X-Content-Type-Options: nosniff
 </code></pre>
-<p>Browsers follow <code>Location</code> by themselves.</p>
-<h2 id="high-level-design"><a class="header" href="#high-level-design">High-level design</a></h2>
-<figure class="wide">
-<img src="figures/shortener-design.svg?v=2c037aed" alt="A URL shortener. The components are Visitors, Load balancer, Web servers, Cache, Key-value store, Id generator. Step 1: A visitor opens a short link. Step 2: The load balancer picks a web server. Step 3: The server looks for the code in the cache. Step 4: On a miss it reads the store and fills the cache. Step 5: For a new link, it takes the next id and encodes it. Step 6: The visitor is redirected with status 301.">
-<figcaption><b>Figure 14.6</b> The components and the path of a request. The steps are numbered.</figcaption>
+<p>For expired or quarantined codes, the service returns <code>410 Gone</code> with <code>Cache-Control: public, max-age=3600</code> so intermediate caches stop forwarding repeated traffic for revoked links. Unknown codes return <code>404 Not Found</code> with a short negative cache header (<code>max-age=60</code>).</p>
+<p><strong>Quarantine an abusive link (control plane):</strong></p>
+<pre><code class="language-http">POST /v1/admin/block/a9K4x7Q HTTP/2
+Host: control.sho.rt
+Authorization: Bearer &lt;admin-token&gt;
+Content-Type: application/json
+
+{
+  "reason": "phishing_credential_harvest",
+  "purge_cdn": true
+}
+</code></pre>
+<h3 id="storage-schemas"><a class="header" href="#storage-schemas">Storage Schemas</a></h3>
+<p>We separate immutable link mappings (optimized for primary-key point lookups) from time-series click rollups (optimized for columnar analytical scans):</p>
+<pre><code class="language-sql">-- Sharded primary mapping store (partitioned by hash(code) across 8 Raft-replicated shards)
+CREATE TABLE short_links (
+    code          VARCHAR(64)  PRIMARY KEY,   -- 7-char Base-62 or custom alias
+    target_url    VARCHAR(4096) NOT NULL,
+    owner_id      BIGINT       NOT NULL,
+    redirect_code SMALLINT     NOT NULL DEFAULT 302, -- 301 or 302
+    status        SMALLINT     NOT NULL DEFAULT 1,   -- 1=active, 2=expired, 3=blocked
+    created_at    TIMESTAMPTZ  NOT NULL DEFAULT NOW(),
+    expires_at    TIMESTAMPTZ  NULL
+);
+
+-- Separate idempotency cache (24-hour TTL) to prevent duplicate allocations on client retry
+CREATE TABLE link_idempotency (
+    owner_id        BIGINT       NOT NULL,
+    idempotency_key VARCHAR(128) NOT NULL,
+    request_hash    BYTEA        NOT NULL,
+    assigned_code   VARCHAR(64)  NOT NULL,
+    created_at      TIMESTAMPTZ  NOT NULL,
+    PRIMARY KEY (owner_id, idempotency_key)
+);
+
+-- OLAP analytical store (ClickHouse) aggregated in 1-minute windows
+CREATE TABLE link_clicks_1m (
+    code          String,
+    bucket_minute DateTime,
+    country_iso   LowCardinality(String),
+    referrer_host String,
+    click_count   UInt64
+) ENGINE = SummingMergeTree()
+PARTITION BY toYYYYMM(bucket_minute)
+ORDER BY (code, bucket_minute, country_iso, referrer_host);
+</code></pre>
+<h2 id="143-high-level-architecture-control-plane-vs-data-plane"><a class="header" href="#143-high-level-architecture-control-plane-vs-data-plane">14.3 High-Level Architecture: Control Plane vs. Data Plane</a></h2>
+<p>We isolate all coordination, safety enforcement, and analytics aggregation inside a control plane so that the hot redirect data plane remains stateless, memory-resident, and insulated from background outages (Figure 14-2).</p>
+<figure class="diagram">
+<img src="figures/m3/ch14_architecture.svg" alt="Control Plane and Data Plane Architecture of the Global URL Shortener: Control Plane runs Abuse and Blocklist Push, Click Stream and OLAP (Kafka to ClickHouse), and Range Allocator (etcd); Data Plane runs CDN Edge PoP, Stateless Redirect Service, Regional Redis plus Bloom Filter, Sharded Mapping Store, and Write API." />
+<figcaption><b>Figure 14-2</b> Control-plane range allocator, abuse policy, and analytics pipeline decoupled from the read-optimized edge redirect data plane.</figcaption>
 </figure>
+<h3 id="component-responsibilities"><a class="header" href="#component-responsibilities">Component Responsibilities</a></h3>
 <div class="table-wrapper">
 <table>
 <thead>
-<tr><th>Component</th><th>Role</th><th>State it holds</th><th>When 1 instance fails</th></tr>
+<tr><th style="text-align: left">Component</th><th style="text-align: left">Plane</th><th style="text-align: left">State Held</th><th style="text-align: left">Failure Impact and Mitigation</th></tr>
 </thead>
 <tbody>
-<tr><td>Web server</td><td>creates links and answers redirects</td><td>none</td><td>the load balancer uses the others</td></tr>
-<tr><td>Cache</td><td>holds the most opened links</td><td>copies, in memory</td><td>its links are read from the store once more</td></tr>
-<tr><td>Key-value store</td><td>maps a code to its URL</td><td>every link, replicated</td><td>a follower takes over, as in chapter 4</td></tr>
-<tr><td>Id generator</td><td>gives each new link a number</td><td>see chapter 8</td><td>another id node is asked</td></tr>
+<tr><td style="text-align: left"><strong>Range Allocator (<code>etcd</code> / Raft)</strong></td><td style="text-align: left">Control</td><td style="text-align: left">Authoritative high-water counter cursor (<code>next_block_start</code>)</td><td style="text-align: left">Write workers hold in-memory leases of <code>100,000</code> IDs; brief allocator outage causes zero write disruption until a worker exhausts its local block</td></tr>
+<tr><td style="text-align: left"><strong>Abuse and Blocklist Service</strong></td><td style="text-align: left">Control</td><td style="text-align: left">Threat intelligence feeds, domain blocklists, revocation log</td><td style="text-align: left">Pushes compiled blocklists to Write APIs and publishes invalidation events to regional Redis clusters and CDN purge APIs</td></tr>
+<tr><td style="text-align: left"><strong>Click Stream and OLAP Pipeline</strong></td><td style="text-align: left">Control</td><td style="text-align: left">Partitioned Kafka click log and ClickHouse <code>link_clicks_1m</code> rollups</td><td style="text-align: left">Redirect servers emit events asynchronously via non-blocking ring buffers; broker outage drops or spills telemetry locally without delaying HTTP redirects</td></tr>
+<tr><td style="text-align: left"><strong>CDN Edge PoPs (Anycast)</strong></td><td style="text-align: left">Data</td><td style="text-align: left">L1 HTTP response cache for viral <code>301</code>/<code>302</code> redirects (<code>80%</code> hit ratio)</td><td style="text-align: left">Automatic BGP Anycast rerouting shifts visitors to the nearest healthy PoP within seconds</td></tr>
+<tr><td style="text-align: left"><strong>Stateless Redirect Service</strong></td><td style="text-align: left">Data</td><td style="text-align: left">In-memory Bloom filter snapshot, L2 Redis connection pools</td><td style="text-align: left">Horizontally auto-scaled across three AZs per region; losing any instance shifts traffic immediately via load balancer health checks</td></tr>
+<tr><td style="text-align: left"><strong>Regional Redis + Sharded Store</strong></td><td style="text-align: left">Data</td><td style="text-align: left">L2 hot link cache (<code>64 GB</code>) and L3 durable mapping shards (<code>8 shards x 3 replicas</code>)</td><td style="text-align: left">Redis miss falls through to L3 store; shard leader crash triggers Raft election in <code>1 to 3 s</code> while reads continue from cache and followers</td></tr>
 </tbody>
 </table>
 </div>
-<h3 id="one-request-step-by-step"><a class="header" href="#one-request-step-by-step">One request, step by step</a></h3>
-<p>The steps follow the arrows of figure 14.6.</p>
+<h3 id="write-and-read-lifecycles"><a class="header" href="#write-and-read-lifecycles">Write and Read Lifecycles</a></h3>
+<p><strong>Write path (<code>POST /v1/links</code>):</strong></p>
 <ol>
-<li>A visitor’s browser sends <code>GET /4C92</code>.</li>
-<li>The load balancer passes the request to a web server.</li>
-<li>The web server asks the cache for <code>4C92</code>. Popular links are found here.</li>
-<li>On a miss, it reads <code>4C92</code> from the key-value store and puts the answer in the cache.</li>
-<li>When an author creates a link, the web server takes the next number from the id generator and writes it in base 62.</li>
-<li>The visitor receives <code>301</code> with the long address in <code>Location</code>, and the browser goes there.</li>
+<li>The Write API authenticates the author, enforces per-account creation rate limits (Chapter 7), validates URI syntax, rejects self-domain URLs (<code>sho.rt</code>), and checks the destination host against an in-memory compiled threat blocklist.</li>
+<li>If an <code>Idempotency-Key</code> is supplied, the Write API checks <code>link_idempotency</code> and returns the prior allocation on an exact payload match.</li>
+<li>For standard generated links, the Write API atomically increments its local in-memory leased counter (<code>AtomicU64</code>), passes the integer through the keyed Feistel permutation, and encodes the scrambled value into a 7-character Base-62 string. No read-before-write uniqueness probe is required.</li>
+<li>For custom aliases, the Write API validates namespace separation (length greater than 7 characters or containing a hyphen) and issues a quorum conditional insert (<code>INSERT ... ON CONFLICT DO NOTHING</code>) to the owning L3 shard.</li>
+<li>Upon quorum commit across three AZs, the Write API updates the shard’s Bloom filter (and broadcasts the bit set asynchronously to redirect workers), optionally warms L2 Redis, and returns <code>201 Created</code>.</li>
 </ol>
-<h2 id="the-design-deployed"><a class="header" href="#the-design-deployed">The design, deployed</a></h2>
-<figure class="wide">
-<img src="figures/shortener-deploy.svg?v=be160444" alt="The URL shortener, deployed. Visitors: Visitors (3900 redirects/s), open short links. Edge, in 3 zones: Load balancers (x 2), any web server, Web servers (x 12), hold no data. Data, in 3 zones: Cache nodes (x 6), popular links, Key-value store (x 24), 8 shards x 3 replicas, Id counter (x 3), blocks of numbers. Counting: Click queue (x 3), see chapter 11, Click counters (x 4), sum each minute.">
-<figcaption><b>Figure 14.7</b> The URL shortener as it is deployed, with the tier that counts clicks kept off the path of a redirect.</figcaption>
+<p><strong>Read path (<code>GET /{code}</code>):</strong></p>
+<ol>
+<li>A visitor’s DNS resolution routes via Anycast to the nearest CDN Edge PoP (L1). Roughly <code>80%</code> of requests hit a cached viral link and return a redirect in under <code>10 ms</code> without contacting origin infrastructure.</li>
+<li>On an L1 miss, the request reaches a regional Stateless Redirect Service instance, which queries L2 Regional Redis (<code>~18%</code> of total traffic, resolved in <code>~2 ms</code>).</li>
+<li>On an L2 miss, the Redirect Service tests the local in-memory Bloom filter (<code>&lt; 0.2 ms</code>, <code>O(k)</code> hash probes). If the filter returns <em>definitely absent</em>, the service immediately replies <code>404 Not Found</code> without touching disk storage.</li>
+<li>On a positive Bloom match, the Redirect Service fetches the mapping from the owning L3 shard (<code>&lt; 2%</code> of total traffic, <code>~12 ms</code>), populates L2 Redis (or sets a short-TTL negative cache entry if the Bloom check was a false positive), checks <code>status</code> and <code>expires_at</code>, appends a non-blocking click record to the local Kafka producer buffer, and returns the redirect response.</li>
+</ol>
+<h2 id="144-key-allocation-range-leasing-base-62-bijection-and-scrambling"><a class="header" href="#144-key-allocation-range-leasing-base-62-bijection-and-scrambling">14.4 Key Allocation: Range Leasing, Base-62 Bijection, and Scrambling</a></h2>
+<h3 id="alphabet-size-and-code-length"><a class="header" href="#alphabet-size-and-code-length">Alphabet Size and Code Length</a></h3>
+<p>Every short code is drawn from the 62-character URL-safe alphanumeric alphabet (<code>0-9</code>, <code>A-Z</code>, <code>a-z</code>), which requires no percent-encoding in RFC 3986 path segments. A 6-character code space yields $62^6 = 56{,}800{,}235{,}584$ (<code>~56.8</code> billion) identifiers. Against our 5-year projection of <code>6</code> billion links, a 6-character space would exceed <code>10.5%</code> occupancy, making blind guessing succeed on more than 1 in 10 probes and risking mid-life schema migration if growth accelerates. Extending to 7 characters expands the space to $62^7 = 3{,}521{,}614{,}606{,}208$ (<code>~3.52</code> trillion) codes, reducing 5-year occupancy to <code>0.17%</code> (roughly 1 valid link per 587 random guesses).</p>
+<p>For contexts where humans read codes aloud or transcribe them from printed material, operators adopt <strong>Base-58</strong> (omitting visually ambiguous glyphs <code>0</code>, <code>O</code>, <code>I</code>, and <code>l</code>), yielding $58^7 \approx 2.21$ trillion codes while eliminating transcription errors.</p>
+<h3 id="comparing-three-code-generation-strategies"><a class="header" href="#comparing-three-code-generation-strategies">Comparing Three Code-Generation Strategies</a></h3>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th style="text-align: left">Strategy</th><th style="text-align: left">Uniqueness Guarantee</th><th style="text-align: left">Read-Before-Write Cost</th><th style="text-align: left">Coordination State</th><th style="text-align: left">Enumeration Resistance</th></tr>
+</thead>
+<tbody>
+<tr><td style="text-align: left"><strong>Truncated Hash (SHA-256 prefix)</strong></td><td style="text-align: left">Probabilistic; requires store check and salt retry on collision</td><td style="text-align: left">Mandatory lookup on every write</td><td style="text-align: left">Stateless</td><td style="text-align: left">High (pseudorandom output)</td></tr>
+<tr><td style="text-align: left"><strong>CSPRNG Random Draw</strong></td><td style="text-align: left">Probabilistic; requires atomic create-if-absent retry</td><td style="text-align: left">Mandatory conditional insert on every write</td><td style="text-align: left">Stateless</td><td style="text-align: left">High (cryptographic entropy)</td></tr>
+<tr><td style="text-align: left"><strong>Leased Counter + Feistel Bijection (Chosen)</strong></td><td style="text-align: left">Deterministic by construction (<code>0</code> collisions)</td><td style="text-align: left">None (<code>1</code> blind quorum write)</td><td style="text-align: left"><code>etcd</code> range allocator consulted once per <code>100,000</code> links</td><td style="text-align: left">High while Feistel round keys remain secret</td></tr>
+</tbody>
+</table>
+</div>
+<p><strong>Why truncated hashes fail without retry loops:</strong> Under the birthday bound, drawing $n$ codes uniformly from a space of size $N$ yields approximately $n^2 / (2N)$ colliding pairs. In the repository simulation (<code>code/shortener</code>), hashing <code>2,000,000</code> distinct URLs and truncating to 6 characters produced <strong>97 collisions</strong>. Sending even 1 visitor in 20,000 to an unrelated website violates functional requirement 3. Resolving hash collisions forces a read-before-write check plus iterative salting, turning every link creation into a conditional read-modify-write cycle. Furthermore, deterministic hashing of the destination URL causes two different authors shortening the same URL to share one code, coupling their analytics and expiry lifetimes.</p>
+<p><strong>Disjoint counter range leasing:</strong> We assign monotonically increasing integers from a strongly consistent <code>etcd</code> / Raft range allocator (Chapter 8). Each Write API instance requests a contiguous block of <code>100,000</code> integers (<code>[start, start + 99,999]</code>) in a single quorum write and dispenses numbers lock-free from RAM via <code>fetch_add(1)</code>. At <code>39</code> writes/s sustained, the entire fleet consults the allocator roughly once every <code>42 minutes</code>. If a Write API node crashes mid-block, the remaining unallocated integers are discarded permanently; against <code>3.52</code> trillion codes, forfeiting tens of thousands of IDs on a crash is negligible compared to the operational simplicity of zero write-path coordination.</p>
+<h3 id="base-62-encoding-step-by-step"><a class="header" href="#base-62-encoding-step-by-step">Base-62 Encoding Step by Step</a></h3>
+<p>Converting a non-negative integer $x$ to Base-62 proceeds by repeated Euclidean division by <code>62</code>, emitting each remainder as the next least-significant glyph in <code>0..9A..Za..z</code>. Interactive Trace 14.A steps through encoding the counter value <code>1,000,000</code> into <code>4C92</code>.</p>
+<figure class="steps" data-prefix="figures/steps-short-encode" data-count="6" data-version="d0e5eca4">
+<img src="figures/steps-short-encode-01.svg?v=d0e5eca4" alt="Writing a number in base 62, step 1 of 6. The link is number 1000000 from the counter. To write it as a code, we divide by 62 again and again. Each remainder is 1 digit of the code, starting from the right." />
+<figcaption><b>Interactive Trace 14.A</b> Converting integer <code>1000000</code> to Base-62 (<code>4C92</code>) by repeated division by 62. Use Next and Back to step through all 6 stages.</figcaption>
 </figure>
-<p>Visitors reach a pair of load balancers in front of 12 web servers in 3 zones, any
-of which can answer any request. A redirect reads the cache and, on a miss, 1 of the
-8 shards of the key-value store, each of which has a replica in every zone. The
-counter that supplies numbers for new links is consulted once for each block of 1000
-and stands to 1 side. Below the line, the click queue and its counters form a
-separate tier, which a redirect writes to and never waits for. In front of all this,
-a service of this kind normally places the edge servers of a content delivery
-network, which can answer a popular redirect without reaching the origin at all.</p>
-<h2 id="how-real-systems-do-it"><a class="header" href="#how-real-systems-do-it">How real systems do it</a></h2>
-<p>The published material on URL shorteners is thinner than on most systems in this
-book, since their operators have written little about them, and this section is
-accordingly short and confined to what can be supported.</p>
-<p>The semantics of the redirects are fixed by the HTTP standard, which also defines 2
-further status codes, <code>307</code> and <code>308</code>. These are the temporary and permanent
-redirects that additionally require the browser to repeat the request with the same
-method, where <code>301</code> and <code>302</code> allow a <code>POST</code> to be turned into a <code>GET</code>. For a link
-that is only ever followed with <code>GET</code>, the difference does not arise.</p>
-<p>The scrambling of a counter described above is an instance of <em>format-preserving
-encryption</em>, a cipher whose output lies in the same range as its input. The
-construction generally used for small ranges is a Feistel network of a few rounds,
-and it should be distinguished from libraries that merely obfuscate numbers by a
-fixed shuffle of the alphabet, which resist casual inspection and do not resist
-analysis.</p>
-<p>The alphabet of 58 characters that omits the easily confused ones is known as
-Base58, and Flickr has described using it for its short addresses. The checking of
-submitted addresses against lists of harmful sites is offered as a public service by
-the makers of the major browsers.</p>
-<h2 id="mistakes-to-avoid"><a class="header" href="#mistakes-to-avoid">Mistakes to avoid</a></h2>
+<h3 id="preventing-enumeration-with-format-preserving-encryption"><a class="header" href="#preventing-enumeration-with-format-preserving-encryption">Preventing Enumeration with Format-Preserving Encryption</a></h3>
+<p>Encoding raw sequential counters directly exposes two severe vulnerabilities. First, an adversary holding <code>4C92</code> can enumerate <code>4C91</code>, <code>4C93</code>, and <code>4C94</code> to harvest unlisted shared documents, private calendar invitations, or capability URLs that rely on secrecy of the link. Second, observing the integer difference between codes created at midnight on consecutive days reveals exact daily link volume to competitors.</p>
+<p>Shuffling the 62-character alphabet does not prevent analysis, because consecutive integers still differ only in their rightmost character. Instead, we pass each 42-bit counter value $x \in [0, 62^7 - 1]$ through a <strong>keyed 4-round balanced Feistel network</strong> (a standard Format-Preserving Encryption construction, Bellare et al. 2009) using HMAC-SHA256 truncated to 21 bits as the round function $F_k$, combined with <strong>cycle walking</strong> whenever an intermediate 42-bit output exceeds $62^7 - 1$:</p>
+<pre><code class="language-rust">// Bijective scrambling over domain [0, 62^7 - 1] via 4-round Feistel + cycle walking.
+// Distinct counter inputs always map to distinct outputs (zero collisions).
+const DOMAIN: u64 = 3_521_614_606_208; // 62^7 (&lt; 2^42 = 4_398_046_511_104)
+const HALF_BITS: u32 = 21;
+const HALF_MASK: u64 = (1u64 &lt;&lt; HALF_BITS) - 1;
+
+fn scramble_id(counter: u64, round_keys: &amp;[u64; 4]) -&gt; u64 {
+    let mut v = counter;
+    loop {
+        let mut left = (v &gt;&gt; HALF_BITS) &amp; HALF_MASK;
+        let mut right = v &amp; HALF_MASK;
+        for &amp;key in round_keys {
+            let f = keyed_prf_21bit(right, key);
+            let next_right = left ^ f;
+            left = right;
+            right = next_right;
+        }
+        v = (left &lt;&lt; HALF_BITS) | right;
+        if v &lt; DOMAIN {
+            return v;
+        }
+    }
+}</code></pre>
+<p>Because a Feistel network is mathematically invertible for any round function $F$, the mapping is a strict bijection on $[0, 2^{42} - 1]$, and cycle walking preserves bijectivity strictly inside $[0, 62^7 - 1]$ with an expected <code>1.25</code> iterations per call ($2^{42} / 62^7 \approx 1.249$). Adjacent counter values produce statistically independent 7-character Base-62 codes while retaining zero-collision deterministic generation.</p>
+<h2 id="145-read-path-optimization-redirects-multi-tier-caching-and-analytics"><a class="header" href="#145-read-path-optimization-redirects-multi-tier-caching-and-analytics">14.5 Read-Path Optimization: Redirects, Multi-Tier Caching, and Analytics</a></h2>
+<h3 id="http-redirect-semantics-301-vs-302-vs-307308"><a class="header" href="#http-redirect-semantics-301-vs-302-vs-307308">HTTP Redirect Semantics: <code>301</code> vs. <code>302</code> vs. <code>307</code>/<code>308</code></a></h3>
+<p>Selecting the HTTP redirect status code directly determines browser caching behavior, origin traffic volume, analytics completeness, and security revocation latency:</p>
 <div class="table-wrapper">
 <table>
 <thead>
-<tr><th>Mistake</th><th>What goes wrong</th><th>What to do</th></tr>
+<tr><th style="text-align: left">Status Code</th><th style="text-align: left">Semantic Contract</th><th style="text-align: left">Browser Caching</th><th style="text-align: left">Click Visibility</th><th style="text-align: left">Abuse Revocation Latency</th></tr>
 </thead>
 <tbody>
-<tr><td>Codes cut from a hash, without a check</td><td>2 addresses receive the same code, and some visitors reach the wrong page.</td><td>Check every code against the store, or use a counter.</td></tr>
-<tr><td>Checking for a free code and then writing it</td><td>2 servers find the same code free and both take it.</td><td>Use an atomic create-if-absent.</td></tr>
-<tr><td>Codes that are consecutive numbers</td><td>Anyone can walk through all links by counting.</td><td>Scramble the number before encoding it, or use random codes.</td></tr>
-<tr><td>Codes only just long enough</td><td>Blind guesses find real links often, and the codes run out.</td><td>Choose a length that leaves the code space sparsely used.</td></tr>
-<tr><td><code>301</code> with unlimited caching</td><td>A link that has been disabled keeps working in browsers that remembered it.</td><td>Use <code>302</code>, or limit how long <code>301</code> may be remembered.</td></tr>
-<tr><td>Incrementing a counter on every redirect</td><td>Every read becomes a write, and popular links contend.</td><td>Record clicks in a queue and count them in batches.</td></tr>
-<tr><td>Not caching absent codes</td><td>Requests for nonexistent codes all reach the store.</td><td>Cache absence briefly, and rate limit such requests.</td></tr>
-<tr><td>Giving the code of an expired link to a new link</td><td>Old references lead to an unrelated destination.</td><td>Do not reuse codes.</td></tr>
-<tr><td>Accepting any address</td><td>The service carries links to harmful pages and is blocked by mail filters.</td><td>Check addresses against lists of harmful sites, and be able to disable a link.</td></tr>
-<tr><td>Shortening the service’s own links</td><td>Redirects chain or loop.</td><td>Refuse addresses on the service’s own domain.</td></tr>
+<tr><td style="text-align: left"><strong><code>301 Moved Permanently</code></strong> (unbounded)</td><td style="text-align: left">Permanent replacement; method may rewrite to <code>GET</code></td><td style="text-align: left">Indefinite heuristic caching by browsers</td><td style="text-align: left">Misses repeat visits from the same browser</td><td style="text-align: left">Unbounded (cannot reliably revoke from client caches)</td></tr>
+<tr><td style="text-align: left"><strong><code>301</code> + <code>Cache-Control: max-age=86400</code></strong></td><td style="text-align: left">Permanent with explicit 24-hour freshness bound</td><td style="text-align: left">Cached up to 24 hours per browser</td><td style="text-align: left">Counts unique browser-days; misses rapid repeats</td><td style="text-align: left">Bounded to <code>&lt;= 24 hours</code></td></tr>
+<tr><td style="text-align: left"><strong><code>302 Found</code></strong> (default here)</td><td style="text-align: left">Temporary redirect; browser revalidates or uses explicit <code>max-age</code></td><td style="text-align: left">Controlled via <code>Cache-Control: max-age=300, s-maxage=3600</code></td><td style="text-align: left">Captures origin and CDN edge click logs cleanly</td><td style="text-align: left">Sub-minute via CDN surrogate-key purge + 5-minute client ceiling</td></tr>
+<tr><td style="text-align: left"><strong><code>307</code> / <code>308</code></strong></td><td style="text-align: left">Strict method-preserving temporary / permanent redirect</td><td style="text-align: left">Matches <code>302</code> / <code>301</code> respectively</td><td style="text-align: left">Same as <code>302</code> / <code>301</code></td><td style="text-align: left">Preserves <code>POST</code> bodies; rarely needed for browser <code>GET</code> links</td></tr>
 </tbody>
 </table>
 </div>
-<h2 id="failures"><a class="header" href="#failures">Failures</a></h2>
+<p>In production, unbounded <code>301</code> responses create a severe safety hazard: once a phishing URL is cached permanently inside millions of browsers, disabling the link at the origin cannot stop affected visitors from being redirected. Our default issues <code>302 Found</code> with <code>Cache-Control: public, max-age=300, s-maxage=3600</code> (5-minute browser cache, 1-hour CDN cache), allowing CDN edge servers to absorb viral surges while preserving fast surrogate-key purge when Trust and Safety quarantines a link. For high-volume static links where click analytics are disabled, authors may explicitly opt into bounded <code>301</code> redirects.</p>
+<h3 id="multi-tier-cache-cascade-and-bloom-filter-defense"><a class="header" href="#multi-tier-cache-cascade-and-bloom-filter-defense">Multi-Tier Cache Cascade and Bloom Filter Defense</a></h3>
+<p>Short-link traffic follows a steep Zipf distribution in which fewer than <code>1%</code> of links generate over <code>80%</code> of redirect volume. Meanwhile, automated credential-stuffing or link-enumeration bots routinely issue thousands of requests per second for nonexistent 7-character codes, causing <strong>cache penetration</strong> straight through LRU caches to disk storage. We defend the read path with a four-tier cascade (Figure 14-3).</p>
+<figure class="diagram">
+<img src="figures/m3/ch14_redirect_cache.svg" alt="Multi-Tier Redirect Cache Hierarchy and Bloom-Filter Negative Lookup Defense: L1 CDN Edge PoP resolves 80 percent of lookups in 10 ms; L2 Regional Redis resolves 18 percent in 2 ms; Bloom Filter Gate blocks nonexistent 404 scans in under 0.2 ms; L3 Sharded Store handles under 2 percent cold long-tail lookups in 12 ms." />
+<figcaption><b>Figure 14-3</b> Multi-tier redirect cache hierarchy and Bloom-filter negative-lookup gate resolving 99.8% of traffic before persistent storage.</figcaption>
+</figure>
+<ol>
+<li><strong>L1 CDN Edge PoP (<code>~80%</code> hit ratio, <code>~10 ms</code> client RTT):</strong> Global Anycast PoPs serve hot viral links directly from edge RAM, shielding origin regions from sudden social-media traffic spikes. Edge log shipping streams sampled or complete <code>302</code> hit logs asynchronously to the analytics ingestion pipeline so cached hits are not lost from click counts.</li>
+<li><strong>L2 Regional Redis Cluster (<code>~18%</code> hit ratio, <code>~2 ms</code> intra-region RTT):</strong> Holds the active working set using an <code>allkeys-lfu</code> eviction policy. Because link targets are immutable, cache entries require invalidation only on administrative quarantine or explicit deletion, published over a control-plane pub/sub channel.</li>
+<li><strong>Bloom Filter Negative Gate (<code>&lt; 0.2 ms</code>, <code>O(k)</code> bit probes):</strong> Each Redirect Service shard maintains a partitioned Counting or Scalable Bloom Filter covering all valid codes in the store. For <code>6</code> billion keys at a <code>1%</code> false-positive rate ($p = 0.01$), optimal sizing requires $k = 7$ hash functions and $9.58$ bits per key (<code>~7.2 GB</code> total, or <code>900 MB</code> per shard). Every nonexistent code rejected by the Bloom filter returns <code>404 Not Found</code> immediately in RAM without issuing an L3 query, blocking <code>99%</code> of random enumeration scans. The remaining <code>1%</code> false positives that miss L3 populate a short-TTL (<code>60 s</code>) negative tombstone in L2 Redis and increment a per-IP <code>404</code> GCRA rate limiter (Chapter 7).</li>
+<li><strong>L3 Sharded Mapping Store (<code>&lt; 2%</code> traffic, <code>~12 ms</code>):</strong> Serves cold long-tail links from SSD-backed Raft-replicated shards partitioned by <code>hash(code)</code>.</li>
+</ol>
+<h3 id="asynchronous-click-analytics-and-abuse-controls"><a class="header" href="#asynchronous-click-analytics-and-abuse-controls">Asynchronous Click Analytics and Abuse Controls</a></h3>
+<p>Incrementing a relational counter row on every redirect would convert a <code>3,900</code> to <code>39,000</code> QPS read workload into a write-contended hotspot on popular rows. Instead, Redirect Services and CDN edge log collectors emit compact 64-byte click events (<code>code</code>, <code>timestamp_ms</code>, <code>country_iso</code>, <code>referrer_hash</code>) into a partitioned Kafka topic via non-blocking ring buffers. Stream consumers aggregate counts in 1-minute tumbling windows in memory and flush bulk batches into ClickHouse (<code>SummingMergeTree</code>), reducing persistent write volume by over <code>1,000x</code> for viral links while isolating redirect latency completely from analytics pipeline backpressure.</p>
+<p>Public redirectors are primary targets for phishing concealment. Three layered safeguards protect domain reputation: synchronous URL inspection against local threat feeds (such as Google Safe Browsing prefix lists) at link creation, periodic background re-scanning of active high-click destinations to catch delayed page swaps, and an instant quarantine endpoint (<code>POST /v1/admin/block/{code}</code>) that marks <code>status = 3</code> in L3, broadcasts an L2 Redis invalidation, and triggers a CDN purge API call so malicious links return <code>410 Gone</code> globally within <code>5 seconds</code>.</p>
+<h2 id="146-failure-modes-slis-and-production-systems"><a class="header" href="#146-failure-modes-slis-and-production-systems">14.6 Failure Modes, SLIs, and Production Systems</a></h2>
+<h3 id="failure-mode-and-mitigation-matrix"><a class="header" href="#failure-mode-and-mitigation-matrix">Failure Mode and Mitigation Matrix</a></h3>
 <div class="table-wrapper">
 <table>
 <thead>
-<tr><th>Failure</th><th>What users see</th><th>How the system recovers</th></tr>
+<tr><th style="text-align: left">Failure Mode</th><th style="text-align: left">Blast Radius</th><th style="text-align: left">Detection Signal</th><th style="text-align: left">Automated Mitigation</th></tr>
 </thead>
 <tbody>
-<tr><td>The cache is lost</td><td>redirects are slower for a few minutes</td><td>links are read from the store and cached again</td></tr>
-<tr><td>The id generator is unreachable</td><td>new links cannot be created; redirects work</td><td>another id node is used</td></tr>
-<tr><td>A store leader fails</td><td>about 1 second without new links for its shard</td><td>a follower is elected</td></tr>
+<tr><td style="text-align: left"><strong>L2 Regional Redis Shard Crash</strong></td><td style="text-align: left">Elevated latency (<code>2 ms</code> to <code>12 ms</code>) for <code>1/N</code> of regional cache misses</td><td style="text-align: left">Redis health probe failure and L3 read QPS jump</td><td style="text-align: left">Redirect Service bypasses dead shard directly to L3 with singleflight request coalescing to prevent cache stampede; Redis replica promotes in <code>&lt; 10 s</code></td></tr>
+<tr><td style="text-align: left"><strong>Range Allocator (<code>etcd</code>) Outage</strong></td><td style="text-align: left">Zero immediate impact; write path degrades only when workers exhaust local <code>100,000</code>-ID blocks</td><td style="text-align: left">Allocator lease-renewal errors and low-water local block alert (<code>&lt; 20%</code> remaining)</td><td style="text-align: left">Workers continue issuing IDs from pre-leased RAM blocks (<code>~40 minutes</code> runway); ops restores quorum before exhaustion</td></tr>
+<tr><td style="text-align: left"><strong>Random 404 Enumeration Flood</strong></td><td style="text-align: left">Risk of saturating L3 storage IOPS via cache penetration</td><td style="text-align: left"><code>404</code> response ratio spikes above <code>5%</code> of total traffic</td><td style="text-align: left">In-memory Bloom filter drops <code>99%</code> of invalid probes in <code>&lt; 0.2 ms</code>; L2 negative cache and per-IP <code>404</code> rate limiter absorb the <code>1%</code> false-positive residual</td></tr>
+<tr><td style="text-align: left"><strong>Kafka Analytics Broker Partition</strong></td><td style="text-align: left">Click dashboard freshness lags beyond 60 s; zero redirect impact</td><td style="text-align: left">Producer ring-buffer drop counter and consumer lag alert</td><td style="text-align: left">Redirect Service drops or spools telemetry locally rather than blocking <code>GET /{code}</code>; consumers catch up after broker recovery</td></tr>
+<tr><td style="text-align: left"><strong>Phishing Domain Slip-Through</strong></td><td style="text-align: left">Risk of mail filters blacklisting the entire <code>sho.rt</code> domain</td><td style="text-align: left">Automated Safe Browsing rescan alert or abuse report webhook</td><td style="text-align: left">Control plane marks <code>status = 3</code>, evicts L2 Redis key, and issues CDN surrogate-key purge within <code>5 s</code></td></tr>
 </tbody>
 </table>
 </div>
-<h2 id="trade-offs"><a class="header" href="#trade-offs">Trade-offs</a></h2>
+<h3 id="operational-slis-slos-and-alert-thresholds"><a class="header" href="#operational-slis-slos-and-alert-thresholds">Operational SLIs, SLOs, and Alert Thresholds</a></h3>
+<ul>
+<li><strong>Redirect Availability SLI:</strong> Fraction of valid <code>GET /{code}</code> requests returning <code>301</code>/<code>302</code> (excluding client <code>4xx</code> errors), targeting <code>99.99%</code> over a 30-day rolling window; page on-call when 5-minute error burn exceeds <code>14.4x</code> budget.</li>
+<li><strong>Origin Redirect Latency SLI:</strong> <code>p99 &lt;= 15 ms</code> for L2 hits and <code>p999 &lt;= 40 ms</code> for L3 misses; alert when <code>p99</code> exceeds <code>25 ms</code> for 5 minutes.</li>
+<li><strong>Cache Efficiency and Penetration SLI:</strong> Combined L1 + L2 hit ratio <code>&gt;= 97%</code> and L3 negative-miss rate <code>&lt;= 0.5%</code> of total traffic; alert if Bloom filter false-positive rate drifts above <code>2%</code> (indicating scheduled filter rebuild is overdue).</li>
+<li><strong>Quarantine Propagation SLI:</strong> End-to-end elapsed time from <code>POST /v1/admin/block/{code}</code> to global CDN <code>410 Gone</code> enforcement, targeting <code>p99 &lt;= 10 s</code>.</li>
+</ul>
+<h3 id="production-benchmarks"><a class="header" href="#production-benchmarks">Production Benchmarks</a></h3>
 <div class="table-wrapper">
 <table>
 <thead>
-<tr><th>Decision</th><th>What it gains</th><th>What it costs</th></tr>
+<tr><th style="text-align: left">Production System</th><th style="text-align: left">Key Encoding &amp; Length</th><th style="text-align: left">Redirect &amp; Caching Pattern</th><th style="text-align: left">Architectural Distinction</th></tr>
 </thead>
 <tbody>
-<tr><td>Codes from a counter</td><td>no collisions and no retry</td><td>codes can be guessed in order</td></tr>
-<tr><td>Cache in front of the store</td><td>most redirects avoid the store</td><td>more memory</td></tr>
-<tr><td><code>301</code> with a time limit</td><td>fewer requests reach us</td><td>click counts are approximate</td></tr>
+<tr><td style="text-align: left"><strong>Bitly</strong></td><td style="text-align: left">7-character Base-62 (<code>bit.ly</code>) with custom branded domains</td><td style="text-align: left"><code>301</code> / configurable <code>302</code> via global CDN edge + regional key-value stores</td><td style="text-align: left">Separates enterprise analytics ingestion from edge redirection; operates multi-billion-link threat scanning to protect domain reputation</td></tr>
+<tr><td style="text-align: left"><strong>Flickr (<code>flic.kr</code>)</strong></td><td style="text-align: left">Base-58 encoding of sequential photo IDs</td><td style="text-align: left">Compact photo shortlinks mapped deterministically without extra lookup tables</td><td style="text-align: left">Omits visually ambiguous glyphs (<code>0</code>, <code>O</code>, <code>I</code>, <code>l</code>) to eliminate manual transcription errors</td></tr>
+<tr><td style="text-align: left"><strong>TinyURL</strong></td><td style="text-align: left">Base-62 generated codes plus user-defined custom aliases</td><td style="text-align: left">Read-optimized key-value lookups with permanent link retention</td><td style="text-align: left">Separates namespace validation for custom aliases from generated alphanumeric keys</td></tr>
+<tr><td style="text-align: left"><strong>YouTube (<code>youtu.be</code>)</strong></td><td style="text-align: left">11-character URL-safe Base-64 video identifiers (<code>64^11</code>)</td><td style="text-align: left">Stateless edge redirect to canonical watch URLs</td><td style="text-align: left">Uses <code>64</code>-bit random video identifiers directly, avoiding any secondary mapping table on the redirect tier</td></tr>
 </tbody>
 </table>
 </div>
-<h2 id="the-simulation"><a class="header" href="#the-simulation">The simulation</a></h2>
+<h2 id="147-simulation-verification"><a class="header" href="#147-simulation-verification">14.7 Simulation Verification</a></h2>
 <div class="simulation">
-<p><strong>Simulation in the repository.</strong> The program <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/distributed-systems-from-the-ground-up/code/shortener/src/main.rs"><code>code/shortener</code></a> simulates this design. To run it, clone the repository and type <code>cargo run --release -p shortener</code> in the <code>code</code> directory.</p>
+<p><strong>Reproduce the Base-62 bijection and hash-collision benchmark.</strong> Run <code>cargo run --release -p shortener</code> inside <code>distributed-systems-from-the-ground-up/code/</code> to verify Base-62 round-trip encoding boundaries and compare collision counts across <code>2,000,000</code> shortened URLs for counter-based versus 6-character hash-truncated allocation.</p>
 </div>
 
-<h2 id="references"><a class="header" href="#references">References</a></h2>
-<ul>
-<li>RFC 9110, <em>HTTP Semantics</em>, 2022, sections on status codes 301, 302, 307 and 308.</li>
-<li>M. Bellare and others, “Format-Preserving Encryption”, Selected Areas in Cryptography, 2009.</li>
-<li>J. Black and P. Rogaway, “Ciphers with Arbitrary Finite Domains”, CT-RSA 2002.</li>
-<li>Flickr API documentation, “URLs”, on short addresses in base 58.</li>
-</ul>
-<h2 id="terms-introduced-in-this-chapter"><a class="header" href="#terms-introduced-in-this-chapter">Terms introduced in this chapter</a></h2>
+<pre><code class="language-console">$ cargo run --release -p shortener
+             0 -&gt; 0        -&gt; Some(0)
+            61 -&gt; z        -&gt; Some(61)
+            62 -&gt; 10       -&gt; Some(62)
+       1000000 -&gt; 4C92     -&gt; Some(1000000)
+ 3521614606207 -&gt; zzzzzzz  -&gt; Some(3521614606207)
+2000000 URLs, codes from a counter: 0 collisions
+2000000 URLs, 6 characters of a hash: 97 collisions
+codes of 7 characters: 3521614606208 possible
+</code></pre>
+<p>From this benchmark output, we verify three quantitative properties of our design:</p>
+<ol>
+<li><strong>Exact boundary bijection:</strong> The Base-62 encoder and decoder round-trip cleanly from <code>0</code> (<code>0</code>) through <code>1,000,000</code> (<code>4C92</code>) up to the maximum 7-character value <code>3,521,614,606,207</code> (<code>zzzzzzz</code>), confirming <code>3,521,614,606,208</code> (<code>62^7</code>) total distinct codes.</li>
+<li><strong>Empirical birthday collision penalty:</strong> Truncating a hash to 6 characters produced <strong>97 collisions</strong> across <code>2,000,000</code> URLs (<code>~1</code> collision per <code>20,618</code> inserts), proving that hash-based shorteners cannot omit read-before-write existence checks and retry loops.</li>
+<li><strong>Zero-collision counter generation:</strong> Counter allocation produced <strong>0 collisions</strong> across all <code>2,000,000</code> URLs without a single existence probe, validating disjoint range leasing paired with bijective Feistel scrambling for the write path.</li>
+</ol>
+<h2 id="148-terminology-and-references"><a class="header" href="#148-terminology-and-references">14.8 Terminology and References</a></h2>
+<h3 id="engineering-glossary"><a class="header" href="#engineering-glossary">Engineering Glossary</a></h3>
 <div class="table-wrapper">
 <table>
 <thead>
-<tr><th>Term</th><th>Meaning</th></tr>
+<tr><th style="text-align: left">Term</th><th style="text-align: left">Definition</th></tr>
 </thead>
 <tbody>
-<tr><td>Short link</td><td>a short address that redirects to a longer one</td></tr>
-<tr><td>Code</td><td>the part of a short link that identifies it</td></tr>
-<tr><td>Base 62</td><td>a way of writing numbers with 62 digits: 0 to 9, A to Z and a to z</td></tr>
-<tr><td>Collision</td><td>2 addresses receiving the same code</td></tr>
-<tr><td>Redirect</td><td>a response that tells the browser to go to another address</td></tr>
-<tr><td><code>301 Moved Permanently</code></td><td>a redirect that the browser may remember</td></tr>
-<tr><td><code>302 Found</code></td><td>a redirect that the browser asks for again each time</td></tr>
-<tr><td>Custom name</td><td>a code chosen by the author</td></tr>
-<tr><td>Expiry</td><td>the time after which a link no longer works</td></tr>
-<tr><td>Enumeration</td><td>finding valid codes by trying them in order</td></tr>
+<tr><td style="text-align: left"><strong>Base-62 Encoding</strong></td><td style="text-align: left">Positional numeral representation using the 62 URL-safe alphanumeric characters (<code>0-9</code>, <code>A-Z</code>, <code>a-z</code>), packing <code>3.52</code> trillion integers into 7 bytes.</td></tr>
+<tr><td style="text-align: left"><strong>Format-Preserving Encryption (FPE)</strong></td><td style="text-align: left">A keyed invertible cipher (such as a Feistel network with cycle walking) whose ciphertext occupies the exact same finite integer domain as its plaintext, preventing sequential code enumeration without introducing collisions.</td></tr>
+<tr><td style="text-align: left"><strong>Range Leasing</strong></td><td style="text-align: left">Pre-allocating disjoint contiguous blocks of integers from a strongly consistent allocator into stateless worker memory to amortize write-path coordination.</td></tr>
+<tr><td style="text-align: left"><strong>Cache Penetration</strong></td><td style="text-align: left">A workload pattern in which requests for nonexistent keys bypass caches repeatedly and strike persistent storage directly, mitigated by Bloom filters and short-TTL negative caching.</td></tr>
+<tr><td style="text-align: left"><strong><code>301</code> vs. <code>302</code> Redirect</strong></td><td style="text-align: left">HTTP status codes signaling permanent (<code>301</code>, aggressively browser-cached) versus temporary (<code>302</code>, controlled by explicit <code>Cache-Control</code> freshness headers) redirection.</td></tr>
+<tr><td style="text-align: left"><strong>Surrogate-Key Purge</strong></td><td style="text-align: left">A CDN invalidation mechanism allowing the control plane to evict a quarantined short link from global edge PoPs within seconds.</td></tr>
 </tbody>
 </table>
 </div>
-<div class="summary">
-<h2 id="summary"><a class="header" href="#summary">Summary</a></h2>
+<h3 id="references"><a class="header" href="#references">References</a></h3>
 <ul>
-<li>Codes of 7 characters over 62 symbols give 3.5 trillion possibilities, far more than the links expected, which keeps guessing unrewarding.</li>
-<li>Codes cut from a hash or drawn at random must be checked against the store before use, while codes from a counter are unique by construction.</li>
-<li>A counter’s numbers are written in base 62 after a scrambling step, since consecutive codes could be guessed.</li>
-<li><code>301</code> lets browsers skip the shortener on repeat visits, and <code>302</code> keeps every visit visible and every link revocable.</li>
-<li>Redirects are served from a cache in front of a sharded key-value store, by web servers that hold no data.</li>
-<li>Clicks are written to a queue and counted in batches, so that a redirect never waits for a write.</li>
-<li>A public shortener checks destinations, limits creation, and can disable a link quickly.</li>
+<li>IETF, RFC 9110, <em>HTTP Semantics</em>, Sections 15.4.2 to 15.4.9 (status codes <code>301</code>, <code>302</code>, <code>307</code>, and <code>308</code>), 2022.</li>
+<li>M. Bellare, T. Ristenpart, P. Rogaway, and T. Stegers, “Format-Preserving Encryption”, <em>Selected Areas in Cryptography (SAC)</em>, 2009.</li>
+<li>J. Black and P. Rogaway, “Ciphers with Arbitrary Finite Domains”, <em>CT-RSA</em>, 2002.</li>
+<li>B. H. Bloom, “Space/Time Trade-offs in Hash Coding with Allowable Errors”, <em>Communications of the ACM</em>, 13(7), 1970.</li>
+<li>Flickr API Documentation, “URLs and Base58 Short Identifiers”.</li>
+<li>Google Safe Browsing API Documentation, “Update API (v4) Local Prefix-List Checking”.</li>
 </ul>
-</div>
-
 
                     </main>
 
@@ -756,7 +618,7 @@ the makers of the major browsers.</p>
         <script src="book-609e4cb8.js"></script>
 
         <!-- Custom JS scripts -->
-        <script src="theme/figures-47b15f7f.js"></script>
+        <script src="theme/figures-9c14cb1c.js"></script>
         <script src="theme/proto-326509cd.js"></script>
         <script src="theme/code-67e9caaf.js"></script>
         <script src="theme/tables-9fb295e8.js"></script>

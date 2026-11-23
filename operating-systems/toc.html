@@ -28,7 +28,7 @@
         <link rel="stylesheet" id="mdbook-ayu-highlight-css" href="ayu-highlight-3fdfc3ac.css">
 
         <!-- Custom theme stylesheets -->
-        <link rel="stylesheet" href="theme/custom-9125cc61.css">
+        <link rel="stylesheet" href="theme/custom-3c3d4beb.css">
 
         <!-- MathJax -->
         <script async src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.1/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
@@ -38,10 +38,10 @@
             const path_to_root = "";
             const default_light_theme = "light";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "searchindex-025a35ef.js";
+            window.path_to_searchindex_js = "searchindex-e451f97a.js";
         </script>
         <!-- Start loading toc.js asap -->
-        <script src="toc-f3585118.js"></script>
+        <script src="toc-1a401835.js"></script>
     </head>
     <body>
     <div id="mdbook-help-container">
@@ -240,7 +240,11 @@
 </li>
 <li><a href="ch03-processes.html#3-process-abstraction-and-lifecycle"><strong>3. Process Abstraction and Lifecycle</strong></a>
 <ul>
-<li><a href="ch03-processes.html#31-the-process-control-block-and-address-space-topology">3.1 The Process Control Block and Address Space Topology</a></li>
+<li><a href="ch03-processes.html#31-the-process-control-block-and-address-space-topology">3.1 The Process Control Block and Address Space Topology</a>
+<ul>
+<li><a href="ch03-processes.html#311-internal-data-structure-of-the-process-control-block">3.1.1 Internal Data Structure of the Process Control Block</a></li>
+</ul>
+</li>
 <li><a href="ch03-processes.html#32-process-creation-and-the-mechanics-of-fork">3.2 Process Creation and the Mechanics of <code>fork</code></a>
 <ul>
 <li><a href="ch03-processes.html#321-the-process-creation-and-reaping-system-call-interface-fork-_exit-waitpid">3.2.1 The Process Creation and Reaping System Call Interface (<code>fork</code>, <code>_exit</code>, <code>waitpid</code>)</a></li>
@@ -315,9 +319,10 @@
 <li><a href="ch07-virtual-memory.html#71-page-based-abstraction-and-isolation">7.1 Page-Based Abstraction and Isolation</a></li>
 <li><a href="ch07-virtual-memory.html#72-hierarchical-translation-and-the-tlb">7.2 Hierarchical Translation and the TLB</a>
 <ul>
-<li><a href="ch07-virtual-memory.html#721-canonical-addresses-and-multi-level-radix-decomposition">7.2.1 Canonical Addresses and Multi-Level Radix Decomposition</a></li>
-<li><a href="ch07-virtual-memory.html#722-hand-calculated-4-level-address-translation-walkthrough">7.2.2 Hand-Calculated 4-Level Address Translation Walkthrough</a></li>
-<li><a href="ch07-virtual-memory.html#723-the-translation-lookaside-buffer-tlb-huge-pages-and-shootdowns">7.2.3 The Translation Lookaside Buffer (TLB), Huge Pages, and Shootdowns</a></li>
+<li><a href="ch07-virtual-memory.html#721-address-decomposition-and-hardware-translation">7.2.1 Address Decomposition and Hardware Translation</a></li>
+<li><a href="ch07-virtual-memory.html#722-multi-level-radix-page-tables-and-canonical-addressing">7.2.2 Multi-Level Radix Page Tables and Canonical Addressing</a></li>
+<li><a href="ch07-virtual-memory.html#723-worked-4-level-address-translation-walkthrough">7.2.3 Worked 4-Level Address Translation Walkthrough</a></li>
+<li><a href="ch07-virtual-memory.html#724-the-translation-lookaside-buffer-huge-pages-and-shootdowns">7.2.4 The Translation Lookaside Buffer, Huge Pages, and Shootdowns</a></li>
 </ul>
 </li>
 <li><a href="ch07-virtual-memory.html#73-fault-handling-and-memory-management-strategies">7.3 Fault Handling and Memory Management Strategies</a>
@@ -615,7 +620,7 @@
 </li>
 <li><strong>Address Translation (Hand Calculation)</strong>: Complete step-by-step mathematical walk of a 48-bit canonical virtual address through PML4, PDPT, PD, and PT levels to physical address assembly.
 <ul>
-<li>Numerical Walkthrough &amp; Invariants: <a href="ch07-virtual-memory.html#722-hand-calculated-4-level-address-translation-walkthrough">§7.2.2</a></li>
+<li>Numerical Walkthrough &amp; Invariants: <a href="ch07-virtual-memory.html#723-worked-4-level-address-translation-walkthrough">§7.2.3</a></li>
 </ul>
 </li>
 <li><strong>Anonymous Mapping (<code>MAP_ANON | MAP_PRIVATE</code>)</strong>: Kernel allocation of zero-initialized demand pages unbacked by physical disk files.
@@ -794,7 +799,7 @@
 </li>
 <li><strong>Huge Pages</strong>: 2 MiB / 1 GiB virtual page translations designed to maximize TLB coverage and eliminate translation latency.
 <ul>
-<li>Hardware TLB Reach: <a href="ch07-virtual-memory.html#723-the-translation-lookaside-buffer-tlb-huge-pages-and-shootdowns">§7.2.3</a></li>
+<li>Hardware TLB Reach: <a href="ch07-virtual-memory.html#724-the-translation-lookaside-buffer-huge-pages-and-shootdowns">§7.2.4</a></li>
 </ul>
 </li>
 <li><strong>Interrupt Descriptor Table (IDT) &amp; Top/Bottom-Half Handlers</strong>: Hardware vector dispatch table, <code>TSS.rsp0</code> trapframe saving, <code>hardirq</code> masking, and <code>softirq</code> deferred execution.
@@ -1023,7 +1028,7 @@
         <script src="book-609e4cb8.js"></script>
 
         <!-- Custom JS scripts -->
-        <script src="theme/figures-f1be29a8.js"></script>
+        <script src="theme/figures-fd5ff574.js"></script>
 
 
 

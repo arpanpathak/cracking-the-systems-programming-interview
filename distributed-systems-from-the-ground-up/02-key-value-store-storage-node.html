@@ -1,9 +1,9 @@
 <!DOCTYPE HTML>
-<html lang="en" class="light sidebar-visible" dir="ltr">
+<html lang="en" class="navy sidebar-visible" dir="ltr">
     <head>
         <!-- Book generated using mdBook -->
         <meta charset="UTF-8">
-        <title>Key-Value Store: Storage Node (Low-Level Design) - Distributed Systems from the Ground Up</title>
+        <title>2. Storage Node and Write-Ahead Logging (LLD) - Distributed Systems from the Ground Up</title>
 
 
         <!-- Custom HTML head -->
@@ -28,20 +28,18 @@
         <link rel="stylesheet" id="mdbook-ayu-highlight-css" href="ayu-highlight-3fdfc3ac.css">
 
         <!-- Custom theme stylesheets -->
-        <link rel="stylesheet" href="theme/custom-8a495b63.css">
-        <link rel="stylesheet" href="theme/formal-05bd78f0.css">
-        <link rel="stylesheet" href="theme/layout-0a0c0003.css">
+        <link rel="stylesheet" href="theme/custom-59beaf6d.css">
 
 
         <!-- Provide site root and default themes to javascript -->
         <script>
             const path_to_root = "";
-            const default_light_theme = "light";
+            const default_light_theme = "navy";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "searchindex-25bb747f.js";
+            window.path_to_searchindex_js = "searchindex-5d54d4b4.js";
         </script>
         <!-- Start loading toc.js asap -->
-        <script src="toc-cc887274.js"></script>
+        <script src="toc-ef51d47d.js"></script>
     </head>
     <body>
     <div id="mdbook-help-container">
@@ -79,7 +77,7 @@
             try { theme = localStorage.getItem('mdbook-theme'); } catch(e) { }
             if (theme === null || theme === undefined) { theme = default_theme; }
             const html = document.documentElement;
-            html.classList.remove('light')
+            html.classList.remove('navy')
             html.classList.add(theme);
             html.classList.add("js");
         </script>
@@ -183,128 +181,71 @@
 
                 <div id="mdbook-content" class="content">
                     <main>
-                        <img class="plate" src="art/ch02.svg?v=ce3188d3" alt="Ledger, a tortoise, writes each change in a long ledger before saying yes. Lightning strikes beside it and a crab jumps in shock, and the ledger still holds every line that was written: put user-1, put user-2, delete user-2.">
-<h1 id="key-value-store-storage-node-low-level-design"><a class="header" href="#key-value-store-storage-node-low-level-design">Key-Value Store: Storage Node (Low-Level Design)</a></h1>
-<p>The design of <a href="01-key-value-store-system-design.html">chapter 1</a> distributes a key-value
-store over 24 machines, keeps every key on 3 of them, and reasons at length about what
-happens when machines fail. All of that reasoning rests on a single assumption about
-each individual machine, which chapter 1 stated in its closing section and did not
-justify: that a write which a node has acknowledged will still be there after the node
-has crashed and been restarted. If 1 node can quietly lose a write it has confirmed,
-then a write “stored on 2 of 3 nodes” may be stored on 1, and nothing built on top of
-that count can be trusted.</p>
-<p>This chapter builds the component that makes the assumption true. A <em>storage node</em> is
-the program that holds the entries of the store on 1 machine, and its whole difficulty
-is concentrated in the few milliseconds during which a write is in progress and the
-machine may lose power. We begin by examining what a crash can do to a write at each
-stage, which leads to the technique of writing every change to a log before doing
-anything else. We then define the format of the log on disk, write the code that
-recovers from a damaged log, and build on top of it the store and the HTTP API of
-chapter 1. The chapter ends by trying, in 3 different ways, to make the node lose
-data: by damaging its log at every possible byte, by killing it under load, and by
-killing it under load from another machine.</p>
+                        <h1 id="chapter-2-storage-node-and-write-ahead-logging-lld"><a class="header" href="#chapter-2-storage-node-and-write-ahead-logging-lld">Chapter 2: Storage Node and Write-Ahead Logging (LLD)</a></h1>
+<img class="plate" src="art/ch02-plate.svg" alt="Chapter 2 plate: Storage Node write-ahead log architecture showing WAL fsync preceding MemTable visibility, sequential CRC32C-checksummed records, and torn-tail truncation on crash recovery." />
+<p>In <a href="01-key-value-store-system-design.html">Chapter 1</a>, we distributed the key-value store across 24 storage nodes, replicated every shard across three independent failure domains, and derived quorum durability bounds under host crashes and network partitions. That entire distributed architecture depends on a single local-storage invariant: once a storage node acknowledges a write to its caller, that write must remain recoverable after the process crashes or the host loses power. If a single node loses an acknowledged record, then a write counted as stored on two of three replicas may survive on only one, invalidating every replication guarantee layered above it.</p>
+<p>In this chapter, I implement the <em>storage node</em> in Rust so that this durability invariant holds unconditionally. A storage node manages the live key-value map and durable log on one host. Its core engineering complexity concentrates in the few milliseconds during which a mutation is in flight and power may fail. We begin by analyzing what a crash can corrupt at each stage of a write, which motivates append-only write-ahead logging (WAL). We then specify the binary record format, implement CRC-32 checksummed encoding and torn-tail recovery, measure the physical latency of <code>write</code> versus <code>fsync</code>, and assemble the in-memory store and HTTP/1.1 interface specified in Chapter 1. Finally, we verify crash durability empirically in three complementary ways: by truncating and bit-flipping every byte of a log in <code>crashsim</code>, by terminating <code>kvd</code> with <code>SIGKILL</code> under active client load on one host, and by repeating the crash test across two separate network hosts.</p>
 <div class="covers">
-<p>This chapter covers</p>
+<p>In this chapter, we cover</p>
 <ul>
-<li>what a crash does to a write at each stage</li>
-<li>write-ahead logging, and why the log is written before memory is changed</li>
-<li>a format for records, with a length and a checksum</li>
-<li>recovery: reading a log, and cutting off a damaged end</li>
-<li>the system calls <code>write</code> and <code>fsync</code>, and what each of them costs</li>
-<li>what to do when the disk reports an error</li>
-<li>a store with entries, versions and conditional writes</li>
-<li>an HTTP server that provides the API of chapter 1</li>
-<li>a simulation that damages a log at every byte</li>
-<li>a test that kills the server under load, on 1 machine and on 2</li>
+<li>crash-consistency failure modes at each stage of a mutation and the four invariants of write-ahead logging</li>
+<li>binary record framing with little-endian length prefixes, monotonic sequence numbers, and CRC-32 checksums</li>
+<li>deterministic startup recovery, torn-tail truncation via <code>set_len</code>, and parent-directory synchronization</li>
+<li>kernel page-cache buffering versus physical disk durability (<code>write</code> versus <code>fsync</code>) and empirical NVMe latency via <code>synccost</code></li>
+<li>fail-stop error handling when <code>write_all</code> or <code>sync_data</code> returns an I/O fault</li>
+<li>the <code>BTreeMap</code>-backed <code>Store</code> supporting monotonic versions, conditional <code>If-Match</code> / <code>If-None-Match</code> writes, and cursor-paginated prefix scans</li>
+<li>the asynchronous <code>axum</code> HTTP server (<code>kvd</code>) offloading blocking disk I/O via <code>spawn_blocking</code></li>
+<li>exhaustive byte-truncation and bit-flip verification (<code>crashsim</code>) and live <code>SIGKILL</code> recovery verification (<code>kvctl</code>) on one host and across two hosts</li>
 </ul>
 </div>
 
-<h2 id="storing-data-durably"><a class="header" href="#storing-data-durably">Storing data durably</a></h2>
-<p>A storage node keeps its entries in memory, so that a read requires no access to the
-disk. Memory is lost when the process stops, and so the node must keep the data on
-disk as well, in a form from which the contents of memory can be reconstructed.</p>
-<p>The first design that comes to mind keeps a file which mirrors the contents of memory
-and, on every write, overwrites the affected part of that file. In the presence of
-crashes this is unsafe, and the reason is worth seeing concretely. Suppose that a
-value of 1 KB is being replaced by another of the same size, and that the power fails
-when half of the new bytes have reached the disk. The file now contains the first
-half of the new value followed by the second half of the old. The entry is corrupt,
-its former value can no longer be recovered, and, worst of all, nothing in the file
-indicates that anything is wrong.</p>
-<p>The fault in this design is that an update in place destroys the old state before the
-new state is complete, so that there is a moment at which neither exists. The standard
-remedy is to give up updating in place altogether. The node appends a description of
-each change to the end of a file and modifies the file in no other way. A file used in
-this manner is called a <em>log</em>. Because every change is entered in the log before it is
-applied to any other structure, the technique is known as <em>write-ahead logging</em>, and
-the file as a <em>write-ahead log</em>.</p>
-<p>With a file that is only ever appended to, a crash during a write can affect nothing
-but the record that was being appended. All the earlier records are intact, since
-nothing ever writes to that part of the file again.</p>
+<h2 id="21-durable-storage-and-write-ahead-logging"><a class="header" href="#21-durable-storage-and-write-ahead-logging">2.1 Durable Storage and Write-Ahead Logging</a></h2>
+<p>A storage node holds its active key-value entries in RAM so that point reads (<code>GET</code>) and prefix scans resolve without disk seeks. Because volatile memory disappears when a process terminates or a server loses power, the node must persist every mutation on non-volatile storage in a form from which we can reconstruct the in-memory map deterministically at startup.</p>
+<p>Updating a data file in place is unsafe under power loss. Consider replacing a 1 KiB value with a new 1 KiB payload when power fails after half of the new bytes reach disk. On restart, the file contains the first half of the new value concatenated with the second half of the old value. The entry is torn, the prior value is gone, and the raw file carries no structural evidence of corruption.</p>
+<p>The defect in an in-place update is that overwriting destroys the old state before the new state becomes complete, creating a vulnerability window in which neither state exists. We eliminate that window by forbidding in-place mutations altogether. Instead, the node appends a self-contained description of each change to the end of an append-only file, called a <em>log</em>, and never modifies previously written bytes. Because we record every change durably in the log before mutating any in-memory index, this design is called <em>write-ahead logging</em> (WAL).</p>
+<p>With an append-only log, a crash mid-write can corrupt at most the single record currently being appended at the tail of the file. Every previously acknowledged record resides at an earlier byte offset that the process never touches again.</p>
+<p>We enforce four strict invariants on every storage node, regardless of request interleaving or crash timing:</p>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th style="text-align: left">No.</th><th style="text-align: left">Storage Node Invariant</th><th style="text-align: left">Operational Guarantee</th></tr>
+</thead>
+<tbody>
+<tr><td style="text-align: left">0</td><td style="text-align: left">Every mutation is appended to the WAL and confirmed by <code>fsync</code> before the server returns a response to the client.</td><td style="text-align: left">Guarantees durability of acknowledged writes across process termination and power loss.</td></tr>
+<tr><td style="text-align: left">1</td><td style="text-align: left">Every mutation reaches the durable WAL before the node applies it to the in-memory <code>BTreeMap</code>.</td><td style="text-align: left">Prevents any concurrent reader from observing uncommitted state that could vanish after a crash.</td></tr>
+<tr><td style="text-align: left">2</td><td style="text-align: left">The in-memory <code>BTreeMap</code> equals the exact result of applying all valid WAL records in sequence order.</td><td style="text-align: left">Ensures that losing RAM loses zero committed state and recovery is deterministic.</td></tr>
+<tr><td style="text-align: left">3</td><td style="text-align: left">The WAL is modified exclusively by appending; bytes belonging to a confirmed record are never overwritten.</td><td style="text-align: left">Confines crash damage strictly to the tail of the file, where startup recovery detects and truncates incomplete frames.</td></tr>
+</tbody>
+</table>
+</div>
+<h2 id="22-crash-points-during-a-write"><a class="header" href="#22-crash-points-during-a-write">2.2 Crash Points During a Write</a></h2>
+<p>Because invariant 0 and invariant 1 impose a strict total order on the write path (encode frame, append to WAL, call <code>fsync</code>, apply to <code>BTreeMap</code>, send HTTP response), we can enumerate the exact recovery state for a crash at every stage of a mutation (Figure 2-1).</p>
 <figure>
-<img src="figures/node-inside.svg?v=fc67b1c5" alt="The inside of a storage node. The HTTP handler reads the key, the headers and the body, and calls the store, which checks the condition on the version. A write goes first to the log on disk, which holds every change in order and survives a crash, and second to the map in memory, which goes from key to entry, is sorted by key, and is rebuilt at start. A read uses map only.">
-<figcaption><b>Figure 2.1</b> The components of a storage node, and the order of the steps of a write.</figcaption>
+<img src="figures/crash-points.svg?v=254c7a72" alt="The four crash points during a write: before WAL write (not on disk, no reply, absent on restart); mid-record write (partial bytes on disk, no reply, truncated on restart); after fsync before HTTP reply (complete record on disk, no reply, present on restart); after HTTP reply (complete record on disk, client received 201 or 204, present on restart)." />
+<figcaption><b>Figure 2-1</b> The four execution points at which a crash can occur during a write, and the resulting state after restart.</figcaption>
 </figure>
-<p>The node maintains 4 <em>invariants</em>, conditions that hold at every moment, whatever
-requests arrive and wherever a crash occurs.</p>
-<ol>
-<li>Every change is in the log, and confirmed by the disk, before its client receives a response.</li>
-<li>Every change is in the log before it is applied to the map in memory.</li>
-<li>The map is equal to the result of applying all the records of the log in order.</li>
-<li>The log is modified only by appending. The bytes of a confirmed record are never written again.</li>
-</ol>
-<p>Each invariant purchases something specific. The first is durability itself. The
-second and third together ensure that the map contains nothing that is absent from the
-log, so that the loss of the map loses no data. And the fourth confines the damage
-that a crash can do to the end of the file, where recovery knows to look for it.</p>
-<h2 id="crashes-during-a-write"><a class="header" href="#crashes-during-a-write">Crashes during a write</a></h2>
-<p>Given this ordering of steps, the outcome of a crash can be worked out for each stage
-of a write.</p>
-<figure>
-<img src="figures/crash-points.svg?v=254c7a72" alt="The 4 moments at which a node can crash during a write. Before the record is written: nothing is on disk, the client gets no answer, and after restart the write did not happen. In the middle of the record: part of a record is on disk, the client gets no answer, and after restart the part is cut off. After fsync but before the answer: the whole record is on disk, the client gets no answer, and after restart the write happened. After the answer: the whole Record is on disk, client got 201 or 204, and write happened.">
-<figcaption><b>Figure 2.2</b> The 4 stages at which a crash can occur, and the state that is found after a restart.</figcaption>
+<p>The third case merits explicit analysis. When the node completes <code>fsync</code> and terminates before writing the HTTP response socket, the record survives recovery even though the caller received a connection reset rather than a <code>201 Created</code> or <code>204 No Content</code>. This outcome satisfies invariant 0: durability binds acknowledged writes and makes no promise that an unacknowledged write did not commit. From the caller’s perspective, the outcome is indeterminate. As we established in Chapter 1, the caller resolves indeterminate writes safely by retrying with an idempotent <code>PUT</code> or a conditional <code>If-Match</code> version check. We trigger and observe this exact third case experimentally in Section 2.8.</p>
+<h2 id="23-on-disk-wal-record-format"><a class="header" href="#23-on-disk-wal-record-format">2.3 On-Disk WAL Record Format</a></h2>
+<p>When the storage node restarts, the recovery scanner must locate every record boundary across variable-length keys and values, and it must reject any truncated or bit-corrupted record at the end of the file.</p>
+<p>We satisfy both requirements by prefixing every serialized payload with an 8-byte <em>frame header</em>: a 4-byte little-endian unsigned payload length (<code>u32</code>) followed by a 4-byte IEEE CRC-32 checksum computed over the payload bytes. Any single-bit flip, torn sector write, or truncated payload changes either the observed length or the recomputed CRC-32 checksum. Figure 2-2 illustrates both the on-disk binary record layout and the synchronous write path from frame encoding through WAL durability to <code>BTreeMap</code> visibility.</p>
+<figure class="diagram">
+<img src="figures/m3/ch02_wal_format.svg" alt="Figure 2-1: On-disk write-ahead log record frame layout (4-byte little-endian length, 4-byte CRC32C checksum, operation tag, key length and bytes, value bytes) and synchronous write path where WAL fsync strictly precedes MemTable visibility." />
+<figcaption><b>Figure 2-2</b> On-disk WAL frame layout and synchronous write path ordering durable append ahead of in-memory state visibility.</figcaption>
 </figure>
-<p>The third case requires comment. The record has been stored durably, and the node
-crashes before it has sent its response. After the restart the write is present,
-although its client was never told that it had succeeded. This does not violate the
-guarantee of durability, which covers acknowledged writes and is silent about writes
-whose outcome was never reported. From the client’s point of view the outcome of such
-a write is unknown, which is the lost response that chapter 1 discussed under
-retries. The client resolves the uncertainty by sending the request again, and can do
-so safely because <code>PUT</code> is idempotent. This case is produced deliberately, by a test,
-in the section on killing the server.</p>
-<h2 id="the-format-of-a-record"><a class="header" href="#the-format-of-a-record">The format of a record</a></h2>
-<p>When a log is read back, the reader has to determine where each record ends, since
-records differ in length. It must also be able to recognise a record that is
-incomplete or damaged, since the end of the file may contain the partial output of a
-write that a crash interrupted.</p>
-<p>Both needs are met by beginning every record with a <em>frame</em> of 8 bytes, which holds
-the length of the data that follows and a checksum of it. The checksum is a <em>CRC-32</em>,
-a value of 32 bits computed from the data in such a way that any change to the data
-will almost certainly change the value. When a record is read, the checksum is
-computed afresh and compared with the one that was stored.</p>
-<figure>
-<img src="figures/record-layout.svg?v=c4fa56a5" alt="The 28 bytes of the first record of the log. The frame is 8 bytes: the length, 14 00 00 00, which says that the payload is 20 bytes, and the checksum, 8d d3 da 1d, the CRC-32 of those 20 bytes. The payload is the sequence 1 as 8 bytes, the kind 01 for a put, the key length 6 as 2 bytes, the 6 bytes of the key user-1, and the value ada as the Rest of payload.">
-<figcaption><b>Figure 2.3</b> The layout of the first record of a log.</figcaption>
-</figure>
-<p>The following are the first bytes of a log after the 2 writes to <code>user-1</code> shown in
-chapter 1.</p>
+<p>Inspecting the raw bytes of <code>data/kv.log</code> after applying two writes to <code>user-1</code> illustrates the exact wire layout:</p>
 <pre><code class="language-console">$ xxd data/kv.log | head -4
 00000000: 1400 0000 8dd3 da1d 0100 0000 0000 0000  ................
 00000010: 0106 0075 7365 722d 3161 6461 1d00 0000  ...user-1ada....
 00000020: cefd 7d53 0200 0000 0000 0000 0106 0075  ..}S...........u
 00000030: 7365 722d 3161 6461 206c 6f76 656c 6163  ser-1ada lovelac
 </code></pre>
-<p>The first 4 bytes, <code>1400 0000</code>, encode the length 20 in <em>little-endian</em> order, in
-which the least significant byte of a number comes first. The 4 bytes of the checksum
-follow. Within the payload, the sequence number 1 occupies the first 8 bytes, and is
-followed by the kind, <code>01</code>, and the length of the key, <code>0600</code>. The key and the value
-can be read in the right-hand column. At byte 28, which is <code>0x1c</code>, the second record
-begins with the length <code>1d00 0000</code>, or 29.</p>
-<p class="listing"><img class="mascot" src="art/crab-happy.svg" alt=""><b>Listing 2.1</b> The imports of <code>kv/src/record.rs</code>. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/distributed-systems-from-the-ground-up/code/kv/src/record.rs">kv/src/record.rs</a></p>
+<p>The first four bytes (<code>1400 0000</code>) encode payload length <code>20</code> in little-endian byte order, followed by the 4-byte CRC-32 checksum (<code>8dd3 da1d</code>). Inside the 20-byte payload, the 8-byte sequence number <code>1</code> precedes the 1-byte operation tag (<code>01</code> for <code>Put</code>), the 2-byte key length (<code>0600</code>), the 6-byte UTF-8 key (<code>user-1</code>), and the remaining value bytes (<code>ada</code>). At byte offset <code>28</code> (<code>0x1c</code>), the second frame opens with length <code>1d00 0000</code> (<code>29</code> bytes).</p>
+<p>We implement binary framing in <code>kv/src/record.rs</code>. Listing 2.1 declares the CRC-32 hasher import required for payload integrity verification.</p>
+<p class="listing"><b>Listing 2.1</b> Imports of <code>kv/src/record.rs</code>. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/distributed-systems-from-the-ground-up/code/kv/src/record.rs">kv/src/record.rs</a></p>
 
 <pre><code class="language-rust">use crc32fast::hash;</code></pre>
-<p class="listing"><img class="mascot" src="art/crab-happy.svg" alt=""><b>Listing 2.2</b> The types for a change, a record, and the result of decoding. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/distributed-systems-from-the-ground-up/code/kv/src/record.rs">kv/src/record.rs</a></p>
+<p>Before writing the encoder and decoder, we define the core domain types in Listing 2.2. <code>Change</code> represents either a <code>Put</code> with key and value bytes or a <code>Delete</code> tombstone, <code>Record</code> pairs a <code>Change</code> with its strictly monotonic <code>u64</code> log sequence number, and <code>Decoded</code> partitions every possible decode result into three mutually exclusive outcomes: <code>Ok</code> (a valid record plus byte count consumed), <code>Incomplete</code> (buffer ended before frame or payload completion), or <code>Corrupt</code> (checksum mismatch, unknown tag, or invalid UTF-8 key). Recovery treats <code>Incomplete</code> and <code>Corrupt</code> identically by stopping the scan, whereas post-mortem fault inspection benefits from distinguishing an interrupted tail write from on-disk bit corruption.</p>
+<p class="listing"><b>Listing 2.2</b> Core record types and three-way decode outcome in <code>kv/src/record.rs</code>. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/distributed-systems-from-the-ground-up/code/kv/src/record.rs">kv/src/record.rs</a></p>
 
 <pre><code class="language-rust">/// A change to the store.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -341,12 +282,8 @@ pub const MAX_PAYLOAD: usize = (1 &lt;&lt; 20) + 1024;
 
 const PUT: u8 = 1;
 const DELETE: u8 = 2;</code></pre>
-<p><code>Decoded</code> has 3 variants because a reader must tell 3 situations apart: a complete
-record, data that ends before the record is complete, and data that is complete and
-invalid. The distinction between the last 2 is of no consequence to recovery, which
-treats them alike, and is valuable when a log is being examined after a fault, since
-the one indicates an interrupted write and the other a damaged disk.</p>
-<p class="listing"><img class="mascot" src="art/crab-happy.svg" alt=""><b>Listing 2.3</b> Encoding a record. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/distributed-systems-from-the-ground-up/code/kv/src/record.rs">kv/src/record.rs</a></p>
+<p>Listing 2.3 defines <code>Record::encode</code>, which serializes the sequence number, operation tag, key length, key bytes, and optional value bytes into a contiguous payload vector, computes its CRC-32 digest, and prepends the 8-byte frame header (<code>len</code> and <code>crc</code>) in little-endian order. The contract guarantees that every encoded frame is self-delimiting and passes <code>Record::decode</code> without allocation ambiguity.</p>
+<p class="listing"><b>Listing 2.3</b> Little-endian framing and CRC-32 encoding in <code>kv/src/record.rs</code>. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/distributed-systems-from-the-ground-up/code/kv/src/record.rs">kv/src/record.rs</a></p>
 
 <pre><code class="language-rust">impl Record {
     /// Returns the record as the bytes that are appended to the log.
@@ -371,9 +308,8 @@ the one indicates an interrupted write and the other a damaged disk.</p>
         bytes
     }
 }</code></pre>
-<p>Decoding carries out the same steps in order and returns the variant that corresponds
-to the first step that fails.</p>
-<p class="listing"><img class="mascot" src="art/crab-happy.svg" alt=""><b>Listing 2.4</b> Decoding a record. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/distributed-systems-from-the-ground-up/code/kv/src/record.rs">kv/src/record.rs</a></p>
+<p>Listing 2.4 implements the inverse contract, <code>Record::decode</code>. It parses a byte slice defensively without trusting any length field read from disk: if fewer than 8 bytes remain or fewer than <code>len</code> payload bytes remain, it returns <code>Decoded::Incomplete</code>; if the recomputed CRC-32 fails, an internal field exceeds payload bounds, the key is invalid UTF-8, or the operation tag is unrecognized, it returns <code>Decoded::Corrupt</code>. Every fixed-width field uses <code>split_first_chunk</code>, ensuring that corrupted length headers never trigger an out-of-bounds panic.</p>
+<p class="listing"><b>Listing 2.4</b> Defensive bounds-checked decoding in <code>kv/src/record.rs</code>. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/distributed-systems-from-the-ground-up/code/kv/src/record.rs">kv/src/record.rs</a></p>
 
 <pre><code class="language-rust">impl Record {
     /// Reads the record at the front of `bytes`.
@@ -432,28 +368,14 @@ fn parse(payload: &amp;[u8]) -&gt; Option&lt;Record&gt; {
         change,
     })
 }</code></pre>
-<p><code>split_first_chunk</code> returns the first bytes of a slice as an array of fixed size,
-together with the remainder, or <code>None</code> if the slice is too short. Every field is
-extracted by this means. A payload shorter than its fields therefore yields <code>None</code>,
-and at no point does the code use a value read from the disk as an index without
-first having validated it. A decoder of data from disk must be written on the
-assumption that the data may be anything at all, since after a fault it may be.</p>
-<h2 id="what-a-durable-write-costs"><a class="header" href="#what-a-durable-write-costs">What a durable write costs</a></h2>
-<p>Invariant 1 requires that the disk has confirmed every record. Writing to a file does
-not, by itself, satisfy this requirement, and the difference between the 2 is the most
-consequential fact about storage that a programmer has to know.</p>
-<p>The system call <code>write</code> copies data into a buffer belonging to the kernel and
-returns. At some later time, the kernel transfers the buffer to the disk. With the
-call <code>fsync</code>, a program instructs the kernel to transfer all the buffered data of a
-file at once, and the call does not return until the disk has reported success. In
-Rust, <code>File::sync_data</code> makes this call.</p>
+<h2 id="24-measuring-the-physical-cost-of-fsync"><a class="header" href="#24-measuring-the-physical-cost-of-fsync">2.4 Measuring the Physical Cost of <code>fsync</code></a></h2>
+<p>Invariant 0 requires confirmation from non-volatile storage before replying to a client. Issuing a <code>write</code> system call alone does not satisfy this requirement. <code>write</code> copies bytes from user-space memory into the operating system kernel’s page cache and returns immediately; the kernel flushes dirty pages asynchronously on its own schedule. Calling <code>fsync</code> (or <code>fdatasync</code>, invoked in Rust via <code>File::sync_data</code>) forces the kernel to flush all buffered bytes for that file descriptor to the storage controller and blocks until the device reports completion.</p>
 <figure>
-<img src="figures/survives.svg?v=66f2d30b" alt="What survives 2 kinds of failure. When the process is killed, the map in the process is lost, bytes given to write are kept, and bytes after fsync are kept. When the power fails, the map is lost, bytes given to write are lost, and bytes after fsync are kept. After write the bytes are in the kernel&#39;s memory, and the kernel outlives the process, So only a power failure shows difference.">
-<figcaption><b>Figure 2.4</b> The data that is lost in each kind of failure.</figcaption>
+<img src="figures/survives.svg?v=66f2d30b" alt="Comparison of process crash versus power loss: killing a process loses only in-process RAM while kernel page-cache writes survive; power failure loses both in-process RAM and un-synced page-cache writes, leaving only fsync-confirmed records intact." />
+<figcaption><b>Figure 2-3</b> Durability boundaries across process termination versus host power failure.</figcaption>
 </figure>
-<p>The program <code>synccost</code> appends 500 records to a log, first without <code>fsync</code> and then
-with an <code>fsync</code> after every record.</p>
-<p class="listing"><img class="mascot" src="art/crab-happy.svg" alt=""><b>Listing 2.5</b> The imports of <code>synccost/src/main.rs</code>. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/distributed-systems-from-the-ground-up/code/synccost/src/main.rs">synccost/src/main.rs</a></p>
+<p>To quantify this durability barrier on real hardware, we build the <code>synccost</code> microbenchmark. Listing 2.5 imports the filesystem, timing, and record types used by <code>synccost</code>.</p>
+<p class="listing"><b>Listing 2.5</b> Imports of <code>synccost/src/main.rs</code>. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/distributed-systems-from-the-ground-up/code/synccost/src/main.rs">synccost/src/main.rs</a></p>
 
 <pre><code class="language-rust">use std::env;
 use std::error::Error;
@@ -462,7 +384,8 @@ use std::path::Path;
 use std::time::{Duration, Instant};
 
 use kv::{Change, Log};</code></pre>
-<p class="listing"><img class="mascot" src="art/crab-happy.svg" alt=""><b>Listing 2.6</b> Measuring the cost of an append with and without <code>fsync</code>. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/distributed-systems-from-the-ground-up/code/synccost/src/main.rs">synccost/src/main.rs</a></p>
+<p>Listing 2.6 appends 500 identical records twice to fresh files: once calling <code>write_all</code> alone (<code>sync = false</code>) and once calling <code>write_all</code> followed by <code>sync_data</code> (<code>sync = true</code>), reporting elapsed time, per-record latency, and sustained throughput for each mode.</p>
+<p class="listing"><b>Listing 2.6</b> Measuring buffered versus durable WAL append throughput in <code>synccost/src/main.rs</code>. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/distributed-systems-from-the-ground-up/code/synccost/src/main.rs">synccost/src/main.rs</a></p>
 
 <pre><code class="language-rust">const RECORDS: u32 = 500;
 
@@ -502,38 +425,32 @@ fn main() -&gt; Result&lt;(), Box&lt;dyn Error&gt;&gt; {
 
     Ok(())
 }</code></pre>
+<p>Running <code>synccost</code> on an NVMe SSD yields a three-order-of-magnitude latency gap:</p>
 <pre><code class="language-console">$ cargo run --release -p synccost -- /var/tmp/synccost
 without fsync: 500 records in      1.4 ms, 0.003 ms per record, 366991 records per second
 with fsync   : 500 records in   2697.5 ms, 5.395 ms per record,    185 records per second
 </code></pre>
 <figure>
-<img src="figures/sync-cost.svg?v=0bf92cb7" alt="The cost of fsync on an NVMe disk. Appending 1 record takes 0.003 ms with write only and 5.395 ms with write followed by fsync. That is 366991 records per second against 185. write copies the bytes into the kernel&#39;s memory and returns, and fsync waits until the disk reports that the bytes are stored.">
-<figcaption><b>Figure 2.5</b> The 2 measurements, drawn to scale.</figcaption>
+<img src="figures/sync-cost.svg?v=0bf92cb7" alt="NVMe sync latency comparison to scale: write only averages 0.003 ms per record (366,991 records/s) versus write plus fsync at 5.395 ms per record (185 records/s)." />
+<figcaption><b>Figure 2-4</b> Empirical NVMe latency of buffered writes versus `fsync`-confirmed appends, drawn to scale.</figcaption>
 </figure>
-<p>On an NVMe disk, a durable append took 5.4 ms, about 1900 times as long as an append
-that merely copies data into the kernel’s buffer. This is the figure from which
-chapter 1 derived its 185 records per second. Because the cost is so high, storage
-systems commonly make the behaviour configurable, and <code>kvd</code> has an option <code>--no-sync</code>
-under which the node responds after <code>write</code> alone. In that mode the node keeps every
-acknowledged write if its process crashes, and may lose the most recent writes if the
-machine loses power. Whether that is an acceptable bargain depends on the data, and it
-is a decision that ought to be made knowingly, since the default behaviour of a great
-many programs makes it silently.</p>
-<h2 id="design-overview"><a class="header" href="#design-overview">Design overview</a></h2>
+<p>Each durable append costs <code>5.4 ms</code>, roughly 1,900 times longer than copying into the kernel page cache, capping an unbatched single-writer disk at <code>185 records/s</code>. This measurement anchors the hardware provisioning analysis we established in Chapter 1 and motivates the group-commit batching optimization we implement in Chapter 6. Because durability versus throughput is an explicit operational trade-off, <code>kvd</code> exposes an optional <code>--no-sync</code> flag that skips <code>sync_data</code>. Under <code>--no-sync</code>, acknowledged writes survive a process crash (<code>SIGKILL</code>) via the kernel page cache, yet recent writes can disappear upon host power loss. Defaulting to durable <code>fsync</code> ensures that no operator trades away power-loss safety without an explicit configuration flag.</p>
+<h2 id="25-low-level-architecture-and-workspace-layout"><a class="header" href="#25-low-level-architecture-and-workspace-layout">2.5 Low-Level Architecture and Workspace Layout</a></h2>
+<p>Before examining the log, store, and HTTP server implementations, we summarize the workspace crates, core types, operation complexities, and failure contracts.</p>
 <div class="lld">
 <p>Low-level design: the storage node</p>
 <p><strong>Crates</strong></p>
 <div class="table-wrapper">
 <table>
 <thead>
-<tr><th>Crate</th><th>Kind</th><th>Contents</th></tr>
+<tr><th style="text-align: left">Crate</th><th style="text-align: left">Kind</th><th style="text-align: left">Responsibilities</th></tr>
 </thead>
 <tbody>
-<tr><td><code>kv</code></td><td>library</td><td><code>record</code> (the format of a record), <code>log</code> (the log file), <code>store</code> (the map and the conditions on writes)</td></tr>
-<tr><td><code>kvd</code></td><td>library and program</td><td><code>api</code> (errors and conditional headers, shared with later chapters) and the HTTP server</td></tr>
-<tr><td><code>kvctl</code></td><td>program</td><td>a client that generates load and verifies acknowledged writes</td></tr>
-<tr><td><code>crashsim</code></td><td>program</td><td>a simulation that damages a log at every position</td></tr>
-<tr><td><code>synccost</code></td><td>program</td><td>the measurement of <code>fsync</code></td></tr>
+<tr><td style="text-align: left"><code>kv</code></td><td style="text-align: left">library</td><td style="text-align: left"><code>record</code> (binary framing and CRC-32), <code>log</code> (append-only WAL and crash recovery), <code>store</code> (<code>BTreeMap</code> state machine and optimistic concurrency checks)</td></tr>
+<tr><td style="text-align: left"><code>kvd</code></td><td style="text-align: left">library and binary</td><td style="text-align: left"><code>api</code> (RFC 9457 error mapping and conditional headers, reused across Chapters 3 to 6) and the <code>axum</code> HTTP server</td></tr>
+<tr><td style="text-align: left"><code>kvctl</code></td><td style="text-align: left">binary</td><td style="text-align: left">External load generator and post-crash durability verifier</td></tr>
+<tr><td style="text-align: left"><code>crashsim</code></td><td style="text-align: left">binary</td><td style="text-align: left">Deterministic WAL fault injector testing every byte truncation and bit flip</td></tr>
+<tr><td style="text-align: left"><code>synccost</code></td><td style="text-align: left">binary</td><td style="text-align: left">Microbenchmark comparing <code>write</code> against <code>write</code> plus <code>fsync</code></td></tr>
 </tbody>
 </table>
 </div>
@@ -541,15 +458,15 @@ many programs makes it silently.</p>
 <div class="table-wrapper">
 <table>
 <thead>
-<tr><th>Type</th><th>Fields</th><th>Purpose</th></tr>
+<tr><th style="text-align: left">Type</th><th style="text-align: left">Key Fields</th><th style="text-align: left">Responsibility</th></tr>
 </thead>
 <tbody>
-<tr><td><code>Change</code></td><td><code>Put { key, value }</code> or <code>Delete { key }</code></td><td>the modification that a write requests</td></tr>
-<tr><td><code>Record</code></td><td><code>sequence</code>, <code>change</code></td><td>a change and its position in the log</td></tr>
-<tr><td><code>Log</code></td><td><code>file</code>, <code>sync</code>, <code>next</code>, <code>failed</code></td><td>appends records and reads them back</td></tr>
-<tr><td><code>Entry</code></td><td><code>value</code>, <code>version</code></td><td>the current state of a key</td></tr>
-<tr><td><code>Condition</code></td><td><code>Always</code>, <code>Absent</code>, <code>Version(n)</code></td><td>the state of the key that a write requires</td></tr>
-<tr><td><code>Store</code></td><td><code>entries: BTreeMap&lt;String, Entry&gt;</code>, <code>log</code></td><td>applies changes and answers reads</td></tr>
+<tr><td style="text-align: left"><code>Change</code></td><td style="text-align: left"><code>Put { key, value }</code> or <code>Delete { key }</code></td><td style="text-align: left">Represents a logical state-machine mutation</td></tr>
+<tr><td style="text-align: left"><code>Record</code></td><td style="text-align: left"><code>sequence</code>, <code>change</code></td><td style="text-align: left">Pairs a mutation with its contiguous WAL index</td></tr>
+<tr><td style="text-align: left"><code>Log</code></td><td style="text-align: left"><code>file</code>, <code>sync</code>, <code>next</code>, <code>failed</code></td><td style="text-align: left">Manages durable appends, startup recovery, and fail-stop latching</td></tr>
+<tr><td style="text-align: left"><code>Entry</code></td><td style="text-align: left"><code>value</code>, <code>version</code></td><td style="text-align: left">Stores the active value bytes and current sequence version of a key</td></tr>
+<tr><td style="text-align: left"><code>Condition</code></td><td style="text-align: left"><code>Always</code>, <code>Absent</code>, <code>Version(n)</code></td><td style="text-align: left">Encodes HTTP <code>If-Match</code> and <code>If-None-Match</code> preconditions</td></tr>
+<tr><td style="text-align: left"><code>Store</code></td><td style="text-align: left"><code>entries: BTreeMap&lt;String, Entry&gt;</code>, <code>log</code></td><td style="text-align: left">Enforces check-append-apply ordering and serves memory-resident reads</td></tr>
 </tbody>
 </table>
 </div>
@@ -557,34 +474,33 @@ many programs makes it silently.</p>
 <div class="table-wrapper">
 <table>
 <thead>
-<tr><th>Operation</th><th>Steps</th><th>Cost</th></tr>
+<tr><th style="text-align: left">Operation</th><th style="text-align: left">Execution Steps</th><th style="text-align: left">Dominant Cost</th></tr>
 </thead>
 <tbody>
-<tr><td><code>Store::put</code></td><td>check the condition, <code>Log::append</code>, apply to the map</td><td>1 <code>fsync</code></td></tr>
-<tr><td><code>Store::delete</code></td><td>check that the key exists, check the condition, <code>Log::append</code>, apply</td><td>1 <code>fsync</code></td></tr>
-<tr><td><code>Store::get</code></td><td>look the key up in the map</td><td>O(log n), with no access to the disk</td></tr>
-<tr><td><code>Store::list</code></td><td>iterate over the map from a starting key</td><td>O(log n + size of the page), with no access to the disk</td></tr>
-<tr><td><code>Store::open</code></td><td><code>Log::open</code>, then apply every record</td><td>proportional to the size of the log</td></tr>
+<tr><td style="text-align: left"><code>Store::put</code></td><td style="text-align: left">Evaluate precondition, <code>Log::append</code>, apply to <code>BTreeMap</code></td><td style="text-align: left">1 <code>fsync</code></td></tr>
+<tr><td style="text-align: left"><code>Store::delete</code></td><td style="text-align: left">Verify key existence and precondition, <code>Log::append</code>, remove from <code>BTreeMap</code></td><td style="text-align: left">1 <code>fsync</code></td></tr>
+<tr><td style="text-align: left"><code>Store::get</code></td><td style="text-align: left">Lookup key in <code>BTreeMap</code></td><td style="text-align: left"><code>O(log n)</code> in RAM, zero disk I/O</td></tr>
+<tr><td style="text-align: left"><code>Store::list</code></td><td style="text-align: left">Range scan from prefix or cursor in <code>BTreeMap</code></td><td style="text-align: left"><code>O(log n + limit)</code> in RAM, zero disk I/O</td></tr>
+<tr><td style="text-align: left"><code>Store::open</code></td><td style="text-align: left"><code>Log::open</code> with torn-tail truncation, replay valid records</td><td style="text-align: left">Linear in WAL byte size</td></tr>
 </tbody>
 </table>
 </div>
-<p><strong>Failure policy</strong></p>
+<p><strong>Failure Policy</strong></p>
 <div class="table-wrapper">
 <table>
 <thead>
-<tr><th>Event</th><th>Response</th></tr>
+<tr><th style="text-align: left">Fault Condition</th><th style="text-align: left">Deterministic Response</th></tr>
 </thead>
 <tbody>
-<tr><td>The log ends with an incomplete or damaged record</td><td>The file is cut off after the last valid record.</td></tr>
-<tr><td>A write to the log fails</td><td>The node returns <code>503</code> and rejects every later write until it is restarted.</td></tr>
+<tr><td style="text-align: left">Trailing incomplete or CRC-corrupt record on startup</td><td style="text-align: left">Truncate the WAL file to the byte offset immediately after the last valid record and <code>sync_all</code>.</td></tr>
+<tr><td style="text-align: left">I/O error returned by <code>write_all</code> or <code>sync_data</code></td><td style="text-align: left">Latch <code>failed = true</code>, return HTTP <code>503 Service Unavailable</code>, and reject all subsequent writes until operator restart.</td></tr>
 </tbody>
 </table>
 </div>
 </div>
 
-<p>The manifest of the workspace declares the edition of Rust, the minimum version of
-the compiler, and the dependencies that its crates share.</p>
-<p class="listing"><img class="mascot" src="art/crab-cute.svg" alt=""><b>Listing 2.7</b> The complete <code>Cargo.toml</code>. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/distributed-systems-from-the-ground-up/code/Cargo.toml">Cargo.toml</a></p>
+<p>Listing 2.7 presents the workspace <code>Cargo.toml</code>, pinning the Rust edition, minimum supported compiler version, and shared dependency versions across all Part I crates.</p>
+<p class="listing"><b>Listing 2.7</b> Workspace manifest in <code>Cargo.toml</code>. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/distributed-systems-from-the-ground-up/code/Cargo.toml">Cargo.toml</a></p>
 
 <pre><code class="language-toml">[workspace]
 resolver = "3"
@@ -625,31 +541,32 @@ xxhash-rust = { version = "0.8", features = ["xxh3"] }
 <div class="table-wrapper">
 <table>
 <thead>
-<tr><th>Dependency</th><th>Purpose</th></tr>
+<tr><th style="text-align: left">Dependency</th><th style="text-align: left">Role in Workspace</th></tr>
 </thead>
 <tbody>
-<tr><td><code>axum</code>, <code>tokio</code></td><td>the HTTP server and the asynchronous runtime</td></tr>
-<tr><td><code>clap</code></td><td>parsing the options of the command line</td></tr>
-<tr><td><code>crc32fast</code></td><td>the checksum of a record</td></tr>
-<tr><td><code>parking_lot</code></td><td>a mutex whose <code>lock</code> method returns the guard directly</td></tr>
-<tr><td><code>serde</code></td><td>JSON encoding of the list response and of error bodies</td></tr>
-<tr><td><code>thiserror</code></td><td>deriving <code>Display</code> and <code>From</code> for the store’s error type</td></tr>
-<tr><td><code>ureq</code></td><td>the HTTP client used by <code>kvctl</code></td></tr>
-<tr><td><code>xxhash-rust</code></td><td>the hash function of the ring described in chapter 1</td></tr>
+<tr><td style="text-align: left"><code>axum</code>, <code>tokio</code></td><td style="text-align: left">Asynchronous HTTP/1.1 server and multi-threaded task executor</td></tr>
+<tr><td style="text-align: left"><code>clap</code></td><td style="text-align: left">Typed command-line argument parsing</td></tr>
+<tr><td style="text-align: left"><code>crc32fast</code></td><td style="text-align: left">Hardware-accelerated IEEE CRC-32 checksum computation</td></tr>
+<tr><td style="text-align: left"><code>parking_lot</code></td><td style="text-align: left">Non-poisoning mutex with fast uncontended locking</td></tr>
+<tr><td style="text-align: left"><code>serde</code></td><td style="text-align: left">JSON serialization for prefix-list responses and RFC 9457 problem payloads</td></tr>
+<tr><td style="text-align: left"><code>thiserror</code></td><td style="text-align: left">Ergonomic <code>Error</code> and <code>From</code> trait derivations for <code>StoreError</code></td></tr>
+<tr><td style="text-align: left"><code>ureq</code></td><td style="text-align: left">Synchronous HTTP client used by <code>kvctl</code></td></tr>
+<tr><td style="text-align: left"><code>xxhash-rust</code></td><td style="text-align: left">Fast non-cryptographic 64-bit hashing for the consistent-hash ring</td></tr>
 </tbody>
 </table>
 </div>
-<h2 id="the-log"><a class="header" href="#the-log">The log</a></h2>
-<p><code>Log</code> owns the log file. It offers 2 operations: opening, which includes recovery, and
-appending a record.</p>
-<p class="listing"><img class="mascot" src="art/crab-happy.svg" alt=""><b>Listing 2.8</b> The imports of <code>kv/src/log.rs</code>. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/distributed-systems-from-the-ground-up/code/kv/src/log.rs">kv/src/log.rs</a></p>
+<h2 id="26-the-write-ahead-log-kvlog"><a class="header" href="#26-the-write-ahead-log-kvlog">2.6 The Write-Ahead Log (<code>kv::log</code>)</a></h2>
+<p><code>Log</code> owns the open file descriptor for <code>kv.log</code> and exposes two public operations: <code>open</code>, which recovers the durable prefix and repairs any torn tail, and <code>append</code>, which assigns the next contiguous sequence number and persists the framed record.</p>
+<p>Listing 2.8 imports the file I/O traits, path types, and <code>Record</code> codec used by <code>kv/src/log.rs</code>.</p>
+<p class="listing"><b>Listing 2.8</b> Imports of <code>kv/src/log.rs</code>. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/distributed-systems-from-the-ground-up/code/kv/src/log.rs">kv/src/log.rs</a></p>
 
 <pre><code class="language-rust">use std::fs::{self, File, OpenOptions};
 use std::io::{self, Read, Write};
 use std::path::Path;
 
 use crate::record::{Change, Decoded, Record};</code></pre>
-<p class="listing"><img class="mascot" src="art/crab-happy.svg" alt=""><b>Listing 2.9</b> The log, and the result of opening it. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/distributed-systems-from-the-ground-up/code/kv/src/log.rs">kv/src/log.rs</a></p>
+<p>Listing 2.9 defines the <code>Log</code> struct and <code>Recovered</code> return bundle. <code>Log</code> tracks the next sequence number to assign (<code>next</code>), whether <code>sync_data</code> is enabled (<code>sync</code>), and the fail-stop latch (<code>failed</code>). <code>Recovered</code> hands back the open <code>Log</code>, the ordered vector of intact <code>Record</code> entries, and <code>truncated_bytes</code> so operators can observe whether startup repaired a torn tail.</p>
+<p class="listing"><b>Listing 2.9</b> <code>Log</code> state and <code>Recovered</code> summary in <code>kv/src/log.rs</code>. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/distributed-systems-from-the-ground-up/code/kv/src/log.rs">kv/src/log.rs</a></p>
 
 <pre><code class="language-rust">/// The name of the log inside the data directory.
 pub const FILE_NAME: &amp;str = "kv.log";
@@ -672,12 +589,9 @@ pub struct Recovery {
     /// The bytes after the last complete record, which were removed.
     pub discarded: u64,
 }</code></pre>
-<h3 id="recovery"><a class="header" href="#recovery">Recovery</a></h3>
-<p>Opening a log reads the entire file and decodes records from the beginning until one
-fails to decode. Since <code>Record::decode</code> already distinguishes every possible outcome,
-the loop is short. Recovery treats an incomplete record and a corrupt one alike: in
-either case the record before it becomes the last record of the log.</p>
-<p class="listing"><img class="mascot" src="art/crab-happy.svg" alt=""><b>Listing 2.10</b> Decoding records until one is incomplete or corrupt. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/distributed-systems-from-the-ground-up/code/kv/src/log.rs">kv/src/log.rs</a></p>
+<h3 id="startup-scan-and-torn-tail-truncation"><a class="header" href="#startup-scan-and-torn-tail-truncation">Startup Scan and Torn-Tail Truncation</a></h3>
+<p>At startup, <code>scan</code> reads the raw file buffer from byte offset <code>0</code> and invokes <code>Record::decode</code> repeatedly until either all bytes are consumed or the first <code>Incomplete</code> or <code>Corrupt</code> frame is encountered. Listing 2.10 implements this pure decoding loop, returning the valid record vector and the exact byte offset where valid data ends.</p>
+<p class="listing"><b>Listing 2.10</b> Sequential record scan in <code>kv/src/log.rs</code>. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/distributed-systems-from-the-ground-up/code/kv/src/log.rs">kv/src/log.rs</a></p>
 
 <pre><code class="language-rust">/// Reads records from the front of `bytes` until one is incomplete or
 /// corrupt. It returns the records and the number of bytes they occupy.
@@ -692,11 +606,13 @@ fn scan(bytes: &amp;[u8]) -&gt; (Vec&lt;Record&gt;, usize) {
 
     (records, valid)
 }</code></pre>
-<figure>
-<img src="figures/recovery-scan.svg?v=debdc2db" alt="Recovery of a log of 63 bytes after a crash. Record 1 occupies bytes 0 to 27 and record 2 bytes 28 to 57, and 5 bytes of a third record follow. The scan reads a frame at 0 that says 20 bytes and whose checksum matches: record 1. At 28 the frame says 22 bytes and the checksum matches: record 2. At 58 only 5 bytes are left and a frame needs 8, so the record is incomplete and the scan stops. The file is cut to 58 bytes, and the next record will have sequence 3.">
-<figcaption><b>Figure 2.6</b> The recovery of a log that was cut off in the middle of its third record.</figcaption>
+<p>Figure 2-5 traces the complete crash-recovery lifecycle: scanning valid CRC-checked frames from byte <code>0</code>, truncating the torn tail at the exact valid boundary, replaying the valid prefix into a fresh <code>BTreeMap</code>, and bounding long-term log growth via atomic snapshot compaction.</p>
+<figure class="diagram">
+<img src="figures/m3/ch02_crash_recovery.svg" alt="Figure 2-2: Crash recovery pipeline showing sequential startup scan from offset 0, ftruncate removal of a torn tail frame, deterministic BTreeMap MemTable rebuild from valid frames, and atomic snapshot compaction." />
+<figcaption><b>Figure 2-5</b> Startup WAL recovery, torn-tail truncation, deterministic MemTable replay, and snapshot compaction.</figcaption>
 </figure>
-<p class="listing"><img class="mascot" src="art/crab-happy.svg" alt=""><b>Listing 2.11</b> Opening the log and cutting off a damaged end. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/distributed-systems-from-the-ground-up/code/kv/src/log.rs">kv/src/log.rs</a></p>
+<p>Listing 2.11 implements <code>Log::open</code>. After opening or creating <code>kv.log</code>, reading its contents, and running <code>scan</code>, it truncates any trailing damaged bytes via <code>file.set_len(valid_end)</code>, seeks the write cursor to <code>valid_end</code>, calls <code>file.sync_all()</code>, and synchronizes the parent directory descriptor (<code>sync_dir</code>).</p>
+<p class="listing"><b>Listing 2.11</b> Opening the WAL, truncating damaged tails, and syncing the parent directory in <code>kv/src/log.rs</code>. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/distributed-systems-from-the-ground-up/code/kv/src/log.rs">kv/src/log.rs</a></p>
 
 <pre><code class="language-rust">impl Log {
     /// Opens the log in `directory`, creating both if they do not exist.
@@ -740,20 +656,10 @@ fn scan(bytes: &amp;[u8]) -&gt; (Vec&lt;Record&gt;, usize) {
         ))
     }
 }</code></pre>
-<p>The call to <code>set_len</code> removes the damaged end of the file before any new record is
-appended, and the correctness of the whole log depends on this step. If the damaged
-bytes were left where they are, the next record would be written after them, a later
-recovery would stop at the damage, and the new record would be lost although the node
-had acknowledged it. A recovery procedure that reads correctly and fails to repair
-has merely postponed the loss.</p>
-<p>Both calls to <code>sync_all</code> are necessary, one to make the new length of the file
-durable and the other for its directory. Synchronising a file makes its contents
-durable, but the existence of the file is recorded in the directory that contains it,
-and that is a separate object. A newly created file whose directory has not been
-synchronised may be absent after a power failure, contents and all. The log therefore
-synchronises its directory when it is opened.</p>
-<h3 id="appending"><a class="header" href="#appending">Appending</a></h3>
-<p class="listing"><img class="mascot" src="art/crab-happy.svg" alt=""><b>Listing 2.12</b> Appending a record. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/distributed-systems-from-the-ground-up/code/kv/src/log.rs">kv/src/log.rs</a></p>
+<p>Truncating the damaged tail before accepting any new write is mandatory for correctness. If trailing garbage remained in the file, subsequent valid records would be appended past the corrupt offset; on the next restart, <code>scan</code> would halt at the old damage and discard newly acknowledged writes. Both <code>sync_all</code> calls are equally required: synchronizing the file descriptor persists its truncated length and contents, whereas synchronizing the parent directory persists the directory entry linking the filename to its inode. On POSIX filesystems, a newly created log file whose parent directory was never synchronized can vanish entirely after a power loss.</p>
+<h3 id="durable-appends-and-fail-stop-error-handling"><a class="header" href="#durable-appends-and-fail-stop-error-handling">Durable Appends and Fail-Stop Error Handling</a></h3>
+<p>Listing 2.12 implements <code>Log::append</code>. Preconditions: <code>self.failed</code> must be <code>false</code>. The method constructs the next <code>Record</code> with sequence number <code>self.next</code>, encodes the frame, writes all bytes to disk, and optionally calls <code>sync_data</code>. Only after disk confirmation succeeds does <code>self.next</code> increment. On any I/O error from <code>write_all</code> or <code>sync_data</code>, the method sets <code>self.failed = true</code> and propagates the error.</p>
+<p class="listing"><b>Listing 2.12</b> Durable append with fail-stop latching in <code>kv/src/log.rs</code>. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/distributed-systems-from-the-ground-up/code/kv/src/log.rs">kv/src/log.rs</a></p>
 
 <pre><code class="language-rust">impl Log {
     /// Appends a change and returns the record that holds it. When the log
@@ -796,24 +702,10 @@ synchronises its directory when it is opened.</p>
         self.next - 1
     }
 }</code></pre>
-<p>The field <code>failed</code> implements a policy known as <em>fail-stop</em>, under which a component
-that meets an error it cannot handle safely ceases to operate. If <code>write_all</code> or
-<code>sync_data</code> returns an error, the state of the file is unknown: the record may be
-absent, partly written, or complete. A log that went on accepting records could append
-a valid record after a damaged one, where recovery would never reach it.</p>
-<p>It might be thought that the node could call <code>fsync</code> again. This is unsafe as
-well, and for a reason that has surprised the authors of several well-known
-databases. After a failed <code>fsync</code>, the kernel may already have discarded the data it
-was unable to write, and a second call may then report success although nothing has
-reached the disk. A success after a failure therefore proves nothing. The log
-accordingly rejects all further appends. From that moment its node answers <code>503</code> to
-writes, continues to serve reads from memory, and has to be restarted or replaced by
-an operator. In the design of chapter 1, the followers of all the affected shards
-elect new leaders at this point, and the fault of 1 disk is absorbed by the cluster.</p>
-<h2 id="the-store"><a class="header" href="#the-store">The store</a></h2>
-<p><code>Store</code> contains the map and the log, and every modification of either passes through
-it.</p>
-<p class="listing"><img class="mascot" src="art/crab-happy.svg" alt=""><b>Listing 2.13</b> The imports of <code>kv/src/store.rs</code>. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/distributed-systems-from-the-ground-up/code/kv/src/store.rs">kv/src/store.rs</a></p>
+<p>Latching <code>self.failed = true</code> enforces a <em>fail-stop</em> policy. When <code>write_all</code> or <code>sync_data</code> fails, the on-disk tail state is indeterminate: the bytes may be absent, partially written, or written to a failing sector. Continuing to append risks placing a valid record behind a corrupt frame where recovery will never read it. Retrying <code>fsync</code> is equally unsafe on Linux and similar kernels: after returning an I/O error from <code>fsync</code>, the kernel marks affected page-cache pages clean and discards the error state, so a second <code>fsync</code> call can return <code>Ok(())</code> even though the data never reached disk. By latching <code>failed = true</code>, the node rejects all further mutations with HTTP <code>503 Service Unavailable</code>, continues serving in-memory reads, and awaits operator restart or host replacement. In the multi-node cluster of Chapter 1, peer replicas elect a new leader and absorb the failed disk without service outage.</p>
+<h2 id="27-the-in-memory-store-kvstore"><a class="header" href="#27-the-in-memory-store-kvstore">2.7 The In-Memory Store (<code>kv::store</code>)</a></h2>
+<p><code>Store</code> owns both the <code>BTreeMap&lt;String, Entry&gt;</code> index and the underlying <code>Log</code>, funneling every mutation through a single ordered code path. Listing 2.13 declares the map and error imports for <code>kv/src/store.rs</code>.</p>
+<p class="listing"><b>Listing 2.13</b> Imports of <code>kv/src/store.rs</code>. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/distributed-systems-from-the-ground-up/code/kv/src/store.rs">kv/src/store.rs</a></p>
 
 <pre><code class="language-rust">use std::collections::BTreeMap;
 use std::io;
@@ -824,7 +716,8 @@ use thiserror::Error;
 
 use crate::log::Log;
 use crate::record::{Change, Record};</code></pre>
-<p class="listing"><img class="mascot" src="art/crab-happy.svg" alt=""><b>Listing 2.14</b> Opening the store by applying the records of the log. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/distributed-systems-from-the-ground-up/code/kv/src/store.rs">kv/src/store.rs</a></p>
+<p>Listing 2.14 implements <code>Store::open</code> and the internal <code>apply</code> helper. <code>Store::open</code> delegates WAL recovery to <code>Log::open</code>, allocates an empty <code>BTreeMap</code>, and replays every recovered record through <code>apply</code>. Because startup recovery and live writes invoke the exact same <code>apply</code> function, invariant 2 holds by construction: live state and recovered state cannot diverge.</p>
+<p class="listing"><b>Listing 2.14</b> Store startup replay and single-source state application in <code>kv/src/store.rs</code>. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/distributed-systems-from-the-ground-up/code/kv/src/store.rs">kv/src/store.rs</a></p>
 
 <pre><code class="language-rust">impl Store {
     /// Opens the store in `directory` and applies every record of its log.
@@ -861,11 +754,14 @@ pub fn apply(entries: &amp;mut BTreeMap&lt;String, Entry&gt;, record: Record) {
         }
     }
 }</code></pre>
-<p>Recovery and the path of a write share a single function, <code>apply</code>, for modifying the
-map. Invariant 3 is a consequence of this arrangement. What a record does to the map
-is defined in exactly 1 place, which is used both when a record is first written and
-whenever a log is read back, so that the 2 cannot come to differ.</p>
-<p class="listing"><img class="mascot" src="art/crab-happy.svg" alt=""><b>Listing 2.15</b> Conditional writes: check, append, apply. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/distributed-systems-from-the-ground-up/code/kv/src/store.rs">kv/src/store.rs</a></p>
+<p>Listing 2.15 implements <code>Store::put</code> and <code>Store::delete</code>. Both enforce the exact three-stage contract required by invariants 0 and 1:</p>
+<ol>
+<li>Validate the caller’s <code>Condition</code> (<code>Always</code>, <code>Absent</code>, or <code>Version(expected)</code>) against the current <code>BTreeMap</code> entry so rejected writes never touch disk.</li>
+<li>Call <code>self.log.append(change)?</code>, returning early on any disk failure before mutating memory.</li>
+<li>Apply the durable record to <code>self.entries</code> and return the assigned version.</li>
+</ol>
+<p>Notice that an entry’s <code>version</code> equals the exact <code>sequence</code> number of the WAL record that last updated it. Reusing the WAL sequence number eliminates any secondary version counter that could drift out of synchronization across crashes.</p>
+<p class="listing"><b>Listing 2.15</b> Check-append-apply write path in <code>kv/src/store.rs</code>. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/distributed-systems-from-the-ground-up/code/kv/src/store.rs">kv/src/store.rs</a></p>
 
 <pre><code class="language-rust">impl Store {
     /// Sets the value of a key. The change is in the log before it is in
@@ -927,18 +823,8 @@ pub fn check(condition: Condition, current: Option&lt;u64&gt;) -&gt; Result&lt;(
         .then_some(())
         .ok_or(StoreError::ConditionFailed { current })
 }</code></pre>
-<p><code>put</code> and <code>delete</code> perform the same 3 steps in the same order. The condition is
-evaluated first, against the map, so that a write which is refused produces no
-record. <code>append</code> then returns when the record is durable, or returns an error, in
-which case the <code>?</code> operator leaves the function before <code>apply</code> is reached. The map is
-modified last. The order of these steps is the order of the invariants, and the code
-has been arranged so that it cannot be otherwise.</p>
-<div class="crab crab-happy">
-<p>The version of an entry is the sequence number of its record. The store keeps no separate counter of versions that could come to disagree with the log after a crash.</p>
-</div>
-
-<p>Reads use the map alone.</p>
-<p class="listing"><img class="mascot" src="art/crab-happy.svg" alt=""><b>Listing 2.16</b> Reading a key, and listing a page of keys. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/distributed-systems-from-the-ground-up/code/kv/src/store.rs">kv/src/store.rs</a></p>
+<p>Listing 2.16 implements the read path (<code>Store::get</code>, <code>Store::list</code>, and <code>page</code>), which queries <code>self.entries</code> exclusively with zero disk I/O. Because <code>BTreeMap</code> maintains keys in lexicographic order, <code>page</code> executes a bounded range scan starting either at <code>prefix</code> or strictly after <code>cursor</code>, terminating at the first key that no longer starts with <code>prefix</code>. Fetching <code>limit + 1</code> keys determines whether a subsequent page exists without scanning the remainder of the keyspace.</p>
+<p class="listing"><b>Listing 2.16</b> Point lookups and cursor-paginated prefix scans in <code>kv/src/store.rs</code>. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/distributed-systems-from-the-ground-up/code/kv/src/store.rs">kv/src/store.rs</a></p>
 
 <pre><code class="language-rust">impl Store {
     pub fn get(&amp;self, key: &amp;str) -&gt; Option&lt;&amp;Entry&gt; {
@@ -994,15 +880,10 @@ pub fn page(
 
     (page, more)
 }</code></pre>
-<p>A <code>BTreeMap</code> keeps its keys in sorted order, so that a listing is an iteration from
-some starting position, which is implemented in a function named <code>page</code>. Its call to
-<code>range</code> begins at the prefix or immediately after the cursor, and <code>take_while</code> ends
-the iteration at the first key that lacks the prefix. By looking for 1 item beyond the
-page, <code>page</code> learns whether a further page exists without having to count the
-remaining keys.</p>
-<h2 id="the-http-server"><a class="header" href="#the-http-server">The HTTP server</a></h2>
-<p><code>kvd</code> presents the store through the API of chapter 1.</p>
-<p class="listing"><img class="mascot" src="art/crab-happy.svg" alt=""><b>Listing 2.17</b> The imports of <code>kvd/src/main.rs</code>. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/distributed-systems-from-the-ground-up/code/kvd/src/main.rs">kvd/src/main.rs</a></p>
+<h2 id="28-the-http-server-kvd"><a class="header" href="#28-the-http-server-kvd">2.8 The HTTP Server (<code>kvd</code>)</a></h2>
+<p>The <code>kvd</code> binary exposes <code>Store</code> over the REST/HTTP contract defined in Chapter 1, translating HTTP headers into <code>Condition</code> values and mapping <code>StoreError</code> variants into RFC 9457 problem documents.</p>
+<p>Listing 2.17 lists the <code>axum</code>, <code>tokio</code>, <code>parking_lot</code>, and <code>kv</code> imports in <code>kvd/src/main.rs</code>.</p>
+<p class="listing"><b>Listing 2.17</b> Imports of <code>kvd/src/main.rs</code>. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/distributed-systems-from-the-ground-up/code/kvd/src/main.rs">kvd/src/main.rs</a></p>
 
 <pre><code class="language-rust">use std::error::Error;
 use std::net::SocketAddr;
@@ -1023,7 +904,8 @@ use parking_lot::Mutex;
 use serde::{Deserialize, Serialize};
 use tokio::net::TcpListener;
 use tokio::task;</code></pre>
-<p class="listing"><img class="mascot" src="art/crab-happy.svg" alt=""><b>Listing 2.18</b> The options of the command line, and the shared state. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/distributed-systems-from-the-ground-up/code/kvd/src/main.rs">kvd/src/main.rs</a></p>
+<p>Listing 2.18 defines the CLI arguments (<code>--listen</code>, <code>--data</code>, <code>--no-sync</code>) and the thread-safe <code>AppState</code> wrapper holding <code>Arc&lt;Mutex&lt;Store&gt;&gt;</code>.</p>
+<p class="listing"><b>Listing 2.18</b> Command-line configuration and shared server state in <code>kvd/src/main.rs</code>. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/distributed-systems-from-the-ground-up/code/kvd/src/main.rs">kvd/src/main.rs</a></p>
 
 <pre><code class="language-rust">#[derive(Parser)]
 struct Options {
@@ -1042,13 +924,9 @@ struct Options {
 
 /// The store, shared by every request.
 type Shared = Arc&lt;Mutex&lt;Store&gt;&gt;;</code></pre>
-<h3 id="errors"><a class="header" href="#errors">Errors</a></h3>
-<p>Each kind of failure of a request is a variant of <code>ApiError</code>, in the module
-<code>kvd::api</code>, and a single function converts a variant into a status code and a response
-body in the format of RFC 9457. Handlers return <code>Result&lt;_, ApiError&gt;</code> and use <code>?</code>. The
-conversion from <code>StoreError</code> is the 1 place that maps a failed condition to <code>412</code> and a
-failure of the log to <code>503</code>.</p>
-<p class="listing"><img class="mascot" src="art/crab-happy.svg" alt=""><b>Listing 2.19</b> The imports of <code>kvd/src/api.rs</code>. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/distributed-systems-from-the-ground-up/code/kvd/src/api.rs">kvd/src/api.rs</a></p>
+<h3 id="typed-errors-and-precondition-header-parsing"><a class="header" href="#typed-errors-and-precondition-header-parsing">Typed Errors and Precondition Header Parsing</a></h3>
+<p>We isolate HTTP error formatting and header parsing in <code>kvd/src/api.rs</code> so that the replicated server (Chapter 3), Raft server (Chapter 4), router (Chapter 5), and group-commit server (Chapter 6) reuse identical wire semantics. Listing 2.19 declares the imports for <code>kvd/src/api.rs</code>.</p>
+<p class="listing"><b>Listing 2.19</b> Imports of <code>kvd/src/api.rs</code>. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/distributed-systems-from-the-ground-up/code/kvd/src/api.rs">kvd/src/api.rs</a></p>
 
 <pre><code class="language-rust">use axum::Json;
 use axum::http::header::{CONTENT_TYPE, IF_MATCH, IF_NONE_MATCH};
@@ -1056,7 +934,8 @@ use axum::http::{HeaderMap, HeaderName, StatusCode};
 use axum::response::{IntoResponse, Response};
 use kv::{Condition, StoreError};
 use serde::Serialize;</code></pre>
-<p class="listing"><img class="mascot" src="art/crab-happy.svg" alt=""><b>Listing 2.20</b> The errors of the API and their responses. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/distributed-systems-from-the-ground-up/code/kvd/src/api.rs">kvd/src/api.rs</a></p>
+<p>Listing 2.20 defines <code>ApiError</code> and its <code>IntoResponse</code> and <code>From&lt;StoreError&gt;</code> implementations. Every storage failure maps deterministically to its RFC 9457 <code>application/problem+json</code> response: invalid keys map to <code>400</code>, missing keys to <code>404</code>, failed optimistic preconditions to <code>412</code> (carrying the current <code>ETag</code> when available), and failed WAL I/O to <code>503</code>.</p>
+<p class="listing"><b>Listing 2.20</b> RFC 9457 error mapping in <code>kvd/src/api.rs</code>. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/distributed-systems-from-the-ground-up/code/kvd/src/api.rs">kvd/src/api.rs</a></p>
 
 <pre><code class="language-rust">/// The ways a request can fail. Each one is a status code and a sentence.
 pub enum ApiError {
@@ -1156,8 +1035,8 @@ impl From&lt;StoreError&gt; for ApiError {
         }
     }
 }</code></pre>
-<h3 id="conditions"><a class="header" href="#conditions">Conditions</a></h3>
-<p class="listing"><img class="mascot" src="art/crab-happy.svg" alt=""><b>Listing 2.21</b> Parsing the <code>If-Match</code> and <code>If-None-Match</code> headers. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/distributed-systems-from-the-ground-up/code/kvd/src/api.rs">kvd/src/api.rs</a></p>
+<p>Listing 2.21 implements <code>write_condition</code> and <code>parse_etag</code>, validating HTTP <code>If-Match</code> and <code>If-None-Match</code> headers before any write reaches <code>Store</code>. Unsupported combinations such as <code>If-Match: *</code> or malformed version tokens return <code>400 Bad Request</code> rather than falling back to an unconditional write; ignoring an unrecognized precondition without returning an error would reintroduce the lost-update anomaly that conditional writes exist to eliminate.</p>
+<p class="listing"><b>Listing 2.21</b> Parsing <code>If-Match</code> and <code>If-None-Match</code> preconditions in <code>kvd/src/api.rs</code>. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/distributed-systems-from-the-ground-up/code/kvd/src/api.rs">kvd/src/api.rs</a></p>
 
 <pre><code class="language-rust">/// A version as it appears in `ETag`, `If-Match` and `If-None-Match`.
 pub fn etag(version: u64) -&gt; String {
@@ -1216,20 +1095,9 @@ pub fn write_condition(headers: &amp;HeaderMap) -&gt; Result&lt;Condition, ApiEr
         (None, Some(..)) =&gt; Err(ApiError::InvalidHeader(IF_NONE_MATCH)),
     }
 }</code></pre>
-<p><code>write_condition</code> accepts the combinations of headers that are meaningful for a write
-and answers <code>400</code> to all others, such as <code>If-Match: *</code>. The server thus rejects a
-condition that it cannot interpret. The alternative, to ignore it, would mean
-performing an unconditional write on behalf of a client that had asked for a
-conditional one, which is exactly the lost update that the condition was sent to
-prevent.</p>
-<h3 id="blocking-calls-in-an-asynchronous-server"><a class="header" href="#blocking-calls-in-an-asynchronous-server">Blocking calls in an asynchronous server</a></h3>
-<p>The server uses an asynchronous runtime, in which a small pool of threads serves all
-the connections and switches among them whenever one has to wait for the network. To
-block such a thread, as an <code>fsync</code> of 5 ms does, would delay every connection that the
-thread serves. <code>spawn_blocking</code> runs a closure on a separate pool of threads intended
-for operations that block, and the handler awaits the result without occupying a
-thread of the runtime.</p>
-<p class="listing"><img class="mascot" src="art/crab-happy.svg" alt=""><b>Listing 2.22</b> Running a write on a thread that is permitted to block. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/distributed-systems-from-the-ground-up/code/kvd/src/main.rs">kvd/src/main.rs</a></p>
+<h3 id="offloading-blocking-fsync-from-the-async-executor"><a class="header" href="#offloading-blocking-fsync-from-the-async-executor">Offloading Blocking <code>fsync</code> from the Async Executor</a></h3>
+<p>The <code>tokio</code> runtime multiplexes thousands of concurrent TCP connections over a small fixed pool of worker threads. Blocking a runtime worker for <code>5.4 ms</code> inside <code>File::sync_data</code> stalls every other connection scheduled on that thread. Listing 2.22 wraps every blocking write closure in <code>tokio::task::spawn_blocking</code>, dispatching disk I/O to Tokio’s dedicated blocking thread pool while the HTTP handler suspends cleanly.</p>
+<p class="listing"><b>Listing 2.22</b> Offloading blocking WAL operations via <code>spawn_blocking</code> in <code>kvd/src/main.rs</code>. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/distributed-systems-from-the-ground-up/code/kvd/src/main.rs">kvd/src/main.rs</a></p>
 
 <pre><code class="language-rust">/// Runs a write on a thread that may block. A write waits for the disk, and
 /// a thread that waits must not be one of the threads that serve requests.
@@ -1244,7 +1112,8 @@ where
 
     Ok(result?)
 }</code></pre>
-<p class="listing"><img class="mascot" src="art/crab-happy.svg" alt=""><b>Listing 2.23</b> The handlers for <code>PUT</code> and <code>DELETE</code>. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/distributed-systems-from-the-ground-up/code/kvd/src/main.rs">kvd/src/main.rs</a></p>
+<p>Listing 2.23 implements the <code>PUT</code> and <code>DELETE</code> HTTP handlers. Both validate the key and conditional headers before dispatching to <code>spawn_blocking</code>. <code>PUT</code> returns <code>201 Created</code> when inserting a new key and <code>204 No Content</code> when updating an existing entry, attaching the newly assigned <code>ETag</code> version header to both responses.</p>
+<p class="listing"><b>Listing 2.23</b> HTTP handlers for <code>PUT</code> and <code>DELETE</code> in <code>kvd/src/main.rs</code>. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/distributed-systems-from-the-ground-up/code/kvd/src/main.rs">kvd/src/main.rs</a></p>
 
 <pre><code class="language-rust">async fn put_key(
     State(store): State&lt;Shared&gt;,
@@ -1277,10 +1146,9 @@ async fn delete_key(
 
     Ok(StatusCode::NO_CONTENT)
 }</code></pre>
-<p><code>PUT</code> answers <code>201 Created</code> when it creates a key and <code>204 No Content</code> when it
-replaces a value. Both responses carry the new version in the <code>ETag</code> header.</p>
-<h3 id="reads"><a class="header" href="#reads">Reads</a></h3>
-<p class="listing"><img class="mascot" src="art/crab-happy.svg" alt=""><b>Listing 2.24</b> The handler for <code>GET</code> on a single key. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/distributed-systems-from-the-ground-up/code/kvd/src/main.rs">kvd/src/main.rs</a></p>
+<h3 id="memory-resident-read-and-health-handlers"><a class="header" href="#memory-resident-read-and-health-handlers">Memory-Resident Read and Health Handlers</a></h3>
+<p>Because <code>Store::get</code> acquires the mutex only long enough to clone an in-memory entry and performs zero disk I/O, it runs directly on the async worker thread without thread-pool handoff overhead. Listing 2.24 implements the <code>GET /v1/keys/:key</code> handler, including <code>304 Not Modified</code> short-circuiting when <code>If-None-Match</code> matches the current <code>ETag</code>.</p>
+<p class="listing"><b>Listing 2.24</b> Point-read handler in <code>kvd/src/main.rs</code>. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/distributed-systems-from-the-ground-up/code/kvd/src/main.rs">kvd/src/main.rs</a></p>
 
 <pre><code class="language-rust">async fn get_key(
     State(store): State&lt;Shared&gt;,
@@ -1307,9 +1175,8 @@ replaces a value. Both responses carry the new version in the <code>ETag</code> 
     )
         .into_response())
 }</code></pre>
-<p>A read holds the lock of the store only while an entry is being copied, and performs
-no access to the disk. It can therefore run directly on a thread of the runtime.</p>
-<p class="listing"><img class="mascot" src="art/crab-happy.svg" alt=""><b>Listing 2.25</b> The handlers for listing keys and for the health check. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/distributed-systems-from-the-ground-up/code/kvd/src/main.rs">kvd/src/main.rs</a></p>
+<p>Listing 2.25 implements paginated prefix listing (<code>GET /v1/keys</code>) and the readiness probe (<code>GET /healthz</code>), which reports live key count and last committed sequence number.</p>
+<p class="listing"><b>Listing 2.25</b> Prefix-listing and health-check handlers in <code>kvd/src/main.rs</code>. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/distributed-systems-from-the-ground-up/code/kvd/src/main.rs">kvd/src/main.rs</a></p>
 
 <pre><code class="language-rust">#[derive(Deserialize)]
 struct ListQuery {
@@ -1369,7 +1236,8 @@ async fn health(State(store): State&lt;Shared&gt;) -&gt; Json&lt;Health&gt; {
         last_sequence: store.last_sequence(),
     })
 }</code></pre>
-<p class="listing"><img class="mascot" src="art/crab-happy.svg" alt=""><b>Listing 2.26</b> Opening the store and starting the server. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/distributed-systems-from-the-ground-up/code/kvd/src/main.rs">kvd/src/main.rs</a></p>
+<p>Listing 2.26 wires the <code>axum</code> router, recovers <code>Store</code> from disk, prints the recovery summary (<code>recovered ... keys from ... records, cut ... bytes</code>), and binds the TCP listener.</p>
+<p class="listing"><b>Listing 2.26</b> Server bootstrap and route registration in <code>kvd/src/main.rs</code>. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/distributed-systems-from-the-ground-up/code/kvd/src/main.rs">kvd/src/main.rs</a></p>
 
 <pre><code class="language-rust">#[tokio::main]
 async fn main() -&gt; Result&lt;(), Box&lt;dyn Error&gt;&gt; {
@@ -1400,16 +1268,15 @@ async fn main() -&gt; Result&lt;(), Box&lt;dyn Error&gt;&gt; {
 
     Ok(())
 }</code></pre>
-<h2 id="running-the-node"><a class="header" href="#running-the-node">Running the node</a></h2>
+<h3 id="exercising-the-running-node"><a class="header" href="#exercising-the-running-node">Exercising the Running Node</a></h3>
+<p>Building the workspace in release mode and starting <code>kvd</code> exposes the full API surface:</p>
 <pre><code class="language-console">$ cd code
 $ cargo build --release
 $ ./target/release/kvd --listen 127.0.0.1:7001 --data /var/tmp/kvd
 recovered 0 keys from 0 records, cut 0 bytes from the end of the log
 listening on 127.0.0.1:7001
 </code></pre>
-<p>All the responses shown in chapter 1 came from this program. A further 3 complete the
-set: a key containing a character outside the permitted set, a method that a resource
-does not support, and a health check.</p>
+<p>Three requests confirm input validation, method enforcement, and readiness telemetry:</p>
 <pre><code class="language-console">$ curl -i -X PUT 'http://127.0.0.1:7001/v1/keys/bad%20key' --data-binary 'x'
 HTTP/1.1 400 Bad Request
 content-type: application/problem+json
@@ -1422,8 +1289,7 @@ HTTP/1.1 405 Method Not Allowed
 allow: GET,HEAD,PUT,DELETE
 content-length: 0
 </code></pre>
-<p>Both the <code>405</code> and its <code>allow</code> header are produced by <code>axum</code>, whose router knows
-which methods are registered for each path.</p>
+<p>Both <code>405 Method Not Allowed</code> and the <code>allow</code> response header are generated automatically by <code>axum</code> from the HTTP verbs registered on <code>/v1/keys/:key</code>.</p>
 <pre><code class="language-console">$ curl -i http://127.0.0.1:7001/healthz
 HTTP/1.1 200 OK
 content-type: application/json
@@ -1431,12 +1297,10 @@ content-length: 42
 
 {"status":"ok","keys":2,"last_sequence":5}
 </code></pre>
-<h2 id="simulating-crashes"><a class="header" href="#simulating-crashes">Simulating crashes</a></h2>
-<p>The log is intended to recover exactly its complete records, wherever a crash occurs.
-A claim of this kind is not established by a few examples, and <code>crashsim</code> verifies it
-exhaustively, for a log of 5 records, by damaging copies of the log in every possible
-position.</p>
-<p class="listing"><img class="mascot" src="art/crab-happy.svg" alt=""><b>Listing 2.27</b> The imports of <code>crashsim/src/main.rs</code>. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/distributed-systems-from-the-ground-up/code/crashsim/src/main.rs">crashsim/src/main.rs</a></p>
+<h2 id="29-exhaustive-crash-simulation-crashsim"><a class="header" href="#29-exhaustive-crash-simulation-crashsim">2.9 Exhaustive Crash Simulation (<code>crashsim</code>)</a></h2>
+<p>A handful of manual unit tests cannot establish that WAL recovery handles every possible tear point or bit flip. To verify recovery exhaustively, we implement <code>crashsim</code>, which constructs a 5-record reference log of <code>152</code> bytes and subjects copies of that log to every single truncation length (<code>0</code> to <code>152</code>) and every single-byte bit inversion (<code>0</code> to <code>151</code>).</p>
+<p>Listing 2.27 declares the filesystem and <code>kv</code> imports in <code>crashsim/src/main.rs</code>.</p>
+<p class="listing"><b>Listing 2.27</b> Imports of <code>crashsim/src/main.rs</code>. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/distributed-systems-from-the-ground-up/code/crashsim/src/main.rs">crashsim/src/main.rs</a></p>
 
 <pre><code class="language-rust">use std::env;
 use std::error::Error;
@@ -1446,7 +1310,8 @@ use std::process;
 
 use kv::log::FILE_NAME;
 use kv::{Change, Log, Record};</code></pre>
-<p class="listing"><img class="mascot" src="art/crab-happy.svg" alt=""><b>Listing 2.28</b> Building the test log. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/distributed-systems-from-the-ground-up/code/crashsim/src/main.rs">crashsim/src/main.rs</a></p>
+<p>Listing 2.28 constructs the 5-record reference WAL and captures its raw bytes together with the exact byte boundary (<code>ends</code>) of each record.</p>
+<p class="listing"><b>Listing 2.28</b> Generating the 5-record reference WAL in <code>crashsim/src/main.rs</code>. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/distributed-systems-from-the-ground-up/code/crashsim/src/main.rs">crashsim/src/main.rs</a></p>
 
 <pre><code class="language-rust">/// The changes of the test log.
 fn changes() -&gt; Vec&lt;Change&gt; {
@@ -1479,7 +1344,8 @@ fn build(directory: &amp;Path) -&gt; Result&lt;(Vec&lt;u8&gt;, Vec&lt;usize&gt;)
 
     Ok((fs::read(directory.join(FILE_NAME))?, ends))
 }</code></pre>
-<p class="listing"><img class="mascot" src="art/crab-happy.svg" alt=""><b>Listing 2.29</b> Opening a damaged copy, and the expected result of recovery. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/distributed-systems-from-the-ground-up/code/crashsim/src/main.rs">crashsim/src/main.rs</a></p>
+<p>Listing 2.29 writes a mutated byte image to a temporary directory, invokes <code>Log::open</code>, and asserts that the recovered record sequence matches the exact prefix expected prior to the fault offset.</p>
+<p class="listing"><b>Listing 2.29</b> Recovering a damaged WAL copy and asserting exact prefix equality in <code>crashsim/src/main.rs</code>. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/distributed-systems-from-the-ground-up/code/crashsim/src/main.rs">crashsim/src/main.rs</a></p>
 
 <pre><code class="language-rust">/// Replaces the log in `directory` with `bytes` and opens it.
 fn recover(directory: &amp;Path, bytes: &amp;[u8]) -&gt; Result&lt;Vec&lt;Record&gt;, Box&lt;dyn Error&gt;&gt; {
@@ -1502,9 +1368,8 @@ fn is_prefix(records: &amp;[Record], count: usize) -&gt; bool {
                 record.sequence == index as u64 + 1 &amp;&amp; &amp;record.change == change
             })
 }</code></pre>
-<p>A crash during a write leaves a file that is shorter than was intended. <code>cuts</code> creates
-every such file, 1 for each possible length, and checks the result of recovering each.</p>
-<p class="listing"><img class="mascot" src="art/crab-happy.svg" alt=""><b>Listing 2.30</b> Cutting the log short at every byte. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/distributed-systems-from-the-ground-up/code/crashsim/src/main.rs">crashsim/src/main.rs</a></p>
+<p>Listing 2.30 implements <code>cuts</code>, slicing the reference log at every integer length from <code>0</code> to <code>bytes.len()</code> and asserting that each recovery returns exactly the records whose full byte span fits within the cut.</p>
+<p class="listing"><b>Listing 2.30</b> Exhaustive byte-truncation sweep in <code>crashsim/src/main.rs</code>. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/distributed-systems-from-the-ground-up/code/crashsim/src/main.rs">crashsim/src/main.rs</a></p>
 
 <pre><code class="language-rust">/// Cuts the log at every length and checks that recovery returns the records
 /// that end at or before the cut.
@@ -1541,11 +1406,8 @@ fn cuts(directory: &amp;Path, log: &amp;[u8], ends: &amp;[usize]) -&gt; Result&l
 
     Ok(())
 }</code></pre>
-<p>Storage devices are also capable of returning data that differs from what was
-written. <code>flips</code> inverts 1 bit in each byte of the log, in a separate run for every
-byte. With a bit inverted, the affected record fails its checksum, and recovery is
-expected to return all the records before it.</p>
-<p class="listing"><img class="mascot" src="art/crab-happy.svg" alt=""><b>Listing 2.31</b> Inverting 1 bit in every byte. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/distributed-systems-from-the-ground-up/code/crashsim/src/main.rs">crashsim/src/main.rs</a></p>
+<p>Storage devices can also return corrupted bits rather than short files. Listing 2.31 implements <code>flips</code>, inverting one bit in each byte offset across the entire 152-byte file in separate runs and verifying that CRC-32 validation halts at the corrupted frame and returns all preceding records intact.</p>
+<p class="listing"><b>Listing 2.31</b> Exhaustive single-bit corruption sweep in <code>crashsim/src/main.rs</code>. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/distributed-systems-from-the-ground-up/code/crashsim/src/main.rs">crashsim/src/main.rs</a></p>
 
 <pre><code class="language-rust">/// Flips 1 bit in each byte in turn and checks that recovery returns the
 /// records before the damaged one.
@@ -1576,7 +1438,8 @@ fn flips(directory: &amp;Path, log: &amp;[u8], ends: &amp;[usize]) -&gt; Result&
 
     Ok(())
 }</code></pre>
-<p class="listing"><img class="mascot" src="art/crab-happy.svg" alt=""><b>Listing 2.32</b> Running the simulation. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/distributed-systems-from-the-ground-up/code/crashsim/src/main.rs">crashsim/src/main.rs</a></p>
+<p>Listing 2.32 executes <code>cuts</code>, <code>flips</code>, and a post-truncation append check verifying that appending after cutting at byte <code>63</code> continues cleanly at sequence number <code>3</code>.</p>
+<p class="listing"><b>Listing 2.32</b> Entry point of <code>crashsim/src/main.rs</code>. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/distributed-systems-from-the-ground-up/code/crashsim/src/main.rs">crashsim/src/main.rs</a></p>
 
 <pre><code class="language-rust">fn run(directory: &amp;Path) -&gt; Result&lt;(), Box&lt;dyn Error&gt;&gt; {
     let (log, ends) = build(directory)?;
@@ -1619,6 +1482,7 @@ fn main() -&gt; Result&lt;(), Box&lt;dyn Error&gt;&gt; {
 
     result
 }</code></pre>
+<p>Executing <code>crashsim</code> confirms zero recovery discrepancies across all 305 injected fault states:</p>
 <pre><code class="language-console">$ cargo run -p crashsim
 a log of 5 records and 152 bytes, with records ending at 28, 58, 95, 120, 152
 cut at every length from 0 to 152: each recovery returned the complete records
@@ -1634,30 +1498,21 @@ after a cut at 63: 2 records recovered, and the next record has sequence 3
 <div class="table-wrapper">
 <table>
 <thead>
-<tr><th>Output</th><th>What it shows</th></tr>
+<tr><th style="text-align: left">Observed Output</th><th style="text-align: left">Verified Property</th></tr>
 </thead>
 <tbody>
-<tr><td>lengths 28 to 57: 1 record</td><td>A record is recovered only if every one of its bytes is present. With 29 of the 30 bytes of record 2 on disk, record 2 is not recovered.</td></tr>
-<tr><td>each recovery returned complete records</td><td>No cut causes recovery to return a partial record, a wrong record, or records out of order.</td></tr>
-<tr><td>1 bit flipped in each of 152 bytes</td><td>Corruption at any position in a record, the length field included, is detected, and the preceding records are returned.</td></tr>
-<tr><td>after a cut at 63, the next record has sequence 3</td><td>The damaged end was removed, and the log continues after the last valid record with no gap in its sequence numbers.</td></tr>
+<tr><td style="text-align: left"><code>lengths 28 to 57: 1 records</code></td><td style="text-align: left">A record recovers only when every single byte is present; 29 of 30 bytes of record 2 are truncated cleanly.</td></tr>
+<tr><td style="text-align: left"><code>each recovery returned the complete records</code></td><td style="text-align: left">No truncation offset yields a partial record, fabricated value, or sequence reordering.</td></tr>
+<tr><td style="text-align: left"><code>1 bit flipped in each of 152 bytes</code></td><td style="text-align: left">Bit corruption anywhere in the header or payload (including the length prefix) triggers rejection and preserves the valid prefix.</td></tr>
+<tr><td style="text-align: left"><code>after a cut at 63: 2 records recovered, and the next record has sequence 3</code></td><td style="text-align: left">Truncation repairs the tail on disk so subsequent appends resume with contiguous sequence numbers.</td></tr>
 </tbody>
 </table>
 </div>
-<p>The test with inverted bits also discloses a limitation. When a bit is inverted in
-record 2, recovery stops there and discards records 3 to 5, although they are intact.
-For damage at the end of the file, which is what an interrupted write produces, this
-behaviour is correct. Damage in the middle of the file is a different matter: it
-means that the disk has lost data which was acknowledged, and a single node has no
-means of repairing such a loss. In the design of chapter 1, the record is recovered
-from the other replicas, and this is the first of several points at which a
-limitation of 1 node is the reason for something in the larger design.</p>
-<h2 id="killing-the-server-under-load"><a class="header" href="#killing-the-server-under-load">Killing the server under load</a></h2>
-<p>The simulation exercises the log in isolation. The next test covers a complete node:
-the HTTP server, the store, the log and the disk. The command <code>kvctl load</code> writes keys
-in sequence and records each key in a local file once the server has answered with
-success.</p>
-<p class="listing"><img class="mascot" src="art/crab-happy.svg" alt=""><b>Listing 2.33</b> The imports of <code>kvctl/src/main.rs</code>. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/distributed-systems-from-the-ground-up/code/kvctl/src/main.rs">kvctl/src/main.rs</a></p>
+<p>The bit-flip test also exposes a structural boundary of single-node storage: flipping a bit inside record 2 causes recovery to stop at record 2 and discard records 3 to 5, even though records 3 to 5 remain intact on disk. For tail corruption caused by an interrupted write, stopping and truncating is exact. For mid-file media corruption, the single disk has lost previously acknowledged state that local recovery cannot reconstruct. In our multi-node architecture, peer replicas supply the lost suffix, which is why we add quorum replication in Chapter 3.</p>
+<h2 id="210-live-crash-testing-under-load-kvctl"><a class="header" href="#210-live-crash-testing-under-load-kvctl">2.10 Live Crash Testing Under Load (<code>kvctl</code>)</a></h2>
+<p>Whereas <code>crashsim</code> exercises <code>Log</code> directly, end-to-end verification must cover the entire stack: HTTP parsing, <code>tokio</code> task scheduling, <code>Store</code> locking, WAL appends, and OS file descriptors. We implement <code>kvctl</code> as an independent external oracle: <code>kvctl load</code> issues sequential <code>PUT</code> requests and appends each acknowledged key-value pair to a local ledger file (<code>acked.txt</code>) only after receiving a <code>201</code> or <code>204</code> response, and <code>kvctl verify</code> reads back every recorded entry after server restart.</p>
+<p>Listing 2.33 lists the CLI and HTTP client imports in <code>kvctl/src/main.rs</code>.</p>
+<p class="listing"><b>Listing 2.33</b> Imports of <code>kvctl/src/main.rs</code>. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/distributed-systems-from-the-ground-up/code/kvctl/src/main.rs">kvctl/src/main.rs</a></p>
 
 <pre><code class="language-rust">use std::error::Error;
 use std::fs::{self, File};
@@ -1666,7 +1521,8 @@ use std::path::PathBuf;
 
 use clap::{Parser, Subcommand};
 use ureq::Agent;</code></pre>
-<p class="listing"><img class="mascot" src="art/crab-happy.svg" alt=""><b>Listing 2.34</b> Writing keys, and recording each acknowledged key. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/distributed-systems-from-the-ground-up/code/kvctl/src/main.rs">kvctl/src/main.rs</a></p>
+<p>Listing 2.34 implements <code>load</code>, which writes keys sequentially, records every acknowledged write to disk via the client ledger, and halts cleanly when the server disconnects.</p>
+<p class="listing"><b>Listing 2.34</b> Sequential load generator and external acknowledgement log in <code>kvctl/src/main.rs</code>. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/distributed-systems-from-the-ground-up/code/kvctl/src/main.rs">kvctl/src/main.rs</a></p>
 
 <pre><code class="language-rust">/// Writes `count` keys. A key is recorded in `acked` only after the server
 /// has answered with a success status.
@@ -1695,7 +1551,8 @@ fn load(agent: &amp;Agent, server: &amp;str, count: u32, acked: &amp;PathBuf) -&
 
     Ok(())
 }</code></pre>
-<p class="listing"><img class="mascot" src="art/crab-happy.svg" alt=""><b>Listing 2.35</b> Reading back every acknowledged key. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/distributed-systems-from-the-ground-up/code/kvctl/src/main.rs">kvctl/src/main.rs</a></p>
+<p>Listing 2.35 implements <code>verify</code>, which iterates over every line in <code>acked.txt</code>, executes <code>GET /v1/keys/:key</code>, checks exact value equality, and reports any missing or mismatched keys.</p>
+<p class="listing"><b>Listing 2.35</b> Post-recovery durability verifier in <code>kvctl/src/main.rs</code>. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/distributed-systems-from-the-ground-up/code/kvctl/src/main.rs">kvctl/src/main.rs</a></p>
 
 <pre><code class="language-rust">/// Reads every acknowledged key and compares the value with the one that
 /// was written.
@@ -1729,8 +1586,7 @@ fn verify(agent: &amp;Agent, server: &amp;str, acked: &amp;PathBuf) -&gt; Result
 
     Ok(())
 }</code></pre>
-<p>While the load is running, the server is terminated with signal 9, <code>SIGKILL</code>, which
-stops a process at once and allows it to complete nothing that is in progress.</p>
+<p>While <code>kvctl load</code> streams writes, we terminate <code>kvd</code> immediately with <code>SIGKILL</code> (<code>pkill -9</code>), preventing user-space cleanup handlers or destructors from executing:</p>
 <pre><code class="language-console">$ ./target/release/kvd --data /var/tmp/kvd &amp;
 recovered 0 keys from 0 records, cut 0 bytes from the end of the log
 listening on 127.0.0.1:7001
@@ -1747,21 +1603,18 @@ $ ./target/release/kvctl verify --server http://127.0.0.1:7001 --acked acked.txt
 <div class="table-wrapper">
 <table>
 <thead>
-<tr><th>Output</th><th>What it shows</th></tr>
+<tr><th style="text-align: left">Observed Output</th><th style="text-align: left">Diagnostic Meaning</th></tr>
 </thead>
 <tbody>
-<tr><td>494 writes acknowledged, 494 found, 0 missing</td><td>Every acknowledged write was recovered after the process was killed.</td></tr>
-<tr><td>recovered 495 keys</td><td>The log contains 1 more write than the client had recorded.</td></tr>
-<tr><td>cut 0 bytes</td><td>The process was not in the middle of appending a record when it was killed.</td></tr>
+<tr><td style="text-align: left"><code>494 acknowledged, 494 found, 0 missing</code></td><td style="text-align: left">Every acknowledged write survived <code>SIGKILL</code> and restarted intact.</td></tr>
+<tr><td style="text-align: left"><code>recovered 495 keys</code></td><td style="text-align: left">Record 495 completed <code>fsync</code> before the process terminated, even though the TCP response never reached the client.</td></tr>
+<tr><td style="text-align: left"><code>cut 0 bytes</code></td><td style="text-align: left"><code>SIGKILL</code> arrived outside the brief <code>write_all</code> syscall window, leaving zero partial trailing bytes.</td></tr>
 </tbody>
 </table>
 </div>
-<p>Write 495 is an instance of the third case in figure 2.2. Its record was
-stored durably, and the process was killed before any response was sent. From the
-client’s side the write failed, although the store contains it, and a client that
-needs a definite outcome sends its <code>PUT</code> again.</p>
-<h3 id="the-limits-of-this-test"><a class="header" href="#the-limits-of-this-test">The limits of this test</a></h3>
-<p>The same test, run with <code>--no-sync</code>, also recovers every acknowledged write.</p>
+<p>Write <code>495</code> reproduces the third crash point of Figure 2-1: durable on disk yet unacknowledged at the client.</p>
+<h3 id="why-process-kill-tests-cannot-validate-power-loss-durability"><a class="header" href="#why-process-kill-tests-cannot-validate-power-loss-durability">Why Process-Kill Tests Cannot Validate Power-Loss Durability</a></h3>
+<p>Running the identical <code>SIGKILL</code> experiment with <code>--no-sync</code> also passes with zero missing keys:</p>
 <pre><code class="language-console">$ ./target/release/kvd --data /var/tmp/kvd --no-sync &amp;
 $ ./target/release/kvctl load --server http://127.0.0.1:7001 --count 200000 --acked acked.txt &amp;
 $ sleep 1.5; pkill -9 -x kvd
@@ -1772,23 +1625,12 @@ recovered 8594 keys from 8594 records, cut 0 bytes from the end of the log
 $ ./target/release/kvctl verify --server http://127.0.0.1:7001 --acked acked.txt
 8594 acknowledged, 8594 found, 0 missing
 </code></pre>
-<p>It would be a serious error to conclude from this that <code>fsync</code> is unnecessary. When a
-process is killed, its own memory is lost, but the data it had passed to <code>write</code> is
-in the kernel’s buffers. The kernel continues to run, and writes that data to the disk
-shortly afterwards. Only a failure that stops the kernel, such as a loss of power,
-loses data that was written without <code>fsync</code>. A test that kills a process therefore
-succeeds with and without <code>fsync</code>, and provides no evidence whatever about durability
-under a loss of power. Many systems have been declared durable on the strength of
-exactly this test.</p>
-<h2 id="running-the-test-on-2-machines"><a class="header" href="#running-the-test-on-2-machines">Running the test on 2 machines</a></h2>
-<p>The server and the client are separate programs that communicate over HTTP, and can
-therefore run on different machines without any change. In the following session, the
-server runs on a machine named <code>node-b</code> at the address 10.0.0.2, and the client on
-<code>node-a</code>. A binary can be copied between machines of the same architecture and
-operating system, and is otherwise built on each.</p>
+<p>Concluding from this output that <code>fsync</code> is unnecessary would be a grave engineering mistake. When <code>SIGKILL</code> terminates a user-space process, the operating system kernel continues running and flushes dirty page-cache buffers to disk moments later. Only a fault that halts the kernel itself, such as power loss or a kernel panic, drops unsynchronized page-cache buffers. Consequently, process-kill testing verifies crash-recovery code paths yet provides zero evidence of power-loss durability.</p>
+<h3 id="running-the-crash-verification-across-two-network-hosts"><a class="header" href="#running-the-crash-verification-across-two-network-hosts">Running the Crash Verification Across Two Network Hosts</a></h3>
+<p>Because <code>kvd</code> and <code>kvctl</code> communicate strictly over HTTP, we can separate the fault domain of the server from the external oracle by running <code>kvd</code> on host <code>node-b</code> (<code>10.0.0.2</code>) and <code>kvctl</code> on host <code>node-a</code> (Figure 2-6).</p>
 <figure>
-<img src="figures/two-machines.svg?v=073ee750" alt="The test on 2 machines. On node-a, kvctl load sends PUT requests and writes each acknowledged key to acked.txt. On node-b, kvd listens on port 7001 and writes kv.log. kvctl writes keys and notes each one the server answered. After 3 seconds kvd is killed with signal 9. kvd is started again and reads its log. kvctl reads every noted key, and 1107 of 1107 are there.">
-<figcaption><b>Figure 2.7</b> The client and the server on separate machines.</figcaption>
+<img src="figures/two-machines.svg?v=073ee750" alt="Two-host crash verification topology: kvctl on node-a sends HTTP PUT traffic and logs acknowledged keys locally to acked.txt while kvd runs on node-b writing kv.log; after SIGKILL and restart on node-b, kvctl verifies all 1,107 acknowledged keys." />
+<figcaption><b>Figure 2-6</b> Separating the external verification client (`node-a`) from the storage node under test (`node-b`).</figcaption>
 </figure>
 <pre><code class="language-console">node-a$ scp target/release/kvd node-b:/tmp/kvd
 node-b$ /tmp/kvd --listen 0.0.0.0:7001 --data /tmp/kvd-data &amp;
@@ -1807,46 +1649,40 @@ node-a$ ./target/release/kvctl verify --server http://10.0.0.2:7001 --acked acke
 node-a$ curl http://10.0.0.2:7001/healthz
 {"status":"ok","keys":1107,"last_sequence":1107}
 </code></pre>
-<p>The client’s file of acknowledged keys is held on a machine that no fault affected,
-and is on that account an independent record of what the server acknowledged. Tests
-of faults follow this structure quite generally. A component outside the system under
-test records what was acknowledged, a fault is injected, and the record is compared
-with the state of the system after it has recovered. Chapters 3 and 4 test replication
-and elections in the same way.</p>
-<p>The test can be run in several configurations.</p>
+<p>Keeping <code>acked.txt</code> on <code>node-a</code> isolates the test oracle from every fault injected on <code>node-b</code>. This external-oracle methodology (record acknowledgements outside the system under test, inject a fault, recover, and verify every recorded outcome) generalizes directly to the replication and Raft leader-election experiments we run in Chapters 3 and 4.</p>
 <div class="table-wrapper">
 <table>
 <thead>
-<tr><th>Configuration</th><th>Server</th><th>Client</th></tr>
+<tr><th style="text-align: left">Deployment Topology</th><th style="text-align: left">Server Command</th><th style="text-align: left">Client Command</th></tr>
 </thead>
 <tbody>
-<tr><td>1 machine</td><td><code>kvd --listen 127.0.0.1:7001</code></td><td><code>kvctl ... --server http://127.0.0.1:7001</code></td></tr>
-<tr><td>2 machines on a local network</td><td><code>kvd --listen 0.0.0.0:7001</code> on machine B</td><td><code>kvctl ... --server http://&lt;address of B&gt;:7001</code> on machine A</td></tr>
-<tr><td>2 cloud instances</td><td>as above, with port 7001 permitted between the instances</td><td>as above, using the private address of the server</td></tr>
+<tr><td style="text-align: left">Single host (loopback)</td><td style="text-align: left"><code>kvd --listen 127.0.0.1:7001</code></td><td style="text-align: left"><code>kvctl ... --server http://127.0.0.1:7001</code></td></tr>
+<tr><td style="text-align: left">Two hosts on a LAN</td><td style="text-align: left"><code>kvd --listen 0.0.0.0:7001</code> on <code>node-b</code></td><td style="text-align: left"><code>kvctl ... --server http://&lt;node-b-ip&gt;:7001</code> on <code>node-a</code></td></tr>
+<tr><td style="text-align: left">Two cloud VMs</td><td style="text-align: left">Same as LAN, with TCP port <code>7001</code> allowed in security group</td><td style="text-align: left">Same as LAN, targeting the private VPC address of <code>node-b</code></td></tr>
 </tbody>
 </table>
 </div>
-<h2 id="the-limits-of-a-single-node"><a class="header" href="#the-limits-of-a-single-node">The limits of a single node</a></h2>
+<h2 id="211-residual-limitations-of-a-single-storage-node"><a class="header" href="#211-residual-limitations-of-a-single-storage-node">2.11 Residual Limitations of a Single Storage Node</a></h2>
+<p>Even with crash-safe write-ahead logging verified, five physical limits remain on a single host, each motivating a specific distributed component in subsequent chapters:</p>
 <div class="table-wrapper">
 <table>
 <thead>
-<tr><th>Limitation</th><th>Consequence</th><th>What chapter 1 provides against it</th></tr>
+<tr><th style="text-align: left">No.</th><th style="text-align: left">Single-Node Limitation</th><th style="text-align: left">Failure Consequence</th><th style="text-align: left">Architectural Mitigation</th></tr>
 </thead>
 <tbody>
-<tr><td>The log is on a single disk.</td><td>The loss of the disk loses all the data.</td><td>3 replicas of every shard</td></tr>
-<tr><td>The node is a single process.</td><td>Every request fails while the process is not running.</td><td>the election of a new leader</td></tr>
-<tr><td>Every write performs its own <code>fsync</code>.</td><td>The node stores 185 records per second on the disk measured.</td><td>group commit, and the distribution of writes over 24 nodes</td></tr>
-<tr><td>The log grows without limit.</td><td>The time to restart and the disk space used increase continually.</td><td>periodic snapshots of the map, after which older records are deleted</td></tr>
-<tr><td>All entries are held in memory.</td><td>The data cannot exceed the memory of 1 machine.</td><td>sharding</td></tr>
+<tr><td style="text-align: left">0</td><td style="text-align: left">The WAL resides on one local disk.</td><td style="text-align: left">Permanent disk or host failure destroys all stored data.</td><td style="text-align: left">Three-way leader-follower quorum replication (Chapter 3).</td></tr>
+<tr><td style="text-align: left">1</td><td style="text-align: left">The node runs as one process.</td><td style="text-align: left">Every client request fails during crashes or restarts.</td><td style="text-align: left">Automated Raft leader election (Chapter 4).</td></tr>
+<tr><td style="text-align: left">2</td><td style="text-align: left">Every write triggers its own <code>fsync</code>.</td><td style="text-align: left">Single-node throughput caps at <code>~185 writes/s</code> on NVMe.</td><td style="text-align: left">WAL group commit (Chapter 6) and horizontal sharding across 24 nodes.</td></tr>
+<tr><td style="text-align: left">3</td><td style="text-align: left">The WAL grows monotonically without compaction.</td><td style="text-align: left">Disk consumption and startup replay duration increase unboundedly.</td><td style="text-align: left">Periodic state snapshots followed by log truncation (Chapter 1).</td></tr>
+<tr><td style="text-align: left">4</td><td style="text-align: left">All active entries reside in one host’s RAM.</td><td style="text-align: left">Corpus size cannot exceed single-server memory capacity.</td><td style="text-align: left">Consistent-hash sharding and request routing (Chapter 5).</td></tr>
 </tbody>
 </table>
 </div>
-<p>Within these limits, the node retains every acknowledged write when its process is
-killed, when its log is cut short at any byte, and when a bit is corrupted in its last
-record. That is the assumption on which chapter 1 was built, and chapter 3 now builds
-replication upon it.</p>
-<h2 id="the-complete-programs"><a class="header" href="#the-complete-programs">The complete programs</a></h2>
-<p class="listing"><img class="mascot" src="art/crab-cute.svg" alt=""><b>Listing 2.36</b> The complete <code>kv/src/lib.rs</code>. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/distributed-systems-from-the-ground-up/code/kv/src/lib.rs">kv/src/lib.rs</a></p>
+<p>Within these bounds, our single storage node preserves every acknowledged write across <code>SIGKILL</code> crashes, arbitrary tail truncations, and single-bit tail corruption. In Chapter 3, we layer leader-follower quorum replication directly onto this WAL foundation.</p>
+<h2 id="212-complete-source-listings"><a class="header" href="#212-complete-source-listings">2.12 Complete Source Listings</a></h2>
+<p>For reference and reproducibility, Listings 2.36 through 2.45 include the complete source files of the five workspace crates developed in this chapter.</p>
+<p>Listing 2.36 declares the public module exports of the <code>kv</code> library crate (<code>log</code>, <code>record</code>, and <code>store</code>).</p>
+<p class="listing"><b>Listing 2.36</b> Complete <code>kv/src/lib.rs</code>. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/distributed-systems-from-the-ground-up/code/kv/src/lib.rs">kv/src/lib.rs</a></p>
 
 <pre><code class="language-rust">//! A key-value store for one node that keeps every acknowledged write across
 //! a crash. A write is appended to a log on disk before it is applied in
@@ -1859,7 +1695,8 @@ pub mod store;
 pub use log::{Log, Recovery};
 pub use record::{Change, Decoded, Record};
 pub use store::{Condition, Entry, Store, StoreError, Summary, Write, Written, apply, check, page};</code></pre>
-<p class="listing"><img class="mascot" src="art/crab-cute.svg" alt=""><b>Listing 2.37</b> The complete <code>kv/src/record.rs</code>. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/distributed-systems-from-the-ground-up/code/kv/src/record.rs">kv/src/record.rs</a></p>
+<p>Listing 2.37 presents the complete binary record codec, CRC-32 checksum verification, and unit tests in <code>kv/src/record.rs</code>.</p>
+<p class="listing"><b>Listing 2.37</b> Complete <code>kv/src/record.rs</code>. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/distributed-systems-from-the-ground-up/code/kv/src/record.rs">kv/src/record.rs</a></p>
 
 <pre><code class="language-rust">//! The format of one record of the log.
 //!
@@ -1991,7 +1828,8 @@ fn parse(payload: &amp;[u8]) -&gt; Option&lt;Record&gt; {
         change,
     })
 }</code></pre>
-<p class="listing"><img class="mascot" src="art/crab-cute.svg" alt=""><b>Listing 2.38</b> The complete <code>kv/src/log.rs</code>. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/distributed-systems-from-the-ground-up/code/kv/src/log.rs">kv/src/log.rs</a></p>
+<p>Listing 2.38 presents the complete append-only WAL, torn-tail recovery, directory sync, and fail-stop error latch in <code>kv/src/log.rs</code>.</p>
+<p class="listing"><b>Listing 2.38</b> Complete <code>kv/src/log.rs</code>. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/distributed-systems-from-the-ground-up/code/kv/src/log.rs">kv/src/log.rs</a></p>
 
 <pre><code class="language-rust">//! The write-ahead log: a file that only grows, to which every change is
 //! appended before it is applied.
@@ -2179,7 +2017,8 @@ impl Log {
         Ok(())
     }
 }</code></pre>
-<p class="listing"><img class="mascot" src="art/crab-cute.svg" alt=""><b>Listing 2.39</b> The complete <code>kv/src/store.rs</code>. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/distributed-systems-from-the-ground-up/code/kv/src/store.rs">kv/src/store.rs</a></p>
+<p>Listing 2.39 presents the complete <code>BTreeMap</code>-backed <code>Store</code>, optimistic precondition evaluation, and paginated prefix scans in <code>kv/src/store.rs</code>.</p>
+<p class="listing"><b>Listing 2.39</b> Complete <code>kv/src/store.rs</code>. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/distributed-systems-from-the-ground-up/code/kv/src/store.rs">kv/src/store.rs</a></p>
 
 <pre><code class="language-rust">//! The store: the current value of every key in memory, and the log that
 //! rebuilds it.
@@ -2466,12 +2305,14 @@ pub fn page(
 
     (page, more)
 }</code></pre>
-<p class="listing"><img class="mascot" src="art/crab-cute.svg" alt=""><b>Listing 2.40</b> The complete <code>kvd/src/lib.rs</code>. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/distributed-systems-from-the-ground-up/code/kvd/src/lib.rs">kvd/src/lib.rs</a></p>
+<p>Listing 2.40 re-exports the shared HTTP error and precondition header helpers from the <code>kvd</code> library root.</p>
+<p class="listing"><b>Listing 2.40</b> Complete <code>kvd/src/lib.rs</code>. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/distributed-systems-from-the-ground-up/code/kvd/src/lib.rs">kvd/src/lib.rs</a></p>
 
 <pre><code class="language-rust">//! The HTTP API of a storage node.
 
 pub mod api;</code></pre>
-<p class="listing"><img class="mascot" src="art/crab-cute.svg" alt=""><b>Listing 2.41</b> The complete <code>kvd/src/api.rs</code>. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/distributed-systems-from-the-ground-up/code/kvd/src/api.rs">kvd/src/api.rs</a></p>
+<p>Listing 2.41 presents the complete RFC 9457 error serialization and <code>If-Match</code> / <code>If-None-Match</code> parsing module in <code>kvd/src/api.rs</code>.</p>
+<p class="listing"><b>Listing 2.41</b> Complete <code>kvd/src/api.rs</code>. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/distributed-systems-from-the-ground-up/code/kvd/src/api.rs">kvd/src/api.rs</a></p>
 
 <pre><code class="language-rust">//! The parts of the HTTP API that do not depend on how a node stores its
 //! data: the errors and their responses, and the reading of keys and
@@ -2645,7 +2486,8 @@ pub fn write_condition(headers: &amp;HeaderMap) -&gt; Result&lt;Condition, ApiEr
         (None, Some(..)) =&gt; Err(ApiError::InvalidHeader(IF_NONE_MATCH)),
     }
 }</code></pre>
-<p class="listing"><img class="mascot" src="art/crab-cute.svg" alt=""><b>Listing 2.42</b> The complete <code>kvd/src/main.rs</code>. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/distributed-systems-from-the-ground-up/code/kvd/src/main.rs">kvd/src/main.rs</a></p>
+<p>Listing 2.42 presents the complete <code>axum</code> HTTP server and blocking WAL dispatch implementation in <code>kvd/src/main.rs</code>.</p>
+<p class="listing"><b>Listing 2.42</b> Complete <code>kvd/src/main.rs</code>. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/distributed-systems-from-the-ground-up/code/kvd/src/main.rs">kvd/src/main.rs</a></p>
 
 <pre><code class="language-rust">//! Command kvd serves a key-value store over HTTP. Every write is in the log
 //! on disk before the response is sent.
@@ -2853,7 +2695,8 @@ async fn main() -&gt; Result&lt;(), Box&lt;dyn Error&gt;&gt; {
 
     Ok(())
 }</code></pre>
-<p class="listing"><img class="mascot" src="art/crab-cute.svg" alt=""><b>Listing 2.43</b> The complete <code>kvctl/src/main.rs</code>. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/distributed-systems-from-the-ground-up/code/kvctl/src/main.rs">kvctl/src/main.rs</a></p>
+<p>Listing 2.43 presents the complete external load generator and durability verification client in <code>kvctl/src/main.rs</code>.</p>
+<p class="listing"><b>Listing 2.43</b> Complete <code>kvctl/src/main.rs</code>. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/distributed-systems-from-the-ground-up/code/kvctl/src/main.rs">kvctl/src/main.rs</a></p>
 
 <pre><code class="language-rust">//! Command kvctl tests a kvd server from another process or another machine.
 //! `load` writes keys and records each write the server acknowledged, and
@@ -2972,7 +2815,8 @@ fn main() -&gt; Result&lt;(), Box&lt;dyn Error&gt;&gt; {
         Command::Verify { server, acked } =&gt; verify(&amp;agent, &amp;server, &amp;acked),
     }
 }</code></pre>
-<p class="listing"><img class="mascot" src="art/crab-cute.svg" alt=""><b>Listing 2.44</b> The complete <code>crashsim/src/main.rs</code>. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/distributed-systems-from-the-ground-up/code/crashsim/src/main.rs">crashsim/src/main.rs</a></p>
+<p>Listing 2.44 presents the complete byte-truncation and bit-flip crash simulator in <code>crashsim/src/main.rs</code>.</p>
+<p class="listing"><b>Listing 2.44</b> Complete <code>crashsim/src/main.rs</code>. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/distributed-systems-from-the-ground-up/code/crashsim/src/main.rs">crashsim/src/main.rs</a></p>
 
 <pre><code class="language-rust">//! Command crashsim checks what the log recovers after a crash in the middle
 //! of a write. It writes a log of 5 records, then damages a copy of it in
@@ -3154,7 +2998,8 @@ fn main() -&gt; Result&lt;(), Box&lt;dyn Error&gt;&gt; {
 
     result
 }</code></pre>
-<p class="listing"><img class="mascot" src="art/crab-cute.svg" alt=""><b>Listing 2.45</b> The complete <code>synccost/src/main.rs</code>. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/distributed-systems-from-the-ground-up/code/synccost/src/main.rs">synccost/src/main.rs</a></p>
+<p>Listing 2.45 presents the complete <code>write</code> versus <code>fsync</code> microbenchmark in <code>synccost/src/main.rs</code>.</p>
+<p class="listing"><b>Listing 2.45</b> Complete <code>synccost/src/main.rs</code>. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/distributed-systems-from-the-ground-up/code/synccost/src/main.rs">synccost/src/main.rs</a></p>
 
 <pre><code class="language-rust">//! Command synccost measures what it costs to wait for the disk. It appends
 //! the same records to 2 logs, one that calls fsync after each record and
@@ -3210,26 +3055,24 @@ fn main() -&gt; Result&lt;(), Box&lt;dyn Error&gt;&gt; {
 
     Ok(())
 }</code></pre>
-<h2 id="further-reading"><a class="header" href="#further-reading">Further reading</a></h2>
+<h2 id="further-reading"><a class="header" href="#further-reading">Further Reading</a></h2>
 <ul>
-<li>T. Pillai and others, “All File Systems Are Not Created Equal: On the Complexity of Crafting Crash-Consistent Applications”, OSDI 2014.</li>
-<li>A. Rebello and others, “Can Applications Recover from fsync Failures?”, USENIX ATC 2020.</li>
-<li>C. Mohan and others, “ARIES: A Transaction Recovery Method Supporting Fine-Granularity Locking and Partial Rollbacks Using Write-Ahead Logging”, ACM Transactions on Database Systems, 1992.</li>
+<li>T. Pillai et al., “All File Systems Are Not Created Equal: On the Complexity of Crafting Crash-Consistent Applications”, OSDI 2014.</li>
+<li>A. Rebello et al., “Can Applications Recover from fsync Failures?”, USENIX ATC 2020.</li>
+<li>C. Mohan et al., “ARIES: A Transaction Recovery Method Supporting Fine-Granularity Locking and Partial Rollbacks Using Write-Ahead Logging”, ACM Transactions on Database Systems, 1992.</li>
 <li>A. Petrov, <em>Database Internals</em>, O’Reilly, 2019.</li>
 </ul>
 <div class="summary">
 <h2 id="summary"><a class="header" href="#summary">Summary</a></h2>
 <ul>
-<li>A storage node keeps its entries in memory for reads and a log on disk for durability, and every write is appended to the log and confirmed by the disk before it is applied in memory.</li>
-<li>With a log that is only appended to, a crash can damage nothing but the last record, whereas an update in place can destroy data that was already stored.</li>
-<li>Every record carries its length and a CRC-32 checksum, by which a reader distinguishes a complete record from one that is incomplete or corrupt.</li>
-<li>Recovery decodes records until one fails, keeps all that precede it, and cuts the file off before anything new is appended.</li>
-<li><code>write</code> hands data to the kernel, and <code>fsync</code> waits until the disk has stored it. A durable append took 5.4 ms, which is 185 records per second.</li>
-<li>The directory entry of a new file becomes durable only when the directory is synchronised.</li>
-<li>After a failed write or <code>fsync</code>, the log accepts no further records, since a repeated <code>fsync</code> can report success for data that is not on the disk.</li>
-<li>A write can be durable without having been acknowledged, when the node crashes between the disk’s confirmation and the response, and the client then repeats its request.</li>
-<li>Killing a process does not test durability under a loss of power, because the kernel keeps what the process had written.</li>
-<li>A test of faults records what was acknowledged outside the system under test, and compares that record with the state of the system afterwards.</li>
+<li>A storage node maintains a <code>BTreeMap</code> in RAM for low-latency reads and an append-only WAL on disk for durability, confirming every write with <code>fsync</code> before modifying memory or acknowledging the client.</li>
+<li>Append-only logging restricts crash damage exclusively to the trailing record, whereas in-place updates risk tearing previously committed values.</li>
+<li>Every WAL frame begins with a 4-byte little-endian length and a 4-byte CRC-32 checksum, allowing defensive bounds-checked decoding to reject incomplete or corrupted records without panicking.</li>
+<li>Startup recovery scans from offset <code>0</code>, retains the valid prefix, truncates any damaged tail via <code>set_len</code>, and synchronizes both the log file and its parent directory.</li>
+<li>On NVMe hardware, <code>write</code> copies into the kernel page cache in <code>0.003 ms</code>, whereas <code>write</code> followed by <code>fsync</code> requires <code>5.4 ms</code> (<code>185 records/s</code>).</li>
+<li>Following any <code>write_all</code> or <code>sync_data</code> error, <code>Log</code> latches a fail-stop flag and rejects all further writes, avoiding the hazard of a retried <code>fsync</code> reporting false success after the kernel discards dirty pages.</li>
+<li>A crash between <code>fsync</code> completion and HTTP response transmission produces a durable yet unacknowledged write, which clients resolve safely via idempotent or conditional retries.</li>
+<li>Process-kill tests (<code>SIGKILL</code>) leave the kernel page cache intact and therefore cannot distinguish durable <code>fsync</code> writes from buffered <code>--no-sync</code> writes under power loss.</li>
 </ul>
 </div>
 
@@ -3285,7 +3128,7 @@ fn main() -&gt; Result&lt;(), Box&lt;dyn Error&gt;&gt; {
         <script src="book-609e4cb8.js"></script>
 
         <!-- Custom JS scripts -->
-        <script src="theme/figures-47b15f7f.js"></script>
+        <script src="theme/figures-9c14cb1c.js"></script>
         <script src="theme/proto-326509cd.js"></script>
         <script src="theme/code-67e9caaf.js"></script>
         <script src="theme/tables-9fb295e8.js"></script>

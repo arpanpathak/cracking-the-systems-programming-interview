@@ -28,7 +28,7 @@
         <link rel="stylesheet" id="mdbook-ayu-highlight-css" href="ayu-highlight-3fdfc3ac.css">
 
         <!-- Custom theme stylesheets -->
-        <link rel="stylesheet" href="theme/custom-9125cc61.css">
+        <link rel="stylesheet" href="theme/custom-3c3d4beb.css">
 
         <!-- MathJax -->
         <script async src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.1/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
@@ -38,10 +38,10 @@
             const path_to_root = "";
             const default_light_theme = "light";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "searchindex-025a35ef.js";
+            window.path_to_searchindex_js = "searchindex-e451f97a.js";
         </script>
         <!-- Start loading toc.js asap -->
-        <script src="toc-f3585118.js"></script>
+        <script src="toc-1a401835.js"></script>
     </head>
     <body>
     <div id="mdbook-help-container">
@@ -184,162 +184,160 @@
                 <div id="mdbook-content" class="content">
                     <main>
                         <h1 id="7-virtual-memory-and-the-architecture-of-address-translation"><a class="header" href="#7-virtual-memory-and-the-architecture-of-address-translation">7. Virtual Memory and the Architecture of Address Translation</a></h1>
-<p>Virtual memory provides a layer of indirection between a process’s perceived address space and the machine’s physical memory. By partitioning both into fixed-size blocks, <strong>pages</strong> in the virtual address space and <strong>frames</strong> in physical memory, the operating system can implement granular isolation, demand-driven resource allocation, and efficient memory sharing.</p>
+<p>Virtual memory provides a layer of indirection between a process’s perceived address space and the machine’s physical memory. Without this indirection, processes executing directly against physical main memory (Dynamic Random-Access Memory) would share a single flat namespace: any process could read or overwrite the memory of any other process or the kernel itself, programs would have to be relocated to non-overlapping physical ranges before loading, and allocating contiguous physical regions for growing heaps and stacks would rapidly fragment main memory into unusable gaps.</p>
+<p>To resolve these constraints while maintaining native execution speed, the operating system and processor implement <strong>address translation</strong> around three architectural objectives: <strong>transparency</strong>, so each process perceives a private, contiguous linear address space starting at a predictable base regardless of where its bytes reside in physical memory; <strong>efficiency</strong>, so translation neither adds prohibitive latency to instruction execution nor consumes excessive physical memory for metadata; and <strong>protection</strong>, so a process cannot read, modify, or execute memory outside its authorized domain. By partitioning both the virtual address space into fixed-size <strong>pages</strong> and physical memory into fixed-size <strong>frames</strong> of identical width, the operating system achieves granular hardware-enforced isolation, demand-driven resource allocation, and zero-copy memory sharing.</p>
 <h2 id="71-page-based-abstraction-and-isolation"><a class="header" href="#71-page-based-abstraction-and-isolation">7.1 Page-Based Abstraction and Isolation</a></h2>
-<p>The fundamental mechanism of virtual memory is the page table, a per-process data structure that maps virtual pages to physical frames. This mapping allows the OS to present a contiguous, linear address space to a program, even when the underlying physical memory is fragmented or non-contiguous. Each page table entry (PTE) also includes permission bits that define the allowed operations (read, write, execute) for that page. This architecture enables hardware-enforced isolation: a process can only access the physical frames explicitly mapped in its own page table, and any violation of the programmed permissions triggers a hardware exception.</p>
+<p>The fundamental mechanism of virtual memory is the <strong>page table</strong>, a per-process data structure maintained by the kernel and consulted by the processor’s <strong>Memory Management Unit</strong> to map <strong>virtual pages</strong> (identified by a <strong>Virtual Page Number</strong>) to <strong>physical frames</strong> (identified by a <strong>Physical Frame Number</strong>). Because every virtual page has the exact same size as every physical frame (4,096 bytes on x86-64; 4,096 or 16,384 bytes on ARM64), any virtual page can be placed in any available physical frame in main memory without external fragmentation. This mapping allows the operating system to present a contiguous, linear address space to a program even when the underlying physical frames are scattered arbitrarily across physical memory (Figure 7-1).</p>
+<p>Beyond translating frame locations, each <strong>Page Table Entry (PTE)</strong> embeds hardware permission bits that govern the allowed operations (<code>Read</code>, <code>Write</code>, <code>Execute</code>, and <code>User/Supervisor</code> privilege) for that page. This architecture enforces three foundational guarantees in silicon. First, it enforces <strong>process and kernel isolation</strong>: a process can reference only the physical frames explicitly mapped with user-accessible permissions (<code>User/Supervisor = 1</code>) in its own page table. Because a process has no valid mapping to sibling processes’ frames, and because kernel pages mapped in the upper address space are marked supervisor-only (<code>User/Supervisor = 0</code>), cross-process interference and unauthorized kernel access trigger an immediate hardware exception before any memory state is altered. Second, it enables <strong>demand-driven allocation</strong>: virtual address reservation is decoupled from physical frame allocation, so pages that a process has reserved but not yet touched (such as <code>Page 5</code> in Figure 7-1) remain marked non-present (<code>Present = 0</code>) in the page table and consume zero physical memory until the first access triggers a page fault. Third, it supports <strong>controlled sharing and copy-on-write</strong>: multiple processes can map their virtual pages to the same physical frames with read-only permissions (<code>Read/Write = 0</code>), enabling shared libraries (<code>libc</code>) and <code>fork()</code> copy-on-write (Section 3.2) to avoid physical memory duplication until a store instruction occurs.</p>
 <figure>
 <img src="figures/ch07_vm_paging.svg" alt="Virtual pages mapping through a page table to scattered physical frames" />
 </figure>
 <h2 id="72-hierarchical-translation-and-the-tlb"><a class="header" href="#72-hierarchical-translation-and-the-tlb">7.2 Hierarchical Translation and the TLB</a></h2>
-<p>On modern 64-bit architectures like x86-64 and ARM64, the virtual address space is too vast to be mapped by a single flat array. A flat page table covering a 48-bit address space (2<sup>48</sup> = 256 TiB) with 4 KiB pages (2<sup>12</sup> bytes) would require 2<sup>36</sup> entries; at 8 bytes per entry, every active process would consume 512 GiB of physical DRAM solely for its page table. Instead, the kernel employs a sparse, multi-level hierarchical radix tree, typically a four-level page table (or five-level with Intel LA57 / ARM64 LPA2). Because entire unmapped subtrees are omitted when their parent directory entry is marked non-present, physical memory is allocated only for page table nodes that map active regions of the process’s address space.</p>
-<p><strong>Table 7-1. Architectural abbreviations used throughout virtual-memory translation.</strong></p>
+<p>Consistent with the separation of mechanism and policy established in Section 1.3, virtual memory divides responsibility between the hardware <strong>Memory Management Unit (<code>MMU</code>)</strong> and the operating system kernel. The kernel manages <strong>policy</strong>: it allocates physical frames for page tables, programs <strong>Page Table Entry (<code>PTE</code>)</strong> mappings, and resolves page-fault exceptions. The <code>MMU</code> implements the translation <strong>mechanism</strong>: on every instruction fetch, load, or store, hardware translates the <strong>Virtual Address (<code>VA</code>)</strong> into a <strong>Physical Address (<code>PA</code>)</strong> without invoking the operating system.</p>
+<h3 id="721-address-decomposition-and-hardware-translation"><a class="header" href="#721-address-decomposition-and-hardware-translation">7.2.1 Address Decomposition and Hardware Translation</a></h3>
+<p>For a machine with an <em>n</em>-bit virtual address space and fixed-size pages of 2<sup>k</sup> bytes, the <code>MMU</code> partitions every <code>VA</code> into two contiguous bit fields (Figure 7-2):</p>
+<ul>
+<li><strong>Virtual Page Number (<code>VPN</code>, upper <em>n</em> − <em>k</em> bits):</strong> Identifies which virtual page contains the referenced byte (<code>VPN = VA &gt;&gt; k</code>).</li>
+<li><strong>Page Offset (lower <em>k</em> bits):</strong> Identifies the byte’s exact displacement within that page (<code>Offset = VA &amp; ((1 &lt;&lt; k) - 1)</code>).</li>
+</ul>
+<p>Because every virtual page and every physical frame share the exact same byte width (2<sup>k</sup> bytes) and align on 2<sup>k</sup>-byte boundaries, relocating a page to any physical frame adds an integer multiple of 2<sup>k</sup> to its base address, leaving all bit positions below <em>k</em> mathematically invariant. The Page Offset bits therefore pass wire-for-wire from the <code>VA</code> into the <code>PA</code> without modification. On standard x86-64 hardware with 4 KiB (2<sup>12</sup>-byte) pages and 48-bit virtual addresses, bits <code>[47:12]</code> form the 36-bit <code>VPN</code> and bits <code>[11:0]</code> form the 12-bit Page Offset.</p>
+<p>During a memory reference, the <code>MMU</code> extracts the <code>VPN</code> and queries the <strong>Translation Lookaside Buffer (<code>TLB</code>)</strong>, a small, core-private associative cache of recent <code>VPN → PFN</code> mappings. On a <code>TLB</code> hit, hardware retrieves the corresponding 40-bit <strong>Physical Frame Number (<code>PFN</code>)</strong> and verifies the cached permission bits (<strong>Present (<code>P</code>)</strong>, <strong>Read/Write (<code>R/W</code>)</strong>, <strong>User/Supervisor (<code>U/S</code>)</strong>, and <strong>No-Execute (<code>NX</code>)</strong>) in approximately 0.5 to 1 clock cycle. On a <code>TLB</code> miss, the hardware page-table walker traverses the active process’s page table starting from the root physical base address stored in <strong>Control Register 3 (<code>CR3</code>)</strong> on x86-64 (or <strong>Translation Table Base Register 0 (<code>TTBR0_EL1</code>)</strong> and <strong>Translation Table Base Register 1 (<code>TTBR1_EL1</code>)</strong> on ARM64), caches the resulting leaf <code>PTE</code> in the <code>TLB</code>, and concatenates the <code>PFN</code> with the unmodified 12-bit Page Offset to form the physical bus address:</p>
+<pre><code class="language-text">PA = (PFN &lt;&lt; 12) | Offset
+</code></pre>
+<figure>
+<img src="figures/ch07_mmu_architecture.svg" alt="Virtual-to-physical address translation: the VPN maps through the TLB or page table to a PFN while the 12-bit page offset bits pass through unmodified" />
+</figure>
+<h3 id="722-multi-level-radix-page-tables-and-canonical-addressing"><a class="header" href="#722-multi-level-radix-page-tables-and-canonical-addressing">7.2.2 Multi-Level Radix Page Tables and Canonical Addressing</a></h3>
+<p>On 64-bit architectures, representing the page table as a single flat array is infeasible. A 48-bit virtual address space (2<sup>48</sup> bytes = 256 TiB) partitioned into 4 KiB (2<sup>12</sup>-byte) pages contains 2<sup>48</sup> / 2<sup>12</sup> = 2<sup>36</sup> (68.7 billion) virtual pages. At 8 bytes per 64-bit <code>PTE</code>, a flat lookup table would consume 2<sup>36</sup> × 8 bytes = 512 GiB of contiguous physical <strong>Dynamic Random-Access Memory (<code>DRAM</code>)</strong> per process, regardless of how few pages the process actually maps.</p>
+<p>To bound metadata overhead while preserving deterministic hardware lookup depth, the kernel organizes the page table as a <strong>sparse, four-level hierarchical radix tree</strong> (extended to five levels on processors supporting 57-bit virtual addressing). Each level partitions the address space by a factor of 512: a Level 4 <strong>Page Map Level 4 (<code>PML4</code>)</strong> entry governs 512 GiB, a Level 3 <strong>Page Directory Pointer Table (<code>PDPT</code>)</strong> entry governs 1 GiB, a Level 2 <strong>Page Directory (<code>PD</code>)</strong> entry governs 2 MiB, and a Level 1 <strong>Page Table (<code>PT</code>)</strong> leaf entry maps a single 4 KiB page (Figure 7-3). Because the hardware walker aborts immediately upon encountering a non-present entry (<code>P = 0</code>), the kernel omits entire unmapped 512 GiB, 1 GiB, or 2 MiB subtrees and allocates physical frames solely for nodes covering active virtual regions. Table 7-1 consolidates the architectural terminology across x86-64, ARM64, and the Linux kernel.</p>
+<p><strong>Table 7-1. Architectural terminology in virtual-memory address translation.</strong></p>
 <div class="table-wrapper">
 <table>
 <thead>
-<tr><th style="text-align: left">Abbreviation</th><th style="text-align: left">Full Term</th><th style="text-align: left">Role in Hardware Translation</th></tr>
+<tr><th style="text-align: left">Concept</th><th style="text-align: left">x86-64</th><th style="text-align: left">ARM64</th><th style="text-align: left">Linux Kernel</th><th style="text-align: left">Role in Hardware Translation</th></tr>
 </thead>
 <tbody>
-<tr><td style="text-align: left"><strong>MMU</strong></td><td style="text-align: left">Memory Management Unit</td><td style="text-align: left">Hardware circuit that translates virtual addresses and enforces page permissions</td></tr>
-<tr><td style="text-align: left"><strong>VA / PA</strong></td><td style="text-align: left">Virtual Address / Physical Address</td><td style="text-align: left">Program pointer address versus actual DRAM physical bus address</td></tr>
-<tr><td style="text-align: left"><strong>VPN / PFN</strong></td><td style="text-align: left">Virtual Page Number / Physical Frame Number</td><td style="text-align: left">Upper address bits identifying a 4 KiB virtual page or 4 KiB physical DRAM frame</td></tr>
-<tr><td style="text-align: left"><strong>CR3 / TTBR0</strong></td><td style="text-align: left">Control Register 3 (x86-64) / Translation Table Base Register (ARM64)</td><td style="text-align: left">Privileged hardware register holding the physical base address of the root page table</td></tr>
-<tr><td style="text-align: left"><strong>PML4 / PDPT / PD / PT</strong></td><td style="text-align: left">Page Map Level 4 / Page Directory Pointer Table / Page Directory / Page Table</td><td style="text-align: left">The four radix tree levels (Levels 4, 3, 2, and 1) traversed on x86-64</td></tr>
-<tr><td style="text-align: left"><strong>PTE</strong></td><td style="text-align: left">Page Table Entry</td><td style="text-align: left">64-bit table entry containing the target PFN and permission/status bits (<code>P</code>, <code>R/W</code>, <code>U/S</code>, <code>NX</code>)</td></tr>
-<tr><td style="text-align: left"><strong>TLB</strong></td><td style="text-align: left">Translation Lookaside Buffer</td><td style="text-align: left">Core-private hardware cache storing recent <code>VPN → PFN</code> translations (~1 cycle hit)</td></tr>
-<tr><td style="text-align: left"><strong>PCID / ASID</strong></td><td style="text-align: left">Process-Context ID (x86-64) / Address Space ID (ARM64)</td><td style="text-align: left">Hardware tag distinguishing TLB entries across processes without flushing on context switch</td></tr>
+<tr><td style="text-align: left"><strong>Translation Unit</strong></td><td style="text-align: left"><strong>Memory Management Unit (<code>MMU</code>)</strong></td><td style="text-align: left"><strong>Memory Management Unit (<code>MMU</code>)</strong></td><td style="text-align: left">Hardware substrate</td><td style="text-align: left">Translates <code>VA</code> to <code>PA</code> and enforces permissions on every memory access</td></tr>
+<tr><td style="text-align: left"><strong>Addresses</strong></td><td style="text-align: left"><strong>Virtual Address (<code>VA</code>)</strong> / <strong>Physical Address (<code>PA</code>)</strong></td><td style="text-align: left"><strong>Virtual Address (<code>VA</code>)</strong> / <strong>Physical Address (<code>PA</code>)</strong></td><td style="text-align: left"><code>unsigned long</code> / <code>phys_addr_t</code></td><td style="text-align: left">Software virtual pointer versus physical memory bus address</td></tr>
+<tr><td style="text-align: left"><strong>Block Numbers</strong></td><td style="text-align: left"><strong>Virtual Page Number (<code>VPN</code>)</strong> / <strong>Physical Frame Number (<code>PFN</code>)</strong></td><td style="text-align: left"><strong>Virtual Page Number (<code>VPN</code>)</strong> / <strong>Output Address (<code>OA</code>)</strong></td><td style="text-align: left"><strong>Page Frame Number (<code>PFN</code>)</strong> (<code>PA &gt;&gt; 12</code>)</td><td style="text-align: left">Upper address bits identifying a 4 KiB virtual page or physical frame</td></tr>
+<tr><td style="text-align: left"><strong>Root Register</strong></td><td style="text-align: left"><strong>Control Register 3 (<code>CR3</code>)</strong></td><td style="text-align: left"><strong>Translation Table Base Register (<code>TTBR0_EL1</code> / <code>TTBR1_EL1</code>)</strong></td><td style="text-align: left"><code>mm_struct-&gt;pgd</code></td><td style="text-align: left">Privileged register holding the physical base address of the root table</td></tr>
+<tr><td style="text-align: left"><strong>Level 4 (Root)</strong></td><td style="text-align: left"><strong>Page Map Level 4 (<code>PML4</code>)</strong></td><td style="text-align: left"><strong>Level 0 Translation Table</strong></td><td style="text-align: left"><strong>Page Global Directory (<code>PGD</code>)</strong></td><td style="text-align: left">Indexed by bits <code>[47:39]</code>; 512 entries, 512 GiB per entry</td></tr>
+<tr><td style="text-align: left"><strong>Level 3</strong></td><td style="text-align: left"><strong>Page Directory Pointer Table (<code>PDPT</code>)</strong></td><td style="text-align: left"><strong>Level 1 Translation Table</strong></td><td style="text-align: left"><strong>Page Upper Directory (<code>PUD</code>)</strong></td><td style="text-align: left">Indexed by bits <code>[38:30]</code>; 1 GiB per entry (or 1 GiB huge page)</td></tr>
+<tr><td style="text-align: left"><strong>Level 2</strong></td><td style="text-align: left"><strong>Page Directory (<code>PD</code>)</strong></td><td style="text-align: left"><strong>Level 2 Translation Table</strong></td><td style="text-align: left"><strong>Page Middle Directory (<code>PMD</code>)</strong></td><td style="text-align: left">Indexed by bits <code>[29:21]</code>; 2 MiB per entry (or 2 MiB huge page)</td></tr>
+<tr><td style="text-align: left"><strong>Level 1 (Leaf)</strong></td><td style="text-align: left"><strong>Page Table (<code>PT</code>)</strong></td><td style="text-align: left"><strong>Level 3 Translation Table</strong></td><td style="text-align: left"><strong>Page Table Entry (<code>PTE</code>)</strong> Table</td><td style="text-align: left">Indexed by bits <code>[20:12]</code>; maps one 4 KiB page to a physical frame</td></tr>
+<tr><td style="text-align: left"><strong>Translation Cache</strong></td><td style="text-align: left"><strong>Translation Lookaside Buffer (<code>TLB</code>)</strong></td><td style="text-align: left"><strong>Translation Lookaside Buffer (<code>TLB</code>)</strong></td><td style="text-align: left">Hardware <code>TLB</code></td><td style="text-align: left">Core-private associative cache of <code>VPN → PFN</code> mappings (~0.5–1 cycle hit)</td></tr>
+<tr><td style="text-align: left"><strong>Address-Space Tag</strong></td><td style="text-align: left"><strong>Process-Context Identifier (<code>PCID</code>, 12-bit)</strong></td><td style="text-align: left"><strong>Address Space Identifier (<code>ASID</code>, 8- or 16-bit)</strong></td><td style="text-align: left"><code>mm-&gt;context.id</code></td><td style="text-align: left">Tags <code>TLB</code> entries by address space to avoid flushes on context switch</td></tr>
 </tbody>
 </table>
 </div>
-<h3 id="721-canonical-addresses-and-multi-level-radix-decomposition"><a class="header" href="#721-canonical-addresses-and-multi-level-radix-decomposition">7.2.1 Canonical Addresses and Multi-Level Radix Decomposition</a></h3>
-<p>Under standard 4-level paging on x86-64 (and 48-bit <code>VA_BITS</code> with 4 KiB granules on ARM64), only the lower 48 bits (<code>[47:0]</code>) of a 64-bit pointer participate in hardware address translation. To prevent software from overloading the upper unused bits (<code>[63:48]</code>) with arbitrary metadata that would break compatibility with 5-level paging extensions, the hardware enforces <strong>canonical address form</strong>: bits <code>63:48</code> must be an exact sign-extension (replication) of bit <code>47</code>.</p>
-<ul>
-<li><strong>User-Space Canonical Range (<code>bit 47 == 0</code>):</strong> <code>0x0000_0000_0000_0000</code> through <code>0x0000_7FFF_FFFF_FFFF</code> (128 TiB).</li>
-<li><strong>Kernel-Space Canonical Range (<code>bit 47 == 1</code>):</strong> <code>0xFFFF_8000_0000_0000</code> through <code>0xFFFF_FFFF_FFFF_FFFF</code> (128 TiB).</li>
-<li><strong>Non-Canonical Hole:</strong> Any memory reference whose upper 16 bits are neither all zeros nor all ones violates canonicality and immediately triggers a hardware General Protection Fault (<code>#GP(0)</code>) before the MMU initiates a page table walk.</li>
-</ul>
-<p>Why does each radix table level consume exactly <strong>9 bits</strong> of the virtual address? The geometry is derived directly from the hardware page size and entry width:</p>
-<ul>
-<li>Each page table node occupies exactly one physical 4 KiB frame (2<sup>12</sup> = 4,096 bytes).</li>
-<li>Each Page Table Entry (PTE) is 64 bits wide (8 bytes = 2<sup>3</sup> bytes).</li>
-<li>Consequently, one 4 KiB page table houses exactly 4,096 / 8 = 512 = 2<sup>9</sup> entries, requiring a <strong>9-bit unsigned index</strong> (<code>0</code> to <code>511</code>) to select an entry at each level, while the lowest <strong>12 bits</strong> (<code>0</code> to <code>4,095</code>) address the individual byte offset within the target 4 KiB physical frame (9 + 9 + 9 + 9 + 12 = 48 bits).</li>
-</ul>
 <figure>
-<img src="figures/ch07_pagewalk.svg" alt="A virtual address split into four 9-bit indices and a 12-bit offset, walking four table levels" />
+<img src="figures/ch07_pagewalk.svg" alt="Four-level hierarchical radix page-table walk on x86-64 with 4 KiB pages" />
 </figure>
-<h3 id="722-hand-calculated-4-level-address-translation-walkthrough"><a class="header" href="#722-hand-calculated-4-level-address-translation-walkthrough">7.2.2 Hand-Calculated 4-Level Address Translation Walkthrough</a></h3>
-<p>To make the hardware MMU translation algorithm concrete, let us hand-calculate the exact bitwise decomposition and four-level physical memory walk for the 64-bit user-mode virtual address <strong><code>VA = 0x0000_7FFF_ABCD_EF01</code></strong> (a stack address near the apex of the user canonical range), assuming the processor’s page-table root register holds <strong><code>CR3 = 0x0000_0000_1000_0000</code></strong>.</p>
-<h4 id="step-1-bitwise-index-extraction"><a class="header" href="#step-1-bitwise-index-extraction">Step 1: Bitwise Index Extraction</a></h4>
-<p>First, we verify canonicality: bit 47 is <code>0</code> (since the hex digit at bits <code>47:44</code> is <code>7 = 0111_2</code>), and bits <code>63:48</code> are <code>0x0000</code>, confirming a valid user-space canonical address. Expanding the lower 48 bits (<code>0x7FFF_ABCD_EF01</code>) into binary and partitioning them into four 9-bit indices and one 12-bit offset yields:</p>
-<pre><code class="language-text">Hex:     7    F    F    F  _  A    B    C    D  _  E    F    0    1
-Binary: 0111 1111 1111 1111 1010 1011 1100 1101 1110 1111 0000 0001
+<p>Two architectural invariants govern the structure of a 64-bit <code>VA</code> before the radix walk begins (Figure 7-4):</p>
+<ol>
+<li><strong>Canonical Address Form (bits <code>[63:48]</code>):</strong> Because 4-level paging translates only bits <code>[47:0]</code>, hardware prohibits software from storing arbitrary tags in the unused upper 16 bits, preserving forward compatibility with 5-level paging (57-bit <code>VA</code>). Bits <code>[63:48]</code> must be an exact sign-extension (replication) of bit 47. When bit 47 is <code>0</code>, bits <code>[63:48]</code> must equal <code>0x0000</code>, defining the <strong>128 TiB User Canonical Space</strong> (<code>0x0000_0000_0000_0000</code> to <code>0x0000_7FFF_FFFF_FFFF</code>). When bit 47 is <code>1</code>, bits <code>[63:48]</code> must equal <code>0xFFFF</code>, defining the <strong>128 TiB Kernel Canonical Space</strong> (<code>0xFFFF_8000_0000_0000</code> to <code>0xFFFF_FFFF_FFFF_FFFF</code>). Any pointer whose upper 16 bits fall into the <strong>Non-Canonical Hole</strong> raises an immediate <strong>General Protection Fault (<code>#GP(0)</code>)</strong> before any table walk begins.</li>
+<li><strong>The <code>9-9-9-9-12</code> Radix Geometry (bits <code>[47:0]</code>):</strong> Addressing 4,096 = 2<sup>12</sup> bytes within a 4 KiB frame requires a <strong>12-bit Page Offset</strong> (<code>bits [11:0]</code>). Each page-table node occupies exactly one 4 KiB physical frame, and each 64-bit <code>PTE</code> occupies 8 bytes (2<sup>3</sup> bytes), yielding 4,096 / 8 = 512 = 2<sup>9</sup> entries per table. Indexing 512 entries (<code>0</code> to <code>511</code>) requires an unsigned <strong>9-bit index</strong> at each of the four radix levels (4 × 9 + 12 = 48 bits). This 9-bit radix width is the exact fan-out that packs one complete table node into one 4 KiB frame with zero internal fragmentation. Extending translation to all 64 bits with 9-bit levels would require 6 levels, increasing every <code>TLB</code> miss to 6 dependent memory reads (and up to 36 reads under nested virtualization, Chapter 16), which is why hardware stops at 48 bits (or 57 bits on 5-level systems).</li>
+</ol>
+<figure>
+<img src="figures/ch07_canonical_va.svg" alt="Bit-level 9-9-9-9-12 decomposition of 0x0000_7FFF_ABCD_EF01 and canonical 64-bit address space" />
+</figure>
+<h3 id="723-worked-4-level-address-translation-walkthrough"><a class="header" href="#723-worked-4-level-address-translation-walkthrough">7.2.3 Worked 4-Level Address Translation Walkthrough</a></h3>
+<p>Consider the 64-bit user-space virtual address <strong><code>VA = 0x0000_7FFF_ABCD_EF01</code></strong> (a stack address near the top of the user canonical range) under a page-table hierarchy rooted at <strong><code>CR3 = 0x0000_0000_1000_0000</code></strong>.</p>
+<h4 id="stage-1-canonicality-verification-and-bitwise-index-extraction"><a class="header" href="#stage-1-canonicality-verification-and-bitwise-index-extraction">Stage 1: Canonicality Verification and Bitwise Index Extraction</a></h4>
+<p>The hexadecimal digit covering bits <code>[47:44]</code> is <code>7</code> (<code>0111₂</code>), so bit 47 is <code>0</code> and bits <code>[63:48]</code> are <code>0x0000</code>, confirming a valid user canonical address. Because 12 bits equal three 4-bit hexadecimal digits, the Page Offset is read directly from the trailing three hex digits (<code>0xF01 = 3,841</code>). By contrast, because 9 does not divide evenly by 4, each 9-bit table index straddles hex-nibble boundaries (visible directly in the bit cells of Figure 7-4). Shifting and masking the upper 36-bit <code>VPN</code> (<code>0x7FFF_ABCDE</code>) into four 9-bit indices (<code>&amp; 0x1FF</code>) yields:</p>
+<pre><code class="language-text">Hex Nibble:    7    F    F    F  _  A    B    C    D  _  E    F    0    1
+4-Bit Binary: 0111 1111 1111 1111  1010 1011 1100 1101  1110 1111 0000 0001
+Bit Position: ^47                                                        ^0
 
-1. PML4 Index (Level 4, bits 47:39): (VA &gt;&gt; 39) &amp; 0x1FF
-   Binary: 0_1111_1111_2       = 0x0FF = 255
-2. PDPT Index (Level 3, bits 38:30): (VA &gt;&gt; 30) &amp; 0x1FF
-   Binary: 1_1111_1110_2       = 0x1FE = 510
-3. PD Index   (Level 2, bits 29:21): (VA &gt;&gt; 21) &amp; 0x1FF
-   Binary: 1_0101_1110_2       = 0x15E = 350
-4. PT Index   (Level 1, bits 20:12): (VA &gt;&gt; 12) &amp; 0x1FF
-   Binary: 0_1101_1111_2       = 0x0DF = 223
-5. Page Offset         (bits 11:0):  VA &amp; 0xFFF
-   Binary: 1111_0000_0001_2    = 0xF01 = 3,841
+  PML4 Index (L4, bits [47:39]): (VA &gt;&gt; 39) &amp; 0x1FF = 0_1111_1111_2    = 0x0FF = 255
+  PDPT Index (L3, bits [38:30]): (VA &gt;&gt; 30) &amp; 0x1FF = 1_1111_1110_2    = 0x1FE = 510
+  PD Index   (L2, bits [29:21]): (VA &gt;&gt; 21) &amp; 0x1FF = 1_0101_1110_2    = 0x15E = 350
+  PT Index   (L1, bits [20:12]): (VA &gt;&gt; 12) &amp; 0x1FF = 0_1101_1111_2    = 0x0DF = 223
+  Page Offset    (bits [11:0]) :  VA        &amp; 0xFFF = 1111_0000_0001_2 = 0xF01 = 3,841
 </code></pre>
-<h4 id="step-2-sequential-radix-table-lookups-from-cr3"><a class="header" href="#step-2-sequential-radix-table-lookups-from-cr3">Step 2: Sequential Radix Table Lookups from <code>CR3</code></a></h4>
-<p>The hardware page table walker executes four sequential 8-byte physical memory reads across DRAM (or the L1/L2 data cache):</p>
-<ol>
-<li><strong>Level 4: Page Map Level 4 (PML4 / <code>PGD</code>):</strong>
-<ul>
-<li>The MMU reads the physical base address of the PML4 table from <code>CR3</code> (<code>0x1000_0000</code>) and indexes entry <code>255</code>:
-<pre><code class="language-text">PML4E_Addr = 0x1000_0000 + (255 × 8) = 0x1000_0000 + 0x7F8 = 0x1000_07F8
+<h4 id="stage-2-four-level-physical-memory-walk-from-cr3"><a class="header" href="#stage-2-four-level-physical-memory-walk-from-cr3">Stage 2: Four-Level Physical Memory Walk from <code>CR3</code></a></h4>
+<p>At each radix level, the hardware walker locates the target 8-byte entry inside the current 4 KiB table frame using:</p>
+<pre><code class="language-text">Entry_PA = Table_Base_PA + (Index × 8)
 </code></pre>
-</li>
-<li>Suppose physical memory at <code>0x1000_07F8</code> contains <code>PML4E = 0x0000_0000_2040_0007</code>. The low flags <code>0x007</code> (<code>Present = 1</code>, <code>Read/Write = 1</code>, <code>User = 1</code>) authorize user-mode traversal, and bits <code>51:12</code> extract the Level 3 table physical base address: <code>L3_Base = 0x2040_0000</code>.</li>
-</ul>
-</li>
-<li><strong>Level 3: Page Directory Pointer Table (PDPT / <code>PUD</code>):</strong>
-<ul>
-<li>The MMU indexes entry <code>510</code> in the PDPT at <code>0x2040_0000</code>:
-<pre><code class="language-text">PDPTE_Addr = 0x2040_0000 + (510 × 8) = 0x2040_0000 + 0xFF0 = 0x2040_0FF0
+<p>Two properties of 4 KiB alignment simplify this arithmetic in silicon. First, every 4 KiB-aligned <code>Table_Base_PA</code> ends in twelve zero bits (<code>0x...000</code>). Since <code>Index</code> ranges from <code>0</code> to <code>511</code>, <code>Index × 8</code> ranges from <code>0x000</code> to <code>0xFF8</code>, fitting entirely within those trailing three hex digits without carry propagation. Second, because the next table’s physical base address also ends in twelve zero bits, each 64-bit entry packs status and permission flags into bits <code>[11:0]</code> (plus bit <code>63</code> for <code>NX</code>) and stores the 40-bit <code>PFN</code> in bits <code>[51:12]</code>. After validating the permission bits at each level, the <code>MMU</code> applies the mask <code>Entry &amp; 0x000F_FFFF_FFFF_F000</code> to recover the next table’s 4 KiB-aligned physical base address (Table 7-2 and Figure 7-5).</p>
+<p><strong>Table 7-2. Four-level hardware page-table walk for <code>VA = 0x0000_7FFF_ABCD_EF01</code> (<code>CR3 = 0x1000_0000</code>).</strong></p>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th style="text-align: left">Hop</th><th style="text-align: left">Level &amp; Span</th><th style="text-align: left">Table Base <code>PA</code></th><th style="text-align: left">Index</th><th style="text-align: left">Byte Offset (<code>Idx × 8</code>)</th><th style="text-align: left">Entry <code>PA</code> Read</th><th style="text-align: left">64-Bit Entry Value</th><th style="text-align: left">Flags &amp; Hardware Check</th><th style="text-align: left">Next Base (<code>Entry &amp; 0x000F_FFFF_FFFF_F000</code>)</th></tr>
+</thead>
+<tbody>
+<tr><td style="text-align: left"><strong>1</strong></td><td style="text-align: left"><strong>L4: <code>PML4</code></strong> (512 GiB)</td><td style="text-align: left"><code>0x1000_0000</code></td><td style="text-align: left"><code>255</code> (<code>0x0FF</code>)</td><td style="text-align: left"><code>0x7F8</code></td><td style="text-align: left"><code>0x1000_07F8</code></td><td style="text-align: left"><code>0x0000_0000_2040_0007</code></td><td style="text-align: left"><code>0x007</code> (<code>P=1, R/W=1, U/S=1</code>)</td><td style="text-align: left"><strong>L3 Base:</strong> <code>0x0000_0000_2040_0000</code></td></tr>
+<tr><td style="text-align: left"><strong>2</strong></td><td style="text-align: left"><strong>L3: <code>PDPT</code></strong> (1 GiB)</td><td style="text-align: left"><code>0x2040_0000</code></td><td style="text-align: left"><code>510</code> (<code>0x1FE</code>)</td><td style="text-align: left"><code>0xFF0</code></td><td style="text-align: left"><code>0x2040_0FF0</code></td><td style="text-align: left"><code>0x0000_0000_3080_0007</code></td><td style="text-align: left"><code>0x007</code> (<code>PS=0</code>, not 1 GiB)</td><td style="text-align: left"><strong>L2 Base:</strong> <code>0x0000_0000_3080_0000</code></td></tr>
+<tr><td style="text-align: left"><strong>3</strong></td><td style="text-align: left"><strong>L2: <code>PD</code></strong> (2 MiB)</td><td style="text-align: left"><code>0x3080_0000</code></td><td style="text-align: left"><code>350</code> (<code>0x15E</code>)</td><td style="text-align: left"><code>0xAF0</code></td><td style="text-align: left"><code>0x3080_0AF0</code></td><td style="text-align: left"><code>0x0000_0000_40C0_0007</code></td><td style="text-align: left"><code>0x007</code> (<code>PS=0</code>, not 2 MiB)</td><td style="text-align: left"><strong>L1 Base:</strong> <code>0x0000_0000_40C0_0000</code></td></tr>
+<tr><td style="text-align: left"><strong>4</strong></td><td style="text-align: left"><strong>L1: <code>PT</code></strong> (4 KiB)</td><td style="text-align: left"><code>0x40C0_0000</code></td><td style="text-align: left"><code>223</code> (<code>0x0DF</code>)</td><td style="text-align: left"><code>0x6F8</code></td><td style="text-align: left"><code>0x40C0_06F8</code></td><td style="text-align: left"><code>0x8000_0000_8A42_0067</code></td><td style="text-align: left"><code>0x067</code> + <code>NX=1</code> (<code>P, R/W, U/S, A, D = 1</code>)</td><td style="text-align: left"><strong>Frame Base:</strong> <code>0x0000_0000_8A42_0000</code></td></tr>
+</tbody>
+</table>
+</div>
+<p>Effective access permissions are the logical intersection across all four levels: clearing <code>U/S</code> or <code>R/W</code> in an upper directory entry restricts the entire subtree beneath it. At Hops 2 and 3, the <strong>Page Size (<code>PS</code>)</strong> bit is <code>0</code>, directing the walker to descend to the next level rather than terminating early on a huge page.</p>
+<h4 id="stage-3-leaf-pte-decoding-and-physical-address-assembly"><a class="header" href="#stage-3-leaf-pte-decoding-and-physical-address-assembly">Stage 3: Leaf <code>PTE</code> Decoding and Physical Address Assembly</a></h4>
+<p>Hop 4 returns the leaf entry <strong><code>PTE = 0x8000_0000_8A42_0067</code></strong>. Unlike the intermediate directory entries (<code>0x...0007</code>), the leaf <code>PTE</code> records hardware-updated activity bits (<strong>Accessed (<code>A = 1</code>)</strong> and <strong>Dirty (<code>D = 1</code>)</strong>, contributing <code>0x60</code> to the low byte <code>0x67</code>) and sets bit 63 (<strong>No-Execute, <code>NX = 1</code></strong>, leading hex digit <code>8</code>) to enforce non-executable stack data (Table 7-3 and Figure 7-5).</p>
+<p><strong>Table 7-3. Architectural bit breakdown of leaf entry <code>PTE = 0x8000_0000_8A42_0067</code>.</strong></p>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th style="text-align: left">Bits</th><th style="text-align: left">Field (Full Form &amp; Symbol)</th><th style="text-align: left">Value</th><th style="text-align: left">Hardware &amp; Kernel Semantics</th></tr>
+</thead>
+<tbody>
+<tr><td style="text-align: left"><strong>0</strong></td><td style="text-align: left"><strong>Present (<code>P</code>)</strong></td><td style="text-align: left"><code>1</code> (<code>0x001</code>)</td><td style="text-align: left">Frame resides in physical memory. If <code>0</code>, hardware aborts the walk, latches the faulting <code>VA</code> into <strong>Control Register 2 (<code>CR2</code>)</strong>, and raises a <strong>Page Fault (<code>#PF</code>, Vector 14)</strong>.</td></tr>
+<tr><td style="text-align: left"><strong>1</strong></td><td style="text-align: left"><strong>Read/Write (<code>R/W</code>)</strong></td><td style="text-align: left"><code>1</code> (<code>0x002</code>)</td><td style="text-align: left">Stores permitted. Cleared to <code>0</code> on shared pages during <code>fork()</code> <strong>Copy-on-Write (<code>COW</code>)</strong> (Section 3.2) so the first write traps to the kernel.</td></tr>
+<tr><td style="text-align: left"><strong>2</strong></td><td style="text-align: left"><strong>User/Supervisor (<code>U/S</code>)</strong></td><td style="text-align: left"><code>1</code> (<code>0x004</code>)</td><td style="text-align: left">Accessible from user mode (<strong>Ring 3</strong> on x86-64; <strong>Exception Level 0 (<code>EL0</code>)</strong> on ARM64). Kernel mappings set <code>U/S = 0</code>.</td></tr>
+<tr><td style="text-align: left"><strong>4:3</strong></td><td style="text-align: left"><strong>Page-Level Cache Disable (<code>PCD</code>)</strong> / <strong>Page-Level Write-Through (<code>PWT</code>)</strong></td><td style="text-align: left"><code>00</code></td><td style="text-align: left">Hardware cache policy (<code>00</code> = write-back cacheable <code>DRAM</code>; set for uncached <strong>Memory-Mapped Input/Output (<code>MMIO</code>)</strong> device registers).</td></tr>
+<tr><td style="text-align: left"><strong>5</strong></td><td style="text-align: left"><strong>Accessed (<code>A</code>)</strong></td><td style="text-align: left"><code>1</code> (<code>0x020</code>)</td><td style="text-align: left">Set atomically by the <code>MMU</code> on any read or write; scanned and cleared by the kernel page-reclamation daemon to approximate <strong>Least Recently Used (<code>LRU</code>)</strong> eviction.</td></tr>
+<tr><td style="text-align: left"><strong>6</strong></td><td style="text-align: left"><strong>Dirty (<code>D</code>)</strong></td><td style="text-align: left"><code>1</code> (<code>0x040</code>)</td><td style="text-align: left">Set atomically by the <code>MMU</code> on a store instruction; signals that a modified file-backed page must be written back before eviction.</td></tr>
+<tr><td style="text-align: left"><strong>7</strong></td><td style="text-align: left"><strong>Page Attribute Table (<code>PAT</code>)</strong> / <strong>Page Size (<code>PS</code>)</strong></td><td style="text-align: left"><code>0</code></td><td style="text-align: left">Selects memory-type caching attributes in leaf <code>PTE</code>s; in <code>PD</code> (L2) or <code>PDPT</code> (L3) entries, <code>PS = 1</code> maps a 2 MiB or 1 GiB huge page directly.</td></tr>
+<tr><td style="text-align: left"><strong>8</strong></td><td style="text-align: left"><strong>Global (<code>G</code>)</strong></td><td style="text-align: left"><code>0</code></td><td style="text-align: left">When <code>1</code> (used on shared kernel mappings), preserves the <code>TLB</code> entry across <code>CR3</code> reloads on context switch.</td></tr>
+<tr><td style="text-align: left"><strong>11:9</strong></td><td style="text-align: left"><strong>Available for Operating System Use (<code>AVL</code>)</strong></td><td style="text-align: left"><code>000</code></td><td style="text-align: left">Ignored by hardware; available for kernel software metadata (for example, swap or copy-on-write markers).</td></tr>
+<tr><td style="text-align: left"><strong>51:12</strong></td><td style="text-align: left"><strong>Physical Frame Number (<code>PFN</code>)</strong></td><td style="text-align: left"><code>0x000_8A420</code></td><td style="text-align: left">40-bit frame index. Masking <code>PTE &amp; 0x000F_FFFF_FFFF_F000</code> yields the 4 KiB-aligned frame base <code>0x0000_0000_8A42_0000</code>.</td></tr>
+<tr><td style="text-align: left"><strong>62:52</strong></td><td style="text-align: left"><strong>Ignored / Protection Key (<code>Ign / PK</code>)</strong></td><td style="text-align: left"><code>0x000</code></td><td style="text-align: left">Ignored / <strong>Memory Protection Key (<code>PKU</code>)</strong> domain tag when hardware protection keys are enabled.</td></tr>
+<tr><td style="text-align: left"><strong>63</strong></td><td style="text-align: left"><strong>No-Execute (<code>NX</code>)</strong></td><td style="text-align: left"><code>1</code> (<code>0x8000...</code>)</td><td style="text-align: left">Hardware <strong>Write XOR Execute (<code>W^X</code>)</strong> enforcement. Blocks instruction fetches from this stack page in silicon.</td></tr>
+</tbody>
+</table>
+</div>
+<p>Combining the masked 4 KiB frame base with the unmodified 12-bit Page Offset (<code>0xF01</code>) yields the final physical address:</p>
+<pre><code class="language-text">PA = (PTE &amp; 0x000F_FFFF_FFFF_F000) | (VA &amp; 0x0000_0000_0000_0FFF)
+   = 0x0000_0000_8A42_0000         | 0x0000_0000_0000_0F01
+   = 0x0000_0000_8A42_0F01
 </code></pre>
-</li>
-<li>Suppose <code>PDPTE = 0x0000_0000_3080_0007</code> (with Page Size bit <code>PS = 0</code>, indicating a pointer to a Level 2 directory rather than a 1 GiB huge page). Bits <code>51:12</code> yield <code>L2_Base = 0x3080_0000</code>.</li>
-</ul>
-</li>
-<li><strong>Level 2: Page Directory (PD / <code>PMD</code>):</strong>
-<ul>
-<li>The MMU indexes entry <code>350</code> in the Page Directory at <code>0x3080_0000</code>:
-<pre><code class="language-text">PDE_Addr   = 0x3080_0000 + (350 × 8) = 0x3080_0000 + 0xAF0 = 0x3080_0AF0
-</code></pre>
-</li>
-<li>Suppose <code>PDE = 0x0000_0000_40C0_0007</code> (<code>PS = 0</code>, pointing to a 4 KiB leaf Page Table rather than a 2 MiB huge page). Bits <code>51:12</code> yield <code>L1_Base = 0x40C0_0000</code>.</li>
-</ul>
-</li>
-<li><strong>Level 1: Leaf Page Table (PT / <code>PTE</code>):</strong>
-<ul>
-<li>The MMU indexes entry <code>223</code> in the leaf Page Table at <code>0x40C0_0000</code>:
-<pre><code class="language-text">PTE_Addr   = 0x40C0_0000 + (223 × 8) = 0x40C0_0000 + 0x6F8 = 0x40C0_06F8
-</code></pre>
-</li>
-<li>Suppose the leaf entry read from <code>0x40C0_06F8</code> is <strong><code>PTE = 0x8000_0000_8A42_0067</code></strong>.</li>
-</ul>
-</li>
-</ol>
-<h4 id="step-3-64-bit-pte-bit-layout-verification-and-physical-address-composition"><a class="header" href="#step-3-64-bit-pte-bit-layout-verification-and-physical-address-composition">Step 3: 64-Bit PTE Bit-Layout Verification and Physical Address Composition</a></h4>
-<p>The MMU masks and validates the architectural permission and status bits of the leaf <strong><code>PTE = 0x8000_0000_8A42_0067</code></strong>:</p>
-<ul>
-<li><strong>Bit 0 (<code>P</code>, Present = <code>1</code>):</strong> The physical frame is resident in DRAM. (If <code>0</code>, the MMU halts and raises a <code>#PF</code> Page Fault exception, loading the faulting virtual address into control register <code>CR2</code>).</li>
-<li><strong>Bit 1 (<code>R/W</code>, Read/Write = <code>1</code>):</strong> Store instructions are permitted on this page. (During <code>fork()</code> copy-on-write, the kernel clears this bit to <code>0</code> so the first write traps into the COW duplication handler).</li>
-<li><strong>Bit 2 (<code>U/S</code>, User/Supervisor = <code>1</code>):</strong> Accessible from Ring 3 (<code>CPL = 3</code>). (Kernel pages set <code>U/S = 0</code>).</li>
-<li><strong>Bit 5 (<code>A</code>, Accessed = <code>1</code>) &amp; Bit 6 (<code>D</code>, Dirty = <code>1</code>):</strong> Set atomically by hardware when the page is read (<code>A</code>) or written (<code>D</code>). The kernel page-reclamation daemon inspects these bits to implement LRU/CLOCK eviction and to determine whether a file-backed page must be flushed to storage before eviction.</li>
-<li><strong>Bit 7 (<code>PS</code> / <code>PAT</code> = <code>0</code>):</strong> Standard 4 KiB leaf page (at Level 2 or Level 3, setting <code>PS = 1</code> terminates the walk early to map a contiguous <strong>2 MiB</strong> or <strong>1 GiB Huge Page</strong>).</li>
-<li><strong>Bit 8 (<code>G</code>, Global = <code>0</code>):</strong> When set to <code>1</code> on shared kernel mappings, prevents the TLB entry from being flushed when <code>CR3</code> is reloaded during a cross-process context switch.</li>
-<li><strong>Bits 51:12 (<code>PFN</code>, Physical Frame Number = <code>0x000_8A420</code>):</strong> Extracted via <code>PTE &amp; 0x000F_FFFF_FFFF_F000</code>, yielding the 4 KiB-aligned physical frame base address <strong><code>0x0000_0000_8A42_0000</code></strong>.</li>
-<li><strong>Bit 63 (<code>NX</code> / <code>XD</code>, No-Execute = <code>1</code>, from leading hex digit <code>8</code>):</strong> Hardware Data Execution Prevention (<code>W^X</code>). Instruction fetches from this stack page are blocked in silicon; any attempt to jump to shellcode on this page raises an immediate <code>#PF</code> instruction-fetch fault.</li>
-</ul>
-<p>Finally, the MMU concatenates the 40-bit Physical Frame Number with the 12-bit Page Offset (<code>0xF01</code>) in a single hardware clock cycle:</p>
-<pre><code class="language-text">Physical_Address = (PTE &amp; 0x000F_FFFF_FFFF_F000) | (VA &amp; 0x0000_0000_0000_0FFF)
-                 = 0x0000_0000_8A42_0000 | 0x0000_0000_0000_0F01
-                 = 0x0000_0000_8A42_0F01
-</code></pre>
+<p>The <code>MMU</code> inserts <code>VPN 0x7FFF_ABCDE → PFN 0x8A420</code> into the core’s <code>TLB</code> and issues the memory request for <code>0x0000_0000_8A42_0F01</code> to the Level 1 data cache. Subsequent accesses to any byte within <code>0x0000_7FFF_ABCD_E000</code> to <code>0x0000_7FFF_ABCD_EFFF</code> hit in the <code>TLB</code> in a single cycle without walking the page table.</p>
 <figure>
-<img src="figures/ch07_canonical_va.svg" alt="Canonical 48-bit virtual address decomposition for 0x0000_7FFF_ABCD_EF01, 4-level radix walk arithmetic, and 64-bit PTE bit layout" />
+<img src="figures/ch07_radix_walk_trace.svg" alt="Four-level hardware page walk for 0x0000_7FFF_ABCD_EF01 and complete 64-bit x86-64 leaf PTE bit layout" />
 </figure>
-<h3 id="723-the-translation-lookaside-buffer-tlb-huge-pages-and-shootdowns"><a class="header" href="#723-the-translation-lookaside-buffer-tlb-huge-pages-and-shootdowns">7.2.3 The Translation Lookaside Buffer (TLB), Huge Pages, and Shootdowns</a></h3>
-<p>Because a 4-level radix walk requires <strong>four sequential memory accesses</strong> before the actual data load or store can proceed, performing a full walk on every instruction would quadruple memory latency. To avoid this penalty, the MMU caches recent virtual-page-to-physical-frame (<code>VPN → PFN</code>) translations in the <strong>Translation Lookaside Buffer (TLB)</strong>, a hardware content-addressable cache checked in parallel with the L1 cache tag array (~0.5 to 1 cycle latency on an L1 dTLB hit).</p>
-<p>Three microarchitectural properties of the TLB directly govern systems software performance:</p>
-<ol>
-<li><strong>TLB Reach and Working-Set Cliffs:</strong> A typical L1 dTLB holds 64 entries and an L2 STLB holds 1,024–2,048 entries. With 4 KiB pages, a 1,536-entry L2 TLB covers a maximum working set (“TLB reach”) of only 1,536 × 4 KiB = 6 MiB. When an application randomly accesses a memory buffer larger than the TLB reach, TLB misses spike, forcing the hardware page walker to stall the CPU pipeline. Configuring <strong>2 MiB Huge Pages</strong> (<code>MAP_HUGEPAGE</code> / <code>MADV_HUGEPAGE</code>, terminating the radix walk at Level 2 with <code>PDE.PS = 1</code>) increases the reach of those same 1,536 TLB entries to <strong>3 GiB</strong>, eliminating L1/L2 PT memory traffic and dramatically reducing translation latency for database buffer pools and VM hypervisors.</li>
-<li><strong>Address Space Identifiers (<code>PCID</code> / <code>ASID</code>):</strong> Historically, reloading <code>CR3</code> during a process context switch flushed all non-global TLB entries to prevent Process B from using Process A’s cached translations. Contemporary processors tag each TLB entry with a 12-bit <strong>Process-Context Identifier (<code>PCID</code> on x86-64)</strong> or 16-bit <strong>Address Space Identifier (<code>ASID</code> on ARM64)</strong>, allowing translations from multiple processes to coexist safely in the TLB across context switches.</li>
-<li><strong>TLB Shootdowns:</strong> Unlike the L1/L2/L3 data caches, <strong>hardware TLBs are not automatically kept coherent across CPU cores</strong>. When the kernel modifies or unmaps a valid PTE (<code>munmap</code>, <code>mprotect</code>, or page eviction) in a multi-threaded process running across <em>K</em> cores, the kernel must flush its local TLB (<code>invlpg</code> on x86-64; <code>tlbi</code> on ARM64) and dispatch synchronous <strong>Inter-Processor Interrupts (IPIs)</strong> to all sibling cores running that address space, a high-overhead synchronization operation known as a <strong>TLB shootdown</strong>.</li>
-</ol>
+<h3 id="724-the-translation-lookaside-buffer-huge-pages-and-shootdowns"><a class="header" href="#724-the-translation-lookaside-buffer-huge-pages-and-shootdowns">7.2.4 The Translation Lookaside Buffer, Huge Pages, and Shootdowns</a></h3>
+<p>Without a <code>TLB</code>, every memory instruction would incur <strong>five physical memory accesses</strong>: four dependent 8-byte reads across <code>PML4 → PDPT → PD → PT</code>, followed by the data access itself. Even when all four table entries reside in the L1 or L2 data cache, chaining four dependent loads adds roughly 8 to 15 ns; when they miss to <code>DRAM</code>, a single translation stall exceeds 300 ns. The <code>TLB</code> amortizes this cost to ~0.5 to 1 cycle on a hit, and three microarchitectural properties govern its behavior under production workloads (Figure 7-6):</p>
+<ul>
+<li><strong>TLB Reach and Huge Pages (2 MiB / 1 GiB):</strong> Single-cycle associative lookup constrains a <strong>Level 1 Data Translation Lookaside Buffer (<code>L1 dTLB</code>)</strong> to ~64 entries, backed by a <strong>Level 2 Shared Translation Lookaside Buffer (<code>L2 STLB</code>)</strong> of 1,024 to 2,048 entries. The total memory span mapped without misses is the <strong><code>TLB</code> reach</strong> (<code>Entries × Page Size</code>). With 4 KiB pages, a 64-entry <code>L1 dTLB</code> covers 256 KiB and a 1,536-entry <code>L2 STLB</code> covers only <strong>6 MiB</strong>. Once an application’s random-access working set exceeds <code>L2 STLB</code> reach, translation misses surge and latency climbs steeply (measured empirically in Listings 7-5 and 7-6). Mapping large arenas with <strong>2 MiB Huge Pages</strong> (<code>MAP_HUGETLB</code> or <code>MADV_HUGEPAGE</code>) sets <code>PS = 1</code> in the L2 <code>PD</code> entry, terminating the walk one level early and merging bits <code>[20:12]</code> with <code>[11:0]</code> into a <strong>21-bit offset</strong> (2<sup>21</sup> = 2 MiB). The same 1,536-entry <code>L2 STLB</code> then covers <strong>3 GiB</strong> (512× reach) with a 3-level walk. Setting <code>PS = 1</code> in an L3 <code>PDPT</code> entry creates a <strong>1 GiB Huge Page</strong> (30-bit offset, 2-level walk, 1.5 TiB reach).</li>
+<li><strong>Address Space Tagging (<code>PCID</code> / <code>ASID</code>):</strong> Because identical virtual addresses in distinct processes map to different physical frames, legacy x86 processors flushed all non-global <code>TLB</code> entries on every <code>CR3</code> reload during a context switch. Modern processors tag each <code>TLB</code> entry with a 12-bit <strong>Process-Context Identifier (<code>PCID</code>)</strong> on x86-64 or an 8- or 16-bit <strong>Address Space Identifier (<code>ASID</code>)</strong> on ARM64. A lookup hits only when both <code>VPN</code> and the active process tag match, preserving cached translations across context switches and across <strong>Kernel Page-Table Isolation (<code>KPTI</code>)</strong> <code>CR3</code> switches on every system call.</li>
+<li><strong>Cross-Core <code>TLB</code> Shootdowns:</strong> Unlike the L1, L2, and L3 data caches, which hardware keeps coherent via cache-coherency protocols (Section 2.2), <strong><code>TLB</code>s are not coherent across processor cores</strong>. When a thread unmaps a page (<code>munmap</code>) or restricts permissions (<code>mprotect</code>) in a multi-threaded process, sibling cores may retain stale translations in their local <code>TLB</code>s. The kernel must update the <code>PTE</code> in memory, invalidate its local entry (<code>invlpg</code> on x86-64; <code>tlbi</code> on ARM64), and issue synchronous <strong>Inter-Processor Interrupts (<code>IPI</code>s)</strong> to every core running that address space, stalling those cores until all acknowledgements arrive. This cross-core synchronization cost is a primary reason high-performance memory allocators (Chapter 8) pool and reuse <code>mmap</code> arenas rather than returning pages via <code>munmap()</code> on every deallocation.</li>
+</ul>
+<figure>
+<img src="figures/ch07_tlb_reach.svg" alt="Measured memory access latency versus working-set size from Listing 7-5 and 4 KiB versus 2 MiB huge-page TLB reach" />
+</figure>
 <h2 id="73-fault-handling-and-memory-management-strategies"><a class="header" href="#73-fault-handling-and-memory-management-strategies">7.3 Fault Handling and Memory Management Strategies</a></h2>
-<p>The kernel’s involvement in memory management is primarily event-driven, occurring through the handling of <strong>page faults</strong>. A page fault is not necessarily an error; rather, it is a mechanism for lazy resource allocation and sophisticated memory management. The kernel responds to faults in several ways:</p>
-<ul>
-<li><strong>Demand Paging:</strong> Mapping a page of a file from disk into memory only when it is first accessed.</li>
-<li><strong>Zero-Fill Allocation:</strong> Providing a fresh, zeroed physical frame when a program requests new heap or stack memory.</li>
-<li><strong>Copy-on-Write (COW):</strong> Facilitating efficient process duplication by mapping shared pages as read-only and only performing a physical copy when a write is attempted.</li>
-<li><strong>Protection Violations:</strong> Terminating a process via a signal (e.g., <code>SIGSEGV</code> or <code>SIGBUS</code>) when an access violates the page’s permission bits.</li>
-</ul>
-<p>This flexibility also allows for the implementation of <strong>guard pages</strong>, unmapped or protected pages placed strategically (such as at the end of a stack) to detect and halt buffer overflows or stack exhaustion before they corrupt adjacent memory regions. Furthermore, the <code>mmap</code> system call allows files or anonymous RAM to be mapped directly into the process’s virtual address space, enabling programs to access file data through the page cache without explicit <code>read</code> copies or to allocate raw page-aligned arenas directly from the kernel.</p>
+<p>While <code>TLB</code> hits and hardware page-table walks execute autonomously in silicon, the kernel enters the virtual-memory datapath when the <code>MMU</code> raises a <strong>Page Fault (<code>#PF</code>)</strong> exception. Upon encountering a <code>PTE</code> with <code>P = 0</code> or a permission violation (<code>R/W</code>, <code>U/S</code>, or <code>NX</code>), hardware latches the faulting <code>VA</code> into <strong>Control Register 2 (<code>CR2</code>)</strong> (or the <strong>Fault Address Register (<code>FAR_EL1</code>)</strong> on ARM64), pushes an architectural error code encoding the access type and cause onto the kernel stack, and transfers control to the kernel’s page-fault handler (Figure 7-7).</p>
+<p>A single load instruction can therefore traverse a six-order-of-magnitude latency hierarchy without any change to application code: ~0.5 ns on an <code>L1 dTLB</code> hit, ~10 to 300 ns on a hardware 4-level page walk, ~1 to 3 µs on a kernel minor page fault, and ~50 µs to 10 ms on a storage-backed major page fault. To classify a <code>#PF</code>, the kernel searches the process’s balanced tree of <strong>Virtual Memory Areas (<code>VMA</code>, <code>vm_area_struct</code> in <code>current-&gt;mm</code>, Section 3.1.1)</strong>, which records every valid virtual interval and its logical permissions:</p>
+<ol>
+<li><strong>Zero-Fill Allocation (Minor Fault):</strong> The faulting <code>VA</code> lies inside a valid anonymous <code>VMA</code> (<code>MAP_PRIVATE | MAP_ANON</code>, such as heap or stack) whose <code>PTE</code> has <code>P = 0</code>. The kernel allocates a free 4 KiB frame, zeroes it to prevent cross-process data leakage, writes the <code>PTE</code> with <code>P = 1</code>, and restarts the faulting instruction with zero storage <strong>Input/Output (<code>I/O</code>)</strong>.</li>
+<li><strong>Demand Paging (Major Fault):</strong> The faulting <code>VA</code> lies inside a file-backed <code>VMA</code> whose page is not resident in <code>DRAM</code>. The kernel allocates a frame in the page cache, schedules a storage read, blocks the thread until <code>I/O</code> completes, maps the frame (<code>P = 1</code>), and restarts the instruction.</li>
+<li><strong>Copy-on-Write (<code>COW</code>):</strong> After <code>fork()</code> (Section 3.2), parent and child share frames marked read-only (<code>R/W = 0</code>) in their <code>PTE</code>s while their <code>VMA</code>s allow writes (<code>VM_WRITE</code>). A store traps on <code>R/W = 0</code>; the kernel allocates a fresh 4 KiB frame, copies the page contents, updates the writing process’s <code>PTE</code> with <code>R/W = 1</code>, and resumes execution.</li>
+<li><strong>Protection Violation:</strong> The faulting <code>VA</code> falls outside every registered <code>VMA</code> (for example, a null-pointer dereference) or violates the <code>VMA</code>’s logical permissions (writing to read-only text or touching a <code>PROT_NONE</code> guard page). The kernel delivers a synchronous fatal signal: <strong>Segmentation Violation (<code>SIGSEGV</code>)</strong> on Linux, or <strong>Bus Error (<code>SIGBUS</code>)</strong> on macOS.</li>
+</ol>
+<figure>
+<img src="figures/ch07_page_fault_handling.svg" alt="Page-fault exception path and four kernel VMA resolution dispositions" />
+</figure>
+<p>Separating virtual address reservation from hardware <code>PTE</code> permissions enables <strong>guard pages</strong>: virtual pages mapped with <code>mprotect(addr, page_size, PROT_NONE)</code> at the end of thread stacks or allocator regions to trap overflows immediately in silicon before adjacent memory is corrupted. Likewise, mapping files with <code>mmap</code> exposes kernel page-cache frames directly in the process’s virtual address space, eliminating the system-call and buffer-copying overhead of explicit <code>read(2)</code> calls.</p>
 <h3 id="731-the-mmap-and-mprotect-system-call-interface"><a class="header" href="#731-the-mmap-and-mprotect-system-call-interface">7.3.1 The <code>mmap</code> and <code>mprotect</code> System Call Interface</a></h3>
-<p>Before examining the reference implementations below, every parameter and flag of <code>mmap(addr, length, prot, flags, fd, offset)</code> and <code>mprotect(addr, length, prot)</code> maps directly to the page-table architecture derived in Section 7.2:</p>
+<p>The parameters of <code>mmap(addr, length, prot, flags, fd, offset)</code> and <code>mprotect(addr, length, prot)</code> map directly onto the page-table and <code>VMA</code> structures described in Sections 7.2 and 7.3:</p>
 <ul>
-<li><strong>Address Hint (<code>addr</code>) and Mapping Size (<code>length</code>):</strong> Passing <code>nullptr</code> (<code>ptr::null_mut()</code> in Rust) instructs the kernel to select an unused, page-aligned virtual address automatically (subject to Address Space Layout Randomization, ASLR). The kernel rounds <code>length</code> upward to an exact multiple of the hardware page size (<code>4,096</code> bytes on x86-64; <code>16,384</code> bytes on Apple Silicon ARM64).</li>
-<li><strong>Hardware Page Protections (<code>prot</code>):</strong> Bitwise-OR flags written directly into each mapped page’s PTE permission bits:
-<ul>
-<li><code>PROT_READ</code>: Authorizes CPU load instructions from the mapped virtual range.</li>
-<li><code>PROT_WRITE</code>: Sets the PTE Read/Write bit (<code>R/W = 1</code>), authorizing store instructions. Combining <code>PROT_READ | PROT_WRITE</code> creates standard readable and writable data memory while keeping the No-Execute bit (<code>NX = 1</code>) enforced.</li>
-<li><code>PROT_NONE</code>: Revokes all read, write, and execute permissions in the PTE while retaining the virtual address reservation. Passing <code>PROT_NONE</code> to <code>mprotect()</code> turns a mapped page into a <strong>guard page</strong> so any accidental dereference raises an immediate hardware protection fault (<code>SIGSEGV</code> on Linux; <code>SIGBUS</code> on macOS).</li>
-</ul>
-</li>
-<li><strong>Visibility and Backing Store (<code>flags</code>):</strong> Controls whether the mapping is private or shared across processes, and whether it is backed by a disk file or fresh zeroed RAM:
-<ul>
-<li><code>MAP_PRIVATE</code>: Creates a private, copy-on-write mapping isolated to the calling process; modifications are never written back to an underlying file.</li>
-<li><code>MAP_SHARED</code>: Shares the underlying physical frames across processes (used for inter-process shared memory in Chapter 11) and flushes writes back to file-backed mappings.</li>
-<li><code>MAP_ANON</code> (also aliased as <code>MAP_ANONYMOUS</code> on Linux): Allocates fresh, demand-zeroed anonymous RAM rather than mapping a file. When <code>MAP_ANON</code> is specified, POSIX mandates passing <code>-1</code> for the file descriptor <code>fd</code> and <code>0</code> for the byte <code>offset</code>.</li>
-</ul>
-</li>
-<li><strong>Error Handling and Reclamation:</strong> Upon failure, <code>mmap</code> returns the sentinel pointer <code>MAP_FAILED</code> (<code>(void*)-1</code>) rather than <code>nullptr</code>. Programs must verify <code>mapped != MAP_FAILED</code> before dereferencing the region, and release the virtual mapping via <code>munmap(addr, length)</code>.</li>
+<li><strong>Address Hint (<code>addr</code>) and Length (<code>length</code>):</strong> Passing <code>nullptr</code> (<code>ptr::null_mut()</code> in Rust) lets the kernel choose an unused, page-aligned virtual base address (<code>4,096</code> bytes on x86-64; <code>16,384</code> bytes on Apple Silicon ARM64). The kernel rounds <code>length</code> upward to an exact multiple of the hardware page size.</li>
+<li><strong>Protection Bitmask (<code>prot</code>):</strong> Sets the hardware permission bits in each mapped leaf <code>PTE</code>. <code>PROT_READ</code> enables loads, <code>PROT_WRITE</code> sets <code>R/W = 1</code> while retaining <code>NX = 1</code>, and <code>PROT_NONE</code> revokes all permissions to establish a guard page while keeping the virtual range reserved.</li>
+<li><strong>Visibility and Backing Flags (<code>flags</code>):</strong> <code>MAP_PRIVATE</code> creates a private copy-on-write mapping whose modifications never propagate to the backing file; <code>MAP_SHARED</code> shares physical frames across processes (Chapter 11) and flushes writes back to file-backed storage. Combining <code>MAP_PRIVATE | MAP_ANON</code> (<code>MAP_ANONYMOUS</code> on Linux) allocates demand-zeroed anonymous memory unbacked by any file, for which the <strong>Portable Operating System Interface (<code>POSIX</code>)</strong> standard requires <code>fd = -1</code> and <code>offset = 0</code>.</li>
+<li><strong>Error Contract and Reclamation:</strong> On failure, <code>mmap</code> returns <code>MAP_FAILED</code> (<code>(void*)-1</code>) rather than <code>nullptr</code> and sets <code>errno</code>. Callers must verify <code>mapped != MAP_FAILED</code> before dereferencing the region and release mappings with <code>munmap(addr, length)</code>.</li>
 </ul>
 <p><strong>Listing 7-1. Page size, page alignment, and a guard page (C++20).</strong></p>
 <pre><code class="language-cpp">// ch07/pagesize.cpp: Queries hardware page size, maps three contiguous virtual pages,
@@ -720,7 +718,7 @@ int main() {
    67108864 bytes    16384 pages    10.6 ns per access  (checksum 4000000)
   268435456 bytes    65536 pages    13.4 ns per access  (checksum 4000000)
 </code></pre>
-<p><strong>Listing 7-6. The same TLB working-set sweep in Rust.</strong></p>
+<p><strong>Listing 7-6. The same Translation Lookaside Buffer working-set sweep in Rust.</strong></p>
 <pre class="playground"><code class="language-rust">// ch07/tlb.rs: Measures per-access latency while sweeping the working set upward,
 // stepping by one full hardware page per access so latency cliffs reveal TLB capacity.
 extern crate libc;
@@ -807,6 +805,21 @@ fn main() {
    67108864 bytes    16384 pages    11.3 ns per access  (checksum 4000000)
   268435456 bytes    65536 pages    13.3 ns per access  (checksum 4000000)
 </code></pre>
+<div class="callout keyidea">
+<span class="label">Key idea</span>
+<p>Virtual memory is a hardware-software co-design: the kernel defines policy by populating sparse 4-level radix page tables and servicing <code>#PF</code> faults lazily, while the <code>MMU</code> and <code>TLB</code> execute translation in ~1 cycle on the fast path, keeping the 12-bit page offset invariant under 4 KiB frame relocation.</p>
+</div>
+
+<div class="callout experiment">
+<span class="label">Experiment</span>
+<p>Run Listing 7-5 (<code>code/ch07/tlb.cpp</code>) on a local machine and inspect where per-access latency steps upward sharply (at ~64 pages for <code>L1 dTLB</code> overflow and ~1,024 to 4,096 pages for <code>L2 STLB</code> overflow). On Linux, add <code>madvise(buf, size, MADV_HUGEPAGE)</code> after <code>mmap()</code> to observe 2 MiB huge pages flattening the 16 MiB to 256 MiB cliff.</p>
+</div>
+
+<div class="callout caution">
+<span class="label">Common Pitfall</span>
+<p>Checking <code>mmap()</code> failure against <code>nullptr</code> instead of <code>MAP_FAILED</code> (<code>(void*)-1</code>). A failed <code>mmap()</code> returns <code>(void*)-1</code>, which evaluates as truthy in C and C++, causing the very next memory dereference to trigger an immediate <code>SIGSEGV</code> at address <code>0xFFFF_FFFF_FFFF_FFFF</code>.</p>
+</div>
+
 
                     </main>
 
@@ -859,7 +872,7 @@ fn main() {
         <script src="book-609e4cb8.js"></script>
 
         <!-- Custom JS scripts -->
-        <script src="theme/figures-f1be29a8.js"></script>
+        <script src="theme/figures-fd5ff574.js"></script>
 
 
 

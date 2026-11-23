@@ -28,7 +28,7 @@
         <link rel="stylesheet" id="mdbook-ayu-highlight-css" href="ayu-highlight-3fdfc3ac.css">
 
         <!-- Custom theme stylesheets -->
-        <link rel="stylesheet" href="theme/custom-9125cc61.css">
+        <link rel="stylesheet" href="theme/custom-3c3d4beb.css">
 
         <!-- MathJax -->
         <script async src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.1/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
@@ -38,10 +38,10 @@
             const path_to_root = "";
             const default_light_theme = "light";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "searchindex-025a35ef.js";
+            window.path_to_searchindex_js = "searchindex-e451f97a.js";
         </script>
         <!-- Start loading toc.js asap -->
-        <script src="toc-f3585118.js"></script>
+        <script src="toc-1a401835.js"></script>
     </head>
     <body>
     <div id="mdbook-help-container">
@@ -364,7 +364,7 @@ fn main() -&gt; Result&lt;(), Box&lt;dyn std::error::Error&gt;&gt; {
 <ol>
 <li><strong>Spawned (Initialized):</strong> The runtime library (<code>pthread_create</code>, <code>std::thread::spawn</code>) allocates a contiguous user-mode virtual memory region for the thread’s execution stack (typically 2–8 MiB, guarded at its lower boundary by a <code>PROT_NONE</code> guard page to trap stack overflows) alongside its Thread-Local Storage (TLS) block. The kernel initializes a TCB pointing its saved <code>PC</code> to the thread entry trampoline and its saved <code>SP</code> to the top of the newly mapped stack, then admits the TCB into a core’s runqueue.</li>
 <li><strong>Runnable (Ready):</strong> The thread is eligible for execution and resides in a processor core’s scheduling runqueue, awaiting dispatch.</li>
-<li><strong>Running:</strong> The thread is actively executing instructions on a physical CPU core. Because all sibling threads share the same virtual address space, context-switching between two threads of the same process requires saving and restoring only the TCB register file and TLS base pointer; the hardware page table root register (<code>CR3</code> / <code>TTBR0_EL1</code>) remains unchanged, avoiding costly TLB flushes.</li>
+<li><strong>Running:</strong> The thread is actively executing instructions on a physical CPU core. Because all sibling threads share the same virtual address space, context-switching between two threads of the same process requires saving and restoring only the TCB register file and TLS base pointer; the hardware page table root register (<code>CR3</code> / <code>TTBR0_EL1</code>) remains unchanged, avoiding costly <strong>Translation Lookaside Buffer (<code>TLB</code>)</strong> flushes.</li>
 <li><strong>Sleeping / Parked (Blocked):</strong> The thread has suspended execution waiting for an intra-process synchronization primitive (such as a contended mutex via <code>futex(FUTEX_WAIT)</code>, a condition variable <code>wait</code>, or an I/O readiness event). The kernel removes the TCB from the runqueue and parks it on the synchronization object’s wait queue, where it consumes zero processor cycles until a peer thread invokes <code>futex(FUTEX_WAKE)</code> or an interrupt handler signals completion.</li>
 <li><strong>Terminated and Reclaimed (<code>join</code> vs. <code>detach</code>):</strong> When the thread’s entry function returns (or invokes <code>pthread_exit</code>), the thread ceases execution. How its stack and TCB are reclaimed depends on its detachment contract:
 <ul>
@@ -379,7 +379,7 @@ fn main() -&gt; Result&lt;(), Box&lt;dyn std::error::Error&gt;&gt; {
 <h3 id="432-language-level-thread-safety-c20-vs-rust-2024"><a class="header" href="#432-language-level-thread-safety-c20-vs-rust-2024">4.3.2 Language-Level Thread Safety: C++20 vs. Rust 2024</a></h3>
 <p>Different systems programming languages enforce starkly different invariants across the thread lifecycle boundary:</p>
 <ul>
-<li><strong>C++20 (<code>std::thread</code> and <code>std::jthread</code>):</strong> In C++11, if a <code>std::thread</code> object is destroyed while still <code>joinable()</code> (neither <code>.join()</code> nor <code>.detach()</code> was called), its destructor immediately invokes <code>std::terminate()</code>, aborting the entire process to prevent silent stack-reference corruption. C++20 introduced <code>std::jthread</code>, which adheres to strict RAII semantics by automatically requesting cooperative cancellation (<code>std::stop_token</code>) and invoking <code>.join()</code> inside its destructor. However, the C++ type system does not prevent threads from capturing raw pointers or references to a caller’s stack frame that may expire before a detached thread finishes, nor does it statically reject unsynchronized concurrent mutations of shared state.</li>
+<li><strong>C++20 (<code>std::thread</code> and <code>std::jthread</code>):</strong> In C++11, if a <code>std::thread</code> object is destroyed while still <code>joinable()</code> (neither <code>.join()</code> nor <code>.detach()</code> was called), its destructor immediately invokes <code>std::terminate()</code>, aborting the entire process to prevent silent stack-reference corruption. C++20 introduced <code>std::jthread</code>, which adheres to strict <strong>Resource Acquisition Is Initialization (<code>RAII</code>)</strong> semantics by automatically requesting cooperative cancellation (<code>std::stop_token</code>) and invoking <code>.join()</code> inside its destructor. However, the C++ type system does not prevent threads from capturing raw pointers or references to a caller’s stack frame that may expire before a detached thread finishes, nor does it statically reject unsynchronized concurrent mutations of shared state.</li>
 <li><strong>Rust 2024 (<code>std::thread::spawn</code>, <code>Send</code>, and <code>Sync</code>):</strong> Rust’s <code>std::thread::spawn</code> returns a <code>JoinHandle&lt;T&gt;</code>. Unlike C++ <code>std::thread</code>, dropping a <code>JoinHandle</code> in Rust safely <em>detaches</em> the background thread without aborting the process. To guarantee that a detached thread can never access dangling stack pointers from its creator, <code>std::thread::spawn</code> enforces a <code>'static</code> lifetime bound on its closure (unless <code>std::thread::scope</code> is used, which statically guarantees that all scoped threads are joined before the scope block exits). Furthermore, Rust’s compiler enforces compile-time data-race freedom via two auto-traits:
 <ul>
 <li><strong><code>Send</code>:</strong> Certifies that ownership of a type may be safely transferred across thread boundaries (precluding thread-pinned types such as non-atomic reference counters <code>Rc&lt;T&gt;</code> or raw pointers).</li>
@@ -443,6 +443,21 @@ thread 2 running
 thread 3 running
 all threads joined
 </code></pre>
+<div class="callout keyidea">
+<span class="label">Key idea</span>
+<p>Threads share code, heap, and file descriptors through one <code>mm_struct</code> (avoiding <code>CR3</code> reloads and <code>TLB</code> flushes on context switch), yet each thread owns a private execution stack and register file. That shared-memory speed is precisely what exposes multi-instruction Read-Modify-Write sequences to data races.</p>
+</div>
+
+<div class="callout experiment">
+<span class="label">Experiment</span>
+<p>Compile Listing 4-1 (<code>code/ch04/race.cpp</code>) with <code>-fsanitize=thread</code> (<code>clang++ -std=c++20 -O2 -fsanitize=thread code/ch04/race.cpp -o /tmp/race &amp;&amp; /tmp/race</code>) and observe ThreadSanitizer pinpointing the exact conflicting unsynchronized store instructions across threads. Compare its report against Listing 4-3 (<code>race_atomic.cpp</code>).</p>
+</div>
+
+<div class="callout caution">
+<span class="label">Common Pitfall</span>
+<p>Assuming <code>volatile</code> in C or C++ makes a counter thread-safe. <code>volatile</code> prevents compiler register caching (needed for <code>MMIO</code> registers and <code>sig_atomic_t</code>), yet emits plain non-atomic load/add/store instructions that still lose updates across CPU cores; always use <code>std::atomic&lt;T&gt;</code> or Rust’s <code>Atomic*</code> types for cross-thread synchronization.</p>
+</div>
+
 
                     </main>
 
@@ -495,7 +510,7 @@ all threads joined
         <script src="book-609e4cb8.js"></script>
 
         <!-- Custom JS scripts -->
-        <script src="theme/figures-f1be29a8.js"></script>
+        <script src="theme/figures-fd5ff574.js"></script>
 
 
 

@@ -1,0 +1,1475 @@
+<!DOCTYPE HTML>
+<html lang="en" class="light sidebar-visible" dir="ltr">
+    <head>
+        <!-- Book generated using mdBook -->
+        <meta charset="UTF-8">
+        <title>Glossary of Architectural Terms &amp; Abbreviations - Operating Systems: A Hands-On Approach</title>
+
+
+        <!-- Custom HTML head -->
+
+        <meta name="description" content="Operating system fundamentals built from first principles, with verified C++20 and Rust 2024 code.">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <meta name="theme-color" content="#ffffff">
+
+        <link rel="icon" href="favicon-de23e50b.svg">
+        <link rel="shortcut icon" href="favicon-8114d1fc.png">
+        <link rel="stylesheet" href="css/variables-8adf115d.css">
+        <link rel="stylesheet" href="css/general-e96d0476.css">
+        <link rel="stylesheet" href="css/chrome-d279d366.css">
+        <link rel="stylesheet" href="css/print-9e4910d8.css" media="print">
+
+        <!-- Fonts -->
+        <link rel="stylesheet" href="fonts/fonts-9644e21d.css">
+
+        <!-- Highlight.js Stylesheets -->
+        <link rel="stylesheet" id="mdbook-highlight-css" href="highlight-493f70e1.css">
+        <link rel="stylesheet" id="mdbook-tomorrow-night-css" href="tomorrow-night-4c0ae647.css">
+        <link rel="stylesheet" id="mdbook-ayu-highlight-css" href="ayu-highlight-3fdfc3ac.css">
+
+        <!-- Custom theme stylesheets -->
+        <link rel="stylesheet" href="theme/custom-3c3d4beb.css">
+
+        <!-- MathJax -->
+        <script async src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.1/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
+
+        <!-- Provide site root and default themes to javascript -->
+        <script>
+            const path_to_root = "";
+            const default_light_theme = "light";
+            const default_dark_theme = "navy";
+            window.path_to_searchindex_js = "searchindex-e451f97a.js";
+        </script>
+        <!-- Start loading toc.js asap -->
+        <script src="toc-1a401835.js"></script>
+    </head>
+    <body>
+    <div id="mdbook-help-container">
+        <div id="mdbook-help-popup">
+            <h2 class="mdbook-help-title">Keyboard shortcuts</h2>
+            <div>
+                <p>Press <kbd>←</kbd> or <kbd>→</kbd> to navigate between chapters</p>
+                <p>Press <kbd>S</kbd> or <kbd>/</kbd> to search in the book</p>
+                <p>Press <kbd>?</kbd> to show this help</p>
+                <p>Press <kbd>Esc</kbd> to hide this help</p>
+            </div>
+        </div>
+    </div>
+    <div id="mdbook-body-container">
+        <!-- Work around some values being stored in localStorage wrapped in quotes -->
+        <script>
+            try {
+                let theme = localStorage.getItem('mdbook-theme');
+                let sidebar = localStorage.getItem('mdbook-sidebar');
+
+                if (theme.startsWith('"') && theme.endsWith('"')) {
+                    localStorage.setItem('mdbook-theme', theme.slice(1, theme.length - 1));
+                }
+
+                if (sidebar.startsWith('"') && sidebar.endsWith('"')) {
+                    localStorage.setItem('mdbook-sidebar', sidebar.slice(1, sidebar.length - 1));
+                }
+            } catch (e) { }
+        </script>
+
+        <!-- Set the theme before any content is loaded, prevents flash -->
+        <script>
+            const default_theme = window.matchMedia("(prefers-color-scheme: dark)").matches ? default_dark_theme : default_light_theme;
+            let theme;
+            try { theme = localStorage.getItem('mdbook-theme'); } catch(e) { }
+            if (theme === null || theme === undefined) { theme = default_theme; }
+            const html = document.documentElement;
+            html.classList.remove('light')
+            html.classList.add(theme);
+            html.classList.add("js");
+        </script>
+
+        <input type="checkbox" id="mdbook-sidebar-toggle-anchor" class="hidden">
+
+        <!-- Hide / unhide sidebar before it is displayed -->
+        <script>
+            let sidebar = null;
+            const sidebar_toggle = document.getElementById("mdbook-sidebar-toggle-anchor");
+            if (document.body.clientWidth >= 1080) {
+                try { sidebar = localStorage.getItem('mdbook-sidebar'); } catch(e) { }
+                sidebar = sidebar || 'visible';
+            } else {
+                sidebar = 'hidden';
+                sidebar_toggle.checked = false;
+            }
+            if (sidebar === 'visible') {
+                sidebar_toggle.checked = true;
+            } else {
+                html.classList.remove('sidebar-visible');
+            }
+        </script>
+
+        <nav id="mdbook-sidebar" class="sidebar" aria-label="Table of contents">
+            <!-- populated by js -->
+            <mdbook-sidebar-scrollbox class="sidebar-scrollbox"></mdbook-sidebar-scrollbox>
+            <noscript>
+                <iframe class="sidebar-iframe-outer" src="toc.html"></iframe>
+            </noscript>
+            <div id="mdbook-sidebar-resize-handle" class="sidebar-resize-handle">
+                <div class="sidebar-resize-indicator"></div>
+            </div>
+        </nav>
+
+        <div id="mdbook-page-wrapper" class="page-wrapper">
+
+            <div class="page">
+                <div id="mdbook-menu-bar-hover-placeholder"></div>
+                <div id="mdbook-menu-bar" class="menu-bar sticky">
+                    <div class="left-buttons">
+                        <label id="mdbook-sidebar-toggle" class="icon-button" for="mdbook-sidebar-toggle-anchor" title="Toggle Table of Contents" aria-label="Toggle Table of Contents" aria-controls="mdbook-sidebar">
+                            <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M0 96C0 78.3 14.3 64 32 64H416c17.7 0 32 14.3 32 32s-14.3 32-32 32H32C14.3 128 0 113.7 0 96zM0 256c0-17.7 14.3-32 32-32H416c17.7 0 32 14.3 32 32s-14.3 32-32 32H32c-17.7 0-32-14.3-32-32zM448 416c0 17.7-14.3 32-32 32H32c-17.7 0-32-14.3-32-32s14.3-32 32-32H416c17.7 0 32 14.3 32 32z"/></svg></span>
+                        </label>
+                        <button id="mdbook-theme-toggle" class="icon-button" type="button" title="Change theme" aria-label="Change theme" aria-haspopup="true" aria-expanded="false" aria-controls="mdbook-theme-list">
+                            <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 576 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M371.3 367.1c27.3-3.9 51.9-19.4 67.2-42.9L600.2 74.1c12.6-19.5 9.4-45.3-7.6-61.2S549.7-4.4 531.1 9.6L294.4 187.2c-24 18-38.2 46.1-38.4 76.1L371.3 367.1zm-19.6 25.4l-116-104.4C175.9 290.3 128 339.6 128 400c0 3.9 .2 7.8 .6 11.6c1.8 17.5-10.2 36.4-27.8 36.4H96c-17.7 0-32 14.3-32 32s14.3 32 32 32H240c61.9 0 112-50.1 112-112c0-2.5-.1-5-.2-7.5z"/></svg></span>
+                        </button>
+                        <ul id="mdbook-theme-list" class="theme-popup" aria-label="Themes" role="menu">
+                            <li role="none"><button role="menuitem" class="theme" id="mdbook-theme-default_theme">Auto</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="mdbook-theme-light">Light</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="mdbook-theme-rust">Rust</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="mdbook-theme-coal">Coal</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="mdbook-theme-navy">Navy</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="mdbook-theme-ayu">Ayu</button></li>
+                        </ul>
+                        <button id="mdbook-search-toggle" class="icon-button" type="button" title="Search (`/`)" aria-label="Toggle Searchbar" aria-expanded="false" aria-keyshortcuts="/ s" aria-controls="mdbook-searchbar">
+                            <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M416 208c0 45.9-14.9 88.3-40 122.7L502.6 457.4c12.5 12.5 12.5 32.8 0 45.3s-32.8 12.5-45.3 0L330.7 376c-34.4 25.2-76.8 40-122.7 40C93.1 416 0 322.9 0 208S93.1 0 208 0S416 93.1 416 208zM208 352c79.5 0 144-64.5 144-144s-64.5-144-144-144S64 128.5 64 208s64.5 144 144 144z"/></svg></span>
+                        </button>
+                    </div>
+
+                    <h1 class="menu-title">Operating Systems: A Hands-On Approach</h1>
+
+                    <div class="right-buttons">
+                        <a href="print.html" title="Print this book" aria-label="Print this book">
+                            <span class=fa-svg id="print-button"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M128 0C92.7 0 64 28.7 64 64v96h64V64H354.7L384 93.3V160h64V93.3c0-17-6.7-33.3-18.7-45.3L400 18.7C388 6.7 371.7 0 354.7 0H128zM384 352v32 64H128V384 368 352H384zm64 32h32c17.7 0 32-14.3 32-32V256c0-35.3-28.7-64-64-64H64c-35.3 0-64 28.7-64 64v96c0 17.7 14.3 32 32 32H64v64c0 35.3 28.7 64 64 64H384c35.3 0 64-28.7 64-64V384zm-16-88c-13.3 0-24-10.7-24-24s10.7-24 24-24s24 10.7 24 24s-10.7 24-24 24z"/></svg></span>
+                        </a>
+                        <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/tree/prep-v2/operating-systems" title="Git repository" aria-label="Git repository">
+                            <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 496 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M165.9 397.4c0 2-2.3 3.6-5.2 3.6-3.3.3-5.6-1.3-5.6-3.6 0-2 2.3-3.6 5.2-3.6 3-.3 5.6 1.3 5.6 3.6zm-31.1-4.5c-.7 2 1.3 4.3 4.3 4.9 2.6 1 5.6 0 6.2-2s-1.3-4.3-4.3-5.2c-2.6-.7-5.5.3-6.2 2.3zm44.2-1.7c-2.9.7-4.9 2.6-4.6 4.9.3 2 2.9 3.3 5.9 2.6 2.9-.7 4.9-2.6 4.6-4.6-.3-1.9-3-3.2-5.9-2.9zM244.8 8C106.1 8 0 113.3 0 252c0 110.9 69.8 205.8 169.5 239.2 12.8 2.3 17.3-5.6 17.3-12.1 0-6.2-.3-40.4-.3-61.4 0 0-70 15-84.7-29.8 0 0-11.4-29.1-27.8-36.6 0 0-22.9-15.7 1.6-15.4 0 0 24.9 2 38.6 25.8 21.9 38.6 58.6 27.5 72.9 20.9 2.3-16 8.8-27.1 16-33.7-55.9-6.2-112.3-14.3-112.3-110.5 0-27.5 7.6-41.3 23.6-58.9-2.6-6.5-11.1-33.3 2.6-67.9 20.9-6.5 69 27 69 27 20-5.6 41.5-8.5 62.8-8.5s42.8 2.9 62.8 8.5c0 0 48.1-33.6 69-27 13.7 34.7 5.2 61.4 2.6 67.9 16 17.7 25.8 31.5 25.8 58.9 0 96.5-58.9 104.2-114.8 110.5 9.2 7.9 17 22.9 17 46.4 0 33.7-.3 75.4-.3 83.6 0 6.5 4.6 14.4 17.3 12.1C428.2 457.8 496 362.9 496 252 496 113.3 383.5 8 244.8 8zM97.2 352.9c-1.3 1-1 3.3.7 5.2 1.6 1.6 3.9 2.3 5.2 1 1.3-1 1-3.3-.7-5.2-1.6-1.6-3.9-2.3-5.2-1zm-10.8-8.1c-.7 1.3.3 2.9 2.3 3.9 1.6 1 3.6.7 4.3-.7.7-1.3-.3-2.9-2.3-3.9-2-.6-3.6-.3-4.3.7zm32.4 35.6c-1.6 1.3-1 4.3 1.3 6.2 2.3 2.3 5.2 2.6 6.5 1 1.3-1.3.7-4.3-1.3-6.2-2.2-2.3-5.2-2.6-6.5-1zm-11.4-14.7c-1.6 1-1.6 3.6 0 5.9 1.6 2.3 4.3 3.3 5.6 2.3 1.6-1.3 1.6-3.9 0-6.2-1.4-2.3-4-3.3-5.6-2z"/></svg></span>
+                        </a>
+                        <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/edit/prep-v2/operating-systems/src/glossary.md" title="Suggest an edit" aria-label="Suggest an edit" rel="edit">
+                            <span class=fa-svg id="git-edit-button"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M421.7 220.3l-11.3 11.3-22.6 22.6-205 205c-6.6 6.6-14.8 11.5-23.8 14.1L30.8 511c-8.4 2.5-17.5 .2-23.7-6.1S-1.5 489.7 1 481.2L38.7 353.1c2.6-9 7.5-17.2 14.1-23.8l205-205 22.6-22.6 11.3-11.3 33.9 33.9 62.1 62.1 33.9 33.9zM96 353.9l-9.3 9.3c-.9 .9-1.6 2.1-2 3.4l-25.3 86 86-25.3c1.3-.4 2.5-1.1 3.4-2l9.3-9.3H112c-8.8 0-16-7.2-16-16V353.9zM453.3 19.3l39.4 39.4c25 25 25 65.5 0 90.5l-14.5 14.5-22.6 22.6-11.3 11.3-33.9-33.9-62.1-62.1L314.3 67.7l11.3-11.3 22.6-22.6 14.5-14.5c25-25 65.5-25 90.5 0z"/></svg></span>
+                        </a>
+
+                    </div>
+                </div>
+
+                <div id="mdbook-search-wrapper" class="hidden">
+                    <form id="mdbook-searchbar-outer" class="searchbar-outer">
+                        <div class="search-wrapper">
+                            <input type="search" id="mdbook-searchbar" name="searchbar" placeholder="Search this book ..." aria-controls="mdbook-searchresults-outer" aria-describedby="searchresults-header">
+                            <div class="spinner-wrapper">
+                                <span class=fa-svg id="fa-spin"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M304 48c0-26.5-21.5-48-48-48s-48 21.5-48 48s21.5 48 48 48s48-21.5 48-48zm0 416c0-26.5-21.5-48-48-48s-48 21.5-48 48s21.5 48 48 48s48-21.5 48-48zM48 304c26.5 0 48-21.5 48-48s-21.5-48-48-48s-48 21.5-48 48s21.5 48 48 48zm464-48c0-26.5-21.5-48-48-48s-48 21.5-48 48s21.5 48 48 48s48-21.5 48-48zM142.9 437c18.7-18.7 18.7-49.1 0-67.9s-49.1-18.7-67.9 0s-18.7 49.1 0 67.9s49.1 18.7 67.9 0zm0-294.2c18.7-18.7 18.7-49.1 0-67.9S93.7 56.2 75 75s-18.7 49.1 0 67.9s49.1 18.7 67.9 0zM369.1 437c18.7 18.7 49.1 18.7 67.9 0s18.7-49.1 0-67.9s-49.1-18.7-67.9 0s-18.7 49.1 0 67.9z"/></svg></span>
+                            </div>
+                        </div>
+                    </form>
+                    <div id="mdbook-searchresults-outer" class="searchresults-outer hidden">
+                        <div id="mdbook-searchresults-header" class="searchresults-header"></div>
+                        <ul id="mdbook-searchresults">
+                        </ul>
+                    </div>
+                </div>
+
+                <!-- Apply ARIA attributes after the sidebar and the sidebar toggle button are added to the DOM -->
+                <script>
+                    document.getElementById('mdbook-sidebar-toggle').setAttribute('aria-expanded', sidebar === 'visible');
+                    document.getElementById('mdbook-sidebar').setAttribute('aria-hidden', sidebar !== 'visible');
+                    Array.from(document.querySelectorAll('#mdbook-sidebar a')).forEach(function(link) {
+                        link.setAttribute('tabIndex', sidebar === 'visible' ? 0 : -1);
+                    });
+                </script>
+
+                <div id="mdbook-content" class="content">
+                    <main>
+                        <h1 id="glossary-of-architectural-terms--abbreviations"><a class="header" href="#glossary-of-architectural-terms--abbreviations">Glossary of Architectural Terms &amp; Abbreviations</a></h1>
+<p>Every systems abbreviation across the book links directly to its definition below. Each entry explains the physical or kernel constraint that motivates the mechanism, its exact role in hardware or software, and (where applicable) an idiomatic Rust 2024 snippet illustrating how systems code interacts with it.</p>
+<h3 id="term-aba"><a class="header" href="#term-aba"><code>ABA</code>: ABA Problem (Lock-Free Reuse Hazard)</a></h3>
+<p>Hazard in lock-free Compare-And-Swap algorithms where a thread reads pointer A, gets preempted while another thread pops A, frees it, and reallocates a distinct object at the identical address A. Without version tags or epoch-based reclamation, CAS succeeds erroneously and corrupts a Treiber stack or lock-free queue. (Ch. 6, 8)</p>
+<pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>// Pack a monotonic version tag alongside the pointer or index
+let next = ((ver.wrapping_add(1)) &lt;&lt; 32) | (new_idx as u64);
+head.compare_exchange_weak(old, next, Ordering::AcqRel, Ordering::Acquire)
+<span class="boring">}</span></code></pre>
+<h3 id="term-abi"><a class="header" href="#term-abi"><code>ABI</code>: Application Binary Interface</a></h3>
+<p>Compiled machine code has no concept of source-level types or parameter names. The ABI fixes the binary contract across function and kernel boundaries: which registers hold arguments, which registers callees must preserve, stack alignment (16 bytes on x86-64 and ARM64), and how struct fields are laid out in memory. (Ch. 2, 8, 9)</p>
+<pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>#[repr(C)]
+struct SockAddrIn { family: u16, port: u16, addr: u32 }
+<span class="boring">}</span></code></pre>
+<h3 id="term-ack"><a class="header" href="#term-ack"><code>ACK</code>: Acknowledgment (TCP)</a></h3>
+<p>Because IP networks drop and reorder packets freely, TCP tracks every transmitted byte by sequence number. Setting the ACK flag tells the sender the next byte offset expected, advancing the sliding window and cancelling retransmission timers for all prior bytes. (Ch. 13, 14)</p>
+<h3 id="term-af-unix"><a class="header" href="#term-af-unix"><code>AF_UNIX</code>: Unix Domain Socket Address Family</a></h3>
+<p>Address family for kernel-mediated local IPC addressed by filesystem paths or anonymous socketpair() endpoints. Bypassing IP routing, checksums, and TCP handshakes yields lower latency than loopback TCP and enables kernel-verified credential passing and file-descriptor transfer via SCM_RIGHTS. (Ch. 11)</p>
+<pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>use std::os::unix::net::UnixStream;
+let (mut a, mut b) = UnixStream::pair()?;
+<span class="boring">}</span></code></pre>
+<h3 id="term-amd-v"><a class="header" href="#term-amd-v"><code>AMD-V</code>: AMD Virtualization</a></h3>
+<p>Hardware hypervisor extensions on AMD x86-64 processors that isolate guest kernels without binary translation, pairing host/guest execution modes with Nested Page Tables (NPT) for two-stage memory translation. (Ch. 16)</p>
+<h3 id="term-apfs"><a class="header" href="#term-apfs"><code>APFS</code>: Apple File System</a></h3>
+<p>Copy-on-write, extent-based filesystem powering macOS and Apple platforms. Rather than overwriting metadata blocks in place, APFS writes new tree nodes and atomically swaps the container checkpoint, enabling instant zero-copy file clones and crash-consistent snapshots. (Ch. 12)</p>
+<h3 id="term-api"><a class="header" href="#term-api"><code>API</code>: Application Programming Interface</a></h3>
+<p>The source-level contract of types, signatures, preconditions, and error values exposed by a library or kernel wrapper. Whereas an API governs source compatibility, an ABI governs binary compatibility. (Ch. 1, 13)</p>
+<h3 id="term-apic"><a class="header" href="#term-apic"><code>APIC</code>: Advanced Programmable Interrupt Controller</a></h3>
+<p>x86-64 interrupt routing fabric split into a system-wide IO-APIC (routing peripheral signals) and per-core Local APICs (delivering preemptive timer ticks and cross-core Inter-Processor Interrupts). (Ch. 2, 5)</p>
+<h3 id="term-asic"><a class="header" href="#term-asic"><code>ASIC</code>: Application-Specific Integrated Circuit</a></h3>
+<p>Fixed-function silicon engineered for a single workload such as AES encryption, video encoding, or matrix multiplication, achieving orders-of-magnitude higher performance per watt than general-purpose CPU cores. (Ch. 17)</p>
+<h3 id="term-asid"><a class="header" href="#term-asid"><code>ASID</code>: Address Space Identifier</a></h3>
+<p>An 8- or 16-bit hardware tag on ARM64 attached to every TLB entry so translations from distinct processes coexist safely across context switches without flushing the TLB. (Ch. 7, 16, 19)</p>
+<h3 id="term-aslr"><a class="header" href="#term-aslr"><code>ASLR</code>: Address Space Layout Randomization</a></h3>
+<p>Kernel security mitigation that randomizes the virtual base addresses of the stack, heap, shared libraries, and executable on every launch, preventing attackers from jumping to hardcoded gadget addresses. (Ch. 3, 7)</p>
+<h3 id="term-avl"><a class="header" href="#term-avl"><code>AVL</code>: Available for Operating System Use</a></h3>
+<p>Bits [11:9] of an x86-64 Page Table Entry ignored by silicon and left free for kernel software metadata such as copy-on-write markers or swap-slot bookkeeping. (Ch. 7)</p>
+<h3 id="term-avx"><a class="header" href="#term-avx"><code>AVX</code>: Advanced Vector Extensions</a></h3>
+<p>256-bit and 512-bit SIMD vector instructions on x86-64 that process 8 or 16 32-bit values in a single cycle, requiring properly aligned memory buffers to avoid split-line penalties. (Ch. 19)</p>
+<h3 id="term-bdp"><a class="header" href="#term-bdp"><code>BDP</code>: Bandwidth-Delay Product</a></h3>
+<p>Product of link bandwidth and round-trip latency (B x RTT), quantifying the exact number of bytes that must remain in flight to saturate a network pipe. If socket send/receive buffers or the TCP receive window fall below the BDP, the sender stalls waiting for ACKs even on an uncongested link. (Ch. 13, 14)</p>
+<pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>// 10 Gbps link with 20 ms RTT requires 25 MiB in flight
+let bdp_bytes: u64 = (10_000_000_000 / 8) * 20 / 1_000;
+<span class="boring">}</span></code></pre>
+<h3 id="term-bsd"><a class="header" href="#term-bsd"><code>BSD</code>: Berkeley Software Distribution</a></h3>
+<p>Unix lineage that introduced the socket API, reliable signal handlers, and the kqueue event subsystem, forming the POSIX layer of macOS and Darwin. (Ch. 10, 13, 14, 15)</p>
+<h3 id="term-bss"><a class="header" href="#term-bss"><code>BSS</code>: Block Started by Symbol</a></h3>
+<p>Executable segment holding zero-initialized static globals. Storing only its byte length in the binary header rather than megabytes of zeros keeps executables small; the kernel maps demand-zeroed frames lazily on first touch. (Ch. 3)</p>
+<pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>static ZERO_INIT: AtomicU64 = AtomicU64::new(0); // placed in .bss
+<span class="boring">}</span></code></pre>
+<h3 id="term-cas"><a class="header" href="#term-cas"><code>CAS</code>: Compare-And-Swap</a></h3>
+<p>Hardware atomic read-modify-write primitive that stores a new value into memory if and only if the current value equals an expected snapshot, forming the building block of lock-free algorithms and mutex fast paths. (Ch. 6)</p>
+<pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>state.compare_exchange_weak(
+    0, 1, Ordering::Acquire, Ordering::Relaxed
+)
+<span class="boring">}</span></code></pre>
+<h3 id="term-cfs"><a class="header" href="#term-cfs"><code>CFS</code>: Completely Fair Scheduler</a></h3>
+<p>Linux proportional-share scheduler tracking each runnable thread’s weighted virtual runtime (vruntime) in a red-black tree and always dispatching the leftmost thread with the smallest vruntime. (Ch. 5)</p>
+<h3 id="term-cisc"><a class="header" href="#term-cisc"><code>CISC</code>: Complex Instruction Set Computer</a></h3>
+<p>Architecture family (such as x86-64) offering variable-length, memory-operating instructions like LOCK CMPXCHG that execute atomic read-modify-write sequences in a single instruction. (Ch. 6)</p>
+<h3 id="term-close-wait"><a class="header" href="#term-close-wait"><code>CLOSE_WAIT</code>: TCP Passive-Close Waiting State</a></h3>
+<p>TCP state entered after receiving a peer’s FIN and acknowledging it while the local application has still left its socket descriptor open. Accumulating sockets stuck in CLOSE_WAIT signals a file-descriptor leak where the server failed to call close() after observing EOF, eventually exhausting EMFILE limits. (Ch. 13, 14)</p>
+<pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>// Dropping TcpStream invokes close(), transitioning out of CLOSE_WAIT
+if stream.read(&amp;mut buf)? == 0 {
+    drop(stream);
+}
+<span class="boring">}</span></code></pre>
+<h3 id="term-cow"><a class="header" href="#term-cow"><code>COW / CoW</code>: Copy-on-Write</a></h3>
+<p>Virtual-memory technique that avoids eager physical copying during fork() by mapping parent and child PTEs to the same physical frames with Read/Write = 0. The first store triggers a hardware fault, prompting the kernel to duplicate only that single 4 KiB frame. (Ch. 3, 7, 11)</p>
+<pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>// MAP_PRIVATE requests copy-on-write semantics across fork()
+libc::mmap(ptr::null_mut(), len, PROT_READ | PROT_WRITE,
+           MAP_PRIVATE | MAP_ANON, -1, 0)
+<span class="boring">}</span></code></pre>
+<h3 id="term-cpi"><a class="header" href="#term-cpi"><code>CPI</code>: Cycles Per Instruction</a></h3>
+<p>Reciprocal of IPC measuring average CPU clock cycles spent retiring each machine instruction via PMU hardware counters. A rising CPI (above 1.0 on superscalar cores) pinpoints front-end branch mispredictions or back-end LLC and DRAM stalls where wider parallelism or better cache locality is needed. (Ch. 18)</p>
+<pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>let cpi: f64 = cycles_retired as f64 / instructions_retired as f64;
+assert!(cpi.is_finite());
+<span class="boring">}</span></code></pre>
+<h3 id="term-cpl"><a class="header" href="#term-cpl"><code>CPL</code>: Current Privilege Level</a></h3>
+<p>Hardware privilege ring stored in the x86-64 code-segment register (Ring 3 for unprivileged user code; Ring 0 for kernel mode). Every privileged instruction and page-table U/S bit is checked against CPL in silicon. (Ch. 2, 9)</p>
+<h3 id="term-cpu"><a class="header" href="#term-cpu"><code>CPU</code>: Central Processing Unit</a></h3>
+<p>General-purpose processor executing instruction streams across fetch, decode, out-of-order execution, and retirement pipelines. Operating systems multiplex finite CPU cores across thousands of runnable threads using hardware timer interrupts, privilege rings, and preemptive scheduling. (Ch. 1 to 19)</p>
+<pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>let cores = std::thread::available_parallelism()?.get();
+<span class="boring">}</span></code></pre>
+<h3 id="term-cr2"><a class="header" href="#term-cr2"><code>CR2</code>: Control Register 2</a></h3>
+<p>x86-64 hardware register into which the MMU latches the exact faulting 64-bit virtual address before vectoring into the kernel’s Page Fault (#PF) handler, allowing the kernel to look up the offending Virtual Memory Area. (Ch. 7)</p>
+<h3 id="term-cr3"><a class="header" href="#term-cr3"><code>CR3</code>: Control Register 3</a></h3>
+<p>Privileged x86-64 register storing the 4 KiB-aligned physical base address of the active process’s Level 4 (PML4) root page table. Context switching between processes reloads CR3; switching between sibling threads leaves CR3 untouched. (Ch. 3, 4, 7, 16)</p>
+<h3 id="term-cwnd"><a class="header" href="#term-cwnd"><code>CWND</code>: Congestion Window (TCP)</a></h3>
+<p>Sender-side TCP bound limiting unacknowledged bytes in flight based on observed network congestion (packet loss or ECN marks). Without CWND slow-start and multiplicative decrease, concurrent senders would overwhelm router queues and trigger global congestion collapse. (Ch. 13, 14)</p>
+<pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>// Effective TCP flight size is bounded by both CWND and peer RWND
+let in_flight_limit = cwnd_bytes.min(rwnd_bytes);
+<span class="boring">}</span></code></pre>
+<h3 id="term-ddr"><a class="header" href="#term-ddr"><code>DDR4 / DDR5</code>: Double Data Rate Synchronous DRAM</a></h3>
+<p>Main system memory modules attached to processor memory controllers, transferring data on both rising and falling clock edges to balance multi-gigabyte capacity against ~60 to 100 ns latency. (Ch. 17)</p>
+<h3 id="term-dma"><a class="header" href="#term-dma"><code>DMA</code>: Direct Memory Access</a></h3>
+<p>Hardware mechanism allowing NVMe drives, NICs, and GPUs to read and write physical DRAM directly over PCIe while CPU cores execute other work, raising an interrupt only once the entire transfer completes. (Ch. 2, 3, 16, 17)</p>
+<h3 id="term-dns"><a class="header" href="#term-dns"><code>DNS</code>: Domain Name System</a></h3>
+<p>Hierarchical naming service resolving hostnames into binary IPv4/IPv6 addresses, queried safely in Rust via ToSocketAddrs (wrapping POSIX getaddrinfo). (Ch. 14)</p>
+<pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>use std::net::ToSocketAddrs;
+let addrs: Vec&lt;_&gt; = "localhost:443".to_socket_addrs()?.collect();
+<span class="boring">}</span></code></pre>
+<h3 id="term-dram"><a class="header" href="#term-dram"><code>DRAM</code>: Dynamic Random-Access Memory</a></h3>
+<p>Off-chip volatile main memory storing bits in tiny capacitors refreshed every few milliseconds. Because a single DRAM miss stalls a 3 GHz core for 200+ cycles, systems software structures data for spatial locality inside L1/L2 caches. (Ch. 2, 5, 7, 8, 16, 17, 18, 19)</p>
+<h3 id="term-dtlb"><a class="header" href="#term-dtlb"><code>dTLB</code>: Data Translation Lookaside Buffer</a></h3>
+<p>First-level core-private associative cache holding ~64 recent data-page translations (~0.5 to 1 cycle hit). With 4 KiB pages its reach is only 256 KiB, explaining why random access over larger buffers triggers translation stalls. (Ch. 7, 18)</p>
+<h3 id="term-eacces"><a class="header" href="#term-eacces"><code>EACCES</code>: Permission Denied (errno)</a></h3>
+<p>POSIX error returned when a process lacks the UID/GID file mode bits, directory search permission, or capability required for open(), execve(), or bind() on a privileged port. Ignoring EACCES obscures misconfigured filesystem ACLs and least-privilege sandbox violations. (Ch. 9, 12, 15)</p>
+<pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>use std::io::ErrorKind;
+if let Err(e) = std::fs::File::open("/etc/shadow") {
+    assert_eq!(e.kind(), ErrorKind::PermissionDenied);
+}
+<span class="boring">}</span></code></pre>
+<h3 id="term-eagain"><a class="header" href="#term-eagain"><code>EAGAIN / EWOULDBLOCK</code>: Resource Temporarily Unavailable (errno)</a></h3>
+<p>POSIX error signaling that a non-blocking read(), write(), or accept() cannot complete immediately without sleeping, or that fork() hit a process-limit ceiling. Event-driven loops treat EAGAIN as the exact stopping signal when draining an O_NONBLOCK descriptor until the next readiness notification. (Ch. 3, 6, 9, 13, 14)</p>
+<pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>match stream.read(&amp;mut buf) {
+    Err(e) if e.kind() == std::io::ErrorKind::WouldBlock =&gt; break,
+    Ok(n) =&gt; process(&amp;buf[..n]),
+    Err(e) =&gt; return Err(e),
+}
+<span class="boring">}</span></code></pre>
+<h3 id="term-ebadf"><a class="header" href="#term-ebadf"><code>EBADF</code>: Bad File Descriptor (errno)</a></h3>
+<p>POSIX error returned when a syscall receives a negative integer, an already-closed descriptor, or one opened with an incompatible access mode (such as writing to an O_RDONLY file). In multi-threaded code, EBADF often reveals a use-after-close bug where one thread closed a descriptor another thread still held. (Ch. 9, 11, 12, 15)</p>
+<pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>// OwnedFd prevents double-close and EBADF via RAII ownership
+use std::os::fd::OwnedFd;
+fn read_owned(fd: &amp;OwnedFd, buf: &amp;mut [u8]) -&gt; isize {
+    unsafe { libc::read(std::os::fd::AsRawFd::as_raw_fd(fd), buf.as_mut_ptr().cast(), buf.len()) }
+}
+<span class="boring">}</span></code></pre>
+<h3 id="term-ebpf"><a class="header" href="#term-ebpf"><code>eBPF</code>: Extended Berkeley Packet Filter</a></h3>
+<p>In-kernel verified bytecode runtime allowing engineers to attach safe, JIT-compiled observability tracers and packet filters directly to kernel tracepoints without user-space context switches or kernel modules. (Ch. 16, 18)</p>
+<h3 id="term-echild"><a class="header" href="#term-echild"><code>ECHILD</code>: No Child Processes (errno)</a></h3>
+<p>POSIX error returned by waitpid() when the caller has zero unwaited child processes matching the requested PID filter (or when SIGCHLD was set to SIG_IGN so the kernel auto-reaped them). Signal-driven supervisors treat ECHILD as the normal termination condition of a WNOHANG reaping loop. (Ch. 3, 10)</p>
+<pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>let rc = unsafe { libc::waitpid(-1, &amp;mut status, libc::WNOHANG) };
+if rc &lt; 0 &amp;&amp; std::io::Error::last_os_error().raw_os_error() == Some(libc::ECHILD) {
+    // All children have been reaped
+}
+<span class="boring">}</span></code></pre>
+<h3 id="term-eevdf"><a class="header" href="#term-eevdf"><code>EEVDF</code>: Earliest Eligible Virtual Deadline First</a></h3>
+<p>Linux scheduler replacing CFS heuristics with explicit virtual deadlines, allowing short latency-sensitive tasks to preempt long-running CPU jobs cleanly while preserving long-term proportional fairness. (Ch. 5)</p>
+<h3 id="term-efault"><a class="header" href="#term-efault"><code>EFAULT</code>: Bad Address (errno)</a></h3>
+<p>POSIX error returned when user code passes an unmapped or read-only pointer to a syscall buffer argument. Rather than panicking the kernel on copy_from_user() or copy_to_user(), the kernel’s exception table catches the fault cleanly and returns EFAULT to Ring 3. (Ch. 9, 10, 11, 12)</p>
+<pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>// Passing a null buffer to write() fails safely with EFAULT
+let rc = unsafe { libc::write(1, std::ptr::null(), 16) };
+assert_eq!(rc, -1);
+<span class="boring">}</span></code></pre>
+<h3 id="term-eintr"><a class="header" href="#term-eintr"><code>EINTR</code>: Interrupted System Call (errno)</a></h3>
+<p>POSIX error returned when an asynchronous signal interrupts a blocking syscall (such as read(), poll(), or waitpid()) before any progress occurs. Failing to retry on EINTR causes spurious I/O aborts whenever a child exits or a timer fires in production. (Ch. 3, 9, 10, 13, 14, 15)</p>
+<pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>loop {
+    match file.read(&amp;mut buf) {
+        Err(e) if e.kind() == std::io::ErrorKind::Interrupted =&gt; continue,
+        res =&gt; break res,
+    }
+}
+<span class="boring">}</span></code></pre>
+<h3 id="term-el0"><a class="header" href="#term-el0"><code>EL0 / EL1 / EL2</code>: ARM64 Exception Levels</a></h3>
+<p>Hardware privilege hierarchy on ARM64: EL0 runs user applications, EL1 runs the operating system kernel, and EL2 runs the hypervisor beneath guest kernels. (Ch. 2, 7, 16)</p>
+<h3 id="term-elf"><a class="header" href="#term-elf"><code>ELF</code>: Executable and Linkable Format</a></h3>
+<p>Standard binary container format on Linux specifying program headers that tell execve() exactly which file offsets map into the read-only text segment, initialized data segment, and zero-filled BSS segment. (Ch. 3)</p>
+<h3 id="term-emfile"><a class="header" href="#term-emfile"><code>EMFILE</code>: Too Many Open Files (errno)</a></h3>
+<p>POSIX error returned when a process exhausts its per-process RLIMIT_NOFILE descriptor table. Without a reserved idle descriptor or connection cap, an accept() loop hitting EMFILE spins at 100% CPU because the pending connection stays ready in the listen queue forever. (Ch. 9, 11, 12, 13, 15)</p>
+<pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>// Inspect or handle EMFILE during accept() backoff
+if err.raw_os_error() == Some(libc::EMFILE) {
+    std::thread::sleep(std::time::Duration::from_millis(5));
+}
+<span class="boring">}</span></code></pre>
+<h3 id="term-enoent"><a class="header" href="#term-enoent"><code>ENOENT</code>: No Such File or Directory (errno)</a></h3>
+<p>POSIX error returned when path resolution traverses a missing directory entry, dangling symlink, or absent Unix socket path. Treating ENOENT explicitly lets systems code distinguish a cold-start state (create a fresh file) from genuine storage or permission failures. (Ch. 9, 12, 15)</p>
+<pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>match std::fs::read("state.bin") {
+    Err(e) if e.kind() == std::io::ErrorKind::NotFound =&gt; Vec::new(),
+    Ok(bytes) =&gt; bytes,
+    Err(e) =&gt; return Err(e),
+}
+<span class="boring">}</span></code></pre>
+<h3 id="term-enomem"><a class="header" href="#term-enomem"><code>ENOMEM</code>: Out of Memory (errno)</a></h3>
+<p>POSIX error returned when mmap(), brk(), or fork() cannot reserve virtual address space, physical frames, or cgroup memory quota. Checking for ENOMEM (or MAP_FAILED) prevents null-pointer dereferences and allows services to shed load gracefully instead of crashing. (Ch. 3, 13, 15)</p>
+<pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>let mut buf = Vec::new();
+buf.try_reserve_exact(64 * 1024 * 1024)?; // returns Err on ENOMEM
+<span class="boring">}</span></code></pre>
+<h3 id="term-eof"><a class="header" href="#term-eof"><code>EOF</code>: End-of-File</a></h3>
+<p>Condition reported when read() returns 0 bytes (never an error). On pipes and TCP sockets, EOF arrives only once every open write descriptor has been closed, making closing unused pipe ends after fork() mandatory. (Ch. 11, 13, 15)</p>
+<pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>match stream.read(&amp;mut buf)? {
+    0 =&gt; break, // peer closed write half (EOF)
+    n =&gt; handle(&amp;buf[..n]),
+}
+<span class="boring">}</span></code></pre>
+<h3 id="term-eoi"><a class="header" href="#term-eoi"><code>EOI</code>: End of Interrupt</a></h3>
+<p>Register write issued by a top-half interrupt handler to the Local APIC or ARM GIC signaling that hardware may clear the active vector bit and deliver subsequent interrupts of equal or lower priority. (Ch. 2)</p>
+<h3 id="term-epipe"><a class="header" href="#term-epipe"><code>EPIPE</code>: Broken Pipe (errno)</a></h3>
+<p>POSIX error returned by write() or send() when the remote reader has closed its pipe end or TCP socket (once SIGPIPE is ignored or masked). Network servers rely on EPIPE to detect abrupt client disconnects cleanly instead of terminating abruptly from an unhandled SIGPIPE. (Ch. 9, 11, 13)</p>
+<pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>match stream.write_all(frame) {
+    Err(e) if e.kind() == std::io::ErrorKind::BrokenPipe =&gt; close_peer(),
+    res =&gt; res?,
+}
+<span class="boring">}</span></code></pre>
+<h3 id="term-ept"><a class="header" href="#term-ept"><code>EPT</code>: Extended Page Tables</a></h3>
+<p>Intel hardware second-stage page tables controlled by the hypervisor that translate every Guest Physical Address (GPA) into a Host Physical Address (HPA), isolating tenant VMs in silicon while avoiding software shadow page tables. (Ch. 16)</p>
+<h3 id="term-evfilt-proc"><a class="header" href="#term-evfilt-proc"><code>EVFILT_PROC</code>: kqueue Process-Lifecycle Event Filter</a></h3>
+<p>BSD and macOS kqueue filter that attaches directly to a target PID inside the kernel to deliver process-lifecycle events (such as NOTE_EXIT) asynchronously. Unlike polling waitpid() or relying on coalesced SIGCHLD signals, EVFILT_PROC integrates child supervision directly into a single event loop. (Ch. 15)</p>
+<pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>// Register a kqueue watch for child process exit on macOS/BSD
+let ev = libc::kevent {
+    ident: child_pid as usize,
+    filter: libc::EVFILT_PROC,
+    flags: libc::EV_ADD | libc::EV_ONESHOT,
+    fflags: libc::NOTE_EXIT,
+    data: 0,
+    udata: std::ptr::null_mut(),
+};
+<span class="boring">}</span></code></pre>
+<h3 id="term-far-el1"><a class="header" href="#term-far-el1"><code>FAR_EL1</code>: Fault Address Register (EL1)</a></h3>
+<p>ARM64 kernel system register capturing the faulting virtual address whenever a translation or permission abort occurs (the architectural counterpart to x86-64 CR2). (Ch. 7)</p>
+<h3 id="term-fcfs"><a class="header" href="#term-fcfs"><code>FCFS</code>: First-Come, First-Served Scheduling</a></h3>
+<p>Non-preemptive scheduling policy that runs each job strictly in arrival order until completion or blocking. Although simple and starvation-free, FCFS suffers from the convoy effect: one long CPU-bound job stalls every short interactive task queued behind it, inflating average turnaround time. (Ch. 5)</p>
+<pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>use std::collections::VecDeque;
+// FCFS dispatches strictly from the front of the arrival queue
+while let Some(job) = ready_queue.pop_front() {
+    run_to_completion(job);
+}
+<span class="boring">}</span></code></pre>
+<h3 id="term-ffs"><a class="header" href="#term-ffs"><code>FFS</code>: Fast File System (Berkeley FFS)</a></h3>
+<p>Classic Unix on-disk filesystem design that partitions storage into Cylinder Groups, placing inodes near their data blocks and directories near their children. Without this spatial locality, spinning disks wasted most of their I/O budget on mechanical seek latency across scattered tracks. (Ch. 12)</p>
+<pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>// Group metadata and payload contiguously to minimize disk seeks
+let block_group = inode_num / inodes_per_group;
+<span class="boring">}</span></code></pre>
+<h3 id="term-fifo"><a class="header" href="#term-fifo"><code>FIFO</code>: First-In, First-Out</a></h3>
+<p>Strict arrival-order queueing discipline preserving element ordering in pipes, bounded producer-consumer rings, and hardware store buffers. (Ch. 5, 6, 11, 19)</p>
+<pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>use std::collections::VecDeque;
+let mut q = VecDeque::with_capacity(64);
+q.push_back(job);
+let next = q.pop_front(); // O(1) FIFO dequeue
+<span class="boring">}</span></code></pre>
+<h3 id="term-fin"><a class="header" href="#term-fin"><code>FIN</code>: Finish (TCP)</a></h3>
+<p>TCP control flag signaling that the sender will transmit no further bytes, initiating graceful half-close teardown while still allowing in-flight data in the reverse direction to drain cleanly. (Ch. 13, 14)</p>
+<h3 id="term-ftl"><a class="header" href="#term-ftl"><code>FTL</code>: Flash Translation Layer</a></h3>
+<p>Firmware layer inside every SSD translating logical block addresses (LBAs) into physical NAND flash pages while performing wear leveling and background garbage collection. Because flash cells must be erased in large blocks before rewriting, random small writes cause write amplification unless batched sequentially. (Ch. 12)</p>
+<pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>// Sequential append-only writes minimize SSD FTL write amplification
+let mut log = std::fs::OpenOptions::new().create(true).append(true).open("wal.log")?;
+std::io::Write::write_all(&amp;mut log, record)?;
+<span class="boring">}</span></code></pre>
+<h3 id="term-gddr"><a class="header" href="#term-gddr"><code>GDDR</code>: Graphics Double Data Rate</a></h3>
+<p>High-bandwidth memory soldered directly onto discrete GPU cards, optimized for wide parallel streaming throughput rather than single-thread CPU latency. (Ch. 17)</p>
+<h3 id="term-gic"><a class="header" href="#term-gic"><code>GIC</code>: Generic Interrupt Controller</a></h3>
+<p>ARM64 interrupt routing architecture (GICv3) connecting SoC peripherals through a central Distributor and per-core Redistributors to CPU interrupt inputs. (Ch. 2)</p>
+<h3 id="term-gid"><a class="header" href="#term-gid"><code>GID</code>: Group Identifier</a></h3>
+<p>Numeric Unix security identifier stored in a process’s credential struct and in every file inode, governing group-level read, write, and execute permissions. (Ch. 3, 12)</p>
+<h3 id="term-gp"><a class="header" href="#term-gp"><code>#GP</code>: General Protection Fault</a></h3>
+<p>x86-64 hardware exception (Vector 13) raised immediately when unprivileged code executes a privileged instruction or dereferences a non-canonical 64-bit pointer whose bits [63:48] fail to replicate bit 47. (Ch. 7)</p>
+<h3 id="term-gpa"><a class="header" href="#term-gpa"><code>GPA</code>: Guest Physical Address</a></h3>
+<p>Physical address perceived by a VM guest kernel starting at 0x0. Hardware translates every GPA into a true Host Physical Address (HPA) via EPT or NPT so guests cannot touch sibling tenants’ DRAM. (Ch. 16)</p>
+<h3 id="term-gpu"><a class="header" href="#term-gpu"><code>GPU</code>: Graphics Processing Unit</a></h3>
+<p>Throughput-oriented processor packing thousands of parallel arithmetic lanes to accelerate graphics, machine learning, and scientific kernels, connected either over PCIe or Unified Memory. (Ch. 16, 17)</p>
+<h3 id="term-gva"><a class="header" href="#term-gva"><code>GVA</code>: Guest Virtual Address</a></h3>
+<p>Virtual address issued inside a VM, translated across two hardware stages: GVA to GPA via Guest CR3, and GPA to HPA via hypervisor EPT/NPT. (Ch. 16)</p>
+<h3 id="term-hbm"><a class="header" href="#term-hbm"><code>HBM</code>: High Bandwidth Memory</a></h3>
+<p>3D-stacked, ultra-wide memory co-packaged on an interposer beside AI/HPC accelerators, delivering multi-terabyte-per-second bandwidth far exceeding host PCIe links. (Ch. 17)</p>
+<h3 id="term-hpa"><a class="header" href="#term-hpa"><code>HPA</code>: Host Physical Address</a></h3>
+<p>Actual physical DRAM bus address on the bare-metal server hosting virtual machines, known solely to the host hypervisor and IOMMU. (Ch. 16)</p>
+<h3 id="term-hpc"><a class="header" href="#term-hpc"><code>HPC</code>: High-Performance Computing</a></h3>
+<p>Large-scale numerical and scientific workloads where NUMA first-touch placement, cache-line alignment, and accelerator memory bandwidth govern scalability. (Ch. 17)</p>
+<h3 id="term-http"><a class="header" href="#term-http"><code>HTTP</code>: Hypertext Transfer Protocol</a></h3>
+<p>Application-layer request/response protocol demonstrating explicit message framing (Content-Length or chunked framing) above byte-stream TCP (HTTP/1.1, HTTP/2) or multiplexed QUIC/UDP (HTTP/3). (Ch. 14)</p>
+<h3 id="term-io"><a class="header" href="#term-io"><code>I/O</code>: Input / Output</a></h3>
+<p>Data movement between processor memory and external subsystems (storage, network, pipes, terminals). Because I/O latency is orders of magnitude slower than CPU cycles, systems software relies on user-space buffering and event-driven multiplexing. (Ch. 9, 12, 13, 14, 15, 16, 18)</p>
+<pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>use std::io::{BufWriter, Write};
+let mut w = BufWriter::with_capacity(64 * 1024, file);
+w.write_all(b"batched syscall\n")?;
+<span class="boring">}</span></code></pre>
+<h3 id="term-idt"><a class="header" href="#term-idt"><code>IDT / IDTR</code>: Interrupt Descriptor Table &amp; Register</a></h3>
+<p>256-entry hardware dispatch table on x86-64 mapping every exception (#GP, #PF) and hardware IRQ vector to its Ring 0 kernel handler entry point, located by the IDTR register. (Ch. 2)</p>
+<h3 id="term-iommu"><a class="header" href="#term-iommu"><code>IOMMU</code>: Input-Output Memory Management Unit</a></h3>
+<p>Hardware translation unit (Intel VT-d, AMD-Vi, ARM SMMU) placed between PCIe devices and physical DRAM to translate device DMA addresses through per-device page tables, preventing rogue or passthrough devices from corrupting host memory. (Ch. 16)</p>
+<h3 id="term-iops"><a class="header" href="#term-iops"><code>IOPS</code>: Input/Output Operations Per Second</a></h3>
+<p>Storage performance metric counting discrete random block read/write operations completed per second, bounded per container via cgroups v2 io.max. (Ch. 16)</p>
+<h3 id="term-ip"><a class="header" href="#term-ip"><code>IP / IPv4 / IPv6</code>: Internet Protocol</a></h3>
+<p>Best-effort, connectionless network-layer packet routing protocol (32-bit addresses in IPv4; 128-bit in IPv6). Because IP may drop or reorder packets, reliability is delegated to transport protocols like TCP or QUIC. (Ch. 11, 13, 14)</p>
+<h3 id="term-ipc"><a class="header" href="#term-ipc"><code>IPC</code>: Inter-Process Communication / Instructions Per Cycle</a></h3>
+<p>In OS architecture (Ch. 11, 15, 16), IPC denotes kernel-mediated channels (pipes, shared memory, Unix sockets) bridging isolated address spaces. In CPU profiling (Ch. 18), IPC measures retired instructions per clock cycle via hardware PMU counters.</p>
+<h3 id="term-ipi"><a class="header" href="#term-ipi"><code>IPI</code>: Inter-Processor Interrupt</a></h3>
+<p>Hardware interrupt dispatched by one CPU core to sibling cores via the APIC or GIC, used to wake idle schedulers and execute synchronous cross-core TLB shootdowns during munmap() or mprotect(). (Ch. 2, 7)</p>
+<h3 id="term-irq"><a class="header" href="#term-irq"><code>IRQ</code>: Interrupt Request</a></h3>
+<p>Asynchronous hardware signal raised by a peripheral device (timer, NIC, NVMe controller) to preempt current execution and invoke a kernel top-half handler. (Ch. 2)</p>
+<h3 id="term-irr"><a class="header" href="#term-irr"><code>IRR</code>: Interrupt Request Register (Local APIC)</a></h3>
+<p>256-bit hardware register inside the x86-64 Local APIC recording accepted interrupts waiting to be serviced by the CPU core. Separating pending bits (IRR) from currently executing bits (ISR) lets hardware prioritize higher-vector interrupts without dropping simultaneous arrivals. (Ch. 2)</p>
+<pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>// Conceptual model: APIC picks the highest-priority pending bit in IRR
+let next_vector = 255 - irr_high_u64.leading_zeros();
+<span class="boring">}</span></code></pre>
+<h3 id="term-isa"><a class="header" href="#term-isa"><code>ISA</code>: Instruction Set Architecture</a></h3>
+<p>Formal hardware/software boundary defining machine instructions, register files, memory-ordering guarantees, and exception semantics (such as x86-64 and ARM64). (Ch. 2)</p>
+<h3 id="term-isr"><a class="header" href="#term-isr"><code>ISR</code>: In-Service Register / Interrupt Service Routine</a></h3>
+<p>In x86-64 APIC hardware, the 256-bit In-Service Register tracks which interrupt vectors are currently executing until the handler writes EOI; in kernel software, ISR denotes the top-half Interrupt Service Routine invoked via the IDT. Keeping ISRs short and non-blocking prevents masking lower-priority timers and I/O devices. (Ch. 2)</p>
+<pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>// Top-half ISR captures minimal state and defers heavy work to a queue
+irq_ring.push_event(event); // O(1) lock-free handoff before EOI
+<span class="boring">}</span></code></pre>
+<h3 id="term-jit"><a class="header" href="#term-jit"><code>JIT</code>: Just-In-Time Compilation</a></h3>
+<p>Runtime compilation emitting executable machine instructions into anonymous mmap pages, transitioning permissions from PROT_READ | PROT_WRITE to PROT_READ | PROT_EXEC via mprotect() to honor W^X invariants. (Ch. 8)</p>
+<h3 id="term-kpti"><a class="header" href="#term-kpti"><code>KPTI</code>: Kernel Page-Table Isolation</a></h3>
+<p>Mitigation against speculative Meltdown attacks that unmaps most kernel memory while in Ring 3, forcing a CR3 page-table switch on every system call and making hardware PCID tagging essential to prevent TLB thrashing. (Ch. 7, 9)</p>
+<h3 id="term-kvm"><a class="header" href="#term-kvm"><code>KVM</code>: Kernel-based Virtual Machine</a></h3>
+<p>Linux kernel subsystem transforming Linux into a hardware-assisted hypervisor by driving Intel VT-x, AMD-V, or ARM64 EL2 directly for guest vCPUs. (Ch. 16)</p>
+<h3 id="term-llc"><a class="header" href="#term-llc"><code>LLC</code>: Last-Level Cache</a></h3>
+<p>Largest on-chip cache tier (typically shared L3, 8 to 128 MiB, ~12 to 20 ns) serving as the final filter before crossing the memory controller to off-chip DRAM. (Ch. 5, 18)</p>
+<h3 id="term-llvm"><a class="header" href="#term-llvm"><code>LLVM</code>: Low-Level Virtual Machine</a></h3>
+<p>Modular optimizing compiler backend powering Clang and rustc, known for heavy use of contiguous index-addressed arena allocators for intermediate representation graphs. (Ch. 8)</p>
+<h3 id="term-lru"><a class="header" href="#term-lru"><code>LRU</code>: Least Recently Used</a></h3>
+<p>Cache eviction policy discarding the entry untouched for the longest interval, implemented in O(1) with a hash map plus doubly-linked list and approximated by OS kernels using PTE Accessed bits. (Ch. 7, 19)</p>
+<h3 id="term-madv-hugepage"><a class="header" href="#term-madv-hugepage"><code>MADV_HUGEPAGE</code>: Transparent Huge Page Memory Advice (Linux)</a></h3>
+<p>Linux madvise() hint advising the kernel (khugepaged) to back a 2 MiB-aligned virtual region with 2 MiB Transparent Huge Pages instead of 4 KiB pages. Expanding TLB reach by 512x cuts page-table walk overhead dramatically for large heaps, arenas, and in-memory indexes. (Ch. 7, 8)</p>
+<pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>#[cfg(target_os = "linux")]
+unsafe {
+    libc::madvise(base_ptr, len, libc::MADV_HUGEPAGE);
+}
+<span class="boring">}</span></code></pre>
+<h3 id="term-map-anon"><a class="header" href="#term-map-anon"><code>MAP_ANON / MAP_ANONYMOUS</code>: Anonymous Memory Mapping Flag</a></h3>
+<p>mmap() flag requesting fresh, demand-zeroed virtual memory backed by RAM and swap rather than an open file descriptor (fd = -1). General-purpose allocators and arena managers rely on MAP_ANON to obtain page-aligned virtual address ranges directly from the kernel. (Ch. 7, 8, 11)</p>
+<pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>let ptr = unsafe {
+    libc::mmap(
+        std::ptr::null_mut(),
+        1 &lt;&lt; 20,
+        libc::PROT_READ | libc::PROT_WRITE,
+        libc::MAP_PRIVATE | libc::MAP_ANON,
+        -1,
+        0,
+    )
+};
+<span class="boring">}</span></code></pre>
+<h3 id="term-map-failed"><a class="header" href="#term-map-failed"><code>MAP_FAILED</code>: mmap() Error Sentinel Pointer</a></h3>
+<p>Sentinel value ((void *)-1, usize::MAX) returned by POSIX mmap() on failure instead of NULL because virtual address 0x0 was historically a valid mapping address. Testing for ptr.is_null() instead of ptr == MAP_FAILED misses allocation errors and dereferences 0xFFFF_FFFF_FFFF_FFFF into an immediate SIGSEGV. (Ch. 7, 8)</p>
+<pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>if ptr == libc::MAP_FAILED {
+    return Err(std::io::Error::last_os_error());
+}
+<span class="boring">}</span></code></pre>
+<h3 id="term-map-private"><a class="header" href="#term-map-private"><code>MAP_PRIVATE</code>: Private Copy-on-Write Mapping Flag</a></h3>
+<p>mmap() visibility flag giving the calling process private copy-on-write pages whose stores remain invisible to other processes and never write back to an underlying file. Without MAP_PRIVATE, mutating a mapped executable or shared library would corrupt the file on disk for every running process. (Ch. 7, 8, 11)</p>
+<pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>let p = unsafe {
+    libc::mmap(std::ptr::null_mut(), len, libc::PROT_READ | libc::PROT_WRITE,
+               libc::MAP_PRIVATE | libc::MAP_ANON, -1, 0)
+};
+<span class="boring">}</span></code></pre>
+<h3 id="term-map-shared"><a class="header" href="#term-map-shared"><code>MAP_SHARED</code>: Shared Memory Mapping Flag</a></h3>
+<p>mmap() visibility flag pointing multiple processes’ PTEs directly at the exact same physical page frames so stores become immediately visible across address spaces and flush back to file-backed storage. Shared-memory ring buffers and IPC arenas require MAP_SHARED; using MAP_PRIVATE isolates each writer’s updates into private copies. (Ch. 7, 11)</p>
+<pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>let shm = unsafe {
+    libc::mmap(std::ptr::null_mut(), len, libc::PROT_READ | libc::PROT_WRITE,
+               libc::MAP_SHARED, shm_fd, 0)
+};
+<span class="boring">}</span></code></pre>
+<h3 id="term-mcs"><a class="header" href="#term-mcs"><code>MCS</code>: Mellor-Crummey and Scott Queue Spinlock</a></h3>
+<p>Scalable FIFO spinlock where each contending core appends its own stack-allocated node to a tail pointer and spins exclusively on a local cache line until its predecessor flips a flag. Unlike a naive test-and-set spinlock, MCS eliminates O(N^2) MESI cache-line invalidation storms on high-core-count servers. (Ch. 6)</p>
+<pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>// Each waiter spins on its own cache-line-aligned node
+#[repr(align(64))]
+struct McsNode {
+    next: AtomicPtr&lt;McsNode&gt;,
+    locked: AtomicBool,
+}
+<span class="boring">}</span></code></pre>
+<h3 id="term-mesi"><a class="header" href="#term-mesi"><code>MESI / MOESI</code>: Modified-Exclusive-Shared-Invalid</a></h3>
+<p>Hardware cache-coherency state machine tracking every 64-byte cache line across cores. Writing to a Shared line forces a Read-For-Ownership invalidation across sibling cores, which is the physical root cause of false sharing. (Ch. 2, 5, 6, 17)</p>
+<pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>#[repr(align(64))] // isolate counters onto distinct MESI cache lines
+struct PaddedCounter(AtomicU64);
+<span class="boring">}</span></code></pre>
+<h3 id="term-ml"><a class="header" href="#term-ml"><code>ML</code>: Machine Learning</a></h3>
+<p>Tensor- and bandwidth-intensive workloads that motivate discrete GPU DMA pinning on x86 servers and zero-copy Unified Memory Architectures on Apple Silicon. (Ch. 17)</p>
+<h3 id="term-mlfq"><a class="header" href="#term-mlfq"><code>MLFQ</code>: Multi-Level Feedback Queue Scheduler</a></h3>
+<p>Preemptive scheduler maintaining multiple priority queues where newly arriving or I/O-blocking tasks stay at high priority with short quanta while CPU-bound jobs demote to lower queues with longer quanta. Periodic priority boosts prevent starvation while delivering fast interactive response without knowing job lengths in advance. (Ch. 5)</p>
+<pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>// Demote a thread that exhausts its full quantum without blocking
+if used_ticks &gt;= quantum_for_level(level) {
+    level = (level + 1).min(MAX_LEVEL);
+}
+<span class="boring">}</span></code></pre>
+<h3 id="term-mmio"><a class="header" href="#term-mmio"><code>MMIO</code>: Memory-Mapped Input/Output</a></h3>
+<p>Hardware design mapping peripheral device control registers into physical memory addresses (with PTE cache-disable bits set) so drivers command devices using ordinary load and store instructions. (Ch. 2, 7, 16)</p>
+<h3 id="term-mmu"><a class="header" href="#term-mmu"><code>MMU</code>: Memory Management Unit</a></h3>
+<p>Silicon state machine inside every CPU core that intercepts every virtual address, translates VPN to PFN via the TLB or 4-level page-table walk, verifies PTE permission bits, and raises #PF on any violation. (Ch. 2, 3, 7, 16)</p>
+<pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>// Hardware translation invariant for 4 KiB (2^12 B) pages:
+let vpn = va &gt;&gt; 12;
+let offset = va &amp; 0xFFF;
+let pa = (pfn &lt;&lt; 12) | offset;
+<span class="boring">}</span></code></pre>
+<h3 id="term-mpsc"><a class="header" href="#term-mpsc"><code>MPSC</code>: Multi-Producer, Single-Consumer Queue</a></h3>
+<p>Concurrency channel topology allowing multiple worker threads to push messages concurrently to one dedicated consumer thread (such as a logger or event loop). Producers synchronize via an atomic tail swap or mutex while the lone consumer dequeues without cross-consumer contention. (Ch. 6)</p>
+<pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>use std::sync::mpsc;
+let (tx, rx) = mpsc::channel::&lt;String&gt;();
+let tx2 = tx.clone(); // second producer thread
+<span class="boring">}</span></code></pre>
+<h3 id="term-mqms"><a class="header" href="#term-mqms"><code>MQMS</code>: Multi-Queue Multiprocessor Scheduling</a></h3>
+<p>SMP scheduling architecture assigning every CPU core its own private runqueue to preserve L1/L2 cache affinity and avoid global lock contention. Periodic work stealing rebalances load across cores so one core never sits idle while a sibling’s queue overflows. (Ch. 5)</p>
+<pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>// Pop locally first; steal from a sibling core only when empty
+let task = local_queue.pop().or_else(|| steal_from_peer(&amp;peers));
+<span class="boring">}</span></code></pre>
+<h3 id="term-msi-x"><a class="header" href="#term-msi-x"><code>MSI-X</code>: Message Signaled Interrupts Extended</a></h3>
+<p>Modern PCIe interrupt mechanism letting a device signal specific CPU cores via targeted DMA writes rather than shared legacy IRQ wires, enabling per-core lock-free NIC receive queues. (Ch. 2)</p>
+<h3 id="term-mss"><a class="header" href="#term-mss"><code>MSS</code>: Maximum Segment Size (TCP)</a></h3>
+<p>Largest TCP payload a single segment can carry without IP fragmentation, negotiated during the SYN handshake as MTU minus IP and TCP headers (typically 1,460 bytes over 1,500-byte Ethernet). Exceeding path MSS forces IP fragmentation or silent black-holing when the IP DF (Do-Not-Fragment) bit is set. (Ch. 13, 14)</p>
+<pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>const ETHERNET_MTU: usize = 1500;
+const TCP_IPV4_MSS: usize = ETHERNET_MTU - 20 - 20; // 1460 bytes
+<span class="boring">}</span></code></pre>
+<h3 id="term-mtu"><a class="header" href="#term-mtu"><code>MTU</code>: Maximum Transmission Unit</a></h3>
+<p>Largest packet payload a physical network link can carry without fragmentation (typically 1,500 bytes on Ethernet); sending a UDP datagram exceeding the path limit fails with EMSGSIZE. (Ch. 14)</p>
+<h3 id="term-napi"><a class="header" href="#term-napi"><code>NAPI</code>: New API (Linux Network Polling)</a></h3>
+<p>Linux driver framework that masks per-packet NIC interrupts under heavy traffic and drains batches of frames inside NET_RX_SOFTIRQ, preventing interrupt livelock. (Ch. 2)</p>
+<h3 id="term-neon"><a class="header" href="#term-neon"><code>NEON</code>: ARM Advanced SIMD</a></h3>
+<p>128-bit vector execution unit standard across ARM64 processors, saved and restored inside the kernel’s thread_struct during context switches. (Ch. 3, 19)</p>
+<h3 id="term-nic"><a class="header" href="#term-nic"><code>NIC</code>: Network Interface Card</a></h3>
+<p>Peripheral controller transferring Ethernet frames between the physical network cable and kernel ring buffers via PCIe DMA and MSI-X interrupts. (Ch. 2, 13, 16)</p>
+<h3 id="term-nmi"><a class="header" href="#term-nmi"><code>NMI</code>: Non-Maskable Interrupt</a></h3>
+<p>Highest-priority hardware interrupt that fires even when normal interrupts are disabled, enabling PMU sampling profilers to capture stack traces inside interrupt-masked kernel critical sections. (Ch. 18)</p>
+<h3 id="term-note-exit"><a class="header" href="#term-note-exit"><code>NOTE_EXIT</code>: kqueue Process-Exit Filter Flag</a></h3>
+<p>Event sub-flag paired with EVFILT_PROC on macOS and BSD asking kqueue to wake the supervisor immediately when the monitored PID terminates. Receiving NOTE_EXIT triggers a non-blocking waitpid(WNOHANG) call to collect the child’s exit code and clear its zombie PCB entry. (Ch. 15)</p>
+<pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>if (ev.fflags &amp; libc::NOTE_EXIT) != 0 {
+    let mut status = 0;
+    unsafe { libc::waitpid(ev.ident as libc::pid_t, &amp;mut status, libc::WNOHANG) };
+}
+<span class="boring">}</span></code></pre>
+<h3 id="term-npt"><a class="header" href="#term-npt"><code>NPT</code>: Nested Page Tables</a></h3>
+<p>AMD hardware two-stage virtualization page tables translating Guest Physical Addresses to Host Physical Addresses (functional equivalent of Intel EPT). (Ch. 16)</p>
+<h3 id="term-npu"><a class="header" href="#term-npu"><code>NPU</code>: Neural Processing Unit</a></h3>
+<p>Dedicated silicon accelerator (such as Apple’s Neural Engine) optimized for low-latency matrix and tensor inference over unified memory. (Ch. 17)</p>
+<h3 id="term-ntfs"><a class="header" href="#term-ntfs"><code>NTFS</code>: New Technology File System</a></h3>
+<p>Primary metadata-journaling filesystem used on Microsoft Windows, logging structural updates before checkpointing them in place. (Ch. 12)</p>
+<h3 id="term-numa"><a class="header" href="#term-numa"><code>NUMA</code>: Non-Uniform Memory Access</a></h3>
+<p>Multi-socket server architecture where each socket owns a local DRAM controller. Crossing an inter-socket link adds 30 to 100% latency, motivating processor affinity and first-touch physical frame allocation. (Ch. 5, 17)</p>
+<h3 id="term-nx"><a class="header" href="#term-nx"><code>NX</code>: No-Execute (Execute-Disable)</a></h3>
+<p>Bit 63 of an x86-64 PTE blocking instruction fetches from writable stack and heap pages in silicon, enforcing hardware Write XOR Execute (W^X) defense against code injection. (Ch. 7, 8)</p>
+<h3 id="term-o-cloexec"><a class="header" href="#term-o-cloexec"><code>O_CLOEXEC</code>: Close-on-Exec File Descriptor Flag</a></h3>
+<p>open() flag setting FD_CLOEXEC atomically when a descriptor is created so the kernel closes it automatically across execve(). Without O_CLOEXEC, multi-threaded programs leak open sockets, lock files, and pipes into spawned child processes, causing hung EOF signals and security exposure. (Ch. 3, 9, 12)</p>
+<pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>// Rust std::fs::File sets O_CLOEXEC automatically; raw libc calls must pass it
+let fd = unsafe { libc::open(path.as_ptr(), libc::O_RDONLY | libc::O_CLOEXEC) };
+<span class="boring">}</span></code></pre>
+<h3 id="term-o-creat"><a class="header" href="#term-o-creat"><code>O_CREAT</code>: Create File If Missing Flag</a></h3>
+<p>open() flag instructing the kernel to allocate a new inode and directory entry when the target path does not exist, using the caller’s mode bits masked by umask. Omitting the mode argument on raw open(…, O_CREAT) leaves random stack permissions on the newly created file. (Ch. 9, 12)</p>
+<pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>let fd = unsafe {
+    libc::open(path.as_ptr(), libc::O_RDWR | libc::O_CREAT | libc::O_CLOEXEC, 0o644)
+};
+<span class="boring">}</span></code></pre>
+<h3 id="term-o-direct"><a class="header" href="#term-o-direct"><code>O_DIRECT</code>: Direct Unbuffered I/O Flag</a></h3>
+<p>open() flag instructing the kernel to DMA directly between user-space buffers and the block device, bypassing the OS page cache. Database engines managing their own buffer pool use O_DIRECT to avoid double caching, accepting strict sector-size alignment constraints on buffers and offsets. (Ch. 12)</p>
+<pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>#[cfg(target_os = "linux")]
+use std::os::unix::fs::OpenOptionsExt;
+#[cfg(target_os = "linux")]
+let f = std::fs::OpenOptions::new().read(true).custom_flags(libc::O_DIRECT).open("data.db")?;
+<span class="boring">}</span></code></pre>
+<h3 id="term-o-nonblock"><a class="header" href="#term-o-nonblock"><code>O_NONBLOCK</code>: Non-Blocking I/O Descriptor Flag</a></h3>
+<p>File-status flag directing read(), write(), accept(), and connect() to return EAGAIN immediately rather than putting the calling thread to sleep when data or buffer space is unavailable. Single-threaded reactors (poll, epoll, kqueue) require O_NONBLOCK on every socket so one slow peer never freezes the entire server. (Ch. 12, 13)</p>
+<pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>stream.set_nonblocking(true)?; // sets O_NONBLOCK via fcntl()
+<span class="boring">}</span></code></pre>
+<h3 id="term-o-rdwr"><a class="header" href="#term-o-rdwr"><code>O_RDWR</code>: Read-Write Access Mode Flag</a></h3>
+<p>POSIX open() access mode requesting both read and write permissions on the opened file description. Memory-mapping a file with PROT_READ | PROT_WRITE and MAP_SHARED requires an O_RDWR descriptor; opening with O_RDONLY causes mmap() to fail with EACCES. (Ch. 9, 12)</p>
+<pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>let file = std::fs::OpenOptions::new()
+    .read(true)
+    .write(true) // translates to O_RDWR
+    .open("ledger.dat")?;
+<span class="boring">}</span></code></pre>
+<h3 id="term-oci"><a class="header" href="#term-oci"><code>OCI</code>: Open Container Initiative</a></h3>
+<p>Industry specification standardizing layered container image formats and runtime lifecycle interfaces across Docker, containerd, and Kubernetes. (Ch. 16)</p>
+<h3 id="term-oom"><a class="header" href="#term-oom"><code>OOM</code>: Out-of-Memory</a></h3>
+<p>Condition triggered when host physical RAM or a container’s cgroup memory.max ceiling is exhausted, causing the kernel OOM killer to terminate a process with SIGKILL to reclaim frames. (Ch. 16)</p>
+<h3 id="term-pa"><a class="header" href="#term-pa"><code>PA</code>: Physical Address</a></h3>
+<p>True hardware address placed on the memory bus to read or write a byte in physical DRAM, composed by the MMU as (PFN &lt;&lt; 12) | Offset. (Ch. 7)</p>
+<h3 id="term-pat"><a class="header" href="#term-pat"><code>PAT</code>: Page Attribute Table</a></h3>
+<p>Bit 7 of a leaf x86-64 PTE combining with PCD and PWT to select fine-grained memory caching attributes such as write-back or write-combining. (Ch. 7)</p>
+<h3 id="term-pcb"><a class="header" href="#term-pcb"><code>PCB</code>: Process Control Block</a></h3>
+<p>Authoritative per-process kernel structure (struct task_struct on Linux) holding scheduling state, saved registers, kernel stack pointer, page-table descriptor (mm_struct), open file descriptors, and signal masks. (Ch. 3, 10, 12, 15)</p>
+<h3 id="term-pcd"><a class="header" href="#term-pcd"><code>PCD / PWT</code>: Page-Level Cache Disable &amp; Write-Through</a></h3>
+<p>PTE bits [4:3] controlling hardware cacheability: 00 selects normal write-back cacheable DRAM, whereas disabling caching prevents stale reads from hardware MMIO registers. (Ch. 7)</p>
+<h3 id="term-pcid"><a class="header" href="#term-pcid"><code>PCID</code>: Process-Context Identifier</a></h3>
+<p>12-bit x86-64 hardware tag stored alongside every TLB entry so context switches and KPTI CR3 reloads preserve cached translations instead of flushing the TLB. (Ch. 7)</p>
+<h3 id="term-pcie"><a class="header" href="#term-pcie"><code>PCIe</code>: Peripheral Component Interconnect Express</a></h3>
+<p>Point-to-point serial expansion bus connecting NVMe SSDs, NICs, and discrete GPUs to the CPU, offering 32 to 64 GB/s per x16 link (far narrower than on-die unified memory). (Ch. 2, 16, 17)</p>
+<h3 id="term-pd"><a class="header" href="#term-pd"><code>PD</code>: Page Directory (Level 2)</a></h3>
+<p>Third radix level in 4-level x86-64 paging indexed by VA bits [29:21]. Each of its 512 entries covers 2 MiB and terminates the walk early to map a 2 MiB huge page when PS = 1. (Ch. 7, 16)</p>
+<h3 id="term-pdpt"><a class="header" href="#term-pdpt"><code>PDPT</code>: Page Directory Pointer Table (Level 3)</a></h3>
+<p>Second radix level indexed by VA bits [38:30]. Each entry covers 1 GiB and can map a 1 GiB huge page directly when PS = 1. (Ch. 7, 16)</p>
+<h3 id="term-pebs"><a class="header" href="#term-pebs"><code>PEBS</code>: Precise Event-Based Sampling (Intel)</a></h3>
+<p>Intel PMU hardware extension that records the exact architectural instruction pointer and register snapshot directly into a DRAM buffer when a counter overflows. Without PEBS, out-of-order execution skid shifts samples several instructions past the true cache-missing load, misleading flame graphs. (Ch. 18)</p>
+<pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>// In Linux perf, appending :pp selects hardware PEBS precision:
+// perf record -e cache-misses:pp -g -- ./target/release/bench
+<span class="boring">}</span></code></pre>
+<h3 id="term-pf"><a class="header" href="#term-pf"><code>#PF</code>: Page Fault Exception</a></h3>
+<p>x86-64 hardware exception (Vector 14) raised when a PTE has Present = 0 or a memory reference violates R/W, U/S, or NX bits. In three of four cases (zero-fill, demand paging, copy-on-write), the kernel resolves #PF transparently and restarts the instruction. (Ch. 7)</p>
+<h3 id="term-pfn"><a class="header" href="#term-pfn"><code>PFN</code>: Physical Frame Number</a></h3>
+<p>40-bit frame index stored in PTE bits [51:12] identifying a 4 KiB-aligned frame in physical DRAM. Masking a leaf PTE with 0x000F_FFFF_FFFF_F000 recovers the physical frame base address. (Ch. 7)</p>
+<pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>let frame_base: u64 = pte &amp; 0x000F_FFFF_FFFF_F000;
+let pfn: u64 = frame_base &gt;&gt; 12;
+<span class="boring">}</span></code></pre>
+<h3 id="term-pgd"><a class="header" href="#term-pgd"><code>PGD / PUD / PMD</code>: Page Global / Upper / Middle Directory</a></h3>
+<p>Architecture-independent Linux kernel names for the Level 4 (PML4), Level 3 (PDPT), and Level 2 (PD) radix page-table nodes. (Ch. 3, 7)</p>
+<h3 id="term-pgid"><a class="header" href="#term-pgid"><code>PGID</code>: Process Group Identifier</a></h3>
+<p>Numeric identifier grouping processes (such as a shell pipeline) so terminal job-control signals like SIGINT reach the entire foreground group together. (Ch. 15)</p>
+<h3 id="term-pid"><a class="header" href="#term-pid"><code>PID</code>: Process Identifier</a></h3>
+<p>Unique positive integer identifying a process in the kernel table. PID 1 is the root supervisor (systemd or launchd) that adopts and reaps orphaned processes. (Ch. 3, 9, 10, 15, 16, 19)</p>
+<pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>let pid = std::process::id(); // portable user-space PID query
+<span class="boring">}</span></code></pre>
+<h3 id="term-pku"><a class="header" href="#term-pku"><code>PKU</code>: Memory Protection Keys</a></h3>
+<p>x86-64 hardware feature tagging PTEs into 16 protection domains whose read/write rights can be toggled in a single unprivileged user-mode register write without calling mprotect(). (Ch. 7)</p>
+<h3 id="term-pml4"><a class="header" href="#term-pml4"><code>PML4</code>: Page Map Level 4</a></h3>
+<p>Root radix table pointed to by CR3 and indexed by VA bits [47:39]. Each of its 512 8-byte entries governs a 512 GiB virtual region, letting the kernel omit unmapped subtrees at zero RAM cost. (Ch. 7, 16)</p>
+<h3 id="term-pmu"><a class="header" href="#term-pmu"><code>PMU</code>: Performance Monitoring Unit / Power Management Unit</a></h3>
+<p>In CPU profiling (Ch. 18), silicon event counters tracking cycles, instructions, cache misses, and TLB misses at zero software cost. In hardware supervision (Ch. 15), the Power Management Unit watchdog timer.</p>
+<h3 id="term-pollin"><a class="header" href="#term-pollin"><code>POLLIN</code>: Readable-Data Event Bit (poll)</a></h3>
+<p>Bitmask flag in struct pollfd.events and revents signaling that normal data, an incoming listen-queue connection, or an EOF condition can be read without blocking. Failing to check POLLIN alongside POLLHUP and POLLERR causes event loops to miss half-closed sockets. (Ch. 13)</p>
+<pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>let mut pfd = libc::pollfd { fd: raw_fd, events: libc::POLLIN, revents: 0 };
+if unsafe { libc::poll(&amp;mut pfd, 1, 1000) } &gt; 0 &amp;&amp; (pfd.revents &amp; libc::POLLIN) != 0 {
+    drain_socket(raw_fd)?;
+}
+<span class="boring">}</span></code></pre>
+<h3 id="term-posix"><a class="header" href="#term-posix"><code>POSIX</code>: Portable Operating System Interface</a></h3>
+<p>IEEE standard family defining uniform Unix system calls (open, mmap, fork, sigaction, poll, pthread_mutex_t) so low-level systems code compiles and behaves predictably across Linux and macOS. (Ch. 1 to 19)</p>
+<h3 id="term-pr-set-pdeathsig"><a class="header" href="#term-pr-set-pdeathsig"><code>PR_SET_PDEATHSIG</code>: Parent-Death Signal (Linux prctl)</a></h3>
+<p>Linux prctl() option telling the kernel to deliver a chosen signal (typically SIGTERM or SIGKILL) to a worker process the instant its parent thread exits. Without PR_SET_PDEATHSIG, a crashed supervisor leaves orphaned worker processes running indefinitely and holding ports or locks. (Ch. 15)</p>
+<pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>#[cfg(target_os = "linux")]
+unsafe {
+    libc::prctl(libc::PR_SET_PDEATHSIG, libc::SIGTERM);
+}
+<span class="boring">}</span></code></pre>
+<h3 id="term-prot-exec"><a class="header" href="#term-prot-exec"><code>PROT_EXEC</code>: Executable Page Protection Flag</a></h3>
+<p>mmap() and mprotect() flag clearing the PTE No-Execute (NX) bit so the CPU instruction fetcher may execute bytes from the page. Security-hardened runtimes and JIT engines forbid combining PROT_WRITE | PROT_EXEC simultaneously to uphold W^X invariants against code injection. (Ch. 7, 8)</p>
+<pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>// Transition JIT code buffer from RW to RX via mprotect()
+unsafe { libc::mprotect(code_page, 4096, libc::PROT_READ | libc::PROT_EXEC) };
+<span class="boring">}</span></code></pre>
+<h3 id="term-prot-none"><a class="header" href="#term-prot-none"><code>PROT_NONE</code>: No-Access Page Protection Flag</a></h3>
+<p>mmap() and mprotect() flag reserving virtual address space while denying all reads, writes, and instruction fetches in hardware PTEs. Placing a PROT_NONE guard page beneath thread stacks or arena slabs converts silent buffer overflows into immediate, deterministic SIGSEGV or SIGBUS traps. (Ch. 4, 7, 8)</p>
+<pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>// Reserve a virtual guard page with zero physical RAM committed
+unsafe {
+    libc::mmap(std::ptr::null_mut(), 4096, libc::PROT_NONE,
+               libc::MAP_PRIVATE | libc::MAP_ANON, -1, 0)
+};
+<span class="boring">}</span></code></pre>
+<h3 id="term-prot-read"><a class="header" href="#term-prot-read"><code>PROT_READ</code>: Readable Page Protection Flag</a></h3>
+<p>mmap() and mprotect() permission flag enabling load instructions from the mapped virtual pages. On x86-64 and ARM64, separating PROT_READ from PROT_WRITE lets kernels protect read-only text segments, constant tables, and shared snapshots against accidental mutation. (Ch. 7, 8, 11)</p>
+<pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>let ro = unsafe {
+    libc::mmap(std::ptr::null_mut(), len, libc::PROT_READ, libc::MAP_SHARED, fd, 0)
+};
+<span class="boring">}</span></code></pre>
+<h3 id="term-prot-write"><a class="header" href="#term-prot-write"><code>PROT_WRITE</code>: Writable Page Protection Flag</a></h3>
+<p>mmap() and mprotect() permission flag setting the PTE Read/Write bit so store instructions succeed (or trigger copy-on-write on MAP_PRIVATE pages). Omitting PROT_WRITE catches unintended writes to immutable buffers directly in the MMU at zero runtime cost. (Ch. 7, 8, 11)</p>
+<pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>// Upgrade a previously reserved PROT_NONE page to readable and writable
+unsafe { libc::mprotect(page, 4096, libc::PROT_READ | libc::PROT_WRITE) };
+<span class="boring">}</span></code></pre>
+<h3 id="term-ps"><a class="header" href="#term-ps"><code>PS</code>: Page Size Bit</a></h3>
+<p>Bit 7 of an x86-64 PD or PDPT entry. Setting PS = 1 terminates the radix walk early to map a contiguous 2 MiB or 1 GiB huge page, expanding TLB reach by 512× or 262,144×. (Ch. 7)</p>
+<h3 id="term-pt"><a class="header" href="#term-pt"><code>PT</code>: Page Table (Level 1 Leaf)</a></h3>
+<p>Bottom radix table indexed by VA bits [20:12], holding 512 8-byte leaf PTEs that map individual 4 KiB virtual pages to physical DRAM frames. (Ch. 7, 16)</p>
+<h3 id="term-pte"><a class="header" href="#term-pte"><code>PTE</code>: Page Table Entry</a></h3>
+<p>64-bit descriptor mapping one virtual page to one 4 KiB-aligned physical frame. Because the low 12 bits of every frame base are zero, hardware packs permission and activity flags (P, R/W, U/S, A, D) directly into bits [11:0] and NX into bit 63. (Ch. 7, 8, 11)</p>
+<h3 id="term-pthread-process-shared"><a class="header" href="#term-pthread-process-shared"><code>PTHREAD_PROCESS_SHARED</code>: Cross-Process Mutex/Condvar Attribute</a></h3>
+<p>POSIX pthread attribute configuring a mutex or condition variable placed inside MAP_SHARED memory so distinct processes can synchronize on it safely. Without PTHREAD_PROCESS_SHARED, the kernel treats the futex wait key as process-private, causing deadlocks or lost wakeups across separate address spaces. (Ch. 11)</p>
+<pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>let mut attr: libc::pthread_mutexattr_t = unsafe { std::mem::zeroed() };
+unsafe {
+    libc::pthread_mutexattr_init(&amp;mut attr);
+    libc::pthread_mutexattr_setpshared(&amp;mut attr, libc::PTHREAD_PROCESS_SHARED);
+}
+<span class="boring">}</span></code></pre>
+<h3 id="term-qemu"><a class="header" href="#term-qemu"><code>QEMU</code>: Quick Emulator</a></h3>
+<p>User-space machine emulator and virtual device model commonly paired with KVM to emulate legacy PCIe controllers or serve virtio device backends. (Ch. 16)</p>
+<h3 id="term-quic"><a class="header" href="#term-quic"><code>QUIC</code>: Quick UDP Internet Connections</a></h3>
+<p>Encrypted, multiplexed transport protocol layered over UDP (powering HTTP/3) that combines TLS and transport setup into one round trip and eliminates cross-stream TCP head-of-line blocking. (Ch. 14)</p>
+<h3 id="term-raii"><a class="header" href="#term-raii"><code>RAII</code>: Resource Acquisition Is Initialization</a></h3>
+<p>Ownership discipline tying resource cleanup (mutex unlocks, file closes, mmap unmaps, thread joins) deterministically to lexical scope exit via C++ destructors and Rust’s Drop trait. (Ch. 4, 6)</p>
+<pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>impl Drop for Arena {
+    fn drop(&amp;mut self) { unsafe { libc::munmap(self.base, self.cap); } }
+}
+<span class="boring">}</span></code></pre>
+<h3 id="term-ram"><a class="header" href="#term-ram"><code>RAM</code>: Random-Access Memory</a></h3>
+<p>Volatile main system memory (implemented with off-chip DRAM) holding active kernel structures, page tables, executable code, and the OS page cache. Because RAM capacity is finite and orders of magnitude slower than CPU registers, kernels manage it in 4 KiB physical frames with demand paging and eviction. (Ch. 2, 3, 7, 8, 11, 12, 19)</p>
+<pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>// Reserve virtual address space; physical RAM frames commit lazily on touch
+let mut buf = vec![0u8; 4096];
+buf[0] = 1; // triggers first physical frame commit
+<span class="boring">}</span></code></pre>
+<h3 id="term-rcu"><a class="header" href="#term-rcu"><code>RCU</code>: Read-Copy-Update</a></h3>
+<p>Kernel synchronization protocol letting concurrent readers traverse read-mostly structures (such as process credentials) with zero locks or atomic writes, while deferring reclamation of replaced copies until all active readers complete. (Ch. 3)</p>
+<h3 id="term-rfo"><a class="header" href="#term-rfo"><code>RFO</code>: Read-For-Ownership</a></h3>
+<p>Cache-coherency bus broadcast issued when a core writes to a Shared cache line, forcing every sibling core to invalidate its copy before the store commits. (Ch. 17)</p>
+<h3 id="term-risc"><a class="header" href="#term-risc"><code>RISC</code>: Reduced Instruction Set Computer</a></h3>
+<p>Load/store architecture family (such as ARM64) using fixed-width instructions and load-linked/store-conditional pairs (LDXR/STXR) for atomic updates. (Ch. 6)</p>
+<h3 id="term-rpc"><a class="header" href="#term-rpc"><code>RPC</code>: Remote Procedure Call</a></h3>
+<p>Request/response messaging abstraction invoking operations across isolated processes (Unix domain sockets) or networked hosts (TCP/gRPC). (Ch. 5, 11)</p>
+<h3 id="term-rwnd"><a class="header" href="#term-rwnd"><code>RWND</code>: Receive Window (TCP Flow Control)</a></h3>
+<p>16-bit (scaled) buffer capacity advertised in every TCP ACK header telling the sender how many unconsumed bytes the receiver’s kernel socket buffer can still absorb. Without RWND flow control, a fast sender would overflow a slow reader’s kernel memory and trigger relentless packet drops. (Ch. 13, 14)</p>
+<pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>// Effective send ceiling obeys both peer RWND and local CWND
+let send_budget = peer_rwnd.min(local_cwnd);
+<span class="boring">}</span></code></pre>
+<h3 id="term-sa-restart"><a class="header" href="#term-sa-restart"><code>SA_RESTART</code>: Automatic Syscall Restart Signal Flag</a></h3>
+<p>sigaction() flag instructing the kernel to transparently restart interrupted slow syscalls (such as read() or waitpid()) after a signal handler returns instead of failing with EINTR. Clear SA_RESTART intentionally when a signal (such as SIGTERM or SIGALRM) must break a blocking read() to begin shutdown. (Ch. 10)</p>
+<pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>let mut sa: libc::sigaction = unsafe { std::mem::zeroed() };
+sa.sa_sigaction = on_sigchld as usize;
+sa.sa_flags = libc::SA_RESTART; // restart interrupted syscalls automatically
+<span class="boring">}</span></code></pre>
+<h3 id="term-scm-rights"><a class="header" href="#term-scm-rights"><code>SCM_RIGHTS</code>: Unix Socket File-Descriptor Passing Control Message</a></h3>
+<p>Ancillary message type passed via sendmsg() and recvmsg() over AF_UNIX sockets that asks the kernel to duplicate an open file description directly into a peer process’s descriptor table. Passing raw integer FD numbers as ordinary bytes fails because descriptor numbers are strictly process-local; SCM_RIGHTS enables privilege-separated servers to hand accepted sockets to unprivileged workers. (Ch. 11)</p>
+<pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>// Kernel copies the underlying struct file when cmsg_type == SCM_RIGHTS
+let cmsg_type = libc::SCM_RIGHTS;
+let cmsg_level = libc::SOL_SOCKET;
+<span class="boring">}</span></code></pre>
+<h3 id="term-sid"><a class="header" href="#term-sid"><code>SID</code>: Session Identifier</a></h3>
+<p>Numeric identifier grouping one or more process groups sharing a controlling terminal. Daemons call setsid() to create a fresh session with no controlling terminal. (Ch. 15)</p>
+<h3 id="term-sig-dfl"><a class="header" href="#term-sig-dfl"><code>SIG_DFL</code>: Default Signal Disposition</a></h3>
+<p>Special handler sentinel passed to sigaction() restoring the kernel’s built-in action for a signal (terminate, core dump, stop, or ignore). Because child processes inherit ignored dispositions across execve(), shells reset SIGINT and SIGPIPE back to SIG_DFL before executing external commands. (Ch. 3, 10)</p>
+<pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>unsafe { libc::signal(libc::SIGINT, libc::SIG_DFL) };
+<span class="boring">}</span></code></pre>
+<h3 id="term-sig-ign"><a class="header" href="#term-sig-ign"><code>SIG_IGN</code>: Ignore Signal Disposition</a></h3>
+<p>Special handler sentinel instructing the kernel to discard a catchable signal immediately upon delivery. Network daemons set SIGPIPE to SIG_IGN so closed client sockets return EPIPE cleanly rather than terminating the server; setting SIGCHLD to SIG_IGN causes POSIX kernels to auto-reap exiting children without zombies. (Ch. 3, 10)</p>
+<pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>// Ignore SIGPIPE so writes to closed sockets return EPIPE instead of killing the server
+unsafe { libc::signal(libc::SIGPIPE, libc::SIG_IGN) };
+<span class="boring">}</span></code></pre>
+<h3 id="term-sigabrt"><a class="header" href="#term-sigabrt"><code>SIGABRT</code>: Abort Signal (Signal 6)</a></h3>
+<p>Signal raised by abort(), failed C assertions, or watchdog timers to terminate a malfunctioning process and generate a core dump for post-mortem debugging. Unlike SIGKILL, SIGABRT allows an emergency handler to flush crash diagnostics before the kernel tears down the address space. (Ch. 10, 15)</p>
+<pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>// Force immediate abnormal termination with SIGABRT on invariant breach
+std::process::abort();
+<span class="boring">}</span></code></pre>
+<h3 id="term-sigalrm"><a class="header" href="#term-sigalrm"><code>SIGALRM</code>: Alarm Clock Signal (Signal 14)</a></h3>
+<p>Asynchronous timer signal delivered when a per-process interval timer configured via alarm() or setitimer() expires. Historically used to bound blocking syscalls (with SA_RESTART disabled), modern event-driven services prefer poll()/kqueue() timeouts to avoid global per-process timer conflicts. (Ch. 10)</p>
+<pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>// Arm a 5-second one-shot SIGALRM watchdog
+unsafe { libc::alarm(5) };
+<span class="boring">}</span></code></pre>
+<h3 id="term-sigchld"><a class="header" href="#term-sigchld"><code>SIGCHLD</code>: Child Status Changed Signal</a></h3>
+<p>Asynchronous notification delivered to a parent when a child exits. Because standard signals coalesce into a single pending bit, handlers must drain all zombies in a non-blocking waitpid(-1, &amp;mut status, WNOHANG) loop. (Ch. 3, 10, 15)</p>
+<h3 id="term-sigkill"><a class="header" href="#term-sigkill"><code>SIGKILL / SIGSTOP</code>: Uncatchable Kill &amp; Stop Signals</a></h3>
+<p>Signals 9 and 19 bypass user signal masks and handlers unconditionally so the kernel and administrator can always terminate or pause a runaway process. (Ch. 9, 10, 15)</p>
+<h3 id="term-sigpipe"><a class="header" href="#term-sigpipe"><code>SIGPIPE</code>: Broken Pipe Signal (Signal 13)</a></h3>
+<p>Synchronous signal delivered when a process writes to a pipe or socket whose read end has zero remaining open descriptors. While helpful for halting shell pipelines (such as yes | head -n 1), ignoring SIGPIPE with SIG_IGN is mandatory in network servers so a single disconnecting client cannot kill the daemon. (Ch. 10, 11, 13)</p>
+<pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>// Rust std initializes SIGPIPE to SIG_IGN at startup; raw C/POSIX code sets it explicitly
+unsafe { libc::signal(libc::SIGPIPE, libc::SIG_IGN) };
+<span class="boring">}</span></code></pre>
+<h3 id="term-sigsegv"><a class="header" href="#term-sigsegv"><code>SIGSEGV / SIGBUS</code>: Segmentation Violation &amp; Bus Error</a></h3>
+<p>Synchronous fatal signals delivered when a process dereferences an unmapped address, violates PTE permissions, or touches a PROT_NONE guard page. (Ch. 7, 10)</p>
+<h3 id="term-sigterm"><a class="header" href="#term-sigterm"><code>SIGTERM / SIGHUP / SIGINT</code>: Lifecycle Control Signals</a></h3>
+<p>Catchable signals steering long-running processes: SIGTERM requests graceful shutdown, SIGHUP triggers configuration reload, and SIGINT represents interactive Ctrl-C. Handlers record an atomic flag and exit promptly. (Ch. 10, 15)</p>
+<pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>static STOP: AtomicBool = AtomicBool::new(false);
+extern "C" fn on_term(_: libc::c_int) { STOP.store(true, Ordering::Relaxed); }
+<span class="boring">}</span></code></pre>
+<h3 id="term-sigusr"><a class="header" href="#term-sigusr"><code>SIGUSR1 / SIGUSR2</code>: User-Defined Signals</a></h3>
+<p>Pair of POSIX signals with no kernel-assigned meaning, reserved exclusively for application-defined control commands such as reopening rotated log files, dumping heap statistics, or toggling debug tracing at runtime. Without a registered handler, their default disposition terminates the process. (Ch. 10, 15)</p>
+<pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>static RELOAD_STATS: AtomicBool = AtomicBool::new(false);
+extern "C" fn on_usr1(_: libc::c_int) { RELOAD_STATS.store(true, Ordering::Relaxed); }
+<span class="boring">}</span></code></pre>
+<h3 id="term-simd"><a class="header" href="#term-simd"><code>SIMD</code>: Single Instruction, Multiple Data</a></h3>
+<p>Data-parallel vector instructions (SSE, AVX, NEON) operating on wide 128- to 512-bit registers in lockstep, imposing strict 16-byte alignment requirements on general-purpose allocators. (Ch. 3, 8, 19)</p>
+<h3 id="term-sjf"><a class="header" href="#term-sjf"><code>SJF</code>: Shortest Job First Scheduling</a></h3>
+<p>Non-preemptive scheduling policy that dispatches the ready job with the smallest total CPU burst next, provably minimizing average turnaround time when all jobs arrive simultaneously. If a short job arrives right after a long job begins, non-preemptive SJF still suffers convoy delay unless upgraded to preemptive STCF. (Ch. 5)</p>
+<pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>// Select the ready job with the minimum estimated burst duration
+ready.sort_by_key(|job| job.burst_us);
+<span class="boring">}</span></code></pre>
+<h3 id="term-slc"><a class="header" href="#term-slc"><code>SLC</code>: System Level Cache</a></h3>
+<p>Large shared on-die cache in Apple Silicon SoCs bridging CPU, GPU, and NPU access to unified memory while absorbing repeated reads before DRAM. (Ch. 17)</p>
+<h3 id="term-slo"><a class="header" href="#term-slo"><code>SLO</code>: Service-Level Objective</a></h3>
+<p>Quantitative tail-latency or availability target (such as p99 &lt; 20 ms) governing production engineering decisions where arithmetic averages hide tail amplification. (Ch. 18)</p>
+<h3 id="term-slub"><a class="header" href="#term-slub"><code>SLUB</code>: Unqueued Slab Allocator</a></h3>
+<p>Primary Linux kernel allocator managing contiguous slabs of fixed-size kernel objects (such as task_struct and inode) with an intrusive free list threaded directly inside empty slots for O(1) cache-warm allocation. (Ch. 3, 8)</p>
+<h3 id="term-smap"><a class="header" href="#term-smap"><code>SMAP</code>: Supervisor Mode Access Prevention</a></h3>
+<p>x86-64 hardware security feature (CR4.SMAP) that raises a Page Fault if Ring 0 kernel code directly reads or writes user-space pages (U/S = 1) outside explicit copy_from_user()/copy_to_user() windows. SMAP prevents kernel bugs from dereferencing attacker-controlled user buffers directly. (Ch. 2, 7, 9)</p>
+<pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>// Kernel must copy user buffers explicitly rather than dereferencing Ring 3 pointers
+// copy_from_user(&amp;mut kernel_buf, user_ptr, len)?;
+<span class="boring">}</span></code></pre>
+<h3 id="term-smep"><a class="header" href="#term-smep"><code>SMEP</code>: Supervisor Mode Execution Prevention</a></h3>
+<p>x86-64 hardware security feature (CR4.SMEP) that blocks Ring 0 from fetching instructions from any page marked User-accessible (U/S = 1). Without SMEP, a kernel pointer-overwrite exploit could pivot execution directly into attacker-mapped user shellcode with full kernel privileges. (Ch. 2, 7, 9)</p>
+<pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>// Enforced in silicon: Ring 0 instruction fetch on a U/S=1 PTE triggers #PF
+const PTE_USER: u64 = 1 &lt;&lt; 2; // Ring 0 cannot execute pages with this bit set under SMEP
+<span class="boring">}</span></code></pre>
+<h3 id="term-smmu"><a class="header" href="#term-smmu"><code>SMMU</code>: System Memory Management Unit</a></h3>
+<p>ARM64 IOMMU translating peripheral DMA memory requests through stage-2 page tables to isolate passthrough devices safely inside guest VMs. (Ch. 16)</p>
+<h3 id="term-smp"><a class="header" href="#term-smp"><code>SMP</code>: Symmetric Multiprocessing</a></h3>
+<p>Multi-core design where identical cores share one physical address space and kernel, requiring per-CPU runqueues and cache-coherent synchronization to scale. (Ch. 5, 17)</p>
+<h3 id="term-smt"><a class="header" href="#term-smt"><code>SMT</code>: Simultaneous Multithreading</a></h3>
+<p>Hardware technique (Hyper-Threading) presenting two logical threads on one physical core sharing L1/L2 caches and execution pipelines to hide memory-stall cycles. (Ch. 5)</p>
+<h3 id="term-so-reuseaddr"><a class="header" href="#term-so-reuseaddr"><code>SO_REUSEADDR</code>: Socket Address Reuse Option</a></h3>
+<p>setsockopt() flag allowing a restarted server to bind() a listening port immediately even while old connections from the previous instance linger in TIME_WAIT. Without SO_REUSEADDR, restarting a crashed or upgraded TCP daemon fails with EADDRINUSE for 60 to 120 seconds. (Ch. 13)</p>
+<pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>let yes: libc::c_int = 1;
+unsafe {
+    libc::setsockopt(fd, libc::SOL_SOCKET, libc::SO_REUSEADDR,
+                     (&amp;raw const yes).cast(), std::mem::size_of_val(&amp;yes) as libc::socklen_t);
+}
+<span class="boring">}</span></code></pre>
+<h3 id="term-soc"><a class="header" href="#term-soc"><code>SoC</code>: System-on-Chip</a></h3>
+<p>Integrated silicon package combining CPU cores, GPU, NPU, memory controllers, and I/O fabrics on one die or interposer for high bandwidth and low dispatch latency. (Ch. 17)</p>
+<h3 id="term-sock-dgram"><a class="header" href="#term-sock-dgram"><code>SOCK_DGRAM</code>: Datagram Socket Type</a></h3>
+<p>Socket type providing connectionless, message-boundary-preserving packet delivery (UDP over IP or datagram AF_UNIX). Each sendto() produces one discrete datagram; readers receive either an entire message or a truncated prefix if the receive buffer is smaller than the payload. (Ch. 11, 14)</p>
+<pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>let fd = unsafe { libc::socket(libc::AF_INET, libc::SOCK_DGRAM, 0) };
+<span class="boring">}</span></code></pre>
+<h3 id="term-sock-stream"><a class="header" href="#term-sock-stream"><code>SOCK_STREAM</code>: Stream Socket Type</a></h3>
+<p>Socket type providing reliable, ordered, full-duplex byte-stream transport (TCP over IP or stream AF_UNIX). Because SOCK_STREAM preserves byte order rather than write boundaries, a single read() may return partial or coalesced writes, making explicit application framing mandatory. (Ch. 11, 13, 14)</p>
+<pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>let fd = unsafe { libc::socket(libc::AF_INET, libc::SOCK_STREAM, 0) };
+<span class="boring">}</span></code></pre>
+<h3 id="term-spsc"><a class="header" href="#term-spsc"><code>SPSC</code>: Single-Producer, Single-Consumer Ring Buffer</a></h3>
+<p>Lock-free bounded queue topology with exactly one writer updating the head index and one reader updating the tail index using Acquire/Release atomics on separate 64-byte cache lines. Eliminating Compare-And-Swap loops and locks makes SPSC rings the fastest inter-thread and io_uring handoff primitive. (Ch. 6, 19)</p>
+<pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>// Producer publishes slot with Release; consumer observes it with Acquire
+let h = head.load(Ordering::Relaxed);
+if h.wrapping_sub(tail.load(Ordering::Acquire)) &lt; CAP {
+    buf[h &amp; (CAP - 1)] = item;
+    head.store(h.wrapping_add(1), Ordering::Release);
+}
+<span class="boring">}</span></code></pre>
+<h3 id="term-sqms"><a class="header" href="#term-sqms"><code>SQMS</code>: Single-Queue Multiprocessor Scheduling</a></h3>
+<p>Simple SMP scheduler design sharing one global runqueue protected by a single mutex across all CPU cores. Although load balancing is trivial, global lock contention and constant thread migration across cores destroy L1/L2 cache locality as core counts grow, motivating MQMS. (Ch. 5)</p>
+<pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>// One shared mutex serializes every core's dispatch decision
+let next = global_runqueue.lock().unwrap().pop_front();
+<span class="boring">}</span></code></pre>
+<h3 id="term-sr-iov"><a class="header" href="#term-sr-iov"><code>SR-IOV</code>: Single Root I/O Virtualization</a></h3>
+<p>PCIe hardware feature splitting one physical NIC into multiple independent virtual functions that the hypervisor assigns directly to guest VMs via the IOMMU for near-bare-metal throughput. (Ch. 16)</p>
+<h3 id="term-sram"><a class="header" href="#term-sram"><code>SRAM</code>: Static Random-Access Memory</a></h3>
+<p>Six-transistor on-chip memory requiring no refresh, used to build L1 (~1 ns), L2 (~4 ns), and L3 (~15 ns) caches at far higher cost per byte than off-chip DRAM. (Ch. 2)</p>
+<h3 id="term-ssd"><a class="header" href="#term-ssd"><code>SSD</code>: Solid-State Drive</a></h3>
+<p>Non-volatile flash storage device accessed over NVMe/PCIe (~50 to 200 µs latency). Volatile controller write caches still require an explicit fsync() flush to guarantee crash durability. (Ch. 12, 18)</p>
+<h3 id="term-sse"><a class="header" href="#term-sse"><code>SSE</code>: Streaming SIMD Extensions</a></h3>
+<p>128-bit x86-64 vector instruction set whose aligned load/store instructions require 16-byte address alignment, shaping the System V AMD64 allocator contract. (Ch. 19)</p>
+<h3 id="term-stcf"><a class="header" href="#term-stcf"><code>STCF</code>: Shortest Time-to-Completion First Scheduling</a></h3>
+<p>Preemptive refinement of SJF that immediately preempts a running job whenever a newly arriving task has less remaining CPU time. STCF achieves optimal average turnaround time across arbitrary arrival patterns, though real kernels approximate it with MLFQ or EEVDF because future burst lengths are unknown. (Ch. 5)</p>
+<pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>// Always dispatch the runnable job with minimum remaining CPU time
+if let Some(best) = ready.iter().min_by_key(|j| j.remaining_us) {
+    dispatch(best.id);
+}
+<span class="boring">}</span></code></pre>
+<h3 id="term-stlb"><a class="header" href="#term-stlb"><code>STLB</code>: Shared Translation Lookaside Buffer (L2)</a></h3>
+<p>Second-level unified per-core TLB (1,024 to 2,048 entries) backing L1 instruction and data TLBs. With 4 KiB pages, 1,536 entries cover 6 MiB; with 2 MiB huge pages, the same entries cover 3 GiB. (Ch. 7)</p>
+<h3 id="term-syn"><a class="header" href="#term-syn"><code>SYN</code>: Synchronize (TCP)</a></h3>
+<p>TCP control flag opening the three-way handshake (SYN, SYN-ACK, ACK) to synchronize initial byte sequence numbers before user data flows. (Ch. 13, 14)</p>
+<h3 id="term-tcb"><a class="header" href="#term-tcb"><code>TCB</code>: Thread Control Block</a></h3>
+<p>Per-thread kernel structure storing saved registers, kernel stack pointer, Thread-Local Storage base, and scheduler runqueue state. (Ch. 4, 6)</p>
+<h3 id="term-tcp"><a class="header" href="#term-tcp"><code>TCP</code>: Transmission Control Protocol</a></h3>
+<p>Connection-oriented, reliable, ordered byte-stream transport over IP. Because TCP coalesces or splits writes freely, higher-level protocols must frame every message explicitly. (Ch. 2, 11, 13, 14, 15)</p>
+<pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>use std::net::TcpListener;
+let listener = TcpListener::bind("127.0.0.1:45678")?;
+<span class="boring">}</span></code></pre>
+<h3 id="term-tcp-nodelay"><a class="header" href="#term-tcp-nodelay"><code>TCP_NODELAY</code>: Disable Nagle’s Algorithm Socket Option</a></h3>
+<p>TCP socket option disabling Nagle’s coalescing timer so small outbound writes transmit immediately instead of waiting for prior ACKs. Leaving Nagle enabled alongside TCP Delayed ACK introduces artificial 40 to 200 ms stalls on interactive RPC and request/response protocols. (Ch. 13, 14)</p>
+<pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>stream.set_nodelay(true)?; // sets TCP_NODELAY to avoid Nagle + Delayed ACK stalls
+<span class="boring">}</span></code></pre>
+<h3 id="term-time-wait"><a class="header" href="#term-time-wait"><code>TIME_WAIT</code>: TCP Active-Close Cooldown State (2 MSL)</a></h3>
+<p>60- to 120-second state held by whichever TCP endpoint sent the final ACK of a four-way close. TIME_WAIT ensures the peer receives a retransmitted final ACK if lost and prevents delayed duplicate packets from corrupting a fresh connection on the same 4-tuple; bind() restarts pair it with SO_REUSEADDR. (Ch. 13, 14)</p>
+<pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>// Enable SO_REUSEADDR before bind() so restarts bypass lingering TIME_WAIT sockets
+let listener = std::net::TcpListener::bind("127.0.0.1:8080")?;
+<span class="boring">}</span></code></pre>
+<h3 id="term-tlb"><a class="header" href="#term-tlb"><code>TLB</code>: Translation Lookaside Buffer</a></h3>
+<p>Core-private associative cache storing recent VPN-to-PFN translations (~1 cycle hit), avoiding 4 sequential memory reads per load. Because TLBs are not coherent across cores, unmapping shared pages requires synchronous IPI shootdowns. (Ch. 4, 7, 13, 16, 18, 19)</p>
+<h3 id="term-tls"><a class="header" href="#term-tls"><code>TLS</code>: Transport Layer Security / Thread-Local Storage</a></h3>
+<p>In networking (Ch. 14), cryptographic protocol encrypting TCP connections. In threading (Ch. 3, 4), per-thread private variable storage anchored at FS_BASE (x86-64) or TPIDR_EL0 (ARM64) for lock-free thread-local state like errno.</p>
+<h3 id="term-tso"><a class="header" href="#term-tso"><code>TSO</code>: Total Store Order Memory Model</a></h3>
+<p>Hardware memory consistency model implemented by x86-64 that guarantees loads never reorder with loads and stores never reorder with stores, while still allowing a local store in a core’s FIFO store buffer to appear after a subsequent load. Relying on TSO without explicit Acquire/Release atomics causes subtle data races when porting lock-free code to weakly ordered ARM64. (Ch. 6)</p>
+<pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>// Explicit SeqCst / Acquire-Release fences keep lock-free code portable beyond x86-64 TSO
+flag.store(true, Ordering::Release);
+let observed = ready.load(Ordering::Acquire);
+<span class="boring">}</span></code></pre>
+<h3 id="term-tss"><a class="header" href="#term-tss"><code>TSS</code>: Task State Segment (x86-64)</a></h3>
+<p>Per-core x86-64 hardware structure supplying the Ring 0 kernel stack pointer (RSP0) and dedicated Interrupt Stack Table pointers whenever an exception or interrupt vectors out of Ring 3. Without a valid TSS kernel stack, a hardware interrupt arriving while Ring 3 holds a corrupted or full user stack would trigger a fatal triple fault. (Ch. 2, 9)</p>
+<pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>// On every Ring 3 -&gt; Ring 0 trap, hardware loads RSP from TSS.RSP0
+#[repr(C, packed)]
+struct Tss64Head { reserved0: u32, rsp0: u64, rsp1: u64, rsp2: u64 }
+<span class="boring">}</span></code></pre>
+<h3 id="term-ttbr0"><a class="header" href="#term-ttbr0"><code>TTBR0_EL1 / TTBR1_EL1</code>: Translation Table Base Registers</a></h3>
+<p>Dual ARM64 root page-table registers separating user-space (TTBR0_EL1) and kernel-space (TTBR1_EL1) mappings natively in silicon without requiring CR3 switches on syscalls. (Ch. 3, 4, 7)</p>
+<h3 id="term-tty"><a class="header" href="#term-tty"><code>TTY</code>: Teletype (Terminal Device)</a></h3>
+<p>Character device mediating interactive keyboard input, line discipline, and foreground job-control signals (SIGINT, SIGHUP). Daemons double-fork so they can never accidentally acquire a controlling TTY. (Ch. 15)</p>
+<h3 id="term-udp"><a class="header" href="#term-udp"><code>UDP</code>: User Datagram Protocol</a></h3>
+<p>Connectionless, boundary-preserving datagram transport with an 8-byte header and zero handshake delay, ideal for DNS, telemetry, real-time media, and QUIC. Oversized datagrams are truncated without error if the receive buffer is too small. (Ch. 13, 14)</p>
+<pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>use std::net::UdpSocket;
+let sock = UdpSocket::bind("127.0.0.1:0")?;
+sock.send_to(b"ping-udp", "127.0.0.1:45680")?;
+<span class="boring">}</span></code></pre>
+<h3 id="term-uid"><a class="header" href="#term-uid"><code>UID</code>: User Identifier</a></h3>
+<p>Numeric Unix identity governing file ownership and privilege checks (UID 0 is root; user namespaces map container UID 0 to an unprivileged host UID). (Ch. 3, 12, 16)</p>
+<h3 id="term-uma"><a class="header" href="#term-uma"><code>UMA</code>: Unified Memory Architecture</a></h3>
+<p>SoC memory design (such as Apple Silicon) where CPU, GPU, and NPU share one physical high-bandwidth memory pool, eliminating PCIe DMA copies while still requiring explicit cache flushes and command-buffer fences. (Ch. 17)</p>
+<h3 id="term-upi"><a class="header" href="#term-upi"><code>UPI</code>: Ultra Path Interconnect</a></h3>
+<p>Intel high-speed point-to-point cache-coherent fabric linking multi-socket NUMA processors and carrying remote DRAM requests and MESI invalidations. (Ch. 5, 17)</p>
+<h3 id="term-usdt"><a class="header" href="#term-usdt"><code>USDT</code>: User-Level Statically Defined Tracing</a></h3>
+<p>Zero-overhead instrumentation probes embedded as NOP instructions in compiled user-space binaries (with metadata in ELF notes) that eBPF or DTrace can patch dynamically at runtime. USDT lets operators inspect live database queries or allocator events in production without recompiling or paying logging overhead when disabled. (Ch. 18)</p>
+<pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>// Attach an eBPF tracepoint to a compiled USDT probe at runtime:
+// bpftrace -e 'usdt:./server:http:request_start { @reqs = count(); }'
+<span class="boring">}</span></code></pre>
+<h3 id="term-va"><a class="header" href="#term-va"><code>VA</code>: Virtual Address</a></h3>
+<p>Program pointer address inside a process’s private linear address space, sliced into four 9-bit radix indices and an invariant 12-bit page offset on 48-bit x86-64 systems. (Ch. 7)</p>
+<h3 id="term-vcpu"><a class="header" href="#term-vcpu"><code>vCPU</code>: Virtual Central Processing Unit</a></h3>
+<p>Virtual core exposed to a guest OS, backed by a host thread and a hardware VMCS structure scheduled across physical host cores by the hypervisor. (Ch. 16)</p>
+<h3 id="term-vdso"><a class="header" href="#term-vdso"><code>vDSO</code>: Virtual Dynamic Shared Object</a></h3>
+<p>Read-only kernel page mapped directly into user space on Linux so high-frequency calls like clock_gettime() read calibrated hardware counters in ~15 ns without trapping into Ring 0. (Ch. 9)</p>
+<h3 id="term-vfio"><a class="header" href="#term-vfio"><code>VFIO</code>: Virtual Function I/O</a></h3>
+<p>Linux framework exposing physical PCIe devices directly to a VM or user-space driver safely through IOMMU DMA isolation. (Ch. 16)</p>
+<h3 id="term-vfs"><a class="header" href="#term-vfs"><code>VFS</code>: Virtual File System</a></h3>
+<p>Kernel abstraction layer defining uniform inode, dentry, superblock, and file operations so POSIX syscalls (open, read, stat, mmap) work identically across ext4, XFS, APFS, tmpfs, pipes, and /proc. Without VFS, every user application would need filesystem-specific code paths. (Ch. 12)</p>
+<pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>// Uniform POSIX VFS interface reads regular files, /proc entries, and pipes identically
+let text = std::fs::read_to_string("/proc/self/stat")?;
+<span class="boring">}</span></code></pre>
+<h3 id="term-vm"><a class="header" href="#term-vm"><code>VM</code>: Virtual Machine</a></h3>
+<p>Hardware-isolated guest execution environment running an independent kernel atop a hypervisor, providing a strong multi-tenant security boundary at higher memory overhead than containers. (Ch. 16)</p>
+<h3 id="term-vma"><a class="header" href="#term-vma"><code>VMA</code>: Virtual Memory Area</a></h3>
+<p>Kernel interval record (vm_area_struct) tracking every valid virtual region (text, heap, mmap, stack) and its logical permissions, consulted by the page-fault handler to distinguish lazy allocation from illegal SIGSEGV accesses. (Ch. 3, 7)</p>
+<h3 id="term-vmcs"><a class="header" href="#term-vmcs"><code>VMCS</code>: Virtual Machine Control Structure</a></h3>
+<p>In-memory Intel VT-x state block storing guest registers, host registers, EPT root pointer, and VM-Exit intercept bitmaps for one vCPU. (Ch. 16)</p>
+<h3 id="term-vmx"><a class="header" href="#term-vmx"><code>VMX</code>: Virtual Machine Extensions</a></h3>
+<p>Intel VT-x execution architecture separating the host hypervisor (VMX Root) from guest kernels (VMX Non-Root) orthogonally to Rings 0 through 3. (Ch. 16)</p>
+<h3 id="term-vpid"><a class="header" href="#term-vpid"><code>VPID</code>: Virtual Processor Identifier</a></h3>
+<p>Intel hardware TLB tag isolating host and guest virtual translations across VM-Exit and VM-Entry without flushing the TLB. (Ch. 16)</p>
+<h3 id="term-vpn"><a class="header" href="#term-vpn"><code>VPN</code>: Virtual Page Number</a></h3>
+<p>Upper virtual address bits (VA &gt;&gt; 12) identifying a 4 KiB virtual page and indexing the TLB or 4-level radix page table while the low 12-bit offset passes through unmodified. (Ch. 7)</p>
+<h3 id="term-vram"><a class="header" href="#term-vram"><code>VRAM</code>: Video Random-Access Memory</a></h3>
+<p>Dedicated high-bandwidth memory soldered onto discrete GPU cards, requiring explicit PCIe DMA copies and host page pinning when moving tensors from CPU DRAM. (Ch. 17)</p>
+<h3 id="term-vt-x"><a class="header" href="#term-vt-x"><code>VT-x</code>: Intel Virtualization Technology</a></h3>
+<p>Intel x86-64 hardware virtualization extensions providing VMX Root/Non-Root execution modes, VMCS state switching, and Extended Page Tables. (Ch. 16)</p>
+<h3 id="term-wx"><a class="header" href="#term-wx"><code>W^X</code>: Write XOR Execute</a></h3>
+<p>Memory-safety invariant prohibiting any virtual page from being simultaneously writable and executable, enforced in hardware via PTE bit 63 (NX = 1) on stack and heap allocations. (Ch. 7)</p>
+<pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>// Guard page: strip all R/W/X permissions in hardware PTE
+unsafe { libc::mprotect(guard_ptr, page_size, libc::PROT_NONE) };
+<span class="boring">}</span></code></pre>
+<h3 id="term-wal"><a class="header" href="#term-wal"><code>WAL</code>: Write-Ahead Log</a></h3>
+<p>Crash-recovery protocol appending every state mutation sequentially to a durable log (flushed via fsync()) before applying in-place updates to primary data structures or filesystem metadata. If power fails mid-operation, replaying committed WAL records restores a consistent state without corruption. (Ch. 12)</p>
+<pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>use std::io::Write;
+wal_file.write_all(entry_bytes)?;
+wal_file.sync_data()?; // commit WAL record before mutating B-tree pages
+<span class="boring">}</span></code></pre>
+<h3 id="term-wnohang"><a class="header" href="#term-wnohang"><code>WNOHANG</code>: Non-Blocking Wait Flag</a></h3>
+<p>waitpid() option flag returning 0 immediately when child processes are still alive instead of blocking the caller. Event loops and SIGCHLD handlers loop over waitpid(-1, &amp;mut status, WNOHANG) until it returns 0 or ECHILD to reap every coalesced zombie without stalling the process. (Ch. 3, 10, 15)</p>
+<pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>let mut status: libc::c_int = 0;
+while unsafe { libc::waitpid(-1, &amp;mut status, libc::WNOHANG) } &gt; 0 {
+    // Reaped a terminated child without blocking
+}
+<span class="boring">}</span></code></pre>
+<h3 id="term-xfs"><a class="header" href="#term-xfs"><code>XFS</code>: Extended File System</a></h3>
+<p>High-performance 64-bit journaling, extent-based Linux filesystem engineered for parallel multi-core I/O scalability and massive file sizes. (Ch. 12)</p>
+<h3 id="term-xnu"><a class="header" href="#term-xnu"><code>XNU</code>: X is Not Unix (Darwin Kernel)</a></h3>
+<p>Hybrid kernel powering macOS and Apple platforms, combining a Mach microkernel core (tasks, threads, Mach ports) with a BSD POSIX layer (processes, sockets, kqueue). (Ch. 3, 5)</p>
+<h2 id="additional-kernel-constants-registers--protocols"><a class="header" href="#additional-kernel-constants-registers--protocols">Additional Kernel Constants, Registers &amp; Protocols</a></h2>
+<h3 id="term-srtf"><a class="header" href="#term-srtf"><code>SRTF</code>: Shortest Remaining Time First</a></h3>
+<p>Preemptive variant of Shortest Job First that immediately switches the processor to any newly arriving job whose remaining burst is shorter than the active job. It minimizes average turnaround time in theory, yet requires predicting future CPU bursts and risks starving long compute jobs under steady short arrivals. (Ch. 5)</p>
+<pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>let next = ready.iter().min_by_key(|job| job.remaining_ms);
+<span class="boring">}</span></code></pre>
+<h3 id="term-rmw"><a class="header" href="#term-rmw"><code>RMW</code>: Read-Modify-Write</a></h3>
+<p>Indivisible hardware instruction sequence that loads a memory word, computes a new value, and stores it back without allowing another core to interleave between the load and store. Atomics such as fetch_add and compare_exchange compile to RMW instructions like LOCK XADD or LDADDAL. (Ch. 2, 4, 6)</p>
+<pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>use std::sync::atomic::{AtomicU64, Ordering};
+let prev = counter.fetch_add(1, Ordering::AcqRel);
+<span class="boring">}</span></code></pre>
+<h3 id="term-tas"><a class="header" href="#term-tas"><code>TAS</code>: Test-and-Set</a></h3>
+<p>Minimal atomic spinlock primitive that atomically writes true to a lock flag and returns its previous value. Under multi-core contention, repeated failed writes bounce the cache line in Modified state across cores and provide no FIFO fairness. (Ch. 6)</p>
+<pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>use std::sync::atomic::{AtomicBool, Ordering};
+while lock.swap(true, Ordering::Acquire) { std::hint::spin_loop(); }
+<span class="boring">}</span></code></pre>
+<h3 id="term-lde"><a class="header" href="#term-lde"><code>LDE</code>: Limited Direct Execution</a></h3>
+<p>Core operating system execution model: programs run instructions directly on the physical CPU in unprivileged user mode at full speed, while hardware traps (system calls, faults, and timer interrupts) hand control back to the kernel to enforce isolation and preemption. (Ch. 3)</p>
+<pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>// User code executes directly until a trap or timer interrupt enters Ring 0
+let pid = std::process::id();
+<span class="boring">}</span></code></pre>
+<h3 id="term-pip"><a class="header" href="#term-pip"><code>PIP</code>: Priority Inheritance Protocol</a></h3>
+<p>Real-time scheduling mechanism that temporarily elevates the priority of a low-priority thread holding a mutex to match the highest-priority thread blocked on that mutex, preventing unbounded priority inversion by medium-priority threads. (Ch. 5)</p>
+<pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>// Linux POSIX mutex attribute: PTHREAD_PRIO_INHERIT
+// Prevents medium-priority threads from preempting a lock holder
+<span class="boring">}</span></code></pre>
+<h3 id="term-pcp"><a class="header" href="#term-pcp"><code>PCP</code>: Priority Ceiling Protocol</a></h3>
+<p>Real-time lock protocol assigning each mutex a static priority ceiling equal to the highest priority of any thread that may acquire it, elevating the holder immediately on acquisition to prevent both priority inversion and chained blocking. (Ch. 5)</p>
+<pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>// Linux POSIX mutex attribute: PTHREAD_PRIO_PROTECT
+// Raises holder to the mutex ceiling immediately upon lock acquisition
+<span class="boring">}</span></code></pre>
+<h3 id="term-pipe-buf"><a class="header" href="#term-pipe-buf"><code>PIPE_BUF</code>: Atomic Pipe Write Threshold</a></h3>
+<p>POSIX minimum guaranteed size (at least 512 bytes; 4,096 bytes on Linux and macOS) for which a single write to a pipe or FIFO is guaranteed not to interleave with concurrent writes from other processes. Writes larger than PIPE_BUF may fragment and interleave. (Ch. 11)</p>
+<pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>const MAX_ATOMIC_MSG: usize = libc::PIPE_BUF;
+assert!(payload.len() &lt;= MAX_ATOMIC_MSG);
+<span class="boring">}</span></code></pre>
+<h3 id="term-rtt"><a class="header" href="#term-rtt"><code>RTT</code>: Round-Trip Time</a></h3>
+<p>Elapsed network latency for a packet to travel from sender to receiver and for the corresponding acknowledgment to return. Together with link bandwidth, RTT determines the Bandwidth-Delay Product required to keep a TCP pipe full. (Ch. 14)</p>
+<pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>let bdp_bytes = (bandwidth_bps / 8.0) * rtt_seconds;
+<span class="boring">}</span></code></pre>
+<h3 id="term-waf"><a class="header" href="#term-waf"><code>WAF</code>: Write Amplification Factor</a></h3>
+<p>Ratio of physical bytes written to NAND flash by an SSD Flash Translation Layer to logical bytes written by the host operating system. Random small writes trigger heavy garbage collection and push WAF well above 1.0, wearing out flash cells prematurely. (Ch. 12)</p>
+<pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>let waf = physical_flash_bytes_written as f64 / host_logical_bytes as f64;
+<span class="boring">}</span></code></pre>
+<h3 id="term-tma"><a class="header" href="#term-tma"><code>TMA</code>: Top-Down Microarchitecture Analysis</a></h3>
+<p>Structured CPU performance methodology that classifies every pipeline issue slot into four mutually exclusive categories: Retiring, Bad Speculation, Frontend Bound, or Backend Bound, pinpointing whether code is stalled on instruction fetch, branch misses, or memory latency. (Ch. 18)</p>
+<pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>// Measure with: perf stat --topdown -a -- ./benchmark
+<span class="boring">}</span></code></pre>
+<h3 id="term-epollet"><a class="header" href="#term-epollet"><code>EPOLLET</code>: Edge-Triggered epoll Mode</a></h3>
+<p>Linux epoll registration flag that delivers a readiness notification only when a file descriptor transitions from not-ready to ready. Callers must drain the non-blocking descriptor in a loop until EAGAIN or risk permanent stalls on unread buffered bytes. (Ch. 13)</p>
+<pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>let ev = libc::epoll_event { events: (libc::EPOLLIN | libc::EPOLLET) as u32, u64: fd as u64 };
+<span class="boring">}</span></code></pre>
+<h3 id="term-pollout"><a class="header" href="#term-pollout"><code>POLLOUT</code>: Socket Writable Readiness Event</a></h3>
+<p>Event-loop readiness flag indicating that the kernel socket send buffer has free space to accept outgoing bytes without blocking. Servers arm POLLOUT only when a non-blocking write returns EAGAIN and disarm it once the send queue drains. (Ch. 13)</p>
+<pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>let pfd = libc::pollfd { fd, events: libc::POLLIN | libc::POLLOUT, revents: 0 };
+<span class="boring">}</span></code></pre>
+<h3 id="term-futex-wait"><a class="header" href="#term-futex-wait"><code>FUTEX_WAIT</code>: Futex Sleep Operation</a></h3>
+<p>Kernel futex command that atomically verifies *addr == expected under the wait-queue hash-bucket spinlock and parks the calling thread only if the condition still holds, closing the lost-wakeup race between user-mode state checks and kernel sleep. (Ch. 6)</p>
+<pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>// Only parks in Ring 0 if atomic state still equals 2 (contended)
+// Returns EAGAIN immediately if another thread already unlocked
+<span class="boring">}</span></code></pre>
+<h3 id="term-futex-wake"><a class="header" href="#term-futex-wake"><code>FUTEX_WAKE</code>: Futex Wakeup Operation</a></h3>
+<p>Kernel futex command that acquires the hash-bucket spinlock for a user-space address and transitions up to N parked waiters back onto the CPU runqueue when a contended lock or condition variable is released. (Ch. 6)</p>
+<pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>// Invoked on unlock only when previous state was 2 (waiters present)
+<span class="boring">}</span></code></pre>
+<h3 id="term-msg-zerocopy"><a class="header" href="#term-msg-zerocopy"><code>MSG_ZEROCOPY</code>: Zero-Copy Socket Transmit Flag</a></h3>
+<p>Linux send(2) flag that pins user-space memory pages and hands them directly to the NIC DMA engine instead of copying into kernel sk_buffs, notifying the sender via MSG_ERRQUEUE once the buffer is safe to reuse. (Ch. 14)</p>
+<pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>// Enable with setsockopt(fd, SOL_SOCKET, SO_ZEROCOPY, &amp;1)
+// Transmit with send(fd, buf, len, MSG_ZEROCOPY)
+<span class="boring">}</span></code></pre>
+<h3 id="term-nand"><a class="header" href="#term-nand"><code>NAND</code>: NAND Flash Storage</a></h3>
+<p>Non-volatile solid-state memory organized into 4 to 16 KiB pages (the unit of reads and writes) grouped into multi-megabyte erase blocks (the unit of erasure). Because flash pages cannot be overwritten in place, SSDs require a Flash Translation Layer. (Ch. 12)</p>
+<pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>// Sequential writes align with NAND erase blocks and minimize garbage collection
+<span class="boring">}</span></code></pre>
+<h3 id="term-lba"><a class="header" href="#term-lba"><code>LBA</code>: Logical Block Address</a></h3>
+<p>Linear block index exposed by an NVMe SSD or disk to the operating system. Inside an SSD, the Flash Translation Layer dynamically remaps each LBA to a physical NAND page on every write. (Ch. 12)</p>
+<pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>let lba_index: u64 = file_byte_offset / 4096;
+<span class="boring">}</span></code></pre>
+<h3 id="term-pan"><a class="header" href="#term-pan"><code>PAN</code>: Privileged Access Never</a></h3>
+<p>ARM64 hardware security feature (analogous to x86-64 SMAP) that traps any accidental kernel-mode load or store to user-space virtual memory unless executed through explicit copy_from_user or copy_to_user helpers. (Ch. 9)</p>
+<pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>// Enforced in hardware via PSTATE.PAN across EL1 kernel execution
+<span class="boring">}</span></code></pre>
+<h3 id="term-alu"><a class="header" href="#term-alu"><code>ALU</code>: Arithmetic Logic Unit</a></h3>
+<p>Combinational hardware circuit inside each CPU core that performs integer arithmetic, bitwise logic, and comparisons directly on architectural registers within a single clock cycle. (Ch. 2)</p>
+<pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>let sum = a.wrapping_add(b); // Single-cycle integer ALU add
+<span class="boring">}</span></code></pre>
+<h3 id="term-mlp"><a class="header" href="#term-mlp"><code>MLP</code>: Memory-Level Parallelism</a></h3>
+<p>Ability of an out-of-order CPU core to keep multiple independent DRAM cache misses in flight concurrently via Line Fill Buffers, hiding 60 to 100 ns memory latency behind overlapped transfers. (Ch. 18)</p>
+<pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>// Independent array streams exploit MLP; linked-list pointer chasing serializes misses
+<span class="boring">}</span></code></pre>
+<h3 id="term-lifo"><a class="header" href="#term-lifo"><code>LIFO</code>: Last-In, First-Out</a></h3>
+<p>Stack ordering discipline where the most recently pushed item is popped first. Kernel slab caches and thread pools often prefer LIFO order because the most recently freed object is still hot in L1/L2 cache. (Ch. 8, 17)</p>
+<pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>let mut freelist: Vec&lt;usize&gt; = Vec::new();
+freelist.push(slot); let hot_slot = freelist.pop();
+<span class="boring">}</span></code></pre>
+<h3 id="term-eperm"><a class="header" href="#term-eperm"><code>EPERM</code>: Operation Not Permitted Error</a></h3>
+<p>POSIX errno indicating that the calling process lacks the required privilege or that an operation is structurally forbidden, such as calling epoll_ctl on a regular disk file or setsid from a process group leader. (Ch. 13, 15)</p>
+<pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>if err.raw_os_error() == Some(libc::EPERM) { /* lacking privilege or invalid fd type */ }
+<span class="boring">}</span></code></pre>
+<h3 id="term-c10m"><a class="header" href="#term-c10m"><code>C10M</code>: Ten Million Concurrent Connections</a></h3>
+<p>Systems scaling regime requiring kernel-bypass or completion-based I/O (io_uring, DPDK), per-core sharded state, and zero-copy packet paths because thread-per-connection memory and syscall overhead collapse well before 10 million sockets. (Ch. 13)</p>
+<pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>// Event-driven reactor + io_uring replaces 10M thread stacks with shared ring buffers
+<span class="boring">}</span></code></pre>
+<h3 id="term-zfs"><a class="header" href="#term-zfs"><code>ZFS</code>: Zettabyte File System</a></h3>
+<p>Copy-on-write, end-to-end checksummed filesystem and volume manager that writes modified data and metadata into fresh blocks and commits atomically by updating a single root uberblock, eliminating in-place write-hole corruption. (Ch. 12)</p>
+<pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>// Copy-on-write root pointer swap makes every transaction atomic across power loss
+<span class="boring">}</span></code></pre>
+<h3 id="term-rsp"><a class="header" href="#term-rsp"><code>RSP</code>: Stack Pointer Register (x86-64)</a></h3>
+<p>64-bit x86-64 architectural register pointing to the top (lowest address) of the active thread call stack. Calling a function decrements RSP to push the return address; returning increments it. (Ch. 2, 3)</p>
+<pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>// ARM64 equivalents: SP_EL0 (user stack) and SP_EL1 (kernel stack)
+<span class="boring">}</span></code></pre>
+<h3 id="term-rip"><a class="header" href="#term-rip"><code>RIP</code>: Instruction Pointer Register (x86-64)</a></h3>
+<p>64-bit x86-64 program counter holding the virtual address of the next instruction to fetch and execute. Saved automatically onto the kernel stack during traps and interrupts. (Ch. 2, 3)</p>
+<pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>// Hardware pushes RIP onto the kernel trapframe on interrupt or exception
+<span class="boring">}</span></code></pre>
+<h3 id="term-rflags"><a class="header" href="#term-rflags"><code>RFLAGS</code>: Processor Flags Register (x86-64)</a></h3>
+<p>64-bit x86-64 status register holding arithmetic condition codes (Zero, Carry, Sign) and system control bits such as the Interrupt Flag (IF) that masks or enables hardware interrupts. (Ch. 2)</p>
+<pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>// Saved and restored atomically across interrupts by hardware iretq
+<span class="boring">}</span></code></pre>
+<h3 id="term-fs-base"><a class="header" href="#term-fs-base"><code>FS_BASE</code>: x86-64 Thread-Local Base Register</a></h3>
+<p>Model-specific x86-64 segment base register storing the per-thread pointer to Thread-Local Storage (TLS) so accessing thread-local variables like errno requires a single register-offset load with zero locks. (Ch. 4, 9)</p>
+<pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>thread_local! { static PER_THREAD_ID: std::cell::Cell&lt;u64&gt; = const { std::cell::Cell::new(0) }; }
+<span class="boring">}</span></code></pre>
+<h3 id="term-tpidr"><a class="header" href="#term-tpidr"><code>TPIDR_EL0</code>: ARM64 Thread-Local Base Register</a></h3>
+<p>ARM64 user-readable system register holding the base address of the current thread Thread-Local Storage block, serving the exact role of FS_BASE on x86-64. (Ch. 4, 9)</p>
+<pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>// Kernel swaps TPIDR_EL0 on every thread context switch
+<span class="boring">}</span></code></pre>
+<h3 id="term-vbar"><a class="header" href="#term-vbar"><code>VBAR_EL1</code>: Vector Base Address Register (ARM64)</a></h3>
+<p>ARM64 EL1 system register pointing to the base address of the kernel exception vector table, analogous to IDTR on x86-64. (Ch. 2)</p>
+<pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>// Hardware jumps to VBAR_EL1 + vector_offset on synchronous traps and IRQs
+<span class="boring">}</span></code></pre>
+<h3 id="term-gicd"><a class="header" href="#term-gicd"><code>GICD / GICR</code>: GIC Distributor and Redistributor</a></h3>
+<p>ARM64 GICv3 hardware components: the global Distributor (GICD) routes shared peripheral interrupts across cores, while each core private Redistributor (GICR) manages per-core SGI and PPI delivery. (Ch. 2)</p>
+<pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>// Replaces x86-64 IO-APIC (shared) and Local APIC (per-core)
+<span class="boring">}</span></code></pre>
+<h3 id="term-sgi"><a class="header" href="#term-sgi"><code>SGI / PPI</code>: Software-Generated &amp; Private Peripheral Interrupts</a></h3>
+<p>ARM64 core-local interrupt classes: SGIs (vectors 0 to 15) implement cross-core Inter-Processor Interrupts (IPIs), while PPIs (vectors 16 to 31) deliver per-core timer signals. (Ch. 2)</p>
+<pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>// Delivered directly through the target core GICR without global distributor contention
+<span class="boring">}</span></code></pre>
+<h3 id="term-msi"><a class="header" href="#term-msi"><code>MSI</code>: Message Signaled Interrupts</a></h3>
+<p>PCIe interrupt mechanism in which a device writes a small DMA message directly to the interrupt controller address space instead of asserting a shared physical IRQ wire, eliminating pin-sharing latency. (Ch. 2)</p>
+<pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>// Extended by MSI-X to support up to 2,048 independent per-queue vectors
+<span class="boring">}</span></code></pre>
+<h3 id="term-sig-block"><a class="header" href="#term-sig-block"><code>SIG_BLOCK / SIG_UNBLOCK</code>: Signal Mask Operations</a></h3>
+<p>Commands passed to sigprocmask or pthread_sigmask to atomically add signals to or remove signals from the thread blocked signal mask, deferring asynchronous delivery across critical sections. (Ch. 10)</p>
+<pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>// Block SIGTERM before entering a critical section; unblock or wait via pselect/signalfd
+<span class="boring">}</span></code></pre>
+<h3 id="term-listen-fds"><a class="header" href="#term-listen-fds"><code>LISTEN_FDS</code>: systemd Socket Activation Environment Variable</a></h3>
+<p>Environment variable set by systemd indicating how many pre-bound listening file descriptors (starting at fd 3) were inherited across exec, enabling zero-downtime restarts without dropping connections. (Ch. 15)</p>
+<pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>let count: usize = std::env::var("LISTEN_FDS").ok().and_then(|v| v.parse().ok()).unwrap_or(0);
+<span class="boring">}</span></code></pre>
+<h3 id="term-subreaper"><a class="header" href="#term-subreaper"><code>PR_SET_CHILD_SUBREAPER</code>: Linux Process Subreaper Flag</a></h3>
+<p>Linux prctl(2) attribute designating a supervisor process to inherit orphaned descendants instead of PID 1, allowing service managers to track and reap grandchildren cleanly. (Ch. 15)</p>
+<pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>// unsafe { libc::prctl(libc::PR_SET_CHILD_SUBREAPER, 1, 0, 0, 0) };
+<span class="boring">}</span></code></pre>
+<h3 id="term-clone-vm"><a class="header" href="#term-clone-vm"><code>CLONE_VM</code>: Linux Shared Address Space Clone Flag</a></h3>
+<p>Linux clone(2) flag instructing the kernel to share the caller virtual memory descriptor (mm_struct) with the newly created task, turning a clone call into a lightweight OS thread rather than an isolated process. (Ch. 3, 4)</p>
+<pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>// Combined with CLONE_THREAD | CLONE_FILES | CLONE_SIGHAND by pthread_create
+<span class="boring">}</span></code></pre>
+<h3 id="term-sol-socket"><a class="header" href="#term-sol-socket"><code>SOL_SOCKET</code>: Socket-Level Option Namespace</a></h3>
+<p>Protocol level constant passed to setsockopt and getsockopt for transport-independent socket options such as SO_REUSEADDR, SO_KEEPALIVE, SO_RCVBUF, and SO_PEERCRED. (Ch. 11, 14)</p>
+<pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>// unsafe { libc::setsockopt(fd, libc::SOL_SOCKET, libc::SO_REUSEADDR, &amp;one as *const _ as *const _, 4) };
+<span class="boring">}</span></code></pre>
+
+                    </main>
+
+                    <nav class="nav-wrapper" aria-label="Page navigation">
+                        <!-- Mobile navigation buttons -->
+                            <a rel="prev" href="ch19-interview-problems.html" class="mobile-nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                                <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M41.4 233.4c-12.5 12.5-12.5 32.8 0 45.3l160 160c12.5 12.5 32.8 12.5 45.3 0s12.5-32.8 0-45.3L109.3 256 246.6 118.6c12.5-12.5 12.5-32.8 0-45.3s-32.8-12.5-45.3 0l-160 160z"/></svg></span>
+                            </a>
+
+
+                        <div style="clear: both"></div>
+                    </nav>
+                </div>
+            </div>
+
+            <nav class="nav-wide-wrapper" aria-label="Page navigation">
+                    <a rel="prev" href="ch19-interview-problems.html" class="nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                        <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M41.4 233.4c-12.5 12.5-12.5 32.8 0 45.3l160 160c12.5 12.5 32.8 12.5 45.3 0s12.5-32.8 0-45.3L109.3 256 246.6 118.6c12.5-12.5 12.5-32.8 0-45.3s-32.8-12.5-45.3 0l-160 160z"/></svg></span>
+                    </a>
+
+            </nav>
+
+        </div>
+
+        <template id=fa-eye><span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 576 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M288 32c-80.8 0-145.5 36.8-192.6 80.6C48.6 156 17.3 208 2.5 243.7c-3.3 7.9-3.3 16.7 0 24.6C17.3 304 48.6 356 95.4 399.4C142.5 443.2 207.2 480 288 480s145.5-36.8 192.6-80.6c46.8-43.5 78.1-95.4 93-131.1c3.3-7.9 3.3-16.7 0-24.6c-14.9-35.7-46.2-87.7-93-131.1C433.5 68.8 368.8 32 288 32zM432 256c0 79.5-64.5 144-144 144s-144-64.5-144-144s64.5-144 144-144s144 64.5 144 144zM288 192c0 35.3-28.7 64-64 64c-11.5 0-22.3-3-31.6-8.4c-.2 2.8-.4 5.5-.4 8.4c0 53 43 96 96 96s96-43 96-96s-43-96-96-96c-2.8 0-5.6 .1-8.4 .4c5.3 9.3 8.4 20.1 8.4 31.6z"/></svg></span></template>
+        <template id=fa-eye-slash><span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M38.8 5.1C28.4-3.1 13.3-1.2 5.1 9.2S-1.2 34.7 9.2 42.9l592 464c10.4 8.2 25.5 6.3 33.7-4.1s6.3-25.5-4.1-33.7L525.6 386.7c39.6-40.6 66.4-86.1 79.9-118.4c3.3-7.9 3.3-16.7 0-24.6c-14.9-35.7-46.2-87.7-93-131.1C465.5 68.8 400.8 32 320 32c-68.2 0-125 26.3-169.3 60.8L38.8 5.1zM223.1 149.5C248.6 126.2 282.7 112 320 112c79.5 0 144 64.5 144 144c0 24.9-6.3 48.3-17.4 68.7L408 294.5c5.2-11.8 8-24.8 8-38.5c0-53-43-96-96-96c-2.8 0-5.6 .1-8.4 .4c5.3 9.3 8.4 20.1 8.4 31.6c0 10.2-2.4 19.8-6.6 28.3l-90.3-70.8zm223.1 298L373 389.9c-16.4 6.5-34.3 10.1-53 10.1c-79.5 0-144-64.5-144-144c0-6.9 .5-13.6 1.4-20.2L83.1 161.5C60.3 191.2 44 220.8 34.5 243.7c-3.3 7.9-3.3 16.7 0 24.6c14.9 35.7 46.2 87.7 93 131.1C174.5 443.2 239.2 480 320 480c47.8 0 89.9-12.9 126.2-32.5z"/></svg></span></template>
+        <template id=fa-copy><span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M502.6 70.63l-61.25-61.25C435.4 3.371 427.2 0 418.7 0H255.1c-35.35 0-64 28.66-64 64l.0195 256C192 355.4 220.7 384 256 384h192c35.2 0 64-28.8 64-64V93.25C512 84.77 508.6 76.63 502.6 70.63zM464 320c0 8.836-7.164 16-16 16H255.1c-8.838 0-16-7.164-16-16L239.1 64.13c0-8.836 7.164-16 16-16h128L384 96c0 17.67 14.33 32 32 32h47.1V320zM272 448c0 8.836-7.164 16-16 16H63.1c-8.838 0-16-7.164-16-16L47.98 192.1c0-8.836 7.164-16 16-16H160V128H63.99c-35.35 0-64 28.65-64 64l.0098 256C.002 483.3 28.66 512 64 512h192c35.2 0 64-28.8 64-64v-32h-47.1L272 448z"/></svg></span></template>
+        <template id=fa-play><span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 384 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M73 39c-14.8-9.1-33.4-9.4-48.5-.9S0 62.6 0 80V432c0 17.4 9.4 33.4 24.5 41.9s33.7 8.1 48.5-.9L361 297c14.3-8.7 23-24.2 23-41s-8.7-32.2-23-41L73 39z"/></svg></span></template>
+        <template id=fa-clock-rotate-left><span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M75 75L41 41C25.9 25.9 0 36.6 0 57.9V168c0 13.3 10.7 24 24 24H134.1c21.4 0 32.1-25.9 17-41l-30.8-30.8C155 85.5 203 64 256 64c106 0 192 86 192 192s-86 192-192 192c-40.8 0-78.6-12.7-109.7-34.4c-14.5-10.1-34.4-6.6-44.6 7.9s-6.6 34.4 7.9 44.6C151.2 495 201.7 512 256 512c141.4 0 256-114.6 256-256S397.4 0 256 0C185.3 0 121.3 28.7 75 75zm181 53c-13.3 0-24 10.7-24 24V256c0 6.4 2.5 12.5 7 17l72 72c9.4 9.4 24.6 9.4 33.9 0s9.4-24.6 0-33.9l-65-65V152c0-13.3-10.7-24-24-24z"/></svg></span></template>
+
+
+
+        <script>
+            window.playground_copyable = true;
+        </script>
+
+
+        <script src="elasticlunr-ef4e11c1.min.js"></script>
+        <script src="mark-09e88c2c.min.js"></script>
+        <script src="searcher-09f2665d.js"></script>
+
+        <script src="clipboard-1626706a.min.js"></script>
+        <script src="highlight-abc7f01d.js"></script>
+        <script src="book-609e4cb8.js"></script>
+
+        <!-- Custom JS scripts -->
+        <script src="theme/figures-fd5ff574.js"></script>
+
+
+
+    </div>
+    </body>
+</html>

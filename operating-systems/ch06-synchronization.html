@@ -28,7 +28,7 @@
         <link rel="stylesheet" id="mdbook-ayu-highlight-css" href="ayu-highlight-3fdfc3ac.css">
 
         <!-- Custom theme stylesheets -->
-        <link rel="stylesheet" href="theme/custom-9125cc61.css">
+        <link rel="stylesheet" href="theme/custom-3c3d4beb.css">
 
         <!-- MathJax -->
         <script async src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.1/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
@@ -38,10 +38,10 @@
             const path_to_root = "";
             const default_light_theme = "light";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "searchindex-025a35ef.js";
+            window.path_to_searchindex_js = "searchindex-e451f97a.js";
         </script>
         <!-- Start loading toc.js asap -->
-        <script src="toc-f3585118.js"></script>
+        <script src="toc-1a401835.js"></script>
     </head>
     <body>
     <div id="mdbook-help-container">
@@ -284,7 +284,7 @@ fn main() -&gt; Result&lt;(), Box&lt;dyn std::error::Error&gt;&gt; {
 <span class="label">Watch out</span>
 <p>Every condition-variable wait must be enclosed within a <strong><code>while (!predicate)</code> loop</strong> (or Rust’s <code>Condvar::wait_while</code>), never a single <code>if (!predicate)</code> branch. Two distinct mechanisms invalidate a non-looping check:</p>
 <ol>
-<li><strong>Spurious Wakeups:</strong> POSIX (<code>pthread_cond_wait</code>) and operating system kernels permit a waiting thread to return from <code>wait</code> without a corresponding notification event.</li>
+<li><strong>Spurious Wakeups:</strong> <strong>Portable Operating System Interface (<code>POSIX</code>)</strong> (<code>pthread_cond_wait</code>) and operating system kernels permit a waiting thread to return from <code>wait</code> without a corresponding notification event.</li>
 <li><strong>Post-Wakeup State Interception:</strong> Returning from a condition wait moves the thread from the condition variable queue to the mutex acquisition queue rather than granting immediate ownership. An intervening thread may acquire the mutex first and invalidate the predicate before the awakened thread obtains lock ownership.</li>
 </ol>
 </div>
@@ -862,6 +862,9 @@ lock cmpxchg QWORD PTR [r_addr], r_desired          cmp   x0, x_expected        
 </tbody>
 </table>
 </div>
+<figure>
+<img src="figures/ch06_memory_orderings.svg" alt="Visual comparison of Relaxed, Acquire, Release, and SeqCst memory orderings showing one-way and two-way reordering walls, x86-64 and ARM64 machine instructions, and the Release-Acquire synchronizes-with handshake" />
+</figure>
 <h2 id="66-synchronization-beneath-the-primitives-futexes-and-seqlocks"><a class="header" href="#66-synchronization-beneath-the-primitives-futexes-and-seqlocks">6.6 Synchronization Beneath the Primitives: Futexes and Seqlocks</a></h2>
 <p>Production operating systems combine user-mode atomic CAS instructions with kernel wait queues to achieve sub-10-nanosecond uncontended locking while avoiding CPU waste under contention.</p>
 <h3 id="661-fast-userspace-mutexes-futex-on-linux--__ulock-on-darwin"><a class="header" href="#661-fast-userspace-mutexes-futex-on-linux--__ulock-on-darwin">6.6.1 Fast Userspace Mutexes (<code>futex</code> on Linux / <code>__ulock</code> on Darwin)</a></h3>
@@ -1159,6 +1162,11 @@ seqlock torn     : 0
 <p>Production synchronization integrates three architectural layers: <code>compare_exchange_weak</code> drives lock-free retry loops and uncontended Ring 3 fast paths (~5 ns), <code>Release</code>/<code>Acquire</code> barriers enforce cross-core visibility across private Store Buffers without <code>SeqCst</code> pipeline drains, and <code>futex</code> / <code>__ulock</code> parks contended threads in Ring 0 only when exclusive ownership fails.</p>
 </div>
 
+<div class="callout experiment">
+<span class="label">Experiment</span>
+<p>In Listing 6-9 (<code>code/ch06/cas_ordering.cpp</code>), weaken the producer’s <code>memory_order_release</code> store and consumer’s <code>memory_order_acquire</code> load to <code>memory_order_relaxed</code> on an ARM64 machine (Apple Silicon or AWS Graviton) and run 10 million iterations to observe weakly ordered hardware reordering payload stores past the ready flag.</p>
+</div>
+
 
                     </main>
 
@@ -1211,7 +1219,7 @@ seqlock torn     : 0
         <script src="book-609e4cb8.js"></script>
 
         <!-- Custom JS scripts -->
-        <script src="theme/figures-f1be29a8.js"></script>
+        <script src="theme/figures-fd5ff574.js"></script>
 
 
 

@@ -1,9 +1,9 @@
 <!DOCTYPE HTML>
-<html lang="en" class="light sidebar-visible" dir="ltr">
+<html lang="en" class="navy sidebar-visible" dir="ltr">
     <head>
         <!-- Book generated using mdBook -->
         <meta charset="UTF-8">
-        <title>Payment System - Distributed Systems from the Ground Up</title>
+        <title>19. Payment System - Distributed Systems from the Ground Up</title>
 
 
         <!-- Custom HTML head -->
@@ -28,20 +28,18 @@
         <link rel="stylesheet" id="mdbook-ayu-highlight-css" href="ayu-highlight-3fdfc3ac.css">
 
         <!-- Custom theme stylesheets -->
-        <link rel="stylesheet" href="theme/custom-8a495b63.css">
-        <link rel="stylesheet" href="theme/formal-05bd78f0.css">
-        <link rel="stylesheet" href="theme/layout-0a0c0003.css">
+        <link rel="stylesheet" href="theme/custom-59beaf6d.css">
 
 
         <!-- Provide site root and default themes to javascript -->
         <script>
             const path_to_root = "";
-            const default_light_theme = "light";
+            const default_light_theme = "navy";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "searchindex-25bb747f.js";
+            window.path_to_searchindex_js = "searchindex-5d54d4b4.js";
         </script>
         <!-- Start loading toc.js asap -->
-        <script src="toc-cc887274.js"></script>
+        <script src="toc-ef51d47d.js"></script>
     </head>
     <body>
     <div id="mdbook-help-container">
@@ -79,7 +77,7 @@
             try { theme = localStorage.getItem('mdbook-theme'); } catch(e) { }
             if (theme === null || theme === undefined) { theme = default_theme; }
             const html = document.documentElement;
-            html.classList.remove('light')
+            html.classList.remove('navy')
             html.classList.add(theme);
             html.classList.add("js");
         </script>
@@ -183,599 +181,324 @@
 
                 <div id="mdbook-content" class="content">
                     <main>
-                        <img class="plate" src="art/ch19.svg?v=7b39c491" alt="A tortoise stands beside a sign that reads: minus 40, plus 40, total 0.">
-<h1 id="payment-system-system-design"><a class="header" href="#payment-system-system-design">Payment System: System Design</a></h1>
-<p>A payment system moves money from a customer to a shop. In its outward form it
-resembles many of the systems in this book, being a service that accepts requests,
-writes records and calls other services, and yet it differs from all of them in the
-consequences of its errors. When a news feed shows a post some seconds late, or a
-cache returns a slightly stale value, or a rate limiter admits a few requests too
-many, nobody is harmed, and the preceding chapters made deliberate use of that
-latitude in order to gain speed and availability. A payment system has no such
-latitude. If it charges a customer twice, real money has left a real account, and if
-it records a payment that did not take place, goods are shipped that were never paid
-for. Its errors are measured in currency, are noticed by the people affected, and in
-most jurisdictions are regulated by law.</p>
-<p>The priorities of the design are in consequence the reverse of those that governed
-earlier chapters. Correctness is placed before availability, so that a payment system
-which is uncertain declines to act where another system would guess. Nothing is ever
-deleted or overwritten, so that every state the system has been in can be
-reconstructed and explained. And every operation is built on the assumption that it
-will be attempted more than once, since the networks and services on which payments
-depend fail in ways that leave the outcome of a request unknown. This chapter develops
-the 3 ideas on which a sound payment system rests: the idempotent request, the
-double-entry ledger, and the treatment of an unknown outcome as a state in its own
-right.</p>
+                        <img class="plate" src="art/ch19-plate.svg" alt="Chapter 19 plate: Ledger the Tortoise and Ferris the Rust Crab beside a glassmorphic Double-Entry Ledger console showing exact zero-sum integer entries, atomic-phase recovery points, and PCI-CDE isolation.">
+<h1 id="19-payment-system-system-design"><a class="header" href="#19-payment-system-system-design">19. Payment System: System Design</a></h1>
+<p>A distributed payment platform orchestrates monetary transfers across payers, merchants, and external banking rails while maintaining an immutable, zero-sum accounting ledger. In contrast to caches, news feeds, or rate limiters where bounded staleness or occasional duplicate execution is an acceptable engineering trade-off, financial infrastructure operates under strict legal and monetary invariants: double-charging a card withdraws real funds from a customer’s account, and recording an uncollected payment causes unrecoverable inventory loss. In this chapter, we design an architecture that places transactional correctness, auditability, and idempotent state recovery strictly ahead of raw availability.</p>
 <div class="covers">
-<p>This chapter covers</p>
+<p>In this chapter, we cover</p>
 <ul>
-<li>the parties to a card payment, and the stages it passes through over several days</li>
-<li>why a payment request must be safe to repeat, and how a key makes it so</li>
-<li>representing money without losing fractions of a cent</li>
-<li>the double-entry ledger, in which every movement is 2 entries that cancel</li>
-<li>why entries are never changed, and how mistakes are corrected</li>
-<li>a charge whose outcome is unknown, and why it is neither a success nor a failure</li>
-<li>reconciliation, which compares our records with the bank’s</li>
-<li>payments that span several services, and undoing what cannot be made atomic</li>
-<li>keeping card numbers out of the system</li>
+<li>actors, use cases, verifiable functional requirements, strong-consistency SLOs, and storage, TPS, and 7-year audit capacity bounds</li>
+<li>idempotent HTTP/2 payment APIs, strict payment state machines, and relational ledger DDL using signed integer minor units</li>
+<li>PCI-DSS Cardholder Data Environment (CDE) isolation, EMV network tokenization, and non-CDE payment core architecture</li>
+<li>Stripe-style atomic-phase execution and recovery points that eliminate database locks during slow external PSP RPCs while modeling network timeouts as a first-class <code>UNKNOWN</code> state</li>
+<li>immutable double-entry ledger invariants, deterministic rounding/remainder allocation, and <code>K</code>-way hot-account sub-account sharding to eliminate row-lock serialization</li>
+<li>transactional outbox with WAL CDC, saga compensation semantics, and T+0 to T+2 three-way financial reconciliation across internal ledger, PSP clearing files, and bank statements</li>
+<li>failure matrices, financial SLIs, production architectures (Stripe, Adyen, Uber LedgerStore, TigerBeetle), and verification via <code>code/paysim</code></li>
 </ul>
 </div>
 
-<h2 id="the-parties-and-the-stages"><a class="header" href="#the-parties-and-the-stages">The parties and the stages</a></h2>
-<p>A payment by card involves more parties than the 2 that are visible at the checkout.
-The customer’s card was issued by a bank, which holds the customer’s account. The
-shop has an account at another bank. Between the 2 banks stands a <em>card network</em>,
-which carries messages between them and lays down the rules. A payment system of the
-kind designed here acts on behalf of the shop: it receives the shop’s request to
-charge a card, communicates with the network, and keeps the records. For the purposes
-of this chapter, the banks and the network may be regarded as a single external
-service, slow and occasionally unavailable, whose behaviour we can observe and cannot
-change.</p>
-<p>What appears to the customer as a single event is in fact spread over several days.</p>
+<h2 id="191-requirements-and-capacity-envelope"><a class="header" href="#191-requirements-and-capacity-envelope">19.1 Requirements and Capacity Envelope</a></h2>
+<p>What appears to a shopper as an instantaneous checkout click is a multi-day distributed workflow spanning four autonomous parties: the <strong>issuing bank</strong> (holding the cardholder’s account), the <strong>card network</strong> (Visa or Mastercard, routing messages and enforcing dispute rules), the <strong>acquiring bank / Payment Service Provider (PSP)</strong> (settling funds on behalf of the merchant), and the <strong>payment platform</strong> we design here. Every card payment traverses four distinct lifecycle stages: <strong>Authorization</strong> (seconds; verifies funds and places a hold without moving cash), <strong>Capture</strong> (at shipment; confirms the final amount <code>&lt;=</code> authorized amount), <strong>Settlement</strong> (T+1 to T+3 batch transfer of actual cash between banks), and <strong>Refund or Chargeback Dispute</strong> (possible for up to 120 to 180 days). Because external banking networks cannot participate in a distributed two-phase commit (<code>2PC</code>) with our internal databases, we achieve financial correctness through idempotent state machines, immutable accounting journals, and automated reconciliation.</p>
+<h3 id="actors-and-use-cases"><a class="header" href="#actors-and-use-cases">Actors and Use Cases</a></h3>
+<p>Three classes of external actors interact across the boundary of the payment platform (Figure 19-1).</p>
 <figure>
-<img src="figures/pay-stages.svg?v=6c4ac676" alt="4 stages of a card payment. Authorisation, in which the customer&#39;s bank sets the amount aside, takes seconds. Capture, in which the shop confirms that it wants the money, happens at shipping. Settlement, in which the banks move the money, follows 1 to 3 days later. A refund or a dispute remains possible for months.">
-<figcaption><b>Figure 19.1</b> A card payment passes through authorisation, capture and settlement, and can be reversed long afterwards.</figcaption>
+<img src="figures/m3/ch19_use_cases.svg" alt="Actors and Use Cases of the Distributed Payment Platform: Merchant authorizes/captures charges and issues refunds; External PSP delivers webhooks and T+1 clearing files; Finance and Auditor query the double-entry ledger and run T+2 three-way reconciliation.">
+<figcaption><b>Figure 19-1</b> Actors, system boundary, and core use cases of the distributed payment platform.</figcaption>
 </figure>
-<p>In <em>authorisation</em>, the customer’s bank is asked whether the card is valid and the
-funds are available, and, if so, sets the amount aside. No money moves. The customer
-sees “payment accepted” at this point, within a second or 2. In <em>capture</em>, the shop
-confirms that it wishes to collect the authorised amount, which it typically does when
-the goods are dispatched, and the amount captured may be less than the amount
-authorised if part of an order could not be fulfilled. In <em>settlement</em>, which takes
-place in batches some days later, the money is actually transferred between the banks.
-And for months afterwards the payment may be reversed, by a <em>refund</em> that the shop
-initiates or by a <em>dispute</em> in which the customer’s bank reclaims the money on the
-customer’s complaint.</p>
-<p>The practical consequence is that a payment is not a single action with a result. It
-is an object with a long life and a series of states, and at each stage our system’s
-record of that state must be brought into agreement with what the banks have actually
-done. Much of the design follows from taking this seriously.</p>
-<h2 id="a-request-that-is-safe-to-repeat"><a class="header" href="#a-request-that-is-safe-to-repeat">A request that is safe to repeat</a></h2>
-<p>Suppose a shop’s server sends a request to charge a customer 40 euros, and the
-connection fails before any reply is received. The shop does not know whether the
-charge was made. If it does nothing, it may have failed to collect payment for an
-order. If it sends the request again and the first had in fact succeeded, the customer
-is charged 80 euros. This is the dilemma of the lost reply, which has appeared in
-chapters 11, 13 and 18, and here it concerns money.</p>
-<p>It is resolved in the same way. The shop attaches to each request an <em>idempotency
-key</em>, a string of its own choosing that uniquely identifies the business event
-concerned, such as the number of the order. The payment system records every key
-together with the result of its request, and when a request arrives bearing a key that
-has been seen before, it performs no action and returns the recorded result. The shop
-may then repeat a request as often as it needs to, in complete safety, until it
-obtains an answer.</p>
-<p>Four details determine whether this protection is real.</p>
-<p>The key and the effects of the request must be recorded atomically. If the system were
-to move the money in 1 step and record the key in another, a crash between the 2 would
-leave a completed charge with no record of its key, and the shop’s retry would be
-treated as new. Both are therefore written in a single database transaction.</p>
-<p>The recorded result must include failures. In the simulation for this chapter, a
-charge of 9000 cents is refused because the customer’s account holds only 6000. That
-refusal is stored under the key, and a retry of the same request receives the same
-refusal, even if the customer has in the meantime received funds that would now cover
-it. The principle is that a retry must behave as a second delivery of the same request,
-which it is, since the shop, having perhaps already told the customer
-that the payment was declined, would otherwise find that it had succeeded after all.</p>
-<p>Concurrent requests with the same key must be dealt with. A shop’s client may retry
-while the first attempt is still in progress, so that 2 requests bearing the same key
-are being processed at once. The system reserves the key, by an atomic “create if
-absent”, before doing anything else, and the second request, finding the key already
-reserved and no result yet recorded, is told to try again shortly.</p>
-<p>And a key should be bound to the contents of its request. If a key that was first used
-for a charge of 40 euros arrives with a request for 400, something is wrong in the
-client, and the system should reject the request. To return the result of
-the earlier and different one would hide the fault.</p>
-<p>The simulation sends 5 requests, of which 2 are repetitions. The 2 requests under the
-key <code>order-7</code> leave the customer with the same balance of 6000, the second having
-moved nothing, and likewise for <code>order-9</code>. The total held across all accounts is 10000
-cents at the start and 10000 at the end.</p>
-<h2 id="representing-money"><a class="header" href="#representing-money">Representing money</a></h2>
-<p>A matter that seems too elementary to need discussion has caused a remarkable number
-of defects. Amounts of money must not be held in the floating-point numbers that
-programming languages offer for fractional values.</p>
-<p>Floating-point numbers are stored in binary, and most decimal fractions have no exact
-binary representation, in the same way that a third has no exact decimal one. The
-value 0.10 is held as a number very slightly different from a tenth, and arithmetic on
-such values accumulates the differences: in most languages, the sum of 0.10 and 0.20
-is not equal to 0.30. A single such discrepancy is far smaller than a cent. Across
-millions of transactions, in sums, percentages and currency conversions, the
-discrepancies round in different directions in different parts of the system, and
-totals that ought to agree fail to agree by a few cents, which in accounting is an
-error to be found and explained.</p>
-<p>Amounts are therefore held as whole numbers of the smallest unit of the currency, so
-that 40 euros is the integer 4000, in cents. Arithmetic on integers is exact. The
-currency is always stored beside the amount, since 4000 means nothing without it, and
-since the smallest unit is not a hundredth in every currency: some have no subdivision
-and others divide into a thousand. Where a calculation yields a fraction of the
-smallest unit, as when a fee of 2.9% is computed or an amount is divided among 3
-recipients, the rule for rounding is laid down explicitly, and the remainder is
-assigned to a specified party, so that the parts always add up to the whole.</p>
-<h2 id="the-ledger"><a class="header" href="#the-ledger">The ledger</a></h2>
-<p>The core of a payment system is its record of where money is, and the form of that
-record has been settled for some 500 years. It is the <em>double-entry ledger</em>, and its
-governing rule is that every movement of money is recorded as 2 entries of equal
-amount and opposite sign, 1 against the account the money leaves and 1 for the account
-it enters.</p>
-<figure class="steps" data-prefix="figures/steps-pay-ledger" data-count="5" data-version="56bbe801">
-<img src="figures/steps-pay-ledger-01.svg?v=56bbe801" alt="2 entries for every movement, step 1 of 5. Ada has 10000 cents and the shop has none. The ledger of movements is empty. Amounts are whole numbers of cents throughout.">
-<figcaption><b>Figure 19.2</b> 2 payments and a refund are recorded, each as a pair of entries that add up to 0. Use Next and Back to move through the 5 steps.</figcaption>
-</figure>
-<p>The method has 3 properties, each of which answers a need that a simpler design would
-leave unmet.</p>
-<p>It cannot create or destroy money. Since every movement consists of 2 entries that
-cancel, the sum of all entries in the ledger is 0 at all times, whatever has
-happened. Should the sum ever differ from 0, the ledger contains an error, and this
-is discovered by a single addition, with no need to understand any individual
-transaction. A design that kept only a balance for each account and adjusted the 2
-balances in turn would have no such check. A defect that deducted from 1 account and
-failed to credit the other would cause money to vanish, and nothing would
-reveal it until a customer complained.</p>
-<p>It explains every balance. The balance of an account is defined as the sum of that
-account’s entries, and so for any balance one can produce the complete list of
-movements that gave rise to it. When a shop asks why its balance is what it is, the
-answer is a list of entries, each referring to the payment that caused it.</p>
-<p>And its history is permanent. Entries are added and never altered or removed, so that
-the ledger is an append-only log of the same kind as the log of chapter 2. An error is
-corrected by adding entries that reverse it, as the refund in the steps above reverses
-the first payment, and the record then shows both the error and its correction. This
-is what makes the system auditable. If a row could be edited, then a mistaken edit, or
-a dishonest one, would leave no evidence, whereas in an append-only ledger whatever
-has once been recorded remains for inspection.</p>
-<p>The 2 entries of a movement must be written atomically, both or neither. This is the
-principal reason why the ledger is kept in a database with transactions and strong
-consistency, and why the weaker models that sufficed elsewhere in this book are out of
-place here.</p>
-<h3 id="balances-in-practice"><a class="header" href="#balances-in-practice">Balances in practice</a></h3>
-<p>To define a balance as the sum of an account’s entries is correct and, taken
-literally, slow, since an account with a million entries would require a million
-additions for each reading. The system therefore keeps a stored balance for each
-account as well and updates it in the same transaction that adds the entries. The
-entries remain the authority. The stored balance is a cache of their sum, and it can
-be verified against them, or recomputed from them, at any time.</p>
-<p>Checking that a customer has sufficient funds and then deducting the amount is a
-sequence of reading and writing, and it is exposed to the race that has appeared
-several times in this book: 2 simultaneous payments from the same account each read a
-balance of 6000, each conclude that 4000 can be afforded, and each deduct, leaving the
-account overdrawn. The check and the deduction have to be a single atomic step, which
-is obtained either by having the transaction lock the account’s row before reading it,
-or by making the update conditional, in the form “deduct 4000 if the balance is at
-least 4000”.</p>
-<p>An account that takes part in a very large number of payments, such as that of a
-major shop, becomes a point of contention under this arrangement, since every payment
-to that shop must lock the same row. A usual remedy is to add the entries at once and
-to bring the shop’s stored balance up to date a little later, in batches. For an
-account that only receives money, a balance that lags by a few seconds is harmless.
-For the account from which a payment is made, the balance must be exact at the moment
-of the check.</p>
-<h2 id="a-charge-whose-outcome-is-unknown"><a class="header" href="#a-charge-whose-outcome-is-unknown">A charge whose outcome is unknown</a></h2>
-<p>The ledger is under our control. The card network is not, and a request to it can
-come to 3 ends, of which the third is the source of most of the difficulty in the
-subject. The network may reply that the charge succeeded. It may reply that the charge
-was declined. Or no reply may arrive within the time allowed.</p>
-<p>In the third case our system does not know whether the customer has been charged.
-Both of the natural reactions are mistaken. To treat the timeout as a failure and
-inform the shop that the payment did not go through is wrong if the charge in fact
-succeeded, since the customer has then paid for an order that the shop believes
-unpaid. To send the charge again is wrong for the same reason, since the customer may
-then be charged twice.</p>
-<p>The correct treatment recognises “unknown” as a legitimate state of a payment, with a
-name and a procedure of its own.</p>
-<figure class="steps" data-prefix="figures/steps-pay-pending" data-count="6" data-version="37645ef4">
-<img src="figures/steps-pay-pending-01.svg?v=37645ef4" alt="A charge whose outcome is unknown, step 1 of 6. Before anything is sent to the card network, the payment is stored in our own system in the state pending, with a reference of our choosing. If we crash in the next step, the record will tell us what we were doing.">
-<figcaption><b>Figure 19.3</b> The network's reply to a charge is lost, the payment remains pending, and its outcome is established by asking. Use Next and Back to move through the 6 steps.</figcaption>
-</figure>
-<p>The steps display 3 practices that are worth stating in general terms.</p>
-<p>The payment is recorded as <em>pending</em> in our own system before the network is called.
-If our process crashes during the call, the record survives to say that a charge was
-in progress and under what reference, so that it can be followed up on restarting.
-Had we called the network first and recorded afterwards, a crash between the 2 would
-leave a customer charged and our system unaware that any payment had been attempted.</p>
-<p>The request to the network carries a reference that we generate, and the network
-supports either the repetition of a request under the same reference without a second
-charge, or a query on the status of a reference. This is our own idempotency key,
-presented to the next party along. Without some such facility at the network, the
-dilemma of the lost reply cannot be resolved at all, and a payment system must select
-its external partners with this requirement in mind.</p>
-<p>And the outcome is determined by asking. A background process
-takes each pending payment in turn and queries the network until it obtains a definite
-answer, upon which the payment moves to <em>done</em> or <em>failed</em> and the ledger entries are
-written. The shop, which was told that the payment was pending, is informed of the
-final outcome by a call to an address it has registered, the webhook of chapter 13.</p>
-<p>The states of a payment thus form a small machine: created, pending, and then either
-done or failed, with later movements to refunded or disputed. Every transition is
-recorded with its time and its cause, and certain transitions are prohibited
-outright. A payment that is done never returns to pending, and a refund is a new
-movement with entries of its own.</p>
-<h2 id="reconciliation"><a class="header" href="#reconciliation">Reconciliation</a></h2>
-<p>However carefully all of this is constructed, our records and the bank’s will
-sometimes differ. A reply was lost and the query that should have resolved it was
-itself mishandled. A defect in our software caused a step to be skipped. A dispute was
-raised at the bank and never communicated to us. The bank made an error of its own.</p>
-<p>A payment system therefore does not assume that its records are right. Every day it
-obtains from the bank a statement of what the bank did in fact process, and compares
-that statement, payment by payment, with its own ledger. This comparison is called
-<em>reconciliation</em>.</p>
-<figure>
-<img src="figures/pay-reconcile.svg?v=8071928f" alt="2 records of the same payments, side by side. Payments 9001 and 9002 agree. Payment 9004 is pending in our ledger and settled on the bank&#39;s statement. Payment 9005 is done in our ledger and missing from the bank&#39;s statement.">
-<figcaption><b>Figure 19.4</b> The same 4 payments in our ledger and on the bank's statement, with 2 that do not agree.</figcaption>
-</figure>
-<p>Each discrepancy falls into 1 of a few classes: a payment that the bank has and we
-lack, a payment that we have and the bank lacks, or a payment present in both with
-different amounts or states. Each is investigated, automatically where a rule can
-decide and by a person where it cannot, and is corrected by adding entries to the
-ledger, in accordance with the rule that nothing already recorded is altered.</p>
-<p>Reconciliation is the final safeguard of the whole system. Idempotency keys, atomic
-transactions and the handling of pending payments are all intended to prevent
-discrepancies, and reconciliation is what detects those that occur in spite of them,
-including any that arise from mistakes in the preventive mechanisms themselves. A
-payment system without it is correct only so long as all of its code is free of
-defects, which is to say that it is not correct.</p>
-<h2 id="payments-that-span-several-services"><a class="header" href="#payments-that-span-several-services">Payments that span several services</a></h2>
-<p>Placing an order usually requires more than a payment. Stock has to be reserved, the
-payment taken, and a shipment arranged, and in a system divided into services each of
-these belongs to a different service with a database of its own. One would wish the 3
-to be atomic, so that either all take place or none does, and no single database
-transaction can span 3 databases.</p>
-<p>There is a protocol, called <em>2-phase commit</em>, that makes several databases commit
-together. A coordinator first asks every participant to prepare and to promise that it
-will be able to commit, and when all have promised, instructs them all to do so. The
-protocol achieves atomicity and is seldom used between services, for 2 reasons. Each
-participant must hold its locks from the moment of its promise until the instruction
-arrives, and if the coordinator fails in that interval the participants are left
-holding locks indefinitely, unable to proceed in either direction. And every
-participant, including external ones such as a card network, must implement the
-protocol, which external services do not.</p>
-<p>The usual alternative gives up atomicity and substitutes for it the assurance that the
-process will eventually be either completed or undone. The operation is divided into
-steps, each a local transaction in a single service, and for every step there is
-defined a <em>compensating action</em> that reverses its effect: releasing the reserved
-stock, refunding the payment, cancelling the shipment. The steps are executed in
-order, and if one fails, the compensating actions of those already completed are
-executed in reverse. A sequence of steps organised in this way is called a <em>saga</em>.</p>
-<p>A saga is not a transaction, and the difference is observable. While it is in
-progress, other parts of the system can see its intermediate states: the stock is
-reserved before the payment has been taken, and for a short time a customer may have
-been charged for an order that is about to be cancelled. Compensation, moreover, is
-not erasure. A refunded payment appears on the customer’s statement as a charge and a
-refund, and a confirmation email that has been sent cannot be recalled. The design of
-a saga consists largely in ordering its steps so that those most easily reversed come
-first and those that cannot be reversed come last.</p>
-<p>The mechanisms needed to run a saga dependably are those of earlier chapters. The
-steps are driven by messages on a queue, as in chapter 11, and each service publishes
-its message by means of an outbox, in the same transaction as its own change. Every
-step and every compensating action is idempotent, since the queue delivers at least
-once.</p>
-<h2 id="keeping-card-numbers-out"><a class="header" href="#keeping-card-numbers-out">Keeping card numbers out</a></h2>
-<p>A card number, in combination with its expiry date and security code, is all that is
-required in order to spend someone else’s money, and a system that stores card numbers
-is a target for theft in exact proportion to the number it holds. The card industry
-imposes a demanding security standard on any system that handles them, with audits
-whose burden grows with every component the numbers pass through.</p>
-<p>The most effective measure is therefore structural: to arrange that card numbers pass
-through as little of the system as possible. The form in which the customer enters the
-card is served by, and submits directly to, a small and isolated service called a
-<em>vault</em>, whose sole purpose is to hold card numbers. The vault returns a <em>token</em>, a
-random identifier that stands for the card and has no value outside this system. The
-remainder of the system, including the shop’s servers, the payment API and the ledger,
-stores and handles only the token. When a charge is to be made, the token is presented
-to the vault, which alone communicates the real number to the card network. A breach
-of any component other than the vault then yields tokens, which are of no use to a
-thief.</p>
-<h2 id="use-cases"><a class="header" href="#use-cases">Use cases</a></h2>
-<p>Shops charge customers and refund them. Accountants read the ledger, in order to
-confirm that it balances.</p>
-<figure>
-<img src="figures/pay-use-cases.svg?v=9068d7db" alt="A use case diagram of the payment system. Shop: charge a customer (POST /v1/payments), refund a payment (POST /v1/payments/{id}/refunds), read a payment (GET /v1/payments/{id}). Accountant: read an account&#39;s entries (GET /v1/accounts/{id}/entries).">
-<figcaption><b>Figure 19.5</b> The actors and what each of them does.</figcaption>
-</figure>
-<h2 id="functional-requirements"><a class="header" href="#functional-requirements">Functional requirements</a></h2>
 <div class="table-wrapper">
 <table>
 <thead>
-<tr><th>No.</th><th>Functional requirement</th></tr>
+<tr><th style="text-align: left">Actor</th><th style="text-align: left">Operation</th><th style="text-align: left">Concrete Scenario</th></tr>
 </thead>
 <tbody>
-<tr><td>0</td><td>A shop can charge a customer an amount.</td></tr>
-<tr><td>1</td><td>A request that is sent again with the same key has no second effect and returns the first result.</td></tr>
-<tr><td>2</td><td>A shop can refund a payment, in full or in part.</td></tr>
-<tr><td>3</td><td>Every payment is recorded as entries in a ledger, and the entries of a payment add up to 0.</td></tr>
-<tr><td>4</td><td>An accountant can list the entries of any account.</td></tr>
+<tr><td style="text-align: left"><strong>Merchant / Checkout Service</strong></td><td style="text-align: left">Authorize, capture, or charge (<code>POST /v1/payments</code>)</td><td style="text-align: left">Collect payment for an order using an opaque card token and caller-supplied <code>Idempotency-Key</code></td></tr>
+<tr><td style="text-align: left"><strong>Merchant / Support System</strong></td><td style="text-align: left">Full or partial refund (<code>POST /v1/payments/{id}/refunds</code>)</td><td style="text-align: left">Reverse all or part of a captured charge via append-only compensating ledger transactions</td></tr>
+<tr><td style="text-align: left"><strong>External PSP / Card Network</strong></td><td style="text-align: left">Asynchronous status webhook and T+1 clearing file</td><td style="text-align: left">Report delayed capture outcomes, interchange fees, FX settlement rates, or cardholder disputes</td></tr>
+<tr><td style="text-align: left"><strong>Finance / Auditor</strong></td><td style="text-align: left">Account journal query and daily three-way reconciliation</td><td style="text-align: left">Prove that every account balance equals the exact sum of its immutable ledger rows and matches bank statements</td></tr>
 </tbody>
 </table>
 </div>
-<h2 id="non-functional-requirements"><a class="header" href="#non-functional-requirements">Non-functional requirements</a></h2>
+<h3 id="functional-requirements"><a class="header" href="#functional-requirements">Functional Requirements</a></h3>
 <div class="table-wrapper">
 <table>
 <thead>
-<tr><th>No.</th><th>Property</th><th>Non-functional requirement</th></tr>
+<tr><th style="text-align: left">No.</th><th style="text-align: left">Functional Requirement</th></tr>
 </thead>
 <tbody>
-<tr><td>0</td><td>Consistency</td><td>Strong. Both entries of a payment are written, or neither.</td></tr>
-<tr><td>1</td><td>Durability</td><td>A recorded payment is not lost under any single failure.</td></tr>
-<tr><td>2</td><td>Availability</td><td>99.99%. When in doubt, the system refuses a payment and does not guess.</td></tr>
-<tr><td>3</td><td>Scale</td><td>1000 payments per second.</td></tr>
+<tr><td style="text-align: left">0</td><td style="text-align: left">The platform supports both single-step (<code>authorize + capture</code>) and two-step (<code>authorize</code>, followed by full or partial <code>capture</code>) charges in any ISO-4217 currency.</td></tr>
+<tr><td style="text-align: left">1</td><td style="text-align: left">Every mutating endpoint mandates a caller-supplied <code>Idempotency-Key</code>. Retries bearing the same key and identical request payload return the original cached result (including declines) with zero duplicate side effects; reusing a key with a different payload returns <code>422 Unprocessable Content</code>.</td></tr>
+<tr><td style="text-align: left">2</td><td style="text-align: left">Every monetary state transition records balanced debit and credit entries in an append-only ledger whose signed integer amounts sum strictly to zero per transaction and currency (<code>SUM(delta_minor) == 0</code>). Existing rows are never updated or deleted.</td></tr>
+<tr><td style="text-align: left">3</td><td style="text-align: left">The platform supports full and multi-partial refunds whose cumulative amount never exceeds the captured amount, recorded exclusively as new reversing ledger entries.</td></tr>
+<tr><td style="text-align: left">4</td><td style="text-align: left">Raw Primary Account Numbers (PANs) and CVVs are strictly confined to an isolated PCI-DSS Cardholder Data Environment (CDE) and never enter the payment core, ledger database, message broker, or application logs.</td></tr>
+<tr><td style="text-align: left">5</td><td style="text-align: left">An automated pipeline reconciles internal ledger records daily against PSP clearing files and bank settlement statements, surfacing unexplained cash breaks within 24 hours.</td></tr>
 </tbody>
 </table>
 </div>
-<p>This is the chapter in which strong consistency prevails in every dispute. The 2
-entries of a movement, the stored balance and the result recorded under the
-idempotency key are all written in 1 transaction on a store that confirms a write
-only when a majority of its replicas hold it. When the store cannot reach a majority,
-payments are refused. A payment system that is unavailable for a minute loses some
-sales, and a payment system that is inconsistent loses money and, with it, the
-confidence of the people whose money it was.</p>
-<h2 id="core-entities"><a class="header" href="#core-entities">Core entities</a></h2>
-<figure>
-<img src="figures/pay-entities.svg?v=2dbf3767" alt="The core entities. Payment has the fields id u64, key string, amount cents, state done|refused. Entry has the fields payment u64, account string, amount +/- cents. Account has the fields id string, balance cents. A Payment produces 2 Entries that add up to 0: money leaves 1 account and enters another. A balance is the sum of entries.">
-<figcaption><b>Figure 19.6</b> The core entities and their fields.</figcaption>
-</figure>
-<h2 id="capacity-estimate"><a class="header" href="#capacity-estimate">Capacity estimate</a></h2>
-<div class="estimate">
-<img class="builder" src="art/crab-builder.svg" alt="A crab in a hard hat, in tears.">
-<p><strong>Arithmetic ahead.</strong> 1000 payments per second are 86 million per day and about 35 GB of ledger entries per day.</p>
-<p><a class="skip" href="#high-level-design">Skip to the high-level design</a></p>
-<details>
-<summary>Show the calculation</summary>
+<h3 id="non-functional-requirements-and-slos"><a class="header" href="#non-functional-requirements-and-slos">Non-Functional Requirements and SLOs</a></h3>
 <div class="table-wrapper">
 <table>
 <thead>
-<tr><th>Quantity</th><th>Calculation</th><th>Result</th></tr>
+<tr><th style="text-align: left">No.</th><th style="text-align: left">Property</th><th style="text-align: left">Target Specification</th><th style="text-align: left">Architectural Consequence</th></tr>
 </thead>
 <tbody>
-<tr><td>Payments per day</td><td>1000 × 86400</td><td>86.4 million</td></tr>
-<tr><td>Entries per day</td><td>86.4 million × 2</td><td>172.8 million</td></tr>
-<tr><td>Storage per day</td><td>172.8 million × 200 bytes</td><td>34.6 GB</td></tr>
+<tr><td style="text-align: left">0</td><td style="text-align: left"><strong>Consistency</strong></td><td style="text-align: left">Strict ACID Serializability / Linearizability across idempotency keys, payment state, and ledger entries</td><td style="text-align: left">Synchronous 3-AZ quorum commit (<code>PC/EC</code>): refuse new charges during a quorum partition rather than risking unverified or duplicate mutations</td></tr>
+<tr><td style="text-align: left">1</td><td style="text-align: left"><strong>Durability</strong></td><td style="text-align: left">Zero loss of any committed payment or ledger entry under any single host, disk, or AZ failure; <code>7-10</code> year immutable audit retention</td><td style="text-align: left">3-AZ synchronous replication (Raft or PostgreSQL synchronous standby in a remote AZ) plus continuous encrypted WAL archival to WORM object storage</td></tr>
+<tr><td style="text-align: left">2</td><td style="text-align: left"><strong>Availability</strong></td><td style="text-align: left"><code>99.99%</code> core API availability (<code>&lt;= 4.3</code> minutes/month) excluding external PSP outages</td><td style="text-align: left">Active-active stateless orchestrators across three AZs; automated multi-PSP failover routing when a single acquirer degrades</td></tr>
+<tr><td style="text-align: left">3</td><td style="text-align: left"><strong>Latency</strong></td><td style="text-align: left">Core internal orchestration overhead <code>p99 &lt;= 40 ms</code> (excluding <code>200-3,000 ms</code> external PSP RTT)</td><td style="text-align: left">Prohibits holding database transactions open during external network I/O; relies on short local ACID phases</td></tr>
+<tr><td style="text-align: left">4</td><td style="text-align: left"><strong>Scale</strong></td><td style="text-align: left"><code>1,000</code> sustained payments/s (<code>5,000</code> peak flash-sale TPS)</td><td style="text-align: left"><code>86.4</code> million payments/day; requires hot-account sharding so high-fan-in merchant or fee rows do not serialize database writes</td></tr>
 </tbody>
 </table>
 </div>
-</details>
+<h3 id="capacity-and-resource-envelope"><a class="header" href="#capacity-and-resource-envelope">Capacity and Resource Envelope</a></h3>
+<p>Financial infrastructure is constrained by <strong>transactional lock contention, cross-AZ synchronous <code>fsync</code> latency, and multi-year regulatory retention</strong>, rather than raw network bandwidth:</p>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th style="text-align: left">Resource Dimension</th><th style="text-align: left">Derivation</th><th style="text-align: left">Provisioned Bound</th></tr>
+</thead>
+<tbody>
+<tr><td style="text-align: left"><strong>Daily Payment Volume</strong></td><td style="text-align: left"><code>1,000 payments/s * 86,400 s</code></td><td style="text-align: left"><code>86.4M</code> payments/day</td></tr>
+<tr><td style="text-align: left"><strong>Daily Ledger Journal Rows</strong></td><td style="text-align: left"><code>86.4M payments * 3 entries</code> (payer debit, merchant credit, platform-fee credit)</td><td style="text-align: left"><code>~259M</code> rows/day</td></tr>
+<tr><td style="text-align: left"><strong>Daily Storage Growth</strong></td><td style="text-align: left"><code>259M rows * ~180 B</code> (tuple + indexes) + <code>86.4M</code> payment and idempotency rows (<code>~300 B</code>)</td><td style="text-align: left"><code>~72 GB/day</code> (<code>~26 TB/year</code>)</td></tr>
+<tr><td style="text-align: left"><strong>7-Year Audit Retention</strong></td><td style="text-align: left">Hot NVMe tier (<code>90</code> days: <code>~6.5 TB</code>) + immutable compressed Parquet/WORM archive (<code>7</code> years)</td><td style="text-align: left"><code>~6.5 TB</code> active NVMe; <code>~35 TB</code> cold WORM archive</td></tr>
+<tr><td style="text-align: left"><strong>Peak ACID Write Rate</strong></td><td style="text-align: left"><code>5,000 peak TPS * 2</code> short local DB transactions/payment (Phase 1 intent + Phase 3 finalize)</td><td style="text-align: left"><code>10,000</code> ACID tx/s -&gt; partitioned PostgreSQL (by <code>merchant_id</code> / account shard) or distributed SQL plus hot-account sharding</td></tr>
+</tbody>
+</table>
 </div>
-
-<h2 id="the-api"><a class="header" href="#the-api">The API</a></h2>
-<p>A charge is a new resource and is created with <code>POST</code>, a method that HTTP does not
-define as idempotent, and this is exactly why the API demands a key with every such
-request.</p>
-<p><strong>Charge a customer</strong></p>
-<pre><code class="language-http">POST /v1/payments HTTP/1.1
+<h2 id="192-external-api-state-machine-and-data-contracts"><a class="header" href="#192-external-api-state-machine-and-data-contracts">19.2 External API, State Machine, and Data Contracts</a></h2>
+<h3 id="idempotent-http2-payment-api"><a class="header" href="#idempotent-http2-payment-api">Idempotent HTTP/2 Payment API</a></h3>
+<p>Because HTTP <code>POST</code> is not inherently idempotent, every mutating request requires a caller-supplied <code>Idempotency-Key</code> header (scoped uniquely per <code>(merchant_id, idempotency_key)</code>). Monetary values are represented strictly as signed 64-bit integers in the currency’s smallest minor unit paired with an ISO-4217 currency code (<code>4000</code> with <code>"EUR"</code> denotes <code>40.00 EUR</code>; <code>500</code> with <code>"JPY"</code> denotes <code>500 JPY</code>, which has zero fractional subunits).</p>
+<p><strong>Create a payment (initial attempt):</strong></p>
+<pre><code class="language-http">POST /v1/payments HTTP/2
 Host: pay.example
+Authorization: Bearer sk_live_merchant_42
 Idempotency-Key: order-7
 Content-Type: application/json
-
-{ "from": "ada", "to": "shop", "amount": 4000, "currency": "EUR" }
-</code></pre>
-<pre><code class="language-http">HTTP/1.1 201 Created
-Location: /v1/payments/9001
-Content-Type: application/json
-
-{ "id": 9001, "state": "done", "amount": 4000, "currency": "EUR" }
-</code></pre>
-<p>Amounts are whole numbers of cents. Fractions of a currency are not stored as floating-point numbers, which cannot represent 0.10 exactly.</p>
-<p><strong>The same request again</strong></p>
-<pre><code class="language-http">POST /v1/payments HTTP/1.1
-Host: pay.example
-Idempotency-Key: order-7
-Content-Type: application/json
-
-{ "from": "ada", "to": "shop", "amount": 4000, "currency": "EUR" }
-</code></pre>
-<pre><code class="language-http">HTTP/1.1 200 OK
-Content-Type: application/json
-
-{ "id": 9001, "state": "done", "amount": 4000, "currency": "EUR" }
-</code></pre>
-<p>The same payment comes back with <code>200</code>, and no money moves.</p>
-<p><strong>A charge without enough money</strong></p>
-<pre><code class="language-http">POST /v1/payments HTTP/1.1
-Host: pay.example
-Idempotency-Key: order-8
-Content-Type: application/json
-
-{ "from": "ada", "to": "shop", "amount": 9000, "currency": "EUR" }
-</code></pre>
-<pre><code class="language-http">HTTP/1.1 422 Unprocessable Content
-Content-Type: application/problem+json
 
 {
-  "type": "/problems/insufficient-funds",
-  "title": "The account does not hold this amount",
-  "status": 422
+  "payer_account": "acct_ada",
+  "merchant_account": "acct_shop_42",
+  "payment_method_token": "tok_9f2a8c11",
+  "amount_minor": 4000,
+  "currency": "EUR",
+  "capture_mode": "automatic"
 }
 </code></pre>
-<p><code>422</code> is the status for a request that is well formed and cannot be carried out.</p>
-<h2 id="high-level-design"><a class="header" href="#high-level-design">High-level design</a></h2>
-<figure class="wide">
-<img src="figures/pay-design.svg?v=4e3b07e3" alt="Charging a customer. The components are Shop, Payment API, Ledger, Card network, Key store. Step 1: A shop sends a charge with a key of its own. Step 2: A key seen before returns the earlier result. Step 3: The ledger writes 2 entries in 1 transaction. Step 4: The card network moves the money between banks.">
-<figcaption><b>Figure 19.7</b> The components and the path of a request. The steps are numbered.</figcaption>
-</figure>
-<div class="table-wrapper">
-<table>
-<thead>
-<tr><th>Component</th><th>Role</th><th>State it holds</th><th>When 1 instance fails</th></tr>
-</thead>
-<tbody>
-<tr><td>Payment API</td><td>checks the key and the request</td><td>none</td><td>another instance answers</td></tr>
-<tr><td>Key store</td><td>remembers the result of every key</td><td>keys, replicated</td><td>a follower takes over; until then payments are refused</td></tr>
-<tr><td>Ledger</td><td>writes the 2 entries of a payment in 1 transaction</td><td>every entry, replicated</td><td>a follower takes over; until then payments are refused</td></tr>
-<tr><td>Card network</td><td>moves money between banks</td><td>outside our control</td><td>the payment stays pending and is checked again</td></tr>
-</tbody>
-</table>
-</div>
-<h3 id="one-request-step-by-step"><a class="header" href="#one-request-step-by-step">One request, step by step</a></h3>
-<p>The steps follow the arrows of figure 19.7.</p>
+<pre><code class="language-http">HTTP/2 201 Created
+Location: /v1/payments/pay_9001
+Content-Type: application/json
+
+{
+  "payment_id": "pay_9001",
+  "state": "CAPTURED",
+  "amount_minor": 4000,
+  "currency": "EUR",
+  "psp_reference_id": "psp_ref_01J9X7"
+}
+</code></pre>
+<p>Four behavioral contracts ensure idempotency protection holds under real network failures:</p>
 <ol>
-<li>A shop sends <code>POST /v1/payments</code> with the key <code>order-7</code>.</li>
-<li>The API looks up <code>order-7</code> in the key store. If a result is stored, it is returned and nothing else happens.</li>
-<li>For a new key, the ledger checks the balance and writes 2 entries, minus 4000 for the customer and plus 4000 for the shop, together with the key’s result, in 1 transaction.</li>
-<li>The card network is asked to move the money between the banks. Its answer can take seconds, so the payment is first <em>pending</em> and becomes <em>done</em> when the answer arrives.</li>
+<li><strong>Atomic Persistence:</strong> The idempotency key record, payment state transition, and ledger entries commit inside the same ACID database transaction. A crash can never commit a charge without also persisting its deduplication key.</li>
+<li><strong>Caching Terminal Failures:</strong> Declines (such as <code>422 Unprocessable Content</code> for insufficient funds) are cached under the key identically to successes. If a merchant already informed a customer that <code>order-8</code> failed, a delayed retry must replay <code>422</code> rather than charging the card later once funds arrive.</li>
+<li><strong>Concurrent In-Flight Exclusion:</strong> When a second request bearing an active <code>Idempotency-Key</code> arrives while the first is still running, the unique key lock returns <code>409 Conflict</code> with <code>Retry-After: 1</code> instead of launching a concurrent duplicate PSP call.</li>
+<li><strong>Payload Fingerprinting:</strong> Storing the SHA-256 hash of the canonical request payload detects accidental key reuse (such as submitting <code>40000</code> cents under a key originally bound to <code>4000</code> cents) and rejects the call with <code>422 Unprocessable Content</code>.</li>
 </ol>
-<h2 id="the-design-deployed"><a class="header" href="#the-design-deployed">The design, deployed</a></h2>
-<figure class="wide">
-<img src="figures/pay-deploy.svg?v=4cee6bd5" alt="The payment system, deployed. Shops: Shops (1000 payments/s), charge and refund. Api, in 3 zones: Load balancers (x 2), any API node, Payment API (x 12), stateless, Vault (x 3), card numbers, isolated. Ledger, in 3 zones: Ledger database (x 3), 1 leader, 2 followers. Background: Outbox relay (x 2), publishes events, Status poller (x 4), asks about pending, Reconciliation (nightly), ledger against bank. Outside: Card network (x 1), outside our control.">
-<figcaption><b>Figure 19.8</b> The payment system as it is deployed, with the vault isolated and the card network outside.</figcaption>
+<h3 id="strict-payment-state-machine-and-relational-schema"><a class="header" href="#strict-payment-state-machine-and-relational-schema">Strict Payment State Machine and Relational Schema</a></h3>
+<p>Every payment transitions along a directed acyclic state machine guarded at the database layer by optimistic version checks (<code>WHERE payment_id = $1 AND state = 'PENDING_PSP' AND version = $2</code>), making illegal transitions (such as <code>DECLINED -&gt; CAPTURED</code> or double-capturing a settled charge) structurally impossible:</p>
+<pre><code class="language-text">CREATED -&gt; PENDING_PSP -&gt; AUTHORIZED -&gt; CAPTURED -&gt; SETTLED
+                |             |            |
+                v             v            v
+            DECLINED        VOIDED   PARTIALLY_REFUNDED -&gt; REFUNDED / DISPUTED
+</code></pre>
+<p>Before examining the DDL below, note the role of each table: <code>idempotency_keys</code> tracks the request SHA-256 digest, current <code>recovery_point</code>, and serialized HTTP reply; <code>payments</code> holds the canonical state machine and the deterministic <code>psp_reference_id</code> shared with the external acquirer; and <code>ledger_entries</code> records immutable signed minor-unit deltas verified by a deferrable transaction-commit trigger asserting <code>SUM(delta_minor) == 0</code> per <code>(tx_id, currency)</code>.</p>
+<pre><code class="language-sql">CREATE TABLE idempotency_keys (
+    merchant_id      TEXT        NOT NULL,
+    idem_key         TEXT        NOT NULL,
+    request_sha256   BYTEA       NOT NULL,
+    recovery_point   TEXT        NOT NULL, -- 'STARTED' | 'PENDING_PSP' | 'FINISHED'
+    response_status  INT,
+    response_body    JSONB,
+    locked_at        TIMESTAMPTZ NOT NULL,
+    expires_at       TIMESTAMPTZ NOT NULL,
+    PRIMARY KEY (merchant_id, idem_key)
+);
+
+CREATE TABLE payments (
+    payment_id       TEXT        PRIMARY KEY,
+    merchant_id      TEXT        NOT NULL,
+    psp_reference_id TEXT        NOT NULL UNIQUE,
+    amount_minor     BIGINT      NOT NULL CHECK (amount_minor &gt; 0),
+    currency         CHAR(3)     NOT NULL,
+    state            TEXT        NOT NULL,
+    version          BIGINT      NOT NULL DEFAULT 1,
+    created_at       TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+CREATE TABLE ledger_entries (
+    entry_id         BIGINT      GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+    tx_id            UUID        NOT NULL,
+    account_id       TEXT        NOT NULL,
+    currency         CHAR(3)     NOT NULL,
+    delta_minor      BIGINT      NOT NULL CHECK (delta_minor &lt;&gt; 0),
+    created_at       TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+-- Deferrable constraint trigger verifies SUM(delta_minor) = 0 per (tx_id, currency) at COMMIT.
+</code></pre>
+<h2 id="193-system-architecture-pci-dss-isolation-and-async-clearing"><a class="header" href="#193-system-architecture-pci-dss-isolation-and-async-clearing">19.3 System Architecture: PCI-DSS Isolation and Async Clearing</a></h2>
+<p>We enforce two explicit structural boundaries across the payment platform: a <strong>security boundary</strong> isolating raw card numbers inside a minimal PCI-DSS Cardholder Data Environment (CDE), and a <strong>transactional boundary</strong> separating short local ACID commits from slow external PSP network calls and multi-day settlement pipelines (Figure 19-2).</p>
+<figure>
+<img src="figures/m3/ch19_architecture.svg" alt="Payment Platform Architecture separating the isolated PCI-DSS Cardholder Data Environment (Tokenization Vault and HSM) from the 3-AZ Non-CDE Payment Core (Orchestrator and Sync Quorum Ledger DB) and Asynchronous Clearing, Recovery, and Three-Way Reconciliation Tier.">
+<figcaption><b>Figure 19-2</b> Payment platform architecture with PCI-DSS CDE isolation and asynchronous settlement.</figcaption>
 </figure>
-<p>By the standards of this book the payment system is small, since 1000 payments per
-second is a modest load, and its deployment is shaped by correctness and isolation
-more than by scale. The payment API is stateless. The ledger is a single database
-with a leader and 2 followers in 3 zones, which confirms a write only when a
-follower in another zone holds it. The vault that holds card numbers is drawn in red
-because it is a separate system with its own network, its own access rules and its
-own audit, which the rest of the system can reach only to exchange a token. The
-background tier carries the work that follows a payment: publishing events from the
-outbox, asking the card network about pending payments, and the nightly
-reconciliation.</p>
-<h2 id="how-real-systems-do-it"><a class="header" href="#how-real-systems-do-it">How real systems do it</a></h2>
-<p>The idempotency key is the centrepiece of Stripe’s public API, and an engineer of
-that company has published the most detailed account of implementing it. The
-account divides a request into <em>atomic phases</em>, each a database transaction that
-ends at a call to an outside service, and records after each phase how far the
-request has progressed, so that a retry with the same key resumes from the last
-completed phase and does not start again. This is a more careful version of the
-pending state described above, generalised to requests with several outside calls.
-Airbnb has described a similar design for its own payments, in which a request is
-divided into a phase before the outside call, the call itself and a phase after it,
-with the rule that no outside call may be made inside a database transaction.</p>
-<p>The saga comes from a paper of 1987, which proposed it for transactions that run
-too long to hold locks. The 2-phase commit protocol and its weakness, the
-participant left in doubt when the coordinator fails, are described in the classic
-literature on transaction processing.</p>
-<p>For the ledger, several companies have described building append-only stores
-specifically for double-entry records, with the immutability enforced by the store
-itself, whatever the application attempts. Whatever the store, the rule of
-keeping card numbers in an isolated component is not a matter of taste. The security
-standard of the card industry applies to every system that stores, processes or
-transmits card numbers, and the tokenising vault exists to keep as much of the
-system as possible outside its scope.</p>
-<p>What this chapter leaves out is considerable. A real card payment involves a
-standard message format between the parties, further authentication of the
-cardholder in many countries, the screening of every payment for fraud before it is
-authorised, the conversion of currencies, and the rules of each card network on
-disputes. Each is a subject in itself, and none of them changes the 3 ideas on which
-the chapter rests.</p>
-<h2 id="mistakes-to-avoid"><a class="header" href="#mistakes-to-avoid">Mistakes to avoid</a></h2>
+<h3 id="component-responsibilities-and-failure-domains"><a class="header" href="#component-responsibilities-and-failure-domains">Component Responsibilities and Failure Domains</a></h3>
 <div class="table-wrapper">
 <table>
 <thead>
-<tr><th>Mistake</th><th>What goes wrong</th><th>What to do</th></tr>
+<tr><th style="text-align: left">Component</th><th style="text-align: left">Compliance Scope</th><th style="text-align: left">State Held</th><th style="text-align: left">Failure Impact and Mitigation</th></tr>
 </thead>
 <tbody>
-<tr><td>A charge without an idempotency key</td><td>A retry after a lost reply charges the customer twice.</td><td>Require a key, and record the result of every key.</td></tr>
-<tr><td>Recording the key separately from the charge</td><td>A crash between the 2 leaves a charge whose retry is treated as new.</td><td>Write the key, the entries and the result in 1 transaction.</td></tr>
-<tr><td>Not recording failures under the key</td><td>A retry of a declined charge may succeed after the shop has reported failure.</td><td>Store every outcome, and return it for every retry.</td></tr>
-<tr><td>Amounts in floating-point numbers</td><td>Totals differ by cents across millions of transactions.</td><td>Store whole numbers of the smallest unit, with the currency.</td></tr>
-<tr><td>Adjusting 1 balance and then the other</td><td>A crash in between destroys or creates money.</td><td>Write both entries of a movement in 1 transaction.</td></tr>
-<tr><td>Editing or deleting ledger rows</td><td>History is lost, and mistakes and fraud leave no trace.</td><td>Add reversing entries, and never change existing ones.</td></tr>
-<tr><td>Reading a balance and then deducting</td><td>2 simultaneous payments both pass the check and overdraw the account.</td><td>Lock the account, or make the deduction conditional on the balance.</td></tr>
-<tr><td>Treating a timeout as a failure</td><td>The customer was charged, and the shop is told otherwise.</td><td>Keep the payment pending, and ask the network for its outcome.</td></tr>
-<tr><td>Sending a timed-out charge again without a reference</td><td>The customer is charged twice.</td><td>Give every charge a reference by which the network recognises a repeat.</td></tr>
-<tr><td>Calling the network before recording the payment</td><td>A crash leaves a charge of which the system has no knowledge.</td><td>Record the payment as pending first.</td></tr>
-<tr><td>No reconciliation</td><td>Differences from the bank’s records accumulate unnoticed.</td><td>Compare the ledger with the bank’s statement every day.</td></tr>
-<tr><td>Treating a saga as a transaction</td><td>Intermediate states are seen by others, and some steps cannot be undone.</td><td>Put reversible steps first and irreversible ones last.</td></tr>
-<tr><td>Card numbers in ordinary databases and logs</td><td>A breach anywhere exposes cards.</td><td>Confine card numbers to a vault, and use tokens elsewhere.</td></tr>
+<tr><td style="text-align: left"><strong>Tokenization Vault and HSM</strong></td><td style="text-align: left">PCI-DSS CDE</td><td style="text-align: left">Encrypted PAN &lt;-&gt; opaque token (<code>tok_*</code>), HSM key material</td><td style="text-align: left">Isolated VPC with direct egress allow-list to card networks; active-active across three AZs; keeps the entire payment core out of PCI audit scope</td></tr>
+<tr><td style="text-align: left"><strong>Payment API Gateway</strong></td><td style="text-align: left">Non-CDE</td><td style="text-align: left">None (stateless mTLS, auth, fail-closed rate limit)</td><td style="text-align: left">Multi-AZ active-active deployment; rejects malformed or unauthorized calls at ingress</td></tr>
+<tr><td style="text-align: left"><strong>Payment Orchestrator (x12)</strong></td><td style="text-align: left">Non-CDE</td><td style="text-align: left">None (stateless atomic-phase runner)</td><td style="text-align: left">Pod crash mid-flight leaves durable <code>PENDING_PSP</code> recovery point in DB; caller retries or pollers resume safely</td></tr>
+<tr><td style="text-align: left"><strong>Core Ledger and Idempotency DB</strong></td><td style="text-align: left">Non-CDE</td><td style="text-align: left"><code>idempotency_keys</code>, <code>payments</code>, <code>ledger_entries</code>, <code>outbox_events</code></td><td style="text-align: left">3-AZ synchronous quorum (Raft or Postgres sync standby); rejects writes during quorum loss rather than risking split-brain double charges</td></tr>
+<tr><td style="text-align: left"><strong>CDC Outbox Relay (Debezium)</strong></td><td style="text-align: left">Async Tier</td><td style="text-align: left">WAL replication slot offset</td><td style="text-align: left">Streams committed <code>outbox_events</code> into Kafka with at-least-once delivery; downstream consumers deduplicate by <code>event_id</code></td></tr>
+<tr><td style="text-align: left"><strong>Pending Poller and Webhooks</strong></td><td style="text-align: left">Async Tier</td><td style="text-align: left">Polling queue and webhook deduplication keys</td><td style="text-align: left">Resolves <code>UNKNOWN</code> payments via PSP status queries and verifies HMAC-signed PSP webhooks</td></tr>
+<tr><td style="text-align: left"><strong>T+1 / T+2 Reconciliation Engine</strong></td><td style="text-align: left">Async Tier</td><td style="text-align: left">Clearing and bank statement snapshots</td><td style="text-align: left">Executes deterministic three-way join across internal ledger, PSP clearing files, and bank cash statements</td></tr>
 </tbody>
 </table>
 </div>
-<h2 id="failures"><a class="header" href="#failures">Failures</a></h2>
+<h2 id="194-atomic-phase-idempotency-and-unknown-outcomes"><a class="header" href="#194-atomic-phase-idempotency-and-unknown-outcomes">19.4 Atomic-Phase Idempotency and Unknown Outcomes</a></h2>
+<p>Opening a database transaction, holding row locks while issuing a remote HTTP call to an external PSP (<code>200 ms</code> to <code>5,000 ms</code>), and committing when the PSP replies fails catastrophically under production concurrency. By Little’s Law (<code>L = lambda * W</code>), sustaining <code>1,000 TPS</code> across a <code>2</code>-second PSP slowdown holds <code>2,000</code> database connections and row locks open simultaneously, exhausting connection pools and cascading a single acquirer’s latency spike into a total platform outage.</p>
+<p>Following the pattern documented by Stripe and Airbnb, we decompose every payment into <strong>Atomic Phases</strong> separated by durable <strong>recovery points</strong>, enforcing one strict invariant: <strong>no external network RPC may ever execute inside an open database transaction</strong> (Figure 19-3).</p>
+<figure>
+<img src="figures/m3/ch19_atomic_phases.svg" alt="Atomic-Phase Idempotency and Recovery Points: Phase 1 commits idempotency lock and PENDING payment in under 5 ms; Phase 2 invokes External PSP RPC with zero database locks held; Phase 3 finalizes ledger entries and cached response.">
+<figcaption><b>Figure 19-3</b> Three-phase atomic execution decoupling local ACID transactions from unreliable external PSP network calls.</figcaption>
+</figure>
+<h3 id="treating-unknown-as-a-first-class-durable-state"><a class="header" href="#treating-unknown-as-a-first-class-durable-state">Treating <code>UNKNOWN</code> as a First-Class Durable State</a></h3>
+<p>When Phase 2 times out after <code>5 seconds</code>, receives an HTTP <code>502</code>, or suffers an orchestrator crash before reading the socket, the outcome at the issuing bank is genuinely unknown. Marking the payment <code>DECLINED</code> on timeout invites the customer to retry with a new order, double-charging their card when the first charge actually settled. Conversely, blindly re-submitting a new charge without the deterministic <code>psp_reference_id</code> persisted in Phase 1 causes the PSP to process two separate charges.</p>
+<p>Instead, the payment remains durably in <code>PENDING_PSP</code> until one of three convergent paths resolves it:</p>
+<ol>
+<li><strong>Idempotent Caller Retry:</strong> A retry carrying the same <code>Idempotency-Key</code> reads <code>recovery_point = 'PENDING_PSP'</code>, skips Phase 1, and queries or re-submits to the PSP using the persisted <code>psp_reference_id</code>.</li>
+<li><strong>Signed PSP Webhook:</strong> When the PSP completes settlement asynchronously, its HMAC-verified webhook triggers Phase 3 via a conditional transition (<code>WHERE state = 'PENDING_PSP'</code>).</li>
+<li><strong>Background Status Poller:</strong> A sweeper inspects payments remaining in <code>PENDING_PSP</code> past <code>30 seconds</code>, queries the PSP status endpoint with exponential backoff, and drives them to <code>CAPTURED</code>, <code>DECLINED</code>, or manual operations escalation after <code>24 hours</code>.</li>
+</ol>
+<p>Advance through the interactive step-by-step trace below to observe how durable <code>PENDING</code> intent and a stable PSP reference resolve a dropped network reply without double-charging:</p>
+<figure class="steps" data-prefix="figures/steps-pay-pending" data-count="6" data-version="37645ef4">
+<img src="figures/steps-pay-pending-01.svg?v=37645ef4" alt="A charge whose outcome is unknown, step 1 of 6. Before anything is sent to the card network, the payment is stored in our own system in the state pending, with a reference of our choosing. If we crash in the next step, the record will tell us what we were doing.">
+<figcaption><b>Interactive Trace 19.A</b> Step-by-step recovery from a dropped card-network reply using durable <code>PENDING</code> state and a stable reference. Use Next and Back to step through.</figcaption>
+</figure>
+<h2 id="195-immutable-double-entry-ledger-and-hot-account-sharding"><a class="header" href="#195-immutable-double-entry-ledger-and-hot-account-sharding">19.5 Immutable Double-Entry Ledger and Hot-Account Sharding</a></h2>
+<p>Mutating a single <code>accounts.balance</code> column in place destroys audit provenance and permits partial-update corruption if a crash occurs between debiting one account and crediting another. Financial systems instead implement <strong>double-entry bookkeeping</strong>: every monetary movement appends an immutable set of journal rows whose signed minor-unit deltas sum strictly to zero (<code>SUM(delta_minor) == 0</code>). Any bug that fails to balance a transfer violates the database constraint and aborts the transaction before committing corrupt state.</p>
+<h3 id="exact-monetary-arithmetic-and-deterministic-rounding"><a class="header" href="#exact-monetary-arithmetic-and-deterministic-rounding">Exact Monetary Arithmetic and Deterministic Rounding</a></h3>
+<p>Binary IEEE-754 floating-point values (<code>f32</code>/<code>f64</code>) cannot represent decimal tenths exactly (<code>0.10 + 0.20 != 0.30</code> in binary), accumulating unexplained cent discrepancies across millions of percentage fees and currency conversions. Storing all amounts as signed 64-bit integer minor units paired with an ISO-4217 currency code guarantees exact integer arithmetic. Whenever a percentage fee or multi-way payout split produces a fractional cent (such as dividing <code>100</code> cents across <code>3</code> recipients), the ledger applies a deterministic rounding policy (round-half-even or largest-remainder allocation) and routes the exact integer remainder to a designated remainder account so the transaction remains strictly zero-sum.</p>
+<p>Executing <code>code/paysim</code> validates idempotent replay (<code>order-7</code>, <code>order-9</code>), cached refusal replay (<code>order-8</code>), and zero-sum conservation (<code>10,000</code> cents total before and after all operations):</p>
+<pre><code class="language-console">$ cargo run --release -p paysim
+start: {"ada": 10000, "shop": 0}, total 10000
+order-7: 4000 cents from ada to shop: Done, ada has 6000
+order-7: 4000 cents from ada to shop: Done, ada has 6000
+order-8: 9000 cents from ada to shop: Refused, ada has 6000
+order-9: 6000 cents from ada to shop: Done, ada has 0
+order-9: 6000 cents from ada to shop: Done, ada has 0
+end: {"ada": 0, "shop": 10000}, total 10000
+</code></pre>
+<p>Inspect the append-only journal mechanics across two charges and an immutable reversing refund below:</p>
+<figure class="steps" data-prefix="figures/steps-pay-ledger" data-count="5" data-version="56bbe801">
+<img src="figures/steps-pay-ledger-01.svg?v=56bbe801" alt="2 entries for every movement, step 1 of 5. Ada has 10000 cents and the shop has none. The ledger of movements is empty. Amounts are whole numbers of cents throughout.">
+<figcaption><b>Interactive Trace 19.B</b> Append-only double-entry ledger recording charges and an immutable reversing refund with invariant zero-sum balance. Use Next and Back to step through.</figcaption>
+</figure>
+<h3 id="eliminating-hot-account-row-lock-serialization"><a class="header" href="#eliminating-hot-account-row-lock-serialization">Eliminating Hot-Account Row-Lock Serialization</a></h3>
+<p>At <code>1,000-5,000</code> TPS, maintaining a single materialized balance row per account introduces severe <strong>row-level lock contention</strong> on high-fan-in accounts such as <code>acct:platform_fees</code>, a global PSP clearing account, or a flagship merchant during a flash sale. Executing <code>SELECT balance FROM accounts WHERE id = 'platform_fees' FOR UPDATE</code> on every payment serializes all concurrent transactions behind a single database row lock, collapsing write throughput regardless of cluster size.</p>
+<p>We eliminate hot-account serialization through two complementary designs (Figure 19-4):</p>
+<figure>
+<img src="figures/m3/ch19_hot_account_ledger.svg" alt="Immutable Double-Entry Journal enforcing zero-sum integer entries alongside Hot-Account Contention Sharding across K=16 logical sub-accounts with asynchronous balance rollup.">
+<figcaption><b>Figure 19-4</b> Zero-sum double-entry invariants and <code>K</code>-way sub-account sharding for high-contention credit accounts.</figcaption>
+</figure>
+<ol>
+<li><strong><code>K</code>-Way Sub-Account Sharding (Credit-Heavy Clearing and Fee Accounts):</strong> Partition high-TPS credit accounts logically into <code>K</code> sub-accounts (<code>merchant_42#0</code> through <code>merchant_42#15</code>) selected deterministically by <code>hash(payment_id) % K</code>. Concurrent credits lock independent rows across <code>K</code> buckets, scaling throughput linearly by factor <code>K</code>. A periodic asynchronous rollup worker writes balance checkpoints (<code>SUM(sub_accounts #0..#15)</code>), bounding read query cost to entries created since the latest checkpoint.</li>
+<li><strong>Single-Threaded Partitioned Ledger Engines (High-TPS Debit Accounts):</strong> Debit accounts enforcing strict synchronous non-negative overdraft checks cannot split debits arbitrarily across independent rows without risking concurrent overdrafts. Workloads demanding <code>100,000+</code> debit TPS on hot accounts route account partitions to dedicated single-threaded, memory-first, Raft-replicated ledger engines (such as TigerBeetle) that execute batched double-entry transfers sequentially in microseconds with zero SQL lock overhead.</li>
+</ol>
+<h3 id="cross-service-consistency-transactional-outbox-and-sagas"><a class="header" href="#cross-service-consistency-transactional-outbox-and-sagas">Cross-Service Consistency: Transactional Outbox and Sagas</a></h3>
+<p>Publishing a <code>PaymentCaptured</code> event to Kafka directly from application code after committing the database transaction creates a <strong>dual-write hazard</strong>: a process crash between the two commits money without notifying order fulfillment, whereas publishing before commit emits phantom events on rollback. Phase 3 resolves this by inserting an <code>outbox_events</code> row inside the exact same ACID transaction as the ledger entries. A Change Data Capture (CDC) relay (such as Debezium tailing the PostgreSQL WAL) streams committed outbox rows into Kafka with at-least-once delivery, while downstream consumers deduplicate by <code>event_id</code>.</p>
+<p>For business workflows spanning independent services (inventory reservation, loyalty points, and card capture), an orchestrator executes a <strong>Saga</strong>: a sequence of local transactions paired with idempotent compensating transactions on failure. Reversible local steps (inventory holds) execute before irreversible external steps (card capture) so partial failures unwind cleanly.</p>
+<h2 id="196-three-way-reconciliation-and-multi-currency-fx"><a class="header" href="#196-three-way-reconciliation-and-multi-currency-fx">19.6 Three-Way Reconciliation and Multi-Currency FX</a></h2>
+<p>Because external PSPs, card networks, and settlement banks operate outside our ACID boundary, internal records can diverge from actual bank cash due to delayed chargebacks, silent PSP duplicate processing, FX rate movement between authorization (<code>T+0</code>) and settlement (<code>T+2</code>), or variable interchange fees. We run an automated <strong>Three-Way Financial Reconciliation Pipeline</strong> daily to detect and classify these breaks (Figure 19-5).</p>
+<figure>
+<img src="figures/m3/ch19_reconciliation_pipeline.svg" alt="Three-Way Financial Reconciliation Pipeline joining Internal Ledger (T+0), PSP Clearing Files (T+1), and Bank Settlement Statements (T+2) into Matched, Timing Difference, Fee/FX Variance, and Critical Break queues.">
+<figcaption><b>Figure 19-5</b> Automated three-way reconciliation pipeline across T+0 intent, T+1 clearing, and T+2 cash settlement.</figcaption>
+</figure>
+<h3 id="clearing-suspense-accounts-and-multi-currency-conservation"><a class="header" href="#clearing-suspense-accounts-and-multi-currency-conservation">Clearing Suspense Accounts and Multi-Currency Conservation</a></h3>
+<p>Double-entry accounting prevents premature merchant payouts by routing captured funds through explicit <strong>clearing suspense accounts</strong>:</p>
+<ol>
+<li><strong>On Capture (<code>T+0</code>):</strong> Debit <code>clearing:psp_receivable</code>, Credit <code>merchant:pending_payout</code> and <code>platform:fee_revenue</code>.</li>
+<li><strong>On Bank Settlement (<code>T+2</code>):</strong> Debit <code>bank:operating_cash</code>, Credit <code>clearing:psp_receivable</code>. When cross-currency settlement occurs (for example, payer billed <code>EUR</code> and merchant settled <code>USD</code>), each currency maintains an independently balanced zero-sum pair bridged through explicit <code>fx:trading_eur</code> and <code>fx:trading_usd</code> clearing accounts so single-currency conservation holds everywhere.</li>
+<li><strong>Deterministic Break Classification:</strong> Unmatched records route into <strong>Timing Differences</strong> (in-flight UTC cutoff items aged out after 72 hours), <strong>Fee or FX Variances</strong> (auto-booked to a tracked variance account within configured tolerances), and <strong>Critical Breaks</strong> (duplicate charges or missing bank cash), which page on-call engineers and automatically freeze affected merchant payout releases until resolved.</li>
+</ol>
+<h2 id="197-security-failure-modes-production-systems-and-verification"><a class="header" href="#197-security-failure-modes-production-systems-and-verification">19.7 Security, Failure Modes, Production Systems, and Verification</a></h2>
+<h3 id="pci-dss-scope-minimization-and-network-tokenization"><a class="header" href="#pci-dss-scope-minimization-and-network-tokenization">PCI-DSS Scope Minimization and Network Tokenization</a></h3>
+<p>Storing, transmitting, or logging raw 16-digit PANs pulls every server, database, message broker, and log aggregator touching that data into full PCI-DSS Level 1 audit scope. The checkout client submits raw card fields directly to the isolated <strong>Tokenization Vault</strong> (via hosted iframe or direct TLS session into the CDE), receiving an opaque token (<code>tok_9f2a8c11</code>) safe for storage in the Non-CDE core. Modern platforms additionally replace static PANs with <strong>EMV Network Tokens</strong> (Visa Token Service and Mastercard MDES), which automatically update expired credentials and cryptographically bind tokens to a single merchant domain, raising authorization approval rates while removing raw PAN exposure.</p>
+<h3 id="failure-and-recovery-matrix"><a class="header" href="#failure-and-recovery-matrix">Failure and Recovery Matrix</a></h3>
 <div class="table-wrapper">
 <table>
 <thead>
-<tr><th>Failure</th><th>What users see</th><th>How the system recovers</th></tr>
+<tr><th style="text-align: left">Failure Scenario</th><th style="text-align: left">Blast Radius</th><th style="text-align: left">Automated Recovery and Preserved Invariant</th></tr>
 </thead>
 <tbody>
-<tr><td>The answer to a charge is lost</td><td>the shop retries</td><td>the key returns the first result</td></tr>
-<tr><td>The card network times out</td><td>the payment shows as pending</td><td>the system asks the network about that payment until it gets a definite answer</td></tr>
-<tr><td>The ledger’s leader fails</td><td>payments are refused for about 1 second</td><td>a follower is elected, as in chapter 4</td></tr>
+<tr><td style="text-align: left"><strong>Client Connection Drops Before Reply</strong></td><td style="text-align: left">Single payment</td><td style="text-align: left">Client retries with same <code>Idempotency-Key</code>; returns cached response or resumes from <code>PENDING_PSP</code> with zero double charge</td></tr>
+<tr><td style="text-align: left"><strong>PSP Timeout / <code>5xx</code> in Phase 2</strong></td><td style="text-align: left">Single payment or one acquirer rail</td><td style="text-align: left">Zero DB locks held; payment remains <code>PENDING_PSP</code> (<code>UNKNOWN</code>) and resolves via webhook or status poller using <code>psp_reference_id</code>; circuit breaker routes new traffic to secondary PSP</td></tr>
+<tr><td style="text-align: left"><strong>Core Ledger Primary Crash / AZ Loss</strong></td><td style="text-align: left">All writes for <code>1-3 s</code></td><td style="text-align: left">Synchronous 3-AZ quorum promotes up-to-date standby with zero RPO (<code>0</code> lost transactions); incoming charges receive <code>503</code> during failover</td></tr>
+<tr><td style="text-align: left"><strong>Duplicate PSP Webhook Delivery</strong></td><td style="text-align: left">Single payment</td><td style="text-align: left">Conditional transition <code>WHERE state = 'PENDING_PSP'</code> plus unique webhook <code>event_id</code> table guarantees single application</td></tr>
+<tr><td style="text-align: left"><strong>High-TPS Merchant Row-Lock Spike</strong></td><td style="text-align: left">Hot merchant / fee account</td><td style="text-align: left"><code>K=16</code> logical sub-account sharding eliminates serial row locks while async rollup preserves exact master balances</td></tr>
+<tr><td style="text-align: left"><strong>Bank Settlement Shortfall</strong></td><td style="text-align: left">Financial integrity</td><td style="text-align: left">T+2 three-way reconciliation raises a Critical Break alert within 24 hours and holds affected payout disbursements</td></tr>
 </tbody>
 </table>
 </div>
-<h2 id="trade-offs"><a class="header" href="#trade-offs">Trade-offs</a></h2>
+<h3 id="financial-observability-slis-and-alerts"><a class="header" href="#financial-observability-slis-and-alerts">Financial Observability: SLIs and Alerts</a></h3>
+<p>Four specialized signals monitor financial integrity beyond standard HTTP metrics: <strong>authorization approval rate</strong> segmented by issuer BIN, country, and PSP (a sudden <code>&gt; 3%</code> drop exposes acquirer regressions even while HTTP status remains <code>200</code>); a continuous <strong>ledger conservation verifier</strong> asserting <code>SUM(delta_minor) == 0</code> per <code>tx_id</code> and currency (<code>SEV-1</code> on any non-zero sum); <strong>pending payment aging</strong> alerting when payments linger in <code>PENDING_PSP</code> past <code>15 minutes</code>; and <strong>unreconciled suspense aging</strong> escalating funds remaining in <code>clearing:psp_receivable</code> past <code>T+3</code>.</p>
+<h3 id="how-production-systems-implement-payments"><a class="header" href="#how-production-systems-implement-payments">How Production Systems Implement Payments</a></h3>
 <div class="table-wrapper">
 <table>
 <thead>
-<tr><th>Decision</th><th>What it gains</th><th>What it costs</th></tr>
+<tr><th style="text-align: left">Production System</th><th style="text-align: left">Core Architecture</th><th style="text-align: left">Architectural Distinction</th></tr>
 </thead>
 <tbody>
-<tr><td>Strong consistency everywhere</td><td>money is not lost or duplicated</td><td>payments are refused during a failover</td></tr>
-<tr><td>A key on every request</td><td>retries are safe</td><td>the result of every key has to be stored</td></tr>
-<tr><td>Entries, with balances computed from them</td><td>every balance can be explained and checked</td><td>more data than 1 number per account</td></tr>
+<tr><td style="text-align: left"><strong>Stripe</strong></td><td style="text-align: left">Atomic-phase idempotency keys, sharded relational ledger, isolated PCI vault</td><td style="text-align: left">Formalized recovery-point idempotency strictly separating ACID transactions from external network RPCs, paired with multi-acquirer smart retries</td></tr>
+<tr><td style="text-align: left"><strong>Adyen</strong></td><td style="text-align: left">Unified platform connected directly to Visa/Mastercard card schemes</td><td style="text-align: left">Removes intermediate gateway hops to cut latency and boost authorization rates; native three-way settlement reconciliation</td></tr>
+<tr><td style="text-align: left"><strong>Uber (<code>LedgerStore</code>)</strong></td><td style="text-align: left">Immutable, cryptographically tamper-evident append-only double-entry store</td><td style="text-align: left">Enforces immutability and Merkle-tree audit verification at the storage engine layer across billions of daily entries</td></tr>
+<tr><td style="text-align: left"><strong>TigerBeetle</strong></td><td style="text-align: left">Purpose-built distributed financial accounting database (Viewstamped Replication + <code>io_uring</code>)</td><td style="text-align: left">Executes strict double-entry transfers in single-threaded deterministic batches (<code>1M+ TPS</code>), eliminating SQL hot-account lock contention natively</td></tr>
 </tbody>
 </table>
 </div>
-<h2 id="the-simulation"><a class="header" href="#the-simulation">The simulation</a></h2>
+<h3 id="verification-in-the-repository"><a class="header" href="#verification-in-the-repository">Verification in the Repository</a></h3>
 <div class="simulation">
-<p><strong>Simulation in the repository.</strong> The program <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/distributed-systems-from-the-ground-up/code/paysim/src/main.rs"><code>code/paysim</code></a> simulates this design. To run it, clone the repository and type <code>cargo run --release -p paysim</code> in the <code>code</code> directory.</p>
+<p><strong>Run the payment ledger and idempotency simulation.</strong> Execute <code>cargo run --release -p paysim</code> in <code>code/</code> to verify idempotent deduplication (<code>order-7</code>, <code>order-9</code>), cached insufficient-funds refusal replay (<code>order-8</code>), and strict zero-sum double-entry conservation across all operations.</p>
 </div>
 
-<h2 id="references"><a class="header" href="#references">References</a></h2>
-<ul>
-<li>B. Leach, “Implementing Stripe-like Idempotency Keys in Postgres”, 2017.</li>
-<li>Stripe API reference, “Idempotent requests”.</li>
-<li>J. Chew, “Avoiding Double Payments in a Distributed Payments System”, Airbnb engineering blog, 2019.</li>
-<li>H. Garcia-Molina and K. Salem, “Sagas”, SIGMOD 1987.</li>
-<li>J. Gray and A. Reuter, <em>Transaction Processing: Concepts and Techniques</em>, Morgan Kaufmann, 1992.</li>
-<li>PCI Security Standards Council, <em>Payment Card Industry Data Security Standard</em>.</li>
-</ul>
-<h2 id="terms-introduced-in-this-chapter"><a class="header" href="#terms-introduced-in-this-chapter">Terms introduced in this chapter</a></h2>
+<h3 id="engineering-glossary"><a class="header" href="#engineering-glossary">Engineering Glossary</a></h3>
 <div class="table-wrapper">
 <table>
 <thead>
-<tr><th>Term</th><th>Meaning</th></tr>
+<tr><th style="text-align: left">Term</th><th style="text-align: left">Definition</th></tr>
 </thead>
 <tbody>
-<tr><td>Card network</td><td>the organisation that carries payment messages between banks</td></tr>
-<tr><td>Authorisation</td><td>asking the customer’s bank to approve an amount and set it aside</td></tr>
-<tr><td>Capture</td><td>the shop’s confirmation that an authorised amount is to be collected</td></tr>
-<tr><td>Settlement</td><td>the actual transfer of money between banks</td></tr>
-<tr><td>Refund</td><td>a return of money initiated by the shop</td></tr>
-<tr><td>Dispute</td><td>a reversal initiated by the customer through their bank</td></tr>
-<tr><td>Idempotency key</td><td>a name the caller gives a request, so that a repeat has no further effect</td></tr>
-<tr><td>Ledger</td><td>the append-only list of all entries, which is the record of where money has gone</td></tr>
-<tr><td>Double entry</td><td>recording every movement as 2 entries that add up to 0</td></tr>
-<tr><td>Entry</td><td>1 line of the ledger: an account, an amount with a sign, and the payment that caused it</td></tr>
-<tr><td>Pending</td><td>the state of a payment whose outcome is not yet known</td></tr>
-<tr><td>Reconciliation</td><td>comparing 2 records of the same payments in order to find differences</td></tr>
-<tr><td>2-phase commit</td><td>a protocol by which several databases commit together or not at all</td></tr>
-<tr><td>Saga</td><td>a sequence of local transactions, each with a compensating action</td></tr>
-<tr><td>Compensating action</td><td>an operation that reverses the effect of an earlier step</td></tr>
-<tr><td>Token</td><td>a random identifier that stands for a card number</td></tr>
-<tr><td>Vault</td><td>the isolated service that alone holds card numbers</td></tr>
+<tr><td style="text-align: left"><strong>Atomic Phase / Recovery Point</strong></td><td style="text-align: left">Structuring a payment workflow into short local ACID transactions separated from slow external RPCs so retries resume cleanly without holding DB locks across network I/O.</td></tr>
+<tr><td style="text-align: left"><strong>Double-Entry Ledger</strong></td><td style="text-align: left">Append-only accounting model in which every monetary transfer records balanced debit and credit rows summing strictly to zero per currency.</td></tr>
+<tr><td style="text-align: left"><strong>Hot-Account Sharding</strong></td><td style="text-align: left">Partitioning high-TPS credit accounts (such as platform fees or clearing suspense accounts) into <code>K</code> logical sub-accounts to remove serial database row-lock contention.</td></tr>
+<tr><td style="text-align: left"><strong>PCI-DSS CDE</strong></td><td style="text-align: left">Cardholder Data Environment: network-isolated security perimeter confining raw PANs to a tokenization vault and HSM so the payment core stays out of compliance scope.</td></tr>
+<tr><td style="text-align: left"><strong>Three-Way Reconciliation</strong></td><td style="text-align: left">Automated daily join across internal ledger records (<code>T+0</code>), PSP clearing files (<code>T+1</code>), and bank statements (<code>T+2</code>) to surface and classify cash discrepancies.</td></tr>
+<tr><td style="text-align: left"><strong>Transactional Outbox</strong></td><td style="text-align: left">Writing domain events in the same ACID database transaction as ledger mutations and streaming them via WAL CDC to prevent dual-write drift.</td></tr>
 </tbody>
 </table>
 </div>
-<div class="summary">
-<h2 id="summary"><a class="header" href="#summary">Summary</a></h2>
+<h3 id="references"><a class="header" href="#references">References</a></h3>
 <ul>
-<li>A payment system places correctness before availability, and declines to act when it is uncertain.</li>
-<li>A card payment is an object with a life of days: authorisation, capture, settlement, and possibly refund or dispute.</li>
-<li>Every request carries an idempotency key, recorded atomically with its result, so that a repeat changes nothing.</li>
-<li>Money is held as whole numbers of the smallest unit of its currency.</li>
-<li>Every movement is 2 ledger entries that add up to 0, written together and never altered afterwards.</li>
-<li>A charge whose reply is lost stays pending until its outcome has been established by asking the network.</li>
-<li>Reconciliation compares the ledger with the bank’s statement every day and catches what everything else missed.</li>
-<li>Operations that span several services are run as sagas, with compensating actions in place of atomicity.</li>
-<li>Card numbers are confined to a vault, and the rest of the system handles tokens.</li>
+<li>B. Leach, “Implementing Stripe-like Idempotency Keys in Postgres”, brandur.org, 2017.</li>
+<li>Stripe Engineering, “Designing robust and predictable APIs with idempotency”, 2017.</li>
+<li>J. Chew, “Avoiding Double Payments in a Distributed Payments System”, Airbnb Engineering Blog, 2019.</li>
+<li>Uber Engineering, “LedgerStore: A Ledger Database for High-Volume Financial Data”, 2023.</li>
+<li>TigerBeetle Architecture Documentation, “Strict Serializability and Double-Entry Accounting at Scale”.</li>
+<li>H. Garcia-Molina and K. Salem, “Sagas”, ACM SIGMOD, 1987.</li>
+<li>J. Gray and A. Reuter, <em>Transaction Processing: Concepts and Techniques</em>, Morgan Kaufmann, 1992.</li>
 </ul>
-</div>
-
 
                     </main>
 
@@ -828,7 +551,7 @@ the chapter rests.</p>
         <script src="book-609e4cb8.js"></script>
 
         <!-- Custom JS scripts -->
-        <script src="theme/figures-47b15f7f.js"></script>
+        <script src="theme/figures-9c14cb1c.js"></script>
         <script src="theme/proto-326509cd.js"></script>
         <script src="theme/code-67e9caaf.js"></script>
         <script src="theme/tables-9fb295e8.js"></script>

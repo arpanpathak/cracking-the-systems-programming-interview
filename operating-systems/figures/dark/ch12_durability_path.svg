@@ -1,0 +1,147 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 612" width="800" height="612">
+  <style>
+    text { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif; fill: #F8FAFC; }
+    .paper { fill: #12161F; }
+    .frame { fill: #12161F; stroke: #3E4C66; stroke-width: 1.2; }
+    .card { fill: #1E2636; stroke: #4E6080; stroke-width: 1; }
+    .hair { stroke: #3E4C66; stroke-width: 1.2; fill: none; }
+    .muted { fill: #D8E0EE; }
+    .ink { fill: #F8FAFC; }
+    .title { font-size: 17.5px; font-weight: 650; }
+    .head { font-size: 15.5px; font-weight: 650; }
+    .name { font-size: 15px; font-weight: 650; }
+    .body { font-size: 13.5px; }
+    .sub { font-size: 13px; }
+    .mono { font-size: 12.5px; font-family: "SF Mono", SFMono-Regular, ui-monospace, Menlo, Consolas, monospace; }
+    .monob { font-size: 12.5px; font-weight: 650; font-family: "SF Mono", SFMono-Regular, ui-monospace, Menlo, Consolas, monospace; }
+    .small { font-size: 12px; }
+    .note { font-size: 13.5px; }
+    .noteb { font-size: 13.5px; font-weight: 650; }
+    .sub, .small, .note { fill: #D8E0EE; }
+    .c-blue { fill: #182B49; stroke: #93C5FD; stroke-opacity: 0.48; stroke-width: 1.2; }
+    .m-blue { fill: #1E3A63; stroke: #93C5FD; stroke-opacity: 0.78; stroke-width: 1.2; }
+    .a-blue { fill: #93C5FD; }
+    .t-blue { fill: #93C5FD; }
+    .w-blue { stroke: #93C5FD; fill: none; stroke-linecap: butt; stroke-linejoin: round; }
+    .o-blue { stroke: #93C5FD; fill: none; stroke-width: 1.5; }
+    .h-blue { stroke: #93C5FD; stroke-width: 1.4; }
+    .c-green { fill: #133328; stroke: #86EFAC; stroke-opacity: 0.48; stroke-width: 1.2; }
+    .m-green { fill: #184D3B; stroke: #86EFAC; stroke-opacity: 0.78; stroke-width: 1.2; }
+    .a-green { fill: #86EFAC; }
+    .t-green { fill: #86EFAC; }
+    .w-green { stroke: #86EFAC; fill: none; stroke-linecap: butt; stroke-linejoin: round; }
+    .o-green { stroke: #86EFAC; fill: none; stroke-width: 1.5; }
+    .h-green { stroke: #86EFAC; stroke-width: 1.4; }
+    .c-amber { fill: #34250F; stroke: #FDE078; stroke-opacity: 0.48; stroke-width: 1.2; }
+    .m-amber { fill: #4F3814; stroke: #FDE078; stroke-opacity: 0.78; stroke-width: 1.2; }
+    .a-amber { fill: #FDE078; }
+    .t-amber { fill: #FDE078; }
+    .w-amber { stroke: #FDE078; fill: none; stroke-linecap: butt; stroke-linejoin: round; }
+    .o-amber { stroke: #FDE078; fill: none; stroke-width: 1.5; }
+    .h-amber { stroke: #FDE078; stroke-width: 1.4; }
+    .c-red { fill: #3A1B23; stroke: #FDA4AF; stroke-opacity: 0.48; stroke-width: 1.2; }
+    .m-red { fill: #582430; stroke: #FDA4AF; stroke-opacity: 0.78; stroke-width: 1.2; }
+    .a-red { fill: #FDA4AF; }
+    .t-red { fill: #FDA4AF; }
+    .w-red { stroke: #FDA4AF; fill: none; stroke-linecap: butt; stroke-linejoin: round; }
+    .o-red { stroke: #FDA4AF; fill: none; stroke-width: 1.5; }
+    .h-red { stroke: #FDA4AF; stroke-width: 1.4; }
+    .c-purple { fill: #261E47; stroke: #DDD6FE; stroke-opacity: 0.48; stroke-width: 1.2; }
+    .m-purple { fill: #382B6B; stroke: #DDD6FE; stroke-opacity: 0.78; stroke-width: 1.2; }
+    .a-purple { fill: #DDD6FE; }
+    .t-purple { fill: #DDD6FE; }
+    .w-purple { stroke: #DDD6FE; fill: none; stroke-linecap: butt; stroke-linejoin: round; }
+    .o-purple { stroke: #DDD6FE; fill: none; stroke-width: 1.5; }
+    .h-purple { stroke: #DDD6FE; stroke-width: 1.4; }
+    .c-teal { fill: #113136; stroke: #5EEAD4; stroke-opacity: 0.48; stroke-width: 1.2; }
+    .m-teal { fill: #164A52; stroke: #5EEAD4; stroke-opacity: 0.78; stroke-width: 1.2; }
+    .a-teal { fill: #5EEAD4; }
+    .t-teal { fill: #5EEAD4; }
+    .w-teal { stroke: #5EEAD4; fill: none; stroke-linecap: butt; stroke-linejoin: round; }
+    .o-teal { stroke: #5EEAD4; fill: none; stroke-width: 1.5; }
+    .h-teal { stroke: #5EEAD4; stroke-width: 1.4; }
+    .c-gray { fill: #1E2534; stroke: #D8E0EE; stroke-opacity: 0.48; stroke-width: 1.2; }
+    .m-gray { fill: #2C364A; stroke: #D8E0EE; stroke-opacity: 0.78; stroke-width: 1.2; }
+    .a-gray { fill: #D8E0EE; }
+    .t-gray { fill: #D8E0EE; }
+    .w-gray { stroke: #D8E0EE; fill: none; stroke-linecap: butt; stroke-linejoin: round; }
+    .o-gray { stroke: #D8E0EE; fill: none; stroke-width: 1.5; }
+    .h-gray { stroke: #D8E0EE; stroke-width: 1.4; }
+    .c-wire { fill: #1E2534; }
+    .m-wire { fill: #2C364A; }
+    .a-wire { fill: #CBD5E1; }
+    .t-wire { fill: #CBD5E1; }
+    .w-wire { stroke: #CBD5E1; fill: none; stroke-linecap: butt; stroke-linejoin: round; }
+    .o-wire { stroke: #CBD5E1; fill: none; stroke-width: 1.5; }
+    .h-wire { stroke: #CBD5E1; stroke-width: 1.4; }
+  </style>
+  <defs>
+    <filter id="lift" x="-10%" y="-15%" width="120%" height="140%">
+      <feDropShadow dx="0" dy="1" stdDeviation="1.2" flood-color="#000000" flood-opacity="0.35"/>
+      <feDropShadow dx="0" dy="3" stdDeviation="4" flood-color="#000000" flood-opacity="0.24"/>
+    </filter>
+  </defs>
+<rect x="0.5" y="0.5" width="799" height="611" rx="16" class="frame"/>
+<text x="28" y="44" class="title"><tspan class="t-blue">Figure 12-3.</tspan> Write-to-durability path across volatile</text>
+<text x="28" y="68" class="title">RAM and the 4-step crash-safe atomic rename protocol.</text>
+<g transform="translate(0 98)">
+<text x="28.0" y="16.0" class="head">1. write() returns at volatile RAM; only fsync() flushes to stable media</text>
+<rect x="28.0" y="34.0" width="152.0" height="92.0" rx="10" class="card" filter="url(#lift)"/>
+<text x="104.0" y="68.2" class="name" text-anchor="middle" data-fit="33.0,175.0">User Buffer</text>
+<text x="104.0" y="86.1" class="mono" text-anchor="middle" data-fit="33.0,175.0">write(fd, buf, n)</text>
+<text x="104.0" y="102.7" class="small" text-anchor="middle" data-fit="33.0,175.0">returns here</text>
+<rect x="214.0" y="34.0" width="186.0" height="92.0" rx="10" class="c-amber"/>
+<text x="307.0" y="68.2" class="name" text-anchor="middle" data-fit="219.0,395.0">Kernel Page Cache</text>
+<text x="307.0" y="86.3" class="sub" text-anchor="middle" data-fit="219.0,395.0">volatile DRAM</text>
+<text x="307.0" y="102.7" class="small" text-anchor="middle" data-fit="219.0,395.0">lost on power cut</text>
+<rect x="434.0" y="34.0" width="156.0" height="92.0" rx="10" class="card" filter="url(#lift)"/>
+<text x="512.0" y="68.2" class="name" text-anchor="middle" data-fit="439.0,585.0">Metadata Journal</text>
+<text x="512.0" y="86.3" class="sub" text-anchor="middle" data-fit="439.0,585.0">write-ahead log</text>
+<text x="512.0" y="102.7" class="small" text-anchor="middle" data-fit="439.0,585.0">fsync() barrier</text>
+<rect x="624.0" y="34.0" width="148.0" height="92.0" rx="10" class="m-green"/>
+<text x="698.0" y="68.2" class="name" text-anchor="middle" data-fit="629.0,767.0">NVMe / SSD</text>
+<text x="698.0" y="86.3" class="sub" text-anchor="middle" data-fit="629.0,767.0">stable media</text>
+<text x="698.0" y="102.7" class="small" text-anchor="middle" data-fit="629.0,767.0">flush ACK</text>
+<polygon points="212.0,80.0 202.0,84.2 204.8,80.0 202.0,75.8" class="a-blue"/>
+<path d="M182.0,80.0 L205.0,80.0" class="w-blue" stroke-width="2.0"/>
+<polygon points="432.0,80.0 422.0,84.2 424.8,80.0 422.0,75.8" class="a-purple"/>
+<path d="M402.0,80.0 L425.0,80.0" class="w-purple" stroke-width="2.0"/>
+<polygon points="622.0,80.0 612.0,84.2 614.8,80.0 612.0,75.8" class="a-green"/>
+<path d="M592.0,80.0 L615.0,80.0" class="w-green" stroke-width="2.0"/>
+<line x1="417.0" y1="26.0" x2="417.0" y2="138.0" class="w-red" stroke-width="1.6" stroke-dasharray="5 4"/>
+<text x="417.0" y="154.0" class="small t-red" text-anchor="middle">power-loss boundary (fsync required to cross)</text>
+<text x="28.0" y="196.0" class="head">2. crash-safe atomic file replacement protocol</text>
+<rect x="28.0" y="214.0" width="174.0" height="114.0" rx="10" class="c-blue"/>
+<text x="115.0" y="251.2" class="name" text-anchor="middle" data-fit="33.0,197.0">1. write temp</text>
+<text x="115.0" y="269.1" class="mono" text-anchor="middle" data-fit="33.0,197.0">write(tmp_fd, ...)</text>
+<text x="115.0" y="285.7" class="small" text-anchor="middle" data-fit="33.0,197.0">new payload in</text>
+<text x="115.0" y="301.7" class="small" text-anchor="middle" data-fit="33.0,197.0">config.tmp</text>
+<rect x="218.0" y="214.0" width="174.0" height="114.0" rx="10" class="c-purple"/>
+<text x="305.0" y="251.2" class="name" text-anchor="middle" data-fit="223.0,387.0">2. fsync temp</text>
+<text x="305.0" y="269.1" class="mono" text-anchor="middle" data-fit="223.0,387.0">fsync(tmp_fd)</text>
+<text x="305.0" y="285.7" class="small" text-anchor="middle" data-fit="223.0,387.0">flush data &amp;</text>
+<text x="305.0" y="301.7" class="small" text-anchor="middle" data-fit="223.0,387.0">temp inode</text>
+<rect x="408.0" y="214.0" width="174.0" height="114.0" rx="10" class="c-teal"/>
+<text x="495.0" y="251.2" class="name" text-anchor="middle" data-fit="413.0,577.0">3. rename()</text>
+<text x="495.0" y="269.1" class="mono" text-anchor="middle" data-fit="413.0,577.0">rename(tmp, cfg)</text>
+<text x="495.0" y="285.7" class="small" text-anchor="middle" data-fit="413.0,577.0">atomic swap of</text>
+<text x="495.0" y="301.7" class="small" text-anchor="middle" data-fit="413.0,577.0">directory entry</text>
+<rect x="598.0" y="214.0" width="174.0" height="114.0" rx="10" class="m-green"/>
+<text x="685.0" y="251.2" class="name" text-anchor="middle" data-fit="603.0,767.0">4. fsync dir</text>
+<text x="685.0" y="269.1" class="mono" text-anchor="middle" data-fit="603.0,767.0">fsync(dir_fd)</text>
+<text x="685.0" y="285.7" class="small" text-anchor="middle" data-fit="603.0,767.0">persist updated</text>
+<text x="685.0" y="301.7" class="small" text-anchor="middle" data-fit="603.0,767.0">parent directory</text>
+<polygon points="216.0,271.0 210.5,273.3 212.0,271.0 210.5,268.7" class="a-blue"/>
+<path d="M204.0,271.0 L212.2,271.0" class="w-blue" stroke-width="2.0"/>
+<polygon points="406.0,271.0 400.5,273.3 402.0,271.0 400.5,268.7" class="a-purple"/>
+<path d="M394.0,271.0 L402.1,271.0" class="w-purple" stroke-width="2.0"/>
+<polygon points="596.0,271.0 590.5,273.3 592.0,271.0 590.5,268.7" class="a-teal"/>
+<path d="M584.0,271.0 L592.1,271.0" class="w-teal" stroke-width="2.0"/>
+</g>
+<rect x="28" y="472" width="744" height="116" rx="12" class="c-gray"/>
+<g transform="translate(42 484) scale(0.833)" class="a-gray"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 15c-.55 0-1-.45-1-1v-4c0-.55.45-1 1-1s1 .45 1 1v4c0 .55-.45 1-1 1zm1-8h-2V7h2v2z"/></g>
+<text x="74" y="498.5" class="note" data-fit="74,760">A successful write(2) only copies bytes into the kernel page cache in volatile</text>
+<text x="74" y="518.5" class="note" data-fit="74,760">DRAM; fsync(2) flushes dirty data and metadata across the power-loss boundary.</text>
+<text x="74" y="546.5" class="note" data-fit="74,760">Crash-safe updates must fsync the temporary file before atomic rename() and</text>
+<text x="74" y="566.5" class="note" data-fit="74,760">then fsync the parent directory so the new directory entry survives a crash.</text>
+</svg>

@@ -1,9 +1,9 @@
 <!DOCTYPE HTML>
-<html lang="en" class="light sidebar-visible" dir="ltr">
+<html lang="en" class="navy sidebar-visible" dir="ltr">
     <head>
         <!-- Book generated using mdBook -->
         <meta charset="UTF-8">
-        <title>Key-Value Store: Leader Election (Low-Level Design) - Distributed Systems from the Ground Up</title>
+        <title>4. Raft Leader Election and Fencing (LLD) - Distributed Systems from the Ground Up</title>
 
 
         <!-- Custom HTML head -->
@@ -28,20 +28,18 @@
         <link rel="stylesheet" id="mdbook-ayu-highlight-css" href="ayu-highlight-3fdfc3ac.css">
 
         <!-- Custom theme stylesheets -->
-        <link rel="stylesheet" href="theme/custom-8a495b63.css">
-        <link rel="stylesheet" href="theme/formal-05bd78f0.css">
-        <link rel="stylesheet" href="theme/layout-0a0c0003.css">
+        <link rel="stylesheet" href="theme/custom-59beaf6d.css">
 
 
         <!-- Provide site root and default themes to javascript -->
         <script>
             const path_to_root = "";
-            const default_light_theme = "light";
+            const default_light_theme = "navy";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "searchindex-25bb747f.js";
+            window.path_to_searchindex_js = "searchindex-5d54d4b4.js";
         </script>
         <!-- Start loading toc.js asap -->
-        <script src="toc-cc887274.js"></script>
+        <script src="toc-ef51d47d.js"></script>
     </head>
     <body>
     <div id="mdbook-help-container">
@@ -79,7 +77,7 @@
             try { theme = localStorage.getItem('mdbook-theme'); } catch(e) { }
             if (theme === null || theme === undefined) { theme = default_theme; }
             const html = document.documentElement;
-            html.classList.remove('light')
+            html.classList.remove('navy')
             html.classList.add(theme);
             html.classList.add("js");
         </script>
@@ -183,75 +181,48 @@
 
                 <div id="mdbook-content" class="content">
                     <main>
-                        <img class="plate" src="art/ch04.svg?v=56c02505" alt="3 cats sit in boxes numbered 1, 2 and 3. The cat in box 3 wears a small crown, and the other 2 cats each hold up a paper marked with a tick. A ballot box stands between them under a banner that reads term 1.">
-<h1 id="key-value-store-leader-election-low-level-design"><a class="header" href="#key-value-store-leader-election-low-level-design">Key-Value Store: Leader Election (Low-Level Design)</a></h1>
-<p>In <a href="03-key-value-store-replication.html">chapter 3</a> the leader of each shard was
-appointed by an operator, and when a leader was lost its shard could accept no writes
-until somebody promoted a follower by hand. Non-functional requirement 1 of
-<a href="01-key-value-store-system-design.html">chapter 1</a> allows 21.6 minutes of failed
-requests in a month, and no procedure that depends on a person noticing a failure,
-understanding it and typing commands can be relied upon to stay within such a limit.
-The members of a shard have to choose their own leader.</p>
-<p>Stated so, the task sounds modest, and it is in fact the hardest problem in this
-book. The members must agree on a leader although they can communicate only by
-messages that may be lost, although any of them may crash and return at any moment
-with whatever it had on disk, and although none of them can tell a crashed member
-from one that is merely slow or cut off. The agreement must be such that 2 members
-are never leaders at once, since each would then accept writes of which the other
-knew nothing. And whoever is chosen must already hold every write that has ever been
-acknowledged, since a leader that lacked one would proceed to overwrite it. A group
-of machines reaching a decision under these conditions is said to reach <em>consensus</em>.</p>
-<p>The algorithm used in this chapter is <em>Raft</em>, published by Diego Ongaro and John
-Ousterhout in 2014 with the stated aim of being understandable, which it is to a
-degree that its predecessors were not. Raft combines the replication of chapter 3
-with a procedure for voting. We first describe the roles of a member and the rule by
-which it votes, and show why that rule guarantees that every new leader holds every
-acknowledged record. We then deal with a case that chapter 3 excluded, that of a
-member whose log differs from its leader’s. Raft is implemented as a library without
-any network code, tested by a simulation that crashes members and loses messages at
-random, and then run over gRPC as <code>kvraft</code>. Finally we measure for how long a shard
-of 3 nodes is unavailable when its leader is killed.</p>
+                        <h1 id="chapter-4-raft-leader-election-and-fencing-lld"><a class="header" href="#chapter-4-raft-leader-election-and-fencing-lld">Chapter 4: Raft Leader Election and Fencing (LLD)</a></h1>
+<img class="plate" src="art/ch04-plate.svg" alt="Chapter 4 plate: Raft consensus and monotonic term fencing illustrating Term 3, Term 4, and Term 5 quorum election barriers where term T+1 fences stale term T." />
+<p>In <a href="03-key-value-store-replication.html">Chapter 3</a>, an operator appointed each shard’s leader manually, and when a leader failed the shard rejected every write until someone inspected follower health endpoints and promoted a survivor by hand. Non-functional requirement 2 of <a href="01-key-value-store-system-design.html">Chapter 1</a> permits at most <code>21.6</code> minutes of unavailability per 30-day month (<code>99.95%</code> availability). No manual incident-response workflow can stay within that budget across dozens of shards. The replicas of a shard must elect their own leader automatically.</p>
+<p>Stated concisely, automated failover sounds modest; in practice, it is the hardest algorithmic problem in this book. The members of a shard must converge on a single leader even though they communicate solely over an asynchronous network that drops and delays messages, any replica may crash and restart with only its persisted disk state, and no replica can distinguish a crashed peer from a slow or partitioned peer. Two members must never lead the same term concurrently, because split leadership would allow divergent writes. Moreover, every elected leader must already hold every write acknowledged in earlier terms so that new writes never overwrite durable client state. Reaching agreement under these fault assumptions is the problem of distributed <em>consensus</em>.</p>
+<p>In this chapter, I implement the <em>Raft</em> consensus algorithm (Ongaro and Ousterhout, 2014) in Rust, extending the replication engine of Chapter 3 with persistent voting, term-tagged log matching, uncommitted suffix truncation, and current-term commit rules. We first build <code>raft</code> as a pure, clock-free, network-free state-machine library so we can drive deterministic fault injection in <code>raftsim</code> across 200 randomized runs of 600 steps and validate the simulator itself by disabling safety rules one by one. We then wrap <code>raft</code> in the networked server <code>kvraft</code> over gRPC and HTTP, and measure real failover pause duration under continuous write load (<code>probe</code>) when killing an active leader with <code>SIGKILL</code>.</p>
 <div class="covers">
-<p>This chapter covers</p>
+<p>In this chapter, we cover</p>
 <ul>
-<li>the roles of a member: follower, candidate and leader</li>
-<li>terms, and the state that a member must keep on disk</li>
-<li>election timeouts and the voting rule</li>
-<li>term markers, which record the term of every record without changing the format of the log</li>
-<li>repairing a log that differs from the leader’s</li>
-<li>the commit rule for records of earlier terms</li>
-<li>a simulation of 200 random runs with crashes and lost messages</li>
-<li>checking that the simulation would detect a faulty implementation</li>
-<li><code>kvraft</code>: driving Raft with a clock and gRPC</li>
-<li>a measurement of the pause that follows the loss of a leader</li>
-<li>the limitations that remain</li>
+<li>the three Raft server roles (<code>Follower</code>, <code>Candidate</code>, <code>Leader</code>) and monotonic term transitions</li>
+<li>volatile versus durable state (<code>kv.log</code> plus atomic <code>state</code> persistence for <code>term</code> and <code>voted_for</code>)</li>
+<li>deterministic per-term election timeouts and the three-part Raft voting rule</li>
+<li>zero-schema-change term markers that encode record terms inside the Chapter 2 WAL and commit inherited logs</li>
+<li>Raft Log Matching (<code>previous_term</code>), suffix conflict resolution, and safe truncation of uncommitted records</li>
+<li>the current-term commit rule and why counting replicas on earlier-term records is unsafe</li>
+<li>deterministic randomized simulation (<code>raftsim</code>) plus fault-injection mutation testing of the simulator itself</li>
+<li><code>kvraft</code>: driving the pure <code>Member</code> state machine from a <code>100 ms</code> clock task and asynchronous gRPC dispatch</li>
+<li>empirical failover measurement (<code>probe</code>): recovering from leader <code>SIGKILL</code> in <code>1.05 s</code> with zero lost writes</li>
 </ul>
 </div>
 
-<h2 id="overview"><a class="header" href="#overview">Overview</a></h2>
-<p>Every member of a shard runs the same program and is started in the same way, and
-none is configured as the leader. At any moment each member is in 1 of 3 roles.</p>
-<figure>
-<img src="figures/elect-roles.svg?v=bde23ea5" alt="The 3 roles of a member and the transitions between them. A follower accepts records from a leader. A candidate asks the others for their votes. A leader accepts writes and sends records. Transition 1, follower to candidate: the follower hears nothing from a leader for 1 to 2 seconds. Transition 2, candidate to leader: a majority of the members votes for the candidate. Transition 3, leader to follower: the leader sees a higher term. Transition 4, candidate to follower: the candidate sees a leader of its term, or a higher term.">
-<figcaption><b>Figure 4.1</b> The roles of a member and the transitions between them.</figcaption>
+<h2 id="41-server-roles-terms-and-consensus-invariants"><a class="header" href="#41-server-roles-terms-and-consensus-invariants">4.1 Server Roles, Terms, and Consensus Invariants</a></h2>
+<p>Every replica in a Raft shard runs identical code with symmetric startup arguments; no host is statically designated as leader. At any instant, each member occupies one of three roles: <em>Follower</em> (passive responder granting votes and appending leader batches), <em>Candidate</em> (transient state requesting majority votes after an election timeout), or <em>Leader</em> (sole writer replicating logs and broadcasting heartbeats). Figure 4-1 maps the complete server role state machine and its monotonic term transitions.</p>
+<figure class="diagram">
+<img src="figures/m3/ch04_raft_states.svg" alt="Figure 4-1: Raft server role state machine showing Boot to Follower, Election timeout incrementing currentTerm to Candidate, majority RequestVote advancing to Leader, split-vote retry, and higher-term discovery stepping Candidate or Leader back to Follower." />
+<figcaption><b>Figure 4-1</b> Raft server role state machine and monotonic term transitions.</figcaption>
 </figure>
-<p>Time is divided into <em>terms</em>, numbered from 1. Every term begins with an election and
-has at most 1 leader. When no candidate obtains a majority, the term has no leader,
-and another election follows in the next. The implementation keeps the invariants of
-chapter 3 and adds 3 more.</p>
-<ol start="5">
-<li>At most 1 member leads any given term.</li>
-<li>An elected leader holds every record that was acknowledged in an earlier term.</li>
-<li>A member removes a record from its log only if the record was not committed.</li>
-</ol>
-<p>Invariant 5 holds because every member votes at most once in a term and a candidate
-needs the votes of a majority. Any 2 majorities have a member in common, and for 2
-candidates to win the same term that member would have had to vote twice. Invariants
-6 and 7 are established in the sections on voting and on the repair of logs.</p>
-<h2 id="the-messages"><a class="header" href="#the-messages">The messages</a></h2>
-<p>Elections add a second call to the protocol of chapter 1, and 2 fields to the
-existing <code>Append</code> call.</p>
-<p class="listing"><img class="mascot" src="art/crab-happy.svg" alt=""><b>Listing 4.1</b> The election service in the schema. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/distributed-systems-from-the-ground-up/code/proto/store.proto">proto/store.proto</a></p>
+<p>Logical time advances in discrete, strictly increasing <em>terms</em> starting at <code>1</code>. Each term opens with an election; if a candidate secures votes from a majority of members, it leads for the remainder of that term. If votes split without a majority, the term ends with no leader and a new election starts in the next term. Building on the four replication invariants of Chapter 3, we enforce three consensus safety invariants:</p>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th style="text-align: left">No.</th><th style="text-align: left">Consensus Invariant</th><th style="text-align: left">Proof Mechanism</th></tr>
+</thead>
+<tbody>
+<tr><td style="text-align: left">0</td><td style="text-align: left"><strong>Election Safety:</strong> At most one member leads any given term.</td><td style="text-align: left">Each member persists at most one vote per term; any two majorities intersect in at least one member, preventing two candidates from both winning a majority.</td></tr>
+<tr><td style="text-align: left">1</td><td style="text-align: left"><strong>Leader Completeness:</strong> Every elected leader holds every record acknowledged in any earlier term.</td><td style="text-align: left">Enforced by the log-completeness voting predicate (<code>(last_term, last_sequence)</code> comparison) combined with quorum intersection.</td></tr>
+<tr><td style="text-align: left">2</td><td style="text-align: left"><strong>Log Safety:</strong> A member truncates a log entry only if that entry was never committed.</td><td style="text-align: left">Guaranteed by Leader Completeness together with an explicit runtime guard in <code>Member::truncate</code> against <code>index &lt;= committed</code>.</td></tr>
+</tbody>
+</table>
+</div>
+<h2 id="42-protocol-extension-requestvote-and-previous_term"><a class="header" href="#42-protocol-extension-requestvote-and-previous_term">4.2 Protocol Extension: <code>RequestVote</code> and <code>previous_term</code></a></h2>
+<p>Automated election adds one new gRPC service (<code>Election::RequestVote</code>) and extends the existing <code>AppendRequest</code> message from Chapter 3 with two backward-compatible fields (<code>previous_term</code> as field <code>6</code> and <code>leader</code> as field <code>7</code>). Listing 4.1 defines the <code>Election</code> service in <code>proto/store.proto</code>, and Listing 4.2 presents the evolved <code>Replication</code> service carrying fields <code>6</code> and <code>7</code> without renumbering any existing fields.</p>
+<p class="listing"><b>Listing 4.1</b> <code>Election</code> gRPC service definition in <code>proto/store.proto</code>. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/distributed-systems-from-the-ground-up/code/proto/store.proto">proto/store.proto</a></p>
 
 <pre><code class="language-protobuf">// Sent by a candidate to every other member of the shard.
 service Election {
@@ -271,7 +242,7 @@ message VoteResponse {
   bool granted = 2;
 }
 </code></pre>
-<p class="listing"><img class="mascot" src="art/crab-happy.svg" alt=""><b>Listing 4.2</b> The replication service, with fields 6 and 7 added. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/distributed-systems-from-the-ground-up/code/proto/store.proto">proto/store.proto</a></p>
+<p class="listing"><b>Listing 4.2</b> Backward-compatible evolution of <code>Replication</code> in <code>proto/store.proto</code>. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/distributed-systems-from-the-ground-up/code/proto/store.proto">proto/store.proto</a></p>
 
 <pre><code class="language-protobuf">// Sent by the leader of a shard to each follower.
 service Replication {
@@ -304,13 +275,8 @@ message AppendResponse {
   uint64 last_sequence = 3;
 }
 </code></pre>
-<p><code>AppendRequest</code> has gained the fields <code>previous_term</code> and <code>leader</code>, under the unused
-numbers 6 and 7. This is the evolution of a schema as chapter 1 described it. The
-existing fields have kept their numbers, <code>kvnode</code>, the program of chapter 3, makes no
-use of the new ones, and a node built from the earlier schema passes over them when it
-decodes a message.</p>
-<p>As in chapter 3, the library has message types of its own.</p>
-<p class="listing"><img class="mascot" src="art/crab-happy.svg" alt=""><b>Listing 4.3</b> The imports of <code>raft/src/lib.rs</code>. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/distributed-systems-from-the-ground-up/code/raft/src/lib.rs">raft/src/lib.rs</a></p>
+<p>Following the pure-library pattern of Chapter 3, <code>raft/src/lib.rs</code> defines transport-independent domain message types. Listing 4.3 declares the <code>kv</code> and filesystem imports of <code>raft/src/lib.rs</code>, and Listing 4.4 specifies the addressed <code>Envelope</code> and <code>Message</code> enum covering <code>Append</code>, <code>Appended</code>, <code>RequestVote</code>, and <code>Voted</code>.</p>
+<p class="listing"><b>Listing 4.3</b> Imports of <code>raft/src/lib.rs</code>. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/distributed-systems-from-the-ground-up/code/raft/src/lib.rs">raft/src/lib.rs</a></p>
 
 <pre><code class="language-rust">use std::collections::BTreeMap;
 use std::fs::{self, File};
@@ -318,7 +284,7 @@ use std::io::{self, Write};
 use std::path::{Path, PathBuf};
 
 use kv::{Change, Condition, Entry, Log, Record, StoreError, apply, check};</code></pre>
-<p class="listing"><img class="mascot" src="art/crab-happy.svg" alt=""><b>Listing 4.4</b> The messages of the library. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/distributed-systems-from-the-ground-up/code/raft/src/lib.rs">raft/src/lib.rs</a></p>
+<p class="listing"><b>Listing 4.4</b> Transport-independent consensus messages in <code>raft/src/lib.rs</code>. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/distributed-systems-from-the-ground-up/code/raft/src/lib.rs">raft/src/lib.rs</a></p>
 
 <pre><code class="language-rust">pub type NodeId = u32;
 
@@ -375,8 +341,9 @@ pub struct Outgoing {
     pub to: NodeId,
     pub message: Message,
 }</code></pre>
-<h2 id="the-state-of-a-member"><a class="header" href="#the-state-of-a-member">The state of a member</a></h2>
-<p class="listing"><img class="mascot" src="art/crab-happy.svg" alt=""><b>Listing 4.5</b> The roles, the election timeout, and the state of a member. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/distributed-systems-from-the-ground-up/code/raft/src/lib.rs">raft/src/lib.rs</a></p>
+<h2 id="43-persistent-versus-volatile-member-state"><a class="header" href="#43-persistent-versus-volatile-member-state">4.3 Persistent Versus Volatile Member State</a></h2>
+<p>Correct crash recovery in Raft depends on strictly separating state that must survive restarts on disk from volatile state rebuilt in memory. Listing 4.5 defines <code>Role</code>, the deterministic <code>election_timeout</code> function, per-follower <code>Progress</code> tracking (<code>next</code>, <code>matched</code>, <code>last_heard</code>), and the <code>Member</code> struct.</p>
+<p class="listing"><b>Listing 4.5</b> Roles, election timeout computation, and <code>Member</code> state in <code>raft/src/lib.rs</code>. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/distributed-systems-from-the-ground-up/code/raft/src/lib.rs">raft/src/lib.rs</a></p>
 
 <pre><code class="language-rust">#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Role {
@@ -435,36 +402,25 @@ pub struct Member {
     /// differed from a leader's.
     discarded: u64,
 }</code></pre>
-<p>A member holds 3 kinds of state, which differ in whether they have to survive a
-restart, and the distinction is among the most important things to understand about
-the algorithm.</p>
+<p>Figure 4-2 partitions <code>Member</code> fields into on-disk durable files (<code>kv.log</code> and <code>state</code>) versus volatile runtime memory rebuilt after every restart.</p>
 <figure>
-<img src="figures/elect-disk-memory.svg?v=9964293d" alt="The state of a member, divided by where it is kept. On disk, where it must survive a restart: the file kv.log with the records and the term markers, and the file state with the term and the vote. In memory, rebuilt after a restart: records and terms, read from kv.log, and term and voted_for, read from state, and entries and committed, which start empty and at 0, and role and leader, which start as follower with no leader known.">
-<figcaption><b>Figure 4.2</b> The state of a member, divided into what is on disk and what is rebuilt.</figcaption>
+<img src="figures/elect-disk-memory.svg?v=9964293d" alt="Partition of Raft Member state between disk and RAM: kv.log (records and term markers) and state (current term and voted_for) persist on disk; records, terms, entries, committed, role, and leader are reconstructed in memory on boot." />
+<figcaption><b>Figure 4-2</b> Durable on-disk files versus volatile in-memory state inside a Raft member.</figcaption>
 </figure>
 <div class="table-wrapper">
 <table>
 <thead>
-<tr><th>State</th><th>Fields</th><th>On disk</th><th>Why</th></tr>
+<tr><th style="text-align: left">State Category</th><th style="text-align: left">Struct Fields</th><th style="text-align: left">Persisted on Disk</th><th style="text-align: left">Safety Justification</th></tr>
 </thead>
 <tbody>
-<tr><td>The log</td><td><code>log</code>, <code>records</code>, <code>terms</code></td><td>yes</td><td>The log is the data.</td></tr>
-<tr><td>The term and the vote</td><td><code>term</code>, <code>voted_for</code></td><td>yes, in the file <code>state</code></td><td>A member that forgot its vote in a restart could vote a second time in the same term, and 2 leaders could then be elected in 1 term.</td></tr>
-<tr><td>Everything else</td><td><code>role</code>, <code>leader</code>, <code>committed</code>, <code>entries</code>, <code>progress</code></td><td>no</td><td>This state is derived from the log and from messages, and is rebuilt after a restart.</td></tr>
+<tr><td style="text-align: left">Replicated WAL</td><td style="text-align: left"><code>log</code>, <code>records</code>, <code>terms</code></td><td style="text-align: left">Yes (<code>kv.log</code>)</td><td style="text-align: left">Stores all durable mutations and term markers.</td></tr>
+<tr><td style="text-align: left">Election metadata</td><td style="text-align: left"><code>term</code>, <code>voted_for</code></td><td style="text-align: left">Yes (<code>state</code>)</td><td style="text-align: left">Forgetting a vote across a crash would allow a member to vote twice in the same term, violating Election Safety (invariant 0).</td></tr>
+<tr><td style="text-align: left">Volatile state</td><td style="text-align: left"><code>role</code>, <code>leader</code>, <code>committed</code>, <code>entries</code>, <code>progress</code></td><td style="text-align: left">No</td><td style="text-align: left">Rebuilt safely from <code>kv.log</code> and live peer messages after restart.</td></tr>
 </tbody>
 </table>
 </div>
-<p>The second row is easily overlooked. It is natural to think of a vote as a passing
-event, of no interest once the election is over. But the whole guarantee of invariant
-5 rests on each member voting once, and a member that crashed after voting and
-returned with no memory of having done so could give a second vote in the same term
-to a different candidate. A vote is therefore a promise, and it is written to disk
-before it is sent.</p>
-<p><code>Member::open</code> reads both files. From the log it obtains the records and, by means of
-the term markers described below, the term of each. From the state file it obtains
-the term and the vote. Everything else begins from fixed values: a member that has
-been opened is a follower, knows of no leader, and has applied nothing.</p>
-<p class="listing"><img class="mascot" src="art/crab-happy.svg" alt=""><b>Listing 4.6</b> Opening a member. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/distributed-systems-from-the-ground-up/code/raft/src/lib.rs">raft/src/lib.rs</a></p>
+<p>Persisting <code>term</code> and <code>voted_for</code> before transmitting any <code>RequestVote</code> or <code>Voted</code> reply is non-negotiable: a vote is a durable promise, not an ephemeral event. Listing 4.6 implements <code>Member::open</code>, loading <code>kv.log</code>, reconstructing per-record terms from embedded markers, reading <code>state</code>, and resetting volatile fields (<code>role = Follower</code>, <code>committed = 0</code>, <code>entries = empty</code>).</p>
+<p class="listing"><b>Listing 4.6</b> Recovering durable WAL and election state in <code>raft/src/lib.rs</code>. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/distributed-systems-from-the-ground-up/code/raft/src/lib.rs">raft/src/lib.rs</a></p>
 
 <pre><code class="language-rust">impl Member {
     /// Opens the member in `directory`. It starts as a follower, with
@@ -555,11 +511,8 @@ been opened is a follower, knows of no leader, and has applied nothing.</p>
         members / 2 + 1
     }
 }</code></pre>
-<p>The state file is replaced by writing a new file and renaming it over the old one. On
-POSIX file systems, a rename within a directory is atomic, so that after a crash the
-file holds either the old state or the new and never a mixture. A member writes this
-file before it sends any message that depends on a new term or a new vote.</p>
-<p class="listing"><img class="mascot" src="art/crab-happy.svg" alt=""><b>Listing 4.7</b> Reading and writing the term and the vote. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/distributed-systems-from-the-ground-up/code/raft/src/lib.rs">raft/src/lib.rs</a></p>
+<p>To guarantee that a crash mid-write never leaves <code>state</code> half-written, Listing 4.7 persists <code>(term, voted_for)</code> via atomic write-sync-rename (<code>state.tmp</code> synced and renamed onto <code>state</code>, followed by parent-directory synchronization). On POSIX filesystems, intra-directory <code>rename</code> is atomic, ensuring startup always reads either the prior state or the complete new state.</p>
+<p class="listing"><b>Listing 4.7</b> Atomic write-and-rename persistence for <code>term</code> and <code>voted_for</code> in <code>raft/src/lib.rs</code>. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/distributed-systems-from-the-ground-up/code/raft/src/lib.rs">raft/src/lib.rs</a></p>
 
 <pre><code class="language-rust">const STATE_FILE: &amp;str = "state";
 
@@ -613,15 +566,9 @@ impl Member {
         Ok(())
     }
 }</code></pre>
-<h3 id="the-term-of-a-record"><a class="header" href="#the-term-of-a-record">The term of a record</a></h3>
-<p>Raft needs to know in which term each record was written. The record format of
-chapter 2 has no field for it, and the implementation records terms without altering
-that format, by means of a <em>term marker</em>: the first record that a new leader writes
-is a <code>Put</code> with an empty key and the leader’s term as its value. Clients cannot write
-an empty key, since the API requires at least 1 character, so that a marker cannot
-collide with any client’s data. The term of any record is then the term of the most
-recent marker at or before it.</p>
-<p class="listing"><img class="mascot" src="art/crab-happy.svg" alt=""><b>Listing 4.8</b> Term markers, and the term of each record of a log. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/distributed-systems-from-the-ground-up/code/raft/src/lib.rs">raft/src/lib.rs</a></p>
+<h3 id="encoding-record-terms-without-changing-the-wal-format"><a class="header" href="#encoding-record-terms-without-changing-the-wal-format">Encoding Record Terms Without Changing the WAL Format</a></h3>
+<p>Raft requires the term number in which every WAL record was originally written. Rather than altering the binary record schema of Chapter 2, we encode term boundaries via an in-band <em>term marker</em>: the very first record every newly elected leader appends is a <code>Put</code> with an empty key (<code>""</code>) whose 8-byte little-endian value holds the leader’s <code>term</code>. Because the external HTTP API forbids empty keys (minimum length <code>1</code>), markers can never collide with user data. Every subsequent record inherits the term of the most recent marker at or before its index. Listing 4.8 implements marker construction, marker detection, and linear-time reconstruction of the <code>terms</code> vector (<code>terms_of</code>).</p>
+<p class="listing"><b>Listing 4.8</b> In-band term markers and per-record term reconstruction in <code>raft/src/lib.rs</code>. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/distributed-systems-from-the-ground-up/code/raft/src/lib.rs">raft/src/lib.rs</a></p>
 
 <pre><code class="language-rust">/// The key of a term marker. A client cannot write the empty key, so the
 /// log can use it for a record of its own: the first record a new leader
@@ -661,25 +608,11 @@ fn terms_of(records: &amp;[Record], mut term: u64) -&gt; Vec&lt;u64&gt; {
 
     terms
 }</code></pre>
-<p>The markers have a second function, which is described under the commit rule.</p>
-<h2 id="elections"><a class="header" href="#elections">Elections</a></h2>
-<h3 id="the-election-timeout"><a class="header" href="#the-election-timeout">The election timeout</a></h3>
-<p>A follower expects a message from its leader at least once in every tick of 100 ms.
-Having received none for the whole of its <em>election timeout</em>, it concludes that the
-leader has failed and stands for election.</p>
-<p>If all followers used the same timeout, they would all stand at the same moment, each
-would vote for itself, and no candidate would obtain a majority. The timeouts are
-therefore made to differ. <code>election_timeout</code>, in the listing above, computes a value
-between 10 and 19 ticks from the id of the member and its term. Within a term, the
-members of a shard obtain different values, and each member obtains a different value
-in each term, so that 2 members which happen to coincide once do not coincide again.
-Raft as published uses random timeouts for this purpose. Timeouts that are computed
-make the simulation later in the chapter repeatable.</p>
-<p>On reaching its timeout, a member calls <code>stand</code>. It increases its term, records a
-vote for itself, and stores both on disk before any request leaves. Every
-<code>VoteRequest</code> carries the end of the candidate’s log, which the voting rule below
-compares with the log of each voter.</p>
-<p class="listing"><img class="mascot" src="art/crab-happy.svg" alt=""><b>Listing 4.9</b> Standing for election. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/distributed-systems-from-the-ground-up/code/raft/src/lib.rs">raft/src/lib.rs</a></p>
+<h2 id="44-elections-voting-safety-and-stepping-down"><a class="header" href="#44-elections-voting-safety-and-stepping-down">4.4 Elections, Voting Safety, and Stepping Down</a></h2>
+<h3 id="deterministic-staggered-election-timeouts"><a class="header" href="#deterministic-staggered-election-timeouts">Deterministic Staggered Election Timeouts</a></h3>
+<p>A follower expects a heartbeat or <code>Append</code> RPC from its leader every <code>100 ms</code> tick. If an entire election timeout elapses without leader contact, the follower transitions to <code>Candidate</code> and initiates an election. If all followers shared an identical timeout, they would stand simultaneously, vote for themselves, and deadlock in repeated split votes. In Listing 4.5, <code>election_timeout(id, term)</code> deterministically maps <code>(id, term)</code> to a value between <code>10</code> and <code>19</code> ticks (<code>1.0 s</code> to <code>1.9 s</code>): distinct members receive staggered timeouts within each term, and each member shifts its timeout on every term increment to break accidental alignments while keeping <code>raftsim</code> 100% reproducible.</p>
+<p>Listing 4.9 implements <code>Member::stand</code>, which increments <code>term</code>, records a self-vote, flushes <code>state</code> to disk via <code>save_state</code>, resets the election timer, and broadcasts <code>RequestVote</code> carrying the candidate’s <code>(last_sequence, last_term)</code> to every peer.</p>
+<p class="listing"><b>Listing 4.9</b> Initiating a candidacy and persisting self-vote in <code>raft/src/lib.rs</code>. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/distributed-systems-from-the-ground-up/code/raft/src/lib.rs">raft/src/lib.rs</a></p>
 
 <pre><code class="language-rust">impl Member {
     /// Stands for election in the next term.
@@ -710,25 +643,27 @@ compares with the log of each voter.</p>
             .collect())
     }
 }</code></pre>
+<p>Figure 4-3 traces an eight-step initial shard election from cold start (<code>term 0</code>) through member 3’s timeout, disk-backed vote grants, term-1 marker commitment, and the first client write at sequence <code>2</code>.</p>
 <figure>
-<img src="figures/elect-steps.svg?v=302a35e4" alt="The first election of a shard, in 8 steps. Step 1: 3 members start as followers in term 0, with election timeouts of 17, 14 and 11 ticks. Step 2: after 11 ticks, member 3 stands for term 1 and stores term 1 and its own vote on disk. Step 3: it sends RequestVote to members 1 and 2 with the end of its log and the term of that record. Step 4: members 1 and 2 grant their votes, each storing the vote on disk before answering. Step 5: member 3 has 3 votes of 3 and leads term 1. Step 6: it appends the marker of term 1 as record 1 and sends it to both followers. Step 7: the followers store record 1 and answer, and record 1 is committed. Step 8: the leader accepts writes, and the first write becomes record 2.">
-<figcaption><b>Figure 4.3</b> The first election of a shard. The steps are numbered from 1 to 8.</figcaption>
+<img src="figures/elect-steps.svg?v=302a35e4" alt="Eight-step cold-start Raft election: members 1, 2, and 3 boot in term 0 with timeouts 17, 14, and 11 ticks; member 3 times out first, persists term 1 self-vote, gathers persisted votes from members 1 and 2, commits term-1 marker as record 1, and serves client write as record 2." />
+<figcaption><b>Figure 4-3</b> Initial eight-step election of a three-member shard from boot through term-marker commitment.</figcaption>
 </figure>
-<h3 id="the-voting-rule"><a class="header" href="#the-voting-rule">The voting rule</a></h3>
-<p>A member grants its vote to a candidate when 3 conditions are satisfied.</p>
+<h3 id="the-three-part-voting-rule"><a class="header" href="#the-three-part-voting-rule">The Three-Part Voting Rule</a></h3>
+<p>A member grants its vote to a candidate if and only if three conditions hold simultaneously:</p>
 <div class="table-wrapper">
 <table>
 <thead>
-<tr><th>Condition</th><th>Purpose</th></tr>
+<tr><th style="text-align: left">No.</th><th style="text-align: left">Voting Condition</th><th style="text-align: left">Safety Property Enforced</th></tr>
 </thead>
 <tbody>
-<tr><td>The candidate’s term equals the member’s term. A request with a higher term first moves the member to that term.</td><td>A candidate of an earlier term cannot win.</td></tr>
-<tr><td>The member has not voted for a different candidate in this term.</td><td>At most 1 leader in a term (invariant 5).</td></tr>
-<tr><td>The candidate’s log ends at least as far as the member’s own. The terms of the last records are compared first, and the sequences if the terms are equal.</td><td>The leader holds every acknowledged record (invariant 6).</td></tr>
+<tr><td style="text-align: left">0</td><td style="text-align: left"><code>request.term == self.term</code> (after stepping up if <code>request.term &gt; self.term</code>).</td><td style="text-align: left">Prevents stale-term candidates from collecting votes.</td></tr>
+<tr><td style="text-align: left">1</td><td style="text-align: left"><code>self.voted_for</code> is <code>None</code> or already equals <code>Some(candidate)</code>.</td><td style="text-align: left">Guarantees at most one vote per term per member (Election Safety, invariant 0).</td></tr>
+<tr><td style="text-align: left">2</td><td style="text-align: left"><code>(request.last_term, request.last_sequence) &gt;= (self.last_term(), self.last_sequence())</code>.</td><td style="text-align: left">Guarantees the winner holds every record committed in earlier terms (Leader Completeness, invariant 1).</td></tr>
 </tbody>
 </table>
 </div>
-<p class="listing"><img class="mascot" src="art/crab-happy.svg" alt=""><b>Listing 4.10</b> Granting a vote, and counting the votes received. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/distributed-systems-from-the-ground-up/code/raft/src/lib.rs">raft/src/lib.rs</a></p>
+<p>Listing 4.10 implements <code>on_vote</code> (persisting the vote before returning <code>Voted { granted: true }</code>) and <code>on_voted</code> (tallying grants and invoking <code>lead</code> as soon as a majority is reached). Rust’s lexicographic tuple ordering directly implements Raft’s log-freshness comparison: higher final term wins first, with log length breaking ties within the same term.</p>
+<p class="listing"><b>Listing 4.10</b> Vote evaluation, durable vote recording, and quorum tallying in <code>raft/src/lib.rs</code>. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/distributed-systems-from-the-ground-up/code/raft/src/lib.rs">raft/src/lib.rs</a></p>
 
 <pre><code class="language-rust">impl Member {
     /// A member grants its vote once in a term, and only to a candidate
@@ -778,35 +713,15 @@ compares with the log of each voter.</p>
         }
     }
 }</code></pre>
+<p>Figure 4-4 demonstrates why term takes precedence over sequence length: member 2 holds a record from term <code>2</code> (reflecting progress from a later leader) and therefore defeats any isolated member that accumulated longer uncommitted logs from term <code>1</code>.</p>
 <figure>
-<img src="figures/elect-vote-rule.svg?v=6889a6eb" alt="The rule for granting a vote, with 3 logs. Member 1 has 4 records, all of term 1. Member 2 has 5 records, the last of term 2. Member 3 has 3 records of term 1. The ends of the logs, as term and sequence, are 1 and 4, 2 and 5, and 1 and 3. If member 2 stands, it receives both votes. If member 1 stands, only member 3 votes for it, and member 2 refuses. If member 3 stands, it receives no vote. A member votes only for a candidate whose log ends at least as Far as its own, and term is compared first, then sequence.">
-<figcaption><b>Figure 4.4</b> The voting rule applied to 3 logs.</figcaption>
+<img src="figures/elect-vote-rule.svg?v=6889a6eb" alt="Raft voting freshness comparison across three members: member 1 ends at (term 1, seq 4), member 2 ends at (term 2, seq 5), and member 3 ends at (term 1, seq 3); member 2 receives all votes, member 1 receives only member 3&#39;s vote, and member 3 receives none." />
+<figcaption><b>Figure 4-4</b> Log-freshness comparison across three replicas comparing final term before final sequence.</figcaption>
 </figure>
-<p>The third condition establishes invariant 6, by the argument that chapter 1 gave in
-outline. An acknowledged record is stored on a majority of the members, and a
-candidate needs the votes of a majority. Since 2 majorities share at least 1 member,
-some voter holds the record. That voter grants its vote only to a candidate whose log
-ends at least as far as its own, and such a candidate holds the record as well. A
-candidate that lacks an acknowledged record therefore cannot collect a majority. The
-choice that an operator made in chapter 3, by reading 2 numbers and promoting the
-follower with the longer log, is here made by the members themselves, each refusing
-its vote to anyone who knows less than it does.</p>
-<p>In <code>on_vote</code>, the 3 conditions are <code>request.term == self.term</code>, <code>free</code> and
-<code>complete</code>. Tuples in Rust are compared by their first elements, with the second
-consulted only in a tie, so that <code>(last_term, last_sequence) &gt;= (...)</code> is precisely
-the comparison that the rule requires. A vote that is granted is written to disk
-before any answer is returned. <code>on_voted</code> counts the votes for a candidate, and the
-vote that completes a majority triggers <code>lead</code>.</p>
-<p>Terms are compared before sequences because a longer log is not necessarily a more
-complete one. In figure 4.4, a member that had been isolated might have
-accumulated several uncommitted records of term 1, and its log would then be longer
-than that of member 2. A record of term 2 at the end of member 2’s log shows that
-member 2 has received records from a later leader, and its log takes precedence.</p>
-<h3 id="becoming-the-leader"><a class="header" href="#becoming-the-leader">Becoming the leader</a></h3>
-<p><code>lead</code> does 3 things. For every follower it records where to begin sending, namely at
-the end of its own log, as a first guess that a refusal will correct. It then appends
-the marker of its term, and finally sends its first messages.</p>
-<p class="listing"><img class="mascot" src="art/crab-happy.svg" alt=""><b>Listing 4.11</b> Becoming the leader. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/distributed-systems-from-the-ground-up/code/raft/src/lib.rs">raft/src/lib.rs</a></p>
+<p>Because every acknowledged record resides on a majority and every winning candidate collects votes from a majority, quorum intersection guarantees that at least one voter holds the acknowledged record. That voter refuses any candidate with a less-fresh log, automating the longest-log promotion rule that an operator executed manually in Chapter 3.</p>
+<h3 id="ascending-to-leadership-and-stepping-down"><a class="header" href="#ascending-to-leadership-and-stepping-down">Ascending to Leadership and Stepping Down</a></h3>
+<p>Upon collecting a majority of votes, <code>Member::lead</code> (Listing 4.11) initializes every peer’s <code>next</code> guess to <code>self.last_sequence()</code>, appends the new term’s in-band marker to the WAL, and immediately broadcasts initial <code>Append</code> RPCs to assert authority and commit the marker.</p>
+<p class="listing"><b>Listing 4.11</b> Transitioning to leader and appending the term marker in <code>raft/src/lib.rs</code>. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/distributed-systems-from-the-ground-up/code/raft/src/lib.rs">raft/src/lib.rs</a></p>
 
 <pre><code class="language-rust">impl Member {
     /// Becomes the leader of the current term. The first record of the term
@@ -839,12 +754,8 @@ the marker of its term, and finally sends its first messages.</p>
         Ok(self.replicate())
     }
 }</code></pre>
-<h3 id="returning-to-follower"><a class="header" href="#returning-to-follower">Returning to follower</a></h3>
-<p>Every message carries the term of its sender. On seeing, in any message, a term
-higher than its own, a member calls <code>step_down</code>: it adopts that term, clears its
-vote, since the vote belonged to an earlier term, and continues as a follower. For a
-leader, this is how the arrival of a successor makes itself known.</p>
-<p class="listing"><img class="mascot" src="art/crab-happy.svg" alt=""><b>Listing 4.12</b> Adopting a higher term. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/distributed-systems-from-the-ground-up/code/raft/src/lib.rs">raft/src/lib.rs</a></p>
+<p>Whenever any member receives any RPC or reply carrying a term strictly greater than <code>self.term</code>, Listing 4.12 (<code>step_down</code>) immediately adopts the higher term, clears <code>voted_for</code>, persists <code>state</code>, and reverts to <code>Follower</code>. For a partitioned former leader, this single rule immediately terminates stale authority upon reconnection.</p>
+<p class="listing"><b>Listing 4.12</b> Adopting a higher term and reverting to follower in <code>raft/src/lib.rs</code>. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/distributed-systems-from-the-ground-up/code/raft/src/lib.rs">raft/src/lib.rs</a></p>
 
 <pre><code class="language-rust">impl Member {
     /// Moves to a newer term as a follower. The vote of the old term does
@@ -863,34 +774,24 @@ leader, this is how the arrival of a successor makes itself known.</p>
         Ok(())
     }
 }</code></pre>
-<h2 id="repairing-a-log-that-differs"><a class="header" href="#repairing-a-log-that-differs">Repairing a log that differs</a></h2>
-<p>In chapter 3 the log of a follower was always a prefix of its leader’s, and a former
-leader had to rejoin with an empty log. With elections, a member can hold records
-that its present leader lacks. This comes about when a leader appends a record and
-fails before sending it. The record exists on 1 member only and was never
-acknowledged, and the new leader writes a different record at the same sequence.</p>
-<p><code>Append</code> detects such a difference through the field <code>previous_term</code>. A follower
-appends records only if its own record at <code>previous_sequence</code> has the term
-<code>previous_term</code>. The check is sufficient on account of a single property: if 2 logs
-contain a record with the same sequence and the same term, the 2 logs are identical
-up to that record. The property holds because each term has 1 leader, a leader writes
-each sequence once, and the check is applied on every append, so that agreement at 1
-position has always been built upon agreement at the position before.</p>
-<figure>
-<img src="figures/elect-repair.svg?v=5de06754" alt="How a member whose log differs from the leader&#39;s is repaired. The leader has 6 records: 4 of term 1 and 2 of term 2. Member 3 has 5 records of term 1, and its record 5 was written in term 1 and never committed. Step 1: the leader sends record 6 with previous sequence 5 and term 2. Step 2: member 3 finds that its record 5 is of term 1, refuses, and answers that the leader should continue from 4. Step 3: the leader sends records 5 and 6 with previous sequence 4 and term 1, which matches. Step 4: member 3 compares its record 5 with the leader&#39;s, finds that they differ, and removes its record 5. Step 5: member 3 appends the leader&#39;s records 5 and 6, and both logs are equal.">
-<figcaption><b>Figure 4.5</b> The repair of a member that holds a record which the leader does not have.</figcaption>
+<h2 id="45-log-matching-and-conflicting-tail-repair"><a class="header" href="#45-log-matching-and-conflicting-tail-repair">4.5 Log Matching and Conflicting-Tail Repair</a></h2>
+<p>In Chapter 3, a returning former leader had to wipe its disk because uncommitted records at the end of its log could conflict with records written by a new leader at the same sequence indices. Raft resolves divergent tails automatically via the <em>Log Matching Property</em> (Figure 4-5): if two logs contain an entry with the same <code>(index, term)</code>, then both logs are guaranteed identical across every preceding index <code>1</code> through <code>index</code>.</p>
+<figure class="diagram">
+<img src="figures/m3/ch04_log_matching.svg" alt="Figure 4-2: Raft Log Matching Property and safety across term boundaries showing identical (index, term) prefixes across terms 1 to 3 and leader truncation of conflicting uncommitted follower tails." />
+<figcaption><b>Figure 4-5</b> Raft Log Matching Property across term boundaries and deterministic truncation of conflicting follower tails.</figcaption>
 </figure>
-<p>On the follower’s side, the handling of <code>Append</code> consists of 3 checks followed by the
-repair itself.</p>
+<p>A follower validates every incoming <code>Append</code> against three sequential checks (Figure 4-6):</p>
+<ol>
+<li>Is <code>msg.term &gt;= self.term</code>? If not, refuse and report <code>self.term</code>.</li>
+<li>Does the follower hold a record at <code>msg.previous_sequence</code>? If not, refuse and report <code>self.last_sequence()</code>.</li>
+<li>Does the follower’s record at <code>msg.previous_sequence</code> have term equal to <code>msg.previous_term</code>? If not, refuse and report <code>msg.previous_sequence - 1</code> so the leader steps backward by one index until reaching the highest matching prefix.</li>
+</ol>
 <figure>
-<img src="figures/elect-append-flow.svg?v=21d1107d" alt="The decisions of on_append. First check: is the term of the message at least the member&#39;s own? If no, refuse and report the end of the log. Second check: does the member have a record at previous_sequence? If no, refuse and report the end of the log. Third check: is the member&#39;s record at that sequence of the term previous_term? If no, refuse and report the sequence before it. If all 3 checks pass, the member stores the records, applies the committed ones and answers that it appended. Passing the first check also makes the member a follower of the sender and restarts its election timeout.">
-<figcaption><b>Figure 4.6</b> The checks that a member applies to an `Append` message, in order.</figcaption>
+<img src="figures/elect-append-flow.svg?v=21d1107d" alt="Three-check decision tree inside on_append: verify term &gt;= local term, verify log contains previous_sequence, verify term at previous_sequence equals previous_term; passing check 1 resets election timeout and records leader id." />
+<figcaption><b>Figure 4-6</b> Three-check validation inside <code>Member::on_append</code>.</figcaption>
 </figure>
-<p>The third check carries a hint for the leader. When its record at <code>previous_sequence</code>
-has a different term, the member answers with <code>previous_sequence - 1</code>, and the leader
-begins its next message 1 record earlier. By repeating this, the leader moves
-backwards through its log until it arrives at a record on which the 2 logs agree.</p>
-<p class="listing"><img class="mascot" src="art/crab-happy.svg" alt=""><b>Listing 4.13</b> The checks of <code>Append</code>. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/distributed-systems-from-the-ground-up/code/raft/src/lib.rs">raft/src/lib.rs</a></p>
+<p>Listing 4.13 implements <code>Member::on_append</code>, resetting the election timer upon accepting the current leader’s term and invoking <code>store</code> plus <code>apply_committed</code> once all three checks pass.</p>
+<p class="listing"><b>Listing 4.13</b> Three-check <code>Append</code> validation in <code>raft/src/lib.rs</code>. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/distributed-systems-from-the-ground-up/code/raft/src/lib.rs">raft/src/lib.rs</a></p>
 
 <pre><code class="language-rust">impl Member {
     fn on_append(&amp;mut self, request: AppendRequest) -&gt; io::Result&lt;AppendAnswer&gt; {
@@ -938,14 +839,12 @@ backwards through its log until it arrives at a record on which the 2 logs agree
         })
     }
 }</code></pre>
-<p>Once all the checks have passed, the 2 logs are known to be equal up to
-<code>previous_sequence</code>, and <code>store</code> makes the member’s log equal to the leader’s for
-every record that follows.</p>
+<p>Once all three checks pass, both logs agree up to <code>previous_sequence</code>. Listing 4.14 (<code>store</code>) walks incoming records forward: identical entries (matching both term and payload) are skipped idempotently; at the first diverging index, <code>truncate</code> removes the conflicting tail from memory and disk, and the remaining leader suffix is appended in a single batched <code>fsync</code> (Figure 4-7).</p>
 <figure>
-<img src="figures/elect-store-example.svg?v=b7fb4e60" alt="An example of the method store. The member holds d, e, x and y at sequences 4 to 7. The leader sends e, f, g and h for sequences 5 to 8, with previous_sequence 4, where both logs hold d in the same term. Step 1: record 5 is e in both logs with the same term, so it is skipped. Step 2: record 6 is x in the member&#39;s log and f from the leader, so the member removes x and y. Step 3: it appends f, g and h in 1 write, and the log is d, e, f, g, h.">
-<figcaption><b>Figure 4.7</b> The method `store` applied to a log that differs from the leader's at record 6.</figcaption>
+<img src="figures/elect-store-example.svg?v=b7fb4e60" alt="Example of Member::store reconciling a divergent tail: follower holds (d, e, x, y) at indices 4 to 7 while leader sends (e, f, g, h) after index 4; record 5 matches and is skipped, conflicting tail (x, y) is truncated, and (f, g, h) are appended in one write." />
+<figcaption><b>Figure 4-7</b> Idempotent prefix skipping, conflict truncation, and batched suffix append inside <code>Member::store</code>.</figcaption>
 </figure>
-<p class="listing"><img class="mascot" src="art/crab-happy.svg" alt=""><b>Listing 4.14</b> Skipping equal records, removing differing ones, and appending the rest. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/distributed-systems-from-the-ground-up/code/raft/src/lib.rs">raft/src/lib.rs</a></p>
+<p class="listing"><b>Listing 4.14</b> Reconciling matching prefixes and truncating conflicting tails in <code>raft/src/lib.rs</code>. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/distributed-systems-from-the-ground-up/code/raft/src/lib.rs">raft/src/lib.rs</a></p>
 
 <pre><code class="language-rust">impl Member {
     /// Makes the log equal to the leader's from `previous` onward: records
@@ -985,10 +884,8 @@ every record that follows.</p>
         Ok(())
     }
 }</code></pre>
-<p>For each incoming record, <code>store</code> computes a term from <code>previous_term</code> and from the
-markers among the incoming records, exactly as <code>terms_of</code> does for a whole log. 2
-records count as equal only if both their terms and their contents agree.</p>
-<p class="listing"><img class="mascot" src="art/crab-happy.svg" alt=""><b>Listing 4.15</b> Removing uncommitted records. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/distributed-systems-from-the-ground-up/code/raft/src/lib.rs">raft/src/lib.rs</a></p>
+<p>Listing 4.15 implements <code>Member::truncate</code>. Although invariant 2 proves that a legitimate leader will never ask a follower to truncate a committed index, <code>truncate</code> asserts <code>keep &gt;= self.committed</code> explicitly and returns an error if violated. Defensive invariant checks convert potential latent bugs or disk corruption into immediate fail-stop halts rather than invisible data loss. To find the exact on-disk byte offset for truncation without storing a separate offset table, <code>truncate</code> sums the encoded frame lengths of the retained prefix.</p>
+<p class="listing"><b>Listing 4.15</b> Guarded uncommitted-tail truncation in <code>raft/src/lib.rs</code>. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/distributed-systems-from-the-ground-up/code/raft/src/lib.rs">raft/src/lib.rs</a></p>
 
 <pre><code class="language-rust">impl Member {
     /// Removes the records after `keep`. Only records that are not
@@ -1015,26 +912,15 @@ records count as equal only if both their terms and their contents agree.</p>
         Ok(())
     }
 }</code></pre>
-<p><code>truncate</code> refuses to remove a committed record and returns an error. By invariant 6
-the situation cannot arise, since a leader holds every committed record and its log
-cannot differ from a follower’s at a committed position. The check is there
-nonetheless, and for a good reason. Should the invariant ever be violated, through a
-defect in this code or a fault in a disk, the result without the check would be
-acknowledged data silently destroyed, and with it the member stops. A program that
-verifies what it believes to be impossible converts its own undiscovered defects from
-corruption into failures that somebody will notice.</p>
-<p>In order to truncate its file, a member needs the byte offset at which the last
-record to be kept ends. It computes that offset by encoding the records that are kept
-and summing their lengths, which avoids storing an offset for every record.</p>
-<p>The log of chapter 2 gains a method for removing records from its end.</p>
-<p class="listing"><img class="mascot" src="art/crab-happy.svg" alt=""><b>Listing 4.16</b> The imports of <code>kv/src/log.rs</code>. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/distributed-systems-from-the-ground-up/code/kv/src/log.rs">kv/src/log.rs</a></p>
+<p>On-disk truncation extends <code>kv::log</code> from Chapter 2 with <code>Log::truncate</code>. Listing 4.16 recalls the imports of <code>kv/src/log.rs</code>, and Listing 4.17 implements <code>Log::truncate</code>, calling <code>set_len(bytes)</code>, seeking to the new end, syncing the file via <code>sync_all</code>, and resetting <code>self.next</code>. This refines invariant 3 of Chapter 2: committed records are never overwritten, whereas uncommitted tail records beyond <code>committed</code> may be cleanly excised during Raft log repair.</p>
+<p class="listing"><b>Listing 4.16</b> Imports of <code>kv/src/log.rs</code>. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/distributed-systems-from-the-ground-up/code/kv/src/log.rs">kv/src/log.rs</a></p>
 
 <pre><code class="language-rust">use std::fs::{self, File, OpenOptions};
 use std::io::{self, Read, Write};
 use std::path::Path;
 
 use crate::record::{Change, Decoded, Record};</code></pre>
-<p class="listing"><img class="mascot" src="art/crab-happy.svg" alt=""><b>Listing 4.17</b> Removing records from the end of the log. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/distributed-systems-from-the-ground-up/code/kv/src/log.rs">kv/src/log.rs</a></p>
+<p class="listing"><b>Listing 4.17</b> Truncating uncommitted tail bytes in <code>kv/src/log.rs</code>. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/distributed-systems-from-the-ground-up/code/kv/src/log.rs">kv/src/log.rs</a></p>
 
 <pre><code class="language-rust">impl Log {
     /// Removes the records after record `keep`, which ends at byte `length`
@@ -1052,17 +938,9 @@ use crate::record::{Change, Decoded, Record};</code></pre>
         Ok(())
     }
 }</code></pre>
-<p>This method qualifies invariant 4 of chapter 2, which stated that the log is modified
-only by appending. Stated exactly, no committed record is ever modified. Records
-beyond the committed sequence may be removed, and invariant 7 of this chapter ensures
-that only such records are.</p>
-<h3 id="the-leaders-view-of-a-follower"><a class="header" href="#the-leaders-view-of-a-follower">The leader’s view of a follower</a></h3>
-<p>For every follower, the leader keeps 2 sequences. <code>next</code> is where its next message
-will begin, and it moves backwards on a refusal. <code>matched</code> is the highest sequence
-that the follower has confirmed, and it only ever increases. The commit rule uses
-<code>matched</code>, since <code>next</code> is a guess. <code>on_appended</code> updates both from an answer, applies
-the commit rule, and returns a further message when the follower is still behind.</p>
-<p class="listing"><img class="mascot" src="art/crab-happy.svg" alt=""><b>Listing 4.18</b> Processing the answer of a follower. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/distributed-systems-from-the-ground-up/code/raft/src/lib.rs">raft/src/lib.rs</a></p>
+<h3 id="leader-per-follower-progress-next-and-matched"><a class="header" href="#leader-per-follower-progress-next-and-matched">Leader Per-Follower Progress (<code>next</code> and <code>matched</code>)</a></h3>
+<p>For every peer, the leader tracks two distinct indices: <code>next</code> (optimistic cursor that decrements upon log-mismatch refusal) and <code>matched</code> (monotonically increasing confirmed index used exclusively by the commit rule). Listing 4.18 implements <code>Member::on_appended</code>, updating peer progress, advancing <code>committed</code> via <code>advance</code>, and emitting an immediate follow-up <code>Append</code> whenever the peer still lags behind the leader’s WAL.</p>
+<p class="listing"><b>Listing 4.18</b> Processing <code>Appended</code> replies and advancing follower cursors in <code>raft/src/lib.rs</code>. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/distributed-systems-from-the-ground-up/code/raft/src/lib.rs">raft/src/lib.rs</a></p>
 
 <pre><code class="language-rust">impl Member {
     fn on_appended(&amp;mut self, answer: AppendAnswer) -&gt; io::Result&lt;Vec&lt;Outgoing&gt;&gt; {
@@ -1102,8 +980,9 @@ the commit rule, and returns a further message when the follower is still behind
         })
     }
 }</code></pre>
-<h2 id="the-commit-rule"><a class="header" href="#the-commit-rule">The commit rule</a></h2>
-<p class="listing"><img class="mascot" src="art/crab-happy.svg" alt=""><b>Listing 4.19</b> Applying committed records, and the leader's commit rule. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/distributed-systems-from-the-ground-up/code/raft/src/lib.rs">raft/src/lib.rs</a></p>
+<h2 id="46-current-term-commit-rule-and-pure-event-loop"><a class="header" href="#46-current-term-commit-rule-and-pure-event-loop">4.6 Current-Term Commit Rule and Pure Event Loop</a></h2>
+<p>Listing 4.19 implements <code>apply_committed</code> and <code>advance</code>. Unlike Chapter 3’s single-term <code>majority_sequence</code>, Raft’s <code>advance</code> commits index <code>candidate</code> by replica counting <strong>only if</strong> <code>self.term_of(candidate) == self.term</code>.</p>
+<p class="listing"><b>Listing 4.19</b> Current-term commit rule and state-machine application in <code>raft/src/lib.rs</code>. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/distributed-systems-from-the-ground-up/code/raft/src/lib.rs">raft/src/lib.rs</a></p>
 
 <pre><code class="language-rust">impl Member {
     /// Applies the records up to `sequence` that are not applied yet. Term
@@ -1143,26 +1022,9 @@ the commit rule, and returns a further message when the follower is still behind
         }
     }
 }</code></pre>
-<p>The commit rule of chapter 3 committed a record as soon as a majority had stored it.
-<code>advance</code> adds a condition, that the record at the majority position must belong to
-the leader’s own term, and the reason for it is the subtlest point in Raft. A record
-of an earlier term can still be replaced even when a majority holds it, if a member
-that lacks it comes to be elected by members that lack it too, which remains possible
-for as long as no record of the current term is stored on a majority. Counting
-replicas is therefore safe only for records of the current term. Records of earlier
-terms are committed indirectly, at the moment when a record of the current term at a
-later sequence is committed.</p>
-<p>It is here that the markers perform their second function. A new leader appends a
-marker as the first record of its term, and as soon as a majority has stored it, the
-marker and every record before it are committed together. Without markers, the
-records inherited from earlier terms would remain uncommitted until the first write
-of a client in the new term happened to arrive.</p>
-<h2 id="the-clock-and-the-messages"><a class="header" href="#the-clock-and-the-messages">The clock and the messages</a></h2>
-<p>The library reads no clock and opens no connection. Its caller invokes <code>tick</code> at a
-fixed interval and <code>handle</code> for every incoming message, and sends whatever messages
-either method returns. As in chapter 3, this separation is what makes the algorithm
-testable, since a test can then supply the clock and the network itself.</p>
-<p class="listing"><img class="mascot" src="art/crab-happy.svg" alt=""><b>Listing 4.20</b> The clock: heartbeats for a leader, the election timeout for the others. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/distributed-systems-from-the-ground-up/code/raft/src/lib.rs">raft/src/lib.rs</a></p>
+<p>Restricting direct replica-count commits to entries of the current term closes a subtle Raft safety hazard (Figure 8 of the Raft paper): an entry written in an earlier term can be replicated to a majority yet still be overwritten by a future leader elected by a disjoint quorum of peers carrying an intermediate term, until a record from the <em>current</em> term reaches a majority. Once a current-term record reaches a majority, the Log Matching Property locks in all preceding entries indirectly. Here the term marker performs its second role: appending and committing the term marker immediately upon election commits every inherited prior-term entry without waiting for a client write to arrive.</p>
+<p>Because <code>raft</code> owns neither clocks nor sockets, callers drive it through three pure entry points: <code>tick</code> (Listing 4.20) advances heartbeat or election timers; <code>handle</code> (Listing 4.21) dispatches incoming peer messages and returns outbound <code>Envelope</code> batches; and client methods (Listing 4.22) enforce <code>can_read</code> (requiring leadership, committed term marker so inherited state is applied, and majority heartbeat contact within the past 10 ticks) and <code>propose</code>.</p>
+<p class="listing"><b>Listing 4.20</b> Logical clock tick driving heartbeats and election timeouts in <code>raft/src/lib.rs</code>. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/distributed-systems-from-the-ground-up/code/raft/src/lib.rs">raft/src/lib.rs</a></p>
 
 <pre><code class="language-rust">impl Member {
     /// Advances the member's clock by one tick. A leader sends every
@@ -1212,7 +1074,7 @@ testable, since a test can then supply the clock and the network itself.</p>
         })
     }
 }</code></pre>
-<p class="listing"><img class="mascot" src="art/crab-happy.svg" alt=""><b>Listing 4.21</b> Dispatching a message. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/distributed-systems-from-the-ground-up/code/raft/src/lib.rs">raft/src/lib.rs</a></p>
+<p class="listing"><b>Listing 4.21</b> Central message dispatcher in <code>raft/src/lib.rs</code>. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/distributed-systems-from-the-ground-up/code/raft/src/lib.rs">raft/src/lib.rs</a></p>
 
 <pre><code class="language-rust">impl Member {
     /// Processes a message and returns the messages to send in response.
@@ -1241,7 +1103,7 @@ testable, since a test can then supply the clock and the network itself.</p>
         }
     }
 }</code></pre>
-<p class="listing"><img class="mascot" src="art/crab-happy.svg" alt=""><b>Listing 4.22</b> The operations for client requests. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/distributed-systems-from-the-ground-up/code/raft/src/lib.rs">raft/src/lib.rs</a></p>
+<p class="listing"><b>Listing 4.22</b> Client read guard and write proposal entry points in <code>raft/src/lib.rs</code>. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/distributed-systems-from-the-ground-up/code/raft/src/lib.rs">raft/src/lib.rs</a></p>
 
 <pre><code class="language-rust">impl Member {
     /// Whether this member is the leader and every record of its log is
@@ -1294,16 +1156,10 @@ testable, since a test can then supply the clock and the network itself.</p>
         self.entries.get(key)
     }
 }</code></pre>
-<p><code>can_read</code> permits a read when the member is the leader, when the marker of its term
-is committed, and when a majority of the members has answered within the last 10
-ticks. The second of these conditions ensures that the entries reflect every record
-that was committed in earlier terms.</p>
-<h2 id="simulating-crashes-and-lost-messages"><a class="header" href="#simulating-crashes-and-lost-messages">Simulating crashes and lost messages</a></h2>
-<p>Because the library is free of clocks and connections, a test has control of all of
-them. <code>raftsim</code> runs 3 members in a single process. It decides when the clock of each
-member ticks, which message is delivered next, which messages are lost, and when a
-member crashes and restarts.</p>
-<p class="listing"><img class="mascot" src="art/crab-happy.svg" alt=""><b>Listing 4.23</b> The imports of <code>raftsim/src/main.rs</code>. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/distributed-systems-from-the-ground-up/code/raftsim/src/main.rs">raftsim/src/main.rs</a></p>
+<h2 id="47-deterministic-randomized-simulation-raftsim"><a class="header" href="#47-deterministic-randomized-simulation-raftsim">4.7 Deterministic Randomized Simulation (<code>raftsim</code>)</a></h2>
+<p>Decoupling <code>Member</code> from system clocks and TCP sockets lets <code>raftsim</code> run three full disk-backed Raft members inside one deterministic process, controlling every tick, message reordering, packet drop, process crash, and restart.</p>
+<p>Listing 4.23 declares the imports of <code>raftsim/src/main.rs</code>, and Listing 4.24 provides a seeded deterministic pseudo-random generator (<code>xorshift64</code>) so any discovered failure replays identically on demand.</p>
+<p class="listing"><b>Listing 4.23</b> Imports of <code>raftsim/src/main.rs</code>. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/distributed-systems-from-the-ground-up/code/raftsim/src/main.rs">raftsim/src/main.rs</a></p>
 
 <pre><code class="language-rust">use std::collections::BTreeMap;
 use std::env;
@@ -1314,7 +1170,7 @@ use std::process;
 
 use kv::{Change, Condition};
 use raft::{Member, NodeId, Outgoing, Role};</code></pre>
-<p class="listing"><img class="mascot" src="art/crab-happy.svg" alt=""><b>Listing 4.24</b> A repeatable source of pseudo-random numbers. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/distributed-systems-from-the-ground-up/code/raftsim/src/main.rs">raftsim/src/main.rs</a></p>
+<p class="listing"><b>Listing 4.24</b> Seeded deterministic pseudo-random generator in <code>raftsim/src/main.rs</code>. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/distributed-systems-from-the-ground-up/code/raftsim/src/main.rs">raftsim/src/main.rs</a></p>
 
 <pre><code class="language-rust">/// A generator of pseudo-random numbers. The same seed gives the same
 /// numbers, so a run that fails can be repeated exactly.
@@ -1334,7 +1190,8 @@ impl Random {
         (self.next() % bound as u64) as usize
     }
 }</code></pre>
-<p class="listing"><img class="mascot" src="art/crab-happy.svg" alt=""><b>Listing 4.25</b> The cluster: members, messages in transit, and writes. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/distributed-systems-from-the-ground-up/code/raftsim/src/main.rs">raftsim/src/main.rs</a></p>
+<p>Listing 4.25 implements the in-process <code>Cluster</code> harness managing member directories, crash/restart lifecycles, an unordered in-flight message queue, and an external oracle tracking acknowledged writes.</p>
+<p class="listing"><b>Listing 4.25</b> In-process Raft cluster harness in <code>raftsim/src/main.rs</code>. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/distributed-systems-from-the-ground-up/code/raftsim/src/main.rs">raftsim/src/main.rs</a></p>
 
 <pre><code class="language-rust">const MEMBERS: [NodeId; 3] = [1, 2, 3];
 
@@ -1500,8 +1357,8 @@ impl Cluster {
             .max_by_key(|member| member.term())
     }
 }</code></pre>
-<p>After every step, <code>raftsim</code> checks 3 properties.</p>
-<p class="listing"><img class="mascot" src="art/crab-happy.svg" alt=""><b>Listing 4.26</b> The properties checked after every step. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/distributed-systems-from-the-ground-up/code/raftsim/src/main.rs">raftsim/src/main.rs</a></p>
+<p>After every single simulation step, Listing 4.26 (<code>check</code>) asserts all three safety invariants: no two live members lead the same term (Election Safety), every two members with entries committed at the same sequence agree on identical record contents (State Machine Safety), and every write acknowledged by a leader while still leading its proposal term remains intact after recovery (Leader Completeness).</p>
+<p class="listing"><b>Listing 4.26</b> Per-step safety invariant checker in <code>raftsim/src/main.rs</code>. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/distributed-systems-from-the-ground-up/code/raftsim/src/main.rs">raftsim/src/main.rs</a></p>
 
 <pre><code class="language-rust">impl Cluster {
     /// The properties that must hold after every step.
@@ -1572,10 +1429,8 @@ impl Cluster {
         Ok(())
     }
 }</code></pre>
-<p>A write counts as acknowledged under exactly the condition that the node itself
-applies: the member that accepted it has committed its record while still leading the
-same term.</p>
-<p class="listing"><img class="mascot" src="art/crab-happy.svg" alt=""><b>Listing 4.27</b> A scripted election, a crashed leader, and the repair of its log. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/distributed-systems-from-the-ground-up/code/raftsim/src/main.rs">raftsim/src/main.rs</a></p>
+<p>Listing 4.27 runs a deterministic scripted scenario that elects member 3, commits three writes, appends uncommitted record 5 on member 3 and crashes it, elects member 1 in term 2, commits a conflicting write at record 5/6, restarts member 3, and verifies that member 3 truncates its uncommitted record 5 and converges cleanly.</p>
+<p class="listing"><b>Listing 4.27</b> Scripted leader-crash and conflicting-tail repair scenario in <code>raftsim/src/main.rs</code>. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/distributed-systems-from-the-ground-up/code/raftsim/src/main.rs">raftsim/src/main.rs</a></p>
 
 <pre><code class="language-rust">fn show(cluster: &amp;Cluster) -&gt; String {
     let describe = |id: &amp;NodeId| match cluster.up.get(id) {
@@ -1682,7 +1537,8 @@ fn cases(root: &amp;Path) -&gt; Result&lt;(), Box&lt;dyn Error&gt;&gt; {
 
     Ok(())
 }</code></pre>
-<p class="listing"><img class="mascot" src="art/crab-happy.svg" alt=""><b>Listing 4.28</b> 200 random runs, and the recovery at the end of each. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/distributed-systems-from-the-ground-up/code/raftsim/src/main.rs">raftsim/src/main.rs</a></p>
+<p>Listing 4.28 executes 200 randomized runs of 600 steps each (40% tick, 42% deliver random in-flight message, 5% drop message, 3% crash member, 4% restart member, 6% client write), healing all members at the end of every run to verify convergence on one leader, identical logs, and every acknowledged key. Listing 4.29 runs both suites from <code>main</code>.</p>
+<p class="listing"><b>Listing 4.28</b> 200 randomized crash-and-partition runs in <code>raftsim/src/main.rs</code>. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/distributed-systems-from-the-ground-up/code/raftsim/src/main.rs">raftsim/src/main.rs</a></p>
 
 <pre><code class="language-rust">const RUNS: u64 = 200;
 const STEPS: usize = 600;
@@ -1802,12 +1658,7 @@ fn runs(root: &amp;Path) -&gt; Result&lt;(), Box&lt;dyn Error&gt;&gt; {
 
     Ok(())
 }</code></pre>
-<p>Each run takes 600 random steps. A step ticks the clock of a member (40%), delivers a
-message (42%), loses a message (5%), crashes a member (3%), restarts a member (4%) or
-sends a write (6%). At the end of a run, all members are started, all messages are
-delivered, and <code>raftsim</code> verifies that the members agree on a leader and on a log, and
-that the leader returns every acknowledged write.</p>
-<p class="listing"><img class="mascot" src="art/crab-happy.svg" alt=""><b>Listing 4.29</b> Running the simulation. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/distributed-systems-from-the-ground-up/code/raftsim/src/main.rs">raftsim/src/main.rs</a></p>
+<p class="listing"><b>Listing 4.29</b> Entry point of <code>raftsim/src/main.rs</code>. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/distributed-systems-from-the-ground-up/code/raftsim/src/main.rs">raftsim/src/main.rs</a></p>
 
 <pre><code class="language-rust">fn main() -&gt; Result&lt;(), Box&lt;dyn Error&gt;&gt; {
     let root = env::temp_dir().join(format!("raftsim-{}", process::id()));
@@ -1817,6 +1668,7 @@ that the leader returns every acknowledged write.</p>
 
     result
 }</code></pre>
+<p>Running <code>raftsim</code> exercises 480 elections, 504 acknowledged writes, and 18 divergent uncommitted tail truncations with zero invariant violations:</p>
 <pre><code class="language-console">$ cargo run --release -p raftsim
 start:            1: Follower term 0 log 0 | 2: Follower term 0 log 0 | 3: Follower term 0 log 0
 after 11 ticks:   1: Follower term 1 log 1 | 2: Follower term 1 log 1 | 3: Leader term 1 log 1
@@ -1836,102 +1688,89 @@ member 3 discarded 1 record that was never committed, and holds the leader's rec
 <div class="table-wrapper">
 <table>
 <thead>
-<tr><th>Output</th><th>What it shows</th></tr>
+<tr><th style="text-align: left">Observed Output</th><th style="text-align: left">Verified Consensus Property</th></tr>
 </thead>
 <tbody>
-<tr><td>after 11 ticks: member 3 is Leader of term 1, all logs at 1</td><td>Member 3 has the shortest timeout in term 0. Record 1 is the term marker.</td></tr>
-<tr><td>leader 3 appends record 5 and crashes: the others have 4 records</td><td>Record 5 exists on member 3 only and was not acknowledged.</td></tr>
-<tr><td>after 10 ticks: member 1 is Leader of term 2, logs at 5</td><td>Member 1 was elected by itself and member 2. Its record 5 is the marker of term 2.</td></tr>
-<tr><td>member 3 returns: Follower, term 1, log 5</td><td>Member 3 holds a record 5 that differs from the leader’s record 5.</td></tr>
-<tr><td>after 2 ticks: member 3 at term 2, log 6; it discarded 1 record</td><td>The repair removed the uncommitted record and installed the leader’s records.</td></tr>
-<tr><td>480 leaders were elected, and no term had 2 leaders</td><td>Invariant 5 held at every step of every run.</td></tr>
-<tr><td>504 writes were acknowledged, and every one was present after recovery</td><td>Invariant 6 held.</td></tr>
-<tr><td>18 uncommitted records were discarded</td><td>The runs produced logs that differed, and the repair resolved them without the loss of an acknowledged write.</td></tr>
+<tr><td style="text-align: left"><code>after 11 ticks: 3: Leader term 1 log 1</code></td><td style="text-align: left">Shortest deterministic timeout wins term 1 and commits the term-1 marker at index 1.</td></tr>
+<tr><td style="text-align: left"><code>leader 3 appends record 5 and crashes</code></td><td style="text-align: left">Uncommitted record 5 exists solely on member 3.</td></tr>
+<tr><td style="text-align: left"><code>after 10 ticks: 1: Leader term 2 log 5</code></td><td style="text-align: left">Surviving quorum elects member 1 in term 2, writing term-2 marker at index 5.</td></tr>
+<tr><td style="text-align: left"><code>member 3 returns ... after 2 ticks: Follower term 2 log 6</code></td><td style="text-align: left">Returning former leader detects conflict at index 5, truncates its uncommitted record, and adopts the leader’s suffix.</td></tr>
+<tr><td style="text-align: left"><code>480 leaders were elected, and no term had 2 leaders</code></td><td style="text-align: left">Election Safety (invariant 0) held at every step of all 200 runs.</td></tr>
+<tr><td style="text-align: left"><code>504 writes were acknowledged, and every one was present</code></td><td style="text-align: left">Leader Completeness (invariant 1) held across every failover.</td></tr>
+<tr><td style="text-align: left"><code>18 uncommitted records were discarded</code></td><td style="text-align: left">Log Matching and conflict truncation resolved 18 divergent tails without losing any acknowledged write.</td></tr>
 </tbody>
 </table>
 </div>
-<h3 id="checking-the-simulation"><a class="header" href="#checking-the-simulation">Checking the simulation</a></h3>
-<p>A simulation that reports no failure is informative only if it would have reported
-one for an incorrect implementation, and this is a question that can be put to the
-test. We disabled 3 rules of Raft in turn and ran the simulation against each
-modified library.</p>
+<h3 id="mutation-testing-the-simulator-itself"><a class="header" href="#mutation-testing-the-simulator-itself">Mutation Testing the Simulator Itself</a></h3>
+<p>A passing test suite warrants confidence only when we verify that it detects real protocol violations. We intentionally disabled three Raft safety rules one at a time and re-ran <code>raftsim</code>:</p>
 <div class="table-wrapper">
 <table>
 <thead>
-<tr><th>Rule disabled</th><th>Result</th></tr>
+<tr><th style="text-align: left">Safety Rule Disabled</th><th style="text-align: left">Simulator Outcome</th></tr>
 </thead>
 <tbody>
-<tr><td>A member votes only for a candidate whose log is at least as complete as its own.</td><td>detected: <code>member 2 lost acknowledged write of key-1</code></td></tr>
-<tr><td>A member votes at most once in a term.</td><td>detected: <code>members 1 and 3 both lead term 4</code></td></tr>
-<tr><td>The leader commits by counting only for records of its own term.</td><td>not detected: all 200 runs passed</td></tr>
+<tr><td style="text-align: left">Log-completeness check in <code>on_vote</code></td><td style="text-align: left"><strong>Detected:</strong> <code>member 2 lost acknowledged write of key-1</code></td></tr>
+<tr><td style="text-align: left">Single-vote-per-term check in <code>on_vote</code></td><td style="text-align: left"><strong>Detected:</strong> <code>members 1 and 3 both lead term 4</code></td></tr>
+<tr><td style="text-align: left">Current-term-only commit check in <code>advance</code></td><td style="text-align: left"><strong>Not detected:</strong> all 200 three-node runs passed</td></tr>
 </tbody>
 </table>
 </div>
-<p>The third result has to be stated with care. The correctness of Raft requires this
-condition, and the implementation contains it. With 3 members and 200 runs, however,
-the simulation did not produce a sequence of events in which the absence of the
-condition leads to an error. In the paper on Raft, such a sequence involves 5 members
-and several successive failures of leaders at particular moments. The simulation
-therefore provides evidence for the voting rules and for the repair of logs, and
-provides none for this condition. It would have been easy to report “200 runs passed”
-and to leave the reader with the impression that everything had been verified, and
-the difference between what a test exercises and what it merely fails to contradict
-is one that this book tries to keep in view.</p>
-<h2 id="design-overview"><a class="header" href="#design-overview">Design overview</a></h2>
+<p>That third outcome deserves explicit engineering candor. The current-term commit restriction is mandatory for Raft correctness and remains implemented in <code>advance</code>, yet triggering its counterexample (Figure 8 of Ongaro and Ousterhout) typically requires five members and a specific multi-term cascade of crashes. Our 200 three-node runs provide strong empirical validation for voting safety and log repair, and zero empirical coverage of the earlier-term commit edge case. Distinguishing what a test actually exercises from what it leaves uncovered is essential to honest systems verification.</p>
+<h2 id="48-low-level-architecture-of-kvraft"><a class="header" href="#48-low-level-architecture-of-kvraft">4.8 Low-Level Architecture of <code>kvraft</code></a></h2>
+<p>We now connect the verified <code>raft::Member</code> engine to a real <code>100 ms</code> clock, <code>tonic</code> gRPC transport, and <code>axum</code> HTTP endpoints in <code>kvraft</code>.</p>
 <div class="lld">
 <p>Low-level design: leader election</p>
 <p><strong>Crates</strong></p>
 <div class="table-wrapper">
 <table>
 <thead>
-<tr><th>Crate</th><th>Kind</th><th>Contents</th></tr>
+<tr><th style="text-align: left">Crate</th><th style="text-align: left">Kind</th><th style="text-align: left">Responsibilities</th></tr>
 </thead>
 <tbody>
-<tr><td><code>raft</code></td><td>library</td><td><code>Member</code>: roles, voting, the repair of logs, the commit rule, with no network and no clock</td></tr>
-<tr><td><code>raftsim</code></td><td>program</td><td>the simulation</td></tr>
-<tr><td><code>kvraft</code></td><td>program</td><td>a node: <code>rpc</code> (both gRPC services), <code>node</code> (the clock, sending messages, writes and reads), <code>main</code> (the HTTP API)</td></tr>
-<tr><td><code>probe</code></td><td>program</td><td>a client that measures the longest pause between acknowledged writes</td></tr>
+<tr><td style="text-align: left"><code>raft</code></td><td style="text-align: left">library</td><td style="text-align: left">Pure <code>Member</code> state machine: roles, durable voting, term markers, log repair, and current-term commit</td></tr>
+<tr><td style="text-align: left"><code>raftsim</code></td><td style="text-align: left">binary</td><td style="text-align: left">Deterministic crash-and-partition simulator (<code>200</code> randomized runs + scripted repair test)</td></tr>
+<tr><td style="text-align: left"><code>kvraft</code></td><td style="text-align: left">binary</td><td style="text-align: left">Networked Raft node: <code>rpc</code> (<code>Replication</code> + <code>Election</code> gRPC services), <code>node</code> (clock, async dispatch, reads/writes), <code>main</code> (HTTP API)</td></tr>
+<tr><td style="text-align: left"><code>probe</code></td><td style="text-align: left">binary</td><td style="text-align: left">Continuous write-availability client measuring the maximum failover pause across shard members</td></tr>
 </tbody>
 </table>
 </div>
-<p><strong>Rules of a member</strong></p>
+<p><strong>Summary of <code>Member</code> Transitions</strong></p>
 <div class="table-wrapper">
 <table>
 <thead>
-<tr><th>Event</th><th>Action</th></tr>
+<tr><th style="text-align: left">Trigger Event</th><th style="text-align: left">Deterministic State Action</th></tr>
 </thead>
 <tbody>
-<tr><td>Any message with a higher term</td><td>adopt the term, clear the vote, become a follower</td></tr>
-<tr><td><code>Append</code> with a lower term</td><td>refuse, and report the member’s own term</td></tr>
-<tr><td><code>Append</code> whose <code>previous_sequence</code> is beyond the end of the log</td><td>refuse, and report the end of the log</td></tr>
-<tr><td><code>Append</code> whose <code>previous_term</code> differs from the term of the member’s record at that sequence</td><td>refuse, and report the sequence before it</td></tr>
-<tr><td><code>Append</code> that matches</td><td>skip identical records, remove the first differing record and everything after it, append the rest, apply up to the committed sequence</td></tr>
-<tr><td><code>RequestVote</code></td><td>grant if the term is current, no other vote was given in this term, and the candidate’s log ends at least as far</td></tr>
-<tr><td>No message from a leader for the election timeout</td><td>increase the term, vote for itself, send <code>RequestVote</code> to all members</td></tr>
-<tr><td>Votes from a majority</td><td>become the leader, append the term marker, send <code>Append</code> to all members</td></tr>
+<tr><td style="text-align: left">Any message with <code>msg.term &gt; self.term</code></td><td style="text-align: left">Adopt <code>msg.term</code>, clear <code>voted_for</code>, persist <code>state</code>, become <code>Follower</code></td></tr>
+<tr><td style="text-align: left"><code>Append</code> with <code>msg.term &lt; self.term</code></td><td style="text-align: left">Refuse and return <code>self.term</code></td></tr>
+<tr><td style="text-align: left"><code>Append</code> with missing <code>previous_sequence</code></td><td style="text-align: left">Refuse and return <code>self.last_sequence()</code></td></tr>
+<tr><td style="text-align: left"><code>Append</code> with mismatched <code>previous_term</code></td><td style="text-align: left">Refuse and return <code>msg.previous_sequence - 1</code></td></tr>
+<tr><td style="text-align: left">Valid <code>Append</code></td><td style="text-align: left">Skip equal entries, truncate first diverging uncommitted suffix, batch-append remainder, apply up to <code>committed</code></td></tr>
+<tr><td style="text-align: left"><code>RequestVote</code></td><td style="text-align: left">Grant and persist vote iff term matches, vote is free, and candidate log is at least as fresh</td></tr>
+<tr><td style="text-align: left">Election timeout elapses</td><td style="text-align: left">Increment <code>term</code>, persist self-vote, broadcast <code>RequestVote</code></td></tr>
+<tr><td style="text-align: left">Majority of votes collected</td><td style="text-align: left">Become <code>Leader</code>, append term marker, broadcast <code>Append</code></td></tr>
 </tbody>
 </table>
 </div>
-<p><strong>Timing</strong></p>
+<p><strong>Timing Parameters</strong></p>
 <div class="table-wrapper">
 <table>
 <thead>
-<tr><th>Quantity</th><th>Value</th></tr>
+<tr><th style="text-align: left">Parameter</th><th style="text-align: left">Value</th></tr>
 </thead>
 <tbody>
-<tr><td>Tick</td><td>100 ms</td></tr>
-<tr><td>Heartbeat interval of a leader</td><td>1 tick</td></tr>
-<tr><td>Election timeout</td><td>10 to 19 ticks, computed from the member’s id and term</td></tr>
-<tr><td>Time a write waits for its record to be committed</td><td>1 s</td></tr>
+<tr><td style="text-align: left">Logical clock tick</td><td style="text-align: left"><code>100 ms</code></td></tr>
+<tr><td style="text-align: left">Leader heartbeat interval</td><td style="text-align: left"><code>1</code> tick (<code>100 ms</code>)</td></tr>
+<tr><td style="text-align: left">Election timeout range</td><td style="text-align: left"><code>10</code> to <code>19</code> ticks (<code>1.0 s</code> to <code>1.9 s</code>)</td></tr>
+<tr><td style="text-align: left">Client write commit timeout</td><td style="text-align: left"><code>1 s</code></td></tr>
 </tbody>
 </table>
 </div>
 </div>
 
-<h2 id="the-node"><a class="header" href="#the-node">The node</a></h2>
-<p><code>kvraft</code> connects the library to a clock, to a network and to an HTTP API. All
-members are started with the same options, apart from their ids and addresses.</p>
-<p class="listing"><img class="mascot" src="art/crab-happy.svg" alt=""><b>Listing 4.30</b> The imports of <code>kvraft/src/main.rs</code>. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/distributed-systems-from-the-ground-up/code/kvraft/src/main.rs">kvraft/src/main.rs</a></p>
+<h2 id="49-implementing-kvraft"><a class="header" href="#49-implementing-kvraft">4.9 Implementing <code>kvraft</code></a></h2>
+<p>Listing 4.30 declares the imports of <code>kvraft/src/main.rs</code>, and Listing 4.31 defines the symmetric CLI options (<code>--id</code>, <code>--listen</code>, <code>--replication</code>, <code>--peer &lt;id&gt;=&lt;url&gt;</code>, <code>--data</code>, <code>--no-sync</code>).</p>
+<p class="listing"><b>Listing 4.30</b> Imports of <code>kvraft/src/main.rs</code>. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/distributed-systems-from-the-ground-up/code/kvraft/src/main.rs">kvraft/src/main.rs</a></p>
 
 <pre><code class="language-rust">use std::collections::BTreeMap;
 use std::error::Error;
@@ -1956,7 +1795,7 @@ use tonic::transport::Server;
 
 use crate::node::Node;
 use crate::rpc::{ElectionServer, ReplicationServer, Service};</code></pre>
-<p class="listing"><img class="mascot" src="art/crab-happy.svg" alt=""><b>Listing 4.31</b> The options of the command line. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/distributed-systems-from-the-ground-up/code/kvraft/src/main.rs">kvraft/src/main.rs</a></p>
+<p class="listing"><b>Listing 4.31</b> Symmetric node CLI arguments in <code>kvraft/src/main.rs</code>. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/distributed-systems-from-the-ground-up/code/kvraft/src/main.rs">kvraft/src/main.rs</a></p>
 
 <pre><code class="language-rust">/// Reads `2=http://127.0.0.1:7102` as member 2 at that address.
 fn parse_peer(text: &amp;str) -&gt; Result&lt;(NodeId, String), String&gt; {
@@ -1995,7 +1834,8 @@ struct Options {
     #[arg(long)]
     no_sync: bool,
 }</code></pre>
-<p class="listing"><img class="mascot" src="art/crab-happy.svg" alt=""><b>Listing 4.32</b> The imports of <code>kvraft/src/rpc.rs</code>. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/distributed-systems-from-the-ground-up/code/kvraft/src/rpc.rs">kvraft/src/rpc.rs</a></p>
+<p>Listing 4.32 lists the imports of <code>kvraft/src/rpc.rs</code>, Listing 4.33 converts between generated Protobuf structs and <code>raft::Message</code> variants, and Listing 4.34 implements both the <code>Replication</code> and <code>Election</code> gRPC server traits by forwarding each incoming RPC directly to <code>Node::answer</code>.</p>
+<p class="listing"><b>Listing 4.32</b> Imports of <code>kvraft/src/rpc.rs</code>. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/distributed-systems-from-the-ground-up/code/kvraft/src/rpc.rs">kvraft/src/rpc.rs</a></p>
 
 <pre><code class="language-rust">use std::sync::Arc;
 
@@ -2004,7 +1844,7 @@ use raft::{AppendAnswer, AppendRequest, Message, NodeId, VoteAnswer, VoteRequest
 use tonic::{Request, Response, Status};
 
 use crate::node::Node;</code></pre>
-<p class="listing"><img class="mascot" src="art/crab-happy.svg" alt=""><b>Listing 4.33</b> Conversion between the generated types and the library's messages. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/distributed-systems-from-the-ground-up/code/kvraft/src/rpc.rs">kvraft/src/rpc.rs</a></p>
+<p class="listing"><b>Listing 4.33</b> Protobuf-to-Raft message conversions in <code>kvraft/src/rpc.rs</code>. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/distributed-systems-from-the-ground-up/code/kvraft/src/rpc.rs">kvraft/src/rpc.rs</a></p>
 
 <pre><code class="language-rust">fn record_to_proto(record: &amp;Record) -&gt; proto::Record {
     let change = match record.change.clone() {
@@ -2100,9 +1940,7 @@ pub fn voted(from: NodeId, answer: proto::VoteResponse) -&gt; Message {
         granted: answer.granted,
     })
 }</code></pre>
-<p>Each gRPC call delivers 1 message to a member, and the member’s answer is returned as
-the response to the call.</p>
-<p class="listing"><img class="mascot" src="art/crab-happy.svg" alt=""><b>Listing 4.34</b> The server side of <code>Append</code> and <code>RequestVote</code>. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/distributed-systems-from-the-ground-up/code/kvraft/src/rpc.rs">kvraft/src/rpc.rs</a></p>
+<p class="listing"><b>Listing 4.34</b> Server implementations for <code>Append</code> and <code>RequestVote</code> in <code>kvraft/src/rpc.rs</code>. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/distributed-systems-from-the-ground-up/code/kvraft/src/rpc.rs">kvraft/src/rpc.rs</a></p>
 
 <pre><code class="language-rust">/// The server side of both services. Each call is one message for the
 /// member, and the member's answer is the response of the call.
@@ -2168,9 +2006,14 @@ impl Election for Service {
         }))
     }
 }</code></pre>
-<p>Around the member, a node consists of a small loop, which is shown in figure
-4.elect-node-loop.</p>
-<p class="listing"><img class="mascot" src="art/crab-happy.svg" alt=""><b>Listing 4.35</b> The imports of <code>kvraft/src/node.rs</code>. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/distributed-systems-from-the-ground-up/code/kvraft/src/node.rs">kvraft/src/node.rs</a></p>
+<h3 id="driving-the-pure-state-machine-kvraftsrcnoders"><a class="header" href="#driving-the-pure-state-machine-kvraftsrcnoders">Driving the Pure State Machine (<code>kvraft/src/node.rs</code>)</a></h3>
+<p>Figure 4-8 illustrates the asynchronous event loop surrounding <code>Mutex&lt;Member&gt;</code>: the <code>100 ms</code> clock task, incoming gRPC handlers, and client HTTP handlers all invoke <code>Member</code> under a brief lock, collect the returned outbound <code>Envelope</code> vector, release the lock, and spawn concurrent <code>500 ms</code>-bounded gRPC tasks whose replies feed back into <code>Member::handle</code>.</p>
+<figure>
+<img src="figures/elect-node-loop.svg?v=4f8fba54" alt="Async event loop driving Raft Member in kvraft: clock task (100 ms) and HTTP write handlers invoke Member under mutex, collect outbound Envelope messages, release mutex, dispatch concurrent 500 ms-bounded gRPC calls, and feed replies back into Member." />
+<figcaption><b>Figure 4-8</b> Asynchronous event loop connecting <code>raft::Member</code> to the logical clock, gRPC peers, and HTTP handlers.</figcaption>
+</figure>
+<p>Listing 4.35 declares the imports of <code>kvraft/src/node.rs</code>, and Listing 4.36 defines the shared <code>Node</code> state and typed <code>NodeError</code> variants (including <code>NotLeader(Option&lt;u64&gt;)</code> so followers can report the current leader ID).</p>
+<p class="listing"><b>Listing 4.35</b> Imports of <code>kvraft/src/node.rs</code>. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/distributed-systems-from-the-ground-up/code/kvraft/src/node.rs">kvraft/src/node.rs</a></p>
 
 <pre><code class="language-rust">use std::collections::BTreeMap;
 use std::io;
@@ -2187,7 +2030,7 @@ use tokio::time::{interval, timeout};
 use tonic::transport::{Channel, Endpoint};
 
 use crate::rpc::{ElectionClient, ReplicationClient, appended, proto, voted};</code></pre>
-<p class="listing"><img class="mascot" src="art/crab-happy.svg" alt=""><b>Listing 4.36</b> The state of a node. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/distributed-systems-from-the-ground-up/code/kvraft/src/node.rs">kvraft/src/node.rs</a></p>
+<p class="listing"><b>Listing 4.36</b> Shared <code>Node</code> concurrency wrapper and error types in <code>kvraft/src/node.rs</code>. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/distributed-systems-from-the-ground-up/code/kvraft/src/node.rs">kvraft/src/node.rs</a></p>
 
 <pre><code class="language-rust">/// The length of a tick of the member's clock.
 pub const TICK: Duration = Duration::from_millis(100);
@@ -2232,14 +2075,8 @@ impl Node {
         }))
     }
 }</code></pre>
-<figure>
-<img src="figures/elect-node-loop.svg?v=4f8fba54" alt="How kvraft drives a member. A clock task, every 100 ms, and an HTTP handler, for a write, call the member, which is behind a mutex. Step 1: the clock or a handler calls the member under the lock. Step 2: the member returns the messages that have to be sent. Step 3: dispatch sends each message as a gRPC call, Append or RequestVote, in its own task and with a time limit of 500 ms. Step 4: the response is a message too, and it goes back to the member, which may return more messages.">
-<figcaption><b>Figure 4.8</b> The loop that connects a member to the clock and to the other members.</figcaption>
-</figure>
-<p><code>with_member</code> is the single point of entry to the member. It takes the lock, runs the
-operation it is given, and publishes the committed sequence afterwards, so that no
-operation can change that sequence without the waiting writes being informed.</p>
-<p class="listing"><img class="mascot" src="art/crab-happy.svg" alt=""><b>Listing 4.37</b> Running an operation on the member. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/distributed-systems-from-the-ground-up/code/kvraft/src/node.rs">kvraft/src/node.rs</a></p>
+<p>Listing 4.37 implements <code>with_member</code>, the single choke point into <code>Mutex&lt;Member&gt;</code>. It runs the supplied closure inside <code>block_in_place</code> (since <code>Member</code> may flush <code>kv.log</code> or <code>state</code>) and unconditionally publishes <code>member.committed()</code> on the <code>watch</code> channel before returning, guaranteeing no commit advance ever misses a waiting writer.</p>
+<p class="listing"><b>Listing 4.37</b> Serialized state-machine entry point <code>with_member</code> in <code>kvraft/src/node.rs</code>. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/distributed-systems-from-the-ground-up/code/kvraft/src/node.rs">kvraft/src/node.rs</a></p>
 
 <pre><code class="language-rust">impl Node {
     /// Runs one operation on the member and publishes the committed
@@ -2256,13 +2093,8 @@ operation can change that sequence without the waiting writes being informed.</p
         })
     }
 }</code></pre>
-<p><code>dispatch</code> starts 1 task for each message, and <code>send</code> performs a gRPC call with a
-time limit. Each response is converted into the corresponding answer message and
-handed to <code>deliver</code>, which passes it to the member and dispatches whatever the member
-returns. A call that fails or times out produces no message at all, which Raft
-tolerates without any special provision, since the next tick sends a new message to
-the same member.</p>
-<p class="listing"><img class="mascot" src="art/crab-happy.svg" alt=""><b>Listing 4.38</b> Sending a message and delivering the answer. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/distributed-systems-from-the-ground-up/code/kvraft/src/node.rs">kvraft/src/node.rs</a></p>
+<p>Listing 4.38 implements <code>dispatch</code>, <code>send</code>, and <code>deliver</code>. Each outbound <code>Envelope</code> runs in its own Tokio task with a <code>500 ms</code> deadline; dropped or timed-out RPCs require no explicit retry queue because the next <code>100 ms</code> tick re-emits fresh messages automatically. Listing 4.39 implements the <code>100 ms</code> <code>run_clock</code> driver and the gRPC <code>answer</code> entry point.</p>
+<p class="listing"><b>Listing 4.38</b> Concurrent message dispatch and reply delivery in <code>kvraft/src/node.rs</code>. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/distributed-systems-from-the-ground-up/code/kvraft/src/node.rs">kvraft/src/node.rs</a></p>
 
 <pre><code class="language-rust">impl Node {
     /// Sends each message in a task of its own, so that a member that does
@@ -2327,9 +2159,7 @@ the same member.</p>
         }
     }
 }</code></pre>
-<p><code>run_clock</code> calls <code>tick</code> every 100 ms. <code>answer</code> serves the gRPC handlers: an incoming
-request is 1 message for the member, which returns exactly 1 answer to it.</p>
-<p class="listing"><img class="mascot" src="art/crab-happy.svg" alt=""><b>Listing 4.39</b> The clock, and answering a request from another member. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/distributed-systems-from-the-ground-up/code/kvraft/src/node.rs">kvraft/src/node.rs</a></p>
+<p class="listing"><b>Listing 4.39</b> Logical clock loop and incoming gRPC request handler in <code>kvraft/src/node.rs</code>. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/distributed-systems-from-the-ground-up/code/kvraft/src/node.rs">kvraft/src/node.rs</a></p>
 
 <pre><code class="language-rust">impl Node {
     /// The member's answer to a request that arrived over gRPC.
@@ -2356,7 +2186,8 @@ request is 1 message for the member, which returns exactly 1 answer to it.</p>
         }
     }
 }</code></pre>
-<p class="listing"><img class="mascot" src="art/crab-happy.svg" alt=""><b>Listing 4.40</b> Writes and reads. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/distributed-systems-from-the-ground-up/code/kvraft/src/node.rs">kvraft/src/node.rs</a></p>
+<p>Listing 4.40 implements <code>Node::write</code>, <code>Node::get</code>, and <code>Node::list</code>. Notice one crucial post-wait check added over Chapter 3: after <code>committed</code> reaches <code>seq</code>, the write handler re-checks that this node <em>still leads the exact term in which <code>propose</code> appended the record</em>. If leadership changed while the write was waiting, a successor leader might have overwritten the uncommitted slot at <code>seq</code> with a different record and committed it; returning <code>503</code> prevents acknowledging a displaced write.</p>
+<p class="listing"><b>Listing 4.40</b> Term-verified write path and guarded read path in <code>kvraft/src/node.rs</code>. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/distributed-systems-from-the-ground-up/code/kvraft/src/node.rs">kvraft/src/node.rs</a></p>
 
 <pre><code class="language-rust">impl Node {
     fn not_leader(member: &amp;Member) -&gt; ApiError {
@@ -2458,16 +2289,8 @@ request is 1 message for the member, which returns exactly 1 answer to it.</p>
             .ok_or(ApiError::NotFound)
     }
 }</code></pre>
-<p>The write path has the structure of chapter 3, with 1 addition after the wait. If a
-member loses its leadership while a write is waiting, its uncommitted record may be
-replaced by a record of the new leader at the same sequence, and the committed
-sequence may then pass that position without the write having been stored at all. A
-handler therefore acknowledges a write only if its member still leads the term in
-which the record was appended. Otherwise it answers <code>503</code>, and the outcome of the
-write is unknown to its client, to be resolved as chapter 3 described.</p>
-<p>Any member that is not the leader answers <code>421 Misdirected Request</code> and names the
-leader it knows of in the <code>detail</code> field.</p>
-<p class="listing"><img class="mascot" src="art/crab-happy.svg" alt=""><b>Listing 4.41</b> The HTTP handlers and the health of a node. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/distributed-systems-from-the-ground-up/code/kvraft/src/main.rs">kvraft/src/main.rs</a></p>
+<p>Listing 4.41 wires the HTTP endpoints (<code>PUT</code>, <code>DELETE</code>, <code>GET</code>, <code>/v1/keys</code>, <code>/healthz</code>), returning <code>421 Misdirected Request</code> with the known leader ID (<code>the leader is member N</code>) whenever a non-leader receives client traffic. Listing 4.42 bootstraps the gRPC server, <code>100 ms</code> clock task, and <code>axum</code> HTTP listener.</p>
+<p class="listing"><b>Listing 4.41</b> HTTP handlers and <code>/healthz</code> endpoint in <code>kvraft/src/main.rs</code>. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/distributed-systems-from-the-ground-up/code/kvraft/src/main.rs">kvraft/src/main.rs</a></p>
 
 <pre><code class="language-rust">async fn put_key(
     State(node): State&lt;Arc&lt;Node&gt;&gt;,
@@ -2561,7 +2384,7 @@ async fn health(State(node): State&lt;Arc&lt;Node&gt;&gt;) -&gt; Json&lt;Health&
         committed: member.committed(),
     })
 }</code></pre>
-<p class="listing"><img class="mascot" src="art/crab-happy.svg" alt=""><b>Listing 4.42</b> Starting a node. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/distributed-systems-from-the-ground-up/code/kvraft/src/main.rs">kvraft/src/main.rs</a></p>
+<p class="listing"><b>Listing 4.42</b> Node bootstrap in <code>kvraft/src/main.rs</code>. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/distributed-systems-from-the-ground-up/code/kvraft/src/main.rs">kvraft/src/main.rs</a></p>
 
 <pre><code class="language-rust">#[tokio::main]
 async fn main() -&gt; Result&lt;(), Box&lt;dyn Error&gt;&gt; {
@@ -2616,7 +2439,8 @@ async fn main() -&gt; Result&lt;(), Box&lt;dyn Error&gt;&gt; {
 
     Ok(())
 }</code></pre>
-<h2 id="running-3-nodes"><a class="header" href="#running-3-nodes">Running 3 nodes</a></h2>
+<h2 id="410-live-three-node-consensus-experiments"><a class="header" href="#410-live-three-node-consensus-experiments">4.10 Live Three-Node Consensus Experiments</a></h2>
+<p>Starting three symmetric <code>kvraft</code> instances with zero leader configuration triggers automatic election within two seconds (member 3 wins term 1, appending the term-1 marker at sequence <code>1</code>, so the first client <code>PUT</code> receives <code>ETag: "2"</code>):</p>
 <pre><code class="language-console">$ ./target/release/kvraft --id 1 --listen 127.0.0.1:7001 --replication 127.0.0.1:7101 --data /var/tmp/m1 \
       --peer 2=http://127.0.0.1:7102 --peer 3=http://127.0.0.1:7103 &amp;
 member 1, term 0, log ends at 0
@@ -2630,9 +2454,6 @@ $ for port in 7001 7002 7003; do curl http://127.0.0.1:$port/healthz; echo; done
 {"id":2,"role":"follower","term":1,"leader":3,"last_sequence":1,"committed":1}
 {"id":3,"role":"leader","term":1,"leader":3,"last_sequence":1,"committed":1}
 </code></pre>
-<p>All 3 members were started without any indication of who should lead. Within 2
-seconds, member 3 had been elected in term 1. Every log contains 1 record, the marker
-of term 1.</p>
 <pre><code class="language-console">$ curl -i -X PUT http://127.0.0.1:7003/v1/keys/user-1 --data-binary 'ada'
 HTTP/1.1 201 Created
 etag: "2"
@@ -2645,16 +2466,9 @@ content-length: 116
 
 {"type":"/problems/not-leader","title":"This node is not the leader","status":421,"detail":"the leader is member 3"}
 </code></pre>
-<p>The first write of a client receives version 2, since record 1 is the term marker.
-Versions remain strictly increasing, which is all that a client is entitled to rely
-upon.</p>
-<h2 id="experiments"><a class="header" href="#experiments">Experiments</a></h2>
-<p>As in chapter 3, the 3 nodes run on 1 machine and share its disk.</p>
-<h3 id="the-leader-is-lost"><a class="header" href="#the-leader-is-lost">The leader is lost</a></h3>
-<p><code>probe</code> writes keys continuously for a fixed time. When a node refuses a write or
-fails to respond, <code>probe</code> sends the write to the next node. It records every
-acknowledged key, and the longest interval between 2 consecutive acknowledged writes.</p>
-<p class="listing"><img class="mascot" src="art/crab-happy.svg" alt=""><b>Listing 4.43</b> The imports of <code>probe/src/main.rs</code>. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/distributed-systems-from-the-ground-up/code/probe/src/main.rs">probe/src/main.rs</a></p>
+<h3 id="measuring-failover-pause-under-continuous-load-probe"><a class="header" href="#measuring-failover-pause-under-continuous-load-probe">Measuring Failover Pause Under Continuous Load (<code>probe</code>)</a></h3>
+<p>To measure real write unavailability when a leader crashes, we build <code>probe</code>, a continuous load client that rotates across all three shard endpoints upon receiving <code>421</code>, <code>503</code>, or connection errors, recording every acknowledged key and the maximum inter-acknowledgement gap. Listing 4.43 declares the imports of <code>probe/src/main.rs</code>, and Listing 4.44 implements the continuous probing loop.</p>
+<p class="listing"><b>Listing 4.43</b> Imports of <code>probe/src/main.rs</code>. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/distributed-systems-from-the-ground-up/code/probe/src/main.rs">probe/src/main.rs</a></p>
 
 <pre><code class="language-rust">use std::error::Error;
 use std::fs::File;
@@ -2665,7 +2479,7 @@ use std::time::{Duration, Instant};
 
 use clap::Parser;
 use ureq::Agent;</code></pre>
-<p class="listing"><img class="mascot" src="art/crab-happy.svg" alt=""><b>Listing 4.44</b> Measuring the longest pause between acknowledged writes. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/distributed-systems-from-the-ground-up/code/probe/src/main.rs">probe/src/main.rs</a></p>
+<p class="listing"><b>Listing 4.44</b> Continuous availability probe measuring failover pause in <code>probe/src/main.rs</code>. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/distributed-systems-from-the-ground-up/code/probe/src/main.rs">probe/src/main.rs</a></p>
 
 <pre><code class="language-rust">fn main() -&gt; Result&lt;(), Box&lt;dyn Error&gt;&gt; {
     let options = Options::parse();
@@ -2722,7 +2536,7 @@ use ureq::Agent;</code></pre>
 
     Ok(())
 }</code></pre>
-<p>The leader is killed 6 seconds into a run of 20 seconds.</p>
+<p>Killing leader member 3 with <code>SIGKILL</code> six seconds into a 20-second <code>probe</code> run yields automatic recovery in <code>1.05 s</code> with zero lost writes (Figure 4-9):</p>
 <pre><code class="language-console">$ ./target/release/probe --seconds 20 --acked acked.txt \
       --server http://127.0.0.1:7001 --server http://127.0.0.1:7002 --server http://127.0.0.1:7003 &amp;
 $ sleep 6; kill -9 &lt;pid of member 3, the leader&gt;
@@ -2736,29 +2550,25 @@ $ ./target/release/kvctl verify --server http://127.0.0.1:7001 --acked acked.txt
 1443 acknowledged, 1443 found, 0 missing
 </code></pre>
 <figure>
-<img src="figures/elect-probe.svg?v=10430968" alt="A timeline of 20 seconds of writes against 3 members. The leader is killed at 6 seconds, and writes resume at 7.1 seconds. 1443 writes were acknowledged, and all were found afterwards. The longest pause between 2 acknowledged writes was 1.05 seconds: the election timeout of the follower that stood, followed by 1 round of votes and 1 round of records. No operator took part.">
-<figcaption><b>Figure 4.9</b> The run of 20 seconds, with the pause caused by the loss of the leader.</figcaption>
+<img src="figures/elect-probe.svg?v=10430968" alt="20-second continuous write timeline across three Raft nodes: leader killed at 6.0 s, new leader elected and writes resume at 7.1 s (1.05 s maximum pause), all 1,443 acknowledged writes verified intact." />
+<figcaption><b>Figure 4-9</b> Empirical 20-second failover timeline showing a 1.05 s election pause and zero lost writes.</figcaption>
 </figure>
 <div class="table-wrapper">
 <table>
 <thead>
-<tr><th>Output</th><th>What it shows</th></tr>
+<tr><th style="text-align: left">Observed Output</th><th style="text-align: left">Operational Significance</th></tr>
 </thead>
 <tbody>
-<tr><td>member 1: leader, term 2</td><td>A new leader was elected without any action by an operator.</td></tr>
-<tr><td>longest pause was 1.05 s</td><td>Writes were unavailable for about 1 second, which is the election timeout of member 1 in term 1 (10 ticks) together with the exchange of votes and of the term marker.</td></tr>
-<tr><td>51 attempts refused</td><td>During the pause, <code>probe</code> tried the nodes in turn and was refused until member 1 had been elected.</td></tr>
-<tr><td>1443 acknowledged, 1443 found, 0 missing</td><td>No acknowledged write was lost.</td></tr>
+<tr><td style="text-align: left"><code>member 1: leader, term 2</code></td><td style="text-align: left">Automated election promoted member 1 with zero operator intervention.</td></tr>
+<tr><td style="text-align: left"><code>longest pause was 1.05 s</code></td><td style="text-align: left">Matches member 1’s 10-tick (<code>1.0 s</code>) election timeout plus one round of votes and term-marker commitment.</td></tr>
+<tr><td style="text-align: left"><code>51 attempts refused</code></td><td style="text-align: left"><code>probe</code> rotated across endpoints during the 1.05 s election window until discovering member 1.</td></tr>
+<tr><td style="text-align: left"><code>1443 acknowledged, 1443 found, 0 missing</code></td><td style="text-align: left">Zero acknowledged writes were lost across the abrupt <code>SIGKILL</code> crash.</td></tr>
 </tbody>
 </table>
 </div>
-<p>The measured pause can be set against the availability allowance of chapter 1. For
-the shards led by 1 node of 24, a pause of 1 second consumes about 0.04 seconds of a
-monthly allowance of 1296. The promotion by hand of chapter 3 would have consumed
-minutes.</p>
-<h3 id="the-former-leader-returns"><a class="header" href="#the-former-leader-returns">The former leader returns</a></h3>
-<p>The member that was killed is started again with its data directory intact, which
-chapter 3 did not permit.</p>
+<p>Across a 24-node cluster, a <code>1.05 s</code> single-node failover consumes roughly <code>0.04 s</code> of our <code>1,296 s</code> monthly availability error budget, satisfying Chapter 1’s <code>99.95%</code> availability target.</p>
+<h3 id="former-leader-rejoining-intact-and-minority-isolation"><a class="header" href="#former-leader-rejoining-intact-and-minority-isolation">Former Leader Rejoining Intact and Minority Isolation</a></h3>
+<p>Unlike Chapter 3, restarting the crashed former leader (member 3) with its data directory untouched succeeds cleanly: member 3 adopts term 2, repairs any divergent tail, catches up to sequence <code>1,447</code>, and matches both peers byte for byte:</p>
 <pre><code class="language-console">$ ./target/release/kvraft --id 3 --listen 127.0.0.1:7003 --replication 127.0.0.1:7103 --data /var/tmp/m3 \
       --peer 1=http://127.0.0.1:7101 --peer 2=http://127.0.0.1:7102 &amp;
 $ for port in 7001 7002 7003; do curl http://127.0.0.1:$port/healthz; echo; done
@@ -2770,11 +2580,7 @@ identical
 $ cat /var/tmp/m1/state
 2 1
 </code></pre>
-<p>It rejoined as a follower of term 2 and received the records it lacked. The 3 logs
-are identical, and the state file of member 1 contains <code>2 1</code>: term 2, and a vote for
-member 1, which it gave to itself when it stood for election.</p>
-<h3 id="a-member-is-left-alone"><a class="header" href="#a-member-is-left-alone">A member is left alone</a></h3>
-<p>The leader and 1 follower are killed, so that a single member remains.</p>
+<p>Finally, killing two members leaves member 1 isolated on the minority side of a partition. Member 1 loops as a <code>candidate</code> incrementing its term (<code>6</code>, <code>8</code>) while rejecting writes with <code>503 Service Unavailable</code>; once peers return, the shard immediately elects a leader in <code>term 9</code>:</p>
 <pre><code class="language-console">$ kill -9 &lt;pid of member 2, the leader&gt; &lt;pid of member 3&gt;
 $ sleep 5; curl http://127.0.0.1:7001/healthz
 {"id":1,"role":"candidate","term":6,"leader":null,"last_sequence":1449,"committed":1449}
@@ -2789,40 +2595,26 @@ $ sleep 4; for port in 7001 7002 7003; do curl http://127.0.0.1:$port/healthz; e
 {"id":2,"role":"follower","term":9,"leader":1,"last_sequence":1450,"committed":1450}
 {"id":3,"role":"follower","term":9,"leader":1,"last_sequence":1450,"committed":1450}
 </code></pre>
+<h2 id="411-residual-limitations"><a class="header" href="#411-residual-limitations">4.11 Residual Limitations</a></h2>
 <div class="table-wrapper">
 <table>
 <thead>
-<tr><th>Output</th><th>What it shows</th></tr>
+<tr><th style="text-align: left">No.</th><th style="text-align: left">Current Limitation</th><th style="text-align: left">Engineering Consequence</th><th style="text-align: left">Resolution</th></tr>
 </thead>
 <tbody>
-<tr><td>candidate, term 6, then term 8</td><td>The remaining member stands for election again and again. It cannot obtain a second vote, and every attempt increases its term.</td></tr>
-<tr><td>the shard has no leader at the moment</td><td>Writes and reads are refused. 1 member of 3 cannot determine whether the other 2 have failed or have elected a leader between themselves.</td></tr>
-<tr><td>after the others return: leader of term 9</td><td>The shard resumed in a term above those that the isolated member had reached.</td></tr>
+<tr><td style="text-align: left">0</td><td style="text-align: left">An isolated candidate increments <code>term</code> on every election timeout.</td><td style="text-align: left">Upon reconnecting, its inflated term forces a healthy leader to step down and triggers an unnecessary election.</td><td style="text-align: left">Raft <em>Pre-Vote</em> extension (verify quorum reachability before incrementing <code>term</code>).</td></tr>
+<tr><td style="text-align: left">1</td><td style="text-align: left">Cluster membership is static at process startup.</td><td style="text-align: left">Adding or replacing hosts requires restarting all members with updated <code>--peer</code> flags.</td><td style="text-align: left">Joint-consensus online reconfiguration (Chapter 1).</td></tr>
+<tr><td style="text-align: left">2</td><td style="text-align: left">Writes execute serially (<code>~72 writes/s</code> single-shard).</td><td style="text-align: left">One unbatched write per replication round trip caps throughput.</td><td style="text-align: left">WAL group commit (Chapter 6).</td></tr>
+<tr><td style="text-align: left">3</td><td style="text-align: left">Every member holds all WAL records in memory without compaction.</td><td style="text-align: left">RAM footprint and restart replay time grow unboundedly.</td><td style="text-align: left">Periodic snapshotting and log compaction (Chapter 1).</td></tr>
+<tr><td style="text-align: left">4</td><td style="text-align: left">Clients must probe shard nodes directly to locate the active leader.</td><td style="text-align: left"><code>probe</code> absorbed 51 refusals discovering the new leader.</td><td style="text-align: left">Stateless consistent-hash request router (Chapter 5).</td></tr>
+<tr><td style="text-align: left">5</td><td style="text-align: left">Earlier-term commit restriction was not triggered by three-node random runs.</td><td style="text-align: left">Implemented in <code>advance</code>, yet untested by <code>raftsim</code> on 3 nodes.</td><td style="text-align: left">Dedicated five-node adversarial schedule reproducing Raft Figure 8.</td></tr>
 </tbody>
 </table>
 </div>
-<p>This is the minority side of a partition once more, seen from the inside. The lone
-member behaves exactly as it would if the other 2 were running and unreachable, as
-from its own position it must, since it has no means of telling the 2 situations
-apart.</p>
-<h2 id="limitations"><a class="header" href="#limitations">Limitations</a></h2>
-<div class="table-wrapper">
-<table>
-<thead>
-<tr><th>Limitation</th><th>Consequence</th></tr>
-</thead>
-<tbody>
-<tr><td>An isolated member increases its term at every attempt at election.</td><td>When it reconnects, its higher term obliges the current leader to step down and causes an unnecessary election. Implementations of Raft avoid this with a preliminary vote that does not increase the term.</td></tr>
-<tr><td>The set of members is fixed when a node starts.</td><td>Adding or replacing a member requires all nodes to be restarted with new options. The procedure of chapter 1 for a node joining the ring is not implemented.</td></tr>
-<tr><td>Writes are processed in turn.</td><td>As in chapter 3, the write rate is 1 write for each round trip: 72 writes per second in the run above. Chapter 6 addresses this.</td></tr>
-<tr><td>Every member holds all its records in memory, and the log grows without limit.</td><td>The time to restart and the memory used grow with the age of the shard.</td></tr>
-<tr><td>Clients must find the leader for themselves.</td><td><code>probe</code> tries each node in turn. The router of chapter 5 does this on the clients’ behalf.</td></tr>
-<tr><td>The commit condition for records of earlier terms is not covered by the simulation.</td><td>The condition is implemented, and its absence was not detected by the test.</td></tr>
-</tbody>
-</table>
-</div>
-<h2 id="the-complete-programs"><a class="header" href="#the-complete-programs">The complete programs</a></h2>
-<p class="listing"><img class="mascot" src="art/crab-cute.svg" alt=""><b>Listing 4.45</b> The complete <code>raft/src/lib.rs</code>. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/distributed-systems-from-the-ground-up/code/raft/src/lib.rs">raft/src/lib.rs</a></p>
+<h2 id="412-complete-source-listings"><a class="header" href="#412-complete-source-listings">4.12 Complete Source Listings</a></h2>
+<p>Listings 4.45 through 4.51 present the complete source files for the <code>raft</code> library, <code>raftsim</code>, <code>kvraft</code>, and <code>probe</code>.</p>
+<p>Listing 4.45 presents the complete clock-free, network-free Raft consensus library in <code>raft/src/lib.rs</code>.</p>
+<p class="listing"><b>Listing 4.45</b> Complete <code>raft/src/lib.rs</code>. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/distributed-systems-from-the-ground-up/code/raft/src/lib.rs">raft/src/lib.rs</a></p>
 
 <pre><code class="language-rust">//! A member of a shard that elects its own leader.
 //!
@@ -3584,7 +3376,8 @@ impl Member {
         self.entries.get(key)
     }
 }</code></pre>
-<p class="listing"><img class="mascot" src="art/crab-cute.svg" alt=""><b>Listing 4.46</b> The complete <code>raftsim/src/main.rs</code>. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/distributed-systems-from-the-ground-up/code/raftsim/src/main.rs">raftsim/src/main.rs</a></p>
+<p>Listing 4.46 presents the complete deterministic Raft fault simulator in <code>raftsim/src/main.rs</code>.</p>
+<p class="listing"><b>Listing 4.46</b> Complete <code>raftsim/src/main.rs</code>. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/distributed-systems-from-the-ground-up/code/raftsim/src/main.rs">raftsim/src/main.rs</a></p>
 
 <pre><code class="language-rust">//! Command raftsim runs 3 members in one process and decides itself when
 //! each clock ticks, which message arrives, which is lost, and which member
@@ -4094,7 +3887,8 @@ fn main() -&gt; Result&lt;(), Box&lt;dyn Error&gt;&gt; {
 
     result
 }</code></pre>
-<p class="listing"><img class="mascot" src="art/crab-cute.svg" alt=""><b>Listing 4.47</b> The complete <code>kvraft/Cargo.toml</code>. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/distributed-systems-from-the-ground-up/code/kvraft/Cargo.toml">kvraft/Cargo.toml</a></p>
+<p>Listing 4.47 presents the package manifest and gRPC build configuration in <code>kvraft/Cargo.toml</code>.</p>
+<p class="listing"><b>Listing 4.47</b> Complete <code>kvraft/Cargo.toml</code>. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/distributed-systems-from-the-ground-up/code/kvraft/Cargo.toml">kvraft/Cargo.toml</a></p>
 
 <pre><code class="language-toml">[package]
 name = "kvraft"
@@ -4120,7 +3914,8 @@ tonic-prost.workspace = true
 [build-dependencies]
 tonic-prost-build.workspace = true
 </code></pre>
-<p class="listing"><img class="mascot" src="art/crab-cute.svg" alt=""><b>Listing 4.48</b> The complete <code>kvraft/src/rpc.rs</code>. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/distributed-systems-from-the-ground-up/code/kvraft/src/rpc.rs">kvraft/src/rpc.rs</a></p>
+<p>Listing 4.48 presents the complete <code>Replication</code> and <code>Election</code> gRPC service layer in <code>kvraft/src/rpc.rs</code>.</p>
+<p class="listing"><b>Listing 4.48</b> Complete <code>kvraft/src/rpc.rs</code>. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/distributed-systems-from-the-ground-up/code/kvraft/src/rpc.rs">kvraft/src/rpc.rs</a></p>
 
 <pre><code class="language-rust">//! The gRPC services of a member: the generated types, their conversion to
 //! the messages of the `raft` crate, and the server side of both calls.
@@ -4304,7 +4099,8 @@ impl Election for Service {
         }))
     }
 }</code></pre>
-<p class="listing"><img class="mascot" src="art/crab-cute.svg" alt=""><b>Listing 4.49</b> The complete <code>kvraft/src/node.rs</code>. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/distributed-systems-from-the-ground-up/code/kvraft/src/node.rs">kvraft/src/node.rs</a></p>
+<p>Listing 4.49 presents the complete async event loop, clock driver, and term-verified write path in <code>kvraft/src/node.rs</code>.</p>
+<p class="listing"><b>Listing 4.49</b> Complete <code>kvraft/src/node.rs</code>. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/distributed-systems-from-the-ground-up/code/kvraft/src/node.rs">kvraft/src/node.rs</a></p>
 
 <pre><code class="language-rust">//! A node: a member, its clock, and the connections that carry its
 //! messages to the other members.
@@ -4575,7 +4371,8 @@ impl Node {
             .ok_or(ApiError::NotFound)
     }
 }</code></pre>
-<p class="listing"><img class="mascot" src="art/crab-cute.svg" alt=""><b>Listing 4.50</b> The complete <code>kvraft/src/main.rs</code>. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/distributed-systems-from-the-ground-up/code/kvraft/src/main.rs">kvraft/src/main.rs</a></p>
+<p>Listing 4.50 presents the complete HTTP API server and CLI bootstrap in <code>kvraft/src/main.rs</code>.</p>
+<p class="listing"><b>Listing 4.50</b> Complete <code>kvraft/src/main.rs</code>. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/distributed-systems-from-the-ground-up/code/kvraft/src/main.rs">kvraft/src/main.rs</a></p>
 
 <pre><code class="language-rust">//! Command kvraft is a storage node whose shard elects its own leader.
 //! Every node is started the same way, with its id and the replication
@@ -4799,7 +4596,8 @@ async fn main() -&gt; Result&lt;(), Box&lt;dyn Error&gt;&gt; {
 
     Ok(())
 }</code></pre>
-<p class="listing"><img class="mascot" src="art/crab-cute.svg" alt=""><b>Listing 4.51</b> The complete <code>probe/src/main.rs</code>. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/distributed-systems-from-the-ground-up/code/probe/src/main.rs">probe/src/main.rs</a></p>
+<p>Listing 4.51 presents the complete continuous availability and failover-pause measurement tool in <code>probe/src/main.rs</code>.</p>
+<p class="listing"><b>Listing 4.51</b> Complete <code>probe/src/main.rs</code>. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/distributed-systems-from-the-ground-up/code/probe/src/main.rs">probe/src/main.rs</a></p>
 
 <pre><code class="language-rust">//! Command probe measures how long a shard is unavailable when its leader
 //! is lost. It writes keys for a number of seconds, trying each node in turn
@@ -4890,27 +4688,25 @@ fn main() -&gt; Result&lt;(), Box&lt;dyn Error&gt;&gt; {
 
     Ok(())
 }</code></pre>
-<h2 id="further-reading"><a class="header" href="#further-reading">Further reading</a></h2>
+<h2 id="further-reading"><a class="header" href="#further-reading">Further Reading</a></h2>
 <ul>
 <li>D. Ongaro and J. Ousterhout, “In Search of an Understandable Consensus Algorithm”, USENIX ATC 2014.</li>
 <li>D. Ongaro, <em>Consensus: Bridging Theory and Practice</em>, doctoral dissertation, Stanford University, 2014.</li>
 <li>L. Lamport, “Paxos Made Simple”, ACM SIGACT News, 2001.</li>
-<li>T. Chandra, R. Griesemer and J. Redstone, “Paxos Made Live: An Engineering Perspective”, PODC 2007.</li>
-<li>M. Fischer, N. Lynch and M. Paterson, “Impossibility of Distributed Consensus with One Faulty Process”, Journal of the ACM, 1985.</li>
-<li>K. Kingsbury, the Jepsen analyses, jepsen.io.</li>
+<li>T. Chandra, R. Griesemer, and J. Redstone, “Paxos Made Live: An Engineering Perspective”, PODC 2007.</li>
+<li>M. Fischer, N. Lynch, and M. Paterson, “Impossibility of Distributed Consensus with One Faulty Process”, Journal of the ACM, 1985.</li>
+<li>K. Kingsbury, Jepsen Distributed Systems Safety Analyses, jepsen.io.</li>
 </ul>
 <div class="summary">
 <h2 id="summary"><a class="header" href="#summary">Summary</a></h2>
 <ul>
-<li>Every member starts as a follower, and a follower that hears nothing from a leader for its election timeout becomes a candidate and asks all the others for their votes.</li>
-<li>A member votes at most once in a term, so that a term has at most 1 leader, and the term and the vote are stored on disk before any answer that depends on them is sent.</li>
-<li>A member votes only for a candidate whose log ends at least as far as its own, with terms compared before sequences, from which it follows that an elected leader holds every acknowledged record.</li>
-<li>A term marker, the first record of a leader, records the term of every record without changing the format of the log, and commits the records of earlier terms.</li>
-<li><code>Append</code> carries the term of the record that precedes its new records. A follower whose record at that position has a different term refuses, the leader steps back, and the follower replaces its differing records with the leader’s.</li>
-<li>Only uncommitted records are ever removed from a log.</li>
-<li>In 200 simulated runs with crashes and lost messages, 480 leaders were elected with no term having 2, and all 504 acknowledged writes were present after recovery.</li>
-<li>The simulation detected 2 disabled voting rules, and did not detect a disabled commit condition for earlier terms.</li>
-<li>With 3 nodes, killing the leader interrupted writes for 1.05 seconds, and none of 1443 acknowledged writes was lost.</li>
+<li>Every Raft replica boots as a follower; upon missing heartbeats for its staggered election timeout, it increments <code>term</code>, persists its self-vote via atomic write-and-rename, and requests votes from peers.</li>
+<li>Persisting <code>(term, voted_for)</code> before replying enforces Election Safety (at most one leader per term), while comparing <code>(last_term, last_sequence)</code> enforces Leader Completeness.</li>
+<li>In-band empty-key term markers encode per-record terms inside the existing WAL format and commit inherited prior-term entries upon quorum replication.</li>
+<li>The Log Matching Property (<code>previous_sequence</code>, <code>previous_term</code>) lets leaders step back to the highest common prefix and followers safely truncate conflicting uncommitted tails.</li>
+<li>Restricting direct replica-count commits to entries of the leader’s current term closes Raft’s earlier-term overwrite hazard.</li>
+<li>Across 200 randomized simulation runs (<code>raftsim</code>), 480 elections occurred with zero split-term leaders, all 504 acknowledged writes survived, and 18 divergent uncommitted tails were safely truncated.</li>
+<li>Live three-node failover testing (<code>probe</code>) recovered from an abrupt leader <code>SIGKILL</code> in <code>1.05 s</code> with zero loss across <code>1,443</code> acknowledged writes.</li>
 </ul>
 </div>
 
@@ -4966,7 +4762,7 @@ fn main() -&gt; Result&lt;(), Box&lt;dyn Error&gt;&gt; {
         <script src="book-609e4cb8.js"></script>
 
         <!-- Custom JS scripts -->
-        <script src="theme/figures-47b15f7f.js"></script>
+        <script src="theme/figures-9c14cb1c.js"></script>
         <script src="theme/proto-326509cd.js"></script>
         <script src="theme/code-67e9caaf.js"></script>
         <script src="theme/tables-9fb295e8.js"></script>

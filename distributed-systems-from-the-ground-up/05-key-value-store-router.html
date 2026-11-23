@@ -1,9 +1,9 @@
 <!DOCTYPE HTML>
-<html lang="en" class="light sidebar-visible" dir="ltr">
+<html lang="en" class="navy sidebar-visible" dir="ltr">
     <head>
         <!-- Book generated using mdBook -->
         <meta charset="UTF-8">
-        <title>Key-Value Store: Router (Low-Level Design) - Distributed Systems from the Ground Up</title>
+        <title>5. Consistent-Hash Request Router (LLD) - Distributed Systems from the Ground Up</title>
 
 
         <!-- Custom HTML head -->
@@ -28,20 +28,18 @@
         <link rel="stylesheet" id="mdbook-ayu-highlight-css" href="ayu-highlight-3fdfc3ac.css">
 
         <!-- Custom theme stylesheets -->
-        <link rel="stylesheet" href="theme/custom-8a495b63.css">
-        <link rel="stylesheet" href="theme/formal-05bd78f0.css">
-        <link rel="stylesheet" href="theme/layout-0a0c0003.css">
+        <link rel="stylesheet" href="theme/custom-59beaf6d.css">
 
 
         <!-- Provide site root and default themes to javascript -->
         <script>
             const path_to_root = "";
-            const default_light_theme = "light";
+            const default_light_theme = "navy";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "searchindex-25bb747f.js";
+            window.path_to_searchindex_js = "searchindex-5d54d4b4.js";
         </script>
         <!-- Start loading toc.js asap -->
-        <script src="toc-cc887274.js"></script>
+        <script src="toc-ef51d47d.js"></script>
     </head>
     <body>
     <div id="mdbook-help-container">
@@ -79,7 +77,7 @@
             try { theme = localStorage.getItem('mdbook-theme'); } catch(e) { }
             if (theme === null || theme === undefined) { theme = default_theme; }
             const html = document.documentElement;
-            html.classList.remove('light')
+            html.classList.remove('navy')
             html.classList.add(theme);
             html.classList.add("js");
         </script>
@@ -183,52 +181,31 @@
 
                 <div id="mdbook-content" class="content">
                     <main>
-                        <img class="plate" src="art/ch05.svg?v=84b52a42" alt="Switch, an octopus, sits between 2 stacks of boxes marked shard-a and shard-b. It holds a parcel labelled user-1 in one arm and points another arm at shard-a.">
-<h1 id="key-value-store-router-low-level-design"><a class="header" href="#key-value-store-router-low-level-design">Key-Value Store: Router (Low-Level Design)</a></h1>
-<p>With <a href="04-key-value-store-leader-election.html">chapter 4</a> complete, we have a shard
-that survives the loss of its leader without anybody’s help. Measured against the
-design of <a href="01-key-value-store-system-design.html">chapter 1</a>, 2 things are still
-wanting. A client has to discover for itself which member of the shard is the leader,
-as the program <code>probe</code> did by trying each node in turn and collecting 51 refusals in
-the process. And all the data is in a single shard, whereas the design calls for the
-keys to be divided among many.</p>
-<p>A single small component supplies both. The <em>router</em> stands between the clients and
-the shards. Clients send every request to it, and for each request it works out which
-shard owns the key and which member of that shard is at present the leader, and
-passes the request on. The clients are thereby relieved of all knowledge of the
-cluster. They know 1 address, and neither the number of shards nor a change of leader
-is visible to them.</p>
-<p>The router is the least intricate program in this part of the book, and it contains
-1 decision that is easy to get wrong and expensive when it is: what to do when the
-member it has asked does not give a clear answer. A router that retries too readily
-will perform a write twice, and a router that retries too reluctantly will report
-failures that it could have concealed. The chapter builds the router, states the rule
-that settles this question, and then repeats the experiment of chapter 4, killing a
-leader under load, with the router in front.</p>
+                        <h1 id="chapter-5-consistent-hash-request-router-lld"><a class="header" href="#chapter-5-consistent-hash-request-router-lld">Chapter 5: Consistent-Hash Request Router (LLD)</a></h1>
+<img class="plate" src="art/ch05-plate.svg" alt="Chapter 5 plate: Stateless Request Router mapping H(key) to shard_id and active leader via O(log V) consistent-hash ring lookup and cached leader hints across four partitioned Raft shards." />
+<p>With <a href="04-key-value-store-leader-election.html">Chapter 4</a> complete, a three-node Raft shard survives leader crashes automatically and recovers writes in <code>1.05 s</code>. Measured against the system architecture of <a href="01-key-value-store-system-design.html">Chapter 1</a>, two architectural gaps remain. First, clients must currently discover the active shard leader themselves by probing replicas directly, as <code>probe</code> did while absorbing <code>51</code> <code>421</code> and <code>503</code> refusals during an election. Second, all keys reside inside a single Raft shard, whereas Chapter 1 scales storage and throughput horizontally by partitioning the keyspace across many independent shards.</p>
+<p>A single stateless component closes both gaps: the <em>request router</em>. Positioned between external clients and the storage shards, the router receives every client HTTP request at a single stable endpoint, maps the target key to its owning shard on the consistent-hash ring, looks up its cached hint for that shard’s active leader, and forwards the request directly. Clients remain completely decoupled from cluster topology, shard count, and Raft leadership transitions.</p>
+<p>Although <code>kvrouter</code> is the smallest binary in Part I, it encodes one subtle retry-safety boundary that carries severe correctness consequences if misimplemented: deciding when to forward a failed request to another replica. A router that retries blindly after an ambiguous timeout risks executing a non-idempotent mutation twice or reporting a false precondition failure (<code>412</code>) on a conditional write that actually succeeded. Conversely, a router that refuses to retry safe rejections (<code>421</code> or connection refused) leaks unnecessary errors to clients during failover. In this chapter, I implement <code>kvrouter</code> in Rust, formalize its safe-retry invariant, verify multi-shard key distribution across two three-node Raft shards, and repeat the live leader-kill experiment of Chapter 4 with the router shielding clients from failover errors.</p>
 <div class="covers">
-<p>This chapter covers</p>
+<p>In this chapter, we cover</p>
 <ul>
-<li>what a router does, and why it holds no data</li>
-<li>a ring file that lists the shards and their members</li>
-<li>finding the shard of a key with the ring of chapter 1</li>
-<li>finding the leader, and the rule that decides when another member may be asked</li>
-<li>2 shards behind 1 router, measured</li>
-<li>the loss of a leader behind the router, as a client sees it</li>
+<li>stateless router design and why holding zero authoritative data enables horizontal active-active scaling</li>
+<li>loading the static <code>ring.json</code> topology map (<code>256</code> virtual nodes per shard) and resolving keys in <code>O(log V)</code> time</li>
+<li>leader-hint caching, <code>421 Misdirected Request</code> redirection, and <code>503 no-leader</code> backoff during elections</li>
+<li>the safe-retry invariant: distinguishing guaranteed zero-effect failures from ambiguous timeouts</li>
+<li>empirical key distribution across two independent three-node Raft shards (<code>400</code> keys split <code>205</code> to <code>195</code>)</li>
+<li>shielding clients during live leader <code>SIGKILL</code>: reducing client-visible errors from <code>51</code> refusals to <code>0</code></li>
 </ul>
 </div>
 
-<h2 id="what-a-router-does"><a class="header" href="#what-a-router-does">What a router does</a></h2>
-<figure>
-<img src="figures/route-overview.svg?v=8d2bc7d5" alt="A router in front of 2 shards. Step 1: a client, which knows 1 address, sends every request to the router on port 7000. Step 2: the router hashes the key, and the ring names a shard. Step 3: it forwards the request to that shard&#39;s leader. Each shard is a group of 3 members, 1 leader and 2 followers, and the other shard never sees the request.">
-<figcaption><b>Figure 5.1</b> A request on its way through the router to the shard that owns its key.</figcaption>
+<h2 id="51-stateless-routing-topology"><a class="header" href="#51-stateless-routing-topology">5.1 Stateless Routing Topology</a></h2>
+<p>A router stores zero durable client data and participates in zero consensus groups. Its entire runtime state consists of the immutable hash ring loaded at boot and a lightweight, per-shard atomic integer hinting at which member last answered as leader. Because that hint is purely a cache, any number of router instances can run active-active behind a load balancer, and any router can crash or restart at any instant without data loss; a freshly booted router repopulates its leader hints from its first few redirected responses. Figure 5-1 illustrates the stateless routing tier, consistent-hash ring lookup, and direct leader forwarding across partitioned three-node Raft shards.</p>
+<figure class="diagram">
+<img src="figures/m3/ch05_router_topology.svg" alt="Figure 5-1: Stateless routing tier using xxhash64 key hashing, O(log V) ring lookup, and leader hint caching to forward client PUT requests directly to the active Raft leader of the owning three-node shard." />
+<figcaption><b>Figure 5-1</b> Stateless request routing from client ingress through consistent-hash ring lookup and leader-hint cache to partitioned Raft shards.</figcaption>
 </figure>
-<p>A router keeps no data. Everything it knows comes from a ring file, read when it
-starts, and from what the members tell it in the course of its work. This is the
-statelessness that chapter 1 required of routers, and its practical value is
-considerable: any number of routers may be run side by side, and any of them may be
-stopped or restarted at any time, since a router that has lost its memory rebuilds it
-from the first few answers it receives.</p>
-<h2 id="the-ring-file"><a class="header" href="#the-ring-file">The ring file</a></h2>
+<h2 id="52-topology-configuration-and-olog-v-ring-lookup"><a class="header" href="#52-topology-configuration-and-olog-v-ring-lookup">5.2 Topology Configuration and <code>O(log V)</code> Ring Lookup</a></h2>
+<p>In Chapter 1, an authoritative control plane distributes versioned ring updates dynamically. To isolate data-plane routing mechanics in this chapter, <code>kvrouter</code> loads its shard map once at startup from <code>ring.json</code>, listing each three-node <code>kvraft</code> group in member-ID order:</p>
 <pre><code class="language-console">$ cat ring.json
 {
   "virtual_nodes": 256,
@@ -238,12 +215,8 @@ from the first few answers it receives.</p>
   ]
 }
 </code></pre>
-<p>Each shard is a group of 3 <code>kvraft</code> members, listed in the order of their ids. In the
-design of chapter 1, the ring is held by a coordinator and changes while the system
-runs. Here it is a file that the router reads once at startup. That is sufficient for
-routing requests, and it leaves changes to the ring, which are a substantial subject
-in themselves, outside this chapter.</p>
-<p class="listing"><img class="mascot" src="art/crab-happy.svg" alt=""><b>Listing 5.1</b> The imports of <code>kvrouter/src/main.rs</code>. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/distributed-systems-from-the-ground-up/code/kvrouter/src/main.rs">kvrouter/src/main.rs</a></p>
+<p>Listing 5.1 declares the <code>axum</code>, <code>reqwest</code>, <code>serde</code>, and consistent-hash ring imports in <code>kvrouter/src/main.rs</code>.</p>
+<p class="listing"><b>Listing 5.1</b> Imports of <code>kvrouter/src/main.rs</code>. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/distributed-systems-from-the-ground-up/code/kvrouter/src/main.rs">kvrouter/src/main.rs</a></p>
 
 <pre><code class="language-rust">use std::collections::HashMap;
 use std::error::Error;
@@ -267,7 +240,8 @@ use ring::Ring;
 use serde::{Deserialize, Serialize};
 use tokio::net::TcpListener;
 use tokio::time::sleep;</code></pre>
-<p class="listing"><img class="mascot" src="art/crab-happy.svg" alt=""><b>Listing 5.2</b> The ring file, and what the router keeps for each shard. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/distributed-systems-from-the-ground-up/code/kvrouter/src/main.rs">kvrouter/src/main.rs</a></p>
+<p>Listing 5.2 defines the JSON schema (<code>RingFile</code>, <code>ShardConfig</code>) and the runtime <code>Shard</code> struct holding the shard name, member base URLs, and an <code>AtomicUsize</code> leader hint. Notice the core architectural property of that hint: an outdated leader hint costs at most one extra intra-cluster HTTP hop and can never cause an incorrect result because followers enforce Raft term checks and refuse writes with <code>421</code>.</p>
+<p class="listing"><b>Listing 5.2</b> Ring configuration schema and per-shard leader-hint state in <code>kvrouter/src/main.rs</code>. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/distributed-systems-from-the-ground-up/code/kvrouter/src/main.rs">kvrouter/src/main.rs</a></p>
 
 <pre><code class="language-rust">#[derive(Parser)]
 struct Options {
@@ -305,16 +279,8 @@ struct Routes {
     shards: HashMap&lt;String, Shard&gt;,
     client: reqwest::Client,
 }</code></pre>
-<p>For every shard the router remembers a single number, the position in the list of the
-member that was the leader when it last asked. This is a guess and nothing more. The
-sections that follow show what happens when the guess is wrong, and the important
-property of the design is that a wrong guess costs an extra request and never a wrong
-result.</p>
-<h2 id="finding-the-shard"><a class="header" href="#finding-the-shard">Finding the shard</a></h2>
-<p>Each shard is placed on the ring of chapter 1 with 256 tokens. To look up a key then
-takes 2 steps: the ring is asked for the name of the owner, and the shard of that
-name is fetched.</p>
-<p class="listing"><img class="mascot" src="art/crab-happy.svg" alt=""><b>Listing 5.3</b> Building the ring, and finding the shard of a key. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/distributed-systems-from-the-ground-up/code/kvrouter/src/main.rs">kvrouter/src/main.rs</a></p>
+<p>Listing 5.3 constructs the consistent-hash ring (<code>256</code> virtual nodes per shard) from <code>ring.json</code> and implements <code>RouterState::shard_for(key)</code>, which hashes the key via <code>xxhash64</code>, locates the owning shard name in <code>O(log V)</code> binary search time, and returns a reference to that shard’s descriptor.</p>
+<p class="listing"><b>Listing 5.3</b> Building the consistent-hash ring and resolving key ownership in <code>kvrouter/src/main.rs</code>. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/distributed-systems-from-the-ground-up/code/kvrouter/src/main.rs">kvrouter/src/main.rs</a></p>
 
 <pre><code class="language-rust">impl Routes {
     /// Builds the ring from the file: every shard receives its tokens.
@@ -346,30 +312,30 @@ name is fetched.</p>
             .get(self.ring.owner(key)?)
     }
 }</code></pre>
-<h2 id="finding-the-leader"><a class="header" href="#finding-the-leader">Finding the leader</a></h2>
-<p>The router sends the request to the member that it believes to be the leader. Usually
-the belief is correct. When it is not, the answer of the member tells the router what
-to do next.</p>
-<figure>
-<img src="figures/route-attempts.svg?v=ef4ace25" alt="What a member can answer and what the router does. Any other status, such as 200, 201, 204, 404 or 412, means the leader served the request, and the router passes the response to the client. 421 with the text the leader is member 1 comes from a follower that changed nothing, and the router asks member 1. 503 of type no-leader means an election is running and nothing was changed, and the router asks the next member after a pause. A refused connection means the process is down and nothing was changed, and the router asks the next member. 503 of another type, or a timeout, means the write may or may not have happened, and the router answers 503 so that the client decides.">
-<figcaption><b>Figure 5.2</b> The answers a member can give, and the router's reaction to each.</figcaption>
+<h2 id="53-leader-redirection-and-the-safe-retry-invariant"><a class="header" href="#53-leader-redirection-and-the-safe-retry-invariant">5.3 Leader Redirection and the Safe-Retry Invariant</a></h2>
+<p>When forwarding a request, the router targets its cached leader index first. Under steady state, that single hop reaches the active leader and completes with minimal latency. When leadership has shifted, the contacted replica’s response tells the router whether retrying on another member is provably safe (Figure 5-2).</p>
+<figure class="diagram">
+<img src="figures/m3/ch05_epoch_redirect.svg" alt="Figure 5-2: Stale route detection and NOT_LEADER retry protocol showing a router sending a write to demoted Node 1, receiving a NOT_LEADER redirect pointing to Node 2 in Term 5, updating its local leader cache, and transparently retrying on Node 2 for HTTP 200 OK." />
+<figcaption><b>Figure 5-2</b> Stale route detection, leader-hint cache update, and transparent retry on the active Raft leader.</figcaption>
 </figure>
-<p>All the cases are decided by a single rule: the router asks another member only if
-the first attempt has certainly changed nothing. A follower that answers <code>421</code> did
-not touch its log. Nor did a member that reports that the shard is electing a leader,
-nor one whose process is not running and whose connection was refused. In all 3
-cases, to ask another member is safe, since whatever that member does will be the
-only effect of the request.</p>
-<p>A timeout is a different matter altogether. The leader may have appended the record,
-and even committed it, before the connection failed, and the router cannot know. If
-it were to send the request to another member, a write might be performed twice, and
-a conditional write that had succeeded might be reported as failed. The router
-therefore answers <code>503</code> and leaves the decision to the client, which is the only
-party that knows whether its request is safe to repeat. This is the lost response of
-chapter 1 once again, and the router’s rule is a refusal to guess about it on
-somebody else’s behalf.</p>
-<p>In the code, the possible outcomes of asking a member are the variants of an enum.</p>
-<p class="listing"><img class="mascot" src="art/crab-happy.svg" alt=""><b>Listing 5.4</b> The 3 outcomes of asking a member. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/distributed-systems-from-the-ground-up/code/kvrouter/src/main.rs">kvrouter/src/main.rs</a></p>
+<p>Every backend outcome is governed by a single invariant: <strong>the router forwards the request to another member if and only if the prior attempt provably modified zero state.</strong></p>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th style="text-align: left">Backend Outcome</th><th style="text-align: left">State Mutation Guarantee</th><th style="text-align: left">Router Action</th></tr>
+</thead>
+<tbody>
+<tr><td style="text-align: left"><code>200</code>, <code>201</code>, <code>204</code>, <code>304</code>, <code>400</code>, <code>404</code>, <code>412</code></td><td style="text-align: left">Definitive leader response</td><td style="text-align: left">Return response verbatim to the client.</td></tr>
+<tr><td style="text-align: left"><code>421 Misdirected Request</code> (<code>the leader is member N</code>)</td><td style="text-align: left">Follower touched zero WAL bytes</td><td style="text-align: left">Update cached leader hint to member <code>N</code> (or next peer) and retry immediately.</td></tr>
+<tr><td style="text-align: left"><code>503</code> with <code>/problems/no-leader</code></td><td style="text-align: left">Shard is mid-election; zero WAL bytes touched</td><td style="text-align: left">Advance to next member; pause <code>150 ms</code> after cycling all members so elections are not flooded.</td></tr>
+<tr><td style="text-align: left">TCP connection refused</td><td style="text-align: left">Target process is down; zero bytes accepted</td><td style="text-align: left">Advance cached hint to next member and retry immediately.</td></tr>
+<tr><td style="text-align: left">Other <code>503</code> (e.g., quorum commit timeout) or read/write timeout</td><td style="text-align: left"><strong>Indeterminate:</strong> leader may have persisted and committed the record</td><td style="text-align: left">Return <code>503</code> to the client immediately; never guess or duplicate the request on the client’s behalf.</td></tr>
+</tbody>
+</table>
+</div>
+<p>This distinction resolves the lost-response ambiguity we analyzed in Chapters 1 through 3. Only the caller holds semantic context on whether repeating an indeterminate write is safe (for instance, via idempotent <code>PUT</code> or conditional <code>If-Match</code>).</p>
+<p>Listing 5.4 models the three mutually exclusive forwarding outcomes in <code>Attempt</code>: <code>Answer</code> (definitive response ready for the client), <code>TryOther(Option&lt;usize&gt;)</code> (guaranteed zero-effect refusal carrying an optional leader index hint), and <code>Uncertain</code> (ambiguous timeout or post-append error that must propagate as <code>503</code>).</p>
+<p class="listing"><b>Listing 5.4</b> Three-way forwarding classification enum in <code>kvrouter/src/main.rs</code>. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/distributed-systems-from-the-ground-up/code/kvrouter/src/main.rs">kvrouter/src/main.rs</a></p>
 
 <pre><code class="language-rust">/// What a member said about a request it did not serve.
 #[derive(Deserialize)]
@@ -404,9 +370,8 @@ enum Attempt {
     /// The request may or may not have taken effect.
     Unknown(String),
 }</code></pre>
-<p><code>ask</code> sends the request to 1 member and classifies what comes back as 1 of the
-outcomes.</p>
-<p class="listing"><img class="mascot" src="art/crab-happy.svg" alt=""><b>Listing 5.5</b> Asking 1 member. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/distributed-systems-from-the-ground-up/code/kvrouter/src/main.rs">kvrouter/src/main.rs</a></p>
+<p>Listing 5.5 implements <code>ask</code>, dispatching the HTTP method, key path, conditional headers (<code>If-Match</code>, <code>If-None-Match</code>), and body to one shard member, inspecting RFC 9457 error bodies on <code>421</code> and <code>503</code> responses, and classifying transport failures into <code>TryOther</code> (connection refused) versus <code>Uncertain</code> (timeout or mid-stream reset).</p>
+<p class="listing"><b>Listing 5.5</b> Single-member HTTP forwarding and outcome classification in <code>kvrouter/src/main.rs</code>. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/distributed-systems-from-the-ground-up/code/kvrouter/src/main.rs">kvrouter/src/main.rs</a></p>
 
 <pre><code class="language-rust">const NO_LEADER: &amp;str = "/problems/no-leader";
 
@@ -476,11 +441,8 @@ async fn relay(response: reqwest::Response) -&gt; Response {
         Err(error) =&gt; ApiError::Unavailable(error.to_string()).into_response(),
     }
 }</code></pre>
-<p><code>forward</code> is the loop around it. A refusal moves the guess to the member that the
-refusal named, or failing that to the next in the list. When every member has refused
-once, an election must be in progress, and the router then waits 150 ms between
-further attempts, so that it does not flood a shard which is busy choosing a leader.</p>
-<p class="listing"><img class="mascot" src="art/crab-happy.svg" alt=""><b>Listing 5.6</b> Trying members until one serves the request. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/distributed-systems-from-the-ground-up/code/kvrouter/src/main.rs">kvrouter/src/main.rs</a></p>
+<p>Listing 5.6 implements <code>forward</code>, looping over <code>ask</code> until receiving a definitive <code>Answer</code>, an <code>Uncertain</code> error, or exhausting the overall forwarding deadline. Upon <code>TryOther(hint)</code>, <code>forward</code> updates the shard’s <code>AtomicUsize</code> hint immediately so concurrent requests converge on the new leader without redundant hops; after one full pass across all members fails during an election, it backs off <code>150 ms</code> between rounds.</p>
+<p class="listing"><b>Listing 5.6</b> Leader-discovery retry loop with election backoff in <code>kvrouter/src/main.rs</code>. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/distributed-systems-from-the-ground-up/code/kvrouter/src/main.rs">kvrouter/src/main.rs</a></p>
 
 <pre><code class="language-rust">/// How many times the router asks a member before it gives up.
 const ATTEMPTS: usize = 12;
@@ -535,7 +497,8 @@ impl Routes {
         Err(ApiError::NoLeader)
     }
 }</code></pre>
-<p class="listing"><img class="mascot" src="art/crab-happy.svg" alt=""><b>Listing 5.7</b> The HTTP handlers, and the start of the program. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/distributed-systems-from-the-ground-up/code/kvrouter/src/main.rs">kvrouter/src/main.rs</a></p>
+<p>Listing 5.7 wires the external <code>PUT</code>, <code>DELETE</code>, <code>GET</code>, and <code>/healthz</code> HTTP handlers and boots the <code>axum</code> server.</p>
+<p class="listing"><b>Listing 5.7</b> HTTP handlers and router bootstrap in <code>kvrouter/src/main.rs</code>. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/distributed-systems-from-the-ground-up/code/kvrouter/src/main.rs">kvrouter/src/main.rs</a></p>
 
 <pre><code class="language-rust">async fn key(
     State(routes): State&lt;Arc&lt;Routes&gt;&gt;,
@@ -590,9 +553,9 @@ async fn main() -&gt; Result&lt;(), Box&lt;dyn Error&gt;&gt; {
 
     Ok(())
 }</code></pre>
-<h2 id="2-shards-behind-1-router"><a class="header" href="#2-shards-behind-1-router">2 shards behind 1 router</a></h2>
-<p>We start 6 <code>kvraft</code> members in 2 groups of 3, then the router, and write 400 keys
-through it.</p>
+<h2 id="54-multi-shard-and-failover-experiments"><a class="header" href="#54-multi-shard-and-failover-experiments">5.4 Multi-Shard and Failover Experiments</a></h2>
+<h3 id="experiment-1-two-three-node-shards-behind-one-router"><a class="header" href="#experiment-1-two-three-node-shards-behind-one-router">Experiment 1: Two Three-Node Shards Behind One Router</a></h3>
+<p>We launch six <code>kvraft</code> processes forming two independent three-node shards (<code>shard-a</code> on ports <code>7011</code> to <code>7013</code>, <code>shard-b</code> on ports <code>7021</code> to <code>7023</code>), start <code>kvrouter</code> on port <code>7000</code>, and write <code>400</code> keys through the single router endpoint:</p>
 <pre><code class="language-console">$ ./target/release/kvrouter --listen 127.0.0.1:7000 --ring ring.json &amp;
 routing to 2 shards
 listening on 127.0.0.1:7000
@@ -607,19 +570,16 @@ $ ./target/release/kvctl verify --server http://127.0.0.1:7000 --acked acked.txt
 <div class="table-wrapper">
 <table>
 <thead>
-<tr><th>Output</th><th>What it shows</th></tr>
+<tr><th style="text-align: left">Observed Output</th><th style="text-align: left">Verified Sharding Property</th></tr>
 </thead>
 <tbody>
-<tr><td>logs end at 206 and 196</td><td>The 400 keys were divided 205 to 195. Each log also contains 1 term marker.</td></tr>
-<tr><td>400 found, 0 missing</td><td>A read through the router reaches the shard that holds the key.</td></tr>
+<tr><td style="text-align: left"><code>last_sequence: 206</code> and <code>196</code></td><td style="text-align: left">Consistent hashing with <code>256</code> virtual nodes partitioned <code>400</code> keys evenly (<code>205</code> to <code>195</code>, plus one term marker per shard).</td></tr>
+<tr><td style="text-align: left"><code>400 acknowledged, 400 found, 0 missing</code></td><td style="text-align: left">Every read routed deterministically to the exact owning shard with zero client knowledge of topology.</td></tr>
 </tbody>
 </table>
 </div>
-<p>The client used a single address throughout. It never learned how many shards exist,
-or which members lead them.</p>
-<h2 id="a-leader-is-lost-behind-the-router"><a class="header" href="#a-leader-is-lost-behind-the-router">A leader is lost behind the router</a></h2>
-<p><code>probe</code>, from chapter 4, is now given the router’s address and no other. While it is
-writing, the leader of <code>shard-a</code> is killed.</p>
+<h3 id="experiment-2-killing-a-shard-leader-behind-the-router"><a class="header" href="#experiment-2-killing-a-shard-leader-behind-the-router">Experiment 2: Killing a Shard Leader Behind the Router</a></h3>
+<p>We repeat the live <code>probe</code> failover benchmark of Chapter 4, pointing <code>probe</code> solely at <code>http://127.0.0.1:7000</code> and killing <code>shard-a</code>’s leader four seconds into a 12-second run:</p>
 <pre><code class="language-console">$ ./target/release/probe --seconds 12 --acked acked.txt --server http://127.0.0.1:7000 &amp;
 $ sleep 4; kill -9 &lt;pid of member 3 of shard-a, its leader&gt;
 780 writes acknowledged in 12 seconds, 0 attempts refused
@@ -632,39 +592,34 @@ $ ./target/release/kvctl verify --server http://127.0.0.1:7000 --acked acked.txt
 <div class="table-wrapper">
 <table>
 <thead>
-<tr><th>Output</th><th>What it shows</th></tr>
+<tr><th style="text-align: left">Observed Output</th><th style="text-align: left">Comparison Against Direct Client Probing (Chapter 4)</th></tr>
 </thead>
 <tbody>
-<tr><td>0 attempts refused</td><td>The client saw no error of any kind. In chapter 4, without a router, the same experiment produced 51 refusals.</td></tr>
-<tr><td>longest pause 1.08 s</td><td>Requests for <code>shard-a</code> waited inside the router while the shard elected a leader.</td></tr>
-<tr><td>leader of <code>shard-a</code> is now member 1</td><td>The router found the new leader by asking, and remembered it.</td></tr>
-<tr><td>780 found, 0 missing</td><td>No acknowledged write was lost.</td></tr>
+<tr><td style="text-align: left"><code>0 attempts refused</code></td><td style="text-align: left">Eliminated all <code>51</code> client-visible refusals observed without a router in Chapter 4.</td></tr>
+<tr><td style="text-align: left"><code>longest pause 1.08 s</code></td><td style="text-align: left">Raft election duration stays unchanged (<code>~1.0 s</code>), yet the router absorbs the election pause transparently as tail latency rather than client errors.</td></tr>
+<tr><td style="text-align: left"><code>leader</code> of <code>shard-a</code> updated to <code>7011</code></td><td style="text-align: left">Router discovered member 1 via <code>421</code> redirection and updated its atomic leader hint automatically.</td></tr>
+<tr><td style="text-align: left"><code>780 acknowledged, 780 found, 0 missing</code></td><td style="text-align: left">Zero acknowledged writes lost across failover.</td></tr>
 </tbody>
 </table>
 </div>
-<p>The comparison with chapter 4 shows what the router contributes. The election took
-as long as it did before, about a second, since the router does nothing to hasten it.
-What has changed is what the client experiences. A second of refusals, which every
-client would have had to be written to handle, has become a second of waiting, which
-requires nothing of the client at all.</p>
-<p>Writes to <code>shard-b</code> were at no time affected. <code>probe</code> sends its keys in turn, and so
-it waited behind the 1 request for <code>shard-a</code> that was being held. Independent clients
-writing to <code>shard-b</code> would have noticed nothing.</p>
-<h2 id="what-is-still-missing"><a class="header" href="#what-is-still-missing">What is still missing</a></h2>
+<p>From a fault-isolation standpoint, <code>shard-b</code> experienced zero interruption during <code>shard-a</code>’s election. Because <code>probe</code> issues writes sequentially, it waited behind one in-flight request to <code>shard-a</code>; independent concurrent clients targeting <code>shard-b</code> would have observed uninterrupted sub-20 ms writes throughout the failover.</p>
+<h2 id="55-residual-limitations"><a class="header" href="#55-residual-limitations">5.5 Residual Limitations</a></h2>
 <div class="table-wrapper">
 <table>
 <thead>
-<tr><th>Missing</th><th>Effect</th></tr>
+<tr><th style="text-align: left">No.</th><th style="text-align: left">Current Limitation</th><th style="text-align: left">Engineering Consequence</th><th style="text-align: left">Architectural Mitigation (Chapter 1)</th></tr>
 </thead>
 <tbody>
-<tr><td>The ring is a file read at startup.</td><td>To add a shard, the router has to be restarted, and existing keys do not move to the new shard.</td></tr>
-<tr><td>Members do not check which shard a key belongs to.</td><td>A router with a wrong ring file could write a key to the wrong shard. Chapter 1 prevents this by sending the version of the ring with every request.</td></tr>
-<tr><td>Listing keys by prefix is not routed.</td><td>The router would have to ask every shard and merge the answers.</td></tr>
+<tr><td style="text-align: left">0</td><td style="text-align: left">Ring topology loads statically from <code>ring.json</code> at boot.</td><td style="text-align: left">Adding a shard requires restarting routers and does not migrate existing keys.</td><td style="text-align: left">Control-plane metadata Raft streaming monotonic ring epochs to routers.</td></tr>
+<tr><td style="text-align: left">1</td><td style="text-align: left">Storage nodes do not validate key-to-shard ownership or ring epoch.</td><td style="text-align: left">A router carrying an outdated <code>ring.json</code> could write a key to the wrong shard.</td><td style="text-align: left">Tag forwarded requests with <code>ring_version</code> and reject stale epochs at storage nodes.</td></tr>
+<tr><td style="text-align: left">2</td><td style="text-align: left">Paginated prefix scans (<code>GET /v1/keys?prefix=...</code>) are not routed.</td><td style="text-align: left">Hash-partitioned prefix scans require scatter-gather across all shards with k-way merge.</td><td style="text-align: left">Scatter-gather coordinator or lexicographic range-partitioned shards.</td></tr>
 </tbody>
 </table>
 </div>
-<h2 id="the-complete-program"><a class="header" href="#the-complete-program">The complete program</a></h2>
-<p class="listing"><img class="mascot" src="art/crab-cute.svg" alt=""><b>Listing 5.8</b> The complete <code>kvrouter/Cargo.toml</code>. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/distributed-systems-from-the-ground-up/code/kvrouter/Cargo.toml">kvrouter/Cargo.toml</a></p>
+<h2 id="56-complete-source-listings"><a class="header" href="#56-complete-source-listings">5.6 Complete Source Listings</a></h2>
+<p>Listings 5.8 and 5.9 present the complete package manifest and source code of <code>kvrouter</code>.</p>
+<p>Listing 5.8 presents the crate dependencies of <code>kvrouter</code> in <code>kvrouter/Cargo.toml</code>.</p>
+<p class="listing"><b>Listing 5.8</b> Complete <code>kvrouter/Cargo.toml</code>. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/distributed-systems-from-the-ground-up/code/kvrouter/Cargo.toml">kvrouter/Cargo.toml</a></p>
 
 <pre><code class="language-toml">[package]
 name = "kvrouter"
@@ -684,7 +639,8 @@ serde.workspace = true
 serde_json.workspace = true
 tokio.workspace = true
 </code></pre>
-<p class="listing"><img class="mascot" src="art/crab-cute.svg" alt=""><b>Listing 5.9</b> The complete <code>kvrouter/src/main.rs</code>. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/distributed-systems-from-the-ground-up/code/kvrouter/src/main.rs">kvrouter/src/main.rs</a></p>
+<p>Listing 5.9 presents the complete stateless consistent-hash request router implementation in <code>kvrouter/src/main.rs</code>.</p>
+<p class="listing"><b>Listing 5.9</b> Complete <code>kvrouter/src/main.rs</code>. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/distributed-systems-from-the-ground-up/code/kvrouter/src/main.rs">kvrouter/src/main.rs</a></p>
 
 <pre><code class="language-rust">//! Command kvrouter sends each request to the shard that owns its key, and
 //! within that shard to the member that leads. Clients talk to the router
@@ -998,12 +954,12 @@ async fn main() -&gt; Result&lt;(), Box&lt;dyn Error&gt;&gt; {
 <div class="summary">
 <h2 id="summary"><a class="header" href="#summary">Summary</a></h2>
 <ul>
-<li>A router hashes the key, finds the shard on the ring, and forwards the request to the leader of that shard, and it holds no data of its own.</li>
-<li>The router keeps a guess at the leader of each shard and corrects the guess from the answers it receives.</li>
-<li>It asks another member only when the first attempt certainly changed nothing: after a follower’s <code>421</code>, after a <code>503</code> that reports no leader, or after a refused connection.</li>
-<li>After a timeout it answers <code>503</code>, since the write may have been performed, and only the client knows whether the request is safe to repeat.</li>
-<li>With 2 shards, 400 keys were divided 205 to 195, and every key was found again through the router.</li>
-<li>When a leader was killed, clients behind the router experienced a pause of 1.08 seconds and no errors.</li>
+<li>A stateless request router hashes each key onto the consistent-hash ring (<code>O(log V)</code>), resolves the owning shard, and forwards requests directly to its cached Raft leader hint.</li>
+<li>Because the router holds zero authoritative data, multiple router instances scale active-active and recover from crashes by repopulating leader hints from initial redirects.</li>
+<li>The safe-retry invariant permits retrying on another replica only after guaranteed zero-effect failures (<code>421 Misdirected Request</code>, <code>503 no-leader</code>, or TCP connection refused).</li>
+<li>Ambiguous timeouts and post-append <code>503</code> errors must never be retried automatically by the router; propagating <code>503</code> leaves duplicate-safety decisions to the caller.</li>
+<li>Across two three-node Raft shards, consistent hashing distributed <code>400</code> keys evenly (<code>205</code> to <code>195</code>) behind one endpoint.</li>
+<li>Under live leader <code>SIGKILL</code>, <code>kvrouter</code> shielded <code>probe</code> completely, reducing client-visible errors from <code>51</code> refusals (Chapter 4) to <code>0</code> while preserving all <code>780</code> acknowledged writes across a <code>1.08 s</code> election pause.</li>
 </ul>
 </div>
 
@@ -1059,7 +1015,7 @@ async fn main() -&gt; Result&lt;(), Box&lt;dyn Error&gt;&gt; {
         <script src="book-609e4cb8.js"></script>
 
         <!-- Custom JS scripts -->
-        <script src="theme/figures-47b15f7f.js"></script>
+        <script src="theme/figures-9c14cb1c.js"></script>
         <script src="theme/proto-326509cd.js"></script>
         <script src="theme/code-67e9caaf.js"></script>
         <script src="theme/tables-9fb295e8.js"></script>

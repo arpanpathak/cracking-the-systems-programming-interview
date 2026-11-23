@@ -28,7 +28,7 @@
         <link rel="stylesheet" id="mdbook-ayu-highlight-css" href="ayu-highlight-3fdfc3ac.css">
 
         <!-- Custom theme stylesheets -->
-        <link rel="stylesheet" href="theme/custom-9125cc61.css">
+        <link rel="stylesheet" href="theme/custom-3c3d4beb.css">
 
         <!-- MathJax -->
         <script async src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.1/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
@@ -38,10 +38,10 @@
             const path_to_root = "";
             const default_light_theme = "light";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "searchindex-025a35ef.js";
+            window.path_to_searchindex_js = "searchindex-e451f97a.js";
         </script>
         <!-- Start loading toc.js asap -->
-        <script src="toc-f3585118.js"></script>
+        <script src="toc-1a401835.js"></script>
     </head>
     <body>
     <div id="mdbook-help-container">
@@ -184,27 +184,22 @@
                 <div id="mdbook-content" class="content">
                     <main>
                         <h1 id="13-io-multiplexing-and-the-event-loop"><a class="header" href="#13-io-multiplexing-and-the-event-loop">13. I/O Multiplexing and the Event Loop</a></h1>
-<p>The central engineering challenge of high-concurrency network servers is sustaining tens of thousands of simultaneous client connections when the vast majority remain idle waiting for network packets at any given instant. Choosing between a thread-per-connection architecture and an event-driven I/O multiplexing loop directly governs memory consumption, cache locality, and scheduler overhead.</p>
+<p>The central engineering challenge of high-concurrency network servers, historically framed as the <strong>C10K problem</strong>, is sustaining tens of thousands of simultaneous client connections when the vast majority remain idle waiting for network packets at any given instant. Choosing between a thread-per-connection architecture and an event-driven <strong>Input/Output (<code>I/O</code>)</strong> multiplexing loop directly governs memory consumption, cache locality, and scheduler overhead.</p>
 <h2 id="131-the-scalability-limits-of-thread-per-connection"><a class="header" href="#131-the-scalability-limits-of-thread-per-connection">13.1 The Scalability Limits of Thread-Per-Connection</a></h2>
-<p>Assigning one operating-system thread to every accepted TCP connection allows handlers to be written as straightforward sequential blocking code (<code>read()</code>, process, <code>write()</code>). While intuitive for low-concurrency services, this model encounters three scaling ceilings as connection counts grow into the tens of thousands:</p>
-<ul>
-<li><strong>Per-thread stack footprint:</strong> Each OS thread reserves a dedicated user-space stack (commonly 1 to 8 MiB of virtual space and tens of kilobytes of resident pages) plus a kernel stack (8 to 16 KiB) and scheduling metadata.</li>
-<li><strong>Context-switch and TLB overhead:</strong> Waking thousands of threads across bursts of short packets triggers frequent kernel scheduler invocations, register-state saves, and L1/L2 cache eviction.</li>
-<li><strong>Lock contention:</strong> Sharing mutable session tables or metrics across thousands of concurrent threads introduces heavy synchronization overhead.</li>
-</ul>
-<h2 id="132-event-driven-architecture-and-io-multiplexing"><a class="header" href="#132-event-driven-architecture-and-io-multiplexing">13.2 Event-Driven Architecture and I/O Multiplexing</a></h2>
-<p>An <strong>event-driven server</strong> decouples connection count from thread count by running a single-threaded (or one-thread-per-core) <strong>event loop</strong> over an <strong>I/O multiplexing</strong> system call (<code>poll</code>, Linux <code>epoll</code>, or BSD/Darwin <code>kqueue</code>). Rather than blocking a dedicated thread on one socket, the loop registers every active file descriptor with the kernel and sleeps once until <em>any</em> descriptor becomes ready:</p>
+<p>Assigning one operating-system thread to every accepted <strong>Transmission Control Protocol (<code>TCP</code>)</strong> connection allows handlers to be written as straightforward sequential blocking code (<code>read()</code>, process, <code>write()</code>). While intuitive for low-concurrency services, this model encounters three scaling ceilings as connection counts grow into the tens of thousands. First, every thread reserves a dedicated user-space stack (commonly 1 to 8 MiB of virtual space and tens of kilobytes of resident pages) plus a kernel stack (8 to 16 KiB) and scheduling metadata. Second, waking thousands of threads across bursts of short packets triggers frequent scheduler invocations, register-state saves, Level 1/Level 2 cache eviction, and <strong>Translation Lookaside Buffer (<code>TLB</code>)</strong> pressure. Third, sharing mutable session tables or metrics across thousands of concurrent threads introduces heavy lock contention.</p>
+<h2 id="132-event-driven-architecture-and-io-multiplexing"><a class="header" href="#132-event-driven-architecture-and-io-multiplexing">13.2 Event-Driven Architecture and <code>I/O</code> Multiplexing</a></h2>
+<p>An <strong>event-driven server</strong> decouples connection count from thread count by running a single-threaded (or one-thread-per-core) <strong>event loop</strong> over an <strong><code>I/O</code> multiplexing</strong> system call (<code>poll</code>, Linux <code>epoll</code>, or <strong>Berkeley Software Distribution (<code>BSD</code>)</strong> / Darwin <code>kqueue</code>). Rather than blocking a dedicated thread on one socket, the loop registers every active file descriptor with the kernel and sleeps once until <em>any</em> descriptor becomes ready (Figure 13-1):</p>
 <ol>
-<li><strong>Wait (Observation):</strong> The loop invokes <code>poll()</code> (or <code>epoll_wait()</code> / <code>kevent()</code>), suspending the thread until one or more monitored sockets transition to a ready state (an incoming TCP connection waiting on the listening socket, readable bytes in a client receive buffer, or an error/hangup) or a timeout expires.</li>
+<li><strong>Wait (Observation):</strong> The loop invokes <code>poll()</code> (or <code>epoll_wait()</code> / <code>kevent()</code>), suspending the thread until one or more monitored sockets transition to a ready state (an incoming <code>TCP</code> connection waiting on the listening socket, readable bytes in a client receive buffer, or an error/hangup) or a timeout expires.</li>
 <li><strong>Dispatch:</strong> The loop inspects the ready descriptors reported by the kernel and routes each event to its connection state machine.</li>
-<li><strong>Non-blocking Execution:</strong> Each handler consumes or emits available bytes and returns promptly to the loop. Because one thread services all connections, a blocking disk read or expensive CPU computation inside a handler stalls every other client until it returns; production event loops offload blocking work to dedicated thread pools.</li>
+<li><strong>Non-blocking Execution:</strong> Each handler consumes or emits available bytes and returns promptly to the loop. Because one thread services all connections, a blocking disk read or expensive computation inside a handler stalls every other client until it returns; production event loops offload blocking work to dedicated thread pools.</li>
 </ol>
 <figure>
 <img src="figures/ch13_event_loop.svg" alt="An event loop asking the kernel which descriptors are ready, then dispatching each" />
 </figure>
 <h3 id="1321-socket-setup-struct-sockaddr_in-and-the-poll2-system-call-interface"><a class="header" href="#1321-socket-setup-struct-sockaddr_in-and-the-poll2-system-call-interface">13.2.1 Socket Setup, <code>struct sockaddr_in</code>, and the <code>poll(2)</code> System Call Interface</a></h3>
-<p>Listings 13-1 through 13-4 build a complete single-threaded TCP echo server and client using the BSD socket API paired with <code>poll(2)</code>. Understanding the exact data structures, byte-order conversions, and return contracts makes every line transparent:</p>
-<pre><code class="language-text">struct sockaddr_in {
+<p>Listings 13-1 through 13-4 build a complete single-threaded <code>TCP</code> echo server and client using the <code>BSD</code> socket <strong>Application Programming Interface (<code>API</code>)</strong> paired with <code>poll(2)</code>:</p>
+<pre><code class="language-c">struct sockaddr_in {
     sa_family_t    sin_family; // Address family: AF_INET (IPv4)
     in_port_t      sin_port;   // 16-bit TCP/UDP port in network byte order (htons)
     struct in_addr sin_addr;   // 32-bit IPv4 address in network byte order (htonl)
@@ -225,24 +220,9 @@ int accept(int sockfd, struct sockaddr *addr, socklen_t *addrlen);
 int connect(int sockfd, const struct sockaddr *addr, socklen_t addrlen);
 int poll(struct pollfd *fds, nfds_t nfds, int timeout);
 </code></pre>
-<ul>
-<li><strong>Network Byte Order (<code>htons</code> / <code>htonl</code>):</strong> Internet protocols transmit multi-byte integers in <strong>big-endian</strong> (most significant byte first) network byte order, whereas x86-64 and ARM64 processors are little-endian. Calling <strong><code>htons(45678)</code></strong> (“host to network short”, 16-bit) and <strong><code>htonl(INADDR_LOOPBACK)</code></strong> (“host to network long”, 32-bit, converting <code>127.0.0.1</code> = <code>0x7F000001</code>) converts fields inside <code>struct sockaddr_in</code> into canonical wire order before passing the struct to the kernel.</li>
-<li><strong>Polymorphic <code>struct sockaddr *</code> casts:</strong> Because <code>bind()</code>, <code>connect()</code>, and <code>accept()</code> serve IPv4 (<code>sockaddr_in</code>), IPv6 (<code>sockaddr_in6</code>), and Unix domain (<code>sockaddr_un</code>) addresses through one C interface, callers cast the concrete address pointer to <code>struct sockaddr *</code> and pass its exact byte size (<code>sizeof addr</code>) in <code>addrlen</code>.</li>
-<li><strong><code>socket(domain, type, protocol)</code>:</strong> Creates an unbound kernel socket endpoint and returns a file descriptor (<code>&gt;= 0</code>), or <code>-1</code> on error (<code>EMFILE</code>, <code>EAFNOSUPPORT</code>). Passing <code>(AF_INET, SOCK_STREAM, 0)</code> selects IPv4 (<code>AF_INET</code>), reliable connection-oriented byte stream (<code>SOCK_STREAM</code>), and the default stream protocol (TCP, <code>0</code>).</li>
-<li><strong><code>setsockopt(ls, SOL_SOCKET, SO_REUSEADDR, &amp;one, sizeof one)</code>:</strong> Configures socket-layer options (<code>SOL_SOCKET</code>). When a TCP server exits with active connections, the kernel holds the old <code>(IP, port)</code> tuple in TCP <strong><code>TIME_WAIT</code></strong> state for 30 to 120 seconds to absorb delayed network packets. Without <strong><code>SO_REUSEADDR</code></strong> set to non-zero (<code>one = 1</code>), immediately restarting the server on port <code>45678</code> fails inside <code>bind()</code> with <code>EADDRINUSE</code>. Returns <code>0</code> on success or <code>-1</code> on error.</li>
-<li><strong><code>bind(ls, addr, addrlen)</code>:</strong> Associates the local IP address and port in <code>addr</code> with socket <code>ls</code>. Returns <code>0</code> on success or <code>-1</code> (<code>EADDRINUSE</code>, <code>EACCES</code> for privileged ports <code>&lt; 1024</code>).</li>
-<li><strong><code>listen(ls, backlog)</code>:</strong> Marks <code>ls</code> as a passive listening socket capable of accepting incoming TCP handshakes. The <strong><code>backlog</code></strong> parameter (<code>8</code> in Listing 13-1) bounds the length of the kernel’s completed-connection queue awaiting <code>accept()</code>. Returns <code>0</code> on success or <code>-1</code>.</li>
-<li><strong><code>accept(ls, addr, addrlen)</code>:</strong> Dequeues one completed client connection from <code>ls</code>’s accept queue and allocates a <strong>new, distinct connected file descriptor</strong> (<code>c &gt;= 0</code>) dedicated to that client, leaving <code>ls</code> open and listening for future clients. Passing <code>nullptr, nullptr</code> for <code>(addr, addrlen)</code> discards the peer’s IP/port metadata. Returns <code>-1</code> on error (<code>EINTR</code>, <code>EAGAIN</code>, <code>EMFILE</code>).</li>
-<li><strong><code>connect(fd, addr, addrlen)</code>:</strong> Used by the client (Listing 13-2) to initiate the TCP three-way handshake (<code>SYN</code>, <code>SYN-ACK</code>, <code>ACK</code>) toward the server address in <code>addr</code>. Returns <code>0</code> once established, or <code>-1</code> (<code>ECONNREFUSED</code> if no server is listening, <code>ETIMEDOUT</code> on network timeout).</li>
-<li><strong><code>poll(fds, nfds, timeout)</code>:</strong> Monitors the array <code>fds</code> of <code>nfds</code> <code>struct pollfd</code> entries simultaneously.
-<ul>
-<li>Before calling <code>poll()</code>, the application sets <code>fds[i].fd</code> and <code>fds[i].events</code> (typically <strong><code>POLLIN</code></strong> to detect readable client bytes, peer EOF, or a newly queued connection ready for <code>accept()</code> on the listening socket <code>ls</code>).</li>
-<li><strong><code>timeout</code></strong> specifies the maximum blocking interval in milliseconds (<code>1000</code> ms in Listing 13-1; <code>-1</code> blocks indefinitely; <code>0</code> returns immediately without blocking).</li>
-<li>On return, the kernel overwrites <strong><code>fds[i].revents</code></strong> for every entry (leaving <code>events</code> untouched) with the subset of conditions actually observed: <strong><code>POLLIN</code></strong> (data or EOF ready to read), <strong><code>POLLOUT</code></strong> (send buffer writable), and output-only flags <strong><code>POLLHUP</code></strong> (peer closed connection), <strong><code>POLLERR</code></strong> (asynchronous socket error), or <strong><code>POLLNVAL</code></strong> (descriptor is not open).</li>
-<li><strong>Return value:</strong> Returns the count (<code>&gt; 0</code>) of entries with non-zero <code>revents</code>, <code>0</code> if <code>timeout</code> elapsed with zero ready descriptors, or <code>-1</code> on error (<code>EINTR</code> if interrupted by a signal, <code>ENOMEM</code>). When <code>fds[i].revents &amp; POLLIN</code> fires on a client socket and <code>read()</code> returns <code>0</code>, the client has closed its write half cleanly (TCP <code>FIN</code>), so the server closes the descriptor and erases it from <code>fds</code>.</li>
-</ul>
-</li>
-</ul>
+<p>Internet protocols transmit multi-byte integers in <strong>big-endian</strong> network byte order, whereas x86-64 and ARM64 processors are little-endian. Calling <code>htons(45678)</code> (“host to network short”, 16-bit) and <code>htonl(INADDR_LOOPBACK)</code> (“host to network long”, 32-bit, converting <code>127.0.0.1</code> = <code>0x7F000001</code>) converts fields inside <code>struct sockaddr_in</code> into wire order before passing the struct to the kernel. Because <code>bind()</code>, <code>connect()</code>, and <code>accept()</code> serve <strong>Internet Protocol Version 4 (<code>IPv4</code>, <code>sockaddr_in</code>)</strong>, <strong>Internet Protocol Version 6 (<code>IPv6</code>, <code>sockaddr_in6</code>)</strong>, and Unix domain (<code>sockaddr_un</code>) addresses through a single C interface, callers cast the concrete pointer to <code>struct sockaddr *</code> and pass its exact byte length in <code>addrlen</code>.</p>
+<p>To establish a listening server, <code>socket(AF_INET, SOCK_STREAM, 0)</code> allocates an unbound <code>IPv4</code> <code>TCP</code> endpoint (<code>fd &gt;= 0</code>, or <code>-1</code> on <code>EMFILE</code>/<code>EAFNOSUPPORT</code>). Calling <code>setsockopt(ls, SOL_SOCKET, SO_REUSEADDR, &amp;one, sizeof one)</code> allows immediate server restarts even when prior connections linger in <code>TCP</code> <code>TIME_WAIT</code> state (preventing <code>EADDRINUSE</code>). Next, <code>bind(ls, addr, addrlen)</code> attaches the local <strong>Internet Protocol (<code>IP</code>)</strong> address and port, and <code>listen(ls, backlog)</code> converts <code>ls</code> into a passive listener whose completed-connection queue is bounded by <code>backlog</code> (<code>8</code> in Listing 13-1). Each call to <code>accept(ls, addr, addrlen)</code> dequeues one completed client connection and returns a <strong>new, distinct connected file descriptor</strong> (<code>c &gt;= 0</code>), leaving <code>ls</code> open for future clients. On the client side (Listing 13-2), <code>connect(fd, addr, addrlen)</code> initiates the <code>TCP</code> three-way handshake (<strong>Synchronize (<code>SYN</code>)</strong>, <strong>Synchronize-Acknowledge (<code>SYN-ACK</code>)</strong>, <strong>Acknowledge (<code>ACK</code>)</strong>), returning <code>0</code> once established or <code>-1</code> (<code>ECONNREFUSED</code>, <code>ETIMEDOUT</code>).</p>
+<p>The <code>poll(fds, nfds, timeout)</code> system call monitors an array of <code>nfds</code> <code>struct pollfd</code> entries simultaneously. Before each call, the application sets <code>fds[i].fd</code> and <code>fds[i].events</code> (typically <code>POLLIN</code> to detect readable client bytes, peer <strong>End-of-File (<code>EOF</code>)</strong>, or a queued connection on <code>ls</code>). The <code>timeout</code> parameter specifies the maximum wait in milliseconds (<code>1000</code> ms in Listing 13-1; <code>-1</code> blocks indefinitely; <code>0</code> returns immediately). On return, the kernel populates <code>fds[i].revents</code> with observed flags (<code>POLLIN</code>, <code>POLLOUT</code>, and output-only <code>POLLHUP</code>, <code>POLLERR</code>, or <code>POLLNVAL</code>) and returns the count of ready entries (<code>&gt; 0</code>), <code>0</code> on timeout, or <code>-1</code> on error (<code>EINTR</code>, <code>ENOMEM</code>). When <code>POLLIN</code> fires on a client socket and <code>read()</code> returns <code>0</code>, the peer has closed its write half (<code>TCP</code> <strong>Finish (<code>FIN</code>)</strong>), so the server closes the descriptor and removes it from <code>fds</code>.</p>
 <p><strong>Listing 13-1. An echo server with one thread and <code>poll</code> (C++20).</strong></p>
 <pre><code class="language-cpp">// ch13/poll_echo_server.cpp: one thread, several clients, poll(2).
 // Serves two clients, then exits; the harness starts it and runs two clients.
@@ -471,22 +451,25 @@ sent "two", got "two" (ok)
 sent "three", got "three" (ok)
 </code></pre>
 <h2 id="133-complexity-and-evolution-of-multiplexing-primitives-select-poll-epoll-kqueue"><a class="header" href="#133-complexity-and-evolution-of-multiplexing-primitives-select-poll-epoll-kqueue">13.3 Complexity and Evolution of Multiplexing Primitives (<code>select</code>, <code>poll</code>, <code>epoll</code>, <code>kqueue</code>)</a></h2>
-<p>The scalability of an event loop depends directly on how the kernel tracks the monitored descriptor set across calls:</p>
+<p>The scalability of an event loop depends directly on how the kernel tracks the monitored descriptor set across calls (Figure 13-2):</p>
 <div class="table-wrapper">
 <table>
 <thead>
 <tr><th style="text-align: left">Primitive</th><th style="text-align: left">Platform</th><th style="text-align: left">Descriptor Limit</th><th style="text-align: left">Per-Wait Complexity</th><th style="text-align: left">Kernel Registration Model</th></tr>
 </thead>
 <tbody>
-<tr><td style="text-align: left"><strong><code>select</code></strong></td><td style="text-align: left">POSIX</td><td style="text-align: left">Fixed <code>FD_SETSIZE</code> (typically 1024)</td><td style="text-align: left">O(max_fd)</td><td style="text-align: left">Stateless; copies full bitmasks on every call</td></tr>
-<tr><td style="text-align: left"><strong><code>poll</code></strong></td><td style="text-align: left">POSIX</td><td style="text-align: left">Unbounded (dynamic <code>pollfd[]</code>)</td><td style="text-align: left">O(N)</td><td style="text-align: left">Stateless; copies and scans full <code>fds</code> array on every call</td></tr>
+<tr><td style="text-align: left"><strong><code>select</code></strong></td><td style="text-align: left"><strong>Portable Operating System Interface (<code>POSIX</code>)</strong></td><td style="text-align: left">Fixed <code>FD_SETSIZE</code> (typically 1024)</td><td style="text-align: left">O(max_fd)</td><td style="text-align: left">Stateless; copies full bitmasks on every call</td></tr>
+<tr><td style="text-align: left"><strong><code>poll</code></strong></td><td style="text-align: left"><code>POSIX</code></td><td style="text-align: left">Unbounded (dynamic <code>pollfd[]</code>)</td><td style="text-align: left">O(N)</td><td style="text-align: left">Stateless; copies and scans full <code>fds</code> array on every call</td></tr>
 <tr><td style="text-align: left"><strong><code>epoll</code></strong></td><td style="text-align: left">Linux</td><td style="text-align: left">Unbounded</td><td style="text-align: left">O(K) ready events</td><td style="text-align: left">Stateful kernel red-black tree (<code>epoll_ctl</code>) + O(1) ready list (<code>epoll_wait</code>)</td></tr>
-<tr><td style="text-align: left"><strong><code>kqueue</code></strong></td><td style="text-align: left">macOS / BSD</td><td style="text-align: left">Unbounded</td><td style="text-align: left">O(K) ready events</td><td style="text-align: left">Stateful kernel event table (<code>kevent</code>) unifying sockets, timers, files, and processes</td></tr>
+<tr><td style="text-align: left"><strong><code>kqueue</code></strong></td><td style="text-align: left">macOS / <code>BSD</code></td><td style="text-align: left">Unbounded</td><td style="text-align: left">O(K) ready events</td><td style="text-align: left">Stateful kernel event table (<code>kevent</code>) unifying sockets, timers, files, and processes</td></tr>
 </tbody>
 </table>
 </div>
-<p>Both <code>select</code> and <code>poll</code> are <strong>stateless</strong>: on every iteration of the event loop, user space copies the entire array of <code>N</code> descriptors into Ring 0, the kernel walks all <code>N</code> descriptors to register wait-queue callbacks, and user space scans all <code>N</code> entries again on return to locate the <code>K</code> active sockets. When <code>N = 50,000</code> connections and only <code>K = 10</code> are active, O(N) scanning dominates CPU time.</p>
-<p>Modern kernels eliminate this scan via stateful interest sets (<code>epoll</code> on Linux, <code>kqueue</code> on Darwin/BSD, and completion-based <code>io_uring</code> on Linux 5.1+). The application registers each socket once upon <code>accept()</code>; when packets arrive, the network interrupt handler appends that socket directly onto a kernel ready queue, reducing event retrieval from O(N) to <strong>O(K)</strong> where <code>K</code> is the number of ready sockets. Production runtimes including Nginx, Envoy, Node.js (<code>libuv</code>), and Rust’s Tokio are built atop these O(K) interfaces.</p>
+<p>Both <code>select</code> and <code>poll</code> are <strong>stateless</strong>: on every iteration of the event loop, user space copies the entire array of <code>N</code> descriptors into Ring 0, the kernel walks all <code>N</code> descriptors to attach wait-queue callbacks, and user space scans all <code>N</code> entries again on return to locate the <code>K</code> active sockets. When <code>N = 50,000</code> connections and only <code>K = 10</code> are active, O(N) scanning dominates execution time.</p>
+<p>Modern kernels eliminate this linear scan via stateful interest sets (<code>epoll</code> on Linux, <code>kqueue</code> on Darwin/<code>BSD</code>). The application registers each socket once upon <code>accept()</code>; when packets arrive, the network interrupt handler appends that socket directly onto a kernel ready queue, reducing event retrieval from O(N) to <strong>O(K)</strong>. Event loops also choose between <strong>level-triggered</strong> readiness (default in <code>poll</code> and <code>epoll</code>, which notifies on every wait while unread bytes remain) and <strong>edge-triggered</strong> readiness (<code>EPOLLET</code>, which notifies once on state transition and requires draining the non-blocking socket until <code>EAGAIN</code>). On Linux 5.1+, <code>io_uring</code> extends this architecture from <em>readiness notification</em> to <em>asynchronous completion</em>, sharing submission and completion ring buffers in memory between user space and the kernel to execute batched network and storage operations with minimal system calls. Production runtimes including Nginx, Envoy, Node.js (<code>libuv</code>), and Rust’s Tokio are built atop these O(K) interfaces.</p>
+<figure>
+<img src="figures/ch13_poll_vs_epoll.svg" alt="Stateless poll O(N) full-array copy and scan versus stateful epoll/kqueue O(K) kernel red-black tree and ready queue" />
+</figure>
 <p><strong>Listing 13-5. Contrast: a thread-per-connection echo server and client (Rust).</strong></p>
 <pre class="playground"><code class="language-rust">// ch13/thread_echo.rs: a thread-per-connection echo server plus its client,
 // both in one process, written with the Rust standard library only.
@@ -574,6 +557,21 @@ thread 2 echoed 5 bytes
 client 1 sent "gamma", got "gamma" (ok=true)
 done
 </code></pre>
+<div class="callout keyidea">
+<span class="label">Key idea</span>
+<p>Event-driven servers scale to tens of thousands of idle connections by replacing per-connection thread stacks with one kernel readiness queue. Stateful <code>epoll</code> and <code>kqueue</code> reduce wait complexity from O(<em>N</em>) total connections (<code>poll</code>) to O(<em>K</em>) active connections.</p>
+</div>
+
+<div class="callout experiment">
+<span class="label">Experiment</span>
+<p>In Listing 13-1 (<code>code/ch13/poll_echo_server.cpp</code>), comment out the <code>setsockopt(..., SO_REUSEADDR, ...)</code> call, connect a client, terminate the server with Ctrl-C, and immediately restart it. Observe <code>bind()</code> failing with <code>EADDRINUSE</code> while the prior socket lingers in <code>TCP</code> <code>TIME_WAIT</code>.</p>
+</div>
+
+<div class="callout caution">
+<span class="label">Common Pitfall</span>
+<p>Executing a blocking disk read, synchronous <code>DNS</code> lookup, or heavy <code>CPU</code> loop inside a single-threaded event-loop callback. Because one thread multiplexes every socket, a 50 ms blocking call stalls tail latency across all sibling connections simultaneously; offload blocking work to a worker pool.</p>
+</div>
+
 
                     </main>
 
@@ -626,7 +624,7 @@ done
         <script src="book-609e4cb8.js"></script>
 
         <!-- Custom JS scripts -->
-        <script src="theme/figures-f1be29a8.js"></script>
+        <script src="theme/figures-fd5ff574.js"></script>
 
 
 

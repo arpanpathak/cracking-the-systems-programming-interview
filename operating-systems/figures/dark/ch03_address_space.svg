@@ -1,12 +1,12 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 670" width="800" height="670">
   <style>
-    text { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif; fill: #E8EAF0; }
-    .paper { fill: #1B1E26; }
-    .frame { fill: #1B1E26; stroke: #363C49; stroke-width: 1; }
-    .card { fill: #2B303B; }
-    .hair { stroke: #363C49; stroke-width: 1.2; fill: none; }
-    .muted { fill: #AEB6C3; }
-    .ink { fill: #E8EAF0; }
+    text { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif; fill: #F8FAFC; }
+    .paper { fill: #12161F; }
+    .frame { fill: #12161F; stroke: #3E4C66; stroke-width: 1.2; }
+    .card { fill: #1E2636; stroke: #4E6080; stroke-width: 1; }
+    .hair { stroke: #3E4C66; stroke-width: 1.2; fill: none; }
+    .muted { fill: #D8E0EE; }
+    .ink { fill: #F8FAFC; }
     .title { font-size: 17.5px; font-weight: 650; }
     .head { font-size: 15.5px; font-weight: 650; }
     .name { font-size: 15px; font-weight: 650; }
@@ -17,72 +17,72 @@
     .small { font-size: 12px; }
     .note { font-size: 13.5px; }
     .noteb { font-size: 13.5px; font-weight: 650; }
-    .sub, .small, .note { fill: #AEB6C3; }
-    .c-blue { fill: #1E2D47; }
-    .m-blue { fill: #2C4674; }
-    .a-blue { fill: #8FB8FA; }
-    .t-blue { fill: #8FB8FA; }
-    .w-blue { stroke: #8FB8FA; fill: none; stroke-linecap: butt; stroke-linejoin: round; }
-    .o-blue { stroke: #8FB8FA; fill: none; stroke-width: 1.5; }
-    .h-blue { stroke: #8FB8FA; stroke-width: 1.4; }
-    .c-green { fill: #1B3426; }
-    .m-green { fill: #28553B; }
-    .a-green { fill: #82D69C; }
-    .t-green { fill: #82D69C; }
-    .w-green { stroke: #82D69C; fill: none; stroke-linecap: butt; stroke-linejoin: round; }
-    .o-green { stroke: #82D69C; fill: none; stroke-width: 1.5; }
-    .h-green { stroke: #82D69C; stroke-width: 1.4; }
-    .c-amber { fill: #3A2D14; }
-    .m-amber { fill: #5E471A; }
-    .a-amber { fill: #F3C06B; }
-    .t-amber { fill: #F3C06B; }
-    .w-amber { stroke: #F3C06B; fill: none; stroke-linecap: butt; stroke-linejoin: round; }
-    .o-amber { stroke: #F3C06B; fill: none; stroke-width: 1.5; }
-    .h-amber { stroke: #F3C06B; stroke-width: 1.4; }
-    .c-red { fill: #41221D; }
-    .m-red { fill: #69322B; }
-    .a-red { fill: #F59E8D; }
-    .t-red { fill: #F59E8D; }
-    .w-red { stroke: #F59E8D; fill: none; stroke-linecap: butt; stroke-linejoin: round; }
-    .o-red { stroke: #F59E8D; fill: none; stroke-width: 1.5; }
-    .h-red { stroke: #F59E8D; stroke-width: 1.4; }
-    .c-purple { fill: #2C2549; }
-    .m-purple { fill: #453978; }
-    .a-purple { fill: #BCA8F7; }
-    .t-purple { fill: #BCA8F7; }
-    .w-purple { stroke: #BCA8F7; fill: none; stroke-linecap: butt; stroke-linejoin: round; }
-    .o-purple { stroke: #BCA8F7; fill: none; stroke-width: 1.5; }
-    .h-purple { stroke: #BCA8F7; stroke-width: 1.4; }
-    .c-teal { fill: #15332F; }
-    .m-teal { fill: #1F514B; }
-    .a-teal { fill: #72D5CA; }
-    .t-teal { fill: #72D5CA; }
-    .w-teal { stroke: #72D5CA; fill: none; stroke-linecap: butt; stroke-linejoin: round; }
-    .o-teal { stroke: #72D5CA; fill: none; stroke-width: 1.5; }
-    .h-teal { stroke: #72D5CA; stroke-width: 1.4; }
-    .c-gray { fill: #272B34; }
-    .m-gray { fill: #3A404D; }
-    .a-gray { fill: #AEB6C3; }
-    .t-gray { fill: #AEB6C3; }
-    .w-gray { stroke: #AEB6C3; fill: none; stroke-linecap: butt; stroke-linejoin: round; }
-    .o-gray { stroke: #AEB6C3; fill: none; stroke-width: 1.5; }
-    .h-gray { stroke: #AEB6C3; stroke-width: 1.4; }
-    .c-wire { fill: #272B34; }
-    .m-wire { fill: #3A404D; }
-    .a-wire { fill: #A2ABB9; }
-    .t-wire { fill: #A2ABB9; }
-    .w-wire { stroke: #A2ABB9; fill: none; stroke-linecap: butt; stroke-linejoin: round; }
-    .o-wire { stroke: #A2ABB9; fill: none; stroke-width: 1.5; }
-    .h-wire { stroke: #A2ABB9; stroke-width: 1.4; }
+    .sub, .small, .note { fill: #D8E0EE; }
+    .c-blue { fill: #182B49; stroke: #93C5FD; stroke-opacity: 0.48; stroke-width: 1.2; }
+    .m-blue { fill: #1E3A63; stroke: #93C5FD; stroke-opacity: 0.78; stroke-width: 1.2; }
+    .a-blue { fill: #93C5FD; }
+    .t-blue { fill: #93C5FD; }
+    .w-blue { stroke: #93C5FD; fill: none; stroke-linecap: butt; stroke-linejoin: round; }
+    .o-blue { stroke: #93C5FD; fill: none; stroke-width: 1.5; }
+    .h-blue { stroke: #93C5FD; stroke-width: 1.4; }
+    .c-green { fill: #133328; stroke: #86EFAC; stroke-opacity: 0.48; stroke-width: 1.2; }
+    .m-green { fill: #184D3B; stroke: #86EFAC; stroke-opacity: 0.78; stroke-width: 1.2; }
+    .a-green { fill: #86EFAC; }
+    .t-green { fill: #86EFAC; }
+    .w-green { stroke: #86EFAC; fill: none; stroke-linecap: butt; stroke-linejoin: round; }
+    .o-green { stroke: #86EFAC; fill: none; stroke-width: 1.5; }
+    .h-green { stroke: #86EFAC; stroke-width: 1.4; }
+    .c-amber { fill: #34250F; stroke: #FDE078; stroke-opacity: 0.48; stroke-width: 1.2; }
+    .m-amber { fill: #4F3814; stroke: #FDE078; stroke-opacity: 0.78; stroke-width: 1.2; }
+    .a-amber { fill: #FDE078; }
+    .t-amber { fill: #FDE078; }
+    .w-amber { stroke: #FDE078; fill: none; stroke-linecap: butt; stroke-linejoin: round; }
+    .o-amber { stroke: #FDE078; fill: none; stroke-width: 1.5; }
+    .h-amber { stroke: #FDE078; stroke-width: 1.4; }
+    .c-red { fill: #3A1B23; stroke: #FDA4AF; stroke-opacity: 0.48; stroke-width: 1.2; }
+    .m-red { fill: #582430; stroke: #FDA4AF; stroke-opacity: 0.78; stroke-width: 1.2; }
+    .a-red { fill: #FDA4AF; }
+    .t-red { fill: #FDA4AF; }
+    .w-red { stroke: #FDA4AF; fill: none; stroke-linecap: butt; stroke-linejoin: round; }
+    .o-red { stroke: #FDA4AF; fill: none; stroke-width: 1.5; }
+    .h-red { stroke: #FDA4AF; stroke-width: 1.4; }
+    .c-purple { fill: #261E47; stroke: #DDD6FE; stroke-opacity: 0.48; stroke-width: 1.2; }
+    .m-purple { fill: #382B6B; stroke: #DDD6FE; stroke-opacity: 0.78; stroke-width: 1.2; }
+    .a-purple { fill: #DDD6FE; }
+    .t-purple { fill: #DDD6FE; }
+    .w-purple { stroke: #DDD6FE; fill: none; stroke-linecap: butt; stroke-linejoin: round; }
+    .o-purple { stroke: #DDD6FE; fill: none; stroke-width: 1.5; }
+    .h-purple { stroke: #DDD6FE; stroke-width: 1.4; }
+    .c-teal { fill: #113136; stroke: #5EEAD4; stroke-opacity: 0.48; stroke-width: 1.2; }
+    .m-teal { fill: #164A52; stroke: #5EEAD4; stroke-opacity: 0.78; stroke-width: 1.2; }
+    .a-teal { fill: #5EEAD4; }
+    .t-teal { fill: #5EEAD4; }
+    .w-teal { stroke: #5EEAD4; fill: none; stroke-linecap: butt; stroke-linejoin: round; }
+    .o-teal { stroke: #5EEAD4; fill: none; stroke-width: 1.5; }
+    .h-teal { stroke: #5EEAD4; stroke-width: 1.4; }
+    .c-gray { fill: #1E2534; stroke: #D8E0EE; stroke-opacity: 0.48; stroke-width: 1.2; }
+    .m-gray { fill: #2C364A; stroke: #D8E0EE; stroke-opacity: 0.78; stroke-width: 1.2; }
+    .a-gray { fill: #D8E0EE; }
+    .t-gray { fill: #D8E0EE; }
+    .w-gray { stroke: #D8E0EE; fill: none; stroke-linecap: butt; stroke-linejoin: round; }
+    .o-gray { stroke: #D8E0EE; fill: none; stroke-width: 1.5; }
+    .h-gray { stroke: #D8E0EE; stroke-width: 1.4; }
+    .c-wire { fill: #1E2534; }
+    .m-wire { fill: #2C364A; }
+    .a-wire { fill: #CBD5E1; }
+    .t-wire { fill: #CBD5E1; }
+    .w-wire { stroke: #CBD5E1; fill: none; stroke-linecap: butt; stroke-linejoin: round; }
+    .o-wire { stroke: #CBD5E1; fill: none; stroke-width: 1.5; }
+    .h-wire { stroke: #CBD5E1; stroke-width: 1.4; }
   </style>
   <defs>
     <filter id="lift" x="-10%" y="-15%" width="120%" height="140%">
-      <feDropShadow dx="0" dy="1" stdDeviation="1.2" flood-color="#000000" flood-opacity="0.45"/>
-      <feDropShadow dx="0" dy="3" stdDeviation="4" flood-color="#000000" flood-opacity="0.32"/>
+      <feDropShadow dx="0" dy="1" stdDeviation="1.2" flood-color="#000000" flood-opacity="0.35"/>
+      <feDropShadow dx="0" dy="3" stdDeviation="4" flood-color="#000000" flood-opacity="0.24"/>
     </filter>
   </defs>
 <rect x="0.5" y="0.5" width="799" height="669" rx="16" class="frame"/>
-<text x="28" y="44" class="title"><tspan class="t-blue">Figure 3-1.</tspan> The address space of one process (64-bit, simplified).</text>
+<text x="28" y="44" class="title"><tspan class="t-blue">Figure 3-2.</tspan> The address space of one process (64-bit, simplified).</text>
 <g transform="translate(0 74)">
 <text x="28.0" y="12.0" class="small">high addresses</text>
 <polygon points="40.0,22.0 44.2,32.0 40.0,29.2 35.8,32.0" class="a-gray"/>

@@ -28,7 +28,7 @@
         <link rel="stylesheet" id="mdbook-ayu-highlight-css" href="ayu-highlight-3fdfc3ac.css">
 
         <!-- Custom theme stylesheets -->
-        <link rel="stylesheet" href="theme/custom-9125cc61.css">
+        <link rel="stylesheet" href="theme/custom-3c3d4beb.css">
 
         <!-- MathJax -->
         <script async src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.1/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
@@ -38,10 +38,10 @@
             const path_to_root = "";
             const default_light_theme = "light";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "searchindex-025a35ef.js";
+            window.path_to_searchindex_js = "searchindex-e451f97a.js";
         </script>
         <!-- Start loading toc.js asap -->
-        <script src="toc-f3585118.js"></script>
+        <script src="toc-1a401835.js"></script>
     </head>
     <body>
     <div id="mdbook-help-container">
@@ -184,44 +184,18 @@
                 <div id="mdbook-content" class="content">
                     <main>
                         <h1 id="11-inter-process-communication-ipc"><a class="header" href="#11-inter-process-communication-ipc">11. Inter-Process Communication (IPC)</a></h1>
-<p>While threads within a single process share an address space and coordinate directly through memory and synchronization primitives, processes are isolated by hardware page tables. Inter-process communication (IPC) provides controlled kernel-mediated channels through which isolated processes exchange data and synchronize execution without sacrificing memory protection.</p>
+<p>While threads within a single process share an address space and coordinate directly through memory and synchronization primitives, processes are isolated by hardware page tables. <strong>Inter-Process Communication (<code>IPC</code>)</strong> provides controlled kernel-mediated channels through which isolated processes exchange data and synchronize execution without sacrificing memory protection.</p>
 <h2 id="111-unidirectional-byte-streams-pipes"><a class="header" href="#111-unidirectional-byte-streams-pipes">11.1 Unidirectional Byte Streams: Pipes</a></h2>
-<p>A <strong>pipe</strong> is a unidirectional, kernel-resident ring buffer (typically 64 KiB on Linux and 16 to 64 KiB on macOS) exposed to user space as a pair of ordinary file descriptors. Because file descriptors are inherited across <code>fork()</code>, a parent process can create a pipe before forking and establish an immediate communication channel with its child.</p>
+<p>A <strong>pipe</strong> is a unidirectional, kernel-resident ring buffer (typically 64 KiB on Linux and 16 to 64 KiB on macOS) exposed to user space as a pair of ordinary file descriptors. Because file descriptors are inherited across <code>fork()</code>, a parent process can create a pipe before forking and establish an immediate communication channel with its child (Figure 11-1).</p>
 <h3 id="1111-the-pipe-system-call-interface-and-stream-semantics"><a class="header" href="#1111-the-pipe-system-call-interface-and-stream-semantics">11.1.1 The <code>pipe</code> System Call Interface and Stream Semantics</a></h3>
-<pre><code class="language-text">int     pipe(int pipefd[2]);
+<pre><code class="language-c">int     pipe(int pipefd[2]);
 ssize_t read(int fd, void *buf, size_t count);
 ssize_t write(int fd, const void *buf, size_t count);
 int     close(int fd);
 </code></pre>
-<ul>
-<li><strong><code>pipe(pipefd)</code>:</strong> Allocates a single kernel pipe buffer and populates the caller’s two-element integer array <code>pipefd</code> with two newly opened file descriptors:
-<ul>
-<li><strong><code>pipefd[0]</code>:</strong> The <strong>read end</strong> of the pipe (analogous to <code>stdin</code>, descriptor <code>0</code>). Attempting to <code>write()</code> to <code>pipefd[0]</code> fails with <code>EBADF</code>.</li>
-<li><strong><code>pipefd[1]</code>:</strong> The <strong>write end</strong> of the pipe (analogous to <code>stdout</code>, descriptor <code>1</code>). Attempting to <code>read()</code> from <code>pipefd[1]</code> fails with <code>EBADF</code>.</li>
-<li><strong>Return value:</strong> <code>0</code> on success, or <code>-1</code> on failure with <code>errno</code> set (<code>EMFILE</code> if the process descriptor table is full, <code>ENFILE</code> if the system-wide open-file limit is reached, or <code>EFAULT</code> if <code>pipefd</code> is not writable).</li>
-</ul>
-</li>
-<li><strong><code>read(fd, buf, count)</code> on a pipe:</strong> Copies up to <code>count</code> available bytes from the kernel ring buffer into <code>buf</code>.
-<ul>
-<li>If the buffer contains data, <code>read()</code> returns the positive byte count transferred (<code>1 &lt;= n &lt;= count</code>) immediately, even if fewer than <code>count</code> bytes are present.</li>
-<li>If the buffer is empty and <strong>at least one process still holds an open write descriptor</strong> for the pipe, <code>read()</code> blocks the calling thread until data arrives or all write descriptors close.</li>
-<li>If the buffer is empty and <strong>zero open write descriptors remain across the entire system</strong>, <code>read()</code> returns <code>0</code>, signaling <strong>End-of-File (EOF)</strong>.</li>
-<li>Returns <code>-1</code> on error (<code>EINTR</code>, <code>EAGAIN</code> if <code>O_NONBLOCK</code> is set on an empty pipe).</li>
-</ul>
-</li>
-<li><strong><code>write(fd, buf, count)</code> on a pipe:</strong> Copies bytes from <code>buf</code> into the kernel ring buffer.
-<ul>
-<li>If the buffer is full, <code>write()</code> blocks until a reader drains space. POSIX guarantees that writes of at most <code>PIPE_BUF</code> bytes (minimum 512 bytes by standard, 4,096 bytes on Linux and macOS) are <strong>atomic</strong>: concurrent writers will not interleave their bytes mid-write.</li>
-<li>If <strong>zero open read descriptors remain</strong>, the kernel refuses the write, delivers <strong><code>SIGPIPE</code></strong> to the writing thread (whose default disposition terminates the process), and, if <code>SIGPIPE</code> is caught or ignored, returns <code>-1</code> with <code>errno = EPIPE</code>.</li>
-</ul>
-</li>
-</ul>
-<p>Effective pipe engineering therefore enforces three operational invariants:</p>
-<ul>
-<li><strong>Closing unused ends immediately after <code>fork()</code>:</strong> Because <code>fork()</code> duplicates both <code>pipefd[0]</code> and <code>pipefd[1]</code> into the child, the kernel reference count on each end becomes <code>2</code>. If the parent forgets to close its unused write end <code>pipefd[1]</code>, the pipe’s writer reference count never drops to zero even after the child exits, causing the parent’s <code>read()</code> to block forever instead of observing EOF.</li>
-<li><strong>Handling partial transfers:</strong> Because pipes are raw byte streams, <code>read()</code> and <code>write()</code> in multi-kilobyte workloads must loop until the expected byte count is transferred or EOF is reached.</li>
-<li><strong>Explicit message framing:</strong> Pipes preserve byte order (FIFO) but do not preserve write boundaries: two consecutive 10-byte <code>write()</code> calls may be returned by a single 20-byte <code>read()</code>. Applications exchanging structured records must layer a framing protocol such as a fixed-width length prefix or newline delimiter.</li>
-</ul>
+<p>Calling <code>pipe(pipefd)</code> allocates a single kernel pipe buffer and populates <code>pipefd</code> with two newly opened file descriptors: <code>pipefd[0]</code> is the <strong>read end</strong> (writing to it fails with <code>EBADF</code>), and <code>pipefd[1]</code> is the <strong>write end</strong> (reading from it fails with <code>EBADF</code>). It returns <code>0</code> on success or <code>-1</code> on failure (<code>EMFILE</code>, <code>ENFILE</code>, or <code>EFAULT</code>).</p>
+<p>On the read end, <code>read(fd, buf, count)</code> copies up to <code>count</code> available bytes from the kernel ring buffer into <code>buf</code>, returning immediately with <code>1 &lt;= n &lt;= count</code> whenever data is present. If the buffer is empty and at least one open write descriptor still exists, <code>read()</code> blocks until data arrives or all writers close; once zero open write descriptors remain system-wide, <code>read()</code> returns <code>0</code>, signaling <strong>End-of-File (<code>EOF</code>)</strong>. On the write end, <code>write(fd, buf, count)</code> copies bytes into the ring buffer, blocking when the buffer is full. The <strong>Portable Operating System Interface (<code>POSIX</code>)</strong> standard guarantees that writes of at most <code>PIPE_BUF</code> bytes (minimum 512 bytes; 4,096 bytes on Linux and macOS) are <strong>atomic</strong>, preventing concurrent writers from interleaving bytes mid-write. If zero open read descriptors remain, the kernel refuses the write, delivers <strong>Broken Pipe (<code>SIGPIPE</code>)</strong> (whose default action terminates the process), and returns <code>-1</code> with <code>errno = EPIPE</code> if <code>SIGPIPE</code> is caught or ignored.</p>
+<p>Three operational invariants prevent classic pipe bugs. First, both parent and child must <strong>close their unused ends immediately after <code>fork()</code></strong>: because <code>fork()</code> duplicates both descriptors, the reference count on each end becomes <code>2</code>; if the parent forgets to close <code>pipefd[1]</code>, the writer reference count never drops to zero even after the child exits, causing the parent’s <code>read()</code> to block forever instead of observing <code>EOF</code>. Second, multi-kilobyte workloads must loop over partial <code>read()</code> and <code>write()</code> transfers. Third, because pipes are <strong>First-In, First-Out (<code>FIFO</code>)</strong> raw byte streams that do not preserve write boundaries (two consecutive 10-byte writes may be returned by one 20-byte <code>read()</code>), structured protocols must layer explicit message framing such as a length prefix or newline delimiter.</p>
 <figure>
 <img src="figures/ch11_pipe.svg" alt="A kernel-buffered byte stream between a writing child and a reading parent" />
 </figure>
@@ -264,6 +238,8 @@ int main() {
 <pre class="playground"><code class="language-rust">// ch11/pipe.rs: the same pipe between parent and child in Rust.
 use std::error::Error;
 use std::io;
+use std::ptr;
+use std::str;
 
 fn main() -&gt; Result&lt;(), Box&lt;dyn Error&gt;&gt; {
     let mut fds = [0; 2];
@@ -297,12 +273,12 @@ fn main() -&gt; Result&lt;(), Box&lt;dyn Error&gt;&gt; {
 
         let mut buf = [0u8; 64];
         let n = libc::read(fds[0], buf.as_mut_ptr() as *mut libc::c_void, buf.len() - 1);
-        libc::waitpid(pid, std::ptr::null_mut(), 0);
+        libc::waitpid(pid, ptr::null_mut(), 0);
         if n &lt; 0 {
             return Err(io::Error::last_os_error().into());
         }
 
-        let s = std::str::from_utf8(&amp;buf[..n as usize])?;
+        let s = str::from_utf8(&amp;buf[..n as usize])?;
         println!("parent read {n} bytes: \"{s}\"");
     }
     Ok(())
@@ -311,30 +287,17 @@ fn main() -&gt; Result&lt;(), Box&lt;dyn Error&gt;&gt; {
 <pre><code class="language-text">parent read 16 bytes: "hello from child"
 </code></pre>
 <h2 id="112-zero-copy-communication-shared-memory"><a class="header" href="#112-zero-copy-communication-shared-memory">11.2 Zero-Copy Communication: Shared Memory</a></h2>
-<p>Every byte transmitted through a pipe or socket traverses the kernel twice: once via <code>copy_from_user</code> into the kernel ring buffer during <code>write()</code>, and a second time via <code>copy_to_user</code> into the receiver’s buffer during <code>read()</code>. For high-throughput workloads such as database buffer pools, video pipelines, and telemetry rings, <strong>shared memory</strong> eliminates both copies by mapping the exact same physical RAM frames into the page tables of multiple processes simultaneously. Once mapped, stores executed by one process become visible to peer processes at hardware cache-coherence speeds with zero system calls.</p>
+<p>Every byte transmitted through a pipe or socket traverses the kernel twice: once via <code>copy_from_user</code> into the kernel ring buffer during <code>write()</code>, and a second time via <code>copy_to_user</code> into the receiver’s buffer during <code>read()</code>. For high-throughput workloads such as database buffer pools, video pipelines, and telemetry rings, <strong>shared memory</strong> eliminates both copies by mapping the exact same physical <strong>Random-Access Memory (<code>RAM</code>)</strong> frames into the page tables of multiple processes simultaneously (Figure 11-2). Once mapped, stores executed by one process become visible to peer processes at hardware cache-coherency speeds with zero system calls.</p>
 <h3 id="1121-map_shared-mappings-and-process-shared-mutex-attributes"><a class="header" href="#1121-map_shared-mappings-and-process-shared-mutex-attributes">11.2.1 <code>MAP_SHARED</code> Mappings and Process-Shared Mutex Attributes</a></h3>
-<p>Removing kernel buffering shifts synchronization responsibility entirely onto the application: concurrent processes mutating a shared region face the exact same read-modify-write atomicity gap as threads (Chapter 4). Listings 11-3 and 11-4 place both a <code>pthread_mutex_t</code> and a 64-bit counter inside one shared virtual page using two coordinated interfaces:</p>
-<pre><code class="language-text">void *mmap(void *addr, size_t length, int prot, int flags, int fd, off_t offset);
+<p>Removing kernel buffering shifts synchronization and failure-recovery responsibility entirely onto the application: concurrent processes mutating a shared region face the exact same read-modify-write atomicity gap as threads (Chapter 4), and if a peer crashes while holding a shared lock without <code>PTHREAD_MUTEX_ROBUST</code> recovery, sibling processes can hang indefinitely. Listings 11-3 and 11-4 place both a <code>pthread_mutex_t</code> and a 64-bit counter inside one shared virtual page:</p>
+<pre><code class="language-c">void *mmap(void *addr, size_t length, int prot, int flags, int fd, off_t offset);
 int   pthread_mutexattr_init(pthread_mutexattr_t *attr);
 int   pthread_mutexattr_setpshared(pthread_mutexattr_t *attr, int pshared);
 int   pthread_mutex_init(pthread_mutex_t *mutex, const pthread_mutexattr_t *attr);
 int   pthread_mutex_destroy(pthread_mutex_t *mutex);
 </code></pre>
-<ul>
-<li><strong><code>MAP_SHARED | MAP_ANON</code> versus <code>MAP_PRIVATE | MAP_ANON</code>:</strong> Both allocate zero-initialized anonymous RAM unbacked by any disk file (<code>fd = -1</code>, <code>offset = 0</code>, <code>prot = PROT_READ | PROT_WRITE</code>). Their critical divergence occurs across <code>fork()</code>:
-<ul>
-<li>With <strong><code>MAP_PRIVATE</code></strong>, the kernel marks both parent and child Page Table Entries read-only and performs <strong>Copy-on-Write (COW)</strong> on the first store, splitting parent and child onto isolated physical frames so neither observes the other’s writes.</li>
-<li>With <strong><code>MAP_SHARED</code></strong>, both parent and child PTEs continue pointing to the identical writable physical frame after <code>fork()</code>, establishing true zero-copy shared memory. (For unrelated processes that do not share a <code>fork()</code> ancestor, POSIX provides <code>shm_open()</code> plus <code>ftruncate()</code> to obtain a shared file descriptor passed as <code>fd</code> to <code>mmap(..., MAP_SHARED, fd, 0)</code>.)</li>
-</ul>
-</li>
-<li><strong>Process-shared mutex configuration (<code>pthread_mutexattr_t</code>):</strong>
-<ul>
-<li>By default, a <code>pthread_mutex_t</code> initialized with <code>nullptr</code> attributes uses <code>PTHREAD_PROCESS_PRIVATE</code>, allowing the runtime to optimize futex wait-queue keys using only the calling process’s virtual address space (<code>FUTEX_PRIVATE_FLAG</code> on Linux). Locking a private-attribute mutex from two distinct processes yields undefined behavior because their futex wait queues do not match.</li>
-<li>Calling <code>pthread_mutexattr_init(&amp;attr)</code> initializes an attribute descriptor, and <strong><code>pthread_mutexattr_setpshared(&amp;attr, PTHREAD_PROCESS_SHARED)</code></strong> instructs <code>pthread_mutex_init(&amp;s-&gt;mu, &amp;attr)</code> to configure the mutex for cross-process futex hashing keyed on the underlying physical memory object. Each of these <code>pthread_*</code> functions returns <code>0</code> on success and a positive POSIX error code directly (without setting <code>errno</code>) on failure.</li>
-<li>After <code>waitpid()</code> guarantees the child has exited and no process holds the lock, the parent calls <code>pthread_mutex_destroy(&amp;s-&gt;mu)</code> followed by <code>munmap(s, sizeof(Shared))</code> to release the lock state and unmap the virtual page.</li>
-</ul>
-</li>
-</ul>
+<p>Both <code>MAP_SHARED | MAP_ANON</code> and <code>MAP_PRIVATE | MAP_ANON</code> allocate zero-initialized anonymous memory (<code>fd = -1</code>, <code>offset = 0</code>, <code>prot = PROT_READ | PROT_WRITE</code>), but they diverge across <code>fork()</code>. Under <code>MAP_PRIVATE</code>, the kernel marks both parent and child <strong>Page Table Entries (<code>PTE</code>s)</strong> read-only and performs <strong>Copy-on-Write (<code>COW</code>)</strong> on the first store, splitting them onto isolated frames. Under <code>MAP_SHARED</code>, both processes’ <code>PTE</code>s continue pointing to the identical writable physical frame, establishing true zero-copy shared memory. (For unrelated processes lacking a <code>fork()</code> ancestor, <code>POSIX</code> provides <code>shm_open()</code> plus <code>ftruncate()</code> to obtain a shared descriptor passed as <code>fd</code> to <code>mmap()</code>.)</p>
+<p>By default, a <code>pthread_mutex_t</code> initialized with <code>nullptr</code> attributes uses <code>PTHREAD_PROCESS_PRIVATE</code>, allowing the runtime to key its futex wait queue strictly on the calling process’s virtual address (<code>FUTEX_PRIVATE_FLAG</code> on Linux). Locking a private mutex across distinct processes produces undefined behavior because their wait queues do not match. Calling <code>pthread_mutexattr_init(&amp;attr)</code> followed by <code>pthread_mutexattr_setpshared(&amp;attr, PTHREAD_PROCESS_SHARED)</code> configures <code>pthread_mutex_init(&amp;s-&gt;mu, &amp;attr)</code> to hash futex wait queues on the underlying physical memory object. Each <code>pthread_*</code> function returns <code>0</code> on success or a positive <code>POSIX</code> error code directly (without setting <code>errno</code>). Once <code>waitpid()</code> confirms the child has exited, the parent invokes <code>pthread_mutex_destroy(&amp;s-&gt;mu)</code> and <code>munmap(s, sizeof(Shared))</code>.</p>
 <figure>
 <img src="figures/ch11_shm.svg" alt="Two page tables mapping one physical frame into two processes" />
 </figure>
@@ -482,18 +445,11 @@ fn main() {
 <pre><code class="language-text">expected 1000000, observed 1000000
 </code></pre>
 <h2 id="113-bidirectional-channels-socket-pairs"><a class="header" href="#113-bidirectional-channels-socket-pairs">11.3 Bidirectional Channels: Socket Pairs</a></h2>
-<p>A pipe supports data flow in only one direction; implementing request-response communication with pipes requires creating two separate pipes and managing four descriptors carefully to avoid deadlock. A <strong>socket pair</strong> provides a single <strong>full-duplex</strong> (bidirectional) local channel between related processes, backed by two independent kernel send/receive buffers so both peers can transmit and receive simultaneously.</p>
+<p>A pipe supports data flow in only one direction; implementing request-response communication with pipes requires two separate pipes and careful descriptor management to avoid deadlock. A <strong>socket pair</strong> provides a single <strong>full-duplex</strong> (bidirectional) local channel between related processes, backed by two independent kernel send/receive buffers so both peers can transmit and receive simultaneously.</p>
 <h3 id="1131-the-socketpair-system-call-interface"><a class="header" href="#1131-the-socketpair-system-call-interface">11.3.1 The <code>socketpair</code> System Call Interface</a></h3>
-<pre><code class="language-text">int socketpair(int domain, int type, int protocol, int sv[2]);
+<pre><code class="language-c">int socketpair(int domain, int type, int protocol, int sv[2]);
 </code></pre>
-<p>Each argument configures the local channel before <code>fork()</code>:</p>
-<ul>
-<li><strong><code>domain</code>:</strong> Protocol family. On POSIX systems, <code>socketpair()</code> supports <strong><code>AF_UNIX</code></strong> (also aliased as <code>AF_LOCAL</code>), which routes data exclusively through local kernel memory without touching IP headers, checksums, or network interfaces.</li>
-<li><strong><code>type</code>:</strong> Communication semantics. <strong><code>SOCK_STREAM</code></strong> provides a reliable, ordered, full-duplex byte stream (identical in framing semantics to a bidirectional pipe or TCP connection); <code>SOCK_DGRAM</code> and <code>SOCK_SEQPACKET</code> preserve explicit message boundaries.</li>
-<li><strong><code>protocol</code>:</strong> Selects a specific protocol within the domain; passing <strong><code>0</code></strong> instructs the kernel to choose the default protocol for <code>(AF_UNIX, SOCK_STREAM)</code>.</li>
-<li><strong><code>sv[2]</code>:</strong> Output array populated with two symmetric, pre-connected file descriptors (<code>sv[0]</code> and <code>sv[1]</code>). Unlike <code>pipe()</code>, neither endpoint is restricted to reading or writing: bytes written to <code>sv[1]</code> are read from <code>sv[0]</code>, and bytes written to <code>sv[0]</code> are read from <code>sv[1]</code>. After <code>fork()</code>, the child closes <code>sv[0]</code> and retains <code>sv[1]</code>, while the parent closes <code>sv[1]</code> and retains <code>sv[0]</code>.</li>
-<li><strong>Return value:</strong> Returns <code>0</code> on success, or <code>-1</code> on failure with <code>errno</code> set (<code>EAFNOSUPPORT</code>, <code>EOPNOTSUPP</code>, <code>EMFILE</code>, or <code>EFAULT</code>). Beyond byte streams, <code>AF_UNIX</code> socket pairs also support passing open file descriptors between isolated processes via <code>sendmsg()</code>/<code>recvmsg()</code> with <code>SCM_RIGHTS</code> ancillary control messages, a cornerstone of privilege-separated browser and sandbox architectures.</li>
-</ul>
+<p>Calling <code>socketpair(AF_UNIX, SOCK_STREAM, 0, sv)</code> creates a pre-connected pair of symmetric local descriptors in <code>sv[0]</code> and <code>sv[1]</code>, returning <code>0</code> on success or <code>-1</code> on error (<code>EAFNOSUPPORT</code>, <code>EOPNOTSUPP</code>, <code>EMFILE</code>, <code>EFAULT</code>). The <code>AF_UNIX</code> (<code>AF_LOCAL</code>) domain routes traffic strictly through local kernel memory without <strong>Internet Protocol (<code>IP</code>)</strong> headers, checksums, or network interfaces, while <code>SOCK_STREAM</code> delivers a reliable, ordered byte stream analogous to a <strong>Transmission Control Protocol (<code>TCP</code>)</strong> connection (passing <code>SOCK_DGRAM</code> or <code>SOCK_SEQPACKET</code> preserves explicit message boundaries; <code>protocol = 0</code> selects the domain default). Unlike <code>pipe()</code>, either endpoint can both read and write: after <code>fork()</code>, the child closes <code>sv[0]</code> and keeps <code>sv[1]</code>, while the parent closes <code>sv[1]</code> and keeps <code>sv[0]</code>. Beyond byte streams, <code>AF_UNIX</code> socket pairs can transfer live open file descriptors across process boundaries via <code>sendmsg()</code> and <code>recvmsg()</code> with <code>SCM_RIGHTS</code> ancillary control messages, enabling privilege-separated browser and sandbox architectures where a broker process opens files on behalf of an untrusted worker.</p>
 <p><strong>Listing 11-5. A two-way channel between parent and child (C++20).</strong></p>
 <pre><code class="language-cpp">// ch11/socketpair.cpp: a socketpair: one bidirectional channel, two directions.
 #include &lt;sys/socket.h&gt;
@@ -546,6 +502,7 @@ extern crate libc;
 
 use std::io::{self, Write};
 use std::ptr;
+use std::str;
 
 fn main() {
     let mut sv = [0 as libc::c_int; 2];
@@ -568,7 +525,7 @@ fn main() {
 
             let mut buf = [0_u8; 64];
             let n = libc::read(sv[1], buf.as_mut_ptr() as *mut libc::c_void, buf.len() - 1);
-            let text = std::str::from_utf8(&amp;buf[..n.max(0) as usize]).unwrap_or("");
+            let text = str::from_utf8(&amp;buf[..n.max(0) as usize]).unwrap_or("");
             println!("child  received: \"{text}\"");
             let _ = io::stdout().flush();
             libc::close(sv[1]);
@@ -582,7 +539,7 @@ fn main() {
         libc::close(sv[1]);
         let mut buf = [0_u8; 64];
         let n = libc::read(sv[0], buf.as_mut_ptr() as *mut libc::c_void, buf.len() - 1);
-        let text = std::str::from_utf8(&amp;buf[..n.max(0) as usize]).unwrap_or("");
+        let text = str::from_utf8(&amp;buf[..n.max(0) as usize]).unwrap_or("");
         println!("parent received: \"{text}\"");
 
         let reply = b"pong from parent";
@@ -595,21 +552,36 @@ fn main() {
 <pre><code class="language-text">parent received: "ping from child"
 child  received: "pong from parent"
 </code></pre>
-<h2 id="114-comparative-analysis-of-ipc-mechanisms"><a class="header" href="#114-comparative-analysis-of-ipc-mechanisms">11.4 Comparative Analysis of IPC Mechanisms</a></h2>
-<p>The selection of an IPC mechanism involves a fundamental trade-off between kernel-managed synchronization simplicity and zero-copy throughput:</p>
+<h2 id="114-comparative-analysis-of-ipc-mechanisms"><a class="header" href="#114-comparative-analysis-of-ipc-mechanisms">11.4 Comparative Analysis of <code>IPC</code> Mechanisms</a></h2>
+<p>Selecting an <code>IPC</code> mechanism balances kernel-managed synchronization and backpressure against zero-copy throughput:</p>
 <div class="table-wrapper">
 <table>
 <thead>
 <tr><th style="text-align: left">Mechanism</th><th style="text-align: left">Directionality</th><th style="text-align: left">Data Copying</th><th style="text-align: left">Synchronization</th><th style="text-align: left">Typical Use Case</th></tr>
 </thead>
 <tbody>
-<tr><td style="text-align: left"><strong>Pipe (<code>pipe</code>)</strong></td><td style="text-align: left">Unidirectional</td><td style="text-align: left">Two copies per transfer</td><td style="text-align: left">Kernel-managed (blocking and FIFO ordering)</td><td style="text-align: left">Shell pipelines, streaming parent/child stdout redirection</td></tr>
+<tr><td style="text-align: left"><strong>Pipe (<code>pipe</code>)</strong></td><td style="text-align: left">Unidirectional</td><td style="text-align: left">Two copies per transfer</td><td style="text-align: left">Kernel-managed (blocking and <code>FIFO</code> ordering)</td><td style="text-align: left">Shell pipelines, streaming parent/child <code>stdout</code> redirection</td></tr>
 <tr><td style="text-align: left"><strong>Shared Memory (<code>mmap(MAP_SHARED)</code>)</strong></td><td style="text-align: left">Bidirectional</td><td style="text-align: left">Zero copies (shared physical frames)</td><td style="text-align: left">Application-managed (<code>PTHREAD_PROCESS_SHARED</code> mutexes or atomics)</td><td style="text-align: left">High-throughput ring buffers, database buffer pools, telemetry</td></tr>
-<tr><td style="text-align: left"><strong>Socket Pair (<code>socketpair(AF_UNIX)</code>)</strong></td><td style="text-align: left">Full-duplex bidirectional</td><td style="text-align: left">Two copies per transfer</td><td style="text-align: left">Kernel-managed (blocking, ordering, <code>SCM_RIGHTS</code> fd passing)</td><td style="text-align: left">Worker RPC channels, privilege-separated sandboxes</td></tr>
+<tr><td style="text-align: left"><strong>Socket Pair (<code>socketpair(AF_UNIX)</code>)</strong></td><td style="text-align: left">Full-duplex bidirectional</td><td style="text-align: left">Two copies per transfer</td><td style="text-align: left">Kernel-managed (blocking, ordering, <code>SCM_RIGHTS</code> fd passing)</td><td style="text-align: left">Worker <strong>Remote Procedure Call (<code>RPC</code>)</strong> channels, privilege-separated sandboxes</td></tr>
 </tbody>
 </table>
 </div>
-<p>Pipes and socket pairs are preferred whenever kernel-managed blocking, EOF detection, and poll/kqueue readiness integration simplify system architecture. Shared memory is reserved for latency-critical or bandwidth-bound data planes where eliminating kernel copies justifies explicit cross-process locking and memory-ordering discipline.</p>
+<p>Pipes and socket pairs are preferred whenever kernel-managed blocking, <code>EOF</code> detection, and <code>poll</code>/<code>kqueue</code> readiness integration simplify system architecture. Shared memory is reserved for latency-critical or bandwidth-bound data planes where eliminating kernel copies justifies explicit cross-process locking and memory-ordering discipline.</p>
+<div class="callout keyidea">
+<span class="label">Key idea</span>
+<p>Pipes and Unix domain sockets trade two kernel buffer copies per transfer for built-in backpressure, <code>EOF</code> lifecycle signaling, and <code>poll</code>/<code>kqueue</code> integration. <code>MAP_SHARED</code> shared memory eliminates every kernel copy by aliasing physical frames across page tables, shifting synchronization and crash recovery onto user space.</p>
+</div>
+
+<div class="callout experiment">
+<span class="label">Experiment</span>
+<p>In Listing 11-1 (<code>code/ch11/pipe.cpp</code>), comment out <code>close(fds[1])</code> in the parent process and run the binary. Observe that the parent’s <code>read()</code> blocks indefinitely even after the child exits because the parent itself still holds an open write reference, preventing <code>EOF</code>.</p>
+</div>
+
+<div class="callout caution">
+<span class="label">Common Pitfall</span>
+<p>Placing a default-initialized <code>pthread_mutex_t</code> (without <code>PTHREAD_PROCESS_SHARED</code>) inside <code>MAP_SHARED</code> memory. Default mutexes use process-private futex keys (<code>FUTEX_PRIVATE_FLAG</code>), causing cross-process lock acquisitions to hash into separate wait queues and produce undefined behavior.</p>
+</div>
+
 
                     </main>
 
@@ -662,7 +634,7 @@ child  received: "pong from parent"
         <script src="book-609e4cb8.js"></script>
 
         <!-- Custom JS scripts -->
-        <script src="theme/figures-f1be29a8.js"></script>
+        <script src="theme/figures-fd5ff574.js"></script>
 
 
 

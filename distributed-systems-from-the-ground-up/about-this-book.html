@@ -1,9 +1,9 @@
 <!DOCTYPE HTML>
-<html lang="en" class="light sidebar-visible" dir="ltr">
+<html lang="en" class="navy sidebar-visible" dir="ltr">
     <head>
         <!-- Book generated using mdBook -->
         <meta charset="UTF-8">
-        <title>About this book - Distributed Systems from the Ground Up</title>
+        <title>Preface - Distributed Systems from the Ground Up</title>
 
 
         <!-- Custom HTML head -->
@@ -28,20 +28,18 @@
         <link rel="stylesheet" id="mdbook-ayu-highlight-css" href="ayu-highlight-3fdfc3ac.css">
 
         <!-- Custom theme stylesheets -->
-        <link rel="stylesheet" href="theme/custom-8a495b63.css">
-        <link rel="stylesheet" href="theme/formal-05bd78f0.css">
-        <link rel="stylesheet" href="theme/layout-0a0c0003.css">
+        <link rel="stylesheet" href="theme/custom-59beaf6d.css">
 
 
         <!-- Provide site root and default themes to javascript -->
         <script>
             const path_to_root = "";
-            const default_light_theme = "light";
+            const default_light_theme = "navy";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "searchindex-25bb747f.js";
+            window.path_to_searchindex_js = "searchindex-5d54d4b4.js";
         </script>
         <!-- Start loading toc.js asap -->
-        <script src="toc-cc887274.js"></script>
+        <script src="toc-ef51d47d.js"></script>
     </head>
     <body>
     <div id="mdbook-help-container">
@@ -79,7 +77,7 @@
             try { theme = localStorage.getItem('mdbook-theme'); } catch(e) { }
             if (theme === null || theme === undefined) { theme = default_theme; }
             const html = document.documentElement;
-            html.classList.remove('light')
+            html.classList.remove('navy')
             html.classList.add(theme);
             html.classList.add("js");
         </script>
@@ -183,47 +181,33 @@
 
                 <div id="mdbook-content" class="content">
                     <main>
-                        <h1 id="about-this-book"><a class="header" href="#about-this-book">About this book</a></h1>
-<p>A distributed system is a set of programs on separate machines that work together
-over a network and present themselves to their users as a single service. The
-machines are not reliable. Any of them may stop at any moment, a disk may be lost, and
-a message may arrive late, twice, or not at all. This book is about designing services
-that keep their promises while such things are happening, and about understanding
-exactly which promises can be kept.</p>
-<p>It has 2 parts, of different character.</p>
-<p>The first part designs and builds a single system from its foundations, a key-value
-store that runs on many machines. Chapter 1 is its system design: the requirements,
-the interfaces, the components, and the reasoning about sharding, replication and
-failure. Chapters 2 to 6 are its low-level design, in which each component is written
-in Rust, measured, and subjected to the failures it is claimed to survive. These are
-the chapters that print code. The ideas established here, the log, the majority, the
-leader, the lease and the conditional write, are the vocabulary of everything that
-follows.</p>
-<p>The second part consists of system designs, each complete in itself: a rate limiter,
-a cache, a message queue, a payment system, a chat service, an exchange and others.
-Each begins from what the system is for, considers the algorithms and arrangements
-that could serve, and explains why one is chosen and what it costs. Where an
-algorithm proceeds in steps, a picture shows it step by step, at the reader’s own
-pace. These chapters print no code. Every one of them has a small simulation in the
-book’s repository, which produced the figures the chapter quotes, and which the
-reader is encouraged to run and to alter.</p>
-<h2 id="running-the-code"><a class="header" href="#running-the-code">Running the code</a></h2>
-<p>The programs are in <code>code/</code>, a Cargo workspace. They use the Rust 2024 edition and are
-built with Rust 1.99.0, which <code>code/rust-toolchain.toml</code> selects.</p>
-<pre><code class="language-console">$ cd code
-$ cargo build --release
-$ cargo run -p crashsim
-$ cargo run -p ratelimit
-</code></pre>
-<p>The programs run on any Linux machine. A single small board is enough for all of
-them, and 2 or 3 boards or cloud machines on a network make it possible to stop a
-real machine and watch the system continue. The measurements quoted in the book were
-taken on an NVMe disk, and timings on other machines will differ.</p>
-<h2 id="what-we-assume"><a class="header" href="#what-we-assume">What we assume</a></h2>
-<p>We assume that the reader has used a Linux shell, <code>curl</code> and HTTP. The first part
-assumes in addition that the reader can read Rust. Every other term is explained
-where it first appears, and each chapter ends with a table of the terms it
-introduced.</p>
+                        <h1 id="preface"><a class="header" href="#preface">Preface</a></h1>
+<p>Distributed systems engineering operates under physical and theoretical constraints that single-node abstractions conceal: asynchronous message delivery, unbounded network delay, independent component crashes, clock drift across unsynchronized oscillators, and volatile kernel page caches. Designing reliable infrastructure requires deriving architectures directly from explicit safety and liveness invariants, fault boundaries, and quantitative resource limits rather than informal component sketches.</p>
+<p>In this book, I examine the architecture of fault-tolerant distributed systems from first principles. For every system, I establish the actors, verifiable functional contracts, explicit latency and availability Service Level Objectives (SLOs), and storage, compute, and bandwidth envelopes prior to introducing algorithms, wire protocols, or deployment topologies.</p>
+<h2 id="organization-of-the-text"><a class="header" href="#organization-of-the-text">Organization of the Text</a></h2>
+<p>The twenty-eight chapters are grouped into six thematic parts:</p>
+<ul>
+<li><strong>Part I (Chapters 1 to 6): Distributed Key-Value Store.</strong> In Chapter 1, I specify the system architecture, consistency model, partitioning scheme, and failure-handling contracts of a strongly consistent key-value store. In Chapters 2 to 6, I detail the low-level design and empirical verification of its core mechanisms: durable write-ahead logging, leader-follower quorum replication, Raft leader election with monotonic term fencing, consistent-hash request routing, and group commit.</li>
+<li><strong>Part II (Chapters 7 to 13): Core Infrastructure Primitives.</strong> I analyze foundational platform services that enforce fairness, ordering, caching, coordination, and asynchronous decoupling: distributed rate limiting, unique identifier generation, distributed caching, distributed locking, partitioned message queues, job scheduling, and notification delivery.</li>
+<li><strong>Part III (Chapters 14 to 18): Content, Media, and Communication Systems.</strong> I analyze read-intensive and media-delivery architectures: URL shortening, social news feeds, chunked object storage, adaptive video streaming, and real-time messaging.</li>
+<li><strong>Part IV (Chapters 19 to 21): Transactional and Marketplace Systems.</strong> I analyze domains governed by strict transactional integrity, concurrency control, and real-time spatial state: payment processing with double-entry ledgers, high-contention ticket booking, and geospatial ride-hailing dispatch.</li>
+<li><strong>Part V (Chapters 22 to 24): Search, Indexing, and Observability.</strong> I analyze low-latency prefix indexing, polite distributed web crawling, and high-cardinality metrics ingestion and monitoring.</li>
+<li><strong>Part VI (Chapters 25 to 28): Synchronization and Low-Latency Streaming.</strong> I analyze conflict resolution, operational convergence, deterministic execution, and stream processing: file synchronization, collaborative editing, a single-threaded stock exchange matching engine, and click aggregation.</li>
+</ul>
+<h2 id="architectural-methodology"><a class="header" href="#architectural-methodology">Architectural Methodology</a></h2>
+<p>Across every system design chapter, I adhere to an explicit engineering progression aligned with formal systems documentation standards (ISO/IEC/IEEE 26514):</p>
+<ol>
+<li><strong>Requirements and Capacity Bounds:</strong> I specify actors, use-case boundaries, numbered functional and non-functional requirements, and order-of-magnitude storage, throughput, and memory calculations upfront.</li>
+<li><strong>External and Internal Interface Contracts:</strong> I define HTTP/2 or gRPC endpoints, preconditions, idempotency semantics, error payloads, and storage schemas before examining internal optimizations.</li>
+<li><strong>Control-Plane and Data-Plane Separation:</strong> I isolate low-frequency metadata management, topology coordination, and policy compilation from the latency-critical request path.</li>
+<li><strong>Failure Modes, Tail Latency, and Observability:</strong> I evaluate network partitions, hot-key skew, lock contention, and gray failures, specifying automated recovery invariants and Service Level Indicators (SLIs) for each failure domain.</li>
+</ol>
+<h2 id="companion-implementations-and-prerequisites"><a class="header" href="#companion-implementations-and-prerequisites">Companion Implementations and Prerequisites</a></h2>
+<p>The companion <code>code/</code> directory contains the runnable Part I storage subsystems and the workload simulations cited across Parts II to VI, allowing readers to reproduce the throughput measurements, skew distributions, and crash-recovery experiments reported in the text.</p>
+<p>For the system design chapters, I assume foundational knowledge of HTTP semantics, relational databases, data structures, and TCP/IP networking. For the low-level implementation chapters in Part I, I additionally assume reading familiarity with Rust. Every distributed systems primitive is derived when first introduced and consolidated in each chapter’s engineering glossary.</p>
+<h2 id="references-and-provenance"><a class="header" href="#references-and-provenance">References and Provenance</a></h2>
+<p>The protocols and trade-offs presented in this volume draw upon primary distributed systems literature and published production engineering reports, including work on Raft consensus, Dynamo, Spanner, CockroachDB, Stripe’s atomic-phase idempotency and GCRA rate-limiting systems, and classical transaction-processing theory. Full bibliographic citations appear at the close of each chapter.</p>
+<p><em>Arpan Pathak</em></p>
 
                     </main>
 
@@ -233,7 +217,7 @@ introduced.</p>
                                 <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M41.4 233.4c-12.5 12.5-12.5 32.8 0 45.3l160 160c12.5 12.5 32.8 12.5 45.3 0s12.5-32.8 0-45.3L109.3 256 246.6 118.6c12.5-12.5 12.5-32.8 0-45.3s-32.8-12.5-45.3 0l-160 160z"/></svg></span>
                             </a>
 
-                            <a rel="next prefetch" href="about-the-cover.html" class="mobile-nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                            <a rel="next prefetch" href="01-key-value-store-system-design.html" class="mobile-nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
                                 <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M278.6 233.4c12.5 12.5 12.5 32.8 0 45.3l-160 160c-12.5 12.5-32.8 12.5-45.3 0s-12.5-32.8 0-45.3L210.7 256 73.4 118.6c-12.5-12.5-12.5-32.8 0-45.3s32.8-12.5 45.3 0l160 160z"/></svg></span>
                             </a>
 
@@ -247,7 +231,7 @@ introduced.</p>
                         <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M41.4 233.4c-12.5 12.5-12.5 32.8 0 45.3l160 160c12.5 12.5 32.8 12.5 45.3 0s12.5-32.8 0-45.3L109.3 256 246.6 118.6c12.5-12.5 12.5-32.8 0-45.3s-32.8-12.5-45.3 0l-160 160z"/></svg></span>
                     </a>
 
-                    <a rel="next prefetch" href="about-the-cover.html" class="nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                    <a rel="next prefetch" href="01-key-value-store-system-design.html" class="nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
                         <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M278.6 233.4c12.5 12.5 12.5 32.8 0 45.3l-160 160c-12.5 12.5-32.8 12.5-45.3 0s-12.5-32.8 0-45.3L210.7 256 73.4 118.6c-12.5-12.5-12.5-32.8 0-45.3s32.8-12.5 45.3 0l160 160z"/></svg></span>
                     </a>
             </nav>
@@ -276,7 +260,7 @@ introduced.</p>
         <script src="book-609e4cb8.js"></script>
 
         <!-- Custom JS scripts -->
-        <script src="theme/figures-47b15f7f.js"></script>
+        <script src="theme/figures-9c14cb1c.js"></script>
         <script src="theme/proto-326509cd.js"></script>
         <script src="theme/code-67e9caaf.js"></script>
         <script src="theme/tables-9fb295e8.js"></script>

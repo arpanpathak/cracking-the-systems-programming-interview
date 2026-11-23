@@ -1,0 +1,1064 @@
+/* Browser edition. The print edition uses tools/print.css; both style the same
+   class names that the chapters use: img.plate, .covers, .sidebar, .listing,
+   and figure. */
+
+:root {
+    --book-ink: #1d2733;
+    --book-steel: #5b6b7c;
+    --book-pale: #e9eef3;
+    --book-navy: #16324f;
+    --book-rust: #d9622b;
+    --book-brass: #c89b3c;
+    --content-max-width: 820px;
+}
+
+.navy, .coal, .ayu {
+    --book-ink: #d6dde5;
+    --book-pale: #1f2b38;
+    --book-navy: #9cc3ec;
+}
+
+.content main {
+    font-family: Charter, "Iowan Old Style", Georgia, serif;
+    font-size: 1.72rem;
+    line-height: 1.62;
+}
+
+.content h1, .content h2, .content h3, .content h4 {
+    font-family: "Avenir Next Condensed", "Avenir Next", "Helvetica Neue", Arial, sans-serif;
+    color: var(--book-navy);
+    letter-spacing: 0.01em;
+}
+
+.content h1 { font-size: 2.4em; margin-top: 0.4em; }
+.content h2 { border-bottom: 1px solid #c9d4de; padding-bottom: 0.2em; margin-top: 2em; }
+
+img.plate {
+    display: block;
+    width: 100%;
+    border-radius: 4px;
+    margin: 0.5em 0 1em 0;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.15);
+}
+
+img.cover {
+    display: block;
+    max-width: 520px;
+    width: 100%;
+    margin: 1em auto;
+    box-shadow: 0 6px 24px rgba(0, 0, 0, 0.25);
+}
+
+.covers {
+    background: var(--book-pale);
+    border-left: 5px solid var(--book-rust);
+    padding: 0.6em 1.2em 0.2em 1.2em;
+    margin: 0 0 1.5em 0;
+}
+
+.covers > p:first-child {
+    font-family: "Avenir Next Condensed", "Helvetica Neue", sans-serif;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: var(--book-navy);
+    margin-bottom: 0.3em;
+}
+
+.sidebar {
+    border: 1px solid #b7c4d1;
+    background: var(--book-pale);
+    padding: 0.6em 1.2em;
+    margin: 1.4em 0;
+    font-size: 0.94em;
+}
+
+.content blockquote {
+    border-left: 4px solid var(--book-brass);
+    background: transparent;
+    margin: 1em 0;
+    padding: 0.2em 1em;
+    font-size: 0.95em;
+}
+
+.listing {
+    font-family: "Avenir Next", "Helvetica Neue", Arial, sans-serif;
+    font-size: 0.82em;
+    margin: 1.6em 0 0.2em 0;
+    padding-bottom: 0.25em;
+    border-bottom: 2px solid var(--book-navy);
+}
+
+.listing b, figcaption b { color: var(--book-rust); margin-right: 0.4em; }
+
+.content pre > code { font-size: 0.83em; line-height: 1.5; }
+
+figure { margin: 1.6em 0; text-align: center; }
+figure img { max-width: 100%; }
+
+figcaption {
+    font-family: "Avenir Next", "Helvetica Neue", Arial, sans-serif;
+    font-size: 0.82em;
+    text-align: left;
+    border-top: 1px solid #c9d4de;
+    margin-top: 0.5em;
+    padding-top: 0.3em;
+}
+
+/* An animated figure. The still figures call their captions "Figure N"; an
+   animation calls its caption "Animation N" and colours it teal, so a reader
+   can tell at a glance that the picture moves. */
+figure.anim {
+    margin: 1.4em 0 2em 0;
+}
+
+figure.anim img {
+    border: 2px solid var(--book-pale);
+    border-radius: 6px;
+}
+
+figure.anim figcaption b {
+    color: #2f7f86;
+}
+
+.navy figure img, .coal figure img, .ayu figure img {
+    background: #f3f5f7;
+    border-radius: 4px;
+    padding: 6px;
+}
+
+.content table { font-size: 0.9em; }
+.content table thead th { background: var(--book-navy); color: #ffffff; }
+.navy .content table thead th, .coal .content table thead th { color: #0d1620; }
+
+.callout { border-left: 5px solid var(--book-navy); background: var(--book-pale); padding: 0.5em 1.1em; margin: 1.3em 0; font-size: 0.95em; }
+.callout.tip { border-left-color: #2f7f86; }
+.callout.warning { border-left-color: var(--book-rust); }
+.callout.note { border-left-color: var(--book-brass); }
+.callout > p:first-child strong:first-child { font-family: "Avenir Next Condensed", "Helvetica Neue", sans-serif; letter-spacing: 0.06em; }
+.summary { border-top: 3px solid var(--book-navy); margin-top: 2em; }
+
+/* The motion animations are videos, with controls a reader can use to take
+   them at their own pace: pause, a slower speed, a jump to any step, and a
+   mode that stops at the end of each step. */
+figure.anim video.motion {
+    display: block;
+    width: 100%;
+    max-width: 100%;
+    height: auto;
+    border: 2px solid var(--book-pale);
+    border-radius: 6px;
+    cursor: pointer;
+    background: #ffffff;
+}
+
+.motion-bar {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.4em 0.9em;
+    margin: 0.5em 0 0.2em 0;
+    font-family: "Avenir Next", "Helvetica Neue", Arial, sans-serif;
+    font-size: 0.8em;
+    text-align: left;
+}
+
+.motion-group { display: inline-flex; flex-wrap: wrap; gap: 0.3em; }
+
+.motion-bar button {
+    font: inherit;
+    padding: 0.25em 0.7em;
+    border: 1px solid #c9d4de;
+    border-radius: 999px;
+    background: #f6f8fa;
+    color: #1d2733;
+    cursor: pointer;
+}
+
+.motion-bar button:hover { border-color: #2f7f86; }
+.motion-bar button:focus-visible { outline: 2px solid #c89b3c; outline-offset: 2px; }
+
+.motion-bar button[aria-pressed="true"],
+.motion-bar button[aria-current="step"] {
+    background: #e3f1ea;
+    border-color: #2f7f86;
+    color: #1d4f54;
+    font-weight: 600;
+}
+
+.motion-bar .motion-play { min-width: 6.5em; font-weight: 600; }
+.motion-stepwise { color: #5b6b7c; cursor: pointer; }
+
+/* ---- Additions for Democratizing Linux -------------------------------- */
+
+/* The diagrams are drawn 480 units wide, to fit a phone held upright. On a
+   wide screen they are shown a little larger, in the middle of the column. */
+figure > img[src*=".svg"] {
+    width: min(100%, 600px);
+    cursor: zoom-in;
+}
+
+figure.anim video.motion,
+figure.anim > img {
+    width: min(100%, 640px);
+    margin-inline: auto;
+}
+
+figure.anim .motion-bar { justify-content: center; }
+
+/* The cover is a portrait plate. */
+img.cover { max-width: 560px; border-radius: 6px; }
+
+/* The low-level design box: the types and operations of a program. */
+.lld {
+    border: 1px solid #b7c4d1;
+    border-top: 4px solid var(--book-navy);
+    background: var(--book-pale);
+    padding: 0.6em 1.2em 0.4em 1.2em;
+    margin: 1.6em 0;
+    font-size: 0.94em;
+}
+
+.lld > p:first-child {
+    font-family: "Avenir Next Condensed", "Helvetica Neue", sans-serif;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: var(--book-navy);
+    margin-bottom: 0.3em;
+}
+
+.lld > p:first-child code { text-transform: none; }
+.lld table { width: 100%; margin: 0.6em 0; background: transparent; }
+
+.listing a {
+    float: right;
+    font-family: "SF Mono", Menlo, Consolas, monospace;
+    font-size: 0.86em;
+    font-weight: 400;
+}
+
+/* Code. theme/code.js puts every line of a listing in its own block, so a
+   line that is longer than the screen wraps under its own indentation and
+   the listing never scrolls sideways. --indent is the width of the line's
+   leading white space, in characters. */
+.content pre { padding: 0; }
+.content pre > code { display: block; padding: 0.9em 1em; tab-size: 4; }
+
+.content pre > code.lined {
+    white-space: normal;
+    overflow-x: visible;
+}
+
+.content pre > code .line {
+    display: block;
+    min-height: 1.5em;
+    white-space: pre-wrap;
+    overflow-wrap: anywhere;
+    padding-left: calc(var(--indent, 0) * 1ch + 4ch);
+    text-indent: calc(var(--indent, 0) * -1ch - 4ch);
+}
+
+/* Phones. The column uses the whole width, tables become lists, and the
+   type is a little smaller. */
+@media (max-width: 720px) {
+    .content main { font-size: 1.62rem; line-height: 1.58; }
+    .content h1 { font-size: 2em; }
+    .content h2 { font-size: 1.45em; }
+    .content pre > code { font-size: 0.74em; padding: 0.8em 0.8em; }
+    .listing a { float: none; display: block; margin-top: 0.2em; overflow-wrap: anywhere; }
+    :not(pre) > code { overflow-wrap: anywhere; }
+
+    .content table, .content tbody, .content tr, .content td { display: block; width: auto; }
+    .content table { border: 0; margin-inline: 0; }
+    .content thead { display: none; }
+    .content tr { padding: 0.55em 0; border: 0; border-bottom: 1px solid #c9d4de; background: none !important; }
+    .content td { padding: 0.1em 0; border: 0; }
+    .content td:first-child { font-weight: 600; }
+    .content td:empty { display: none; }
+    .lld, .covers, .callout { padding-inline: 0.9em; }
+}
+
+.figure-zoom {
+    position: fixed;
+    inset: 0;
+    z-index: 1000;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: rgba(9, 11, 16, 0.94);
+    cursor: zoom-out;
+    overflow: auto;
+    touch-action: pinch-zoom;
+}
+.figure-zoom img {
+    max-width: 96vw;
+    max-height: 94vh;
+    border-radius: 10px;
+    background: #fbfaf6;
+}
+/* On an upright phone a wide diagram is turned a quarter, so its long side
+   runs down the screen. */
+.figure-zoom.turned img {
+    transform: rotate(90deg);
+    width: 94vh;
+    max-width: none;
+    max-height: 96vw;
+}
+.figure-zoom::after {
+    content: "Tap to close";
+    position: fixed;
+    right: 12px;
+    bottom: 10px;
+    color: #a6accd;
+    font-size: 1.3rem;
+}
+
+/* The mascots. A gopher marks a Go listing and a crab a Rust listing. A crab
+   in one of 5 moods sits beside a note, a callout and the summary. */
+.listing img.mascot {
+    height: 1.9em;
+    width: auto;
+    vertical-align: -0.55em;
+    margin-right: 0.45em;
+    box-shadow: none;
+    border: 0;
+    background: none;
+    padding: 0;
+}
+
+.crab {
+    display: flex;
+    align-items: center;
+    gap: 1em;
+    margin: 1.6em 0;
+    padding: 0.5em 1.1em 0.5em 0.9em;
+    border: 1px solid #f3c3a8;
+    border-left: 5px solid var(--book-rust);
+    border-radius: 6px;
+    background: #fff5ee;
+    font-size: 0.95em;
+}
+
+.navy .crab, .coal .crab, .ayu .crab { background: #2a1d17; border-color: #6b3a22; }
+
+.crab::before {
+    content: "";
+    flex: 0 0 4.6em;
+    height: 3.7em;
+    background: no-repeat center / contain;
+}
+
+.crab > p { margin: 0.3em 0; }
+.crab-happy::before { background-image: url("../art/crab-happy.svg"); }
+.crab-cute::before { background-image: url("../art/crab-cute.svg"); }
+.crab-angry::before { background-image: url("../art/crab-angry.svg"); }
+.crab-sleepy::before { background-image: url("../art/crab-sleepy.svg"); }
+.crab-shocked::before { background-image: url("../art/crab-shocked.svg"); }
+
+.callout { position: relative; padding-right: 5.4em; }
+
+.callout::after {
+    content: "";
+    position: absolute;
+    right: 0.7em;
+    top: 0.6em;
+    width: 4em;
+    height: 3.2em;
+    background: url("../art/crab-cute.svg") no-repeat center / contain;
+}
+
+.summary h2::after {
+    content: "";
+    display: inline-block;
+    width: 2.2em;
+    height: 1.7em;
+    margin-left: 0.5em;
+    vertical-align: -0.35em;
+    background: url("../art/crab-happy.svg") no-repeat center / contain;
+}
+
+@media (max-width: 720px) {
+    .crab { gap: 0.7em; padding-inline: 0.7em; }
+    .crab::before { flex-basis: 3.6em; height: 2.9em; }
+    .callout { padding-right: 0.9em; }
+    .callout::after { position: static; display: block; margin: 0 0 0.2em auto; width: 3.4em; height: 2.7em; float: right; }
+}
+
+/* The capacity estimate: a box that can be skipped, with the calculation
+   folded away until it is asked for. */
+.estimate {
+    position: relative;
+    margin: 1.2em 0 1.6em;
+    padding: 1em 1.1em 0.9em;
+    border: 2px solid #e0a31f;
+    border-radius: 10px;
+    background: #fff7df;
+    color: #3a2c05;
+}
+
+.estimate::before {
+    content: "\26A0";
+    position: absolute;
+    top: -0.85em;
+    left: 0.9em;
+    padding: 0 0.35em;
+    border-radius: 6px;
+    background: #e0a31f;
+    color: #fff;
+    font-size: 1.15em;
+    line-height: 1.5;
+}
+
+.estimate img.builder {
+    float: right;
+    width: 104px;
+    margin: -0.2em 0 0.2em 0.8em;
+    box-shadow: none;
+    background: none;
+}
+
+.estimate a.skip {
+    display: inline-block;
+    margin: 0.1em 0 0.7em;
+    padding: 0.45em 0.9em;
+    border-radius: 999px;
+    background: #14508c;
+    color: #fff;
+    font-family: "Open Sans", sans-serif;
+    font-size: 0.9em;
+    font-weight: 600;
+    text-decoration: none;
+}
+
+.estimate a.skip::after { content: " \2192"; }
+
+.estimate details { clear: both; }
+
+.estimate summary {
+    cursor: pointer;
+    padding: 0.4em 0;
+    font-family: "Open Sans", sans-serif;
+    font-size: 0.92em;
+    font-weight: 700;
+    color: #7a5200;
+}
+
+.estimate details[open] summary { margin-bottom: 0.6em; border-bottom: 1px solid #e9cf8c; }
+
+.navy .estimate, .coal .estimate, .ayu .estimate { background: #3a3013; border-color: #b98a1c; color: #f3e6c0; }
+.navy .estimate summary, .coal .estimate summary, .ayu .estimate summary { color: #f2c75c; }
+
+/* A figure drawn wide, such as a high-level design, uses the full width of the
+   column. On a phone it is shown at the width of the screen, and a tap enlarges it. */
+figure.wide > img[src*=".svg"] { width: 100%; }
+
+/* On a narrow screen a wide figure keeps a readable size and scrolls sideways
+   inside its own frame. The page itself does not scroll sideways. */
+@media (max-width: 720px) {
+    figure.wide { overflow-x: auto; -webkit-overflow-scrolling: touch; text-align: left; }
+    figure.wide > img[src*=".svg"] { width: auto; max-width: none; height: 340px; }
+    figure.wide > figcaption { position: sticky; left: 0; }
+}
+
+/* The name of the column, shown above each cell when a table is a list. */
+@media (max-width: 720px) {
+    .content td[data-label]::before {
+        content: attr(data-label);
+        display: block;
+        margin-top: 0.35em;
+        font-family: "Open Sans", sans-serif;
+        font-size: 0.68em;
+        font-weight: 700;
+        letter-spacing: 0.05em;
+        text-transform: uppercase;
+        color: #6b7a8c;
+    }
+
+    .content td:first-child { font-weight: 400; }
+    .content tr { padding: 0.3em 0 0.7em; }
+}
+
+/* A picture in numbered steps, with its controls. */
+figure.steps > img { border: 1px solid #d5dbe3; border-radius: 10px; }
+
+.steps-bar {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5em 0.7em;
+    margin: 0.6em 0 0.2em 0;
+    font-family: "Open Sans", sans-serif;
+    font-size: 0.86em;
+}
+
+.steps-bar button {
+    font: inherit;
+    font-weight: 600;
+    min-width: 5em;
+    padding: 0.45em 1em;
+    border: 1px solid #b7c4d1;
+    border-radius: 999px;
+    background: #f6f8fa;
+    color: #1d2733;
+    cursor: pointer;
+}
+
+.steps-bar button:hover:not(:disabled) { border-color: #2f6fdb; }
+.steps-bar button:disabled { opacity: 0.4; cursor: default; }
+.steps-place { min-width: 7.5em; font-weight: 600; text-align: center; }
+
+/* The link from a system design chapter to its simulation in the repository. */
+.simulation {
+    border: 1px solid #b7c4d1;
+    border-left: 5px solid #1f8a70;
+    border-radius: 6px;
+    background: #f1f8f5;
+    padding: 0.3em 1.1em;
+    margin: 1.4em 0;
+    font-size: 0.95em;
+}
+
+.navy .simulation, .coal .simulation, .ayu .simulation { background: #16302a; border-color: #2c6b5b; }
+
+/* ---- Material Design 3 Light & Material Deep Ocean Dark Theme ---- */
+:root {
+    --book-rust: #1A5FC4;
+    --m3-ink: #1B2230;
+    --m3-muted: #526075;
+    --m3-surface: #FFFFFF;
+    --m3-surface-tonal: #F3F7FC;
+    --m3-table-head-bg: #E6EFFD;
+    --m3-table-head-ink: #163E7A;
+    --m3-table-row-alt: #F8FAFD;
+    --m3-hairline: #DCE2EC;
+    --m3-accent: #1A5FC4;
+    --m3-cyan: #0E7168;
+    --m3-teal-bg: #E4F4EE;
+    --m3-teal-border: #1B7A58;
+    --m3-code-bg: #F4F7FB;
+}
+
+/* 1. Night Owl (default dark — rich blueish-dark #011627 from Dogeleena Neo) */
+html.navy {
+    --bg: #011627;
+    --fg: #D6DEEB;
+    --sidebar-bg: #01111D;
+    --sidebar-fg: #8BADC1;
+    --sidebar-non-existant: #4B6479;
+    --sidebar-active: #7FDBCA;
+    --sidebar-spacer: #122D42;
+    --scrollbar: #1D3B53;
+    --icons: #7E9CB2;
+    --icons-hover: #7FDBCA;
+    --links: #82AAFF;
+    --inline-code-color: #7FDBCA;
+    --theme-popup-bg: #071F33;
+    --theme-popup-border: #1D3B53;
+    --theme-hover: #0B2942;
+    --quote-bg: #071D30;
+    --quote-border: #7FDBCA;
+    --table-border-color: #16334B;
+    --table-header-bg: #0B2942;
+    --table-alternate-bg: #051B2E;
+    --searchbar-border-color: #1D3B53;
+    --searchbar-bg: #061D30;
+    --searchbar-fg: #D6DEEB;
+    --searchbar-shadow-color: #000B14;
+    --searchresults-header-fg: #7FDBCA;
+    --searchresults-border-color: #16334B;
+    --searchresults-li-bg: #071E32;
+    --search-mark-bg: #1D3B53;
+
+    --book-ink: #D6DEEB;
+    --book-pale: #071E32;
+    --book-navy: #82AAFF;
+    --book-rust: #7FDBCA;
+    --book-brass: #ECC48D;
+
+    --m3-ink: #D6DEEB;
+    --m3-muted: #8BADC1;
+    --m3-surface: #051B2E;
+    --m3-surface-tonal: #082238;
+    --m3-table-head-bg: #0B2942;
+    --m3-table-head-ink: #B7D7F5;
+    --m3-table-row-alt: #082035;
+    --m3-hairline: #173752;
+    --m3-accent: #82AAFF;
+    --m3-cyan: #7FDBCA;
+    --m3-teal-bg: #072630;
+    --m3-teal-border: #7FDBCA;
+    --m3-code-bg: #051A2B;
+}
+
+/* 2. Material Deep Ocean (coal — deep midnight blue-black #0F111A) */
+html.coal {
+    --bg: #0F111A;
+    --fg: #DCE6F7;
+    --sidebar-bg: #090B10;
+    --sidebar-fg: #8F93A2;
+    --sidebar-non-existant: #525975;
+    --sidebar-active: #82AAFF;
+    --sidebar-spacer: #1B1F30;
+    --scrollbar: #252C42;
+    --icons: #7D8CAE;
+    --icons-hover: #89DDFF;
+    --links: #82AAFF;
+    --inline-code-color: #89DDFF;
+    --theme-popup-bg: #151926;
+    --theme-popup-border: #252E45;
+    --theme-hover: #1E273D;
+    --quote-bg: #141926;
+    --quote-border: #82AAFF;
+    --table-border-color: #232B40;
+    --table-header-bg: #172033;
+    --table-alternate-bg: #131724;
+    --searchbar-border-color: #252E45;
+    --searchbar-bg: #141824;
+    --searchbar-fg: #DCE6F7;
+    --searchbar-shadow-color: #06080D;
+    --searchresults-header-fg: #82AAFF;
+    --searchresults-border-color: #232B40;
+    --searchresults-li-bg: #141824;
+    --search-mark-bg: #263A63;
+
+    --book-ink: #DCE6F7;
+    --book-pale: #151A28;
+    --book-navy: #82AAFF;
+    --book-rust: #89DDFF;
+    --book-brass: #F2CF88;
+
+    --m3-ink: #DCE6F7;
+    --m3-muted: #9AA8C4;
+    --m3-surface: #131724;
+    --m3-surface-tonal: #151B2B;
+    --m3-table-head-bg: #18233A;
+    --m3-table-head-ink: #B7D0FF;
+    --m3-table-row-alt: #161B2A;
+    --m3-hairline: #242E45;
+    --m3-accent: #82AAFF;
+    --m3-cyan: #89DDFF;
+    --m3-teal-bg: #122429;
+    --m3-teal-border: #89DDFF;
+    --m3-code-bg: #141826;
+}
+
+/* 3. Oceanic Next (ayu — calm deep teal-slate ocean #1B2B34) */
+html.ayu {
+    --bg: #1B2B34;
+    --fg: #D8DEE9;
+    --sidebar-bg: #142129;
+    --sidebar-fg: #A7ADBA;
+    --sidebar-non-existant: #65737E;
+    --sidebar-active: #5FB3B3;
+    --sidebar-spacer: #263A45;
+    --scrollbar: #344957;
+    --icons: #8FA3B0;
+    --icons-hover: #5FB3B3;
+    --links: #6699CC;
+    --inline-code-color: #5FB3B3;
+    --theme-popup-bg: #20333E;
+    --theme-popup-border: #344957;
+    --theme-hover: #29414F;
+    --quote-bg: #20333E;
+    --quote-border: #5FB3B3;
+    --table-border-color: #2E4654;
+    --table-header-bg: #233845;
+    --table-alternate-bg: #1F313B;
+    --searchbar-border-color: #344957;
+    --searchbar-bg: #17262E;
+    --searchbar-fg: #D8DEE9;
+    --searchbar-shadow-color: #0D171D;
+    --searchresults-header-fg: #5FB3B3;
+    --searchresults-border-color: #2E4654;
+    --searchresults-li-bg: #1F313B;
+    --search-mark-bg: #344E5E;
+
+    --book-ink: #D8DEE9;
+    --book-pale: #21343F;
+    --book-navy: #6699CC;
+    --book-rust: #5FB3B3;
+    --book-brass: #FAC863;
+
+    --m3-ink: #D8DEE9;
+    --m3-muted: #A3B3C0;
+    --m3-surface: #1E303A;
+    --m3-surface-tonal: #223642;
+    --m3-table-head-bg: #27404E;
+    --m3-table-head-ink: #CBE3F5;
+    --m3-table-row-alt: #21343F;
+    --m3-hairline: #324C5C;
+    --m3-accent: #6699CC;
+    --m3-cyan: #5FB3B3;
+    --m3-teal-bg: #1C363C;
+    --m3-teal-border: #5FB3B3;
+    --m3-code-bg: #17262E;
+}
+
+.navy ::selection { background: #1D3B53; color: #FFFFFF; }
+.coal ::selection { background: #364B75; color: #EEFFFF; }
+.ayu ::selection  { background: #3B5566; color: #FFFFFF; }
+
+.content main {
+    font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+    font-size: 1.72rem;
+    line-height: 1.68;
+    color: var(--m3-ink);
+}
+
+.content h1, .content h2, .content h3, .content h4 {
+    font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+    color: var(--m3-ink);
+    letter-spacing: -0.01em;
+}
+
+.navy .content h1, .coal .content h1, .ayu .content h1 {
+    color: #EEFFFF;
+}
+
+.navy .content h2, .coal .content h2, .ayu .content h2 {
+    color: #C7DCFF;
+}
+
+.navy .content h3, .coal .content h3, .ayu .content h3 {
+    color: #9EC5FF;
+}
+
+.content h2 {
+    border-bottom: 1px solid var(--m3-hairline);
+    padding-bottom: 0.25em;
+    margin-top: 2.1em;
+}
+
+.content a {
+    color: var(--m3-accent);
+}
+
+.content pre {
+    background: var(--m3-code-bg);
+    border: 1px solid var(--m3-hairline);
+    border-radius: 10px;
+}
+
+.content :not(pre) > code {
+    background: var(--m3-surface-tonal);
+    border: 1px solid var(--m3-hairline);
+    border-radius: 5px;
+    padding: 0.1em 0.36em;
+}
+
+.listing b, figcaption b {
+    color: var(--m3-accent);
+}
+
+.content blockquote {
+    border-left: 3px solid var(--m3-accent);
+    background: var(--m3-surface-tonal);
+    border-radius: 0 10px 10px 0;
+    padding: 0.6em 1.15em;
+    color: var(--m3-muted);
+}
+
+/* Material Design 3 Tonal Tables */
+.content table {
+    width: 100%;
+    border-collapse: separate;
+    border-spacing: 0;
+    margin: 1.5em 0;
+    font-size: 0.91em;
+    border: 1px solid var(--m3-hairline);
+    border-radius: 12px;
+    overflow: hidden;
+    background: var(--m3-surface);
+}
+
+.content table thead th {
+    background: var(--m3-table-head-bg) !important;
+    color: var(--m3-table-head-ink) !important;
+    font-weight: 650;
+    text-align: left;
+    padding: 0.65em 0.9em;
+    border: none;
+    border-bottom: 1px solid var(--m3-hairline);
+}
+
+.content table td {
+    padding: 0.6em 0.9em;
+    border: none;
+    border-bottom: 1px solid var(--m3-hairline);
+    vertical-align: top;
+    line-height: 1.5;
+}
+
+.content table tbody tr:last-child td {
+    border-bottom: none;
+}
+
+.content table tbody tr:nth-child(2n) {
+    background: var(--m3-table-row-alt);
+}
+
+/* Material Design 3 Tonal Scope & Simulation Cards */
+.covers {
+    background: var(--m3-surface-tonal);
+    border: 1px solid var(--m3-hairline);
+    border-left: 4px solid var(--m3-accent);
+    border-radius: 12px;
+    padding: 0.85em 1.3em 0.55em 1.3em;
+    margin: 1.3em 0 1.8em 0;
+}
+
+.covers > p:first-child {
+    color: var(--m3-accent);
+}
+
+.simulation {
+    border: 1px solid var(--m3-hairline);
+    border-left: 4px solid var(--m3-teal-border);
+    border-radius: 12px;
+    background: var(--m3-teal-bg);
+    padding: 0.5em 1.2em;
+    margin: 1.5em 0;
+}
+
+.navy .simulation, .coal .simulation, .ayu .simulation {
+    background: var(--m3-teal-bg);
+    border-color: var(--m3-hairline);
+    border-left-color: var(--m3-teal-border);
+}
+
+figure > img[src*="figures/m3/"] {
+    width: 100%;
+    max-width: 900px;
+    border-radius: 16px;
+    cursor: zoom-in;
+}
+
+.navy figure img[src*="figures/m3/"],
+.coal figure img[src*="figures/m3/"],
+.ayu figure img[src*="figures/m3/"] {
+    background: transparent;
+    padding: 0;
+    border-radius: 16px;
+}
+
+.figure-zoom img[src*="figures/m3/dark/"] {
+    background: #111420;
+}
+
+img.plate {
+    border-radius: 14px;
+    height: auto;
+    box-shadow: none;
+}
+
+img.cover {
+    border-radius: 14px;
+    box-shadow: none;
+    border: 1px solid var(--m3-hairline);
+}
+
+/* Calm styling for interactive step controls in Deep Ocean dark mode */
+.navy .steps-bar button, .coal .steps-bar button, .ayu .steps-bar button {
+    background: #161C2C;
+    border-color: #2A3652;
+    color: #DCE6F7;
+}
+.navy .steps-bar button:hover:not(:disabled),
+.coal .steps-bar button:hover:not(:disabled),
+.ayu .steps-bar button:hover:not(:disabled) {
+    border-color: #82AAFF;
+    color: #89DDFF;
+}
+
+/* Publication-grade Print / PDF stylesheet */
+@page {
+    size: letter;
+    margin: 0.5in 0.55in 0.55in 0.55in;
+    background: #ffffff;
+}
+
+@media print {
+    :root, html, body, html.navy, html.coal, html.ayu, html.rust, html.light,
+    #page-wrapper, .page-wrapper, .page, .content, main {
+        --bg: #ffffff !important;
+        --fg: #1b1f27 !important;
+        --links: #1a5fc4 !important;
+        --inline-code-color: #1b1f27 !important;
+        --m3-surface: #ffffff !important;
+        --m3-surface-tonal: #f6f8fc !important;
+        --m3-surface-card: #ffffff !important;
+        --m3-hairline: #dce0e7 !important;
+        --m3-ink: #1b1f27 !important;
+        --m3-muted: #566070 !important;
+        --m3-accent: #1a5fc4 !important;
+        --m3-table-head-bg: #eef4fe !important;
+        --m3-table-head-fg: #173d7a !important;
+        --m3-table-row-alt: #f9fbfe !important;
+        --m3-teal-bg: #eef8f6 !important;
+        --m3-teal-border: #0e7168 !important;
+        background: #ffffff !important;
+        background-color: #ffffff !important;
+        color: #1b1f27 !important;
+        -webkit-print-color-adjust: exact !important;
+        print-color-adjust: exact !important;
+    }
+
+    .page-wrapper, .page, .content, main {
+        max-width: 100% !important;
+        margin: 0 !important;
+        padding: 0 !important;
+        box-shadow: none !important;
+    }
+
+    #menu-bar, #sidebar, .nav-chapters, .nav-wrapper, .mobile-nav-chapters,
+    .steps-bar, .copy-button, .buttons, .fa, #cover {
+        display: none !important;
+    }
+
+    body, .content, .content p, .content li {
+        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif !important;
+        font-weight: 400 !important;
+        font-size: 9.3pt !important;
+        line-height: 1.46 !important;
+        color: #1b1f27 !important;
+    }
+
+    .content p { margin: 0.45em 0 !important; orphans: 3; widows: 3; }
+    .content ul, .content ol { margin: 0.4em 0 !important; }
+    .content li { margin: 0.2em 0 !important; }
+
+    .content h1 { font-size: 18pt !important; font-weight: 700 !important; margin: 0.2em 0 0.45em 0 !important; }
+    .content h2 { font-size: 13pt !important; font-weight: 700 !important; margin: 0.95em 0 0.35em 0 !important; }
+    .content h3 { font-size: 10.8pt !important; font-weight: 650 !important; margin: 0.75em 0 0.25em 0 !important; }
+    .content strong, .content b { font-weight: 650 !important; }
+
+    /* Full-page cover */
+    img.cover {
+        display: block;
+        max-height: 9.6in !important;
+        width: auto !important;
+        margin: 0 auto !important;
+        border: none !important;
+    }
+
+    img.plate {
+        width: 100% !important;
+        max-height: 2.05in !important;
+        object-fit: contain;
+        break-inside: avoid;
+        margin: 0 0 0.6em 0 !important;
+    }
+
+    h1, h2, h3, h4 {
+        color: #1b1f27 !important;
+        break-after: avoid;
+        page-break-after: avoid;
+    }
+
+    /* Keep diagrams atomic, but let multi-row tables, code listings, and callouts flow across pages cleanly */
+    figure {
+        break-inside: avoid;
+        page-break-inside: avoid;
+        margin: 0.65em 0 !important;
+    }
+
+    .covers, .simulation, table, pre, code, .content pre > code, .content pre > code.lined, blockquote {
+        break-inside: auto !important;
+        page-break-inside: auto !important;
+    }
+
+    .content pre > code {
+        display: block !important;
+        padding: 0 !important;
+        margin: 0 !important;
+    }
+
+    .content pre > code .line {
+        display: inline !important;
+        padding-left: 0 !important;
+        text-indent: 0 !important;
+    }
+
+    .covers {
+        padding: 0.55em 0.95em 0.4em 0.95em !important;
+        margin: 0.6em 0 0.9em 0 !important;
+    }
+
+    .simulation {
+        padding: 0.4em 0.85em !important;
+        margin: 0.7em 0 !important;
+    }
+
+    figure img, figure > img[src*="figures/m3/"] {
+        max-width: 100% !important;
+        max-height: 4.9in !important;
+        width: auto !important;
+        height: auto !important;
+        margin: 0 auto !important;
+        display: block;
+    }
+
+    figcaption {
+        font-size: 8.4pt !important;
+        margin-top: 0.25em !important;
+        padding-top: 0.25em !important;
+    }
+
+    pre, code {
+        background: #f6f8fc !important;
+        color: #1b1f27 !important;
+        border-color: #dce0e7 !important;
+        font-size: 7.9pt !important;
+        line-height: 1.38 !important;
+    }
+
+    pre {
+        border: 1px solid #dce0e7 !important;
+        border-radius: 6px !important;
+        padding: 0.5em 0.7em !important;
+        margin: 0.5em 0 !important;
+        white-space: pre-wrap !important;
+        word-break: break-word !important;
+    }
+
+    .content table {
+        font-size: 8.3pt !important;
+        width: 100% !important;
+        margin: 0.6em 0 !important;
+        background: #ffffff !important;
+        border-color: #dce0e7 !important;
+        border-collapse: collapse !important;
+        border-radius: 0 !important;
+        overflow: visible !important;
+        box-shadow: none !important;
+    }
+
+    .content table thead {
+        display: table-header-group !important;
+    }
+
+    .content table tr {
+        break-inside: avoid !important;
+        page-break-inside: avoid !important;
+    }
+
+    .content table thead, .content table thead tr {
+        background: #eef4fe !important;
+    }
+
+    .content table thead th {
+        background: #eef4fe !important;
+        color: #173d7a !important;
+        font-weight: 650 !important;
+        padding: 0.4em 0.65em !important;
+    }
+
+    .content table td {
+        color: #1b1f27 !important;
+        border-bottom-color: #dce0e7 !important;
+        padding: 0.36em 0.65em !important;
+        line-height: 1.38 !important;
+    }
+}

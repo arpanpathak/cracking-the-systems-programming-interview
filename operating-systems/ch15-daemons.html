@@ -28,7 +28,7 @@
         <link rel="stylesheet" id="mdbook-ayu-highlight-css" href="ayu-highlight-3fdfc3ac.css">
 
         <!-- Custom theme stylesheets -->
-        <link rel="stylesheet" href="theme/custom-9125cc61.css">
+        <link rel="stylesheet" href="theme/custom-3c3d4beb.css">
 
         <!-- MathJax -->
         <script async src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.1/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
@@ -38,10 +38,10 @@
             const path_to_root = "";
             const default_light_theme = "light";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "searchindex-025a35ef.js";
+            window.path_to_searchindex_js = "searchindex-e451f97a.js";
         </script>
         <!-- Start loading toc.js asap -->
-        <script src="toc-f3585118.js"></script>
+        <script src="toc-1a401835.js"></script>
     </head>
     <body>
     <div id="mdbook-help-container">
@@ -186,35 +186,33 @@
                         <h1 id="15-daemon-lifecycle-and-service-supervision"><a class="header" href="#15-daemon-lifecycle-and-service-supervision">15. Daemon Lifecycle and Service Supervision</a></h1>
 <p>A daemon is a specialized process designed for long-running background execution, decoupled from any interactive terminal. While traditional daemons implement explicit detachment rituals to sever ties with their launching shell, modern operating systems have evolved toward a supervision-based model where central init systems (such as <code>launchd</code> on macOS and Darwin, or <code>systemd</code> on Linux) manage the lifecycle, socket activation, resource boundaries, and fault recovery of background services.</p>
 <h2 id="151-the-ritual-of-detachment"><a class="header" href="#151-the-ritual-of-detachment">15.1 The Ritual of Detachment</a></h2>
-<p>To transition from a terminal-bound process to a fully independent daemon in a standalone environment, a program undergoes four ordered stages designed to sever every kernel linkage to the launching session and controlling terminal:</p>
+<p>To transition from a terminal-bound process to a fully independent daemon in a standalone environment, a program undergoes four ordered stages designed to sever every kernel linkage to the launching session and controlling terminal (Figures 15-1 and 15-2):</p>
 <ol>
-<li><strong>Session Decoupling (First Fork):</strong> The process invokes <code>fork()</code>, and the parent immediately calls <code>_exit(0)</code>, returning control to the launching shell. The child is reparented to PID 1 and is guaranteed <strong>not</strong> to be a process group leader (its new PID differs from its inherited PGID).</li>
-<li><strong>Session Leadership (<code>setsid</code>):</strong> The child invokes <code>setsid()</code> to create a brand-new session and process group with itself as leader, detaching completely from its original controlling terminal so terminal signals (<code>SIGHUP</code> on logout, <code>SIGINT</code> on Ctrl-C) can never reach it.</li>
-<li><strong>Terminal Prevention (Second Fork):</strong> Because POSIX allows a session leader without a controlling terminal to inadvertently acquire one if it ever calls <code>open()</code> on a tty device (without <code>O_NOCTTY</code>), a second <code>fork()</code> exits the session leader so the grandchild daemon is never a session leader and can never acquire a controlling terminal.</li>
-<li><strong>Environment Sanitization:</strong> The grandchild restricts default file permissions via <code>umask()</code>, moves its working directory to <code>/</code> via <code>chdir("/")</code> so it cannot pin a mounted volume against unmounting, redirects descriptors <code>0</code>, <code>1</code>, and <code>2</code> (<code>stdin</code>, <code>stdout</code>, <code>stderr</code>) to <code>/dev/null</code> or a log file via <code>dup2()</code>, and writes its PID into a <strong>pidfile</strong>.</li>
+<li><strong>Session Decoupling (First Fork):</strong> The process invokes <code>fork()</code>, and the parent immediately calls <code>_exit(0)</code>, returning control to the launching shell. The child is reparented to <strong>Process Identifier (<code>PID</code>)</strong> <code>1</code> and is guaranteed <em>not</em> to be a process group leader because its new <code>PID</code> differs from its inherited <strong>Process Group Identifier (<code>PGID</code>)</strong>.</li>
+<li><strong>Session Leadership (<code>setsid</code>):</strong> The child invokes <code>setsid()</code> to create a new session (<strong>Session Identifier (<code>SID</code>)</strong>) and process group with itself as leader, detaching completely from its original controlling terminal so terminal signals (<strong>Signal Hangup (<code>SIGHUP</code>)</strong> on logout, <strong>Signal Interrupt (<code>SIGINT</code>)</strong> on Ctrl-C) can never reach it.</li>
+<li><strong>Terminal Prevention (Second Fork):</strong> Because the <strong>Portable Operating System Interface (<code>POSIX</code>)</strong> standard permits a session leader without a controlling terminal to acquire one inadvertently if it calls <code>open()</code> on a <strong>Teletype (<code>TTY</code>)</strong> device without <code>O_NOCTTY</code>, a second <code>fork()</code> exits the session leader so the grandchild daemon is never a session leader and can never acquire a controlling terminal.</li>
+<li><strong>Environment Sanitization:</strong> The grandchild restricts default file permissions via <code>umask()</code>, moves its working directory to <code>/</code> via <code>chdir("/")</code> so it cannot pin a mounted volume against unmounting, redirects descriptors <code>0</code>, <code>1</code>, and <code>2</code> (<code>stdin</code>, <code>stdout</code>, <code>stderr</code>) to <code>/dev/null</code> or a log file via <code>dup2()</code>, and writes its <code>PID</code> into a <strong>pidfile</strong>.</li>
 </ol>
 <figure>
 <img src="figures/ch15_daemonize.svg" alt="The four daemonization steps: fork, setsid, fork again, redirect stdio and write the pidfile" />
 </figure>
+<figure>
+<img src="figures/ch15_session_hierarchy.svg" alt="Unix session, process group, and controlling terminal hierarchy before and after double-fork setsid detachment" />
+</figure>
 <h3 id="1511-the-detachment-system-call-interface-setsid-umask-chdir-dup2"><a class="header" href="#1511-the-detachment-system-call-interface-setsid-umask-chdir-dup2">15.1.1 The Detachment System Call Interface (<code>setsid</code>, <code>umask</code>, <code>chdir</code>, <code>dup2</code>)</a></h3>
 <p>Listings 15-1 and 15-2 invoke four specialized environment-control system calls alongside <code>fork()</code>, <code>open()</code>, and <code>sigaction()</code>:</p>
-<pre><code class="language-text">pid_t  setsid(void);
+<pre><code class="language-c">pid_t  setsid(void);
 mode_t umask(mode_t mask);
 int    chdir(const char *path);
 int    dup2(int oldfd, int newfd);
 </code></pre>
-<ul>
-<li><strong><code>setsid()</code>:</strong> Takes no parameters. If the calling process is not already a process group leader, the kernel creates a new session and a new process group whose IDs both equal the caller’s PID, strips any controlling terminal association, and returns the new session ID (<code>pid_t &gt; 0</code>). If the caller <em>is</em> already a process group leader, <code>setsid()</code> fails and returns <code>(pid_t)-1</code> with <code>errno = EPERM</code>, which is precisely why the first <code>fork()</code> must precede <code>setsid()</code>.</li>
-<li><strong><code>umask(mask)</code>:</strong> Sets the process’s file-mode creation mask to <code>mask</code> and returns the previous mask (this call never fails). Whenever the daemon subsequently creates a file with <code>open(..., mode)</code> or <code>fopen()</code>, the kernel clears every bit set in <code>umask</code> (<code>effective_permissions = mode &amp; ~umask</code>). Passing octal <strong><code>0027</code></strong> (<code>0o027</code> in Rust) clears group-write (<code>2</code>) and all permissions for others (<code>7</code>), ensuring newly created log files and pidfiles are readable/writable by the owner, at most readable by the group, and completely inaccessible to unprivileged users.</li>
-<li><strong><code>chdir(path)</code>:</strong> Changes the process’s current working directory to <code>path</code>, returning <code>0</code> on success or <code>-1</code> on error (<code>ENOENT</code>, <code>EACCES</code>). Because the kernel keeps the working directory’s mount point pinned as busy while any process sits inside it, moving to <code>"/"</code> prevents a long-running daemon from blocking administrative <code>umount</code> operations.</li>
-<li><strong><code>dup2(oldfd, newfd)</code>:</strong> Atomically closes <code>newfd</code> (if currently open) and duplicates <code>oldfd</code> onto slot <code>newfd</code> in the process’s file descriptor table so both slots point to the identical kernel open file description. In Listing 15-1, opening <code>logfile</code> and calling <code>dup2(fd, STDOUT_FILENO)</code> (<code>1</code>) and <code>dup2(fd, STDERR_FILENO)</code> (<code>2</code>) followed by <code>close(fd)</code> redirects all subsequent <code>printf()</code> and error writes directly into the log file without leaking an extra descriptor; similarly, <code>dup2(devnull, STDIN_FILENO)</code> (<code>0</code>) ensures any library read from <code>stdin</code> receives immediate EOF. Returns <code>newfd</code> on success or <code>-1</code> on error (<code>EBADF</code>, <code>EMFILE</code>).</li>
-</ul>
+<p>Calling <code>setsid()</code> creates a new session and process group whose <code>SID</code> and <code>PGID</code> both equal the caller’s <code>PID</code>, stripping any controlling terminal association and returning the new <code>SID</code> (<code>&gt; 0</code>). If the caller is already a process group leader, <code>setsid()</code> fails with <code>EPERM</code>, which is why the first <code>fork()</code> must precede it. Calling <code>umask(mask)</code> sets the file-mode creation mask and returns the prior mask (never failing); whenever the daemon creates a file via <code>open(..., mode)</code>, the kernel clears bits set in <code>umask</code> (<code>mode &amp; ~umask</code>), so octal <code>0027</code> (<code>0o027</code> in Rust) clears group-write and all world permissions. Calling <code>chdir("/")</code> moves the working directory to the root mount (<code>0</code> on success, <code>-1</code> on <code>ENOENT</code>/<code>EACCES</code>) so the daemon never blocks administrative <code>umount</code> operations. Finally, <code>dup2(oldfd, newfd)</code> atomically closes <code>newfd</code> if open and duplicates <code>oldfd</code> onto slot <code>newfd</code>; in Listing 15-1, redirecting <code>STDOUT_FILENO</code> (<code>1</code>) and <code>STDERR_FILENO</code> (<code>2</code>) to the log file and <code>STDIN_FILENO</code> (<code>0</code>) to <code>/dev/null</code> ensures library reads observe immediate <strong>End-of-File (<code>EOF</code>)</strong> while log output lands cleanly on disk.</p>
 <h2 id="152-signal-driven-management-and-the-lifecycle-interface"><a class="header" href="#152-signal-driven-management-and-the-lifecycle-interface">15.2 Signal-Driven Management and the Lifecycle Interface</a></h2>
 <p>The primary administrative interface for a standalone daemon consists of signals paired with its pidfile:</p>
 <ul>
 <li><strong><code>SIGHUP</code> (Signal Hangup):</strong> Conventionally repurposed to instruct the daemon to reload configuration files and rotate log handles without dropping active connections.</li>
-<li><strong><code>SIGTERM</code> (Signal Terminate):</strong> Requests a graceful shutdown. The handler sets an atomic stop flag (<code>g_stop = 1</code> / <code>STOP.store(true, Ordering::Relaxed)</code>), allowing the main loop to finish in-flight work, flush logs, call <code>unlink(pidfile)</code>, and exit cleanly.</li>
-<li><strong><code>SIGKILL</code> (Uncatchable Kill):</strong> Forcibly terminates the process immediately in kernel mode when a daemon fails to exit within the supervisor’s grace period after <code>SIGTERM</code>.</li>
+<li><strong>Signal Terminate (<code>SIGTERM</code>):</strong> Requests a graceful shutdown. The handler sets an atomic stop flag (<code>g_stop = 1</code> / <code>STOP.store(true, Ordering::Relaxed)</code>), allowing the main loop to finish in-flight work, flush logs, call <code>unlink(pidfile)</code>, and exit cleanly.</li>
+<li><strong>Kill Signal (<code>SIGKILL</code>):</strong> Forcibly terminates the process immediately in kernel mode when a daemon fails to exit within the supervisor’s grace period after <code>SIGTERM</code>.</li>
 </ul>
 <p><strong>Listing 15-1. A daemon from start to shutdown (C++20).</strong></p>
 <pre><code class="language-cpp">// ch15/daemon.cpp: a complete daemon lifecycle in C++.
@@ -312,8 +310,11 @@ stopping after 3 ticks
 <p><strong>Listing 15-2. The same daemon in Rust.</strong></p>
 <pre class="playground"><code class="language-rust">// ch15/daemon.rs: the same lifecycle in Rust: double fork, setsid, pidfile,
 // and signal-driven shutdown through libc.
-use std::fs::OpenOptions;
-use std::io::Write;
+use std::fs::{self, OpenOptions};
+use std::io::{self, Write};
+use std::mem;
+use std::process;
+use std::ptr;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::thread;
 use std::time::Duration;
@@ -329,7 +330,7 @@ extern "C" fn on_term(_: libc::c_int) {
     STOP.store(true, Ordering::Relaxed);
 }
 
-fn main() -&gt; std::io::Result&lt;()&gt; {
+fn main() -&gt; io::Result&lt;()&gt; {
     // SAFETY: Classic UNIX Daemonization Invariants:
     // 1. First `fork()`: Creates an asynchronous background child and terminates the parent,
     //    guaranteeing the child is not a process group leader.
@@ -341,7 +342,7 @@ fn main() -&gt; std::io::Result&lt;()&gt; {
     unsafe {
         let pid = libc::fork();
         if pid &lt; 0 {
-            std::process::exit(1);
+            process::exit(1);
         }
         if pid &gt; 0 {
             libc::_exit(0);        // first parent exits
@@ -367,7 +368,7 @@ fn main() -&gt; std::io::Result&lt;()&gt; {
             .write(true)
             .truncate(true)
             .open(pidfile)?;
-        writeln!(pf, "{}", std::process::id())?;
+        writeln!(pf, "{}", process::id())?;
     }
 
     let mut log = OpenOptions::new().create(true).append(true).open(logfile)?;
@@ -376,16 +377,16 @@ fn main() -&gt; std::io::Result&lt;()&gt; {
     // flags with `Ordering::Relaxed`. Atomic stores compile to single store instructions on x86/ARM,
     // fulfilling the strict POSIX async-signal-safety specification.
     unsafe {
-        let mut sa: libc::sigaction = std::mem::zeroed();
+        let mut sa: libc::sigaction = mem::zeroed();
         sa.sa_sigaction = on_hup as *const () as usize;
         libc::sigemptyset(&amp;mut sa.sa_mask);
-        libc::sigaction(libc::SIGHUP, &amp;sa, std::ptr::null_mut());
+        libc::sigaction(libc::SIGHUP, &amp;sa, ptr::null_mut());
 
         sa.sa_sigaction = on_term as *const () as usize;
-        libc::sigaction(libc::SIGTERM, &amp;sa, std::ptr::null_mut());
+        libc::sigaction(libc::SIGTERM, &amp;sa, ptr::null_mut());
     }
 
-    writeln!(log, "daemon {} started", std::process::id())?;
+    writeln!(log, "daemon {} started", process::id())?;
     log.flush()?;
 
     let mut ticks = 0;
@@ -403,7 +404,7 @@ fn main() -&gt; std::io::Result&lt;()&gt; {
     }
 
     writeln!(log, "stopping after {ticks} ticks")?;
-    std::fs::remove_file(pidfile)?;
+    fs::remove_file(pidfile)?;
     Ok(())
 }</code></pre>
 <p><strong>Output 15-2. The Rust daemon.</strong></p>
@@ -421,39 +422,22 @@ stopping after 2 ticks
 </code></pre>
 <div class="callout keyidea">
 <span class="label">Key idea</span>
-<p>A daemon’s interface is three artifacts: a pidfile that names it, a log that records it, and signal handlers that steer it. In standalone systems, the double-fork ritual is merely plumbing; the signal-driven lifecycle is the true contract.</p>
+<p>A daemon’s interface is three artifacts: a pidfile that names it, a log that records it, and signal handlers that steer it. In standalone systems, the double-fork ritual is plumbing; the signal-driven lifecycle is the true contract.</p>
 </div>
 
 <h2 id="153-service-supervision-and-on-demand-activation-launchd-and-systemd"><a class="header" href="#153-service-supervision-and-on-demand-activation-launchd-and-systemd">15.3 Service Supervision and On-Demand Activation: <code>launchd</code> and <code>systemd</code></a></h2>
-<p>In modern production environments (particularly cloud server operating systems and Apple platforms), the manual detachment ritual is replaced by centralized <strong>service supervision</strong>. Central supervisors, such as Apple’s <code>launchd</code> and Linux’s <code>systemd</code>, operate as PID 1, managing daemons as direct child processes.</p>
+<p>In modern production environments (particularly cloud server operating systems and Apple platforms), the manual detachment ritual is replaced by centralized <strong>service supervision</strong>. Central supervisors, such as Apple’s <code>launchd</code> and Linux’s <code>systemd</code>, operate as <code>PID 1</code>, managing daemons as direct child processes.</p>
 <h3 id="1531-the-foreground-daemon-model"><a class="header" href="#1531-the-foreground-daemon-model">15.3.1 The Foreground Daemon Model</a></h3>
-<p>Supervised services must run in the <strong>foreground</strong>:</p>
-<ul>
-<li>The daemon does not invoke <code>fork()</code> or <code>setsid()</code>.</li>
-<li>The daemon does not manage its own pidfile or redirect standard I/O to <code>/dev/null</code>.</li>
-<li>The supervisor starts the binary directly as an immediate child.</li>
-</ul>
-<p>If a daemon double-forks under a supervisor, it severs parentage, causing the supervisor to believe the service terminated prematurely. By retaining direct parentage, the supervisor tracks the true PID reliably, observes exact exit codes, enforces memory and CPU limits via cgroups or task policies, and aggregates log streams written directly to <code>stdout</code>/<code>stderr</code>.</p>
+<p>Supervised services run in the <strong>foreground</strong>: they do not call <code>fork()</code> or <code>setsid()</code>, do not manage their own pidfiles, and do not redirect standard <strong>Input/Output (<code>I/O</code>)</strong> to <code>/dev/null</code>. If a daemon double-forks under a supervisor, it severs parentage, causing the supervisor to believe the service terminated prematurely. Retaining direct parentage allows the supervisor to track the true <code>PID</code>, observe exact exit codes, enforce memory and CPU limits via control groups or task policies, and aggregate logs written directly to <code>stdout</code> and <code>stderr</code>.</p>
 <h3 id="1532-socket-based-on-demand-activation"><a class="header" href="#1532-socket-based-on-demand-activation">15.3.2 Socket-Based On-Demand Activation</a></h3>
-<p>A major architectural innovation pioneered by Apple’s <code>launchd</code> (and subsequently adopted by <code>systemd</code>) is <strong>socket activation</strong>. Traditional init scripts enforce fragile boot-order dependency chains: a logging daemon must start before a database daemon, which must start before an application server. If one daemon stalls, downstream services time out.</p>
-<p>Under socket activation, the supervisor creates and binds the listening sockets (Unix domain sockets or TCP ports) <em>before</em> the daemon ever launches:</p>
-<ol>
-<li><code>launchd</code> parses the service descriptor (<code>.plist</code> on Darwin) and binds listening sockets on designated ports or Mach endpoints.</li>
-<li>When a client connects, the kernel queues the incoming connection on the bound socket.</li>
-<li><code>launchd</code> detects socket readiness, spawns the daemon process on demand, and passes the pre-bound listening descriptor directly to the child (typically file descriptor 3, or retrieved via <code>launch_activate_socket()</code>).</li>
-<li>The daemon invokes <code>accept()</code> immediately with zero startup race conditions.</li>
-</ol>
+<p>A major architectural innovation pioneered by Apple’s <code>launchd</code> (and adopted by <code>systemd</code>) is <strong>socket activation</strong>. Traditional init scripts enforce fragile boot-order dependency chains: a logging daemon must start before a database daemon, which must start before an application server. Under socket activation, the supervisor creates and binds the listening sockets (Unix domain sockets or <strong>Transmission Control Protocol (<code>TCP</code>)</strong> ports) <em>before</em> the daemon launches. When a client connects, the kernel queues the incoming connection on the bound socket; the supervisor detects readiness, spawns the daemon on demand, and hands the pre-bound listening descriptor directly to the child (typically descriptor <code>3</code> or via <code>launch_activate_socket()</code>), letting the daemon call <code>accept()</code> immediately with zero startup race conditions.</p>
 <h2 id="154-asynchronous-fault-detection-and-process-monitoring-via-kqueue"><a class="header" href="#154-asynchronous-fault-detection-and-process-monitoring-via-kqueue">15.4 Asynchronous Fault Detection and Process Monitoring via <code>kqueue</code></a></h2>
 <p>In distributed infrastructure and cloud platforms, daemons frequently act as local supervisors that manage worker processes, telemetry sidecars, and hardware accelerators. A supervisor must detect worker crashes and hardware faults instantaneously.</p>
 <h3 id="1541-the-limits-of-signal-based-monitoring-sigchld"><a class="header" href="#1541-the-limits-of-signal-based-monitoring-sigchld">15.4.1 The Limits of Signal-Based Monitoring (<code>SIGCHLD</code>)</a></h3>
-<p>Traditional Unix process monitoring relies on <code>SIGCHLD</code> and <code>waitpid()</code>. However, signal-based monitoring exhibits two architectural constraints in complex event-driven supervisors:</p>
-<ul>
-<li><strong>Signal Coalescence:</strong> Standard POSIX signals do not queue. If multiple children exit simultaneously, the kernel coalesces multiple <code>SIGCHLD</code> deliveries into one pending bit, forcing non-blocking <code>waitpid(-1, &amp;status, WNOHANG)</code> drain loops.</li>
-<li><strong>Async-Signal Safety Restrictions:</strong> Inside a <code>SIGCHLD</code> handler, a supervisor cannot allocate memory, lock standard mutexes, or update complex in-memory worker tables without risking self-deadlock, typically requiring a self-pipe wakeup trick to hand off notification to the main loop.</li>
-</ul>
+<p>Traditional Unix process monitoring relies on <strong>Child Status Changed (<code>SIGCHLD</code>)</strong> and <code>waitpid()</code>. In complex event-driven supervisors, signal-based monitoring imposes two constraints: standard <code>POSIX</code> signals coalesce when multiple children exit simultaneously (requiring non-blocking <code>waitpid(-1, &amp;status, WNOHANG)</code> drain loops), and async-signal-safety restrictions prohibit allocating memory or acquiring standard mutexes inside the handler, forcing a self-pipe wakeup trick to notify the main loop.</p>
 <h3 id="1542-event-driven-supervision-with-evfilt_proc-and-the-struct-kevent-interface"><a class="header" href="#1542-event-driven-supervision-with-evfilt_proc-and-the-struct-kevent-interface">15.4.2 Event-Driven Supervision with <code>EVFILT_PROC</code> and the <code>struct kevent</code> Interface</a></h3>
-<p>On Apple Darwin and BSD-derived kernels, <strong><code>kqueue</code></strong> unifies socket readiness, timers, filesystem changes, and process lifecycle monitoring inside one stateful kernel event queue. Rather than installing a signal handler, a supervisor registers an <code>EVFILT_PROC</code> filter directly on a child PID and receives termination notifications synchronously inside its main event loop.</p>
-<pre><code class="language-text">struct kevent {
+<p>On Apple Darwin and <strong>Berkeley Software Distribution (<code>BSD</code>)</strong> kernels, <strong><code>kqueue</code></strong> unifies socket readiness, timers, filesystem changes, and process lifecycle monitoring inside one stateful kernel event queue. Rather than installing a signal handler, a supervisor registers an <code>EVFILT_PROC</code> filter directly on a child <code>PID</code> and receives termination notifications synchronously inside its main event loop:</p>
+<pre><code class="language-c">struct kevent {
     uintptr_t ident;  // Identifier for this event (e.g., fd, signal number, or child PID)
     int16_t   filter; // Kernel event subsystem (EVFILT_READ, EVFILT_TIMER, EVFILT_PROC)
     uint16_t  flags;  // Registration action flags (EV_ADD, EV_ENABLE, EV_DELETE, EV_ONESHOT)
@@ -468,26 +452,8 @@ void EV_SET(struct kevent *kev, uintptr_t ident, int16_t filter, uint16_t flags,
 int  kevent(int kq, const struct kevent *changelist, int nchanges,
             struct kevent *eventlist, int nevents, const struct timespec *timeout);
 </code></pre>
-<p>Each primitive and structure field serves a distinct role in Listings 15-3 and 15-4:</p>
-<ul>
-<li><strong><code>kqueue()</code>:</strong> Allocates a new empty kernel event queue and returns a file descriptor (<code>kq &gt;= 0</code>), or <code>-1</code> on error (<code>EMFILE</code>, <code>ENOMEM</code>). Unlike regular descriptors, a <code>kqueue</code> descriptor is not inherited across <code>fork()</code> and must be closed via <code>close(kq)</code> when finished.</li>
-<li><strong><code>EV_SET(&amp;change, pid, EVFILT_PROC, EV_ADD | EV_ENABLE, NOTE_EXIT, 0, nullptr)</code>:</strong> Helper macro that initializes every field of a <code>struct kevent</code> cleanly:
-<ul>
-<li><strong><code>ident = pid</code>:</strong> The target child process ID to monitor.</li>
-<li><strong><code>filter = EVFILT_PROC</code>:</strong> Attaches the event to the kernel’s process-lifecycle monitor.</li>
-<li><strong><code>flags = EV_ADD | EV_ENABLE</code>:</strong> Inserts the filter into <code>kq</code> (<code>EV_ADD</code>) and marks it active for delivery (<code>EV_ENABLE</code>).</li>
-<li><strong><code>fflags = NOTE_EXIT</code>:</strong> Requests notification the instant the child terminates (additional <code>EVFILT_PROC</code> flags include <code>NOTE_EXITSTATUS</code>, <code>NOTE_FORK</code>, and <code>NOTE_EXEC</code>).</li>
-<li><strong><code>data = 0</code>, <code>udata = nullptr</code>:</strong> Unused on input registration; <code>udata</code> can carry a pointer to a supervisor’s internal worker struct so event dispatch executes in O(1) without a hash lookup.</li>
-</ul>
-</li>
-<li><strong><code>kevent(kq, changelist, nchanges, eventlist, nevents, timeout)</code>:</strong> Performs registration and waiting through a single unified system call:
-<ul>
-<li><strong>Registration phase (<code>changelist</code>, <code>nchanges</code>):</strong> Applies <code>nchanges</code> modifications from <code>changelist</code> to <code>kq</code>. Passing <code>eventlist = nullptr, nevents = 0</code> (the first <code>kevent()</code> call in Listing 15-3) registers the <code>EVFILT_PROC</code> interest and returns <code>0</code> immediately without blocking.</li>
-<li><strong>Retrieval phase (<code>eventlist</code>, <code>nevents</code>, <code>timeout</code>):</strong> Waits until up to <code>nevents</code> registered events fire or <code>timeout</code> elapses (<code>nullptr</code> blocks indefinitely; <code>timespec{0, 0}</code> polls without blocking). Passing <code>changelist = nullptr, nchanges = 0</code> (the second <code>kevent()</code> call in Listing 15-3) blocks until the child exits and fills <code>event</code>.</li>
-<li><strong>Return value:</strong> Returns the number of ready events written into <code>eventlist</code> (<code>&gt; 0</code>), <code>0</code> if <code>timeout</code> expired, or <code>-1</code> on error (<code>EBADF</code>, <code>EINTR</code>, <code>ESRCH</code> if <code>pid</code> already exited before registration). Once <code>event.fflags &amp; NOTE_EXIT</code> fires, the supervisor calls <code>waitpid(pid, &amp;status, WNOHANG)</code> to reap the zombie PCB and extract <code>WEXITSTATUS(status)</code>.</li>
-</ul>
-</li>
-</ul>
+<p>Calling <code>kqueue()</code> allocates an empty kernel event queue and returns a descriptor (<code>kq &gt;= 0</code>, or <code>-1</code> on <code>EMFILE</code>/<code>ENOMEM</code>) that is not inherited across <code>fork()</code>. The helper macro <code>EV_SET(&amp;change, pid, EVFILT_PROC, EV_ADD | EV_ENABLE, NOTE_EXIT, 0, nullptr)</code> populates a <code>struct kevent</code> targeting child <code>ident = pid</code> under the <code>EVFILT_PROC</code> process-lifecycle filter, activating <code>NOTE_EXIT</code> notification (with optional opaque <code>udata</code> pointer for O(1) dispatch back to a supervisor’s worker record).</p>
+<p>The single <code>kevent()</code> system call performs both registration and retrieval. Passing a populated <code>changelist</code> with <code>eventlist = nullptr, nevents = 0</code> registers the filter and returns <code>0</code> immediately; passing <code>changelist = nullptr, nchanges = 0</code> with an <code>eventlist</code> blocks until up to <code>nevents</code> fire or <code>timeout</code> expires (<code>nullptr</code> blocks indefinitely), returning the ready count (<code>&gt; 0</code>), <code>0</code> on timeout, or <code>-1</code> on error (<code>EBADF</code>, <code>EINTR</code>, or <code>ESRCH</code> if <code>pid</code> already exited). Once <code>event.fflags &amp; NOTE_EXIT</code> arrives, the supervisor calls <code>waitpid(pid, &amp;status, WNOHANG)</code> to reap the zombie <strong>Process Control Block (<code>PCB</code>)</strong> and extract <code>WEXITSTATUS(status)</code>.</p>
 <p><strong>Listing 15-3. Process supervision via <code>kqueue</code> (C++20).</strong></p>
 <pre><code class="language-cpp">// ch15/kqueue_supervisor.cpp: process fault monitoring using kqueue on Darwin/BSD.
 #include &lt;sys/types.h&gt;
@@ -540,7 +506,9 @@ int main() {
 </code></pre>
 <p><strong>Listing 15-4. The same supervisor in Rust.</strong></p>
 <pre class="playground"><code class="language-rust">// ch15/kqueue_supervisor.rs: process fault monitoring using kqueue in Rust.
+use std::mem;
 use std::process::{Command, Stdio};
+use std::ptr;
 
 fn main() {
     // SAFETY: Kernel Event Loop Supervision Invariants:
@@ -579,15 +547,15 @@ fn main() {
             flags: libc::EV_ADD | libc::EV_ENABLE,
             fflags: libc::NOTE_EXIT,
             data: 0,
-            udata: std::ptr::null_mut(),
+            udata: ptr::null_mut(),
         };
 
-        let ret = libc::kevent(kq, &amp;change, 1, std::ptr::null_mut(), 0, std::ptr::null());
+        let ret = libc::kevent(kq, &amp;change, 1, ptr::null_mut(), 0, ptr::null());
         assert!(ret &gt;= 0, "failed to register kevent");
 
         // Block on the event queue until the process exits
-        let mut event = std::mem::zeroed();
-        let nev = libc::kevent(kq, std::ptr::null(), 0, &amp;mut event, 1, std::ptr::null());
+        let mut event = mem::zeroed();
+        let nev = libc::kevent(kq, ptr::null(), 0, &amp;mut event, 1, ptr::null());
         assert!(nev &gt; 0, "kevent wait failed");
 
         let status = child.wait().expect("failed to wait on child");
@@ -602,21 +570,16 @@ fn main() {
 <h2 id="155-fault-recovery-policies-and-health-checks"><a class="header" href="#155-fault-recovery-policies-and-health-checks">15.5 Fault Recovery Policies and Health Checks</a></h2>
 <p>Detecting a failure is only the first half of high-availability systems software; the second half is executing a deterministic recovery policy.</p>
 <h3 id="1551-crash-loops-and-exponential-backoff"><a class="header" href="#1551-crash-loops-and-exponential-backoff">15.5.1 Crash Loops and Exponential Backoff</a></h3>
-<p>When a daemon crashes due to an unrecoverable condition (such as corrupted persistent state, a missing configuration file, or dead hardware), an unconstrained supervisor will repeatedly restart the process in an infinite tight loop. This “crash-loop” consumes 100% CPU capacity and fills storage disks with repetitive panic dumps.</p>
-<p>Production supervisors implement <strong>restart rate limiting</strong>:</p>
-<ul>
-<li><strong><code>launchd</code> <code>ThrottleInterval</code>:</strong> Enforces a minimum delay (defaulting to 10 seconds) between successive restarts of an exiting job.</li>
-<li><strong>Exponential Backoff:</strong> Each consecutive failure doubles the restart delay (1s → 2s → 4s → 8s…) up to a maximum threshold. If the service achieves steady-state operation for a configured duration, the failure counter resets.</li>
-</ul>
+<p>When a daemon crashes due to an unrecoverable condition (such as corrupted persistent state, a missing configuration file, or dead hardware), an unconstrained supervisor will repeatedly restart the process in an infinite tight loop, consuming 100% CPU capacity and filling storage disks with panic dumps. Production supervisors enforce <strong>restart rate limiting</strong> via fixed throttle intervals (<code>launchd</code>’s <code>ThrottleInterval</code>, defaulting to 10 seconds) or <strong>exponential backoff</strong> (doubling the delay on consecutive failures: 1s → 2s → 4s → 8s up to a cap, resetting once the service sustains healthy uptime).</p>
 <h3 id="1552-watchdog-timers-and-liveness-probing"><a class="header" href="#1552-watchdog-timers-and-liveness-probing">15.5.2 Watchdog Timers and Liveness Probing</a></h3>
-<p>A process failure does not always manifest as an abrupt crash. Daemons frequently succumb to deadlocks, infinite spin loops, or hung network I/O, where the process remains alive in the process table but stops serving requests.</p>
-<p>Supervisors resolve hung processes via <strong>watchdogs</strong>:</p>
-<ul>
-<li><strong>Software Watchdogs:</strong> The daemon must periodically ping the supervisor (for example, via an IPC keepalive message or updating a shared memory timestamp) within a negotiated interval (such as every 5 seconds). If the daemon misses two consecutive heartbeats, the supervisor assumes a deadlock, collects a diagnostic backtrace, and issues <code>SIGABRT</code> or <code>SIGKILL</code>.</li>
-<li><strong>Hardware Watchdogs:</strong> For bare-metal hypervisors and low-level system controllers, the supervisor itself resets a hardware watchdog timer (<code>/dev/watchdog</code> or a microcontroller PMU register). If the entire kernel or root supervisor deadlocks, the hardware timer expires, triggering a physical machine reset.</li>
-</ul>
+<p>Process failures also manifest as deadlocks, infinite spin loops, or hung network <code>I/O</code>, where the process remains alive in the process table yet stops serving requests. Supervisors detect hung processes via <strong>software watchdogs</strong> (requiring periodic <strong>Inter-Process Communication (<code>IPC</code>)</strong> heartbeats or shared-memory timestamp updates, issuing <strong>Abort Signal (<code>SIGABRT</code>)</strong> or <code>SIGKILL</code> after missed intervals) and <strong>hardware watchdogs</strong> (resetting <code>/dev/watchdog</code> or a <strong>Power Management Unit (<code>PMU</code>)</strong> timer so a deadlocked kernel triggers a physical machine reset).</p>
+<div class="callout experiment">
+<span class="label">Experiment</span>
+<p>Run Listing 15-1 (<code>code/ch15/daemon.cpp</code>), inspect the detached daemon’s <code>PID</code>, <code>PGID</code>, <code>SID</code>, and <code>TTY</code> column (<code>ps -o pid,ppid,pgid,sid,tty,comm -p $(cat /tmp/osbook_daemon.pid)</code>), and send <code>kill -HUP</code> followed by <code>kill -TERM</code> while watching <code>/tmp/osbook_daemon.log</code> record the reload and graceful shutdown.</p>
+</div>
+
 <div class="callout caution">
-<span class="label">Watch out</span>
+<span class="label">Common Pitfall</span>
 <p>Three common daemon failure modes:</p>
 <ol>
 <li><strong>Double-daemonizing under a supervisor:</strong> Invoking <code>fork()</code> and <code>setsid()</code> inside a <code>launchd</code> or <code>systemd</code> unit causes the supervisor to track the short-lived parent, leaving the actual worker orphaned and unmanaged.</li>
@@ -688,7 +651,7 @@ fn main() {
         <script src="book-609e4cb8.js"></script>
 
         <!-- Custom JS scripts -->
-        <script src="theme/figures-f1be29a8.js"></script>
+        <script src="theme/figures-fd5ff574.js"></script>
 
 
 

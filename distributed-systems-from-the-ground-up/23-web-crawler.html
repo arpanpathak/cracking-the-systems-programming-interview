@@ -1,9 +1,9 @@
 <!DOCTYPE HTML>
-<html lang="en" class="light sidebar-visible" dir="ltr">
+<html lang="en" class="navy sidebar-visible" dir="ltr">
     <head>
         <!-- Book generated using mdBook -->
         <meta charset="UTF-8">
-        <title>Web Crawler - Distributed Systems from the Ground Up</title>
+        <title>23. Web Crawler - Distributed Systems from the Ground Up</title>
 
 
         <!-- Custom HTML head -->
@@ -28,20 +28,18 @@
         <link rel="stylesheet" id="mdbook-ayu-highlight-css" href="ayu-highlight-3fdfc3ac.css">
 
         <!-- Custom theme stylesheets -->
-        <link rel="stylesheet" href="theme/custom-8a495b63.css">
-        <link rel="stylesheet" href="theme/formal-05bd78f0.css">
-        <link rel="stylesheet" href="theme/layout-0a0c0003.css">
+        <link rel="stylesheet" href="theme/custom-59beaf6d.css">
 
 
         <!-- Provide site root and default themes to javascript -->
         <script>
             const path_to_root = "";
-            const default_light_theme = "light";
+            const default_light_theme = "navy";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "searchindex-25bb747f.js";
+            window.path_to_searchindex_js = "searchindex-5d54d4b4.js";
         </script>
         <!-- Start loading toc.js asap -->
-        <script src="toc-cc887274.js"></script>
+        <script src="toc-ef51d47d.js"></script>
     </head>
     <body>
     <div id="mdbook-help-container">
@@ -79,7 +77,7 @@
             try { theme = localStorage.getItem('mdbook-theme'); } catch(e) { }
             if (theme === null || theme === undefined) { theme = default_theme; }
             const html = document.documentElement;
-            html.classList.remove('light')
+            html.classList.remove('navy')
             html.classList.add(theme);
             html.classList.add("js");
         </script>
@@ -183,511 +181,361 @@
 
                 <div id="mdbook-content" class="content">
                     <main>
-                        <img class="plate" src="art/ch23.svg?v=c31a6091" alt="An octopus stands beside a sign that reads: 1 queue per host, wait 2 seconds, never twice.">
-<h1 id="web-crawler-system-design"><a class="header" href="#web-crawler-system-design">Web Crawler: System Design</a></h1>
-<p>A <em>web crawler</em> is a program that reads the web as a person would who had unlimited
-patience and no particular interest in any page. It begins with a few known
-addresses, downloads the pages at those addresses, extracts from each page the
-addresses to which it links, and proceeds to download those in their turn. Continued
-long enough, the process reaches every page that can be reached by following links,
-and the collection that results is the raw material of a search engine, of an
-archive, or of any system that needs to know what the web contains.</p>
-<p>As an algorithm, this is the traversal of a graph, and an introductory course in
-programming covers it in a week. What separates the exercise from the system is the
-nature of this particular graph. It has tens of billions of nodes and can be stored
-on no single machine. It is not given in advance, each node being discoverable only
-by fetching another. It changes while it is being traversed. Parts of it are
-infinite, generated on demand by programs that will produce a new page for every
-address they are asked for. And every node belongs to somebody, who is paying for the
-server that answers and who will, quite reasonably, block a crawler that asks too
-much too quickly. A crawler has therefore to be at once fast in aggregate and gentle
-towards each individual site, and most of its design follows from the need to
-reconcile the 2.</p>
+                        <h1 id="chapter-23-web-crawler-system-design"><a class="header" href="#chapter-23-web-crawler-system-design">Chapter 23: Web Crawler: System Design</a></h1>
+<img class="plate" src="art/ch23-plate.svg" alt="Chapter 23 plate illustrating a distributed web crawler with a Mercator two-stage politeness frontier, robots.txt enforcement, URL Bloom filtering, and SimHash content deduplication." />
+<p>A distributed web crawler traverses the public web graph continuously, discovering billions of URLs, fetching HTML and structured resources, and feeding deduplicated documents into downstream search indexers or archival corpora. Although breadth-first graph traversal requires ten lines of code in memory, operating against the live internet introduces five severe distributed systems constraints: the graph contains tens of billions of vertices that mutate while being traversed, infinite dynamically generated spider traps lure workers into unbounded loops, more than a quarter of pages duplicate existing content across distinct URLs, DNS resolution saturates standard resolvers, and every origin server belongs to an external operator who will block any crawler that violates politeness limits. In this chapter, I design a host-partitioned crawler built around the Mercator two-stage politeness frontier, RFC 9309 <code>robots.txt</code> compliance, Bloom-filter and RocksDB URL deduplication, 64-bit SimHash near-duplicate detection, and multi-layered spider-trap defenses.</p>
 <div class="covers">
-<p>This chapter covers</p>
+<p>In this chapter, we cover</p>
 <ul>
-<li>the loop at the centre of every crawler</li>
-<li>the frontier: which address to fetch next, and why it is more than a queue</li>
-<li>politeness, and a queue for every host</li>
-<li>what a site asks of crawlers, and why a crawler complies</li>
-<li>recognising an address that has been seen before</li>
-<li>recognising a page that has been seen before under another address</li>
-<li>sites that never end</li>
-<li>dividing the crawl among many machines</li>
-<li>returning to pages that change</li>
+<li>actors, use cases, verifiable functional requirements, strict politeness SLOs, explicit non-goals, and petabyte-scale crawl capacity bounds</li>
+<li>operator control APIs for seed injection and host policy overrides, monotonic cursor page-feed contracts, and frontier/host metadata schemas</li>
+<li>control-plane vs. data-plane separation across the Seed Coordinator, DNS and <code>robots.txt</code> caches, host-partitioned frontier shards, async fetcher pools, and object storage</li>
+<li>Mercator two-stage politeness frontier (priority front queues, per-host back queues, and next-fetch min-heap), consistent-hash host ownership, and adaptive <code>429</code> backoff</li>
+<li>URL canonicalization, sharded Bloom filter + RocksDB seen-set deduplication, 64-bit SimHash / MinHash near-duplicate detection, spider-trap budgets, and conditional <code>304</code> revisit scheduling</li>
+<li>failure matrices, crawl SLIs/SLOs, production architectures (Googlebot, Mercator, IRLbot, Common Crawl), and verification via <code>code/crawlsim</code></li>
 </ul>
 </div>
 
-<h2 id="the-loop"><a class="header" href="#the-loop">The loop</a></h2>
-<p>Every crawler, whatever its size, repeats the same 4 steps. It takes an address from
-the collection of those waiting to be fetched, which is called the <em>frontier</em>. It
-downloads the page at that address. It extracts the links from the page. And it adds
-to the frontier those of the links that it has not met before.</p>
-<p>If the frontier were a simple first-in, first-out queue, this would be a breadth-first
-traversal. Almost everything of interest in a crawler’s design is a departure from
-that simple queue, prompted by 1 of 3 matters: the order in which addresses should
-be taken, given that there are always far more waiting than can be fetched, how soon
-the same server may be asked again, and how it is known that an address, or a page,
-has been dealt with already.</p>
-<h2 id="politeness"><a class="header" href="#politeness">Politeness</a></h2>
-<p>A crawler with 1000 connections at its disposal could, if it chose, direct all of
-them at a single web site. For a small site this would be indistinguishable from an
-attack. The server would be overwhelmed, its ordinary visitors would be turned away,
-and its owner would respond by blocking the crawler’s addresses permanently, as would
-the owners of other sites who heard of it. A crawler that is to be tolerated must
-restrict itself, for each site separately, to a rate that the site will not notice. A
-usual rule allows 1 request to a given host at any moment, followed by a pause of a
-second or more before the next.</p>
-<p>The difficulty is that this restriction is at odds with the order in which addresses
-are discovered. A page generally links mostly to other pages of its own site, so that
-the frontier, at any moment, contains long runs of addresses on the same host. A
-crawler that took addresses strictly in order would spend nearly all its time waiting
-for the pause on some host to expire, while thousands of other hosts stood ready.</p>
-<p>The standard arrangement resolves this by giving the frontier a structure that
-mirrors the constraint. There is a separate queue for every host, and with each queue
-is recorded the earliest time at which that host may next be asked. A fetcher that
-wants work takes an address from any host whose time has come, and that host’s time
-is then moved forward by the length of the pause.</p>
-<figure class="steps" data-prefix="figures/steps-crawl-frontier" data-count="5" data-version="53461153">
-<img src="figures/steps-crawl-frontier-01.svg?v=53461153" alt="A frontier with 1 queue for each host, step 1 of 5. The crawl starts from 1 address. The frontier keeps a separate queue for every host, and each host may be asked once every 2 seconds.">
-<figcaption><b>Figure 23.1</b> A crawl of 3 hosts, each of which may be asked once every 2 seconds. Use Next and Back to move through the 5 steps.</figcaption>
+<h2 id="231-requirements-actors-and-capacity-bounds"><a class="header" href="#231-requirements-actors-and-capacity-bounds">23.1 Requirements, Actors, and Capacity Bounds</a></h2>
+<p>Web crawling exhibits an unusual error-tolerance asymmetry. Missing 0.5% of long-tail URLs due to a Bloom filter false positive, or re-fetching a small fraction of pages after a worker crash, causes negligible harm to a search index. Violating per-host politeness, however, harms external website operators, triggers IP-block blacklists, and degrades the crawler’s global reach. Every architectural boundary in this design therefore treats <strong>per-host politeness</strong> as a strict invariant while allowing <strong>approximate deduplication</strong> and <strong>eventual consistency</strong> across the broader crawl loop.</p>
+<h3 id="actors-and-use-cases"><a class="header" href="#actors-and-use-cases">Actors and Use Cases</a></h3>
+<p>Three external actor classes interact across the boundary of the distributed web crawler, as illustrated in Figure 23-1.</p>
+<figure class="diagram">
+<img src="figures/m3/ch23_use_cases.svg" alt="Actors and Use Cases of the Distributed Web Crawler: Crawl Operator submits seed URLs and configures host crawl rules; Target Web Host serves robots.txt and HTTP pages under strict politeness delays; Search Indexer consumes the deduplicated, monotonically ordered page feed." />
+<figcaption><b>Figure 23-1</b> Actors, system boundary, and core use cases of the distributed web crawler.</figcaption>
 </figure>
-<p>The simulation for this chapter crawls a small invented web of 3 hosts under this
-rule. In 8 seconds it fetches 10 pages, never asking any host twice within 2 seconds,
-and never standing idle while some host is ready.</p>
-<p>The consequence for the performance of a crawler is fundamental and somewhat
-counter-intuitive. The speed of a crawl is determined by the number of different
-hosts it has in hand, and hardly at all by how fast any 1 of them answers. With a
-pause of 1 second, a crawler that knows of a million hosts can fetch a million pages
-a second, and a crawler confined to a single enormous site can fetch 1. A very large
-site therefore takes a long time to crawl completely however many machines are
-available, and the only remedy is an agreement with its owner.</p>
-<p>The pause need not be the same for every host. A crawler can measure how long a
-server takes to answer and wait some multiple of that, which treats a fast server
-more briskly and backs away from one that is struggling. A server that begins to
-return errors, or the status <code>429</code> of chapter 7, is telling the crawler directly that
-it is asking too much, and the pause for that host should be lengthened at once.</p>
-<h2 id="what-a-site-asks-of-crawlers"><a class="header" href="#what-a-site-asks-of-crawlers">What a site asks of crawlers</a></h2>
-<p>By a convention almost as old as the web, a site may publish a file named
-<code>robots.txt</code> at its root, stating which parts of the site crawlers are asked to stay
-out of, and sometimes how long they should wait between requests. A site might
-exclude its search results, its shopping baskets, or pages that are costly to
-generate.</p>
-<p>Nothing enforces this file. A crawler obeys it because the alternative is to be
-blocked, and because the exclusions usually serve the crawler’s own interest by
-steering it away from pages of no value. The file has to be fetched before any other
-page of the host, and since it applies to every later request it is kept in a cache,
-with a time limit of perhaps a day, so that it is neither fetched for every page nor
-relied upon indefinitely after the site has changed it.</p>
-<p>A crawler also identifies itself, by a name in the <code>User-Agent</code> header of each
-request together with an address at which its operators can be reached. An
-administrator who finds an unfamiliar program in the logs and can discover what it is
-and whom to write to is far less inclined to block it than one who cannot.</p>
-<h2 id="an-address-seen-before"><a class="header" href="#an-address-seen-before">An address seen before</a></h2>
-<p>The web is densely connected, and the same address appears as a link on a great many
-pages. In the small simulation, 7 of the links encountered led to addresses that were
-already known. On the real web the proportion is far higher, and a crawler that
-fetched every address every time it was mentioned would never finish. Every address
-ever added to the frontier is therefore recorded in a <em>seen set</em>, and a newly
-extracted link is checked against the set before anything else is done with it.</p>
-<p>Before the check, the address has to be brought to a standard form, since many
-different strings denote the same page. The name of the host is not sensitive to
-case. A port number that is the default may be given or left out. The part of an
-address after a <code>#</code> refers to a position within the page and is never sent to the
-server. The parameters of a query may appear in any order, and often include
-identifiers of a session or of an advertising campaign that have no effect on what
-is returned. A crawler that failed to <em>normalise</em> its addresses would fetch the same
-page many times under different spellings.</p>
-<p>The seen set is very large. 10 billion addresses of 80 bytes each would occupy 800
-GB, and the set is consulted for every link on every page. Storing a fixed-size hash
-of each address in place of the address reduces this by a factor of 10. A further
-reduction is possible if occasional errors are tolerated. The <em>Bloom filter</em> that
-chapter 9 used against cache penetration serves here too: it occupies about 10 bits
-for each address and answers the question of membership with certainty when the
-answer is no, and with a small probability of error, around 1 in 100, when the answer
-is yes. For a crawler the error means that a few addresses in every hundred which are
-in truth new are taken as seen and are not fetched. Whether that loss is acceptable
-depends on the purpose of the crawl, and for most purposes a web of which 1% is
-missed is a perfectly good web.</p>
-<h2 id="a-page-seen-before"><a class="header" href="#a-page-seen-before">A page seen before</a></h2>
-<p>Normalising addresses does not eliminate duplication, because the same content is
-very often served at addresses that are truly distinct. A site answers both with and
-without <code>www</code>. An article is available at a short address and a long one, or in a
-printable version, or on a second site that reproduces it. Estimates of the share of
-the web that duplicates some other part of it run to a quarter or more.</p>
-<p>Identical copies are detected easily. The crawler computes a checksum of the content
-of each page it fetches and keeps the checksums, as the object store of chapter 16
-does for chunks. A page whose checksum is already present is a duplicate, and is
-neither stored again nor examined for links.</p>
-<p>Copies that are nearly identical are a harder matter, and are much the commoner
-case. 2 copies of the same article may differ in the date printed at the top, in the
-advertisements, or in a counter of visitors, and a checksum, which changes completely
-when a single byte changes, treats them as unrelated. For this purpose a different
-kind of fingerprint is used, constructed so that similar documents receive similar
-fingerprints. The page is broken into overlapping sequences of a few words, each
-sequence is hashed, and the hashes are combined into a short value in such a way that
-every sequence has a small influence on every bit. 2 pages that share most of their
-sequences then receive fingerprints that differ in only a few bits, and near
-duplicates can be found by looking for fingerprints close to one another.</p>
-<h2 id="sites-that-never-end"><a class="header" href="#sites-that-never-end">Sites that never end</a></h2>
-<p>Some parts of the web are generated by programs and have no boundary. The classic
-instance is a calendar.</p>
-<figure>
-<img src="figures/crawl-trap.svg?v=94ff9e55" alt="4 steps. A page shows the events of 1 day. It links to the next day, which links to the day after. Every day exists for ever, because the site computes each page when asked. A crawler that follows every link never finishes. The cure is a limit on pages and on depth for every host.">
-<figcaption><b>Figure 23.2</b> A calendar in which every day links to the next.</figcaption>
-</figure>
-<p>The page for each day contains a link to the following day, and the server will
-obligingly produce a page for any date whatever. A crawler that follows links
-faithfully proceeds through the calendar day by day into the indefinite future. A
-shop with 5 filters that may be combined in any order, a site that embeds a fresh
-session identifier in every link, and a directory that by mistake contains a link to
-itself all have the same effect. Such structures are called <em>crawler traps</em>. Most are
-accidents, and a few are built on purpose to waste the time of crawlers.</p>
-<p>No test can tell, for an arbitrary site, whether its pages are endless, and the
-defences are accordingly limits, since nothing can serve as a detector. A crawler restricts the number of
-pages it will take from any 1 host, as the simulation does when it stops the calendar
-at 4. It restricts the depth to which it will follow links from the page at which it
-entered a site. It restricts the length of the addresses it will accept, since
-addresses in a trap tend to grow. And it gives a larger allowance to hosts that many
-other sites link to, on the grounds that a site which the rest of the web considers
-important is unlikely to be a trap.</p>
-<h2 id="which-address-next"><a class="header" href="#which-address-next">Which address next</a></h2>
-<p>With far more addresses waiting than can ever be fetched, the order in which they are
-taken decides what the crawl contains. A crawler that is to feed a search engine
-wants the important pages first, and has to estimate importance before fetching, from
-what is known about an address in advance: how many pages link to it, how important
-those pages are themselves, how near it is to the root of its site, and how valuable
-the other pages of its host have proved.</p>
-<p>Priority and politeness have to be combined, and the usual structure has 2 stages. A
-set of queues ordered by priority feeds the queues ordered by host. Addresses enter
-at the front according to their estimated importance, are drawn from the
-high-priority queues more often than from the low, and are then placed in the queue
-of their host, from which the rule of politeness releases them. The first stage
-decides what is worth fetching, and the second decides when it may be fetched.</p>
-<h2 id="many-machines"><a class="header" href="#many-machines">Many machines</a></h2>
-<p>A crawl of billions of pages is carried out by many machines, and the work has to be
-divided among them in such a way that the constraints still hold. The decisive
-constraint is politeness, which is a property of a host and must therefore be
-enforced in 1 place for each host. If 2 machines each held addresses of the same host
-and each observed the pause on its own account, the host would receive twice the
-permitted load.</p>
-<p>The division is therefore made by host. Each host is assigned to a single crawler
-machine, by hashing its name, with the consistent hashing of chapter 1 so that the
-addition of a machine moves only a small share of the hosts. All the addresses of a
-host are queued on its machine, which alone keeps the host’s waiting time and its
-<code>robots.txt</code>. When a machine extracts a link to a host that belongs to another
-machine, it forwards the address there, usually in batches by way of a message queue.
-Since most links lead to the site on which they are found, most addresses stay where
-they were discovered.</p>
-<p>The frontier must survive failures. It represents days of accumulated discovery and
-cannot quickly be rebuilt. It is therefore kept on disk, and since it is far larger
-than memory, each host’s queue is held mostly on disk, with only the next few
-addresses of each host in memory.</p>
-<p>A crawler also depends heavily on the name resolution system, since every host name
-has to be turned into a network address before the host can be contacted. At
-thousands of requests a second, the ordinary resolver becomes a bottleneck, and
-crawlers keep their own cache of resolved names, refreshed as the entries expire.</p>
-<h2 id="returning-to-pages"><a class="header" href="#returning-to-pages">Returning to pages</a></h2>
-<p>The web changes, and a collection that was accurate last month is partly wrong
-today. A crawler has to revisit, and since it cannot revisit everything as often as
-it would wish, it has to decide how its limited capacity is best spent.</p>
-<p>Pages change at very different rates. The front page of a newspaper changes every few
-minutes, and a paper published by a scientific journal 10 years ago will never change
-again. A crawler therefore records, for each page, how often it has found the page
-changed on its previous visits, and schedules the next visit accordingly: soon for a
-page that is usually different, and after a long interval for one that is usually the
-same.</p>
-<p>HTTP allows a revisit to be made cheaply. The crawler sends the entity tag that it
-received with the page on the last occasion, in the <code>If-None-Match</code> header that
-chapter 1 described, and a server whose page has not changed answers <code>304 Not Modified</code> with no body. The crawler has confirmed that its copy is current at the
-cost of a few hundred bytes.</p>
-<h2 id="use-cases"><a class="header" href="#use-cases">Use cases</a></h2>
-<p>An operator starts a crawl and governs it. A consumer, typically the indexer of a
-search engine, reads the pages that have been fetched.</p>
-<figure>
-<img src="figures/crawl-use-cases.svg?v=c2f0f847" alt="A use case diagram of the crawler. Operator: give starting addresses (POST /v1/seeds), set the rules for a host (PUT /v1/hosts/{host}/rules), read the progress (GET /v1/crawls/{id}). Indexer: read the fetched pages (GET /v1/pages?after=).">
-<figcaption><b>Figure 23.3</b> The actors and what each of them does.</figcaption>
-</figure>
-<h2 id="functional-requirements"><a class="header" href="#functional-requirements">Functional requirements</a></h2>
 <div class="table-wrapper">
 <table>
 <thead>
-<tr><th>No.</th><th>Functional requirement</th></tr>
+<tr><th style="text-align: left">Actor</th><th style="text-align: left">Operation</th><th style="text-align: left">Concrete Scenario</th></tr>
 </thead>
 <tbody>
-<tr><td>0</td><td>Starting from given addresses, the crawler fetches the pages that can be reached by following links.</td></tr>
-<tr><td>1</td><td>No address is fetched more than once in a crawl.</td></tr>
-<tr><td>2</td><td>The crawler observes the rules that each site publishes for crawlers.</td></tr>
-<tr><td>3</td><td>No host is asked more often than once in a configured interval.</td></tr>
-<tr><td>4</td><td>Pages whose content has already been stored are recognised and not stored again.</td></tr>
-<tr><td>5</td><td>Pages are fetched again at intervals that depend on how often they change.</td></tr>
+<tr><td style="text-align: left"><strong>Crawl Operator</strong></td><td style="text-align: left">Inject seed URLs (<code>POST /v1/seeds</code>) and override host rules (<code>PUT /v1/hosts/{host}/rules</code>)</td><td style="text-align: left">Bootstrap a fresh crawl from high-authority seed domains or cap page budgets and crawl delays for a sensitive partner host</td></tr>
+<tr><td style="text-align: left"><strong>Target Web Host</strong></td><td style="text-align: left">Publish <code>robots.txt</code> directives and respond to polite HTTP/TLS <code>GET</code> requests</td><td style="text-align: left">Specify disallowed URL prefixes, optional <code>Crawl-delay</code>, <code>ETag</code> validators, and <code>429 Too Many Requests</code> rate signals</td></tr>
+<tr><td style="text-align: left"><strong>Search Indexer</strong></td><td style="text-align: left">Consume deduplicated crawl stream (<code>GET /v1/pages?after={cursor}</code>)</td><td style="text-align: left">Read unique newly fetched or modified documents in monotonic sequence order without re-parsing mirrors or infinite traps</td></tr>
 </tbody>
 </table>
 </div>
-<h2 id="non-functional-requirements"><a class="header" href="#non-functional-requirements">Non-functional requirements</a></h2>
+<h3 id="functional-requirements"><a class="header" href="#functional-requirements">Functional Requirements</a></h3>
 <div class="table-wrapper">
 <table>
 <thead>
-<tr><th>No.</th><th>Property</th><th>Non-functional requirement</th></tr>
+<tr><th style="text-align: left">No.</th><th style="text-align: left">Functional Requirement</th></tr>
 </thead>
 <tbody>
-<tr><td>0</td><td>Scale</td><td>10 billion pages in a crawl of a month, which is about 4000 pages per second.</td></tr>
-<tr><td>1</td><td>Politeness</td><td>At most 1 request at any moment to a host, with at least 1 second between requests.</td></tr>
-<tr><td>2</td><td>Durability</td><td>The frontier and the seen set survive the failure of any machine.</td></tr>
-<tr><td>3</td><td>Consistency</td><td>Eventual. A small share of addresses may be fetched twice or missed.</td></tr>
-<tr><td>4</td><td>Robustness</td><td>No page, however malformed or large, stops the crawl.</td></tr>
+<tr><td style="text-align: left">0</td><td style="text-align: left">Starting from operator-supplied seed URLs, the system discovers, normalizes, and fetches reachable web pages by following extracted hyperlinks.</td></tr>
+<tr><td style="text-align: left">1</td><td style="text-align: left">Before fetching any page on an origin host, the crawler retrieves, parses, caches, and strictly obeys that host’s <code>robots.txt</code> exclusion rules (RFC 9309).</td></tr>
+<tr><td style="text-align: left">2</td><td style="text-align: left">The crawler enforces strict per-host politeness: at most one in-flight request per host (or configured concurrency cap) separated by a minimum crawl delay (<code>&gt;= 1 s</code> default, scaled dynamically on slow or <code>429</code> responses).</td></tr>
+<tr><td style="text-align: left">3</td><td style="text-align: left">The crawler deduplicates normalized URLs against a durable seen set so the same URL is not re-crawled unnecessarily within a single crawl epoch.</td></tr>
+<tr><td style="text-align: left">4</td><td style="text-align: left">The crawler identifies exact duplicate pages (via SHA-256 content hash) and near-duplicate mirrors (via 64-bit SimHash) before persisting to the page store and downstream feed.</td></tr>
+<tr><td style="text-align: left">5</td><td style="text-align: left">The crawler defends against infinite spider traps through per-host depth caps, page budgets, URL length caps, and path-repetition filters.</td></tr>
+<tr><td style="text-align: left">6</td><td style="text-align: left">The crawler revisits previously fetched pages at adaptive intervals driven by observed change frequency, using HTTP <code>If-None-Match</code> / <code>If-Modified-Since</code> conditional headers.</td></tr>
 </tbody>
 </table>
 </div>
-<p>A crawler is unusually tolerant of small errors, and non-functional requirement 3
-says so. If 1 address in 100 is skipped because a Bloom filter was mistaken, or
-fetched twice because a machine failed between fetching and recording, the resulting
-collection is for all practical purposes as good. This tolerance is what allows the
-seen set to be approximate and the coordination between machines to be loose. The 1
-requirement that admits no approximation is politeness, since the party harmed by a
-violation is somebody else.</p>
-<h2 id="core-entities"><a class="header" href="#core-entities">Core entities</a></h2>
-<figure>
-<img src="figures/crawl-entities.svg?v=0d6561c6" alt="The core entities. Page has the fields address string, fetched time, checksum u64, status 200|404|.... Host has the fields name string, ready_at time, rules robots.txt, taken pages so far. A Host is every address on 1 server. The crawler keeps a queue and a waiting time for each host, and not for each page.">
-<figcaption><b>Figure 23.4</b> The core entities and their fields.</figcaption>
-</figure>
-<h2 id="capacity-estimate"><a class="header" href="#capacity-estimate">Capacity estimate</a></h2>
-<div class="estimate">
-<img class="builder" src="art/crab-builder.svg" alt="A crab in a hard hat, in tears.">
-<p><strong>Arithmetic ahead.</strong> 10 billion pages of 100 KB are 1 PB of content, fetched at 4000 pages per second, which needs about 3 Gbit/s of bandwidth and a few hundred fetching machines.</p>
-<p><a class="skip" href="#high-level-design">Skip to the high-level design</a></p>
-<details>
-<summary>Show the calculation</summary>
+<h3 id="non-functional-requirements-and-slos"><a class="header" href="#non-functional-requirements-and-slos">Non-Functional Requirements and SLOs</a></h3>
 <div class="table-wrapper">
 <table>
 <thead>
-<tr><th>Quantity</th><th>Calculation</th><th>Result</th></tr>
+<tr><th style="text-align: left">No.</th><th style="text-align: left">Property</th><th style="text-align: left">Target Specification</th><th style="text-align: left">Architectural Consequence</th></tr>
 </thead>
 <tbody>
-<tr><td>Pages per second</td><td>10 billion ÷ (30 × 86400 s)</td><td>about 3900</td></tr>
-<tr><td>Content stored</td><td>10 billion × 100 KB</td><td>1 PB</td></tr>
-<tr><td>Bandwidth</td><td>3900 × 100 KB × 8</td><td>about 3 Gbit/s</td></tr>
-<tr><td>Hosts needed to sustain the rate</td><td>3900 pages per second × 1 s pause</td><td>at least 3900 hosts ready at every moment</td></tr>
-<tr><td>Seen set as hashes</td><td>10 billion × 8 bytes</td><td>80 GB</td></tr>
-<tr><td>Seen set as a Bloom filter</td><td>10 billion × 10 bits</td><td>12.5 GB</td></tr>
+<tr><td style="text-align: left">0</td><td style="text-align: left"><strong>Scale and Throughput</strong></td><td style="text-align: left"><code>10,000,000,000</code> (10B) pages crawled per 30-day cycle (<code>~3,860</code> pages/s sustained; <code>10,000</code> pages/s burst)</td><td style="text-align: left">Horizontal partitioning across <code>40+</code> disk-backed frontier shards and <code>300+</code> asynchronous non-blocking fetcher workers (<code>epoll</code>/<code>io_uring</code>)</td></tr>
+<tr><td style="text-align: left">1</td><td style="text-align: left"><strong>Politeness</strong></td><td style="text-align: left"><code>&lt;= 1</code> active request per origin host at any instant; <code>&gt;= 1 s</code> inter-request pause (<code>100%</code> enforcement across cluster)</td><td style="text-align: left">Consistent-hash partitioning by hostname ensures exactly one frontier machine owns all scheduling state for a given host</td></tr>
+<tr><td style="text-align: left">2</td><td style="text-align: left"><strong>Durability</strong></td><td style="text-align: left">Frontier queues, host politeness state, and URL-seen database survive machine restarts without losing days of graph discovery</td><td style="text-align: left">Disk-backed frontier queues (RocksDB/segmented logs) with replica checkpoints; pages written to replicated object storage (Chapter 16)</td></tr>
+<tr><td style="text-align: left">3</td><td style="text-align: left"><strong>Consistency</strong></td><td style="text-align: left">Eventual consistency across URL deduplication (<code>&lt;= 1%</code> Bloom filter false-positive skip rate acceptable, or <code>0%</code> with RocksDB backing)</td><td style="text-align: left">Loose asynchronous batch forwarding of cross-host links over Kafka eliminates synchronous cross-shard locks</td></tr>
+<tr><td style="text-align: left">4</td><td style="text-align: left"><strong>Robustness</strong></td><td style="text-align: left">Zero worker crashes or memory exhaustion from malformed HTML, decompression bombs, slow-loris streams, or infinite redirects</td><td style="text-align: left">Hard per-fetch socket timeout (<code>10 s</code>), max body byte cap (<code>10 MB</code>), max redirect hops (<code>5</code>), and sandboxed streaming HTML parsers</td></tr>
 </tbody>
 </table>
 </div>
-</details>
+<h3 id="non-goals-and-explicit-scope-boundaries"><a class="header" href="#non-goals-and-explicit-scope-boundaries">Non-Goals and Explicit Scope Boundaries</a></h3>
+<p>To keep our focus on distributed crawling, politeness, and deduplication, we exclude the following concerns:</p>
+<ul>
+<li><strong>Full headless-browser JavaScript rendering at 100% coverage:</strong> Executing Chromium/V8 for single-page applications multiplies CPU cost by 20x to 50x; production crawlers route only a selective subset of JS-heavy domains to a separate rendering pool after static HTML fetch.</li>
+<li><strong>Inverted-index construction, PageRank computation, and query serving:</strong> Downstream search engines consume our immutable object store and change feed asynchronously.</li>
+<li><strong>Authenticated crawling behind login walls or anti-bot gates:</strong> This architecture crawls strictly public, <code>robots.txt</code>-permitted web resources and never circumvents access controls.</li>
+</ul>
+<h3 id="back-of-the-envelope-capacity-bounds"><a class="header" href="#back-of-the-envelope-capacity-bounds">Back-of-the-Envelope Capacity Bounds</a></h3>
+<p>Web crawling is bounded simultaneously by <strong>distinct active hosts in the frontier</strong> (politeness concurrency), <strong>URL-seen memory/disk footprint</strong>, and <strong>petabyte-scale object storage</strong>.</p>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th style="text-align: left">Resource Dimension</th><th style="text-align: left">Derivation</th><th style="text-align: left">Provisioned Bound</th></tr>
+</thead>
+<tbody>
+<tr><td style="text-align: left"><strong>Sustained Fetch Rate</strong></td><td style="text-align: left"><code>10,000,000,000 pages / (30 days * 86,400 s)</code></td><td style="text-align: left"><code>~3,858</code> pages/s (provisioned for <code>5,000</code> pages/s)</td></tr>
+<tr><td style="text-align: left"><strong>Minimum Active Hosts for Politeness</strong></td><td style="text-align: left"><code>5,000 pages/s * 1 s</code> minimum delay (or <code>2 s</code> average delay)</td><td style="text-align: left"><code>&gt;= 10,000</code> distinct ready hosts active simultaneously</td></tr>
+<tr><td style="text-align: left"><strong>Ingress Network Bandwidth</strong></td><td style="text-align: left"><code>5,000 pages/s * 100 KB</code> average HTML payload <code>* 8 bits</code></td><td style="text-align: left"><code>~4.0 Gbit/s</code> sustained HTTP ingress</td></tr>
+<tr><td style="text-align: left"><strong>Monthly Raw Content Storage</strong></td><td style="text-align: left"><code>10B pages * 100 KB</code> (<code>~70%</code> unique after exact/near dedup, <code>~4x</code> zstd compression)</td><td style="text-align: left"><code>~1.0 PB</code> uncompressed; <code>~175 TB</code> compressed unique pages/month</td></tr>
+<tr><td style="text-align: left"><strong>URL-Seen Set (Exact 64-Bit Hash / RocksDB)</strong></td><td style="text-align: left"><code>10B URLs * 16 B</code> (128-bit MD5/xxHash128 + metadata in LSM-tree)</td><td style="text-align: left"><code>~160 GB</code> on NVMe SSD across 8 shards (<code>20 GB</code>/shard)</td></tr>
+<tr><td style="text-align: left"><strong>URL-Seen In-Memory Bloom Filter</strong></td><td style="text-align: left"><code>10B URLs * 10 bits</code> (<code>~0.8%</code> false-positive rate)</td><td style="text-align: left"><code>~12.5 GB</code> total RAM (<code>~1.6 GB</code>/shard) fronting RocksDB</td></tr>
+<tr><td style="text-align: left"><strong>DNS Resolution Rate</strong></td><td style="text-align: left"><code>5,000 fetches/s</code> with <code>95%</code> local DNS cache hit rate (respecting TTLs)</td><td style="text-align: left"><code>~250</code> external recursive DNS lookups/s</td></tr>
+</tbody>
+</table>
 </div>
-
-<h2 id="the-api"><a class="header" href="#the-api">The API</a></h2>
-<p>A crawler has few callers. An operator supplies starting addresses and rules, and a
-consumer reads what has been fetched, in pages, by a cursor.</p>
-<p><strong>Give starting addresses</strong></p>
-<pre><code class="language-http">POST /v1/seeds HTTP/1.1
+<h2 id="232-external-api-and-data-contracts"><a class="header" href="#232-external-api-and-data-contracts">23.2 External API and Data Contracts</a></h2>
+<p>The crawler exposes a narrow internal control API for operators to manage seeds and host budgets, and a pull-based monotonic change feed for downstream search indexers.</p>
+<h3 id="seed-injection-endpoint"><a class="header" href="#seed-injection-endpoint">Seed Injection Endpoint</a></h3>
+<pre><code class="language-http">POST /v1/seeds HTTP/2
 Host: crawler.internal
+Authorization: Bearer ops_eyJhbGci...
 Content-Type: application/json
 
-{ "addresses": ["https://news.example/", "https://shop.example/"] }
+{
+  "crawl_id": "web-2026-10",
+  "seeds": [
+    { "url": "https://news.example/", "priority": 1, "max_depth": 4 },
+    { "url": "https://docs.example/", "priority": 2, "max_depth": 6 }
+  ]
+}
 </code></pre>
-<pre><code class="language-http">HTTP/1.1 202 Accepted
+<pre><code class="language-http">HTTP/2 202 Accepted
 Content-Type: application/json
 
-{ "accepted": 2 }
+{
+  "crawl_id": "web-2026-10",
+  "accepted": 2,
+  "rejected_invalid": 0
+}
 </code></pre>
-<p>The status is <code>202</code>, since the addresses have been taken into the frontier and
-nothing has yet been fetched.</p>
-<p><strong>Set the rules for a host</strong></p>
-<pre><code class="language-http">PUT /v1/hosts/calendar.example/rules HTTP/1.1
+<h3 id="host-politeness-and-trap-guard-policy-override"><a class="header" href="#host-politeness-and-trap-guard-policy-override">Host Politeness and Trap-Guard Policy Override</a></h3>
+<pre><code class="language-http">PUT /v1/hosts/calendar.example/rules HTTP/2
 Host: crawler.internal
+Authorization: Bearer ops_eyJhbGci...
 Content-Type: application/json
 
-{ "pause_seconds": 5, "page_limit": 1000, "depth_limit": 6 }
+{
+  "min_crawl_delay_ms": 5000,
+  "max_pages_per_epoch": 1000,
+  "max_depth": 6,
+  "deny_path_regexes": ["^/calendar/[0-9]{4}-[0-9]{2}-[0-9]{2}$"]
+}
 </code></pre>
-<pre><code class="language-http">HTTP/1.1 204 No Content
+<pre><code class="language-http">HTTP/2 204 No Content
 </code></pre>
-<p><strong>Read the fetched pages</strong></p>
-<pre><code class="language-http">GET /v1/pages?after=880213&amp;limit=2 HTTP/1.1
+<h3 id="downstream-deduplicated-page-feed-endpoint"><a class="header" href="#downstream-deduplicated-page-feed-endpoint">Downstream Deduplicated Page Feed Endpoint</a></h3>
+<pre><code class="language-http">GET /v1/pages?after=880213&amp;limit=2 HTTP/2
 Host: crawler.internal
+Accept: application/json
 </code></pre>
-<pre><code class="language-http">HTTP/1.1 200 OK
+<pre><code class="language-http">HTTP/2 200 OK
 Content-Type: application/json
 
 {
   "pages": [
-    { "id": 880214, "address": "https://news.example/a", "fetched": "2026-10-14T09:00:02Z", "status": 200, "content": "/v1/pages/880214/content" },
-    { "id": 880215, "address": "https://shop.example/item-1", "fetched": "2026-10-14T09:00:03Z", "status": 200, "content": "/v1/pages/880215/content" }
+    {
+      "seq_id": 880214,
+      "canonical_url": "https://news.example/a",
+      "fetched_at": "2026-10-14T09:00:02Z",
+      "http_status": 200,
+      "etag": "\"v92a1\"",
+      "content_sha256": "e3b0c44298fc...",
+      "simhash64": "9182736455120934812",
+      "object_uri": "s3://crawl-pages/2026-10/880214.html.zst"
+    },
+    {
+      "seq_id": 880215,
+      "canonical_url": "https://shop.example/item-1",
+      "fetched_at": "2026-10-14T09:00:03Z",
+      "http_status": 200,
+      "etag": "\"itm-1\"",
+      "content_sha256": "8a91bc0241ef...",
+      "simhash64": "4019283746501928374",
+      "object_uri": "s3://crawl-pages/2026-10/880215.html.zst"
+    }
   ],
   "next_after": 880215
 }
 </code></pre>
-<h2 id="high-level-design"><a class="header" href="#high-level-design">High-level design</a></h2>
-<figure class="wide">
-<img src="figures/crawl-design.svg?v=e2b8e660" alt="A web crawler. The components are Frontier, Fetchers, Parser, Link filter, Host rules, Page store, Seen set. Step 1: The frontier hands out an address of a host that is ready. Step 2: The fetcher checks the host&#39;s rules and downloads the page. Step 3: The parser receives the page. Step 4: The page is stored. Step 5: The links of the page go to the filter. Step 6: New addresses return to the frontier.">
-<figcaption><b>Figure 23.5</b> The components and the path of a page. The steps are numbered.</figcaption>
+<h3 id="frontier-host-metadata-and-seen-set-schema"><a class="header" href="#frontier-host-metadata-and-seen-set-schema">Frontier Host Metadata and Seen-Set Schema</a></h3>
+<p>Each frontier shard maintains durable host scheduling state and page fingerprints locally in RocksDB (or partitioned relational metadata for host policies):</p>
+<pre><code class="language-sql">CREATE TABLE host_state (
+    host_name        TEXT        PRIMARY KEY,
+    shard_id         INT         NOT NULL,
+    next_ready_at    TIMESTAMPTZ NOT NULL,
+    crawl_delay_ms   INT         NOT NULL DEFAULT 1000,
+    ewma_rtt_ms      INT         NOT NULL DEFAULT 200,
+    pages_fetched    INT         NOT NULL DEFAULT 0,
+    page_budget      INT         NOT NULL DEFAULT 10000,
+    robots_fetched_at TIMESTAMPTZ,
+    robots_expires_at TIMESTAMPTZ,
+    robots_rules_raw BYTEA,
+    consecutive_err  INT         NOT NULL DEFAULT 0
+);
+</code></pre>
+<h2 id="233-high-level-architecture-control-plane-vs-data-plane"><a class="header" href="#233-high-level-architecture-control-plane-vs-data-plane">23.3 High-Level Architecture: Control Plane vs. Data Plane</a></h2>
+<p>We partition the crawler into a <strong>Control Plane</strong> that governs host ownership, compliance policies, and DNS caching, and a streaming <strong>Data Plane</strong> that executes the continuous <code>Frontier -&gt; Fetch -&gt; Parse -&gt; Deduplicate -&gt; Store</code> pipeline, as illustrated in Figure 23-2.</p>
+<figure class="diagram">
+<img src="figures/m3/ch23_architecture.svg" alt="High-Level Architecture showing Control Plane (Seed Coordinator, Host Policy and Traps, Robots and DNS Cache) and Data Plane (Politeness Frontier, Fetcher Worker Pool, External Web Hosts, HTML Parser, Content Deduplicator, URL Seen Filter, and Crawled Page Object Store and Change Feed)." />
+<figcaption><b>Figure 23-2</b> Control plane and data plane separation across consistent-hash host ownership, polite fetching, and deduplication.</figcaption>
 </figure>
+<h3 id="control-plane-responsibilities"><a class="header" href="#control-plane-responsibilities">Control Plane Responsibilities</a></h3>
+<ul>
+<li><strong>Seed Coordinator:</strong> Maintains the consistent-hash ring mapping normalized hostnames (<code>hash(host)</code>) onto Frontier shards. Adding or removing a frontier node rebalances only <code>1/N</code> of hosts while preserving single-owner politeness guarantees.</li>
+<li><strong>Host Policy and Trap Guard:</strong> Distributes operator overrides, domain authority page budgets, and regex trap rules to all parsers and frontier shards.</li>
+<li><strong>Robots and DNS Cache:</strong> Caches parsed <code>robots.txt</code> directives (24-hour TTL, honoring <code>Cache-Control</code> and negative caching on <code>404</code> for 24 hours; fail-closed backoff on <code>5xx</code>) and resolved IP addresses (honoring DNS record TTLs) so fetchers never block on external UDP resolvers.</li>
+</ul>
+<h3 id="data-plane-responsibilities"><a class="header" href="#data-plane-responsibilities">Data Plane Responsibilities</a></h3>
 <div class="table-wrapper">
 <table>
 <thead>
-<tr><th>Component</th><th>Role</th><th>State it holds</th><th>When 1 instance fails</th></tr>
+<tr><th style="text-align: left">Component</th><th style="text-align: left">State Held</th><th style="text-align: left">Failure Impact and Mitigation</th></tr>
 </thead>
 <tbody>
-<tr><td>Frontier</td><td>holds the waiting addresses, in a queue for each host</td><td>the queues and waiting times, on disk</td><td>its hosts are taken over, with their queues, by another machine</td></tr>
-<tr><td>Fetcher</td><td>downloads pages, within a time limit and a size limit</td><td>none</td><td>the address returns to the frontier</td></tr>
-<tr><td>Host rules</td><td>holds each host’s <code>robots.txt</code> and limits</td><td>a cache</td><td>the rules are fetched again</td></tr>
-<tr><td>Parser</td><td>extracts and normalises the links of a page</td><td>none</td><td>the page is parsed again</td></tr>
-<tr><td>Link filter</td><td>removes addresses that have been seen</td><td>the seen set</td><td>the set is restored from its copy</td></tr>
-<tr><td>Page store</td><td>keeps the content of every page</td><td>the pages, in an object store</td><td>as in chapter 16</td></tr>
+<tr><td style="text-align: left"><strong>Politeness Frontier (x40 Shards)</strong></td><td style="text-align: left">Disk-backed priority front queues, per-host back queues, and min-heap of <code>next_ready_at</code> times</td><td style="text-align: left">Host-partitioned with WAL replication to standby; shard crash fails over its host partitions to standby without losing discovered URLs</td></tr>
+<tr><td style="text-align: left"><strong>Fetcher Worker Pool (x300 Nodes)</strong></td><td style="text-align: left">Ephemeral in-flight HTTP/TLS sockets (thousands of async connections per node)</td><td style="text-align: left">Worker crash drops in-flight URLs; frontier tracks leased URLs with a 60-second lease timeout and re-enqueues unacknowledged URLs</td></tr>
+<tr><td style="text-align: left"><strong>HTML Parser and Normalizer (x60 Nodes)</strong></td><td style="text-align: left">Stateless streaming HTML/UTF-8 parser</td><td style="text-align: left">Crash replays page from durable fetch buffer; strict byte/nesting limits isolate malformed markup</td></tr>
+<tr><td style="text-align: left"><strong>URL Seen Filter (x8 Shards)</strong></td><td style="text-align: left">In-memory Bloom filter backed by on-disk RocksDB 128-bit URL hash table</td><td style="text-align: left">Crash reloads from replicated NVMe RocksDB shard; cross-host new URLs route in batches via Kafka to owning frontier shard</td></tr>
+<tr><td style="text-align: left"><strong>Content Deduplicator</strong></td><td style="text-align: left">Exact SHA-256 hash store + 64-bit SimHash permutation tables</td><td style="text-align: left">Prevents duplicate mirrors from entering object storage or triggering redundant downstream link expansion</td></tr>
+<tr><td style="text-align: left"><strong>Page Object Store and Change Feed</strong></td><td style="text-align: left">Compressed unique HTML artifacts (<code>s3://crawl-pages/...</code>) + append-only sequence log</td><td style="text-align: left">Erasure-coded multi-AZ object storage (Chapter 16) serves downstream indexers via cursor pagination</td></tr>
 </tbody>
 </table>
 </div>
-<h3 id="one-page-step-by-step"><a class="header" href="#one-page-step-by-step">One page, step by step</a></h3>
-<p>The steps follow the arrows of figure 23.5.</p>
+<h2 id="234-deep-dive-mercator-two-stage-politeness-frontier-and-robotstxt-compliance"><a class="header" href="#234-deep-dive-mercator-two-stage-politeness-frontier-and-robotstxt-compliance">23.4 Deep Dive: Mercator Two-Stage Politeness Frontier and <code>robots.txt</code> Compliance</a></h2>
+<p>A single FIFO frontier queue fails immediately on the live web. Because pages link heavily to other pages on the same domain, a FIFO queue produces long runs of consecutive URLs targeting one host (<code>news.example/1</code>, <code>news.example/2</code>, …). Either the crawler launches parallel requests and floods <code>news.example</code> (triggering an IP ban), or workers sit idle waiting on <code>news.example</code>’s crawl delay while thousands of other hosts sit ready behind it in the queue.</p>
+<h3 id="mercator-two-stage-frontier-architecture"><a class="header" href="#mercator-two-stage-frontier-architecture">Mercator Two-Stage Frontier Architecture</a></h3>
+<p>Following the classic Mercator architecture, we decouple <strong>what is important to crawl</strong> (priority) from <strong>when a host may be contacted</strong> (politeness) using two distinct queue stages, as depicted in Figure 23-3.</p>
+<figure class="diagram">
+<img src="figures/m3/ch23_politeness_frontier.svg" alt="Mercator Two-Stage Frontier showing Stage 1 Priority Front Queues (P1 High, P2 Med, P3 Low) feeding through a Biased Selector into Stage 2 Per-Host Back Queues (B1, B2, B3) coordinated by a Host-to-Queue Table and a Min-Heap ordered by Next Fetch Time." />
+<figcaption><b>Figure 23-3</b> Mercator two-stage frontier combining priority front queues with per-host back queues and a politeness min-heap.</figcaption>
+</figure>
 <ol>
-<li>The frontier hands a fetcher the next address of a host whose waiting time has passed, and moves that host’s time forward.</li>
-<li>The fetcher consults the rules of the host. If the address is excluded, it is dropped. Otherwise the fetcher downloads the page, giving up if the server is too slow or the page too large.</li>
-<li>The page passes to the parser.</li>
-<li>The content is given a checksum. If no page with that checksum has been stored, the page is stored.</li>
-<li>The parser extracts the links, normalises them, and passes them to the link filter.</li>
-<li>The filter drops every address that is in the seen set, adds the others to the set, and sends them to the frontier, where each joins the queue of its host.</li>
+<li><strong>Stage 1: Priority Front Queues (<code>F</code> Queues):</strong> Incoming unseen URLs are scored by a <strong>URL Prioritizer</strong> using domain authority (in-link count / PageRank), expected freshness (news homepages vs. static archives), and shallow path depth, then appended to one of <code>F</code> disk-backed priority queues (<code>P1</code> High through <code>PF</code> Low). A <strong>Biased Selector</strong> draws from <code>P1</code> far more frequently than from <code>PF</code> (for example, weighted probabilities <code>0.6 / 0.3 / 0.1</code>), preventing starvation of low-priority URLs while favoring high-value pages.</li>
+<li><strong>Stage 2: Per-Host Back Queues (<code>B</code> Queues) and Min-Heap:</strong> The frontier maintains <code>B</code> active back queues (typically <code>B = 3x</code> to <code>5x</code> the number of fetcher threads per shard), enforcing one strict invariant: <strong>every non-empty back queue contains URLs belonging to exactly one origin host</strong>. A <strong>Host-to-Queue Table</strong> maps <code>host -&gt; back_queue_id</code>, and a <strong>Min-Heap</strong> orders all active back queues by their earliest legal fetch timestamp <code>next_ready_at</code>.</li>
+<li><strong>Polite Dispatch Loop:</strong> When a fetcher worker asks for work, the frontier pops the root of the min-heap (<code>B1</code>, ready at <code>t = 10.0 s</code>). If <code>now &lt; B1.next_ready_at</code>, the worker sleeps until <code>10.0 s</code> (in practice, with <code>10,000+</code> hosts, the root is always immediately ready). The frontier pops one URL from <code>B1</code>, hands it to the fetcher, and computes the next allowed timestamp dynamically from the server’s own response time:
+<pre><code class="language-text">next_ready_at = fetch_complete_time + max(min_crawl_delay_ms, 10 * last_rtt_ms)
+</code></pre>
+Multiplying observed response latency by <code>10</code> automatically slows down against struggling small servers while moving briskly across well-provisioned origins. If a host returns HTTP <code>429 Too Many Requests</code> or <code>503 Service Unavailable</code>, the frontier respects any <code>Retry-After</code> header and applies exponential backoff (<code>2x</code> per failure up to 24 hours). When <code>B1</code> empties, the frontier pulls from the Biased Selector until a fresh host populates <code>B1</code>.</li>
 </ol>
-<h2 id="the-design-deployed"><a class="header" href="#the-design-deployed">The design, deployed</a></h2>
-<figure class="wide">
-<img src="figures/crawl-deploy.svg?v=97f125a6" alt="The crawler, deployed. Control: Operator (1 crawl), seeds and rules. Crawling: Frontier machines (x 40), hosts assigned by hash, Fetchers (x 300), many connections each, Resolver cache (x 6), names to addresses. Processing: Parsers (x 60), links, checksums, Seen set (x 8), hashes or a filter, Link queue (x 6), to the owning machine. Storage: Page store (1 PB), an object store.">
-<figcaption><b>Figure 23.6</b> The crawler as it is deployed: frontier machines that each own a set of hosts, and the fetching and processing tiers around them.</figcaption>
+<p>Advance through the interactive step-by-step trace below to observe how per-host queues and a 2-second host interval keep fetchers busy across three hosts without ever violating politeness.</p>
+<figure class="steps" data-prefix="figures/steps-crawl-frontier" data-count="5" data-version="53461153">
+<img src="figures/steps-crawl-frontier-01.svg?v=53461153" alt="A frontier with 1 queue for each host, step 1 of 5. The crawl starts from 1 address. The frontier keeps a separate queue for every host, and each host may be asked once every 2 seconds.">
+<figcaption><b>Figure 23.1</b> A crawl of 3 hosts, each of which may be asked once every 2 seconds. Use Next and Back to move through the 5 steps.</figcaption>
 </figure>
-<p>A crawler has no users in the ordinary sense, and its deployment is that of a
-pipeline. The 40 frontier machines are the heart of it. Each owns the hosts whose
-names hash to it, and holds their queues on disk. The 300 fetchers are stateless and
-hold thousands of connections each. Parsers, the seen set and the queue that
-forwards links to the machine owning their host form the processing tier, and the
-pages themselves go to an object store. Since the frontier is the only state that
-cannot be rebuilt quickly, it is the part that is replicated.</p>
-<h2 id="how-real-systems-do-it"><a class="header" href="#how-real-systems-do-it">How real systems do it</a></h2>
-<p>The frontier of this chapter, with queues by priority feeding queues by host, is
-the design of Mercator, a crawler built at Compaq and described in 1999. Mercator’s
-paper names the 2 stages the front queues and the back queues, keeps exactly 1 back
-queue for each host being crawled, and holds a heap of the times at which each host
-may next be contacted. The paper on the original Google crawler, of the year before,
-describes a simpler arrangement and is of interest chiefly for its account of what
-went wrong when a crawler first met the real web.</p>
-<p>How far a single machine can be taken was shown by IRLbot, which crawled over 6
-billion pages in 41 days from 1 server. Its paper is largely about the 2 problems
-that this chapter treats under the seen set and the endless site. For the first it
-replaces the in-memory set by a structure on disk that checks addresses in large
-sorted batches. For the second it gives each site a budget that depends on how many
-other sites link to it, which is the allowance described above, and it argues that
-without such a budget any crawler at scale is eventually captured by sites that
-generate pages without end.</p>
-<p>The fingerprint under which similar pages receive similar values is <em>simhash</em>.
-Google described using it on a collection of 8 billion pages, with fingerprints of
-64 bits, treating 2 pages as near duplicates when their fingerprints differ in at
-most 3 bits, and the paper’s main contribution is a way of finding all fingerprints
-within that distance of a given one without comparing it with every other.</p>
-<p>The convention of <code>robots.txt</code>, in use since 1994, was written down as a standard
-only in 2022. And the scheduling of revisits according to observed rates of change
-goes back to a study which showed, among other things, that revisiting every page
-equally often keeps a collection fresher than revisiting each in proportion to how
-often it changes, since pages that change constantly can never be kept fresh and
-absorb the effort.</p>
-<h2 id="mistakes-to-avoid"><a class="header" href="#mistakes-to-avoid">Mistakes to avoid</a></h2>
+<h3 id="host-ownership-sharding-and-robotstxt-compliance"><a class="header" href="#host-ownership-sharding-and-robotstxt-compliance">Host-Ownership Sharding and <code>robots.txt</code> Compliance</a></h3>
+<p>Enforcing politeness locally on each machine breaks if two frontier nodes hold queues for <code>news.example</code> simultaneously, doubling its incoming request rate. Partitioning frontier shards strictly by <code>consistent_hash(origin_host)</code> guarantees a single authoritative scheduler and <code>robots.txt</code> cache entry per host. Because <code>80%</code> to <code>85%</code> of hyperlinks on a web page point to other pages on the <strong>same</strong> host, host partitioning also minimizes cross-node network forwarding: only the remaining <code>15%</code> to <code>20%</code> of cross-host links travel through Kafka batches to remote shards.</p>
+<p>Before fetching any path on a newly encountered host, the fetcher requests <code>https://{host}/robots.txt</code> with an identifiable <code>User-Agent</code> string and contact URL, obeying RFC 9309 longest-match <code>Allow</code>/<code>Disallow</code> prefix precedence:</p>
+<ul>
+<li><code>2xx</code>: Parse directives and cache for 24 hours (or <code>Cache-Control</code> max-age).</li>
+<li><code>4xx</code> (including <code>404 Not Found</code>): Assume full crawl permission and negative-cache for 24 hours.</li>
+<li><code>5xx</code> or timeout: Assume temporary disallow (fail closed) and retry with exponential backoff so the crawler never hammers an unhealthy origin.</li>
+</ul>
+<h2 id="235-deep-dive-url-deduplication-simhash-near-duplicates-and-spider-trap-defenses"><a class="header" href="#235-deep-dive-url-deduplication-simhash-near-duplicates-and-spider-trap-defenses">23.5 Deep Dive: URL Deduplication, SimHash Near-Duplicates, and Spider-Trap Defenses</a></h2>
+<h3 id="url-canonicalization-and-hybrid-bloom-filter--rocksdb-seen-set"><a class="header" href="#url-canonicalization-and-hybrid-bloom-filter--rocksdb-seen-set">URL Canonicalization and Hybrid Bloom Filter + RocksDB Seen Set</a></h3>
+<p>Before checking whether a discovered link has already been queued, the parser applies deterministic <strong>URL canonicalization</strong>: lowercasing scheme and host, stripping default ports (<code>:80</code>, <code>:443</code>), removing URL fragments (<code>#section</code>), resolving relative dot-segments (<code>/a/../b -&gt; /b</code>), sorting query parameters lexicographically, and stripping known tracking parameters (<code>utm_*</code>, <code>fbclid</code>, <code>sessionid</code>).</p>
+<p>Checking <code>50,000+</code> extracted links per second against 10 billion seen URLs (<code>~800 GB</code> as raw 80-byte strings) exceeds single-node RAM. We resolve this with a two-tier sharded lookup (partitioned by <code>hash(host)</code> so every shard validates its own host’s links locally):</p>
+<ol>
+<li><strong>Tier 1: In-Memory Sharded Bloom Filter (<code>12.5 GB</code> total across 8 shards at <code>10 bits/URL</code>):</strong> Answers “definitely unseen” in under <code>100 ns</code> with zero disk I/O. If the crawl tolerates missing <code>~0.8%</code> of new URLs due to Bloom false positives, the filter alone suffices.</li>
+<li><strong>Tier 2: On-Disk RocksDB 128-Bit Hash Table (<code>160 GB</code> NVMe SSD):</strong> For exact deduplication (<code>0%</code> false-positive drops), any positive Bloom hit probes the local RocksDB LSM-tree keyed by <code>xxHash128(canonical_url)</code>. Because most newly discovered links on the web are duplicates, batching RocksDB point lookups and keeping an LRU cache of hot URLs (such as site navigation links appearing on every page) eliminates <code>&gt; 90%</code> of SSD reads.</li>
+</ol>
+<h3 id="exact-checksums-and-64-bit-simhash-near-duplicate-detection"><a class="header" href="#exact-checksums-and-64-bit-simhash-near-duplicate-detection">Exact Checksums and 64-Bit SimHash Near-Duplicate Detection</a></h3>
+<p>Roughly <code>25%</code> to <code>30%</code> of fetched web pages duplicate content already stored under another URL (<code>http</code> vs. <code>https</code>, <code>www</code> vs. apex domain, printer-friendly views, syndicated articles). Exact duplicates are caught immediately by hashing normalized body text with SHA-256.</p>
+<p>Near-duplicates, however, differ slightly in timestamps, ad banners, or view counters, causing cryptographic hashes like SHA-256 to diverge completely. Following Google’s Manku et al. algorithm, we compute a locality-sensitive <strong>64-bit SimHash fingerprint</strong> for every fetched document:</p>
+<ol>
+<li>Extract overlapping word shingles (for example, 3-word n-grams) from the visible text and assign TF-IDF weights.</li>
+<li>Hash each shingle to a 64-bit integer; maintain a 64-element float vector <code>V</code>, adding <code>+weight</code> to <code>V[i]</code> if bit <code>i</code> of the hash is <code>1</code>, or <code>-weight</code> if <code>0</code>.</li>
+<li>Collapse <code>V</code> into a 64-bit fingerprint <code>F</code> where bit <code>i = 1</code> if <code>V[i] &gt; 0</code>, else <code>0</code>.</li>
+<li><strong>Near-Duplicate Index Lookup (Hamming Distance <code>&lt;= 3</code>):</strong> Two pages whose 64-bit fingerprints differ in at most <code>k = 3</code> bit positions are classified as near-duplicates. Comparing against 10 billion fingerprints linearly is infeasible; instead, by the pigeonhole principle, partitioning each 64-bit fingerprint into <code>4</code> blocks of <code>16</code> bits (or <code>6</code> blocks across permuted sorted tables) guarantees that any two fingerprints with Hamming distance <code>&lt;= 3</code> share at least one <strong>exact</strong> 16-bit prefix block. Probing 4 sorted permutation tables reduces candidate comparisons from billions to a handful of entries in microseconds.</li>
+</ol>
+<h3 id="spider-trap-containment-and-adaptive-revisit-scheduling"><a class="header" href="#spider-trap-containment-and-adaptive-revisit-scheduling">Spider-Trap Containment and Adaptive Revisit Scheduling</a></h3>
+<p>Dynamically generated websites create infinite URL spaces: online calendars linking <code>day-1 -&gt; day-2 -&gt; ...</code> forever, e-commerce faceted filter permutations (<code>?color=red&amp;size=m&amp;sort=asc</code>), or symlinks causing recursive path loops (<code>/a/b/a/b/a/b/...</code>). Because no algorithm can decide in general whether an arbitrary web server generates an infinite graph, we enforce four orthogonal hard bounds:</p>
+<ol>
+<li><strong>Per-Host Authority-Weighted Page Budget (IRLbot Model):</strong> Every host receives a finite page budget per crawl epoch proportional to its external in-degree (number of distinct referring domains), preventing low-authority traps from consuming crawler capacity.</li>
+<li><strong>Depth and URL-Length Limits:</strong> Cap link-hop depth from the host root (default <code>max_depth = 8</code>), maximum URL length (<code>2,048</code> bytes), and repeated path segments (reject any URL where a path component repeats <code>&gt;= 3</code> times).</li>
+<li><strong>Hard Fetch Resource Limits:</strong> Enforce strict TCP connect (<code>3 s</code>), total download (<code>10 s</code>), max payload (<code>10 MB</code>), and redirect hop (<code>&lt;= 5</code>) limits to block slow-loris and gzip-bomb traps.</li>
+<li><strong>Adaptive Revisit Scheduling:</strong> Rather than revisiting every page uniformly or strictly proportional to change frequency (Cho and Garcia-Molina proved that proportional revisiting wastes budget on ultra-volatile pages that grow stale immediately), we schedule conditional revisits (<code>If-None-Match: "&lt;etag&gt;"</code>) prioritizing moderate-change, high-importance pages, confirming unchanged documents via lightweight <code>304 Not Modified</code> responses.</li>
+</ol>
+<h2 id="236-failure-modes-slis-and-production-systems"><a class="header" href="#236-failure-modes-slis-and-production-systems">23.6 Failure Modes, SLIs, and Production Systems</a></h2>
+<h3 id="failure-and-recovery-matrix"><a class="header" href="#failure-and-recovery-matrix">Failure and Recovery Matrix</a></h3>
 <div class="table-wrapper">
 <table>
 <thead>
-<tr><th>Mistake</th><th>What goes wrong</th><th>What to do</th></tr>
+<tr><th style="text-align: left">Failure Scenario</th><th style="text-align: left">Blast Radius</th><th style="text-align: left">Automated Recovery and Preserved Invariant</th></tr>
 </thead>
 <tbody>
-<tr><td>1 queue for all addresses</td><td>The crawler either overloads a site or waits on 1 host while thousands are ready.</td><td>Keep a queue and a waiting time for every host.</td></tr>
-<tr><td>Enforcing politeness separately on each machine</td><td>A host served by 2 machines receives twice the permitted load.</td><td>Assign each host to exactly 1 machine.</td></tr>
-<tr><td>Ignoring <code>robots.txt</code></td><td>The crawler is blocked, and fetches pages of no value.</td><td>Fetch and cache the rules of each host before anything else.</td></tr>
-<tr><td>Comparing addresses as raw strings</td><td>The same page is fetched under many spellings.</td><td>Normalise every address before checking the seen set.</td></tr>
-<tr><td>Detecting duplicates by address only</td><td>The same article is stored from many addresses.</td><td>Compare checksums of content, and fingerprints for near duplicates.</td></tr>
-<tr><td>Following every link without limit</td><td>A calendar or a set of filters occupies the crawler for ever.</td><td>Limit the pages and the depth for each host.</td></tr>
-<tr><td>No limit on time or size of a download</td><td>1 slow or endless response holds a fetcher indefinitely.</td><td>Give every download a time limit and a size limit.</td></tr>
-<tr><td>The frontier in memory only</td><td>A restart loses days of discovery.</td><td>Keep the frontier on disk.</td></tr>
-<tr><td>Asking the resolver for every request</td><td>Name resolution becomes the bottleneck.</td><td>Cache resolved names.</td></tr>
-<tr><td>Revisiting every page equally often</td><td>Capacity is spent on pages that never change.</td><td>Revisit according to how often each page has changed.</td></tr>
-<tr><td>Persisting when a host returns errors</td><td>The host is pushed further into overload, and blocks the crawler.</td><td>Lengthen the pause for a host that answers with errors or <code>429</code>.</td></tr>
+<tr><td style="text-align: left"><strong>Fetcher Worker Crashes Mid-Download</strong></td><td style="text-align: left">In-flight URLs on 1 worker</td><td style="text-align: left">Frontier lease (<code>60 s</code>) expires without completion ACK; URL returns to host back queue for retry</td></tr>
+<tr><td style="text-align: left"><strong>Frontier Shard Machine Crash</strong></td><td style="text-align: left"><code>1/40</code> of origin hosts pause briefly</td><td style="text-align: left">Replicated WAL promotes standby shard owning those host partitions; zero loss of discovered queue state</td></tr>
+<tr><td style="text-align: left"><strong>Target Origin Returns <code>429</code> or <code>503</code></strong></td><td style="text-align: left">Single external origin host</td><td style="text-align: left">Frontier honors <code>Retry-After</code> and exponentially increases <code>crawl_delay_ms</code>; after 5 consecutive failures, quarantines host for 24 hours</td></tr>
+<tr><td style="text-align: left"><strong>Infinite Calendar or Faceted Filter Trap</strong></td><td style="text-align: left">Single origin host</td><td style="text-align: left">Per-host <code>page_budget</code>, <code>max_depth</code>, and path-repetition guards halt expansion before frontier disk fills</td></tr>
+<tr><td style="text-align: left"><strong>Malformed HTML or Gzip Decompression Bomb</strong></td><td style="text-align: left">Single fetch task</td><td style="text-align: left">Streaming byte-counter aborts download at <code>10 MB</code> decompressed limit; sandboxed parser drops corrupt document without crashing worker</td></tr>
+<tr><td style="text-align: left"><strong>External Recursive DNS Slowdown</strong></td><td style="text-align: left">Fetcher connection setup</td><td style="text-align: left">Dedicated in-cluster DNS Resolver Cache absorbs <code>95%+</code> of lookups; circuit breaker pauses uncached host resolution rather than exhausting worker threads</td></tr>
 </tbody>
 </table>
 </div>
-<h2 id="failures"><a class="header" href="#failures">Failures</a></h2>
+<h3 id="operational-slis-and-slos"><a class="header" href="#operational-slis-and-slos">Operational SLIs and SLOs</a></h3>
+<p>Four domain-specific Service Level Indicators govern crawl efficiency and external safety:</p>
+<ol>
+<li><strong>Per-Host Politeness Violation Rate:</strong> Audit metric verifying zero inter-request intervals below <code>min_crawl_delay_ms</code> or <code>robots.txt</code> <code>Disallow</code> violations (<code>SLO = 0.000%</code>, <code>SEV-1</code> on any violation).</li>
+<li><strong>Useful-Byte Yield (Unique / Total Fetched Ratio):</strong> Percentage of fetched bytes passing exact SHA-256 and SimHash deduplication (<code>target &gt;= 65%</code>); sudden drops signal an uncontained spider trap or URL normalization regression.</li>
+<li><strong>Frontier Queue Starvation and Active Host Count:</strong> Tracks number of distinct ready hosts in the min-heap (<code>target &gt;= 10,000</code> active hosts) and fetcher thread utilization.</li>
+<li><strong>HTTP Status Distribution (<code>2xx</code> / <code>304</code> / <code>4xx</code> / <code>429</code> / <code>5xx</code>):</strong> Rising <code>429</code> or <code>403</code> share signals overly aggressive default crawl delays or IP reputation issues requiring immediate pacing adjustment.</li>
+</ol>
+<h3 id="how-production-systems-implement-web-crawling"><a class="header" href="#how-production-systems-implement-web-crawling">How Production Systems Implement Web Crawling</a></h3>
 <div class="table-wrapper">
 <table>
 <thead>
-<tr><th>Failure</th><th>What is observed</th><th>How the system recovers</th></tr>
+<tr><th style="text-align: left">Production System</th><th style="text-align: left">Core Architecture</th><th style="text-align: left">Architectural Distinction</th></tr>
 </thead>
 <tbody>
-<tr><td>A fetcher crashes during a download</td><td>the page is not stored</td><td>the address was not removed from its queue until the page was stored, and is fetched again</td></tr>
-<tr><td>A crawler machine is lost</td><td>its hosts are not crawled for a time</td><td>its hosts and their queues pass to other machines</td></tr>
-<tr><td>A host does not respond</td><td>downloads to it time out</td><td>its pause is lengthened, and after repeated failures it is set aside for a day</td></tr>
-<tr><td>A page is enormous or never ends</td><td>the download is cut off</td><td>the size limit and the time limit end it</td></tr>
-<tr><td>The seen set gives a false “seen”</td><td>a new address is not fetched</td><td>accepted, as a known property of the filter</td></tr>
-<tr><td>A site blocks the crawler</td><td>every request is refused</td><td>the host is set aside, and an operator is informed</td></tr>
+<tr><td style="text-align: left"><strong>Googlebot</strong></td><td style="text-align: left">Massively distributed host-partitioned crawler with adaptive crawl-budget optimization, SimHash near-dedup, and decoupled Chromium Evergreen JS rendering pipeline</td><td style="text-align: left">Dynamically computes per-host crawl capacity from live error/latency telemetry and splits fast static HTML fetching from GPU/CPU-intensive JavaScript rendering</td></tr>
+<tr><td style="text-align: left"><strong>Mercator (Compaq SRC)</strong></td><td style="text-align: left">Two-stage frontier (priority front queues + per-host back queues + politeness min-heap) with disk-backed URL-seen batching</td><td style="text-align: left">Defined the canonical politeness frontier data structure still used across modern large-scale crawlers</td></tr>
+<tr><td style="text-align: left"><strong>IRLbot (Texas A&amp;M)</strong></td><td style="text-align: left">Single-server extreme-efficiency crawler using disk-based DRUM (Disk Repository with Update Management) batch seen-set checks and STAR domain-budgeting</td><td style="text-align: left">Crawled 6.38 billion pages in 41 days from a single machine, demonstrating that authority-weighted per-domain budgets are essential to defeat spider traps</td></tr>
+<tr><td style="text-align: left"><strong>Common Crawl (Apache Nutch / StormCrawler)</strong></td><td style="text-align: left">Open-source distributed politeness-partitioned crawler publishing petabyte-scale monthly WARC archives on S3</td><td style="text-align: left">Exposes public, standardized WARC/WET crawl snapshots with strict RFC 9309 compliance for open web research and ML corpora</td></tr>
 </tbody>
 </table>
 </div>
-<h2 id="trade-offs"><a class="header" href="#trade-offs">Trade-offs</a></h2>
-<div class="table-wrapper">
-<table>
-<thead>
-<tr><th>Decision</th><th>What it gains</th><th>What it costs</th></tr>
-</thead>
-<tbody>
-<tr><td>A queue for every host</td><td>politeness without idleness</td><td>a frontier that is large and complicated</td></tr>
-<tr><td>Hosts assigned to machines by hash</td><td>politeness enforced in 1 place</td><td>links to other hosts have to be forwarded</td></tr>
-<tr><td>A Bloom filter for the seen set</td><td>a tenth of the memory</td><td>about 1 new address in 100 is missed</td></tr>
-<tr><td>Limits for each host</td><td>traps cannot hold the crawler</td><td>a large legitimate site may be cut short</td></tr>
-<tr><td>Revisits according to past change</td><td>fresh copies of what changes</td><td>stale copies of pages that change unexpectedly</td></tr>
-</tbody>
-</table>
-</div>
-<h2 id="the-simulation"><a class="header" href="#the-simulation">The simulation</a></h2>
+<h2 id="237-simulation-verification"><a class="header" href="#237-simulation-verification">23.7 Simulation Verification</a></h2>
+<p>To verify per-host politeness scheduling, URL-seen deduplication, and per-host spider-trap page budgets, execute the <code>crawlsim</code> crate in the repository’s <code>code/</code> workspace:</p>
+<pre><code class="language-console">$ cargo run --release -p crawlsim
+t= 0  fetch news/
+t= 1  fetch calendar/day-1, shop/
+t= 2  fetch news/a
+t= 3  fetch calendar/day-2, shop/item-1
+t= 4  fetch news/b
+t= 5  fetch calendar/day-3, shop/item-2
+t= 7  fetch calendar/day-4
+pages fetched: 10
+links to addresses already seen: 7
+links not followed because a host had given 4 pages: 1
+</code></pre>
+<p>The observed transcript confirms all three core crawler invariants across three hosts (<code>news</code>, <code>calendar</code>, <code>shop</code>) configured with a 2-second per-host politeness interval and a 4-page per-host trap budget:</p>
+<ul>
+<li><strong>Zero politeness violations:</strong> <code>news</code> is fetched strictly at <code>t = 0, 2, 4</code>; <code>calendar</code> at <code>t = 1, 3, 5, 7</code>; and <code>shop</code> at <code>t = 1, 3, 5</code>. No host is ever contacted twice within 2 seconds, while fetchers remain busy across interleaved hosts.</li>
+<li><strong>URL deduplication:</strong> <code>7</code> links pointing to already-discovered URLs are filtered out cleanly before re-entering the frontier.</li>
+<li><strong>Spider-trap containment:</strong> The infinite <code>calendar/day-1 -&gt; day-2 -&gt; day-3 -&gt; day-4 -&gt; day-5</code> chain terminates cleanly at <code>calendar/day-4</code>, dropping <code>day-5</code> (<code>1</code> link blocked by the 4-page host cap).</li>
+</ul>
 <div class="simulation">
-<p><strong>Simulation in the repository.</strong> The program <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/distributed-systems-from-the-ground-up/code/crawlsim/src/main.rs"><code>code/crawlsim</code></a> simulates this design. To run it, clone the repository and type <code>cargo run --release -p crawlsim</code> in the <code>code</code> directory.</p>
+<p><strong>Run the web crawler simulation.</strong> Execute <code>cargo run --release -p crawlsim</code> in <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/distributed-systems-from-the-ground-up/code/crawlsim/src/main.rs"><code>code/crawlsim</code></a> to reproduce per-host 2-second politeness scheduling, URL deduplication (<code>7</code> duplicates filtered), and infinite calendar trap termination at 4 pages.</p>
 </div>
 
-<h2 id="references"><a class="header" href="#references">References</a></h2>
-<ul>
-<li>A. Heydon and M. Najork, “Mercator: A Scalable, Extensible Web Crawler”, World Wide Web, 1999.</li>
-<li>S. Brin and L. Page, “The Anatomy of a Large-Scale Hypertextual Web Search Engine”, WWW 1998.</li>
-<li>H. Lee, D. Leonard, X. Wang and D. Loguinov, “IRLbot: Scaling to 6 Billion Pages and Beyond”, WWW 2008.</li>
-<li>G. Manku, A. Jain and A. Das Sarma, “Detecting Near-Duplicates for Web Crawling”, WWW 2007.</li>
-<li>RFC 9309, <em>Robots Exclusion Protocol</em>, 2022.</li>
-<li>J. Cho and H. Garcia-Molina, “Effective Page Refresh Policies for Web Crawlers”, ACM Transactions on Database Systems, 2003.</li>
-</ul>
-<h2 id="terms-introduced-in-this-chapter"><a class="header" href="#terms-introduced-in-this-chapter">Terms introduced in this chapter</a></h2>
+<h2 id="238-terminology-and-references"><a class="header" href="#238-terminology-and-references">23.8 Terminology and References</a></h2>
+<h3 id="engineering-glossary"><a class="header" href="#engineering-glossary">Engineering Glossary</a></h3>
 <div class="table-wrapper">
 <table>
 <thead>
-<tr><th>Term</th><th>Meaning</th></tr>
+<tr><th style="text-align: left">Term</th><th style="text-align: left">Definition</th></tr>
 </thead>
 <tbody>
-<tr><td>Crawler</td><td>a program that fetches pages and follows their links</td></tr>
-<tr><td>Frontier</td><td>the addresses that are known and have yet to be fetched</td></tr>
-<tr><td>Seed</td><td>an address from which a crawl starts</td></tr>
-<tr><td>Host</td><td>the server named in an address, to which politeness applies</td></tr>
-<tr><td>Politeness</td><td>limiting the rate of requests to each host</td></tr>
-<tr><td><code>robots.txt</code></td><td>a file in which a site states what crawlers are asked to leave alone</td></tr>
-<tr><td>Normalisation</td><td>bringing an address to a standard form</td></tr>
-<tr><td>Seen set</td><td>the set of every address that has been added to the frontier</td></tr>
-<tr><td>Bloom filter</td><td>a compact set that can be wrong only by reporting an absent item as present</td></tr>
-<tr><td>Near duplicate</td><td>a page that differs only slightly from another</td></tr>
-<tr><td>Crawler trap</td><td>a part of a site that produces pages without end</td></tr>
-<tr><td>Revisit</td><td>fetching a page again to learn whether it has changed</td></tr>
+<tr><td style="text-align: left"><strong>Bloom Filter</strong></td><td style="text-align: left">A compact probabilistic bit-array set membership structure (<code>~10 bits/element</code>) with zero false negatives and a tunable low false-positive rate.</td></tr>
+<tr><td style="text-align: left"><strong>Mercator Frontier</strong></td><td style="text-align: left">A two-stage URL scheduler combining priority front queues (deciding crawl importance) with per-host back queues and a next-fetch min-heap (enforcing politeness).</td></tr>
+<tr><td style="text-align: left"><strong>Politeness Constraint</strong></td><td style="text-align: left">Restricting crawler concurrency to at most one active request per origin host separated by a minimum crawl delay so external servers are never overloaded.</td></tr>
+<tr><td style="text-align: left"><strong>Robots Exclusion Protocol (<code>robots.txt</code>)</strong></td><td style="text-align: left">Standardized site-root directives (RFC 9309) specifying disallowed URL paths and crawler policies that compliant crawlers fetch and cache prior to crawling.</td></tr>
+<tr><td style="text-align: left"><strong>SimHash</strong></td><td style="text-align: left">A locality-sensitive 64-bit document fingerprint in which near-duplicate pages differ in at most a few bits (small Hamming distance), enabling fast mirror detection.</td></tr>
+<tr><td style="text-align: left"><strong>Spider Trap (Crawler Trap)</strong></td><td style="text-align: left">A dynamically generated or cyclical URL structure (such as an infinite calendar or faceted filter graph) capable of producing unbounded distinct URLs.</td></tr>
+<tr><td style="text-align: left"><strong>URL Canonicalization</strong></td><td style="text-align: left">Normalizing case, default ports, relative paths, fragments, and query parameter order so equivalent URLs map to a single canonical key.</td></tr>
 </tbody>
 </table>
 </div>
-<div class="summary">
-<h2 id="summary"><a class="header" href="#summary">Summary</a></h2>
+<h3 id="references"><a class="header" href="#references">References</a></h3>
 <ul>
-<li>A crawler repeats 4 steps: take an address, fetch the page, extract its links, and add the new ones to the frontier.</li>
-<li>Each host may be asked only at intervals, so the frontier keeps a queue and a waiting time for every host.</li>
-<li>The speed of a crawl comes from the number of hosts in hand, and no single site can be crawled quickly.</li>
-<li>Addresses are normalised and checked against a seen set, which may be a Bloom filter where a small loss is acceptable.</li>
-<li>Duplicate content is found by checksum, and near duplicates by fingerprints that are similar for similar pages.</li>
-<li>Endless sites cannot be detected, and are contained by limits on pages and depth for every host.</li>
-<li>Each host is assigned to 1 machine, so that politeness is enforced in a single place.</li>
-<li>Pages are revisited at intervals that depend on how often they have been found changed.</li>
+<li>A. Heydon and M. Najork, “Mercator: A Scalable, Extensible Web Crawler”, <em>World Wide Web Journal</em>, vol. 2, no. 4, 1999.</li>
+<li>S. Brin and L. Page, “The Anatomy of a Large-Scale Hypertextual Web Search Engine”, <em>Proceedings of WWW</em>, 1998.</li>
+<li>H. T. Lee, D. Leonard, X. Wang, and D. Loguinov, “IRLbot: Scaling to 6 Billion Pages and Beyond”, <em>Proceedings of WWW</em>, 2008.</li>
+<li>G. S. Manku, A. Jain, and A. Das Sarma, “Detecting Near-Duplicates for Web Crawling”, <em>Proceedings of WWW</em>, 2007.</li>
+<li>J. Cho and H. Garcia-Molina, “Effective Page Refresh Policies for Web Crawlers”, <em>ACM Transactions on Database Systems</em>, vol. 28, no. 4, 2003.</li>
+<li>RFC 9309, <em>Robots Exclusion Protocol</em>, IETF, 2022.</li>
+<li>RFC 9110, <em>HTTP Semantics</em>, IETF, 2022 (<code>If-None-Match</code>, <code>304 Not Modified</code>, and <code>429 Too Many Requests</code>).</li>
 </ul>
-</div>
-
 
                     </main>
 
@@ -740,7 +588,7 @@ absorb the effort.</p>
         <script src="book-609e4cb8.js"></script>
 
         <!-- Custom JS scripts -->
-        <script src="theme/figures-47b15f7f.js"></script>
+        <script src="theme/figures-9c14cb1c.js"></script>
         <script src="theme/proto-326509cd.js"></script>
         <script src="theme/code-67e9caaf.js"></script>
         <script src="theme/tables-9fb295e8.js"></script>

@@ -1,9 +1,9 @@
 <!DOCTYPE HTML>
-<html lang="en" class="light sidebar-visible" dir="ltr">
+<html lang="en" class="navy sidebar-visible" dir="ltr">
     <head>
         <!-- Book generated using mdBook -->
         <meta charset="UTF-8">
-        <title>Metrics and Monitoring - Distributed Systems from the Ground Up</title>
+        <title>24. Metrics and Monitoring Platform - Distributed Systems from the Ground Up</title>
 
 
         <!-- Custom HTML head -->
@@ -28,20 +28,18 @@
         <link rel="stylesheet" id="mdbook-ayu-highlight-css" href="ayu-highlight-3fdfc3ac.css">
 
         <!-- Custom theme stylesheets -->
-        <link rel="stylesheet" href="theme/custom-8a495b63.css">
-        <link rel="stylesheet" href="theme/formal-05bd78f0.css">
-        <link rel="stylesheet" href="theme/layout-0a0c0003.css">
+        <link rel="stylesheet" href="theme/custom-59beaf6d.css">
 
 
         <!-- Provide site root and default themes to javascript -->
         <script>
             const path_to_root = "";
-            const default_light_theme = "light";
+            const default_light_theme = "navy";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "searchindex-25bb747f.js";
+            window.path_to_searchindex_js = "searchindex-5d54d4b4.js";
         </script>
         <!-- Start loading toc.js asap -->
-        <script src="toc-cc887274.js"></script>
+        <script src="toc-ef51d47d.js"></script>
     </head>
     <body>
     <div id="mdbook-help-container">
@@ -79,7 +77,7 @@
             try { theme = localStorage.getItem('mdbook-theme'); } catch(e) { }
             if (theme === null || theme === undefined) { theme = default_theme; }
             const html = document.documentElement;
-            html.classList.remove('light')
+            html.classList.remove('navy')
             html.classList.add(theme);
             html.classList.add("js");
         </script>
@@ -183,561 +181,355 @@
 
                 <div id="mdbook-content" class="content">
                     <main>
-                        <img class="plate" src="art/ch24.svg?v=c4ca9b72" alt="An owl stands beside a sign that reads: 40, plus 2, minus 3, plus 1.">
-<h1 id="metrics-and-monitoring-system-design"><a class="header" href="#metrics-and-monitoring-system-design">Metrics and Monitoring: System Design</a></h1>
-<p>Every system in this book has been described as doing what its design says. A real
-system has also to be watched, since machines fail, software is released with
-defects, and traffic arrives in patterns that nobody foresaw. The people responsible
-need to know, at every moment, how many requests the system is receiving, how many
-of them are failing, how long they take, and how close each machine is to the limits
-of its memory and its disks. They need to see these quantities change over hours and
-weeks, and they need to be woken at night when one of them goes wrong. The system
-that provides for this is a <em>monitoring system</em>, and the numbers it collects are
-called <em>metrics</em>.</p>
-<p>A monitoring system has a peculiar workload. It receives an enormous number of very
-small writes, since every service on every machine reports dozens of numbers every
-few seconds, and those writes never stop. Its data is of a single shape, a number
-with a time attached, which permits a degree of compression that no general database
-approaches. Almost nobody reads the data, and yet when it is read, during an
-incident, the answer is wanted immediately and may span months. And the system has a
-responsibility of an unusual kind. It is the means by which every other failure is
-detected, and it must therefore go on working when the things around it do not.</p>
+                        <h1 id="chapter-24-metrics-and-monitoring-system-design"><a class="header" href="#chapter-24-metrics-and-monitoring-system-design">Chapter 24: Metrics and Monitoring: System Design</a></h1>
+<img class="plate" src="art/ch24-plate.svg" alt="Chapter 24 plate illustrating a time-series metrics and monitoring platform with sharded TSDB ingesters, Gorilla delta-of-delta compression, immutable 2-hour blocks, and isolated alerting." />
+<p>A distributed metrics and monitoring platform continuously collects numeric telemetry across tens of thousands of services, compresses billions of daily data points into specialized time-series storage, serves interactive range queries during live incidents, and pages on-call engineers when user-facing service levels degrade. Monitoring exhibits an asymmetric workload profile: continuous, relentless append-only writes of tiny <code>(timestamp, float64)</code> samples paired with sparse ad-hoc reads that suddenly spike during outages across multi-month ranges. Above all, a monitoring system carries a strict failure-isolation mandate: because engineers depend on metrics precisely when production infrastructure breaks, the telemetry plane must run on independent compute, networking, and storage so a production outage cannot silence its own alarms. In this chapter, I design a horizontally sharded time-series database (TSDB) and alerting platform incorporating pull and push ingestion, Gorilla delta-of-delta and XOR compression, inverted label-index cardinality defenses, two-hour WAL-backed head blocks compacted to immutable object storage, spike-preserving rollups, and hysteresis-guarded multi-window alert evaluation.</p>
 <div class="covers">
-<p>This chapter covers</p>
+<p>In this chapter, we cover</p>
 <ul>
-<li>what a metric is, and the 3 kinds in common use</li>
-<li>time series, and why their number is the quantity to watch</li>
-<li>whether services send their measurements or are asked for them</li>
-<li>storing a number every few seconds for a year in 2 bytes a point</li>
-<li>reducing old data to 1 point a minute, and what that loses</li>
-<li>why an average of response times misleads, and what to keep in its place</li>
-<li>alerts that wake somebody for the right reasons</li>
-<li>keeping the monitoring system alive when everything else is failing</li>
+<li>actors, use cases, verifiable functional requirements, high-availability write SLOs, explicit non-goals, and compression-adjusted capacity bounds</li>
+<li>Prometheus OpenMetrics scrape exposition, Remote Write ingestion, PromQL range-query APIs, alert rule definitions, and TSDB chunk/index schemas</li>
+<li>control-plane vs. data-plane separation across isolated target discovery, sharded TSDB ingesters, object-store compaction, query engines, and Dead-Man’s Switch watchdogs</li>
+<li>pull vs. push ingestion trade-offs, mergeable histograms vs. non-aggregatable percentiles, Gorilla delta-of-delta timestamp and XOR float64 compression, and inverted label-index cardinality defense</li>
+<li>two-hour WAL head blocks flushed to immutable object-store TSDB blocks, multi-stat downsampling rollups (<code>min</code>, <code>max</code>, <code>sum</code>, <code>count</code>), and <code>Pending -&gt; Firing</code> alert evaluation with hysteresis</li>
+<li>failure matrices, telemetry SLIs/SLOs, production architectures (Prometheus, VictoriaMetrics, Google Monarch, Grafana Mimir), and verification via <code>code/metricsim</code></li>
 </ul>
 </div>
 
-<h2 id="what-a-metric-is"><a class="header" href="#what-a-metric-is">What a metric is</a></h2>
-<p>A metric is a number, measured repeatedly, that describes some aspect of a running
-system. 3 kinds account for nearly all of them, and they behave differently enough
-that it matters which is which.</p>
-<p>A <em>counter</em> is a number that only ever increases: the requests served since the
-process started, or the bytes sent. Its value at a single moment is of no interest.
-What is wanted is its rate of change, obtained by subtracting 2 readings and dividing
-by the time between them. Counters have the great merit that nothing is lost between
-readings. If a reading is missed, the next one still includes everything that
-happened in the interval.</p>
-<p>A <em>gauge</em> is a number that rises and falls: the memory in use, the length of a queue,
-the temperature of a processor. Here the value at a moment is the thing of interest,
-and whatever it did between 2 readings is unknown. A queue that filled and emptied
-within 5 seconds leaves no trace in a gauge read every 10.</p>
-<p>A <em>histogram</em> records the distribution of a quantity that takes a different value on
-every occasion, above all the time taken to answer a request. Its treatment needs a
-section of its own, since the natural way of summarising such a quantity, by its
-average, turns out to be nearly useless.</p>
-<h2 id="time-series"><a class="header" href="#time-series">Time series</a></h2>
-<p>A measurement is identified by the name of the metric and by a set of <em>labels</em>,
-which are pairs of a key and a value saying what the measurement refers to. The
-requests served by the payments service on machine 14 with status 500 might be
-recorded as the metric <code>requests_total</code> with the labels <code>service=payments</code>,
-<code>machine=14</code> and <code>status=500</code>. The sequence of values recorded for 1 metric with 1
-particular set of label values is a <em>time series</em>.</p>
-<p>Labels are what make metrics useful, since they allow the same measurement to be
-added up or separated out along any dimension: all requests to payments, all
-requests with status 500, all requests on machine 14. They are also the principal
-hazard in the operation of a monitoring system, for a reason that follows from simple
-multiplication.</p>
-<p>Every distinct combination of label values is a separate series, to be stored and
-indexed separately. A metric with the labels service, machine and status, in a
-system with 20 services, 100 machines and 5 statuses in use, has up to 10000 series,
-which is entirely manageable. Suppose now that a well-meaning engineer adds a label
-for the identifier of the user, so as to see which users experience errors. With a
-million users, the 1 metric has up to 10 billion series. The number of series that a
-metric gives rise to is called its <em>cardinality</em>, and a single label whose values are
-unbounded, such as a user identifier, a request identifier or the full text of an
-address, is enough to exhaust the memory of the system within hours.</p>
-<p>The rule that follows is that labels must take a small and bounded number of values.
-A question about an individual user or request is a legitimate one, and it belongs
-to a different kind of system: to <em>logs</em>, which record individual events, or to
-<em>traces</em>, which follow a single request through the services it touches. Metrics
-answer questions about aggregates, and pay for their cheapness by being unable to
-answer any other kind.</p>
-<h2 id="sending-or-being-asked"><a class="header" href="#sending-or-being-asked">Sending or being asked</a></h2>
-<p>Measurements have to travel from the services to the monitoring system, and there
-are 2 ways of arranging it.</p>
-<p>Under the <em>push</em> model, each service sends its measurements to the monitoring system
-at regular intervals. Under the <em>pull</em> model, each service exposes its current values
-at an address of its own, and the monitoring system visits every service at regular
-intervals to collect them.</p>
+<h2 id="241-requirements-actors-and-capacity-bounds"><a class="header" href="#241-requirements-actors-and-capacity-bounds">24.1 Requirements, Actors, and Capacity Bounds</a></h2>
+<p>Every telemetry data point belongs to a <strong>time series</strong> uniquely identified by a metric name and a sorted set of <code>key=value</code> labels (for example, <code>http_requests_total{service="payments",az="us-east-1a",status="500"}</code>). Three metric primitives cover nearly all operational signals: <strong>counters</strong> (monotonically increasing totals from which queries derive rates across intervals, surviving missed scrapes cleanly), <strong>gauges</strong> (instantaneous point-in-time readings such as queue depth or resident memory), and <strong>histograms</strong> (cumulative counts across duration buckets that can be summed across hosts and time windows to compute exact or relative-error-bounded tail percentiles like <code>p99</code>).</p>
+<h3 id="actors-and-use-cases"><a class="header" href="#actors-and-use-cases">Actors and Use Cases</a></h3>
+<p>Three external actor classes interact across the boundary of the metrics and alerting platform, as illustrated in Figure 24-1.</p>
+<figure class="diagram">
+<img src="figures/m3/ch24_use_cases.svg" alt="Actors and Use Cases of the Time-Series Metrics and Alerting Platform: Instrumented Service exposes /metrics for scraping or pushes Remote Write samples; SRE and On-Call Engineer query aggregated series and define alert thresholds; Incident Pager receives firing alerts and dead-man heartbeats." />
+<figcaption><b>Figure 24-1</b> Actors, system boundary, and core use cases of the time-series metrics and alerting platform.</figcaption>
+</figure>
 <div class="table-wrapper">
 <table>
 <thead>
-<tr><th></th><th>Push</th><th>Pull</th></tr>
+<tr><th style="text-align: left">Actor</th><th style="text-align: left">Operation</th><th style="text-align: left">Concrete Scenario</th></tr>
 </thead>
 <tbody>
-<tr><td>Who must know whom</td><td>every service knows the address of the monitoring system</td><td>the monitoring system knows the address of every service</td></tr>
-<tr><td>A service that has died</td><td>stops sending, which looks the same as having nothing to report</td><td>fails to answer, which is itself a clear signal</td></tr>
-<tr><td>A service that lives for seconds</td><td>can report before it exits</td><td>may be gone before it is visited</td></tr>
-<tr><td>Who controls the load</td><td>the services, all at once</td><td>the monitoring system, at its own pace</td></tr>
-<tr><td>Services behind a firewall</td><td>can send outwards</td><td>cannot be reached</td></tr>
+<tr><td style="text-align: left"><strong>Instrumented Service</strong></td><td style="text-align: left">Expose <code>/metrics</code> for pull scraping or transmit Remote Write batches (<code>POST /api/v1/write</code>)</td><td style="text-align: left">Report request counters, latency histogram buckets, and memory gauges every 10 seconds across 100,000 service instances</td></tr>
+<tr><td style="text-align: left"><strong>SRE / On-Call Engineer</strong></td><td style="text-align: left">Execute range queries (<code>GET /v1/series?query=...</code>) and register alert expressions (<code>PUT /v1/alerts/{name}</code>)</td><td style="text-align: left">Inspect 6-hour <code>p99</code> checkout latency across availability zones and configure a 5-minute burn-rate error alert</td></tr>
+<tr><td style="text-align: left"><strong>Incident Pager</strong></td><td style="text-align: left">Receive grouped firing alerts and periodic dead-man’s switch heartbeats</td><td style="text-align: left">Deduplicate cascading dependency alarms into one actionable page and trigger escalation if the monitoring pipeline stalls</td></tr>
 </tbody>
 </table>
 </div>
-<p>The second row is the strongest argument for pulling. When the monitoring system
-does the asking, the absence of an answer is information, and the health of every
-service is checked as a by-product of collecting its numbers. The third row is the
-strongest argument for pushing, since a batch job that runs for 5 seconds cannot
-wait to be visited. Many installations use both, pulling from long-lived services
-and accepting pushes from short-lived ones. The design of this chapter pulls, with
-collectors that visit each service every 10 seconds.</p>
-<h2 id="storing-a-number-every-10-seconds"><a class="header" href="#storing-a-number-every-10-seconds">Storing a number every 10 seconds</a></h2>
-<p>The store receives points, each consisting of a time and a value, and must keep them
-for months. Stored plainly, as 2 numbers of 8 bytes, a point occupies 16 bytes. A
-million series sampled every 10 seconds produce 8.6 billion points a day, or 138 GB,
-and a year of that is 50 TB.</p>
-<p>Time series have 2 properties that allow far better. The points of a series arrive
-in order of time and are never modified afterwards, so that the store only ever
-appends. And successive points resemble one another closely: the times are evenly
-spaced, and the values change little from one reading to the next. A number that is
-close to its predecessor can be stored as the difference between them, and a small
-difference needs few bits.</p>
+<h3 id="functional-requirements"><a class="header" href="#functional-requirements">Functional Requirements</a></h3>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th style="text-align: left">No.</th><th style="text-align: left">Functional Requirement</th></tr>
+</thead>
+<tbody>
+<tr><td style="text-align: left">0</td><td style="text-align: left">The platform collects numeric time-series samples (counters, gauges, and cumulative histograms) from long-lived services via pull scraping and accepts pushed batches from ephemeral short-lived jobs.</td></tr>
+<tr><td style="text-align: left">1</td><td style="text-align: left">Engineers can select and aggregate arbitrary subsets of time series by label matchers (<code>service="payments"</code>, <code>status=~"5.."</code>) over any historical time window.</td></tr>
+<tr><td style="text-align: left">2</td><td style="text-align: left">The query engine computes fleet-wide latency percentiles (<code>p50</code>, <code>p95</code>, <code>p99</code>) by aggregating histogram bucket counts across instances and intervals.</td></tr>
+<tr><td style="text-align: left">3</td><td style="text-align: left">Raw samples are retained at full 10-second resolution for 15 days and automatically downsampled into 5-minute and 1-hour multi-stat rollups (<code>min</code>, <code>max</code>, <code>sum</code>, <code>count</code>) retained for 2 years.</td></tr>
+<tr><td style="text-align: left">4</td><td style="text-align: left">Engineers define PromQL-style alert rules specifying an expression, threshold, and sustained <code>for</code> duration; the evaluator suppresses transient flapping and fires absence alerts when critical series cease arriving.</td></tr>
+<tr><td style="text-align: left">5</td><td style="text-align: left">Firing alerts route through grouping, inhibition, and deduplication pipelines before paging responders, guarded by an external Dead-Man’s Switch watchdog.</td></tr>
+</tbody>
+</table>
+</div>
+<h3 id="non-functional-requirements-and-slos"><a class="header" href="#non-functional-requirements-and-slos">Non-Functional Requirements and SLOs</a></h3>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th style="text-align: left">No.</th><th style="text-align: left">Property</th><th style="text-align: left">Target Specification</th><th style="text-align: left">Architectural Consequence</th></tr>
+</thead>
+<tbody>
+<tr><td style="text-align: left">0</td><td style="text-align: left"><strong>Ingestion Scale</strong></td><td style="text-align: left"><code>10,000,000</code> active time series sampled every <code>10 s</code> (<code>1,000,000</code> samples/s sustained; <code>3,000,000</code> samples/s burst)</td><td style="text-align: left">Horizontally sharded TSDB ingesters partitioned by <code>hash(series_labels)</code> with lock-free append-only in-memory head chunks</td></tr>
+<tr><td style="text-align: left">1</td><td style="text-align: left"><strong>Query Latency</strong></td><td style="text-align: left"><code>p99 &lt;= 1.0 s</code> for 6-hour incident dashboards; <code>p99 &lt;= 3.0 s</code> for 1-year downsampled trend queries</td><td style="text-align: left">Separate read/query tier from write ingesters; route long-range queries automatically to 5-minute or 1-hour rolled-up blocks</td></tr>
+<tr><td style="text-align: left">2</td><td style="text-align: left"><strong>Freshness</strong></td><td style="text-align: left">Newly scraped samples become queryable and alert-evaluable within <code>&lt;= 30 s</code></td><td style="text-align: left">Query Engine fans out to both active RAM head blocks on ingesters and immutable historical blocks in object storage</td></tr>
+<tr><td style="text-align: left">3</td><td style="text-align: left"><strong>Availability and Isolation</strong></td><td style="text-align: left"><code>99.9%</code> write and alert availability (<code>&lt;= 43.2</code> minutes/month) with <strong>zero shared fate</strong> against monitored production systems</td><td style="text-align: left">Dedicated monitoring VPC, separate AWS/GCP account or failure zone, and independent pager egress path</td></tr>
+<tr><td style="text-align: left">4</td><td style="text-align: left"><strong>Tiered Durability</strong></td><td style="text-align: left">Tolerates losing a few seconds of un-replicated live points on crash; zero loss of flushed historical blocks (<code>11 nines</code> durability)</td><td style="text-align: left">Write-ahead log (WAL) + 2x or 3x ingester replication without synchronous cross-AZ consensus (<code>AP</code> writes); 2-hour blocks flushed to replicated object storage</td></tr>
+<tr><td style="text-align: left">5</td><td style="text-align: left"><strong>Cardinality Defense</strong></td><td style="text-align: left">Hard per-tenant active-series caps (<code>&lt;= 500,000</code> series/service) to prevent unbounded label OOM cascades</td><td style="text-align: left">Ingress distributor rejects or relabels violating series while emitting a cardinality-breach meta-metric</td></tr>
+</tbody>
+</table>
+</div>
+<h3 id="non-goals-and-explicit-scope-boundaries"><a class="header" href="#non-goals-and-explicit-scope-boundaries">Non-Goals and Explicit Scope Boundaries</a></h3>
+<p>To maintain sharp boundaries across the three pillars of observability, we exclude the following systems from the TSDB core:</p>
+<ul>
+<li><strong>Unstructured application log indexing:</strong> Per-request JSON logs containing unbounded <code>user_id</code> or <code>order_id</code> fields belong in dedicated inverted-text or columnar log stores (such as Loki, Elasticsearch, or ClickHouse), never as TSDB labels.</li>
+<li><strong>Distributed request tracing:</strong> Following an individual RPC tree across microservices (OpenTelemetry spans / Jaeger / Tempo) stores high-cardinality trace IDs outside numeric metric aggregation.</li>
+<li><strong>Continuous CPU/heap flame-graph profiling:</strong> Stack-trace sampling uses specialized symbol-table profiles rather than scalar time series.</li>
+</ul>
+<h3 id="back-of-the-envelope-capacity-bounds"><a class="header" href="#back-of-the-envelope-capacity-bounds">Back-of-the-Envelope Capacity Bounds</a></h3>
+<p>Time-series storage capacity changes by an order of magnitude once Gorilla bit-level compression is applied:</p>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th style="text-align: left">Resource Dimension</th><th style="text-align: left">Derivation</th><th style="text-align: left">Provisioned Bound</th></tr>
+</thead>
+<tbody>
+<tr><td style="text-align: left"><strong>Sustained Sample Ingestion</strong></td><td style="text-align: left"><code>10,000,000</code> active series <code>/ 10 s</code> scrape interval</td><td style="text-align: left"><code>1,000,000</code> samples/s (<code>86.4B</code> samples/day)</td></tr>
+<tr><td style="text-align: left"><strong>Uncompressed Daily Storage</strong></td><td style="text-align: left"><code>86.4B</code> samples <code>* 16 B</code> (<code>8 B</code> int64 timestamp + <code>8 B</code> float64 value)</td><td style="text-align: left"><code>1.38 TB/day</code> (<code>~504 TB/year</code>)</td></tr>
+<tr><td style="text-align: left"><strong>Gorilla-Compressed Daily Storage</strong></td><td style="text-align: left"><code>86.4B</code> samples <code>* 1.5 to 2.0 B/sample</code> (1.37 B typical in Gorilla; 2.0 B byte-aligned)</td><td style="text-align: left"><code>~130 to 173 GB/day</code> (<code>~8x to 11x</code> reduction)</td></tr>
+<tr><td style="text-align: left"><strong>15-Day Raw Retention (Object Store)</strong></td><td style="text-align: left"><code>173 GB/day * 15 days</code></td><td style="text-align: left"><code>~2.6 TB</code> immutable 2-hour TSDB blocks</td></tr>
+<tr><td style="text-align: left"><strong>2-Year Hourly Rollup Storage</strong></td><td style="text-align: left"><code>10M</code> series <code>* 17,520</code> hours <code>* 4</code> stats (<code>min, max, sum, count</code>) <code>* 2 B</code></td><td style="text-align: left"><code>~1.4 TB</code> compressed historical rollups</td></tr>
+<tr><td style="text-align: left"><strong>Ingester Head-Block RAM (2-Hour Window)</strong></td><td style="text-align: left"><code>10M</code> series <code>* 720</code> samples/2h <code>* 2 B</code> + <code>~1 KB</code>/series inverted label index overhead</td><td style="text-align: left"><code>~14.4 GB</code> raw chunks + <code>~10 GB</code> label index (<code>~25 to 30 GB</code> per full replica; <code>~75 to 90 GB</code> at 3x replication across 40 ingesters)</td></tr>
+</tbody>
+</table>
+</div>
+<h2 id="242-external-api-and-data-contracts"><a class="header" href="#242-external-api-and-data-contracts">24.2 External API and Data Contracts</a></h2>
+<h3 id="target-pull-exposition-format-openmetrics--prometheus"><a class="header" href="#target-pull-exposition-format-openmetrics--prometheus">Target Pull Exposition Format (OpenMetrics / Prometheus)</a></h3>
+<p>Monitored services expose an HTTP endpoint (<code>GET /metrics</code>) returning current counter totals, gauge values, and cumulative histogram bucket counts in plain text or protobuf:</p>
+<pre><code class="language-http">GET /metrics HTTP/1.1
+Host: payments-14.internal
+Accept: application/openmetrics-text; version=1.0.0
+</code></pre>
+<pre><code class="language-http">HTTP/1.1 200 OK
+Content-Type: text/plain; version=0.0.4
+
+# TYPE http_requests_total counter
+http_requests_total{service="payments",status="200"} 918234
+http_requests_total{service="payments",status="500"} 417
+# TYPE queue_depth gauge
+queue_depth{service="payments"} 12
+# TYPE http_request_duration_seconds histogram
+http_request_duration_seconds_bucket{service="payments",le="0.05"} 880112
+http_request_duration_seconds_bucket{service="payments",le="0.25"} 915540
+http_request_duration_seconds_bucket{service="payments",le="+Inf"} 918651
+http_request_duration_seconds_sum{service="payments"} 19842.6
+http_request_duration_seconds_count{service="payments"} 918651
+</code></pre>
+<h3 id="promql-range-query-endpoint"><a class="header" href="#promql-range-query-endpoint">PromQL Range Query Endpoint</a></h3>
+<pre><code class="language-http">GET /v1/series?query=histogram_quantile(0.99,sum(rate(http_request_duration_seconds_bucket{service="payments"}[5m]))by(le))&amp;from=2026-10-14T08:00:00Z&amp;to=2026-10-14T09:00:00Z&amp;step=60 HTTP/2
+Host: metrics.internal
+Authorization: Bearer sre_eyJhbGci...
+</code></pre>
+<pre><code class="language-http">HTTP/2 200 OK
+Content-Type: application/json
+
+{
+  "status": "success",
+  "resolution_tier": "raw_10s",
+  "step_sec": 60,
+  "series": [
+    {
+      "labels": { "service": "payments", "quantile": "0.99" },
+      "points": [
+        [1760428800, 0.042],
+        [1760428860, 0.048]
+      ]
+    }
+  ]
+}
+</code></pre>
+<h3 id="alert-rule-configuration-endpoint"><a class="header" href="#alert-rule-configuration-endpoint">Alert Rule Configuration Endpoint</a></h3>
+<pre><code class="language-http">PUT /v1/alerts/payments-high-error-rate HTTP/2
+Host: metrics.internal
+Authorization: Bearer sre_eyJhbGci...
+Content-Type: application/json
+
+{
+  "expr": "sum(rate(http_requests_total{service=\"payments\",status=~\"5..\"}[5m])) / sum(rate(http_requests_total{service=\"payments\"}[5m])) &gt; 0.01",
+  "for_seconds": 300,
+  "keep_firing_for_seconds": 120,
+  "severity": "critical",
+  "route": "payments-on-call",
+  "annotations": {
+    "summary": "Payments 5xx error ratio exceeded 1% for 5 continuous minutes"
+  }
+}
+</code></pre>
+<pre><code class="language-http">HTTP/2 204 No Content
+</code></pre>
+<h3 id="on-disk-immutable-tsdb-block-layout"><a class="header" href="#on-disk-immutable-tsdb-block-layout">On-Disk Immutable TSDB Block Layout</a></h3>
+<p>Every 2 hours, each ingester flushes its closed head window into a self-contained immutable directory uploaded to object storage:</p>
+<pre><code class="language-text">blocks/&lt;ulid_2h_block&gt;/
+  meta.json        # min_time, max_time, num_samples, num_series, compaction_level
+  index            # Symbol table + inverted posting lists (label=value -&gt; sorted series_ids)
+  chunks/000001    # Contiguous Gorilla-compressed 120-sample chunks per series_id
+  tombstones       # Optional administrative deletion markers
+</code></pre>
+<h2 id="243-high-level-architecture-control-plane-vs-data-plane"><a class="header" href="#243-high-level-architecture-control-plane-vs-data-plane">24.3 High-Level Architecture: Control Plane vs. Data Plane</a></h2>
+<p>To protect alert delivery and telemetry durability during production incidents, we isolate the monitoring cluster on independent infrastructure and separate control-plane discovery and watchdog logic from the high-throughput ingestion and query data plane, as illustrated in Figure 24-2.</p>
+<figure class="diagram">
+<img src="figures/m3/ch24_architecture.svg" alt="High-Level Architecture showing Control Plane (Target Discovery, Alert Rule Registry, Dead-Man Watchdog) and Data Plane (Collection Agents, Write Distributor, Sharded TSDB Ingesters with WAL and Gorilla head chunks, Immutable 2h Object-Store Blocks, Compactor and Rollups, PromQL Query Engine, Alert Evaluator, and Alertmanager)." />
+<figcaption><b>Figure 24-2</b> Control plane and data plane architecture of the isolated time-series metrics and alerting platform.</figcaption>
+</figure>
+<h3 id="control-plane-responsibilities"><a class="header" href="#control-plane-responsibilities">Control Plane Responsibilities</a></h3>
+<ul>
+<li><strong>Target Discovery:</strong> Reads service registries (Kubernetes API, Consul, cloud instance tags) to push live lists of <code>/metrics</code> scrape targets to regional Collection Agents without manual host files.</li>
+<li><strong>Alert Rule Registry:</strong> Stores versioned PromQL alert definitions, multi-window SLO burn-rate rules, and temporary maintenance silences.</li>
+<li><strong>Dead-Man’s Switch Watchdog:</strong> A minimal external probe running in an independent region or cloud provider. The internal Alert Evaluator continuously fires an always-true synthetic alert (<code>vector(1)</code>) to the watchdog every 60 seconds; if the watchdog stops receiving that heartbeat for 3 consecutive minutes, it pages SRE through an independent escalation channel.</li>
+</ul>
+<h3 id="data-plane-responsibilities"><a class="header" href="#data-plane-responsibilities">Data Plane Responsibilities</a></h3>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th style="text-align: left">Component</th><th style="text-align: left">State Held</th><th style="text-align: left">Failure Impact and Mitigation</th></tr>
+</thead>
+<tbody>
+<tr><td style="text-align: left"><strong>Collection Agents (Scrapers)</strong></td><td style="text-align: left">Target list + short local retry buffer</td><td style="text-align: left">Consistent-hash sharded across target services; HA pairs scrape critical targets in parallel and deduplicate on ingestion</td></tr>
+<tr><td style="text-align: left"><strong>Write Distributor</strong></td><td style="text-align: left">Stateless consistent-hash router + per-tenant cardinality limiter</td><td style="text-align: left">Routes every sample by <code>hash(metric_name + sorted_labels)</code> to <code>RF = 3</code> (or <code>RF = 2</code>) TSDB Ingesters; rejects runaway label cardinality at ingress</td></tr>
+<tr><td style="text-align: left"><strong>Sharded TSDB Ingesters</strong></td><td style="text-align: left">Active 2-hour Gorilla head chunks in RAM + local NVMe Write-Ahead Log (WAL)</td><td style="text-align: left">Single ingester crash leaves zero query gaps because <code>RF = 3</code> peer ingesters hold identical samples; restart replays local WAL in <code>&lt; 30 s</code></td></tr>
+<tr><td style="text-align: left"><strong>Object-Store Blocks and Compactor</strong></td><td style="text-align: left">Immutable 2-hour, 24-hour, and downsampled (<code>5m</code>, <code>1h</code>) blocks in S3/GCS</td><td style="text-align: left">Compactor merges overlapping 2-hour blocks from replicas into deduplicated, erasure-coded long-term Parquet/TSDB blocks</td></tr>
+<tr><td style="text-align: left"><strong>PromQL Query Engine</strong></td><td style="text-align: left">Stateless query planner + short-TTL sub-query result cache</td><td style="text-align: left">Strictly isolated from write path with per-query memory (<code>2 GB</code>), max-series (<code>100k</code>), and timeout (<code>30 s</code>) guardrails so incident dashboard floods never stall ingestion</td></tr>
+<tr><td style="text-align: left"><strong>Alert Evaluator and Alertmanager</strong></td><td style="text-align: left">Active <code>Pending</code>/<code>Firing</code> alert state + silence/grouping table</td><td style="text-align: left">Runs in redundant HA pair; Alertmanager groups related alerts (for example, 50 services failing behind 1 database) into a single incident notification</td></tr>
+</tbody>
+</table>
+</div>
+<h2 id="244-deep-dive-pull-vs-push-ingestion-gorilla-compression-and-cardinality-defense"><a class="header" href="#244-deep-dive-pull-vs-push-ingestion-gorilla-compression-and-cardinality-defense">24.4 Deep Dive: Pull vs. Push Ingestion, Gorilla Compression, and Cardinality Defense</a></h2>
+<h3 id="pull-vs-push-ingestion-trade-offs"><a class="header" href="#pull-vs-push-ingestion-trade-offs">Pull vs. Push Ingestion Trade-Offs</a></h3>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th style="text-align: left">Dimension</th><th style="text-align: left">Pull Model (HTTP Scrape)</th><th style="text-align: left">Push Model (Remote Write / OTLP)</th></tr>
+</thead>
+<tbody>
+<tr><td style="text-align: left"><strong>Failure Detection</strong></td><td style="text-align: left">Failed scrape immediately sets synthetic <code>up == 0</code> metric, distinguishing dead instances from idle ones</td><td style="text-align: left">Silent service crash looks identical to zero traffic unless paired with external absence alerts</td></tr>
+<tr><td style="text-align: left"><strong>Backpressure Control</strong></td><td style="text-align: left">Collectors govern scrape cadence and can shed non-critical targets during overload</td><td style="text-align: left">Services can DDoS the monitoring tier simultaneously during traffic storms or restarts</td></tr>
+<tr><td style="text-align: left"><strong>Short-Lived Batch Jobs</strong></td><td style="text-align: left">Cron or Lambda jobs finishing in 3 seconds exit before the 10-second scrape arrives</td><td style="text-align: left">Jobs push final counters cleanly before process termination</td></tr>
+<tr><td style="text-align: left"><strong>Network Topology</strong></td><td style="text-align: left">Requires collector-to-service reachability across VPC/NAT boundaries</td><td style="text-align: left">Services behind restrictive firewalls push outbound over TLS</td></tr>
+</tbody>
+</table>
+</div>
+<p>Production platforms combine both models cleanly: regional Collection Agents <strong>pull</strong> from long-lived services every 10 seconds to obtain free health checks (<code>up == 1</code>) and centrally paced load, while ephemeral batch jobs and edge clients <strong>push</strong> via protobuf Remote Write (<code>POST /api/v1/write</code>) into the Write Distributor.</p>
+<h3 id="gorilla-delta-of-delta-timestamp-and-xor-value-compression"><a class="header" href="#gorilla-delta-of-delta-timestamp-and-xor-value-compression">Gorilla Delta-of-Delta Timestamp and XOR Value Compression</a></h3>
+<p>Storing raw <code>(int64 timestamp, float64 value)</code> pairs consumes <code>16 bytes/sample</code>, requiring <code>1.38 TB/day</code> at <code>1M</code> samples/s. Because consecutive samples in a time series arrive at regular scrape intervals (<code>10 s</code>) and vary gradually, we apply the <strong>Gorilla</strong> bit-level streaming encoder inside every 2-hour chunk, as depicted in Figure 24-3.</p>
+<figure class="diagram">
+<img src="figures/m3/ch24_tsdb_ingestion.svg" alt="Gorilla Compression Pipeline showing Delta-of-Delta timestamp bit packing (D=0 emitted as 1 bit &#39;0&#39;, small jitter in 9 to 12 bits) and IEEE-754 float64 bitwise XOR window encoding (identical values in 1 bit, narrow XOR windows sharing prior leading/trailing zeros)." />
+<figcaption><b>Figure 24-3</b> Gorilla delta-of-delta timestamp packing and IEEE-754 float64 bitwise XOR window compression.</figcaption>
+</figure>
+<ol>
+<li><strong>Timestamp Delta-of-Delta (DoD) Packing:</strong> For sample <code>n</code>, compute the first delta <code>dt_n = t_n - t_(n-1)</code> and the second-order difference <code>D = dt_n - dt_(n-1)</code>. On a regular 10-second scrape cadence (<code>t = 100, 110, 120</code>), <code>dt_1 = 10</code>, <code>dt_2 = 10</code>, and <code>D = 0</code>. Gorilla encodes <code>D</code> using variable-length bit prefixes:
+<ul>
+<li><code>D == 0</code>: write single bit <code>'0'</code> (<code>1 bit</code> total, a 64x reduction over 64-bit timestamps).</li>
+<li><code>D in [-63, 64]</code>: write <code>'10'</code> followed by a 7-bit signed integer (<code>9 bits</code>).</li>
+<li><code>D in [-255, 256]</code>: write <code>'110'</code> followed by a 9-bit signed integer (<code>12 bits</code>).</li>
+<li><code>D in [-2047, 2048]</code>: write <code>'1110'</code> followed by a 12-bit signed integer (<code>16 bits</code>).</li>
+<li>Otherwise: write <code>'1111'</code> followed by a 32-bit signed value (<code>36 bits</code>).</li>
+</ul>
+</li>
+<li><strong>Float64 Bitwise XOR Encoding:</strong> IEEE-754 double-precision numbers for slowly varying gauges or rates share identical sign, exponent, and leading mantissa bits. Computing <code>xor = bits(v_n) ^ bits(v_(n-1))</code> produces long runs of leading and trailing zero bits:
+<ul>
+<li>If <code>xor == 0</code> (value unchanged): write single bit <code>'0'</code> (<code>1 bit</code> total).</li>
+<li>If <code>xor != 0</code> and its non-zero meaningful bits fall within the previous sample’s leading/trailing zero window: write <code>'10'</code> followed only by the meaningful bits.</li>
+<li>Otherwise: write <code>'11'</code>, 5 bits encoding leading-zero count, 6 bits encoding meaningful-bit length, and the meaningful bits themselves.</li>
+</ul>
+</li>
+</ol>
+<p>Advance through the interactive step-by-step trace below to observe how encoding differences shrinks timestamps and values dramatically compared with raw 16-byte storage.</p>
 <figure class="steps" data-prefix="figures/steps-metrics-delta" data-count="5" data-version="e332f4cb">
 <img src="figures/steps-metrics-delta-01.svg?v=e332f4cb" alt="Storing changes in place of numbers, step 1 of 5. 4 measurements, 1 second apart. Each time is a number of 10 digits and needs 8 bytes when stored as it is.">
 <figcaption><b>Figure 24.1</b> The times and the values of a series, stored as changes from the point before. Use Next and Back to move through the 5 steps.</figcaption>
 </figure>
-<p>For the times, the differences are themselves nearly constant, the interval of
-collection, so that storing the difference between successive differences yields 0
-almost every time. For the values, the difference from the previous value is small
-whenever the quantity being measured is steady, which most are for most of the time.</p>
-<p>The simulation for this chapter stores an hour of a response time measured every
-second, 3600 points. Stored plainly they occupy 57600 bytes. Stored as changes, with
-small numbers written in fewer bytes, they occupy 7223, which is 2 bytes for each
-point and an eighth of the plain size. Production systems encode at the level of
-individual bits and exploit the structure of floating-point numbers, and commonly
-reach between 1 and 2 bytes a point. The 50 TB a year computed above becomes about 5.</p>
-<p>Compression of this kind has a consequence for the layout of the store. A point
-encoded as a difference can be decoded only by starting from the beginning of its
-run and working forwards. Points are therefore grouped into <em>blocks</em>, each covering
-a fixed span of time for 1 series, 2 hours for example, and each block is encoded
-and decoded as a unit. The block being written is held in memory, where it can be
-appended to, and is protected by a write-ahead log of the kind described in chapter
-2, and when its span is over it is compressed and written to disk, never to be
-modified again. Reading a range of time means locating the blocks that cover it,
-which is quick because blocks are indexed by series and by time.</p>
-<h2 id="keeping-less-of-the-past"><a class="header" href="#keeping-less-of-the-past">Keeping less of the past</a></h2>
-<p>Even well compressed, points every 10 seconds for a year are more than most
-questions about the past require. A graph of the last year, drawn on a screen 2000
-pixels wide, can show at most 2000 values, and to compute them from 3 million points
-for each series would be slow and pointless.</p>
-<p>Older data is therefore reduced in resolution, a process called <em>downsampling</em> or
-<em>rollup</em>. A background job reads the raw points of each series and writes 1 point
-for every minute, and later 1 for every hour. Recent data is retained at full
-resolution for some days, the 1-minute data for some months, and the hourly data for
-years. A query chooses the resolution suited to the range it covers.</p>
-<p>What is written for each minute has to be chosen with care, since a single number
-cannot represent 6 or 60 readings without losing something, and what is lost depends
-on the number chosen.</p>
-<figure>
-<img src="figures/metrics-rollup.svg?v=052523c7" alt="2 bars for a minute that contains 57 seconds at 40 ms and 3 seconds at 900 ms. Kept as its average, the minute is 83 ms. Kept as its largest value, the minute is 900 ms.">
-<figcaption><b>Figure 24.2</b> A minute containing a spike of 3 seconds, kept as its average and as its largest value.</figcaption>
-</figure>
-<p>In the simulation, 1 minute contains 57 seconds in which the response time is about
-40 ms and 3 seconds in which it is 900. Kept as its average, that minute is recorded
-as 83 ms, which suggests a slight slowness and conceals entirely that for 3 seconds
-the service was nearly unusable. Kept as its largest value, the minute is recorded
-as 900 ms, which preserves the incident and says nothing of how brief it was.
-Neither is wrong, and neither is sufficient. A rollup therefore stores several
-numbers for each interval, usually the smallest value, the largest, the sum and the
-count, from which the average can be derived and the extremes are not lost.</p>
-<h2 id="why-an-average-of-response-times-misleads"><a class="header" href="#why-an-average-of-response-times-misleads">Why an average of response times misleads</a></h2>
-<p>The same example exposes a wider difficulty. The time taken to answer a request is
-the most important single measure of a service, and its average is a poor
-description of it.</p>
-<p>Response times are not distributed symmetrically about a typical value. Most
-requests are fast, and a small proportion are very much slower, because they met a
-busy disk, an expired cache entry or a retry. The average is pulled upwards a little
-by these slow requests and describes neither group. A service whose requests take 40
-ms in 99 cases and 2 seconds in the hundredth has an average of 60 ms, which looks
-entirely healthy, while 1 user in every 100 waits 2 seconds, and a user who loads a
-page that issues 50 requests has a chance of 2 in 5 of encountering at least 1 of
-them.</p>
-<p>The quantity that describes experience is the <em>percentile</em>, introduced in chapter 1.
-The 99th percentile, written p99, is the time within which 99% of requests complete,
-and it states directly how bad the experience is for the least fortunate 1 in 100.</p>
-<p>Percentiles have an awkward property that averages lack, and it shapes how response
-times must be collected. They cannot be combined. The average of 2 machines can be
-computed from the average and the count of each. The p99 of 2 machines cannot be
-computed from the p99 of each: if one machine has a p99 of 50 ms and the other of 2
-seconds, the combined p99 may be almost anything between, depending on how the
-requests were divided. A service that computes its own percentiles and reports them
-has produced numbers that can never be aggregated across machines or across time.</p>
-<p>The histogram solves this. A service does not report a percentile. It counts its
-requests in <em>buckets</em> by duration, so many under 10 ms, so many under 50 ms, so many
-under 250 ms and so on, and reports the counts. Counts can be added, across machines
-and across intervals, and a percentile is estimated from the combined counts at the
-moment of the query. The estimate is only as fine as the buckets, so the boundaries
-of the buckets have to be chosen around the durations that matter, but it can be
-computed for any grouping of machines over any period, which no percentile computed
-in advance allows.</p>
-<h2 id="alerts"><a class="header" href="#alerts">Alerts</a></h2>
-<p>A monitoring system that is only looked at when something is already known to be
-wrong has done half its work. The other half is to notice the trouble first, by
-means of <em>alerts</em>. An alert is a rule consisting of a query and a condition, which
-the system evaluates at regular intervals, notifying somebody when the condition
-holds.</p>
-<p>Rules are easy to write and hard to write well, and the commonest failing of
-monitoring in practice is too many alerts. An engineer who is woken 3 times a night
-by alerts that required no action soon ceases to respond with any urgency, and the
-alert that matters is then lost among the rest. A few principles keep alerts worth
-answering.</p>
-<p>An alert should concern what users experience. What machines are doing is a different matter.
-“The proportion of failed requests has exceeded 1%” is a statement about harm.
-“Processor usage is at 90%” is a statement about a machine, which may be working
-exactly as intended. Alerts on causes multiply endlessly, since there are countless
-possible causes, while the symptoms that matter are few.</p>
-<p>A condition should have to hold for some time before the alert fires. A single
-reading above a threshold is very often a momentary disturbance, and a rule that
-requires the condition to persist for 5 minutes ignores the noise at the price of 5
-minutes’ delay.</p>
-<p>Every alert should demand an action. If the proper response to an alert is to
-observe it and go back to sleep, it belongs on a dashboard, and nobody should be
-notified of it.</p>
-<p>And related alerts should be grouped. When a database fails, 50 services that depend
-on it fail too, and 50 alerts arriving together tell the engineer less than 1 that
-names the database. The notification itself is delivered by the notification service
-of chapter 13, with escalation to a second person if the first does not acknowledge
-it.</p>
-<p>One further case deserves mention because it is so often overlooked. A rule that
-tests whether a value is too high does not fire when there is no value at all. If a
-service stops reporting altogether, its error rate is not high, it is absent, and a
-naively written alert remains silent during the worst failure of all. Every
-important series therefore needs a second rule that fires when data has ceased to
-arrive.</p>
-<h2 id="watching-the-watcher"><a class="header" href="#watching-the-watcher">Watching the watcher</a></h2>
-<p>The monitoring system is relied upon precisely when other things are failing, and
-its design has to take account of that.</p>
-<p>It must not share the fate of what it monitors. If it runs on the same machines, the
-same network and the same storage as the services it watches, a single failure may
-remove both, and the engineers are left without information exactly when they need
-it most. It is therefore given infrastructure of its own, and kept as simple and as
-free of dependencies as its function allows. A monitoring system that needs the
-message queue, the coordinator and the object store all to be healthy before it can
-display a graph will be unavailable in most serious incidents.</p>
-<p>It must also withstand the load that incidents themselves produce. When something
-breaks, many engineers open many dashboards together, each issuing dozens of
-queries over long ranges, at the very moment when the stream of incoming
-measurements may also be surging. The paths for writing and for querying are
-separated, so that a flood of queries cannot delay the storing of new points, and
-queries are bounded in the time and memory they may consume.</p>
-<p>Finally, something has to watch the monitoring system itself. The usual arrangement
-is a second, minimal instance that checks nothing except whether the first is alive
-and evaluating its rules, and that raises its own alert through an independent
-channel when it is not.</p>
-<h2 id="use-cases"><a class="header" href="#use-cases">Use cases</a></h2>
-<p>Services report measurements. Engineers look at graphs, define alerts and are
-notified.</p>
-<figure>
-<img src="figures/metrics-use-cases.svg?v=0a09f42d" alt="A use case diagram of the monitoring system. Service: send measurements (POST /v1/points). Engineer: draw a graph (GET /v1/series?name=&amp;from=&amp;to=), define an alert (PUT /v1/alerts/{name}), be paged when it fires (a notification, chapter 13).">
-<figcaption><b>Figure 24.3</b> The actors and what each of them does.</figcaption>
-</figure>
-<h2 id="functional-requirements"><a class="header" href="#functional-requirements">Functional requirements</a></h2>
-<div class="table-wrapper">
-<table>
-<thead>
-<tr><th>No.</th><th>Functional requirement</th></tr>
-</thead>
-<tbody>
-<tr><td>0</td><td>The system collects measurements from every service at a fixed interval.</td></tr>
-<tr><td>1</td><td>An engineer can query any series, or a combination of series selected by labels, over any range of time.</td></tr>
-<tr><td>2</td><td>Percentiles of durations can be computed across any group of machines.</td></tr>
-<tr><td>3</td><td>An engineer can define alerts, each a query, a condition and a duration.</td></tr>
-<tr><td>4</td><td>When an alert fires, the people responsible are notified.</td></tr>
-<tr><td>5</td><td>Data is kept at full resolution for 15 days and at lower resolution for 2 years.</td></tr>
-</tbody>
-</table>
-</div>
-<h2 id="non-functional-requirements"><a class="header" href="#non-functional-requirements">Non-functional requirements</a></h2>
-<div class="table-wrapper">
-<table>
-<thead>
-<tr><th>No.</th><th>Property</th><th>Non-functional requirement</th></tr>
-</thead>
-<tbody>
-<tr><td>0</td><td>Scale</td><td>10 million series, sampled every 10 seconds: 1 million points per second.</td></tr>
-<tr><td>1</td><td>Latency of queries</td><td>A dashboard covering the last 6 hours loads within 1 second.</td></tr>
-<tr><td>2</td><td>Freshness</td><td>A point is visible in queries within 30 seconds of being measured.</td></tr>
-<tr><td>3</td><td>Availability</td><td>99.9%, and independent of the systems that are monitored.</td></tr>
-<tr><td>4</td><td>Durability</td><td>The loss of a few seconds of points in a failure is acceptable. The loss of history is not.</td></tr>
-<tr><td>5</td><td>Consistency</td><td>Eventual. 2 queries moments apart may differ in the most recent points.</td></tr>
-</tbody>
-</table>
-</div>
-<p>Non-functional requirement 4 distinguishes 2 things that are often run together. A
-single point of a metric is nearly worthless: if 10 seconds of 1 series are lost, a
-graph shows a small gap and no decision is affected. The accumulated history is
-valuable, since it is what allows this week to be compared with the same week of
-last year. The design accordingly accepts weak durability for incoming points, which
-keeps the write path cheap, and stores completed blocks with the full protection of
-the object store of chapter 16.</p>
-<h2 id="core-entities"><a class="header" href="#core-entities">Core entities</a></h2>
-<figure>
-<img src="figures/metrics-entities.svg?v=b132dd3f" alt="The core entities. Series has the fields name string, labels key=value, .... Point has the fields series u64, time seconds, value f64. Alert has the fields query string, threshold f64, for duration. A Series is 1 name with 1 set of label values. Every different combination of label values is a separate series.">
-<figcaption><b>Figure 24.4</b> The core entities and their fields.</figcaption>
-</figure>
-<h2 id="capacity-estimate"><a class="header" href="#capacity-estimate">Capacity estimate</a></h2>
-<div class="estimate">
-<img class="builder" src="art/crab-builder.svg" alt="A crab in a hard hat, in tears.">
-<p><strong>Arithmetic ahead.</strong> 10 million series at 1 point every 10 seconds, compressed to 2 bytes a point, need about 170 GB a day at full resolution.</p>
-<p><a class="skip" href="#high-level-design">Skip to the high-level design</a></p>
-<details>
-<summary>Show the calculation</summary>
-<div class="table-wrapper">
-<table>
-<thead>
-<tr><th>Quantity</th><th>Calculation</th><th>Result</th></tr>
-</thead>
-<tbody>
-<tr><td>Points per second</td><td>10 million series ÷ 10 s</td><td>1 million</td></tr>
-<tr><td>Points per day</td><td>1 million × 86400</td><td>86.4 billion</td></tr>
-<tr><td>Bytes per day, plain</td><td>86.4 billion × 16 bytes</td><td>1.4 TB</td></tr>
-<tr><td>Bytes per day, compressed</td><td>86.4 billion × 2 bytes</td><td>173 GB</td></tr>
-<tr><td>15 days at full resolution</td><td>173 GB × 15</td><td>2.6 TB</td></tr>
-<tr><td>2 years at 1 point per hour, 4 numbers each</td><td>10 million × 17520 × 4 × 2 bytes</td><td>1.4 TB</td></tr>
-<tr><td>Memory for the current blocks</td><td>10 million series × 720 points × 2 bytes</td><td>14 GB</td></tr>
-</tbody>
-</table>
-</div>
-</details>
-</div>
-
-<h2 id="the-api"><a class="header" href="#the-api">The API</a></h2>
-<p>Under the pull model, a service takes no action to report. It answers a request from
-a collector with its current values. The API of the monitoring system itself is used
-by dashboards and by the people who define alerts.</p>
-<p><strong>What a collector receives from a service</strong></p>
-<pre><code class="language-http">GET /metrics HTTP/1.1
-Host: payments-14.internal
-</code></pre>
-<pre><code class="language-http">HTTP/1.1 200 OK
-Content-Type: text/plain
-
-requests_total{service="payments",status="200"} 918234
-requests_total{service="payments",status="500"} 417
-queue_length{service="payments"} 12
-request_duration_bucket{service="payments",le="0.05"} 880112
-request_duration_bucket{service="payments",le="0.25"} 915540
-request_duration_bucket{service="payments",le="+Inf"} 918651
-</code></pre>
-<p>Each line is the present value of 1 series. The lines of <code>request_duration_bucket</code>
-are a histogram: <code>le</code> is the upper bound of a bucket in seconds, and each count
-includes every request that took no longer than that.</p>
-<p><strong>Query a series over a range</strong></p>
-<pre><code class="language-http">GET /v1/series?query=rate(requests_total{service="payments",status="500"})&amp;from=2026-10-14T08:00:00Z&amp;to=2026-10-14T09:00:00Z&amp;step=60 HTTP/1.1
-Host: metrics.internal
-</code></pre>
-<pre><code class="language-http">HTTP/1.1 200 OK
-Content-Type: application/json
-
-{
-  "step": 60,
-  "points": [
-    { "time": "2026-10-14T08:00:00Z", "value": 0.02 },
-    { "time": "2026-10-14T08:01:00Z", "value": 0.03 }
-  ]
-}
-</code></pre>
-<p><strong>Define an alert</strong></p>
-<pre><code class="language-http">PUT /v1/alerts/payments-errors HTTP/1.1
-Host: metrics.internal
-Content-Type: application/json
-
-{
-  "query": "rate(requests_total{service=\"payments\",status=\"500\"}) / rate(requests_total{service=\"payments\"})",
-  "condition": "&gt; 0.01",
-  "for_seconds": 300,
-  "notify": "payments-on-call"
-}
-</code></pre>
-<pre><code class="language-http">HTTP/1.1 204 No Content
-</code></pre>
-<p>The rule fires when more than 1% of the requests to payments have failed
-continuously for 5 minutes.</p>
-<h2 id="high-level-design"><a class="header" href="#high-level-design">High-level design</a></h2>
-<figure class="wide">
-<img src="figures/metrics-design.svg?v=80a8b262" alt="A monitoring system. The components are Services, Collectors, Series store, Query service, Rollup job, Alert evaluator. Step 1: Every service sends its measurements every 10 seconds. Step 2: A collector appends each point to its series. Step 3: A graph is a query over a range of time. Step 4: Older points are reduced to 1 per minute. Step 5: Every rule is evaluated once a minute.">
-<figcaption><b>Figure 24.5</b> The components and the path of a measurement. The steps are numbered.</figcaption>
-</figure>
-<div class="table-wrapper">
-<table>
-<thead>
-<tr><th>Component</th><th>Role</th><th>State it holds</th><th>When 1 instance fails</th></tr>
-</thead>
-<tbody>
-<tr><td>Collector</td><td>visits each service and reads its values</td><td>the list of services</td><td>its services are visited by another collector</td></tr>
-<tr><td>Series store</td><td>appends points, and compresses finished blocks</td><td>current blocks in memory, with a log, and finished blocks on disk</td><td>a replica that received the same points answers</td></tr>
-<tr><td>Rollup job</td><td>reduces old points to 1 per minute and 1 per hour</td><td>none</td><td>it is run again</td></tr>
-<tr><td>Query service</td><td>reads blocks and computes what a graph or a rule asks for</td><td>a cache of recent results</td><td>another instance answers</td></tr>
-<tr><td>Alert evaluator</td><td>evaluates every rule once a minute</td><td>which alerts are firing</td><td>a second evaluator runs the same rules</td></tr>
-</tbody>
-</table>
-</div>
-<h3 id="one-measurement-step-by-step"><a class="header" href="#one-measurement-step-by-step">One measurement, step by step</a></h3>
-<p>The steps follow the arrows of figure 24.5.</p>
+<p>Because decoding sample <code>k</code> requires scanning from the beginning of its compressed bit stream, samples are segmented into fixed <strong>120-sample chunks</strong> (20 minutes at 10-second intervals) inside 2-hour blocks, bounding random-access decode cost to microseconds.</p>
+<h3 id="inverted-label-index-and-cardinality-explosion-defense"><a class="header" href="#inverted-label-index-and-cardinality-explosion-defense">Inverted Label Index and Cardinality Explosion Defense</a></h3>
+<p>To answer label-filtered queries like <code>http_requests_total{service="payments", status="500"}</code> in milliseconds, every TSDB block maintains an <strong>inverted index</strong> mapping each <code>(label_key, label_value)</code> pair to a sorted posting list of integer <code>series_id</code>s. Query resolution intersects the posting lists for <code>service="payments"</code> and <code>status="500"</code>, yielding the exact matching series IDs before decoding their Gorilla chunks.</p>
+<p>This inverted index creates the single most destructive operational failure mode in monitoring systems: <strong>cardinality explosion</strong>. Every unique combination of label values allocates a distinct <code>series_id</code>, inverted index entries, and an active RAM Gorilla head chunk (<code>~1 to 2 KB</code> per series). Adding a single unbounded label such as <code>user_id</code> (<code>1,000,000</code> values) or raw <code>url_path</code> to a metric with 100 hosts and 5 HTTP statuses multiplies <code>500</code> series into <code>500,000,000</code> series, exhausting ingester RAM within minutes. We enforce three defenses:</p>
 <ol>
-<li>Every 10 seconds, a collector asks each of its services for its current values.</li>
-<li>The collector attaches the time to each value and sends the points to the series store, which appends each to the current block of its series.</li>
-<li>A dashboard sends a query. The query service finds the blocks that cover the range, decodes them, and computes the result.</li>
-<li>In the background, the rollup job reads blocks that are some hours old and writes 1 point for each minute.</li>
-<li>Once a minute, the alert evaluator runs the query of every rule, and notifies the people named when a condition has held for long enough.</li>
+<li><strong>Ingestion-Time Relabeling Rules:</strong> Drop or normalize high-cardinality labels (replacing <code>/users/98123/profile</code> with route template <code>/users/:id/profile</code>) at the Collection Agent before samples enter the Write Distributor.</li>
+<li><strong>Per-Tenant Active-Series Quotas:</strong> The Write Distributor tracks active <code>series_id</code> counts per service/tenant and rejects new series creations above the configured quota (<code>429</code> + cardinality-limit alert) rather than letting one misconfigured deployment OOM the shared TSDB cluster.</li>
+<li><strong>Observability Pillar Routing:</strong> Enforce organizational lint rules keeping TSDB labels strictly bounded (<code>&lt; 100</code> distinct values per label) while routing <code>user_id</code> and <code>request_id</code> diagnostics to structured logs and distributed traces.</li>
 </ol>
-<p>So that the loss of 1 machine of the series store leaves no gap, every point is sent
-to 2 machines, each of which builds its own blocks independently. The 2 copies are
-not kept identical by any protocol, and may differ by a point here and there. For
-this data that is acceptable, and the query service merges whatever it receives.</p>
-<h2 id="the-design-deployed"><a class="header" href="#the-design-deployed">The design, deployed</a></h2>
-<figure class="wide">
-<img src="figures/metrics-deploy.svg?v=d471eee9" alt="The monitoring system, deployed. What is watched: Service instances (x 100000), expose current values. Collection: Collectors (x 60), 2 for each group. Storage: Series store (x 40), 2 copies of each series, Block storage (object store), finished blocks, Rollup jobs (x 6), per minute, per hour. Reading and alerting: Query service (x 12), bounded queries, Alert evaluators (x 2), both run every rule, Second watcher (elsewhere), watches the watcher.">
-<figcaption><b>Figure 24.6</b> The monitoring system as it is deployed, on infrastructure that it shares with nothing it watches.</figcaption>
-</figure>
-<p>The system watches 100000 service instances with 60 collectors, arranged so that
-every group of services is visited by 2 of them. Each collector sends its points to
-2 nodes of the series store, which build their blocks independently, and finished
-blocks are copied to an object store. The reading tier is kept apart from the
-writing tier, with its own machines, so that a flood of queries during an incident
-cannot delay the storing of new points. The last box is the smallest and among the
-most important: a second, minimal monitor in another place, which checks nothing
-except that the first is alive.</p>
-<h2 id="how-real-systems-do-it"><a class="header" href="#how-real-systems-do-it">How real systems do it</a></h2>
-<p>The compression described in this chapter is that of Gorilla, an in-memory store
-that Facebook described in 2015. The paper introduced the 2 techniques together:
-storing each timestamp as the difference between successive differences, and
-storing each value as the result of combining its bits with those of the previous
-value, which for a floating-point number that changes little leaves mostly zeros. It
-reports an average of 1.37 bytes for each point against 16 uncompressed, a
-reduction of 12 times, which is somewhat better than the 2 bytes of the simulation
-here, whose encoding works on whole bytes. The paper also argues for the priorities
-adopted in this chapter, that a monitoring store should favour availability for
-writing and for recent reads over consistency, and should tolerate the loss of a
-small amount of data.</p>
-<p>Prometheus is the widely used system that collects by pulling, and its storage
-engine adopts Gorilla’s encoding, with blocks of 2 hours that are written once and
-merged into larger blocks as they age. Google’s Monarch, described in 2020, is a
-system on a far larger scale that receives pushes and keeps recent data in memory
-in every region, and its paper gives as a design principle the independence from
-other systems that this chapter set out under watching the watcher.</p>
-<p>The advice on alerts is drawn from Google’s book on site reliability engineering,
-which distinguishes symptoms from causes and proposes 4 signals to watch for any
-service that answers requests: latency, traffic, errors and saturation. The danger
-of the average, and the way in which a small proportion of slow requests comes to
-affect most users of a service built from many parts, is the subject of a well
-known article by Dean and Barroso.</p>
-<p>For percentiles, fixed buckets are the simplest histogram, and better ones exist. More
-recent structures choose their buckets so that the relative error of any percentile
-is bounded, and can still be merged across machines, which removes the need to
-guess the boundaries in advance.</p>
-<h2 id="mistakes-to-avoid"><a class="header" href="#mistakes-to-avoid">Mistakes to avoid</a></h2>
+<h2 id="245-deep-dive-block-compaction-spike-preserving-rollups-and-alert-hysteresis"><a class="header" href="#245-deep-dive-block-compaction-spike-preserving-rollups-and-alert-hysteresis">24.5 Deep Dive: Block Compaction, Spike-Preserving Rollups, and Alert Hysteresis</a></h2>
+<h3 id="two-hour-wal-head-blocks-and-immutable-object-store-compaction"><a class="header" href="#two-hour-wal-head-blocks-and-immutable-object-store-compaction">Two-Hour WAL Head Blocks and Immutable Object-Store Compaction</a></h3>
+<p>TSDB ingesters separate live mutable writes from immutable cold storage using an LSM-inspired lifecycle:</p>
+<ol>
+<li><strong>In-Memory Head Block (<code>0 to 2 hours</code>):</strong> Newly arriving samples append to both a sequential local NVMe Write-Ahead Log (for crash recovery) and per-series RAM Gorilla chunks. No disk random writes occur during steady-state ingestion.</li>
+<li><strong>Immutable 2-Hour Flush:</strong> At the end of every 2-hour window, the ingester seals the head block, builds its compact sorted inverted index, writes an immutable block to object storage (S3/GCS), and truncates the corresponding WAL segment.</li>
+<li><strong>Background Compaction and Parquet/TSDB Tiering:</strong> Stateless Compactor workers merge 2-hour blocks from multiple HA replicas (deduplicating identical samples) into larger 12-hour and 24-hour immutable blocks (or columnar Parquet files for analytical long-term retention), reducing object-store metadata lookups during multi-week queries.</li>
+</ol>
+<h3 id="why-averages-mislead-and-spike-preserving-rollups"><a class="header" href="#why-averages-mislead-and-spike-preserving-rollups">Why Averages Mislead and Spike-Preserving Rollups</a></h3>
+<p>Averaging response times hides tail latency that degrades user experience: if 99% of requests finish in <code>40 ms</code> and 1% stall at <code>2,000 ms</code>, the mean is a deceptively calm <code>60 ms</code>, yet a user page triggering 50 backend fan-out RPCs has a <code>1 - 0.99^50 = 39.5%</code> chance of hitting a 2-second stall. Moreover, precomputed per-host percentiles (<code>p99</code>) are mathematically <strong>non-aggregatable</strong>: the fleet <code>p99</code> across two servers cannot be derived from their individual <code>p99</code> values. Services must therefore emit mergeable <strong>cumulative histogram buckets</strong> (or relative-error <strong>exponential / DDSketch histograms</strong>) so the Query Engine sums counts across hosts before computing quantiles.</p>
+<p>The exact same hazard affects long-term <strong>downsampling rollups</strong>. Rendering a 1-year graph on a 2,000-pixel monitor cannot scan 3.15 million raw 10-second points per series, so the Compactor downsamples blocks older than 15 days into 5-minute and 1-hour rollups. Reducing a 1-minute window containing 57 seconds at <code>40 ms</code> and 3 seconds at <code>900 ms</code> to a single arithmetic average (<code>83 ms</code>) erases the outage completely. Each rollup point therefore stores a 4-tuple of aggregates: <strong><code>min</code>, <code>max</code>, <code>sum</code>, and <code>count</code></strong>, preserving exact averages (<code>sum / count</code>) alongside peak spikes (<code>max</code>) and floors (<code>min</code>).</p>
+<h3 id="multi-window-alert-evaluation-with-hysteresis"><a class="header" href="#multi-window-alert-evaluation-with-hysteresis">Multi-Window Alert Evaluation with Hysteresis</a></h3>
+<p>Noisy alerting causes pager fatigue, eroding on-call responsiveness during genuine incidents. We enforce four architectural rules in the Alert Evaluator:</p>
+<ol>
+<li><strong>Symptom-Based SLO Alerts:</strong> Page on user-facing symptoms (error budget burn rate, <code>p99</code> checkout latency, failed payment ratio) rather than low-level machine causes (<code>CPU &gt; 85%</code>) that may reflect healthy batch utilization.</li>
+<li><strong>State Machine with <code>Pending -&gt; Firing</code> Hysteresis:</strong> When an alert expression evaluates true at <code>t = 0</code>, it transitions from <code>INACTIVE</code> to <code>PENDING</code> without paging. Only if the condition holds continuously across every 30-second evaluation for the configured <code>for_seconds</code> window (for example, <code>300 s</code>) does it transition to <code>FIRING</code> and dispatch to Alertmanager. Adding a <code>keep_firing_for_seconds</code> cooldown (hysteresis) prevents rapid flapping across a noisy threshold boundary.</li>
+<li><strong>Absence / Missing-Data Guards:</strong> A threshold rule <code>error_rate &gt; 0.01</code> evaluates to an empty vector when a service crashes completely and stops emitting metrics, leaving the alert silent during total outage. Every critical service therefore pairs symptom alerts with an explicit absence rule (<code>absent(up{service="payments"}) == 1</code> for <code>2 minutes</code>).</li>
+<li><strong>Grouping and Inhibition in Alertmanager:</strong> Groups simultaneous alerts sharing <code>cluster</code> or <code>service</code> labels into one consolidated incident page, and inhibits downstream dependency alerts when an upstream root-cause alert (such as <code>DatabasePrimaryDown</code>) is already firing.</li>
+</ol>
+<h2 id="246-failure-modes-slis-and-production-systems"><a class="header" href="#246-failure-modes-slis-and-production-systems">24.6 Failure Modes, SLIs, and Production Systems</a></h2>
+<h3 id="failure-and-recovery-matrix"><a class="header" href="#failure-and-recovery-matrix">Failure and Recovery Matrix</a></h3>
 <div class="table-wrapper">
 <table>
 <thead>
-<tr><th>Mistake</th><th>What goes wrong</th><th>What to do</th></tr>
+<tr><th style="text-align: left">Failure Scenario</th><th style="text-align: left">Blast Radius</th><th style="text-align: left">Automated Recovery and Preserved Invariant</th></tr>
 </thead>
 <tbody>
-<tr><td>A label with unbounded values</td><td>The number of series multiplies until memory is exhausted.</td><td>Keep labels to small, fixed sets of values, and put identifiers in logs.</td></tr>
-<tr><td>Reporting gauges for things that are counted</td><td>Whatever happened between 2 readings is lost.</td><td>Report counters, and compute rates when querying.</td></tr>
-<tr><td>Storing points plainly</td><td>Storage is 8 times what it need be.</td><td>Encode each point as its change from the one before.</td></tr>
-<tr><td>Rolling up to the average alone</td><td>Short spikes vanish from the history.</td><td>Keep the smallest value, the largest, the sum and the count.</td></tr>
-<tr><td>Watching the average response time</td><td>A slow hundredth of requests is invisible.</td><td>Watch percentiles.</td></tr>
-<tr><td>Computing percentiles in each service</td><td>They cannot be combined across machines.</td><td>Report histograms, and compute percentiles when querying.</td></tr>
-<tr><td>Alerts on causes</td><td>Engineers are woken by things that harm nobody.</td><td>Alert on what users experience.</td></tr>
-<tr><td>Alerts that fire on 1 reading</td><td>Momentary noise pages people.</td><td>Require the condition to hold for some minutes.</td></tr>
-<tr><td>No alert for missing data</td><td>A service that stops reporting raises no alarm.</td><td>Add a rule that fires when a series stops arriving.</td></tr>
-<tr><td>Monitoring on the monitored infrastructure</td><td>A single failure removes both the system and the view of it.</td><td>Give monitoring its own machines, network path and storage.</td></tr>
-<tr><td>Queries without limits</td><td>1 dashboard over a year exhausts the query service during an incident.</td><td>Bound the time and memory of every query, and use rollups for long ranges.</td></tr>
+<tr><td style="text-align: left"><strong>Monitored Production Cluster Outage</strong></td><td style="text-align: left">Zero impact on monitoring plane</td><td style="text-align: left">Monitoring runs in isolated VPC/account with independent network egress; <code>up == 0</code> and absence alerts fire reliably</td></tr>
+<tr><td style="text-align: left"><strong>Single TSDB Ingester Crash</strong></td><td style="text-align: left">Zero data loss or query gap</td><td style="text-align: left">Write Distributor writes to <code>RF = 3</code> ingesters; peers serve active 2-hour head blocks while crashed node replays local WAL on restart</td></tr>
+<tr><td style="text-align: left"><strong>Runaway High-Cardinality Label Deploy</strong></td><td style="text-align: left">Violating service’s new series only</td><td style="text-align: left">Write Distributor enforces per-tenant active-series cap, rejecting offending series while keeping shared cluster RAM stable</td></tr>
+<tr><td style="text-align: left"><strong>Incident Dashboard Query Storm</strong></td><td style="text-align: left">Query latency rises slightly</td><td style="text-align: left">Separate query tier enforces per-query timeouts (<code>30 s</code>) and max-series caps; TSDB ingestion and alert evaluation remain completely unaffected</td></tr>
+<tr><td style="text-align: left"><strong>Alert Evaluator or Alertmanager Freeze</strong></td><td style="text-align: left">Alert evaluation stalls</td><td style="text-align: left">Redundant HA evaluator continues running; if both stall, external Dead-Man’s Switch watchdog detects missing heartbeat within 3 minutes and pages SRE</td></tr>
+<tr><td style="text-align: left"><strong>Object-Store Transient Read Error</strong></td><td style="text-align: left">Historical range queries (<code>&gt; 2 h</code>)</td><td style="text-align: left">Real-time alerting and recent 2-hour incident graphs serve directly from ingester RAM head blocks without object-store dependency</td></tr>
 </tbody>
 </table>
 </div>
-<h2 id="failures"><a class="header" href="#failures">Failures</a></h2>
+<h3 id="operational-slis-and-slos"><a class="header" href="#operational-slis-and-slos">Operational SLIs and SLOs</a></h3>
+<p>Four meta-monitoring Service Level Indicators (“watching the watcher”) track the telemetry platform’s own health:</p>
+<ol>
+<li><strong>Sample Ingestion Drop Rate:</strong> Fraction of incoming scraped or pushed samples dropped due to overload or timeout (<code>SLO &lt; 0.01%</code>).</li>
+<li><strong>End-to-End Ingestion-to-Query Freshness (<code>p99</code>):</strong> Elapsed seconds from sample timestamp to visibility in PromQL queries (<code>SLO &lt;= 30 s</code>).</li>
+<li><strong>Alert Evaluation Loop Duration and Missed Cycles:</strong> Verifies every 30-second rule group finishes within its interval (<code>SLO: 0</code> skipped evaluation ticks per hour).</li>
+<li><strong>Dead-Man’s Switch Heartbeat Continuity:</strong> End-to-end synthetic alert fired every 60 seconds through the full <code>Evaluator -&gt; Alertmanager -&gt; Pager</code> pipeline (<code>SLO: 99.99%</code> delivery continuity).</li>
+</ol>
+<h3 id="how-production-systems-implement-metrics-and-monitoring"><a class="header" href="#how-production-systems-implement-metrics-and-monitoring">How Production Systems Implement Metrics and Monitoring</a></h3>
 <div class="table-wrapper">
 <table>
 <thead>
-<tr><th>Failure</th><th>What is observed</th><th>How the system recovers</th></tr>
+<tr><th style="text-align: left">Production System</th><th style="text-align: left">Core Architecture</th><th style="text-align: left">Architectural Distinction</th></tr>
 </thead>
 <tbody>
-<tr><td>A service stops answering the collector</td><td>its series end</td><td>the rule for missing data fires</td></tr>
-<tr><td>A collector fails</td><td>its services are not visited</td><td>another collector takes over its list</td></tr>
-<tr><td>A machine of the series store fails</td><td>no gap, since each point went to 2 machines</td><td>a replacement builds its blocks from then on, and older blocks are in the object store</td></tr>
-<tr><td>The store restarts</td><td>up to a few seconds of points may be missing</td><td>the current blocks are rebuilt from the log</td></tr>
-<tr><td>A flood of queries</td><td>dashboards load slowly</td><td>queries are limited, and writes are unaffected</td></tr>
-<tr><td>The alert evaluator fails</td><td>no alerts fire</td><td>a second evaluator runs, and an independent check watches both</td></tr>
+<tr><td style="text-align: left"><strong>Prometheus</strong></td><td style="text-align: left">Pull-based collector + local embedded TSDB using Gorilla compression, 2-hour WAL head blocks, and PromQL</td><td style="text-align: left">Established the OpenMetrics exposition standard, pull-based <code>up</code> health probing, and inverted label-index TSDB architecture</td></tr>
+<tr><td style="text-align: left"><strong>VictoriaMetrics</strong></td><td style="text-align: left">High-efficiency Go TSDB with merged LSM-style storage parts, zstd-layered delta/XOR encoding, and native high-cardinality index caching</td><td style="text-align: left">Achieves sub-byte-per-sample compression (<code>~0.4 to 0.8 B/point</code>) and significantly lower RAM per active series than standard TSDB layouts</td></tr>
+<tr><td style="text-align: left"><strong>Google Monarch</strong></td><td style="text-align: left">Planet-scale globally distributed push-based in-memory TSDB structured in regional leaves, zone aggregators, and global root query mixers</td><td style="text-align: left">Prioritizes strict regional failure isolation (zero global dependency for local alerting) and high-fan-in streaming aggregation</td></tr>
+<tr><td style="text-align: left"><strong>Grafana Mimir / Thanos</strong></td><td style="text-align: left">Horizontally sharded, multi-tenant Prometheus-compatible TSDB separating stateless distributors, replicated ingesters, object-store compactors, and query frontends</td><td style="text-align: left">Extends Prometheus semantics to billions of active series with per-tenant cardinality limits, split-by-interval query caching, and unlimited S3/GCS block retention</td></tr>
 </tbody>
 </table>
 </div>
-<h2 id="trade-offs"><a class="header" href="#trade-offs">Trade-offs</a></h2>
-<div class="table-wrapper">
-<table>
-<thead>
-<tr><th>Decision</th><th>What it gains</th><th>What it costs</th></tr>
-</thead>
-<tbody>
-<tr><td>Pulling measurements</td><td>a silent service is noticed, and the collectors set the pace</td><td>short-lived jobs need a separate way in</td></tr>
-<tr><td>Bounded labels</td><td>a predictable number of series</td><td>no questions about individual users or requests</td></tr>
-<tr><td>Compression by differences</td><td>about 2 bytes a point</td><td>a block must be decoded from its start</td></tr>
-<tr><td>Rollups</td><td>fast queries over long ranges, and far less storage</td><td>the detail of the past is gone</td></tr>
-<tr><td>2 independent copies without agreement</td><td>a simple and cheap write path</td><td>the copies may differ by a few points</td></tr>
-<tr><td>Histograms</td><td>percentiles over any group and period</td><td>accuracy limited by the buckets chosen</td></tr>
-</tbody>
-</table>
-</div>
-<h2 id="the-simulation"><a class="header" href="#the-simulation">The simulation</a></h2>
+<h2 id="247-simulation-verification"><a class="header" href="#247-simulation-verification">24.7 Simulation Verification</a></h2>
+<p>To verify delta-based time-series compression and the difference between average and maximum downsampling rollups on transient latency spikes, execute the <code>metricsim</code> crate in the repository’s <code>code/</code> workspace:</p>
+<pre><code class="language-console">$ cargo run --release -p metricsim
+3600 points, 1 for every second of an hour
+plain, 16 bytes for each point: 57600 bytes
+each point as its change from the one before: 7223 bytes, 2.0 bytes for each point
+minute 20, kept as its average: 83 ms
+minute 20, kept as its largest value: 900 ms
+</code></pre>
+<p>The observed output validates two core TSDB mechanics over 3,600 one-second response-time samples:</p>
+<ul>
+<li><strong>Compression efficiency:</strong> Storing raw 16-byte <code>(timestamp, value)</code> points consumes <code>57,600 bytes</code>, whereas byte-aligned delta encoding shrinks the hour to <code>7,223 bytes</code> (<code>2.0 bytes/point</code>, an <code>8x</code> reduction; bit-packed Gorilla XOR pushes this further to <code>~1.37 bytes/point</code>).</li>
+<li><strong>Spike preservation in rollups:</strong> During minute <code>20</code> (57 seconds at <code>~40 ms</code> plus a 3-second spike at <code>900 ms</code>), an average-only rollup records <code>83 ms</code> and conceals the incident, whereas recording <code>max</code> preserves the <code>900 ms</code> spike alongside <code>min</code>, <code>sum</code>, and <code>count</code>.</li>
+</ul>
 <div class="simulation">
-<p><strong>Simulation in the repository.</strong> The program <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/distributed-systems-from-the-ground-up/code/metricsim/src/main.rs"><code>code/metricsim</code></a> simulates this design. To run it, clone the repository and type <code>cargo run --release -p metricsim</code> in the <code>code</code> directory.</p>
+<p><strong>Run the metrics compression and rollup simulation.</strong> Execute <code>cargo run --release -p metricsim</code> in <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/distributed-systems-from-the-ground-up/code/metricsim/src/main.rs"><code>code/metricsim</code></a> to reproduce the <code>8x</code> delta compression reduction (<code>57,600</code> to <code>7,223</code> bytes) and verify how <code>max</code> rollups preserve the <code>900 ms</code> spike that an <code>83 ms</code> average hides.</p>
 </div>
 
-<h2 id="references"><a class="header" href="#references">References</a></h2>
-<ul>
-<li>T. Pelkonen and others, “Gorilla: A Fast, Scalable, In-Memory Time Series Database”, VLDB 2015.</li>
-<li>C. Adams and others, “Monarch: Google’s Planet-Scale In-Memory Time Series Database”, VLDB 2020.</li>
-<li>Prometheus documentation, “Storage”.</li>
-<li>B. Beyer and others (editors), <em>Site Reliability Engineering</em>, O’Reilly, 2016, chapter 6, “Monitoring Distributed Systems”.</li>
-<li>J. Dean and L. Barroso, “The Tail at Scale”, Communications of the ACM, 2013.</li>
-<li>C. Masson, J. Rim and H. Lee, “DDSketch: A Fast and Fully-Mergeable Quantile Sketch with Relative-Error Guarantees”, VLDB 2019.</li>
-</ul>
-<h2 id="terms-introduced-in-this-chapter"><a class="header" href="#terms-introduced-in-this-chapter">Terms introduced in this chapter</a></h2>
+<h2 id="248-terminology-and-references"><a class="header" href="#248-terminology-and-references">24.8 Terminology and References</a></h2>
+<h3 id="engineering-glossary"><a class="header" href="#engineering-glossary">Engineering Glossary</a></h3>
 <div class="table-wrapper">
 <table>
 <thead>
-<tr><th>Term</th><th>Meaning</th></tr>
+<tr><th style="text-align: left">Term</th><th style="text-align: left">Definition</th></tr>
 </thead>
 <tbody>
-<tr><td>Metric</td><td>a number, measured repeatedly, that describes a running system</td></tr>
-<tr><td>Counter</td><td>a metric that only increases, of which the rate is what matters</td></tr>
-<tr><td>Gauge</td><td>a metric that rises and falls, of which the present value is what matters</td></tr>
-<tr><td>Histogram</td><td>counts of events in buckets by size, from which percentiles are estimated</td></tr>
-<tr><td>Label</td><td>a key and a value that say what a measurement refers to</td></tr>
-<tr><td>Time series</td><td>the values of 1 metric with 1 set of label values, in order of time</td></tr>
-<tr><td>Cardinality</td><td>the number of series that a metric gives rise to</td></tr>
-<tr><td>Push, pull</td><td>services sending their measurements, and the monitoring system asking for them</td></tr>
-<tr><td>Block</td><td>the points of 1 series for a fixed span of time, compressed together</td></tr>
-<tr><td>Downsampling, rollup</td><td>reducing old data to fewer points</td></tr>
-<tr><td>Percentile</td><td>the value below which a given percentage of measurements fall</td></tr>
-<tr><td>Alert</td><td>a query and a condition that, when it holds, causes somebody to be notified</td></tr>
-<tr><td>Logs, traces</td><td>records of individual events, and of the path of a single request</td></tr>
+<tr><td style="text-align: left"><strong>Cardinality Explosion</strong></td><td style="text-align: left">Unbounded growth in active time series caused by placing high-cardinality identifiers (such as <code>user_id</code> or <code>request_id</code>) into metric labels, exhausting inverted-index RAM.</td></tr>
+<tr><td style="text-align: left"><strong>Dead-Man’s Switch</strong></td><td style="text-align: left">An always-firing synthetic heartbeat alert verified by an independent external watchdog to detect silent stalls in the monitoring or paging pipeline.</td></tr>
+<tr><td style="text-align: left"><strong>Delta-of-Delta (DoD) Compression</strong></td><td style="text-align: left">Encoding regular time-series timestamps as the second-order difference <code>D = (t_n - t_(n-1)) - (t_(n-1) - t_(n-2))</code>, compressing jitter-free intervals to 1 bit.</td></tr>
+<tr><td style="text-align: left"><strong>Downsampling (Rollup)</strong></td><td style="text-align: left">Aggregating high-resolution historical points into coarser intervals (<code>5m</code>, <code>1h</code>) storing <code>min</code>, <code>max</code>, <code>sum</code>, and <code>count</code> to accelerate long-range queries without hiding spikes.</td></tr>
+<tr><td style="text-align: left"><strong>Gorilla XOR Encoding</strong></td><td style="text-align: left">Compressing adjacent IEEE-754 floating-point metric values by bitwise XORing consecutive readings and packing only the non-zero significant window.</td></tr>
+<tr><td style="text-align: left"><strong>Hysteresis (<code>for:</code> / Cooldown)</strong></td><td style="text-align: left">Requiring an alert condition to persist across consecutive evaluations before firing (and keeping it firing briefly after recovery) to eliminate noisy flapping.</td></tr>
+<tr><td style="text-align: left"><strong>Mergeable Histogram</strong></td><td style="text-align: left">Recording request durations into cumulative or exponential buckets whose counts can be summed across instances before computing accurate fleet percentiles.</td></tr>
 </tbody>
 </table>
 </div>
-<div class="summary">
-<h2 id="summary"><a class="header" href="#summary">Summary</a></h2>
+<h3 id="references"><a class="header" href="#references">References</a></h3>
 <ul>
-<li>Metrics are numbers measured repeatedly, of 3 kinds: counters, gauges and histograms.</li>
-<li>Every combination of label values is a separate series, and a label with unbounded values will exhaust the system.</li>
-<li>Pulling lets the monitoring system notice a service that has fallen silent, and pushing suits jobs that live for seconds.</li>
-<li>Points arrive in order and resemble their predecessors, so that storing each as its change from the one before takes about 2 bytes.</li>
-<li>Old data is reduced to 1 point for each minute or hour, keeping the smallest value, the largest, the sum and the count.</li>
-<li>An average of response times hides the slow requests that users notice, and percentiles must be computed from histograms because they cannot be combined.</li>
-<li>An alert should concern what users experience, hold for some time before firing, demand an action, and have a companion that fires when data stops.</li>
-<li>The monitoring system runs on infrastructure of its own, and is itself watched by something independent.</li>
+<li>T. Pelkonen et al., “Gorilla: A Fast, Scalable, In-Memory Time Series Database”, <em>Proceedings of the VLDB Endowment</em>, vol. 8, no. 12, 2015.</li>
+<li>C. Adams et al., “Monarch: Google’s Planet-Scale In-Memory Time Series Database”, <em>Proceedings of the VLDB Endowment</em>, vol. 13, no. 12, 2020.</li>
+<li>Prometheus Authors, “TSDB Storage Engine and Block Compaction Format”, Prometheus Documentation.</li>
+<li>Grafana Labs, “Grafana Mimir Architecture: Horizontally Scalable Multi-Tenant TSDB”, Mimir Documentation.</li>
+<li>B. Beyer, C. Jones, J. Petoff, and N. R. Murphy (eds.), <em>Site Reliability Engineering</em>, O’Reilly Media, 2016 (Chapter 6: “Monitoring Distributed Systems”).</li>
+<li>J. Dean and L. A. Barroso, “The Tail at Scale”, <em>Communications of the ACM</em>, vol. 56, no. 2, 2013.</li>
+<li>C. Masson, J. E. Rim, and H. K. Lee, “DDSketch: A Fast and Fully-Mergeable Quantile Sketch with Relative-Error Guarantees”, <em>Proceedings of the VLDB Endowment</em>, vol. 12, no. 12, 2019.</li>
 </ul>
-</div>
-
 
                     </main>
 
@@ -790,7 +582,7 @@ guess the boundaries in advance.</p>
         <script src="book-609e4cb8.js"></script>
 
         <!-- Custom JS scripts -->
-        <script src="theme/figures-47b15f7f.js"></script>
+        <script src="theme/figures-9c14cb1c.js"></script>
         <script src="theme/proto-326509cd.js"></script>
         <script src="theme/code-67e9caaf.js"></script>
         <script src="theme/tables-9fb295e8.js"></script>

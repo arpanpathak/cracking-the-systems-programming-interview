@@ -28,7 +28,7 @@
         <link rel="stylesheet" id="mdbook-ayu-highlight-css" href="ayu-highlight-3fdfc3ac.css">
 
         <!-- Custom theme stylesheets -->
-        <link rel="stylesheet" href="theme/custom-9125cc61.css">
+        <link rel="stylesheet" href="theme/custom-3c3d4beb.css">
 
         <!-- MathJax -->
         <script async src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.1/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
@@ -38,10 +38,10 @@
             const path_to_root = "";
             const default_light_theme = "light";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "searchindex-025a35ef.js";
+            window.path_to_searchindex_js = "searchindex-e451f97a.js";
         </script>
         <!-- Start loading toc.js asap -->
-        <script src="toc-f3585118.js"></script>
+        <script src="toc-1a401835.js"></script>
     </head>
     <body>
     <div id="mdbook-help-container">
@@ -473,14 +473,14 @@ match        yes
 <tr><td style="text-align: left"><strong>Raw <code>Box&lt;[MaybeUninit&lt;T&gt;]&gt;</code></strong></td><td style="text-align: left">FIFO</td><td style="text-align: left">O(1) / O(1)</td><td style="text-align: left">Zero <code>Option</code> tag overhead, no <code>Default</code> bound; requires <code>unsafe</code> (<code>write</code>, <code>assume_init_read</code>) and custom <code>Drop</code></td><td style="text-align: left">Production channels, kernel rings, and lock-free SPSC queues (Section 19.4)</td></tr>
 <tr><td style="text-align: left"><strong>Two-stack <code>Vec&lt;T&gt;</code> (<code>inbox</code> + <code>outbox</code>)</strong></td><td style="text-align: left">FIFO</td><td style="text-align: left">Amortized O(1)</td><td style="text-align: left">Plain <code>Vec&lt;T&gt;</code> with zero <code>Option&lt;T&gt;</code> and zero <code>unsafe</code>, but reverses <code>inbox</code> in O(N) whenever <code>outbox</code> empties</td><td style="text-align: left">Functional or safe FIFO when occasional O(N) tail-latency spikes are acceptable</td></tr>
 <tr><td style="text-align: left"><strong>Plain <code>Vec&lt;T&gt;</code> (<code>push</code> + <code>pop</code>)</strong></td><td style="text-align: left"><strong>LIFO</strong></td><td style="text-align: left">O(1) / O(1)</td><td style="text-align: left">Plain <code>Vec&lt;T&gt;</code>, zero overhead, improves L1 cache warmth for recent items</td><td style="text-align: left">Object pools and worker stacks where FIFO ordering is not required</td></tr>
-<tr><td style="text-align: left"><strong>Plain <code>Vec&lt;T&gt;</code> (<code>push</code> + <code>remove(0)</code>)</strong></td><td style="text-align: left">FIFO</td><td style="text-align: left">O(1) / <strong>O(N)</strong></td><td style="text-align: left">Shifts every remaining element left via <code>memmove</code> on every pop</td><td style="text-align: left"><strong>Interview red flag</strong> unless you explicitly call out the O(N) cost for tiny bounds</td></tr>
+<tr><td style="text-align: left"><strong>Plain <code>Vec&lt;T&gt;</code> (<code>push</code> + <code>remove(0)</code>)</strong></td><td style="text-align: left">FIFO</td><td style="text-align: left">O(1) / <strong>O(N)</strong></td><td style="text-align: left">Shifts every remaining element left via <code>memmove</code> on every pop</td><td style="text-align: left"><strong>Interview red flag</strong> unless the O(N) cost is called out explicitly for tiny bounds</td></tr>
 </tbody>
 </table>
 </div>
 <h4 id="why-vecdeque-is-the-right-first-answer"><a class="header" href="#why-vecdeque-is-the-right-first-answer">Why <code>VecDeque</code> Is the Right First Answer</a></h4>
-<p>For a mutex-guarded bounded queue in an interview, start with <code>VecDeque::with_capacity(capacity)</code> (or <code>std::deque&lt;T&gt;</code> in C++) and state your reasoning out loud: <code>VecDeque</code> is already a contiguous circular ring buffer whose <code>push_back</code> and <code>pop_front</code> operations both run in O(1) time without reallocating once pre-sized, while using <code>MaybeUninit&lt;T&gt;</code> internally to avoid <code>Option&lt;T&gt;</code> discriminant padding. Using <code>Vec::remove(0)</code> is a mild red flag on systems teams because removing from index <code>0</code> copies <code>N - 1</code> elements left on every dequeue, turning a constant-time primitive into a linear bottleneck.</p>
+<p>For a mutex-guarded bounded queue in an interview, starting with <code>VecDeque::with_capacity(capacity)</code> (or <code>std::deque&lt;T&gt;</code> in C++) and stating the reasoning clearly is the strongest opening: <code>VecDeque</code> is already a contiguous circular ring buffer whose <code>push_back</code> and <code>pop_front</code> operations both run in O(1) time without reallocating once pre-sized, while using <code>MaybeUninit&lt;T&gt;</code> internally to avoid <code>Option&lt;T&gt;</code> discriminant padding. Using <code>Vec::remove(0)</code> is a mild red flag on systems teams because removing from index <code>0</code> copies <code>N - 1</code> elements left on every dequeue, turning a constant-time primitive into a linear bottleneck.</p>
 <h4 id="why-a-hand-rolled-safe-ring-uses-vecoptiont-and-not-plain-vect"><a class="header" href="#why-a-hand-rolled-safe-ring-uses-vecoptiont-and-not-plain-vect">Why a Hand-Rolled Safe Ring Uses <code>Vec&lt;Option&lt;T&gt;&gt;</code> (and Not Plain <code>Vec&lt;T&gt;</code>)</a></h4>
-<p>When an interviewer asks you to drop <code>VecDeque</code> and write the circular buffer directly, three Rust ownership invariants explain why a generic ring buffer cannot be backed by a plain <code>Vec&lt;T&gt;</code>:</p>
+<p>When an interviewer asks a candidate to drop <code>VecDeque</code> and write the circular buffer directly, three Rust ownership invariants explain why a generic ring buffer cannot be backed by a plain <code>Vec&lt;T&gt;</code>:</p>
 <ol>
 <li><strong>Empty slots cannot remain uninitialized in <code>Vec&lt;T&gt;</code>:</strong> Every index <code>0..vec.len()</code> in a <code>Vec&lt;T&gt;</code> must hold a fully initialized <code>T</code>. At construction, the ring is empty, and arbitrary types such as <code>String</code>, <code>TcpStream</code>, or <code>Job</code> do not implement <code>Default</code>. (Plain <code>vec![0u8; cap]</code> works only for <code>T: Copy + Default</code>, such as a raw byte buffer.)</li>
 <li><strong>Moving a non-<code>Copy</code> item out of <code>buf[head]</code>:</strong> Writing <code>let item = self.buf[self.head];</code> fails to compile for any owning type such as <code>String</code> or <code>Box&lt;T&gt;</code>, because <code>Vec&lt;T&gt;</code> retains ownership of the slot and would double-free it when overwritten or dropped. Wrapping each slot in <code>Option&lt;T&gt;</code> lets <code>self.buf[self.head].take()</code> atomically move ownership of the <code>T</code> to the caller while leaving <code>None</code> in the slot.</li>
@@ -1076,12 +1076,12 @@ fn main() -&gt; QueueResult&lt;()&gt; {
 MaybeUninit ring: 200 Strings transferred + partial-ring Drop destroyed 3/3 live items (verified)
 </code></pre>
 <h3 id="1926-systems-analysis-and-concurrency-interview-follow-ups"><a class="header" href="#1926-systems-analysis-and-concurrency-interview-follow-ups">19.2.6 Systems Analysis and Concurrency Interview Follow-Ups</a></h3>
-<p>Interviewers routinely probe five concurrency subtleties directly on top of your bounded queue implementation (in C/C++ with <code>std::condition_variable</code> or <code>pthread_cond_wait</code>, and in Rust with <code>Condvar</code>):</p>
+<p>Interviewers routinely probe five concurrency subtleties directly on top of a bounded queue implementation (in C/C++ with <code>std::condition_variable</code> or <code>pthread_cond_wait</code>, and in Rust with <code>Condvar</code>):</p>
 <ul>
-<li><strong>Why <code>wait_while</code> (or a <code>while</code> loop) instead of a single <code>if</code> + <code>wait</code>?</strong> Operating system schedulers and POSIX condition variables permit <strong>spurious wakeups</strong>, where a sleeping thread unblocks without any matching signal. Even on a legitimate wakeup, another thread can acquire the mutex first and consume the item or fill the slot before the awakened thread re-acquires the lock. Rechecking the predicate inside a <code>while</code> loop (which <code>Condvar::wait_while</code> and <code>std::condition_variable::wait(lock, pred)</code> encapsulate for you) guarantees that the thread proceeds only when the invariant holds under exclusive lock ownership.</li>
+<li><strong>Why <code>wait_while</code> (or a <code>while</code> loop) instead of a single <code>if</code> + <code>wait</code>?</strong> Operating system schedulers and <strong>Portable Operating System Interface (<code>POSIX</code>)</strong> condition variables permit <strong>spurious wakeups</strong>, where a sleeping thread unblocks without any matching signal. Even on a legitimate wakeup, another thread can acquire the mutex first and consume the item or fill the slot before the awakened thread re-acquires the lock. Rechecking the predicate inside a <code>while</code> loop (encapsulated cleanly by <code>Condvar::wait_while</code> and <code>std::condition_variable::wait(lock, pred)</code>) guarantees that the thread proceeds only when the invariant holds under exclusive lock ownership.</li>
 <li><strong>Why two condition variables (<code>not_full</code> and <code>not_empty</code>) instead of one?</strong> Dual condition variables isolate waiting producers from waiting consumers: a producer wakes only consumers, and a consumer wakes only producers. With a single shared condition variable, <code>notify_one</code> can wake another producer when the queue is full (causing permanent deadlock), forcing <code>notify_all</code> on every operation and waking every sleeping thread when only one can proceed.</li>
 <li><strong>Why is <code>notify_one</code> safe and preferred over <code>notify_all</code>?</strong> Because each <code>push</code> inserts exactly one item (enabling at most one consumer to proceed) and each <code>pop</code> frees exactly one slot (enabling at most one producer to proceed). Waking every waiter via <code>notify_all</code> triggers a <strong>thundering herd</strong>, burning CPU cycles as <code>K - 1</code> threads re-acquire the mutex only to fall back asleep. (Reserve <code>notify_all</code> for shutdown/close transitions where all waiters must wake and exit.)</li>
-<li><strong>Should you notify before or after dropping the mutex lock?</strong> Both orders are strictly correct. Signaling while holding the mutex can cause a “hurry up and wait” penalty where the woken thread immediately blocks trying to acquire the mutex still held by the signaler; dropping the guard (<code>drop(ring)</code>) before calling <code>notify_one()</code> avoids that redundant context switch, though modern OS kernels also mitigate inside-lock signaling via <strong>wait morphing</strong> (moving a waiter directly from the condvar wait queue to the mutex wait queue in kernel space).</li>
+<li><strong>Should notification occur before or after dropping the mutex lock?</strong> Both orders are strictly correct. Signaling while holding the mutex can cause a “hurry up and wait” penalty where the woken thread immediately blocks trying to acquire the mutex still held by the signaler; dropping the guard (<code>drop(ring)</code>) before calling <code>notify_one()</code> avoids that redundant context switch, though modern OS kernels also mitigate inside-lock signaling via <strong>wait morphing</strong> (moving a waiter directly from the condvar wait queue to the mutex wait queue in kernel space).</li>
 <li><strong>What is Rust lock poisoning (<code>PoisonError</code>)?</strong> Unique to Rust’s <code>std::sync::Mutex</code>, a mutex transitions to a <em>poisoned</em> state if a thread panics while holding its <code>MutexGuard</code>, warning subsequent callers that the protected data structure may have been left halfway through a multi-field update with broken invariants. In production and interview code, propagate the error cleanly with <code>.map_err(...)?</code> (as in Listings 19-2 and 19-2b) rather than panicking blindly with <code>.unwrap()</code>.</li>
 </ul>
 <div class="callout keyidea">
@@ -3745,6 +3745,9 @@ cycle after : yes
                                 <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M41.4 233.4c-12.5 12.5-12.5 32.8 0 45.3l160 160c12.5 12.5 32.8 12.5 45.3 0s12.5-32.8 0-45.3L109.3 256 246.6 118.6c12.5-12.5 12.5-32.8 0-45.3s-32.8-12.5-45.3 0l-160 160z"/></svg></span>
                             </a>
 
+                            <a rel="next prefetch" href="glossary.html" class="mobile-nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                                <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M278.6 233.4c12.5 12.5 12.5 32.8 0 45.3l-160 160c-12.5 12.5-32.8 12.5-45.3 0s-12.5-32.8 0-45.3L210.7 256 73.4 118.6c-12.5-12.5-12.5-32.8 0-45.3s32.8-12.5 45.3 0l160 160z"/></svg></span>
+                            </a>
 
                         <div style="clear: both"></div>
                     </nav>
@@ -3756,6 +3759,9 @@ cycle after : yes
                         <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M41.4 233.4c-12.5 12.5-12.5 32.8 0 45.3l160 160c12.5 12.5 32.8 12.5 45.3 0s12.5-32.8 0-45.3L109.3 256 246.6 118.6c12.5-12.5 12.5-32.8 0-45.3s-32.8-12.5-45.3 0l-160 160z"/></svg></span>
                     </a>
 
+                    <a rel="next prefetch" href="glossary.html" class="nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                        <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M278.6 233.4c12.5 12.5 12.5 32.8 0 45.3l-160 160c-12.5 12.5-32.8 12.5-45.3 0s-12.5-32.8 0-45.3L210.7 256 73.4 118.6c-12.5-12.5-12.5-32.8 0-45.3s32.8-12.5 45.3 0l160 160z"/></svg></span>
+                    </a>
             </nav>
 
         </div>
@@ -3782,7 +3788,7 @@ cycle after : yes
         <script src="book-609e4cb8.js"></script>
 
         <!-- Custom JS scripts -->
-        <script src="theme/figures-f1be29a8.js"></script>
+        <script src="theme/figures-fd5ff574.js"></script>
 
 
 

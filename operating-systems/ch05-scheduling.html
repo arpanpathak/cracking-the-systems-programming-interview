@@ -28,7 +28,7 @@
         <link rel="stylesheet" id="mdbook-ayu-highlight-css" href="ayu-highlight-3fdfc3ac.css">
 
         <!-- Custom theme stylesheets -->
-        <link rel="stylesheet" href="theme/custom-9125cc61.css">
+        <link rel="stylesheet" href="theme/custom-3c3d4beb.css">
 
         <!-- MathJax -->
         <script async src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.1/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
@@ -38,10 +38,10 @@
             const path_to_root = "";
             const default_light_theme = "light";
             const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "searchindex-025a35ef.js";
+            window.path_to_searchindex_js = "searchindex-e451f97a.js";
         </script>
         <!-- Start loading toc.js asap -->
-        <script src="toc-f3585118.js"></script>
+        <script src="toc-1a401835.js"></script>
     </head>
     <body>
     <div id="mdbook-help-container">
@@ -548,16 +548,26 @@ RR   (quantum 5)
 <p>In symmetric multiprocessing (SMP) and Non-Uniform Memory Access (NUMA) architectures, maintaining a single global ready queue creates a severe serialization bottleneck: every context switch, wakeup, and timer tick must acquire a single global runqueue spinlock, saturating inter-core cache coherence interconnects.</p>
 <p>Modern kernels resolve this contention by partitioning scheduling state into <strong>per-CPU runqueues</strong> managed by a topology-aware load balancer:</p>
 <ul>
-<li><strong>Cache Affinity:</strong> While a thread executes on Core 2, its active working set populates Core 2’s private L1/L2 caches and TLBs. Dispatching that thread back onto Core 2 following a brief blocking interval eliminates cold cache refills and cross-core MESI coherence invalidations. Schedulers enforce <strong>soft affinity</strong> automatically by biasing wakeups toward the thread’s previous core, while providing explicit pinning interfaces (<code>sched_setaffinity</code>) for <strong>hard affinity</strong> in deterministic latency-critical deployments.</li>
+<li><strong>Cache Affinity:</strong> While a thread executes on Core 2, its active working set populates Core 2’s private L1/L2 caches and TLBs. Dispatching that thread back onto Core 2 following a brief blocking interval eliminates cold cache refills and cross-core <strong>Modified-Exclusive-Shared-Invalid (<code>MESI</code>)</strong> coherence invalidations. Schedulers enforce <strong>soft affinity</strong> automatically by biasing wakeups toward the thread’s previous core, while providing explicit pinning interfaces (<code>sched_setaffinity</code>) for <strong>hard affinity</strong> in deterministic latency-critical deployments.</li>
 <li><strong>Work-Stealing Load Balancing:</strong> Partitioned runqueues permit transient imbalance in which one core holds multiple queued threads while a sibling core becomes idle. Upon emptying its local runqueue, or at periodic load-balancing ticks, an idle core invokes <strong>work stealing</strong>, migrating a cache-cold runnable thread from an overloaded sibling runqueue.</li>
 <li><strong>Hierarchical Scheduling Domains and NUMA Awareness:</strong> The kernel encodes physical hardware topology as a hierarchy of <strong>scheduling domains</strong>:
 <ol>
-<li><strong>SMT / Hyperthread Siblings:</strong> Hardware threads sharing a physical core and L1/L2 caches (minimal migration cost).</li>
+<li><strong>Simultaneous Multithreading (<code>SMT</code>) / Hyperthread Siblings:</strong> Hardware threads sharing a physical core and L1/L2 caches (minimal migration cost).</li>
 <li><strong>Core / Last-Level Cache (LLC) Domain:</strong> Distinct cores sharing a unified L3 cache (moderate migration cost limited to L1/L2 warm-up).</li>
-<li><strong>NUMA Socket Domain:</strong> Independent processor sockets connected across inter-socket links (Intel UPI, AMD Infinity Fabric) with local DRAM controllers. Migrating a thread across NUMA boundaries decouples it from its locally allocated physical DRAM pages, increasing remote memory latency by 30–100%. Load balancers therefore equalize queue depth within an LLC domain first and migrate threads across NUMA nodes only when load imbalance exceeds the remote-memory access penalty.</li>
+<li><strong>NUMA Socket Domain:</strong> Independent processor sockets connected across inter-socket links (Intel <strong>Ultra Path Interconnect (<code>UPI</code>)</strong>, AMD Infinity Fabric) with local <strong>Dynamic Random-Access Memory (<code>DRAM</code>)</strong> controllers. Migrating a thread across NUMA boundaries decouples it from its locally allocated physical <code>DRAM</code> pages, increasing remote memory latency by 30–100%. Load balancers therefore equalize queue depth within an LLC domain first and migrate threads across NUMA nodes only when load imbalance exceeds the remote-memory access penalty.</li>
 </ol>
 </li>
 </ul>
+<div class="callout experiment">
+<span class="label">Experiment</span>
+<p>Modify Listing 5-1 (<code>code/ch05/sched.cpp</code>) to add one long-running 500 ms CPU-bound job at <code>t = 0</code> ahead of five 5 ms interactive jobs. Compare the average response time under First-Come, First-Served (<code>FCFS</code>) versus Round-Robin (<code>RR</code>) with a 10 ms quantum to observe the convoy effect directly.</p>
+</div>
+
+<div class="callout caution">
+<span class="label">Common Pitfall</span>
+<p>Treating <code>nice</code> values or thread priorities as hard real-time guarantees. Under proportional-share schedulers (<code>CFS</code> / <code>EEVDF</code>), a low-priority background thread still receives non-zero CPU share, and priority inversion can stall a high-priority thread indefinitely unless priority inheritance is enabled on the contended mutex.</p>
+</div>
+
 
                     </main>
 
@@ -610,7 +620,7 @@ RR   (quantum 5)
         <script src="book-609e4cb8.js"></script>
 
         <!-- Custom JS scripts -->
-        <script src="theme/figures-f1be29a8.js"></script>
+        <script src="theme/figures-fd5ff574.js"></script>
 
 
 
