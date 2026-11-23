@@ -1199,7 +1199,147 @@ def plate_ch19(t: dict) -> str:
     return "\n".join(p)
 
 
+def book_cover(t: dict) -> str:
+    """Swiss-Modernist / Bauhaus monograph front cover (900x1240) — twin of Distributed Systems."""
+    CW, CH = 900, 1240
+    is_dark = t is DARK
+    bg = "#0E131F" if is_dark else "#FBF9F4"
+    grid_c = "rgba(226, 232, 240, 0.045)" if is_dark else "#EAE5DA"
+    p = [
+        f'<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 {CW} {CH}" width="{CW}" height="{CH}" '
+        f'shape-rendering="geometricPrecision" text-rendering="geometricPrecision" role="img" '
+        f'aria-label="Cover of Operating Systems: A Hands-On Approach by Arpan Pathak: a Swiss-Modernist abstract geometric composition depicting concentric Ring 3 and Ring 0 hardware privilege boundaries, a central SYSCALL trap gate, user-space processes, and a four-pillar kernel and silicon substrate.">',
+        "  <style>",
+        '    .sans { font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif; }',
+        '    .serif { font-family: Georgia, "Iowan Old Style", "Times New Roman", serif; }',
+        '    .mono { font-family: "SF Mono", SFMono-Regular, ui-monospace, Menlo, Consolas, monospace; }',
+        "  </style>",
+        f'  <rect x="0.5" y="0.5" width="{CW - 1}" height="{CH - 1}" rx="12" fill="{bg}" stroke="{t["hair"]}" stroke-width="1.2"/>',
+    ]
+    # Crisp 40px architectural editorial grid
+    for gx in range(40, CW, 40):
+        p.append(f'  <line x1="{gx}" y1="1" x2="{gx}" y2="{CH - 1}" stroke="{grid_c}" stroke-width="0.75"/>')
+    for gy in range(40, CH, 40):
+        p.append(f'  <line x1="1" y1="{gy}" x2="{CW - 1}" y2="{gy}" stroke="{grid_c}" stroke-width="0.75"/>')
+
+    # Clean outer Swiss editorial frame inset
+    p.append(f'  <rect x="34" y="34" width="{CW - 68}" height="{CH - 68}" rx="8" fill="none" stroke="{t["hair"]}" stroke-width="1.1"/>')
+
+    # --- Top Swiss Editorial Masthead ---
+    p += [
+        f'  <rect x="70" y="76" width="64" height="5" rx="2.5" fill="{t["terra"]}"/>',
+        f'  <text x="70" y="110" class="mono" font-size="12.5" font-weight="700" fill="{t["muted"]}" letter-spacing="0.12em">SYSTEMS ARCHITECTURE MONOGRAPH  ·  C++20 &amp; RUST 2024  ·  19 CHAPTERS</text>',
+        f'  <text x="70" y="182" class="sans" font-size="60" font-weight="800" fill="{t["ink"]}" letter-spacing="-0.025em">Operating Systems</text>',
+        f'  <text x="70" y="238" class="serif" font-size="40" font-style="italic" fill="{t["blue"]}" letter-spacing="-0.01em">A Hands-On Approach</text>',
+        f'  <text x="70" y="282" class="sans" font-size="17" font-weight="500" fill="{t["muted"]}">Kernel Internals, Virtual Memory, Concurrency, and Modern I/O Architecture</text>',
+        f'  <line x1="70" y1="312" x2="{CW - 70}" y2="312" stroke="{t["hair"]}" stroke-width="1.2"/>',
+    ]
+
+    # --- Centerpiece Abstract Architectural Sculpture (cx=450, cy=692) ---
+    cx, cy = 450, 692
+
+    # Balanced Bauhaus background color planes
+    p.append(f'  <rect x="96" y="370" width="240" height="310" rx="6" fill="{t["blue_soft"]}" opacity="0.52"/>')
+    p.append(f'  <rect x="564" y="692" width="240" height="296" rx="6" fill="{t["teal_soft"]}" opacity="0.52"/>')
+    p.append(f'  <circle cx="678" cy="482" r="108" fill="{t["ochre_soft"]}" opacity="0.58"/>')
+
+    # Horizontal User Space (Ring 3) / Kernel Space (Ring 0) privilege datum line
+    p.append(f'  <line x1="70" y1="{cy}" x2="{CW - 70}" y2="{cy}" stroke="{t["terra"]}" stroke-width="1.6" stroke-dasharray="8 6" opacity="0.72"/>')
+    p.append(f'  <line x1="{cx}" y1="346" x2="{cx}" y2="1038" stroke="{t["ink"]}" stroke-width="1.0" opacity="0.16" stroke-dasharray="4 6"/>')
+
+    # Outer Ring 3 compass circle + segmented hardware protection arcs (R = 266)
+    p.append(f'  <circle cx="{cx}" cy="{cy}" r="298" fill="none" stroke="{t["hair"]}" stroke-width="1.2" stroke-dasharray="4 6"/>')
+    p.append(f'  <path d="{arc_path(cx, cy, 266, -152, -28)}" fill="none" stroke="{t["blue"]}" stroke-width="22"/>')
+    p.append(f'  <path d="{arc_path(cx, cy, 266, 26, 108)}" fill="none" stroke="{t["teal"]}" stroke-width="22"/>')
+    p.append(f'  <path d="{arc_path(cx, cy, 266, 122, 158)}" fill="none" stroke="{t["ochre"]}" stroke-width="22"/>')
+
+    # 36 radial clock / cache-line graduation ticks between R=216 and R=244
+    for k in range(36):
+        ang = math.radians(k * 10)
+        r0 = 212 if k % 3 == 0 else 224
+        r1 = 244
+        x0, y0 = cx + r0 * math.cos(ang), cy + r0 * math.sin(ang)
+        x1, y1 = cx + r1 * math.cos(ang), cy + r1 * math.sin(ang)
+        col = [t["blue"], t["teal"], t["ochre"], t["terra"]][k % 4]
+        p.append(f'  <line x1="{x0:.1f}" y1="{y0:.1f}" x2="{x1:.1f}" y2="{y1:.1f}" stroke="{col}" stroke-width="{2.0 if k % 3 == 0 else 1.0}" opacity="0.72"/>')
+
+    # Inner Kernel & MMU Core Disc (R = 178)
+    p.append(f'  <circle cx="{cx}" cy="{cy}" r="178" fill="{t["surface"]}" fill-opacity="0.88" stroke="{t["hair"]}" stroke-width="1.4"/>')
+
+    # Subtle shaded Ring 0 lower hemisphere inside the disc
+    p.append(f'  <path d="M {cx - 178} {cy} A 178 178 0 0 0 {cx + 178} {cy} Z" fill="{t["blue_soft"]}" fill-opacity="0.45"/>')
+
+    # Upper Hemisphere (Ring 3): Three isolated User Process / Thread nodes converging to SYSCALL gate
+    user_nodes = [
+        (cx - 94, cy - 84, t["blue"], "P1"),
+        (cx,      cy - 114, t["indigo"], "P2"),
+        (cx + 94, cy - 84, t["teal"], "P3"),
+    ]
+    # Orthogonal bus from P1, P2, P3 down to central SYSCALL gate
+    p.append(f'  <path d="M {cx - 94} {cy - 68} L {cx - 94} {cy - 48} L {cx} {cy - 48}" fill="none" stroke="{t["blue"]}" stroke-width="2.2" opacity="0.85"/>')
+    p.append(f'  <path d="M {cx + 94} {cy - 68} L {cx + 94} {cy - 48} L {cx} {cy - 48}" fill="none" stroke="{t["teal"]}" stroke-width="2.2" opacity="0.85"/>')
+    p.append(f'  <line x1="{cx}" y1="{cy - 98}" x2="{cx}" y2="{cy - 34}" stroke="{t["indigo"]}" stroke-width="2.4" opacity="0.9"/>')
+
+    for nx, ny, col, lbl in user_nodes:
+        p.append(f'  <circle cx="{nx}" cy="{ny}" r="19" fill="{t["surface"]}" stroke="{col}" stroke-width="3.6"/>')
+        p.append(f'  <text x="{nx}" y="{ny + 4}" text-anchor="middle" class="mono" font-size="11.5" font-weight="700" fill="{col}">{lbl}</text>')
+
+    # Lower Hemisphere (Ring 0): Four-Pillar Kernel & Silicon Substrate (CPU · MMU · VFS · I/O)
+    pillars = [
+        (cx - 102, cy + 72, "CPU", t["blue"],  t["blue_soft"]),
+        (cx - 34,  cy + 72, "MMU", t["ochre"], t["ochre_soft"]),
+        (cx + 34,  cy + 72, "VFS", t["teal"],  t["teal_soft"]),
+        (cx + 102, cy + 72, "I/O", t["terra"], t["terra_soft"]),
+    ]
+    # Orthogonal kernel bus from SYSCALL gate down to all 4 Ring 0 subsystems
+    p.append(f'  <line x1="{cx}" y1="{cy + 34}" x2="{cx}" y2="{cy + 52}" stroke="{t["terra"]}" stroke-width="2.4"/>')
+    p.append(f'  <line x1="{cx - 102}" y1="{cy + 52}" x2="{cx + 102}" y2="{cy + 52}" stroke="{t["ink"]}" stroke-width="2.0" opacity="0.55"/>')
+    for px, py, plbl, sc, sf in pillars:
+        p.append(f'  <line x1="{px}" y1="{cy + 52}" x2="{px}" y2="{py}" stroke="{sc}" stroke-width="2.2"/>')
+        p.append(f'  <rect x="{px - 26}" y="{py}" width="52" height="40" rx="8" fill="{sf}" stroke="{sc}" stroke-width="2.2"/>')
+        p.append(f'  <text x="{px}" y="{py + 24}" text-anchor="middle" class="mono" font-size="11.5" font-weight="700" fill="{sc}">{plbl}</text>')
+
+    # Bottom hardware silicon datum bar connecting all 4 pillars
+    p.append(f'  <line x1="{cx - 102}" y1="{cy + 128}" x2="{cx + 102}" y2="{cy + 128}" stroke="{t["ochre"]}" stroke-width="3.2" stroke-linecap="round"/>')
+    for px, py, _, sc, _ in pillars:
+        p.append(f'  <line x1="{px}" y1="{py + 40}" x2="{px}" y2="{cy + 128}" stroke="{sc}" stroke-width="1.8" opacity="0.75"/>')
+        p.append(f'  <circle cx="{px}" cy="{cy + 128}" r="4" fill="{sc}"/>')
+
+    # Central SYSCALL / Ring 0 Trap Gate Diamond at (cx, cy)
+    p.append(f'  <polygon points="{cx},{cy - 34} {cx + 34},{cy} {cx},{cy + 34} {cx - 34},{cy}" fill="{t["terra"]}"/>')
+    p.append(f'  <circle cx="{cx}" cy="{cy}" r="12" fill="{t["surface"]}"/>')
+    p.append(f'  <circle cx="{cx}" cy="{cy}" r="5" fill="{t["ochre"]}"/>')
+
+    # Subtle Ring 3 / Ring 0 callout labels along the privilege datum (clear of outer ring)
+    p += [
+        f'  <text x="72" y="{cy - 12}" class="mono" font-size="11" font-weight="700" fill="{t["blue"]}">RING 3 · USER</text>',
+        f'  <text x="72" y="{cy + 22}" class="mono" font-size="11" font-weight="700" fill="{t["terra"]}">RING 0 · KERNEL</text>',
+        f'  <text x="{CW - 72}" y="{cy - 12}" text-anchor="end" class="mono" font-size="11" font-weight="700" fill="{t["teal"]}">SYSCALL / SYSRET</text>',
+        f'  <text x="{CW - 72}" y="{cy + 22}" text-anchor="end" class="mono" font-size="11" font-weight="700" fill="{t["ochre"]}">4-LEVEL MMU · DMA</text>',
+    ]
+
+    # Crisp geometric legend annotations below the sculpture
+    p += [
+        f'  <text x="96" y="1028" class="mono" font-size="11.5" font-weight="700" fill="{t["blue"]}">RING 3 -&gt; RING 0  ·  POSIX / IO_URING / MMU</text>',
+        f'  <text x="{CW - 96}" y="1028" text-anchor="end" class="mono" font-size="11.5" font-weight="700" fill="{t["terra"]}">x86-64 &amp; ARM64</text>',
+    ]
+
+    # --- Bottom Author & Taxonomy Footer ---
+    p += [
+        f'  <line x1="70" y1="1084" x2="{CW - 70}" y2="1084" stroke="{t["ink"]}" stroke-width="1.6"/>',
+        f'  <text x="70" y="1136" class="sans" font-size="26" font-weight="800" fill="{t["ink"]}" letter-spacing="0.06em">ARPAN PATHAK</text>',
+        f'  <text x="70" y="1168" class="mono" font-size="12" font-weight="600" fill="{t["muted"]}" letter-spacing="0.05em">PROCESSES  ·  VIRTUAL MEMORY  ·  SYNCHRONIZATION  ·  FILE SYSTEMS  ·  EVENT LOOPS</text>',
+        f'  <rect x="{CW - 122}" y="1112" width="52" height="52" rx="8" fill="{t["blue_soft"]}" stroke="{t["blue"]}" stroke-width="1.8"/>',
+        f'  <rect x="{CW - 109}" y="1125" width="26" height="26" rx="4" fill="none" stroke="{t["blue"]}" stroke-width="2.2"/>',
+        f'  <circle cx="{CW - 96}" cy="1138" r="5" fill="{t["terra"]}"/>',
+    ]
+
+    p.append("</svg>\n")
+    return "\n".join(p)
+
+
 PLATES = {
+    "cover.svg": book_cover,
     "ch01-plate.svg": plate_ch01,
     "ch02-plate.svg": plate_ch02,
     "ch03-plate.svg": plate_ch03,
