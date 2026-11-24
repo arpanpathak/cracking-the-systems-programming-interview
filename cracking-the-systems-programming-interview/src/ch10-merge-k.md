@@ -14,11 +14,18 @@ This chapter covers
 
 </div>
 
-Building on the singly linked list and `Option::take` ownership transfers from Chapter 9, this chapter addresses the k-way merge problem: combining `k` already-sorted linked lists into a single sorted list containing all `N` nodes.
+A **k-way merge** combines *k* independently sorted sequences containing *N* total elements into a single
+globally sorted sequence while preserving element multiplicity. Merging *k* sorted singly linked lists is a
+foundational primitive in external merge sort, log-structured merge-tree (LSM) compaction, and distributed
+query execution, where nodes are relinked in place via ownership transfer rather than copied.
 
-Section 10.2 compares three merge orders, Sections 10.3 through 10.6 implement them, and Section 10.7 summarizes their time, memory, and stack complexity. Appendix C preserves an expanded version of this study containing eleven variants.
+Section 10.2 analyzes three asymptotic merge schedules, Sections 10.3 through 10.6 implement them using
+ownership transfer, disjoint slice borrows (`split_at_mut`), and a binary min-heap, and Section 10.7 compares
+their time, auxiliary space, call-stack depth, and allocation profiles. Appendix C preserves an expanded study
+covering eleven variants.
 
-Throughout the chapter, **k** denotes the number of input lists and **N** denotes the total number of nodes across all lists.
+Throughout this chapter, *k* denotes the number of input lists and *N* denotes the total number of nodes across
+all lists.
 
 ## 10.1 Merging two sorted lists
 
@@ -40,16 +47,17 @@ Three primary strategies extend two-list merging to `k` lists, as illustrated in
 <figcaption><b>Figure 10.2</b> The first strategy walks its growing result again and again. The other two touch each node only about log₂ k times.</figcaption>
 </figure>
 
-**One at a time.** Merge list 2 into list 1, then list 3 into the result, and so on. Each merge walks the
-whole result so far, which keeps growing. The first nodes are walked k times, so the total is about O(kN).
+**Sequential accumulation.** Merge list 2 into list 1, then list 3 into the accumulated result, and so on. Because
+each merge traverses the entire accumulated prefix, elements from the earliest lists are visited up to *k* − 1
+times, yielding O(*kN*) total work.
 
-**Pairwise rounds.** Merge the lists in pairs, like the rounds of a tournament. After the first round there are
-k / 2 lists, after the second k / 4, and so on. In every round, each node takes part in exactly one merge. There
-are about log₂ k rounds, so the total is O(N log k).
+**Pairwise tournament rounds.** Merge lists in disjoint pairs across successive rounds. Each round halves the
+number of active lists (*k*/2, *k*/4, ..., 1), and every node participates in exactly one merge per round. Across
+⌈log₂ *k*⌉ rounds, total work is O(*N* log *k*).
 
-**A heap of heads.** Put the front node of each list into a min-heap, the structure from chapter 5. Pop the
-smallest, append it to the output, and push the next node from the same list. Each node goes through one push and one pop on a heap of at most k entries. Each costs O(log k), so the
-total is again O(N log k).
+**Min-heap of list heads.** Insert the head of each non-empty list into a min-priority queue of size at most *k*.
+Repeatedly extract the minimum head, append it to the output tail, and push its successor from the same source
+list. Because each of the *N* nodes undergoes one push and one pop at O(log *k*) cost, total time is O(*N* log *k*).
 
 Animation 10.1 compares total node moves across eight lists of three nodes each, contrasting pairwise rounds against sequential merging.
 
@@ -67,13 +75,15 @@ The pairwise strategy admits a compact in-place formulation that stores the list
 <figcaption><b>Figure 10.3</b> Interval rounds on five lists. The interval doubles each round, and the result collects in <code>lists[0]</code>.</figcaption>
 </figure>
 
-In each round, the list at position `i` absorbs the list at `i + interval`. The position `i` runs through
-0, 2 × interval, 4 × interval, and so on. The odd list out, number 4 here, waits until the interval is large enough to reach it.
+In each round, slot `i` absorbs slot `i + interval` as `i` advances by `2 * interval` (0, 2 × interval,
+4 × interval, ...). Any unpaired trailing list (such as index 4 here) remains untouched until `interval` grows
+large enough to pair it with index 0.
 
 ## 10.3 Merging with the lists swapped by value
 
-The merge builds its output after a placeholder node, the **dummy** head, so the first real node needs no special
-case. `tail` always points at the last node of the output (figure 10.4).
+The merge constructs its output behind a stack-allocated sentinel node (the **dummy head**), eliminating special
+casing for the first output element. A mutable cursor `tail` tracks the last appended node at all times
+(Figure 10.4).
 
 <figure>
 <img src="figures/merge-tail.svg" alt="A dummy node followed by two merged nodes; tail points at the last one; the next node to move is 3, the front of the right list">
@@ -88,23 +98,24 @@ The function `merge_two` takes both lists by value. Whenever the right list has 
 {{#include ../../rust-interview-lab/src/bin/merge_k_sorted_lists_owned.rs:4:27}}
 ```
 
-`while let (Some(l), Some(r)) = (&left, &right)` runs while both lists have a node. `&left` and `&right` are
-shared references, used only to read the two front values.
+The loop condition `while let (Some(l), Some(r)) = (&left, &right)` executes while both lists remain non-empty,
+borrowing `&left` and `&right` immutably solely to compare the two front keys.
 
-If the right front is smaller, `(left, right) = (right, left)` swaps the two lists. The assignment moves the two
-`Option` values; no node moves, and no reference is taken. After it, the smaller front node is always in `left`.
+Whenever the right head is strictly smaller, `(left, right) = (right, left)` exchanges the two `Option` bindings
+by value without touching heap nodes or introducing extra references. After this normalization step, `left`
+invariantly holds the minimum head.
 
-`left.unwrap()` moves that list out of `left`. It cannot fail, because the `while let` checked that
-`left` is `Some`. `node.next.take()` cuts the front node off, and the rest of the list goes back into `left`.
+Calling `left.unwrap()` moves the `Box<ListNode>` out of `left` (infallible because the `while let` guard
+established `Some`). `node.next.take()` detaches the tail and restores it to `left`, isolating the front node.
 
-`tail.next.insert(node)` attaches the node at the end of the output and returns a mutable reference to
-it. That node is the new `tail`.
+Calling `tail.next.insert(node)` links the detached node onto the output tail and returns a `&mut Box<ListNode>`
+reference to it, advancing `tail` in a single expression.
 
-When the loop ends, one list is empty. `left.or(right)` returns the other one, and `tail.next` takes it whole.
+Once either input is exhausted, `left.or(right)` selects the remaining non-empty suffix and attaches it directly
+to `tail.next` in O(1) time.
 
-Animation 10.2 runs `merge_two` one line at a time on the lists of the trace below. The table beside the lists
-shows what each variable owns or borrows after every line. The last part reads `l` after the swap, which does not
-compile.
+Animation 10.2 traces `merge_two` line by line alongside ownership and borrow state, concluding with a
+borrow-checker error when `l` is read after the tuple swap.
 
 
 <figure class="anim">
@@ -122,8 +133,8 @@ Trace the merge of 1 → 4 with 2 → 3 → 5:
 | 4 | 5 | 4 | yes: 4 < 5 | 4 | 1 → 2 → 3 → 4 |
 | 5 | None | 5 | the loop ends; `or` attaches 5 | | 1 → 2 → 3 → 4 → 5 |
 
-Each pass moves one node, so merging n nodes takes O(n) time. The merge uses O(1) extra memory, and allocates
-only the dummy node.
+Each iteration moves exactly one node, so merging *n* nodes executes in O(*n*) time and O(1) auxiliary space,
+requiring only the single stack-allocated sentinel node.
 
 <p class="listing"><b>Listing 10.2</b> <code>merge_k</code> (lines 29 to 47).</p>
 
@@ -131,11 +142,11 @@ only the dummy node.
 {{#include ../../rust-interview-lab/src/bin/merge_k_sorted_lists_owned.rs:29:47}}
 ```
 
-`merge_k` follows figure 10.3. The outer `while` doubles `gap`. The inner `while` steps `i` by `gap * 2` and merges
-position `i` with position `i + gap`. `lists[i].take()` moves each list out of its slot and leaves `None`, so
-`merge_two` receives two owned lists.
+`merge_k` implements the doubling-interval schedule of Figure 10.3: the outer loop doubles `gap` each round, while
+the inner loop advances `i` by `gap * 2` and merges `lists[i]` with `lists[i + gap]`. Calling `lists[i].take()`
+extracts each owned list and leaves `None` in its slot so `merge_two` receives two owned heads.
 
-Animation 10.3 runs the merge of the trace. The last part leaves out the line after the loop.
+Animation 10.3 traces this merge and demonstrates the node drop caused by omitting `left.or(right)` after the loop.
 
 <figure class="anim">
 <video class="motion" src="figures/ch10-merge-owned.mp4" autoplay loop muted playsinline preload="metadata" aria-label="Rows for left and right, and an output row that starts at a dummy node, with a tail marker at its end. Each pass compares the two front nodes; when right's front is smaller, the two rows trade places. Then the front node of left moves to the end of the output, and the rest of its list stays in left. After pass 4, left is empty and the loop ends; left.or(right) attaches the remaining 5, and the output reads 1, 2, 3, 4, 5. Last, with that line struck out, the output stops at 4 and node 5 is dropped." data-chapters="[[0.0, &quot;merge&quot;], [30.16, &quot;no or&quot;]]"><img src="figures/ch10-merge-owned.gif" alt="Rows for left and right, and an output row that starts at a dummy node, with a tail marker at its end. Each pass compares the two front nodes; when right's front is smaller, the two rows trade places. Then the front node of left moves to the end of the output, and the rest of its list stays in left. After pass 4, left is empty and the loop ends; left.or(right) attaches the remaining 5, and the output reads 1, 2, 3, 4, 5. Last, with that line struck out, the output stops at 4 and node 5 is dropped."></video>
@@ -160,25 +171,24 @@ called on two slots of the same vector:
 merge_two(&mut lists[i], &mut lists[i + gap]) // does not compile
 ```
 
-Both `&mut` borrows are borrows of the whole vector `lists`, and Rust allows only one mutable borrow of a value at
-a time. The compiler does not reason about the two indexes being different.
+Both `&mut` expressions borrow the entire `Vec`, violating Rust's aliasing rule that prohibits simultaneous mutable
+borrows of the same container; the borrow checker does not perform index-disjointness analysis on slice indexing.
 
-`split_at_mut(i + gap)` splits the vector into two slices that do not overlap: the part before position `i + gap`,
-and the rest. It returns a mutable borrow of each. In the long version of this chapter, listing C.1 merges this
-way:
+Calling `lists.split_at_mut(i + gap)` partitions the vector at index `i + gap` into two statically disjoint
+mutable slices, returning `(&mut [..], &mut [..])`. Listing C.1 in Appendix C employs this pattern:
 
 ```rust
 {{#include ../../rust-interview-lab/src/bin/merge_k_sorted_lists_divide.rs:26:27}}
 ```
 
-Now `left[i]` and `right[0]` come from different slices, and borrowing both is allowed. Section 10.6 uses
-`split_at_mut` to split a slice of lists in half.
+Because `left[i]` and `right[0]` belong to disjoint slices, the borrow checker permits both mutable references
+simultaneously. Section 10.6 applies `split_at_mut` recursively to bisect a slice of lists.
 
 ## 10.5 A heap of list heads
 
-This is the third strategy from figure 10.2. The heap does not hold nodes. It holds pairs of `(front value, list
-number)`, wrapped in `Reverse` to make it a min-heap, as in chapter 5. Storing the list number instead of the
-node keeps the nodes in their lists, and avoids needing an ordering on nodes.
+The min-heap strategy of Figure 10.2 stores `(front_value, list_index)` pairs wrapped in `Reverse` inside a
+`BinaryHeap`. Indexing lists by `usize` rather than placing `Box<ListNode>` directly in the heap leaves nodes
+anchored in `lists` and eliminates the need to implement `Ord` on `ListNode`.
 
 <p class="listing"><b>Listing 10.3</b> <code>merge_k_lists</code> (lines 10 to 33). <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/bin/merge_k_sorted_lists_heap.rs">src/bin/merge_k_sorted_lists_heap.rs</a></p>
 
@@ -186,17 +196,18 @@ node keeps the nodes in their lists, and avoids needing an ordering on nodes.
 {{#include ../../rust-interview-lab/src/bin/merge_k_sorted_lists_heap.rs:10:33}}
 ```
 
-Each pass of the loop:
+Each iteration performs four steps:
 
-1. Pops the smallest pair. Its second field, `i`, says which list holds that value.
-2. Takes the front node out of `lists[i]` and puts the rest of that list back.
-3. If the list still has a node, pushes that node's value with `i`.
-4. Attaches the taken node to the output with `tail.next.insert(node)`, as in listing 10.1.
+1. Pop the minimum `Reverse((val, i))` pair, identifying the source list `i`.
+2. Detach the front node from `lists[i]` and write its successor back into `lists[i]`.
+3. If `lists[i]` remains non-empty, push its new front value paired with `i` onto the heap.
+4. Append the detached node to the output tail via `tail.next.insert(node)`.
 
-When two fronts have equal values, the pairs compare by list number, so the lower-numbered list goes first.
+Because Rust compares tuples lexicographically, equal front values break ties deterministically in favor of the
+lower-indexed list, making the merge stable across input order.
 
-The heap needs only the current front of each list. That makes this strategy the right one when the lists are too
-large to hold in memory. One example is k sorted files read line by line.
+Because the heap holds at most one element per source stream (*k* entries total), this design generalizes directly
+to external k-way merge over disk-backed sorted runs where only the current record of each file resides in RAM.
 
 ```text
 $ cargo run --bin merge_k_sorted_lists_heap
@@ -220,15 +231,17 @@ merges the two results. Its node holds an `i32` named `val`, and `List` is the a
 {{#include ../../rust-interview-lab/src/bin/merge_k_sorted_lists_halves.rs:11:34}}
 ```
 
-The first arm of `merge`, `(None, rest) | (rest, None) => rest`, handles an empty list on either side: the other
-list is the answer. In the second arm, `mem::swap` makes `left` the list with the smaller front. Its node stays at
-the front, and its `next` becomes the merge of the rest of `left` with `right`. No node is allocated; the boxes
-move.
+The base arm `(None, rest) | (rest, None) => rest` returns the remaining list intact when either input is empty.
+In the recursive arm, `mem::swap` normalizes `left` to hold the smaller head, retains that node at the front, and
+recursively assigns `left.next` to the merge of the tail of `left` with `right`. Ownership transfers across
+existing `Box` allocations with zero heap allocation.
 
-`merge_k_slice` works on a slice, `&mut [List]`, and splits it with `split_at_mut` from section 10.4. Splitting a
-slice creates two views of the same memory, so nothing is allocated to split.
+`merge_k_slice` operates over a mutable slice `&mut [List]`, bisecting it in O(1) space via `split_at_mut` without
+allocating intermediate vectors.
 
-Because `merge` calls itself once per output node, the final merge reaches a call stack depth of O(N) frames. As demonstrated in Section 9.7, recursive execution of this depth overflows the 8 MiB main-thread stack between 260,000 and 270,000 nodes. For large inputs, prefer the iterative merge from Section 10.3.
+Because `merge` recurses once per output node, the final merge reaches a call-stack depth of O(*N*) frames,
+overflowing an 8 MiB main-thread stack at approximately 260,000 to 270,000 nodes. Production workloads with
+unbounded *N* therefore require the iterative merge of Section 10.3.
 
 ```text
 $ cargo run --bin merge_k_sorted_lists_halves
@@ -286,17 +299,22 @@ beyond the input `Vec` and the nodes. The stack column is the deepest the call s
 
 ## Summary
 
-- Merging two sorted lists moves the smaller front node to the output until one list is empty, in O(a + b).
-- Merging k lists one at a time costs O(kN). Pairwise rounds and a heap of heads both cost O(N log k).
-- Swapping the two lists by value keeps the smaller front in `left`, so `tail` is the only mutable reference.
-- `Option::insert` attaches a node and returns a reference to it, so `tail` moves in one call.
-- Two `&mut` borrows of one `Vec` do not compile. `split_at_mut` splits it into two slices that do not overlap.
-- A heap of `(value, list number)` pairs needs only the front of each list, which suits lists read from disk.
-- A recursive merge is short, but it recurses once per output node.
+- Merging two sorted linked lists transfers the smaller head to the output tail in O(*a* + *b*) time and O(1)
+  auxiliary space.
+- Sequential accumulation costs O(*kN*), whereas both pairwise tournament rounds and a min-heap of list heads
+  achieve O(*N* log *k*).
+- Swapping owned `Option<Box<ListNode>>` bindings by value normalizes the minimum head into `left`, leaving
+  `tail` as the sole mutable borrow.
+- `Option::insert` links a node onto `tail.next` and returns a mutable reference to the inserted node in a single
+  operation.
+- `slice::split_at_mut` partitions a `Vec` into statically disjoint mutable slices, enabling simultaneous mutable
+  borrows of distinct elements.
+- A min-heap of `(value, list_index)` pairs requires O(*k*) auxiliary space and generalizes directly to external
+  streaming merges from disk.
+- Recursive two-way merging requires zero heap allocations but consumes O(*N*) call-stack frames, risking stack
+  overflow on large inputs.
 
 </div>
-
-In Chapter 11, linked structures expand from linear lists to binary trees, where each node has up to two children, and conclude with tries, where each node branches by character.
 
 ## Exercises
 

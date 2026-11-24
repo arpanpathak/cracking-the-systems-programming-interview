@@ -15,21 +15,21 @@ This chapter covers
 
 </div>
 
-Part 3 shifts focus to data modeling. Earlier chapters relied on standard Rust types such as integers, strings, vectors, and maps. In this chapter, we design custom domain types whose structure makes invalid states unrepresentable.
+Robust systems enforce domain invariants at compile time through algebraic data types rather than scattering defensive runtime checks across business logic. By restricting construction to validated boundaries, custom structs and enums make invalid program states unrepresentable.
 
-The examples come from a command-line utility that manages compute jobs, called **workloads**, on a remote cluster. Each workload requests between 1 and 64 GPUs (graphics processors used on servers for general-purpose parallel computation) and transitions through lifecycle states such as pending, running, and terminated. The tool parses text commands such as `create triton 4`, which requests a workload named `triton` with 4 GPUs.
+The implementations below model a command-line control plane that manages compute jobs, termed **workloads**, on a remote cluster. Each workload requests between 1 and 64 GPUs and transitions through discrete lifecycle states such as `Pending`, `Running`, and `Terminated`. Users issue text commands such as `create triton 4`, requesting a workload named `triton` with 4 GPUs.
 
-The core design problem is input validation. A GPU count arrives as raw user text, and the program must reject invalid inputs such as `0`, `99`, and `many` before that data reaches core business logic. Checking the count inside every downstream function is error-prone because a single omitted check lets an invalid value propagate. Instead, the program validates the count once at the system boundary and stores it in a dedicated type that can hold only valid counts. Every downstream function receiving that type relies on the invariant without repeating the check.
+Input validation illustrates the core architectural invariant. A GPU count arrives as untrusted text, and inputs such as `0`, `99`, or `many` must be rejected before reaching scheduling logic. Revalidating raw integers in every downstream function is brittle because a single omitted guard permits corrupt state to propagate. Validating once at the ingress boundary and encapsulating the result in a private-field newtype guarantees that every downstream function receiving that type observes a valid count by construction.
 
 The implementation progresses through seven stages:
 
-1. Section 7.1 covers traits, which the subsequent types implement.
-2. Section 7.2 defines the validated GPU count type.
-3. Section 7.3 defines a dedicated error type for rejected counts.
-4. Section 7.4 adds standard `From` and `TryFrom` conversions.
-5. Section 7.5 defines a command enum and its text parser.
-6. Section 7.6 models workload lifecycle states and valid transitions.
-7. Section 7.7 models structured server error responses.
+1. Section 7.1 formalizes traits and automatic derivation.
+2. Section 7.2 defines the validated `GpuCount` newtype.
+3. Section 7.3 defines a structured error type for rejected counts.
+4. Section 7.4 implements standard `From` and `TryFrom` conversions.
+5. Section 7.5 models CLI commands as a tagged union enum with a text parser.
+6. Section 7.6 encodes workload lifecycle states and transition rules as a finite state machine.
+7. Section 7.7 models structured remote API errors with retry classification.
 
 ## 7.1 Traits
 
@@ -175,7 +175,7 @@ Before examining the parser itself, consider its error representation and helper
 
 `CommandError` enumerates every parsing failure mode, and its `Display` implementation formats a message for each variant. Because errors are typed variants rather than opaque strings, callers can `match` on them directly, such as displaying usage help on `MissingArgument` or printing the valid range on `InvalidGpuCount`. With a plain `String` error, callers would have to parse the error text to distinguish failure cases.
 
-The helper `argument` extracts the next whitespace-delimited token from the iterator or fails with the missing parameter's name. Its first parameter, `&mut impl Iterator<Item = &'a str>`, mutably borrows the caller's iterator so each call consumes one token. The lifetime `'a` (introduced in Chapter 4) ties the returned `&str` to the input line, avoiding heap allocation until `parse` explicitly clones the string with `to_string()`.
+The helper `argument` extracts the next whitespace-delimited token from the iterator or fails with the missing parameter's name. Its first parameter, `&mut impl Iterator<Item = &'a str>`, mutably borrows the caller's iterator so each call consumes one token. The explicit lifetime `'a` binds the returned `&str` to the input line, deferring heap allocation until `parse` invokes `to_string()`.
 
 ### 7.5.3 Parsing a line of text
 
@@ -298,7 +298,7 @@ The `is_retryable` method answers a standard client decision: whether retrying t
 Self::RateLimited { .. } | Self::Server { status: 500..=599, .. }
 ```
 
-Inside the struct pattern, `status: 500..=599` matches any HTTP 5xx status code while `..` ignores the remaining fields. In Chapter 19, a retry loop is built directly on top of this method.
+Inside the struct pattern, `status: 500..=599` matches any HTTP 5xx status code while `..` ignores the remaining fields. A client retry policy can query this predicate directly to separate transient failures from permanent errors.
 
 The `user_message` method formats each variant into a human-readable string, converting `retry_after` to milliseconds via `retry_after.as_millis()`.
 
@@ -322,20 +322,16 @@ The unit tests verify an allowed transition, two disallowed transitions, the ret
 
 ## Summary
 
-- A trait defines a set of methods a type provides, implemented manually with `impl Trait for Type` or generated via `#[derive]`.
-- A newtype with a private field and a checking constructor can only hold valid values, so the code that
-  receives it needs no checks.
-- An error type with `Display` and `std::error::Error` tells the caller what went wrong, and works with `?`.
-- `From` converts when it cannot fail. `TryFrom` returns a `Result` when it can.
-- An enum whose variants carry their own data replaces a struct full of `Option` fields, and is as large as its
-  largest variant.
-- A parser converts raw text into typed values, using `map_err` to translate low-level failures into domain-specific errors.
-- Matching on a pair of states describes a state machine, and a final `_` arm rejects every move not listed.
-- Error enums can carry data and methods such as `is_retryable`.
+- A trait specifies an interface contract implemented either manually via `impl Trait for Type` or automatically via `#[derive]`.
+- A newtype encapsulating a private field behind a validating constructor enforces domain invariants at the ingress boundary, eliminating redundant downstream checks.
+- Custom error types implementing `Display` and `std::error::Error` carry structured diagnostic context and integrate directly with the `?` operator.
+- `From` encodes infallible value conversions, whereas `TryFrom` encodes fallible conversions returning `Result`.
+- Tagged union enums whose variants carry variant-specific payloads eliminate invalid field combinations inherent in structs of `Option` fields, occupying the size of their largest variant plus any required discriminant.
+- Boundary parsers transform untrusted text into typed domain values, using `map_err` to translate low-level parse failures into structured domain errors.
+- Exhaustive pattern matching over `(current, next)` state pairs defines a deny-by-default finite state machine in which a catch-all `_` arm rejects every unlisted transition.
+- Structured error enums carry failure-specific metadata and expose domain predicates such as `is_retryable`.
 
 </div>
-
-Every value in this chapter had a single owner. In Chapter 8, we examine the smart pointer types designed for shared ownership and cross-thread synchronization.
 
 ## Exercises
 

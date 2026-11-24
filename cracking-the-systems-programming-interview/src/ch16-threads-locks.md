@@ -16,11 +16,11 @@ This chapter covers
 
 </div>
 
-As established in Chapter 15, modern processors contain multiple physical cores. A single-threaded process utilizes at most one core at a time. To exploit the remaining cores, a program must divide its computation across multiple **threads**: independent sequences of instructions that the operating system schedules onto available hardware cores.
+Modern processors integrate multiple physical cores capable of executing independent instruction streams in parallel. A single-threaded process utilizes at most one core at any instant; exploiting the remaining hardware parallelism requires decomposing computation across multiple **threads** scheduled by the operating system onto available cores.
 
-Because threads within a process share an address space, they can read and modify the same memory directly. That shared access introduces a class of concurrency defects that are notoriously difficult to reproduce: when two threads modify the same memory location concurrently, the resulting state depends on nondeterministic scheduling.
+Because threads within a process share a single virtual address space, they can read and mutate the same memory locations directly. Unsynchronized shared-memory access introduces nondeterministic concurrency defects whose manifestation depends on thread interleaving and cache-coherence timing.
 
-Safe Rust enforces a precise compile-time guarantee against this failure mode. Safe Rust code cannot contain a **data race**, defined as two or more concurrent accesses to the same memory location where at least one access is a write and no synchronization orders them. The compiler enforces this invariant through two marker traits, `Send` and `Sync`, which form the foundation of the concurrency primitives examined below.
+Safe Rust enforces a compile-time invariant that rules out **data races**, defined as two or more concurrent accesses to the same memory location where at least one access is a write and no synchronization relation orders them. The type system encodes this invariant through two marker traits, `Send` and `Sync`, which underpin the atomic operations and mutual-exclusion primitives constructed below.
 
 ## 16.1 Starting threads
 
@@ -123,7 +123,7 @@ An **atomic** type executes the read, modification, and write as a single indivi
 {{#include ../../rust-interview-lab/src/problems/threads.rs:71:110}}
 ```
 
-Notice that `increment` accepts `&self` rather than `&mut self`. Like `RefCell`, atomic types provide interior mutability, allowing mutation through a shared reference, with hardware synchronization ensuring thread safety. Multiple threads can therefore hold `&AtomicCounter` and invoke `increment` concurrently.
+The `increment` method accepts `&self` rather than `&mut self`. Like `RefCell`, atomic types provide interior mutability, permitting mutation through a shared reference while hardware atomicity guarantees thread safety. Multiple threads can therefore hold `&AtomicCounter` and invoke `increment` concurrently.
 
 Because `fetch_add` returns the value prior to the addition, `increment` adds 1 to the returned count to report the updated total.
 
@@ -265,7 +265,7 @@ As `p` grows without bound, `(1 - s) / p` approaches zero and the speedup conver
 
 The standard library's `Mutex` provides mutual exclusion by suspending contending threads in the kernel. To expose the underlying mechanics of mutual exclusion, this section constructs a minimal lock from a single atomic boolean.
 
-A **spin lock** enforces exclusion by busy-waiting: a contending thread repeatedly polls the lock flag in a tight loop until the flag clears. Busy-waiting avoids context-switch overhead when critical sections last only a few nanoseconds, whereas longer critical sections cause spinning threads to burn entire CPU cores without making progress. For general-purpose synchronization, `std::sync::Mutex` delegates waiting to the operating system scheduler so blocked threads sleep.
+A **spin lock** enforces mutual exclusion by busy-waiting: a contending thread polls the lock flag in a tight loop until the flag clears. Busy-waiting avoids kernel context-switch overhead when critical sections last only a few nanoseconds, whereas longer critical sections cause spinning threads to saturate execution cores without advancing application work. For general-purpose synchronization, `std::sync::Mutex` delegates contention handling to the operating system scheduler so blocked threads sleep.
 
 ### 16.4.1 The type
 
@@ -301,11 +301,11 @@ impl<T> SpinLock<T> {
 }
 ```
 
-Acquiring the lock requires a single atomic test-and-set transition so that no competing thread can slip between observing `false` and writing `true`. Calling `compare_exchange(false, true, ...)` atomically transitions `false` to `true` and returns `Ok`, or leaves `true` intact and returns `Err`.
+Acquiring the lock requires a single atomic test-and-set transition so that no competing thread can interleave between observing `false` and writing `true`. Calling `compare_exchange(false, true, ...)` atomically transitions `false` to `true` and returns `Ok`, or leaves `true` intact and returns `Err`.
 
 The acquisition loop uses `compare_exchange_weak`, which is permitted to fail spuriously even when the expected value matches. On load-linked/store-conditional architectures such as ARM64, the weak variant compiles to fewer instructions, and inside a retry loop a spurious failure costs only one additional iteration.
 
-When the exchange fails, the contending thread enters an inner polling loop that reads `locked` with a `Relaxed` load. Read-only polling allows the cache line containing `locked` to remain in a shared state across waiting cores, whereas repeating `compare_exchange` would demand exclusive ownership on every iteration and bounce the cache line across the interconnect (as described in section 15.4). Once the load observes `false`, the outer loop retries the exchange. Calling `std::hint::spin_loop()` signals a busy-wait loop to the processor, reducing power consumption and yielding execution pipeline resources to sibling hardware threads.
+When the exchange fails, the contending thread enters an inner polling loop that reads `locked` with a `Relaxed` load. Read-only polling allows the cache line containing `locked` to remain in a shared state across waiting cores, whereas repeating `compare_exchange` would demand exclusive ownership on every iteration and induce repeated cache-line invalidations across the coherence interconnect (as described in section 15.4). Once the load observes `false`, the outer loop retries the exchange. Calling `std::hint::spin_loop()` signals a busy-wait loop to the processor, reducing power consumption and yielding execution pipeline resources to sibling hardware threads.
 
 The non-blocking `try_lock` method attempts a single exchange and returns `None` immediately if the lock is held.
 
@@ -391,7 +391,7 @@ Because permits may be held for milliseconds or longer, waiting threads should s
 3. Another thread locks the mutex, updates the state, and invokes `notify_one()`.
 4. The sleeping thread wakes with the mutex re-acquired and re-evaluates the predicate.
 
-Re-checking the predicate in step 4 is mandatory for two reasons: another thread may have acquired the newly released permit before the woken thread ran, and operating systems may deliver **spurious wakeups** with no corresponding notification. Condition-variable waits therefore always sit inside a `while` loop rather than an `if` statement.
+Re-checking the predicate in step 4 is mandatory for two reasons: another thread may have acquired the newly released permit before the woken thread ran, and operating systems may deliver **spurious wakeups** with no corresponding notification. Condition-variable waits must therefore always execute inside a `while` loop rather than an `if` statement.
 
 <p class="listing"><b>Listing 16.13</b> The state, the guard, and <code>acquire_guard</code>. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/problems/semaphore.rs">src/problems/semaphore.rs</a></p>
 
@@ -425,7 +425,7 @@ impl Semaphore {
 
 The `release` method increments the permit count and wakes one waiting thread via `notify_one`. Keeping `release` private and invoking it solely from `SemaphoreGuard::drop` prevents callers from releasing permits they never acquired.
 
-Two methods in this listing contain deliberate limitations worth noting:
+Two methods in this listing exhibit deliberate limitations:
 
 - `acquire` binds the result of `acquire_guard` to `_guard`, which drops immediately when `acquire` returns. The permit is released before the caller executes any work, making `acquire_guard` the only method that actually holds a permit.
 - `try_acquire_timeout` calls `wait_timeout` once without looping. If a spurious wakeup occurs or another thread claims the permit first, it returns `None` prematurely before the full timeout elapses. A complete implementation tracks the deadline and loops over the remaining duration (Exercise 4).
@@ -594,8 +594,6 @@ Breaking any single condition eliminates deadlock. In practice, systems prevent 
 - Threads deadlock if and only if their wait-for graph contains a cycle; enforcing a global lock acquisition order eliminates circular wait.
 
 </div>
-
-In Chapter 17, these synchronization primitives are combined to construct thread-safe queues and bounded buffers that coordinate producers and consumers with backpressure.
 
 ## Exercises
 

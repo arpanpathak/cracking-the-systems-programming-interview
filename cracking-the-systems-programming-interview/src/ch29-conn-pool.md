@@ -6,43 +6,36 @@
 
 This chapter covers
 
-- What a new connection costs, and why a client keeps connections open between requests
-- A pool with a hard limit on open connections, and a deadline for callers that have to wait
-- A guard type that returns its connection when dropped, and a way to throw a broken one away
-- Reusing the newest idle connection first, and closing connections idle for too long
-- Connections the server closed while they sat idle, and how to detect them before reuse
-- 2,000 requests with and without a pool, measured
+- Amortizing per-connection overhead (TCP/TLS handshakes, congestion-window slow start, and `TIME_WAIT` port consumption) via persistent reuse
+- Bounded concurrency control: enforcing a hard cap on open sockets and a wait deadline for saturated callers
+- RAII borrowing via a guard type that returns healthy sockets on drop and discards broken sockets after I/O errors
+- LIFO idle-stack reuse and idle-timeout eviction to shrink pool footprint under light load
+- Detecting half-closed stale connections via non-blocking `peek` before lending
+- Empirical comparison of 2,000 concurrent requests with and without pooling
 
 </div>
 
-As shown in chapter 27, every closed TCP connection leaves a socket in `TIME_WAIT`, which can exhaust ephemeral ports on a busy client. Adding TLS, as in chapter 28, introduces an additional handshake to every new connection. Because both costs are incurred during connection setup and teardown, clients amortize them by keeping a bounded set of connections open across requests. A **connection pool** manages those reusable connections and lends them to calling threads on demand.
+Establishing a new TCP connection for every outbound RPC imposes four compounding costs: a TCP three-way handshake (plus a TLS handshake when encrypted), TCP congestion-window slow start, server-side `accept` and descriptor allocation overhead, and a 60-second `TIME_WAIT` entry that rapidly exhausts client ephemeral ports (Chapter 27). A **bounded client connection pool** amortizes these setup and teardown costs by maintaining a capped set of persistent connections, lending them exclusively to calling threads via RAII guards, and reclaiming or evicting them deterministically.
 
-In this chapter, we implement a connection pool using only the standard library: a `Mutex`, a `Condvar`, and an RAII guard implementing `Drop`. The companion program, `conn_pool`, exercises the pool against a local line-oriented server and verifies each invariant under measurement.
+The reference program `conn_pool` implements a thread-safe bounded pool using only the Rust standard library (`Mutex`, `Condvar`, and `Drop`), then benchmarks 2,000 multithreaded requests and verifies capacity limits, idle eviction, and stale-connection detection against a local line-oriented server.
 
 ## 29.1 What a new connection costs
 
-Each new TCP connection costs:
+Each freshly dialed connection incurs four distinct performance and resource penalties:
 
-- **A round trip** for the TCP handshake before the first byte, and a second one for TLS.
-- **A slow start.** A new connection begins with a small congestion window and grows it over several round
-  trips (section 20.2). A connection that has been in use already has a large one.
-- **Work on the server**: an `accept`, a descriptor, and often a thread or a task.
-- **A socket in `TIME_WAIT`** after the close, on whichever side closed first.
+- **Handshake latency:** one round trip for the TCP three-way handshake, plus a second round trip for TLS 1.3 (Chapter 28).
+- **TCP slow start:** a new connection begins with a minimal initial congestion window and requires multiple round trips to probe link capacity (Section 20.2), whereas a warm persistent connection retains its expanded window.
+- **Server-side setup overhead:** `accept`, descriptor allocation, and per-connection worker dispatch.
+- **`TIME_WAIT` port pinning:** active closure pins an ephemeral client port for 60 seconds (Section 27.2.1).
 
-On a network with a 50 ms round trip, the handshakes alone add 100 ms. On an open connection, the same request might take 5 ms.
+Across a 50 ms RTT link, connection handshakes alone add 100 ms to an RPC whose actual application latency is 5 ms.
 
-Keeping connections open has costs too. Each open connection holds a descriptor and buffers on both
-machines, and a server can hold only so many. A pool therefore keeps a bounded number of connections and
-lends them out one caller at a time. It follows four rules:
+Unbounded connection retention introduces an opposing hazard: every open socket consumes file descriptors and kernel socket buffers on both client and server, risking `EMFILE` or server overload. A production connection pool therefore enforces four invariants (Figure 29.1):
 
-1. **A bound.** At most `max` connections are open, counting those lent out and those idle.
-2. **Automatic return.** A borrowed connection comes back when the borrower drops it, unless the borrower
-   reports it broken.
-3. **Newest first.** The most recently returned idle connection is reused first.
-4. **No stale connections.** A connection idle longer than `idle_timeout`, or one the server has closed, is
-   closed instead of lent.
-
-Figure 29.1 shows the path of a call to `get` through the four rules.
+1. **Bounded capacity:** total open sockets (in-use plus idle) never exceed `max`.
+2. **Deterministic return:** dropping a borrowed guard returns the socket to the idle pool unless explicitly marked broken via `discard`.
+3. **LIFO reuse:** the most recently returned idle socket is lent first, allowing surplus sockets to age out under low load.
+4. **Staleness eviction:** sockets idle beyond `idle_timeout` or closed asynchronously by the server are destroyed rather than lent.
 
 <figure>
 <img src="figures/ch29-pool.svg" alt="pool.get() pops the idle stack, newest on top. If that connection is fresh and open it becomes a Pooled guard; if not it is closed as evicted or stale, and the next one is tried. When the stack is empty, if open is below max the pool reserves a slot and connects outside the lock; otherwise the caller waits on a Condvar until a return or the deadline, which gives Err(TimedOut). The guard derefs to TcpStream; dropping it puts the connection back on the idle stack, and discard() after an error closes it and frees the slot.">
@@ -51,28 +44,25 @@ Figure 29.1 shows the path of a call to `get` through the four rules.
 
 ## 29.2 The pool's state
 
-`Config` holds the limits, and `Stats` counts what the pool does, so the program can print it:
+`Config` specifies the pool's operational bounds, and `Stats` tracks cumulative connects, reuses, evictions, and stale discards:
 
 ```rust
 {{#include ../../rust-interview-lab/src/bin/conn_pool.rs:8:42}}
 ```
 
-The pool keeps its idle connections in a `Vec` used as a stack, each with the time it was returned. `open`
-counts every connection the pool owns, idle or lent out:
+Idle sockets reside in a `Vec` operated as a LIFO stack, paired with their return timestamps. The `open` counter tracks the total number of sockets currently owned by the pool (both idle and checked out):
 
 ```rust
 {{#include ../../rust-interview-lab/src/bin/conn_pool.rs:44:68}}
 ```
 
-The invariant is that `open` equals the number of idle connections plus the number lent out. Every change to
-`open` happens under the mutex, so `get` can trust it when it decides whether to connect.
+The pool maintains the structural invariant `open == idle.len() + checked_out`. Because every mutation of `open` occurs while holding the internal `Mutex`, `get` can decide atomically whether capacity permits dialing a new connection.
 
-`Pooled` is the borrowed connection. It holds a reference to its pool, so the borrow checker keeps every
-`Pooled` from outliving the pool. The stream sits in an `Option`, so `Drop` can move it out.
+`Pooled<'a>` wraps a checked-out `TcpStream` inside an `Option` alongside a shared reference `&'a Pool`. The lifetime parameter `'a` prevents any borrowed handle from outliving the pool at compile time, while `Option` allows `Drop` to move ownership of the stream back into the idle stack.
 
 ## 29.3 Borrowing a connection
 
-`get` loops under the lock until it has a connection or runs out of time:
+`get` executes a lock-protected state-machine loop until it acquires a usable socket or exhausts its deadline:
 
 ```rust
 {{#include ../../rust-interview-lab/src/bin/conn_pool.rs:83:122}}
@@ -80,15 +70,15 @@ The invariant is that `open` equals the number of idle connections plus the numb
 }
 ```
 
-Each pass tries three things in order:
+Each iteration evaluates three branches in priority order:
 
-- **An idle connection.** `take_idle` returns the newest usable one, or `None`.
-- **A new connection.** If fewer than `max` connections are open, `get` reserves a slot by incrementing `open` under the lock, then drops the lock before calling `connect`. Establishing a TCP connection can take an entire round trip, or several seconds if the server is slow to respond; holding the mutex across that I/O would block every other caller, including threads attempting to return idle connections. Reserving the slot under the lock prevents concurrent callers from exceeding `max`.
-- **Wait.** Otherwise, the caller waits on the `Condvar` until a connection is returned or the deadline expires. `wait_timeout` releases the lock atomically while sleeping (as in section 16.5) and may wake spuriously, so the loop re-evaluates the pool state on every wake-up.
+- **Reuse an idle socket:** `take_idle` pops the most recent healthy socket from the idle stack, or returns `None`.
+- **Dial a new socket outside the lock:** if `open < max`, `get` reserves a capacity slot by incrementing `open` under the mutex, releases the mutex immediately, and performs `TcpStream::connect` without holding the lock. Performing blocking network I/O while holding the mutex would serialize all pool operations, preventing concurrent threads from returning healthy sockets. Pre-incrementing `open` guarantees that concurrent callers never violate the `max` bound.
+- **Wait with a bounded deadline:** when `open == max`, the caller blocks on `Condvar::wait_timeout` until another thread returns or discards a socket, or until the deadline expires. Because `wait_timeout` atomically releases the mutex while sleeping (Section 16.5) and may return spuriously, the enclosing `loop` re-evaluates pool state on every wakeup.
 
-A caller that cannot obtain a connection before its deadline receives `ErrorKind::TimedOut`. Blocking indefinitely would allow an overloaded server to stall callers permanently; enforcing a deadline converts overload into an explicit error the caller can handle, mirroring the bounded queues of chapter 17.
+If the deadline expires before a slot opens, `get` returns `io::ErrorKind::TimedOut`. Bounding wait time transforms downstream saturation into explicit backpressure rather than unbounded thread starvation (Chapter 17).
 
-If the connect fails, `connect` gives the slot back:
+If `TcpStream::connect` fails after reserving a slot, `connect` decrements `open` under the mutex and notifies one waiting thread so the reserved capacity is not leaked:
 
 ```rust
 impl Pool {
@@ -100,7 +90,7 @@ impl Pool {
 
 ## 29.4 Giving it back
 
-`Drop` returns the connection, so a caller cannot forget to. Early returns and `?` return it too:
+Implementing `Drop` on `Pooled` guarantees that every borrowed connection returns to the pool automatically across normal returns, early `?` propagation, and stack unwinding:
 
 ```rust
 impl Pool {
@@ -113,9 +103,9 @@ impl Pool {
 {{#include ../../rust-interview-lab/src/bin/conn_pool.rs:195:226}}
 ```
 
-`give_back` pushes the connection onto the idle stack and notifies one waiting caller. `discard` marks the guard as broken so that `Drop` closes the socket and decrements `open` rather than returning it to the pool. A caller must discard a connection after any I/O error, because a failed request may have left a partial response in the socket buffer that the next borrower would mistakenly read as the start of its own reply.
+`give_back` pushes the socket onto the idle stack with `Instant::now()` and invokes `notify_one` on the `Condvar`. Calling `discard` marks the guard as broken so that `Drop` closes the socket, decrements `open`, and wakes a waiter instead of returning it to the idle stack. Discarding after any I/O error is mandatory: an aborted request may leave partial response bytes in the kernel receive buffer, which would corrupt framing for the next borrower.
 
-`ask` combines borrowing, error handling, and automatic return; the program uses it for every pooled request:
+`ask` composes borrowing, request-response execution, error-triggered discard, and automatic return into a single helper:
 
 ```rust
 {{#include ../../rust-interview-lab/src/bin/conn_pool.rs:228:250}}
@@ -123,19 +113,16 @@ impl Pool {
 
 ## 29.5 Stale connections
 
-The pool reuses the most recently returned idle connection first (LIFO). Under light load, a small subset of connections handles all traffic while the remaining connections sink to the bottom of the stack and expire past `idle_timeout`. Reusing the oldest connection first (FIFO) would rotate through every connection periodically and prevent idle connections from ever being reclaimed.
+Operating the idle collection as a **LIFO stack** concentrates traffic onto a small working set of warm sockets during low load. Surplus sockets sink to the bottom of the stack, age past `idle_timeout`, and are closed on subsequent sweeps. A **FIFO queue**, by contrast, rotates every socket evenly across requests, resetting every idle timestamp and preventing the pool from shrinking after a traffic spike.
 
-Servers also close connections they consider idle, typically after anywhere from 5 seconds to several minutes. When the server sends a `FIN` while the connection sits unused in the pool, nothing reads it until the next borrower writes a request into the half-closed socket, at which point `read` returns 0 or the write triggers a reset.
-
-Figure 29.2 shows the timing with this chapter's numbers. The server closes idle connections after 50 ms,
-and the pool reuses the connection after 100 ms.
+Even within `idle_timeout`, servers enforce their own idle connection timeouts (commonly 5 seconds to several minutes) by transmitting a TCP `FIN`. While the socket sits idle in the pool, no thread reads that `FIN`; without a liveness probe, the next borrower writes a request into the half-closed socket and fails with `UnexpectedEof` or `ECONNRESET` (Figure 29.2).
 
 <figure>
 <img src="figures/ch29-stale.svg" alt="At t = 0 a request finishes and the connection is returned to the pool. At 50 ms the server's idle timeout fires and it sends FIN, which sits unread in the pooled socket. At 100 ms get lends the connection. Without the check, the write goes out and the read returns 0, so the request fails. With check_alive, a peek sees the FIN first, and the pool closes the connection and connects again.">
 <figcaption><b>Figure 29.2</b> A connection goes stale while it sits in the pool. A check before lending it catches the server's <code>FIN</code>.</figcaption>
 </figure>
 
-`take_idle` handles both kinds of stale connection:
+`take_idle` enforces both idle-timeout eviction and server-close detection before lending a socket:
 
 ```rust
 {{#include ../../rust-interview-lab/src/bin/conn_pool.rs:70:81}}
@@ -149,19 +136,14 @@ impl Pool {
 }
 ```
 
-`is_alive` peeks at the socket without blocking. On an idle connection nothing should be waiting to be
-read, so `WouldBlock` means the connection is open. A peek that returns 0 bytes has found the server's
-`FIN`. A peek that returns data has found bytes nobody asked for. Either way, the connection is closed.
+`is_alive` temporarily switches the socket to non-blocking mode and executes `peek(&mut [0u8; 1])`. Because a healthy idle request-response socket should contain zero unread bytes, `WouldBlock` confirms that the connection remains open and clean. Returning `Ok(0)` indicates a pending server `FIN`, and returning `Ok(n > 0)` indicates unexpected stray bytes; in either case, the pool closes the socket and decrements `open`.
 
-The check narrows the window, and does not close it. The server can close the connection between the peek
-and the request. Two more measures cover the rest:
+A pre-lend `peek` narrows the stale-connection race window but cannot eliminate it completely, because the server's `FIN` can arrive in flight between `peek` and the client's `write`. Production clients close the remaining window with two complementary defenses:
 
-- Set the pool's `idle_timeout` shorter than the server's idle timeout, so the pool closes connections
-  before the server does.
-- Retry an idempotent request once on a new connection when a reused one fails, with the retry policy of
-  chapter 19.
+- Configure the pool's `idle_timeout` strictly shorter than the server's keep-alive timeout so the client initiates eviction before the server closes.
+- Retry idempotent requests once on a fresh connection when a reused socket fails with a transport error (Chapter 19).
 
-Animation 29.1 follows the pool through borrowing, waiting, eviction, and a stale connection.
+Animation 29.1 visualizes the complete pool lifecycle across borrowing, capacity blocking, idle eviction, and stale-socket detection.
 
 <figure class="anim">
 <video class="motion" src="figures/ch29-pool.mp4" autoplay loop muted playsinline preload="metadata" aria-label="Three caller robots on the left, the pool in the middle with two slots and an idle shelf, and the server on the right. Caller A gets a connection: the shelf is empty and open is 0 of 2, so the pool connects. A sends a request, gets a reply, and drops the guard; the connection goes onto the idle shelf with an age clock. Caller B gets it from the shelf, a reuse. A and B now hold both connections, and caller C's get finds open at 2 of 2 and sleeps on the Condvar. B drops its guard, C wakes and takes the returned connection. Later a connection on the shelf ages past idle_timeout and is closed. In a last run the server closes an idle connection, its FIN lands on the shelf unread, and a pool without the liveness check lends it: the caller writes, read returns 0, and the request fails." data-chapters="[[0.0, &quot;connect&quot;], [13.1, &quot;reuse&quot;], [19.7, &quot;limit&quot;], [39.98, &quot;eviction&quot;], [55.18, &quot;stale&quot;]]"><img src="figures/ch29-pool.gif" alt="Three caller robots on the left, the pool in the middle with two slots and an idle shelf, and the server on the right. Caller A gets a connection: the shelf is empty and open is 0 of 2, so the pool connects. A sends a request, gets a reply, and drops the guard; the connection goes onto the idle shelf with an age clock. Caller B gets it from the shelf, a reuse. A and B now hold both connections, and caller C's get finds open at 2 of 2 and sleeps on the Condvar. B drops its guard, C wakes and takes the returned connection. Later a connection on the shelf ages past idle_timeout and is closed. In a last run the server closes an idle connection, its FIN lands on the shelf unread, and a pool without the liveness check lends it: the caller writes, read returns 0, and the request fails."></video>
@@ -170,8 +152,7 @@ Animation 29.1 follows the pool through borrowing, waiting, eviction, and a stal
 
 ## 29.6 Measured
 
-`main` runs four scenes against the line server. The first sends 2,000 requests from eight threads, first
-with a new connection for each request, then through a pool of four:
+`main` executes four scenarios against a local line-oriented server. Scenario 1 dispatches 2,000 requests across eight worker threads, comparing unpooled connections against a 4-connection pool:
 
 ```text
 1. 2000 requests from 8 threads
@@ -179,9 +160,9 @@ with a new connection for each request, then through a pool of four:
   a pool of 4:                4 connections,   80.4 ms, 1996 reuses
 ```
 
-Even on loopback, where establishing a connection takes only microseconds, the pool cut total latency in half. Without pooling, each request also left a socket in `TIME_WAIT`, accumulating 2,000 entries in 0.17 seconds; at that rate, the ephemeral port range described in section 27.2.1 would be exhausted in under 3 seconds. Over a real network with TLS, each unpooled request would also incur two full round trips for handshakes.
+Even on loopback where TCP handshakes execute in microseconds, pooling halved elapsed wall-clock latency while eliminating 1,996 handshakes. Without pooling, the run generated 2,000 `TIME_WAIT` sockets in 0.17 seconds, a rate that exhausts Linux's 28,232-port ephemeral range in under 3 seconds (Section 27.2.1). Over a real network with TLS, unpooled requests would additionally incur 2 RTT per call.
 
-The other scenes check one rule each:
+Scenarios 2 through 4 verify capacity enforcement, idle eviction, and stale-connection detection:
 
 ```text
 2. The bound: 2 connections, both lent out
@@ -196,11 +177,7 @@ The other scenes check one rule each:
   check_alive true : Ok("ok second"), stale discarded 1
 ```
 
-With both connections lent out, the third `get` waited its full 100 ms deadline and failed. Once a
-connection came back, the next `get` reused it. A connection idle for 150 ms against a 100 ms limit was
-closed, and the second request connected again. Against a server that closes idle connections after 50 ms,
-the pool without the check lent a closed connection, and the request failed. With the check, the pool found
-the server's `FIN`, discarded the connection, and connected again.
+When both slots were occupied, the third `get` waited its 100 ms deadline and returned `TimedOut`; returning one guard immediately unblocked the next acquisition. Sleeping 150 ms past a 100 ms `idle_timeout` triggered eviction and a fresh dial. Against a server enforcing a 50 ms idle close, disabling `check_alive` lent a half-closed socket and failed with `UnexpectedEof`, whereas enabling `check_alive` detected the pending `FIN`, discarded the stale socket, and redialed transparently.
 
 ## 29.7 The complete program
 
@@ -231,52 +208,38 @@ $ cargo run --release --bin conn_pool
 ## 29.8 Questions that come up
 
 **"How large should the pool be?"**
-Large enough for the requests in flight at peak. That is the request rate times the time each request holds a connection. At 2,000 requests per second and 5 ms each, that is 10. Each client process multiplies it on the
-server, so the server's connection limit divided by the number of clients is the upper bound.
+By Little's Law, the steady-state concurrency required is $L = \lambda W$ (peak request rate multiplied by average connection hold duration). At 2,000 requests per second and 5 ms per request, $L = 10$ concurrent connections. Because each client instance multiplies load on the server, the upper bound per client is the server's maximum connection budget divided by the fleet size.
 
 **"Why not one pool shared by every server address?"**
-A connection is to one address. Real clients keep one pool per host and port, often with a limit per host
-and one overall.
+A TCP socket is bound to a single remote endpoint. HTTP clients therefore maintain a map of per-origin `(host, port)` pools, enforcing both a per-host concurrency cap and a global descriptor cap.
 
 **"What does HTTP/2 change?"**
-HTTP/2 sends many requests at once over one connection, each in its own stream. A client then needs one
-connection per server, or a few, and the pool limits streams rather than connections.
+HTTP/2 multiplexes concurrent request-response streams over a single TCP connection. Clients require only one (or a small fixed number of) TCP connections per origin, shifting pooling from connection checkout to concurrent stream-quota management.
 
 **"What happens when the server restarts?"**
-Every idle connection in the pool is closed by the server at once. The liveness check catches most of them.
-Requests already in flight fail, and the idempotent ones can be retried.
+The server closes all idle pooled sockets simultaneously via `FIN` or `RST`. Pre-lend liveness probes discard idle sockets before reuse, while in-flight requests fail and idempotent operations retry on freshly dialed connections.
 
 **"Is a `Mutex` too slow for a pool?"**
-The lock is held only for a few vector pushes and pops, never across a `connect` or network request. At hundreds of thousands of requests per second, the pool can be partitioned into shards with one lock per shard, using the sharding strategy introduced for maps in chapter 14.
+Because `TcpStream::connect` and all network I/O execute outside the critical section, the mutex protects only nanosecond-scale vector pushes, pops, and integer increments. Under extreme contention (hundreds of thousands of acquisitions per second), partitioning the pool into independent shards eliminates single-lock contention, mirroring the sharded map architecture of Chapter 14.
 
 <div class="summary" markdown="1">
 
 ## Summary
 
-- A new connection costs a round trip, a TLS handshake, a slow start, and a socket in `TIME_WAIT` when it
-  closes. A pool pays those costs once per connection, not once per request.
-- The pool counts every open connection under one mutex, and never opens more than `max`.
-- `get` reuses an idle connection, opens a new one outside the lock, or waits on a `Condvar` until a
-  deadline. Overload becomes `TimedOut`, not a caller that hangs.
-- The guard returns its connection in `Drop`. `discard` closes a connection after an error, so no caller
-  reads another's half-finished response.
-- Reusing the newest connection first lets the oldest ones expire under light load.
-- A non-blocking `peek` finds a connection the server has closed. Idle timeouts shorter than the server's,
-  and one retry for idempotent requests, cover the rest.
-- 2,000 requests took 4 connections and 80 ms through the pool, against 2,000 connections and 170 ms
-  without it.
+- Connection pooling amortizes TCP/TLS handshakes, congestion-window slow start, server accept overhead, and client-side `TIME_WAIT` port consumption across many requests.
+- Enforcing `open <= max` under a single mutex while dialing new sockets outside the lock prevents both capacity violations and mutex serialization during slow connects.
+- Blocking saturated callers on `Condvar::wait_timeout` converts downstream overload into bounded `TimedOut` errors instead of indefinite hangs.
+- RAII guards return healthy connections automatically in `Drop`; calling `discard` after an I/O error closes the socket so corrupted framing cannot leak to subsequent borrowers.
+- LIFO idle-stack reuse concentrates traffic on warm sockets and enables surplus connections to expire under `idle_timeout`.
+- Non-blocking `peek` detects server-closed sockets before lending; setting `idle_timeout` below the server's timeout and retrying idempotent requests once closes the remaining race window.
+- Across 2,000 concurrent loopback requests, a 4-connection pool reduced elapsed time from 169.8 ms (2,000 connections) to 80.4 ms (4 connections, 1,996 reuses).
 
 </div>
 
-In chapter 30, we assemble compact, interview-sized implementations of the core structures built throughout the book, pairing each short form with the trade-offs it makes relative to its full reference version.
-
 ## Exercises
 
-1. Add a `max_lifetime` to `Config`, and close a connection older than it even if it is in use often.
-   Why do production pools have this limit, when the server's address can change behind a DNS name?
-2. Give `get` a fairness guarantee: callers that started waiting first get connections first. What does
-   `Condvar::notify_one` promise about order, and what structure would you add?
-3. Make `ask` retry once on a new connection when a reused connection fails, but only if the request is
-   marked idempotent.
-4. Run scene 1 with `max` set to 1, 2, 8, and 16, and plot the time. Where does the curve flatten, and why?
-5. Wrap the pool's connections in TLS from chapter 28, and measure scene 1 again with and without the pool.
+1. Add a `max_lifetime` field to `Config` that closes any connection older than its creation deadline even under continuous reuse. Explain why production pools enforce `max_lifetime` when upstream backends rotate IP addresses behind DNS or load balancers.
+2. Enforce FIFO wakeup fairness in `get` so waiting callers acquire connections in arrival order. Explain why `Condvar::notify_one` does not guarantee FIFO ordering and specify the synchronization data structure required.
+3. Extend `ask` to retry an idempotent request once on a fresh connection when a reused connection fails with an I/O error, while refusing to retry non-idempotent requests.
+4. Benchmark scenario 1 with `max` set to 1, 2, 4, 8, and 16, plotting elapsed time against pool size. Identify where throughput plateaus and explain why.
+5. Wrap the pool's `TcpStream` connections in `rustls` TLS streams (Chapter 28) and re-measure scenario 1 with and without pooling.

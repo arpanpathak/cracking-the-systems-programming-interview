@@ -15,11 +15,11 @@ This chapter covers
 
 </div>
 
-In Chapter 16, a single computation was partitioned evenly across worker threads. Many concurrent systems follow a different topology: producer threads generate work (accepting network requests, parsing files, or receiving messages), while consumer threads process each item asynchronously. Because producers and consumers operate at varying rates, they require an intermediary structure to decouple their execution.
+Many concurrent systems decouple work generation from work execution across distinct thread roles: producer threads emit tasks (accepting network connections, parsing input streams, or receiving messages), while consumer threads process those tasks asynchronously. Because production and consumption rates fluctuate independently, the two cohorts require a synchronized intermediary to buffer in-flight work.
 
-That intermediary is a **queue**, where producers enqueue items at the back and consumers dequeue them from the front. Items emerge in arrival order, a discipline known as **FIFO** (first in, first out).
+That intermediary is a **queue**, where producers enqueue elements at the tail and consumers dequeue them from the head. Elements emerge in strict arrival order, a scheduling discipline known as **FIFO** (first in, first out).
 
-The sections below construct six progressive queue designs. Each iteration resolves a concrete operational limitation of its predecessor, culminating in a lock-free ring buffer.
+The sections below construct six progressive queue designs. Each iteration resolves a concrete synchronization, liveness, or memory-safety limitation of its predecessor, culminating in a lock-free single-producer, single-consumer ring buffer.
 
 ## 17.1 Why a queue needs a limit
 
@@ -38,7 +38,7 @@ A bounded queue with blocking `push` and `pop` operations is commonly referred t
 
 The initial design is an unbounded queue that establishes the two core primitives used across the mutex-based implementations: a `VecDeque` guarded by a `Mutex` and a `Condvar` for blocking waits.
 
-As examined in Chapter 3, `VecDeque` supports O(1) amortized insertion at the back and removal from the front, while the `Mutex` serializes access across threads.
+The standard library's `VecDeque` provides O(1) amortized insertion at the back and removal from the front, while a `Mutex` serializes concurrent access across threads.
 
 When a consumer finds the queue empty, it blocks on the `Condvar`. Following the condition-variable protocol from section 16.5, waiting atomically releases the mutex and suspends the thread; when a producer invokes `notify_one`, one sleeping consumer wakes with the mutex re-acquired.
 
@@ -153,7 +153,7 @@ The inline comments in `push` document each invariant, and figure 17.3 traces th
 
 In `guard = self.not_full.wait(guard).unwrap();`, `wait` consumes `guard` by value to release the mutex before sleeping, then re-acquires the mutex on wakeup and returns a fresh guard, which is assigned back to the same binding.
 
-After pushing the item, `drop(guard)` releases the mutex before `notify_one()` is called. Notifying while still holding the lock remains correct, yet it can cause the woken consumer to wake up, immediately contend on the still-held mutex, and block a second time. Dropping the guard first avoids that redundant context switch.
+After pushing the item, `drop(guard)` releases the mutex before `notify_one()` is called. Notifying while still holding the lock remains correct, yet it can cause the signaled consumer to resume, immediately contend on the still-held mutex, and re-block. Dropping the guard first avoids that redundant context switch.
 
 <p class="listing"><b>Listing 17.5</b> <code>pop</code> (lines 78 to 102).</p>
 
@@ -613,8 +613,6 @@ Each complete source file appears below in the order introduced in this chapter.
 - An SPSC ring buffer eliminates locks by giving each counter a single writer and synchronizing slot handoffs with `Release` and `Acquire` orderings, provided the public API enforces the single-producer and single-consumer invariants.
 
 </div>
-
-In Chapter 18, a shared work queue forms the core of a thread pool, where a fixed crew of worker threads pulls and executes submitted jobs.
 
 ## Exercises
 

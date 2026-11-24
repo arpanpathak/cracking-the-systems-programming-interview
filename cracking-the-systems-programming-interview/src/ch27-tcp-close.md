@@ -6,24 +6,24 @@
 
 This chapter covers
 
-- How each direction of a TCP connection closes with its own `FIN`
-- The states of the side that closes first and of the side that closes second, read from the kernel
-- `TIME_WAIT`: what it protects, how long it lasts, and the port limit it puts on busy clients
-- `SO_REUSEADDR`, and why a restarted server can bind its port
-- `CLOSE_WAIT`: the sockets a server keeps when it never closes, and how to find them
-- The reset that replaces `FIN` when a socket closes with unread data
+- Independent full-duplex teardown via TCP's four-way `FIN`/`ACK` handshake
+- Kernel state transitions for active close (`FIN_WAIT1`, `FIN_WAIT2`, `TIME_WAIT`) and passive close (`CLOSE_WAIT`, `LAST_ACK`), inspected via `/proc/net/tcp`
+- `TIME_WAIT` protocol invariants, the 60-second Linux 2 MSL duration, and ephemeral port exhaustion on high-rate clients
+- `SO_REUSEADDR` semantics for rebinding a listening port occupied by `TIME_WAIT` entries
+- `CLOSE_WAIT` descriptor accumulation caused by servers that fail to close peer-terminated sockets
+- Abrupt termination via TCP `RST` when closing a socket with unread receive-buffer data or `SO_LINGER`
 
 </div>
 
-In chapter 20, TCP connections were opened and closed with `shutdown` and `drop`. From the application's perspective, each close transmits a `FIN` and causes the peer's `read` to return 0. Beneath that interface, however, the kernel tracks each endpoint through a sequence of closing states long after the application has moved on: some states persist for a full minute, and one persists indefinitely if the application fails to close its descriptor.
+A TCP connection is a full-duplex byte stream whose teardown is asymmetric and outlives user-space descriptor closure. When an application calls `shutdown` or `close`, the kernel transitions the underlying transmission control block (TCB) through a deterministic state machine that can persist for 60 seconds after the process drops the socket (`TIME_WAIT`), or indefinitely if a server neglects to close a peer-terminated descriptor (`CLOSE_WAIT`). Failing to account for these kernel states manifests in production as ephemeral port exhaustion (`EADDRNOTAVAIL`), restart failures (`EADDRINUSE`), descriptor exhaustion (`EMFILE`), and unexpected connection resets (`ECONNRESET`).
 
-In this chapter, we trace a TCP connection through its closing transitions as recorded by the kernel. The companion program, `tcp_close`, reads socket states directly from Linux's `/proc/net/tcp` at each step in a Linux container. We also examine two production failures caused by these closing states, along with the conditions under which closing a socket sends a reset rather than a `FIN`.
+The reference program `tcp_close` exercises these kernel transitions directly inside a Linux container by parsing `/proc/net/tcp` after each protocol step, reproducing `CLOSE_WAIT` leaks, `TIME_WAIT` bind conflicts, and unread-buffer resets.
 
 ## 27.1 Two directions, two `FIN`s
 
-A TCP connection is full-duplex, carrying bytes independently in both directions, and each direction closes separately. An endpoint with no further bytes to transmit sends a **`FIN`**, which the peer acknowledges; bytes may continue flowing in the opposite direction until the peer closes its side as well. Complete teardown therefore requires four segments: `FIN`, `ACK`, `FIN`, and `ACK`.
+Because TCP carries two independent, full-duplex byte streams, each direction terminates separately. An endpoint with no further payload to transmit emits a **`FIN`** segment, which the peer acknowledges with an **`ACK`**; data may continue flowing in the reverse direction (a **half-closed** connection) until the peer transmits its own `FIN` and receives the final `ACK`. Orderly teardown therefore requires four segments: `FIN`, `ACK`, `FIN`, `ACK`.
 
-The endpoint that transmits the first `FIN` performs the **active close**, while the peer performs the **passive close**. The two endpoints traverse distinct state sequences (figure 27.1):
+The endpoint transmitting the first `FIN` executes the **active close**; its peer executes the **passive close**. The two endpoints traverse disjoint subsets of the TCP state machine (Figure 27.1):
 
 | Side | State | Waiting for |
 |---|---|---|
@@ -38,13 +38,13 @@ The endpoint that transmits the first `FIN` performs the **active close**, while
 <figcaption><b>Figure 27.1</b> The four segments of a close, and the state each side is in between them.</figcaption>
 </figure>
 
-Two of these states depend on local events rather than network traffic: `CLOSE_WAIT` persists until the local process closes the socket descriptor, and `TIME_WAIT` persists until a kernel timer expires. Sections 27.2 and 27.3 examine both states in detail.
+Two of these states depend on local events rather than network arrivals: `CLOSE_WAIT` persists until the local application closes its socket descriptor, and `TIME_WAIT` persists until a kernel timer expires. Sections 27.2 and 27.3 analyze both states and their operational failure modes.
 
 ### 27.1.1 Reading the states
 
-Linux exposes every IPv4 TCP socket in `/proc/net/tcp`, one socket per line. The second and third columns record the local and remote endpoints in hexadecimal form (for example, `0100007F:1F90` for the IP address and port), and the fourth column records the TCP state as a hexadecimal code from `01` (`ESTABLISHED`) through `0B` (`CLOSING`).
+Linux exposes active IPv4 TCP control blocks through `/proc/net/tcp`, emitting one line per socket. The second and third columns encode the local and remote endpoints in hexadecimal (for example, `0100007F:1F90` for `127.0.0.1:8080`), and the fourth column encodes the TCP state as a hexadecimal enumeration from `01` (`ESTABLISHED`) through `0B` (`CLOSING`).
 
-The helper functions below parse those lines into port pairs and human-readable state names:
+The parser helpers extract endpoint port pairs and map hexadecimal state codes to canonical TCP state names:
 
 ```rust
 {{#include ../../rust-interview-lab/src/bin/tcp_close.rs:8:70}}
@@ -52,11 +52,9 @@ The helper functions below parse those lines into port pairs and human-readable 
 }
 ```
 
-`entries` skips the header line, splits each line on whitespace, and keeps the three columns it needs. The
-`?` operators inside `filter_map` skip any line that does not parse. All connections in this program run
-over `127.0.0.1`, so the two ports alone identify a socket.
+`entries` skips the header row, tokenizes each record on whitespace, and extracts the three target columns; the `?` operator inside `filter_map` discards malformed lines. Because all test traffic traverses `127.0.0.1`, the `(local_port, remote_port)` pair uniquely identifies each socket endpoint.
 
-`state` looks up one socket, and `census` counts the states of every socket on one server port:
+`state` queries a single endpoint's state, and `census` aggregates state counts across all sockets associated with a server port:
 
 ```rust
 mod linux {
@@ -66,12 +64,11 @@ mod linux {
 }
 ```
 
-A socket the kernel has forgotten has no line in the file, and `state` reports it as `gone`. `connected`
-returns both ends of a new connection, so one process can watch both sides.
+Once the kernel reclaims a TCB, its entry disappears from `/proc/net/tcp` and `state` reports `gone`. `connected` returns both ends of a loopback TCP pair so a single process can drive and inspect both endpoints deterministically.
 
 ### 27.1.2 A close, step by step
 
-The first scenario closes a connection in the same sequence used by the echo test in chapter 20. The client half-closes its write direction with `shutdown(Write)`, the server reads until EOF and sends a reply, and both endpoints then drop their sockets. After each step, the program sleeps for 50 ms so loopback segments complete delivery before sampling both states:
+The first scenario executes an orderly half-close sequence: the client closes its write half via `shutdown(Write)`, the server drains until EOF and transmits a reply, and both endpoints drop their descriptors. A 50 ms delay after each step ensures loopback segment delivery completes before `/proc/net/tcp` is sampled:
 
 ```text
 1. An orderly close, client first, with a half-close
@@ -84,11 +81,11 @@ The first scenario closes a connection in the same sequence used by the echo tes
   client read the reply, dropped         TIME_WAIT    gone
 ```
 
-The client never appears in `FIN_WAIT1` because on loopback the `ACK` of its `FIN` arrives within microseconds, advancing the socket to `FIN_WAIT2` before the program polls `/proc/net/tcp`. Over a network link with a 50 ms round-trip time, `FIN_WAIT1` would be visible.
+`FIN_WAIT1` is transient on loopback because the peer's `ACK` arrives within microseconds, advancing the client TCB directly into `FIN_WAIT2` before the poll executes; over a wide-area link with non-trivial round-trip latency, `FIN_WAIT1` is directly observable.
 
-The third row demonstrates a half-closed connection in action: the client's transmit direction is closed while the server's remains open, allowing the server's reply to reach the client cleanly. Once the server drops its socket, the server side transitions through `LAST_ACK` and disappears from the table, while the client side enters `TIME_WAIT` and remains there even after the client drops its descriptor. `TIME_WAIT` is maintained by the kernel rather than by the application process.
+Row three demonstrates half-closed duplex operation: the client's transmit direction is closed while the server's remains open to deliver the response. When the server drops its socket, the server TCB transmits `FIN`, transitions through `LAST_ACK`, and is reclaimed upon receiving the client's final `ACK`. The client TCB enters `TIME_WAIT` and persists in kernel memory even after the client drops its descriptor, demonstrating that `TIME_WAIT` is owned strictly by the kernel network stack rather than the application process.
 
-Animation 27.1 follows these steps, then shows a server that never closes.
+Animation 27.1 traces this orderly teardown followed by a server that leaks descriptors in `CLOSE_WAIT`.
 
 <figure class="anim">
 <video class="motion" src="figures/ch27-close.mp4" autoplay loop muted playsinline preload="metadata" aria-label="A client robot and a server robot joined by a wire, each with its TCP state above it. The client's shutdown sends FIN; the server's kernel acknowledges it, and the states become FIN_WAIT2 and CLOSE_WAIT. The server's read returns 0, it writes a reply that crosses to the client, and it drops its socket, which sends FIN. The server goes through LAST_ACK to gone, and the client acknowledges and enters TIME_WAIT, where a 60-second clock runs after the client drops its socket. In a second run the server never drops its sockets: five clients connect and close, each leaves a FIN_WAIT2 on the client side and a CLOSE_WAIT on the server, and the server's count of open descriptors climbs toward its limit." data-chapters="[[0.0, &quot;FIN&quot;], [15.42, &quot;reply&quot;], [23.42, &quot;second FIN&quot;], [42.42, &quot;leak&quot;]]"><img src="figures/ch27-close.gif" alt="A client robot and a server robot joined by a wire, each with its TCP state above it. The client's shutdown sends FIN; the server's kernel acknowledges it, and the states become FIN_WAIT2 and CLOSE_WAIT. The server's read returns 0, it writes a reply that crosses to the client, and it drops its socket, which sends FIN. The server goes through LAST_ACK to gone, and the client acknowledges and enters TIME_WAIT, where a 60-second clock runs after the client drops its socket. In a second run the server never drops its sockets: five clients connect and close, each leaves a FIN_WAIT2 on the client side and a CLOSE_WAIT on the server, and the server's count of open descriptors climbs toward its limit."></video>
@@ -97,36 +94,31 @@ Animation 27.1 follows these steps, then shows a server that never closes.
 
 ## 27.2 `TIME_WAIT`
 
-The endpoint that initiates the active close remains in `TIME_WAIT` before the kernel reclaims the connection state. This waiting period guards against two network hazards:
+The active-closing endpoint retains its TCB in `TIME_WAIT` before releasing the connection's four-tuple. This mandatory holding interval enforces two transport-layer safety invariants:
 
-- **A lost final `ACK`.** If the final `ACK` is dropped in transit, the peer remains in `LAST_ACK` and retransmits its `FIN`. An endpoint still in `TIME_WAIT` recognizes the connection and retransmits the `ACK`. Had it discarded the connection immediately, it would respond with a reset (`RST`), causing the peer to report an error on a connection that closed cleanly.
-- **Delayed duplicate segments.** A segment from the closed connection can be delayed in the network and arrive late. If a new connection reusing the same four-tuple (local IP, local port, remote IP, remote port) were already established, that stale segment could corrupt the new byte stream. `TIME_WAIT` keeps the four-tuple reserved until any delayed segments have expired.
+- **Reliable delivery of the final `ACK`.** If the final `ACK` is lost in transit, the passive peer remains in `LAST_ACK` and retransmits its `FIN`. An active endpoint still in `TIME_WAIT` recognizes the retransmitted `FIN` and re-emits the `ACK`. Had it purged the TCB immediately, it would reply with `RST`, causing the peer to observe an error on an orderly close.
+- **Isolation from delayed duplicate segments.** Packets delayed in the network can arrive after connection teardown. If a new connection immediately reused the identical four-tuple `(local IP, local port, remote IP, remote port)`, stale segments from the previous incarnation could pass sequence checks and corrupt the new byte stream. `TIME_WAIT` quarantines the four-tuple until delayed segments expire.
 
-The TCP specification defines this duration as twice the maximum segment lifetime (2 MSL); Linux fixes it at 60 seconds.
+RFC 9293 specifies `TIME_WAIT` as twice the maximum segment lifetime (`2 MSL`); Linux hardcodes `TCP_TIMEWAIT_LEN` to 60 seconds.
 
 ### 27.2.1 The cost: ports on a busy client
 
-A `TIME_WAIT` socket consumes only a few hundred bytes of kernel memory, which is negligible. The scarce resource is the four-tuple it reserves. For each outgoing connection to a server, the client kernel allocates a local port from the **ephemeral port range** (32768 to 60999 by default on Linux, providing 28,232 ports). When the client closes first, each port remains bound in `TIME_WAIT` for 60 seconds, capping the client at roughly 470 new connections per second to a single destination address and port. Exceeding that rate causes `connect` to fail with `EADDRNOTAVAIL`.
+A `TIME_WAIT` control block occupies only a few hundred bytes of kernel memory. The constraining resource is four-tuple cardinality. For every outbound connection to a fixed `(remote IP, remote port)`, the client kernel selects a local port from the **ephemeral port range** (`net.ipv4.ip_local_port_range`, defaulting to 32,768 through 60,999 on Linux, yielding 28,232 ports). When the client performs the active close, each port remains pinned in `TIME_WAIT` for 60 seconds, bounding sustained connection churn to roughly $28{,}232 / 60 \approx 470$ new connections per second per destination endpoint (Figure 27.2). Exceeding this rate exhausts the ephemeral pool and causes `connect` to fail with `EADDRNOTAVAIL`.
 
 <figure>
 <img src="figures/ch27-ports.svg" alt="A client at 10.0.0.5 with ephemeral ports 32768 to 60999, 28,232 ports, has connections from ports 40001 and 40002 to the server 10.0.0.9:443, each in TIME_WAIT with about 60 seconds left. With 28,232 such four-tuples held at once, the next connect fails with EADDRNOTAVAIL. The server uses its one port for every connection.">
 <figcaption><b>Figure 27.2</b> Each closed connection holds its four values for 60 seconds. On the client, the free values run out with the ephemeral ports.</figcaption>
 </figure>
 
-Three fixes are common:
+Three architectural mitigations address client-side ephemeral port exhaustion:
 
-- **Reuse connections.** An HTTP client that keeps connections alive, or a connection pool, as in chapter
-  29, makes few connections and few closes.
-- **Let the server close first.** Then `TIME_WAIT` lands on the server. All its connections share its one port, so the entries use up nothing.
-- **`net.ipv4.tcp_tw_reuse`.** This Linux setting lets an outgoing connection reuse a port in `TIME_WAIT`
-  when TCP timestamps prove its segments are newer.
+- **Connection reuse.** Persistent HTTP keep-alive connections or a bounded client connection pool (Chapter 29) amortize connection setup and eliminate per-request `TIME_WAIT` churn.
+- **Server-initiated active close.** Shifting active close onto the server places `TIME_WAIT` entries on the server side, where all connections share a single listening port and are distinguished by distinct client endpoints.
+- **`net.ipv4.tcp_tw_reuse`.** Enabling this Linux sysctl permits outbound `connect` calls to reclaim a `TIME_WAIT` four-tuple safely after one second when TCP timestamps (`RFC 7323`) guarantee monotonically increasing timestamps relative to the closed incarnation.
 
 ### 27.2.2 Binding a port with connections in `TIME_WAIT`
 
-A server that closes first collects `TIME_WAIT` entries on its own port. If it restarts within a minute,
-its new listening socket asks for a port that those entries still use. By default, `bind` refuses.
-**`SO_REUSEADDR`** allows the bind as long as no socket on the port is listening. Rust's `TcpListener::bind`
-sets it on Unix, so the program uses raw calls to bind both ways:
+When a server initiates active close and subsequently restarts within 60 seconds, residual `TIME_WAIT` entries still occupy its listening port. By default, `bind` rejects a new listening socket on that port with `EADDRINUSE`. Setting **`SO_REUSEADDR`** instructs the kernel to permit `bind` whenever no active `LISTEN` socket holds the identical `(IP, port)` pair. Because Rust's `TcpListener::bind` enables `SO_REUSEADDR` automatically on Unix, `tcp_close` invokes raw `libc` socket primitives to contrast both configurations:
 
 ```rust
 unsafe extern "C" {
@@ -142,8 +134,7 @@ unsafe extern "C" {
 }
 ```
 
-`sockaddr` is a generic address type. An IPv4 address is a `sockaddr_in`, passed as a pointer to `sockaddr`
-with its own size:
+`sockaddr` serves as the polymorphic C address header; an IPv4 endpoint is populated in `sockaddr_in` and passed as a `*const sockaddr` pointer alongside its byte length:
 
 ```rust
 mod linux {
@@ -153,7 +144,7 @@ mod linux {
 }
 ```
 
-The third scene closes one connection server-first, drops the listener, and binds the port again:
+The third scenario closes a connection server-first, drops the listener, and attempts to rebind the port with `SO_REUSEADDR` disabled and enabled:
 
 ```text
 3. TIME_WAIT on the server's port, and binding it again
@@ -163,18 +154,15 @@ The third scene closes one connection server-first, drops the listener, and bind
   bind port again, SO_REUSEADDR true : bound
 ```
 
-One socket in `TIME_WAIT` was enough to stop a plain `bind`.
+A single residual `TIME_WAIT` entry suffices to block an unconfigured `bind` call.
 
 ## 27.3 `CLOSE_WAIT`
 
-The side that receives the first `FIN` moves to `CLOSE_WAIT`, and stays there until its own program
-closes the socket. The kernel cannot leave `CLOSE_WAIT` on its own. Only the program knows whether it still
-wants to send.
+Upon receiving a peer's `FIN`, the passive endpoint transitions to `CLOSE_WAIT` and remains there indefinitely until its owning process invokes `close` (or `shutdown(Write)`). The kernel cannot unilaterally exit `CLOSE_WAIT`, because only the application knows whether it still intends to transmit response bytes before closing its half of the stream.
 
-A server that never closes a connection after the client has gone leaves it in `CLOSE_WAIT` for as long as
-the server runs. Each such connection holds a descriptor. The usual causes are a handler that ignores a `read` of 0, and a connection kept in a map that nothing removes. A reference cycle that keeps a socket's owner alive does the same.
+A server that neglects to drop accepted sockets after clients disconnect accumulates `CLOSE_WAIT` sockets for the lifetime of the process, pinning one file descriptor per leaked connection. Common root causes include read handlers that ignore a `0`-byte EOF return, connection maps that omit eviction on error paths, and reference-counting cycles (`Rc`/`Arc`) that retain socket owners indefinitely.
 
-`leaky_server` keeps every accepted socket in a `Vec`, while each client connects and closes at once:
+`leaky_server` reproduces this pathology by retaining five accepted sockets in a `Vec` while all five clients connect and immediately close:
 
 ```rust
 mod linux {
@@ -191,15 +179,13 @@ mod linux {
   after the server drops them:      {"TIME_WAIT": 5}
 ```
 
-Five connections waited at the halfway point of figure 27.1. The clients were in `FIN_WAIT2`, waiting for a `FIN`, and the server in `CLOSE_WAIT`, waiting for itself. When the server dropped the `Vec`, it sent five
-`FIN`s, and the clients' sides moved to `TIME_WAIT`. The clients had already closed their descriptors.
-Linux keeps such an orphaned `FIN_WAIT2` socket for 60 seconds (`tcp_fin_timeout`), then drops it.
+All five connections stalled mid-teardown: the clients remained in `FIN_WAIT2` awaiting the server's `FIN`, while the server held five sockets in `CLOSE_WAIT`. Dropping the server's `Vec` transmitted five `FIN` segments and transitioned the client endpoints into `TIME_WAIT`. Because the clients had already closed their local descriptors, Linux would otherwise bound such orphaned `FIN_WAIT2` sockets with `net.ipv4.tcp_fin_timeout` (defaulting to 60 seconds) before reclaiming them.
 
-In production, `ss -tan state close-wait` lists the `CLOSE_WAIT` sockets of every process. A count that only grows is a leak in the program that owns them. It ends in `EMFILE`, "Too many open files", as in section 24.1.
+In production diagnostics, `ss -tan state close-wait` enumerates all `CLOSE_WAIT` sockets across the host. A monotonically increasing `CLOSE_WAIT` count indicates a descriptor leak in the owning server process that will eventually terminate new connections with `EMFILE` (Section 24.1).
 
 ## 27.4 Reset instead of `FIN`
 
-When a process closes a socket whose receive buffer still contains unread bytes, the kernel sends a **reset** (`RST`) rather than a `FIN`, signaling to the peer that data was discarded. The peer's subsequent `read` fails with `ECONNRESET`, and any unread bytes still buffered on the peer side are discarded as well.
+When a process closes a TCP socket whose kernel receive buffer still holds unread bytes, the kernel aborts orderly teardown and transmits a **reset (`RST`)** segment instead of a `FIN`, signaling data loss to the peer. The peer's subsequent `read` fails with `ECONNRESET` ("Connection reset by peer"), and any unread bytes queued in the peer's receive buffer are discarded:
 
 ```rust
 mod linux {
@@ -214,9 +200,9 @@ mod linux {
   client read failed: Connection reset by peer (os error 104)
 ```
 
-This behavior creates a subtle failure mode in HTTP servers. If a server transmits an error response and closes the socket before draining the remaining request body, the resulting `RST` can overtake or abort delivery of the response, causing the client to report a connection reset instead of reading the HTTP error. Production servers avoid this with a **lingering close**: after writing the response, the server calls `shutdown(Write)`, drains and discards incoming request bytes for a brief interval, and only then closes the descriptor.
+This mechanism causes a subtle failure mode in HTTP servers. If a server rejects an oversized request by writing an HTTP `413` response and immediately calling `close` while unread request-body bytes remain in the kernel receive buffer, the resulting `RST` can overtake or flush the response on the client, causing the client to report `ECONNRESET` instead of reading the HTTP error status. Production servers prevent this race via a **lingering close**: after writing the error response, the server invokes `shutdown(Write)` to transmit `FIN`, drains and discards incoming request bytes for a bounded interval, and only then closes the descriptor.
 
-An application can also force an immediate reset intentionally by configuring `SO_LINGER` with a timeout of 0 before closing. Doing so bypasses `TIME_WAIT` and delivers `ECONNRESET` to the peer. While load balancers occasionally use this technique to shed connections rapidly, it also discards unsent data in the send buffer and is unsuitable as a general default.
+An application can also trigger an immediate `RST` explicitly by enabling `SO_LINGER` with `l_onoff = 1` and `l_linger = 0` before closing. This bypasses `TIME_WAIT` and forces `ECONNRESET` on the peer; although edge proxies occasionally use it to shed abusive connections rapidly, it discards unsent data in the send buffer and violates orderly transport semantics.
 
 ## 27.5 The complete program
 
@@ -256,51 +242,38 @@ $ cargo run --bin tcp_close
 ## 27.6 Questions that come up
 
 **"A server has 30,000 sockets in `TIME_WAIT`. Is that a problem?"**
-Usually not on the server. They share the server's port and cost little memory. It is a problem on a
-client, where each one holds an ephemeral port to the same destination.
+Rarely on a server. Each `TIME_WAIT` entry occupies a few hundred bytes of kernel memory and all share the server's listening port without consuming ephemeral ports. The same count on a client targeting a single upstream endpoint exhausts the 28,232-port ephemeral range and causes `EADDRNOTAVAIL`.
 
 **"A server has 3,000 sockets in `CLOSE_WAIT` and the number keeps rising. What happened?"**
-The clients closed, and the server never closed its side. Look for a code path that returns without
-dropping the connection, or a collection that keeps connections after they end.
+Remote peers closed their write directions, and the server process failed to close its descriptors. Audit read loops for ignored `0`-byte EOF returns, connection registries that omit cleanup on error paths, and reference cycles retaining `TcpStream` instances.
 
 **"Why not shorten `TIME_WAIT`?"**
-Linux has no setting for it: the 60 seconds is a constant in the kernel. Reusing connections removes the need, and `tcp_tw_reuse` covers the outgoing case safely.
+Linux fixes `TCP_TIMEWAIT_LEN` at 60 seconds as a compile-time kernel constant to uphold RFC 9293's 2 MSL guarantee. Eliminating client-side `TIME_WAIT` churn is properly addressed through persistent connection pooling or `net.ipv4.tcp_tw_reuse` with TCP timestamps enabled.
 
 **"What is the difference between `shutdown(Write)` and `close`?"**
-`shutdown(Write)` sends `FIN` and keeps the socket open for reading. `close` releases the descriptor. If no
-other descriptor refers to the socket, the kernel sends `FIN`, or a reset if unread data remains.
+`shutdown(Write)` transmits a `FIN` to close the outbound byte stream while keeping the descriptor open for reading (and affects all duplicated descriptors referencing that socket). `close` removes a single descriptor table entry; the kernel transmits `FIN` (or `RST` if unread data remains) only when the open file description's reference count reaches zero.
 
 **"Both sides send `FIN` at the same moment. What happens?"**
-Both go from `FIN_WAIT1` to `CLOSING`, a state for this simultaneous close, then both to `TIME_WAIT`.
+Both endpoints transition from `FIN_WAIT1` into the simultaneous-close state `CLOSING` upon receiving the peer's `FIN`, and then into `TIME_WAIT` upon receiving the peer's `ACK`.
 
 <div class="summary" markdown="1">
 
 ## Summary
 
-- Each direction of a connection closes with its own `FIN` and `ACK`, four segments in all.
-- The side that closes first passes through `FIN_WAIT1`, `FIN_WAIT2`, and `TIME_WAIT`. The other passes
-  through `CLOSE_WAIT` and `LAST_ACK`.
-- `TIME_WAIT` lasts 60 seconds on Linux. It answers a retransmitted `FIN` and keeps late segments out of a
-  new connection with the same addresses and ports.
-- On a client, `TIME_WAIT` holds ephemeral ports: about 470 new connections per second to one server.
-  Reusing connections is the fix.
-- `SO_REUSEADDR` lets a server bind a port that has connections in `TIME_WAIT`. `TcpListener::bind` sets it.
-- `CLOSE_WAIT` lasts until the program closes the socket. A growing count is a leak of descriptors.
-- Closing with unread data sends a reset, and the peer's `read` fails with `ECONNRESET`.
+- Each direction of a full-duplex TCP connection terminates independently via `FIN` and `ACK`, requiring four segments for complete teardown.
+- Active close traverses `FIN_WAIT1`, `FIN_WAIT2`, and `TIME_WAIT`; passive close traverses `CLOSE_WAIT` and `LAST_ACK`.
+- `TIME_WAIT` lasts 60 seconds on Linux (`2 MSL`) to retransmit lost final `ACK`s and prevent delayed duplicate segments from corrupting a reused four-tuple.
+- On a high-rate client, `TIME_WAIT` pins ephemeral ports, capping throughput at roughly 470 new connections per second per destination unless connections are reused.
+- `SO_REUSEADDR` permits a restarting server to bind a port still referenced by `TIME_WAIT` entries; `TcpListener::bind` enables it automatically on Unix.
+- `CLOSE_WAIT` persists until the local application closes the socket; unbounded `CLOSE_WAIT` growth signals a descriptor leak culminating in `EMFILE`.
+- Closing a socket with unread receive-buffer bytes (or `SO_LINGER` with a zero timeout) transmits `RST` instead of `FIN`, surfacing as `ECONNRESET` on the peer.
 
 </div>
 
-In chapter 28, we add transport encryption to TCP connections using `rustls`, verifying server certificates and extending the handshake to mutual TLS so that the server authenticates clients as well.
-
 ## Exercises
 
-1. Add `thread::sleep(Duration::from_secs(61))` at the end of the first scene and print the client's state
-   again. What does it show?
-2. Change `leaky_server` so the server closes first and the clients never do. Which side holds `FIN_WAIT2`,
-   which holds `CLOSE_WAIT`, and which ends up in `TIME_WAIT`?
-3. Open 1,000 connections to one listener in a loop, closing each from the client side, and print the
-   `census` afterwards. Then make the server close first and compare.
-4. In `close_with_unread_data`, read the client's bytes on the server before dropping it. What does the
-   client's `read` return now?
-5. Set `SO_LINGER` to `{ l_onoff: 1, l_linger: 0 }` on the server's socket with `libc::setsockopt` before
-   dropping it in the first scene. Which states disappear, and what does the client's `read` report?
+1. Insert `thread::sleep(Duration::from_secs(61))` at the end of scenario 1 and re-query the client's `/proc/net/tcp` state. Confirm that the `TIME_WAIT` entry has been reclaimed.
+2. Invert `leaky_server` so the server performs active close while clients retain their descriptors open. Identify which side enters `FIN_WAIT2`, which enters `CLOSE_WAIT`, and which transitions to `TIME_WAIT` upon client drop.
+3. Open and close 1,000 loopback connections sequentially from the client side and print `census`; repeat with the server closing first and compare the resulting state distributions.
+4. In `close_with_unread_data`, drain the client's bytes on the server prior to dropping the server socket. Record the new return value of the client's `read`.
+5. Configure `SO_LINGER` with `{ l_onoff: 1, l_linger: 0 }` via `libc::setsockopt` on the server socket in scenario 1 before dropping it. Identify which TCP states vanish and what error the client's `read` reports.

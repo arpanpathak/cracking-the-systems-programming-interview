@@ -15,15 +15,15 @@ This chapter covers
 
 </div>
 
-Whereas Chapter 1 focused on pure in-memory computation, this chapter crosses the boundary into the operating system. The programs here read and write files, traverse directories, and parse arguments supplied on the command line.
+Interacting with persistent storage and process arguments requires crossing the privilege boundary between user space and the operating system kernel. Unlike pure in-memory computation, every kernel-mediated operation can fail because a path may not exist, permissions may be denied, or underlying storage may return an error.
 
-Every interaction with the operating system can fail: a target path may be missing, or the process may lack read permissions. Rust models recoverable failures through the `Result` type, which forms the starting point of this chapter. We then examine path manipulation, buffered I/O, file mutations, and directory traversal, concluding with two complete utilities: a stateless file paginator and a typed command-line argument parser.
+Rust encodes recoverable failures explicitly through the `Result` type, preventing callers from overlooking error conditions. Building on `Result` and the `?` propagation operator, the sections below develop path manipulation, buffered I/O, atomic file mutations, and recursive directory traversal, culminating in two complete utilities: a stateless cursor-based file paginator and a typed command-line argument parser.
 
-Three operating system concepts govern all file I/O:
+Three operating system abstractions govern all file I/O:
 
-- The **kernel** is the privileged core of the operating system responsible for managing hardware, memory, and storage.
-- A **system call** is a controlled transition from user space into the kernel requesting a service, such as opening a file or reading a byte range.
-- A **file descriptor** is a small non-negative integer assigned by the kernel to represent an open file within a process; subsequent system calls reference the file through this integer.
+- The **kernel** is the privileged core of the operating system responsible for mediating hardware, virtual memory, and filesystem access.
+- A **system call** is a controlled trap from user space into the kernel requesting a privileged service, such as opening a file or transferring a byte range.
+- A **file descriptor** is a small non-negative integer allocated per process by the kernel to identify an open file table entry; subsequent I/O system calls reference the file through this integer.
 
 ## 2.1 What happens when you read a file
 
@@ -134,9 +134,9 @@ Streaming a file line by line requires wrapping the `File` in a `BufReader`. Fig
 {{#include ../../rust-interview-lab/src/bin/readfile_line_by_line.rs}}
 ```
 
-`BufReader::new(file)` takes ownership of the `File` and pairs it with an 8 KiB user-space buffer. Because `lines` is defined on the `BufRead` trait, the trait must be brought into scope with `use std::io::BufRead;`.
+`BufReader::new(file)` assumes ownership of the `File` and pairs it with an 8 KiB user-space buffer, amortizing kernel-crossing overhead across multiple line reads. Because `lines` is defined on the `BufRead` trait, that trait must be imported via `use std::io::BufRead;`.
 
-Each iteration of `lines()` yields an `io::Result<String>` stripped of its trailing newline; a read error or invalid UTF-8 sequence can occur partway through the file, so each item must be checked individually. The statement `let line = line?;` unwraps the `String` by shadowing the `Result` binding, as introduced in Section 1.2. Chaining `enumerate()` pairs each line with its zero-based index, which the output shifts by one (`i + 1`).
+Each iteration of `lines()` yields an `io::Result<String>` stripped of its trailing newline; because a read error or invalid UTF-8 sequence can occur mid-stream, every item must be checked individually. The statement `let line = line?;` unwraps the `String` by shadowing the `Result` binding. Chaining `enumerate()` pairs each line with its zero-based index, which the formatter shifts by one (`i + 1`).
 
 Animation 2.1 traces this loop over a 12-byte, three-line file, counting `read` system calls with and without a buffer.
 
@@ -411,19 +411,17 @@ The `--` separator instructs Cargo to stop parsing flags for itself and forward 
 
 ## Summary
 
-- User-space programs access files through kernel system calls; the kernel caches recently accessed file pages in memory.
-- `Result<T, E>` encodes recoverable success or failure. The `?` operator propagates errors immediately to the caller, requiring the enclosing function to return a compatible `Result`.
-- `&Path` and `PathBuf` provide borrowed and owned path representations; public functions should accept `&Path`.
-- `fs::read_to_string` loads small files in one call, while `BufReader` amortizes system call overhead for large files. Calling `read_line` into a single cleared `String` eliminates per-line allocations.
-- `OpenOptions` with `append(true)` delegates atomic end-of-file writes to the kernel, and same-filesystem `fs::rename` provides atomic file replacement.
-- Inspecting `io::Error::kind()` enables targeted recovery for specific error conditions such as `NotFound` or `InvalidData`.
-- Using `entry.file_type()` avoids following symbolic links during recursive directory traversal, preventing symlink cycles.
-- Stateless byte-offset cursors must track bytes consumed by `read_line` rather than the underlying file descriptor's buffered seek position.
-- Accepting an iterator in the argument parser enables direct unit testing, while returning `ExitCode` from `main` communicates failure cleanly to the invoking shell.
+- User-space processes access storage exclusively through kernel system calls; the kernel page cache retains recently read file blocks in physical memory.
+- `Result<T, E>` encodes recoverable success or failure. The `?` operator propagates `Err` variants immediately to the caller, requiring the enclosing function to return a compatible `Result`.
+- `&Path` and `PathBuf` provide borrowed and owned filesystem path representations; public APIs should accept `&Path` to avoid unnecessary allocation.
+- `fs::read_to_string` loads small files in a single operation, whereas `BufReader` amortizes system-call overhead for large streams. Reusing a cleared `String` with `read_line` eliminates per-line heap allocation.
+- `OpenOptions` with `append(true)` sets `O_APPEND` for kernel-synchronized end-of-file writes, and same-filesystem `fs::rename` provides atomic file replacement.
+- Inspecting `io::Error::kind()` enables targeted recovery for specific failure classes such as `NotFound` or `InvalidData`.
+- Calling `entry.file_type()` avoids dereferencing symbolic links during recursive directory traversal, preventing infinite symlink cycles.
+- Stateless byte-offset cursors must accumulate exact byte counts returned by `read_line` rather than querying the underlying file descriptor's buffered seek offset.
+- Accepting an abstract iterator in a command-line parser decouples parsing from `std::env::args` for unit testing, while returning `ExitCode` from `main` reports completion status to the parent process.
 
 </div>
-
-Chapter 3 opens Part 2, applying Rust's primary standard collections (`Vec`, `String`, and `HashMap`) to core array and text algorithms.
 
 ## Exercises
 

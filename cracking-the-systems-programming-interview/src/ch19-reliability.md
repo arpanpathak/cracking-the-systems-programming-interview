@@ -61,7 +61,7 @@ impl TokenBucket {
 }
 ```
 
-Because `capacity` and `rate` are immutable after construction, they sit outside the lock. The mutable token balance and last-refill timestamp reside in `BucketState` behind a `Mutex`. Storing tokens as `f64` preserves fractional accruals between closely spaced requests, and the bucket initializes full.
+Because `capacity` and `rate` are immutable after construction, they remain outside the lock. The mutable token balance and last-refill timestamp reside in `BucketState` behind a `Mutex`. Storing tokens as `f64` preserves fractional accruals between closely spaced requests, and the bucket initializes full.
 
 Using `std::time::Instant` rather than `SystemTime` guarantees a monotonic clock immune to wall-clock adjustments such as NTP corrections.
 
@@ -170,7 +170,7 @@ Many distributed failures are transient: a backend restarts, a switch drops a pa
 An effective retry mechanism must answer three questions:
 
 1. **Which errors are retryable.** Client errors such as "not found" will fail deterministically on repeat attempts, whereas "server busy" errors may clear.
-2. **How long to wait between attempts.** Increasing the delay after consecutive failures gives an overloaded service room to recover.
+2. **How long to wait between attempts.** Increasing the delay after consecutive failures allows an overloaded service to drain its backlog and recover.
 3. **When to stop.** Bounding the total number of attempts prevents indefinite blocking and surfaces persistent outages to the caller.
 
 ### 19.2.1 Which errors to retry
@@ -427,7 +427,7 @@ payment provider crashed
   caller 1: Ok(Ok("txn-order-6"))
 ```
 
-When caller 0 panics, stack unwinding runs `Claim::drop`, removing the `InProgress` sentinel and waking caller 1, which then claims the key and completes the charge. Without `Claim::drop`, the sentinel would remain stuck in `InProgress` and caller 1 would block forever (Animation 19.2).
+When caller 0 panics, stack unwinding runs `Claim::drop`, removing the `InProgress` sentinel and waking caller 1, which then claims the key and completes the charge. Without `Claim::drop`, the sentinel would remain permanently in `InProgress` and caller 1 would block indefinitely (Animation 19.2).
 
 <figure class="anim">
 <video class="motion" src="figures/ch19-single-flight.mp4" autoplay loop muted playsinline preload="metadata" aria-label="Three caller robots, A, B, and C, a slot map with an entry for order-1, and a payment service. A finds no entry, marks order-1 InProgress, releases the lock, and calls the service. B and C find InProgress and sleep on the Condvar. The charge returns txn-order-1; A stores Done and calls notify_all; B and C wake and each take a clone, with one execution counted. In a second run without the claim's Drop, A's work panics, the mark stays InProgress, and B and C sleep while a clock runs." data-chapters="[[0.0, &quot;claim&quot;], [13.67, &quot;done&quot;], [26.82, &quot;panic, no Drop&quot;]]"><img src="figures/ch19-single-flight.gif" alt="Three caller robots, A, B, and C, a slot map with an entry for order-1, and a payment service. A finds no entry, marks order-1 InProgress, releases the lock, and calls the service. B and C find InProgress and sleep on the Condvar. The charge returns txn-order-1; A stores Done and calls notify_all; B and C wake and each take a clone, with one execution counted. In a second run without the claim's Drop, A's work panics, the mark stays InProgress, and B and C sleep while a clock runs."></video>
@@ -455,8 +455,6 @@ Production single-flight stores add two safeguards: waiter deadlines via `Condva
 - Single flight deduplicates concurrent work per key while allowing distinct keys to run in parallel (103 ms versus 417 ms behind a single lock), using an RAII claim guard to clear `InProgress` state on error or panic.
 
 </div>
-
-In Chapter 20, the stack descends to the network layer itself, examining IPv4 addressing, TCP flow windows, and blocking versus event-driven echo servers.
 
 ## Exercises
 

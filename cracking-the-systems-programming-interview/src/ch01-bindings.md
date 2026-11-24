@@ -14,24 +14,24 @@ This chapter covers
 
 </div>
 
-This chapter opens Part 1, which establishes the core Rust mechanics relied upon throughout the remainder of the book. We begin with the smallest building blocks: variable bindings, functions, and control flow.
+Every compiled program maps source-level identifiers onto concrete storage locations and control-flow frames. In Rust, lexical bindings, explicit mutability, and deterministic stack-frame reclamation govern how values occupy memory across function invocations.
 
-We examine two short programs. The first binds a single identifier to three distinct values in sequence, demonstrating the distinction between introducing a new binding with `let` and mutating an existing slot in place. The second computes Fibonacci numbers using three different strategies and times each one, illustrating how recursion consumes stack memory and how algorithmic structure governs execution time.
+Two programs illustrate these foundational mechanics. The first binds a single identifier to three values of distinct types in sequence, contrasting lexical shadowing with in-place mutation of a mutable slot. The second evaluates Fibonacci numbers through direct recursion, constant-space iteration, and memoization, demonstrating how recursive call trees consume stack memory and how algorithmic structure dictates asymptotic execution time.
 
-Four foundational terms anchor the discussion:
+Four definitions establish the memory model used throughout:
 
-- A **binding** associates an identifier with a value; for example, `let x = 5;` binds the name `x` to `5`.
-- A **scope** is the lexical region in which a binding remains valid, typically delimited in Rust by `{` and `}`.
-- The **stack** is the contiguous region of memory where active function calls store their local variables.
-- A **stack frame** is the slice of stack memory allocated for a single invocation of a function.
+- A **binding** associates an identifier with a typed value; for example, `let x = 5;` binds `x` to `5`.
+- A **lexical scope** is the syntactic region in which a binding remains valid, delimited in Rust by `{` and `}`.
+- The **call stack** is the contiguous LIFO memory region holding activation records for active function invocations.
+- A **stack frame** (activation record) is the fixed-size slice of stack memory allocated upon entering a function to store its parameters, return address, and local bindings.
 
 ## 1.1 A binding is a name for a value
 
-Upon entering a function, the runtime reserves a stack frame sized to hold its local bindings. Each `let` statement occupies a fixed-width slot determined by its type: a `u32` occupies 4 bytes, whereas a `usize` occupies 8 bytes on a 64-bit architecture.
+Upon function entry, the runtime allocates a stack frame sized statically from the types of its local bindings. Fixed-size scalar bindings occupy adjacent slots within that frame: a `u32` requires 4 bytes, whereas a `usize` requires 8 bytes on a 64-bit architecture.
 
-Heap-allocated types such as `String` split their representation across two memory regions. Because text length can change at runtime, the raw character bytes reside on the **heap**, a dynamically managed memory pool requested from the allocator and returned when no longer needed. On the stack, the `String` itself is a fixed-size header holding three machine words: a pointer to the heap buffer, the current byte length, and the allocated capacity.
+Dynamically sized types such as `String` partition their representation across the stack and the **heap**, a dynamically managed memory pool obtained from the system allocator. Because string length varies at runtime, the UTF-8 character bytes reside in a heap-allocated buffer, while the stack frame holds a three-word header consisting of a pointer to that buffer, the current byte length, and the allocated capacity.
 
-When a function returns, its stack frame is popped and every local value in that frame is dropped. Dropping a `String` releases its underlying heap buffer automatically.
+Upon function return, the stack frame is popped and every local binding undergoes deterministic destruction in reverse declaration order. Dropping a `String` deallocates its backing heap buffer automatically.
 
 ## 1.2 Shadowing: one name, several values
 
@@ -148,7 +148,7 @@ test tests::mutation_requires_mut_binding ... ok
 test tests::shadowing_allows_type_changes ... ok
 ```
 
-With stack-frame storage established for single function calls, we next examine how nested calls accumulate frames when a function invokes itself.
+With single-frame storage established, nested invocations introduce a second dimension of stack management: activation-record accumulation during recursion.
 
 ## 1.5 A function that calls itself
 
@@ -190,7 +190,7 @@ Every active invocation allocates its own stack frame containing its parameter `
 <figcaption><b>Figure 1.4</b> The stack at the deepest point of <code>recursive(4)</code>. The depth is about <code>n</code> frames, while the number of calls grows much faster.</figcaption>
 </figure>
 
-Direct recursion therefore incurs two distinct costs: exponential runtime caused by overlapping subproblems, and linear stack depth proportional to `n`. While a depth of 90 frames is trivial, linear recursion depth overflows the call stack on large inputs, a failure mode examined on linked lists in Chapter 9.
+Direct recursion therefore incurs two distinct costs: exponential time complexity $O(\varphi^n)$ caused by overlapping subproblems, and linear stack depth $O(n)$ proportional to the input parameter. Although a depth of 90 frames is negligible, linear recursion depth exhausts the call stack on large inputs.
 
 ## 1.6 The same numbers with a loop
 
@@ -217,7 +217,7 @@ After five iterations, `previous` holds 5, which equals `fib(5)`. Because the lo
 
 ## 1.7 Recursion with a memory
 
-To retain the recursive structure while eliminating redundant recomputation, we can store each computed result the first time it is evaluated and look it up on subsequent visits. This technique is **memoization**, and the lookup table storing previously computed answers is a **cache**.
+To preserve the recursive formulation while eliminating redundant recomputation, each subproblem result can be recorded upon first evaluation and retrieved on subsequent visits. This technique is **memoization**, and the auxiliary lookup table storing evaluated subproblems is a **cache**.
 
 <p class="listing"><b>Listing 1.6</b> Fibonacci with a cache. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/bin/cs_fib.rs">src/bin/cs_fib.rs</a>, lines 26 to 41</p>
 
@@ -311,17 +311,15 @@ Although both `memoized` and `iterative` scale linearly with `n`, `memoized` run
 
 ## Summary
 
-- A `let` binding associates a name with a value in the current stack frame. A `String` stores its character bytes on the heap and keeps a three-word header (pointer, length, capacity) on the stack.
-- Shadowing introduces a new binding that may take a different type, leaving earlier values unmodified and unreachable by name. Closures that captured the previous binding continue referencing the old value.
-- Declaring a binding with `mut` permits in-place mutation of a fixed-type storage slot.
-- Recursive calls allocate one stack frame per active invocation. Unmemoized recursive Fibonacci repeats overlapping subproblems, causing exponential runtime growth.
-- An iterative loop tracking only the two preceding values computes `fib(n)` in linear time and constant memory.
-- Memoization preserves the recursive formulation while caching each subproblem's result, reducing runtime to linear in `n`.
-- `impl Fn(u64) -> u64` accepts any function or closure with that signature, and `Instant` measures monotonic elapsed time.
+- A `let` binding associates an identifier with a fixed-size slot in the active stack frame. A `String` stores its UTF-8 bytes in a heap-allocated buffer referenced by a three-word stack header (pointer, length, capacity).
+- Lexical shadowing introduces an independent binding that may assume a different type while leaving prior bindings immutable and unreachable by name. Closures capturing an earlier binding retain their reference to the original storage slot.
+- Declaring a binding with `mut` enables in-place mutation of a fixed-type storage slot.
+- Each active recursive invocation allocates a stack frame; unmemoized recursive Fibonacci recomputes overlapping subproblems, yielding exponential runtime and linear stack depth.
+- An iterative loop maintaining only the two preceding recurrence terms computes `fib(n)` in $O(n)$ time and $O(1)$ auxiliary space.
+- Memoization caches evaluated subproblems in an auxiliary table, reducing recursive Fibonacci to $O(n)$ time at the cost of $O(n)$ heap space and $O(n)$ stack depth.
+- `impl Fn(u64) -> u64` accepts any function item or closure matching that signature, and `Instant` samples a monotonic clock for elapsed-time measurement.
 
 </div>
-
-Chapter 2 moves from pure computation to operating system interfaces: reading and writing files, traversing directory trees, parsing command-line arguments, and propagating errors with `Result` and `?`.
 
 ## Exercises
 

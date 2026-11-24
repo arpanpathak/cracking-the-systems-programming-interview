@@ -6,53 +6,51 @@
 
 This chapter covers
 
-- What TLS adds to a TCP connection: secrecy, integrity, and proof of who the server is
-- Certificates, certificate authorities, and the three checks a client makes
-- The TLS 1.3 handshake, and the records it puts on the wire, read byte by byte
-- A client and server on `rustls`, with certificates made at startup by `rcgen`
-- The errors a client reports for a wrong name and for an unknown authority
-- Mutual TLS, where the server checks a certificate from the client
+- Transport Layer Security (TLS) guarantees over TCP: confidentiality, authenticated integrity, and cryptographic peer authentication
+- X.509 certificates, certificate authorities (CAs), trust stores, and the three mandatory verification checks
+- The single-round-trip TLS 1.3 handshake and wire-level record framing inspected byte by byte
+- Configuring a `rustls` client and server with ephemeral X.509 certificates generated via `rcgen`
+- Handshake failure diagnostics for hostname mismatch and untrusted issuer chains
+- Mutual TLS (mTLS) client authentication, `CertificateRequired` alerts, and certificate rotation lifecycles
 
 </div>
 
-The TCP connections examined in chapters 20 through 27 transmitted plaintext bytes, leaving traffic exposed to any router along the path that might inspect or alter it without detection. **TLS** (Transport Layer Security) layers three guarantees on top of TCP: confidentiality through encryption, integrity through per-record authentication tags that detect modification, and server authentication through digital certificates that prevent impersonation.
+Unencrypted TCP transmits payloads in plaintext across every intermediate router and network link, providing neither confidentiality against passive eavesdropping nor integrity against active tampering or endpoint impersonation. **Transport Layer Security (TLS)** inserts a cryptographic record and handshake layer directly above TCP, providing three formal security guarantees: confidentiality via symmetric authenticated encryption (AEAD), integrity via per-record authentication tags that detect modification or truncation, and endpoint authentication via X.509 public-key certificates.
 
-In this chapter, we configure TLS with the `rustls` crate. The companion program, `tls_mtls`, generates a local certificate authority and leaf certificates at startup, executes five connections over loopback, and reports the protocol behavior observed by each endpoint.
+The reference program `tls_mtls` constructs a self-contained public-key infrastructure (PKI) in memory using `rcgen` and executes five TLS 1.3 scenarios over loopback with `rustls`: standard server-authenticated TLS, hostname-mismatch rejection, untrusted-CA rejection, mutual TLS rejection of an unauthenticated client, and mutual TLS with a verified client certificate.
 
 ## 28.1 Certificates and trust
 
-TLS establishes server identity through **public-key cryptography**. An asymmetric key pair consists of a private key kept secret by its owner and a public key distributed freely. A **digital signature** produced with the private key can be verified using the corresponding public key, and only the holder of the private key can produce a valid signature.
+TLS establishes cryptographic identity using **asymmetric (public-key) cryptography**. An endpoint generates a key pair comprising a confidential private key and a publicly distributed public key. A **digital signature** computed with the private key can be verified by any party holding the corresponding public key, yet cannot be forged without possessing the private key.
 
-A **certificate** is a signed assertion binding a public key to an identity and validity window (for example, that a given public key belongs to `localhost` between two dates). The issuing entity is a **certificate authority** (CA). Each client maintains a **trust store** listing the CA certificates it trusts. When a server presents its certificate, the client performs three verification checks (figure 28.1):
+An **X.509 certificate** is a digitally signed assertion binding a subject's identity (such as a DNS name) and validity window (`not_before` to `not_after`) to a public key. The signing entity is a **certificate authority (CA)**, and each verifying party maintains a **trust store** of trusted root CA certificates. Upon receiving a server's certificate chain during a handshake, the client enforces three mandatory verification invariants (Figure 28.1):
 
-1. **Signature chain.** The certificate is signed by a CA in the trust store, either directly or through intermediate certificates supplied by the server.
-2. **Validity period.** The current time falls within the certificate's `not_before` and `not_after` bounds.
-3. **Host identity.** One of the subject alternative names in the certificate matches the host name requested by the client.
+1. **Signature chain validation.** Every certificate in the chain carries a valid signature from its issuer, terminating at a root CA present in the client's trust store.
+2. **Temporal validity.** The current wall-clock time falls within every certificate's `[not_before, not_after]` interval.
+3. **Subject identity match.** At least one Subject Alternative Name (SAN) in the leaf certificate matches the target hostname requested by the client.
 
-Because certificates are public documents, presenting a certificate alone does not prove identity. During the handshake, the server also signs a transcript of the handshake messages with its private key, proving that it possesses the private key corresponding to the public key in the certificate.
+Because certificates are transmitted publicly, presenting a valid certificate alone does not prove ownership. During the handshake, the server additionally signs a cryptographic hash of the entire handshake transcript with its private key (`CertificateVerify`), proving live possession of the private key bound to the certificate's public key.
 
 <figure>
 <img src="figures/ch28-trust.svg" alt="The lab CA, self-signed, signs a certificate for localhost holding the server's public key, and a certificate for billing holding the client's public key. The client's trust store holds the lab CA and checks the server certificate's signature, dates, and name. The server's trust store, used only for mutual TLS, holds the lab CA and checks the client certificate's signature and dates.">
 <figcaption><b>Figure 28.1</b> One CA signs both certificates. Each side trusts the CA, and so trusts what it signed.</figcaption>
 </figure>
 
-On the public internet, trust stores hold a few hundred commercial CAs, and browsers ship them. Inside a
-company, services often trust a private CA of their own, as this program does.
+On the public internet, operating systems and browsers ship trust stores containing hundreds of commercial root CAs. Within private infrastructure and service meshes, organizations operate internal CAs that issue short-lived certificates exclusively for internal service-to-service traffic, mirroring the structure of `tls_mtls`.
 
 ### 28.1.1 Making the certificates
 
-`rcgen` creates key pairs and certificates in memory. `Pki` makes a CA, then has it sign one certificate
-for the server and one for the client:
+The `rcgen` crate generates asymmetric key pairs and X.509 certificates programmatically. `Pki` synthesizes a self-signed root CA and uses it to sign distinct leaf certificates for the server (`localhost`) and the client (`billing`):
 
 ```rust
 {{#include ../../rust-interview-lab/src/bin/tls_mtls.rs:11:89}}
 ```
 
-`IsCa::Ca` marks the root certificate as authorized to sign subordinate certificates, and `self_signed` signs it with its own key. A root CA sits at the top of the trust chain and vouches for itself; clients trust it strictly because it appears in their trust store. `CertificateParams::new` specifies the host names covered by a leaf certificate, and `signed_by` signs the leaf's public key with the CA's key. All private keys remain inside the process, and `roots` constructs a trust store containing only this local CA.
+Setting `IsCa::Ca` authorizes the root certificate to sign subordinate certificates, and `self_signed` signs the root with its own private key; clients trust a root CA strictly by explicit inclusion in their trust store. `CertificateParams::new` populates the SAN entries for each leaf certificate, and `signed_by` certifies the leaf public key using the CA's signing key. `roots` constructs a `RootCertStore` trusting solely this local CA.
 
 ## 28.2 The TLS 1.3 handshake
 
-Before any application bytes move, the two sides run a **handshake**. In TLS 1.3 it takes one round trip:
+Before transmitting application data, the endpoints execute a **handshake** to negotiate cipher suites, derive shared symmetric keys, and authenticate identities. TLS 1.3 completes this protocol in a single network round trip (1-RTT):
 
 | Step | From | Messages | Encrypted |
 |---|---|---|---|
@@ -61,35 +59,25 @@ Before any application bytes move, the two sides run a **handshake**. In TLS 1.3
 | 3 | server | `Certificate`, `CertificateVerify` (the signature), `Finished` | yes |
 | 4 | client | `Finished` | yes |
 
-After step 2, each side combines its own secret with the other's key share, and both get the same keys. Anyone watching the wire cannot compute them. This is an elliptic-curve Diffie-Hellman exchange. Everything after
-`ServerHello` is encrypted with those keys, including the server's certificate. The client checks the
-certificate and the signature in step 3 before it sends step 4. The client's first application bytes can
-travel with its `Finished`.
+Following step 2, both endpoints combine their local ephemeral private value with the peer's public key share via **elliptic-curve Diffie-Hellman (ECDHE)** to derive identical symmetric handshake keys with forward secrecy; a passive observer recording the wire cannot compute these keys. Every handshake message subsequent to `ServerHello` (including the server's certificate) is encrypted under those keys. The client validates the certificate chain, `CertificateVerify` signature, and `Finished` MAC in step 3 before transmitting its own `Finished` message and initial application payload in step 4.
 
-TLS sends everything in **records**. Each record starts with a 5-byte header: a content type (22 for
-handshake, 23 for application data), a version, and a 2-byte length.
+TLS encapsulates all handshake messages, alerts, and application payloads into **records**. Each record begins with an unencrypted 5-byte header: a 1-byte content type (`22` for handshake, `23` for application data), a 2-byte legacy protocol version (`0x0303`), and a 2-byte big-endian payload length.
 
 ### 28.2.1 Watching the wire
 
-To see the records, the client's socket is wrapped in `Tap`, which keeps a copy of every byte written.
-`records` walks the copy, one header at a time:
+To inspect wire-level framing without external packet capture, `Tap` wraps the client's `TcpStream` and records a copy of every outbound byte. `records` parses the captured stream header by header:
 
 ```rust
 {{#include ../../rust-interview-lab/src/bin/tls_mtls.rs:97:140}}
 ```
 
-The slice pattern `[kind, _, _, high, low, rest @ ..]` matches only while at least five bytes remain, and
-names the parts of the header. `rest.get(length..)` skips the record's body, and returns `None` if the body
-is cut short, which ends the loop.
+The slice pattern `[kind, _, _, high, low, rest @ ..]` matches while at least five header bytes remain, extracting the record type and big-endian length. `rest.get(length..)` advances past the record body and returns `None` if the buffer terminates mid-record.
 
 ### 28.2.2 A client and a server
 
-`rustls` keeps TLS separate from I/O. A `ClientConnection` or `ServerConnection` holds the TLS state, and
-`StreamOwned` joins it to any type that implements `Read` and `Write`. The handshake runs inside the first
-`read` or `write`.
+`rustls` decouples cryptographic state machines (`ClientConnection` and `ServerConnection`) from transport I/O. `StreamOwned` composes a TLS state machine with any type implementing `std::io::Read` and `std::io::Write`, driving the handshake automatically on the first I/O call.
 
-The configurations are built in steps. Both name the crypto provider, `ring`, explicitly. The server gives
-its certificate and key, and the client gives its trust store:
+Builder methods assemble immutable `ServerConfig` and `ClientConfig` structures, explicitly selecting the `ring` cryptographic provider:
 
 ```rust
 {{#include ../../rust-interview-lab/src/bin/tls_mtls.rs:228:241}}
@@ -97,36 +85,32 @@ its certificate and key, and the client gives its trust store:
 }
 ```
 
-`with_safe_default_protocol_versions` allows TLS 1.3 and 1.2. `with_no_client_auth` means the server asks
-for no client certificate, and the client offers none.
+`with_safe_default_protocol_versions` enables TLS 1.3 and TLS 1.2 while excluding deprecated protocol versions. `with_no_client_auth` configures unidirectional authentication: the server authenticates to the client, and no client certificate is requested.
 
-The server accepts one connection and answers one message in capitals:
+The server accepts a single connection, uppercases one message, and performs an authenticated shutdown:
 
 ```rust
 {{#include ../../rust-interview-lab/src/bin/tls_mtls.rs:142:161}}
 ```
 
-`send_close_notify` queues a closing alert, which tells the client that the stream ended on purpose. TLS
-needs it because an attacker can cut a TCP connection at any point. Without the alert, the client could not
-tell a complete reply from a truncated one, and `rustls` reports that case as an error.
+Invoking `send_close_notify` transmits a cryptographically authenticated `close_notify` alert prior to closing the TCP socket. Without this alert, an active attacker could inject a forged TCP `FIN` to truncate a response prematurely; `rustls` therefore surfaces an unauthenticated EOF as an unexpected end-of-file error.
 
-The client connects through the tap, sends `hello over tls`, and reads the reply:
+The client connects through `Tap`, transmits `hello over tls`, and reads the server's reply:
 
 ```rust
 {{#include ../../rust-interview-lab/src/bin/tls_mtls.rs:163:203}}
 ```
 
-`ServerName` is the name the client expects. `rustls` sends it as SNI in the `ClientHello`, and checks the
-server's certificate against it.
+`ServerName` serves two roles: `rustls` transmits it in the `ClientHello` Server Name Indication (SNI) extension and verifies it against the SANs in the server's certificate.
 
-Animation 28.1 follows this connection, then the mutual TLS connections of section 28.4.
+Animation 28.1 traces this standard TLS 1.3 exchange followed by the mutual TLS scenarios of Section 28.4.
 
 <figure class="anim">
 <video class="motion" src="figures/ch28-tls.mp4" autoplay loop muted playsinline preload="metadata" aria-label="A client robot and a server robot joined by a wire. The client sends ClientHello with its key share and the name localhost. The server answers ServerHello with its key share, and both robots get the same key. Locked messages follow from the server: its certificate, signed by the lab CA; CertificateVerify, a signature with its private key; and Finished. The client checks the signature chain to its trust store, the dates, and that the name is localhost, then sends Finished, and its 14-byte message travels as a locked 31-byte record. In mutual TLS the server also sends CertificateRequest. A client with the billing certificate sends Certificate and CertificateVerify, and the server checks them against the lab CA. A client with no certificate sends an empty Certificate, and the server ends the handshake with the alert CertificateRequired." data-chapters="[[0.0, &quot;hello&quot;], [12.36, &quot;keys&quot;], [22.38, &quot;certificate&quot;], [37.86, &quot;data&quot;], [48.06, &quot;mutual&quot;], [67.38, &quot;no certificate&quot;]]"><img src="figures/ch28-tls.gif" alt="A client robot and a server robot joined by a wire. The client sends ClientHello with its key share and the name localhost. The server answers ServerHello with its key share, and both robots get the same key. Locked messages follow from the server: its certificate, signed by the lab CA; CertificateVerify, a signature with its private key; and Finished. The client checks the signature chain to its trust store, the dates, and that the name is localhost, then sends Finished, and its 14-byte message travels as a locked 31-byte record. In mutual TLS the server also sends CertificateRequest. A client with the billing certificate sends Certificate and CertificateVerify, and the server checks them against the lab CA. A client with no certificate sends an empty Certificate, and the server ends the handshake with the alert CertificateRequired."></video>
 <figcaption><b>Animation 28.1</b> One round trip sets up the keys, and everything after <code>ServerHello</code> is encrypted. In mutual TLS the server asks for a certificate, and refuses a client without one.</figcaption>
 </figure>
 
-`main` runs the scenes. The first is the plain case:
+Scenario 1 verifies normal TLS 1.3 negotiation and wire-level encryption:
 
 ```text
 1. The client checks the server's certificate
@@ -136,26 +120,23 @@ Animation 28.1 follows this connection, then the mutual TLS connections of secti
   server: client presented no certificate
 ```
 
-The client sent four records:
+The client transmitted four records:
 
-- **`handshake`, 231 bytes**: the `ClientHello`, the only record the client sent in the clear.
-- **`change_cipher_spec`, 1 byte**: a record TLS 1.3 does not use. It is sent so that old middleboxes,
-  which expect TLS 1.2, let the connection through.
-- **`application_data`, 69 bytes**: the client's `Finished`. In TLS 1.3, encrypted handshake messages are
-  labeled as application data, so an observer cannot tell them apart.
-- **`application_data`, 31 bytes**: the 14 bytes of `hello over tls`, plus 1 byte for the real content type
-  and a 16-byte tag that detects any change.
+- **`handshake` (231 bytes):** the unencrypted `ClientHello` record containing cipher suites, key share, and SNI.
+- **`change_cipher_spec` (1 byte):** a compatibility dummy record retained by RFC 8446 so legacy middleboxes expecting TLS 1.2 state machines do not drop the connection.
+- **`application_data` (69 bytes):** the client's encrypted `Finished` message; TLS 1.3 wraps all post-`ServerHello` handshake records in outer type `23` (`application_data`) to obscure record boundaries from passive observers.
+- **`application_data` (31 bytes):** the 14-byte plaintext `hello over tls`, plus 1 byte encoding the inner content type and a 16-byte AES-256-GCM authentication tag (Figure 28.2).
 
 <figure>
 <img src="figures/ch28-record.svg" alt="One TLS record: a 5-byte header with type 23, version 3 3, and length 31, sent in the clear, followed by 31 bytes: the 14 encrypted bytes of hello over tls plus one byte for the real content type, and a 16-byte tag that detects any change.">
 <figcaption><b>Figure 28.2</b> The client's last record, byte by byte. Only the header can be read on the wire.</figcaption>
 </figure>
 
-The plaintext appears nowhere in what the client sent.
+Scanning the captured byte stream confirms that the plaintext substring `"hello"` never appears on the wire.
 
 ## 28.3 When the check fails
 
-The second and third scenes break one of the client's checks each:
+Scenarios 2 and 3 violate the hostname-identity check and the trusted-CA chain check, respectively:
 
 ```text
 2. The client expects a different name
@@ -167,22 +148,17 @@ The second and third scenes break one of the client's checks each:
   server: handshake failed: unexpected end of file
 ```
 
-In both failure cases, the client aborted the handshake at step 3 and closed the socket, causing the server to observe an unexpected EOF. Although the server's certificate was structurally valid in both scenarios, the client rejected it because it either failed to match the expected host name or lacked a signature chain to a trusted CA.
+In both cases, the client aborts the handshake at step 3 prior to transmitting any application data and closes the socket, causing the server to observe an unexpected EOF. Although the server's certificate is structurally well-formed in both runs, rejecting a mismatched hostname or an untrusted issuer prevents man-in-the-middle impersonation.
 
-Certificate verification is the foundation of TLS's defense against impersonation: encrypting traffic to an unverified peer merely encrypts traffic to whichever party answered the connection. Accordingly, `rustls` provides no boolean flag to disable verification; bypassing it requires implementing a custom `ServerCertVerifier` explicitly gated under a `danger` module.
+Encrypting a channel to an unauthenticated peer provides confidentiality against passive observers while remaining completely vulnerable to active interception. Accordingly, `rustls` provides no boolean toggle to disable verification; bypassing certificate validation requires implementing a custom `ServerCertVerifier` explicitly gated behind the `danger` API namespace.
 
 ## 28.4 Mutual TLS
 
-In plain TLS, only the server proves who it is. The client is anonymous at the TLS level, and proves itself,
-if at all, with a password or token inside the encrypted stream. In **mutual TLS** (mTLS), the server asks
-for a certificate in the handshake. The client sends one, with its own `CertificateVerify` signature. Each
-side then knows which key the other holds.
+Standard TLS authenticates only the server at the transport layer; clients remain anonymous until they present application-level credentials (such as bearer tokens or passwords) inside the encrypted channel. In **mutual TLS (mTLS)**, the server transmits a `CertificateRequest` during the handshake, requiring the client to present an X.509 certificate signed by a CA in the server's trust store alongside a `CertificateVerify` signature proving possession of the client's private key.
 
-Services inside one company use mutual TLS to authenticate each other. The certificate's name becomes the
-caller's identity, and the server can then authorize by it: requests from `billing` may read invoices,
-for example.
+Internal microservice architectures use mTLS to bind cryptographic caller identities directly to transport connections: once verified, the subject name in the client certificate (`billing`) serves as an unforgeable principal for authorization policies.
 
-The server adds a client certificate verifier that trusts the same CA:
+Enabling mTLS on the server attaches a `WebPkiClientVerifier` configured with the shared CA trust store:
 
 ```rust
 fn main() -> Result<(), Error> {
@@ -203,21 +179,15 @@ fn main() -> Result<(), Error> {
   server: client presented 1 verified certificate
 ```
 
-The client without a certificate got a fatal alert, `CertificateRequired`, and the server reported why.
-With the certificate, the client's encrypted handshake record grew from 69 to 481 bytes. The extra 412
-bytes carry the client's certificate and its signature.
+In scenario 4, the client lacking a certificate receives a fatal `CertificateRequired` TLS alert. In scenario 5, presenting the `billing` certificate expands the client's encrypted handshake record from 69 bytes to 481 bytes; the additional 412 bytes encode the client's X.509 certificate and `CertificateVerify` signature.
 
-Certificates expire, and a service that uses mutual TLS has to replace them before they do. Production
-systems issue certificates that last hours or days, and rotate them automatically. A leaked key is then
-useful only until its certificate expires.
+Because every X.509 certificate carries a finite validity window, production mTLS deployments automate short-lived certificate issuance and rotation (typically hours or days, as in SPIFFE/SPIRE). Short validity periods bound the blast radius of a compromised private key without requiring global revocation checks on every handshake.
 
 ### 28.4.1 What TLS costs
 
-- **A round trip.** A new connection waits for TCP's handshake and then for TLS's, two round trips before
-  the first request. Across regions that is 100 ms or more. **Session resumption** lets a client that has connected before skip the certificate exchange. A connection pool (chapter 29) avoids the handshake for most requests.
-- **CPU.** The key exchange and the signatures cost tens to hundreds of microseconds per handshake. The
-  symmetric encryption of the data afterwards runs at gigabytes per second on modern CPUs.
-- **Copies.** `rustls` encrypts in user space, so a TLS server cannot use `sendfile` to transmit a file without copying it through user space, as discussed in section 23.3.2.
+- **Handshake latency.** Establishing a fresh TLS 1.3 connection requires one round trip for the TCP three-way handshake plus one round trip for the TLS handshake (2 RTT total) before the first request departs, exceeding 100 ms across continental regions. **Session resumption** (pre-shared key tickets) avoids full certificate verification on repeat connections, and persistent connection pools (Chapter 29) amortize handshake latency across thousands of requests.
+- **CPU overhead.** Asymmetric ECDHE key exchange and digital signatures consume tens to hundreds of microseconds per handshake, whereas hardware-accelerated symmetric AEAD encryption (`AES-GCM` via AES-NI or ARMv8 Crypto) sustains multi-gigabyte-per-second throughput per core.
+- **User-space copies.** Because `rustls` encrypts records in user space, static file servers cannot invoke `sendfile` directly on a `rustls` stream without copying payload bytes through user space, unless symmetric encryption is offloaded to kernel TLS (Section 23.3.2).
 
 ## 28.5 The complete program
 
@@ -257,55 +227,38 @@ $ cargo run --bin tls_mtls
 ## 28.6 Questions that come up
 
 **"What does SNI do, and is it encrypted?"**
-SNI, Server Name Indication, carries the host name in the `ClientHello`. One IP address can then serve certificates for many names. It is sent in the clear. Encrypted Client Hello (ECH) hides it, where both
-sides support it.
+Server Name Indication (SNI) transmits the target hostname inside `ClientHello`, enabling a single IP address to host distinct certificates for multiple virtual domains. Standard SNI travels in plaintext; **Encrypted Client Hello (ECH)** encrypts the inner `ClientHello` (including SNI) when both client and server support it.
 
 **"Where should TLS end in a system?"**
-At a load balancer, the bytes are plaintext between the balancer and the servers behind it. That is
-acceptable on a trusted network. Mutual TLS between services keeps them encrypted and authenticated all the
-way.
+Terminating TLS at an edge load balancer leaves backend traffic in plaintext, which is acceptable only inside a strictly isolated network perimeter. End-to-end mutual TLS between internal services preserves confidentiality and cryptographic service authentication across every network hop.
 
 **"A client fails with `UnknownIssuer` against a server that works in a browser. Why?"**
-Usually the server sends only its own certificate, without the intermediate that links it to a root. A
-browser may have the intermediate cached, and a fresh client does not. The server should send the full chain.
+The server is typically transmitting only its leaf certificate while omitting the intermediate CA certificate required to chain to a trusted root. Web browsers often succeed via cached intermediates or AIA fetching, whereas minimal TLS clients reject incomplete chains. The server must transmit the full leaf-to-intermediate chain.
 
 **"What does 0-RTT mean?"**
-A client resuming an earlier session can send application data in its first flight, before the handshake
-completes. An attacker can replay that data, so it is only safe for requests that are idempotent, in the
-sense of chapter 19.
+TLS 1.3 zero-round-trip resumption allows a client with a cached session ticket to transmit encrypted application data alongside `ClientHello` before the handshake finishes. Because 0-RTT payloads lack single-use replay protection, servers must restrict 0-RTT strictly to idempotent operations (Chapter 19).
 
 **"How does a server revoke a client's certificate before it expires?"**
-With a revocation list that the verifier checks, which `WebPkiClientVerifier` accepts. Short-lived
-certificates often replace revocation: the certificate is not renewed, and it expires within hours.
+The server can attach Certificate Revocation Lists (CRLs) to `WebPkiClientVerifier` so revoked serial numbers are rejected during handshake verification. Many internal systems supplement or replace CRLs with short-lived certificates (hours in duration) that expire naturally when renewal is halted.
 
 <div class="summary" markdown="1">
 
 ## Summary
 
-- TLS adds encryption, tamper detection, and server authentication on top of TCP.
-- A certificate binds a name to a public key, signed by a CA. A client checks the signature chain to its
-  trust store, the dates, and the name.
-- The `CertificateVerify` signature proves that the server holds the certificate's private key.
-- TLS 1.3 sets up keys in one round trip and encrypts everything after `ServerHello`. On the wire, only the
-  `ClientHello` was readable, and the 14-byte message became a 31-byte record.
-- A wrong name and an unknown CA both fail in the handshake, before any application data moves.
-- Mutual TLS has the client present a certificate too. Without one, the server ended the handshake with
-  `CertificateRequired`.
-- TLS costs a round trip and some CPU per new connection, which connection reuse avoids.
+- TLS layers confidentiality (AEAD encryption), tamper and truncation detection (authentication tags and `close_notify`), and X.509 certificate authentication over TCP.
+- An X.509 certificate binds a public key to a subject identity and validity window, signed by a CA; verifying clients check the signature chain to a trusted root, validity dates, and hostname SAN match.
+- `CertificateVerify` proves live possession of the private key corresponding to the presented certificate.
+- TLS 1.3 establishes forward-secret keys via ECDHE in one round trip and encrypts all handshake messages after `ServerHello`; a 14-byte payload expands into a 31-byte encrypted record (1-byte inner type plus 16-byte AEAD tag).
+- Hostname mismatches and untrusted CAs abort the handshake before any application payload is transmitted.
+- Mutual TLS requires the client to present a verified certificate and signature; omitting one terminates the handshake with a fatal `CertificateRequired` alert.
+- Per-connection TLS overhead (one extra round trip and asymmetric cryptography) is amortized by session resumption and connection pooling.
 
 </div>
 
-In chapter 29, we implement that reuse with a bounded client connection pool that caps concurrent connections, reclaims them automatically when borrowers finish, and evicts connections that remain idle past a timeout.
-
 ## Exercises
 
-1. Print the length of the server's certificate and of the client's. Compare with the 412 extra bytes in
-   the mutual TLS record, and account for the rest.
-2. Make the server certificate valid for both `localhost` and `api.internal` with `CertificateParams::new`,
-   and connect with each name.
-3. Set the server certificate's `not_after` to yesterday with `rcgen`'s `date_time_ymd`, and record the
-   client's error.
-4. Issue the server certificate from an intermediate CA signed by the root, and have the server send only its
-   own certificate. Then send the chain. What does the client report in each case?
-5. Restrict the server to TLS 1.2 with `with_protocol_versions(&[&rustls::version::TLS12])`. Compare the
-   records the client sends with the TLS 1.3 run.
+1. Print the DER-encoded byte lengths of the server and client certificates in `tls_mtls`. Compare the client certificate size against the 412-byte increase in the mutual TLS encrypted handshake record and account for the remaining bytes.
+2. Issue the server certificate with both `localhost` and `api.internal` in `CertificateParams::new`, and verify successful TLS connections targeting each hostname.
+3. Set the server certificate's `not_after` timestamp to yesterday via `rcgen::date_time_ymd` and record the exact verification error returned by `rustls`.
+4. Introduce an intermediate CA signed by the root CA and sign the server leaf certificate with that intermediate. Observe the client error when the server sends only its leaf certificate, then verify success when the full chain `[leaf, intermediate]` is sent.
+5. Restrict the server to TLS 1.2 via `with_protocol_versions(&[&rustls::version::TLS12])` and compare the client's captured wire records against the TLS 1.3 trace.

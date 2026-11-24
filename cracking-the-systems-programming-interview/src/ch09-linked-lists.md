@@ -15,24 +15,32 @@ This chapter covers
 
 </div>
 
-Building on the smart pointer types from Chapter 8, this chapter implements the classic linked data structure: the linked list. Linked lists provide a direct test of Rust's ownership model because every structural operation transfers node ownership from one link to another under compiler verification.
+A **linked list** is a linear, pointer-linked dynamic data structure in which each node is independently allocated
+and stores an explicit link to its successor (and, in a doubly linked list, its predecessor). Unlike contiguous
+arrays, linked lists support O(1) structural splicing and head mutation without shifting elements, at the cost of
+pointer chasing and per-node allocation overhead. In Rust, implementing linked lists tests ownership transfer and
+aliasing invariants directly because every structural edit moves node ownership from one link to another under
+compile-time borrow verification.
 
-The implementations progress in complexity: first a singly linked list with in-place reversal and cursor-based removal, then four node representations compared under a shared benchmark. That benchmark exposes a list length at which default deallocation overflows the call stack. After diagnosing and fixing recursive drops, the chapter concludes with a doubly linked list built from `Rc`, `RefCell`, and `Weak`.
+The implementations in this chapter progress from singly linked lists with in-place reversal and cursor-based
+deletion, to an empirical comparison of four node layouts under a unified benchmark harness, to diagnosing and
+eliminating recursive `Drop` stack overflows, and finally to a doubly linked list constructed from `Rc`,
+`RefCell`, and `Weak`.
 
 ## 9.1 What a linked list is
 
-A **linked list** stores a sequence of values in separate nodes. Each **node** holds one value and a pointer
-to the next node. The list itself holds a pointer to the first node, called the **head**. The last node's
-pointer is empty, which marks the end.
+A **linked list** stores an ordered sequence across discrete heap-allocated nodes, each pairing a payload with an
+optional pointer to its successor. The list header stores a single pointer to the initial node (the **head**), and
+a `None` link terminates the chain.
 
-Figure 9.1 compares a linked list with a `Vec` holding the same three values.
+Figure 9.1 contrasts a singly linked list with a contiguous `Vec` storing the same three values.
 
 <figure>
 <img src="figures/list-vs-vec.svg" alt="A Vec holds 1, 2, 3 side by side in one block. A linked list has a head pointing to a node holding 1, which points to a node holding 2, which points to a node holding 3 whose next is None; the nodes are scattered.">
 <figcaption><b>Figure 9.1</b> A <code>Vec</code> stores its values next to each other. A linked list stores each value in its own heap block and connects the blocks with pointers.</figcaption>
 </figure>
 
-The two structures are good at different things:
+The two structures exhibit complementary asymptotic and memory-layout trade-offs:
 
 | Operation | `Vec` | Singly linked list |
 |---|---|---|
@@ -43,7 +51,9 @@ The two structures are good at different things:
 
 Conceptually, a linked list resembles a chain of pointers where each node reveals only the location of its successor: reaching the fifth node requires traversing the first four, whereas inserting a new head updates a single pointer without moving existing nodes. By contrast, a `Vec` stores elements contiguously like a numbered row of slots: indexing position 5 is a single address calculation, whereas inserting at the front shifts every existing element.
 
-In practice, `Vec` outperforms linked lists for most workloads because contiguous memory exploits hardware spatial locality (measured in Chapter 15). Nevertheless, the ownership-transfer techniques developed here apply directly to the trees and graphs in Chapters 11 and 12.
+In practice, contiguous storage (`Vec`) outperforms pointer-linked lists across most workloads due to superior
+spatial cache locality and hardware prefetching. Nevertheless, the ownership-transfer idioms developed here
+(atomic replacement, cursor traversal, and iterative `Drop`) recur throughout recursive trees and graphs.
 
 In Rust, each node owns its successor through a `Box`, and `None` terminates the chain, giving the `next` field the type `Option<Box<Node>>`.
 
@@ -106,13 +116,13 @@ Listing 9.2 implements the in-place reversal.
 {{#include ../../rust-interview-lab/src/problems/linked_list.rs:35:46}}
 ```
 
-Each pass through the loop does three moves:
+Each iteration executes three ownership transfers:
 
-1. `current = node.next.take();` takes the rest of the list out of the node, as in figure 9.2.
-2. `node.next = previous;` points the node at the reversed part.
-3. `previous = Some(node);` makes the node the front of the reversed part.
+1. `current = node.next.take();` detaches the remaining suffix from `node` (Figure 9.2).
+2. `node.next = previous;` reverses the node's successor pointer toward the reversed prefix.
+3. `previous = Some(node);` advances the reversed head to `node`.
 
-Trace it on 1 → 2 → 3:
+Tracing the invariant across `1 → 2 → 3`:
 
 | After pass | `previous` | `current` |
 |---|---|---|
@@ -164,13 +174,14 @@ Each node is inspected once in O(n) time and O(1) auxiliary space. Animation 9.3
 <figcaption><b>Animation 9.3</b> The cursor stays on a link after removing what it pointed at. A version that always moves on skips the node that slid into place.</figcaption>
 </figure>
 
-The tests check the cases that break removal code. They remove a match at the head and matches in a row. They
-also try a target that is absent, a list where every node matches, and an empty list.
+The unit tests exercise the boundary conditions that commonly invalidate pointer-unlinking logic: matching at the
+head, consecutive duplicate matches, an absent target, an all-matching list, and an empty list.
 
 ## 9.5 A list written as an enum
 
-The first list separated the node type from the `Option` that marks the end. Another way puts both into one
-enum: a list is either empty, or a node holding a value and the rest of the list.
+The preceding formulation separated `ListNode` from the `Option` sentinel. An algebraic alternative unifies both
+into a single recursive enum whose variants represent either the empty list or a node owning a payload and its
+tail.
 
 <p class="listing"><b>Listing 9.4</b> The list type (lines 1 to 13). <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/bin/singly_linked_list.rs">src/bin/singly_linked_list.rs</a></p>
 
@@ -178,8 +189,8 @@ enum: a list is either empty, or a node holding a value and the rest of the list
 {{#include ../../rust-interview-lab/src/bin/singly_linked_list.rs:1:13}}
 ```
 
-`List<T>` is **generic**. The `T` is a placeholder for the type of the values, so the same code works for
-a list of numbers or of strings. `type Link<T> = Box<List<T>>;` gives the boxed rest of the list a short name.
+`List<T>` is parameterized over an arbitrary element type `T`, and `type Link<T> = Box<List<T>>` aliases the
+heap-indirected recursive tail.
 
 <p class="listing"><b>Listing 9.5</b> Creating, checking, and measuring (lines 16 to 29).</p>
 
@@ -213,8 +224,8 @@ Animation 9.4 traces both operations and contrasts them with the direct move tha
 </figure>
 
 
-The complete program is listing 9.21 at the end of the chapter. Its `main` pushes three values and pops them back in reverse order, the last one pushed coming out first. A list
-that adds and removes at the same end behaves as a stack, like the `Vec` in chapter 3.
+The complete program appears in Listing 9.21 at the end of the chapter. Its `main` driver pushes three elements and
+pops them in LIFO order, illustrating stack semantics over a singly linked head.
 
 ```text
 $ cargo run --bin singly_linked_list
@@ -223,13 +234,14 @@ ok
 
 ## 9.6 Four node layouts, measured
 
-Section 9.3 wrote a node as a struct with an `Option<Box<Node>>`, and section 9.5 wrote the list as an enum.
-Which is faster? To answer, the benchmark in this section puts four versions of the same list behind one **trait**. Then
-one piece of code can measure them all.
+Sections 9.3 and 9.5 introduced two distinct node representations: a struct linked through `Option<Box<Node>>` and
+a recursive enum. To compare their throughput and deallocation behavior empirically, the benchmark below unifies
+four list variants behind a single trait interface so one generic driver exercises all four identically.
 
 ### 9.6.1 One trait for four lists
 
-The four list types are measured by one benchmark, so they share a trait with the operations the benchmark calls.
+Sharing a single trait interface allows the benchmark harness to execute identical workloads against all four
+implementations via static dispatch.
 
 <p class="listing"><b>Listing 9.7</b> The trait every list implements. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/benchmarking_examples/lists/mod.rs">benchmarking_examples/lists/mod.rs</a></p>
 
@@ -237,12 +249,11 @@ The four list types are measured by one benchmark, so they share a trait with th
 {{#include ../../rust-interview-lab/benchmarking_examples/lists/mod.rs}}
 ```
 
-The trait lists the operations: `new`, `push_front`, `pop_front`, `is_empty`, and `variant`, which returns a
-name for printing. `SinglyList<T>: Sized` limits the trait to types whose size is known at compile time. The benchmark uses
-the trait only through generic functions, so the limit costs nothing. The four `pub mod` lines declare the four versions, each in its own
-file.
+`SinglyList<T>: Sized` defines the minimal stack interface (`new`, `push_front`, `pop_front`, `is_empty`, and a
+diagnostic `variant` label) and constrains implementors to statically sized types for monomorphized generic
+dispatch. The four `pub mod` declarations expose each layout implementation from its own submodule.
 
-The first two versions are the struct form and the enum form:
+The first two implementations realize the boxed-struct and recursive-enum layouts:
 
 <p class="listing"><b>Listing 9.8</b> <code>Option&lt;Box&lt;Node&lt;T&gt;&gt;&gt;</code>: the types, <code>push_front</code>, and <code>pop_front</code> (lines 9 to 38). <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/benchmarking_examples/lists/boxed.rs">benchmarking_examples/lists/boxed.rs</a></p>
 
@@ -272,14 +283,16 @@ Figure 9.4 draws both lists after pushing 10, 20, and 30.
 <figcaption><b>Figure 9.4</b> The two layouts after three pushes. The struct list's head is one pointer. The enum list keeps its first node inside the list value itself and ends with a heap-allocated <code>Empty</code>.</figcaption>
 </figure>
 
-On a 64-bit machine, with `u64` values, each node is 16 bytes in both versions: 8 for the value and 8 for the
-pointer. `Option<Box<Node>>` is only 8 bytes, because a `Box` is never null, so Rust uses the null address to
-mean `None`. The enum gets the same treatment, using a null `Box` to mean `Empty`.
+On a 64-bit target with `u64` payloads, both representations occupy 16 bytes per node (8 bytes for the payload and
+8 bytes for the pointer). Because `Box` carries a non-null niche invariant, the compiler applies null-pointer
+optimization to both `Option<Box<Node<T>>>` and `enum ListNode<T>`, encoding `None` and `Empty` as the null
+address without an extra discriminant word.
 
-The versions still differ in two ways. The enum list keeps its first node, 16 bytes, inside the list value. So every push moves those 16 bytes
-into a new box, where the struct version moves one 8-byte pointer. And the enum
-chain ends with a boxed `Empty`. Both lists make one allocation per push, but one of the enum's boxes holds no
-value.
+Despite identical node sizes, the two layouts differ structurally in two respects. First, the enum representation
+stores its head node (16 bytes) inline within the list header, so each `push_front` copies 16 bytes into a newly
+allocated `Box`, whereas the boxed-struct layout moves only an 8-byte pointer. Second, the enum chain terminates
+with a heap-allocated `Empty` sentinel box. Both designs perform one heap allocation per push, yet the enum layout
+transfers twice as many inline bytes per operation.
 
 Animation 9.5 pushes 10, 20, and 30 onto both lists, pops one value, and then pops from two empty lists.
 
@@ -335,15 +348,15 @@ Eliminating this recursion requires a custom iterative **`Drop`** implementation
 {{#include ../../rust-interview-lab/benchmarking_examples/lists/boxed_drop.rs:46:55}}
 ```
 
-The file `boxed_drop.rs` repeats the types and operations of listing 9.8. Only this `Drop` implementation is new. Its loop reads:
+The module `boxed_drop.rs` retains the layout and methods of Listing 9.8, adding only this iterative `Drop`
+implementation:
 
-1. `let mut current = self.head.take();` takes the whole chain out of the list.
-2. `while let Some(mut node) = current` moves the first box out of `current`.
-3. `current = node.next.take();` moves the rest of the chain out of that node.
-4. At the end of the loop body, `node` goes out of scope and is freed. Its `next` is already `None`, so freeing
-   it frees nothing else.
+1. `let mut current = self.head.take();` transfers ownership of the entire chain out of `self`.
+2. `while let Some(mut node) = current` moves the leading `Box<Node<T>>` into a loop-local binding.
+3. `current = node.next.take();` detaches the remainder of the chain before `node` is dropped.
+4. At the end of each iteration, `node` is deallocated with `node.next == None`, preventing recursive drop descent.
 
-The loop runs in one stack frame, whatever the length of the list.
+Consequently, deallocation executes in O(1) auxiliary stack space regardless of list cardinality.
 
 <p class="listing"><b>Listing 9.11</b> The enum version's <code>Drop</code> (lines 52 to 62). <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/benchmarking_examples/lists/enum_drop.rs">benchmarking_examples/lists/enum_drop.rs</a></p>
 
@@ -378,20 +391,20 @@ the caches of chapter 13, and is listed there. This is the part that measures th
 
 The full benchmark harness, including the cache benchmarks from Chapter 13, is presented in Listing 13.16.
 
-`run_list::<L: SinglyList<u64>>` is **generic** over the list type `L`. The compiler generates a separate copy of the function for each list type. So each list is measured with
-its own code.
+`run_list::<L: SinglyList<u64>>` is monomorphized per concrete list type `L`, ensuring zero dynamic-dispatch
+overhead during measurement.
 
-The function follows three rules that apply to any small benchmark:
+The harness enforces three standard microbenchmarking invariants:
 
-1. **Warm up first.** The first time a program allocates a lot of memory, the operating system has to supply
-   fresh pages, which is slow. A warm-up pass pays that cost before timing starts.
-2. **Run several times and keep the fastest.** Other programs can slow a run down but never speed it
-   up. So the fastest run is the closest to the true cost.
-3. **Check the result before trusting the time.** Every run pops all the values and checks their order. A
-   broken list cannot report a fast time.
+1. **Warm-up pass.** Initial large allocations trigger kernel demand-paging and allocator pool growth; executing
+   an untimed warm-up pass excludes cold-page faults from the measured window.
+2. **Minimum of repeated trials.** OS scheduling jitter and background contention can only inflate elapsed time,
+   so the minimum across multiple trials best approximates true algorithmic cost.
+3. **Result verification.** Each trial pops and validates every element in LIFO order to ensure correctness before
+   accepting a timing measurement.
 
-`std::hint::black_box(expected)` tells the compiler to treat the value as used, so it cannot delete the loop
-that computed it.
+`std::hint::black_box(expected)` acts as an optimization barrier, preventing the compiler from eliding the loop
+via dead-code elimination.
 
 These results come from a release build on an 8-core aarch64 development board:
 
@@ -414,14 +427,15 @@ These results come from a release build on an 8-core aarch64 development board:
   enum+drop     5,000,000       90.98ms       67.51ms
 ```
 
-Read the table this way:
+Three conclusions follow from these measurements:
 
-- A push costs about 12 nanoseconds for the struct node and about 17 for the enum node. Section 9.6.2 gave
-  two differences that could explain the gap. The benchmark does not measure them separately.
-- `box` and `box+drop` share the same push code, and their push times agree, 2.40 against 2.32 ms. That
-  agreement is a sign the measurement is stable.
-- The loop drop is not much faster than the recursive one. Its purpose is to remove the size limit, not to
-  save time.
+- Per-element push latency is approximately 12 ns for the boxed-struct layout versus 17 ns for the enum layout,
+  consistent with the inline 16-byte move and sentinel-allocation differences analyzed in Section 9.6.2 (though
+  this harness measures their combined effect rather than isolating them).
+- `box` and `box+drop` execute identical `push_front` code and record nearly identical push times (2.40 ms versus
+  2.32 ms), confirming measurement repeatability.
+- Iterative `Drop` does not substantially accelerate deallocation; its purpose is guaranteeing O(1) stack space
+  so list length is bounded only by available heap memory.
 
 The stack overflow and iterative fix can be reproduced with the following commands:
 
@@ -437,7 +451,9 @@ In a **doubly linked list**, each node stores pointers to both its successor and
 
 In Rust, this layout introduces shared ownership: every interior node is referenced both by the preceding node's `next` link and by the following node's `prev` link, which single-owner `Box` pointers cannot represent.
 
-Applying the pointer types from Chapter 8 resolves this: nodes are wrapped in `Rc<RefCell<Node>>` for shared interior mutability, forward `next` links use strong `Rc` handles to establish ownership from head to tail, and backward `prev` links use `Weak` handles to prevent reference cycles (Figure 9.6).
+Wrapping each node in `Rc<RefCell<Node<T>>>` resolves shared ownership with runtime borrow checking: forward
+`next` links hold strong `Rc` handles defining an acyclic ownership chain from head to tail, while backward `prev`
+links hold `Weak` handles to prevent reference-cycle memory leaks (Figure 9.6).
 
 <figure>
 <img src="figures/list-doubly.svg" alt="A list with head pointing to 20 and tail to 40; solid next links 20 to 10 to 30 to 40; dashed weak prev links back from each node to the one before">
@@ -509,20 +525,20 @@ impl<T> LinkedList<T> {
 }
 ```
 
-`pop_front` must return the value by ownership, not a reference. To move the value out, the node itself must
-be moved out of its `Rc`, and `Rc::try_unwrap` does that. It succeeds only if the handle is the last strong
-one. So the method first removes every other strong link to the node:
+Because `pop_front` returns an owned `T`, it must extract the `Node<T>` from its `Rc` via `Rc::try_unwrap`, which
+succeeds only when the strong reference count equals 1. The method therefore severs every other strong reference
+before unwrapping:
 
-1. `self.head.take()` removes the list's link to it.
-2. The next node's `prev` is set to `None`. That link was weak, so it did not count anyway.
-3. If there was no next node, the list is now empty, so `self.tail` is cleared, removing the tail's link.
+1. `self.head.take()` transfers the list's strong `head` handle into `old_head`.
+2. The successor node's `prev` link is cleared to `None` (a weak link, maintained for structural consistency).
+3. If no successor exists, the list is now empty, so `self.tail` is cleared to drop the tail's strong reference.
 
-Now `Rc::try_unwrap(old_head)` succeeds, and `.into_inner()` moves the `Node` out of its `RefCell`.
+With `old_head` holding the sole remaining strong reference, `Rc::try_unwrap(old_head)` succeeds and
+`.into_inner()` consumes the `RefCell` to yield the owned `Node<T>`.
 
-The call is written `.ok().unwrap()` rather than `.unwrap()`. `Result::unwrap` needs to print the error if it
-fails, which requires the error type to implement `Debug`. Here the error type is the `Rc` itself, and `Node`
-does not implement `Debug`, so `.unwrap()` would not compile. `.ok()` turns the `Result` into an `Option`,
-whose `unwrap` needs no `Debug`.
+The unwrapping chain uses `.ok().unwrap()` rather than `.unwrap()` directly because `Result::unwrap` requires the
+error type (`Rc<RefCell<Node<T>>>`) to implement `Debug` for panic formatting; converting the `Result` into an
+`Option` via `.ok()` removes the `Debug` bound on `T`.
 
 Animation 9.7 builds the list of figure 9.6 and pops its front. The badge on each node is its strong count.
 The last part makes `prev` strong, to show the leak that `Weak` prevents.
@@ -566,10 +582,10 @@ impl<T> LinkedList<T> {
 }
 ```
 
-`peek_front` returns `Option<Ref<'_, T>>`, not `Option<&T>`. The value is inside a `RefCell`, and a reference
-to it is only safe while the cell's borrow is active. A `Ref` is the guard that keeps the borrow active, as
-section 8.4 showed. `Ref::map` narrows a guard for the whole node into a guard for its `data` field. The
-caller reads the value with `*`, as `main` does.
+`peek_front` returns `Option<Ref<'_, T>>` rather than `Option<&T>`. Because the payload resides inside a
+`RefCell`, any shared reference remains sound only while the cell's dynamic borrow guard is active. `Ref::map`
+projects the node-level `Ref` guard onto the `data` field so callers can dereference `*guard` safely without
+exposing internal link fields.
 
 
 ### 9.9.5 Running it
@@ -592,7 +608,11 @@ The test `alternating_push_pop_keeps_invariants` pushes 100 values at each end, 
 checks every value. The comment block at the end of the file lists each standard-library method the file
 uses, with a one-line description.
 
-This list costs more than the singly linked list: each node requires a separate heap allocation, two reference counts, and a runtime borrow flag, and every access incurs a dynamic borrow check. It also retains the recursive drop from Section 9.7, because dropping the head drops the next `Rc`, which drops the next node. In Chapter 13, an LRU cache avoids both costs by storing nodes contiguously in a `Vec` and linking them by index.
+Compared with a singly linked list, this `Rc<RefCell<_>>` doubly linked list incurs substantial per-node
+overhead: each node requires an independent heap allocation, strong and weak reference counts, and a dynamic
+borrow flag checked on every access. It also inherits the recursive `Drop` vulnerability of Section 9.7 along the
+strong `next` chain. Storing nodes contiguously inside a `Vec` arena and linking them by `usize` index eliminates
+both reference-counting overhead and scattered heap allocations.
 
 ## 9.10 The complete files
 
@@ -656,22 +676,23 @@ The complete source files follow in the order introduced above.
 
 ## Summary
 
-- A linked list stores each value in its own node and links the nodes with pointers. It adds and removes at
-  the front in O(1), but reaching position i takes O(i).
-- `Option::take` and `std::mem::replace` move a value out of a place and leave a valid value behind. List
-  code uses them to move nodes between owners.
-- Reversing a list moves three owners per node: take the rest, point the node back, make it the new front.
-- Removal walks a cursor, a `&mut` borrow of one link. A match is unlinked by moving its `next` into that link,
-  and the cursor stays put.
-- A list can be a struct with `Option<Box<Node>>` or an enum. Both nodes are 16 bytes for `u64` values.
-- The compiler-generated drop of a `Box` list recurses once per node and overflows the stack for long lists.
-  A hand-written `Drop` loop removes the limit.
-- A benchmark should warm up, keep the fastest of several runs, and check its results.
-- A doubly linked list needs `Rc<RefCell<Node>>` with strong forward links and `Weak` back-links.
+- A linked list allocates each element in an independent node connected by pointers, providing O(1) head
+  insertion and deletion at the cost of O(*i*) indexed traversal and poor spatial locality.
+- `Option::take` and `std::mem::replace` transfer ownership out of borrowed locations while atomically installing
+  a valid replacement value.
+- In-place list reversal rewires links in O(*n*) time and O(1) space using three ownership transfers per node.
+- Cursor-based deletion maintains a `&mut Option<Box<ListNode>>` reference to the owning link, unifying head and
+  interior removal without skipping consecutive matches.
+- Both `Option<Box<Node<T>>>` and recursive enum layouts benefit from null-pointer niche optimization (16 bytes
+  per `u64` node), though the enum layout copies twice as many inline bytes per push.
+- Default compiler-generated drop glue recurses linearly down the `next` chain and overflows the call stack on
+  long lists; a custom iterative `Drop` implementation reduces stack usage to O(1).
+- Reliable microbenchmarks perform a warm-up pass, take the minimum across multiple trials, verify output
+  correctness, and guard against dead-code elimination with `std::hint::black_box`.
+- A safe doubly linked list in Rust pairs `Rc<RefCell<Node<T>>>` forward links with `Weak` backward links to
+  prevent reference cycles.
 
 </div>
-
-In Chapter 10, the singly linked list from Section 9.3 serves as the foundation for merging multiple sorted lists into one using several algorithmic strategies.
 
 ## Exercises
 

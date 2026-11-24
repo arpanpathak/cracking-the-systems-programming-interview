@@ -14,18 +14,20 @@ This chapter covers
 
 </div>
 
-The LRU caches developed in Chapter 13 serve a single thread at a time. When multiple threads within one process
-or multiple servers across a cluster share a key space, coordination becomes the primary bottleneck.
+**Partitioning** (or **sharding**) divides a key space across independent buckets or nodes via a deterministic hash
+function so that concurrent operations scale without global serialization. Whether coordinating threads within a
+single multi-core process or distributing state across servers in a cluster, partitioning bounds contention and
+isolates failures.
 
-Both halves of this chapter apply the same partitioning principle: keys are divided by hash into independent
-groups, each called a **shard**. Section 14.1 partitions an in-process map so threads accessing distinct keys do
-not block one another; Section 14.2 partitions keys across servers so that adding or removing a node relocates
-as few keys as possible.
+Section 14.1 partitions an in-process hash map into independently locked shards to eliminate global mutex
+contention across threads; Section 14.2 partitions keys across distributed servers using consistent hashing and
+virtual nodes so that membership changes relocate a minimal fraction of keys.
 
 ## 14.1 A map split into shards
 
-As established in Section 8.6, sharing mutable state across threads uses a `Mutex` wrapped in an `Arc`. While
-one thread holds the lock, every other thread calling `lock()` blocks until the guard is released.
+Sharing mutable state across threads in Rust commonly combines `Arc` (atomic reference counting) with `Mutex`
+(mutual exclusion). While one thread holds the `MutexGuard`, every other thread invoking `lock()` blocks until
+the guard is dropped.
 
 A single `Mutex<HashMap<K, V>>` is memory-safe, yet it serializes concurrent access: if four threads query the
 map simultaneously, three must wait even when each targets a distinct key. Blocking on a lock held by another
@@ -68,32 +70,28 @@ where
 }
 ```
 
-`ShardedCache` has three fields:
+`ShardedCache` comprises three fields:
 
-- `shards` is a `Vec` of maps, each inside its own `Mutex`.
-- `hasher` produces the hash that picks a shard for a key.
-- `mask` turns a hash into a shard number, as the next section explains.
+- `shards`: a `Vec<Mutex<HashMap<K, V>>>` partitioning the key space across independent lock domains.
+- `hasher`: a `RandomState` instance supplying deterministic per-cache hashing.
+- `mask`: a bitmask (`shard_count - 1`) mapping 64-bit hash digests to shard indices.
 
-`new` builds the `Vec` with an iterator. `(0..shard_count).map(|_| Mutex::new(HashMap::new()))` makes one empty,
-locked map per shard, and `collect()` gathers them. The `_` in the closure ignores the shard number, which is
-not needed.
-
-The first line of `new` adjusts the requested count. `shard_count.max(1)` turns a request for 0 shards into 1.
-`.next_power_of_two()` rounds up to the next power of two, so a request for 6 shards gives 8.
+`new` constructs the shard vector via `(0..shard_count).map(|_| Mutex::new(HashMap::new())).collect()`, clamping
+`shard_count` to at least 1 with `.max(1)` and rounding up to a power of two via `.next_power_of_two()` (so a
+request for 6 shards allocates 8).
 
 ### 14.1.2 Picking a shard with a mask
 
-A shard count that is a power of two lets the code pick a shard cheaply. For 8 shards, the mask is 8 − 1 = 7,
-which is `0b111` in binary. The operation `hash & mask` keeps the lowest three bits of the hash and clears the
-rest. The result is a number from 0 to 7 (figure 14.2).
+Power-of-two shard counts reduce shard indexing from integer division to a single bitwise AND. For 8 shards, the
+mask is 8 − 1 = 7 (`0b111` in binary), so `hash & mask` extracts the low three bits in `[0, 7]` (Figure 14.2).
 
 <figure>
 <img src="figures/shard-mask.svg" alt="The last 16 bits of a hash, the mask 0b111, and their bitwise AND, which keeps the low three bits 110, giving shard 6.">
 <figcaption><b>Figure 14.2</b> <code>hash &amp; mask</code> keeps the low bits. For a power-of-two count, it gives the same result as <code>hash % count</code>.</figcaption>
 </figure>
 
-`hash % 8` would give the same answer. The `&` is one simple CPU instruction, while `%` is a division, which
-takes more time. The difference is small, but this code runs on every call.
+Although `hash % 8` produces the same mathematical residue, bitwise AND executes in a single clock cycle, whereas
+integer division requires higher latency and executes on the hot path of every cache operation.
 
 <p class="listing"><b>Listing 14.2</b> Picking a shard (lines 45 to 48).</p>
 
@@ -108,14 +106,12 @@ where
 }
 ```
 
-`hash_one` hashes the key with the cache's `RandomState` and returns a `u64`. The mask keeps its low bits as the shard index. It returns a reference to the chosen shard's `Mutex`.
+`hash_one` hashes the key using the cache's `RandomState` to produce a `u64` digest, applies `mask` to compute the
+shard index, and returns a shared reference to the selected `Mutex`.
 
-The cache keeps one `RandomState` for its whole life. `RandomState::new()` picks random secret keys for the hash
-function when the cache is created. Every lookup in the same cache uses the same keys, so a key always maps to the
-same shard. A different cache, or the same program run again, would place the keys differently.
-
-`HashMap` uses `RandomState` for the same reason. Random keys stop an attacker from choosing inputs that all hash
-to the same place and slow the map down.
+Retaining a single `RandomState` for the lifetime of the cache guarantees consistent shard routing within that
+instance while randomizing the SipHash seed at construction time to defend against algorithmic hash-flooding
+denial-of-service attacks.
 
 <div class="callout warning" markdown="1">
 
@@ -173,21 +169,17 @@ where
 }
 ```
 
-Each method follows the same three steps: pick the shard, lock it, and call the matching `HashMap` method. The
-methods take `&self`, not `&mut self`. The `Mutex` provides the permission to change the map, so a shared
-reference to the cache is enough. Several threads can then share one cache through an `Arc`.
+Each single-key method follows the same protocol: compute the shard index, acquire its `Mutex`, and delegate to
+the underlying `HashMap`. Because `Mutex` provides interior mutability, every method accepts `&self` rather than
+`&mut self`, permitting concurrent access across threads through `Arc<ShardedCache<K, V>>`.
 
-`lock()` returns a `Result`. It is an error only if another thread panicked while it held the same lock. Such a
-lock is called **poisoned**, and chapter 16 covers it. Here `.expect(...)` turns that error into a panic with a
-clear message.
+`lock()` returns `LockResult<MutexGuard<'_, _>>`, returning `Err` only if a thread panicked while holding that
+shard's lock (a **poisoned** lock); `.expect(...)` propagates poisoning as an explicit panic. The lock remains
+held until the `MutexGuard` drops at the end of the enclosing statement.
 
-The lock stays held until the guard returned by `lock()` is dropped. In `insert`, the guard is a temporary value
-in one expression, so it is dropped at the end of the statement.
-
-`get` must return a clone of the value, which is why it asks for `V: Clone`. A reference to the value would point
-into the map, and the map is only reachable through the guard. When `get` returns, the guard is dropped and the
-lock released. A reference could then be read while another thread changes the map, so the compiler does not
-allow it to escape.
+`get` requires `V: Clone` because returning a borrowed `&V` would allow a reference to outlive the `MutexGuard`
+and race with concurrent mutations on other threads; the borrow checker statically forbids references tied to the
+guard from escaping the method scope.
 
 ### 14.1.4 Reading under the lock with a closure
 
@@ -209,10 +201,10 @@ The test `with_exposes_the_value_without_cloning` uses it to read the length of 
 let observed = cache.with(&"node", |value| value.map(|v| v.len()));
 ```
 
-The doc comment of `with` gives two rules. Keep the closure short, because every other thread that needs the same
-shard waits while it runs. And do not call the cache from inside the closure. A call that lands on the same shard
-would try to lock a `Mutex` that this thread already holds. The standard `Mutex` does not allow that: the thread
-blocks forever or panics. A thread waiting forever for a lock is called a **deadlock**.
+The doc comment on `with` enforces two concurrency invariants: keep the callback brief because competing threads
+targeting the same shard block until it returns, and never invoke methods on the same `ShardedCache` from inside
+the closure. Re-acquiring a non-reentrant `std::sync::Mutex` already held by the current thread causes a
+self-**deadlock**.
 
 ### 14.1.5 Operations on every shard
 
@@ -231,12 +223,10 @@ where
 }
 ```
 
-`len` locks each shard in turn, reads its size, releases the lock, and adds up the sizes. `clear` also visits the
-shards one at a time.
-
-This is the price of sharding, and the comment at the top of the file states it. No moment exists when all
-shards are locked together. While `len` runs, other threads can insert into shards it has already counted. The
-total is correct if no other thread is writing, and approximate if one is.
+`len` and `clear` acquire and release each shard lock sequentially rather than taking a global lock across all
+shards simultaneously. This reflects the fundamental consistency trade-off of lock sharding: no single instant
+exists at which all shards are frozen together, so `len` is exact under quiescence and weakly consistent
+(approximate) under concurrent writes.
 
 ### 14.1.6 The complete file
 
@@ -289,18 +279,18 @@ new server does not have it. Adding one server would empty most of the cache at 
 
 ### 14.2.2 The ring
 
-**Consistent hashing** places both servers and keys on a circle of hash values, called the **ring**. The ring
-covers every `u64` value. After the largest value, it wraps around to 0.
+**Consistent hashing** maps both servers and keys onto a cyclic 64-bit hash space (`0..=u64::MAX`, wrapping around
+modulo 2⁶⁴), termed the **ring**. Each server is hashed to a position on the ring, and each key is assigned to the
+first server encountered clockwise (the smallest ring position strictly greater than the key's hash, wrapping to
+index 0).
 
-Each server is hashed to a point on the ring. A key is hashed too, and it belongs to the first server point
-clockwise from it. In practice, "clockwise" means "the next larger hash".
+When a server joins, it assumes ownership solely of the hash arc between its position and its counterclockwise
+predecessor; all other key assignments remain invariant. When a server departs, only its owned arc transfers to
+its clockwise successor.
 
-When a server joins, it takes over only the keys between its point and the point before it. Every other key keeps
-its server. When a server leaves, only its own keys move, to the next point clockwise.
-
-With one point per server, the arcs between points are uneven, so some servers get much more of the ring than
-others. The fix is to place each server at many points, called **virtual nodes**. With many small arcs per
-server, the shares even out (figure 14.4).
+Assigning a single ring point per physical server produces high variance in arc lengths and uneven load
+distribution. Replicating each physical server across many distinct ring positions, called **virtual nodes**,
+reduces variance and balances key distribution across the cluster (Figure 14.4).
 
 <figure>
 <img src="figures/ring.svg" alt="A circle with twelve points: four each for nodes a, b, and c, spread around it. A key's hash lands between an a point and a b point, and an arc shows it moving clockwise to the b point.">
@@ -347,21 +337,14 @@ impl ConsistentHash {
 }
 ```
 
-The ring is a `Vec<(u64, Arc<str>)>`, kept sorted by hash. Each entry is one virtual node: its position on the
-ring, and the name of the server it belongs to.
+The ring is stored as a sorted `Vec<(u64, Arc<str>)>` pairing each virtual node's 64-bit hash coordinate with an
+immutable reference-counted server identifier. With 128 virtual nodes per server, storing `Arc<str>` instead of
+`String` allocates each server's name once on the heap via `Arc::from(node)` and shares it across all 128 entries
+via cheap atomic reference-count increments (`Arc::clone`).
 
-With 128 virtual nodes per server, each name would be stored 128 times as a `String`. The code stores it as
-`Arc<str>` instead. `Arc::from(node)` copies the name into one heap block once. Each `Arc::clone(&name)` then
-adds a pointer to that same block and increases its reference count. No text is copied.
-
-`add_node` does three things:
-
-1. It checks whether the server is already on the ring, by scanning the entries. If so, it returns.
-2. It pushes one entry per virtual node, with the hash from `virtual_node_hash`.
-3. It sorts the ring by hash again.
-
-`remove_node` keeps every entry that belongs to another server, with `retain`. Removing entries does not
-change the order of the rest, so the ring stays sorted.
+`add_node` checks for membership idempotently, appends one `(hash, Arc<str>)` entry per virtual node, and re-sorts
+the ring by hash coordinate. `remove_node` filters entries in place via `Vec::retain`, preserving the sorted
+invariant without re-sorting.
 
 <p class="listing"><b>Listing 14.7</b> The hash functions (lines 94 to 109).</p>
 
@@ -396,23 +379,17 @@ impl ConsistentHash {
 }
 ```
 
-`get` must find the first ring entry with a hash larger than the key's hash. The ring is sorted, so a binary
-search can find it in O(log n) steps, as in section 3.10.
-
-`partition_point` performs that binary search. It takes a condition that is true for a first part of the slice and false for the rest. It returns the
-index where the condition turns false (figure 14.6). Here the condition is
-`point <= hash`, so the result is the index of the first point larger than the key's hash.
+`get` locates the first ring entry whose hash strictly exceeds the key's hash using O(log *n*) binary search via
+`slice::partition_point` (Figure 14.6). Given the monotonic predicate `point <= hash`, `partition_point` returns the
+first index where the predicate evaluates to `false`.
 
 <figure>
 <img src="figures/ring-search.svg" alt="A sorted ring of six entries with hashes 12, 31, 47, 58, 73, 90. For a key hash of 50, the condition point <= 50 is true for indexes 0 to 2 and false from 3, so partition_point returns 3, node a.">
 <figcaption><b>Figure 14.6</b> <code>partition_point</code> returns the first index where the condition is false.</figcaption>
 </figure>
 
-If the key's hash is larger than every point, `partition_point` returns the length of the ring. The ring wraps
-around there, so the code uses index 0 instead.
-
-`get` returns `Option<&str>`, a reference into the ring. `.as_ref()` turns the `Arc<str>` into a `&str`. An empty
-ring has no servers, so the function returns `None` for it.
+When the key's hash exceeds every ring point, `partition_point` returns `ring.len()`, which wraps around to index
+0. An empty ring returns `None`; otherwise `.as_ref()` borrows `&str` from the `Arc<str>` entry.
 
 ### 14.2.5 The complete file
 
@@ -449,23 +426,20 @@ test result: ok. 5 passed; 0 failed; 0 ignored; 0 measured; 132 filtered out
 
 ## Summary
 
-- A single `Mutex` around a map makes every thread wait for every other. Sharding gives each group of keys its
-  own lock, so threads wait only when their keys share a shard.
-- With a power-of-two shard count, `hash & (count - 1)` picks the shard with one AND instruction.
-- A value inside a `Mutex` can leave the lock only as a clone. A closure passed to `with` can read the value in
-  place while the lock is held.
-- Operations over all shards, such as `len`, lock one shard at a time and therefore do not represent an atomic
-  point-in-time snapshot.
-- `hash % N` moves most keys when N changes. Consistent hashing moves only the keys the new server takes over,
-  about 1/(n + 1) of them.
-- Virtual nodes even out each server's share of the ring. `Arc<str>` lets all of a server's entries share one
-  copy of its name.
-- The ring is a sorted `Vec`, and `partition_point` finds a key's server by binary search.
+- Wrapping an entire `HashMap` in a single `Mutex` serializes concurrent operations; sharding partitions the key
+  space across independent lock domains so threads contend only on hash-bucket collisions.
+- Enforcing a power-of-two shard count reduces shard selection to a single-cycle bitwise mask (`hash & (count - 1)`).
+- Because a borrowed `&V` cannot outlive a `MutexGuard`, `get` clones values whereas `with` executes a bounded
+  closure under the shard lock for zero-copy inspection.
+- Multi-shard operations (`len`, `clear`) lock shards sequentially and therefore yield approximate snapshots under
+  concurrent mutation.
+- Modulo routing (`hash % N`) relocates most keys upon membership changes; consistent hashing bounds relocation
+  to approximately 1/(*n* + 1) of keys when adding a server to an *n*-node cluster.
+- Virtual nodes reduce hash-arc variance across servers, and `Arc<str>` deduplicates server identifiers across
+  replicas.
+- Storing the consistent-hash ring in a sorted `Vec` enables O(log *n*) clockwise lookup via `partition_point`.
 
 </div>
-
-In Chapter 15, we move below the data-structure layer to examine CPU caches, memory layout, and operating-system
-primitives.
 
 ## Exercises
 

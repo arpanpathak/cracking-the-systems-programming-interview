@@ -15,11 +15,11 @@ This chapter covers
 
 </div>
 
-The listings in Chapter 3 used iterators and references throughout (`nums.iter().enumerate()`, `s.chars()`, `seen.get(&key)`). Because every subsequent chapter depends on these abstractions, we now examine their mechanics in full detail.
+Zero-cost collection traversal in Rust rests on two interlocking abstractions: lazy pull-based iterators and statically verified borrowing lifetimes. Together, they enable composable data pipelines and zero-copy indexing structures without garbage collection or dangling pointers.
 
-The chapter is structured in two parts. The first half covers iterators: how the `Iterator` trait operates, how `for` loops drive it, and how lazy adapters compose without intermediate allocations. The second half covers references and lifetimes. A **lifetime** is the static region of a program during which a reference is guaranteed to point to valid, initialized data. We examine why Rust enforces lifetimes across function signatures and how to interpret explicit `'a` annotations.
+The first half of this treatment formalizes the `Iterator` trait, its desugaring from `for` loops, and how lazy adapters compose without allocating intermediate buffers. The second half formalizes references and lifetimes. A **lifetime** is the static program region over which a reference is guaranteed to refer to valid, initialized memory; explicit `'a` annotations express borrowing contracts across function boundaries so the borrow checker can verify soundness compositionally.
 
-Both halves converge in a complete program that indexes a slice of `User` structs by ID using a `HashMap` of borrowed references, avoiding any struct cloning.
+Both mechanisms converge in a complete program that indexes a slice of `User` structs by identifier using a `HashMap` of borrowed references, eliminating struct cloning altogether.
 
 ## 4.1 What an iterator is
 
@@ -130,7 +130,7 @@ Listing 4.1 defines a small `User` struct alongside two slice transformations wr
 
 Neither style carries an inherent runtime penalty; under optimization, LLVM compiles both forms to comparable machine code. Iterator pipelines express linear data transformations cleanly, whereas explicit loops suit bodies with multiple side effects or complex early-exit control flow.
 
-Having covered iterator pipelines, we next examine the lifetime rules that keep the references they produce valid.
+Because iterator pipelines frequently yield borrowed references into backing storage, soundness depends on static lifetime verification.
 
 ## 4.6 Lifetimes
 
@@ -252,17 +252,15 @@ Repeated runs print the map entries in different orders because `HashMap` uses a
 
 ## Summary
 
-- An iterator yields elements through `next`, returning `Some(item)` until exhausted and `None` thereafter; `for` loops desugar to `next` calls.
-- `iter()` yields `&T`, `iter_mut()` yields `&mut T`, and `into_iter()` yields `T` while consuming the collection.
-- Adapters (`filter`, `map`) are lazy; no work executes until a consumer (`collect`, `for`) pulls elements one by one through the pipeline.
-- Because `filter` borrows each yielded item, chaining `iter().filter(...)` passes `&&T` to the predicate; patterns such as `|&&x|` destructure references for `Copy` types.
-- A lifetime defines the static region in which a reference remains valid; the borrow checker rejects any reference used after its referent is dropped.
-- Explicit lifetime parameters such as `'a` link input and output reference lifetimes in function signatures without altering runtime storage durations.
-- Indexing slices with `HashMap<u32, &'a User>` avoids cloning elements while statically guaranteeing that the map never outlives the underlying data.
+- An iterator is a stateful cursor implementing `Iterator::next`, yielding `Some(item)` until exhausted and `None` thereafter; `for` loops desugar directly to `next` calls.
+- `iter()` yields shared references (`&T`), `iter_mut()` yields exclusive mutable references (`&mut T`), and `into_iter()` transfers ownership (`T`) while consuming the source collection.
+- Iterator adapters (`filter`, `map`) are lazy state machines; no element is processed until a consumer (`collect`, `for`) pulls items through the pipeline one by one.
+- Because `filter` borrows each yielded item without consuming it, `iter().filter(...)` supplies `&&T` to its predicate closure; irrefutable patterns such as `|&&x|` dereference `Copy` values directly.
+- A lifetime designates the static program span during which a reference remains valid; the borrow checker rejects any reference whose use outlives its referent's drop point.
+- Explicit lifetime parameters such as `'a` bind input and output reference lifetimes across function signatures without altering runtime storage durations.
+- Indexing slices with `HashMap<u32, &'a User>` eliminates element cloning while statically guaranteeing that the index never outlives the underlying slice.
 
 </div>
-
-Chapter 5 extends these iterators and collections to binary heaps and priority-ordered algorithms, including top-k frequency selection and streaming median computation.
 
 ## Exercises
 

@@ -14,7 +14,9 @@ This chapter covers
 
 </div>
 
-The sections below work upward through the network stack from addressing to server concurrency models. Section 20.1 covers IPv4 addresses, private subnets, and wire byte order. Section 20.2 analyzes TCP's in-flight window and how the bandwidth-delay product constrains throughput over high-latency links. Sections 20.3 and 20.4 construct two TCP echo servers: a thread-per-connection server built on `std::net` and a single-threaded non-blocking `epoll` server built directly over `libc` so every kernel system call remains explicit.
+Networked services layer reliable, ordered byte streams over packet-switched addressing, constrained by sliding-window flow and congestion control and mediated by kernel socket descriptors. Achieving predictable throughput and scalability across these layers requires precise control over address encoding, in-flight window sizing, and I/O multiplexing.
+
+The progression moves upward through the transport stack: IPv4 addressing, CIDR private ranges, and network byte order (Section 20.1); the TCP effective window and bandwidth-delay product (Section 20.2); and a comparison between a thread-per-connection echo server on `std::net` and a single-threaded, non-blocking `epoll` event loop written directly over `libc` system calls (Sections 20.3 and 20.4).
 
 ## 20.1 IPv4 addresses
 
@@ -77,7 +79,7 @@ input            parsed              private       as u32
 all checks passed
 ```
 
-Note that `str::parse::<u8>` permits leading `+` signs and leading zeros (accepting `"+1.02.3.4"`). Production code should use `std::net::Ipv4Addr` (which rejects both forms and provides `Ipv4Addr::is_private`).
+Because `str::parse::<u8>` permits leading `+` signs and leading zeros (accepting `"+1.02.3.4"`), production code should rely on `std::net::Ipv4Addr`, which rejects both forms and provides `Ipv4Addr::is_private`.
 
 ## 20.2 How much data can be in flight
 
@@ -340,7 +342,7 @@ Although `epoll_echo.rs` is a complete, tested event loop, four refinements are 
 - **Avoiding redundant `epoll_ctl` calls.** `update_interest` issues an `EPOLL_CTL_MOD` system call on every event even when the interest mask has not changed. Caching the currently registered mask per connection eliminates unnecessary kernel transitions.
 - **Level-triggered versus edge-triggered readiness.** Omitting `EPOLLET` selects level-triggered mode, where epoll continues reporting a socket for as long as it remains ready. Draining until `EAGAIN` is mandatory under edge-triggered mode (`EPOLLET`) and remains safe under level-triggered mode.
 
-Portable I/O crates such as `mio` (underlying Tokio) abstract this exact readiness loop across Linux `epoll`, BSD/macOS `kqueue`, and Windows `IOCP`. In Chapter 22, we build the complementary half of an async runtime: polling futures when readiness events wake them.
+Portable I/O crates such as `mio` (underlying Tokio) abstract this readiness-notification loop across Linux `epoll`, BSD/macOS `kqueue`, and Windows `IOCP`, forming the reactor layer paired with an asynchronous task executor.
 
 ## 20.5 The complete programs
 

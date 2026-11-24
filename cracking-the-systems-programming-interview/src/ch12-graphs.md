@@ -16,13 +16,15 @@ This chapter covers
 
 </div>
 
-In Chapter 11, every node had at most one parent, and no path could return to its origin. A **graph** relaxes
-both constraints: any node may connect to any other node, and paths may form cycles.
+A **graph** *G* = (*V*, *E*) generalizes hierarchical tree topologies by removing both the single-parent restriction
+and the acyclicity invariant: any vertex in *V* may connect to any other vertex via an edge in *E*, and directed
+or undirected paths may form cycles.
 
-Graphs model a wide range of systems, including road networks, hyperlink topologies, cluster communication links,
-course prerequisites, and build dependency pipelines. Because arbitrary connectivity allows a traversal to reach
-the same node repeatedly or loop indefinitely, every graph algorithm in this chapter maintains a record of
-handled nodes using a `Vec<bool>`, a `HashSet`, or a `HashMap` of visitation states.
+Graphs model arbitrary binary relations across systems engineering, including network routing topologies,
+distributed cluster communication links, build dependency pipelines, and scheduling constraints. Because multiple
+paths may converge on the same vertex and cycles can cause non-terminating traversals, every graph traversal
+algorithm must maintain an explicit visitation state structure, typically a dense `Vec<bool>`, a `HashSet`, or a
+state-machine table backed by a `HashMap`.
 
 ## 12.1 Graph vocabulary
 
@@ -41,8 +43,8 @@ The fundamental components of a graph are labeled in Figure 12.1.
 - A **path** is a sequence of consecutive edges connecting a sequence of nodes.
 - A **cycle** is a non-empty path that begins and ends at the same node.
 
-A directed graph containing no cycles is a **directed acyclic graph** (DAG). A tree is a restricted graph with no
-cycles in which every node except the root has exactly one parent.
+A directed graph containing no directed cycles is a **directed acyclic graph** (DAG). A rooted tree corresponds to
+the special case of a connected acyclic graph in which every vertex other than the root has indegree 1.
 
 ## 12.2 Storing a graph
 
@@ -73,21 +75,23 @@ The map form in `graph_bfs.rs` has a type alias:
 {{#include ../../rust-interview-lab/src/problems/graph_bfs.rs:15:16}}
 ```
 
-`GraphAdjList<'a, Node>` is a `HashMap` whose values are borrowed slices, `&'a [(Node, u32)]`. The map does not
-own the edges. They live somewhere else for at least the lifetime `'a`, and the map points at them. The tests
-keep the edges in constant arrays, which live for the whole program.
+`GraphAdjList<'a, Node>` maps each vertex key to a borrowed slice `&'a [(Node, u32)]` of outgoing `(neighbor,
+weight)` pairs. Because the map holds non-owning slice references bounded by lifetime `'a`, the backing edge
+storage must outlive the map itself; in the test suite, edges are backed by `'static` constant arrays with
+program-wide storage duration.
 
 ## 12.3 Breadth-first search
 
-**Breadth-first search** (BFS) visits the start node first, then every node one edge away, then every node two
-edges away, and so on. It works the same way as the level-order tree traversal of section 11.4: a queue holds
-the nodes waiting to be visited.
+**Breadth-first search** (BFS) explores vertices in non-decreasing order of unweighted hop distance from a source
+vertex: first the source at distance 0, then all vertices at distance 1, then distance 2, and so on. Like
+level-order tree traversal, BFS maintains a FIFO queue representing the active vertex frontier.
 
-Unlike a tree, a graph can offer two paths to the same node. In the sample graph, A reaches C directly, and also
-through B. Without a record, C would enter the queue twice. So BFS marks a node as seen when it first enters the
-queue, and never adds it again.
+Unlike a tree, a general graph may contain multiple distinct paths to the same vertex: in the sample graph, vertex
+A reaches C directly via (A, C) and indirectly via (A, B, C). Without deduplication, C would be enqueued multiple
+times. BFS enforces the invariant that each vertex is marked visited immediately upon discovery (when first
+enqueued), guaranteeing that every reachable vertex enters the frontier at most once.
 
-The top half of figure 12.3 follows the queue step by step.
+The upper half of Figure 12.3 traces the frontier queue at each iteration.
 
 <figure>
 <img src="figures/graph-bfs-dfs.svg" alt="The sample graph beside two tables. BFS from A: queue after taking A is B C; after B, C D; after C, D; after D, empty; visit order A B C D. DFS from A: stack after A is B C; after C, B D; after D, B; after B, C D; then D and C are skipped as already seen; visit order A C D B.">
@@ -135,7 +139,7 @@ The traversal logic is identical, with three structural differences:
 - `visited.insert(neighbor)` combines the membership check and insertion in a single call, returning `true` when
   the node was previously unseen.
 
-The tests at the end of the file build the sample graph in both forms and check that the two functions agree:
+The unit tests construct the sample topology in both representations and assert identical visitation order:
 
 ```text
 $ cargo test --lib problems::graph_bfs
@@ -149,13 +153,13 @@ test problems::graph_bfs::tests::map_variant_visits_level_by_level ... ok
 test result: ok. 5 passed; 0 failed; 0 ignored; 0 measured; 132 filtered out
 ```
 
-Tests run in parallel, so the order of the lines can change from run to run.
+Because Cargo executes test cases concurrently by default, output line ordering is non-deterministic across runs.
 
 ## 12.4 Depth-first search
 
-**Depth-first search** (DFS) explores one path as far as possible before backtracking to try another. Although
-DFS can be expressed recursively (as in the tree traversals of Chapter 11), the implementations below use a `Vec`
-as an explicit heap-allocated stack, eliminating the risk of overflowing the thread call stack on deep graphs.
+**Depth-first search** (DFS) explores each branch to its full depth before backtracking to alternative edges.
+Although DFS can be expressed recursively, the implementations below maintain an explicit heap-allocated stack
+(`Vec`), avoiding thread call-stack overflow on deep or pathological graphs.
 
 <p class="listing"><b>Listing 12.3</b> DFS over the index form (lines 16 to 33). <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/problems/graph_dfs.rs">src/problems/graph_dfs.rs</a></p>
 
@@ -165,16 +169,17 @@ as an explicit heap-allocated stack, eliminating the risk of overflowing the thr
 {{#include ../../rust-interview-lab/src/problems/graph_dfs.rs:16:33}}
 ```
 
-Compare this with listing 12.1. The queue became a stack, so `pop_front` became `pop`. The other change is when
-a node is marked. BFS marked a node when it was added. DFS marks a node when it is taken off the stack, and skips
-it if it was already visited.
+Relative to Listing 12.1, iterative DFS differs in two respects: replacing the FIFO queue with a LIFO stack
+(`pop` in place of `pop_front`), and deferring visitation marking until a vertex is popped rather than when it is
+pushed.
 
-Marking late gives the true depth-first order, at a small cost. A node can sit on the stack more than once, as C
-and D do in the lower half of figure 12.3. The stack can hold up to one entry per edge, and the duplicates are
-skipped with `continue` when they come off.
+Deferred marking preserves exact depth-first visitation order at the expense of bounded stack duplication: a
+vertex reachable via multiple unexpanded edges may appear on the stack more than once (as C and D do in the lower
+half of Figure 12.3). The stack size remains bounded by O(*E*), and duplicate entries are discarded immediately
+via `continue` upon removal.
 
-The neighbors are pushed in list order, so the last neighbor pushed is the first taken. From A, the stack
-receives B and then C, so C is explored first. The visit order is A, C, D, B.
+Because adjacency entries are pushed in slice order, LIFO extraction explores the final neighbor first: from A,
+pushing B then C causes C to be expanded before B, yielding the traversal order A, C, D, B.
 
 <figure class="anim">
 <video class="motion" src="figures/ch12-dfs.mp4" autoplay loop muted playsinline preload="metadata" aria-label="The same graph with a stack and a result list. dfs_vec pops the newest entry, records it if it is unvisited, and pushes all its neighbors. Entries for nodes already visited are popped and skipped. The result is 0, 2, 4, 5, 3, 1. Last, without the visited check, every pop pushes its neighbors again and the stack never empties." data-chapters="[[0.0, &quot;stack&quot;], [98.76, &quot;no visited check&quot;]]"><img src="figures/ch12-dfs.gif" alt="The same graph with a stack and a result list. dfs_vec pops the newest entry, records it if it is unvisited, and pushes all its neighbors. Entries for nodes already visited are popped and skipped. The result is 0, 2, 4, 5, 3, 1. Last, without the visited check, every pop pushes its neighbors again and the stack never empties."></video>
@@ -188,15 +193,17 @@ receives B and then C, so C is explored first. The visit order is A, C, D, B.
 {{#include ../../rust-interview-lab/src/problems/graph_dfs.rs:35:54}}
 ```
 
-Here `if !visited.insert(current_node)` is the "already visited" check. If `insert` returns `false`, the node
-was in the set, and the loop moves on.
+Here `if !visited.insert(current_node)` performs atomic membership testing and insertion: a `false` return value
+signals that `current_node` was already visited, prompting the loop to skip the stale stack entry.
 
-The file starts with `use crate::problems::graph_bfs::GraphAdjList;`, so both files share one type alias.
+The module imports `GraphAdjList` from `crate::problems::graph_bfs` so both traversal modules share a single
+adjacency-list type definition.
 
 ### 12.4.1 A stack of references
 
-When the graph is a tree, DFS needs no visited record, because no node can be reached twice. The following
-program walks a tree with a stack of references.
+When the input topology is a tree, acyclic single-parent connectivity guarantees that no vertex is reachable via
+multiple paths, eliminating the need for a visited set. The following program performs iterative DFS over an owned
+tree using a stack of shared references.
 
 <p class="listing"><b>Listing 12.5</b> The complete program. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/bin/rust_interview_hacks_graph.rs">src/bin/rust_interview_hacks_graph.rs</a></p>
 
@@ -204,9 +211,9 @@ program walks a tree with a stack of references.
 {{#include ../../rust-interview-lab/src/bin/rust_interview_hacks_graph.rs}}
 ```
 
-The stack has type `Vec<&Node>`. It holds borrowed references into the tree, so the loop moves no nodes and
-copies none. `stack.extend(node.children.iter())` pushes a reference to each child. The last line of `main` uses
-`tree.value` after the walk, which shows that `tree` still owns its nodes.
+The explicit stack has type `Vec<&Node>`, storing non-owning references into the tree without moving or cloning
+any node payloads. Calling `stack.extend(node.children.iter())` pushes references to all children in one pass.
+Accessing `tree.value` after the traversal terminates verifies that `tree` retains full ownership throughout.
 
 ```text
 $ cargo run --bin rust_interview_hacks_graph
@@ -217,8 +224,9 @@ Node { value: 2, children: [] }
 still own it: 1
 ```
 
-`{:?}` prints each node with all its children, so the first line shows the whole tree. The order is 1, 3, 4, 2,
-because the last child pushed is the first popped.
+Debug formatting (`{:?}`) prints each node recursively with its descendants, so the first line displays the entire
+subtree rooted at 1. Because LIFO extraction pops the last pushed child first, the visitation sequence is 1, 3, 4,
+2.
 
 ## 12.5 A graph with named nodes
 
@@ -240,28 +248,28 @@ list indexed by those integers:
 {{#include ../../rust-interview-lab/src/bin/graph_bfs.rs}}
 ```
 
-`Graph` has two fields. `ids` maps a name to its number, and `adj` is an index-form adjacency list without
-weights.
+`Graph` pairs two fields: `ids`, mapping each string label to its assigned integer index, and `adj`, an unweighted
+index-form adjacency list.
 
-The `id` method does the interning in one expression. `self.ids.entry(name.to_owned())` looks up the name.
-`or_insert_with` runs its closure only if the name is new. The closure adds an empty edge list to `adj` and
-returns its index, which becomes the name's number. Either way, the expression returns a reference to the
-number, and the `*` at the front copies it out.
+The `id` method performs interning in a single entry lookup. Calling `self.ids.entry(name.to_owned())` queries
+the map, and `or_insert_with` invokes its closure exclusively when the label is absent, appending an empty
+adjacency vector to `self.adj` and returning its newly assigned index. Dereferencing with `*` copies out the
+`usize` identifier.
 
-The closure changes `self.adj` while `self.ids` is borrowed by the entry. The compiler allows this because a
-closure borrows only the fields it uses, here `self.adj`. The two borrows touch different fields, so they do not
-conflict.
+Although `self.ids` is mutably borrowed by the `Entry` handle while the closure mutates `self.adj`, Rust's
+disjoint field borrow analysis permits both borrows simultaneously because they reference distinct struct fields.
 
-This `bfs` marks nodes when they leave the queue, as the DFS of section 12.4 did. A node can enter the queue
-more than once, and the second copy is skipped. `queue.extend(self.adj[node].iter())` adds all neighbors at
-once.
+This `bfs` implementation marks vertices upon dequeue rather than enqueue, matching the deferred-marking strategy
+of Section 12.4: a vertex may enter the queue multiple times, with subsequent copies skipped upon removal.
+Calling `queue.extend(self.adj[node].iter())` enqueues all adjacent vertex indices in a single pass.
 
 ```text
 $ cargo run --bin graph_bfs
 [0, 1, 2, 3, 4, 5]
 ```
 
-The result is numbers, not names. A to F were numbered 0 to 5 in the order they first appeared.
+The output reports interned integer indices rather than string labels; vertices A through F receive indices 0
+through 5 in order of first insertion.
 
 ## 12.6 Finding cycles
 
@@ -277,15 +285,17 @@ rather than a cycle.
 <figcaption><b>Figure 12.4</b> An edge to a node on the current path is a cycle. An edge to a finished node is not.</figcaption>
 </figure>
 
-The fix is to give each node one of three states:
+Cycle detection in directed graphs requires a three-state visitation state machine per vertex (standard
+white-gray-black DFS coloring):
 
-- **Unvisited**: DFS has not reached the node yet.
-- **Visiting**: the node is on the path DFS is currently following. DFS has entered it and not yet finished it.
-- **Done**: DFS has explored everything reachable from the node.
+- **Unvisited (white):** DFS has not yet discovered the vertex.
+- **Visiting (gray):** The vertex is active on the current DFS recursion stack; its descendants are still being
+  explored.
+- **Done (black):** All vertices reachable from this vertex have been completely explored and verified acyclic.
 
-An edge that leads to a Visiting node goes back to an earlier point on the current path, so it closes a loop.
-Such an edge is called a **back edge**. An edge that leads to a Done node joins a path that was already fully
-explored, and cannot close a loop.
+An edge targeting a `Visiting` vertex points to an ancestor on the active recursion stack and therefore closes a
+directed cycle; such an edge is classified as a **back edge**. An edge targeting a `Done` vertex enters a
+previously validated acyclic subgraph (a forward or cross edge) and cannot form a cycle.
 
 ### 12.6.1 A graph that owns its node data
 
@@ -300,17 +310,18 @@ impl<T> Graph<T> {
 }
 ```
 
-This `Graph<T>` keeps the node data in `nodes`, and the edges in `adj`, as numbers. `NodeId` is a type alias
-for `usize`, so signatures say what a number means. `add_node` returns the new node's number, and the caller
-uses that number to add edges.
+This `Graph<T>` stores owned vertex payloads in a contiguous arena `nodes: Vec<T>` and represents edges as integer
+indices inside `adj`. Defining `type NodeId = usize` documents index semantics in method signatures; `add_node`
+allocates a slot and returns its `NodeId` handle for subsequent edge insertions.
 
-Storing numbers instead of references is the usual way to build graphs in Rust. A cycle of references between
-nodes would need `Rc` and `RefCell`, as chapter 9's doubly linked list did. Numbers into a `Vec` have no
-ownership problems at all.
+Index-based arena storage is the idiomatic graph representation in Rust. Representing cyclic graphs with direct
+pointers or references requires reference counting (`Rc`) and interior mutability (`RefCell`), introducing runtime
+borrow checks and reference-cycle memory leaks; integer indices into a `Vec` eliminate ownership aliasing
+altogether while improving spatial cache locality.
 
-`neighbors` returns `impl Iterator<Item = NodeId> + '_`. That return type means "some iterator of node
-numbers". The `+ '_` says the iterator borrows from `self`, so it cannot outlive the graph. `.copied()` turns
-the `&usize` items of the slice iterator into `usize` values.
+The `neighbors` method returns `impl Iterator<Item = NodeId> + '_`, an opaque iterator type whose lifetime is tied
+to the borrow of `self` so that it cannot outlive the graph. Calling `.copied()` converts yielded `&usize` slice
+references into owned `NodeId` values.
 
 <p class="listing"><b>Listing 12.8</b> BFS and DFS (lines 39 to 74).</p>
 
@@ -322,9 +333,10 @@ impl<T> Graph<T> {
 }
 ```
 
-These are the algorithms of sections 12.3 and 12.4, written with `neighbors`. The DFS filters out visited
-neighbors before pushing them, with `.filter(|&n| !visited[n])`. The filter keeps the stack smaller, but the
-check after `pop` is still needed. A node can be pushed by two different nodes before either copy is popped.
+These methods implement the BFS and DFS traversals of Sections 12.3 and 12.4 over the `neighbors` iterator.
+Filtering out already-visited neighbors via `.filter(|&n| !visited[n])` before pushing reduces peak stack depth,
+but the post-pop visitation guard remains mandatory: two distinct ancestors may still enqueue the same unvisited
+vertex before either stack entry is popped.
 
 <p class="listing"><b>Listing 12.9</b> Cycle detection (lines 76 to 94).</p>
 
@@ -335,15 +347,18 @@ impl<T> Graph<T> {
 }
 ```
 
-`visit` is a recursive DFS that returns `true` as soon as it finds a cycle. It reads the node's state:
+`visit` executes a recursive DFS that short-circuits and returns `true` upon encountering any back edge,
+dispatching on the vertex's current state:
 
-- `Visiting` means this edge is a back edge, so the answer is `true`.
-- `Done` means the node was explored before and no cycle was found through it, so the answer is `false`.
-- `Unvisited` means this is the first visit. The node becomes `Visiting`, and `visit` recurses into each
-  neighbor. `any` stops at the first neighbor that reports a cycle. Then the node becomes `Done`.
+- `Visiting`: the incoming edge is a back edge to an active ancestor, confirming a cycle (`true`).
+- `Done`: the subgraph rooted at this vertex has already been proven acyclic (`false`).
+- `Unvisited`: the vertex transitions to `Visiting` and recurses over its outgoing neighbors; `.any(...)`
+  short-circuits as soon as any branch reports a cycle. Once all descendants return acyclic, the vertex
+  transitions to `Done`.
 
-`has_cycle` calls `visit` from every node, because a cycle might not be reachable from node 0. All the calls
-share one `state` vector, so each node is fully explored only once, and the whole check runs in O(V + E).
+Because a directed graph may contain disconnected components, `has_cycle` initiates `visit` from every vertex in
+`0..self.nodes.len()`. All invocations share a single `state` vector, ensuring each vertex and edge is processed
+at most once for an overall time complexity of O(*V* + *E*).
 
 <p class="listing"><b>Listing 12.10</b> The complete program. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/bin/cyclic_graph.rs">src/bin/cyclic_graph.rs</a></p>
 
@@ -351,8 +366,8 @@ share one `state` vector, so each node is fully explored only once, and the whol
 {{#include ../../rust-interview-lab/src/bin/cyclic_graph.rs}}
 ```
 
-`main` builds the loop A to B to C to A. The closure `names` converts a list of numbers back into names for
-printing.
+`main` constructs the directed cycle A -> B -> C -> A, and the `names` closure maps returned `NodeId` indices back
+to their stored labels for display.
 
 ```text
 $ cargo run --bin cyclic_graph
@@ -377,14 +392,14 @@ The cycle check marks each node with a `State`: `Visiting` while its descendants
 {{#include ../../rust-interview-lab/src/bin/cyclic_graph_map.rs}}
 ```
 
-Three details differ from listing 12.10:
+Three structural details distinguish this map-backed implementation from Listing 12.10:
 
-- `State` has only `Visiting` and `Done`. A node that is not in the `state` map is unvisited, so the map itself
-  plays the role of the third state.
-- `add_edge` inserts the target `v` as a key too, with `entry(v).or_default()`. Every node therefore has an
-  entry, and `self.adj[&u]` cannot panic on a node that has no outgoing edges.
-- The recursive helper is a function declared inside `has_cycle`. A nested `fn` cannot use the local variables
-  of the function around it, so it receives the graph and the state map as arguments.
+- `State` defines only `Visiting` and `Done`; absence from the `state` map implicitly encodes the `Unvisited`
+  state.
+- `add_edge` inserts the target vertex `v` via `entry(v).or_default()`, guaranteeing that every vertex present in
+  the graph owns a map entry so `self.adj[&u]` never panics on sink vertices with outdegree 0.
+- The recursive helper is declared as an inner `fn` inside `has_cycle`. Because nested functions do not capture
+  enclosing stack variables, the adjacency map and state table are passed explicitly as parameters.
 
 ```text
 $ cargo run --bin cyclic_graph_map
@@ -394,16 +409,16 @@ true
 
 ## 12.7 A grid is a graph
 
-A grid of cells is a graph too, even though it is not stored as one. Each cell is a node, and each cell has an
-edge to the cells directly above, below, left, and right of it. The edges are computed from the coordinates when
-needed, not stored.
+A two-dimensional grid defines an **implicit graph**: each cell `(r, c)` represents a vertex, and its incident
+edges to orthogonally adjacent cells (up, down, left, right) are computed dynamically from coordinate offsets
+rather than materialized in an adjacency list.
 
-The classic grid problem counts **islands**. The grid holds land and water. An island is a group of land cells
-connected up, down, left, or right. Diagonal neighbors do not count.
+The canonical connected-components problem on an implicit grid counts **islands**, where each island is a maximal
+4-connected component of land cells (diagonal adjacency is excluded).
 
-The method is to scan every cell. When the scan finds a land cell that no earlier search has reached, that cell
-starts a new island. The count goes up by one, and a BFS from that cell marks every cell of the island. Filling
-a connected area this way is called a **flood fill** (figure 12.5).
+The algorithm scans the grid in row-major order. Whenever the scan encounters an unvisited land cell, it
+increments the component counter and executes a BFS **flood fill** from that seed cell to mark the entire
+connected component visited (Figure 12.5).
 
 <figure>
 <img src="figures/graph-islands.svg" alt="A 4 by 5 grid of 1s and 0s. The four 1s in the top-left corner are green, the single 1 at row 2 column 2 is cream, and the two 1s at row 3 columns 3 and 4 are pink. Steps on the right explain how the count reaches 3.">
@@ -423,22 +438,22 @@ a connected area this way is called a **flood fill** (figure 12.5).
 {{#include ../../rust-interview-lab/src/bin/count_islands.rs:27:72}}
 ```
 
-The grid has type `&[&[T]]`, a slice of rows, where each row is a slice of cells. The function is generic, so
-cells can be characters, booleans, or numbers. `land: T` says which value counts as land, and `T: PartialEq`
-lets the code compare a cell with it.
+The grid parameter has type `&[&[T]]` (a slice of row slices), parameterized over any `T: PartialEq` so callers
+may supply character, boolean, or integer matrices along with the sentinel value `land: T`.
 
-`dirs` lists the four moves as (row change, column change) pairs. The BFS adds each move to the current cell's
-coordinates. The coordinates are `usize`, which cannot be negative, and a move up from row 0 would go below
-zero. So the code converts to `i32` first. It checks that the new position is inside the grid with `(0..rows as
-i32).contains(&nr)`, and only then converts back to `usize`.
+`dirs` enumerates the four orthogonal `(dr, dc)` offsets. Because grid indices have unsigned type `usize`,
+subtracting 1 from coordinate 0 would underflow; the implementation widens coordinates to signed `i32`, validates
+bounds with `(0..rows as i32).contains(&nr)`, and casts back to `usize` only after bounds verification succeeds.
 
-The BFS is a closure stored in `bfs`. It reads `grid`, `dirs`, `rows`, `cols`, and `land` from the function
-around it. It does not capture `visited`, though. It takes `visited` as a parameter instead. If the closure
-captured `visited` mutably, that borrow would last as long as the closure. The outer loop could then not call
-`visited.contains` while the closure exists. Passing it in on each call keeps the borrow short.
+The flood-fill routine is defined as a local closure `bfs` that borrows `grid`, `dirs`, `rows`, `cols`, and `land`
+immutably from its enclosing scope while receiving `visited` explicitly as a mutable parameter. Capturing
+`visited` mutably inside the closure would hold an exclusive borrow across the closure's entire lifetime,
+preventing the outer scan loop from querying `visited.contains`; passing `&mut visited` per invocation restricts
+the mutable borrow to each flood-fill call.
 
-Each cell is looked at a constant number of times, so the function runs in O(rows × cols). A `Vec<bool>` with
-one entry per cell would be faster than the `HashSet` of coordinates, because it avoids hashing.
+Because each cell is examined a constant number of times, the algorithm runs in O(*R* × *C*) time for an
+*R* × *C* grid. Replacing the coordinate `HashSet` with a flat `Vec<bool>` of length *R* × *C* eliminates hashing
+overhead and improves spatial cache locality.
 
 <p class="listing"><b>Listing 12.13</b> The complete program, with tests. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/bin/count_islands.rs">src/bin/count_islands.rs</a></p>
 
@@ -473,20 +488,20 @@ number of incoming edges, representing the count of unresolved prerequisites.
 
 **Kahn's algorithm** constructs a topological order iteratively (Figure 12.6):
 
-1. Put every node with indegree 0 in a queue. They have no prerequisites.
-2. Take a node from the queue and add it to the order.
-3. For each arrow out of that node, lower the target's indegree by one. The target has one fewer prerequisite
-   to wait for. If its indegree reaches 0, add it to the queue.
-4. Repeat until the queue is empty.
+1. Enqueue every vertex with indegree 0 (tasks with no unresolved prerequisites).
+2. Dequeue a vertex from the frontier and append it to the output topological ordering.
+3. For each outgoing edge from that vertex, decrement the target vertex's indegree by 1; whenever a target's
+   indegree reaches 0, enqueue it.
+4. Repeat until the frontier queue is empty.
 
 <figure>
 <img src="figures/graph-kahn.svg" alt="datastructs, indegree 0, points to algos and os, each indegree 1, which both point to compilers, indegree 2. A table shows the indegrees after each node is taken, ending in the order datastructs, algos, os, compilers.">
 <figcaption><b>Figure 12.6</b> Kahn's algorithm on four courses.</figcaption>
 </figure>
 
-If the graph has a cycle, the nodes on the cycle wait for each other forever. Their indegrees never reach 0, so
-they never enter the order. The order then comes out shorter than the number of nodes, and that is how the
-algorithm detects a cycle.
+If the graph contains a directed cycle, every vertex participating in or depending on that cycle retains an
+indegree of at least 1 and never enters the frontier. Consequently, the resulting sequence contains strictly fewer
+than |*V*| vertices, providing a complete O(*V* + *E*) cycle-detection condition.
 
 <figure class="anim">
 <video class="motion" src="figures/ch12-topo.mp4" autoplay loop muted playsinline preload="metadata" aria-label="Five nodes with directed edges and each node's indegree below it. Node 0 has indegree 0 and is taken first; removing its edges brings 1 and 2 to 0. Then 1, 2, 3, and 4 follow. A last part adds an edge from 4 back to 1: after 0 and 2, no node reaches indegree 0, and the function returns None." data-chapters="[[0.0, &quot;Kahn&quot;], [61.44, &quot;cycle&quot;]]"><img src="figures/ch12-topo.gif" alt="Five nodes with directed edges and each node's indegree below it. Node 0 has indegree 0 and is taken first; removing its edges brings 1 and 2 to 0. Then 1, 2, 3, and 4 follow. A last part adds an edge from 4 back to 1: after 0 and 2, no node reaches indegree 0, and the function returns None."></video>
@@ -515,10 +530,10 @@ pub fn topological_sort(num_nodes: usize, edges: &[(usize, usize)]) -> Option<Ve
 }
 ```
 
-`(0..num_nodes)` produces every node number. `.filter(|&n| indegree[n] == 0)` keeps the nodes with no
-prerequisites, and `.collect()` builds the `VecDeque`.
+The iterator pipeline `(0..num_nodes).filter(|&n| indegree[n] == 0).collect()` enumerates all vertex indices,
+retains those with zero unresolved prerequisites, and materializes the initial `VecDeque` frontier.
 
-The loop is Kahn's algorithm itself:
+The main loop executes Kahn's reduction:
 
 ```rust
 pub fn topological_sort(num_nodes: usize, edges: &[(usize, usize)]) -> Option<Vec<usize>> {
@@ -527,12 +542,12 @@ pub fn topological_sort(num_nodes: usize, edges: &[(usize, usize)]) -> Option<Ve
 }
 ```
 
-Each node taken from the queue goes into `order`. Removing it removes its outgoing edges, so each neighbor's
-indegree drops by one. A neighbor whose indegree reaches 0 has no prerequisites left, and joins the queue.
+Each dequeued vertex is appended to `order`. Logically removing it from the graph decrements the indegree of each
+adjacent dependent vertex; any dependent whose indegree reaches 0 has all prerequisites satisfied and enters the
+frontier.
 
-The last line returns the answer. `bool::then_some(order)` gives `Some(order)` if the condition is true, and
-`None` if it is false. So the function returns `None` exactly when a cycle kept some nodes out of the order.
-The nodes on a cycle never reach indegree 0.
+The final expression `(order.len() == num_nodes).then_some(order)` yields `Some(order)` when every vertex was
+scheduled and `None` when a directed cycle prevented one or more vertices from reaching indegree 0.
 
 <p class="listing"><b>Listing 12.14</b> The complete file. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/problems/graph_topology.rs">src/problems/graph_topology.rs</a></p>
 
@@ -540,8 +555,9 @@ The nodes on a cycle never reach indegree 0.
 {{#include ../../rust-interview-lab/src/problems/graph_topology.rs}}
 ```
 
-The tests check positions rather than one exact order. A graph usually has several valid topological orders, and
-the tests only require that each edge's source comes before its target.
+Because a DAG generally admits multiple valid topological orderings, the unit tests verify the partial-order
+invariant directly (asserting that every edge's source precedes its target in the output) rather than comparing
+against a single hardcoded permutation.
 
 ```text
 $ cargo test --lib problems::graph_topology
@@ -570,57 +586,63 @@ A course has a name and a list of prerequisites, the names of the courses that m
 {{#include ../../rust-interview-lab/src/bin/dependency_resolutiom.rs}}
 ```
 
-The input describes edges backward from the way the algorithm needs them. Each course lists its prerequisites,
-but Kahn's algorithm follows arrows from a prerequisite to the courses that need it. The loop turns them around.
-For each prerequisite `dep` of course `name`, it adds `name` to `adj[dep]`.
+The input encodes dependencies in reverse orientation relative to Kahn's traversal: each `Course` lists the
+prerequisites it depends on, whereas Kahn's algorithm traverses forward from each prerequisite to its unlocked
+dependents. The setup loop inverts every edge, appending `name` to `adj[dep]` for each prerequisite `dep`.
 
-A course's indegree is the length of its `depends_on` list. A prerequisite that is never listed as a course,
-like `datastructs` here, still needs an entry. `indegree.entry(dep.clone()).or_insert(0)` adds it with indegree
-0, and `or_insert` leaves an existing entry alone.
+A course's initial indegree equals the cardinality of its `depends_on` list. Root prerequisites that never appear
+as standalone `Course` entries (such as `"datastructs"`) still require an entry in `indegree`; calling
+`indegree.entry(dep.clone()).or_insert(0)` initializes absent prerequisites to 0 without overwriting existing
+counts.
 
-`for Course { name, depends_on } in courses` takes each course apart in the loop header. Because `courses` is a
-slice reference, `name` and `depends_on` are references to the fields.
+Destructuring `for Course { name, depends_on } in courses` binds immutable field references directly in the loop
+header because `courses` is a shared slice reference.
 
-If a cycle keeps some courses out of the order, the function returns an empty `Vec`. With `Option` as in listing
-12.14, the caller could tell "no courses" from "a cycle".
+When a cycle prevents full resolution, this variant returns an empty `Vec`. Returning `Option<Vec<String>>` (as in
+Listing 12.14) is preferable in production interfaces because it distinguishes an empty input graph from a cyclic
+dependency error.
 
 ```text
 $ cargo run --bin dependency_resolutiom
 ["datastructs", "algos", "os", "compilers"]
 ```
 
-The starting queue is built by iterating over a `HashMap`, and that order changes between runs. This input has
-only one course with no prerequisites, so the output is always the same. With several such courses, the order
-among them could change from run to run.
+Because the initial frontier is populated by iterating over a `HashMap`, iteration order is randomized per
+process. This graph has a unique zero-indegree root, yielding deterministic output; graphs with multiple
+concurrent zero-indegree roots may produce different valid topological orderings across executions.
 
 ## 12.9 Shortest paths
 
-In a weighted graph, the cost of a path is the sum of its edge weights. The **shortest path** from A to D is the
-path with the lowest cost. It is not always the one with the fewest edges.
+In a weighted graph, the cost of a path is the sum of its constituent edge weights, and a **shortest path**
+between two vertices minimizes that total weight rather than edge cardinality.
 
-BFS finds the path with the fewest edges, which is a different question. **Dijkstra's algorithm** finds the lowest
-cost from one start node to every other node, as long as no weight is negative.
+Whereas unweighted BFS minimizes hop count, **Dijkstra's algorithm** computes single-source shortest paths from a
+start vertex to all reachable vertices in any graph with non-negative edge weights.
 
 ### 12.9.1 How Dijkstra's algorithm works
 
-The algorithm maintains two structures:
+Dijkstra's algorithm maintains two auxiliary structures:
 
-- `dist`, recording the lowest path cost discovered so far to each node (initialized to 0 for the start node).
-- A min-heap of `(cost, node)` entries so that the cheapest unsettled frontier node is always extracted next
-  (using `BinaryHeap` with `Reverse`, as introduced in Chapter 5).
+- `dist`, storing the best known upper-bound path cost from the source to each vertex (initialized to 0 for the
+  source).
+- A min-priority queue of `(cost, vertex)` entries, implemented with `BinaryHeap` and `Reverse`, so that the
+  minimum-cost unsettled frontier vertex is always extracted next.
 
-Each step takes the cheapest entry from the heap. For each edge out of that node, it computes the cost of
-reaching the neighbor through this node. If that cost beats the neighbor's recorded cost, the new cost is
-recorded and pushed onto the heap. Updating a recorded cost to a lower one is called **relaxing** the edge.
+On each iteration, the algorithm extracts the minimum-cost entry `(d, u)` from the heap. For every outgoing edge
+`(u, v, w)`, it evaluates the candidate path cost `d + w`; if this candidate strictly improves upon `dist[v]`, the
+algorithm updates `dist[v]` and pushes `(d + w, v)` onto the heap. Tightening a vertex's distance upper bound in
+this manner is called an **edge relaxation** step.
 
-When a node is taken from the heap with its recorded cost, that cost is final. Every other entry in the heap
-costs at least as much, and weights are never negative. So no path found later can come back cheaper.
+When a vertex `u` is extracted with its current recorded cost `d == dist[u]`, its shortest-path distance is
+permanently settled. Because all remaining heap entries have cost at least `d` and edge weights are non-negative,
+no future path can reach `u` with a strictly lower total cost.
 
-A node can be in the heap several times. When a cheaper path to B is found, the old entry for B stays in the heap.
-`BinaryHeap` has no way to find and update it. When the old entry is eventually taken, its cost is higher than
-B's recorded cost, and the code skips it. Such an entry is called **stale**.
+Because `std::collections::BinaryHeap` does not support an in-place decrease-key operation, relaxing an edge to a
+vertex already in the heap pushes a second, lower-cost entry while leaving the earlier entry intact. When that
+superseded entry is eventually popped, its cost exceeds `dist[u]` and the algorithm discards it; such entries are
+termed **stale** (lazy deletion).
 
-Figure 12.7 follows every step on a four-node graph.
+Figure 12.7 traces the distance table and heap state across a four-vertex weighted graph.
 
 <figure>
 <img src="figures/graph-dijkstra.svg" alt="Graph: A to B weight 4, A to C weight 1, C to B weight 2, B to D weight 1, C to D weight 5. A table lists each pop with the distances and heap after it. The entries (4,B) and (6,D) are popped as stale. Final distances: A 0, C 1, B 3, D 4.">
@@ -647,17 +669,17 @@ heap entry while leaving `(4, B)` stale. Settling B at cost 3 then relaxes D fro
 {{#include ../../rust-interview-lab/src/problems/graph_dijkstra.rs:23:44}}
 ```
 
-The distances are a `Vec<Option<u32>>`, where `None` means "no path found yet". Two methods of `Option` read
-well here:
+Distance upper bounds are stored in `Vec<Option<u32>>`, where `None` represents infinity (no path discovered yet).
+Two `Option` combinators express the core invariants cleanly:
 
-- `is_some_and(|best| current_cost > best)` is true only if there is a recorded cost and the popped cost is
-  higher. That is the stale check.
-- `is_none_or(|best| new_distance < best)` is true if there is no recorded cost, or the new cost is lower. That
-  is the relax check.
+- `is_some_and(|best| current_cost > best)` identifies stale heap entries whose popped cost exceeds the settled
+  or improved distance in `distances`.
+- `is_none_or(|best| new_distance < best)` evaluates the relaxation predicate, returning `true` when the neighbor
+  is unreached or when the candidate path strictly lowers its recorded distance.
 
-The heap holds `Reverse((cost, node))`. `BinaryHeap` pops the largest item, and `Reverse` flips the comparison,
-so the smallest cost comes out first. Tuples compare by their first field, then by their second, so the cost
-decides and the node number breaks ties.
+The heap stores `Reverse((cost, node))`. Because `BinaryHeap` is a max-heap by default, wrapping tuples in
+`Reverse` inverts the ordering into a min-heap; Rust orders tuples lexicographically, prioritizing `cost` first
+and breaking ties deterministically by vertex index.
 
 <p class="listing"><b>Listing 12.17</b> Dijkstra over the map form (lines 46 to 73).</p>
 
@@ -665,15 +687,16 @@ decides and the node number breaks ties.
 {{#include ../../rust-interview-lab/src/problems/graph_dijkstra.rs:46:73}}
 ```
 
-In this version, `distances` is a `HashMap` that contains only nodes that have been reached. `Node` also needs
-`Ord`, because nodes sit inside the tuples that the heap compares.
+In this map-backed formulation, `distances` is a `HashMap` populated lazily with reached vertices, and `Node`
+requires an `Ord` bound to support lexicographic tie-breaking inside the priority queue.
 
-`distances[&current_node]` cannot panic here. A node is pushed onto the heap only after its distance is inserted,
-so every popped node has an entry. `distances.get(&neighbor).unwrap_or(&u32::MAX)` treats a missing entry as
-the largest possible cost, so any real cost beats it.
+Indexing `distances[&current_node]` is guaranteed not to panic because every vertex is inserted into `distances`
+prior to being pushed onto the heap. Calling `distances.get(&neighbor).unwrap_or(&u32::MAX)` treats unreached
+vertices as having cost `u32::MAX` (infinity).
 
-Each edge can push one heap entry, and each heap operation takes O(log E). The whole algorithm runs in
-O(E log E), which is the same as O(E log V) for simple graphs.
+Because each edge relaxation pushes at most one entry onto a heap of size O(*E*) and each heap push or pop takes
+O(log *E*) time, the total time complexity is O((*V* + *E*) log *E*), which simplifies to O(*E* log *V*) for
+connected simple graphs.
 
 ```text
 $ cargo test --lib problems::graph_dijkstra
@@ -696,11 +719,12 @@ this hazard using `checked_add`.
 
 ### 12.9.3 Edges as a struct
 
-The next three programs use a named `Edge` struct instead of a `(neighbor, weight)` tuple, and `u64` costs.
-They show three steps of the same function: it first clones node names, then borrows them, and finally handles
-missing nodes and overflow.
+The next three implementations replace raw `(neighbor, weight)` tuples with a named `Edge` struct and widen path
+costs to `u64`. Together they form a progressive refinement: first cloning vertex labels, then borrowing vertex
+references with explicit lifetimes, and finally guarding against missing adjacency entries and integer overflow.
 
-An `Edge` holds the node it leads to and its weight. `AdjMap` is an alias for the graph: each node, with the list of edges that leave it. Both are generic over the node type:
+`Edge<Node>` pairs a target vertex with its `u64` weight, and `AdjMap<Node>` aliases the adjacency map from each
+vertex to its outgoing edge vector:
 
 ```rust
 {{#include ../../rust-interview-lab/src/bin/dijkstra.rs:7:13}}
@@ -712,11 +736,12 @@ An `Edge` holds the node it leads to and its weight. `AdjMap` is an alias for th
 {{#include ../../rust-interview-lab/src/bin/dijkstra.rs}}
 ```
 
-`edge.to` and `edge.weight` read better than `.0` and `.1`. The node type needs `Clone` instead of `Copy`, so
-it could be a `String`. The function clones a node each time it stores one in `dist` or on the heap.
+Named fields (`edge.to`, `edge.weight`) improve readability over positional tuple indexing (`.0`, `.1`). Relaxing
+the bound from `Copy` to `Clone` accommodates heap-allocated vertex identifiers such as `String`, at the cost of
+cloning keys on each insertion into `dist` or the priority queue.
 
-`graph[&node]` panics if a node has no entry in the map. `main` includes `"D"` with an empty list, so every node
-has one.
+Direct indexing `graph[&node]` panics if a vertex lacks an explicit key in the map, so `main` registers sink
+vertex `"D"` with an empty edge vector.
 
 ```text
 $ cargo run --bin dijkstra
@@ -748,23 +773,24 @@ deterministic iteration order, the printed line order may vary across executions
 {{#include ../../rust-interview-lab/src/bin/dijkstra_with_lifetime.rs:15:47}}
 ```
 
-The types are generic over `Node`, the type that names a node, such as `&str` or `u32`. An `Edge<Node>` holds
-the node it leads to and a weight. `AdjMap<Node>` is an alias for the adjacency map: each node, and the list
-of edges that leave it.
+Both `Edge<Node>` and `AdjMap<Node>` are generic over the vertex identifier type `Node` (such as `&str`, `String`,
+or `u32`).
 
-This version stores references to nodes, `&'a Node`, in `dist` and in the heap, so `Node` does not need `Clone`.
-With `String` nodes, that saves an allocation per clone.
+To eliminate key cloning, this implementation stores borrowed references `&'a Node` inside `dist` and the priority
+queue, removing the `Clone` trait bound entirely and avoiding heap allocations when vertices are owned `String`
+values.
 
-The lifetime `'a` ties everything together. The graph and the start node are both borrowed for `'a`, and the
-returned map holds `&'a Node` keys. The compiler therefore keeps the graph alive as long as the result is in
-use. Every reference pushed onto the heap, `&edge.to`, points into the graph, so it lives long enough.
+The explicit lifetime parameter `'a` binds the input graph, the start vertex reference, and the keys of the
+returned distance map to a common borrow scope. Because every `&edge.to` reference pushed onto the heap borrows
+directly from `graph`, the borrow checker enforces statically that `graph` remains immutable and valid for as long
+as the returned distance map is accessed.
 
-Two `let ... else` lines make the function safer than listing 12.18:
+Two `let ... else` guards harden this implementation against runtime panics:
 
-- `let Some(edges) = graph.get(node) else { continue };` handles a node that has no entry in the map. `main`
-  leaves `"D"` out of the map, and the function still works.
-- `let Some(new_cost) = cost.checked_add(edge.weight) else { continue };` skips an edge whose total cost would
-  overflow. `checked_add` returns `None` on overflow instead of panicking or wrapping around.
+- `let Some(edges) = graph.get(node) else { continue };` tolerates sink vertices omitted from the adjacency map
+  (such as `"D"` in `main`).
+- `let Some(new_cost) = cost.checked_add(edge.weight) else { continue };` skips edges whose cumulative path cost
+  would overflow `u64::MAX`, preventing both debug panics and release-mode wraparound.
 
 <p class="listing"><b>Listing 12.20</b> The complete program. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/bin/dijkstra_with_lifetime.rs">src/bin/dijkstra_with_lifetime.rs</a></p>
 
@@ -772,8 +798,8 @@ Two `let ... else` lines make the function safer than listing 12.18:
 {{#include ../../rust-interview-lab/src/bin/dijkstra_with_lifetime.rs}}
 ```
 
-In `main`, `let start = "A".into();` makes a `String` in its own variable, because the function needs a
-reference that lives as long as the graph borrow.
+In `main`, binding `let start = "A".into();` to a local variable ensures the start key's borrow outlives the
+returned distance map.
 
 ```text
 $ cargo run --bin dijkstra_with_lifetime
@@ -818,28 +844,30 @@ Table 12.1 compares the five versions.
 The final graph problem operates on an undirected, weighted graph. Modeling buildings as nodes and cabling costs
 as edge weights, the objective is to connect every node directly or indirectly at the minimum total edge weight.
 
-A set of edges that connects all the nodes without forming a cycle is a **spanning tree**. A spanning tree with
-the lowest total weight is a **minimum spanning tree** (MST). With n nodes, a spanning tree has exactly n − 1
-edges. One edge fewer would leave a node disconnected, and one edge more would close a loop.
+A subset of edges connecting all vertices of an undirected graph without cycles is a **spanning tree**; a spanning
+tree of minimum total edge weight is a **minimum spanning tree** (MST). Every spanning tree over |*V*| = *n*
+vertices contains exactly *n* − 1 edges: removing any edge disconnects the graph, and adding any edge introduces a
+cycle.
 
-**Kruskal's algorithm** builds an MST by taking edges from lightest to heaviest. It keeps an edge if the edge
-joins two groups of nodes that are not yet connected. It skips an edge whose two ends are already connected,
-because that edge would close a loop.
+**Kruskal's algorithm** constructs an MST greedily by examining edges in non-decreasing order of weight. An edge
+is accepted into the spanning forest if and only if its endpoints belong to distinct connected components; any
+edge whose endpoints are already connected is discarded because it would close a cycle.
 
 ### 12.10.1 Union-find
 
-Kruskal's algorithm needs to answer one question fast: are these two nodes already connected? A **union-find**
-structure, also called a disjoint set, answers it.
+Kruskal's algorithm requires dynamic connectivity queries and component merges. A **disjoint-set union**
+(DSU or **union-find**) data structure maintains a partition of vertices into disjoint sets with near-constant
+amortized cost.
 
-Union-find keeps nodes in groups. Each group is a small tree stored in a `parent` array, where `parent[i]` is
-the node that `i` points to. The node at the top of a group points to itself and is called the group's **root**.
-Two nodes are in the same group when they have the same root.
+Each connected component is represented as an inverted tree encoded in a flat `parent` array, where `parent[i]`
+stores the parent index of vertex `i`. A component's canonical representative (its **root**) satisfies
+`parent[r] == r`; two vertices belong to the same connected component if and only if they share the same root.
 
-There are two operations:
+The structure exposes two core operations:
 
-- `find(x)` follows `parent` links from `x` up to the root.
-- `union(x, y)` finds both roots. If the roots differ, it makes one root point to the other, which joins the two
-  groups.
+- `find(x)` traverses `parent` pointers from `x` to its component root.
+- `union(x, y)` resolves the roots of `x` and `y`; if they differ, it links one root under the other to merge the
+  two components.
 
 <p class="listing"><b>Listing 12.22</b> Union-find (lines 10 to 49). <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/bin/kruskals_algorithm.rs">src/bin/kruskals_algorithm.rs</a></p>
 
@@ -849,18 +877,17 @@ There are two operations:
 {{#include ../../rust-interview-lab/src/bin/kruskals_algorithm.rs:10:49}}
 ```
 
-`new` makes every node its own group: `parent` is `[0, 1, 2, ...]`, built with `(0..n).collect()`.
+`new` initializes *n* singleton components by setting `parent` to `[0, 1, ..., n - 1]` via `(0..n).collect()`.
 
-`find` operates recursively and rewrites `parent[elem]` directly to the root on the way back up, so subsequent
-lookups on that node resolve in a single step. This optimization is called **path compression**.
+`find` resolves the root recursively and rewrites `parent[elem]` directly to the root on stack unwind, flattening
+the lookup path so subsequent queries resolve in a single hop. This optimization is **path compression**.
 
-`union` returns `false` if both nodes already share a root. Otherwise it merges the two trees using `rank`, an
-upper bound on each tree's height, attaching the shallower tree beneath the deeper one to keep tree height
-bounded. When both trees share the same rank, either may become the new root and its rank increments by one; this
-heuristic is called **union by rank**.
+`union` returns `false` if both vertices already share a root. Otherwise it merges the two trees via **union by
+rank**, attaching the tree of smaller rank beneath the root of higher rank to keep tree height logarithmic; when
+both roots share equal rank, one becomes the parent and its rank increments by 1.
 
-Combined, path compression and union by rank yield amortized nearly constant time (inverse Ackermann time) for
-both `find` and `union`.
+Combined, path compression and union by rank achieve an amortized time complexity of O(α(*V*)) per operation,
+where α is the inverse Ackermann function (effectively constant for all practical graph sizes).
 
 ### 12.10.2 Kruskal's algorithm
 
@@ -872,24 +899,24 @@ both `find` and `union`.
 {{#include ../../rust-interview-lab/src/bin/kruskals_algorithm.rs:51:65}}
 ```
 
-An `Edge` joins nodes `u` and `v`, numbered from 0, with weight `w`. The graph is undirected, so the
-order of `u` and `v` does not matter.
+An `Edge` connects zero-indexed vertices `u` and `v` with weight `w`; because the graph is undirected, endpoint
+order is symmetric.
 
-`edges.sort_by_key(|e| e.w)` sorts the edges by weight. Then each edge is offered to `union`. If `union`
-returns `true`, the edge joined two groups, and it goes into the tree. The edge is moved into `mst`, not copied,
-because `for edge in edges` takes ownership of each one.
+`edges.sort_by_key(|e| e.w)` orders all edges by non-decreasing weight. Each edge is then tested via
+`uf.union(edge.u, edge.v)`: a `true` return value indicates that the endpoints belonged to disjoint components, so
+the edge is moved directly into `mst` without copying (`for edge in edges` consumes the vector by value).
 
-Sorting dominates the running time, so the algorithm runs in O(E log E).
+Edge sorting dominates the asymptotic complexity, yielding O(*E* log *E*) total time.
 
-Figure 12.8 follows the `parent` array through every edge of the program's graph.
+Figure 12.8 traces the `parent` array state across every edge of the sample graph.
 
 <figure>
 <img src="figures/graph-kruskal.svg" alt="Five nodes with edges 0-1 weight 4, 0-2 weight 3, 1-2 weight 1, 1-3 weight 2, 2-3 weight 4, 3-4 weight 2. Kept edges 1-2, 1-3, 3-4, 0-2 are solid; 0-1 and 2-3 are dashed. A table shows the roots and the parent array after each union.">
 <figcaption><b>Figure 12.8</b> Kruskal's algorithm with union-find. The two weight-4 edges would close loops, so they are skipped.</figcaption>
 </figure>
 
-`sort_by_key` is a stable sort: edges with equal weights keep their input order. So 1-3 comes before 3-4, and
-0-1 comes before 2-3.
+Because `sort_by_key` is a stable sort, equal-weight edges preserve their original input ordering (edge 1-3
+precedes 3-4, and 0-1 precedes 2-3).
 
 <figure class="anim">
 <video class="motion" src="figures/ch12-kruskal.mp4" autoplay loop muted playsinline preload="metadata" aria-label="Five nodes with weighted edges, colored by the set each node belongs to. The edges are taken cheapest first. An edge joining two sets is kept and the sets merge. The edges 0-1 and 2-3 would close cycles and are skipped. Four edges remain, total weight 8. Last, keeping every edge without the union-find check gives six edges, two cycles, and a total of 16." data-chapters="[[2.4, &quot;union-find&quot;], [50.52, &quot;no check&quot;]]"><img src="figures/ch12-kruskal.gif" alt="Five nodes with weighted edges, colored by the set each node belongs to. The edges are taken cheapest first. An edge joining two sets is kept and the sets merge. The edges 0-1 and 2-3 would close cycles and are skipped. Four edges remain, total weight 8. Last, keeping every edge without the union-find check gives six edges, two cycles, and a total of 16."></video>
@@ -912,7 +939,7 @@ $ cargo run --bin kruskals_algorithm
 total: 8
 ```
 
-The tree has four edges for five nodes, as expected.
+The resulting minimum spanning tree contains *n* − 1 = 4 edges across 5 vertices with total weight 8.
 
 ## 12.11 The complete files
 
@@ -940,26 +967,25 @@ The preceding sections presented these modules in excerpts; the complete source 
 
 ## Summary
 
-- A graph is a set of nodes and edges, with no rule against cycles. Every traversal needs a record of the nodes
-  it has handled.
-- An adjacency list stores each node's outgoing edges. The index form uses `Vec<Vec<...>>` and numbered nodes.
-  The map form uses a `HashMap` and allows any hashable node.
-- BFS uses a queue and visits nodes in order of edge count from the start. DFS uses a stack and follows one path
-  as deep as it goes. Both run in O(V + E).
-- Graph nodes in Rust are usually numbers into a `Vec`, which avoids reference cycles.
-- Cycle detection needs three states. An edge to a node on the current path, a Visiting node, closes a cycle.
-- A grid is a graph whose edges are computed from coordinates. Counting islands runs one flood fill per island.
-- Kahn's algorithm produces a topological order by repeatedly taking nodes with indegree 0. A shorter order than
-  the node count means the graph has a cycle.
-- Dijkstra's algorithm finds lowest-cost paths with a min-heap, skipping stale entries. `checked_add` and
-  `let ... else` guard against overflow and missing nodes.
-- Kruskal's algorithm builds a minimum spanning tree from the lightest edges, using union-find to skip edges
-  that would close a loop.
+- A graph *G* = (*V*, *E*) permits arbitrary vertex connectivity and cycles, requiring every traversal to maintain
+  an explicit visitation state structure.
+- Adjacency lists represent sparse graphs cleanly: the dense index form (`Vec<Vec<...>>`) maximizes cache locality
+  and throughput, whereas the map form (`HashMap`) accommodates arbitrary hashable vertex identifiers.
+- BFS uses a FIFO queue to explore vertices in non-decreasing hop distance, whereas DFS uses a LIFO stack to
+  explore full branches before backtracking; both run in O(*V* + *E*) time.
+- Arena-style integer indexing (`NodeId = usize`) eliminates reference-cycle ownership hazards in Rust graphs.
+- Directed cycle detection requires a three-state visitation machine (`Unvisited`, `Visiting`, `Done`); an edge
+  targeting a `Visiting` ancestor is a back edge that closes a cycle.
+- Two-dimensional grids form implicit graphs whose orthogonal edges are computed from coordinate offsets, enabling
+  O(*R* × *C*) flood-fill connected-component counting.
+- Kahn's algorithm computes a topological ordering in O(*V* + *E*) time by iteratively removing zero-indegree
+  vertices; producing fewer than |*V*| vertices proves the presence of a directed cycle.
+- Dijkstra's algorithm computes single-source shortest paths over non-negative edge weights in O(*E* log *V*)
+  time using a min-heap with lazy stale-entry deletion, hardened by `checked_add` and `let ... else` guards.
+- Kruskal's algorithm constructs a minimum spanning tree in O(*E* log *E*) time by sorting edges and querying
+  disjoint-set union with path compression and union by rank.
 
 </div>
-
-In Chapter 13, we combine a hash map with a doubly linked list to construct an LRU cache, revisiting the
-ownership and interior-mutability trade-offs from Chapters 8 and 9.
 
 ## Exercises
 

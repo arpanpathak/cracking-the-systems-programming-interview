@@ -15,31 +15,32 @@ This chapter covers
 
 </div>
 
-The preceding chapters analyzed algorithms through asymptotic step counts: O(1), O(log *n*), and O(*n*). Step
-counts predict how runtime scales with input size, but not how long an individual step takes. On modern hardware,
-a single memory load can cost 2 ns or 150 ns depending on where the target line resides in the memory hierarchy,
-which explains the threefold gap observed between two O(1) LRU caches in Chapter 13.
+Asymptotic complexity classes (O(1), O(log *n*), O(*n*)) count abstract operations while treating every memory
+access as uniform-cost. On modern superscalar processors, however, a single memory load spans nearly two orders
+of magnitude in latency (from roughly 2 ns in L1 cache to 150 ns in main DRAM) depending on spatial and temporal
+cache locality, cache-line coherence traffic, and virtual-to-physical address translation.
 
-This chapter examines the hardware and operating-system layers beneath those data structures. Section 15.1
-measures memory hierarchy latency; Sections 15.2 through 15.4 present three programs whose performance depends on
-memory layout and access patterns; and Sections 15.5 through 15.7 examine three core operating-system services:
-virtual memory, CPU scheduling, and system calls.
+This chapter examines the hardware memory hierarchy and operating-system abstractions beneath user-space data
+structures. Section 15.1 measures cache-level latency via dependent pointer chasing; Sections 15.2 through 15.4
+analyze arena allocation, traversal locality, and cache-line contention (false sharing); and Sections 15.5 through
+15.7 model virtual memory paging, round-robin CPU scheduling, and kernel system-call overhead.
 
-Most programs in this chapter report wall-clock timings. Always run them with `--release`, and expect absolute
-measurements to vary by hardware. All figures reported here were collected on an Intel Core i5-1038NG7 running
+Because most programs below report wall-clock timings, compile and run them with `--release`; absolute timings
+vary across microarchitectures. Measurements reported here were collected on an Intel Core i5-1038NG7 running
 macOS.
 
 ## 15.1 How far away is memory?
 
-Main memory, the RAM, is large and slow compared with the CPU. To hide the difference, the CPU keeps copies of
-recently used memory in small, fast memories called **caches**. There are usually three levels:
+Dynamic RAM (DRAM) provides high capacity at tens to hundreds of nanoseconds of latency, far slower than modern
+CPU clock cycles. Processors bridge this memory wall with a hierarchy of small, fast SRAM **caches**:
 
-- **L1** is the smallest and fastest, and each core has its own. On this CPU it holds 48 KiB of data per core.
-- **L2** is larger and slower, also per core: 512 KiB here.
-- **L3** is shared by all cores: 6 MiB here.
+- **L1 data cache:** smallest and fastest, private to each core (48 KiB per core on this processor).
+- **L2 cache:** intermediate capacity and latency, private to each core (512 KiB per core here).
+- **L3 cache:** largest on-die cache, shared across all cores (6 MiB here).
 
-Caches do not copy single bytes. They copy blocks of 64 bytes, called **cache lines**. Reading one `u64` brings
-in the line around it, so the next seven `u64` values in memory arrive at no extra cost.
+Hardware caches transfer memory in fixed-size 64-byte blocks called **cache lines** rather than individual bytes.
+Fetching a single 8-byte `u64` loads the entire enclosing 64-byte line, delivering the adjacent seven `u64` values
+at zero additional memory-bus cost.
 
 To quantify the latency of each cache level, a **pointer-chasing** benchmark populates an array with a random
 single-cycle permutation so that each element stores the index of the next element to read. Executing
@@ -52,54 +53,52 @@ from overlapping memory requests and exposing the true latency per read across f
 <figcaption><b>Figure 15.1</b> Time per dependent read, by data size. Data that fits in L1 is about 65 times faster to reach than data in main memory.</figcaption>
 </figure>
 
-A read from L1 took 2.2 ns. A read that had to go to main memory took 120 to 146 ns. In 120 ns, this CPU can run
-several hundred simple instructions. The larger sizes also include the cost of translating addresses, which
-section 15.5 explains.
+The latency profile rises in discrete steps corresponding directly to hardware capacity boundaries: 2.2 ns within
+the 48 KiB L1 cache, 5.6 ns at 256 KiB (spilling into L2), 42.3 ns at 2 MiB (spilling into shared L3), and 120 to
+146.2 ns at 32 MiB and above (main DRAM plus translation lookaside buffer misses, examined in Section 15.5).
+During a single 120 ns DRAM stall, an out-of-order core could otherwise retire hundreds of arithmetic instructions.
+This capacity-latency trade-off is physical: larger SRAM arrays incur longer wire delays and higher associative
+lookup costs.
 
-Those five numbers describe one hierarchy, not five separate machines. Data in L1 answers a dependent read in
-2.2 ns. The same read against 256 KiB costs 5.6 ns. That array no longer fits in a 48 KiB L1, so the line comes
-from L2. At 2 MiB the cost is 42.3 ns, having left L2 as well. From 32 MiB upward it is 120 ns or more, which
-is main memory. A larger level holds several times more than the one above it, and answers several times more
-slowly. The trade is forced. A store that answers in 2 ns has to be small, because reaching a location costs
-more as the store grows.
+Because memory transfers occur at 64-byte granularity, sequential iteration over `u64` values achieves 100%
+cache-line utilization (eight values per transfer), whereas random pointer chasing pays the full 120 ns DRAM
+latency while consuming only one eighth of each fetched line.
 
-A cache line is 64 bytes, and it arrives as one unit. A program that reads one `u64` and then the next seven
-pays for a single line and uses all of it. A program that jumps to a new random line on every read pays the
-same 120 ns. It uses one eighth of what it fetched.
-
-Animation 15.1 follows single reads through the hierarchy, then a line read in order and lines read
-scattered.
+Animation 15.1 contrasts single-load traversal across hierarchy tiers with sequential versus scattered cache-line
+utilization.
 
 <figure class="anim">
 <video class="motion" src="figures/ch15-mem-hierarchy.mp4" autoplay loop muted playsinline preload="metadata" aria-label="A core robot beside four boxes, L1 48 KiB, L2 512 KiB, L3 6 MiB, and RAM, each labelled with its measured time per dependent read: 2.2, 5.6, 42.3, and 146.2 ns. A read with 16 KiB of data stops at L1 in 2.2 ns; with 2 MiB it reaches L3, 42.3 ns; with 256 MiB it reaches RAM, 146 ns. Then a miss brings a 64-byte line of eight values into L1, and the next seven reads in order hit L1 at about 2 ns each. Last, scattered reads each fetch a new line from RAM and use one value of eight." data-chapters="[[0.0, &quot;one read&quot;], [22.68, &quot;a line&quot;], [41.04, &quot;scattered&quot;]]"><img src="figures/ch15-mem-hierarchy.gif" alt="A core robot beside four boxes, L1 48 KiB, L2 512 KiB, L3 6 MiB, and RAM, each labelled with its measured time per dependent read: 2.2, 5.6, 42.3, and 146.2 ns. A read with 16 KiB of data stops at L1 in 2.2 ns; with 2 MiB it reaches L3, 42.3 ns; with 256 MiB it reaches RAM, 146 ns. Then a miss brings a 64-byte line of eight values into L1, and the next seven reads in order hit L1 at about 2 ns each. Last, scattered reads each fetch a new line from RAM and use one value of eight."></video>
 <figcaption><b>Animation 15.1</b> A read stops at the first level that holds its line. A line read in order serves eight values for one trip; scattered reads pay the trip every time.</figcaption>
 </figure>
 
-The rest of the chapter comes back to one fact. Data that is close together in memory, and read in order,
-is much cheaper than data scattered around. Keeping related data close together is called **locality**.
+A single principle underlies the remainder of this chapter: contiguous, sequentially accessed data exploits both
+**spatial locality** (adjacent elements sharing a cache line) and **temporal locality** (reusing recently cached
+lines), yielding order-of-magnitude speedups over scattered heap layouts.
 
 ## 15.2 A bump allocator
 
-Programs get heap memory from an **allocator**. Every `Box::new` and every growing `Vec` asks the allocator for
-a block, and every drop gives one back. A general-purpose allocator must handle blocks of any size, freed in any
-order, from any thread. That takes bookkeeping.
+Dynamic heap memory is managed by an **allocator**, which services `Box::new` and `Vec` growth requests and
+reclaims deallocated blocks. A general-purpose allocator (such as `jemalloc` or `glibc malloc`) must support
+arbitrary block sizes, out-of-order deallocation, and multi-threaded contention, incurring metadata and
+synchronization overhead.
 
-A **bump allocator** is the simplest allocator. It owns one large buffer and an offset, the position of the
-first free byte. To allocate, it hands out the bytes at the offset and moves the offset forward. It never frees a
-single block. Instead, `reset` frees everything at once by setting the offset back to 0.
+A **bump allocator** (or region/arena allocator) eliminates per-object deallocation metadata: it owns a single
+contiguous backing buffer and a monotonic byte offset. Allocation advances the offset by the aligned block size in
+O(1) time without free-list traversal, and `reset()` reclaims the entire arena in a single store by resetting the
+offset to 0.
 
-This fits work that allocates many small pieces and throws them all away together. A parser can allocate its
-syntax tree in an arena and drop it after compiling. A server can allocate per request and reset after sending
-the response.
+Region-based allocation matches phase-scoped workloads where many short-lived objects share a common lifetime,
+such as compiler abstract syntax trees or per-request HTTP server scratch buffers.
 
 ### 15.2.1 Alignment
 
-Most types must start at an address that is a multiple of some number, called their **alignment**. A `u64` has
-alignment 8, so it must start at an address divisible by 8. The CPU reads aligned values in one step, and some
-instructions refuse unaligned ones.
+Hardware load/store units require most scalar types to reside at addresses divisible by their **alignment** (for
+example, 8-byte alignment for `u64`). Aligned accesses execute in a single memory transaction without split-line
+penalties or architecture-specific alignment faults.
 
-An allocator must therefore advance past unused bytes, called **padding**, to reach a properly aligned offset
-(Figure 15.2).
+An allocator must therefore insert unused **padding** bytes ahead of each block so that its starting offset
+satisfies the requested alignment (Figure 15.2).
 
 <figure>
 <img src="figures/bump.svg" alt="A 64-byte strip. Byte 0 holds the first block. Bytes 1 to 15 are padding. Bytes 16 to 19 hold the second block. Bytes 20 to 63 are free. used is 20 and remaining is 44.">
@@ -140,9 +139,9 @@ returns `None` if the block would end past the buffer. Only after every check pa
 So a failed allocation leaves the arena unchanged, which the test `exhaustion_returns_none_and_keeps_state`
 checks.
 
-The allocated block is returned as `&mut [u8]`, a mutable slice into the backing buffer. Because that slice
-borrows the arena mutably, subsequent `alloc` calls are statically prevented while the slice remains live. A
-production arena allocator hands out multiple concurrent references using `unsafe` code or interior mutability.
+The allocated region is returned as `&mut [u8]` borrowing `self` mutably, which statically prevents overlapping
+`alloc` calls while the slice remains live. Production region allocators dispense multiple disjoint mutable
+allocations concurrently by combining `Cell<usize>` interior mutability with `unsafe` slice splitting.
 
 <div class="callout warning" markdown="1">
 
@@ -257,22 +256,22 @@ factor at a time and verify that the measurement responds.
 
 ## 15.4 False sharing
 
-Chapter 16 covers concurrency in depth; this section requires only two primitives:
+Multi-threaded execution requires two concurrency primitives:
 
-- `thread::scope(|scope| { ... })` establishes a scoped thread block whose spawned threads may borrow local
-  variables safely because the scope joins all threads before returning.
-- An atomic integer such as `AtomicUsize` supports lock-free concurrent updates. `fetch_add(1, Ordering::Relaxed)`
-  increments the counter atomically; `Relaxed` ordering suffices for an independent counter (memory ordering is
-  covered in Chapter 16).
+- `thread::scope(|scope| { ... })` spawns scoped worker threads guaranteed to join before the scope exits,
+  permitting safe borrows of stack-local data without `Arc`.
+- `AtomicUsize` provides lock-free atomic read-modify-write operations; `fetch_add(1, Ordering::Relaxed)`
+  increments an independent counter atomically without imposing cross-thread memory-ordering barriers.
 
-The performance hazard arises from cache coherence across cores. Each core maintains a private L1 cache, and
-before a core writes to a cache line, the coherence protocol must grant it exclusive ownership by invalidating
-every other core's copy. When two cores alternate writes to the same line, ownership bounces back and forth on
-nearly every store.
+The performance pathology stems from hardware **cache coherence** (such as the MESI/MOESI protocols). Each core
+maintains a private L1 cache; before modifying a cache line, a core must acquire exclusive ownership (Modified
+state) by broadcasting invalidations to all other cores caching that line. When two cores alternate writes to the
+same line, the coherence interconnect bounces the line between private caches on nearly every store.
 
-That is expected when two threads write the same variable. **False sharing** is the same slowdown when the two
-threads write different variables that happen to sit in the same cache line (figure 15.4). The threads share no
-data, but the hardware moves memory in whole lines, so they share a line.
+While expected when threads contend on a shared variable, **false sharing** triggers the identical coherence
+ping-pong when threads mutate logically independent variables that happen to occupy the same 64-byte cache line
+(Figure 15.4). Because coherence tracks ownership at cache-line granularity rather than variable granularity,
+independent counters suffer severe cache-line contention.
 
 <figure>
 <img src="figures/false-sharing.svg" alt="Top: counters a and b sit in one 64-byte line, and the line moves between core 0 and core 1 on every write. Bottom: with 64-byte alignment, a and b are in separate lines, and each core keeps its own line.">
@@ -372,36 +371,39 @@ also fetch lines in adjacent pairs, so some libraries pad shared counters to 128
 
 ## 15.5 Pages and page faults
 
-Every memory address observed by a user-space process is a **virtual address**. The operating system provides
-each process with an isolated virtual address space, and the CPU's memory management unit translates each virtual
-address into a **physical address** in RAM.
+Every memory address issued by a user-space process is a **virtual address**. The operating system provides each
+process with an isolated virtual address space, and the processor's **memory management unit** (MMU) performs
+virtual-to-physical address translation into physical DRAM.
 
-Translation works on fixed-size blocks called **pages**. On this machine a page is 4,096 bytes. Apple's ARM Macs
-use 16 KiB pages. The operating system keeps a **page table** for each process, which maps each virtual page to a
-physical block of RAM, called a **frame**.
+Translation operates at fixed-size granularity called **pages** (4 KiB on x86-64; 16 KiB on Apple Silicon ARM64).
+The kernel maintains a per-process **page table** mapping each virtual page number (VPN) to a physical page
+**frame** (PFN) along with permission bits.
 
-An address splits into two parts (figure 15.5). The high part is the page number, which the page table
-translates. The low part is the offset inside the page, which stays the same. With 4,096-byte pages, the offset
-is the low 12 bits, because 2 to the power 12 is 4,096.
+Each virtual address splits into two bitfields (Figure 15.5): the upper bits form the virtual page number
+translated by the page table, while the lower bits form the invariant byte offset within the page (the low 12
+bits for 4 KiB = 2¹²-byte pages).
 
 <figure>
 <img src="figures/paging.svg" alt="Address 0x1234 splits into page 0x1 and offset 0x234. A page table maps page 0 to frame 7 read-only, page 1 to frame 3 writable, page 2 to disk, and page 3 has no entry. On the right, four cases that cause a page fault.">
 <figcaption><b>Figure 15.5</b> Splitting an address, and the four cases in which accessing a page causes a fault.</figcaption>
 </figure>
 
-Looking up the page table on every access would be slow. The CPU keeps recent translations in a small cache called
-the **TLB** (translation lookaside buffer). Scattered reads over a large array need many different pages, miss
-the TLB, and pay for a table lookup. That cost is part of the larger numbers in figure 15.1.
+Walking multi-level page tables in DRAM on every load would multiply memory latency. Processors therefore cache
+recent VPN-to-PFN translations in the **translation lookaside buffer** (TLB). Random accesses across large
+working sets exceed TLB reach, triggering hardware page-table walks whose latency compounds into the DRAM figures
+of Figure 15.1.
 
-When the translation cannot complete, the CPU stops the program and hands control to the kernel. This is a
-**page fault**. The kernel decides what kind it is:
+When the MMU cannot resolve a virtual address or detects a permission violation, it raises a hardware exception
+that traps into the kernel: a **page fault**. The kernel classifies and handles four cases:
 
-- **Invalid**: the address is not mapped at all. The program is stopped, usually with a segmentation fault.
-- **Protection**: the page is mapped, but the access is not allowed, such as a write to a read-only page.
-- **Major**: the page is valid, but its contents are on disk. The kernel reads it in and restarts the access.
-  This takes milliseconds.
-- **Minor**: the kernel can fix the mapping without reading the disk. Examples are the first write to a freshly
-  allocated page, or a write to a page shared after `fork` (copy-on-write). This takes microseconds.
+- **Invalid:** the virtual address has no valid mapping; the kernel delivers `SIGSEGV` (segmentation fault) and
+  terminates the process.
+- **Protection:** the page is mapped, but the operation violates its permissions (such as writing to a read-only
+  text or copy-on-write page).
+- **Major:** the mapping is valid, but the page frame resides on backing storage; the kernel schedules disk I/O
+  (millisecond latency) before restarting the faulting instruction.
+- **Minor:** the kernel satisfies the fault without disk I/O (microsecond latency), such as zero-filling a
+  demand-allocated anonymous page or copying a shared page after `fork` (copy-on-write).
 
 <p class="listing"><b>Listing 15.9</b> The address arithmetic and the fault model (lines 6 to 35). <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/bin/os_paging.rs">src/bin/os_paging.rs</a></p>
 
@@ -572,24 +574,26 @@ millions of events per second cannot afford one system call per event; batching 
 
 ## Summary
 
-- Reading memory on this laptop took 2.2 ns from L1 and up to 146 ns from main memory. Caches move 64-byte lines.
-- A bump allocator hands out bytes from an offset and frees everything at once. `(offset + align - 1) & !(align - 1)` rounds an offset up to a power-of-two alignment.
-- Reading in order uses whole cache lines and lets the CPU prefetch. Scattered reads were about seven times
-  slower when independent, and about 114 ns each when each depended on the last.
-- The `cs_locality` benchmark mostly measured a division instruction. Change one thing at a time before
-  explaining a number.
-- False sharing slows threads that write different variables in one cache line. `#[repr(align(64))]` gave each
-  counter its own line and made the loop up to ten times faster.
-- A virtual address is a page number and an offset. The page table maps pages to frames, the TLB caches the
-  mappings, and a page fault hands control to the kernel.
-- Round robin gives each task one quantum in turn. A shorter quantum lowers waiting but adds switches.
-- A system call costs hundreds of nanoseconds here. macOS answers `getpid` without one, so the benchmark measured
-  a cached value.
+- Dependent memory loads span nearly two orders of magnitude on this processor: 2.2 ns from L1 cache versus up to
+  146 ns from DRAM, with hardware caches transferring 64-byte cache lines.
+- A bump allocator services allocations in O(1) time by advancing a monotonic offset and reclaims the entire arena
+  in a single reset; `(offset + align - 1) & !(align - 1)` rounds offsets up to power-of-two alignments.
+- Sequential traversal achieves full cache-line utilization and enables hardware prefetching, whereas scattered
+  access degrades throughput by 7x for independent loads and over an order of magnitude more for dependent chains.
+- Microbenchmarking requires isolating one variable at a time: `cs_locality` initially measured integer modulo
+  division latency rather than cache-miss overhead.
+- False sharing triggers cross-core cache-line invalidation traffic when threads mutate distinct variables within
+  the same 64-byte cache line; padding counters with `#[repr(align(64))]` eliminated contention and accelerated
+  the benchmark up to 10x.
+- Virtual-to-physical address translation splits addresses into virtual page numbers and page offsets, cached by
+  the TLB and backed by page tables and kernel page-fault handlers.
+- Round-robin scheduling prevents starvation by cycling runnable threads across fixed quanta, trading
+  responsiveness against context-switch overhead.
+- A true user-to-kernel system-call transition costs hundreds of nanoseconds (`getppid` at ~594 ns); macOS libc
+  caches `getpid` in user space (~3.1 ns), underscoring the necessity of verifying what a benchmark actually
+  exercises.
 
 </div>
-
-In Chapter 16, we turn to concurrency: threads, atomic operations, memory ordering, and the synchronization
-primitives that keep concurrent code correct.
 
 ## Exercises
 

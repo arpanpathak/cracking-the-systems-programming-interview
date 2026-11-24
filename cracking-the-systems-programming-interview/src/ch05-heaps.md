@@ -15,18 +15,16 @@ This chapter covers
 
 </div>
 
-Alongside vectors, strings, and hash maps from Chapter 3, the binary heap is an essential collection for priority-driven workloads. A heap maintains dynamic access to the extreme element (maximum or minimum) while supporting efficient insertions and removals.
+Priority-driven workloads require continuous access to the extreme element of a dynamic multiset without paying the $O(n)$ maintenance cost of keeping the entire collection sorted. A **binary heap** resolves this tradeoff by enforcing a partial ordering invariant over a complete binary tree packed contiguously in a vector, supporting $O(1)$ extremum inspection and $O(\log n)$ insertions and deletions.
 
-This capability underpins top-k ranking, task scheduling by priority, and streaming order-statistic queries. We implement three programs in this chapter: two variants that extract the `k` most frequent items, and a streaming median tracker.
+This priority-queue abstraction underpins top-$k$ frequency selection, priority scheduling, and streaming order-statistic maintenance. The sections below formalize the implicit array representation, sift-up and sift-down invariant restoration, and Rust's `BinaryHeap` API before developing three complete applications: unbounded top-$k$ selection, $k$-bounded top-$k$ word ranking, and dual-heap streaming median maintenance.
 
-Following the structure of Chapter 3, we examine the memory representation and core operations first, then walk through each implementation.
+Four formal definitions establish the terminology:
 
-Four definitions establish the terminology:
-
-- A **binary tree** is a hierarchical structure in which every node has at most two children (left and right); the single node with no parent is the **root**.
-- A **max-heap** is a complete binary tree satisfying the heap property: every parent is greater than or equal to both of its children, placing the maximum element at the root.
-- A **min-heap** reverses the ordering invariant so every parent is less than or equal to its children, placing the minimum element at the root.
-- The **median** of a collection of numbers is the middle element in sorted order (or the arithmetic mean of the two middle elements when the count is even).
+- A **binary tree** is a hierarchical structure in which every node has at most two children (left and right); the unique node without a parent is the **root**.
+- A **max-heap** is a complete binary tree satisfying the max-heap invariant: every parent key is greater than or equal to the keys of both children, placing the global maximum at the root.
+- A **min-heap** inverts this ordering invariant so every parent key is less than or equal to its children's keys, placing the global minimum at the root.
+- The **median** of a finite multiset of real numbers is its middle element in sorted order when cardinality is odd, or the arithmetic mean of the two middle elements when cardinality is even.
 
 ## 5.1 A tree stored in a vector
 
@@ -101,7 +99,7 @@ Rather than offering a separate min-heap type, the standard library provides the
 
 Callers wrap values on insertion (`heap.push(Reverse(x))`) and destructure the wrapper on extraction (`if let Some(Reverse(x)) = heap.pop()`).
 
-With the data structure and Rust APIs established, we examine three complete heap applications.
+With the implicit array layout and `BinaryHeap` interface established, the following three sections apply heaps to frequency ranking and streaming order statistics.
 
 ## 5.4 The k most frequent numbers
 
@@ -291,17 +289,15 @@ The final test verifies the size-balance invariant directly, asserting that the 
 
 ## Summary
 
-- A binary heap packs a complete binary tree level by level into a `Vec`, placing the children of index `i` at `2i + 1` and `2i + 2` and its parent at `(i - 1) / 2`.
-- In a max-heap, every parent is at least as large as its children, keeping the maximum element at index 0 for O(1) `peek`.
-- `push` appends to the tail and sifts upward; `pop` moves the tail to the root and sifts downward through the larger child. Both run in O(log n) time.
-- Rust's `BinaryHeap` is a max-heap; wrapping items in `std::cmp::Reverse` converts it into a min-heap.
-- Tuples compare lexicographically from left to right, enabling `(count, value)` priority ordering without custom comparator types.
-- Selecting the top `k` items with a `k`-bounded min-heap reduces heap memory from O(u) to O(k) and heap work from O(u log u) to O(u log k).
-- Pairing a max-heap (`low`) with a min-heap (`high`) maintains a streaming median in O(log n) per insertion and O(1) per query.
+- A binary heap embeds a complete binary tree level by level in a contiguous `Vec`, locating the children of index `i` at `2i + 1` and `2i + 2` and its parent at `(i - 1) / 2`.
+- In a max-heap, every parent key dominates its children, exposing the global maximum at index `0` for $O(1)$ `peek`.
+- `push` appends to the tail and restores the invariant via sift-up; `pop` promotes the tail element to index `0` and restores the invariant via sift-down through the larger child. Both operations run in $O(\log n)$ worst-case time.
+- Rust's `BinaryHeap<T>` implements a max-heap; wrapping elements in the zero-cost `std::cmp::Reverse<T>` adapter yields a min-heap.
+- Lexicographical tuple ordering enables `(count, value)` priority keys without custom comparator structs.
+- Bounding a min-heap to $k + 1$ entries during top-$k$ selection reduces heap space from $O(u)$ to $O(k)$ and heap work from $O(u \log u)$ to $O(u \log k)$.
+- Partitioning a stream across a lower max-heap (`low`) and an upper min-heap (`high`) maintains the running median in $O(\log n)$ time per insertion and $O(1)$ time per query.
 
 </div>
-
-Chapter 6 turns to recursion and dynamic programming, solving problems with overlapping subproblems by caching intermediate results and concluding with parallel workloads suited to GPU execution.
 
 ## Exercises
 

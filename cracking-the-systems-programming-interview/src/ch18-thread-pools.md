@@ -17,7 +17,7 @@ This chapter covers
 
 Spawning an operating-system thread incurs measurable latency and memory overhead: the kernel must allocate a thread control block, map a call stack, and insert the thread into its scheduler queues. For workloads consisting of thousands of short-lived tasks, creating a dedicated thread per task spends more time in thread lifecycle management than in actual computation.
 
-A **thread pool** amortizes that cost by spawning a fixed cohort of **worker** threads at startup and reusing them across tasks. Each worker pulls a job from a shared queue, executes it to completion, and blocks for the next item. Structurally, this combines the concurrent queue patterns of Chapter 17 with a managed set of consumer threads.
+A **thread pool** amortizes that cost by spawning a fixed cohort of **worker** threads at startup and reusing them across tasks. Each worker dequeues a job from a shared work queue, executes it to completion, and blocks until the next job arrives. Structurally, a thread pool composes a concurrent work queue with a managed set of consumer threads.
 
 The sections below evolve a thread pool through successive iterations, each addressing a concrete concurrency, lifecycle, or fault-isolation defect exposed by the previous design.
 
@@ -73,7 +73,7 @@ impl ThreadPool {
 }
 ```
 
-`execute` enqueues a boxed job asynchronously without waiting for a worker to pick it up. `join` consumes `self` by value, preventing further submissions after shutdown begins. Dropping `self.sender` closes the channel so that workers drain any remaining jobs, observe `Err` from `recv()`, and exit before `w.join()` reaps each thread.
+`execute` enqueues a boxed job asynchronously without waiting for a worker to dequeue it. `join` consumes `self` by value, preventing further submissions after shutdown begins. Dropping `self.sender` closes the channel so that workers drain any remaining jobs, observe `Err` from `recv()`, and exit before `w.join()` reaps each thread.
 
 In `main`, 10,000 printing jobs are submitted and joined:
 
@@ -194,7 +194,7 @@ The `dropping_the_pool_finishes_queued_jobs` test constructs a pool inside an in
 
 ## 18.5 Version 4: surviving a panicking job
 
-Version 3 leaves one fault-isolation gap: an unhandled panic inside a job unwinds out of `worker_loop` and terminates that worker thread. Each panicking job permanently reduces the pool's capacity without notifying the caller; once every worker has died, queued jobs accumulate indefinitely.
+Version 3 leaves one fault-isolation gap: an unhandled panic inside a job unwinds out of `worker_loop` and terminates that worker thread. Each panicking job permanently reduces the pool's capacity without notifying the caller; once every worker thread has terminated, queued jobs accumulate indefinitely.
 
 Version 4 isolates job panics inside each worker (figure 18.3).
 
@@ -203,7 +203,7 @@ Version 4 isolates job panics inside each worker (figure 18.3).
 <figcaption><b>Figure 18.3</b> A job's panic stops at <code>catch_unwind</code>, and the worker lives on.</figcaption>
 </figure>
 
-Animation 18.2 contrasts versions 3 and 4 under repeated job panics: version 4 records each failure while keeping all workers alive, whereas version 3 loses one thread per panic until no workers remain.
+Animation 18.2 contrasts versions 3 and 4 under repeated job panics: version 4 records each failure while preserving the full worker cohort, whereas version 3 loses one thread per panic until no workers remain.
 
 <figure class="anim">
 <video class="motion" src="figures/ch18-pool-panic.mp4" autoplay loop muted playsinline preload="metadata" aria-label="Four worker robots, a channel, and counters for completed and panicked jobs. In version 4, each worker runs jobs inside catch_unwind; when worker 2's job panics, the panic is caught and counted, and all four workers keep taking jobs. In version 3, each panic ends its worker's thread, and the robot greys out; after four panics no worker is left, and jobs pile up in the channel while a clock runs." data-chapters="[[0.0, &quot;version 4&quot;], [14.04, &quot;version 3&quot;]]"><img src="figures/ch18-pool-panic.gif" alt="Four worker robots, a channel, and counters for completed and panicked jobs. In version 4, each worker runs jobs inside catch_unwind; when worker 2's job panics, the panic is caught and counted, and all four workers keep taking jobs. In version 3, each panic ends its worker's thread, and the robot greys out; after four panics no worker is left, and jobs pile up in the channel while a clock runs."></video>
@@ -325,7 +325,7 @@ task 3 on ThreadId(5)
 
 In this run, one worker executed five of the eight tasks because printing a single line finishes quickly enough for an active thread to reclaim the mutex before sleeping threads are scheduled. Thread pools do not guarantee uniform task distribution across workers.
 
-Note that `Drop` invokes `worker.join().unwrap()`; if a worker panicked, unwrapping inside `Drop` would trigger a second panic (potentially aborting the process during unwinding). Later variants discard the join result with `let _ = worker.join();`.
+Because `Drop` invokes `worker.join().unwrap()`, a panicked worker would trigger a secondary panic during unwinding (potentially aborting the process). Later variants discard the join status with `let _ = worker.join();`.
 
 ### 18.6.2 A bounded queue and results
 
@@ -354,7 +354,7 @@ The combined architecture, pairing a bounded submission queue with per-job resul
 <figcaption><b>Figure 18.4</b> A bounded queue slows the caller down when the workers fall behind. Each job carries its own channel back to the caller.</figcaption>
 </figure>
 
-The `submit` method allocates a dedicated one-shot channel for each task, moves the result `Sender` into the worker closure, and returns the `Receiver` immediately so the caller can invoke `recv()` when the result is needed. A handle representing a value that will become available later is known as a **future**, a concept developed further in Chapter 22.
+The `submit` method allocates a dedicated one-shot channel for each task, moves the result `Sender` into the worker closure, and returns the `Receiver` immediately so the caller can invoke `recv()` when the result is required. A handle representing a value that will resolve asynchronously is known as a **future**, the foundational abstraction underlying asynchronous runtimes.
 
 ```text
 $ cargo run --bin thread_pool_with_back_pressure
@@ -537,8 +537,6 @@ test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 135 filtered out
 - Tagging inputs with sequence indices allows a parallel map to reassemble out-of-order worker results in exact input order.
 
 </div>
-
-In Chapter 19, the focus shifts from intra-process concurrency to resilience across process and network boundaries: rate limiting, retry policies, and idempotent execution.
 
 ## Exercises
 

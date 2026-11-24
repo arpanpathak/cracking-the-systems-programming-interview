@@ -6,39 +6,33 @@
 
 This chapter covers
 
-- Readiness as a level and as an edge, and how epoll's ready list implements both
-- Three handlers measured: read once under each mode, and read until `EAGAIN`
-- The stall: data left in a socket that no event will report
-- Why edge-triggered mode suits writes, and how a loop keeps one busy socket from starving the rest
-- `EPOLLONESHOT` for a loop shared by several threads
-- `EPOLLEXCLUSIVE` and `SO_REUSEPORT` for many threads waiting on one listener
+- Readiness semantics as a persistent level versus a state-transition edge, and their implementation on the `epoll` ready list
+- Quantitative comparison of three socket handlers: single-read level-triggered, single-read edge-triggered, and drain-to-`EAGAIN` edge-triggered
+- The edge-triggered stall condition: unread kernel buffer data with no future readiness notification
+- Write-readiness efficiency under `EPOLLET` and bounded drain quotas to prevent single-connection starvation
+- Serializing per-socket dispatch across shared-instance worker threads with `EPOLLONESHOT`
+- Mitigating the accept thundering herd across per-thread event loops with `EPOLLEXCLUSIVE` and `SO_REUSEPORT`
 
 </div>
 
-The echo server in Section 20.4 used `epoll` in its default **level-triggered** mode. Linux `epoll` also supports an **edge-triggered** mode, enabled with the `EPOLLET` flag, which Section 20.6 noted requires draining each socket until `EAGAIN`. In this chapter, we measure the exact event counts produced by both modes to demonstrate why draining is mandatory, and then examine two synchronization flags for multithreaded event loops: `EPOLLONESHOT` and `EPOLLEXCLUSIVE`.
+An I/O multiplexer reports socket readiness under one of two semantic contracts: **level-triggered** notification, which reports a descriptor on every `epoll_wait` invocation while its readiness predicate remains true, or **edge-triggered** notification (`EPOLLET`), which reports a descriptor once per arrival transition. Edge-triggered mode reduces kernel re-evaluation overhead and permits persistent `EPOLLOUT` registration, but it imposes a strict non-blocking drain invariant: every handler must consume readiness until `EAGAIN`, or residual bytes remain stranded in the kernel receive buffer with no subsequent wakeup.
 
-Because `epoll_edge` relies on Linux `epoll`, its sample output comes from a Linux container. The program writes 10,000 bytes into a socket and records the events and byte counts observed by each handler.
+Because `epoll` is a Linux kernel subsystem, the accompanying `epoll_edge` benchmark runs inside a Linux container. It injects 10,000 bytes into a socket pair to measure exact event and byte counts across three handler designs, then verifies the concurrency guarantees of `EPOLLONESHOT` and `EPOLLEXCLUSIVE`.
 
 ## 25.1 Levels and edges
 
-A socket is **readable** while its receive buffer holds at least one byte. That is a state, or a **level**:
-it stays true until a read empties the buffer. The moment new bytes arrive is a change, or an **edge**.
+A socket satisfies the **readable** predicate whenever its kernel receive buffer contains at least one unread byte (or an EOF/error condition is pending). This predicate is a persistent state, or **level**: it remains asserted until read calls empty the buffer. The arrival of new bytes from the peer or network stack constitutes a state transition, or **edge**.
 
-Level-triggered epoll reports the level: every `epoll_wait` returns the socket while it is readable.
-Edge-triggered epoll reports the edge: one event when bytes arrive, and no more until more bytes arrive.
+Level-triggered `epoll` reports the level: each call to `epoll_wait` returns the descriptor as long as unread bytes remain. Edge-triggered `epoll` reports only the edge: a single notification fires upon arrival, and no further event is delivered until additional bytes arrive.
 
-The difference comes from the ready list, introduced in section 20.4 (figure 25.1). When bytes arrive, a
-callback that epoll registered on the socket adds the socket to the ready list. `epoll_wait` takes entries
-off the list and returns them. For a level-triggered socket, the kernel puts the entry back on the list,
-and the next `epoll_wait` checks the socket again. It reports the socket only if it is still readable. An
-edge-triggered entry is not put back. Only the callback, on the next arrival, can add it again.
+This divergence arises directly from how the kernel maintains the `epoll` **ready list** introduced in Section 20.4 (Figure 25.1). When data arrives on a monitored socket, a kernel wait-queue callback enqueues the descriptor onto the `epoll` instance's ready list. `epoll_wait` dequeues ready entries and copies them to user space. For a level-triggered entry, the kernel reinserts the descriptor onto the ready list before returning, causing the subsequent `epoll_wait` to re-poll the socket's readiness predicate and report it again if unread bytes remain. For an edge-triggered entry, the kernel does not reinsert the descriptor; only a future arrival callback can enqueue it again.
 
 <figure>
 <img src="figures/ch25-ready-list.svg" alt="Bytes arrive on the socket; epoll's callback adds the fd to the ready list; epoll_wait reports the fd. A level-triggered fd is put back on the ready list and checked again at the next epoll_wait. An edge-triggered fd is off the list until the next arrival.">
 <figcaption><b>Figure 25.1</b> The ready list. A level-triggered entry goes back on the list after each report. An edge-triggered entry waits for the next arrival.</figcaption>
 </figure>
 
-The table below compares the events reported by each mode when 10,000 bytes arrive at once and the handler reads 4,096 bytes per event:
+The table below traces event delivery when 10,000 bytes arrive in a single burst and a handler reads at most 4,096 bytes per notification:
 
 | Step | Bytes in the buffer | Level-triggered | Edge-triggered |
 |---|---|---|---|
@@ -47,12 +41,11 @@ The table below compares the events reported by each mode when 10,000 bytes arri
 | handler reads 4,096 | 1,808 | event: still readable | n/a |
 | handler reads 1,808 | 0 | nothing | n/a |
 
-In edge-triggered mode, 5,904 bytes remain unread in the socket buffer after the first event, and no further event will be delivered until the peer transmits additional data. If the peer is waiting for a reply to the bytes already sent, neither side makes progress and the connection stalls indefinitely. Edge-triggered mode therefore requires a handler that loops on `read` until it observes `EAGAIN`, confirming that the receive buffer is empty.
+Under edge-triggered mode, 5,904 bytes remain unread in the receive buffer after the first event, yet the descriptor is absent from the ready list. If the peer is awaiting a protocol response to those 10,000 bytes before transmitting again, both endpoints block indefinitely in a classic liveness stall. Correctness under `EPOLLET` therefore requires a non-blocking socket drained in a loop until `read` returns `EAGAIN`, proving that the receive buffer is empty.
 
 ## 25.2 Three handlers, measured
 
-Epoll is three system calls. `epoll_event` is the record that carries a descriptor's flags in and its
-events out:
+The Linux `epoll` interface comprises three system calls and the `epoll_event` descriptor structure, which carries interest flags into `epoll_ctl` and triggered events out of `epoll_wait`:
 
 ```rust
 struct epoll_event {
@@ -77,7 +70,7 @@ unsafe extern "C" {
 }
 ```
 
-The program wraps the epoll instance in a type that closes it when dropped:
+The `Epoll` wrapper owns the `epoll` file descriptor and closes it deterministically on drop:
 
 ```rust
 {{#include ../../rust-interview-lab/src/bin/epoll_edge.rs:11:76}}
@@ -85,11 +78,9 @@ The program wraps the epoll instance in a type that closes it when dropped:
 }
 ```
 
-`epoll_create1(EPOLL_CLOEXEC)` creates the instance with close-on-exec set, as section 24.4 recommends.
-`control` fills an `epoll_event` with the flags and with the descriptor as the event's data, then calls
-`epoll_ctl`. `wait` returns only the number of events, because each run watches a single socket.
+`epoll_create1(EPOLL_CLOEXEC)` allocates the instance with close-on-exec set atomically (Section 24.4). `control` populates an `epoll_event` with the requested flag bitmask and descriptor identifier before invoking `epoll_ctl`. Because each benchmark monitors a single descriptor, `wait` returns only the event count.
 
-The two handlers differ in one loop:
+The two read handlers differ solely by the presence of the drain loop:
 
 ```rust
 mod linux {
@@ -99,10 +90,9 @@ mod linux {
 }
 ```
 
-`read_once` makes one `read` of up to 4,096 bytes. `read_until_eagain` reads until the socket is empty. On a
-non-blocking socket, `EAGAIN` reaches Rust as `io::ErrorKind::WouldBlock`, which is the loop's normal exit.
+`read_once` issues a single 4,096-byte `read`, whereas `read_until_eagain` loops until the non-blocking socket returns `EAGAIN`, surfaced in Rust as `io::ErrorKind::WouldBlock`.
 
-`run` connects a pair of Unix sockets and writes the bytes into one end. Then it handles events on the other end until 100 ms pass without one:
+`run` allocates a connected Unix domain socket pair, writes the 10,000-byte payload into one endpoint, and dispatches readiness events on the non-blocking peer until a 100 ms `epoll_wait` timeout expires:
 
 ```rust
 mod linux {
@@ -112,18 +102,16 @@ mod linux {
 }
 ```
 
-`UnixStream::pair` returns two sockets connected to each other, which keeps the test off the network. The
-reading end is non-blocking, as epoll requires. `handler` is a function pointer, so one `run` measures
-both handlers.
+`UnixStream::pair` isolates kernel socket-buffer semantics from network timing jitter. Setting the reading endpoint to non-blocking mode satisfies the precondition for `read_until_eagain`, and parameterizing `run` by a function pointer allows identical harness execution across all three configurations.
 
-Animation 25.1 follows the three runs.
+Animation 25.1 visualizes the three runs side by side.
 
 <figure class="anim">
 <video class="motion" src="figures/ch25-edge.mp4" autoplay loop muted playsinline preload="metadata" aria-label="A socket's receive buffer as a gauge of bytes, a ready list, and an event loop robot. Level-triggered with one read per event: 10,000 bytes arrive and the socket joins the ready list. epoll_wait returns it, the robot reads 4,096, and the socket goes back on the list because 5,904 bytes remain. Two more events read 4,096 and 1,808, and the buffer is empty. Edge-triggered with reads until EAGAIN: one event, three reads of 4,096, 4,096, and 1,808, then EAGAIN, and the buffer is empty. Edge-triggered with one read per event: one event, one read of 4,096, and the socket is not put back. The robot sleeps in epoll_wait while 5,904 bytes sit in the buffer; the 100 ms timeout passes with no event." data-chapters="[[0.0, &quot;level-triggered&quot;], [32.11, &quot;edge, drained&quot;], [49.21, &quot;edge, read once&quot;]]"><img src="figures/ch25-edge.gif" alt="A socket's receive buffer as a gauge of bytes, a ready list, and an event loop robot. Level-triggered with one read per event: 10,000 bytes arrive and the socket joins the ready list. epoll_wait returns it, the robot reads 4,096, and the socket goes back on the list because 5,904 bytes remain. Two more events read 4,096 and 1,808, and the buffer is empty. Edge-triggered with reads until EAGAIN: one event, three reads of 4,096, 4,096, and 1,808, then EAGAIN, and the buffer is empty. Edge-triggered with one read per event: one event, one read of 4,096, and the socket is not put back. The robot sleeps in epoll_wait while 5,904 bytes sit in the buffer; the 100 ms timeout passes with no event."></video>
 <figcaption><b>Animation 25.1</b> The same 10,000 bytes under three handlers. An edge-triggered socket that is not drained stays off the ready list with data in it.</figcaption>
 </figure>
 
-The output matches the table in section 25.1:
+The container execution reproduces the analytical table from Section 25.1 exactly:
 
 ```text
 10000 bytes written into a socket; one handler call per epoll event
@@ -133,28 +121,18 @@ edge-triggered,  read once  events 1, bytes per event [4096], left unread 5904
 edge-triggered,  to EAGAIN  events 1, bytes per event [10000], left unread 0
 ```
 
-Level-triggered mode with one read per event delivered every byte, in three events. Edge-triggered mode
-with the same handler left 5,904 bytes unread. The drained handler took one event for all 10,000 bytes.
+Level-triggered single-read delivery required three `epoll_wait` cycles to drain all 10,000 bytes. Edge-triggered single-read delivery stalled with 5,904 bytes stranded in the kernel buffer, whereas draining to `EAGAIN` consumed all 10,000 bytes in a single event notification.
 
 ### 25.2.1 Why use edge-triggered mode
 
-Edge-triggered mode reports each arrival once, which saves work in two places.
+Edge-triggered notification eliminates redundant kernel work in two hot paths:
 
-- **Fewer re-checks.** A level-triggered loop gets the same socket back from every `epoll_wait` until it
-  is drained. The kernel re-checks every such socket on every call.
-- **Writes.** A socket is writable whenever its send buffer has room, which is nearly always. Section 20.4
-  registered `EPOLLOUT` only while a reply was pending, because a level-triggered `EPOLLOUT` would report
-  the socket on every call. In edge-triggered mode, a loop registers `EPOLLIN | EPOLLOUT | EPOLLET` once.
-  The writable edge comes only after a `write` has returned `EAGAIN` and the buffer has drained. That is when the loop has a reply to finish.
+- **Elimination of ready-list re-polling.** Under level-triggered mode, every partially drained descriptor is reinserted onto the ready list and re-polled by the kernel on each `epoll_wait` invocation. Under `EPOLLET`, each arrival transition produces exactly one notification.
+- **Persistent `EPOLLOUT` registration.** A TCP socket's send buffer almost always has available capacity, meaning the socket is continuously writable. Under level-triggered mode (Section 20.4), an event loop must dynamically add `EPOLLOUT` via `epoll_ctl` when a write blocks and remove it once flushed, otherwise `epoll_wait` returns immediately on every iteration in a busy spin. Under edge-triggered mode, the loop registers `EPOLLIN | EPOLLOUT | EPOLLET` once at connection setup; a write-readiness edge fires only after a `write` returns `EAGAIN` and the kernel subsequently drains space in the send buffer.
 
-The `mio` crate, which Tokio uses for its I/O on Linux, registers every socket edge-triggered for these
-reasons.
+For these reasons, the `mio` I/O abstraction layer underlying the Tokio runtime registers Linux sockets in edge-triggered mode by default.
 
-Draining to `EAGAIN` has a cost of its own. A client that sends faster than the loop reads keeps the
-handler in its read loop, and every other socket waits. A production loop caps the bytes it reads per event.
-It keeps the sockets it stopped early on a list of its own, and returns to them after serving the other
-events. Tokio's tasks do the same with a budget: after a fixed amount of work, a task yields even if its
-socket still has data.
+Unbounded draining to `EAGAIN` introduces a fairness hazard: a high-rate peer transmitting faster than the event loop can consume keeps the handler trapped inside its read loop, starving every other socket on the same thread. Production event loops therefore enforce a per-event byte quota (Figure 25.2). When a handler reaches its quota without observing `EAGAIN`, it yields the socket onto an internal user-space continuation queue, services the remaining ready descriptors from `epoll_wait`, and revisits the continuation queue on the next cycle. Tokio applies this same cooperative budgeting mechanism across asynchronous tasks, forcing a task to yield after consuming its per-poll work budget even when its socket remains readable.
 
 <figure>
 <img src="figures/ch25-fair-drain.svg" alt="epoll_wait returns ready sockets. The handler reads up to a cap, for example 64 KiB. If the socket reports EAGAIN, it is drained. If the cap is reached with more data, the socket goes on a still-readable list. The loop serves the other ready sockets, then the still-readable list, then calls epoll_wait again.">
@@ -163,17 +141,13 @@ socket still has data.
 
 ## 25.3 Several threads on one epoll: `EPOLLONESHOT`
 
-A server can run several threads that all call `epoll_wait` on one epoll instance. In edge-triggered mode,
-a socket can then be handled by two threads at once:
+When a pool of worker threads invokes `epoll_wait` concurrently on a single shared `epoll` instance, edge-triggered mode permits a race condition that dispatches the same socket to two threads simultaneously:
 
-1. Bytes arrive, and thread A wakes with the socket and starts reading.
-2. More bytes arrive while A is still reading. The arrival is a new edge, so the socket is ready again.
-3. Thread B wakes with the same socket and reads too. A and B each get part of the stream, and the order
-   between their parts is lost.
+1. Data arrives on a socket; Thread A returns from `epoll_wait` with that descriptor and begins reading.
+2. While Thread A is still servicing the socket, a second packet arrives, generating a new readiness edge and re-enqueuing the descriptor on the ready list.
+3. Thread B returns from `epoll_wait` with the identical descriptor and invokes `read` concurrently. The two threads interleave chunks of the same byte stream, corrupting framing and message ordering.
 
-**`EPOLLONESHOT`** disables a descriptor in the interest list after it reports one event. It stays
-registered, but reports nothing until the thread that handled it calls `epoll_ctl` with `EPOLL_CTL_MOD` to
-re-arm it. Only one thread can hold the socket between the event and the re-arm.
+The **`EPOLLONESHOT`** flag prevents concurrent per-socket dispatch by atomically disabling the descriptor in the `epoll` interest list immediately after delivering a single event. The descriptor remains registered, but the kernel suppresses all subsequent notifications until the owning thread finishes processing and explicitly re-arms it with `epoll_ctl(..., EPOLL_CTL_MOD, ...)`. Exclusivity is thereby guaranteed between event delivery and re-arming.
 
 ```rust
 mod linux {
@@ -187,28 +161,20 @@ mod linux {
 EPOLLONESHOT: first write 1 event, second write 0 events, after re-arming 1 event
 ```
 
-The second write arrived while the descriptor was disabled, and `epoll_wait` timed out. The re-arm found the
-socket readable, so the next `epoll_wait` reported it at once. No data is lost while a descriptor is
-disabled. It waits in the socket's buffer for the re-arm.
+The second write arrived while the descriptor was disarmed, causing `epoll_wait` to time out with zero events. Upon re-arming via `EPOLL_CTL_MOD`, the kernel detected the pending readable data and delivered the event immediately. Disarming a descriptor never discards incoming data; bytes remain buffered in the kernel receive queue until the descriptor is re-armed and drained.
 
 ## 25.4 Many waiters on one listener: `EPOLLEXCLUSIVE`
 
-A common server design gives each thread its own epoll instance, and adds the same listening socket to all
-of them. When one connection arrives, the listener's callback runs for every instance, and every thread
-wakes. One of them wins `accept`. The others get `EAGAIN` and go back to sleep. With 64 threads, one
-connection costs 64 wakeups and 63 wasted system calls. This is the **thundering herd**.
+An alternative multithreaded server architecture assigns each worker thread a private `epoll` instance and registers the shared listening socket on every instance. When an incoming TCP connection completes the three-way handshake, the listener's wait-queue callback notifies every registered `epoll` instance, waking all worker threads simultaneously. One thread succeeds in `accept`; the remaining threads receive `EAGAIN` and return to sleep. On a 64-core server, a single incoming connection triggers 64 thread wakeups and 63 wasted `accept` system calls, a contention pathology known as the **thundering herd**.
 
-**`EPOLLEXCLUSIVE`**, added in Linux 4.5, marks an instance's interest in the listener as exclusive. When a
-connection arrives, the kernel wakes one of the exclusive waiters, or a few, instead of all of them
-(figure 25.3). The flag is allowed only with `EPOLL_CTL_ADD`.
+Introduced in Linux 4.5, **`EPOLLEXCLUSIVE`** (permitted only with `EPOLL_CTL_ADD`) registers an `epoll` instance as an exclusive waiter on the underlying file wait queue. When a connection arrives on the listener, the kernel wakes a single exclusive waiter (or a small bounded subset) rather than broadcasting to every sleeping thread (Figure 25.3).
 
 <figure>
 <img src="figures/ch25-herd.svg" alt="Left: with EPOLLIN, one connection on the listener wakes threads 1 to 4. Right: with EPOLLIN and EPOLLEXCLUSIVE, the same connection wakes thread 1, and threads 2 to 4 keep sleeping.">
 <figcaption><b>Figure 25.3</b> One connection and four waiting threads, with and without <code>EPOLLEXCLUSIVE</code>.</figcaption>
 </figure>
 
-`woken_by_one_connection` starts the threads, waits until each has registered the listener, connects one
-client, and counts the threads whose `epoll_wait` returned an event:
+`woken_by_one_connection` spawns four worker threads, synchronizes their `epoll_ctl` registrations with a `Barrier`, initiates one client connection, and tallies how many threads return from `epoll_wait`:
 
 ```rust
 mod linux {
@@ -217,8 +183,7 @@ mod linux {
 }
 ```
 
-The `Barrier` holds the main thread until every waiter has called `epoll_ctl`. The 50 ms sleep gives each
-waiter time to block in `epoll_wait` before the client connects.
+The `Barrier` guarantees that all workers have registered the listener prior to client connection, and the 50 ms delay allows each worker to block inside `epoll_wait` before the SYN arrives.
 
 ```text
 4 threads wait on one listener, and one client connects:
@@ -226,10 +191,7 @@ waiter time to block in `epoll_wait` before the client connects.
   with EPOLLEXCLUSIVE:    1 thread woke
 ```
 
-`SO_REUSEPORT` solves the same problem another way. Each thread creates its own listening socket on the same
-port, with the option set before `bind`. The kernel then assigns each new connection to one of the sockets,
-chosen by a hash of the client's address and port. No two threads share a listener, so none is woken for
-another's connection.
+An orthogonal kernel-level solution is **`SO_REUSEPORT`**: each worker thread opens an independent listening socket bound to the identical IP address and port with `SO_REUSEPORT` enabled prior to `bind`. The kernel hashes the incoming packet's four-tuple to route each new connection directly to one listener's accept queue. Because no two threads share a listening descriptor, cross-thread wakeup contention is eliminated entirely.
 
 ## 25.5 The complete program
 
@@ -257,52 +219,37 @@ EPOLLONESHOT: first write 1 event, second write 0 events, after re-arming 1 even
 ## 25.6 Questions that come up
 
 **"A server under edge-triggered epoll sometimes stops answering one client, while CPU use is zero. What should be checked first?"**
-Verify that every read loop drains the socket until `EAGAIN`. A loop that stops after a single buffer fill or a fixed byte count leaves unread data in the kernel buffer with no subsequent event to report it.
+Audit every `read` and `accept` handler to confirm that it loops until `EAGAIN` (or re-enqueues the descriptor on an application-level continuation list when hitting a drain cap). Terminating a read handler after a fixed buffer fill leaves unread bytes stranded in the kernel receive buffer with no future edge event to trigger dispatch.
 
 **"Does edge-triggered mode apply to `accept`?"**
-Yes. An edge-triggered listener reports once when connections arrive, so the handler calls `accept` until
-`EAGAIN`, as `accept_ready` in section 20.4 does.
+Yes. If multiple connections arrive simultaneously in the listen backlog, an edge-triggered listener may fire a single `EPOLLIN` notification; the handler must therefore call `accept` in a loop until `EAGAIN`, matching `accept_ready` in Section 20.4.
 
 **"What happens to an edge-triggered socket when the peer closes it?"**
-The close is an arrival. Epoll reports `EPOLLIN`, and `EPOLLRDHUP` if it was requested. The drain loop then
-reads the remaining bytes and sees `read` return 0.
+Receiving a TCP `FIN` constitutes a readiness transition. `epoll` delivers `EPOLLIN` (along with `EPOLLRDHUP` if registered), and the subsequent drain loop consumes any remaining buffered bytes before observing `read() == 0`.
 
 **"Is kqueue edge-triggered?"**
-kqueue offers both. `EV_CLEAR` gives edge-triggered behavior, and `EV_DISPATCH` disables an event after it
-fires, like `EPOLLONESHOT`.
+BSD and macOS `kqueue` supports both semantics per filter registration: `EV_CLEAR` resets the event state after delivery to provide edge-triggered behavior, and `EV_DISPATCH` disables the event after delivery to provide `EPOLLONESHOT` semantics.
 
 **"Why not have every thread call `accept` on one blocking listener?"**
-That works. The kernel queues blocked `accept` callers and wakes one per connection. The herd appears when
-threads wait in `epoll_wait` instead, because each epoll instance is a separate waiter on the listener.
+Modern Linux kernels use exclusive wakeups (`WQ_FLAG_EXCLUSIVE`) for threads blocked directly inside `accept`, waking only one thread per connection. The thundering herd re-emerges when multiple private `epoll` instances register the same listener, because each `epoll` instance attaches a non-exclusive wait-queue callback unless `EPOLLEXCLUSIVE` is specified.
 
 <div class="summary" markdown="1">
 
 ## Summary
 
-- Readable is a level: true while the buffer has bytes. An arrival is an edge.
-- Level-triggered epoll puts a reported socket back on the ready list and reports it again while it is
-  readable. Edge-triggered epoll reports it again only after new bytes arrive.
-- An edge-triggered handler must read until `EAGAIN`. One 4,096-byte read per event left 5,904 of 10,000
-  bytes unread, with no further event.
-- Edge-triggered mode saves re-checks and lets `EPOLLOUT` stay registered. A drain loop needs a cap so one
-  busy socket cannot starve the others.
-- `EPOLLONESHOT` disables a descriptor after one event until `EPOLL_CTL_MOD` re-arms it, so one thread
-  handles a socket at a time.
-- `EPOLLEXCLUSIVE` wakes one of the waiters on a shared listener: 1 of 4 threads in this run, against 4 of 4
-  without it. `SO_REUSEPORT` gives each thread its own listener instead.
+- Socket readability is a persistent level (non-empty receive buffer); data arrival is a state-transition edge.
+- Level-triggered `epoll` reinserts reported descriptors onto the ready list and re-polls them on every `epoll_wait`. Edge-triggered `epoll` (`EPOLLET`) delivers one event per arrival transition and does not re-notify until new bytes arrive.
+- Edge-triggered handlers must drain non-blocking sockets until `EAGAIN`. Reading a single 4,096-byte chunk from a 10,000-byte arrival stranded 5,904 bytes unread with no subsequent notification.
+- `EPOLLET` eliminates ready-list re-polling and allows persistent `EPOLLOUT` registration, but requires per-event byte quotas and user-space continuation queues to prevent busy sockets from starving peers.
+- `EPOLLONESHOT` disarms a descriptor after a single event until re-armed via `EPOLL_CTL_MOD`, enforcing single-thread ownership in shared-`epoll` worker pools.
+- `EPOLLEXCLUSIVE` suppresses the accept thundering herd across per-thread `epoll` instances (waking 1 of 4 threads rather than all 4); `SO_REUSEPORT` eliminates shared listeners altogether by hashing connections across per-thread listening sockets.
 
 </div>
 
-In Chapter 26, we move beneath the locks used in Chapter 16, implementing a mutex directly over the `futex` system call and running litmus tests that demonstrate what each memory ordering permits.
-
 ## Exercises
 
-1. Change `run` so that after the edge-triggered stall it writes one more byte, and count the events. How
-   many bytes does `read_once` return now, and why?
-2. Add `EPOLLOUT | EPOLLET` to a socket in `run` and count the events while nothing is written. Then fill
-   the socket's send buffer until `write` returns `WouldBlock`, read from the other end, and count again.
-3. Cap `read_until_eagain` at 8,192 bytes per call and return whether it stopped early. Write a loop that
-   keeps a list of sockets that stopped early, and serves them after the events from `epoll_wait`.
-4. Run `woken_by_one_connection` with 16 threads and 10 connections. How many wakeups does each mode cost?
-5. Rewrite `woken_by_one_connection` with `SO_REUSEPORT`, using the `socket2` crate to set the option
-   before `bind`. Count how the 10 connections spread across the threads.
+1. Modify `run` so that after the edge-triggered single-read stall completes, the writer injects one additional byte, and record the resulting event and byte counts. How many bytes does `read_once` return on the second event, and why?
+2. Register `EPOLLOUT | EPOLLET` on a socket in `run` and count events while no writes occur. Fill the send buffer until `write` returns `WouldBlock`, drain bytes from the peer, and verify that a single writable edge fires.
+3. Cap `read_until_eagain` at 8,192 bytes per invocation and return a boolean indicating whether the cap was reached prior to `EAGAIN`. Implement a continuation queue in the event loop that services capped descriptors after processing each `epoll_wait` batch.
+4. Execute `woken_by_one_connection` with 16 worker threads and 10 sequential connections. Compare total thread wakeups with and without `EPOLLEXCLUSIVE`.
+5. Reimplement `woken_by_one_connection` using `SO_REUSEPORT` (via the `socket2` crate before `bind`) and measure how 10 incoming connections distribute across the worker threads.

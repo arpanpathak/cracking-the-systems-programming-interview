@@ -14,16 +14,14 @@ This chapter covers
 
 </div>
 
-In Chapter 1, we computed Fibonacci numbers in three ways: a direct recursive implementation that repeated overlapping work, a memoized version that cached each result in a table, and an iterative loop that retained only the preceding states still required. That small example captures the core principle of this chapter.
+**Dynamic programming** solves combinatorial optimization and counting problems by evaluating smaller subproblems once, tabulating their optimal solutions, and combining those results to solve larger instances. The paradigm applies whenever a problem exhibits two structural properties:
 
-**Dynamic programming** solves an optimization or counting problem by evaluating smaller subproblems first, storing their results, and combining those results into the final solution. The technique applies when two structural properties hold:
+1. **Optimal substructure:** An optimal solution to a problem instance can be constructed directly from optimal solutions to smaller subproblems.
+2. **Overlapping subproblems:** A direct recursive decomposition revisits the same subproblem instances repeatedly, so tabulating intermediate results collapses exponential recursion trees into polynomial time.
 
-1. **Optimal substructure:** The solution for a larger input can be constructed from the solutions for smaller inputs.
-2. **Overlapping subproblems:** The same smaller inputs recur repeatedly, so storing their results eliminates redundant computation.
+Five problems develop these principles in progression. Minimum-coin change presents bottom-up tabulation in its canonical form. Subset enumeration contrasts dynamic programming with exhaustive backtracking, where every distinct combination must be emitted and no overlapping subproblems exist. Longest increasing subsequence, weighted interval scheduling, and resource-constrained GPU scheduling combine dynamic programming with sorting and binary search.
 
-Four problems below develop these ideas in sequence. The first, making change with coins, presents dynamic programming in its canonical form. The second, enumerating subsets, uses recursion without memoization because every distinct combination must be emitted. The final two combine dynamic programming with the sorting and binary search techniques introduced in Chapter 3.
-
-For each dynamic programming problem, we begin by stating in a single sentence what one table entry represents. That definition is the **subproblem**; once it is stated precisely, both the recurrence relation and the implementation follow directly from it.
+Every dynamic programming derivation below begins by stating, in a single precise sentence, the invariant represented by one table entry. That statement defines the **subproblem**; once specified, both the recurrence relation and its implementation follow directly.
 
 ## 6.1 Making change with the fewest coins
 
@@ -141,7 +139,7 @@ To enumerate every node, the algorithm traverses the tree depth first, descendin
 {{#include ../../rust-interview-lab/src/problems/backtracking.rs}}
 ```
 
-The helper `backtrack` is nested inside `subsets`, following the same pattern as `go` in Chapter 1. It accepts four parameters:
+The helper `backtrack` is scoped as a private nested function inside `subsets` and accepts four parameters:
 
 - `nums`: an immutable borrow of the input slice.
 - `start`: the first index eligible for selection at this level.
@@ -169,7 +167,7 @@ The total work is O(n · 2ⁿ): there are 2ⁿ subsets, and cloning each copies 
 
 **The problem.** Given a sequence of integers, select elements in their original relative order such that each selected element is strictly greater than the previous one. The goal is to find the maximum length of such an **increasing subsequence**. In `[10, 9, 2, 5, 3, 7, 101, 18]`, the elements `2, 3, 7, 18` form an increasing subsequence of length 4.
 
-Unlike the contiguous substrings examined in Chapter 3, a subsequence may omit intervening elements.
+Unlike a contiguous substring, a subsequence may omit intervening elements while preserving their original relative order.
 
 **The direct dynamic program.** Define `dp[i]` as the length of the longest increasing subsequence ending at index `i`. For each `i`, inspecting every earlier index `j` with `nums[j] < nums[i]` and taking the maximum `dp[j] + 1` yields an O(n²) algorithm, because each position scans all preceding positions.
 
@@ -241,7 +239,7 @@ For job `i`, two mutually exclusive choices exist:
 
 Thus `dp[i + 1]` is the maximum of those two values, and the final table entry gives the optimal profit.
 
-Finding `prev` is a binary search over the sorted prefix, analogous to the binary search in Chapter 3. The Rust standard library provides this operation directly via `slice::partition_point`, which accepts a predicate that is `true` for a prefix and `false` thereafter and returns the length of that prefix.
+Locating `prev` reduces to binary search over the sorted prefix in $O(\log n)$ time. The Rust standard library exposes this operation directly via `slice::partition_point`, which accepts a monotonic predicate that holds on a prefix and fails thereafter, returning the length of that prefix.
 
 ### 6.4.2 The code
 
@@ -364,24 +362,17 @@ Finding an optimal multi-device assignment is a fundamentally harder combinatori
 
 ## Summary
 
-- Dynamic programming answers smaller versions of a problem first, saves the answers, and combines them.
-- Start by writing, in one sentence, what one table entry means. The recurrence and the code follow from it.
-- Coin change fills `dp[t]` from `dp[t - c] + 1` for each coin, left to right, in O(amount × coins).
-- Greedy choices can fail. Coins 1, 3, and 4 make 6 greedily with three coins, but two suffice.
-- Backtracking explores a tree of choices with one shared `path`, pushing before each recursive call and
-  popping after it. Listing all subsets is O(n · 2ⁿ), the size of the output.
-- The longest increasing subsequence keeps the smallest possible ending for each length, in a sorted set,
-  for O(n log n).
-- Weighted job scheduling sorts by end time, uses `partition_point` to find compatible jobs, and fills a
-  table of best profits.
-- A memory and a core need cost one boolean in that loop. A job that does not fit is skipped, and one `dp`
-  vector serves every GPU.
-- The best single GPU is not the same as the best use of all the GPUs. On the sample data, sharing the jobs
-  out earns 130 where one GPU earns 120.
+- Dynamic programming eliminates redundant recomputation on problems exhibiting optimal substructure and overlapping subproblems by tabulating subproblem solutions bottom up.
+- Every dynamic programming formulation begins with an explicit subproblem invariant defining the exact meaning of a single table entry; the recurrence relation and loop order follow directly from that invariant.
+- Minimum-coin change computes `dp[t]` from `dp[t - c] + 1` across all denominations `c <= t` in $O(\text{amount} \times |\text{coins}|)$ time and $O(\text{amount})$ space.
+- Greedy heuristics fail on arbitrary coin systems: for denominations `{1, 3, 4}` and target `6`, a greedy choice selects three coins (`4 + 1 + 1`), whereas the optimal solution uses two (`3 + 3`).
+- Backtracking traverses an implicit decision tree depth first with a single mutable `path`, pushing on descent and popping on ascent; enumerating all $2^n$ subsets runs in output-optimal $O(n \cdot 2^n)$ time.
+- Longest increasing subsequence maintains the minimal ending value for each subsequence length in an ordered `BTreeSet`, reducing runtime from $O(n^2)$ to $O(n \log n)$.
+- Weighted interval scheduling sorts jobs by finish time, locates the latest compatible predecessor via `slice::partition_point`, and tabulates optimal prefix profits in $O(n \log n)$ time.
+- Adding memory and core constraints gates each job transition with a single feasibility predicate while reusing one `dp` buffer across all candidate GPUs.
+- Optimizing each GPU independently underutilizes multi-device clusters: on the sample workload, partitioning jobs across two GPUs achieves profit `130`, whereas the best single-GPU schedule achieves `120`.
 
 </div>
-
-Chapter 7 opens Part 3 on data modeling, where structs, enums, and custom error types enforce invariants so that only valid values can be constructed.
 
 ## Exercises
 
