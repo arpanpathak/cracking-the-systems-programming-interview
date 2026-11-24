@@ -15,10 +15,9 @@ This chapter covers
 
 </div>
 
-Section 20.4 built an echo server on epoll in its default mode, **level-triggered**. Epoll has a second mode, **edge-triggered**, selected with the flag `EPOLLET`. Section 20.6 noted that it needs a handler that reads until `EAGAIN`. This chapter shows why, by measuring what each mode reports. Then it covers two flags for loops that several threads share: `EPOLLONESHOT` and `EPOLLEXCLUSIVE`.
+The echo server in Section 20.4 used `epoll` in its default **level-triggered** mode. Linux `epoll` also supports an **edge-triggered** mode, enabled with the `EPOLLET` flag, which Section 20.6 noted requires draining each socket until `EAGAIN`. In this chapter, we measure the exact event counts produced by both modes to demonstrate why draining is mandatory, and then examine two synchronization flags for multithreaded event loops: `EPOLLONESHOT` and `EPOLLEXCLUSIVE`.
 
-The program, `epoll_edge`, uses Linux epoll, so its output comes from a Linux container. It writes 10,000
-bytes into a socket and counts the events and bytes each handler sees.
+Because `epoll_edge` relies on Linux `epoll`, its sample output comes from a Linux container. The program writes 10,000 bytes into a socket and records the events and byte counts observed by each handler.
 
 ## 25.1 Levels and edges
 
@@ -39,19 +38,16 @@ edge-triggered entry is not put back. Only the callback, on the next arrival, ca
 <figcaption><b>Figure 25.1</b> The ready list. A level-triggered entry goes back on the list after each report. An edge-triggered entry waits for the next arrival.</figcaption>
 </figure>
 
-Here is what each mode reports when 10,000 bytes arrive at once and the handler reads 4,096 bytes per event:
+The table below compares the events reported by each mode when 10,000 bytes arrive at once and the handler reads 4,096 bytes per event:
 
 | Step | Bytes in the buffer | Level-triggered | Edge-triggered |
 |---|---|---|---|
 | 10,000 bytes arrive | 10,000 | event | event |
 | handler reads 4,096 | 5,904 | event: still readable | nothing |
-| handler reads 4,096 | 1,808 | event: still readable | — |
-| handler reads 1,808 | 0 | nothing | — |
+| handler reads 4,096 | 1,808 | event: still readable | n/a |
+| handler reads 1,808 | 0 | nothing | n/a |
 
-In edge-triggered mode, 5,904 bytes stay in the buffer after the first event. No event will report them
-until the peer sends more. If the peer is waiting for a reply to the bytes it already sent, it never sends
-more, and both sides wait forever. This is the stall. Edge-triggered mode needs a handler that reads until
-`read` returns `EAGAIN`, which proves the buffer is empty.
+In edge-triggered mode, 5,904 bytes remain unread in the socket buffer after the first event, and no further event will be delivered until the peer transmits additional data. If the peer is waiting for a reply to the bytes already sent, neither side makes progress and the connection stalls indefinitely. Edge-triggered mode therefore requires a handler that loops on `read` until it observes `EAGAIN`, confirming that the receive buffer is empty.
 
 ## 25.2 Three handlers, measured
 
@@ -260,10 +256,8 @@ EPOLLONESHOT: first write 1 event, second write 0 events, after re-arming 1 even
 
 ## 25.6 Questions that come up
 
-**"A server under edge-triggered epoll sometimes stops answering one client. CPU use is zero. What do you
-check first?"**
-Whether every read loop runs until `EAGAIN`. A loop that stops after a full buffer, or after a fixed number
-of bytes, leaves data that no event will report.
+**"A server under edge-triggered epoll sometimes stops answering one client, while CPU use is zero. What should be checked first?"**
+Verify that every read loop drains the socket until `EAGAIN`. A loop that stops after a single buffer fill or a fixed byte count leaves unread data in the kernel buffer with no subsequent event to report it.
 
 **"Does edge-triggered mode apply to `accept`?"**
 Yes. An edge-triggered listener reports once when connections arrive, so the handler calls `accept` until
@@ -299,8 +293,7 @@ threads wait in `epoll_wait` instead, because each epoll instance is a separate 
 
 </div>
 
-Chapter 26 goes under the locks used in chapter 16. It builds a mutex on the futex system call, and runs
-litmus tests that show what each memory ordering allows.
+In Chapter 26, we move beneath the locks used in Chapter 16, implementing a mutex directly over the `futex` system call and running litmus tests that demonstrate what each memory ordering permits.
 
 ## Exercises
 

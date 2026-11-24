@@ -15,26 +15,21 @@ This chapter covers
 
 </div>
 
-Programs that talk to other programs over a network see failures that local code never sees. A server is busy
-and refuses a request. A connection drops halfway. A reply takes so long that the client gives up, without
-knowing whether the server did the work.
+Processes communicating over a network encounter failure modes absent from local function calls: an overloaded server rejects incoming requests, a TCP connection drops mid-transfer, or a response times out without revealing whether the server committed the requested work.
 
-This chapter builds three tools for those situations:
+Three complementary mechanisms address these failure modes:
 
-- A **rate limiter** protects a service from too many requests, by refusing requests above a set rate.
-- A **retry** policy tries a failed call again, waiting longer after each failure.
-- An **idempotency key** makes it safe to send the same request twice, by making the second one do nothing new.
+- A **rate limiter** protects a service from overload by rejecting requests that exceed a configured budget.
+- A **retry** policy re-attempts transient failures while increasing the delay after each failed attempt.
+- An **idempotency key** ensures that delivering the same logical request multiple times produces the same effect as delivering it once.
 
-The three work together. A client that retries must not overload the server, so it backs off. And a retried
-request must not repeat a side effect, such as charging a card twice.
+These three primitives reinforce one another: retrying clients must back off to avoid overwhelming a recovering server, and the server must deduplicate retries so side effects such as billing charges are never applied twice.
 
 ## 19.1 A token bucket
 
-Suppose a service allows each client 5 requests per second. A simple counter that resets every second allows 5
-requests at 0.99 s and 5 more at 1.01 s: 10 requests in 20 ms. A **token bucket** smooths this out.
+Consider a service enforcing a limit of 5 requests per second per client. A fixed-window counter that resets at every whole-second boundary permits a client to issue 5 requests at 0.99 s and 5 more at 1.01 s, producing a burst of 10 requests within 20 ms. A **token bucket** smooths out these boundary spikes.
 
-Picture a bucket that holds up to 5 tokens. Every request takes one token out. If the bucket is empty, the request
-is refused. Tokens flow back in at a steady rate, say 1 per second, until the bucket is full again (figure 19.1).
+In a token bucket, a virtual container holds up to a fixed maximum of tokens (for example, 5). Each admitted request removes one token; if the bucket is empty, the request is rejected. Tokens replenish at a steady rate, such as 1 token per second, capped at the bucket's capacity (figure 19.1).
 
 <figure class="anim">
 <video class="motion" src="figures/ch19-token-bucket.mp4" autoplay loop muted playsinline preload="metadata" aria-label="A bucket that holds 5 tokens and refills 1 per second. Five calls at time 0 take the five tokens. The sixth call returns false. One second passes with nothing running; the next call adds the token that second earned and takes it. Last, without the cap on the refill, an hour idle adds 3,600 tokens and lets 3,600 calls through at once." data-chapters="[[0.0, &quot;spend&quot;], [28.5, &quot;refuse&quot;], [34.8, &quot;refill&quot;], [56.28, &quot;no cap&quot;]]"><img src="figures/ch19-token-bucket.gif" alt="A bucket that holds 5 tokens and refills 1 per second. Five calls at time 0 take the five tokens. The sixth call returns false. One second passes with nothing running; the next call adds the token that second earned and takes it. Last, without the cap on the refill, an hour idle adds 3,600 tokens and lets 3,600 calls through at once."></video>
@@ -47,11 +42,9 @@ is refused. Tokens flow back in at a steady rate, say 1 per second, until the bu
 <figcaption><b>Figure 19.1</b> The bucket in the test <code>it_works</code>: capacity 5, refill 1 token per second.</figcaption>
 </figure>
 
-Two numbers describe the bucket. The **capacity** is the largest burst allowed at once. The **rate** is the
-long-run number of requests per second.
+Two parameters characterize the limiter: **capacity** defines the maximum burst size permitted instantaneously, and **rate** defines the sustained long-run request rate per second.
 
-The bucket does not need a timer that adds tokens. Each request computes how many tokens arrived since the last request, from the time that has passed. It
-adds them before it checks.
+No background timer thread is needed to replenish tokens. Instead, each incoming call computes the elapsed time since the previous call, credits the accrued tokens lazily, and then checks whether at least one token is available.
 
 ### 19.1.1 The bucket behind a lock
 
@@ -68,12 +61,9 @@ impl TokenBucket {
 }
 ```
 
-The capacity and the rate never change, so they are plain fields. The token count and the time of the last refill
-change on every call, so they live in `BucketState` behind a `Mutex`. The token count is an `f64`, because a
-fraction of a token can arrive between two requests. The bucket starts full.
+Because `capacity` and `rate` are immutable after construction, they sit outside the lock. The mutable token balance and last-refill timestamp reside in `BucketState` behind a `Mutex`. Storing tokens as `f64` preserves fractional accruals between closely spaced requests, and the bucket initializes full.
 
-`Instant` is the standard library's clock for measuring durations. It only moves forward, unlike the wall-clock
-time, which can jump when the system clock is corrected.
+Using `std::time::Instant` rather than `SystemTime` guarantees a monotonic clock immune to wall-clock adjustments such as NTP corrections.
 
 <p class="listing"><b>Listing 19.2</b> <code>try_acquire</code> (lines 32 to 49).</p>
 
@@ -84,17 +74,15 @@ impl TokenBucket {
 }
 ```
 
-`try_acquire` does all its work under the lock:
+`try_acquire` executes the refill and consumption atomically under the mutex:
 
-1. It computes the time since the last refill, `now - s.last_refill`, a `Duration`.
-2. It converts that to seconds and multiplies by the rate: the number of new tokens.
-3. It adds them and caps the total at the capacity with `.min(self.capacity)`.
-4. It records `now` as the last refill.
-5. If at least one token is there, it takes it and returns `true`. Otherwise it returns `false`.
+1. Compute the elapsed `Duration` since `s.last_refill`.
+2. Convert that duration to fractional seconds and multiply by `self.refill_rate` to obtain accrued tokens.
+3. Add the accrued tokens to the balance, clamping at `self.capacity` via `.min(self.capacity)`.
+4. Advance `s.last_refill` to `now`.
+5. If `s.tokens >= 1.0`, subtract one token and return `true`; otherwise return `false`.
 
-Work through the test by hand. The bucket starts with 5 tokens. Five calls happen within microseconds, so almost no
-tokens refill, and each call takes one. The sixth finds about 0.00001 tokens and returns `false`. After a one-second
-sleep, about 1.00001 tokens are there, so one call succeeds, and the next finds about 0.00001 again.
+Tracing the unit test confirms this behavior: the bucket initializes with 5 tokens, five rapid calls consume all five within microseconds (accruing negligible fractional tokens), and the sixth call observes roughly 0.00001 tokens and returns `false`. After sleeping one second, the balance rises to approximately 1.00001 tokens, admitting one additional call before rejecting the next.
 
 <p class="listing"><b>Listing 19.3</b> The complete file, with its test. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/problems/rate_limiter.rs">src/problems/rate_limiter.rs</a></p>
 
@@ -110,13 +98,11 @@ test problems::rate_limiter::tests::it_works ... ok
 test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 136 filtered out; finished in 1.00s
 ```
 
-The test takes one second, because it sleeps to let a token refill. A test that depends on real time can also fail
-on a heavily loaded machine. Exercise 1 removes the dependency by passing the time in.
+Because the test invokes `thread::sleep`, it takes one full second to run and remains vulnerable to scheduling jitter on heavily loaded machines. Exercise 1 eliminates this clock dependency by injecting `Instant` as an explicit parameter.
 
 ### 19.1.2 The bucket with atomics
 
-Every call to the locked bucket takes the mutex. Under heavy load, threads wait for each other there, as section
-14.1 described for maps. The second version replaces the lock with atomic integers.
+Acquiring a single mutex on every request can become a contention bottleneck under high concurrency, mirroring the single-lock map contention examined in section 14.1. The second implementation attempts to replace the mutex with atomic integers.
 
 <p class="listing"><b>Listing 19.4</b> The limiter (lines 5 to 37). <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/bin/rate_limiter_atomic_token_bucket.rs">src/bin/rate_limiter_atomic_token_bucket.rs</a></p>
 
@@ -130,18 +116,13 @@ impl RateLimiter {
 }
 ```
 
-The design differs from the locked version in three ways:
+This implementation differs from the locked design in three respects:
 
-- Tokens are whole numbers in an `AtomicI64`, and time is whole seconds since the limiter was created. Tokens
-  arrive in steps, once per second, instead of continuously.
-- `last_refilled_at.fetch_max(now, Relaxed)` records the current second and returns the previous value, in one
-  atomic step. If several threads start a new second at once, only the first sees an older value, so only that
-  thread adds tokens.
-- `#[repr(align(64))]` gives the limiter its own cache lines, so it does not share a line with a neighbor, as
-  section 15.4 described.
+- Tokens are stored as whole integers in an `AtomicI64`, and elapsed time is tracked in whole seconds since construction, causing tokens to replenish in discrete one-second steps rather than continuously.
+- `last_refilled_at.fetch_max(now, Relaxed)` atomically updates the timestamp and returns the previous value. When multiple threads enter a new second simultaneously, only the first thread observes an earlier second and performs the refill.
+- `#[repr(align(64))]` aligns the struct to a 64-byte cache line boundary to prevent false sharing with adjacent data (section 15.4).
 
-Then comes the check. If the count is 0 or less, the call returns `false`. Otherwise it takes a token with
-`fetch_sub(1)`, and returns `true` if the count before the subtraction was positive.
+After refilling, `try_acquire` loads the token count, returns `false` if it is non-positive, and otherwise decrements with `fetch_sub(1)`, returning `true` when the prior count was positive.
 
 <p class="listing"><b>Listing 19.5</b> The complete program. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/bin/rate_limiter_atomic_token_bucket.rs">src/bin/rate_limiter_atomic_token_bucket.rs</a></p>
 
@@ -165,48 +146,36 @@ request 5: true
 request 6: false
 ```
 
-With one thread, the output is exactly right: 5 requests pass, the sixth fails, and after a second 5 more pass.
+Under single-threaded execution, the behavior matches specification: five requests succeed, the sixth is rejected, and five more succeed after one second.
 
 ### 19.1.3 What happens with many threads
 
-Each atomic operation is safe on its own. The problem is that `try_acquire` makes several of them, and other threads
-can act between them. Figure 19.2 shows one interleaving with one token left.
+Although each individual atomic instruction is race-free, `try_acquire` composes multiple separate atomic operations without a combined transaction, allowing concurrent threads to interleave between them (figure 19.2).
 
 <figure>
 <img src="figures/atomic-bucket.svg" alt="With one token left, threads A and B both load 1. A's fetch_sub sees 1 and succeeds, leaving 0. B's fetch_sub sees 0, so B is refused, but the count drops to -1.">
 <figcaption><b>Figure 19.2</b> Both threads pass the check before either takes the token.</figcaption>
 </figure>
 
-B is correctly refused, but its `fetch_sub` still ran. The count drops below zero, and the next refill starts from
-there, so the limiter lets through fewer requests than its rate. To measure this, I ran 8 threads calling
-`try_acquire` in a loop for 3.5 seconds, on a limiter with capacity 5 and rate 5. A correct limiter admits 20
-requests: 5 at the start and 5 in each of the next three seconds. Three runs admitted 18, 19, and 17, and ended
-with the count at 0, −1, and −1.
+In this interleaving, Thread B is properly rejected, yet its `fetch_sub(1)` still decrements the counter to `-1`. When the next refill adds tokens to that negative balance, the limiter admits fewer requests than its configured rate. Running 8 threads in a tight `try_acquire` loop for 3.5 seconds against a limiter of capacity 5 and rate 5 (which should admit exactly 20 requests: 5 initially plus 5 per elapsed second) admitted only 18, 19, and 17 requests across three trials, terminating with token balances of 0, −1, and −1.
 
-A second gap goes the other way. The refill is a `fetch_add` followed by a separate `fetch_min`. Between the two,
-the count can be above the capacity, and other threads can take the extra tokens before the cap is applied. That
-would let through more than the capacity in one burst. My runs did not catch this window, but nothing in the code
-prevents it.
+A second race window operates in the opposite direction: because refilling executes `fetch_add` followed by a separate `fetch_min`, a competing thread arriving between the two instructions can consume tokens above `capacity` before the cap takes effect, permitting bursts larger than the configured limit.
 
-Both gaps close if the check, the take, and the refill happen as one atomic step. `compare_exchange` in a loop does that. It reads the count, computes the new count, and writes it only if
-no other thread changed the count in between.
-Exercise 2 asks you to write it.
+Both races vanish when refill, availability check, and decrement are fused into a single atomic compare-and-swap transition using a `compare_exchange` loop that reads the current state, computes the capped next state locally, and commits only if no other thread modified the word in the interim (Exercise 2).
 
 ## 19.2 Retrying failed calls
 
-Many failures are temporary. A server restarts, a network link drops a packet, or a service is briefly overloaded.
-Trying again a moment later often works.
+Many distributed failures are transient: a backend restarts, a switch drops a packet, or a downstream dependency experiences a brief traffic spike. Re-issuing the request after a short pause frequently succeeds.
 
-Retrying well takes three decisions:
+An effective retry mechanism must answer three questions:
 
-1. **Which errors to retry.** A "not found" error will fail again. A "server busy" error may not.
-2. **How long to wait.** Waiting a little longer after each failure gives a struggling server time to recover.
-3. **How many times.** At some point, the caller should give up and report the error.
+1. **Which errors are retryable.** Client errors such as "not found" will fail deterministically on repeat attempts, whereas "server busy" errors may clear.
+2. **How long to wait between attempts.** Increasing the delay after consecutive failures gives an overloaded service room to recover.
+3. **When to stop.** Bounding the total number of attempts prevents indefinite blocking and surfaces persistent outages to the caller.
 
 ### 19.2.1 Which errors to retry
 
-The retry code works with `ApiError`, the error enum from section 7.7. Here it is again. Each variant is one
-way a call to a service can fail, and carries the data that failure needs:
+The retry engine operates against `ApiError` (introduced in section 7.7), where each variant encodes a distinct failure mode and its associated metadata:
 
 ```rust
 {{#include ../../rust-interview-lab/src/problems/state_machine.rs:58:78}}
@@ -214,17 +183,14 @@ way a call to a service can fail, and carries the data that failure needs:
 }
 ```
 
-- `InvalidRequest` and `NotFound` describe a request that is wrong. Sending it again gives the same answer.
-- `Unauthorized` needs new credentials, not a second try.
-- `RateLimited` says the server is busy, and carries how long it asked the client to wait.
-- `Server` is a failure on the server's side, with the HTTP status code.
+- `InvalidRequest` and `NotFound` indicate defective or missing targets; retrying yields the same failure.
+- `Unauthorized` requires refreshed credentials rather than a repeat attempt.
+- `RateLimited` indicates server-side throttling and carries the server's requested wait duration.
+- `Server` represents a server-side failure carrying an HTTP status code.
 
-The enum's own method, `is_retryable`, already answers the first question for each variant. `matches!` tests a
-value against a pattern and returns `true` or `false`. It returns `true` for `RateLimited`, and for `Server` with a
-status from 500 to 599.
+The inherent `is_retryable` method uses `matches!` to classify `RateLimited` and 5xx `Server` status codes (500 through 599) as retryable.
 
-The retry code should not be tied to `ApiError`, though. It should work with any error that can answer the
-question. That is a job for a trait:
+To decouple the retry engine from `ApiError`, the classification contract is abstracted into a trait:
 
 <p class="listing"><b>Listing 19.6</b> The <code>Retryable</code> trait (lines 22 to 44). <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/problems/retry.rs">src/problems/retry.rs</a></p>
 
@@ -234,29 +200,18 @@ question. That is a job for a trait:
 {{#include ../../rust-interview-lab/src/problems/retry.rs:22:44}}
 ```
 
-`Retryable` is a trait that an error type implements to answer the first question. `is_retryable` has no default,
-so each error type must decide. `retry_after` has a default body that returns `None`, so an error type only needs
-to implement it if the server can send a hint.
+Every implementing error type must define `is_retryable`, whereas `retry_after` supplies a default implementation returning `None` for error types that carry no server-supplied wait hint.
 
-The trait is implemented for `ApiError`. Its `is_retryable` passes the question to the enum's own method.
-`retry_after` returns the delay carried by a `RateLimited` error. That delay usually comes from the HTTP header `Retry-After`, which a server sends to say when
-to try again.
-
-The line `ApiError::is_retryable(self)` calls the enum's own method, not the trait's. Both have the same name. The
-path `ApiError::is_retryable` finds the inherent method first, so the trait method does not call itself forever.
+For `ApiError`, `Retryable::is_retryable` delegates to the inherent method via the fully qualified path `ApiError::is_retryable(self)` (avoiding infinite recursion on the identically named trait method), while `retry_after` extracts the duration carried by `RateLimited`, typically parsed from an HTTP `Retry-After` response header.
 
 ### 19.2.2 How long to wait
 
-A fixed delay has a problem. If a server fails, all its clients fail at the same moment. With a fixed delay they all retry at the same moment too. The server is hit by a wave of retries at the
-moment it recovers. This is called a
-**thundering herd**.
+Using a constant retry interval creates a synchronization hazard: if a server outage causes hundreds of clients to fail simultaneously, a fixed delay causes all of them to retry in lockstep, striking the recovering service with a synchronized spike known as a **thundering herd**.
 
-Two techniques spread the retries out:
+Two techniques break that synchronization:
 
-- **Exponential backoff** doubles the delay after each failure: 100 ms, 200 ms, 400 ms, and so on, up to a cap
-  (figure 19.3). The longer the outage, the less often each client tries.
-- **Jitter** adds randomness to the delay, so clients that failed together do not retry together (figure 19.4).
-  **Full jitter** picks a random delay between 0 and the backoff.
+- **Exponential backoff** doubles the delay after each consecutive failure (100 ms, 200 ms, 400 ms, and so forth) up to an upper bound (figure 19.3), reducing load rapidly during prolonged outages.
+- **Jitter** introduces randomness into the wait interval so clients that failed simultaneously scatter their retries over time (figure 19.4). **Full jitter** selects a uniform random delay between `0` and the computed exponential backoff.
 
 <figure>
 <img src="figures/backoff.svg" alt="Bars for retries 0 to 5: 100, 200, 400, 800, then 1000 ms twice, capped. Full jitter picks a random delay between 0 and the bar.">
@@ -274,18 +229,15 @@ Two techniques spread the retries out:
 {{#include ../../rust-interview-lab/src/problems/retry.rs:46:102}}
 ```
 
-`RetryPolicy` holds the four settings. `max_attempts` counts the first try as well, so 3 means one try and two
-retries.
+`RetryPolicy` bundles the four configuration parameters; `max_attempts` includes the initial call, so a value of 3 permits one initial call and two retries.
 
-`exponential_delay` computes `base * 2^attempt`, capped at `max_delay`. Three details keep it from overflowing:
+`exponential_delay` computes `base * 2^attempt` while guarding against arithmetic overflow in three steps:
 
-- `1u32 << shift` computes 2 to the power `shift` by shifting the bit 1 left. `attempt.min(31)` keeps the shift
-  within a `u32`, because shifting by 32 or more is an error.
-- `Duration::saturating_mul` returns the largest `Duration` instead of overflowing.
-- `.min(self.max_delay)` applies the cap.
+- `attempt.min(31)` constrains the left-shift `1u32 << shift` to valid 32-bit shift widths.
+- `Duration::saturating_mul` clamps overflow to `Duration::MAX` rather than panicking.
+- `.min(self.max_delay)` enforces the configured ceiling.
 
-`delay_for` applies jitter. It takes a random number in `[0, 1)` as an argument, and multiplies the delay by it
-with `Duration::mul_f64`. `clamp(0.0, 1.0)` guards against a random source that returns something out of range.
+`delay_for` applies full jitter by scaling the exponential delay with a caller-provided floating-point sample in `[0.0, 1.0)`, clamped with `.clamp(0.0, 1.0)` against out-of-range inputs.
 
 ### 19.2.3 The retry loop
 
@@ -295,30 +247,19 @@ with `Duration::mul_f64`. `clamp(0.0, 1.0)` guards against a random source that 
 {{#include ../../rust-interview-lab/src/problems/retry.rs:104:137}}
 ```
 
-`retry` is generic over four types. `T` and `E` are the success and error types. `F` is the operation, a closure
-that receives the attempt number. `R` produces random numbers.
+The generic `retry` function parameterizes over four types: result `T`, error `E: Retryable`, operation closure `F: FnMut(u32) -> Result<T, E>`, and random source `R: FnMut() -> f64`. Requiring `FnMut` rather than `FnOnce` allows repeated invocation and mutable captured state, such as attempt counters in tests.
 
-The operation is `FnMut`, not `FnOnce`, because the loop calls it several times, and it may change captured state,
-like the test's attempt counter.
-
-On each error, the loop checks two reasons to stop: the attempts are used up, or the error is not retryable. Either
-way it returns the last error. Otherwise it computes its own backoff, and then applies the server's hint:
+When an attempt returns `Err`, the loop immediately returns the error if attempts are exhausted or `!error.is_retryable()`. Otherwise, it computes its jittered backoff and merges any server-supplied hint:
 
 ```rust
 let delay = error.retry_after().map_or(backoff, |hint| hint.max(backoff));
 ```
 
-`map_or(default, f)` returns `default` for `None`, and `f(hint)` for `Some(hint)`. So without a hint, the delay is
-the backoff. With a hint, it is the larger of the two. The client never retries sooner than the server asked, and
-never sooner than its own backoff.
+`Option::map_or` yields `backoff` when no hint is present and `hint.max(backoff)` when one is, treating the server's `Retry-After` as a lower bound so the client respects both server guidance and its own backoff curve.
 
-`std::thread::sleep(delay)` blocks the thread for the delay. In async code, chapter 22, the wait would be an async
-timer instead, so the thread can do other work.
+Calling `std::thread::sleep(delay)` blocks the OS thread for the wait interval; in asynchronous runtimes (Chapter 22), this becomes a non-blocking timer await so the executor can poll other tasks.
 
-**Injecting randomness.** The random number comes from the `unit_random` closure the caller passes in. Production
-code passes a real random number generator. Tests pass `|| 0.0`, which makes every delay predictable. Passing in a
-dependency this way, instead of creating it inside the function, is called **dependency injection**. It makes the
-function testable without a real clock or a real random source.
+**Injecting randomness.** Accepting `unit_random` as a closure parameter is an instance of **dependency injection**: production callers supply a real PRNG, whereas unit tests supply deterministic stubs such as `|| 0.0`, keeping tests fast and reproducible without global mutable state.
 
 <p class="listing"><b>Listing 19.9</b> The complete file, with tests. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/problems/retry.rs">src/problems/retry.rs</a></p>
 
@@ -326,9 +267,7 @@ function testable without a real clock or a real random source.
 {{#include ../../rust-interview-lab/src/problems/retry.rs}}
 ```
 
-The tests use a policy with zero delays, so they run instantly. `retries_then_succeeds` fails twice with a 503 and
-then succeeds: three attempts in total. `non_retryable_errors_return_immediately` returns `NotFound`, and must stop
-after one attempt.
+The unit tests configure zero-duration delays so the entire suite executes instantaneously, verifying retry convergence on transient 503 responses (`retries_then_succeeds`) and immediate termination on non-retryable `NotFound` errors (`non_retryable_errors_return_immediately`).
 
 ```text
 $ cargo test --lib problems::retry
@@ -345,22 +284,18 @@ test result: ok. 6 passed; 0 failed; 0 ignored; 0 measured; 131 filtered out
 
 ## 19.3 Idempotency keys
 
-Retries have a danger. Suppose a client asks a server to charge a card, and the reply is lost. The client cannot
-tell whether the charge happened. If it retries, the card may be charged twice.
+Retries introduce a classic ambiguity: if a client submits a payment charge and the response is lost in transit, the client cannot determine whether the charge succeeded. Blindly retrying risks charging the customer twice.
 
-An operation is **idempotent** if doing it twice has the same effect as doing it once. Reading a record is
-idempotent. Charging a card is not, unless the server makes it so.
+An operation is **idempotent** when executing it multiple times leaves the system in the same state as executing it once. Read queries are naturally idempotent; mutating side effects such as billing charges require explicit server-side protection.
 
-The usual way is an **idempotency key**. The client picks a unique key for each logical request, such as an order
-number, and sends it with every attempt. The server records the result under that key. When the same key arrives
-again, the server returns the recorded result and does not repeat the work (figure 19.5).
+The standard mechanism is an **idempotency key**: the client attaches a unique identifier (such as an order ID) to every attempt of a logical request. The server caches the outcome under that key and returns the recorded result on duplicate arrivals without re-executing the side effect (figure 19.5).
 
 <figure>
 <img src="figures/idempotency.svg" alt="The first execute with key order-1 runs charge, prints charging card, and stores txn_42. The second execute with the same key skips charge and returns txn_42.">
 <figcaption><b>Figure 19.5</b> Two calls with one key. The work runs once.</figcaption>
 </figure>
 
-The store is a `HashMap` from key to result, behind a `Mutex` so that several threads can share it:
+The in-memory store guards a `HashMap` of completed results behind a `Mutex` for concurrent access:
 
 ```rust
 {{#include ../../rust-interview-lab/src/bin/idempotent_operation.rs:1:5}}
@@ -372,26 +307,21 @@ The store is a `HashMap` from key to result, behind a `Mutex` so that several th
 {{#include ../../rust-interview-lab/src/bin/idempotent_operation.rs}}
 ```
 
-`Idempotent<K, V>` stores results in a `HashMap` behind a `Mutex`. `execute` takes a key and a closure `f` that does
-the work:
+`Idempotent<K, V>::execute` coordinates lookup and execution in four steps:
 
-1. It locks the store. A poisoned lock becomes an error: `map_err(|_| "lock poisoned")?` turns the `PoisonError`
-   into a `&str`, and `?` converts that into a `Box<dyn Error>`.
-2. If the key is present, it returns a clone of the stored result.
-3. Otherwise it runs `f()`. If `f` fails, `?` returns the error, and nothing is stored, so a later call can try
-   again.
-4. It stores a clone of the result and returns it.
+1. Acquire the mutex, converting a `PoisonError` via `map_err(|_| "lock poisoned")?` into a boxed `dyn Error`.
+2. If `key` already exists in the map, return a clone of the cached value.
+3. Otherwise invoke `f()`; if `f` returns an error, `?` propagates it without inserting into the map so subsequent retries can re-attempt the work.
+4. Insert a clone of the successful result into the map and return it.
 
-In `main`, `charge` is called with the same key twice. The closure captures nothing, so it is `Copy`, and passing it
-to `execute` twice copies it. The line "charging card..." appears once:
+In `main`, `charge` is passed twice under the same key. Because the closure captures no variables, it implements `Copy` and executes only once:
 
 ```text
 $ cargo run --bin idempotent_operation
 charging card...
 ```
 
-The second file is the same program with a type alias, `type RuntimeError = Box<dyn std::error::Error>;`, which
-shortens the signatures:
+A second variant introduces the type alias `type RuntimeError = Box<dyn std::error::Error>;` to simplify method signatures:
 
 <p class="listing"><b>Listing 19.11</b> The complete program. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/bin/idempotent_operation_with_error_progagation.rs">src/bin/idempotent_operation_with_error_progagation.rs</a></p>
 
@@ -404,31 +334,20 @@ $ cargo run --bin idempotent_operation_with_error_progagation
 charging card...
 ```
 
-Holding the lock while `f()` runs makes the store correct. Two calls with the same key cannot both find it
-missing and both run the work. It is also the store's limit. Every call waits for the one lock, even calls with
-different keys, so one slow operation delays all others. Section 19.4 removes that limit. A real service also keeps the results in a database, so they survive a
-restart.
+Retaining the mutex across `f()` prevents two concurrent calls with the same key from both missing the cache and executing twice, yet it severely restricts scalability: every key contends on the same lock, so one slow payment stalls unrelated orders. Section 19.4 removes this bottleneck, while production services additionally persist idempotency records in durable storage so they survive process restarts.
 
 ## 19.4 One execution per key: single flight
 
-The store in section 19.3 has two problems under load.
+Under concurrent load, the single-lock idempotency store exhibits two opposing constraints:
 
-- **It serializes every key.** It holds one lock while the work runs. A slow charge for `order-1` makes a
-  call for `order-2` wait, although the two have nothing in common.
-- **It cannot be split naively.** Suppose the lock is released during the work. Two callers with the same key
-  can then both find it missing, and both charge the card.
+- **Global serialization.** Holding one mutex across `f()` blocks unrelated keys (`order-2`) behind slow operations (`order-1`).
+- **Duplicate execution on lock release.** Releasing the mutex before invoking `f()` without coordination allows two simultaneous callers for the same key to both observe a cache miss and charge the card twice.
 
-The same shape appears in caches. When a popular entry expires, hundreds of requests can miss at once, and
-each recomputes the value or queries the database. That burst is a **cache stampede**, a thundering herd
-aimed at one key.
+Caching layers encounter the identical failure mode when a hot entry expires and hundreds of concurrent misses flood the backing database simultaneously, a phenomenon known as a **cache stampede** (a per-key thundering herd).
 
-The fix is to record, for each key, that work is **in progress**. The first caller for a key marks it,
-releases the lock, and runs the work. A caller that finds the mark waits for the result instead of starting
-its own. Callers with other keys never wait. This is called **single flight**: at most one execution per key
-is in the air at a time.
+The **single flight** pattern resolves both constraints by tracking **in-progress** keys explicitly. The first caller for a key inserts an `InProgress` sentinel under the lock, releases the lock, and performs the work. Concurrent callers arriving for the same key observe `InProgress` and wait on a condition variable for the outcome, while callers targeting distinct keys proceed concurrently without waiting.
 
-Each key moves through three states (figure 19.6). A success stores the value for every later caller. A
-failure, or a panic, removes the mark, so the next caller can try again.
+Each key transitions through three states (figure 19.6): completion publishes `Done(value)` for all waiters and future callers, whereas an error or panic removes the sentinel so a subsequent caller can retry.
 
 <figure>
 <img src="figures/ch19-single-flight.svg" alt="A key with no entry moves to InProgress when the first caller marks it, unlocks, and runs the work; later callers wait on the Condvar. Ok stores the value as Done, and notify_all wakes the waiters, who each get a clone. On Err or a panic, the Claim removes the mark and notify_all wakes the waiters, and the key has no entry again.">
@@ -437,63 +356,51 @@ failure, or a panic, removes the mark, so the next caller can try again.
 
 ### 19.4.1 The state
 
-Each key maps to a `Slot`, and all the slots share one map behind one mutex. A `Condvar` wakes the waiters
-when any slot changes:
+A single mutex guards the `HashMap<K, Slot<V>>`, paired with a `Condvar` that wakes waiting threads upon state transitions:
 
 ```rust
 {{#include ../../rust-interview-lab/src/bin/single_flight.rs:11:38}}
 ```
 
-The mutex is held only to read or change the map, never while the work runs. So one lock is enough for every
-key. `notify_all` wakes every waiter, for any key. Each one checks its own key and goes back to sleep if
-nothing it cares about changed. That costs a few spurious wakeups, and keeps the code to one `Condvar`.
+Because the mutex is held strictly for brief map lookups and updates, never during I/O or computation, one lock scales across distinct keys. Calling `notify_all()` wakes all waiting callers regardless of key; each re-checks its own key and resumes sleeping if unchanged, trading minor spurious wakeups for a compact single-`Condvar` design.
 
 ### 19.4.2 The claim
 
-The caller that runs the work holds a **claim** on its key. If the work fails or panics, someone has to remove
-the `InProgress` mark, or the waiters sleep forever. `Drop` is the place that runs in both cases:
+The caller executing the work holds an RAII **claim** on its key. If the work returns an error or unwinds from a panic, the `InProgress` sentinel must be removed so waiting callers do not block indefinitely; implementing `Drop` on the claim handles both exit paths uniformly:
 
 ```rust
 {{#include ../../rust-interview-lab/src/bin/single_flight.rs:40:65}}
 ```
 
-`key` is an `Option`. The success path takes the key out of the claim before the claim is dropped, so `Drop`
-does nothing. On an error or a panic, the key is still inside, and `Drop` removes the mark and wakes the
-waiters.
+Storing `key` inside an `Option` allows the success path to disarm the guard via `take()` before dropping it. On an error or panic, `key` remains `Some`, causing `Drop` to remove the `InProgress` entry and call `notify_all()`.
 
-`lock` recovers a poisoned mutex with `into_inner`, as in section 16.6. The map is consistent after every
-update, because each update is one `insert` or one `remove`, so the data is safe to keep using.
+The helper `lock` recovers poisoned mutexes via `PoisonError::into_inner` (section 16.6); because every map mutation is a single `insert` or `remove`, the map itself remains structurally consistent after a panic.
 
 ### 19.4.3 `execute`
 
-`execute` loops while the key is in progress, then claims it, runs the work outside the lock, and stores the
-result:
+`execute` loops while the key is in progress, claims ownership when absent, runs `work()` outside the lock, and publishes the result:
 
 ```rust
 {{#include ../../rust-interview-lab/src/bin/single_flight.rs:67:116}}
 ```
 
-The `loop` handles all three states:
+The lookup loop handles all three slot states:
 
-- `Done(value)`: return a clone. This is the idempotency of section 19.3.
-- `InProgress`: wait on the `Condvar`. `wait` releases the lock while it sleeps, and takes it back on wakeup.
-  The loop then checks the key again, because the wakeup may be for another key, or spurious.
-- No entry: leave the loop and claim the key.
+- `Some(Slot::Done(value))`: return a clone immediately (matching section 19.3).
+- `Some(Slot::InProgress)`: block on `Condvar::wait`, releasing the lock while sleeping and re-checking the slot upon wakeup in case the notification targeted a different key or was spurious.
+- `None`: exit the loop and insert `Slot::InProgress`.
 
-After the claim, `drop(slots)` releases the lock, and `work()` runs with no lock held. If `work` returns an
-error, `?` returns it, and the claim's `Drop` removes the mark. If `work` succeeds, the code takes the key out
-of the claim, stores `Done`, and wakes the waiters.
+After claiming the key, `drop(slots)` releases the mutex prior to running `work()`. If `work()` returns `Err`, `?` returns early and `Claim::drop` clears the sentinel. If `work()` returns `Ok`, the caller disarms the claim, stores `Slot::Done(value)`, and wakes all waiters.
 
 ### 19.4.4 Measured
 
-`main` starts its callers together with a `Barrier`, so they really overlap, and times them:
+In `main`, a `Barrier` synchronizes concurrent callers so they contend simultaneously, measuring execution counts and wall-clock latency:
 
 ```rust
 {{#include ../../rust-interview-lab/src/bin/single_flight.rs:118:139}}
 ```
 
-The work is a fake charge that sleeps for 100 ms and counts how many times it ran. The second scene also runs
-the four keys through a store like section 19.3's: one lock, held while the work runs.
+Each simulated charge sleeps 100 ms and increments an execution counter. The second scenario compares single flight against a single-lock store holding its mutex across the work.
 
 ```text
 1. Eight concurrent calls with one key
@@ -507,11 +414,9 @@ the four keys through a store like section 19.3's: one lock, held while the work
   first: Err("card declined"), retry: Ok("txn-order-5"), executions 1
 ```
 
-Eight callers with one key caused one charge, and all eight got its result in 103 ms. Four keys ran in
-parallel in 103 ms. The one-lock store ran them one after another, in 417 ms. A declined charge was not
-stored, so the retry ran the work, and that run succeeded.
+Eight concurrent callers for one key triggered a single execution and all received `txn-order-1` in 103 ms. Four distinct keys executed in parallel under single flight in 103 ms, compared with 417 ms when serialized behind one lock. A declined charge was left uncached, allowing the subsequent retry to execute and succeed.
 
-The fourth scene makes the work panic while a second caller waits for the same key:
+The fourth scenario induces a panic inside the active worker while a second caller waits on the same key:
 
 ```text
 4. The work panics while another caller waits
@@ -522,18 +427,14 @@ payment provider crashed
   caller 1: Ok(Ok("txn-order-6"))
 ```
 
-The `panicked at` lines are the default panic message, written to standard error. Caller 0's panic dropped
-its claim, and `Drop` removed the mark and woke caller 1. Caller 1 found no entry, claimed the key, and ran
-the work itself. Without the claim's `Drop`, the mark would stay `InProgress`, and caller 1 would wait
-forever. Animation 19.2 shows both runs.
+When caller 0 panics, stack unwinding runs `Claim::drop`, removing the `InProgress` sentinel and waking caller 1, which then claims the key and completes the charge. Without `Claim::drop`, the sentinel would remain stuck in `InProgress` and caller 1 would block forever (Animation 19.2).
 
 <figure class="anim">
 <video class="motion" src="figures/ch19-single-flight.mp4" autoplay loop muted playsinline preload="metadata" aria-label="Three caller robots, A, B, and C, a slot map with an entry for order-1, and a payment service. A finds no entry, marks order-1 InProgress, releases the lock, and calls the service. B and C find InProgress and sleep on the Condvar. The charge returns txn-order-1; A stores Done and calls notify_all; B and C wake and each take a clone, with one execution counted. In a second run without the claim's Drop, A's work panics, the mark stays InProgress, and B and C sleep while a clock runs." data-chapters="[[0.0, &quot;claim&quot;], [13.67, &quot;done&quot;], [26.82, &quot;panic, no Drop&quot;]]"><img src="figures/ch19-single-flight.gif" alt="Three caller robots, A, B, and C, a slot map with an entry for order-1, and a payment service. A finds no entry, marks order-1 InProgress, releases the lock, and calls the service. B and C find InProgress and sleep on the Condvar. The charge returns txn-order-1; A stores Done and calls notify_all; B and C wake and each take a clone, with one execution counted. In a second run without the claim's Drop, A's work panics, the mark stays InProgress, and B and C sleep while a clock runs."></video>
 <figcaption><b>Animation 19.2</b> One key, three callers, one execution. When the claim's <code>Drop</code> is missing, a panic leaves the mark in place and the waiters sleep forever.</figcaption>
 </figure>
 
-A production version adds two things. Waiters need a deadline, `wait_timeout`, so a hung charge cannot hold
-them forever. And the results need an expiry, or a store that only grows becomes a memory leak.
+Production single-flight stores add two safeguards: waiter deadlines via `Condvar::wait_timeout` so a stalled upstream call cannot block waiters indefinitely, and TTL-based cache eviction so the map does not grow without bound.
 
 <p class="listing"><b>Listing 19.12</b> Single flight: one execution per key in flight. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/bin/single_flight.rs">src/bin/single_flight.rs</a></p>
 
@@ -545,24 +446,17 @@ them forever. And the results need an expiry, or a store that only grows becomes
 
 ## Summary
 
-- A token bucket allows bursts up to its capacity and a long-run rate. Each call adds the tokens earned since the
-  last call before it checks.
-- The locked bucket is correct and simple. The atomic bucket avoids the lock, but its separate check, take, and
-  refill steps let the count go negative. With 8 threads it admitted 17 to 19 requests where 20 were due.
-- Retry only errors that can succeed later. A `Retryable` trait lets each error type decide, and carry a server
-  hint.
-- Exponential backoff with full jitter spreads retries out and prevents a thundering herd. The server's
-  `Retry-After` is a floor on the delay.
-- Passing randomness in as a closure makes the retry logic testable.
-- An idempotency key makes a retried request safe: the server stores the result under the key and returns it for
-  every repeat.
-- Single flight marks a key in progress and runs its work outside the lock. Eight callers with one key caused one
-  execution, and four keys took 103 ms, against 417 ms behind one lock. A claim with `Drop` clears the mark after
-  an error or a panic.
+- A token bucket caps burst size at its capacity and sustained throughput at its refill rate, computing accrued tokens lazily from elapsed monotonic time on each call.
+- A mutex-guarded token bucket is straightforward and race-free; splitting refill, check, and decrement across separate atomic operations allows the balance to go negative under contention, admitting 17 to 19 requests across 8 threads where 20 were due.
+- Only transient failures should be retried; a `Retryable` trait lets each error type classify retryability and expose server `Retry-After` hints.
+- Exponential backoff with full jitter spreads client retries across time to prevent thundering herds, treating `Retry-After` as a lower bound on delay.
+- Injecting the random source as a closure keeps retry logic deterministic and testable.
+- Idempotency keys prevent duplicate side effects by caching results per logical request key and returning cached outcomes on repeat delivery.
+- Single flight deduplicates concurrent work per key while allowing distinct keys to run in parallel (103 ms versus 417 ms behind a single lock), using an RAII claim guard to clear `InProgress` state on error or panic.
 
 </div>
 
-Chapter 20 moves down to the network itself: IP addresses, sockets, and a server that echoes back what it receives.
+In Chapter 20, the stack descends to the network layer itself, examining IPv4 addressing, TCP flow windows, and blocking versus event-driven echo servers.
 
 ## Exercises
 

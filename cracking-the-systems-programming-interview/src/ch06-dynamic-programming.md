@@ -14,58 +14,45 @@ This chapter covers
 
 </div>
 
-In chapter 1 you computed Fibonacci numbers three ways. The recursive version repeated work. The memoized
-version saved each answer in a table, and the loop version kept only the answers it still needed. That
-small example contains the whole idea of this chapter.
+In Chapter 1, we computed Fibonacci numbers in three ways: a direct recursive implementation that repeated overlapping work, a memoized version that cached each result in a table, and an iterative loop that retained only the preceding states still required. That small example captures the core principle of this chapter.
 
-**Dynamic programming** is a way to solve a problem by answering smaller versions of the same problem first,
-saving those answers, and combining them. It applies when two things are true:
+**Dynamic programming** solves an optimization or counting problem by evaluating smaller subproblems first, storing their results, and combining those results into the final solution. The technique applies when two structural properties hold:
 
-1. The answer for a large input can be built from the answers for smaller inputs.
-2. The same smaller inputs come up again and again, so saving their answers avoids repeated work.
+1. **Optimal substructure:** The solution for a larger input can be constructed from the solutions for smaller inputs.
+2. **Overlapping subproblems:** The same smaller inputs recur repeatedly, so storing their results eliminates redundant computation.
 
-This chapter works through four problems. The first, making change with coins, is dynamic programming in its
-plainest form. The second, listing subsets, uses recursion without any saved answers. The last two combine
-dynamic programming with the sorting and searching you learned in chapter 3.
+Four problems below develop these ideas in sequence. The first, making change with coins, presents dynamic programming in its canonical form. The second, enumerating subsets, uses recursion without memoization because every distinct combination must be emitted. The final two combine dynamic programming with the sorting and binary search techniques introduced in Chapter 3.
 
-For each problem I first say, in one sentence, what one entry of the table means. That sentence is called
-the **subproblem**. Once it is written down, the code follows from it.
+For each dynamic programming problem, we begin by stating in a single sentence what one table entry represents. That definition is the **subproblem**; once it is stated precisely, both the recurrence relation and the implementation follow directly from it.
 
 ## 6.1 Making change with the fewest coins
 
-**The problem.** You have coins of some values, as many of each as you like. What is the fewest number of
-coins that add up to a given amount? With coins 1, 2, and 5, the amount 11 needs three coins: 5 + 5 + 1.
-Some amounts cannot be made at all. With only a 2 coin, the amount 3 is impossible.
+**The problem.** Given a set of coin denominations with an unlimited supply of each, determine the minimum number of coins that sum to a target amount. With denominations 1, 2, and 5, the amount 11 requires three coins (`5 + 5 + 1`). Some target amounts have no valid representation; with only a coin of value 2, the amount 3 is impossible.
 
 ### 6.1.1 Why the obvious approach fails
 
-A natural first try is to take the largest coin that fits, again and again. This is called a **greedy**
-approach. It works for 1, 2, and 5. It does not work for every set of coins (figure 6.1).
+A natural initial strategy selects the largest denomination that fits at each step. This **greedy** approach succeeds for denominations 1, 2, and 5, but it fails for arbitrary coin sets (Figure 6.1).
 
 <figure>
 <img src="figures/dp-greedy.svg" alt="With coins 1, 3, 4 and amount 6, greedy picks 4, 1, 1 for three coins; the best answer is 3, 3 for two coins">
 <figcaption><b>Figure 6.1</b> Greedy picks 4 first and needs three coins. The best answer uses two.</figcaption>
 </figure>
 
-So the program has to consider every coin at every step. Trying every combination directly takes
-exponential time. Dynamic programming makes it fast.
+Consequently, the algorithm must evaluate every denomination at each step. Exhaustively enumerating every combination takes exponential time, whereas dynamic programming reduces the work to polynomial time.
 
 ### 6.1.2 The subproblem
 
-Write down what one entry of the table means:
+Begin by defining the meaning of a single table entry:
 
-> `dp[t]` is the fewest coins that add up to exactly `t`.
+> `dp[t]` is the minimum number of coins that sum to exactly `t`.
 
-Now think about the last coin used to make `t`. If that coin is `c`, the coins before it add up to `t - c`,
-and the fewest coins for that is `dp[t - c]`. So using coin `c` last costs `dp[t - c] + 1` coins. You do not
-know which coin is last in the best answer, so try every coin and keep the smallest:
+Consider the final coin placed in an optimal solution for `t`. If that coin has value `c`, the preceding coins must sum to `t - c`, and the fewest coins required for that remainder is `dp[t - c]`. Choosing coin `c` last therefore costs `dp[t - c] + 1` coins. Because the optimal final coin is unknown in advance, the recurrence evaluates every valid denomination and retains the minimum:
 
-> `dp[t]` = the smallest of `dp[t - c] + 1`, over every coin `c` that is not larger than `t`.
+> `dp[t]` = the minimum of `dp[t - c] + 1` over every coin `c` such that `c <= t`.
 
-The starting point is `dp[0] = 0`: zero coins make zero.
+The base case is `dp[0] = 0`, since zero coins sum to zero.
 
-Fill the table by hand for the coins in figure 6.1, which are 1, 3, and 4, and the amount 6. Each row tries
-every coin that fits, and keeps the smallest count:
+Filling the table by hand for the denominations in Figure 6.1 (1, 3, and 4) up to amount 6 demonstrates how each row evaluates every fitting coin and retains the smallest count:
 
 | `t` | coins that fit | options from each coin | `dp[t]` |
 |---|---|---|---|
@@ -76,18 +63,11 @@ every coin that fits, and keeps the smallest count:
 | 5 | 1, 3, 4 | `dp[4] + 1` = 2, `dp[2] + 1` = 3, `dp[1] + 1` = 2 | 2 |
 | 6 | 1, 3, 4 | `dp[5] + 1` = 3, `dp[3] + 1` = 2, `dp[2] + 1` = 3 | 2 |
 
-`dp[6]` is 2, from `3 + 3`. Greedy needed three coins for the same amount, because it took the 4 first and
-never went back. The table records the best count for every smaller amount. Each new amount is then one
-lookup plus one.
+The entry `dp[6]` evaluates to 2 (from `3 + 3`). The greedy strategy required three coins for the same amount because it committed to 4 and never reconsidered earlier choices. Because the table records the optimal count for every smaller amount, each new entry reduces to a fixed number of lookups plus one.
 
-Two properties must hold for that to work. The answers must **overlap**, so that saving them avoids work.
-`dp[6]` and `dp[5]` both read `dp[1]`, and a longer table reads each entry many times. The best answer must
-also be built from best answers to smaller amounts. Taking the smallest of `dp[t - c] + 1` relies on that.
-If some way of making `t - c` used fewer coins, `dp[t - c]` would hold that smaller number. When either
-property fails, the table gives a wrong answer.
+Both structural properties are required for this recurrence to hold. Subproblems must **overlap** so that caching results avoids repeated work: both `dp[6]` and `dp[5]` read `dp[1]`, and larger tables revisit each entry many times. Optimal substructure must also hold so that the best solution for `t` is composed from best solutions for smaller remainders `t - c`. If a better way to form `t - c` existed, `dp[t - c]` would hold that smaller count. When either property fails, the table produces an incorrect result.
 
-Because `dp[t]` only uses entries for smaller amounts, you can fill the table from left to right. Figure 6.2
-shows the table for coins 1, 2, and 5, and how `dp[11]` is computed.
+Because `dp[t]` depends exclusively on entries for smaller amounts, the table can be populated from left to right. Figure 6.2 illustrates the completed table for denominations 1, 2, and 5, along with the dependencies used to compute `dp[11]`.
 
 <figure>
 <img src="figures/dp-coins.svg" alt="A table dp[0] to dp[11] with values 0 1 1 2 2 1 2 2 3 3 2 3; dp[11] is the smallest of dp[10]+1, dp[9]+1, and dp[6]+1">
@@ -107,33 +87,24 @@ shows the table for coins 1, 2, and 5, and how `dp[11]` is computed.
 {{#include ../../rust-interview-lab/src/problems/dp.rs:6:29}}
 ```
 
-Read it against the recurrence:
+Comparing the implementation against the recurrence clarifies each step:
 
-- A negative amount is rejected first. After that check, `amount as usize` cannot produce a strange value.
-- `vec![usize::MAX; amount + 1]` creates the table, one entry per amount from 0 to `amount`. `usize::MAX`,
-  the largest `usize`, stands for "cannot be made yet".
-- `dp[0] = 0` is the starting point.
-- The outer loop fills amounts from 1 upward. The inner loop tries every coin.
-- The `continue` skips a coin that is larger than the amount, or whose remainder cannot be made. The second
-  check also prevents `usize::MAX + 1`, which would overflow.
-- `dp[total].min(dp[total - coin] + 1)` keeps the smaller of the current best and the new option.
+- Negative amounts are rejected up front, ensuring that the cast `amount as usize` is always well defined.
+- `vec![usize::MAX; amount + 1]` allocates one entry per amount from `0` through `amount`, using `usize::MAX` as a sentinel meaning "currently unreachable".
+- `dp[0] = 0` establishes the base case.
+- The outer loop advances from `1` through `amount`, while the inner loop evaluates every coin denomination.
+- The `continue` guard skips any coin larger than `total` as well as any remainder `total - coin` that remains unreachable. That second check also prevents `usize::MAX + 1`, which would overflow.
+- `dp[total].min(dp[total - coin] + 1)` updates the entry with the smaller of the current best count and the new candidate.
 
 <div class="callout warning" markdown="1">
 
-**WARNING** The second half of that `continue` is not an optimisation. Remove it and the function breaks.
-If `dp[total - coin]` holds the sentinel, then `dp[total - coin] + 1` adds one to the largest `usize`. A
-debug build panics with "attempt to add with overflow". A release build wraps around to 0, and the final
-`match` reads 0 as a real count of zero coins. The table then reports fewer coins than exist. Add the
-sentinel check before adding, or `usize::MAX` cannot stand for "impossible".
+**WARNING** The second condition in that `continue` statement is required for correctness rather than performance. Removing it breaks the function: when `dp[total - coin]` holds the sentinel, evaluating `dp[total - coin] + 1` adds one to the maximum `usize`. In a debug build, the program panics with `"attempt to add with overflow"`. In a release build, the addition wraps around to `0`, and the final `match` interprets `0` as a valid count of zero coins, causing the table to report artificially small counts. Checking for the sentinel before adding is mandatory whenever `usize::MAX` represents an unreachable state.
 
 </div>
 
-At the end, a `match` turns the table entry into the result. The pattern `usize::MAX` matches that exact
-value, meaning impossible, and returns `None`. Any other value is a count. So the function returns
-`Option<i32>`, and the caller cannot mistake "impossible" for a number of coins.
+At the end of the function, a `match` converts the final table entry into the return value. Matching `usize::MAX` produces `None`, while any other value yields `Some(count)`. Returning `Option<i32>` ensures that callers cannot confuse an impossible amount with a valid coin count.
 
-The table has `amount + 1` entries and each one tries every coin. The cost is O(amount × coins) time and
-O(amount) memory.
+Because the table contains `amount + 1` entries and each entry inspects every denomination, the algorithm runs in O(amount × coins) time and uses O(amount) memory.
 
 <p class="listing"><b>Listing 6.2</b> The complete file. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/problems/dp.rs">src/problems/dp.rs</a></p>
 
@@ -141,31 +112,22 @@ O(amount) memory.
 {{#include ../../rust-interview-lab/src/problems/dp.rs}}
 ```
 
-Run the tests with `cargo test --lib coin_change`. The tests check the example from section 6.1, an
-impossible amount, and the amount 0.
+Running `cargo test --lib coin_change` executes the test suite, which verifies the example from Section 6.1, an unreachable amount, and the base case of `0`.
 
 ## 6.2 Listing every subset
 
-Not every recursive problem needs a table. Sometimes you need every possible answer, not the best one. Then
-recursion explores all the choices, and there is nothing to save.
+Not every recursive problem requires a memoization table. When a problem demands every valid solution rather than a single optimum, recursion explores the entire decision space and there are no overlapping subproblems to cache.
 
-**The problem.** List every subset of a set of distinct numbers. A **subset** is any selection of the
-elements, including none of them and all of them. `[1, 2, 3]` has eight subsets: `[]`, `[1]`, `[2]`, `[3]`,
-`[1, 2]`, `[1, 3]`, `[2, 3]`, and `[1, 2, 3]`.
+**The problem.** Enumerate every subset of a set of distinct integers. A **subset** is any selection of elements, including the empty selection and the full set. The input `[1, 2, 3]` has eight subsets: `[]`, `[1]`, `[2]`, `[3]`, `[1, 2]`, `[1, 3]`, `[2, 3]`, and `[1, 2, 3]`.
 
-**The idea.** Build subsets one element at a time. Start with the empty subset. From any subset, you can add
-one more element, as long as it comes later in the input than the elements already chosen. That rule is what
-stops `[2, 1]` from appearing as a copy of `[1, 2]`. Figure 6.3 draws the choices as a tree. Every node in
-the tree is one subset.
+**The idea.** Construct subsets one element at a time, starting from the empty subset. From any partial subset, append one additional element whose index is strictly greater than the indices of all elements already chosen. Enforcing this index order prevents duplicate permutations such as `[2, 1]` from appearing alongside `[1, 2]`. Figure 6.3 depicts these decisions as a tree in which every node corresponds to a distinct subset.
 
 <figure>
 <img src="figures/dp-subsets.svg" alt="A tree rooted at the empty subset; each edge pushes a later element; the eight nodes are the eight subsets">
 <figcaption><b>Figure 6.3</b> The tree of choices for <code>[1, 2, 3]</code>. Each edge adds an element that comes after the last one chosen.</figcaption>
 </figure>
 
-To visit the whole tree, the program walks it depth first, going down one branch as far as it can before
-trying the next. Going down means adding an element; coming back up means removing it. This way of exploring
-choices is called **backtracking**.
+To enumerate every node, the algorithm traverses the tree depth first, descending along one branch as far as possible before exploring its siblings. Descending pushes an element onto the active selection, and ascending pops it back off. This systematic search pattern is called **backtracking**.
 
 <figure class="anim">
 <video class="motion" src="figures/ch06-subsets.mp4" autoplay loop muted playsinline preload="metadata" aria-label="The tree of choices for 1, 2, 3, with the current path highlighted. The recursion records a subset at each node, pushes the next element on the way down, and pops it on the way back. The result list grows to [], [1], [1, 2], [1, 2, 3], [1, 3], [2], [2, 3], [3]. A last part shows the copy [2, 1] that a loop starting at 0 would record." data-chapters="[[0.0, &quot;walk&quot;], [67.44, &quot;loop from 0&quot;]]"><img src="figures/ch06-subsets.gif" alt="The tree of choices for 1, 2, 3, with the current path highlighted. The recursion records a subset at each node, pushes the next element on the way down, and pops it on the way back. The result list grows to [], [1], [1, 2], [1, 2, 3], [1, 3], [2], [2, 3], [3]. A last part shows the copy [2, 1] that a loop starting at 0 would record."></video>
@@ -179,19 +141,16 @@ choices is called **backtracking**.
 {{#include ../../rust-interview-lab/src/problems/backtracking.rs}}
 ```
 
-`backtrack` is a function defined inside `subsets`, as `go` was in chapter 1. It takes four things:
+The helper `backtrack` is nested inside `subsets`, following the same pattern as `go` in Chapter 1. It accepts four parameters:
 
-- `nums`, the input, borrowed.
-- `start`, the first position it may choose from.
-- `path`, the subset being built. Only one `path` vector exists for the whole search, passed as `&mut`.
-- `result`, the list of finished subsets, also passed as `&mut`.
+- `nums`: an immutable borrow of the input slice.
+- `start`: the first index eligible for selection at this level.
+- `path`: a single mutable vector holding the subset currently under construction, passed as `&mut`.
+- `result`: the mutable output vector accumulating completed subsets, also passed as `&mut`.
 
-On entry, `backtrack` records `path.clone()` in the result. The current path is one subset, the node of
-the tree it has reached. Then, for each later position, it pushes that element, recurses to explore the
-subtree below, and pops the element. After the pop, `path` is exactly as it was before the push, ready for
-the next choice.
+Upon entry, `backtrack` appends `path.clone()` to `result`, recording the subset represented by the current tree node. For each index from `start` onward, it pushes the element, recurses to explore the subtree below, and pops the element upon return. After the pop, `path` is restored to its exact prior state, ready for the next sibling branch.
 
-Trace the start of `subsets(vec![1, 2, 3])`:
+Tracing the opening calls of `subsets(vec![1, 2, 3])` illustrates this push-and-pop discipline:
 
 | Call | `path` on entry | Records | Then pushes |
 |---|---|---|---|
@@ -202,49 +161,37 @@ Trace the start of `subsets(vec![1, 2, 3])`:
 | back in `start 2` | `[1, 2]` after pop | | no more positions |
 | back in `start 1` | `[1]` after pop | | 3 |
 
-`Vec::with_capacity(1 << nums.len())` reserves exactly enough room. `1 << n` means 2 to the power n, because
-shifting 1 left by n bits doubles it n times. A set of n elements has 2ⁿ subsets.
+Calling `Vec::with_capacity(1 << nums.len())` preallocates the exact output capacity. Shifting `1` left by `n` bits computes 2ⁿ, which is the exact number of subsets of an `n`-element set.
 
-The work is O(n · 2ⁿ): there are 2ⁿ subsets and each clone copies up to n numbers. No algorithm can do
-better, because the output itself has that size.
+The total work is O(n · 2ⁿ): there are 2ⁿ subsets, and cloning each copies up to `n` elements. Because the output itself has size O(n · 2ⁿ), this bound is asymptotically optimal.
 
 ## 6.3 The longest increasing run inside a list
 
-**The problem.** In a list of numbers, pick some of them and keep their order. Each picked number must be
-larger than the one before. What is the most you can pick? The picked numbers are called an **increasing
-subsequence**. In `[10, 9, 2, 5, 3, 7, 101, 18]`, you can pick `2, 3, 7, 18`, so the answer is 4.
+**The problem.** Given a sequence of integers, select elements in their original relative order such that each selected element is strictly greater than the previous one. The goal is to find the maximum length of such an **increasing subsequence**. In `[10, 9, 2, 5, 3, 7, 101, 18]`, the elements `2, 3, 7, 18` form an increasing subsequence of length 4.
 
-A subsequence may skip numbers. That is the difference from the substrings of chapter 3, which were
-contiguous.
+Unlike the contiguous substrings examined in Chapter 3, a subsequence may omit intervening elements.
 
-**The direct dynamic program.** Let `dp[i]` be the length of the longest increasing subsequence that ends at
-position i. For each i, look at every earlier j with a smaller number, and take the best `dp[j] + 1`. That is
-O(n²), because each position looks at every earlier one.
+**The direct dynamic program.** Define `dp[i]` as the length of the longest increasing subsequence ending at index `i`. For each `i`, inspecting every earlier index `j` with `nums[j] < nums[i]` and taking the maximum `dp[j] + 1` yields an O(n²) algorithm, because each position scans all preceding positions.
 
-**A faster idea.** Keep a different table, called `tails`. Its entries have this meaning:
+**A faster formulation.** Maintain a separate ordered structure called `tails`, whose entries satisfy the following invariant:
 
-> The k-th smallest entry of `tails` is the smallest number that can end an increasing subsequence of
-> length k.
+> The `k`-th smallest entry in `tails` is the smallest possible ending value of an increasing subsequence of length `k`.
 
-Keeping the smallest possible ending number is useful because a smaller ending leaves more room for later
-numbers to extend it. When a new number arrives:
+Minimizing the ending value is advantageous because a smaller tail leaves more room for subsequent elements to extend the subsequence. As each input element arrives, two cases apply:
 
-- If it is larger than every entry, it extends the longest subsequence found so far. Add it.
-- Otherwise, find the smallest entry that is at least as large as it, and replace that entry with it. Some
-  subsequence of that length can now end with a smaller number.
+- If the element exceeds every existing entry, it extends the longest subsequence discovered so far and is inserted into `tails`.
+- Otherwise, the smallest entry greater than or equal to the element is replaced by the new element, recording a smaller tail for a subsequence of that length.
 
-At the end, the number of entries is the answer. Figure 6.4 follows the example.
+When the scan completes, the cardinality of `tails` equals the length of the longest increasing subsequence. Figure 6.4 traces the evolution of `tails` on the sample input.
 
 <figure>
 <img src="figures/dp-lis.svg" alt="Eight rows showing tails after each number: 10; 9; 2; 2 5; 2 3; 2 3 7; 2 3 7 101; 2 3 7 18">
 <figcaption><b>Figure 6.4</b> <code>tails</code> after each number. The green cell is the one that changed.</figcaption>
 </figure>
 
-Look at the last row. `tails` is `2, 3, 7, 18`, which happens to be a real increasing subsequence here. That
-is not true in general. `tails` can mix numbers from different subsequences. Only its length is meaningful.
+In the final row of Figure 6.4, `tails` holds `2, 3, 7, 18`, which happens to be a valid increasing subsequence for this input. That coincidence does not hold in general: `tails` can combine elements from distinct subsequences, so only its length is guaranteed to match the answer.
 
-The entries of `tails` are always in increasing order, so finding "the smallest entry at least as large" can
-use a sorted structure. The program uses a `BTreeSet`, a set that keeps its elements sorted.
+Because the entries of `tails` remain strictly sorted, locating the smallest entry at least as large as a given element can be performed logarithmically in an ordered collection. The implementation below stores `tails` in a `BTreeSet`.
 
 <p class="listing"><b>Listing 6.4</b> The complete program. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/bin/longest_increasing_subsequence.rs">src/bin/longest_increasing_subsequence.rs</a></p>
 
@@ -252,15 +199,11 @@ use a sorted structure. The program uses a `BTreeSet`, a set that keeps its elem
 {{#include ../../rust-interview-lab/src/bin/longest_increasing_subsequence.rs}}
 ```
 
-`tails.range(num..)` returns the elements from `num` upward, in sorted order. `.next()` takes the first of
-them, the smallest element that is at least `num`. If there is one, the program removes it. Then it inserts
-`num` in every case. Removing and inserting is how the set replaces one element with another.
+The call `tails.range(num..)` yields an iterator over all entries greater than or equal to `num` in ascending order, and `.next()` retrieves the smallest such entry. If one exists, the function removes it before inserting `num`, effectively replacing the old tail with the smaller value.
 
-The range `num..` includes `num` itself, which handles repeated numbers. In `[7, 7, 7, 7]`, the second 7
-finds the first 7, removes it, and inserts itself again, so the answer stays 1. A run with a repeated number
-is not strictly increasing, so 1 is correct.
+Including `num` in the lower-bounded range `num..` also handles duplicate inputs correctly. For `[7, 7, 7, 7]`, each subsequent `7` locates the existing `7`, removes it, and inserts `7` again, leaving the length at 1 as required for a strictly increasing subsequence.
 
-Each `range`, `remove`, and `insert` on a `BTreeSet` costs O(log n), so the whole program is O(n log n).
+Because `range`, `remove`, and `insert` each run in O(log n) time on a `BTreeSet`, the complete algorithm runs in O(n log n) time.
 
 ```text
 $ cargo run --bin longest_increasing_subsequence
@@ -272,44 +215,37 @@ $ cargo run --bin longest_increasing_subsequence
 0
 ```
 
-The six outputs match the comments in `main`.
+The six output lines match the expected values documented in `main`.
 
 ## 6.4 Choosing jobs that do not overlap
 
-**The problem.** A machine can run one job at a time. Each job has a start time, an end time, and a profit.
-Choose jobs that do not overlap so that the total profit is as large as possible. Figure 6.5 shows the four
-sample jobs.
+**The problem.** A single machine executes one job at a time. Each job specifies a start time, an end time, and a profit. The objective is to select a set of non-overlapping jobs that maximizes total profit. Figure 6.5 illustrates four sample jobs.
 
 <figure>
 <img src="figures/dp-jobs.svg" alt="Four jobs on a timeline: A from 1 to 3 profit 50, B from 2 to 4 profit 10, C from 3 to 5 profit 40, D from 3 to 6 profit 70; A and D are highlighted">
 <figcaption><b>Figure 6.5</b> The sample jobs. A and D fit together and earn 120, the best possible.</figcaption>
 </figure>
 
-A job written `[s, e)` runs from time s up to, but not including, time e. So a job ending at 3 and a job
-starting at 3 do not overlap.
+A job interval `[s, e)` runs from time `s` up to, but excluding, time `e`. Consequently, a job ending at time `3` and a job starting at time `3` do not overlap.
 
 ### 6.4.1 Building the subproblem
 
-First sort the jobs by end time. Then any job that can come before job i in a schedule ends earlier, so it
-appears earlier in the sorted list. The subproblem is:
+Sorting the jobs by end time ensures that any job eligible to precede job `i` in a valid schedule finishes earlier and therefore appears earlier in the sorted slice. The subproblem is defined as follows:
 
-> `dp[i]` is the best profit using only the first i jobs of the sorted list.
+> `dp[i]` is the maximum profit achievable using only the first `i` jobs in the sorted list.
 
-For job i there are two choices:
+For job `i`, two mutually exclusive choices exist:
 
-- **Skip it.** The best profit stays `dp[i]`, the best without it.
-- **Take it.** Then only jobs that end by its start time can come before it. Those jobs are a prefix of the
-  sorted list, say the first `prev` jobs. The profit is `dp[prev] + profit of job i`.
+- **Skip the job:** The maximum profit remains `dp[i]`, the best total achievable without job `i`.
+- **Schedule the job:** Only jobs finishing at or before job `i`'s start time may precede it. Because the slice is sorted by end time, those compatible jobs form a prefix of length `prev`, yielding a total profit of `dp[prev] + job.profit`.
 
-So `dp[i + 1]` is the larger of the two. The last entry is the answer.
+Thus `dp[i + 1]` is the maximum of those two values, and the final table entry gives the optimal profit.
 
-Finding `prev` is a search in a sorted list, so it can be a binary search, like chapter 3's. The standard
-library provides one as `partition_point`. Given a condition that is true for a prefix of the list and false
-after it, `partition_point` returns the length of that prefix.
+Finding `prev` is a binary search over the sorted prefix, analogous to the binary search in Chapter 3. The Rust standard library provides this operation directly via `slice::partition_point`, which accepts a predicate that is `true` for a prefix and `false` thereafter and returns the length of that prefix.
 
 ### 6.4.2 The code
 
-A job is a small `Copy` struct: when it starts, when it ends, and what it pays.
+Each job is represented as a compact `Copy` struct storing its start time, end time, and profit.
 
 ```rust
 {{#include ../../rust-interview-lab/src/bin/job_scheduling_with_profit_and_deadline.rs:1:6}}
@@ -321,12 +257,7 @@ A job is a small `Copy` struct: when it starts, when it ends, and what it pays.
 {{#include ../../rust-interview-lab/src/bin/job_scheduling_with_profit_and_deadline.rs}}
 ```
 
-The comments inside `max_profit` walk through the same reasoning as section 6.4.1, step by step.
-`jobs[..i].partition_point(|j| j.end <= job.start)` counts the jobs among the first i that end by this job's
-start. Because the list is sorted by end time, those jobs come first, which is the condition
-`partition_point` needs.
-
-Trace it on the sorted jobs A, B, C, D:
+The comments inside `max_profit` mirror the derivation in Section 6.4.1. Calling `jobs[..i].partition_point(|j| j.end <= job.start)` counts how many of the first `i` jobs finish by `job.start`; sorting by end time guarantees the monotonic prefix property that `partition_point` requires. Tracing the algorithm on the sorted jobs A, B, C, and D produces the following table:
 
 | i | job | prev | skip: `dp[i]` | take: `dp[prev]` + profit | `dp[i + 1]` |
 |---|---|---|---|---|---|
@@ -335,8 +266,7 @@ Trace it on the sorted jobs A, B, C, D:
 | 2 | C [3, 5) 40 | 1 | 50 | 50 + 40 = 90 | 90 |
 | 3 | D [3, 6) 70 | 1 | 90 | 50 + 70 = 120 | **120** |
 
-For C and D, `prev` is 1: only A ends by time 3. Sorting costs O(n log n), and each job does one binary
-search, so the whole program is O(n log n).
+For jobs C and D, `prev` equals `1`, because only job A finishes by time `3`. Sorting requires O(n log n) time, and each of the `n` jobs performs one O(log n) binary search, yielding an overall runtime of O(n log n).
 
 ```text
 $ cargo run --bin job_scheduling_with_profit_and_deadline
@@ -345,15 +275,11 @@ $ cargo run --bin job_scheduling_with_profit_and_deadline
 
 ## 6.5 Jobs that also need memory and cores
 
-**The problem.** A cluster holds several GPUs. Each GPU has a fixed amount of memory and a fixed
-number of cores. Each job needs some of both, and it runs only on a GPU that has enough of each. A
-GPU runs one job at a time, as in section 6.4.
+**The problem.** Consider a cluster containing several GPUs, each with a fixed memory capacity and core count. Every job specifies both a memory requirement and a core requirement and can execute only on a GPU that satisfies both constraints. As in Section 6.4, each GPU executes one job at a time.
 
-The program below answers a narrow question: which single GPU gives the best schedule? Section 6.5.4
-measures what that leaves unused.
+The program below addresses a narrower question: which single GPU yields the highest-profit schedule? The capacity left unused by this single-GPU restriction is analyzed in Section 6.5.4.
 
-The sample cluster has two GPUs and the four jobs from section 6.4, with a memory need and a core
-need added.
+The sample cluster comprises two GPUs and the four jobs from Section 6.4, augmented with memory and core requirements:
 
 | job | time | memory | cores | profit |
 |---|---|---|---|---|
@@ -362,24 +288,17 @@ need added.
 | C | [3, 5) | 40 GB | 60 | 40 |
 | D | [3, 6) | 60 GB | 90 | 70 |
 
-gpu 0 has 80 GB and 108 cores, so all four jobs fit there. Only A and B fit on gpu 1, which has 16 GB
-and 40 cores.
+GPU 0 provides 80 GB of memory and 108 cores, accommodating all four jobs. GPU 1 provides 16 GB and 40 cores, accommodating only jobs A and B.
 
 ### 6.5.1 The fit test, and the same table
 
-The new step is one boolean. A job fits a GPU when the GPU has at least its memory and at least its
-cores.
+The resource constraint introduces a single boolean predicate: a job fits on a GPU if and only if the GPU has at least the required memory and at least the required cores.
 
-The rest is the table from section 6.4. Sort the jobs by end time and find each job's compatible
-prefix `prev`. Then fill `dp` with the better of skipping the job and taking it on top of `dp[prev]`.
-
-The fit test changes one line of that loop. A job that does not fit is skipped, as if it were not in
-the list at all. Its entry in `dp` copies the entry before it.
+The remainder of the algorithm reuses the table structure from Section 6.4. After sorting the jobs by end time and precomputing each job's compatible prefix `prev`, the loop populates `dp` with the maximum of skipping the job or scheduling it after `dp[prev]`. A job that fails the fit test is skipped unconditionally, copying the preceding entry `dp[i]` into `dp[i + 1]`.
 
 ### 6.5.2 The code
 
-A job carries its two resource needs beside its time and its profit. A GPU carries the same two
-numbers, and one method answers whether a job fits.
+Each `Job` stores its resource requirements alongside its time interval and profit, and each `Gpu` stores its capacities together with a `fits` predicate.
 
 ```rust
 {{#include ../../rust-interview-lab/src/bin/gpu_job_schedule.rs:7:27}}
@@ -391,15 +310,11 @@ numbers, and one method answers whether a job fits.
 {{#include ../../rust-interview-lab/src/bin/gpu_job_schedule.rs}}
 ```
 
-`max_profit` builds `prev` once and then reuses a single `dp` vector for each GPU. The closure
-`pick_jobs_dp` fills the table for one GPU and returns its last entry. `gpus.iter().map(pick_jobs_dp)`
-runs that closure for every GPU, and `.max()` keeps the best result.
+The function `max_profit` precomputes `prev` once and reuses a single `dp` buffer across all GPUs. The closure `pick_jobs_dp` populates the table for one GPU and returns its final entry; `gpus.iter().map(pick_jobs_dp)` evaluates every GPU, and `.max()` selects the highest total.
 
-Reusing `dp` is safe. The loop writes `dp[i + 1]` from `dp[i]` and `dp[prev[i]]`. Both indexes are at
-most `i`, so it reads values this pass has already written. Every pass overwrites all of `dp` except
-`dp[0]`, which stays 0.
+Reusing `dp` across iterations is sound because each step writes `dp[i + 1]` using only `dp[i]` and `dp[prev[i]]`. Since both indices are at most `i`, every read accesses a value already computed in the current pass, while `dp[0]` remains `0`.
 
-Animation 6.3 opens with the jobs out of order. It lifts them into end order, then shows each job's arithmetic in a callout beside the table.
+Animation 6.3 begins with the jobs unsorted, reorders them by end time, and displays the recurrence arithmetic for each job beside the table.
 
 <figure class="anim">
 <video class="motion" src="figures/ch06-gpu-jobs.mp4" autoplay loop muted playsinline preload="metadata" aria-label="Four jobs, numbered 0 to 3, start out of order and lift into order of end time, above a row of five dp cells. Two cards show gpu 0 with 80 GB and 108 cores, and gpu 1 with 16 GB and 40 cores. A callout beside the table names the job being scanned and shows its arithmetic: skip is dp[i], take is dp[prev] plus the job's profit, and the result is the larger of the two. Arrows lead from the two source cells into dp[i+1]. On gpu 1 the fit test blocks C and D, and the callout marks the take as no fit. Striking the fit test lets gpu 1 take them and read 120, a schedule it cannot run. The last part shares the jobs out, A and D on gpu 0 for 120 and B on gpu 1 for 10, for 130." data-chapters="[[0.0, &quot;the jobs&quot;], [8.7, &quot;sort&quot;], [16.02, &quot;prev&quot;], [46.44, &quot;gpu 0&quot;], [74.24, &quot;gpu 1&quot;], [106.0, &quot;the fit test&quot;], [118.3, &quot;share&quot;]]"><img src="figures/ch06-gpu-jobs.gif" alt="Four jobs, numbered 0 to 3, start out of order and lift into order of end time, above a row of five dp cells. Two cards show gpu 0 with 80 GB and 108 cores, and gpu 1 with 16 GB and 40 cores. A callout beside the table names the job being scanned and shows its arithmetic: skip is dp[i], take is dp[prev] plus the job's profit, and the result is the larger of the two. Arrows lead from the two source cells into dp[i+1]. On gpu 1 the fit test blocks C and D, and the callout marks the take as no fit. Striking the fit test lets gpu 1 take them and read 120, a schedule it cannot run. The last part shares the jobs out, A and D on gpu 0 for 120 and B on gpu 1 for 10, for 130."></video>
@@ -408,7 +323,7 @@ Animation 6.3 opens with the jobs out of order. It lifts them into end order, th
 
 ### 6.5.3 Two tables
 
-gpu 0 has enough of both for every job, so its table is the one from section 6.4.
+Because GPU 0 satisfies the resource requirements of every job, its table matches Section 6.4:
 
 | i | job | fits | prev | skip `dp[i]` | take `dp[prev]` + profit | `dp[i+1]` |
 |---|---|---|---|---|---|---|
@@ -417,7 +332,7 @@ gpu 0 has enough of both for every job, so its table is the one from section 6.4
 | 2 | C | yes | 1 | 50 | 50 + 40 = 90 | 90 |
 | 3 | D | yes | 1 | 90 | 50 + 70 = 120 | **120** |
 
-gpu 1 fails the fit test for C and D, so both are skipped and the table stops at 50.
+GPU 1 fails the fit test for jobs C and D, so both are skipped and the optimal profit remains 50:
 
 | i | job | fits | prev | skip `dp[i]` | take | `dp[i+1]` |
 |---|---|---|---|---|---|---|
@@ -433,23 +348,17 @@ $ cargo run --bin gpu_job_schedule
 120
 ```
 
-Sorting costs O(n log n), and each job finds its compatible prefix with one binary search. Each GPU
-then fills its table in O(n), and the same `dp` is reused, so memory is O(n).
+Sorting and computing compatible prefixes via binary search take O(n log n) time. Evaluating each GPU then fills its table in O(n) time, and reusing a single `dp` buffer keeps auxiliary memory at O(n).
 
 ### 6.5.4 What one GPU at a time costs
 
-`max` returns one GPU's schedule. The other GPU runs nothing in that answer, even when it has room.
+Selecting the maximum across GPUs returns a schedule for only one device, leaving the remaining GPUs idle even when they have available capacity.
 
-The two schedules cannot be added, because they overlap. The best schedule for gpu 1 is A alone,
-which earns 50. That A is already part of the 120 on gpu 0, so adding the two totals counts A twice.
+The per-GPU optima cannot be summed directly because the schedules overlap in job assignments. The optimal schedule for GPU 1 runs job A alone for a profit of 50, but job A is already included in GPU 0's schedule of 120; summing the two totals would double-count job A.
 
-Sharing the jobs out does better. Put A and D on gpu 0, and B on gpu 1. Neither GPU runs two
-overlapping jobs, and the total is 120 + 10 = 130.
+Partitioning the jobs across devices achieves a higher total: assigning A and D to GPU 0 and B to GPU 1 avoids all time conflicts and yields a combined profit of `120 + 10 = 130`.
 
-Finding that split is a different problem. It has to decide which GPU runs each job. A table per GPU
-cannot express that choice, because the GPUs are not independent. With many jobs and many GPUs the
-search grows quickly, and production schedulers use heuristics, bin packing, or an integer program
-instead.
+Finding an optimal multi-device assignment is a fundamentally harder combinatorial problem because the scheduler must decide which GPU runs each job. Independent per-GPU tables cannot capture cross-device contention. As job and GPU counts scale, the search space grows rapidly, so production cluster schedulers rely on heuristics, bin-packing approximations, or integer linear programming.
 
 <div class="summary" markdown="1">
 
@@ -472,8 +381,7 @@ instead.
 
 </div>
 
-Chapter 7 begins Part 3, on modeling data. You will build types that can only hold valid values, using
-structs, enums, and error types.
+Chapter 7 opens Part 3 on data modeling, where structs, enums, and custom error types enforce invariants so that only valid values can be constructed.
 
 ## Exercises
 

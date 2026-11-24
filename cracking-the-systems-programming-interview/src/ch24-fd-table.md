@@ -15,13 +15,9 @@ This chapter covers
 
 </div>
 
-Chapter 2 said that `open` returns a small number, the file descriptor, and that later calls name the
-file by that number. Chapter 20 used the same numbers for sockets. This chapter looks at the table that
-holds those numbers. It shows what happens to the table when a process starts another program. Then it shows how a shell uses the table to join two programs with a pipe.
+As introduced in Chapter 2, `open` returns a small non-negative integer, the file descriptor, which subsequent system calls use to reference the open file; Chapter 20 applied the same abstraction to network sockets. In this chapter, we examine the per-process table that tracks these descriptors, trace how `fork` and `exec` transform that table when launching a new program, and replicate the pipeline mechanism a shell uses to connect two processes.
 
-The chapter's program, `fd_table`, does the shell's work with raw system calls from the `libc` crate. It
-watches descriptor numbers being handed out and reused. It builds `ls | wc -l`, then breaks it by keeping
-one descriptor open too long. Last, it checks which descriptors a child process inherits.
+The accompanying program, `fd_table`, performs this work directly through raw `libc` system calls. It observes descriptor allocation and reuse, constructs `ls | wc -l` by hand, reproduces the hang caused by leaving a write end open, and verifies descriptor inheritance across `exec`.
 
 ## 24.1 The descriptor table
 
@@ -377,7 +373,7 @@ sockets that are never dropped, or files opened in a loop.
 
 </div>
 
-Chapter 25 returns to chapter 20's epoll loop in edge-triggered mode. There, each readiness change is reported once, and a handler that reads too little stalls.
+In Chapter 25, we return to the `epoll` event loop from Chapter 20 in edge-triggered mode, where each readiness transition is reported once and a handler that fails to drain the socket stalls.
 
 ## Exercises
 

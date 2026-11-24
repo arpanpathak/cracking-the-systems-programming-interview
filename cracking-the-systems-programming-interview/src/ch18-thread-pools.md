@@ -15,61 +15,46 @@ This chapter covers
 
 </div>
 
-Starting a thread costs time and memory. The operating system must create it, give it a stack, and schedule it.
-For a program that runs thousands of small jobs, starting a thread per job wastes most of its time on starting
-threads.
+Spawning an operating-system thread incurs measurable latency and memory overhead: the kernel must allocate a thread control block, map a call stack, and insert the thread into its scheduler queues. For workloads consisting of thousands of short-lived tasks, creating a dedicated thread per task spends more time in thread lifecycle management than in actual computation.
 
-A **thread pool** starts a fixed number of threads once, and reuses them. The threads are called **workers**. Each
-worker waits for a job, runs it, and waits for the next. Jobs wait in a queue until a worker is free. This is the
-queue of chapter 17, with the consumers built in.
+A **thread pool** amortizes that cost by spawning a fixed cohort of **worker** threads at startup and reusing them across tasks. Each worker pulls a job from a shared queue, executes it to completion, and blocks for the next item. Structurally, this combines the concurrent queue patterns of Chapter 17 with a managed set of consumer threads.
 
-This chapter builds the pool several times. Each version fixes a problem found in the one before, so read them in
-order.
+The sections below evolve a thread pool through successive iterations, each addressing a concrete concurrency, lifecycle, or fault-isolation defect exposed by the previous design.
 
 ## 18.1 The parts of a pool
 
-Every pool here has the same parts (figure 18.1).
+Every pool implementation in this chapter shares four structural components (figure 18.1).
 
 <figure>
 <img src="figures/pool-parts.svg" alt="execute sends a job into a channel through a Sender. The single Receiver is shared by four workers through an Arc and a Mutex. Notes explain the Job type, the shared receiver, and how dropping the Sender closes the channel.">
 <figcaption><b>Figure 18.1</b> A job travels from <code>execute</code>, through a channel, to whichever worker takes it first.</figcaption>
 </figure>
 
-**The job type.** A job is any closure that the pool can run once on another thread:
+**The job type.** A job is any closure that the pool can invoke once on a worker thread:
 
 ```rust
 type Job = Box<dyn FnOnce() + Send + 'static>;
 ```
 
-Each closure has its own unnamed type, so a queue cannot hold them directly. `Box<dyn FnOnce()>` puts each closure
-on the heap behind a pointer of one common type. `dyn FnOnce()` means "some type that can be called once with no
-arguments". `Send` lets the job move to a worker thread. `'static` means the job borrows nothing that could be
-dropped before the job runs.
+Because each closure in Rust has a distinct, anonymous type, a homogeneous queue cannot store closures directly. Wrapping them in `Box<dyn FnOnce()>` erases the concrete type behind a heap-allocated trait object callable once with no arguments. The `Send` bound permits moving the closure across thread boundaries, and `'static` guarantees the closure borrows no short-lived stack data that could be invalidated before execution.
 
-**The channel.** `std::sync::mpsc::channel()` returns a `Sender` and a `Receiver`. Values sent through the sender
-come out of the receiver in the same order. `mpsc` stands for multiple producer, single consumer: the `Sender` can
-be cloned, but there is only one `Receiver`.
+**The channel.** Calling `std::sync::mpsc::channel()` constructs a FIFO channel split into a `Sender` and a `Receiver`. The acronym `mpsc` denotes multiple producer, single consumer: the `Sender` can be cloned across submitting threads, whereas only a single `Receiver` exists.
 
-**The shared receiver.** Every worker needs to take jobs from the one receiver. So the pool wraps it in a `Mutex`,
-and shares the mutex through an `Arc`. A worker locks the mutex, calls `recv()` to take the next job, and runs it.
+**The shared receiver.** Because multiple workers must dequeue from the single `Receiver`, the pool wraps it in `Arc<Mutex<Receiver<Job>>>`. Each worker locks the mutex, calls `recv()` to claim the next job, and then executes that job.
 
-**Shutdown.** When every `Sender` is dropped, the channel closes. `recv()` then returns `Err` once the remaining
-jobs are taken. A worker that sees the `Err` leaves its loop, and the thread ends.
+**Shutdown.** Dropping every `Sender` closes the channel. After all buffered jobs have been drained, subsequent `recv()` calls return `Err`, signaling each worker to break out of its loop and terminate cleanly.
 
-## 18.2 Version 1, and a bug you can measure
+## 18.2 Version 1, and a measurable bug
 
-Version 1 writes the pool of figure 18.1 directly. `new` starts the workers, `execute` sends a job, and `join`
-closes the channel and waits for every worker. Each worker locks the shared receiver to take a job. How long it
-keeps that lock decides whether the workers run at the same time.
+The first implementation translates figure 18.1 directly into code: `new` spawns the workers, `execute` enqueues a job, and `join` closes the channel and joins every thread. Each worker locks the shared receiver to obtain work, and the exact lifetime of that lock guard determines whether jobs execute concurrently or serially.
 
-A `Job` is a boxed closure that runs once and can move to another thread. The pool holds the sending end of the
-job channel and the handles of its workers:
+The pool holds the channel's sending half alongside the worker `JoinHandle`s:
 
 ```rust
 {{#include ../../rust-interview-lab/src/bin/thread_pool.rs:1:11}}
 ```
 
-`new` builds the parts of figure 18.1 and starts the workers:
+`new` creates the channel, wraps the receiver in `Arc<Mutex<_>>`, and spawns the workers:
 
 ```rust
 {{#include ../../rust-interview-lab/src/bin/thread_pool.rs:13:30}}
@@ -77,13 +62,9 @@ job channel and the handles of its workers:
 }
 ```
 
-`mpsc::channel::<Job>()` creates the channel. The receiver goes into `Arc::new(Mutex::new(...))`, so every worker
-can share it and only one at a time can use it. For each worker, `Arc::clone(&receiver)` makes another handle to
-the same mutex, and `thread::spawn(move || ...)` starts a thread that owns that handle. The `move` closure is the
-worker's whole life: take a job, run it, and repeat until `recv` fails. `collect()` gathers the `JoinHandle`s
-that `spawn` returned into the `workers` vector.
+For each worker, `Arc::clone(&receiver)` produces a shared handle to the protected receiver, which `thread::spawn(move || ...)` moves into the worker thread. Each worker loops until `recv()` returns `Err`, and `collect()` gathers the resulting `JoinHandle`s into the `workers` vector.
 
-Submitting a job and shutting down are two short methods:
+Job submission and shutdown are implemented in two compact methods:
 
 ```rust
 impl ThreadPool {
@@ -92,12 +73,9 @@ impl ThreadPool {
 }
 ```
 
-`execute` sends the boxed job into the channel. It does not wait for a worker: the job sits in the channel until
-a worker takes it. `join` takes `self` by value, so the pool cannot be used after it. `drop(self.sender)` closes
-the channel. Each worker finishes the jobs still queued, gets `Err` from `recv`, and ends. `w.join()` waits for
-each worker thread to finish.
+`execute` enqueues a boxed job asynchronously without waiting for a worker to pick it up. `join` consumes `self` by value, preventing further submissions after shutdown begins. Dropping `self.sender` closes the channel so that workers drain any remaining jobs, observe `Err` from `recv()`, and exit before `w.join()` reaps each thread.
 
-`main` queues 10,000 jobs that each print a line, then joins:
+In `main`, 10,000 printing jobs are submitted and joined:
 
 ```rust
 {{#include ../../rust-interview-lab/src/bin/thread_pool.rs:44:51}}
@@ -109,7 +87,7 @@ each worker thread to finish.
 {{#include ../../rust-interview-lab/src/bin/thread_pool.rs}}
 ```
 
-The program prints 10,000 lines and looks correct. It has one bug, in the worker loop:
+Although this program prints all 10,000 lines, its worker loop harbors a severe concurrency defect:
 
 ```rust
 while let Ok(job) = rx.lock().unwrap().recv() {
@@ -117,33 +95,25 @@ while let Ok(job) = rx.lock().unwrap().recv() {
 }
 ```
 
-`rx.lock().unwrap()` creates a `MutexGuard`. The guard is a temporary value inside the `while let` condition. A
-temporary in that position lives until the end of the loop body, so the guard is still alive while `job()` runs.
-The worker holds the lock for the whole job, and no other worker can take a job in the meantime.
+The expression `rx.lock().unwrap()` produces a temporary `MutexGuard`. Under Rust's temporary lifetime rules, temporaries created inside a `while let` scrutinee remain alive until the end of the entire loop body. Consequently, the worker retains the receiver mutex for the full duration of `job()`, blocking every other worker from calling `recv()`.
 
-To see the effect, I ran four jobs that each sleep for 200 ms on four workers. I ran them once with this
-loop and once with the loop of version 2. Figure 18.2 shows the result.
+Running four 200 ms sleep jobs on a four-worker pool exposes the serialization immediately (figure 18.2).
 
 <figure>
 <img src="figures/pool-lock-held.svg" alt="With the while-let loop, four 200 ms jobs run one after another and take 814 ms. With a let statement, they run at the same time and take 205 ms.">
 <figcaption><b>Figure 18.2</b> The same four jobs with each loop shape, release build.</figcaption>
 </figure>
 
-With `while let`, the four jobs ran one after another and took 814 ms. With the lock released before the job, they
-ran at the same time and took 205 ms. The first pool had four threads but used one at a time.
+With the `while let` loop, the four jobs executed sequentially in 814 ms; releasing the lock before invoking `job()` allowed all four to overlap and finish in 205 ms. Despite allocating four worker threads, version 1 utilized only one thread at a time.
 
-Animation 18.1 replays both runs. Watch the lock. In version 2 it is free again before each job starts. In version 1
-it stays with the worker that is running.
+Animation 18.1 contrasts both executions, highlighting the mutex ownership across workers.
 
 <figure class="anim">
 <video class="motion" src="figures/ch18-pool-lock.mp4" autoplay loop muted playsinline preload="metadata" aria-label="A channel holding four jobs, a receiver with a padlock, and four worker robots. In version 2, worker 1 locks the receiver, takes job 1, and the lock is free again at once; workers 2, 3, and 4 do the same, and all four jobs run together, finishing at 205 ms. In version 1, worker 1 takes job 1 and keeps the lock while it runs; workers 2, 3, and 4 sleep waiting for the lock, and the jobs run one after another, finishing at 814 ms." data-chapters="[[0.0, &quot;version 2&quot;], [27.48, &quot;version 1&quot;]]"><img src="figures/ch18-pool-lock.gif" alt="A channel holding four jobs, a receiver with a padlock, and four worker robots. In version 2, worker 1 locks the receiver, takes job 1, and the lock is free again at once; workers 2, 3, and 4 do the same, and all four jobs run together, finishing at 205 ms. In version 1, worker 1 takes job 1 and keeps the lock while it runs; workers 2, 3, and 4 sleep waiting for the lock, and the jobs run one after another, finishing at 814 ms."></video>
 <figcaption><b>Animation 18.1</b> The same four 200 ms jobs. Released before the job, the lock lets all four run at once. Held through the job, it makes the workers take turns.</figcaption>
 </figure>
 
-The same bug has a second effect. If a job panics, the panic happens while the guard is alive, so it poisons the
-mutex. When I piped this program's output into `head`, which closes the pipe after five lines, `println!` panicked
-inside a job. The other three workers then panicked on `.unwrap()` of the poisoned lock, and `main` panicked when
-`send` found no worker left.
+Holding the guard across `job()` introduces a second failure mode: if a job panics, unwinding occurs while the mutex is locked, poisoning the receiver mutex. Piping version 1's output into `head` (which closes the pipe after five lines) causes `println!` to panic inside a job; that panic poisons the lock, causing the remaining three workers to panic on `.unwrap()` and `main` to panic when `send()` finds no surviving receivers.
 
 ## 18.3 Version 2: release the lock before the job
 
@@ -157,15 +127,11 @@ impl ThreadPool {
 }
 ```
 
-`Job` is a type alias for the work a pool runs, a boxed closure. The closure runs once (`FnOnce`), can move
-to another thread (`Send`), and borrows nothing short-lived (`'static`). `ThreadPool` holds the sending end of the
-channel that carries jobs, and the handles of its worker threads.
+As in version 1, `Job` aliases `Box<dyn FnOnce() + Send + 'static>`, and `ThreadPool` owns the job sender and worker handles.
 
-The fix is one line. `let job = receiver.lock().unwrap().recv();` is a separate statement, and the temporary guard
-is dropped at the end of that statement. The lock is released before `match` runs the job.
+Moving reception into its own statement, `let job = receiver.lock().unwrap().recv();`, resolves the lock-lifetime bug. Because temporary values in a `let` statement drop at the semicolon, the `MutexGuard` is released before the subsequent `match` invokes `job()`.
 
-Version 2 also changes `execute`. It is generic over `F: FnOnce() + Send + 'static`, and does the boxing itself.
-Callers write `pool.execute(|| ...)` instead of `pool.execute(Box::new(|| ...))`.
+Version 2 also improves ergonomics by making `execute` generic over `F: FnOnce() + Send + 'static` and performing the heap allocation internally, allowing callers to write `pool.execute(|| ...)` instead of boxing closures manually.
 
 <p class="listing"><b>Listing 18.3</b> The complete file, with tests. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/problems/thread_pool_v2.rs">src/problems/thread_pool_v2.rs</a></p>
 
@@ -173,18 +139,13 @@ Callers write `pool.execute(|| ...)` instead of `pool.execute(Box::new(|| ...))`
 {{#include ../../rust-interview-lab/src/problems/thread_pool_v2.rs}}
 ```
 
-The test `jobs_run_at_the_same_time` checks the fix without measuring time. It uses a `Barrier` for four threads.
-A barrier makes each thread that calls `wait()` sleep until four threads have called it, then releases them all.
-Four jobs wait on the barrier. They can only get through if four workers run them at the same moment. With
-version 1's loop, the first job would hold the lock and wait on the barrier forever.
+The `jobs_run_at_the_same_time` test verifies true parallelism deterministically without relying on wall-clock timings. It coordinates four jobs with a `std::sync::Barrier` of size four: each job blocks at `barrier.wait()` until all four arrive simultaneously. Under version 1's serialized loop, the first job would hold the lock while waiting on the barrier forever.
 
-The test waits for the results with `recv_timeout(Duration::from_secs(5))`, so a broken pool fails the test after
-five seconds instead of hanging it.
+Wrapping result collection in `recv_timeout(Duration::from_secs(5))` ensures a regression fails cleanly after five seconds rather than deadlocking the test runner.
 
 ## 18.4 Version 3: errors, and shutdown on drop
 
-Version 2 still panics in three places: for a size of zero, when `send` fails, and when the lock is poisoned. And
-if the caller forgets to call `join`, the pool is dropped without waiting for its jobs. Version 3 fixes both.
+Version 2 still panics in three cases: zero worker counts, failed channel sends, and poisoned locks. Furthermore, omitting an explicit `join()` call drops the pool without waiting for queued jobs to finish. Version 3 replaces panics with typed errors and guarantees graceful teardown in `Drop`.
 
 <p class="listing"><b>Listing 18.4</b> The job type and the error type (lines 8 to 32). <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/problems/thread_pool_v3.rs">src/problems/thread_pool_v3.rs</a></p>
 
@@ -194,8 +155,7 @@ if the caller forgets to call `join`, the pool is dropped without waiting for it
 {{#include ../../rust-interview-lab/src/problems/thread_pool_v3.rs:16:32}}
 ```
 
-`PoolError` names the two ways a request can fail. It implements `Display` for a message, and `Error` so callers
-can use `?` and `Box<dyn Error>` with it.
+`PoolError` enumerates the pool's failure modes and implements both `Display` and `std::error::Error` for compatibility with `?` and `Box<dyn Error>`.
 
 <p class="listing"><b>Listing 18.5</b> The pool, <code>execute</code>, <code>shutdown</code>, and <code>Drop</code>.</p>
 
@@ -210,15 +170,11 @@ impl ThreadPool {
 {{#include ../../rust-interview-lab/src/problems/thread_pool_v3.rs:85:89}}
 ```
 
-The sender is now an `Option<Sender<Job>>`. `shutdown` takes it out with `self.sender.take()`, which leaves `None`
-behind, and drops it. `execute` checks for `None` with `.ok_or(PoolError::ShutDown)?`.
+Wrapping the sender in `Option<Sender<Job>>` enables explicit closure: `shutdown` extracts and drops the sender via `self.sender.take()`, leaving `None` in its place. Subsequent calls to `execute` observe `None` and return `Err(PoolError::ShutDown)`.
 
-`shutdown` takes `&mut self`, not `self`, so that `Drop` can call it. `self.workers.drain(..)` removes the handles
-from the vector one at a time and gives each to the loop. A second call finds no sender and no workers, so it does
-nothing.
+Taking `&mut self` in `shutdown` rather than `self` permits `Drop::drop` to invoke it directly. `self.workers.drain(..)` removes and joins each handle once; calling `shutdown` a second time finds an empty vector and `None` sender, making teardown idempotent.
 
-`impl Drop for ThreadPool` calls `shutdown`. When a pool goes out of scope, it closes its channel and waits for
-every queued job to finish.
+Because `Drop` delegates to `shutdown`, any `ThreadPool` leaving scope automatically closes its channel and waits for all queued jobs to complete.
 
 <p class="listing"><b>Listing 18.6</b> The worker loop (lines 91 to 104).</p>
 
@@ -226,8 +182,7 @@ every queued job to finish.
 {{#include ../../rust-interview-lab/src/problems/thread_pool_v3.rs:91:104}}
 ```
 
-The worker loop is now a named function. It uses `let ... else` to leave quietly if the lock is poisoned, and
-drops the guard explicitly before running the job.
+Extracting the worker loop into a standalone function improves clarity. A `let ... else` guard exits cleanly if the mutex is poisoned, and an explicit `drop(guard)` releases the lock prior to executing the job.
 
 <p class="listing"><b>Listing 18.7</b> The complete file, with tests. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/problems/thread_pool_v3.rs">src/problems/thread_pool_v3.rs</a></p>
 
@@ -235,28 +190,24 @@ drops the guard explicitly before running the job.
 {{#include ../../rust-interview-lab/src/problems/thread_pool_v3.rs}}
 ```
 
-The test `dropping_the_pool_finishes_queued_jobs` creates a pool inside a block, queues 50 jobs, and lets the pool
-go out of scope at the closing brace. After the block, all 50 jobs must have run.
+The `dropping_the_pool_finishes_queued_jobs` test constructs a pool inside an inner scope, enqueues 50 jobs, and asserts after the closing brace that all 50 jobs ran to completion.
 
 ## 18.5 Version 4: surviving a panicking job
 
-Version 3 has one remaining weakness. If a job panics, the panic unwinds out of `worker_loop` and ends that
-worker's thread. The pool now has one worker fewer, and nothing reports it. After enough panics, no worker is left,
-and jobs queue up forever.
+Version 3 leaves one fault-isolation gap: an unhandled panic inside a job unwinds out of `worker_loop` and terminates that worker thread. Each panicking job permanently reduces the pool's capacity without notifying the caller; once every worker has died, queued jobs accumulate indefinitely.
 
-Version 4 catches the panic (figure 18.3).
+Version 4 isolates job panics inside each worker (figure 18.3).
 
 <figure>
 <img src="figures/pool-catch-unwind.svg" alt="A worker takes a job and runs it inside catch_unwind. Ok increments completed; Err, a caught panic, increments panicked. The worker continues.">
 <figcaption><b>Figure 18.3</b> A job's panic stops at <code>catch_unwind</code>, and the worker lives on.</figcaption>
 </figure>
 
-Animation 18.2 shows the difference over many jobs. Version 4 counts the panic and keeps every worker.
-Version 3 loses one worker per panic, until no one is left to run the queue.
+Animation 18.2 contrasts versions 3 and 4 under repeated job panics: version 4 records each failure while keeping all workers alive, whereas version 3 loses one thread per panic until no workers remain.
 
 <figure class="anim">
 <video class="motion" src="figures/ch18-pool-panic.mp4" autoplay loop muted playsinline preload="metadata" aria-label="Four worker robots, a channel, and counters for completed and panicked jobs. In version 4, each worker runs jobs inside catch_unwind; when worker 2's job panics, the panic is caught and counted, and all four workers keep taking jobs. In version 3, each panic ends its worker's thread, and the robot greys out; after four panics no worker is left, and jobs pile up in the channel while a clock runs." data-chapters="[[0.0, &quot;version 4&quot;], [14.04, &quot;version 3&quot;]]"><img src="figures/ch18-pool-panic.gif" alt="Four worker robots, a channel, and counters for completed and panicked jobs. In version 4, each worker runs jobs inside catch_unwind; when worker 2's job panics, the panic is caught and counted, and all four workers keep taking jobs. In version 3, each panic ends its worker's thread, and the robot greys out; after four panics no worker is left, and jobs pile up in the channel while a clock runs."></video>
-<figcaption><b>Animation 18.2</b> With <code>catch_unwind</code>, a panic costs one job. Without it, each panic costs a worker, and the pool fails silently once all are gone.</figcaption>
+<figcaption><b>Animation 18.2</b> With <code>catch_unwind</code>, a panic costs one job. Without it, each panic costs a worker, and the pool stalls once all are gone.</figcaption>
 </figure>
 
 <p class="listing"><b>Listing 18.8</b> The types and the worker loop. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/problems/thread_pool_v4.rs">src/problems/thread_pool_v4.rs</a></p>
@@ -269,22 +220,17 @@ Version 3 loses one worker per panic, until no one is left to run the queue.
 {{#include ../../rust-interview-lab/src/problems/thread_pool_v4.rs:150:169}}
 ```
 
-Version 4 adds three things to the types of version 3:
+Version 4 extends version 3 with three additions:
 
-- `PoolError::Spawn(io::Error)`, for a worker thread the operating system refused to start. Its `source`
-  method returns the `io::Error` inside, so a caller can see the cause.
-- `Counters`, two atomic counts that every worker updates. The pool and the workers share them through an `Arc`.
-- `Report`, a plain copy of the two counts, which `shutdown` returns.
+- `PoolError::Spawn(io::Error)` captures operating-system thread creation failures and exposes the underlying `io::Error` through `Error::source`.
+- `Counters` stores two atomic tallies (`completed` and `panicked`) shared between the pool and all workers via `Arc`.
+- `Report` provides an immutable snapshot of those tallies returned by `shutdown`.
 
-`panic::catch_unwind(f)` runs `f`. If `f` panics, the unwinding stops at `catch_unwind`, which returns `Err`.
-Otherwise it returns `Ok` with `f`'s result.
+Calling `panic::catch_unwind(f)` executes `f` and intercepts unwinding panics, returning `Err` on panic and `Ok` on normal completion.
 
-`catch_unwind` requires the closure to be `UnwindSafe`. The trait marks types that cannot leave broken data
-visible after a panic. A boxed `dyn FnOnce` does not have it, because the compiler cannot see what the closure
-captured. `AssertUnwindSafe(job)` is a wrapper that declares the closure safe anyway. The comment gives the reason:
-the job owns everything it touches, and this loop never looks at its partial state.
+Because `catch_unwind` requires its argument to implement `UnwindSafe` (a marker trait indicating that observing captured state after a panic cannot violate invariants), a type-erased `Box<dyn FnOnce()>` does not qualify automatically. Wrapping the job in `AssertUnwindSafe(job)` asserts that the invariant holds because each job owns its captured environment and the worker loop never inspects partial state after a panic.
 
-Each outcome increments one of two atomic counters, `completed` or `panicked`.
+Depending on the `catch_unwind` result, the worker increments either `completed` or `panicked`.
 
 <p class="listing"><b>Listing 18.9</b> Named workers (lines 73 to 105).</p>
 
@@ -295,13 +241,9 @@ impl ThreadPool {
 }
 ```
 
-`thread::Builder` configures a thread before starting it. Here it gives each worker a name, `pool-worker-0` and so
-on, which appears in panic messages and debuggers. `Builder::spawn` returns a `Result`, because the operating system
-can refuse to create a thread. `thread::spawn` panics in that case.
+Using `thread::Builder` assigns each worker a descriptive OS thread name (`pool-worker-0`, `pool-worker-1`, and so on) that surfaces in panic messages and debuggers. Unlike `thread::spawn`, which panics on OS resource exhaustion, `Builder::spawn` returns an `io::Result`.
 
-The pool is built before the workers are started. If starting the third worker fails, `return Err(...)` drops the
-half-built `pool`. Its `Drop` closes the channel and joins the two workers that did start, so no thread is left
-running.
+Constructing `pool` before spawning workers ensures exception safety during initialization: if spawning the third worker fails, returning `Err(...)` drops the partially initialized `pool`, whose `Drop` implementation closes the channel and joins the two already-running threads so none leak.
 
 <p class="listing"><b>Listing 18.10</b> <code>shutdown</code> and the report (lines 113 to 136).</p>
 
@@ -314,9 +256,7 @@ impl ThreadPool {
 {{#include ../../rust-interview-lab/src/problems/thread_pool_v4.rs:144:148}}
 ```
 
-`shutdown` takes `self` by value and returns a `Report` with the two counts. The work is in `close_and_join`, which
-`Drop` also calls. When `shutdown` returns, `self` is dropped, and `Drop` runs `close_and_join` a second time. The
-second call finds nothing left to do.
+`shutdown` consumes `self` by value, delegates teardown to `close_and_join`, and returns a `Report` summarizing completed and panicked jobs. When `shutdown` returns, `Drop` runs `close_and_join` a second time as a harmless no-op.
 
 <p class="listing"><b>Listing 18.11</b> The complete file, with tests. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/problems/thread_pool_v4.rs">src/problems/thread_pool_v4.rs</a></p>
 
@@ -324,11 +264,9 @@ second call finds nothing left to do.
 {{#include ../../rust-interview-lab/src/problems/thread_pool_v4.rs}}
 ```
 
-The test `a_panicking_job_does_not_kill_its_worker` uses a pool with one worker. The first job panics. If that
-killed the worker, the second job would never run, and `recv_timeout` would fail after five seconds.
+The `a_panicking_job_does_not_kill_its_worker` test uses a single-worker pool where the first job panics and the second sends a confirmation value; if the panic killed the sole worker, `recv_timeout` would expire after five seconds.
 
-The test `spawn_errors_expose_their_source` checks the `source` method. `Error::source` returns the lower-level
-error that caused this one, so a caller can print the whole chain.
+The `spawn_errors_expose_their_source` test verifies that `Error::source` surfaces the underlying `io::Error` for structured error chains.
 
 ```text
 $ cargo test --lib problems::thread_pool
@@ -349,20 +287,17 @@ test problems::thread_pool_v4::tests::workers_are_named ... ok
 test result: ok. 12 passed; 0 failed; 0 ignored; 0 measured; 125 filtered out
 ```
 
-The filter `problems::thread_pool` matches all three versions. `cargo test` hides what passing tests print,
-including the message of the job that panics on purpose. Add `-- --nocapture` to see it. The message names the
-thread, `pool-worker-0`, which shows the thread names at work.
+The filter `problems::thread_pool` runs the suites for versions 2, 3, and 4 together. By default, `cargo test` captures stdout and stderr for passing tests; passing `-- --nocapture` reveals the intentional panic message tagged with the worker name `pool-worker-0`.
 
 ## 18.6 Shorter pools
 
-Three more pools take the lessons of versions 2 and 3 in a more compact form, and each adds one feature.
+The next three standalone programs distill versions 2 and 3 into compact forms, each introducing one additional capability.
 
 ### 18.6.1 Shutdown in `Drop`, compactly
 
-This pool shuts itself down when it goes out of scope. Its `Drop` closes the channel and joins the workers, so
-the caller never calls a shutdown method.
+This minimal pool relies solely on `Drop` for lifecycle management, closing the channel and joining all workers automatically when the pool leaves scope.
 
-The sender is wrapped in an `Option`, as in version 3, so `Drop` can close the channel by setting it to `None`:
+As in version 3, wrapping the sender in `Option` allows `Drop` to close the channel by assigning `None`:
 
 ```rust
 {{#include ../../rust-interview-lab/src/bin/thread_pool_bruce_lee.rs:6:11}}
@@ -374,11 +309,7 @@ The sender is wrapped in an `Option`, as in version 3, so `Drop` can close the c
 {{#include ../../rust-interview-lab/src/bin/thread_pool_bruce_lee.rs}}
 ```
 
-This pool keeps version 2's worker loop and version 3's `Option` sender and `Drop`. `self.job_sender = None`
-drops the sender by overwriting it. `thread::spawn(move || loop { ... })` passes a closure whose whole body is the
-`loop`.
-
-`main` has no explicit shutdown. The pool is dropped at the end of `main`, and `Drop` waits for all eight jobs.
+Overwriting `self.job_sender = None` drops the `Sender` in place, and each worker thread runs an inline `move || loop { ... }` closure. `main` submits eight jobs and exits; `Drop` blocks until all eight complete.
 
 ```text
 $ cargo run --bin thread_pool_bruce_lee
@@ -392,18 +323,15 @@ task 2 on ThreadId(2)
 task 3 on ThreadId(5)
 ```
 
-In this run, one worker took five of the eight jobs. Printing a line is so quick that the first worker to wake
-could take the next job before the others were scheduled. The pool does not promise an even split.
+In this run, one worker executed five of the eight tasks because printing a single line finishes quickly enough for an active thread to reclaim the mutex before sleeping threads are scheduled. Thread pools do not guarantee uniform task distribution across workers.
 
-`Drop` calls `worker.join().unwrap()`. If a job panicked, its worker's `join` returns `Err`, and the `unwrap` panics
-inside `Drop`. The later versions use `let _ = worker.join();` instead.
+Note that `Drop` invokes `worker.join().unwrap()`; if a worker panicked, unwrapping inside `Drop` would trigger a second panic (potentially aborting the process during unwinding). Later variants discard the join result with `let _ = worker.join();`.
 
 ### 18.6.2 A bounded queue and results
 
-This pool adds two features. The queue has a fixed size, so a caller that submits jobs faster than the workers
-run them has to wait. And each job's return value comes back to the caller.
+This variant introduces two capabilities: a bounded job queue that applies backpressure when workers fall behind, and a return channel delivering each job's output to the submitter.
 
-The sender is now a `SyncSender`, the sending end of a channel with a fixed capacity:
+Replacing `Sender` with `SyncSender` switches the pool to a fixed-capacity channel:
 
 ```rust
 {{#include ../../rust-interview-lab/src/bin/thread_pool_with_back_pressure.rs:6:11}}
@@ -415,22 +343,18 @@ The sender is now a `SyncSender`, the sending end of a channel with a fixed capa
 {{#include ../../rust-interview-lab/src/bin/thread_pool_with_back_pressure.rs}}
 ```
 
-The comments marked `changed` and `new` show the two additions.
+Comments tagged `changed` and `new` highlight the two extensions.
 
-`mpsc::sync_channel(queue_size)` creates a channel that holds at most `queue_size` messages. `SyncSender::send`
-blocks while the channel is full. This is the backpressure of section 17.1, built into the standard library's channel. A caller that queues
-jobs faster than the workers run them has to wait.
+Calling `mpsc::sync_channel(queue_size)` bounds the channel to at most `queue_size` pending jobs. When the channel is full, `SyncSender::send` blocks the submitting thread, providing the backpressure mechanism of section 17.1 directly through the standard library.
 
-Figure 18.4 shows both additions: a queue that can fill up, and a private channel per job for its result.
+The combined architecture, pairing a bounded submission queue with per-job result channels, is illustrated in figure 18.4.
 
 <figure>
 <img src="figures/ch18-backpressure.svg" alt="The caller's submit sends a job and a result Sender into sync_channel(queue_size); when the queue is full, submit blocks. Two workers take jobs from it. A worker sends the job's value into a per-job channel, whose Receiver was returned to the caller at once; the caller calls recv when it needs the value.">
 <figcaption><b>Figure 18.4</b> A bounded queue slows the caller down when the workers fall behind. Each job carries its own channel back to the caller.</figcaption>
 </figure>
 
-`submit` returns a result. It creates a new channel for each job, and the job sends its return value into it. The
-caller gets the `Receiver` back at once, and calls `recv()` when it needs the value. A value that will be ready
-later is often called a **future**, and chapter 22 builds on that idea.
+The `submit` method allocates a dedicated one-shot channel for each task, moves the result `Sender` into the worker closure, and returns the `Receiver` immediately so the caller can invoke `recv()` when the result is needed. A handle representing a value that will become available later is known as a **future**, a concept developed further in Chapter 22.
 
 ```text
 $ cargo run --bin thread_pool_with_back_pressure
@@ -444,15 +368,13 @@ $ cargo run --bin thread_pool_with_back_pressure
 49
 ```
 
-The results print in order because `main` calls `recv()` on the receivers in order, even though the jobs may finish
-in any order.
+Although tasks may complete in arbitrary order across workers, the output appears in ascending order because `main` calls `recv()` on the returned receivers sequentially.
 
 ### 18.6.3 Many producers
 
-In this pool, several threads submit jobs at the same time, each through its own clone of the `Sender`. The
-worker loop also handles a poisoned lock and a closed channel separately.
+This variant allows multiple producer threads to submit jobs concurrently while distinguishing mutex poisoning from channel closure inside the worker loop.
 
-`SharedLockedChannel` names the type every worker shares: one receiver, behind a `Mutex`, in an `Arc`. The pool holds a bounded sender in an `Option`, and the worker handles:
+`SharedLockedChannel` aliases `Arc<Mutex<Receiver<Job>>>`, while the pool stores an optional bounded `SyncSender` and the worker handles:
 
 ```rust
 {{#include ../../rust-interview-lab/src/bin/mpmc_thread_pool_engine.rs:10:16}}
@@ -464,7 +386,7 @@ worker loop also handles a poisoned lock and a closed channel separately.
 {{#include ../../rust-interview-lab/src/bin/mpmc_thread_pool_engine.rs}}
 ```
 
-This pool's worker loop is the clearest of the chapter:
+Its worker loop makes both exit conditions and lock release explicit:
 
 ```rust
 let Ok(receiver) = rx.lock() else { break }; // mutex poisoned
@@ -473,13 +395,11 @@ drop(receiver); // release lock before running the job
 job();
 ```
 
-Each `let ... else` line handles one failure and says which. The lock is released explicitly before the job runs.
+Each `let ... else` branch documents its specific termination condition, and `drop(receiver)` guarantees the mutex is released before `job()` executes.
 
-`execute` returns `Result<(), SendError<Job>>`. When the pool is shut down, it returns the job inside the error,
-so the caller can still run it or report it.
+`execute` returns `Result<(), SendError<Job>>`; if the pool has shut down, the error returns ownership of the rejected `Job` to the caller.
 
-`main` shares the pool between three producer threads with an `Arc`. Each producer queues five jobs. When the last
-`Arc` is dropped at the end of `main`, `Drop` runs and waits for every queued job.
+In `main`, three producer threads share the pool through an `Arc`, each submitting five jobs. When the final `Arc` reference drops at the end of `main`, `Drop` closes the channel and waits for all 15 jobs to finish.
 
 ```text
 $ cargo run --bin mpmc_thread_pool_engine
@@ -500,22 +420,20 @@ producer 1, job 3
 producer 1, job 0
 ```
 
-All 15 jobs ran. The order is mixed, even within one producer, because four workers run the jobs at the same time.
+All 15 jobs complete with interleaved ordering, even within a single producer, because four workers execute tasks concurrently.
 
 ## 18.7 A parallel map that keeps order
 
-The last pool is a single function. `map_order` applies a function to every input on several threads, and returns
-the results in the same order as the inputs.
+The final design encapsulates a scoped pool inside a single function: `map_order` applies a transformation function across an input vector in parallel while returning outputs in exact input order.
 
-The difficulty is that jobs finish in any order. The fix is to tag each input with its position, and use the tag
-to put each result back in place (figure 18.5).
+Because concurrent workers complete tasks in nondeterministic order, `map_order` pairs each input with its original index and uses that index to place each result into its target slot (figure 18.5).
 
 <figure>
 <img src="figures/pool-ordered.svg" alt="Inputs are sent as index and value pairs. Results arrive out of order as index and result pairs. Each result is stored at its index in a Vec of Options.">
 <figcaption><b>Figure 18.5</b> The index travels with the job, and puts the result back in its slot.</figcaption>
 </figure>
 
-The function's signature and its two channels come first:
+The function signature and channel setup establish the type bounds:
 
 ```rust
 {{#include ../../rust-interview-lab/src/problems/worker_pool.rs:8:26}}
@@ -523,14 +441,11 @@ The function's signature and its two channels come first:
 }
 ```
 
-`T` is the input type, `R` the result type, and `F` the function applied to each input. Inputs and results
-cross threads, so both must be `Send`. `mapper` is shared by all workers, so it goes in an `Arc`, and it must be
-`Sync` as well as `Send`. It has type `F: Fn(T) -> R`, not `FnOnce`, because each worker calls it many times.
+Both the input type `T` and output type `R` cross thread boundaries and therefore require `Send + 'static`. Because `mapper` is shared across all workers via `Arc`, it requires `Fn(T) -> R + Send + Sync + 'static`; it uses `Fn` rather than `FnOnce` because each worker invokes it repeatedly.
 
-Jobs go out as `(usize, T)` pairs, and results come back as `(usize, R)` pairs. The `usize` is the input's
-position, the tag of figure 18.5.
+Tasks travel through the job channel as `(usize, T)` pairs and return through the result channel as `(usize, R)` pairs, carrying the original sequence index.
 
-Each worker gets its own handle to the mapper, the job receiver, and the result sender:
+Each worker clones handles to the mapper, the shared job receiver, and the result sender:
 
 ```rust
 pub fn map_order<T, R, F>(worker_count: usize, inputs: Vec<T>, mapper: F) -> Vec<R>
@@ -545,11 +460,9 @@ where
 }
 ```
 
-The worker takes the job inside a block: `let job = { let guard = ...; guard.recv() };`. The guard is dropped
-at the end of the block, so the lock is released before `mapper` runs. This is the third way in this chapter to
-write the fix from section 18.3. If the result channel is closed, the caller has gone, and the worker stops.
+Receiving inside a dedicated block (`let job = { let guard = ...; guard.recv() };`) drops `guard` at the closing brace before invoking `mapper`, providing a third syntactic form of the lock-release fix from section 18.3. If sending the result fails because the caller dropped `result_rx`, the worker breaks out of its loop.
 
-The caller sends every job, then gives up its own senders:
+The caller dispatches all indexed inputs and drops its local senders:
 
 ```rust
 pub fn map_order<T, R, F>(worker_count: usize, inputs: Vec<T>, mapper: F) -> Vec<R>
@@ -564,11 +477,9 @@ where
 }
 ```
 
-`enumerate()` attaches each input's position. Dropping `job_tx` closes the job channel, so the workers stop when
-the queue is empty. Dropping the caller's `result_tx` leaves only the workers' clones. `result_rx.iter()` then
-ends when the last worker exits and drops its clone.
+`enumerate()` attaches each element's position. Dropping `job_tx` closes the job channel so workers exit once the queue drains, and dropping the caller's `result_tx` ensures that `result_rx.iter()` terminates as soon as the final worker exits and drops its clone.
 
-Last, the results are put back in input order:
+Finally, results are reassembled in input order:
 
 ```rust
 pub fn map_order<T, R, F>(worker_count: usize, inputs: Vec<T>, mapper: F) -> Vec<R>
@@ -582,8 +493,7 @@ where
 }
 ```
 
-Each result is stored at its index in `ordered`, a `Vec<Option<R>>`, which grows as needed with `resize_with`.
-At the end, every slot must hold `Some`, and the options are unwrapped into the final `Vec<R>`.
+Each returned `(index, value)` is placed into `ordered: Vec<Option<R>>`, grown dynamically via `resize_with` as needed. Once all workers finish, every slot contains `Some(value)` and is unwrapped into the final `Vec<R>`.
 
 <p class="listing"><b>Listing 18.15</b> The complete file, with tests. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/problems/worker_pool.rs">src/problems/worker_pool.rs</a></p>
 
@@ -618,21 +528,17 @@ test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 135 filtered out
 
 ## Summary
 
-- A thread pool reuses a fixed set of worker threads. Jobs are boxed closures, `Box<dyn FnOnce() + Send +
-  'static>`, sent through a channel whose receiver the workers share behind `Arc<Mutex<_>>`.
-- In `while let Ok(job) = rx.lock().unwrap().recv()`, the guard lives through the loop body. The workers ran one at
-  a time: 814 ms instead of 205 ms for four 200 ms jobs.
-- Release the lock before running the job: take it in its own `let` statement, in a block, or with `drop(guard)`.
-- Dropping the sender closes the channel. Workers drain the queue, see `Err` from `recv`, and exit. Doing this in
-  `Drop` makes a pool finish its jobs when it goes out of scope.
-- `catch_unwind` with `AssertUnwindSafe` keeps a worker alive when its job panics.
-- `sync_channel` bounds the queue and adds backpressure. A per-job channel carries a result back to the caller.
-- Tagging each job with its index returns parallel results in input order.
+- A thread pool amortizes thread-creation overhead by reusing a fixed set of workers that pull `Box<dyn FnOnce() + Send + 'static>` jobs from an `Arc<Mutex<Receiver<Job>>>`.
+- Placing `rx.lock().unwrap().recv()` directly in a `while let` condition extends the `MutexGuard` lifetime across the entire loop body, serializing four 200 ms jobs into 814 ms instead of 205 ms.
+- Releasing the lock before executing the job (via a separate `let` statement, an inner block, or an explicit `drop(guard)`) restores full concurrency.
+- Dropping the channel `Sender` signals workers to drain remaining tasks and exit; performing teardown inside `Drop` guarantees queued work completes when the pool leaves scope.
+- Wrapping job execution in `panic::catch_unwind` with `AssertUnwindSafe` prevents a panicking task from terminating its worker thread.
+- `mpsc::sync_channel` introduces bounded-queue backpressure, while per-job return channels deliver results back to callers.
+- Tagging inputs with sequence indices allows a parallel map to reassemble out-of-order worker results in exact input order.
 
 </div>
 
-Chapter 19 turns to failures between programs: limiting request rates, retrying failed calls, and making repeated
-requests safe.
+In Chapter 19, the focus shifts from intra-process concurrency to resilience across process and network boundaries: rate limiting, retry policies, and idempotent execution.
 
 ## Exercises
 

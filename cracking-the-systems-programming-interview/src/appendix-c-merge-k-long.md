@@ -1,8 +1,6 @@
 # Appendix C. Merging k sorted lists, the long version
 
-> **Warning.** This is the first version of chapter 10, kept whole. It walks through eleven programs for one
-> merge, and most of them are near copies of each other. It is very ugly. It stays in the book for brave readers
-> who want every variant and every borrow trick. Chapter 10 teaches the same material with three programs.
+> **Note.** This appendix preserves the original, unabridged draft of chapter 10. It walks through eleven implementations of the same merge, many of which differ only in borrow-checker mechanics or allocation strategy. Chapter 10 covers the same algorithmic material concisely with three implementations; this appendix remains for readers who wish to study every variant and ownership pattern in detail.
 
 <div class="covers" markdown="1">
 
@@ -16,20 +14,15 @@ This chapter covers
 
 </div>
 
-Chapter 9 built singly linked lists and moved their nodes between owners with `take`. Here you have k linked
-lists, each already sorted, and you want one sorted list that contains all their nodes.
+In chapter 9, we constructed singly linked lists and transferred their nodes between owners with `take`. This appendix addresses the extension to k sorted linked lists, combining all of their nodes into a single sorted list.
 
-Section C.2 compares three orders of merging. Sections C.3 to C.8 implement them in eleven programs, and
-section C.9 lists the time and memory each program needs.
+Section C.2 compares three merge orders, sections C.3 through C.8 implement them across eleven programs, and section C.9 summarizes the time, memory, and allocation profile of each variant.
 
-Two letters appear throughout. **k** is the number of lists. **N** is the total number of nodes across all of
-them.
+Throughout this appendix, **k** denotes the number of input lists and **N** denotes the total number of nodes across all lists.
 
 ## C.1 Merging two sorted lists
 
-Every program in this chapter merges two sorted lists at a time. Compare the front nodes of the
-two lists. Move the smaller one to the end of the output. Repeat until one list is empty, then attach the
-other list whole. Figure C.1 works through an example.
+Every implementation in this appendix builds on a two-list merge: compare the front nodes of both lists, detach the smaller node and append it to the output, and repeat until one list is exhausted before attaching the remaining list whole. Figure C.1 traces an example.
 
 <figure>
 <img src="figures/merge-two.svg" alt="Six steps merging 1,4,5 with 1,3,4. At each step the smaller front node moves to the output. After step 5 the output is 1,1,3,4,4 and the remaining 5 is attached.">
@@ -174,19 +167,16 @@ It uses the same `MergeKSorted`, `ListNode`, and `OptionalLink` as listing C.1.
 {{#include ../../rust-interview-lab/src/bin/merge_k_sorted_lists_swap.rs:16:56}}
 ```
 
-Look at the inner loop:
+Consider the inner loop:
 
 ```rust
 let mut right = lists[i + interval].take();
 lists[i] = Self::merge_two(&mut lists[i], &mut right);
 ```
 
-The right list is moved out of the vector into a local variable first. After that, the only borrow of the
-vector is the one for `lists[i]`, so the call compiles.
+Moving the right list out of the vector into a local variable first leaves only a single mutable borrow of `lists` (for `lists[i]`), satisfying the borrow checker.
 
-The merge changes too. Instead of choosing which list to take from, it makes sure `left` always holds the
-smaller front. When the right front is smaller, `std::mem::swap(left, right)` exchanges the two lists. Then the
-loop body always takes from `left`.
+The merge logic also simplifies: rather than branching on which list to pop from, `std::mem::swap(left, right)` ensures that `left` always holds the smaller front node whenever the right front is smaller, allowing the loop body to advance `left` unconditionally.
 
 The complete program is listing C.20 at the end of the chapter.
 
@@ -343,7 +333,7 @@ The complete program is listing C.23 at the end of the chapter.
 
 ## C.5 The same merge on an enum node
 
-Chapter 9 also wrote a list as an enum. Two versions try the merge on that shape.
+In chapter 9, we also represented a linked list as an enum. The next two implementations adapt the merge to that representation.
 
 ### C.5.1 An enum with its own `take`
 
@@ -371,15 +361,13 @@ impl MergeKSorted {
 The loop picks `smaller` with a `match` on both fronts. The two `Empty` arms attach the other list and leave
 the loop with `break`. The third arm returns a mutable reference to the list with the smaller front.
 
-This representation has a cost. Look at how a node is attached:
+This representation carries an allocation cost, visible in how each node is attached:
 
 ```rust
 *tail = Node { data, next: LinkTo::new(Empty) };
 ```
 
-With `Option<Box<Node>>`, a node's box moves from the input to the output. Here, `*smaller = *next` moves the
-rest of the input out of its box, and that box is freed. The output node is a new `Node` with a new `Box`
-holding a new `Empty`. So this version allocates once for every node it outputs.
+With `Option<Box<Node>>`, an existing node's `Box` moves directly from input to output. Here, `*smaller = *next` moves the remainder of the input out of its box and frees that box, while constructing a fresh `Node` with a new `Box` containing `Empty` for the output. Consequently, this variant allocates once for every node emitted.
 
 The complete program is listing C.24 at the end of the chapter.
 
@@ -411,8 +399,7 @@ This version uses standard traits in place of hand-written helpers:
 its place. It takes the right list before the left, which avoids the double borrow as listing C.3 did.
 `lists.swap_remove(0)` removes position 0 by moving the last element into it, which takes O(1).
 
-`merge` is recursive, and takes both lists as `ListNode` values. The caller moves them out of their boxes with `*left` and `*right`. `merge` keeps the smaller front node, merges the rest into `rest`, and boxes only the result. The list it did not take from passes to the recursive call unboxed. The code reads almost like a definition of merging. It has two costs. It allocates a new `Box` for every output node. And it recurses once per output node, so
-a long result uses a deep stack, as chapter 9's recursive drop did.
+`merge` is recursive and accepts both lists as owned `ListNode` values unboxed by the caller (`*left` and `*right`). It retains the smaller front node, merges the remainder recursively, and boxes only the returned node. Although this form reads almost directly like an inductive definition of merging, it incurs two costs: it allocates a new `Box` for every output node, and it recurses once per output node, consuming O(N) call-stack depth on long lists (the same stack-overflow hazard observed with recursive `Drop` in chapter 9).
 
 The complete program is listing C.25 at the end of the chapter.
 
@@ -431,9 +418,7 @@ Node(
 
 ## C.6 A queue of lists
 
-This version does pairwise rounds with a queue instead of intervals. A `VecDeque` is a double-ended queue:
-you can push and pop at both ends in O(1). `merge_k_lists` puts all the lists in the queue. Then it pops two from the front and pushes their merge on
-the back, until one list is left.
+This variant executes pairwise rounds using a queue rather than index intervals. A `VecDeque` is a double-ended queue supporting O(1) push and pop operations at both ends. `merge_k_lists` enqueues all input lists, then repeatedly pops two lists from the front and pushes their merged result to the back until a single list remains.
 
 This file declares its own copy of the node type, with `Link` as the alias for a whole list:
 
@@ -674,8 +659,7 @@ Each file below is shown whole, in the order the chapter used it.
 
 - Merging two sorted lists moves the smaller front node to the output until one list is empty, in O(a + b).
 - Merging k lists one at a time costs O(kN). Pairwise rounds and a heap of heads both cost O(N log k).
-- Two `&mut` borrows of elements of one `Vec` do not compile. `split_at_mut` splits it into two slices, or you
-  can move one list out with `take()` first.
+- Two simultaneous `&mut` borrows of elements in one `Vec` do not compile; use `split_at_mut` to obtain disjoint slices, or move one list out with `take()` first.
 - A dummy head and a tail pointer attach nodes to the end of a list. `Option::insert` attaches and advances in
   one call.
 - With `Option<Box<Node>>`, merging moves boxes and allocates nothing. The enum versions allocate a new box for

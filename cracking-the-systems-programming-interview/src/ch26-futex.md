@@ -6,32 +6,27 @@
 
 This chapter covers
 
-- The futex: a wait queue in the kernel, keyed by the address of a word in your memory
-- A mutex with three states that enters the kernel only to sleep and to wake
-- Why the kernel checks the word before it puts a thread to sleep
-- Counting the system calls a mutex makes, and comparing it with `std::sync::Mutex`
-- Store buffers, and the reordering they allow even on x86
-- Two litmus tests run a million times: store buffering, and message passing
+- The futex: a kernel wait queue keyed by the address of a word in user-space memory
+- A three-state mutex that enters the kernel only to sleep and to wake waiters
+- Why the kernel verifies the word atomically before putting a thread to sleep
+- Counting the system calls a mutex issues and comparing it against `std::sync::Mutex`
+- Store buffers and the memory reordering they permit even on x86
+- Two litmus tests executed a million times each: store buffering and message passing
 
 </div>
 
-Chapter 16 built a spin lock from one atomic flag. A thread that found the lock taken kept the CPU busy
-until the lock came free. That is a good trade for a lock held for a few nanoseconds. It is a poor one for a lock held while a thread writes a file. Such a lock has to put the waiting thread to sleep and wake it later. Only the kernel can do that.
+In chapter 16, we implemented a spin lock from a single atomic flag. A thread encountering a held lock kept its CPU busy until the lock became free. Spinning is an effective trade-off when a critical section lasts only a few nanoseconds, but it wastes processor cycles when a thread holds the lock across blocking work such as file I/O. For longer critical sections, the lock must put waiting threads to sleep and wake them once the lock is released, an operation that requires kernel intervention.
 
-This chapter builds such a lock on the Linux **futex** system call, the same design `std::sync::Mutex` uses
-on Linux. Then it looks under the orderings chapter 16 used. It runs two classic litmus tests a million times each, and counts how often the hardware reorders memory operations.
+In this chapter, we build a sleeping mutex on the Linux **futex** system call, following the same three-state design used by `std::sync::Mutex` on Linux. We then examine the hardware behavior beneath the memory orderings introduced in chapter 16 by running two classic litmus tests a million times each and counting how frequently the processor reorders memory operations.
 
 ## 26.1 Sleeping on a word
 
-A **futex**, a fast user-space mutex, is a wait queue in the kernel, keyed by an address. The word at that
-address lives in your program's memory, and the kernel never interprets it. A futex has two operations:
+A **futex** (fast user-space mutex) is a wait queue in the kernel keyed by a memory address. The 32-bit word at that address resides in user-space memory, and the kernel never interprets its meaning. A futex provides two primary operations:
 
-- **`futex_wait(addr, expected)`**: if the 32-bit word at `addr` still holds `expected`, put this thread to
-  sleep on the queue for `addr`. If it holds anything else, return at once.
-- **`futex_wake(addr, n)`**: wake up to `n` threads sleeping on the queue for `addr`.
+- **`futex_wait(addr, expected)`**: if the 32-bit word at `addr` still holds `expected`, place the calling thread to sleep on the wait queue associated with `addr`. If the word holds any other value, return immediately.
+- **`futex_wake(addr, n)`**: wake up to `n` threads currently sleeping on the wait queue for `addr`.
 
-The lock state stays in an atomic in user space (figure 26.1). Taking a free lock is one compare-exchange
-on that word, with no system call. Only a thread that has to wait calls `futex_wait`, and only an `unlock` that may have a sleeper to wake calls `futex_wake`.
+The lock state itself lives in an atomic integer in user space (figure 26.1). Acquiring an uncontended lock requires only a single compare-exchange instruction on that word, with no system call. A thread invokes `futex_wait` only when it must block, and `unlock` invokes `futex_wake` only when a sleeping waiter may be present.
 
 <figure>
 <img src="figures/ch26-futex.svg" alt="In user space, thread A holds the lock and the state word holds 2, locked with waiters. Thread B's swap(2) returned 1, so B calls futex_wait(&state, 2) and sleeps on the kernel's queue for that address. A unlocks with swap(0), which returns 2, so A calls futex_wake(&state, 1).">
@@ -47,20 +42,17 @@ this sequence would lose a wake-up:
 2. Thread A unlocks and calls `futex_wake`. No thread is on the queue yet, so the wake does nothing.
 3. B enters the queue and sleeps. Nobody will wake it.
 
-With the check, step 3 finds that the word no longer holds the value B saw, and `futex_wait` returns at
-once. B then tries the lock again. This is the **lost wake-up** problem, and it is the reason `Condvar` in
-chapter 16 takes the mutex as an argument.
+With the atomic check in place, step 3 observes that the word no longer holds the value thread B read, so `futex_wait` returns immediately and thread B retries the lock. This race is the **lost wake-up** problem, and it is the same reason `Condvar` in chapter 16 requires a mutex argument.
 
 ## 26.2 A mutex with three states
 
-The lock word has three values (figure 26.2):
+The lock word encodes three states (figure 26.2):
 
-- **0**, unlocked.
-- **1**, locked, and no thread is waiting.
-- **2**, locked, and some thread may be asleep in `futex_wait`.
+- **0**: unlocked.
+- **1**: locked, with no waiting threads.
+- **2**: locked, with one or more threads potentially asleep in `futex_wait`.
 
-The third state exists so that `unlock` knows whether to call `futex_wake`. Unlocking from 1 costs one
-atomic instruction. Unlocking from 2 also costs a system call.
+The third state allows `unlock` to determine whether a `futex_wake` call is necessary. Releasing a lock from state 1 costs a single atomic instruction, whereas releasing from state 2 also incurs a system call.
 
 <figure>
 <img src="figures/ch26-states.svg" alt="State 0, unlocked, goes to 1, locked, by compare_exchange(0, 1) with no system call. 1 goes back to 0 by swap(0) returning 1, with no system call. A second thread moves 1 to 2 with swap(2) and then futex_wait. Unlock from 2 is swap(0) returning 2, then futex_wake. A woken thread's swap(2) returning 0 takes the lock in state 2.">
@@ -91,11 +83,11 @@ The two wrappers:
 }
 ```
 
-`FUTEX_PRIVATE_FLAG` tells the kernel that only this process uses the word. The kernel can then key the queue by the virtual address alone. A word shared between processes needs the physical page, which costs more to find. `AtomicU32::as_ptr` gives the address of the atomic's value. The return value is ignored. `futex_wait` returns early for several reasons, a signal among them, and the caller checks the word again anyway.
+`FUTEX_PRIVATE_FLAG` informs the kernel that the futex word is private to the current process, allowing the kernel to key the wait queue by virtual address alone. A word shared across processes must be keyed by physical page, which requires an extra lookup. `AtomicU32::as_ptr` yields the address of the underlying word. The return value of `futex_wait` is ignored because the call can return spuriously (for example, when interrupted by a signal), and the caller re-checks the lock word in a loop regardless.
 
 ### 26.2.2 `lock` and `unlock`
 
-The type holds the word, two counters for this chapter's measurements, and the protected value:
+The mutex struct holds the state word, two atomic counters for the measurements in this chapter, and the protected value:
 
 ```rust
 mod linux {
@@ -105,9 +97,7 @@ mod linux {
 }
 ```
 
-As with the spin lock in chapter 16, the `unsafe impl Sync` promises that the lock hands out `value` to one
-thread at a time. `lock` returns a `Guard`, which section 26.2.2 shows below: it gives access to the value,
-and unlocks when it is dropped. `lock` tries the uncontended path first:
+As with the spin lock in chapter 16, the `unsafe impl Sync` invariant guarantees that the mutex grants exclusive access to `value` to one thread at a time. Calling `lock` returns a `Guard` (defined below) that provides access to the protected value and releases the lock upon drop. `lock` attempts the uncontended fast path first:
 
 ```rust
 mod linux {
@@ -121,19 +111,13 @@ mod linux {
 }
 ```
 
-`compare_exchange(UNLOCKED, LOCKED, Acquire, Relaxed)` takes a free lock in one instruction. If it fails,
-`lock_contended` swaps in 2 and looks at the old value. An old value of 0 means the lock was free, and this
-thread now holds it. Any other value means the lock is held. The thread sleeps while the word is still 2,
-then tries again.
+`compare_exchange(UNLOCKED, LOCKED, Acquire, Relaxed)` acquires an uncontended lock in a single atomic instruction. When that exchange fails, `lock_contended` swaps in state 2 and inspects the previous value. A previous value of 0 indicates that the lock was free and the calling thread now holds it; any other value indicates that another thread holds the lock, so the caller sleeps in `futex_wait` as long as the word remains 2 and then retries.
 
-A thread that takes the lock in `lock_contended` leaves the word at 2, even if no other thread waits. It
-cannot know whether others are asleep, so it assumes they are. The cost is a `futex_wake` call that may find
-nobody to wake.
+A thread that acquires the lock via `lock_contended` leaves the state word at 2 even if no other threads are waiting. Because the thread cannot tell whether other waiters remain asleep in the kernel, it preserves state 2 conservatively. The trade-off is an occasional `futex_wake` call that finds an empty wait queue.
 
-`unlock` swaps in 0 with `Release`, which publishes the writes made under the lock, as in section 16.4.3.
-The old value says whether to wake a sleeper.
+`unlock` swaps in 0 with `Release` ordering, publishing all writes performed inside the critical section (as established in section 16.4.3). The previous state determines whether to wake a sleeping thread.
 
-The guard is the same as the spin lock's:
+The guard implementation mirrors that of the spin lock:
 
 ```rust
 mod linux {
@@ -162,32 +146,19 @@ threads     total    waits    wakes     futex ms       std ms
       4   1000000    28006    71826         71.0         56.1
 ```
 
-With one thread, a million increments made no system calls, at about 30 ns each. With
-two threads, about 2.4% of the locks slept. There were 2.5 times as many wakes as waits. Most wakes came
-from a thread that had taken the lock in `lock_contended`, left the word at 2, and woke an empty queue.
+With a single thread, one million increments issued zero system calls, averaging roughly 30 ns per lock-unlock pair. With two threads, approximately 2.4% of lock acquisitions slept, and `futex_wake` was called 2.5 times as often as `futex_wait`. Most of those extra wakes originated from threads that acquired the lock through `lock_contended`, left the word in state 2, and subsequently woke an empty queue.
 
-`std::sync::Mutex` uses the same three states, and was faster with contention. Before it sleeps, it spins
-for up to 100 rounds, reading the word. A lock held for a few nanoseconds is often free again within those
-rounds, so the waiter avoids two system calls. The timings vary between runs by 10% or more on this
-container. In one of three runs, `std` with four threads took 214 ms. The counts of waits and wakes are the
-steadier measurement.
+`std::sync::Mutex` uses the same three-state protocol, yet it ran faster under contention. Before entering the kernel to sleep, it spins for up to 100 iterations polling the lock word. Because a lock held for only a few nanoseconds frequently becomes free within that window, the waiter avoids two system calls and a context switch. Wall-clock timings vary by 10% or more across runs in this container (in one of three runs, four threads on `std::sync::Mutex` took 214 ms), so the wait and wake counts provide the more reliable metric.
 
 ## 26.3 What the hardware reorders
 
-Section 16.2.3 said that `Relaxed` promises nothing about other memory, and that `SeqCst` gives one order
-all threads agree on. This section shows a reordering that real hardware performs, and the ordering that
-forbids it.
+As established in section 16.2.3, `Relaxed` imposes no ordering constraints on surrounding memory operations, whereas `SeqCst` establishes a single global order observed by all threads. This section demonstrates a reordering performed by real hardware and the ordering constraint that forbids it.
 
 ### 26.3.1 Store buffers
 
-A store to memory is slow for a core: the cache line may have to be fetched from another core first. So
-each core puts its stores in a **store buffer** and goes on running. The buffer drains to the cache in the
-background. The core's own loads check its buffer, so a thread always sees its own stores. Other cores see a
-store only after it drains.
+Writing directly to memory is slow for a processor core because the target cache line may first need to be fetched from another core. To hide that latency, each core queues outgoing stores in a private **store buffer** and continues executing subsequent instructions while the buffer drains to the cache in the background. A core's own loads consult its store buffer, guaranteeing that a thread always observes its own prior stores, but other cores observe a store only after it drains into the coherent cache hierarchy.
 
-A load that comes after a store can therefore complete before the store is visible to anyone else. Figure
-26.3 shows two cores each doing that at once. Both loads read the old value, 0, from memory, while both
-stores still sit in the buffers.
+Consequently, a load that follows a store in program order can complete before that store becomes visible to other cores. Figure 26.3 illustrates two cores executing this pattern concurrently: both loads read the initial value 0 from memory while both stores remain pending in their respective store buffers.
 
 <figure>
 <img src="figures/ch26-store-buffer.svg" alt="Core 1 stores x = 1 and core 2 stores y = 1; both stores wait in their cores' store buffers. Core 1 loads y and core 2 loads x from cache and memory, where x and y are still 0. Both loads read 0. The buffers drain later.">
@@ -249,17 +220,11 @@ message passing, 1000000 rounds: flag read as 1, data read as 0
   SeqCst                    0
 ```
 
-The Linux container on the same machine found 6,342 and 5,045 rounds for store buffering, and the same
-zeros elsewhere. The results say three things:
+The Linux container on the same machine recorded 6,342 and 5,045 reordered rounds for store buffering, with identical zeros elsewhere. These measurements establish three properties:
 
-- **Store buffering happens.** About 1.5% of rounds read 0 twice with `Relaxed`. `Release` and `Acquire` did not prevent it. They order a thread's earlier operations before a release store, and later operations after an acquire load. Neither stops a store from being passed by a later load.
-- **`SeqCst` forbids it.** On x86, a `SeqCst` store compiles to an `xchg` instruction, which waits for the
-  store buffer to drain. Every `SeqCst` operation then fits one global order, and in any such order one of
-  the stores comes first, so one load sees 1.
-- **Message passing did not fail, even with `Relaxed`.** On x86 the hardware does not reorder the two
-  stores or the two loads. The `Relaxed` version is still wrong. On ARM the same test fails in some rounds,
-  and the compiler may reorder the `Relaxed` operations on any processor. A test that passes on x86 does not
-  show that the orderings are right.
+- **Store buffering occurs in practice.** Roughly 1.5% of rounds observed both loads reading 0 under `Relaxed`. Pairing `Release` and `Acquire` did not prevent this outcome, because release ordering constrains earlier operations before a store and acquire ordering constrains later operations after a load; neither prevents a store from being bypassed by a subsequent load.
+- **`SeqCst` forbids store-load reordering.** On x86, a `SeqCst` store compiles to an `xchg` instruction, which flushes the store buffer before subsequent loads execute. Every `SeqCst` operation then participates in a single total order, ensuring that one store precedes the other and at least one load reads 1.
+- **Message passing did not fail on x86, even with `Relaxed`.** Because x86 hardware preserves store-store and load-load order, the hardware never reordered this test. The `Relaxed` version remains incorrect: on ARM processors it fails in practice, and on any architecture the compiler is free to reorder `Relaxed` operations. A test that passes on x86 does not prove that its memory orderings are sound.
 
 ## 26.4 The complete programs
 
@@ -316,7 +281,7 @@ Dekker's mutual-exclusion algorithm is the classic case. Most code built from lo
 
 </div>
 
-Chapter 27 starts Part 9, production networking. It follows a TCP connection through its close. It covers the states after `FIN`, the length of `TIME_WAIT`, and the `CLOSE_WAIT` sockets a leaking server piles up.
+Part 9 turns to production networking, beginning in chapter 27 with the lifecycle of a closing TCP connection, including the post-`FIN` states, the duration of `TIME_WAIT`, and the `CLOSE_WAIT` sockets accumulated by a leaking server.
 
 ## Exercises
 

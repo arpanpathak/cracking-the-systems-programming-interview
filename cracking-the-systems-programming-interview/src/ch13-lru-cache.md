@@ -14,18 +14,17 @@ This chapter covers
 
 </div>
 
-A **cache** keeps a limited number of recent results close at hand, so a program does not have to compute or
-fetch them again. A web browser caches images. A database caches disk pages in memory. A CPU caches memory in
-small, fast storage next to its cores, which chapter 15 looks at.
+A **cache** retains a bounded set of recent results in fast storage so that a program can avoid repeating
+expensive computation or I/O. Web browsers cache decoded assets, database engines cache disk pages in RAM, and
+CPUs cache main memory in small, low-latency SRAM adjacent to each core (examined in Chapter 15).
 
-A cache has a fixed size. When it is full and a new entry arrives, it must remove, or **evict**, an old entry.
-The rule for choosing which entry to evict is the cache's **eviction policy**.
+Because a cache has a fixed capacity, inserting a new entry once full requires removing, or **evicting**, an
+existing entry according to an **eviction policy**. This chapter implements the **least recently used** (LRU)
+policy, which evicts the entry that has remained unaccessed for the longest time, leveraging temporal locality.
 
-This chapter builds a cache with the **least recently used** (LRU) policy: evict the entry that has gone longest
-without being used. The idea is that an entry used recently is likely to be used again soon.
-
-You have already built both parts of an LRU cache. Chapter 3 covered `HashMap`, and chapters 8 and 9 covered
-linked lists and `Rc`. This chapter combines them, four ways, and then measures two of them.
+Both underlying components have already been introduced: `HashMap` in Chapter 3 and linked lists with `Rc` in
+Chapters 8 and 9. We now combine them across four progressively refined implementations and benchmark two of them
+head to head.
 
 ## 13.1 What an LRU cache does
 
@@ -62,10 +61,10 @@ request is then set almost entirely by the misses:
 Going from 90% to 99% makes the average ten times smaller. The hit rate depends on what stays in the cache,
 and the eviction policy decides that.
 
-Here is a longer trace. The cache holds three entries, and eight requests arrive: A, B, A, C, A, D, A, B. A
-request for a cached key is a hit; any other request is a miss, which fetches the value and stores it. The
-table follows the LRU rule, and a simpler rule for comparison. **FIFO**, first in, first out, evicts the entry
-that arrived earliest, and ignores use. The order is shown most recent first.
+Consider an eight-request trace against a three-entry cache: A, B, A, C, A, D, A, B. A request for a cached key
+is a hit; any other request is a miss that fetches the value from the backing store and inserts it. The table
+below compares LRU against **FIFO** (first in, first out), which evicts the earliest-arriving entry regardless of
+subsequent reads. Entries are listed from most recent to least recent.
 
 | Request | LRU: entries after | LRU | FIFO: entries after | FIFO |
 |---|---|---|---|---|
@@ -184,9 +183,9 @@ Animation 13.2 runs the four calls of figure 13.2 with a capacity of 2, then a r
 
 <div class="callout warning" markdown="1">
 
-**WARNING:** The queue gets one new event per call, but loses events only during eviction. A workload of mostly
-hits evicts rarely, so the queue can grow far longer than the capacity. The memory used depends on the number of
-calls, not on the number of cached entries. Exercise 1 asks you to fix it.
+**WARNING:** The queue appends one new event per call, yet removes events only during eviction. Under a
+hit-heavy workload, evictions occur rarely and the queue can grow far beyond cache capacity, making memory usage
+proportional to total request count rather than cached entry count. Exercise 1 addresses bounding this queue.
 
 </div>
 
@@ -196,11 +195,12 @@ The classic LRU design keeps the entries in a doubly linked list, ordered from m
 A doubly linked list can move an entry to the front in O(1). Removing the last entry and adding one at the
 front are O(1) too. The map stores, for each key, where that key's node is.
 
-Chapter 9 showed that a doubly linked list of `Rc<RefCell<_>>` nodes is awkward in Rust. Each node is owned
-jointly, every change goes through runtime borrow checks, and the back links must be `Weak` to avoid leaks.
+As seen in Chapter 9, a doubly linked list built from `Rc<RefCell<_>>` nodes introduces substantial friction in
+Rust: every node is jointly owned, every mutation incurs runtime borrow checks, and backward links must use
+`Weak` to prevent reference cycles.
 
-This version uses a different approach. All nodes live in one `Vec`, and a link is the index of another node in
-that `Vec`. A `Vec` used as a pool of nodes this way is called an **arena**. Figure 13.3 shows one.
+An alternative layout stores all nodes inside a single `Vec` and represents links as integer indices into that
+vector. A `Vec` used as a contiguous node pool is called an **arena** (Figure 13.3).
 
 <figure>
 <img src="figures/lru-arena.svg" alt="The lookup table maps A to 0, B to 1, C to 2. The nodes Vec has index 0 A 10 prev None next Some(2); index 1 B 20 prev Some(2) next None; index 2 C 30 prev Some(0) next Some(1). head is Some(0), tail is Some(1). Following next from the head gives A, C, B.">
@@ -236,8 +236,8 @@ Every `get` and `put` ends by moving one node to the front of the list. The meth
 <figcaption><b>Figure 13.4</b> Moving C to the front. Only the links around C and at the head change.</figcaption>
 </figure>
 
-Animation 13.3 runs `touch` on a list of four entries. The `Vec` sits underneath and never moves. Only the
-links above it change. Watch the arrows: when C is lifted out, A's `next` swings over to D.
+Animation 13.3 traces `touch` on a four-entry list: the backing `Vec` remains stationary in memory while only the
+logical index links change, redirecting A's `next` to D as C moves to the front.
 
 <figure class="anim">
 <video class="motion" src="figures/ch13-lru-touch.mp4" autoplay loop muted playsinline preload="metadata" aria-label="Four nodes B, A, C, D in a chain, next links above and prev links below, a lookup table on the left, and the Vec slots underneath. get(C) looks up slot 2, lifts C out of the chain, points A's next at D and D's prev at A, slides the rest right, and sets C down at the front with C.next = B, B.prev = C, and head = C. get(D) on the tail moves the tail marker back to A. In a last run without the line None => self.tail = prev, the tail marker stays on D after D moves to the front, so the next eviction would remove the entry just read." data-chapters="[[0.0, &quot;middle&quot;], [30.02, &quot;tail&quot;], [51.52, &quot;tail left behind&quot;]]"><img src="figures/ch13-lru-touch.gif" alt="Four nodes B, A, C, D in a chain, next links above and prev links below, a lookup table on the left, and the Vec slots underneath. get(C) looks up slot 2, lifts C out of the chain, points A's next at D and D's prev at A, slides the rest right, and sets C down at the front with C.next = B, B.prev = C, and head = C. get(D) on the tail moves the tail marker back to A. In a last run without the line None => self.tail = prev, the tail marker stays on D after D moves to the front, so the next eviction would remove the entry just read."></video>
@@ -283,18 +283,18 @@ where
 }
 ```
 
-`get` finds the index, touches the node, and returns a reference to the value. The return type `Option<&V>`
-borrows from the cache. Because `get` takes `&mut self`, the cache stays mutably borrowed while you hold that
-reference.
+`get` looks up the slot index, promotes the node, and returns a shared reference to the value. Because `get`
+takes `&mut self`, the cache remains mutably borrowed for as long as the returned `Option<&V>` remains live.
 
-`put` has three cases:
+`put` handles three cases:
 
-1. **The key is present.** Replace the value and touch the node.
-2. **There is room.** Push a new node onto the end of the `Vec`, record its index, and touch it.
-3. **The cache is full.** Reuse the tail node's slot for the new entry.
+1. **The key is present.** Overwrite the stored value and promote the node.
+2. **Capacity remains.** Push a new node onto the `Vec`, record its index, and promote it.
+3. **The cache is full.** Reuse the tail node's slot for the incoming entry.
 
-The third case is the arena's advantage. Eviction does not free anything, and insertion does not allocate. The
-tail slot receives the new key and value, and `touch` moves it to the front.
+The third case highlights the primary advantage of an arena: eviction performs no deallocation and insertion
+performs no heap allocation. Instead, the tail slot is overwritten with the new key and value, and `touch`
+promotes its index to the head.
 
 `std::mem::replace(&mut self.nodes[i].key, key)` puts the new key into the node and returns the old key, in one
 step. The old key is then removed from `lookup_table`. The new key was moved into the node, so the map receives a
@@ -329,9 +329,10 @@ get A = Some(99)
 
 ## 13.4 Version 3: one operation per method
 
-`touch` in version 2 does two jobs, and must first work out which situation it is in. Version 3 splits it into
-three methods, each with a stated precondition. A **precondition** is something that must be true when a
-function is called. The compiler cannot check these preconditions, so the doc comments state them.
+In Version 2, `touch` combines two distinct responsibilities and must first determine whether the target node is
+already linked. Version 3 decomposes it into three single-purpose methods, each documented with an explicit
+**precondition** (an invariant that callers must satisfy upon entry). Because the compiler cannot verify index
+invariants statically, the doc comments state each contract explicitly.
 
 This version also fixes the key and value types to `i32`. `i32` is `Copy`, so the code never clones a key.
 
@@ -366,8 +367,9 @@ get 1 = Some(99)
 
 ## 13.5 Version 4: measuring the arena against `Rc<RefCell<_>>`
 
-Is the arena faster than a list of `Rc<RefCell<_>>` nodes, and by how much? The only reliable answer is to
-measure. This section builds both caches behind one trait, and runs the same requests through each.
+Determining whether an arena-backed list outperforms an `Rc<RefCell<_>>` list, and by what margin, requires
+empirical measurement. In this section, we place both caches behind a shared trait and drive them with an
+identical request stream.
 
 ### 13.5.1 One trait, two caches
 
@@ -414,8 +416,8 @@ link, so two neighbors do not keep each other alive forever. The map holds one m
 {{#include ../../rust-interview-lab/benchmarking_examples/cache/rc_list.rs:35:69}}
 ```
 
-The logic matches listing 13.8, with pointers instead of indices. The difference is in the ceremony around
-each step:
+The logic mirrors Listing 13.8 using reference-counted pointers rather than integer indices, at the cost of
+additional runtime bookkeeping at each step:
 
 - `detach` reads the node's links inside a small block. `node.borrow()` returns a guard that holds a shared
   borrow of the `RefCell`. The block ends before any neighbor is changed, so the guard is dropped early. A
@@ -515,24 +517,26 @@ Best of 3 runs per cache.
 <figcaption><b>Figure 13.6</b> Time per request on an Intel Core i5-1038NG7 laptop.</figcaption>
 </figure>
 
-On this machine, the arena handled a request in 59 ns on average, and the `Rc` list took 186 ns. Your numbers
-will differ, but the ratio should be similar on most machines.
+On this test machine, the arena handled a request in 59 ns on average, whereas the `Rc<RefCell<_>>` list took
+186 ns. Absolute timings vary across hardware, though the relative speedup remains consistent.
 
-The two caches do the same O(1) work per request. Three differences in how they do it add up:
+Both caches perform the same O(1) asymptotic work per request, yet three low-level factors compound into a
+3.16x difference:
 
-- **Allocation.** About one request in ten is a miss, and each miss in the `Rc` list frees a node and allocates
-  another. The arena reuses the tail slot.
-- **Bookkeeping.** The `Rc` list updates reference counts on every clone and drop, and checks the `RefCell`
-  borrow flag on every access. The arena reads and writes plain integers.
-- **Location.** The arena's nodes sit side by side in one block. The `Rc` nodes sit wherever the allocator put
-  them. Chapter 15 explains why nearby memory is faster to reach.
+- **Allocation.** Roughly one request in ten is a miss; each miss in the `Rc` list deallocates a node and
+  allocates a replacement, whereas the arena reuses the evicted slot in place.
+- **Bookkeeping.** The `Rc` list updates reference counts on every clone and drop and checks the `RefCell`
+  borrow state on every access, whereas the arena reads and writes plain integers.
+- **Spatial locality.** The arena stores all nodes contiguously in a single allocation, whereas `Rc` nodes sit
+  wherever the allocator places them. In Chapter 15, we examine the hardware cache hierarchy that makes
+  contiguous memory access faster.
 
-This benchmark measures the total, and does not separate the three costs. Exercise 4 suggests a way to
+This benchmark measures the combined effect without isolating the three factors; Exercise 4 outlines how to
 separate them.
 
 ## 13.6 The complete files
 
-The sections above showed these files in excerpts. Here each one is whole.
+The preceding sections presented these modules in excerpts; the complete source files follow below.
 
 <p class="listing"><b>Listing 13.17</b> Version 1, stamped events, with tests. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/problems/lru_cache.rs">src/problems/lru_cache.rs</a></p>
 
@@ -590,7 +594,8 @@ checks that a capacity of 0 panics.
 
 </div>
 
-Chapter 14 spreads a cache across several machines, and asks how to decide which machine holds which key.
+In Chapter 14, we extend caching across multiple threads and servers, examining lock sharding and consistent
+hashing.
 
 ## Exercises
 
@@ -599,5 +604,6 @@ Chapter 14 spreads a cache across several machines, and asks how to decide which
 2. Add `peek(&self, key: &K) -> Option<&V>` to version 2, which returns a value without changing the order.
 3. Add `remove(&mut self, key: &K) -> Option<V>` to version 3. The removed slot must be reused by a later `put`.
    Keep a list of free slots.
-4. Change the benchmark's `CACHE_CAPACITY` to the full key space, so no request evicts anything. Compare the ratio
-   with the one above, and explain what the change tells you about the cost of allocation.
+4. Change the benchmark's `CACHE_CAPACITY` to the full key space so that no request triggers eviction. Compare
+   the resulting ratio with the earlier measurement and explain what the difference reveals about allocation
+   overhead.

@@ -15,40 +15,39 @@ This chapter covers
 
 </div>
 
-In a linked list, each node points to at most one next node. In a **tree**, each node can point to several
-nodes, called its children. Trees describe anything organized as a hierarchy. Examples are folders on a disk, the parts of an
-expression, and a sorted set of numbers arranged for fast search.
+In a linked list, each node points to at most one successor. In a **tree**, each node may point to multiple
+nodes, called its children, enabling trees to represent hierarchical structures such as filesystem directories,
+expression syntax trees, and ordered sets arranged for fast search.
 
-Trees are easier to write in Rust than the doubly linked list of chapter 9. Each node has exactly one parent,
-so a parent can own its children outright, with `Box` or with a `Vec`. No `Rc` or `RefCell` is needed. The
-harder parts are elsewhere: replacing a node from inside a method, and choosing between recursion and an
-explicit stack or queue.
+Trees are considerably simpler to implement in Rust than the doubly linked list examined in Chapter 9. Because
+each node has at most one parent, a parent can own its children outright through `Box` or `Vec`, without
+requiring `Rc` or `RefCell`. The primary implementation challenges lie elsewhere: replacing a node in place
+from within a method, and choosing between call-stack recursion and an explicit stack or queue.
 
-The chapter starts with vocabulary, then binary trees, then binary search trees, then trees with any number of
-children, and ends with the trie.
+We begin with core tree terminology, then implement binary trees, binary search trees, general multi-way trees,
+serialization, and finally a prefix trie.
 
 ## 11.1 Tree vocabulary
 
-Figure 11.1 names the parts of a tree.
+The structural components of a tree are labeled in Figure 11.1.
 
 <figure>
 <img src="figures/tree-terms.svg" alt="A tree with root 3, children 9 and 20, and 20's children 15 and 7. The root, the leaves, the children of 20, and the subtree of 20 are marked.">
 <figcaption><b>Figure 11.1</b> The small tree used by this chapter's tests, with its parts labeled.</figcaption>
 </figure>
 
-- The **root** is the one node with no parent. Trees are drawn with the root at the top.
+- The **root** is the unique node with no parent; trees are conventionally drawn with the root at the top.
 - A **leaf** is a node with no children.
-- The **subtree** of a node is that node and everything below it. Every subtree is a tree itself. So a function on a tree can call itself on each subtree, which is
-recursion.
-- The **depth** of a tree is the number of levels from the root down to its deepest leaf.
+- The **subtree** rooted at a node consists of that node and all of its descendants. Because every subtree is
+  itself a tree, tree algorithms naturally admit recursive definitions.
+- The **depth** of a tree is the number of levels along the longest path from the root down to a leaf.
 
-A **binary tree** is a tree in which each node has at most two children, called the left child and the right
-child.
+A **binary tree** restricts each node to at most two children, designated the left child and the right child.
 
 ## 11.2 A binary tree as an enum
 
-A binary tree is either empty, or a node holding a value and two smaller binary trees. That sentence
-translates directly into an enum:
+A binary tree is defined inductively as either empty or a node holding a value together with two smaller binary
+trees. This definition translates directly into a Rust enum:
 
 <p class="listing"><b>Listing 11.1</b> The tree type (lines 1 to 16). <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/problems/binary_tree.rs">src/problems/binary_tree.rs</a></p>
 
@@ -56,8 +55,9 @@ translates directly into an enum:
 {{#include ../../rust-interview-lab/src/problems/binary_tree.rs:1:16}}
 ```
 
-The children are `Box<Tree>` for the reason chapter 8 gave. A `Tree` cannot contain two `Tree` values
-directly, because its size would have no end. A `Box` is one pointer, so a node has a fixed size.
+As established in Chapter 8, the children must be wrapped in `Box<Tree>`. A `Tree` cannot embed two `Tree`
+values directly because the resulting type would have an infinite size; indirection through `Box` stores a
+single pointer per child, giving every node a fixed memory layout.
 
 ### 11.2.1 Depth and inversion
 
@@ -70,22 +70,23 @@ impl Tree {
 }
 ```
 
-Each method is a `match` with two arms. The `Empty` arm is the **base case**, the input small enough to answer
-directly. The `Node` arm calls the method on the children and combines the results.
+Each method dispatches on the two variants of `Tree`. The `Empty` arm serves as the **base case**, returning
+an answer directly without further recursion, while the `Node` arm recurses on both subtrees and combines their
+results.
 
-`max_depth` reads as a definition. An empty tree has depth 0. A node has depth 1 plus the larger depth of
-its two subtrees. For the tree in figure 11.1: the leaves have depth 1, node 20 has depth 2, and the root has
-depth 3.
+The `max_depth` method mirrors the recursive definition directly: an empty tree has depth 0, and a non-empty
+node has depth 1 plus the greater depth of its two subtrees. In Figure 11.1, the leaves have depth 1, node 20
+has depth 2, and the root has depth 3.
 
-`invert` swaps every node's left and right children, so the tree becomes its mirror image. It inverts both
-subtrees first and then calls `std::mem::swap(left, right)`. The pattern binds `left` and `right` as mutable
-references to the boxes, so the swap exchanges two pointers and moves no nodes.
+The `invert` method transforms the tree into its mirror image by recursively inverting both subtrees and then
+exchanging them with `std::mem::swap(left, right)`. Because the `match` pattern binds `left` and `right` as
+mutable references to the `Box` handles, the swap exchanges two pointers in place without moving node payloads.
 
 ### 11.2.2 The three depth-first orders
 
-Visiting every node of a tree once is called a **traversal**. Going down one branch as far as possible before
-trying the next is **depth-first** traversal. There are three common depth-first orders. They differ only in
-when a node is visited relative to its children (figure 11.2).
+Visiting every node of a tree exactly once is called a **traversal**. Descending along one branch as far as
+possible before backtracking is a **depth-first** traversal. The three standard depth-first orders differ only
+in when a node is visited relative to its children (Figure 11.2).
 
 <figure>
 <img src="figures/tree-orders.svg" alt="The same tree three times. Pre-order visits 3, 9, 20, 15, 7. In-order visits 9, 3, 15, 20, 7. Post-order visits 9, 15, 7, 20, 3.">
@@ -106,8 +107,8 @@ impl Tree {
 }
 ```
 
-Each public method creates an empty `Vec`, passes it to a private helper, and returns it. Creating the vector
-once and passing it down avoids building a new vector at every node.
+Each public method allocates a single `Vec`, passes a mutable reference to a private recursive helper, and
+returns the populated vector. Accumulating into one buffer avoids allocating intermediate vectors at every node.
 
 <p class="listing"><b>Listing 11.4</b> The recursive helpers (lines 55 to 86).</p>
 
@@ -118,8 +119,8 @@ impl Tree {
 }
 ```
 
-The three helpers are identical except for one line: where `out.push(*value)` appears relative to the two
-recursive calls. `*value` copies the `i32` out of the reference.
+The three helpers are structurally identical, differing only in where `out.push(*value)` appears relative to
+the two recursive calls. Dereferencing `*value` copies the `i32` payload out of the shared reference.
 
 <p class="listing"><b>Listing 11.5</b> The complete file, with its tests. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/problems/binary_tree.rs">src/problems/binary_tree.rs</a></p>
 
@@ -127,26 +128,27 @@ recursive calls. `*value` copies the `i32` out of the reference.
 {{#include ../../rust-interview-lab/src/problems/binary_tree.rs}}
 ```
 
-The test module defines two small helpers, `leaf` and `node`, so a test tree can be built in one readable
-expression. `sample()` builds the tree of figure 11.1. The traversal test checks all three orders from figure
-11.2.
+The test module defines two concise constructors, `leaf` and `node`, so test trees can be assembled in a single
+readable expression. The `sample()` helper constructs the tree in Figure 11.1, and the traversal test verifies
+all three visitation orders illustrated in Figure 11.2.
 
 ## 11.3 Binary search trees
 
-A **binary search tree** (BST) is a binary tree with an ordering rule. For every node, all values in its left
-subtree are smaller than the node's value, and all values in its right subtree are larger.
+A **binary search tree** (BST) is a binary tree that enforces a strict ordering invariant: for every node, all
+values in its left subtree are smaller than the node's value, and all values in its right subtree are larger.
 
-The rule makes searching fast. To find a value, compare it with the root. If it is smaller, it can only be in
-the left subtree; if larger, only in the right. Each comparison discards one subtree (figure 11.3).
+This invariant accelerates lookup. Comparing the target against the current node determines which subtree can
+contain it: smaller targets lie exclusively in the left subtree, and larger targets lie exclusively in the
+right. Each comparison eliminates an entire subtree from consideration (Figure 11.3).
 
 <figure>
 <img src="figures/bst-search.svg" alt="A BST with root 10, children 5 and 15, and leaves 3, 7, 12, 18. Searching for 7 goes left at 10, right at 5, and finds 7.">
 <figcaption><b>Figure 11.3</b> Searching for 7 visits one node per level. In a balanced tree of n values, that is about log₂ n comparisons.</figcaption>
 </figure>
 
-The code for this chapter has two implementations of the same BST. They agree on inserting and searching, and differ in
-how they remove values and answer range queries. I'll go through the first fully, then the parts where the
-second differs.
+Two implementations of the same BST interface accompany this section. Both share identical insertion and lookup
+logic, differing in how they perform removal and range queries. We examine the first implementation in full and
+then focus on the design differences in the second.
 
 <figure class="anim">
 <video class="motion" src="figures/ch11-bst.mp4" autoplay loop muted playsinline preload="metadata" aria-label="The values 8, 3, 10, 1, 6, 14, 13 are inserted one at a time. Each value starts at the root and moves left or right at every comparison until it reaches an empty subtree. Then contains(&6) follows 8, 3, 6. A last part inserts 1, 2, 3, 4, 5 in sorted order, and the tree becomes a chain." data-chapters="[[0.0, &quot;insert&quot;], [94.1, &quot;sorted input&quot;]]"><img src="figures/ch11-bst.gif" alt="The values 8, 3, 10, 1, 6, 14, 13 are inserted one at a time. Each value starts at the root and moves left or right at every comparison until it reaches an empty subtree. Then contains(&6) follows 8, 3, 6. A last part inserts 1, 2, 3, 4, 5 in sorted order, and the tree becomes a chain."></video>
@@ -162,9 +164,9 @@ second differs.
 {{#include ../../rust-interview-lab/src/bin/bst_clean.rs:1:14}}
 ```
 
-`BST<T>` is generic over the value type. The methods require `T: Ord`, meaning values of type `T` can be
-ordered, which a search tree needs. `#[default]` on `Empty` makes an empty tree the default value, which the
-removal code uses.
+`BST<T>` is generic over its element type, and its methods require `T: Ord` so that values admit a total
+ordering. Annotating `Empty` with `#[default]` designates the empty tree as the default value, which the
+removal logic relies on.
 
 <p class="listing"><b>Listing 11.7</b> Creating, inserting, and searching (lines 17 to 47).</p>
 
@@ -175,17 +177,15 @@ impl<T: Ord> BST<T> {
 }
 ```
 
-`insert` takes `&mut self` because it changes the tree in place. It walks down with recursive calls. When it
-reaches an `Empty` tree, it replaces that spot with a new leaf: `*self = Self::Node { ... }`. On the way down,
-`val.cmp(value)` compares the new value with the node's and returns `Ordering::Less`, `Greater`, or `Equal`. A
-value equal to one already in the tree is ignored, so the tree holds each value once.
-
-`contains` follows the same path without changing anything.
+`insert` takes `&mut self` to mutate the tree in place, descending recursively until it reaches an `Empty`
+slot and replacing it with a new leaf via `*self = Self::Node { ... }`. At each internal node, `val.cmp(value)`
+returns `Ordering::Less`, `Greater`, or `Equal`. Duplicate values are ignored, so the tree maintains set
+semantics. The `contains` method follows the identical search path without modifying the tree.
 
 ### 11.3.2 Removal
 
-Removing a value is the hardest operation, because the tree must keep its ordering rule. There are three cases
-(figure 11.4).
+Removing a value is the most intricate BST operation because the ordering invariant must be preserved across
+three structural cases (Figure 11.4).
 
 <figure>
 <img src="figures/bst-remove.svg" alt="Case 1: a node with no left child is replaced by its right child. Case 2: a node with no right child is replaced by its left child. Case 3: a node with two children takes the smallest value from its right subtree, which is then removed there.">
@@ -209,28 +209,28 @@ impl<T: Ord> BST<T> {
 }
 ```
 
-The first two cases need to replace `*self` with one of its own children. That is not straightforward, because
-`right` is a reference into `*self`. You cannot move a subtree out through `right` and assign it to `*self` in
-one step. `std::mem::take(right)` solves it: it moves the subtree out and leaves the default value, an empty
-tree, in its place. Then `*self = *std::mem::take(right)` assigns the subtree, and the `*` moves it out of its
-`Box`. `take` needs `Default`, which is why the type derives it.
+The first two cases replace `*self` with one of its own children. Because `right` is a mutable reference
+borrowing `*self`, moving a subtree out through `right` and assigning it directly to `*self` in one step is
+rejected by the borrow checker. Calling `std::mem::take(right)` resolves this conflict by moving the subtree
+out and leaving `BST::Empty` (the `Default` value) in its place. The assignment `*self = *std::mem::take(right)`
+then unboxes the moved subtree and installs it at `*self`.
 
-The code also handles a leaf, a node with no children, separately. Case 1 would already cover it.
+The implementation also handles a leaf (a node with no children) in its own arm, although case 1 already covers
+it.
 
-For case 3, `remove_min` removes and returns the smallest value of the right subtree. It walks left until it
-reaches a node whose left child is empty, using a match guard: `Self::Node { left, .. } if left.is_empty()`.
-That node holds the smallest value. The method takes the whole node out with `std::mem::take(self)`, puts its
-right subtree in its place, and returns its value. The `if let ... else { unreachable!() }` is there because
-the compiler cannot see that the value taken from a `Node` arm is a `Node`. `unreachable!()` panics if that
-ever turns out false.
+For case 3, `remove_min` extracts and returns the smallest value in the right subtree. It descends left until
+the match guard `Self::Node { left, .. } if left.is_empty()` identifies the leftmost node. Taking that node out
+with `std::mem::take(self)` allows installing its right subtree in its place and returning its value. The
+`if let ... else { unreachable!() }` branch satisfies the compiler, which cannot statically prove that the value
+taken inside a `Node` arm is itself a `Node`; `unreachable!()` panics if that invariant were ever violated.
 
-`remove` returns `true` if the value was found and removed, and `false` otherwise, so a caller can tell the two
-apart.
+`remove` returns `true` when the target value was found and removed, and `false` otherwise, allowing callers to
+distinguish deletion from a missing key.
 
 ### 11.3.3 Range queries
 
-A **range query** returns every value between a low and a high bound, in order. A BST can answer it without
-visiting subtrees that cannot contain an answer.
+A **range query** returns every value within a closed interval `[low, high]` in sorted order, pruning subtrees
+that cannot contain matching elements.
 
 <p class="listing"><b>Listing 11.9</b> Range queries (lines 92 to 114).</p>
 
@@ -292,13 +292,13 @@ After removals: Node {
 }
 ```
 
-Follow the two removals by hand. Node 5 has two children, 3 and 7. So it takes 7, the smallest value on its right, and the old 7 leaf is
-removed. Node 10 also has two children, so the root takes 12, the smallest
-value in its right subtree. The printed tree shows 12 at the root and 7 where 5 was.
+Tracing the two removals illustrates case 3 in action. Node 5 has children 3 and 7, so it adopts 7 (the minimum
+of its right subtree) and removes the original leaf 7. Node 10 likewise adopts 12 from its right subtree,
+leaving 12 at the root and 7 in node 5's former position.
 
 ### 11.3.4 A second BST, with an iterative minimum
 
-The second implementation writes removal and range queries differently.
+The second implementation adopts alternative strategies for removal and range queries.
 
 <p class="listing"><b>Listing 11.11</b> Removal and <code>pop_min</code> (lines 49 to 84). <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/bin/bst_easy.rs">src/bin/bst_easy.rs</a></p>
 
@@ -362,32 +362,35 @@ Pop min: Some(3)
 
 <div class="callout warning" markdown="1">
 
-**WARNING:** Neither tree keeps itself balanced. Suppose you insert 1, 2, 3, and so on in increasing order. Each value becomes the right child of the
-previous one, and the tree turns into a chain n levels deep. Searches
-then take O(n), and every recursive method recurses n levels. The standard library's `BTreeMap` stays balanced.
+**WARNING:** Neither implementation performs self-balancing. Inserting keys in strictly ascending order (1, 2,
+3, and so on) appends each value as the right child of the previous node, degenerating the tree into a linear
+chain of depth *n*. Lookups then degrade to O(*n*), and every recursive method consumes O(*n*) stack frames. For
+balanced search trees in production code, use the standard library's `BTreeMap`.
 
 </div>
 
 ## 11.4 Trees with any number of children
 
-Many real trees are not binary. A folder can hold any number of files and folders. A node that owns a
-`Vec<TreeNode<T>>` of children describes such a tree. It needs no `Box`, because the `Vec` already keeps its
-elements on the heap, so the node's own size is fixed.
+Many hierarchical structures are not binary; a filesystem directory, for example, can hold an arbitrary number
+of entries. Modeling a node with a `Vec<TreeNode<T>>` of children accommodates arbitrary branching without
+requiring `Box`, because `Vec` already heap-allocates its backing buffer and keeps the node's inline size fixed.
 
 ### 11.4.1 Depth first and breadth first
 
-Figure 11.5 shows the two basic ways to visit such a tree. A **depth-first** visit goes down one branch completely before starting the next, as in section 11.2.2. A
-**breadth-first** visit goes level by level: the root, then all its children, then all their children.
+The two fundamental traversal strategies for a multi-way tree are illustrated in Figure 11.5. A **depth-first**
+traversal descends completely down one branch before starting the next (as in Section 11.2.2), whereas a
+**breadth-first** traversal visits nodes level by level: the root, then all of its children, then all of their
+children.
 
 <figure>
 <img src="figures/tree-dfs-bfs.svg" alt="The same tree of six nodes twice. Depth first visits 1, 2, 4, 5, 3, 6. Breadth first visits 1, 2, 3, 4, 5, 6.">
 <figcaption><b>Figure 11.5</b> Depth first finishes node 2's branch before visiting 3. Breadth first finishes each level before the next.</figcaption>
 </figure>
 
-Depth first is naturally recursive. Breadth first needs a **queue**: a collection where items leave in the
-order they arrived. You put the root in the queue. Then, repeatedly, you take the node at the front, visit it,
-and add its children at the back. Because children join at the back, every node of one level leaves the queue
-before any node of the next.
+Depth-first traversal maps naturally onto recursion, whereas breadth-first traversal requires a FIFO **queue**.
+The root is enqueued first; on each iteration, the front node is dequeued, visited, and its children are
+appended to the back. Because children always enter at the back, every node of one level leaves the queue before
+any node of the next level is processed.
 
 A node owns its value and a `Vec` of child nodes. The children are stored inside the vector itself, not behind pointers, so a node can have any number of them:
 
@@ -451,9 +454,10 @@ its children and joins all those children into one sequence. The loop ends when 
 {{#include ../../rust-interview-lab/src/bin/tree_under_pressure.rs:22:40}}
 ```
 
-`level_order_readable` uses one queue, as `bfs` did. The trick is `queue.len()` at the start of each round. At
-that moment, the queue holds exactly one level. So the loop pops exactly that many nodes, collecting their
-values, while their children pile up behind them for the next round.
+`level_order_readable` maintains a single queue, as `bfs` did. The key invariant is reading `queue.len()` at the
+start of each round: at that moment, the queue holds the exact set of nodes belonging to the current level. The
+inner loop pops that exact count and records their values, while their children accumulate at the back for the
+next round.
 
 `let Some(node) = queue.pop_front() else { break };` is a **let-else** statement. It binds `node` if the pattern
 matches, and runs the `else` block, which must leave the loop or the function, if it does not.
@@ -481,12 +485,13 @@ Both functions return `Vec<Vec<&T>>`, references into the tree, and both run in 
 
 ## 11.5 Saving a tree to a file and loading it back
 
-To save a tree, you turn it into a flat sequence of text. Later, you rebuild exactly the same tree from
-that text. Turning a structure into a flat sequence is called **serialization**.
+Persisting a tree to storage requires converting its hierarchical structure into a flat sequence of text, a
+process called **serialization**, so that the exact topology can be reconstructed later.
 
-A list of values in pre-order is not enough, because it does not say where one node's children end. The file's
-format adds, after each value, the number of children that follow (figure 11.6). A reader can then rebuild the
-tree: read a value and a count, then read that many subtrees.
+A pre-order sequence of values alone cannot uniquely identify a multi-way tree because it omits where each
+node's children terminate. Appending each node's child count immediately after its value resolves this
+ambiguity (Figure 11.6): a deserializer reads a value and its child count *k*, then recursively reads *k* child
+subtrees.
 
 <figure>
 <img src="figures/tree-serialize.svg" alt="A tree with root, a, b, a1, a2, b1, and its serialized form: root 2, a 2, a1 0, a2 0, b 1, b1 0">
@@ -531,9 +536,9 @@ impl<T> TreeNode<T> {
 call reads a value and a count at `pos`, advances `pos` by two, and then calls itself `child_count` times to read
 the children.
 
-Every step that can fail uses `?` on an `Option`. The failures are a missing token, a value that does not
-parse, and a count that is not a number. `.parse().ok()?` first turns the parse `Result` into an `Option`. Any failure makes the whole
-function return `None`.
+Every fallible step propagates failure through the `?` operator on `Option`: a truncated token stream, an
+unparseable value, or a non-numeric child count. Calling `.parse().ok()?` converts the `Result` from `parse`
+into an `Option`, causing any malformed input to return `None`.
 
 <p class="listing"><b>Listing 11.20</b> The complete program. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/bin/tree_serializ_deserialize_into_file.rs">src/bin/tree_serializ_deserialize_into_file.rs</a></p>
 
@@ -605,9 +610,10 @@ marked terminal.
 function at the first missing character. `search` then checks that the node exists and is terminal, with
 `is_some_and`. `starts_with` only checks that the node exists.
 
-Searching for a word of m characters takes m steps, whatever the number of stored words. A `HashMap` per node is
-flexible but uses a lot of memory. For words of lowercase English letters only, an array of 26 child pointers
-per node is faster and smaller.
+Searching for a word of *m* characters requires *m* steps, independent of the total number of stored words.
+Storing a `HashMap` per node supports arbitrary Unicode characters at the cost of significant per-node memory
+overhead. When the alphabet is restricted to lowercase ASCII letters, a fixed array of 26 child pointers per
+node reduces both memory footprint and lookup latency.
 
 <div class="summary" markdown="1">
 
@@ -628,7 +634,7 @@ per node is faster and smaller.
 
 </div>
 
-Chapter 12 generalizes trees to graphs, where any node can connect to any other, and cycles are possible.
+In Chapter 12, we generalize trees to graphs, allowing arbitrary connections between nodes and cycles.
 
 ## Exercises
 

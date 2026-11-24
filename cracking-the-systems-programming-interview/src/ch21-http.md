@@ -15,41 +15,30 @@ This chapter covers
 
 </div>
 
-HTTP looks like text with line breaks, but it is a byte stream whose message boundaries are decided by
-headers. The security bugs in real servers come from disagreeing about where one request ends and the next
-begins. The parser in this chapter is built around that boundary. The server on top of it keeps protocol
-handling separate from routing, so each can be tested alone.
+Although HTTP resembles line-oriented text, it is transmitted as an unstructured byte stream whose message boundaries are determined entirely by headers. Many severe vulnerabilities in production servers arise when two components disagree on where one request ends and the next begins. In this chapter, we construct a parser centered on unambiguous framing and layer an HTTP/1.1 server above it that separates protocol handling from application routing so that each layer can be verified independently.
 
 ## 21.1 Requests and responses on the wire
 
-HTTP/1.1 runs over one TCP connection, the byte stream from chapter 20. The client writes a request into the
-connection. The server reads it, works out an answer, and writes a response back on the same connection.
+HTTP/1.1 operates over a single TCP connection, which provides the byte stream examined in Chapter 20. A client writes a request into the stream; the server reads the bytes, computes a result, and writes a response back over the same connection.
 
-A request is a few lines of text, then an optional body. Every line ends with two bytes, a carriage return
-and a line feed, written `\r\n` in Rust strings and called CRLF. Figure 21.1 shows a request that creates a
-GPU workload, byte for byte.
+Each request consists of a sequence of text lines followed by an optional body. Every line terminates with a two-byte carriage return and line feed sequence, written `\r\n` in Rust string literals and known as CRLF. As illustrated in Figure 21.1, a request that creates a GPU workload follows this exact byte layout.
 
 <figure>
 <img src="figures/ch21-anatomy.svg" alt="A POST request laid out line by line. The request line POST /v1/gpu-workloads HTTP/1.1, three header lines Host, Content-Type, and Content-Length 14, an empty line, and the 14-byte body {&quot;gpuCount&quot;:1}. Every line ends with a CRLF.">
 <figcaption><b>Figure 21.1</b> One request. The head is text lines ending in CRLF, and an empty line separates it from the body.</figcaption>
 </figure>
 
-The first line is the **request line**. It has three parts separated by spaces:
+The first line is the **request line**, composed of three space-separated tokens:
 
-- The **method** says what the client wants done. `GET` reads, `POST` creates, and `DELETE` removes.
-- The **target** names the thing to act on, here the path `/v1/gpu-workloads`.
-- The **version** is `HTTP/1.1`.
+- The **method** specifies the requested operation: `GET` retrieves a resource, `POST` creates one, and `DELETE` removes one.
+- The **target** identifies the resource to act upon, in this case the path `/v1/gpu-workloads`.
+- The **version** specifies the protocol version, here `HTTP/1.1`.
 
-Each following line is a **header**: a name, a colon, and a value. `Host` names the server the client meant.
-`Content-Type` says what kind of data the body holds. `Content-Length` says how many bytes the body has, here
-14.
+Each subsequent line is a **header** consisting of a name, a colon, and a value. `Host` identifies the target authority, `Content-Type` declares the media type of the payload, and `Content-Length` specifies the exact byte length of the body (here, 14).
 
-An empty line ends the **head**. The **body** follows it, and it is exactly `Content-Length` bytes long:
-`{"gpuCount":1}` is 14 bytes.
+An empty line terminates the **head**, and the **body** follows immediately for exactly `Content-Length` bytes (`{"gpuCount":1}` occupies 14 bytes).
 
-A response has the same shape. Its first line is a **status line**: the version, a three-digit status code,
-and a short reason phrase. Codes from 200 to 299 mean success, 400 to 499 mean the client sent something
-wrong, and 500 to 599 mean the server failed.
+A response uses the same framing structure. Its opening line is a **status line** containing the protocol version, a three-digit status code, and a brief reason phrase. Status codes in the 200 to 299 range indicate success, 400 to 499 indicate a client error, and 500 to 599 indicate a server failure.
 
 ```text
 HTTP/1.1 201 Created
@@ -62,56 +51,44 @@ Connection: keep-alive
 
 ### 21.1.1 Where one request ends
 
-TCP delivers bytes, not messages. As chapter 20 showed, one `read` can return part of a request, exactly one
-request, or one request and the start of the next. The bytes carry no marker that says "a request starts
-here". The server has to find the end of each request from the bytes themselves:
+TCP delivers an unstructured stream of bytes rather than discrete messages. As established in Chapter 20, a single `read` call may return a fragment of a request, one complete request, or one request followed by the beginning of the next. Because the wire format includes no explicit start-of-message delimiter, the server must derive message boundaries from the bytes themselves:
 
-1. The head ends at the first empty line, the four bytes `\r\n\r\n`.
-2. The head then says how long the body is. `Content-Length` gives a byte count. Section 21.2.4 covers the
-   other way, a body sent in sized pieces.
+1. The head terminates at the first empty line, represented by the four-byte sequence `\r\n\r\n`.
+2. The headers within the head then specify the body length, either directly through `Content-Length` or as a sequence of sized chunks (covered in Section 21.2.4).
 
-The next request depends on it too. HTTP/1.1 keeps a connection open after a response, so the client can
-send another request without a new TCP handshake. This is called **keep-alive**. The server
-can read the second request only if it knows exactly where the first one stopped.
+Correct framing is also essential for connection reuse. HTTP/1.1 keeps a TCP connection open after sending a response so that the client can issue subsequent requests without paying for another TCP handshake, a mechanism called **keep-alive**. The server can locate the start of the second request only if it determines the exact end of the first.
 
 ### 21.1.2 The parts of the server
 
-Figure 21.2 shows the pieces of the server in this chapter and the order in which a request passes through
-them.
+The server architecture is structured as a pipeline of four stages, illustrated in Figure 21.2.
 
 <figure>
 <img src="figures/ch21-server.svg" alt="A flow from left to right: client, read into buffer, parse_request, route, build_response, client. A dashed arrow labelled Incomplete: read more goes from parse_request back to read into buffer. The arrow from parse_request to route is labelled Ok(request), and the arrow from route to build_response is labelled status, body.">
 <figcaption><b>Figure 21.2</b> One request through the server. The parser sends the server back to read more until a whole request has arrived.</figcaption>
 </figure>
 
-- The server reads bytes from the connection and appends them to a buffer.
-- `parse_request` looks at the whole buffer. If the request is not complete yet, it says `Incomplete`, and
-  the server reads more. If it is complete, it returns a `Request` value.
-- `route` decides the answer from the `Request`: a status code and a body. It never sees bytes or sockets.
-- `build_response` turns the answer into the bytes of a response, which the server writes back.
+- The server reads bytes from the socket and appends them to a per-connection buffer.
+- `parse_request` inspects the accumulated buffer. If a full message has not yet arrived, it returns `Incomplete` so the read loop fetches additional bytes; otherwise it produces a `Request` value.
+- `route` maps the `Request` to a status code and response payload without interacting with raw bytes or sockets.
+- `build_response` serializes that result into wire-format response bytes for transmission back to the client.
 
-The parser, the read loop, and the response bytes are the protocol. `route` is the application. Keeping
-them apart means each can be tested without the other: the parser with byte strings, and `route` with
-`Request` values.
+The parser, read loop, and response serializer implement the HTTP protocol, whereas `route` implements application behavior. Separating these concerns enables independent testing: the parser can be exercised directly on byte slices, and `route` can be verified on constructed `Request` values.
 
 ## 21.2 The parser
 
-The parser is one file, `src/problems/http_request.rs`. Listing 21.1 in section 21.4 is the whole file.
+The parser resides in `src/problems/http_request.rs` (shown in full as Listing 21.1 in Section 21.4).
 
 ### 21.2.1 Types first
 
-The file opens with its vocabulary. `Method` is an enum with a `parse` that returns `None` for an unknown
-token, and two predicates from RFC 9110:
+The module begins by defining its domain types. `Method` is an enum providing a `parse` constructor that returns `None` for unrecognized tokens, along with two semantic predicates defined in RFC 9110:
 
 ```rust
 {{#include ../../rust-interview-lab/src/problems/http_request.rs:10:45}}
 ```
 
-`is_safe` is true for GET, HEAD, and OPTIONS, which do not change state. `is_idempotent` adds PUT and
-DELETE to those. Chapter 19's retry loop is the consumer that needs `is_idempotent`.
+`is_safe` holds for `GET`, `HEAD`, and `OPTIONS`, which do not modify server state, while `is_idempotent` additionally includes `PUT` and `DELETE`. The retry loop from Chapter 19 relies on `is_idempotent` to determine whether a failed request can be reissued safely.
 
-`Version` has two variants because the parser accepts two. `Limits` carries the header and body caps, with
-defaults of 16 KiB and 8 MiB:
+`Version` defines the two protocol versions accepted by the parser, and `Limits` enforces upper bounds on header and body sizes, defaulting to 16 KiB and 8 MiB respectively:
 
 ```rust
 {{#include ../../rust-interview-lab/src/problems/http_request.rs:47:66}}
@@ -134,13 +111,11 @@ keep-alive`. The `has` closure splits the header on commas because `Connection` 
 {{#include ../../rust-interview-lab/src/problems/http_request.rs:102:112}}
 ```
 
-`Incomplete` is not a failure: it means "read more bytes and try again", and the server's loop in section
-21.3 depends on it. `PayloadTooLarge` maps to status 413, `MissingHost` and `Malformed` to 400.
+`Incomplete` signals that the server should read additional bytes and retry parsing, a condition that the connection loop in Section 21.3 handles as normal control flow. `PayloadTooLarge` maps to status 413, while `MissingHost` and `Malformed` map to 400.
 
 ### 21.2.2 The head of the request
 
-`parse_request` works on `&[u8]`, not `&str`, because an HTTP body is arbitrary bytes and only the head is
-text. It first looks for the blank line that ends the head, `\r\n\r\n`, with `windows(4).position(...)`:
+`parse_request` accepts `&[u8]` rather than `&str` because an HTTP body may contain arbitrary binary data, whereas only the head is constrained to text. It begins by searching for the terminating blank line (`\r\n\r\n`) using `windows(4).position(...)`:
 
 ```rust
 {{#include ../../rust-interview-lab/src/problems/http_request.rs:134:151}}
@@ -148,10 +123,7 @@ text. It first looks for the blank line that ends the head, `\r\n\r\n`, with `wi
 }
 ```
 
-If the blank line is missing, the request is `Incomplete`. The exception is a buffer already larger than
-`max_header_bytes`: then the client is sending an endless header and gets `PayloadTooLarge`. That check
-stops a slow client from holding memory with a header that never ends. Figure 21.3 shows the order of the
-remaining checks.
+When the blank line has not yet arrived, the parser returns `Incomplete`, unless the accumulated buffer already exceeds `max_header_bytes`, in which case it returns `PayloadTooLarge`. Enforcing this limit before finding the delimiter prevents a slow client from exhausting server memory with an unbounded header. The validation sequence across `parse_request` and `parse_body` is outlined in Figure 21.3.
 
 <figure>
 <img src="figures/ch21-framing.svg" alt="Flowchart: find the end of the head, parse the request line, parse headers, require exactly one Host for HTTP/1.1, then choose body framing: both headers is an error, Transfer-Encoding decodes chunked, Content-Length takes that many bytes, neither means no body">
@@ -204,11 +176,7 @@ rejected as `AmbiguousBodyLength`:
 }
 ```
 
-The reason is request smuggling (figure 21.4). A front-end proxy may frame a request by `Content-Length`,
-while the back-end server frames the same bytes by `Transfer-Encoding: chunked`. The two then disagree
-about where the request ends. The attacker places a second request in the part the back-end treats as
-"after the body". The back-end runs it as though it arrived on its own, past whatever checks the proxy
-applied. Refusing ambiguous framing outright, and closing the connection, removes the disagreement.
+This restriction prevents request smuggling (Figure 21.4). When a front-end proxy frames a message using `Content-Length` while a back-end server frames the same byte stream using `Transfer-Encoding: chunked`, the two components disagree on where the first request ends. An attacker can embed a second request in the trailing bytes that the back-end interprets as the start of a new message, bypassing security controls enforced by the proxy. Rejecting ambiguous framing outright and closing the connection eliminates this desynchronization.
 
 <figure>
 <img src="figures/ch21-smuggling.svg" alt="One message with both Content-Length and Transfer-Encoding; the proxy reads one request, the back-end ends the POST at the zero chunk and reads GET /admin as a new request; the parser rejects the message instead">
@@ -471,23 +439,16 @@ acknowledges.
 ## 21.5 Questions that come up
 
 **"How does a server know where an HTTP/1.1 request body ends?"**
-`Transfer-Encoding: chunked` means read chunks until a zero-size chunk. Else `Content-Length` gives the
-count. With neither header there is no body. For responses, closing the connection can also end the body.
+If `Transfer-Encoding: chunked` is present, the server reads length-prefixed chunks until it encounters a zero-size terminating chunk. Otherwise, `Content-Length` specifies the exact byte count. When neither header is present, the request carries no body (for responses, closing the connection can also delimit the body).
 
-**"What is request smuggling, and how do you prevent it?"**
-Two servers frame the same bytes differently, so each sees a different message.
-Reject requests with both framing headers. Reject conflicting `Content-Length`s. Close the
-connection after any framing error.
+**"What is request smuggling, and how is it prevented?"**
+Request smuggling occurs when two servers along the request path frame the same byte stream differently, causing them to disagree on message boundaries. Prevention requires rejecting requests that carry both `Content-Length` and `Transfer-Encoding`, rejecting conflicting `Content-Length` values, and closing the connection after any framing error.
 
-**"How do you stop a client from exhausting your server's memory?"**
-Limit header size and body size. Check the declared length before reading the body. Time out idle
-and slow connections.
+**"How does a server prevent a client from exhausting its memory?"**
+The server enforces upper bounds on header and body sizes, validates any declared `Content-Length` before buffering payload bytes, and closes idle or slow connections after a timeout.
 
-**"Why is routing a separate pure function?"**
-So the rules are testable without sockets. The protocol code (framing, keep-alive) can then be changed
-without touching the application logic.
+**"Why is routing implemented as a separate pure function?"**
+Isolating routing from socket I/O allows every route to be unit-tested directly on `Request` values, while enabling protocol changes (such as framing or keep-alive adjustments) without modifying application logic.
 
 **"What does HTTP/2 change?"**
-Binary framing with explicit lengths, many concurrent streams on one connection, and header compression.
-Framing ambiguity of the HTTP/1.1 kind disappears inside HTTP/2, although it can return where a proxy
-downgrades to HTTP/1.1.
+HTTP/2 replaces text-based delimiters with binary framing and explicit frame lengths, multiplexes concurrent streams over a single TCP connection, and compresses headers. HTTP/1.1 framing ambiguities disappear within HTTP/2 itself, although they can reappear at gateways that downgrade HTTP/2 requests to HTTP/1.1.

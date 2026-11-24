@@ -1,153 +1,307 @@
-/* Browser edition. The print edition uses tools/print.css; both style the same
-   class names that the chapters use: img.plate, .covers, .sidebar, .listing,
-   and figure. */
+/* ============================================================
+   Cracking the Systems Programming Interview — Material Design 3
+   & Perceptually Calibrated APCA / OKLCH Theme Suite
+   (Matches Operating Systems & Distributed Systems sister books;
+    preserves all existing art, plates, figures, and animations.)
+   ============================================================ */
 
 :root {
-    --book-ink: #1d2733;
-    --book-steel: #5b6b7c;
-    --book-pale: #e9eef3;
-    --book-navy: #16324f;
-    --book-rust: #d9622b;
-    --book-brass: #c89b3c;
-    --content-max-width: 820px;
+    --content-max-width: 840px;
+    --book-ink: #1b2230;
+    --book-steel: #526075;
+    --book-pale: #f3f7fc;
+    --book-navy: #163e7a;
+    --book-rust: #1a5fc4;
+    --book-brass: #a15c07;
+
+    --m3-ink: #1b2230;
+    --m3-muted: #526075;
+    --m3-surface: #ffffff;
+    --m3-surface-tonal: #f3f7fc;
+    --m3-table-head-bg: #e6effd;
+    --m3-table-head-ink: #163e7a;
+    --m3-table-row-alt: #f8fafd;
+    --m3-hairline: #dce2ec;
+    --m3-accent: #1a5fc4;
+    --m3-teal: #0e7168;
+    --m3-amber: #a15c07;
+    --m3-red: #bf3620;
+    --m3-code-bg: #f4f7fb;
 }
 
-.navy, .coal, .ayu {
-    --book-ink: #d6dde5;
-    --book-pale: #1f2b38;
-    --book-navy: #9cc3ec;
+/* 1. Night Owl (navy — rich deep midnight blue #011627) */
+html.navy {
+    --bg: #011627;
+    --fg: #edf2fa;
+    --sidebar-bg: #01111d;
+    --sidebar-fg: #9eb9cc;
+    --sidebar-non-existant: #567085;
+    --sidebar-active: #89d8d3;
+    --sidebar-spacer: #122d42;
+    --scrollbar: #1d3b53;
+    --icons: #8aa7bc;
+    --icons-hover: #89d8d3;
+    --links: #89b4fa;
+    --inline-code-color: #89d8d3;
+    --theme-popup-bg: #071f33;
+    --theme-popup-border: #1d3b53;
+    --theme-hover: #0b2942;
+    --quote-bg: #071d30;
+    --quote-border: #89d8d3;
+    --table-border-color: #173752;
+    --table-header-bg: #0b2942;
+    --table-alternate-bg: #082035;
+
+    --book-ink: #edf2fa;
+    --book-pale: #071e32;
+    --book-navy: #89b4fa;
+    --book-rust: #89d8d3;
+    --book-brass: #f2c98a;
+
+    --m3-ink: #edf2fa;
+    --m3-muted: #c2cfe0;
+    --m3-surface: #051b2e;
+    --m3-surface-tonal: #082238;
+    --m3-table-head-bg: #0b2942;
+    --m3-table-head-ink: #d8e8fc;
+    --m3-table-row-alt: #082035;
+    --m3-hairline: #173752;
+    --m3-accent: #89b4fa;
+    --m3-teal: #89d8d3;
+    --m3-amber: #f2c98a;
+    --m3-red: #f3a6b2;
+    --m3-code-bg: #051a2b;
 }
+
+/* 2. Material Deep Ocean (coal — default dark #0F111A) */
+html.coal {
+    --bg: #0f111a;
+    --fg: #edf2fa;
+    --sidebar-bg: #090b10;
+    --sidebar-fg: #a1a9bc;
+    --sidebar-non-existant: #5a627d;
+    --sidebar-active: #89b4fa;
+    --sidebar-spacer: #1b1f30;
+    --scrollbar: #252c42;
+    --icons: #8c9ab8;
+    --icons-hover: #89d8d3;
+    --links: #89b4fa;
+    --inline-code-color: #89d8d3;
+    --theme-popup-bg: #151926;
+    --theme-popup-border: #252e45;
+    --theme-hover: #1e273d;
+    --quote-bg: #141926;
+    --quote-border: #89b4fa;
+    --table-border-color: #242e45;
+    --table-header-bg: #18233a;
+    --table-alternate-bg: #161b2a;
+
+    --book-ink: #edf2fa;
+    --book-pale: #151a28;
+    --book-navy: #89b4fa;
+    --book-rust: #89d8d3;
+    --book-brass: #f2c98a;
+
+    --m3-ink: #edf2fa;
+    --m3-muted: #c2cfe0;
+    --m3-surface: #131724;
+    --m3-surface-tonal: #151b2b;
+    --m3-table-head-bg: #18233a;
+    --m3-table-head-ink: #d8e8fc;
+    --m3-table-row-alt: #161b2a;
+    --m3-hairline: #242e45;
+    --m3-accent: #89b4fa;
+    --m3-teal: #89d8d3;
+    --m3-amber: #f2c98a;
+    --m3-red: #f3a6b2;
+    --m3-code-bg: #141826;
+}
+
+/* 3. Oceanic Next (ayu — calm deep teal-slate ocean #1B2B34) */
+html.ayu {
+    --bg: #1b2b34;
+    --fg: #edf2fa;
+    --sidebar-bg: #142129;
+    --sidebar-fg: #b0bdc7;
+    --sidebar-non-existant: #6b7b87;
+    --sidebar-active: #89d8d3;
+    --sidebar-spacer: #263a45;
+    --scrollbar: #344957;
+    --icons: #97acb8;
+    --icons-hover: #89d8d3;
+    --links: #89b4fa;
+    --inline-code-color: #89d8d3;
+    --theme-popup-bg: #20333e;
+    --theme-popup-border: #344957;
+    --theme-hover: #29414f;
+    --quote-bg: #20333e;
+    --quote-border: #89d8d3;
+    --table-border-color: #324c5c;
+    --table-header-bg: #27404e;
+    --table-alternate-bg: #21343f;
+
+    --book-ink: #edf2fa;
+    --book-pale: #21343f;
+    --book-navy: #89b4fa;
+    --book-rust: #89d8d3;
+    --book-brass: #f2c98a;
+
+    --m3-ink: #edf2fa;
+    --m3-muted: #c2cfe0;
+    --m3-surface: #1e303a;
+    --m3-surface-tonal: #223642;
+    --m3-table-head-bg: #27404e;
+    --m3-table-head-ink: #d8e8fc;
+    --m3-table-row-alt: #21343f;
+    --m3-hairline: #324c5c;
+    --m3-accent: #89b4fa;
+    --m3-teal: #89d8d3;
+    --m3-amber: #f2c98a;
+    --m3-red: #f3a6b2;
+    --m3-code-bg: #17262e;
+}
+
+/* ---------- Typography ---------- */
 
 .content main {
-    font-family: Charter, "Iowan Old Style", Georgia, serif;
+    font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
     font-size: 1.72rem;
-    line-height: 1.62;
+    line-height: 1.68;
+    color: var(--m3-ink);
 }
 
 .content h1, .content h2, .content h3, .content h4 {
-    font-family: "Avenir Next Condensed", "Avenir Next", "Helvetica Neue", Arial, sans-serif;
-    color: var(--book-navy);
-    letter-spacing: 0.01em;
+    font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+    color: var(--m3-ink);
+    letter-spacing: -0.012em;
 }
 
-.content h1 { font-size: 2.4em; margin-top: 0.4em; }
-.content h2 { border-bottom: 1px solid #c9d4de; padding-bottom: 0.2em; margin-top: 2em; }
+html.navy .content h1, html.coal .content h1, html.ayu .content h1 { color: #f4f8ff; }
+html.navy .content h2, html.coal .content h2, html.ayu .content h2 { color: #d4e4ff; }
+html.navy .content h3, html.coal .content h3, html.ayu .content h3 { color: #a9cbff; }
+
+.content h1 {
+    font-size: 2.15em;
+    font-weight: 750;
+    margin-top: 0.45em;
+    padding-bottom: 0.25em;
+    border-bottom: 1px solid var(--m3-hairline);
+}
+
+.content h2 {
+    font-size: 1.48em;
+    font-weight: 680;
+    border-bottom: 1px solid var(--m3-hairline);
+    padding-bottom: 0.26em;
+    margin-top: 2.05em;
+}
+
+.content .md-sec-icon {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    vertical-align: middle;
+    transform: translateY(-0.08em);
+    margin-right: 0.38em;
+    width: 1.12em;
+    height: 1.12em;
+    border-radius: 6px;
+    background: var(--m3-surface-tonal);
+    color: var(--m3-accent);
+    border: 1px solid var(--m3-hairline);
+}
+
+.content .md-sec-icon svg {
+    width: 0.72em;
+    height: 0.72em;
+    fill: currentColor;
+}
+
+/* Clean Material chevron list markers */
+.content main ul {
+    list-style: none;
+    padding-left: 1.55em;
+}
+
+.content main ul > li {
+    position: relative;
+    margin: 0.45em 0;
+}
+
+.content main ul > li::before {
+    content: "";
+    position: absolute;
+    left: -1.35em;
+    top: 0.34em;
+    width: 1em;
+    height: 1em;
+    background-color: var(--m3-accent);
+    opacity: 0.82;
+    -webkit-mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='M10 6L8.59 7.41 13.17 12l-4.58 4.59L10 18l6-6z'/%3E%3C/svg%3E");
+    mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='M10 6L8.59 7.41 13.17 12l-4.58 4.59L10 18l6-6z'/%3E%3C/svg%3E");
+    -webkit-mask-size: contain;
+    mask-size: contain;
+    -webkit-mask-repeat: no-repeat;
+    mask-repeat: no-repeat;
+}
+
+.content a { color: var(--m3-accent); }
+
+/* ---------- Art, Plates, Figures & Animations (100% Preserved) ---------- */
 
 img.plate {
     display: block;
     width: 100%;
-    border-radius: 4px;
-    margin: 0.5em 0 1em 0;
-    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.15);
+    height: auto;
+    border-radius: 14px;
+    margin: 0.5em 0 1.3em 0;
+    border: 1px solid var(--m3-hairline);
 }
 
 img.cover {
     display: block;
-    max-width: 520px;
+    max-width: 540px;
     width: 100%;
     margin: 1em auto;
-    box-shadow: 0 6px 24px rgba(0, 0, 0, 0.25);
+    border-radius: 14px;
+    border: 1px solid var(--m3-hairline);
 }
 
-.covers {
-    background: var(--book-pale);
-    border-left: 5px solid var(--book-rust);
-    padding: 0.6em 1.2em 0.2em 1.2em;
-    margin: 0 0 1.5em 0;
+figure { margin: 1.7em 0; text-align: center; page-break-inside: avoid; }
+figure img { max-width: 100%; border-radius: 12px; }
+figure img[src*=".svg"] { cursor: zoom-in; }
+
+.navy figure img[src*=".svg"],
+.coal figure img[src*=".svg"],
+.ayu figure img[src*=".svg"] {
+    background: #f5f7fb;
+    border-radius: 12px;
+    padding: 10px;
+    border: 1px solid var(--m3-hairline);
 }
-
-.covers > p:first-child {
-    font-family: "Avenir Next Condensed", "Helvetica Neue", sans-serif;
-    font-weight: 600;
-    text-transform: uppercase;
-    letter-spacing: 0.06em;
-    color: var(--book-navy);
-    margin-bottom: 0.3em;
-}
-
-.sidebar {
-    border: 1px solid #b7c4d1;
-    background: var(--book-pale);
-    padding: 0.6em 1.2em;
-    margin: 1.4em 0;
-    font-size: 0.94em;
-}
-
-.content blockquote {
-    border-left: 4px solid var(--book-brass);
-    background: transparent;
-    margin: 1em 0;
-    padding: 0.2em 1em;
-    font-size: 0.95em;
-}
-
-.listing {
-    font-family: "Avenir Next", "Helvetica Neue", Arial, sans-serif;
-    font-size: 0.82em;
-    margin: 1.6em 0 0.2em 0;
-    padding-bottom: 0.25em;
-    border-bottom: 2px solid var(--book-navy);
-}
-
-.listing b, figcaption b { color: var(--book-rust); margin-right: 0.4em; }
-
-.content pre > code { font-size: 0.83em; line-height: 1.5; }
-
-figure { margin: 1.6em 0; text-align: center; }
-figure img { max-width: 100%; }
 
 figcaption {
-    font-family: "Avenir Next", "Helvetica Neue", Arial, sans-serif;
-    font-size: 0.82em;
+    font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", Roboto, sans-serif;
+    font-size: 0.86em;
+    color: var(--m3-muted);
     text-align: left;
-    border-top: 1px solid #c9d4de;
-    margin-top: 0.5em;
-    padding-top: 0.3em;
+    border-top: 1px solid var(--m3-hairline);
+    margin-top: 0.55em;
+    padding-top: 0.38em;
 }
 
-/* An animated figure. The still figures call their captions "Figure N"; an
-   animation calls its caption "Animation N" and colours it teal, so a reader
-   can tell at a glance that the picture moves. */
-figure.anim {
-    margin: 1.4em 0 2em 0;
-}
+figcaption b, .listing b { color: var(--m3-accent); margin-right: 0.35em; }
 
-figure.anim img {
-    border: 2px solid var(--book-pale);
-    border-radius: 6px;
-}
+figure.anim { margin: 1.5em 0 2em 0; }
+figure.anim figcaption b { color: var(--m3-teal); }
 
-figure.anim figcaption b {
-    color: #2f7f86;
-}
-
-.navy figure img, .coal figure img, .ayu figure img {
-    background: #f3f5f7;
-    border-radius: 4px;
-    padding: 6px;
-}
-
-.content table { font-size: 0.9em; }
-.content table thead th { background: var(--book-navy); color: #ffffff; }
-.navy .content table thead th, .coal .content table thead th { color: #0d1620; }
-
-.callout { border-left: 5px solid var(--book-navy); background: var(--book-pale); padding: 0.5em 1.1em; margin: 1.3em 0; font-size: 0.95em; }
-.callout.tip { border-left-color: #2f7f86; }
-.callout.warning { border-left-color: var(--book-rust); }
-.callout.note { border-left-color: var(--book-brass); }
-.callout > p:first-child strong:first-child { font-family: "Avenir Next Condensed", "Helvetica Neue", sans-serif; letter-spacing: 0.06em; }
-.summary { border-top: 3px solid var(--book-navy); margin-top: 2em; }
-
-/* The motion animations are videos, with controls a reader can use to take
-   them at their own pace: pause, a slower speed, a jump to any step, and a
-   mode that stops at the end of each step. */
 figure.anim video.motion {
     display: block;
     width: 100%;
     max-width: 100%;
     height: auto;
-    border: 2px solid var(--book-pale);
-    border-radius: 6px;
+    border: 1px solid var(--m3-hairline);
+    border-radius: 12px;
     cursor: pointer;
     background: #ffffff;
 }
@@ -156,35 +310,227 @@ figure.anim video.motion {
     display: flex;
     flex-wrap: wrap;
     align-items: center;
-    gap: 0.4em 0.9em;
-    margin: 0.5em 0 0.2em 0;
-    font-family: "Avenir Next", "Helvetica Neue", Arial, sans-serif;
-    font-size: 0.8em;
-    text-align: left;
+    justify-content: center;
+    gap: 0.45em 0.9em;
+    margin: 0.6em 0 0.2em 0;
+    font-size: 0.82em;
 }
 
-.motion-group { display: inline-flex; flex-wrap: wrap; gap: 0.3em; }
+.motion-group { display: inline-flex; flex-wrap: wrap; gap: 0.35em; }
 
 .motion-bar button {
     font: inherit;
-    padding: 0.25em 0.7em;
-    border: 1px solid #c9d4de;
+    padding: 0.28em 0.78em;
+    border: 1px solid var(--m3-hairline);
     border-radius: 999px;
-    background: #f6f8fa;
-    color: #1d2733;
+    background: var(--m3-surface-tonal);
+    color: var(--m3-ink);
     cursor: pointer;
 }
 
-.motion-bar button:hover { border-color: #2f7f86; }
-.motion-bar button:focus-visible { outline: 2px solid #c89b3c; outline-offset: 2px; }
-
+.motion-bar button:hover { border-color: var(--m3-accent); }
 .motion-bar button[aria-pressed="true"],
 .motion-bar button[aria-current="step"] {
-    background: #e3f1ea;
-    border-color: #2f7f86;
-    color: #1d4f54;
+    background: var(--m3-table-head-bg);
+    border-color: var(--m3-accent);
+    color: var(--m3-accent);
     font-weight: 600;
 }
 
 .motion-bar .motion-play { min-width: 6.5em; font-weight: 600; }
-.motion-stepwise { color: #5b6b7c; cursor: pointer; }
+.motion-stepwise { color: var(--m3-muted); cursor: pointer; }
+
+.figure-zoom {
+    position: fixed;
+    inset: 0;
+    z-index: 1000;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: rgba(9, 11, 16, 0.92);
+    cursor: zoom-out;
+    padding: 20px;
+}
+
+.figure-zoom img {
+    max-width: 95vw;
+    max-height: 92vh;
+    background: #ffffff;
+    border-radius: 12px;
+    padding: 12px;
+}
+
+/* ---------- Scope Card, Callouts, Sidebars & Listings ---------- */
+
+.covers {
+    background: var(--m3-surface-tonal);
+    border: 1px solid var(--m3-hairline);
+    border-left: 4px solid var(--m3-accent);
+    border-radius: 12px;
+    padding: 0.85em 1.3em 0.6em 1.3em;
+    margin: 1.2em 0 1.8em 0;
+}
+
+.covers > p:first-child {
+    font-weight: 700;
+    font-size: 0.82em;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: var(--m3-accent);
+    margin: 0 0 0.45em 0;
+}
+
+.sidebar {
+    border: 1px solid var(--m3-hairline);
+    border-left: 4px solid var(--m3-teal);
+    border-radius: 12px;
+    background: var(--m3-surface-tonal);
+    padding: 0.8em 1.25em;
+    margin: 1.5em 0;
+    font-size: 0.95em;
+}
+
+.callout {
+    border-radius: 12px;
+    border: 1px solid var(--m3-hairline);
+    border-left: 4px solid var(--m3-accent);
+    background: var(--m3-surface-tonal);
+    padding: 0.85em 1.25em;
+    margin: 1.45em 0;
+    font-size: 0.95em;
+    page-break-inside: avoid;
+}
+
+.callout.tip { border-left-color: var(--m3-teal); }
+.callout.warning { border-left-color: var(--m3-red); }
+.callout.note { border-left-color: var(--m3-amber); }
+
+.callout > p:first-child strong:first-child {
+    font-size: 0.86em;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+    color: var(--m3-accent);
+}
+.callout.tip > p:first-child strong:first-child { color: var(--m3-teal); }
+.callout.warning > p:first-child strong:first-child { color: var(--m3-red); }
+.callout.note > p:first-child strong:first-child { color: var(--m3-amber); }
+
+.content blockquote {
+    border-left: 3px solid var(--m3-accent);
+    background: var(--m3-surface-tonal);
+    border-radius: 0 10px 10px 0;
+    margin: 1.1em 0;
+    padding: 0.55em 1.15em;
+    color: var(--m3-muted);
+}
+
+.listing {
+    font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", Roboto, sans-serif;
+    font-size: 0.86em;
+    margin: 1.6em 0 0.35em 0;
+    padding-bottom: 0.28em;
+    border-bottom: 1.5px solid var(--m3-hairline);
+    color: var(--m3-muted);
+}
+
+.content pre {
+    background: var(--m3-code-bg);
+    border: 1px solid var(--m3-hairline);
+    border-radius: 10px;
+}
+
+.content pre > code {
+    font-family: "SF Mono", SFMono-Regular, ui-monospace, Menlo, Consolas, monospace;
+    font-size: 0.84em;
+    line-height: 1.52;
+}
+
+.content :not(pre) > code {
+    background: var(--m3-surface-tonal);
+    border: 1px solid var(--m3-hairline);
+    border-radius: 5px;
+    padding: 0.1em 0.36em;
+    font-size: 0.86em;
+}
+
+.summary {
+    border-top: 2px solid var(--m3-hairline);
+    margin-top: 2.2em;
+    padding-top: 0.6em;
+}
+
+/* ---------- Material Design 3 Tonal Tables ---------- */
+
+.content table {
+    width: 100%;
+    border-collapse: separate;
+    border-spacing: 0;
+    margin: 1.5em 0;
+    font-size: 0.91em;
+    background: var(--m3-surface);
+    border: 1px solid var(--m3-hairline);
+    border-radius: 12px;
+    overflow: hidden;
+}
+
+.content table thead th {
+    background: var(--m3-table-head-bg) !important;
+    color: var(--m3-table-head-ink) !important;
+    font-weight: 650;
+    text-align: left;
+    padding: 0.65em 0.9em;
+    border: none;
+    border-bottom: 1px solid var(--m3-hairline);
+}
+
+.content table td {
+    padding: 0.62em 0.9em;
+    border: none;
+    border-bottom: 1px solid var(--m3-hairline);
+    vertical-align: baseline;
+    line-height: 1.55;
+}
+
+.content table td:first-child { font-variant-numeric: tabular-nums; }
+.content table tbody tr:last-child td { border-bottom: none; }
+.content table tbody tr:nth-child(2n) { background: var(--m3-table-row-alt) !important; }
+.content table tbody tr:nth-child(2n+1) { background: transparent !important; }
+
+/* ---------- Crisp White-Paper Print Stylesheet ---------- */
+
+@media print {
+    @page {
+        size: Letter;
+        margin: 12mm 13mm 14mm 13mm;
+        background: #ffffff;
+    }
+
+    * {
+        -webkit-print-color-adjust: exact !important;
+        print-color-adjust: exact !important;
+    }
+
+    :root, html, body, html.coal, html.navy, html.ayu, html.rust, html.light {
+        --bg: #ffffff !important;
+        --fg: #1b2230 !important;
+        --m3-ink: #1b2230 !important;
+        --m3-muted: #526075 !important;
+        --m3-surface: #ffffff !important;
+        --m3-surface-tonal: #f6f8fc !important;
+        --m3-table-head-bg: #eef4fe !important;
+        --m3-table-head-ink: #163e7a !important;
+        --m3-table-row-alt: #f9fbfe !important;
+        --m3-hairline: #dce2ec !important;
+        --m3-accent: #1a5fc4 !important;
+        --m3-code-bg: #f6f8fc !important;
+        background: #ffffff !important;
+        color: #1b2230 !important;
+    }
+
+    .content h1, .content h2, .content h3, .content h4 {
+        color: #1b2230 !important;
+        break-after: avoid !important;
+    }
+
+    .motion-bar { display: none !important; }
+}

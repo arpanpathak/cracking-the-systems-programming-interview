@@ -6,53 +6,45 @@
 
 This chapter covers
 
-- What happens between your program and the disk when you read a file
-- `Result` and the `?` operator, which every later chapter uses
-- `Path` and `PathBuf`, and reading a file whole or line by line
-- Appending, copying, renaming, and deleting files, and telling one error from another
-- Listing and walking directories
-- Reading a large file one page at a time, and parsing command-line arguments
+- How a program interacts with the kernel and storage subsystem when reading a file
+- `Result` and the `?` operator for structured error propagation
+- `Path` and `PathBuf`, alongside whole-file and line-oriented reading strategies
+- Appending, copying, renaming, and deleting files, and classifying I/O error kinds
+- Listing directory entries and traversing nested directory trees
+- Cursor-based file pagination and typed command-line argument parsing
 
 </div>
 
-In chapter 1 your programs only computed values. In this chapter they talk to the operating system. They
-read and write files, look inside directories, and read the arguments you type after a program's name.
+Whereas Chapter 1 focused on pure in-memory computation, this chapter crosses the boundary into the operating system. The programs here read and write files, traverse directories, and parse arguments supplied on the command line.
 
-Every one of these operations can fail. A file may not exist, or you may not have permission to read it.
-Rust reports such failures through a type called `Result`, so this chapter starts there. After that come
-paths, reading, writing, and directories. The chapter ends with two complete tools. One reads a file a page
-at a time. The other turns command-line arguments into typed options.
+Every interaction with the operating system can fail: a target path may be missing, or the process may lack read permissions. Rust models recoverable failures through the `Result` type, which forms the starting point of this chapter. We then examine path manipulation, buffered I/O, file mutations, and directory traversal, concluding with two complete utilities: a stateless file paginator and a typed command-line argument parser.
 
-A few terms:
+Three operating system concepts govern all file I/O:
 
-- The **kernel** is the core of the operating system. It controls the disk, memory, and devices.
-- A **system call** is a request from a program to the kernel, such as "open this file" or "read 100
-  bytes".
-- A **file descriptor** is a small number the kernel gives your program for each open file. Later system
-  calls use it to name that file.
+- The **kernel** is the privileged core of the operating system responsible for managing hardware, memory, and storage.
+- A **system call** is a controlled transition from user space into the kernel requesting a service, such as opening a file or reading a byte range.
+- A **file descriptor** is a small non-negative integer assigned by the kernel to represent an open file within a process; subsequent system calls reference the file through this integer.
 
 ## 2.1 What happens when you read a file
 
-Your program cannot read the disk directly. It asks the kernel with system calls, and the kernel does the
-work. Figure 2.1 shows the steps for reading a small file.
+User-space processes cannot access storage hardware directly. Every file read is mediated by the kernel through a sequence of system calls, as illustrated in Figure 2.1.
 
 <figure>
 <img src="figures/ch02-syscall.svg" alt="The program asks the kernel through system calls; the kernel checks its page cache, reads from disk if needed, and copies bytes into the program's buffer. Opening the file returns file descriptor 3.">
 <figcaption><b>Figure 2.1</b> A read goes through the kernel. The kernel keeps recently used file data in memory, in its page cache. A second read of the same file usually does not touch the disk.</figcaption>
 </figure>
 
-The steps are:
+Reading a file proceeds in three stages:
 
-1. `open` asks the kernel to open the file. The kernel checks permissions and returns a file descriptor.
-2. `read` asks for bytes from that descriptor. The kernel copies them into a buffer in your program.
-3. `close` tells the kernel you are done, so it can release the descriptor.
+1. `open` requests access to the path; the kernel verifies permissions and returns a file descriptor.
+2. `read` requests bytes from that descriptor; the kernel copies data from its page cache (fetching from disk on a cache miss) into a user-space buffer.
+3. `close` notifies the kernel that the process has finished with the file so the descriptor can be reclaimed.
 
-Rust's standard library makes these calls for you. Each call can fail, and the library reports that with
-`Result`.
+Rust's standard library wraps these system calls in safe abstractions, reporting any kernel error through `Result`.
 
 ## 2.2 `Result` and the `?` operator
 
-`Result` is an enum with two variants:
+`Result` is a two-variant enum representing either a successful value or a failure:
 
 ```rust
 enum Result<T, E> {
@@ -61,31 +53,23 @@ enum Result<T, E> {
 }
 ```
 
-For file operations, the error type is `std::io::Error`, and `io::Result<T>` is a shorter name for
-`Result<T, io::Error>`. So `fs::read_to_string(path)` returns `io::Result<String>`: either the file's text,
-or the reason it could not be read.
+For I/O operations, the error type is `std::io::Error`, and `io::Result<T>` is a standard type alias for `Result<T, io::Error>`. Accordingly, `fs::read_to_string(path)` returns `io::Result<String>`, yielding either the decoded text or the underlying OS error.
 
-You can handle a `Result` with `match`. That gets long when a function makes several calls, each of which
-can fail. The `?` operator shortens it. Put `?` after an expression of type `Result`, and it does one of two
-things (figure 2.2):
+Handling every fallible call with an explicit `match` quickly obscures control flow when a function chains multiple I/O operations. The `?` operator eliminates that boilerplate. Appending `?` to any `Result` expression performs one of two actions (Figure 2.2):
 
-- If the value is `Ok(x)`, the expression evaluates to `x` and the function continues.
-- If the value is `Err(e)`, the function returns `Err(e)` immediately.
+- On `Ok(x)`, the expression evaluates to `x` and execution continues.
+- On `Err(e)`, the enclosing function immediately returns `Err(e)` to its caller.
 
 <figure>
 <img src="figures/ch02-question.svg" alt="read_to_string returns a Result. On Ok, ? unwraps the value and the function continues. On Err, ? returns the error from the current function.">
 <figcaption><b>Figure 2.2</b> The <code>?</code> operator. It can only be used inside a function that itself returns <code>Result</code>.</figcaption>
 </figure>
 
-Because `?` returns from the function, the function must return a `Result` too. That is why the programs in
-this chapter declare `fn main() -> io::Result<()>`. If `main` returns an `Err`, Rust prints the error and
-the program exits with status 1.
+Because `?` performs an early return on error, the enclosing function must itself return a compatible `Result` type. For this reason, the binaries in this chapter declare `fn main() -> io::Result<()>`. When `main` returns an `Err`, the Rust runtime prints the error message to standard error and exits with status code 1.
 
 ## 2.3 Paths
 
-A **path** names a file or directory, such as `/tmp/data.txt`. Rust has two path types. `&Path` is a
-borrowed view of a path, and `PathBuf` is an owned path that can grow. They relate the same way `&str`
-relates to `String` (figure 2.3).
+A **path** identifies a file or directory, such as `/tmp/data.txt`. Rust splits path handling across two complementary types: `&Path` is an unsized, borrowed slice of a path, while `PathBuf` is an owned, heap-allocated buffer that can be mutated in place. Their relationship mirrors `&str` and `String` (Figure 2.3).
 
 <figure>
 <img src="figures/ch02-path.svg" alt="PathBuf derefs to a Path reference; Path.join creates a new PathBuf; PathBuf.push modifies in place">
@@ -98,8 +82,7 @@ relates to `String` (figure 2.3).
 {{#include ../../rust-interview-lab/src/bin/path_buff.rs}}
 ```
 
-`Path::new("/tmp")` wraps a string as a path without copying it. `dir.join("data.txt")` builds a new
-`PathBuf`. `PathBuf::from(dir)` copies the path into an owned buffer, and each `push` adds one component.
+`Path::new("/tmp")` constructs a borrowed `&Path` view without allocating. Calling `dir.join("data.txt")` allocates and returns a new `PathBuf`, whereas `PathBuf::from(dir)` copies the base path into an owned buffer that `push` extends in place.
 
 ```text
 $ cargo run --bin path_buff
@@ -110,15 +93,11 @@ file_name: Some("file.txt")
 ext: Some("txt")
 ```
 
-`parent`, `file_name`, and `extension` return `Option`, because some paths lack them: `/` has no parent.
-To print a path you call `display()`. On Linux and macOS a path is a sequence of bytes that need not be
-valid UTF-8. `display()` replaces any invalid bytes when it prints.
+Inspectors such as `parent`, `file_name`, and `extension` return `Option` because not every path contains those components; for instance, the root directory `/` has no parent. Formatting a path for display requires calling `display()`. On Unix systems (Linux and macOS), filesystem paths are arbitrary non-NUL byte sequences that need not be valid UTF-8; `display()` substitutes replacement characters for any non-UTF-8 sequences during formatting.
 
 <div class="callout warning" markdown="1">
 
-**WARNING:** If the argument to `join` or `push` is an absolute path, it replaces the whole path instead of
-extending it. `Path::new("/srv").join("/etc/passwd")` is `/etc/passwd`. If part of a path comes from a user,
-reject absolute paths and `..` before you join it.
+**WARNING:** Passing an absolute path to `join` or `push` replaces the entire base path rather than appending to it; `Path::new("/srv").join("/etc/passwd")` resolves to `/etc/passwd`. When constructing paths from untrusted input, reject absolute paths and `..` traversal components before joining.
 
 </div>
 
@@ -126,7 +105,7 @@ reject absolute paths and `..` before you join it.
 
 ### 2.4.1 The whole file at once
 
-The simplest read loads the whole file into one `String`.
+For small files, the most direct approach loads the entire file into a single `String`.
 
 <p class="listing"><b>Listing 2.2</b> Write a file, then read it back. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/bin/read_write_file.rs">src/bin/read_write_file.rs</a></p>
 
@@ -134,20 +113,15 @@ The simplest read loads the whole file into one `String`.
 {{#include ../../rust-interview-lab/src/bin/read_write_file.rs}}
 ```
 
-`fs::write` creates the file (or empties an existing one) and writes the text. `fs::read_to_string` opens,
-reads, and closes the file in one call. Both calls end with `?`, so a failure in either one returns from
-`main`.
+`fs::write` creates the file (or truncates an existing one) and writes the provided bytes, while `fs::read_to_string` opens, reads, validates UTF-8, and closes the file in a single call. Appending `?` propagates any failure directly out of `main`.
 
-`read_content_of_file` takes `&Path`. The program calls it twice, with a path built by `join` and a path built
-by `push`. Both are `PathBuf` values that convert to `&Path`. The two calls print the
-same text.
+Because `read_content_of_file` accepts `&Path`, both `PathBuf` arguments constructed via `join` and `push` coerce automatically via `Deref`, printing identical contents.
 
-`read_to_string` keeps the whole file in memory. That suits a small configuration file. For a log of
-several gigabytes, read one line at a time instead.
+Loading an entire file into memory works well for configuration files, but is unsuitable for multi-gigabyte logs, which require streaming line by line.
 
 ### 2.4.2 One line at a time
 
-To read line by line, wrap the file in a `BufReader`. Figure 2.4 shows why the buffer helps.
+Streaming a file line by line requires wrapping the `File` in a `BufReader`. Figure 2.4 contrasts buffered and unbuffered reads.
 
 <figure>
 <img src="figures/ch02-bufreader.svg" alt="Top: without a buffer, reading a small file line by line makes twelve small read system calls. Bottom: with BufReader, one read fills an 8 KiB buffer and the lines are copied out of it.">
@@ -160,16 +134,11 @@ To read line by line, wrap the file in a `BufReader`. Figure 2.4 shows why the b
 {{#include ../../rust-interview-lab/src/bin/readfile_line_by_line.rs}}
 ```
 
-`BufReader::new(file)` takes ownership of the file and adds an 8 KiB buffer. The `lines` method comes from
-the `BufRead` trait, so the program imports that trait. Without the import, the method is not visible.
+`BufReader::new(file)` takes ownership of the `File` and pairs it with an 8 KiB user-space buffer. Because `lines` is defined on the `BufRead` trait, the trait must be brought into scope with `use std::io::BufRead;`.
 
-`lines()` yields one `io::Result<String>` per line, with the newline removed. Reading can fail partway
-through the file, so each line is a `Result`. `let line = line?;` replaces the `Result` with the `String`
-inside it, using the shadowing you saw in section 1.2. `enumerate()` pairs each line with its index,
-starting at 0, which is why the program prints `i + 1`.
+Each iteration of `lines()` yields an `io::Result<String>` stripped of its trailing newline; a read error or invalid UTF-8 sequence can occur partway through the file, so each item must be checked individually. The statement `let line = line?;` unwraps the `String` by shadowing the `Result` binding, as introduced in Section 1.2. Chaining `enumerate()` pairs each line with its zero-based index, which the output shifts by one (`i + 1`).
 
-Animation 2.1 runs this loop on a 12-byte file of three lines, and counts the `read` system calls. Then it runs
-the same lines through a reader with no buffer.
+Animation 2.1 traces this loop over a 12-byte, three-line file, counting `read` system calls with and without a buffer.
 
 <figure class="anim">
 <video class="motion" src="figures/ch02-bufreader.mp4" autoplay loop muted playsinline preload="metadata" aria-label="A program robot on one side of the kernel boundary, and log.txt in the page cache on the other, holding a=1, b=2, and c=3, each with a newline. lines asks for the first line; the empty BufReader makes one read call for up to 8 KiB, and all 12 bytes come back into its buffer. The three lines are cut from the buffer and printed with no more calls. A last read returns 0 bytes, end of file: two read calls in all. In a second run without a buffer, the reader reads one byte per call, and the count climbs to 13 calls for the same 12 bytes." data-chapters="[[0.0, &quot;BufReader&quot;], [32.22, &quot;no buffer&quot;]]"><img src="figures/ch02-bufreader.gif" alt="A program robot on one side of the kernel boundary, and log.txt in the page cache on the other, holding a=1, b=2, and c=3, each with a newline. lines asks for the first line; the empty BufReader makes one read call for up to 8 KiB, and all 12 bytes come back into its buffer. The three lines are cut from the buffer and printed with no more calls. A last read returns 0 bytes, end of file: two read calls in all. In a second run without a buffer, the reader reads one byte per call, and the count climbs to 13 calls for the same 12 bytes."></video>
@@ -178,8 +147,7 @@ the same lines through a reader with no buffer.
 
 ### 2.4.3 Reusing one buffer, and skipping bad lines
 
-`lines()` allocates a new `String` for every line. For a very large file, you can read every line into the
-same `String` instead.
+Because `lines()` allocates a fresh `String` on every iteration, high-throughput scanners avoid per-line heap allocations by reading repeatedly into a single reusable buffer.
 
 <p class="listing"><b>Listing 2.4</b> One reused buffer, with invalid lines skipped. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/bin/read_large_file.rs">src/bin/read_large_file.rs</a></p>
 
@@ -187,12 +155,9 @@ same `String` instead.
 {{#include ../../rust-interview-lab/src/bin/read_large_file.rs}}
 ```
 
-`reader.read_line(&mut line)` appends the next line, including its newline, to `line`. It returns the
-number of bytes read. The loop is written in an unusual way: `while match ... { ... } {}`. The whole
-`match` is the loop's condition, and the loop's body, `{}`, is empty. Each arm of the `match` evaluates to
-`true` to continue or `false` to stop.
+`reader.read_line(&mut line)` appends the next line, including its delimiter, into `line` and returns the byte count read. The loop uses the `while match ... { ... } {}` idiom, placing the `match` directly in the loop condition with an empty body `{}`; each match arm evaluates to `true` to continue scanning or `false` to terminate.
 
-Table 2.1 lists the four outcomes.
+Table 2.1 summarizes the four outcomes handled by the `match`.
 
 | `read_line` returns | Meaning | What the loop does |
 |---|---|---|
@@ -201,11 +166,9 @@ Table 2.1 lists the four outcomes.
 | `Err(e)` with kind `InvalidData` | the line is not valid UTF-8 text | prints a message, clears, continues |
 | any other `Err` | a real read failure | returns the error from `main` |
 
-Because `read_line` appends, the loop must call `line.clear()` after each line. Otherwise the buffer would
-grow to hold the whole file.
+Because `read_line` appends to the existing string, the loop must call `line.clear()` after each iteration; omitting `clear()` would cause the buffer to accumulate the entire file while keeping its allocated capacity.
 
-The `InvalidData` arm can continue safely because `read_line` has already consumed the invalid bytes. You
-can check this with a file whose second line holds two bytes that are not UTF-8:
+The `InvalidData` branch can resume safely because `read_line` has already consumed the malformed line up to the newline delimiter. Testing against a file containing invalid UTF-8 bytes on its second line confirms this behavior:
 
 ```text
 $ printf 'ok\n\xff\xfebad\nfine\n' > large.txt
@@ -219,8 +182,7 @@ fine
 
 ### 2.5.1 Appending
 
-`fs::write` replaces a file's contents. To add lines to the end of a log instead, open the file with
-`OpenOptions`.
+Whereas `fs::write` truncates and replaces a file, appending to a log requires opening the file in append mode via `OpenOptions`.
 
 <p class="listing"><b>Listing 2.5</b> Appending lines to a file. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/bin/append_to_file_open_options.rs">src/bin/append_to_file_open_options.rs</a></p>
 
@@ -228,16 +190,13 @@ fine
 {{#include ../../rust-interview-lab/src/bin/append_to_file_open_options.rs}}
 ```
 
-`OpenOptions` collects settings, and `open` applies them. `create(true)` creates the file if it is missing.
-`append(true)` asks the kernel to move to the end of the file before every write. The kernel does that move
-and the write as one step. So two programs appending to the same log do not overwrite each other's lines.
+`OpenOptions` configures open flags before issuing the `open` system call: `create(true)` creates the file if absent, and `append(true)` sets the OS `O_APPEND` flag so the kernel positions the write offset at end-of-file and writes the payload atomically. As a result, concurrent processes appending to the same log file do not overwrite one another's records.
 
-`writeln!` works like `println!`, but writes to any value that implements the `std::io::Write` trait, such
-as a `File`. The trait must be imported, as the second `use` line does.
+The `writeln!` macro formats text into any type implementing `std::io::Write` (such as `File`), requiring `use std::io::Write;` in scope.
 
 ### 2.5.2 Copying, renaming, and deleting
 
-The standard library has one function for each of these file operations. The program copies a file, renames the copy, and deletes the original.
+The standard library provides dedicated functions for copying, renaming, and removing files. Listing 2.6 creates a file, copies it, renames the copy, and deletes the original.
 
 <p class="listing"><b>Listing 2.6</b> Copy, rename, remove. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/bin/copy_rename_delete_file.rs">src/bin/copy_rename_delete_file.rs</a></p>
 
@@ -245,17 +204,13 @@ The standard library has one function for each of these file operations. The pro
 {{#include ../../rust-interview-lab/src/bin/copy_rename_delete_file.rs}}
 ```
 
-After the program runs, `a.txt` is gone and `c.txt` holds `hello`. Each call is one or two system calls.
+Upon completion, `a.txt` has been unlinked and `c.txt` contains `hello`. Each operation maps directly to one or two underlying system calls.
 
-`fs::rename` has a property you can build on. When both names are on the same disk, the rename is
-**atomic**. Any other program sees either the old name or the new one, never a half-renamed file. To update
-a file safely, write the new contents to a temporary file, then rename it over the old one. A crash in the
-middle leaves either the old file or the new file, never a partial one.
+`fs::rename` provides an essential durability guarantee: when source and destination reside on the same filesystem, the rename is **atomic**. Concurrent readers observe either the complete old file or the complete new file, never a partially written state. Reliable file updates exploit this property by writing the new contents to a sibling temporary file and then renaming it over the target path.
 
 ### 2.5.3 Telling one error from another
 
-An `io::Error` carries a **kind**, an enum value such as `NotFound` or `PermissionDenied`. You can match on
-it to handle one failure and report the others.
+Every `io::Error` carries a platform-independent **kind** (`io::ErrorKind`), such as `NotFound` or `PermissionDenied`, enabling callers to handle specific failure conditions distinctly from unexpected I/O errors.
 
 <p class="listing"><b>Listing 2.7</b> Matching on the kind of an error. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/bin/file_error_handling.rs">src/bin/file_error_handling.rs</a></p>
 
@@ -263,19 +218,15 @@ it to handle one failure and report the others.
 {{#include ../../rust-interview-lab/src/bin/file_error_handling.rs}}
 ```
 
-The second arm has a **match guard**, the `if` after the pattern. It matches only errors whose kind is
-`NotFound`. Every other error falls through to the third arm. This `main` does not return a `Result`, so it
-cannot use `?`; it handles every case itself. Run it where `missing.txt` does not exist, and it prints
-`File not found`.
+The second arm uses a **match guard** (`if e.kind() == ErrorKind::NotFound`) to isolate missing-file errors while letting all other errors fall through to the third arm. Because `main` returns `()` rather than `io::Result<()>`, it handles every `Result` variant explicitly instead of propagating with `?`. Executed in a directory without `missing.txt`, the program prints `File not found`.
 
 ## 2.6 Directories
 
-A directory is a list of entries. Each entry has a name and a type: a file, a directory, or a symbolic
-link. A **symbolic link** is an entry that points to another path.
+A directory maps entry names to filesystem objects: regular files, subdirectories, or symbolic links. A **symbolic link** is a directory entry that stores a pathname pointing to another target path.
 
 ### 2.6.1 One level
 
-A directory is a list of entries, each a name and a type. The program prints the entries of the current directory and marks which are directories.
+Listing 2.8 enumerates the entries of the current working directory and distinguishes subdirectories from regular files.
 
 <p class="listing"><b>Listing 2.8</b> Listing the current directory. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/bin/list_directory.rs">src/bin/list_directory.rs</a></p>
 
@@ -283,14 +234,11 @@ A directory is a list of entries, each a name and a type. The program prints the
 {{#include ../../rust-interview-lab/src/bin/list_directory.rs}}
 ```
 
-`fs::read_dir(".")` returns an iterator over the entries of the current directory. Each item is a
-`Result`, because reading an entry can fail. `path.is_dir()` asks the kernel for the entry's details. If
-the entry is a symbolic link, `is_dir` follows it and reports on the target.
+`fs::read_dir(".")` returns an iterator yielding `io::Result<DirEntry>` items, since reading directory entries can fail mid-iteration. Calling `path.is_dir()` queries the kernel for metadata via `stat`, following symbolic links to report the type of the link target.
 
 ### 2.6.2 Every level
 
-To visit subdirectories, the function calls itself on each directory it finds, the recursion you met in
-section 1.5.
+Traversing nested subdirectories applies the recursive pattern from Section 1.5, invoking `walk` on every subdirectory encountered.
 
 <p class="listing"><b>Listing 2.9</b> Walking a directory tree. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/bin/recusrive_directory_walk.rs">src/bin/recusrive_directory_walk.rs</a></p>
 
@@ -298,26 +246,19 @@ section 1.5.
 {{#include ../../rust-interview-lab/src/bin/recusrive_directory_walk.rs}}
 ```
 
-`walk` uses `entry.file_type()` instead of `path.is_dir()`. The difference is how each treats symbolic
-links. `file_type()` does not follow them, so a link to a directory is reported as a link, and `walk` does
-not descend into it. That keeps the walk from looping forever through a link that points back to one of its
-own parent directories. On Linux, `file_type()` is usually also faster, because the kernel returns the type
-together with the name.
+Here `walk` calls `entry.file_type()` rather than `path.is_dir()`. Unlike `is_dir()`, `file_type()` does not follow symbolic links, reporting a symlink to a directory as a symlink rather than a directory. Refusing to descend into symlinks prevents infinite recursion when a symlink points to an ancestor directory. On Linux, `file_type()` is also faster because the `getdents` system call typically returns the entry type alongside its name without requiring an additional `lstat` call.
 
-The recursion goes one level deeper per directory level. Real directory trees are shallow, so the stack is
-not a concern here.
+Recursion depth equals the directory nesting depth. Because practical filesystem hierarchies are shallow relative to default thread stack sizes, stack overflow is rarely a hazard here.
 
 ## 2.7 Project: reading a large file one page at a time
 
-Suppose a service stores millions of job records, one per line, in a file. A client asks for them a page at
-a time. With each page, the service returns a **cursor**, a value the client sends back to get the next page.
+Consider a backend service storing millions of newline-delimited job records in a flat file, serving them to clients one page at a time. Alongside each page, the service returns a **cursor**, an opaque token the client sends back to request the subsequent page.
 
-If the cursor is the byte position where the next page starts, the service needs no memory of past
-requests. Any copy of the service can read the next page from the cursor alone.
+Representing the cursor as the exact byte offset where the next page begins makes the service stateless: any server replica with access to the file can fulfill the next request directly from the cursor without retaining per-client session state.
 
 ### 2.7.1 The page type
 
-A page is the lines it holds, plus the cursor where the next page starts. The cursor is a byte offset into the file.
+Each response page bundles its vector of lines with the byte offset of the following page.
 
 <p class="listing"><b>Listing 2.10</b> The <code>Page</code> type (lines 1 to 9). <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/bin/file_pagination.rs">src/bin/file_pagination.rs</a></p>
 
@@ -325,21 +266,18 @@ A page is the lines it holds, plus the cursor where the next page starts. The cu
 {{#include ../../rust-interview-lab/src/bin/file_pagination.rs:1:9}}
 ```
 
-A `Page` holds the lines and an `Option<u64>` for the next cursor. `None` means there are no more pages.
+`Page` stores the decoded `lines` and an `Option<u64>` for `next_cursor`, where `None` signals that the end of the file has been reached.
 
 ### 2.7.2 Counting bytes to find the next cursor
 
-The next cursor is the byte where this page ends. There is a trap in finding it. You might ask the file for
-its current position after reading three lines. That answer is wrong, because the `BufReader` read 8 KiB
-ahead on its first read, as figure 2.4 showed. The file's position is past the buffered data, not after the
-third line (figure 2.5).
+Computing the next cursor requires care. Querying the underlying `File`'s current seek position after reading three lines yields the wrong offset: as illustrated in Figure 2.4, `BufReader` prefetches up to 8 KiB on its first read, advancing the kernel's file offset well past the third line (Figure 2.5).
 
 <figure>
 <img src="figures/ch02-cursor.svg" alt="A file drawn as rows of three lines. cursor 0 points at the first line, next cursor 35 at line four, and the last page has no next cursor. The BufReader buffer extends far past the page.">
 <figcaption><b>Figure 2.5</b> Each row is one page. The next cursor is the sum of the bytes each <code>read_line</code> returned: 12 + 12 + 11 = 35 for the first page. The file's own position is far past that, at the end of what the buffer read.</figcaption>
 </figure>
 
-So `read_page` counts the bytes itself:
+To maintain an exact byte offset, `read_page` accumulates the byte count returned by each `read_line` call (Listing 2.11).
 
 <p class="listing"><b>Listing 2.11</b> <code>read_page</code> (lines 11 to 38).</p>
 
@@ -347,21 +285,15 @@ So `read_page` counts the bytes itself:
 {{#include ../../rust-interview-lab/src/bin/file_pagination.rs:11:38}}
 ```
 
-`read_page` opens the file and calls `seek(SeekFrom::Start(cursor))`, which moves the file's read position
-to byte `cursor`. Then it wraps the file in a `BufReader`. `Vec::with_capacity(page_size)` reserves room
-for a full page, so pushing lines does not reallocate.
+`read_page` opens the file, seeks directly to `SeekFrom::Start(cursor)`, and wraps the descriptor in a `BufReader`. Preallocating with `Vec::with_capacity(page_size)` avoids reallocations while collecting the page's lines.
 
-`offset` starts at `cursor`. Each `read_line` returns how many bytes it consumed, newline included, and
-`offset` grows by that amount. `line.trim_end()` removes the newline (and any trailing spaces) before the
-line is stored, but the count still includes them, so `offset` stays exact.
+Initialized to `cursor`, `offset` increases by the exact byte count returned by each `read_line` call, including the trailing newline bytes. Calling `line.trim_end()` strips line terminators before storing the string, while leaving `offset` aligned to the exact byte boundary of the next record.
 
-The last page needs care. If the file ends exactly after this page's last line, the page should report no
-next cursor. `reader.fill_buf()` returns the bytes waiting in the buffer, reading more if the buffer is
-empty, without consuming them. If it returns nothing, the file has ended, and the cursor is `None`.
+Detecting end-of-file on a full final page requires one extra check. If the file ends immediately after the last line of the page, `next_cursor` must be `None` rather than pointing at EOF. Calling `reader.fill_buf()` exposes unread bytes in the buffer (refilling from the file if empty) without consuming them; an empty slice confirms EOF and sets `next_cursor` to `None`.
 
 ### 2.7.3 The complete program
 
-`main` acts as a client. It asks for pages of three lines until the cursor is `None`.
+In Listing 2.12, `main` drives the paginator as a client, requesting three-line pages until `next_cursor` becomes `None`.
 
 <p class="listing"><b>Listing 2.12</b> The complete program. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/bin/file_pagination.rs">src/bin/file_pagination.rs</a></p>
 
@@ -369,7 +301,7 @@ empty, without consuming them. If it returns nothing, the file has ended, and th
 {{#include ../../rust-interview-lab/src/bin/file_pagination.rs}}
 ```
 
-The input file has thirteen lines, so the program prints four full pages and one page of one line:
+Against a thirteen-line input file, the program emits four full pages followed by a single-line final page:
 
 ```text
 $ cargo run --bin file_pagination
@@ -395,27 +327,24 @@ Thrid Line
 
 <div class="callout tip" markdown="1">
 
-**TIP:** If the file can change between requests, an old cursor may point into the middle of a line. You
-can include a version number with the offset in the cursor, and reject cursors whose version is out of date.
+**TIP:** If the underlying file can be rewritten or rotated between requests, a previously issued byte offset may land mid-line. Embedding a file generation or version identifier alongside the byte offset in the cursor allows the server to detect and reject stale cursors.
 
 </div>
 
 ## 2.8 Project: command-line arguments
 
-When you run `command_line_args --name ada --count 2 --verbose`, the operating system passes the program a
-list of strings (figure 2.6). The first string is the program's own path. The rest are the arguments, in
-the order you typed them.
+When a process is launched with `command_line_args --name ada --count 2 --verbose`, the operating system passes an argument vector (`argv`) of strings (Figure 2.6). Index 0 holds the executable's path, and subsequent entries hold the remaining tokens in invocation order.
 
 <figure>
 <img src="figures/ch02-argv.svg" alt="Six boxes: the program path, --name, ada, --count, 2, --verbose, numbered 0 to 5">
 <figcaption><b>Figure 2.6</b> The arguments as the program receives them. <code>--name</code> and <code>--count</code> each take the next string as their value.</figcaption>
 </figure>
 
-This program turns that list into a struct of typed options, or an error message.
+The following program parses that raw string sequence into a typed configuration struct or returns a descriptive error message.
 
 ### 2.8.1 The options and their defaults
 
-The program's settings live in one struct, with a default value for each setting the user does not give.
+All program configuration resides in a single struct whose `Default` implementation supplies fallback values for omitted flags.
 
 <p class="listing"><b>Listing 2.13</b> The options (lines 1 to 17). <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/bin/command_line_args.rs">src/bin/command_line_args.rs</a></p>
 
@@ -423,12 +352,11 @@ The program's settings live in one struct, with a default value for each setting
 {{#include ../../rust-interview-lab/src/bin/command_line_args.rs:1:19}}
 ```
 
-`Options` has one field per option. The `Default` trait gives the values used when an option is not given.
-`#[derive(Debug, PartialEq)]` lets the tests print and compare `Options` values.
+`Options` defines one field per supported flag. Implementing `Default` centralizes the default configuration, while `#[derive(Debug, PartialEq)]` enables assertion comparisons in unit tests.
 
 ### 2.8.2 Parsing
 
-Parsing walks the arguments one at a time and fills in the options. An unknown argument is an error. So is a flag with no value after it, and a count that is not a number.
+The parser consumes arguments sequentially and populates `Options`, rejecting unknown flags, flags missing their value, and non-numeric counts.
 
 <p class="listing"><b>Listing 2.14</b> <code>parse</code> (lines 21 to 47).</p>
 
@@ -436,22 +364,17 @@ Parsing walks the arguments one at a time and fills in the options. An unknown a
 {{#include ../../rust-interview-lab/src/bin/command_line_args.rs:21:47}}
 ```
 
-`parse` takes `impl IntoIterator<Item = String>`, which means "anything that can produce `String`s one at a
-time". The program passes the real arguments. The tests pass short lists written in the test code.
+Accepting `impl IntoIterator<Item = String>` decouples parsing from `std::env::args`: the production binary supplies the process argument iterator, while unit tests pass in-memory string slices.
 
-The loop is `while let Some(argument) = arguments.next()`. It calls `next()` itself, rather than using
-`for`, because `--name` must take the next string from the same iterator as its value. A `for` loop holds
-the iterator for the whole loop, so the body could not call `next()` on it.
+The loop drives iteration explicitly with `while let Some(argument) = arguments.next()` rather than a `for` loop. Flags such as `--name` and `--count` must consume the following token from the same iterator inside the loop body, which a `for` loop prohibits because it holds exclusive ownership of the iterator for the duration of the loop.
 
-`arguments.next().ok_or("--name needs a value")?` does two steps. `ok_or` turns `None` into an `Err` with
-the message. Then `?` returns that error from `parse`. The `--count` arm adds a third step. `parse()`
-converts the text to a number, and `map_err` replaces a parse error with a message that includes the text.
+The expression `arguments.next().ok_or("--name needs a value")?` combines two steps: `ok_or` converts `None` into an `Err`, and `?` returns that error immediately. The `--count` arm adds integer parsing via `.parse()`, using `map_err` to attach the offending input text to the error message.
 
-An argument the program does not know is an error, so a misspelled option is reported instead of ignored.
+Rejecting unrecognized tokens rather than ignoring them ensures misspelled options fail loudly at startup.
 
 ### 2.8.3 The exit code
 
-`main` ties the pieces together: it parses the arguments, runs, and tells the shell whether it succeeded.
+Listing 2.15 connects argument parsing, execution, and process exit status in `main`.
 
 <p class="listing"><b>Listing 2.15</b> <code>main</code> (lines 49 to 68).</p>
 
@@ -459,10 +382,7 @@ An argument the program does not know is an error, so a misspelled option is rep
 {{#include ../../rust-interview-lab/src/bin/command_line_args.rs:49:68}}
 ```
 
-A program's **exit code** is a number it returns to whoever started it. Zero means success. `main` returns
-`ExitCode`, so it can report failure after printing its own message. `args().skip(1)` drops the program's
-path. On an error, `main` prints the message and a usage line to standard error with `eprintln!`, then
-returns `ExitCode::FAILURE`, which is 1.
+A process communicates completion status to its parent shell via an **exit code**, where `0` denotes success and any non-zero value signals failure. Returning `ExitCode` from `main` lets the program emit custom diagnostics before exiting. `args().skip(1)` discards the executable path at index 0. On parse failure, `main` writes both the error and a usage line to standard error via `eprintln!` and returns `ExitCode::FAILURE` (1).
 
 ### 2.8.4 The complete program
 
@@ -472,9 +392,7 @@ returns `ExitCode::FAILURE`, which is 1.
 {{#include ../../rust-interview-lab/src/bin/command_line_args.rs}}
 ```
 
-The helper `parse_args` in the test module converts a list of `&str` into `String`s, so each test states its
-input in one line. The tests cover the defaults, each option, a missing value, a bad number, and an unknown
-argument.
+Inside the test module, the `parse_args` helper converts `&[&str]` literals into owned `String` iterators so each test case stays concise. The suite exercises default values, individual flags, missing values, invalid integers, and unknown options.
 
 ```text
 $ cargo run --bin command_line_args -- --name ada --count 2 --verbose
@@ -487,36 +405,29 @@ $ echo $?
 1
 ```
 
-The `--` after `cargo run --bin command_line_args` tells Cargo that the rest of the line belongs to your
-program, not to Cargo.
+The `--` separator instructs Cargo to stop parsing flags for itself and forward all subsequent arguments directly to the compiled binary.
 
 <div class="summary" markdown="1">
 
 ## Summary
 
-- A program reads files through system calls. The kernel keeps recent file data in its page cache.
-- `Result<T, E>` holds either a value or an error. `?` returns the error from the current function, so that
-  function must return `Result`.
-- `&Path` and `PathBuf` are the borrowed and owned path types. Functions should take `&Path`.
-- `fs::read_to_string` reads a whole file. A `BufReader` reads large files a line at a time with few system
-  calls. `read_line` into one reused `String` avoids an allocation per line.
-- `OpenOptions` with `append(true)` adds to a file safely. A rename within one disk is atomic.
-- `io::Error::kind()` lets you handle one kind of failure and report the others.
-- `file_type()` does not follow symbolic links, which keeps a recursive walk from looping.
-- A byte offset works as a page cursor if you count the bytes you read, not the file's position.
-- Command-line arguments arrive as strings. Parse them in a function that takes an iterator, and return an
-  exit code.
+- User-space programs access files through kernel system calls; the kernel caches recently accessed file pages in memory.
+- `Result<T, E>` encodes recoverable success or failure. The `?` operator propagates errors immediately to the caller, requiring the enclosing function to return a compatible `Result`.
+- `&Path` and `PathBuf` provide borrowed and owned path representations; public functions should accept `&Path`.
+- `fs::read_to_string` loads small files in one call, while `BufReader` amortizes system call overhead for large files. Calling `read_line` into a single cleared `String` eliminates per-line allocations.
+- `OpenOptions` with `append(true)` delegates atomic end-of-file writes to the kernel, and same-filesystem `fs::rename` provides atomic file replacement.
+- Inspecting `io::Error::kind()` enables targeted recovery for specific error conditions such as `NotFound` or `InvalidData`.
+- Using `entry.file_type()` avoids following symbolic links during recursive directory traversal, preventing symlink cycles.
+- Stateless byte-offset cursors must track bytes consumed by `read_line` rather than the underlying file descriptor's buffered seek position.
+- Accepting an iterator in the argument parser enables direct unit testing, while returning `ExitCode` from `main` communicates failure cleanly to the invoking shell.
 
 </div>
 
-Chapter 3 begins Part 2. It works with Rust's main collections, `Vec`, `String`, and `HashMap`, on a series
-of problems about arrays and text.
+Chapter 3 opens Part 2, applying Rust's primary standard collections (`Vec`, `String`, and `HashMap`) to core array and text algorithms.
 
 ## Exercises
 
-1. Rewrite `walk` without recursion. Keep a `Vec<PathBuf>` of directories still to visit, and count the files
-   and total bytes for each file extension.
-2. Write `atomic_write(path, bytes)`. Write to a temporary file in the same directory, call `sync_all()` on
-   it, and rename it over the target.
-3. Add a version number to the pagination cursor, and return an error when the file changed between pages.
-4. Let the argument parser accept `--name=ada` as well as `--name ada`.
+1. Rewrite `walk` iteratively using an explicit `Vec<PathBuf>` work stack, tallying file counts and total byte sizes grouped by file extension.
+2. Implement `atomic_write(path, bytes)` by writing to a temporary file in the target directory, calling `sync_all()` to flush data to storage, and atomically renaming it over `path`.
+3. Extend the pagination cursor with a version or modification-timestamp field, returning an error if the file changes between page requests.
+4. Extend the command-line parser to accept `--name=ada` syntax in addition to `--name ada`.

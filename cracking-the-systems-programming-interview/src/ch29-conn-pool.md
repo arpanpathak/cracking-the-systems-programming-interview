@@ -15,13 +15,9 @@ This chapter covers
 
 </div>
 
-Chapter 27 showed that each closed connection leaves a socket in `TIME_WAIT`, and that a busy client runs
-out of ports. Chapter 28 added a TLS handshake to every new connection. Both costs come from making connections. A client avoids most of them by keeping a few connections open, and sending request after request over them. A **connection pool** holds those connections and lends them to the threads that
-need them.
+As shown in chapter 27, every closed TCP connection leaves a socket in `TIME_WAIT`, which can exhaust ephemeral ports on a busy client. Adding TLS, as in chapter 28, introduces an additional handshake to every new connection. Because both costs are incurred during connection setup and teardown, clients amortize them by keeping a bounded set of connections open across requests. A **connection pool** manages those reusable connections and lends them to calling threads on demand.
 
-This chapter builds a pool on the standard library: a `Mutex`, a `Condvar`, and a guard type with `Drop`.
-The program, `conn_pool`, runs it against a small line server on loopback, and measures each of the pool's
-rules.
+In this chapter, we implement a connection pool using only the standard library: a `Mutex`, a `Condvar`, and an RAII guard implementing `Drop`. The companion program, `conn_pool`, exercises the pool against a local line-oriented server and verifies each invariant under measurement.
 
 ## 29.1 What a new connection costs
 
@@ -87,16 +83,10 @@ The invariant is that `open` equals the number of idle connections plus the numb
 Each pass tries three things in order:
 
 - **An idle connection.** `take_idle` returns the newest usable one, or `None`.
-- **A new connection.** If fewer than `max` are open, `get` counts the new one in `open` under the lock. Then it drops the lock and connects. A connect can take a whole round trip, or seconds if the server is
-  slow to answer. Holding the lock that long would stop every other caller, including those returning
-  connections. Counting the slot first keeps two callers from both deciding there is room for one more.
-- **Wait.** Otherwise the caller sleeps on the `Condvar` until a connection is returned or the deadline
-  passes. `wait_timeout` releases the lock while it sleeps, as in section 16.5. It can also return early,
-  so the loop checks the state again on every wake.
+- **A new connection.** If fewer than `max` connections are open, `get` reserves a slot by incrementing `open` under the lock, then drops the lock before calling `connect`. Establishing a TCP connection can take an entire round trip, or several seconds if the server is slow to respond; holding the mutex across that I/O would block every other caller, including threads attempting to return idle connections. Reserving the slot under the lock prevents concurrent callers from exceeding `max`.
+- **Wait.** Otherwise, the caller waits on the `Condvar` until a connection is returned or the deadline expires. `wait_timeout` releases the lock atomically while sleeping (as in section 16.5) and may wake spuriously, so the loop re-evaluates the pool state on every wake-up.
 
-A caller that cannot get a connection by its deadline gets `ErrorKind::TimedOut`. Waiting forever would
-turn an overloaded server into callers that never return. The deadline turns overload into an error the
-caller can handle, as with the bounded queues of chapter 17.
+A caller that cannot obtain a connection before its deadline receives `ErrorKind::TimedOut`. Blocking indefinitely would allow an overloaded server to stall callers permanently; enforcing a deadline converts overload into an explicit error the caller can handle, mirroring the bounded queues of chapter 17.
 
 If the connect fails, `connect` gives the slot back:
 
@@ -123,11 +113,9 @@ impl Pool {
 {{#include ../../rust-interview-lab/src/bin/conn_pool.rs:195:226}}
 ```
 
-`give_back` pushes the connection onto the idle stack and wakes one waiting caller. `discard` marks the
-guard broken, so `Drop` closes the connection and frees its slot instead. A caller discards a connection
-after any error on it. A failed request may have left half a response in the socket. The next caller would read it as the start of its own.
+`give_back` pushes the connection onto the idle stack and notifies one waiting caller. `discard` marks the guard as broken so that `Drop` closes the socket and decrements `open` rather than returning it to the pool. A caller must discard a connection after any I/O error, because a failed request may have left a partial response in the socket buffer that the next borrower would mistakenly read as the start of its own reply.
 
-`ask` puts the two together. It is how the program sends every pooled request:
+`ask` combines borrowing, error handling, and automatic return; the program uses it for every pooled request:
 
 ```rust
 {{#include ../../rust-interview-lab/src/bin/conn_pool.rs:228:250}}
@@ -135,13 +123,9 @@ after any error on it. A failed request may have left half a response in the soc
 
 ## 29.5 Stale connections
 
-The pool takes the newest idle connection first. Under light load, a few connections then do all the work. The rest sink to the bottom of the stack and age past `idle_timeout`. Taking the oldest first
-would keep every connection in light use, and none would ever be closed.
+The pool reuses the most recently returned idle connection first (LIFO). Under light load, a small subset of connections handles all traffic while the remaining connections sink to the bottom of the stack and expire past `idle_timeout`. Reusing the oldest connection first (FIFO) would rotate through every connection periodically and prevent idle connections from ever being reclaimed.
 
-The server also closes connections it considers idle. Most HTTP servers do it after somewhere between 5
-seconds and a few minutes. The server's `FIN` arrives while the connection sits in the pool, and nothing
-reads it. The next caller to borrow that connection writes its request into a socket the server has closed.
-Its `read` then returns 0, or the write draws a reset.
+Servers also close connections they consider idle, typically after anywhere from 5 seconds to several minutes. When the server sends a `FIN` while the connection sits unused in the pool, nothing reads it until the next borrower writes a request into the half-closed socket, at which point `read` returns 0 or the write triggers a reset.
 
 Figure 29.2 shows the timing with this chapter's numbers. The server closes idle connections after 50 ms,
 and the pool reuses the connection after 100 ms.
@@ -195,8 +179,7 @@ with a new connection for each request, then through a pool of four:
   a pool of 4:                4 connections,   80.4 ms, 1996 reuses
 ```
 
-On loopback a connect costs microseconds, and the pool still halved the time. Each request without the pool also left a socket in `TIME_WAIT`: 2,000 in 0.17 seconds. At that rate, the ephemeral ports of section 27.2.1 run out in under 3 seconds. On a real network with TLS, each of those connections would also cost two
-round trips.
+Even on loopback, where establishing a connection takes only microseconds, the pool cut total latency in half. Without pooling, each request also left a socket in `TIME_WAIT`, accumulating 2,000 entries in 0.17 seconds; at that rate, the ephemeral port range described in section 27.2.1 would be exhausted in under 3 seconds. Over a real network with TLS, each unpooled request would also incur two full round trips for handshakes.
 
 The other scenes check one rule each:
 
@@ -264,8 +247,7 @@ Every idle connection in the pool is closed by the server at once. The liveness 
 Requests already in flight fail, and the idempotent ones can be retried.
 
 **"Is a `Mutex` too slow for a pool?"**
-The lock is held for a few pushes and pops. It is never held across a connect or a request. At hundreds of thousands
-of requests per second, a pool can split into shards with one lock each, as chapter 14 split a map.
+The lock is held only for a few vector pushes and pops, never across a `connect` or network request. At hundreds of thousands of requests per second, the pool can be partitioned into shards with one lock per shard, using the sharding strategy introduced for maps in chapter 14.
 
 <div class="summary" markdown="1">
 
@@ -286,8 +268,7 @@ of requests per second, a pool can split into shards with one lock each, as chap
 
 </div>
 
-Chapter 30 collects compact versions of the structures from the earlier parts. Each is the shortest program
-that still shows the structure working.
+In chapter 30, we assemble compact, interview-sized implementations of the core structures built throughout the book, pairing each short form with the trade-offs it makes relative to its full reference version.
 
 ## Exercises
 

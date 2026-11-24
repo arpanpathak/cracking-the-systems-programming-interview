@@ -1,8 +1,6 @@
 # About the cover
 
-The cover shows the Chief Mechanic of the Ferrous Works in a workshop of gears. The crates are labelled
-`Arc`, `Mutex`, `epoll`, and `Box`, and the chain ends in a crate marked `unsafe`. Each chapter opens
-with a member of the same crew at a machine that represents the chapter's subject.
+The cover depicts the Chief Mechanic of the Ferrous Works inside a workshop of interlocking gears. The crates are labeled `Arc`, `Mutex`, `epoll`, and `Box`, with the chain terminating at a crate marked `unsafe`. Each chapter opens with a member of the same crew operating a machine that reflects the chapter's technical focus.
 
 | Chapter | Mechanic | Machine |
 |---|---|---|

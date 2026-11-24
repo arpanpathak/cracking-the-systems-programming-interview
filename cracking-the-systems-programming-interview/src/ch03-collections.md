@@ -6,24 +6,20 @@
 
 This chapter covers
 
-- Counting how much work an algorithm does, and the O(n) notation for it
-- How a `Vec`, a `String`, and a `HashMap` are laid out in memory
-- Finding a pair of numbers with a hash map
-- Using a vector as a stack to check brackets and to track a minimum
-- Walking an array with two indexes: reversing, sliding windows, and merging intervals
-- Binary search, rotating a grid, and searching text
+- Quantifying algorithmic work using Big-O notation
+- Memory layouts of `Vec`, `String`, and `HashMap`
+- Finding matching pairs in linear time with a hash map
+- Using a vector as a stack to validate brackets and track a running minimum
+- Traversing arrays with two indexes: in-place reversal, sliding windows, and interval merging
+- Binary search on rotated arrays, in-place matrix rotation, and linear-time substring matching
 
 </div>
 
-This chapter begins Part 2. Part 2 is about data structures and the algorithms that use them. In this
-chapter you work with the three collections you will use most in Rust: `Vec`, `String`, and `HashMap`.
+This chapter opens Part 2, which examines core data structures and the algorithms built upon them. Here we focus on Rust's three most frequently used standard collections: `Vec`, `String`, and `HashMap`.
 
-Before any problem, I spend a few sections on groundwork. First, a way to compare two solutions by how
-much work they do. Then a look at how each collection stores its data. With that in place, each problem
-in the rest of the chapter is short, and you can see why each solution is fast.
+Before tackling algorithmic problems, the opening sections establish two prerequisites: asymptotic complexity notation for comparing algorithms, and the internal memory layouts of each collection. With those foundations established, the subsequent implementations remain concise while making their runtime and memory guarantees transparent.
 
-The problems are grouped by technique, not by topic. A technique is a pattern you can reuse. Two examples are
-"keep a stack of things not yet matched" and "move two indexes toward each other". Table 3.1 lists them.
+The problems are organized by reusable algorithmic technique rather than by surface domain. Table 3.1 maps each section to its underlying technique and target problems.
 
 | Section | Technique | Problems |
 |---|---|---|
@@ -38,25 +34,17 @@ The problems are grouped by technique, not by topic. A technique is a pattern yo
 
 ## 3.1 Counting the work an algorithm does
 
-Two programs can give the same answer and take very different amounts of time. You saw this in chapter 1:
-the recursive Fibonacci took milliseconds where the loop took nanoseconds. To choose between solutions,
-you need a way to describe how their running time grows as the input grows.
+Two implementations can compute identical results while differing by orders of magnitude in execution time, as demonstrated by the recursive and iterative Fibonacci timings in Chapter 1. Selecting between competing designs requires a systematic notation for how work scales with input size.
 
-The usual way is to count the basic steps a program takes for an input of size n. Here n is the length of
-the array or string. A basic step is something that takes a fixed amount of time, such as comparing two
-numbers or reading one element.
+We measure algorithmic work by counting elementary constant-time operations (such as comparisons or array reads) as a function of input size `n`, where `n` typically denotes the length of an array or string. Consider three operations on an array of `n` integers:
 
-Consider three ways to answer questions about an array of n numbers:
+- Reading the first element requires 1 operation, independent of `n`.
+- Summing every element requires `n` operations, one per entry.
+- Comparing every element against every other element requires roughly `n × n` operations.
 
-- Reading the first element takes one step, whatever n is.
-- Adding up all the elements takes n steps, one per element.
-- Comparing every element with every other element takes about n × n steps.
+**Big-O notation** expresses asymptotic growth by retaining only the dominant term and dropping constant multipliers. The three operations above are written O(1), O(n), and O(n²), where O(n) ("order n") indicates runtime growing linearly with `n`.
 
-**Big-O notation** is a short way to write how the count grows. You keep only the part that grows fastest
-and drop constant factors. So the three examples above are written O(1), O(n), and O(n²). You read O(n) as
-"order n": the time grows in proportion to n.
-
-Table 3.2 shows how different these are once n is large.
+Table 3.2 illustrates how sharply these complexity classes diverge at scale.
 
 | n | O(1) | O(log n) | O(n) | O(n log n) | O(n²) |
 |---|---|---|---|---|---|
@@ -64,116 +52,87 @@ Table 3.2 shows how different these are once n is large.
 | 1,000 | 1 | about 10 | 1,000 | about 10,000 | 1,000,000 |
 | 1,000,000 | 1 | about 20 | 1,000,000 | about 20,000,000 | 1,000,000,000,000 |
 
-A modern processor does roughly a billion simple steps per second. At a million elements, an O(n) solution
-finishes in about a millisecond. An O(n²) solution takes about a quarter of an hour.
+A modern processor executes on the order of one billion simple operations per second. At one million elements, an O(n) algorithm completes in roughly a millisecond, whereas an O(n²) algorithm requires on the order of fifteen minutes.
 
-The same notation describes memory. A solution that uses O(n) extra memory stores something for each
-input element. A solution that uses O(1) extra memory uses a fixed amount, however large the input.
+The same notation characterizes auxiliary memory consumption. An O(n)-space algorithm allocates storage proportional to the input size, whereas an O(1)-space algorithm uses a fixed amount of extra memory regardless of `n`.
 
 <div class="callout note" markdown="1">
 
-**NOTE:** O(log n) appears when each step cuts the remaining work in half. Halving a million items takes
-about 20 steps to get down to one, because 2 multiplied by itself 20 times is about a million. Section
-3.10 uses this.
+**NOTE:** O(log n) arises whenever each step discards half of the remaining search space. Halving one million elements reduces the range to a single element in roughly 20 steps, since 2<sup>20</sup> ≈ 1,048,576. Section 3.10 applies this property to binary search.
 
 </div>
 
 ## 3.2 How a `Vec` stores its elements
 
-A `Vec<T>` is a growable array. Its elements sit next to each other in one block of heap memory. The
-`Vec` value itself is small. It holds three numbers. The first is a pointer to the block. The second is
-the number of elements in use, its **length**. The third is how many elements the block has room for, its
-**capacity**. Figure 3.1
-shows a vector of four `i32` values with room for six.
+A `Vec<T>` is a dynamically resizable, contiguous array. Its elements occupy adjacent addresses in a single heap allocation. On the stack, the `Vec` header stores three machine words: a pointer to the heap buffer, the count of initialized elements (**length**), and the total number of elements the current allocation can hold (**capacity**). Figure 3.1 depicts a vector of four `i32` values backed by a six-slot allocation.
 
 <figure>
 <img src="figures/ch03-vec-layout.svg" alt="On the stack, three fields: ptr, len 4, cap 6. The pointer leads to a heap block of six i32 slots holding 10, 20, 30, 40 and two empty slots.">
 <figcaption><b>Figure 3.1</b> A <code>Vec&lt;i32&gt;</code> with length 4 and capacity 6. The elements are next to each other, so the address of any element can be computed from its index.</figcaption>
 </figure>
 
-Because the elements are next to each other, reading `v[i]` takes one step. The address of element `i` is
-the block's address plus `i` times the size of one element. The length of the vector does not matter.
-So indexing a `Vec` is O(1).
+Contiguous storage makes indexing O(1): the address of `v[i]` is computed directly as `base_ptr + i * size_of::<T>()`, independent of the vector's length.
 
-When you push an element and the block is full, the vector needs a bigger block. Figure 3.2 shows what
-happens.
+When `push` is called on a full vector (`len == cap`), the vector must reallocate a larger heap block, as illustrated in Figure 3.2.
 
 <figure>
 <img src="figures/ch03-vec-grow.svg" alt="A full block of capacity 4 is copied into a new block of capacity 8, and 50 is written into the fifth slot.">
 <figcaption><b>Figure 3.2</b> Pushing into a full vector. The vector allocates a block twice as large, copies the old elements, writes the new one, and frees the old block.</figcaption>
 </figure>
 
-That copy costs O(n), but it happens rarely, because each growth doubles the capacity. Spread over all
-the pushes, each push costs a constant amount on average. This is called **amortized O(1)**.
+Although an individual reallocation copies `n` elements in O(n) time, doubling capacity on each growth ensures reallocations occur infrequently. Averaged across any sequence of pushes, each `push` performs constant work, a guarantee termed **amortized O(1)**.
 
-If you know how many elements you will push, `Vec::with_capacity(n)` allocates the whole block at once, and
-no copy happens at all. You will see this in several listings below.
+When the final element count is known ahead of time, `Vec::with_capacity(n)` reserves the full heap block upfront, eliminating intermediate reallocations altogether.
 
 <div class="callout warning" markdown="1">
 
-**WARNING:** A push can move every element to a new block. So Rust does not let you keep a reference to an
-element while you push. The compiler rejects code that holds `&v[0]` across a `v.push(...)`, since
-the reference could point to freed memory afterward.
+**WARNING:** Because `push` may reallocate and move every element to a new heap address, holding an element reference such as `&v[0]` across a `v.push(...)` would create a dangling pointer. Rust's borrow checker rejects such code at compile time.
 
 </div>
 
 ## 3.3 How a `String` stores text
 
-A `String` is a `Vec<u8>` with one extra rule. Its bytes must always be valid UTF-8. **UTF-8** is the
-standard way of turning characters into bytes. An English letter takes one byte. Other characters take two,
-three, or four bytes. Figure 3.3 shows the four characters of `"café"`.
+A `String` wraps a `Vec<u8>` with one additional invariant: its byte sequence must always be valid UTF-8. **UTF-8** is a variable-width character encoding in which ASCII characters occupy 1 byte while other Unicode scalar values occupy 2, 3, or 4 bytes. Figure 3.3 illustrates the byte representation of `"café"`.
 
 <figure>
 <img src="figures/ch03-utf8.svg" alt="The characters c, a, f, é above their bytes 0x63, 0x61, 0x66, and two bytes 0xC3 0xA9 for é">
 <figcaption><b>Figure 3.3</b> <code>"café"</code> has four characters and five bytes. The letter é takes two bytes.</figcaption>
 </figure>
 
-This has three consequences you will meet in this chapter:
+This variable-width encoding has three direct consequences in Rust:
 
-- `s.len()` counts bytes, not characters. `"café".len()` is 5.
-- `s.chars()` walks the characters one at a time, decoding the bytes as it goes.
-- You cannot index a `String` with `s[3]`. A byte index might fall in the middle of a character, as index 4
-  does in figure 3.3, so Rust does not allow it.
+- `s.len()` returns the byte length rather than the character count (`"café".len()` equals 5).
+- `s.chars()` decodes and yields Unicode scalar values sequentially from the underlying bytes.
+- Integer indexing (`s[3]`) is forbidden at compile time because an arbitrary byte offset can land in the middle of a multi-byte character (such as byte index 4 in Figure 3.3).
 
 ## 3.4 How a `HashMap` finds a key
 
-A `HashMap<K, V>` stores pairs of a key and a value, and finds the value for a key quickly. It works in
-three steps (figure 3.4):
+A `HashMap<K, V>` maps keys to values with O(1) expected lookup time through three steps (Figure 3.4):
 
-1. It runs the key through a **hash function**, which turns any key into a large number. The same key
-   always gives the same number.
-2. It uses some of the bits of that number to pick a **bucket**, one slot in an array of buckets.
-3. It stores the pair in that bucket, or looks for it there.
+1. A **hash function** deterministically maps the key to a 64-bit integer.
+2. Selected bits of that hash index into a **bucket** within an internal table.
+3. The map inserts or locates the key-value pair starting from that bucket.
 
 <figure>
 <img src="figures/ch03-hashmap.svg" alt="Keys 7, 2, and 11 each pass through a hash function. The last three bits of the hash select buckets 3, 6, and 3. Bucket 3 holds two entries.">
 <figcaption><b>Figure 3.4</b> A map with 8 buckets. Keys 7 and 11 happen to land in the same bucket, so a lookup there compares both.</figcaption>
 </figure>
 
-Two keys can land in the same bucket, as 7 and 11 do in the figure. Then a lookup compares the keys in
-that bucket one by one. The map keeps the number of keys per bucket small by growing its bucket array as
-it fills. So on average, `insert` and `get` are O(1), however many keys the map holds.
+Distinct keys can hash to the same bucket (a collision), as keys 7 and 11 do in Figure 3.4, requiring key equality checks to resolve the entry. By resizing the table whenever its load factor exceeds a fixed threshold, `HashMap` keeps probe chains short, maintaining O(1) expected time for `insert` and `get`.
 
-Rust's `HashMap` uses a hash function with a random starting value, chosen when the program starts. This
-stops an attacker from sending keys that all land in one bucket. It also means the order in which you
-iterate over a map changes from one run to the next.
+By default, Rust's `HashMap` initializes its hasher with a per-process random seed to prevent algorithmic-complexity (HashDoS) attacks crafted to collide in a single bucket. As a consequence, iteration order over a `HashMap` is non-deterministic across executions.
 
-Now you have the tools for the problems. Each one starts with the simplest correct idea, then shows how a
-collection makes it faster.
+With complexity analysis and collection internals in place, we turn to the algorithmic problems, progressing from baseline designs to collection-accelerated implementations.
 
 ## 3.5 Finding two numbers that add up to a target
 
-**The problem.** Given an array of numbers and a target, find two positions whose numbers add up to the
-target. For `[2, 7, 11, 15]` and target 9, the answer is positions 0 and 1, because 2 + 7 = 9.
+**The problem.** Given a slice of integers and a target sum, return two distinct indexes whose elements sum to the target. For `[2, 7, 11, 15]` and target 9, the result is `(0, 1)`, since `2 + 7 = 9`.
 
-**The simple idea.** Try every pair. For each position `i`, check every later position `j`. That is about
-n × n / 2 pairs, so O(n²).
+**The baseline approach.** Testing every pair `(i, j)` with `i < j` examines roughly `n(n - 1) / 2` pairs, yielding O(n²) time.
 
-**A faster idea.** Walk the array once. For each number, you know which partner it needs: `target - num`.
-If you have already seen that partner, you are done. To answer "have I seen it?" in one step, keep a
-`HashMap` from each number seen so far to its position.
+**The hash-map approach.** Scanning the slice once, each element `num` requires a known complement `target - num`. Storing previously visited values and their indexes in a `HashMap` reduces the complement query to an O(1) lookup.
 
-Trace it on `[2, 7, 11, 15]` with target 9:
+Tracing `[2, 7, 11, 15]` with target 9:
 
 | Position | Number | Partner needed | In the map? | Map afterward |
 |---|---|---|---|---|
@@ -186,21 +145,17 @@ Trace it on `[2, 7, 11, 15]` with target 9:
 {{#include ../../rust-interview-lab/src/problems/two_sum.rs}}
 ```
 
-Walk through the function:
+Key details of the implementation:
 
-- The parameter `nums: &[i32]` is a **slice**, a borrowed view of a sequence of `i32` values. You can pass a
-  `Vec`, an array, or part of either.
-- `HashMap::with_capacity(nums.len())` sizes the map for the worst case, so it never grows during the loop.
-- `nums.iter().enumerate()` gives pairs of (position, reference to number). The pattern `(idx, &num)` copies
-  the number out of the reference.
-- `seen.get(&(target - num))` looks up the partner. `get` takes a reference to the key, hence the `&`.
-- If the partner is found, the function returns both positions. Otherwise it records this number.
+- The parameter `nums: &[i32]` is a **slice**, a borrowed view over contiguous `i32` elements compatible with arrays, vectors, and subslices.
+- `HashMap::with_capacity(nums.len())` preallocates enough buckets to avoid rehashing during the scan.
+- `nums.iter().enumerate()` yields `(usize, &i32)` pairs, and the pattern `(idx, &num)` copies the `i32` out of its reference.
+- `seen.get(&(target - num))` probes for the complement by reference.
+- When the complement exists, the function returns both indexes immediately; otherwise, it inserts `(num, idx)`.
 
-The lookup comes before the insert. Think of target 4 with a single 2 in the array. If the insert came
-first, the 2 would find itself and pair with itself.
+Performing the lookup before the insertion prevents an element from pairing with itself: for target 4 and `[2]`, inserting before looking up would erroneously return `(0, 0)`.
 
-The function returns `Option<(usize, usize)>`: `Some` with the two positions, or `None` if no pair exists.
-It runs in O(n) time and uses O(n) extra memory for the map.
+The function returns `Option<(usize, usize)>`, running in O(n) expected time and O(n) auxiliary space.
 
 <figure class="anim">
 <video class="motion" src="figures/ch03-two-sum.mp4" autoplay loop muted playsinline preload="metadata" aria-label="The array 2, 7, 11, 15 with target 9, and the map seen beside it. idx points at 2; the partner 7 is not in seen, so 2 maps to 0 is stored. idx moves to 7; the partner 2 is in seen at index 0, so the function returns Some((0, 1)). A second run moves the insert above the lookup: with target 4 and the array [2], the 2 finds itself and the result is Some((0, 0))." data-chapters="[[2.4, &quot;index 0&quot;], [22.92, &quot;index 1&quot;], [41.46, &quot;insert first&quot;]]"><img src="figures/ch03-two-sum.gif" alt="The array 2, 7, 11, 15 with target 9, and the map seen beside it. idx points at 2; the partner 7 is not in seen, so 2 maps to 0 is stored. idx moves to 7; the partner 2 is in seen at index 0, so the function returns Some((0, 1)). A second run moves the insert above the lookup: with target 4 and the array [2], the 2 finds itself and the result is Some((0, 0))."></video>
@@ -209,26 +164,19 @@ It runs in O(n) time and uses O(n) extra memory for the map.
 
 <div class="callout warning" markdown="1">
 
-**WARNING:** `target - num` is computed in `i32`. For numbers near the ends of the `i32` range, such as
-`i32::MIN`, the subtraction overflows, and a debug build stops with a panic. Using `i64` for the arithmetic,
-or `target.checked_sub(num)`, avoids it.
+**WARNING:** Computing `target - num` in `i32` can overflow near the bounds of `i32` (for example, when `num == i32::MIN` and `target > 0`), causing a panic in debug builds. Widening to `i64` or calling `target.checked_sub(num)` eliminates overflow.
 
 </div>
 
 ## 3.6 A vector used as a stack
 
-A **stack** is a collection where you add and remove items at the same end, called the top. The last item
-you added is the first one you remove. A `Vec` works as a stack. `push` adds to the end, and `pop` removes
-the last item and returns it. `last` looks at the end without removing it. All three are O(1).
+A **stack** is a last-in, first-out (LIFO) sequence where insertions and removals occur exclusively at one end (the top). `Vec` serves directly as a stack: `push` appends to the top, `pop` removes and returns the top element, and `last` inspects the top without mutating the vector. All three operations run in amortized O(1) time.
 
 ### 3.6.1 Checking brackets
 
-**The problem.** A string of brackets is valid if every opening bracket is closed by the matching kind, in
-the right order. `"{[()]}"` is valid. `"([)]"` is not, because `]` arrives while `(` is still open.
+**The problem.** A bracket string is balanced if every opening delimiter is closed by the matching delimiter type in proper nested order. `"{[()]}"` is valid, whereas `"([)]"` is invalid because `]` closes while `(` remains open.
 
-**The idea.** Read the string from left to right. Push each opening bracket onto a stack. When a closing
-bracket arrives, the top of the stack must be its matching opener; pop it and continue. At the end, the
-stack must be empty. Figure 3.5 traces `"{[()]}"`.
+**The strategy.** Scan left to right, pushing every opening bracket onto a stack. Upon encountering a closing bracket, pop the top of the stack and verify that it matches the expected opener. After the scan completes, the stack must be empty. Figure 3.5 traces `"{[()]}"`.
 
 <figure>
 <img src="figures/ch03-stack.svg" alt="Six steps: push {, push [, push (, then ) pops (, ] pops [, } pops {, leaving the stack empty">
@@ -246,39 +194,28 @@ stack must be empty. Figure 3.5 traces `"{[()]}"`.
 {{#include ../../rust-interview-lab/src/problems/valid_parentheses.rs}}
 ```
 
-The map `expected` records, for each closing bracket, the opener it needs. `HashMap::from([...])` builds a
-map from an array of pairs.
+The lookup table `expected`, constructed via `HashMap::from([...])`, maps each closing bracket to its required opener.
 
-The `match` has two arms. The first pushes any of the three openers. The second handles every other
-character and compares two `Option` values:
+The `match` expression partitions characters into two arms: the first pushes opening brackets, and the second compares two `Option<&char>` values:
 
-- `stack.pop()` removes the top and returns `Some(opener)`, or `None` if the stack is empty. `.as_ref()`
-  turns `Option<char>` into `Option<&char>`, so it can be compared with the next value.
-- `expected.get(&ch)` returns `Some(&opener)` for a closing bracket.
+- `stack.pop().as_ref()` pops the top opener and converts `Option<char>` to `Option<&char>` so both sides share the same type.
+- `expected.get(&ch)` returns `Some(&opener)` for any closing bracket.
 
-If they differ, the string is invalid. An empty stack gives `None`, which differs from `Some`, so an extra
-closer is caught. After the loop, `stack.is_empty()` catches openers that were never closed.
-
-The tests list valid and invalid examples, including `"([)]"`, a lone `")"`, and `"(("`.
+Any mismatch returns `false` immediately, including an extra closing bracket on an empty stack (`None != Some(...)`). After the loop finishes, `stack.is_empty()` rejects any unclosed openers. The unit tests cover balanced inputs, interleaved mismatches (`"([)]"`), lone closers (`")"`), and unclosed openers (`"(("`).
 
 <div class="callout warning" markdown="1">
 
-**WARNING:** Suppose a character that is not a bracket arrives while the stack is empty. It gives `None`
-on both sides of the comparison, so it passes. `is_valid("a")` returns `true`. If your input can contain other
-characters, skip or reject them in their own arm.
+**WARNING:** If a non-bracket character arrives while the stack is empty, both `stack.pop().as_ref()` and `expected.get(&ch)` evaluate to `None`, causing `is_valid("a")` to return `true`. Production validators that may encounter arbitrary characters should match non-brackets in a dedicated arm to skip or reject them explicitly.
 
 </div>
 
 ### 3.6.2 A stack that knows its minimum
 
-**The problem.** Build a stack that supports `push`, `pop`, `top`, and `get_min`, the smallest value
-currently in it, all in O(1).
+**The problem.** Design a stack supporting `push`, `pop`, `top`, and `get_min` (returning the current minimum element), each in O(1) time.
 
-**The idea.** Scanning the stack for the minimum takes O(n). Instead, keep a second stack beside the first.
-Each time you push a value, also push the minimum so far. Then the minimum of the whole stack is always on
-top of the second stack. When you pop, pop both.
+**The strategy.** Scanning the stack on every `get_min` call costs O(n). Maintaining a parallel auxiliary stack (`mins`) that records the running minimum at each depth makes `get_min` an O(1) lookup: every `push` appends the updated minimum to `mins`, and every `pop` pops both stacks in lockstep.
 
-Trace pushes of -2, 0, and -3:
+Tracing pushes of `-2`, `0`, and `-3` followed by a `pop`:
 
 | Operation | `values` | `mins` | `get_min()` |
 |---|---|---|---|
@@ -293,40 +230,28 @@ Trace pushes of -2, 0, and -3:
 {{#include ../../rust-interview-lab/src/problems/min_stack.rs}}
 ```
 
-`#[derive(Default)]` gives `MinStack` a `default()` function that creates two empty vectors, and `new` calls
-it.
+`#[derive(Default)]` synthesizes `MinStack::default()` with two empty vectors, which `new()` delegates to.
 
-In `push`, `self.mins.last()` returns the current minimum, if any. The arm `Some(&min) if min <= val` has a
-**guard**, the `if` after the pattern. It pushes the old minimum again when the new value is not smaller.
-The `_` arm covers both an empty stack and a new smaller value, and pushes `val`.
+Inside `push`, `self.mins.last()` inspects the current minimum. The match arm `Some(&min) if min <= val` uses a **guard** to re-push `min` when the incoming value is not smaller; the fallback arm `_` covers both an empty stack and a new strictly smaller minimum, pushing `val`.
 
-The guard uses `<=`, not `<`. When you push a value equal to the current minimum, the minimum is recorded
-again. So popping one copy leaves the other, and the minimum stays correct. The test `handles_duplicates`
-checks this case.
+Using `<=` rather than `<` preserves correctness when duplicate minimum values are pushed: popping one copy leaves the second copy reflected on top of `mins`, a case verified by the `handles_duplicates` test.
 
-`top` and `get_min` use `.copied()` to turn `Option<&i32>` into `Option<i32>`, so the caller gets a plain
-number.
+Both `top` and `get_min` call `.copied()` to convert `Option<&i32>` into `Option<i32>`, returning owned integers to callers.
 
 ## 3.7 Two indexes moving toward each other
 
-Some problems need you to look at both ends of an array at once. Keep one index at the start and one at the
-end, and move them toward each other. Each step moves at least one index, so the whole walk is O(n).
+Problems that inspect both ends of a sequence simultaneously can maintain two indexes, `start` and `end`, advancing them inward until they cross. Because at least one index advances per iteration, the traversal completes in O(n) time.
 
 ### 3.7.1 Reversing a string in place
 
-**The idea.** Swap the first and last bytes, then the second and second-to-last, and stop when the indexes
-meet (figure 3.6).
+**The strategy.** Swap the first and last bytes, then move inward one position from each end until the two indexes meet (Figure 3.6).
 
 <figure>
 <img src="figures/ch03-two-pointers.svg" alt="abcd becomes dbca after swapping the ends, then dcba after swapping the middle pair; then start passes end and the loop stops">
 <figcaption><b>Figure 3.6</b> Reversing <code>"abcd"</code>. Two swaps, then the indexes cross.</figcaption>
 </figure>
 
-There is a complication. As section 3.3 explained, a `String` must stay valid UTF-8, and swapping the bytes
-of a two-byte character would break it. So Rust does not let you change a `String`'s bytes directly in safe
-code. `String::as_mut_vec` gives you the bytes, but it is marked `unsafe`. **`unsafe`** marks code where the
-compiler cannot check a rule, so the programmer must. Here the rule is "the bytes are valid UTF-8 when
-you are done".
+As noted in Section 3.3, a `String` must preserve valid UTF-8; reversing individual bytes of a multi-byte character would corrupt the encoding. Consequently, Rust exposes mutable byte access only through `String::as_mut_vec`, which is marked `unsafe`. An **`unsafe`** block designates code whose memory or type invariants cannot be verified statically by the compiler and must instead be upheld by the author; here, the required invariant is that the buffer remains valid UTF-8 upon exiting the block.
 
 <p class="listing"><b>Listing 3.4</b> The reversing function (lines 1 to 14). <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/bin/reverse_string.rs">src/bin/reverse_string.rs</a></p>
 
@@ -334,12 +259,9 @@ you are done".
 {{#include ../../rust-interview-lab/src/bin/reverse_string.rs:1:14}}
 ```
 
-The function keeps the rule by checking first: `assert!(s.is_ascii())` stops the program unless every byte
-is a plain ASCII character. Reversing ASCII bytes gives ASCII, which is valid UTF-8. The `unsafe` block is
-then as small as possible, one call.
+The function enforces the UTF-8 invariant upfront via `assert!(s.is_ascii())`, panicking if any multi-byte character is present. Because every ASCII byte is a self-contained single-byte UTF-8 sequence, any permutation of ASCII bytes remains valid UTF-8, allowing the `unsafe` block to wrap a single method call.
 
-`bytes.swap(start, end)` exchanges two elements of the vector. The loop runs while `start < end`, so the
-middle element of an odd-length string stays where it is.
+Inside the loop, `bytes.swap(start, end)` exchanges the two endpoints while `start < end`, leaving the center byte of an odd-length string untouched.
 
 <p class="listing"><b>Listing 3.5</b> The complete program, with its tests. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/bin/reverse_string.rs">src/bin/reverse_string.rs</a></p>
 
@@ -347,10 +269,7 @@ middle element of an odd-length string stays where it is.
 {{#include ../../rust-interview-lab/src/bin/reverse_string.rs}}
 ```
 
-The test `the_buffer_is_reused` records the string's capacity and the address of its bytes before the
-call, then checks both afterward. They are unchanged, so the reversal used no new memory.
-`non_ascii_input_panics` is marked `#[should_panic]`: it passes only if the call panics, which the
-`assert!` does for `"café"`.
+The unit test `the_buffer_is_reused` captures the string's capacity and heap pointer before and after reversal, confirming zero reallocation. `non_ascii_input_panics` is annotated with `#[should_panic]` to verify that the ASCII precondition rejects `"café"`.
 
 ```text
 $ cargo run --bin reverse_string
@@ -362,28 +281,23 @@ $ cargo run --bin reverse_string
 
 <div class="callout warning" markdown="1">
 
-**WARNING:** For an empty string, `bytes.len() - 1` subtracts 1 from 0 in `usize`, which cannot go below
-zero. A debug build panics. Return early when the string is empty.
+**WARNING:** On an empty string, `bytes.len() - 1` underflows `usize`, triggering a panic in debug builds. Production implementations must return early when `s.is_empty()`.
 
 </div>
 
 ### 3.7.2 Three numbers that add up to a target
 
-**The problem.** Find every set of three numbers in an array that adds up to a target, without listing the
-same set twice.
+**The problem.** Find every unique triple of integers in an array that sums to a given target, without emitting duplicate triples.
 
-**The idea.** Sort the array first. Then fix the first number, and look for the other two in the rest of the
-array. Use two indexes: `left` starts right after the fixed number, and `right` starts at the end. Because the array is
-sorted, you know which index to move:
+**The strategy.** Sort the slice in ascending order first. Fix the first element at index `i`, then search the remaining suffix with two converging indexes: `left = i + 1` and `right = len - 1`. Sorted order determines which pointer must move at each step:
 
-- If the sum is too small, move `left` right. That can only increase the sum.
-- If the sum is too large, move `right` left. That can only decrease it.
-- If the sum is right, record the three numbers, then move both.
+- If the sum is below `target`, increment `left` to increase the sum.
+- If the sum exceeds `target`, decrement `right` to decrease the sum.
+- If the sum equals `target`, record the triple and advance both indexes past any duplicate values.
 
-Each fixed number costs one O(n) walk, and there are n fixed numbers, so the whole search is O(n²). Sorting
-costs O(n log n), which is smaller.
+Sorting costs O(n log n), and each of the `n` fixed elements triggers an O(n) two-pointer scan, yielding O(n²) overall time.
 
-The function first sorts, then fixes each number in turn:
+The outer setup sorts the slice and iterates over each unique first element:
 
 ```rust
 {{#include ../../rust-interview-lab/src/problems/three_sum.rs:6:21}}
@@ -392,12 +306,11 @@ The function first sorts, then fixes each number in turn:
 }
 ```
 
-- `use std::cmp::Ordering::{Equal, Greater, Less};` lets the code write `Less` instead of
-  `Ordering::Less`. The next excerpt matches on these three.
-- The `continue` skips a fixed value equal to the previous one, so the same set is not found twice.
-- `numbers.len().saturating_sub(1)` gives 0 instead of underflowing when the slice is empty.
+- Importing `std::cmp::Ordering::{Equal, Greater, Less}` allows concise pattern matching on comparison results.
+- Skipping `numbers[i] == numbers[i - 1]` prevents duplicate triples anchored on the same first element.
+- `numbers.len().saturating_sub(1)` safely yields `0` on empty slices without unsigned underflow.
 
-For each fixed number, `left` and `right` close in from the two ends of the rest:
+For each fixed index `i`, the inner loop converges `left` and `right`:
 
 ```rust
 pub fn three_sum(numbers: &mut [i32], target: i32) -> Vec<(i32, i32, i32)> {
@@ -410,11 +323,9 @@ pub fn three_sum(numbers: &mut [i32], target: i32) -> Vec<(i32, i32, i32)> {
 }
 ```
 
-- The sum is computed in `i64`. Three `i32` values can add up to more than `i32` can hold. The test
-  `does_not_overflow_on_extreme_values` uses `i32::MAX` twice to check this.
-- `current_sum.cmp(&target)` returns `Less`, `Greater`, or `Equal`, and the `match` turns each into the move
-  from the list above.
-- After a match, the two inner `while` loops step `left` and `right` past values equal to the ones in the match.
+- Accumulating the triple sum in `i64` prevents signed 32-bit overflow when summing values near `i32::MAX` or `i32::MIN`, as exercised by `does_not_overflow_on_extreme_values`.
+- Matching on `current_sum.cmp(&target)` maps `Less`, `Greater`, and `Equal` directly to the pointer updates.
+- After recording a match, two inner `while` loops skip consecutive duplicate values at `left` and `right`.
 
 <p class="listing"><b>Listing 3.6</b> Three Sum, with its tests. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/problems/three_sum.rs">src/problems/three_sum.rs</a></p>
 
@@ -429,16 +340,11 @@ pub fn three_sum(numbers: &mut [i32], target: i32) -> Vec<(i32, i32, i32)> {
 
 ## 3.8 A window that slides along a string
 
-**The problem.** Find the length of the longest piece of a string in which no character repeats. In
-`"pwwkew"`, the answer is 3, for `"wke"` or `"kew"`.
+**The problem.** Compute the length of the longest contiguous substring containing no repeated characters. For `"pwwkew"`, the maximum length is 3 (corresponding to `"wke"` or `"kew"`).
 
-**The idea.** Keep a **window**, a range `start..=end` of the string with no repeated character. Move `end`
-forward one character at a time. When the new character already appears inside the window, move `start` to
-the position right after its earlier one. The window never contains a repeat, and the answer is the largest window
-seen.
+**The strategy.** Maintain a sliding **window** `start..=end` invariant to contain exclusively distinct characters. As `end` advances one character at a time, if the incoming character already lies inside the current window, advance `start` immediately past its prior occurrence. Recording the maximum window width across all positions yields the answer.
 
-To know where a character last appeared, keep a `HashMap` from each character to its last position. Figure
-3.7 shows the moment in `"pwwkew"` when the second `w` arrives.
+A `HashMap<char, usize>` maps each seen character to its most recent character index. Figure 3.7 depicts the window state in `"pwwkew"` when the third `w` is processed.
 
 <figure>
 <img src="figures/ch03-window.svg" alt="The string pwwkew with start at index 3 and end at index 5, window kew">
@@ -456,24 +362,15 @@ To know where a character last appeared, keep a `HashMap` from each character to
 {{#include ../../rust-interview-lab/src/problems/sliding_window.rs}}
 ```
 
-`if let Some(&previous) = last_seen.get(&ch)` runs its block only when the character has been seen before.
-Then `start = start.max(previous + 1)` moves `start` past the earlier position. The `max` stops `start` from
-moving backward when the earlier position is already outside the window. For example, in `"abba"`, the last
-`a` was seen at 0, but `start` is already at 2.
+When `last_seen.get(&ch)` finds an earlier index `previous`, `start = start.max(previous + 1)` advances the left boundary without ever moving it backward. The `.max(...)` guard is essential for inputs like `"abba"`: when the second `'a'` arrives at index 3, `'a'` was last seen at index 0, which already falls outside the current window starting at index 2.
 
-`end - start + 1` is the current window's length. Both `start` and `end` only move forward, so the loop does
-O(n) work.
-
-The positions come from `chars().enumerate()`, so they count characters, not bytes. That is what the
-problem asks for.
+At each step, `end - start + 1` gives the active window length. Because both `start` and `end` advance monotonically, the algorithm runs in O(n) time. Iterating via `chars().enumerate()` counts Unicode scalar values rather than raw UTF-8 bytes, matching the problem specification.
 
 ## 3.9 Sort, then walk once: merging ranges
 
-**The problem.** Given ranges such as `[1,3] [2,6] [8,10] [15,18]`, merge every group that overlaps. The
-answer here is `[1,6] [8,10] [15,18]`.
+**The problem.** Given a list of closed intervals such as `[1,3] [2,6] [8,10] [15,18]`, merge all overlapping intervals into disjoint ranges (`[1,6] [8,10] [15,18]`).
 
-**The idea.** Sort the ranges by their start. Then walk them once. Each range either overlaps the last
-merged range, and extends it, or starts a new merged range (figure 3.8).
+**The strategy.** Sort the intervals by their start coordinate, then perform a single linear pass. In sorted order, each interval either overlaps the most recently merged interval (extending its end coordinate) or starts a new disjoint interval (Figure 3.8).
 
 <figure>
 <img src="figures/ch03-intervals.svg" alt="Ranges 1-3 and 2-6 overlap and become 1-6; 8-10 and 15-18 stay separate">
@@ -485,8 +382,7 @@ merged range, and extends it, or starts a new merged range (figure 3.8).
 <figcaption><b>Animation 3.5</b> Sorting puts overlapping ranges next to each other, so one walk can merge them. Each step extends the last merged range or starts a new one.</figcaption>
 </figure>
 
-The file solves the problem three times: with a named struct, with plain tuples, and in place. First the
-struct and the first version:
+The module implements three variations: one using a named `Interval` struct, one using raw tuples, and one operating in place. Listing 3.8 presents the `Interval` struct and the first implementation.
 
 <p class="listing"><b>Listing 3.8</b> Merging ranges held in a struct (lines 6 to 28). <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/problems/merge_intervals.rs">src/problems/merge_intervals.rs</a></p>
 
@@ -494,17 +390,11 @@ struct and the first version:
 {{#include ../../rust-interview-lab/src/problems/merge_intervals.rs:6:28}}
 ```
 
-`sort_unstable_by_key(|interval| interval.start)` sorts by start. "Unstable" means equal starts may change
-order, which does not affect the result and is slightly faster.
+`sort_unstable_by_key(|interval| interval.start)` orders intervals by start coordinate; unstable sorting may reorder elements with identical start keys, which is inconsequential here and avoids auxiliary allocation.
 
-The loop header `for Interval { start, end } in intervals` takes each range apart into two variables.
+The loop header `for Interval { start, end } in intervals` destructures each struct directly. Calling `merged.last_mut()` yields a mutable reference to the active tail interval (or `None` on the first element). When the guard `if start <= previous.end` holds, `previous.end = previous.end.max(end)` extends the tail interval in place while preserving containment when a shorter interval lies entirely inside the previous one. Otherwise, the fallback arm appends a new interval.
 
-`merged.last_mut()` returns a mutable reference to the last merged range, or `None` if there is none yet.
-The guard `if start <= previous.end` checks for overlap. When it holds, the code extends the range in place
-through the reference: `previous.end = previous.end.max(end)`. The `max` handles a range that lies entirely
-inside the previous one. In every other case, the `_` arm starts a new merged range.
-
-The second version does the same with `(i32, i32)` tuples, so the end is written `previous.1`:
+Listing 3.9 implements the same algorithm over `(i32, i32)` tuples, replacing named fields with positional `.0` and `.1` accessors.
 
 <p class="listing"><b>Listing 3.9</b> The same merge over tuples (lines 30 to 48).</p>
 
@@ -512,10 +402,9 @@ The second version does the same with `(i32, i32)` tuples, so the end is written
 {{#include ../../rust-interview-lab/src/problems/merge_intervals.rs:30:48}}
 ```
 
-It works the same way. The struct version is easier to read, because `previous.end` says what `previous.1`
-leaves to you to remember.
+While behaviorally identical, the named struct in Listing 3.8 improves readability by making `previous.end` self-documenting rather than requiring callers to remember field positions.
 
-The third version needs no second vector. It writes the merged ranges into the front of the input vector:
+Listing 3.10 eliminates the output vector entirely by compacting merged intervals into the prefix of the input vector.
 
 <p class="listing"><b>Listing 3.10</b> Merging in place (lines 50 to 72).</p>
 
@@ -523,13 +412,9 @@ The third version needs no second vector. It writes the merged ranges into the f
 {{#include ../../rust-interview-lab/src/problems/merge_intervals.rs:50:72}}
 ```
 
-`last` is the position of the last merged range. For each later range, the code either extends
-`intervals[last]`, or moves `last` forward one place and copies the range there. At the end,
-`truncate(last + 1)` drops the leftovers. This version uses O(1) extra memory.
+The write cursor `last` tracks the index of the latest merged interval. Each subsequent interval either extends `intervals[last]` or advances `last` by one and copies into the new slot. Calling `intervals.truncate(last + 1)` discards the uncompacted tail, achieving O(1) auxiliary space beyond sorting.
 
-`match (intervals[last], intervals[i])` copies both ranges out of the vector into a pair. That works
-because `Interval` derives `Copy`. Because the arms work on copies, they are free to write to
-`intervals[last]` without a borrowing conflict.
+Matching on `(intervals[last], intervals[i])` copies both `Copy` structs out of the vector before mutating `intervals[last]`, avoiding simultaneous overlapping borrows of the vector.
 
 <p class="listing"><b>Listing 3.11</b> The tests (lines 74 to 106).</p>
 
@@ -537,16 +422,11 @@ because `Interval` derives `Copy`. Because the arms work on copies, they are fre
 {{#include ../../rust-interview-lab/src/problems/merge_intervals.rs:74:106}}
 ```
 
-The tests build ranges from tuples with `.map(|(start, end)| Interval { start, end })` on arrays. They cover
-overlapping ranges, an empty input, ranges that do not touch, and unsorted input for the in-place version.
-
-All three versions merge ranges that only touch, such as `[1,3]` and `[3,5]`, because the check is `<=`.
+The test suite constructs `Interval` values from tuple arrays via `.map(|(start, end)| Interval { start, end })`, verifying overlapping ranges, empty inputs, disjoint ranges, and unsorted inputs for the in-place variant. Because the overlap predicate uses `<=`, adjacent intervals that share an endpoint (such as `[1,3]` and `[3,5]`) merge into a single range.
 
 ## 3.10 Halving the search: binary search
 
-In a sorted array, you can find a value without looking at every element. Compare the value with the middle
-element. If the value is smaller, it can only be in the left half; if larger, only in the right half.
-Discard the other half and repeat. Figure 3.9 finds 23 in eight values in three steps.
+In a sorted array, locating a target does not require a linear scan. Comparing the target against the midpoint eliminates half of the remaining range on every step: values smaller than the midpoint can lie only in the left half, and larger values only in the right half. Figure 3.9 locates `23` among eight elements in three comparisons.
 
 <figure>
 <img src="figures/ch03-binary-search.svg" alt="Three rows of the array 2 5 8 12 16 23 38 56. The range shrinks from all eight, to the last three, to one element, 23.">
@@ -558,20 +438,17 @@ Discard the other half and repeat. Figure 3.9 finds 23 in eight values in three 
 <figcaption><b>Animation 3.6</b> Each comparison halves the live range <code>low..high</code>. Eight elements take three comparisons. The search for 20 ends with an empty range.</figcaption>
 </figure>
 
-The code in this section uses a **half-open range** `low..high`. `low` is the first position still in the
-range, and `high` is one past the last. The range is empty when `low == high`.
+The implementation below represents the active candidate set as a **half-open range** `low..high`, where `low` is inclusive and `high` is exclusive; the search space is empty precisely when `low == high`.
 
 ### 3.10.1 Searching a rotated array
 
-The file solves a harder version. A sorted array has been **rotated**: some elements from the front were
-moved to the back, as in `[4, 5, 6, 7, 0, 1, 2]`. You still want O(log n).
+A harder variant searches a sorted array that has been **rotated** by moving a prefix to the back, such as `[4, 5, 6, 7, 0, 1, 2]`, while maintaining O(log n) complexity.
 
-The idea rests on one observation. If you split a rotated array at any middle position, at least one of the
-two halves is still sorted. You can tell which by comparing its end values. Then:
+The algorithm relies on a structural invariant: splitting a rotated sorted array at any midpoint `mid` guarantees that at least one of the two halves remains strictly sorted. Comparing endpoint values identifies which half is sorted:
 
-- If the left half is sorted and the target lies between its first and middle values, search the left half.
-- If the right half is sorted and the target lies between its middle and last values, search the right half.
-- Otherwise, search the other half.
+- If the left half is sorted and `target` falls within `[nums[low], nums[mid])`, narrow the search to the left half.
+- If the right half is sorted and `target` falls within `(nums[mid], nums[high - 1]]`, narrow the search to the right half.
+- Otherwise, discard the sorted half and search the opposite half.
 
 <figure>
 <img src="figures/ch03-rotated.svg" alt="Array 4 5 6 7 0 1 2 with low 0, mid 3, high 7; the left half 4..7 is sorted and does not contain 0, so low moves to 4">
@@ -589,20 +466,15 @@ two halves is still sorted. You can tell which by comparing its end values. Then
 {{#include ../../rust-interview-lab/src/problems/binary_search.rs}}
 ```
 
-`mid = low + (high - low) / 2` finds the middle. The shorter `(low + high) / 2` can overflow when both are
-very large; this form cannot.
+Computing `mid = low + (high - low) / 2` avoids integer overflow when `low + high` would exceed `usize::MAX`.
 
-`nums[low] <= nums[mid]` means the left half is sorted. The test that the target is in it is
-`nums[low] <= target && target < nums[mid]`. The right-half test uses `nums[high - 1]`, the last element,
-because `high` itself is one past the end.
+The condition `nums[low] <= nums[mid]` confirms that the left half is monotonically ordered, in which case `nums[low] <= target && target < nums[mid]` determines whether the target lies inside it. For the right half, the upper bound uses `nums[high - 1]` because `high` is exclusive.
 
 ## 3.11 Rotating a square grid in place
 
-**The problem.** Rotate an n × n grid a quarter turn clockwise, without a second grid.
+**The problem.** Rotate an `n × n` matrix 90 degrees clockwise in place, using O(1) extra memory.
 
-**The idea.** Do it in two simple steps (figure 3.11). First **transpose** the grid. That means swapping the element at
-row i, column j with the one at row j, column i. It flips the grid across its diagonal. Then reverse each
-row.
+**The strategy.** Decompose the rotation into two in-place passes (Figure 3.11): first **transpose** the matrix across its main diagonal by swapping `(i, j)` with `(j, i)`, then reverse every row.
 
 <figure>
 <img src="figures/ch03-rotate.svg" alt="1 to 9 in a grid, the transposed grid, and the grid after reversing each row, which is the clockwise rotation">
@@ -620,15 +492,11 @@ row.
 {{#include ../../rust-interview-lab/src/bin/rotate_matrix.rs}}
 ```
 
-The grid is a `Vec<Vec<i32>>`, a vector of rows. `rotate` takes it as `&mut [Vec<i32>]`, a mutable slice of rows, because it changes cells but never adds or removes a row. The transpose loop starts `j` at `i + 1`, so it visits only
-the cells above the diagonal and swaps each pair once. Visiting every cell would swap each pair twice and
-undo the work.
+Because `rotate` modifies cell values without inserting or removing rows, it accepts `&mut [Vec<i32>]` (a mutable slice of rows). In the transpose pass, starting the inner loop at `j = i + 1` visits only the upper triangle so each off-diagonal pair is swapped once; iterating from `0` would swap every pair twice and restore the original grid.
 
-The swap uses a temporary variable `tmp`. `std::mem::swap` needs two mutable references, and
-`m[i][j]` and `m[j][i]` are in different rows of the same outer vector. The borrow checker cannot see that
-they do not overlap, so it would reject taking both at once.
+The exchange uses an explicit temporary variable `tmp` rather than `std::mem::swap(&mut m[i][j], &mut m[j][i])`. Because `m[i]` and `m[j]` are indexed through the same outer slice `m`, the borrow checker cannot prove statically that `i != j` and therefore rejects two simultaneous mutable borrows of `m`.
 
-`for row in m.iter_mut()` gives a mutable reference to each row, and `row.reverse()` reverses it.
+In the second pass, `for row in m.iter_mut()` yields a mutable reference to each row, which `row.reverse()` reverses in place.
 
 ```text
 $ cargo run --bin rotate_matrix
@@ -639,19 +507,13 @@ $ cargo run --bin rotate_matrix
 
 ## 3.12 Finding text inside text
 
-**The problem.** Find the first position where a short string, the **needle**, appears in a longer one, the
-**haystack**.
+**The problem.** Locate the first byte index where a pattern string (the **needle**) occurs inside a target string (the **haystack**).
 
-**The simple idea.** Try each position of the haystack, and compare the needle character by character. On
-a mismatch, move one position right and start over. In the worst case this compares every needle character
-at every position. For a haystack of length n and a needle of length m, that is O(n × m).
+**The baseline approach.** Trying every starting offset in the haystack and comparing the needle character by character restarts from scratch on every mismatch. For a haystack of length `n` and needle of length `m`, worst-case complexity is O(n × m).
 
-**The better idea.** Suppose a mismatch comes after several matching characters. You already know what
-those characters were, because they are the start of the needle. Often a later part of them is also the start of the
-needle, so you can continue from there instead of starting over. The Knuth-Morris-Pratt algorithm (KMP)
-uses this. It never moves backward in the haystack, so it runs in O(n + m).
+**The linear-time approach.** When a mismatch occurs after several matching characters, those matched characters are already known to equal a prefix of the needle. If a proper suffix of the matched portion also equals a prefix of the needle, matching can resume from that prefix length without backtracking in the haystack. The Knuth-Morris-Pratt (KMP) algorithm exploits this structure to achieve O(n + m) worst-case time.
 
-Figure 3.12 shows one such jump.
+Figure 3.12 illustrates a KMP fallback jump.
 
 <figure>
 <img src="figures/ch03-kmp.svg" alt="The needle aabaaac is tried at position 0 and matches six characters before a mismatch. It resumes at position 4, keeping the two matched characters aa.">
@@ -663,16 +525,14 @@ Figure 3.12 shows one such jump.
 <figcaption><b>Animation 3.9</b> On a mismatch, <code>left</code> falls back to <code>lps[left - 1]</code> and <code>right</code> stays where it is. The haystack is read once, from left to right.</figcaption>
 </figure>
 
-To know how far to jump, KMP first builds a table from the needle alone. For each position i, look at the piece `needle[0..=i]`. `lps[i]` is
-the length of the longest part of that piece that is both its start and its end. The whole piece does not
-count. The name "lps" stands for longest proper prefix that is also a suffix. For the needle in the figure:
+To compute fallback offsets in O(1), KMP preprocesses the needle into a failure table `lps` (longest proper prefix that is also a suffix). For each prefix `needle[0..=i]`, `lps[i]` records the length of its longest proper prefix (excluding the entire substring) that matches its suffix. For `"aabaaac"`:
 
 | index | 0 | 1 | 2 | 3 | 4 | 5 | 6 |
 |---|---|---|---|---|---|---|---|
 | needle | a | a | b | a | a | a | c |
 | lps | 0 | 1 | 0 | 1 | 2 | 2 | 0 |
 
-For example, `lps[4] = 2`, because `"aabaa"` starts with `"aa"` and ends with `"aa"`.
+For example, `lps[4] = 2` because `"aabaa"` both starts and ends with `"aa"`.
 
 <figure class="anim">
 <video class="motion" src="figures/ch03-kmp-lps.mp4" autoplay loop muted playsinline preload="metadata" aria-label="The needle aabaaac with the lps row below it, filled one entry at a time. right compares needle[right] with needle[left]. A match writes lps[right] = left + 1. A mismatch with left above 0 moves left back to lps[left - 1]; a mismatch at left 0 leaves the entry at 0. The table ends as 0 1 0 1 2 2 0. Last, with left reset to 0 on a mismatch instead of lps[left - 1], lps[5] comes out 1 instead of 2." data-chapters="[[95.88, &quot;reset to 0&quot;]]"><img src="figures/ch03-kmp-lps.gif" alt="The needle aabaaac with the lps row below it, filled one entry at a time. right compares needle[right] with needle[left]. A match writes lps[right] = left + 1. A mismatch with left above 0 moves left back to lps[left - 1]; a mismatch at left 0 leaves the entry at 0. The table ends as 0 1 0 1 2 2 0. Last, with left reset to 0 on a mismatch instead of lps[left - 1], lps[5] comes out 1 instead of 2."></video>
@@ -688,19 +548,15 @@ For example, `lps[4] = 2`, because `"aabaa"` starts with `"aa"` and ends with `"
 }
 ```
 
-`str_str` works on bytes, from `as_bytes()`, so it can index directly. `left` counts how many needle
-characters currently match, and `right` walks the haystack. Each pass of the loop takes one of three
-branches:
+`str_str` operates directly on byte slices from `as_bytes()` for O(1) indexing. Here `left` tracks the number of matched needle bytes and `right` scans the haystack. Each iteration executes one of three branches:
 
-1. The characters match: advance both.
-2. They do not match, but some characters had matched: jump `left` back to `lps[left - 1]`, keeping `right`
-   where it is.
-3. They do not match and nothing had matched: advance `right`.
+1. Matching bytes: advance both `left` and `right`.
+2. Mismatch with `left > 0`: fall back to `left = lps[left - 1]` without moving `right`.
+3. Mismatch with `left == 0`: advance `right`.
 
-When `left` reaches the needle's length, the needle starts at `right - left`.
+Once `left` reaches `needle.len()`, the match begins at `right - left`.
 
-`build_lps` runs the same three-branch loop, comparing the needle against itself. Both loops only move
-forward, which gives the O(n + m) total.
+`build_lps` runs the identical three-branch state machine of the needle against itself. Because `right` advances monotonically and total fallbacks cannot exceed total increments of `left`, preprocessing and searching together run in O(n + m) time.
 
 <p class="listing"><b>Listing 3.15</b> The complete program. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/bin/kmp_pattern_matching.rs">src/bin/kmp_pattern_matching.rs</a></p>
 
@@ -719,13 +575,11 @@ str_str("aabaaabaaac", "aabaaac") = 4
 str_str("hello", "") = 0
 ```
 
-The function returns -1 when the needle is absent, following the convention of the problem it solves. In
-your own code, `Option<usize>` states that more clearly. For everyday searching, the standard library's
-`str::find` is also linear time.
+The `-1` sentinel follows the classic interview specification; idiomatic Rust APIs return `Option<usize>` instead. For production string searching, `str::find` in the standard library also runs in linear time (using the Two-Way algorithm).
 
 ## 3.13 The complete files
 
-The sections above showed these files in excerpts. Here each one is whole.
+Listing 3.16 reproduces `merge_intervals.rs` in full, combining the excerpts from Section 3.9.
 
 <p class="listing"><b>Listing 3.16</b> Merging overlapping intervals, with its tests. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/problems/merge_intervals.rs">src/problems/merge_intervals.rs</a></p>
 
@@ -737,31 +591,26 @@ The sections above showed these files in excerpts. Here each one is whole.
 
 ## Summary
 
-- Big-O notation describes how running time or memory grows with the input size, keeping only the fastest
-  growing part.
-- A `Vec` stores its elements next to each other on the heap, so indexing is O(1). Pushing is amortized O(1)
-  because the capacity doubles when it runs out.
-- A `String` is UTF-8 bytes. `len()` counts bytes, and `chars()` walks characters.
-- A `HashMap` hashes each key to a bucket, so `get` and `insert` are O(1) on average.
-- A hash map turns "have I seen the partner?" into one step (Two Sum).
-- A vector used as a stack tracks unmatched openers (brackets) and running minimums (Min Stack).
-- Two indexes moving toward each other reverse a string or search a sorted array for sums in O(n) per pass.
-- A sliding window with a map of last positions finds the longest run without repeats in O(n).
-- Sorting first lets one pass merge overlapping ranges.
-- Binary search halves the range each step, O(log n), and still works on a rotated sorted array.
-- KMP reuses matched characters, so text search takes O(n + m).
+- Big-O notation characterizes asymptotic time and space growth by retaining only the dominant term and dropping constant factors.
+- A `Vec` stores elements contiguously on the heap, providing O(1) indexing and amortized O(1) `push` through exponential capacity growth.
+- A `String` enforces valid UTF-8 over a `Vec<u8>`; `len()` reports byte length, while `chars()` decodes Unicode scalar values.
+- A `HashMap` hashes keys into buckets with randomized seeding, delivering O(1) expected `get` and `insert`.
+- Hash maps reduce complement lookups in Two Sum from O(n²) to O(n).
+- Using a `Vec` as a LIFO stack solves bracket validation and O(1) minimum tracking (`MinStack`).
+- Converging two-pointer scans reverse ASCII strings in place and solve Three Sum in O(n²) time after sorting.
+- Sliding windows paired with a last-seen index map find the longest substring without repeated characters in O(n) time.
+- Sorting intervals by start coordinate allows a single linear pass to merge overlapping ranges, either into a new vector or in place.
+- Binary search halves the candidate range per step in O(log n) time and extends to rotated sorted arrays by checking which half remains ordered.
+- KMP preprocesses a pattern's prefix-suffix table (`lps`) to match substrings in O(n + m) worst-case time without backtracking.
 
 </div>
 
-This chapter used iterators such as `iter()` and `enumerate()` without much comment. Chapter 4 looks at them
-closely, along with the references they hand you and the lifetimes that keep those references valid.
+The listings in this chapter relied repeatedly on iterators (`iter()`, `enumerate()`, `chars()`) and borrowed references. Chapter 4 covers iterator mechanics, double-reference patterns, and the lifetime rules that guarantee reference validity.
 
 ## Exercises
 
-1. Change `two_sum` to use `i64` arithmetic so that it cannot overflow, and add a test with `i32::MIN`.
-2. Fix `is_valid` so that characters other than brackets are rejected, and add a test for `"a"`.
-3. Make `reverse_str` handle an empty string, then write a version that reverses the characters of any
-   UTF-8 string, including `"café"`.
-4. Write a plain binary search over a sorted slice that returns `Option<usize>`, and test it on arrays of
-   length 0, 1, and 2.
-5. Rotate the grid counterclockwise instead, using a transpose and one other reversal.
+1. Update `two_sum` to perform complement arithmetic in `i64` so extreme values cannot overflow, and add a unit test exercising `i32::MIN`.
+2. Modify `is_valid` to reject non-bracket characters explicitly, and add a unit test for `"a"`.
+3. Guard `reverse_str` against empty strings, then implement a safe variant that reverses Unicode scalar values for arbitrary UTF-8 strings including `"café"`.
+4. Implement standard binary search over a sorted slice returning `Option<usize>`, testing slices of length 0, 1, and 2.
+5. Modify the matrix rotation to rotate 90 degrees counterclockwise using a transpose and one reversal pass.

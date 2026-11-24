@@ -2,11 +2,9 @@
 
 # Appendix A. The Rust cheat sheet
 
-This appendix reproduces `rust-interview-lab/src/bin/RUST_CHEATSHEET.md`, the page of compile errors and
-idioms that cost the most time while the Rust lab was being written. Its own instructions are the right way
-to use it: read a block, close the file, and type it from memory.
+This appendix reproduces `rust-interview-lab/src/bin/RUST_CHEATSHEET.md`, a reference sheet of compiler diagnostics and Rust idioms that caused the most friction during the construction of the lab. Its embedded study method remains the most effective way to use it: read a section, close the file, and reproduce the idioms from memory.
 
-Its sections map onto the chapters of this book:
+Its sections correspond to the chapters of this book:
 
 - reference levels and iterator closures: chapters 1 and 3
 - `Option` and `Result` combinators: chapter 1

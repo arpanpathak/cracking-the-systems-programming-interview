@@ -14,32 +14,38 @@ This chapter covers
 
 </div>
 
-The caches of chapter 13 serve one thread at a time. This chapter asks what happens when many threads, or many
-machines, share one set of keys.
+The LRU caches developed in Chapter 13 serve a single thread at a time. When multiple threads within one process
+or multiple servers across a cluster share a key space, coordination becomes the primary bottleneck.
 
-Both halves of the chapter use the same idea. You split the keys into groups by their hash, and each group is
-handled separately. A group of keys handled separately is called a **shard**.
-
-Section 14.1 splits a map inside one program, so threads that use different keys do not wait for each other.
-Section 14.2 splits keys across machines, so that adding or removing a machine moves as few keys as possible.
+Both halves of this chapter apply the same partitioning principle: keys are divided by hash into independent
+groups, each called a **shard**. Section 14.1 partitions an in-process map so threads accessing distinct keys do
+not block one another; Section 14.2 partitions keys across servers so that adding or removing a node relocates
+as few keys as possible.
 
 ## 14.1 A map split into shards
 
-Section 8.6 showed how to share a value between threads: wrap it in a `Mutex`, and share the `Mutex` with an
-`Arc`. A thread calls `lock()` before it touches the value. While one thread holds the lock, every other thread
-that calls `lock()` waits.
+As established in Section 8.6, sharing mutable state across threads uses a `Mutex` wrapped in an `Arc`. While
+one thread holds the lock, every other thread calling `lock()` blocks until the guard is released.
 
-A single `Mutex<HashMap<K, V>>` is safe, but it has a cost. If four threads use the map at once, three of them
-wait, even when each thread wants a different key. Waiting for a lock that another thread holds is called
-**lock contention**.
+A single `Mutex<HashMap<K, V>>` is memory-safe, yet it serializes concurrent access: if four threads query the
+map simultaneously, three must wait even when each targets a distinct key. Blocking on a lock held by another
+thread is called **lock contention**.
 
-The fix is to give the map several locks. Split it into, say, eight smaller maps, each with its own `Mutex`
-(figure 14.1). A key always goes to the same small map. Two threads then wait for each other only when their
-keys land in the same shard.
+Partitioning the map across multiple independent locks reduces contention. Splitting the key space into eight
+smaller maps, each guarded by its own `Mutex` (Figure 14.1), ensures that two threads contend only when their
+keys hash to the same shard.
 
 <figure>
 <img src="figures/shard-locks.svg" alt="Left: one Mutex HashMap; thread 1 holds the lock and threads 2 to 4 wait. Right: eight shards; threads 1, 2, and 3 work in shards 0, 3, and 6 at the same time, and the other shards are idle.">
 <figcaption><b>Figure 14.1</b> One lock for everything, against one lock per shard.</figcaption>
+</figure>
+
+Animation 14.1 sends one key and value from each thread into the map. Under the single lock the pairs go in one
+at a time and stay. Under eight shards they go in together, each into the shard that owns its key.
+
+<figure class="anim">
+<video class="motion" src="figures/ch14-shard-lock.mp4" autoplay loop muted playsinline preload="metadata" aria-label="Four threads, A to D, each holding a key and value pair. Under one Mutex the pairs k1 to 11, k2 to 12, k3 to 13, and k4 to 14 enter the map one at a time and stay there, over four time units. Under eight shards the same four pairs enter shards 1, 3, 6, and 4 at the same time, in one time unit. In the last part every key hashes to shard 0, so all four pairs queue into that one shard." data-chapters="[[0.0, &quot;one lock&quot;], [22.77, &quot;eight shards&quot;], [41.25, &quot;skew&quot;]]"><img src="figures/ch14-shard-lock.gif" alt="Four threads, A to D, each holding a key and value pair. Under one Mutex the pairs k1 to 11, k2 to 12, k3 to 13, and k4 to 14 enter the map one at a time and stay there, over four time units. Under eight shards the same four pairs enter shards 1, 3, 6, and 4 at the same time, in one time unit. In the last part every key hashes to shard 0, so all four pairs queue into that one shard."></video>
+<figcaption><b>Animation 14.1</b> One lock serializes the four inserts; eight shards take them at once. A hash that sends every key to shard 0 brings the queue back.</figcaption>
 </figure>
 
 ### 14.1.1 The type
@@ -111,6 +117,45 @@ same shard. A different cache, or the same program run again, would place the ke
 `HashMap` uses `RandomState` for the same reason. Random keys stop an attacker from choosing inputs that all hash
 to the same place and slow the map down.
 
+<div class="callout warning" markdown="1">
+
+**WARNING:** the mask reads the low three bits of the hash and nothing else. A hash whose low bits repeat sends
+every key to one shard. That shard then carries the traffic of the whole map, its lock serializes every call, and
+the seven other shards sit idle. The work looks sharded and behaves like the single map of section 14.1.
+
+Three short hashes show how this happens. Each one takes the low three bits at the end, the mask for eight shards.
+
+```rust
+// 1. The bytes added up. Every order of the same bytes gives one number.
+fn hash_sum(bytes: &[u8]) -> u64 {
+    bytes.iter().map(|b| u64::from(*b)).sum()
+}
+
+// 2. The first byte only. Every key with the same first letter collides.
+fn hash_first(bytes: &[u8]) -> u64 {
+    u64::from(bytes.first().copied().unwrap_or(0))
+}
+
+// 3. The key itself, for a numeric key. The low bits repeat every eight.
+fn hash_identity(key: u64) -> u64 {
+    key
+}
+```
+
+The keys `"ab"` and `"ba"` hold the same two bytes, so `hash_sum` returns 195 for both. The mask computes
+195 & 7 = 3, so both keys land in shard 3. The keys `"abc"` and `"cab"` both return 294, so both land in shard 6.
+Under `hash_first`, the keys `"user-1"`, `"user-2"`, and `"user-3"` all begin with `u`, which is 117, so all
+three land in shard 5. Under `hash_identity`, the keys 1000, 1008, 1016, and 1024 are all multiples of 8. Their
+low three bits are 0, so all four land in shard 0.
+
+The repair is a hash that mixes the whole key, not a piece of it. SipHash, which `RandomState` uses, flips about
+half of the output bits when one input bit changes. Keys that arrive from outside, such as user names or header
+values, are chosen by whoever sends them. A weak hash lets that caller fill one shard on purpose, and one busy
+shard can take the whole service down. Use a reviewed hash, and keep the hash seed secret where the input is
+untrusted. Animation 14.1 ends on this case: every key gives index 0, and the four pairs queue on one shard.
+
+</div>
+
 ### 14.1.3 Each method locks one shard
 
 A single-key operation touches one shard only. It hashes the key, locks that shard, and leaves every other shard free for other threads.
@@ -146,8 +191,8 @@ allow it to escape.
 
 ### 14.1.4 Reading under the lock with a closure
 
-Cloning a large value only to read one field of it wastes work. `with` avoids the clone. You pass it a closure,
-and `with` runs the closure while it holds the lock:
+Cloning a large value solely to inspect one field wastes allocations and memory bandwidth. The `with` method
+avoids cloning by accepting a closure and executing it while holding the shard lock:
 
 ```rust
 pub fn with<R>(&self, key: &K, inspect: impl FnOnce(Option<&V>) -> R) -> R
@@ -222,17 +267,17 @@ test result: ok. 4 passed; 0 failed; 0 ignored; 0 measured; 133 filtered out
 
 ## 14.2 Spreading keys across machines
 
-Now move from threads to machines. Suppose a cache is spread over several servers, and each key must live on
-exactly one of them. Every client must compute the same server for the same key, with no central directory to
-ask.
+The same partitioning problem extends from threads within one process to servers across a cluster. When a cache
+is distributed across multiple machines, every client must independently map any given key to the same server
+without consulting a central directory.
 
 ### 14.2.1 The problem with `hash % N`
 
-The obvious rule is `hash(key) % N`, where N is the number of servers. It spreads keys evenly and needs no
-storage. It breaks down when N changes.
+The simplest mapping rule is `hash(key) % N`, where *N* is the number of servers. Although it distributes keys
+evenly with zero metadata overhead, it breaks down whenever *N* changes.
 
-Figure 14.3 shows keys with hashes 0 to 11 when a fourth server joins three others. A key stays in place only if
-`hash % 3` equals `hash % 4`.
+The remapping of hashes 0 through 11 when a fourth server joins three existing servers is illustrated in
+Figure 14.3; a key remains on its server only when `hash % 3` equals `hash % 4`.
 
 <figure>
 <img src="figures/shard-modulo.svg" alt="A table of hashes 0 to 11 with their values modulo 3 and modulo 4. Only hashes 0, 1, and 2 give the same result; the other nine move.">
@@ -262,17 +307,25 @@ server, the shares even out (figure 14.4).
 <figcaption><b>Figure 14.4</b> Three nodes with four virtual nodes each. The key belongs to the next point clockwise, which belongs to node b.</figcaption>
 </figure>
 
-Figure 14.5 shows the ring cut open and laid flat, before and after a third node joins.
+Unrolling the ring into a linear axis clarifies how adding a third node reassigns key ranges (Figure 14.5).
 
 <figure>
 <img src="figures/ring-add.svg" alt="Before: points a, b, a, b, a on a line, with the keys in each gap going to the next point to the right. After: two c points are added. Only the keys between an a point and a new c point move, from b to c.">
 <figcaption><b>Figure 14.5</b> Adding node c. The keys that move all move to c. None moves between a and b.</figcaption>
 </figure>
 
+Animation 14.2 follows the join through the whole system. It shows the ring, the keys each node holds, the key
+that moves, and the clients that learn about it.
+
 <figure class="anim">
-<video class="motion" src="figures/ch14-ring.mp4" autoplay loop muted playsinline preload="metadata" aria-label="A ring from 0 to 99 with nodes a at 25, b at 60, and d at 90, and five keys colored by the node that owns them. Key 95 wraps past 99 to a. Node c joins at 45, and only key 30 changes owner, from b to c. A table then compares hash % 3 with hash % 4 for the same keys: four of the five change server." data-chapters="[[0.0, &quot;ring&quot;], [18.24, &quot;add c&quot;], [31.74, &quot;hash % N&quot;]]"><img src="figures/ch14-ring.gif" alt="A ring from 0 to 99 with nodes a at 25, b at 60, and d at 90, and five keys colored by the node that owns them. Key 95 wraps past 99 to a. Node c joins at 45, and only key 30 changes owner, from b to c. A table then compares hash % 3 with hash % 4 for the same keys: four of the five change server."></video>
-<figcaption><b>Animation 14.1</b> A key belongs to the first node clockwise from it. Adding <code>c</code> moves only the keys in the arc it takes over. With <code>hash % N</code>, going from 3 to 4 servers moves 4 of the same 5 keys.</figcaption>
+<video class="motion" src="figures/ch14-ring.mp4" autoplay loop muted playsinline preload="metadata" aria-label="A ring of 100 points with node a at 20 and node b at 70, and the keys k10, k30, k50, k85, and k95 drawn inside it. Node a holds k10, k85, and k95, and node b holds k30 and k50. Node c joins at point 45 and takes over the arc from 20 to 45, so k30 moves from node b to node c. An event carries the new ring to both clients, which add c to their copy. In the last part client 2 keeps the old copy, sends k30 to node b, and misses." data-chapters="[[0.0, &quot;the ring&quot;], [16.5, &quot;c joins&quot;], [24.26, &quot;keys move&quot;], [41.06, &quot;clients update&quot;], [52.82, &quot;stale ring&quot;]]"><img src="figures/ch14-ring.gif" alt="A ring of 100 points with node a at 20 and node b at 70, and the keys k10, k30, k50, k85, and k95 drawn inside it. Node a holds k10, k85, and k95, and node b holds k30 and k50. Node c joins at point 45 and takes over the arc from 20 to 45, so k30 moves from node b to node c. An event carries the new ring to both clients, which add c to their copy. In the last part client 2 keeps the old copy, sends k30 to node b, and misses."></video>
+<figcaption><b>Animation 14.2</b> Each node holds the keys it owns, and each client holds a copy of the ring. Adding <code>c</code> moves one key from <code>b</code> to <code>c</code>. An event carries the new ring to every client; a client that misses it asks the wrong node.</figcaption>
 </figure>
+
+Each node keeps the keys it owns. A join moves the keys in the new arc from the old owner to the new one.
+Every client also keeps a `ConsistentHash` of its own and computes the owner locally, so no lookup needs a central
+directory. When a node joins or leaves, each client has to learn the new ring. Until it does, it sends keys to the
+old owner. A client that still points `k30` at node b asks a node that has given that key up.
 
 With n servers, a new server takes over about 1/(n + 1) of the keys. Going from 3 servers to 4 moves about 25% of
 the keys, where `hash % N` moved 75%.
@@ -401,7 +454,8 @@ test result: ok. 5 passed; 0 failed; 0 ignored; 0 measured; 132 filtered out
 - With a power-of-two shard count, `hash & (count - 1)` picks the shard with one AND instruction.
 - A value inside a `Mutex` can leave the lock only as a clone. A closure passed to `with` can read the value in
   place while the lock is held.
-- Operations over all shards, such as `len`, lock one shard at a time and are not a single snapshot.
+- Operations over all shards, such as `len`, lock one shard at a time and therefore do not represent an atomic
+  point-in-time snapshot.
 - `hash % N` moves most keys when N changes. Consistent hashing moves only the keys the new server takes over,
   about 1/(n + 1) of them.
 - Virtual nodes even out each server's share of the ring. `Arc<str>` lets all of a server's entries share one
@@ -410,8 +464,8 @@ test result: ok. 5 passed; 0 failed; 0 ignored; 0 measured; 132 filtered out
 
 </div>
 
-Chapter 15 looks below the data structures, at how the CPU caches memory and how the operating system hands it
-out.
+In Chapter 15, we move below the data-structure layer to examine CPU caches, memory layout, and operating-system
+primitives.
 
 ## Exercises
 

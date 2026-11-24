@@ -16,65 +16,61 @@ This chapter covers
 
 </div>
 
-Chapter 20's echo server gave every client a thread, and chapter 21 parsed HTTP on top of it. That design works for tens or hundreds of clients. It stops working when a program holds thousands of mostly idle connections.
+The echo server in Chapter 20 assigns a dedicated OS thread to each client, and the HTTP server from Chapter 21 extends that model directly. While a thread-per-connection design handles tens or hundreds of concurrent clients comfortably, it breaks down when a process must maintain thousands of mostly idle connections.
 
-This chapter builds the runtime that replaces one thread per connection with one thread and many waiting tasks. It starts at the bottom, with the single method a `Future` has, and works up to a client on Tokio.
+In this chapter, we construct an asynchronous runtime that replaces one thread per connection with a single thread multiplexing many suspended tasks. Starting from the single method defined by the `Future` trait, we build upward to an asynchronous HTTP client running on Tokio.
 
 ## 22.1 Why a thread per connection does not scale
 
-A spawned thread in Rust is given a stack of 2 MiB by default. The stack stays reserved for as long as the thread lives, including all the time the thread spends parked in `read`. Ten thousand idle connections held as threads reserve about 20 GB of address space before any work happens.
+A spawned OS thread in Rust reserves a 2 MiB stack by default, and that reservation persists for the thread's entire lifetime, including time spent blocked in `read`. Holding ten thousand idle connections as separate threads reserves roughly 20 GB of virtual address space before any application work occurs.
 
-The alternative is to keep one thread and represent each connection as a **future**. A future is a value that may not have finished yet. While it waits, it is not running on a thread. It is a small object that records where it stopped and what it was doing.
+An alternative model keeps a single OS thread and represents each connection as a **future**: a state object representing an in-progress computation. While awaiting I/O, a suspended future does not occupy a thread stack; it stores only the local state needed to resume from its suspension point.
 
-A **task** is a future a runtime has taken responsibility for. The runtime will poll the future again when there is a reason to.
+A **task** is a future managed by a runtime, which schedules and polls the future whenever progress becomes possible.
 
-A suspended future holds only the values alive across its pause points. An idle connection can be a few hundred bytes instead of two megabytes. Ten thousand of them fit in a few megabytes rather than tens of gigabytes. Figure 22.1 contrasts the two arrangements.
+Because a suspended future retains only values live across its suspension points, an idle connection typically occupies a few hundred bytes rather than two megabytes. Ten thousand idle connections therefore fit in a few megabytes instead of tens of gigabytes, as contrasted in Figure 22.1.
 
 <figure>
 <img src="figures/ch22-thread-vs-task.svg" alt="On the left, one thread per connection, each thread reserving a 2 MiB stack. On the right, one worker thread holding thousands of small task state machines.">
 <figcaption><b>Figure 22.1</b> A parked thread keeps its stack. A parked future keeps only the values it needs to resume.</figcaption>
 </figure>
 
-The cost of this saving is that waiting has to be written as a state machine. `async` and `.await` are the notation that lets the state machine still look like ordinary code.
-
-You can now work out what a thread-per-connection design costs, and name what a future stores instead.
+The trade-off for this memory efficiency is that waiting must be expressed as an explicit state machine. Rust's `async` and `.await` syntax generates that state machine automatically while preserving sequential control flow.
 
 ## 22.2 The contract
 
-The chapter starts with the one method a `Future` has. A type that implements `Future` answers a single question: has the work finished?
+At the foundation of asynchronous Rust lies the single method of the `Future` trait, which answers whether a computation has finished:
 
 ```rust
 fn poll(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output>;
 ```
 
-`poll` returns `Poll::Ready(value)` when the work is done. It returns `Poll::Pending` when the work is not finished yet.
+`poll` returns `Poll::Ready(value)` once the computation finishes, or `Poll::Pending` when it cannot proceed yet.
 
-`Pending` carries an obligation. Before returning it, the future must arrange for `cx.waker()` to be called once progress is possible. The waker is a handle the executor gives to the future. Calling it tells the executor that this task should be polled again.
+Returning `Pending` carries a strict obligation: before returning, the future must arrange for `cx.waker()` to be invoked once progress becomes possible. The waker is a handle supplied by the executor; calling it notifies the executor that the task is ready to be polled again.
 
-The executor has the matching obligation. It polls the task again after a wake. Until a wake arrives it does not poll the task, and it does not spin. Figure 22.2 draws both sides.
+The executor upholds the reciprocal obligation by polling the task again after receiving a wake notification, while remaining idle rather than busy-spinning in the interim. Both halves of this contract are illustrated in Figure 22.2.
 
 <figure>
 <img src="figures/ch22-contract.svg" alt="The executor polls the future. Ready returns the value. Pending requires the future to arm the waker; the executor parks, the waker fires, and the executor polls again. A dashed branch shows a dropped waker, where the task never runs again.">
 <figcaption><b>Figure 22.2</b> The poll contract. A dropped waker is the one branch with no error and no panic.</figcaption>
 </figure>
 
-Two rules follow from the contract. Polling a future that is not ready is always safe: it returns `Pending` again, so a spurious wake costs one wasted poll. Forgetting to arrange a wake is not safe: the task returns `Pending`, nothing calls its waker, and the task never runs again.
+Two invariants follow directly from this contract. Polling a future that is not yet ready is always safe, because it returns `Pending` again and costs only one redundant poll. Failing to register a wake, however, breaks liveness: the task returns `Pending`, nothing invokes its waker, and the task never runs again.
 
 <div class="callout warning" markdown="1">
 
-**WARNING** The second failure has no symptom. There is no panic, no error, and no CPU use. One task stops making progress while the rest of the program carries on. When an async program hangs for no visible reason, look first for a waker that was dropped instead of called.
+**WARNING** A dropped waker produces no panic, no error, and no CPU activity. The affected task stalls indefinitely while the rest of the program continues normally. When an asynchronous program hangs without visible error, inspect first for a waker that was dropped instead of invoked.
 
 </div>
 
-One part of the signature is explained in section 22.6: `poll` takes `Pin<&mut Self>`, not `&mut self`. For now, read it as a promise that the future will not move in memory between polls.
-
-You can now state what each side of the contract promises, and say which broken promise shows up as a hang.
+The receiver type `Pin<&mut Self>` (rather than `&mut self`) is examined in Section 22.6; for now, treat it as a guarantee that the future will not relocate in memory between polls.
 
 ## 22.3 The smallest executor
 
-`.await` does not call the operating system. Something has to call `poll` and decide what a `Pending` result means. That something is an **executor**.
+Because `.await` does not invoke the operating system directly, a runtime component must call `poll` and act on `Poll::Pending`. That component is an **executor**.
 
-The smallest useful executor drives one future on the current thread. When the future is not ready, it parks the thread rather than polling again. Listing 22.1 is the whole of it.
+The minimal useful executor drives a single future on the current thread, parking the thread instead of busy-waiting whenever the future returns `Pending`. Listing 22.1 presents the complete implementation.
 
 <p class="listing"><b>Listing 22.1</b> <code>block_on</code> and its waker (lines 36 to 61). <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/problems/async_mini.rs">src/problems/async_mini.rs</a></p>
 
@@ -99,11 +95,9 @@ The smallest useful executor drives one future on the current thread. When the f
 <figcaption><b>Animation 22.1</b> <code>block_on</code> driving a future that waits on a timer, the <code>Delay</code> of section 22.4.2, with the line each thread is running. In the second run the waker is never stored, and the executor never wakes.</figcaption>
 </figure>
 
-You can now read `block_on` line by line and explain why an idle future costs no CPU.
-
 ## 22.4 Two futures written by hand
 
-Almost every future has one of two shapes. The first re-arms itself and asks to be polled again. The second waits on an event outside the executor, and keeps the waker of whoever is waiting for it.
+Almost every leaf future follows one of two patterns: either it immediately re-arms itself to yield control, or it waits on an external event and stores the caller's waker until that event completes.
 
 ### 22.4.1 A future that yields to itself
 
@@ -139,7 +133,7 @@ Its state is a `ready` flag and an optional stored `Waker`, shared with a backgr
 {{#include ../../rust-interview-lab/src/problems/async_mini.rs:139:154}}
 ```
 
-The background thread sleeps, sets `ready`, takes the waker out of the state, releases the lock, and calls `wake()`. Figure 22.3 shows the exchange.
+The background thread sleeps for the requested duration, sets `ready` to `true`, extracts the stored waker, drops the lock, and invokes `wake()`. The full exchange between the executor and the timer thread is depicted in Figure 22.3.
 
 <figure>
 <img src="figures/ch22-poll-wake.svg" alt="The executor polls Delay, which stores the waker and returns Pending; the executor parks. The timer thread sleeps, sets ready, takes the waker, and wakes it, which unparks the executor, which polls again and gets Ready.">
@@ -148,9 +142,7 @@ The background thread sleeps, sets `ready`, takes the waker out of the state, re
 
 Two details make it correct. `poll` stores the waker on every `Pending`, not only the first. A task can be polled with a different waker each time. A runtime may move the task to another thread, and only the latest waker reaches its current owner. The timer thread wakes after dropping the lock, so the woken executor does not immediately block on a mutex the waker still held.
 
-A real runtime replaces one thread per timer with a single timer wheel. It replaces the thread per socket with the `epoll` loop from chapter 20. That loop's reactor keeps wakers by file descriptor, and wakes them when `epoll_wait` reports the descriptor ready.
-
-You can now write both shapes: a future that re-arms itself, and a future that keeps a waker for an outside event.
+A production runtime replaces one thread per timer with a single timer wheel, and replaces one thread per socket with the `epoll` reactor from Chapter 20, storing wakers keyed by file descriptor and waking them when `epoll_wait` reports readiness.
 
 ## 22.5 Waking is scheduling
 
@@ -226,15 +218,13 @@ task 3 completed after 3 yield(s)
 3 task(s) completed
 ```
 
-The tasks finish in the order 1, 2, 3 because each yield sends its task to the back of the queue. Each task takes a turn, as in the round-robin scheduler of chapter 15, with a yield as the end of a time slice.
-
-You can now follow a task from `spawn` to `Ready`, and say what `wake` does to the queue.
+The tasks complete in the order 1, 2, 3 because each yield pushes the active task to the back of the run queue. Each task receives one turn per round, mirroring the round-robin scheduler from Chapter 15 with each yield acting as the end of a time slice.
 
 ## 22.6 What `async` compiles to, and why `Pin`
 
-An `async` block or function is notation. The compiler turns it into an anonymous type that implements `Future`. That type is usually an enum with one variant per suspension point, and each variant holds the values alive across that point.
+An `async` block or function is syntactic sugar that the compiler lowers into an anonymous type implementing `Future`. That generated type is structured as a state-machine enum with one variant per suspension point, where each variant stores the local variables that remain live across that point.
 
-The block used by the demo is:
+The block executed by the demo is:
 
 ```rust
 async {
@@ -244,7 +234,7 @@ async {
 }
 ```
 
-The compiler writes an enum with four states: `Start`, `Awaiting first`, `Awaiting second`, and `Done`. Figure 22.4 shows the states and the values each one keeps.
+The compiler synthesizes an enum with four states: `Start`, `Awaiting first`, `Awaiting second`, and `Done`. The resulting state transitions and the values retained in each state are illustrated in Figure 22.4.
 
 <figure>
 <img src="figures/ch22-state-machine.svg" alt="States: Start, Awaiting first (holds YieldTimes 1), Awaiting second (holds first and YieldTimes 2), and Done with first plus second. Pending loops back to the same state; an inner Ready moves to the next.">
@@ -260,7 +250,7 @@ Polling the block runs code until the next `.await` whose inner future returns `
 
 `first` survives the second `.await`, so it is stored in the `Awaiting second` state. The size of a future is fixed once its type is known. The compiler sizes each state to hold the largest set of locals that can live there.
 
-The remaining question is why `poll` takes `Pin<&mut Self>`. A state can hold a reference to another field of the same state machine. One example is a local buffer that is borrowed and still used across an `.await`. If the machine moved after the borrow was created, the reference would point at the old location. Figure 22.5 shows the two cases.
+The remaining question is why `poll` requires `Pin<&mut Self>`. A suspended state may hold a reference pointing into another field of the same state machine, such as a local buffer borrowed across an `.await`. If the state machine were moved in memory after creating that borrow, the internal reference would become a dangling pointer to the old address. Both the unpinned failure and the pinned solution are contrasted in Figure 22.5.
 
 <figure>
 <img src="figures/ch22-pin.svg" alt="Left: an unpinned future with a field r holding the address of its own buf. After a move, buf is at a new address but r still holds the old one, which is freed. Right: a pinned future stays at one address, so r stays valid.">
@@ -269,25 +259,23 @@ The remaining question is why `poll` takes `Pin<&mut Self>`. A state can hold a 
 
 `Pin<&mut Self>` is the promise that the value will not move after the first poll. That is why `block_on` calls `Box::pin` and why `MiniExecutor` stores `Pin<Box<...>>`. Both keep the future at one address for its whole life.
 
-Pinning is not a property of every type. A type whose values are safe to move even after a poll is `Unpin`, and for those types pinning adds no restriction. `YieldTimes` is `Unpin` because it holds two integers, so its `poll` can call `self.get_mut()` and work with `&mut Self` directly.
+Only self-referential or address-sensitive types require pinning. Any type whose values can relocate safely in memory after being polled implements the auto-trait `Unpin`, for which `Pin` imposes no restriction. `YieldTimes` is `Unpin` because it contains only two integers, allowing its `poll` implementation to call `self.get_mut()` and access `&mut Self` directly.
 
 <figure class="anim">
 <video class="motion" src="figures/ch22-pin.mp4" autoplay loop muted playsinline preload="metadata" aria-label="A future holds buf, the bytes p i n g, and r, a reference to buf that holds the address 0x1000. The future moves to 0x2000. Its bytes are copied, but r still holds 0x1000, so its arrow stretches back to the freed place, which now holds garbage. Next, Box::pin puts the future on the heap, marked with a pin. Moving the Pin&lt;Box&lt;_&gt;&gt; handle from one stack slot to another leaves the future where it is, so r stays valid. An attempt to swap the future out is rejected at compile time. Last, a YieldTimes value, which is Unpin, moves freely." data-chapters="[[0.0, &quot;a borrow&quot;], [5.7, &quot;a move&quot;], [25.5, &quot;pinned&quot;], [39.72, &quot;rejected&quot;], [46.38, &quot;Unpin&quot;]]"><img src="figures/ch22-pin.gif" alt="A future holds buf, the bytes p i n g, and r, a reference to buf that holds the address 0x1000. The future moves to 0x2000. Its bytes are copied, but r still holds 0x1000, so its arrow stretches back to the freed place, which now holds garbage. Next, Box::pin puts the future on the heap, marked with a pin. Moving the Pin&lt;Box&lt;_&gt;&gt; handle from one stack slot to another leaves the future where it is, so r stays valid. An attempt to swap the future out is rejected at compile time. Last, a YieldTimes value, which is Unpin, moves freely."></video>
 <figcaption><b>Animation 22.4</b> A move copies bytes and leaves a reference into the old copy behind. <code>Box::pin</code> keeps the future at one address, so moving the handle the program holds moves only a pointer.</figcaption>
 </figure>
 
-You can now read an `async` block as an enum of states, and explain what `Pin` stops the compiler from doing.
-
 ## 22.7 Two HTTP clients with caching, retries, and idempotency
 
-The last two programs put a runtime to work. Both send `POST /post` with a JSON body to `httpbin.org`, a public echo service, with the idempotency key `create-demo-001`. Both have the same three layers: a cache, a retry policy, and a transport. Figure 22.6 shows the stacks.
+The final two programs put a runtime to practical use. Both send `POST /post` with a JSON body and the idempotency key `create-demo-001` to `httpbin.org`, a public echo service, and both compose the same three layers: a cache, a retry policy, and a transport. Both client stacks are compared in Figure 22.6.
 
 <figure>
 <img src="figures/ch22-clients.svg" alt="Two stacks. Blocking client: idempotency cache, then retry policy, then a hand-built HTTP request over TcpStream. Async client: cache lookup, then a retry loop on 429 and 5xx with tokio sleep, then a reqwest client with a timeout and an Idempotency-Key header.">
 <figcaption><b>Figure 22.6</b> The same three layers in both clients: cache, retry, transport.</figcaption>
 </figure>
 
-Chapter 19 built retries and idempotency keys on their own. Here they meet a network call.
+In Chapter 19, retries and idempotency keys were developed in isolation; here they are integrated with live network requests.
 
 ### 22.7.1 A blocking client over `TcpStream`
 
@@ -358,7 +346,7 @@ the end. `split_once("\r\n\r\n")` drops the status line and the headers, and kee
 {{#include ../../rust-interview-lab/src/bin/fun_network_call.rs}}
 ```
 
-Two gaps separate this from a client you would ship, and both are visible in the code:
+Two omissions separate this implementation from a production client, and both are visible in the code:
 
 - The status code is never read. `send` returns whatever follows the first blank line. A `500` error page is returned as success, cached under the idempotency key, and never retried. Only transport errors reach the retry loop.
 - Everything is retried. A policy should ask the error, as `Retryable` does in chapter 19. Here a DNS failure for a misspelled host is retried three times.
@@ -436,7 +424,7 @@ this one waits.
 
 The asynchronous client has the opposite gap from the blocking one. It reads the status code, but a transport error from `send().await?` is not retried at all. The blocking client retries transport errors and never reads the status code. Merging the two means retrying both, with a policy that asks the error which kind it is.
 
-Neither client adds jitter, and neither honors `Retry-After`. Chapter 19 shows both in its delay policy.
+Neither client adds jitter, and neither honors `Retry-After`; both techniques are implemented in the delay policy from Chapter 19.
 
 ### 22.7.4 Where the merged client belongs
 
@@ -453,8 +441,8 @@ An async state machine can hold a reference into itself across an `.await`. Pinn
 **"Why must spawned futures be `Send` in Tokio?"**
 The multi-threaded runtime may resume a task on a different worker thread after any `.await`. Everything the task holds across an `.await` must therefore be safe to move between threads.
 
-**"Can you call blocking code inside async?"**
-Only briefly. A blocking call holds the worker thread, and every task scheduled on it waits. Use `tokio::task::spawn_blocking` for blocking work, and async versions of I/O and sleep.
+**"Can blocking code be called inside an async task?"**
+Only briefly. A blocking call holds the worker thread, stalling every other task scheduled on it. Offload blocking work with `tokio::task::spawn_blocking`, and use asynchronous equivalents for I/O and timers.
 
 **"Is a `std::sync::Mutex` allowed in async code?"**
 Yes, if the guard is dropped before the next `.await`. Holding it across an `.await` can block the worker or deadlock it. Use `tokio::sync::Mutex` when the lock must be held across an await.
@@ -475,7 +463,7 @@ Yes, if the guard is dropped before the next `.await`. Holding it across an `.aw
 
 </div>
 
-Chapter 23 goes below the system calls these chapters made. It maps a file into memory and watches the page faults that load it. Then it sends a file to a socket without copying it through the program.
+In Chapter 23, we move beneath standard `read` and `write` system calls to map a file directly into virtual memory, observe the page faults that populate it, and transmit a file over a socket without copying its payload through user space.
 
 ## Exercises
 

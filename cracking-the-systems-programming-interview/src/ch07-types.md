@@ -6,7 +6,7 @@
 
 This chapter covers
 
-- Traits: what they are, how to implement one, and what `#[derive]` writes for you
+- Traits: what they are, how to implement one, and what `#[derive]` generates automatically
 - A newtype: a struct around one number that can only hold valid values
 - Error types that say what went wrong, with `Display` and `std::error::Error`
 - Converting between types with `From` and `TryFrom`
@@ -15,39 +15,27 @@ This chapter covers
 
 </div>
 
-This chapter begins Part 3, on modeling data. So far your programs have used the types Rust provides:
-numbers, strings, vectors, and maps. In this chapter you design your own types, so that invalid values cannot
-be represented at all.
+Part 3 shifts focus to data modeling. Earlier chapters relied on standard Rust types such as integers, strings, vectors, and maps. In this chapter, we design custom domain types whose structure makes invalid states unrepresentable.
 
-The examples come from a small command-line tool that manages jobs on a remote computer. The jobs are called
-**workloads**. Each workload asks for a number of GPUs, which must be between 1 and 64. A GPU is a graphics processor,
-and servers also use GPUs for general computation. A workload moves through states such as pending,
-running, and terminated. The tool reads commands typed by a user, such as `create triton 4`, which asks for a
-workload named `triton` with 4 GPUs. That is all you need to know about the tool.
+The examples come from a command-line utility that manages compute jobs, called **workloads**, on a remote cluster. Each workload requests between 1 and 64 GPUs (graphics processors used on servers for general-purpose parallel computation) and transitions through lifecycle states such as pending, running, and terminated. The tool parses text commands such as `create triton 4`, which requests a workload named `triton` with 4 GPUs.
 
-Here is the problem this chapter solves. A GPU count arrives as text typed by a user. The program must reject
-`0`, `99`, and `many`, and it must do so before the count reaches the code that uses it. If each function
-checked the count itself, one forgotten check would let a bad value through. Instead, the program checks the
-count once, where the text enters, and stores the result in a type that can only hold valid counts. Every
-function that receives that type can rely on it without checking again.
+The core design problem is input validation. A GPU count arrives as raw user text, and the program must reject invalid inputs such as `0`, `99`, and `many` before that data reaches core business logic. Checking the count inside every downstream function is error-prone because a single omitted check lets an invalid value propagate. Instead, the program validates the count once at the system boundary and stores it in a dedicated type that can hold only valid counts. Every downstream function receiving that type relies on the invariant without repeating the check.
 
-The chapter builds this in order:
+The implementation progresses through seven stages:
 
-1. Section 7.1 explains traits, which the rest of the chapter implements.
-2. Section 7.2 builds the GPU count type.
-3. Section 7.3 gives it an error type.
-4. Section 7.4 adds the standard conversions.
-5. Section 7.5 builds an enum for commands and a parser for them.
-6. Section 7.6 models the workload's states and the moves between them.
-7. Section 7.7 models the errors a server can return.
+1. Section 7.1 covers traits, which the subsequent types implement.
+2. Section 7.2 defines the validated GPU count type.
+3. Section 7.3 defines a dedicated error type for rejected counts.
+4. Section 7.4 adds standard `From` and `TryFrom` conversions.
+5. Section 7.5 defines a command enum and its text parser.
+6. Section 7.6 models workload lifecycle states and valid transitions.
+7. Section 7.7 models structured server error responses.
 
 ## 7.1 Traits
 
-A **trait** is a set of methods that a type promises to provide. The standard library defines many traits.
-For example, the `Display` trait has one method, `fmt`, which writes a value as text for a person to read.
-`println!("{}", x)` works for any `x` whose type implements `Display`.
+A **trait** defines a set of methods that a type guarantees to provide. The standard library supplies many traits; for example, `Display` defines a single method, `fmt`, that formats a value as human-readable text. Any type implementing `Display` can be formatted with `println!("{}", x)`.
 
-You implement a trait for your type with an `impl` block that names the trait:
+A trait is implemented for a type via an `impl` block naming both the trait and the type:
 
 ```rust
 impl fmt::Display for GpuCountError {
@@ -57,10 +45,9 @@ impl fmt::Display for GpuCountError {
 }
 ```
 
-Some traits are so regular that the compiler can write them for you. `#[derive(Debug, Clone, PartialEq)]` placed above a struct asks the compiler to generate three traits.
-`Debug` prints with `{:?}`, `Clone` copies with `.clone()`, and `PartialEq` compares with `==`. The derived versions work field by field.
+For common traits with mechanical implementations, the compiler can generate the code automatically. Placing `#[derive(Debug, Clone, PartialEq)]` above a struct generates `Debug` (formatting with `{:?}`), `Clone` (duplicating with `.clone()`), and `PartialEq` (comparing with `==`), operating field by field.
 
-Table 7.1 lists the traits this chapter uses.
+Table 7.1 summarizes the traits used in this chapter.
 
 | Trait | What it gives you | How you get it |
 |---|---|---|
@@ -75,20 +62,16 @@ Table 7.1 lists the traits this chapter uses.
 
 ## 7.2 A GPU count that is always valid
 
-A **newtype** is a struct with one field, used to give a plain value a type of its own. Here the plain value
-is a `u32`, and the new type is `GpuCount`.
+A **newtype** is a single-field struct that wraps a primitive value in a distinct type. Here, a `GpuCount` wraps a `u32`.
 
-The trick is privacy. Fields in Rust are private by default. Code outside the module where the struct is defined cannot read or
-write them, and cannot build the struct with `GpuCount(0)`. The only way to get a
-`GpuCount` is through the functions the module offers. If those functions check the value, every
-`GpuCount` in the program is valid. Figure 7.1 shows the design.
+The enforcement mechanism is field privacy. Struct fields in Rust are private by default, so code outside the defining module cannot read or modify the inner field directly, nor can it construct `GpuCount(0)`. Callers can obtain a `GpuCount` exclusively through the module's public constructors. Because those constructors validate the range, every `GpuCount` instance in the program is guaranteed valid, as illustrated in Figure 7.1.
 
 <figure>
 <img src="figures/ch01-boundary.svg" alt="Untrusted inputs, a string and a u32, pass through a parse/try_from gate. Valid input becomes a Command containing a GpuCount, which flows to functions that need no checks. Invalid input becomes a typed error.">
 <figcaption><b>Figure 7.1</b> Checks happen once, at the gate. Inside, the types guarantee the values are valid.</figcaption>
 </figure>
 
-The module starts with a comment that lists its ideas:
+The module opens with a documentation comment summarizing its design principles:
 
 <p class="listing"><b>Listing 7.1</b> The module comment (lines 1 to 12). <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/problems/adt_idioms.rs">src/problems/adt_idioms.rs</a></p>
 
@@ -96,7 +79,7 @@ The module starts with a comment that lists its ideas:
 {{#include ../../rust-interview-lab/src/problems/adt_idioms.rs:1:12}}
 ```
 
-Here is the type:
+Listing 7.2 defines the `GpuCount` type:
 
 <p class="listing"><b>Listing 7.2</b> <code>GpuCount</code> (lines 14 to 36).</p>
 
@@ -104,21 +87,16 @@ Here is the type:
 {{#include ../../rust-interview-lab/src/problems/adt_idioms.rs:14:36}}
 ```
 
-- `pub struct GpuCount(u32);` is a **tuple struct**: a struct whose field has no name, only a position. The
-  struct is public, but its field is not.
-- `pub const MIN: u32 = 1;` and `MAX` are **associated constants**, constants that belong to the type. You
-  refer to them as `GpuCount::MIN`, or `Self::MIN` inside the `impl`.
-- `new` is the gate. `(Self::MIN..=Self::MAX)` is the range 1 to 64, including both ends, and `.contains(&value)`
-  checks the value. If it is in range, `new` returns `Ok(Self(value))`. If not, it returns
-  `Err(GpuCountError(value))`, an error that carries the rejected value. Section 7.3 shows that type.
-- `get` returns the number inside. It takes `self` by value, which is fine because `GpuCount` is `Copy`.
+- `pub struct GpuCount(u32);` is a **tuple struct**, a struct whose fields are addressed by position rather than name. The type itself is public, while its inner field remains private.
+- `pub const MIN: u32 = 1;` and `MAX` are **associated constants** belonging to the type, referenced as `GpuCount::MIN` externally or `Self::MIN` inside the `impl` block.
+- `new` acts as the validation gate. The inclusive range `(Self::MIN..=Self::MAX)` covers `1` through `64`, and `.contains(&value)` tests membership. Valid values yield `Ok(Self(value))`, whereas out-of-range values yield `Err(GpuCountError(value))`, carrying the rejected input (defined in Section 7.3).
+- `get` extracts the inner `u32`. Taking `self` by value is inexpensive because `GpuCount` derives `Copy`.
 
-The long `#[derive(...)]` line gives `GpuCount` the same abilities as the `u32` inside it. You can print it,
-copy it, compare it, sort it, and use it as a map key.
+The `#[derive(...)]` attribute equips `GpuCount` with the same standard capabilities as the underlying `u32`, allowing it to be formatted, copied, compared, ordered, and used as a hash map key.
 
 ## 7.3 An error that says what went wrong
 
-When `new` rejects a value, it returns a `GpuCountError`. Here is that type:
+When `new` rejects an out-of-range value, it returns a `GpuCountError` (Listing 7.3).
 
 <p class="listing"><b>Listing 7.3</b> The error type (lines 38 to 54).</p>
 
@@ -126,24 +104,18 @@ When `new` rejects a value, it returns a `GpuCountError`. Here is that type:
 {{#include ../../rust-interview-lab/src/problems/adt_idioms.rs:38:54}}
 ```
 
-`GpuCountError(pub u32)` keeps the rejected value. Its field is `pub`, so a caller can read which value was
-rejected.
+`GpuCountError(pub u32)` preserves the rejected value in a public field so callers can inspect the exact invalid input.
 
-The `Display` implementation writes the message a user sees. `write!` works like `format!`, but writes into
-the formatter. The message includes the value and the allowed range: `gpu count 0 is outside 1..=64`.
+The `Display` implementation formats a human-readable diagnostic message. Like `format!`, the `write!` macro formats arguments directly into the provided formatter, producing output such as `gpu count 0 is outside 1..=64`.
 
-`impl std::error::Error for GpuCountError {}` is empty. The `Error` trait's methods all have defaults, and it
-requires `Debug` and `Display`, which the type already has. Implementing it lets this error work with other
-error-handling code, such as `Box<dyn std::error::Error>`, which you will see in section 7.5.
+The `impl std::error::Error for GpuCountError {}` block has an empty body because every method on `Error` provides a default implementation, requiring only that the type implement `Debug` and `Display`. Implementing `std::error::Error` integrates `GpuCountError` with generic error-handling interfaces such as `Box<dyn std::error::Error>`, used in Section 7.5.
 
 ## 7.4 Converting with `From` and `TryFrom`
 
-The standard library has two traits for converting a value of one type into another:
+The standard library provides two traits for explicit type conversions:
 
-- `From<A> for B` is for conversions that always succeed. Implementing it gives you `B::from(a)`, and also
-  `a.into()` wherever a `B` is expected.
-- `TryFrom<A> for B` is for conversions that can fail. Its `try_from` returns a `Result`. Implementing it
-  gives you `B::try_from(a)` and `a.try_into()`.
+- `From<A> for B` models infallible conversions. Implementing it provides both `B::from(a)` and the reciprocal `a.into()` wherever a `B` is expected.
+- `TryFrom<A> for B` models fallible conversions, returning a `Result`. Implementing it provides both `B::try_from(a)` and `a.try_into()`.
 
 <p class="listing"><b>Listing 7.4</b> The two conversions (lines 56 to 68).</p>
 
@@ -151,16 +123,13 @@ The standard library has two traits for converting a value of one type into anot
 {{#include ../../rust-interview-lab/src/problems/adt_idioms.rs:56:68}}
 ```
 
-Going from `u32` to `GpuCount` can fail, so it is `TryFrom`. Its body calls `new`, so the check still lives
-in one place. `type Error = GpuCountError;` names the error type this conversion returns.
+Converting from `u32` to `GpuCount` can fail and therefore implements `TryFrom`. Its body delegates to `new` so the validation logic remains in one place, and `type Error = GpuCountError;` declares the associated error type.
 
-Going from `GpuCount` back to `u32` cannot fail, so it is `From`. The body returns the field, `count.0`.
+Converting from `GpuCount` back to `u32` is infallible and implements `From`, returning the inner field `count.0`.
 
 <div class="callout tip" markdown="1">
 
-**TIP:** Rust also has the `as` keyword, as in `x as u32`. `as` never reports failure: converting 300 to a
-`u8` with `as` quietly gives 44. Prefer `From` when a conversion cannot fail and `TryFrom` when it can, and
-keep `as` for cases where you want truncation.
+**TIP:** Rust also provides the `as` cast operator (such as `x as u32`), which never reports failure: casting `300` to `u8` with `as` wraps to `44` without warning. Prefer `From` for infallible conversions and `TryFrom` for fallible ones, reserving `as` for cases where intentional truncation or bit-level conversion is desired.
 
 </div>
 
@@ -168,8 +137,7 @@ keep `as` for cases where you want truncation.
 
 ### 7.5.1 Why an enum
 
-The tool accepts four commands. `list` takes no arguments. `get` and `delete` each take an ID. `create`
-takes a name and a GPU count. A first design might put all the possible fields in one struct:
+The CLI supports four commands: `list` takes no arguments, `get` and `delete` each take an identifier, and `create` takes a name and a GPU count. A struct-based design might collect all optional fields into a single type:
 
 ```rust
 struct Command {
@@ -180,10 +148,7 @@ struct Command {
 }
 ```
 
-This struct can hold a `get` without an ID, or a `list` with a GPU count. Every function that receives it
-has to check which fields make sense for the verb.
-
-An enum whose variants each carry their own data cannot hold those combinations:
+That struct permits invalid combinations, such as a `get` command without an identifier or a `list` command carrying a GPU count, forcing every downstream consumer to revalidate which fields apply to the verb. An enum whose variants carry variant-specific payloads eliminates those invalid states at compile time:
 
 <p class="listing"><b>Listing 7.5</b> The command enum (lines 70 to 77).</p>
 
@@ -191,10 +156,7 @@ An enum whose variants each carry their own data cannot hold those combinations:
 {{#include ../../rust-interview-lab/src/problems/adt_idioms.rs:70:77}}
 ```
 
-A `Create` always has a name and a valid `GpuCount`, because Rust will not build one without them. A `List`
-has no fields, because it needs none.
-
-In memory, every `Command` takes the same space, enough for its largest variant, as figure 7.2 shows.
+A `Create` variant is guaranteed to contain both a `name` and a validated `GpuCount`, because the compiler forbids constructing it otherwise, whereas `List` carries no fields. In memory, every `Command` value occupies the size of its largest variant, as illustrated in Figure 7.2.
 
 <figure>
 <img src="figures/enum-layout.svg" alt="Four rows of 32 bytes: List uses none, Get and Delete use 24 bytes for a String, Create uses 24 bytes for a String and 4 for the count">
@@ -203,7 +165,7 @@ In memory, every `Command` takes the same space, enough for its largest variant,
 
 ### 7.5.2 The parser's errors and helper
 
-Before the parser, here is what it returns when a line is wrong. Each way a line can be malformed gets its own error variant, so the caller learns exactly what failed.
+Before examining the parser itself, consider its error representation and helper function. Assigning each failure mode a distinct error variant allows callers to determine the exact cause of a malformed line.
 
 <p class="listing"><b>Listing 7.6</b> <code>CommandError</code> and <code>argument</code> (lines 119 to 148).</p>
 
@@ -211,19 +173,13 @@ Before the parser, here is what it returns when a line is wrong. Each way a line
 {{#include ../../rust-interview-lab/src/problems/adt_idioms.rs:119:148}}
 ```
 
-`CommandError` lists every way parsing can fail, and its `Display` writes a message for each. Because the
-errors are enum variants, a caller can `match` on them and react differently to each. A CLI could print usage
-help for `MissingArgument` and the allowed range for `InvalidGpuCount`. With a plain `String` error, the
-caller would have to read the message text to tell the cases apart.
+`CommandError` enumerates every parsing failure mode, and its `Display` implementation formats a message for each variant. Because errors are typed variants rather than opaque strings, callers can `match` on them directly, such as displaying usage help on `MissingArgument` or printing the valid range on `InvalidGpuCount`. With a plain `String` error, callers would have to parse the error text to distinguish failure cases.
 
-`argument` takes the next word from the iterator, or fails with the argument's name. Look at its first
-parameter, `&mut impl Iterator<Item = &'a str>`. It borrows the caller's iterator mutably, so that each call
-consumes one more word. The lifetime `'a`, which you met in chapter 4, says the returned `&str` points into
-the original line. So no text is copied until `parse` decides to keep it with `to_string()`.
+The helper `argument` extracts the next whitespace-delimited token from the iterator or fails with the missing parameter's name. Its first parameter, `&mut impl Iterator<Item = &'a str>`, mutably borrows the caller's iterator so each call consumes one token. The lifetime `'a` (introduced in Chapter 4) ties the returned `&str` to the input line, avoiding heap allocation until `parse` explicitly clones the string with `to_string()`.
 
 ### 7.5.3 Parsing a line of text
 
-Parsing turns one line of text into a `Command`, or into an error that says what was wrong with the line.
+Parsing translates a single line of text into either a validated `Command` or an error describing the syntax or domain violation.
 
 <p class="listing"><b>Listing 7.7</b> <code>Command::parse</code> and <code>verb</code> (lines 79 to 117).</p>
 
@@ -231,8 +187,7 @@ Parsing turns one line of text into a `Command`, or into an error that says what
 {{#include ../../rust-interview-lab/src/problems/adt_idioms.rs:79:117}}
 ```
 
-`parse` returns `Result<Self, CommandError>`: a command, or the reason the line could not be parsed. Trace
-`Command::parse("create triton 4")` step by step:
+The `parse` method returns `Result<Self, CommandError>`, producing either a validated command or the specific reason the line failed. Tracing `Command::parse("create triton 4")` step by step yields:
 
 | Step | Code | Result |
 |---|---|---|
@@ -245,27 +200,22 @@ Parsing turns one line of text into a `Command`, or into an error that says what
 | 7 | `GpuCount::new(value)` | `GpuCount(4)` |
 | 8 | `Ok(Self::Create { name, gpus })` | the finished command |
 
-Now try some bad inputs. An empty line fails at step 2, because there is no first word. `ok_or` turns the
-`None` into `Err(CommandError::Empty)`, and `?` returns it. The line `create triton many` fails at step 6,
-because `"many"` is not a number. The line `create triton 0` passes step 6 and fails at step 7.
+Malformed inputs fail at the exact stage where validation breaks down. An empty line fails at step 2 because no initial token exists; `ok_or` converts `None` into `Err(CommandError::Empty)`, and `?` returns it immediately. The input `create triton many` fails at step 6 because `"many"` cannot be parsed as an integer, whereas `create triton 0` passes integer parsing at step 6 and is rejected at step 7 by `GpuCount::new`.
 
-Animation 7.1 runs the good line and the three bad ones through the stages of the table.
+Animation 7.1 traces both the valid command and the three malformed inputs through these stages.
 
 <figure class="anim">
 <video class="motion" src="figures/ch07-parse-trace.mp4" autoplay loop muted playsinline preload="metadata" aria-label="Five stages in a row: split, verb, name, parse u32, and GpuCount::new. The line create triton 4 is split into three words; the verb is create, the name triton, the count parses as 4, and GpuCount::new accepts it, so parse returns Ok of a Create command. An empty line fails at the verb with Err of Empty. create triton many fails at parse u32 with InvalidGpuCount of many. create triton 0 parses as 0 and fails at GpuCount::new, because 0 is outside 1 to 64, with InvalidGpuCount of 0." data-chapters="[[0.0, &quot;valid&quot;], [21.42, &quot;empty&quot;], [29.82, &quot;not a number&quot;], [38.82, &quot;out of range&quot;]]"><img src="figures/ch07-parse-trace.gif" alt="Five stages in a row: split, verb, name, parse u32, and GpuCount::new. The line create triton 4 is split into three words; the verb is create, the name triton, the count parses as 4, and GpuCount::new accepts it, so parse returns Ok of a Create command. An empty line fails at the verb with Err of Empty. create triton many fails at parse u32 with InvalidGpuCount of many. create triton 0 parses as 0 and fails at GpuCount::new, because 0 is outside 1 to 64, with InvalidGpuCount of 0."></video>
 <figcaption><b>Animation 7.1</b> Each <code>?</code> either passes a value to the next stage or returns a typed error. A count of 0 gets past parsing and stops at the type's gate.</figcaption>
 </figure>
 
-Steps 6 and 7 can fail for different reasons, but both failures are reported the same way.
-`.map_err(|_| CommandError::InvalidGpuCount(raw.to_string()))` replaces whatever error came back with
-`InvalidGpuCount`, carrying the text the user typed. The user then sees their own input in the message.
+Although steps 6 and 7 fail for different underlying reasons, both map to the same domain error. Calling `.map_err(|_| CommandError::InvalidGpuCount(raw.to_string()))` converts either failure into `InvalidGpuCount`, preserving the original token so the diagnostic message echoes the user's input.
 
-`verb` goes the other way, from a command to its name. The patterns `Self::Get { .. }` match a variant and
-ignore its fields.
+The `verb` method performs the inverse mapping from a command variant to its static verb name. Patterns such as `Self::Get { .. }` match a variant while ignoring its payload fields.
 
 ### 7.5.4 Adding up without an index
 
-The file has one more small function:
+The module includes one additional utility function:
 
 <p class="listing"><b>Listing 7.8</b> <code>summarize</code> (lines 150 to 157).</p>
 
@@ -273,9 +223,7 @@ The file has one more small function:
 {{#include ../../rust-interview-lab/src/problems/adt_idioms.rs:150:157}}
 ```
 
-`fold` walks the slice once and carries a value along. Here the value is a pair, `(count, sum)`, starting at
-`(0, 0)`. For each element, the closure returns the new pair. `i64::from(*value)` widens each `i32` to `i64`.
-That conversion is a `From`, so it can never lose information.
+The `fold` combinator traverses the slice in a single pass while threading an accumulator `(count, sum)` initialized to `(0, 0)`. Widening each `i32` via `i64::from(*value)` uses an infallible `From` conversion, guaranteeing no loss of precision.
 
 ### 7.5.5 The complete file
 
@@ -285,12 +233,9 @@ That conversion is a `From`, so it can never lose information.
 {{#include ../../rust-interview-lab/src/problems/adt_idioms.rs}}
 ```
 
-Read the tests as a description of the behavior. `parses_each_command_variant` shows one valid line per
-variant. `rejects_bad_input_with_typed_errors` shows each failure, and compares the errors with `assert_eq!`.
-That comparison works because `CommandError` derives `PartialEq`. `newtype_rejects_out_of_range_values`
-tests both edges of the range, 1 and 64, and one step past each.
+The unit tests serve as an executable specification of the module. `parses_each_command_variant` verifies one valid input per variant, `rejects_bad_input_with_typed_errors` asserts exact error equality with `assert_eq!` (enabled by deriving `PartialEq` on `CommandError`), and `newtype_rejects_out_of_range_values` checks both boundary values (`1` and `64`) along with the adjacent out-of-range values.
 
-The tests run in parallel, so their order in the output can change from run to run:
+Because Cargo executes unit tests concurrently, their reporting order may vary across runs:
 
 ```text
 $ cargo test --lib adt_idioms
@@ -304,15 +249,11 @@ test problems::adt_idioms::tests::errors_render_a_reason ... ok
 test result: ok. 5 passed; 0 failed
 ```
 
-The command enum describes what a user asks for. The next section uses an enum to describe something that
-changes over time.
+Whereas `Command` models user requests, the next section applies enums to entities whose state evolves over time.
 
 ## 7.6 The states of a workload
 
-A workload is accepted (`Pending`), gets machines assigned (`Provisioning`), runs (`Running`), is shut down
-(`Terminating`), and ends (`Terminated`). Any of the active states can fail, and a failed workload can be
-tried again. A description like this, a set of states and the allowed moves between them, is called a
-**state machine**. Figure 7.3 draws it.
+A workload is accepted (`Pending`), receives compute resources (`Provisioning`), executes (`Running`), shuts down (`Terminating`), and completes (`Terminated`). Any active state may transition to `Failed`, and a failed workload may be retried. Modeling a finite set of states together with the permitted transitions between them defines a **state machine** (Figure 7.3).
 
 <figure>
 <img src="figures/ch01-state-machine.svg" alt="State diagram: Pending to Provisioning to Running to Terminating to Terminated, every live state can fail, and Failed can retry into Pending or Provisioning">
@@ -325,8 +266,7 @@ tried again. A description like this, a set of states and the allowed moves betw
 {{#include ../../rust-interview-lab/src/problems/state_machine.rs:1:18}}
 ```
 
-Each state is a variant with no data. Such an enum is stored as a single byte, and it derives `Copy`, so you
-pass states around by value.
+Each state is a unit variant carrying no payload. Rust represents this enum in a single byte and derives `Copy`, allowing states to be passed by value.
 
 <p class="listing"><b>Listing 7.11</b> The allowed moves (lines 20 to 56).</p>
 
@@ -334,23 +274,15 @@ pass states around by value.
 {{#include ../../rust-interview-lab/src/problems/state_machine.rs:20:56}}
 ```
 
-`can_transition_to` checks one move, from `self` to `next`. It matches on the pair `(self, next)`, so each
-pattern is one arrow in figure 7.3. Patterns joined with `|` share one arm: this is an **or-pattern**. The
-first arm lists the forward moves and the failure moves. The second lists the retries. The last arm, `_`,
-matches every other pair and returns an error.
+`can_transition_to` validates a single transition from `self` to `next` by matching on the tuple `(self, next)`, where each arm corresponds to edges in Figure 7.3. Joining patterns with `|` forms an **or-pattern**: the first arm enumerates all forward and failure transitions, the second enumerates retries, and the catch-all arm `_` rejects every other pair.
 
-That last arm decides what happens to moves nobody listed. With it, any move not written down is rejected.
-If someone adds a new state later, every move into or out of it is rejected until they list it. That is the
-safe default for a state machine.
+That final catch-all establishes a deny-by-default policy. If a new state is added later, all transitions into or out of it are rejected until explicitly permitted, which is the safest default for a state machine.
 
-`is_terminal` uses the `matches!` macro, which returns `true` when a value matches a pattern. `Failed` counts
-as terminal even though it can retry, because it holds no machines. `summary` returns a fixed message for
-each state. Its return type `&'static str` means the text lives for the whole program, because it is written
-into the program itself.
+`is_terminal` delegates to the `matches!` macro, returning `true` when the value matches the given pattern. `Failed` is classified as terminal despite permitting retries because it holds no active compute resources. Finally, `summary` returns a fixed description with type `&'static str`, indicating a string literal embedded in the binary that remains valid for the entire program lifetime.
 
 ## 7.7 Errors from a server
 
-The same file models the errors a server can send back. Here, different errors carry different information.
+The same module models structured errors returned by a remote server, where each failure category carries distinct metadata.
 
 <p class="listing"><b>Listing 7.12</b> <code>ApiError</code> and its methods (lines 58 to 91).</p>
 
@@ -358,22 +290,17 @@ The same file models the errors a server can send back. Here, different errors c
 {{#include ../../rust-interview-lab/src/problems/state_machine.rs:58:91}}
 ```
 
-A rate-limit error says how long to wait before trying again. A not-found error says which resource. A server
-error carries the HTTP status code and a message.
+A rate-limit error specifies the required backoff duration, a not-found error identifies the missing resource, and a server error carries both an HTTP status code and a diagnostic message.
 
-`is_retryable` answers a question every client asks after a failure: could trying again help? A rate limit
-will pass, and a server error in the 500s may be temporary, so both are retryable. A missing resource will
-still be missing. The whole rule is one pattern:
+The `is_retryable` method answers a standard client decision: whether retrying the request can succeed. Rate limits expire and HTTP `5xx` server errors are often transient, making both retryable, whereas a missing resource remains absent. A single pattern expresses this policy:
 
 ```rust
 Self::RateLimited { .. } | Self::Server { status: 500..=599, .. }
 ```
 
-`status: 500..=599` inside the struct pattern matches any status from 500 to 599. `..` ignores the other
-fields. Chapter 19 builds a retry loop around this method.
+Inside the struct pattern, `status: 500..=599` matches any HTTP 5xx status code while `..` ignores the remaining fields. In Chapter 19, a retry loop is built directly on top of this method.
 
-`user_message` turns each error into text for a person. `retry_after.as_millis()` converts the waiting time
-to milliseconds for the message.
+The `user_message` method formats each variant into a human-readable string, converting `retry_after` to milliseconds via `retry_after.as_millis()`.
 
 <p class="listing"><b>Listing 7.13</b> A small parser (lines 93 to 101).</p>
 
@@ -381,9 +308,7 @@ to milliseconds for the message.
 {{#include ../../rust-interview-lab/src/problems/state_machine.rs:93:101}}
 ```
 
-`parse_gpu_count` is a shorter version of the gate from section 7.2. It trims the text, handles the empty
-case with its own message, and converts the standard library's parse error into `ApiError::InvalidRequest`.
-`{raw:?}` prints the text with quotes, so an empty or odd input is visible in the message.
+The `parse_gpu_count` helper provides a compact variant of the validation gate from Section 7.2. It trims surrounding whitespace, handles empty strings explicitly, and maps the standard library's integer parse error into `ApiError::InvalidRequest`. Formatting with `{raw:?}` quotes the input so empty or whitespace-padded strings remain visible in the diagnostic message.
 
 <p class="listing"><b>Listing 7.14</b> The complete file, with its tests. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/problems/state_machine.rs">src/problems/state_machine.rs</a></p>
 
@@ -391,28 +316,26 @@ case with its own message, and converts the standard library's parse error into 
 {{#include ../../rust-interview-lab/src/problems/state_machine.rs}}
 ```
 
-The tests check an allowed move and two forbidden ones, the retry rule for three errors, and the parser.
+The unit tests verify an allowed transition, two disallowed transitions, the retry classification across three error variants, and the input parser.
 
 <div class="summary" markdown="1">
 
 ## Summary
 
-- A trait is a set of methods a type promises. You implement one with `impl Trait for Type`, and
-  `#[derive]` generates the standard ones.
+- A trait defines a set of methods a type provides, implemented manually with `impl Trait for Type` or generated via `#[derive]`.
 - A newtype with a private field and a checking constructor can only hold valid values, so the code that
   receives it needs no checks.
 - An error type with `Display` and `std::error::Error` tells the caller what went wrong, and works with `?`.
 - `From` converts when it cannot fail. `TryFrom` returns a `Result` when it can.
 - An enum whose variants carry their own data replaces a struct full of `Option` fields, and is as large as its
   largest variant.
-- A parser turns text into a typed value, and `map_err` turns low-level failures into your own errors.
+- A parser converts raw text into typed values, using `map_err` to translate low-level failures into domain-specific errors.
 - Matching on a pair of states describes a state machine, and a final `_` arm rejects every move not listed.
 - Error enums can carry data and methods such as `is_retryable`.
 
 </div>
 
-Every value in this chapter had exactly one owner. Chapter 8 covers the pointer types for data that needs
-several owners, or that must be shared between threads.
+Every value in this chapter had a single owner. In Chapter 8, we examine the smart pointer types designed for shared ownership and cross-thread synchronization.
 
 ## Exercises
 

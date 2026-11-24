@@ -15,33 +15,21 @@ This chapter covers
 
 </div>
 
-The connections in chapters 20 to 27 sent their bytes as they were. Every router between the two machines
-could read them, and could change them without either side noticing. **TLS**, Transport Layer Security,
-runs on top of TCP and fixes three things. The bytes are encrypted, so others cannot read them. Each record
-carries a tag, so a changed byte is detected. And the server proves who it is with a certificate, so the
-client knows it is not talking to an impostor.
+The TCP connections examined in chapters 20 through 27 transmitted plaintext bytes, leaving traffic exposed to any router along the path that might inspect or alter it without detection. **TLS** (Transport Layer Security) layers three guarantees on top of TCP: confidentiality through encryption, integrity through per-record authentication tags that detect modification, and server authentication through digital certificates that prevent impersonation.
 
-This chapter runs TLS with the `rustls` crate. The program, `tls_mtls`, makes its own certificate authority
-and certificates when it starts, runs five connections over loopback, and prints what each side reports.
+In this chapter, we configure TLS with the `rustls` crate. The companion program, `tls_mtls`, generates a local certificate authority and leaf certificates at startup, executes five connections over loopback, and reports the protocol behavior observed by each endpoint.
 
 ## 28.1 Certificates and trust
 
-TLS identifies a server with **public-key cryptography**. A key pair is two numbers: a private key that the
-owner keeps secret, and a public key that anyone may have. A **signature** made with the private key can be
-checked with the public key. Only the holder of the private key can make a signature that checks out.
+TLS establishes server identity through **public-key cryptography**. An asymmetric key pair consists of a private key kept secret by its owner and a public key distributed freely. A **digital signature** produced with the private key can be verified using the corresponding public key, and only the holder of the private key can produce a valid signature.
 
-A **certificate** is a signed statement: "this public key belongs to `localhost`, from this date to that
-date". The signer is a **certificate authority** (CA). A client keeps a **trust store**, a list of CA
-certificates it accepts. When a server presents its certificate, the client makes three checks (figure 28.1):
+A **certificate** is a signed assertion binding a public key to an identity and validity window (for example, that a given public key belongs to `localhost` between two dates). The issuing entity is a **certificate authority** (CA). Each client maintains a **trust store** listing the CA certificates it trusts. When a server presents its certificate, the client performs three verification checks (figure 28.1):
 
-1. **The signature.** The certificate is signed by a CA in the trust store, possibly through intermediate
-   certificates that the server also sends.
-2. **The dates.** The current time is inside the certificate's validity period.
-3. **The name.** One of the names in the certificate matches the name the client connected to.
+1. **Signature chain.** The certificate is signed by a CA in the trust store, either directly or through intermediate certificates supplied by the server.
+2. **Validity period.** The current time falls within the certificate's `not_before` and `not_after` bounds.
+3. **Host identity.** One of the subject alternative names in the certificate matches the host name requested by the client.
 
-A certificate is public, so anyone can present one. During the handshake, the server also signs data from
-that handshake with its private key. That signature proves the server holds the key that matches the
-certificate.
+Because certificates are public documents, presenting a certificate alone does not prove identity. During the handshake, the server also signs a transcript of the handshake messages with its private key, proving that it possesses the private key corresponding to the public key in the certificate.
 
 <figure>
 <img src="figures/ch28-trust.svg" alt="The lab CA, self-signed, signs a certificate for localhost holding the server's public key, and a certificate for billing holding the client's public key. The client's trust store holds the lab CA and checks the server certificate's signature, dates, and name. The server's trust store, used only for mutual TLS, holds the lab CA and checks the client certificate's signature and dates.">
@@ -60,10 +48,7 @@ for the server and one for the client:
 {{#include ../../rust-interview-lab/src/bin/tls_mtls.rs:11:89}}
 ```
 
-`IsCa::Ca` marks the first certificate as one that may sign others. `self_signed` signs it with its own key. A CA at the top of a chain vouches for itself. A client trusts it only if it is in the trust store.
-`CertificateParams::new` takes the names the certificate covers. `signed_by` signs the new certificate's
-public key with the CA's key. The private keys never leave the process. `roots` builds a trust store that
-holds only this CA.
+`IsCa::Ca` marks the root certificate as authorized to sign subordinate certificates, and `self_signed` signs it with its own key. A root CA sits at the top of the trust chain and vouches for itself; clients trust it strictly because it appears in their trust store. `CertificateParams::new` specifies the host names covered by a leaf certificate, and `signed_by` signs the leaf's public key with the CA's key. All private keys remain inside the process, and `roots` constructs a trust store containing only this local CA.
 
 ## 28.2 The TLS 1.3 handshake
 
@@ -182,13 +167,9 @@ The second and third scenes break one of the client's checks each:
   server: handshake failed: unexpected end of file
 ```
 
-In both cases the client stopped in step 3 of the handshake and closed the connection, so the server saw
-the stream end. The certificate was valid in both. The client rejected it because it named a different
-server, or because nothing in the trust store had signed it.
+In both failure cases, the client aborted the handshake at step 3 and closed the socket, causing the server to observe an unexpected EOF. Although the server's certificate was structurally valid in both scenarios, the client rejected it because it either failed to match the expected host name or lacked a signature chain to a trusted CA.
 
-These checks are the whole of TLS's protection against an impostor. Encryption to an unchecked server is
-encryption to whoever answered. `rustls` has no flag to turn the checks off. A program that wants to skip
-them must write its own `ServerCertVerifier`, under a module named `danger`.
+Certificate verification is the foundation of TLS's defense against impersonation: encrypting traffic to an unverified peer merely encrypts traffic to whichever party answered the connection. Accordingly, `rustls` provides no boolean flag to disable verification; bypassing it requires implementing a custom `ServerCertVerifier` explicitly gated under a `danger` module.
 
 ## 28.4 Mutual TLS
 
@@ -236,8 +217,7 @@ useful only until its certificate expires.
   the first request. Across regions that is 100 ms or more. **Session resumption** lets a client that has connected before skip the certificate exchange. A connection pool (chapter 29) avoids the handshake for most requests.
 - **CPU.** The key exchange and the signatures cost tens to hundreds of microseconds per handshake. The
   symmetric encryption of the data afterwards runs at gigabytes per second on modern CPUs.
-- **Copies.** `rustls` encrypts in user space, so a TLS server cannot use `sendfile` to send a file
-  without copying it, as section 23.3.2 explained.
+- **Copies.** `rustls` encrypts in user space, so a TLS server cannot use `sendfile` to transmit a file without copying it through user space, as discussed in section 23.3.2.
 
 ## 28.5 The complete program
 
@@ -315,7 +295,7 @@ certificates often replace revocation: the certificate is not renewed, and it ex
 
 </div>
 
-Chapter 29 builds that reuse: a client connection pool. It bounds the number of connections, takes each one back when its user is done, and drops connections idle for too long.
+In chapter 29, we implement that reuse with a bounded client connection pool that caps concurrent connections, reclaims them automatically when borrowers finish, and evicts connections that remain idle past a timeout.
 
 ## Exercises
 

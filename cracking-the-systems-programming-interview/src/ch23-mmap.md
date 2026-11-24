@@ -7,41 +7,29 @@
 This chapter covers
 
 - The page cache: where a file's bytes live in RAM, and the copy that `read` makes from it
-- `mmap`: a file's pages placed in your address space, loaded by page faults on first touch
+- `mmap`: a file's pages placed in a process's address space, loaded by page faults on first touch
 - Shared and private mappings, `msync`, and copy-on-write
 - What a mapping cannot report as an error, and when `read` is the better tool
-- Sending a file to a socket with `sendfile`, without passing its bytes through your process
+- Sending a file to a socket with `sendfile`, without passing its bytes through user space
 - Why TLS puts the bytes back into user space
 
 </div>
 
-Part 7 works at the boundary between your program and the kernel. Chapter 2 read files with `read`, and
-chapter 15 explained pages and page faults. This chapter joins the two. It maps a file into memory and
-watches the page faults that load it. Then it sends a file over a socket without copying its bytes into
-the program at all.
+Part 7 examines the boundary between user-space processes and the operating system kernel. Building on the `read` system call from Chapter 2 and the virtual memory mechanics from Chapter 15, this chapter maps a file directly into a process's address space, measures the page faults that populate the mapping, and transfers a file over a socket without copying its payload through user space.
 
-Two programs carry the chapter. `mmap_file` maps a 64-page file, counts the faults that two passes over it
-take, and writes through a shared and a private mapping. `zero_copy` sends a 256 MiB file over a loopback
-socket twice: once with a `read`/`write` loop, and once with `sendfile`.
+Two programs anchor the discussion. `mmap_file` maps a 64-page file, measures the minor page faults incurred across two traversal passes, and contrasts writes through shared and private mappings. `zero_copy` transfers a 256 MiB file over a loopback socket twice, comparing a conventional `read`/`write` loop against Linux `sendfile`.
 
 ## 23.1 Where a file's bytes live
 
-The kernel keeps recently used file data in RAM, in the **page cache**. The cache is organized by file and by page. Page 0 of a file holds bytes 0 to 4,095, and page 1 holds the next 4,096. Every way of
-reading a file goes through it. A `read` of a page that is not cached makes the kernel load the page from
-disk first. A later `read` of the same page, by any process, finds it in RAM.
+The kernel keeps recently accessed file data in RAM inside the **page cache**, organized by file and by page (page 0 holds bytes 0 to 4,095, page 1 holds the next 4,096, and so on). Every standard file read passes through this cache: reading an uncached page prompts the kernel to fetch it from disk first, while any subsequent read of the same page by any process hits RAM directly.
 
-The page cache belongs to the kernel, so a `read` cannot hand your program the cached page itself. It
-copies the requested bytes into a buffer your program owns. After `read(fd, &mut buffer)` returns, the file's
-bytes sit in RAM twice: once in the page cache, and once in `buffer`.
+Because the page cache resides in kernel memory, `read` cannot hand a user-space process direct access to the cached frame. Instead, it copies the requested bytes into a caller-owned buffer. Once `read(fd, &mut buffer)` returns, those bytes reside in RAM twice: once in the kernel page cache and once in `buffer`.
 
-A **memory mapping** removes the second copy. The system call `mmap` asks the kernel to make a range of a
-file part of your address space. The kernel reserves a range of virtual addresses and returns a pointer to
-its start. When the program reads from those addresses, the page table translates them to the page cache's
-own frames (figure 23.1). The program reads the file's bytes where the kernel keeps them.
+A **memory mapping** eliminates that second copy. The `mmap` system call maps a byte range of a file directly into the process's virtual address space, reserving virtual addresses and returning a pointer to the start of the region. When the process reads from those addresses, the page table translates them directly to the physical frames of the page cache (Figure 23.1), allowing the process to access the file in place.
 
 <figure>
 <img src="figures/ch23-read-vs-mmap.svg" alt="The disk feeds the kernel's page cache on first access. read copies from the page cache into a Vec in the process, a second copy. A mapping in the process is a set of page table entries that point at the page cache's frames.">
-<figcaption><b>Figure 23.1</b> <code>read</code> copies from the page cache into your buffer. A mapping points at the page cache's frames.</figcaption>
+<figcaption><b>Figure 23.1</b> <code>read</code> copies from the page cache into a user-space buffer. A mapping points at the page cache's frames.</figcaption>
 </figure>
 
 Figure 23.2 places the mapping in the process. It is one more region of the address space, beside the heap and
@@ -52,13 +40,9 @@ the stack. Its page table entries point at frames the kernel already holds for t
 <figcaption><b>Figure 23.2</b> A mapping is a region of virtual addresses. Its page table entries point into the page cache.</figcaption>
 </figure>
 
-`mmap` loads nothing when it returns. The page table entries for the range start empty. The first access
-to each page is a page fault, as in section 15.5. The kernel finds the file's page in the page cache, or
-reads it from disk if it is not there. Then it fills in the page table entry and restarts the instruction
-that faulted. A fault that finds the page already cached is a **minor fault**, and costs microseconds. A
-fault that has to read the disk is a **major fault**, and costs at least a disk access.
+`mmap` loads no data when it returns; the page table entries for the mapped range start empty. The first access to each page triggers a page fault (as described in Section 15.5), prompting the kernel to locate the page in the page cache or load it from disk, populate the page table entry, and restart the faulting instruction. A fault resolved from the page cache is a **minor fault** costing microseconds, whereas a fault requiring disk I/O is a **major fault** costing at least one storage read.
 
-Here is the plan for 64 pages:
+For a 64-page mapping, the expected fault behavior proceeds in three stages:
 
 | Step | What the kernel does | Faults |
 |---|---|---|
@@ -77,11 +61,7 @@ unmapped exactly once. That is the shape of an owning Rust type with a `Drop`:
 {{#include ../../rust-interview-lab/src/bin/mmap_file.rs:10:23}}
 ```
 
-`NonNull<u8>` is a raw pointer that is never null. It records that `Mapping` always holds a real address.
-Creating the mapping is one call to `mmap`. The `libc` crate declares each C function inside an
-`unsafe extern "C"` block, with C's types. `c_int` is a C `int`, `size_t` is an unsigned size, and `off_t` is a
-file offset. `*mut c_void` is a pointer to bytes of no particular type. Here is the declaration, with what
-each parameter means:
+`NonNull<u8>` is a non-null raw pointer, encoding the invariant that `Mapping` always holds a valid address. The `libc` crate declares C functions inside an `unsafe extern "C"` block using C types: `c_int` for C `int`, `size_t` for an unsigned size, `off_t` for a file offset, and `*mut c_void` for an untyped byte pointer. The declaration and parameter semantics of `mmap` are as follows:
 
 ```rust
 unsafe extern "C" {
@@ -256,46 +236,33 @@ and the file still starts with "HELLO"
 `fork` uses the same mechanism for a whole process. The child gets a copy of the parent's page tables with
 every writable page marked read-only. Neither process copies a page until one of them writes to it.
 
-### 23.2.1 What a mapping cannot tell you
+### 23.2.1 What a mapping cannot report
 
-A `read` that fails returns an error. An access through a mapping has no return value, so the kernel
-reports a failure with a signal:
+A failing `read` returns an error value directly. Because a memory access through a mapping has no return channel, the kernel reports failures asynchronously through a signal:
 
-- If another process truncates the file, the pages past the new end no longer exist. Touching one of them
-  raises `SIGBUS`, which kills the process unless it installs a handler.
-- If the disk returns an error while a major fault reads a page, the access also raises `SIGBUS`.
+- If another process truncates the file, the pages beyond the new end no longer exist; touching one raises `SIGBUS`, terminating the process unless a signal handler is installed.
+- If the storage device returns an I/O error during a major fault, the access likewise raises `SIGBUS`.
 
-There is also a rule that Rust's types cannot check. A `&[u8]` promises that the bytes do not change while
-the slice is alive. Through a `MAP_SHARED` mapping, another process can write the file at any moment, and
-the slice's bytes change under it. `Mapping::bytes` is sound only while no other process writes the file.
-The `memmap2` crate makes `Mmap::map` an `unsafe fn` for this reason: the caller promises that the file
-stays unchanged.
+Rust's type system also cannot enforce aliasing invariants across process boundaries. A `&[u8]` slice promises that its underlying bytes remain immutable for the lifetime of the borrow, yet another process can modify a `MAP_SHARED` file concurrently. `Mapping::bytes` is therefore sound only while no external process writes to the file, which is why the `memmap2` crate marks `Mmap::map` as an `unsafe fn` requiring the caller to uphold that guarantee.
 
 ### 23.2.2 When to map, and when to read
 
-A mapping saves the copy into a buffer, but it has costs of its own. Every first touch of a page is a fault,
-and each fault enters the kernel. When a mapping is removed, every CPU that may hold its translations in a TLB must drop them. The kernel interrupts those CPUs to make them do it.
+Although a mapping eliminates the copy into a user-space buffer, it introduces overhead of its own: every first touch incurs a page fault that traps into the kernel, and unmapping requires invalidating cached TLB entries across all CPUs via inter-processor interrupts.
 
 | Access pattern | Better tool | Reason |
 |---|---|---|
-| Read a file once, front to back | `read` into a reused buffer | readahead keeps the page cache ahead of you, and one buffer is cheap to copy into |
+| Read a file once, front to back | `read` into a reused buffer | readahead keeps the page cache ahead of the reader, and one buffer is cheap to copy into |
 | Random reads over a large file, repeated | `mmap` | each page faults once, then reads cost what memory reads cost |
 | Many processes reading the same large file | `mmap` (shared, read-only) | every process uses the page cache's single copy |
 | Files that other processes may truncate | `read` | a failed `read` returns an error instead of raising `SIGBUS` |
 
-Databases such as LMDB map their data files for the second and third reasons. Log readers and copy tools
-read sequentially, and use `read`.
+Databases such as LMDB map their data files for the second and third reasons, whereas log readers and file-copy utilities read sequentially and favor `read`.
 
 ## 23.3 Sending a file to a socket
 
-A static file server sends files to sockets. The simple version reads a chunk of the file into a buffer and
-writes the buffer to the socket, until the file ends. Figure 23.4 shows what each chunk costs. A `read` copies from the page cache to the buffer. A `write` copies from the buffer to the socket's send buffer. The program never looks at the bytes. They pass through it only because `read` and `write`
-are the calls it knows.
+A static file server transmits files over network sockets. A conventional implementation reads chunks of the file into a user-space buffer and writes each chunk to the socket until end-of-file. The copy path for each chunk is illustrated in Figure 23.4: `read` copies bytes from the page cache into the user-space buffer, and `write` copies them from that buffer into the socket's send buffer. Even though the server never inspects the payload, the bytes traverse user space solely because `read` and `write` require a user-space buffer.
 
-`sendfile` moves the bytes from a file to a socket inside the kernel. One call names both descriptors, an
-offset, and a count. The kernel passes the page cache's pages to the socket, and the bytes never enter the
-process. On network cards that can gather data from several places in memory, the kernel passes references
-to the pages instead of copying them. This is **zero-copy**: no copy of the payload by the CPU.
+`sendfile` transfers bytes from a file descriptor directly to a socket descriptor inside the kernel. A single system call specifies both descriptors, a file offset, and a byte count, allowing the kernel to pass page cache frames directly to the socket without entering user space. On network interface cards that support scatter-gather DMA, the kernel passes frame references rather than copying payload bytes, achieving **zero-copy** transmission with no CPU payload copies.
 
 <figure>
 <img src="figures/ch23-copies.svg" alt="Top: the read/write loop copies page cache to user buffer with read, user buffer to socket buffer with write, then DMA to the network card, two system calls per chunk. Bottom: sendfile passes the pages from the page cache to the socket buffer inside the kernel, then DMA to the network card, one system call.">
@@ -433,8 +400,8 @@ It lowers the number of faults for a mapping read in order. It does not change w
 
 ## Summary
 
-- The page cache holds files' pages in kernel memory. `read` copies from it into your buffer.
-- `mmap` maps a file's pages into your address space. Nothing loads until the first touch of a page faults.
+- The page cache holds files' pages in kernel memory; `read` copies from it into a user-space buffer.
+- `mmap` maps a file's pages into a process's address space, loading nothing until the first touch of each page triggers a page fault.
 - A minor fault fills the page table entry from the page cache. A major fault reads the disk first.
 - Writes through `MAP_SHARED` change the file's cached page. Writes through `MAP_PRIVATE` go to a private
   copy made on the first write. `msync` writes the dirty pages of a shared mapping now.
@@ -446,7 +413,7 @@ It lowers the number of faults for a mapping read in order. It does not change w
 
 </div>
 
-Chapter 24 looks at file descriptors themselves. It covers the table each process keeps, what `fork` and `exec` do to it, and how a shell joins two programs with a pipe.
+In Chapter 24, we examine file descriptors directly: the per-process descriptor table, the effects of `fork` and `exec` on open descriptors, and the mechanism a shell uses to connect two processes with a pipe.
 
 ## Exercises
 

@@ -3,6 +3,7 @@
 [Cover](cover.md)
 [About this book](about-this-book.md)
 [About the cover](about-the-cover.md)
+[Table of Contents](toc.md)
 
 # Part 1: First steps
 
