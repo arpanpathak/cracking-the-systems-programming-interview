@@ -424,6 +424,109 @@ Cache line false sharing on `head` and `tail`: because producer and consumer exe
 
 </div>
 
+### 19.4.6 Extending to Multiple Producers: The Wait-Free Vyukov MPSC Queue
+
+Many core operating system subsystems funnel work from multiple worker cores into a single serialized consumer: asynchronous logging sinks, actor mailboxes, I/O completion dispatchers, and kernel work queues. This fan-in topology is a **Multi-Producer, Single-Consumer (MPSC)** queue.
+
+As established in Section 19.4.5, the SPSC ring buffer depends on a single-writer invariant on `tail`. Allowing concurrent producers to update `tail` without arbitration introduces lost updates and slot overwrites. Conventional lock-free generalizations (such as Compare-And-Swap ring buffers or Michael-Scott linked queues) resolve producer contention with CAS retry loops, which degrade under high core counts as contending threads repeatedly invalidate one another's cache lines and retry failed comparisons. Furthermore, general lock-free linked structures typically require hazard pointers or epoch-based reclamation to prevent a consumer from deallocating a node still dereferenced by a stalled peer.
+
+Dmitry Vyukov's stub-node MPSC queue exploits the asymmetry of the single-consumer topology to bypass both hazards. Producers achieve **wait-free** progress (completing every enqueue in a bounded, constant number of instructions with zero retry loops), while the single consumer reclaims memory immediately without hazard pointers, version tags, or ABA mitigation.
+
+#### Architectural Contract and Ownership Topology
+
+The queue maintains an intrusive singly linked chain anchored by two pointers isolated on separate 64-byte cache lines:
+
+- **`head` (`std::atomic<Node*>` / `AtomicPtr<Node<T>>`):** Points to the most recently enqueued node. All producer threads contend exclusively on this pointer.
+- **`tail` (`Node*` / `AtomicPtr<Node<T>>`):** Points to the oldest node in the chain, designated the **stub** (sentinel) node. Its payload has either never been populated (at initialization) or has already been extracted by a prior `pop()`. Only the single consumer thread reads or mutates `tail`.
+
+At construction, the queue allocates one empty stub node and initializes both `head` and `tail` to point to it. Retaining a permanent stub node eliminates every empty-queue boundary case: the consumer never inspects or modifies `head`, and producers never touch `tail`. The two ends of the queue remain structurally decoupled across separate cache lines.
+
+The caller contract enforces two strict concurrency bounds: any number of threads may invoke `push()` concurrently, whereas at most one thread at a time may invoke `pop()`. Destruction (`~MpscQueue` / `Drop`) requires exclusive ownership after all producer and consumer threads have ceased accessing the queue.
+
+<figure>
+<img src="figures/ch19_mpsc_vyukov.svg" alt="Vyukov lock-free MPSC queue: wait-free producer swap, stub-node chain, and single-consumer reclamation."/>
+</figure>
+
+#### Decoupling Linearization from Publication
+
+The key insight of Vyukov's algorithm is that enqueuing a node splits into two distinct phases: **linearization** (establishing the node's exact position in the FIFO order) and **publication** (making the node visible to the consumer).
+
+1. **Wait-Free Linearization (`AcqRel` Exchange):** A producer allocates a heap `Node` holding `value` and executes `prev = head.exchange(node, acq_rel)` (`head.swap(node, AcqRel)` in Rust). Because atomic exchange unconditionally succeeds in one hardware bus transaction (`LOCK XCHG` on x86-64; `SWPAL` on ARM64), concurrent producers never retry or livelock. The hardware serializes every caller into a strict total order, granting each producer exclusive ownership of the unique predecessor link `prev->next`.
+2. **Release Publication (`Release` Store):** The producer writes `prev->next.store(node, release)`. This release barrier guarantees that both the allocation of `node` and the initialization of `node->data` become globally visible before the consumer can observe the non-null pointer in `prev->next` (compiles to a plain `MOV` under x86-64 TSO and an explicit `STLR` store-release on ARM64).
+
+#### The Transient Link Window
+
+Because linearization and publication are two separate instructions, a brief interval exists after `head.exchange(node)` completes and before `prev->next.store(node)` executes. During this **transient link window**, `head` already points to `node`, yet `prev->next` remains null.
+
+If the operating system scheduler preempts Producer 1 inside this window, the queue does not stall other producers. Producer 2 executes `head.exchange(node2)`, receives `prev == node1`, and stores `node1->next = node2`, forming a valid detached suffix behind `node1`. Meanwhile, if the consumer invokes `pop()` while `tail == prev`, it observes `tail->next == nullptr` and returns `None` immediately rather than spinning. The moment Producer 1 resumes and executes `prev->next.store(node1, release)`, the entire suffix reconnects atomically and drains in exact FIFO order.
+
+This behavior carries a subtle operational consequence: while producers remain active, observing `pop() == None` indicates that no linked element is currently visible at the stub, rather than proving that the queue is globally empty. Callers draining a live queue must therefore coordinate shutdown explicitly (for example, by joining all producer threads or sending an explicit sentinel message).
+
+#### Deterministic Reclamation and Rust `unsafe` Soundness
+
+On the consumer side, `pop()` executes without loops or read-modify-write instructions:
+
+1. Load `next = tail->next.load(acquire)` (`LDAR` on ARM64; plain `MOV` on x86-64). If `next` is null, return `None`.
+2. Advance `tail = next`, promoting `next` to become the new stub node.
+3. Reclaim the previous `tail` stub node.
+4. Extract and return the payload from `next->data`.
+
+Immediate deallocation of the old stub is sound without hazard pointers or ABA protection. Observing a non-null `tail->next` via an acquire load proves two facts simultaneously: the producer that received `prev == tail` from `head.exchange` has already executed its final write to `tail->next`, and `head` moved strictly past `tail` prior to that write so no future producer can ever obtain a pointer to `tail`. Zero threads retain any reference to the old stub, allowing immediate `delete` or `Box::from_raw` reclamation.
+
+In Rust, raw-pointer traversal and reclamation require `unsafe` blocks, each governed by explicit `// SAFETY:` invariants in Listing 19-6b. One aliasing subtlety deserves particular attention: when the consumer extracts `next.data`, another producer may concurrently hold `prev == next` and execute `(*prev).next.store(...)`. Constructing an exclusive `&mut Node<T>` reference over `next` would therefore trigger undefined behavior under Rust's aliasing model. Wrapping `data` in `UnsafeCell<Option<T>>` while keeping `next` as an `AtomicPtr<Node<T>>` allows the consumer to project strictly to the disjoint `data` field while producers touch only `next`, preserving full memory soundness alongside the acquire-release happens-before edge.
+
+**Table 19-2. Architectural trade-offs: lock-free SPSC ring buffer versus Vyukov MPSC queue.**
+
+| Dimension | Lock-Free SPSC Ring (Section 19.4) | Vyukov Lock-Free MPSC Queue (Section 19.4.6) |
+| :--- | :--- | :--- |
+| **Backing storage** | Fixed-size contiguous array | Dynamically allocated singly linked list with stub node |
+| **Producer progress** | Wait-free (bounded by ring capacity) | Wait-free (single atomic exchange, zero CAS retries) |
+| **Consumer progress** | Wait-free | Lock-free (returns `None` during a transient link window) |
+| **Allocation profile** | Zero per-operation heap allocation | One node allocation per `push`, one deallocation per `pop` |
+| **Reclamation & ABA** | Monotonic 64-bit indices; no reclamation | Immediate single-consumer stub reclamation; ABA-immune |
+
+In latency-critical kernels and runtimes that cannot tolerate general-purpose allocator overhead on every `push()`, the same Vyukov pointer protocol is routinely paired with an intrusive node field embedded directly inside each task struct or with a per-core slab pool (Chapter 8), preserving wait-free enqueue semantics while eliminating dynamic heap allocation.
+
+#### Reference Implementation
+
+**Listing 19-6a. A wait-free Vyukov MPSC queue (C++20).** ([`code/ch19/mpsc_queue.cpp`](https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/operating-systems/code/ch19/mpsc_queue.cpp))
+
+```cpp
+{{#include ../code/ch19/mpsc_queue.cpp}}
+```
+
+**Output 19-6a.**
+
+```text
+{{#include ../code/out/ch19_mpsc_queue.out}}
+```
+
+**Listing 19-6b. The same wait-free Vyukov MPSC queue in Rust 2024 with explicit `SAFETY` proofs.** ([`code/ch19/mpsc_queue.rs`](https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/operating-systems/code/ch19/mpsc_queue.rs))
+
+```rust
+{{#include ../code/ch19/mpsc_queue.rs}}
+```
+
+**Output 19-6b.**
+
+```text
+{{#include ../code/out/ch19_mpsc_queue_rs.out}}
+```
+
+<div class="callout keyidea">
+<span class="label">Key idea</span>
+
+The permanent stub node severs producer-consumer interference: producers linearize in one wait-free atomic exchange on `head`, publish via a release store on `prev->next`, and hand off ownership so the single consumer can reclaim each old stub the instant its `next` link becomes non-null.
+
+</div>
+
+<div class="callout caution">
+<span class="label">Watch out</span>
+
+Do not equate `pop() == None` with global emptiness while producers are running. A producer preempted between `head.exchange(node)` and `prev->next.store(node)` leaves `tail->next` temporarily null even when subsequent producers have already appended nodes behind `node`. Always drain through an explicit termination barrier (joining producers or enqueuing a sentinel token).
+
+</div>
+
 ## 19.5 Byte Routines: `memmove`, `strlen` and `atoi`
 
 Low-level byte manipulation routines form the foundation of runtime environments, operating systems, and network protocol parsers. Implementing these routines correctly requires reasoning directly about contiguous byte streams, pointer arithmetic, buffer overlap, and numerical conversion limits.

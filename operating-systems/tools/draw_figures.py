@@ -2988,6 +2988,83 @@ def ch19_spsc_ring():
 
 
 @figure
+def ch19_mpsc_vyukov():
+    fig = Fig(
+        "ch19_mpsc_vyukov",
+        "Figure 19-4a. Vyukov lock-free MPSC queue: wait-free producer swap, stub-node chain, and single-consumer reclamation.",
+        308,
+    )
+
+    # Top row: Single Consumer (left), Transient Window note (center), Producers (right)
+    cons = fig.node(24, 18, 224, 102, "purple")
+    fig.tile(36, 30, "developer_board", "purple", 30)
+    fig.text(74, 49, "Single Consumer", "name")
+    fig.cell(36, 68, 200, 38, "purple", [("tail.next.load(Acquire)", "mono")], kind="card", r=8)
+
+    gap = fig.node(268, 18, 248, 102, "amber")
+    fig.tile(280, 30, "warning", "amber", 30)
+    fig.text(318, 49, "Transient Link Window", "name")
+    fig.lines(
+        392,
+        88,
+        [
+            ("between step 1 and step 2,", "small"),
+            ("prev.next is null; pop() yields None", "small"),
+        ],
+        "middle",
+        fit=(274, 510),
+    )
+
+    prod = fig.node(536, 18, 240, 102, "blue")
+    fig.tile(548, 30, "bolt", "blue", 30)
+    fig.text(586, 49, "Producers (P0..Pn)", "name")
+    fig.cell(548, 68, 216, 38, "blue", [("head.swap(node, AcqRel)", "mono")], kind="card", r=8)
+
+    # Middle row: Linked-list chain from tail (oldest stub) to head (newest node)
+    n0 = fig.cell(24, 162, 152, 62, "purple", [("Stub (tail)", "name"), ("data: None", "mono")], kind="card", r=10)
+    n1 = fig.cell(220, 162, 152, 62, "teal", [("Node 1", "name"), ("data: Some(v1)", "mono")], kind="card", r=10)
+    n2 = fig.cell(416, 162, 152, 62, "teal", [("Node 2 (prev)", "name"), ("data: Some(v2)", "mono")], kind="card", r=10)
+    n3 = fig.cell(624, 162, 152, 62, "blue", [("Node 3 (head)", "name"), ("data: Some(v3)", "mono")], kind="card", r=10)
+
+    # Vertical pointer wires from Consumer -> tail and Producers -> head
+    fig.wire([(100, cons.b + 2), (100, n0.y - 3)], "purple", width=2.2)
+    fig.label(154, 141, "tail (free old)", "purple", "small")
+
+    fig.wire([(700, prod.b + 2), (700, n3.y - 3)], "blue", width=2.2)
+    fig.label(642, 141, "1. swap head", "blue", "small")
+
+    # Horizontal next links
+    fig.wire([(n0.r + 3, 193), (n1.x - 3, 193)], "purple", width=2.0)
+    fig.label(198, 179, "next", "purple", "small")
+
+    fig.wire([(n1.r + 3, 193), (n2.x - 3, 193)], "teal", width=2.0)
+    fig.label(394, 179, "next", "teal", "small")
+
+    fig.wire([(n2.r + 3, 193), (n3.x - 3, 193)], "amber", dash=True, width=2.2)
+    fig.label(596, 173, "2. link", "amber", "small")
+    fig.label(596, 213, "Release", "amber", "small")
+
+    # Bottom invariant banner
+    fig.node(
+        24,
+        242,
+        752,
+        52,
+        "teal",
+        [
+            ("Cache-line isolation: head and tail occupy separate 64-byte cache lines.", "name"),
+            ("Safe reclamation: a non-null tail.next proves the producer finished linking and no thread retains tail.", "small"),
+        ],
+        icon="shield",
+    )
+
+    fig.save([
+        "Producers are wait-free: each push executes one atomic exchange on head followed by one Release store on prev.next.",
+        "The consumer never contends on head; once tail.next is non-null, it advances tail, reclaims the old stub, and takes the payload.",
+    ])
+
+
+@figure
 def ch19_mini_pipeline():
     fig = Fig("ch19_mini_pipeline", "Figure 19-5. Process pipeline: stdout-to-stdin redirection via a kernel pipe buffer.", 270)
 

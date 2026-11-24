@@ -184,6 +184,7 @@
     - [19.4.5 Microarchitectural Optimization and False Sharing](ch19-interview-problems.md#1945-microarchitectural-optimization-and-false-sharing)
     - [19.4.2 State Invariants and Ring Wraparound](ch19-interview-problems.md#1942-state-invariants-and-ring-wraparound)
     - [19.4.4 Reference Implementation](ch19-interview-problems.md#1944-reference-implementation)
+    - [19.4.6 Extending to Multiple Producers: The Wait-Free Vyukov MPSC Queue](ch19-interview-problems.md#1946-extending-to-multiple-producers-the-wait-free-vyukov-mpsc-queue)
   - [19.5 Byte Routines: `memmove`, `strlen` and `atoi`](ch19-interview-problems.md#195-byte-routines-memmove-strlen-and-atoi)
     - [19.5.1 The Memory Overlap Hazard and ](ch19-interview-problems.md#1951-the-memory-overlap-hazard-and-memmove)
     - [19.5.2 String Bounds and NUL-Termination in ](ch19-interview-problems.md#1952-string-bounds-and-nul-termination-in-strlen)
