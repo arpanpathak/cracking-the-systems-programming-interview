@@ -36,7 +36,7 @@
             const path_to_root = "";
             const default_light_theme = "coal";
             const default_dark_theme = "coal";
-            window.path_to_searchindex_js = "searchindex-4622e2bb.js";
+            window.path_to_searchindex_js = "searchindex-09ae7f8d.js";
         </script>
         <!-- Start loading toc.js asap -->
         <script src="toc-c196c8a9.js"></script>
@@ -192,9 +192,9 @@
 </ul>
 </div>
 
-<p>Although HTTP resembles line-oriented text, it is transmitted as an unstructured byte stream whose message boundaries are determined entirely by headers. Many severe vulnerabilities in production servers arise when two components disagree on where one request ends and the next begins. In this chapter, we construct a parser centered on unambiguous framing and layer an HTTP/1.1 server above it that separates protocol handling from application routing so that each layer can be verified independently.</p>
+<p>Although HTTP/1.1 resembles line-oriented text, it traverses TCP as an unstructured byte stream whose message boundaries are governed entirely by header-driven framing rules. When a proxy and an origin server disagree on where one message terminates and the next begins, the resulting desynchronization enables request smuggling and bypasses access controls. The sections below construct a strict HTTP/1.1 request parser enforcing unambiguous framing and layer a REST server above it that isolates protocol mechanics from pure application routing.</p>
 <h2 id="211-requests-and-responses-on-the-wire"><a class="header" href="#211-requests-and-responses-on-the-wire">21.1 Requests and responses on the wire</a></h2>
-<p>HTTP/1.1 operates over a single TCP connection, which provides the byte stream examined in Chapter 20. A client writes a request into the stream; the server reads the bytes, computes a result, and writes a response back over the same connection.</p>
+<p>HTTP/1.1 operates over a persistent TCP connection, which provides a reliable, unframed byte stream. A client writes a serialized request into the stream; the server reads the incoming bytes, computes a result, and transmits a response over the same connection.</p>
 <p>Each request consists of a sequence of text lines followed by an optional body. Every line terminates with a two-byte carriage return and line feed sequence, written <code>\r\n</code> in Rust string literals and known as CRLF. As illustrated in Figure 21.1, a request that creates a GPU workload follows this exact byte layout.</p>
 <figure>
 <img src="figures/ch21-anatomy.svg" alt="A POST request laid out line by line. The request line POST /v1/gpu-workloads HTTP/1.1, three header lines Host, Content-Type, and Content-Length 14, an empty line, and the 14-byte body {&quot;gpuCount&quot;:1}. Every line ends with a CRLF.">
@@ -217,7 +217,7 @@ Connection: keep-alive
 {"id":"wl-a100-2","gpuCount":1,"state":"Pending"}
 </code></pre>
 <h3 id="2111-where-one-request-ends"><a class="header" href="#2111-where-one-request-ends">21.1.1 Where one request ends</a></h3>
-<p>TCP delivers an unstructured stream of bytes rather than discrete messages. As established in Chapter 20, a single <code>read</code> call may return a fragment of a request, one complete request, or one request followed by the beginning of the next. Because the wire format includes no explicit start-of-message delimiter, the server must derive message boundaries from the bytes themselves:</p>
+<p>Because TCP delivers an unstructured byte stream rather than discrete datagrams, a single <code>read</code> call may yield a request fragment, one complete request, or one request concatenated with the prefix of the next. Lacking an explicit start-of-message delimiter on the wire, the server must derive message boundaries directly from the stream:</p>
 <ol>
 <li>The head terminates at the first empty line, represented by the four-byte sequence <code>\r\n\r\n</code>.</li>
 <li>The headers within the head then specify the body length, either directly through <code>Content-Length</code> or as a sequence of sized chunks (covered in Section 21.2.4).</li>
@@ -298,7 +298,7 @@ impl Default for Limits {
         }
     }
 }</code></pre>
-<p><code>Request</code> holds what the parser found:</p>
+<p><code>Request</code> encapsulates the parsed request line, normalized headers, and decoded payload:</p>
 <pre><code class="language-rust">#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Request {
     pub method: Method,
@@ -332,10 +332,8 @@ impl Request {
         }
     }
 }</code></pre>
-<p><code>Request::header</code> finds a header case-insensitively, because header names are case-insensitive. Then
-<code>should_keep_alive</code> encodes the one rule that differs by version. HTTP/1.1 keeps the connection open
-unless the client sends <code>Connection: close</code>. HTTP/1.0 closes it unless the client sends <code>Connection: keep-alive</code>. The <code>has</code> closure splits the header on commas because <code>Connection</code> carries a list.</p>
-<p><code>ParseError</code> distinguishes the cases a server must treat differently:</p>
+<p>Because HTTP header field names are case-insensitive under RFC 9110, <code>Request::header</code> performs ASCII case-insensitive matching. The <code>should_keep_alive</code> method encodes the version-dependent connection persistence rule: HTTP/1.1 defaults to persistent connections unless the client includes <code>Connection: close</code>, whereas HTTP/1.0 closes the connection unless the client explicitly supplies <code>Connection: keep-alive</code>. Because the <code>Connection</code> header accepts a comma-delimited token list, the inner <code>has</code> closure splits the field value on commas before matching.</p>
+<p><code>ParseError</code> partitions failure modes according to the protocol action required from the server:</p>
 <pre><code class="language-rust">#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum ParseError {
     /// Not a complete request yet; read more and retry.
@@ -375,8 +373,7 @@ pub fn parse_request(input: &amp;[u8], limits: Limits) -&gt; Result&lt;Request, 
 <img src="figures/ch21-framing.svg" alt="Flowchart: find the end of the head, parse the request line, parse headers, require exactly one Host for HTTP/1.1, then choose body framing: both headers is an error, Transfer-Encoding decodes chunked, Content-Length takes that many bytes, neither means no body">
 <figcaption><b>Figure 21.3</b> The order of checks in <code>parse_request</code> and <code>parse_body</code>.</figcaption>
 </figure>
-<p>The request line must be exactly three space-separated parts: a known method, a non-empty target, and
-<code>HTTP/1.1</code> or <code>HTTP/1.0</code>. A fourth part is an error.</p>
+<p>The request line must contain exactly three space-separated tokens: a recognized method, a non-empty request target, and either <code>HTTP/1.1</code> or <code>HTTP/1.0</code>. Any trailing fourth token is rejected as malformed.</p>
 <pre><code class="language-rust">pub fn parse_request(input: &amp;[u8], limits: Limits) -&gt; Result&lt;Request, ParseError&gt; {
     // ...
     let mut lines = head
@@ -409,10 +406,7 @@ pub fn parse_request(input: &amp;[u8], limits: Limits) -&gt; Result&lt;Request, 
     }
     // ...
 }</code></pre>
-<p>Header lines are split at the first colon. A name with whitespace is rejected, because RFC 9112 forbids
-whitespace between the name and the colon. A line that starts with a space or tab is <em>obsolete line
-folding</em>, a continuation syntax the RFC deprecates. Since different servers interpret it differently, the
-parser rejects it.</p>
+<p>Each header line is split at the first colon. Header names containing whitespace are rejected because RFC 9112 prohibits whitespace between a field name and its terminating colon. Lines beginning with a space or horizontal tab represent <em>obsolete line folding</em> (<code>obs-fold</code>), a deprecated continuation syntax whose inconsistent interpretation across proxies creates smuggling vectors; the parser rejects it outright.</p>
 <pre><code class="language-rust">pub fn parse_request(input: &amp;[u8], limits: Limits) -&gt; Result&lt;Request, ParseError&gt; {
     // ...
     let mut headers = Vec::new();
@@ -442,8 +436,7 @@ parser rejects it.</p>
     }
     // ...
 }</code></pre>
-<p>HTTP/1.1 requires exactly one <code>Host</code> header. The count uses <code>filter(...).count() != 1</code>, which rejects both
-zero and two.</p>
+<p>RFC 9112 mandates that every HTTP/1.1 request contain exactly one <code>Host</code> header field. Evaluating <code>filter(...).count() != 1</code> rejects both missing and duplicate <code>Host</code> headers.</p>
 <pre><code class="language-rust">pub fn parse_request(input: &amp;[u8], limits: Limits) -&gt; Result&lt;Request, ParseError&gt; {
     // ...
     if version == Version::Http11
@@ -458,8 +451,7 @@ zero and two.</p>
     // ...
 }</code></pre>
 <h3 id="2123-body-framing-and-request-smuggling"><a class="header" href="#2123-body-framing-and-request-smuggling">21.2.3 Body framing and request smuggling</a></h3>
-<p><code>parse_body</code> decides how long the body is. A request with both <code>Content-Length</code> and <code>Transfer-Encoding</code> is
-rejected as <code>AmbiguousBodyLength</code>:</p>
+<p><code>parse_body</code> resolves message framing from the parsed headers. A request carrying both <code>Content-Length</code> and <code>Transfer-Encoding</code> is rejected immediately with <code>AmbiguousBodyLength</code>:</p>
 <pre><code class="language-rust">fn parse_body(
     input: &amp;[u8],
     body_start: usize,
@@ -491,9 +483,7 @@ rejected as <code>AmbiguousBodyLength</code>:</p>
 <video class="motion" src="figures/ch21-http-framing.mp4" autoplay="" loop="" muted="" playsinline="" preload="metadata" aria-label="A request&#39;s bytes stream into a buffer. The parser slides a window until it finds the blank line that ends the head, then splits the request line and headers into fields. With Content-Length: 5, a ruler counts five body bytes. With Transfer-Encoding: chunked, the parser reads a size line, takes that many bytes, and stops at the zero-size chunk. Last, one message carries both headers: a proxy frames it by Content-Length and sees one request, a back-end frames it by chunks and finds a hidden GET /admin after the body. The parser refuses the message with 400 and closes the connection." data-chapters="[[0.0, &quot;the head&quot;], [14.1, &quot;Content-Length&quot;], [23.7, &quot;chunked&quot;], [40.08, &quot;both&quot;]]"><img src="figures/ch21-http-framing.gif" alt="A request&#39;s bytes stream into a buffer. The parser slides a window until it finds the blank line that ends the head, then splits the request line and headers into fields. With Content-Length: 5, a ruler counts five body bytes. With Transfer-Encoding: chunked, the parser reads a size line, takes that many bytes, and stops at the zero-size chunk. Last, one message carries both headers: a proxy frames it by Content-Length and sees one request, a back-end frames it by chunks and finds a hidden GET /admin after the body. The parser refuses the message with 400 and closes the connection."></video>
 <figcaption><b>Animation 21.1</b> The head ends at the first blank line. <code>Content-Length</code> or chunked encoding then sets where the body ends. A message with both is refused with 400.</figcaption>
 </figure>
-<p><code>Transfer-Encoding</code> values from every such header are joined and split into codings. The parser supports
-only <code>chunked</code>, and requires it to be last, because a body whose final coding is not <code>chunked</code> has no
-defined end. Anything else is <code>UnsupportedTransferEncoding</code>.</p>
+<p>Values from all <code>Transfer-Encoding</code> headers are concatenated and split into transfer codings. Because a request body whose final transfer coding is not <code>chunked</code> has no self-delimiting boundary, the parser accepts only <code>chunked</code> as the sole coding and rejects all other configurations with <code>UnsupportedTransferEncoding</code>.</p>
 <pre><code class="language-rust">fn parse_body(
     input: &amp;[u8],
     body_start: usize,
@@ -522,10 +512,7 @@ defined end. Anything else is <code>UnsupportedTransferEncoding</code>.</p>
     }
     // ...
 }</code></pre>
-<p>Multiple <code>Content-Length</code> headers are allowed only if they all agree. The check parses each value and
-compares with <code>lengths.any(|length| length != Ok(first))</code>, comparing <code>Result</code>s directly. A length above
-<code>max_body_bytes</code> is rejected <em>before</em> the server waits for the bytes. A client cannot claim a huge body and
-make the server buffer it. If fewer bytes than the length have arrived, the result is <code>Incomplete</code>.</p>
+<p>Multiple <code>Content-Length</code> headers are permitted only when every declared value parses identically; <code>lengths.any(|length| length != Ok(first))</code> compares the <code>Result</code> values directly to reject both malformed integers and conflicting lengths. Validating the declared length against <code>max_body_bytes</code> <em>before</em> awaiting the payload prevents a client from forcing unbounded memory allocation through an inflated header. If fewer than the declared bytes have arrived, the parser returns <code>Incomplete</code>.</p>
 <pre><code class="language-rust">fn parse_body(
     input: &amp;[u8],
     body_start: usize,
@@ -557,8 +544,7 @@ make the server buffer it. If fewer bytes than the length have arrived, the resu
     Ok(input[body_start..end].to_vec())
 }</code></pre>
 <h3 id="2124-chunked-bodies"><a class="header" href="#2124-chunked-bodies">21.2.4 Chunked bodies</a></h3>
-<p><code>decode_chunked</code> walks a cursor through <code>size-in-hex CRLF data CRLF</code> records until a size of 0. Chunk
-extensions after a <code>;</code> are ignored, as the RFC permits.</p>
+<p><code>decode_chunked</code> advances a cursor across <code>size-in-hex CRLF data CRLF</code> frames until it encounters a zero-length terminating chunk, discarding optional chunk extensions following <code>;</code> as permitted by RFC 9112.</p>
 <pre><code class="language-rust">fn decode_chunked(data: &amp;[u8], max_body: usize) -&gt; Result&lt;Vec&lt;u8&gt;, ParseError&gt; {
     let mut cursor = 0;
     let mut body = Vec::new();
@@ -580,7 +566,7 @@ extensions after a <code>;</code> are ignored, as the RFC permits.</p>
         // ...
     }
 }</code></pre>
-<p>A size of 0 ends the body, after optional trailer lines up to an empty line:</p>
+<p>A zero-length chunk terminates the payload after consuming any optional trailer fields up to the final empty line:</p>
 <pre><code class="language-rust">fn decode_chunked(data: &amp;[u8], max_body: usize) -&gt; Result&lt;Vec&lt;u8&gt;, ParseError&gt; {
     // ...
     loop {
@@ -599,9 +585,7 @@ extensions after a <code>;</code> are ignored, as the RFC permits.</p>
         // ...
     }
 }</code></pre>
-<p>Each other chunk checks the running total against the body limit. It computes the chunk’s end with
-<code>checked_add</code>, returns <code>Incomplete</code> if the data has not all arrived, and insists on the CRLF after the
-data.</p>
+<p>For each non-zero chunk, the decoder verifies the cumulative payload size against <code>max_body</code>, computes the chunk end offset using <code>checked_add</code>, returns <code>Incomplete</code> if the buffer does not yet contain the full frame, and validates the trailing CRLF delimiter:</p>
 <pre><code class="language-rust">fn decode_chunked(data: &amp;[u8], max_body: usize) -&gt; Result&lt;Vec&lt;u8&gt;, ParseError&gt; {
     // ...
     loop {
@@ -622,24 +606,19 @@ data.</p>
         cursor = chunk_end + 2;
     }
 }</code></pre>
-<p><code>find_crlf</code> uses <code>data.get(from..)?</code> so that a cursor past the end is <code>None</code> rather than a panic.</p>
+<p><code>find_crlf</code> indexes via <code>data.get(from..)?</code> so an out-of-bounds cursor yields <code>None</code> rather than panicking:</p>
 <pre><code class="language-rust">fn find_crlf(data: &amp;[u8], from: usize) -&gt; Option&lt;usize&gt; {
     data.get(from..)?
         .windows(2)
         .position(|window| window == b"\r\n")
         .map(|offset| offset + from)
 }</code></pre>
-<p>One arithmetic detail needs tightening. <code>body.len() + size &gt; max_body</code> runs before the <code>checked_add</code>, and
-a chunk size near <code>usize::MAX</code> overflows that addition. <code>from_str_radix</code> parses such a size from sixteen
-<code>f</code>s. The form <code>size &gt; max_body - body.len()</code> cannot overflow.</p>
-<p><code>parse_request</code> returns the request but not how many bytes it consumed. A caller therefore cannot find the
-start of a second, pipelined request in the same buffer. The server below accepts that limitation, and its
-module comment says so.</p>
+<p>One arithmetic edge case warrants hardening: <code>body.len() + size &gt; max_body</code> executes prior to <code>checked_add</code>, so a hex chunk length near <code>usize::MAX</code> (sixteen <code>f</code> digits on 64-bit targets) overflows the addition. Rewriting the bound check as <code>size &gt; max_body - body.len()</code> eliminates the overflow condition entirely.</p>
+<p>Additionally, <code>parse_request</code> returns only the parsed <code>Request</code> without reporting the number of bytes consumed, which prevents a caller from locating the offset of a subsequent pipelined request within the same buffer. The server in Section 21.3 explicitly documents and accepts this non-pipelined constraint.</p>
 <h2 id="213-a-small-rest-server"><a class="header" href="#213-a-small-rest-server">21.3 A small REST server</a></h2>
-<p>The server is <code>src/bin/http_server.rs</code>. Listing 21.2 in section 21.4 is the whole file.</p>
+<p>The HTTP/1.1 server resides in <code>src/bin/http_server.rs</code> (shown in full as Listing 21.2 in Section 21.4).</p>
 <h3 id="2131-routing-as-a-pure-function"><a class="header" href="#2131-routing-as-a-pure-function">21.3.1 Routing as a pure function</a></h3>
-<p><code>route(&amp;Request) -&gt; (u16, &amp;'static str, Vec&lt;u8&gt;)</code> decides the status, content type, and body without
-touching a socket:</p>
+<p>The routing function <code>route(&amp;Request) -&gt; (u16, &amp;'static str, Vec&lt;u8&gt;)</code> maps a parsed request to its status code, media type, and serialized response body without performing socket I/O:</p>
 <pre><code class="language-rust">/// Map a request to `(status, content_type, body)`.
 ///
 /// Pure, so the routing rules are unit-testable without a socket.
@@ -654,7 +633,7 @@ pub fn route(request: &amp;Request) -&gt; (u16, &amp;'static str, Vec&lt;u8&gt;)
     }
     // ...
 }</code></pre>
-<p>A known path with an unsupported method returns 405, an unknown path 404.</p>
+<p>A recognized path paired with an unsupported method yields 405 Method Not Allowed, whereas an unrecognized path yields 404 Not Found:</p>
 <pre><code class="language-rust">pub fn route(request: &amp;Request) -&gt; (u16, &amp;'static str, Vec&lt;u8&gt;) {
     // ...
     if target == "/v1/gpu-workloads" {
@@ -674,8 +653,7 @@ pub fn route(request: &amp;Request) -&gt; (u16, &amp;'static str, Vec&lt;u8&gt;)
     }
     // ...
 }</code></pre>
-<p>For <code>/v1/gpu-workloads/{id}</code>, <code>strip_prefix</code> extracts the id, and an empty id or one containing <code>/</code> is a
-404.</p>
+<p>For <code>/v1/gpu-workloads/{id}</code>, <code>strip_prefix</code> extracts the resource identifier, rejecting empty identifiers or nested path segments containing <code>/</code> with 404:</p>
 <pre><code class="language-rust">pub fn route(request: &amp;Request) -&gt; (u16, &amp;'static str, Vec&lt;u8&gt;) {
     // ...
     if let Some(id) = target.strip_prefix("/v1/gpu-workloads/") {
@@ -695,10 +673,8 @@ pub fn route(request: &amp;Request) -&gt; (u16, &amp;'static str, Vec&lt;u8&gt;)
 
     (404, "text/plain", b"not found\n".to_vec())
 }</code></pre>
-<p>Its doc comment gives the reason it is a separate function: it is unit-testable. The tests at the bottom
-of the file exercise every route by building a <code>Request</code> value directly.</p>
-<p><code>build_response</code> writes the status line, <code>Content-Length</code>, an optional <code>Content-Type</code>, and a <code>Connection</code>
-header that tells the client what the server will do:</p>
+<p>Isolating routing as a pure function enables direct unit testing: the test suite at the end of <code>http_server.rs</code> exercises every endpoint by passing constructed <code>Request</code> values directly without opening sockets.</p>
+<p><code>build_response</code> formats the status line, <code>Content-Length</code>, an optional <code>Content-Type</code>, and the <code>Connection</code> header declaring whether the server will maintain or close the TCP stream:</p>
 <pre><code class="language-rust">fn build_response(status: u16, content_type: &amp;str, body: &amp;[u8], keep_alive: bool) -&gt; Vec&lt;u8&gt; {
     let mut response = format!("HTTP/1.1 {} {}\r\n", status, status_reason(status));
     response.push_str(&amp;format!("Content-Length: {}\r\n", body.len()));
@@ -717,12 +693,12 @@ header that tells the client what the server will do:</p>
     bytes
 }</code></pre>
 <h3 id="2132-the-connection-loop"><a class="header" href="#2132-the-connection-loop">21.3.2 The connection loop</a></h3>
-<p><code>handle_connection</code> accumulates bytes in <code>buffer</code> and asks the parser what it has (figure 21.5).</p>
+<p><code>handle_connection</code> accumulates incoming socket bytes in <code>buffer</code> and invokes <code>parse_request</code> after each read to determine whether a complete message is available (Figure 21.5).</p>
 <figure>
 <img src="figures/ch21-connection.svg" alt="State loop: parse; on Ok route and respond, then clear the buffer and loop if keep-alive or close; on Incomplete read more and parse again; on other errors send 400 and close">
 <figcaption><b>Figure 21.5</b> The keep-alive loop in <code>handle_connection</code>.</figcaption>
 </figure>
-<p>On <code>Ok</code>, it routes, writes the response, and either closes or clears the buffer for the next request:</p>
+<p>Upon <code>Ok(request)</code>, the loop dispatches to <code>route</code>, transmits the serialized response, and either terminates or clears the buffer to await the next keep-alive request:</p>
 <pre><code class="language-rust">fn handle_connection(mut stream: TcpStream) -&gt; std::io::Result&lt;()&gt; {
     stream.set_nodelay(true)?;
     let limits = Limits::default();
@@ -746,9 +722,7 @@ header that tells the client what the server will do:</p>
         }
     }
 }</code></pre>
-<p>On <code>Incomplete</code>, it reads more; a read of 0 means the client left mid-request. Any other error gets a 400
-whose body is the error’s <code>Display</code> text, and the connection closes. After a framing error the server
-cannot know where the next request starts.</p>
+<p>Upon <code>Err(ParseError::Incomplete)</code>, the loop reads additional bytes from the socket, exiting cleanly if a 0-byte read indicates peer closure mid-request. All other parse errors produce a 400 response carrying the error’s <code>Display</code> message, followed by immediate connection teardown because stream synchronization is unrecoverable after a framing error:</p>
 <pre><code class="language-rust">fn handle_connection(mut stream: TcpStream) -&gt; std::io::Result&lt;()&gt; {
     // ...
     loop {
@@ -800,8 +774,7 @@ Connection: close
 Content-Length and Transfer-Encoding are mutually exclusive
 </code></pre>
 <h3 id="2133-reading-the-server-against-the-rfc"><a class="header" href="#2133-reading-the-server-against-the-rfc">21.3.3 Reading the server against the RFC</a></h3>
-<p>The same session shows three places where the server departs from RFC 9110. None of them is hard to fix,
-and finding them is good practice.</p>
+<p>Testing the server against <code>curl</code> and <code>nc</code> exposes three concrete departures from RFC 9110:</p>
 <pre><code class="language-text">$ curl -si -X DELETE http://127.0.0.1:18080/v1/gpu-workloads/wl-7
 HTTP/1.1 204 No Content
 Content-Length: 0
@@ -816,20 +789,11 @@ Connection: close
 ok
 </code></pre>
 <ul>
-<li><strong>HEAD must not carry a body.</strong> A HEAD response repeats the GET headers, including the
-<code>Content-Length</code> of a body it does not send. The server sends <code>ok</code>. A client that
-trusts the spec reads those three bytes as the start of the <em>next</em> response. The fix is one line in
-<code>handle_connection</code>: skip <code>body</code> when <code>request.method == Method::Head</code>.</li>
-<li><strong>204 must not carry <code>Content-Length</code>.</strong> <code>build_response</code> always writes it. Skipping it for 204 (and
-1xx) fixes that.</li>
-<li><strong>Errors all become 400.</strong> <code>PayloadTooLarge</code> deserves 413, and <code>status_reason</code> already has its text.
-Mapping <code>ParseError</code> to a status in one <code>match</code> fixes it. A 405 should also carry an <code>Allow</code> header
-listing the methods that path supports.</li>
+<li><strong>HEAD responses must omit the message body.</strong> A <code>HEAD</code> response returns the exact headers of the corresponding <code>GET</code> response, including the <code>Content-Length</code> of the omitted payload, without transmitting any body bytes. Because this server transmits <code>ok</code>, a compliant client reading a persistent connection interprets those three trailing bytes as the status line of the <em>next</em> response. Omitting the body in <code>handle_connection</code> when <code>request.method == Method::Head</code> resolves the violation.</li>
+<li><strong>204 responses must omit <code>Content-Length</code>.</strong> RFC 9110 prohibits <code>Content-Length</code> in 1xx and 204 No Content responses, whereas <code>build_response</code> emits the header unconditionally. Suppressing <code>Content-Length</code> for 1xx and 204 status codes restores compliance.</li>
+<li><strong>Parse errors map uniformly to 400.</strong> <code>PayloadTooLarge</code> requires status 413 Payload Too Large (already present in <code>status_reason</code>), which can be dispatched by matching on <code>ParseError</code>. Likewise, RFC 9110 requires a 405 Method Not Allowed response to include an <code>Allow</code> header enumerating the supported methods for the target resource.</li>
 </ul>
-<p>Two more points concern safety rather than the RFC. The id is interpolated into JSON with <code>format!</code>, so an
-id containing <code>"</code> produces invalid JSON; a real server serializes with <code>serde_json</code>. And <code>buffer.clear()</code>
-after each request discards any pipelined bytes that arrived with it, which the module comment
-acknowledges.</p>
+<p>Two additional implementation trade-offs lie outside RFC 9110 compliance. Interpolating <code>id</code> into JSON via <code>format!</code> allows unescaped <code>"</code> characters to corrupt the JSON output, whereas production services serialize structured payloads with <code>serde_json</code>. Furthermore, invoking <code>buffer.clear()</code> after each response discards any pipelined request bytes already read from the socket, a limitation documented in the module header.</p>
 <h2 id="214-the-complete-programs"><a class="header" href="#214-the-complete-programs">21.4 The complete programs</a></h2>
 <p class="listing"><b>Listing 21.1</b> An HTTP/1.1 request parser with framing checks and limits. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/problems/http_request.rs">src/problems/http_request.rs</a></p>
 

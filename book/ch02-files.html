@@ -36,7 +36,7 @@
             const path_to_root = "";
             const default_light_theme = "coal";
             const default_dark_theme = "coal";
-            window.path_to_searchindex_js = "searchindex-4622e2bb.js";
+            window.path_to_searchindex_js = "searchindex-09ae7f8d.js";
         </script>
         <!-- Start loading toc.js asap -->
         <script src="toc-c196c8a9.js"></script>
@@ -192,13 +192,13 @@
 </ul>
 </div>
 
-<p>Whereas Chapter 1 focused on pure in-memory computation, this chapter crosses the boundary into the operating system. The programs here read and write files, traverse directories, and parse arguments supplied on the command line.</p>
-<p>Every interaction with the operating system can fail: a target path may be missing, or the process may lack read permissions. Rust models recoverable failures through the <code>Result</code> type, which forms the starting point of this chapter. We then examine path manipulation, buffered I/O, file mutations, and directory traversal, concluding with two complete utilities: a stateless file paginator and a typed command-line argument parser.</p>
-<p>Three operating system concepts govern all file I/O:</p>
+<p>Interacting with persistent storage and process arguments requires crossing the privilege boundary between user space and the operating system kernel. Unlike pure in-memory computation, every kernel-mediated operation can fail because a path may not exist, permissions may be denied, or underlying storage may return an error.</p>
+<p>Rust encodes recoverable failures explicitly through the <code>Result</code> type, preventing callers from overlooking error conditions. Building on <code>Result</code> and the <code>?</code> propagation operator, the sections below develop path manipulation, buffered I/O, atomic file mutations, and recursive directory traversal, culminating in two complete utilities: a stateless cursor-based file paginator and a typed command-line argument parser.</p>
+<p>Three operating system abstractions govern all file I/O:</p>
 <ul>
-<li>The <strong>kernel</strong> is the privileged core of the operating system responsible for managing hardware, memory, and storage.</li>
-<li>A <strong>system call</strong> is a controlled transition from user space into the kernel requesting a service, such as opening a file or reading a byte range.</li>
-<li>A <strong>file descriptor</strong> is a small non-negative integer assigned by the kernel to represent an open file within a process; subsequent system calls reference the file through this integer.</li>
+<li>The <strong>kernel</strong> is the privileged core of the operating system responsible for mediating hardware, virtual memory, and filesystem access.</li>
+<li>A <strong>system call</strong> is a controlled trap from user space into the kernel requesting a privileged service, such as opening a file or transferring a byte range.</li>
+<li>A <strong>file descriptor</strong> is a small non-negative integer allocated per process by the kernel to identify an open file table entry; subsequent I/O system calls reference the file through this integer.</li>
 </ul>
 <h2 id="21-what-happens-when-you-read-a-file"><a class="header" href="#21-what-happens-when-you-read-a-file">2.1 What happens when you read a file</a></h2>
 <p>User-space processes cannot access storage hardware directly. Every file read is mediated by the kernel through a sequence of system calls, as illustrated in Figure 2.1.</p>
@@ -329,8 +329,8 @@ fn main() -&gt; std::io::Result&lt;()&gt; {
 
     Ok(())
 }</code></pre>
-<p><code>BufReader::new(file)</code> takes ownership of the <code>File</code> and pairs it with an 8 KiB user-space buffer. Because <code>lines</code> is defined on the <code>BufRead</code> trait, the trait must be brought into scope with <code>use std::io::BufRead;</code>.</p>
-<p>Each iteration of <code>lines()</code> yields an <code>io::Result&lt;String&gt;</code> stripped of its trailing newline; a read error or invalid UTF-8 sequence can occur partway through the file, so each item must be checked individually. The statement <code>let line = line?;</code> unwraps the <code>String</code> by shadowing the <code>Result</code> binding, as introduced in Section 1.2. Chaining <code>enumerate()</code> pairs each line with its zero-based index, which the output shifts by one (<code>i + 1</code>).</p>
+<p><code>BufReader::new(file)</code> assumes ownership of the <code>File</code> and pairs it with an 8 KiB user-space buffer, amortizing kernel-crossing overhead across multiple line reads. Because <code>lines</code> is defined on the <code>BufRead</code> trait, that trait must be imported via <code>use std::io::BufRead;</code>.</p>
+<p>Each iteration of <code>lines()</code> yields an <code>io::Result&lt;String&gt;</code> stripped of its trailing newline; because a read error or invalid UTF-8 sequence can occur mid-stream, every item must be checked individually. The statement <code>let line = line?;</code> unwraps the <code>String</code> by shadowing the <code>Result</code> binding. Chaining <code>enumerate()</code> pairs each line with its zero-based index, which the formatter shifts by one (<code>i + 1</code>).</p>
 <p>Animation 2.1 traces this loop over a 12-byte, three-line file, counting <code>read</code> system calls with and without a buffer.</p>
 <figure class="anim">
 <video class="motion" src="figures/ch02-bufreader.mp4" autoplay="" loop="" muted="" playsinline="" preload="metadata" aria-label="A program robot on one side of the kernel boundary, and log.txt in the page cache on the other, holding a=1, b=2, and c=3, each with a newline. lines asks for the first line; the empty BufReader makes one read call for up to 8 KiB, and all 12 bytes come back into its buffer. The three lines are cut from the buffer and printed with no more calls. A last read returns 0 bytes, end of file: two read calls in all. In a second run without a buffer, the reader reads one byte per call, and the count climbs to 13 calls for the same 12 bytes." data-chapters="[[0.0, &quot;BufReader&quot;], [32.22, &quot;no buffer&quot;]]"><img src="figures/ch02-bufreader.gif" alt="A program robot on one side of the kernel boundary, and log.txt in the page cache on the other, holding a=1, b=2, and c=3, each with a newline. lines asks for the first line; the empty BufReader makes one read call for up to 8 KiB, and all 12 bytes come back into its buffer. The three lines are cut from the buffer and printed with no more calls. A last read returns 0 bytes, end of file: two read calls in all. In a second run without a buffer, the reader reads one byte per call, and the count climbs to 13 calls for the same 12 bytes."></video>
@@ -874,19 +874,18 @@ $ echo $?
 <div class="summary" markdown="1">
 <h2 id="summary"><a class="header" href="#summary">Summary</a></h2>
 <ul>
-<li>User-space programs access files through kernel system calls; the kernel caches recently accessed file pages in memory.</li>
-<li><code>Result&lt;T, E&gt;</code> encodes recoverable success or failure. The <code>?</code> operator propagates errors immediately to the caller, requiring the enclosing function to return a compatible <code>Result</code>.</li>
-<li><code>&amp;Path</code> and <code>PathBuf</code> provide borrowed and owned path representations; public functions should accept <code>&amp;Path</code>.</li>
-<li><code>fs::read_to_string</code> loads small files in one call, while <code>BufReader</code> amortizes system call overhead for large files. Calling <code>read_line</code> into a single cleared <code>String</code> eliminates per-line allocations.</li>
-<li><code>OpenOptions</code> with <code>append(true)</code> delegates atomic end-of-file writes to the kernel, and same-filesystem <code>fs::rename</code> provides atomic file replacement.</li>
-<li>Inspecting <code>io::Error::kind()</code> enables targeted recovery for specific error conditions such as <code>NotFound</code> or <code>InvalidData</code>.</li>
-<li>Using <code>entry.file_type()</code> avoids following symbolic links during recursive directory traversal, preventing symlink cycles.</li>
-<li>Stateless byte-offset cursors must track bytes consumed by <code>read_line</code> rather than the underlying file descriptor’s buffered seek position.</li>
-<li>Accepting an iterator in the argument parser enables direct unit testing, while returning <code>ExitCode</code> from <code>main</code> communicates failure cleanly to the invoking shell.</li>
+<li>User-space processes access storage exclusively through kernel system calls; the kernel page cache retains recently read file blocks in physical memory.</li>
+<li><code>Result&lt;T, E&gt;</code> encodes recoverable success or failure. The <code>?</code> operator propagates <code>Err</code> variants immediately to the caller, requiring the enclosing function to return a compatible <code>Result</code>.</li>
+<li><code>&amp;Path</code> and <code>PathBuf</code> provide borrowed and owned filesystem path representations; public APIs should accept <code>&amp;Path</code> to avoid unnecessary allocation.</li>
+<li><code>fs::read_to_string</code> loads small files in a single operation, whereas <code>BufReader</code> amortizes system-call overhead for large streams. Reusing a cleared <code>String</code> with <code>read_line</code> eliminates per-line heap allocation.</li>
+<li><code>OpenOptions</code> with <code>append(true)</code> sets <code>O_APPEND</code> for kernel-synchronized end-of-file writes, and same-filesystem <code>fs::rename</code> provides atomic file replacement.</li>
+<li>Inspecting <code>io::Error::kind()</code> enables targeted recovery for specific failure classes such as <code>NotFound</code> or <code>InvalidData</code>.</li>
+<li>Calling <code>entry.file_type()</code> avoids dereferencing symbolic links during recursive directory traversal, preventing infinite symlink cycles.</li>
+<li>Stateless byte-offset cursors must accumulate exact byte counts returned by <code>read_line</code> rather than querying the underlying file descriptor’s buffered seek offset.</li>
+<li>Accepting an abstract iterator in a command-line parser decouples parsing from <code>std::env::args</code> for unit testing, while returning <code>ExitCode</code> from <code>main</code> reports completion status to the parent process.</li>
 </ul>
 </div>
 
-<p>Chapter 3 opens Part 2, applying Rust’s primary standard collections (<code>Vec</code>, <code>String</code>, and <code>HashMap</code>) to core array and text algorithms.</p>
 <h2 id="exercises"><a class="header" href="#exercises">Exercises</a></h2>
 <ol>
 <li>Rewrite <code>walk</code> iteratively using an explicit <code>Vec&lt;PathBuf&gt;</code> work stack, tallying file counts and total byte sizes grouped by file extension.</li>

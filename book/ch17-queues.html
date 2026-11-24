@@ -36,7 +36,7 @@
             const path_to_root = "";
             const default_light_theme = "coal";
             const default_dark_theme = "coal";
-            window.path_to_searchindex_js = "searchindex-4622e2bb.js";
+            window.path_to_searchindex_js = "searchindex-09ae7f8d.js";
         </script>
         <!-- Start loading toc.js asap -->
         <script src="toc-c196c8a9.js"></script>
@@ -192,9 +192,9 @@
 </ul>
 </div>
 
-<p>In Chapter 16, a single computation was partitioned evenly across worker threads. Many concurrent systems follow a different topology: producer threads generate work (accepting network requests, parsing files, or receiving messages), while consumer threads process each item asynchronously. Because producers and consumers operate at varying rates, they require an intermediary structure to decouple their execution.</p>
-<p>That intermediary is a <strong>queue</strong>, where producers enqueue items at the back and consumers dequeue them from the front. Items emerge in arrival order, a discipline known as <strong>FIFO</strong> (first in, first out).</p>
-<p>The sections below construct six progressive queue designs. Each iteration resolves a concrete operational limitation of its predecessor, culminating in a lock-free ring buffer.</p>
+<p>Many concurrent systems decouple work generation from work execution across distinct thread roles: producer threads emit tasks (accepting network connections, parsing input streams, or receiving messages), while consumer threads process those tasks asynchronously. Because production and consumption rates fluctuate independently, the two cohorts require a synchronized intermediary to buffer in-flight work.</p>
+<p>That intermediary is a <strong>queue</strong>, where producers enqueue elements at the tail and consumers dequeue them from the head. Elements emerge in strict arrival order, a scheduling discipline known as <strong>FIFO</strong> (first in, first out).</p>
+<p>The sections below construct six progressive queue designs. Each iteration resolves a concrete synchronization, liveness, or memory-safety limitation of its predecessor, culminating in a lock-free single-producer, single-consumer ring buffer.</p>
 <h2 id="171-why-a-queue-needs-a-limit"><a class="header" href="#171-why-a-queue-needs-a-limit">17.1 Why a queue needs a limit</a></h2>
 <p>When producers enqueue items faster than consumers can drain them, an unbounded queue grows continuously until the process exhausts available memory and is terminated by the operating system (figure 17.1).</p>
 <figure>
@@ -205,7 +205,7 @@
 <p>A bounded queue with blocking <code>push</code> and <code>pop</code> operations is commonly referred to as a <strong>bounded buffer</strong>.</p>
 <h2 id="172-a-shared-queue"><a class="header" href="#172-a-shared-queue">17.2 A shared queue</a></h2>
 <p>The initial design is an unbounded queue that establishes the two core primitives used across the mutex-based implementations: a <code>VecDeque</code> guarded by a <code>Mutex</code> and a <code>Condvar</code> for blocking waits.</p>
-<p>As examined in Chapter 3, <code>VecDeque</code> supports O(1) amortized insertion at the back and removal from the front, while the <code>Mutex</code> serializes access across threads.</p>
+<p>The standard library’s <code>VecDeque</code> provides O(1) amortized insertion at the back and removal from the front, while a <code>Mutex</code> serializes concurrent access across threads.</p>
 <p>When a consumer finds the queue empty, it blocks on the <code>Condvar</code>. Following the condition-variable protocol from section 16.5, waiting atomically releases the mutex and suspends the thread; when a producer invokes <code>notify_one</code>, one sleeping consumer wakes with the mutex re-acquired.</p>
 <p class="listing"><b>Listing 17.1</b> The queue (lines 7 to 29). <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/bin/thread_safe_queue.rs">src/bin/thread_safe_queue.rs</a></p>
 
@@ -388,7 +388,7 @@ impl&lt;T&gt; BoundedQueue&lt;T&gt; {
 <figcaption><b>Animation 17.2</b> The producer sleeps while the buffer is full and wakes when a pop makes room. A fast producer cannot get more than three items ahead of the consumer.</figcaption>
 </figure>
 <p>In <code>guard = self.not_full.wait(guard).unwrap();</code>, <code>wait</code> consumes <code>guard</code> by value to release the mutex before sleeping, then re-acquires the mutex on wakeup and returns a fresh guard, which is assigned back to the same binding.</p>
-<p>After pushing the item, <code>drop(guard)</code> releases the mutex before <code>notify_one()</code> is called. Notifying while still holding the lock remains correct, yet it can cause the woken consumer to wake up, immediately contend on the still-held mutex, and block a second time. Dropping the guard first avoids that redundant context switch.</p>
+<p>After pushing the item, <code>drop(guard)</code> releases the mutex before <code>notify_one()</code> is called. Notifying while still holding the lock remains correct, yet it can cause the signaled consumer to resume, immediately contend on the still-held mutex, and re-block. Dropping the guard first avoids that redundant context switch.</p>
 <p class="listing"><b>Listing 17.5</b> <code>pop</code> (lines 78 to 102).</p>
 
 <pre><code class="language-rust">impl&lt;T&gt; BoundedQueue&lt;T&gt; {
@@ -2154,7 +2154,6 @@ mod tests {
 </ul>
 </div>
 
-<p>In Chapter 18, a shared work queue forms the core of a thread pool, where a fixed crew of worker threads pulls and executes submitted jobs.</p>
 <h2 id="exercises"><a class="header" href="#exercises">Exercises</a></h2>
 <ol>
 <li>In <code>bounded_buffer.rs</code>, measure how long each <code>push</code> waits and print it. Change the sleep times until the

@@ -36,7 +36,7 @@
             const path_to_root = "";
             const default_light_theme = "coal";
             const default_dark_theme = "coal";
-            window.path_to_searchindex_js = "searchindex-4622e2bb.js";
+            window.path_to_searchindex_js = "searchindex-09ae7f8d.js";
         </script>
         <!-- Start loading toc.js asap -->
         <script src="toc-c196c8a9.js"></script>
@@ -192,9 +192,9 @@
 </ul>
 </div>
 
-<p>The listings in Chapter 3 used iterators and references throughout (<code>nums.iter().enumerate()</code>, <code>s.chars()</code>, <code>seen.get(&amp;key)</code>). Because every subsequent chapter depends on these abstractions, we now examine their mechanics in full detail.</p>
-<p>The chapter is structured in two parts. The first half covers iterators: how the <code>Iterator</code> trait operates, how <code>for</code> loops drive it, and how lazy adapters compose without intermediate allocations. The second half covers references and lifetimes. A <strong>lifetime</strong> is the static region of a program during which a reference is guaranteed to point to valid, initialized data. We examine why Rust enforces lifetimes across function signatures and how to interpret explicit <code>'a</code> annotations.</p>
-<p>Both halves converge in a complete program that indexes a slice of <code>User</code> structs by ID using a <code>HashMap</code> of borrowed references, avoiding any struct cloning.</p>
+<p>Zero-cost collection traversal in Rust rests on two interlocking abstractions: lazy pull-based iterators and statically verified borrowing lifetimes. Together, they enable composable data pipelines and zero-copy indexing structures without garbage collection or dangling pointers.</p>
+<p>The first half of this treatment formalizes the <code>Iterator</code> trait, its desugaring from <code>for</code> loops, and how lazy adapters compose without allocating intermediate buffers. The second half formalizes references and lifetimes. A <strong>lifetime</strong> is the static program region over which a reference is guaranteed to refer to valid, initialized memory; explicit <code>'a</code> annotations express borrowing contracts across function boundaries so the borrow checker can verify soundness compositionally.</p>
+<p>Both mechanisms converge in a complete program that indexes a slice of <code>User</code> structs by identifier using a <code>HashMap</code> of borrowed references, eliminating struct cloning altogether.</p>
 <h2 id="41-what-an-iterator-is"><a class="header" href="#41-what-an-iterator-is">4.1 What an iterator is</a></h2>
 <p>An <strong>iterator</strong> is a stateful value implementing the <code>Iterator</code> trait, which requires a single method, <code>next</code>. Each call to <code>next</code> yields <code>Some(item)</code> while elements remain and <code>None</code> once the sequence is exhausted.</p>
 <p>Conceptually, a slice iterator behaves like a cursor positioned just before the first element. Each <code>next</code> call advances the cursor and yields a reference to the element it crosses (Figure 4.1).</p>
@@ -287,7 +287,7 @@ fn imperative_numbers_map(slice: &amp;[i32]) -&gt; HashMap&lt;i32, i32&gt; {
 <p><code>functional_numbers_drill</code> implements the pipeline from Figure 4.3. Type inference determines that <code>collect()</code> should construct a <code>Vec&lt;i32&gt;</code> from the function’s return signature; when inference is ambiguous, callers specify the target type explicitly via turbofish syntax (<code>collect::&lt;Vec&lt;i32&gt;&gt;()</code>).</p>
 <p><code>imperative_numbers_map</code> uses a <code>for</code> loop to populate a <code>HashMap</code> mapping each input number to <code>num * 100</code>. The pattern <code>for &amp;num in slice</code> copies the <code>i32</code> out of each yielded <code>&amp;i32</code>.</p>
 <p>Neither style carries an inherent runtime penalty; under optimization, LLVM compiles both forms to comparable machine code. Iterator pipelines express linear data transformations cleanly, whereas explicit loops suit bodies with multiple side effects or complex early-exit control flow.</p>
-<p>Having covered iterator pipelines, we next examine the lifetime rules that keep the references they produce valid.</p>
+<p>Because iterator pipelines frequently yield borrowed references into backing storage, soundness depends on static lifetime verification.</p>
 <h2 id="46-lifetimes"><a class="header" href="#46-lifetimes">4.6 Lifetimes</a></h2>
 <p>Every reference borrows data owned elsewhere. If the owner is dropped while a reference remains live, that reference becomes a dangling pointer referencing freed memory, leading to undefined behavior or crashes in unmanaged languages. Figure 4.5 illustrates the minimal case.</p>
 <figure>
@@ -463,17 +463,16 @@ Filtered : [2, 4, 6]
 <div class="summary" markdown="1">
 <h2 id="summary"><a class="header" href="#summary">Summary</a></h2>
 <ul>
-<li>An iterator yields elements through <code>next</code>, returning <code>Some(item)</code> until exhausted and <code>None</code> thereafter; <code>for</code> loops desugar to <code>next</code> calls.</li>
-<li><code>iter()</code> yields <code>&amp;T</code>, <code>iter_mut()</code> yields <code>&amp;mut T</code>, and <code>into_iter()</code> yields <code>T</code> while consuming the collection.</li>
-<li>Adapters (<code>filter</code>, <code>map</code>) are lazy; no work executes until a consumer (<code>collect</code>, <code>for</code>) pulls elements one by one through the pipeline.</li>
-<li>Because <code>filter</code> borrows each yielded item, chaining <code>iter().filter(...)</code> passes <code>&amp;&amp;T</code> to the predicate; patterns such as <code>|&amp;&amp;x|</code> destructure references for <code>Copy</code> types.</li>
-<li>A lifetime defines the static region in which a reference remains valid; the borrow checker rejects any reference used after its referent is dropped.</li>
-<li>Explicit lifetime parameters such as <code>'a</code> link input and output reference lifetimes in function signatures without altering runtime storage durations.</li>
-<li>Indexing slices with <code>HashMap&lt;u32, &amp;'a User&gt;</code> avoids cloning elements while statically guaranteeing that the map never outlives the underlying data.</li>
+<li>An iterator is a stateful cursor implementing <code>Iterator::next</code>, yielding <code>Some(item)</code> until exhausted and <code>None</code> thereafter; <code>for</code> loops desugar directly to <code>next</code> calls.</li>
+<li><code>iter()</code> yields shared references (<code>&amp;T</code>), <code>iter_mut()</code> yields exclusive mutable references (<code>&amp;mut T</code>), and <code>into_iter()</code> transfers ownership (<code>T</code>) while consuming the source collection.</li>
+<li>Iterator adapters (<code>filter</code>, <code>map</code>) are lazy state machines; no element is processed until a consumer (<code>collect</code>, <code>for</code>) pulls items through the pipeline one by one.</li>
+<li>Because <code>filter</code> borrows each yielded item without consuming it, <code>iter().filter(...)</code> supplies <code>&amp;&amp;T</code> to its predicate closure; irrefutable patterns such as <code>|&amp;&amp;x|</code> dereference <code>Copy</code> values directly.</li>
+<li>A lifetime designates the static program span during which a reference remains valid; the borrow checker rejects any reference whose use outlives its referent’s drop point.</li>
+<li>Explicit lifetime parameters such as <code>'a</code> bind input and output reference lifetimes across function signatures without altering runtime storage durations.</li>
+<li>Indexing slices with <code>HashMap&lt;u32, &amp;'a User&gt;</code> eliminates element cloning while statically guaranteeing that the index never outlives the underlying slice.</li>
 </ul>
 </div>
 
-<p>Chapter 5 extends these iterators and collections to binary heaps and priority-ordered algorithms, including top-k frequency selection and streaming median computation.</p>
 <h2 id="exercises"><a class="header" href="#exercises">Exercises</a></h2>
 <ol>
 <li>Rewrite <code>imperative_numbers_map</code> as a single iterator chain terminating in <code>collect::&lt;HashMap&lt;_, _&gt;&gt;()</code>.</li>

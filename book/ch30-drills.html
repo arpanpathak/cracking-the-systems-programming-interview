@@ -36,7 +36,7 @@
             const path_to_root = "";
             const default_light_theme = "coal";
             const default_dark_theme = "coal";
-            window.path_to_searchindex_js = "searchindex-4622e2bb.js";
+            window.path_to_searchindex_js = "searchindex-09ae7f8d.js";
         </script>
         <!-- Start loading toc.js asap -->
         <script src="toc-c196c8a9.js"></script>
@@ -183,15 +183,15 @@
 <div class="covers" markdown="1">
 <p>This chapter covers</p>
 <ul>
-<li>Ten short implementations, each sized to type in a live round</li>
-<li>Where each drill’s full version lives in this book</li>
-<li>Two drills that differ from their reference versions, one of them in a way that changes the answer</li>
-<li>A plan for a 45-minute round, and a way to practice with this repository</li>
+<li>Ten compact systems implementations sized for a 45-minute technical interview</li>
+<li>Cross-references mapping each compact drill to its full production-grade counterpart</li>
+<li>Deliberate engineering trade-offs omitted from the short forms, including a subtle lazy-iterator serialization defect</li>
+<li>Time-allocation discipline for a 45-minute live coding round and a structured rehearsal protocol</li>
 </ul>
 </div>
 
-<p>The preceding chapters presented complete reference implementations alongside their design rationale, test suites, and evolution. A timed technical interview offers a different environment: an empty editor, a brief problem statement, and roughly forty minutes. The module <code>drills.rs</code> provides compact counterparts, consisting of ten implementations sized to be written from scratch under time pressure, each paired with a unit test that verifies basic behavior.</p>
-<p>This chapter serves as a field guide to those drills. We map each implementation back to its reference chapter, examine the deliberate simplifications made in the short forms, and outline a structured method for rehearsing them.</p>
+<p>Production-grade systems primitives prioritize safety invariants, cache-line contention avoidance, and exhaustive failure handling; timed technical interviews impose a distinct constraint set: a blank buffer, a concise specification, and roughly forty minutes to deliver a verified implementation. The module <code>drills.rs</code> provides ten self-contained, interview-sized counterparts to the book’s core concurrency, networking, and data-structure primitives, each paired with a unit test exercising primary behavior.</p>
+<p>This reference guide indexes each drill against its full implementation, audits every deliberate simplification and behavioral divergence, and defines a repeatable rehearsal protocol for timed execution.</p>
 <h2 id="301-the-drills"><a class="header" href="#301-the-drills">30.1 The drills</a></h2>
 <p class="listing"><b>Listing 30.1</b> Ten answers sized for a live round. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/problems/drills.rs">src/problems/drills.rs</a></p>
 
@@ -717,7 +717,7 @@ mod tests {
         ));
     }
 }</code></pre>
-<p>The module comment states the file’s role in one line: the neighboring modules hold the reference implementations, and this file contains the compact forms written under interview conditions. Table 30.1 pairs each drill with the chapter that explains its full version.</p>
+<p>The module header defines its architectural boundary: neighboring modules hold full reference implementations, while <code>drills.rs</code> isolates minimal versions achievable under time pressure. The table below maps each drill to its corresponding reference chapter and listing:</p>
 <div class="table-wrapper">
 <table>
 <thead>
@@ -738,30 +738,15 @@ mod tests {
 </table>
 </div>
 <h2 id="302-what-the-short-forms-leave-out"><a class="header" href="#302-what-the-short-forms-leave-out">30.2 What the short forms leave out</a></h2>
-<p>A drill is allowed to be simpler than its reference. Knowing <em>what</em> it left out is part of the answer,
-because the follow-up question is usually aimed at exactly that.</p>
-<p><strong>The spin lock uses <code>swap</code>.</strong> <code>while self.locked.swap(true, Acquire) { spin_loop() }</code> is a test-and-set lock: every waiting thread writes the lock’s cache line on every iteration. The reference version in chapter 16 uses <code>compare_exchange_weak</code> and spins on a <em>load</em>, allowing waiters to share the cache line read-only until the lock is released. Both are correct, but the reference scales better under contention. The drill also omits the <code>// SAFETY:</code> comments, which production code and formal reviews require.</p>
-<p><strong>The semaphore has no guard.</strong> <code>acquire</code> and <code>release</code> are separate calls, so a caller that panics
-between them leaks a permit. The reference in section 16.5 returns a <code>SemaphoreGuard</code> whose <code>Drop</code> gives the
-permit back.</p>
-<p><strong>The thread pool receives in a let-else.</strong> <code>let Ok(job) = receiver.lock().expect(..).recv() else { return; };</code>
-is a <code>let</code> statement, so the <code>MutexGuard</code> temporary is dropped at its end, before <code>job()</code> runs. The
-pool is fully parallel, which a timing confirms: four 200 ms jobs on four workers take 205 ms. The same
-receive written as <code>while let</code> would serialize the pool (chapter 18, figure 18.2), so this is the form
-to memorize.</p>
-<p><strong>The hash ring wraps with <code>%</code>.</strong> <code>partition_point(..) % self.points.len()</code> maps an index one past the
-end back to 0 in one expression. The reference uses an <code>if</code> instead. The drill also hashes in a plainer
-way: it calls <code>hasher.write(input.as_bytes())</code> and <code>write_usize(replica)</code> directly. It stores a <code>String</code>
-per virtual node where the reference shares an <code>Arc&lt;str&gt;</code>.</p>
-<p><strong>The request parser checks the version and little else.</strong> <code>parse_request_head</code> accepts only
-<code>HTTP/1.1</code>, splits headers at the first colon, and lowercases the names. It has no size limits, no
-<code>Host</code> check, and no body framing. That is the right scope for a ten-minute question about a request
-head. For a question about serving requests, chapter 21’s checks are the answer.</p>
-<p><strong><code>Port::new</code> is a one-expression validator.</strong> <code>(1..=u16::MAX).contains(&amp;value).then_some(Self(value)).ok_or(..)</code>
-reads left to right as the rule. <code>Route::parse</code> matches the two fixed paths and falls back to
-<code>strip_prefix</code> for the id route, returning <code>None</code> for everything else.</p>
+<p>Omitting secondary features is acceptable under interview time constraints only when the author can articulate every omitted invariant and its production consequence during follow-up questioning.</p>
+<p><strong>Test-and-set versus test-and-test-and-set in <code>SpinLock</code>.</strong> The drill spins via <code>while self.locked.swap(true, Acquire) { spin_loop() }</code>, executing an atomic read-modify-write on every iteration. Under multicore contention, every spinning core repeatedly invalidates the lock’s cache line across the interconnect (cache-line bouncing). The reference implementation in Chapter 16 uses <code>compare_exchange_weak</code> guarded by an inner <code>Relaxed</code> load loop, allowing waiting cores to spin on a shared read-only cache line until release. Both preserve mutual exclusion, but only the reference scales under contention. The drill also omits explicit <code>// SAFETY:</code> invariant documentation required in production reviews.</p>
+<p><strong>Permit leakage in <code>Semaphore</code>.</strong> Exposing bare <code>acquire</code> and <code>release</code> methods leaks a permit whenever a caller returns early or panics between calls. The reference design in Section 16.5 returns an RAII <code>SemaphoreGuard</code> whose <code>Drop</code> implementation releases the permit deterministically.</p>
+<p><strong>Temporary drop order in <code>ThreadPool</code>.</strong> Writing <code>let Ok(job) = receiver.lock().expect(..).recv() else { return; };</code> binds the job in a <code>let</code> statement, dropping the temporary <code>MutexGuard</code> at the semicolon prior to executing <code>job()</code>. Timing confirms true parallelism: four 200 ms tasks across four workers complete in 205 ms. Writing the identical receive inside <code>while let</code> would extend the <code>MutexGuard</code> lifetime across the loop body and serialize all worker threads (Chapter 18, Figure 18.2).</p>
+<p><strong>Modulo wraparound and allocation in <code>HashRing</code>.</strong> The drill maps past-the-end binary-search indices back to slot 0 via <code>partition_point(..) % self.points.len()</code> rather than an explicit branch, hashes <code>(input, replica)</code> directly without intermediate formatting, and stores an owned <code>String</code> per virtual node instead of sharing a single <code>Arc&lt;str&gt;</code>.</p>
+<p><strong>Minimal validation in <code>parse_request_head</code>.</strong> The drill enforces <code>HTTP/1.1</code>, splits headers on the first colon, and normalizes header names to lowercase, omitting header-size bounds, mandatory <code>Host</code> verification, and body framing. That scope matches a ten-minute parsing prompt; full HTTP server hardening requires the checks developed in Chapter 21.</p>
+<p><strong>Concise domain validation in <code>Port</code> and <code>Route</code>.</strong> <code>Port::new</code> encodes its range invariant in a single combinator pipeline: <code>(1..=u16::MAX).contains(&amp;value).then_some(Self(value)).ok_or(..)</code>. <code>Route::parse</code> matches static paths directly and extracts parameterized IDs via <code>strip_prefix</code>, rejecting all unrecognized paths with <code>None</code>.</p>
 <h2 id="303-the-drill-that-is-slower-than-it-looks"><a class="header" href="#303-the-drill-that-is-slower-than-it-looks">30.3 The drill that is slower than it looks</a></h2>
-<p><code>parallel_sum</code> changed behavior in the short form. Compare it with the reference in chapter 16:</p>
+<p>Unlike the intentional simplifications above, the drill version of <code>parallel_sum</code> alters asymptotic concurrency relative to the Chapter 16 reference:</p>
 <pre><code class="language-rust">// drills.rs
 values
     .chunks(chunk_size)
@@ -772,50 +757,44 @@ values
 // threads.rs
 let handles: Vec&lt;_&gt; = values.chunks(chunk_size).map(|chunk| scope.spawn(...)).collect();
 handles.into_iter().map(|handle| handle.join().expect("worker panicked")).sum()</code></pre>
-<p>Iterators are lazy. In the drill, <code>sum</code> pulls one item through both <code>map</code>s before it asks for the next.
-The first chunk’s thread is therefore spawned and then <em>joined</em> before the second chunk’s thread is
-spawned. The four workers run one after another. The reference collects every <code>JoinHandle</code> into a <code>Vec</code>
-first, which spawns all four, and only then joins them.</p>
-<p>The result is the same number either way, so the drill’s test passes. Timing four workers that each
-sleep 200 ms shows the difference:</p>
+<p>Rust iterators are lazy. In <code>drills.rs</code>, <code>sum</code> pulls one element completely through both <code>map</code> adapters before requesting the next chunk. Consequently, the first worker thread is spawned and immediately <em>joined</em> before the second worker thread is even created, executing all four chunks strictly sequentially. The reference implementation forces eager spawning by collecting all <code>JoinHandle</code>s into a <code>Vec</code> before joining any of them.</p>
+<p>Because sequential execution produces the identical arithmetic sum, a value-only unit test passes without flagging the bug. Timing four workers that each sleep for 200 ms exposes the serialization immediately:</p>
 <pre><code class="language-text">lazy spawn/join chain, four 200 ms workers: 809.402756ms (sum 4)
 collect first, then join:              203.482125ms (sum 4)
 </code></pre>
-<p>The fix is a single <code>collect()</code> between the two <code>map</code> calls. The same concurrency principle appeared in the thread pool analysis of chapter 18: a test that checks only the final numerical result cannot distinguish parallel execution from serial execution. Verifying concurrency requires either a synchronization barrier (as in <code>thread_pool_v2</code>’s <code>jobs_run_at_the_same_time</code>) or a wall-clock timing assertion.</p>
+<p>Inserting a single <code>.collect::&lt;Vec&lt;_&gt;&gt;()</code> between the two <code>map</code> stages restores full parallelism. As established in the thread-pool analysis of Chapter 18, verifying concurrency requires either a synchronization barrier (such as <code>thread_pool_v2</code>’s <code>jobs_run_at_the_same_time</code>) or a wall-clock timing assertion rather than output-value equality alone.</p>
 <h2 id="304-running-a-round"><a class="header" href="#304-running-a-round">30.4 Running a round</a></h2>
-<p>A 45-minute coding round follows a predictable arc. Budgeting time deliberately keeps the final ten minutes, where the strongest engineering signal emerges, free from last-minute debugging (figure 30.1).</p>
+<p>A 45-minute technical round follows five predictable phases. Allocating time deliberately protects the final seven minutes, where systems design maturity is evaluated, from last-minute debugging (Figure 30.1).</p>
 <figure>
 <img src="figures/ch23-round.svg" alt="A bar split into 0 to 5 minutes clarify, 5 to 10 types first, 10 to 30 happy path then edge cases, 30 to 38 tests, 38 to 45 failure modes">
 <figcaption><b>Figure 30.1</b> One way to spend a 45-minute round. The proportions matter more than the exact minutes.</figcaption>
 </figure>
 <ul>
-<li><strong>Clarify.</strong> Establish the input contracts, invalid-input behavior, and operational bounds (size, concurrency, latency). Each constraint translates directly into a type or guard check.</li>
-<li><strong>Types first.</strong> Define enums, newtypes, and function signatures before writing function bodies. Choosing a <code>Result&lt;T, ParseError&gt;</code> return type in minute six avoids a structural rewrite in minute twenty-five.</li>
-<li><strong>The happy path, then each edge.</strong> Get a single end-to-end case compiling and passing, then layer in the edge cases identified during clarification.</li>
-<li><strong>Tests.</strong> Exercise the boundary conditions explicitly rather than testing only the prompt’s happy-path example.</li>
-<li><strong>Failure modes.</strong> Articulate what degrades at scale and how the design would evolve in production; the reference implementations throughout this book serve as that checklist.</li>
+<li><strong>Clarify (0 to 5 min).</strong> Lock down input contracts, invalid-input semantics, and operational bounds (capacity, concurrency, latency). Every constraint translates directly into a type invariant or guard clause.</li>
+<li><strong>Types first (5 to 10 min).</strong> Specify enums, newtypes, and public function signatures before writing implementation bodies. Selecting <code>Result&lt;T, ParseError&gt;</code> early prevents structural rewrites mid-round.</li>
+<li><strong>Happy path, then edge cases (10 to 30 min).</strong> Compile and pass one end-to-end path first, then layer in boundary checks, concurrency shutdown paths, and error variants.</li>
+<li><strong>Tests (30 to 38 min).</strong> Write targeted unit tests covering empty inputs, capacity bounds, concurrent contention, and error returns rather than only the prompt’s nominal example.</li>
+<li><strong>Failure modes (38 to 45 min).</strong> Articulate scaling bottlenecks, kernel limits, and production hardening steps, drawing directly from the book’s reference implementations.</li>
 </ul>
 <h2 id="305-practicing-with-this-repository"><a class="header" href="#305-practicing-with-this-repository">30.5 Practicing with this repository</a></h2>
-<p>The repository supports the structured rehearsal loop described in the problem index: write a minimal correct implementation in 30 to 45 minutes, then analyze its failure modes and verification strategy.</p>
+<p>The repository supports a closed-loop rehearsal workflow for building timed fluency: implement a minimal correct structure within 30 to 45 minutes, then audit its failure modes and tests against the reference solution.</p>
 <ol>
-<li>Select a drill and read its reference chapter once.</li>
-<li>Close the book and the reference file, then implement the structure from a blank buffer in a scratch binary under <code>src/bin/</code>.</li>
-<li>Run <code>cargo test</code> on the implementation, followed by the reference test suites (<code>cargo test thread_pool</code>, <code>cargo test bounded_queue</code>, <code>cargo test --bin http_server</code>).</li>
-<li>Diff against the reference implementation, noting every omission and whether it was an intentional trade-off.</li>
-<li>Walk through the failure modes aloud as if presenting to a design reviewer.</li>
+<li>Select one drill and review its reference chapter once.</li>
+<li>Close the chapter and reference source, then implement the primitive from a blank file in a scratch binary under <code>src/bin/</code>.</li>
+<li>Execute <code>cargo test</code> on the implementation alongside the corresponding reference suites (<code>cargo test thread_pool</code>, <code>cargo test bounded_queue</code>, <code>cargo test --bin http_server</code>).</li>
+<li>Diff the implementation against the reference module, cataloging every omission as either an intentional scope reduction or a correctness gap.</li>
+<li>Verbalize the production failure modes and concurrency proofs aloud as if addressing a design review.</li>
 </ol>
-<p>The “Questions that come up” sections at the end of each chapter provide the follow-up prompts to rehearse. The progression traced across this book (eleven merge variants, nine pools, and six buffers) illustrates what that iterative refinement loop produces when intermediate drafts are preserved.</p>
+<p>The “Questions that come up” sections at the end of each chapter supply targeted follow-up prompts for step 5. The iterative progressions preserved across the repository (eleven merge variants, nine pools, and six ring buffers) illustrate how minimal prototypes evolve into hardened systems components.</p>
 <h2 id="306-questions-that-come-up"><a class="header" href="#306-questions-that-come-up">30.6 Questions that come up</a></h2>
-<p><strong>“Your parallel sum gives the right answer. Is it parallel?”</strong>
-Check that all threads are spawned before any is joined. A lazy iterator that spawns and joins in one
-chain is serial.</p>
-<p><strong>“What would you add to this spin lock for production?”</strong>
-Spin on a relaxed load before retrying the exchange. Back off or yield under contention. Add <code>SAFETY</code>
-comments, and prefer <code>std::sync::Mutex</code> unless measurements say otherwise.</p>
-<p><strong>“Your semaphore’s caller panicked. What happened to the permit?”</strong>
-It leaked. Return a guard whose <code>Drop</code> releases it.</p>
-<p><strong>“How did you decide what to leave out?”</strong>
-By the question’s scope. Name what a full version adds, and where it would change the answer.</p>
+<p><strong>“A parallel sum returns the exact expected total. How can parallelism be verified?”</strong>
+Inspect thread lifecycle ordering to verify that all worker threads are spawned before any handle is joined; a lazy iterator chaining <code>spawn</code> and <code>join</code> executes serially. Confirm concurrency empirically with a <code>Barrier</code> test or a wall-clock timing assertion.</p>
+<p><strong>“What changes are required to harden this spin lock for production?”</strong>
+Guard the atomic exchange with an inner <code>Relaxed</code> load spin loop to avoid cache-line bouncing, add backoff or thread yielding under sustained contention, document explicit <code>// SAFETY:</code> invariants on <code>unsafe impl Sync</code>, and prefer <code>std::sync::Mutex</code> unless profiling proves a spin lock is necessary.</p>
+<p><strong>“A caller panics while holding a semaphore permit. What happens to the permit?”</strong>
+With bare <code>acquire</code>/<code>release</code> methods, the permit leaks permanently and reduces effective concurrency. Returning an RAII <code>SemaphoreGuard</code> whose <code>Drop</code> releases the permit guarantees leak-free cleanup across panics and early returns.</p>
+<p><strong>“What criterion governs what to omit in a timed drill?”</strong>
+Match omissions strictly to the interview prompt’s stated scope, while explicitly naming every omitted production invariant (such as <code>// SAFETY:</code> proofs, RAII guards, cache-line optimization, or bounds enforcement) and noting where an omission alters asymptotic or concurrency behavior.</p>
 
                     </main>
 

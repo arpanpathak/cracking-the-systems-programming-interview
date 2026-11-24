@@ -36,7 +36,7 @@
             const path_to_root = "";
             const default_light_theme = "coal";
             const default_dark_theme = "coal";
-            window.path_to_searchindex_js = "searchindex-4622e2bb.js";
+            window.path_to_searchindex_js = "searchindex-09ae7f8d.js";
         </script>
         <!-- Start loading toc.js asap -->
         <script src="toc-c196c8a9.js"></script>
@@ -193,9 +193,8 @@
 </ul>
 </div>
 
-<p>In Chapter 7, every value had a single owner. That model covers most Rust code, but certain data structures require richer ownership semantics: a tree node referencing its parent, a shared counter updated concurrently by multiple threads, or a recursive expression containing subexpressions of its own type.</p>
-<p>To express these patterns safely, the Rust standard library provides <strong>smart pointer types</strong>. Each pointer type holds the address of a value while enforcing a specific ownership or mutability discipline. In this chapter, we examine the primary pointer types in sequence, inspecting both their memory layout and the problems they solve. The next four chapters on linked lists, trees, and graphs rely on all of them.</p>
-<p>We begin by reviewing Rust’s baseline ownership rules, since each smart pointer extends or adapts those rules in a specific way.</p>
+<p>Rust’s default affine ownership discipline assigns every value a single static owner and enforces aliasing XOR mutability at compile time. Although single ownership suffices for tree-structured, non-cyclic values, recursive data types, shared graph nodes, parent back-links, and cross-thread mutable state require explicit indirection, reference counting, or dynamic synchronization.</p>
+<p>The Rust standard library models these ownership and mutability disciplines through <strong>smart pointer types</strong>. Each smart pointer encapsulates a heap address or interior-mutability guard while preserving memory safety through compile-time trait bounds or runtime checks. The sections below formalize the memory layout, invariants, and tradeoffs of <code>Box</code>, <code>Rc</code>, <code>RefCell</code>, <code>Weak</code>, <code>Arc</code>, <code>Mutex</code>, and <code>Cow</code>, beginning with a concise review of baseline move and borrow semantics.</p>
 <h2 id="81-ownership-and-moves"><a class="header" href="#81-ownership-and-moves">8.1 Ownership and moves</a></h2>
 <p>Every value in Rust has a single <strong>owner</strong>, the variable or container responsible for it. When the owner leaves scope, the value is dropped and its memory is reclaimed.</p>
 <p>Assigning a non-<code>Copy</code> value to another variable <strong>moves</strong> it: ownership transfers to the new binding, and the previous binding becomes unusable (Figure 8.1).</p>
@@ -301,14 +300,13 @@ pub fn shared_counter_with_rc_refcell() -&gt; i32 {
 
     *counter.borrow()
 }</code></pre>
-<p>Step through it:</p>
+<p>Tracing the five statements of Listing 8.3 clarifies how reference counting and dynamic borrow guards interact:</p>
 <ol>
-<li><code>Rc::new(RefCell::new(0))</code> creates a counter holding 0, with a strong count of 1.</li>
-<li><code>Rc::clone(&amp;counter)</code> makes a second handle, <code>alias</code>. The strong count is now 2. There is still one counter.</li>
-<li><code>*alias.borrow_mut() += 1;</code> borrows mutably through <code>alias</code> and adds 1. The guard is dropped at the end of
-the statement, so the borrow ends there.</li>
-<li><code>*counter.borrow_mut() += 10;</code> does the same through the other handle.</li>
-<li><code>*counter.borrow()</code> reads 11.</li>
+<li><code>Rc::new(RefCell::new(0))</code> allocates a heap control block initialized to <code>0</code> with a strong count of <code>1</code>.</li>
+<li><code>Rc::clone(&amp;counter)</code> creates a second handle <code>alias</code> to the same allocation, incrementing the strong count to <code>2</code> without duplicating the underlying integer.</li>
+<li><code>*alias.borrow_mut() += 1;</code> acquires a temporary <code>RefMut</code> guard through <code>alias</code>, increments the value to <code>1</code>, and drops the guard at the semicolon, immediately releasing the exclusive borrow.</li>
+<li><code>*counter.borrow_mut() += 10;</code> acquires and releases a second exclusive guard through <code>counter</code>, advancing the value to <code>11</code>.</li>
+<li><code>*counter.borrow()</code> acquires a shared <code>Ref</code> guard and reads <code>11</code>.</li>
 </ol>
 <p>Animation 8.1 illustrates these operations alongside the strong count and <code>RefCell</code> borrow state stored in the heap allocation.</p>
 <figure class="anim">
@@ -358,12 +356,10 @@ impl TreeNode {
     }
 }</code></pre>
 <ul>
-<li><code>parent: RefCell&lt;Weak&lt;TreeNode&gt;&gt;</code> stores the link to the parent. The <code>RefCell</code> allows the link to be
-changed after the node exists.</li>
-<li><code>root</code> creates a node with <code>Weak::new()</code>, an empty weak pointer whose <code>upgrade</code> always returns <code>None</code>.</li>
-<li><code>child_of</code> creates a node whose parent link is <code>Rc::downgrade(parent)</code>.</li>
-<li><code>parent_value</code> borrows the link, calls <code>upgrade()</code>, and reads the parent’s value if the parent still
-exists. <code>Option::map</code> applies the closure only when there is a value.</li>
+<li><code>parent: RefCell&lt;Weak&lt;TreeNode&gt;&gt;</code> encapsulates the non-owning back-link inside a <code>RefCell</code> so parent attachment can be updated after node construction.</li>
+<li><code>root</code> constructs a node with <code>Weak::new()</code>, a null weak reference whose <code>upgrade</code> always yields <code>None</code>.</li>
+<li><code>child_of</code> binds the child’s parent field to <code>Rc::downgrade(parent)</code>, incrementing only the parent’s weak count.</li>
+<li><code>parent_value</code> borrows the <code>RefCell</code>, attempts <code>upgrade()</code>, and projects the parent’s integer payload via <code>Option::map</code> if the parent allocation remains alive.</li>
 </ul>
 <p>The test <code>weak_parent_link_does_not_keep_the_parent_alive</code> in Listing 8.7 verifies this behavior. Animation 8.2 traces that test and contrasts it with the leak caused by bidirectional <code>Rc</code> links.</p>
 <figure class="anim">
@@ -372,8 +368,8 @@ exists. <code>Option::map</code> applies the closure only when there is a value.
 </figure>
 <p>Once <code>root</code> is dropped, its strong count reaches zero and the node is deallocated, causing subsequent <code>parent_value()</code> calls on <code>child</code> to return <code>None</code>.</p>
 <h2 id="86-arc-and-mutex-sharing-across-threads"><a class="header" href="#86-arc-and-mutex-sharing-across-threads">8.6 <code>Arc</code> and <code>Mutex</code>: sharing across threads</a></h2>
-<p><code>Arc&lt;T&gt;</code> is the thread-safe equivalent of <code>Rc&lt;T&gt;</code>, maintaining its reference count with <strong>atomic</strong> operations. An atomic operation completes as an indivisible hardware step even when multiple processor cores access the same memory address concurrently, making <code>Arc</code> safe to share across threads (atomic operations are examined in detail in Chapter 16).</p>
-<p><code>Mutex&lt;T&gt;</code> is the thread-safe counterpart to <code>RefCell&lt;T&gt;</code>. Calling <code>lock()</code> acquires exclusive access and returns a guard; if another thread already holds the lock, the calling thread blocks until the lock is released rather than panicking.</p>
+<p><code>Arc&lt;T&gt;</code> is the thread-safe counterpart to <code>Rc&lt;T&gt;</code>, maintaining its reference count through hardware <strong>atomic</strong> instructions. An atomic read-modify-write executes indivisibly across processor cores, preventing data races on the reference count and allowing <code>Arc</code> handles to cross thread boundaries safely.</p>
+<p><code>Mutex&lt;T&gt;</code> is the thread-safe counterpart to <code>RefCell&lt;T&gt;</code>. Calling <code>lock()</code> acquires mutual exclusion and returns a <code>MutexGuard</code>; if another thread already holds the lock, the calling thread blocks until the guard is dropped rather than panicking.</p>
 <p class="listing"><b>Listing 8.5</b> Several threads adding to one total (lines 89 to 110).</p>
 
 <pre><code class="language-rust">/// Shared mutation across threads, with `Arc` for ownership and `Mutex` for
@@ -398,17 +394,16 @@ pub fn total_with_arc_mutex(threads: usize, per_thread: usize) -&gt; usize {
 
     *total.lock().expect("mutex poisoned")
 }</code></pre>
-<p>Step through it:</p>
+<p>The concurrent accumulation in Listing 8.5 proceeds in five steps:</p>
 <ol>
-<li><code>Arc::new(Mutex::new(0usize))</code> creates the shared total.</li>
-<li>For each thread, <code>Arc::clone(&amp;total)</code> makes a new handle, and <code>thread::spawn(move || ...)</code> moves that handle
-into the new thread. <code>move</code> means the closure takes ownership of what it uses.</li>
-<li>Each thread locks the mutex, adds 1, and drops the guard, <code>per_thread</code> times.</li>
-<li><code>handle.join()</code> waits for each thread to finish.</li>
-<li>The last line locks once more and reads the result.</li>
+<li><code>Arc::new(Mutex::new(0usize))</code> allocates a mutex-protected counter with an atomic strong count of <code>1</code>.</li>
+<li>For each worker, <code>Arc::clone(&amp;total)</code> increments the atomic reference count, and <code>thread::spawn(move || ...)</code> transfers ownership of that cloned handle into the spawned thread’s closure.</li>
+<li>Each worker acquires the lock, increments the protected counter, and drops the <code>MutexGuard</code> on every iteration for <code>per_thread</code> cycles.</li>
+<li><code>handle.join()</code> synchronizes with each worker thread’s termination before proceeding.</li>
+<li>The final lock acquisition reads the aggregated total once all workers have exited.</li>
 </ol>
-<p>Because a thread panicking while holding a lock leaves the protected data in a potentially inconsistent state, <code>lock()</code> returns a <code>Result</code> indicating whether the mutex is <strong>poisoned</strong> (covered in Chapter 16). Calling <code>.expect("mutex poisoned")</code> terminates the program if poisoning occurs.</p>
-<p>Acquiring the lock on every single increment forces threads to contend continuously on the mutex. Although correct, this pattern performs poorly under contention; Chapter 16 benchmarks faster concurrent accumulation strategies.</p>
+<p>If a thread panics while holding a <code>MutexGuard</code>, the protected state may violate its invariants; subsequent <code>lock()</code> calls return an <code>Err</code> indicating mutex <strong>poisoning</strong>. Calling <code>.expect("mutex poisoned")</code> propagates that failure by panicking.</p>
+<p>Acquiring a mutex on every individual increment serializes all worker threads on a single cache line, degrading throughput under contention. Accumulating into a thread-local counter and locking once per thread eliminates that contention bottleneck.</p>
 <h2 id="87-cow-borrowing-when-possible"><a class="header" href="#87-cow-borrowing-when-possible">8.7 <code>Cow</code>: borrowing when possible</a></h2>
 <p>The enum <code>Cow&lt;'a, str&gt;</code> (short for <em>clone on write</em>) holds either a borrowed <code>&amp;'a str</code> or an owned <code>String</code>. It is suited to functions that usually return their input unmodified and allocate only when a transformation is required.</p>
 <p class="listing"><b>Listing 8.6</b> Uppercase only when needed (lines 112 to 126).</p>
@@ -606,20 +601,16 @@ mod tests {
 <div class="summary" markdown="1">
 <h2 id="summary"><a class="header" href="#summary">Summary</a></h2>
 <ul>
-<li>Every value has one owner. Assignment moves ownership, copying only the stack header, and borrowing lends
-access without moving.</li>
-<li><code>Box&lt;T&gt;</code> owns a value on the heap. It gives recursive types a fixed size.</li>
-<li><code>Rc&lt;T&gt;</code> lets several owners share a value, counted, within one thread. Cloning an <code>Rc</code> adds to the count.</li>
-<li><code>RefCell&lt;T&gt;</code> allows changes through shared references and checks the borrow rules at run time, panicking on
-a violation.</li>
-<li>Two <code>Rc</code> handles pointing at each other leak. <code>Weak&lt;T&gt;</code> does not count as an owner and breaks such cycles.</li>
-<li><code>Arc&lt;T&gt;</code> is <code>Rc</code> with an atomic count, for threads, and <code>Mutex&lt;T&gt;</code> makes other threads wait instead of
-panicking.</li>
-<li><code>Cow</code> returns borrowed data unchanged and allocates only when it must change it.</li>
+<li>Rust’s affine ownership model assigns every value a single static owner: assignment transfers ownership by copying only the stack header, whereas borrowing grants temporary shared or exclusive access without moving ownership.</li>
+<li><code>Box&lt;T&gt;</code> provides single-owner heap indirection with a fixed pointer size, enabling recursive algebraic types to have statically known layouts.</li>
+<li><code>Rc&lt;T&gt;</code> enables single-threaded shared ownership via non-atomic reference counting; <code>Rc::clone</code> increments the strong count without duplicating the pointee.</li>
+<li><code>RefCell&lt;T&gt;</code> provides single-threaded interior mutability by enforcing aliasing XOR mutability at runtime, panicking on overlapping conflicting borrows.</li>
+<li>Bidirectional <code>Rc</code> cycles prevent strong counts from reaching zero and leak memory; <code>Weak&lt;T&gt;</code> provides a non-owning reference that breaks cycles and upgrades to <code>Option&lt;Rc&lt;T&gt;&gt;</code>.</li>
+<li><code>Arc&lt;T&gt;</code> uses atomic reference counting for cross-thread shared ownership, and <code>Mutex&lt;T&gt;</code> enforces mutual exclusion by blocking contending threads until the active <code>MutexGuard</code> is dropped.</li>
+<li><code>Cow&lt;'a, T&gt;</code> defers heap allocation by returning borrowed data unchanged and cloning into an owned buffer only when mutation is required.</li>
 </ul>
 </div>
 
-<p>In Chapter 9, these pointer types are applied to linked lists: first building singly linked lists with <code>Box</code> and diagnosing stack overflow during recursive deallocation, then constructing a doubly linked list with <code>Rc</code>, <code>RefCell</code>, and <code>Weak</code>.</p>
 <h2 id="exercises"><a class="header" href="#exercises">Exercises</a></h2>
 <ol>
 <li>Build the expression <code>(1 + 2) + 3</code> with <code>Expr</code> and check that <code>eval</code> returns 6.</li>

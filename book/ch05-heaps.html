@@ -36,7 +36,7 @@
             const path_to_root = "";
             const default_light_theme = "coal";
             const default_dark_theme = "coal";
-            window.path_to_searchindex_js = "searchindex-4622e2bb.js";
+            window.path_to_searchindex_js = "searchindex-09ae7f8d.js";
         </script>
         <!-- Start loading toc.js asap -->
         <script src="toc-c196c8a9.js"></script>
@@ -192,15 +192,14 @@
 </ul>
 </div>
 
-<p>Alongside vectors, strings, and hash maps from Chapter 3, the binary heap is an essential collection for priority-driven workloads. A heap maintains dynamic access to the extreme element (maximum or minimum) while supporting efficient insertions and removals.</p>
-<p>This capability underpins top-k ranking, task scheduling by priority, and streaming order-statistic queries. We implement three programs in this chapter: two variants that extract the <code>k</code> most frequent items, and a streaming median tracker.</p>
-<p>Following the structure of Chapter 3, we examine the memory representation and core operations first, then walk through each implementation.</p>
-<p>Four definitions establish the terminology:</p>
+<p>Priority-driven workloads require continuous access to the extreme element of a dynamic multiset without paying the $O(n)$ maintenance cost of keeping the entire collection sorted. A <strong>binary heap</strong> resolves this tradeoff by enforcing a partial ordering invariant over a complete binary tree packed contiguously in a vector, supporting $O(1)$ extremum inspection and $O(\log n)$ insertions and deletions.</p>
+<p>This priority-queue abstraction underpins top-$k$ frequency selection, priority scheduling, and streaming order-statistic maintenance. The sections below formalize the implicit array representation, sift-up and sift-down invariant restoration, and Rust’s <code>BinaryHeap</code> API before developing three complete applications: unbounded top-$k$ selection, $k$-bounded top-$k$ word ranking, and dual-heap streaming median maintenance.</p>
+<p>Four formal definitions establish the terminology:</p>
 <ul>
-<li>A <strong>binary tree</strong> is a hierarchical structure in which every node has at most two children (left and right); the single node with no parent is the <strong>root</strong>.</li>
-<li>A <strong>max-heap</strong> is a complete binary tree satisfying the heap property: every parent is greater than or equal to both of its children, placing the maximum element at the root.</li>
-<li>A <strong>min-heap</strong> reverses the ordering invariant so every parent is less than or equal to its children, placing the minimum element at the root.</li>
-<li>The <strong>median</strong> of a collection of numbers is the middle element in sorted order (or the arithmetic mean of the two middle elements when the count is even).</li>
+<li>A <strong>binary tree</strong> is a hierarchical structure in which every node has at most two children (left and right); the unique node without a parent is the <strong>root</strong>.</li>
+<li>A <strong>max-heap</strong> is a complete binary tree satisfying the max-heap invariant: every parent key is greater than or equal to the keys of both children, placing the global maximum at the root.</li>
+<li>A <strong>min-heap</strong> inverts this ordering invariant so every parent key is less than or equal to its children’s keys, placing the global minimum at the root.</li>
+<li>The <strong>median</strong> of a finite multiset of real numbers is its middle element in sorted order when cardinality is odd, or the arithmetic mean of the two middle elements when cardinality is even.</li>
 </ul>
 <h2 id="51-a-tree-stored-in-a-vector"><a class="header" href="#51-a-tree-stored-in-a-vector">5.1 A tree stored in a vector</a></h2>
 <p>Although conceptually a tree, a binary heap stores no child or parent pointers. Because a heap is always a complete binary tree (every level filled except possibly the last, which fills from left to right), its nodes pack densely into a <code>Vec</code> in level order: the root at index 0, its two children at indexes 1 and 2, their children at indexes 3 through 6, and so on. Figure 5.1 depicts a six-element max-heap alongside its backing vector.</p>
@@ -254,7 +253,7 @@
 <h3 id="532-a-min-heap-with-reverse"><a class="header" href="#532-a-min-heap-with-reverse">5.3.2 A min-heap with <code>Reverse</code></a></h3>
 <p>Rather than offering a separate min-heap type, the standard library provides the zero-cost wrapper <code>std::cmp::Reverse&lt;T&gt;</code>, whose <code>Ord</code> implementation inverts <code>T</code>’s ordering (<code>Reverse(3) &gt; Reverse(5)</code> because <code>3 &lt; 5</code>). Consequently, <code>BinaryHeap&lt;Reverse&lt;i32&gt;&gt;</code> behaves as a min-heap keeping the smallest value at the root.</p>
 <p>Callers wrap values on insertion (<code>heap.push(Reverse(x))</code>) and destructure the wrapper on extraction (<code>if let Some(Reverse(x)) = heap.pop()</code>).</p>
-<p>With the data structure and Rust APIs established, we examine three complete heap applications.</p>
+<p>With the implicit array layout and <code>BinaryHeap</code> interface established, the following three sections apply heaps to frequency ranking and streaming order statistics.</p>
 <h2 id="54-the-k-most-frequent-numbers"><a class="header" href="#54-the-k-most-frequent-numbers">5.4 The k most frequent numbers</a></h2>
 <p><strong>The problem.</strong> Given a slice of integers and a count <code>k</code>, return the <code>k</code> most frequently occurring numbers. For <code>[1, 1, 1, 2, 2, 3]</code> and <code>k = 2</code>, the result is <code>1</code> and <code>2</code>.</p>
 <p><strong>The strategy.</strong> Tally frequencies in a <code>HashMap</code>, build a max-heap of <code>(count, number)</code> pairs, and pop <code>k</code> elements.</p>
@@ -723,17 +722,16 @@ after  0: median 3
 <div class="summary" markdown="1">
 <h2 id="summary"><a class="header" href="#summary">Summary</a></h2>
 <ul>
-<li>A binary heap packs a complete binary tree level by level into a <code>Vec</code>, placing the children of index <code>i</code> at <code>2i + 1</code> and <code>2i + 2</code> and its parent at <code>(i - 1) / 2</code>.</li>
-<li>In a max-heap, every parent is at least as large as its children, keeping the maximum element at index 0 for O(1) <code>peek</code>.</li>
-<li><code>push</code> appends to the tail and sifts upward; <code>pop</code> moves the tail to the root and sifts downward through the larger child. Both run in O(log n) time.</li>
-<li>Rust’s <code>BinaryHeap</code> is a max-heap; wrapping items in <code>std::cmp::Reverse</code> converts it into a min-heap.</li>
-<li>Tuples compare lexicographically from left to right, enabling <code>(count, value)</code> priority ordering without custom comparator types.</li>
-<li>Selecting the top <code>k</code> items with a <code>k</code>-bounded min-heap reduces heap memory from O(u) to O(k) and heap work from O(u log u) to O(u log k).</li>
-<li>Pairing a max-heap (<code>low</code>) with a min-heap (<code>high</code>) maintains a streaming median in O(log n) per insertion and O(1) per query.</li>
+<li>A binary heap embeds a complete binary tree level by level in a contiguous <code>Vec</code>, locating the children of index <code>i</code> at <code>2i + 1</code> and <code>2i + 2</code> and its parent at <code>(i - 1) / 2</code>.</li>
+<li>In a max-heap, every parent key dominates its children, exposing the global maximum at index <code>0</code> for $O(1)$ <code>peek</code>.</li>
+<li><code>push</code> appends to the tail and restores the invariant via sift-up; <code>pop</code> promotes the tail element to index <code>0</code> and restores the invariant via sift-down through the larger child. Both operations run in $O(\log n)$ worst-case time.</li>
+<li>Rust’s <code>BinaryHeap&lt;T&gt;</code> implements a max-heap; wrapping elements in the zero-cost <code>std::cmp::Reverse&lt;T&gt;</code> adapter yields a min-heap.</li>
+<li>Lexicographical tuple ordering enables <code>(count, value)</code> priority keys without custom comparator structs.</li>
+<li>Bounding a min-heap to $k + 1$ entries during top-$k$ selection reduces heap space from $O(u)$ to $O(k)$ and heap work from $O(u \log u)$ to $O(u \log k)$.</li>
+<li>Partitioning a stream across a lower max-heap (<code>low</code>) and an upper min-heap (<code>high</code>) maintains the running median in $O(\log n)$ time per insertion and $O(1)$ time per query.</li>
 </ul>
 </div>
 
-<p>Chapter 6 turns to recursion and dynamic programming, solving problems with overlapping subproblems by caching intermediate results and concluding with parallel workloads suited to GPU execution.</p>
 <h2 id="exercises"><a class="header" href="#exercises">Exercises</a></h2>
 <ol>
 <li>Implement a standalone max-heap over <code>Vec&lt;i32&gt;</code> supporting <code>push</code>, <code>pop</code>, and <code>peek</code> using the index formulas from Section 5.1, and oracle-test it against <code>BinaryHeap</code> on random sequences.</li>

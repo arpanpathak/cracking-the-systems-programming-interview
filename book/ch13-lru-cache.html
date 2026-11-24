@@ -36,7 +36,7 @@
             const path_to_root = "";
             const default_light_theme = "coal";
             const default_dark_theme = "coal";
-            window.path_to_searchindex_js = "searchindex-4622e2bb.js";
+            window.path_to_searchindex_js = "searchindex-09ae7f8d.js";
         </script>
         <!-- Start loading toc.js asap -->
         <script src="toc-c196c8a9.js"></script>
@@ -191,24 +191,25 @@
 </ul>
 </div>
 
-<p>A <strong>cache</strong> retains a bounded set of recent results in fast storage so that a program can avoid repeating
+<p>A <strong>cache</strong> retains a bounded working set of recently accessed entries in low-latency storage to avoid repeating
 expensive computation or I/O. Web browsers cache decoded assets, database engines cache disk pages in RAM, and
-CPUs cache main memory in small, low-latency SRAM adjacent to each core (examined in Chapter 15).</p>
-<p>Because a cache has a fixed capacity, inserting a new entry once full requires removing, or <strong>evicting</strong>, an
-existing entry according to an <strong>eviction policy</strong>. This chapter implements the <strong>least recently used</strong> (LRU)
-policy, which evicts the entry that has remained unaccessed for the longest time, leveraging temporal locality.</p>
-<p>Both underlying components have already been introduced: <code>HashMap</code> in Chapter 3 and linked lists with <code>Rc</code> in
-Chapters 8 and 9. We now combine them across four progressively refined implementations and benchmark two of them
-head to head.</p>
+processors cache main memory in small SRAM arrays adjacent to each core.</p>
+<p>Because capacity is strictly bounded, inserting a new entry into a full cache requires <strong>evicting</strong> an existing
+entry according to an <strong>eviction policy</strong>. The <strong>least recently used</strong> (LRU) policy evicts the entry that has
+remained unaccessed for the longest duration, exploiting temporal locality to maximize hit rates.</p>
+<p>Implementing an O(1) LRU cache combines hash-indexed key lookup with a recency-ordered doubly linked structure.
+This chapter develops four progressively refined implementations (a timestamped lazy-eviction queue, an
+arena-backed doubly linked list, a precondition-partitioned modular arena, and a reference-counted list) and
+benchmarks the arena representation directly against <code>Rc&lt;RefCell&lt;_&gt;&gt;</code>.</p>
 <h2 id="131-what-an-lru-cache-does"><a class="header" href="#131-what-an-lru-cache-does">13.1 What an LRU cache does</a></h2>
-<p>An LRU cache has two operations:</p>
+<p>An LRU cache exposes two core operations, both executing in O(1) time:</p>
 <ul>
-<li><code>get(key)</code> returns the value for <code>key</code>, or nothing if the key is not cached. A successful <code>get</code> counts as a use,
-so the key becomes the most recently used.</li>
-<li><code>put(key, value)</code> stores the value. The key becomes the most recently used. If the cache was full and the key
-is new, the least recently used entry is evicted.</li>
+<li><code>get(key)</code> returns the cached value associated with <code>key</code>, or <code>None</code> on a miss. A cache hit promotes <code>key</code> to
+the most-recently-used position.</li>
+<li><code>put(key, value)</code> inserts or updates the mapping for <code>key</code> and promotes it to the most-recently-used position.
+When inserting a new key at full capacity, the least-recently-used entry is evicted first.</li>
 </ul>
-<p>Figure 13.1 follows five calls on a cache with room for two entries.</p>
+<p>Figure 13.1 traces five operations against a two-entry cache.</p>
 <figure>
 <img src="figures/lru-behaviour.svg" alt="Five rows, one per call, showing the recency order. put A gives A. put B gives B then A. get A gives A then B. put C evicts B and gives C then A. get B returns None.">
 <figcaption><b>Figure 13.1</b> The recency order after each call. The entry at the right end is evicted next.</figcaption>
@@ -255,42 +256,44 @@ subsequent reads. Entries are listed from most recent to least recent.</p>
 </tbody>
 </table>
 </div>
-<p>LRU scores 3 hits, and FIFO 2. A is used most, and LRU never evicts it: every use moves it back to the front.
-FIFO evicts A at the sixth request because A arrived first, and the very next request misses on A.</p>
+<p>LRU achieves 3 hits compared with 2 for FIFO: because every access promotes A back to the head of the recency
+list, the hot key remains resident, whereas FIFO evicts A on the sixth request solely because it arrived first,
+causing an immediate miss on the seventh request.</p>
 <p>Animation 13.1 plays the same trace, with a robot for the cache and one for the slow store behind it.</p>
 <figure class="anim">
 <video class="motion" src="figures/ch13-lru-shelf.mp4" autoplay="" loop="" muted="" playsinline="" preload="metadata" aria-label="A cache robot with a shelf of three slots, most recent on the left, and a backing store robot on the right, with the eight requests A, B, A, C, A, D, A, B above. Each miss sends a fetch to the backing store, which takes time, and the value lands in the front slot. Each hit takes the value from the shelf and moves it to the front. At the sixth request the shelf is full, and B, at the back, slides into the evicted tray. The run ends with 3 hits and 5 misses, and A never left the shelf. In a second run with FIFO, hits do not move anything; D evicts A, which arrived first, and the next request for A misses: 2 hits and 6 misses." data-chapters="[[0.0, &quot;LRU&quot;], [36.29, &quot;FIFO&quot;]]"><img src="figures/ch13-lru-shelf.gif" alt="A cache robot with a shelf of three slots, most recent on the left, and a backing store robot on the right, with the eight requests A, B, A, C, A, D, A, B above. Each miss sends a fetch to the backing store, which takes time, and the value lands in the front slot. Each hit takes the value from the shelf and moves it to the front. At the sixth request the shelf is full, and B, at the back, slides into the evicted tray. The run ends with 3 hits and 5 misses, and A never left the shelf. In a second run with FIFO, hits do not move anything; D evicts A, which arrived first, and the next request for A misses: 2 hits and 6 misses."></video>
 <figcaption><b>Animation 13.1</b> The trace above. Under LRU, each use moves an entry to the front, so the hot key stays. Under FIFO, the hot key is evicted because it arrived first.</figcaption>
 </figure>
-<p>LRU works when the recent past predicts the near future, which holds for most workloads. One pattern breaks it:
-a scan that reads many keys once each. Every key in the scan becomes the most recent, and the scan pushes out
-the entries that were in steady use. Databases defend against this with variants that admit a key fully only
-on its second use.</p>
-<p>A cache needs to answer two questions fast:</p>
+<p>LRU excels under workloads exhibiting strong temporal locality, yet it degrades under <strong>sequential scans</strong>
+(one-time sweeps over more distinct keys than cache capacity), which flush the hot working set completely.
+Production storage engines mitigate scan pollution using multi-queue or frequency-aware admission policies (such
+as 2Q, LRU-K, or W-TinyLFU) that promote keys into the protected tier only upon a second access.</p>
+<p>An O(1) LRU cache must satisfy two simultaneous indexing requirements:</p>
 <ol>
-<li>Is this key cached, and what is its value? A <code>HashMap</code> answers that in O(1).</li>
-<li>Which entry is the least recently used? This needs an order that changes on every call.</li>
+<li>O(1) key-to-entry lookup, provided by a <code>HashMap</code>.</li>
+<li>O(1) recency promotion and tail eviction, requiring a dynamically reorderable sequence.</li>
 </ol>
-<p>Keeping the order in a <code>Vec</code> would be slow. Moving an entry from the middle to the front shifts every element
-between, which is O(n). The four versions in this chapter keep the order in structures where each step is O(1).</p>
+<p>Maintaining recency order inside a <code>Vec</code> requires O(<em>n</em>) element shifts on every promotion. The four
+implementations below achieve O(1) recency updates through timestamped queues and index-linked or pointer-linked
+doubly linked lists.</p>
 <h2 id="132-version-1-stamped-events-in-a-queue"><a class="header" href="#132-version-1-stamped-events-in-a-queue">13.2 Version 1: stamped events in a queue</a></h2>
-<p>The first version avoids a linked list entirely. Its idea is to record each use as an event, and to sort out
-which events still count only when something must be evicted.</p>
-<p>The cache has a counter called <code>generation</code> that goes up by one on every call. Each call stamps the key with the
-current generation in two places (figure 13.2):</p>
+<p>The first design avoids a doubly linked list altogether by logging every access into a FIFO queue and deferring
+deduplication to eviction time (lazy deletion).</p>
+<p>A monotonically increasing <code>generation: u64</code> counter increments on every <code>get</code> hit or <code>put</code>. Each access stamps
+the target key in two structures (Figure 13.2):</p>
 <ul>
-<li>The map stores each key’s value and its latest stamp: <code>HashMap&lt;K, (V, u64)&gt;</code>.</li>
-<li>A queue, <code>recency</code>, receives a <code>(key, stamp)</code> event at the back on every use.</li>
+<li><code>map: HashMap&lt;K, (V, u64)&gt;</code> stores each resident key’s value paired with its most recent generation stamp.</li>
+<li><code>recency: VecDeque&lt;(K, u64)&gt;</code> appends a <code>(key, generation)</code> event to the back of the queue.</li>
 </ul>
 <figure>
 <img src="figures/lru-stamps.svg" alt="The queue holds (a,1), (b,2), (a,3), (c,4). The map holds a with (1,3), b with (2,2), c with (3,4). Eviction skips (a,1) because a&#39;s stamp is 3, then removes b because its stamp 2 matches.">
 <figcaption><b>Figure 13.2</b> The state after four calls. The event (a, 1) is stale, because a was used again at stamp 3.</figcaption>
 </figure>
-<p>The queue is in the order of use, oldest at the front. A key used several times has several events in it. Only
-the event whose stamp matches the map is current. The others are <strong>stale</strong>, the same idea as the stale heap
-entries of Dijkstra’s algorithm in section 12.9.</p>
-<p>To evict, the cache pops events from the front. It skips stale events, and removes the key of the first
-current event. That key is the least recently used one.</p>
+<p>The queue preserves chronological access order from oldest (front) to newest (back). Repeatedly accessed keys
+accumulate multiple entries in <code>recency</code>; only the entry whose stamp matches the key’s current stamp in <code>map</code> is
+authoritative, while earlier entries are <strong>stale</strong> (analogous to lazy deletion in Dijkstra’s priority queue).</p>
+<p>During eviction, the cache dequeues events from the front, discarding stale records until it encounters an
+authoritative event, whose key is guaranteed to be the least recently used resident entry.</p>
 <p class="listing"><b>Listing 13.1</b> The type (lines 10 to 24). <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/problems/lru_cache.rs">src/problems/lru_cache.rs</a></p>
 
 <pre><code class="language-rust">use std::{
@@ -390,21 +393,22 @@ proportional to total request count rather than cached entry count. Exercise 1 a
 </div>
 
 <h2 id="133-version-2-a-linked-list-inside-a-vec"><a class="header" href="#133-version-2-a-linked-list-inside-a-vec">13.3 Version 2: a linked list inside a <code>Vec</code></a></h2>
-<p>The classic LRU design keeps the entries in a doubly linked list, ordered from most to least recently used.
-A doubly linked list can move an entry to the front in O(1). Removing the last entry and adding one at the
-front are O(1) too. The map stores, for each key, where that key’s node is.</p>
-<p>As seen in Chapter 9, a doubly linked list built from <code>Rc&lt;RefCell&lt;_&gt;&gt;</code> nodes introduces substantial friction in
-Rust: every node is jointly owned, every mutation incurs runtime borrow checks, and backward links must use
-<code>Weak</code> to prevent reference cycles.</p>
-<p>An alternative layout stores all nodes inside a single <code>Vec</code> and represents links as integer indices into that
-vector. A <code>Vec</code> used as a contiguous node pool is called an <strong>arena</strong> (Figure 13.3).</p>
+<p>The canonical O(1) LRU architecture maintains resident entries in a doubly linked list ordered from most recently
+used (<code>head</code>) to least recently used (<code>tail</code>), paired with a <code>HashMap</code> mapping each key directly to its node
+location. Promoting an interior node, inserting at the head, and evicting from the tail each execute in O(1)
+worst-case time.</p>
+<p>A doubly linked list built from <code>Rc&lt;RefCell&lt;_&gt;&gt;</code> nodes incurs significant runtime overhead in Rust: every node
+requires an independent heap allocation, reference-count updates, dynamic borrow checks, and <code>Weak</code> back-links to
+prevent cycles.</p>
+<p>An <strong>arena</strong> layout eliminates these costs by storing all nodes contiguously inside a single <code>Vec&lt;Node&lt;K, V&gt;&gt;</code>
+and encoding <code>prev</code> and <code>next</code> pointers as integer <code>Option&lt;usize&gt;</code> indices (Figure 13.3).</p>
 <figure>
 <img src="figures/lru-arena.svg" alt="The lookup table maps A to 0, B to 1, C to 2. The nodes Vec has index 0 A 10 prev None next Some(2); index 1 B 20 prev Some(2) next None; index 2 C 30 prev Some(0) next Some(1). head is Some(0), tail is Some(1). Following next from the head gives A, C, B.">
 <figcaption><b>Figure 13.3</b> Three entries in the arena. The order in the <code>Vec</code> is the order of insertion. The <code>prev</code> and <code>next</code> indices give the order of use.</figcaption>
 </figure>
-<p>An index is a plain <code>usize</code>. The borrow checker does not track it, so a node can be “pointed to” by several other
-nodes with no <code>Rc</code> and no <code>RefCell</code>. The cost is that the compiler cannot catch a wrong index. The code must keep
-the links correct by itself.</p>
+<p>Because <code>usize</code> indices are copyable scalars outside the borrow checker’s aliasing model, multiple nodes and the
+lookup table can reference the same slot without <code>Rc</code> or <code>RefCell</code>. The trade-off shifts responsibility for
+referential integrity from the compiler to the implementation’s link-maintenance invariants.</p>
 <p class="listing"><b>Listing 13.4</b> The node and the cache (lines 20 to 45). <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/problems/lru_cache_easy.rs">src/problems/lru_cache_easy.rs</a></p>
 
 <pre><code class="language-rust">use std::{collections::HashMap, hash::Hash};
@@ -587,9 +591,9 @@ takes <code>&amp;mut self</code>, the cache remains mutably borrowed for as long
 <p>The third case highlights the primary advantage of an arena: eviction performs no deallocation and insertion
 performs no heap allocation. Instead, the tail slot is overwritten with the new key and value, and <code>touch</code>
 promotes its index to the head.</p>
-<p><code>std::mem::replace(&amp;mut self.nodes[i].key, key)</code> puts the new key into the node and returns the old key, in one
-step. The old key is then removed from <code>lookup_table</code>. The new key was moved into the node, so the map receives a
-clone of it.</p>
+<p><code>std::mem::replace(&amp;mut self.nodes[i].key, key)</code> installs the incoming key and returns the evicted key in a
+single operation so the evicted key can be removed from <code>lookup_table</code>; the table then receives a clone of the
+new key.</p>
 <p>Animation 13.4 plays the three cases in order. It fills the cache, updates an entry, and then evicts the tail
 by reusing its slot. The last run leaves out the <code>remove</code> of the old key.</p>
 <figure class="anim">
@@ -687,8 +691,8 @@ get 1 = Some(99)
 </code></pre>
 <h2 id="135-version-4-measuring-the-arena-against-rcrefcell_"><a class="header" href="#135-version-4-measuring-the-arena-against-rcrefcell_">13.5 Version 4: measuring the arena against <code>Rc&lt;RefCell&lt;_&gt;&gt;</code></a></h2>
 <p>Determining whether an arena-backed list outperforms an <code>Rc&lt;RefCell&lt;_&gt;&gt;</code> list, and by what margin, requires
-empirical measurement. In this section, we place both caches behind a shared trait and drive them with an
-identical request stream.</p>
+empirical measurement. Both cache implementations are placed behind a unified trait interface and driven with an
+identical deterministic request stream.</p>
 <h3 id="1351-one-trait-two-caches"><a class="header" href="#1351-one-trait-two-caches">13.5.1 One trait, two caches</a></h3>
 <p class="listing"><b>Listing 13.9</b> The trait. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/benchmarking_examples/cache/mod.rs">benchmarking_examples/cache/mod.rs</a></p>
 
@@ -967,8 +971,10 @@ The map drops its <code>Rc</code> handles afterward, and each drop then frees a 
 <img src="figures/lru-rc-layout.svg" alt="The arena is one contiguous row of 48-byte nodes. The Rc list node is a separate 56-byte block holding a strong count, a weak count, a RefCell borrow flag, key, value, prev, and next; such blocks are scattered and linked by arrows.">
 <figcaption><b>Figure 13.5</b> Node storage for <code>u64</code> keys and values. The sizes were measured with <code>std::mem::size_of</code>.</figcaption>
 </figure>
-<p>The arena’s node is 48 bytes: the key and value take 8 bytes each, and each <code>Option&lt;usize&gt;</code> takes 16. The <code>Rc</code> node is 32 bytes. The heap block around it adds a strong count, a weak count, and the <code>RefCell</code>
-flag, for 56 bytes. The memory sizes are close. What differs is the number of allocations and where the nodes sit in memory.</p>
+<p>Each arena node occupies 48 bytes (8 bytes each for <code>u64</code> key and value, plus 16 bytes each for the two
+<code>Option&lt;usize&gt;</code> index links). By contrast, each <code>Rc&lt;RefCell&lt;Node&gt;&gt;</code> allocation occupies 56 bytes (the 32-byte
+node plus strong count, weak count, and <code>RefCell</code> borrow state). Although per-node byte footprints are comparable,
+the two designs differ fundamentally in allocator churn and spatial cache locality.</p>
 <h3 id="1353-the-benchmark"><a class="header" href="#1353-the-benchmark">13.5.3 The benchmark</a></h3>
 <p class="listing"><b>Listing 13.14</b> The request stream and the timed loop (lines 52 to 106). <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/benchmarking_examples/benchmark.rs">benchmarking_examples/benchmark.rs</a></p>
 
@@ -1385,9 +1391,8 @@ Best of 3 runs per cache.
 allocates a replacement, whereas the arena reuses the evicted slot in place.</li>
 <li><strong>Bookkeeping.</strong> The <code>Rc</code> list updates reference counts on every clone and drop and checks the <code>RefCell</code>
 borrow state on every access, whereas the arena reads and writes plain integers.</li>
-<li><strong>Spatial locality.</strong> The arena stores all nodes contiguously in a single allocation, whereas <code>Rc</code> nodes sit
-wherever the allocator places them. In Chapter 15, we examine the hardware cache hierarchy that makes
-contiguous memory access faster.</li>
+<li><strong>Spatial locality.</strong> The arena packs all nodes contiguously inside a single backing allocation, whereas <code>Rc</code>
+nodes are scattered across allocator buckets, increasing L1/L2 cache misses during pointer traversal.</li>
 </ul>
 <p>This benchmark measures the combined effect without isolating the three factors; Exercise 4 outlines how to
 separate them.</p>
@@ -2370,23 +2375,22 @@ impl&lt;K, V&gt; Drop for LruCache&lt;K, V&gt; {
 <div class="summary" markdown="1">
 <h2 id="summary"><a class="header" href="#summary">Summary</a></h2>
 <ul>
-<li>An LRU cache evicts the entry that has gone longest without use. It needs fast lookup by key and a recency
-order that changes on every call.</li>
-<li>Version 1 records each use as a stamped event in a queue, and skips stale events during eviction. It is
-amortized O(1), but its queue grows with the number of calls.</li>
-<li>Version 2 keeps a doubly linked list in a <code>Vec</code>, with indices as links. Eviction reuses the tail slot, so the
-cache stops allocating once it is full.</li>
-<li>Version 3 splits the list operations into <code>detach</code>, <code>push_front</code>, and <code>promote_to_front</code>, each with one job and
-a stated precondition.</li>
-<li>Behind a common trait, the arena cache handled requests about three times faster than an <code>Rc&lt;RefCell&lt;_&gt;&gt;</code> list
-in this benchmark.</li>
-<li>A fair benchmark feeds both versions the same input, checks that their results agree, and runs in release
-mode.</li>
+<li>An LRU cache evicts the least recently accessed entry upon capacity exhaustion, combining O(1) hash lookup with
+O(1) recency-order maintenance.</li>
+<li>Version 1 appends generation-stamped access events to a <code>VecDeque</code> and discards stale entries lazily during
+eviction, achieving amortized O(1) time at the cost of unbounded queue growth under hit-heavy workloads.</li>
+<li>Version 2 stores a doubly linked list inside a contiguous <code>Vec</code> arena linked by <code>Option&lt;usize&gt;</code> indices,
+reusing the evicted tail slot in place to eliminate heap allocation after warm-up.</li>
+<li>Version 3 decomposes list mutation into single-purpose methods (<code>detach</code>, <code>push_front</code>, <code>promote_to_front</code>),
+each governed by an explicit documented precondition.</li>
+<li>Under an identical 10-million-request skewed workload behind a shared <code>Cache</code> trait, the arena implementation
+achieved a 3.16x speedup over the <code>Rc&lt;RefCell&lt;_&gt;&gt;</code> doubly linked list by eliminating per-eviction allocations,
+reference-count traffic, and pointer-chasing cache misses.</li>
+<li>Rigorous benchmarking requires deterministic workloads, output-equivalence verification across variants, and
+optimized <code>--release</code> builds.</li>
 </ul>
 </div>
 
-<p>In Chapter 14, we extend caching across multiple threads and servers, examining lock sharding and consistent
-hashing.</p>
 <h2 id="exercises"><a class="header" href="#exercises">Exercises</a></h2>
 <ol>
 <li>Bound the queue in version 1. When <code>recency</code> grows longer than twice the capacity, rebuild it with only the

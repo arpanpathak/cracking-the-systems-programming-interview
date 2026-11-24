@@ -36,7 +36,7 @@
             const path_to_root = "";
             const default_light_theme = "coal";
             const default_dark_theme = "coal";
-            window.path_to_searchindex_js = "searchindex-4622e2bb.js";
+            window.path_to_searchindex_js = "searchindex-09ae7f8d.js";
         </script>
         <!-- Start loading toc.js asap -->
         <script src="toc-c196c8a9.js"></script>
@@ -192,9 +192,9 @@
 </ul>
 </div>
 
-<p>This chapter opens Part 2, which examines core data structures and the algorithms built upon them. Here we focus on Rust’s three most frequently used standard collections: <code>Vec</code>, <code>String</code>, and <code>HashMap</code>.</p>
-<p>Before tackling algorithmic problems, the opening sections establish two prerequisites: asymptotic complexity notation for comparing algorithms, and the internal memory layouts of each collection. With those foundations established, the subsequent implementations remain concise while making their runtime and memory guarantees transparent.</p>
-<p>The problems are organized by reusable algorithmic technique rather than by surface domain. Table 3.1 maps each section to its underlying technique and target problems.</p>
+<p>Algorithmic efficiency depends jointly on asymptotic operation counts and the physical memory layout of the underlying data structures. Rust’s three foundational standard collections (<code>Vec</code>, <code>String</code>, and <code>HashMap</code>) provide contiguous array storage, UTF-8-validated byte buffers, and open-addressed hash tables with predictable performance contracts.</p>
+<p>The opening sections establish two prerequisites: asymptotic Big-O complexity notation for comparing scaling behavior, and the stack-versus-heap memory layout of each collection. With these cost models explicit, the subsequent algorithms remain concise while making their time and space bounds transparent.</p>
+<p>The implementations are organized by reusable algorithmic paradigm rather than by surface domain. Table 3.1 maps each section to its underlying technique and target problems.</p>
 <div class="table-wrapper">
 <table>
 <thead>
@@ -213,8 +213,8 @@
 </table>
 </div>
 <h2 id="31-counting-the-work-an-algorithm-does"><a class="header" href="#31-counting-the-work-an-algorithm-does">3.1 Counting the work an algorithm does</a></h2>
-<p>Two implementations can compute identical results while differing by orders of magnitude in execution time, as demonstrated by the recursive and iterative Fibonacci timings in Chapter 1. Selecting between competing designs requires a systematic notation for how work scales with input size.</p>
-<p>We measure algorithmic work by counting elementary constant-time operations (such as comparisons or array reads) as a function of input size <code>n</code>, where <code>n</code> typically denotes the length of an array or string. Consider three operations on an array of <code>n</code> integers:</p>
+<p>Two implementations can compute identical outputs while differing by orders of magnitude in execution time. Selecting between competing designs requires a formal notation characterizing how work scales with input size.</p>
+<p>Algorithmic work is quantified by counting elementary constant-time operations (such as comparisons, arithmetic instructions, or array accesses) as a function of input size <code>n</code>, where <code>n</code> typically denotes the length of an array or string. Consider three operations on an array of <code>n</code> integers:</p>
 <ul>
 <li>Reading the first element requires 1 operation, independent of <code>n</code>.</li>
 <li>Summing every element requires <code>n</code> operations, one per entry.</li>
@@ -283,7 +283,7 @@
 </figure>
 <p>Distinct keys can hash to the same bucket (a collision), as keys 7 and 11 do in Figure 3.4, requiring key equality checks to resolve the entry. By resizing the table whenever its load factor exceeds a fixed threshold, <code>HashMap</code> keeps probe chains short, maintaining O(1) expected time for <code>insert</code> and <code>get</code>.</p>
 <p>By default, Rust’s <code>HashMap</code> initializes its hasher with a per-process random seed to prevent algorithmic-complexity (HashDoS) attacks crafted to collide in a single bucket. As a consequence, iteration order over a <code>HashMap</code> is non-deterministic across executions.</p>
-<p>With complexity analysis and collection internals in place, we turn to the algorithmic problems, progressing from baseline designs to collection-accelerated implementations.</p>
+<p>With asymptotic analysis and collection memory layouts established, the following sections develop eight canonical algorithms, contrasting baseline designs against collection-accelerated implementations.</p>
 <h2 id="35-finding-two-numbers-that-add-up-to-a-target"><a class="header" href="#35-finding-two-numbers-that-add-up-to-a-target">3.5 Finding two numbers that add up to a target</a></h2>
 <p><strong>The problem.</strong> Given a slice of integers and a target sum, return two distinct indexes whose elements sum to the target. For <code>[2, 7, 11, 15]</code> and target 9, the result is <code>(0, 1)</code>, since <code>2 + 7 = 9</code>.</p>
 <p><strong>The baseline approach.</strong> Testing every pair <code>(i, j)</code> with <code>i &lt; j</code> examines roughly <code>n(n - 1) / 2</code> pairs, yielding O(n²) time.</p>
@@ -1385,21 +1385,20 @@ mod tests {
 <div class="summary" markdown="1">
 <h2 id="summary"><a class="header" href="#summary">Summary</a></h2>
 <ul>
-<li>Big-O notation characterizes asymptotic time and space growth by retaining only the dominant term and dropping constant factors.</li>
-<li>A <code>Vec</code> stores elements contiguously on the heap, providing O(1) indexing and amortized O(1) <code>push</code> through exponential capacity growth.</li>
-<li>A <code>String</code> enforces valid UTF-8 over a <code>Vec&lt;u8&gt;</code>; <code>len()</code> reports byte length, while <code>chars()</code> decodes Unicode scalar values.</li>
-<li>A <code>HashMap</code> hashes keys into buckets with randomized seeding, delivering O(1) expected <code>get</code> and <code>insert</code>.</li>
-<li>Hash maps reduce complement lookups in Two Sum from O(n²) to O(n).</li>
-<li>Using a <code>Vec</code> as a LIFO stack solves bracket validation and O(1) minimum tracking (<code>MinStack</code>).</li>
-<li>Converging two-pointer scans reverse ASCII strings in place and solve Three Sum in O(n²) time after sorting.</li>
-<li>Sliding windows paired with a last-seen index map find the longest substring without repeated characters in O(n) time.</li>
-<li>Sorting intervals by start coordinate allows a single linear pass to merge overlapping ranges, either into a new vector or in place.</li>
-<li>Binary search halves the candidate range per step in O(log n) time and extends to rotated sorted arrays by checking which half remains ordered.</li>
-<li>KMP preprocesses a pattern’s prefix-suffix table (<code>lps</code>) to match substrings in O(n + m) worst-case time without backtracking.</li>
+<li>Big-O notation characterizes asymptotic time and auxiliary space growth by retaining only the dominant term and omitting constant factors.</li>
+<li>A <code>Vec&lt;T&gt;</code> stores elements contiguously in a heap-allocated buffer, providing $O(1)$ random-access indexing and amortized $O(1)$ <code>push</code> via geometric capacity growth.</li>
+<li>A <code>String</code> enforces a UTF-8 encoding invariant over a <code>Vec&lt;u8&gt;</code>; <code>len()</code> reports byte length, whereas <code>chars()</code> decodes Unicode scalar values sequentially.</li>
+<li>A <code>HashMap&lt;K, V&gt;</code> maps keys to buckets with a randomly seeded hasher to resist collision attacks, delivering $O(1)$ expected <code>get</code> and <code>insert</code>.</li>
+<li>Indexing visited elements in a <code>HashMap</code> reduces complement queries in Two Sum from $O(n^2)$ to $O(n)$ expected time.</li>
+<li>Using a <code>Vec</code> as a LIFO stack solves nested delimiter validation and $O(1)$ minimum-element queries (<code>MinStack</code>).</li>
+<li>Converging two-pointer traversals reverse ASCII buffers in place in $O(1)$ auxiliary space and solve Three Sum in $O(n^2)$ time after sorting.</li>
+<li>Sliding windows paired with a last-seen index map compute the longest substring without repeated characters in $O(n)$ time.</li>
+<li>Sorting intervals by start coordinate permits a single $O(n)$ pass to merge overlapping ranges, either into an output vector or in place.</li>
+<li>Binary search halves the candidate range per step in $O(\log n)$ time and extends to rotated sorted arrays by identifying which half preserves monotonic order.</li>
+<li>Knuth-Morris-Pratt (KMP) preprocesses a pattern’s prefix-suffix table (<code>lps</code>) to locate substrings in $O(n + m)$ worst-case time without backtracking in the haystack.</li>
 </ul>
 </div>
 
-<p>The listings in this chapter relied repeatedly on iterators (<code>iter()</code>, <code>enumerate()</code>, <code>chars()</code>) and borrowed references. Chapter 4 covers iterator mechanics, double-reference patterns, and the lifetime rules that guarantee reference validity.</p>
 <h2 id="exercises"><a class="header" href="#exercises">Exercises</a></h2>
 <ol>
 <li>Update <code>two_sum</code> to perform complement arithmetic in <code>i64</code> so extreme values cannot overflow, and add a unit test exercising <code>i32::MIN</code>.</li>

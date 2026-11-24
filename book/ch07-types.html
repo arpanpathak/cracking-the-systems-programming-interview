@@ -36,7 +36,7 @@
             const path_to_root = "";
             const default_light_theme = "coal";
             const default_dark_theme = "coal";
-            window.path_to_searchindex_js = "searchindex-4622e2bb.js";
+            window.path_to_searchindex_js = "searchindex-09ae7f8d.js";
         </script>
         <!-- Start loading toc.js asap -->
         <script src="toc-c196c8a9.js"></script>
@@ -192,18 +192,18 @@
 </ul>
 </div>
 
-<p>Part 3 shifts focus to data modeling. Earlier chapters relied on standard Rust types such as integers, strings, vectors, and maps. In this chapter, we design custom domain types whose structure makes invalid states unrepresentable.</p>
-<p>The examples come from a command-line utility that manages compute jobs, called <strong>workloads</strong>, on a remote cluster. Each workload requests between 1 and 64 GPUs (graphics processors used on servers for general-purpose parallel computation) and transitions through lifecycle states such as pending, running, and terminated. The tool parses text commands such as <code>create triton 4</code>, which requests a workload named <code>triton</code> with 4 GPUs.</p>
-<p>The core design problem is input validation. A GPU count arrives as raw user text, and the program must reject invalid inputs such as <code>0</code>, <code>99</code>, and <code>many</code> before that data reaches core business logic. Checking the count inside every downstream function is error-prone because a single omitted check lets an invalid value propagate. Instead, the program validates the count once at the system boundary and stores it in a dedicated type that can hold only valid counts. Every downstream function receiving that type relies on the invariant without repeating the check.</p>
+<p>Robust systems enforce domain invariants at compile time through algebraic data types rather than scattering defensive runtime checks across business logic. By restricting construction to validated boundaries, custom structs and enums make invalid program states unrepresentable.</p>
+<p>The implementations below model a command-line control plane that manages compute jobs, termed <strong>workloads</strong>, on a remote cluster. Each workload requests between 1 and 64 GPUs and transitions through discrete lifecycle states such as <code>Pending</code>, <code>Running</code>, and <code>Terminated</code>. Users issue text commands such as <code>create triton 4</code>, requesting a workload named <code>triton</code> with 4 GPUs.</p>
+<p>Input validation illustrates the core architectural invariant. A GPU count arrives as untrusted text, and inputs such as <code>0</code>, <code>99</code>, or <code>many</code> must be rejected before reaching scheduling logic. Revalidating raw integers in every downstream function is brittle because a single omitted guard permits corrupt state to propagate. Validating once at the ingress boundary and encapsulating the result in a private-field newtype guarantees that every downstream function receiving that type observes a valid count by construction.</p>
 <p>The implementation progresses through seven stages:</p>
 <ol>
-<li>Section 7.1 covers traits, which the subsequent types implement.</li>
-<li>Section 7.2 defines the validated GPU count type.</li>
-<li>Section 7.3 defines a dedicated error type for rejected counts.</li>
-<li>Section 7.4 adds standard <code>From</code> and <code>TryFrom</code> conversions.</li>
-<li>Section 7.5 defines a command enum and its text parser.</li>
-<li>Section 7.6 models workload lifecycle states and valid transitions.</li>
-<li>Section 7.7 models structured server error responses.</li>
+<li>Section 7.1 formalizes traits and automatic derivation.</li>
+<li>Section 7.2 defines the validated <code>GpuCount</code> newtype.</li>
+<li>Section 7.3 defines a structured error type for rejected counts.</li>
+<li>Section 7.4 implements standard <code>From</code> and <code>TryFrom</code> conversions.</li>
+<li>Section 7.5 models CLI commands as a tagged union enum with a text parser.</li>
+<li>Section 7.6 encodes workload lifecycle states and transition rules as a finite state machine.</li>
+<li>Section 7.7 models structured remote API errors with retry classification.</li>
 </ol>
 <h2 id="71-traits"><a class="header" href="#71-traits">7.1 Traits</a></h2>
 <p>A <strong>trait</strong> defines a set of methods that a type guarantees to provide. The standard library supplies many traits; for example, <code>Display</code> defines a single method, <code>fmt</code>, that formats a value as human-readable text. Any type implementing <code>Display</code> can be formatted with <code>println!("{}", x)</code>.</p>
@@ -398,7 +398,7 @@ fn argument&lt;'a&gt;(
         .ok_or(CommandError::MissingArgument(name))
 }</code></pre>
 <p><code>CommandError</code> enumerates every parsing failure mode, and its <code>Display</code> implementation formats a message for each variant. Because errors are typed variants rather than opaque strings, callers can <code>match</code> on them directly, such as displaying usage help on <code>MissingArgument</code> or printing the valid range on <code>InvalidGpuCount</code>. With a plain <code>String</code> error, callers would have to parse the error text to distinguish failure cases.</p>
-<p>The helper <code>argument</code> extracts the next whitespace-delimited token from the iterator or fails with the missing parameter’s name. Its first parameter, <code>&amp;mut impl Iterator&lt;Item = &amp;'a str&gt;</code>, mutably borrows the caller’s iterator so each call consumes one token. The lifetime <code>'a</code> (introduced in Chapter 4) ties the returned <code>&amp;str</code> to the input line, avoiding heap allocation until <code>parse</code> explicitly clones the string with <code>to_string()</code>.</p>
+<p>The helper <code>argument</code> extracts the next whitespace-delimited token from the iterator or fails with the missing parameter’s name. Its first parameter, <code>&amp;mut impl Iterator&lt;Item = &amp;'a str&gt;</code>, mutably borrows the caller’s iterator so each call consumes one token. The explicit lifetime <code>'a</code> binds the returned <code>&amp;str</code> to the input line, deferring heap allocation until <code>parse</code> invokes <code>to_string()</code>.</p>
 <h3 id="753-parsing-a-line-of-text"><a class="header" href="#753-parsing-a-line-of-text">7.5.3 Parsing a line of text</a></h3>
 <p>Parsing translates a single line of text into either a validated <code>Command</code> or an error describing the syntax or domain violation.</p>
 <p class="listing"><b>Listing 7.7</b> <code>Command::parse</code> and <code>verb</code> (lines 79 to 117).</p>
@@ -843,7 +843,7 @@ impl ApiError {
 <p>A rate-limit error specifies the required backoff duration, a not-found error identifies the missing resource, and a server error carries both an HTTP status code and a diagnostic message.</p>
 <p>The <code>is_retryable</code> method answers a standard client decision: whether retrying the request can succeed. Rate limits expire and HTTP <code>5xx</code> server errors are often transient, making both retryable, whereas a missing resource remains absent. A single pattern expresses this policy:</p>
 <pre><code class="language-rust">Self::RateLimited { .. } | Self::Server { status: 500..=599, .. }</code></pre>
-<p>Inside the struct pattern, <code>status: 500..=599</code> matches any HTTP 5xx status code while <code>..</code> ignores the remaining fields. In Chapter 19, a retry loop is built directly on top of this method.</p>
+<p>Inside the struct pattern, <code>status: 500..=599</code> matches any HTTP 5xx status code while <code>..</code> ignores the remaining fields. A client retry policy can query this predicate directly to separate transient failures from permanent errors.</p>
 <p>The <code>user_message</code> method formats each variant into a human-readable string, converting <code>retry_after</code> to milliseconds via <code>retry_after.as_millis()</code>.</p>
 <p class="listing"><b>Listing 7.13</b> A small parser (lines 93 to 101).</p>
 
@@ -1015,20 +1015,17 @@ mod tests {
 <div class="summary" markdown="1">
 <h2 id="summary"><a class="header" href="#summary">Summary</a></h2>
 <ul>
-<li>A trait defines a set of methods a type provides, implemented manually with <code>impl Trait for Type</code> or generated via <code>#[derive]</code>.</li>
-<li>A newtype with a private field and a checking constructor can only hold valid values, so the code that
-receives it needs no checks.</li>
-<li>An error type with <code>Display</code> and <code>std::error::Error</code> tells the caller what went wrong, and works with <code>?</code>.</li>
-<li><code>From</code> converts when it cannot fail. <code>TryFrom</code> returns a <code>Result</code> when it can.</li>
-<li>An enum whose variants carry their own data replaces a struct full of <code>Option</code> fields, and is as large as its
-largest variant.</li>
-<li>A parser converts raw text into typed values, using <code>map_err</code> to translate low-level failures into domain-specific errors.</li>
-<li>Matching on a pair of states describes a state machine, and a final <code>_</code> arm rejects every move not listed.</li>
-<li>Error enums can carry data and methods such as <code>is_retryable</code>.</li>
+<li>A trait specifies an interface contract implemented either manually via <code>impl Trait for Type</code> or automatically via <code>#[derive]</code>.</li>
+<li>A newtype encapsulating a private field behind a validating constructor enforces domain invariants at the ingress boundary, eliminating redundant downstream checks.</li>
+<li>Custom error types implementing <code>Display</code> and <code>std::error::Error</code> carry structured diagnostic context and integrate directly with the <code>?</code> operator.</li>
+<li><code>From</code> encodes infallible value conversions, whereas <code>TryFrom</code> encodes fallible conversions returning <code>Result</code>.</li>
+<li>Tagged union enums whose variants carry variant-specific payloads eliminate invalid field combinations inherent in structs of <code>Option</code> fields, occupying the size of their largest variant plus any required discriminant.</li>
+<li>Boundary parsers transform untrusted text into typed domain values, using <code>map_err</code> to translate low-level parse failures into structured domain errors.</li>
+<li>Exhaustive pattern matching over <code>(current, next)</code> state pairs defines a deny-by-default finite state machine in which a catch-all <code>_</code> arm rejects every unlisted transition.</li>
+<li>Structured error enums carry failure-specific metadata and expose domain predicates such as <code>is_retryable</code>.</li>
 </ul>
 </div>
 
-<p>Every value in this chapter had a single owner. In Chapter 8, we examine the smart pointer types designed for shared ownership and cross-thread synchronization.</p>
 <h2 id="exercises"><a class="header" href="#exercises">Exercises</a></h2>
 <ol>
 <li>Write a <code>Port</code> newtype for network ports that rejects 0, with a <code>TryFrom&lt;u16&gt;</code> implementation and its own

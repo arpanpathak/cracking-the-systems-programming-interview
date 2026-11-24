@@ -36,7 +36,7 @@
             const path_to_root = "";
             const default_light_theme = "coal";
             const default_dark_theme = "coal";
-            window.path_to_searchindex_js = "searchindex-4622e2bb.js";
+            window.path_to_searchindex_js = "searchindex-09ae7f8d.js";
         </script>
         <!-- Start loading toc.js asap -->
         <script src="toc-c196c8a9.js"></script>
@@ -193,8 +193,8 @@
 </ul>
 </div>
 
-<p>The echo server in Chapter 20 assigns a dedicated OS thread to each client, and the HTTP server from Chapter 21 extends that model directly. While a thread-per-connection design handles tens or hundreds of concurrent clients comfortably, it breaks down when a process must maintain thousands of mostly idle connections.</p>
-<p>In this chapter, we construct an asynchronous runtime that replaces one thread per connection with a single thread multiplexing many suspended tasks. Starting from the single method defined by the <code>Future</code> trait, we build upward to an asynchronous HTTP client running on Tokio.</p>
+<p>Assigning a dedicated operating-system thread to every network connection scales cleanly to tens or hundreds of concurrent clients, yet exhausts virtual memory and scheduler capacity when a service must hold thousands of predominantly idle connections. Cooperative asynchronous runtimes eliminate that per-connection stack overhead by multiplexing many suspended state machines onto a small pool of worker threads.</p>
+<p>The sections below construct an asynchronous runtime from first principles: starting from the cooperative polling contract of the <code>Future</code> trait, building a single-future <code>block_on</code> executor and a multi-task run queue, analyzing <code>Pin</code> and self-referential compiler-generated state machines, and culminating in a comparative implementation of blocking and Tokio-based HTTP clients.</p>
 <h2 id="221-why-a-thread-per-connection-does-not-scale"><a class="header" href="#221-why-a-thread-per-connection-does-not-scale">22.1 Why a thread per connection does not scale</a></h2>
 <p>A spawned OS thread in Rust reserves a 2 MiB stack by default, and that reservation persists for the thread’s entire lifetime, including time spent blocked in <code>read</code>. Holding ten thousand idle connections as separate threads reserves roughly 20 GB of virtual address space before any application work occurs.</p>
 <p>An alternative model keeps a single OS thread and represents each connection as a <strong>future</strong>: a state object representing an in-progress computation. While awaiting I/O, a suspended future does not occupy a thread stack; it stores only the local state needed to resume from its suspension point.</p>
@@ -266,14 +266,14 @@ impl Wake for ThreadWaker {
         self.0.unpark();
     }
 }</code></pre>
-<p><code>block_on</code> does three things, in order:</p>
+<p><code>block_on</code> executes in three distinct stages:</p>
 <ol>
-<li><code>Box::pin(future)</code> moves the future to the heap and pins it there, so its address is the same for every poll.</li>
-<li><code>Waker::from(Arc::new(ThreadWaker(thread::current())))</code> builds a waker. <code>ThreadWaker</code> implements <code>Wake</code>, and its <code>wake</code> method unparks the thread driving the future. <code>Waker::from</code> is the safe way to build a waker without writing a raw vtable.</li>
-<li>The loop polls. <code>Ready</code> returns the value. <code>Pending</code> calls <code>thread::park()</code>, which sleeps until <code>unpark</code> is called on this thread.</li>
+<li><code>Box::pin(future)</code> heap-allocates the future and pins it in place, guaranteeing a stable memory address across every subsequent poll.</li>
+<li><code>Waker::from(Arc::new(ThreadWaker(thread::current())))</code> constructs a <code>Waker</code> backed by the <code>Wake</code> trait, avoiding manual raw vtable construction; invoking <code>wake</code> unparks the calling executor thread.</li>
+<li>The poll loop repeatedly invokes <code>future.as_mut().poll(&amp;mut cx)</code>, returning immediately on <code>Poll::Ready(value)</code> and suspending the thread via <code>thread::park()</code> on <code>Poll::Pending</code> until an <code>unpark</code> notification arrives.</li>
 </ol>
-<p><code>park</code> can return without anyone calling <code>unpark</code>. The loop tolerates that by polling again: a second poll of a future that is not ready returns <code>Pending</code> a second time. Spurious wakes are harmless, which is the other half of the contract.</p>
-<p><code>park</code> and <code>unpark</code> also cover a race the loop depends on. If <code>unpark</code> runs before <code>park</code>, it leaves a token behind, and the next <code>park</code> returns at once.</p>
+<p>Because <code>thread::park</code> may return spuriously without a corresponding <code>unpark</code>, the loop unconditionally re-polls the future; an unready future re-registers its waker and returns <code>Poll::Pending</code>, making spurious wakeups harmless under the poll contract.</p>
+<p>The <code>park</code>/<code>unpark</code> pair also prevents lost wakeups under concurrent scheduling: if a background thread invokes <code>unpark</code> before the executor enters <code>park</code>, the runtime records an unpark permit so the subsequent <code>park</code> call consumes the permit and returns immediately.</p>
 <figure class="anim">
 <video class="motion" src="figures/ch22-poll-wake.mp4" autoplay="" loop="" muted="" playsinline="" preload="metadata" aria-label="A robot labelled executor thread polls a future that waits on a timer, and hands it a waker drawn as a bell. The future&#39;s ready flag is false, so it stores the bell in its waker slot and returns Pending. The executor parks, and its CPU gauge falls to zero. A timer thread sleeps for 50 ms, sets ready to true, takes the bell out of the slot, and rings it, which unparks the executor. The second poll returns Ready. The run then repeats with the line that stores the waker deleted: the timer finds the slot empty, and the executor stays parked forever." data-chapters="[[0.0, &quot;cast&quot;], [4.74, &quot;poll&quot;], [27.42, &quot;park&quot;], [33.14, &quot;wake&quot;], [48.86, &quot;ready&quot;], [63.26, &quot;no waker&quot;]]"><img src="figures/ch22-poll-wake.gif" alt="A robot labelled executor thread polls a future that waits on a timer, and hands it a waker drawn as a bell. The future&#39;s ready flag is false, so it stores the bell in its waker slot and returns Pending. The executor parks, and its CPU gauge falls to zero. A timer thread sleeps for 50 ms, sets ready to true, takes the bell out of the slot, and rings it, which unparks the executor. The second poll returns Ready. The run then repeats with the line that stores the waker deleted: the timer finds the slot empty, and the executor stays parked forever."></video>
 <figcaption><b>Animation 22.1</b> <code>block_on</code> driving a future that waits on a timer, the <code>Delay</code> of section 22.4.2, with the line each thread is running. In the second run the waker is never stored, and the executor never wakes.</figcaption>
@@ -281,7 +281,7 @@ impl Wake for ThreadWaker {
 <h2 id="224-two-futures-written-by-hand"><a class="header" href="#224-two-futures-written-by-hand">22.4 Two futures written by hand</a></h2>
 <p>Almost every leaf future follows one of two patterns: either it immediately re-arms itself to yield control, or it waits on an external event and stores the caller’s waker until that event completes.</p>
 <h3 id="2241-a-future-that-yields-to-itself"><a class="header" href="#2241-a-future-that-yields-to-itself">22.4.1 A future that yields to itself</a></h3>
-<p><code>YieldTimes</code> returns <code>Pending</code> a set number of times before it completes. Nothing is blocking it. It is giving the executor a chance to run other tasks before it finishes its own work.</p>
+<p><code>YieldTimes</code> voluntarily returns <code>Poll::Pending</code> a configured number of times before completing. Although no external I/O blocks its progress, yielding relinquishes execution back to the executor so peer tasks can advance in cooperative round-robin order.</p>
 <p class="listing"><b>Listing 22.2</b> <code>YieldTimes</code>, a future that re-arms itself (lines 63 to 97). <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/problems/async_mini.rs">src/problems/async_mini.rs</a></p>
 
 <pre><code class="language-rust">/// A future that yields to the executor `times` times before completing.
@@ -319,11 +319,11 @@ impl Future for YieldTimes {
         Poll::Pending
     }
 }</code></pre>
-<p><code>YieldTimes</code> holds two <code>usize</code> values, which makes it <code>Unpin</code>: safe to move even after a poll. <code>self.get_mut()</code> uses that to turn <code>Pin&lt;&amp;mut Self&gt;</code> into <code>&amp;mut Self</code> without <code>unsafe</code>.</p>
-<p>One line asks for the next poll: <code>context.waker().wake_by_ref()</code>. It runs, then <code>poll</code> returns <code>Pending</code>. This is what <code>tokio::task::yield_now</code> does. <code>YieldTimes</code> completes with the number of times it yielded. A test can use that count to check that the executor suspended and resumed it.</p>
+<p>Because <code>YieldTimes</code> stores only two <code>usize</code> counters, it automatically implements <code>Unpin</code>, allowing <code>self.get_mut()</code> to project <code>Pin&lt;&amp;mut Self&gt;</code> into <code>&amp;mut Self</code> in safe Rust.</p>
+<p>To satisfy the polling contract before returning <code>Poll::Pending</code>, <code>poll</code> invokes <code>context.waker().wake_by_ref()</code>, immediately re-enqueuing the task for a subsequent poll (the exact mechanism used by <code>tokio::task::yield_now</code>). Upon exhaustion of its yield budget, <code>YieldTimes</code> resolves to its total yield count, allowing tests to verify suspension and resumption behavior deterministically.</p>
 <h3 id="2242-a-future-that-waits-on-a-timer"><a class="header" href="#2242-a-future-that-waits-on-a-timer">22.4.2 A future that waits on a timer</a></h3>
-<p><code>Delay</code> completes after a wall-clock duration. It is the second shape, and it is the one that looks like real I/O.</p>
-<p>Its state is a <code>ready</code> flag and an optional stored <code>Waker</code>, shared with a background thread through <code>Arc&lt;Mutex&lt;_&gt;&gt;</code>.</p>
+<p><code>Delay</code> resolves after an elapsed wall-clock interval, modeling the second leaf-future pattern characteristic of asynchronous I/O and kernel event sources.</p>
+<p>Its shared state pairs a <code>ready</code> boolean with an optional <code>Waker</code>, synchronized between the executor and a background timer thread through <code>Arc&lt;Mutex&lt;_&gt;&gt;</code>:</p>
 <p class="listing"><b>Listing 22.3</b> <code>Delay</code> state and constructor (lines 99 to 137). <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/problems/async_mini.rs">src/problems/async_mini.rs</a></p>
 
 <pre><code class="language-rust">struct DelayState {
@@ -365,7 +365,7 @@ impl Delay {
         Self { state }
     }
 }</code></pre>
-<p><code>poll</code> checks <code>ready</code>. While it is false, <code>poll</code> stores a clone of the current waker and returns <code>Pending</code>.</p>
+<p>On each poll, <code>Delay::poll</code> inspects <code>ready</code>; while the timer has not expired, it stores a clone of the current waker and returns <code>Poll::Pending</code>:</p>
 <p class="listing"><b>Listing 22.4</b> <code>Delay</code> as a future (lines 139 to 154). <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/problems/async_mini.rs">src/problems/async_mini.rs</a></p>
 
 <pre><code class="language-rust">impl Future for Delay {
@@ -384,16 +384,16 @@ impl Delay {
         }
     }
 }</code></pre>
-<p>The background thread sleeps for the requested duration, sets <code>ready</code> to <code>true</code>, extracts the stored waker, drops the lock, and invokes <code>wake()</code>. The full exchange between the executor and the timer thread is depicted in Figure 22.3.</p>
+<p>The background thread sleeps for the requested duration, sets <code>ready</code> to <code>true</code>, extracts the stored waker, drops the mutex guard, and invokes <code>wake()</code>. The full synchronization exchange between the executor and the timer thread is depicted in Figure 22.3.</p>
 <figure>
 <img src="figures/ch22-poll-wake.svg" alt="The executor polls Delay, which stores the waker and returns Pending; the executor parks. The timer thread sleeps, sets ready, takes the waker, and wakes it, which unparks the executor, which polls again and gets Ready.">
 <figcaption><b>Figure 22.3</b> One <code>Delay</code> from start to finish. The executor thread sleeps in <code>park</code>, not in <code>poll</code>.</figcaption>
 </figure>
-<p>Two details make it correct. <code>poll</code> stores the waker on every <code>Pending</code>, not only the first. A task can be polled with a different waker each time. A runtime may move the task to another thread, and only the latest waker reaches its current owner. The timer thread wakes after dropping the lock, so the woken executor does not immediately block on a mutex the waker still held.</p>
-<p>A production runtime replaces one thread per timer with a single timer wheel, and replaces one thread per socket with the <code>epoll</code> reactor from Chapter 20, storing wakers keyed by file descriptor and waking them when <code>epoll_wait</code> reports readiness.</p>
+<p>Two synchronization invariants ensure correctness. First, <code>poll</code> overwrites the stored waker on <em>every</em> <code>Poll::Pending</code> return rather than only the first: because a work-stealing runtime may migrate a suspended task to another worker thread between polls, only the most recent waker targets its current owner. Second, the timer thread drops the mutex guard before calling <code>wake()</code> so the unparked executor does not immediately contend on a lock still held by the signaling thread.</p>
+<p>Production runtimes replace one OS thread per timer with a hierarchical timer wheel and replace blocking socket threads with a readiness reactor such as <code>epoll</code> (Section 20.4), indexing registered wakers by file descriptor and waking them when <code>epoll_wait</code> reports I/O readiness.</p>
 <h2 id="225-waking-is-scheduling"><a class="header" href="#225-waking-is-scheduling">22.5 Waking is scheduling</a></h2>
-<p><code>block_on</code> drives one future. A general executor drives many, and it shows that waking a task and scheduling it are the same operation.</p>
-<p>A <code>Task</code> holds its future, a handle to the executor’s queue, and a <code>completed</code> flag. It also implements <code>Wake</code>. Waking a task pushes an <code>Arc</code> of the task back on the queue.</p>
+<p>Whereas <code>block_on</code> drives a single future to completion, a multi-task executor multiplexes many independent futures on a shared run queue, demonstrating that waking a task and scheduling it are the identical operation.</p>
+<p>Each <code>Task</code> encapsulates a pinned future, a handle to the executor’s run queue, and a <code>completed</code> flag, and implements <code>Wake</code> by pushing a cloned <code>Arc&lt;Task&gt;</code> onto the queue:</p>
 <p class="listing"><b>Listing 22.5</b> A task, and the <code>Wake</code> impl that reschedules it (lines 156 to 177). <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/problems/async_mini.rs">src/problems/async_mini.rs</a></p>
 
 <pre><code class="language-rust">struct Task {
@@ -418,7 +418,7 @@ impl Wake for Task {
             .push_back(Arc::clone(self));
     }
 }</code></pre>
-<p><code>spawn</code> wraps a future in a task and enqueues it.</p>
+<p><code>spawn</code> wraps a future in a heap-allocated <code>Task</code> and enqueues it onto the run queue:</p>
 <p class="listing"><b>Listing 22.6</b> The executor's queue, and <code>spawn</code> (lines 184 to 208). <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/problems/async_mini.rs">src/problems/async_mini.rs</a></p>
 
 <pre><code class="language-rust">#[derive(Default)]
@@ -448,7 +448,7 @@ impl MiniExecutor {
     }
     // ...
 }</code></pre>
-<p><code>run</code> pops tasks one at a time, builds a waker from the task itself, and polls the future. A <code>Ready</code> result marks the task completed, so a late wake is skipped by the <code>completed</code> check.</p>
+<p><code>run</code> dequeues tasks sequentially, constructs a <code>Waker</code> from the <code>Arc&lt;Task&gt;</code> itself, and polls the inner future. Observing <code>Poll::Ready</code> sets <code>completed</code> so that any stale wake arriving afterward is ignored without re-polling a completed future:</p>
 <p class="listing"><b>Listing 22.7</b> <code>MiniExecutor::run</code> (lines 210 to 245). <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/problems/async_mini.rs">src/problems/async_mini.rs</a></p>
 
 <pre><code class="language-rust">impl MiniExecutor {
@@ -494,9 +494,9 @@ impl MiniExecutor {
 <video class="motion" src="figures/ch22-task-queue.mp4" autoplay="" loop="" muted="" playsinline="" preload="metadata" aria-label="Three task tickets wait on a run queue. Each ticket shows its YieldTimes future, the yields it has left, and a bell for its waker. The executor pops the front ticket and polls it. A yield uses up one dot and rings the ticket&#39;s own bell, and the ticket flies to the back of the queue. A ticket with no yields left is stamped Ready and moves to the completed column, in the order 1, 2, 3. In a second run, task 1 returns Pending without ringing its bell. It drops out of the queue and is never polled again, while tasks 2 and 3 finish." data-chapters="[[0.0, &quot;spawn&quot;], [5.46, &quot;round 1&quot;], [38.22, &quot;round 2&quot;], [46.68, &quot;the rest&quot;], [65.87, &quot;no wake&quot;]]"><img src="figures/ch22-task-queue.gif" alt="Three task tickets wait on a run queue. Each ticket shows its YieldTimes future, the yields it has left, and a bell for its waker. The executor pops the front ticket and polls it. A yield uses up one dot and rings the ticket&#39;s own bell, and the ticket flies to the back of the queue. A ticket with no yields left is stamped Ready and moves to the completed column, in the order 1, 2, 3. In a second run, task 1 returns Pending without ringing its bell. It drops out of the queue and is never polled again, while tasks 2 and 3 finish."></video>
 <figcaption><b>Animation 22.2</b> Three tasks take turns on one thread. Waking a task pushes it onto the back of the queue. A task that returns <code>Pending</code> without waking is never polled again.</figcaption>
 </figure>
-<p><code>run</code> returns when the queue is empty. A task that returned <code>Pending</code> without waking is waiting on something outside this executor, and this executor has nothing to park on. A real runtime would park on its timer or its I/O reactor instead of returning.</p>
-<p>The <code>+ Send</code> bound on spawned futures comes from the waker. A waker may be sent to another thread, as <code>Delay</code> does, so the task it can reach must be safe to send too. This is the same bound <code>tokio::spawn</code> imposes. It is also why holding a <code>std::sync::MutexGuard</code> or an <code>Rc</code> across an <code>.await</code> in a spawned task is a compile error.</p>
-<p>Listings 22.8 and 22.9 are the complete pair: the runtime module, and the program that drives it, with no runtime dependency.</p>
+<p><code>MiniExecutor::run</code> returns once the run queue empties. A task that returned <code>Poll::Pending</code> without re-enqueuing itself awaits an external event source; lacking an integrated timer or I/O reactor, this minimal executor exits immediately rather than parking on an event loop.</p>
+<p>The <code>+ Send</code> bound on spawned futures is dictated by <code>Waker</code>: because a waker may be transferred to another thread (as in <code>Delay</code>) and invoke <code>wake</code>, the <code>Arc&lt;Task&gt;</code> it references must satisfy <code>Send + Sync</code>, which in turn requires the enclosed future to be <code>Send</code>. This is the exact constraint enforced by <code>tokio::spawn</code> and explains why holding non-<code>Send</code> values such as <code>std::sync::MutexGuard</code> or <code>Rc</code> across an <code>.await</code> point triggers a compile-time error.</p>
+<p>Listings 22.8 and 22.9 present the complete standalone runtime module and its driver program, requiring zero external runtime crates.</p>
 <p class="listing"><b>Listing 22.8</b> The complete runtime, with tests. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/problems/async_mini.rs">src/problems/async_mini.rs</a></p>
 
 <pre><code class="language-rust">//! A minimal async runtime, built from `Future`, `Waker`, and `Pin`.
@@ -891,33 +891,31 @@ task 3 completed after 3 yield(s)
 <img src="figures/ch22-state-machine.svg" alt="States: Start, Awaiting first (holds YieldTimes 1), Awaiting second (holds first and YieldTimes 2), and Done with first plus second. Pending loops back to the same state; an inner Ready moves to the next.">
 <figcaption><b>Figure 22.4</b> The state machine behind the async block. The value <code>first</code> survives the second <code>.await</code>, so it is stored in the second state.</figcaption>
 </figure>
-<p>Polling the block runs code until the next <code>.await</code> whose inner future returns <code>Pending</code>. It saves the state, stores the inner future and the live locals, and returns <code>Pending</code> too. A later poll resumes at the saved state rather than starting the block again.</p>
+<p>Each poll advances execution until it reaches an <code>.await</code> whose inner future returns <code>Poll::Pending</code>, at which point the state machine records its discriminant, stores the inner future alongside all live local variables, and returns <code>Poll::Pending</code>. Subsequent polls dispatch directly to the saved variant rather than restarting from the beginning.</p>
 <figure class="anim">
 <video class="motion" src="figures/ch22-await.mp4" autoplay="" loop="" muted="" playsinline="" preload="metadata" aria-label="The async block&#39;s code, with a bookmark at the await where the next poll resumes, beside the future&#39;s memory: a state tag and two slots. Poll 1 runs to the first await, stores YieldTimes(1), and the tag flips to AwaitingFirst. Poll 2 resumes at the bookmark. first = 1 moves into memory, YieldTimes(2) is stored, and the tag flips to AwaitingSecond. Poll 3 returns Pending and stays in the same state. Poll 4 computes first + second = 3, returns Ready(3), and the tag flips to Done. A fifth poll would find Done and panic." data-chapters="[[0.0, &quot;the block&quot;], [5.46, &quot;poll 1&quot;], [20.58, &quot;poll 2&quot;], [43.5, &quot;poll 3&quot;], [53.04, &quot;poll 4&quot;], [69.78, &quot;poll 5?&quot;]]"><img src="figures/ch22-await.gif" alt="The async block&#39;s code, with a bookmark at the await where the next poll resumes, beside the future&#39;s memory: a state tag and two slots. Poll 1 runs to the first await, stores YieldTimes(1), and the tag flips to AwaitingFirst. Poll 2 resumes at the bookmark. first = 1 moves into memory, YieldTimes(2) is stored, and the tag flips to AwaitingSecond. Poll 3 returns Pending and stays in the same state. Poll 4 computes first + second = 3, returns Ready(3), and the tag flips to Done. A fifth poll would find Done and panic."></video>
 <figcaption><b>Animation 22.3</b> The same block, one poll at a time. <code>first</code> lives across the second <code>.await</code>, so the future stores it. <code>second</code> does not, so the future never stores it.</figcaption>
 </figure>
-<p><code>first</code> survives the second <code>.await</code>, so it is stored in the <code>Awaiting second</code> state. The size of a future is fixed once its type is known. The compiler sizes each state to hold the largest set of locals that can live there.</p>
-<p>The remaining question is why <code>poll</code> requires <code>Pin&lt;&amp;mut Self&gt;</code>. A suspended state may hold a reference pointing into another field of the same state machine, such as a local buffer borrowed across an <code>.await</code>. If the state machine were moved in memory after creating that borrow, the internal reference would become a dangling pointer to the old address. Both the unpinned failure and the pinned solution are contrasted in Figure 22.5.</p>
+<p>Because <code>first</code> remains live across the second <code>.await</code>, it resides inside the <code>Awaiting second</code> variant; the future’s total size is statically determined by the largest enum variant plus its discriminant.</p>
+<p>The receiver type <code>Pin&lt;&amp;mut Self&gt;</code> enforces memory-location stability for self-referential state machines. A suspended variant may hold an internal reference pointing into another field of the same struct, such as a local buffer borrowed across an <code>.await</code>. Relocating the state machine in memory after creating that borrow would invalidate the internal pointer, leaving it dangling at the prior address (Figure 22.5).</p>
 <figure>
 <img src="figures/ch22-pin.svg" alt="Left: an unpinned future with a field r holding the address of its own buf. After a move, buf is at a new address but r still holds the old one, which is freed. Right: a pinned future stays at one address, so r stays valid.">
 <figcaption><b>Figure 22.5</b> Why a self-referential future must not move. Pinning keeps a borrow of one field valid across a suspension point.</figcaption>
 </figure>
-<p><code>Pin&lt;&amp;mut Self&gt;</code> is the promise that the value will not move after the first poll. That is why <code>block_on</code> calls <code>Box::pin</code> and why <code>MiniExecutor</code> stores <code>Pin&lt;Box&lt;...&gt;&gt;</code>. Both keep the future at one address for its whole life.</p>
+<p><code>Pin&lt;&amp;mut Self&gt;</code> encodes the invariant that the pointee will not relocate in memory between its first poll and its <code>Drop</code> execution. Both <code>block_on</code> (via <code>Box::pin</code>) and <code>MiniExecutor</code> (via <code>Pin&lt;Box&lt;...&gt;&gt;</code>) uphold this guarantee by pinning the future at a fixed heap address for its entire lifetime.</p>
 <p>Only self-referential or address-sensitive types require pinning. Any type whose values can relocate safely in memory after being polled implements the auto-trait <code>Unpin</code>, for which <code>Pin</code> imposes no restriction. <code>YieldTimes</code> is <code>Unpin</code> because it contains only two integers, allowing its <code>poll</code> implementation to call <code>self.get_mut()</code> and access <code>&amp;mut Self</code> directly.</p>
 <figure class="anim">
 <video class="motion" src="figures/ch22-pin.mp4" autoplay="" loop="" muted="" playsinline="" preload="metadata" aria-label="A future holds buf, the bytes p i n g, and r, a reference to buf that holds the address 0x1000. The future moves to 0x2000. Its bytes are copied, but r still holds 0x1000, so its arrow stretches back to the freed place, which now holds garbage. Next, Box::pin puts the future on the heap, marked with a pin. Moving the Pin&lt;Box&lt;_&gt;&gt; handle from one stack slot to another leaves the future where it is, so r stays valid. An attempt to swap the future out is rejected at compile time. Last, a YieldTimes value, which is Unpin, moves freely." data-chapters="[[0.0, &quot;a borrow&quot;], [5.7, &quot;a move&quot;], [25.5, &quot;pinned&quot;], [39.72, &quot;rejected&quot;], [46.38, &quot;Unpin&quot;]]"><img src="figures/ch22-pin.gif" alt="A future holds buf, the bytes p i n g, and r, a reference to buf that holds the address 0x1000. The future moves to 0x2000. Its bytes are copied, but r still holds 0x1000, so its arrow stretches back to the freed place, which now holds garbage. Next, Box::pin puts the future on the heap, marked with a pin. Moving the Pin&lt;Box&lt;_&gt;&gt; handle from one stack slot to another leaves the future where it is, so r stays valid. An attempt to swap the future out is rejected at compile time. Last, a YieldTimes value, which is Unpin, moves freely."></video>
 <figcaption><b>Animation 22.4</b> A move copies bytes and leaves a reference into the old copy behind. <code>Box::pin</code> keeps the future at one address, so moving the handle the program holds moves only a pointer.</figcaption>
 </figure>
 <h2 id="227-two-http-clients-with-caching-retries-and-idempotency"><a class="header" href="#227-two-http-clients-with-caching-retries-and-idempotency">22.7 Two HTTP clients with caching, retries, and idempotency</a></h2>
-<p>The final two programs put a runtime to practical use. Both send <code>POST /post</code> with a JSON body and the idempotency key <code>create-demo-001</code> to <code>httpbin.org</code>, a public echo service, and both compose the same three layers: a cache, a retry policy, and a transport. Both client stacks are compared in Figure 22.6.</p>
+<p>The final two implementations integrate reliability primitives with live network I/O. Both clients issue <code>POST /post</code> with a JSON payload and the idempotency key <code>create-demo-001</code> against <code>httpbin.org</code>, composing the same three architectural layers: an idempotency cache, a retry policy, and an HTTP transport (Figure 22.6).</p>
 <figure>
 <img src="figures/ch22-clients.svg" alt="Two stacks. Blocking client: idempotency cache, then retry policy, then a hand-built HTTP request over TcpStream. Async client: cache lookup, then a retry loop on 429 and 5xx with tokio sleep, then a reqwest client with a timeout and an Idempotency-Key header.">
 <figcaption><b>Figure 22.6</b> The same three layers in both clients: cache, retry, transport.</figcaption>
 </figure>
-<p>In Chapter 19, retries and idempotency keys were developed in isolation; here they are integrated with live network requests.</p>
 <h3 id="2271-a-blocking-client-over-tcpstream"><a class="header" href="#2271-a-blocking-client-over-tcpstream">22.7.1 A blocking client over <code>TcpStream</code></a></h3>
-<p>The blocking client is built from four parts: a request type, a cache, a retry policy, and the client that joins
-them. A request is an enum, and each variant carries exactly the fields its HTTP method needs:</p>
+<p>The synchronous client composes four components: a typed request enum, an idempotency cache, an exponential-backoff retry policy, and an HTTP/1.1 transport over <code>std::net::TcpStream</code>. Encoding HTTP methods as enum variants restricts payloads to methods that permit them:</p>
 <pre><code class="language-rust">use std::{
     collections::HashMap,
     io::{Read, Write},
@@ -943,9 +941,8 @@ enum RequestType {
         body: String,
     },
 }</code></pre>
-<p><code>RuntimeError</code> is a boxed error, so <code>?</code> can return any error type from <code>main</code>. <code>RequestHeader</code> is an alias for a
-list of (name, value) pairs. A <code>Get</code> has no body and a <code>Post</code> has one, so a <code>GET</code> with a body cannot be built.</p>
-<p>The cache keeps each successful response under its idempotency key:</p>
+<p><code>RuntimeError</code> erases heterogeneous error types behind <code>Box&lt;dyn Error&gt;</code> so <code>?</code> propagates failures uniformly from <code>main</code>, while <code>RequestHeader</code> aliases a vector of <code>(name, value)</code> pairs. Separating <code>Get</code> from <code>Post</code> makes constructing a <code>GET</code> request with a message body unrepresentable at compile time.</p>
+<p>The cache memoizes each successful response body keyed by its idempotency key:</p>
 <pre><code class="language-rust">/// Successful responses, stored by idempotency key.
 struct IdemCache {
     store: Mutex&lt;HashMap&lt;String, String&gt;&gt;,
@@ -974,10 +971,8 @@ impl IdemCache {
         Ok(v)
     }
 }</code></pre>
-<p><code>IdemCache</code> is chapter 19’s <code>Idempotent&lt;K, V&gt;</code> store with <code>String</code> keys and values. <code>get_or_insert</code> returns the
-stored response if there is one. Otherwise it runs <code>f</code>, stores the result, and returns it. A failure is not
-stored, so a later call tries again. The lock is held while <code>f</code> runs, so two calls with one key cannot both send.</p>
-<p>The retry policy runs an operation up to <code>max_attempts</code> times:</p>
+<p><code>IdemCache</code> specializes the mutex-guarded idempotency store from Section 19.3 to <code>String</code> keys and values: <code>get_or_insert</code> returns any cached response immediately, or executes <code>f</code>, inserts the successful outcome, and returns it. Failures are not cached so subsequent invocations may retry, and holding the mutex across <code>f</code> serializes concurrent calls for the same key at the cost of blocking unrelated keys.</p>
+<p>The retry policy re-attempts failing operations up to <code>max_attempts</code> times:</p>
 <pre><code class="language-rust">struct RetryPolicy {
     max_attempts: u32,
     base_delay: Duration,
@@ -1011,10 +1006,8 @@ impl RetryPolicy {
         }
     }
 }</code></pre>
-<p>After each failure except the last, <code>execute</code> sleeps for <code>base × 2^(attempt - 1)</code>, capped at <code>max_delay</code>: 100 ms
-after the first failure, 200 ms after the second. <code>F</code> is <code>FnMut</code>, not <code>FnOnce</code>, because the loop calls it more
-than once.</p>
-<p>The client holds the server’s address and one of each layer. <code>execute</code> joins the layers in one line:</p>
+<p>Following each failure prior to the final attempt, <code>execute</code> sleeps for <code>base × 2^(attempt - 1)</code> clamped to <code>max_delay</code> (100 ms after the first failure, 200 ms after the second). The closure bound requires <code>FnMut</code> rather than <code>FnOnce</code> to permit repeated invocation across retries.</p>
+<p><code>HttpClient</code> composes the server address with both layers, chaining cache lookup and retry dispatch in a single expression:</p>
 <pre><code class="language-rust">/// An HTTP/1.1 client with a response cache and a retry policy.
 struct HttpClient {
     host: String,
@@ -1039,8 +1032,8 @@ impl HttpClient {
     }
     // ...
 }</code></pre>
-<p>The cache calls the retry policy only on a miss, and the retry policy calls <code>send</code> once per attempt.</p>
-<p><code>send</code> writes the request by hand and reads the response:</p>
+<p>A cache miss delegates to the retry policy, which invokes <code>send</code> on each attempt until success or exhaustion.</p>
+<p><code>send</code> serializes the HTTP/1.1 request manually and reads the response stream to EOF:</p>
 <pre><code class="language-rust">impl HttpClient {
     // ...
     fn send(&amp;self, req: &amp;RequestType) -&gt; Result&lt;String, RuntimeError&gt; {
@@ -1079,12 +1072,8 @@ impl HttpClient {
             .to_string())
     }
 }</code></pre>
-<p>The <code>match</code> turns either variant into the same four parts: the method name, the path, the headers, and an
-optional body. The request text then follows section 21.1. It is the request line, <code>Host</code>,
-<code>Connection: close</code>, and the caller’s headers. A body adds <code>Content-Length</code>, then the blank line, then the body.
-<code>Connection: close</code> lets <code>read_to_string</code> read the whole response, because the server closes the connection at
-the end. <code>split_once("\r\n\r\n")</code> drops the status line and the headers, and keeps the body.</p>
-<p><code>main</code> reads with a <code>GET</code>, then creates an item with a <code>POST</code>. Each request has its own idempotency key:</p>
+<p>The <code>match</code> destructures each variant into its method token, target path, headers, and optional payload, then formats the wire message according to Section 21.1: request line, <code>Host</code>, <code>Connection: close</code>, caller headers, optional <code>Content-Length</code>, the terminating blank line, and any body bytes. Specifying <code>Connection: close</code> causes the peer to close the socket after transmitting the response, allowing <code>read_to_string</code> to terminate cleanly, after which <code>split_once("\r\n\r\n")</code> strips the response head and returns the body.</p>
+<p><code>main</code> issues a <code>GET</code> query followed by a <code>POST</code> creation request, each carrying a distinct idempotency key:</p>
 <pre><code class="language-rust">// --- The actual REST call ---
 
 fn create_item(client: &amp;HttpClient, item_name: &amp;str) -&gt; Result&lt;String, RuntimeError&gt; {
@@ -1300,14 +1289,13 @@ fn main() -&gt; Result&lt;(), RuntimeError&gt; {
     println!("created:\n{}", create_item(&amp;client, "demo")?);
     Ok(())
 }</code></pre>
-<p>Two omissions separate this implementation from a production client, and both are visible in the code:</p>
+<p>Two architectural omissions separate this implementation from a production HTTP client:</p>
 <ul>
-<li>The status code is never read. <code>send</code> returns whatever follows the first blank line. A <code>500</code> error page is returned as success, cached under the idempotency key, and never retried. Only transport errors reach the retry loop.</li>
-<li>Everything is retried. A policy should ask the error, as <code>Retryable</code> does in chapter 19. Here a DNS failure for a misspelled host is retried three times.</li>
+<li><strong>Unchecked HTTP status codes.</strong> <code>send</code> returns whatever bytes follow the first <code>\r\n\r\n</code> delimiter without inspecting the status line. A <code>500 Internal Server Error</code> response is treated as a successful result, cached under the idempotency key, and never retried; only transport-layer I/O failures reach the retry loop.</li>
+<li><strong>Unconditional retries.</strong> Every transport error is retried identically rather than classified through a <code>Retryable</code> predicate (Section 19.2.1), causing deterministic failures such as DNS resolution errors for invalid hostnames to waste all retry attempts.</li>
 </ul>
 <h3 id="2272-an-async-client-with-reqwest"><a class="header" href="#2272-an-async-client-with-reqwest">22.7.2 An async client with <code>reqwest</code></a></h3>
-<p>The async client keeps the same layers, on Tokio and the <code>reqwest</code> crate. It also reads the status code, and
-decides from it whether to retry. Its settings come first:</p>
+<p>The asynchronous client preserves the same three-layer architecture over Tokio and <code>reqwest</code>, while adding status-code inspection to classify retryable server responses:</p>
 <pre><code class="language-rust">use std::{collections::HashMap, sync::Mutex, time::Duration};
 
 use reqwest::{Client, Method, StatusCode};
@@ -1336,11 +1324,8 @@ struct Api {
     cache: Mutex&lt;HashMap&lt;String, String&gt;&gt;,
     cfg: Config,
 }</code></pre>
-<p><code>RETRY</code> lists the statuses to retry, where the server may succeed later: 429, Too Many Requests, and four
-5xx codes. <code>Config</code> holds the base URL, the retry settings, and a timeout. <code>Api</code> holds a <code>reqwest::Client</code>, the
-cache, and the configuration. <code>type Error = Box&lt;dyn std::error::Error + Send + Sync&gt;</code> lets errors cross task
-boundaries, because a <code>Send + Sync</code> error can move between Tokio’s worker threads.</p>
-<p><code>new</code> builds the HTTP client, and two helpers read and write the cache:</p>
+<p><code>RETRY</code> enumerates transient HTTP status codes: <code>429 Too Many Requests</code> and four <code>5xx</code> server errors. <code>Config</code> groups the base URL, retry parameters, and per-request timeout, while <code>Api</code> bundles the <code>reqwest::Client</code>, idempotency cache, and configuration. Defining <code>type Error = Box&lt;dyn std::error::Error + Send + Sync&gt;</code> permits error values to traverse multi-threaded Tokio worker boundaries safely.</p>
+<p><code>new</code> configures the underlying client, accompanied by short-lived cache accessors:</p>
 <pre><code class="language-rust">impl Api {
     fn new(cfg: Config) -&gt; Result&lt;Self, Error&gt; {
         Ok(Self {
@@ -1369,14 +1354,10 @@ boundaries, because a <code>Send + Sync</code> error can move between Tokio’s 
     // ...
 }</code></pre>
 <ul>
-<li><code>Client::builder().timeout(cfg.timeout)</code> bounds every request. A client without a timeout can wait forever on
-a server that accepted the connection and never answered.</li>
-<li>The cache is a <code>std::sync::Mutex</code>. That is allowed in async code because the guard is never held across an
-<code>.await</code>: <code>cached</code> and <code>store</code> lock, act, and return. The lock is taken with
-<code>unwrap_or_else(|e| e.into_inner())</code>, chapter 16’s ignore-the-poison choice. A <code>HashMap</code> insert cannot leave
-the map half-updated, so recovering the guard is safe here.</li>
+<li><code>Client::builder().timeout(cfg.timeout)</code> enforces an upper bound on total request latency, preventing indefinite hangs against unresponsive peers that accept TCP connections without replying.</li>
+<li>The cache relies on <code>std::sync::Mutex</code>, which remains sound in asynchronous code strictly because its guard is never held across an <code>.await</code> point: both <code>cached</code> and <code>store</code> lock, perform an O(1) map operation, and release the guard before returning. Poisoned locks are recovered via <code>unwrap_or_else(|e| e.into_inner())</code> (Section 16.6) because single-entry <code>HashMap</code> insertions preserve structural consistency.</li>
 </ul>
-<p><code>call</code> checks the cache, then sends and retries:</p>
+<p><code>call</code> consults the cache and executes the asynchronous retry loop on a miss:</p>
 <pre><code class="language-rust">impl Api {
     // ...
     async fn call(
@@ -1425,21 +1406,15 @@ the map half-updated, so recovering the guard is safe here.</li>
         }
     }
 }</code></pre>
-<p>Each attempt builds a request with <code>self.http.request(method, url)</code>. It adds two headers, and for a body calls
-<code>req.json(b)</code>, which serializes the JSON value and sets <code>Content-Type</code>. The request carries
-<code>Idempotency-Key: create-demo-001</code>, so a server that honors the header can deduplicate a retried <code>POST</code>. The
-client-side cache gives the same guarantee within one process.</p>
-<p><code>req.send().await?</code> sends the request and waits for the response headers. <code>resp.text().await?</code> waits for the
-body. The <code>match</code> on the status then has three arms:</p>
+<p>Each attempt constructs a request with <code>self.http.request(method, url)</code>, attaches <code>Accept</code> and <code>Idempotency-Key</code> headers, and serializes any JSON payload via <code>req.json(b)</code> (which automatically sets <code>Content-Type: application/json</code>). Transmitting <code>Idempotency-Key: create-demo-001</code> allows a compliant server to deduplicate retried <code>POST</code> requests across network failures, complementing the client-side in-process cache.</p>
+<p><code>req.send().await?</code> transmits the request and awaits response headers, and <code>resp.text().await?</code> streams the response body. Dispatching on the HTTP status code handles three outcomes:</p>
 <ul>
-<li>A success is stored in the cache and returned.</li>
-<li>A status in <code>RETRY</code>, with attempts left, sleeps and doubles the delay.</li>
-<li>Anything else is returned as an error that names the status and the attempts.</li>
+<li>A <code>2xx</code> success is memoized in the cache and returned.</li>
+<li>A status listed in <code>RETRY</code> with remaining attempts awaits an exponential backoff interval and retries.</li>
+<li>Any other status (or an exhausted retry budget) returns an error recording the final status code and attempt count.</li>
 </ul>
-<p><code>tokio::time::sleep</code> does not block the thread. It returns a future that registers with Tokio’s timer and
-returns <code>Pending</code>, which is the <code>Delay</code> of section 22.4.2 done properly. Other tasks run on the same thread while
-this one waits.</p>
-<p><code>main</code> builds the client and makes one call:</p>
+<p>Calling <code>tokio::time::sleep(delay).await</code> suspends only the current task rather than blocking the worker thread: it returns a timer future registered with Tokio’s timer wheel (the production counterpart to <code>Delay</code> in Section 22.4.2), allowing the executor to poll other ready tasks during the backoff interval.</p>
+<p><code>main</code> initializes the client and executes a single <code>POST</code> request:</p>
 <pre><code class="language-rust">#[tokio::main]
 async fn main() -&gt; Result&lt;(), Error&gt; {
     let api = Api::new(Config {
@@ -1457,8 +1432,7 @@ async fn main() -&gt; Result&lt;(), Error&gt; {
     println!("created:\n{out}");
     Ok(())
 }</code></pre>
-<p><code>#[tokio::main]</code> starts a Tokio runtime and runs <code>main</code> as its first task, so <code>main</code> can be <code>async</code>.
-<code>serde_json::json!</code> builds a JSON value from JSON-like syntax.</p>
+<p>The <code>#[tokio::main]</code> attribute macro expands to a synchronous entry point that constructs a Tokio runtime and invokes <code>block_on</code> on the <code>async fn main</code> future, while <code>serde_json::json!</code> constructs structured JSON values directly in source syntax.</p>
 <p class="listing"><b>Listing 22.11</b> The same layers on Tokio. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/bin/reqwest_and_tokio.rs">src/bin/reqwest_and_tokio.rs</a></p>
 
 <pre><code class="language-rust">use std::{collections::HashMap, sync::Mutex, time::Duration};
@@ -1581,37 +1555,36 @@ async fn main() -&gt; Result&lt;(), Error&gt; {
     Ok(())
 }</code></pre>
 <h3 id="2273-the-two-clients-side-by-side"><a class="header" href="#2273-the-two-clients-side-by-side">22.7.3 The two clients side by side</a></h3>
-<p>The asynchronous client has the opposite gap from the blocking one. It reads the status code, but a transport error from <code>send().await?</code> is not retried at all. The blocking client retries transport errors and never reads the status code. Merging the two means retrying both, with a policy that asks the error which kind it is.</p>
-<p>Neither client adds jitter, and neither honors <code>Retry-After</code>; both techniques are implemented in the delay policy from Chapter 19.</p>
+<p>The two implementations exhibit complementary failure-handling gaps: the asynchronous client inspects HTTP status codes yet propagates transport errors from <code>send().await?</code> immediately without retrying, whereas the blocking client retries transport errors yet ignores HTTP status codes. A complete client unifies both paths under a <code>Retryable</code> classification covering transient transport faults alongside <code>429</code> and <code>5xx</code> responses.</p>
+<p>Neither client applies full jitter or honors server <code>Retry-After</code> headers; both mechanisms are already formulated in the retry policy of Section 19.2.</p>
 <h3 id="2274-where-the-merged-client-belongs"><a class="header" href="#2274-where-the-merged-client-belongs">22.7.4 Where the merged client belongs</a></h3>
-<p>The repository has an empty crate named <code>rust-async-http-examples</code>, created for this. Its first program can be the client from section 22.7.2 moved into <code>lib.rs</code>, with the retry and cache layers exposed for testing. Its tests can then run against a local server such as chapter 17’s, instead of a public one.</p>
+<p>The repository includes an empty <code>rust-async-http-examples</code> crate reserved for a unified client library. Extracting the asynchronous client from Section 22.7.2 into <code>lib.rs</code> with public retry and cache abstractions enables deterministic integration tests against the local HTTP server from Chapter 21 rather than an external echo service.</p>
 <h2 id="228-questions-that-come-up"><a class="header" href="#228-questions-that-come-up">22.8 Questions that come up</a></h2>
 <p><strong>“What happens when a future returns <code>Pending</code>?”</strong>
-It has arranged for its waker to be called when it can make progress. The executor stops polling it and runs other tasks. When the waker fires, the executor polls it again.</p>
+The future guarantees that it has registered <code>cx.waker()</code> to be invoked once forward progress becomes possible. The executor suspends polling that task and schedules other runnable tasks; when the waker fires, the executor re-enqueues and polls the task again.</p>
 <p><strong>“Why does <code>poll</code> take <code>Pin&lt;&amp;mut Self&gt;</code>?”</strong>
-An async state machine can hold a reference into itself across an <code>.await</code>. Pinning guarantees the value will not move after the first poll, so that reference stays valid.</p>
+A compiler-generated async state machine can store internal references pointing to its own fields across <code>.await</code> points. Pinning guarantees that the future remains at a fixed memory address from its first poll until <code>Drop</code>, keeping every self-reference valid.</p>
 <p><strong>“Why must spawned futures be <code>Send</code> in Tokio?”</strong>
-The multi-threaded runtime may resume a task on a different worker thread after any <code>.await</code>. Everything the task holds across an <code>.await</code> must therefore be safe to move between threads.</p>
+A multi-threaded work-stealing executor may resume a suspended task on a different worker thread after any <code>.await</code> point. Every value held live across a suspension point must therefore implement <code>Send</code>.</p>
 <p><strong>“Can blocking code be called inside an async task?”</strong>
-Only briefly. A blocking call holds the worker thread, stalling every other task scheduled on it. Offload blocking work with <code>tokio::task::spawn_blocking</code>, and use asynchronous equivalents for I/O and timers.</p>
+Only for negligible durations. A blocking system call stalls the underlying worker thread and starves every other task multiplexed onto that thread. Blocking CPU or I/O work must be offloaded via <code>tokio::task::spawn_blocking</code>, while network and timer waits use asynchronous primitives.</p>
 <p><strong>“Is a <code>std::sync::Mutex</code> allowed in async code?”</strong>
-Yes, if the guard is dropped before the next <code>.await</code>. Holding it across an <code>.await</code> can block the worker or deadlock it. Use <code>tokio::sync::Mutex</code> when the lock must be held across an await.</p>
+Yes, provided the <code>MutexGuard</code> is dropped before any <code>.await</code> point. Holding a synchronous mutex guard across a suspension point can block the executor thread or induce deadlock; locks held across <code>.await</code> boundaries require an async-aware lock such as <code>tokio::sync::Mutex</code>.</p>
 <div class="summary" markdown="1">
 <h2 id="summary"><a class="header" href="#summary">Summary</a></h2>
 <ul>
-<li>A future has one method, <code>poll</code>. <code>Ready</code> finishes the task. <code>Pending</code> is a promise that the waker will be called when progress becomes possible.</li>
-<li>The executor polls again after a wake and does not spin. Spurious wakes are harmless; a missing wake is a task that never runs again, with no error.</li>
-<li><code>block_on</code> is the whole executor for one future: pin, build a waker from the current thread, poll, and park on <code>Pending</code>.</li>
-<li>A future either re-arms itself (<code>YieldTimes</code>, <code>yield_now</code>) or keeps a waker for an event outside the executor (<code>Delay</code>, sockets, timers).</li>
-<li>Waking a task and scheduling it are the same operation. <code>Task</code> implements <code>Wake</code>, and <code>wake</code> pushes the task back on the queue.</li>
-<li>An <code>async</code> block compiles to an enum with one variant per suspension point. Each variant holds the values alive across that point.</li>
-<li><code>poll</code> takes <code>Pin&lt;&amp;mut Self&gt;</code> because a state can borrow from another field of the same future. Pinning keeps the value at one address, so the borrow stays valid.</li>
-<li>A spawned future must be <code>Send</code>, because a waker may move it to another worker thread.</li>
-<li>The two HTTP clients share three layers: cache, retry, and transport. The blocking client never reads the status code; the async one never retries a transport error.</li>
+<li>The <code>Future</code> trait defines a single cooperative polling method, <code>poll</code>: <code>Poll::Ready</code> completes the task, whereas <code>Poll::Pending</code> obligates the future to arrange a <code>Waker</code> notification when progress becomes possible.</li>
+<li>An executor re-polls tasks upon wake notifications without busy-spinning. Spurious wakeups are benign, whereas a dropped or uninvoked waker breaks liveness without raising an error.</li>
+<li><code>block_on</code> implements a minimal single-future executor: pin the future, construct a thread-unparking <code>Waker</code>, poll in a loop, and call <code>thread::park()</code> on <code>Poll::Pending</code>.</li>
+<li>Leaf futures either re-arm their own waker immediately (<code>YieldTimes</code>, <code>yield_now</code>) or register the waker with an external event source (<code>Delay</code>, kernel sockets, timer wheels).</li>
+<li>In a multi-task executor, waking a task and scheduling it are the same operation: <code>Task</code> implements <code>Wake</code> by pushing itself back onto the run queue.</li>
+<li>An <code>async</code> block compiles into a state-machine enum with one variant per <code>.await</code> suspension point, storing only the local variables live across that point.</li>
+<li><code>Future::poll</code> requires <code>Pin&lt;&amp;mut Self&gt;</code> so self-referential state machines cannot relocate in memory after their first poll, preserving internal borrows.</li>
+<li>Spawned futures require <code>Send</code> because wakers and work-stealing executors may transfer a task across worker threads between polls.</li>
+<li>Both HTTP clients compose caching, retry, and transport layers; unifying them requires classifying both transport errors and retryable HTTP status codes (<code>429</code>, <code>5xx</code>), combined with jitter and <code>Retry-After</code> handling.</li>
 </ul>
 </div>
 
-<p>In Chapter 23, we move beneath standard <code>read</code> and <code>write</code> system calls to map a file directly into virtual memory, observe the page faults that populate it, and transmit a file over a socket without copying its payload through user space.</p>
 <h2 id="exercises"><a class="header" href="#exercises">Exercises</a></h2>
 <ol>
 <li>Add a poll counter to <code>block_on</code> and print it. Check that the count matches the number of wakes for <code>Delay</code>, and that a spurious wake adds one poll without breaking anything.</li>

@@ -36,7 +36,7 @@
             const path_to_root = "";
             const default_light_theme = "coal";
             const default_dark_theme = "coal";
-            window.path_to_searchindex_js = "searchindex-4622e2bb.js";
+            window.path_to_searchindex_js = "searchindex-09ae7f8d.js";
         </script>
         <!-- Start loading toc.js asap -->
         <script src="toc-c196c8a9.js"></script>
@@ -246,7 +246,7 @@ impl TokenBucket {
     }
     // ...
 }</code></pre>
-<p>Because <code>capacity</code> and <code>rate</code> are immutable after construction, they sit outside the lock. The mutable token balance and last-refill timestamp reside in <code>BucketState</code> behind a <code>Mutex</code>. Storing tokens as <code>f64</code> preserves fractional accruals between closely spaced requests, and the bucket initializes full.</p>
+<p>Because <code>capacity</code> and <code>rate</code> are immutable after construction, they remain outside the lock. The mutable token balance and last-refill timestamp reside in <code>BucketState</code> behind a <code>Mutex</code>. Storing tokens as <code>f64</code> preserves fractional accruals between closely spaced requests, and the bucket initializes full.</p>
 <p>Using <code>std::time::Instant</code> rather than <code>SystemTime</code> guarantees a monotonic clock immune to wall-clock adjustments such as NTP corrections.</p>
 <p class="listing"><b>Listing 19.2</b> <code>try_acquire</code> (lines 32 to 49).</p>
 
@@ -509,7 +509,7 @@ request 6: false
 <p>An effective retry mechanism must answer three questions:</p>
 <ol>
 <li><strong>Which errors are retryable.</strong> Client errors such as “not found” will fail deterministically on repeat attempts, whereas “server busy” errors may clear.</li>
-<li><strong>How long to wait between attempts.</strong> Increasing the delay after consecutive failures gives an overloaded service room to recover.</li>
+<li><strong>How long to wait between attempts.</strong> Increasing the delay after consecutive failures allows an overloaded service to drain its backlog and recover.</li>
 <li><strong>When to stop.</strong> Bounding the total number of attempts prevents indefinite blocking and surfaces persistent outages to the caller.</li>
 </ol>
 <h3 id="1921-which-errors-to-retry"><a class="header" href="#1921-which-errors-to-retry">19.2.1 Which errors to retry</a></h3>
@@ -1268,7 +1268,7 @@ payment provider crashed
   caller 0: Err("panicked")
   caller 1: Ok(Ok("txn-order-6"))
 </code></pre>
-<p>When caller 0 panics, stack unwinding runs <code>Claim::drop</code>, removing the <code>InProgress</code> sentinel and waking caller 1, which then claims the key and completes the charge. Without <code>Claim::drop</code>, the sentinel would remain stuck in <code>InProgress</code> and caller 1 would block forever (Animation 19.2).</p>
+<p>When caller 0 panics, stack unwinding runs <code>Claim::drop</code>, removing the <code>InProgress</code> sentinel and waking caller 1, which then claims the key and completes the charge. Without <code>Claim::drop</code>, the sentinel would remain permanently in <code>InProgress</code> and caller 1 would block indefinitely (Animation 19.2).</p>
 <figure class="anim">
 <video class="motion" src="figures/ch19-single-flight.mp4" autoplay="" loop="" muted="" playsinline="" preload="metadata" aria-label="Three caller robots, A, B, and C, a slot map with an entry for order-1, and a payment service. A finds no entry, marks order-1 InProgress, releases the lock, and calls the service. B and C find InProgress and sleep on the Condvar. The charge returns txn-order-1; A stores Done and calls notify_all; B and C wake and each take a clone, with one execution counted. In a second run without the claim&#39;s Drop, A&#39;s work panics, the mark stays InProgress, and B and C sleep while a clock runs." data-chapters="[[0.0, &quot;claim&quot;], [13.67, &quot;done&quot;], [26.82, &quot;panic, no Drop&quot;]]"><img src="figures/ch19-single-flight.gif" alt="Three caller robots, A, B, and C, a slot map with an entry for order-1, and a payment service. A finds no entry, marks order-1 InProgress, releases the lock, and calls the service. B and C find InProgress and sleep on the Condvar. The charge returns txn-order-1; A stores Done and calls notify_all; B and C wake and each take a clone, with one execution counted. In a second run without the claim&#39;s Drop, A&#39;s work panics, the mark stays InProgress, and B and C sleep while a clock runs."></video>
 <figcaption><b>Animation 19.2</b> One key, three callers, one execution. When the claim's <code>Drop</code> is missing, a panic leaves the mark in place and the waiters sleep forever.</figcaption>
@@ -1545,7 +1545,6 @@ mod tests {
 </ul>
 </div>
 
-<p>In Chapter 20, the stack descends to the network layer itself, examining IPv4 addressing, TCP flow windows, and blocking versus event-driven echo servers.</p>
 <h2 id="exercises"><a class="header" href="#exercises">Exercises</a></h2>
 <ol>
 <li>Change <code>TokenBucket::try_acquire</code> to take the current time as an argument, <code>try_acquire_at(&amp;self, now: Instant)</code>.

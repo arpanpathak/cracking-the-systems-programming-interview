@@ -36,7 +36,7 @@
             const path_to_root = "";
             const default_light_theme = "coal";
             const default_dark_theme = "coal";
-            window.path_to_searchindex_js = "searchindex-4622e2bb.js";
+            window.path_to_searchindex_js = "searchindex-09ae7f8d.js";
         </script>
         <!-- Start loading toc.js asap -->
         <script src="toc-c196c8a9.js"></script>
@@ -191,19 +191,19 @@
 </ul>
 </div>
 
-<p>This chapter opens Part 1, which establishes the core Rust mechanics relied upon throughout the remainder of the book. We begin with the smallest building blocks: variable bindings, functions, and control flow.</p>
-<p>We examine two short programs. The first binds a single identifier to three distinct values in sequence, demonstrating the distinction between introducing a new binding with <code>let</code> and mutating an existing slot in place. The second computes Fibonacci numbers using three different strategies and times each one, illustrating how recursion consumes stack memory and how algorithmic structure governs execution time.</p>
-<p>Four foundational terms anchor the discussion:</p>
+<p>Every compiled program maps source-level identifiers onto concrete storage locations and control-flow frames. In Rust, lexical bindings, explicit mutability, and deterministic stack-frame reclamation govern how values occupy memory across function invocations.</p>
+<p>Two programs illustrate these foundational mechanics. The first binds a single identifier to three values of distinct types in sequence, contrasting lexical shadowing with in-place mutation of a mutable slot. The second evaluates Fibonacci numbers through direct recursion, constant-space iteration, and memoization, demonstrating how recursive call trees consume stack memory and how algorithmic structure dictates asymptotic execution time.</p>
+<p>Four definitions establish the memory model used throughout:</p>
 <ul>
-<li>A <strong>binding</strong> associates an identifier with a value; for example, <code>let x = 5;</code> binds the name <code>x</code> to <code>5</code>.</li>
-<li>A <strong>scope</strong> is the lexical region in which a binding remains valid, typically delimited in Rust by <code>{</code> and <code>}</code>.</li>
-<li>The <strong>stack</strong> is the contiguous region of memory where active function calls store their local variables.</li>
-<li>A <strong>stack frame</strong> is the slice of stack memory allocated for a single invocation of a function.</li>
+<li>A <strong>binding</strong> associates an identifier with a typed value; for example, <code>let x = 5;</code> binds <code>x</code> to <code>5</code>.</li>
+<li>A <strong>lexical scope</strong> is the syntactic region in which a binding remains valid, delimited in Rust by <code>{</code> and <code>}</code>.</li>
+<li>The <strong>call stack</strong> is the contiguous LIFO memory region holding activation records for active function invocations.</li>
+<li>A <strong>stack frame</strong> (activation record) is the fixed-size slice of stack memory allocated upon entering a function to store its parameters, return address, and local bindings.</li>
 </ul>
 <h2 id="11-a-binding-is-a-name-for-a-value"><a class="header" href="#11-a-binding-is-a-name-for-a-value">1.1 A binding is a name for a value</a></h2>
-<p>Upon entering a function, the runtime reserves a stack frame sized to hold its local bindings. Each <code>let</code> statement occupies a fixed-width slot determined by its type: a <code>u32</code> occupies 4 bytes, whereas a <code>usize</code> occupies 8 bytes on a 64-bit architecture.</p>
-<p>Heap-allocated types such as <code>String</code> split their representation across two memory regions. Because text length can change at runtime, the raw character bytes reside on the <strong>heap</strong>, a dynamically managed memory pool requested from the allocator and returned when no longer needed. On the stack, the <code>String</code> itself is a fixed-size header holding three machine words: a pointer to the heap buffer, the current byte length, and the allocated capacity.</p>
-<p>When a function returns, its stack frame is popped and every local value in that frame is dropped. Dropping a <code>String</code> releases its underlying heap buffer automatically.</p>
+<p>Upon function entry, the runtime allocates a stack frame sized statically from the types of its local bindings. Fixed-size scalar bindings occupy adjacent slots within that frame: a <code>u32</code> requires 4 bytes, whereas a <code>usize</code> requires 8 bytes on a 64-bit architecture.</p>
+<p>Dynamically sized types such as <code>String</code> partition their representation across the stack and the <strong>heap</strong>, a dynamically managed memory pool obtained from the system allocator. Because string length varies at runtime, the UTF-8 character bytes reside in a heap-allocated buffer, while the stack frame holds a three-word header consisting of a pointer to that buffer, the current byte length, and the allocated capacity.</p>
+<p>Upon function return, the stack frame is popped and every local binding undergoes deterministic destruction in reverse declaration order. Dropping a <code>String</code> deallocates its backing heap buffer automatically.</p>
 <h2 id="12-shadowing-one-name-several-values"><a class="header" href="#12-shadowing-one-name-several-values">1.2 Shadowing: one name, several values</a></h2>
 <p>Declaring a second <code>let</code> statement with an identifier already in scope does not overwrite the original value. Instead, it creates a distinct binding that reuses the identifier, hiding the earlier value from subsequent statements. Rust terms this mechanism <strong>shadowing</strong>. The original value remains alive until the enclosing scope exits, though it is no longer reachable by name.</p>
 <p>Because each shadowed binding is an independent variable, its type can differ from the previous binding. Figure 1.1 traces the identifier <code>value</code> across three bindings of three different types.</p>
@@ -390,7 +390,7 @@ running 2 tests
 test tests::mutation_requires_mut_binding ... ok
 test tests::shadowing_allows_type_changes ... ok
 </code></pre>
-<p>With stack-frame storage established for single function calls, we next examine how nested calls accumulate frames when a function invokes itself.</p>
+<p>With single-frame storage established, nested invocations introduce a second dimension of stack management: activation-record accumulation during recursion.</p>
 <h2 id="15-a-function-that-calls-itself"><a class="header" href="#15-a-function-that-calls-itself">1.5 A function that calls itself</a></h2>
 <p>The Fibonacci sequence begins with 0 and 1, and each subsequent term is the sum of the two preceding terms:</p>
 <div class="table-wrapper">
@@ -430,7 +430,7 @@ fn recursive(n: u64) -&gt; u64 {
 <img src="figures/ch01-stack.svg" alt="A stack of frames from main at the bottom through timed, recursive(4), recursive(3), recursive(2), to recursive(1) at the top">
 <figcaption><b>Figure 1.4</b> The stack at the deepest point of <code>recursive(4)</code>. The depth is about <code>n</code> frames, while the number of calls grows much faster.</figcaption>
 </figure>
-<p>Direct recursion therefore incurs two distinct costs: exponential runtime caused by overlapping subproblems, and linear stack depth proportional to <code>n</code>. While a depth of 90 frames is trivial, linear recursion depth overflows the call stack on large inputs, a failure mode examined on linked lists in Chapter 9.</p>
+<p>Direct recursion therefore incurs two distinct costs: exponential time complexity $O(\varphi^n)$ caused by overlapping subproblems, and linear stack depth $O(n)$ proportional to the input parameter. Although a depth of 90 frames is negligible, linear recursion depth exhausts the call stack on large inputs.</p>
 <h2 id="16-the-same-numbers-with-a-loop"><a class="header" href="#16-the-same-numbers-with-a-loop">1.6 The same numbers with a loop</a></h2>
 <p>Computing the next Fibonacci number requires only the two preceding values. An iterative loop can maintain those two values in registers or stack slots and advance them one step per iteration.</p>
 <p class="listing"><b>Listing 1.5</b> Fibonacci with a loop. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/bin/cs_fib.rs">src/bin/cs_fib.rs</a>, lines 17 to 24</p>
@@ -459,7 +459,7 @@ fn iterative(n: u64) -&gt; u64 {
 </div>
 <p>After five iterations, <code>previous</code> holds 5, which equals <code>fib(5)</code>. Because the loop executes <code>n</code> iterations using two fixed-size integers, its running time is linear in <code>n</code> and its memory usage is constant.</p>
 <h2 id="17-recursion-with-a-memory"><a class="header" href="#17-recursion-with-a-memory">1.7 Recursion with a memory</a></h2>
-<p>To retain the recursive structure while eliminating redundant recomputation, we can store each computed result the first time it is evaluated and look it up on subsequent visits. This technique is <strong>memoization</strong>, and the lookup table storing previously computed answers is a <strong>cache</strong>.</p>
+<p>To preserve the recursive formulation while eliminating redundant recomputation, each subproblem result can be recorded upon first evaluation and retrieved on subsequent visits. This technique is <strong>memoization</strong>, and the auxiliary lookup table storing evaluated subproblems is a <strong>cache</strong>.</p>
 <p class="listing"><b>Listing 1.6</b> Fibonacci with a cache. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/bin/cs_fib.rs">src/bin/cs_fib.rs</a>, lines 26 to 41</p>
 
 <pre><code class="language-rust">/// Linear time, linear space: recursion plus a cache of subproblem answers.
@@ -618,17 +618,16 @@ all checks passed
 <div class="summary" markdown="1">
 <h2 id="summary"><a class="header" href="#summary">Summary</a></h2>
 <ul>
-<li>A <code>let</code> binding associates a name with a value in the current stack frame. A <code>String</code> stores its character bytes on the heap and keeps a three-word header (pointer, length, capacity) on the stack.</li>
-<li>Shadowing introduces a new binding that may take a different type, leaving earlier values unmodified and unreachable by name. Closures that captured the previous binding continue referencing the old value.</li>
-<li>Declaring a binding with <code>mut</code> permits in-place mutation of a fixed-type storage slot.</li>
-<li>Recursive calls allocate one stack frame per active invocation. Unmemoized recursive Fibonacci repeats overlapping subproblems, causing exponential runtime growth.</li>
-<li>An iterative loop tracking only the two preceding values computes <code>fib(n)</code> in linear time and constant memory.</li>
-<li>Memoization preserves the recursive formulation while caching each subproblem’s result, reducing runtime to linear in <code>n</code>.</li>
-<li><code>impl Fn(u64) -&gt; u64</code> accepts any function or closure with that signature, and <code>Instant</code> measures monotonic elapsed time.</li>
+<li>A <code>let</code> binding associates an identifier with a fixed-size slot in the active stack frame. A <code>String</code> stores its UTF-8 bytes in a heap-allocated buffer referenced by a three-word stack header (pointer, length, capacity).</li>
+<li>Lexical shadowing introduces an independent binding that may assume a different type while leaving prior bindings immutable and unreachable by name. Closures capturing an earlier binding retain their reference to the original storage slot.</li>
+<li>Declaring a binding with <code>mut</code> enables in-place mutation of a fixed-type storage slot.</li>
+<li>Each active recursive invocation allocates a stack frame; unmemoized recursive Fibonacci recomputes overlapping subproblems, yielding exponential runtime and linear stack depth.</li>
+<li>An iterative loop maintaining only the two preceding recurrence terms computes <code>fib(n)</code> in $O(n)$ time and $O(1)$ auxiliary space.</li>
+<li>Memoization caches evaluated subproblems in an auxiliary table, reducing recursive Fibonacci to $O(n)$ time at the cost of $O(n)$ heap space and $O(n)$ stack depth.</li>
+<li><code>impl Fn(u64) -&gt; u64</code> accepts any function item or closure matching that signature, and <code>Instant</code> samples a monotonic clock for elapsed-time measurement.</li>
 </ul>
 </div>
 
-<p>Chapter 2 moves from pure computation to operating system interfaces: reading and writing files, traversing directory trees, parsing command-line arguments, and propagating errors with <code>Result</code> and <code>?</code>.</p>
 <h2 id="exercises"><a class="header" href="#exercises">Exercises</a></h2>
 <ol>
 <li>Add a call counter to <code>recursive</code>, print the invocation count for <code>n</code> from 1 to 25, and verify that consecutive counts grow by approximately 1.6x.</li>

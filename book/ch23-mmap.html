@@ -36,7 +36,7 @@
             const path_to_root = "";
             const default_light_theme = "coal";
             const default_dark_theme = "coal";
-            window.path_to_searchindex_js = "searchindex-4622e2bb.js";
+            window.path_to_searchindex_js = "searchindex-09ae7f8d.js";
         </script>
         <!-- Start loading toc.js asap -->
         <script src="toc-c196c8a9.js"></script>
@@ -183,33 +183,32 @@
 <div class="covers" markdown="1">
 <p>This chapter covers</p>
 <ul>
-<li>The page cache: where a file’s bytes live in RAM, and the copy that <code>read</code> makes from it</li>
-<li><code>mmap</code>: a file’s pages placed in a process’s address space, loaded by page faults on first touch</li>
-<li>Shared and private mappings, <code>msync</code>, and copy-on-write</li>
-<li>What a mapping cannot report as an error, and when <code>read</code> is the better tool</li>
-<li>Sending a file to a socket with <code>sendfile</code>, without passing its bytes through user space</li>
-<li>Why TLS puts the bytes back into user space</li>
+<li>The kernel page cache: how file data resides in physical RAM and why <code>read</code> incurs a user-space copy</li>
+<li>Demand-paged virtual memory mappings (<code>mmap</code>): page table population via minor and major page faults</li>
+<li>Shared (<code>MAP_SHARED</code>) and private (<code>MAP_PRIVATE</code>) mappings, explicit writeback via <code>msync</code>, and copy-on-write isolation</li>
+<li>Asynchronous error delivery (<code>SIGBUS</code>), cross-process aliasing hazards, and selection criteria between <code>mmap</code> and <code>read</code></li>
+<li>Kernel-space file-to-socket transfer via <code>sendfile</code> and scatter-gather DMA zero-copy transmission</li>
+<li>The architectural boundary where user-space TLS encryption and dynamic compression preclude zero-copy I/O</li>
 </ul>
 </div>
 
-<p>Part 7 examines the boundary between user-space processes and the operating system kernel. Building on the <code>read</code> system call from Chapter 2 and the virtual memory mechanics from Chapter 15, this chapter maps a file directly into a process’s address space, measures the page faults that populate the mapping, and transfers a file over a socket without copying its payload through user space.</p>
-<p>Two programs anchor the discussion. <code>mmap_file</code> maps a 64-page file, measures the minor page faults incurred across two traversal passes, and contrasts writes through shared and private mappings. <code>zero_copy</code> transfers a 256 MiB file over a loopback socket twice, comparing a conventional <code>read</code>/<code>write</code> loop against Linux <code>sendfile</code>.</p>
+<p>Every conventional file transfer across the user-kernel boundary pays a memory bandwidth tax: the kernel copies file bytes from its internal page cache into a caller-allocated buffer, and a subsequent network transmission copies those same bytes back into a kernel socket buffer. Eliminating redundant copies requires either exposing page cache frames directly in a process’s virtual address space through demand-paged memory mappings (<code>mmap</code>) or delegating file-to-socket movement entirely to the kernel (<code>sendfile</code>). Both mechanisms shift the cost profile of I/O from linear byte copying to virtual memory management, page fault handling, and scatter-gather DMA descriptors.</p>
+<p>Two reference programs quantify these mechanisms. <code>mmap_file</code> maps a 64-page file into virtual memory, records minor page faults across consecutive traversal passes, and contrasts write propagation under shared and private mappings. <code>zero_copy</code> transmits a 256 MiB file over a loopback TCP socket, measuring system call volume and wall-clock throughput for a conventional <code>read</code>/<code>write</code> loop against Linux <code>sendfile</code>.</p>
 <h2 id="231-where-a-files-bytes-live"><a class="header" href="#231-where-a-files-bytes-live">23.1 Where a file’s bytes live</a></h2>
-<p>The kernel keeps recently accessed file data in RAM inside the <strong>page cache</strong>, organized by file and by page (page 0 holds bytes 0 to 4,095, page 1 holds the next 4,096, and so on). Every standard file read passes through this cache: reading an uncached page prompts the kernel to fetch it from disk first, while any subsequent read of the same page by any process hits RAM directly.</p>
-<p>Because the page cache resides in kernel memory, <code>read</code> cannot hand a user-space process direct access to the cached frame. Instead, it copies the requested bytes into a caller-owned buffer. Once <code>read(fd, &amp;mut buffer)</code> returns, those bytes reside in RAM twice: once in the kernel page cache and once in <code>buffer</code>.</p>
-<p>A <strong>memory mapping</strong> eliminates that second copy. The <code>mmap</code> system call maps a byte range of a file directly into the process’s virtual address space, reserving virtual addresses and returning a pointer to the start of the region. When the process reads from those addresses, the page table translates them directly to the physical frames of the page cache (Figure 23.1), allowing the process to access the file in place.</p>
+<p>The operating system maintains recently accessed file blocks in physical memory inside the <strong>kernel page cache</strong>, indexed by file inode and page offset (page 0 spans bytes 0 to 4,095, page 1 spans bytes 4,096 to 8,191, and so forth). All buffered file I/O traverses this cache: reading an uncached page triggers a storage read into a newly allocated page frame, whereas subsequent reads of that page by any process are satisfied directly from RAM.</p>
+<p>Because the page cache resides in kernel address space, the <code>read</code> system call cannot expose a cached physical frame directly to user space. Instead, the kernel copies the requested byte range from the page cache into a caller-supplied buffer. Upon return from <code>read(fd, &amp;mut buffer)</code>, the same data occupies physical memory twice: once in the kernel page cache and once in the process’s heap or stack buffer.</p>
+<p>A <strong>demand-paged memory mapping</strong> eliminates this duplication. The <code>mmap</code> system call reserves a contiguous virtual address range within the process’s address space, associates it with a specified byte range of an open file descriptor, and returns the base virtual address. When the process dereferences an address within that range, the hardware memory management unit (MMU) translates the virtual address through the page table directly to the physical frame in the kernel page cache (Figure 23.1), granting direct in-place access without a copy.</p>
 <figure>
 <img src="figures/ch23-read-vs-mmap.svg" alt="The disk feeds the kernel&#39;s page cache on first access. read copies from the page cache into a Vec in the process, a second copy. A mapping in the process is a set of page table entries that point at the page cache&#39;s frames.">
 <figcaption><b>Figure 23.1</b> <code>read</code> copies from the page cache into a user-space buffer. A mapping points at the page cache's frames.</figcaption>
 </figure>
-<p>Figure 23.2 places the mapping in the process. It is one more region of the address space, beside the heap and
-the stack. Its page table entries point at frames the kernel already holds for the file.</p>
+<p>As depicted in Figure 23.2, a file mapping constitutes a standard virtual memory area (VMA) within the process’s address space alongside the stack, heap, and executable text segments. Its page table entries resolve directly to the physical frames managed by the kernel page cache.</p>
 <figure>
 <img src="figures/ch23-address-space.svg" alt="A process&#39;s virtual address space from top to bottom: the stack, an unmapped gap, the file mapping from mmap of 64 pages, another gap, the heap with Vec, String, and Box, and the program code. The mapping is translated by the page table, one entry per page, filled on first touch, which points at page cache frames holding the file&#39;s pages, loaded from and written back to the file on disk.">
 <figcaption><b>Figure 23.2</b> A mapping is a region of virtual addresses. Its page table entries point into the page cache.</figcaption>
 </figure>
-<p><code>mmap</code> loads no data when it returns; the page table entries for the mapped range start empty. The first access to each page triggers a page fault (as described in Section 15.5), prompting the kernel to locate the page in the page cache or load it from disk, populate the page table entry, and restart the faulting instruction. A fault resolved from the page cache is a <strong>minor fault</strong> costing microseconds, whereas a fault requiring disk I/O is a <strong>major fault</strong> costing at least one storage read.</p>
-<p>For a 64-page mapping, the expected fault behavior proceeds in three stages:</p>
+<p>Invoking <code>mmap</code> transfers no file data and populates no page table entries; it records only the virtual memory area metadata in the kernel. The initial memory access to each mapped page triggers a hardware page fault (Section 15.5), trapping into the kernel. The page fault handler locates the target page in the page cache (or schedules a block I/O read if the page is absent), installs the corresponding page table entry, and resumes the faulting instruction. A fault satisfied from an already-resident page cache frame is a <strong>minor fault</strong> (costing microseconds), whereas a fault requiring block storage I/O is a <strong>major fault</strong> (dominated by storage latency).</p>
+<p>For a 64-page mapping whose backing file is already resident in the page cache, fault accumulation proceeds in three distinct phases:</p>
 <div class="table-wrapper">
 <table>
 <thead>
@@ -222,10 +221,9 @@ the stack. Its page table entries point at frames the kernel already holds for t
 </tbody>
 </table>
 </div>
-<p>The rest of this section builds a type for a mapping and checks the table against a real run.</p>
+<p>The remainder of this section encapsulates the mapping lifecycle in an RAII Rust wrapper and verifies this fault profile empirically.</p>
 <h3 id="2311-a-type-that-owns-a-mapping"><a class="header" href="#2311-a-type-that-owns-a-mapping">23.1.1 A type that owns a mapping</a></h3>
-<p>The program calls <code>mmap</code> through the <code>libc</code> crate. A mapping is a pointer and a length, and it must be
-unmapped exactly once. That is the shape of an owning Rust type with a <code>Drop</code>:</p>
+<p>Direct invocation of <code>mmap</code> requires FFI bindings through the <code>libc</code> crate. A live mapping consists of a base virtual address and a byte length that must be released via <code>munmap</code> exactly once. Encapsulating these invariants in an owning struct with a <code>Drop</code> implementation ensures deterministic unmapping:</p>
 <pre><code class="language-rust">use std::{
     fs::{self, File},
     io,
@@ -240,7 +238,7 @@ struct Mapping {
     ptr: NonNull&lt;u8&gt;,
     len: usize,
 }</code></pre>
-<p><code>NonNull&lt;u8&gt;</code> is a non-null raw pointer, encoding the invariant that <code>Mapping</code> always holds a valid address. The <code>libc</code> crate declares C functions inside an <code>unsafe extern "C"</code> block using C types: <code>c_int</code> for C <code>int</code>, <code>size_t</code> for an unsigned size, <code>off_t</code> for a file offset, and <code>*mut c_void</code> for an untyped byte pointer. The declaration and parameter semantics of <code>mmap</code> are as follows:</p>
+<p>The <code>NonNull&lt;u8&gt;</code> pointer encodes the invariant that a constructed <code>Mapping</code> always holds a non-null virtual base address. The <code>libc</code> crate exposes POSIX C interfaces through <code>unsafe extern "C"</code> declarations parameterized by platform ABI types: <code>c_int</code> for C <code>int</code>, <code>size_t</code> for unsigned byte counts, <code>off_t</code> for file offsets, and <code>*mut c_void</code> for untyped pointers. The contract of <code>mmap</code> is specified as follows:</p>
 <pre><code class="language-rust">unsafe extern "C" {
     fn mmap(
         addr: *mut c_void, // where to map; null lets the kernel choose
@@ -251,8 +249,7 @@ struct Mapping {
         offset: off_t,     // where in the file; a multiple of the page size
     ) -&gt; *mut c_void;      // the mapping's address, or MAP_FAILED
 }</code></pre>
-<p>Every call through such a declaration is <code>unsafe</code>, because the compiler cannot check what the C code does with
-the pointers it is given. <code>new</code> makes the call and checks the result:</p>
+<p>Invoking an <code>extern "C"</code> function requires an <code>unsafe</code> block because the Rust compiler cannot verify pointer validity, alignment, or lifetime invariants across the foreign function boundary. <code>Mapping::new</code> executes the system call and validates its return value:</p>
 <pre><code class="language-rust">impl Mapping {
     /// Map the first `len` bytes of `file` for reading and writing.
     ///
@@ -287,10 +284,8 @@ the pointers it is given. <code>new</code> makes the call and checks the result:
     }
     // ...
 }</code></pre>
-<p>On failure <code>mmap</code> returns <code>MAP_FAILED</code>, not null, so the code checks for that value first. <code>last_os_error</code>
-reads <code>errno</code> and turns it into an <code>io::Error</code>.</p>
-<p>The program reaches the bytes through slices. <code>bytes</code> and <code>bytes_mut</code> build them from the pointer and the
-length:</p>
+<p>On failure, <code>mmap</code> returns the sentinel value <code>MAP_FAILED</code> (<code>(void *)-1</code>) rather than a null pointer; the constructor therefore compares the result against <code>MAP_FAILED</code> before reading <code>errno</code> via <code>io::Error::last_os_error()</code>.</p>
+<p>Safe byte-level access is exposed through shared and mutable slices constructed from the base pointer and length:</p>
 <pre><code class="language-rust">impl Mapping {
     // ...
     fn bytes(&amp;self) -&gt; &amp;[u8] {
@@ -304,8 +299,7 @@ length:</p>
     }
     // ...
 }</code></pre>
-<p><code>bytes_mut</code> takes <code>&amp;mut self</code>, so the borrow checker allows one mutable slice at a time, as with a <code>Vec</code>.
-<code>Drop</code> gives the address range back to the kernel with <code>munmap</code>, which takes the same address and length:</p>
+<p>Because <code>bytes_mut</code> requires <code>&amp;mut self</code>, the borrow checker enforces exclusive mutable access within the current process, matching the aliasing discipline of <code>Vec&lt;u8&gt;</code>. Releasing the virtual address range in <code>Drop</code> invokes <code>munmap</code> with the original base address and length:</p>
 <pre><code class="language-rust">unsafe extern "C" {
     fn munmap(addr: *mut c_void, len: size_t) -&gt; c_int; // 0, or -1 with errno set
 }</code></pre>
@@ -318,11 +312,9 @@ length:</p>
         }
     }
 }</code></pre>
-<p>A slice returned by <code>bytes</code> borrows <code>self</code>, so it cannot outlive the <code>Mapping</code>. Without that borrow, a slice
-could point into an unmapped range, and the next read through it would crash the process.</p>
+<p>The lifetime of any slice returned by <code>bytes</code> or <code>bytes_mut</code> is bound to <code>&amp;self</code> or <code>&amp;mut self</code>, preventing a slice from outliving the <code>Mapping</code> instance. Without this compile-time lifetime tie, dereferencing a slice after <code>munmap</code> would access an unmapped virtual address and raise <code>SIGSEGV</code>.</p>
 <h3 id="2312-counting-the-faults"><a class="header" href="#2312-counting-the-faults">23.1.2 Counting the faults</a></h3>
-<p>The kernel counts each process’s page faults. <code>getrusage</code> copies the counts into a <code>rusage</code> struct that the
-caller provides, and <code>sysconf</code> reads system constants such as the page size:</p>
+<p>The kernel maintains per-process resource accounting counters, including minor and major page fault totals. <code>getrusage</code> populates a caller-supplied <code>rusage</code> structure with these counters, while <code>sysconf</code> queries runtime system parameters such as the hardware page size:</p>
 <pre><code class="language-rust">unsafe extern "C" {
     fn getrusage(
         who: c_int,          // RUSAGE_SELF: this process
@@ -330,7 +322,7 @@ caller provides, and <code>sysconf</code> reads system constants such as the pag
     ) -&gt; c_int;              // 0, or -1 with errno set
     fn sysconf(name: c_int) -&gt; c_long; // _SC_PAGESIZE gives the page size
 }</code></pre>
-<p>The program reads the minor-fault count before and after a pass over the mapping:</p>
+<p>Sampling <code>ru_minflt</code> immediately before and after a traversal pass isolates the exact fault count incurred by that pass:</p>
 <pre><code class="language-rust">/// Minor page faults this process has taken so far: faults the kernel served
 /// from memory, without reading the disk.
 fn minor_faults() -&gt; u64 {
@@ -351,10 +343,8 @@ fn touch_every_page(bytes: &amp;[u8], page: usize) -&gt; u64 {
         .map(|&amp;byte| u64::from(byte))
         .sum()
 }</code></pre>
-<p><code>touch_every_page</code> reads one byte per page. <code>step_by(page)</code> skips from the first byte of one page to the
-first byte of the next. The function returns the sum of the bytes so the compiler cannot drop the reads as
-unused.</p>
-<p><code>main</code> writes a file of 64 pages, maps it shared, and runs the pass twice:</p>
+<p><code>touch_every_page</code> reads one byte per page by advancing an iterator with <code>step_by(page)</code>. Accumulating and returning the byte sum introduces a data dependency that prevents dead-code elimination from optimizing away the memory loads.</p>
+<p><code>main</code> creates a 64-page file, maps it with <code>MAP_SHARED</code>, and executes two consecutive traversal passes:</p>
 <pre><code class="language-rust">fn main() -&gt; io::Result&lt;()&gt; {
     // ...
     let mut shared = Mapping::new(&amp;file, len, true)?;
@@ -371,39 +361,31 @@ unused.</p>
     println!("second pass over the mapping: {second} minor faults\n");
     // ...
 }</code></pre>
-<p>Animation 23.1 follows both passes, the writes of section 23.2, and the truncation of section 23.2.1.</p>
+<p>Animation 23.1 traces both traversal passes, the shared and private write behaviors of Section 23.2, and the truncation fault of Section 23.2.1.</p>
 <figure class="anim">
 <video class="motion" src="figures/ch23-faults.mp4" autoplay="" loop="" muted="" playsinline="" preload="metadata" aria-label="The program&#39;s thread as a robot, its page table as a grid of 64 empty entries, and the kernel&#39;s page cache holding the file&#39;s 64 pages beside the file on disk. The first read of page 0 finds the entry empty: a page fault stops the thread. The kernel finds page 0 in the page cache, a minor fault, and fills the entry. Every other page takes the same path, and the first-pass counter reaches 64. The second pass sweeps all 64 entries with no fault. Writing HELLO through the shared mapping changes the page cache&#39;s page 0, and msync carries it to the disk. A private mapping starts with no entries filled; writing world to page 0 faults, the kernel copies page 0 into a private frame, and only the copy holds world. In a last run another process truncates the file to one page; the kernel drops pages 1 to 63 and empties their entries, and the next read of page 1 ends in SIGBUS." data-chapters="[[0.0, &quot;mmap&quot;], [10.62, &quot;first pass&quot;], [48.72, &quot;second pass&quot;], [58.98, &quot;HELLO&quot;], [70.8, &quot;world&quot;], [89.28, &quot;truncated&quot;]]"><img src="figures/ch23-faults.gif" alt="The program&#39;s thread as a robot, its page table as a grid of 64 empty entries, and the kernel&#39;s page cache holding the file&#39;s 64 pages beside the file on disk. The first read of page 0 finds the entry empty: a page fault stops the thread. The kernel finds page 0 in the page cache, a minor fault, and fills the entry. Every other page takes the same path, and the first-pass counter reaches 64. The second pass sweeps all 64 entries with no fault. Writing HELLO through the shared mapping changes the page cache&#39;s page 0, and msync carries it to the disk. A private mapping starts with no entries filled; writing world to page 0 faults, the kernel copies page 0 into a private frame, and only the copy holds world. In a last run another process truncates the file to one page; the kernel drops pages 1 to 63 and empties their entries, and the next read of page 1 ends in SIGBUS."></video>
 <figcaption><b>Animation 23.1</b> The first touch of each page faults, and the kernel fills the entry from the page cache. A first write to a private mapping copies the page. A page truncated away leaves nothing to fill the entry with.</figcaption>
 </figure>
-<p>On macOS, the run matches the table:</p>
+<p>On macOS, the measured fault counts match the theoretical single-page-per-fault model exactly:</p>
 <pre><code class="language-text">$ cargo run --bin mmap_file
 page size 4096 bytes, file 64 pages (262144 bytes)
 
 first pass over the mapping:  64 minor faults
 second pass over the mapping: 0 minor faults
 </code></pre>
-<p>The faults are minor because <code>fs::write</code> had put every page of the file in the page cache a moment
-earlier. No disk read was needed.</p>
-<p>On Linux, the same program reports <code>first pass over the mapping:  5 minor faults</code>. When a read faults on a
-file mapping, Linux also fills the entries of the neighbouring pages that are already in the page cache.
-This is <strong>fault-around</strong>, and by default it covers 64 KiB, which is 16 pages, per fault. 64 pages need at
-least 4 such faults. The second pass is 0 faults on both systems.</p>
+<p>Every fault is classified as minor because the preceding <code>fs::write</code> call already populated the kernel page cache with all 64 pages; no block device reads occur during traversal.</p>
+<p>On Linux, the identical binary reports <code>first pass over the mapping:  5 minor faults</code>. During a read fault on a file-backed mapping, the Linux virtual memory subsystem performs <strong>fault-around</strong>: it speculatively installs page table entries for neighboring pages that are already resident in the page cache. With the default fault-around window of 64 KiB (16 pages of 4 KiB each), traversing 64 pages requires a minimum of 4 fault-around traps. On both operating systems, the second pass incurs zero faults because all 64 page table entries remain resident.</p>
 <h2 id="232-shared-and-private-mappings"><a class="header" href="#232-shared-and-private-mappings">23.2 Shared and private mappings</a></h2>
-<p>The flags argument decides where a write through the mapping goes (figure 23.3).</p>
+<p>The <code>flags</code> parameter passed to <code>mmap</code> determines how store instructions to mapped pages interact with the kernel page cache and backing file (Figure 23.3):</p>
 <ul>
-<li><strong><code>MAP_SHARED</code></strong>: the entry points at the page cache frame itself. A write changes the file’s cached
-page. Every process that maps or reads the file sees the change. The kernel writes the dirty page to disk
-later, during <strong>writeback</strong>.</li>
-<li><strong><code>MAP_PRIVATE</code></strong>: the entry also points at the page cache frame, but it is marked read-only. The first
-write to a page faults. The kernel copies the page into a new frame that belongs to this process and
-points the entry at the copy. This is <strong>copy-on-write</strong>. The file never sees the write.</li>
+<li><strong><code>MAP_SHARED</code></strong>: page table entries map directly to the shared page cache frames with write permissions enabled. A store modifies the cached page in place, making the update immediately visible to every process mapping or reading the same file. The kernel flushes modified (dirty) pages to storage asynchronously during background <strong>writeback</strong>.</li>
+<li><strong><code>MAP_PRIVATE</code></strong>: page table entries initially map to the shared page cache frames, but the kernel marks those entries read-only in hardware. The first store to a page triggers a protection fault; the kernel allocates a fresh anonymous physical frame, copies the original page contents into it, updates the process’s page table entry to point to the private frame with write permission, and resumes the store. This <strong>copy-on-write</strong> (CoW) isolation ensures that modifications remain private to the process and never propagate to the backing file.</li>
 </ul>
 <figure>
 <img src="figures/ch23-shared-private.svg" alt="A MAP_SHARED mapping writes HELLO into the page cache page, which writeback or msync carries to the file on disk. A MAP_PRIVATE mapping reads the page cache page until its first write, then writes world into a private copy that only its process sees.">
 <figcaption><b>Figure 23.3</b> A shared mapping writes into the page cache. A private mapping copies the page on its first write.</figcaption>
 </figure>
-<p>Writeback happens on the kernel’s schedule, typically within about 30 seconds. To put the data on disk at a known point, call <code>msync</code>:</p>
+<p>Background writeback operates on the kernel’s dirty-page flushing schedule (commonly bounded near 30 seconds). When durability requires flushing dirty pages at a deterministic boundary, the application invokes <code>msync</code>:</p>
 <pre><code class="language-rust">unsafe extern "C" {
     fn msync(
         addr: *mut c_void, // start of the range, as returned by mmap
@@ -411,7 +393,7 @@ points the entry at the copy. This is <strong>copy-on-write</strong>. The file n
         flags: c_int,      // MS_SYNC: return after the write completes
     ) -&gt; c_int;            // 0, or -1 with errno set
 }</code></pre>
-<p>With <code>MS_SYNC</code>, it returns after the dirty pages of the range are written:</p>
+<p>Passing <code>MS_SYNC</code> blocks the calling thread until all dirty pages within the specified virtual range have been written to the underlying storage subsystem:</p>
 <pre><code class="language-rust">impl Mapping {
     // ...
     /// Write the changed pages of a shared mapping back to the file now.
@@ -425,8 +407,7 @@ points the entry at the copy. This is <strong>copy-on-write</strong>. The file n
         }
     }
 }</code></pre>
-<p><code>main</code> writes <code>HELLO</code> through the shared mapping and syncs it. Then it maps the same file privately and
-writes <code>world</code>:</p>
+<p><code>main</code> writes <code>HELLO</code> through the shared mapping and synchronizes it to disk, then creates a <code>MAP_PRIVATE</code> mapping of the same file and writes <code>world</code>:</p>
 <pre><code class="language-rust">fn main() -&gt; io::Result&lt;()&gt; {
     // ...
     shared.bytes_mut()[..5].copy_from_slice(b"HELLO");
@@ -447,23 +428,21 @@ writes <code>world</code>:</p>
     println!("and the file still starts with {:?}", file_prefix(&amp;path)?);
     // ...
 }</code></pre>
-<p><code>file_prefix</code> reads the file with <code>fs::read</code>, the ordinary path through the page cache. It reports what the
-file holds, not what a mapping holds:</p>
+<p><code>file_prefix</code> inspects the backing file via <code>fs::read</code>, querying the kernel page cache directly rather than the private mapping:</p>
 <pre><code class="language-text">after writing HELLO through MAP_SHARED, the file starts with "HELLO"
 after writing world through MAP_PRIVATE, the mapping holds "world"
 and the file still starts with "HELLO"
 </code></pre>
-<p><code>fork</code> uses the same mechanism for a whole process. The child gets a copy of the parent’s page tables with
-every writable page marked read-only. Neither process copies a page until one of them writes to it.</p>
+<p>POSIX <code>fork</code> relies on this same copy-on-write primitive at process granularity. The kernel duplicates the parent’s page tables for the child and marks all writable anonymous pages read-only in both processes; physical frame duplication is deferred until either process executes a store to a shared page.</p>
 <h3 id="2321-what-a-mapping-cannot-report"><a class="header" href="#2321-what-a-mapping-cannot-report">23.2.1 What a mapping cannot report</a></h3>
-<p>A failing <code>read</code> returns an error value directly. Because a memory access through a mapping has no return channel, the kernel reports failures asynchronously through a signal:</p>
+<p>A failing <code>read</code> system call returns <code>-1</code> and sets <code>errno</code>, enabling synchronous error handling in user space. A load or store instruction targeting a memory-mapped address has no error return channel; consequently, the kernel must report I/O and bounds failures asynchronously via signals:</p>
 <ul>
-<li>If another process truncates the file, the pages beyond the new end no longer exist; touching one raises <code>SIGBUS</code>, terminating the process unless a signal handler is installed.</li>
-<li>If the storage device returns an I/O error during a major fault, the access likewise raises <code>SIGBUS</code>.</li>
+<li>If another process truncates the backing file, physical pages beyond the new file length are invalidated. Dereferencing a virtual address in the truncated region raises <code>SIGBUS</code>, which terminates the process unless a signal handler is registered.</li>
+<li>If the storage device returns a media or transport error while servicing a major page fault, the kernel likewise delivers <code>SIGBUS</code> to the faulting thread.</li>
 </ul>
-<p>Rust’s type system also cannot enforce aliasing invariants across process boundaries. A <code>&amp;[u8]</code> slice promises that its underlying bytes remain immutable for the lifetime of the borrow, yet another process can modify a <code>MAP_SHARED</code> file concurrently. <code>Mapping::bytes</code> is therefore sound only while no external process writes to the file, which is why the <code>memmap2</code> crate marks <code>Mmap::map</code> as an <code>unsafe fn</code> requiring the caller to uphold that guarantee.</p>
+<p>Furthermore, Rust’s borrow checker enforces aliasing invariants only within a single process. A <code>&amp;[u8]</code> slice asserts that its referenced bytes remain immutable for the duration of the borrow, yet an external process can mutate a <code>MAP_SHARED</code> backing file concurrently. <code>Mapping::bytes</code> is therefore sound only under the external precondition that no concurrent writer modifies the file. For this reason, the ecosystem <code>memmap2</code> crate marks <code>Mmap::map</code> as an <code>unsafe fn</code>, delegating that cross-process aliasing contract to the caller.</p>
 <h3 id="2322-when-to-map-and-when-to-read"><a class="header" href="#2322-when-to-map-and-when-to-read">23.2.2 When to map, and when to read</a></h3>
-<p>Although a mapping eliminates the copy into a user-space buffer, it introduces overhead of its own: every first touch incurs a page fault that traps into the kernel, and unmapping requires invalidating cached TLB entries across all CPUs via inter-processor interrupts.</p>
+<p>Eliminating the kernel-to-user copy is not cost-free. A memory mapping incurs page fault trap overhead on first access to each page, consumes virtual address space, and requires a <strong>TLB shootdown</strong> upon <code>munmap</code>: the kernel must issue inter-processor interrupts (IPIs) to invalidate stale translation lookaside buffer entries across all CPU cores executing threads of the process.</p>
 <div class="table-wrapper">
 <table>
 <thead>
@@ -477,18 +456,16 @@ every writable page marked read-only. Neither process copies a page until one of
 </tbody>
 </table>
 </div>
-<p>Databases such as LMDB map their data files for the second and third reasons, whereas log readers and file-copy utilities read sequentially and favor <code>read</code>.</p>
+<p>Embedded storage engines such as LMDB map their B-tree data files to exploit zero-overhead repeated random reads and cross-process page cache sharing, whereas streaming log processors and file-copy utilities favor sequential <code>read</code> with a reused buffer to avoid page fault and TLB invalidation costs.</p>
 <h2 id="233-sending-a-file-to-a-socket"><a class="header" href="#233-sending-a-file-to-a-socket">23.3 Sending a file to a socket</a></h2>
-<p>A static file server transmits files over network sockets. A conventional implementation reads chunks of the file into a user-space buffer and writes each chunk to the socket until end-of-file. The copy path for each chunk is illustrated in Figure 23.4: <code>read</code> copies bytes from the page cache into the user-space buffer, and <code>write</code> copies them from that buffer into the socket’s send buffer. Even though the server never inspects the payload, the bytes traverse user space solely because <code>read</code> and <code>write</code> require a user-space buffer.</p>
-<p><code>sendfile</code> transfers bytes from a file descriptor directly to a socket descriptor inside the kernel. A single system call specifies both descriptors, a file offset, and a byte count, allowing the kernel to pass page cache frames directly to the socket without entering user space. On network interface cards that support scatter-gather DMA, the kernel passes frame references rather than copying payload bytes, achieving <strong>zero-copy</strong> transmission with no CPU payload copies.</p>
+<p>A static file server transmits file contents from disk to network sockets without inspecting or transforming the payload. A conventional implementation loops over <code>read</code> and <code>write</code>: <code>read</code> copies bytes from the kernel page cache into a user-space buffer, and <code>write</code> copies those bytes from the user-space buffer into the kernel’s socket send buffer (Figure 23.4). Each chunk requires two system calls, two context-switch boundaries, and two CPU-driven memory copies solely because the POSIX <code>read</code>/<code>write</code> interface routes data through a user-space buffer.</p>
+<p>The <code>sendfile</code> system call transfers bytes directly from a file descriptor to a socket descriptor entirely inside the kernel. A single invocation specifies the destination socket, source file, starting offset, and byte count. On network interface cards (NICs) that support scatter-gather DMA (<code>NETIF_F_SG</code>), the kernel attaches references to the page cache frames directly to the socket buffer descriptors (<code>sk_buff</code>) and instructs the NIC to read payload bytes directly from physical memory via DMA. This <strong>zero-copy</strong> path eliminates both CPU payload copies and reduces system call overhead to a single transition per transfer segment.</p>
 <figure>
 <img src="figures/ch23-copies.svg" alt="Top: the read/write loop copies page cache to user buffer with read, user buffer to socket buffer with write, then DMA to the network card, two system calls per chunk. Bottom: sendfile passes the pages from the page cache to the socket buffer inside the kernel, then DMA to the network card, one system call.">
 <figcaption><b>Figure 23.4</b> The two copies of a <code>read</code>/<code>write</code> loop, and the path of <code>sendfile</code>.</figcaption>
 </figure>
 <h3 id="2331-measuring-both"><a class="header" href="#2331-measuring-both">23.3.1 Measuring both</a></h3>
-<p><code>sendfile</code> with a socket as the destination is a Linux call, so <code>zero_copy</code> puts its code in a module
-compiled only on Linux. It also needs a socket to send to. <code>connected_pair</code> opens a loopback connection
-and starts a thread that reads everything from the far end and counts it:</p>
+<p>Because Linux <code>sendfile</code> accepts a socket as <code>out_fd</code> with a distinct signature from BSD and macOS, <code>zero_copy</code> isolates its implementation inside a Linux-conditional module. <code>connected_pair</code> establishes a loopback TCP connection and spawns a consumer thread that drains the receiving socket to verify complete delivery:</p>
 <pre><code class="language-rust">#[cfg(target_os = "linux")]
 mod linux {
     use std::{
@@ -527,9 +504,8 @@ mod linux {
     }
     // ...
 }</code></pre>
-<p><code>Transfer</code> records what one run cost. The receiving thread returns its byte count through <code>join</code>, so each
-run checks that every byte arrived.</p>
-<p>The loop reads up to <code>buffer_size</code> bytes and writes what it read. It counts every system call:</p>
+<p>The <code>Transfer</code> struct records elapsed duration and system call count for each benchmark pass. Joining the receiver thread returns the total byte count observed on the peer socket, verifying that no bytes were dropped or truncated.</p>
+<p>The baseline <code>copy_loop</code> reads up to <code>buffer_size</code> bytes per iteration and transmits them via <code>write_all</code>, incrementing the system call counter on each operation:</p>
 <pre><code class="language-rust">mod linux {
     // ...
     /// Send `file` with `read` into a buffer and `write` out of it.
@@ -559,10 +535,8 @@ run checks that every byte arrived.</p>
     }
     // ...
 }</code></pre>
-<p><code>write_all</code> may need more than one <code>write</code> when the socket’s send buffer is full. The count adds one per
-<code>write_all</code>, so it is a lower bound.</p>
-<p>The <code>sendfile</code> version has no buffer. On Linux, <code>sendfile</code> copies from one descriptor to another inside the
-kernel:</p>
+<p>Because <code>write_all</code> may issue multiple underlying <code>write</code> calls whenever the socket send buffer fills, counting one call per <code>write_all</code> yields a conservative lower bound on total system calls.</p>
+<p>The <code>sendfile</code> implementation allocates no user-space transfer buffer and invokes the kernel transfer interface directly:</p>
 <pre><code class="language-rust">unsafe extern "C" {
     fn sendfile(
         out_fd: c_int,       // where the bytes go: the socket
@@ -571,7 +545,7 @@ kernel:</p>
         count: size_t,       // at most this many bytes
     ) -&gt; ssize_t;            // bytes sent, or -1 with errno set
 }</code></pre>
-<p>The program calls it until the offset reaches the file’s length:</p>
+<p>The transfer loop invokes <code>sendfile</code> repeatedly until <code>offset</code> reaches the file length:</p>
 <pre><code class="language-rust">mod linux {
     // ...
     /// Send `file` with `sendfile`, which moves the bytes inside the kernel.
@@ -605,27 +579,19 @@ kernel:</p>
     }
     // ...
 }</code></pre>
-<p>The kernel advances <code>offset</code> by the number of bytes it sent. A single call sends at most 2,147,479,552 bytes on Linux, and a signal can cut a call short. The loop handles both, although this run needs one call.</p>
-<p><code>main</code> writes a 256 MiB file and sends it once untimed, so both timed runs start with the file in the page
-cache. Run in a Linux container, in release mode:</p>
+<p>On each call, the kernel advances <code>*offset</code> by the number of bytes transferred. Linux caps a single <code>sendfile</code> call at <code>0x7ffff000</code> (2,147,479,552) bytes, and signal delivery can cause a short transfer; looping until completion handles both cases, though a 256 MiB loopback transfer completes in a single call.</p>
+<p><code>main</code> creates a 256 MiB file and performs an untimed warm-up transfer so that both timed runs operate against a hot page cache. Executed in release mode inside a Linux container:</p>
 <pre><code class="language-text">$ cargo run --release --bin zero_copy
 method                        MiB   syscalls         ms        MiB/s
 read/write, 64 KiB            256       8193      316.4          809
 sendfile                      256          1      194.3         1318
 </code></pre>
-<p>256 MiB in 64 KiB chunks is 4,096 chunks. Each takes a <code>read</code> and a <code>write</code>, and one last <code>read</code> returns 0,
-which gives 8,193 calls. <code>sendfile</code> made one. The time fell by about 40%. Both runs share the costs of loopback TCP and of the receiving thread, which still copies every byte into its own buffer. Over a real network card, the receiver is on another machine, and the sender’s saving
-is a larger share of its work.</p>
+<p>Transferring 256 MiB in 64 KiB chunks requires 4,096 <code>read</code> calls, 4,096 <code>write</code> calls, and one terminal <code>read</code> returning 0 (EOF), totaling 8,193 system calls. <code>sendfile</code> completed the identical transfer in 1 system call, reducing elapsed time by approximately 39%. Both runs share the fixed overhead of loopback TCP segmentation and the local receiver thread copying bytes into its own buffer; over a physical NIC to a remote host, eliminating sender-side copies represents a substantially larger fraction of total CPU cost.</p>
 <h3 id="2332-where-zero-copy-stops"><a class="header" href="#2332-where-zero-copy-stops">23.3.2 Where zero-copy stops</a></h3>
-<p><code>sendfile</code> works only when the bytes leave the kernel exactly as they sit in the page cache. Any
-transformation of the bytes needs a CPU to touch them:</p>
+<p><code>sendfile</code> requires that bytes leave the kernel unmodified relative to their representation in the page cache. Any payload transformation forces the CPU to read and rewrite every byte:</p>
 <ul>
-<li><strong>TLS.</strong> A TLS library such as <code>rustls</code> encrypts each record in user space. The plaintext has to come into the process first. A server that sends a file over HTTPS reads it into a buffer, encrypts
-the buffer, and writes the ciphertext. Linux can move the encryption into the kernel with kernel TLS:
-the library performs the handshake, then hands the session keys to the socket. With kernel TLS on,
-<code>sendfile</code> works on a TLS connection again, and the kernel encrypts as it sends.</li>
-<li><strong>Compression.</strong> A server that compresses responses on the fly reads every byte. Storing a compressed
-copy of each file ahead of time brings <code>sendfile</code> back.</li>
+<li><strong>TLS encryption.</strong> User-space TLS implementations such as <code>rustls</code> encrypt records inside the application process. Serving a file over HTTPS requires reading plaintext into user space, encrypting it into ciphertext buffers, and writing the ciphertext to the socket. Linux <strong>kernel TLS</strong> (kTLS) restores zero-copy transmission by allowing the user-space library to perform the handshake and then install the symmetric session keys into the kernel socket via <code>setsockopt(SOL_TLS)</code>. With kTLS active, <code>sendfile</code> transfers page cache frames directly while the kernel (or a kTLS-capable NIC) encrypts records inline.</li>
+<li><strong>On-the-fly compression.</strong> Dynamic response compression (<code>gzip</code>, <code>brotli</code>, <code>zstd</code>) requires reading every plaintext byte into CPU registers. Pre-compressing static assets on disk restores eligibility for <code>sendfile</code> by allowing the kernel to transmit the compressed representation directly.</li>
 </ul>
 <h2 id="234-the-complete-programs"><a class="header" href="#234-the-complete-programs">23.4 The complete programs</a></h2>
 <p class="listing"><b>Listing 23.1</b> Shared and private mappings, and the faults that load them. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/bin/mmap_file.rs">src/bin/mmap_file.rs</a></p>
@@ -1018,48 +984,35 @@ mod tests {
 }</code></pre>
 <h2 id="235-questions-that-come-up"><a class="header" href="#235-questions-that-come-up">23.5 Questions that come up</a></h2>
 <p><strong>“Is a mapped file faster than <code>read</code>?”</strong>
-For repeated random access to a large file, usually. Each page faults once, and later reads cost a memory read.
-For one sequential pass, <code>read</code> with a reused buffer is as fast or faster, because it takes no faults.</p>
+For repeated random access over a large file, <code>mmap</code> is typically faster: each page faults once, and subsequent accesses execute at memory-load speed without system call transitions. For a single sequential scan, <code>read</code> into a reused buffer is competitive or faster because kernel readahead keeps the page cache populated without incurring per-page fault traps or TLB shootdowns on teardown.</p>
 <p><strong>“What happens when two processes map the same file with <code>MAP_SHARED</code>?”</strong>
-Both page tables point at the same page cache frames. A write by one is visible to the other at once,
-before any writeback. Shared memory between processes works this way.</p>
+Both processes’ page tables map to the identical physical frames in the kernel page cache. A store executed by one process is immediately visible to the other through cache coherence, prior to any disk writeback. POSIX shared memory (<code>shm_open</code> paired with <code>mmap</code>) uses this exact mechanism.</p>
 <p><strong>“Does <code>msync</code> make a write durable?”</strong>
-<code>MS_SYNC</code> waits until the dirty pages are written to the device. Whether the device has stored them
-permanently depends on its write cache, as with <code>fsync</code>.</p>
+<code>msync</code> with <code>MS_SYNC</code> blocks until the kernel flushes all dirty pages in the range to the storage device. Physical durability beyond power loss still depends on the storage controller’s volatile write cache and flush barriers, matching the semantics of <code>fsync</code>.</p>
 <p><strong>“Why does a file server stop using <code>sendfile</code> when it turns on TLS?”</strong>
-The TLS library encrypts the bytes in user space. Kernel TLS moves the encryption into
-the kernel and allows <code>sendfile</code> again.</p>
+User-space TLS libraries must read plaintext into process memory to encrypt each record before writing ciphertext to the socket. Offloading symmetric record encryption to the kernel via kTLS restores <code>sendfile</code> compatibility.</p>
 <p><strong>“What does fault-around change?”</strong>
-It lowers the number of faults for a mapping read in order. It does not change what the program sees. It maps only neighbouring pages that are already cached, and reads nothing from disk.</p>
+Fault-around reduces the minor page fault count during sequential access to a memory-mapped file by speculatively populating page table entries for neighboring pages already resident in the page cache. It does not alter observable memory semantics and issues no additional block I/O.</p>
 <div class="summary" markdown="1">
 <h2 id="summary"><a class="header" href="#summary">Summary</a></h2>
 <ul>
-<li>The page cache holds files’ pages in kernel memory; <code>read</code> copies from it into a user-space buffer.</li>
-<li><code>mmap</code> maps a file’s pages into a process’s address space, loading nothing until the first touch of each page triggers a page fault.</li>
-<li>A minor fault fills the page table entry from the page cache. A major fault reads the disk first.</li>
-<li>Writes through <code>MAP_SHARED</code> change the file’s cached page. Writes through <code>MAP_PRIVATE</code> go to a private
-copy made on the first write. <code>msync</code> writes the dirty pages of a shared mapping now.</li>
-<li>A failed access through a mapping raises <code>SIGBUS</code> instead of returning an error. A <code>&amp;[u8]</code> over a shared
-mapping is sound only while no other process writes the file.</li>
-<li><code>sendfile</code> sends a file to a socket without passing its bytes through the process. This run made one call instead of 8,193.</li>
-<li>TLS and compression need the CPU to read every byte, which brings the bytes back into user space unless
-the kernel does the work.</li>
+<li>The kernel page cache stores recently accessed file pages in kernel memory; <code>read</code> copies bytes from the page cache into a caller-owned user-space buffer.</li>
+<li><code>mmap</code> reserves a virtual address range backed by a file without preloading data; the first access to each page triggers a hardware page fault that populates its page table entry.</li>
+<li>A minor page fault resolves from an already-resident page cache frame; a major page fault requires a blocking read from storage.</li>
+<li>Stores through <code>MAP_SHARED</code> mutate the page cache frame in place and propagate to disk via writeback or <code>msync(MS_SYNC)</code>. Stores through <code>MAP_PRIVATE</code> trigger copy-on-write isolation into a private anonymous frame.</li>
+<li>I/O errors or external file truncation on a mapped range deliver <code>SIGBUS</code> asynchronously rather than returning an error code. Exposing a <code>MAP_SHARED</code> region as <code>&amp;[u8]</code> is sound only when no external process mutates the file concurrently.</li>
+<li><code>sendfile</code> transfers file data to a socket inside the kernel without user-space copies, reducing a 256 MiB loopback transfer from 8,193 system calls to 1.</li>
+<li>User-space TLS encryption and dynamic compression require CPU access to payload bytes, precluding <code>sendfile</code> unless encryption is offloaded to kTLS or assets are pre-compressed.</li>
 </ul>
 </div>
 
-<p>In Chapter 24, we examine file descriptors directly: the per-process descriptor table, the effects of <code>fork</code> and <code>exec</code> on open descriptors, and the mechanism a shell uses to connect two processes with a pipe.</p>
 <h2 id="exercises"><a class="header" href="#exercises">Exercises</a></h2>
 <ol>
-<li>Change <code>PAGES</code> to 4,096 and run <code>mmap_file</code> again. Then drop the page cache (on Linux, as root:
-<code>echo 1 &gt; /proc/sys/vm/drop_caches</code>) between writing the file and mapping it, and read <code>ru_majflt</code> as
-well as <code>ru_minflt</code>. Which faults turn major?</li>
-<li>Map the file read-only with <code>PROT_READ</code> only, and write through the slice from an <code>unsafe</code> block. Which
-signal stops the process, and which kind of fault from section 15.5 is it?</li>
-<li>In <code>copy_loop</code>, try buffer sizes of 4 KiB, 64 KiB, and 1 MiB. Explain the change in system calls and in
-time.</li>
-<li>Add a third method to <code>zero_copy</code> that maps the file and calls <code>write_all</code> on the whole mapping. Count
-its system calls and compare its time with the other two.</li>
-<li>Write a test that truncates the file to one page while a two-page <code>Mapping</code> of it is alive. Check that the first page still reads. Do not read the second page in the test. Explain why.</li>
+<li>Change <code>PAGES</code> to 4,096 and run <code>mmap_file</code> again. Drop the page cache (on Linux as root: <code>echo 1 &gt; /proc/sys/vm/drop_caches</code>) between writing the file and mapping it, and record both <code>ru_majflt</code> and <code>ru_minflt</code>. Which faults become major?</li>
+<li>Map the file read-only with <code>PROT_READ</code> alone, and attempt a write through a raw pointer inside an <code>unsafe</code> block. Identify the resulting signal and classify the fault using Section 15.5.</li>
+<li>In <code>copy_loop</code>, benchmark buffer sizes of 4 KiB, 64 KiB, and 1 MiB. Account for the changes in system call count and elapsed wall-clock time.</li>
+<li>Add a third benchmark method to <code>zero_copy</code> that maps the entire file via <code>mmap</code> and passes the slice to <code>write_all</code>. Compare its system call count and throughput against <code>copy_loop</code> and <code>sendfile</code>.</li>
+<li>Write a test that truncates the backing file to one page while a two-page <code>Mapping</code> remains live. Verify that page 0 remains readable, explain why dereferencing page 1 is omitted from the test, and state the signal that accessing page 1 would raise.</li>
 </ol>
 
                     </main>

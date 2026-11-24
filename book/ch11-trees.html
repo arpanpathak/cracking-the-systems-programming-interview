@@ -36,7 +36,7 @@
             const path_to_root = "";
             const default_light_theme = "coal";
             const default_dark_theme = "coal";
-            window.path_to_searchindex_js = "searchindex-4622e2bb.js";
+            window.path_to_searchindex_js = "searchindex-09ae7f8d.js";
         </script>
         <!-- Start loading toc.js asap -->
         <script src="toc-c196c8a9.js"></script>
@@ -192,15 +192,19 @@
 </ul>
 </div>
 
-<p>In a linked list, each node points to at most one successor. In a <strong>tree</strong>, each node may point to multiple
-nodes, called its children, enabling trees to represent hierarchical structures such as filesystem directories,
-expression syntax trees, and ordered sets arranged for fast search.</p>
-<p>Trees are considerably simpler to implement in Rust than the doubly linked list examined in Chapter 9. Because
-each node has at most one parent, a parent can own its children outright through <code>Box</code> or <code>Vec</code>, without
-requiring <code>Rc</code> or <code>RefCell</code>. The primary implementation challenges lie elsewhere: replacing a node in place
-from within a method, and choosing between call-stack recursion and an explicit stack or queue.</p>
-<p>We begin with core tree terminology, then implement binary trees, binary search trees, general multi-way trees,
-serialization, and finally a prefix trie.</p>
+<p>A <strong>tree</strong> is a connected, acyclic hierarchical data structure composed of nodes organized under a strict
+single-parent relation. Whereas a linear sequence restricts each element to at most one successor, a tree permits
+each node to own an arbitrary or bounded collection of descendant nodes, termed its <strong>children</strong>. This topology
+models hierarchical domains directly, including filesystem directory hierarchies, abstract syntax trees (ASTs),
+and ordered search structures.</p>
+<p>Because every non-root node has a unique parent and no directed cycles exist, a tree exhibits strict single
+ownership. In Rust, each parent node can own its children directly through <code>Box</code> or <code>Vec</code> without requiring
+reference counting (<code>Rc</code>) or runtime interior mutability (<code>RefCell</code>). The primary implementation challenges
+instead concern mutating recursive enum variants in place under the borrow checker and selecting between
+call-stack recursion and explicit heap-allocated traversal frontiers.</p>
+<p>This chapter formalizes core tree terminology and develops four foundational structures: recursive binary trees,
+binary search trees (BSTs), general <em>k</em>-ary trees with level-order and serialized representations, and prefix
+tries.</p>
 <h2 id="111-tree-vocabulary"><a class="header" href="#111-tree-vocabulary">11.1 Tree vocabulary</a></h2>
 <p>The structural components of a tree are labeled in Figure 11.1.</p>
 <figure>
@@ -236,9 +240,10 @@ pub enum Tree {
         right: Box&lt;Tree&gt;,
     },
 }</code></pre>
-<p>As established in Chapter 8, the children must be wrapped in <code>Box&lt;Tree&gt;</code>. A <code>Tree</code> cannot embed two <code>Tree</code>
-values directly because the resulting type would have an infinite size; indirection through <code>Box</code> stores a
-single pointer per child, giving every node a fixed memory layout.</p>
+<p>Each child pointer must be wrapped in <code>Box&lt;Tree&gt;</code> to introduce heap indirection. Embedding <code>Tree</code> values inline
+within <code>Tree::Node</code> produces a recursive type of unbounded static size, which the compiler rejects because stack
+frame allocation requires a known, finite <code>Sized</code> layout. Boxing each child reduces the inline representation of
+a node to a fixed-size discriminant, its scalar payload, and two machine-word pointers.</p>
 <h3 id="1121-depth-and-inversion"><a class="header" href="#1121-depth-and-inversion">11.2.1 Depth and inversion</a></h3>
 <p class="listing"><b>Listing 11.2</b> Depth and inversion (lines 19 to 35).</p>
 
@@ -510,9 +515,9 @@ right. Each comparison eliminates an entire subtree from consideration (Figure 1
 <img src="figures/bst-search.svg" alt="A BST with root 10, children 5 and 15, and leaves 3, 7, 12, 18. Searching for 7 goes left at 10, right at 5, and finds 7.">
 <figcaption><b>Figure 11.3</b> Searching for 7 visits one node per level. In a balanced tree of n values, that is about log₂ n comparisons.</figcaption>
 </figure>
-<p>Two implementations of the same BST interface accompany this section. Both share identical insertion and lookup
-logic, differing in how they perform removal and range queries. We examine the first implementation in full and
-then focus on the design differences in the second.</p>
+<p>Two implementations of the same BST interface follow. Both share identical insertion and lookup logic, differing
+in how they handle node deletion and range-query allocation. The first implementation is examined in full; the
+second isolates the structural and allocation trade-offs.</p>
 <figure class="anim">
 <video class="motion" src="figures/ch11-bst.mp4" autoplay="" loop="" muted="" playsinline="" preload="metadata" aria-label="The values 8, 3, 10, 1, 6, 14, 13 are inserted one at a time. Each value starts at the root and moves left or right at every comparison until it reaches an empty subtree. Then contains(&amp;6) follows 8, 3, 6. A last part inserts 1, 2, 3, 4, 5 in sorted order, and the tree becomes a chain." data-chapters="[[0.0, &quot;insert&quot;], [94.1, &quot;sorted input&quot;]]"><img src="figures/ch11-bst.gif" alt="The values 8, 3, 10, 1, 6, 14, 13 are inserted one at a time. Each value starts at the root and moves left or right at every comparison until it reaches an empty subtree. Then contains(&amp;6) follows 8, 3, 6. A last part inserts 1, 2, 3, 4, 5 in sorted order, and the tree becomes a chain."></video>
 <figcaption><b>Animation 11.1</b> Each insert is a walk from the root that ends at an empty subtree, and a search is the same walk. Sorted input produces a chain, so the shape depends on the insert order.</figcaption>
@@ -585,12 +590,13 @@ three structural cases (Figure 11.4).</p>
 <figcaption><b>Figure 11.4</b> The three removal cases. In case 3, removing 10 copies 12 into the root, then removes 12 from the right subtree.</figcaption>
 </figure>
 <ol>
-<li><strong>No left child.</strong> Replace the node with its right subtree.</li>
-<li><strong>No right child.</strong> Replace the node with its left subtree.</li>
-<li><strong>Two children.</strong> Keep the node, but give it a new value: the smallest value in its right subtree. That value
-is larger than everything on the left and smaller than everything else on the right, so the rule still
-holds. Then remove that smallest value from the right subtree. The smallest value has no left child, so its
-removal is case 1.</li>
+<li><strong>No left child.</strong> Promote the right subtree into the removed node’s position.</li>
+<li><strong>No right child.</strong> Promote the left subtree into the removed node’s position.</li>
+<li><strong>Two children.</strong> Retain the structural node and overwrite its payload with its <strong>in-order successor</strong>, defined
+as the minimum element in its right subtree. Because this successor exceeds every key in the left subtree and
+is strictly less than all remaining keys in the right subtree, the BST ordering invariant is preserved. The
+successor node is then deleted from the right subtree; having no left child by definition, its removal reduces
+immediately to Case 1.</li>
 </ol>
 <p class="listing"><b>Listing 11.8</b> Removal (lines 49 to 90).</p>
 
@@ -686,18 +692,22 @@ that cannot contain matching elements.</p>
     }
     // ...
 }</code></pre>
-<p><code>range_helper</code> collects matching values into an accumulator, <code>acc</code>. Its three branches skip work:</p>
+<p><code>range_helper</code> appends matching element references into an accumulator <code>acc</code>, exploiting the BST ordering
+invariant to prune unreachable subtrees across three mutually exclusive branches:</p>
 <ul>
-<li>If the node’s value is below <code>low</code>, everything in its left subtree is lower still, so only the right subtree
-is searched.</li>
-<li>If the value is above <code>high</code>, only the left subtree is searched.</li>
-<li>Otherwise, the helper searches the left subtree, adds the value, and searches the right subtree. That order
-is in-order traversal, so the results come out sorted.</li>
+<li>When the node’s key is strictly less than <code>low</code>, every key in its left subtree is also below <code>low</code>; traversal
+prunes the left subtree and descends exclusively into the right subtree.</li>
+<li>When the node’s key exceeds <code>high</code>, every key in its right subtree also exceeds <code>high</code>; traversal prunes the
+right subtree and descends exclusively into the left subtree.</li>
+<li>When the key falls within <code>[low, high]</code>, the helper visits the left subtree, records the current key, and visits
+the right subtree. Performing this visit in-order guarantees monotonically ascending output without a post-pass
+sort.</li>
 </ul>
-<p>The signature has an explicit lifetime: <code>fn range_helper&lt;'a&gt;(&amp;'a self, ..., acc: &amp;mut Vec&lt;&amp;'a T&gt;)</code>. The
-references pushed into <code>acc</code> point into the tree, so they must live as long as the tree borrow <code>&amp;'a self</code>.
-Without the named <code>'a</code>, the elision rules from chapter 4 would give <code>self</code> and the vector’s elements
-separate lifetimes. The push would then not compile.</p>
+<p>The method signature declares an explicit lifetime parameter: <code>fn range_helper&lt;'a&gt;(&amp;'a self, ..., acc: &amp;mut Vec&lt;&amp;'a T&gt;)</code>.
+Every reference pushed into <code>acc</code> borrows from the underlying tree storage and must therefore share the borrow
+lifetime <code>'a</code> of <code>&amp;'a self</code>. Under Rust’s default lifetime elision rules, omitting <code>'a</code> assigns distinct
+anonymous lifetimes to <code>&amp;self</code> and the vector’s element references, causing the borrow checker to reject the
+insertion into <code>acc</code>.</p>
 <p class="listing"><b>Listing 11.10</b> The complete program. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/bin/bst_clean.rs">src/bin/bst_clean.rs</a></p>
 
 <pre><code class="language-rust">use std::cmp::Ordering;
@@ -923,20 +933,21 @@ impl&lt;T: Ord&gt; BST&lt;T&gt; {
     }
     // ...
 }</code></pre>
-<p>This <code>remove</code> uses a helper <code>take</code>, defined at the end of the file, that swaps in <code>Empty</code> with
-<code>mem::replace</code>. So the type does not need <code>Default</code>. <code>right.take()</code> reaches through the <code>Box</code> automatically
-and returns the tree inside.</p>
-<p><code>pop_min</code> finds the smallest value with a loop instead of recursion. It moves a mutable reference, <code>node</code>, down
-the left side of the tree:</p>
+<p>This <code>remove</code> implementation delegates extraction to a helper method <code>take</code> (defined at the end of the module) that
+substitutes <code>BST::Empty</code> via <code>mem::replace</code>, eliminating the <code>Default</code> trait bound on <code>BST&lt;T&gt;</code>. Method resolution
+dereferences <code>Box&lt;BST&lt;T&gt;&gt;</code> automatically, allowing <code>right.take()</code> to extract the owned child subtree directly.</p>
+<p>Rather than descending recursively, <code>pop_min</code> locates the minimum element iteratively by advancing a mutable
+cursor reference <code>node</code> down the left spine of the tree:</p>
 <pre><code class="language-rust">let mut node = self;
 while node.has_left() {
     if let Self::Node { left, .. } = node {
         node = left;
     }
 }</code></pre>
-<p>When the loop ends, <code>node</code> refers to the leftmost node. <code>match node.take()</code> splits it into its value and its
-right subtree, with no <code>unreachable!</code>. The loop uses one stack frame however deep the tree is. <code>pop_min</code> is also public, so the tree can serve as
-a queue that always returns the smallest value.</p>
+<p>Upon loop termination, <code>node</code> refers to the leftmost node. Matching on <code>node.take()</code> extracts its value and
+promotes its right subtree without requiring an <code>unreachable!()</code> guard. Because this loop operates in O(1)
+auxiliary stack space regardless of tree height, it eliminates stack-overflow risk on degenerate trees. Exposing
+<code>pop_min</code> as a public method additionally enables the BST to function as a min-ordered priority structure.</p>
 <p class="listing"><b>Listing 11.12</b> A range query that returns a new vector (lines 86 to 102).</p>
 
 <pre><code class="language-rust">impl&lt;T: Ord&gt; BST&lt;T&gt; {
@@ -960,9 +971,9 @@ a queue that always returns the smallest value.</p>
     }
     // ...
 }</code></pre>
-<p>This <code>range</code> returns a new <code>Vec</code> from each call and joins the children’s results with <code>extend</code>. It is shorter
-than the accumulator version, and it allocates a vector at every node it visits, where the accumulator version
-allocates one.</p>
+<p>This <code>range</code> implementation allocates a fresh <code>Vec</code> per recursive invocation and merges child results via <code>extend</code>.
+Although more concise than the accumulator pattern in Listing 11.9, it incurs O(<em>k</em>) heap allocations across <em>k</em>
+visited nodes, whereas passing a shared <code>&amp;mut Vec</code> accumulator performs a single amortized allocation.</p>
 <p class="listing"><b>Listing 11.13</b> The complete program. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/bin/bst_easy.rs">src/bin/bst_easy.rs</a></p>
 
 <pre><code class="language-rust">use std::{
@@ -1136,7 +1147,9 @@ children.</p>
 The root is enqueued first; on each iteration, the front node is dequeued, visited, and its children are
 appended to the back. Because children always enter at the back, every node of one level leaves the queue before
 any node of the next level is processed.</p>
-<p>A node owns its value and a <code>Vec</code> of child nodes. The children are stored inside the vector itself, not behind pointers, so a node can have any number of them:</p>
+<p>Each node owns its payload together with a contiguous <code>Vec&lt;TreeNode&lt;T&gt;&gt;</code> of child nodes. Because <code>Vec</code> stores its
+elements in a heap-allocated array, storing children inline within the vector permits unbounded arity while
+improving spatial cache locality during sibling iteration:</p>
 <pre><code class="language-rust">use std::collections::VecDeque;
 
 struct TreeNode&lt;T&gt; {
@@ -1215,12 +1228,12 @@ fn main() {
     root.bfs();
     // Output: 1, 2, 3, 4, 5, 6
 }</code></pre>
-<p><code>dfs</code> prints the node and then calls itself on each child, which is pre-order.</p>
-<p><code>bfs</code> uses a <code>VecDeque</code> as the queue. <code>VecDeque::from([self])</code> starts it with the root. The queue holds
-references, <code>&amp;TreeNode&lt;T&gt;</code>, so no node is moved or copied. <code>pop_front</code> takes from the front, and <code>push_back</code>
-adds each child at the back.</p>
-<p>The tree in <code>main</code> is written as one nested value. The shape of the code matches the shape of the tree, which
-makes test data easy to check.</p>
+<p><code>dfs</code> visits the current node before recursing across its child slice, executing a pre-order traversal.</p>
+<p><code>bfs</code> maintains an explicit FIFO frontier in a <code>VecDeque&lt;&amp;TreeNode&lt;T&gt;&gt;</code>, initialized with the root via
+<code>VecDeque::from([self])</code>. Storing borrowed references avoids moving or cloning node payloads; each iteration
+dequeues the oldest frontier element with <code>pop_front</code> and enqueues its children with <code>push_back</code>.</p>
+<p>In <code>main</code>, the sample hierarchy is constructed as a single nested struct literal whose syntactic indentation
+mirrors the tree topology directly.</p>
 <pre><code class="language-text">$ cargo run --bin test_tree
 === DFS ===
 1
@@ -1239,8 +1252,9 @@ makes test data easy to check.</p>
 6
 </code></pre>
 <h3 id="1142-grouping-values-by-level"><a class="header" href="#1142-grouping-values-by-level">11.4.2 Grouping values by level</a></h3>
-<p>A common variation returns the values grouped by level, as a list of lists. The first list holds the
-root’s value, the second the values of its children, and so on. The file solves it twice.</p>
+<p>A standard breadth-first variant partitions node values by depth, returning a nested sequence (<code>Vec&lt;Vec&lt;&amp;T&gt;&gt;</code>)
+in which index <em>d</em> contains all nodes at distance <em>d</em> from the root. The module below presents two equivalent
+formulations.</p>
 <p class="listing"><b>Listing 11.15</b> The type and the first version (lines 1 to 20). <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/bin/tree_under_pressure.rs">src/bin/tree_under_pressure.rs</a></p>
 
 <pre><code class="language-rust">use std::collections::VecDeque;
@@ -1263,10 +1277,10 @@ fn level_order&lt;T&gt;(root: &amp;TreeNode&lt;T&gt;) -&gt; Vec&lt;Vec&lt;&amp;T
     }
     result
 }</code></pre>
-<p><code>level_order</code> keeps one whole level in <code>level</code>, a <code>Vec</code> of references to nodes. Each pass of the loop does two
-things. It adds the values of this level to the result. Then it builds the next level from all the children of
-all the nodes in this level: <code>level.iter().flat_map(|n| &amp;n.children).collect()</code>. <code>flat_map</code> turns each node into
-its children and joins all those children into one sequence. The loop ends when a level has no nodes.</p>
+<p><code>level_order</code> materializes one complete frontier per iteration inside <code>level: Vec&lt;&amp;TreeNode&lt;T&gt;&gt;</code>. Each pass
+projects the current frontier’s payloads into the output vector and constructs the succeeding frontier via
+<code>level.iter().flat_map(|n| &amp;n.children).collect()</code>, flattening all child slices into a single contiguous buffer.
+Iteration terminates when the frontier becomes empty.</p>
 <p class="listing"><b>Listing 11.16</b> The second version, with a queue (lines 22 to 40).</p>
 
 <pre><code class="language-rust">fn level_order_readable&lt;T&gt;(root: &amp;TreeNode&lt;T&gt;) -&gt; Vec&lt;Vec&lt;&amp;T&gt;&gt; {
@@ -1288,13 +1302,13 @@ its children and joins all those children into one sequence. The loop ends when 
     }
     result
 }</code></pre>
-<p><code>level_order_readable</code> maintains a single queue, as <code>bfs</code> did. The key invariant is reading <code>queue.len()</code> at the
-start of each round: at that moment, the queue holds the exact set of nodes belonging to the current level. The
-inner loop pops that exact count and records their values, while their children accumulate at the back for the
-next round.</p>
-<p><code>let Some(node) = queue.pop_front() else { break };</code> is a <strong>let-else</strong> statement. It binds <code>node</code> if the pattern
-matches, and runs the <code>else</code> block, which must leave the loop or the function, if it does not.
-<code>queue.extend(&amp;node.children)</code> adds references to all the children at once.</p>
+<p><code>level_order_readable</code> maintains a single <code>VecDeque</code> frontier. The loop invariant relies on snapshotting
+<code>queue.len()</code> at the start of each outer iteration: at that boundary, the queue contains exclusively the nodes of
+the current depth. The inner loop dequeues exactly that count, records each payload, and appends child references
+at the back for the subsequent depth.</p>
+<p>The statement <code>let Some(node) = queue.pop_front() else { break };</code> employs Rust’s <strong>let-else</strong> syntax, binding
+<code>node</code> when the refutable pattern matches and executing the diverging <code>else</code> branch otherwise. Calling
+<code>queue.extend(&amp;node.children)</code> enqueues all child references in a single batch.</p>
 <p class="listing"><b>Listing 11.17</b> The complete program. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/bin/tree_under_pressure.rs">src/bin/tree_under_pressure.rs</a></p>
 
 <pre><code class="language-rust">use std::collections::VecDeque;
@@ -1377,7 +1391,8 @@ fn main() {
         println!("{:?}", level);
     }
 }</code></pre>
-<p><code>main</code> prints the tree with <code>{:#?}</code>, then the levels from each version. Both give the same three levels:</p>
+<p><code>main</code> formats the hierarchy with <code>{:#?}</code> and prints the level partitions produced by both implementations,
+confirming identical output:</p>
 <pre><code class="language-text">["root"]
 ["branch_a", "branch_b"]
 ["leaf_1", "leaf_2", "leaf_3"]
@@ -1386,7 +1401,8 @@ one queue, one level per round:
 ["branch_a", "branch_b"]
 ["leaf_1", "leaf_2", "leaf_3"]
 </code></pre>
-<p>Both functions return <code>Vec&lt;Vec&lt;&amp;T&gt;&gt;</code>, references into the tree, and both run in O(n).</p>
+<p>Both functions return <code>Vec&lt;Vec&lt;&amp;T&gt;&gt;</code> containing borrowed references into the tree and execute in O(<em>n</em>) time
+across <em>n</em> nodes.</p>
 <h2 id="115-saving-a-tree-to-a-file-and-loading-it-back"><a class="header" href="#115-saving-a-tree-to-a-file-and-loading-it-back">11.5 Saving a tree to a file and loading it back</a></h2>
 <p>Persisting a tree to storage requires converting its hierarchical structure into a flat sequence of text, a
 process called <strong>serialization</strong>, so that the exact topology can be reconstructed later.</p>
@@ -1430,13 +1446,14 @@ impl&lt;T&gt; TreeNode&lt;T&gt; {
     }
     // ...
 }</code></pre>
-<p><code>TreeNode&lt;T&gt;</code> is the same shape as in section 11.4: a value and a <code>Vec</code> of child nodes. A node can have any
-number of children.</p>
-<p><code>serialize</code> walks the tree in pre-order without recursion, using a <code>Vec</code> as a <strong>stack</strong>: the last item pushed
-is the first popped. It pushes the children in reverse order, with <code>iter().rev()</code>, so that the first child is on
-top and is popped first. For each node it writes the value and the child count as strings.</p>
-<p>The line <code>where T: ToString</code> sits on the method, not on the whole <code>impl</code>. So a tree of any type exists, and only
-a tree whose values can become strings gets a <code>serialize</code> method.</p>
+<p><code>TreeNode&lt;T&gt;</code> retains the multi-way representation of Section 11.4, pairing a generic payload with a <code>Vec</code> of child
+nodes.</p>
+<p><code>serialize</code> performs an iterative pre-order traversal backed by an explicit heap-allocated stack (<code>Vec</code>). Pushing
+children in reverse order via <code>iter().rev()</code> ensures that the leftmost child resides at the top of the stack and
+is popped first, matching recursive pre-order visitation. For each visited node, the encoder emits two string
+tokens: the formatted payload and its arity (child count).</p>
+<p>Placing the <code>where T: ToString</code> bound directly on <code>serialize</code> rather than on the enclosing <code>impl&lt;T&gt;</code> block keeps
+the container type unconstrained while restricting serialization exclusively to string-formattable payloads.</p>
 <p class="listing"><b>Listing 11.19</b> Reading the pairs back (lines 49 to 63).</p>
 
 <pre><code class="language-rust">impl&lt;T&gt; TreeNode&lt;T&gt; {
@@ -1458,9 +1475,9 @@ a tree whose values can become strings gets a <code>serialize</code> method.</p>
     }
     // ...
 }</code></pre>
-<p><code>deserialize</code> is recursive. <code>pos</code> is a <code>&amp;mut usize</code>, a position in the token list shared by all the calls. Each
-call reads a value and a count at <code>pos</code>, advances <code>pos</code> by two, and then calls itself <code>child_count</code> times to read
-the children.</p>
+<p><code>deserialize</code> reconstructs the tree recursively using a shared cursor <code>pos: &amp;mut usize</code> into the flat token
+slice. Each invocation reads the <code>(value, child_count)</code> pair at <code>*pos</code>, advances <code>*pos</code> by two, and recurses
+<code>child_count</code> times to rebuild every child subtree in order.</p>
 <p>Every fallible step propagates failure through the <code>?</code> operator on <code>Option</code>: a truncated token stream, an
 unparseable value, or a non-numeric child count. Calling <code>.parse().ok()?</code> converts the <code>Result</code> from <code>parse</code>
 into an <code>Option</code>, causing any malformed input to return <code>None</code>.</p>
@@ -1587,32 +1604,36 @@ fn main() -&gt; io::Result&lt;()&gt; {
 
     Ok(())
 }</code></pre>
-<p><code>save</code> joins the tokens with newlines and writes the file. <code>load</code> reads the file, splits it into lines, and starts
-reading at position 0 with <code>&amp;mut 0</code>. <code>main</code> saves a tree, loads it back, and prints its levels to show the shape
-survived:</p>
+<p><code>save</code> joins the serialized token stream with newline delimiters and writes it to disk; <code>load</code> reads the file,
+splits it by line, and invokes <code>deserialize</code> starting at cursor offset <code>&amp;mut 0</code>. The <code>main</code> driver performs a
+full round trip and prints the reconstructed levels to confirm structural equivalence:</p>
 <pre><code class="language-text">$ cargo run --bin tree_serializ_deserialize_into_file
 ["root"]
 ["a", "b"]
 ["a1", "a2", "b1"]
 </code></pre>
-<p>The format breaks if a value contains a newline, because the reader splits on newlines. For arbitrary text,
-write each value’s length before it, or use a serialization library such as <code>serde</code>.</p>
+<p>Because newline characters act as record delimiters, payloads containing embedded newlines corrupt the framing.
+Handling arbitrary byte sequences requires length-prefixed framing (storing each payload’s byte length before its
+contents) or a structured binary serialization format such as <code>serde</code> with <code>bincode</code> or CBOR.</p>
 <h2 id="116-a-trie-for-finding-words-by-prefix"><a class="header" href="#116-a-trie-for-finding-words-by-prefix">11.6 A trie for finding words by prefix</a></h2>
-<p>A <strong>trie</strong> (usually pronounced “try”) stores a set of words by sharing their common beginnings. Each edge is one
-character. Walking from the root along the characters of a word leads to the node for that word. A flag on the
-node marks whether a stored word ends there (figure 11.7).</p>
+<p>A <strong>trie</strong> (derived from <em>retrieval</em>, commonly pronounced “try”) is a prefix tree that indexes a set of strings
+by factoring out shared leading character sequences. Each directed edge represents a single character transition;
+traversing from the root along the characters of a key locates its corresponding node, where a boolean flag
+indicates whether a complete stored key terminates at that position (Figure 11.7).</p>
 <figure>
 <img src="figures/trie.svg" alt="A chain from the root through g, p, u, c, l, o, u, d; the node after u and the node after d are green, marking the ends of gpu and gpucloud">
 <figcaption><b>Figure 11.7</b> A trie holding <code>"gpu"</code> and <code>"gpucloud"</code>. The two words share their first three nodes.</figcaption>
 </figure>
-<p>A <strong>prefix</strong> is the beginning of a word: <code>"gp"</code> is a prefix of <code>"gpu"</code>. A trie answers “is any stored word
-starting with this prefix?” by walking the prefix’s characters. That makes it the usual structure behind
-autocompletion.</p>
+<p>A <strong>prefix</strong> is any leading substring of a string; for instance, <code>"gp"</code> is a prefix of <code>"gpu"</code>. Because every
+descendant of a node shares the path leading to that node, a trie answers prefix-membership queries by following
+the prefix’s character transitions from the root, making it the foundational index for autocompletion, routing
+tables, and lexical dictionaries.</p>
 <figure class="anim">
 <video class="motion" src="figures/ch11-trie.mp4" autoplay="" loop="" muted="" playsinline="" preload="metadata" aria-label="Inserting cat, car, and dog one character at a time. A node is created only when no child exists for the character, so cat and car share the nodes c and ca. A ring marks each node that ends a word. starts_with(ca) finds the node ca; search(ca) finds it but it ends no word; cab finds no child b." data-chapters="[[0.0, &quot;insert cat&quot;], [15.44, &quot;insert car&quot;], [32.44, &quot;insert dog&quot;], [49.44, &quot;queries&quot;]]"><img src="figures/ch11-trie.gif" alt="Inserting cat, car, and dog one character at a time. A node is created only when no child exists for the character, so cat and car share the nodes c and ca. A ring marks each node that ends a word. starts_with(ca) finds the node ca; search(ca) finds it but it ends no word; cab finds no child b."></video>
 <figcaption><b>Animation 11.2</b> <code>insert</code> creates a node only when the character has no child yet, so words with a common start share nodes. <code>"ca"</code> is a prefix but not a word, and <code>"cab"</code> stops at a missing child.</figcaption>
 </figure>
-<p>A trie is one root node. Each node maps a character to the child node for that character, and <code>terminal</code> marks a node where a stored word ends:</p>
+<p>A trie encapsulates a single root <code>Node</code>. Each <code>Node</code> stores a transition table mapping characters to owned child
+nodes along with a <code>terminal</code> marker indicating key termination:</p>
 <pre><code class="language-rust">pub struct Trie {
     root: Node,
 }
@@ -1692,16 +1713,16 @@ mod tests {
         assert!(!trie.starts_with("cpu"));
     }
 }</code></pre>
-<p>Each <code>Node</code> has a <code>HashMap</code> from a character to a child node, and a <code>terminal</code> flag. Both types derive <code>Default</code>,
-so an empty node is <code>Node::default()</code>.</p>
-<p><code>insert</code> walks a mutable cursor, <code>node</code>, down the word, one character per line:</p>
+<p>Each <code>Node</code> stores a <code>HashMap&lt;char, Node&gt;</code> for outgoing transitions and a boolean <code>terminal</code> flag. Deriving
+<code>Default</code> on both types allows empty nodes to be instantiated directly via <code>Node::default()</code>.</p>
+<p><code>insert</code> advances a mutable cursor <code>node</code> through the character sequence, creating intermediate nodes on demand:</p>
 <pre><code class="language-rust">node = node.children.entry(ch).or_default();</code></pre>
-<p><code>entry(ch).or_default()</code> finds the child for <code>ch</code>, creating an empty one if it is missing, and returns a mutable
-reference to it. Assigning that to <code>node</code> moves the cursor down one level. After the last character, the node is
-marked terminal.</p>
-<p><code>find_node</code> walks the same way without changing anything. <code>node.children.get(&amp;ch)?</code> returns <code>None</code> from the
-function at the first missing character. <code>search</code> then checks that the node exists and is terminal, with
-<code>is_some_and</code>. <code>starts_with</code> only checks that the node exists.</p>
+<p><code>entry(ch).or_default()</code> performs a single hash lookup, returning a mutable reference to the existing child or
+inserting a default <code>Node</code> if none is present. Rebinding <code>node</code> descends one level; once all characters are
+consumed, setting <code>node.terminal = true</code> registers the complete key.</p>
+<p><code>find_node</code> executes the corresponding read-only descent: <code>node.children.get(&amp;ch)?</code> short-circuits and returns
+<code>None</code> upon encountering any absent transition. <code>search</code> verifies both node existence and termination via
+<code>is_some_and(|n| n.terminal)</code>, whereas <code>starts_with</code> tests only whether the prefix path resolves to a valid node.</p>
 <p>Searching for a word of <em>m</em> characters requires <em>m</em> steps, independent of the total number of stored words.
 Storing a <code>HashMap</code> per node supports arbitrary Unicode characters at the cost of significant per-node memory
 overhead. When the alphabet is restricted to lowercase ASCII letters, a fixed array of 26 child pointers per
@@ -1709,22 +1730,27 @@ node reduces both memory footprint and lookup latency.</p>
 <div class="summary" markdown="1">
 <h2 id="summary"><a class="header" href="#summary">Summary</a></h2>
 <ul>
-<li>A tree is a hierarchy of nodes. Each subtree is itself a tree, so recursion fits tree problems.</li>
-<li>A binary tree fits in an enum with <code>Box</code> children. Pre-order, in-order, and post-order differ only in when a
-node is visited relative to its subtrees.</li>
-<li>A binary search tree keeps smaller values on the left and larger on the right, so a search discards a subtree
-at each step.</li>
-<li>Removing from a BST has three cases. The two-children case copies in the smallest value of the right subtree.</li>
-<li><code>std::mem::take</code> and <code>mem::replace</code> let a method replace <code>*self</code> with one of its own children.</li>
-<li>A range query skips subtrees outside the range and visits the rest in order.</li>
-<li>A node with <code>Vec</code> children describes a tree with any number of children. Breadth-first traversal uses a queue,
-and <code>queue.len()</code> at the start of a round gives the size of a level.</li>
-<li>Pre-order with child counts saves a tree in a form that can be rebuilt exactly.</li>
-<li>A trie shares prefixes between words, and finds a word in time proportional to its length.</li>
+<li>A tree is a connected, acyclic hierarchy of nodes. Because every subtree is itself a tree, tree algorithms
+admit direct inductive and recursive formulations.</li>
+<li>A binary tree maps cleanly onto a Rust enum with <code>Box</code>-indirected children. Pre-order, in-order, and post-order
+traversals differ only in when a node is visited relative to its left and right subtrees.</li>
+<li>A binary search tree enforces a total ordering invariant across left and right subtrees, pruning half the
+remaining search space per comparison in balanced topologies.</li>
+<li>BST deletion resolves three structural cases; the two-child case substitutes the in-order successor (minimum of
+the right subtree) and deletes that successor via Case 1.</li>
+<li><code>std::mem::take</code> and <code>std::mem::replace</code> enable in-place replacement of <code>*self</code> with an owned child subtree
+without violating borrow-checker exclusivity.</li>
+<li>Range queries prune subtrees outside <code>[low, high]</code> and traverse qualifying subtrees in-order to yield sorted
+output.</li>
+<li>General <em>k</em>-ary trees store children in a contiguous <code>Vec</code>. Breadth-first level partitioning tracks depth
+boundaries either by swapping frontier vectors or by snapshotting <code>queue.len()</code> at each level.</li>
+<li>Pre-order traversal paired with per-node child counts encodes a multi-way tree unambiguously for lossless
+deserialization.</li>
+<li>A trie factors common prefixes across keys, executing exact lookup and prefix queries in O(<em>m</em>) time
+independent of dictionary cardinality.</li>
 </ul>
 </div>
 
-<p>In Chapter 12, we generalize trees to graphs, allowing arbitrary connections between nodes and cycles.</p>
 <h2 id="exercises"><a class="header" href="#exercises">Exercises</a></h2>
 <ol>
 <li>Write an in-order traversal of the binary tree from listing 11.1 without recursion, using a <code>Vec</code> of
