@@ -36,7 +36,7 @@
             const path_to_root = "";
             const default_light_theme = "coal";
             const default_dark_theme = "coal";
-            window.path_to_searchindex_js = "searchindex-53cc97a7.js";
+            window.path_to_searchindex_js = "searchindex-d6f1a78d.js";
         </script>
         <!-- Start loading toc.js asap -->
         <script src="toc-c196c8a9.js"></script>
@@ -1386,16 +1386,16 @@ mod tests {
 <h2 id="summary"><a class="header" href="#summary">Summary</a></h2>
 <ul>
 <li>Big-O notation characterizes asymptotic time and auxiliary space growth by retaining only the dominant term and omitting constant factors.</li>
-<li>A <code>Vec&lt;T&gt;</code> stores elements contiguously in a heap-allocated buffer, providing $O(1)$ random-access indexing and amortized $O(1)$ <code>push</code> via geometric capacity growth.</li>
+<li>A <code>Vec&lt;T&gt;</code> stores elements contiguously in a heap-allocated buffer, providing O(1) random-access indexing and amortized O(1) <code>push</code> via geometric capacity growth.</li>
 <li>A <code>String</code> enforces a UTF-8 encoding invariant over a <code>Vec&lt;u8&gt;</code>; <code>len()</code> reports byte length, whereas <code>chars()</code> decodes Unicode scalar values sequentially.</li>
-<li>A <code>HashMap&lt;K, V&gt;</code> maps keys to buckets with a randomly seeded hasher to resist collision attacks, delivering $O(1)$ expected <code>get</code> and <code>insert</code>.</li>
-<li>Indexing visited elements in a <code>HashMap</code> reduces complement queries in Two Sum from $O(n^2)$ to $O(n)$ expected time.</li>
-<li>Using a <code>Vec</code> as a LIFO stack solves nested delimiter validation and $O(1)$ minimum-element queries (<code>MinStack</code>).</li>
-<li>Converging two-pointer traversals reverse ASCII buffers in place in $O(1)$ auxiliary space and solve Three Sum in $O(n^2)$ time after sorting.</li>
-<li>Sliding windows paired with a last-seen index map compute the longest substring without repeated characters in $O(n)$ time.</li>
-<li>Sorting intervals by start coordinate permits a single $O(n)$ pass to merge overlapping ranges, either into an output vector or in place.</li>
-<li>Binary search halves the candidate range per step in $O(\log n)$ time and extends to rotated sorted arrays by identifying which half preserves monotonic order.</li>
-<li>Knuth-Morris-Pratt (KMP) preprocesses a pattern’s prefix-suffix table (<code>lps</code>) to locate substrings in $O(n + m)$ worst-case time without backtracking in the haystack.</li>
+<li>A <code>HashMap&lt;K, V&gt;</code> maps keys to buckets with a randomly seeded hasher to resist collision attacks, delivering O(1) expected <code>get</code> and <code>insert</code>.</li>
+<li>Indexing visited elements in a <code>HashMap</code> reduces complement queries in Two Sum from O(n<sup>2</sup>) to O(n) expected time.</li>
+<li>Using a <code>Vec</code> as a LIFO stack solves nested delimiter validation and O(1) minimum-element queries (<code>MinStack</code>).</li>
+<li>Converging two-pointer traversals reverse ASCII buffers in place in O(1) auxiliary space and solve Three Sum in O(n<sup>2</sup>) time after sorting.</li>
+<li>Sliding windows paired with a last-seen index map compute the longest substring without repeated characters in O(n) time.</li>
+<li>Sorting intervals by start coordinate permits a single O(n) pass to merge overlapping ranges, either into an output vector or in place.</li>
+<li>Binary search halves the candidate range per step in O(log n) time and extends to rotated sorted arrays by identifying which half preserves monotonic order.</li>
+<li>Knuth-Morris-Pratt (KMP) preprocesses a pattern’s prefix-suffix table (<code>lps</code>) to locate substrings in O(n + m) worst-case time without backtracking in the haystack.</li>
 </ul>
 </div>
 
@@ -1443,6 +1443,22 @@ mod tests {
         <template id=fa-play><span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 384 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M73 39c-14.8-9.1-33.4-9.4-48.5-.9S0 62.6 0 80V432c0 17.4 9.4 33.4 24.5 41.9s33.7 8.1 48.5-.9L361 297c14.3-8.7 23-24.2 23-41s-8.7-32.2-23-41L73 39z"/></svg></span></template>
         <template id=fa-clock-rotate-left><span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M75 75L41 41C25.9 25.9 0 36.6 0 57.9V168c0 13.3 10.7 24 24 24H134.1c21.4 0 32.1-25.9 17-41l-30.8-30.8C155 85.5 203 64 256 64c106 0 192 86 192 192s-86 192-192 192c-40.8 0-78.6-12.7-109.7-34.4c-14.5-10.1-34.4-6.6-44.6 7.9s-6.6 34.4 7.9 44.6C151.2 495 201.7 512 256 512c141.4 0 256-114.6 256-256S397.4 0 256 0C185.3 0 121.3 28.7 75 75zm181 53c-13.3 0-24 10.7-24 24V256c0 6.4 2.5 12.5 7 17l72 72c9.4 9.4 24.6 9.4 33.9 0s9.4-24.6 0-33.9l-65-65V152c0-13.3-10.7-24-24-24z"/></svg></span></template>
 
+        <!-- Livereload script (if served using the cli tool) -->
+        <script>
+            const wsProtocol = location.protocol === 'https:' ? 'wss:' : 'ws:';
+            const wsAddress = wsProtocol + "//" + location.host + "/" + "__livereload";
+            const socket = new WebSocket(wsAddress);
+            socket.onmessage = function (event) {
+                if (event.data === "reload") {
+                    socket.close();
+                    location.reload();
+                }
+            };
+
+            window.onbeforeunload = function() {
+                socket.close();
+            }
+        </script>
 
 
         <script>

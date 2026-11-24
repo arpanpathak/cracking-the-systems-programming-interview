@@ -36,7 +36,7 @@
             const path_to_root = "";
             const default_light_theme = "coal";
             const default_dark_theme = "coal";
-            window.path_to_searchindex_js = "searchindex-53cc97a7.js";
+            window.path_to_searchindex_js = "searchindex-d6f1a78d.js";
         </script>
         <!-- Start loading toc.js asap -->
         <script src="toc-c196c8a9.js"></script>
@@ -396,7 +396,7 @@ threads     total    waits    wakes     futex ms       std ms
 <p>Section 16.2.3 defined the Rust/C++ memory model contracts: <code>Relaxed</code> enforces atomicity without ordering constraints on surrounding memory accesses, <code>Release</code>/<code>Acquire</code> establishes pairwise happens-before edges, and <code>SeqCst</code> enforces a single total modification order across all sequentially consistent operations. Those abstract rules exist because physical processors reorder memory operations to hide cache-coherence latency.</p>
 <h3 id="2631-store-buffers"><a class="header" href="#2631-store-buffers">26.3.1 Store buffers</a></h3>
 <p>Committing a store directly to a coherent L1 cache stalls the pipeline whenever the target cache line resides exclusively in another core’s cache. To mask this coherence latency, modern superscalar cores enqueue outgoing stores in a private FIFO <strong>store buffer</strong> and immediately retire subsequent instructions while the store drains asynchronously to cache. A core’s own loads perform <strong>store-to-load forwarding</strong> from its local store buffer (preserving single-thread program semantics), whereas remote cores observe a store only after it drains into the coherent cache hierarchy.</p>
-<p>Consequently, a load to address $y$ that follows a store to address $x$ in program order can execute and read from cache before the earlier store to $x$ becomes globally visible. Figure 26.3 depicts two cores executing this symmetric pattern concurrently: both loads observe the stale value <code>0</code> from memory while both stores remain queued in their private store buffers.</p>
+<p>Consequently, a load to address <em>y</em> that follows a store to address <em>x</em> in program order can execute and read from cache before the earlier store to <em>x</em> becomes globally visible. Figure 26.3 depicts two cores executing this symmetric pattern concurrently: both loads observe the stale value <code>0</code> from memory while both stores remain queued in their private store buffers.</p>
 <figure>
 <img src="figures/ch26-store-buffer.svg" alt="Core 1 stores x = 1 and core 2 stores y = 1; both stores wait in their cores&#39; store buffers. Core 1 loads y and core 2 loads x from cache and memory, where x and y are still 0. Both loads read 0. The buffers drain later.">
 <figcaption><b>Figure 26.3</b> Both stores wait in store buffers while both loads read memory. Each thread's load completes before its own store is visible.</figcaption>
@@ -939,6 +939,22 @@ Yes. Placing the atomic 32-bit word in a shared memory region (such as a <code>M
         <template id=fa-play><span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 384 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M73 39c-14.8-9.1-33.4-9.4-48.5-.9S0 62.6 0 80V432c0 17.4 9.4 33.4 24.5 41.9s33.7 8.1 48.5-.9L361 297c14.3-8.7 23-24.2 23-41s-8.7-32.2-23-41L73 39z"/></svg></span></template>
         <template id=fa-clock-rotate-left><span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M75 75L41 41C25.9 25.9 0 36.6 0 57.9V168c0 13.3 10.7 24 24 24H134.1c21.4 0 32.1-25.9 17-41l-30.8-30.8C155 85.5 203 64 256 64c106 0 192 86 192 192s-86 192-192 192c-40.8 0-78.6-12.7-109.7-34.4c-14.5-10.1-34.4-6.6-44.6 7.9s-6.6 34.4 7.9 44.6C151.2 495 201.7 512 256 512c141.4 0 256-114.6 256-256S397.4 0 256 0C185.3 0 121.3 28.7 75 75zm181 53c-13.3 0-24 10.7-24 24V256c0 6.4 2.5 12.5 7 17l72 72c9.4 9.4 24.6 9.4 33.9 0s9.4-24.6 0-33.9l-65-65V152c0-13.3-10.7-24-24-24z"/></svg></span></template>
 
+        <!-- Livereload script (if served using the cli tool) -->
+        <script>
+            const wsProtocol = location.protocol === 'https:' ? 'wss:' : 'ws:';
+            const wsAddress = wsProtocol + "//" + location.host + "/" + "__livereload";
+            const socket = new WebSocket(wsAddress);
+            socket.onmessage = function (event) {
+                if (event.data === "reload") {
+                    socket.close();
+                    location.reload();
+                }
+            };
+
+            window.onbeforeunload = function() {
+                socket.close();
+            }
+        </script>
 
 
         <script>

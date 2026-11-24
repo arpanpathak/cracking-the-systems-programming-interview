@@ -37,7 +37,7 @@
             const path_to_root = "";
             const default_light_theme = "coal";
             const default_dark_theme = "coal";
-            window.path_to_searchindex_js = "searchindex-53cc97a7.js";
+            window.path_to_searchindex_js = "searchindex-d6f1a78d.js";
         </script>
         <!-- Start loading toc.js asap -->
         <script src="toc-c196c8a9.js"></script>
@@ -1470,7 +1470,7 @@ fn recursive(n: u64) -&gt; u64 {
 <img src="figures/ch01-stack.svg" alt="A stack of frames from main at the bottom through timed, recursive(4), recursive(3), recursive(2), to recursive(1) at the top">
 <figcaption><b>Figure 1.4</b> The stack at the deepest point of <code>recursive(4)</code>. The depth is about <code>n</code> frames, while the number of calls grows much faster.</figcaption>
 </figure>
-<p>Direct recursion therefore incurs two distinct costs: exponential time complexity $O(\varphi^n)$ caused by overlapping subproblems, and linear stack depth $O(n)$ proportional to the input parameter. Although a depth of 90 frames is negligible, linear recursion depth exhausts the call stack on large inputs.</p>
+<p>Direct recursion therefore incurs two distinct costs: exponential time complexity O(\varphi<sup>n</sup>) caused by overlapping subproblems, and linear stack depth O(n) proportional to the input parameter. Although a depth of 90 frames is negligible, linear recursion depth exhausts the call stack on large inputs.</p>
 <h2 id="16-the-same-numbers-with-a-loop"><a class="header" href="#16-the-same-numbers-with-a-loop">1.6 The same numbers with a loop</a></h2>
 <p>Computing the next Fibonacci number requires only the two preceding values. An iterative loop can maintain those two values in registers or stack slots and advance them one step per iteration.</p>
 <p class="listing"><b>Listing 1.5</b> Fibonacci with a loop. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/bin/cs_fib.rs">src/bin/cs_fib.rs</a>, lines 17 to 24</p>
@@ -1662,8 +1662,8 @@ all checks passed
 <li>Lexical shadowing introduces an independent binding that may assume a different type while leaving prior bindings immutable and unreachable by name. Closures capturing an earlier binding retain their reference to the original storage slot.</li>
 <li>Declaring a binding with <code>mut</code> enables in-place mutation of a fixed-type storage slot.</li>
 <li>Each active recursive invocation allocates a stack frame; unmemoized recursive Fibonacci recomputes overlapping subproblems, yielding exponential runtime and linear stack depth.</li>
-<li>An iterative loop maintaining only the two preceding recurrence terms computes <code>fib(n)</code> in $O(n)$ time and $O(1)$ auxiliary space.</li>
-<li>Memoization caches evaluated subproblems in an auxiliary table, reducing recursive Fibonacci to $O(n)$ time at the cost of $O(n)$ heap space and $O(n)$ stack depth.</li>
+<li>An iterative loop maintaining only the two preceding recurrence terms computes <code>fib(n)</code> in O(n) time and O(1) auxiliary space.</li>
+<li>Memoization caches evaluated subproblems in an auxiliary table, reducing recursive Fibonacci to O(n) time at the cost of O(n) heap space and O(n) stack depth.</li>
 <li><code>impl Fn(u64) -&gt; u64</code> accepts any function item or closure matching that signature, and <code>Instant</code> samples a monotonic clock for elapsed-time measurement.</li>
 </ul>
 </div>
@@ -3598,16 +3598,16 @@ mod tests {
 <h2 id="summary-2"><a class="header" href="#summary-2">Summary</a></h2>
 <ul>
 <li>Big-O notation characterizes asymptotic time and auxiliary space growth by retaining only the dominant term and omitting constant factors.</li>
-<li>A <code>Vec&lt;T&gt;</code> stores elements contiguously in a heap-allocated buffer, providing $O(1)$ random-access indexing and amortized $O(1)$ <code>push</code> via geometric capacity growth.</li>
+<li>A <code>Vec&lt;T&gt;</code> stores elements contiguously in a heap-allocated buffer, providing O(1) random-access indexing and amortized O(1) <code>push</code> via geometric capacity growth.</li>
 <li>A <code>String</code> enforces a UTF-8 encoding invariant over a <code>Vec&lt;u8&gt;</code>; <code>len()</code> reports byte length, whereas <code>chars()</code> decodes Unicode scalar values sequentially.</li>
-<li>A <code>HashMap&lt;K, V&gt;</code> maps keys to buckets with a randomly seeded hasher to resist collision attacks, delivering $O(1)$ expected <code>get</code> and <code>insert</code>.</li>
-<li>Indexing visited elements in a <code>HashMap</code> reduces complement queries in Two Sum from $O(n^2)$ to $O(n)$ expected time.</li>
-<li>Using a <code>Vec</code> as a LIFO stack solves nested delimiter validation and $O(1)$ minimum-element queries (<code>MinStack</code>).</li>
-<li>Converging two-pointer traversals reverse ASCII buffers in place in $O(1)$ auxiliary space and solve Three Sum in $O(n^2)$ time after sorting.</li>
-<li>Sliding windows paired with a last-seen index map compute the longest substring without repeated characters in $O(n)$ time.</li>
-<li>Sorting intervals by start coordinate permits a single $O(n)$ pass to merge overlapping ranges, either into an output vector or in place.</li>
-<li>Binary search halves the candidate range per step in $O(\log n)$ time and extends to rotated sorted arrays by identifying which half preserves monotonic order.</li>
-<li>Knuth-Morris-Pratt (KMP) preprocesses a pattern’s prefix-suffix table (<code>lps</code>) to locate substrings in $O(n + m)$ worst-case time without backtracking in the haystack.</li>
+<li>A <code>HashMap&lt;K, V&gt;</code> maps keys to buckets with a randomly seeded hasher to resist collision attacks, delivering O(1) expected <code>get</code> and <code>insert</code>.</li>
+<li>Indexing visited elements in a <code>HashMap</code> reduces complement queries in Two Sum from O(n<sup>2</sup>) to O(n) expected time.</li>
+<li>Using a <code>Vec</code> as a LIFO stack solves nested delimiter validation and O(1) minimum-element queries (<code>MinStack</code>).</li>
+<li>Converging two-pointer traversals reverse ASCII buffers in place in O(1) auxiliary space and solve Three Sum in O(n<sup>2</sup>) time after sorting.</li>
+<li>Sliding windows paired with a last-seen index map compute the longest substring without repeated characters in O(n) time.</li>
+<li>Sorting intervals by start coordinate permits a single O(n) pass to merge overlapping ranges, either into an output vector or in place.</li>
+<li>Binary search halves the candidate range per step in O(log n) time and extends to rotated sorted arrays by identifying which half preserves monotonic order.</li>
+<li>Knuth-Morris-Pratt (KMP) preprocesses a pattern’s prefix-suffix table (<code>lps</code>) to locate substrings in O(n + m) worst-case time without backtracking in the haystack.</li>
 </ul>
 </div>
 
@@ -3935,8 +3935,8 @@ Filtered : [2, 4, 6]
 </ul>
 </div>
 
-<p>Priority-driven workloads require continuous access to the extreme element of a dynamic multiset without paying the $O(n)$ maintenance cost of keeping the entire collection sorted. A <strong>binary heap</strong> resolves this tradeoff by enforcing a partial ordering invariant over a complete binary tree packed contiguously in a vector, supporting $O(1)$ extremum inspection and $O(\log n)$ insertions and deletions.</p>
-<p>This priority-queue abstraction underpins top-$k$ frequency selection, priority scheduling, and streaming order-statistic maintenance. The sections below formalize the implicit array representation, sift-up and sift-down invariant restoration, and Rust’s <code>BinaryHeap</code> API before developing three complete applications: unbounded top-$k$ selection, $k$-bounded top-$k$ word ranking, and dual-heap streaming median maintenance.</p>
+<p>Priority-driven workloads require continuous access to the extreme element of a dynamic multiset without paying the O(n) maintenance cost of keeping the entire collection sorted. A <strong>binary heap</strong> resolves this tradeoff by enforcing a partial ordering invariant over a complete binary tree packed contiguously in a vector, supporting O(1) extremum inspection and O(log n) insertions and deletions.</p>
+<p>This priority-queue abstraction underpins top-<em>k</em> frequency selection, priority scheduling, and streaming order-statistic maintenance. The sections below formalize the implicit array representation, sift-up and sift-down invariant restoration, and Rust’s <code>BinaryHeap</code> API before developing three complete applications: unbounded top-<em>k</em> selection, <em>k</em>-bounded top-<em>k</em> word ranking, and dual-heap streaming median maintenance.</p>
 <p>Four formal definitions establish the terminology:</p>
 <ul>
 <li>A <strong>binary tree</strong> is a hierarchical structure in which every node has at most two children (left and right); the unique node without a parent is the <strong>root</strong>.</li>
@@ -4466,12 +4466,12 @@ after  0: median 3
 <h2 id="summary-4"><a class="header" href="#summary-4">Summary</a></h2>
 <ul>
 <li>A binary heap embeds a complete binary tree level by level in a contiguous <code>Vec</code>, locating the children of index <code>i</code> at <code>2i + 1</code> and <code>2i + 2</code> and its parent at <code>(i - 1) / 2</code>.</li>
-<li>In a max-heap, every parent key dominates its children, exposing the global maximum at index <code>0</code> for $O(1)$ <code>peek</code>.</li>
-<li><code>push</code> appends to the tail and restores the invariant via sift-up; <code>pop</code> promotes the tail element to index <code>0</code> and restores the invariant via sift-down through the larger child. Both operations run in $O(\log n)$ worst-case time.</li>
+<li>In a max-heap, every parent key dominates its children, exposing the global maximum at index <code>0</code> for O(1) <code>peek</code>.</li>
+<li><code>push</code> appends to the tail and restores the invariant via sift-up; <code>pop</code> promotes the tail element to index <code>0</code> and restores the invariant via sift-down through the larger child. Both operations run in O(log n) worst-case time.</li>
 <li>Rust’s <code>BinaryHeap&lt;T&gt;</code> implements a max-heap; wrapping elements in the zero-cost <code>std::cmp::Reverse&lt;T&gt;</code> adapter yields a min-heap.</li>
 <li>Lexicographical tuple ordering enables <code>(count, value)</code> priority keys without custom comparator structs.</li>
-<li>Bounding a min-heap to $k + 1$ entries during top-$k$ selection reduces heap space from $O(u)$ to $O(k)$ and heap work from $O(u \log u)$ to $O(u \log k)$.</li>
-<li>Partitioning a stream across a lower max-heap (<code>low</code>) and an upper min-heap (<code>high</code>) maintains the running median in $O(\log n)$ time per insertion and $O(1)$ time per query.</li>
+<li>Bounding a min-heap to k + 1 entries during top-<em>k</em> selection reduces heap space from O(u) to O(k) and heap work from O(u log u) to O(u log k).</li>
+<li>Partitioning a stream across a lower max-heap (<code>low</code>) and an upper min-heap (<code>high</code>) maintains the running median in O(log n) time per insertion and O(1) time per query.</li>
 </ul>
 </div>
 
@@ -4790,7 +4790,7 @@ fn main() {
 <li><strong>Schedule the job:</strong> Only jobs finishing at or before job <code>i</code>’s start time may precede it. Because the slice is sorted by end time, those compatible jobs form a prefix of length <code>prev</code>, yielding a total profit of <code>dp[prev] + job.profit</code>.</li>
 </ul>
 <p>Thus <code>dp[i + 1]</code> is the maximum of those two values, and the final table entry gives the optimal profit.</p>
-<p>Locating <code>prev</code> reduces to binary search over the sorted prefix in $O(\log n)$ time. The Rust standard library exposes this operation directly via <code>slice::partition_point</code>, which accepts a monotonic predicate that holds on a prefix and fails thereafter, returning the length of that prefix.</p>
+<p>Locating <code>prev</code> reduces to binary search over the sorted prefix in O(log n) time. The Rust standard library exposes this operation directly via <code>slice::partition_point</code>, which accepts a monotonic predicate that holds on a prefix and fails thereafter, returning the length of that prefix.</p>
 <h3 id="642-the-code"><a class="header" href="#642-the-code">6.4.2 The code</a></h3>
 <p>Each job is represented as a compact <code>Copy</code> struct storing its start time, end time, and profit.</p>
 <pre><code class="language-rust">#[derive(Debug, Default, Clone, Copy)]
@@ -5166,11 +5166,11 @@ fn main() {
 <ul>
 <li>Dynamic programming eliminates redundant recomputation on problems exhibiting optimal substructure and overlapping subproblems by tabulating subproblem solutions bottom up.</li>
 <li>Every dynamic programming formulation begins with an explicit subproblem invariant defining the exact meaning of a single table entry; the recurrence relation and loop order follow directly from that invariant.</li>
-<li>Minimum-coin change computes <code>dp[t]</code> from <code>dp[t - c] + 1</code> across all denominations <code>c &lt;= t</code> in $O(\text{amount} \times |\text{coins}|)$ time and $O(\text{amount})$ space.</li>
+<li>Minimum-coin change computes <code>dp[t]</code> from <code>dp[t - c] + 1</code> across all denominations <code>c &lt;= t</code> in O(amount × |coins|) time and O(amount) space.</li>
 <li>Greedy heuristics fail on arbitrary coin systems: for denominations <code>{1, 3, 4}</code> and target <code>6</code>, a greedy choice selects three coins (<code>4 + 1 + 1</code>), whereas the optimal solution uses two (<code>3 + 3</code>).</li>
-<li>Backtracking traverses an implicit decision tree depth first with a single mutable <code>path</code>, pushing on descent and popping on ascent; enumerating all $2^n$ subsets runs in output-optimal $O(n \cdot 2^n)$ time.</li>
-<li>Longest increasing subsequence maintains the minimal ending value for each subsequence length in an ordered <code>BTreeSet</code>, reducing runtime from $O(n^2)$ to $O(n \log n)$.</li>
-<li>Weighted interval scheduling sorts jobs by finish time, locates the latest compatible predecessor via <code>slice::partition_point</code>, and tabulates optimal prefix profits in $O(n \log n)$ time.</li>
+<li>Backtracking traverses an implicit decision tree depth first with a single mutable <code>path</code>, pushing on descent and popping on ascent; enumerating all 2<sup>n</sup> subsets runs in output-optimal O(n · 2<sup>n</sup>) time.</li>
+<li>Longest increasing subsequence maintains the minimal ending value for each subsequence length in an ordered <code>BTreeSet</code>, reducing runtime from O(n<sup>2</sup>) to O(n log n).</li>
+<li>Weighted interval scheduling sorts jobs by finish time, locates the latest compatible predecessor via <code>slice::partition_point</code>, and tabulates optimal prefix profits in O(n log n) time.</li>
 <li>Adding memory and core constraints gates each job transition with a single feasibility predicate while reusing one <code>dp</code> buffer across all candidate GPUs.</li>
 <li>Optimizing each GPU independently underutilizes multi-device clusters: on the sample workload, partitioning jobs across two GPUs achieves profit <code>130</code>, whereas the best single-GPU schedule achieves <code>120</code>.</li>
 </ul>
@@ -29148,7 +29148,7 @@ The process has exhausted its <code>RLIMIT_NOFILE</code> descriptor table limit 
 <li>Execute <code>fd_table</code> with standard input closed: <code>cargo run --bin fd_table &lt;&amp;-</code>. Which descriptor index does the first <code>File::open</code> return, and which allocation rule explains the result?</li>
 <li>Read a prefix of bytes from a file, then invoke <code>spawn</code> to run <code>cat</code> with that file’s descriptor bound to standard input. Does <code>cat</code> emit the entire file or only the unread remainder? Justify the behavior using Figure 24.2.</li>
 <li>Remove <code>drop(write_end)</code> from <code>output</code> and run the test suite. Identify which test hangs and which system call blocks indefinitely.</li>
-<li>Generalize <code>ls_wc</code> into a pipeline builder accepting an arbitrary slice of commands (such as <code>ls | sort | wc -l</code>). For $n$ commands, how many pipes are created and how many pipe descriptors must the parent close?</li>
+<li>Generalize <code>ls_wc</code> into a pipeline builder accepting an arbitrary slice of commands (such as <code>ls | sort | wc -l</code>). For <em>n</em> commands, how many pipes are created and how many pipe descriptors must the parent close?</li>
 <li>Replace <code>pipe</code> plus <code>fcntl</code> with <code>pipe2(..., O_CLOEXEC)</code> under <code>#[cfg(target_os = "linux")]</code>, retaining the two-call implementation for non-Linux targets.</li>
 </ol>
 <div style="break-before: page; page-break-before: always;"></div><img class="plate" src="art/ch25.png" alt="Trip, the robot who is the signalman of the ready list, beside a signal post whose arm drops once as a train of bytes passes a trip wire">
@@ -29968,7 +29968,7 @@ threads     total    waits    wakes     futex ms       std ms
 <p>Section 16.2.3 defined the Rust/C++ memory model contracts: <code>Relaxed</code> enforces atomicity without ordering constraints on surrounding memory accesses, <code>Release</code>/<code>Acquire</code> establishes pairwise happens-before edges, and <code>SeqCst</code> enforces a single total modification order across all sequentially consistent operations. Those abstract rules exist because physical processors reorder memory operations to hide cache-coherence latency.</p>
 <h3 id="2631-store-buffers"><a class="header" href="#2631-store-buffers">26.3.1 Store buffers</a></h3>
 <p>Committing a store directly to a coherent L1 cache stalls the pipeline whenever the target cache line resides exclusively in another core’s cache. To mask this coherence latency, modern superscalar cores enqueue outgoing stores in a private FIFO <strong>store buffer</strong> and immediately retire subsequent instructions while the store drains asynchronously to cache. A core’s own loads perform <strong>store-to-load forwarding</strong> from its local store buffer (preserving single-thread program semantics), whereas remote cores observe a store only after it drains into the coherent cache hierarchy.</p>
-<p>Consequently, a load to address $y$ that follows a store to address $x$ in program order can execute and read from cache before the earlier store to $x$ becomes globally visible. Figure 26.3 depicts two cores executing this symmetric pattern concurrently: both loads observe the stale value <code>0</code> from memory while both stores remain queued in their private store buffers.</p>
+<p>Consequently, a load to address <em>y</em> that follows a store to address <em>x</em> in program order can execute and read from cache before the earlier store to <em>x</em> becomes globally visible. Figure 26.3 depicts two cores executing this symmetric pattern concurrently: both loads observe the stale value <code>0</code> from memory while both stores remain queued in their private store buffers.</p>
 <figure>
 <img src="figures/ch26-store-buffer.svg" alt="Core 1 stores x = 1 and core 2 stores y = 1; both stores wait in their cores&#39; store buffers. Core 1 loads y and core 2 loads x from cache and memory, where x and y are still 0. Both loads read 0. The buffers drain later.">
 <figcaption><b>Figure 26.3</b> Both stores wait in store buffers while both loads read memory. Each thread's load completes before its own store is visible.</figcaption>
@@ -30641,7 +30641,7 @@ mod linux {
 </ul>
 <p>RFC 9293 specifies <code>TIME_WAIT</code> as twice the maximum segment lifetime (<code>2 MSL</code>); Linux hardcodes <code>TCP_TIMEWAIT_LEN</code> to 60 seconds.</p>
 <h3 id="2721-the-cost-ports-on-a-busy-client"><a class="header" href="#2721-the-cost-ports-on-a-busy-client">27.2.1 The cost: ports on a busy client</a></h3>
-<p>A <code>TIME_WAIT</code> control block occupies only a few hundred bytes of kernel memory. The constraining resource is four-tuple cardinality. For every outbound connection to a fixed <code>(remote IP, remote port)</code>, the client kernel selects a local port from the <strong>ephemeral port range</strong> (<code>net.ipv4.ip_local_port_range</code>, defaulting to 32,768 through 60,999 on Linux, yielding 28,232 ports). When the client performs the active close, each port remains pinned in <code>TIME_WAIT</code> for 60 seconds, bounding sustained connection churn to roughly $28{,}232 / 60 \approx 470$ new connections per second per destination endpoint (Figure 27.2). Exceeding this rate exhausts the ephemeral pool and causes <code>connect</code> to fail with <code>EADDRNOTAVAIL</code>.</p>
+<p>A <code>TIME_WAIT</code> control block occupies only a few hundred bytes of kernel memory. The constraining resource is four-tuple cardinality. For every outbound connection to a fixed <code>(remote IP, remote port)</code>, the client kernel selects a local port from the <strong>ephemeral port range</strong> (<code>net.ipv4.ip_local_port_range</code>, defaulting to 32,768 through 60,999 on Linux, yielding 28,232 ports). When the client performs the active close, each port remains pinned in <code>TIME_WAIT</code> for 60 seconds, bounding sustained connection churn to roughly 28,232 / 60 ≈ 470 new connections per second per destination endpoint (Figure 27.2). Exceeding this rate exhausts the ephemeral pool and causes <code>connect</code> to fail with <code>EADDRNOTAVAIL</code>.</p>
 <figure>
 <img src="figures/ch27-ports.svg" alt="A client at 10.0.0.5 with ephemeral ports 32768 to 60999, 28,232 ports, has connections from ports 40001 and 40002 to the server 10.0.0.9:443, each in TIME_WAIT with about 60 seconds left. With 28,232 such four-tuples held at once, the next connect fails with EADDRNOTAVAIL. The server uses its one port for every connection.">
 <figcaption><b>Figure 27.2</b> Each closed connection holds its four values for 60 seconds. On the client, the free values run out with the ephemeral ports.</figcaption>
@@ -32623,7 +32623,7 @@ mod tests {
 </code></pre>
 <h2 id="298-questions-that-come-up"><a class="header" href="#298-questions-that-come-up">29.8 Questions that come up</a></h2>
 <p><strong>“How large should the pool be?”</strong>
-By Little’s Law, the steady-state concurrency required is $L = \lambda W$ (peak request rate multiplied by average connection hold duration). At 2,000 requests per second and 5 ms per request, $L = 10$ concurrent connections. Because each client instance multiplies load on the server, the upper bound per client is the server’s maximum connection budget divided by the fleet size.</p>
+By Little’s Law, the steady-state concurrency required is L = \lambda W (peak request rate multiplied by average connection hold duration). At 2,000 requests per second and 5 ms per request, L = 10 concurrent connections. Because each client instance multiplies load on the server, the upper bound per client is the server’s maximum connection budget divided by the fleet size.</p>
 <p><strong>“Why not one pool shared by every server address?”</strong>
 A TCP socket is bound to a single remote endpoint. HTTP clients therefore maintain a map of per-origin <code>(host, port)</code> pools, enforcing both a per-host concurrency cap and a global descriptor cap.</p>
 <p><strong>“What does HTTP/2 change?”</strong>
@@ -36247,6 +36247,22 @@ confirm the difference described in section C.5.1.</li>
         <template id=fa-play><span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 384 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M73 39c-14.8-9.1-33.4-9.4-48.5-.9S0 62.6 0 80V432c0 17.4 9.4 33.4 24.5 41.9s33.7 8.1 48.5-.9L361 297c14.3-8.7 23-24.2 23-41s-8.7-32.2-23-41L73 39z"/></svg></span></template>
         <template id=fa-clock-rotate-left><span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M75 75L41 41C25.9 25.9 0 36.6 0 57.9V168c0 13.3 10.7 24 24 24H134.1c21.4 0 32.1-25.9 17-41l-30.8-30.8C155 85.5 203 64 256 64c106 0 192 86 192 192s-86 192-192 192c-40.8 0-78.6-12.7-109.7-34.4c-14.5-10.1-34.4-6.6-44.6 7.9s-6.6 34.4 7.9 44.6C151.2 495 201.7 512 256 512c141.4 0 256-114.6 256-256S397.4 0 256 0C185.3 0 121.3 28.7 75 75zm181 53c-13.3 0-24 10.7-24 24V256c0 6.4 2.5 12.5 7 17l72 72c9.4 9.4 24.6 9.4 33.9 0s9.4-24.6 0-33.9l-65-65V152c0-13.3-10.7-24-24-24z"/></svg></span></template>
 
+        <!-- Livereload script (if served using the cli tool) -->
+        <script>
+            const wsProtocol = location.protocol === 'https:' ? 'wss:' : 'ws:';
+            const wsAddress = wsProtocol + "//" + location.host + "/" + "__livereload";
+            const socket = new WebSocket(wsAddress);
+            socket.onmessage = function (event) {
+                if (event.data === "reload") {
+                    socket.close();
+                    location.reload();
+                }
+            };
+
+            window.onbeforeunload = function() {
+                socket.close();
+            }
+        </script>
 
 
         <script>
