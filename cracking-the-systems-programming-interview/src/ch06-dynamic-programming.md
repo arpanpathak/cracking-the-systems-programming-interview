@@ -239,7 +239,7 @@ For job `i`, two mutually exclusive choices exist:
 
 Thus `dp[i + 1]` is the maximum of those two values, and the final table entry gives the optimal profit.
 
-Locating `prev` reduces to binary search over the sorted prefix in $O(\log n)$ time. The Rust standard library exposes this operation directly via `slice::partition_point`, which accepts a monotonic predicate that holds on a prefix and fails thereafter, returning the length of that prefix.
+Locating `prev` reduces to binary search over the sorted prefix in O(log n) time. The Rust standard library exposes this operation directly via `slice::partition_point`, which accepts a monotonic predicate that holds on a prefix and fails thereafter, returning the length of that prefix.
 
 ### 6.4.2 The code
 
@@ -364,11 +364,11 @@ Finding an optimal multi-device assignment is a fundamentally harder combinatori
 
 - Dynamic programming eliminates redundant recomputation on problems exhibiting optimal substructure and overlapping subproblems by tabulating subproblem solutions bottom up.
 - Every dynamic programming formulation begins with an explicit subproblem invariant defining the exact meaning of a single table entry; the recurrence relation and loop order follow directly from that invariant.
-- Minimum-coin change computes `dp[t]` from `dp[t - c] + 1` across all denominations `c <= t` in $O(\text{amount} \times |\text{coins}|)$ time and $O(\text{amount})$ space.
+- Minimum-coin change computes `dp[t]` from `dp[t - c] + 1` across all denominations `c <= t` in O(amount × |coins|) time and O(amount) space.
 - Greedy heuristics fail on arbitrary coin systems: for denominations `{1, 3, 4}` and target `6`, a greedy choice selects three coins (`4 + 1 + 1`), whereas the optimal solution uses two (`3 + 3`).
-- Backtracking traverses an implicit decision tree depth first with a single mutable `path`, pushing on descent and popping on ascent; enumerating all $2^n$ subsets runs in output-optimal $O(n \cdot 2^n)$ time.
-- Longest increasing subsequence maintains the minimal ending value for each subsequence length in an ordered `BTreeSet`, reducing runtime from $O(n^2)$ to $O(n \log n)$.
-- Weighted interval scheduling sorts jobs by finish time, locates the latest compatible predecessor via `slice::partition_point`, and tabulates optimal prefix profits in $O(n \log n)$ time.
+- Backtracking traverses an implicit decision tree depth first with a single mutable `path`, pushing on descent and popping on ascent; enumerating all 2<sup>n</sup> subsets runs in output-optimal O(n · 2<sup>n</sup>) time.
+- Longest increasing subsequence maintains the minimal ending value for each subsequence length in an ordered `BTreeSet`, reducing runtime from O(n<sup>2</sup>) to O(n log n).
+- Weighted interval scheduling sorts jobs by finish time, locates the latest compatible predecessor via `slice::partition_point`, and tabulates optimal prefix profits in O(n log n) time.
 - Adding memory and core constraints gates each job transition with a single feasibility predicate while reusing one `dp` buffer across all candidate GPUs.
 - Optimizing each GPU independently underutilizes multi-device clusters: on the sample workload, partitioning jobs across two GPUs achieves profit `130`, whereas the best single-GPU schedule achieves `120`.
 

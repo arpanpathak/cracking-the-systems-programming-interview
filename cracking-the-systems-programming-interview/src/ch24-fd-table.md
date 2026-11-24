@@ -320,5 +320,5 @@ The process has exhausted its `RLIMIT_NOFILE` descriptor table limit (`EMFILE`).
 1. Execute `fd_table` with standard input closed: `cargo run --bin fd_table <&-`. Which descriptor index does the first `File::open` return, and which allocation rule explains the result?
 2. Read a prefix of bytes from a file, then invoke `spawn` to run `cat` with that file's descriptor bound to standard input. Does `cat` emit the entire file or only the unread remainder? Justify the behavior using Figure 24.2.
 3. Remove `drop(write_end)` from `output` and run the test suite. Identify which test hangs and which system call blocks indefinitely.
-4. Generalize `ls_wc` into a pipeline builder accepting an arbitrary slice of commands (such as `ls | sort | wc -l`). For $n$ commands, how many pipes are created and how many pipe descriptors must the parent close?
+4. Generalize `ls_wc` into a pipeline builder accepting an arbitrary slice of commands (such as `ls | sort | wc -l`). For *n* commands, how many pipes are created and how many pipe descriptors must the parent close?
 5. Replace `pipe` plus `fcntl` with `pipe2(..., O_CLOEXEC)` under `#[cfg(target_os = "linux")]`, retaining the two-call implementation for non-Linux targets.

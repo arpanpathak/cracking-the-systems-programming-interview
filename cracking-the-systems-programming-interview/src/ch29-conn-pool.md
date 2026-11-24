@@ -208,7 +208,7 @@ $ cargo run --release --bin conn_pool
 ## 29.8 Questions that come up
 
 **"How large should the pool be?"**
-By Little's Law, the steady-state concurrency required is $L = \lambda W$ (peak request rate multiplied by average connection hold duration). At 2,000 requests per second and 5 ms per request, $L = 10$ concurrent connections. Because each client instance multiplies load on the server, the upper bound per client is the server's maximum connection budget divided by the fleet size.
+By Little's Law, the steady-state concurrency required is L = \lambda W (peak request rate multiplied by average connection hold duration). At 2,000 requests per second and 5 ms per request, L = 10 concurrent connections. Because each client instance multiplies load on the server, the upper bound per client is the server's maximum connection budget divided by the fleet size.
 
 **"Why not one pool shared by every server address?"**
 A TCP socket is bound to a single remote endpoint. HTTP clients therefore maintain a map of per-origin `(host, port)` pools, enforcing both a per-host concurrency cap and a global descriptor cap.

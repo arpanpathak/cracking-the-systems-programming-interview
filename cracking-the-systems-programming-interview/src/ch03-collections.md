@@ -592,16 +592,16 @@ Listing 3.16 reproduces `merge_intervals.rs` in full, combining the excerpts fro
 ## Summary
 
 - Big-O notation characterizes asymptotic time and auxiliary space growth by retaining only the dominant term and omitting constant factors.
-- A `Vec<T>` stores elements contiguously in a heap-allocated buffer, providing $O(1)$ random-access indexing and amortized $O(1)$ `push` via geometric capacity growth.
+- A `Vec<T>` stores elements contiguously in a heap-allocated buffer, providing O(1) random-access indexing and amortized O(1) `push` via geometric capacity growth.
 - A `String` enforces a UTF-8 encoding invariant over a `Vec<u8>`; `len()` reports byte length, whereas `chars()` decodes Unicode scalar values sequentially.
-- A `HashMap<K, V>` maps keys to buckets with a randomly seeded hasher to resist collision attacks, delivering $O(1)$ expected `get` and `insert`.
-- Indexing visited elements in a `HashMap` reduces complement queries in Two Sum from $O(n^2)$ to $O(n)$ expected time.
-- Using a `Vec` as a LIFO stack solves nested delimiter validation and $O(1)$ minimum-element queries (`MinStack`).
-- Converging two-pointer traversals reverse ASCII buffers in place in $O(1)$ auxiliary space and solve Three Sum in $O(n^2)$ time after sorting.
-- Sliding windows paired with a last-seen index map compute the longest substring without repeated characters in $O(n)$ time.
-- Sorting intervals by start coordinate permits a single $O(n)$ pass to merge overlapping ranges, either into an output vector or in place.
-- Binary search halves the candidate range per step in $O(\log n)$ time and extends to rotated sorted arrays by identifying which half preserves monotonic order.
-- Knuth-Morris-Pratt (KMP) preprocesses a pattern's prefix-suffix table (`lps`) to locate substrings in $O(n + m)$ worst-case time without backtracking in the haystack.
+- A `HashMap<K, V>` maps keys to buckets with a randomly seeded hasher to resist collision attacks, delivering O(1) expected `get` and `insert`.
+- Indexing visited elements in a `HashMap` reduces complement queries in Two Sum from O(n<sup>2</sup>) to O(n) expected time.
+- Using a `Vec` as a LIFO stack solves nested delimiter validation and O(1) minimum-element queries (`MinStack`).
+- Converging two-pointer traversals reverse ASCII buffers in place in O(1) auxiliary space and solve Three Sum in O(n<sup>2</sup>) time after sorting.
+- Sliding windows paired with a last-seen index map compute the longest substring without repeated characters in O(n) time.
+- Sorting intervals by start coordinate permits a single O(n) pass to merge overlapping ranges, either into an output vector or in place.
+- Binary search halves the candidate range per step in O(log n) time and extends to rotated sorted arrays by identifying which half preserves monotonic order.
+- Knuth-Morris-Pratt (KMP) preprocesses a pattern's prefix-suffix table (`lps`) to locate substrings in O(n + m) worst-case time without backtracking in the haystack.
 
 </div>
 

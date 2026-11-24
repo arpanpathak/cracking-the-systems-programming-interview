@@ -190,7 +190,7 @@ Every active invocation allocates its own stack frame containing its parameter `
 <figcaption><b>Figure 1.4</b> The stack at the deepest point of <code>recursive(4)</code>. The depth is about <code>n</code> frames, while the number of calls grows much faster.</figcaption>
 </figure>
 
-Direct recursion therefore incurs two distinct costs: exponential time complexity $O(\varphi^n)$ caused by overlapping subproblems, and linear stack depth $O(n)$ proportional to the input parameter. Although a depth of 90 frames is negligible, linear recursion depth exhausts the call stack on large inputs.
+Direct recursion therefore incurs two distinct costs: exponential time complexity O(\varphi<sup>n</sup>) caused by overlapping subproblems, and linear stack depth O(n) proportional to the input parameter. Although a depth of 90 frames is negligible, linear recursion depth exhausts the call stack on large inputs.
 
 ## 1.6 The same numbers with a loop
 
@@ -315,8 +315,8 @@ Although both `memoized` and `iterative` scale linearly with `n`, `memoized` run
 - Lexical shadowing introduces an independent binding that may assume a different type while leaving prior bindings immutable and unreachable by name. Closures capturing an earlier binding retain their reference to the original storage slot.
 - Declaring a binding with `mut` enables in-place mutation of a fixed-type storage slot.
 - Each active recursive invocation allocates a stack frame; unmemoized recursive Fibonacci recomputes overlapping subproblems, yielding exponential runtime and linear stack depth.
-- An iterative loop maintaining only the two preceding recurrence terms computes `fib(n)` in $O(n)$ time and $O(1)$ auxiliary space.
-- Memoization caches evaluated subproblems in an auxiliary table, reducing recursive Fibonacci to $O(n)$ time at the cost of $O(n)$ heap space and $O(n)$ stack depth.
+- An iterative loop maintaining only the two preceding recurrence terms computes `fib(n)` in O(n) time and O(1) auxiliary space.
+- Memoization caches evaluated subproblems in an auxiliary table, reducing recursive Fibonacci to O(n) time at the cost of O(n) heap space and O(n) stack depth.
 - `impl Fn(u64) -> u64` accepts any function item or closure matching that signature, and `Instant` samples a monotonic clock for elapsed-time measurement.
 
 </div>

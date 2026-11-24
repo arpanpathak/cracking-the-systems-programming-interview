@@ -155,7 +155,7 @@ Section 16.2.3 defined the Rust/C++ memory model contracts: `Relaxed` enforces a
 
 Committing a store directly to a coherent L1 cache stalls the pipeline whenever the target cache line resides exclusively in another core's cache. To mask this coherence latency, modern superscalar cores enqueue outgoing stores in a private FIFO **store buffer** and immediately retire subsequent instructions while the store drains asynchronously to cache. A core's own loads perform **store-to-load forwarding** from its local store buffer (preserving single-thread program semantics), whereas remote cores observe a store only after it drains into the coherent cache hierarchy.
 
-Consequently, a load to address $y$ that follows a store to address $x$ in program order can execute and read from cache before the earlier store to $x$ becomes globally visible. Figure 26.3 depicts two cores executing this symmetric pattern concurrently: both loads observe the stale value `0` from memory while both stores remain queued in their private store buffers.
+Consequently, a load to address *y* that follows a store to address *x* in program order can execute and read from cache before the earlier store to *x* becomes globally visible. Figure 26.3 depicts two cores executing this symmetric pattern concurrently: both loads observe the stale value `0` from memory while both stores remain queued in their private store buffers.
 
 <figure>
 <img src="figures/ch26-store-buffer.svg" alt="Core 1 stores x = 1 and core 2 stores y = 1; both stores wait in their cores' store buffers. Core 1 loads y and core 2 loads x from cache and memory, where x and y are still 0. Both loads read 0. The buffers drain later.">

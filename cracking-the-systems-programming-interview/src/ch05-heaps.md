@@ -15,9 +15,9 @@ This chapter covers
 
 </div>
 
-Priority-driven workloads require continuous access to the extreme element of a dynamic multiset without paying the $O(n)$ maintenance cost of keeping the entire collection sorted. A **binary heap** resolves this tradeoff by enforcing a partial ordering invariant over a complete binary tree packed contiguously in a vector, supporting $O(1)$ extremum inspection and $O(\log n)$ insertions and deletions.
+Priority-driven workloads require continuous access to the extreme element of a dynamic multiset without paying the O(n) maintenance cost of keeping the entire collection sorted. A **binary heap** resolves this tradeoff by enforcing a partial ordering invariant over a complete binary tree packed contiguously in a vector, supporting O(1) extremum inspection and O(log n) insertions and deletions.
 
-This priority-queue abstraction underpins top-$k$ frequency selection, priority scheduling, and streaming order-statistic maintenance. The sections below formalize the implicit array representation, sift-up and sift-down invariant restoration, and Rust's `BinaryHeap` API before developing three complete applications: unbounded top-$k$ selection, $k$-bounded top-$k$ word ranking, and dual-heap streaming median maintenance.
+This priority-queue abstraction underpins top-*k* frequency selection, priority scheduling, and streaming order-statistic maintenance. The sections below formalize the implicit array representation, sift-up and sift-down invariant restoration, and Rust's `BinaryHeap` API before developing three complete applications: unbounded top-*k* selection, *k*-bounded top-*k* word ranking, and dual-heap streaming median maintenance.
 
 Four formal definitions establish the terminology:
 
@@ -290,12 +290,12 @@ The final test verifies the size-balance invariant directly, asserting that the 
 ## Summary
 
 - A binary heap embeds a complete binary tree level by level in a contiguous `Vec`, locating the children of index `i` at `2i + 1` and `2i + 2` and its parent at `(i - 1) / 2`.
-- In a max-heap, every parent key dominates its children, exposing the global maximum at index `0` for $O(1)$ `peek`.
-- `push` appends to the tail and restores the invariant via sift-up; `pop` promotes the tail element to index `0` and restores the invariant via sift-down through the larger child. Both operations run in $O(\log n)$ worst-case time.
+- In a max-heap, every parent key dominates its children, exposing the global maximum at index `0` for O(1) `peek`.
+- `push` appends to the tail and restores the invariant via sift-up; `pop` promotes the tail element to index `0` and restores the invariant via sift-down through the larger child. Both operations run in O(log n) worst-case time.
 - Rust's `BinaryHeap<T>` implements a max-heap; wrapping elements in the zero-cost `std::cmp::Reverse<T>` adapter yields a min-heap.
 - Lexicographical tuple ordering enables `(count, value)` priority keys without custom comparator structs.
-- Bounding a min-heap to $k + 1$ entries during top-$k$ selection reduces heap space from $O(u)$ to $O(k)$ and heap work from $O(u \log u)$ to $O(u \log k)$.
-- Partitioning a stream across a lower max-heap (`low`) and an upper min-heap (`high`) maintains the running median in $O(\log n)$ time per insertion and $O(1)$ time per query.
+- Bounding a min-heap to k + 1 entries during top-*k* selection reduces heap space from O(u) to O(k) and heap work from O(u log u) to O(u log k).
+- Partitioning a stream across a lower max-heap (`low`) and an upper min-heap (`high`) maintains the running median in O(log n) time per insertion and O(1) time per query.
 
 </div>
 
