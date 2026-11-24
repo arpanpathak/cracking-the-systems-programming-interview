@@ -36,7 +36,7 @@
             const path_to_root = "";
             const default_light_theme = "coal";
             const default_dark_theme = "coal";
-            window.path_to_searchindex_js = "searchindex-09ae7f8d.js";
+            window.path_to_searchindex_js = "searchindex-53cc97a7.js";
         </script>
         <!-- Start loading toc.js asap -->
         <script src="toc-c196c8a9.js"></script>
@@ -191,16 +191,8 @@
 </ul>
 </div>
 
-<p>A <strong>k-way merge</strong> combines <em>k</em> independently sorted sequences containing <em>N</em> total elements into a single
-globally sorted sequence while preserving element multiplicity. Merging <em>k</em> sorted singly linked lists is a
-foundational primitive in external merge sort, log-structured merge-tree (LSM) compaction, and distributed
-query execution, where nodes are relinked in place via ownership transfer rather than copied.</p>
-<p>Section 10.2 analyzes three asymptotic merge schedules, Sections 10.3 through 10.6 implement them using
-ownership transfer, disjoint slice borrows (<code>split_at_mut</code>), and a binary min-heap, and Section 10.7 compares
-their time, auxiliary space, call-stack depth, and allocation profiles. Appendix C preserves an expanded study
-covering eleven variants.</p>
-<p>Throughout this chapter, <em>k</em> denotes the number of input lists and <em>N</em> denotes the total number of nodes across
-all lists.</p>
+<p>Merging <em>k</em> sorted singly linked lists containing <em>N</em> total nodes into a single ordered sequence is a core primitive in external merge sort, log-structured merge-tree (LSM) compaction, and distributed query execution. Merging two sorted lists requires a single linear scan, whereas scaling to <em>k</em> lists exposes a sharp algorithmic trade-off: folding the lists sequentially forces early nodes to be revisited up to <em>k</em> times (<em>O</em>(<em>kN</em>) work), while balanced divide-and-conquer reduction and binary min-heap selection both achieve the optimal <em>O</em>(<em>N</em> log <em>k</em>) bound under different auxiliary-memory, call-stack, and cache-locality profiles.</p>
+<p>Implementing these strategies in Rust also stresses ownership and borrowing directly: rather than cloning node payloads, each variant transfers ownership of <code>Box&lt;Node&gt;</code> handles in place, using disjoint slice borrows (<code>split_at_mut</code>) for divide-and-conquer reduction and an <em>O</em>(<em>k</em>) <code>BinaryHeap</code> of active list heads for heap-guided selection. Appendix C preserves an expanded reference study covering eleven variants.</p>
 <h2 id="101-merging-two-sorted-lists"><a class="header" href="#101-merging-two-sorted-lists">10.1 Merging two sorted lists</a></h2>
 <p>Every pairwise strategy in this chapter relies on merging two sorted lists: compare their front nodes, move the smaller node to the tail of the output list, repeat until one list is exhausted, and attach the remaining list intact (Figure 10.1).</p>
 <figure>

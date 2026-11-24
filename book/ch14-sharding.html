@@ -36,7 +36,7 @@
             const path_to_root = "";
             const default_light_theme = "coal";
             const default_dark_theme = "coal";
-            window.path_to_searchindex_js = "searchindex-09ae7f8d.js";
+            window.path_to_searchindex_js = "searchindex-53cc97a7.js";
         </script>
         <!-- Start loading toc.js asap -->
         <script src="toc-c196c8a9.js"></script>
@@ -193,11 +193,8 @@
 
 <p><strong>Partitioning</strong> (or <strong>sharding</strong>) divides a key space across independent buckets or nodes via a deterministic hash
 function so that concurrent operations scale without global serialization. Whether coordinating threads within a
-single multi-core process or distributing state across servers in a cluster, partitioning bounds contention and
-isolates failures.</p>
-<p>Section 14.1 partitions an in-process hash map into independently locked shards to eliminate global mutex
-contention across threads; Section 14.2 partitions keys across distributed servers using consistent hashing and
-virtual nodes so that membership changes relocate a minimal fraction of keys.</p>
+single multi-core process or distributing state across servers in a cluster, partitioning bounds contention,
+isolates failures, and keeps key relocation minimal when cluster membership changes.</p>
 <h2 id="141-a-map-split-into-shards"><a class="header" href="#141-a-map-split-into-shards">14.1 A map split into shards</a></h2>
 <p>Sharing mutable state across threads in Rust commonly combines <code>Arc</code> (atomic reference counting) with <code>Mutex</code>
 (mutual exclusion). While one thread holds the <code>MutexGuard</code>, every other thread invoking <code>lock()</code> blocks until

@@ -37,7 +37,7 @@
             const path_to_root = "";
             const default_light_theme = "coal";
             const default_dark_theme = "coal";
-            window.path_to_searchindex_js = "searchindex-09ae7f8d.js";
+            window.path_to_searchindex_js = "searchindex-53cc97a7.js";
         </script>
         <!-- Start loading toc.js asap -->
         <script src="toc-c196c8a9.js"></script>
@@ -5205,16 +5205,6 @@ and four jobs in section 6.5 by hand. Then explain why one table per GPU cannot 
 <p>Robust systems enforce domain invariants at compile time through algebraic data types rather than scattering defensive runtime checks across business logic. By restricting construction to validated boundaries, custom structs and enums make invalid program states unrepresentable.</p>
 <p>The implementations below model a command-line control plane that manages compute jobs, termed <strong>workloads</strong>, on a remote cluster. Each workload requests between 1 and 64 GPUs and transitions through discrete lifecycle states such as <code>Pending</code>, <code>Running</code>, and <code>Terminated</code>. Users issue text commands such as <code>create triton 4</code>, requesting a workload named <code>triton</code> with 4 GPUs.</p>
 <p>Input validation illustrates the core architectural invariant. A GPU count arrives as untrusted text, and inputs such as <code>0</code>, <code>99</code>, or <code>many</code> must be rejected before reaching scheduling logic. Revalidating raw integers in every downstream function is brittle because a single omitted guard permits corrupt state to propagate. Validating once at the ingress boundary and encapsulating the result in a private-field newtype guarantees that every downstream function receiving that type observes a valid count by construction.</p>
-<p>The implementation progresses through seven stages:</p>
-<ol>
-<li>Section 7.1 formalizes traits and automatic derivation.</li>
-<li>Section 7.2 defines the validated <code>GpuCount</code> newtype.</li>
-<li>Section 7.3 defines a structured error type for rejected counts.</li>
-<li>Section 7.4 implements standard <code>From</code> and <code>TryFrom</code> conversions.</li>
-<li>Section 7.5 models CLI commands as a tagged union enum with a text parser.</li>
-<li>Section 7.6 encodes workload lifecycle states and transition rules as a finite state machine.</li>
-<li>Section 7.7 models structured remote API errors with retry classification.</li>
-</ol>
 <h2 id="71-traits"><a class="header" href="#71-traits">7.1 Traits</a></h2>
 <p>A <strong>trait</strong> defines a set of methods that a type guarantees to provide. The standard library supplies many traits; for example, <code>Display</code> defines a single method, <code>fmt</code>, that formats a value as human-readable text. Any type implementing <code>Display</code> can be formatted with <code>println!("{}", x)</code>.</p>
 <p>A trait is implemented for a type via an <code>impl</code> block naming both the trait and the type:</p>
@@ -8248,16 +8238,8 @@ push and pop times with the <code>Rc</code> version.</li>
 </ul>
 </div>
 
-<p>A <strong>k-way merge</strong> combines <em>k</em> independently sorted sequences containing <em>N</em> total elements into a single
-globally sorted sequence while preserving element multiplicity. Merging <em>k</em> sorted singly linked lists is a
-foundational primitive in external merge sort, log-structured merge-tree (LSM) compaction, and distributed
-query execution, where nodes are relinked in place via ownership transfer rather than copied.</p>
-<p>Section 10.2 analyzes three asymptotic merge schedules, Sections 10.3 through 10.6 implement them using
-ownership transfer, disjoint slice borrows (<code>split_at_mut</code>), and a binary min-heap, and Section 10.7 compares
-their time, auxiliary space, call-stack depth, and allocation profiles. Appendix C preserves an expanded study
-covering eleven variants.</p>
-<p>Throughout this chapter, <em>k</em> denotes the number of input lists and <em>N</em> denotes the total number of nodes across
-all lists.</p>
+<p>Merging <em>k</em> sorted singly linked lists containing <em>N</em> total nodes into a single ordered sequence is a core primitive in external merge sort, log-structured merge-tree (LSM) compaction, and distributed query execution. Merging two sorted lists requires a single linear scan, whereas scaling to <em>k</em> lists exposes a sharp algorithmic trade-off: folding the lists sequentially forces early nodes to be revisited up to <em>k</em> times (<em>O</em>(<em>kN</em>) work), while balanced divide-and-conquer reduction and binary min-heap selection both achieve the optimal <em>O</em>(<em>N</em> log <em>k</em>) bound under different auxiliary-memory, call-stack, and cache-locality profiles.</p>
+<p>Implementing these strategies in Rust also stresses ownership and borrowing directly: rather than cloning node payloads, each variant transfers ownership of <code>Box&lt;Node&gt;</code> handles in place, using disjoint slice borrows (<code>split_at_mut</code>) for divide-and-conquer reduction and an <em>O</em>(<em>k</em>) <code>BinaryHeap</code> of active list heads for heap-guided selection. Appendix C preserves an expanded reference study covering eleven variants.</p>
 <h2 id="101-merging-two-sorted-lists"><a class="header" href="#101-merging-two-sorted-lists">10.1 Merging two sorted lists</a></h2>
 <p>Every pairwise strategy in this chapter relies on merging two sorted lists: compare their front nodes, move the smaller node to the tail of the output list, repeat until one list is exhausted, and attach the remaining list intact (Figure 10.1).</p>
 <figure>
@@ -14977,11 +14959,8 @@ overhead.</li>
 
 <p><strong>Partitioning</strong> (or <strong>sharding</strong>) divides a key space across independent buckets or nodes via a deterministic hash
 function so that concurrent operations scale without global serialization. Whether coordinating threads within a
-single multi-core process or distributing state across servers in a cluster, partitioning bounds contention and
-isolates failures.</p>
-<p>Section 14.1 partitions an in-process hash map into independently locked shards to eliminate global mutex
-contention across threads; Section 14.2 partitions keys across distributed servers using consistent hashing and
-virtual nodes so that membership changes relocate a minimal fraction of keys.</p>
+single multi-core process or distributing state across servers in a cluster, partitioning bounds contention,
+isolates failures, and keeps key relocation minimal when cluster membership changes.</p>
 <h2 id="141-a-map-split-into-shards"><a class="header" href="#141-a-map-split-into-shards">14.1 A map split into shards</a></h2>
 <p>Sharing mutable state across threads in Rust commonly combines <code>Arc</code> (atomic reference counting) with <code>Mutex</code>
 (mutual exclusion). While one thread holds the <code>MutexGuard</code>, every other thread invoking <code>lock()</code> blocks until
@@ -15874,13 +15853,9 @@ with <code>partition_point</code> and <code>Vec::insert</code>, and compare the 
 access as uniform-cost. On modern superscalar processors, however, a single memory load spans nearly two orders
 of magnitude in latency (from roughly 2 ns in L1 cache to 150 ns in main DRAM) depending on spatial and temporal
 cache locality, cache-line coherence traffic, and virtual-to-physical address translation.</p>
-<p>This chapter examines the hardware memory hierarchy and operating-system abstractions beneath user-space data
-structures. Section 15.1 measures cache-level latency via dependent pointer chasing; Sections 15.2 through 15.4
-analyze arena allocation, traversal locality, and cache-line contention (false sharing); and Sections 15.5 through
-15.7 model virtual memory paging, round-robin CPU scheduling, and kernel system-call overhead.</p>
-<p>Because most programs below report wall-clock timings, compile and run them with <code>--release</code>; absolute timings
-vary across microarchitectures. Measurements reported here were collected on an Intel Core i5-1038NG7 running
-macOS.</p>
+<p>Because most programs in this chapter report wall-clock timings, compile and run them with <code>--release</code>; absolute
+timings vary across microarchitectures. Measurements reported here were collected on an Intel Core i5-1038NG7
+running macOS.</p>
 <h2 id="151-how-far-away-is-memory"><a class="header" href="#151-how-far-away-is-memory">15.1 How far away is memory?</a></h2>
 <p>Dynamic RAM (DRAM) provides high capacity at tens to hundreds of nanoseconds of latency, far slower than modern
 CPU clock cycles. Processors bridge this memory wall with a hierarchy of small, fast SRAM <strong>caches</strong>:</p>
@@ -23814,8 +23789,7 @@ in progress returns an error. Use <code>Condvar::wait_timeout</code>, and keep t
 </ul>
 </div>
 
-<p>Networked services layer reliable, ordered byte streams over packet-switched addressing, constrained by sliding-window flow and congestion control and mediated by kernel socket descriptors. Achieving predictable throughput and scalability across these layers requires precise control over address encoding, in-flight window sizing, and I/O multiplexing.</p>
-<p>The progression moves upward through the transport stack: IPv4 addressing, CIDR private ranges, and network byte order (Section 20.1); the TCP effective window and bandwidth-delay product (Section 20.2); and a comparison between a thread-per-connection echo server on <code>std::net</code> and a single-threaded, non-blocking <code>epoll</code> event loop written directly over <code>libc</code> system calls (Sections 20.3 and 20.4).</p>
+<p>Networked services layer reliable, ordered byte streams over packet-switched addressing, constrained by sliding-window flow and congestion control and mediated by kernel socket descriptors. Achieving predictable throughput and scalability across these layers requires precise control over wire byte ordering, in-flight window sizing relative to the bandwidth-delay product, and kernel-level I/O multiplexing (<code>epoll</code>) as concurrent connections scale beyond one thread per socket.</p>
 <h2 id="201-ipv4-addresses"><a class="header" href="#201-ipv4-addresses">20.1 IPv4 addresses</a></h2>
 <p>An <strong>IPv4 address</strong> identifies a network interface on a host using a 32-bit unsigned integer. Human-readable dotted-decimal notation writes those four bytes individually, such as <code>10.0.0.1</code>, where each 8-bit component is an <strong>octet</strong> ranging from 0 to 255.</p>
 <p>Because multiple processes share a single host, a transport connection pairs the IP address with a 16-bit <strong>port</strong> number to identify the target application. Together, an IP address and port (such as <code>127.0.0.1:8080</code>) form a <strong>socket address</strong>.</p>

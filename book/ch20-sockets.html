@@ -36,7 +36,7 @@
             const path_to_root = "";
             const default_light_theme = "coal";
             const default_dark_theme = "coal";
-            window.path_to_searchindex_js = "searchindex-09ae7f8d.js";
+            window.path_to_searchindex_js = "searchindex-53cc97a7.js";
         </script>
         <!-- Start loading toc.js asap -->
         <script src="toc-c196c8a9.js"></script>
@@ -191,8 +191,7 @@
 </ul>
 </div>
 
-<p>Networked services layer reliable, ordered byte streams over packet-switched addressing, constrained by sliding-window flow and congestion control and mediated by kernel socket descriptors. Achieving predictable throughput and scalability across these layers requires precise control over address encoding, in-flight window sizing, and I/O multiplexing.</p>
-<p>The progression moves upward through the transport stack: IPv4 addressing, CIDR private ranges, and network byte order (Section 20.1); the TCP effective window and bandwidth-delay product (Section 20.2); and a comparison between a thread-per-connection echo server on <code>std::net</code> and a single-threaded, non-blocking <code>epoll</code> event loop written directly over <code>libc</code> system calls (Sections 20.3 and 20.4).</p>
+<p>Networked services layer reliable, ordered byte streams over packet-switched addressing, constrained by sliding-window flow and congestion control and mediated by kernel socket descriptors. Achieving predictable throughput and scalability across these layers requires precise control over wire byte ordering, in-flight window sizing relative to the bandwidth-delay product, and kernel-level I/O multiplexing (<code>epoll</code>) as concurrent connections scale beyond one thread per socket.</p>
 <h2 id="201-ipv4-addresses"><a class="header" href="#201-ipv4-addresses">20.1 IPv4 addresses</a></h2>
 <p>An <strong>IPv4 address</strong> identifies a network interface on a host using a 32-bit unsigned integer. Human-readable dotted-decimal notation writes those four bytes individually, such as <code>10.0.0.1</code>, where each 8-bit component is an <strong>octet</strong> ranging from 0 to 255.</p>
 <p>Because multiple processes share a single host, a transport connection pairs the IP address with a 16-bit <strong>port</strong> number to identify the target application. Together, an IP address and port (such as <code>127.0.0.1:8080</code>) form a <strong>socket address</strong>.</p>

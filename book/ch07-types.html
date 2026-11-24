@@ -36,7 +36,7 @@
             const path_to_root = "";
             const default_light_theme = "coal";
             const default_dark_theme = "coal";
-            window.path_to_searchindex_js = "searchindex-09ae7f8d.js";
+            window.path_to_searchindex_js = "searchindex-53cc97a7.js";
         </script>
         <!-- Start loading toc.js asap -->
         <script src="toc-c196c8a9.js"></script>
@@ -195,16 +195,6 @@
 <p>Robust systems enforce domain invariants at compile time through algebraic data types rather than scattering defensive runtime checks across business logic. By restricting construction to validated boundaries, custom structs and enums make invalid program states unrepresentable.</p>
 <p>The implementations below model a command-line control plane that manages compute jobs, termed <strong>workloads</strong>, on a remote cluster. Each workload requests between 1 and 64 GPUs and transitions through discrete lifecycle states such as <code>Pending</code>, <code>Running</code>, and <code>Terminated</code>. Users issue text commands such as <code>create triton 4</code>, requesting a workload named <code>triton</code> with 4 GPUs.</p>
 <p>Input validation illustrates the core architectural invariant. A GPU count arrives as untrusted text, and inputs such as <code>0</code>, <code>99</code>, or <code>many</code> must be rejected before reaching scheduling logic. Revalidating raw integers in every downstream function is brittle because a single omitted guard permits corrupt state to propagate. Validating once at the ingress boundary and encapsulating the result in a private-field newtype guarantees that every downstream function receiving that type observes a valid count by construction.</p>
-<p>The implementation progresses through seven stages:</p>
-<ol>
-<li>Section 7.1 formalizes traits and automatic derivation.</li>
-<li>Section 7.2 defines the validated <code>GpuCount</code> newtype.</li>
-<li>Section 7.3 defines a structured error type for rejected counts.</li>
-<li>Section 7.4 implements standard <code>From</code> and <code>TryFrom</code> conversions.</li>
-<li>Section 7.5 models CLI commands as a tagged union enum with a text parser.</li>
-<li>Section 7.6 encodes workload lifecycle states and transition rules as a finite state machine.</li>
-<li>Section 7.7 models structured remote API errors with retry classification.</li>
-</ol>
 <h2 id="71-traits"><a class="header" href="#71-traits">7.1 Traits</a></h2>
 <p>A <strong>trait</strong> defines a set of methods that a type guarantees to provide. The standard library supplies many traits; for example, <code>Display</code> defines a single method, <code>fmt</code>, that formats a value as human-readable text. Any type implementing <code>Display</code> can be formatted with <code>println!("{}", x)</code>.</p>
 <p>A trait is implemented for a type via an <code>impl</code> block naming both the trait and the type:</p>

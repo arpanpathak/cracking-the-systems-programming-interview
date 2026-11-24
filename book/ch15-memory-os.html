@@ -36,7 +36,7 @@
             const path_to_root = "";
             const default_light_theme = "coal";
             const default_dark_theme = "coal";
-            window.path_to_searchindex_js = "searchindex-09ae7f8d.js";
+            window.path_to_searchindex_js = "searchindex-53cc97a7.js";
         </script>
         <!-- Start loading toc.js asap -->
         <script src="toc-c196c8a9.js"></script>
@@ -196,13 +196,9 @@
 access as uniform-cost. On modern superscalar processors, however, a single memory load spans nearly two orders
 of magnitude in latency (from roughly 2 ns in L1 cache to 150 ns in main DRAM) depending on spatial and temporal
 cache locality, cache-line coherence traffic, and virtual-to-physical address translation.</p>
-<p>This chapter examines the hardware memory hierarchy and operating-system abstractions beneath user-space data
-structures. Section 15.1 measures cache-level latency via dependent pointer chasing; Sections 15.2 through 15.4
-analyze arena allocation, traversal locality, and cache-line contention (false sharing); and Sections 15.5 through
-15.7 model virtual memory paging, round-robin CPU scheduling, and kernel system-call overhead.</p>
-<p>Because most programs below report wall-clock timings, compile and run them with <code>--release</code>; absolute timings
-vary across microarchitectures. Measurements reported here were collected on an Intel Core i5-1038NG7 running
-macOS.</p>
+<p>Because most programs in this chapter report wall-clock timings, compile and run them with <code>--release</code>; absolute
+timings vary across microarchitectures. Measurements reported here were collected on an Intel Core i5-1038NG7
+running macOS.</p>
 <h2 id="151-how-far-away-is-memory"><a class="header" href="#151-how-far-away-is-memory">15.1 How far away is memory?</a></h2>
 <p>Dynamic RAM (DRAM) provides high capacity at tens to hundreds of nanoseconds of latency, far slower than modern
 CPU clock cycles. Processors bridge this memory wall with a hierarchy of small, fast SRAM <strong>caches</strong>:</p>
