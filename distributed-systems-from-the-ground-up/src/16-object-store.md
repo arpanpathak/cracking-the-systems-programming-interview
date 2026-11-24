@@ -202,7 +202,7 @@ We isolate namespace metadata, failure-domain topology management, and backgroun
 <figcaption><b>Interactive Trace 16.A</b> Single-parity erasure reconstruction: storing 3 data blocks plus 1 parity sum across 4 disks tolerates any 1 disk loss at 1.33x overhead. Use Next and Back to step through all 5 stages.</figcaption>
 </figure>
 
-To tolerate $m > 1$ simultaneous failures without integer overflow, production object stores execute **Reed-Solomon `RS(k, m)` coding** over the finite Galois Field $\text{GF}(2^8)$, where every byte is a polynomial element of degree at most 7, addition is bitwise `XOR`, and multiplication executes modulo an irreducible degree-8 polynomial (`0x11d`). Given $k = 6$ data shards arranged as a vector $\mathbf{d}$, multiplying by a $9 \times 6$ systematic Cauchy generator matrix $\mathbf{G}$ (whose top $6 \times 6$ submatrix is the identity matrix $\mathbf{I}_6$) produces the $6$ unaltered data shards plus $3$ parity shards (`P1`, `P2`, `P3`). Because every $6 \times 6$ submatrix of a Cauchy matrix is guaranteed invertible over $\text{GF}(2^8)$, **any 6 surviving shards out of 9** uniquely recover all 6 original data shards via $\mathbf{d} = \mathbf{G}_{\text{surv}}^{-1} \mathbf{y}_{\text{surv}}$.
+To tolerate m > 1 simultaneous failures without integer overflow, production object stores execute **Reed-Solomon `RS(k, m)` coding** over the finite Galois Field GF(2<sup>8</sup>), where every byte is a polynomial element of degree at most 7, addition is bitwise `XOR`, and multiplication executes modulo an irreducible degree-8 polynomial (`0x11d`). Given k = 6 data shards arranged as a vector \mathbfd, multiplying by a 9 × 6 systematic Cauchy generator matrix \mathbfG (whose top 6 × 6 submatrix is the identity matrix \mathbfI<sub>6</sub>) produces the $6$ unaltered data shards plus $3$ parity shards (`P1`, `P2`, `P3`). Because every 6 × 6 submatrix of a Cauchy matrix is guaranteed invertible over GF(2<sup>8</sup>), **any 6 surviving shards out of 9** uniquely recover all 6 original data shards via \mathbfd = \mathbfG<sub>surv</sub><sup>-1</sup> \mathbfy<sub>surv</sub>.
 
 Modern CPUs execute `GF(2^8)` multiply-accumulate via 4-bit nibble lookup tables using AVX2/AVX-512 `VPSHUFB` (or ARM NEON `VTBL`) instructions at **`> 10 GB/s` per core**, making CPU encoding overhead negligible compared to disk and network bandwidth.
 
@@ -244,9 +244,9 @@ Erasure coding a `20 KB` thumbnail across 9 disks in 3 AZs wastes 9 network RPCs
 Replication and erasure coding protect against hardware failure, never against software defects or accidental operator `DELETE` commands, because a mistaken deletion is faithfully committed to the metadata quorum. Enabling **bucket versioning** converts every `DELETE` into an append-only `is_delete_marker = TRUE` metadata record and retains prior `version_id` manifests until lifecycle rules explicitly expire them.
 
 When an object version is permanently expired, its metadata entry disappears immediately, while physical shard deletion runs asynchronously in the background **Garbage Collector (GC)**. Deleting chunks immediately creates a notorious data-loss race under content addressing or concurrent multipart commits:
-1. The GC scans metadata at time $t_0$ and marks chunk `c9` as unreferenced.
-2. At time $t_1$, a concurrent upload produces identical chunk `c9`, sees `c9` already exists on storage nodes, and commits a new manifest referencing `c9`.
-3. At time $t_2$, the GC deletes `c9` from its stale $t_0$ candidate list, permanently corrupting the newly uploaded object.
+1. The GC scans metadata at time t<sub>0</sub> and marks chunk `c9` as unreferenced.
+2. At time t<sub>1</sub>, a concurrent upload produces identical chunk `c9`, sees `c9` already exists on storage nodes, and commits a new manifest referencing `c9`.
+3. At time t<sub>2</sub>, the GC deletes `c9` from its stale t<sub>0</sub> candidate list, permanently corrupting the newly uploaded object.
 
 We eliminate this race with a **two-phase mark-and-grace protocol**: the GC only reclaims chunks that have remained unreferenced continuously for a `24-hour` grace window (`t_now - last_referenced_at > 24 h`) and acquires an epoch-fenced tombstone lock before reclaiming storage blocks, while any upload reusing an existing chunk refreshes `last_referenced_at` atomically prior to manifest commit.
 
