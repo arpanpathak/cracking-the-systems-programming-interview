@@ -23,5 +23,8 @@ OUTPUT_PDF="$REPO_DIR/Operating-Systems-A-Hands-On-Approach.pdf"
   --print-to-pdf="$OUTPUT_PDF" \
   "file://$REPO_DIR/book/print.html"
 
+echo "==> Stamping page numbers..."
+python3 scripts/stamp_page_numbers.py "$OUTPUT_PDF" 1 0 2
+
 echo "==> Successfully generated $OUTPUT_PDF"
 ls -lh "$OUTPUT_PDF"
