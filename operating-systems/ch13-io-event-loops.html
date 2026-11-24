@@ -38,7 +38,7 @@
             const path_to_root = "";
             const default_light_theme = "coal";
             const default_dark_theme = "coal";
-            window.path_to_searchindex_js = "searchindex-e451f97a.js";
+            window.path_to_searchindex_js = "searchindex-a2840308.js";
         </script>
         <!-- Start loading toc.js asap -->
         <script src="toc-1a401835.js"></script>
@@ -224,7 +224,7 @@ int poll(struct pollfd *fds, nfds_t nfds, int timeout);
 <p>Internet protocols transmit multi-byte integers in <strong>big-endian</strong> network byte order, whereas x86-64 and ARM64 processors are little-endian. Calling <code>htons(45678)</code> (“host to network short”, 16-bit) and <code>htonl(INADDR_LOOPBACK)</code> (“host to network long”, 32-bit, converting <code>127.0.0.1</code> = <code>0x7F000001</code>) converts fields inside <code>struct sockaddr_in</code> into wire order before passing the struct to the kernel. Because <code>bind()</code>, <code>connect()</code>, and <code>accept()</code> serve <strong>Internet Protocol Version 4 (<code>IPv4</code>, <code>sockaddr_in</code>)</strong>, <strong>Internet Protocol Version 6 (<code>IPv6</code>, <code>sockaddr_in6</code>)</strong>, and Unix domain (<code>sockaddr_un</code>) addresses through a single C interface, callers cast the concrete pointer to <code>struct sockaddr *</code> and pass its exact byte length in <code>addrlen</code>.</p>
 <p>To establish a listening server, <code>socket(AF_INET, SOCK_STREAM, 0)</code> allocates an unbound <code>IPv4</code> <code>TCP</code> endpoint (<code>fd &gt;= 0</code>, or <code>-1</code> on <code>EMFILE</code>/<code>EAFNOSUPPORT</code>). Calling <code>setsockopt(ls, SOL_SOCKET, SO_REUSEADDR, &amp;one, sizeof one)</code> allows immediate server restarts even when prior connections linger in <code>TCP</code> <code>TIME_WAIT</code> state (preventing <code>EADDRINUSE</code>). Next, <code>bind(ls, addr, addrlen)</code> attaches the local <strong>Internet Protocol (<code>IP</code>)</strong> address and port, and <code>listen(ls, backlog)</code> converts <code>ls</code> into a passive listener whose completed-connection queue is bounded by <code>backlog</code> (<code>8</code> in Listing 13-1). Each call to <code>accept(ls, addr, addrlen)</code> dequeues one completed client connection and returns a <strong>new, distinct connected file descriptor</strong> (<code>c &gt;= 0</code>), leaving <code>ls</code> open for future clients. On the client side (Listing 13-2), <code>connect(fd, addr, addrlen)</code> initiates the <code>TCP</code> three-way handshake (<strong>Synchronize (<code>SYN</code>)</strong>, <strong>Synchronize-Acknowledge (<code>SYN-ACK</code>)</strong>, <strong>Acknowledge (<code>ACK</code>)</strong>), returning <code>0</code> once established or <code>-1</code> (<code>ECONNREFUSED</code>, <code>ETIMEDOUT</code>).</p>
 <p>The <code>poll(fds, nfds, timeout)</code> system call monitors an array of <code>nfds</code> <code>struct pollfd</code> entries simultaneously. Before each call, the application sets <code>fds[i].fd</code> and <code>fds[i].events</code> (typically <code>POLLIN</code> to detect readable client bytes, peer <strong>End-of-File (<code>EOF</code>)</strong>, or a queued connection on <code>ls</code>). The <code>timeout</code> parameter specifies the maximum wait in milliseconds (<code>1000</code> ms in Listing 13-1; <code>-1</code> blocks indefinitely; <code>0</code> returns immediately). On return, the kernel populates <code>fds[i].revents</code> with observed flags (<code>POLLIN</code>, <code>POLLOUT</code>, and output-only <code>POLLHUP</code>, <code>POLLERR</code>, or <code>POLLNVAL</code>) and returns the count of ready entries (<code>&gt; 0</code>), <code>0</code> on timeout, or <code>-1</code> on error (<code>EINTR</code>, <code>ENOMEM</code>). When <code>POLLIN</code> fires on a client socket and <code>read()</code> returns <code>0</code>, the peer has closed its write half (<code>TCP</code> <strong>Finish (<code>FIN</code>)</strong>), so the server closes the descriptor and removes it from <code>fds</code>.</p>
-<p><strong>Listing 13-1. An echo server with one thread and <code>poll</code> (C++20).</strong></p>
+<p><strong>Listing 13-1. An echo server with one thread and <code>poll</code> (C++20).</strong> (<a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/operating-systems/code/ch13/poll_echo_server.cpp"><code>code/ch13/poll_echo_server.cpp</code></a>)</p>
 <pre><code class="language-cpp">// ch13/poll_echo_server.cpp: one thread, several clients, poll(2).
 // Serves two clients, then exits; the harness starts it and runs two clients.
 #include &lt;arpa/inet.h&gt;
@@ -297,7 +297,7 @@ int main() {
     close(ls);
 }
 </code></pre>
-<p><strong>Listing 13-2. The C++20 echo client.</strong></p>
+<p><strong>Listing 13-2. The C++20 echo client.</strong> (<a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/operating-systems/code/ch13/echo_client.cpp"><code>code/ch13/echo_client.cpp</code></a>)</p>
 <pre><code class="language-cpp">// ch13/echo_client.cpp: connect, send three messages, verify the echoes.
 #include &lt;arpa/inet.h&gt;
 #include &lt;netinet/in.h&gt;
@@ -354,7 +354,7 @@ served 2 clients, exiting
 sent "two", got "two" (ok)
 sent "three", got "three" (ok)
 </code></pre>
-<p><strong>Listing 13-3. The same single-threaded <code>poll</code> echo server in Rust.</strong></p>
+<p><strong>Listing 13-3. The same single-threaded <code>poll</code> echo server in Rust.</strong> (<a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/operating-systems/code/ch13/poll_echo_server.rs"><code>code/ch13/poll_echo_server.rs</code></a>)</p>
 <pre class="playground"><code class="language-rust">// ch13/poll_echo_server.rs: one thread, several clients, poll(2) in Rust.
 extern crate libc;
 
@@ -415,7 +415,7 @@ fn main() {
 
     println!("served 2 clients, exiting");
 }</code></pre>
-<p><strong>Listing 13-4. The Rust echo client.</strong></p>
+<p><strong>Listing 13-4. The Rust echo client.</strong> (<a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/operating-systems/code/ch13/echo_client.rs"><code>code/ch13/echo_client.rs</code></a>)</p>
 <pre class="playground"><code class="language-rust">// ch13/echo_client.rs: connect, send three messages, verify the echoes.
 use std::io::{Read, Write};
 use std::net::TcpStream;
@@ -471,7 +471,7 @@ sent "three", got "three" (ok)
 <figure>
 <img src="figures/ch13_poll_vs_epoll.svg" alt="Stateless poll O(N) full-array copy and scan versus stateful epoll/kqueue O(K) kernel red-black tree and ready queue" />
 </figure>
-<p><strong>Listing 13-5. Contrast: a thread-per-connection echo server and client (Rust).</strong></p>
+<p><strong>Listing 13-5. Contrast: a thread-per-connection echo server and client (Rust).</strong> (<a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/operating-systems/code/ch13/thread_echo.rs"><code>code/ch13/thread_echo.rs</code></a>)</p>
 <pre class="playground"><code class="language-rust">// ch13/thread_echo.rs: a thread-per-connection echo server plus its client,
 // both in one process, written with the Rust standard library only.
 use std::io::{Read, Write};
@@ -565,7 +565,7 @@ done
 
 <div class="callout experiment">
 <span class="label">Experiment</span>
-<p>In Listing 13-1 (<code>code/ch13/poll_echo_server.cpp</code>), comment out the <code>setsockopt(..., SO_REUSEADDR, ...)</code> call, connect a client, terminate the server with Ctrl-C, and immediately restart it. Observe <code>bind()</code> failing with <code>EADDRINUSE</code> while the prior socket lingers in <code>TCP</code> <code>TIME_WAIT</code>.</p>
+<p>In Listing 13-1 (<a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/operating-systems/code/ch13/poll_echo_server.cpp"><code>code/ch13/poll_echo_server.cpp</code></a>), comment out the <code>setsockopt(..., SO_REUSEADDR, ...)</code> call, connect a client, terminate the server with Ctrl-C, and immediately restart it. Observe <code>bind()</code> failing with <code>EADDRINUSE</code> while the prior socket lingers in <code>TCP</code> <code>TIME_WAIT</code>.</p>
 </div>
 
 <div class="callout caution">

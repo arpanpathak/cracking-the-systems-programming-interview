@@ -36,7 +36,7 @@
             const path_to_root = "";
             const default_light_theme = "coal";
             const default_dark_theme = "coal";
-            window.path_to_searchindex_js = "searchindex-38bda414.js";
+            window.path_to_searchindex_js = "searchindex-cf88c8cf.js";
         </script>
         <!-- Start loading toc.js asap -->
         <script src="toc-00f6d8fe.js"></script>
@@ -193,7 +193,7 @@
 <li>separation of the control plane (range allocation, blocklist propagation, click analytics) from the read-optimized data plane</li>
 <li>key allocation strategies comparing truncated cryptographic hashes, random generation, and disjoint counter range leasing with Base-62 bijection and Feistel scrambling</li>
 <li>multi-tier redirect caching (CDN edge, regional Redis, Bloom filter negative-lookup defense), <code>301</code> versus <code>302</code> revocation trade-offs, and asynchronous click pipelines</li>
-<li>failure-mode mitigation matrices, operational SLIs, production benchmarks (Bitly, TinyURL, Flickr Base58), and verification via <code>code/shortener</code></li>
+<li>failure-mode mitigation matrices, operational SLIs, production benchmarks (Bitly, TinyURL, Flickr Base58), and verification via <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/tree/prep-v2/distributed-systems-from-the-ground-up/code/shortener"><code>code/shortener</code></a></li>
 </ul>
 </div>
 
@@ -270,7 +270,7 @@
 <tr><td style="text-align: left"><strong>Regional L2 Redis Cache (Hot 5%)</strong></td><td style="text-align: left"><code>5% * 6 * 10^9 = 300M</code> hot rows; working daily set (<code>20M</code> active links <code>* 500 B</code>)</td><td style="text-align: left"><code>10 GB</code> active daily working set (<code>64 GB</code> provisioned per region for headroom)</td></tr>
 <tr><td style="text-align: left"><strong>Bloom Filter RAM (All 6B Keys)</strong></td><td style="text-align: left"><code>m = -n ln(p) / (ln 2)^2</code> at <code>n = 6 * 10^9</code>, <code>p = 0.01</code> (<code>9.58</code> bits/key)</td><td style="text-align: left"><code>~7.2 GB</code> aggregate (<code>~900 MB</code> per shard across 8 shards)</td></tr>
 <tr><td style="text-align: left"><strong>Redirect Egress Bandwidth</strong></td><td style="text-align: left"><code>39,000 peak req/s * 600 B</code> HTTP redirect headers</td><td style="text-align: left"><code>23.4 MB/s</code> (<code>~187 Mbps</code> peak aggregate)</td></tr>
-<tr><td style="text-align: left"><strong>Click Event Stream (5 yr raw)</strong></td><td style="text-align: left"><code>3,900 clicks/s * 64 B</code> compact event (<code>code</code>, <code>ts</code>, <code>country</code>, <code>ref_hash</code>)</td><td style="text-align: left"><code>250 KB/s</code> (<code>~21.6 GB/day</code> raw; <code>&lt; 2 GB/day</code> after 1-minute OLAP rollup)</td></tr>
+<tr><td style="text-align: left"><strong>Click Event Stream (5 yr raw)</strong></td><td style="text-align: left"><code>3,900 clicks/s * 64 B</code> compact event (<a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/tree/prep-v2/distributed-systems-from-the-ground-up/code"><code>code</code></a>, <code>ts</code>, <code>country</code>, <code>ref_hash</code>)</td><td style="text-align: left"><code>250 KB/s</code> (<code>~21.6 GB/day</code> raw; <code>&lt; 2 GB/day</code> after 1-minute OLAP rollup)</td></tr>
 </tbody>
 </table>
 </div>
@@ -415,7 +415,7 @@ ORDER BY (code, bucket_minute, country_iso, referrer_host);
 </tbody>
 </table>
 </div>
-<p><strong>Why truncated hashes fail without retry loops:</strong> Under the birthday bound, drawing $n$ codes uniformly from a space of size $N$ yields approximately $n^2 / (2N)$ colliding pairs. In the repository simulation (<code>code/shortener</code>), hashing <code>2,000,000</code> distinct URLs and truncating to 6 characters produced <strong>97 collisions</strong>. Sending even 1 visitor in 20,000 to an unrelated website violates functional requirement 3. Resolving hash collisions forces a read-before-write check plus iterative salting, turning every link creation into a conditional read-modify-write cycle. Furthermore, deterministic hashing of the destination URL causes two different authors shortening the same URL to share one code, coupling their analytics and expiry lifetimes.</p>
+<p><strong>Why truncated hashes fail without retry loops:</strong> Under the birthday bound, drawing $n$ codes uniformly from a space of size $N$ yields approximately $n^2 / (2N)$ colliding pairs. In the repository simulation (<a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/tree/prep-v2/distributed-systems-from-the-ground-up/code/shortener"><code>code/shortener</code></a>), hashing <code>2,000,000</code> distinct URLs and truncating to 6 characters produced <strong>97 collisions</strong>. Sending even 1 visitor in 20,000 to an unrelated website violates functional requirement 3. Resolving hash collisions forces a read-before-write check plus iterative salting, turning every link creation into a conditional read-modify-write cycle. Furthermore, deterministic hashing of the destination URL causes two different authors shortening the same URL to share one code, coupling their analytics and expiry lifetimes.</p>
 <p><strong>Disjoint counter range leasing:</strong> We assign monotonically increasing integers from a strongly consistent <code>etcd</code> / Raft range allocator (Chapter 8). Each Write API instance requests a contiguous block of <code>100,000</code> integers (<code>[start, start + 99,999]</code>) in a single quorum write and dispenses numbers lock-free from RAM via <code>fetch_add(1)</code>. At <code>39</code> writes/s sustained, the entire fleet consults the allocator roughly once every <code>42 minutes</code>. If a Write API node crashes mid-block, the remaining unallocated integers are discarded permanently; against <code>3.52</code> trillion codes, forfeiting tens of thousands of IDs on a crash is negligible compared to the operational simplicity of zero write-path coordination.</p>
 <h3 id="base-62-encoding-step-by-step"><a class="header" href="#base-62-encoding-step-by-step">Base-62 Encoding Step by Step</a></h3>
 <p>Converting a non-negative integer $x$ to Base-62 proceeds by repeated Euclidean division by <code>62</code>, emitting each remainder as the next least-significant glyph in <code>0..9A..Za..z</code>. Interactive Trace 14.A steps through encoding the counter value <code>1,000,000</code> into <code>4C92</code>.</p>
@@ -480,7 +480,7 @@ fn scramble_id(counter: u64, round_keys: &amp;[u64; 4]) -&gt; u64 {
 <li><strong>L3 Sharded Mapping Store (<code>&lt; 2%</code> traffic, <code>~12 ms</code>):</strong> Serves cold long-tail links from SSD-backed Raft-replicated shards partitioned by <code>hash(code)</code>.</li>
 </ol>
 <h3 id="asynchronous-click-analytics-and-abuse-controls"><a class="header" href="#asynchronous-click-analytics-and-abuse-controls">Asynchronous Click Analytics and Abuse Controls</a></h3>
-<p>Incrementing a relational counter row on every redirect would convert a <code>3,900</code> to <code>39,000</code> QPS read workload into a write-contended hotspot on popular rows. Instead, Redirect Services and CDN edge log collectors emit compact 64-byte click events (<code>code</code>, <code>timestamp_ms</code>, <code>country_iso</code>, <code>referrer_hash</code>) into a partitioned Kafka topic via non-blocking ring buffers. Stream consumers aggregate counts in 1-minute tumbling windows in memory and flush bulk batches into ClickHouse (<code>SummingMergeTree</code>), reducing persistent write volume by over <code>1,000x</code> for viral links while isolating redirect latency completely from analytics pipeline backpressure.</p>
+<p>Incrementing a relational counter row on every redirect would convert a <code>3,900</code> to <code>39,000</code> QPS read workload into a write-contended hotspot on popular rows. Instead, Redirect Services and CDN edge log collectors emit compact 64-byte click events (<a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/tree/prep-v2/distributed-systems-from-the-ground-up/code"><code>code</code></a>, <code>timestamp_ms</code>, <code>country_iso</code>, <code>referrer_hash</code>) into a partitioned Kafka topic via non-blocking ring buffers. Stream consumers aggregate counts in 1-minute tumbling windows in memory and flush bulk batches into ClickHouse (<code>SummingMergeTree</code>), reducing persistent write volume by over <code>1,000x</code> for viral links while isolating redirect latency completely from analytics pipeline backpressure.</p>
 <p>Public redirectors are primary targets for phishing concealment. Three layered safeguards protect domain reputation: synchronous URL inspection against local threat feeds (such as Google Safe Browsing prefix lists) at link creation, periodic background re-scanning of active high-click destinations to catch delayed page swaps, and an instant quarantine endpoint (<code>POST /v1/links/{code}:block</code>) that marks <code>status = 3</code> in L3, broadcasts an L2 Redis invalidation, and triggers a CDN purge API call so malicious links return <code>410 Gone</code> globally within <code>5 seconds</code>.</p>
 <h2 id="146-failure-modes-slis-and-production-systems"><a class="header" href="#146-failure-modes-slis-and-production-systems">14.6 Failure Modes, SLIs, and Production Systems</a></h2>
 <h3 id="failure-mode-and-mitigation-matrix"><a class="header" href="#failure-mode-and-mitigation-matrix">Failure Mode and Mitigation Matrix</a></h3>
@@ -631,22 +631,6 @@ codes of 7 characters: 3521614606208 possible
         <template id=fa-play><span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 384 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M73 39c-14.8-9.1-33.4-9.4-48.5-.9S0 62.6 0 80V432c0 17.4 9.4 33.4 24.5 41.9s33.7 8.1 48.5-.9L361 297c14.3-8.7 23-24.2 23-41s-8.7-32.2-23-41L73 39z"/></svg></span></template>
         <template id=fa-clock-rotate-left><span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M75 75L41 41C25.9 25.9 0 36.6 0 57.9V168c0 13.3 10.7 24 24 24H134.1c21.4 0 32.1-25.9 17-41l-30.8-30.8C155 85.5 203 64 256 64c106 0 192 86 192 192s-86 192-192 192c-40.8 0-78.6-12.7-109.7-34.4c-14.5-10.1-34.4-6.6-44.6 7.9s-6.6 34.4 7.9 44.6C151.2 495 201.7 512 256 512c141.4 0 256-114.6 256-256S397.4 0 256 0C185.3 0 121.3 28.7 75 75zm181 53c-13.3 0-24 10.7-24 24V256c0 6.4 2.5 12.5 7 17l72 72c9.4 9.4 24.6 9.4 33.9 0s9.4-24.6 0-33.9l-65-65V152c0-13.3-10.7-24-24-24z"/></svg></span></template>
 
-        <!-- Livereload script (if served using the cli tool) -->
-        <script>
-            const wsProtocol = location.protocol === 'https:' ? 'wss:' : 'ws:';
-            const wsAddress = wsProtocol + "//" + location.host + "/" + "__livereload";
-            const socket = new WebSocket(wsAddress);
-            socket.onmessage = function (event) {
-                if (event.data === "reload") {
-                    socket.close();
-                    location.reload();
-                }
-            };
-
-            window.onbeforeunload = function() {
-                socket.close();
-            }
-        </script>
 
 
         <script>

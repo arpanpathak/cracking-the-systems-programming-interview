@@ -38,7 +38,7 @@
             const path_to_root = "";
             const default_light_theme = "coal";
             const default_dark_theme = "coal";
-            window.path_to_searchindex_js = "searchindex-e451f97a.js";
+            window.path_to_searchindex_js = "searchindex-a2840308.js";
         </script>
         <!-- Start loading toc.js asap -->
         <script src="toc-1a401835.js"></script>
@@ -220,7 +220,7 @@ int raise(int sig);
 </code></pre>
 <p>Inside <code>struct sigaction</code>, <code>sa_handler</code> registers either a user callback <code>void handler(int sig)</code> or the sentinels <code>SIG_DFL</code> (default kernel action) and <code>SIG_IGN</code> (ignore); setting <code>SA_SIGINFO</code> in <code>sa_flags</code> selects the three-argument <code>sa_sigaction</code> callback instead (both fields typically share a C <code>union</code>, so callers populate only one). The <code>sa_mask</code> field specifies <em>additional</em> signals blocked while the handler runs (by default, the kernel also blocks the delivered signal itself unless <code>SA_NODEFER</code> is set); callers must always initialize <code>sa_mask</code> with <code>sigemptyset(&amp;sa.sa_mask)</code> so uninitialized stack bytes do not block arbitrary signals. Useful <code>sa_flags</code> include <strong><code>SA_RESTART</code></strong> (automatically restarting slow blocking calls such as <code>read</code>, <code>write</code>, or <code>waitpid</code> instead of failing with <code>EINTR</code>) and <strong><code>SA_NOCLDSTOP</code></strong> (suppressing <code>SIGCHLD</code> on job-control stops and resumes).</p>
 <p>Calling <code>sigaction(signum, act, oldact)</code> atomically installs <code>act</code> for <code>signum</code> (any signal except <code>SIGKILL</code> and <code>SIGSTOP</code>) and optionally saves the prior disposition into <code>*oldact</code>, returning <code>0</code> on success or <code>-1</code> on error (<code>EINVAL</code>, <code>EFAULT</code>). Because the bit layout of <code>sigset_t</code> varies across kernels (64 bits on Linux; 32 bits on Darwin/<code>BSD</code>), callers construct masks exclusively with <code>sigemptyset(&amp;set)</code> and <code>sigaddset(&amp;set, signum)</code>. Updating the calling thread’s blocked mask is performed atomically via <code>sigprocmask(how, set, oldset)</code> (or <code>pthread_sigmask</code> in multi-threaded programs), where <code>how</code> is <code>SIG_BLOCK</code> (<code>mask |= *set</code>), <code>SIG_UNBLOCK</code> (<code>mask &amp;= ~(*set)</code>), or <code>SIG_SETMASK</code> (<code>mask = *set</code>), and <code>oldset</code> captures the prior mask for later restoration. If <code>SIG_UNBLOCK</code> exposes a signal waiting in the pending bitmask, the kernel delivers at least one pending unblocked signal <strong>before <code>sigprocmask()</code> returns to user space</strong>. Finally, <code>raise(sig)</code> delivers <code>sig</code> to the calling thread itself (equivalent to <code>kill(getpid(), sig)</code> in a single-threaded process).</p>
-<p><strong>Listing 10-1. Blocking, sending, and unblocking a signal (C++20).</strong></p>
+<p><strong>Listing 10-1. Blocking, sending, and unblocking a signal (C++20).</strong> (<a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/operating-systems/code/ch10/signals.cpp"><code>code/ch10/signals.cpp</code></a>)</p>
 <pre><code class="language-cpp">// ch10/signals.cpp: block a signal, watch it stay pending, then deliver it.
 #include &lt;csignal&gt;
 #include &lt;unistd.h&gt;
@@ -264,7 +264,7 @@ int main() {
 after unblock: handled=1
 after SIGINT: handled=1
 </code></pre>
-<p><strong>Listing 10-2. The same steps in Rust, using the libc crate.</strong></p>
+<p><strong>Listing 10-2. The same steps in Rust, using the libc crate.</strong> (<a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/operating-systems/code/ch10/signals.rs"><code>code/ch10/signals.rs</code></a>)</p>
 <pre class="playground"><code class="language-rust">// ch10/signals.rs: the same block-then-deliver sequence in Rust.
 use std::mem;
 use std::ptr;
@@ -329,7 +329,7 @@ after SIGINT: handled=true
 <p>Whenever a child process terminates, the kernel retains its zombie <strong>Process Control Block (<code>PCB</code>)</strong> (Chapter 3) and generates <code>SIGCHLD</code> for the parent process. By default, <code>SIGCHLD</code> is ignored, requiring the parent to call <code>waitpid()</code> synchronously. Installing a <code>SIGCHLD</code> handler allows an event-driven server or supervisor to reap terminated children asynchronously without blocking its main loop.</p>
 <p>Two signal properties dictate the exact shape of every correct <code>SIGCHLD</code> handler. First, because standard pending signals coalesce into a single bit, if three worker children exit while the parent is inside the handler or briefly unscheduled, the kernel delivers only one <code>SIGCHLD</code>. Calling <code>waitpid()</code> once per handler invocation would permanently leak two zombies. The handler must therefore drain all terminated children in a non-blocking loop (<code>while (waitpid(-1, &amp;status, WNOHANG) &gt; 0)</code>), reaping every zombie’s <strong>Process Identifier (<code>PID</code>)</strong> until <code>waitpid()</code> returns <code>0</code> (live children remain) or <code>-1</code> with <code>errno = ECHILD</code> (no children remain). Second, setting <code>sa.sa_flags = SA_RESTART</code> ensures that an asynchronous <code>SIGCHLD</code> arriving while the parent is blocked inside <code>accept()</code>, <code>read()</code>, or <code>sleep()</code> resumes the interrupted call transparently rather than surfacing spurious <code>EINTR</code> errors.</p>
 <p>In Listings 10-3 and 10-4, the parent first spawns child <code>c1</code> without a handler and reaps it explicitly via blocking <code>waitpid(c1, &amp;status, 0)</code>. After flushing <code>stdout</code> so <code>c2</code> does not inherit buffered output across <code>fork()</code>, the parent installs <code>on_sigchld</code> with <code>SA_RESTART</code> and spawns <code>c2</code>. When <code>c2</code> exits, <code>on_sigchld</code> reaps it immediately; the subsequent <code>waitpid(c2, &amp;status, WNOHANG)</code> in <code>main()</code> therefore returns <code>-1</code> (<code>ECHILD</code>), confirming that no zombie remains.</p>
-<p><strong>Listing 10-3. Reaping one child directly and one child in a handler (C++20).</strong></p>
+<p><strong>Listing 10-3. Reaping one child directly and one child in a handler (C++20).</strong> (<a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/operating-systems/code/ch10/sigchld.cpp"><code>code/ch10/sigchld.cpp</code></a>)</p>
 <pre><code class="language-cpp">// ch10/sigchld.cpp: reaping by hand versus reaping by a SIGCHLD handler.
 #include &lt;sys/wait.h&gt;
 #include &lt;unistd.h&gt;
@@ -384,7 +384,7 @@ parent reaped child 65134 by hand, status 0
 child 65135: exiting
 after handler: waitpid(WNOHANG) -&gt; -1 (-1 = already reaped)
 </code></pre>
-<p><strong>Listing 10-4. The same SIGCHLD reaping sequence in Rust.</strong></p>
+<p><strong>Listing 10-4. The same SIGCHLD reaping sequence in Rust.</strong> (<a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/operating-systems/code/ch10/sigchld.rs"><code>code/ch10/sigchld.rs</code></a>)</p>
 <pre class="playground"><code class="language-rust">// ch10/sigchld.rs: reaping by hand versus reaping by a SIGCHLD handler.
 extern crate libc;
 
@@ -469,7 +469,7 @@ after handler: waitpid(WNOHANG) -&gt; -1 (-1 = already reaped)
 
 <div class="callout experiment">
 <span class="label">Experiment</span>
-<p>In Listing 10-3 (<code>code/ch10/sigchld.cpp</code>), spawn five children simultaneously after installing <code>on_sigchld</code> and replace the <code>while (waitpid(-1, &amp;status, WNOHANG) &gt; 0)</code> loop with a single <code>waitpid()</code> call. Inspect <code>ps</code> while the parent sleeps to observe leaked zombie processes caused by <code>SIGCHLD</code> coalescing.</p>
+<p>In Listing 10-3 (<a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/operating-systems/code/ch10/sigchld.cpp"><code>code/ch10/sigchld.cpp</code></a>), spawn five children simultaneously after installing <code>on_sigchld</code> and replace the <code>while (waitpid(-1, &amp;status, WNOHANG) &gt; 0)</code> loop with a single <code>waitpid()</code> call. Inspect <code>ps</code> while the parent sleeps to observe leaked zombie processes caused by <code>SIGCHLD</code> coalescing.</p>
 </div>
 
 <div class="callout caution">

@@ -38,7 +38,7 @@
             const path_to_root = "";
             const default_light_theme = "coal";
             const default_dark_theme = "coal";
-            window.path_to_searchindex_js = "searchindex-e451f97a.js";
+            window.path_to_searchindex_js = "searchindex-a2840308.js";
         </script>
         <!-- Start loading toc.js asap -->
         <script src="toc-1a401835.js"></script>
@@ -200,7 +200,7 @@ int     close(int fd);
 <figure>
 <img src="figures/ch11_pipe.svg" alt="A kernel-buffered byte stream between a writing child and a reading parent" />
 </figure>
-<p><strong>Listing 11-1. One pipe, one fork, and one message (C++20).</strong></p>
+<p><strong>Listing 11-1. One pipe, one fork, and one message (C++20).</strong> (<a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/operating-systems/code/ch11/pipe.cpp"><code>code/ch11/pipe.cpp</code></a>)</p>
 <pre><code class="language-cpp">// ch11/pipe.cpp: one pipe, one fork, one message from child to parent.
 #include &lt;sys/wait.h&gt;
 #include &lt;unistd.h&gt;
@@ -235,7 +235,7 @@ int main() {
 <p><strong>Output 11-1.</strong></p>
 <pre><code class="language-text">parent read 16 bytes: "hello from child"
 </code></pre>
-<p><strong>Listing 11-2. The same program in Rust.</strong></p>
+<p><strong>Listing 11-2. The same program in Rust.</strong> (<a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/operating-systems/code/ch11/pipe.rs"><code>code/ch11/pipe.rs</code></a>)</p>
 <pre class="playground"><code class="language-rust">// ch11/pipe.rs: the same pipe between parent and child in Rust.
 use std::error::Error;
 use std::io;
@@ -302,7 +302,7 @@ int   pthread_mutex_destroy(pthread_mutex_t *mutex);
 <figure>
 <img src="figures/ch11_shm.svg" alt="Two page tables mapping one physical frame into two processes" />
 </figure>
-<p><strong>Listing 11-3. A counter in shared memory, protected by a process-shared mutex (C++20).</strong></p>
+<p><strong>Listing 11-3. A counter in shared memory, protected by a process-shared mutex (C++20).</strong> (<a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/operating-systems/code/ch11/shm_counter.cpp"><code>code/ch11/shm_counter.cpp</code></a>)</p>
 <pre><code class="language-cpp">// ch11/shm_counter.cpp: a counter in shared memory, guarded by a
 // process-shared mutex. Parent and child each add half a million.
 #include &lt;sys/mman.h&gt;
@@ -363,7 +363,7 @@ int main() {
 <p><strong>Output 11-3. The counter reaches exactly 1,000,000.</strong></p>
 <pre><code class="language-text">expected 1000000, observed 1000000
 </code></pre>
-<p><strong>Listing 11-4. The same process-shared mutex counter in Rust.</strong></p>
+<p><strong>Listing 11-4. The same process-shared mutex counter in Rust.</strong> (<a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/operating-systems/code/ch11/shm_counter.rs"><code>code/ch11/shm_counter.rs</code></a>)</p>
 <pre class="playground"><code class="language-rust">// ch11/shm_counter.rs: a counter in shared memory, guarded by a
 // process-shared mutex. Parent and child each add half a million.
 extern crate libc;
@@ -451,7 +451,7 @@ fn main() {
 <pre><code class="language-c">int socketpair(int domain, int type, int protocol, int sv[2]);
 </code></pre>
 <p>Calling <code>socketpair(AF_UNIX, SOCK_STREAM, 0, sv)</code> creates a pre-connected pair of symmetric local descriptors in <code>sv[0]</code> and <code>sv[1]</code>, returning <code>0</code> on success or <code>-1</code> on error (<code>EAFNOSUPPORT</code>, <code>EOPNOTSUPP</code>, <code>EMFILE</code>, <code>EFAULT</code>). The <code>AF_UNIX</code> (<code>AF_LOCAL</code>) domain routes traffic strictly through local kernel memory without <strong>Internet Protocol (<code>IP</code>)</strong> headers, checksums, or network interfaces, while <code>SOCK_STREAM</code> delivers a reliable, ordered byte stream analogous to a <strong>Transmission Control Protocol (<code>TCP</code>)</strong> connection (passing <code>SOCK_DGRAM</code> or <code>SOCK_SEQPACKET</code> preserves explicit message boundaries; <code>protocol = 0</code> selects the domain default). Unlike <code>pipe()</code>, either endpoint can both read and write: after <code>fork()</code>, the child closes <code>sv[0]</code> and keeps <code>sv[1]</code>, while the parent closes <code>sv[1]</code> and keeps <code>sv[0]</code>. Beyond byte streams, <code>AF_UNIX</code> socket pairs can transfer live open file descriptors across process boundaries via <code>sendmsg()</code> and <code>recvmsg()</code> with <code>SCM_RIGHTS</code> ancillary control messages, enabling privilege-separated browser and sandbox architectures where a broker process opens files on behalf of an untrusted worker.</p>
-<p><strong>Listing 11-5. A two-way channel between parent and child (C++20).</strong></p>
+<p><strong>Listing 11-5. A two-way channel between parent and child (C++20).</strong> (<a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/operating-systems/code/ch11/socketpair.cpp"><code>code/ch11/socketpair.cpp</code></a>)</p>
 <pre><code class="language-cpp">// ch11/socketpair.cpp: a socketpair: one bidirectional channel, two directions.
 #include &lt;sys/socket.h&gt;
 #include &lt;sys/wait.h&gt;
@@ -497,7 +497,7 @@ int main() {
 <pre><code class="language-text">child  received: "pong from parent"
 parent received: "ping from child"
 </code></pre>
-<p><strong>Listing 11-6. The same bidirectional socketpair in Rust.</strong></p>
+<p><strong>Listing 11-6. The same bidirectional socketpair in Rust.</strong> (<a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/operating-systems/code/ch11/socketpair.rs"><code>code/ch11/socketpair.rs</code></a>)</p>
 <pre class="playground"><code class="language-rust">// ch11/socketpair.rs: a socketpair: one bidirectional channel, two directions.
 extern crate libc;
 
@@ -575,7 +575,7 @@ child  received: "pong from parent"
 
 <div class="callout experiment">
 <span class="label">Experiment</span>
-<p>In Listing 11-1 (<code>code/ch11/pipe.cpp</code>), comment out <code>close(fds[1])</code> in the parent process and run the binary. Observe that the parent’s <code>read()</code> blocks indefinitely even after the child exits because the parent itself still holds an open write reference, preventing <code>EOF</code>.</p>
+<p>In Listing 11-1 (<a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/operating-systems/code/ch11/pipe.cpp"><code>code/ch11/pipe.cpp</code></a>), comment out <code>close(fds[1])</code> in the parent process and run the binary. Observe that the parent’s <code>read()</code> blocks indefinitely even after the child exits because the parent itself still holds an open write reference, preventing <code>EOF</code>.</p>
 </div>
 
 <div class="callout caution">

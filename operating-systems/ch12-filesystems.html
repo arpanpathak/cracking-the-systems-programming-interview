@@ -38,7 +38,7 @@
             const path_to_root = "";
             const default_light_theme = "coal";
             const default_dark_theme = "coal";
-            window.path_to_searchindex_js = "searchindex-e451f97a.js";
+            window.path_to_searchindex_js = "searchindex-a2840308.js";
         </script>
         <!-- Start loading toc.js asap -->
         <script src="toc-1a401835.js"></script>
@@ -206,7 +206,7 @@ int     unlink(const char *pathname);
 <p>Calling <code>open(pathname, flags, mode)</code> opens or creates a file and returns the lowest unused file descriptor (<code>&gt;= 0</code>), or <code>-1</code> on error (<code>ENOENT</code>, <code>EACCES</code>, <code>EEXIST</code>, <code>EMFILE</code>). The <code>flags</code> bitmask combines an access mode (<code>O_RDWR</code>) with creation and state flags (<code>O_CREAT</code> creates a missing file; <code>O_TRUNC</code> resets an existing regular file to zero bytes). When <code>O_CREAT</code> creates a file, the octal <code>mode</code> (such as <code>0644</code>: owner <code>rw-</code>, group <code>r--</code>, other <code>r--</code>) is masked against the process’s <code>umask</code> (<code>mode &amp; ~umask</code>). Repositioning the open file description’s byte offset without transferring data is performed by <code>lseek(fd, offset, whence)</code>, where <code>whence</code> selects the reference origin: <code>SEEK_SET</code> (from byte <code>0</code>), <code>SEEK_CUR</code> (relative to the current cursor), or <code>SEEK_END</code> (relative to end-of-file). Seeking past end-of-file is legal in <code>POSIX</code> and allocates zero storage until a subsequent <code>write()</code> creates a <strong>sparse hole</strong>.</p>
 <p>To inspect authoritative inode metadata, <code>fstat(fd, statbuf)</code> populates <code>struct stat</code> (returning <code>0</code> on success or <code>-1</code> on <code>EBADF</code> / <code>EFAULT</code>): <code>st_ino</code> holds the unique inode number, <code>st_size</code> records the logical byte length (including sparse holes), <code>st_blocks</code> reports actual allocated physical storage in <strong>512-byte units</strong> regardless of the filesystem’s native 4 KiB block size (<code>st_blocks * 512</code> bytes), <code>st_blksize</code> indicates the preferred <strong>Input/Output (<code>I/O</code>)</strong> transfer size, and <code>st_mode</code> / <code>st_nlink</code> record file type, permission bits, and hard-link count. Resizing a file’s logical length (<code>st_size</code>) is performed by <code>ftruncate(fd, length)</code>, which discards trailing blocks when shrinking or creates a zero-reading sparse extension when growing.</p>
 <p>Durability and reclamation rely on <code>fsync(fd)</code> and <code>unlink(pathname)</code>. Invoking <code>fsync(fd)</code> flushes all modified data pages and inode metadata associated with <code>fd</code> from the kernel’s volatile page cache down to stable non-volatile storage, blocking until the storage controller acknowledges completion. Calling <code>unlink(pathname)</code> removes the directory entry naming <code>pathname</code> and decrements <code>st_nlink</code>; the kernel reclaims the inode and its data blocks only when <strong>both</strong> <code>st_nlink == 0</code> <strong>and</strong> zero open file descriptions reference the inode, allowing an already-open file to remain readable and writable even after being unlinked.</p>
-<p><strong>Listing 12-1. open, write, lseek, read, and stat (C++20).</strong></p>
+<p><strong>Listing 12-1. open, write, lseek, read, and stat (C++20).</strong> (<a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/operating-systems/code/ch12/files.cpp"><code>code/ch12/files.cpp</code></a>)</p>
 <pre><code class="language-cpp">// ch12/files.cpp: open, write, seek, read, stat: the syscall layer of a file system.
 #include &lt;fcntl.h&gt;
 #include &lt;sys/stat.h&gt;
@@ -255,7 +255,7 @@ operating systems
 operating systems
 inode 11420117, size 36 bytes, 8 blocks
 </code></pre>
-<p><strong>Listing 12-2. The same operations with the Rust standard library.</strong></p>
+<p><strong>Listing 12-2. The same operations with the Rust standard library.</strong> (<a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/operating-systems/code/ch12/files.rs"><code>code/ch12/files.rs</code></a>)</p>
 <pre class="playground"><code class="language-rust">// ch12/files.rs: the same file operations through the Rust standard library.
 use std::fs::OpenOptions;
 use std::io::{Read, Seek, SeekFrom, Write};
@@ -328,7 +328,7 @@ inode 11420119, size 36 bytes, 8 blocks
 <figure>
 <img src="figures/ch12_durability_path.svg" alt="Write-to-durability path from user space through the kernel page cache and write-ahead journal to non-volatile storage, and the 4-step atomic rename protocol" />
 </figure>
-<p><strong>Listing 12-3. A file with a logical size of 8 MiB and 8 KiB of storage (C++20).</strong></p>
+<p><strong>Listing 12-3. A file with a logical size of 8 MiB and 8 KiB of storage (C++20).</strong> (<a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/operating-systems/code/ch12/sparse.cpp"><code>code/ch12/sparse.cpp</code></a>)</p>
 <pre><code class="language-cpp">// ch12/sparse.cpp: a sparse file: two small islands, a hole between them.
 #include &lt;fcntl.h&gt;
 #include &lt;sys/stat.h&gt;
@@ -383,7 +383,7 @@ int main() {
 blocks used  : 16 x 512 bytes = 8192 bytes
 hole at 2 MiB reads back 16 bytes, all zero: yes
 </code></pre>
-<p><strong>Listing 12-4. The same sparse file in Rust.</strong></p>
+<p><strong>Listing 12-4. The same sparse file in Rust.</strong> (<a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/operating-systems/code/ch12/sparse.rs"><code>code/ch12/sparse.rs</code></a>)</p>
 <pre class="playground"><code class="language-rust">// ch12/sparse.rs: the same sparse-file experiment in Rust.
 use std::fs::OpenOptions;
 use std::io::{Read, Seek, SeekFrom, Write};
@@ -440,7 +440,7 @@ hole at 2 MiB reads back 16 bytes, all zero: yes
 
 <div class="callout experiment">
 <span class="label">Experiment</span>
-<p>Run Listing 12-3 (<code>code/ch12/sparse.cpp</code>) and inspect the created file with <code>ls -lh</code> versus <code>du -h</code> before <code>unlink()</code>. Notice that <code>ls -lh</code> reports the 8 MiB logical <code>st_size</code>, while <code>du -h</code> reports only 8 KiB of physical blocks allocated on disk.</p>
+<p>Run Listing 12-3 (<a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/operating-systems/code/ch12/sparse.cpp"><code>code/ch12/sparse.cpp</code></a>) and inspect the created file with <code>ls -lh</code> versus <code>du -h</code> before <code>unlink()</code>. Notice that <code>ls -lh</code> reports the 8 MiB logical <code>st_size</code>, while <code>du -h</code> reports only 8 KiB of physical blocks allocated on disk.</p>
 </div>
 
 <div class="callout caution">

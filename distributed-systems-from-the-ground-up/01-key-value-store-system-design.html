@@ -36,7 +36,7 @@
             const path_to_root = "";
             const default_light_theme = "coal";
             const default_dark_theme = "coal";
-            window.path_to_searchindex_js = "searchindex-38bda414.js";
+            window.path_to_searchindex_js = "searchindex-cf88c8cf.js";
         </script>
         <!-- Start loading toc.js asap -->
         <script src="toc-00f6d8fe.js"></script>
@@ -314,7 +314,7 @@ ETag: "8"
 </code></pre>
 <p>Retry safety follows directly from these semantics. <code>GET</code> and <code>DELETE</code> are naturally idempotent. Conditional <code>PUT</code> with <code>If-Match</code> is safe to retry after a dropped connection: if the initial attempt committed before the reply packet was lost, the retry observes <code>412 Precondition Failed</code> carrying <code>ETag: "8"</code> rather than applying the mutation twice. Client SDKs should apply truncated exponential backoff with full jitter on <code>503 Service Unavailable</code> and <code>429 Too Many Requests</code>, and must never retry deterministic client errors (<code>400</code>, <code>412</code>, <code>413</code>).</p>
 <h3 id="internal-replication-and-topology-protocol-grpc--protobuf"><a class="header" href="#internal-replication-and-topology-protocol-grpc--protobuf">Internal Replication and Topology Protocol (gRPC / Protobuf)</a></h3>
-<p>Storage nodes exchange strictly typed Protobuf messages over persistent HTTP/2 streams (<code>code/proto/store.proto</code>). Before examining Listings 1.1 through 1.3, note the invariants encoded in the message fields:</p>
+<p>Storage nodes exchange strictly typed Protobuf messages over persistent HTTP/2 streams (<a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/distributed-systems-from-the-ground-up/code/proto/store.proto"><code>code/proto/store.proto</code></a>). Before examining Listings 1.1 through 1.3, note the invariants encoded in the message fields:</p>
 <ul>
 <li><strong><code>Record.sequence</code> (<code>uint64</code>):</strong> The contiguous, strictly monotonic log index assigned by the shard leader. Every replica applies committed records in exact sequence order, guaranteeing identical state-machine convergence.</li>
 <li><strong><code>AppendRequest.term</code> (<code>uint64</code>):</strong> The sender’s current Raft election epoch. Any follower observing <code>request.term &lt; local_term</code> immediately rejects the RPC and returns its higher term, fencing partitioned former leaders.</li>
@@ -552,7 +552,7 @@ position of user-1: 0x7c7615c11438e5c9
 </div>
 <h3 id="verification-in-the-repository"><a class="header" href="#verification-in-the-repository">Verification in the Repository</a></h3>
 <div class="simulation">
-<p><strong>Run the consistent-hashing variance simulation.</strong> Execute <code>cargo run --release -p ringsim</code> in <code>code/</code> to reproduce the <code>1</code>, <code>8</code>, <code>64</code>, and <code>256</code> virtual-node skew measurements and modulo-hashing migration contrast we analyzed in Section 1.5. In Chapters 2 through 6, we implement and fault-test the durable storage node (<code>kvd</code>, <code>crashsim</code>), quorum replication (<code>replsim</code>), Raft leader election (<code>raftsim</code>), stateless router (<code>kvrouter</code>), and group-commit WAL (<code>kvgroup</code>).</p>
+<p><strong>Run the consistent-hashing variance simulation.</strong> Execute <code>cargo run --release -p ringsim</code> in <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/tree/prep-v2/distributed-systems-from-the-ground-up/code"><code>code/</code></a> to reproduce the <code>1</code>, <code>8</code>, <code>64</code>, and <code>256</code> virtual-node skew measurements and modulo-hashing migration contrast we analyzed in Section 1.5. In Chapters 2 through 6, we implement and fault-test the durable storage node (<code>kvd</code>, <code>crashsim</code>), quorum replication (<code>replsim</code>), Raft leader election (<code>raftsim</code>), stateless router (<code>kvrouter</code>), and group-commit WAL (<code>kvgroup</code>).</p>
 </div>
 
 <h3 id="engineering-glossary"><a class="header" href="#engineering-glossary">Engineering Glossary</a></h3>
@@ -610,7 +610,7 @@ position of user-1: 0x7c7615c11438e5c9
 </div>
 
 <div class="callout experiment"><span class="label">Experiment</span>
-<p><strong>Quantify hot-key variance before sizing shards.</strong> Run <code>cargo run --release -p ringsim</code> in <code>code/</code> and compare the maximum-to-mean shard load ratio at <code>1</code>, <code>8</code>, <code>64</code>, and <code>256</code> virtual nodes. Observe how increasing virtual nodes from <code>1</code> to <code>256</code> compresses standard deviation by more than an order of magnitude while keeping lookup complexity at <code>O(log V)</code> (fewer than <code>14</code> binary-search comparisons for <code>24</code> nodes).</p>
+<p><strong>Quantify hot-key variance before sizing shards.</strong> Run <code>cargo run --release -p ringsim</code> in <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/tree/prep-v2/distributed-systems-from-the-ground-up/code"><code>code/</code></a> and compare the maximum-to-mean shard load ratio at <code>1</code>, <code>8</code>, <code>64</code>, and <code>256</code> virtual nodes. Observe how increasing virtual nodes from <code>1</code> to <code>256</code> compresses standard deviation by more than an order of magnitude while keeping lookup complexity at <code>O(log V)</code> (fewer than <code>14</code> binary-search comparisons for <code>24</code> nodes).</p>
 </div>
 
 <div class="callout caution"><span class="label">Common pitfall</span>
@@ -663,22 +663,6 @@ position of user-1: 0x7c7615c11438e5c9
         <template id=fa-play><span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 384 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M73 39c-14.8-9.1-33.4-9.4-48.5-.9S0 62.6 0 80V432c0 17.4 9.4 33.4 24.5 41.9s33.7 8.1 48.5-.9L361 297c14.3-8.7 23-24.2 23-41s-8.7-32.2-23-41L73 39z"/></svg></span></template>
         <template id=fa-clock-rotate-left><span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M75 75L41 41C25.9 25.9 0 36.6 0 57.9V168c0 13.3 10.7 24 24 24H134.1c21.4 0 32.1-25.9 17-41l-30.8-30.8C155 85.5 203 64 256 64c106 0 192 86 192 192s-86 192-192 192c-40.8 0-78.6-12.7-109.7-34.4c-14.5-10.1-34.4-6.6-44.6 7.9s-6.6 34.4 7.9 44.6C151.2 495 201.7 512 256 512c141.4 0 256-114.6 256-256S397.4 0 256 0C185.3 0 121.3 28.7 75 75zm181 53c-13.3 0-24 10.7-24 24V256c0 6.4 2.5 12.5 7 17l72 72c9.4 9.4 24.6 9.4 33.9 0s9.4-24.6 0-33.9l-65-65V152c0-13.3-10.7-24-24-24z"/></svg></span></template>
 
-        <!-- Livereload script (if served using the cli tool) -->
-        <script>
-            const wsProtocol = location.protocol === 'https:' ? 'wss:' : 'ws:';
-            const wsAddress = wsProtocol + "//" + location.host + "/" + "__livereload";
-            const socket = new WebSocket(wsAddress);
-            socket.onmessage = function (event) {
-                if (event.data === "reload") {
-                    socket.close();
-                    location.reload();
-                }
-            };
-
-            window.onbeforeunload = function() {
-                socket.close();
-            }
-        </script>
 
 
         <script>

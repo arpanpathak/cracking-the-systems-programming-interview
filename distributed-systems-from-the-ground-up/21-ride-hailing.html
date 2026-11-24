@@ -36,7 +36,7 @@
             const path_to_root = "";
             const default_light_theme = "coal";
             const default_dark_theme = "coal";
-            window.path_to_searchindex_js = "searchindex-38bda414.js";
+            window.path_to_searchindex_js = "searchindex-cf88c8cf.js";
         </script>
         <!-- Start loading toc.js asap -->
         <script src="toc-00f6d8fe.js"></script>
@@ -192,7 +192,7 @@
 <li>control-plane vs. data-plane separation across region partitioning, cell-sharded RAM indexes, road-graph ETA engines, and Raft-backed trip stores</li>
 <li>H3 hexagonal and S2 Hilbert-curve spatial indexing compared with geohash boundary distortion, plus TTL-leased driver heartbeat ingestion</li>
 <li>adaptive k-ring cell expansion, Contraction Hierarchies ETA ranking, serialized 15-second exclusive offer locks, and H3 cell-level surge pricing aggregation</li>
-<li>failure matrices, dispatch SLIs/SLOs, production architectures (Uber H3/DISCO, Lyft, Google S2), and verification via <code>code/nearbysim</code></li>
+<li>failure matrices, dispatch SLIs/SLOs, production architectures (Uber H3/DISCO, Lyft, Google S2), and verification via <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/tree/prep-v2/distributed-systems-from-the-ground-up/code/nearbysim"><code>code/nearbysim</code></a></li>
 </ul>
 </div>
 
@@ -511,7 +511,7 @@ Alongside upgrading <code>driver_active_locks.lock_type</code> from <code>'OFFER
 </table>
 </div>
 <h2 id="217-simulation-verification"><a class="header" href="#217-simulation-verification">21.7 Simulation Verification</a></h2>
-<p>To verify the asymptotic speedup and exact equivalence of spatial grid indexing versus full-fleet scanning, execute the <code>nearbysim</code> crate in the repository’s <code>code/</code> workspace:</p>
+<p>To verify the asymptotic speedup and exact equivalence of spatial grid indexing versus full-fleet scanning, execute the <code>nearbysim</code> crate in the repository’s <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/tree/prep-v2/distributed-systems-from-the-ground-up/code"><code>code/</code></a> workspace:</p>
 <pre><code class="language-console">$ cargo run --release -p nearbysim
 20000 drivers on a map of 100 by 100 units
 measuring every driver: 20000 distances, nearest: driver 19862 at 0.19, driver 7056 at 0.84, driver 17908 at 0.85
@@ -577,7 +577,7 @@ using the grid: 15 distances, nearest: driver 19862 at 0.19, driver 7056 at 0.84
 <p><strong>Lyft Regional Dispatch and Trajectory-Aware ETA.</strong> Lyft pairs Google S2 spherical geometry cells with regional dispatch microservices that continuously ingest <code>3 to 4 s</code> driver GPS heartbeats and live road-segment speed estimates. Rather than matching strictly on instantaneous straight-line proximity, Lyft’s dispatch solver incorporates vehicle heading, upcoming drop-off locations of nearly completed rides (chained dispatch), and dynamic batch windows to minimize fleet-wide pickup ETAs and driver deadhead mileage.</p>
 <div class="callout keyidea"><span class="label">Key idea</span> Hexagonal spatial indexing (`H3`) eliminates the corner-neighbor distance distortion of square grids and geohashes, allowing `k`-ring neighbor queries and surge-pricing heatmaps to operate with uniform isotropic geometry across any urban area.</div>
 
-<div class="callout experiment"><span class="label">Experiment</span> In `code/nearbysim`, increase the fleet size from `20,000` to `200,000` drivers while keeping the cell size proportional to local density, and compare candidate distance evaluations against a full-fleet scan. Verify that grid-indexed lookup remains `O(1)` in local neighborhood density while linear scanning grows `10x` slower.</div>
+<div class="callout experiment"><span class="label">Experiment</span> In [`code/nearbysim`](https://github.com/arpanpathak/cracking-the-systems-programming-interview/tree/prep-v2/distributed-systems-from-the-ground-up/code/nearbysim), increase the fleet size from `20,000` to `200,000` drivers while keeping the cell size proportional to local density, and compare candidate distance evaluations against a full-fleet scan. Verify that grid-indexed lookup remains `O(1)` in local neighborhood density while linear scanning grows `10x` slower.</div>
 
 <div class="callout caution"><span class="label">Common pitfall</span> Persisting every `4 s` driver GPS heartbeat to a relational disk database creates millions of needless write IOPS per city for ephemeral coordinates that expire in `15 s`. Keep live driver locations inside an in-memory TTL-indexed spatial shard that self-heals within one heartbeat interval after any pod restart, reserving durable consensus storage strictly for trip state transitions and billing milestones.</div>
 
@@ -617,22 +617,6 @@ using the grid: 15 distances, nearest: driver 19862 at 0.19, driver 7056 at 0.84
         <template id=fa-play><span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 384 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M73 39c-14.8-9.1-33.4-9.4-48.5-.9S0 62.6 0 80V432c0 17.4 9.4 33.4 24.5 41.9s33.7 8.1 48.5-.9L361 297c14.3-8.7 23-24.2 23-41s-8.7-32.2-23-41L73 39z"/></svg></span></template>
         <template id=fa-clock-rotate-left><span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M75 75L41 41C25.9 25.9 0 36.6 0 57.9V168c0 13.3 10.7 24 24 24H134.1c21.4 0 32.1-25.9 17-41l-30.8-30.8C155 85.5 203 64 256 64c106 0 192 86 192 192s-86 192-192 192c-40.8 0-78.6-12.7-109.7-34.4c-14.5-10.1-34.4-6.6-44.6 7.9s-6.6 34.4 7.9 44.6C151.2 495 201.7 512 256 512c141.4 0 256-114.6 256-256S397.4 0 256 0C185.3 0 121.3 28.7 75 75zm181 53c-13.3 0-24 10.7-24 24V256c0 6.4 2.5 12.5 7 17l72 72c9.4 9.4 24.6 9.4 33.9 0s9.4-24.6 0-33.9l-65-65V152c0-13.3-10.7-24-24-24z"/></svg></span></template>
 
-        <!-- Livereload script (if served using the cli tool) -->
-        <script>
-            const wsProtocol = location.protocol === 'https:' ? 'wss:' : 'ws:';
-            const wsAddress = wsProtocol + "//" + location.host + "/" + "__livereload";
-            const socket = new WebSocket(wsAddress);
-            socket.onmessage = function (event) {
-                if (event.data === "reload") {
-                    socket.close();
-                    location.reload();
-                }
-            };
-
-            window.onbeforeunload = function() {
-                socket.close();
-            }
-        </script>
 
 
         <script>

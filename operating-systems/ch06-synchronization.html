@@ -38,7 +38,7 @@
             const path_to_root = "";
             const default_light_theme = "coal";
             const default_dark_theme = "coal";
-            window.path_to_searchindex_js = "searchindex-e451f97a.js";
+            window.path_to_searchindex_js = "searchindex-a2840308.js";
         </script>
         <!-- Start loading toc.js asap -->
         <script src="toc-1a401835.js"></script>
@@ -201,7 +201,7 @@
 <figure>
 <img src="figures/ch06_mutex.svg" alt="A mutex with an owner, a wait queue, and the critical section it protects" />
 </figure>
-<p><strong>Listing 6-1. The shared counter, protected by a mutex (C++20).</strong></p>
+<p><strong>Listing 6-1. The shared counter, protected by a mutex (C++20).</strong> (<a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/operating-systems/code/ch06/mutex_counter.cpp"><code>code/ch06/mutex_counter.cpp</code></a>)</p>
 <pre><code class="language-cpp">// ch06/mutex_counter.cpp: the counter from chapter 4, now guarded by a mutex.
 #include &lt;cstdint&gt;
 #include &lt;iostream&gt;
@@ -235,7 +235,7 @@ int main() {
 <p><strong>Output 6-1. The observed value equals the expected value in every run.</strong></p>
 <pre><code class="language-text">expected 40000000, observed 40000000
 </code></pre>
-<p><strong>Listing 6-2. The same counter in Rust.</strong></p>
+<p><strong>Listing 6-2. The same counter in Rust.</strong> (<a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/operating-systems/code/ch06/mutex_counter.rs"><code>code/ch06/mutex_counter.rs</code></a>)</p>
 <pre class="playground"><code class="language-rust">// ch06/mutex_counter.rs: the same guarded counter in Rust.
 use std::sync::{Arc, Mutex};
 use std::thread;
@@ -290,7 +290,7 @@ fn main() -&gt; Result&lt;(), Box&lt;dyn std::error::Error&gt;&gt; {
 </ol>
 </div>
 
-<p><strong>Listing 6-3. A bounded buffer with two producers and two consumers (C++20).</strong></p>
+<p><strong>Listing 6-3. A bounded buffer with two producers and two consumers (C++20).</strong> (<a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/operating-systems/code/ch06/prodcons.cpp"><code>code/ch06/prodcons.cpp</code></a>)</p>
 <pre><code class="language-cpp">// ch06/prodcons.cpp: a bounded buffer shared by two producers and two consumers.
 #include &lt;condition_variable&gt;
 #include &lt;cstdint&gt;
@@ -378,7 +378,7 @@ consumed sum 20000100000
 expected     20000100000
 match        yes
 </code></pre>
-<p><strong>Listing 6-4. The same buffer in Rust, with <code>Mutex</code> and <code>Condvar</code>.</strong></p>
+<p><strong>Listing 6-4. The same buffer in Rust, with <code>Mutex</code> and <code>Condvar</code>.</strong> (<a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/operating-systems/code/ch06/prodcons.rs"><code>code/ch06/prodcons.rs</code></a>)</p>
 <pre class="playground"><code class="language-rust">// ch06/prodcons.rs: the same bounded buffer with Mutex + Condvar.
 use std::collections::VecDeque;
 use std::sync::{Arc, Condvar, Mutex};
@@ -532,7 +532,7 @@ match        yes
 <figure>
 <img src="figures/ch06_deadlock.svg" alt="Two workers each holding one resource and waiting for the other, forming a cycle" />
 </figure>
-<p><strong>Listing 6-5. A deliberate deadlock caused by inverted lock acquisition order (C++20).</strong></p>
+<p><strong>Listing 6-5. A deliberate deadlock caused by inverted lock acquisition order (C++20).</strong> (<a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/operating-systems/code/ch06/deadlock.cpp"><code>code/ch06/deadlock.cpp</code></a>)</p>
 <pre><code class="language-cpp">// ch06/deadlock.cpp: two workers, two mutexes, opposite acquisition order.
 // This program is expected to hang; the harness kills it and records the outcome.
 #include &lt;chrono&gt;
@@ -570,7 +570,7 @@ int main() {
 worker 2 holds B
 harness: process still alive after 1 s - deadlocked (killed)
 </code></pre>
-<p><strong>Listing 6-6. The same deliberate deadlock in Rust.</strong></p>
+<p><strong>Listing 6-6. The same deliberate deadlock in Rust.</strong> (<a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/operating-systems/code/ch06/deadlock.rs"><code>code/ch06/deadlock.rs</code></a>)</p>
 <pre class="playground"><code class="language-rust">// ch06/deadlock.rs: two workers, two mutexes, opposite acquisition order.
 // This program is expected to hang; the harness terminates it and records the outcome.
 use std::io::{self, Write};
@@ -623,7 +623,7 @@ worker 2 holds B
 harness: process still alive after 1 s - deadlocked (killed)
 </code></pre>
 <p>Where a global lock hierarchy cannot be established statically, breaking <strong>Hold and Wait</strong> via non-blocking <code>try_lock()</code> eliminates the deadlock cycle. When Worker 2 holds Mutex B and <code>a.try_lock()</code> fails, Worker 2 immediately releases Mutex B, pauses briefly to mitigate livelock, and retries acquisition.</p>
-<p><strong>Listing 6-7. Deadlock elimination using <code>try_lock</code> backoff (C++20).</strong></p>
+<p><strong>Listing 6-7. Deadlock elimination using <code>try_lock</code> backoff (C++20).</strong> (<a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/operating-systems/code/ch06/trylock.cpp"><code>code/ch06/trylock.cpp</code></a>)</p>
 <pre><code class="language-cpp">// ch06/trylock.cpp: the same two workers, but worker 2 backs off instead of blocking.
 #include &lt;chrono&gt;
 #include &lt;iostream&gt;
@@ -680,7 +680,7 @@ worker 2 holds B, tries A
 worker 2 got B and A
 finished without deadlock
 </code></pre>
-<p><strong>Listing 6-8. The same <code>try_lock</code> backoff protocol in Rust.</strong></p>
+<p><strong>Listing 6-8. The same <code>try_lock</code> backoff protocol in Rust.</strong> (<a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/operating-systems/code/ch06/trylock.rs"><code>code/ch06/trylock.rs</code></a>)</p>
 <pre class="playground"><code class="language-rust">// ch06/trylock.rs: the same two workers, but worker 2 backs off instead of blocking.
 use std::io::{self, Write};
 use std::sync::{Arc, Mutex};
@@ -921,7 +921,7 @@ lock cmpxchg QWORD PTR [r_addr], r_desired          cmp   x0, x_expected        
 <figure>
 <img src="figures/ch06_seqlock.svg" alt="Lock-free Sequence Lock timeline showing writer even-odd-even transitions, torn-read retry, and zero-write clean reader execution" />
 </figure>
-<p><strong>Listing 6-9. <code>compare_exchange_weak</code> CAS loop, Acquire-Release message passing, and a lock-free Seqlock (C++20).</strong></p>
+<p><strong>Listing 6-9. <code>compare_exchange_weak</code> CAS loop, Acquire-Release message passing, and a lock-free Seqlock (C++20).</strong> (<a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/operating-systems/code/ch06/cas_ordering.cpp"><code>code/ch06/cas_ordering.cpp</code></a>)</p>
 <pre><code class="language-cpp">// ch06/cas_ordering.cpp: compare_exchange_weak CAS loop, Acquire-Release
 // message passing, and a lock-free Seqlock snapshot reader/writer.
 #include &lt;atomic&gt;
@@ -1038,7 +1038,7 @@ int main() {
 acq-rel payload  : 0xcafebabe2026
 seqlock torn     : 0
 </code></pre>
-<p><strong>Listing 6-10. The same CAS loop, Acquire-Release handoff, and Seqlock in Rust.</strong></p>
+<p><strong>Listing 6-10. The same CAS loop, Acquire-Release handoff, and Seqlock in Rust.</strong> (<a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/operating-systems/code/ch06/cas_ordering.rs"><code>code/ch06/cas_ordering.rs</code></a>)</p>
 <pre class="playground"><code class="language-rust">// ch06/cas_ordering.rs: compare_exchange_weak CAS loop, Acquire-Release
 // message passing, and a lock-free Seqlock snapshot reader/writer.
 use std::sync::atomic::{AtomicBool, AtomicU64, Ordering, compiler_fence, fence};
@@ -1165,7 +1165,7 @@ seqlock torn     : 0
 
 <div class="callout experiment">
 <span class="label">Experiment</span>
-<p>In Listing 6-9 (<code>code/ch06/cas_ordering.cpp</code>), weaken the producer’s <code>memory_order_release</code> store and consumer’s <code>memory_order_acquire</code> load to <code>memory_order_relaxed</code> on an ARM64 machine (Apple Silicon or AWS Graviton) and run 10 million iterations to observe weakly ordered hardware reordering payload stores past the ready flag.</p>
+<p>In Listing 6-9 (<a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/operating-systems/code/ch06/cas_ordering.cpp"><code>code/ch06/cas_ordering.cpp</code></a>), weaken the producer’s <code>memory_order_release</code> store and consumer’s <code>memory_order_acquire</code> load to <code>memory_order_relaxed</code> on an ARM64 machine (Apple Silicon or AWS Graviton) and run 10 million iterations to observe weakly ordered hardware reordering payload stores past the ready flag.</p>
 </div>
 
 

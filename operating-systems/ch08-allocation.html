@@ -38,7 +38,7 @@
             const path_to_root = "";
             const default_light_theme = "coal";
             const default_dark_theme = "coal";
-            window.path_to_searchindex_js = "searchindex-e451f97a.js";
+            window.path_to_searchindex_js = "searchindex-a2840308.js";
         </script>
         <!-- Start loading toc.js asap -->
         <script src="toc-1a401835.js"></script>
@@ -216,7 +216,7 @@
 <li><strong>Zero-cost bulk reclamation:</strong> <code>reset()</code> calls <code>clear()</code>, reclaiming all nodes in O(1) while retaining the backing capacity for the next request or frame.</li>
 <li><strong>Production adoption:</strong> Compilers (including <code>rustc</code> and LLVM), query planners, and Entity Component Systems (ECS) rely heavily on index-addressed arenas for cyclic graphs and syntax trees.</li>
 </ul>
-<p><strong>Listing 8-1. Level 1 arena: a safe, contiguous index pool allocating a 10,000-node list (C++20).</strong></p>
+<p><strong>Listing 8-1. Level 1 arena: a safe, contiguous index pool allocating a 10,000-node list (C++20).</strong> (<a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/operating-systems/code/ch08/index_arena.cpp"><code>code/ch08/index_arena.cpp</code></a>)</p>
 <pre><code class="language-cpp">// ch08/index_arena.cpp: Level 1 arena: a minimal, zero-raw-pointer index pool.
 // Nodes live contiguously inside one std::vector&lt;T&gt; and link via copyable Id handles.
 #include &lt;cassert&gt;
@@ -282,7 +282,7 @@ int main() {
 <pre><code class="language-text">index arena: 10000 nodes allocated, sum = 49995000 (verified)
 after reset: 0 nodes
 </code></pre>
-<p><strong>Listing 8-2. The same zero-<code>unsafe</code> index arena in Rust.</strong></p>
+<p><strong>Listing 8-2. The same zero-<code>unsafe</code> index arena in Rust.</strong> (<a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/operating-systems/code/ch08/index_arena.rs"><code>code/ch08/index_arena.rs</code></a>)</p>
 <pre class="playground"><code class="language-rust">// ch08/index_arena.rs: Level 1 arena: a minimal, zero-unsafe index pool.
 // Nodes live contiguously inside one Vec&lt;T&gt; and link via copyable Id(usize) handles.
 struct Arena&lt;T&gt; {
@@ -370,7 +370,7 @@ Replacing raw pointers with <code>usize</code> indices eliminates segfaults and 
 <figure>
 <img src="figures/ch08_gen_arena.svg" alt="Generational arena with intrusive free list showing stale handle rejection versus textbook LinkedList and Linux intrusive list_head plus SLUB" />
 </figure>
-<p><strong>Listing 8-3. Level 2 arena: a generational arena with an intrusive free list (C++20).</strong></p>
+<p><strong>Listing 8-3. Level 2 arena: a generational arena with an intrusive free list (C++20).</strong> (<a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/operating-systems/code/ch08/gen_arena.cpp"><code>code/ch08/gen_arena.cpp</code></a>)</p>
 <pre><code class="language-cpp">// ch08/gen_arena.cpp: Level 2 arena: a generational arena with an intrusive
 // free list threaded through empty slots (C++20 counterpart to gen_arena.rs).
 //
@@ -512,7 +512,7 @@ int main() {
 stale handle (idx=0, gen=0) -&gt; nullptr (ABA prevented)
 live  handle (idx=0, gen=1) -&gt; "gamma"
 </code></pre>
-<p><strong>Listing 8-4. The same zero-<code>unsafe</code> generational arena with intrusive free list in Rust.</strong></p>
+<p><strong>Listing 8-4. The same zero-<code>unsafe</code> generational arena with intrusive free list in Rust.</strong> (<a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/operating-systems/code/ch08/gen_arena.rs"><code>code/ch08/gen_arena.rs</code></a>)</p>
 <pre class="playground"><code class="language-rust">// ch08/gen_arena.rs: Level 2 arena: a zero-unsafe generational arena with an
 // intrusive free list threaded directly through empty slots.
 //
@@ -679,7 +679,7 @@ live  handle (idx=0, gen=1) -&gt; Some("gamma")
 <figure>
 <img src="figures/ch08_bump.svg" alt="Bump allocator sequential byte layout showing 8-byte, 3-byte, 5-byte alignment padding, and 16-byte aligned allocations" />
 </figure>
-<p><strong>Listing 8-5. Level 3 arena: an <code>mmap</code>-backed bump allocator with explicit alignment rounding (C++20).</strong></p>
+<p><strong>Listing 8-5. Level 3 arena: an <code>mmap</code>-backed bump allocator with explicit alignment rounding (C++20).</strong> (<a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/operating-systems/code/ch08/bump.cpp"><code>code/ch08/bump.cpp</code></a>)</p>
 <pre><code class="language-cpp">// ch08/bump.cpp: A linear bump (arena) allocator with explicit power-of-two alignment.
 // Allocations advance a single monotonic offset; individual objects cannot be freed,
 // and reset() reclaims the entire arena in O(1) time.
@@ -771,7 +771,7 @@ next_offset         -&gt; 32
 
 after reset, alloc(8, align=8) -&gt; 0x10b85a000 (reuses offset 0: yes)
 </code></pre>
-<p><strong>Listing 8-6. The same <code>mmap</code>-backed bump allocator in Rust.</strong></p>
+<p><strong>Listing 8-6. The same <code>mmap</code>-backed bump allocator in Rust.</strong> (<a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/operating-systems/code/ch08/bump.rs"><code>code/ch08/bump.rs</code></a>)</p>
 <pre class="playground"><code class="language-rust">// ch08/bump.rs: A linear bump (arena) allocator with explicit power-of-two alignment.
 use std::error::Error;
 use std::io;
@@ -921,7 +921,7 @@ header pointer                                                   pointer returne
 <figure>
 <img src="figures/ch08_freelist.svg" alt="Free-list allocator unified trace showing initial allocations, block splitting of 200 B into 150 B plus 26 B, and coalescing back to 200 B" />
 </figure>
-<p><strong>Listing 8-7. A first-fit free-list allocator with splitting and coalescing (C++20).</strong></p>
+<p><strong>Listing 8-7. A first-fit free-list allocator with splitting and coalescing (C++20).</strong> (<a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/operating-systems/code/ch08/free_list.cpp"><code>code/ch08/free_list.cpp</code></a>)</p>
 <pre><code class="language-cpp">// ch08/free_list.cpp: First-fit free-list allocator with in-band headers,
 // block splitting, and adjacent free-block coalescing.
 // Written with flat control flow (early returns and small helpers) to keep logic clear.
@@ -1103,7 +1103,7 @@ after freeing all blocks (coalesced back to 1 free block):
   block map:
     [0] offset 0  payload 262120  free
 </code></pre>
-<p><strong>Listing 8-8. The same free-list allocator in Rust.</strong></p>
+<p><strong>Listing 8-8. The same free-list allocator in Rust.</strong> (<a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/operating-systems/code/ch08/free_list.rs"><code>code/ch08/free_list.rs</code></a>)</p>
 <pre class="playground"><code class="language-rust">// ch08/free_list.rs: First-fit free-list allocator with in-band headers,
 // block splitting, and adjacent free-block coalescing in Rust.
 // Written with flat control flow (early returns and small helpers) to keep logic clear.
@@ -1368,7 +1368,7 @@ after freeing all blocks (coalesced back to 1 free block):
 
 <div class="callout experiment">
 <span class="label">Experiment</span>
-<p>In Listing 8-4 (<code>code/ch08/gen_arena.rs</code>), comment out the <code>slot.generation += 1</code> increment inside <code>remove()</code> and re-run. Observe how the stale <code>alpha</code> handle returns <code>"gamma"</code> without error from the recycled slot instead of <code>None</code>, demonstrating the logical ABA hazard of plain integer indices.</p>
+<p>In Listing 8-4 (<a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/operating-systems/code/ch08/gen_arena.rs"><code>code/ch08/gen_arena.rs</code></a>), comment out the <code>slot.generation += 1</code> increment inside <code>remove()</code> and re-run. Observe how the stale <code>alpha</code> handle returns <code>"gamma"</code> without error from the recycled slot instead of <code>None</code>, demonstrating the logical ABA hazard of plain integer indices.</p>
 </div>
 
 <div class="callout caution">

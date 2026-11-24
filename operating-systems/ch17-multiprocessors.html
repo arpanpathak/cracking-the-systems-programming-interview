@@ -38,7 +38,7 @@
             const path_to_root = "";
             const default_light_theme = "coal";
             const default_dark_theme = "coal";
-            window.path_to_searchindex_js = "searchindex-e451f97a.js";
+            window.path_to_searchindex_js = "searchindex-a2840308.js";
         </script>
         <!-- Start loading toc.js asap -->
         <script src="toc-1a401835.js"></script>
@@ -201,7 +201,7 @@
 <figure>
 <img src="figures/ch17_false_sharing.svg" alt="Two counters in one cache line bouncing between cores, versus two padded counters in separate lines" />
 </figure>
-<p><strong>Listing 17-1. Two counters in one cache line and in two (C++20).</strong></p>
+<p><strong>Listing 17-1. Two counters in one cache line and in two (C++20).</strong> (<a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/operating-systems/code/ch17/false_sharing.cpp"><code>code/ch17/false_sharing.cpp</code></a>)</p>
 <pre><code class="language-cpp">// ch17/false_sharing.cpp: two hot counters, one cache line versus two.
 // The counters use atomic increments: the standard pattern for shared counters.
 #include &lt;atomic&gt;
@@ -268,7 +268,7 @@ padded   (separate)   :   340.6 ms
 ratio                 :  5.13x
 (unpadded 80000000, padded 80000000)
 </code></pre>
-<p><strong>Listing 17-2. The same experiment in Rust, with atomic counters.</strong></p>
+<p><strong>Listing 17-2. The same experiment in Rust, with atomic counters.</strong> (<a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/operating-systems/code/ch17/false_sharing.rs"><code>code/ch17/false_sharing.rs</code></a>)</p>
 <pre class="playground"><code class="language-rust">// ch17/false_sharing.rs: the same experiment with atomic counters.
 use std::sync::atomic::{AtomicU64, Ordering};
 use std::thread;
@@ -340,7 +340,7 @@ ratio                 :  5.18x
 
 <div class="callout experiment">
 <span class="label">Experiment</span>
-<p>Run Listing 17-1 (<code>code/ch17/false_sharing.cpp</code>) or Listing 17-2 (<code>code/ch17/false_sharing.rs</code>) and compare elapsed time between the packed struct (both counters on one 64-byte cache line) and the <code>alignas(64)</code> padded struct. Notice how separating the two counters by 64 bytes eliminates <code>MESI</code> <code>RFO</code> ping-ponging and speeds up execution several-fold.</p>
+<p>Run Listing 17-1 (<a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/operating-systems/code/ch17/false_sharing.cpp"><code>code/ch17/false_sharing.cpp</code></a>) or Listing 17-2 (<a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/operating-systems/code/ch17/false_sharing.rs"><code>code/ch17/false_sharing.rs</code></a>) and compare elapsed time between the packed struct (both counters on one 64-byte cache line) and the <code>alignas(64)</code> padded struct. Notice how separating the two counters by 64 bytes eliminates <code>MESI</code> <code>RFO</code> ping-ponging and speeds up execution several-fold.</p>
 </div>
 
 <h2 id="173-hardware-accelerators-discrete-architecture-vs-unified-memory-architecture-uma"><a class="header" href="#173-hardware-accelerators-discrete-architecture-vs-unified-memory-architecture-uma">17.3 Hardware Accelerators: Discrete Architecture vs. Unified Memory Architecture (<code>UMA</code>)</a></h2>

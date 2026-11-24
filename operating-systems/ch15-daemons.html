@@ -38,7 +38,7 @@
             const path_to_root = "";
             const default_light_theme = "coal";
             const default_dark_theme = "coal";
-            window.path_to_searchindex_js = "searchindex-e451f97a.js";
+            window.path_to_searchindex_js = "searchindex-a2840308.js";
         </script>
         <!-- Start loading toc.js asap -->
         <script src="toc-1a401835.js"></script>
@@ -215,7 +215,7 @@ int    dup2(int oldfd, int newfd);
 <li><strong>Signal Terminate (<code>SIGTERM</code>):</strong> Requests a graceful shutdown. The handler sets an atomic stop flag (<code>g_stop = 1</code> / <code>STOP.store(true, Ordering::Relaxed)</code>), allowing the main loop to finish in-flight work, flush logs, call <code>unlink(pidfile)</code>, and exit cleanly.</li>
 <li><strong>Kill Signal (<code>SIGKILL</code>):</strong> Forcibly terminates the process immediately in kernel mode when a daemon fails to exit within the supervisor’s grace period after <code>SIGTERM</code>.</li>
 </ul>
-<p><strong>Listing 15-1. A daemon from start to shutdown (C++20).</strong></p>
+<p><strong>Listing 15-1. A daemon from start to shutdown (C++20).</strong> (<a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/operating-systems/code/ch15/daemon.cpp"><code>code/ch15/daemon.cpp</code></a>)</p>
 <pre><code class="language-cpp">// ch15/daemon.cpp: a complete daemon lifecycle in C++.
 // double fork, setsid, redirected stdio, pidfile, signal-driven shutdown.
 #include &lt;fcntl.h&gt;
@@ -308,7 +308,7 @@ tick 2
 tick 3
 stopping after 3 ticks
 </code></pre>
-<p><strong>Listing 15-2. The same daemon in Rust.</strong></p>
+<p><strong>Listing 15-2. The same daemon in Rust.</strong> (<a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/operating-systems/code/ch15/daemon.rs"><code>code/ch15/daemon.rs</code></a>)</p>
 <pre class="playground"><code class="language-rust">// ch15/daemon.rs: the same lifecycle in Rust: double fork, setsid, pidfile,
 // and signal-driven shutdown through libc.
 use std::fs::{self, OpenOptions};
@@ -455,7 +455,7 @@ int  kevent(int kq, const struct kevent *changelist, int nchanges,
 </code></pre>
 <p>Calling <code>kqueue()</code> allocates an empty kernel event queue and returns a descriptor (<code>kq &gt;= 0</code>, or <code>-1</code> on <code>EMFILE</code>/<code>ENOMEM</code>) that is not inherited across <code>fork()</code>. The helper macro <code>EV_SET(&amp;change, pid, EVFILT_PROC, EV_ADD | EV_ENABLE, NOTE_EXIT, 0, nullptr)</code> populates a <code>struct kevent</code> targeting child <code>ident = pid</code> under the <code>EVFILT_PROC</code> process-lifecycle filter, activating <code>NOTE_EXIT</code> notification (with optional opaque <code>udata</code> pointer for O(1) dispatch back to a supervisor’s worker record).</p>
 <p>The single <code>kevent()</code> system call performs both registration and retrieval. Passing a populated <code>changelist</code> with <code>eventlist = nullptr, nevents = 0</code> registers the filter and returns <code>0</code> immediately; passing <code>changelist = nullptr, nchanges = 0</code> with an <code>eventlist</code> blocks until up to <code>nevents</code> fire or <code>timeout</code> expires (<code>nullptr</code> blocks indefinitely), returning the ready count (<code>&gt; 0</code>), <code>0</code> on timeout, or <code>-1</code> on error (<code>EBADF</code>, <code>EINTR</code>, or <code>ESRCH</code> if <code>pid</code> already exited). Once <code>event.fflags &amp; NOTE_EXIT</code> arrives, the supervisor calls <code>waitpid(pid, &amp;status, WNOHANG)</code> to reap the zombie <strong>Process Control Block (<code>PCB</code>)</strong> and extract <code>WEXITSTATUS(status)</code>.</p>
-<p><strong>Listing 15-3. Process supervision via <code>kqueue</code> (C++20).</strong></p>
+<p><strong>Listing 15-3. Process supervision via <code>kqueue</code> (C++20).</strong> (<a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/operating-systems/code/ch15/kqueue_supervisor.cpp"><code>code/ch15/kqueue_supervisor.cpp</code></a>)</p>
 <pre><code class="language-cpp">// ch15/kqueue_supervisor.cpp: process fault monitoring using kqueue on Darwin/BSD.
 #include &lt;sys/types.h&gt;
 #include &lt;sys/event.h&gt;
@@ -505,7 +505,7 @@ int main() {
 <p><strong>Output 15-3. The C++ supervisor output.</strong></p>
 <pre><code class="language-text">supervisor detected child 65207 termination, exit status: 0
 </code></pre>
-<p><strong>Listing 15-4. The same supervisor in Rust.</strong></p>
+<p><strong>Listing 15-4. The same supervisor in Rust.</strong> (<a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/operating-systems/code/ch15/kqueue_supervisor.rs"><code>code/ch15/kqueue_supervisor.rs</code></a>)</p>
 <pre class="playground"><code class="language-rust">// ch15/kqueue_supervisor.rs: process fault monitoring using kqueue in Rust.
 use std::mem;
 use std::process::{Command, Stdio};
@@ -576,7 +576,7 @@ fn main() {
 <p>Process failures also manifest as deadlocks, infinite spin loops, or hung network <code>I/O</code>, where the process remains alive in the process table yet stops serving requests. Supervisors detect hung processes via <strong>software watchdogs</strong> (requiring periodic <strong>Inter-Process Communication (<code>IPC</code>)</strong> heartbeats or shared-memory timestamp updates, issuing <strong>Abort Signal (<code>SIGABRT</code>)</strong> or <code>SIGKILL</code> after missed intervals) and <strong>hardware watchdogs</strong> (resetting <code>/dev/watchdog</code> or a <strong>Power Management Unit (<code>PMU</code>)</strong> timer so a deadlocked kernel triggers a physical machine reset).</p>
 <div class="callout experiment">
 <span class="label">Experiment</span>
-<p>Run Listing 15-1 (<code>code/ch15/daemon.cpp</code>), inspect the detached daemon’s <code>PID</code>, <code>PGID</code>, <code>SID</code>, and <code>TTY</code> column (<code>ps -o pid,ppid,pgid,sid,tty,comm -p $(cat /tmp/osbook_daemon.pid)</code>), and send <code>kill -HUP</code> followed by <code>kill -TERM</code> while watching <code>/tmp/osbook_daemon.log</code> record the reload and graceful shutdown.</p>
+<p>Run Listing 15-1 (<a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/operating-systems/code/ch15/daemon.cpp"><code>code/ch15/daemon.cpp</code></a>), inspect the detached daemon’s <code>PID</code>, <code>PGID</code>, <code>SID</code>, and <code>TTY</code> column (<code>ps -o pid,ppid,pgid,sid,tty,comm -p $(cat /tmp/osbook_daemon.pid)</code>), and send <code>kill -HUP</code> followed by <code>kill -TERM</code> while watching <code>/tmp/osbook_daemon.log</code> record the reload and graceful shutdown.</p>
 </div>
 
 <div class="callout caution">

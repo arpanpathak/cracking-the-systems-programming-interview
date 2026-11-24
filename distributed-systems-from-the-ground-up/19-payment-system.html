@@ -36,7 +36,7 @@
             const path_to_root = "";
             const default_light_theme = "coal";
             const default_dark_theme = "coal";
-            window.path_to_searchindex_js = "searchindex-38bda414.js";
+            window.path_to_searchindex_js = "searchindex-cf88c8cf.js";
         </script>
         <!-- Start loading toc.js asap -->
         <script src="toc-00f6d8fe.js"></script>
@@ -193,7 +193,7 @@
 <li>Stripe-style atomic-phase execution and recovery points that eliminate database locks during slow external PSP RPCs while modeling network timeouts as a first-class <code>UNKNOWN</code> state</li>
 <li>immutable double-entry ledger invariants, deterministic rounding/remainder allocation, and <code>K</code>-way hot-account sub-account sharding to eliminate row-lock serialization</li>
 <li>transactional outbox with WAL CDC, saga compensation semantics, and T+0 to T+2 three-way financial reconciliation across internal ledger, PSP clearing files, and bank statements</li>
-<li>failure matrices, financial SLIs, production architectures (Stripe, Adyen, Uber LedgerStore, TigerBeetle), and verification via <code>code/paysim</code></li>
+<li>failure matrices, financial SLIs, production architectures (Stripe, Adyen, Uber LedgerStore, TigerBeetle), and verification via <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/tree/prep-v2/distributed-systems-from-the-ground-up/code/paysim"><code>code/paysim</code></a></li>
 </ul>
 </div>
 
@@ -391,7 +391,7 @@ CREATE TABLE ledger_entries (
 <p>Mutating a single <code>accounts.balance</code> column in place destroys audit provenance and permits partial-update corruption if a crash occurs between debiting one account and crediting another. Financial systems instead implement <strong>double-entry bookkeeping</strong>: every monetary movement appends an immutable set of journal rows whose signed minor-unit deltas sum strictly to zero (<code>SUM(delta_minor) == 0</code>). Any bug that fails to balance a transfer violates the database constraint and aborts the transaction before committing corrupt state.</p>
 <h3 id="exact-monetary-arithmetic-and-deterministic-rounding"><a class="header" href="#exact-monetary-arithmetic-and-deterministic-rounding">Exact Monetary Arithmetic and Deterministic Rounding</a></h3>
 <p>Binary IEEE-754 floating-point values (<code>f32</code>/<code>f64</code>) cannot represent decimal tenths exactly (<code>0.10 + 0.20 != 0.30</code> in binary), accumulating unexplained cent discrepancies across millions of percentage fees and currency conversions. Storing all amounts as signed 64-bit integer minor units paired with an ISO-4217 currency code guarantees exact integer arithmetic. Whenever a percentage fee or multi-way payout split produces a fractional cent (such as dividing <code>100</code> cents across <code>3</code> recipients), the ledger applies a deterministic rounding policy (round-half-even or largest-remainder allocation) and routes the exact integer remainder to a designated remainder account so the transaction remains strictly zero-sum.</p>
-<p>Executing <code>code/paysim</code> validates idempotent replay (<code>order-7</code>, <code>order-9</code>), cached refusal replay (<code>order-8</code>), and zero-sum conservation (<code>10,000</code> cents total before and after all operations):</p>
+<p>Executing <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/tree/prep-v2/distributed-systems-from-the-ground-up/code/paysim"><code>code/paysim</code></a> validates idempotent replay (<code>order-7</code>, <code>order-9</code>), cached refusal replay (<code>order-8</code>), and zero-sum conservation (<code>10,000</code> cents total before and after all operations):</p>
 <pre><code class="language-console">$ cargo run --release -p paysim
 start: {"ada": 10000, "shop": 0}, total 10000
 order-7: 4000 cents from ada to shop: Done, ada has 6000
@@ -470,7 +470,7 @@ end: {"ada": 0, "shop": 10000}, total 10000
 </div>
 <h3 id="verification-in-the-repository"><a class="header" href="#verification-in-the-repository">Verification in the Repository</a></h3>
 <div class="simulation">
-<p><strong>Run the payment ledger and idempotency simulation.</strong> Execute <code>cargo run --release -p paysim</code> in <code>code/</code> to verify idempotent deduplication (<code>order-7</code>, <code>order-9</code>), cached insufficient-funds refusal replay (<code>order-8</code>), and strict zero-sum double-entry conservation across all operations.</p>
+<p><strong>Run the payment ledger and idempotency simulation.</strong> Execute <code>cargo run --release -p paysim</code> in <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/tree/prep-v2/distributed-systems-from-the-ground-up/code"><code>code/</code></a> to verify idempotent deduplication (<code>order-7</code>, <code>order-9</code>), cached insufficient-funds refusal replay (<code>order-8</code>), and strict zero-sum double-entry conservation across all operations.</p>
 </div>
 
 <h3 id="engineering-glossary"><a class="header" href="#engineering-glossary">Engineering Glossary</a></h3>
@@ -523,7 +523,7 @@ end: {"ada": 0, "shop": 10000}, total 10000
 <p><strong>Square Books Double-Entry Ledger.</strong> Square built Books, a globally distributed, strongly consistent double-entry accounting service backed by Google Cloud Spanner to record immutable financial journal entries across Cash App and merchant payouts. Every transaction enforces strict zero-sum balance invariants per currency and supports idempotent append-only corrections (reversing entries rather than in-place <code>UPDATE</code> mutations) so auditors can reconstruct exact historical balances at any timestamp.</p>
 <div class="callout keyidea"><span class="label">Key idea</span> Holding an open relational database transaction across an external acquiring-bank RPC exhausts connection pools whenever a downstream bank slows down. Split each payment into short local ACID recovery phases separated by lock-free external network calls so retries resume deterministically without wedging the ledger.</div>
 
-<div class="callout experiment"><span class="label">Experiment</span> In `code/paysim`, replay the identical `order-7` idempotency key three times in succession and inspect the resulting ledger journal. Confirm that the sum of all debit entries equals the sum of all credit entries strictly to zero and that the customer balance decrements once rather than three times.</div>
+<div class="callout experiment"><span class="label">Experiment</span> In [`code/paysim`](https://github.com/arpanpathak/cracking-the-systems-programming-interview/tree/prep-v2/distributed-systems-from-the-ground-up/code/paysim), replay the identical `order-7` idempotency key three times in succession and inspect the resulting ledger journal. Confirm that the sum of all debit entries equals the sum of all credit entries strictly to zero and that the customer balance decrements once rather than three times.</div>
 
 <div class="callout caution"><span class="label">Common pitfall</span> Treating a client-side HTTP timeout during an external PSP call as a confirmed payment failure causes automatic retries to double-charge cardholders when the issuer actually approved the first request. Transition timed-out charges into an `UNKNOWN` reconciliation state and query the PSP's status API with the same idempotency key before issuing a retry or refund.</div>
 
@@ -563,22 +563,6 @@ end: {"ada": 0, "shop": 10000}, total 10000
         <template id=fa-play><span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 384 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M73 39c-14.8-9.1-33.4-9.4-48.5-.9S0 62.6 0 80V432c0 17.4 9.4 33.4 24.5 41.9s33.7 8.1 48.5-.9L361 297c14.3-8.7 23-24.2 23-41s-8.7-32.2-23-41L73 39z"/></svg></span></template>
         <template id=fa-clock-rotate-left><span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M75 75L41 41C25.9 25.9 0 36.6 0 57.9V168c0 13.3 10.7 24 24 24H134.1c21.4 0 32.1-25.9 17-41l-30.8-30.8C155 85.5 203 64 256 64c106 0 192 86 192 192s-86 192-192 192c-40.8 0-78.6-12.7-109.7-34.4c-14.5-10.1-34.4-6.6-44.6 7.9s-6.6 34.4 7.9 44.6C151.2 495 201.7 512 256 512c141.4 0 256-114.6 256-256S397.4 0 256 0C185.3 0 121.3 28.7 75 75zm181 53c-13.3 0-24 10.7-24 24V256c0 6.4 2.5 12.5 7 17l72 72c9.4 9.4 24.6 9.4 33.9 0s9.4-24.6 0-33.9l-65-65V152c0-13.3-10.7-24-24-24z"/></svg></span></template>
 
-        <!-- Livereload script (if served using the cli tool) -->
-        <script>
-            const wsProtocol = location.protocol === 'https:' ? 'wss:' : 'ws:';
-            const wsAddress = wsProtocol + "//" + location.host + "/" + "__livereload";
-            const socket = new WebSocket(wsAddress);
-            socket.onmessage = function (event) {
-                if (event.data === "reload") {
-                    socket.close();
-                    location.reload();
-                }
-            };
-
-            window.onbeforeunload = function() {
-                socket.close();
-            }
-        </script>
 
 
         <script>

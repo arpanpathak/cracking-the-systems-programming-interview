@@ -36,7 +36,7 @@
             const path_to_root = "";
             const default_light_theme = "coal";
             const default_dark_theme = "coal";
-            window.path_to_searchindex_js = "searchindex-38bda414.js";
+            window.path_to_searchindex_js = "searchindex-cf88c8cf.js";
         </script>
         <!-- Start loading toc.js asap -->
         <script src="toc-00f6d8fe.js"></script>
@@ -191,7 +191,7 @@
 <li>actors, use cases, functional requirements, latency and availability SLOs, explicit non-goals, and cache, storage, and fan-out capacity bounds</li>
 <li>external HTTP/2 contracts for publishing, cursor-paginated feed retrieval, social-graph edges, and normalized storage schemas</li>
 <li>separation of the control plane (ranking model registry, celebrity fan-out thresholds, social graph) from the asynchronous publish and read-assembly data plane</li>
-<li>push fan-out on write, pull fan-out on read, and hybrid K-way merge backed by interactive traces and <code>code/feedsim</code> measurements</li>
+<li>push fan-out on write, pull fan-out on read, and hybrid K-way merge backed by interactive traces and <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/tree/prep-v2/distributed-systems-from-the-ground-up/code/feedsim"><code>code/feedsim</code></a> measurements</li>
 <li>keyset cursor pagination, read-time hydration and safety filtering, multi-stage ML candidate ranking, hot-celebrity outbox caching, and author read-own-writes guarantees</li>
 <li>failure-mode mitigation matrices, operational SLIs, production architectures (Twitter/X Home Timeline, Meta Multifeed and TAO, LinkedIn FollowFeed), and simulation verification</li>
 </ul>
@@ -410,7 +410,7 @@ CREATE INDEX idx_follow_by_followed ON follow_edges (followed_id, follower_id);
 </figure>
 <p>Pure pull eliminates write amplification and wasted work for inactive readers, and follow or unfollow changes reflect instantaneously. Its penalty is paid on the frequent read path: a member following <code>200</code> accounts triggers <code>200</code> parallel outbox fetches on every feed load, subjecting tail latency to the straggler distribution (<code>max</code> of <code>200</code> network RPCs).</p>
 <h3 id="hybrid-fan-out-and-threshold-calibration"><a class="header" href="#hybrid-fan-out-and-threshold-calibration">Hybrid Fan-Out and Threshold Calibration</a></h3>
-<p>Real social graphs exhibit extreme degree skew: in <code>code/feedsim</code>, modeling <code>1,000</code> ordinary accounts (<code>200</code> followers each, <code>2</code> posts/day, <code>20</code> reads/day) alongside <strong>one</strong> celebrity account (<code>2,000,000</code> followers, <code>10</code> posts/day) reveals that the single celebrity generates <code>20,000,000</code> of the <code>20,400,000</code> daily push copies (<code>98.0%</code> of total write load). Conversely, pure pull executes <code>4,000,500</code> daily outbox fetches, <code>99.5%</code> of which come from ordinary accounts.</p>
+<p>Real social graphs exhibit extreme degree skew: in <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/tree/prep-v2/distributed-systems-from-the-ground-up/code/feedsim"><code>code/feedsim</code></a>, modeling <code>1,000</code> ordinary accounts (<code>200</code> followers each, <code>2</code> posts/day, <code>20</code> reads/day) alongside <strong>one</strong> celebrity account (<code>2,000,000</code> followers, <code>10</code> posts/day) reveals that the single celebrity generates <code>20,000,000</code> of the <code>20,400,000</code> daily push copies (<code>98.0%</code> of total write load). Conversely, pure pull executes <code>4,000,500</code> daily outbox fetches, <code>99.5%</code> of which come from ordinary accounts.</p>
 <p>Hybrid fan-out partitions authors by a follower threshold $T_{\text{celeb}}$ (<code>10,000</code> in the simulation, typically <code>50,000 to 100,000</code> in production systems such as Twitter/X) (Figure 15-3).</p>
 <figure class="diagram">
 <img src="figures/m3/ch15_hybrid_fanout.svg" alt="Hybrid Fan-Out combining Path A Push Fan-Out for accounts with at most 100k followers and Path B Pull Merge for celebrity accounts with over 100k followers, followed by Read-Time K-Way Merge and Cursor Pagination under 50 ms." />
@@ -555,7 +555,7 @@ mixture, copy unless the author has over 10000 followers:
 <p><strong>Meta TAO and Multifeed.</strong> Meta serves home feeds through a pull-dominant leaf-aggregator tree sitting above TAO, a read-optimized distributed graph cache layered over sharded MySQL. TAO handles billions of reads per second at <code>99.9%</code> cache hit rates by partitioning social-graph edges across follower-tier caches and routing writes synchronously through leader tiers; because personal friend counts stay bounded (at or below <code>5,000</code>), Multifeed leaf nodes can gather recent candidate stories on read and apply deep neural ranking without maintaining static push inboxes for every member.</p>
 <div class="callout keyidea"><span class="label">Key idea</span> Hybrid fan-out decouples write amplification from read amplification by placing a follower-count threshold between two complementary storage paths. Ordinary accounts pay a small asynchronous write cost to keep reads sub-50 ms, while celebrity accounts absorb zero fan-out storms by deferring merge work to read-time cached outboxes.</div>
 
-<div class="callout experiment"><span class="label">Experiment</span> In `code/feedsim`, raise the celebrity cutoff from `10,000` to `5,000,000` and compare daily copy volume against the default hybrid configuration. Observe how a single high-follower author shifts `98%` of total cluster write traffic back onto the fan-out workers while barely changing read-side list fetches.</div>
+<div class="callout experiment"><span class="label">Experiment</span> In [`code/feedsim`](https://github.com/arpanpathak/cracking-the-systems-programming-interview/tree/prep-v2/distributed-systems-from-the-ground-up/code/feedsim), raise the celebrity cutoff from `10,000` to `5,000,000` and compare daily copy volume against the default hybrid configuration. Observe how a single high-follower author shifts `98%` of total cluster write traffic back onto the fan-out workers while barely changing read-side list fetches.</div>
 
 <div class="callout caution"><span class="label">Common pitfall</span> Caching full post bodies inside every follower's Redis inbox multiplies memory footprint by average follower count and makes edits, deletions, and moderation takedowns eventually inconsistent. Store compact `(timestamp, post_id)` references in the inbox and hydrate authoritative content and visibility flags once at read time.</div>
 
@@ -595,22 +595,6 @@ mixture, copy unless the author has over 10000 followers:
         <template id=fa-play><span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 384 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M73 39c-14.8-9.1-33.4-9.4-48.5-.9S0 62.6 0 80V432c0 17.4 9.4 33.4 24.5 41.9s33.7 8.1 48.5-.9L361 297c14.3-8.7 23-24.2 23-41s-8.7-32.2-23-41L73 39z"/></svg></span></template>
         <template id=fa-clock-rotate-left><span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M75 75L41 41C25.9 25.9 0 36.6 0 57.9V168c0 13.3 10.7 24 24 24H134.1c21.4 0 32.1-25.9 17-41l-30.8-30.8C155 85.5 203 64 256 64c106 0 192 86 192 192s-86 192-192 192c-40.8 0-78.6-12.7-109.7-34.4c-14.5-10.1-34.4-6.6-44.6 7.9s-6.6 34.4 7.9 44.6C151.2 495 201.7 512 256 512c141.4 0 256-114.6 256-256S397.4 0 256 0C185.3 0 121.3 28.7 75 75zm181 53c-13.3 0-24 10.7-24 24V256c0 6.4 2.5 12.5 7 17l72 72c9.4 9.4 24.6 9.4 33.9 0s9.4-24.6 0-33.9l-65-65V152c0-13.3-10.7-24-24-24z"/></svg></span></template>
 
-        <!-- Livereload script (if served using the cli tool) -->
-        <script>
-            const wsProtocol = location.protocol === 'https:' ? 'wss:' : 'ws:';
-            const wsAddress = wsProtocol + "//" + location.host + "/" + "__livereload";
-            const socket = new WebSocket(wsAddress);
-            socket.onmessage = function (event) {
-                if (event.data === "reload") {
-                    socket.close();
-                    location.reload();
-                }
-            };
-
-            window.onbeforeunload = function() {
-                socket.close();
-            }
-        </script>
 
 
         <script>

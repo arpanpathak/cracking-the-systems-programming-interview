@@ -38,7 +38,7 @@
             const path_to_root = "";
             const default_light_theme = "coal";
             const default_dark_theme = "coal";
-            window.path_to_searchindex_js = "searchindex-e451f97a.js";
+            window.path_to_searchindex_js = "searchindex-a2840308.js";
         </script>
         <!-- Start loading toc.js asap -->
         <script src="toc-1a401835.js"></script>
@@ -223,7 +223,7 @@
 </ul>
 <p>A critical requirement in predicate synchronization is the <strong>repeated evaluation loop</strong> (<code>while (is_full())</code> / <code>while (is_empty())</code>). When a thread is awakened, it is merely moved from the condition variable’s sleep queue to the mutex’s contention queue; it does not instantaneously resume execution with the lock. By the time the thread re-acquires the mutex, an intervening thread may have intercepted the vacancy or consumed the available item. Furthermore, POSIX and operating system schedulers permit <strong>spurious wakeups</strong>, where a waiting thread unblocks without any explicit notification. Encapsulating the wait operation within a predicate loop ensures that a thread never advances until the condition is verified under exclusive lock ownership.</p>
 <h3 id="1923-reference-implementation"><a class="header" href="#1923-reference-implementation">19.2.3 Reference Implementation</a></h3>
-<p><strong>Listing 19-1. A bounded blocking queue (C++20).</strong></p>
+<p><strong>Listing 19-1. A bounded blocking queue (C++20).</strong> (<a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/operating-systems/code/ch19/bounded_queue.cpp"><code>code/ch19/bounded_queue.cpp</code></a>)</p>
 <pre><code class="language-cpp">// ch19/bounded_queue.cpp: a blocking queue of fixed capacity.
 #include &lt;condition_variable&gt;
 #include &lt;cstdint&gt;
@@ -323,7 +323,7 @@ int main() {
 consumed sum 5000050000
 match        yes
 </code></pre>
-<p><strong>Listing 19-2. The same queue in Rust.</strong></p>
+<p><strong>Listing 19-2. The same queue in Rust.</strong> (<a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/operating-systems/code/ch19/bounded_queue.rs"><code>code/ch19/bounded_queue.rs</code></a>)</p>
 <pre class="playground"><code class="language-rust">// ch19/bounded_queue.rs: a blocking queue of fixed capacity.
 use std::collections::VecDeque;
 use std::sync::{Arc, Condvar, Mutex};
@@ -497,7 +497,7 @@ match        yes
 <figure>
 <img src="figures/ch19_ring_variants.svg" alt="Hand-rolled ring buffer using head and len wrap-around geometry alongside four backing-store trade-off cards" />
 </figure>
-<p><strong>Listing 19-2a. Bounded blocking queue backed by a hand-rolled <code>Ring&lt;T&gt;</code> without <code>std::deque</code> (C++20).</strong></p>
+<p><strong>Listing 19-2a. Bounded blocking queue backed by a hand-rolled <code>Ring&lt;T&gt;</code> without <code>std::deque</code> (C++20).</strong> (<a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/operating-systems/code/ch19/ring_buffer.cpp"><code>code/ch19/ring_buffer.cpp</code></a>)</p>
 <pre><code class="language-cpp">// ch19/ring_buffer.cpp: Hand-rolled fixed-capacity ring buffer (without std::deque)
 // paired with std::mutex and dual std::condition_variables.
 #include &lt;cassert&gt;
@@ -594,7 +594,7 @@ int main() {
 <p><strong>Output 19-2a.</strong></p>
 <pre><code class="language-text">hand-rolled ring queue: 200 std::string messages transferred in strict FIFO order (verified)
 </code></pre>
-<p><strong>Listing 19-2b. The same hand-rolled <code>Ring&lt;T&gt;</code> over <code>Vec&lt;Option&lt;T&gt;&gt;</code> without <code>VecDeque</code> (Rust 2024).</strong></p>
+<p><strong>Listing 19-2b. The same hand-rolled <code>Ring&lt;T&gt;</code> over <code>Vec&lt;Option&lt;T&gt;&gt;</code> without <code>VecDeque</code> (Rust 2024).</strong> (<a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/operating-systems/code/ch19/ring_buffer.rs"><code>code/ch19/ring_buffer.rs</code></a>)</p>
 <pre class="playground"><code class="language-rust">// ch19/ring_buffer.rs: Hand-rolled fixed-capacity ring buffer (without VecDeque)
 // paired with a Mutex and dual Condvars for thread-safe bounded queuing.
 use std::sync::{Arc, Condvar, Mutex};
@@ -765,7 +765,7 @@ fn main() -&gt; QueueResult&lt;()&gt; {
 <figure>
 <img src="figures/ch19_option_maybeuninit_layout.svg" alt="Memory layout inside one 64-byte cache line comparing Option&lt;u64&gt; with 1B tag and 7B padding, Option&lt;Box&lt;u64&gt;&gt; niche optimization, and tightly packed MaybeUninit&lt;u64&gt;" />
 </figure>
-<p><strong>Listing 19-2c. Zero-overhead ring buffer using raw aligned byte storage, <code>std::construct_at</code>, and <code>std::destroy_at</code> (C++20).</strong></p>
+<p><strong>Listing 19-2c. Zero-overhead ring buffer using raw aligned byte storage, <code>std::construct_at</code>, and <code>std::destroy_at</code> (C++20).</strong> (<a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/operating-systems/code/ch19/ring_buffer_uninit.cpp"><code>code/ch19/ring_buffer_uninit.cpp</code></a>)</p>
 <pre><code class="language-cpp">// ch19/ring_buffer_uninit.cpp: Zero-overhead fixed-capacity ring buffer using raw
 // uninitialized aligned storage (C++20 counterpart to Rust's MaybeUninit&lt;T&gt;).
 #include &lt;atomic&gt;
@@ -908,7 +908,7 @@ int main() {
 <pre><code class="language-text">layouts (bytes): uint64_t=8, std::optional&lt;uint64_t&gt;=16, RawSlot&lt;uint64_t&gt;=8, std::string=24, std::optional&lt;std::string&gt;=32
 RawSlot ring: 200 std::strings transferred + partial-ring ~RawRing destroyed 3/3 live items (verified)
 </code></pre>
-<p><strong>Listing 19-2d. Zero-overhead ring buffer over <code>Box&lt;[MaybeUninit&lt;T&gt;]&gt;</code> with verified manual <code>Drop</code> (Rust 2024).</strong></p>
+<p><strong>Listing 19-2d. Zero-overhead ring buffer over <code>Box&lt;[MaybeUninit&lt;T&gt;]&gt;</code> with verified manual <code>Drop</code> (Rust 2024).</strong> (<a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/operating-systems/code/ch19/ring_buffer_uninit.rs"><code>code/ch19/ring_buffer_uninit.rs</code></a>)</p>
 <pre class="playground"><code class="language-rust">// ch19/ring_buffer_uninit.rs: Zero-overhead fixed-capacity ring buffer backed by
 // Box&lt;[MaybeUninit&lt;T&gt;]&gt;, eliminating Option&lt;T&gt;'s discriminant + padding overhead.
 use std::mem::{self, MaybeUninit};
@@ -1120,7 +1120,7 @@ MaybeUninit ring: 200 Strings transferred + partial-ring Drop destroyed 3/3 live
 <li><strong>Alignment Invariant:</strong> For every active block, <code>address(payload) % 16 == 0</code> (aligned to a 16-byte boundary).</li>
 </ul>
 <h3 id="1934-reference-implementation"><a class="header" href="#1934-reference-implementation">19.3.4 Reference Implementation</a></h3>
-<p><strong>Listing 19-3. A first-fit allocator with splitting and coalescing (C++20).</strong></p>
+<p><strong>Listing 19-3. A first-fit allocator with splitting and coalescing (C++20).</strong> (<a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/operating-systems/code/ch19/free_list_allocator.cpp"><code>code/ch19/free_list_allocator.cpp</code></a>)</p>
 <pre><code class="language-cpp">// ch19/free_list_allocator.cpp: a first-fit allocator with splitting and coalescing.
 #include &lt;cstddef&gt;
 #include &lt;cstdint&gt;
@@ -1294,7 +1294,7 @@ fourth reuses the block of second: yes
 after releasing everything:
   offset    0  payload  992  free
 </code></pre>
-<p><strong>Listing 19-4. The same allocator in Rust.</strong></p>
+<p><strong>Listing 19-4. The same allocator in Rust.</strong> (<a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/operating-systems/code/ch19/free_list_allocator.rs"><code>code/ch19/free_list_allocator.rs</code></a>)</p>
 <pre class="playground"><code class="language-rust">// ch19/free_list_allocator.rs: a first-fit allocator with splitting and coalescing.
 use std::alloc::{self, Layout};
 use std::ptr;
@@ -1635,7 +1635,7 @@ after releasing everything:
 </ol>
 <p>The symmetric acquire-release pair governs <code>head</code> updates, ensuring that the consumer finishes reading a slot before the producer observes the updated <code>head</code> and overwrites that memory.</p>
 <h3 id="1944-reference-implementation"><a class="header" href="#1944-reference-implementation">19.4.4 Reference Implementation</a></h3>
-<p><strong>Listing 19-5. A lock-free SPSC ring buffer (C++20).</strong></p>
+<p><strong>Listing 19-5. A lock-free SPSC ring buffer (C++20).</strong> (<a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/operating-systems/code/ch19/spsc_ring.cpp"><code>code/ch19/spsc_ring.cpp</code></a>)</p>
 <pre><code class="language-cpp">// ch19/spsc_ring.cpp: a lock-free ring buffer for one producer and one consumer.
 #include &lt;array&gt;
 #include &lt;atomic&gt;
@@ -1721,7 +1721,7 @@ int main() {
 consumed sum 500000500000
 match        yes
 </code></pre>
-<p><strong>Listing 19-6. The same ring buffer in Rust, with atomic slots and no <code>unsafe</code>.</strong></p>
+<p><strong>Listing 19-6. The same ring buffer in Rust, with atomic slots and no <code>unsafe</code>.</strong> (<a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/operating-systems/code/ch19/spsc_ring.rs"><code>code/ch19/spsc_ring.rs</code></a>)</p>
 <pre class="playground"><code class="language-rust">// ch19/spsc_ring.rs: a lock-free ring buffer for one producer and one consumer.
 use std::sync::Arc;
 use std::sync::atomic::{AtomicU64, AtomicUsize, Ordering};
@@ -1895,7 +1895,7 @@ match        yes
 <li><strong>Boundary Enforcement:</strong> Detecting integer overflow. A 32-bit signed integer spans the asymmetric range <code>[-2,147,483,648, 2,147,483,647]</code>. In C++, signed integer overflow invokes undefined behavior; therefore, accumulating directly in an <code>int32_t</code> is hazardous. The robust implementation accumulates intermediate values in a 64-bit integer (<code>int64_t</code>), applies the parsed sign, and clamps or reports an error if the magnitude exceeds the 32-bit bounds.</li>
 </ol>
 <h3 id="1954-reference-implementation"><a class="header" href="#1954-reference-implementation">19.5.4 Reference Implementation</a></h3>
-<p><strong>Listing 19-7. <code>memmove</code>, <code>strlen</code> and <code>atoi</code> (C++20).</strong></p>
+<p><strong>Listing 19-7. <code>memmove</code>, <code>strlen</code> and <code>atoi</code> (C++20).</strong> (<a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/operating-systems/code/ch19/byte_routines.cpp"><code>code/ch19/byte_routines.cpp</code></a>)</p>
 <pre><code class="language-cpp">// ch19/byte_routines.cpp: memmove, strlen, and atoi written by hand.
 #include &lt;climits&gt;
 #include &lt;cstddef&gt;
@@ -2001,7 +2001,7 @@ length     : 9
 parse min  : ok -2147483648
 parse over : error
 </code></pre>
-<p><strong>Listing 19-8. The same routines in Rust.</strong></p>
+<p><strong>Listing 19-8. The same routines in Rust.</strong> (<a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/operating-systems/code/ch19/byte_routines.rs"><code>code/ch19/byte_routines.rs</code></a>)</p>
 <pre class="playground"><code class="language-rust">// ch19/byte_routines.rs: memmove, strlen, and atoi written by hand.
 
 /// Copies `count` bytes inside `buffer` from `source` to `destination`.
@@ -2138,7 +2138,7 @@ parse over : None
 <li><strong><code>put(key, value)</code>:</strong> If the key already exists, its value is updated and the node is spliced to the head. If the key is new and the cache is saturated (<code>|Keys| == capacity</code>), the tail node is extracted, its key is purged from the hash map, and the node is re-purposed or deallocated. The new key-value pair is inserted at the head and registered in the hash map.</li>
 </ul>
 <h3 id="1963-reference-implementation"><a class="header" href="#1963-reference-implementation">19.6.3 Reference Implementation</a></h3>
-<p><strong>Listing 19-9. An LRU cache built from a list and a hash map (C++20).</strong></p>
+<p><strong>Listing 19-9. An LRU cache built from a list and a hash map (C++20).</strong> (<a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/operating-systems/code/ch19/lru_cache.cpp"><code>code/ch19/lru_cache.cpp</code></a>)</p>
 <pre><code class="language-cpp">// ch19/lru_cache.cpp: a least-recently-used cache with O(1) get and put.
 #include &lt;iostream&gt;
 #include &lt;list&gt;
@@ -2216,7 +2216,7 @@ get 3 -&gt; 30
 get 1 -&gt; miss
 get 4 -&gt; 40
 </code></pre>
-<p><strong>Listing 19-10. The same cache in Rust, with a list linked by index.</strong></p>
+<p><strong>Listing 19-10. The same cache in Rust, with a list linked by index.</strong> (<a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/operating-systems/code/ch19/lru_cache.rs"><code>code/ch19/lru_cache.rs</code></a>)</p>
 <pre class="playground"><code class="language-rust">// ch19/lru_cache.rs: a fixed-capacity, generic LRU (Least Recently Used) cache.
 //!
 //! ## Design
@@ -2522,7 +2522,7 @@ get 4 -&gt; 40
 <p>A reader-preference lock grants access to any arriving reader as long as <code>writer_active</code> is false. Under high read concurrency, new reader threads arrive before existing readers release the lock, causing <code>readers_active</code> to remain non-zero indefinitely. Under this reader-preference policy, waiting writers experience <strong>writer starvation</strong>, blocked from updating state for unbounded durations.</p>
 <p>To prevent starvation, the lock implements a <strong>writer-preference policy</strong>: an arriving reader thread is forced to wait if <code>writer_active</code> is true <em>or</em> if <code>writers_waiting &gt; 0</code>. Prioritizing queued writers bounds write latency and ensures fair forward progress across both read and write operations.</p>
 <h3 id="1973-reference-implementation"><a class="header" href="#1973-reference-implementation">19.7.3 Reference Implementation</a></h3>
-<p><strong>Listing 19-11. A reader-writer lock with writer preference (C++20).</strong></p>
+<p><strong>Listing 19-11. A reader-writer lock with writer preference (C++20).</strong> (<a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/operating-systems/code/ch19/rw_lock.cpp"><code>code/ch19/rw_lock.cpp</code></a>)</p>
 <pre><code class="language-cpp">// ch19/rw_lock.cpp: a reader-writer lock built from a mutex and a condition variable.
 #include &lt;atomic&gt;
 #include &lt;condition_variable&gt;
@@ -2629,7 +2629,7 @@ int main() {
 <pre><code class="language-text">transfers    40000
 broken reads 0
 </code></pre>
-<p><strong>Listing 19-12. The same lock in Rust.</strong></p>
+<p><strong>Listing 19-12. The same lock in Rust.</strong> (<a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/operating-systems/code/ch19/rw_lock.rs"><code>code/ch19/rw_lock.rs</code></a>)</p>
 <pre class="playground"><code class="language-rust">// ch19/rw_lock.rs: a reader-writer lock built from a mutex and a condition variable.
 use std::sync::atomic::{AtomicI64, AtomicU64, Ordering};
 use std::sync::{Arc, Condvar, Mutex};
@@ -2860,7 +2860,7 @@ broken reads 0
 </code></pre>
 <p>If the queue still contains tasks when <code>stopping</code> is asserted, workers continue extracting and processing tasks until the queue is fully drained, after which they terminate cleanly.</p>
 <h3 id="1983-reference-implementation"><a class="header" href="#1983-reference-implementation">19.8.3 Reference Implementation</a></h3>
-<p><strong>Listing 19-13. A thread pool (C++20).</strong></p>
+<p><strong>Listing 19-13. A thread pool (C++20).</strong> (<a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/operating-systems/code/ch19/thread_pool.cpp"><code>code/ch19/thread_pool.cpp</code></a>)</p>
 <pre><code class="language-cpp">// ch19/thread_pool.cpp: a fixed set of worker threads that run queued tasks.
 #include &lt;atomic&gt;
 #include &lt;condition_variable&gt;
@@ -2956,7 +2956,7 @@ int main() {
 <pre><code class="language-text">expected 500500
 total    500500
 </code></pre>
-<p><strong>Listing 19-14. The same pool in Rust, built on a channel.</strong></p>
+<p><strong>Listing 19-14. The same pool in Rust, built on a channel.</strong> (<a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/operating-systems/code/ch19/thread_pool.rs"><code>code/ch19/thread_pool.rs</code></a>)</p>
 <pre class="playground"><code class="language-rust">// ch19/thread_pool.rs: a fixed set of worker threads that run queued tasks.
 use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::mpsc::{self, Receiver, Sender};
@@ -3109,7 +3109,7 @@ total    500500
 <li><strong>Reaping Child Processes:</strong> The parent invokes <code>waitpid()</code> for both child PIDs, collecting their exit status codes and preventing zombie process accumulation.</li>
 </ol>
 <h3 id="1993-reference-implementation"><a class="header" href="#1993-reference-implementation">19.9.3 Reference Implementation</a></h3>
-<p><strong>Listing 19-15. A pipeline of two processes (C++20).</strong></p>
+<p><strong>Listing 19-15. A pipeline of two processes (C++20).</strong> (<a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/operating-systems/code/ch19/mini_pipeline.cpp"><code>code/ch19/mini_pipeline.cpp</code></a>)</p>
 <pre><code class="language-cpp">// ch19/mini_pipeline.cpp: what a shell does for `echo hello | tr a-z A-Z`.
 #include &lt;cstdio&gt;
 #include &lt;sys/wait.h&gt;
@@ -3178,7 +3178,7 @@ int main() {
 <pre><code class="language-text">HELLO
 echo exited with 0, tr exited with 0
 </code></pre>
-<p><strong>Listing 19-16. The same pipeline in Rust, with the libc crate.</strong></p>
+<p><strong>Listing 19-16. The same pipeline in Rust, with the libc crate.</strong> (<a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/operating-systems/code/ch19/mini_pipeline.rs"><code>code/ch19/mini_pipeline.rs</code></a>)</p>
 <pre class="playground"><code class="language-rust">// ch19/mini_pipeline.rs: what a shell does for `echo hello | tr a-z A-Z`.
 use std::ffi::CString;
 use std::io::Write;
@@ -3319,7 +3319,7 @@ Adding <code>A - 1</code> forces any non-zero offset in the lower <code>k</code>
 <li><strong>Next Power of Two (<code>next_power_of_two</code>):</strong> Determines the smallest power of two ≥ x. In systems software, this is computed either via bit-smearing (propagating the highest set bit rightward across all lower positions and adding 1) or via the Count Leading Zeros (<code>CLZ</code>) hardware instruction.</li>
 </ul>
 <h3 id="19103-reference-implementation"><a class="header" href="#19103-reference-implementation">19.10.3 Reference Implementation</a></h3>
-<p><strong>Listing 19-17. Bit manipulation (C++20).</strong></p>
+<p><strong>Listing 19-17. Bit manipulation (C++20).</strong> (<a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/operating-systems/code/ch19/bit_tricks.cpp"><code>code/ch19/bit_tricks.cpp</code></a>)</p>
 <pre><code class="language-cpp">// ch19/bit_tricks.cpp: four bit manipulations that systems code uses daily.
 #include &lt;cinttypes&gt;
 #include &lt;cstdint&gt;
@@ -3380,7 +3380,7 @@ align_up(11, 16)        = 16
 align_up(4097, 4096)    = 8192
 next_power_of_two(1000) = 1024
 </code></pre>
-<p><strong>Listing 19-18. The same functions in Rust.</strong></p>
+<p><strong>Listing 19-18. The same functions in Rust.</strong> (<a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/operating-systems/code/ch19/bit_tricks.rs"><code>code/ch19/bit_tricks.rs</code></a>)</p>
 <pre class="playground"><code class="language-rust">// ch19/bit_tricks.rs: four bit manipulations that systems code uses daily.
 
 /// Counts the 1 bits. Each iteration clears the lowest set bit.
@@ -3470,7 +3470,7 @@ next_power_of_two(1000) = 1024
 </ul>
 <p>If the list is acyclic, <code>fast</code> reaches the null terminator in <code>O(N)</code> steps. If a cycle exists, both pointers eventually enter the cycle. Let the cycle length be <code>C</code>. Once both pointers circulate within the cycle, each step decreases the distance from <code>fast</code> to <code>slow</code> by exactly one node (2 - 1 = 1). Because relative distance decreases monotonically by 1 modulo <code>C</code>, <code>fast</code> is mathematically guaranteed to collide with <code>slow</code> within at most <code>C</code> iterations from the moment <code>slow</code> entered the cycle.</p>
 <h3 id="19114-reference-implementation"><a class="header" href="#19114-reference-implementation">19.11.4 Reference Implementation</a></h3>
-<p><strong>Listing 19-19. Reverse, merge and cycle detection (C++20).</strong></p>
+<p><strong>Listing 19-19. Reverse, merge and cycle detection (C++20).</strong> (<a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/operating-systems/code/ch19/linked_list.cpp"><code>code/ch19/linked_list.cpp</code></a>)</p>
 <pre><code class="language-cpp">// ch19/linked_list.cpp: reverse a list, merge two sorted lists, detect a cycle.
 #include &lt;cstdio&gt;
 
@@ -3556,7 +3556,7 @@ reversed: 6 5 4 3 2 1
 cycle before: no
 cycle after : yes
 </code></pre>
-<p><strong>Listing 19-20. The same operations in Rust.</strong></p>
+<p><strong>Listing 19-20. The same operations in Rust.</strong> (<a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/operating-systems/code/ch19/linked_list.rs"><code>code/ch19/linked_list.rs</code></a>)</p>
 <pre class="playground"><code class="language-rust">// ch19/linked_list.rs: reverse a list, merge two sorted lists, detect a cycle.
 
 struct Node {

@@ -37,7 +37,7 @@
             const path_to_root = "";
             const default_light_theme = "coal";
             const default_dark_theme = "coal";
-            window.path_to_searchindex_js = "searchindex-38bda414.js";
+            window.path_to_searchindex_js = "searchindex-cf88c8cf.js";
         </script>
         <!-- Start loading toc.js asap -->
         <script src="toc-00f6d8fe.js"></script>
@@ -204,7 +204,7 @@
 <li><strong>Failure Modes, Tail Latency, and Observability:</strong> I evaluate network partitions, hot-key skew, lock contention, and gray failures, specifying automated recovery invariants and Service Level Indicators (SLIs) for each failure domain.</li>
 </ol>
 <h2 id="companion-implementations-and-prerequisites"><a class="header" href="#companion-implementations-and-prerequisites">Companion Implementations and Prerequisites</a></h2>
-<p>The companion <code>code/</code> directory contains the runnable Part I storage subsystems and the workload simulations cited across Parts II to VI, allowing readers to reproduce the throughput measurements, skew distributions, and crash-recovery experiments reported in the text.</p>
+<p>The companion <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/tree/prep-v2/distributed-systems-from-the-ground-up/code"><code>code/</code></a> directory contains the runnable Part I storage subsystems and the workload simulations cited across Parts II to VI, allowing readers to reproduce the throughput measurements, skew distributions, and crash-recovery experiments reported in the text.</p>
 <p>For the system design chapters, I assume foundational knowledge of HTTP semantics, relational databases, data structures, and TCP/IP networking. For the low-level implementation chapters in Part I, I additionally assume reading familiarity with Rust. Every distributed systems primitive is derived when first introduced and consolidated in each chapter’s engineering glossary.</p>
 <h2 id="references-and-provenance"><a class="header" href="#references-and-provenance">References and Provenance</a></h2>
 <p>The protocols and trade-offs presented in this volume draw upon primary distributed systems literature and published production engineering reports, including work on Raft consensus, Dynamo, Spanner, CockroachDB, Stripe’s atomic-phase idempotency and GCRA rate-limiting systems, and classical transaction-processing theory. Full bibliographic citations appear at the close of each chapter.</p>
@@ -1808,7 +1808,7 @@ ETag: "8"
 </code></pre>
 <p>Retry safety follows directly from these semantics. <code>GET</code> and <code>DELETE</code> are naturally idempotent. Conditional <code>PUT</code> with <code>If-Match</code> is safe to retry after a dropped connection: if the initial attempt committed before the reply packet was lost, the retry observes <code>412 Precondition Failed</code> carrying <code>ETag: "8"</code> rather than applying the mutation twice. Client SDKs should apply truncated exponential backoff with full jitter on <code>503 Service Unavailable</code> and <code>429 Too Many Requests</code>, and must never retry deterministic client errors (<code>400</code>, <code>412</code>, <code>413</code>).</p>
 <h3 id="internal-replication-and-topology-protocol-grpc--protobuf"><a class="header" href="#internal-replication-and-topology-protocol-grpc--protobuf">Internal Replication and Topology Protocol (gRPC / Protobuf)</a></h3>
-<p>Storage nodes exchange strictly typed Protobuf messages over persistent HTTP/2 streams (<code>code/proto/store.proto</code>). Before examining Listings 1.1 through 1.3, note the invariants encoded in the message fields:</p>
+<p>Storage nodes exchange strictly typed Protobuf messages over persistent HTTP/2 streams (<a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/distributed-systems-from-the-ground-up/code/proto/store.proto"><code>code/proto/store.proto</code></a>). Before examining Listings 1.1 through 1.3, note the invariants encoded in the message fields:</p>
 <ul>
 <li><strong><code>Record.sequence</code> (<code>uint64</code>):</strong> The contiguous, strictly monotonic log index assigned by the shard leader. Every replica applies committed records in exact sequence order, guaranteeing identical state-machine convergence.</li>
 <li><strong><code>AppendRequest.term</code> (<code>uint64</code>):</strong> The sender’s current Raft election epoch. Any follower observing <code>request.term &lt; local_term</code> immediately rejects the RPC and returns its higher term, fencing partitioned former leaders.</li>
@@ -2046,7 +2046,7 @@ position of user-1: 0x7c7615c11438e5c9
 </div>
 <h3 id="verification-in-the-repository"><a class="header" href="#verification-in-the-repository">Verification in the Repository</a></h3>
 <div class="simulation">
-<p><strong>Run the consistent-hashing variance simulation.</strong> Execute <code>cargo run --release -p ringsim</code> in <code>code/</code> to reproduce the <code>1</code>, <code>8</code>, <code>64</code>, and <code>256</code> virtual-node skew measurements and modulo-hashing migration contrast we analyzed in Section 1.5. In Chapters 2 through 6, we implement and fault-test the durable storage node (<code>kvd</code>, <code>crashsim</code>), quorum replication (<code>replsim</code>), Raft leader election (<code>raftsim</code>), stateless router (<code>kvrouter</code>), and group-commit WAL (<code>kvgroup</code>).</p>
+<p><strong>Run the consistent-hashing variance simulation.</strong> Execute <code>cargo run --release -p ringsim</code> in <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/tree/prep-v2/distributed-systems-from-the-ground-up/code"><code>code/</code></a> to reproduce the <code>1</code>, <code>8</code>, <code>64</code>, and <code>256</code> virtual-node skew measurements and modulo-hashing migration contrast we analyzed in Section 1.5. In Chapters 2 through 6, we implement and fault-test the durable storage node (<code>kvd</code>, <code>crashsim</code>), quorum replication (<code>replsim</code>), Raft leader election (<code>raftsim</code>), stateless router (<code>kvrouter</code>), and group-commit WAL (<code>kvgroup</code>).</p>
 </div>
 
 <h3 id="engineering-glossary"><a class="header" href="#engineering-glossary">Engineering Glossary</a></h3>
@@ -2104,7 +2104,7 @@ position of user-1: 0x7c7615c11438e5c9
 </div>
 
 <div class="callout experiment"><span class="label">Experiment</span>
-<p><strong>Quantify hot-key variance before sizing shards.</strong> Run <code>cargo run --release -p ringsim</code> in <code>code/</code> and compare the maximum-to-mean shard load ratio at <code>1</code>, <code>8</code>, <code>64</code>, and <code>256</code> virtual nodes. Observe how increasing virtual nodes from <code>1</code> to <code>256</code> compresses standard deviation by more than an order of magnitude while keeping lookup complexity at <code>O(log V)</code> (fewer than <code>14</code> binary-search comparisons for <code>24</code> nodes).</p>
+<p><strong>Quantify hot-key variance before sizing shards.</strong> Run <code>cargo run --release -p ringsim</code> in <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/tree/prep-v2/distributed-systems-from-the-ground-up/code"><code>code/</code></a> and compare the maximum-to-mean shard load ratio at <code>1</code>, <code>8</code>, <code>64</code>, and <code>256</code> virtual nodes. Observe how increasing virtual nodes from <code>1</code> to <code>256</code> compresses standard deviation by more than an order of magnitude while keeping lookup complexity at <code>O(log V)</code> (fewer than <code>14</code> binary-search comparisons for <code>24</code> nodes).</p>
 </div>
 
 <div class="callout caution"><span class="label">Common pitfall</span>
@@ -5037,7 +5037,7 @@ fn main() -&gt; Result&lt;(), Box&lt;dyn Error&gt;&gt; {
 </div>
 
 <div class="callout experiment"><span class="label">Experiment</span>
-<p><strong>Measure buffered vs. durable throughput on local storage.</strong> Execute <code>cargo run --release -p synccost</code> in <code>code/</code> with default record sizes and again with <code>4 KiB</code> and <code>64 KiB</code> payloads. Compare the throughput ratio between <code>write(2)</code> alone and <code>write(2)</code> followed by <code>sync_data()</code>; observe that fixed flush latency dominates small writes until payload sizes exceed several hundred kilobytes.</p>
+<p><strong>Measure buffered vs. durable throughput on local storage.</strong> Execute <code>cargo run --release -p synccost</code> in <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/tree/prep-v2/distributed-systems-from-the-ground-up/code"><code>code/</code></a> with default record sizes and again with <code>4 KiB</code> and <code>64 KiB</code> payloads. Compare the throughput ratio between <code>write(2)</code> alone and <code>write(2)</code> followed by <code>sync_data()</code>; observe that fixed flush latency dominates small writes until payload sizes exceed several hundred kilobytes.</p>
 </div>
 
 <div class="callout caution"><span class="label">Common pitfall</span>
@@ -8004,7 +8004,7 @@ async fn main() -&gt; Result&lt;(), Box&lt;dyn Error&gt;&gt; {
 </div>
 
 <div class="callout experiment"><span class="label">Experiment</span>
-<p><strong>Exhaustively verify quorum invariants under packet loss.</strong> Run <code>cargo run --release -p replsim</code> in <code>code/</code> to exercise all <code>4,096</code> combinations of dropped <code>Append</code> requests and dropped <code>AppendReply</code> messages across three sequential writes. Verify that invariants 0 (log prefix agreement) and 1 (every acknowledged record persists on a majority) hold across every single schedule.</p>
+<p><strong>Exhaustively verify quorum invariants under packet loss.</strong> Run <code>cargo run --release -p replsim</code> in <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/tree/prep-v2/distributed-systems-from-the-ground-up/code"><code>code/</code></a> to exercise all <code>4,096</code> combinations of dropped <code>Append</code> requests and dropped <code>AppendReply</code> messages across three sequential writes. Verify that invariants 0 (log prefix agreement) and 1 (every acknowledged record persists on a majority) hold across every single schedule.</p>
 </div>
 
 <div class="callout caution"><span class="label">Common pitfall</span>
@@ -12575,7 +12575,7 @@ fn main() -&gt; Result&lt;(), Box&lt;dyn Error&gt;&gt; {
 </div>
 
 <div class="callout experiment"><span class="label">Experiment</span>
-<p><strong>Trigger randomized elections and verify Election Safety.</strong> Execute <code>cargo run --release -p raftsim</code> in <code>code/</code> to run 200 randomized three-node fault schedules. Inspect the summary counters for elections held, acknowledged writes preserved, and conflicting uncommitted tails truncated, then deliberately disable durable <code>voted_for</code> persistence in a local branch to watch the simulator catch a dual-leader safety violation immediately.</p>
+<p><strong>Trigger randomized elections and verify Election Safety.</strong> Execute <code>cargo run --release -p raftsim</code> in <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/tree/prep-v2/distributed-systems-from-the-ground-up/code"><code>code/</code></a> to run 200 randomized three-node fault schedules. Inspect the summary counters for elections held, acknowledged writes preserved, and conflicting uncommitted tails truncated, then deliberately disable durable <code>voted_for</code> persistence in a local branch to watch the simulator catch a dual-leader safety violation immediately.</p>
 </div>
 
 <div class="callout caution"><span class="label">Common pitfall</span>
@@ -14183,7 +14183,7 @@ fn main() -&gt; Result&lt;(), Box&lt;dyn Error&gt;&gt; {
 <li>actors, use cases, verifiable functional requirements, sub-millisecond latency SLOs, and memory and CPU capacity bounds</li>
 <li>HTTP caller contracts (<code>429 Too Many Requests</code>, IETF <code>RateLimit-*</code> headers, jittered <code>Retry-After</code>), internal Envoy-style gRPC checks, and policy control APIs</li>
 <li>separation of policy compilation (control plane) from sub-millisecond evaluation (data plane), including shadow-mode rollout</li>
-<li>formal and empirical comparison of rate-limiting algorithms via <code>code/ratelimit</code> and interactive traces, culminating in the O(1) Generic Cell Rate Algorithm (GCRA) and its atomic Redis Lua implementation</li>
+<li>formal and empirical comparison of rate-limiting algorithms via <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/tree/prep-v2/distributed-systems-from-the-ground-up/code/ratelimit"><code>code/ratelimit</code></a> and interactive traces, culminating in the O(1) Generic Cell Rate Algorithm (GCRA) and its atomic Redis Lua implementation</li>
 <li>distributed quota synchronization across single-region Redis Clusters, L1 local quota leasing for hot keys, and multi-region asynchronous convergence</li>
 <li>defense-in-depth failure policies (fail-open versus fail-closed tiers), composite key selection, and backend adaptive load shedding (AIMD and CoDel)</li>
 <li>operational SLIs, production architectures (Stripe, Cloudflare, Envoy, Kong), and verification</li>
@@ -14340,7 +14340,7 @@ Content-Type: application/json
 <h2 id="74-rate-limiting-algorithms-and-gcra-formulation"><a class="header" href="#74-rate-limiting-algorithms-and-gcra-formulation">7.4 Rate-Limiting Algorithms and GCRA Formulation</a></h2>
 <p>The natural-language specification “5 requests per second” admits multiple incompatible implementations until two degrees of freedom are fixed: <strong>burst tolerance</strong> (whether all 5 requests may arrive in the same millisecond or must be spaced evenly every <code>200 ms</code>) and <strong>window alignment</strong> (calendar-aligned clock seconds versus every rolling <code>1,000 ms</code> span).</p>
 <h3 id="empirical-comparison-of-classical-algorithms"><a class="header" href="#empirical-comparison-of-classical-algorithms">Empirical Comparison of Classical Algorithms</a></h3>
-<p>The repository’s <code>code/ratelimit</code> simulation subjects five classical algorithms to identical traffic at <code>5</code> requests/s (<code>20</code> simultaneous requests, <code>10</code> requests straddling the <code>1,000 ms</code> clock boundary, and <code>30</code> requests arriving at <code>10</code> req/s over <code>3</code> seconds):</p>
+<p>The repository’s <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/tree/prep-v2/distributed-systems-from-the-ground-up/code/ratelimit"><code>code/ratelimit</code></a> simulation subjects five classical algorithms to identical traffic at <code>5</code> requests/s (<code>20</code> simultaneous requests, <code>10</code> requests straddling the <code>1,000 ms</code> clock boundary, and <code>30</code> requests arriving at <code>10</code> req/s over <code>3</code> seconds):</p>
 <pre><code class="language-console">$ cargo run --release -p ratelimit
 the limit for every algorithm: 5 requests per second
 
@@ -14515,7 +14515,7 @@ return { 1, remaining, 0 }
 </div>
 <h3 id="verification-in-the-repository-1"><a class="header" href="#verification-in-the-repository-1">Verification in the Repository</a></h3>
 <div class="simulation">
-<p><strong>Run the algorithm comparison simulation.</strong> Execute <code>cargo run --release -p ratelimit</code> in <code>code/</code> to reproduce the simultaneous-burst, boundary-straddling, and sustained-overload results across all five algorithms reported in Section 7.4.</p>
+<p><strong>Run the algorithm comparison simulation.</strong> Execute <code>cargo run --release -p ratelimit</code> in <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/tree/prep-v2/distributed-systems-from-the-ground-up/code"><code>code/</code></a> to reproduce the simultaneous-burst, boundary-straddling, and sustained-overload results across all five algorithms reported in Section 7.4.</p>
 </div>
 
 <h3 id="engineering-glossary-1"><a class="header" href="#engineering-glossary-1">Engineering Glossary</a></h3>
@@ -14569,7 +14569,7 @@ return { 1, remaining, 0 }
 </div>
 
 <div class="callout experiment"><span class="label">Experiment</span>
-<p><strong>Expose fixed-window boundary bursts empirically.</strong> Execute <code>cargo run --release -p ratelimit</code> in <code>code/</code> to replay identical burst and boundary-straddling workloads against Fixed Window, Sliding Log, Sliding Counter, Token Bucket, and GCRA. Verify that Fixed Window admits <code>2x</code> the configured quota across a window boundary, whereas GCRA bounds both instantaneous burst and sustained rate cleanly.</p>
+<p><strong>Expose fixed-window boundary bursts empirically.</strong> Execute <code>cargo run --release -p ratelimit</code> in <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/tree/prep-v2/distributed-systems-from-the-ground-up/code"><code>code/</code></a> to replay identical burst and boundary-straddling workloads against Fixed Window, Sliding Log, Sliding Counter, Token Bucket, and GCRA. Verify that Fixed Window admits <code>2x</code> the configured quota across a window boundary, whereas GCRA bounds both instantaneous burst and sustained rate cleanly.</p>
 </div>
 
 <div class="callout caution"><span class="label">Common pitfall</span>
@@ -14901,7 +14901,7 @@ message NextBatchResponse {
 </table>
 </div>
 <h2 id="87-simulation-verification"><a class="header" href="#87-simulation-verification">8.7 Simulation Verification</a></h2>
-<p>To validate per-millisecond sequence exhaustion, global uniqueness across independent nodes, chronological ordering, and backward clock-step refusal, we execute the repository’s <code>idgen</code> simulation (<code>code/idgen/src/main.rs</code>). The test drives <code>3</code> independent generator nodes, requesting <code>5,000</code> IDs per node across <code>100</code> milliseconds (<code>1,500,000</code> total requests), and then injects a <code>2 ms</code> backward clock jump on node <code>7</code>:</p>
+<p>To validate per-millisecond sequence exhaustion, global uniqueness across independent nodes, chronological ordering, and backward clock-step refusal, we execute the repository’s <code>idgen</code> simulation (<a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/distributed-systems-from-the-ground-up/code/idgen/src/main.rs"><code>code/idgen/src/main.rs</code></a>). The test drives <code>3</code> independent generator nodes, requesting <code>5,000</code> IDs per node across <code>100</code> milliseconds (<code>1,500,000</code> total requests), and then injects a <code>2 ms</code> backward clock jump on node <code>7</code>:</p>
 <pre><code class="language-console">$ cargo run --release -p idgen
 ids made: 1228800, different ids: 1228800
 requests refused because a millisecond was full: 271200
@@ -14917,7 +14917,7 @@ ids sort by time: true
 <li><strong>Strict Monotonic Guard:</strong> When node <code>7</code> observes <code>t = 1999 ms</code> after already emitting at <code>t = 2001 ms</code>, it returns <code>None</code> instead of reissuing IDs from a past millisecond.</li>
 </ol>
 <div class="simulation">
-<p><strong>Run the unique ID generator simulation.</strong> Execute <code>cargo run --release -p idgen</code> in <code>code/</code> (<a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/distributed-systems-from-the-ground-up/code/idgen/src/main.rs"><code>code/idgen/src/main.rs</code></a>) to reproduce the 1,228,800-ID uniqueness, sequence-exhaustion, and clock-regression checks above.</p>
+<p><strong>Run the unique ID generator simulation.</strong> Execute <code>cargo run --release -p idgen</code> in <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/tree/prep-v2/distributed-systems-from-the-ground-up/code"><code>code/</code></a> (<a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/distributed-systems-from-the-ground-up/code/idgen/src/main.rs"><code>code/idgen/src/main.rs</code></a>) to reproduce the 1,228,800-ID uniqueness, sequence-exhaustion, and clock-regression checks above.</p>
 </div>
 
 <h2 id="88-terminology-and-references"><a class="header" href="#88-terminology-and-references">8.8 Terminology and References</a></h2>
@@ -15269,7 +15269,7 @@ Host: cache-shard-03.internal
 </table>
 </div>
 <h2 id="97-simulation-verification"><a class="header" href="#97-simulation-verification">9.7 Simulation Verification</a></h2>
-<p>To measure empirically how cache capacity translates into hit ratio under skewed Zipfian popularity, we run the repository’s <code>cachesim</code> benchmark (<code>code/cachesim/src/main.rs</code>), which replays <code>1,000,000</code> read requests across <code>100,000</code> distinct keys against an LRU cache sized at <code>1%</code>, <code>5%</code>, <code>10%</code>, and <code>25%</code> of the keyspace:</p>
+<p>To measure empirically how cache capacity translates into hit ratio under skewed Zipfian popularity, we run the repository’s <code>cachesim</code> benchmark (<a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/distributed-systems-from-the-ground-up/code/cachesim/src/main.rs"><code>code/cachesim/src/main.rs</code></a>), which replays <code>1,000,000</code> read requests across <code>100,000</code> distinct keys against an LRU cache sized at <code>1%</code>, <code>5%</code>, <code>10%</code>, and <code>25%</code> of the keyspace:</p>
 <pre><code class="language-console">$ cargo run --release -p cachesim
 1000000 requests for 100000 keys, a few of them popular
   cache holds  1% of the keys:  5.7% of requests answered from the cache
@@ -15279,7 +15279,7 @@ Host: cache-shard-03.internal
 </code></pre>
 <p>Holding <code>25%</code> of the keyspace (<code>25,000</code> keys) absorbs <code>72.7%</code> of all requests, cutting backing-store traffic by <code>3.66x</code>. Under steeper real-world Zipfian exponents (<code>alpha &gt;= 1.0</code>), <code>5%</code> to <code>10%</code> of the keyspace routinely exceeds <code>95%</code> to <code>99%</code> hit ratios. In practice, operators must always benchmark miss-ratio curves against real production access traces before finalizing fleet RAM budgets.</p>
 <div class="simulation">
-<p><strong>Run the distributed cache hit-ratio simulation.</strong> Execute <code>cargo run --release -p cachesim</code> in <code>code/</code> (<a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/distributed-systems-from-the-ground-up/code/cachesim/src/main.rs"><code>code/cachesim/src/main.rs</code></a>) to reproduce the 1,000,000-request Zipfian hit-ratio curve across 1%, 5%, 10%, and 25% cache capacities.</p>
+<p><strong>Run the distributed cache hit-ratio simulation.</strong> Execute <code>cargo run --release -p cachesim</code> in <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/tree/prep-v2/distributed-systems-from-the-ground-up/code"><code>code/</code></a> (<a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/distributed-systems-from-the-ground-up/code/cachesim/src/main.rs"><code>code/cachesim/src/main.rs</code></a>) to reproduce the 1,000,000-request Zipfian hit-ratio curve across 1%, 5%, 10%, and 25% cache capacities.</p>
 </div>
 
 <h2 id="98-terminology-and-references"><a class="header" href="#98-terminology-and-references">9.8 Terminology and References</a></h2>
@@ -15634,7 +15634,7 @@ UPDATE billing_ledger_state
 </table>
 </div>
 <h2 id="107-simulation-verification"><a class="header" href="#107-simulation-verification">10.7 Simulation Verification</a></h2>
-<p>To verify end-to-end fencing safety under a long process pause, we execute the repository’s <code>locksim</code> simulation (<code>code/locksim/src/main.rs</code>). In this trace, <code>client-a</code> acquires the lock at <code>t = 0</code> with a <code>10 s</code> lease and fencing token <code>1</code>, then freezes for <code>15 seconds</code> at <code>t = 2</code>. At <code>t = 12</code>, after the lease expires, <code>client-b</code> acquires the lock with token <code>2</code> and writes to storage at <code>t = 13</code>. When <code>client-a</code> wakes at <code>t = 17</code> and attempts to write with token <code>1</code>, the storage engine rejects the stale write:</p>
+<p>To verify end-to-end fencing safety under a long process pause, we execute the repository’s <code>locksim</code> simulation (<a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/distributed-systems-from-the-ground-up/code/locksim/src/main.rs"><code>code/locksim/src/main.rs</code></a>). In this trace, <code>client-a</code> acquires the lock at <code>t = 0</code> with a <code>10 s</code> lease and fencing token <code>1</code>, then freezes for <code>15 seconds</code> at <code>t = 2</code>. At <code>t = 12</code>, after the lease expires, <code>client-b</code> acquires the lock with token <code>2</code> and writes to storage at <code>t = 13</code>. When <code>client-a</code> wakes at <code>t = 17</code> and attempts to write with token <code>1</code>, the storage engine rejects the stale write:</p>
 <pre><code class="language-console">$ cargo run --release -p locksim
 t=0   client-a acquires the lock: token Some(1), lease until t=10
 t=1   client-b asks for the lock: None
@@ -15646,7 +15646,7 @@ the storage holds: written by client-b
 </code></pre>
 <p>Without storage-layer token verification, <code>client-a</code>’s write at <code>t = 17</code> would overwrite <code>client-b</code>’s committed data without detection. With monotonic fencing enforced at storage, <code>1 &lt; 2</code> triggers an unconditional refusal (<code>accepted false</code>), preserving <code>written by client-b</code> regardless of pause duration or clock skew.</p>
 <div class="simulation">
-<p><strong>Run the distributed lock and fencing simulation.</strong> Execute <code>cargo run --release -p locksim</code> in <code>code/</code> (<a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/distributed-systems-from-the-ground-up/code/locksim/src/main.rs"><code>code/locksim/src/main.rs</code></a>) to reproduce the 15-second pause, lease transfer, and storage-layer token rejection trace above.</p>
+<p><strong>Run the distributed lock and fencing simulation.</strong> Execute <code>cargo run --release -p locksim</code> in <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/tree/prep-v2/distributed-systems-from-the-ground-up/code"><code>code/</code></a> (<a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/distributed-systems-from-the-ground-up/code/locksim/src/main.rs"><code>code/locksim/src/main.rs</code></a>) to reproduce the 15-second pause, lease transfer, and storage-layer token rejection trace above.</p>
 </div>
 
 <h2 id="108-terminology-and-references"><a class="header" href="#108-terminology-and-references">10.8 Terminology and References</a></h2>
@@ -15985,7 +15985,7 @@ Content-Type: application/json
 </table>
 </div>
 <h2 id="117-simulation-verification"><a class="header" href="#117-simulation-verification">11.7 Simulation Verification</a></h2>
-<p>To verify partition-key ordering, at-least-once crash recovery, and idempotent consumer deduplication, we execute the repository’s <code>queuesim</code> simulation (<code>code/queuesim/src/main.rs</code>). Six order lifecycle events append sequentially into partition <code>1</code> (offsets <code>0</code> through <code>5</code>). The consumer processes all <code>6</code> events and crashes right before committing its offset; upon restarting from committed offset <code>0</code>, it replays all <code>6</code> records, recognizes each previously processed event ID, and skips duplicate side effects before committing offset <code>6</code>:</p>
+<p>To verify partition-key ordering, at-least-once crash recovery, and idempotent consumer deduplication, we execute the repository’s <code>queuesim</code> simulation (<a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/distributed-systems-from-the-ground-up/code/queuesim/src/main.rs"><code>code/queuesim/src/main.rs</code></a>). Six order lifecycle events append sequentially into partition <code>1</code> (offsets <code>0</code> through <code>5</code>). The consumer processes all <code>6</code> events and crashes right before committing its offset; upon restarting from committed offset <code>0</code>, it replays all <code>6</code> records, recognizes each previously processed event ID, and skips duplicate side effects before committing offset <code>6</code>:</p>
 <pre><code class="language-console">$ cargo run --release -p queuesim
 produced order-7 created: partition 1, offset 0
 produced order-8 created: partition 1, offset 1
@@ -16010,7 +16010,7 @@ messages in the partition: 6, actions taken: 6, committed offset: 6
 </code></pre>
 <p>The final summary confirms end-to-end effectively-once semantics under a crash right before offset commit: <code>messages in the partition: 6</code>, <code>actions taken: 6</code>, and <code>committed offset: 6</code>.</p>
 <div class="simulation">
-<p><strong>Run the partitioned message queue simulation.</strong> Execute <code>cargo run --release -p queuesim</code> in <code>code/</code> (<a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/distributed-systems-from-the-ground-up/code/queuesim/src/main.rs"><code>code/queuesim/src/main.rs</code></a>) to reproduce ordered partition appends, consumer crash redelivery, and idempotent deduplication.</p>
+<p><strong>Run the partitioned message queue simulation.</strong> Execute <code>cargo run --release -p queuesim</code> in <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/tree/prep-v2/distributed-systems-from-the-ground-up/code"><code>code/</code></a> (<a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/distributed-systems-from-the-ground-up/code/queuesim/src/main.rs"><code>code/queuesim/src/main.rs</code></a>) to reproduce ordered partition appends, consumer crash redelivery, and idempotent deduplication.</p>
 </div>
 
 <h2 id="118-terminology-and-references"><a class="header" href="#118-terminology-and-references">11.8 Terminology and References</a></h2>
@@ -16396,7 +16396,7 @@ RETURNING j.job_id, j.attempt_id, j.payload;
 </table>
 </div>
 <h2 id="127-simulation-verification"><a class="header" href="#127-simulation-verification">12.7 Simulation Verification</a></h2>
-<p>To verify lease claiming, worker crash recovery via deadline expiration, and bounded attempt accounting, we run the repository’s <code>jobsim</code> simulation (<code>code/jobsim/src/main.rs</code>). Six jobs enter the queue with three workers (<code>worker 0</code>, <code>worker 1</code>, <code>worker 2</code>). At <code>t = 0</code>, all three workers claim jobs <code>0</code>, <code>1</code>, and <code>2</code>. Worker <code>1</code> crashes while holding <code>job 1</code>; at <code>t = 3</code>, its lease expires and the reclaimer returns <code>job 1</code> to the queue. At <code>t = 4</code>, <code>worker 0</code> claims <code>job 1</code> on its second attempt and completes it at <code>t = 6</code>:</p>
+<p>To verify lease claiming, worker crash recovery via deadline expiration, and bounded attempt accounting, we run the repository’s <code>jobsim</code> simulation (<a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/distributed-systems-from-the-ground-up/code/jobsim/src/main.rs"><code>code/jobsim/src/main.rs</code></a>). Six jobs enter the queue with three workers (<code>worker 0</code>, <code>worker 1</code>, <code>worker 2</code>). At <code>t = 0</code>, all three workers claim jobs <code>0</code>, <code>1</code>, and <code>2</code>. Worker <code>1</code> crashes while holding <code>job 1</code>; at <code>t = 3</code>, its lease expires and the reclaimer returns <code>job 1</code> to the queue. At <code>t = 4</code>, <code>worker 0</code> claims <code>job 1</code> on its second attempt and completes it at <code>t = 6</code>:</p>
 <pre><code class="language-console">$ cargo run --release -p jobsim
 t= 0  worker 0 takes job 0
 t= 0  worker 1 takes job 1
@@ -16416,7 +16416,7 @@ jobs done: 6 of 6, attempts per job: 1 2 1 1 1 1
 </code></pre>
 <p>All <code>6</code> of <code>6</code> jobs finish cleanly despite the mid-flight worker failure, with <code>attempts per job: 1 2 1 1 1 1</code> confirming exact attempt tracking on <code>job 1</code>.</p>
 <div class="simulation">
-<p><strong>Run the distributed job scheduler simulation.</strong> Execute <code>cargo run --release -p jobsim</code> in <code>code/</code> (<a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/distributed-systems-from-the-ground-up/code/jobsim/src/main.rs"><code>code/jobsim/src/main.rs</code></a>) to reproduce worker crash detection, lease reclamation, and fenced completion above.</p>
+<p><strong>Run the distributed job scheduler simulation.</strong> Execute <code>cargo run --release -p jobsim</code> in <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/tree/prep-v2/distributed-systems-from-the-ground-up/code"><code>code/</code></a> (<a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/distributed-systems-from-the-ground-up/code/jobsim/src/main.rs"><code>code/jobsim/src/main.rs</code></a>) to reproduce worker crash detection, lease reclamation, and fenced completion above.</p>
 </div>
 
 <h2 id="128-terminology-and-references"><a class="header" href="#128-terminology-and-references">12.8 Terminology and References</a></h2>
@@ -16748,7 +16748,7 @@ CREATE TABLE address_suppression_list (
 </table>
 </div>
 <h2 id="137-simulation-verification"><a class="header" href="#137-simulation-verification">13.7 Simulation Verification</a></h2>
-<p>To verify caller idempotency deduplication, exponential retry pacing, and bounded DLQ quarantine, we execute the repository’s <code>notifysim</code> simulation (<code>code/notifysim/src/main.rs</code>). Five requests enter the notification service against a simulated provider configured with distinct transient failure counts per key:</p>
+<p>To verify caller idempotency deduplication, exponential retry pacing, and bounded DLQ quarantine, we execute the repository’s <code>notifysim</code> simulation (<a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/distributed-systems-from-the-ground-up/code/notifysim/src/main.rs"><code>code/notifysim/src/main.rs</code></a>). Five requests enter the notification service against a simulated provider configured with distinct transient failure counts per key:</p>
 <pre><code class="language-console">$ cargo run --release -p notifysim
 order-7-shipped   sent on try 1, 0 seconds after the first try
 order-8-shipped   sent on try 3, 3 seconds after the first try
@@ -16764,7 +16764,7 @@ order-10-shipped  failed 5 times: set aside for a person to look at
 <li><strong>Bounded Retry Quarantine (DLQ):</strong> <code>order-10-shipped</code> fails all <code>5</code> permitted attempts and moves to the dead-letter set for human inspection rather than looping indefinitely.</li>
 </ol>
 <div class="simulation">
-<p><strong>Run the notification delivery simulation.</strong> Execute <code>cargo run --release -p notifysim</code> in <code>code/</code> (<a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/distributed-systems-from-the-ground-up/code/notifysim/src/main.rs"><code>code/notifysim/src/main.rs</code></a>) to reproduce idempotency suppression, exponential backoff schedules, and five-try dead-letter isolation above.</p>
+<p><strong>Run the notification delivery simulation.</strong> Execute <code>cargo run --release -p notifysim</code> in <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/tree/prep-v2/distributed-systems-from-the-ground-up/code"><code>code/</code></a> (<a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/distributed-systems-from-the-ground-up/code/notifysim/src/main.rs"><code>code/notifysim/src/main.rs</code></a>) to reproduce idempotency suppression, exponential backoff schedules, and five-try dead-letter isolation above.</p>
 </div>
 
 <h2 id="138-terminology-and-references"><a class="header" href="#138-terminology-and-references">13.8 Terminology and References</a></h2>
@@ -16837,7 +16837,7 @@ order-10-shipped  failed 5 times: set aside for a person to look at
 <li>separation of the control plane (range allocation, blocklist propagation, click analytics) from the read-optimized data plane</li>
 <li>key allocation strategies comparing truncated cryptographic hashes, random generation, and disjoint counter range leasing with Base-62 bijection and Feistel scrambling</li>
 <li>multi-tier redirect caching (CDN edge, regional Redis, Bloom filter negative-lookup defense), <code>301</code> versus <code>302</code> revocation trade-offs, and asynchronous click pipelines</li>
-<li>failure-mode mitigation matrices, operational SLIs, production benchmarks (Bitly, TinyURL, Flickr Base58), and verification via <code>code/shortener</code></li>
+<li>failure-mode mitigation matrices, operational SLIs, production benchmarks (Bitly, TinyURL, Flickr Base58), and verification via <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/tree/prep-v2/distributed-systems-from-the-ground-up/code/shortener"><code>code/shortener</code></a></li>
 </ul>
 </div>
 
@@ -16914,7 +16914,7 @@ order-10-shipped  failed 5 times: set aside for a person to look at
 <tr><td style="text-align: left"><strong>Regional L2 Redis Cache (Hot 5%)</strong></td><td style="text-align: left"><code>5% * 6 * 10^9 = 300M</code> hot rows; working daily set (<code>20M</code> active links <code>* 500 B</code>)</td><td style="text-align: left"><code>10 GB</code> active daily working set (<code>64 GB</code> provisioned per region for headroom)</td></tr>
 <tr><td style="text-align: left"><strong>Bloom Filter RAM (All 6B Keys)</strong></td><td style="text-align: left"><code>m = -n ln(p) / (ln 2)^2</code> at <code>n = 6 * 10^9</code>, <code>p = 0.01</code> (<code>9.58</code> bits/key)</td><td style="text-align: left"><code>~7.2 GB</code> aggregate (<code>~900 MB</code> per shard across 8 shards)</td></tr>
 <tr><td style="text-align: left"><strong>Redirect Egress Bandwidth</strong></td><td style="text-align: left"><code>39,000 peak req/s * 600 B</code> HTTP redirect headers</td><td style="text-align: left"><code>23.4 MB/s</code> (<code>~187 Mbps</code> peak aggregate)</td></tr>
-<tr><td style="text-align: left"><strong>Click Event Stream (5 yr raw)</strong></td><td style="text-align: left"><code>3,900 clicks/s * 64 B</code> compact event (<code>code</code>, <code>ts</code>, <code>country</code>, <code>ref_hash</code>)</td><td style="text-align: left"><code>250 KB/s</code> (<code>~21.6 GB/day</code> raw; <code>&lt; 2 GB/day</code> after 1-minute OLAP rollup)</td></tr>
+<tr><td style="text-align: left"><strong>Click Event Stream (5 yr raw)</strong></td><td style="text-align: left"><code>3,900 clicks/s * 64 B</code> compact event (<a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/tree/prep-v2/distributed-systems-from-the-ground-up/code"><code>code</code></a>, <code>ts</code>, <code>country</code>, <code>ref_hash</code>)</td><td style="text-align: left"><code>250 KB/s</code> (<code>~21.6 GB/day</code> raw; <code>&lt; 2 GB/day</code> after 1-minute OLAP rollup)</td></tr>
 </tbody>
 </table>
 </div>
@@ -17059,7 +17059,7 @@ ORDER BY (code, bucket_minute, country_iso, referrer_host);
 </tbody>
 </table>
 </div>
-<p><strong>Why truncated hashes fail without retry loops:</strong> Under the birthday bound, drawing $n$ codes uniformly from a space of size $N$ yields approximately $n^2 / (2N)$ colliding pairs. In the repository simulation (<code>code/shortener</code>), hashing <code>2,000,000</code> distinct URLs and truncating to 6 characters produced <strong>97 collisions</strong>. Sending even 1 visitor in 20,000 to an unrelated website violates functional requirement 3. Resolving hash collisions forces a read-before-write check plus iterative salting, turning every link creation into a conditional read-modify-write cycle. Furthermore, deterministic hashing of the destination URL causes two different authors shortening the same URL to share one code, coupling their analytics and expiry lifetimes.</p>
+<p><strong>Why truncated hashes fail without retry loops:</strong> Under the birthday bound, drawing $n$ codes uniformly from a space of size $N$ yields approximately $n^2 / (2N)$ colliding pairs. In the repository simulation (<a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/tree/prep-v2/distributed-systems-from-the-ground-up/code/shortener"><code>code/shortener</code></a>), hashing <code>2,000,000</code> distinct URLs and truncating to 6 characters produced <strong>97 collisions</strong>. Sending even 1 visitor in 20,000 to an unrelated website violates functional requirement 3. Resolving hash collisions forces a read-before-write check plus iterative salting, turning every link creation into a conditional read-modify-write cycle. Furthermore, deterministic hashing of the destination URL causes two different authors shortening the same URL to share one code, coupling their analytics and expiry lifetimes.</p>
 <p><strong>Disjoint counter range leasing:</strong> We assign monotonically increasing integers from a strongly consistent <code>etcd</code> / Raft range allocator (Chapter 8). Each Write API instance requests a contiguous block of <code>100,000</code> integers (<code>[start, start + 99,999]</code>) in a single quorum write and dispenses numbers lock-free from RAM via <code>fetch_add(1)</code>. At <code>39</code> writes/s sustained, the entire fleet consults the allocator roughly once every <code>42 minutes</code>. If a Write API node crashes mid-block, the remaining unallocated integers are discarded permanently; against <code>3.52</code> trillion codes, forfeiting tens of thousands of IDs on a crash is negligible compared to the operational simplicity of zero write-path coordination.</p>
 <h3 id="base-62-encoding-step-by-step"><a class="header" href="#base-62-encoding-step-by-step">Base-62 Encoding Step by Step</a></h3>
 <p>Converting a non-negative integer $x$ to Base-62 proceeds by repeated Euclidean division by <code>62</code>, emitting each remainder as the next least-significant glyph in <code>0..9A..Za..z</code>. Interactive Trace 14.A steps through encoding the counter value <code>1,000,000</code> into <code>4C92</code>.</p>
@@ -17124,7 +17124,7 @@ fn scramble_id(counter: u64, round_keys: &amp;[u64; 4]) -&gt; u64 {
 <li><strong>L3 Sharded Mapping Store (<code>&lt; 2%</code> traffic, <code>~12 ms</code>):</strong> Serves cold long-tail links from SSD-backed Raft-replicated shards partitioned by <code>hash(code)</code>.</li>
 </ol>
 <h3 id="asynchronous-click-analytics-and-abuse-controls"><a class="header" href="#asynchronous-click-analytics-and-abuse-controls">Asynchronous Click Analytics and Abuse Controls</a></h3>
-<p>Incrementing a relational counter row on every redirect would convert a <code>3,900</code> to <code>39,000</code> QPS read workload into a write-contended hotspot on popular rows. Instead, Redirect Services and CDN edge log collectors emit compact 64-byte click events (<code>code</code>, <code>timestamp_ms</code>, <code>country_iso</code>, <code>referrer_hash</code>) into a partitioned Kafka topic via non-blocking ring buffers. Stream consumers aggregate counts in 1-minute tumbling windows in memory and flush bulk batches into ClickHouse (<code>SummingMergeTree</code>), reducing persistent write volume by over <code>1,000x</code> for viral links while isolating redirect latency completely from analytics pipeline backpressure.</p>
+<p>Incrementing a relational counter row on every redirect would convert a <code>3,900</code> to <code>39,000</code> QPS read workload into a write-contended hotspot on popular rows. Instead, Redirect Services and CDN edge log collectors emit compact 64-byte click events (<a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/tree/prep-v2/distributed-systems-from-the-ground-up/code"><code>code</code></a>, <code>timestamp_ms</code>, <code>country_iso</code>, <code>referrer_hash</code>) into a partitioned Kafka topic via non-blocking ring buffers. Stream consumers aggregate counts in 1-minute tumbling windows in memory and flush bulk batches into ClickHouse (<code>SummingMergeTree</code>), reducing persistent write volume by over <code>1,000x</code> for viral links while isolating redirect latency completely from analytics pipeline backpressure.</p>
 <p>Public redirectors are primary targets for phishing concealment. Three layered safeguards protect domain reputation: synchronous URL inspection against local threat feeds (such as Google Safe Browsing prefix lists) at link creation, periodic background re-scanning of active high-click destinations to catch delayed page swaps, and an instant quarantine endpoint (<code>POST /v1/links/{code}:block</code>) that marks <code>status = 3</code> in L3, broadcasts an L2 Redis invalidation, and triggers a CDN purge API call so malicious links return <code>410 Gone</code> globally within <code>5 seconds</code>.</p>
 <h2 id="146-failure-modes-slis-and-production-systems"><a class="header" href="#146-failure-modes-slis-and-production-systems">14.6 Failure Modes, SLIs, and Production Systems</a></h2>
 <h3 id="failure-mode-and-mitigation-matrix"><a class="header" href="#failure-mode-and-mitigation-matrix">Failure Mode and Mitigation Matrix</a></h3>
@@ -17249,7 +17249,7 @@ codes of 7 characters: 3521614606208 possible
 <li>actors, use cases, functional requirements, latency and availability SLOs, explicit non-goals, and cache, storage, and fan-out capacity bounds</li>
 <li>external HTTP/2 contracts for publishing, cursor-paginated feed retrieval, social-graph edges, and normalized storage schemas</li>
 <li>separation of the control plane (ranking model registry, celebrity fan-out thresholds, social graph) from the asynchronous publish and read-assembly data plane</li>
-<li>push fan-out on write, pull fan-out on read, and hybrid K-way merge backed by interactive traces and <code>code/feedsim</code> measurements</li>
+<li>push fan-out on write, pull fan-out on read, and hybrid K-way merge backed by interactive traces and <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/tree/prep-v2/distributed-systems-from-the-ground-up/code/feedsim"><code>code/feedsim</code></a> measurements</li>
 <li>keyset cursor pagination, read-time hydration and safety filtering, multi-stage ML candidate ranking, hot-celebrity outbox caching, and author read-own-writes guarantees</li>
 <li>failure-mode mitigation matrices, operational SLIs, production architectures (Twitter/X Home Timeline, Meta Multifeed and TAO, LinkedIn FollowFeed), and simulation verification</li>
 </ul>
@@ -17468,7 +17468,7 @@ CREATE INDEX idx_follow_by_followed ON follow_edges (followed_id, follower_id);
 </figure>
 <p>Pure pull eliminates write amplification and wasted work for inactive readers, and follow or unfollow changes reflect instantaneously. Its penalty is paid on the frequent read path: a member following <code>200</code> accounts triggers <code>200</code> parallel outbox fetches on every feed load, subjecting tail latency to the straggler distribution (<code>max</code> of <code>200</code> network RPCs).</p>
 <h3 id="hybrid-fan-out-and-threshold-calibration"><a class="header" href="#hybrid-fan-out-and-threshold-calibration">Hybrid Fan-Out and Threshold Calibration</a></h3>
-<p>Real social graphs exhibit extreme degree skew: in <code>code/feedsim</code>, modeling <code>1,000</code> ordinary accounts (<code>200</code> followers each, <code>2</code> posts/day, <code>20</code> reads/day) alongside <strong>one</strong> celebrity account (<code>2,000,000</code> followers, <code>10</code> posts/day) reveals that the single celebrity generates <code>20,000,000</code> of the <code>20,400,000</code> daily push copies (<code>98.0%</code> of total write load). Conversely, pure pull executes <code>4,000,500</code> daily outbox fetches, <code>99.5%</code> of which come from ordinary accounts.</p>
+<p>Real social graphs exhibit extreme degree skew: in <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/tree/prep-v2/distributed-systems-from-the-ground-up/code/feedsim"><code>code/feedsim</code></a>, modeling <code>1,000</code> ordinary accounts (<code>200</code> followers each, <code>2</code> posts/day, <code>20</code> reads/day) alongside <strong>one</strong> celebrity account (<code>2,000,000</code> followers, <code>10</code> posts/day) reveals that the single celebrity generates <code>20,000,000</code> of the <code>20,400,000</code> daily push copies (<code>98.0%</code> of total write load). Conversely, pure pull executes <code>4,000,500</code> daily outbox fetches, <code>99.5%</code> of which come from ordinary accounts.</p>
 <p>Hybrid fan-out partitions authors by a follower threshold $T_{\text{celeb}}$ (<code>10,000</code> in the simulation, typically <code>50,000 to 100,000</code> in production systems such as Twitter/X) (Figure 15-3).</p>
 <figure class="diagram">
 <img src="figures/m3/ch15_hybrid_fanout.svg" alt="Hybrid Fan-Out combining Path A Push Fan-Out for accounts with at most 100k followers and Path B Pull Merge for celebrity accounts with over 100k followers, followed by Read-Time K-Way Merge and Cursor Pagination under 50 ms." />
@@ -17613,7 +17613,7 @@ mixture, copy unless the author has over 10000 followers:
 <p><strong>Meta TAO and Multifeed.</strong> Meta serves home feeds through a pull-dominant leaf-aggregator tree sitting above TAO, a read-optimized distributed graph cache layered over sharded MySQL. TAO handles billions of reads per second at <code>99.9%</code> cache hit rates by partitioning social-graph edges across follower-tier caches and routing writes synchronously through leader tiers; because personal friend counts stay bounded (at or below <code>5,000</code>), Multifeed leaf nodes can gather recent candidate stories on read and apply deep neural ranking without maintaining static push inboxes for every member.</p>
 <div class="callout keyidea"><span class="label">Key idea</span> Hybrid fan-out decouples write amplification from read amplification by placing a follower-count threshold between two complementary storage paths. Ordinary accounts pay a small asynchronous write cost to keep reads sub-50 ms, while celebrity accounts absorb zero fan-out storms by deferring merge work to read-time cached outboxes.</div>
 
-<div class="callout experiment"><span class="label">Experiment</span> In `code/feedsim`, raise the celebrity cutoff from `10,000` to `5,000,000` and compare daily copy volume against the default hybrid configuration. Observe how a single high-follower author shifts `98%` of total cluster write traffic back onto the fan-out workers while barely changing read-side list fetches.</div>
+<div class="callout experiment"><span class="label">Experiment</span> In [`code/feedsim`](https://github.com/arpanpathak/cracking-the-systems-programming-interview/tree/prep-v2/distributed-systems-from-the-ground-up/code/feedsim), raise the celebrity cutoff from `10,000` to `5,000,000` and compare daily copy volume against the default hybrid configuration. Observe how a single high-follower author shifts `98%` of total cluster write traffic back onto the fan-out workers while barely changing read-side list fetches.</div>
 
 <div class="callout caution"><span class="label">Common pitfall</span> Caching full post bodies inside every follower's Redis inbox multiplies memory footprint by average follower count and makes edits, deletions, and moderation takedowns eventually inconsistent. Store compact `(timestamp, post_id)` references in the inbox and hydrate authoritative content and visibility flags once at read time.</div>
 
@@ -17629,7 +17629,7 @@ mixture, copy unless the author has over 10000 followers:
 <li>separation of the control plane (metadata cluster, failure-domain placement controller, background scrubber and garbage collector) from the stateless chunking and erasure-coding data plane</li>
 <li>Reed-Solomon <code>RS(6, 3)</code> coding over <code>GF(2^8)</code>, failure-domain placement across three availability zones, Copyset correlation control, continuous bit-rot scrubbing, and MTTR-driven durability</li>
 <li>write-chunks-first atomic metadata commits, resumable multipart sealing, small-object Haystack packing, versioning, and grace-period garbage collection</li>
-<li>failure-mode mitigation matrices, operational SLIs, production architectures (Amazon S3, Ceph RADOS, Facebook Haystack and f4, Azure Storage LRC), and verification via <code>code/objectsim</code></li>
+<li>failure-mode mitigation matrices, operational SLIs, production architectures (Amazon S3, Ceph RADOS, Facebook Haystack and f4, Azure Storage LRC), and verification via <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/tree/prep-v2/distributed-systems-from-the-ground-up/code/objectsim"><code>code/objectsim</code></a></li>
 </ul>
 </div>
 
@@ -17688,7 +17688,7 @@ mixture, copy unless the author has over 10000 followers:
 <ul>
 <li><strong>No in-place partial overwrites or appends:</strong> Modifying a single byte requires uploading a new immutable object version; POSIX byte-range locking and random writes belong to block stores or distributed file systems.</li>
 <li><strong>No atomic directory renames:</strong> Slashes inside keys (such as <code>2026/11/video.mp4</code>) are visual prefix conventions only; renaming a prefix requires copying each underlying object metadata entry.</li>
-<li><strong>No cross-tenant deduplication:</strong> Although content-addressed chunks support deduplication within a single tenant or backup domain (as demonstrated in <code>code/objectsim</code>), public multi-tenant stores prohibit cross-customer deduplication because timing side channels would allow one tenant to probe whether another tenant holds a specific file.</li>
+<li><strong>No cross-tenant deduplication:</strong> Although content-addressed chunks support deduplication within a single tenant or backup domain (as demonstrated in <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/tree/prep-v2/distributed-systems-from-the-ground-up/code/objectsim"><code>code/objectsim</code></a>), public multi-tenant stores prohibit cross-customer deduplication because timing side channels would allow one tenant to probe whether another tenant holds a specific file.</li>
 </ul>
 <h3 id="back-of-the-envelope-capacity-bounds-7"><a class="header" href="#back-of-the-envelope-capacity-bounds-7">Back-of-the-Envelope Capacity Bounds</a></h3>
 <p>We contrast raw hardware requirements for <code>100 PB</code> of logical customer data (<code>1 billion</code> objects) under 3-way replication versus <code>RS(6, 3)</code> erasure coding:</p>
@@ -17796,7 +17796,7 @@ CREATE TABLE placement_groups (
 <h3 id="write-and-read-lifecycles-2"><a class="header" href="#write-and-read-lifecycles-2">Write and Read Lifecycles</a></h3>
 <p><strong>Write path (<code>PUT /v1/buckets/{b}/{key}</code>):</strong></p>
 <ol>
-<li>The Object API Gateway verifies caller credentials (or presigned HMAC token + expiration), validates bucket policy, and streams incoming bytes in <code>64 MB</code> chunks (<code>4 MB</code> in <code>code/objectsim</code>).</li>
+<li>The Object API Gateway verifies caller credentials (or presigned HMAC token + expiration), validates bucket policy, and streams incoming bytes in <code>64 MB</code> chunks (<code>4 MB</code> in <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/tree/prep-v2/distributed-systems-from-the-ground-up/code/objectsim"><code>code/objectsim</code></a>).</li>
 <li>For each chunk, the gateway computes its cryptographic content hash (<code>SHA-256</code>) and hardware-accelerated <code>CRC32C</code>. For small hot objects (<code>&lt; 1 MB</code>), it selects a 3-way replicated placement group; for large objects (<code>&gt;= 1 MB</code>), it splits the <code>64 MB</code> chunk into <code>6</code> equal <code>10.67 MB</code> data shards and computes <code>3</code> Reed-Solomon parity shards via SIMD <code>GF(2^8)</code> arithmetic.</li>
 <li>The gateway writes all <code>9</code> shards concurrently to the <code>9</code> distinct disks assigned to the chosen Placement Group (<code>3</code> shards in AZ-1, <code>3</code> in AZ-2, <code>3</code> in AZ-3). A chunk write succeeds once at least <code>8</code> of <code>9</code> shards acknowledge durable <code>fsync</code> (strict quorum with immediate asynchronous repair of the 9th shard if one disk is transiently slow), or all <code>9</code> under strict full-stripe durability mode.</li>
 <li><strong>Atomic metadata commit (last step):</strong> Only after every chunk of the object is durably persisted on storage nodes does the gateway write the single <code>object_manifests</code> row to the Metadata Cluster and return <code>201 Created</code>. An interrupted upload never exposes a half-written or dangling object name.</li>
@@ -17978,7 +17978,7 @@ video.mp4 read back: 10485760 bytes, equal to the original: true, copies repaire
 <li>separation of the control plane (ingest coordination, DAG scheduler, manifest and DRM service), offline transcoding plane, and multi-tier CDN playback plane</li>
 <li>chunked parallel DAG transcoding across closed-GOP keyframes, unified CMAF packaging, per-title VMAF bitrate optimization, and permanent source archival</li>
 <li>client-side Adaptive Bitrate (ABR) control algorithms (throughput margin, BBA, BOLA, MPC), CDN origin shielding against stampedes, egress economics, and low-latency live streaming</li>
-<li>failure-mode mitigation matrices, QoE SLIs, production architectures (Netflix Open Connect, YouTube, Twitch LL-HLS), and simulation verification via <code>code/streamsim</code></li>
+<li>failure-mode mitigation matrices, QoE SLIs, production architectures (Netflix Open Connect, YouTube, Twitch LL-HLS), and simulation verification via <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/tree/prep-v2/distributed-systems-from-the-ground-up/code/streamsim"><code>code/streamsim</code></a></li>
 </ul>
 </div>
 
@@ -18332,7 +18332,7 @@ time without video after the start: 0.1 s
 <li>separation of the control plane (presence heartbeat service, Redis session directory, APNs/FCM offline push relay) from stateful WebSocket gateways and partitioned message logs</li>
 <li>transport selection (polling, long polling, WebSocket), gateway connection isolation, monotonic per-conversation sequencing, <code>client_id</code> deduplication, and offline cursor recovery via interactive traces</li>
 <li>1:1 versus large-group fan-out, multi-device cursors and cumulative watermarks, viewport-scoped presence control, hot-channel storage partitioning, and Signal Double Ratchet E2EE implications</li>
-<li>failure-mode mitigation matrices, operational SLIs, production architectures (WhatsApp Erlang/FreeBSD, Discord ScyllaDB, Slack, Facebook Messenger MQTT), and verification via <code>code/chatsim</code></li>
+<li>failure-mode mitigation matrices, operational SLIs, production architectures (WhatsApp Erlang/FreeBSD, Discord ScyllaDB, Slack, Facebook Messenger MQTT), and verification via <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/tree/prep-v2/distributed-systems-from-the-ground-up/code/chatsim"><code>code/chatsim</code></a></li>
 </ul>
 </div>
 
@@ -18698,7 +18698,7 @@ messages on the server: 4, shown on the phone: 4
 <p><strong>Slack Edge Cache (Flannel).</strong> Slack introduced Flannel, an application-level edge caching layer deployed in geographically distributed PoPs between desktop clients and central workspace shards. Flannel terminates WebSocket connections close to users, serves workspace metadata and channel-membership lookups from local memory, and coalesces reconnect storms after network blips so central database shards avoid thundering-herd bootstrap queries.</p>
 <div class="callout keyidea"><span class="label">Key idea</span> Treating the persistent WebSocket gateway as a replaceable delivery hint while anchoring canonical ordering to a per-conversation sequence number (`seq_id`) guarantees exact gapless history recovery even when connections drop mid-flight.</div>
 
-<div class="callout experiment"><span class="label">Experiment</span> In `code/chatsim`, simulate a recipient disconnecting for `20` messages while two other participants interleave sends, then reconnect with the stale cursor. Verify that cursor-based range sync (`seq &gt; last_seen`) reconstructs the identical total order on every device without duplicating previously delivered messages.</div>
+<div class="callout experiment"><span class="label">Experiment</span> In [`code/chatsim`](https://github.com/arpanpathak/cracking-the-systems-programming-interview/tree/prep-v2/distributed-systems-from-the-ground-up/code/chatsim), simulate a recipient disconnecting for `20` messages while two other participants interleave sends, then reconnect with the stale cursor. Verify that cursor-based range sync (`seq &gt; last_seen`) reconstructs the identical total order on every device without duplicating previously delivered messages.</div>
 
 <div class="callout caution"><span class="label">Common pitfall</span> Broadcasting presence transitions (online, typing, idle) eagerly to every member of a `100,000`-user channel generates quadratic fan-out traffic that starves actual message delivery. Scope presence updates strictly to active viewport subscribers and throttle heartbeat refreshes to `30 to 60 s` intervals.</div>
 
@@ -18714,7 +18714,7 @@ messages on the server: 4, shown on the phone: 4
 <li>Stripe-style atomic-phase execution and recovery points that eliminate database locks during slow external PSP RPCs while modeling network timeouts as a first-class <code>UNKNOWN</code> state</li>
 <li>immutable double-entry ledger invariants, deterministic rounding/remainder allocation, and <code>K</code>-way hot-account sub-account sharding to eliminate row-lock serialization</li>
 <li>transactional outbox with WAL CDC, saga compensation semantics, and T+0 to T+2 three-way financial reconciliation across internal ledger, PSP clearing files, and bank statements</li>
-<li>failure matrices, financial SLIs, production architectures (Stripe, Adyen, Uber LedgerStore, TigerBeetle), and verification via <code>code/paysim</code></li>
+<li>failure matrices, financial SLIs, production architectures (Stripe, Adyen, Uber LedgerStore, TigerBeetle), and verification via <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/tree/prep-v2/distributed-systems-from-the-ground-up/code/paysim"><code>code/paysim</code></a></li>
 </ul>
 </div>
 
@@ -18912,7 +18912,7 @@ CREATE TABLE ledger_entries (
 <p>Mutating a single <code>accounts.balance</code> column in place destroys audit provenance and permits partial-update corruption if a crash occurs between debiting one account and crediting another. Financial systems instead implement <strong>double-entry bookkeeping</strong>: every monetary movement appends an immutable set of journal rows whose signed minor-unit deltas sum strictly to zero (<code>SUM(delta_minor) == 0</code>). Any bug that fails to balance a transfer violates the database constraint and aborts the transaction before committing corrupt state.</p>
 <h3 id="exact-monetary-arithmetic-and-deterministic-rounding"><a class="header" href="#exact-monetary-arithmetic-and-deterministic-rounding">Exact Monetary Arithmetic and Deterministic Rounding</a></h3>
 <p>Binary IEEE-754 floating-point values (<code>f32</code>/<code>f64</code>) cannot represent decimal tenths exactly (<code>0.10 + 0.20 != 0.30</code> in binary), accumulating unexplained cent discrepancies across millions of percentage fees and currency conversions. Storing all amounts as signed 64-bit integer minor units paired with an ISO-4217 currency code guarantees exact integer arithmetic. Whenever a percentage fee or multi-way payout split produces a fractional cent (such as dividing <code>100</code> cents across <code>3</code> recipients), the ledger applies a deterministic rounding policy (round-half-even or largest-remainder allocation) and routes the exact integer remainder to a designated remainder account so the transaction remains strictly zero-sum.</p>
-<p>Executing <code>code/paysim</code> validates idempotent replay (<code>order-7</code>, <code>order-9</code>), cached refusal replay (<code>order-8</code>), and zero-sum conservation (<code>10,000</code> cents total before and after all operations):</p>
+<p>Executing <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/tree/prep-v2/distributed-systems-from-the-ground-up/code/paysim"><code>code/paysim</code></a> validates idempotent replay (<code>order-7</code>, <code>order-9</code>), cached refusal replay (<code>order-8</code>), and zero-sum conservation (<code>10,000</code> cents total before and after all operations):</p>
 <pre><code class="language-console">$ cargo run --release -p paysim
 start: {"ada": 10000, "shop": 0}, total 10000
 order-7: 4000 cents from ada to shop: Done, ada has 6000
@@ -18991,7 +18991,7 @@ end: {"ada": 0, "shop": 10000}, total 10000
 </div>
 <h3 id="verification-in-the-repository-2"><a class="header" href="#verification-in-the-repository-2">Verification in the Repository</a></h3>
 <div class="simulation">
-<p><strong>Run the payment ledger and idempotency simulation.</strong> Execute <code>cargo run --release -p paysim</code> in <code>code/</code> to verify idempotent deduplication (<code>order-7</code>, <code>order-9</code>), cached insufficient-funds refusal replay (<code>order-8</code>), and strict zero-sum double-entry conservation across all operations.</p>
+<p><strong>Run the payment ledger and idempotency simulation.</strong> Execute <code>cargo run --release -p paysim</code> in <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/tree/prep-v2/distributed-systems-from-the-ground-up/code"><code>code/</code></a> to verify idempotent deduplication (<code>order-7</code>, <code>order-9</code>), cached insufficient-funds refusal replay (<code>order-8</code>), and strict zero-sum double-entry conservation across all operations.</p>
 </div>
 
 <h3 id="engineering-glossary-13"><a class="header" href="#engineering-glossary-13">Engineering Glossary</a></h3>
@@ -19044,7 +19044,7 @@ end: {"ada": 0, "shop": 10000}, total 10000
 <p><strong>Square Books Double-Entry Ledger.</strong> Square built Books, a globally distributed, strongly consistent double-entry accounting service backed by Google Cloud Spanner to record immutable financial journal entries across Cash App and merchant payouts. Every transaction enforces strict zero-sum balance invariants per currency and supports idempotent append-only corrections (reversing entries rather than in-place <code>UPDATE</code> mutations) so auditors can reconstruct exact historical balances at any timestamp.</p>
 <div class="callout keyidea"><span class="label">Key idea</span> Holding an open relational database transaction across an external acquiring-bank RPC exhausts connection pools whenever a downstream bank slows down. Split each payment into short local ACID recovery phases separated by lock-free external network calls so retries resume deterministically without wedging the ledger.</div>
 
-<div class="callout experiment"><span class="label">Experiment</span> In `code/paysim`, replay the identical `order-7` idempotency key three times in succession and inspect the resulting ledger journal. Confirm that the sum of all debit entries equals the sum of all credit entries strictly to zero and that the customer balance decrements once rather than three times.</div>
+<div class="callout experiment"><span class="label">Experiment</span> In [`code/paysim`](https://github.com/arpanpathak/cracking-the-systems-programming-interview/tree/prep-v2/distributed-systems-from-the-ground-up/code/paysim), replay the identical `order-7` idempotency key three times in succession and inspect the resulting ledger journal. Confirm that the sum of all debit entries equals the sum of all credit entries strictly to zero and that the customer balance decrements once rather than three times.</div>
 
 <div class="callout caution"><span class="label">Common pitfall</span> Treating a client-side HTTP timeout during an external PSP call as a confirmed payment failure causes automatic retries to double-charge cardholders when the issuer actually approved the first request. Transition timed-out charges into an `UNKNOWN` reconciliation state and query the PSP's status API with the same idempotency key before issuing a retry or refund.</div>
 
@@ -19060,7 +19060,7 @@ end: {"ada": 0, "shop": 10000}, total 10000
 <li>control-plane vs. data-plane separation across the virtual waiting room, event-sharded inventory tier, seat-map cache, and payment saga engine</li>
 <li>flash-sale admission control with randomized pre-sale lottery pools, HMAC-signed pass tokens, and layered anti-bot rate limits</li>
 <li>per-seat state machine (<code>AVAILABLE -&gt; HELD -&gt; BOOKED</code>), conditional CAS SQL predicates, multi-seat deadlock-free locking, and compensating payment sagas</li>
-<li>failure matrices, booking SLIs/SLOs, production architectures (Ticketmaster, Stripe, Cloudflare Waiting Room), and verification via <code>code/bookingsim</code></li>
+<li>failure matrices, booking SLIs/SLOs, production architectures (Ticketmaster, Stripe, Cloudflare Waiting Room), and verification via <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/tree/prep-v2/distributed-systems-from-the-ground-up/code/bookingsim"><code>code/bookingsim</code></a></li>
 </ul>
 </div>
 
@@ -19441,7 +19441,7 @@ In the extreme case where an external payment took longer than the 60-second gra
 </table>
 </div>
 <h2 id="207-simulation-verification"><a class="header" href="#207-simulation-verification">20.7 Simulation Verification</a></h2>
-<p>To verify conditional seat holds, contention rejection, lease expiry without a background reaper, and late-payment fencing, run the <code>bookingsim</code> crate in the repository’s <code>code/</code> workspace:</p>
+<p>To verify conditional seat holds, contention rejection, lease expiry without a background reaper, and late-payment fencing, run the <code>bookingsim</code> crate in the repository’s <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/tree/prep-v2/distributed-systems-from-the-ground-up/code"><code>code/</code></a> workspace:</p>
 <pre><code class="language-console">$ cargo run --release -p bookingsim
 minute 0: ada holds seat 1: true
 minute 1: bob holds seat 1: false
@@ -19514,7 +19514,7 @@ seat 2: Sold { buyer: "bob" }
 <p><strong>SeatGeek Inventory Aggregation and Real-Time Pricing.</strong> SeatGeek operates both primary box-office ticketing (SeatGeek Enterprise) and a secondary resale marketplace, ingesting continuous listing updates from hundreds of partner feeds into a normalized section-and-row seat-map index. To prevent double-selling across primary and secondary channels, SeatGeek enforces atomic hold locks on the authoritative venue inventory service before rendering final checkout totals and relies on optimistic version checks to reject stale listing confirmations immediately.</p>
 <div class="callout keyidea"><span class="label">Key idea</span> Separating browse-path seat-map reads from write-path conditional CAS holds keeps `99%` of flash-sale traffic on edge caches and read replicas while preserving strict single-buyer exclusivity on the primary inventory shard.</div>
 
-<div class="callout experiment"><span class="label">Experiment</span> In `code/bookingsim`, advance the simulated payment callback for `ada` from minute `7` to minute `4` (inside the 5-minute lease window) and re-run the trace. Observe how the fencing predicate (`hold_id` plus `state = 'HELD'`) confirms `ada` before expiry while rejecting late arrivals once `bob` acquires the reclaimed seat.</div>
+<div class="callout experiment"><span class="label">Experiment</span> In [`code/bookingsim`](https://github.com/arpanpathak/cracking-the-systems-programming-interview/tree/prep-v2/distributed-systems-from-the-ground-up/code/bookingsim), advance the simulated payment callback for `ada` from minute `7` to minute `4` (inside the 5-minute lease window) and re-run the trace. Observe how the fencing predicate (`hold_id` plus `state = 'HELD'`) confirms `ada` before expiry while rejecting late arrivals once `bob` acquires the reclaimed seat.</div>
 
 <div class="callout caution">
 <span class="label">Common pitfall</span>
@@ -19533,7 +19533,7 @@ seat 2: Sold { buyer: "bob" }
 <li>control-plane vs. data-plane separation across region partitioning, cell-sharded RAM indexes, road-graph ETA engines, and Raft-backed trip stores</li>
 <li>H3 hexagonal and S2 Hilbert-curve spatial indexing compared with geohash boundary distortion, plus TTL-leased driver heartbeat ingestion</li>
 <li>adaptive k-ring cell expansion, Contraction Hierarchies ETA ranking, serialized 15-second exclusive offer locks, and H3 cell-level surge pricing aggregation</li>
-<li>failure matrices, dispatch SLIs/SLOs, production architectures (Uber H3/DISCO, Lyft, Google S2), and verification via <code>code/nearbysim</code></li>
+<li>failure matrices, dispatch SLIs/SLOs, production architectures (Uber H3/DISCO, Lyft, Google S2), and verification via <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/tree/prep-v2/distributed-systems-from-the-ground-up/code/nearbysim"><code>code/nearbysim</code></a></li>
 </ul>
 </div>
 
@@ -19852,7 +19852,7 @@ Alongside upgrading <code>driver_active_locks.lock_type</code> from <code>'OFFER
 </table>
 </div>
 <h2 id="217-simulation-verification"><a class="header" href="#217-simulation-verification">21.7 Simulation Verification</a></h2>
-<p>To verify the asymptotic speedup and exact equivalence of spatial grid indexing versus full-fleet scanning, execute the <code>nearbysim</code> crate in the repository’s <code>code/</code> workspace:</p>
+<p>To verify the asymptotic speedup and exact equivalence of spatial grid indexing versus full-fleet scanning, execute the <code>nearbysim</code> crate in the repository’s <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/tree/prep-v2/distributed-systems-from-the-ground-up/code"><code>code/</code></a> workspace:</p>
 <pre><code class="language-console">$ cargo run --release -p nearbysim
 20000 drivers on a map of 100 by 100 units
 measuring every driver: 20000 distances, nearest: driver 19862 at 0.19, driver 7056 at 0.84, driver 17908 at 0.85
@@ -19918,7 +19918,7 @@ using the grid: 15 distances, nearest: driver 19862 at 0.19, driver 7056 at 0.84
 <p><strong>Lyft Regional Dispatch and Trajectory-Aware ETA.</strong> Lyft pairs Google S2 spherical geometry cells with regional dispatch microservices that continuously ingest <code>3 to 4 s</code> driver GPS heartbeats and live road-segment speed estimates. Rather than matching strictly on instantaneous straight-line proximity, Lyft’s dispatch solver incorporates vehicle heading, upcoming drop-off locations of nearly completed rides (chained dispatch), and dynamic batch windows to minimize fleet-wide pickup ETAs and driver deadhead mileage.</p>
 <div class="callout keyidea"><span class="label">Key idea</span> Hexagonal spatial indexing (`H3`) eliminates the corner-neighbor distance distortion of square grids and geohashes, allowing `k`-ring neighbor queries and surge-pricing heatmaps to operate with uniform isotropic geometry across any urban area.</div>
 
-<div class="callout experiment"><span class="label">Experiment</span> In `code/nearbysim`, increase the fleet size from `20,000` to `200,000` drivers while keeping the cell size proportional to local density, and compare candidate distance evaluations against a full-fleet scan. Verify that grid-indexed lookup remains `O(1)` in local neighborhood density while linear scanning grows `10x` slower.</div>
+<div class="callout experiment"><span class="label">Experiment</span> In [`code/nearbysim`](https://github.com/arpanpathak/cracking-the-systems-programming-interview/tree/prep-v2/distributed-systems-from-the-ground-up/code/nearbysim), increase the fleet size from `20,000` to `200,000` drivers while keeping the cell size proportional to local density, and compare candidate distance evaluations against a full-fleet scan. Verify that grid-indexed lookup remains `O(1)` in local neighborhood density while linear scanning grows `10x` slower.</div>
 
 <div class="callout caution"><span class="label">Common pitfall</span> Persisting every `4 s` driver GPS heartbeat to a relational disk database creates millions of needless write IOPS per city for ephemeral coordinates that expire in `15 s`. Keep live driver locations inside an in-memory TTL-indexed spatial shard that self-heals within one heartbeat interval after any pod restart, reserving durable consensus storage strictly for trip state transitions and billing milestones.</div>
 
@@ -19934,7 +19934,7 @@ using the grid: 15 distances, nearest: driver 19862 at 0.19, driver 7056 at 0.84
 <li>control-plane and offline build pipeline separation from the lock-free, read-only online serving data plane</li>
 <li>precomputed top-K prefix trie nodes achieving <code>O(L)</code> lookup, exponential frequency decay, fast-lane Flink trending overlays, and double-buffered atomic snapshot swaps</li>
 <li>load-balanced prefix range sharding across serving nodes, client debouncing, CDN caching trade-offs, k-anonymity privacy gates, and PII/profanity filtering</li>
-<li>failure matrices, typeahead SLIs/SLOs, production architectures (Google Suggest, Elasticsearch FST, Meta Typeahead, Microsoft Top-k Completion), and verification via <code>code/typeahead</code></li>
+<li>failure matrices, typeahead SLIs/SLOs, production architectures (Google Suggest, Elasticsearch FST, Meta Typeahead, Microsoft Top-k Completion), and verification via <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/tree/prep-v2/distributed-systems-from-the-ground-up/code/typeahead"><code>code/typeahead</code></a></li>
 </ul>
 </div>
 
@@ -20190,7 +20190,7 @@ Content-Type: application/json
 </table>
 </div>
 <h2 id="227-simulation-verification"><a class="header" href="#227-simulation-verification">22.7 Simulation Verification</a></h2>
-<p>To verify prefix lookup, frequency-ordered top-K ranking, and empty-prefix handling, execute the <code>typeahead</code> crate in the repository’s <code>code/</code> workspace:</p>
+<p>To verify prefix lookup, frequency-ordered top-K ranking, and empty-prefix handling, execute the <code>typeahead</code> crate in the repository’s <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/tree/prep-v2/distributed-systems-from-the-ground-up/code"><code>code/</code></a> workspace:</p>
 <pre><code class="language-console">$ cargo run --release -p typeahead
 k    -&gt; kubernetes (950), kafka (900), karaoke near me (800)
 ka   -&gt; kafka (900), karaoke near me (800), kayak (450)
@@ -20284,7 +20284,7 @@ x    -&gt; no suggestion
 <li>control-plane vs. data-plane separation across the Seed Coordinator, DNS and <code>robots.txt</code> caches, host-partitioned frontier shards, async fetcher pools, and object storage</li>
 <li>Mercator two-stage politeness frontier (priority front queues, per-host back queues, and next-fetch min-heap), consistent-hash host ownership, and adaptive <code>429</code> backoff</li>
 <li>URL canonicalization, sharded Bloom filter + RocksDB seen-set deduplication, 64-bit SimHash / MinHash near-duplicate detection, spider-trap budgets, and conditional <code>304</code> revisit scheduling</li>
-<li>failure matrices, crawl SLIs/SLOs, production architectures (Googlebot, Mercator, IRLbot, Common Crawl), and verification via <code>code/crawlsim</code></li>
+<li>failure matrices, crawl SLIs/SLOs, production architectures (Googlebot, Mercator, IRLbot, Common Crawl), and verification via <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/tree/prep-v2/distributed-systems-from-the-ground-up/code/crawlsim"><code>code/crawlsim</code></a></li>
 </ul>
 </div>
 
@@ -20577,7 +20577,7 @@ Multiplying observed response latency by <code>10</code> automatically slows dow
 </table>
 </div>
 <h2 id="237-simulation-verification"><a class="header" href="#237-simulation-verification">23.7 Simulation Verification</a></h2>
-<p>To verify per-host politeness scheduling, URL-seen deduplication, and per-host spider-trap page budgets, execute the <code>crawlsim</code> crate in the repository’s <code>code/</code> workspace:</p>
+<p>To verify per-host politeness scheduling, URL-seen deduplication, and per-host spider-trap page budgets, execute the <code>crawlsim</code> crate in the repository’s <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/tree/prep-v2/distributed-systems-from-the-ground-up/code"><code>code/</code></a> workspace:</p>
 <pre><code class="language-console">$ cargo run --release -p crawlsim
 t= 0  fetch news/
 t= 1  fetch calendar/day-1, shop/
@@ -20676,7 +20676,7 @@ links not followed because a host had given 4 pages: 1
 <li>control-plane vs. data-plane separation across isolated target discovery, sharded TSDB ingesters, object-store compaction, query engines, and Dead-Man’s Switch watchdogs</li>
 <li>pull vs. push ingestion trade-offs, mergeable histograms vs. non-aggregatable percentiles, Gorilla delta-of-delta timestamp and XOR float64 compression, and inverted label-index cardinality defense</li>
 <li>two-hour WAL head blocks flushed to immutable object-store TSDB blocks, multi-stat downsampling rollups (<code>min</code>, <code>max</code>, <code>sum</code>, <code>count</code>), and <code>Pending -&gt; Firing</code> alert evaluation with hysteresis</li>
-<li>failure matrices, telemetry SLIs/SLOs, production architectures (Prometheus, VictoriaMetrics, Google Monarch, Grafana Mimir), and verification via <code>code/metricsim</code></li>
+<li>failure matrices, telemetry SLIs/SLOs, production architectures (Prometheus, VictoriaMetrics, Google Monarch, Grafana Mimir), and verification via <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/tree/prep-v2/distributed-systems-from-the-ground-up/code/metricsim"><code>code/metricsim</code></a></li>
 </ul>
 </div>
 
@@ -20973,7 +20973,7 @@ Content-Type: application/json
 </table>
 </div>
 <h2 id="247-simulation-verification"><a class="header" href="#247-simulation-verification">24.7 Simulation Verification</a></h2>
-<p>To verify delta-based time-series compression and the difference between average and maximum downsampling rollups on transient latency spikes, execute the <code>metricsim</code> crate in the repository’s <code>code/</code> workspace:</p>
+<p>To verify delta-based time-series compression and the difference between average and maximum downsampling rollups on transient latency spikes, execute the <code>metricsim</code> crate in the repository’s <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/tree/prep-v2/distributed-systems-from-the-ground-up/code"><code>code/</code></a> workspace:</p>
 <pre><code class="language-console">$ cargo run --release -p metricsim
 3600 points, 1 for every second of an hour
 plain, 16 bytes for each point: 57600 bytes
@@ -21066,7 +21066,7 @@ minute 20, kept as its largest value: 900 ms
 <li>control-plane and data-plane separation across the Metadata Service, Content-Addressed Block Store, Garbage Collector, and Delta Notification Bus</li>
 <li>FastCDC content-defined chunking, cross-version deduplication security boundaries, and Merkle directory tree diffing</li>
 <li>optimistic concurrency control, conflict-copy branching, tombstone lifecycle management, long-poll notification hints, and epoch-safe garbage collection</li>
-<li>failure recovery matrices, synchronization SLIs, real-world production architectures (Dropbox Magic Pocket, Google Drive, iCloud Drive), and simulation verification via <code>code/syncsim</code></li>
+<li>failure recovery matrices, synchronization SLIs, real-world production architectures (Dropbox Magic Pocket, Google Drive, iCloud Drive), and simulation verification via <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/tree/prep-v2/distributed-systems-from-the-ground-up/code/syncsim"><code>code/syncsim</code></a></li>
 </ul>
 </div>
 
@@ -21451,7 +21451,7 @@ CREATE TABLE namespace_blocks (
 </table>
 </div>
 <h2 id="257-simulation-verification"><a class="header" href="#257-simulation-verification">25.7 Simulation Verification</a></h2>
-<p>Running <code>code/syncsim</code> verifies both core invariants of this chapter: (1) FastCDC boundary stability under a single-byte prepend to a <code>65,536</code>-byte file compared against fixed <code>1,024</code>-byte slicing, and (2) atomic optimistic concurrency conflict detection when two offline devices commit against base version <code>3</code>.</p>
+<p>Running <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/tree/prep-v2/distributed-systems-from-the-ground-up/code/syncsim"><code>code/syncsim</code></a> verifies both core invariants of this chapter: (1) FastCDC boundary stability under a single-byte prepend to a <code>65,536</code>-byte file compared against fixed <code>1,024</code>-byte slicing, and (2) atomic optimistic concurrency conflict detection when two offline devices commit against base version <code>3</code>.</p>
 <pre><code class="language-console">$ cargo run --release -p syncsim
 a file of 65536 bytes, and the same file with 1 byte added at the start
 cuts every 1024 bytes: 65 chunks, 65 to upload again
@@ -21462,7 +21462,7 @@ phone uploads, based on version 3: conflict: the server is at version 4, written
 </code></pre>
 <p>Inspect the observed ratio directly: prepending <code>1</code> byte invalidates <code>65 / 65</code> (<code>100%</code>) of fixed-offset chunks, whereas content-defined chunking isolates the mutation to <code>1 / 62</code> (<code>1.6%</code>) of chunks, reducing WAN upload bandwidth by <code>98.4%</code>. On the control plane, the laptop’s conditional upload based on version <code>3</code> commits cleanly as version <code>4</code>, and the phone’s subsequent upload carrying base version <code>3</code> is deterministically flagged as a conflict against version <code>4</code>.</p>
 <div class="simulation">
-<p><strong>Run the file synchronization simulation.</strong> Execute <code>cargo run --release -p syncsim</code> in <code>code/</code> to reproduce the fixed-block vs. content-defined chunking comparison (<code>65/65</code> vs. <code>1/62</code> dirty chunks) and the offline version-3 optimistic concurrency conflict trace.</p>
+<p><strong>Run the file synchronization simulation.</strong> Execute <code>cargo run --release -p syncsim</code> in <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/tree/prep-v2/distributed-systems-from-the-ground-up/code"><code>code/</code></a> to reproduce the fixed-block vs. content-defined chunking comparison (<code>65/65</code> vs. <code>1/62</code> dirty chunks) and the offline version-3 optimistic concurrency conflict trace.</p>
 </div>
 
 <h3 id="end-to-end-request-lifecycle-and-hop-by-hop-latency-budget-10"><a class="header" href="#end-to-end-request-lifecycle-and-hop-by-hop-latency-budget-10">End-to-End Request Lifecycle and Hop-by-Hop Latency Budget</a></h3>
@@ -21542,7 +21542,7 @@ phone uploads, based on version 3: conflict: the server is at version 4, written
 <li>control-plane session coordination and fencing epochs separated from sticky collaboration gateways, presence buses, and snapshot compaction</li>
 <li>positional divergence, Jupiter server-serialized Operational Transformation, and causal Sequence CRDTs (RGA, YATA, and Fugue) versus fractional indexing</li>
 <li>tombstone retention, epoch-based garbage collection, server-compacted snapshots with operation log tails, ephemeral carets, and selective local undo</li>
-<li>failure recovery matrices, convergence SLIs, production architectures (Google Docs, Figma, Yjs, Automerge), and simulation verification via <code>code/editsim</code></li>
+<li>failure recovery matrices, convergence SLIs, production architectures (Google Docs, Figma, Yjs, Automerge), and simulation verification via <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/tree/prep-v2/distributed-systems-from-the-ground-up/code/editsim"><code>code/editsim</code></a></li>
 </ul>
 </div>
 
@@ -21887,7 +21887,7 @@ CREATE TABLE doc_acls (
 </table>
 </div>
 <h2 id="267-simulation-verification"><a class="header" href="#267-simulation-verification">26.7 Simulation Verification</a></h2>
-<p>Running <code>code/editsim</code> directly compares unadjusted positional edits against Operational Transformation and CRDT identifier ordering on the canonical <code>"cat"</code> concurrent-edit workload (<code>ada</code> inserts <code>h</code> at <code>1</code>; <code>bob</code> inserts <code>s</code> at <code>3</code>), followed by a concurrent same-position insertion tie-break test.</p>
+<p>Running <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/tree/prep-v2/distributed-systems-from-the-ground-up/code/editsim"><code>code/editsim</code></a> directly compares unadjusted positional edits against Operational Transformation and CRDT identifier ordering on the canonical <code>"cat"</code> concurrent-edit workload (<code>ada</code> inserts <code>h</code> at <code>1</code>; <code>bob</code> inserts <code>s</code> at <code>3</code>), followed by a concurrent same-position insertion tie-break test.</p>
 <pre><code class="language-console">$ cargo run --release -p editsim
 both start from "cat". ada puts h at 1, bob puts s at 3
 changes applied as they are:     ada sees "chast", bob sees "chats"
@@ -21897,7 +21897,7 @@ both type between a and t:       ada sees "carnt", bob sees "carnt"
 </code></pre>
 <p>The simulation transcript confirms three exact properties: applying raw positional offsets without coordination causes permanent replica divergence (<code>"chast"</code> vs. <code>"chats"</code>); transforming concurrent indices (OT) and assigning immutable character identifiers (CRDT) both achieve exact convergence to <code>"chats"</code> regardless of delivery order; and deterministic <code>(clock, site_id)</code> tie-breaking resolves concurrent insertions at the exact same boundary identically (<code>"carnt"</code>) on every replica.</p>
 <div class="simulation">
-<p><strong>Run the collaborative editing simulation.</strong> Execute <code>cargo run --release -p editsim</code> in <code>code/</code> to verify raw positional divergence (<code>chast</code> vs. <code>chats</code>), Operational Transformation convergence, Sequence CRDT commutativity, and deterministic tie-breaking (<code>carnt</code>).</p>
+<p><strong>Run the collaborative editing simulation.</strong> Execute <code>cargo run --release -p editsim</code> in <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/tree/prep-v2/distributed-systems-from-the-ground-up/code"><code>code/</code></a> to verify raw positional divergence (<code>chast</code> vs. <code>chats</code>), Operational Transformation convergence, Sequence CRDT commutativity, and deterministic tie-breaking (<code>carnt</code>).</p>
 </div>
 
 <h3 id="end-to-end-request-lifecycle-and-hop-by-hop-latency-budget-11"><a class="header" href="#end-to-end-request-lifecycle-and-hop-by-hop-latency-budget-11">End-to-End Request Lifecycle and Hop-by-Hop Latency Budget</a></h3>
@@ -21978,7 +21978,7 @@ both type between a and t:       ada sees "carnt", bob sees "carnt"
 <li>control-plane surveillance and risk limits separated from the zero-allocation deterministic matching data plane and microsecond latency budgets</li>
 <li>price-time priority limit order book mechanics and intrusive doubly-linked-list data structures delivering <code>O(1)</code> cancellations with zero heap allocation</li>
 <li>single-threaded mechanical sympathy, cache-line-padded LMAX Disruptor ring buffers, pre-trade risk enforcement, and deterministic active-passive standby failover via replicated sequencer journals</li>
-<li>failure recovery matrices, exchange SLIs, production architectures (LMAX, Nasdaq, IEX, CME Globex), and simulation verification via <code>code/matchsim</code></li>
+<li>failure recovery matrices, exchange SLIs, production architectures (LMAX, Nasdaq, IEX, CME Globex), and simulation verification via <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/tree/prep-v2/distributed-systems-from-the-ground-up/code/matchsim"><code>code/matchsim</code></a></li>
 </ul>
 </div>
 
@@ -22261,7 +22261,7 @@ Content-Type: application/json
 </table>
 </div>
 <h2 id="277-simulation-verification"><a class="header" href="#277-simulation-verification">27.7 Simulation Verification</a></h2>
-<p>Running <code>code/matchsim</code> executes a deterministic price-time priority limit order book across seven incoming orders, exercising resting spread formation, FIFO partial fills at identical prices (<code>1005</code>), multi-level book sweeps, and passive price improvement (<code>order 7</code> selling with limit <code>995</code> fills at resting buy prices <code>1010</code> and <code>1000</code>).</p>
+<p>Running <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/tree/prep-v2/distributed-systems-from-the-ground-up/code/matchsim"><code>code/matchsim</code></a> executes a deterministic price-time priority limit order book across seven incoming orders, exercising resting spread formation, FIFO partial fills at identical prices (<code>1005</code>), multi-level book sweeps, and passive price improvement (<code>order 7</code> selling with limit <code>995</code> fills at resting buy prices <code>1010</code> and <code>1000</code>).</p>
 <pre><code class="language-console">$ cargo run --release -p matchsim
 order 1: sell 50 at 1010
 order 2: sell 30 at 1005
@@ -22287,7 +22287,7 @@ shares traded: 200
 <li><strong>Passive Price Improvement &amp; Conservation:</strong> <code>order 7</code> (<code>sell 80 @ 995</code>) trades <code>30</code> shares at <code>1010</code> and <code>50</code> shares at <code>1000</code> (resting buyers’ prices), transferring <code>200</code> total shares and leaving exactly <code>10</code> shares of <code>order 4</code> resting at <code>1000</code>.</li>
 </ul>
 <div class="simulation">
-<p><strong>Run the deterministic matching engine simulation.</strong> Execute <code>cargo run --release -p matchsim</code> in <code>code/</code> to verify price-time FIFO ordering, passive price execution, multi-level sweeps, and share conservation (<code>200</code> shares traded, <code>10</code> remaining at <code>1000</code>).</p>
+<p><strong>Run the deterministic matching engine simulation.</strong> Execute <code>cargo run --release -p matchsim</code> in <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/tree/prep-v2/distributed-systems-from-the-ground-up/code"><code>code/</code></a> to verify price-time FIFO ordering, passive price execution, multi-level sweeps, and share conservation (<code>200</code> shares traded, <code>10</code> remaining at <code>1000</code>).</p>
 </div>
 
 <h3 id="end-to-end-request-lifecycle-and-hop-by-hop-latency-budget-12"><a class="header" href="#end-to-end-request-lifecycle-and-hop-by-hop-latency-budget-12">End-to-End Request Lifecycle and Hop-by-Hop Latency Budget</a></h3>
@@ -22366,7 +22366,7 @@ shares traded: 200
 <li>control-plane stream orchestration and schema management separated from the speed-layer streaming path and immutable archive reconciliation path</li>
 <li>event-time versus processing-time semantics, client clock-skew clamping, heuristic watermarks with idle-partition handling, allowed lateness, and late-event side outputs</li>
 <li>Chandy-Lamport asynchronous barrier snapshots for effectively-once state recovery, hot-ad salting with two-stage pre-aggregation, HyperLogLog distinct counts, and click-fraud deduplication</li>
-<li>failure recovery matrices, streaming SLIs, production architectures (Apache Flink, Google MillWheel and Photon, Meta Scuba), and simulation verification via <code>code/clicksim</code></li>
+<li>failure recovery matrices, streaming SLIs, production architectures (Apache Flink, Google MillWheel and Photon, Meta Scuba), and simulation verification via <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/tree/prep-v2/distributed-systems-from-the-ground-up/code/clicksim"><code>code/clicksim</code></a></li>
 </ul>
 </div>
 
@@ -22647,7 +22647,7 @@ ORDER BY (ad_id, window_sec, window_start);
 </table>
 </div>
 <h2 id="287-simulation-verification"><a class="header" href="#287-simulation-verification">28.7 Simulation Verification</a></h2>
-<p>Running <code>code/clicksim</code> feeds an identical stream of out-of-order, duplicated, and late-arriving ad clicks through both a processing-time (arrival-time) counter and an event-time watermarked counter (<code>10 s</code> tumbling windows, <code>5 s</code> watermark lag allowance) and compares both against ground truth.</p>
+<p>Running <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/tree/prep-v2/distributed-systems-from-the-ground-up/code/clicksim"><code>code/clicksim</code></a> feeds an identical stream of out-of-order, duplicated, and late-arriving ad clicks through both a processing-time (arrival-time) counter and an event-time watermarked counter (<code>10 s</code> tumbling windows, <code>5 s</code> watermark lag allowance) and compares both against ground truth.</p>
 <pre><code class="language-console">$ cargo run --release -p clicksim
 what happened:              0-10 s: 8, 10-20 s: 4, 20-30 s: 1
 counted by arrival time:    0-10 s: 7, 10-20 s: 5, 20-30 s: 1, 60-70 s: 1
@@ -22661,7 +22661,7 @@ clicks received twice: 1, clicks too late for their window: 1
 <li><strong>Event-Time Watermark Accuracy:</strong> Counting by event time with deduplication drops the <code>1</code> duplicate click cleanly, attributes the <code>7 s</code> delayed click correctly to <code>0-10 s</code>, produces exact <code>10-20 s: 4</code>, keeps <code>20-30 s: 1</code> open pending watermark advancement, and explicitly flags the <code>1</code> extreme straggler (<code>clicks too late for their window: 1</code>) so downstream late-event side outputs and nightly batch reconciliation restore the exact <code>0-10 s</code> total of <code>8</code>.</li>
 </ul>
 <div class="simulation">
-<p><strong>Run the streaming click aggregation simulation.</strong> Execute <code>cargo run --release -p clicksim</code> in <code>code/</code> to observe processing-time distortion versus event-time watermarked windows, duplicate suppression (<code>1</code> duplicate dropped), open-window buffering (<code>20-30 s: 1</code>), and late-straggler detection (<code>1</code> late click).</p>
+<p><strong>Run the streaming click aggregation simulation.</strong> Execute <code>cargo run --release -p clicksim</code> in <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/tree/prep-v2/distributed-systems-from-the-ground-up/code"><code>code/</code></a> to observe processing-time distortion versus event-time watermarked windows, duplicate suppression (<code>1</code> duplicate dropped), open-window buffering (<code>20-30 s: 1</code>), and late-straggler detection (<code>1</code> late click).</p>
 </div>
 
 <h3 id="end-to-end-request-lifecycle-and-hop-by-hop-latency-budget-13"><a class="header" href="#end-to-end-request-lifecycle-and-hop-by-hop-latency-budget-13">End-to-End Request Lifecycle and Hop-by-Hop Latency Budget</a></h3>
@@ -23022,22 +23022,6 @@ wal_file.sync_data()?;</code></pre>
         <template id=fa-play><span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 384 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M73 39c-14.8-9.1-33.4-9.4-48.5-.9S0 62.6 0 80V432c0 17.4 9.4 33.4 24.5 41.9s33.7 8.1 48.5-.9L361 297c14.3-8.7 23-24.2 23-41s-8.7-32.2-23-41L73 39z"/></svg></span></template>
         <template id=fa-clock-rotate-left><span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M75 75L41 41C25.9 25.9 0 36.6 0 57.9V168c0 13.3 10.7 24 24 24H134.1c21.4 0 32.1-25.9 17-41l-30.8-30.8C155 85.5 203 64 256 64c106 0 192 86 192 192s-86 192-192 192c-40.8 0-78.6-12.7-109.7-34.4c-14.5-10.1-34.4-6.6-44.6 7.9s-6.6 34.4 7.9 44.6C151.2 495 201.7 512 256 512c141.4 0 256-114.6 256-256S397.4 0 256 0C185.3 0 121.3 28.7 75 75zm181 53c-13.3 0-24 10.7-24 24V256c0 6.4 2.5 12.5 7 17l72 72c9.4 9.4 24.6 9.4 33.9 0s9.4-24.6 0-33.9l-65-65V152c0-13.3-10.7-24-24-24z"/></svg></span></template>
 
-        <!-- Livereload script (if served using the cli tool) -->
-        <script>
-            const wsProtocol = location.protocol === 'https:' ? 'wss:' : 'ws:';
-            const wsAddress = wsProtocol + "//" + location.host + "/" + "__livereload";
-            const socket = new WebSocket(wsAddress);
-            socket.onmessage = function (event) {
-                if (event.data === "reload") {
-                    socket.close();
-                    location.reload();
-                }
-            };
-
-            window.onbeforeunload = function() {
-                socket.close();
-            }
-        </script>
 
 
         <script>

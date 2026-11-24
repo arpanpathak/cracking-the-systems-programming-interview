@@ -38,7 +38,7 @@
             const path_to_root = "";
             const default_light_theme = "coal";
             const default_dark_theme = "coal";
-            window.path_to_searchindex_js = "searchindex-e451f97a.js";
+            window.path_to_searchindex_js = "searchindex-a2840308.js";
         </script>
         <!-- Start loading toc.js asap -->
         <script src="toc-1a401835.js"></script>
@@ -340,7 +340,7 @@ Bit Position: ^47                                                        ^0
 <li><strong>Visibility and Backing Flags (<code>flags</code>):</strong> <code>MAP_PRIVATE</code> creates a private copy-on-write mapping whose modifications never propagate to the backing file; <code>MAP_SHARED</code> shares physical frames across processes (Chapter 11) and flushes writes back to file-backed storage. Combining <code>MAP_PRIVATE | MAP_ANON</code> (<code>MAP_ANONYMOUS</code> on Linux) allocates demand-zeroed anonymous memory unbacked by any file, for which the <strong>Portable Operating System Interface (<code>POSIX</code>)</strong> standard requires <code>fd = -1</code> and <code>offset = 0</code>.</li>
 <li><strong>Error Contract and Reclamation:</strong> On failure, <code>mmap</code> returns <code>MAP_FAILED</code> (<code>(void*)-1</code>) rather than <code>nullptr</code> and sets <code>errno</code>. Callers must verify <code>mapped != MAP_FAILED</code> before dereferencing the region and release mappings with <code>munmap(addr, length)</code>.</li>
 </ul>
-<p><strong>Listing 7-1. Page size, page alignment, and a guard page (C++20).</strong></p>
+<p><strong>Listing 7-1. Page size, page alignment, and a guard page (C++20).</strong> (<a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/operating-systems/code/ch07/pagesize.cpp"><code>code/ch07/pagesize.cpp</code></a>)</p>
 <pre><code class="language-cpp">// ch07/pagesize.cpp: Queries hardware page size, maps three contiguous virtual pages,
 // and converts the middle page into an inaccessible guard page via mprotect(PROT_NONE).
 #include &lt;sys/mman.h&gt;
@@ -416,7 +416,7 @@ fault on write to 0x10b4de000
 fault address is the guard page: yes
 neighbors still readable: a c
 </code></pre>
-<p><strong>Listing 7-2. Mapping and protecting pages in Rust, using the libc crate.</strong></p>
+<p><strong>Listing 7-2. Mapping and protecting pages in Rust, using the libc crate.</strong> (<a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/operating-systems/code/ch07/pagesize.rs"><code>code/ch07/pagesize.rs</code></a>)</p>
 <pre class="playground"><code class="language-rust">// ch07/pagesize.rs: Queries hardware page size, maps three contiguous virtual pages,
 // and strips permissions from the middle guard page via mprotect(PROT_NONE).
 use std::process::exit;
@@ -472,7 +472,7 @@ fn main() {
 region:    0x1086e2000 (page-aligned by construction)
 mprotect(middle page, PROT_NONE): status=0
 </code></pre>
-<p><strong>Listing 7-3. Reading one file with read(2) and with mmap (C++20).</strong></p>
+<p><strong>Listing 7-3. Reading one file with read(2) and with mmap (C++20).</strong> (<a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/operating-systems/code/ch07/mmap_file.cpp"><code>code/ch07/mmap_file.cpp</code></a>)</p>
 <pre><code class="language-cpp">// ch07/mmap_file.cpp: Compares counting bytes via read(2) (kernel-to-user copy)
 // against reading directly through an mmap(2) virtual memory mapping.
 #include &lt;fcntl.h&gt;
@@ -547,7 +547,7 @@ read(2)     : 4128768 'a' characters
 mmap        : 4128768 'a' characters
 match       : yes
 </code></pre>
-<p><strong>Listing 7-4. The same file-mapping comparison in Rust, using the libc crate.</strong></p>
+<p><strong>Listing 7-4. The same file-mapping comparison in Rust, using the libc crate.</strong> (<a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/operating-systems/code/ch07/mmap_file.rs"><code>code/ch07/mmap_file.rs</code></a>)</p>
 <pre class="playground"><code class="language-rust">// ch07/mmap_file.rs: Compares counting bytes via read(2) (kernel-to-user copy)
 // against reading directly through an mmap(2) virtual memory mapping.
 extern crate libc;
@@ -648,7 +648,7 @@ read(2)     : 4128768 'a' characters
 mmap        : 4128768 'a' characters
 match       : yes
 </code></pre>
-<p><strong>Listing 7-5. One access per page, for a growing number of pages (C++20).</strong></p>
+<p><strong>Listing 7-5. One access per page, for a growing number of pages (C++20).</strong> (<a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/operating-systems/code/ch07/tlb.cpp"><code>code/ch07/tlb.cpp</code></a>)</p>
 <pre><code class="language-cpp">// ch07/tlb.cpp: Measures per-access latency while sweeping the working set upward,
 // stepping by one full hardware page per access so latency cliffs reveal TLB capacity.
 #include &lt;sys/mman.h&gt;
@@ -719,7 +719,7 @@ int main() {
    67108864 bytes    16384 pages    10.6 ns per access  (checksum 4000000)
   268435456 bytes    65536 pages    13.4 ns per access  (checksum 4000000)
 </code></pre>
-<p><strong>Listing 7-6. The same Translation Lookaside Buffer working-set sweep in Rust.</strong></p>
+<p><strong>Listing 7-6. The same Translation Lookaside Buffer working-set sweep in Rust.</strong> (<a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/operating-systems/code/ch07/tlb.rs"><code>code/ch07/tlb.rs</code></a>)</p>
 <pre class="playground"><code class="language-rust">// ch07/tlb.rs: Measures per-access latency while sweeping the working set upward,
 // stepping by one full hardware page per access so latency cliffs reveal TLB capacity.
 extern crate libc;
@@ -813,7 +813,7 @@ fn main() {
 
 <div class="callout experiment">
 <span class="label">Experiment</span>
-<p>Run Listing 7-5 (<code>code/ch07/tlb.cpp</code>) on a local machine and inspect where per-access latency steps upward sharply (at ~64 pages for <code>L1 dTLB</code> overflow and ~1,024 to 4,096 pages for <code>L2 STLB</code> overflow). On Linux, add <code>madvise(buf, size, MADV_HUGEPAGE)</code> after <code>mmap()</code> to observe 2 MiB huge pages flattening the 16 MiB to 256 MiB cliff.</p>
+<p>Run Listing 7-5 (<a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/operating-systems/code/ch07/tlb.cpp"><code>code/ch07/tlb.cpp</code></a>) on a local machine and inspect where per-access latency steps upward sharply (at ~64 pages for <code>L1 dTLB</code> overflow and ~1,024 to 4,096 pages for <code>L2 STLB</code> overflow). On Linux, add <code>madvise(buf, size, MADV_HUGEPAGE)</code> after <code>mmap()</code> to observe 2 MiB huge pages flattening the 16 MiB to 256 MiB cliff.</p>
 </div>
 
 <div class="callout caution">

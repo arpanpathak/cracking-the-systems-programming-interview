@@ -36,7 +36,7 @@
             const path_to_root = "";
             const default_light_theme = "coal";
             const default_dark_theme = "coal";
-            window.path_to_searchindex_js = "searchindex-38bda414.js";
+            window.path_to_searchindex_js = "searchindex-cf88c8cf.js";
         </script>
         <!-- Start loading toc.js asap -->
         <script src="toc-00f6d8fe.js"></script>
@@ -192,7 +192,7 @@
 <li>control-plane stream orchestration and schema management separated from the speed-layer streaming path and immutable archive reconciliation path</li>
 <li>event-time versus processing-time semantics, client clock-skew clamping, heuristic watermarks with idle-partition handling, allowed lateness, and late-event side outputs</li>
 <li>Chandy-Lamport asynchronous barrier snapshots for effectively-once state recovery, hot-ad salting with two-stage pre-aggregation, HyperLogLog distinct counts, and click-fraud deduplication</li>
-<li>failure recovery matrices, streaming SLIs, production architectures (Apache Flink, Google MillWheel and Photon, Meta Scuba), and simulation verification via <code>code/clicksim</code></li>
+<li>failure recovery matrices, streaming SLIs, production architectures (Apache Flink, Google MillWheel and Photon, Meta Scuba), and simulation verification via <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/tree/prep-v2/distributed-systems-from-the-ground-up/code/clicksim"><code>code/clicksim</code></a></li>
 </ul>
 </div>
 
@@ -473,7 +473,7 @@ ORDER BY (ad_id, window_sec, window_start);
 </table>
 </div>
 <h2 id="287-simulation-verification"><a class="header" href="#287-simulation-verification">28.7 Simulation Verification</a></h2>
-<p>Running <code>code/clicksim</code> feeds an identical stream of out-of-order, duplicated, and late-arriving ad clicks through both a processing-time (arrival-time) counter and an event-time watermarked counter (<code>10 s</code> tumbling windows, <code>5 s</code> watermark lag allowance) and compares both against ground truth.</p>
+<p>Running <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/tree/prep-v2/distributed-systems-from-the-ground-up/code/clicksim"><code>code/clicksim</code></a> feeds an identical stream of out-of-order, duplicated, and late-arriving ad clicks through both a processing-time (arrival-time) counter and an event-time watermarked counter (<code>10 s</code> tumbling windows, <code>5 s</code> watermark lag allowance) and compares both against ground truth.</p>
 <pre><code class="language-console">$ cargo run --release -p clicksim
 what happened:              0-10 s: 8, 10-20 s: 4, 20-30 s: 1
 counted by arrival time:    0-10 s: 7, 10-20 s: 5, 20-30 s: 1, 60-70 s: 1
@@ -487,7 +487,7 @@ clicks received twice: 1, clicks too late for their window: 1
 <li><strong>Event-Time Watermark Accuracy:</strong> Counting by event time with deduplication drops the <code>1</code> duplicate click cleanly, attributes the <code>7 s</code> delayed click correctly to <code>0-10 s</code>, produces exact <code>10-20 s: 4</code>, keeps <code>20-30 s: 1</code> open pending watermark advancement, and explicitly flags the <code>1</code> extreme straggler (<code>clicks too late for their window: 1</code>) so downstream late-event side outputs and nightly batch reconciliation restore the exact <code>0-10 s</code> total of <code>8</code>.</li>
 </ul>
 <div class="simulation">
-<p><strong>Run the streaming click aggregation simulation.</strong> Execute <code>cargo run --release -p clicksim</code> in <code>code/</code> to observe processing-time distortion versus event-time watermarked windows, duplicate suppression (<code>1</code> duplicate dropped), open-window buffering (<code>20-30 s: 1</code>), and late-straggler detection (<code>1</code> late click).</p>
+<p><strong>Run the streaming click aggregation simulation.</strong> Execute <code>cargo run --release -p clicksim</code> in <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/tree/prep-v2/distributed-systems-from-the-ground-up/code"><code>code/</code></a> to observe processing-time distortion versus event-time watermarked windows, duplicate suppression (<code>1</code> duplicate dropped), open-window buffering (<code>20-30 s: 1</code>), and late-straggler detection (<code>1</code> late click).</p>
 </div>
 
 <h3 id="end-to-end-request-lifecycle-and-hop-by-hop-latency-budget"><a class="header" href="#end-to-end-request-lifecycle-and-hop-by-hop-latency-budget">End-to-End Request Lifecycle and Hop-by-Hop Latency Budget</a></h3>
@@ -592,22 +592,6 @@ clicks received twice: 1, clicks too late for their window: 1
         <template id=fa-play><span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 384 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M73 39c-14.8-9.1-33.4-9.4-48.5-.9S0 62.6 0 80V432c0 17.4 9.4 33.4 24.5 41.9s33.7 8.1 48.5-.9L361 297c14.3-8.7 23-24.2 23-41s-8.7-32.2-23-41L73 39z"/></svg></span></template>
         <template id=fa-clock-rotate-left><span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M75 75L41 41C25.9 25.9 0 36.6 0 57.9V168c0 13.3 10.7 24 24 24H134.1c21.4 0 32.1-25.9 17-41l-30.8-30.8C155 85.5 203 64 256 64c106 0 192 86 192 192s-86 192-192 192c-40.8 0-78.6-12.7-109.7-34.4c-14.5-10.1-34.4-6.6-44.6 7.9s-6.6 34.4 7.9 44.6C151.2 495 201.7 512 256 512c141.4 0 256-114.6 256-256S397.4 0 256 0C185.3 0 121.3 28.7 75 75zm181 53c-13.3 0-24 10.7-24 24V256c0 6.4 2.5 12.5 7 17l72 72c9.4 9.4 24.6 9.4 33.9 0s9.4-24.6 0-33.9l-65-65V152c0-13.3-10.7-24-24-24z"/></svg></span></template>
 
-        <!-- Livereload script (if served using the cli tool) -->
-        <script>
-            const wsProtocol = location.protocol === 'https:' ? 'wss:' : 'ws:';
-            const wsAddress = wsProtocol + "//" + location.host + "/" + "__livereload";
-            const socket = new WebSocket(wsAddress);
-            socket.onmessage = function (event) {
-                if (event.data === "reload") {
-                    socket.close();
-                    location.reload();
-                }
-            };
-
-            window.onbeforeunload = function() {
-                socket.close();
-            }
-        </script>
 
 
         <script>

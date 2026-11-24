@@ -38,7 +38,7 @@
             const path_to_root = "";
             const default_light_theme = "coal";
             const default_dark_theme = "coal";
-            window.path_to_searchindex_js = "searchindex-e451f97a.js";
+            window.path_to_searchindex_js = "searchindex-a2840308.js";
         </script>
         <!-- Start loading toc.js asap -->
         <script src="toc-1a401835.js"></script>
@@ -263,7 +263,7 @@
 <figure>
 <img src="figures/ch03_address_space.svg" alt="Process address space: text, data, BSS, heap growing up, stack growing down, kernel at the top" />
 </figure>
-<p><strong>Listing 3-1. Printing one address from each region (C++20).</strong></p>
+<p><strong>Listing 3-1. Printing one address from each region (C++20).</strong> (<a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/operating-systems/code/ch03/layout.cpp"><code>code/ch03/layout.cpp</code></a>)</p>
 <pre><code class="language-cpp">// ch03/layout.cpp: the regions of a process address space, observed from inside.
 #include &lt;cstdint&gt;
 #include &lt;iomanip&gt;
@@ -301,7 +301,7 @@ bss    (uninitialized) : 101A24004
 heap   (new int)       : 600000B00040
 stack  (local)         : 7FF7BE4DC1EC
 </code></pre>
-<p><strong>Listing 3-2. The same program in Rust (2024 edition).</strong></p>
+<p><strong>Listing 3-2. The same program in Rust (2024 edition).</strong> (<a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/operating-systems/code/ch03/layout.rs"><code>code/ch03/layout.rs</code></a>)</p>
 <pre class="playground"><code class="language-rust">// ch03/layout.rs: the same address-space regions, observed from Rust.
 use std::ptr::addr_of;
 use std::sync::atomic::AtomicI32;
@@ -352,7 +352,7 @@ pid_t waitpid(pid_t pid, int *wstatus, int options);
 <figure>
 <img src="figures/ch03_fork.svg" alt="fork copies the process; parent receives the child PID, child receives 0" />
 </figure>
-<p><strong>Listing 3-3. fork, waitpid, and the exit status (C++20).</strong></p>
+<p><strong>Listing 3-3. fork, waitpid, and the exit status (C++20).</strong> (<a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/operating-systems/code/ch03/fork.cpp"><code>code/ch03/fork.cpp</code></a>)</p>
 <pre><code class="language-cpp">// ch03/fork.cpp: one program, two processes.
 #include &lt;sys/wait.h&gt;
 #include &lt;unistd.h&gt;
@@ -390,7 +390,7 @@ child : pid=65088 parent=65087
 before fork: pid=65087
 parent: child 65088 exited with status 7
 </code></pre>
-<p><strong>Listing 3-4. The same sequence in Rust, using the libc crate.</strong></p>
+<p><strong>Listing 3-4. The same sequence in Rust, using the libc crate.</strong> (<a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/operating-systems/code/ch03/fork.rs"><code>code/ch03/fork.rs</code></a>)</p>
 <pre class="playground"><code class="language-rust">// ch03/fork.rs: the same fork/wait sequence through Rust's libc bindings.
 use std::io::{self, Write};
 use std::process::exit;
@@ -475,7 +475,7 @@ parent: child 65090 exited with status 7
 
 <div class="callout experiment">
 <span class="label">Experiment</span>
-<p>Run Listing 3-3 (<code>code/ch03/fork.cpp</code>) with stdout redirected to a file (<code>./fork &gt; /tmp/out.txt &amp;&amp; cat /tmp/out.txt</code>) and then remove <code>fflush(stdout)</code> before <code>fork()</code>. Notice how <code>before fork</code> prints <strong>twice</strong> because full block buffering retains the line in user-space <code>stdio</code> memory, duplicating it across the <code>fork()</code> boundary.</p>
+<p>Run Listing 3-3 (<a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/operating-systems/code/ch03/fork.cpp"><code>code/ch03/fork.cpp</code></a>) with stdout redirected to a file (<code>./fork &gt; /tmp/out.txt &amp;&amp; cat /tmp/out.txt</code>) and then remove <code>fflush(stdout)</code> before <code>fork()</code>. Notice how <code>before fork</code> prints <strong>twice</strong> because full block buffering retains the line in user-space <code>stdio</code> memory, duplicating it across the <code>fork()</code> boundary.</p>
 </div>
 
 <div class="callout caution">

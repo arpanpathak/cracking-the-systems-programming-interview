@@ -38,7 +38,7 @@
             const path_to_root = "";
             const default_light_theme = "coal";
             const default_dark_theme = "coal";
-            window.path_to_searchindex_js = "searchindex-e451f97a.js";
+            window.path_to_searchindex_js = "searchindex-a2840308.js";
         </script>
         <!-- Start loading toc.js asap -->
         <script src="toc-1a401835.js"></script>
@@ -206,7 +206,7 @@ ssize_t recvfrom(int sockfd, void *buf, size_t len, int flags,
 </code></pre>
 <p>In both calls, <code>sockfd</code> is a <code>SOCK_DGRAM</code> descriptor (calling <code>bind()</code> assigns a fixed local port such as <code>45680</code> in Listing 14-1, whereas an unbound sender automatically receives an ephemeral port), <code>buf</code> and <code>len</code> specify the payload buffer, and <code>flags</code> controls per-call behavior (<code>0</code> for standard blocking <strong>Input/Output (<code>I/O</code>)</strong>, <code>MSG_DONTWAIT</code> for non-blocking execution, or <code>MSG_PEEK</code> to inspect a queued datagram without dequeuing it). In <code>sendto()</code>, <code>dest_addr</code> points to the target <code>struct sockaddr_in</code> (or <code>sockaddr_in6</code>) and <code>addrlen</code> is passed <strong>by value</strong> (<code>sizeof addr</code>). In <code>recvfrom()</code>, <code>src_addr</code> and <code>addrlen</code> are output parameters receiving the sender’s address, so <code>addrlen</code> is passed <strong>by pointer (<code>socklen_t *</code>)</strong> as a value-result argument: the caller initializes <code>*addrlen</code> to the buffer capacity before the call, and the kernel overwrites it with the actual length written (passing <code>nullptr, nullptr</code> discards the sender’s address).</p>
 <p>Both functions return the signed byte count transferred (<code>ssize_t &gt;= 0</code>), or <code>-1</code> on error (<code>EMSGSIZE</code> if a datagram exceeds the link’s <strong>Maximum Transmission Unit (<code>MTU</code>)</strong> limit, <code>EAGAIN</code> on non-blocking empty receive, or <code>EINTR</code>). Unlike <code>TCP</code> <code>read()</code>, which leaves unread bytes queued for the next call, if an arriving <code>UDP</code> datagram exceeds the <code>len</code> buffer supplied to <code>recvfrom()</code>, the kernel copies the first <code>len</code> bytes and <strong>discards the remaining tail without signaling an error</strong>.</p>
-<p><strong>Listing 14-1. Sending and receiving one datagram (C++20).</strong></p>
+<p><strong>Listing 14-1. Sending and receiving one datagram (C++20).</strong> (<a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/operating-systems/code/ch14/udp.cpp"><code>code/ch14/udp.cpp</code></a>)</p>
 <pre><code class="language-cpp">// ch14/udp.cpp: a datagram sent to the loopback address and read back.
 #include &lt;arpa/inet.h&gt;
 #include &lt;netinet/in.h&gt;
@@ -246,7 +246,7 @@ int main() {
 <p><strong>Output 14-1. One datagram of 8 bytes.</strong></p>
 <pre><code class="language-text">sent 8 bytes, received 8 bytes: "datagram"
 </code></pre>
-<p><strong>Listing 14-2. The same exchange with <code>std::net::UdpSocket</code> (Rust).</strong></p>
+<p><strong>Listing 14-2. The same exchange with <code>std::net::UdpSocket</code> (Rust).</strong> (<a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/operating-systems/code/ch14/udp.rs"><code>code/ch14/udp.rs</code></a>)</p>
 <pre class="playground"><code class="language-rust">// ch14/udp.rs: the same datagram round trip with std::net::UdpSocket.
 use std::net::UdpSocket;
 
@@ -291,7 +291,7 @@ const char *inet_ntop(int af, const void *src, char *dst, socklen_t size);
 </code></pre>
 <p>Callers zero-initialize a <code>struct addrinfo hints{}</code> and populate only the constraints they require: <code>ai_family = AF_UNSPEC</code> accepts both <code>IPv4</code> and <code>IPv6</code>, <code>ai_socktype = SOCK_STREAM</code> restricts results to <code>TCP</code> endpoints so each address is not duplicated for <code>UDP</code>, and <code>ai_flags = AI_PASSIVE</code> with <code>node = nullptr</code> yields wildcard server listen addresses (<code>0.0.0.0</code> and <code>::</code>). Calling <code>getaddrinfo(node, service, hints, res)</code> queries <code>/etc/hosts</code> and configured <code>DNS</code> resolvers, allocates a heap-resident singly-linked list of candidate <code>struct addrinfo</code> nodes in <code>*res</code>, and returns <code>0</code> on success. Unlike raw system calls, failures return a dedicated non-zero resolver code (<code>EAI_NONAME</code>, <code>EAI_AGAIN</code>, <code>EAI_MEMORY</code>) that callers decode with <code>gai_strerror(rc)</code> rather than <code>perror()</code>.</p>
 <p>Because a hostname commonly resolves to both <code>IPv6</code> (<code>::1</code>) and <code>IPv4</code> (<code>127.0.0.1</code>) endpoints, callers traverse the linked list via <code>ai-&gt;ai_next</code>, inspect <code>ai-&gt;ai_family</code> to cast <code>ai-&gt;ai_addr</code> safely to <code>sockaddr_in *</code> or <code>sockaddr_in6 *</code>, and release the entire list with <code>freeaddrinfo(list)</code>. To format a binary network-order address into text, <code>inet_ntop(af, src, dst, size)</code> (“network to presentation”) writes a null-terminated string into <code>dst</code>; sizing <code>dst</code> to <code>INET6_ADDRSTRLEN</code> (46 bytes) guarantees sufficient capacity for both <code>IPv4</code> dotted-quad and full <code>IPv6</code> colon-hex strings.</p>
-<p><strong>Listing 14-3. The addresses that <code>getaddrinfo</code> returns for “localhost” (C++20).</strong></p>
+<p><strong>Listing 14-3. The addresses that <code>getaddrinfo</code> returns for “localhost” (C++20).</strong> (<a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/operating-systems/code/ch14/getaddrinfo.cpp"><code>code/ch14/getaddrinfo.cpp</code></a>)</p>
 <pre><code class="language-cpp">// ch14/getaddrinfo.cpp: resolve a name and inspect what the resolver returns.
 #include &lt;arpa/inet.h&gt;
 #include &lt;netdb.h&gt;
@@ -334,7 +334,7 @@ int main() {
 <pre><code class="language-text">[0] family=IPv6 addr=::1 socktype=stream
 [1] family=IPv4 addr=127.0.0.1 socktype=stream
 </code></pre>
-<p><strong>Listing 14-4. The same lookup in Rust, with <code>to_socket_addrs</code>.</strong></p>
+<p><strong>Listing 14-4. The same lookup in Rust, with <code>to_socket_addrs</code>.</strong> (<a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/operating-systems/code/ch14/to_socket_addrs.rs"><code>code/ch14/to_socket_addrs.rs</code></a>)</p>
 <pre class="playground"><code class="language-rust">// ch14/to_socket_addrs.rs: the Rust equivalent of getaddrinfo.
 use std::net::ToSocketAddrs;
 
@@ -355,7 +355,7 @@ fn main() -&gt; std::io::Result&lt;()&gt; {
 
 <div class="callout experiment">
 <span class="label">Experiment</span>
-<p>In Listing 14-1 (<code>code/ch14/udp.cpp</code>), shrink the receiver buffer <code>char buf[4]</code> while sending the 8-byte <code>"ping-udp"</code> payload. Observe <code>recvfrom()</code> returning <code>4</code> bytes and discarding the remaining 4 bytes without returning an error, contrasting sharply with <code>TCP</code> stream buffering.</p>
+<p>In Listing 14-1 (<a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/operating-systems/code/ch14/udp.cpp"><code>code/ch14/udp.cpp</code></a>), shrink the receiver buffer <code>char buf[4]</code> while sending the 8-byte <code>"ping-udp"</code> payload. Observe <code>recvfrom()</code> returning <code>4</code> bytes and discarding the remaining 4 bytes without returning an error, contrasting sharply with <code>TCP</code> stream buffering.</p>
 </div>
 
 <div class="callout caution">

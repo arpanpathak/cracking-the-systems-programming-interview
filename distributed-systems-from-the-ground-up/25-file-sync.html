@@ -36,7 +36,7 @@
             const path_to_root = "";
             const default_light_theme = "coal";
             const default_dark_theme = "coal";
-            window.path_to_searchindex_js = "searchindex-38bda414.js";
+            window.path_to_searchindex_js = "searchindex-cf88c8cf.js";
         </script>
         <!-- Start loading toc.js asap -->
         <script src="toc-00f6d8fe.js"></script>
@@ -192,7 +192,7 @@
 <li>control-plane and data-plane separation across the Metadata Service, Content-Addressed Block Store, Garbage Collector, and Delta Notification Bus</li>
 <li>FastCDC content-defined chunking, cross-version deduplication security boundaries, and Merkle directory tree diffing</li>
 <li>optimistic concurrency control, conflict-copy branching, tombstone lifecycle management, long-poll notification hints, and epoch-safe garbage collection</li>
-<li>failure recovery matrices, synchronization SLIs, real-world production architectures (Dropbox Magic Pocket, Google Drive, iCloud Drive), and simulation verification via <code>code/syncsim</code></li>
+<li>failure recovery matrices, synchronization SLIs, real-world production architectures (Dropbox Magic Pocket, Google Drive, iCloud Drive), and simulation verification via <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/tree/prep-v2/distributed-systems-from-the-ground-up/code/syncsim"><code>code/syncsim</code></a></li>
 </ul>
 </div>
 
@@ -577,7 +577,7 @@ CREATE TABLE namespace_blocks (
 </table>
 </div>
 <h2 id="257-simulation-verification"><a class="header" href="#257-simulation-verification">25.7 Simulation Verification</a></h2>
-<p>Running <code>code/syncsim</code> verifies both core invariants of this chapter: (1) FastCDC boundary stability under a single-byte prepend to a <code>65,536</code>-byte file compared against fixed <code>1,024</code>-byte slicing, and (2) atomic optimistic concurrency conflict detection when two offline devices commit against base version <code>3</code>.</p>
+<p>Running <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/tree/prep-v2/distributed-systems-from-the-ground-up/code/syncsim"><code>code/syncsim</code></a> verifies both core invariants of this chapter: (1) FastCDC boundary stability under a single-byte prepend to a <code>65,536</code>-byte file compared against fixed <code>1,024</code>-byte slicing, and (2) atomic optimistic concurrency conflict detection when two offline devices commit against base version <code>3</code>.</p>
 <pre><code class="language-console">$ cargo run --release -p syncsim
 a file of 65536 bytes, and the same file with 1 byte added at the start
 cuts every 1024 bytes: 65 chunks, 65 to upload again
@@ -588,7 +588,7 @@ phone uploads, based on version 3: conflict: the server is at version 4, written
 </code></pre>
 <p>Inspect the observed ratio directly: prepending <code>1</code> byte invalidates <code>65 / 65</code> (<code>100%</code>) of fixed-offset chunks, whereas content-defined chunking isolates the mutation to <code>1 / 62</code> (<code>1.6%</code>) of chunks, reducing WAN upload bandwidth by <code>98.4%</code>. On the control plane, the laptop’s conditional upload based on version <code>3</code> commits cleanly as version <code>4</code>, and the phone’s subsequent upload carrying base version <code>3</code> is deterministically flagged as a conflict against version <code>4</code>.</p>
 <div class="simulation">
-<p><strong>Run the file synchronization simulation.</strong> Execute <code>cargo run --release -p syncsim</code> in <code>code/</code> to reproduce the fixed-block vs. content-defined chunking comparison (<code>65/65</code> vs. <code>1/62</code> dirty chunks) and the offline version-3 optimistic concurrency conflict trace.</p>
+<p><strong>Run the file synchronization simulation.</strong> Execute <code>cargo run --release -p syncsim</code> in <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/tree/prep-v2/distributed-systems-from-the-ground-up/code"><code>code/</code></a> to reproduce the fixed-block vs. content-defined chunking comparison (<code>65/65</code> vs. <code>1/62</code> dirty chunks) and the offline version-3 optimistic concurrency conflict trace.</p>
 </div>
 
 <h3 id="end-to-end-request-lifecycle-and-hop-by-hop-latency-budget"><a class="header" href="#end-to-end-request-lifecycle-and-hop-by-hop-latency-budget">End-to-End Request Lifecycle and Hop-by-Hop Latency Budget</a></h3>
@@ -692,22 +692,6 @@ phone uploads, based on version 3: conflict: the server is at version 4, written
         <template id=fa-play><span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 384 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M73 39c-14.8-9.1-33.4-9.4-48.5-.9S0 62.6 0 80V432c0 17.4 9.4 33.4 24.5 41.9s33.7 8.1 48.5-.9L361 297c14.3-8.7 23-24.2 23-41s-8.7-32.2-23-41L73 39z"/></svg></span></template>
         <template id=fa-clock-rotate-left><span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M75 75L41 41C25.9 25.9 0 36.6 0 57.9V168c0 13.3 10.7 24 24 24H134.1c21.4 0 32.1-25.9 17-41l-30.8-30.8C155 85.5 203 64 256 64c106 0 192 86 192 192s-86 192-192 192c-40.8 0-78.6-12.7-109.7-34.4c-14.5-10.1-34.4-6.6-44.6 7.9s-6.6 34.4 7.9 44.6C151.2 495 201.7 512 256 512c141.4 0 256-114.6 256-256S397.4 0 256 0C185.3 0 121.3 28.7 75 75zm181 53c-13.3 0-24 10.7-24 24V256c0 6.4 2.5 12.5 7 17l72 72c9.4 9.4 24.6 9.4 33.9 0s9.4-24.6 0-33.9l-65-65V152c0-13.3-10.7-24-24-24z"/></svg></span></template>
 
-        <!-- Livereload script (if served using the cli tool) -->
-        <script>
-            const wsProtocol = location.protocol === 'https:' ? 'wss:' : 'ws:';
-            const wsAddress = wsProtocol + "//" + location.host + "/" + "__livereload";
-            const socket = new WebSocket(wsAddress);
-            socket.onmessage = function (event) {
-                if (event.data === "reload") {
-                    socket.close();
-                    location.reload();
-                }
-            };
-
-            window.onbeforeunload = function() {
-                socket.close();
-            }
-        </script>
 
 
         <script>

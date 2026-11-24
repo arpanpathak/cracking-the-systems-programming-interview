@@ -36,7 +36,7 @@
             const path_to_root = "";
             const default_light_theme = "coal";
             const default_dark_theme = "coal";
-            window.path_to_searchindex_js = "searchindex-38bda414.js";
+            window.path_to_searchindex_js = "searchindex-cf88c8cf.js";
         </script>
         <!-- Start loading toc.js asap -->
         <script src="toc-00f6d8fe.js"></script>
@@ -192,7 +192,7 @@
 <li>control-plane surveillance and risk limits separated from the zero-allocation deterministic matching data plane and microsecond latency budgets</li>
 <li>price-time priority limit order book mechanics and intrusive doubly-linked-list data structures delivering <code>O(1)</code> cancellations with zero heap allocation</li>
 <li>single-threaded mechanical sympathy, cache-line-padded LMAX Disruptor ring buffers, pre-trade risk enforcement, and deterministic active-passive standby failover via replicated sequencer journals</li>
-<li>failure recovery matrices, exchange SLIs, production architectures (LMAX, Nasdaq, IEX, CME Globex), and simulation verification via <code>code/matchsim</code></li>
+<li>failure recovery matrices, exchange SLIs, production architectures (LMAX, Nasdaq, IEX, CME Globex), and simulation verification via <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/tree/prep-v2/distributed-systems-from-the-ground-up/code/matchsim"><code>code/matchsim</code></a></li>
 </ul>
 </div>
 
@@ -475,7 +475,7 @@ Content-Type: application/json
 </table>
 </div>
 <h2 id="277-simulation-verification"><a class="header" href="#277-simulation-verification">27.7 Simulation Verification</a></h2>
-<p>Running <code>code/matchsim</code> executes a deterministic price-time priority limit order book across seven incoming orders, exercising resting spread formation, FIFO partial fills at identical prices (<code>1005</code>), multi-level book sweeps, and passive price improvement (<code>order 7</code> selling with limit <code>995</code> fills at resting buy prices <code>1010</code> and <code>1000</code>).</p>
+<p>Running <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/tree/prep-v2/distributed-systems-from-the-ground-up/code/matchsim"><code>code/matchsim</code></a> executes a deterministic price-time priority limit order book across seven incoming orders, exercising resting spread formation, FIFO partial fills at identical prices (<code>1005</code>), multi-level book sweeps, and passive price improvement (<code>order 7</code> selling with limit <code>995</code> fills at resting buy prices <code>1010</code> and <code>1000</code>).</p>
 <pre><code class="language-console">$ cargo run --release -p matchsim
 order 1: sell 50 at 1010
 order 2: sell 30 at 1005
@@ -501,7 +501,7 @@ shares traded: 200
 <li><strong>Passive Price Improvement &amp; Conservation:</strong> <code>order 7</code> (<code>sell 80 @ 995</code>) trades <code>30</code> shares at <code>1010</code> and <code>50</code> shares at <code>1000</code> (resting buyers’ prices), transferring <code>200</code> total shares and leaving exactly <code>10</code> shares of <code>order 4</code> resting at <code>1000</code>.</li>
 </ul>
 <div class="simulation">
-<p><strong>Run the deterministic matching engine simulation.</strong> Execute <code>cargo run --release -p matchsim</code> in <code>code/</code> to verify price-time FIFO ordering, passive price execution, multi-level sweeps, and share conservation (<code>200</code> shares traded, <code>10</code> remaining at <code>1000</code>).</p>
+<p><strong>Run the deterministic matching engine simulation.</strong> Execute <code>cargo run --release -p matchsim</code> in <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/tree/prep-v2/distributed-systems-from-the-ground-up/code"><code>code/</code></a> to verify price-time FIFO ordering, passive price execution, multi-level sweeps, and share conservation (<code>200</code> shares traded, <code>10</code> remaining at <code>1000</code>).</p>
 </div>
 
 <h3 id="end-to-end-request-lifecycle-and-hop-by-hop-latency-budget"><a class="header" href="#end-to-end-request-lifecycle-and-hop-by-hop-latency-budget">End-to-End Request Lifecycle and Hop-by-Hop Latency Budget</a></h3>
@@ -604,22 +604,6 @@ shares traded: 200
         <template id=fa-play><span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 384 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M73 39c-14.8-9.1-33.4-9.4-48.5-.9S0 62.6 0 80V432c0 17.4 9.4 33.4 24.5 41.9s33.7 8.1 48.5-.9L361 297c14.3-8.7 23-24.2 23-41s-8.7-32.2-23-41L73 39z"/></svg></span></template>
         <template id=fa-clock-rotate-left><span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M75 75L41 41C25.9 25.9 0 36.6 0 57.9V168c0 13.3 10.7 24 24 24H134.1c21.4 0 32.1-25.9 17-41l-30.8-30.8C155 85.5 203 64 256 64c106 0 192 86 192 192s-86 192-192 192c-40.8 0-78.6-12.7-109.7-34.4c-14.5-10.1-34.4-6.6-44.6 7.9s-6.6 34.4 7.9 44.6C151.2 495 201.7 512 256 512c141.4 0 256-114.6 256-256S397.4 0 256 0C185.3 0 121.3 28.7 75 75zm181 53c-13.3 0-24 10.7-24 24V256c0 6.4 2.5 12.5 7 17l72 72c9.4 9.4 24.6 9.4 33.9 0s9.4-24.6 0-33.9l-65-65V152c0-13.3-10.7-24-24-24z"/></svg></span></template>
 
-        <!-- Livereload script (if served using the cli tool) -->
-        <script>
-            const wsProtocol = location.protocol === 'https:' ? 'wss:' : 'ws:';
-            const wsAddress = wsProtocol + "//" + location.host + "/" + "__livereload";
-            const socket = new WebSocket(wsAddress);
-            socket.onmessage = function (event) {
-                if (event.data === "reload") {
-                    socket.close();
-                    location.reload();
-                }
-            };
-
-            window.onbeforeunload = function() {
-                socket.close();
-            }
-        </script>
 
 
         <script>

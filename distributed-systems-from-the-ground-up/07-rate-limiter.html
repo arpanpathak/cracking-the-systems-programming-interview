@@ -36,7 +36,7 @@
             const path_to_root = "";
             const default_light_theme = "coal";
             const default_dark_theme = "coal";
-            window.path_to_searchindex_js = "searchindex-38bda414.js";
+            window.path_to_searchindex_js = "searchindex-cf88c8cf.js";
         </script>
         <!-- Start loading toc.js asap -->
         <script src="toc-00f6d8fe.js"></script>
@@ -191,7 +191,7 @@
 <li>actors, use cases, verifiable functional requirements, sub-millisecond latency SLOs, and memory and CPU capacity bounds</li>
 <li>HTTP caller contracts (<code>429 Too Many Requests</code>, IETF <code>RateLimit-*</code> headers, jittered <code>Retry-After</code>), internal Envoy-style gRPC checks, and policy control APIs</li>
 <li>separation of policy compilation (control plane) from sub-millisecond evaluation (data plane), including shadow-mode rollout</li>
-<li>formal and empirical comparison of rate-limiting algorithms via <code>code/ratelimit</code> and interactive traces, culminating in the O(1) Generic Cell Rate Algorithm (GCRA) and its atomic Redis Lua implementation</li>
+<li>formal and empirical comparison of rate-limiting algorithms via <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/tree/prep-v2/distributed-systems-from-the-ground-up/code/ratelimit"><code>code/ratelimit</code></a> and interactive traces, culminating in the O(1) Generic Cell Rate Algorithm (GCRA) and its atomic Redis Lua implementation</li>
 <li>distributed quota synchronization across single-region Redis Clusters, L1 local quota leasing for hot keys, and multi-region asynchronous convergence</li>
 <li>defense-in-depth failure policies (fail-open versus fail-closed tiers), composite key selection, and backend adaptive load shedding (AIMD and CoDel)</li>
 <li>operational SLIs, production architectures (Stripe, Cloudflare, Envoy, Kong), and verification</li>
@@ -348,7 +348,7 @@ Content-Type: application/json
 <h2 id="74-rate-limiting-algorithms-and-gcra-formulation"><a class="header" href="#74-rate-limiting-algorithms-and-gcra-formulation">7.4 Rate-Limiting Algorithms and GCRA Formulation</a></h2>
 <p>The natural-language specification “5 requests per second” admits multiple incompatible implementations until two degrees of freedom are fixed: <strong>burst tolerance</strong> (whether all 5 requests may arrive in the same millisecond or must be spaced evenly every <code>200 ms</code>) and <strong>window alignment</strong> (calendar-aligned clock seconds versus every rolling <code>1,000 ms</code> span).</p>
 <h3 id="empirical-comparison-of-classical-algorithms"><a class="header" href="#empirical-comparison-of-classical-algorithms">Empirical Comparison of Classical Algorithms</a></h3>
-<p>The repository’s <code>code/ratelimit</code> simulation subjects five classical algorithms to identical traffic at <code>5</code> requests/s (<code>20</code> simultaneous requests, <code>10</code> requests straddling the <code>1,000 ms</code> clock boundary, and <code>30</code> requests arriving at <code>10</code> req/s over <code>3</code> seconds):</p>
+<p>The repository’s <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/tree/prep-v2/distributed-systems-from-the-ground-up/code/ratelimit"><code>code/ratelimit</code></a> simulation subjects five classical algorithms to identical traffic at <code>5</code> requests/s (<code>20</code> simultaneous requests, <code>10</code> requests straddling the <code>1,000 ms</code> clock boundary, and <code>30</code> requests arriving at <code>10</code> req/s over <code>3</code> seconds):</p>
 <pre><code class="language-console">$ cargo run --release -p ratelimit
 the limit for every algorithm: 5 requests per second
 
@@ -523,7 +523,7 @@ return { 1, remaining, 0 }
 </div>
 <h3 id="verification-in-the-repository"><a class="header" href="#verification-in-the-repository">Verification in the Repository</a></h3>
 <div class="simulation">
-<p><strong>Run the algorithm comparison simulation.</strong> Execute <code>cargo run --release -p ratelimit</code> in <code>code/</code> to reproduce the simultaneous-burst, boundary-straddling, and sustained-overload results across all five algorithms reported in Section 7.4.</p>
+<p><strong>Run the algorithm comparison simulation.</strong> Execute <code>cargo run --release -p ratelimit</code> in <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/tree/prep-v2/distributed-systems-from-the-ground-up/code"><code>code/</code></a> to reproduce the simultaneous-burst, boundary-straddling, and sustained-overload results across all five algorithms reported in Section 7.4.</p>
 </div>
 
 <h3 id="engineering-glossary"><a class="header" href="#engineering-glossary">Engineering Glossary</a></h3>
@@ -577,7 +577,7 @@ return { 1, remaining, 0 }
 </div>
 
 <div class="callout experiment"><span class="label">Experiment</span>
-<p><strong>Expose fixed-window boundary bursts empirically.</strong> Execute <code>cargo run --release -p ratelimit</code> in <code>code/</code> to replay identical burst and boundary-straddling workloads against Fixed Window, Sliding Log, Sliding Counter, Token Bucket, and GCRA. Verify that Fixed Window admits <code>2x</code> the configured quota across a window boundary, whereas GCRA bounds both instantaneous burst and sustained rate cleanly.</p>
+<p><strong>Expose fixed-window boundary bursts empirically.</strong> Execute <code>cargo run --release -p ratelimit</code> in <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/tree/prep-v2/distributed-systems-from-the-ground-up/code"><code>code/</code></a> to replay identical burst and boundary-straddling workloads against Fixed Window, Sliding Log, Sliding Counter, Token Bucket, and GCRA. Verify that Fixed Window admits <code>2x</code> the configured quota across a window boundary, whereas GCRA bounds both instantaneous burst and sustained rate cleanly.</p>
 </div>
 
 <div class="callout caution"><span class="label">Common pitfall</span>
@@ -629,22 +629,6 @@ return { 1, remaining, 0 }
         <template id=fa-play><span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 384 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M73 39c-14.8-9.1-33.4-9.4-48.5-.9S0 62.6 0 80V432c0 17.4 9.4 33.4 24.5 41.9s33.7 8.1 48.5-.9L361 297c14.3-8.7 23-24.2 23-41s-8.7-32.2-23-41L73 39z"/></svg></span></template>
         <template id=fa-clock-rotate-left><span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M75 75L41 41C25.9 25.9 0 36.6 0 57.9V168c0 13.3 10.7 24 24 24H134.1c21.4 0 32.1-25.9 17-41l-30.8-30.8C155 85.5 203 64 256 64c106 0 192 86 192 192s-86 192-192 192c-40.8 0-78.6-12.7-109.7-34.4c-14.5-10.1-34.4-6.6-44.6 7.9s-6.6 34.4 7.9 44.6C151.2 495 201.7 512 256 512c141.4 0 256-114.6 256-256S397.4 0 256 0C185.3 0 121.3 28.7 75 75zm181 53c-13.3 0-24 10.7-24 24V256c0 6.4 2.5 12.5 7 17l72 72c9.4 9.4 24.6 9.4 33.9 0s9.4-24.6 0-33.9l-65-65V152c0-13.3-10.7-24-24-24z"/></svg></span></template>
 
-        <!-- Livereload script (if served using the cli tool) -->
-        <script>
-            const wsProtocol = location.protocol === 'https:' ? 'wss:' : 'ws:';
-            const wsAddress = wsProtocol + "//" + location.host + "/" + "__livereload";
-            const socket = new WebSocket(wsAddress);
-            socket.onmessage = function (event) {
-                if (event.data === "reload") {
-                    socket.close();
-                    location.reload();
-                }
-            };
-
-            window.onbeforeunload = function() {
-                socket.close();
-            }
-        </script>
 
 
         <script>

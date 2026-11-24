@@ -38,7 +38,7 @@
             const path_to_root = "";
             const default_light_theme = "coal";
             const default_dark_theme = "coal";
-            window.path_to_searchindex_js = "searchindex-e451f97a.js";
+            window.path_to_searchindex_js = "searchindex-a2840308.js";
         </script>
         <!-- Start loading toc.js asap -->
         <script src="toc-1a401835.js"></script>
@@ -210,7 +210,7 @@ int     setvbuf(FILE *stream, char *buf, int mode, size_t size);
 <p>Calling <code>open(pathname, flags, [mode])</code> resolves <code>pathname</code> in the virtual filesystem, allocates an open file description in the kernel, and installs a reference to it in the lowest unused slot of the calling process’s file descriptor table. Listings 9-3 and 9-4 open <code>/dev/null</code>, a virtual character device whose kernel driver immediately discards every written byte and returns success, isolating pure system-call overhead from storage latency. The <code>flags</code> bitmask combines one access mode (<code>O_RDONLY</code>, <code>O_WRONLY</code>, or <code>O_RDWR</code>) with optional creation or status flags (<code>O_CREAT</code>, <code>O_TRUNC</code>, <code>O_APPEND</code>, <code>O_CLOEXEC</code>); an octal permission <code>mode</code> (such as <code>0644</code>) is required only when <code>O_CREAT</code> is set. On success, <code>open()</code> returns a non-negative integer file descriptor (<code>fd &gt;= 0</code>); on failure, it returns <code>-1</code> with <code>errno</code> set (<code>ENOENT</code>, <code>EACCES</code>, or <code>EMFILE</code>).</p>
 <p>Calling <code>write(fd, buf, count)</code> requests that the kernel transfer up to <code>count</code> bytes starting at user address <code>buf</code> to the resource referenced by <code>fd</code>. It returns a signed byte count (<code>ssize_t</code>, <code>0 &lt;= n &lt;= count</code>) or <code>-1</code> on error (<code>EINTR</code> if interrupted by a signal, <code>EAGAIN</code> on a full non-blocking descriptor, <code>EPIPE</code> on a closed pipe or socket, or <code>ENOSPC</code> when storage is exhausted). Because <code>POSIX</code> permits <strong>short writes</strong> (transferring fewer than <code>count</code> bytes without error on pipes, sockets, or interrupted writes), production code wraps raw <code>write()</code> calls in a loop advancing the buffer slice until all bytes are accepted, as shown in Listing 9-4.</p>
 <p>When the resource is no longer needed, <code>close(fd)</code> releases the descriptor slot and decrements the kernel open file description’s reference count, returning <code>0</code> on success or <code>-1</code> on error (<code>EBADF</code> or delayed <code>EIO</code>). To control user-space buffering on a C <code>FILE*</code> stream before any <code>I/O</code> occurs, <code>setvbuf(stream, buf, mode, size)</code> configures the buffering policy: passing <code>buf = nullptr</code> allocates an internal buffer of <code>size</code> bytes (<code>64 * 1024</code>), while <code>mode</code> selects full buffering (<code>_IOFBF</code>), line buffering (<code>_IOLBF</code>), or unbuffered mode (<code>_IONBF</code>), returning <code>0</code> on success.</p>
-<p><strong>Listing 9-1. A system call compared with a function call (C++20).</strong></p>
+<p><strong>Listing 9-1. A system call compared with a function call (C++20).</strong> (<a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/operating-systems/code/ch09/syscall_cost.cpp"><code>code/ch09/syscall_cost.cpp</code></a>)</p>
 <pre><code class="language-cpp">// ch09/syscall_cost.cpp: compare a system call with a plain function call.
 #include &lt;unistd.h&gt;
 #include &lt;chrono&gt;
@@ -259,7 +259,7 @@ getppid() system call:   586.8 ns
 ratio                :   277.2x
 (parent pid 63901, checksum 1279998207)
 </code></pre>
-<p><strong>Listing 9-2. The same comparison in Rust.</strong></p>
+<p><strong>Listing 9-2. The same comparison in Rust.</strong> (<a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/operating-systems/code/ch09/syscall_cost.rs"><code>code/ch09/syscall_cost.rs</code></a>)</p>
 <pre class="playground"><code class="language-rust">// ch09/syscall_cost.rs: the same comparison in Rust.
 use std::hint::black_box;
 use std::time::Instant;
@@ -311,7 +311,7 @@ ratio                :   327.7x
 <figure>
 <img src="figures/ch09_buffering.svg" alt="Unbuffered writes cross into the kernel per call; a 64 KiB user buffer crosses only when full" />
 </figure>
-<p><strong>Listing 9-3. 200,000 small writes, unbuffered and buffered (C++20).</strong></p>
+<p><strong>Listing 9-3. 200,000 small writes, unbuffered and buffered (C++20).</strong> (<a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/operating-systems/code/ch09/write_buffered.cpp"><code>code/ch09/write_buffered.cpp</code></a>)</p>
 <pre><code class="language-cpp">// ch09/write_buffered.cpp: many small writes, buffered and unbuffered.
 #include &lt;fcntl.h&gt;
 #include &lt;unistd.h&gt;
@@ -361,7 +361,7 @@ int main() {
 <pre><code class="language-text">write(2) into /dev/null, 200000 x 17 bytes :   274.3 ms
 fwrite buffered, 200000 x 17 bytes         :    12.0 ms
 </code></pre>
-<p><strong>Listing 9-4. The same comparison in Rust, with write(2) and BufWriter.</strong></p>
+<p><strong>Listing 9-4. The same comparison in Rust, with write(2) and BufWriter.</strong> (<a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/operating-systems/code/ch09/write_buffered.rs"><code>code/ch09/write_buffered.rs</code></a>)</p>
 <pre class="playground"><code class="language-rust">// ch09/write_buffered.rs: the same comparison with raw write(2) and BufWriter.
 use std::fs::File;
 use std::io::{BufWriter, Write};
@@ -439,7 +439,7 @@ BufWriter,     200000 x 17 bytes         :     0.6 ms
 
 <div class="callout experiment">
 <span class="label">Experiment</span>
-<p>Modify Listing 9-3 (<code>code/ch09/write_buffered.cpp</code>) to sweep the buffer size passed to <code>setvbuf()</code> across <code>256</code>, <code>4,096</code>, <code>65,536</code>, and <code>1,048,576</code> bytes. Observe how wall-clock time drops steeply up to 64 KiB (as syscall count falls 256×) and then plateaus once user-space <code>memcpy</code> dominates.</p>
+<p>Modify Listing 9-3 (<a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/operating-systems/code/ch09/write_buffered.cpp"><code>code/ch09/write_buffered.cpp</code></a>) to sweep the buffer size passed to <code>setvbuf()</code> across <code>256</code>, <code>4,096</code>, <code>65,536</code>, and <code>1,048,576</code> bytes. Observe how wall-clock time drops steeply up to 64 KiB (as syscall count falls 256×) and then plateaus once user-space <code>memcpy</code> dominates.</p>
 </div>
 
 <div class="callout caution">
