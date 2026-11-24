@@ -38,7 +38,7 @@
             const path_to_root = "";
             const default_light_theme = "coal";
             const default_dark_theme = "coal";
-            window.path_to_searchindex_js = "searchindex-a2840308.js";
+            window.path_to_searchindex_js = "searchindex-fe606de6.js";
         </script>
         <!-- Start loading toc.js asap -->
         <script src="toc-1a401835.js"></script>
@@ -1866,6 +1866,315 @@ match        yes
 <div class="callout caution">
 <span class="label">Watch out</span>
 <p>Cache line false sharing on <code>head</code> and <code>tail</code>: because producer and consumer execute on different cores, placing both atomic indices in the same 64-byte cache line causes the hardware coherency protocol (MESI) to bounce the line between cores on every push and pop. Always separate cross-core indices with <code>alignas(64)</code>.</p>
+</div>
+
+<h3 id="1946-extending-to-multiple-producers-the-wait-free-vyukov-mpsc-queue"><a class="header" href="#1946-extending-to-multiple-producers-the-wait-free-vyukov-mpsc-queue">19.4.6 Extending to Multiple Producers: The Wait-Free Vyukov MPSC Queue</a></h3>
+<p>Many core operating system subsystems funnel work from multiple worker cores into a single serialized consumer: asynchronous logging sinks, actor mailboxes, I/O completion dispatchers, and kernel work queues. This fan-in topology is a <strong>Multi-Producer, Single-Consumer (MPSC)</strong> queue.</p>
+<p>As established in Section 19.4.5, the SPSC ring buffer depends on a single-writer invariant on <code>tail</code>. Allowing concurrent producers to update <code>tail</code> without arbitration introduces lost updates and slot overwrites. Conventional lock-free generalizations (such as Compare-And-Swap ring buffers or Michael-Scott linked queues) resolve producer contention with CAS retry loops, which degrade under high core counts as contending threads repeatedly invalidate one another’s cache lines and retry failed comparisons. Furthermore, general lock-free linked structures typically require hazard pointers or epoch-based reclamation to prevent a consumer from deallocating a node still dereferenced by a stalled peer.</p>
+<p>Dmitry Vyukov’s stub-node MPSC queue exploits the asymmetry of the single-consumer topology to bypass both hazards. Producers achieve <strong>wait-free</strong> progress (completing every enqueue in a bounded, constant number of instructions with zero retry loops), while the single consumer reclaims memory immediately without hazard pointers, version tags, or ABA mitigation.</p>
+<h4 id="architectural-contract-and-ownership-topology"><a class="header" href="#architectural-contract-and-ownership-topology">Architectural Contract and Ownership Topology</a></h4>
+<p>The queue maintains an intrusive singly linked chain anchored by two pointers isolated on separate 64-byte cache lines:</p>
+<ul>
+<li><strong><code>head</code> (<code>std::atomic&lt;Node*&gt;</code> / <code>AtomicPtr&lt;Node&lt;T&gt;&gt;</code>):</strong> Points to the most recently enqueued node. All producer threads contend exclusively on this pointer.</li>
+<li><strong><code>tail</code> (<code>Node*</code> / <code>AtomicPtr&lt;Node&lt;T&gt;&gt;</code>):</strong> Points to the oldest node in the chain, designated the <strong>stub</strong> (sentinel) node. Its payload has either never been populated (at initialization) or has already been extracted by a prior <code>pop()</code>. Only the single consumer thread reads or mutates <code>tail</code>.</li>
+</ul>
+<p>At construction, the queue allocates one empty stub node and initializes both <code>head</code> and <code>tail</code> to point to it. Retaining a permanent stub node eliminates every empty-queue boundary case: the consumer never inspects or modifies <code>head</code>, and producers never touch <code>tail</code>. The two ends of the queue remain structurally decoupled across separate cache lines.</p>
+<p>The caller contract enforces two strict concurrency bounds: any number of threads may invoke <code>push()</code> concurrently, whereas at most one thread at a time may invoke <code>pop()</code>. Destruction (<code>~MpscQueue</code> / <code>Drop</code>) requires exclusive ownership after all producer and consumer threads have ceased accessing the queue.</p>
+<figure>
+<img src="figures/ch19_mpsc_vyukov.svg" alt="Vyukov lock-free MPSC queue: wait-free producer swap, stub-node chain, and single-consumer reclamation." />
+</figure>
+<h4 id="decoupling-linearization-from-publication"><a class="header" href="#decoupling-linearization-from-publication">Decoupling Linearization from Publication</a></h4>
+<p>The key insight of Vyukov’s algorithm is that enqueuing a node splits into two distinct phases: <strong>linearization</strong> (establishing the node’s exact position in the FIFO order) and <strong>publication</strong> (making the node visible to the consumer).</p>
+<ol>
+<li><strong>Wait-Free Linearization (<code>AcqRel</code> Exchange):</strong> A producer allocates a heap <code>Node</code> holding <code>value</code> and executes <code>prev = head.exchange(node, acq_rel)</code> (<code>head.swap(node, AcqRel)</code> in Rust). Because atomic exchange unconditionally succeeds in one hardware bus transaction (<code>LOCK XCHG</code> on x86-64; <code>SWPAL</code> on ARM64), concurrent producers never retry or livelock. The hardware serializes every caller into a strict total order, granting each producer exclusive ownership of the unique predecessor link <code>prev-&gt;next</code>.</li>
+<li><strong>Release Publication (<code>Release</code> Store):</strong> The producer writes <code>prev-&gt;next.store(node, release)</code>. This release barrier guarantees that both the allocation of <code>node</code> and the initialization of <code>node-&gt;data</code> become globally visible before the consumer can observe the non-null pointer in <code>prev-&gt;next</code> (compiles to a plain <code>MOV</code> under x86-64 TSO and an explicit <code>STLR</code> store-release on ARM64).</li>
+</ol>
+<h4 id="the-transient-link-window"><a class="header" href="#the-transient-link-window">The Transient Link Window</a></h4>
+<p>Because linearization and publication are two separate instructions, a brief interval exists after <code>head.exchange(node)</code> completes and before <code>prev-&gt;next.store(node)</code> executes. During this <strong>transient link window</strong>, <code>head</code> already points to <code>node</code>, yet <code>prev-&gt;next</code> remains null.</p>
+<p>If the operating system scheduler preempts Producer 1 inside this window, the queue does not stall other producers. Producer 2 executes <code>head.exchange(node2)</code>, receives <code>prev == node1</code>, and stores <code>node1-&gt;next = node2</code>, forming a valid detached suffix behind <code>node1</code>. Meanwhile, if the consumer invokes <code>pop()</code> while <code>tail == prev</code>, it observes <code>tail-&gt;next == nullptr</code> and returns <code>None</code> immediately rather than spinning. The moment Producer 1 resumes and executes <code>prev-&gt;next.store(node1, release)</code>, the entire suffix reconnects atomically and drains in exact FIFO order.</p>
+<p>This behavior carries a subtle operational consequence: while producers remain active, observing <code>pop() == None</code> indicates that no linked element is currently visible at the stub, rather than proving that the queue is globally empty. Callers draining a live queue must therefore coordinate shutdown explicitly (for example, by joining all producer threads or sending an explicit sentinel message).</p>
+<h4 id="deterministic-reclamation-and-rust-unsafe-soundness"><a class="header" href="#deterministic-reclamation-and-rust-unsafe-soundness">Deterministic Reclamation and Rust <code>unsafe</code> Soundness</a></h4>
+<p>On the consumer side, <code>pop()</code> executes without loops or read-modify-write instructions:</p>
+<ol>
+<li>Load <code>next = tail-&gt;next.load(acquire)</code> (<code>LDAR</code> on ARM64; plain <code>MOV</code> on x86-64). If <code>next</code> is null, return <code>None</code>.</li>
+<li>Advance <code>tail = next</code>, promoting <code>next</code> to become the new stub node.</li>
+<li>Reclaim the previous <code>tail</code> stub node.</li>
+<li>Extract and return the payload from <code>next-&gt;data</code>.</li>
+</ol>
+<p>Immediate deallocation of the old stub is sound without hazard pointers or ABA protection. Observing a non-null <code>tail-&gt;next</code> via an acquire load proves two facts simultaneously: the producer that received <code>prev == tail</code> from <code>head.exchange</code> has already executed its final write to <code>tail-&gt;next</code>, and <code>head</code> moved strictly past <code>tail</code> prior to that write so no future producer can ever obtain a pointer to <code>tail</code>. Zero threads retain any reference to the old stub, allowing immediate <code>delete</code> or <code>Box::from_raw</code> reclamation.</p>
+<p>In Rust, raw-pointer traversal and reclamation require <code>unsafe</code> blocks, each governed by explicit <code>// SAFETY:</code> invariants in Listing 19-6b. One aliasing subtlety deserves particular attention: when the consumer extracts <code>next.data</code>, another producer may concurrently hold <code>prev == next</code> and execute <code>(*prev).next.store(...)</code>. Constructing an exclusive <code>&amp;mut Node&lt;T&gt;</code> reference over <code>next</code> would therefore trigger undefined behavior under Rust’s aliasing model. Wrapping <code>data</code> in <code>UnsafeCell&lt;Option&lt;T&gt;&gt;</code> while keeping <code>next</code> as an <code>AtomicPtr&lt;Node&lt;T&gt;&gt;</code> allows the consumer to project strictly to the disjoint <code>data</code> field while producers touch only <code>next</code>, preserving full memory soundness alongside the acquire-release happens-before edge.</p>
+<p><strong>Table 19-2. Architectural trade-offs: lock-free SPSC ring buffer versus Vyukov MPSC queue.</strong></p>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th style="text-align: left">Dimension</th><th style="text-align: left">Lock-Free SPSC Ring (Section 19.4)</th><th style="text-align: left">Vyukov Lock-Free MPSC Queue (Section 19.4.6)</th></tr>
+</thead>
+<tbody>
+<tr><td style="text-align: left"><strong>Backing storage</strong></td><td style="text-align: left">Fixed-size contiguous array</td><td style="text-align: left">Dynamically allocated singly linked list with stub node</td></tr>
+<tr><td style="text-align: left"><strong>Producer progress</strong></td><td style="text-align: left">Wait-free (bounded by ring capacity)</td><td style="text-align: left">Wait-free (single atomic exchange, zero CAS retries)</td></tr>
+<tr><td style="text-align: left"><strong>Consumer progress</strong></td><td style="text-align: left">Wait-free</td><td style="text-align: left">Lock-free (returns <code>None</code> during a transient link window)</td></tr>
+<tr><td style="text-align: left"><strong>Allocation profile</strong></td><td style="text-align: left">Zero per-operation heap allocation</td><td style="text-align: left">One node allocation per <code>push</code>, one deallocation per <code>pop</code></td></tr>
+<tr><td style="text-align: left"><strong>Reclamation &amp; ABA</strong></td><td style="text-align: left">Monotonic 64-bit indices; no reclamation</td><td style="text-align: left">Immediate single-consumer stub reclamation; ABA-immune</td></tr>
+</tbody>
+</table>
+</div>
+<p>In latency-critical kernels and runtimes that cannot tolerate general-purpose allocator overhead on every <code>push()</code>, the same Vyukov pointer protocol is routinely paired with an intrusive node field embedded directly inside each task struct or with a per-core slab pool (Chapter 8), preserving wait-free enqueue semantics while eliminating dynamic heap allocation.</p>
+<h4 id="reference-implementation"><a class="header" href="#reference-implementation">Reference Implementation</a></h4>
+<p><strong>Listing 19-6a. A wait-free Vyukov MPSC queue (C++20).</strong> (<a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/operating-systems/code/ch19/mpsc_queue.cpp"><code>code/ch19/mpsc_queue.cpp</code></a>)</p>
+<pre><code class="language-cpp">// ch19/mpsc_queue.cpp: wait-free multi-producer, single-consumer queue (Vyukov).
+#include &lt;atomic&gt;
+#include &lt;cstdint&gt;
+#include &lt;iostream&gt;
+#include &lt;optional&gt;
+#include &lt;thread&gt;
+#include &lt;utility&gt;
+#include &lt;vector&gt;
+
+/// Unbounded lock-free MPSC queue using a stub-node linked list.
+/// Multiple threads may call push() concurrently; only one thread may call pop().
+template &lt;typename T&gt;
+class MpscQueue {
+public:
+    MpscQueue() {
+        Node* stub = new Node(std::nullopt);
+        head_.store(stub, std::memory_order_relaxed);
+        tail_ = stub;
+    }
+
+    MpscQueue(const MpscQueue&amp;) = delete;
+    MpscQueue&amp; operator=(const MpscQueue&amp;) = delete;
+
+    ~MpscQueue() {
+        Node* curr = tail_;
+        while (curr) {
+            Node* next = curr-&gt;next.load(std::memory_order_relaxed);
+            delete curr;
+            curr = next;
+        }
+    }
+
+    /// Wait-free enqueue: atomically swap head, then link the previous node.
+    void push(T value) {
+        Node* node = new Node(std::move(value));
+        Node* prev = head_.exchange(node, std::memory_order_acq_rel);
+        prev-&gt;next.store(node, std::memory_order_release);
+    }
+
+    /// Single-consumer dequeue: advance stub to next, reclaim old stub, return payload.
+    std::optional&lt;T&gt; pop() {
+        Node* next = tail_-&gt;next.load(std::memory_order_acquire);
+        if (!next) return std::nullopt;
+
+        T value = std::move(*next-&gt;data);
+        next-&gt;data.reset();
+
+        delete tail_;
+        tail_ = next;
+        return value;
+    }
+
+private:
+    struct Node {
+        explicit Node(std::optional&lt;T&gt; value) : data(std::move(value)) {}
+
+        std::optional&lt;T&gt; data;
+        std::atomic&lt;Node*&gt; next{nullptr};
+    };
+
+    alignas(64) std::atomic&lt;Node*&gt; head_{nullptr}; // shared by all producers
+    alignas(64) Node* tail_{nullptr};              // owned by the single consumer
+};
+
+int main() {
+    constexpr uint64_t kProducers = 4;
+    constexpr uint64_t kPerProducer = 25'000;
+    constexpr uint64_t kTotal = kProducers * kPerProducer;
+
+    MpscQueue&lt;uint64_t&gt; queue;
+    std::vector&lt;std::thread&gt; producers;
+    producers.reserve(kProducers);
+
+    for (uint64_t p = 0; p &lt; kProducers; ++p) {
+        producers.emplace_back([&amp;queue, p] {
+            uint64_t base = p * kPerProducer;
+            for (uint64_t i = 1; i &lt;= kPerProducer; ++i) {
+                queue.push(base + i);
+            }
+        });
+    }
+
+    uint64_t taken = 0;
+    uint64_t consumed_sum = 0;
+
+    while (taken &lt; kTotal) {
+        std::optional&lt;uint64_t&gt; value = queue.pop();
+        if (!value) {
+            std::this_thread::yield();
+            continue;
+        }
+
+        consumed_sum += *value;
+        ++taken;
+    }
+
+    for (std::thread&amp; t : producers) t.join();
+
+    uint64_t expected = kTotal * (kTotal + 1) / 2;
+
+    std::cout &lt;&lt; "producers    " &lt;&lt; kProducers &lt;&lt; "\n"
+              &lt;&lt; "expected sum " &lt;&lt; expected &lt;&lt; "\n"
+              &lt;&lt; "consumed sum " &lt;&lt; consumed_sum &lt;&lt; "\n"
+              &lt;&lt; "match        " &lt;&lt; (expected == consumed_sum ? "yes" : "NO") &lt;&lt; "\n";
+}
+</code></pre>
+<p><strong>Output 19-6a.</strong></p>
+<pre><code class="language-text">producers    4
+expected sum 5000050000
+consumed sum 5000050000
+match        yes
+</code></pre>
+<p><strong>Listing 19-6b. The same wait-free Vyukov MPSC queue in Rust 2024 with explicit <code>SAFETY</code> proofs.</strong> (<a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/operating-systems/code/ch19/mpsc_queue.rs"><code>code/ch19/mpsc_queue.rs</code></a>)</p>
+<pre class="playground"><code class="language-rust">// ch19/mpsc_queue.rs: wait-free multi-producer, single-consumer queue (Vyukov).
+use std::cell::UnsafeCell;
+use std::ptr;
+use std::sync::atomic::{AtomicPtr, Ordering};
+use std::thread;
+
+struct Node&lt;T&gt; {
+    data: UnsafeCell&lt;Option&lt;T&gt;&gt;,
+    next: AtomicPtr&lt;Node&lt;T&gt;&gt;,
+}
+
+impl&lt;T&gt; Node&lt;T&gt; {
+    fn new(data: Option&lt;T&gt;) -&gt; *mut Self {
+        Box::into_raw(Box::new(Self {
+            data: UnsafeCell::new(data),
+            next: AtomicPtr::new(ptr::null_mut()),
+        }))
+    }
+}
+
+/// Unbounded lock-free MPSC queue using a stub-node linked list.
+/// Multiple threads may call `push` concurrently; only one thread may call `pop`.
+/// `head` and `tail` are isolated on separate 64-byte cache lines to prevent false sharing.
+#[repr(C, align(64))]
+struct MpscQueue&lt;T&gt; {
+    head: AtomicPtr&lt;Node&lt;T&gt;&gt;, // shared by all producers (wait-free swap)
+    _pad: [u8; 56],           // 8 bytes head + 56 bytes padding = 64-byte cache line
+    tail: AtomicPtr&lt;Node&lt;T&gt;&gt;, // owned exclusively by the single consumer
+}
+
+// SAFETY: Ownership of `T` transfers cleanly across threads via Release-Acquire edges.
+unsafe impl&lt;T: Send&gt; Send for MpscQueue&lt;T&gt; {}
+// SAFETY: Producers synchronize on `head` via atomic swap; caller contract limits `pop` to one thread.
+unsafe impl&lt;T: Send&gt; Sync for MpscQueue&lt;T&gt; {}
+
+impl&lt;T&gt; MpscQueue&lt;T&gt; {
+    fn new() -&gt; Self {
+        let stub = Node::new(None);
+        Self {
+            head: AtomicPtr::new(stub),
+            _pad: [0; 56],
+            tail: AtomicPtr::new(stub),
+        }
+    }
+
+    /// Wait-free enqueue: atomically swap `head`, then link the previous node.
+    fn push(&amp;self, value: T) {
+        let node = Node::new(Some(value));
+        let prev = self.head.swap(node, Ordering::AcqRel);
+
+        // SAFETY: `prev` is a live heap node detached from `head` by our swap.
+        // The consumer cannot free `prev` until this Release store makes `prev.next` non-null.
+        unsafe { (*prev).next.store(node, Ordering::Release) };
+    }
+
+    /// Single-consumer dequeue: advance stub to `next`, reclaim old stub, return payload.
+    fn pop(&amp;self) -&gt; Option&lt;T&gt; {
+        let tail = self.tail.load(Ordering::Relaxed);
+
+        // SAFETY: `tail` is always a valid allocated stub owned exclusively by the single consumer.
+        let next = unsafe { (*tail).next.load(Ordering::Acquire) };
+        if next.is_null() {
+            return None;
+        }
+
+        self.tail.store(next, Ordering::Relaxed);
+
+        // SAFETY: `tail.next` is non-null, proving the producer finished storing `tail.next`
+        // and no thread retains a pointer to `tail`.
+        unsafe { drop(Box::from_raw(tail)) };
+
+        // SAFETY: The Acquire load of `next` synchronizes-with the producer's Release store.
+        // Only the consumer accesses `next.data`; concurrent producers touch only `next.next`.
+        unsafe { (*(*next).data.get()).take() }
+    }
+}
+
+impl&lt;T&gt; Drop for MpscQueue&lt;T&gt; {
+    fn drop(&amp;mut self) {
+        let mut curr = *self.tail.get_mut();
+        while !curr.is_null() {
+            // SAFETY: `&amp;mut self` guarantees exclusive access; every node in the chain was
+            // allocated with `Box::into_raw` and has not yet been reclaimed.
+            let node = unsafe { Box::from_raw(curr) };
+            curr = node.next.into_inner();
+        }
+    }
+}
+
+fn main() {
+    const PRODUCERS: u64 = 4;
+    const PER_PRODUCER: u64 = 25_000;
+    const TOTAL: u64 = PRODUCERS * PER_PRODUCER;
+
+    let queue = &amp;MpscQueue::&lt;u64&gt;::new();
+    let mut consumed_sum = 0;
+
+    thread::scope(|scope| {
+        for p in 0..PRODUCERS {
+            scope.spawn(move || {
+                let base = p * PER_PRODUCER;
+                for i in 1..=PER_PRODUCER {
+                    queue.push(base + i);
+                }
+            });
+        }
+
+        let mut taken = 0;
+        while taken &lt; TOTAL {
+            let Some(value) = queue.pop() else {
+                thread::yield_now();
+                continue;
+            };
+
+            consumed_sum += value;
+            taken += 1;
+        }
+    });
+
+    let expected = TOTAL * (TOTAL + 1) / 2;
+    let verdict = if expected == consumed_sum { "yes" } else { "NO" };
+
+    println!("producers    {PRODUCERS}");
+    println!("expected sum {expected}");
+    println!("consumed sum {consumed_sum}");
+    println!("match        {verdict}");
+}</code></pre>
+<p><strong>Output 19-6b.</strong></p>
+<pre><code class="language-text">producers    4
+expected sum 5000050000
+consumed sum 5000050000
+match        yes
+</code></pre>
+<div class="callout keyidea">
+<span class="label">Key idea</span>
+<p>The permanent stub node severs producer-consumer interference: producers linearize in one wait-free atomic exchange on <code>head</code>, publish via a release store on <code>prev-&gt;next</code>, and hand off ownership so the single consumer can reclaim each old stub the instant its <code>next</code> link becomes non-null.</p>
+</div>
+
+<div class="callout caution">
+<span class="label">Watch out</span>
+<p>Do not equate <code>pop() == None</code> with global emptiness while producers are running. A producer preempted between <code>head.exchange(node)</code> and <code>prev-&gt;next.store(node)</code> leaves <code>tail-&gt;next</code> temporarily null even when subsequent producers have already appended nodes behind <code>node</code>. Always drain through an explicit termination barrier (joining producers or enqueuing a sentinel token).</p>
 </div>
 
 <h2 id="195-byte-routines-memmove-strlen-and-atoi"><a class="header" href="#195-byte-routines-memmove-strlen-and-atoi">19.5 Byte Routines: <code>memmove</code>, <code>strlen</code> and <code>atoi</code></a></h2>
