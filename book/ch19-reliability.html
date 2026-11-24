@@ -1,5 +1,5 @@
 <!DOCTYPE HTML>
-<html lang="en" class="light sidebar-visible" dir="ltr">
+<html lang="en" class="coal sidebar-visible" dir="ltr">
     <head>
         <!-- Book generated using mdBook -->
         <meta charset="UTF-8">
@@ -28,18 +28,18 @@
         <link rel="stylesheet" id="mdbook-ayu-highlight-css" href="ayu-highlight-3fdfc3ac.css">
 
         <!-- Custom theme stylesheets -->
-        <link rel="stylesheet" href="theme/custom-b2009ce0.css">
+        <link rel="stylesheet" href="theme/custom-985f104d.css">
 
 
         <!-- Provide site root and default themes to javascript -->
         <script>
             const path_to_root = "";
-            const default_light_theme = "light";
-            const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "searchindex-f2511fee.js";
+            const default_light_theme = "coal";
+            const default_dark_theme = "coal";
+            window.path_to_searchindex_js = "searchindex-4622e2bb.js";
         </script>
         <!-- Start loading toc.js asap -->
-        <script src="toc-34d6c47e.js"></script>
+        <script src="toc-c196c8a9.js"></script>
     </head>
     <body>
     <div id="mdbook-help-container">
@@ -77,7 +77,7 @@
             try { theme = localStorage.getItem('mdbook-theme'); } catch(e) { }
             if (theme === null || theme === undefined) { theme = default_theme; }
             const html = document.documentElement;
-            html.classList.remove('light')
+            html.classList.remove('coal')
             html.classList.add(theme);
             html.classList.add("js");
         </script>
@@ -192,22 +192,17 @@
 </ul>
 </div>
 
-<p>Programs that talk to other programs over a network see failures that local code never sees. A server is busy
-and refuses a request. A connection drops halfway. A reply takes so long that the client gives up, without
-knowing whether the server did the work.</p>
-<p>This chapter builds three tools for those situations:</p>
+<p>Processes communicating over a network encounter failure modes absent from local function calls: an overloaded server rejects incoming requests, a TCP connection drops mid-transfer, or a response times out without revealing whether the server committed the requested work.</p>
+<p>Three complementary mechanisms address these failure modes:</p>
 <ul>
-<li>A <strong>rate limiter</strong> protects a service from too many requests, by refusing requests above a set rate.</li>
-<li>A <strong>retry</strong> policy tries a failed call again, waiting longer after each failure.</li>
-<li>An <strong>idempotency key</strong> makes it safe to send the same request twice, by making the second one do nothing new.</li>
+<li>A <strong>rate limiter</strong> protects a service from overload by rejecting requests that exceed a configured budget.</li>
+<li>A <strong>retry</strong> policy re-attempts transient failures while increasing the delay after each failed attempt.</li>
+<li>An <strong>idempotency key</strong> ensures that delivering the same logical request multiple times produces the same effect as delivering it once.</li>
 </ul>
-<p>The three work together. A client that retries must not overload the server, so it backs off. And a retried
-request must not repeat a side effect, such as charging a card twice.</p>
+<p>These three primitives reinforce one another: retrying clients must back off to avoid overwhelming a recovering server, and the server must deduplicate retries so side effects such as billing charges are never applied twice.</p>
 <h2 id="191-a-token-bucket"><a class="header" href="#191-a-token-bucket">19.1 A token bucket</a></h2>
-<p>Suppose a service allows each client 5 requests per second. A simple counter that resets every second allows 5
-requests at 0.99 s and 5 more at 1.01 s: 10 requests in 20 ms. A <strong>token bucket</strong> smooths this out.</p>
-<p>Picture a bucket that holds up to 5 tokens. Every request takes one token out. If the bucket is empty, the request
-is refused. Tokens flow back in at a steady rate, say 1 per second, until the bucket is full again (figure 19.1).</p>
+<p>Consider a service enforcing a limit of 5 requests per second per client. A fixed-window counter that resets at every whole-second boundary permits a client to issue 5 requests at 0.99 s and 5 more at 1.01 s, producing a burst of 10 requests within 20 ms. A <strong>token bucket</strong> smooths out these boundary spikes.</p>
+<p>In a token bucket, a virtual container holds up to a fixed maximum of tokens (for example, 5). Each admitted request removes one token; if the bucket is empty, the request is rejected. Tokens replenish at a steady rate, such as 1 token per second, capped at the bucket’s capacity (figure 19.1).</p>
 <figure class="anim">
 <video class="motion" src="figures/ch19-token-bucket.mp4" autoplay="" loop="" muted="" playsinline="" preload="metadata" aria-label="A bucket that holds 5 tokens and refills 1 per second. Five calls at time 0 take the five tokens. The sixth call returns false. One second passes with nothing running; the next call adds the token that second earned and takes it. Last, without the cap on the refill, an hour idle adds 3,600 tokens and lets 3,600 calls through at once." data-chapters="[[0.0, &quot;spend&quot;], [28.5, &quot;refuse&quot;], [34.8, &quot;refill&quot;], [56.28, &quot;no cap&quot;]]"><img src="figures/ch19-token-bucket.gif" alt="A bucket that holds 5 tokens and refills 1 per second. Five calls at time 0 take the five tokens. The sixth call returns false. One second passes with nothing running; the next call adds the token that second earned and takes it. Last, without the cap on the refill, an hour idle adds 3,600 tokens and lets 3,600 calls through at once."></video>
 <figcaption><b>Animation 19.1</b> <code>try_acquire</code> adds the tokens earned since the last call, then takes one if it can. Nothing runs between calls.</figcaption>
@@ -216,10 +211,8 @@ is refused. Tokens flow back in at a steady rate, say 1 per second, until the bu
 <img src="figures/token-bucket.svg" alt="Tokens over time: five requests take the count from 5 to 0; the sixth is refused; over one second the count climbs back to 1; a request takes it; the next is refused.">
 <figcaption><b>Figure 19.1</b> The bucket in the test <code>it_works</code>: capacity 5, refill 1 token per second.</figcaption>
 </figure>
-<p>Two numbers describe the bucket. The <strong>capacity</strong> is the largest burst allowed at once. The <strong>rate</strong> is the
-long-run number of requests per second.</p>
-<p>The bucket does not need a timer that adds tokens. Each request computes how many tokens arrived since the last request, from the time that has passed. It
-adds them before it checks.</p>
+<p>Two parameters characterize the limiter: <strong>capacity</strong> defines the maximum burst size permitted instantaneously, and <strong>rate</strong> defines the sustained long-run request rate per second.</p>
+<p>No background timer thread is needed to replenish tokens. Instead, each incoming call computes the elapsed time since the previous call, credits the accrued tokens lazily, and then checks whether at least one token is available.</p>
 <h3 id="1911-the-bucket-behind-a-lock"><a class="header" href="#1911-the-bucket-behind-a-lock">19.1.1 The bucket behind a lock</a></h3>
 <p class="listing"><b>Listing 19.1</b> The bucket (lines 6 to 31). <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/problems/rate_limiter.rs">src/problems/rate_limiter.rs</a></p>
 
@@ -253,11 +246,8 @@ impl TokenBucket {
     }
     // ...
 }</code></pre>
-<p>The capacity and the rate never change, so they are plain fields. The token count and the time of the last refill
-change on every call, so they live in <code>BucketState</code> behind a <code>Mutex</code>. The token count is an <code>f64</code>, because a
-fraction of a token can arrive between two requests. The bucket starts full.</p>
-<p><code>Instant</code> is the standard library’s clock for measuring durations. It only moves forward, unlike the wall-clock
-time, which can jump when the system clock is corrected.</p>
+<p>Because <code>capacity</code> and <code>rate</code> are immutable after construction, they sit outside the lock. The mutable token balance and last-refill timestamp reside in <code>BucketState</code> behind a <code>Mutex</code>. Storing tokens as <code>f64</code> preserves fractional accruals between closely spaced requests, and the bucket initializes full.</p>
+<p>Using <code>std::time::Instant</code> rather than <code>SystemTime</code> guarantees a monotonic clock immune to wall-clock adjustments such as NTP corrections.</p>
 <p class="listing"><b>Listing 19.2</b> <code>try_acquire</code> (lines 32 to 49).</p>
 
 <pre><code class="language-rust">impl TokenBucket {
@@ -281,17 +271,15 @@ time, which can jump when the system clock is corrected.</p>
         }
     }
 }</code></pre>
-<p><code>try_acquire</code> does all its work under the lock:</p>
+<p><code>try_acquire</code> executes the refill and consumption atomically under the mutex:</p>
 <ol>
-<li>It computes the time since the last refill, <code>now - s.last_refill</code>, a <code>Duration</code>.</li>
-<li>It converts that to seconds and multiplies by the rate: the number of new tokens.</li>
-<li>It adds them and caps the total at the capacity with <code>.min(self.capacity)</code>.</li>
-<li>It records <code>now</code> as the last refill.</li>
-<li>If at least one token is there, it takes it and returns <code>true</code>. Otherwise it returns <code>false</code>.</li>
+<li>Compute the elapsed <code>Duration</code> since <code>s.last_refill</code>.</li>
+<li>Convert that duration to fractional seconds and multiply by <code>self.refill_rate</code> to obtain accrued tokens.</li>
+<li>Add the accrued tokens to the balance, clamping at <code>self.capacity</code> via <code>.min(self.capacity)</code>.</li>
+<li>Advance <code>s.last_refill</code> to <code>now</code>.</li>
+<li>If <code>s.tokens &gt;= 1.0</code>, subtract one token and return <code>true</code>; otherwise return <code>false</code>.</li>
 </ol>
-<p>Work through the test by hand. The bucket starts with 5 tokens. Five calls happen within microseconds, so almost no
-tokens refill, and each call takes one. The sixth finds about 0.00001 tokens and returns <code>false</code>. After a one-second
-sleep, about 1.00001 tokens are there, so one call succeeds, and the next finds about 0.00001 again.</p>
+<p>Tracing the unit test confirms this behavior: the bucket initializes with 5 tokens, five rapid calls consume all five within microseconds (accruing negligible fractional tokens), and the sixth call observes roughly 0.00001 tokens and returns <code>false</code>. After sleeping one second, the balance rises to approximately 1.00001 tokens, admitting one additional call before rejecting the next.</p>
 <p class="listing"><b>Listing 19.3</b> The complete file, with its test. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/problems/rate_limiter.rs">src/problems/rate_limiter.rs</a></p>
 
 <pre><code class="language-rust">//! Thread-safe token bucket rate limiter.
@@ -376,11 +364,9 @@ test problems::rate_limiter::tests::it_works ... ok
 
 test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 136 filtered out; finished in 1.00s
 </code></pre>
-<p>The test takes one second, because it sleeps to let a token refill. A test that depends on real time can also fail
-on a heavily loaded machine. Exercise 1 removes the dependency by passing the time in.</p>
+<p>Because the test invokes <code>thread::sleep</code>, it takes one full second to run and remains vulnerable to scheduling jitter on heavily loaded machines. Exercise 1 eliminates this clock dependency by injecting <code>Instant</code> as an explicit parameter.</p>
 <h3 id="1912-the-bucket-with-atomics"><a class="header" href="#1912-the-bucket-with-atomics">19.1.2 The bucket with atomics</a></h3>
-<p>Every call to the locked bucket takes the mutex. Under heavy load, threads wait for each other there, as section
-14.1 described for maps. The second version replaces the lock with atomic integers.</p>
+<p>Acquiring a single mutex on every request can become a contention bottleneck under high concurrency, mirroring the single-lock map contention examined in section 14.1. The second implementation attempts to replace the mutex with atomic integers.</p>
 <p class="listing"><b>Listing 19.4</b> The limiter (lines 5 to 37). <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/bin/rate_limiter_atomic_token_bucket.rs">src/bin/rate_limiter_atomic_token_bucket.rs</a></p>
 
 <pre><code class="language-rust">use std::{
@@ -427,18 +413,13 @@ impl RateLimiter {
         self.tokens.fetch_sub(1, Relaxed) &gt; 0
     }
 }</code></pre>
-<p>The design differs from the locked version in three ways:</p>
+<p>This implementation differs from the locked design in three respects:</p>
 <ul>
-<li>Tokens are whole numbers in an <code>AtomicI64</code>, and time is whole seconds since the limiter was created. Tokens
-arrive in steps, once per second, instead of continuously.</li>
-<li><code>last_refilled_at.fetch_max(now, Relaxed)</code> records the current second and returns the previous value, in one
-atomic step. If several threads start a new second at once, only the first sees an older value, so only that
-thread adds tokens.</li>
-<li><code>#[repr(align(64))]</code> gives the limiter its own cache lines, so it does not share a line with a neighbor, as
-section 15.4 described.</li>
+<li>Tokens are stored as whole integers in an <code>AtomicI64</code>, and elapsed time is tracked in whole seconds since construction, causing tokens to replenish in discrete one-second steps rather than continuously.</li>
+<li><code>last_refilled_at.fetch_max(now, Relaxed)</code> atomically updates the timestamp and returns the previous value. When multiple threads enter a new second simultaneously, only the first thread observes an earlier second and performs the refill.</li>
+<li><code>#[repr(align(64))]</code> aligns the struct to a 64-byte cache line boundary to prevent false sharing with adjacent data (section 15.4).</li>
 </ul>
-<p>Then comes the check. If the count is 0 or less, the call returns <code>false</code>. Otherwise it takes a token with
-<code>fetch_sub(1)</code>, and returns <code>true</code> if the count before the subtraction was positive.</p>
+<p>After refilling, <code>try_acquire</code> loads the token count, returns <code>false</code> if it is non-positive, and otherwise decrements with <code>fetch_sub(1)</code>, returning <code>true</code> when the prior count was positive.</p>
 <p class="listing"><b>Listing 19.5</b> The complete program. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/bin/rate_limiter_atomic_token_bucket.rs">src/bin/rate_limiter_atomic_token_bucket.rs</a></p>
 
 <pre><code class="language-rust">use std::{
@@ -513,38 +494,26 @@ request 4: true
 request 5: true
 request 6: false
 </code></pre>
-<p>With one thread, the output is exactly right: 5 requests pass, the sixth fails, and after a second 5 more pass.</p>
+<p>Under single-threaded execution, the behavior matches specification: five requests succeed, the sixth is rejected, and five more succeed after one second.</p>
 <h3 id="1913-what-happens-with-many-threads"><a class="header" href="#1913-what-happens-with-many-threads">19.1.3 What happens with many threads</a></h3>
-<p>Each atomic operation is safe on its own. The problem is that <code>try_acquire</code> makes several of them, and other threads
-can act between them. Figure 19.2 shows one interleaving with one token left.</p>
+<p>Although each individual atomic instruction is race-free, <code>try_acquire</code> composes multiple separate atomic operations without a combined transaction, allowing concurrent threads to interleave between them (figure 19.2).</p>
 <figure>
 <img src="figures/atomic-bucket.svg" alt="With one token left, threads A and B both load 1. A&#39;s fetch_sub sees 1 and succeeds, leaving 0. B&#39;s fetch_sub sees 0, so B is refused, but the count drops to -1.">
 <figcaption><b>Figure 19.2</b> Both threads pass the check before either takes the token.</figcaption>
 </figure>
-<p>B is correctly refused, but its <code>fetch_sub</code> still ran. The count drops below zero, and the next refill starts from
-there, so the limiter lets through fewer requests than its rate. To measure this, I ran 8 threads calling
-<code>try_acquire</code> in a loop for 3.5 seconds, on a limiter with capacity 5 and rate 5. A correct limiter admits 20
-requests: 5 at the start and 5 in each of the next three seconds. Three runs admitted 18, 19, and 17, and ended
-with the count at 0, −1, and −1.</p>
-<p>A second gap goes the other way. The refill is a <code>fetch_add</code> followed by a separate <code>fetch_min</code>. Between the two,
-the count can be above the capacity, and other threads can take the extra tokens before the cap is applied. That
-would let through more than the capacity in one burst. My runs did not catch this window, but nothing in the code
-prevents it.</p>
-<p>Both gaps close if the check, the take, and the refill happen as one atomic step. <code>compare_exchange</code> in a loop does that. It reads the count, computes the new count, and writes it only if
-no other thread changed the count in between.
-Exercise 2 asks you to write it.</p>
+<p>In this interleaving, Thread B is properly rejected, yet its <code>fetch_sub(1)</code> still decrements the counter to <code>-1</code>. When the next refill adds tokens to that negative balance, the limiter admits fewer requests than its configured rate. Running 8 threads in a tight <code>try_acquire</code> loop for 3.5 seconds against a limiter of capacity 5 and rate 5 (which should admit exactly 20 requests: 5 initially plus 5 per elapsed second) admitted only 18, 19, and 17 requests across three trials, terminating with token balances of 0, −1, and −1.</p>
+<p>A second race window operates in the opposite direction: because refilling executes <code>fetch_add</code> followed by a separate <code>fetch_min</code>, a competing thread arriving between the two instructions can consume tokens above <code>capacity</code> before the cap takes effect, permitting bursts larger than the configured limit.</p>
+<p>Both races vanish when refill, availability check, and decrement are fused into a single atomic compare-and-swap transition using a <code>compare_exchange</code> loop that reads the current state, computes the capped next state locally, and commits only if no other thread modified the word in the interim (Exercise 2).</p>
 <h2 id="192-retrying-failed-calls"><a class="header" href="#192-retrying-failed-calls">19.2 Retrying failed calls</a></h2>
-<p>Many failures are temporary. A server restarts, a network link drops a packet, or a service is briefly overloaded.
-Trying again a moment later often works.</p>
-<p>Retrying well takes three decisions:</p>
+<p>Many distributed failures are transient: a backend restarts, a switch drops a packet, or a downstream dependency experiences a brief traffic spike. Re-issuing the request after a short pause frequently succeeds.</p>
+<p>An effective retry mechanism must answer three questions:</p>
 <ol>
-<li><strong>Which errors to retry.</strong> A “not found” error will fail again. A “server busy” error may not.</li>
-<li><strong>How long to wait.</strong> Waiting a little longer after each failure gives a struggling server time to recover.</li>
-<li><strong>How many times.</strong> At some point, the caller should give up and report the error.</li>
+<li><strong>Which errors are retryable.</strong> Client errors such as “not found” will fail deterministically on repeat attempts, whereas “server busy” errors may clear.</li>
+<li><strong>How long to wait between attempts.</strong> Increasing the delay after consecutive failures gives an overloaded service room to recover.</li>
+<li><strong>When to stop.</strong> Bounding the total number of attempts prevents indefinite blocking and surfaces persistent outages to the caller.</li>
 </ol>
 <h3 id="1921-which-errors-to-retry"><a class="header" href="#1921-which-errors-to-retry">19.2.1 Which errors to retry</a></h3>
-<p>The retry code works with <code>ApiError</code>, the error enum from section 7.7. Here it is again. Each variant is one
-way a call to a service can fail, and carries the data that failure needs:</p>
+<p>The retry engine operates against <code>ApiError</code> (introduced in section 7.7), where each variant encodes a distinct failure mode and its associated metadata:</p>
 <pre><code class="language-rust">/// API error modeled as an enum with associated data.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum ApiError {
@@ -569,16 +538,13 @@ impl ApiError {
     // ...
 }</code></pre>
 <ul>
-<li><code>InvalidRequest</code> and <code>NotFound</code> describe a request that is wrong. Sending it again gives the same answer.</li>
-<li><code>Unauthorized</code> needs new credentials, not a second try.</li>
-<li><code>RateLimited</code> says the server is busy, and carries how long it asked the client to wait.</li>
-<li><code>Server</code> is a failure on the server’s side, with the HTTP status code.</li>
+<li><code>InvalidRequest</code> and <code>NotFound</code> indicate defective or missing targets; retrying yields the same failure.</li>
+<li><code>Unauthorized</code> requires refreshed credentials rather than a repeat attempt.</li>
+<li><code>RateLimited</code> indicates server-side throttling and carries the server’s requested wait duration.</li>
+<li><code>Server</code> represents a server-side failure carrying an HTTP status code.</li>
 </ul>
-<p>The enum’s own method, <code>is_retryable</code>, already answers the first question for each variant. <code>matches!</code> tests a
-value against a pattern and returns <code>true</code> or <code>false</code>. It returns <code>true</code> for <code>RateLimited</code>, and for <code>Server</code> with a
-status from 500 to 599.</p>
-<p>The retry code should not be tied to <code>ApiError</code>, though. It should work with any error that can answer the
-question. That is a job for a trait:</p>
+<p>The inherent <code>is_retryable</code> method uses <code>matches!</code> to classify <code>RateLimited</code> and 5xx <code>Server</code> status codes (500 through 599) as retryable.</p>
+<p>To decouple the retry engine from <code>ApiError</code>, the classification contract is abstracted into a trait:</p>
 <p class="listing"><b>Listing 19.6</b> The <code>Retryable</code> trait (lines 22 to 44). <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/problems/retry.rs">src/problems/retry.rs</a></p>
 
 <pre><code class="language-rust">use std::time::Duration;
@@ -608,24 +574,14 @@ impl Retryable for ApiError {
         }
     }
 }</code></pre>
-<p><code>Retryable</code> is a trait that an error type implements to answer the first question. <code>is_retryable</code> has no default,
-so each error type must decide. <code>retry_after</code> has a default body that returns <code>None</code>, so an error type only needs
-to implement it if the server can send a hint.</p>
-<p>The trait is implemented for <code>ApiError</code>. Its <code>is_retryable</code> passes the question to the enum’s own method.
-<code>retry_after</code> returns the delay carried by a <code>RateLimited</code> error. That delay usually comes from the HTTP header <code>Retry-After</code>, which a server sends to say when
-to try again.</p>
-<p>The line <code>ApiError::is_retryable(self)</code> calls the enum’s own method, not the trait’s. Both have the same name. The
-path <code>ApiError::is_retryable</code> finds the inherent method first, so the trait method does not call itself forever.</p>
+<p>Every implementing error type must define <code>is_retryable</code>, whereas <code>retry_after</code> supplies a default implementation returning <code>None</code> for error types that carry no server-supplied wait hint.</p>
+<p>For <code>ApiError</code>, <code>Retryable::is_retryable</code> delegates to the inherent method via the fully qualified path <code>ApiError::is_retryable(self)</code> (avoiding infinite recursion on the identically named trait method), while <code>retry_after</code> extracts the duration carried by <code>RateLimited</code>, typically parsed from an HTTP <code>Retry-After</code> response header.</p>
 <h3 id="1922-how-long-to-wait"><a class="header" href="#1922-how-long-to-wait">19.2.2 How long to wait</a></h3>
-<p>A fixed delay has a problem. If a server fails, all its clients fail at the same moment. With a fixed delay they all retry at the same moment too. The server is hit by a wave of retries at the
-moment it recovers. This is called a
-<strong>thundering herd</strong>.</p>
-<p>Two techniques spread the retries out:</p>
+<p>Using a constant retry interval creates a synchronization hazard: if a server outage causes hundreds of clients to fail simultaneously, a fixed delay causes all of them to retry in lockstep, striking the recovering service with a synchronized spike known as a <strong>thundering herd</strong>.</p>
+<p>Two techniques break that synchronization:</p>
 <ul>
-<li><strong>Exponential backoff</strong> doubles the delay after each failure: 100 ms, 200 ms, 400 ms, and so on, up to a cap
-(figure 19.3). The longer the outage, the less often each client tries.</li>
-<li><strong>Jitter</strong> adds randomness to the delay, so clients that failed together do not retry together (figure 19.4).
-<strong>Full jitter</strong> picks a random delay between 0 and the backoff.</li>
+<li><strong>Exponential backoff</strong> doubles the delay after each consecutive failure (100 ms, 200 ms, 400 ms, and so forth) up to an upper bound (figure 19.3), reducing load rapidly during prolonged outages.</li>
+<li><strong>Jitter</strong> introduces randomness into the wait interval so clients that failed simultaneously scatter their retries over time (figure 19.4). <strong>Full jitter</strong> selects a uniform random delay between <code>0</code> and the computed exponential backoff.</li>
 </ul>
 <figure>
 <img src="figures/backoff.svg" alt="Bars for retries 0 to 5: 100, 200, 400, 800, then 1000 ms twice, capped. Full jitter picks a random delay between 0 and the bar.">
@@ -694,17 +650,14 @@ impl RetryPolicy {
         }
     }
 }</code></pre>
-<p><code>RetryPolicy</code> holds the four settings. <code>max_attempts</code> counts the first try as well, so 3 means one try and two
-retries.</p>
-<p><code>exponential_delay</code> computes <code>base * 2^attempt</code>, capped at <code>max_delay</code>. Three details keep it from overflowing:</p>
+<p><code>RetryPolicy</code> bundles the four configuration parameters; <code>max_attempts</code> includes the initial call, so a value of 3 permits one initial call and two retries.</p>
+<p><code>exponential_delay</code> computes <code>base * 2^attempt</code> while guarding against arithmetic overflow in three steps:</p>
 <ul>
-<li><code>1u32 &lt;&lt; shift</code> computes 2 to the power <code>shift</code> by shifting the bit 1 left. <code>attempt.min(31)</code> keeps the shift
-within a <code>u32</code>, because shifting by 32 or more is an error.</li>
-<li><code>Duration::saturating_mul</code> returns the largest <code>Duration</code> instead of overflowing.</li>
-<li><code>.min(self.max_delay)</code> applies the cap.</li>
+<li><code>attempt.min(31)</code> constrains the left-shift <code>1u32 &lt;&lt; shift</code> to valid 32-bit shift widths.</li>
+<li><code>Duration::saturating_mul</code> clamps overflow to <code>Duration::MAX</code> rather than panicking.</li>
+<li><code>.min(self.max_delay)</code> enforces the configured ceiling.</li>
 </ul>
-<p><code>delay_for</code> applies jitter. It takes a random number in <code>[0, 1)</code> as an argument, and multiplies the delay by it
-with <code>Duration::mul_f64</code>. <code>clamp(0.0, 1.0)</code> guards against a random source that returns something out of range.</p>
+<p><code>delay_for</code> applies full jitter by scaling the exponential delay with a caller-provided floating-point sample in <code>[0.0, 1.0)</code>, clamped with <code>.clamp(0.0, 1.0)</code> against out-of-range inputs.</p>
 <h3 id="1923-the-retry-loop"><a class="header" href="#1923-the-retry-loop">19.2.3 The retry loop</a></h3>
 <p class="listing"><b>Listing 19.8</b> <code>retry</code> (lines 104 to 137).</p>
 
@@ -742,22 +695,12 @@ where
         }
     }
 }</code></pre>
-<p><code>retry</code> is generic over four types. <code>T</code> and <code>E</code> are the success and error types. <code>F</code> is the operation, a closure
-that receives the attempt number. <code>R</code> produces random numbers.</p>
-<p>The operation is <code>FnMut</code>, not <code>FnOnce</code>, because the loop calls it several times, and it may change captured state,
-like the test’s attempt counter.</p>
-<p>On each error, the loop checks two reasons to stop: the attempts are used up, or the error is not retryable. Either
-way it returns the last error. Otherwise it computes its own backoff, and then applies the server’s hint:</p>
+<p>The generic <code>retry</code> function parameterizes over four types: result <code>T</code>, error <code>E: Retryable</code>, operation closure <code>F: FnMut(u32) -&gt; Result&lt;T, E&gt;</code>, and random source <code>R: FnMut() -&gt; f64</code>. Requiring <code>FnMut</code> rather than <code>FnOnce</code> allows repeated invocation and mutable captured state, such as attempt counters in tests.</p>
+<p>When an attempt returns <code>Err</code>, the loop immediately returns the error if attempts are exhausted or <code>!error.is_retryable()</code>. Otherwise, it computes its jittered backoff and merges any server-supplied hint:</p>
 <pre><code class="language-rust">let delay = error.retry_after().map_or(backoff, |hint| hint.max(backoff));</code></pre>
-<p><code>map_or(default, f)</code> returns <code>default</code> for <code>None</code>, and <code>f(hint)</code> for <code>Some(hint)</code>. So without a hint, the delay is
-the backoff. With a hint, it is the larger of the two. The client never retries sooner than the server asked, and
-never sooner than its own backoff.</p>
-<p><code>std::thread::sleep(delay)</code> blocks the thread for the delay. In async code, chapter 22, the wait would be an async
-timer instead, so the thread can do other work.</p>
-<p><strong>Injecting randomness.</strong> The random number comes from the <code>unit_random</code> closure the caller passes in. Production
-code passes a real random number generator. Tests pass <code>|| 0.0</code>, which makes every delay predictable. Passing in a
-dependency this way, instead of creating it inside the function, is called <strong>dependency injection</strong>. It makes the
-function testable without a real clock or a real random source.</p>
+<p><code>Option::map_or</code> yields <code>backoff</code> when no hint is present and <code>hint.max(backoff)</code> when one is, treating the server’s <code>Retry-After</code> as a lower bound so the client respects both server guidance and its own backoff curve.</p>
+<p>Calling <code>std::thread::sleep(delay)</code> blocks the OS thread for the wait interval; in asynchronous runtimes (Chapter 22), this becomes a non-blocking timer await so the executor can poll other tasks.</p>
+<p><strong>Injecting randomness.</strong> Accepting <code>unit_random</code> as a closure parameter is an instance of <strong>dependency injection</strong>: production callers supply a real PRNG, whereas unit tests supply deterministic stubs such as <code>|| 0.0</code>, keeping tests fast and reproducible without global mutable state.</p>
 <p class="listing"><b>Listing 19.9</b> The complete file, with tests. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/problems/retry.rs">src/problems/retry.rs</a></p>
 
 <pre><code class="language-rust">//! Retry with exponential backoff, full jitter, and `Retry-After`.
@@ -1008,9 +951,7 @@ mod tests {
         assert_eq!(chosen, Duration::from_secs(5));
     }
 }</code></pre>
-<p>The tests use a policy with zero delays, so they run instantly. <code>retries_then_succeeds</code> fails twice with a 503 and
-then succeeds: three attempts in total. <code>non_retryable_errors_return_immediately</code> returns <code>NotFound</code>, and must stop
-after one attempt.</p>
+<p>The unit tests configure zero-duration delays so the entire suite executes instantaneously, verifying retry convergence on transient 503 responses (<code>retries_then_succeeds</code>) and immediate termination on non-retryable <code>NotFound</code> errors (<code>non_retryable_errors_return_immediately</code>).</p>
 <pre><code class="language-text">$ cargo test --lib problems::retry
 running 6 tests
 test problems::retry::tests::full_jitter_scales_the_delay ... ok
@@ -1023,18 +964,14 @@ test problems::retry::tests::retries_then_succeeds ... ok
 test result: ok. 6 passed; 0 failed; 0 ignored; 0 measured; 131 filtered out
 </code></pre>
 <h2 id="193-idempotency-keys"><a class="header" href="#193-idempotency-keys">19.3 Idempotency keys</a></h2>
-<p>Retries have a danger. Suppose a client asks a server to charge a card, and the reply is lost. The client cannot
-tell whether the charge happened. If it retries, the card may be charged twice.</p>
-<p>An operation is <strong>idempotent</strong> if doing it twice has the same effect as doing it once. Reading a record is
-idempotent. Charging a card is not, unless the server makes it so.</p>
-<p>The usual way is an <strong>idempotency key</strong>. The client picks a unique key for each logical request, such as an order
-number, and sends it with every attempt. The server records the result under that key. When the same key arrives
-again, the server returns the recorded result and does not repeat the work (figure 19.5).</p>
+<p>Retries introduce a classic ambiguity: if a client submits a payment charge and the response is lost in transit, the client cannot determine whether the charge succeeded. Blindly retrying risks charging the customer twice.</p>
+<p>An operation is <strong>idempotent</strong> when executing it multiple times leaves the system in the same state as executing it once. Read queries are naturally idempotent; mutating side effects such as billing charges require explicit server-side protection.</p>
+<p>The standard mechanism is an <strong>idempotency key</strong>: the client attaches a unique identifier (such as an order ID) to every attempt of a logical request. The server caches the outcome under that key and returns the recorded result on duplicate arrivals without re-executing the side effect (figure 19.5).</p>
 <figure>
 <img src="figures/idempotency.svg" alt="The first execute with key order-1 runs charge, prints charging card, and stores txn_42. The second execute with the same key skips charge and returns txn_42.">
 <figcaption><b>Figure 19.5</b> Two calls with one key. The work runs once.</figcaption>
 </figure>
-<p>The store is a <code>HashMap</code> from key to result, behind a <code>Mutex</code> so that several threads can share it:</p>
+<p>The in-memory store guards a <code>HashMap</code> of completed results behind a <code>Mutex</code> for concurrent access:</p>
 <pre><code class="language-rust">use std::{collections::HashMap, hash::Hash, sync::Mutex};
 
 pub struct Idempotent&lt;K, V&gt; {
@@ -1088,23 +1025,18 @@ fn main() -&gt; Result&lt;(), Box&lt;dyn std::error::Error&gt;&gt; {
     assert_eq!(idem.execute("order-1", charge)?, "txn_42");
     Ok(())
 }</code></pre>
-<p><code>Idempotent&lt;K, V&gt;</code> stores results in a <code>HashMap</code> behind a <code>Mutex</code>. <code>execute</code> takes a key and a closure <code>f</code> that does
-the work:</p>
+<p><code>Idempotent&lt;K, V&gt;::execute</code> coordinates lookup and execution in four steps:</p>
 <ol>
-<li>It locks the store. A poisoned lock becomes an error: <code>map_err(|_| "lock poisoned")?</code> turns the <code>PoisonError</code>
-into a <code>&amp;str</code>, and <code>?</code> converts that into a <code>Box&lt;dyn Error&gt;</code>.</li>
-<li>If the key is present, it returns a clone of the stored result.</li>
-<li>Otherwise it runs <code>f()</code>. If <code>f</code> fails, <code>?</code> returns the error, and nothing is stored, so a later call can try
-again.</li>
-<li>It stores a clone of the result and returns it.</li>
+<li>Acquire the mutex, converting a <code>PoisonError</code> via <code>map_err(|_| "lock poisoned")?</code> into a boxed <code>dyn Error</code>.</li>
+<li>If <code>key</code> already exists in the map, return a clone of the cached value.</li>
+<li>Otherwise invoke <code>f()</code>; if <code>f</code> returns an error, <code>?</code> propagates it without inserting into the map so subsequent retries can re-attempt the work.</li>
+<li>Insert a clone of the successful result into the map and return it.</li>
 </ol>
-<p>In <code>main</code>, <code>charge</code> is called with the same key twice. The closure captures nothing, so it is <code>Copy</code>, and passing it
-to <code>execute</code> twice copies it. The line “charging card…” appears once:</p>
+<p>In <code>main</code>, <code>charge</code> is passed twice under the same key. Because the closure captures no variables, it implements <code>Copy</code> and executes only once:</p>
 <pre><code class="language-text">$ cargo run --bin idempotent_operation
 charging card...
 </code></pre>
-<p>The second file is the same program with a type alias, <code>type RuntimeError = Box&lt;dyn std::error::Error&gt;;</code>, which
-shortens the signatures:</p>
+<p>A second variant introduces the type alias <code>type RuntimeError = Box&lt;dyn std::error::Error&gt;;</code> to simplify method signatures:</p>
 <p class="listing"><b>Listing 19.11</b> The complete program. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/bin/idempotent_operation_with_error_progagation.rs">src/bin/idempotent_operation_with_error_progagation.rs</a></p>
 
 <pre><code class="language-rust">use std::{collections::HashMap, hash::Hash, sync::Mutex};
@@ -1158,34 +1090,22 @@ fn main() -&gt; Result&lt;(), RuntimeError&gt; {
 <pre><code class="language-text">$ cargo run --bin idempotent_operation_with_error_progagation
 charging card...
 </code></pre>
-<p>Holding the lock while <code>f()</code> runs makes the store correct. Two calls with the same key cannot both find it
-missing and both run the work. It is also the store’s limit. Every call waits for the one lock, even calls with
-different keys, so one slow operation delays all others. Section 19.4 removes that limit. A real service also keeps the results in a database, so they survive a
-restart.</p>
+<p>Retaining the mutex across <code>f()</code> prevents two concurrent calls with the same key from both missing the cache and executing twice, yet it severely restricts scalability: every key contends on the same lock, so one slow payment stalls unrelated orders. Section 19.4 removes this bottleneck, while production services additionally persist idempotency records in durable storage so they survive process restarts.</p>
 <h2 id="194-one-execution-per-key-single-flight"><a class="header" href="#194-one-execution-per-key-single-flight">19.4 One execution per key: single flight</a></h2>
-<p>The store in section 19.3 has two problems under load.</p>
+<p>Under concurrent load, the single-lock idempotency store exhibits two opposing constraints:</p>
 <ul>
-<li><strong>It serializes every key.</strong> It holds one lock while the work runs. A slow charge for <code>order-1</code> makes a
-call for <code>order-2</code> wait, although the two have nothing in common.</li>
-<li><strong>It cannot be split naively.</strong> Suppose the lock is released during the work. Two callers with the same key
-can then both find it missing, and both charge the card.</li>
+<li><strong>Global serialization.</strong> Holding one mutex across <code>f()</code> blocks unrelated keys (<code>order-2</code>) behind slow operations (<code>order-1</code>).</li>
+<li><strong>Duplicate execution on lock release.</strong> Releasing the mutex before invoking <code>f()</code> without coordination allows two simultaneous callers for the same key to both observe a cache miss and charge the card twice.</li>
 </ul>
-<p>The same shape appears in caches. When a popular entry expires, hundreds of requests can miss at once, and
-each recomputes the value or queries the database. That burst is a <strong>cache stampede</strong>, a thundering herd
-aimed at one key.</p>
-<p>The fix is to record, for each key, that work is <strong>in progress</strong>. The first caller for a key marks it,
-releases the lock, and runs the work. A caller that finds the mark waits for the result instead of starting
-its own. Callers with other keys never wait. This is called <strong>single flight</strong>: at most one execution per key
-is in the air at a time.</p>
-<p>Each key moves through three states (figure 19.6). A success stores the value for every later caller. A
-failure, or a panic, removes the mark, so the next caller can try again.</p>
+<p>Caching layers encounter the identical failure mode when a hot entry expires and hundreds of concurrent misses flood the backing database simultaneously, a phenomenon known as a <strong>cache stampede</strong> (a per-key thundering herd).</p>
+<p>The <strong>single flight</strong> pattern resolves both constraints by tracking <strong>in-progress</strong> keys explicitly. The first caller for a key inserts an <code>InProgress</code> sentinel under the lock, releases the lock, and performs the work. Concurrent callers arriving for the same key observe <code>InProgress</code> and wait on a condition variable for the outcome, while callers targeting distinct keys proceed concurrently without waiting.</p>
+<p>Each key transitions through three states (figure 19.6): completion publishes <code>Done(value)</code> for all waiters and future callers, whereas an error or panic removes the sentinel so a subsequent caller can retry.</p>
 <figure>
 <img src="figures/ch19-single-flight.svg" alt="A key with no entry moves to InProgress when the first caller marks it, unlocks, and runs the work; later callers wait on the Condvar. Ok stores the value as Done, and notify_all wakes the waiters, who each get a clone. On Err or a panic, the Claim removes the mark and notify_all wakes the waiters, and the key has no entry again.">
 <figcaption><b>Figure 19.6</b> The states of one key. Only the first caller runs the work. A failure returns the key to no entry, so a retry runs it again.</figcaption>
 </figure>
 <h3 id="1941-the-state"><a class="header" href="#1941-the-state">19.4.1 The state</a></h3>
-<p>Each key maps to a <code>Slot</code>, and all the slots share one map behind one mutex. A <code>Condvar</code> wakes the waiters
-when any slot changes:</p>
+<p>A single mutex guards the <code>HashMap&lt;K, Slot&lt;V&gt;&gt;</code>, paired with a <code>Condvar</code> that wakes waiting threads upon state transitions:</p>
 <pre><code class="language-rust">use std::{
     collections::HashMap,
     hash::Hash,
@@ -1214,12 +1134,9 @@ pub struct SingleFlight&lt;K, V&gt; {
     slots: Mutex&lt;HashMap&lt;K, Slot&lt;V&gt;&gt;&gt;,
     finished: Condvar,
 }</code></pre>
-<p>The mutex is held only to read or change the map, never while the work runs. So one lock is enough for every
-key. <code>notify_all</code> wakes every waiter, for any key. Each one checks its own key and goes back to sleep if
-nothing it cares about changed. That costs a few spurious wakeups, and keeps the code to one <code>Condvar</code>.</p>
+<p>Because the mutex is held strictly for brief map lookups and updates, never during I/O or computation, one lock scales across distinct keys. Calling <code>notify_all()</code> wakes all waiting callers regardless of key; each re-checks its own key and resumes sleeping if unchanged, trading minor spurious wakeups for a compact single-<code>Condvar</code> design.</p>
 <h3 id="1942-the-claim"><a class="header" href="#1942-the-claim">19.4.2 The claim</a></h3>
-<p>The caller that runs the work holds a <strong>claim</strong> on its key. If the work fails or panics, someone has to remove
-the <code>InProgress</code> mark, or the waiters sleep forever. <code>Drop</code> is the place that runs in both cases:</p>
+<p>The caller executing the work holds an RAII <strong>claim</strong> on its key. If the work returns an error or unwinds from a panic, the <code>InProgress</code> sentinel must be removed so waiting callers do not block indefinitely; implementing <code>Drop</code> on the claim handles both exit paths uniformly:</p>
 <pre><code class="language-rust">/// The claim of the caller that is running the work for `key`. If it is
 /// dropped while it still holds the key, after an error or a panic, it clears
 /// the `InProgress` mark and wakes the waiters, so one of them can run the work.
@@ -1246,14 +1163,10 @@ impl&lt;K: Eq + Hash, V&gt; SingleFlight&lt;K, V&gt; {
             .unwrap_or_else(|poisoned| poisoned.into_inner())
     }
 }</code></pre>
-<p><code>key</code> is an <code>Option</code>. The success path takes the key out of the claim before the claim is dropped, so <code>Drop</code>
-does nothing. On an error or a panic, the key is still inside, and <code>Drop</code> removes the mark and wakes the
-waiters.</p>
-<p><code>lock</code> recovers a poisoned mutex with <code>into_inner</code>, as in section 16.6. The map is consistent after every
-update, because each update is one <code>insert</code> or one <code>remove</code>, so the data is safe to keep using.</p>
+<p>Storing <code>key</code> inside an <code>Option</code> allows the success path to disarm the guard via <code>take()</code> before dropping it. On an error or panic, <code>key</code> remains <code>Some</code>, causing <code>Drop</code> to remove the <code>InProgress</code> entry and call <code>notify_all()</code>.</p>
+<p>The helper <code>lock</code> recovers poisoned mutexes via <code>PoisonError::into_inner</code> (section 16.6); because every map mutation is a single <code>insert</code> or <code>remove</code>, the map itself remains structurally consistent after a panic.</p>
 <h3 id="1943-execute"><a class="header" href="#1943-execute">19.4.3 <code>execute</code></a></h3>
-<p><code>execute</code> loops while the key is in progress, then claims it, runs the work outside the lock, and stores the
-result:</p>
+<p><code>execute</code> loops while the key is in progress, claims ownership when absent, runs <code>work()</code> outside the lock, and publishes the result:</p>
 <pre><code class="language-rust">impl&lt;K, V&gt; SingleFlight&lt;K, V&gt;
 where
     K: Eq + Hash + Clone,
@@ -1304,18 +1217,15 @@ where
         Ok(value)
     }
 }</code></pre>
-<p>The <code>loop</code> handles all three states:</p>
+<p>The lookup loop handles all three slot states:</p>
 <ul>
-<li><code>Done(value)</code>: return a clone. This is the idempotency of section 19.3.</li>
-<li><code>InProgress</code>: wait on the <code>Condvar</code>. <code>wait</code> releases the lock while it sleeps, and takes it back on wakeup.
-The loop then checks the key again, because the wakeup may be for another key, or spurious.</li>
-<li>No entry: leave the loop and claim the key.</li>
+<li><code>Some(Slot::Done(value))</code>: return a clone immediately (matching section 19.3).</li>
+<li><code>Some(Slot::InProgress)</code>: block on <code>Condvar::wait</code>, releasing the lock while sleeping and re-checking the slot upon wakeup in case the notification targeted a different key or was spurious.</li>
+<li><code>None</code>: exit the loop and insert <code>Slot::InProgress</code>.</li>
 </ul>
-<p>After the claim, <code>drop(slots)</code> releases the lock, and <code>work()</code> runs with no lock held. If <code>work</code> returns an
-error, <code>?</code> returns it, and the claim’s <code>Drop</code> removes the mark. If <code>work</code> succeeds, the code takes the key out
-of the claim, stores <code>Done</code>, and wakes the waiters.</p>
+<p>After claiming the key, <code>drop(slots)</code> releases the mutex prior to running <code>work()</code>. If <code>work()</code> returns <code>Err</code>, <code>?</code> returns early and <code>Claim::drop</code> clears the sentinel. If <code>work()</code> returns <code>Ok</code>, the caller disarms the claim, stores <code>Slot::Done(value)</code>, and wakes all waiters.</p>
 <h3 id="1944-measured"><a class="header" href="#1944-measured">19.4.4 Measured</a></h3>
-<p><code>main</code> starts its callers together with a <code>Barrier</code>, so they really overlap, and times them:</p>
+<p>In <code>main</code>, a <code>Barrier</code> synchronizes concurrent callers so they contend simultaneously, measuring execution counts and wall-clock latency:</p>
 <pre><code class="language-rust">/// Run `call` on `threads` threads that start together. Returns the results
 /// and the time from the start to the last return.
 fn together&lt;T: Send&gt;(threads: usize, call: impl Fn(usize) -&gt; T + Sync) -&gt; (Vec&lt;T&gt;, Duration) {
@@ -1338,8 +1248,7 @@ fn together&lt;T: Send&gt;(threads: usize, call: impl Fn(usize) -&gt; T + Sync) 
     });
     (results, start.elapsed())
 }</code></pre>
-<p>The work is a fake charge that sleeps for 100 ms and counts how many times it ran. The second scene also runs
-the four keys through a store like section 19.3’s: one lock, held while the work runs.</p>
+<p>Each simulated charge sleeps 100 ms and increments an execution counter. The second scenario compares single flight against a single-lock store holding its mutex across the work.</p>
 <pre><code class="language-text">1. Eight concurrent calls with one key
   executions 1, all got txn-order-1: true, 103 ms
 
@@ -1350,10 +1259,8 @@ the four keys through a store like section 19.3’s: one lock, held while the wo
 3. A failure is not stored
   first: Err("card declined"), retry: Ok("txn-order-5"), executions 1
 </code></pre>
-<p>Eight callers with one key caused one charge, and all eight got its result in 103 ms. Four keys ran in
-parallel in 103 ms. The one-lock store ran them one after another, in 417 ms. A declined charge was not
-stored, so the retry ran the work, and that run succeeded.</p>
-<p>The fourth scene makes the work panic while a second caller waits for the same key:</p>
+<p>Eight concurrent callers for one key triggered a single execution and all received <code>txn-order-1</code> in 103 ms. Four distinct keys executed in parallel under single flight in 103 ms, compared with 417 ms when serialized behind one lock. A declined charge was left uncached, allowing the subsequent retry to execute and succeed.</p>
+<p>The fourth scenario induces a panic inside the active worker while a second caller waits on the same key:</p>
 <pre><code class="language-text">4. The work panics while another caller waits
 
 thread '&lt;unnamed&gt;' panicked at src/bin/single_flight.rs:209:21:
@@ -1361,16 +1268,12 @@ payment provider crashed
   caller 0: Err("panicked")
   caller 1: Ok(Ok("txn-order-6"))
 </code></pre>
-<p>The <code>panicked at</code> lines are the default panic message, written to standard error. Caller 0’s panic dropped
-its claim, and <code>Drop</code> removed the mark and woke caller 1. Caller 1 found no entry, claimed the key, and ran
-the work itself. Without the claim’s <code>Drop</code>, the mark would stay <code>InProgress</code>, and caller 1 would wait
-forever. Animation 19.2 shows both runs.</p>
+<p>When caller 0 panics, stack unwinding runs <code>Claim::drop</code>, removing the <code>InProgress</code> sentinel and waking caller 1, which then claims the key and completes the charge. Without <code>Claim::drop</code>, the sentinel would remain stuck in <code>InProgress</code> and caller 1 would block forever (Animation 19.2).</p>
 <figure class="anim">
 <video class="motion" src="figures/ch19-single-flight.mp4" autoplay="" loop="" muted="" playsinline="" preload="metadata" aria-label="Three caller robots, A, B, and C, a slot map with an entry for order-1, and a payment service. A finds no entry, marks order-1 InProgress, releases the lock, and calls the service. B and C find InProgress and sleep on the Condvar. The charge returns txn-order-1; A stores Done and calls notify_all; B and C wake and each take a clone, with one execution counted. In a second run without the claim&#39;s Drop, A&#39;s work panics, the mark stays InProgress, and B and C sleep while a clock runs." data-chapters="[[0.0, &quot;claim&quot;], [13.67, &quot;done&quot;], [26.82, &quot;panic, no Drop&quot;]]"><img src="figures/ch19-single-flight.gif" alt="Three caller robots, A, B, and C, a slot map with an entry for order-1, and a payment service. A finds no entry, marks order-1 InProgress, releases the lock, and calls the service. B and C find InProgress and sleep on the Condvar. The charge returns txn-order-1; A stores Done and calls notify_all; B and C wake and each take a clone, with one execution counted. In a second run without the claim&#39;s Drop, A&#39;s work panics, the mark stays InProgress, and B and C sleep while a clock runs."></video>
 <figcaption><b>Animation 19.2</b> One key, three callers, one execution. When the claim's <code>Drop</code> is missing, a panic leaves the mark in place and the waiters sleep forever.</figcaption>
 </figure>
-<p>A production version adds two things. Waiters need a deadline, <code>wait_timeout</code>, so a hung charge cannot hold
-them forever. And the results need an expiry, or a store that only grows becomes a memory leak.</p>
+<p>Production single-flight stores add two safeguards: waiter deadlines via <code>Condvar::wait_timeout</code> so a stalled upstream call cannot block waiters indefinitely, and TTL-based cache eviction so the map does not grow without bound.</p>
 <p class="listing"><b>Listing 19.12</b> Single flight: one execution per key in flight. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/bin/single_flight.rs">src/bin/single_flight.rs</a></p>
 
 <pre><code class="language-rust">//! Single flight: concurrent calls with the same key share one execution.
@@ -1632,24 +1535,17 @@ mod tests {
 <div class="summary" markdown="1">
 <h2 id="summary"><a class="header" href="#summary">Summary</a></h2>
 <ul>
-<li>A token bucket allows bursts up to its capacity and a long-run rate. Each call adds the tokens earned since the
-last call before it checks.</li>
-<li>The locked bucket is correct and simple. The atomic bucket avoids the lock, but its separate check, take, and
-refill steps let the count go negative. With 8 threads it admitted 17 to 19 requests where 20 were due.</li>
-<li>Retry only errors that can succeed later. A <code>Retryable</code> trait lets each error type decide, and carry a server
-hint.</li>
-<li>Exponential backoff with full jitter spreads retries out and prevents a thundering herd. The server’s
-<code>Retry-After</code> is a floor on the delay.</li>
-<li>Passing randomness in as a closure makes the retry logic testable.</li>
-<li>An idempotency key makes a retried request safe: the server stores the result under the key and returns it for
-every repeat.</li>
-<li>Single flight marks a key in progress and runs its work outside the lock. Eight callers with one key caused one
-execution, and four keys took 103 ms, against 417 ms behind one lock. A claim with <code>Drop</code> clears the mark after
-an error or a panic.</li>
+<li>A token bucket caps burst size at its capacity and sustained throughput at its refill rate, computing accrued tokens lazily from elapsed monotonic time on each call.</li>
+<li>A mutex-guarded token bucket is straightforward and race-free; splitting refill, check, and decrement across separate atomic operations allows the balance to go negative under contention, admitting 17 to 19 requests across 8 threads where 20 were due.</li>
+<li>Only transient failures should be retried; a <code>Retryable</code> trait lets each error type classify retryability and expose server <code>Retry-After</code> hints.</li>
+<li>Exponential backoff with full jitter spreads client retries across time to prevent thundering herds, treating <code>Retry-After</code> as a lower bound on delay.</li>
+<li>Injecting the random source as a closure keeps retry logic deterministic and testable.</li>
+<li>Idempotency keys prevent duplicate side effects by caching results per logical request key and returning cached outcomes on repeat delivery.</li>
+<li>Single flight deduplicates concurrent work per key while allowing distinct keys to run in parallel (103 ms versus 417 ms behind a single lock), using an RAII claim guard to clear <code>InProgress</code> state on error or panic.</li>
 </ul>
 </div>
 
-<p>Chapter 20 moves down to the network itself: IP addresses, sockets, and a server that echoes back what it receives.</p>
+<p>In Chapter 20, the stack descends to the network layer itself, examining IPv4 addressing, TCP flow windows, and blocking versus event-driven echo servers.</p>
 <h2 id="exercises"><a class="header" href="#exercises">Exercises</a></h2>
 <ol>
 <li>Change <code>TokenBucket::try_acquire</code> to take the current time as an argument, <code>try_acquire_at(&amp;self, now: Instant)</code>.
@@ -1713,6 +1609,7 @@ in progress returns an error. Use <code>Condvar::wait_timeout</code>, and keep t
 
         <!-- Custom JS scripts -->
         <script src="theme/anim-4192821e.js"></script>
+        <script src="theme/book-ui-621ed017.js"></script>
 
 
 

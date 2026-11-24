@@ -1,5 +1,5 @@
 <!DOCTYPE HTML>
-<html lang="en" class="light sidebar-visible" dir="ltr">
+<html lang="en" class="coal sidebar-visible" dir="ltr">
     <head>
         <!-- Book generated using mdBook -->
         <meta charset="UTF-8">
@@ -28,18 +28,18 @@
         <link rel="stylesheet" id="mdbook-ayu-highlight-css" href="ayu-highlight-3fdfc3ac.css">
 
         <!-- Custom theme stylesheets -->
-        <link rel="stylesheet" href="theme/custom-b2009ce0.css">
+        <link rel="stylesheet" href="theme/custom-985f104d.css">
 
 
         <!-- Provide site root and default themes to javascript -->
         <script>
             const path_to_root = "";
-            const default_light_theme = "light";
-            const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "searchindex-f2511fee.js";
+            const default_light_theme = "coal";
+            const default_dark_theme = "coal";
+            window.path_to_searchindex_js = "searchindex-4622e2bb.js";
         </script>
         <!-- Start loading toc.js asap -->
-        <script src="toc-34d6c47e.js"></script>
+        <script src="toc-c196c8a9.js"></script>
     </head>
     <body>
     <div id="mdbook-help-container">
@@ -77,7 +77,7 @@
             try { theme = localStorage.getItem('mdbook-theme'); } catch(e) { }
             if (theme === null || theme === undefined) { theme = default_theme; }
             const html = document.documentElement;
-            html.classList.remove('light')
+            html.classList.remove('coal')
             html.classList.add(theme);
             html.classList.add("js");
         </script>
@@ -192,12 +192,8 @@
 </ul>
 </div>
 
-<p>Chapter 27 showed that each closed connection leaves a socket in <code>TIME_WAIT</code>, and that a busy client runs
-out of ports. Chapter 28 added a TLS handshake to every new connection. Both costs come from making connections. A client avoids most of them by keeping a few connections open, and sending request after request over them. A <strong>connection pool</strong> holds those connections and lends them to the threads that
-need them.</p>
-<p>This chapter builds a pool on the standard library: a <code>Mutex</code>, a <code>Condvar</code>, and a guard type with <code>Drop</code>.
-The program, <code>conn_pool</code>, runs it against a small line server on loopback, and measures each of the pool’s
-rules.</p>
+<p>As shown in chapter 27, every closed TCP connection leaves a socket in <code>TIME_WAIT</code>, which can exhaust ephemeral ports on a busy client. Adding TLS, as in chapter 28, introduces an additional handshake to every new connection. Because both costs are incurred during connection setup and teardown, clients amortize them by keeping a bounded set of connections open across requests. A <strong>connection pool</strong> manages those reusable connections and lends them to calling threads on demand.</p>
+<p>In this chapter, we implement a connection pool using only the standard library: a <code>Mutex</code>, a <code>Condvar</code>, and an RAII guard implementing <code>Drop</code>. The companion program, <code>conn_pool</code>, exercises the pool against a local line-oriented server and verifies each invariant under measurement.</p>
 <h2 id="291-what-a-new-connection-costs"><a class="header" href="#291-what-a-new-connection-costs">29.1 What a new connection costs</a></h2>
 <p>Each new TCP connection costs:</p>
 <ul>
@@ -339,16 +335,10 @@ struct Pooled&lt;'a&gt; {
 <p>Each pass tries three things in order:</p>
 <ul>
 <li><strong>An idle connection.</strong> <code>take_idle</code> returns the newest usable one, or <code>None</code>.</li>
-<li><strong>A new connection.</strong> If fewer than <code>max</code> are open, <code>get</code> counts the new one in <code>open</code> under the lock. Then it drops the lock and connects. A connect can take a whole round trip, or seconds if the server is
-slow to answer. Holding the lock that long would stop every other caller, including those returning
-connections. Counting the slot first keeps two callers from both deciding there is room for one more.</li>
-<li><strong>Wait.</strong> Otherwise the caller sleeps on the <code>Condvar</code> until a connection is returned or the deadline
-passes. <code>wait_timeout</code> releases the lock while it sleeps, as in section 16.5. It can also return early,
-so the loop checks the state again on every wake.</li>
+<li><strong>A new connection.</strong> If fewer than <code>max</code> connections are open, <code>get</code> reserves a slot by incrementing <code>open</code> under the lock, then drops the lock before calling <code>connect</code>. Establishing a TCP connection can take an entire round trip, or several seconds if the server is slow to respond; holding the mutex across that I/O would block every other caller, including threads attempting to return idle connections. Reserving the slot under the lock prevents concurrent callers from exceeding <code>max</code>.</li>
+<li><strong>Wait.</strong> Otherwise, the caller waits on the <code>Condvar</code> until a connection is returned or the deadline expires. <code>wait_timeout</code> releases the lock atomically while sleeping (as in section 16.5) and may wake spuriously, so the loop re-evaluates the pool state on every wake-up.</li>
 </ul>
-<p>A caller that cannot get a connection by its deadline gets <code>ErrorKind::TimedOut</code>. Waiting forever would
-turn an overloaded server into callers that never return. The deadline turns overload into an error the
-caller can handle, as with the bounded queues of chapter 17.</p>
+<p>A caller that cannot obtain a connection before its deadline receives <code>ErrorKind::TimedOut</code>. Blocking indefinitely would allow an overloaded server to stall callers permanently; enforcing a deadline converts overload into an explicit error the caller can handle, mirroring the bounded queues of chapter 17.</p>
 <p>If the connect fails, <code>connect</code> gives the slot back:</p>
 <pre><code class="language-rust">impl Pool {
     // ...
@@ -442,10 +432,8 @@ impl Drop for Pooled&lt;'_&gt; {
         }
     }
 }</code></pre>
-<p><code>give_back</code> pushes the connection onto the idle stack and wakes one waiting caller. <code>discard</code> marks the
-guard broken, so <code>Drop</code> closes the connection and frees its slot instead. A caller discards a connection
-after any error on it. A failed request may have left half a response in the socket. The next caller would read it as the start of its own.</p>
-<p><code>ask</code> puts the two together. It is how the program sends every pooled request:</p>
+<p><code>give_back</code> pushes the connection onto the idle stack and notifies one waiting caller. <code>discard</code> marks the guard as broken so that <code>Drop</code> closes the socket and decrements <code>open</code> rather than returning it to the pool. A caller must discard a connection after any I/O error, because a failed request may have left a partial response in the socket buffer that the next borrower would mistakenly read as the start of its own reply.</p>
+<p><code>ask</code> combines borrowing, error handling, and automatic return; the program uses it for every pooled request:</p>
 <pre><code class="language-rust">/// Send one line, and read one line back.
 fn request(stream: &amp;mut TcpStream, line: &amp;str) -&gt; io::Result&lt;String&gt; {
     writeln!(stream, "{line}")?;
@@ -470,12 +458,8 @@ fn ask(pool: &amp;Pool, line: &amp;str) -&gt; io::Result&lt;String&gt; {
     reply
 }</code></pre>
 <h2 id="295-stale-connections"><a class="header" href="#295-stale-connections">29.5 Stale connections</a></h2>
-<p>The pool takes the newest idle connection first. Under light load, a few connections then do all the work. The rest sink to the bottom of the stack and age past <code>idle_timeout</code>. Taking the oldest first
-would keep every connection in light use, and none would ever be closed.</p>
-<p>The server also closes connections it considers idle. Most HTTP servers do it after somewhere between 5
-seconds and a few minutes. The server’s <code>FIN</code> arrives while the connection sits in the pool, and nothing
-reads it. The next caller to borrow that connection writes its request into a socket the server has closed.
-Its <code>read</code> then returns 0, or the write draws a reset.</p>
+<p>The pool reuses the most recently returned idle connection first (LIFO). Under light load, a small subset of connections handles all traffic while the remaining connections sink to the bottom of the stack and expire past <code>idle_timeout</code>. Reusing the oldest connection first (FIFO) would rotate through every connection periodically and prevent idle connections from ever being reclaimed.</p>
+<p>Servers also close connections they consider idle, typically after anywhere from 5 seconds to several minutes. When the server sends a <code>FIN</code> while the connection sits unused in the pool, nothing reads it until the next borrower writes a request into the half-closed socket, at which point <code>read</code> returns 0 or the write triggers a reset.</p>
 <p>Figure 29.2 shows the timing with this chapter’s numbers. The server closes idle connections after 50 ms,
 and the pool reuses the connection after 100 ms.</p>
 <figure>
@@ -538,8 +522,7 @@ with a new connection for each request, then through a pool of four:</p>
   a new connection each:   2000 connections,  169.8 ms
   a pool of 4:                4 connections,   80.4 ms, 1996 reuses
 </code></pre>
-<p>On loopback a connect costs microseconds, and the pool still halved the time. Each request without the pool also left a socket in <code>TIME_WAIT</code>: 2,000 in 0.17 seconds. At that rate, the ephemeral ports of section 27.2.1 run out in under 3 seconds. On a real network with TLS, each of those connections would also cost two
-round trips.</p>
+<p>Even on loopback, where establishing a connection takes only microseconds, the pool cut total latency in half. Without pooling, each request also left a socket in <code>TIME_WAIT</code>, accumulating 2,000 entries in 0.17 seconds; at that rate, the ephemeral port range described in section 27.2.1 would be exhausted in under 3 seconds. Over a real network with TLS, each unpooled request would also incur two full round trips for handshakes.</p>
 <p>The other scenes check one rule each:</p>
 <pre><code class="language-text">2. The bound: 2 connections, both lent out
   third get after 103 ms: Err(Custom { kind: TimedOut, error: "pool exhausted" })
@@ -1025,8 +1008,7 @@ connection per server, or a few, and the pool limits streams rather than connect
 Every idle connection in the pool is closed by the server at once. The liveness check catches most of them.
 Requests already in flight fail, and the idempotent ones can be retried.</p>
 <p><strong>“Is a <code>Mutex</code> too slow for a pool?”</strong>
-The lock is held for a few pushes and pops. It is never held across a connect or a request. At hundreds of thousands
-of requests per second, a pool can split into shards with one lock each, as chapter 14 split a map.</p>
+The lock is held only for a few vector pushes and pops, never across a <code>connect</code> or network request. At hundreds of thousands of requests per second, the pool can be partitioned into shards with one lock per shard, using the sharding strategy introduced for maps in chapter 14.</p>
 <div class="summary" markdown="1">
 <h2 id="summary"><a class="header" href="#summary">Summary</a></h2>
 <ul>
@@ -1045,8 +1027,7 @@ without it.</li>
 </ul>
 </div>
 
-<p>Chapter 30 collects compact versions of the structures from the earlier parts. Each is the shortest program
-that still shows the structure working.</p>
+<p>In chapter 30, we assemble compact, interview-sized implementations of the core structures built throughout the book, pairing each short form with the trade-offs it makes relative to its full reference version.</p>
 <h2 id="exercises"><a class="header" href="#exercises">Exercises</a></h2>
 <ol>
 <li>Add a <code>max_lifetime</code> to <code>Config</code>, and close a connection older than it even if it is in use often.
@@ -1111,6 +1092,7 @@ marked idempotent.</li>
 
         <!-- Custom JS scripts -->
         <script src="theme/anim-4192821e.js"></script>
+        <script src="theme/book-ui-621ed017.js"></script>
 
 
 

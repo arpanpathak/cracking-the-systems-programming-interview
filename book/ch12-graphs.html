@@ -1,5 +1,5 @@
 <!DOCTYPE HTML>
-<html lang="en" class="light sidebar-visible" dir="ltr">
+<html lang="en" class="coal sidebar-visible" dir="ltr">
     <head>
         <!-- Book generated using mdBook -->
         <meta charset="UTF-8">
@@ -28,18 +28,18 @@
         <link rel="stylesheet" id="mdbook-ayu-highlight-css" href="ayu-highlight-3fdfc3ac.css">
 
         <!-- Custom theme stylesheets -->
-        <link rel="stylesheet" href="theme/custom-b2009ce0.css">
+        <link rel="stylesheet" href="theme/custom-985f104d.css">
 
 
         <!-- Provide site root and default themes to javascript -->
         <script>
             const path_to_root = "";
-            const default_light_theme = "light";
-            const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "searchindex-f2511fee.js";
+            const default_light_theme = "coal";
+            const default_dark_theme = "coal";
+            window.path_to_searchindex_js = "searchindex-4622e2bb.js";
         </script>
         <!-- Start loading toc.js asap -->
-        <script src="toc-34d6c47e.js"></script>
+        <script src="toc-c196c8a9.js"></script>
     </head>
     <body>
     <div id="mdbook-help-container">
@@ -77,7 +77,7 @@
             try { theme = localStorage.getItem('mdbook-theme'); } catch(e) { }
             if (theme === null || theme === undefined) { theme = default_theme; }
             const html = document.documentElement;
-            html.classList.remove('light')
+            html.classList.remove('coal')
             html.classList.add(theme);
             html.classList.add("js");
         </script>
@@ -193,46 +193,44 @@
 </ul>
 </div>
 
-<p>In chapter 11, every node had exactly one parent, and no path could lead back to where it started. A <strong>graph</strong>
-drops both rules. Any node can connect to any other node, and a path can come back to its start.</p>
-<p>Graphs describe many real systems. Roads between cities form a graph. So do links between web pages, and
-network links between machines. Courses and their prerequisites form a graph, and so do build steps and their
-inputs.</p>
-<p>The freedom has a cost. A traversal that follows edges can reach the same node many times, or walk around a loop
-forever. Every algorithm in this chapter therefore keeps a record of which nodes it has already handled. The
-record is a <code>Vec&lt;bool&gt;</code>, a <code>HashSet</code>, or a <code>HashMap</code> of states.</p>
+<p>In Chapter 11, every node had at most one parent, and no path could return to its origin. A <strong>graph</strong> relaxes
+both constraints: any node may connect to any other node, and paths may form cycles.</p>
+<p>Graphs model a wide range of systems, including road networks, hyperlink topologies, cluster communication links,
+course prerequisites, and build dependency pipelines. Because arbitrary connectivity allows a traversal to reach
+the same node repeatedly or loop indefinitely, every graph algorithm in this chapter maintains a record of
+handled nodes using a <code>Vec&lt;bool&gt;</code>, a <code>HashSet</code>, or a <code>HashMap</code> of visitation states.</p>
 <h2 id="121-graph-vocabulary"><a class="header" href="#121-graph-vocabulary">12.1 Graph vocabulary</a></h2>
-<p>Figure 12.1 names the parts of a graph.</p>
+<p>The fundamental components of a graph are labeled in Figure 12.1.</p>
 <figure>
 <img src="figures/graph-terms.svg" alt="On the left, three nodes x, y, z joined by undirected edges in a triangle. In the middle, the sample graph: A to B weight 1, A to C weight 4, B to C weight 2, B to D weight 5, C to D weight 1. On the right, definitions of node, edge, neighbor, weight, path, and cycle.">
 <figcaption><b>Figure 12.1</b> An undirected graph, and the directed, weighted sample graph used in sections 12.2 to 12.4.</figcaption>
 </figure>
 <ul>
-<li>A <strong>node</strong>, also called a vertex, is one of the things in the graph.</li>
-<li>An <strong>edge</strong> connects two nodes. In a <strong>directed</strong> graph, an edge goes one way, from one node to another. In an
-<strong>undirected</strong> graph, an edge works both ways, like a two-way road.</li>
-<li>The <strong>neighbors</strong> of a node are the nodes its edges lead to.</li>
-<li>A <strong>weight</strong> is a number on an edge, such as a distance or a cost.</li>
-<li>A <strong>path</strong> is a sequence of edges that you can follow one after another.</li>
-<li>A <strong>cycle</strong> is a path that ends at the node where it started.</li>
+<li>A <strong>node</strong> (or vertex) represents an entity in the graph.</li>
+<li>An <strong>edge</strong> connects two nodes. In a <strong>directed</strong> graph, an edge has a single orientation from a source node to
+a target node; in an <strong>undirected</strong> graph, an edge permits traversal in both directions.</li>
+<li>The <strong>neighbors</strong> of a node are the nodes directly reachable via its outgoing edges.</li>
+<li>A <strong>weight</strong> is a numeric cost or distance associated with an edge.</li>
+<li>A <strong>path</strong> is a sequence of consecutive edges connecting a sequence of nodes.</li>
+<li>A <strong>cycle</strong> is a non-empty path that begins and ends at the same node.</li>
 </ul>
-<p>A directed graph with no cycles is called a <strong>directed acyclic graph</strong>, or DAG. A tree is a special graph: it
-has no cycles, and every node except the root has exactly one parent.</p>
+<p>A directed graph containing no cycles is a <strong>directed acyclic graph</strong> (DAG). A tree is a restricted graph with no
+cycles in which every node except the root has exactly one parent.</p>
 <h2 id="122-storing-a-graph"><a class="header" href="#122-storing-a-graph">12.2 Storing a graph</a></h2>
-<p>The most common way to store a graph is an <strong>adjacency list</strong>. For every node, you keep a list of its outgoing
-edges. Each edge is stored as a pair: the neighbor, and the weight of the edge.</p>
-<p>The code in this chapter uses two forms of adjacency list (figure 12.2).</p>
+<p>The standard in-memory representation of a sparse graph is an <strong>adjacency list</strong>, which stores each node’s
+outgoing edges as a collection of <code>(neighbor, weight)</code> pairs. The implementations in this chapter use two
+variants of the adjacency list (Figure 12.2).</p>
 <figure>
 <img src="figures/graph-layout.svg" alt="Index form: a Vec on the stack pointing to four Vec headers on the heap, one per node, each pointing to its (neighbor, weight) pairs; node 3 has no pairs and no allocation. Map form: four entries mapping a name to a slice of (name, weight) pairs.">
 <figcaption><b>Figure 12.2</b> The sample graph in the two adjacency-list forms.</figcaption>
 </figure>
-<p>In the <strong>index form</strong>, the nodes are numbered 0, 1, 2, and so on. The graph is a <code>Vec&lt;Vec&lt;(usize, u32)&gt;&gt;</code>.
-<code>graph[i]</code> is the list of edges out of node <code>i</code>, and each edge is a <code>(neighbor, weight)</code> pair. Finding a node’s
-edges is one array index. The record of visited nodes can be a <code>Vec&lt;bool&gt;</code> with one entry per node.</p>
-<p>In the <strong>map form</strong>, nodes can be any type that can be hashed, such as names. The graph is a <code>HashMap</code> from a
-node to its edges. Finding a node’s edges means hashing the key. The visited record becomes a <code>HashSet</code>.</p>
-<p>The index form is faster, and the map form is more convenient when nodes have natural names. Several files in
-this chapter solve the same problem both ways, so you can compare them side by side.</p>
+<p>In the <strong>index form</strong>, nodes are numbered <code>0..n</code> and the graph has type <code>Vec&lt;Vec&lt;(usize, u32)&gt;&gt;</code>. Looking up the
+outgoing edges of node <code>i</code> is a single array index <code>graph[i]</code>, and visited tracking uses a compact <code>Vec&lt;bool&gt;</code>.</p>
+<p>In the <strong>map form</strong>, nodes may be any hashable type such as string names, and the graph is a <code>HashMap</code> mapping
+each node to its outgoing edges. Edge lookup hashes the node key, and visited tracking uses a <code>HashSet</code>.</p>
+<p>The index form delivers higher throughput and cache locality, whereas the map form is more convenient when nodes
+carry natural identifiers. Several files in this chapter implement both representations side by side for direct
+comparison.</p>
 <p>The map form in <code>graph_bfs.rs</code> has a type alias:</p>
 <pre><code class="language-rust">use std::{
     collections::{HashMap, HashSet, VecDeque},
@@ -282,14 +280,14 @@ pub fn bfs_vec(graph: &amp;[Vec&lt;(usize, u32)&gt;], start_node: usize) -&gt; V
     }
     result
 }</code></pre>
-<p>The function sets up three things. <code>visited</code> has one <code>false</code> per node. <code>queue</code> holds the start node. <code>result</code>
-collects the nodes in the order they are visited.</p>
-<p>The loop takes the front node, records it, and looks at its edges. The pattern <code>&amp;(neighbor, _)</code> takes each edge
-apart: it copies out the neighbor and ignores the weight with <code>_</code>. Each neighbor that has not been seen is
-marked and added to the back of the queue.</p>
-<p>Every node enters the queue at most once, and every edge is looked at once. So BFS runs in O(V + E) time, where
-V is the number of nodes and E the number of edges. Nodes that cannot be reached from the start never enter the
-queue, and are not in the result.</p>
+<p>The function initializes three structures: <code>visited</code> (one <code>false</code> entry per node), <code>queue</code> (seeded with the
+start node), and <code>result</code> (collecting nodes in visitation order).</p>
+<p>Each iteration dequeues the front node, appends it to <code>result</code>, and inspects its outgoing edges. The pattern
+<code>&amp;(neighbor, _)</code> destructures each edge pair, copying out the neighbor index while ignoring the weight. Any
+unvisited neighbor is marked immediately and enqueued at the back.</p>
+<p>Because each node enters the queue at most once and every edge is examined once, BFS runs in O(<em>V</em> + <em>E</em>) time,
+where <em>V</em> is the number of nodes and <em>E</em> is the number of edges. Nodes unreachable from the start never enter the
+queue and are omitted from the result.</p>
 <h3 id="1232-bfs-with-any-node-type"><a class="header" href="#1232-bfs-with-any-node-type">12.3.2 BFS with any node type</a></h3>
 <p class="listing"><b>Listing 12.2</b> BFS over the map form (lines 38 to 59).</p>
 
@@ -315,14 +313,14 @@ where
     }
     result
 }</code></pre>
-<p>The steps are the same. Three things change:</p>
+<p>The traversal logic is identical, with three structural differences:</p>
 <ul>
-<li>The function is generic over <code>Node</code>. The <code>where</code> clause asks for <code>Copy</code>, so a node can be copied into the queue and the result. It also asks
-for <code>Eq + Hash</code>, so a node can be a key in a <code>HashSet</code>.</li>
-<li><code>graph[&amp;current_node]</code> looks up the edges by key. Indexing a <code>HashMap</code> panics if the key is missing, so every
-node needs an entry, even a node with no edges.</li>
-<li><code>visited.insert(neighbor)</code> does the check and the marking in one call. <code>insert</code> returns <code>true</code> if the value
-was not in the set before.</li>
+<li>The function is generic over <code>Node</code>. Its <code>where</code> clause requires <code>Copy</code> so nodes can be copied into the queue
+and result vector, and <code>Eq + Hash</code> so nodes can serve as keys in <code>HashSet</code>.</li>
+<li><code>graph[&amp;current_node]</code> looks up outgoing edges by key. Because indexing a <code>HashMap</code> panics on a missing key,
+every node in the graph must have an entry, even if its edge slice is empty.</li>
+<li><code>visited.insert(neighbor)</code> combines the membership check and insertion in a single call, returning <code>true</code> when
+the node was previously unseen.</li>
 </ul>
 <p>The tests at the end of the file build the sample graph in both forms and check that the two functions agree:</p>
 <pre><code class="language-text">$ cargo test --lib problems::graph_bfs
@@ -337,10 +335,9 @@ test result: ok. 5 passed; 0 failed; 0 ignored; 0 measured; 132 filtered out
 </code></pre>
 <p>Tests run in parallel, so the order of the lines can change from run to run.</p>
 <h2 id="124-depth-first-search"><a class="header" href="#124-depth-first-search">12.4 Depth-first search</a></h2>
-<p><strong>Depth-first search</strong> (DFS) follows one path as far as it can before it tries another. You can write it with
-recursion, as the tree traversals of chapter 11 were. The versions here use a <code>Vec</code> as an explicit stack
-instead. An explicit stack has no depth limit other than memory, while deep recursion can overflow the thread’s
-stack.</p>
+<p><strong>Depth-first search</strong> (DFS) explores one path as far as possible before backtracking to try another. Although
+DFS can be expressed recursively (as in the tree traversals of Chapter 11), the implementations below use a <code>Vec</code>
+as an explicit heap-allocated stack, eliminating the risk of overflowing the thread call stack on deep graphs.</p>
 <p class="listing"><b>Listing 12.3</b> DFS over the index form (lines 16 to 33). <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/problems/graph_dfs.rs">src/problems/graph_dfs.rs</a></p>
 
 <pre><code class="language-rust">use std::{collections::HashSet, hash::Hash};
@@ -457,10 +454,12 @@ still own it: 1
 <p><code>{:?}</code> prints each node with all its children, so the first line shows the whole tree. The order is 1, 3, 4, 2,
 because the last child pushed is the first popped.</p>
 <h2 id="125-a-graph-with-named-nodes"><a class="header" href="#125-a-graph-with-named-nodes">12.5 A graph with named nodes</a></h2>
-<p>Programs often receive a graph as pairs of names, such as <code>("A", "B")</code>. A common way to handle names is to give
-each name a number the first time you see it. The algorithm then runs on numbers, with the fast index form.
-Assigning numbers to names this way is called <strong>interning</strong>.</p>
-<p>The graph keeps two things: <code>ids</code>, which interns each name as a number, and <code>adj</code>, the adjacency list indexed by those numbers:</p>
+<p>Real-world inputs frequently represent graphs as pairs of string identifiers such as <code>("A", "B")</code>. A standard
+technique is to assign each distinct name an integer index upon first encounter and then execute graph algorithms
+on the compact index representation. Assigning compact numeric identifiers to names in this way is called
+<strong>interning</strong>.</p>
+<p>The graph maintains two structures: <code>ids</code>, which interns each name to a numeric index, and <code>adj</code>, the adjacency
+list indexed by those integers:</p>
 <pre><code class="language-rust">use std::collections::{HashMap, HashSet, VecDeque};
 
 #[derive(Default)]
@@ -537,11 +536,11 @@ once.</p>
 </code></pre>
 <p>The result is numbers, not names. A to F were numbered 0 to 5 in the order they first appeared.</p>
 <h2 id="126-finding-cycles"><a class="header" href="#126-finding-cycles">12.6 Finding cycles</a></h2>
-<p>Many problems need to know whether a directed graph has a cycle. A build system cannot build a file that
-depends on itself. A course plan cannot require a course before itself.</p>
-<p>A visited flag is not enough to find cycles. Look at the diamond on the right of figure 12.4. DFS reaches D
-through B, and later reaches D again through C. That second visit does not mean there is a loop. It only means
-two paths join.</p>
+<p>Many systems must verify that a directed graph is acyclic: a build system cannot compile a target that depends on
+itself, and a curriculum planner cannot schedule circular prerequisites.</p>
+<p>A single visited flag cannot reliably detect cycles. Consider the diamond on the right of Figure 12.4: DFS
+reaches D through B and later encounters D again through C, yet that second visit reflects converging paths
+rather than a cycle.</p>
 <figure>
 <img src="figures/graph-cycle.svg" alt="Left: A to B to C and back to A; all three are Visiting when C&#39;s edge to A is found, a back edge. Right: a diamond A to B, A to C, B to D, C to D; B and D are Done when C&#39;s edge reaches D, so there is no cycle.">
 <figcaption><b>Figure 12.4</b> An edge to a node on the current path is a cycle. An edge to a finished node is not.</figcaption>
@@ -1149,12 +1148,12 @@ test tests::counts_classic_example ... ok
 test result: ok. 5 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out
 </code></pre>
 <h2 id="128-putting-tasks-in-order"><a class="header" href="#128-putting-tasks-in-order">12.8 Putting tasks in order</a></h2>
-<p>Suppose you have tasks, and some tasks must finish before others can start. A <strong>topological order</strong> lists
-every task so that each one comes after all of its prerequisites. Build tools, package managers, and course
-planners all compute one.</p>
-<p>Draw an arrow from each task to the tasks that depend on it. The <strong>indegree</strong> of a node is the number of arrows
-coming into it: the number of prerequisites it is still waiting for.</p>
-<p><strong>Kahn’s algorithm</strong> builds the order step by step (figure 12.6):</p>
+<p>When tasks have ordering constraints requiring certain prerequisites to complete before dependent tasks begin, a
+<strong>topological order</strong> arranges all tasks so that every dependency precedes its dependents. Build systems, package
+managers, and course planners rely on topological sorting.</p>
+<p>Each directed edge points from a prerequisite to a task that depends on it. The <strong>indegree</strong> of a node is the
+number of incoming edges, representing the count of unresolved prerequisites.</p>
+<p><strong>Kahn’s algorithm</strong> constructs a topological order iteratively (Figure 12.6):</p>
 <ol>
 <li>Put every node with indegree 0 in a queue. They have no prerequisites.</li>
 <li>Take a node from the queue and add it to the order.</li>
@@ -1414,11 +1413,11 @@ path with the lowest cost. It is not always the one with the fewest edges.</p>
 <p>BFS finds the path with the fewest edges, which is a different question. <strong>Dijkstra’s algorithm</strong> finds the lowest
 cost from one start node to every other node, as long as no weight is negative.</p>
 <h3 id="1291-how-dijkstras-algorithm-works"><a class="header" href="#1291-how-dijkstras-algorithm-works">12.9.1 How Dijkstra’s algorithm works</a></h3>
-<p>The algorithm keeps two things:</p>
+<p>The algorithm maintains two structures:</p>
 <ul>
-<li><code>dist</code>, the lowest cost found so far to each node. At the start, only the start node has a cost, 0.</li>
-<li>A min-heap of <code>(cost, node)</code> entries, so the cheapest entry is always taken next. Chapter 5 built min-heaps
-with <code>BinaryHeap</code> and <code>Reverse</code>.</li>
+<li><code>dist</code>, recording the lowest path cost discovered so far to each node (initialized to 0 for the start node).</li>
+<li>A min-heap of <code>(cost, node)</code> entries so that the cheapest unsettled frontier node is always extracted next
+(using <code>BinaryHeap</code> with <code>Reverse</code>, as introduced in Chapter 5).</li>
 </ul>
 <p>Each step takes the cheapest entry from the heap. For each edge out of that node, it computes the cost of
 reaching the neighbor through this node. If that cost beats the neighbor’s recorded cost, the new cost is
@@ -1437,10 +1436,10 @@ B’s recorded cost, and the code skips it. Such an entry is called <strong>stal
 <video class="motion" src="figures/ch12-dijkstra.mp4" autoplay="" loop="" muted="" playsinline="" preload="metadata" aria-label="A weighted graph A, B, C, D with each node&#39;s distance and the heap of entries. A settles at 0 and pushes B at 4 and C at 1. C settles at 1 and lowers B to 3 and D to 6. B settles at 3 and lowers D to 4. The older entry (4, B) is popped later and skipped as stale. D settles at 4. Last, a node E with no edges is never pushed, and its distance stays None." data-chapters="[[0.0, &quot;settle&quot;], [79.32, &quot;unreachable&quot;]]"><img src="figures/ch12-dijkstra.gif" alt="A weighted graph A, B, C, D with each node&#39;s distance and the heap of entries. A settles at 0 and pushes B at 4 and C at 1. C settles at 1 and lowers B to 3 and D to 6. B settles at 3 and lowers D to 4. The older entry (4, B) is popped later and skipped as stale. D settles at 4. Last, a node E with no edges is never pushed, and its distance stays None."></video>
 <figcaption><b>Animation 12.5</b> <code>dijkstra_vec</code> settles the node with the smallest cost in the heap, then relaxes its edges. An entry whose cost is above the recorded distance is stale and skipped.</figcaption>
 </figure>
-<p>Read the table row by row. Taking A records B at 4 and C at 1. Taking C finds B at 1 + 2 = 3, which beats 4, so
-B is recorded at 3 and pushed again. The old <code>(4, B)</code> entry is now stale. Taking B at 3 finds D at 4, which
-beats the 6 recorded through C. Later, <code>(4, B)</code> and <code>(6, D)</code> come off the heap, and each is skipped because its
-cost is higher than the recorded one.</p>
+<p>Tracing the table in Figure 12.7 row by row illustrates how stale entries arise. Settling A records B at cost 4
+and C at cost 1. Settling C discovers a cheaper path to B at cost 1 + 2 = 3, which replaces 4 and pushes a new
+heap entry while leaving <code>(4, B)</code> stale. Settling B at cost 3 then relaxes D from 6 down to 4. When <code>(4, B)</code> and
+<code>(6, D)</code> are eventually popped, each is discarded because its cost exceeds the recorded best distance.</p>
 <h3 id="1292-two-versions-side-by-side"><a class="header" href="#1292-two-versions-side-by-side">12.9.2 Two versions side by side</a></h3>
 <p class="listing"><b>Listing 12.16</b> Dijkstra over the index form (lines 23 to 44). <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/problems/graph_dijkstra.rs">src/problems/graph_dijkstra.rs</a></p>
 
@@ -1532,9 +1531,9 @@ test problems::graph_dijkstra::tests::map_variant_finds_shorter_multi_hop_paths 
 test result: ok. 4 passed; 0 failed; 0 ignored; 0 measured; 133 filtered out
 </code></pre>
 <div class="callout warning" markdown="1">
-<p><strong>WARNING:</strong> <code>current_cost + weight</code> panics on overflow in a debug build, and wraps around silently in a
-release build. With <code>u32</code> weights, a long path of large weights can overflow. Listing 12.20 shows the fix with
-<code>checked_add</code>.</p>
+<p><strong>WARNING:</strong> <code>current_cost + weight</code> panics on arithmetic overflow in debug builds and wraps around modulo
+2^32 in release builds. With <code>u32</code> weights, a long path of large weights can overflow; Listing 12.20 prevents
+this hazard using <code>checked_add</code>.</p>
 </div>
 
 <h3 id="1293-edges-as-a-struct"><a class="header" href="#1293-edges-as-a-struct">12.9.3 Edges as a struct</a></h3>
@@ -1629,8 +1628,8 @@ has one.</p>
     "D": 4,
 }
 </code></pre>
-<p>The first print shows the graph and is cut short here. A <code>HashMap</code> does not keep its entries in any order. The lines of both prints can come out in a different
-order on your machine.</p>
+<p>The first output displays the adjacency map and is truncated here. Because <code>HashMap</code> does not maintain a
+deterministic iteration order, the printed line order may vary across executions.</p>
 <p class="listing"><b>Listing 12.19</b> The graph types, and borrowing nodes instead of cloning them (lines 1 to 47). <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/bin/dijkstra_with_lifetime.rs">src/bin/dijkstra_with_lifetime.rs</a></p>
 
 <pre><code class="language-rust">use std::{
@@ -1886,9 +1885,8 @@ fn main() {
 </table>
 </div>
 <h2 id="1210-connecting-every-node-at-the-lowest-cost"><a class="header" href="#1210-connecting-every-node-at-the-lowest-cost">12.10 Connecting every node at the lowest cost</a></h2>
-<p>The last problem uses an undirected, weighted graph. Think of the nodes as buildings and the weights as the cost
-of laying cable between two buildings. You want to connect every building, directly or indirectly, at the lowest
-total cost.</p>
+<p>The final graph problem operates on an undirected, weighted graph. Modeling buildings as nodes and cabling costs
+as edge weights, the objective is to connect every node directly or indirectly at the minimum total edge weight.</p>
 <p>A set of edges that connects all the nodes without forming a cycle is a <strong>spanning tree</strong>. A spanning tree with
 the lowest total weight is a <strong>minimum spanning tree</strong> (MST). With n nodes, a spanning tree has exactly n − 1
 edges. One edge fewer would leave a node disconnected, and one edge more would close a loop.</p>
@@ -1952,13 +1950,14 @@ impl DisjointSet {
     }
 }</code></pre>
 <p><code>new</code> makes every node its own group: <code>parent</code> is <code>[0, 1, 2, ...]</code>, built with <code>(0..n).collect()</code>.</p>
-<p><code>find</code> is recursive. On the way back from the root, it sets <code>parent[elem]</code> to the root directly. The next <code>find</code>
-on that node then takes one step instead of many. This trick is called <strong>path compression</strong>.</p>
-<p><code>union</code> returns <code>false</code> if both nodes already have the same root. Otherwise it joins the groups using <code>rank</code>, a
-rough measure of each group’s height. The shorter group goes under the taller one, so the trees stay flat. If
-both have the same rank, either can go under the other, and the new root’s rank grows by one. This is called
-<strong>union by rank</strong>.</p>
-<p>With both tricks, <code>find</code> and <code>union</code> take nearly constant time in practice.</p>
+<p><code>find</code> operates recursively and rewrites <code>parent[elem]</code> directly to the root on the way back up, so subsequent
+lookups on that node resolve in a single step. This optimization is called <strong>path compression</strong>.</p>
+<p><code>union</code> returns <code>false</code> if both nodes already share a root. Otherwise it merges the two trees using <code>rank</code>, an
+upper bound on each tree’s height, attaching the shallower tree beneath the deeper one to keep tree height
+bounded. When both trees share the same rank, either may become the new root and its rank increments by one; this
+heuristic is called <strong>union by rank</strong>.</p>
+<p>Combined, path compression and union by rank yield amortized nearly constant time (inverse Ackermann time) for
+both <code>find</code> and <code>union</code>.</p>
 <h3 id="12102-kruskals-algorithm"><a class="header" href="#12102-kruskals-algorithm">12.10.2 Kruskal’s algorithm</a></h3>
 <p class="listing"><b>Listing 12.23</b> The edge type and Kruskal's algorithm (lines 3 to 65).</p>
 
@@ -2096,7 +2095,7 @@ total: 8
 </code></pre>
 <p>The tree has four edges for five nodes, as expected.</p>
 <h2 id="1211-the-complete-files"><a class="header" href="#1211-the-complete-files">12.11 The complete files</a></h2>
-<p>The sections above showed these files in excerpts. Here each one is whole.</p>
+<p>The preceding sections presented these modules in excerpts; the complete source files follow below.</p>
 <p class="listing"><b>Listing 12.25</b> Breadth-first search, with its tests. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/problems/graph_bfs.rs">src/problems/graph_bfs.rs</a></p>
 
 <pre><code class="language-rust">//! Breadth-first search.
@@ -2474,8 +2473,8 @@ that would close a loop.</li>
 </ul>
 </div>
 
-<p>Chapter 13 builds an LRU cache, which combines a hash map with a linked list. It brings back the ownership
-questions of chapters 8 and 9.</p>
+<p>In Chapter 13, we combine a hash map with a doubly linked list to construct an LRU cache, revisiting the
+ownership and interior-mutability trade-offs from Chapters 8 and 9.</p>
 <h2 id="exercises"><a class="header" href="#exercises">Exercises</a></h2>
 <ol>
 <li>Change <code>bfs_vec</code> in listing 12.1 to also return, for each node, the number of edges on the shortest path from
@@ -2540,6 +2539,7 @@ that the tests still pass.</li>
 
         <!-- Custom JS scripts -->
         <script src="theme/anim-4192821e.js"></script>
+        <script src="theme/book-ui-621ed017.js"></script>
 
 
 

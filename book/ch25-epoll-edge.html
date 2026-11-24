@@ -1,5 +1,5 @@
 <!DOCTYPE HTML>
-<html lang="en" class="light sidebar-visible" dir="ltr">
+<html lang="en" class="coal sidebar-visible" dir="ltr">
     <head>
         <!-- Book generated using mdBook -->
         <meta charset="UTF-8">
@@ -28,18 +28,18 @@
         <link rel="stylesheet" id="mdbook-ayu-highlight-css" href="ayu-highlight-3fdfc3ac.css">
 
         <!-- Custom theme stylesheets -->
-        <link rel="stylesheet" href="theme/custom-b2009ce0.css">
+        <link rel="stylesheet" href="theme/custom-985f104d.css">
 
 
         <!-- Provide site root and default themes to javascript -->
         <script>
             const path_to_root = "";
-            const default_light_theme = "light";
-            const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "searchindex-f2511fee.js";
+            const default_light_theme = "coal";
+            const default_dark_theme = "coal";
+            window.path_to_searchindex_js = "searchindex-4622e2bb.js";
         </script>
         <!-- Start loading toc.js asap -->
-        <script src="toc-34d6c47e.js"></script>
+        <script src="toc-c196c8a9.js"></script>
     </head>
     <body>
     <div id="mdbook-help-container">
@@ -77,7 +77,7 @@
             try { theme = localStorage.getItem('mdbook-theme'); } catch(e) { }
             if (theme === null || theme === undefined) { theme = default_theme; }
             const html = document.documentElement;
-            html.classList.remove('light')
+            html.classList.remove('coal')
             html.classList.add(theme);
             html.classList.add("js");
         </script>
@@ -192,9 +192,8 @@
 </ul>
 </div>
 
-<p>Section 20.4 built an echo server on epoll in its default mode, <strong>level-triggered</strong>. Epoll has a second mode, <strong>edge-triggered</strong>, selected with the flag <code>EPOLLET</code>. Section 20.6 noted that it needs a handler that reads until <code>EAGAIN</code>. This chapter shows why, by measuring what each mode reports. Then it covers two flags for loops that several threads share: <code>EPOLLONESHOT</code> and <code>EPOLLEXCLUSIVE</code>.</p>
-<p>The program, <code>epoll_edge</code>, uses Linux epoll, so its output comes from a Linux container. It writes 10,000
-bytes into a socket and counts the events and bytes each handler sees.</p>
+<p>The echo server in Section 20.4 used <code>epoll</code> in its default <strong>level-triggered</strong> mode. Linux <code>epoll</code> also supports an <strong>edge-triggered</strong> mode, enabled with the <code>EPOLLET</code> flag, which Section 20.6 noted requires draining each socket until <code>EAGAIN</code>. In this chapter, we measure the exact event counts produced by both modes to demonstrate why draining is mandatory, and then examine two synchronization flags for multithreaded event loops: <code>EPOLLONESHOT</code> and <code>EPOLLEXCLUSIVE</code>.</p>
+<p>Because <code>epoll_edge</code> relies on Linux <code>epoll</code>, its sample output comes from a Linux container. The program writes 10,000 bytes into a socket and records the events and byte counts observed by each handler.</p>
 <h2 id="251-levels-and-edges"><a class="header" href="#251-levels-and-edges">25.1 Levels and edges</a></h2>
 <p>A socket is <strong>readable</strong> while its receive buffer holds at least one byte. That is a state, or a <strong>level</strong>:
 it stays true until a read empties the buffer. The moment new bytes arrive is a change, or an <strong>edge</strong>.</p>
@@ -209,7 +208,7 @@ edge-triggered entry is not put back. Only the callback, on the next arrival, ca
 <img src="figures/ch25-ready-list.svg" alt="Bytes arrive on the socket; epoll&#39;s callback adds the fd to the ready list; epoll_wait reports the fd. A level-triggered fd is put back on the ready list and checked again at the next epoll_wait. An edge-triggered fd is off the list until the next arrival.">
 <figcaption><b>Figure 25.1</b> The ready list. A level-triggered entry goes back on the list after each report. An edge-triggered entry waits for the next arrival.</figcaption>
 </figure>
-<p>Here is what each mode reports when 10,000 bytes arrive at once and the handler reads 4,096 bytes per event:</p>
+<p>The table below compares the events reported by each mode when 10,000 bytes arrive at once and the handler reads 4,096 bytes per event:</p>
 <div class="table-wrapper">
 <table>
 <thead>
@@ -218,15 +217,12 @@ edge-triggered entry is not put back. Only the callback, on the next arrival, ca
 <tbody>
 <tr><td>10,000 bytes arrive</td><td>10,000</td><td>event</td><td>event</td></tr>
 <tr><td>handler reads 4,096</td><td>5,904</td><td>event: still readable</td><td>nothing</td></tr>
-<tr><td>handler reads 4,096</td><td>1,808</td><td>event: still readable</td><td>—</td></tr>
-<tr><td>handler reads 1,808</td><td>0</td><td>nothing</td><td>—</td></tr>
+<tr><td>handler reads 4,096</td><td>1,808</td><td>event: still readable</td><td>n/a</td></tr>
+<tr><td>handler reads 1,808</td><td>0</td><td>nothing</td><td>n/a</td></tr>
 </tbody>
 </table>
 </div>
-<p>In edge-triggered mode, 5,904 bytes stay in the buffer after the first event. No event will report them
-until the peer sends more. If the peer is waiting for a reply to the bytes it already sent, it never sends
-more, and both sides wait forever. This is the stall. Edge-triggered mode needs a handler that reads until
-<code>read</code> returns <code>EAGAIN</code>, which proves the buffer is empty.</p>
+<p>In edge-triggered mode, 5,904 bytes remain unread in the socket buffer after the first event, and no further event will be delivered until the peer transmits additional data. If the peer is waiting for a reply to the bytes already sent, neither side makes progress and the connection stalls indefinitely. Edge-triggered mode therefore requires a handler that loops on <code>read</code> until it observes <code>EAGAIN</code>, confirming that the receive buffer is empty.</p>
 <h2 id="252-three-handlers-measured"><a class="header" href="#252-three-handlers-measured">25.2 Three handlers, measured</a></h2>
 <p>Epoll is three system calls. <code>epoll_event</code> is the record that carries a descriptor’s flags in and its
 events out:</p>
@@ -789,10 +785,8 @@ EPOLLONESHOT: first write 1 event, second write 0 events, after re-arming 1 even
   with EPOLLEXCLUSIVE:    1 thread woke
 </code></pre>
 <h2 id="256-questions-that-come-up"><a class="header" href="#256-questions-that-come-up">25.6 Questions that come up</a></h2>
-<p><strong>“A server under edge-triggered epoll sometimes stops answering one client. CPU use is zero. What do you
-check first?”</strong>
-Whether every read loop runs until <code>EAGAIN</code>. A loop that stops after a full buffer, or after a fixed number
-of bytes, leaves data that no event will report.</p>
+<p><strong>“A server under edge-triggered epoll sometimes stops answering one client, while CPU use is zero. What should be checked first?”</strong>
+Verify that every read loop drains the socket until <code>EAGAIN</code>. A loop that stops after a single buffer fill or a fixed byte count leaves unread data in the kernel buffer with no subsequent event to report it.</p>
 <p><strong>“Does edge-triggered mode apply to <code>accept</code>?”</strong>
 Yes. An edge-triggered listener reports once when connections arrive, so the handler calls <code>accept</code> until
 <code>EAGAIN</code>, as <code>accept_ready</code> in section 20.4 does.</p>
@@ -822,8 +816,7 @@ without it. <code>SO_REUSEPORT</code> gives each thread its own listener instead
 </ul>
 </div>
 
-<p>Chapter 26 goes under the locks used in chapter 16. It builds a mutex on the futex system call, and runs
-litmus tests that show what each memory ordering allows.</p>
+<p>In Chapter 26, we move beneath the locks used in Chapter 16, implementing a mutex directly over the <code>futex</code> system call and running litmus tests that demonstrate what each memory ordering permits.</p>
 <h2 id="exercises"><a class="header" href="#exercises">Exercises</a></h2>
 <ol>
 <li>Change <code>run</code> so that after the edge-triggered stall it writes one more byte, and count the events. How
@@ -889,6 +882,7 @@ before <code>bind</code>. Count how the 10 connections spread across the threads
 
         <!-- Custom JS scripts -->
         <script src="theme/anim-4192821e.js"></script>
+        <script src="theme/book-ui-621ed017.js"></script>
 
 
 

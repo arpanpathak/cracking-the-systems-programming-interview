@@ -1,32 +1,1119 @@
 <!DOCTYPE HTML>
-<html lang="en" class="light" dir="ltr">
+<html lang="en" class="coal sidebar-visible" dir="ltr">
     <head>
-        <!-- sidebar iframe generated using mdBook
-
-        This is a frame, and not included directly in the page, to control the total size of the
-        book. The TOC contains an entry for each page, so if each page includes a copy of the TOC,
-        the total size of the page becomes O(n**2).
-
-        The frame is only used as a fallback when JS is turned off. When it's on, the sidebar is
-        instead added to the main page by `toc.js` instead. The JavaScript mode is better
-        because, when running in a `file:///` URL, the iframed page would not be Same-Origin as
-        the rest of the page, so the sidebar and the main page theme would fall out of sync.
-        -->
+        <!-- Book generated using mdBook -->
         <meta charset="UTF-8">
-        <meta name="robots" content="noindex">
+        <title>Table of Contents - Cracking the Systems Programming Interview</title>
+
+
         <!-- Custom HTML head -->
+
+        <meta name="description" content="Rust from data structures to the kernel boundary">
         <meta name="viewport" content="width=device-width, initial-scale=1">
         <meta name="theme-color" content="#ffffff">
+
+        <link rel="icon" href="favicon-de23e50b.svg">
+        <link rel="shortcut icon" href="favicon-8114d1fc.png">
         <link rel="stylesheet" href="css/variables-8adf115d.css">
         <link rel="stylesheet" href="css/general-e96d0476.css">
         <link rel="stylesheet" href="css/chrome-d279d366.css">
         <link rel="stylesheet" href="css/print-9e4910d8.css" media="print">
+
         <!-- Fonts -->
         <link rel="stylesheet" href="fonts/fonts-9644e21d.css">
+
+        <!-- Highlight.js Stylesheets -->
+        <link rel="stylesheet" id="mdbook-highlight-css" href="highlight-493f70e1.css">
+        <link rel="stylesheet" id="mdbook-tomorrow-night-css" href="tomorrow-night-4c0ae647.css">
+        <link rel="stylesheet" id="mdbook-ayu-highlight-css" href="ayu-highlight-3fdfc3ac.css">
+
         <!-- Custom theme stylesheets -->
-        <link rel="stylesheet" href="theme/custom-b2009ce0.css">
+        <link rel="stylesheet" href="theme/custom-985f104d.css">
+
+
+        <!-- Provide site root and default themes to javascript -->
+        <script>
+            const path_to_root = "";
+            const default_light_theme = "coal";
+            const default_dark_theme = "coal";
+            window.path_to_searchindex_js = "searchindex-4622e2bb.js";
+        </script>
+        <!-- Start loading toc.js asap -->
+        <script src="toc-c196c8a9.js"></script>
     </head>
-    <body class="sidebar-iframe-inner">
-        <ol class="chapter"><li class="chapter-item expanded "><span class="chapter-link-wrapper"><a href="cover.html" target="_parent">Cover</a></span></li><li class="chapter-item expanded "><span class="chapter-link-wrapper"><a href="about-this-book.html" target="_parent">About this book</a></span></li><li class="chapter-item expanded "><span class="chapter-link-wrapper"><a href="about-the-cover.html" target="_parent">About the cover</a></span></li><li class="chapter-item expanded "><li class="part-title">Part 1: First steps</li></li><li class="chapter-item expanded "><span class="chapter-link-wrapper"><a href="ch01-bindings.html" target="_parent"><strong aria-hidden="true">1.</strong> Bindings, functions, and loops</a></span></li><li class="chapter-item expanded "><span class="chapter-link-wrapper"><a href="ch02-files.html" target="_parent"><strong aria-hidden="true">2.</strong> Files, paths, and the command line</a></span></li><li class="chapter-item expanded "><li class="part-title">Part 2: Collections and algorithms</li></li><li class="chapter-item expanded "><span class="chapter-link-wrapper"><a href="ch03-collections.html" target="_parent"><strong aria-hidden="true">3.</strong> Vectors, strings, and hash maps</a></span></li><li class="chapter-item expanded "><span class="chapter-link-wrapper"><a href="ch04-iterators.html" target="_parent"><strong aria-hidden="true">4.</strong> Iterators and references</a></span></li><li class="chapter-item expanded "><span class="chapter-link-wrapper"><a href="ch05-heaps.html" target="_parent"><strong aria-hidden="true">5.</strong> Heaps</a></span></li><li class="chapter-item expanded "><span class="chapter-link-wrapper"><a href="ch06-dynamic-programming.html" target="_parent"><strong aria-hidden="true">6.</strong> Recursion and dynamic programming</a></span></li><li class="chapter-item expanded "><li class="part-title">Part 3: Modeling data and ownership</li></li><li class="chapter-item expanded "><span class="chapter-link-wrapper"><a href="ch07-types.html" target="_parent"><strong aria-hidden="true">7.</strong> Types that refuse bad input</a></span></li><li class="chapter-item expanded "><span class="chapter-link-wrapper"><a href="ch08-pointers.html" target="_parent"><strong aria-hidden="true">8.</strong> Ownership and the pointer types</a></span></li><li class="chapter-item expanded "><span class="chapter-link-wrapper"><a href="ch09-linked-lists.html" target="_parent"><strong aria-hidden="true">9.</strong> Linked lists</a></span></li><li class="chapter-item expanded "><span class="chapter-link-wrapper"><a href="ch10-merge-k.html" target="_parent"><strong aria-hidden="true">10.</strong> Merging k sorted lists</a></span></li><li class="chapter-item expanded "><span class="chapter-link-wrapper"><a href="ch11-trees.html" target="_parent"><strong aria-hidden="true">11.</strong> Trees and tries</a></span></li><li class="chapter-item expanded "><span class="chapter-link-wrapper"><a href="ch12-graphs.html" target="_parent"><strong aria-hidden="true">12.</strong> Graphs</a></span></li><li class="chapter-item expanded "><li class="part-title">Part 4: Memory and the machine</li></li><li class="chapter-item expanded "><span class="chapter-link-wrapper"><a href="ch13-lru-cache.html" target="_parent"><strong aria-hidden="true">13.</strong> An LRU cache</a></span></li><li class="chapter-item expanded "><span class="chapter-link-wrapper"><a href="ch14-sharding.html" target="_parent"><strong aria-hidden="true">14.</strong> Shards and consistent hashing</a></span></li><li class="chapter-item expanded "><span class="chapter-link-wrapper"><a href="ch15-memory-os.html" target="_parent"><strong aria-hidden="true">15.</strong> Memory, CPU caches, and the operating system</a></span></li><li class="chapter-item expanded "><li class="part-title">Part 5: Concurrency</li></li><li class="chapter-item expanded "><span class="chapter-link-wrapper"><a href="ch16-threads-locks.html" target="_parent"><strong aria-hidden="true">16.</strong> Threads, atomics, and locks</a></span></li><li class="chapter-item expanded "><span class="chapter-link-wrapper"><a href="ch17-queues.html" target="_parent"><strong aria-hidden="true">17.</strong> Queues and bounded buffers</a></span></li><li class="chapter-item expanded "><span class="chapter-link-wrapper"><a href="ch18-thread-pools.html" target="_parent"><strong aria-hidden="true">18.</strong> Thread pools</a></span></li><li class="chapter-item expanded "><span class="chapter-link-wrapper"><a href="ch19-reliability.html" target="_parent"><strong aria-hidden="true">19.</strong> Rate limits, retries, and idempotency</a></span></li><li class="chapter-item expanded "><li class="part-title">Part 6: The network</li></li><li class="chapter-item expanded "><span class="chapter-link-wrapper"><a href="ch20-sockets.html" target="_parent"><strong aria-hidden="true">20.</strong> Addresses, windows, and echo servers</a></span></li><li class="chapter-item expanded "><span class="chapter-link-wrapper"><a href="ch21-http.html" target="_parent"><strong aria-hidden="true">21.</strong> Parsing and serving HTTP/1.1</a></span></li><li class="chapter-item expanded "><span class="chapter-link-wrapper"><a href="ch22-async.html" target="_parent"><strong aria-hidden="true">22.</strong> Async Rust from the executor up</a></span></li><li class="chapter-item expanded "><li class="part-title">Part 7: The kernel boundary</li></li><li class="chapter-item expanded "><span class="chapter-link-wrapper"><a href="ch23-mmap.html" target="_parent"><strong aria-hidden="true">23.</strong> Mapping files and copying less</a></span></li><li class="chapter-item expanded "><span class="chapter-link-wrapper"><a href="ch24-fd-table.html" target="_parent"><strong aria-hidden="true">24.</strong> File descriptors, fork, and pipes</a></span></li><li class="chapter-item expanded "><span class="chapter-link-wrapper"><a href="ch25-epoll-edge.html" target="_parent"><strong aria-hidden="true">25.</strong> Edge-triggered epoll</a></span></li><li class="chapter-item expanded "><li class="part-title">Part 8: Under the locks</li></li><li class="chapter-item expanded "><span class="chapter-link-wrapper"><a href="ch26-futex.html" target="_parent"><strong aria-hidden="true">26.</strong> Futexes and memory ordering</a></span></li><li class="chapter-item expanded "><li class="part-title">Part 9: Production networking</li></li><li class="chapter-item expanded "><span class="chapter-link-wrapper"><a href="ch27-tcp-close.html" target="_parent"><strong aria-hidden="true">27.</strong> Closing TCP connections</a></span></li><li class="chapter-item expanded "><span class="chapter-link-wrapper"><a href="ch28-tls.html" target="_parent"><strong aria-hidden="true">28.</strong> TLS and mutual TLS</a></span></li><li class="chapter-item expanded "><span class="chapter-link-wrapper"><a href="ch29-conn-pool.html" target="_parent"><strong aria-hidden="true">29.</strong> A client connection pool</a></span></li><li class="chapter-item expanded "><li class="part-title">Part 10: Compact implementations</li></li><li class="chapter-item expanded "><span class="chapter-link-wrapper"><a href="ch30-drills.html" target="_parent"><strong aria-hidden="true">30.</strong> Compact implementations</a></span></li><li class="chapter-item expanded "><li class="spacer"></li></li><li class="chapter-item expanded "><span class="chapter-link-wrapper"><a href="appendix-a-cheatsheet.html" target="_parent">Appendix A. The Rust cheat sheet</a></span></li><li class="chapter-item expanded "><span class="chapter-link-wrapper"><a href="appendix-d-benchmark-report.html" target="_parent">Appendix B. The benchmark report</a></span></li><li class="chapter-item expanded "><span class="chapter-link-wrapper"><a href="appendix-c-merge-k-long.html" target="_parent">Appendix C. Merging k sorted lists, the long version</a></span></li></ol>
+    <body>
+    <div id="mdbook-help-container">
+        <div id="mdbook-help-popup">
+            <h2 class="mdbook-help-title">Keyboard shortcuts</h2>
+            <div>
+                <p>Press <kbd>←</kbd> or <kbd>→</kbd> to navigate between chapters</p>
+                <p>Press <kbd>S</kbd> or <kbd>/</kbd> to search in the book</p>
+                <p>Press <kbd>?</kbd> to show this help</p>
+                <p>Press <kbd>Esc</kbd> to hide this help</p>
+            </div>
+        </div>
+    </div>
+    <div id="mdbook-body-container">
+        <!-- Work around some values being stored in localStorage wrapped in quotes -->
+        <script>
+            try {
+                let theme = localStorage.getItem('mdbook-theme');
+                let sidebar = localStorage.getItem('mdbook-sidebar');
+
+                if (theme.startsWith('"') && theme.endsWith('"')) {
+                    localStorage.setItem('mdbook-theme', theme.slice(1, theme.length - 1));
+                }
+
+                if (sidebar.startsWith('"') && sidebar.endsWith('"')) {
+                    localStorage.setItem('mdbook-sidebar', sidebar.slice(1, sidebar.length - 1));
+                }
+            } catch (e) { }
+        </script>
+
+        <!-- Set the theme before any content is loaded, prevents flash -->
+        <script>
+            const default_theme = window.matchMedia("(prefers-color-scheme: dark)").matches ? default_dark_theme : default_light_theme;
+            let theme;
+            try { theme = localStorage.getItem('mdbook-theme'); } catch(e) { }
+            if (theme === null || theme === undefined) { theme = default_theme; }
+            const html = document.documentElement;
+            html.classList.remove('coal')
+            html.classList.add(theme);
+            html.classList.add("js");
+        </script>
+
+        <input type="checkbox" id="mdbook-sidebar-toggle-anchor" class="hidden">
+
+        <!-- Hide / unhide sidebar before it is displayed -->
+        <script>
+            let sidebar = null;
+            const sidebar_toggle = document.getElementById("mdbook-sidebar-toggle-anchor");
+            if (document.body.clientWidth >= 1080) {
+                try { sidebar = localStorage.getItem('mdbook-sidebar'); } catch(e) { }
+                sidebar = sidebar || 'visible';
+            } else {
+                sidebar = 'hidden';
+                sidebar_toggle.checked = false;
+            }
+            if (sidebar === 'visible') {
+                sidebar_toggle.checked = true;
+            } else {
+                html.classList.remove('sidebar-visible');
+            }
+        </script>
+
+        <nav id="mdbook-sidebar" class="sidebar" aria-label="Table of contents">
+            <!-- populated by js -->
+            <mdbook-sidebar-scrollbox class="sidebar-scrollbox"></mdbook-sidebar-scrollbox>
+            <noscript>
+                <iframe class="sidebar-iframe-outer" src="toc.html"></iframe>
+            </noscript>
+            <div id="mdbook-sidebar-resize-handle" class="sidebar-resize-handle">
+                <div class="sidebar-resize-indicator"></div>
+            </div>
+        </nav>
+
+        <div id="mdbook-page-wrapper" class="page-wrapper">
+
+            <div class="page">
+                <div id="mdbook-menu-bar-hover-placeholder"></div>
+                <div id="mdbook-menu-bar" class="menu-bar sticky">
+                    <div class="left-buttons">
+                        <label id="mdbook-sidebar-toggle" class="icon-button" for="mdbook-sidebar-toggle-anchor" title="Toggle Table of Contents" aria-label="Toggle Table of Contents" aria-controls="mdbook-sidebar">
+                            <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M0 96C0 78.3 14.3 64 32 64H416c17.7 0 32 14.3 32 32s-14.3 32-32 32H32C14.3 128 0 113.7 0 96zM0 256c0-17.7 14.3-32 32-32H416c17.7 0 32 14.3 32 32s-14.3 32-32 32H32c-17.7 0-32-14.3-32-32zM448 416c0 17.7-14.3 32-32 32H32c-17.7 0-32-14.3-32-32s14.3-32 32-32H416c17.7 0 32 14.3 32 32z"/></svg></span>
+                        </label>
+                        <button id="mdbook-theme-toggle" class="icon-button" type="button" title="Change theme" aria-label="Change theme" aria-haspopup="true" aria-expanded="false" aria-controls="mdbook-theme-list">
+                            <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 576 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M371.3 367.1c27.3-3.9 51.9-19.4 67.2-42.9L600.2 74.1c12.6-19.5 9.4-45.3-7.6-61.2S549.7-4.4 531.1 9.6L294.4 187.2c-24 18-38.2 46.1-38.4 76.1L371.3 367.1zm-19.6 25.4l-116-104.4C175.9 290.3 128 339.6 128 400c0 3.9 .2 7.8 .6 11.6c1.8 17.5-10.2 36.4-27.8 36.4H96c-17.7 0-32 14.3-32 32s14.3 32 32 32H240c61.9 0 112-50.1 112-112c0-2.5-.1-5-.2-7.5z"/></svg></span>
+                        </button>
+                        <ul id="mdbook-theme-list" class="theme-popup" aria-label="Themes" role="menu">
+                            <li role="none"><button role="menuitem" class="theme" id="mdbook-theme-default_theme">Auto</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="mdbook-theme-light">Light</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="mdbook-theme-rust">Rust</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="mdbook-theme-coal">Coal</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="mdbook-theme-navy">Navy</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="mdbook-theme-ayu">Ayu</button></li>
+                        </ul>
+                        <button id="mdbook-search-toggle" class="icon-button" type="button" title="Search (`/`)" aria-label="Toggle Searchbar" aria-expanded="false" aria-keyshortcuts="/ s" aria-controls="mdbook-searchbar">
+                            <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M416 208c0 45.9-14.9 88.3-40 122.7L502.6 457.4c12.5 12.5 12.5 32.8 0 45.3s-32.8 12.5-45.3 0L330.7 376c-34.4 25.2-76.8 40-122.7 40C93.1 416 0 322.9 0 208S93.1 0 208 0S416 93.1 416 208zM208 352c79.5 0 144-64.5 144-144s-64.5-144-144-144S64 128.5 64 208s64.5 144 144 144z"/></svg></span>
+                        </button>
+                    </div>
+
+                    <h1 class="menu-title">Cracking the Systems Programming Interview</h1>
+
+                    <div class="right-buttons">
+                        <a href="print.html" title="Print this book" aria-label="Print this book">
+                            <span class=fa-svg id="print-button"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M128 0C92.7 0 64 28.7 64 64v96h64V64H354.7L384 93.3V160h64V93.3c0-17-6.7-33.3-18.7-45.3L400 18.7C388 6.7 371.7 0 354.7 0H128zM384 352v32 64H128V384 368 352H384zm64 32h32c17.7 0 32-14.3 32-32V256c0-35.3-28.7-64-64-64H64c-35.3 0-64 28.7-64 64v96c0 17.7 14.3 32 32 32H64v64c0 35.3 28.7 64 64 64H384c35.3 0 64-28.7 64-64V384zm-16-88c-13.3 0-24-10.7-24-24s10.7-24 24-24s24 10.7 24 24s-10.7 24-24 24z"/></svg></span>
+                        </a>
+                        <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/tree/prep-v2/cracking-the-systems-programming-interview" title="Git repository" aria-label="Git repository">
+                            <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 496 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M165.9 397.4c0 2-2.3 3.6-5.2 3.6-3.3.3-5.6-1.3-5.6-3.6 0-2 2.3-3.6 5.2-3.6 3-.3 5.6 1.3 5.6 3.6zm-31.1-4.5c-.7 2 1.3 4.3 4.3 4.9 2.6 1 5.6 0 6.2-2s-1.3-4.3-4.3-5.2c-2.6-.7-5.5.3-6.2 2.3zm44.2-1.7c-2.9.7-4.9 2.6-4.6 4.9.3 2 2.9 3.3 5.9 2.6 2.9-.7 4.9-2.6 4.6-4.6-.3-1.9-3-3.2-5.9-2.9zM244.8 8C106.1 8 0 113.3 0 252c0 110.9 69.8 205.8 169.5 239.2 12.8 2.3 17.3-5.6 17.3-12.1 0-6.2-.3-40.4-.3-61.4 0 0-70 15-84.7-29.8 0 0-11.4-29.1-27.8-36.6 0 0-22.9-15.7 1.6-15.4 0 0 24.9 2 38.6 25.8 21.9 38.6 58.6 27.5 72.9 20.9 2.3-16 8.8-27.1 16-33.7-55.9-6.2-112.3-14.3-112.3-110.5 0-27.5 7.6-41.3 23.6-58.9-2.6-6.5-11.1-33.3 2.6-67.9 20.9-6.5 69 27 69 27 20-5.6 41.5-8.5 62.8-8.5s42.8 2.9 62.8 8.5c0 0 48.1-33.6 69-27 13.7 34.7 5.2 61.4 2.6 67.9 16 17.7 25.8 31.5 25.8 58.9 0 96.5-58.9 104.2-114.8 110.5 9.2 7.9 17 22.9 17 46.4 0 33.7-.3 75.4-.3 83.6 0 6.5 4.6 14.4 17.3 12.1C428.2 457.8 496 362.9 496 252 496 113.3 383.5 8 244.8 8zM97.2 352.9c-1.3 1-1 3.3.7 5.2 1.6 1.6 3.9 2.3 5.2 1 1.3-1 1-3.3-.7-5.2-1.6-1.6-3.9-2.3-5.2-1zm-10.8-8.1c-.7 1.3.3 2.9 2.3 3.9 1.6 1 3.6.7 4.3-.7.7-1.3-.3-2.9-2.3-3.9-2-.6-3.6-.3-4.3.7zm32.4 35.6c-1.6 1.3-1 4.3 1.3 6.2 2.3 2.3 5.2 2.6 6.5 1 1.3-1.3.7-4.3-1.3-6.2-2.2-2.3-5.2-2.6-6.5-1zm-11.4-14.7c-1.6 1-1.6 3.6 0 5.9 1.6 2.3 4.3 3.3 5.6 2.3 1.6-1.3 1.6-3.9 0-6.2-1.4-2.3-4-3.3-5.6-2z"/></svg></span>
+                        </a>
+
+                    </div>
+                </div>
+
+                <div id="mdbook-search-wrapper" class="hidden">
+                    <form id="mdbook-searchbar-outer" class="searchbar-outer">
+                        <div class="search-wrapper">
+                            <input type="search" id="mdbook-searchbar" name="searchbar" placeholder="Search this book ..." aria-controls="mdbook-searchresults-outer" aria-describedby="searchresults-header">
+                            <div class="spinner-wrapper">
+                                <span class=fa-svg id="fa-spin"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M304 48c0-26.5-21.5-48-48-48s-48 21.5-48 48s21.5 48 48 48s48-21.5 48-48zm0 416c0-26.5-21.5-48-48-48s-48 21.5-48 48s21.5 48 48 48s48-21.5 48-48zM48 304c26.5 0 48-21.5 48-48s-21.5-48-48-48s-48 21.5-48 48s21.5 48 48 48zm464-48c0-26.5-21.5-48-48-48s-48 21.5-48 48s21.5 48 48 48s48-21.5 48-48zM142.9 437c18.7-18.7 18.7-49.1 0-67.9s-49.1-18.7-67.9 0s-18.7 49.1 0 67.9s49.1 18.7 67.9 0zm0-294.2c18.7-18.7 18.7-49.1 0-67.9S93.7 56.2 75 75s-18.7 49.1 0 67.9s49.1 18.7 67.9 0zM369.1 437c18.7 18.7 49.1 18.7 67.9 0s18.7-49.1 0-67.9s-49.1-18.7-67.9 0s-18.7 49.1 0 67.9z"/></svg></span>
+                            </div>
+                        </div>
+                    </form>
+                    <div id="mdbook-searchresults-outer" class="searchresults-outer hidden">
+                        <div id="mdbook-searchresults-header" class="searchresults-header"></div>
+                        <ul id="mdbook-searchresults">
+                        </ul>
+                    </div>
+                </div>
+
+                <!-- Apply ARIA attributes after the sidebar and the sidebar toggle button are added to the DOM -->
+                <script>
+                    document.getElementById('mdbook-sidebar-toggle').setAttribute('aria-expanded', sidebar === 'visible');
+                    document.getElementById('mdbook-sidebar').setAttribute('aria-hidden', sidebar !== 'visible');
+                    Array.from(document.querySelectorAll('#mdbook-sidebar a')).forEach(function(link) {
+                        link.setAttribute('tabIndex', sidebar === 'visible' ? 0 : -1);
+                    });
+                </script>
+
+                <div id="mdbook-content" class="content">
+                    <main>
+                        <h1 id="table-of-contents"><a class="header" href="#table-of-contents">Table of Contents</a></h1>
+<p>Complete navigable index of all ten parts, thirty chapters, subsections, and appendices.</p>
+<ul>
+<li>
+<p><strong><a href="about-this-book.html">About this book</a></strong></p>
+<ul>
+<li><a href="about-this-book.html#who-should-read-this-book">Who should read this book</a></li>
+<li><a href="about-this-book.html#what-you-will-learn">What you will learn</a></li>
+<li><a href="about-this-book.html#how-this-book-is-organized">How this book is organized</a></li>
+<li><a href="about-this-book.html#conventions">Conventions</a></li>
+<li><a href="about-this-book.html#about-the-code">About the code</a></li>
+<li><a href="about-this-book.html#building-the-book">Building the book</a></li>
+</ul>
+</li>
+<li>
+<p><strong><a href="about-the-cover.html">About the cover</a></strong></p>
+</li>
+</ul>
+<h2 id="part-1-first-steps"><a class="header" href="#part-1-first-steps">Part 1: First steps</a></h2>
+<ul>
+<li>
+<p><strong><a href="ch01-bindings.html">Bindings, functions, and loops</a></strong></p>
+<ul>
+<li><a href="ch01-bindings.html#11-a-binding-is-a-name-for-a-value">1.1 A binding is a name for a value</a></li>
+<li><a href="ch01-bindings.html#12-shadowing-one-name-several-values">1.2 Shadowing: one name, several values</a>
+<ul>
+<li><a href="ch01-bindings.html#121-when-shadowing-helps">1.2.1 When shadowing helps</a></li>
+<li><a href="ch01-bindings.html#122-a-value-captured-earlier-keeps-its-old-value">1.2.2 A value captured earlier keeps its old value</a></li>
+</ul>
+</li>
+<li><a href="ch01-bindings.html#13-mutation-one-value-that-changes">1.3 Mutation: one value that changes</a></li>
+<li><a href="ch01-bindings.html#14-the-first-complete-program">1.4 The first complete program</a></li>
+<li><a href="ch01-bindings.html#15-a-function-that-calls-itself">1.5 A function that calls itself</a>
+<ul>
+<li><a href="ch01-bindings.html#151-counting-the-calls">1.5.1 Counting the calls</a></li>
+<li><a href="ch01-bindings.html#152-what-each-call-uses-on-the-stack">1.5.2 What each call uses on the stack</a></li>
+</ul>
+</li>
+<li><a href="ch01-bindings.html#16-the-same-numbers-with-a-loop">1.6 The same numbers with a loop</a></li>
+<li><a href="ch01-bindings.html#17-recursion-with-a-memory">1.7 Recursion with a memory</a></li>
+<li><a href="ch01-bindings.html#18-timing-the-three-versions">1.8 Timing the three versions</a></li>
+<li><a href="ch01-bindings.html#19-the-complete-fibonacci-program">1.9 The complete Fibonacci program</a></li>
+<li><a href="ch01-bindings.html#summary">Summary</a></li>
+<li><a href="ch01-bindings.html#exercises">Exercises</a></li>
+</ul>
+</li>
+<li>
+<p><strong><a href="ch02-files.html">Files, paths, and the command line</a></strong></p>
+<ul>
+<li><a href="ch02-files.html#21-what-happens-when-you-read-a-file">2.1 What happens when you read a file</a></li>
+<li><a href="ch02-files.html#22-result-and-the-operator">2.2 <code>Result</code> and the <code>?</code> operator</a></li>
+<li><a href="ch02-files.html#23-paths">2.3 Paths</a></li>
+<li><a href="ch02-files.html#24-reading-a-file">2.4 Reading a file</a>
+<ul>
+<li><a href="ch02-files.html#241-the-whole-file-at-once">2.4.1 The whole file at once</a></li>
+<li><a href="ch02-files.html#242-one-line-at-a-time">2.4.2 One line at a time</a></li>
+<li><a href="ch02-files.html#243-reusing-one-buffer-and-skipping-bad-lines">2.4.3 Reusing one buffer, and skipping bad lines</a></li>
+</ul>
+</li>
+<li><a href="ch02-files.html#25-writing-and-changing-files">2.5 Writing and changing files</a>
+<ul>
+<li><a href="ch02-files.html#251-appending">2.5.1 Appending</a></li>
+<li><a href="ch02-files.html#252-copying-renaming-and-deleting">2.5.2 Copying, renaming, and deleting</a></li>
+<li><a href="ch02-files.html#253-telling-one-error-from-another">2.5.3 Telling one error from another</a></li>
+</ul>
+</li>
+<li><a href="ch02-files.html#26-directories">2.6 Directories</a>
+<ul>
+<li><a href="ch02-files.html#261-one-level">2.6.1 One level</a></li>
+<li><a href="ch02-files.html#262-every-level">2.6.2 Every level</a></li>
+</ul>
+</li>
+<li><a href="ch02-files.html#27-project-reading-a-large-file-one-page-at-a-time">2.7 Project: reading a large file one page at a time</a>
+<ul>
+<li><a href="ch02-files.html#271-the-page-type">2.7.1 The page type</a></li>
+<li><a href="ch02-files.html#272-counting-bytes-to-find-the-next-cursor">2.7.2 Counting bytes to find the next cursor</a></li>
+<li><a href="ch02-files.html#273-the-complete-program">2.7.3 The complete program</a></li>
+</ul>
+</li>
+<li><a href="ch02-files.html#28-project-command-line-arguments">2.8 Project: command-line arguments</a>
+<ul>
+<li><a href="ch02-files.html#281-the-options-and-their-defaults">2.8.1 The options and their defaults</a></li>
+<li><a href="ch02-files.html#282-parsing">2.8.2 Parsing</a></li>
+<li><a href="ch02-files.html#283-the-exit-code">2.8.3 The exit code</a></li>
+<li><a href="ch02-files.html#284-the-complete-program">2.8.4 The complete program</a></li>
+</ul>
+</li>
+<li><a href="ch02-files.html#summary">Summary</a></li>
+<li><a href="ch02-files.html#exercises">Exercises</a></li>
+</ul>
+</li>
+</ul>
+<h2 id="part-2-collections-and-algorithms"><a class="header" href="#part-2-collections-and-algorithms">Part 2: Collections and algorithms</a></h2>
+<ul>
+<li>
+<p><strong><a href="ch03-collections.html">Vectors, strings, and hash maps</a></strong></p>
+<ul>
+<li><a href="ch03-collections.html#31-counting-the-work-an-algorithm-does">3.1 Counting the work an algorithm does</a></li>
+<li><a href="ch03-collections.html#32-how-a-vec-stores-its-elements">3.2 How a <code>Vec</code> stores its elements</a></li>
+<li><a href="ch03-collections.html#33-how-a-string-stores-text">3.3 How a <code>String</code> stores text</a></li>
+<li><a href="ch03-collections.html#34-how-a-hashmap-finds-a-key">3.4 How a <code>HashMap</code> finds a key</a></li>
+<li><a href="ch03-collections.html#35-finding-two-numbers-that-add-up-to-a-target">3.5 Finding two numbers that add up to a target</a></li>
+<li><a href="ch03-collections.html#36-a-vector-used-as-a-stack">3.6 A vector used as a stack</a>
+<ul>
+<li><a href="ch03-collections.html#361-checking-brackets">3.6.1 Checking brackets</a></li>
+<li><a href="ch03-collections.html#362-a-stack-that-knows-its-minimum">3.6.2 A stack that knows its minimum</a></li>
+</ul>
+</li>
+<li><a href="ch03-collections.html#37-two-indexes-moving-toward-each-other">3.7 Two indexes moving toward each other</a>
+<ul>
+<li><a href="ch03-collections.html#371-reversing-a-string-in-place">3.7.1 Reversing a string in place</a></li>
+<li><a href="ch03-collections.html#372-three-numbers-that-add-up-to-a-target">3.7.2 Three numbers that add up to a target</a></li>
+</ul>
+</li>
+<li><a href="ch03-collections.html#38-a-window-that-slides-along-a-string">3.8 A window that slides along a string</a></li>
+<li><a href="ch03-collections.html#39-sort-then-walk-once-merging-ranges">3.9 Sort, then walk once: merging ranges</a></li>
+<li><a href="ch03-collections.html#310-halving-the-search-binary-search">3.10 Halving the search: binary search</a>
+<ul>
+<li><a href="ch03-collections.html#3101-searching-a-rotated-array">3.10.1 Searching a rotated array</a></li>
+</ul>
+</li>
+<li><a href="ch03-collections.html#311-rotating-a-square-grid-in-place">3.11 Rotating a square grid in place</a></li>
+<li><a href="ch03-collections.html#312-finding-text-inside-text">3.12 Finding text inside text</a></li>
+<li><a href="ch03-collections.html#313-the-complete-files">3.13 The complete files</a></li>
+<li><a href="ch03-collections.html#summary">Summary</a></li>
+<li><a href="ch03-collections.html#exercises">Exercises</a></li>
+</ul>
+</li>
+<li>
+<p><strong><a href="ch04-iterators.html">Iterators and references</a></strong></p>
+<ul>
+<li><a href="ch04-iterators.html#41-what-an-iterator-is">4.1 What an iterator is</a></li>
+<li><a href="ch04-iterators.html#42-three-ways-to-walk-a-collection">4.2 Three ways to walk a collection</a></li>
+<li><a href="ch04-iterators.html#43-chaining-iterators">4.3 Chaining iterators</a></li>
+<li><a href="ch04-iterators.html#44-references-to-references">4.4 References to references</a></li>
+<li><a href="ch04-iterators.html#45-the-same-work-in-two-styles">4.5 The same work in two styles</a></li>
+<li><a href="ch04-iterators.html#46-lifetimes">4.6 Lifetimes</a></li>
+<li><a href="ch04-iterators.html#47-a-map-that-points-into-a-slice">4.7 A map that points into a slice</a></li>
+<li><a href="ch04-iterators.html#48-two-lifetimes-in-one-type">4.8 Two lifetimes in one type</a></li>
+<li><a href="ch04-iterators.html#49-the-complete-program">4.9 The complete program</a></li>
+<li><a href="ch04-iterators.html#summary">Summary</a></li>
+<li><a href="ch04-iterators.html#exercises">Exercises</a></li>
+</ul>
+</li>
+<li>
+<p><strong><a href="ch05-heaps.html">Heaps</a></strong></p>
+<ul>
+<li><a href="ch05-heaps.html#51-a-tree-stored-in-a-vector">5.1 A tree stored in a vector</a></li>
+<li><a href="ch05-heaps.html#52-adding-and-removing">5.2 Adding and removing</a>
+<ul>
+<li><a href="ch05-heaps.html#521-push">5.2.1 Push</a></li>
+<li><a href="ch05-heaps.html#522-pop">5.2.2 Pop</a></li>
+</ul>
+</li>
+<li><a href="ch05-heaps.html#53-heaps-in-rust">5.3 Heaps in Rust</a>
+<ul>
+<li><a href="ch05-heaps.html#531-how-tuples-compare">5.3.1 How tuples compare</a></li>
+<li><a href="ch05-heaps.html#532-a-min-heap-with-reverse">5.3.2 A min-heap with <code>Reverse</code></a></li>
+</ul>
+</li>
+<li><a href="ch05-heaps.html#54-the-k-most-frequent-numbers">5.4 The k most frequent numbers</a></li>
+<li><a href="ch05-heaps.html#55-the-k-most-frequent-words-with-a-heap-of-size-k">5.5 The k most frequent words, with a heap of size k</a>
+<ul>
+<li><a href="ch05-heaps.html#551-the-complete-program">5.5.1 The complete program</a></li>
+</ul>
+</li>
+<li><a href="ch05-heaps.html#56-the-median-of-a-stream">5.6 The median of a stream</a>
+<ul>
+<li><a href="ch05-heaps.html#561-adding-a-number">5.6.1 Adding a number</a></li>
+<li><a href="ch05-heaps.html#562-reading-the-median">5.6.2 Reading the median</a></li>
+<li><a href="ch05-heaps.html#563-the-complete-program">5.6.3 The complete program</a></li>
+</ul>
+</li>
+<li><a href="ch05-heaps.html#summary">Summary</a></li>
+<li><a href="ch05-heaps.html#exercises">Exercises</a></li>
+</ul>
+</li>
+<li>
+<p><strong><a href="ch06-dynamic-programming.html">Recursion and dynamic programming</a></strong></p>
+<ul>
+<li><a href="ch06-dynamic-programming.html#61-making-change-with-the-fewest-coins">6.1 Making change with the fewest coins</a>
+<ul>
+<li><a href="ch06-dynamic-programming.html#611-why-the-obvious-approach-fails">6.1.1 Why the obvious approach fails</a></li>
+<li><a href="ch06-dynamic-programming.html#612-the-subproblem">6.1.2 The subproblem</a></li>
+<li><a href="ch06-dynamic-programming.html#613-the-code">6.1.3 The code</a></li>
+</ul>
+</li>
+<li><a href="ch06-dynamic-programming.html#62-listing-every-subset">6.2 Listing every subset</a></li>
+<li><a href="ch06-dynamic-programming.html#63-the-longest-increasing-run-inside-a-list">6.3 The longest increasing run inside a list</a></li>
+<li><a href="ch06-dynamic-programming.html#64-choosing-jobs-that-do-not-overlap">6.4 Choosing jobs that do not overlap</a>
+<ul>
+<li><a href="ch06-dynamic-programming.html#641-building-the-subproblem">6.4.1 Building the subproblem</a></li>
+<li><a href="ch06-dynamic-programming.html#642-the-code">6.4.2 The code</a></li>
+</ul>
+</li>
+<li><a href="ch06-dynamic-programming.html#65-jobs-that-also-need-memory-and-cores">6.5 Jobs that also need memory and cores</a>
+<ul>
+<li><a href="ch06-dynamic-programming.html#651-the-fit-test-and-the-same-table">6.5.1 The fit test, and the same table</a></li>
+<li><a href="ch06-dynamic-programming.html#652-the-code">6.5.2 The code</a></li>
+<li><a href="ch06-dynamic-programming.html#653-two-tables">6.5.3 Two tables</a></li>
+<li><a href="ch06-dynamic-programming.html#654-what-one-gpu-at-a-time-costs">6.5.4 What one GPU at a time costs</a></li>
+</ul>
+</li>
+<li><a href="ch06-dynamic-programming.html#summary">Summary</a></li>
+<li><a href="ch06-dynamic-programming.html#exercises">Exercises</a></li>
+</ul>
+</li>
+</ul>
+<h2 id="part-3-modeling-data-and-ownership"><a class="header" href="#part-3-modeling-data-and-ownership">Part 3: Modeling data and ownership</a></h2>
+<ul>
+<li>
+<p><strong><a href="ch07-types.html">Types that refuse bad input</a></strong></p>
+<ul>
+<li><a href="ch07-types.html#71-traits">7.1 Traits</a></li>
+<li><a href="ch07-types.html#72-a-gpu-count-that-is-always-valid">7.2 A GPU count that is always valid</a></li>
+<li><a href="ch07-types.html#73-an-error-that-says-what-went-wrong">7.3 An error that says what went wrong</a></li>
+<li><a href="ch07-types.html#74-converting-with-from-and-tryfrom">7.4 Converting with <code>From</code> and <code>TryFrom</code></a></li>
+<li><a href="ch07-types.html#75-commands-an-enum-that-carries-data">7.5 Commands: an enum that carries data</a>
+<ul>
+<li><a href="ch07-types.html#751-why-an-enum">7.5.1 Why an enum</a></li>
+<li><a href="ch07-types.html#752-the-parsers-errors-and-helper">7.5.2 The parser’s errors and helper</a></li>
+<li><a href="ch07-types.html#753-parsing-a-line-of-text">7.5.3 Parsing a line of text</a></li>
+<li><a href="ch07-types.html#754-adding-up-without-an-index">7.5.4 Adding up without an index</a></li>
+<li><a href="ch07-types.html#755-the-complete-file">7.5.5 The complete file</a></li>
+</ul>
+</li>
+<li><a href="ch07-types.html#76-the-states-of-a-workload">7.6 The states of a workload</a></li>
+<li><a href="ch07-types.html#77-errors-from-a-server">7.7 Errors from a server</a></li>
+<li><a href="ch07-types.html#summary">Summary</a></li>
+<li><a href="ch07-types.html#exercises">Exercises</a></li>
+</ul>
+</li>
+<li>
+<p><strong><a href="ch08-pointers.html">Ownership and the pointer types</a></strong></p>
+<ul>
+<li><a href="ch08-pointers.html#81-ownership-and-moves">8.1 Ownership and moves</a></li>
+<li><a href="ch08-pointers.html#82-box-one-owner-on-the-heap">8.2 <code>Box</code>: one owner, on the heap</a></li>
+<li><a href="ch08-pointers.html#83-rc-several-owners-counted">8.3 <code>Rc</code>: several owners, counted</a></li>
+<li><a href="ch08-pointers.html#84-refcell-changing-a-shared-value-checked-at-run-time">8.4 <code>RefCell</code>: changing a shared value, checked at run time</a></li>
+<li><a href="ch08-pointers.html#85-weak-a-pointer-that-does-not-own">8.5 <code>Weak</code>: a pointer that does not own</a></li>
+<li><a href="ch08-pointers.html#86-arc-and-mutex-sharing-across-threads">8.6 <code>Arc</code> and <code>Mutex</code>: sharing across threads</a></li>
+<li><a href="ch08-pointers.html#87-cow-borrowing-when-possible">8.7 <code>Cow</code>: borrowing when possible</a></li>
+<li><a href="ch08-pointers.html#88-the-complete-file">8.8 The complete file</a></li>
+<li><a href="ch08-pointers.html#summary">Summary</a></li>
+<li><a href="ch08-pointers.html#exercises">Exercises</a></li>
+</ul>
+</li>
+<li>
+<p><strong><a href="ch09-linked-lists.html">Linked lists</a></strong></p>
+<ul>
+<li><a href="ch09-linked-lists.html#91-what-a-linked-list-is">9.1 What a linked list is</a></li>
+<li><a href="ch09-linked-lists.html#92-moving-nodes-take-and-replace">9.2 Moving nodes: <code>take</code> and <code>replace</code></a></li>
+<li><a href="ch09-linked-lists.html#93-reversing-a-list">9.3 Reversing a list</a></li>
+<li><a href="ch09-linked-lists.html#94-removing-nodes-with-a-cursor">9.4 Removing nodes with a cursor</a></li>
+<li><a href="ch09-linked-lists.html#95-a-list-written-as-an-enum">9.5 A list written as an enum</a></li>
+<li><a href="ch09-linked-lists.html#96-four-node-layouts-measured">9.6 Four node layouts, measured</a>
+<ul>
+<li><a href="ch09-linked-lists.html#961-one-trait-for-four-lists">9.6.1 One trait for four lists</a></li>
+<li><a href="ch09-linked-lists.html#962-what-each-node-costs-in-memory">9.6.2 What each node costs in memory</a></li>
+</ul>
+</li>
+<li><a href="ch09-linked-lists.html#97-when-dropping-a-list-crashes">9.7 When dropping a list crashes</a></li>
+<li><a href="ch09-linked-lists.html#98-the-benchmark">9.8 The benchmark</a></li>
+<li><a href="ch09-linked-lists.html#99-a-doubly-linked-list">9.9 A doubly linked list</a>
+<ul>
+<li><a href="ch09-linked-lists.html#991-the-types">9.9.1 The types</a></li>
+<li><a href="ch09-linked-lists.html#992-adding-at-either-end">9.9.2 Adding at either end</a></li>
+<li><a href="ch09-linked-lists.html#993-removing-from-either-end">9.9.3 Removing from either end</a></li>
+<li><a href="ch09-linked-lists.html#994-looking-without-removing">9.9.4 Looking without removing</a></li>
+<li><a href="ch09-linked-lists.html#995-running-it">9.9.5 Running it</a></li>
+</ul>
+</li>
+<li><a href="ch09-linked-lists.html#910-the-complete-files">9.10 The complete files</a></li>
+<li><a href="ch09-linked-lists.html#summary">Summary</a></li>
+<li><a href="ch09-linked-lists.html#exercises">Exercises</a></li>
+</ul>
+</li>
+<li>
+<p><strong><a href="ch10-merge-k.html">Merging k sorted lists</a></strong></p>
+<ul>
+<li><a href="ch10-merge-k.html#101-merging-two-sorted-lists">10.1 Merging two sorted lists</a></li>
+<li><a href="ch10-merge-k.html#102-three-strategies-for-k-lists">10.2 Three strategies for k lists</a></li>
+<li><a href="ch10-merge-k.html#103-merging-with-the-lists-swapped-by-value">10.3 Merging with the lists swapped by value</a></li>
+<li><a href="ch10-merge-k.html#104-borrowing-two-elements-of-one-vec">10.4 Borrowing two elements of one <code>Vec</code></a></li>
+<li><a href="ch10-merge-k.html#105-a-heap-of-list-heads">10.5 A heap of list heads</a></li>
+<li><a href="ch10-merge-k.html#106-recursion-on-halves">10.6 Recursion on halves</a></li>
+<li><a href="ch10-merge-k.html#107-the-three-programs-side-by-side">10.7 The three programs side by side</a></li>
+<li><a href="ch10-merge-k.html#108-the-complete-files">10.8 The complete files</a></li>
+<li><a href="ch10-merge-k.html#summary">Summary</a></li>
+<li><a href="ch10-merge-k.html#exercises">Exercises</a></li>
+</ul>
+</li>
+<li>
+<p><strong><a href="ch11-trees.html">Trees and tries</a></strong></p>
+<ul>
+<li><a href="ch11-trees.html#111-tree-vocabulary">11.1 Tree vocabulary</a></li>
+<li><a href="ch11-trees.html#112-a-binary-tree-as-an-enum">11.2 A binary tree as an enum</a>
+<ul>
+<li><a href="ch11-trees.html#1121-depth-and-inversion">11.2.1 Depth and inversion</a></li>
+<li><a href="ch11-trees.html#1122-the-three-depth-first-orders">11.2.2 The three depth-first orders</a></li>
+</ul>
+</li>
+<li><a href="ch11-trees.html#113-binary-search-trees">11.3 Binary search trees</a>
+<ul>
+<li><a href="ch11-trees.html#1131-the-type-insertion-and-search">11.3.1 The type, insertion, and search</a></li>
+<li><a href="ch11-trees.html#1132-removal">11.3.2 Removal</a></li>
+<li><a href="ch11-trees.html#1133-range-queries">11.3.3 Range queries</a></li>
+<li><a href="ch11-trees.html#1134-a-second-bst-with-an-iterative-minimum">11.3.4 A second BST, with an iterative minimum</a></li>
+</ul>
+</li>
+<li><a href="ch11-trees.html#114-trees-with-any-number-of-children">11.4 Trees with any number of children</a>
+<ul>
+<li><a href="ch11-trees.html#1141-depth-first-and-breadth-first">11.4.1 Depth first and breadth first</a></li>
+<li><a href="ch11-trees.html#1142-grouping-values-by-level">11.4.2 Grouping values by level</a></li>
+</ul>
+</li>
+<li><a href="ch11-trees.html#115-saving-a-tree-to-a-file-and-loading-it-back">11.5 Saving a tree to a file and loading it back</a></li>
+<li><a href="ch11-trees.html#116-a-trie-for-finding-words-by-prefix">11.6 A trie for finding words by prefix</a></li>
+<li><a href="ch11-trees.html#summary">Summary</a></li>
+<li><a href="ch11-trees.html#exercises">Exercises</a></li>
+</ul>
+</li>
+<li>
+<p><strong><a href="ch12-graphs.html">Graphs</a></strong></p>
+<ul>
+<li><a href="ch12-graphs.html#121-graph-vocabulary">12.1 Graph vocabulary</a></li>
+<li><a href="ch12-graphs.html#122-storing-a-graph">12.2 Storing a graph</a></li>
+<li><a href="ch12-graphs.html#123-breadth-first-search">12.3 Breadth-first search</a>
+<ul>
+<li><a href="ch12-graphs.html#1231-bfs-with-numbered-nodes">12.3.1 BFS with numbered nodes</a></li>
+<li><a href="ch12-graphs.html#1232-bfs-with-any-node-type">12.3.2 BFS with any node type</a></li>
+</ul>
+</li>
+<li><a href="ch12-graphs.html#124-depth-first-search">12.4 Depth-first search</a>
+<ul>
+<li><a href="ch12-graphs.html#1241-a-stack-of-references">12.4.1 A stack of references</a></li>
+</ul>
+</li>
+<li><a href="ch12-graphs.html#125-a-graph-with-named-nodes">12.5 A graph with named nodes</a></li>
+<li><a href="ch12-graphs.html#126-finding-cycles">12.6 Finding cycles</a>
+<ul>
+<li><a href="ch12-graphs.html#1261-a-graph-that-owns-its-node-data">12.6.1 A graph that owns its node data</a></li>
+<li><a href="ch12-graphs.html#1262-the-same-graph-with-a-hashmap">12.6.2 The same graph with a HashMap</a></li>
+</ul>
+</li>
+<li><a href="ch12-graphs.html#127-a-grid-is-a-graph">12.7 A grid is a graph</a></li>
+<li><a href="ch12-graphs.html#128-putting-tasks-in-order">12.8 Putting tasks in order</a>
+<ul>
+<li><a href="ch12-graphs.html#1281-kahns-algorithm-on-numbered-nodes">12.8.1 Kahn’s algorithm on numbered nodes</a></li>
+<li><a href="ch12-graphs.html#1282-kahns-algorithm-on-named-courses">12.8.2 Kahn’s algorithm on named courses</a></li>
+</ul>
+</li>
+<li><a href="ch12-graphs.html#129-shortest-paths">12.9 Shortest paths</a>
+<ul>
+<li><a href="ch12-graphs.html#1291-how-dijkstras-algorithm-works">12.9.1 How Dijkstra’s algorithm works</a></li>
+<li><a href="ch12-graphs.html#1292-two-versions-side-by-side">12.9.2 Two versions side by side</a></li>
+<li><a href="ch12-graphs.html#1293-edges-as-a-struct">12.9.3 Edges as a struct</a></li>
+</ul>
+</li>
+<li><a href="ch12-graphs.html#1210-connecting-every-node-at-the-lowest-cost">12.10 Connecting every node at the lowest cost</a>
+<ul>
+<li><a href="ch12-graphs.html#12101-union-find">12.10.1 Union-find</a></li>
+<li><a href="ch12-graphs.html#12102-kruskals-algorithm">12.10.2 Kruskal’s algorithm</a></li>
+</ul>
+</li>
+<li><a href="ch12-graphs.html#1211-the-complete-files">12.11 The complete files</a></li>
+<li><a href="ch12-graphs.html#summary">Summary</a></li>
+<li><a href="ch12-graphs.html#exercises">Exercises</a></li>
+</ul>
+</li>
+</ul>
+<h2 id="part-4-memory-and-the-machine"><a class="header" href="#part-4-memory-and-the-machine">Part 4: Memory and the machine</a></h2>
+<ul>
+<li>
+<p><strong><a href="ch13-lru-cache.html">An LRU cache</a></strong></p>
+<ul>
+<li><a href="ch13-lru-cache.html#131-what-an-lru-cache-does">13.1 What an LRU cache does</a>
+<ul>
+<li><a href="ch13-lru-cache.html#1311-what-a-cache-saves">13.1.1 What a cache saves</a></li>
+</ul>
+</li>
+<li><a href="ch13-lru-cache.html#132-version-1-stamped-events-in-a-queue">13.2 Version 1: stamped events in a queue</a></li>
+<li><a href="ch13-lru-cache.html#133-version-2-a-linked-list-inside-a-vec">13.3 Version 2: a linked list inside a <code>Vec</code></a>
+<ul>
+<li><a href="ch13-lru-cache.html#1331-moving-a-node-to-the-front">13.3.1 Moving a node to the front</a></li>
+<li><a href="ch13-lru-cache.html#1332-get-and-put">13.3.2 <code>get</code> and <code>put</code></a></li>
+</ul>
+</li>
+<li><a href="ch13-lru-cache.html#134-version-3-one-operation-per-method">13.4 Version 3: one operation per method</a></li>
+<li><a href="ch13-lru-cache.html#135-version-4-measuring-the-arena-against-rc">13.5 Version 4: measuring the arena against <code>Rc&lt;RefCell&lt;_&gt;&gt;</code></a>
+<ul>
+<li><a href="ch13-lru-cache.html#1351-one-trait-two-caches">13.5.1 One trait, two caches</a></li>
+<li><a href="ch13-lru-cache.html#1352-the-rc-list">13.5.2 The <code>Rc&lt;RefCell&lt;_&gt;&gt;</code> list</a></li>
+<li><a href="ch13-lru-cache.html#1353-the-benchmark">13.5.3 The benchmark</a></li>
+</ul>
+</li>
+<li><a href="ch13-lru-cache.html#136-the-complete-files">13.6 The complete files</a></li>
+<li><a href="ch13-lru-cache.html#summary">Summary</a></li>
+<li><a href="ch13-lru-cache.html#exercises">Exercises</a></li>
+</ul>
+</li>
+<li>
+<p><strong><a href="ch14-sharding.html">Shards and consistent hashing</a></strong></p>
+<ul>
+<li><a href="ch14-sharding.html#141-a-map-split-into-shards">14.1 A map split into shards</a>
+<ul>
+<li><a href="ch14-sharding.html#1411-the-type">14.1.1 The type</a></li>
+<li><a href="ch14-sharding.html#1412-picking-a-shard-with-a-mask">14.1.2 Picking a shard with a mask</a></li>
+<li><a href="ch14-sharding.html#1413-each-method-locks-one-shard">14.1.3 Each method locks one shard</a></li>
+<li><a href="ch14-sharding.html#1414-reading-under-the-lock-with-a-closure">14.1.4 Reading under the lock with a closure</a></li>
+<li><a href="ch14-sharding.html#1415-operations-on-every-shard">14.1.5 Operations on every shard</a></li>
+<li><a href="ch14-sharding.html#1416-the-complete-file">14.1.6 The complete file</a></li>
+</ul>
+</li>
+<li><a href="ch14-sharding.html#142-spreading-keys-across-machines">14.2 Spreading keys across machines</a>
+<ul>
+<li><a href="ch14-sharding.html#1421-the-problem-with-hash-n">14.2.1 The problem with <code>hash % N</code></a></li>
+<li><a href="ch14-sharding.html#1422-the-ring">14.2.2 The ring</a></li>
+<li><a href="ch14-sharding.html#1423-the-ring-as-a-sorted-vec">14.2.3 The ring as a sorted <code>Vec</code></a></li>
+<li><a href="ch14-sharding.html#1424-finding-a-keys-server">14.2.4 Finding a key’s server</a></li>
+<li><a href="ch14-sharding.html#1425-the-complete-file">14.2.5 The complete file</a></li>
+</ul>
+</li>
+<li><a href="ch14-sharding.html#summary">Summary</a></li>
+<li><a href="ch14-sharding.html#exercises">Exercises</a></li>
+</ul>
+</li>
+<li>
+<p><strong><a href="ch15-memory-os.html">Memory, CPU caches, and the operating system</a></strong></p>
+<ul>
+<li><a href="ch15-memory-os.html#151-how-far-away-is-memory">15.1 How far away is memory?</a></li>
+<li><a href="ch15-memory-os.html#152-a-bump-allocator">15.2 A bump allocator</a>
+<ul>
+<li><a href="ch15-memory-os.html#1521-alignment">15.2.1 Alignment</a></li>
+<li><a href="ch15-memory-os.html#1522-the-code">15.2.2 The code</a></li>
+</ul>
+</li>
+<li><a href="ch15-memory-os.html#153-reading-in-order-and-reading-scattered">15.3 Reading in order, and reading scattered</a>
+<ul>
+<li><a href="ch15-memory-os.html#1531-the-program">15.3.1 The program</a></li>
+<li><a href="ch15-memory-os.html#1532-what-the-strided-loop-measured">15.3.2 What the strided loop measured</a></li>
+</ul>
+</li>
+<li><a href="ch15-memory-os.html#154-false-sharing">15.4 False sharing</a>
+<ul>
+<li><a href="ch15-memory-os.html#1541-four-counters">15.4.1 Four counters</a></li>
+<li><a href="ch15-memory-os.html#1542-two-counters">15.4.2 Two counters</a></li>
+</ul>
+</li>
+<li><a href="ch15-memory-os.html#155-pages-and-page-faults">15.5 Pages and page faults</a></li>
+<li><a href="ch15-memory-os.html#156-taking-turns-on-the-cpu">15.6 Taking turns on the CPU</a></li>
+<li><a href="ch15-memory-os.html#157-the-cost-of-a-system-call">15.7 The cost of a system call</a>
+<ul>
+<li><a href="ch15-memory-os.html#1571-calling-c-from-rust">15.7.1 Calling C from Rust</a></li>
+<li><a href="ch15-memory-os.html#1572-what-the-31-ns-measured">15.7.2 What the 3.1 ns measured</a></li>
+</ul>
+</li>
+<li><a href="ch15-memory-os.html#summary">Summary</a></li>
+<li><a href="ch15-memory-os.html#exercises">Exercises</a></li>
+</ul>
+</li>
+</ul>
+<h2 id="part-5-concurrency"><a class="header" href="#part-5-concurrency">Part 5: Concurrency</a></h2>
+<ul>
+<li>
+<p><strong><a href="ch16-threads-locks.html">Threads, atomics, and locks</a></strong></p>
+<ul>
+<li><a href="ch16-threads-locks.html#161-starting-threads">16.1 Starting threads</a>
+<ul>
+<li><a href="ch16-threads-locks.html#1611-what-a-thread-is">16.1.1 What a thread is</a></li>
+<li><a href="ch16-threads-locks.html#1612-spawn-and-join">16.1.2 <code>spawn</code> and <code>join</code></a></li>
+<li><a href="ch16-threads-locks.html#1613-scoped-threads">16.1.3 Scoped threads</a></li>
+<li><a href="ch16-threads-locks.html#1614-send-and-sync">16.1.4 <code>Send</code> and <code>Sync</code></a></li>
+</ul>
+</li>
+<li><a href="ch16-threads-locks.html#162-atomic-integers">16.2 Atomic integers</a>
+<ul>
+<li><a href="ch16-threads-locks.html#1621-the-lost-update">16.2.1 The lost update</a></li>
+<li><a href="ch16-threads-locks.html#1622-a-counter-without-a-lock">16.2.2 A counter without a lock</a></li>
+<li><a href="ch16-threads-locks.html#1623-memory-ordering">16.2.3 Memory ordering</a></li>
+<li><a href="ch16-threads-locks.html#1624-initializing-a-value-once">16.2.4 Initializing a value once</a></li>
+</ul>
+</li>
+<li><a href="ch16-threads-locks.html#163-how-much-faster-do-threads-make-it">16.3 How much faster do threads make it?</a>
+<ul>
+<li><a href="ch16-threads-locks.html#1631-a-billion-elements">16.3.1 A billion elements</a></li>
+<li><a href="ch16-threads-locks.html#1632-amdahls-law">16.3.2 Amdahl’s law</a></li>
+</ul>
+</li>
+<li><a href="ch16-threads-locks.html#164-a-spin-lock">16.4 A spin lock</a>
+<ul>
+<li><a href="ch16-threads-locks.html#1641-the-type">16.4.1 The type</a></li>
+<li><a href="ch16-threads-locks.html#1642-taking-and-releasing-the-lock">16.4.2 Taking and releasing the lock</a></li>
+<li><a href="ch16-threads-locks.html#1643-acquire-and-release">16.4.3 Acquire and release</a></li>
+<li><a href="ch16-threads-locks.html#1644-the-guard">16.4.4 The guard</a></li>
+</ul>
+</li>
+<li><a href="ch16-threads-locks.html#165-a-counting-semaphore">16.5 A counting semaphore</a>
+<ul>
+<li><a href="ch16-threads-locks.html#1651-waiting-without-spinning">16.5.1 Waiting without spinning</a></li>
+</ul>
+</li>
+<li><a href="ch16-threads-locks.html#166-when-a-lock-holder-panics">16.6 When a lock holder panics</a></li>
+<li><a href="ch16-threads-locks.html#167-deadlock">16.7 Deadlock</a></li>
+<li><a href="ch16-threads-locks.html#summary">Summary</a></li>
+<li><a href="ch16-threads-locks.html#exercises">Exercises</a></li>
+</ul>
+</li>
+<li>
+<p><strong><a href="ch17-queues.html">Queues and bounded buffers</a></strong></p>
+<ul>
+<li><a href="ch17-queues.html#171-why-a-queue-needs-a-limit">17.1 Why a queue needs a limit</a></li>
+<li><a href="ch17-queues.html#172-a-shared-queue">17.2 A shared queue</a></li>
+<li><a href="ch17-queues.html#173-a-bounded-buffer">17.3 A bounded buffer</a></li>
+<li><a href="ch17-queues.html#174-when-the-lock-is-poisoned">17.4 When the lock is poisoned</a>
+<ul>
+<li><a href="ch17-queues.html#1741-a-custom-error-type">17.4.1 A custom error type</a></li>
+<li><a href="ch17-queues.html#1742-a-boxed-error">17.4.2 A boxed error</a></li>
+</ul>
+</li>
+<li><a href="ch17-queues.html#175-many-producers-and-consumers-with-wait_while">17.5 Many producers and consumers with <code>wait_while</code></a></li>
+<li><a href="ch17-queues.html#176-closing-a-queue">17.6 Closing a queue</a></li>
+<li><a href="ch17-queues.html#177-a-ring-buffer-without-a-lock">17.7 A ring buffer without a lock</a>
+<ul>
+<li><a href="ch17-queues.html#1771-the-idea">17.7.1 The idea</a></li>
+<li><a href="ch17-queues.html#1772-the-type">17.7.2 The type</a></li>
+<li><a href="ch17-queues.html#1773-push-and-pop">17.7.3 Push and pop</a></li>
+</ul>
+</li>
+<li><a href="ch17-queues.html#178-the-complete-files">17.8 The complete files</a></li>
+<li><a href="ch17-queues.html#summary">Summary</a></li>
+<li><a href="ch17-queues.html#exercises">Exercises</a></li>
+</ul>
+</li>
+<li>
+<p><strong><a href="ch18-thread-pools.html">Thread pools</a></strong></p>
+<ul>
+<li><a href="ch18-thread-pools.html#181-the-parts-of-a-pool">18.1 The parts of a pool</a></li>
+<li><a href="ch18-thread-pools.html#182-version-1-and-a-measurable-bug">18.2 Version 1, and a measurable bug</a></li>
+<li><a href="ch18-thread-pools.html#183-version-2-release-the-lock-before-the-job">18.3 Version 2: release the lock before the job</a></li>
+<li><a href="ch18-thread-pools.html#184-version-3-errors-and-shutdown-on-drop">18.4 Version 3: errors, and shutdown on drop</a></li>
+<li><a href="ch18-thread-pools.html#185-version-4-surviving-a-panicking-job">18.5 Version 4: surviving a panicking job</a></li>
+<li><a href="ch18-thread-pools.html#186-shorter-pools">18.6 Shorter pools</a>
+<ul>
+<li><a href="ch18-thread-pools.html#1861-shutdown-in-drop-compactly">18.6.1 Shutdown in <code>Drop</code>, compactly</a></li>
+<li><a href="ch18-thread-pools.html#1862-a-bounded-queue-and-results">18.6.2 A bounded queue and results</a></li>
+<li><a href="ch18-thread-pools.html#1863-many-producers">18.6.3 Many producers</a></li>
+</ul>
+</li>
+<li><a href="ch18-thread-pools.html#187-a-parallel-map-that-keeps-order">18.7 A parallel map that keeps order</a></li>
+<li><a href="ch18-thread-pools.html#188-the-versions-compared">18.8 The versions compared</a></li>
+<li><a href="ch18-thread-pools.html#summary">Summary</a></li>
+<li><a href="ch18-thread-pools.html#exercises">Exercises</a></li>
+</ul>
+</li>
+<li>
+<p><strong><a href="ch19-reliability.html">Rate limits, retries, and idempotency</a></strong></p>
+<ul>
+<li><a href="ch19-reliability.html#191-a-token-bucket">19.1 A token bucket</a>
+<ul>
+<li><a href="ch19-reliability.html#1911-the-bucket-behind-a-lock">19.1.1 The bucket behind a lock</a></li>
+<li><a href="ch19-reliability.html#1912-the-bucket-with-atomics">19.1.2 The bucket with atomics</a></li>
+<li><a href="ch19-reliability.html#1913-what-happens-with-many-threads">19.1.3 What happens with many threads</a></li>
+</ul>
+</li>
+<li><a href="ch19-reliability.html#192-retrying-failed-calls">19.2 Retrying failed calls</a>
+<ul>
+<li><a href="ch19-reliability.html#1921-which-errors-to-retry">19.2.1 Which errors to retry</a></li>
+<li><a href="ch19-reliability.html#1922-how-long-to-wait">19.2.2 How long to wait</a></li>
+<li><a href="ch19-reliability.html#1923-the-retry-loop">19.2.3 The retry loop</a></li>
+</ul>
+</li>
+<li><a href="ch19-reliability.html#193-idempotency-keys">19.3 Idempotency keys</a></li>
+<li><a href="ch19-reliability.html#194-one-execution-per-key-single-flight">19.4 One execution per key: single flight</a>
+<ul>
+<li><a href="ch19-reliability.html#1941-the-state">19.4.1 The state</a></li>
+<li><a href="ch19-reliability.html#1942-the-claim">19.4.2 The claim</a></li>
+<li><a href="ch19-reliability.html#1943-execute">19.4.3 <code>execute</code></a></li>
+<li><a href="ch19-reliability.html#1944-measured">19.4.4 Measured</a></li>
+</ul>
+</li>
+<li><a href="ch19-reliability.html#summary">Summary</a></li>
+<li><a href="ch19-reliability.html#exercises">Exercises</a></li>
+</ul>
+</li>
+</ul>
+<h2 id="part-6-the-network"><a class="header" href="#part-6-the-network">Part 6: The network</a></h2>
+<ul>
+<li>
+<p><strong><a href="ch20-sockets.html">Addresses, windows, and echo servers</a></strong></p>
+<ul>
+<li><a href="ch20-sockets.html#201-ipv4-addresses">20.1 IPv4 addresses</a></li>
+<li><a href="ch20-sockets.html#202-how-much-data-can-be-in-flight">20.2 How much data can be in flight</a></li>
+<li><a href="ch20-sockets.html#203-a-thread-per-connection-echo-server">20.3 A thread-per-connection echo server</a></li>
+<li><a href="ch20-sockets.html#204-an-epoll-echo-server">20.4 An epoll echo server</a>
+<ul>
+<li><a href="ch20-sockets.html#2041-setting-up-the-listener-by-hand">20.4.1 Setting up the listener by hand</a></li>
+<li><a href="ch20-sockets.html#2042-the-loop">20.4.2 The loop</a></li>
+<li><a href="ch20-sockets.html#2043-what-a-production-server-would-change">20.4.3 What a production server would change</a></li>
+</ul>
+</li>
+<li><a href="ch20-sockets.html#205-the-complete-programs">20.5 The complete programs</a></li>
+<li><a href="ch20-sockets.html#206-questions-that-come-up">20.6 Questions that come up</a></li>
+</ul>
+</li>
+<li>
+<p><strong><a href="ch21-http.html">Parsing and serving HTTP/1.1</a></strong></p>
+<ul>
+<li><a href="ch21-http.html#211-requests-and-responses-on-the-wire">21.1 Requests and responses on the wire</a>
+<ul>
+<li><a href="ch21-http.html#2111-where-one-request-ends">21.1.1 Where one request ends</a></li>
+<li><a href="ch21-http.html#2112-the-parts-of-the-server">21.1.2 The parts of the server</a></li>
+</ul>
+</li>
+<li><a href="ch21-http.html#212-the-parser">21.2 The parser</a>
+<ul>
+<li><a href="ch21-http.html#2121-types-first">21.2.1 Types first</a></li>
+<li><a href="ch21-http.html#2122-the-head-of-the-request">21.2.2 The head of the request</a></li>
+<li><a href="ch21-http.html#2123-body-framing-and-request-smuggling">21.2.3 Body framing and request smuggling</a></li>
+<li><a href="ch21-http.html#2124-chunked-bodies">21.2.4 Chunked bodies</a></li>
+</ul>
+</li>
+<li><a href="ch21-http.html#213-a-small-rest-server">21.3 A small REST server</a>
+<ul>
+<li><a href="ch21-http.html#2131-routing-as-a-pure-function">21.3.1 Routing as a pure function</a></li>
+<li><a href="ch21-http.html#2132-the-connection-loop">21.3.2 The connection loop</a></li>
+<li><a href="ch21-http.html#2133-reading-the-server-against-the-rfc">21.3.3 Reading the server against the RFC</a></li>
+</ul>
+</li>
+<li><a href="ch21-http.html#214-the-complete-programs">21.4 The complete programs</a></li>
+<li><a href="ch21-http.html#215-questions-that-come-up">21.5 Questions that come up</a></li>
+</ul>
+</li>
+<li>
+<p><strong><a href="ch22-async.html">Async Rust from the executor up</a></strong></p>
+<ul>
+<li><a href="ch22-async.html#221-why-a-thread-per-connection-does-not-scale">22.1 Why a thread per connection does not scale</a></li>
+<li><a href="ch22-async.html#222-the-contract">22.2 The contract</a></li>
+<li><a href="ch22-async.html#223-the-smallest-executor">22.3 The smallest executor</a></li>
+<li><a href="ch22-async.html#224-two-futures-written-by-hand">22.4 Two futures written by hand</a>
+<ul>
+<li><a href="ch22-async.html#2241-a-future-that-yields-to-itself">22.4.1 A future that yields to itself</a></li>
+<li><a href="ch22-async.html#2242-a-future-that-waits-on-a-timer">22.4.2 A future that waits on a timer</a></li>
+</ul>
+</li>
+<li><a href="ch22-async.html#225-waking-is-scheduling">22.5 Waking is scheduling</a></li>
+<li><a href="ch22-async.html#226-what-async-compiles-to-and-why-pin">22.6 What <code>async</code> compiles to, and why <code>Pin</code></a></li>
+<li><a href="ch22-async.html#227-two-http-clients-with-caching-retries-and-idempotency">22.7 Two HTTP clients with caching, retries, and idempotency</a>
+<ul>
+<li><a href="ch22-async.html#2271-a-blocking-client-over-tcpstream">22.7.1 A blocking client over <code>TcpStream</code></a></li>
+<li><a href="ch22-async.html#2272-an-async-client-with-reqwest">22.7.2 An async client with <code>reqwest</code></a></li>
+<li><a href="ch22-async.html#2273-the-two-clients-side-by-side">22.7.3 The two clients side by side</a></li>
+<li><a href="ch22-async.html#2274-where-the-merged-client-belongs">22.7.4 Where the merged client belongs</a></li>
+</ul>
+</li>
+<li><a href="ch22-async.html#228-questions-that-come-up">22.8 Questions that come up</a></li>
+<li><a href="ch22-async.html#summary">Summary</a></li>
+<li><a href="ch22-async.html#exercises">Exercises</a></li>
+</ul>
+</li>
+</ul>
+<h2 id="part-7-the-kernel-boundary"><a class="header" href="#part-7-the-kernel-boundary">Part 7: The kernel boundary</a></h2>
+<ul>
+<li>
+<p><strong><a href="ch23-mmap.html">Mapping files and copying less</a></strong></p>
+<ul>
+<li><a href="ch23-mmap.html#231-where-a-files-bytes-live">23.1 Where a file’s bytes live</a>
+<ul>
+<li><a href="ch23-mmap.html#2311-a-type-that-owns-a-mapping">23.1.1 A type that owns a mapping</a></li>
+<li><a href="ch23-mmap.html#2312-counting-the-faults">23.1.2 Counting the faults</a></li>
+</ul>
+</li>
+<li><a href="ch23-mmap.html#232-shared-and-private-mappings">23.2 Shared and private mappings</a>
+<ul>
+<li><a href="ch23-mmap.html#2321-what-a-mapping-cannot-report">23.2.1 What a mapping cannot report</a></li>
+<li><a href="ch23-mmap.html#2322-when-to-map-and-when-to-read">23.2.2 When to map, and when to read</a></li>
+</ul>
+</li>
+<li><a href="ch23-mmap.html#233-sending-a-file-to-a-socket">23.3 Sending a file to a socket</a>
+<ul>
+<li><a href="ch23-mmap.html#2331-measuring-both">23.3.1 Measuring both</a></li>
+<li><a href="ch23-mmap.html#2332-where-zero-copy-stops">23.3.2 Where zero-copy stops</a></li>
+</ul>
+</li>
+<li><a href="ch23-mmap.html#234-the-complete-programs">23.4 The complete programs</a></li>
+<li><a href="ch23-mmap.html#235-questions-that-come-up">23.5 Questions that come up</a></li>
+<li><a href="ch23-mmap.html#summary">Summary</a></li>
+<li><a href="ch23-mmap.html#exercises">Exercises</a></li>
+</ul>
+</li>
+<li>
+<p><strong><a href="ch24-fd-table.html">File descriptors, fork, and pipes</a></strong></p>
+<ul>
+<li><a href="ch24-fd-table.html#241-the-descriptor-table">24.1 The descriptor table</a>
+<ul>
+<li><a href="ch24-fd-table.html#2411-watching-the-numbers">24.1.1 Watching the numbers</a></li>
+</ul>
+</li>
+<li><a href="ch24-fd-table.html#242-fork-and-exec">24.2 <code>fork</code> and <code>exec</code></a>
+<ul>
+<li><a href="ch24-fd-table.html#2421-what-the-child-may-do-before-exec">24.2.1 What the child may do before <code>exec</code></a></li>
+</ul>
+</li>
+<li><a href="ch24-fd-table.html#243-pipes">24.3 Pipes</a>
+<ul>
+<li><a href="ch24-fd-table.html#2431-building-the-pipeline">24.3.1 Building the pipeline</a></li>
+<li><a href="ch24-fd-table.html#2432-a-write-end-left-open">24.3.2 A write end left open</a></li>
+</ul>
+</li>
+<li><a href="ch24-fd-table.html#244-close-on-exec">24.4 Close-on-exec</a></li>
+<li><a href="ch24-fd-table.html#245-the-complete-program">24.5 The complete program</a></li>
+<li><a href="ch24-fd-table.html#246-questions-that-come-up">24.6 Questions that come up</a></li>
+<li><a href="ch24-fd-table.html#summary">Summary</a></li>
+<li><a href="ch24-fd-table.html#exercises">Exercises</a></li>
+</ul>
+</li>
+<li>
+<p><strong><a href="ch25-epoll-edge.html">Edge-triggered epoll</a></strong></p>
+<ul>
+<li><a href="ch25-epoll-edge.html#251-levels-and-edges">25.1 Levels and edges</a></li>
+<li><a href="ch25-epoll-edge.html#252-three-handlers-measured">25.2 Three handlers, measured</a>
+<ul>
+<li><a href="ch25-epoll-edge.html#2521-why-use-edge-triggered-mode">25.2.1 Why use edge-triggered mode</a></li>
+</ul>
+</li>
+<li><a href="ch25-epoll-edge.html#253-several-threads-on-one-epoll-epolloneshot">25.3 Several threads on one epoll: <code>EPOLLONESHOT</code></a></li>
+<li><a href="ch25-epoll-edge.html#254-many-waiters-on-one-listener-epollexclusive">25.4 Many waiters on one listener: <code>EPOLLEXCLUSIVE</code></a></li>
+<li><a href="ch25-epoll-edge.html#255-the-complete-program">25.5 The complete program</a></li>
+<li><a href="ch25-epoll-edge.html#256-questions-that-come-up">25.6 Questions that come up</a></li>
+<li><a href="ch25-epoll-edge.html#summary">Summary</a></li>
+<li><a href="ch25-epoll-edge.html#exercises">Exercises</a></li>
+</ul>
+</li>
+</ul>
+<h2 id="part-8-under-the-locks"><a class="header" href="#part-8-under-the-locks">Part 8: Under the locks</a></h2>
+<ul>
+<li><strong><a href="ch26-futex.html">Futexes and memory ordering</a></strong>
+<ul>
+<li><a href="ch26-futex.html#261-sleeping-on-a-word">26.1 Sleeping on a word</a>
+<ul>
+<li><a href="ch26-futex.html#2611-why-the-kernel-checks-the-word">26.1.1 Why the kernel checks the word</a></li>
+</ul>
+</li>
+<li><a href="ch26-futex.html#262-a-mutex-with-three-states">26.2 A mutex with three states</a>
+<ul>
+<li><a href="ch26-futex.html#2621-the-system-calls">26.2.1 The system calls</a></li>
+<li><a href="ch26-futex.html#2622-lock-and-unlock">26.2.2 <code>lock</code> and <code>unlock</code></a></li>
+<li><a href="ch26-futex.html#2623-measured">26.2.3 Measured</a></li>
+</ul>
+</li>
+<li><a href="ch26-futex.html#263-what-the-hardware-reorders">26.3 What the hardware reorders</a>
+<ul>
+<li><a href="ch26-futex.html#2631-store-buffers">26.3.1 Store buffers</a></li>
+<li><a href="ch26-futex.html#2632-the-litmus-tests">26.3.2 The litmus tests</a></li>
+</ul>
+</li>
+<li><a href="ch26-futex.html#264-the-complete-programs">26.4 The complete programs</a></li>
+<li><a href="ch26-futex.html#265-questions-that-come-up">26.5 Questions that come up</a></li>
+<li><a href="ch26-futex.html#summary">Summary</a></li>
+<li><a href="ch26-futex.html#exercises">Exercises</a></li>
+</ul>
+</li>
+</ul>
+<h2 id="part-9-production-networking"><a class="header" href="#part-9-production-networking">Part 9: Production networking</a></h2>
+<ul>
+<li>
+<p><strong><a href="ch27-tcp-close.html">Closing TCP connections</a></strong></p>
+<ul>
+<li><a href="ch27-tcp-close.html#271-two-directions-two-fins">27.1 Two directions, two <code>FIN</code>s</a>
+<ul>
+<li><a href="ch27-tcp-close.html#2711-reading-the-states">27.1.1 Reading the states</a></li>
+<li><a href="ch27-tcp-close.html#2712-a-close-step-by-step">27.1.2 A close, step by step</a></li>
+</ul>
+</li>
+<li><a href="ch27-tcp-close.html#272-time_wait">27.2 <code>TIME_WAIT</code></a>
+<ul>
+<li><a href="ch27-tcp-close.html#2721-the-cost-ports-on-a-busy-client">27.2.1 The cost: ports on a busy client</a></li>
+<li><a href="ch27-tcp-close.html#2722-binding-a-port-with-connections-in-time_wait">27.2.2 Binding a port with connections in <code>TIME_WAIT</code></a></li>
+</ul>
+</li>
+<li><a href="ch27-tcp-close.html#273-close_wait">27.3 <code>CLOSE_WAIT</code></a></li>
+<li><a href="ch27-tcp-close.html#274-reset-instead-of-fin">27.4 Reset instead of <code>FIN</code></a></li>
+<li><a href="ch27-tcp-close.html#275-the-complete-program">27.5 The complete program</a></li>
+<li><a href="ch27-tcp-close.html#276-questions-that-come-up">27.6 Questions that come up</a></li>
+<li><a href="ch27-tcp-close.html#summary">Summary</a></li>
+<li><a href="ch27-tcp-close.html#exercises">Exercises</a></li>
+</ul>
+</li>
+<li>
+<p><strong><a href="ch28-tls.html">TLS and mutual TLS</a></strong></p>
+<ul>
+<li><a href="ch28-tls.html#281-certificates-and-trust">28.1 Certificates and trust</a>
+<ul>
+<li><a href="ch28-tls.html#2811-making-the-certificates">28.1.1 Making the certificates</a></li>
+</ul>
+</li>
+<li><a href="ch28-tls.html#282-the-tls-13-handshake">28.2 The TLS 1.3 handshake</a>
+<ul>
+<li><a href="ch28-tls.html#2821-watching-the-wire">28.2.1 Watching the wire</a></li>
+<li><a href="ch28-tls.html#2822-a-client-and-a-server">28.2.2 A client and a server</a></li>
+</ul>
+</li>
+<li><a href="ch28-tls.html#283-when-the-check-fails">28.3 When the check fails</a></li>
+<li><a href="ch28-tls.html#284-mutual-tls">28.4 Mutual TLS</a>
+<ul>
+<li><a href="ch28-tls.html#2841-what-tls-costs">28.4.1 What TLS costs</a></li>
+</ul>
+</li>
+<li><a href="ch28-tls.html#285-the-complete-program">28.5 The complete program</a></li>
+<li><a href="ch28-tls.html#286-questions-that-come-up">28.6 Questions that come up</a></li>
+<li><a href="ch28-tls.html#summary">Summary</a></li>
+<li><a href="ch28-tls.html#exercises">Exercises</a></li>
+</ul>
+</li>
+<li>
+<p><strong><a href="ch29-conn-pool.html">A client connection pool</a></strong></p>
+<ul>
+<li><a href="ch29-conn-pool.html#291-what-a-new-connection-costs">29.1 What a new connection costs</a></li>
+<li><a href="ch29-conn-pool.html#292-the-pools-state">29.2 The pool’s state</a></li>
+<li><a href="ch29-conn-pool.html#293-borrowing-a-connection">29.3 Borrowing a connection</a></li>
+<li><a href="ch29-conn-pool.html#294-giving-it-back">29.4 Giving it back</a></li>
+<li><a href="ch29-conn-pool.html#295-stale-connections">29.5 Stale connections</a></li>
+<li><a href="ch29-conn-pool.html#296-measured">29.6 Measured</a></li>
+<li><a href="ch29-conn-pool.html#297-the-complete-program">29.7 The complete program</a></li>
+<li><a href="ch29-conn-pool.html#298-questions-that-come-up">29.8 Questions that come up</a></li>
+<li><a href="ch29-conn-pool.html#summary">Summary</a></li>
+<li><a href="ch29-conn-pool.html#exercises">Exercises</a></li>
+</ul>
+</li>
+</ul>
+<h2 id="part-10-compact-implementations"><a class="header" href="#part-10-compact-implementations">Part 10: Compact implementations</a></h2>
+<ul>
+<li>
+<p><strong><a href="ch30-drills.html">Compact implementations</a></strong></p>
+<ul>
+<li><a href="ch30-drills.html#301-the-drills">30.1 The drills</a></li>
+<li><a href="ch30-drills.html#302-what-the-short-forms-leave-out">30.2 What the short forms leave out</a></li>
+<li><a href="ch30-drills.html#303-the-drill-that-is-slower-than-it-looks">30.3 The drill that is slower than it looks</a></li>
+<li><a href="ch30-drills.html#304-running-a-round">30.4 Running a round</a></li>
+<li><a href="ch30-drills.html#305-practicing-with-this-repository">30.5 Practicing with this repository</a></li>
+<li><a href="ch30-drills.html#306-questions-that-come-up">30.6 Questions that come up</a></li>
+</ul>
+</li>
+<li>
+<p><strong><a href="appendix-a-cheatsheet.html">Appendix A. The Rust cheat sheet</a></strong></p>
+</li>
+<li>
+<p><strong><a href="appendix-d-benchmark-report.html">Appendix B. The benchmark report</a></strong></p>
+</li>
+<li>
+<p><strong><a href="appendix-c-merge-k-long.html">Appendix C. Merging k sorted lists, the long version</a></strong></p>
+<ul>
+<li><a href="appendix-c-merge-k-long.html#c1-merging-two-sorted-lists">C.1 Merging two sorted lists</a></li>
+<li><a href="appendix-c-merge-k-long.html#c2-three-strategies-for-k-lists">C.2 Three strategies for k lists</a></li>
+<li><a href="appendix-c-merge-k-long.html#c3-first-version-split_at_mut-and-a-dummy-head">C.3 First version: <code>split_at_mut</code> and a dummy head</a></li>
+<li><a href="appendix-c-merge-k-long.html#c4-avoiding-the-double-borrow">C.4 Avoiding the double borrow</a>
+<ul>
+<li><a href="appendix-c-merge-k-long.html#c41-take-the-right-list-out-first">C.4.1 Take the right list out first</a></li>
+<li><a href="appendix-c-merge-k-long.html#c42-merge-owned-lists-with-no-dummy-node">C.4.2 Merge owned lists, with no dummy node</a></li>
+<li><a href="appendix-c-merge-k-long.html#c43-the-shortest-form-with-optioninsert">C.4.3 The shortest form, with <code>Option::insert</code></a></li>
+<li><a href="appendix-c-merge-k-long.html#c44-swap-the-lists-by-value">C.4.4 Swap the lists by value</a></li>
+</ul>
+</li>
+<li><a href="appendix-c-merge-k-long.html#c5-the-same-merge-on-an-enum-node">C.5 The same merge on an enum node</a>
+<ul>
+<li><a href="appendix-c-merge-k-long.html#c51-an-enum-with-its-own-take">C.5.1 An enum with its own <code>take</code></a></li>
+<li><a href="appendix-c-merge-k-long.html#c52-an-enum-with-standard-traits-and-a-recursive-merge">C.5.2 An enum with standard traits and a recursive merge</a></li>
+</ul>
+</li>
+<li><a href="appendix-c-merge-k-long.html#c6-a-queue-of-lists">C.6 A queue of lists</a></li>
+<li><a href="appendix-c-merge-k-long.html#c7-a-heap-of-list-heads">C.7 A heap of list heads</a></li>
+<li><a href="appendix-c-merge-k-long.html#c8-recursion-on-halves">C.8 Recursion on halves</a></li>
+<li><a href="appendix-c-merge-k-long.html#c9-the-eleven-versions-side-by-side">C.9 The eleven versions side by side</a></li>
+<li><a href="appendix-c-merge-k-long.html#c10-the-complete-files">C.10 The complete files</a></li>
+<li><a href="appendix-c-merge-k-long.html#summary">Summary</a></li>
+<li><a href="appendix-c-merge-k-long.html#exercises">Exercises</a></li>
+</ul>
+</li>
+</ul>
+
+                    </main>
+
+                    <nav class="nav-wrapper" aria-label="Page navigation">
+                        <!-- Mobile navigation buttons -->
+                            <a rel="prev" href="about-the-cover.html" class="mobile-nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                                <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M41.4 233.4c-12.5 12.5-12.5 32.8 0 45.3l160 160c12.5 12.5 32.8 12.5 45.3 0s12.5-32.8 0-45.3L109.3 256 246.6 118.6c12.5-12.5 12.5-32.8 0-45.3s-32.8-12.5-45.3 0l-160 160z"/></svg></span>
+                            </a>
+
+                            <a rel="next prefetch" href="ch01-bindings.html" class="mobile-nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                                <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M278.6 233.4c12.5 12.5 12.5 32.8 0 45.3l-160 160c-12.5 12.5-32.8 12.5-45.3 0s-12.5-32.8 0-45.3L210.7 256 73.4 118.6c-12.5-12.5-12.5-32.8 0-45.3s32.8-12.5 45.3 0l160 160z"/></svg></span>
+                            </a>
+
+                        <div style="clear: both"></div>
+                    </nav>
+                </div>
+            </div>
+
+            <nav class="nav-wide-wrapper" aria-label="Page navigation">
+                    <a rel="prev" href="about-the-cover.html" class="nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                        <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M41.4 233.4c-12.5 12.5-12.5 32.8 0 45.3l160 160c12.5 12.5 32.8 12.5 45.3 0s12.5-32.8 0-45.3L109.3 256 246.6 118.6c12.5-12.5 12.5-32.8 0-45.3s-32.8-12.5-45.3 0l-160 160z"/></svg></span>
+                    </a>
+
+                    <a rel="next prefetch" href="ch01-bindings.html" class="nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                        <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M278.6 233.4c12.5 12.5 12.5 32.8 0 45.3l-160 160c-12.5 12.5-32.8 12.5-45.3 0s-12.5-32.8 0-45.3L210.7 256 73.4 118.6c-12.5-12.5-12.5-32.8 0-45.3s32.8-12.5 45.3 0l160 160z"/></svg></span>
+                    </a>
+            </nav>
+
+        </div>
+
+        <template id=fa-eye><span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 576 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M288 32c-80.8 0-145.5 36.8-192.6 80.6C48.6 156 17.3 208 2.5 243.7c-3.3 7.9-3.3 16.7 0 24.6C17.3 304 48.6 356 95.4 399.4C142.5 443.2 207.2 480 288 480s145.5-36.8 192.6-80.6c46.8-43.5 78.1-95.4 93-131.1c3.3-7.9 3.3-16.7 0-24.6c-14.9-35.7-46.2-87.7-93-131.1C433.5 68.8 368.8 32 288 32zM432 256c0 79.5-64.5 144-144 144s-144-64.5-144-144s64.5-144 144-144s144 64.5 144 144zM288 192c0 35.3-28.7 64-64 64c-11.5 0-22.3-3-31.6-8.4c-.2 2.8-.4 5.5-.4 8.4c0 53 43 96 96 96s96-43 96-96s-43-96-96-96c-2.8 0-5.6 .1-8.4 .4c5.3 9.3 8.4 20.1 8.4 31.6z"/></svg></span></template>
+        <template id=fa-eye-slash><span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M38.8 5.1C28.4-3.1 13.3-1.2 5.1 9.2S-1.2 34.7 9.2 42.9l592 464c10.4 8.2 25.5 6.3 33.7-4.1s6.3-25.5-4.1-33.7L525.6 386.7c39.6-40.6 66.4-86.1 79.9-118.4c3.3-7.9 3.3-16.7 0-24.6c-14.9-35.7-46.2-87.7-93-131.1C465.5 68.8 400.8 32 320 32c-68.2 0-125 26.3-169.3 60.8L38.8 5.1zM223.1 149.5C248.6 126.2 282.7 112 320 112c79.5 0 144 64.5 144 144c0 24.9-6.3 48.3-17.4 68.7L408 294.5c5.2-11.8 8-24.8 8-38.5c0-53-43-96-96-96c-2.8 0-5.6 .1-8.4 .4c5.3 9.3 8.4 20.1 8.4 31.6c0 10.2-2.4 19.8-6.6 28.3l-90.3-70.8zm223.1 298L373 389.9c-16.4 6.5-34.3 10.1-53 10.1c-79.5 0-144-64.5-144-144c0-6.9 .5-13.6 1.4-20.2L83.1 161.5C60.3 191.2 44 220.8 34.5 243.7c-3.3 7.9-3.3 16.7 0 24.6c14.9 35.7 46.2 87.7 93 131.1C174.5 443.2 239.2 480 320 480c47.8 0 89.9-12.9 126.2-32.5z"/></svg></span></template>
+        <template id=fa-copy><span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M502.6 70.63l-61.25-61.25C435.4 3.371 427.2 0 418.7 0H255.1c-35.35 0-64 28.66-64 64l.0195 256C192 355.4 220.7 384 256 384h192c35.2 0 64-28.8 64-64V93.25C512 84.77 508.6 76.63 502.6 70.63zM464 320c0 8.836-7.164 16-16 16H255.1c-8.838 0-16-7.164-16-16L239.1 64.13c0-8.836 7.164-16 16-16h128L384 96c0 17.67 14.33 32 32 32h47.1V320zM272 448c0 8.836-7.164 16-16 16H63.1c-8.838 0-16-7.164-16-16L47.98 192.1c0-8.836 7.164-16 16-16H160V128H63.99c-35.35 0-64 28.65-64 64l.0098 256C.002 483.3 28.66 512 64 512h192c35.2 0 64-28.8 64-64v-32h-47.1L272 448z"/></svg></span></template>
+        <template id=fa-play><span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 384 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M73 39c-14.8-9.1-33.4-9.4-48.5-.9S0 62.6 0 80V432c0 17.4 9.4 33.4 24.5 41.9s33.7 8.1 48.5-.9L361 297c14.3-8.7 23-24.2 23-41s-8.7-32.2-23-41L73 39z"/></svg></span></template>
+        <template id=fa-clock-rotate-left><span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M75 75L41 41C25.9 25.9 0 36.6 0 57.9V168c0 13.3 10.7 24 24 24H134.1c21.4 0 32.1-25.9 17-41l-30.8-30.8C155 85.5 203 64 256 64c106 0 192 86 192 192s-86 192-192 192c-40.8 0-78.6-12.7-109.7-34.4c-14.5-10.1-34.4-6.6-44.6 7.9s-6.6 34.4 7.9 44.6C151.2 495 201.7 512 256 512c141.4 0 256-114.6 256-256S397.4 0 256 0C185.3 0 121.3 28.7 75 75zm181 53c-13.3 0-24 10.7-24 24V256c0 6.4 2.5 12.5 7 17l72 72c9.4 9.4 24.6 9.4 33.9 0s9.4-24.6 0-33.9l-65-65V152c0-13.3-10.7-24-24-24z"/></svg></span></template>
+
+
+
+        <script>
+            window.playground_copyable = true;
+        </script>
+
+
+        <script src="elasticlunr-ef4e11c1.min.js"></script>
+        <script src="mark-09e88c2c.min.js"></script>
+        <script src="searcher-09f2665d.js"></script>
+
+        <script src="clipboard-1626706a.min.js"></script>
+        <script src="highlight-abc7f01d.js"></script>
+        <script src="book-609e4cb8.js"></script>
+
+        <!-- Custom JS scripts -->
+        <script src="theme/anim-4192821e.js"></script>
+        <script src="theme/book-ui-621ed017.js"></script>
+
+
+
+    </div>
     </body>
 </html>

@@ -1,5 +1,5 @@
 <!DOCTYPE HTML>
-<html lang="en" class="light sidebar-visible" dir="ltr">
+<html lang="en" class="coal sidebar-visible" dir="ltr">
     <head>
         <!-- Book generated using mdBook -->
         <meta charset="UTF-8">
@@ -28,18 +28,18 @@
         <link rel="stylesheet" id="mdbook-ayu-highlight-css" href="ayu-highlight-3fdfc3ac.css">
 
         <!-- Custom theme stylesheets -->
-        <link rel="stylesheet" href="theme/custom-b2009ce0.css">
+        <link rel="stylesheet" href="theme/custom-985f104d.css">
 
 
         <!-- Provide site root and default themes to javascript -->
         <script>
             const path_to_root = "";
-            const default_light_theme = "light";
-            const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "searchindex-f2511fee.js";
+            const default_light_theme = "coal";
+            const default_dark_theme = "coal";
+            window.path_to_searchindex_js = "searchindex-4622e2bb.js";
         </script>
         <!-- Start loading toc.js asap -->
-        <script src="toc-34d6c47e.js"></script>
+        <script src="toc-c196c8a9.js"></script>
     </head>
     <body>
     <div id="mdbook-help-container">
@@ -77,7 +77,7 @@
             try { theme = localStorage.getItem('mdbook-theme'); } catch(e) { }
             if (theme === null || theme === undefined) { theme = default_theme; }
             const html = document.documentElement;
-            html.classList.remove('light')
+            html.classList.remove('coal')
             html.classList.add(theme);
             html.classList.add("js");
         </script>
@@ -192,29 +192,17 @@
 </ul>
 </div>
 
-<p>The connections in chapters 20 to 27 sent their bytes as they were. Every router between the two machines
-could read them, and could change them without either side noticing. <strong>TLS</strong>, Transport Layer Security,
-runs on top of TCP and fixes three things. The bytes are encrypted, so others cannot read them. Each record
-carries a tag, so a changed byte is detected. And the server proves who it is with a certificate, so the
-client knows it is not talking to an impostor.</p>
-<p>This chapter runs TLS with the <code>rustls</code> crate. The program, <code>tls_mtls</code>, makes its own certificate authority
-and certificates when it starts, runs five connections over loopback, and prints what each side reports.</p>
+<p>The TCP connections examined in chapters 20 through 27 transmitted plaintext bytes, leaving traffic exposed to any router along the path that might inspect or alter it without detection. <strong>TLS</strong> (Transport Layer Security) layers three guarantees on top of TCP: confidentiality through encryption, integrity through per-record authentication tags that detect modification, and server authentication through digital certificates that prevent impersonation.</p>
+<p>In this chapter, we configure TLS with the <code>rustls</code> crate. The companion program, <code>tls_mtls</code>, generates a local certificate authority and leaf certificates at startup, executes five connections over loopback, and reports the protocol behavior observed by each endpoint.</p>
 <h2 id="281-certificates-and-trust"><a class="header" href="#281-certificates-and-trust">28.1 Certificates and trust</a></h2>
-<p>TLS identifies a server with <strong>public-key cryptography</strong>. A key pair is two numbers: a private key that the
-owner keeps secret, and a public key that anyone may have. A <strong>signature</strong> made with the private key can be
-checked with the public key. Only the holder of the private key can make a signature that checks out.</p>
-<p>A <strong>certificate</strong> is a signed statement: “this public key belongs to <code>localhost</code>, from this date to that
-date”. The signer is a <strong>certificate authority</strong> (CA). A client keeps a <strong>trust store</strong>, a list of CA
-certificates it accepts. When a server presents its certificate, the client makes three checks (figure 28.1):</p>
+<p>TLS establishes server identity through <strong>public-key cryptography</strong>. An asymmetric key pair consists of a private key kept secret by its owner and a public key distributed freely. A <strong>digital signature</strong> produced with the private key can be verified using the corresponding public key, and only the holder of the private key can produce a valid signature.</p>
+<p>A <strong>certificate</strong> is a signed assertion binding a public key to an identity and validity window (for example, that a given public key belongs to <code>localhost</code> between two dates). The issuing entity is a <strong>certificate authority</strong> (CA). Each client maintains a <strong>trust store</strong> listing the CA certificates it trusts. When a server presents its certificate, the client performs three verification checks (figure 28.1):</p>
 <ol>
-<li><strong>The signature.</strong> The certificate is signed by a CA in the trust store, possibly through intermediate
-certificates that the server also sends.</li>
-<li><strong>The dates.</strong> The current time is inside the certificate’s validity period.</li>
-<li><strong>The name.</strong> One of the names in the certificate matches the name the client connected to.</li>
+<li><strong>Signature chain.</strong> The certificate is signed by a CA in the trust store, either directly or through intermediate certificates supplied by the server.</li>
+<li><strong>Validity period.</strong> The current time falls within the certificate’s <code>not_before</code> and <code>not_after</code> bounds.</li>
+<li><strong>Host identity.</strong> One of the subject alternative names in the certificate matches the host name requested by the client.</li>
 </ol>
-<p>A certificate is public, so anyone can present one. During the handshake, the server also signs data from
-that handshake with its private key. That signature proves the server holds the key that matches the
-certificate.</p>
+<p>Because certificates are public documents, presenting a certificate alone does not prove identity. During the handshake, the server also signs a transcript of the handshake messages with its private key, proving that it possesses the private key corresponding to the public key in the certificate.</p>
 <figure>
 <img src="figures/ch28-trust.svg" alt="The lab CA, self-signed, signs a certificate for localhost holding the server&#39;s public key, and a certificate for billing holding the client&#39;s public key. The client&#39;s trust store holds the lab CA and checks the server certificate&#39;s signature, dates, and name. The server&#39;s trust store, used only for mutual TLS, holds the lab CA and checks the client certificate&#39;s signature and dates.">
 <figcaption><b>Figure 28.1</b> One CA signs both certificates. Each side trusts the CA, and so trusts what it signed.</figcaption>
@@ -303,10 +291,7 @@ impl Pki {
         Ok(roots)
     }
 }</code></pre>
-<p><code>IsCa::Ca</code> marks the first certificate as one that may sign others. <code>self_signed</code> signs it with its own key. A CA at the top of a chain vouches for itself. A client trusts it only if it is in the trust store.
-<code>CertificateParams::new</code> takes the names the certificate covers. <code>signed_by</code> signs the new certificate’s
-public key with the CA’s key. The private keys never leave the process. <code>roots</code> builds a trust store that
-holds only this CA.</p>
+<p><code>IsCa::Ca</code> marks the root certificate as authorized to sign subordinate certificates, and <code>self_signed</code> signs it with its own key. A root CA sits at the top of the trust chain and vouches for itself; clients trust it strictly because it appears in their trust store. <code>CertificateParams::new</code> specifies the host names covered by a leaf certificate, and <code>signed_by</code> signs the leaf’s public key with the CA’s key. All private keys remain inside the process, and <code>roots</code> constructs a trust store containing only this local CA.</p>
 <h2 id="282-the-tls-13-handshake"><a class="header" href="#282-the-tls-13-handshake">28.2 The TLS 1.3 handshake</a></h2>
 <p>Before any application bytes move, the two sides run a <strong>handshake</strong>. In TLS 1.3 it takes one round trip:</p>
 <div class="table-wrapper">
@@ -507,12 +492,8 @@ and a 16-byte tag that detects any change.</li>
   client: invalid peer certificate: UnknownIssuer
   server: handshake failed: unexpected end of file
 </code></pre>
-<p>In both cases the client stopped in step 3 of the handshake and closed the connection, so the server saw
-the stream end. The certificate was valid in both. The client rejected it because it named a different
-server, or because nothing in the trust store had signed it.</p>
-<p>These checks are the whole of TLS’s protection against an impostor. Encryption to an unchecked server is
-encryption to whoever answered. <code>rustls</code> has no flag to turn the checks off. A program that wants to skip
-them must write its own <code>ServerCertVerifier</code>, under a module named <code>danger</code>.</p>
+<p>In both failure cases, the client aborted the handshake at step 3 and closed the socket, causing the server to observe an unexpected EOF. Although the server’s certificate was structurally valid in both scenarios, the client rejected it because it either failed to match the expected host name or lacked a signature chain to a trusted CA.</p>
+<p>Certificate verification is the foundation of TLS’s defense against impersonation: encrypting traffic to an unverified peer merely encrypts traffic to whichever party answered the connection. Accordingly, <code>rustls</code> provides no boolean flag to disable verification; bypassing it requires implementing a custom <code>ServerCertVerifier</code> explicitly gated under a <code>danger</code> module.</p>
 <h2 id="284-mutual-tls"><a class="header" href="#284-mutual-tls">28.4 Mutual TLS</a></h2>
 <p>In plain TLS, only the server proves who it is. The client is anonymous at the TLS level, and proves itself,
 if at all, with a password or token inside the encrypted stream. In <strong>mutual TLS</strong> (mTLS), the server asks
@@ -565,8 +546,7 @@ useful only until its certificate expires.</p>
 the first request. Across regions that is 100 ms or more. <strong>Session resumption</strong> lets a client that has connected before skip the certificate exchange. A connection pool (chapter 29) avoids the handshake for most requests.</li>
 <li><strong>CPU.</strong> The key exchange and the signatures cost tens to hundreds of microseconds per handshake. The
 symmetric encryption of the data afterwards runs at gigabytes per second on modern CPUs.</li>
-<li><strong>Copies.</strong> <code>rustls</code> encrypts in user space, so a TLS server cannot use <code>sendfile</code> to send a file
-without copying it, as section 23.3.2 explained.</li>
+<li><strong>Copies.</strong> <code>rustls</code> encrypts in user space, so a TLS server cannot use <code>sendfile</code> to transmit a file without copying it through user space, as discussed in section 23.3.2.</li>
 </ul>
 <h2 id="285-the-complete-program"><a class="header" href="#285-the-complete-program">28.5 The complete program</a></h2>
 <p class="listing"><b>Listing 28.1</b> TLS and mutual TLS with <code>rustls</code>, on certificates made by <code>rcgen</code>. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/bin/tls_mtls.rs">src/bin/tls_mtls.rs</a></p>
@@ -940,7 +920,7 @@ trust store, the dates, and the name.</li>
 </ul>
 </div>
 
-<p>Chapter 29 builds that reuse: a client connection pool. It bounds the number of connections, takes each one back when its user is done, and drops connections idle for too long.</p>
+<p>In chapter 29, we implement that reuse with a bounded client connection pool that caps concurrent connections, reclaims them automatically when borrowers finish, and evicts connections that remain idle past a timeout.</p>
 <h2 id="exercises"><a class="header" href="#exercises">Exercises</a></h2>
 <ol>
 <li>Print the length of the server’s certificate and of the client’s. Compare with the 412 extra bytes in
@@ -1007,6 +987,7 @@ records the client sends with the TLS 1.3 run.</li>
 
         <!-- Custom JS scripts -->
         <script src="theme/anim-4192821e.js"></script>
+        <script src="theme/book-ui-621ed017.js"></script>
 
 
 

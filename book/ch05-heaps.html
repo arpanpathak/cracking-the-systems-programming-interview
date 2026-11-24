@@ -1,5 +1,5 @@
 <!DOCTYPE HTML>
-<html lang="en" class="light sidebar-visible" dir="ltr">
+<html lang="en" class="coal sidebar-visible" dir="ltr">
     <head>
         <!-- Book generated using mdBook -->
         <meta charset="UTF-8">
@@ -28,18 +28,18 @@
         <link rel="stylesheet" id="mdbook-ayu-highlight-css" href="ayu-highlight-3fdfc3ac.css">
 
         <!-- Custom theme stylesheets -->
-        <link rel="stylesheet" href="theme/custom-b2009ce0.css">
+        <link rel="stylesheet" href="theme/custom-985f104d.css">
 
 
         <!-- Provide site root and default themes to javascript -->
         <script>
             const path_to_root = "";
-            const default_light_theme = "light";
-            const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "searchindex-f2511fee.js";
+            const default_light_theme = "coal";
+            const default_dark_theme = "coal";
+            window.path_to_searchindex_js = "searchindex-4622e2bb.js";
         </script>
         <!-- Start loading toc.js asap -->
-        <script src="toc-34d6c47e.js"></script>
+        <script src="toc-c196c8a9.js"></script>
     </head>
     <body>
     <div id="mdbook-help-container">
@@ -77,7 +77,7 @@
             try { theme = localStorage.getItem('mdbook-theme'); } catch(e) { }
             if (theme === null || theme === undefined) { theme = default_theme; }
             const html = document.documentElement;
-            html.classList.remove('light')
+            html.classList.remove('coal')
             html.classList.add(theme);
             html.classList.add("js");
         </script>
@@ -183,77 +183,56 @@
 <div class="covers" markdown="1">
 <p>This chapter covers</p>
 <ul>
-<li>What a heap is, and how it stores a tree inside a <code>Vec</code></li>
-<li>How <code>push</code> and <code>pop</code> keep the largest item on top in O(log n) steps</li>
-<li>Rust’s <code>BinaryHeap</code>, and turning it into a min-heap with <code>Reverse</code></li>
-<li>How tuples compare, and why <code>(count, value)</code> orders items by count</li>
-<li>Finding the k most frequent items, first with a full heap and then with a heap of size k</li>
-<li>Keeping the median of a stream of numbers with two heaps</li>
+<li>Binary heap structure and how a complete tree maps onto a contiguous <code>Vec</code></li>
+<li>How <code>push</code> and <code>pop</code> restore the heap invariant in O(log n) steps</li>
+<li>Rust’s <code>BinaryHeap</code>, and converting it into a min-heap using <code>Reverse</code></li>
+<li>Lexicographical tuple ordering and prioritizing heap entries by <code>(count, value)</code></li>
+<li>Finding the <code>k</code> most frequent items using both an unbounded max-heap and a <code>k</code>-bounded min-heap</li>
+<li>Computing a running median over a data stream using two balanced heaps</li>
 </ul>
 </div>
 
-<p>Chapter 3 used vectors, strings, and hash maps. This chapter adds one more collection, the heap. A heap
-answers one question quickly: “what is the largest item right now?” It keeps answering it while items are
-added and removed.</p>
-<p>That question comes up whenever you want the best few items from many. Two examples are the most frequent
-words in a text and the next job to run from a queue ordered by priority. You will build three programs. Two find
-the most frequent items. The third keeps the median of a stream of numbers.</p>
-<p>As in chapter 3, I start with how the structure works, with pictures, and then show the code.</p>
-<p>A few terms used throughout the chapter:</p>
+<p>Alongside vectors, strings, and hash maps from Chapter 3, the binary heap is an essential collection for priority-driven workloads. A heap maintains dynamic access to the extreme element (maximum or minimum) while supporting efficient insertions and removals.</p>
+<p>This capability underpins top-k ranking, task scheduling by priority, and streaming order-statistic queries. We implement three programs in this chapter: two variants that extract the <code>k</code> most frequent items, and a streaming median tracker.</p>
+<p>Following the structure of Chapter 3, we examine the memory representation and core operations first, then walk through each implementation.</p>
+<p>Four definitions establish the terminology:</p>
 <ul>
-<li>A <strong>binary tree</strong> is a set of nodes where each node has at most two children, a left one and a right one.
-The node with no parent is the <strong>root</strong>.</li>
-<li>A <strong>max-heap</strong> is a binary tree where every parent is at least as large as each of its children. So the
-root holds the largest item.</li>
-<li>A <strong>min-heap</strong> is the same with “at least as large” replaced by “at most as large”. The root holds the
-smallest item.</li>
-<li>The <strong>median</strong> of a list of numbers is the middle value once they are sorted. For an even count, it is
-the average of the two middle values.</li>
+<li>A <strong>binary tree</strong> is a hierarchical structure in which every node has at most two children (left and right); the single node with no parent is the <strong>root</strong>.</li>
+<li>A <strong>max-heap</strong> is a complete binary tree satisfying the heap property: every parent is greater than or equal to both of its children, placing the maximum element at the root.</li>
+<li>A <strong>min-heap</strong> reverses the ordering invariant so every parent is less than or equal to its children, placing the minimum element at the root.</li>
+<li>The <strong>median</strong> of a collection of numbers is the middle element in sorted order (or the arithmetic mean of the two middle elements when the count is even).</li>
 </ul>
 <h2 id="51-a-tree-stored-in-a-vector"><a class="header" href="#51-a-tree-stored-in-a-vector">5.1 A tree stored in a vector</a></h2>
-<p>A heap is a tree, but it does not store pointers between nodes. It stores the nodes in a <code>Vec</code>, level by
-level: the root first, then its two children, then their four children, and so on. Figure 5.1 shows a
-max-heap of six numbers and the vector that holds it.</p>
+<p>Although conceptually a tree, a binary heap stores no child or parent pointers. Because a heap is always a complete binary tree (every level filled except possibly the last, which fills from left to right), its nodes pack densely into a <code>Vec</code> in level order: the root at index 0, its two children at indexes 1 and 2, their children at indexes 3 through 6, and so on. Figure 5.1 depicts a six-element max-heap alongside its backing vector.</p>
 <figure>
 <img src="figures/heap-layout.svg" alt="A tree with 9 at the root, children 7 and 8, and 3, 5, 6 below; the same values in a vector 9, 7, 8, 3, 5, 6 at indexes 0 to 5">
 <figcaption><b>Figure 5.1</b> A max-heap and its vector. The children of the node at index i are at 2i + 1 and 2i + 2.</figcaption>
 </figure>
-<p>Because the nodes are packed level by level, simple arithmetic finds a node’s relatives. The children of index i are at 2i + 1 and 2i + 2. Its parent is at (i − 1) / 2, rounded down. In figure 5.1, the
-children of 7 (index 1) are at indexes 3 and 4, which hold 3 and 5.</p>
-<p>The heap rule only compares parents with children. It says nothing about brothers or cousins. In figure
-5.1, 7 is on the left and 8 on the right, and that is allowed. That weak rule keeps a heap cheap to
-maintain.</p>
-<p>A tree with n nodes packed this way has about log₂ n levels. A heap of a million items is only about 20
-levels deep.</p>
+<p>Dense level-order packing replaces pointer chasing with index arithmetic. For any node at index <code>i</code>, its left child lies at <code>2i + 1</code>, its right child at <code>2i + 2</code>, and its parent at <code>(i - 1) / 2</code> (using integer division). In Figure 5.1, node <code>7</code> at index 1 has children at indexes 3 and 4, holding <code>3</code> and <code>5</code>.</p>
+<p>The heap invariant constrains only parent-child relationships; sibling and cousin ordering is unconstrained (for example, <code>7</code> sits to the left of <code>8</code> in Figure 5.1). Maintaining this partial order is far cheaper than keeping the entire array sorted.</p>
+<p>A complete binary tree of <code>n</code> nodes has height <code>floor(log₂ n)</code>, so a heap of one million items is roughly 20 levels deep.</p>
 <h2 id="52-adding-and-removing"><a class="header" href="#52-adding-and-removing">5.2 Adding and removing</a></h2>
 <h3 id="521-push"><a class="header" href="#521-push">5.2.1 Push</a></h3>
-<p>To add an item, put it at the end of the vector, which is the next free spot on the bottom level. It may be
-larger than its parent, which breaks the rule. So swap it with its parent, and keep swapping upward until it
-is not larger than its parent, or it reaches the root. Figure 5.2 pushes 10.</p>
+<p>Inserting a new element appends it to the end of the vector, occupying the next free leaf slot on the bottom level. If the new value exceeds its parent, violating the max-heap invariant, it swaps upward with its parent repeatedly (sift-up) until either its parent is larger or it reaches the root. Figure 5.2 traces pushing <code>10</code>.</p>
 <figure>
 <img src="figures/heap-push.svg" alt="10 is added under 8, swaps with 8, then swaps with 9 and becomes the root">
 <figcaption><b>Figure 5.2</b> Pushing 10. It moves up one level per swap until the rule holds again.</figcaption>
 </figure>
-<p>Each swap moves the item one level up, and there are about log₂ n levels. So a push takes O(log n) steps.</p>
+<p>Because each swap ascends one level in a tree of height O(log n), <code>push</code> completes in O(log n) worst-case time.</p>
 <h3 id="522-pop"><a class="header" href="#522-pop">5.2.2 Pop</a></h3>
-<p>To remove the largest item, take the root. That leaves a hole at the top. Fill it with the last item in the
-vector, which shrinks the vector by one. The moved item is probably too small for the top. So swap it with its larger child, and keep swapping
-downward until both its children are smaller. Figure 5.3 pops the 10
-that figure 5.2 added.</p>
+<p>Removing the maximum element extracts the root at index 0. To preserve tree completeness, the final element of the vector moves into index 0 and the vector length shrinks by one. That displaced element typically violates the heap invariant, so it swaps downward with its larger child repeatedly (sift-down) until both children are smaller or it becomes a leaf. Figure 5.3 traces popping <code>10</code>.</p>
 <figure>
 <img src="figures/heap-pop.svg" alt="The root 10 is removed and the last value 6 moves to the top; 6 swaps with its larger child 9, then with 8">
 <figcaption><b>Figure 5.3</b> Popping the largest item. The item moved to the top sinks one level per swap.</figcaption>
 </figure>
-<p>It swaps with the larger child for a reason. That child is about to become the parent of the other one,
-and a parent must be at least as large as its children. Pop is also O(log n).</p>
-<p>Looking at the largest item without removing it is O(1): it is always at index 0.</p>
+<p>Swapping with the larger child is mandatory because the promoted child becomes the new parent of its sibling and must therefore be at least as large as that sibling. Like <code>push</code>, <code>pop</code> traverses at most the height of the tree in O(log n) time.</p>
+<p>Inspecting the maximum element without removal (<code>peek</code>) reads index 0 directly in O(1) time.</p>
 <figure class="anim">
 <video class="motion" src="figures/ch05-heap-sift.mp4" autoplay="" loop="" muted="" playsinline="" preload="metadata" aria-label="A max-heap 9, 5, 8, 3, 2 drawn as a tree above its array. push(10) appends 10 at index 5; it swaps with its parent 8 at index 2, then with 9 at the root. pop() takes 10 from the root, moves the last value 8 into the root, and 8 swaps with its larger child 9. A last part swaps 8 with the smaller child 5 instead, and 5 ends up as the parent of 9." data-chapters="[[0.0, &quot;push&quot;], [34.32, &quot;pop&quot;], [55.74, &quot;wrong child&quot;]]"><img src="figures/ch05-heap-sift.gif" alt="A max-heap 9, 5, 8, 3, 2 drawn as a tree above its array. push(10) appends 10 at index 5; it swaps with its parent 8 at index 2, then with 9 at the root. pop() takes 10 from the root, moves the last value 8 into the root, and 8 swaps with its larger child 9. A last part swaps 8 with the smaller child 5 instead, and 5 ends up as the parent of 9."></video>
 <figcaption><b>Animation 5.1</b> A push appends and swaps up; a pop moves the last value to the root and swaps it down with the larger child. Each value moves in the tree and in the array at the same time. The last part swaps with the smaller child and breaks the heap rule.</figcaption>
 </figure>
 <h2 id="53-heaps-in-rust"><a class="header" href="#53-heaps-in-rust">5.3 Heaps in Rust</a></h2>
-<p>Rust’s standard library provides <code>std::collections::BinaryHeap&lt;T&gt;</code>, a max-heap. Its main methods match the
-operations above:</p>
+<p>Rust’s standard library provides <code>std::collections::BinaryHeap&lt;T&gt;</code>, implemented as a max-heap over a <code>Vec&lt;T&gt;</code>. Its core API maps directly to the operations above:</p>
 <div class="table-wrapper">
 <table>
 <thead>
@@ -268,26 +247,17 @@ operations above:</p>
 </tbody>
 </table>
 </div>
-<p>To decide which item is larger, <code>BinaryHeap</code> uses the <code>Ord</code> trait, which types such as <code>i32</code>, <code>String</code>, and
-tuples implement.</p>
+<p><code>BinaryHeap&lt;T&gt;</code> orders elements via the <code>Ord</code> trait, which is implemented by integer types, <code>String</code>, and tuples of <code>Ord</code> elements.</p>
 <h3 id="531-how-tuples-compare"><a class="header" href="#531-how-tuples-compare">5.3.1 How tuples compare</a></h3>
-<p>Tuples compare element by element, from the left. Two tuples are compared on their first elements, and
-only if those are equal does the second element decide. So <code>(3, 1) &gt; (2, 9)</code>, because 3 &gt; 2, and the 9 is
-never looked at. And <code>(3, 1) &lt; (3, 2)</code>, because the first elements tie and 1 &lt; 2.</p>
-<p>This gives a way to choose what a heap orders by: put that field first in a tuple. A heap of
-<code>(count, value)</code> pairs orders by count, and breaks ties by value.</p>
+<p>Rust compares tuples lexicographically from left to right: the first elements determine the ordering, and subsequent elements act as tie-breakers only when earlier elements are equal. Thus <code>(3, 1) &gt; (2, 9)</code> because <code>3 &gt; 2</code>, while <code>(3, 1) &lt; (3, 2)</code> because <code>1 &lt; 2</code>.</p>
+<p>Placing the priority key first in a tuple lets a <code>BinaryHeap</code> order arbitrary payloads without defining a custom wrapper type: a heap of <code>(count, value)</code> pairs prioritizes by <code>count</code> and breaks ties by <code>value</code>.</p>
 <h3 id="532-a-min-heap-with-reverse"><a class="header" href="#532-a-min-heap-with-reverse">5.3.2 A min-heap with <code>Reverse</code></a></h3>
-<p><code>BinaryHeap</code> has no min-heap mode. Instead, the standard library provides a wrapper,
-<code>std::cmp::Reverse&lt;T&gt;</code>, whose comparison is the opposite of <code>T</code>’s. <code>Reverse(3) &gt; Reverse(5)</code>, because 3 &lt; 5.
-So a <code>BinaryHeap&lt;Reverse&lt;i32&gt;&gt;</code> keeps the smallest number on top.</p>
-<p>To put a value in, wrap it: <code>heap.push(Reverse(x))</code>. To get it out, unwrap it with a pattern:
-<code>if let Some(Reverse(x)) = heap.pop()</code>.</p>
-<p>Now you can read the three programs.</p>
+<p>Rather than offering a separate min-heap type, the standard library provides the zero-cost wrapper <code>std::cmp::Reverse&lt;T&gt;</code>, whose <code>Ord</code> implementation inverts <code>T</code>’s ordering (<code>Reverse(3) &gt; Reverse(5)</code> because <code>3 &lt; 5</code>). Consequently, <code>BinaryHeap&lt;Reverse&lt;i32&gt;&gt;</code> behaves as a min-heap keeping the smallest value at the root.</p>
+<p>Callers wrap values on insertion (<code>heap.push(Reverse(x))</code>) and destructure the wrapper on extraction (<code>if let Some(Reverse(x)) = heap.pop()</code>).</p>
+<p>With the data structure and Rust APIs established, we examine three complete heap applications.</p>
 <h2 id="54-the-k-most-frequent-numbers"><a class="header" href="#54-the-k-most-frequent-numbers">5.4 The k most frequent numbers</a></h2>
-<p><strong>The problem.</strong> Given a list of numbers and a count k, return the k numbers that occur most often. For
-<code>[1, 1, 1, 2, 2, 3]</code> and k = 2, the answer is 1 and 2.</p>
-<p><strong>The idea.</strong> Count each number with a <code>HashMap</code>. Put every <code>(count, number)</code> pair into a max-heap. Pop k
-times.</p>
+<p><strong>The problem.</strong> Given a slice of integers and a count <code>k</code>, return the <code>k</code> most frequently occurring numbers. For <code>[1, 1, 1, 2, 2, 3]</code> and <code>k = 2</code>, the result is <code>1</code> and <code>2</code>.</p>
+<p><strong>The strategy.</strong> Tally frequencies in a <code>HashMap</code>, build a max-heap of <code>(count, number)</code> pairs, and pop <code>k</code> elements.</p>
 <p class="listing"><b>Listing 5.1</b> Top k with a full heap. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/problems/top_k_frequent.rs">src/problems/top_k_frequent.rs</a></p>
 
 <pre><code class="language-rust">//! Top K Frequent Elements.
@@ -337,32 +307,22 @@ mod tests {
         assert_eq!(result.len(), 3);
     }
 }</code></pre>
-<p>Step through it:</p>
+<p>The implementation proceeds in three stages:</p>
 <ol>
-<li><code>*counts.entry(num).or_insert(0) += 1;</code> counts one occurrence. <code>entry(num)</code> finds the map slot for <code>num</code>,
-and <code>or_insert(0)</code> creates it with 0 if it is missing. Both steps return a mutable reference to the
-count, and <code>*</code> followed by <code>+= 1</code> adds one to the value it points to.</li>
-<li><code>counts.into_iter().map(|(num, count)| (count, num)).collect()</code> turns each map entry around, so the count
-comes first, and collects the pairs straight into a <code>BinaryHeap</code>. A <code>BinaryHeap</code> can be built with
-<code>collect</code> like a <code>Vec</code>.</li>
-<li>The <code>while</code> loop pops until it has k numbers. If there are fewer than k distinct numbers, <code>pop</code> returns
-<code>None</code> and the loop stops early. The second test checks that case.</li>
+<li><code>*counts.entry(num).or_insert(0) += 1;</code> increments the count for <code>num</code>. <code>entry(num)</code> locates the bucket, <code>or_insert(0)</code> initializes absent keys to <code>0</code> and returns <code>&amp;mut usize</code>, and <code>*... += 1</code> increments the counter in place.</li>
+<li><code>counts.into_iter().map(|(num, count)| (count, num)).collect()</code> swaps each pair so the frequency leads, then constructs the <code>BinaryHeap</code> directly via <code>collect</code> (using linear-time Floyd heapification).</li>
+<li>The <code>while</code> loop extracts up to <code>k</code> elements, terminating early if <code>pop()</code> yields <code>None</code> when fewer than <code>k</code> distinct values exist (covered by the second unit test).</li>
 </ol>
-<p>Counting takes O(n). Building the heap from u distinct numbers takes O(u), and k pops take O(k log u).</p>
-<p>The first test sorts the result before comparing it. The order of numbers with equal counts depends on the map’s iteration order. That order changes between
-runs, so a test must not depend on it.</p>
+<p>For <code>n</code> input elements and <code>u</code> distinct values, counting takes O(n) time, heap construction takes O(u) time, and <code>k</code> pops take O(k log u) time.</p>
+<p>In the first unit test, sorting the returned vector before comparison avoids brittleness: elements with tied frequencies can appear in different orders depending on the randomized <code>HashMap</code> seed.</p>
 <h2 id="55-the-k-most-frequent-words-with-a-heap-of-size-k"><a class="header" href="#55-the-k-most-frequent-words-with-a-heap-of-size-k">5.5 The k most frequent words, with a heap of size k</a></h2>
-<p>The first version puts every distinct number in the heap. If the input has millions of distinct words and
-you only want the top 3, most of that heap is wasted. The second version never lets the heap grow past k + 1
-entries.</p>
-<p><strong>The idea.</strong> Use a min-heap. Push each <code>(count, word)</code> pair. Whenever the heap has more than k entries, pop
-once. A min-heap pops its smallest entry, which is the least frequent word seen so far, so the k most
-frequent words survive (figure 5.4).</p>
+<p>Inserting every distinct element into the heap wastes memory when <code>u</code> is large and <code>k</code> is small (for example, finding the top 3 words across millions of distinct tokens). Bounding the heap to at most <code>k + 1</code> entries reduces both memory and comparison work.</p>
+<p><strong>The strategy.</strong> Maintain a min-heap of <code>(count, word)</code> pairs. After pushing each entry, if the heap length exceeds <code>k</code>, pop the root. Because a min-heap places the smallest entry at the root, every eviction discards the least frequent candidate seen so far, guaranteeing that the <code>k</code> highest-frequency words remain (Figure 5.4).</p>
 <figure>
 <img src="figures/heap-topk.svg" alt="Five pushes into a min-heap limited to 3 entries; when a fourth entry arrives, the smallest is popped">
 <figcaption><b>Figure 5.4</b> A min-heap bounded to k = 3 entries. Each time a fourth entry arrives, the smallest is removed.</figcaption>
 </figure>
-<p>The program first turns the text into words, then counts them, then runs the bounded heap.</p>
+<p>The program tokenizes input text into normalized words, counts occurrences, and filters them through the bounded min-heap.</p>
 <figure class="anim">
 <video class="motion" src="figures/ch05-top-k.mp4" autoplay="" loop="" muted="" playsinline="" preload="metadata" aria-label="Word counts the 3, cat 1, and 2, dog 1, and a min-heap with k = 2. Each count is pushed. When the heap holds three entries, pop removes the top, the smallest count. The heap ends with (2, and) and (3, the). Last, without the pop, the heap keeps all four words, and taking two from its top gives cat and dog, the least frequent." data-chapters="[[0.0, &quot;count&quot;], [8.16, &quot;heap&quot;], [52.48, &quot;no pop&quot;]]"><img src="figures/ch05-top-k.gif" alt="Word counts the 3, cat 1, and 2, dog 1, and a min-heap with k = 2. Each count is pushed. When the heap holds three entries, pop removes the top, the smallest count. The heap ends with (2, and) and (3, the). Last, without the pop, the heap keeps all four words, and taking two from its top gives cat and dog, the least frequent."></video>
 <figcaption><b>Animation 5.2</b> The bounded heap from listing 5.2 with k = 2. The top of the heap is the least frequent word kept, and it is popped whenever the heap holds k + 1 entries.</figcaption>
@@ -410,21 +370,14 @@ fn top_k_frequent(sentence: &amp;str, k: usize) -&gt; Vec&lt;(String, u32)&gt; {
         .map(|Rev((frequency, word))| (word.to_string(), frequency))
         .collect()
 }</code></pre>
-<p><strong>Turning text into words.</strong> The chain splits on whitespace. Then it trims characters that are not letters
-or digits from both ends of each piece, so <code>"sentence."</code> becomes <code>"sentence"</code>. It drops empty pieces, which a
-lone punctuation mark leaves behind, and lowercases each word. <code>trim_matches</code> takes a closure that decides
-which characters to trim. <code>map(str::to_lowercase)</code> passes a function by name instead of writing a closure.</p>
-<p><strong>Counting without copying.</strong> The map is <code>HashMap&lt;&amp;str, u32&gt;</code>. Its keys are references into the <code>words</code>
-vector, so counting allocates nothing for each occurrence. <code>or_default()</code> inserts the type’s default value,
-0 for <code>u32</code>, when the key is missing.</p>
-<p><strong>The bounded heap.</strong> <code>use std::cmp::Reverse as Rev;</code> gives <code>Reverse</code> a shorter name. Each entry is
-<code>Rev((frequency, word))</code>, so the heap’s top is the smallest <code>(frequency, word)</code> pair. After each push, if
-the heap has more than k entries, one pop removes that smallest pair.</p>
-<p><strong>The result.</strong> <code>into_sorted_vec()</code> returns the entries in ascending order of <code>Rev</code>, which is descending
-order of frequency. The final <code>map</code> unwraps each <code>Rev</code> with a pattern and copies the word into an owned <code>String</code>. The result
-must not borrow from <code>words</code>, because <code>words</code> is dropped when the function returns.</p>
-<p>The heap holds at most k + 1 entries, so each push and pop costs O(log k). For u distinct words, the heap
-work is O(u log k) instead of O(u log u), and its memory is O(k) instead of O(u).</p>
+<p>Four design choices keep the implementation concise and allocation-lean:</p>
+<ul>
+<li><strong>Tokenization:</strong> The iterator chain splits on whitespace, strips leading and trailing non-alphanumeric characters via <code>trim_matches</code> (turning <code>"sentence."</code> into <code>"sentence"</code>), filters out empty remnants left by standalone punctuation, and lowercases each token by passing <code>str::to_lowercase</code> directly to <code>map</code>.</li>
+<li><strong>Zero-copy counting:</strong> The frequency map has type <code>HashMap&lt;&amp;str, u32&gt;</code>, borrowing slices from <code>words</code> rather than cloning strings for every token occurrence. <code>or_default()</code> inserts <code>0</code> for absent keys.</li>
+<li><strong>Bounded min-heap:</strong> Aliasing <code>std::cmp::Reverse as Rev</code> keeps the type concise. Pushing <code>Rev((frequency, word))</code> places the lowest-frequency pair at the root; whenever <code>heap.len() &gt; k</code>, a single <code>pop()</code> evicts it.</li>
+<li><strong>Ordered output:</strong> <code>into_sorted_vec()</code> drains the heap in ascending order of <code>Rev</code>, which corresponds to descending order of frequency. The final <code>map</code> unwraps each <code>Rev</code> and allocates an owned <code>String</code> for only the surviving <code>k</code> words, since the local <code>words</code> vector is dropped upon return.</li>
+</ul>
+<p>Bounding the heap size to <code>k + 1</code> caps each heap operation at O(log k), reducing heap work from O(u log u) to O(u log k) and heap memory from O(u) to O(k).</p>
 <h3 id="551-the-complete-program"><a class="header" href="#551-the-complete-program">5.5.1 The complete program</a></h3>
 <p class="listing"><b>Listing 5.3</b> The complete program, with its tests. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/bin/top_k_frequent_words.rs">src/bin/top_k_frequent_words.rs</a></p>
 
@@ -505,9 +458,7 @@ mod tests {
         assert!(top_k_frequent("", 3).is_empty());
     }
 }</code></pre>
-<p>The sentence in <code>main</code> is a <strong>raw string literal</strong>, written <code>r"..."</code>. A raw string treats backslashes as
-ordinary characters, and this one also spans several lines. The tests cover the basic case, uppercase and
-punctuation, a k larger than the number of words, and an empty input.</p>
+<p>In <code>main</code>, the sample text uses a <strong>raw string literal</strong> (<code>r"..."</code>), which disables backslash escaping and spans multiple lines. The unit tests exercise standard ranking, case folding and punctuation stripping, <code>k</code> exceeding the vocabulary size, and empty input.</p>
 <pre><code class="language-text">$ cargo run --bin top_k_frequent_words
 Top 3 frequency [(word, frequency)] :
  [
@@ -525,28 +476,20 @@ Top 3 frequency [(word, frequency)] :
     ),
 ]
 </code></pre>
-<p>Four words occur twice in the sentence: “this”, “sentence”, “count”, and “words”. Only three fit, and
-“count” was evicted. When two entries have the same count, the tuple comparison falls to the word, and the
-min-heap evicts the alphabetically smallest one. So among equal counts, this version keeps the words that
-come last in alphabetical order.</p>
+<p>Four words appear twice in the sample input (<code>"this"</code>, <code>"sentence"</code>, <code>"count"</code>, and <code>"words"</code>), and <code>"count"</code> is evicted. When frequencies tie, lexicographical tuple comparison falls back to the word string; the min-heap therefore evicts the alphabetically smallest word, retaining the alphabetically latest words among ties.</p>
 <div class="callout tip" markdown="1">
-<p><strong>TIP:</strong> To keep the alphabetically first words instead, push <code>Rev((frequency, Reverse(word)))</code>. The inner
-<code>Reverse</code> flips the order of words only. Among equal counts, the alphabetically last word then has the
-smallest key and is evicted first.</p>
+<p><strong>TIP:</strong> To retain the alphabetically earliest words on frequency ties, push <code>Rev((frequency, Reverse(word)))</code>. The inner <code>Reverse</code> inverts string ordering alone, causing the alphabetically latest word to sit at the min-heap root and be evicted first.</p>
 </div>
 
 <h2 id="56-the-median-of-a-stream"><a class="header" href="#56-the-median-of-a-stream">5.6 The median of a stream</a></h2>
-<p><strong>The problem.</strong> Numbers arrive one at a time. After each one, report the median of all the numbers so far.</p>
-<p><strong>The simple idea.</strong> Keep every number in a sorted <code>Vec</code>, and read the middle. Inserting into the middle of a
-sorted vector shifts the elements after it, which costs O(n) per number.</p>
-<p><strong>The idea with heaps.</strong> Split the numbers into two halves (figure 5.5):</p>
+<p><strong>The problem.</strong> Integers arrive incrementally in a stream. After each arrival, report the median of all values received so far.</p>
+<p><strong>The baseline approach.</strong> Maintaining a sorted <code>Vec</code> allows O(1) median reads, but inserting each new element into its sorted position shifts up to <code>n</code> elements, costing O(n) per arrival.</p>
+<p><strong>The two-heap approach.</strong> Partition the seen values across two complementary heaps (Figure 5.5):</p>
 <ul>
-<li><code>low</code>, a max-heap holding the smaller half. Its top is the largest of the small numbers.</li>
-<li><code>high</code>, a min-heap holding the larger half. Its top is the smallest of the large numbers.</li>
+<li><code>low</code>: a max-heap storing the smaller half of the values, exposing the largest element of the lower half at its root.</li>
+<li><code>high</code>: a min-heap storing the larger half of the values, exposing the smallest element of the upper half at its root.</li>
 </ul>
-<p>Keep two rules. Every number in <code>low</code> is at most every number in <code>high</code>. And <code>low</code> has either the same
-number of items as <code>high</code>, or one more. Then the median is always at the tops. With an odd count, it is the
-top of <code>low</code>. With an even count, it is the average of the two tops.</p>
+<p>Two invariants hold after every insertion: every element in <code>low</code> is less than or equal to every element in <code>high</code>, and <code>low.len()</code> is either equal to <code>high.len()</code> or <code>high.len() + 1</code>. Under these invariants, the median is always available in O(1) at the roots: the root of <code>low</code> when the total count is odd, or the mean of both roots when the count is even.</p>
 <figure>
 <img src="figures/ch03-two-heaps.svg" alt="Two heaps after eleven values: low holds 3,2,1,0,0,0 with 3 on top; high holds 5,6,6,6,10 with 5 on top">
 <figcaption><b>Figure 5.5</b> The two heaps after all eleven sample values. <code>low</code> has six values and <code>high</code> five, so the median is 3, the top of <code>low</code>.</figcaption>
@@ -582,15 +525,13 @@ impl MedianFinder {
     }
     // ...
 }</code></pre>
-<p><code>add_num</code> keeps both rules with three moves, and never compares numbers itself:</p>
+<p><code>add_num</code> preserves both invariants in three unconditional or size-checked heap moves without explicit value comparisons:</p>
 <ol>
-<li>Push the new number into <code>low</code>.</li>
-<li>Pop the largest number from <code>low</code> and push it into <code>high</code>. This keeps the first rule: whatever <code>high</code>
-receives is at least as large as everything left in <code>low</code>.</li>
-<li>If <code>high</code> now has more items than <code>low</code>, pop its smallest and push it back into <code>low</code>. This keeps the
-second rule.</li>
+<li>Push the incoming value into <code>low</code>.</li>
+<li>Pop the maximum element from <code>low</code> and push it into <code>high</code>, restoring the ordering invariant so every element in <code>high</code> is at least as large as every element remaining in <code>low</code>.</li>
+<li>If <code>high.len() &gt; low.len()</code>, pop the minimum element from <code>high</code> and push it back into <code>low</code>, restoring the size balance invariant.</li>
 </ol>
-<p>Trace the first three numbers of the sample, 6, 10, and 2:</p>
+<p>Tracing the first three arrivals (<code>6</code>, <code>10</code>, and <code>2</code>):</p>
 <div class="table-wrapper">
 <table>
 <thead>
@@ -603,7 +544,7 @@ second rule.</li>
 </tbody>
 </table>
 </div>
-<p>Each move is one heap operation, so adding a number is O(log n).</p>
+<p>Because each step performs a constant number of heap pushes and pops, <code>add_num</code> runs in O(log n) time.</p>
 <h3 id="562-reading-the-median"><a class="header" href="#562-reading-the-median">5.6.2 Reading the median</a></h3>
 <p class="listing"><b>Listing 5.5</b> <code>find_median</code> (lines 28 to 37).</p>
 
@@ -620,10 +561,8 @@ second rule.</li>
         }
     }
 }</code></pre>
-<p><code>*self.low.peek()?</code> reads the top of <code>low</code>. The <code>?</code> works on <code>Option</code> the same way it works on <code>Result</code>. If no number has been added, <code>peek</code> returns
-<code>None</code>, and so does the function. The function returns
-<code>Option&lt;f64&gt;</code>, a floating-point number, because the average of two integers can be a half.</p>
-<p><code>let Reverse(min_high) = *self.high.peek()?;</code> unwraps the <code>Reverse</code> in the <code>let</code> pattern itself.</p>
+<p><code>*self.low.peek()?</code> inspects the root of <code>low</code>. The <code>?</code> operator works on <code>Option</code> identically to <code>Result</code>: if no values have been inserted yet, <code>peek()</code> yields <code>None</code> and <code>find_median</code> returns <code>None</code> immediately. The return type is <code>Option&lt;f64&gt;</code> because the mean of two integers can be fractional.</p>
+<p>In the even-count branch, <code>let Reverse(min_high) = *self.high.peek()?;</code> unwraps the <code>Reverse</code> wrapper directly in the <code>let</code> pattern.</p>
 <h3 id="563-the-complete-program"><a class="header" href="#563-the-complete-program">5.6.3 The complete program</a></h3>
 <p class="listing"><b>Listing 5.6</b> The complete program, with its tests. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/bin/median_finder.rs">src/bin/median_finder.rs</a></p>
 
@@ -765,7 +704,7 @@ mod tests {
         }
     }
 }</code></pre>
-<p><code>main</code> adds the eleven sample values and prints the median after each one.</p>
+<p><code>main</code> feeds eleven sample integers into <code>MedianFinder</code> and prints the running median after each step:</p>
 <pre><code class="language-text">$ cargo run --bin median_finder
 after  6: median 6
 after 10: median 8
@@ -779,38 +718,28 @@ after  1: median 5
 after  0: median 4
 after  0: median 3
 </code></pre>
-<p>Look at the test <code>the_stream_matches_a_sort_on_every_step</code>. After every added number, it sorts a copy of all the numbers so far. Then it computes the median the slow
-way, with the helper <code>median_of_sorted</code>. Then it checks
-that the heaps give the same answer. A test like this, which compares a fast method with a slow method you
-can trust, is called an <strong>oracle test</strong>. It catches mistakes that a few hand-picked examples miss.</p>
-<p>The last test checks the second rule directly: after every number, the two heaps’ sizes differ by at most one.</p>
+<p>The test <code>the_stream_matches_a_sort_on_every_step</code> validates the two-heap implementation against a simple reference routine: after each insertion, it sorts a copy of all values seen so far, computes the median via <code>median_of_sorted</code>, and asserts equality with <code>find_median()</code>. Verifying an optimized algorithm against a slower, obviously correct reference implementation is known as <strong>oracle testing</strong>, and reliably catches subtle invariant bugs missed by small hand-crafted examples.</p>
+<p>The final test verifies the size-balance invariant directly, asserting that the two heap lengths differ by at most 1 after every insertion.</p>
 <div class="summary" markdown="1">
 <h2 id="summary"><a class="header" href="#summary">Summary</a></h2>
 <ul>
-<li>A heap is a binary tree stored level by level in a <code>Vec</code>. The children of index i are at 2i + 1 and 2i + 2.</li>
-<li>In a max-heap every parent is at least as large as its children, so the largest item is at index 0.</li>
-<li>Push adds at the end and swaps upward. Pop moves the last item to the top and swaps downward with the
-larger child. Both are O(log n).</li>
-<li><code>BinaryHeap</code> is a max-heap. Wrapping items in <code>Reverse</code> makes it a min-heap.</li>
-<li>Tuples compare element by element from the left, so <code>(count, value)</code> orders by count first.</li>
-<li>Top k with a full heap costs O(u) memory. A min-heap bounded to k entries costs O(k) memory and O(u log k)
-time.</li>
-<li>Two heaps, a max-heap for the small half and a min-heap for the large half, give the running median in
-O(log n) per number.</li>
+<li>A binary heap packs a complete binary tree level by level into a <code>Vec</code>, placing the children of index <code>i</code> at <code>2i + 1</code> and <code>2i + 2</code> and its parent at <code>(i - 1) / 2</code>.</li>
+<li>In a max-heap, every parent is at least as large as its children, keeping the maximum element at index 0 for O(1) <code>peek</code>.</li>
+<li><code>push</code> appends to the tail and sifts upward; <code>pop</code> moves the tail to the root and sifts downward through the larger child. Both run in O(log n) time.</li>
+<li>Rust’s <code>BinaryHeap</code> is a max-heap; wrapping items in <code>std::cmp::Reverse</code> converts it into a min-heap.</li>
+<li>Tuples compare lexicographically from left to right, enabling <code>(count, value)</code> priority ordering without custom comparator types.</li>
+<li>Selecting the top <code>k</code> items with a <code>k</code>-bounded min-heap reduces heap memory from O(u) to O(k) and heap work from O(u log u) to O(u log k).</li>
+<li>Pairing a max-heap (<code>low</code>) with a min-heap (<code>high</code>) maintains a streaming median in O(log n) per insertion and O(1) per query.</li>
 </ul>
 </div>
 
-<p>Chapter 6 covers recursion and dynamic programming. You will solve problems by combining answers to
-smaller versions of themselves, and save those answers so none is computed twice.</p>
+<p>Chapter 6 turns to recursion and dynamic programming, solving problems with overlapping subproblems by caching intermediate results and concluding with parallel workloads suited to GPU execution.</p>
 <h2 id="exercises"><a class="header" href="#exercises">Exercises</a></h2>
 <ol>
-<li>Implement a max-heap yourself on a <code>Vec&lt;i32&gt;</code>, with <code>push</code>, <code>pop</code>, and <code>peek</code>, using the index formulas
-from section 5.1. Test it against <code>BinaryHeap</code> on random input.</li>
-<li>Change <code>top_k_frequent_words</code> to keep the alphabetically first words among ties, as the tip in section 5.5
-describes, and add a test.</li>
-<li>Add a method <code>len</code> to <code>MedianFinder</code> that returns how many numbers it holds.</li>
-<li>Extend the running median to remove numbers as well, so it can report the median of the last 100
-numbers only. Hint: remove lazily, by remembering which numbers are waiting to be deleted.</li>
+<li>Implement a standalone max-heap over <code>Vec&lt;i32&gt;</code> supporting <code>push</code>, <code>pop</code>, and <code>peek</code> using the index formulas from Section 5.1, and oracle-test it against <code>BinaryHeap</code> on random sequences.</li>
+<li>Modify <code>top_k_frequent_words</code> to retain alphabetically earliest words on frequency ties using the nested <code>Reverse</code> pattern from Section 5.5, and add a unit test confirming the tie-breaking order.</li>
+<li>Add a <code>len(&amp;self) -&gt; usize</code> method to <code>MedianFinder</code> returning the total number of elements inserted.</li>
+<li>Extend <code>MedianFinder</code> to support a sliding window of the most recent 100 values by implementing lazy deletion (recording expired values in a hash map and discarding them when they surface at either heap root).</li>
 </ol>
 
                     </main>
@@ -865,6 +794,7 @@ numbers only. Hint: remove lazily, by remembering which numbers are waiting to b
 
         <!-- Custom JS scripts -->
         <script src="theme/anim-4192821e.js"></script>
+        <script src="theme/book-ui-621ed017.js"></script>
 
 
 

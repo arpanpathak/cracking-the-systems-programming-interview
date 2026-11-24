@@ -1,5 +1,5 @@
 <!DOCTYPE HTML>
-<html lang="en" class="light sidebar-visible" dir="ltr">
+<html lang="en" class="coal sidebar-visible" dir="ltr">
     <head>
         <!-- Book generated using mdBook -->
         <meta charset="UTF-8">
@@ -28,18 +28,18 @@
         <link rel="stylesheet" id="mdbook-ayu-highlight-css" href="ayu-highlight-3fdfc3ac.css">
 
         <!-- Custom theme stylesheets -->
-        <link rel="stylesheet" href="theme/custom-b2009ce0.css">
+        <link rel="stylesheet" href="theme/custom-985f104d.css">
 
 
         <!-- Provide site root and default themes to javascript -->
         <script>
             const path_to_root = "";
-            const default_light_theme = "light";
-            const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "searchindex-f2511fee.js";
+            const default_light_theme = "coal";
+            const default_dark_theme = "coal";
+            window.path_to_searchindex_js = "searchindex-4622e2bb.js";
         </script>
         <!-- Start loading toc.js asap -->
-        <script src="toc-34d6c47e.js"></script>
+        <script src="toc-c196c8a9.js"></script>
     </head>
     <body>
     <div id="mdbook-help-container">
@@ -77,7 +77,7 @@
             try { theme = localStorage.getItem('mdbook-theme'); } catch(e) { }
             if (theme === null || theme === undefined) { theme = default_theme; }
             const html = document.documentElement;
-            html.classList.remove('light')
+            html.classList.remove('coal')
             html.classList.add(theme);
             html.classList.add("js");
         </script>
@@ -180,19 +180,11 @@
                     <main>
                         <img class="plate" src="art/app-b.png" alt="Dispatch, the robot with a television head and a flag, beside an open manual on a lectern and a brass gear">
 <h1 id="appendix-b-the-benchmark-report"><a class="header" href="#appendix-b-the-benchmark-report">Appendix B. The benchmark report</a></h1>
-<p>Chapters 4 and 9 quote measurements from the Rust lab’s benchmark program. This appendix reproduces the full
-report written from those runs: <code>rust-interview-lab/benchmarking_examples/benchmarking-report.md</code>. It
-presents them as a short paper, with method, results, discussion, and threats to validity. The recorded
-program output it relies on is in <code>rust-interview-lab/BENCHMARKS.md</code>.</p>
+<p>Chapters 4 and 9 cite measurements from the Rust lab’s benchmark suite. This appendix reproduces the complete report generated from those runs (<code>rust-interview-lab/benchmarking_examples/benchmarking-report.md</code>), structured as a technical paper covering methodology, results, discussion, and threats to validity. The raw recorded output underlying the report resides in <code>rust-interview-lab/BENCHMARKS.md</code>.</p>
 <blockquote>
-<p><strong>A correction to sections 2.2 and 5.2 of the report.</strong> They attribute the enum list’s slower push to
-a discriminant stored alongside the boxed continuation. On a 64-bit target,
-<code>std::mem::size_of::&lt;ListNode&lt;u64&gt;&gt;()</code> is 16, the same as <code>Node&lt;u64&gt;</code>: the <code>Box</code> field’s non-null niche
-encodes <code>Empty</code>, so there is no separate discriminant. Chapter 4, section 4.3, gives the two structural
-differences that remain (the inline head moved on every push, and the extra allocation for the final
-<code>Empty</code>). The measured timings are unaffected.</p>
+<p><strong>A correction to sections 2.2 and 5.2 of the report.</strong> Those sections attribute the enum list’s slower push to a discriminant stored alongside the boxed continuation. On a 64-bit target, <code>std::mem::size_of::&lt;ListNode&lt;u64&gt;&gt;()</code> is 16 bytes, identical to <code>Node&lt;u64&gt;</code>: the <code>Box</code> field’s non-null niche encodes <code>Empty</code>, so no separate discriminant is stored. Section 4.3 details the two remaining structural differences (the inline head moved on every push, and the extra allocation for the terminal <code>Empty</code> variant). The measured timings are unaffected.</p>
 </blockquote>
-<p>The report is built as its own PDF by this script and stylesheet:</p>
+<p>The standalone PDF report is built with the following script and stylesheet:</p>
 <p class="listing"><b>Listing B.1</b> The report's build script. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/benchmarking_examples/build_report_pdf.py">benchmarking_examples/build_report_pdf.py</a></p>
 
 <pre><code class="language-python">#!/usr/bin/env python3
@@ -812,6 +804,7 @@ cost of the arena becomes measurable.</p>
 
         <!-- Custom JS scripts -->
         <script src="theme/anim-4192821e.js"></script>
+        <script src="theme/book-ui-621ed017.js"></script>
 
 
 

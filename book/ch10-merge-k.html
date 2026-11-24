@@ -1,5 +1,5 @@
 <!DOCTYPE HTML>
-<html lang="en" class="light sidebar-visible" dir="ltr">
+<html lang="en" class="coal sidebar-visible" dir="ltr">
     <head>
         <!-- Book generated using mdBook -->
         <meta charset="UTF-8">
@@ -28,18 +28,18 @@
         <link rel="stylesheet" id="mdbook-ayu-highlight-css" href="ayu-highlight-3fdfc3ac.css">
 
         <!-- Custom theme stylesheets -->
-        <link rel="stylesheet" href="theme/custom-b2009ce0.css">
+        <link rel="stylesheet" href="theme/custom-985f104d.css">
 
 
         <!-- Provide site root and default themes to javascript -->
         <script>
             const path_to_root = "";
-            const default_light_theme = "light";
-            const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "searchindex-f2511fee.js";
+            const default_light_theme = "coal";
+            const default_dark_theme = "coal";
+            window.path_to_searchindex_js = "searchindex-4622e2bb.js";
         </script>
         <!-- Start loading toc.js asap -->
-        <script src="toc-34d6c47e.js"></script>
+        <script src="toc-c196c8a9.js"></script>
     </head>
     <body>
     <div id="mdbook-help-container">
@@ -77,7 +77,7 @@
             try { theme = localStorage.getItem('mdbook-theme'); } catch(e) { }
             if (theme === null || theme === undefined) { theme = default_theme; }
             const html = document.documentElement;
-            html.classList.remove('light')
+            html.classList.remove('coal')
             html.classList.add(theme);
             html.classList.add("js");
         </script>
@@ -191,24 +191,18 @@
 </ul>
 </div>
 
-<p>Chapter 9 built singly linked lists and moved their nodes between owners with <code>take</code>. Here you have k linked
-lists, each already sorted, and you want one sorted list that contains all their nodes.</p>
-<p>Section 10.2 compares three orders of merging. Sections 10.3 to 10.6 implement them, and section 10.7 lists the
-time and memory each program needs. Appendix C keeps the first, much longer version of this chapter, with eleven
-programs.</p>
-<p>Two letters appear throughout. <strong>k</strong> is the number of lists. <strong>N</strong> is the total number of nodes across all of
-them.</p>
+<p>Building on the singly linked list and <code>Option::take</code> ownership transfers from Chapter 9, this chapter addresses the k-way merge problem: combining <code>k</code> already-sorted linked lists into a single sorted list containing all <code>N</code> nodes.</p>
+<p>Section 10.2 compares three merge orders, Sections 10.3 through 10.6 implement them, and Section 10.7 summarizes their time, memory, and stack complexity. Appendix C preserves an expanded version of this study containing eleven variants.</p>
+<p>Throughout the chapter, <strong>k</strong> denotes the number of input lists and <strong>N</strong> denotes the total number of nodes across all lists.</p>
 <h2 id="101-merging-two-sorted-lists"><a class="header" href="#101-merging-two-sorted-lists">10.1 Merging two sorted lists</a></h2>
-<p>Every program in this chapter merges two sorted lists at a time. Compare the front nodes of the
-two lists. Move the smaller one to the end of the output. Repeat until one list is empty, then attach the
-other list whole. Figure 10.1 works through an example.</p>
+<p>Every pairwise strategy in this chapter relies on merging two sorted lists: compare their front nodes, move the smaller node to the tail of the output list, repeat until one list is exhausted, and attach the remaining list intact (Figure 10.1).</p>
 <figure>
 <img src="figures/merge-two.svg" alt="Six steps merging 1,4,5 with 1,3,4. At each step the smaller front node moves to the output. After step 5 the output is 1,1,3,4,4 and the remaining 5 is attached.">
 <figcaption><b>Figure 10.1</b> Merging two sorted lists. Each step moves one node, so merging lists of lengths a and b takes a + b steps.</figcaption>
 </figure>
-<p>With linked lists, “move a node to the output” does not copy the value. It detaches the node from the front of</p>
+<p>With linked lists, moving a node to the output does not copy its payload; it detaches the node from the front of its source list and links it to the tail of the output list.</p>
 <h2 id="102-three-strategies-for-k-lists"><a class="header" href="#102-three-strategies-for-k-lists">10.2 Three strategies for k lists</a></h2>
-<p>Figure 10.2 shows three ways to extend two-list merging to k lists.</p>
+<p>Three primary strategies extend two-list merging to <code>k</code> lists, as illustrated in Figure 10.2.</p>
 <figure>
 <img src="figures/merge-strategies.svg" alt="One at a time: L1, then L1+L2, then L1+L2+L3, then all four. Pairwise rounds: merge L1 with L2 and L3 with L4, then merge the two results. Heap: the four heads feed a min-heap that outputs the smallest.">
 <figcaption><b>Figure 10.2</b> The first strategy walks its growing result again and again. The other two touch each node only about log₂ k times.</figcaption>
@@ -221,15 +215,13 @@ are about log₂ k rounds, so the total is O(N log k).</p>
 <p><strong>A heap of heads.</strong> Put the front node of each list into a min-heap, the structure from chapter 5. Pop the
 smallest, append it to the output, and push the next node from the same list. Each node goes through one push and one pop on a heap of at most k entries. Each costs O(log k), so the
 total is again O(N log k).</p>
-<p>Animation 10.1 counts node moves for eight lists of three nodes: pairwise rounds against one list at a time.</p>
+<p>Animation 10.1 compares total node moves across eight lists of three nodes each, contrasting pairwise rounds against sequential merging.</p>
 <figure class="anim">
 <video class="motion" src="figures/ch10-merge-gap.mp4" autoplay="" loop="" muted="" playsinline="" preload="metadata" aria-label="Eight bars, lists[0] to lists[7], each of three nodes, and a counter of node moves. Pairwise: with gap 1, four merges of 3 and 3 take 24 moves; with gap 2, two merges of 6 and 6 take 24 more; with gap 4, one merge of 12 and 12 takes 24, and lists[0] holds all 24 nodes after 72 moves. Then one at a time: each list is merged into the growing lists[0], and the moves add up 6, 9, 12, up to 24, for 105 in total." data-chapters="[[0.0, &quot;pairwise&quot;], [25.02, &quot;one at a time&quot;]]"><img src="figures/ch10-merge-gap.gif" alt="Eight bars, lists[0] to lists[7], each of three nodes, and a counter of node moves. Pairwise: with gap 1, four merges of 3 and 3 take 24 moves; with gap 2, two merges of 6 and 6 take 24 more; with gap 4, one merge of 12 and 12 takes 24, and lists[0] holds all 24 nodes after 72 moves. Then one at a time: each list is merged into the growing lists[0], and the moves add up 6, 9, 12, up to 24, for 105 in total."></video>
 <figcaption><b>Animation 10.1</b> Pairwise rounds move each node once per round, log₂ 8 = 3 rounds: 72 moves. One at a time walks the growing result again and again: 105 moves for the same 24 nodes.</figcaption>
 </figure>
-<p>For 100 lists of 10,000 nodes each, N is a million. O(kN) is about 100 million steps. O(N log k) is about 7
-million.</p>
-<p>The pairwise strategy has a compact in-place form. It keeps the lists in a <code>Vec</code> and merges positions that are a
-growing <strong>interval</strong> apart (figure 10.3). The code in section 10.3 calls the interval <code>gap</code>.</p>
+<p>For 100 lists of 10,000 nodes each (<code>N = 1,000,000</code>), sequential merging performs roughly 100 million node visits, whereas an O(N log k) strategy performs roughly 7 million.</p>
+<p>The pairwise strategy admits a compact in-place formulation that stores the lists in a <code>Vec</code> and merges positions separated by a doubling <strong>interval</strong> (Figure 10.3), named <code>gap</code> in Section 10.3.</p>
 <figure>
 <img src="figures/merge-interval.svg" alt="Five lists. With interval 1, 0 merges with 1 and 2 with 3. With interval 2, 0 merges with 2. With interval 4, 0 merges with 4 and holds all five.">
 <figcaption><b>Figure 10.3</b> Interval rounds on five lists. The interval doubles each round, and the result collects in <code>lists[0]</code>.</figcaption>
@@ -243,9 +235,7 @@ case. <code>tail</code> always points at the last node of the output (figure 10.
 <img src="figures/merge-tail.svg" alt="A dummy node followed by two merged nodes; tail points at the last one; the next node to move is 3, the front of the right list">
 <figcaption><b>Figure 10.4</b> The dummy node gives the output a fixed starting point. <code>tail</code> always points at the last node, where the next one is attached.</figcaption>
 </figure>
-<p><code>merge_two</code> takes both lists by value. When the right list has the smaller front node, the two lists swap, so
-<code>left</code> always holds the node to move. The only mutable reference is <code>tail</code>. This keeps the loop readable and
-reduces the mutable borrow fatigue: there is one borrow to follow.</p>
+<p>The function <code>merge_two</code> takes both lists by value. Whenever the right list has the smaller front node, the two bindings are swapped so <code>left</code> always holds the next node to detach. Maintaining <code>tail</code> as the sole mutable reference simplifies borrow tracking and keeps the loop concise.</p>
 <p class="listing"><b>Listing 10.1</b> The node type and <code>merge_two</code> (lines 4 to 27). <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/bin/merge_k_sorted_lists_owned.rs">src/bin/merge_k_sorted_lists_owned.rs</a></p>
 
 <pre><code class="language-rust">type Link = Option&lt;Box&lt;Node&gt;&gt;;
@@ -438,9 +428,7 @@ the front, and its <code>next</code> becomes the merge of the rest of <code>left
 move.</p>
 <p><code>merge_k_slice</code> works on a slice, <code>&amp;mut [List]</code>, and splits it with <code>split_at_mut</code> from section 10.4. Splitting a
 slice creates two views of the same memory, so nothing is allocated to split.</p>
-<p><code>merge</code> calls itself once for each node of its output. The last merge outputs all N nodes, so the stack reaches
-O(N) frames. In section 9.6, a recursive drop overflowed the 8 MiB main-thread stack between 260,000 and 270,000
-nodes. For long lists, use the loop of section 10.3.</p>
+<p>Because <code>merge</code> calls itself once per output node, the final merge reaches a call stack depth of O(N) frames. As demonstrated in Section 9.7, recursive execution of this depth overflows the 8 MiB main-thread stack between 260,000 and 270,000 nodes. For large inputs, prefer the iterative merge from Section 10.3.</p>
 <pre><code class="language-text">$ cargo run --bin merge_k_sorted_lists_halves
 Input lists:
 [1 -&gt; 4 -&gt; 5]
@@ -747,8 +735,7 @@ fn main() {
 </ul>
 </div>
 
-<p>Chapter 11 moves from lists to trees, where each node has up to two children. It ends with tries, where
-each node has one child per letter.</p>
+<p>In Chapter 11, linked structures expand from linear lists to binary trees, where each node has up to two children, and conclude with tries, where each node branches by character.</p>
 <h2 id="exercises"><a class="header" href="#exercises">Exercises</a></h2>
 <ol>
 <li>Write the “one at a time” merge and time it against listing 10.5 on 200 lists of 5,000 nodes each.</li>
@@ -810,6 +797,7 @@ nodes each.</li>
 
         <!-- Custom JS scripts -->
         <script src="theme/anim-4192821e.js"></script>
+        <script src="theme/book-ui-621ed017.js"></script>
 
 
 

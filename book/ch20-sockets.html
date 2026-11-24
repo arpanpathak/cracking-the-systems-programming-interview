@@ -1,5 +1,5 @@
 <!DOCTYPE HTML>
-<html lang="en" class="light sidebar-visible" dir="ltr">
+<html lang="en" class="coal sidebar-visible" dir="ltr">
     <head>
         <!-- Book generated using mdBook -->
         <meta charset="UTF-8">
@@ -28,18 +28,18 @@
         <link rel="stylesheet" id="mdbook-ayu-highlight-css" href="ayu-highlight-3fdfc3ac.css">
 
         <!-- Custom theme stylesheets -->
-        <link rel="stylesheet" href="theme/custom-b2009ce0.css">
+        <link rel="stylesheet" href="theme/custom-985f104d.css">
 
 
         <!-- Provide site root and default themes to javascript -->
         <script>
             const path_to_root = "";
-            const default_light_theme = "light";
-            const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "searchindex-f2511fee.js";
+            const default_light_theme = "coal";
+            const default_dark_theme = "coal";
+            window.path_to_searchindex_js = "searchindex-4622e2bb.js";
         </script>
         <!-- Start loading toc.js asap -->
-        <script src="toc-34d6c47e.js"></script>
+        <script src="toc-c196c8a9.js"></script>
     </head>
     <body>
     <div id="mdbook-help-container">
@@ -77,7 +77,7 @@
             try { theme = localStorage.getItem('mdbook-theme'); } catch(e) { }
             if (theme === null || theme === undefined) { theme = default_theme; }
             const html = document.documentElement;
-            html.classList.remove('light')
+            html.classList.remove('coal')
             html.classList.add(theme);
             html.classList.add("js");
         </script>
@@ -191,20 +191,11 @@
 </ul>
 </div>
 
-<p>This chapter works up from the bottom of the network stack. Section 20.1 covers addresses, the numbers that
-name a machine. Section 20.2 covers how much data TCP lets a sender have on the wire at once, and why that
-limits speed on long links. Sections 20.3 and 20.4 build two echo servers. The first gives every client its
-own thread. The second serves every client from one thread with epoll. It uses no crate beyond <code>libc</code>, so every
-system call it makes is visible.</p>
+<p>The sections below work upward through the network stack from addressing to server concurrency models. Section 20.1 covers IPv4 addresses, private subnets, and wire byte order. Section 20.2 analyzes TCP’s in-flight window and how the bandwidth-delay product constrains throughput over high-latency links. Sections 20.3 and 20.4 construct two TCP echo servers: a thread-per-connection server built on <code>std::net</code> and a single-threaded non-blocking <code>epoll</code> server built directly over <code>libc</code> so every kernel system call remains explicit.</p>
 <h2 id="201-ipv4-addresses"><a class="header" href="#201-ipv4-addresses">20.1 IPv4 addresses</a></h2>
-<p>An <strong>IPv4 address</strong> names one network interface on one machine. It is a 32-bit number. People write it as
-four bytes in decimal, separated by dots, such as <code>10.0.0.1</code>. Each of the four parts is called an <strong>octet</strong>,
-so each must be between 0 and 255.</p>
-<p>An address alone names a machine. A connection also needs to name a program on that machine. That is the job
-of the <strong>port</strong>, a 16-bit number. An address and a port together, such as <code>127.0.0.1:8080</code>, are a <strong>socket
-address</strong>.</p>
-<p>Some addresses are reserved for private networks: offices, homes, and the inside of a data center. Routers on
-the public internet do not forward them. Three ranges are private:</p>
+<p>An <strong>IPv4 address</strong> identifies a network interface on a host using a 32-bit unsigned integer. Human-readable dotted-decimal notation writes those four bytes individually, such as <code>10.0.0.1</code>, where each 8-bit component is an <strong>octet</strong> ranging from 0 to 255.</p>
+<p>Because multiple processes share a single host, a transport connection pairs the IP address with a 16-bit <strong>port</strong> number to identify the target application. Together, an IP address and port (such as <code>127.0.0.1:8080</code>) form a <strong>socket address</strong>.</p>
+<p>Three address blocks are reserved for private networks (offices, homes, and internal data-center fabrics) and are not routed across the public internet:</p>
 <div class="table-wrapper">
 <table>
 <thead>
@@ -217,18 +208,14 @@ the public internet do not forward them. Three ranges are private:</p>
 </tbody>
 </table>
 </div>
-<p>The <code>/8</code> means that the first 8 bits are fixed and the rest can be anything.</p>
-<p>When an address travels inside a packet, it is four bytes in a fixed order: the first octet first. That order
-is called <strong>network byte order</strong>, and it is big-endian: the first byte is the most significant. Most CPUs
-store numbers little-endian, with the least significant byte first. Code that puts an address into a packet
-has to convert it (figure 20.1).</p>
+<p>In CIDR notation, the prefix length (such as <code>/8</code>) specifies how many leading bits are fixed for the network prefix while the remaining bits identify hosts within that subnet.</p>
+<p>On the wire, multi-byte network fields are transmitted in <strong>network byte order</strong>, which is big-endian (most significant byte first). Because most modern processors (x86-64 and ARM64 in standard configurations) store integers in little-endian order, networking code must convert explicitly between host and network byte order (figure 20.1).</p>
 <figure>
 <img src="figures/ch20-byte-order.svg" alt="The string 127.0.0.1 parses to the array 127, 0, 0, 1, which from_be_bytes turns into 0x7f000001; to_be_bytes gives back the bytes in wire order">
 <figcaption><b>Figure 20.1</b> An address as text, as octets, as a <code>u32</code>, and on the wire.</figcaption>
 </figure>
-<p>The program <code>net_ipv4.rs</code> does these three jobs: parse the text, check the private ranges, and convert to and
-from network order.</p>
-<p><code>parse</code> splits the text on dots and parses each part as a <code>u8</code>:</p>
+<p>The program <code>net_ipv4.rs</code> implements dotted-decimal parsing, private-range classification, and byte-order conversion.</p>
+<p><code>parse</code> splits the input string on <code>.</code> and parses each component as a <code>u8</code>:</p>
 <pre><code class="language-rust">/// Parse `a.b.c.d`, rejecting anything that is not exactly four octets.
 fn parse(input: &amp;str) -&gt; Option&lt;[u8; 4]&gt; {
     let mut parts = input
@@ -245,21 +232,15 @@ fn parse(input: &amp;str) -&gt; Option&lt;[u8; 4]&gt; {
         .is_none()
         .then_some(address)
 }</code></pre>
-<p><code>parse</code> is four <code>parts.next()??</code> expressions and a check that nothing is left over. The iterator yields
-<code>Option&lt;u8&gt;</code> (the result of <code>part.parse::&lt;u8&gt;().ok()</code>), so <code>next()</code> returns <code>Option&lt;Option&lt;u8&gt;&gt;</code>. The
-first <code>?</code> returns <code>None</code> if there is no fourth part. The second returns <code>None</code> if a part is not a valid
-<code>u8</code>, which is how <code>"256.1.1.1"</code> is rejected. <code>parts.next().is_none().then_some(address)</code> rejects a fifth
-part.</p>
-<p><code>is_private</code> is the table above, written as one pattern:</p>
+<p>Each octet is extracted via <code>parts.next()??</code>, followed by a trailing-element check. Because the mapped iterator yields <code>Option&lt;u8&gt;</code>, <code>next()</code> returns <code>Option&lt;Option&lt;u8&gt;&gt;</code>: the first <code>?</code> returns <code>None</code> if fewer than four segments exist, and the second <code>?</code> returns <code>None</code> if a segment fails <code>u8</code> parsing (rejecting <code>"256.1.1.1"</code>). Finally, <code>parts.next().is_none().then_some(address)</code> rejects inputs with a fifth segment.</p>
+<p><code>is_private</code> encodes the private-range table directly as a slice pattern:</p>
 <pre><code class="language-rust">/// `10.0.0.0/8`, `172.16.0.0/12`, and `192.168.0.0/16` are not routable on the
 /// public internet.
 fn is_private(address: [u8; 4]) -&gt; bool {
     matches!(address, [10, ..] | [172, 16..=31, ..] | [192, 168, ..])
 }</code></pre>
-<p><code>[10, ..]</code> matches any address starting with 10. <code>[172, 16..=31, ..]</code> uses a range pattern for the second
-octet: exactly the /12 block from 172.16 to 172.31. Rust’s patterns are shorter here than the bit masks they
-replace.</p>
-<p>The conversions are one standard-library call each:</p>
+<p>The pattern <code>[10, ..]</code> matches the entire <code>10.0.0.0/8</code> block, and <code>[172, 16..=31, ..]</code> matches the <code>/12</code> range from <code>172.16</code> through <code>172.31</code> without manual bit masking.</p>
+<p>Conversion to and from big-endian integers uses single standard-library calls:</p>
 <pre><code class="language-rust">/// Addresses travel big-endian, so the first octet is the most significant byte.
 fn to_network_order(address: [u8; 4]) -&gt; u32 {
     u32::from_be_bytes(address)
@@ -268,8 +249,7 @@ fn to_network_order(address: [u8; 4]) -&gt; u32 {
 fn from_network_order(value: u32) -&gt; [u8; 4] {
     value.to_be_bytes()
 }</code></pre>
-<p><code>u32::from_be_bytes</code> reads the four octets as a big-endian number on any machine, whatever its native order.
-<code>to_be_bytes</code> goes back. The program prints each input with its result:</p>
+<p><code>u32::from_be_bytes</code> interprets the four octets in big-endian order independently of host endianness, and <code>to_be_bytes</code> reverses the operation:</p>
 <pre><code class="language-text">input            parsed              private       as u32
 10.0.0.1         [10, 0, 0, 1]          true    167772161
 172.16.5.4       [172, 16, 5, 4]        true   2886731012
@@ -280,30 +260,17 @@ fn from_network_order(value: u32) -&gt; [u8; 4] {
 
 all checks passed
 </code></pre>
-<p><code>str::parse::&lt;u8&gt;</code> accepts a leading <code>+</code> and leading zeros, so <code>"+1.02.3.4"</code> parses. The standard
-library’s <code>"1.2.3.4".parse::&lt;std::net::Ipv4Addr&gt;()</code> rejects both, and <code>Ipv4Addr::is_private</code> implements
-the same three ranges. Production code uses <code>Ipv4Addr</code>.</p>
+<p>Note that <code>str::parse::&lt;u8&gt;</code> permits leading <code>+</code> signs and leading zeros (accepting <code>"+1.02.3.4"</code>). Production code should use <code>std::net::Ipv4Addr</code> (which rejects both forms and provides <code>Ipv4Addr::is_private</code>).</p>
 <h2 id="202-how-much-data-can-be-in-flight"><a class="header" href="#202-how-much-data-can-be-in-flight">20.2 How much data can be in flight</a></h2>
-<p>TCP turns an unreliable network into a reliable byte stream. The sender numbers every byte it sends. The
-receiver answers with an <strong>acknowledgment</strong>, or ACK, that says how many bytes have arrived in order. A byte
-the sender has sent, but not yet seen acknowledged, is <strong>in flight</strong>. If its ACK never comes, the sender sends
-it again.</p>
-<p>The time from sending a byte to receiving its ACK is the <strong>round-trip time</strong>, or RTT. Between two machines in
-one data center it is under a millisecond. Across a continent it is tens of milliseconds.</p>
-<p>A sender may not send without limit. It keeps at most a <strong>window</strong> of bytes in flight, and stops when the
-window is full. Two limits set the window:</p>
+<p>TCP constructs a reliable, ordered byte stream over an unreliable packet network. The sender assigns a sequence number to every transmitted byte, and the receiver replies with an <strong>acknowledgment</strong> (ACK) indicating how many contiguous bytes have arrived. Bytes transmitted but not yet acknowledged are <strong>in flight</strong>; if an ACK fails to arrive before a timeout or loss signal, the sender retransmits the unacknowledged bytes.</p>
+<p>The elapsed interval between transmitting a byte and receiving its ACK is the <strong>round-trip time</strong> (RTT), typically sub-millisecond within a data center and tens of milliseconds across continents.</p>
+<p>A TCP sender cannot transmit unbounded data; it caps unacknowledged bytes in flight to an <strong>effective window</strong>, determined by the minimum of two independent limits:</p>
 <ul>
-<li>The <strong>receive window</strong> is how much the receiver can buffer. The receiver states it in every ACK. This is
-<strong>flow control</strong>: it stops a fast sender from overrunning a slow reader.</li>
-<li>The <strong>congestion window</strong> is the sender’s own estimate of what the network can carry. It grows while ACKs
-return and shrinks when packets are lost. This is <strong>congestion control</strong>.</li>
+<li>The <strong>receive window</strong> (<code>rwnd</code>), advertised in every ACK by the peer, reflects available space in the receiver’s socket buffer. Limiting transmission to <code>rwnd</code> enforces <strong>flow control</strong>, preventing a fast sender from overwhelming a slow reader.</li>
+<li>The <strong>congestion window</strong> (<code>cwnd</code>), maintained locally by the sender, estimates network path capacity by expanding as ACKs arrive and shrinking upon packet loss. Limiting transmission to <code>cwnd</code> enforces <strong>congestion control</strong>.</li>
 </ul>
-<p>The sender uses the smaller of the two. Once that many bytes are in flight, it waits for an ACK.</p>
-<p>The window decides how fast a single connection can go. The bytes a link holds while they travel are its
-bandwidth times the round-trip time, the <strong>bandwidth-delay product</strong>. If the window is smaller than that, the
-sender runs out of window before the first ACK returns. The link then sits idle for the rest of each round
-trip. A worked example: a 1 GB/s link with a 100 ms round trip holds 100,000,000 bytes in flight. A 64,000-byte
-window fills 0.064% of it, so the connection moves 64,000 bytes per 100 ms, which is 640 KB/s (figure 20.2).</p>
+<p>Once <code>min(rwnd, cwnd)</code> bytes are in flight, the sender stalls until incoming ACKs advance the window.</p>
+<p>This window directly bounds single-connection throughput. The total volume of data a link can hold in transit simultaneously is its bandwidth multiplied by its RTT, called the <strong>bandwidth-delay product</strong> (BDP). Whenever the effective window is smaller than the BDP, the sender exhausts its window before the first ACK returns, leaving the link idle for the remainder of every round trip. On a 1 GB/s link with a 100 ms RTT, the BDP is 100,000,000 bytes; a 64,000-byte window utilizes only 0.064% of the pipe, capping throughput at 64,000 bytes per 100 ms, or 640 KB/s (figure 20.2).</p>
 <figure>
 <img src="figures/ch20-bdp.svg" alt="A pipe representing a 1 GB/s link with 100 ms RTT, holding 100 MB; a 64 KB window fills a sliver of it; throughput is 640 KB/s">
 <figcaption><b>Figure 20.2</b> A 64,000-byte window on a link whose bandwidth-delay product is 100,000,000 bytes.</figcaption>
@@ -312,19 +279,17 @@ window fills 0.064% of it, so the connection moves 64,000 bytes per 100 ms, whic
 <video class="motion" src="figures/ch20-bdp.mp4" autoplay="" loop="" muted="" playsinline="" preload="metadata" aria-label="A sender and a receiver joined by a link with a data lane and an ACK lane. A gauge above shows 16 slots, the packets the link holds in one round trip. With a window of 4, the sender sends 4 packets, stops with the label window full, and waits a round trip for ACKs while most of the link is empty; the link is busy 25 percent of the time. With a window of 16, packets leave continuously, the first ACK returns as the 16th packet leaves, and the link is busy 100 percent of the time. Last, a window of 1 against the real numbers: 1 GB/s times 100 ms is 100,000,000 bytes in flight, and a 64,000-byte window gives 640 KB/s." data-chapters="[[0.0, &quot;window 4&quot;], [25.74, &quot;window 16&quot;], [44.88, &quot;real numbers&quot;]]"><img src="figures/ch20-bdp.gif" alt="A sender and a receiver joined by a link with a data lane and an ACK lane. A gauge above shows 16 slots, the packets the link holds in one round trip. With a window of 4, the sender sends 4 packets, stops with the label window full, and waits a round trip for ACKs while most of the link is empty; the link is busy 25 percent of the time. With a window of 16, packets leave continuously, the first ACK returns as the 16th packet leaves, and the link is busy 100 percent of the time. Last, a window of 1 against the real numbers: 1 GB/s times 100 ms is 100,000,000 bytes in flight, and a 64,000-byte window gives 640 KB/s."></video>
 <figcaption><b>Animation 20.1</b> The window caps how many packets are unacknowledged. When it is smaller than the bandwidth-delay product, the sender stops for part of every round trip. The link is idle for that part.</figcaption>
 </figure>
-<p>The program <code>net_window.rs</code> computes both quantities. The effective window is the smaller of the two limits:</p>
+<p>The program <code>net_window.rs</code> computes both quantities. The effective window takes the minimum of the two limits:</p>
 <pre><code class="language-rust">/// The sender may have this much unacknowledged data in flight.
 fn effective_window(receive: u32, congestion: u32) -&gt; u32 {
     receive.min(congestion)
 }</code></pre>
-<p>The bandwidth-delay product is a multiplication, done with care for integer precision:</p>
+<p>The bandwidth-delay product preserves integer precision by multiplying before dividing:</p>
 <pre><code class="language-rust">/// Bytes in flight needed to keep a link busy: bandwidth times round-trip time.
 fn bandwidth_delay_product(bytes_per_second: u64, rtt_millis: u64) -&gt; u64 {
     bytes_per_second * rtt_millis / 1_000
 }</code></pre>
-<p>It multiplies before it divides, <code>bytes_per_second * rtt_millis / 1_000</code>, which keeps precision in integer
-arithmetic. The intermediate product overflows <code>u64</code> only when bytes per second times milliseconds passes
-about 1.8 × 10¹⁹, far beyond any real link. The program prints:</p>
+<p>Evaluating <code>bytes_per_second * rtt_millis / 1_000</code> avoids truncating sub-second RTTs to zero; the intermediate <code>u64</code> product overflows only beyond roughly 1.8 × 10¹⁹ byte-milliseconds per second, well above physical link speeds:</p>
 <pre><code class="language-text">effective window = min(receiver window, congestion window)
   receiver   64000 B, congestion   16000 B -&gt;   16000 B
   receiver   16000 B, congestion   64000 B -&gt;   16000 B
@@ -339,32 +304,23 @@ window 64000 B vs product 100000000 B: link is starved, the window too small
 
 all checks passed
 </code></pre>
-<p>For bulk transfers, latency limits a connection as much as bandwidth does. TCP’s original window field is 16
-bits, so it caps at 65,535 bytes. The window-scaling option multiplies it, so a window can reach the size of a
-fast, long link. On Linux, <code>net.ipv4.tcp_rmem</code> and <code>tcp_wmem</code> bound how large the kernel lets the windows
-grow.</p>
+<p>Because TCP’s original 16-bit header window field caps at 65,535 bytes, modern stacks negotiate the TCP window-scaling option during the handshake to multiply the advertised window up to the BDP of high-speed, long-distance links. On Linux, the sysctl parameters <code>net.ipv4.tcp_rmem</code> and <code>net.ipv4.tcp_wmem</code> bound kernel auto-tuning of these buffer sizes.</p>
 <h2 id="203-a-thread-per-connection-echo-server"><a class="header" href="#203-a-thread-per-connection-echo-server">20.3 A thread-per-connection echo server</a></h2>
-<p>An <strong>echo server</strong> writes back every byte it receives. It is a small server, but it still accepts
-connections, reads, writes, and notices when the client leaves.</p>
-<p>A server reaches the network through a <strong>socket</strong>, a file descriptor that the kernel connects to a network
-endpoint. A listening server goes through a fixed sequence of system calls (figure 20.3):</p>
+<p>An <strong>echo server</strong> transmits back every byte it receives from each client. Despite its minimal protocol, it exercises the complete TCP server lifecycle: accepting connections, reading and writing byte streams, and detecting peer closure.</p>
+<p>Applications access the kernel’s network stack through a <strong>socket</strong>, a file descriptor bound to a transport endpoint. A listening TCP server executes six canonical system calls in sequence (figure 20.3):</p>
 <ol>
-<li><code>socket</code> creates the socket and returns its file descriptor.</li>
-<li><code>bind</code> gives it a socket address, so clients know where to connect.</li>
-<li><code>listen</code> turns it into a listening socket. The kernel now completes TCP handshakes for it and keeps the
-finished connections in an <strong>accept queue</strong>.</li>
-<li><code>accept</code> takes one connection from that queue and returns a new file descriptor for it. The listening
-socket stays open for the next client.</li>
-<li><code>read</code> and <code>write</code> on the new descriptor move bytes in both directions.</li>
-<li><code>close</code> ends the connection. The kernel sends a FIN, the TCP message that says “no more bytes from me”.</li>
+<li><code>socket</code> allocates a kernel socket object and returns its file descriptor.</li>
+<li><code>bind</code> assigns a local socket address (IP and port) to the descriptor.</li>
+<li><code>listen</code> transitions the socket into passive listening mode; the kernel now completes incoming three-way handshakes and places established connections into an <strong>accept queue</strong>.</li>
+<li><code>accept</code> dequeues one established connection and returns a new dedicated file descriptor for that client while leaving the listening socket open.</li>
+<li><code>read</code> and <code>write</code> transfer bytes over the client descriptor.</li>
+<li><code>close</code> tears down the connection, instructing the kernel to transmit a TCP <code>FIN</code> segment signaling end-of-stream.</li>
 </ol>
 <figure>
 <img src="figures/ch20-lifecycle.svg" alt="Six boxes in a row: socket a new fd, bind address plus port, listen accept queue, accept one fd per client, read and write bytes both ways, close FIN. A dashed loop on accept is labelled next client.">
 <figcaption><b>Figure 20.3</b> The system calls of a listening server. <code>accept</code> runs once per client, and each client gets its own file descriptor.</figcaption>
 </figure>
-<p><code>std::net</code> wraps these calls. <code>TcpListener::bind</code> performs <code>socket</code>, <code>bind</code>, and <code>listen</code>. Iterating over
-<code>incoming()</code> calls <code>accept</code>. The simplest way to serve several clients at once is to give each accepted
-connection its own thread:</p>
+<p>Rust’s <code>std::net</code> wraps this lifecycle directly: <code>TcpListener::bind</code> invokes <code>socket</code>, <code>bind</code>, and <code>listen</code>, while iterating over <code>incoming()</code> invokes <code>accept</code>. In the thread-per-connection architecture, each accepted <code>TcpStream</code> is moved into a dedicated worker thread:</p>
 <pre><code class="language-rust">/// Accept connections forever, handling each on its own thread.
 pub fn serve(listener: TcpListener) {
     for incoming in listener.incoming() {
@@ -380,10 +336,8 @@ pub fn serve(listener: TcpListener) {
         }
     }
 }</code></pre>
-<p>Binding to port 0 asks the kernel for any free port. <code>local_addr()</code> reports which one it chose, which is how
-both <code>main</code> and the test avoid colliding with other programs. <code>listener.incoming()</code> is an endless iterator
-over <code>accept</code>, and each accepted stream moves into its own thread.</p>
-<p>Each thread runs the whole protocol for one client:</p>
+<p>Binding to port <code>0</code> instructs the kernel to assign an unused ephemeral port, queried afterward via <code>local_addr()</code> so tests and parallel instances never collide. <code>listener.incoming()</code> yields accepted client streams indefinitely, spawning one thread per connection.</p>
+<p>Each worker thread drives the full echo loop for its assigned client:</p>
 <pre><code class="language-rust">/// Echo every byte back until the peer closes the connection.
 fn handle_connection(mut stream: TcpStream) -&gt; std::io::Result&lt;()&gt; {
     stream.set_nodelay(true)?;
@@ -401,53 +355,35 @@ fn handle_connection(mut stream: TcpStream) -&gt; std::io::Result&lt;()&gt; {
         stream.write_all(&amp;buffer[..read])?;
     }
 }</code></pre>
+<p>Four protocol details govern this loop:</p>
 <ul>
-<li><code>set_nodelay(true)</code> disables Nagle’s algorithm. Nagle delays small writes to combine them into fewer
-packets. That is wrong for an echo server, whose reply is never followed by more data.</li>
-<li><code>read</code> returns how many bytes arrived, which can be anything from 1 to the buffer size, no matter how
-the client wrote them. TCP is a byte stream with no message boundaries.</li>
-<li><code>read</code> returning 0 means the peer sent FIN: an orderly close. The function returns <code>Ok(())</code> and the
-stream is closed when it is dropped.</li>
-<li><code>write_all</code> loops over partial writes until every byte is sent.</li>
+<li><code>set_nodelay(true)</code> disables Nagle’s algorithm, which otherwise buffers small writes to coalesce packets and introduces artificial latency for request-response servers whose replies are not immediately followed by additional data.</li>
+<li><code>read</code> returns any count from <code>1</code> up to <code>buf.len()</code> depending on packet arrival; because TCP is an unframed byte stream, read boundaries need not match client write boundaries.</li>
+<li>A <code>read</code> return value of <code>0</code> signals an orderly EOF (the peer transmitted <code>FIN</code>). The handler returns <code>Ok(())</code>, and dropping <code>stream</code> closes the socket.</li>
+<li><code>write_all</code> loops across partial kernel writes until the entire slice has been accepted into the send buffer.</li>
 </ul>
 <figure class="anim">
 <video class="motion" src="figures/ch20-tcp-handshake.mp4" autoplay="" loop="" muted="" playsinline="" preload="metadata" aria-label="The echo server&#39;s test as two robots, a client and a server, joined by a wire, each with its TCP state above it and a kernel receive buffer below it. The server thread sleeps in accept. The client&#39;s connect sends SYN seq 1000; the server&#39;s kernel, not the server thread, answers SYN+ACK seq 5000 ack 1001; the client sends ACK 5001, and both sides are ESTABLISHED. The connection waits in the accept queue until accept takes it. write_all sends hello echo as one 10-byte segment into the server&#39;s receive buffer, read returns 10, and write_all sends it back. shutdown sends FIN; the server&#39;s read returns 0, the handler returns, and the server sends its own FIN; read_to_end returns the echo, and the client&#39;s last ACK closes the server side. A second run deletes the shutdown line: both sides block in read forever." data-chapters="[[0.0, &quot;listen&quot;], [5.22, &quot;handshake&quot;], [34.26, &quot;echo&quot;], [57.72, &quot;close&quot;], [88.68, &quot;no FIN&quot;]]"><img src="figures/ch20-tcp-handshake.gif" alt="The echo server&#39;s test as two robots, a client and a server, joined by a wire, each with its TCP state above it and a kernel receive buffer below it. The server thread sleeps in accept. The client&#39;s connect sends SYN seq 1000; the server&#39;s kernel, not the server thread, answers SYN+ACK seq 5000 ack 1001; the client sends ACK 5001, and both sides are ESTABLISHED. The connection waits in the accept queue until accept takes it. write_all sends hello echo as one 10-byte segment into the server&#39;s receive buffer, read returns 10, and write_all sends it back. shutdown sends FIN; the server&#39;s read returns 0, the handler returns, and the server sends its own FIN; read_to_end returns the echo, and the client&#39;s last ACK closes the server side. A second run deletes the shutdown line: both sides block in read forever."></video>
 <figcaption><b>Animation 20.2</b> The test from listing 20.3, one segment at a time. The kernel completes the handshake before <code>accept</code> returns, and each direction closes with its own FIN. Without <code>shutdown</code>, no FIN is sent, and both reads wait forever.</figcaption>
 </figure>
-<p>The test is a model of how to test a server. It binds an ephemeral port, runs <code>handle_connection</code> for
-exactly one connection in a thread, writes <code>"hello echo"</code>, and then half-closes with
-<code>shutdown(Shutdown::Write)</code>. The half-close sends FIN, so the server’s <code>read</code> returns 0 and the server
-finishes. The client’s read side stays open, so <code>read_to_end</code> can collect the echo.</p>
-<p>Thread per connection is the right default when connections are few or handlers block on other I/O. Each
-thread costs a kernel stack and scheduling work. At thousands of mostly idle connections, the model spends
-its memory on stacks that wait. That is the case for the next program.</p>
+<p>The unit test demonstrates clean network testing: it binds an ephemeral port, handles a single connection in a background thread, writes <code>"hello echo"</code>, and half-closes the transmit direction with <code>shutdown(Shutdown::Write)</code>. Sending <code>FIN</code> causes the server’s <code>read</code> to return <code>0</code> and exit, while leaving the client’s read half open so <code>read_to_end</code> collects the echoed bytes.</p>
+<p>Thread-per-connection servers remain a strong default for modest concurrency or handlers that perform blocking I/O. However, each thread consumes a call stack and kernel scheduling overhead; at thousands of mostly idle connections, memory and context-switching costs dominate. Serving large connection counts efficiently requires an event-driven architecture.</p>
 <h2 id="204-an-epoll-echo-server"><a class="header" href="#204-an-epoll-echo-server">20.4 An epoll echo server</a></h2>
-<p>A thread blocked in <code>read</code> is waiting for one socket. To serve thousands of sockets with one thread, the
-thread must never wait on any single one. Two kernel features make that possible.</p>
-<p>A <strong>non-blocking</strong> socket never makes its caller wait. When there is nothing to read, <code>read</code> returns at once
-with the error <code>EAGAIN</code>, which means “try again later”. When the kernel’s send buffer for the socket is full,
-<code>write</code> returns <code>EAGAIN</code> the same way.</p>
-<p><strong>epoll</strong> tells the program which sockets have work. The program creates one epoll instance and adds every
-socket to its <strong>interest list</strong>. For each socket it says what to watch for: <code>EPOLLIN</code> for “readable” and
-<code>EPOLLOUT</code> for “writable”. When data arrives on a socket, the kernel puts that socket on the instance’s <strong>ready list</strong>.
-<code>epoll_wait</code> sleeps until the ready list is not empty, then returns it (figure 20.4).</p>
+<p>A thread blocked in <code>read</code> can monitor only a single socket. To multiplex thousands of sockets onto one thread, no I/O call may block on an individual connection. Two Linux kernel mechanisms make this possible.</p>
+<p>First, a <strong>non-blocking</strong> socket returns immediately when an operation cannot complete: <code>read</code> fails with <code>EAGAIN</code> when the receive buffer is empty, and <code>write</code> fails with <code>EAGAIN</code> when the kernel send buffer is full.</p>
+<p>Second, <strong>epoll</strong> provides O(1) readiness notification across many file descriptors. A process creates an epoll instance and registers sockets into its kernel <strong>interest list</strong>, specifying readiness flags such as <code>EPOLLIN</code> (readable) and <code>EPOLLOUT</code> (writable). Whenever a registered socket becomes ready, the kernel appends it to the instance’s <strong>ready list</strong>, and <code>epoll_wait</code> sleeps until at least one event is ready before returning the batch to user space (figure 20.4).</p>
 <figure>
 <img src="figures/ch20-epoll-lists.svg" alt="epoll_ctl adds sockets to the interest list inside the kernel: fd 3 IN, fd 5 IN, fd 6 IN or OUT. When data arrives on fd 5, the kernel marks it on the ready list. epoll_wait returns the ready list.">
 <figcaption><b>Figure 20.4</b> One epoll instance. <code>epoll_ctl</code> edits the interest list; the kernel fills the ready list; <code>epoll_wait</code> hands it to the program.</figcaption>
 </figure>
-<p>The server becomes a loop: wait for ready sockets, do whatever work is possible on each without blocking,
-and wait again. Figure 20.5 contrasts this with thread per connection.</p>
+<p>The server architecture reduces to a single event loop: wait in <code>epoll_wait</code>, perform non-blocking work on each ready descriptor, and return to <code>epoll_wait</code> (figure 20.5).</p>
 <figure>
 <img src="figures/ch20-models.svg" alt="Top: one thread waits in epoll_wait and dispatches to accept, read, or flush handlers. Bottom: an accept loop spawns one blocking thread per connection.">
 <figcaption><b>Figure 20.5</b> Readiness events against threads. The epoll server's only blocking call is <code>epoll_wait</code>.</figcaption>
 </figure>
-<p>The program <code>epoll_echo.rs</code> is Linux only. The whole implementation lives in <code>mod linux</code> behind
-<code>#[cfg(target_os = "linux")]</code>, and a second <code>main</code> for every other platform prints a message instead. The
-program compiles everywhere and runs where epoll exists.</p>
+<p>Because <code>epoll</code> is Linux-specific, <code>epoll_echo.rs</code> gates the implementation inside <code>mod linux</code> with <code>#[cfg(target_os = "linux")]</code> and provides a fallback <code>main</code> on other platforms so the crate builds everywhere while executing natively on Linux.</p>
 <h3 id="2041-setting-up-the-listener-by-hand"><a class="header" href="#2041-setting-up-the-listener-by-hand">20.4.1 Setting up the listener by hand</a></h3>
-<p><code>bind_listener</code> is what <code>TcpListener::bind</code> does inside, spelled out. It calls C functions through the
-<code>libc</code> crate. The crate declares them inside an <code>unsafe extern "C"</code> block, with C’s types. <code>c_int</code> is a C
-<code>int</code>, and <code>socklen_t</code> is the size of an address in bytes. These are the five it uses, with what each parameter means:</p>
+<p><code>bind_listener</code> performs the exact steps hidden inside <code>TcpListener::bind</code>, invoking POSIX C functions through <code>libc</code> (<code>c_int</code> maps to C’s <code>int</code>, and <code>socklen_t</code> holds socket address lengths):</p>
 <pre><code class="language-rust">unsafe extern "C" {
     fn socket(domain: c_int, ty: c_int, protocol: c_int) -&gt; c_int; // AF_INET, SOCK_STREAM | SOCK_NONBLOCK, 0
     fn setsockopt(
@@ -461,18 +397,14 @@ program compiles everywhere and runs where epoll exists.</p>
     fn listen(fd: c_int, backlog: c_int) -&gt; c_int; // backlog: how many connections may wait for accept
     fn getsockname(fd: c_int, addr: *mut sockaddr, len: *mut socklen_t) -&gt; c_int; // read back the address
 }</code></pre>
-<p>Each returns 0, or a new descriptor for <code>socket</code>, and -1 on failure with the reason in <code>errno</code>. <code>sockaddr</code> is
-a generic address type. An IPv4 address is a <code>sockaddr_in</code>, passed as a pointer to <code>sockaddr</code> together with its
-size. The epoll calls the loop uses later are declared the same way:</p>
+<p>Each call returns <code>0</code> (or a non-negative file descriptor for <code>socket</code>) on success, and <code>-1</code> on failure with the error code stored in <code>errno</code>. <code>sockaddr</code> serves as a generic C address header; an IPv4 <code>sockaddr_in</code> is cast to <code>*const sockaddr</code> alongside its byte length. The three epoll system calls follow the same convention:</p>
 <pre><code class="language-rust">unsafe extern "C" {
     fn epoll_create1(flags: c_int) -&gt; c_int; // a new epoll instance's fd
     fn epoll_ctl(epfd: c_int, op: c_int, fd: c_int, event: *mut epoll_event) -&gt; c_int; // add, modify, remove
     fn epoll_wait(epfd: c_int, events: *mut epoll_event, maxevents: c_int, timeout: c_int) -&gt; c_int;
 }</code></pre>
-<p>An <code>epoll_event</code> has two fields: <code>events</code>, the flags such as <code>EPOLLIN</code>, and <code>u64</code>, a number the program chooses.
-This program stores the fd there, so each event says which socket it is about. <code>epoll_wait</code> fills an array of
-them and returns how many it filled.</p>
-<p>The function:</p>
+<p>Each <code>epoll_event</code> pairs an <code>events</code> bitmask (such as <code>EPOLLIN</code>) with an opaque <code>u64</code> user-data field; storing the socket’s file descriptor in <code>u64</code> identifies which socket triggered each event when <code>epoll_wait</code> populates the output array.</p>
+<p>The listener setup applies these calls in sequence:</p>
 <pre><code class="language-rust">mod linux {
     // ...
     /// Bind a non-blocking listener on `127.0.0.1:port`; port 0 asks the kernel for
@@ -534,14 +466,9 @@ them and returns how many it filled.</p>
     }
     // ...
 }</code></pre>
-<p><code>socket(AF_INET, SOCK_STREAM | SOCK_NONBLOCK, 0)</code> creates a non-blocking socket in one call.
-<code>SO_REUSEADDR</code> lets a restarted server bind while old connections sit in <code>TIME_WAIT</code>. The <code>sockaddr_in</code> is
-built with <code>std::mem::zeroed()</code>, and its fields are converted to network order: <code>port.to_be()</code> and
-<code>INADDR_LOOPBACK.to_be()</code>. That is the byte order of section 20.1, used where the kernel reads it. Every
-failure path closes the fd before returning the error, so nothing leaks, and the <code>SAFETY</code> comment explains
-why the raw pointers are valid.</p>
+<p>Passing <code>SOCK_STREAM | SOCK_NONBLOCK</code> creates a non-blocking listening socket atomically in a single call. Enabling <code>SO_REUSEADDR</code> permits immediate rebinding after a restart even while prior sockets linger in <code>TIME_WAIT</code>. The <code>sockaddr_in</code> struct is zero-initialized via <code>std::mem::zeroed()</code> with port and loopback address converted via <code>to_be()</code> into network byte order (section 20.1). Every error path closes the allocated descriptor before returning, preventing fd leaks, and each <code>unsafe</code> block documents its pointer-validity invariants in a <code>SAFETY</code> comment.</p>
 <h3 id="2042-the-loop"><a class="header" href="#2042-the-loop">20.4.2 The loop</a></h3>
-<p>Each client needs a place for bytes that could not be written yet:</p>
+<p>Because non-blocking writes can return <code>EAGAIN</code> partway through a reply, each connection maintains a user-space output buffer:</p>
 <pre><code class="language-rust">mod linux {
     // ...
     /// Per-connection state. `out`/`out_pos` form a write buffer that survives a
@@ -558,10 +485,8 @@ why the raw pointers are valid.</p>
         }
     // ...
 }</code></pre>
-<p><code>Connection</code> is two fields, <code>out</code> and <code>out_pos</code>, and <code>has_pending_output</code> compares them. That buffer keeps
-one slow client harmless. Its reply waits in memory, and the loop moves on to other sockets instead of
-blocking in <code>write</code>.</p>
-<p><code>event_loop</code> is the wait-and-dispatch loop:</p>
+<p><code>Connection</code> tracks buffered bytes in <code>out</code> and the current write cursor in <code>out_pos</code>, with <code>has_pending_output</code> comparing the two. Buffering unsent bytes isolates slow peers so the event loop can continue servicing other sockets instead of blocking in <code>write</code>.</p>
+<p><code>event_loop</code> drives readiness dispatch:</p>
 <pre><code class="language-rust">mod linux {
     // ...
     /// Run the event loop until `shutdown` becomes true.
@@ -616,11 +541,8 @@ blocking in <code>write</code>.</p>
     }
     // ...
 }</code></pre>
-<p>It registers the listening socket for <code>EPOLLIN</code>, then waits, at most 64 events at a time. The wait has a
-100 ms timeout, so the loop re-checks the <code>shutdown</code> flag regularly. <code>EINTR</code> (a signal arrived during the
-wait) is not an error; the loop continues. Each event carries the fd in its <code>u64</code> field, put there at
-registration.</p>
-<p>When the listener is readable, new connections are waiting in the accept queue:</p>
+<p>After registering the listening socket for <code>EPOLLIN</code>, the loop waits for up to 64 events per call with a 100 ms timeout so it periodically polls the <code>shutdown</code> atomic flag. Signal interruptions (<code>EINTR</code>) are benign and resume the loop; each returned event identifies its target socket through its <code>u64</code> field.</p>
+<p>When the listener reports readable, <code>accept_ready</code> drains all pending connections from the accept queue:</p>
 <pre><code class="language-rust">mod linux {
     // ...
     /// Accept every pending connection, then return; `accept4` with
@@ -654,9 +576,8 @@ registration.</p>
     }
     // ...
 }</code></pre>
-<p><code>accept_ready</code> calls <code>accept4</code> with <code>SOCK_NONBLOCK</code> in a loop until it returns <code>EAGAIN</code>, registering each new
-client for <code>EPOLLIN</code>. Accepting until <code>EAGAIN</code> drains a burst of connections in one wake-up.</p>
-<p>When a client is readable, its bytes go into its output buffer:</p>
+<p>Calling <code>accept4</code> with <code>SOCK_NONBLOCK</code> in a loop until <code>EAGAIN</code> drains an entire burst of incoming connections in one wakeup and registers each accepted client for <code>EPOLLIN</code>.</p>
+<p>When a client socket becomes readable, <code>read_into</code> drains available bytes into <code>out</code> and attempts an immediate flush:</p>
 <pre><code class="language-rust">mod linux {
     // ...
     /// Drain readable bytes into the connection's output buffer.
@@ -693,9 +614,8 @@ client for <code>EPOLLIN</code>. Accepting until <code>EAGAIN</code> drains a bu
     }
     // ...
 }</code></pre>
-<p><code>read_into</code> reads until <code>EAGAIN</code>, appending everything to the connection’s <code>out</code> buffer, then tries to
-<code>flush</code> it. A read of 0 closes the connection.</p>
-<p><code>flush</code> writes as much as the socket accepts:</p>
+<p>Reading until <code>EAGAIN</code> accumulates all arrived bytes before calling <code>flush</code>; observing a 0-byte read signals peer EOF and triggers connection cleanup.</p>
+<p><code>flush</code> writes from <code>out_pos</code> onward until either the buffer empties or the kernel send buffer fills:</p>
 <pre><code class="language-rust">mod linux {
     // ...
     /// Write as much of the buffered reply as the socket accepts.
@@ -731,9 +651,8 @@ client for <code>EPOLLIN</code>. Accepting until <code>EAGAIN</code> drains a bu
     }
     // ...
 }</code></pre>
-<p>It writes from <code>out_pos</code> onward. When <code>write</code> returns <code>EAGAIN</code>, the socket’s send buffer is full, and the rest
-stays queued.</p>
-<p>After either, <code>update_interest</code> sets what the loop waits for on this socket:</p>
+<p>When <code>write</code> returns <code>EAGAIN</code>, the unwritten suffix remains in <code>out</code> to be resumed once the socket becomes writable again.</p>
+<p>After any read or flush, <code>update_interest</code> adjusts the socket’s epoll mask:</p>
 <pre><code class="language-rust">mod linux {
     // ...
     /// Ask for `EPOLLOUT` only while a reply is still buffered.
@@ -754,31 +673,21 @@ stays queued.</p>
     }
     // ...
 }</code></pre>
-<p>It asks for <code>EPOLLOUT</code> only while output is pending. A socket with room in its send buffer is almost always
-writable, so leaving <code>EPOLLOUT</code> on permanently would wake the loop continuously for nothing.</p>
+<p><code>EPOLLOUT</code> is requested strictly while <code>has_pending_output()</code> is true. Because a socket with free send-buffer space is almost always writable, leaving <code>EPOLLOUT</code> enabled permanently would cause <code>epoll_wait</code> to spin continuously at 100% CPU.</p>
 <figure class="anim">
 <video class="motion" src="figures/ch20-epoll.mp4" autoplay="" loop="" muted="" playsinline="" preload="metadata" aria-label="One robot, the event loop thread, beside a panel of registered sockets. Each row shows an fd, its interest set, a readiness light, and for clients an out buffer. The thread sleeps in epoll_wait. Two clients connect, the listener fd 3 lights up, and accept4 turns them into fd 5 and fd 6 until it returns EAGAIN. fd 5 sends 1 KB and fd 6 sends 12 KB; one epoll_wait returns both. fd 5&#39;s reply is written in full. fd 6&#39;s write stops at EAGAIN with 4 KB left, so the 4 KB stays in out and fd 6&#39;s interest becomes IN and OUT while the thread moves on. Later fd 6 turns writable, flush sends the rest, and the interest returns to IN. In a last run fd 6 is blocking: the thread is stuck in write, while fd 5 and a new connection sit ready and ignored." data-chapters="[[0.0, &quot;wait&quot;], [5.22, &quot;accept&quot;], [21.42, &quot;read&quot;], [56.46, &quot;writable&quot;], [69.18, &quot;blocking fd&quot;]]"><img src="figures/ch20-epoll.gif" alt="One robot, the event loop thread, beside a panel of registered sockets. Each row shows an fd, its interest set, a readiness light, and for clients an out buffer. The thread sleeps in epoll_wait. Two clients connect, the listener fd 3 lights up, and accept4 turns them into fd 5 and fd 6 until it returns EAGAIN. fd 5 sends 1 KB and fd 6 sends 12 KB; one epoll_wait returns both. fd 5&#39;s reply is written in full. fd 6&#39;s write stops at EAGAIN with 4 KB left, so the 4 KB stays in out and fd 6&#39;s interest becomes IN and OUT while the thread moves on. Later fd 6 turns writable, flush sends the rest, and the interest returns to IN. In a last run fd 6 is blocking: the thread is stuck in write, while fd 5 and a new connection sit ready and ignored."></video>
 <figcaption><b>Animation 20.3</b> The loop from listing 20.4 serving three sockets on one thread. A slow client leaves bytes in its <code>out</code> buffer, not a blocked thread. One blocking socket would stop every other socket.</figcaption>
 </figure>
-<p><code>main</code> ignores <code>SIGPIPE</code>. By default, writing to a socket whose peer has gone away raises <code>SIGPIPE</code>, which
-kills the process. With the signal ignored, <code>write</code> returns <code>EPIPE</code> instead. Rust’s standard library does
-this for you at startup on Unix, but a program that makes raw <code>libc</code> calls should not rely on it.</p>
+<p>In <code>main</code>, the server explicitly ignores <code>SIGPIPE</code>. On Unix, writing to a socket whose peer has closed raises <code>SIGPIPE</code>, terminating the process by default; ignoring the signal causes <code>write</code> to return <code>EPIPE</code> as an ordinary error instead. Although Rust’s runtime ignores <code>SIGPIPE</code> at startup on Unix, raw <code>libc</code> programs should set this disposition explicitly.</p>
 <h3 id="2043-what-a-production-server-would-change"><a class="header" href="#2043-what-a-production-server-would-change">20.4.3 What a production server would change</a></h3>
-<p>The program is a complete, tested event loop, and reading it critically is good practice.</p>
+<p>Although <code>epoll_echo.rs</code> is a complete, tested event loop, four refinements are required for production hardening:</p>
 <ul>
-<li><strong>One client’s error stops the server.</strong> <code>read_into</code> and <code>flush</code> return <code>Err</code> on any failure other than
-<code>EAGAIN</code>, and <code>event_loop</code> propagates it with <code>?</code>. A client that resets its connection (<code>ECONNRESET</code>)
-makes the whole loop return. A per-connection error should close that connection and continue.</li>
-<li><strong>The output buffer is unbounded.</strong> A client that sends continuously and never reads grows <code>out</code>
-without limit. Backpressure here means turning off <code>EPOLLIN</code> for that client while its buffer is over a
-threshold.</li>
-<li><strong><code>epoll_ctl</code> runs after every event.</strong> <code>update_interest</code> issues a <code>EPOLL_CTL_MOD</code> system call even
-when the interest set has not changed. Tracking the current set per connection removes most of them.</li>
-<li><strong>Level-triggered mode.</strong> The loop registers without <code>EPOLLET</code>, so epoll keeps reporting a socket while
-it stays ready. Reading until <code>EAGAIN</code> is required in edge-triggered mode and harmless here.</li>
+<li><strong>Per-connection error isolation.</strong> Currently, any non-<code>EAGAIN</code> error from <code>read_into</code> or <code>flush</code> propagates via <code>?</code> and terminates <code>event_loop</code>. A single peer resetting its connection (<code>ECONNRESET</code>) should close only that connection while keeping the server running.</li>
+<li><strong>Bounded output buffers.</strong> A client that transmits continuously without reading causes <code>out</code> to grow without limit. Enforcing backpressure requires removing <code>EPOLLIN</code> for that socket whenever <code>out.len()</code> exceeds a high-water mark, and re-enabling it once <code>flush</code> drains below a low-water mark.</li>
+<li><strong>Avoiding redundant <code>epoll_ctl</code> calls.</strong> <code>update_interest</code> issues an <code>EPOLL_CTL_MOD</code> system call on every event even when the interest mask has not changed. Caching the currently registered mask per connection eliminates unnecessary kernel transitions.</li>
+<li><strong>Level-triggered versus edge-triggered readiness.</strong> Omitting <code>EPOLLET</code> selects level-triggered mode, where epoll continues reporting a socket for as long as it remains ready. Draining until <code>EAGAIN</code> is mandatory under edge-triggered mode (<code>EPOLLET</code>) and remains safe under level-triggered mode.</li>
 </ul>
-<p>Frameworks such as <code>mio</code> (under Tokio) wrap exactly this loop, portably over epoll, kqueue, and IOCP.
-Chapter 22 builds the other half of an async runtime, the part that turns readiness into resumed tasks.</p>
+<p>Portable I/O crates such as <code>mio</code> (underlying Tokio) abstract this exact readiness loop across Linux <code>epoll</code>, BSD/macOS <code>kqueue</code>, and Windows <code>IOCP</code>. In Chapter 22, we build the complementary half of an async runtime: polling futures when readiness events wake them.</p>
 <h2 id="205-the-complete-programs"><a class="header" href="#205-the-complete-programs">20.5 The complete programs</a></h2>
 <p class="listing"><b>Listing 20.1</b> Parse, classify, and convert IPv4 addresses. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/bin/net_ipv4.rs">src/bin/net_ipv4.rs</a></p>
 
@@ -1417,20 +1326,15 @@ mod tests {
 }</code></pre>
 <h2 id="206-questions-that-come-up"><a class="header" href="#206-questions-that-come-up">20.6 Questions that come up</a></h2>
 <p><strong>“What does a <code>read</code> of 0 bytes mean on a TCP socket?”</strong>
-The peer closed its sending side (FIN). No more data will arrive. It is not an error.</p>
+The peer closed its sending half by transmitting a <code>FIN</code> segment. No further bytes will arrive on the connection; returning <code>0</code> signals an orderly end-of-stream rather than an I/O error.</p>
 <p><strong>“Why set <code>TCP_NODELAY</code>?”</strong>
-To stop Nagle’s algorithm from holding back small writes. Request-response protocols that write a small
-reply and wait want it off.</p>
+Disabling Nagle’s algorithm prevents the kernel from buffering small writes while waiting for prior acknowledgments. Request-response protocols that transmit a small reply and wait for the next request enable <code>TCP_NODELAY</code> to avoid artificial latency spikes.</p>
 <p><strong>“Thread per connection or an event loop?”</strong>
-Threads for a modest number of connections and simple blocking code. An event loop, or an async runtime
-on top of one, for many mostly idle connections, where per-thread stacks and context switches dominate.</p>
+Thread-per-connection suits modest connection counts and straightforward blocking handlers. An event loop (or an async runtime built over one) suits thousands of mostly idle connections, where per-thread stack memory and scheduler context switches would otherwise dominate.</p>
 <p><strong>“Level-triggered or edge-triggered epoll?”</strong>
-Level-triggered reports a ready fd until it is no longer ready. Edge-triggered reports only transitions, so
-the handler must drain the fd until <code>EAGAIN</code>. Otherwise it may never hear about the remaining data.</p>
+Level-triggered epoll reports a descriptor as long as it remains readable or writable. Edge-triggered epoll (<code>EPOLLET</code>) fires only on state transitions, requiring handlers to drain each descriptor until <code>EAGAIN</code> so unread data is not stranded without another notification.</p>
 <p><strong>“A 10 Gb/s link between regions delivers 50 MB/s. Why?”</strong>
-Check the bandwidth-delay product against the window: at 80 ms RTT, 10 Gb/s needs about 100 MB in
-flight. A small socket buffer, or window scaling disabled somewhere on the path, caps throughput at
-window / RTT.</p>
+Compare the bandwidth-delay product against the effective TCP window: at an 80 ms RTT, saturating a 10 Gb/s link requires roughly 100 MB in flight. A small socket buffer, or disabled TCP window scaling along the path, caps throughput at <code>window / RTT</code>.</p>
 
                     </main>
 
@@ -1484,6 +1388,7 @@ window / RTT.</p>
 
         <!-- Custom JS scripts -->
         <script src="theme/anim-4192821e.js"></script>
+        <script src="theme/book-ui-621ed017.js"></script>
 
 
 

@@ -1,5 +1,5 @@
 <!DOCTYPE HTML>
-<html lang="en" class="light sidebar-visible" dir="ltr">
+<html lang="en" class="coal sidebar-visible" dir="ltr">
     <head>
         <!-- Book generated using mdBook -->
         <meta charset="UTF-8">
@@ -28,18 +28,18 @@
         <link rel="stylesheet" id="mdbook-ayu-highlight-css" href="ayu-highlight-3fdfc3ac.css">
 
         <!-- Custom theme stylesheets -->
-        <link rel="stylesheet" href="theme/custom-b2009ce0.css">
+        <link rel="stylesheet" href="theme/custom-985f104d.css">
 
 
         <!-- Provide site root and default themes to javascript -->
         <script>
             const path_to_root = "";
-            const default_light_theme = "light";
-            const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "searchindex-f2511fee.js";
+            const default_light_theme = "coal";
+            const default_dark_theme = "coal";
+            window.path_to_searchindex_js = "searchindex-4622e2bb.js";
         </script>
         <!-- Start loading toc.js asap -->
-        <script src="toc-34d6c47e.js"></script>
+        <script src="toc-c196c8a9.js"></script>
     </head>
     <body>
     <div id="mdbook-help-container">
@@ -77,7 +77,7 @@
             try { theme = localStorage.getItem('mdbook-theme'); } catch(e) { }
             if (theme === null || theme === undefined) { theme = default_theme; }
             const html = document.documentElement;
-            html.classList.remove('light')
+            html.classList.remove('coal')
             html.classList.add(theme);
             html.classList.add("js");
         </script>
@@ -192,13 +192,8 @@
 </ul>
 </div>
 
-<p>Chapter 8 introduced the pointer types. This chapter uses them to build the classic linked structure, the
-linked list. Linked lists are a good first test of ownership. Each operation moves a node from one owner to another,
-and the compiler checks every move.</p>
-<p>The chapter goes from simple to hard. First a singly linked list, where each node points only to the next,
-and an algorithm that reverses it. Then four ways to write the same list, and a benchmark that compares them.
-The benchmark finds a size at which the list crashes the program when it is dropped. After explaining and
-fixing that, the chapter ends with a doubly linked list, where each node also points back to the one before.</p>
+<p>Building on the smart pointer types from Chapter 8, this chapter implements the classic linked data structure: the linked list. Linked lists provide a direct test of Rust’s ownership model because every structural operation transfers node ownership from one link to another under compiler verification.</p>
+<p>The implementations progress in complexity: first a singly linked list with in-place reversal and cursor-based removal, then four node representations compared under a shared benchmark. That benchmark exposes a list length at which default deallocation overflows the call stack. After diagnosing and fixing recursive drops, the chapter concludes with a doubly linked list built from <code>Rc</code>, <code>RefCell</code>, and <code>Weak</code>.</p>
 <h2 id="91-what-a-linked-list-is"><a class="header" href="#91-what-a-linked-list-is">9.1 What a linked list is</a></h2>
 <p>A <strong>linked list</strong> stores a sequence of values in separate nodes. Each <strong>node</strong> holds one value and a pointer
 to the next node. The list itself holds a pointer to the first node, called the <strong>head</strong>. The last node’s
@@ -222,35 +217,25 @@ pointer is empty, which marks the end.</p>
 </tbody>
 </table>
 </div>
-<p>A linked list works like a treasure hunt. Each clue says where the next clue is hidden. To read the fifth
-clue, you must find the first four. To add a clue at the start, you write one new clue that names the old
-first one, and nothing else moves. A <code>Vec</code> works like a numbered row of lockers. Locker 5 is found in one step.
-A new locker at the front means renumbering the whole row.</p>
-<p>In practice, a <code>Vec</code> is faster for most work. Its values are next to each other in memory, and the
-processor reads nearby memory quickly; chapter 15 measures that effect. The techniques you learn here for
-moving nodes between owners carry over to the trees and graphs of chapters 11 and 12.</p>
-<p>In Rust, a node owns the next node through a <code>Box</code>, and the “empty” pointer at the end is <code>None</code>. So a node’s
-<code>next</code> field has type <code>Option&lt;Box&lt;Node&gt;&gt;</code>.</p>
+<p>Conceptually, a linked list resembles a chain of pointers where each node reveals only the location of its successor: reaching the fifth node requires traversing the first four, whereas inserting a new head updates a single pointer without moving existing nodes. By contrast, a <code>Vec</code> stores elements contiguously like a numbered row of slots: indexing position 5 is a single address calculation, whereas inserting at the front shifts every existing element.</p>
+<p>In practice, <code>Vec</code> outperforms linked lists for most workloads because contiguous memory exploits hardware spatial locality (measured in Chapter 15). Nevertheless, the ownership-transfer techniques developed here apply directly to the trees and graphs in Chapters 11 and 12.</p>
+<p>In Rust, each node owns its successor through a <code>Box</code>, and <code>None</code> terminates the chain, giving the <code>next</code> field the type <code>Option&lt;Box&lt;Node&gt;&gt;</code>.</p>
 <h2 id="92-moving-nodes-take-and-replace"><a class="header" href="#92-moving-nodes-take-and-replace">9.2 Moving nodes: <code>take</code> and <code>replace</code></a></h2>
-<p>Every list operation moves a node from one owner to another. Rust has a rule that makes this tricky. You cannot move a value out of a place that you only borrowed.
-That would leave the place empty, and the owner would later find garbage there.</p>
-<p>Two standard functions solve this by putting something valid in the place as they take the value out:</p>
+<p>Every list manipulation transfers a node from one owner to another. Rust’s memory safety rules prohibit moving a value directly out of a borrowed location, because doing so would leave the location uninitialized for its owner.</p>
+<p>Two standard library operations resolve this by atomically substituting a valid replacement as the old value is extracted:</p>
 <ul>
-<li><code>option.take()</code> returns the value inside an <code>Option</code> and leaves <code>None</code> in its place.</li>
-<li><code>std::mem::replace(&amp;mut place, new_value)</code> returns the old value and puts <code>new_value</code> in its place.</li>
+<li><code>option.take()</code> moves the value out of an <code>Option</code> and leaves <code>None</code> in its place.</li>
+<li><code>std::mem::replace(&amp;mut place, new_value)</code> moves the old value out and writes <code>new_value</code> into its place.</li>
 </ul>
-<p>Figure 9.2 shows <code>take</code> on a node’s <code>next</code> field.</p>
+<p>Figure 9.2 illustrates <code>take</code> operating on a node’s <code>next</code> field.</p>
 <figure>
 <img src="figures/list-take.svg" alt="Before: node.next holds Some pointing to the rest of the list. After take: node.next is None, and the variable rest owns the rest of the list.">
 <figcaption><b>Figure 9.2</b> <code>node.next.take()</code> moves the rest of the list out of the node into a variable, and leaves <code>None</code> behind.</figcaption>
 </figure>
-<p>You will see these two calls in almost every listing of this chapter.</p>
+<p>These two operations appear throughout the listings in this chapter.</p>
 <h2 id="93-reversing-a-list"><a class="header" href="#93-reversing-a-list">9.3 Reversing a list</a></h2>
-<p><strong>The problem.</strong> Given the list 1 → 2 → 3 → 4, turn it into 4 → 3 → 2 → 1. Change the pointers; do not
-copy the values.</p>
-<p><strong>The idea.</strong> Walk the list from the front. Keep two variables: <code>previous</code>, the part already reversed, and
-<code>current</code>, the part not yet visited. At each step, take the first node of <code>current</code>, point it at <code>previous</code>,
-and make it the new front of <code>previous</code>. Figure 9.3 shows the state after two steps.</p>
+<p><strong>The problem.</strong> Given a singly linked list <code>1 → 2 → 3 → 4</code>, reverse it in place to <code>4 → 3 → 2 → 1</code> by rewiring pointers without copying node values.</p>
+<p><strong>The idea.</strong> Traverse the list from front to back using two bindings: <code>previous</code> holds the already-reversed prefix, and <code>current</code> holds the remaining unvisited suffix. Each iteration detaches the head of <code>current</code>, points its <code>next</code> link at <code>previous</code>, and advances <code>previous</code> to that node (Figure 9.3).</p>
 <figure>
 <img src="figures/ch04-reverse.svg" alt="Nodes 1 and 2 point left toward None; the link from 2 to 3 is cut; 3 points to 4">
 <figcaption><b>Figure 9.3</b> Halfway through. <code>previous</code> owns the reversed part (2 → 1), and <code>current</code> owns the rest (3 → 4).</figcaption>
@@ -259,7 +244,7 @@ and make it the new front of <code>previous</code>. Figure 9.3 shows the state a
 <video class="motion" src="figures/ch04-reverse.mp4" autoplay="" loop="" muted="" playsinline="" preload="metadata" aria-label="The list 1, 2, 3, 4 as four boxes with arrows between them, and the variables previous and current pointing at nodes. For each node, take moves the rest of the list into current, the node&#39;s link is turned back toward previous, and previous moves to the node. The list ends as 4, 3, 2, 1. A last part turns the link before taking the rest, and nodes 2, 3, and 4 are dropped." data-chapters="[[0.0, &quot;loop&quot;], [81.12, &quot;flip first&quot;]]"><img src="figures/ch04-reverse.gif" alt="The list 1, 2, 3, 4 as four boxes with arrows between them, and the variables previous and current pointing at nodes. For each node, take moves the rest of the list into current, the node&#39;s link is turned back toward previous, and previous moves to the node. The list ends as 4, 3, 2, 1. A last part turns the link before taking the rest, and nodes 2, 3, and 4 are dropped."></video>
 <figcaption><b>Animation 9.1</b> <code>reverse_list</code> one node at a time: take the rest, point the node back, move <code>previous</code> forward. No node is copied. The last part flips the link before taking the rest, and the rest of the list is dropped.</figcaption>
 </figure>
-<p>First, the node type and two helpers for building and reading lists:</p>
+<p>Listing 9.1 defines the node struct along with two conversion helpers for constructing and inspecting lists.</p>
 <p class="listing"><b>Listing 9.1</b> The node and two helpers (lines 1 to 33). <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/problems/linked_list.rs">src/problems/linked_list.rs</a></p>
 
 <pre><code class="language-rust">//! Reverse a singly linked list, and remove nodes from it.
@@ -295,18 +280,13 @@ impl ListNode {
         result
     }
 }</code></pre>
-<p><code>from_slice</code> builds a list from a slice. It walks the slice backward, putting each value in front of the list
-built so far. The last value pushed is <code>values[0]</code>, so it ends up first. Building from the back means it never
-needs a pointer to the end of the list.</p>
-<p><code>to_vec</code> reads a list into a <code>Vec</code>. It takes the list by value and consumes it. In <code>while let Some(node) = current</code>, each pass moves one box out of <code>current</code>. <code>current = node.next</code> then moves the rest of the list out
-of that node before the node is freed.</p>
-<p>Animation 9.2 builds <code>[1, 2, 3]</code> with <code>from_slice</code>, reads it back with <code>to_vec</code>, and then shows what the
-loop does without <code>.rev()</code>.</p>
+<p>The <code>from_slice</code> helper iterates over the input slice in reverse, prepending each element to the front of the list so <code>values[0]</code> ends up at the head without maintaining a tail pointer. Conversely, <code>to_vec</code> consumes the list by value: each iteration of <code>while let Some(node) = current</code> moves one <code>Box</code> out of <code>current</code> and transfers <code>node.next</code> back to <code>current</code> before the node is freed.</p>
+<p>Animation 9.2 traces <code>from_slice</code> and <code>to_vec</code> on <code>[1, 2, 3]</code> and illustrates how omitting <code>.rev()</code> inverts the resulting order.</p>
 <figure class="anim">
 <video class="motion" src="figures/ch09-list-build.mp4" autoplay="" loop="" muted="" playsinline="" preload="metadata" aria-label="A slice holding 1, 2, 3. from_slice walks it from the back: node 3 drops into place pointing at None and becomes head, then 2 in front of it, then 1. to_vec moves each box out of current in turn, pushes its value into the result, and frees it, until current is None. Without .rev(), the pushes of 1, 2, 3 build the list 3, 2, 1, and the result reads 3, 2, 1." data-chapters="[[0.0, &quot;build&quot;], [21.01, &quot;read&quot;], [38.83, &quot;no .rev()&quot;]]"><img src="figures/ch09-list-build.gif" alt="A slice holding 1, 2, 3. from_slice walks it from the back: node 3 drops into place pointing at None and becomes head, then 2 in front of it, then 1. to_vec moves each box out of current in turn, pushes its value into the result, and frees it, until current is None. Without .rev(), the pushes of 1, 2, 3 build the list 3, 2, 1, and the result reads 3, 2, 1."></video>
 <figcaption><b>Animation 9.2</b> Building from the back puts <code>values[0]</code> first. Without <code>.rev()</code>, pushing at the front reverses the order.</figcaption>
 </figure>
-<p>Now the reversal:</p>
+<p>Listing 9.2 implements the in-place reversal.</p>
 <p class="listing"><b>Listing 9.2</b> Reversing the list (lines 35 to 46).</p>
 
 <pre><code class="language-rust">pub fn reverse_list(head: Option&lt;Box&lt;ListNode&gt;&gt;) -&gt; Option&lt;Box&lt;ListNode&gt;&gt; {
@@ -341,18 +321,12 @@ loop does without <code>.rev()</code>.</p>
 </tbody>
 </table>
 </div>
-<p>At no moment do two variables own the same node, which is why the compiler accepts the code. The function
-visits each node once, so it is O(n), and it uses O(1) extra memory.</p>
-<p>The complete file is listing 9.20 at the end of the chapter. Its tests reverse a four-element list, an
-empty list, and a one-element list.</p>
+<p>At no point do two bindings own the same node, which satisfies the borrow checker. The traversal visits each node once in O(n) time and O(1) auxiliary space.</p>
+<p>The complete module appears in Listing 9.20 at the end of the chapter, with unit tests covering a four-element list, an empty list, and a single-element list.</p>
 <h2 id="94-removing-nodes-with-a-cursor"><a class="header" href="#94-removing-nodes-with-a-cursor">9.4 Removing nodes with a cursor</a></h2>
-<p><strong>The problem.</strong> Remove every node whose value equals <code>target</code>, in one pass. The head may match, and so may
-several nodes in a row.</p>
-<p><strong>The idea.</strong> To unlink a node, you change the link that points at it. That link is either <code>head</code> or the
-<code>next</code> field of the node before. So the loop holds a link, not a node. It is a <code>&amp;mut Option&lt;Box&lt;ListNode&gt;&gt;</code>
-called the <strong>cursor</strong>.</p>
-<p>Think of the cursor as a finger on one arrow of the chain. If the arrow points at a match, you bend the arrow
-past that node, and the finger stays where it is. If not, the finger moves to the next arrow.</p>
+<p><strong>The problem.</strong> Remove every node whose value equals <code>target</code> in a single pass, including matches at the head or consecutive matches.</p>
+<p><strong>The idea.</strong> Unlinking a node requires mutating the link that owns it, which is either <code>head</code> or the preceding node’s <code>next</code> field. Rather than tracking a node directly, the loop maintains a mutable reference to the owning link itself: a <code>&amp;mut Option&lt;Box&lt;ListNode&gt;&gt;</code> called a <strong>cursor</strong>.</p>
+<p>The cursor acts as a pointer to a single link in the chain. When the link points to a matching node, the link is redirected past that node and the cursor remains in place to inspect the newly promoted successor. When the node does not match, the cursor advances to that node’s <code>next</code> link.</p>
 <p class="listing"><b>Listing 9.3</b> Removing every match (lines 48 to 71). <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/problems/linked_list.rs">src/problems/linked_list.rs</a></p>
 
 <pre><code class="language-rust">/// Remove every node whose value is `target`, in one pass.
@@ -379,17 +353,14 @@ pub fn remove_all(mut head: Option&lt;Box&lt;ListNode&gt;&gt;, target: i32) -&gt
     }
     head
 }</code></pre>
-<p>The loop reads:</p>
+<p>The loop proceeds in four steps:</p>
 <ol>
-<li><code>let mut cursor = &amp;mut head;</code> puts the cursor on the head link. The head is a link like any other, so
-removing the first node needs no extra code.</li>
-<li><code>cursor.as_mut()</code> borrows the node the link points at.</li>
-<li>On a match, <code>node.next.take()</code> moves the rest of the list out of the node. <code>*cursor = next</code> writes it into
-the link. Nothing owns the old node any more, so it is freed there.</li>
-<li>Otherwise, <code>cursor = &amp;mut cursor...next</code> moves the cursor to that node’s <code>next</code> link.</li>
+<li><code>let mut cursor = &amp;mut head;</code> anchors the cursor on the <code>head</code> link. Treating <code>head</code> identically to any <code>next</code> field eliminates special-case code for removing the first node.</li>
+<li><code>cursor.as_mut()</code> mutably borrows the node referenced by the current link.</li>
+<li>On a match, <code>node.next.take()</code> detaches the remainder of the list and <code>*cursor = next</code> rebinds the link to it, dropping the unlinked node immediately.</li>
+<li>Otherwise, <code>cursor = &amp;mut cursor...next</code> advances the cursor to the current node’s <code>next</code> link.</li>
 </ol>
-<p>The cursor does not move after a removal. The link now points at the node that slid into place, and that node
-has not been checked yet. Trace it on 2 → 1 → 2 → 2 → 3 with <code>target</code> 2:</p>
+<p>Keeping the cursor stationary after a removal ensures that consecutive matches are never skipped, because the link now points to an uninspected node. Tracing <code>2 → 1 → 2 → 2 → 3</code> with <code>target = 2</code> yields:</p>
 <div class="table-wrapper">
 <table>
 <thead>
@@ -405,9 +376,7 @@ has not been checked yet. Trace it on 2 → 1 → 2 → 2 → 3 with <code>targe
 </tbody>
 </table>
 </div>
-<p>Each node is checked once, so the function is O(n). It uses O(1) extra memory.</p>
-<p>Animation 9.3 plays this trace, then three unhappy cases. The target may be absent, every node may match, or
-the cursor may move after a removal.</p>
+<p>Each node is inspected once in O(n) time and O(1) auxiliary space. Animation 9.3 traces this example alongside three edge cases: an absent target, a list where every node matches, and the bug introduced by advancing the cursor unconditionally after a removal.</p>
 <figure class="anim">
 <video class="motion" src="figures/ch09-list-remove.mp4" autoplay="" loop="" muted="" playsinline="" preload="metadata" aria-label="A head box and the list 2, 1, 2, 2, 3, with the cursor drawn as a highlighted link. The head link points at a 2: it matches, the 2 falls away, and the head link swings to 1. The cursor moves to 1&#39;s next link, which points at a 2; it is removed, and the link swings to the second 2, which is removed too, and the link reaches 3. The result is 1, 3. With target 2 on 1, 3, nothing changes. With 7, 7, 7, the cursor never leaves head and head ends as None. Last, a version that moves the cursor after every node skips the second 2 and returns 1, 2, 3." data-chapters="[[0.0, &quot;remove 2&quot;], [39.37, &quot;absent&quot;], [50.03, &quot;all match&quot;], [58.69, &quot;advance always&quot;]]"><img src="figures/ch09-list-remove.gif" alt="A head box and the list 2, 1, 2, 2, 3, with the cursor drawn as a highlighted link. The head link points at a 2: it matches, the 2 falls away, and the head link swings to 1. The cursor moves to 1&#39;s next link, which points at a 2; it is removed, and the link swings to the second 2, which is removed too, and the link reaches 3. The result is 1, 3. With target 2 on 1, 3, nothing changes. With 7, 7, 7, the cursor never leaves head and head ends as None. Last, a version that moves the cursor after every node skips the second 2 and returns 1, 2, 3."></video>
 <figcaption><b>Animation 9.3</b> The cursor stays on a link after removing what it pointed at. A version that always moves on skips the node that slid into place.</figcaption>
@@ -453,8 +422,7 @@ a list of numbers or of strings. <code>type Link&lt;T&gt; = Box&lt;List&lt;T&gt;
     }
     // ...
 }</code></pre>
-<p><code>len</code> counts the nodes recursively: an empty list has length 0, and a node adds 1 to the length of the rest.
-Each call waits for the next, so a list of n nodes uses n stack frames. Section 9.7 shows where that ends.</p>
+<p>The <code>len</code> method counts nodes recursively, returning <code>0</code> for <code>Empty</code> and adding <code>1</code> to the length of the tail for <code>Node</code>. Because each recursive call waits on the next, an <code>n</code>-node list consumes <code>n</code> stack frames, a limitation examined in Section 9.7.</p>
 <p class="listing"><b>Listing 9.6</b> Adding and removing at the front (lines 31 to 49).</p>
 
 <pre><code class="language-rust">impl&lt;T&gt; List&lt;T&gt; {
@@ -479,14 +447,9 @@ Each call waits for the next, so a list of n nodes uses n stack frames. Section 
         }
     }
 }</code></pre>
-<p>Both methods take <code>&amp;mut self</code>, so they change the list in place. They use <code>std::mem::replace</code> from section 9.2. The method cannot move the old list out of <code>*self</code> and assign a new one later. Between those two steps,
-<code>*self</code> would be empty. <code>replace(self, List::Empty)</code> puts a temporary <code>Empty</code> in place
-and hands back the old list in one step.</p>
-<p><code>push_front</code> wraps the old list in a new node with the new value, and writes it back into <code>*self</code>.</p>
-<p><code>pop_front</code> matches on the old list. If it was <code>Empty</code>, there is nothing to pop, and <code>*self</code> is already <code>Empty</code>
-again. If it was a <code>Node</code>, the method writes the rest of the list back into <code>*self</code> with <code>*self = *next</code>, and
-returns the value. <code>*next</code> moves the list out of its <code>Box</code>.</p>
-<p>Animation 9.4 shows both methods, then the version without <code>replace</code> that the compiler refuses.</p>
+<p>Both <code>push_front</code> and <code>pop_front</code> take <code>&amp;mut self</code> to mutate the list in place, relying on <code>std::mem::replace</code> from Section 9.2. Moving the existing list directly out of <code>*self</code> would leave <code>*self</code> temporarily uninitialized; <code>replace(self, List::Empty)</code> atomically installs a temporary <code>Empty</code> variant while returning ownership of the previous list.</p>
+<p>In <code>push_front</code>, the old list is wrapped inside a new <code>Node</code> and written back into <code>*self</code>. In <code>pop_front</code>, matching on the old list returns <code>None</code> for <code>Empty</code> (leaving <code>*self</code> empty) or unboxes the tail with <code>*self = *next</code> for <code>Node</code> before returning the front value.</p>
+<p>Animation 9.4 traces both operations and contrasts them with the direct move that the compiler rejects.</p>
 <figure class="anim">
 <video class="motion" src="figures/ch09-list-replace.mp4" autoplay="" loop="" muted="" playsinline="" preload="metadata" aria-label="A robot owns the list through &amp;mut self, and a caller robot waits on the right. push_front(1): replace moves the list, Empty, down into the local old and leaves a teal Empty in *self; the new node 1 takes the place and links to old. Pushes of 2 and 3 do the same. pop_front swaps Empty in, moves the list down, sends the front value to the caller, frees the empty box, and moves the rest back into *self. Last, let old = *self leaves a red question mark in *self, and the compiler rejects it with error E0507." data-chapters="[[0.0, &quot;push&quot;], [29.98, &quot;pop&quot;], [49.06, &quot;move out&quot;]]"><img src="figures/ch09-list-replace.gif" alt="A robot owns the list through &amp;mut self, and a caller robot waits on the right. push_front(1): replace moves the list, Empty, down into the local old and leaves a teal Empty in *self; the new node 1 takes the place and links to old. Pushes of 2 and 3 do the same. pop_front swaps Empty in, moves the list down, sends the front value to the caller, frees the empty box, and moves the rest back into *self. Last, let old = *self leaves a red question mark in *self, and the compiler rejects it with error E0507."></video>
 <figcaption><b>Animation 9.4</b> <code>replace</code> puts <code>Empty</code> in the place as it takes the list out, so the borrowed place is never empty. A plain move out of <code>*self</code> would leave a hole, and the compiler rejects it.</figcaption>
@@ -637,34 +600,28 @@ value.</p>
 lists from the crate’s library with <code>use systems_lab::lists::...</code>, so every program shares one compiled copy of
 the list code. Both are listed at the end of the chapter.</p>
 <h2 id="97-when-dropping-a-list-crashes"><a class="header" href="#97-when-dropping-a-list-crashes">9.7 When dropping a list crashes</a></h2>
-<p>Here is a short program built on the struct version:</p>
+<p>Consider the following snippet using the struct-based list:</p>
 <pre><code class="language-rust">let mut list = boxed::LinkedList::new();
 for value in 0..270_000u64 {
     list.push_front(value);
 }
 // list goes out of scope here and is dropped</code></pre>
-<p>It builds the list without trouble, and then it crashes at the closing brace:</p>
+<p>Construction succeeds, but execution terminates at the closing brace when <code>list</code> is dropped:</p>
 <pre><code class="language-text">thread 'main' has overflowed its stack
 fatal runtime error: stack overflow, aborting
 </code></pre>
-<p>None of the list’s methods is recursive. The recursion is in the code the compiler generates to drop the list.
-To drop the list, Rust drops <code>head</code>. To drop a <code>Box&lt;Node&gt;</code>, it drops the node, which means dropping its fields,
-including <code>next</code>, another <code>Box&lt;Node&gt;</code>. That drops the next node, and so on. Each step is a function call
-nested inside the previous one, so each node adds one stack frame (figure 9.5, left).</p>
+<p>None of the list’s methods are recursive; the recursion resides in the compiler-generated drop glue. Dropping the list drops <code>head</code>, which drops the first <code>Box&lt;Node&gt;</code>, which recursively drops its <code>next</code> field, nesting one call frame per node (Figure 9.5, left).</p>
 <figure>
 <img src="figures/list-drop.svg" alt="Left: nested drop calls, one per node, until the stack is full. Right: a loop that takes each node&#39;s next before freeing it, in one frame.">
 <figcaption><b>Figure 9.5</b> The default drop nests one call per node. A hand-written <code>Drop</code> detaches each node's successor first, so freeing one node never frees another.</figcaption>
 </figure>
-<p>Animation 9.6 runs both. Watch the stack on the right: one frame per node for the default drop, and never
-more than three for the loop.</p>
+<p>Animation 9.6 compares the default recursive drop against an iterative implementation, illustrating the stack depth for each.</p>
 <figure class="anim">
 <video class="motion" src="figures/ch09-list-drop.mp4" autoplay="" loop="" muted="" playsinline="" preload="metadata" aria-label="A list of nodes 1 to 5 and 269,995 more, a main-thread robot, and a stack of frames with a gauge of 8 MiB. The default drop pushes drop(list), then drop(node 1), drop(node 2), and so on, one frame per node, without freeing anything; the counter runs to 262,144 frames, the gauge fills, and the stack overflows. Then a hand-written Drop: current takes the chain, each pass moves one node out, takes its next, and frees it, with a third frame that returns at once. The freed counter runs to 270,000 with the stack at two or three frames." data-chapters="[[0.0, &quot;default drop&quot;], [40.08, &quot;loop drop&quot;]]"><img src="figures/ch09-list-drop.gif" alt="A list of nodes 1 to 5 and 269,995 more, a main-thread robot, and a stack of frames with a gauge of 8 MiB. The default drop pushes drop(list), then drop(node 1), drop(node 2), and so on, one frame per node, without freeing anything; the counter runs to 262,144 frames, the gauge fills, and the stack overflows. Then a hand-written Drop: current takes the chain, each pass moves one node out, takes its next, and frees it, with a third frame that returns at once. The freed counter runs to 270,000 with the stack at two or three frames."></video>
 <figcaption><b>Animation 9.6</b> The default drop keeps every node's frame on the stack until the last node is reached. The <code>Drop</code> loop frees one node per pass, so the stack stays flat.</figcaption>
 </figure>
-<p>The main thread’s stack is 8 MiB on most systems. The crash happened between 260,000 and 270,000 nodes, so
-each level of nesting used about 32 bytes of stack. A thread you start with <code>std::thread::spawn</code> gets a 2 MiB stack by default. On such a thread the limit
-would be about a quarter as many nodes.</p>
-<p>The fix is to write the list’s <code>Drop</code> yourself, as a loop. <strong><code>Drop</code></strong> is a trait. Rust calls its <code>drop</code> method when a value goes out of scope. If you implement it, your code runs before the fields are dropped.</p>
+<p>On most systems, the main thread receives an 8 MiB stack. Because the overflow occurs between 260,000 and 270,000 nodes, each nested drop frame consumes roughly 32 bytes. Threads spawned via <code>std::thread::spawn</code> default to a 2 MiB stack and therefore overflow at roughly one quarter of that length.</p>
+<p>Eliminating this recursion requires a custom iterative <strong><code>Drop</code></strong> implementation. Rust invokes <code>Drop::drop</code> automatically before dropping a value’s fields.</p>
 <p class="listing"><b>Listing 9.10</b> The struct version's <code>Drop</code> (lines 46 to 55). <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/benchmarking_examples/lists/boxed_drop.rs">benchmarking_examples/lists/boxed_drop.rs</a></p>
 
 <pre><code class="language-rust">impl&lt;T&gt; Drop for LinkedList&lt;T&gt; {
@@ -821,7 +778,7 @@ fn run_list&lt;L: SinglyList&lt;u64&gt;&gt;(elements: usize) {
         with_thousands(elements as u64)
     );
 }</code></pre>
-<p>The whole file is listing 13.16. Chapter 13 adds the cache benchmarks to it, and shows it complete there.</p>
+<p>The full benchmark harness, including the cache benchmarks from Chapter 13, is presented in Listing 13.16.</p>
 <p><code>run_list::&lt;L: SinglyList&lt;u64&gt;&gt;</code> is <strong>generic</strong> over the list type <code>L</code>. The compiler generates a separate copy of the function for each list type. So each list is measured with
 its own code.</p>
 <p>The function follows three rules that apply to any small benchmark:</p>
@@ -868,20 +825,15 @@ agreement is a sign the measurement is stable.</li>
 <li>The loop drop is not much faster than the recursive one. Its purpose is to remove the size limit, not to
 save time.</li>
 </ul>
-<p>You can reproduce the crash and the fix:</p>
+<p>The stack overflow and iterative fix can be reproduced with the following commands:</p>
 <pre><code class="language-bash">cargo run --release --bin benchmark list box 260000   # completes
 cargo run --release --bin benchmark list box 270000   # crashes
 cargo run --release --bin list_drop                   # five million nodes, no crash
 </code></pre>
 <h2 id="99-a-doubly-linked-list"><a class="header" href="#99-a-doubly-linked-list">9.9 A doubly linked list</a></h2>
-<p>In a <strong>doubly linked list</strong>, each node points to the next node and also back to the previous one. That lets
-you add and remove at both ends in O(1), and walk the list in either direction.</p>
-<p>In Rust this creates an ownership problem. Every node in the middle is pointed to twice: by the previous
-node’s <code>next</code> and by the following node’s <code>prev</code>. A <code>Box</code> has exactly one owner, so it cannot express this.</p>
-<p>The solution uses the three types from chapter 8. Nodes live in <code>Rc&lt;RefCell&lt;Node&gt;&gt;</code>, so they can have more than
-one handle and still be changed. The forward links, <code>next</code>, are strong <code>Rc</code> handles, so the list owns its nodes
-from front to back. The backward links, <code>prev</code>, are <code>Weak</code> handles, so they do not create reference cycles
-(figure 9.6).</p>
+<p>In a <strong>doubly linked list</strong>, each node stores pointers to both its successor and its predecessor, enabling O(1) insertion and removal at either end as well as bidirectional traversal.</p>
+<p>In Rust, this layout introduces shared ownership: every interior node is referenced both by the preceding node’s <code>next</code> link and by the following node’s <code>prev</code> link, which single-owner <code>Box</code> pointers cannot represent.</p>
+<p>Applying the pointer types from Chapter 8 resolves this: nodes are wrapped in <code>Rc&lt;RefCell&lt;Node&gt;&gt;</code> for shared interior mutability, forward <code>next</code> links use strong <code>Rc</code> handles to establish ownership from head to tail, and backward <code>prev</code> links use <code>Weak</code> handles to prevent reference cycles (Figure 9.6).</p>
 <figure>
 <img src="figures/list-doubly.svg" alt="A list with head pointing to 20 and tail to 40; solid next links 20 to 10 to 30 to 40; dashed weak prev links back from each node to the one before">
 <figcaption><b>Figure 9.6</b> Strong links run forward and weak links run backward. If the back-links were strong, every pair of neighbors would form a cycle and no node would ever be freed.</figcaption>
@@ -1159,12 +1111,9 @@ Empty? true
 <p>The test <code>alternating_push_pop_keeps_invariants</code> pushes 100 values at each end, then pops from both ends and
 checks every value. The comment block at the end of the file lists each standard-library method the file
 uses, with a one-line description.</p>
-<p>This list costs more than the singly linked list. Each node needs a heap block, two counts, and a borrow
-flag, and every access is checked. It also keeps the recursive drop from section 9.7, because dropping the head drops the
-next <code>Rc</code>, which drops the next node. Chapter 13 avoids both costs for an LRU cache by storing its nodes in a
-<code>Vec</code> and linking them by index.</p>
+<p>This list costs more than the singly linked list: each node requires a separate heap allocation, two reference counts, and a runtime borrow flag, and every access incurs a dynamic borrow check. It also retains the recursive drop from Section 9.7, because dropping the head drops the next <code>Rc</code>, which drops the next node. In Chapter 13, an LRU cache avoids both costs by storing nodes contiguously in a <code>Vec</code> and linking them by index.</p>
 <h2 id="910-the-complete-files"><a class="header" href="#910-the-complete-files">9.10 The complete files</a></h2>
-<p>Each file below is shown whole, in the order the chapter used it.</p>
+<p>The complete source files follow in the order introduced above.</p>
 <p class="listing"><b>Listing 9.20</b> The node, the helpers, <code>reverse_list</code>, and <code>remove_all</code>, with tests. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/problems/linked_list.rs">src/problems/linked_list.rs</a></p>
 
 <pre><code class="language-rust">//! Reverse a singly linked list, and remove nodes from it.
@@ -1943,8 +1892,7 @@ A hand-written <code>Drop</code> loop removes the limit.</li>
 </ul>
 </div>
 
-<p>Chapter 10 uses the singly linked list from section 9.3 to merge many sorted lists into one, and compares eleven
-ways of doing it.</p>
+<p>In Chapter 10, the singly linked list from Section 9.3 serves as the foundation for merging multiple sorted lists into one using several algorithmic strategies.</p>
 <h2 id="exercises"><a class="header" href="#exercises">Exercises</a></h2>
 <ol>
 <li>Write <code>len</code> for the enum list of section 9.5 with a loop instead of recursion.</li>
@@ -2006,6 +1954,7 @@ push and pop times with the <code>Rc</code> version.</li>
 
         <!-- Custom JS scripts -->
         <script src="theme/anim-4192821e.js"></script>
+        <script src="theme/book-ui-621ed017.js"></script>
 
 
 

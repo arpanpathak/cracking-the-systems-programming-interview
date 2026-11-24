@@ -1,5 +1,5 @@
 <!DOCTYPE HTML>
-<html lang="en" class="light sidebar-visible" dir="ltr">
+<html lang="en" class="coal sidebar-visible" dir="ltr">
     <head>
         <!-- Book generated using mdBook -->
         <meta charset="UTF-8">
@@ -28,18 +28,18 @@
         <link rel="stylesheet" id="mdbook-ayu-highlight-css" href="ayu-highlight-3fdfc3ac.css">
 
         <!-- Custom theme stylesheets -->
-        <link rel="stylesheet" href="theme/custom-b2009ce0.css">
+        <link rel="stylesheet" href="theme/custom-985f104d.css">
 
 
         <!-- Provide site root and default themes to javascript -->
         <script>
             const path_to_root = "";
-            const default_light_theme = "light";
-            const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "searchindex-f2511fee.js";
+            const default_light_theme = "coal";
+            const default_dark_theme = "coal";
+            window.path_to_searchindex_js = "searchindex-4622e2bb.js";
         </script>
         <!-- Start loading toc.js asap -->
-        <script src="toc-34d6c47e.js"></script>
+        <script src="toc-c196c8a9.js"></script>
     </head>
     <body>
     <div id="mdbook-help-container">
@@ -77,7 +77,7 @@
             try { theme = localStorage.getItem('mdbook-theme'); } catch(e) { }
             if (theme === null || theme === undefined) { theme = default_theme; }
             const html = document.documentElement;
-            html.classList.remove('light')
+            html.classList.remove('coal')
             html.classList.add(theme);
             html.classList.add("js");
         </script>
@@ -191,22 +191,21 @@
 </ul>
 </div>
 
-<p>The caches of chapter 13 serve one thread at a time. This chapter asks what happens when many threads, or many
-machines, share one set of keys.</p>
-<p>Both halves of the chapter use the same idea. You split the keys into groups by their hash, and each group is
-handled separately. A group of keys handled separately is called a <strong>shard</strong>.</p>
-<p>Section 14.1 splits a map inside one program, so threads that use different keys do not wait for each other.
-Section 14.2 splits keys across machines, so that adding or removing a machine moves as few keys as possible.</p>
+<p>The LRU caches developed in Chapter 13 serve a single thread at a time. When multiple threads within one process
+or multiple servers across a cluster share a key space, coordination becomes the primary bottleneck.</p>
+<p>Both halves of this chapter apply the same partitioning principle: keys are divided by hash into independent
+groups, each called a <strong>shard</strong>. Section 14.1 partitions an in-process map so threads accessing distinct keys do
+not block one another; Section 14.2 partitions keys across servers so that adding or removing a node relocates
+as few keys as possible.</p>
 <h2 id="141-a-map-split-into-shards"><a class="header" href="#141-a-map-split-into-shards">14.1 A map split into shards</a></h2>
-<p>Section 8.6 showed how to share a value between threads: wrap it in a <code>Mutex</code>, and share the <code>Mutex</code> with an
-<code>Arc</code>. A thread calls <code>lock()</code> before it touches the value. While one thread holds the lock, every other thread
-that calls <code>lock()</code> waits.</p>
-<p>A single <code>Mutex&lt;HashMap&lt;K, V&gt;&gt;</code> is safe, but it has a cost. If four threads use the map at once, three of them
-wait, even when each thread wants a different key. Waiting for a lock that another thread holds is called
-<strong>lock contention</strong>.</p>
-<p>The fix is to give the map several locks. Split it into, say, eight smaller maps, each with its own <code>Mutex</code>
-(figure 14.1). A key always goes to the same small map. Two threads then wait for each other only when their
-keys land in the same shard.</p>
+<p>As established in Section 8.6, sharing mutable state across threads uses a <code>Mutex</code> wrapped in an <code>Arc</code>. While
+one thread holds the lock, every other thread calling <code>lock()</code> blocks until the guard is released.</p>
+<p>A single <code>Mutex&lt;HashMap&lt;K, V&gt;&gt;</code> is memory-safe, yet it serializes concurrent access: if four threads query the
+map simultaneously, three must wait even when each targets a distinct key. Blocking on a lock held by another
+thread is called <strong>lock contention</strong>.</p>
+<p>Partitioning the map across multiple independent locks reduces contention. Splitting the key space into eight
+smaller maps, each guarded by its own <code>Mutex</code> (Figure 14.1), ensures that two threads contend only when their
+keys hash to the same shard.</p>
 <figure>
 <img src="figures/shard-locks.svg" alt="Left: one Mutex HashMap; thread 1 holds the lock and threads 2 to 4 wait. Right: eight shards; threads 1, 2, and 3 work in shards 0, 3, and 6 at the same time, and the other shards are idle.">
 <figcaption><b>Figure 14.1</b> One lock for everything, against one lock per shard.</figcaption>
@@ -382,8 +381,8 @@ into the map, and the map is only reachable through the guard. When <code>get</c
 lock released. A reference could then be read while another thread changes the map, so the compiler does not
 allow it to escape.</p>
 <h3 id="1414-reading-under-the-lock-with-a-closure"><a class="header" href="#1414-reading-under-the-lock-with-a-closure">14.1.4 Reading under the lock with a closure</a></h3>
-<p>Cloning a large value only to read one field of it wastes work. <code>with</code> avoids the clone. You pass it a closure,
-and <code>with</code> runs the closure while it holds the lock:</p>
+<p>Cloning a large value solely to inspect one field wastes allocations and memory bandwidth. The <code>with</code> method
+avoids cloning by accepting a closure and executing it while holding the shard lock:</p>
 <pre><code class="language-rust">pub fn with&lt;R&gt;(&amp;self, key: &amp;K, inspect: impl FnOnce(Option&lt;&amp;V&gt;) -&gt; R) -&gt; R</code></pre>
 <ul>
 <li><code>inspect: impl FnOnce(Option&lt;&amp;V&gt;) -&gt; R</code> accepts any closure that takes an <code>Option&lt;&amp;V&gt;</code> and returns some type
@@ -648,14 +647,14 @@ test problems::sharded_cache::tests::keys_spread_across_shards ... ok
 test result: ok. 4 passed; 0 failed; 0 ignored; 0 measured; 133 filtered out
 </code></pre>
 <h2 id="142-spreading-keys-across-machines"><a class="header" href="#142-spreading-keys-across-machines">14.2 Spreading keys across machines</a></h2>
-<p>Now move from threads to machines. Suppose a cache is spread over several servers, and each key must live on
-exactly one of them. Every client must compute the same server for the same key, with no central directory to
-ask.</p>
+<p>The same partitioning problem extends from threads within one process to servers across a cluster. When a cache
+is distributed across multiple machines, every client must independently map any given key to the same server
+without consulting a central directory.</p>
 <h3 id="1421-the-problem-with-hash--n"><a class="header" href="#1421-the-problem-with-hash--n">14.2.1 The problem with <code>hash % N</code></a></h3>
-<p>The obvious rule is <code>hash(key) % N</code>, where N is the number of servers. It spreads keys evenly and needs no
-storage. It breaks down when N changes.</p>
-<p>Figure 14.3 shows keys with hashes 0 to 11 when a fourth server joins three others. A key stays in place only if
-<code>hash % 3</code> equals <code>hash % 4</code>.</p>
+<p>The simplest mapping rule is <code>hash(key) % N</code>, where <em>N</em> is the number of servers. Although it distributes keys
+evenly with zero metadata overhead, it breaks down whenever <em>N</em> changes.</p>
+<p>The remapping of hashes 0 through 11 when a fourth server joins three existing servers is illustrated in
+Figure 14.3; a key remains on its server only when <code>hash % 3</code> equals <code>hash % 4</code>.</p>
 <figure>
 <img src="figures/shard-modulo.svg" alt="A table of hashes 0 to 11 with their values modulo 3 and modulo 4. Only hashes 0, 1, and 2 give the same result; the other nine move.">
 <figcaption><b>Figure 14.3</b> From 3 servers to 4 with <code>hash % N</code>. Three keys in twelve stay, and the rest move.</figcaption>
@@ -676,7 +675,7 @@ server, the shares even out (figure 14.4).</p>
 <img src="figures/ring.svg" alt="A circle with twelve points: four each for nodes a, b, and c, spread around it. A key&#39;s hash lands between an a point and a b point, and an arc shows it moving clockwise to the b point.">
 <figcaption><b>Figure 14.4</b> Three nodes with four virtual nodes each. The key belongs to the next point clockwise, which belongs to node b.</figcaption>
 </figure>
-<p>Figure 14.5 shows the ring cut open and laid flat, before and after a third node joins.</p>
+<p>Unrolling the ring into a linear axis clarifies how adding a third node reassigns key ranges (Figure 14.5).</p>
 <figure>
 <img src="figures/ring-add.svg" alt="Before: points a, b, a, b, a on a line, with the keys in each gap going to the next point to the right. After: two c points are added. Only the keys between an a point and a new c point move, from b to c.">
 <figcaption><b>Figure 14.5</b> Adding node c. The keys that move all move to c. None moves between a and b.</figcaption>
@@ -1067,7 +1066,8 @@ own lock, so threads wait only when their keys share a shard.</li>
 <li>With a power-of-two shard count, <code>hash &amp; (count - 1)</code> picks the shard with one AND instruction.</li>
 <li>A value inside a <code>Mutex</code> can leave the lock only as a clone. A closure passed to <code>with</code> can read the value in
 place while the lock is held.</li>
-<li>Operations over all shards, such as <code>len</code>, lock one shard at a time and are not a single snapshot.</li>
+<li>Operations over all shards, such as <code>len</code>, lock one shard at a time and therefore do not represent an atomic
+point-in-time snapshot.</li>
 <li><code>hash % N</code> moves most keys when N changes. Consistent hashing moves only the keys the new server takes over,
 about 1/(n + 1) of them.</li>
 <li>Virtual nodes even out each server’s share of the ring. <code>Arc&lt;str&gt;</code> lets all of a server’s entries share one
@@ -1076,8 +1076,8 @@ copy of its name.</li>
 </ul>
 </div>
 
-<p>Chapter 15 looks below the data structures, at how the CPU caches memory and how the operating system hands it
-out.</p>
+<p>In Chapter 15, we move below the data-structure layer to examine CPU caches, memory layout, and operating-system
+primitives.</p>
 <h2 id="exercises"><a class="header" href="#exercises">Exercises</a></h2>
 <ol>
 <li>Add <code>update(&amp;self, key: &amp;K, change: impl FnOnce(&amp;mut V))</code> to <code>ShardedCache</code>, which changes a value in place
@@ -1142,6 +1142,7 @@ with <code>partition_point</code> and <code>Vec::insert</code>, and compare the 
 
         <!-- Custom JS scripts -->
         <script src="theme/anim-4192821e.js"></script>
+        <script src="theme/book-ui-621ed017.js"></script>
 
 
 

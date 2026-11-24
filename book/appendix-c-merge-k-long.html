@@ -1,5 +1,5 @@
 <!DOCTYPE HTML>
-<html lang="en" class="light sidebar-visible" dir="ltr">
+<html lang="en" class="coal sidebar-visible" dir="ltr">
     <head>
         <!-- Book generated using mdBook -->
         <meta charset="UTF-8">
@@ -28,18 +28,18 @@
         <link rel="stylesheet" id="mdbook-ayu-highlight-css" href="ayu-highlight-3fdfc3ac.css">
 
         <!-- Custom theme stylesheets -->
-        <link rel="stylesheet" href="theme/custom-b2009ce0.css">
+        <link rel="stylesheet" href="theme/custom-985f104d.css">
 
 
         <!-- Provide site root and default themes to javascript -->
         <script>
             const path_to_root = "";
-            const default_light_theme = "light";
-            const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "searchindex-f2511fee.js";
+            const default_light_theme = "coal";
+            const default_dark_theme = "coal";
+            window.path_to_searchindex_js = "searchindex-4622e2bb.js";
         </script>
         <!-- Start loading toc.js asap -->
-        <script src="toc-34d6c47e.js"></script>
+        <script src="toc-c196c8a9.js"></script>
     </head>
     <body>
     <div id="mdbook-help-container">
@@ -77,7 +77,7 @@
             try { theme = localStorage.getItem('mdbook-theme'); } catch(e) { }
             if (theme === null || theme === undefined) { theme = default_theme; }
             const html = document.documentElement;
-            html.classList.remove('light')
+            html.classList.remove('coal')
             html.classList.add(theme);
             html.classList.add("js");
         </script>
@@ -180,9 +180,7 @@
                     <main>
                         <h1 id="appendix-c-merging-k-sorted-lists-the-long-version"><a class="header" href="#appendix-c-merging-k-sorted-lists-the-long-version">Appendix C. Merging k sorted lists, the long version</a></h1>
 <blockquote>
-<p><strong>Warning.</strong> This is the first version of chapter 10, kept whole. It walks through eleven programs for one
-merge, and most of them are near copies of each other. It is very ugly. It stays in the book for brave readers
-who want every variant and every borrow trick. Chapter 10 teaches the same material with three programs.</p>
+<p><strong>Note.</strong> This appendix preserves the original, unabridged draft of chapter 10. It walks through eleven implementations of the same merge, many of which differ only in borrow-checker mechanics or allocation strategy. Chapter 10 covers the same algorithmic material concisely with three implementations; this appendix remains for readers who wish to study every variant and ownership pattern in detail.</p>
 </blockquote>
 <div class="covers" markdown="1">
 <p>This chapter covers</p>
@@ -195,16 +193,11 @@ who want every variant and every borrow trick. Chapter 10 teaches the same mater
 </ul>
 </div>
 
-<p>Chapter 9 built singly linked lists and moved their nodes between owners with <code>take</code>. Here you have k linked
-lists, each already sorted, and you want one sorted list that contains all their nodes.</p>
-<p>Section C.2 compares three orders of merging. Sections C.3 to C.8 implement them in eleven programs, and
-section C.9 lists the time and memory each program needs.</p>
-<p>Two letters appear throughout. <strong>k</strong> is the number of lists. <strong>N</strong> is the total number of nodes across all of
-them.</p>
+<p>In chapter 9, we constructed singly linked lists and transferred their nodes between owners with <code>take</code>. This appendix addresses the extension to k sorted linked lists, combining all of their nodes into a single sorted list.</p>
+<p>Section C.2 compares three merge orders, sections C.3 through C.8 implement them across eleven programs, and section C.9 summarizes the time, memory, and allocation profile of each variant.</p>
+<p>Throughout this appendix, <strong>k</strong> denotes the number of input lists and <strong>N</strong> denotes the total number of nodes across all lists.</p>
 <h2 id="c1-merging-two-sorted-lists"><a class="header" href="#c1-merging-two-sorted-lists">C.1 Merging two sorted lists</a></h2>
-<p>Every program in this chapter merges two sorted lists at a time. Compare the front nodes of the
-two lists. Move the smaller one to the end of the output. Repeat until one list is empty, then attach the
-other list whole. Figure C.1 works through an example.</p>
+<p>Every implementation in this appendix builds on a two-list merge: compare the front nodes of both lists, detach the smaller node and append it to the output, and repeat until one list is exhausted before attaching the remaining list whole. Figure C.1 traces an example.</p>
 <figure>
 <img src="figures/merge-two.svg" alt="Six steps merging 1,4,5 with 1,3,4. At each step the smaller front node moves to the output. After step 5 the output is 1,1,3,4,4 and the remaining 5 is attached.">
 <figcaption><b>Figure C.1</b> Merging two sorted lists. Each step moves one node, so merging lists of lengths a and b takes a + b steps.</figcaption>
@@ -399,14 +392,11 @@ vector, the merge needs only one mutable borrow of it.</p>
         dummy.next
     }
 }</code></pre>
-<p>Look at the inner loop:</p>
+<p>Consider the inner loop:</p>
 <pre><code class="language-rust">let mut right = lists[i + interval].take();
 lists[i] = Self::merge_two(&amp;mut lists[i], &amp;mut right);</code></pre>
-<p>The right list is moved out of the vector into a local variable first. After that, the only borrow of the
-vector is the one for <code>lists[i]</code>, so the call compiles.</p>
-<p>The merge changes too. Instead of choosing which list to take from, it makes sure <code>left</code> always holds the
-smaller front. When the right front is smaller, <code>std::mem::swap(left, right)</code> exchanges the two lists. Then the
-loop body always takes from <code>left</code>.</p>
+<p>Moving the right list out of the vector into a local variable first leaves only a single mutable borrow of <code>lists</code> (for <code>lists[i]</code>), satisfying the borrow checker.</p>
+<p>The merge logic also simplifies: rather than branching on which list to pop from, <code>std::mem::swap(left, right)</code> ensures that <code>left</code> always holds the smaller front node whenever the right front is smaller, allowing the loop body to advance <code>left</code> unconditionally.</p>
 <p>The complete program is listing C.20 at the end of the chapter.</p>
 <h3 id="c42-merge-owned-lists-with-no-dummy-node"><a class="header" href="#c42-merge-owned-lists-with-no-dummy-node">C.4.2 Merge owned lists, with no dummy node</a></h3>
 <p>This version moves both lists out of the vector and passes them by value, so nothing is borrowed during the
@@ -640,7 +630,7 @@ fn merge_k(mut lists: Vec&lt;Link&gt;) -&gt; Link {
 </code></pre>
 <p>The complete program is listing C.23 at the end of the chapter.</p>
 <h2 id="c5-the-same-merge-on-an-enum-node"><a class="header" href="#c5-the-same-merge-on-an-enum-node">C.5 The same merge on an enum node</a></h2>
-<p>Chapter 9 also wrote a list as an enum. Two versions try the merge on that shape.</p>
+<p>In chapter 9, we also represented a linked list as an enum. The next two implementations adapt the merge to that representation.</p>
 <h3 id="c51-an-enum-with-its-own-take"><a class="header" href="#c51-an-enum-with-its-own-take">C.5.1 An enum with its own <code>take</code></a></h3>
 <p>The node can also be an enum, as in chapter 9. A list is either <code>Empty</code>, or a <code>Node</code> with a value and the rest of
 the list. This version gives that enum a <code>take</code> method so the merge reads like the <code>Option</code> versions.</p>
@@ -708,11 +698,9 @@ impl ListNode {
 }</code></pre>
 <p>The loop picks <code>smaller</code> with a <code>match</code> on both fronts. The two <code>Empty</code> arms attach the other list and leave
 the loop with <code>break</code>. The third arm returns a mutable reference to the list with the smaller front.</p>
-<p>This representation has a cost. Look at how a node is attached:</p>
+<p>This representation carries an allocation cost, visible in how each node is attached:</p>
 <pre><code class="language-rust">*tail = Node { data, next: LinkTo::new(Empty) };</code></pre>
-<p>With <code>Option&lt;Box&lt;Node&gt;&gt;</code>, a node’s box moves from the input to the output. Here, <code>*smaller = *next</code> moves the
-rest of the input out of its box, and that box is freed. The output node is a new <code>Node</code> with a new <code>Box</code>
-holding a new <code>Empty</code>. So this version allocates once for every node it outputs.</p>
+<p>With <code>Option&lt;Box&lt;Node&gt;&gt;</code>, an existing node’s <code>Box</code> moves directly from input to output. Here, <code>*smaller = *next</code> moves the remainder of the input out of its box and frees that box, while constructing a fresh <code>Node</code> with a new <code>Box</code> containing <code>Empty</code> for the output. Consequently, this variant allocates once for every node emitted.</p>
 <p>The complete program is listing C.24 at the end of the chapter.</p>
 <h3 id="c52-an-enum-with-standard-traits-and-a-recursive-merge"><a class="header" href="#c52-an-enum-with-standard-traits-and-a-recursive-merge">C.5.2 An enum with standard traits and a recursive merge</a></h3>
 <p>This version uses the same enum shape but derives <code>Default</code>, so the standard <code>std::mem::take</code> works on it. Its
@@ -789,8 +777,7 @@ uses <code>fold</code> to wrap each value around the list built so far. <code>ma
 <p><code>std::mem::take(&amp;mut lists[i + interval])</code> moves the right list out and leaves the default, an empty list, in
 its place. It takes the right list before the left, which avoids the double borrow as listing C.3 did.
 <code>lists.swap_remove(0)</code> removes position 0 by moving the last element into it, which takes O(1).</p>
-<p><code>merge</code> is recursive, and takes both lists as <code>ListNode</code> values. The caller moves them out of their boxes with <code>*left</code> and <code>*right</code>. <code>merge</code> keeps the smaller front node, merges the rest into <code>rest</code>, and boxes only the result. The list it did not take from passes to the recursive call unboxed. The code reads almost like a definition of merging. It has two costs. It allocates a new <code>Box</code> for every output node. And it recurses once per output node, so
-a long result uses a deep stack, as chapter 9’s recursive drop did.</p>
+<p><code>merge</code> is recursive and accepts both lists as owned <code>ListNode</code> values unboxed by the caller (<code>*left</code> and <code>*right</code>). It retains the smaller front node, merges the remainder recursively, and boxes only the returned node. Although this form reads almost directly like an inductive definition of merging, it incurs two costs: it allocates a new <code>Box</code> for every output node, and it recurses once per output node, consuming O(N) call-stack depth on long lists (the same stack-overflow hazard observed with recursive <code>Drop</code> in chapter 9).</p>
 <p>The complete program is listing C.25 at the end of the chapter.</p>
 <p>The program prints the result with <code>{:#?}</code>, which shows the nesting of the enum directly:</p>
 <pre><code class="language-text">$ cargo run --bin merge_k_sorted_lists_enum_recursive
@@ -803,9 +790,7 @@ Node(
             ...
 </code></pre>
 <h2 id="c6-a-queue-of-lists"><a class="header" href="#c6-a-queue-of-lists">C.6 A queue of lists</a></h2>
-<p>This version does pairwise rounds with a queue instead of intervals. A <code>VecDeque</code> is a double-ended queue:
-you can push and pop at both ends in O(1). <code>merge_k_lists</code> puts all the lists in the queue. Then it pops two from the front and pushes their merge on
-the back, until one list is left.</p>
+<p>This variant executes pairwise rounds using a queue rather than index intervals. A <code>VecDeque</code> is a double-ended queue supporting O(1) push and pop operations at both ends. <code>merge_k_lists</code> enqueues all input lists, then repeatedly pops two lists from the front and pushes their merged result to the back until a single list remains.</p>
 <p>This file declares its own copy of the node type, with <code>Link</code> as the alias for a whole list:</p>
 <pre><code class="language-rust">use std::collections::VecDeque;
 
@@ -2065,8 +2050,7 @@ fn main() {
 <ul>
 <li>Merging two sorted lists moves the smaller front node to the output until one list is empty, in O(a + b).</li>
 <li>Merging k lists one at a time costs O(kN). Pairwise rounds and a heap of heads both cost O(N log k).</li>
-<li>Two <code>&amp;mut</code> borrows of elements of one <code>Vec</code> do not compile. <code>split_at_mut</code> splits it into two slices, or you
-can move one list out with <code>take()</code> first.</li>
+<li>Two simultaneous <code>&amp;mut</code> borrows of elements in one <code>Vec</code> do not compile; use <code>split_at_mut</code> to obtain disjoint slices, or move one list out with <code>take()</code> first.</li>
 <li>A dummy head and a tail pointer attach nodes to the end of a list. <code>Option::insert</code> attaches and advances in
 one call.</li>
 <li>With <code>Option&lt;Box&lt;Node&gt;&gt;</code>, merging moves boxes and allocates nothing. The enum versions allocate a new box for
@@ -2131,6 +2115,7 @@ confirm the difference described in section C.5.1.</li>
 
         <!-- Custom JS scripts -->
         <script src="theme/anim-4192821e.js"></script>
+        <script src="theme/book-ui-621ed017.js"></script>
 
 
 

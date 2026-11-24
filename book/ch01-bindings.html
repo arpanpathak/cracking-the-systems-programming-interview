@@ -1,5 +1,5 @@
 <!DOCTYPE HTML>
-<html lang="en" class="light sidebar-visible" dir="ltr">
+<html lang="en" class="coal sidebar-visible" dir="ltr">
     <head>
         <!-- Book generated using mdBook -->
         <meta charset="UTF-8">
@@ -28,18 +28,18 @@
         <link rel="stylesheet" id="mdbook-ayu-highlight-css" href="ayu-highlight-3fdfc3ac.css">
 
         <!-- Custom theme stylesheets -->
-        <link rel="stylesheet" href="theme/custom-b2009ce0.css">
+        <link rel="stylesheet" href="theme/custom-985f104d.css">
 
 
         <!-- Provide site root and default themes to javascript -->
         <script>
             const path_to_root = "";
-            const default_light_theme = "light";
-            const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "searchindex-f2511fee.js";
+            const default_light_theme = "coal";
+            const default_dark_theme = "coal";
+            window.path_to_searchindex_js = "searchindex-4622e2bb.js";
         </script>
         <!-- Start loading toc.js asap -->
-        <script src="toc-34d6c47e.js"></script>
+        <script src="toc-c196c8a9.js"></script>
     </head>
     <body>
     <div id="mdbook-help-container">
@@ -77,7 +77,7 @@
             try { theme = localStorage.getItem('mdbook-theme'); } catch(e) { }
             if (theme === null || theme === undefined) { theme = default_theme; }
             const html = document.documentElement;
-            html.classList.remove('light')
+            html.classList.remove('coal')
             html.classList.add(theme);
             html.classList.add("js");
         </script>
@@ -183,48 +183,35 @@
 <div class="covers" markdown="1">
 <p>This chapter covers</p>
 <ul>
-<li>What a <code>let</code> binding is and where its value lives</li>
-<li>Shadowing a name, and how it differs from changing a value with <code>mut</code></li>
-<li>Writing a function that calls itself, and what happens on the stack when it does</li>
-<li>Replacing that recursion with a loop, and with a table of saved answers</li>
-<li>Timing code with <code>Instant</code>, and passing a function to another function</li>
+<li>How a <code>let</code> binding works and where its value resides in memory</li>
+<li>Shadowing an identifier, and how it differs from in-place mutation with <code>mut</code></li>
+<li>Recursive functions and their stack-frame allocation behavior</li>
+<li>Replacing direct recursion with an iterative loop and with a memoization table</li>
+<li>Measuring execution time with <code>Instant</code>, and passing functions as arguments</li>
 </ul>
 </div>
 
-<p>This chapter begins Part 1 of the book. Part 1 covers the pieces of Rust that every later chapter uses.
-This first chapter works with the smallest pieces: names for values, functions, and loops.</p>
-<p>You will read and run two short programs. The first gives one name to three different values in turn. It
-shows what a <code>let</code> statement does, and how that differs from changing a value in place. The second
-program computes Fibonacci numbers in three ways and times each one. It shows how a function that calls
-itself uses memory, and it compares the running times of the three versions.</p>
-<p>A few terms first:</p>
+<p>This chapter opens Part 1, which establishes the core Rust mechanics relied upon throughout the remainder of the book. We begin with the smallest building blocks: variable bindings, functions, and control flow.</p>
+<p>We examine two short programs. The first binds a single identifier to three distinct values in sequence, demonstrating the distinction between introducing a new binding with <code>let</code> and mutating an existing slot in place. The second computes Fibonacci numbers using three different strategies and times each one, illustrating how recursion consumes stack memory and how algorithmic structure governs execution time.</p>
+<p>Four foundational terms anchor the discussion:</p>
 <ul>
-<li>A <strong>binding</strong> is a name attached to a value. <code>let x = 5;</code> binds the name <code>x</code> to the value <code>5</code>.</li>
-<li>A <strong>scope</strong> is the region of code where a binding can be used. In Rust, a scope is usually a block
-between <code>{</code> and <code>}</code>.</li>
-<li>The <strong>stack</strong> is the memory where a function keeps its local values while it runs.</li>
-<li>A <strong>stack frame</strong> is the part of the stack that belongs to one running call of a function.</li>
+<li>A <strong>binding</strong> associates an identifier with a value; for example, <code>let x = 5;</code> binds the name <code>x</code> to <code>5</code>.</li>
+<li>A <strong>scope</strong> is the lexical region in which a binding remains valid, typically delimited in Rust by <code>{</code> and <code>}</code>.</li>
+<li>The <strong>stack</strong> is the contiguous region of memory where active function calls store their local variables.</li>
+<li>A <strong>stack frame</strong> is the slice of stack memory allocated for a single invocation of a function.</li>
 </ul>
 <h2 id="11-a-binding-is-a-name-for-a-value"><a class="header" href="#11-a-binding-is-a-name-for-a-value">1.1 A binding is a name for a value</a></h2>
-<p>When a function starts, Rust reserves a stack frame for it. Each <code>let</code> in the function gets a place in
-that frame, sized for its type. A <code>u32</code> takes 4 bytes, and a <code>usize</code> takes 8 bytes on a 64-bit machine.</p>
-<p>A <code>String</code> is different. Its text can grow, so the text is kept in heap memory. The <strong>heap</strong> is memory the
-program requests while it runs and gives back when it is done. The <code>String</code> value on the stack holds three
-numbers. They are the address of the text on the heap, the length of the text, and the size of the heap block.</p>
-<p>When a function returns, its frame is removed. Every value in the frame is dropped. For a <code>String</code>,
-dropping it also frees its heap block.</p>
+<p>Upon entering a function, the runtime reserves a stack frame sized to hold its local bindings. Each <code>let</code> statement occupies a fixed-width slot determined by its type: a <code>u32</code> occupies 4 bytes, whereas a <code>usize</code> occupies 8 bytes on a 64-bit architecture.</p>
+<p>Heap-allocated types such as <code>String</code> split their representation across two memory regions. Because text length can change at runtime, the raw character bytes reside on the <strong>heap</strong>, a dynamically managed memory pool requested from the allocator and returned when no longer needed. On the stack, the <code>String</code> itself is a fixed-size header holding three machine words: a pointer to the heap buffer, the current byte length, and the allocated capacity.</p>
+<p>When a function returns, its stack frame is popped and every local value in that frame is dropped. Dropping a <code>String</code> releases its underlying heap buffer automatically.</p>
 <h2 id="12-shadowing-one-name-several-values"><a class="header" href="#12-shadowing-one-name-several-values">1.2 Shadowing: one name, several values</a></h2>
-<p>You can write a second <code>let</code> with a name that is already in use. This does not change the first value.
-It creates a second binding with the same name, and the name now refers to the new value. Rust calls this
-<strong>shadowing</strong>. The first value still exists until the end of its scope, but you can no longer reach it by
-that name.</p>
-<p>Because the second binding is a new variable, it can have a different type. Figure 1.1 follows the name
-<code>value</code> through three bindings of three types.</p>
+<p>Declaring a second <code>let</code> statement with an identifier already in scope does not overwrite the original value. Instead, it creates a distinct binding that reuses the identifier, hiding the earlier value from subsequent statements. Rust terms this mechanism <strong>shadowing</strong>. The original value remains alive until the enclosing scope exits, though it is no longer reachable by name.</p>
+<p>Because each shadowed binding is an independent variable, its type can differ from the previous binding. Figure 1.1 traces the identifier <code>value</code> across three bindings of three different types.</p>
 <figure>
 <img src="figures/ch01-shadowing.svg" alt="Three steps. After line 1, value names a u32 7. After line 2, value names the String 7 and the u32 has no name. After line 3, value names a usize 1 and both earlier values have no name.">
 <figcaption><b>Figure 1.1</b> Each <code>let</code> creates a new value and moves the name to it. The earlier values are not changed; they lose their name.</figcaption>
 </figure>
-<p>Here is the function that performs those three steps:</p>
+<p>Listing 1.1 implements this three-step sequence.</p>
 <p class="listing"><b>Listing 1.1</b> One name, three types. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/bin/shadowing.rs">src/bin/shadowing.rs</a>, lines 27 to 41</p>
 
 <pre><code class="language-rust">fn demonstrate_shadowing() -&gt; String {
@@ -242,47 +229,36 @@ that name.</p>
 
     log
 }</code></pre>
-<p>Read the three <code>let value</code> lines in order:</p>
+<p>Tracing the three <code>let value</code> statements in order clarifies how evaluation proceeds:</p>
 <ol>
-<li><code>let value: u32 = 7;</code> creates a <code>u32</code>.</li>
-<li><code>let value = value.to_string();</code> reads the <code>u32</code>, builds a <code>String</code> from it, and binds the name to the
-<code>String</code>. On the right-hand side, <code>value</code> still means the <code>u32</code>, because the new binding does not exist
-until the statement finishes.</li>
-<li><code>let value = value.len();</code> reads the <code>String</code> and binds the name to its length, a <code>usize</code>.</li>
+<li><code>let value: u32 = 7;</code> initializes a <code>u32</code> binding.</li>
+<li><code>let value = value.to_string();</code> reads the <code>u32</code>, allocates a <code>String</code> containing its decimal representation, and binds <code>value</code> to that <code>String</code>. On the right-hand side, <code>value</code> still resolves to the <code>u32</code> because the new binding enters scope only after the initializer finishes evaluating.</li>
+<li><code>let value = value.len();</code> reads the byte length of the <code>String</code> and binds <code>value</code> to the resulting <code>usize</code>.</li>
 </ol>
-<p>None of these lines needs <code>mut</code>, because no value is changed after it is created. The <code>log</code> string does
-change, so it is declared <code>let mut log</code>. Each <code>push_str</code> appends one line to it, so the test can check all
-three stages.</p>
-<p>Figure 1.2 (left) shows the stack frame after the third line. There are three values, and only the last
-one has a usable name.</p>
+<p>None of these bindings require <code>mut</code> because every value remains immutable after initialization. By contrast, <code>log</code> accumulates output lines via <code>push_str</code>, so it is declared <code>let mut log</code>, allowing the unit tests to verify all three intermediate states.</p>
+<p>Figure 1.2 (left) depicts the conceptual stack frame after the third binding: three distinct slots exist, with only the final slot remaining accessible by name.</p>
 <figure>
 <img src="figures/ch01-slots.svg" alt="Left: a stack frame with three slots, a u32 7, a String pointing to heap bytes 7, and a usize 1; only the third has a usable name. Right: one slot holding count, shown at four moments as it changes from 0 to 3.">
 <figcaption><b>Figure 1.2</b> Shadowing creates a new slot for each binding. Mutation writes new values into the same slot. The compiler may reuse a slot it can prove is unused. The picture shows what the program means.</figcaption>
 </figure>
 <h3 id="121-when-shadowing-helps"><a class="header" href="#121-when-shadowing-helps">1.2.1 When shadowing helps</a></h3>
-<p>Programs often receive a value in one form and need it in another. A number typed by a user arrives as
-text. After you parse it, you want the number and never the text again. Shadowing lets the number take the
-text’s name:</p>
+<p>Shadowing is well suited to staged data transformations where an input arrives in one representation and must be converted into another. For example, numeric input from a user arrives as raw text; once parsed, the unparsed string is no longer needed and can be shadowed by the parsed integer:</p>
 <pre><code class="language-rust">let count = read_line_from_user();   // a String, for example "42"
 let count: u32 = count.trim().parse().expect("a number");</code></pre>
-<p>After the second line, <code>count</code> is a <code>u32</code>. Code below it cannot use the unparsed text by mistake, because
-no name refers to it any more.</p>
+<p>After the second line, <code>count</code> has type <code>u32</code>. Subsequent code cannot accidentally reference the raw string because its identifier has been rebound.</p>
 <h3 id="122-a-value-captured-earlier-keeps-its-old-value"><a class="header" href="#122-a-value-captured-earlier-keeps-its-old-value">1.2.2 A value captured earlier keeps its old value</a></h3>
-<p>A closure or a reference created before a shadowing <code>let</code> still refers to the first value:</p>
+<p>A closure or reference created prior to a shadowing <code>let</code> remains bound to the original variable:</p>
 <pre><code class="language-rust">let x = 1;
 let show = || println!("{x}");
 let x = x + 1;   // a new x
 show();          // prints 1</code></pre>
-<p>The closure captured the first <code>x</code>. The second <code>let</code> created a new variable, and the closure never sees it.</p>
+<p>Because the second <code>let</code> allocates a new binding rather than modifying the first, the closure continues to observe the original <code>x</code>.</p>
 <div class="callout warning" markdown="1">
-<p><strong>WARNING:</strong> Inside a loop, <code>let x = x + 1;</code> creates a new <code>x</code> that lives only until the end of that pass
-through the loop. On the next pass, the outer <code>x</code> has its old value again. To count across passes, declare
-<code>let mut x</code> before the loop and write <code>x += 1</code> inside it.</p>
+<p><strong>WARNING:</strong> Writing <code>let x = x + 1;</code> inside a loop body introduces a new binding scoped exclusively to that single iteration. On the next iteration, the outer <code>x</code> retains its original value. To accumulate state across iterations, declare <code>let mut x</code> outside the loop and update it with <code>x += 1</code>.</p>
 </div>
 
 <h2 id="13-mutation-one-value-that-changes"><a class="header" href="#13-mutation-one-value-that-changes">1.3 Mutation: one value that changes</a></h2>
-<p>When you want one variable whose value changes over time, declare it with <code>mut</code>. The type stays the same,
-and each assignment writes into the same place in the frame.</p>
+<p>When a single storage location must change over time, declare the binding with <code>mut</code>. The type remains fixed, and every assignment overwrites the same stack slot in place.</p>
 <p class="listing"><b>Listing 1.2</b> A counter that changes in place. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/bin/shadowing.rs">src/bin/shadowing.rs</a>, lines 43 to 53</p>
 
 <pre><code class="language-rust">fn demonstrate_mutation() -&gt; String {
@@ -296,10 +272,8 @@ and each assignment writes into the same place in the frame.</p>
     }
     log
 }</code></pre>
-<p><code>for _ in 0..3</code> runs the loop body three times. The <code>_</code> means the loop does not use the counter it is given.
-Each pass adds 1 to <code>count</code> and appends the new value to <code>log</code>. Figure 1.2 (right) shows the one slot for
-<code>count</code> at four moments.</p>
-<p>Table 1.1 compares the two ways of changing what a name refers to.</p>
+<p>The header <code>for _ in 0..3</code> executes the body three times while discarding the loop index with the wildcard <code>_</code>. Each iteration increments <code>count</code> in place and appends the updated value to <code>log</code>. Figure 1.2 (right) illustrates the single slot for <code>count</code> across its four states.</p>
+<p>Table 1.1 summarizes the behavioral differences between shadowing and mutation.</p>
 <div class="table-wrapper">
 <table>
 <thead>
@@ -314,8 +288,7 @@ Each pass adds 1 to <code>count</code> and appends the new value to <code>log</c
 </table>
 </div>
 <h2 id="14-the-first-complete-program"><a class="header" href="#14-the-first-complete-program">1.4 The first complete program</a></h2>
-<p>The rest of <code>shadowing.rs</code> runs both functions and tests them. The file starts with a comment that
-explains the program:</p>
+<p>Listing 1.3 presents the complete <code>shadowing.rs</code> binary, including its entry point and unit tests.</p>
 <p class="listing"><b>Listing 1.3</b> The complete program. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/bin/shadowing.rs">src/bin/shadowing.rs</a></p>
 
 <pre><code class="language-rust">// ============================================================================
@@ -401,10 +374,8 @@ mod tests {
         assert!(log.contains("mut count: 1 2 3"));
     }
 }</code></pre>
-<p>The tests at the end are in a module marked <code>#[cfg(test)]</code>. The compiler builds that module only when you
-run <code>cargo test</code>. <code>use super::*;</code> brings the functions from the rest of the file into the test module.
-Each test calls a function and uses <code>assert!</code> to check that the log contains the expected text.</p>
-<p>Run the program and its tests from the <code>rust-interview-lab</code> directory:</p>
+<p>The unit tests reside in a module annotated with <code>#[cfg(test)]</code>, which instructs the compiler to compile this module exclusively during <code>cargo test</code>. Inside the module, <code>use super::*;</code> imports the parent module’s items into scope, and each test verifies the formatted log output with <code>assert!</code>.</p>
+<p>Running the binary and its test suite from the <code>rust-interview-lab</code> directory produces:</p>
 <pre><code class="language-text">$ cargo run --bin shadowing
 === Shadowing ===
 integer: 7
@@ -419,10 +390,9 @@ running 2 tests
 test tests::mutation_requires_mut_binding ... ok
 test tests::shadowing_allows_type_changes ... ok
 </code></pre>
-<p>Now that you know where a function keeps its values, you can look at what happens when a function calls
-itself many times.</p>
+<p>With stack-frame storage established for single function calls, we next examine how nested calls accumulate frames when a function invokes itself.</p>
 <h2 id="15-a-function-that-calls-itself"><a class="header" href="#15-a-function-that-calls-itself">1.5 A function that calls itself</a></h2>
-<p>The Fibonacci numbers start with 0 and 1. Each later number is the sum of the two before it:</p>
+<p>The Fibonacci sequence begins with 0 and 1, and each subsequent term is the sum of the two preceding terms:</p>
 <div class="table-wrapper">
 <table>
 <thead>
@@ -433,7 +403,7 @@ itself many times.</p>
 </tbody>
 </table>
 </div>
-<p>The definition can be written directly as a Rust function. A function that calls itself is <strong>recursive</strong>.</p>
+<p>This recurrence translates directly into a <strong>recursive</strong> function, a function that invokes itself.</p>
 <p class="listing"><b>Listing 1.4</b> Fibonacci by recursion. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/bin/cs_fib.rs">src/bin/cs_fib.rs</a>, lines 8 to 15</p>
 
 <pre><code class="language-rust">use std::time::{Duration, Instant};
@@ -446,33 +416,23 @@ fn recursive(n: u64) -&gt; u64 {
         recursive(n - 1) + recursive(n - 2)
     }
 }</code></pre>
-<p>For <code>n</code> of 0 or 1, the function returns <code>n</code>. This is the <strong>base case</strong>, the input that needs no further
-calls. For larger <code>n</code>, it calls itself twice and adds the results. The <code>if</code> is an expression, so its
-value is the function’s return value, and no <code>return</code> keyword is needed.</p>
+<p>Inputs <code>0</code> and <code>1</code> form the <strong>base case</strong>, returning <code>n</code> directly without further calls. For any <code>n &gt;= 2</code>, the function makes two recursive calls and sums their results. Because <code>if</code> is an expression in Rust, its evaluated branch serves as the function’s return value without an explicit <code>return</code> statement.</p>
 <h3 id="151-counting-the-calls"><a class="header" href="#151-counting-the-calls">1.5.1 Counting the calls</a></h3>
-<p>Work out <code>recursive(5)</code> by hand. It calls <code>recursive(4)</code> and <code>recursive(3)</code>. <code>recursive(4)</code> then calls
-<code>recursive(3)</code> again. Figure 1.3 draws every call.</p>
+<p>Tracing <code>recursive(5)</code> reveals significant redundant work: <code>recursive(5)</code> invokes <code>recursive(4)</code> and <code>recursive(3)</code>, and <code>recursive(4)</code> invokes <code>recursive(3)</code> a second time. Figure 1.3 illustrates the complete call tree.</p>
 <figure>
 <img src="figures/ch08-fib.svg" alt="The call tree of fib(5): fib(4) and fib(3) at the second level, with fib(3) and fib(2) repeated further down">
 <figcaption><b>Figure 1.3</b> The calls made by <code>recursive(5)</code>. Shaded calls repeat work that another branch already did: <code>fib(3)</code> is computed twice and <code>fib(2)</code> three times.</figcaption>
 </figure>
-<p>The tree has 15 calls for <code>n = 5</code>. The tree for <code>n</code> contains the trees for <code>n - 1</code> and <code>n - 2</code>, so the
-count grows by about 1.6 times per step. For <code>n = 30</code>, the function makes about 2.7 million calls. For <code>n = 90</code>,
-the count would be about 10<sup>19</sup>.</p>
+<p>Evaluating <code>n = 5</code> requires 15 calls. Because the call tree for <code>n</code> contains both the tree for <code>n - 1</code> and the tree for <code>n - 2</code>, the total call count grows by roughly a factor of 1.618 per increment of <code>n</code>. At <code>n = 30</code>, the function executes approximately 2.7 million calls; at <code>n = 90</code>, the call count exceeds 10<sup>19</sup>.</p>
 <h3 id="152-what-each-call-uses-on-the-stack"><a class="header" href="#152-what-each-call-uses-on-the-stack">1.5.2 What each call uses on the stack</a></h3>
-<p>Every call gets its own stack frame, holding its <code>n</code> and the address to return to. A frame is removed when
-its call returns. So the stack does not hold all the calls at once, only the chain of calls that are
-waiting on each other. Figure 1.4 shows the deepest moment of <code>recursive(4)</code>.</p>
+<p>Every active invocation allocates its own stack frame containing its parameter <code>n</code> and return address, and releases that frame upon returning. Consequently, the stack never holds the entire call tree simultaneously; it holds only the active chain of pending calls. Figure 1.4 depicts the deepest stack state reached during <code>recursive(4)</code>.</p>
 <figure>
 <img src="figures/ch01-stack.svg" alt="A stack of frames from main at the bottom through timed, recursive(4), recursive(3), recursive(2), to recursive(1) at the top">
 <figcaption><b>Figure 1.4</b> The stack at the deepest point of <code>recursive(4)</code>. The depth is about <code>n</code> frames, while the number of calls grows much faster.</figcaption>
 </figure>
-<p>So the recursive version has two costs. Its time grows exponentially with <code>n</code>, because it repeats work.
-Its stack depth grows with <code>n</code>, which is small here but limits recursion on very deep inputs. Chapter 9
-shows a list that crashes because of this second cost.</p>
+<p>Direct recursion therefore incurs two distinct costs: exponential runtime caused by overlapping subproblems, and linear stack depth proportional to <code>n</code>. While a depth of 90 frames is trivial, linear recursion depth overflows the call stack on large inputs, a failure mode examined on linked lists in Chapter 9.</p>
 <h2 id="16-the-same-numbers-with-a-loop"><a class="header" href="#16-the-same-numbers-with-a-loop">1.6 The same numbers with a loop</a></h2>
-<p>You only ever need the last two numbers to compute the next one. A loop can keep those two and move them
-forward one step at a time.</p>
+<p>Computing the next Fibonacci number requires only the two preceding values. An iterative loop can maintain those two values in registers or stack slots and advance them one step per iteration.</p>
 <p class="listing"><b>Listing 1.5</b> Fibonacci with a loop. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/bin/cs_fib.rs">src/bin/cs_fib.rs</a>, lines 17 to 24</p>
 
 <pre><code class="language-rust">/// Linear time, constant space.
@@ -483,12 +443,9 @@ fn iterative(n: u64) -&gt; u64 {
     }
     previous
 }</code></pre>
-<p><code>let (mut previous, mut current) = (0u64, 1u64);</code> declares two variables in one statement by matching a
-pair. The suffix <code>u64</code> on each literal sets its type.</p>
-<p><code>(previous, current) = (current, previous + current);</code> assigns both variables at once. Rust evaluates the
-whole right-hand side first, using the old values, and only then writes both. Without the pair, you would
-need a temporary variable to avoid overwriting <code>previous</code> before it is used.</p>
-<p>Trace <code>iterative(5)</code>:</p>
+<p>The declaration <code>let (mut previous, mut current) = (0u64, 1u64);</code> destructures a tuple to initialize both bindings in one statement, with the <code>u64</code> suffix fixing the integer width.</p>
+<p>Inside the loop, <code>(previous, current) = (current, previous + current);</code> updates both bindings simultaneously. Rust evaluates the entire right-hand tuple using the pre-update values before writing to the left-hand targets, eliminating the need for an explicit temporary variable.</p>
+<p>Tracing <code>iterative(5)</code> confirms the state transitions:</p>
 <div class="table-wrapper">
 <table>
 <thead>
@@ -500,12 +457,9 @@ need a temporary variable to avoid overwriting <code>previous</code> before it i
 </tbody>
 </table>
 </div>
-<p>After five passes, <code>previous</code> is 5, which is fib(5). The loop runs <code>n</code> times and keeps two numbers, so its
-time grows in proportion to <code>n</code> and its memory stays constant.</p>
+<p>After five iterations, <code>previous</code> holds 5, which equals <code>fib(5)</code>. Because the loop executes <code>n</code> iterations using two fixed-size integers, its running time is linear in <code>n</code> and its memory usage is constant.</p>
 <h2 id="17-recursion-with-a-memory"><a class="header" href="#17-recursion-with-a-memory">1.7 Recursion with a memory</a></h2>
-<p>The loop is fast, but the recursive version matches the definition more closely. You can keep the
-recursion and remove the repeated work by saving each answer the first time you compute it. Saving answers
-this way is called <strong>memoization</strong>, and the table of saved answers is a <strong>cache</strong>.</p>
+<p>To retain the recursive structure while eliminating redundant recomputation, we can store each computed result the first time it is evaluated and look it up on subsequent visits. This technique is <strong>memoization</strong>, and the lookup table storing previously computed answers is a <strong>cache</strong>.</p>
 <p class="listing"><b>Listing 1.6</b> Fibonacci with a cache. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/bin/cs_fib.rs">src/bin/cs_fib.rs</a>, lines 26 to 41</p>
 
 <pre><code class="language-rust">/// Linear time, linear space: recursion plus a cache of subproblem answers.
@@ -524,33 +478,26 @@ fn memoized(n: u64) -&gt; u64 {
     let mut cache = vec![0u64; n as usize + 1];
     go(n, &amp;mut cache)
 }</code></pre>
-<p>This listing uses three pieces of syntax you may not have used before:</p>
+<p>Three Rust constructs appear in Listing 1.6:</p>
 <ul>
-<li><strong>A function inside a function.</strong> <code>go</code> is declared inside <code>memoized</code>. Only <code>memoized</code> can call it. It is
-an ordinary function; it does not see <code>memoized</code>’s variables.</li>
-<li><strong><code>vec![0u64; n as usize + 1]</code>.</strong> This creates a <code>Vec</code> of <code>n + 1</code> zeros. <code>n as usize</code> converts the
-<code>u64</code> to <code>usize</code>, the type Rust uses for lengths and indexes.</li>
-<li><strong><code>&amp;mut [u64]</code>.</strong> This is a mutable slice: a borrowed view of the vector’s elements that allows writing.
-<code>go</code> receives the cache this way, so every call shares one table instead of copying it.</li>
+<li><strong>Nested function definitions:</strong> <code>go</code> is declared inside <code>memoized</code>, restricting its visibility to the enclosing function. Unlike a closure, a nested <code>fn</code> does not capture local variables from its enclosing scope.</li>
+<li><strong><code>vec![0u64; n as usize + 1]</code>:</strong> This macro allocates a heap-backed <code>Vec</code> initialized with <code>n + 1</code> zeros. The cast <code>n as usize</code> converts <code>u64</code> to <code>usize</code>, Rust’s pointer-sized indexing type.</li>
+<li><strong><code>&amp;mut [u64]</code>:</strong> A mutable slice provides a borrowed, writable view into the vector’s contiguous elements. Passing the cache by mutable slice allows every recursive call to share one table without copying it.</li>
 </ul>
-<p><code>go</code> checks the base case first. Then it looks in the cache. A zero means “not computed yet”. In that case
-it computes the value with two recursive calls and stores it. Either way, it returns the saved value.</p>
-<p>Zero can mark an empty slot here because fib(n) is never zero for n of 2 or more. Smaller values
-return before the cache is read. Figure 1.5 shows the cache after <code>memoized(6)</code>.</p>
+<p>On each invocation, <code>go</code> handles the base cases first and then inspects <code>cache[index]</code>. A zero entry indicates an uncomputed value, prompting two recursive calls whose sum is stored in the table before returning.</p>
+<p>Using zero as an empty sentinel is valid here because <code>fib(n)</code> is strictly positive for all <code>n &gt;= 2</code>, and smaller inputs return before consulting the cache. Figure 1.5 depicts the cache contents after <code>memoized(6)</code> completes.</p>
 <figure>
 <img src="figures/ch01-memo.svg" alt="A row of seven cells holding 0, 0, 1, 2, 3, 5, 8 for indexes 0 to 6; indexes 0 and 1 are unused">
 <figcaption><b>Figure 1.5</b> The cache after <code>memoized(6)</code>. Each slot from 2 to 6 is computed once and then read.</figcaption>
 </figure>
-<p>With the cache, each value from 2 to <code>n</code> is computed once, so the time grows in proportion to <code>n</code>. The
-cache uses memory in proportion to <code>n</code>, and the recursion still uses <code>n</code> stack frames.</p>
-<p>Animation 1.1 runs <code>memoized(5)</code> and <code>recursive(5)</code> side by side in time. The tree on the left gains a node per
-call, and the stack on the right holds only the calls that are still waiting.</p>
+<p>With memoization, every subproblem from <code>2</code> to <code>n</code> is evaluated exactly once, reducing execution time to linear in <code>n</code>. Memory consumption remains linear in <code>n</code> for both the heap cache and the <code>n</code> active stack frames.</p>
+<p>Animation 1.1 contrasts <code>memoized(5)</code> and <code>recursive(5)</code> side by side. The call tree on the left records every invocation, while the stack on the right tracks only the frames currently awaiting a return value.</p>
 <figure class="anim">
 <video class="motion" src="figures/ch01-fib-calls.mp4" autoplay="" loop="" muted="" playsinline="" preload="metadata" aria-label="A call tree grows on the left and a stack of frames on the right. memoized(5) calls go(5), go(4), go(3), go(2), and go(1); the stack holds five frames. go(1) and go(0) return base values, and go(2) stores 1 in the cache. As the calls return, the cache fills with 1, 2, 3, 5 for slots 2 to 5. When go(4) calls go(2) and go(5) calls go(3), the cache already holds the answer, and they return without further calls: 9 calls in all. Then recursive(5) makes the same tree without a cache: recursive(2) and recursive(3) run again in full, shaded as repeats, for 15 calls." data-chapters="[[0.0, &quot;with a cache&quot;], [25.62, &quot;no cache&quot;]]"><img src="figures/ch01-fib-calls.gif" alt="A call tree grows on the left and a stack of frames on the right. memoized(5) calls go(5), go(4), go(3), go(2), and go(1); the stack holds five frames. go(1) and go(0) return base values, and go(2) stores 1 in the cache. As the calls return, the cache fills with 1, 2, 3, 5 for slots 2 to 5. When go(4) calls go(2) and go(5) calls go(3), the cache already holds the answer, and they return without further calls: 9 calls in all. Then recursive(5) makes the same tree without a cache: recursive(2) and recursive(3) run again in full, shaded as repeats, for 15 calls."></video>
 <figcaption><b>Animation 1.1</b> The stack is only as deep as the chain of waiting calls. With the cache, each value is computed once; without it, whole subtrees repeat.</figcaption>
 </figure>
 <h2 id="18-timing-the-three-versions"><a class="header" href="#18-timing-the-three-versions">1.8 Timing the three versions</a></h2>
-<p>To compare the versions, the program measures how long each call takes.</p>
+<p>To compare all three implementations quantitatively, the program wraps each invocation in a timing helper.</p>
 <p class="listing"><b>Listing 1.7</b> Timing a function and printing the result. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/bin/cs_fib.rs">src/bin/cs_fib.rs</a>, lines 43 to 51</p>
 
 <pre><code class="language-rust">fn timed(label: &amp;str, n: u64, operation: impl Fn(u64) -&gt; u64) {
@@ -562,15 +509,11 @@ call, and the stack on the right holds only the calls that are still waiting.</p
 fn report(label: &amp;str, n: u64, value: u64, elapsed: Duration) {
     println!("  {label:&lt;10} fib({n:&gt;2}) = {value:&lt;20} in {elapsed:?}");
 }</code></pre>
-<p><code>timed</code> takes a parameter <code>operation: impl Fn(u64) -&gt; u64</code>. This means “any function or closure that takes
-a <code>u64</code> and returns a <code>u64</code>”. So <code>main</code> can pass <code>recursive</code>, <code>iterative</code>, or <code>memoized</code> by name.</p>
-<p><code>Instant::now()</code> reads a clock that only moves forward. <code>start.elapsed()</code> returns the time since then as a
-<code>Duration</code>.</p>
-<p><code>report</code> uses format specifiers inside the braces. <code>{label:&lt;10}</code> pads the label to 10 characters, aligned
-left. <code>{n:&gt;2}</code> right-aligns <code>n</code> in 2 characters. <code>{elapsed:?}</code> prints the <code>Duration</code> with its debug format,
-which chooses a unit such as <code>µs</code> or <code>ms</code>.</p>
+<p>The parameter <code>operation: impl Fn(u64) -&gt; u64</code> accepts any function item or closure that maps a <code>u64</code> to a <code>u64</code>, enabling <code>main</code> to pass <code>recursive</code>, <code>iterative</code>, and <code>memoized</code> directly by name.</p>
+<p><code>Instant::now()</code> samples a monotonic clock that never moves backward, and <code>start.elapsed()</code> computes the interval as a <code>Duration</code>.</p>
+<p>In <code>report</code>, format specifiers control column alignment: <code>{label:&lt;10}</code> left-aligns the label within a 10-character field, <code>{n:&gt;2}</code> right-aligns <code>n</code> within 2 characters, and <code>{elapsed:?}</code> invokes <code>Duration</code>’s debug formatter, which automatically scales units to nanoseconds, microseconds, or milliseconds.</p>
 <h2 id="19-the-complete-fibonacci-program"><a class="header" href="#19-the-complete-fibonacci-program">1.9 The complete Fibonacci program</a></h2>
-<p>Here is the whole program, including <code>main</code>. <code>main</code> times each version, then checks that all three agree.</p>
+<p>Listing 1.8 combines all three implementations, the timing harness, and the verification loop in <code>main</code>.</p>
 <p class="listing"><b>Listing 1.8</b> The complete program. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/bin/cs_fib.rs">src/bin/cs_fib.rs</a></p>
 
 <pre><code class="language-rust">//! Three ways to compute Fibonacci: naive recursion, iteration, and memoization.
@@ -648,10 +591,8 @@ fn main() {
 
     println!("\nall checks passed");
 }</code></pre>
-<p>The loop near the end of <code>main</code> compares the three versions for every <code>n</code> below 20. If any pair disagrees,
-<code>assert_eq!</code> stops the program with both values. The two final assertions check known values of fib(30) and
-fib(90).</p>
-<p>This output comes from a debug build, the default for <code>cargo run</code>:</p>
+<p>Near the end of <code>main</code>, a loop verifies that all three implementations produce identical outputs for every <code>n</code> below 20, terminating via <code>assert_eq!</code> on any discrepancy. Two final assertions validate <code>fib(30)</code> and <code>fib(90)</code> against known reference values.</p>
+<p>Executing the default debug build with <code>cargo run</code> yields:</p>
 <pre><code class="language-text">$ cargo run --bin cs_fib
 small input, all three should agree
   recursive  fib(20) = 6765                 in 90.908µs
@@ -668,52 +609,39 @@ large input: recursion alone would not finish
 
 all checks passed
 </code></pre>
-<p>Compare the two recursive timings. Going from <code>n = 20</code> to <code>n = 30</code>, the time grows about 120 times. That
-matches the growth rate from section 1.5.1: 1.618 multiplied by itself 10 times is about 123. At that rate,
-<code>recursive(90)</code> would run for over a thousand years, so <code>main</code> does not call it.</p>
-<p>The memoized version is slower than the loop, although both grow in proportion to <code>n</code>. It allocates a
-<code>Vec</code> and makes function calls, and the loop does neither.</p>
+<p>The recursive timings confirm the growth analysis from Section 1.5.1: increasing <code>n</code> from 20 to 30 multiplies runtime by roughly 120, matching <code>1.618^10 ≈ 123</code>. At that growth rate, <code>recursive(90)</code> would require millennia, so <code>main</code> omits it.</p>
+<p>Although both <code>memoized</code> and <code>iterative</code> scale linearly with <code>n</code>, <code>memoized</code> runs slower because it allocates a heap <code>Vec</code> and incurs recursive call overhead, neither of which the loop pays.</p>
 <div class="callout note" markdown="1">
-<p><strong>NOTE:</strong> fib(93) is the largest Fibonacci number that fits in a <code>u64</code>. <code>iterative(94)</code> would overflow. In
-a debug build, an overflow stops the program with a panic. In a release build, the value silently wraps
-around.</p>
+<p><strong>NOTE:</strong> <code>fib(93)</code> is the largest Fibonacci number representable in a <code>u64</code>; <code>iterative(94)</code> overflows. Debug builds trap integer overflow with a panic, whereas release builds wrap around in two’s complement arithmetic without signaling an error.</p>
 </div>
 
 <div class="summary" markdown="1">
 <h2 id="summary"><a class="header" href="#summary">Summary</a></h2>
 <ul>
-<li>A <code>let</code> binding attaches a name to a value in the current stack frame. A <code>String</code> keeps its text on the
-heap and a small header on the stack.</li>
-<li>Shadowing creates a new binding, which may have a new type. Earlier values are unchanged and lose their
-name. Closures that captured the old binding keep the old value.</li>
-<li><code>mut</code> lets one binding change its value. The type stays the same.</li>
-<li>A recursive function uses one stack frame per active call. Naive recursive Fibonacci repeats work, so its
-time grows exponentially.</li>
-<li>A loop that keeps only the last two values computes the same result in linear time and constant memory.</li>
-<li>Memoization keeps the recursion and saves each answer in a cache, making the time linear.</li>
-<li><code>impl Fn(u64) -&gt; u64</code> accepts any function or closure with that signature, and <code>Instant</code> measures
-elapsed time.</li>
+<li>A <code>let</code> binding associates a name with a value in the current stack frame. A <code>String</code> stores its character bytes on the heap and keeps a three-word header (pointer, length, capacity) on the stack.</li>
+<li>Shadowing introduces a new binding that may take a different type, leaving earlier values unmodified and unreachable by name. Closures that captured the previous binding continue referencing the old value.</li>
+<li>Declaring a binding with <code>mut</code> permits in-place mutation of a fixed-type storage slot.</li>
+<li>Recursive calls allocate one stack frame per active invocation. Unmemoized recursive Fibonacci repeats overlapping subproblems, causing exponential runtime growth.</li>
+<li>An iterative loop tracking only the two preceding values computes <code>fib(n)</code> in linear time and constant memory.</li>
+<li>Memoization preserves the recursive formulation while caching each subproblem’s result, reducing runtime to linear in <code>n</code>.</li>
+<li><code>impl Fn(u64) -&gt; u64</code> accepts any function or closure with that signature, and <code>Instant</code> measures monotonic elapsed time.</li>
 </ul>
 </div>
 
-<p>Chapter 2 moves from computation to the operating system. You will read and write files, walk
-directories, and parse command-line arguments, and meet <code>Result</code> and <code>?</code>, which every later chapter uses.</p>
+<p>Chapter 2 moves from pure computation to operating system interfaces: reading and writing files, traversing directory trees, parsing command-line arguments, and propagating errors with <code>Result</code> and <code>?</code>.</p>
 <h2 id="exercises"><a class="header" href="#exercises">Exercises</a></h2>
 <ol>
-<li>Add a counter to <code>recursive</code> that records how many calls it makes. Print the count for <code>n</code> from 1 to 25,
-and check that each count is close to 1.6 times the previous one.</li>
-<li>Rewrite <code>memoized</code> so the cache holds <code>Option&lt;u64&gt;</code> instead of using 0 as “empty”. Explain why the 0
-marker is safe for Fibonacci but would not be safe for a function that can return 0.</li>
-<li>Change <code>iterative</code> to return <code>Option&lt;u64&gt;</code> and use <code>checked_add</code>, so that <code>iterative(94)</code> returns <code>None</code>
-instead of overflowing.</li>
-<li>Run <code>cargo run --release --bin cs_fib</code> and compare the timings with the debug build above.</li>
+<li>Add a call counter to <code>recursive</code>, print the invocation count for <code>n</code> from 1 to 25, and verify that consecutive counts grow by approximately 1.6x.</li>
+<li>Modify <code>memoized</code> so the cache stores <code>Option&lt;u64&gt;</code> rather than treating <code>0</code> as an empty sentinel. Explain why <code>0</code> is a valid sentinel for Fibonacci numbers but unsafe for functions that can legitimately return <code>0</code>.</li>
+<li>Update <code>iterative</code> to return <code>Option&lt;u64&gt;</code> using <code>checked_add</code>, so that <code>iterative(94)</code> returns <code>None</code> rather than overflowing.</li>
+<li>Run <code>cargo run --release --bin cs_fib</code> and compare the optimized timings against the debug output above.</li>
 </ol>
 
                     </main>
 
                     <nav class="nav-wrapper" aria-label="Page navigation">
                         <!-- Mobile navigation buttons -->
-                            <a rel="prev" href="about-the-cover.html" class="mobile-nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                            <a rel="prev" href="toc.html" class="mobile-nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
                                 <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M41.4 233.4c-12.5 12.5-12.5 32.8 0 45.3l160 160c12.5 12.5 32.8 12.5 45.3 0s12.5-32.8 0-45.3L109.3 256 246.6 118.6c12.5-12.5 12.5-32.8 0-45.3s-32.8-12.5-45.3 0l-160 160z"/></svg></span>
                             </a>
 
@@ -727,7 +655,7 @@ instead of overflowing.</li>
             </div>
 
             <nav class="nav-wide-wrapper" aria-label="Page navigation">
-                    <a rel="prev" href="about-the-cover.html" class="nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                    <a rel="prev" href="toc.html" class="nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
                         <span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M41.4 233.4c-12.5 12.5-12.5 32.8 0 45.3l160 160c12.5 12.5 32.8 12.5 45.3 0s12.5-32.8 0-45.3L109.3 256 246.6 118.6c12.5-12.5 12.5-32.8 0-45.3s-32.8-12.5-45.3 0l-160 160z"/></svg></span>
                     </a>
 
@@ -761,6 +689,7 @@ instead of overflowing.</li>
 
         <!-- Custom JS scripts -->
         <script src="theme/anim-4192821e.js"></script>
+        <script src="theme/book-ui-621ed017.js"></script>
 
 
 

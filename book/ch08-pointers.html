@@ -1,5 +1,5 @@
 <!DOCTYPE HTML>
-<html lang="en" class="light sidebar-visible" dir="ltr">
+<html lang="en" class="coal sidebar-visible" dir="ltr">
     <head>
         <!-- Book generated using mdBook -->
         <meta charset="UTF-8">
@@ -28,18 +28,18 @@
         <link rel="stylesheet" id="mdbook-ayu-highlight-css" href="ayu-highlight-3fdfc3ac.css">
 
         <!-- Custom theme stylesheets -->
-        <link rel="stylesheet" href="theme/custom-b2009ce0.css">
+        <link rel="stylesheet" href="theme/custom-985f104d.css">
 
 
         <!-- Provide site root and default themes to javascript -->
         <script>
             const path_to_root = "";
-            const default_light_theme = "light";
-            const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "searchindex-f2511fee.js";
+            const default_light_theme = "coal";
+            const default_dark_theme = "coal";
+            window.path_to_searchindex_js = "searchindex-4622e2bb.js";
         </script>
         <!-- Start loading toc.js asap -->
-        <script src="toc-34d6c47e.js"></script>
+        <script src="toc-c196c8a9.js"></script>
     </head>
     <body>
     <div id="mdbook-help-container">
@@ -77,7 +77,7 @@
             try { theme = localStorage.getItem('mdbook-theme'); } catch(e) { }
             if (theme === null || theme === undefined) { theme = default_theme; }
             const html = document.documentElement;
-            html.classList.remove('light')
+            html.classList.remove('coal')
             html.classList.add(theme);
             html.classList.add("js");
         </script>
@@ -193,32 +193,20 @@
 </ul>
 </div>
 
-<p>In chapter 7 every value had exactly one owner. That is the normal case in Rust, and most code needs nothing
-more. But some structures cannot be described with one owner per value. A tree node wants to point back to
-its parent. A counter must be updated by several threads. An expression contains smaller expressions of its
-own type.</p>
-<p>For each of these, the standard library has a <strong>pointer type</strong>. A pointer type holds the address of a
-value and adds a rule about who owns it. This chapter covers the main ones, one at a time. For each, I show where its
-data sits in memory and which problem it solves. The next four chapters, on linked lists, trees, and graphs,
-use every one of them.</p>
-<p>I start by reviewing ownership itself, because each pointer type is a change to its rules.</p>
+<p>In Chapter 7, every value had a single owner. That model covers most Rust code, but certain data structures require richer ownership semantics: a tree node referencing its parent, a shared counter updated concurrently by multiple threads, or a recursive expression containing subexpressions of its own type.</p>
+<p>To express these patterns safely, the Rust standard library provides <strong>smart pointer types</strong>. Each pointer type holds the address of a value while enforcing a specific ownership or mutability discipline. In this chapter, we examine the primary pointer types in sequence, inspecting both their memory layout and the problems they solve. The next four chapters on linked lists, trees, and graphs rely on all of them.</p>
+<p>We begin by reviewing Rust’s baseline ownership rules, since each smart pointer extends or adapts those rules in a specific way.</p>
 <h2 id="81-ownership-and-moves"><a class="header" href="#81-ownership-and-moves">8.1 Ownership and moves</a></h2>
-<p>Every value in Rust has one <strong>owner</strong>, the variable or structure that holds it. When the owner goes away, at
-the end of its scope, the value is dropped and its memory is freed.</p>
-<p>Assigning a value to another variable <strong>moves</strong> it: ownership passes to the new variable, and the old one can
-no longer be used. Figure 8.1 shows a move of a <code>String</code>.</p>
+<p>Every value in Rust has a single <strong>owner</strong>, the variable or container responsible for it. When the owner leaves scope, the value is dropped and its memory is reclaimed.</p>
+<p>Assigning a non-<code>Copy</code> value to another variable <strong>moves</strong> it: ownership transfers to the new binding, and the previous binding becomes unusable (Figure 8.1).</p>
 <figure>
 <img src="figures/own-move.svg" alt="Before the move, a holds a String header pointing to heap text hi. After let b = a, the header is copied into b, a cannot be used, and the text stays in place.">
 <figcaption><b>Figure 8.1</b> Moving a <code>String</code>. The small header is copied; the heap text is not. Only one variable may free the text, so the old one becomes unusable.</figcaption>
 </figure>
-<p>A move copies only the header on the stack, the pointer, length, and capacity. The text on the heap stays
-where it is. If both <code>a</code> and <code>b</code> were usable, both would try to free the same text when they went out of
-scope. The compiler prevents that by making <code>a</code> unusable after the move.</p>
-<p>Instead of moving a value, you can <strong>borrow</strong> it with a reference. A shared reference <code>&amp;T</code> lets you read. A
-mutable reference <code>&amp;mut T</code> lets you change. The borrow rules say you may have either any number of <code>&amp;T</code> or exactly one <code>&amp;mut T</code>, but not both at once.
-And no reference may outlive its value.</p>
-<p>These rules cover most programs. The pointer types in this chapter handle the cases they cannot.</p>
-<p>The module for this chapter starts with a table that summarizes them:</p>
+<p>A move copies only the stack-resident header (pointer, length, and capacity), leaving the heap allocation untouched. If both <code>a</code> and <code>b</code> remained valid, both would attempt to free the same heap buffer on drop; invalidating <code>a</code> prevents that double free at compile time.</p>
+<p>Instead of transferring ownership, code can <strong>borrow</strong> a value through a reference. A shared reference (<code>&amp;T</code>) grants read-only access, whereas a mutable reference (<code>&amp;mut T</code>) grants exclusive read-write access. The borrow checker enforces two invariants: at any point, a value may have either any number of shared references or a single mutable reference, never both; and no reference may outlive the value it borrows.</p>
+<p>These static rules govern most programs. The pointer types below address cases that require heap indirection, shared ownership, or dynamic borrow checking.</p>
+<p>Listing 8.1 presents the module header and summary table for these types.</p>
 <p class="listing"><b>Listing 8.1</b> The module comment and imports (lines 1 to 27). <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/problems/smart_pointers.rs">src/problems/smart_pointers.rs</a></p>
 
 <pre><code class="language-rust">//! Smart pointers and interior mutability.
@@ -248,20 +236,15 @@ use std::{
     sync::{Arc, Mutex},
     thread,
 };</code></pre>
-<p>Do not try to memorize the table yet. Each section below covers one row.</p>
+<p>There is no need to memorize the table up front; each subsequent section covers one row in detail.</p>
 <h2 id="82-box-one-owner-on-the-heap"><a class="header" href="#82-box-one-owner-on-the-heap">8.2 <code>Box</code>: one owner, on the heap</a></h2>
-<p>A <code>Box&lt;T&gt;</code> puts a value of type <code>T</code> on the heap and owns it. The <code>Box</code> itself is one pointer, 8 bytes on a
-64-bit machine. When the <code>Box</code> is dropped, it drops the value and frees the heap memory. So a <code>Box</code> behaves
-like an owned value that happens to live on the heap.</p>
-<p>You need a <code>Box</code> most often for a type that contains itself. Consider an arithmetic expression: it is either
-a number, or the sum of two smaller expressions. Written directly, that type would have no size (figure 8.2).</p>
+<p>A <code>Box&lt;T&gt;</code> allocates a value of type <code>T</code> on the heap and retains sole ownership of it. On a 64-bit architecture, the <code>Box</code> itself is an 8-byte pointer. When the <code>Box</code> leaves scope, it drops the pointee and frees the heap allocation, behaving like an owned value stored indirectly.</p>
+<p>The primary use case for <code>Box</code> is defining recursive types. Consider an arithmetic expression that is either a numeric literal or the sum of two subexpressions. Without indirection, such a type would have infinite size (Figure 8.2).</p>
 <figure>
 <img src="figures/own-box-recursive.svg" alt="Left: an Expr that contains two Exprs directly, nested forever. Right: an Expr that holds two Box pointers to child Exprs on the heap.">
 <figcaption><b>Figure 8.2</b> Left: an <code>Add</code> that contains two <code>Expr</code> values directly would need infinite space. Right: with <code>Box</code>, an <code>Add</code> holds two pointers.</figcaption>
 </figure>
-<p>To lay out a type, the compiler must know its size. An <code>Add(Expr, Expr)</code> contains two <code>Expr</code> values, each of
-which may be another <code>Add</code>. The size has no end, so the compiler rejects the type. <code>Box&lt;Expr&gt;</code> is always 8
-bytes, whatever it points to, so <code>Add(Box&lt;Expr&gt;, Box&lt;Expr&gt;)</code> has a fixed size.</p>
+<p>To compute a type’s memory layout, the compiler requires a finite, statically known size. An <code>Add(Expr, Expr)</code> variant embeds two <code>Expr</code> values directly, each of which could itself be another <code>Add</code>, causing the size calculation to diverge. Because <code>Box&lt;Expr&gt;</code> always occupies 8 bytes regardless of what it points to, <code>Add(Box&lt;Expr&gt;, Box&lt;Expr&gt;)</code> has a fixed size.</p>
 <p class="listing"><b>Listing 8.2</b> An expression tree (lines 29 to 43).</p>
 
 <pre><code class="language-rust">/// A recursive type needs indirection, because `Expr` cannot contain itself by
@@ -279,45 +262,32 @@ pub fn eval(expr: &amp;Expr) -&gt; i64 {
         Expr::Add(left, right) =&gt; eval(left) + eval(right),
     }
 }</code></pre>
-<p><code>eval</code> computes the value of an expression. For a number, the value is the number. For a sum, it evaluates
-both sides and adds them. The call <code>eval(left)</code> passes a <code>&amp;Box&lt;Expr&gt;</code> where the function expects <code>&amp;Expr</code>.
-Rust converts it automatically, following the box to the value inside. This automatic conversion is called
-<strong>deref coercion</strong>.</p>
-<p>To build <code>1 + 2</code>, you write <code>Expr::Add(Box::new(Expr::Lit(1)), Box::new(Expr::Lit(2)))</code>. <code>Box::new</code>
-allocates on the heap and moves the value there.</p>
+<p>The <code>eval</code> function computes the numeric value of an expression: literals return their stored integer, and sums recursively evaluate both operands and add the results. Passing <code>left</code> (of type <code>&amp;Box&lt;Expr&gt;</code>) where <code>&amp;Expr</code> is expected succeeds through <strong>deref coercion</strong>, an automatic conversion that follows the <code>Box</code> pointer to its target.</p>
+<p>Constructing <code>1 + 2</code> uses <code>Expr::Add(Box::new(Expr::Lit(1)), Box::new(Expr::Lit(2)))</code>, where <code>Box::new</code> allocates heap storage and moves each operand into it.</p>
 <h2 id="83-rc-several-owners-counted"><a class="header" href="#83-rc-several-owners-counted">8.3 <code>Rc</code>: several owners, counted</a></h2>
-<p>Sometimes one value really has several owners, and none of them can be picked as the one that frees it. A
-node in a graph with several incoming edges is an example. For this, Rust has <code>Rc&lt;T&gt;</code>, short for <strong>reference
-counted</strong>.</p>
-<p><code>Rc::new(value)</code> puts the value on the heap together with a count of how many <code>Rc</code> handles point to it.
-<code>Rc::clone(&amp;rc)</code> does not copy the value. It adds 1 to the count and returns another handle to the same value.
-Dropping a handle subtracts 1. When the count reaches zero, the value is dropped. Figure 8.3 shows two handles.</p>
+<p>Some structures inherently require multiple owners with no single owner responsible for deallocation, such as a graph node with multiple incoming edges. For single-threaded shared ownership, Rust provides <code>Rc&lt;T&gt;</code> (<strong>reference counted</strong>).</p>
+<p>Calling <code>Rc::new(value)</code> allocates the value on the heap alongside a count of active handles. Calling <code>Rc::clone(&amp;rc)</code> does not duplicate the underlying data; it increments the strong count and returns a new handle to the same allocation. Dropping a handle decrements the count, and when the count reaches zero, the value is dropped and freed (Figure 8.3).</p>
 <figure>
 <img src="figures/ch01-rc-layout.svg" alt="On the stack, a Box points to its heap value. Two Rc handles point to one heap block containing strong count 2, weak count 1, a RefCell borrow flag, and the value 11. A Weak handle points to the same block with a dashed arrow.">
 <figcaption><b>Figure 8.3</b> Two <code>Rc</code> handles share one heap block. The block holds a strong count (the number of <code>Rc</code> handles), a weak count (section 8.5), and the value.</figcaption>
 </figure>
-<p>An <code>Rc</code> hands out only shared references to its value. With several owners, a <code>&amp;mut</code> through one of them
-would break the rule that a <code>&amp;mut</code> is the only reference. So by itself, a value inside an <code>Rc</code> cannot be
-changed. The next section adds that ability.</p>
+<p>Because multiple owners share the allocation, <code>Rc</code> exposes only shared references (<code>&amp;T</code>). Issuing a <code>&amp;mut T</code> through one handle would violate Rust’s aliasing invariant. Mutating shared data therefore requires interior mutability, covered in the next section.</p>
 <div class="callout note" markdown="1">
-<p><strong>NOTE:</strong> <code>Rc</code> updates its count with ordinary, non-atomic arithmetic. If two threads updated it at the same
-moment, the count could end up wrong. So the compiler does not let an <code>Rc</code> be sent to another thread.
-Section 8.6 covers <code>Arc</code>, the version for threads.</p>
+<p><strong>NOTE:</strong> <code>Rc</code> updates its reference count with non-atomic arithmetic. Concurrent updates from multiple threads would cause a data race, so the compiler forbids sending an <code>Rc</code> across thread boundaries. Section 8.6 covers <code>Arc</code>, the thread-safe counterpart.</p>
 </div>
 
 <h2 id="84-refcell-changing-a-shared-value-checked-at-run-time"><a class="header" href="#84-refcell-changing-a-shared-value-checked-at-run-time">8.4 <code>RefCell</code>: changing a shared value, checked at run time</a></h2>
-<p><code>RefCell&lt;T&gt;</code> holds a value and allows it to be changed through a shared reference. It keeps the borrow rules,
-but checks them while the program runs instead of at compile time. Figure 8.4 shows what it tracks.</p>
+<p>A <code>RefCell&lt;T&gt;</code> enables mutation through a shared reference by enforcing Rust’s borrowing rules at run time rather than compile time (Figure 8.4).</p>
 <figure>
 <img src="figures/own-refcell.svg" alt="A RefCell starts not borrowed. borrow() moves it to n shared borrows, where more borrow() calls are allowed and borrow_mut() panics. borrow_mut() moves it to one mutable borrow, where any other borrow panics.">
 <figcaption><b>Figure 8.4</b> The borrow states of a <code>RefCell</code>. Breaking the rules is not a compile error; it panics when it happens.</figcaption>
 </figure>
 <ul>
-<li><code>cell.borrow()</code> returns a guard that acts like <code>&amp;T</code>. Many can exist at once.</li>
-<li><code>cell.borrow_mut()</code> returns a guard that acts like <code>&amp;mut T</code>. It panics if any other borrow is active.</li>
-<li>When a guard is dropped, its borrow ends.</li>
+<li><code>cell.borrow()</code> returns a <code>Ref&lt;T&gt;</code> guard behaving like <code>&amp;T</code>; multiple shared guards may coexist.</li>
+<li><code>cell.borrow_mut()</code> returns a <code>RefMut&lt;T&gt;</code> guard behaving like <code>&amp;mut T</code>; it panics if any other borrow is active.</li>
+<li>Dropping a guard releases its borrow.</li>
 </ul>
-<p><code>Rc</code> and <code>RefCell</code> are used together: <code>Rc&lt;RefCell&lt;T&gt;&gt;</code> gives several owners who can each change the value.</p>
+<p>Combining <code>Rc</code> and <code>RefCell</code> as <code>Rc&lt;RefCell&lt;T&gt;&gt;</code> provides multiple owners with runtime-checked mutable access to the same value.</p>
 <p class="listing"><b>Listing 8.3</b> Two handles to one counter (lines 45 to 55).</p>
 
 <pre><code class="language-rust">/// Shared mutation inside one thread, with `Rc` for aliasing and `RefCell` for
@@ -340,26 +310,20 @@ the statement, so the borrow ends there.</li>
 <li><code>*counter.borrow_mut() += 10;</code> does the same through the other handle.</li>
 <li><code>*counter.borrow()</code> reads 11.</li>
 </ol>
-<p>Animation 8.1 runs these steps, with the strong count and the <code>RefCell</code> flag drawn on the heap block.</p>
+<p>Animation 8.1 illustrates these operations alongside the strong count and <code>RefCell</code> borrow state stored in the heap allocation.</p>
 <figure class="anim">
 <video class="motion" src="figures/ch08-rc-refcell.mp4" autoplay="" loop="" muted="" playsinline="" preload="metadata" aria-label="Two stack variables, counter and alias, point at one heap block showing a strong count, a RefCell flag, and a value. Rc::new creates the block with count 1 and value 0; Rc::clone adds alias and the count becomes 2. borrow_mut through alias sets the flag to mutably borrowed, the value becomes 1, and the flag clears when the guard is dropped. The same through counter makes the value 11, and borrow reads it with a shared borrow. Dropping alias and counter brings the count to 0, and the block is freed. In a last run a guard g is kept alive, and a second borrow_mut panics with already borrowed." data-chapters="[[0.0, &quot;two handles&quot;], [7.98, &quot;borrow&quot;], [26.34, &quot;drop&quot;], [36.3, &quot;two guards&quot;]]"><img src="figures/ch08-rc-refcell.gif" alt="Two stack variables, counter and alias, point at one heap block showing a strong count, a RefCell flag, and a value. Rc::new creates the block with count 1 and value 0; Rc::clone adds alias and the count becomes 2. borrow_mut through alias sets the flag to mutably borrowed, the value becomes 1, and the flag clears when the guard is dropped. The same through counter makes the value 11, and borrow reads it with a shared borrow. Dropping alias and counter brings the count to 0, and the block is freed. In a last run a guard g is kept alive, and a second borrow_mut panics with already borrowed."></video>
 <figcaption><b>Animation 8.1</b> Two handles, one value. Each guard ends its borrow when it is dropped; a guard kept alive makes the next <code>borrow_mut</code> panic at run time.</figcaption>
 </figure>
-<p>Each <code>borrow_mut</code> ends before the next starts, so no panic occurs. If you stored the first guard in a variable
-and then called <code>borrow_mut</code> again while it was still alive, the program would panic.</p>
+<p>Because each <code>borrow_mut</code> guard is dropped at the end of its statement, no borrows overlap and no panic occurs. Retaining the first guard in a local binding while invoking <code>borrow_mut</code> a second time triggers a runtime panic.</p>
 <h2 id="85-weak-a-pointer-that-does-not-own"><a class="header" href="#85-weak-a-pointer-that-does-not-own">8.5 <code>Weak</code>: a pointer that does not own</a></h2>
-<p>Counting has a weakness. If two values hold <code>Rc</code> handles to each other, each keeps the other’s count above
-zero. When you drop your own handles, both counts stay at 1, and neither value is ever freed. This is a
-<strong>reference cycle</strong>, and it leaks memory (figure 8.5, left).</p>
+<p>Reference counting has a structural limitation: if two allocations hold <code>Rc</code> handles to each other, neither strong count can reach zero even after all external handles are dropped. This <strong>reference cycle</strong> leaks memory (Figure 8.5, left).</p>
 <figure>
 <img src="figures/own-cycle.svg" alt="Left: a parent and a child each hold an Rc to the other, so both counts stay above zero. Right: the child&#39;s link to the parent is Weak, so dropping the parent frees both.">
 <figcaption><b>Figure 8.5</b> Left: a cycle of strong pointers is never freed. Right: making the back-link <code>Weak</code> breaks the cycle.</figcaption>
 </figure>
-<p>The fix is a pointer that does not count as an owner. <code>Weak&lt;T&gt;</code> is made from an <code>Rc</code> with <code>Rc::downgrade</code>.
-It increases only the weak count, which does not keep the value alive. To use the value, you call
-<code>upgrade()</code>, which returns <code>Some(Rc)</code> if the value still exists and <code>None</code> if it has been dropped.</p>
-<p>The usual pattern is that parents own children with <code>Rc</code>, and children point back to their parents with
-<code>Weak</code>.</p>
+<p>Breaking a cycle requires a non-owning pointer. Calling <code>Rc::downgrade</code> produces a <code>Weak&lt;T&gt;</code> handle that increments the weak count rather than the strong count and does not prevent deallocation. Accessing the target requires calling <code>upgrade()</code>, which returns <code>Some(Rc&lt;T&gt;)</code> if the allocation is still alive and <code>None</code> if it has been dropped.</p>
+<p>In hierarchical structures, parents typically own children via <code>Rc</code> while children hold non-owning <code>Weak</code> back-links to their parents.</p>
 <p class="listing"><b>Listing 8.4</b> A tree node with a weak parent pointer (lines 57 to 87).</p>
 
 <pre><code class="language-rust">/// A node whose parent link is weak, so a child does not keep its parent alive.
@@ -401,20 +365,15 @@ changed after the node exists.</li>
 <li><code>parent_value</code> borrows the link, calls <code>upgrade()</code>, and reads the parent’s value if the parent still
 exists. <code>Option::map</code> applies the closure only when there is a value.</li>
 </ul>
-<p>The test <code>weak_parent_link_does_not_keep_the_parent_alive</code> in listing 8.7 checks the behavior.</p>
-<p>Animation 8.2 follows that test, then shows the cycle that <code>Weak</code> prevents.</p>
+<p>The test <code>weak_parent_link_does_not_keep_the_parent_alive</code> in Listing 8.7 verifies this behavior. Animation 8.2 traces that test and contrasts it with the leak caused by bidirectional <code>Rc</code> links.</p>
 <figure class="anim">
 <video class="motion" src="figures/ch08-weak-parent.mp4" autoplay="" loop="" muted="" playsinline="" preload="metadata" aria-label="Stack variables root and child point at two heap nodes, each showing strong and weak counts. child_of gives the child a dashed Weak link to root, which raises root&#39;s weak count to 1 and leaves its strong count at 1. parent_value upgrades the link and returns Some(1). drop(root) brings root&#39;s strong count to 0, the node is freed, and parent_value returns None. In a second run both links are Rc: dropping both variables leaves each node with a strong count of 1, held by the other, and the pair is leaked." data-chapters="[[0.0, &quot;weak link&quot;], [16.86, &quot;drop root&quot;], [26.1, &quot;Rc both ways&quot;]]"><img src="figures/ch08-weak-parent.gif" alt="Stack variables root and child point at two heap nodes, each showing strong and weak counts. child_of gives the child a dashed Weak link to root, which raises root&#39;s weak count to 1 and leaves its strong count at 1. parent_value upgrades the link and returns Some(1). drop(root) brings root&#39;s strong count to 0, the node is freed, and parent_value returns None. In a second run both links are Rc: dropping both variables leaves each node with a strong count of 1, held by the other, and the pair is leaked."></video>
 <figcaption><b>Animation 8.2</b> A <code>Weak</code> parent link lets the parent be freed. With <code>Rc</code> in both directions, each node keeps the other alive forever.</figcaption>
 </figure>
-<p>The test creates a
-root and a child, drops the root, and then checks that the child’s <code>parent_value()</code> is <code>None</code>.</p>
+<p>Once <code>root</code> is dropped, its strong count reaches zero and the node is deallocated, causing subsequent <code>parent_value()</code> calls on <code>child</code> to return <code>None</code>.</p>
 <h2 id="86-arc-and-mutex-sharing-across-threads"><a class="header" href="#86-arc-and-mutex-sharing-across-threads">8.6 <code>Arc</code> and <code>Mutex</code>: sharing across threads</a></h2>
-<p><code>Arc&lt;T&gt;</code> is <code>Rc&lt;T&gt;</code> with an atomic count. An <strong>atomic</strong> operation is one the processor completes as a single step. That stays true even when several
-cores run it on the same memory at the same moment. So <code>Arc</code> handles can
-be sent to other threads. Chapter 16 explains atomic operations in detail.</p>
-<p><code>Mutex&lt;T&gt;</code> is the thread-safe counterpart of <code>RefCell</code>. <code>lock()</code> returns a guard that gives access to the
-value. If another thread holds the lock, <code>lock()</code> waits until it is released, instead of panicking.</p>
+<p><code>Arc&lt;T&gt;</code> is the thread-safe equivalent of <code>Rc&lt;T&gt;</code>, maintaining its reference count with <strong>atomic</strong> operations. An atomic operation completes as an indivisible hardware step even when multiple processor cores access the same memory address concurrently, making <code>Arc</code> safe to share across threads (atomic operations are examined in detail in Chapter 16).</p>
+<p><code>Mutex&lt;T&gt;</code> is the thread-safe counterpart to <code>RefCell&lt;T&gt;</code>. Calling <code>lock()</code> acquires exclusive access and returns a guard; if another thread already holds the lock, the calling thread blocks until the lock is released rather than panicking.</p>
 <p class="listing"><b>Listing 8.5</b> Several threads adding to one total (lines 89 to 110).</p>
 
 <pre><code class="language-rust">/// Shared mutation across threads, with `Arc` for ownership and `Mutex` for
@@ -448,14 +407,10 @@ into the new thread. <code>move</code> means the closure takes ownership of what
 <li><code>handle.join()</code> waits for each thread to finish.</li>
 <li>The last line locks once more and reads the result.</li>
 </ol>
-<p><code>lock()</code> returns a <code>Result</code>, because a thread that panics while holding the lock leaves the mutex marked as
-<strong>poisoned</strong>. <code>.expect("mutex poisoned")</code> stops the program with that message in that case. Chapter 16 covers
-poisoning.</p>
-<p>This function locks once for every single increment, so the threads spend most of their time waiting for each
-other. It is correct but slow. Chapter 16 measures faster ways to count across threads.</p>
-<h2 id="87-cow-borrow-when-you-can"><a class="header" href="#87-cow-borrow-when-you-can">8.7 <code>Cow</code>: borrow when you can</a></h2>
-<p><code>Cow&lt;'a, str&gt;</code> holds either a borrowed <code>&amp;'a str</code> or an owned <code>String</code>. Its name stands for “clone on write”.
-It fits functions that usually return their input unchanged but sometimes need to change it.</p>
+<p>Because a thread panicking while holding a lock leaves the protected data in a potentially inconsistent state, <code>lock()</code> returns a <code>Result</code> indicating whether the mutex is <strong>poisoned</strong> (covered in Chapter 16). Calling <code>.expect("mutex poisoned")</code> terminates the program if poisoning occurs.</p>
+<p>Acquiring the lock on every single increment forces threads to contend continuously on the mutex. Although correct, this pattern performs poorly under contention; Chapter 16 benchmarks faster concurrent accumulation strategies.</p>
+<h2 id="87-cow-borrowing-when-possible"><a class="header" href="#87-cow-borrowing-when-possible">8.7 <code>Cow</code>: borrowing when possible</a></h2>
+<p>The enum <code>Cow&lt;'a, str&gt;</code> (short for <em>clone on write</em>) holds either a borrowed <code>&amp;'a str</code> or an owned <code>String</code>. It is suited to functions that usually return their input unmodified and allocate only when a transformation is required.</p>
 <p class="listing"><b>Listing 8.6</b> Uppercase only when needed (lines 112 to 126).</p>
 
 <pre><code class="language-rust">/// Borrow when no change is needed, allocate only when there is one.
@@ -473,9 +428,7 @@ pub fn normalize(input: &amp;str, uppercase: bool) -&gt; Cow&lt;'_, str&gt; {
         Cow::Borrowed(input)
     }
 }</code></pre>
-<p><code>normalize</code> checks whether any byte is a lowercase letter. If there is nothing to change, it returns
-<code>Cow::Borrowed(input)</code>, which costs nothing. Only when a change is needed does it allocate a new uppercase
-<code>String</code> and return <code>Cow::Owned</code>. The caller can use either variant as a <code>&amp;str</code>.</p>
+<p>In Listing 8.6, <code>normalize</code> scans the input bytes for any ASCII lowercase letter. When no conversion is needed, it returns <code>Cow::Borrowed(input)</code> without allocating. Only when modification is required does it allocate an uppercase <code>String</code> and return <code>Cow::Owned</code>. Callers can dereference either variant transparently as a <code>&amp;str</code>.</p>
 <h2 id="88-the-complete-file"><a class="header" href="#88-the-complete-file">8.8 The complete file</a></h2>
 <p class="listing"><b>Listing 8.7</b> The complete file, with its tests. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/problems/smart_pointers.rs">src/problems/smart_pointers.rs</a></p>
 
@@ -644,10 +597,8 @@ mod tests {
         assert_eq!(normalize("a100", false), "a100");
     }
 }</code></pre>
-<p>The tests check one behavior per pointer type. <code>cow_borrows_and_owns_as_needed</code> uses <code>matches!</code> to check
-which variant came back, not only the text. That is how a test shows that the unchanged case did not
-allocate. Run them with <code>cargo test --lib smart_pointers</code>.</p>
-<p>Figure 8.6 turns the chapter into three questions you can ask when choosing a pointer type.</p>
+<p>The unit tests verify one core property per pointer type. Notably, <code>cow_borrows_and_owns_as_needed</code> uses <code>matches!</code> to verify the returned enum variant rather than comparing text alone, proving that the unchanged path performs no heap allocation. Run the suite with <code>cargo test --lib smart_pointers</code>.</p>
+<p>Figure 8.6 distills the chapter into a three-question decision tree for selecting the appropriate pointer type.</p>
 <figure>
 <img src="figures/ch01-pointer-choice.svg" alt="Decision tree from &#39;more than one owner?&#39; through &#39;more than one thread?&#39; and &#39;must owners mutate?&#39; to Box, Rc, Rc RefCell, Arc, and Arc Mutex">
 <figcaption><b>Figure 8.6</b> Choosing a pointer type: owners first, then threads, then whether the owners change the value.</figcaption>
@@ -668,8 +619,7 @@ panicking.</li>
 </ul>
 </div>
 
-<p>Chapter 9 puts these types to work. You will build linked lists with <code>Box</code> and see how dropping a very long one can crash. Then you will build
-a doubly linked list with <code>Rc</code>, <code>RefCell</code>, and <code>Weak</code>.</p>
+<p>In Chapter 9, these pointer types are applied to linked lists: first building singly linked lists with <code>Box</code> and diagnosing stack overflow during recursive deallocation, then constructing a doubly linked list with <code>Rc</code>, <code>RefCell</code>, and <code>Weak</code>.</p>
 <h2 id="exercises"><a class="header" href="#exercises">Exercises</a></h2>
 <ol>
 <li>Build the expression <code>(1 + 2) + 3</code> with <code>Expr</code> and check that <code>eval</code> returns 6.</li>
@@ -733,6 +683,7 @@ once. Compare the running time for 8 threads and one million increments each.</l
 
         <!-- Custom JS scripts -->
         <script src="theme/anim-4192821e.js"></script>
+        <script src="theme/book-ui-621ed017.js"></script>
 
 
 

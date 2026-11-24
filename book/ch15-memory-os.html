@@ -1,5 +1,5 @@
 <!DOCTYPE HTML>
-<html lang="en" class="light sidebar-visible" dir="ltr">
+<html lang="en" class="coal sidebar-visible" dir="ltr">
     <head>
         <!-- Book generated using mdBook -->
         <meta charset="UTF-8">
@@ -28,18 +28,18 @@
         <link rel="stylesheet" id="mdbook-ayu-highlight-css" href="ayu-highlight-3fdfc3ac.css">
 
         <!-- Custom theme stylesheets -->
-        <link rel="stylesheet" href="theme/custom-b2009ce0.css">
+        <link rel="stylesheet" href="theme/custom-985f104d.css">
 
 
         <!-- Provide site root and default themes to javascript -->
         <script>
             const path_to_root = "";
-            const default_light_theme = "light";
-            const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "searchindex-f2511fee.js";
+            const default_light_theme = "coal";
+            const default_dark_theme = "coal";
+            window.path_to_searchindex_js = "searchindex-4622e2bb.js";
         </script>
         <!-- Start loading toc.js asap -->
-        <script src="toc-34d6c47e.js"></script>
+        <script src="toc-c196c8a9.js"></script>
     </head>
     <body>
     <div id="mdbook-help-container">
@@ -77,7 +77,7 @@
             try { theme = localStorage.getItem('mdbook-theme'); } catch(e) { }
             if (theme === null || theme === undefined) { theme = default_theme; }
             const html = document.documentElement;
-            html.classList.remove('light')
+            html.classList.remove('coal')
             html.classList.add(theme);
             html.classList.add("js");
         </script>
@@ -185,21 +185,24 @@
 <ul>
 <li>How long it takes the CPU to read memory, measured at five data sizes</li>
 <li>A bump allocator, and what alignment means</li>
-<li>Why the order in which you read an array changes the time, and a benchmark that measured something else</li>
+<li>Why array traversal order governs memory throughput, and how a benchmark can inadvertently measure an unrelated bottleneck</li>
 <li>False sharing: two threads that slow each other down without sharing any data</li>
 <li>Pages, page tables, and the kinds of page fault</li>
 <li>Round-robin scheduling, and what a system call costs</li>
 </ul>
 </div>
 
-<p>The earlier chapters counted steps: O(1), O(log n), O(n). Step counts predict how a program grows, but not how
-long one step takes. On a real machine, one memory read can take 2 ns or 150 ns, depending on where the data is.
-Chapter 13 already saw a factor of three between two caches with the same step count.</p>
-<p>This chapter looks at the machine under the data structures. Section 15.1 measures the memory system. Sections
-15.2 to 15.4 show three programs whose speed depends on how they lay out and touch memory. Sections 15.5 to 15.7
-look at three services of the operating system: virtual memory, scheduling, and system calls.</p>
-<p>Most programs in this chapter print times. Run them with <code>--release</code>, and expect your numbers to differ from mine.
-All the numbers here come from one laptop with an Intel Core i5-1038NG7 CPU, running macOS.</p>
+<p>The preceding chapters analyzed algorithms through asymptotic step counts: O(1), O(log <em>n</em>), and O(<em>n</em>). Step
+counts predict how runtime scales with input size, but not how long an individual step takes. On modern hardware,
+a single memory load can cost 2 ns or 150 ns depending on where the target line resides in the memory hierarchy,
+which explains the threefold gap observed between two O(1) LRU caches in Chapter 13.</p>
+<p>This chapter examines the hardware and operating-system layers beneath those data structures. Section 15.1
+measures memory hierarchy latency; Sections 15.2 through 15.4 present three programs whose performance depends on
+memory layout and access patterns; and Sections 15.5 through 15.7 examine three core operating-system services:
+virtual memory, CPU scheduling, and system calls.</p>
+<p>Most programs in this chapter report wall-clock timings. Always run them with <code>--release</code>, and expect absolute
+measurements to vary by hardware. All figures reported here were collected on an Intel Core i5-1038NG7 running
+macOS.</p>
 <h2 id="151-how-far-away-is-memory"><a class="header" href="#151-how-far-away-is-memory">15.1 How far away is memory?</a></h2>
 <p>Main memory, the RAM, is large and slow compared with the CPU. To hide the difference, the CPU keeps copies of
 recently used memory in small, fast memories called <strong>caches</strong>. There are usually three levels:</p>
@@ -210,10 +213,11 @@ recently used memory in small, fast memories called <strong>caches</strong>. The
 </ul>
 <p>Caches do not copy single bytes. They copy blocks of 64 bytes, called <strong>cache lines</strong>. Reading one <code>u64</code> brings
 in the line around it, so the next seven <code>u64</code> values in memory arrive at no extra cost.</p>
-<p>To see the cost of each level, I measured a <strong>pointer chase</strong>. The program fills an array with the indexes of a
-random cycle, so each element holds the index of the next one to read. The loop then runs
-<code>i = next[i]</code> many times. Each read needs the result of the previous one, so the reads cannot overlap. The time per step is the time
-of one read. Figure 15.1 shows the result for five array sizes.</p>
+<p>To quantify the latency of each cache level, a <strong>pointer-chasing</strong> benchmark populates an array with a random
+single-cycle permutation so that each element stores the index of the next element to read. Executing
+<code>i = next[i]</code> in a tight loop creates a strict data dependency between consecutive loads, preventing the CPU
+from overlapping memory requests and exposing the true latency per read across five working-set sizes
+(Figure 15.1).</p>
 <figure>
 <img src="figures/mem-latency.svg" alt="Bars for five data sizes: 16 KiB 2.2 ns, 256 KiB 5.6 ns, 2 MiB 42.3 ns, 32 MiB 120 ns, 256 MiB 146.2 ns per dependent load.">
 <figcaption><b>Figure 15.1</b> Time per dependent read, by data size. Data that fits in L1 is about 65 times faster to reach than data in main memory.</figcaption>
@@ -252,8 +256,8 @@ the response.</p>
 <p>Most types must start at an address that is a multiple of some number, called their <strong>alignment</strong>. A <code>u64</code> has
 alignment 8, so it must start at an address divisible by 8. The CPU reads aligned values in one step, and some
 instructions refuse unaligned ones.</p>
-<p>So an allocator must sometimes skip bytes before a block, to reach an address with the right alignment. The
-skipped bytes are called <strong>padding</strong>. Figure 15.2 shows two allocations and the padding between them.</p>
+<p>An allocator must therefore advance past unused bytes, called <strong>padding</strong>, to reach a properly aligned offset
+(Figure 15.2).</p>
 <figure>
 <img src="figures/bump.svg" alt="A 64-byte strip. Byte 0 holds the first block. Bytes 1 to 15 are padding. Bytes 16 to 19 hold the second block. Bytes 20 to 63 are free. used is 20 and remaining is 44.">
 <figcaption><b>Figure 15.2</b> The state checked by the test <code>allocations_are_aligned</code>. Aligning the second block to 16 costs 15 bytes of padding.</figcaption>
@@ -291,9 +295,9 @@ fn align_up(offset: usize, align: usize) -&gt; Option&lt;usize&gt; {
 <p><code>align_up</code> rounds the offset up to the next multiple of <code>align</code>. The alignment must be a power of two, which the
 <code>assert!</code> in <code>alloc</code> checks. A power of two has exactly one bit set, so <code>align - 1</code> is a mask with all the bits
 below it set. For <code>align = 16</code>, the mask is <code>0b1111</code>.</p>
-<p>The rounding happens in two steps. Adding the mask pushes the offset past the next multiple, unless it is already
-on one. Then <code>&amp; !mask</code> clears the low bits, which rounds down to a multiple. Work through the second allocation of
-figure 15.2 by hand:</p>
+<p>The rounding occurs in two steps: adding the mask advances the offset past the next multiple unless it is already
+aligned, and <code>&amp; !mask</code> clears the low bits to round down to that multiple. Tracing the second allocation of
+Figure 15.2 illustrates both steps:</p>
 <ol>
 <li>The offset is 1, and the alignment is 16, so the mask is 15.</li>
 <li>1 + 15 = 16.</li>
@@ -305,9 +309,9 @@ is.</p>
 returns <code>None</code> if the block would end past the buffer. Only after every check passes does it move the offset.
 So a failed allocation leaves the arena unchanged, which the test <code>exhaustion_returns_none_and_keeps_state</code>
 checks.</p>
-<p>The block is returned as <code>&amp;mut [u8]</code>, a slice of the buffer. That reference borrows the arena mutably, so you
-cannot call <code>alloc</code> again while you hold it. A production arena allocator hands out many live references at
-once, and needs <code>unsafe</code> code or interior mutability to do so.</p>
+<p>The allocated block is returned as <code>&amp;mut [u8]</code>, a mutable slice into the backing buffer. Because that slice
+borrows the arena mutably, subsequent <code>alloc</code> calls are statically prevented while the slice remains live. A
+production arena allocator hands out multiple concurrent references using <code>unsafe</code> code or interior mutability.</p>
 <div class="callout warning" markdown="1">
 <p><strong>WARNING:</strong> <code>align_up</code> aligns the offset, not the memory address. The address of a block is the buffer’s address plus the offset. So the block is aligned only if the buffer
 itself starts at a multiple of <code>align</code>. The buffer is a
@@ -466,9 +470,9 @@ test problems::bump_allocator::tests::writes_are_isolated_between_allocations ..
 test result: ok. 5 passed; 0 failed; 0 ignored; 0 measured; 132 filtered out
 </code></pre>
 <h2 id="153-reading-in-order-and-reading-scattered"><a class="header" href="#153-reading-in-order-and-reading-scattered">15.3 Reading in order, and reading scattered</a></h2>
-<p>Figure 15.3 shows how the order of reads changes the work. Reading a <code>u64</code> array in order uses every value of each cache
-line it loads. The CPU also notices the pattern and fetches the next lines before they are needed, which is called
-<strong>prefetching</strong>. Reading scattered values loads a whole line for each value and uses one eighth of it.</p>
+<p>Traversal order directly governs how effectively each cache line is utilized (Figure 15.3). Reading a <code>u64</code> array
+sequentially consumes all eight values in every loaded line and enables hardware <strong>prefetching</strong>, whereas
+scattered reads pull in an entire 64-byte line only to consume one eighth of it.</p>
 <figure>
 <img src="figures/cache-lines.svg" alt="Top: six cache lines of eight values; reading in order uses all eight values of each line. Bottom: reading scattered values uses one value from each of six lines.">
 <figcaption><b>Figure 15.3</b> Six reads in order touch one line. Six scattered reads touch six lines.</figcaption>
@@ -576,7 +580,7 @@ differ in more than their reading order.</p>
 <p><code>strided_sum</code> computes <code>(index + STRIDE) % data.len()</code> at every step. <code>data.len()</code> is not known at compile time,
 so <code>%</code> is compiled as a real division instruction, one of the slowest integer instructions. Each step’s index
 depends on the previous one, so the divisions run one after another.</p>
-<p>To separate the two costs, I ran four variants of the loop:</p>
+<p>Running six loop variants isolates the division overhead from cache miss latency (Table 15.1):</p>
 <p class="listing"><b>Table 15.1</b> Variants of the 32 MiB sum, release build</p>
 
 <div class="table-wrapper">
@@ -594,27 +598,30 @@ depends on the previous one, so the divisions run one after another.</p>
 </tbody>
 </table>
 </div>
-<p>The third row settles it. With stride 1, the loop reads memory in perfect order, and it still takes 36 ms. The
-division sets the pace of <code>strided_sum</code>, not the memory.</p>
-<p>The last three rows remove the division and show the real cost of scattered reads. Reading through a list of
-indexes in random order took about seven times as long as reading through the same list in order. The reads are
-independent of each other, so the CPU keeps several of them in flight at once. In the pointer chase of section 15.1, each read must wait for the previous one. There, the same 4 million
-reads take 478 ms, about 114 ns each.</p>
-<p>Two lessons come out of this. Scattered memory access is expensive, from a few times slower to a hundred times,
-depending on whether reads can overlap. And a benchmark measures everything in its loop. Before you explain a
-number, change one thing at a time and check that the number moves.</p>
+<p>The third row isolates the bottleneck: even at stride 1 (pure sequential access), the loop requires 36 ms,
+confirming that integer division rather than memory latency dominates <code>strided_sum</code>.</p>
+<p>The final three rows eliminate the division and expose the true cost of scattered loads. Summing through a
+randomized index array took roughly seven times longer than summing sequentially; because those loads are
+independent, the CPU keeps several memory requests in flight concurrently. In the dependent pointer chase of
+Section 15.1, where every load depends on the previous result, the same 4 million reads take 478 ms (roughly
+114 ns per load).</p>
+<p>Two engineering principles follow. First, scattered memory access degrades throughput by an order of magnitude
+when loads are independent and by two orders of magnitude when loads are dependent. Second, a benchmark measures
+every instruction inside its loop; before attributing a timing result to a specific hardware mechanism, vary one
+factor at a time and verify that the measurement responds.</p>
 <h2 id="154-false-sharing"><a class="header" href="#154-false-sharing">15.4 False sharing</a></h2>
-<p>Chapter 16 covers threads in depth. This section needs only two facts about them:</p>
+<p>Chapter 16 covers concurrency in depth; this section requires only two primitives:</p>
 <ul>
-<li><code>thread::scope(|scope| { ... })</code> creates a scope. Threads started inside it with <code>scope.spawn</code> may borrow local
-variables, because the scope waits for all of them to finish before it returns.</li>
-<li>An atomic integer such as <code>AtomicUsize</code> can be changed by several threads at once without a lock.
-<code>fetch_add(1, Ordering::Relaxed)</code> adds 1 in one indivisible step. The <code>Ordering</code> argument is explained in
-chapter 16. <code>Relaxed</code> is enough for a counter that nothing else depends on.</li>
+<li><code>thread::scope(|scope| { ... })</code> establishes a scoped thread block whose spawned threads may borrow local
+variables safely because the scope joins all threads before returning.</li>
+<li>An atomic integer such as <code>AtomicUsize</code> supports lock-free concurrent updates. <code>fetch_add(1, Ordering::Relaxed)</code>
+increments the counter atomically; <code>Relaxed</code> ordering suffices for an independent counter (memory ordering is
+covered in Chapter 16).</li>
 </ul>
-<p>Now the problem. Each core has its own L1 cache. Before a core writes to a cache line, it must have the only
-copy of that line. Every other core’s copy is thrown away. If two cores write to the same line in turn, the line
-moves back and forth between them on almost every write.</p>
+<p>The performance hazard arises from cache coherence across cores. Each core maintains a private L1 cache, and
+before a core writes to a cache line, the coherence protocol must grant it exclusive ownership by invalidating
+every other core’s copy. When two cores alternate writes to the same line, ownership bounces back and forth on
+nearly every store.</p>
 <p>That is expected when two threads write the same variable. <strong>False sharing</strong> is the same slowdown when the two
 threads write different variables that happen to sit in the same cache line (figure 15.4). The threads share no
 data, but the hardware moves memory in whole lines, so they share a line.</p>
@@ -902,9 +909,9 @@ also fetch lines in adjacent pairs, so some libraries pad shared counters to 128
 </div>
 
 <h2 id="155-pages-and-page-faults"><a class="header" href="#155-pages-and-page-faults">15.5 Pages and page faults</a></h2>
-<p>Every address your program uses is a <strong>virtual address</strong>. The operating system gives each process its own
-private range of addresses. The CPU translates each virtual address into a <strong>physical address</strong>, a location in
-the actual RAM.</p>
+<p>Every memory address observed by a user-space process is a <strong>virtual address</strong>. The operating system provides
+each process with an isolated virtual address space, and the CPU’s memory management unit translates each virtual
+address into a <strong>physical address</strong> in RAM.</p>
 <p>Translation works on fixed-size blocks called <strong>pages</strong>. On this machine a page is 4,096 bytes. Apple’s ARM Macs
 use 16 KiB pages. The operating system keeps a <strong>page table</strong> for each process, which maps each virtual page to a
 physical block of RAM, called a <strong>frame</strong>.</p>
@@ -1311,15 +1318,15 @@ At 10M calls/s, syscall overhead would consume: 0.03 CPU-seconds per second
 something other than its title says.</p>
 <p>The C library on macOS stores the process ID the first time it is asked, and answers later <code>getpid</code> calls from
 that stored value. None of the ten million calls entered the kernel.</p>
-<p>To measure a real round trip, the call must be one the library cannot answer by itself. On the same machine, I
-timed <code>getppid</code>, which returns the parent’s process ID, and a raw <code>syscall(SYS_getpid)</code>. Both took about 594 ns
-per call, nearly 200 times the cached <code>getpid</code>.</p>
-<p>On Linux, the answer is different again. The GNU C library stopped caching <code>getpid</code> in version 2.25, so there the
-same program does measure a real system call.</p>
-<p>The lesson matches section 15.3. Before you trust a number, check that the code did the work you meant to time.
-The comment block at the top of the file names the practical point. A program that handles millions of events
-per second cannot afford one system call per event. Interfaces such as Linux’s <code>recvmmsg</code> and <code>io_uring</code> exist to
-handle many events per system call.</p>
+<p>Measuring a genuine kernel transition requires a call that libc cannot satisfy in user space. On the same test
+machine, both <code>getppid</code> (which queries the parent process ID) and a raw <code>syscall(SYS_getpid)</code> averaged roughly
+594 ns per call, nearly 200 times slower than the cached <code>getpid</code>.</p>
+<p>On Linux, behavior differs: the GNU C library removed <code>getpid</code> caching in version 2.25, so the same program
+exercises an actual kernel transition there.</p>
+<p>The diagnostic lesson mirrors Section 15.3: before trusting a benchmark figure, verify that the timed loop
+actually exercises the intended operation. As noted in the header comment of Listing 15.13, a service handling
+millions of events per second cannot afford one system call per event; batching interfaces such as Linux’s
+<code>recvmmsg</code> and <code>io_uring</code> amortize kernel-transition overhead across many operations.</p>
 <div class="summary" markdown="1">
 <h2 id="summary"><a class="header" href="#summary">Summary</a></h2>
 <ul>
@@ -1339,19 +1346,19 @@ a cached value.</li>
 </ul>
 </div>
 
-<p>Chapter 16 starts the concurrency part of the book: threads, atomics, and locks, and the rules that keep them
-correct.</p>
+<p>In Chapter 16, we turn to concurrency: threads, atomic operations, memory ordering, and the synchronization
+primitives that keep concurrent code correct.</p>
 <h2 id="exercises"><a class="header" href="#exercises">Exercises</a></h2>
 <ol>
 <li>Change <code>strided_sum</code> to use <code>&amp; (data.len() - 1)</code> instead of <code>% data.len()</code>, and compare its time with
 stride 1 and stride 1,000,003.</li>
-<li>Write the pointer chase of section 15.1, and measure it on your machine for sizes from 4 KiB to 512 MiB. Find
-where the time jumps, and compare with your CPU’s cache sizes.</li>
-<li>Fix the warning in section 15.2. Make <code>BumpArena</code> allocate its buffer with <code>std::alloc::alloc</code> and a
-<code>Layout</code> aligned to 64. Add a test that requests alignment 64.</li>
-<li>Change <code>concurrency_false_sharing.rs</code> to use <code>#[repr(align(128))]</code>, and check whether the time changes on your
-machine.</li>
-<li>Time <code>getppid</code> in a loop on your system, and compare it with <code>getpid</code>.</li>
+<li>Implement the pointer chase of Section 15.1 and measure it locally for sizes from 4 KiB to 512 MiB. Identify
+where latency jumps and compare those thresholds against the host CPU’s cache sizes.</li>
+<li>Fix the warning in Section 15.2. Make <code>BumpArena</code> allocate its buffer with <code>std::alloc::alloc</code> and a
+<code>Layout</code> aligned to 64, and add a test that requests alignment 64.</li>
+<li>Change <code>concurrency_false_sharing.rs</code> to use <code>#[repr(align(128))]</code> and measure whether execution time changes
+on the local machine.</li>
+<li>Time <code>getppid</code> in a loop on the host operating system and compare its per-call latency with <code>getpid</code>.</li>
 </ol>
 
                     </main>
@@ -1406,6 +1413,7 @@ machine.</li>
 
         <!-- Custom JS scripts -->
         <script src="theme/anim-4192821e.js"></script>
+        <script src="theme/book-ui-621ed017.js"></script>
 
 
 

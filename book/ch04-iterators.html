@@ -1,5 +1,5 @@
 <!DOCTYPE HTML>
-<html lang="en" class="light sidebar-visible" dir="ltr">
+<html lang="en" class="coal sidebar-visible" dir="ltr">
     <head>
         <!-- Book generated using mdBook -->
         <meta charset="UTF-8">
@@ -28,18 +28,18 @@
         <link rel="stylesheet" id="mdbook-ayu-highlight-css" href="ayu-highlight-3fdfc3ac.css">
 
         <!-- Custom theme stylesheets -->
-        <link rel="stylesheet" href="theme/custom-b2009ce0.css">
+        <link rel="stylesheet" href="theme/custom-985f104d.css">
 
 
         <!-- Provide site root and default themes to javascript -->
         <script>
             const path_to_root = "";
-            const default_light_theme = "light";
-            const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "searchindex-f2511fee.js";
+            const default_light_theme = "coal";
+            const default_dark_theme = "coal";
+            window.path_to_searchindex_js = "searchindex-4622e2bb.js";
         </script>
         <!-- Start loading toc.js asap -->
-        <script src="toc-34d6c47e.js"></script>
+        <script src="toc-c196c8a9.js"></script>
     </head>
     <body>
     <div id="mdbook-help-container">
@@ -77,7 +77,7 @@
             try { theme = localStorage.getItem('mdbook-theme'); } catch(e) { }
             if (theme === null || theme === undefined) { theme = default_theme; }
             const html = document.documentElement;
-            html.classList.remove('light')
+            html.classList.remove('coal')
             html.classList.add(theme);
             html.classList.add("js");
         </script>
@@ -183,110 +183,82 @@
 <div class="covers" markdown="1">
 <p>This chapter covers</p>
 <ul>
-<li>What an iterator is, and what a <code>for</code> loop does with one</li>
-<li>The three ways to walk a collection: by reference, by mutable reference, and by value</li>
-<li>Chaining <code>filter</code>, <code>map</code>, and <code>collect</code>, and why nothing runs until <code>collect</code></li>
-<li>Why a closure sometimes receives <code>&amp;&amp;i32</code>, and how patterns like <code>|&amp;&amp;x|</code> remove the references</li>
-<li>Lifetimes: what they are, why the compiler needs them, and how to read <code>'a</code> in a signature</li>
-<li>Building a map that stores references instead of copies</li>
+<li>The <code>Iterator</code> trait and how <code>for</code> loops desugar to <code>next</code> calls</li>
+<li>The three collection traversal modes: shared reference, mutable reference, and by value</li>
+<li>Chaining lazy adapters (<code>filter</code>, <code>map</code>) and driving execution with consumers (<code>collect</code>)</li>
+<li>Why <code>filter</code> closures receive <code>&amp;&amp;T</code>, and how pattern destructuring (<code>|&amp;&amp;x|</code>) strips reference layers</li>
+<li>Lifetimes: what they represent, why the compiler requires them across function boundaries, and how to read <code>'a</code></li>
+<li>Indexing a slice with a <code>HashMap</code> of borrowed references without cloning elements</li>
 </ul>
 </div>
 
-<p>Chapter 3 used iterators and references in almost every listing: <code>nums.iter().enumerate()</code>,
-<code>s.chars()</code>, <code>seen.get(&amp;key)</code>. I explained each use briefly and moved on. This chapter slows down and
-looks at them properly, because every later chapter depends on them.</p>
-<p>The chapter has two halves. The first half is about iterators: what they are, how a <code>for</code> loop uses them,
-and how to chain them. The second half is about references and lifetimes. A <strong>lifetime</strong> is the part of a
-program during which a reference is guaranteed to point to valid data. You will see why Rust needs them,
-how to read them, and how to write a function whose signature uses one.</p>
-<p>Both halves meet in one short program. It turns a list of users into a map from each user’s ID to that
-user, without copying any user.</p>
+<p>The listings in Chapter 3 used iterators and references throughout (<code>nums.iter().enumerate()</code>, <code>s.chars()</code>, <code>seen.get(&amp;key)</code>). Because every subsequent chapter depends on these abstractions, we now examine their mechanics in full detail.</p>
+<p>The chapter is structured in two parts. The first half covers iterators: how the <code>Iterator</code> trait operates, how <code>for</code> loops drive it, and how lazy adapters compose without intermediate allocations. The second half covers references and lifetimes. A <strong>lifetime</strong> is the static region of a program during which a reference is guaranteed to point to valid, initialized data. We examine why Rust enforces lifetimes across function signatures and how to interpret explicit <code>'a</code> annotations.</p>
+<p>Both halves converge in a complete program that indexes a slice of <code>User</code> structs by ID using a <code>HashMap</code> of borrowed references, avoiding any struct cloning.</p>
 <h2 id="41-what-an-iterator-is"><a class="header" href="#41-what-an-iterator-is">4.1 What an iterator is</a></h2>
-<p>An <strong>iterator</strong> is a value that hands out items one at a time. It has one required method, <code>next</code>, which
-returns <code>Some(item)</code> while there are items left and <code>None</code> when there are none.</p>
-<p>You can think of an iterator over a slice as a cursor that starts before the first element. Each call to
-<code>next</code> returns the element under the cursor and moves the cursor one step (figure 4.1).</p>
+<p>An <strong>iterator</strong> is a stateful value implementing the <code>Iterator</code> trait, which requires a single method, <code>next</code>. Each call to <code>next</code> yields <code>Some(item)</code> while elements remain and <code>None</code> once the sequence is exhausted.</p>
+<p>Conceptually, a slice iterator behaves like a cursor positioned just before the first element. Each <code>next</code> call advances the cursor and yields a reference to the element it crosses (Figure 4.1).</p>
 <figure>
 <img src="figures/iter-cursor.svg" alt="Four rows showing the cursor over 10, 20, 30 and then past the end; the calls return Some(&amp;10), Some(&amp;20), Some(&amp;30), and None">
 <figcaption><b>Figure 4.1</b> An iterator over <code>[10, 20, 30]</code>. Each call to <code>next</code> returns one item. After the last item, it returns <code>None</code>.</figcaption>
 </figure>
-<p>You rarely call <code>next</code> yourself. A <code>for</code> loop calls it for you. This loop:</p>
+<p>Application code rarely calls <code>next</code> manually because Rust’s <code>for</code> loop desugars directly to it. The loop:</p>
 <pre><code class="language-rust">for x in [10, 20, 30].iter() {
     println!("{x}");
 }</code></pre>
-<p>does the same as this:</p>
+<p>is equivalent to:</p>
 <pre><code class="language-rust">let mut it = [10, 20, 30].iter();
 while let Some(x) = it.next() {
     println!("{x}");
 }</code></pre>
-<p><code>while let Some(x) = it.next()</code> keeps looping as long as <code>next</code> returns <code>Some</code>, and binds the item to <code>x</code>.
-Section 2.8 used this form directly, because it needed to call <code>next</code> inside the loop body.</p>
+<p>The <code>while let Some(x) = it.next()</code> loop continues pulling items until <code>next</code> returns <code>None</code>. The argument parser in Section 2.8 used this explicit form so the loop body could call <code>next</code> a second time to consume flag values.</p>
 <h2 id="42-three-ways-to-walk-a-collection"><a class="header" href="#42-three-ways-to-walk-a-collection">4.2 Three ways to walk a collection</a></h2>
-<p>A <code>Vec&lt;String&gt;</code> owns its strings. When you walk it, you have to decide what you get for each element: a
-shared reference, a mutable reference, or the string itself. Each choice has its own method (figure 4.2).</p>
+<p>A collection such as <code>Vec&lt;String&gt;</code> owns its elements. Iterating over it requires choosing how each element is accessed: by shared reference, by mutable reference, or by owned value. Each mode corresponds to a distinct method (Figure 4.2).</p>
 <figure>
 <img src="figures/iter-kinds.svg" alt="names.iter() yields &amp;String and leaves names usable; names.iter_mut() yields &amp;mut String; names.into_iter() yields String and uses names up">
 <figcaption><b>Figure 4.2</b> The three iteration methods and the item type each one yields.</figcaption>
 </figure>
 <ul>
-<li><code>iter()</code> gives <code>&amp;T</code>, a shared reference to each element. You can read the elements, and the collection
-is unchanged afterward.</li>
-<li><code>iter_mut()</code> gives <code>&amp;mut T</code>. You can change each element in place.</li>
-<li><code>into_iter()</code> gives <code>T</code>, the element itself. The collection is moved into the iterator, so you cannot use
-it afterward.</li>
+<li><code>iter()</code> yields <code>&amp;T</code> (shared references), leaving the collection intact and usable afterward.</li>
+<li><code>iter_mut()</code> yields <code>&amp;mut T</code>, permitting in-place mutation of each element.</li>
+<li><code>into_iter()</code> yields <code>T</code> by value, moving ownership out of the collection so the collection cannot be accessed afterward.</li>
 </ul>
-<p>A <code>for</code> loop chooses for you based on what you write after <code>in</code>. <code>for x in &amp;names</code> means <code>names.iter()</code>.
-<code>for x in &amp;mut names</code> means <code>names.iter_mut()</code>. <code>for x in names</code> means <code>names.into_iter()</code>, and <code>names</code> is
-gone after the loop.</p>
+<p>In a <code>for</code> loop, the expression following <code>in</code> selects the mode automatically: <code>for x in &amp;names</code> calls <code>names.iter()</code>, <code>for x in &amp;mut names</code> calls <code>names.iter_mut()</code>, and <code>for x in names</code> calls <code>names.into_iter()</code>, consuming <code>names</code>.</p>
 <div class="callout tip" markdown="1">
-<p><strong>TIP:</strong> When you are not sure which one you have, look at the item type the compiler reports. A
-deliberate type error such as <code>let () = x;</code> inside the loop makes the compiler print the type of <code>x</code>.</p>
+<p><strong>TIP:</strong> When an iterator item’s exact reference depth is unclear, inserting a deliberate type mismatch such as <code>let () = x;</code> inside the loop forces the compiler to print the inferred type of <code>x</code> in its diagnostic.</p>
 </div>
 
 <h2 id="43-chaining-iterators"><a class="header" href="#43-chaining-iterators">4.3 Chaining iterators</a></h2>
-<p>An <strong>iterator adapter</strong> is a method that takes one iterator and returns another. <code>filter</code> keeps only the
-items for which a closure returns <code>true</code>. <code>map</code> replaces each item with the closure’s result. <code>collect</code>
-is different: it runs the whole chain and gathers the items into a collection, such as a <code>Vec</code>.</p>
-<p>Figure 4.3 follows three numbers through a chain.</p>
+<p>An <strong>iterator adapter</strong> wraps one iterator to produce another. <code>filter</code> retains only items for which a predicate closure returns <code>true</code>, while <code>map</code> transforms each item through a closure. By contrast, <code>collect</code> is a <strong>consumer</strong>: it drives the pipeline to completion and materializes the output into a target collection such as a <code>Vec</code> or <code>HashMap</code>.</p>
+<p>Figure 4.3 traces three values flowing through a <code>filter</code> and <code>map</code> pipeline.</p>
 <figure>
 <img src="figures/iter-pipeline.svg" alt="Stages iter, filter, map, collect. &amp;10 and &amp;20 pass the filter, &amp;15 is dropped, map turns them into 100 and 200, collect builds vec![100, 200]">
 <figcaption><b>Figure 4.3</b> Items flow through the chain one at a time. The odd number 15 stops at <code>filter</code>.</figcaption>
 </figure>
-<p>Adapters are <strong>lazy</strong>. <code>iter().filter(...).map(...)</code> only builds a description of the work. Nothing happens
-until something asks for items, as <code>collect</code> or a <code>for</code> loop does. Then each item goes through every stage
-before the next item starts. No temporary vector is created between stages.</p>
-<p>Animation 4.1 runs <code>functional_numbers_drill</code> from listing 4.1 on <code>[10, 15, 20, 25, 30]</code>. The requests go
-backward, from <code>collect</code> toward the slice, and the items come forward one at a time.</p>
+<p>Rust iterator adapters are <strong>lazy</strong>. Evaluating <code>iter().filter(...).map(...)</code> constructs a nested state machine describing the pipeline without touching a single element. Execution begins only when a consumer such as <code>collect</code> or a <code>for</code> loop pulls items via <code>next</code>. Each element then traverses all stages sequentially before the next element is fetched, eliminating intermediate heap allocations.</p>
+<p>Animation 4.1 traces <code>functional_numbers_drill</code> (Listing 4.1) on <code>[10, 15, 20, 25, 30]</code>, showing demand propagating backward from <code>collect</code> and elements flowing forward one at a time.</p>
 <figure class="anim">
 <video class="motion" src="figures/ch04-lazy-chain.mp4" autoplay="" loop="" muted="" playsinline="" preload="metadata" aria-label="Four stages in a row, iter, filter, map, and collect, above the input 10, 15, 20, 25, 30. collect sends next() back through map and filter to iter. The item &amp;10 comes forward, passes filter, becomes 100 in map, and collect stores it. Then &amp;15 comes forward and filter drops it, because it is odd, and asks for the next item at once. 20 and 30 pass, and the result is 100, 200, 300, built in one pass. In a last run collect is removed: no next() is ever called, filter and map never run, and the compiler warns that the Map is unused." data-chapters="[[0.0, &quot;pull&quot;], [12.46, &quot;one at a time&quot;], [32.64, &quot;no collect&quot;]]"><img src="figures/ch04-lazy-chain.gif" alt="Four stages in a row, iter, filter, map, and collect, above the input 10, 15, 20, 25, 30. collect sends next() back through map and filter to iter. The item &amp;10 comes forward, passes filter, becomes 100 in map, and collect stores it. Then &amp;15 comes forward and filter drops it, because it is odd, and asks for the next item at once. 20 and 30 pass, and the result is 100, 200, 300, built in one pass. In a last run collect is removed: no next() is ever called, filter and map never run, and the compiler warns that the Map is unused."></video>
 <figcaption><b>Animation 4.1</b> <code>collect</code> pulls items through the chain one at a time. Without a consumer, no item is ever asked for, and the chain does nothing.</figcaption>
 </figure>
 <div class="callout warning" markdown="1">
-<p><strong>WARNING:</strong> Because adapters are lazy, a chain that ends without <code>collect</code>, a <code>for</code> loop, or another method
-that consumes it does nothing at all. The compiler warns about such a chain: “unused <code>Map</code> that must be used”.</p>
+<p><strong>WARNING:</strong> Because adapters are lazy, an iterator chain without a terminating consumer (<code>collect</code>, <code>for</code>, <code>count</code>, or <code>for_each</code>) performs no work at runtime. The compiler flags such dead pipelines with an <code>unused_must_use</code> warning (<code>unused Map that must be used</code>).</p>
 </div>
 
 <h2 id="44-references-to-references"><a class="header" href="#44-references-to-references">4.4 References to references</a></h2>
-<p>Look closely at the chain in figure 4.3. <code>slice.iter()</code> yields items of type <code>&amp;i32</code>. <code>filter</code> passes its
-closure a reference to each item, so that the closure can look at the item without taking it. So the
-closure receives <code>&amp;&amp;i32</code>: a reference to a reference to an <code>i32</code> (figure 4.4).</p>
+<p>Inspecting the exact item types in Figure 4.3 clarifies a common point of confusion. Calling <code>slice.iter()</code> produces items of type <code>&amp;i32</code>. Because <code>filter</code> must inspect each item without consuming it (so surviving items can be yielded downstream), <code>filter</code> passes a shared reference to the item (<code>&amp;Self::Item</code>) into its predicate closure. Combining both layers gives the closure <code>&amp;&amp;i32</code>, a reference to a reference to an <code>i32</code> (Figure 4.4).</p>
 <figure>
 <img src="figures/iter-refref.svg" alt="An i32 in the slice, a &amp;i32 pointing to it from iter(), and a &amp;&amp;i32 pointing to that from filter">
 <figcaption><b>Figure 4.4</b> The two layers of reference inside <code>filter</code>'s closure.</figcaption>
 </figure>
-<p>A closure’s parameter can be a pattern, the same as the left side of a <code>let</code>. The pattern <code>&amp;x</code> matches a
-reference and binds <code>x</code> to what it points to. So:</p>
+<p>Closure parameters accept irrefutable patterns identical to <code>let</code> bindings, where <code>&amp;x</code> strips one layer of reference:</p>
 <ul>
-<li><code>.filter(|&amp;&amp;x| x % 2 == 0)</code> removes both layers. Inside the closure, <code>x</code> is an <code>i32</code>.</li>
-<li><code>.map(|&amp;x| x * 10)</code> removes the one layer that <code>map</code> gives. <code>map</code> passes the item itself, not a reference
-to it.</li>
+<li><code>.filter(|&amp;&amp;x| x % 2 == 0)</code> strips both reference layers, binding <code>x</code> directly as <code>i32</code>.</li>
+<li><code>.map(|&amp;x| x * 10)</code> strips the single reference layer yielded by <code>iter()</code>, because <code>map</code> passes <code>Self::Item</code> by value rather than by reference.</li>
 </ul>
-<p>This works for <code>i32</code> because <code>i32</code> is <code>Copy</code>: removing the reference copies the number. A <code>String</code> is not
-<code>Copy</code>. For it, a pattern like <code>|&amp;s|</code> would try to move the value out of a reference, and the compiler
-rejects that. You would write <code>|s|</code> and use <code>s</code> as a reference instead.</p>
+<p>Pattern dereferencing works for <code>i32</code> because <code>i32</code> implements <code>Copy</code>, so binding <code>x</code> copies the integer out of the reference. Non-<code>Copy</code> types such as <code>String</code> cannot be moved out of a shared reference; attempting <code>|&amp;s|</code> fails to compile, and the closure must bind <code>|s|</code> as a reference instead.</p>
 <h2 id="45-the-same-work-in-two-styles"><a class="header" href="#45-the-same-work-in-two-styles">4.5 The same work in two styles</a></h2>
-<p>The program for this chapter starts with a small <code>User</code> type and two functions that do similar work in two
-styles.</p>
+<p>Listing 4.1 defines a small <code>User</code> struct alongside two slice transformations written in functional and imperative styles.</p>
 <p class="listing"><b>Listing 4.1</b> The <code>User</code> type and two ways to transform a slice (lines 1 to 23). <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/bin/lifetime_reference_drill.rs">src/bin/lifetime_reference_drill.rs</a></p>
 
 <pre><code class="language-rust">use std::collections::HashMap;
@@ -312,51 +284,31 @@ fn imperative_numbers_map(slice: &amp;[i32]) -&gt; HashMap&lt;i32, i32&gt; {
     }
     map
 }</code></pre>
-<p><code>functional_numbers_drill</code> is the chain from figure 4.3. <code>collect()</code> knows to build a <code>Vec&lt;i32&gt;</code> because
-that is the function’s return type. When the type is not clear from context, you write it, as in
-<code>collect::&lt;Vec&lt;i32&gt;&gt;()</code>.</p>
-<p><code>imperative_numbers_map</code> uses a <code>for</code> loop and builds a <code>HashMap</code> from each number to that number times
-100. <code>for &amp;num in slice</code> removes the one reference that iterating a slice gives, so <code>num</code> is an <code>i32</code>.</p>
-<p>Neither style is faster. Both compile to similar machine code. Iterator chains read well when the work is a
-sequence of steps. Loops read well when the body does several unrelated things.</p>
-<p>With iterators covered, the rest of the chapter turns to the references they hand out, and to the rules
-that keep those references safe.</p>
+<p><code>functional_numbers_drill</code> implements the pipeline from Figure 4.3. Type inference determines that <code>collect()</code> should construct a <code>Vec&lt;i32&gt;</code> from the function’s return signature; when inference is ambiguous, callers specify the target type explicitly via turbofish syntax (<code>collect::&lt;Vec&lt;i32&gt;&gt;()</code>).</p>
+<p><code>imperative_numbers_map</code> uses a <code>for</code> loop to populate a <code>HashMap</code> mapping each input number to <code>num * 100</code>. The pattern <code>for &amp;num in slice</code> copies the <code>i32</code> out of each yielded <code>&amp;i32</code>.</p>
+<p>Neither style carries an inherent runtime penalty; under optimization, LLVM compiles both forms to comparable machine code. Iterator pipelines express linear data transformations cleanly, whereas explicit loops suit bodies with multiple side effects or complex early-exit control flow.</p>
+<p>Having covered iterator pipelines, we next examine the lifetime rules that keep the references they produce valid.</p>
 <h2 id="46-lifetimes"><a class="header" href="#46-lifetimes">4.6 Lifetimes</a></h2>
-<p>A reference points to data owned by something else. If the owner is dropped while the reference is still
-in use, the reference points to freed memory. Reading through it would give garbage or crash the program.
-Figure 4.5 shows the smallest example.</p>
+<p>Every reference borrows data owned elsewhere. If the owner is dropped while a reference remains live, that reference becomes a dangling pointer referencing freed memory, leading to undefined behavior or crashes in unmanaged languages. Figure 4.5 illustrates the minimal case.</p>
 <figure>
 <img src="figures/iter-dangling.svg" alt="A reference r is set to &amp;s inside a block; s is dropped at the end of the block, and r is used afterward. The compiler reports error E0597, s does not live long enough.">
 <figcaption><b>Figure 4.5</b> A reference that would outlive its data. The compiler rejects this program.</figcaption>
 </figure>
-<p>To prevent this, the compiler tracks, for every reference, the part of the program where it is used. It
-also knows where each value is dropped. If a reference is used after its value is dropped, the program does
-not compile. The part of the program where a reference is valid is its lifetime.</p>
-<p>Inside one function, the compiler works out all lifetimes on its own. Across function calls it needs help.
-Consider a function that takes a reference and returns one:</p>
+<p>To prevent dangling references at compile time, the borrow checker tracks the lexical and control-flow span over which each reference is used and verifies that it never extends past the point where its referent is dropped. That valid span is the reference’s lifetime.</p>
+<p>Within a single function body, the compiler infers all lifetimes automatically. Across function boundaries, however, the compiler checks each function strictly against its signature. Consider a function that takes and returns a string slice:</p>
 <pre><code class="language-rust">fn first_word(s: &amp;str) -&gt; &amp;str { ... }</code></pre>
-<p>The caller needs to know how long the returned reference is valid. Here the only possible answer is “as
-long as <code>s</code>”, and the compiler assumes that without being told. These assumptions are called <strong>lifetime
-elision rules</strong>. For a function with one reference parameter, the returned reference gets that parameter’s
-lifetime.</p>
-<p>When the rules cannot decide, or when you want to state a relationship yourself, you name lifetimes. A
-lifetime name is an apostrophe and a short name, usually <code>'a</code>. You declare it in angle brackets after the
-function name, like a generic type, and then attach it to references:</p>
+<p>Callers must know how long the returned <code>&amp;str</code> remains valid. Because only one input reference exists, the compiler applies its <strong>lifetime elision rules</strong> and infers that the output lifetime matches <code>s</code>.</p>
+<p>When multiple input references exist, elision cannot determine which input the output borrows from, so the signature must declare explicit lifetime parameters. A lifetime parameter begins with an apostrophe (conventionally <code>'a</code>), is declared in angle brackets after the function name, and attaches to the related references:</p>
 <pre><code class="language-rust">fn longest&lt;'a&gt;(x: &amp;'a str, y: &amp;'a str) -&gt; &amp;'a str { ... }</code></pre>
-<p>Read this as: “for some lifetime <code>'a</code>, both inputs are valid for <code>'a</code>, and so is the output”. The compiler
-then checks every caller. The returned reference may not be used after either input’s data is dropped.</p>
-<p>A lifetime annotation does not change how long anything lives. It describes a relationship, and the
-compiler checks that the code keeps it.</p>
+<p>This signature states a contract: for some lifetime <code>'a</code>, both inputs remain valid for at least <code>'a</code>, and the returned reference is valid for <code>'a</code>. At every call site, the compiler verifies that the returned reference is never used after either input’s backing data is dropped.</p>
+<p>Lifetime annotations never alter runtime behavior or extend how long values live; they document borrowing relationships so the compiler can verify memory safety statically.</p>
 <h2 id="47-a-map-that-points-into-a-slice"><a class="header" href="#47-a-map-that-points-into-a-slice">4.7 A map that points into a slice</a></h2>
-<p>Now you have what you need to read the main functions of the program. The goal is to index a list of users
-by ID. You could copy each user into a <code>HashMap&lt;u32, User&gt;</code>. Or you could store only a reference to each
-user, in a <code>HashMap&lt;u32, &amp;User&gt;</code>, and leave the users where they are. Figure 4.6 compares the two.</p>
+<p>These lifetime mechanics directly enable zero-copy indexing. To index a slice of <code>User</code> structs by ID, one option is cloning each <code>User</code> into a <code>HashMap&lt;u32, User&gt;</code>. A cheaper alternative stores only borrowed pointers in a <code>HashMap&lt;u32, &amp;User&gt;</code>, leaving the original structs untouched (Figure 4.6).</p>
 <figure>
 <img src="figures/ch01-borrow-layout.svg" alt="A map of copies, each entry holding a cloned User, and a map of references, each entry holding a pointer into the original users array">
 <figcaption><b>Figure 4.6</b> A map of copies duplicates every user and its name. A map of references stores one pointer per entry, and depends on the original array staying alive.</figcaption>
 </figure>
-<p>The map of references is cheaper. It also depends on the users staying alive while the map is used. The
-function’s signature states that dependency with a lifetime.</p>
+<p>Avoiding copies introduces a lifetime dependency: the original slice must remain alive and immutable for as long as the map is used. Listing 4.2 encodes this contract in the function signature.</p>
 <p class="listing"><b>Listing 4.2</b> A map whose values point into the slice (lines 27 to 33).</p>
 
 <pre><code class="language-rust">fn struct_slice_to_map&lt;'a&gt;(slice: &amp;'a [User]) -&gt; HashMap&lt;u32, &amp;'a User&gt; {
@@ -366,15 +318,10 @@ function’s signature states that dependency with a lifetime.</p>
     }
     map
 }</code></pre>
-<p>Read the signature the way section 4.6 showed. For some lifetime <code>'a</code>, the input is a slice of users valid
-for <code>'a</code>. The output is a map whose values are references valid for <code>'a</code>. Because both mention the same
-<code>'a</code>, the map may not be used after the users are dropped. If you tried, the compiler would reject the
-program with the same error as figure 4.5.</p>
-<p>Inside the function, <code>for user in slice</code> walks the slice by reference, so <code>user</code> is a <code>&amp;User</code>. The map
-stores that reference. No <code>User</code> is cloned.</p>
+<p>Applying the contract from Section 4.6, <code>slice</code> is valid for <code>'a</code>, and every <code>&amp;'a User</code> stored in the returned <code>HashMap</code> shares that lifetime <code>'a</code>. Consequently, attempting to drop <code>users</code> while still reading from the map triggers the same compile-time error shown in Figure 4.5.</p>
+<p>Inside the body, <code>for user in slice</code> yields <code>&amp;'a User</code> references directly, inserting pointers into the map with zero <code>User</code> clones.</p>
 <h2 id="48-two-lifetimes-in-one-type"><a class="header" href="#48-two-lifetimes-in-one-type">4.8 Two lifetimes in one type</a></h2>
-<p>The second function takes a different input. Instead of a slice of users, it takes a slice of references to
-users.</p>
+<p>Listing 4.3 generalizes the input from a slice of structs to a slice of struct references (<code>&amp;[&amp;'a User]</code>).</p>
 <p class="listing"><b>Listing 4.3</b> A map built from a slice of references (lines 35 to 41).</p>
 
 <pre><code class="language-rust">fn ref_slice_to_map&lt;'a&gt;(slice: &amp;[&amp;'a User]) -&gt; HashMap&lt;u32, &amp;'a User&gt; {
@@ -384,20 +331,17 @@ users.</p>
     }
     map
 }</code></pre>
-<p>The type <code>&amp;[&amp;'a User]</code> has two references in it:</p>
+<p>The parameter type <code>&amp;[&amp;'a User]</code> contains two distinct lifetimes:</p>
 <ul>
-<li>The outer <code>&amp;</code> is the slice itself, a short list of pointers. Its lifetime has no name here.</li>
-<li>The inner <code>&amp;'a User</code> is each pointer in the list. Its lifetime <code>'a</code> belongs to the users those pointers
-point to.</li>
+<li>The outer <code>&amp;</code> borrows the temporary slice of pointers itself; its lifetime is elided because the return type does not depend on it.</li>
+<li>The inner <code>&amp;'a User</code> carries the lifetime <code>'a</code> of the underlying <code>User</code> structs.</li>
 </ul>
-<p>The returned map mentions only <code>'a</code>. So the map depends on the users, not on the list of pointers. The list
-can be dropped right after the call, and the map stays valid (figure 4.7).</p>
+<p>Because the returned <code>HashMap&lt;u32, &amp;'a User&gt;</code> references only <code>'a</code>, the map depends exclusively on the <code>User</code> values and not on the intermediate pointer slice. The pointer slice can be dropped immediately after the call returns while the map remains valid (Figure 4.7).</p>
 <figure>
 <img src="figures/ch01-lifetimes.svg" alt="A short-lived slice of references, the users it points to, and a map pointing directly at the users">
 <figcaption><b>Figure 4.7</b> The map copies the pointers out of the short-lived slice. It points at the users directly, so only the users must stay alive.</figcaption>
 </figure>
-<p><code>for &amp;user in slice</code> copies each pointer out of the slice. A reference is a <code>Copy</code> value, one machine word, so
-this copy is cheap.</p>
+<p>The loop pattern <code>for &amp;user in slice</code> copies each <code>&amp;'a User</code> pointer out of the slice. Shared references implement <code>Copy</code> and occupy a single machine word, making this copy a register-width move.</p>
 <h2 id="49-the-complete-program"><a class="header" href="#49-the-complete-program">4.9 The complete program</a></h2>
 <p class="listing"><b>Listing 4.4</b> The complete program. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/bin/lifetime_reference_drill.rs">src/bin/lifetime_reference_drill.rs</a></p>
 
@@ -492,17 +436,11 @@ fn main() {
 
     println!("\n--- Drill Completed Successfully! ---");
 }</code></pre>
-<p><code>main</code> starts with one more iterator chain. <code>vv.iter()</code> yields <code>&amp;i32</code>, and <code>filter</code> receives <code>&amp;&amp;i32</code>. This
-closure writes <code>|x|</code> and then <code>*x % 2</code>. The <code>*</code> removes one layer of reference, and the <code>%</code> operator works
-through the other. <code>.copied()</code> turns each <code>&amp;i32</code> into an <code>i32</code>, so <code>collect</code> builds a <code>Vec&lt;i32&gt;</code>.</p>
-<p>Two lines in <code>main</code> use a rule you have not seen yet:</p>
+<p>At the start of <code>main</code>, an additional iterator chain demonstrates an alternative way to handle <code>&amp;&amp;i32</code> in <code>filter</code>: binding <code>|x|</code> and writing <code>*x % 2</code> explicitly dereferences one layer while <code>%</code> auto-dereferences the second. Chaining <code>.copied()</code> converts each <code>&amp;i32</code> to <code>i32</code> before <code>collect</code> builds the <code>Vec&lt;i32&gt;</code>.</p>
+<p>Two declarations in <code>main</code> rely on an important compiler rule:</p>
 <pre><code class="language-rust">let users: &amp;[User] = &amp;[ User { ... }, User { ... }, User { ... } ];</code></pre>
-<p><code>&amp;[ ... ]</code> takes a reference to an array that was never given a name of its own. Such a value is a
-<strong>temporary</strong>, and a temporary is normally dropped at the end of the statement. That would leave <code>users</code>
-pointing to freed memory. Rust extends the temporary’s life to the end of the enclosing block when it is the
-direct value of a <code>let</code>. This is called <strong>temporary lifetime extension</strong>. It is why <code>users</code> and <code>user_refs</code>
-stay valid for the rest of <code>main</code>.</p>
-<p>Run the program:</p>
+<p>Here <code>&amp;[ ... ]</code> takes a reference to an unnamed array literal. Normally, an unnamed <strong>temporary</strong> value is dropped at the end of its statement, which would leave <code>users</code> dangling. When a reference to a temporary is bound directly in a <code>let</code> statement, however, Rust applies <strong>temporary lifetime extension</strong>, extending the backing array’s lifetime to the end of the enclosing block so <code>users</code> and <code>user_refs</code> remain valid throughout <code>main</code>.</p>
+<p>Executing the binary produces:</p>
 <pre><code class="language-text">$ cargo run --bin lifetime_reference_drill
 Filtered : [2, 4, 6]
 --- Ultra-Lean Inline Slice Drill ---
@@ -521,36 +459,27 @@ Filtered : [2, 4, 6]
 
 --- Drill Completed Successfully! ---
 </code></pre>
-<p>Run it again and the map lines may come out in a different order. As section 3.4 explained, <code>HashMap</code> uses a
-randomly seeded hash, so its iteration order is not fixed. When you need a stable order, use a <code>BTreeMap</code>,
-which keeps its keys sorted, or sort the keys before printing.</p>
+<p>Repeated runs print the map entries in different orders because <code>HashMap</code> uses a randomly seeded hasher (Section 3.4). When deterministic ordering is required, use <code>BTreeMap</code> to maintain keys in sorted order or sort the keys explicitly prior to output.</p>
 <div class="summary" markdown="1">
 <h2 id="summary"><a class="header" href="#summary">Summary</a></h2>
 <ul>
-<li>An iterator hands out items through <code>next</code>, which returns <code>Some(item)</code> or <code>None</code>. A <code>for</code> loop calls
-<code>next</code> until it gets <code>None</code>.</li>
-<li><code>iter()</code> yields <code>&amp;T</code>, <code>iter_mut()</code> yields <code>&amp;mut T</code>, and <code>into_iter()</code> yields <code>T</code> and uses up the
-collection.</li>
-<li>Adapters such as <code>filter</code> and <code>map</code> are lazy. <code>collect</code> or a loop drives them, one item at a time.</li>
-<li><code>filter</code> passes a reference to each item, so over <code>iter()</code> its closure receives <code>&amp;&amp;T</code>. Patterns like
-<code>|&amp;&amp;x|</code> remove the references for <code>Copy</code> types.</li>
-<li>A lifetime is the part of the program where a reference is valid. The compiler rejects a reference used
-after its data is dropped.</li>
-<li><code>'a</code> in a signature names a lifetime and ties inputs to outputs. It describes a relationship; it does not
-change how long anything lives.</li>
-<li>A <code>HashMap&lt;u32, &amp;'a User&gt;</code> indexes data without copying it, and cannot outlive that data.</li>
+<li>An iterator yields elements through <code>next</code>, returning <code>Some(item)</code> until exhausted and <code>None</code> thereafter; <code>for</code> loops desugar to <code>next</code> calls.</li>
+<li><code>iter()</code> yields <code>&amp;T</code>, <code>iter_mut()</code> yields <code>&amp;mut T</code>, and <code>into_iter()</code> yields <code>T</code> while consuming the collection.</li>
+<li>Adapters (<code>filter</code>, <code>map</code>) are lazy; no work executes until a consumer (<code>collect</code>, <code>for</code>) pulls elements one by one through the pipeline.</li>
+<li>Because <code>filter</code> borrows each yielded item, chaining <code>iter().filter(...)</code> passes <code>&amp;&amp;T</code> to the predicate; patterns such as <code>|&amp;&amp;x|</code> destructure references for <code>Copy</code> types.</li>
+<li>A lifetime defines the static region in which a reference remains valid; the borrow checker rejects any reference used after its referent is dropped.</li>
+<li>Explicit lifetime parameters such as <code>'a</code> link input and output reference lifetimes in function signatures without altering runtime storage durations.</li>
+<li>Indexing slices with <code>HashMap&lt;u32, &amp;'a User&gt;</code> avoids cloning elements while statically guaranteeing that the map never outlives the underlying data.</li>
 </ul>
 </div>
 
-<p>Chapter 5 uses iterators and collections to solve problems with heaps and sorted collections, such as
-finding the most frequent words in a text.</p>
+<p>Chapter 5 extends these iterators and collections to binary heaps and priority-ordered algorithms, including top-k frequency selection and streaming median computation.</p>
 <h2 id="exercises"><a class="header" href="#exercises">Exercises</a></h2>
 <ol>
-<li>Rewrite <code>imperative_numbers_map</code> as an iterator chain that ends in <code>collect::&lt;HashMap&lt;_, _&gt;&gt;()</code>.</li>
-<li>Write <code>fn longest&lt;'a&gt;(x: &amp;'a str, y: &amp;'a str) -&gt; &amp;'a str</code>. Then write a <code>main</code> where calling it and
-using the result fails to compile, and read the error.</li>
-<li>Change <code>struct_slice_to_map</code> to return a <code>BTreeMap</code>, and check that the output order is now stable.</li>
-<li>Write a function that takes <code>&amp;mut [User]</code> and uses <code>iter_mut()</code> to append “ (admin)“ to every name.</li>
+<li>Rewrite <code>imperative_numbers_map</code> as a single iterator chain terminating in <code>collect::&lt;HashMap&lt;_, _&gt;&gt;()</code>.</li>
+<li>Implement <code>fn longest&lt;'a&gt;(x: &amp;'a str, y: &amp;'a str) -&gt; &amp;'a str</code>, then write a <code>main</code> function that intentionally violates its lifetime contract and inspect the resulting compiler diagnostic.</li>
+<li>Change <code>struct_slice_to_map</code> to return a <code>BTreeMap</code> and verify that output order becomes deterministic across runs.</li>
+<li>Write a function taking <code>&amp;mut [User]</code> that uses <code>iter_mut()</code> to append <code>" (admin)"</code> to every user’s name.</li>
 </ol>
 
                     </main>
@@ -605,6 +534,7 @@ using the result fails to compile, and read the error.</li>
 
         <!-- Custom JS scripts -->
         <script src="theme/anim-4192821e.js"></script>
+        <script src="theme/book-ui-621ed017.js"></script>
 
 
 

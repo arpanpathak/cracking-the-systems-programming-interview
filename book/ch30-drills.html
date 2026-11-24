@@ -1,5 +1,5 @@
 <!DOCTYPE HTML>
-<html lang="en" class="light sidebar-visible" dir="ltr">
+<html lang="en" class="coal sidebar-visible" dir="ltr">
     <head>
         <!-- Book generated using mdBook -->
         <meta charset="UTF-8">
@@ -28,18 +28,18 @@
         <link rel="stylesheet" id="mdbook-ayu-highlight-css" href="ayu-highlight-3fdfc3ac.css">
 
         <!-- Custom theme stylesheets -->
-        <link rel="stylesheet" href="theme/custom-b2009ce0.css">
+        <link rel="stylesheet" href="theme/custom-985f104d.css">
 
 
         <!-- Provide site root and default themes to javascript -->
         <script>
             const path_to_root = "";
-            const default_light_theme = "light";
-            const default_dark_theme = "navy";
-            window.path_to_searchindex_js = "searchindex-f2511fee.js";
+            const default_light_theme = "coal";
+            const default_dark_theme = "coal";
+            window.path_to_searchindex_js = "searchindex-4622e2bb.js";
         </script>
         <!-- Start loading toc.js asap -->
-        <script src="toc-34d6c47e.js"></script>
+        <script src="toc-c196c8a9.js"></script>
     </head>
     <body>
     <div id="mdbook-help-container">
@@ -77,7 +77,7 @@
             try { theme = localStorage.getItem('mdbook-theme'); } catch(e) { }
             if (theme === null || theme === undefined) { theme = default_theme; }
             const html = document.documentElement;
-            html.classList.remove('light')
+            html.classList.remove('coal')
             html.classList.add(theme);
             html.classList.add("js");
         </script>
@@ -190,12 +190,8 @@
 </ul>
 </div>
 
-<p>Every chapter so far has shown the long form: the reference implementation with its explanations, its
-tests, and its history. In a live round you will not have that. You will have a blank editor, a
-problem stated in two sentences, and about forty minutes. <code>drills.rs</code> is the short form: ten answers
-written at the length you can type under that pressure. Each group carries one test, so you know it runs.</p>
-<p>This chapter is a guide to using them. It maps each drill to its chapter, reads the places where the
-short form cuts a corner, and ends with a way to rehearse.</p>
+<p>The preceding chapters presented complete reference implementations alongside their design rationale, test suites, and evolution. A timed technical interview offers a different environment: an empty editor, a brief problem statement, and roughly forty minutes. The module <code>drills.rs</code> provides compact counterparts, consisting of ten implementations sized to be written from scratch under time pressure, each paired with a unit test that verifies basic behavior.</p>
+<p>This chapter serves as a field guide to those drills. We map each implementation back to its reference chapter, examine the deliberate simplifications made in the short forms, and outline a structured method for rehearsing them.</p>
 <h2 id="301-the-drills"><a class="header" href="#301-the-drills">30.1 The drills</a></h2>
 <p class="listing"><b>Listing 30.1</b> Ten answers sized for a live round. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/problems/drills.rs">src/problems/drills.rs</a></p>
 
@@ -721,9 +717,7 @@ mod tests {
         ));
     }
 }</code></pre>
-<p>The module comment states the file’s role in one line: the neighbouring modules are the reference
-versions, and this file is what you type. Table 30.1 pairs each drill with the chapter that explains its
-full form.</p>
+<p>The module comment states the file’s role in one line: the neighboring modules hold the reference implementations, and this file contains the compact forms written under interview conditions. Table 30.1 pairs each drill with the chapter that explains its full version.</p>
 <div class="table-wrapper">
 <table>
 <thead>
@@ -746,11 +740,7 @@ full form.</p>
 <h2 id="302-what-the-short-forms-leave-out"><a class="header" href="#302-what-the-short-forms-leave-out">30.2 What the short forms leave out</a></h2>
 <p>A drill is allowed to be simpler than its reference. Knowing <em>what</em> it left out is part of the answer,
 because the follow-up question is usually aimed at exactly that.</p>
-<p><strong>The spin lock uses <code>swap</code>.</strong> <code>while self.locked.swap(true, Acquire) { spin_loop() }</code> is a
-test-and-set lock: every waiting thread writes the lock’s cache line on every iteration. The reference
-version in chapter 16 uses <code>compare_exchange_weak</code> and spins on a <em>load</em>, so waiters share the line
-read-only until it is released. Both are correct; the reference scales better under contention. The
-drill also omits the <code>SAFETY</code> comments, which in a real review you would add back.</p>
+<p><strong>The spin lock uses <code>swap</code>.</strong> <code>while self.locked.swap(true, Acquire) { spin_loop() }</code> is a test-and-set lock: every waiting thread writes the lock’s cache line on every iteration. The reference version in chapter 16 uses <code>compare_exchange_weak</code> and spins on a <em>load</em>, allowing waiters to share the cache line read-only until the lock is released. Both are correct, but the reference scales better under contention. The drill also omits the <code>// SAFETY:</code> comments, which production code and formal reviews require.</p>
 <p><strong>The semaphore has no guard.</strong> <code>acquire</code> and <code>release</code> are separate calls, so a caller that panics
 between them leaks a permit. The reference in section 16.5 returns a <code>SemaphoreGuard</code> whose <code>Drop</code> gives the
 permit back.</p>
@@ -771,7 +761,7 @@ head. For a question about serving requests, chapter 21’s checks are the answe
 reads left to right as the rule. <code>Route::parse</code> matches the two fixed paths and falls back to
 <code>strip_prefix</code> for the id route, returning <code>None</code> for everything else.</p>
 <h2 id="303-the-drill-that-is-slower-than-it-looks"><a class="header" href="#303-the-drill-that-is-slower-than-it-looks">30.3 The drill that is slower than it looks</a></h2>
-<p><code>parallel_sum</code> changed behaviour in the short form. Compare it with the reference in chapter 16:</p>
+<p><code>parallel_sum</code> changed behavior in the short form. Compare it with the reference in chapter 16:</p>
 <pre><code class="language-rust">// drills.rs
 values
     .chunks(chunk_size)
@@ -791,39 +781,30 @@ sleep 200 ms shows the difference:</p>
 <pre><code class="language-text">lazy spawn/join chain, four 200 ms workers: 809.402756ms (sum 4)
 collect first, then join:              203.482125ms (sum 4)
 </code></pre>
-<p>The fix is one <code>collect()</code> between the two <code>map</code>s. Chapter 18 drew the same lesson from the
-thread pool. A concurrency test that checks only the answer cannot tell parallel from serial. Put a
-barrier in it, as <code>thread_pool_v2</code>’s <code>jobs_run_at_the_same_time</code> does, or time it.</p>
+<p>The fix is a single <code>collect()</code> between the two <code>map</code> calls. The same concurrency principle appeared in the thread pool analysis of chapter 18: a test that checks only the final numerical result cannot distinguish parallel execution from serial execution. Verifying concurrency requires either a synchronization barrier (as in <code>thread_pool_v2</code>’s <code>jobs_run_at_the_same_time</code>) or a wall-clock timing assertion.</p>
 <h2 id="304-running-a-round"><a class="header" href="#304-running-a-round">30.4 Running a round</a></h2>
-<p>A 45-minute coding round has a shape. Planning it keeps the last ten minutes, where most of the
-signal is, from being spent debugging (figure 30.1).</p>
+<p>A 45-minute coding round follows a predictable arc. Budgeting time deliberately keeps the final ten minutes, where the strongest engineering signal emerges, free from last-minute debugging (figure 30.1).</p>
 <figure>
 <img src="figures/ch23-round.svg" alt="A bar split into 0 to 5 minutes clarify, 5 to 10 types first, 10 to 30 happy path then edge cases, 30 to 38 tests, 38 to 45 failure modes">
 <figcaption><b>Figure 30.1</b> One way to spend a 45-minute round. The proportions matter more than the exact minutes.</figcaption>
 </figure>
 <ul>
-<li><strong>Clarify.</strong> Ask what the inputs are, what should happen on bad input, and what the limits are (size,
-concurrency, latency). Each answer becomes a type or a check.</li>
-<li><strong>Types first.</strong> Write the enums, newtypes, and signatures before the bodies. A <code>Result&lt;T, ParseError&gt;</code>
-return type decided in minute six saves a rewrite in minute twenty-five.</li>
-<li><strong>The happy path, then each edge.</strong> Get one case working end to end, then add the edges you listed.</li>
-<li><strong>Tests.</strong> Test the edges you named, not only the example given.</li>
-<li><strong>Failure modes.</strong> Say what breaks at scale and what you would change: the reference versions in this
-book are that list, written out.</li>
+<li><strong>Clarify.</strong> Establish the input contracts, invalid-input behavior, and operational bounds (size, concurrency, latency). Each constraint translates directly into a type or guard check.</li>
+<li><strong>Types first.</strong> Define enums, newtypes, and function signatures before writing function bodies. Choosing a <code>Result&lt;T, ParseError&gt;</code> return type in minute six avoids a structural rewrite in minute twenty-five.</li>
+<li><strong>The happy path, then each edge.</strong> Get a single end-to-end case compiling and passing, then layer in the edge cases identified during clarification.</li>
+<li><strong>Tests.</strong> Exercise the boundary conditions explicitly rather than testing only the prompt’s happy-path example.</li>
+<li><strong>Failure modes.</strong> Articulate what degrades at scale and how the design would evolve in production; the reference implementations throughout this book serve as that checklist.</li>
 </ul>
 <h2 id="305-practicing-with-this-repository"><a class="header" href="#305-practicing-with-this-repository">30.5 Practicing with this repository</a></h2>
-<p>The repository is set up for the drill loop that the problem index in appendix C describes. Write a
-minimal correct version in 30 to 45 minutes, then explain its failure modes and how you would test them.</p>
+<p>The repository supports the structured rehearsal loop described in the problem index: write a minimal correct implementation in 30 to 45 minutes, then analyze its failure modes and verification strategy.</p>
 <ol>
-<li>Pick a drill. Read its chapter once.</li>
-<li>Close the book and the file. Write it from an empty buffer, in a scratch binary under <code>src/bin/</code>.</li>
-<li>Run <code>cargo test</code> on it, then run the reference tests: <code>cargo test thread_pool</code>, <code>cargo test bounded_queue</code>, <code>cargo test --bin http_server</code>.</li>
-<li>Compare with the reference. Write down what you left out, and whether it was a choice.</li>
-<li>Say the failure modes out loud, as if to a reviewer.</li>
+<li>Select a drill and read its reference chapter once.</li>
+<li>Close the book and the reference file, then implement the structure from a blank buffer in a scratch binary under <code>src/bin/</code>.</li>
+<li>Run <code>cargo test</code> on the implementation, followed by the reference test suites (<code>cargo test thread_pool</code>, <code>cargo test bounded_queue</code>, <code>cargo test --bin http_server</code>).</li>
+<li>Diff against the reference implementation, noting every omission and whether it was an intentional trade-off.</li>
+<li>Walk through the failure modes aloud as if presenting to a design reviewer.</li>
 </ol>
-<p>The chapters’ “Questions that come up” sections are the follow-ups to rehearse. The history
-this book has followed, eleven merges, nine pools, six buffers, is what that loop looks like when you keep
-the drafts.</p>
+<p>The “Questions that come up” sections at the end of each chapter provide the follow-up prompts to rehearse. The progression traced across this book (eleven merge variants, nine pools, and six buffers) illustrates what that iterative refinement loop produces when intermediate drafts are preserved.</p>
 <h2 id="306-questions-that-come-up"><a class="header" href="#306-questions-that-come-up">30.6 Questions that come up</a></h2>
 <p><strong>“Your parallel sum gives the right answer. Is it parallel?”</strong>
 Check that all threads are spawned before any is joined. A lazy iterator that spawns and joins in one
@@ -888,6 +869,7 @@ By the question’s scope. Name what a full version adds, and where it would cha
 
         <!-- Custom JS scripts -->
         <script src="theme/anim-4192821e.js"></script>
+        <script src="theme/book-ui-621ed017.js"></script>
 
 
 
