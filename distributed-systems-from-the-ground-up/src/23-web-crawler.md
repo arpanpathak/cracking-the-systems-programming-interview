@@ -13,7 +13,7 @@ In this chapter, we cover
 - control-plane vs. data-plane separation across the Seed Coordinator, DNS and `robots.txt` caches, host-partitioned frontier shards, async fetcher pools, and object storage
 - Mercator two-stage politeness frontier (priority front queues, per-host back queues, and next-fetch min-heap), consistent-hash host ownership, and adaptive `429` backoff
 - URL canonicalization, sharded Bloom filter + RocksDB seen-set deduplication, 64-bit SimHash / MinHash near-duplicate detection, spider-trap budgets, and conditional `304` revisit scheduling
-- failure matrices, crawl SLIs/SLOs, production architectures (Googlebot, Mercator, IRLbot, Common Crawl), and verification via `code/crawlsim`
+- failure matrices, crawl SLIs/SLOs, production architectures (Googlebot, Mercator, IRLbot, Common Crawl), and verification via [`code/crawlsim`](https://github.com/arpanpathak/cracking-the-systems-programming-interview/tree/prep-v2/distributed-systems-from-the-ground-up/code/crawlsim)
 
 </div>
 
@@ -318,7 +318,7 @@ Four domain-specific Service Level Indicators govern crawl efficiency and extern
 
 ## 23.7 Simulation Verification
 
-To verify per-host politeness scheduling, URL-seen deduplication, and per-host spider-trap page budgets, execute the `crawlsim` crate in the repository's `code/` workspace:
+To verify per-host politeness scheduling, URL-seen deduplication, and per-host spider-trap page budgets, execute the `crawlsim` crate in the repository's [`code/`](https://github.com/arpanpathak/cracking-the-systems-programming-interview/tree/prep-v2/distributed-systems-from-the-ground-up/code) workspace:
 
 ```console
 $ cargo run --release -p crawlsim

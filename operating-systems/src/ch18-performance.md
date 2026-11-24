@@ -21,7 +21,7 @@ Sequential scans mask much of `DRAM` latency because the processor's **hardware 
 <img src="figures/ch18_pyramid.svg" alt="The memory hierarchy pyramid: registers and caches at the top, DRAM, SSD, and network below"/>
 </figure>
 
-**Listing 18-1. Reading a buffer with a stride of 64 bytes (C++20).**
+**Listing 18-1. Reading a buffer with a stride of 64 bytes (C++20).** ([`code/ch18/cache_bench.cpp`](https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/operating-systems/code/ch18/cache_bench.cpp))
 
 ```cpp
 {{#include ../code/ch18/cache_bench.cpp}}
@@ -33,7 +33,7 @@ Sequential scans mask much of `DRAM` latency because the processor's **hardware 
 {{#include ../code/out/ch18_cache_bench.out}}
 ```
 
-**Listing 18-2. The same program in Rust.**
+**Listing 18-2. The same program in Rust.** ([`code/ch18/cache_bench.rs`](https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/operating-systems/code/ch18/cache_bench.rs))
 
 ```rust
 {{#include ../code/ch18/cache_bench.rs}}
@@ -87,7 +87,7 @@ Performance engineering is empirical: measure hardware `PMU` counters (`IPC`, `L
 <div class="callout experiment">
 <span class="label">Experiment</span>
 
-Compile Listing 18-1 (`code/ch18/cache_bench.cpp`) with `-O2` and run it; then change the stride from `64` bytes to `4,096` bytes to observe `dTLB` misses compounding `L2`/`L3` cache misses as the working set grows from 4 KiB to 64 MiB.
+Compile Listing 18-1 ([`code/ch18/cache_bench.cpp`](https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/operating-systems/code/ch18/cache_bench.cpp)) with `-O2` and run it; then change the stride from `64` bytes to `4,096` bytes to observe `dTLB` misses compounding `L2`/`L3` cache misses as the working set grows from 4 KiB to 64 MiB.
 
 </div>
 

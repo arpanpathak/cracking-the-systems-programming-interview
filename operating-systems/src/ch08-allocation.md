@@ -49,7 +49,7 @@ When all arena-resident nodes share a single homogeneous type `T` (such as abstr
 - **Zero-cost bulk reclamation:** `reset()` calls `clear()`, reclaiming all nodes in O(1) while retaining the backing capacity for the next request or frame.
 - **Production adoption:** Compilers (including `rustc` and LLVM), query planners, and Entity Component Systems (ECS) rely heavily on index-addressed arenas for cyclic graphs and syntax trees.
 
-**Listing 8-1. Level 1 arena: a safe, contiguous index pool allocating a 10,000-node list (C++20).**
+**Listing 8-1. Level 1 arena: a safe, contiguous index pool allocating a 10,000-node list (C++20).** ([`code/ch08/index_arena.cpp`](https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/operating-systems/code/ch08/index_arena.cpp))
 
 ```cpp
 {{#include ../code/ch08/index_arena.cpp}}
@@ -61,7 +61,7 @@ When all arena-resident nodes share a single homogeneous type `T` (such as abstr
 {{#include ../code/out/ch08_index_arena.out}}
 ```
 
-**Listing 8-2. The same zero-`unsafe` index arena in Rust.**
+**Listing 8-2. The same zero-`unsafe` index arena in Rust.** ([`code/ch08/index_arena.rs`](https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/operating-systems/code/ch08/index_arena.rs))
 
 ```rust
 {{#include ../code/ch08/index_arena.rs}}
@@ -88,7 +88,7 @@ The Level 1 `Arena<T>` in Listing 8-2 supports O(1) bulk `reset()`, yet it canno
 <img src="figures/ch08_gen_arena.svg" alt="Generational arena with intrusive free list showing stale handle rejection versus textbook LinkedList and Linux intrusive list_head plus SLUB"/>
 </figure>
 
-**Listing 8-3. Level 2 arena: a generational arena with an intrusive free list (C++20).**
+**Listing 8-3. Level 2 arena: a generational arena with an intrusive free list (C++20).** ([`code/ch08/gen_arena.cpp`](https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/operating-systems/code/ch08/gen_arena.cpp))
 
 ```cpp
 {{#include ../code/ch08/gen_arena.cpp}}
@@ -100,7 +100,7 @@ The Level 1 `Arena<T>` in Listing 8-2 supports O(1) bulk `reset()`, yet it canno
 {{#include ../code/out/ch08_gen_arena.out}}
 ```
 
-**Listing 8-4. The same zero-`unsafe` generational arena with intrusive free list in Rust.**
+**Listing 8-4. The same zero-`unsafe` generational arena with intrusive free list in Rust.** ([`code/ch08/gen_arena.rs`](https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/operating-systems/code/ch08/gen_arena.rs))
 
 ```rust
 {{#include ../code/ch08/gen_arena.rs}}
@@ -122,7 +122,7 @@ The computational complexity of allocation in a bump allocator is O(1), consisti
 <img src="figures/ch08_bump.svg" alt="Bump allocator sequential byte layout showing 8-byte, 3-byte, 5-byte alignment padding, and 16-byte aligned allocations"/>
 </figure>
 
-**Listing 8-5. Level 3 arena: an `mmap`-backed bump allocator with explicit alignment rounding (C++20).**
+**Listing 8-5. Level 3 arena: an `mmap`-backed bump allocator with explicit alignment rounding (C++20).** ([`code/ch08/bump.cpp`](https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/operating-systems/code/ch08/bump.cpp))
 
 ```cpp
 {{#include ../code/ch08/bump.cpp}}
@@ -134,7 +134,7 @@ The computational complexity of allocation in a bump allocator is O(1), consisti
 {{#include ../code/out/ch08_bump.out}}
 ```
 
-**Listing 8-6. The same `mmap`-backed bump allocator in Rust.**
+**Listing 8-6. The same `mmap`-backed bump allocator in Rust.** ([`code/ch08/bump.rs`](https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/operating-systems/code/ch08/bump.rs))
 
 ```rust
 {{#include ../code/ch08/bump.rs}}
@@ -190,7 +190,7 @@ The allocator's performance and fragmentation profile are governed by three poli
 <img src="figures/ch08_freelist.svg" alt="Free-list allocator unified trace showing initial allocations, block splitting of 200 B into 150 B plus 26 B, and coalescing back to 200 B"/>
 </figure>
 
-**Listing 8-7. A first-fit free-list allocator with splitting and coalescing (C++20).**
+**Listing 8-7. A first-fit free-list allocator with splitting and coalescing (C++20).** ([`code/ch08/free_list.cpp`](https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/operating-systems/code/ch08/free_list.cpp))
 
 ```cpp
 {{#include ../code/ch08/free_list.cpp}}
@@ -202,7 +202,7 @@ The allocator's performance and fragmentation profile are governed by three poli
 {{#include ../code/out/ch08_free_list.out}}
 ```
 
-**Listing 8-8. The same free-list allocator in Rust.**
+**Listing 8-8. The same free-list allocator in Rust.** ([`code/ch08/free_list.rs`](https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/operating-systems/code/ch08/free_list.rs))
 
 ```rust
 {{#include ../code/ch08/free_list.rs}}
@@ -250,7 +250,7 @@ Memory allocators reconcile kernel page granularity with fine-grained object lif
 <div class="callout experiment">
 <span class="label">Experiment</span>
 
-In Listing 8-4 (`code/ch08/gen_arena.rs`), comment out the `slot.generation += 1` increment inside `remove()` and re-run. Observe how the stale `alpha` handle returns `"gamma"` without error from the recycled slot instead of `None`, demonstrating the logical ABA hazard of plain integer indices.
+In Listing 8-4 ([`code/ch08/gen_arena.rs`](https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/operating-systems/code/ch08/gen_arena.rs)), comment out the `slot.generation += 1` increment inside `remove()` and re-run. Observe how the stale `alpha` handle returns `"gamma"` without error from the recycled slot instead of `None`, demonstrating the logical ABA hazard of plain integer indices.
 
 </div>
 

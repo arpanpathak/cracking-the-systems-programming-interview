@@ -14,7 +14,7 @@ In this chapter, we cover
 - Stripe-style atomic-phase execution and recovery points that eliminate database locks during slow external PSP RPCs while modeling network timeouts as a first-class `UNKNOWN` state
 - immutable double-entry ledger invariants, deterministic rounding/remainder allocation, and `K`-way hot-account sub-account sharding to eliminate row-lock serialization
 - transactional outbox with WAL CDC, saga compensation semantics, and T+0 to T+2 three-way financial reconciliation across internal ledger, PSP clearing files, and bank statements
-- failure matrices, financial SLIs, production architectures (Stripe, Adyen, Uber LedgerStore, TigerBeetle), and verification via `code/paysim`
+- failure matrices, financial SLIs, production architectures (Stripe, Adyen, Uber LedgerStore, TigerBeetle), and verification via [`code/paysim`](https://github.com/arpanpathak/cracking-the-systems-programming-interview/tree/prep-v2/distributed-systems-from-the-ground-up/code/paysim)
 
 </div>
 
@@ -222,7 +222,7 @@ Mutating a single `accounts.balance` column in place destroys audit provenance a
 
 Binary IEEE-754 floating-point values (`f32`/`f64`) cannot represent decimal tenths exactly (`0.10 + 0.20 != 0.30` in binary), accumulating unexplained cent discrepancies across millions of percentage fees and currency conversions. Storing all amounts as signed 64-bit integer minor units paired with an ISO-4217 currency code guarantees exact integer arithmetic. Whenever a percentage fee or multi-way payout split produces a fractional cent (such as dividing `100` cents across `3` recipients), the ledger applies a deterministic rounding policy (round-half-even or largest-remainder allocation) and routes the exact integer remainder to a designated remainder account so the transaction remains strictly zero-sum.
 
-Executing `code/paysim` validates idempotent replay (`order-7`, `order-9`), cached refusal replay (`order-8`), and zero-sum conservation (`10,000` cents total before and after all operations):
+Executing [`code/paysim`](https://github.com/arpanpathak/cracking-the-systems-programming-interview/tree/prep-v2/distributed-systems-from-the-ground-up/code/paysim) validates idempotent replay (`order-7`, `order-9`), cached refusal replay (`order-8`), and zero-sum conservation (`10,000` cents total before and after all operations):
 
 ```console
 $ cargo run --release -p paysim
@@ -313,7 +313,7 @@ Four specialized signals monitor financial integrity beyond standard HTTP metric
 
 <div class="simulation">
 
-**Run the payment ledger and idempotency simulation.** Execute `cargo run --release -p paysim` in `code/` to verify idempotent deduplication (`order-7`, `order-9`), cached insufficient-funds refusal replay (`order-8`), and strict zero-sum double-entry conservation across all operations.
+**Run the payment ledger and idempotency simulation.** Execute `cargo run --release -p paysim` in [`code/`](https://github.com/arpanpathak/cracking-the-systems-programming-interview/tree/prep-v2/distributed-systems-from-the-ground-up/code) to verify idempotent deduplication (`order-7`, `order-9`), cached insufficient-funds refusal replay (`order-8`), and strict zero-sum double-entry conservation across all operations.
 
 </div>
 
@@ -363,6 +363,6 @@ An online card charge (`POST /v1/payments`) spans six strict isolation boundarie
 
 <div class="callout keyidea"><span class="label">Key idea</span> Holding an open relational database transaction across an external acquiring-bank RPC exhausts connection pools whenever a downstream bank slows down. Split each payment into short local ACID recovery phases separated by lock-free external network calls so retries resume deterministically without wedging the ledger.</div>
 
-<div class="callout experiment"><span class="label">Experiment</span> In `code/paysim`, replay the identical `order-7` idempotency key three times in succession and inspect the resulting ledger journal. Confirm that the sum of all debit entries equals the sum of all credit entries strictly to zero and that the customer balance decrements once rather than three times.</div>
+<div class="callout experiment"><span class="label">Experiment</span> In [`code/paysim`](https://github.com/arpanpathak/cracking-the-systems-programming-interview/tree/prep-v2/distributed-systems-from-the-ground-up/code/paysim), replay the identical `order-7` idempotency key three times in succession and inspect the resulting ledger journal. Confirm that the sum of all debit entries equals the sum of all credit entries strictly to zero and that the customer balance decrements once rather than three times.</div>
 
 <div class="callout caution"><span class="label">Common pitfall</span> Treating a client-side HTTP timeout during an external PSP call as a confirmed payment failure causes automatic retries to double-charge cardholders when the issuer actually approved the first request. Transition timed-out charges into an `UNKNOWN` reconciliation state and query the PSP's status API with the same idempotency key before issuing a retry or refund.</div>

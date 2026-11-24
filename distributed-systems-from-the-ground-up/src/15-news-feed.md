@@ -13,7 +13,7 @@ In this chapter, we cover
 - actors, use cases, functional requirements, latency and availability SLOs, explicit non-goals, and cache, storage, and fan-out capacity bounds
 - external HTTP/2 contracts for publishing, cursor-paginated feed retrieval, social-graph edges, and normalized storage schemas
 - separation of the control plane (ranking model registry, celebrity fan-out thresholds, social graph) from the asynchronous publish and read-assembly data plane
-- push fan-out on write, pull fan-out on read, and hybrid K-way merge backed by interactive traces and `code/feedsim` measurements
+- push fan-out on write, pull fan-out on read, and hybrid K-way merge backed by interactive traces and [`code/feedsim`](https://github.com/arpanpathak/cracking-the-systems-programming-interview/tree/prep-v2/distributed-systems-from-the-ground-up/code/feedsim) measurements
 - keyset cursor pagination, read-time hydration and safety filtering, multi-stage ML candidate ranking, hot-celebrity outbox caching, and author read-own-writes guarantees
 - failure-mode mitigation matrices, operational SLIs, production architectures (Twitter/X Home Timeline, Meta Multifeed and TAO, LinkedIn FollowFeed), and simulation verification
 
@@ -240,7 +240,7 @@ Pure pull eliminates write amplification and wasted work for inactive readers, a
 
 ### Hybrid Fan-Out and Threshold Calibration
 
-Real social graphs exhibit extreme degree skew: in `code/feedsim`, modeling `1,000` ordinary accounts (`200` followers each, `2` posts/day, `20` reads/day) alongside **one** celebrity account (`2,000,000` followers, `10` posts/day) reveals that the single celebrity generates `20,000,000` of the `20,400,000` daily push copies (`98.0%` of total write load). Conversely, pure pull executes `4,000,500` daily outbox fetches, `99.5%` of which come from ordinary accounts.
+Real social graphs exhibit extreme degree skew: in [`code/feedsim`](https://github.com/arpanpathak/cracking-the-systems-programming-interview/tree/prep-v2/distributed-systems-from-the-ground-up/code/feedsim), modeling `1,000` ordinary accounts (`200` followers each, `2` posts/day, `20` reads/day) alongside **one** celebrity account (`2,000,000` followers, `10` posts/day) reveals that the single celebrity generates `20,000,000` of the `20,400,000` daily push copies (`98.0%` of total write load). Conversely, pure pull executes `4,000,500` daily outbox fetches, `99.5%` of which come from ordinary accounts.
 
 Hybrid fan-out partitions authors by a follower threshold $T_{\text{celeb}}$ (`10,000` in the simulation, typically `50,000 to 100,000` in production systems such as Twitter/X) (Figure 15-3).
 
@@ -382,6 +382,6 @@ A `GET /v1/feeds/home` request traverses six network and storage boundaries from
 
 <div class="callout keyidea"><span class="label">Key idea</span> Hybrid fan-out decouples write amplification from read amplification by placing a follower-count threshold between two complementary storage paths. Ordinary accounts pay a small asynchronous write cost to keep reads sub-50 ms, while celebrity accounts absorb zero fan-out storms by deferring merge work to read-time cached outboxes.</div>
 
-<div class="callout experiment"><span class="label">Experiment</span> In `code/feedsim`, raise the celebrity cutoff from `10,000` to `5,000,000` and compare daily copy volume against the default hybrid configuration. Observe how a single high-follower author shifts `98%` of total cluster write traffic back onto the fan-out workers while barely changing read-side list fetches.</div>
+<div class="callout experiment"><span class="label">Experiment</span> In [`code/feedsim`](https://github.com/arpanpathak/cracking-the-systems-programming-interview/tree/prep-v2/distributed-systems-from-the-ground-up/code/feedsim), raise the celebrity cutoff from `10,000` to `5,000,000` and compare daily copy volume against the default hybrid configuration. Observe how a single high-follower author shifts `98%` of total cluster write traffic back onto the fan-out workers while barely changing read-side list fetches.</div>
 
 <div class="callout caution"><span class="label">Common pitfall</span> Caching full post bodies inside every follower's Redis inbox multiplies memory footprint by average follower count and makes edits, deletions, and moderation takedowns eventually inconsistent. Store compact `(timestamp, post_id)` references in the inbox and hydrate authoritative content and visibility flags once at read time.</div>

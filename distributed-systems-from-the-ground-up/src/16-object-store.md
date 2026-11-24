@@ -15,7 +15,7 @@ In this chapter, we cover
 - separation of the control plane (metadata cluster, failure-domain placement controller, background scrubber and garbage collector) from the stateless chunking and erasure-coding data plane
 - Reed-Solomon `RS(6, 3)` coding over `GF(2^8)`, failure-domain placement across three availability zones, Copyset correlation control, continuous bit-rot scrubbing, and MTTR-driven durability
 - write-chunks-first atomic metadata commits, resumable multipart sealing, small-object Haystack packing, versioning, and grace-period garbage collection
-- failure-mode mitigation matrices, operational SLIs, production architectures (Amazon S3, Ceph RADOS, Facebook Haystack and f4, Azure Storage LRC), and verification via `code/objectsim`
+- failure-mode mitigation matrices, operational SLIs, production architectures (Amazon S3, Ceph RADOS, Facebook Haystack and f4, Azure Storage LRC), and verification via [`code/objectsim`](https://github.com/arpanpathak/cracking-the-systems-programming-interview/tree/prep-v2/distributed-systems-from-the-ground-up/code/objectsim)
 
 </div>
 
@@ -63,7 +63,7 @@ Object stores achieve petabyte scale specifically by omitting expensive POSIX fi
 
 - **No in-place partial overwrites or appends:** Modifying a single byte requires uploading a new immutable object version; POSIX byte-range locking and random writes belong to block stores or distributed file systems.
 - **No atomic directory renames:** Slashes inside keys (such as `2026/11/video.mp4`) are visual prefix conventions only; renaming a prefix requires copying each underlying object metadata entry.
-- **No cross-tenant deduplication:** Although content-addressed chunks support deduplication within a single tenant or backup domain (as demonstrated in `code/objectsim`), public multi-tenant stores prohibit cross-customer deduplication because timing side channels would allow one tenant to probe whether another tenant holds a specific file.
+- **No cross-tenant deduplication:** Although content-addressed chunks support deduplication within a single tenant or backup domain (as demonstrated in [`code/objectsim`](https://github.com/arpanpathak/cracking-the-systems-programming-interview/tree/prep-v2/distributed-systems-from-the-ground-up/code/objectsim)), public multi-tenant stores prohibit cross-customer deduplication because timing side channels would allow one tenant to probe whether another tenant holds a specific file.
 
 ### Back-of-the-Envelope Capacity Bounds
 
@@ -181,7 +181,7 @@ We isolate namespace metadata, failure-domain topology management, and backgroun
 ### Write and Read Lifecycles
 
 **Write path (`PUT /v1/buckets/{b}/{key}`):**
-1. The Object API Gateway verifies caller credentials (or presigned HMAC token + expiration), validates bucket policy, and streams incoming bytes in `64 MB` chunks (`4 MB` in `code/objectsim`).
+1. The Object API Gateway verifies caller credentials (or presigned HMAC token + expiration), validates bucket policy, and streams incoming bytes in `64 MB` chunks (`4 MB` in [`code/objectsim`](https://github.com/arpanpathak/cracking-the-systems-programming-interview/tree/prep-v2/distributed-systems-from-the-ground-up/code/objectsim)).
 2. For each chunk, the gateway computes its cryptographic content hash (`SHA-256`) and hardware-accelerated `CRC32C`. For small hot objects (`< 1 MB`), it selects a 3-way replicated placement group; for large objects (`>= 1 MB`), it splits the `64 MB` chunk into `6` equal `10.67 MB` data shards and computes `3` Reed-Solomon parity shards via SIMD `GF(2^8)` arithmetic.
 3. The gateway writes all `9` shards concurrently to the `9` distinct disks assigned to the chosen Placement Group (`3` shards in AZ-1, `3` in AZ-2, `3` in AZ-3). A chunk write succeeds once at least `8` of `9` shards acknowledge durable `fsync` (strict quorum with immediate asynchronous repair of the 9th shard if one disk is transiently slow), or all `9` under strict full-stripe durability mode.
 4. **Atomic metadata commit (last step):** Only after every chunk of the object is durably persisted on storage nodes does the gateway write the single `object_manifests` row to the Metadata Cluster and return `201 Created`. An interrupted upload never exposes a half-written or dangling object name.

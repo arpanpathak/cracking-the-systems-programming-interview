@@ -35,7 +35,7 @@ Classical scheduling theory establishes three foundational policies that formali
 <img src="figures/ch05_gantt.svg" alt="Gantt charts for FCFS, SJF, and round-robin on jobs of length 10, 5, and 5"/>
 </figure>
 
-**Listing 5-1. A simulator for FCFS, SJF, and RR (C++20).**
+**Listing 5-1. A simulator for FCFS, SJF, and RR (C++20).** ([`code/ch05/sched_sim.cpp`](https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/operating-systems/code/ch05/sched_sim.cpp))
 
 ```cpp
 {{#include ../code/ch05/sched_sim.cpp}}
@@ -47,7 +47,7 @@ Classical scheduling theory establishes three foundational policies that formali
 {{#include ../code/out/ch05_sched.out}}
 ```
 
-**Listing 5-2. The same simulator in Rust.**
+**Listing 5-2. The same simulator in Rust.** ([`code/ch05/sched_sim.rs`](https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/operating-systems/code/ch05/sched_sim.rs))
 
 ```rust
 {{#include ../code/ch05/sched_sim.rs}}
@@ -145,7 +145,7 @@ Modern kernels resolve this contention by partitioning scheduling state into **p
 <div class="callout experiment">
 <span class="label">Experiment</span>
 
-Modify Listing 5-1 (`code/ch05/sched.cpp`) to add one long-running 500 ms CPU-bound job at `t = 0` ahead of five 5 ms interactive jobs. Compare the average response time under First-Come, First-Served (`FCFS`) versus Round-Robin (`RR`) with a 10 ms quantum to observe the convoy effect directly.
+Modify Listing 5-1 ([`code/ch05/sched_sim.cpp`](https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/operating-systems/code/ch05/sched_sim.cpp)) to add one long-running 500 ms CPU-bound job at `t = 0` ahead of five 5 ms interactive jobs. Compare the average response time under First-Come, First-Served (`FCFS`) versus Round-Robin (`RR`) with a 10 ms quantum to observe the convoy effect directly.
 
 </div>
 

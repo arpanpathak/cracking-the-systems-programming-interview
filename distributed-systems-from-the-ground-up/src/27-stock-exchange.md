@@ -13,7 +13,7 @@ In this chapter, we cover
 - control-plane surveillance and risk limits separated from the zero-allocation deterministic matching data plane and microsecond latency budgets
 - price-time priority limit order book mechanics and intrusive doubly-linked-list data structures delivering `O(1)` cancellations with zero heap allocation
 - single-threaded mechanical sympathy, cache-line-padded LMAX Disruptor ring buffers, pre-trade risk enforcement, and deterministic active-passive standby failover via replicated sequencer journals
-- failure recovery matrices, exchange SLIs, production architectures (LMAX, Nasdaq, IEX, CME Globex), and simulation verification via `code/matchsim`
+- failure recovery matrices, exchange SLIs, production architectures (LMAX, Nasdaq, IEX, CME Globex), and simulation verification via [`code/matchsim`](https://github.com/arpanpathak/cracking-the-systems-programming-interview/tree/prep-v2/distributed-systems-from-the-ground-up/code/matchsim)
 
 </div>
 
@@ -301,7 +301,7 @@ To disseminate market data fairly without allowing a slow TCP subscriber to stal
 
 ## 27.7 Simulation Verification
 
-Running `code/matchsim` executes a deterministic price-time priority limit order book across seven incoming orders, exercising resting spread formation, FIFO partial fills at identical prices (`1005`), multi-level book sweeps, and passive price improvement (`order 7` selling with limit `995` fills at resting buy prices `1010` and `1000`).
+Running [`code/matchsim`](https://github.com/arpanpathak/cracking-the-systems-programming-interview/tree/prep-v2/distributed-systems-from-the-ground-up/code/matchsim) executes a deterministic price-time priority limit order book across seven incoming orders, exercising resting spread formation, FIFO partial fills at identical prices (`1005`), multi-level book sweeps, and passive price improvement (`order 7` selling with limit `995` fills at resting buy prices `1010` and `1000`).
 
 ```console
 $ cargo run --release -p matchsim
@@ -330,7 +330,7 @@ Verify every invariant directly from the transcript:
 
 <div class="simulation">
 
-**Run the deterministic matching engine simulation.** Execute `cargo run --release -p matchsim` in `code/` to verify price-time FIFO ordering, passive price execution, multi-level sweeps, and share conservation (`200` shares traded, `10` remaining at `1000`).
+**Run the deterministic matching engine simulation.** Execute `cargo run --release -p matchsim` in [`code/`](https://github.com/arpanpathak/cracking-the-systems-programming-interview/tree/prep-v2/distributed-systems-from-the-ground-up/code) to verify price-time FIFO ordering, passive price execution, multi-level sweeps, and share conservation (`200` shares traded, `10` remaining at `1000`).
 
 </div>
 

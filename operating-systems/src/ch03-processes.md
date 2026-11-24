@@ -85,7 +85,7 @@ The process's memory is organized into a structured address space, which provide
 <img src="figures/ch03_address_space.svg" alt="Process address space: text, data, BSS, heap growing up, stack growing down, kernel at the top"/>
 </figure>
 
-**Listing 3-1. Printing one address from each region (C++20).**
+**Listing 3-1. Printing one address from each region (C++20).** ([`code/ch03/layout.cpp`](https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/operating-systems/code/ch03/layout.cpp))
 
 ```cpp
 {{#include ../code/ch03/layout.cpp}}
@@ -97,7 +97,7 @@ The process's memory is organized into a structured address space, which provide
 {{#include ../code/out/ch03_layout.out}}
 ```
 
-**Listing 3-2. The same program in Rust (2024 edition).**
+**Listing 3-2. The same program in Rust (2024 edition).** ([`code/ch03/layout.rs`](https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/operating-systems/code/ch03/layout.rs))
 
 ```rust
 {{#include ../code/ch03/layout.rs}}
@@ -137,7 +137,7 @@ To collect a terminated child and release its zombie PCB, the parent invokes `wa
 <img src="figures/ch03_fork.svg" alt="fork copies the process; parent receives the child PID, child receives 0"/>
 </figure>
 
-**Listing 3-3. fork, waitpid, and the exit status (C++20).**
+**Listing 3-3. fork, waitpid, and the exit status (C++20).** ([`code/ch03/fork.cpp`](https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/operating-systems/code/ch03/fork.cpp))
 
 ```cpp
 {{#include ../code/ch03/fork.cpp}}
@@ -149,7 +149,7 @@ To collect a terminated child and release its zombie PCB, the parent invokes `wa
 {{#include ../code/out/ch03_fork.out}}
 ```
 
-**Listing 3-4. The same sequence in Rust, using the libc crate.**
+**Listing 3-4. The same sequence in Rust, using the libc crate.** ([`code/ch03/fork.rs`](https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/operating-systems/code/ch03/fork.rs))
 
 ```rust
 {{#include ../code/ch03/fork.rs}}
@@ -199,7 +199,7 @@ Splitting process creation into `fork()` (clone) and `execve()` (replace) allows
 <div class="callout experiment">
 <span class="label">Experiment</span>
 
-Run Listing 3-3 (`code/ch03/fork.cpp`) with stdout redirected to a file (`./fork > /tmp/out.txt && cat /tmp/out.txt`) and then remove `fflush(stdout)` before `fork()`. Notice how `before fork` prints **twice** because full block buffering retains the line in user-space `stdio` memory, duplicating it across the `fork()` boundary.
+Run Listing 3-3 ([`code/ch03/fork.cpp`](https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/operating-systems/code/ch03/fork.cpp)) with stdout redirected to a file (`./fork > /tmp/out.txt && cat /tmp/out.txt`) and then remove `fflush(stdout)` before `fork()`. Notice how `before fork` prints **twice** because full block buffering retains the line in user-space `stdio` memory, duplicating it across the `fork()` boundary.
 
 </div>
 

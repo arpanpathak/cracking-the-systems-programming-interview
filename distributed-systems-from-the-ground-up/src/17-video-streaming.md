@@ -15,7 +15,7 @@ In this chapter, we cover
 - separation of the control plane (ingest coordination, DAG scheduler, manifest and DRM service), offline transcoding plane, and multi-tier CDN playback plane
 - chunked parallel DAG transcoding across closed-GOP keyframes, unified CMAF packaging, per-title VMAF bitrate optimization, and permanent source archival
 - client-side Adaptive Bitrate (ABR) control algorithms (throughput margin, BBA, BOLA, MPC), CDN origin shielding against stampedes, egress economics, and low-latency live streaming
-- failure-mode mitigation matrices, QoE SLIs, production architectures (Netflix Open Connect, YouTube, Twitch LL-HLS), and simulation verification via `code/streamsim`
+- failure-mode mitigation matrices, QoE SLIs, production architectures (Netflix Open Connect, YouTube, Twitch LL-HLS), and simulation verification via [`code/streamsim`](https://github.com/arpanpathak/cracking-the-systems-programming-interview/tree/prep-v2/distributed-systems-from-the-ground-up/code/streamsim)
 
 </div>
 

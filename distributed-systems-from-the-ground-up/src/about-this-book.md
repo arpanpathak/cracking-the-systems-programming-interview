@@ -26,7 +26,7 @@ Across every system design chapter, I adhere to an explicit engineering progress
 
 ## Companion Implementations and Prerequisites
 
-The companion `code/` directory contains the runnable Part I storage subsystems and the workload simulations cited across Parts II to VI, allowing readers to reproduce the throughput measurements, skew distributions, and crash-recovery experiments reported in the text.
+The companion [`code/`](https://github.com/arpanpathak/cracking-the-systems-programming-interview/tree/prep-v2/distributed-systems-from-the-ground-up/code) directory contains the runnable Part I storage subsystems and the workload simulations cited across Parts II to VI, allowing readers to reproduce the throughput measurements, skew distributions, and crash-recovery experiments reported in the text.
 
 For the system design chapters, I assume foundational knowledge of HTTP semantics, relational databases, data structures, and TCP/IP networking. For the low-level implementation chapters in Part I, I additionally assume reading familiarity with Rust. Every distributed systems primitive is derived when first introduced and consolidated in each chapter's engineering glossary.
 

@@ -26,7 +26,7 @@ It is critical to distinguish between **atomicity** and **memory ordering**. Ato
 <img src="figures/ch04_race_timeline.svg" alt="Timeline showing two threads loading 42, adding 1, and storing 43, losing one increment"/>
 </figure>
 
-**Listing 4-1. Eight threads increment one counter without synchronization (C++20).**
+**Listing 4-1. Eight threads increment one counter without synchronization (C++20).** ([`code/ch04/race.cpp`](https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/operating-systems/code/ch04/race.cpp))
 
 ```cpp
 {{#include ../code/ch04/race.cpp}}
@@ -38,7 +38,7 @@ It is critical to distinguish between **atomicity** and **memory ordering**. Ato
 {{#include ../code/out/ch04_race.out}}
 ```
 
-**Listing 4-2. The same race in Rust, written with `unsafe`.**
+**Listing 4-2. The same race in Rust, written with `unsafe`.** ([`code/ch04/race.rs`](https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/operating-systems/code/ch04/race.rs))
 
 ```rust
 {{#include ../code/ch04/race.rs}}
@@ -50,7 +50,7 @@ It is critical to distinguish between **atomicity** and **memory ordering**. Ato
 {{#include ../code/out/ch04_race_rs.out}}
 ```
 
-**Listing 4-3. The counter as a `std::atomic` (C++20).**
+**Listing 4-3. The counter as a `std::atomic` (C++20).** ([`code/ch04/race_atomic.cpp`](https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/operating-systems/code/ch04/race_atomic.cpp))
 
 ```cpp
 {{#include ../code/ch04/race_atomic.cpp}}
@@ -62,7 +62,7 @@ It is critical to distinguish between **atomicity** and **memory ordering**. Ato
 {{#include ../code/out/ch04_race_atomic.out}}
 ```
 
-**Listing 4-4. The atomic counter in Rust.**
+**Listing 4-4. The atomic counter in Rust.** ([`code/ch04/race_atomic.rs`](https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/operating-systems/code/ch04/race_atomic.rs))
 
 ```rust
 {{#include ../code/ch04/race_atomic.rs}}
@@ -103,7 +103,7 @@ Different systems programming languages enforce starkly different invariants acr
   - **`Send`:** Certifies that ownership of a type may be safely transferred across thread boundaries (precluding thread-pinned types such as non-atomic reference counters `Rc<T>` or raw pointers).
   - **`Sync`:** Certifies that a type may be safely referenced concurrently by multiple threads via shared immutable references (`T: Sync` if and only if `&T: Send`). Shared mutation across threads is statically rejected unless mediated by types implementing thread-safe interior mutability, such as atomic primitives (`AtomicU64`) or synchronization guards (`Arc<Mutex<T>>`).
 
-**Listing 4-5. Four threads in one process (C++20).**
+**Listing 4-5. Four threads in one process (C++20).** ([`code/ch04/threads.cpp`](https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/operating-systems/code/ch04/threads.cpp))
 
 ```cpp
 {{#include ../code/ch04/threads.cpp}}
@@ -115,7 +115,7 @@ Different systems programming languages enforce starkly different invariants acr
 {{#include ../code/out/ch04_threads.out}}
 ```
 
-**Listing 4-6. The same four threads in Rust.**
+**Listing 4-6. The same four threads in Rust.** ([`code/ch04/threads.rs`](https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/operating-systems/code/ch04/threads.rs))
 
 ```rust
 {{#include ../code/ch04/threads.rs}}
@@ -137,7 +137,7 @@ Threads share code, heap, and file descriptors through one `mm_struct` (avoiding
 <div class="callout experiment">
 <span class="label">Experiment</span>
 
-Compile Listing 4-1 (`code/ch04/race.cpp`) with `-fsanitize=thread` (`clang++ -std=c++20 -O2 -fsanitize=thread code/ch04/race.cpp -o /tmp/race && /tmp/race`) and observe ThreadSanitizer pinpointing the exact conflicting unsynchronized store instructions across threads. Compare its report against Listing 4-3 (`race_atomic.cpp`).
+Compile Listing 4-1 ([`code/ch04/race.cpp`](https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/operating-systems/code/ch04/race.cpp)) with `-fsanitize=thread` (`clang++ -std=c++20 -O2 -fsanitize=thread code/ch04/race.cpp -o /tmp/race && /tmp/race`) and observe ThreadSanitizer pinpointing the exact conflicting unsynchronized store instructions across threads. Compare its report against Listing 4-3 (`race_atomic.cpp`).
 
 </div>
 

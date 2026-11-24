@@ -51,7 +51,7 @@ Inside `struct sigaction`, `sa_handler` registers either a user callback `void h
 
 Calling `sigaction(signum, act, oldact)` atomically installs `act` for `signum` (any signal except `SIGKILL` and `SIGSTOP`) and optionally saves the prior disposition into `*oldact`, returning `0` on success or `-1` on error (`EINVAL`, `EFAULT`). Because the bit layout of `sigset_t` varies across kernels (64 bits on Linux; 32 bits on Darwin/`BSD`), callers construct masks exclusively with `sigemptyset(&set)` and `sigaddset(&set, signum)`. Updating the calling thread's blocked mask is performed atomically via `sigprocmask(how, set, oldset)` (or `pthread_sigmask` in multi-threaded programs), where `how` is `SIG_BLOCK` (`mask |= *set`), `SIG_UNBLOCK` (`mask &= ~(*set)`), or `SIG_SETMASK` (`mask = *set`), and `oldset` captures the prior mask for later restoration. If `SIG_UNBLOCK` exposes a signal waiting in the pending bitmask, the kernel delivers at least one pending unblocked signal **before `sigprocmask()` returns to user space**. Finally, `raise(sig)` delivers `sig` to the calling thread itself (equivalent to `kill(getpid(), sig)` in a single-threaded process).
 
-**Listing 10-1. Blocking, sending, and unblocking a signal (C++20).**
+**Listing 10-1. Blocking, sending, and unblocking a signal (C++20).** ([`code/ch10/signals.cpp`](https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/operating-systems/code/ch10/signals.cpp))
 
 ```cpp
 {{#include ../code/ch10/signals.cpp}}
@@ -63,7 +63,7 @@ Calling `sigaction(signum, act, oldact)` atomically installs `act` for `signum` 
 {{#include ../code/out/ch10_signals.out}}
 ```
 
-**Listing 10-2. The same steps in Rust, using the libc crate.**
+**Listing 10-2. The same steps in Rust, using the libc crate.** ([`code/ch10/signals.rs`](https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/operating-systems/code/ch10/signals.rs))
 
 ```rust
 {{#include ../code/ch10/signals.rs}}
@@ -83,7 +83,7 @@ Two signal properties dictate the exact shape of every correct `SIGCHLD` handler
 
 In Listings 10-3 and 10-4, the parent first spawns child `c1` without a handler and reaps it explicitly via blocking `waitpid(c1, &status, 0)`. After flushing `stdout` so `c2` does not inherit buffered output across `fork()`, the parent installs `on_sigchld` with `SA_RESTART` and spawns `c2`. When `c2` exits, `on_sigchld` reaps it immediately; the subsequent `waitpid(c2, &status, WNOHANG)` in `main()` therefore returns `-1` (`ECHILD`), confirming that no zombie remains.
 
-**Listing 10-3. Reaping one child directly and one child in a handler (C++20).**
+**Listing 10-3. Reaping one child directly and one child in a handler (C++20).** ([`code/ch10/sigchld.cpp`](https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/operating-systems/code/ch10/sigchld.cpp))
 
 ```cpp
 {{#include ../code/ch10/sigchld.cpp}}
@@ -95,7 +95,7 @@ In Listings 10-3 and 10-4, the parent first spawns child `c1` without a handler 
 {{#include ../code/out/ch10_sigchld.out}}
 ```
 
-**Listing 10-4. The same SIGCHLD reaping sequence in Rust.**
+**Listing 10-4. The same SIGCHLD reaping sequence in Rust.** ([`code/ch10/sigchld.rs`](https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/operating-systems/code/ch10/sigchld.rs))
 
 ```rust
 {{#include ../code/ch10/sigchld.rs}}
@@ -117,7 +117,7 @@ Standard `POSIX` signals (`1..31`) are single-bit flags (`deliverable = pending 
 <div class="callout experiment">
 <span class="label">Experiment</span>
 
-In Listing 10-3 (`code/ch10/sigchld.cpp`), spawn five children simultaneously after installing `on_sigchld` and replace the `while (waitpid(-1, &status, WNOHANG) > 0)` loop with a single `waitpid()` call. Inspect `ps` while the parent sleeps to observe leaked zombie processes caused by `SIGCHLD` coalescing.
+In Listing 10-3 ([`code/ch10/sigchld.cpp`](https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/operating-systems/code/ch10/sigchld.cpp)), spawn five children simultaneously after installing `on_sigchld` and replace the `while (waitpid(-1, &status, WNOHANG) > 0)` loop with a single `waitpid()` call. Inspect `ps` while the parent sleeps to observe leaked zombie processes caused by `SIGCHLD` coalescing.
 
 </div>
 

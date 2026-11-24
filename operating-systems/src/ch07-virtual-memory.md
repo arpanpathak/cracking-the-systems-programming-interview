@@ -186,7 +186,7 @@ The parameters of `mmap(addr, length, prot, flags, fd, offset)` and `mprotect(ad
 - **Visibility and Backing Flags (`flags`):** `MAP_PRIVATE` creates a private copy-on-write mapping whose modifications never propagate to the backing file; `MAP_SHARED` shares physical frames across processes (Chapter 11) and flushes writes back to file-backed storage. Combining `MAP_PRIVATE | MAP_ANON` (`MAP_ANONYMOUS` on Linux) allocates demand-zeroed anonymous memory unbacked by any file, for which the **Portable Operating System Interface (`POSIX`)** standard requires `fd = -1` and `offset = 0`.
 - **Error Contract and Reclamation:** On failure, `mmap` returns `MAP_FAILED` (`(void*)-1`) rather than `nullptr` and sets `errno`. Callers must verify `mapped != MAP_FAILED` before dereferencing the region and release mappings with `munmap(addr, length)`.
 
-**Listing 7-1. Page size, page alignment, and a guard page (C++20).**
+**Listing 7-1. Page size, page alignment, and a guard page (C++20).** ([`code/ch07/pagesize.cpp`](https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/operating-systems/code/ch07/pagesize.cpp))
 
 ```cpp
 {{#include ../code/ch07/pagesize.cpp}}
@@ -198,7 +198,7 @@ The parameters of `mmap(addr, length, prot, flags, fd, offset)` and `mprotect(ad
 {{#include ../code/out/ch07_pagesize.out}}
 ```
 
-**Listing 7-2. Mapping and protecting pages in Rust, using the libc crate.**
+**Listing 7-2. Mapping and protecting pages in Rust, using the libc crate.** ([`code/ch07/pagesize.rs`](https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/operating-systems/code/ch07/pagesize.rs))
 
 ```rust
 {{#include ../code/ch07/pagesize.rs}}
@@ -210,7 +210,7 @@ The parameters of `mmap(addr, length, prot, flags, fd, offset)` and `mprotect(ad
 {{#include ../code/out/ch07_pagesize_rs.out}}
 ```
 
-**Listing 7-3. Reading one file with read(2) and with mmap (C++20).**
+**Listing 7-3. Reading one file with read(2) and with mmap (C++20).** ([`code/ch07/mmap_file.cpp`](https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/operating-systems/code/ch07/mmap_file.cpp))
 
 ```cpp
 {{#include ../code/ch07/mmap_file.cpp}}
@@ -222,7 +222,7 @@ The parameters of `mmap(addr, length, prot, flags, fd, offset)` and `mprotect(ad
 {{#include ../code/out/ch07_mmap_file.out}}
 ```
 
-**Listing 7-4. The same file-mapping comparison in Rust, using the libc crate.**
+**Listing 7-4. The same file-mapping comparison in Rust, using the libc crate.** ([`code/ch07/mmap_file.rs`](https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/operating-systems/code/ch07/mmap_file.rs))
 
 ```rust
 {{#include ../code/ch07/mmap_file.rs}}
@@ -234,7 +234,7 @@ The parameters of `mmap(addr, length, prot, flags, fd, offset)` and `mprotect(ad
 {{#include ../code/out/ch07_mmap_file_rs.out}}
 ```
 
-**Listing 7-5. One access per page, for a growing number of pages (C++20).**
+**Listing 7-5. One access per page, for a growing number of pages (C++20).** ([`code/ch07/tlb.cpp`](https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/operating-systems/code/ch07/tlb.cpp))
 
 ```cpp
 {{#include ../code/ch07/tlb.cpp}}
@@ -246,7 +246,7 @@ The parameters of `mmap(addr, length, prot, flags, fd, offset)` and `mprotect(ad
 {{#include ../code/out/ch07_tlb.out}}
 ```
 
-**Listing 7-6. The same Translation Lookaside Buffer working-set sweep in Rust.**
+**Listing 7-6. The same Translation Lookaside Buffer working-set sweep in Rust.** ([`code/ch07/tlb.rs`](https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/operating-systems/code/ch07/tlb.rs))
 
 ```rust
 {{#include ../code/ch07/tlb.rs}}
@@ -268,7 +268,7 @@ Virtual memory is a hardware-software co-design: the kernel defines policy by po
 <div class="callout experiment">
 <span class="label">Experiment</span>
 
-Run Listing 7-5 (`code/ch07/tlb.cpp`) on a local machine and inspect where per-access latency steps upward sharply (at ~64 pages for `L1 dTLB` overflow and ~1,024 to 4,096 pages for `L2 STLB` overflow). On Linux, add `madvise(buf, size, MADV_HUGEPAGE)` after `mmap()` to observe 2 MiB huge pages flattening the 16 MiB to 256 MiB cliff.
+Run Listing 7-5 ([`code/ch07/tlb.cpp`](https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/operating-systems/code/ch07/tlb.cpp)) on a local machine and inspect where per-access latency steps upward sharply (at ~64 pages for `L1 dTLB` overflow and ~1,024 to 4,096 pages for `L2 STLB` overflow). On Linux, add `madvise(buf, size, MADV_HUGEPAGE)` after `mmap()` to observe 2 MiB huge pages flattening the 16 MiB to 256 MiB cliff.
 
 </div>
 

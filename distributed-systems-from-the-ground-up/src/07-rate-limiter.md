@@ -13,7 +13,7 @@ In this chapter, we cover
 - actors, use cases, verifiable functional requirements, sub-millisecond latency SLOs, and memory and CPU capacity bounds
 - HTTP caller contracts (`429 Too Many Requests`, IETF `RateLimit-*` headers, jittered `Retry-After`), internal Envoy-style gRPC checks, and policy control APIs
 - separation of policy compilation (control plane) from sub-millisecond evaluation (data plane), including shadow-mode rollout
-- formal and empirical comparison of rate-limiting algorithms via `code/ratelimit` and interactive traces, culminating in the O(1) Generic Cell Rate Algorithm (GCRA) and its atomic Redis Lua implementation
+- formal and empirical comparison of rate-limiting algorithms via [`code/ratelimit`](https://github.com/arpanpathak/cracking-the-systems-programming-interview/tree/prep-v2/distributed-systems-from-the-ground-up/code/ratelimit) and interactive traces, culminating in the O(1) Generic Cell Rate Algorithm (GCRA) and its atomic Redis Lua implementation
 - distributed quota synchronization across single-region Redis Clusters, L1 local quota leasing for hot keys, and multi-region asynchronous convergence
 - defense-in-depth failure policies (fail-open versus fail-closed tiers), composite key selection, and backend adaptive load shedding (AIMD and CoDel)
 - operational SLIs, production architectures (Stripe, Cloudflare, Envoy, Kong), and verification
@@ -172,7 +172,7 @@ The natural-language specification "5 requests per second" admits multiple incom
 
 ### Empirical Comparison of Classical Algorithms
 
-The repository's `code/ratelimit` simulation subjects five classical algorithms to identical traffic at `5` requests/s (`20` simultaneous requests, `10` requests straddling the `1,000 ms` clock boundary, and `30` requests arriving at `10` req/s over `3` seconds):
+The repository's [`code/ratelimit`](https://github.com/arpanpathak/cracking-the-systems-programming-interview/tree/prep-v2/distributed-systems-from-the-ground-up/code/ratelimit) simulation subjects five classical algorithms to identical traffic at `5` requests/s (`20` simultaneous requests, `10` requests straddling the `1,000 ms` clock boundary, and `30` requests arriving at `10` req/s over `3` seconds):
 
 ```console
 $ cargo run --release -p ratelimit
@@ -367,7 +367,7 @@ Four operational signals govern day-two reliability: **hot-path latency SLI** (`
 
 <div class="simulation">
 
-**Run the algorithm comparison simulation.** Execute `cargo run --release -p ratelimit` in `code/` to reproduce the simultaneous-burst, boundary-straddling, and sustained-overload results across all five algorithms reported in Section 7.4.
+**Run the algorithm comparison simulation.** Execute `cargo run --release -p ratelimit` in [`code/`](https://github.com/arpanpathak/cracking-the-systems-programming-interview/tree/prep-v2/distributed-systems-from-the-ground-up/code) to reproduce the simultaneous-burst, boundary-straddling, and sustained-overload results across all five algorithms reported in Section 7.4.
 
 </div>
 
@@ -416,7 +416,7 @@ Expanding on the summary table above, three production deployments highlight the
 
 <div class="callout experiment"><span class="label">Experiment</span>
 
-**Expose fixed-window boundary bursts empirically.** Execute `cargo run --release -p ratelimit` in `code/` to replay identical burst and boundary-straddling workloads against Fixed Window, Sliding Log, Sliding Counter, Token Bucket, and GCRA. Verify that Fixed Window admits `2x` the configured quota across a window boundary, whereas GCRA bounds both instantaneous burst and sustained rate cleanly.
+**Expose fixed-window boundary bursts empirically.** Execute `cargo run --release -p ratelimit` in [`code/`](https://github.com/arpanpathak/cracking-the-systems-programming-interview/tree/prep-v2/distributed-systems-from-the-ground-up/code) to replay identical burst and boundary-straddling workloads against Fixed Window, Sliding Log, Sliding Counter, Token Bucket, and GCRA. Verify that Fixed Window admits `2x` the configured quota across a window boundary, whereas GCRA bounds both instantaneous burst and sustained rate cleanly.
 
 </div>
 

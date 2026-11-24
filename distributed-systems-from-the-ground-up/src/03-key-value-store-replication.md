@@ -729,7 +729,7 @@ Real-world distributed databases adapt quorum log replication to balance write l
 
 <div class="callout experiment"><span class="label">Experiment</span>
 
-**Exhaustively verify quorum invariants under packet loss.** Run `cargo run --release -p replsim` in `code/` to exercise all `4,096` combinations of dropped `Append` requests and dropped `AppendReply` messages across three sequential writes. Verify that invariants 0 (log prefix agreement) and 1 (every acknowledged record persists on a majority) hold across every single schedule.
+**Exhaustively verify quorum invariants under packet loss.** Run `cargo run --release -p replsim` in [`code/`](https://github.com/arpanpathak/cracking-the-systems-programming-interview/tree/prep-v2/distributed-systems-from-the-ground-up/code) to exercise all `4,096` combinations of dropped `Append` requests and dropped `AppendReply` messages across three sequential writes. Verify that invariants 0 (log prefix agreement) and 1 (every acknowledged record persists on a majority) hold across every single schedule.
 
 </div>
 

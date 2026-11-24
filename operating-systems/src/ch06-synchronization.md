@@ -20,7 +20,7 @@ The selection between atomic instructions and mutexes is governed by critical-se
 <img src="figures/ch06_mutex.svg" alt="A mutex with an owner, a wait queue, and the critical section it protects"/>
 </figure>
 
-**Listing 6-1. The shared counter, protected by a mutex (C++20).**
+**Listing 6-1. The shared counter, protected by a mutex (C++20).** ([`code/ch06/mutex_counter.cpp`](https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/operating-systems/code/ch06/mutex_counter.cpp))
 
 ```cpp
 {{#include ../code/ch06/mutex_counter.cpp}}
@@ -32,7 +32,7 @@ The selection between atomic instructions and mutexes is governed by critical-se
 {{#include ../code/out/ch06_mutex.out}}
 ```
 
-**Listing 6-2. The same counter in Rust.**
+**Listing 6-2. The same counter in Rust.** ([`code/ch06/mutex_counter.rs`](https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/operating-systems/code/ch06/mutex_counter.rs))
 
 ```rust
 {{#include ../code/ch06/mutex_counter.rs}}
@@ -63,7 +63,7 @@ Every condition-variable wait must be enclosed within a **`while (!predicate)` l
 
 </div>
 
-**Listing 6-3. A bounded buffer with two producers and two consumers (C++20).**
+**Listing 6-3. A bounded buffer with two producers and two consumers (C++20).** ([`code/ch06/prodcons.cpp`](https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/operating-systems/code/ch06/prodcons.cpp))
 
 ```cpp
 {{#include ../code/ch06/prodcons.cpp}}
@@ -75,7 +75,7 @@ Every condition-variable wait must be enclosed within a **`while (!predicate)` l
 {{#include ../code/out/ch06_prodcons.out}}
 ```
 
-**Listing 6-4. The same buffer in Rust, with `Mutex` and `Condvar`.**
+**Listing 6-4. The same buffer in Rust, with `Mutex` and `Condvar`.** ([`code/ch06/prodcons.rs`](https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/operating-systems/code/ch06/prodcons.rs))
 
 ```rust
 {{#include ../code/ch06/prodcons.rs}}
@@ -104,7 +104,7 @@ Negating any single Coffman condition provably precludes deadlock. Production ke
 <img src="figures/ch06_deadlock.svg" alt="Two workers each holding one resource and waiting for the other, forming a cycle"/>
 </figure>
 
-**Listing 6-5. A deliberate deadlock caused by inverted lock acquisition order (C++20).**
+**Listing 6-5. A deliberate deadlock caused by inverted lock acquisition order (C++20).** ([`code/ch06/deadlock.cpp`](https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/operating-systems/code/ch06/deadlock.cpp))
 
 ```cpp
 {{#include ../code/ch06/deadlock.cpp}}
@@ -116,7 +116,7 @@ Negating any single Coffman condition provably precludes deadlock. Production ke
 {{#include ../code/out/ch06_deadlock.out}}
 ```
 
-**Listing 6-6. The same deliberate deadlock in Rust.**
+**Listing 6-6. The same deliberate deadlock in Rust.** ([`code/ch06/deadlock.rs`](https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/operating-systems/code/ch06/deadlock.rs))
 
 ```rust
 {{#include ../code/ch06/deadlock.rs}}
@@ -130,7 +130,7 @@ Negating any single Coffman condition provably precludes deadlock. Production ke
 
 Where a global lock hierarchy cannot be established statically, breaking **Hold and Wait** via non-blocking `try_lock()` eliminates the deadlock cycle. When Worker 2 holds Mutex B and `a.try_lock()` fails, Worker 2 immediately releases Mutex B, pauses briefly to mitigate livelock, and retries acquisition.
 
-**Listing 6-7. Deadlock elimination using `try_lock` backoff (C++20).**
+**Listing 6-7. Deadlock elimination using `try_lock` backoff (C++20).** ([`code/ch06/trylock.cpp`](https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/operating-systems/code/ch06/trylock.cpp))
 
 ```cpp
 {{#include ../code/ch06/trylock.cpp}}
@@ -142,7 +142,7 @@ Where a global lock hierarchy cannot be established statically, breaking **Hold 
 {{#include ../code/out/ch06_trylock.out}}
 ```
 
-**Listing 6-8. The same `try_lock` backoff protocol in Rust.**
+**Listing 6-8. The same `try_lock` backoff protocol in Rust.** ([`code/ch06/trylock.rs`](https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/operating-systems/code/ch06/trylock.rs))
 
 ```rust
 {{#include ../code/ch06/trylock.rs}}
@@ -333,7 +333,7 @@ Because readers issue exclusively read transactions, all processor cores simulta
 <img src="figures/ch06_seqlock.svg" alt="Lock-free Sequence Lock timeline showing writer even-odd-even transitions, torn-read retry, and zero-write clean reader execution"/>
 </figure>
 
-**Listing 6-9. `compare_exchange_weak` CAS loop, Acquire-Release message passing, and a lock-free Seqlock (C++20).**
+**Listing 6-9. `compare_exchange_weak` CAS loop, Acquire-Release message passing, and a lock-free Seqlock (C++20).** ([`code/ch06/cas_ordering.cpp`](https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/operating-systems/code/ch06/cas_ordering.cpp))
 
 ```cpp
 {{#include ../code/ch06/cas_ordering.cpp}}
@@ -345,7 +345,7 @@ Because readers issue exclusively read transactions, all processor cores simulta
 {{#include ../code/out/ch06_cas_ordering.out}}
 ```
 
-**Listing 6-10. The same CAS loop, Acquire-Release handoff, and Seqlock in Rust.**
+**Listing 6-10. The same CAS loop, Acquire-Release handoff, and Seqlock in Rust.** ([`code/ch06/cas_ordering.rs`](https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/operating-systems/code/ch06/cas_ordering.rs))
 
 ```rust
 {{#include ../code/ch06/cas_ordering.rs}}
@@ -367,6 +367,6 @@ Production synchronization integrates three architectural layers: `compare_excha
 <div class="callout experiment">
 <span class="label">Experiment</span>
 
-In Listing 6-9 (`code/ch06/cas_ordering.cpp`), weaken the producer's `memory_order_release` store and consumer's `memory_order_acquire` load to `memory_order_relaxed` on an ARM64 machine (Apple Silicon or AWS Graviton) and run 10 million iterations to observe weakly ordered hardware reordering payload stores past the ready flag.
+In Listing 6-9 ([`code/ch06/cas_ordering.cpp`](https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/operating-systems/code/ch06/cas_ordering.cpp)), weaken the producer's `memory_order_release` store and consumer's `memory_order_acquire` load to `memory_order_relaxed` on an ARM64 machine (Apple Silicon or AWS Graviton) and run 10 million iterations to observe weakly ordered hardware reordering payload stores past the ready flag.
 
 </div>

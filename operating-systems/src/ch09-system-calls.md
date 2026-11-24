@@ -47,7 +47,7 @@ Calling `write(fd, buf, count)` requests that the kernel transfer up to `count` 
 
 When the resource is no longer needed, `close(fd)` releases the descriptor slot and decrements the kernel open file description's reference count, returning `0` on success or `-1` on error (`EBADF` or delayed `EIO`). To control user-space buffering on a C `FILE*` stream before any `I/O` occurs, `setvbuf(stream, buf, mode, size)` configures the buffering policy: passing `buf = nullptr` allocates an internal buffer of `size` bytes (`64 * 1024`), while `mode` selects full buffering (`_IOFBF`), line buffering (`_IOLBF`), or unbuffered mode (`_IONBF`), returning `0` on success.
 
-**Listing 9-1. A system call compared with a function call (C++20).**
+**Listing 9-1. A system call compared with a function call (C++20).** ([`code/ch09/syscall_cost.cpp`](https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/operating-systems/code/ch09/syscall_cost.cpp))
 
 ```cpp
 {{#include ../code/ch09/syscall_cost.cpp}}
@@ -59,7 +59,7 @@ When the resource is no longer needed, `close(fd)` releases the descriptor slot 
 {{#include ../code/out/ch09_syscall_cost.out}}
 ```
 
-**Listing 9-2. The same comparison in Rust.**
+**Listing 9-2. The same comparison in Rust.** ([`code/ch09/syscall_cost.rs`](https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/operating-systems/code/ch09/syscall_cost.rs))
 
 ```rust
 {{#include ../code/ch09/syscall_cost.rs}}
@@ -75,7 +75,7 @@ When the resource is no longer needed, `close(fd)` releases the descriptor slot 
 <img src="figures/ch09_buffering.svg" alt="Unbuffered writes cross into the kernel per call; a 64 KiB user buffer crosses only when full"/>
 </figure>
 
-**Listing 9-3. 200,000 small writes, unbuffered and buffered (C++20).**
+**Listing 9-3. 200,000 small writes, unbuffered and buffered (C++20).** ([`code/ch09/write_buffered.cpp`](https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/operating-systems/code/ch09/write_buffered.cpp))
 
 ```cpp
 {{#include ../code/ch09/write_buffered.cpp}}
@@ -87,7 +87,7 @@ When the resource is no longer needed, `close(fd)` releases the descriptor slot 
 {{#include ../code/out/ch09_write_buffered.out}}
 ```
 
-**Listing 9-4. The same comparison in Rust, with write(2) and BufWriter.**
+**Listing 9-4. The same comparison in Rust, with write(2) and BufWriter.** ([`code/ch09/write_buffered.rs`](https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/operating-systems/code/ch09/write_buffered.rs))
 
 ```rust
 {{#include ../code/ch09/write_buffered.rs}}
@@ -109,7 +109,7 @@ Crossing the Ring 3 to Ring 0 privilege boundary costs roughly 100× more than a
 <div class="callout experiment">
 <span class="label">Experiment</span>
 
-Modify Listing 9-3 (`code/ch09/write_buffered.cpp`) to sweep the buffer size passed to `setvbuf()` across `256`, `4,096`, `65,536`, and `1,048,576` bytes. Observe how wall-clock time drops steeply up to 64 KiB (as syscall count falls 256×) and then plateaus once user-space `memcpy` dominates.
+Modify Listing 9-3 ([`code/ch09/write_buffered.cpp`](https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/operating-systems/code/ch09/write_buffered.cpp)) to sweep the buffer size passed to `setvbuf()` across `256`, `4,096`, `65,536`, and `1,048,576` bytes. Observe how wall-clock time drops steeply up to 64 KiB (as syscall count falls 256×) and then plateaus once user-space `memcpy` dominates.
 
 </div>
 

@@ -13,7 +13,7 @@ In this chapter, we cover
 - control-plane and data-plane separation across the Metadata Service, Content-Addressed Block Store, Garbage Collector, and Delta Notification Bus
 - FastCDC content-defined chunking, cross-version deduplication security boundaries, and Merkle directory tree diffing
 - optimistic concurrency control, conflict-copy branching, tombstone lifecycle management, long-poll notification hints, and epoch-safe garbage collection
-- failure recovery matrices, synchronization SLIs, real-world production architectures (Dropbox Magic Pocket, Google Drive, iCloud Drive), and simulation verification via `code/syncsim`
+- failure recovery matrices, synchronization SLIs, real-world production architectures (Dropbox Magic Pocket, Google Drive, iCloud Drive), and simulation verification via [`code/syncsim`](https://github.com/arpanpathak/cracking-the-systems-programming-interview/tree/prep-v2/distributed-systems-from-the-ground-up/code/syncsim)
 
 </div>
 
@@ -431,7 +431,7 @@ Four domain-specific Service Level Indicators track synchronization health beyon
 
 ## 25.7 Simulation Verification
 
-Running `code/syncsim` verifies both core invariants of this chapter: (1) FastCDC boundary stability under a single-byte prepend to a `65,536`-byte file compared against fixed `1,024`-byte slicing, and (2) atomic optimistic concurrency conflict detection when two offline devices commit against base version `3`.
+Running [`code/syncsim`](https://github.com/arpanpathak/cracking-the-systems-programming-interview/tree/prep-v2/distributed-systems-from-the-ground-up/code/syncsim) verifies both core invariants of this chapter: (1) FastCDC boundary stability under a single-byte prepend to a `65,536`-byte file compared against fixed `1,024`-byte slicing, and (2) atomic optimistic concurrency conflict detection when two offline devices commit against base version `3`.
 
 ```console
 $ cargo run --release -p syncsim
@@ -447,7 +447,7 @@ Inspect the observed ratio directly: prepending `1` byte invalidates `65 / 65` (
 
 <div class="simulation">
 
-**Run the file synchronization simulation.** Execute `cargo run --release -p syncsim` in `code/` to reproduce the fixed-block vs. content-defined chunking comparison (`65/65` vs. `1/62` dirty chunks) and the offline version-3 optimistic concurrency conflict trace.
+**Run the file synchronization simulation.** Execute `cargo run --release -p syncsim` in [`code/`](https://github.com/arpanpathak/cracking-the-systems-programming-interview/tree/prep-v2/distributed-systems-from-the-ground-up/code) to reproduce the fixed-block vs. content-defined chunking comparison (`65/65` vs. `1/62` dirty chunks) and the offline version-3 optimistic concurrency conflict trace.
 
 </div>
 

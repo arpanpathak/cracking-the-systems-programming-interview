@@ -297,7 +297,7 @@ Two additional seams require care on the producer side:
 
 ## 11.7 Simulation Verification
 
-To verify partition-key ordering, at-least-once crash recovery, and idempotent consumer deduplication, we execute the repository's `queuesim` simulation (`code/queuesim/src/main.rs`). Six order lifecycle events append sequentially into partition `1` (offsets `0` through `5`). The consumer processes all `6` events and crashes right before committing its offset; upon restarting from committed offset `0`, it replays all `6` records, recognizes each previously processed event ID, and skips duplicate side effects before committing offset `6`:
+To verify partition-key ordering, at-least-once crash recovery, and idempotent consumer deduplication, we execute the repository's `queuesim` simulation ([`code/queuesim/src/main.rs`](https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/distributed-systems-from-the-ground-up/code/queuesim/src/main.rs)). Six order lifecycle events append sequentially into partition `1` (offsets `0` through `5`). The consumer processes all `6` events and crashes right before committing its offset; upon restarting from committed offset `0`, it replays all `6` records, recognizes each previously processed event ID, and skips duplicate side effects before committing offset `6`:
 
 ```console
 $ cargo run --release -p queuesim
@@ -327,7 +327,7 @@ The final summary confirms end-to-end effectively-once semantics under a crash r
 
 <div class="simulation">
 
-**Run the partitioned message queue simulation.** Execute `cargo run --release -p queuesim` in `code/` ([`code/queuesim/src/main.rs`](https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/distributed-systems-from-the-ground-up/code/queuesim/src/main.rs)) to reproduce ordered partition appends, consumer crash redelivery, and idempotent deduplication.
+**Run the partitioned message queue simulation.** Execute `cargo run --release -p queuesim` in [`code/`](https://github.com/arpanpathak/cracking-the-systems-programming-interview/tree/prep-v2/distributed-systems-from-the-ground-up/code) ([`code/queuesim/src/main.rs`](https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/distributed-systems-from-the-ground-up/code/queuesim/src/main.rs)) to reproduce ordered partition appends, consumer crash redelivery, and idempotent deduplication.
 
 </div>
 

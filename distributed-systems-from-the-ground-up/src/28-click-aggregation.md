@@ -13,7 +13,7 @@ In this chapter, we cover
 - control-plane stream orchestration and schema management separated from the speed-layer streaming path and immutable archive reconciliation path
 - event-time versus processing-time semantics, client clock-skew clamping, heuristic watermarks with idle-partition handling, allowed lateness, and late-event side outputs
 - Chandy-Lamport asynchronous barrier snapshots for effectively-once state recovery, hot-ad salting with two-stage pre-aggregation, HyperLogLog distinct counts, and click-fraud deduplication
-- failure recovery matrices, streaming SLIs, production architectures (Apache Flink, Google MillWheel and Photon, Meta Scuba), and simulation verification via `code/clicksim`
+- failure recovery matrices, streaming SLIs, production architectures (Apache Flink, Google MillWheel and Photon, Meta Scuba), and simulation verification via [`code/clicksim`](https://github.com/arpanpathak/cracking-the-systems-programming-interview/tree/prep-v2/distributed-systems-from-the-ground-up/code/clicksim)
 
 </div>
 
@@ -314,7 +314,7 @@ Ad-click pipelines are constant targets for automated click-fraud botnets attemp
 
 ## 28.7 Simulation Verification
 
-Running `code/clicksim` feeds an identical stream of out-of-order, duplicated, and late-arriving ad clicks through both a processing-time (arrival-time) counter and an event-time watermarked counter (`10 s` tumbling windows, `5 s` watermark lag allowance) and compares both against ground truth.
+Running [`code/clicksim`](https://github.com/arpanpathak/cracking-the-systems-programming-interview/tree/prep-v2/distributed-systems-from-the-ground-up/code/clicksim) feeds an identical stream of out-of-order, duplicated, and late-arriving ad clicks through both a processing-time (arrival-time) counter and an event-time watermarked counter (`10 s` tumbling windows, `5 s` watermark lag allowance) and compares both against ground truth.
 
 ```console
 $ cargo run --release -p clicksim
@@ -331,7 +331,7 @@ Inspect every metric confirmed by the simulation output:
 
 <div class="simulation">
 
-**Run the streaming click aggregation simulation.** Execute `cargo run --release -p clicksim` in `code/` to observe processing-time distortion versus event-time watermarked windows, duplicate suppression (`1` duplicate dropped), open-window buffering (`20-30 s: 1`), and late-straggler detection (`1` late click).
+**Run the streaming click aggregation simulation.** Execute `cargo run --release -p clicksim` in [`code/`](https://github.com/arpanpathak/cracking-the-systems-programming-interview/tree/prep-v2/distributed-systems-from-the-ground-up/code) to observe processing-time distortion versus event-time watermarked windows, duplicate suppression (`1` duplicate dropped), open-window buffering (`20-30 s: 1`), and late-straggler detection (`1` late click).
 
 </div>
 

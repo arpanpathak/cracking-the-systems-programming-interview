@@ -297,7 +297,7 @@ Because `ln(rand(0, 1))` is negative, `-delta * beta * ln(rand(0, 1))` adds a ra
 
 ## 9.7 Simulation Verification
 
-To measure empirically how cache capacity translates into hit ratio under skewed Zipfian popularity, we run the repository's `cachesim` benchmark (`code/cachesim/src/main.rs`), which replays `1,000,000` read requests across `100,000` distinct keys against an LRU cache sized at `1%`, `5%`, `10%`, and `25%` of the keyspace:
+To measure empirically how cache capacity translates into hit ratio under skewed Zipfian popularity, we run the repository's `cachesim` benchmark ([`code/cachesim/src/main.rs`](https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/distributed-systems-from-the-ground-up/code/cachesim/src/main.rs)), which replays `1,000,000` read requests across `100,000` distinct keys against an LRU cache sized at `1%`, `5%`, `10%`, and `25%` of the keyspace:
 
 ```console
 $ cargo run --release -p cachesim
@@ -312,7 +312,7 @@ Holding `25%` of the keyspace (`25,000` keys) absorbs `72.7%` of all requests, c
 
 <div class="simulation">
 
-**Run the distributed cache hit-ratio simulation.** Execute `cargo run --release -p cachesim` in `code/` ([`code/cachesim/src/main.rs`](https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/distributed-systems-from-the-ground-up/code/cachesim/src/main.rs)) to reproduce the 1,000,000-request Zipfian hit-ratio curve across 1%, 5%, 10%, and 25% cache capacities.
+**Run the distributed cache hit-ratio simulation.** Execute `cargo run --release -p cachesim` in [`code/`](https://github.com/arpanpathak/cracking-the-systems-programming-interview/tree/prep-v2/distributed-systems-from-the-ground-up/code) ([`code/cachesim/src/main.rs`](https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/distributed-systems-from-the-ground-up/code/cachesim/src/main.rs)) to reproduce the 1,000,000-request Zipfian hit-ratio curve across 1%, 5%, 10%, and 25% cache capacities.
 
 </div>
 

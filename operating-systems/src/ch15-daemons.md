@@ -41,7 +41,7 @@ The primary administrative interface for a standalone daemon consists of signals
 - **Signal Terminate (`SIGTERM`):** Requests a graceful shutdown. The handler sets an atomic stop flag (`g_stop = 1` / `STOP.store(true, Ordering::Relaxed)`), allowing the main loop to finish in-flight work, flush logs, call `unlink(pidfile)`, and exit cleanly.
 - **Kill Signal (`SIGKILL`):** Forcibly terminates the process immediately in kernel mode when a daemon fails to exit within the supervisor's grace period after `SIGTERM`.
 
-**Listing 15-1. A daemon from start to shutdown (C++20).**
+**Listing 15-1. A daemon from start to shutdown (C++20).** ([`code/ch15/daemon.cpp`](https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/operating-systems/code/ch15/daemon.cpp))
 
 ```cpp
 {{#include ../code/ch15/daemon.cpp}}
@@ -53,7 +53,7 @@ The primary administrative interface for a standalone daemon consists of signals
 {{#include ../code/out/ch15_daemon.out}}
 ```
 
-**Listing 15-2. The same daemon in Rust.**
+**Listing 15-2. The same daemon in Rust.** ([`code/ch15/daemon.rs`](https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/operating-systems/code/ch15/daemon.rs))
 
 ```rust
 {{#include ../code/ch15/daemon.rs}}
@@ -117,7 +117,7 @@ Calling `kqueue()` allocates an empty kernel event queue and returns a descripto
 
 The single `kevent()` system call performs both registration and retrieval. Passing a populated `changelist` with `eventlist = nullptr, nevents = 0` registers the filter and returns `0` immediately; passing `changelist = nullptr, nchanges = 0` with an `eventlist` blocks until up to `nevents` fire or `timeout` expires (`nullptr` blocks indefinitely), returning the ready count (`> 0`), `0` on timeout, or `-1` on error (`EBADF`, `EINTR`, or `ESRCH` if `pid` already exited). Once `event.fflags & NOTE_EXIT` arrives, the supervisor calls `waitpid(pid, &status, WNOHANG)` to reap the zombie **Process Control Block (`PCB`)** and extract `WEXITSTATUS(status)`.
 
-**Listing 15-3. Process supervision via `kqueue` (C++20).**
+**Listing 15-3. Process supervision via `kqueue` (C++20).** ([`code/ch15/kqueue_supervisor.cpp`](https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/operating-systems/code/ch15/kqueue_supervisor.cpp))
 
 ```cpp
 {{#include ../code/ch15/kqueue_supervisor.cpp}}
@@ -129,7 +129,7 @@ The single `kevent()` system call performs both registration and retrieval. Pass
 {{#include ../code/out/ch15_kqueue_supervisor.out}}
 ```
 
-**Listing 15-4. The same supervisor in Rust.**
+**Listing 15-4. The same supervisor in Rust.** ([`code/ch15/kqueue_supervisor.rs`](https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/operating-systems/code/ch15/kqueue_supervisor.rs))
 
 ```rust
 {{#include ../code/ch15/kqueue_supervisor.rs}}
@@ -156,7 +156,7 @@ Process failures also manifest as deadlocks, infinite spin loops, or hung networ
 <div class="callout experiment">
 <span class="label">Experiment</span>
 
-Run Listing 15-1 (`code/ch15/daemon.cpp`), inspect the detached daemon's `PID`, `PGID`, `SID`, and `TTY` column (`ps -o pid,ppid,pgid,sid,tty,comm -p $(cat /tmp/osbook_daemon.pid)`), and send `kill -HUP` followed by `kill -TERM` while watching `/tmp/osbook_daemon.log` record the reload and graceful shutdown.
+Run Listing 15-1 ([`code/ch15/daemon.cpp`](https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/operating-systems/code/ch15/daemon.cpp)), inspect the detached daemon's `PID`, `PGID`, `SID`, and `TTY` column (`ps -o pid,ppid,pgid,sid,tty,comm -p $(cat /tmp/osbook_daemon.pid)`), and send `kill -HUP` followed by `kill -TERM` while watching `/tmp/osbook_daemon.log` record the reload and graceful shutdown.
 
 </div>
 

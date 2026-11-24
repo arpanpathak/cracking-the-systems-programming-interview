@@ -53,7 +53,7 @@ A critical requirement in predicate synchronization is the **repeated evaluation
 
 ### 19.2.3 Reference Implementation
 
-**Listing 19-1. A bounded blocking queue (C++20).**
+**Listing 19-1. A bounded blocking queue (C++20).** ([`code/ch19/bounded_queue.cpp`](https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/operating-systems/code/ch19/bounded_queue.cpp))
 
 ```cpp
 {{#include ../code/ch19/bounded_queue.cpp}}
@@ -65,7 +65,7 @@ A critical requirement in predicate synchronization is the **repeated evaluation
 {{#include ../code/out/ch19_bounded_queue.out}}
 ```
 
-**Listing 19-2. The same queue in Rust.**
+**Listing 19-2. The same queue in Rust.** ([`code/ch19/bounded_queue.rs`](https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/operating-systems/code/ch19/bounded_queue.rs))
 
 ```rust
 {{#include ../code/ch19/bounded_queue.rs}}
@@ -122,7 +122,7 @@ A classic bug in hand-rolled ring buffers arises from tracking only `(head, tail
 <img src="figures/ch19_ring_variants.svg" alt="Hand-rolled ring buffer using head and len wrap-around geometry alongside four backing-store trade-off cards"/>
 </figure>
 
-**Listing 19-2a. Bounded blocking queue backed by a hand-rolled `Ring<T>` without `std::deque` (C++20).**
+**Listing 19-2a. Bounded blocking queue backed by a hand-rolled `Ring<T>` without `std::deque` (C++20).** ([`code/ch19/ring_buffer.cpp`](https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/operating-systems/code/ch19/ring_buffer.cpp))
 
 ```cpp
 {{#include ../code/ch19/ring_buffer.cpp}}
@@ -134,7 +134,7 @@ A classic bug in hand-rolled ring buffers arises from tracking only `(head, tail
 {{#include ../code/out/ch19_ring_buffer.out}}
 ```
 
-**Listing 19-2b. The same hand-rolled `Ring<T>` over `Vec<Option<T>>` without `VecDeque` (Rust 2024).**
+**Listing 19-2b. The same hand-rolled `Ring<T>` over `Vec<Option<T>>` without `VecDeque` (Rust 2024).** ([`code/ch19/ring_buffer.rs`](https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/operating-systems/code/ch19/ring_buffer.rs))
 
 ```rust
 {{#include ../code/ch19/ring_buffer.rs}}
@@ -188,7 +188,7 @@ Rust's **`std::mem::MaybeUninit<T>`** (internally a `#[repr(transparent)]` union
 <img src="figures/ch19_option_maybeuninit_layout.svg" alt="Memory layout inside one 64-byte cache line comparing Option<u64> with 1B tag and 7B padding, Option<Box<u64>> niche optimization, and tightly packed MaybeUninit<u64>"/>
 </figure>
 
-**Listing 19-2c. Zero-overhead ring buffer using raw aligned byte storage, `std::construct_at`, and `std::destroy_at` (C++20).**
+**Listing 19-2c. Zero-overhead ring buffer using raw aligned byte storage, `std::construct_at`, and `std::destroy_at` (C++20).** ([`code/ch19/ring_buffer_uninit.cpp`](https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/operating-systems/code/ch19/ring_buffer_uninit.cpp))
 
 ```cpp
 {{#include ../code/ch19/ring_buffer_uninit.cpp}}
@@ -200,7 +200,7 @@ Rust's **`std::mem::MaybeUninit<T>`** (internally a `#[repr(transparent)]` union
 {{#include ../code/out/ch19_ring_buffer_uninit.out}}
 ```
 
-**Listing 19-2d. Zero-overhead ring buffer over `Box<[MaybeUninit<T>]>` with verified manual `Drop` (Rust 2024).**
+**Listing 19-2d. Zero-overhead ring buffer over `Box<[MaybeUninit<T>]>` with verified manual `Drop` (Rust 2024).** ([`code/ch19/ring_buffer_uninit.rs`](https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/operating-systems/code/ch19/ring_buffer_uninit.rs))
 
 ```rust
 {{#include ../code/ch19/ring_buffer_uninit.rs}}
@@ -266,7 +266,7 @@ The allocator preserves the following invariants across every allocation and rel
 
 ### 19.3.4 Reference Implementation
 
-**Listing 19-3. A first-fit allocator with splitting and coalescing (C++20).**
+**Listing 19-3. A first-fit allocator with splitting and coalescing (C++20).** ([`code/ch19/free_list_allocator.cpp`](https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/operating-systems/code/ch19/free_list_allocator.cpp))
 
 ```cpp
 {{#include ../code/ch19/free_list_allocator.cpp}}
@@ -278,7 +278,7 @@ The allocator preserves the following invariants across every allocation and rel
 {{#include ../code/out/ch19_free_list_allocator.out}}
 ```
 
-**Listing 19-4. The same allocator in Rust.**
+**Listing 19-4. The same allocator in Rust.** ([`code/ch19/free_list_allocator.rs`](https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/operating-systems/code/ch19/free_list_allocator.rs))
 
 ```rust
 {{#include ../code/ch19/free_list_allocator.rs}}
@@ -379,7 +379,7 @@ The symmetric acquire-release pair governs `head` updates, ensuring that the con
 
 ### 19.4.4 Reference Implementation
 
-**Listing 19-5. A lock-free SPSC ring buffer (C++20).**
+**Listing 19-5. A lock-free SPSC ring buffer (C++20).** ([`code/ch19/spsc_ring.cpp`](https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/operating-systems/code/ch19/spsc_ring.cpp))
 
 ```cpp
 {{#include ../code/ch19/spsc_ring.cpp}}
@@ -391,7 +391,7 @@ The symmetric acquire-release pair governs `head` updates, ensuring that the con
 {{#include ../code/out/ch19_spsc_ring.out}}
 ```
 
-**Listing 19-6. The same ring buffer in Rust, with atomic slots and no `unsafe`.**
+**Listing 19-6. The same ring buffer in Rust, with atomic slots and no `unsafe`.** ([`code/ch19/spsc_ring.rs`](https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/operating-systems/code/ch19/spsc_ring.rs))
 
 ```rust
 {{#include ../code/ch19/spsc_ring.rs}}
@@ -458,7 +458,7 @@ Converting an ASCII character sequence to a signed 32-bit integer requires manag
 
 ### 19.5.4 Reference Implementation
 
-**Listing 19-7. `memmove`, `strlen` and `atoi` (C++20).**
+**Listing 19-7. `memmove`, `strlen` and `atoi` (C++20).** ([`code/ch19/byte_routines.cpp`](https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/operating-systems/code/ch19/byte_routines.cpp))
 
 ```cpp
 {{#include ../code/ch19/byte_routines.cpp}}
@@ -470,7 +470,7 @@ Converting an ASCII character sequence to a signed 32-bit integer requires manag
 {{#include ../code/out/ch19_byte_routines.out}}
 ```
 
-**Listing 19-8. The same routines in Rust.**
+**Listing 19-8. The same routines in Rust.** ([`code/ch19/byte_routines.rs`](https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/operating-systems/code/ch19/byte_routines.rs))
 
 ```rust
 {{#include ../code/ch19/byte_routines.rs}}
@@ -536,7 +536,7 @@ Every operation preserves this topology:
 
 ### 19.6.3 Reference Implementation
 
-**Listing 19-9. An LRU cache built from a list and a hash map (C++20).**
+**Listing 19-9. An LRU cache built from a list and a hash map (C++20).** ([`code/ch19/lru_cache.cpp`](https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/operating-systems/code/ch19/lru_cache.cpp))
 
 ```cpp
 {{#include ../code/ch19/lru_cache.cpp}}
@@ -548,7 +548,7 @@ Every operation preserves this topology:
 {{#include ../code/out/ch19_lru_cache.out}}
 ```
 
-**Listing 19-10. The same cache in Rust, with a list linked by index.**
+**Listing 19-10. The same cache in Rust, with a list linked by index.** ([`code/ch19/lru_cache.rs`](https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/operating-systems/code/ch19/lru_cache.rs))
 
 ```rust
 {{#include ../code/ch19/lru_cache.rs}}
@@ -613,7 +613,7 @@ To prevent starvation, the lock implements a **writer-preference policy**: an ar
 
 ### 19.7.3 Reference Implementation
 
-**Listing 19-11. A reader-writer lock with writer preference (C++20).**
+**Listing 19-11. A reader-writer lock with writer preference (C++20).** ([`code/ch19/rw_lock.cpp`](https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/operating-systems/code/ch19/rw_lock.cpp))
 
 ```cpp
 {{#include ../code/ch19/rw_lock.cpp}}
@@ -625,7 +625,7 @@ To prevent starvation, the lock implements a **writer-preference policy**: an ar
 {{#include ../code/out/ch19_rw_lock.out}}
 ```
 
-**Listing 19-12. The same lock in Rust.**
+**Listing 19-12. The same lock in Rust.** ([`code/ch19/rw_lock.rs`](https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/operating-systems/code/ch19/rw_lock.rs))
 
 ```rust
 {{#include ../code/ch19/rw_lock.rs}}
@@ -685,7 +685,7 @@ If the queue still contains tasks when `stopping` is asserted, workers continue 
 
 ### 19.8.3 Reference Implementation
 
-**Listing 19-13. A thread pool (C++20).**
+**Listing 19-13. A thread pool (C++20).** ([`code/ch19/thread_pool.cpp`](https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/operating-systems/code/ch19/thread_pool.cpp))
 
 ```cpp
 {{#include ../code/ch19/thread_pool.cpp}}
@@ -697,7 +697,7 @@ If the queue still contains tasks when `stopping` is asserted, workers continue 
 {{#include ../code/out/ch19_thread_pool.out}}
 ```
 
-**Listing 19-14. The same pool in Rust, built on a channel.**
+**Listing 19-14. The same pool in Rust, built on a channel.** ([`code/ch19/thread_pool.rs`](https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/operating-systems/code/ch19/thread_pool.rs))
 
 ```rust
 {{#include ../code/ch19/thread_pool.rs}}
@@ -763,7 +763,7 @@ Establishing a pipeline between two child processes proceeds through five determ
 
 ### 19.9.3 Reference Implementation
 
-**Listing 19-15. A pipeline of two processes (C++20).**
+**Listing 19-15. A pipeline of two processes (C++20).** ([`code/ch19/mini_pipeline.cpp`](https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/operating-systems/code/ch19/mini_pipeline.cpp))
 
 ```cpp
 {{#include ../code/ch19/mini_pipeline.cpp}}
@@ -775,7 +775,7 @@ Establishing a pipeline between two child processes proceeds through five determ
 {{#include ../code/out/ch19_mini_pipeline.out}}
 ```
 
-**Listing 19-16. The same pipeline in Rust, with the libc crate.**
+**Listing 19-16. The same pipeline in Rust, with the libc crate.** ([`code/ch19/mini_pipeline.rs`](https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/operating-systems/code/ch19/mini_pipeline.rs))
 
 ```rust
 {{#include ../code/ch19/mini_pipeline.rs}}
@@ -843,7 +843,7 @@ Computing the bitwise AND of `x` and `x - 1` clears the lowest set bit while lea
 
 ### 19.10.3 Reference Implementation
 
-**Listing 19-17. Bit manipulation (C++20).**
+**Listing 19-17. Bit manipulation (C++20).** ([`code/ch19/bit_tricks.cpp`](https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/operating-systems/code/ch19/bit_tricks.cpp))
 
 ```cpp
 {{#include ../code/ch19/bit_tricks.cpp}}
@@ -855,7 +855,7 @@ Computing the bitwise AND of `x` and `x - 1` clears the lowest set bit while lea
 {{#include ../code/out/ch19_bit_tricks.out}}
 ```
 
-**Listing 19-18. The same functions in Rust.**
+**Listing 19-18. The same functions in Rust.** ([`code/ch19/bit_tricks.rs`](https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/operating-systems/code/ch19/bit_tricks.rs))
 
 ```rust
 {{#include ../code/ch19/bit_tricks.rs}}
@@ -908,7 +908,7 @@ If the list is acyclic, `fast` reaches the null terminator in `O(N)` steps. If a
 
 ### 19.11.4 Reference Implementation
 
-**Listing 19-19. Reverse, merge and cycle detection (C++20).**
+**Listing 19-19. Reverse, merge and cycle detection (C++20).** ([`code/ch19/linked_list.cpp`](https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/operating-systems/code/ch19/linked_list.cpp))
 
 ```cpp
 {{#include ../code/ch19/linked_list.cpp}}
@@ -920,7 +920,7 @@ If the list is acyclic, `fast` reaches the null terminator in `O(N)` steps. If a
 {{#include ../code/out/ch19_linked_list.out}}
 ```
 
-**Listing 19-20. The same operations in Rust.**
+**Listing 19-20. The same operations in Rust.** ([`code/ch19/linked_list.rs`](https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/operating-systems/code/ch19/linked_list.rs))
 
 ```rust
 {{#include ../code/ch19/linked_list.rs}}

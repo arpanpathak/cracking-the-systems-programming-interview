@@ -13,7 +13,7 @@ In this chapter, we cover
 - control-plane vs. data-plane separation across the virtual waiting room, event-sharded inventory tier, seat-map cache, and payment saga engine
 - flash-sale admission control with randomized pre-sale lottery pools, HMAC-signed pass tokens, and layered anti-bot rate limits
 - per-seat state machine (`AVAILABLE -> HELD -> BOOKED`), conditional CAS SQL predicates, multi-seat deadlock-free locking, and compensating payment sagas
-- failure matrices, booking SLIs/SLOs, production architectures (Ticketmaster, Stripe, Cloudflare Waiting Room), and verification via `code/bookingsim`
+- failure matrices, booking SLIs/SLOs, production architectures (Ticketmaster, Stripe, Cloudflare Waiting Room), and verification via [`code/bookingsim`](https://github.com/arpanpathak/cracking-the-systems-programming-interview/tree/prep-v2/distributed-systems-from-the-ground-up/code/bookingsim)
 
 </div>
 
@@ -424,7 +424,7 @@ We monitor four domain-specific Service Level Indicators alongside standard HTTP
 
 ## 20.7 Simulation Verification
 
-To verify conditional seat holds, contention rejection, lease expiry without a background reaper, and late-payment fencing, run the `bookingsim` crate in the repository's `code/` workspace:
+To verify conditional seat holds, contention rejection, lease expiry without a background reaper, and late-payment fencing, run the `bookingsim` crate in the repository's [`code/`](https://github.com/arpanpathak/cracking-the-systems-programming-interview/tree/prep-v2/distributed-systems-from-the-ground-up/code) workspace:
 
 ```console
 $ cargo run --release -p bookingsim
@@ -497,7 +497,7 @@ During a high-demand concert on-sale, a buyer's seat reservation (`POST /v1/even
 
 <div class="callout keyidea"><span class="label">Key idea</span> Separating browse-path seat-map reads from write-path conditional CAS holds keeps `99%` of flash-sale traffic on edge caches and read replicas while preserving strict single-buyer exclusivity on the primary inventory shard.</div>
 
-<div class="callout experiment"><span class="label">Experiment</span> In `code/bookingsim`, advance the simulated payment callback for `ada` from minute `7` to minute `4` (inside the 5-minute lease window) and re-run the trace. Observe how the fencing predicate (`hold_id` plus `state = 'HELD'`) confirms `ada` before expiry while rejecting late arrivals once `bob` acquires the reclaimed seat.</div>
+<div class="callout experiment"><span class="label">Experiment</span> In [`code/bookingsim`](https://github.com/arpanpathak/cracking-the-systems-programming-interview/tree/prep-v2/distributed-systems-from-the-ground-up/code/bookingsim), advance the simulated payment callback for `ada` from minute `7` to minute `4` (inside the 5-minute lease window) and re-run the trace. Observe how the fencing predicate (`hold_id` plus `state = 'HELD'`) confirms `ada` before expiry while rejecting late arrivals once `bob` acquires the reclaimed seat.</div>
 
 <div class="callout caution">
 <span class="label">Common pitfall</span>

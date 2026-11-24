@@ -765,7 +765,7 @@ Production storage nodes extend the single-file WAL and in-memory index architec
 
 <div class="callout experiment"><span class="label">Experiment</span>
 
-**Measure buffered vs. durable throughput on local storage.** Execute `cargo run --release -p synccost` in `code/` with default record sizes and again with `4 KiB` and `64 KiB` payloads. Compare the throughput ratio between `write(2)` alone and `write(2)` followed by `sync_data()`; observe that fixed flush latency dominates small writes until payload sizes exceed several hundred kilobytes.
+**Measure buffered vs. durable throughput on local storage.** Execute `cargo run --release -p synccost` in [`code/`](https://github.com/arpanpathak/cracking-the-systems-programming-interview/tree/prep-v2/distributed-systems-from-the-ground-up/code) with default record sizes and again with `4 KiB` and `64 KiB` payloads. Compare the throughput ratio between `write(2)` alone and `write(2)` followed by `sync_data()`; observe that fixed flush latency dominates small writes until payload sizes exceed several hundred kilobytes.
 
 </div>
 

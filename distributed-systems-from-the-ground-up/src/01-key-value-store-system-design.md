@@ -131,7 +131,7 @@ Retry safety follows directly from these semantics. `GET` and `DELETE` are natur
 
 ### Internal Replication and Topology Protocol (gRPC / Protobuf)
 
-Storage nodes exchange strictly typed Protobuf messages over persistent HTTP/2 streams (`code/proto/store.proto`). Before examining Listings 1.1 through 1.3, note the invariants encoded in the message fields:
+Storage nodes exchange strictly typed Protobuf messages over persistent HTTP/2 streams ([`code/proto/store.proto`](https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/distributed-systems-from-the-ground-up/code/proto/store.proto)). Before examining Listings 1.1 through 1.3, note the invariants encoded in the message fields:
 
 - **`Record.sequence` (`uint64`):** The contiguous, strictly monotonic log index assigned by the shard leader. Every replica applies committed records in exact sequence order, guaranteeing identical state-machine convergence.
 - **`AppendRequest.term` (`uint64`):** The sender's current Raft election epoch. Any follower observing `request.term < local_term` immediately rejects the RPC and returns its higher term, fencing partitioned former leaders.
@@ -320,7 +320,7 @@ At `100,000` reads/s, a `0.1%` tail anomaly affects `100` operations every secon
 
 <div class="simulation">
 
-**Run the consistent-hashing variance simulation.** Execute `cargo run --release -p ringsim` in `code/` to reproduce the `1`, `8`, `64`, and `256` virtual-node skew measurements and modulo-hashing migration contrast we analyzed in Section 1.5. In Chapters 2 through 6, we implement and fault-test the durable storage node (`kvd`, `crashsim`), quorum replication (`replsim`), Raft leader election (`raftsim`), stateless router (`kvrouter`), and group-commit WAL (`kvgroup`).
+**Run the consistent-hashing variance simulation.** Execute `cargo run --release -p ringsim` in [`code/`](https://github.com/arpanpathak/cracking-the-systems-programming-interview/tree/prep-v2/distributed-systems-from-the-ground-up/code) to reproduce the `1`, `8`, `64`, and `256` virtual-node skew measurements and modulo-hashing migration contrast we analyzed in Section 1.5. In Chapters 2 through 6, we implement and fault-test the durable storage node (`kvd`, `crashsim`), quorum replication (`replsim`), Raft leader election (`raftsim`), stateless router (`kvrouter`), and group-commit WAL (`kvgroup`).
 
 </div>
 
@@ -374,7 +374,7 @@ Beyond the summary comparison above, three production architectures illustrate h
 
 <div class="callout experiment"><span class="label">Experiment</span>
 
-**Quantify hot-key variance before sizing shards.** Run `cargo run --release -p ringsim` in `code/` and compare the maximum-to-mean shard load ratio at `1`, `8`, `64`, and `256` virtual nodes. Observe how increasing virtual nodes from `1` to `256` compresses standard deviation by more than an order of magnitude while keeping lookup complexity at `O(log V)` (fewer than `14` binary-search comparisons for `24` nodes).
+**Quantify hot-key variance before sizing shards.** Run `cargo run --release -p ringsim` in [`code/`](https://github.com/arpanpathak/cracking-the-systems-programming-interview/tree/prep-v2/distributed-systems-from-the-ground-up/code) and compare the maximum-to-mean shard load ratio at `1`, `8`, `64`, and `256` virtual nodes. Observe how increasing virtual nodes from `1` to `256` compresses standard deviation by more than an order of magnitude while keeping lookup complexity at `O(log V)` (fewer than `14` binary-search comparisons for `24` nodes).
 
 </div>
 

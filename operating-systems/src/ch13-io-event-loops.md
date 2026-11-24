@@ -53,13 +53,13 @@ To establish a listening server, `socket(AF_INET, SOCK_STREAM, 0)` allocates an 
 
 The `poll(fds, nfds, timeout)` system call monitors an array of `nfds` `struct pollfd` entries simultaneously. Before each call, the application sets `fds[i].fd` and `fds[i].events` (typically `POLLIN` to detect readable client bytes, peer **End-of-File (`EOF`)**, or a queued connection on `ls`). The `timeout` parameter specifies the maximum wait in milliseconds (`1000` ms in Listing 13-1; `-1` blocks indefinitely; `0` returns immediately). On return, the kernel populates `fds[i].revents` with observed flags (`POLLIN`, `POLLOUT`, and output-only `POLLHUP`, `POLLERR`, or `POLLNVAL`) and returns the count of ready entries (`> 0`), `0` on timeout, or `-1` on error (`EINTR`, `ENOMEM`). When `POLLIN` fires on a client socket and `read()` returns `0`, the peer has closed its write half (`TCP` **Finish (`FIN`)**), so the server closes the descriptor and removes it from `fds`.
 
-**Listing 13-1. An echo server with one thread and `poll` (C++20).**
+**Listing 13-1. An echo server with one thread and `poll` (C++20).** ([`code/ch13/poll_echo_server.cpp`](https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/operating-systems/code/ch13/poll_echo_server.cpp))
 
 ```cpp
 {{#include ../code/ch13/poll_echo_server.cpp}}
 ```
 
-**Listing 13-2. The C++20 echo client.**
+**Listing 13-2. The C++20 echo client.** ([`code/ch13/echo_client.cpp`](https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/operating-systems/code/ch13/echo_client.cpp))
 
 ```cpp
 {{#include ../code/ch13/echo_client.cpp}}
@@ -77,13 +77,13 @@ The `poll(fds, nfds, timeout)` system call monitors an array of `nfds` `struct p
 {{#include ../code/out/ch13_echo_client_1.out}}
 ```
 
-**Listing 13-3. The same single-threaded `poll` echo server in Rust.**
+**Listing 13-3. The same single-threaded `poll` echo server in Rust.** ([`code/ch13/poll_echo_server.rs`](https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/operating-systems/code/ch13/poll_echo_server.rs))
 
 ```rust
 {{#include ../code/ch13/poll_echo_server.rs}}
 ```
 
-**Listing 13-4. The Rust echo client.**
+**Listing 13-4. The Rust echo client.** ([`code/ch13/echo_client.rs`](https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/operating-systems/code/ch13/echo_client.rs))
 
 ```rust
 {{#include ../code/ch13/echo_client.rs}}
@@ -120,7 +120,7 @@ Modern kernels eliminate this linear scan via stateful interest sets (`epoll` on
 <img src="figures/ch13_poll_vs_epoll.svg" alt="Stateless poll O(N) full-array copy and scan versus stateful epoll/kqueue O(K) kernel red-black tree and ready queue"/>
 </figure>
 
-**Listing 13-5. Contrast: a thread-per-connection echo server and client (Rust).**
+**Listing 13-5. Contrast: a thread-per-connection echo server and client (Rust).** ([`code/ch13/thread_echo.rs`](https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/operating-systems/code/ch13/thread_echo.rs))
 
 ```rust
 {{#include ../code/ch13/thread_echo.rs}}
@@ -142,7 +142,7 @@ Event-driven servers scale to tens of thousands of idle connections by replacing
 <div class="callout experiment">
 <span class="label">Experiment</span>
 
-In Listing 13-1 (`code/ch13/poll_echo_server.cpp`), comment out the `setsockopt(..., SO_REUSEADDR, ...)` call, connect a client, terminate the server with Ctrl-C, and immediately restart it. Observe `bind()` failing with `EADDRINUSE` while the prior socket lingers in `TCP` `TIME_WAIT`.
+In Listing 13-1 ([`code/ch13/poll_echo_server.cpp`](https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/operating-systems/code/ch13/poll_echo_server.cpp)), comment out the `setsockopt(..., SO_REUSEADDR, ...)` call, connect a client, terminate the server with Ctrl-C, and immediately restart it. Observe `bind()` failing with `EADDRINUSE` while the prior socket lingers in `TCP` `TIME_WAIT`.
 
 </div>
 

@@ -754,7 +754,7 @@ Production consensus engines harden textbook Raft and Multi-Paxos against split-
 
 <div class="callout experiment"><span class="label">Experiment</span>
 
-**Trigger randomized elections and verify Election Safety.** Execute `cargo run --release -p raftsim` in `code/` to run 200 randomized three-node fault schedules. Inspect the summary counters for elections held, acknowledged writes preserved, and conflicting uncommitted tails truncated, then deliberately disable durable `voted_for` persistence in a local branch to watch the simulator catch a dual-leader safety violation immediately.
+**Trigger randomized elections and verify Election Safety.** Execute `cargo run --release -p raftsim` in [`code/`](https://github.com/arpanpathak/cracking-the-systems-programming-interview/tree/prep-v2/distributed-systems-from-the-ground-up/code) to run 200 randomized three-node fault schedules. Inspect the summary counters for elections held, acknowledged writes preserved, and conflicting uncommitted tails truncated, then deliberately disable durable `voted_for` persistence in a local branch to watch the simulator catch a dual-leader safety violation immediately.
 
 </div>
 

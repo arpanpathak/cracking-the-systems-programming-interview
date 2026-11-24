@@ -13,7 +13,7 @@ In this chapter, we cover
 - control-plane session coordination and fencing epochs separated from sticky collaboration gateways, presence buses, and snapshot compaction
 - positional divergence, Jupiter server-serialized Operational Transformation, and causal Sequence CRDTs (RGA, YATA, and Fugue) versus fractional indexing
 - tombstone retention, epoch-based garbage collection, server-compacted snapshots with operation log tails, ephemeral carets, and selective local undo
-- failure recovery matrices, convergence SLIs, production architectures (Google Docs, Figma, Yjs, Automerge), and simulation verification via `code/editsim`
+- failure recovery matrices, convergence SLIs, production architectures (Google Docs, Figma, Yjs, Automerge), and simulation verification via [`code/editsim`](https://github.com/arpanpathak/cracking-the-systems-programming-interview/tree/prep-v2/distributed-systems-from-the-ground-up/code/editsim)
 
 </div>
 
@@ -378,7 +378,7 @@ Three user-facing mechanics require specialized treatment in multi-author sessio
 
 ## 26.7 Simulation Verification
 
-Running `code/editsim` directly compares unadjusted positional edits against Operational Transformation and CRDT identifier ordering on the canonical `"cat"` concurrent-edit workload (`ada` inserts `h` at `1`; `bob` inserts `s` at `3`), followed by a concurrent same-position insertion tie-break test.
+Running [`code/editsim`](https://github.com/arpanpathak/cracking-the-systems-programming-interview/tree/prep-v2/distributed-systems-from-the-ground-up/code/editsim) directly compares unadjusted positional edits against Operational Transformation and CRDT identifier ordering on the canonical `"cat"` concurrent-edit workload (`ada` inserts `h` at `1`; `bob` inserts `s` at `3`), followed by a concurrent same-position insertion tie-break test.
 
 ```console
 $ cargo run --release -p editsim
@@ -393,7 +393,7 @@ The simulation transcript confirms three exact properties: applying raw position
 
 <div class="simulation">
 
-**Run the collaborative editing simulation.** Execute `cargo run --release -p editsim` in `code/` to verify raw positional divergence (`chast` vs. `chats`), Operational Transformation convergence, Sequence CRDT commutativity, and deterministic tie-breaking (`carnt`).
+**Run the collaborative editing simulation.** Execute `cargo run --release -p editsim` in [`code/`](https://github.com/arpanpathak/cracking-the-systems-programming-interview/tree/prep-v2/distributed-systems-from-the-ground-up/code) to verify raw positional divergence (`chast` vs. `chats`), Operational Transformation convergence, Sequence CRDT commutativity, and deterministic tie-breaking (`carnt`).
 
 </div>
 

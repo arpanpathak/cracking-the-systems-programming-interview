@@ -13,7 +13,7 @@ In this chapter, we cover
 - control-plane vs. data-plane separation across isolated target discovery, sharded TSDB ingesters, object-store compaction, query engines, and Dead-Man's Switch watchdogs
 - pull vs. push ingestion trade-offs, mergeable histograms vs. non-aggregatable percentiles, Gorilla delta-of-delta timestamp and XOR float64 compression, and inverted label-index cardinality defense
 - two-hour WAL head blocks flushed to immutable object-store TSDB blocks, multi-stat downsampling rollups (`min`, `max`, `sum`, `count`), and `Pending -> Firing` alert evaluation with hysteresis
-- failure matrices, telemetry SLIs/SLOs, production architectures (Prometheus, VictoriaMetrics, Google Monarch, Grafana Mimir), and verification via `code/metricsim`
+- failure matrices, telemetry SLIs/SLOs, production architectures (Prometheus, VictoriaMetrics, Google Monarch, Grafana Mimir), and verification via [`code/metricsim`](https://github.com/arpanpathak/cracking-the-systems-programming-interview/tree/prep-v2/distributed-systems-from-the-ground-up/code/metricsim)
 
 </div>
 
@@ -313,7 +313,7 @@ Four meta-monitoring Service Level Indicators ("watching the watcher") track the
 
 ## 24.7 Simulation Verification
 
-To verify delta-based time-series compression and the difference between average and maximum downsampling rollups on transient latency spikes, execute the `metricsim` crate in the repository's `code/` workspace:
+To verify delta-based time-series compression and the difference between average and maximum downsampling rollups on transient latency spikes, execute the `metricsim` crate in the repository's [`code/`](https://github.com/arpanpathak/cracking-the-systems-programming-interview/tree/prep-v2/distributed-systems-from-the-ground-up/code) workspace:
 
 ```console
 $ cargo run --release -p metricsim

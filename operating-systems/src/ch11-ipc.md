@@ -27,7 +27,7 @@ Three operational invariants prevent classic pipe bugs. First, both parent and c
 <img src="figures/ch11_pipe.svg" alt="A kernel-buffered byte stream between a writing child and a reading parent"/>
 </figure>
 
-**Listing 11-1. One pipe, one fork, and one message (C++20).**
+**Listing 11-1. One pipe, one fork, and one message (C++20).** ([`code/ch11/pipe.cpp`](https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/operating-systems/code/ch11/pipe.cpp))
 
 ```cpp
 {{#include ../code/ch11/pipe.cpp}}
@@ -39,7 +39,7 @@ Three operational invariants prevent classic pipe bugs. First, both parent and c
 {{#include ../code/out/ch11_pipe.out}}
 ```
 
-**Listing 11-2. The same program in Rust.**
+**Listing 11-2. The same program in Rust.** ([`code/ch11/pipe.rs`](https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/operating-systems/code/ch11/pipe.rs))
 
 ```rust
 {{#include ../code/ch11/pipe.rs}}
@@ -75,7 +75,7 @@ By default, a `pthread_mutex_t` initialized with `nullptr` attributes uses `PTHR
 <img src="figures/ch11_shm.svg" alt="Two page tables mapping one physical frame into two processes"/>
 </figure>
 
-**Listing 11-3. A counter in shared memory, protected by a process-shared mutex (C++20).**
+**Listing 11-3. A counter in shared memory, protected by a process-shared mutex (C++20).** ([`code/ch11/shm_counter.cpp`](https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/operating-systems/code/ch11/shm_counter.cpp))
 
 ```cpp
 {{#include ../code/ch11/shm_counter.cpp}}
@@ -87,7 +87,7 @@ By default, a `pthread_mutex_t` initialized with `nullptr` attributes uses `PTHR
 {{#include ../code/out/ch11_shm_counter.out}}
 ```
 
-**Listing 11-4. The same process-shared mutex counter in Rust.**
+**Listing 11-4. The same process-shared mutex counter in Rust.** ([`code/ch11/shm_counter.rs`](https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/operating-systems/code/ch11/shm_counter.rs))
 
 ```rust
 {{#include ../code/ch11/shm_counter.rs}}
@@ -111,7 +111,7 @@ int socketpair(int domain, int type, int protocol, int sv[2]);
 
 Calling `socketpair(AF_UNIX, SOCK_STREAM, 0, sv)` creates a pre-connected pair of symmetric local descriptors in `sv[0]` and `sv[1]`, returning `0` on success or `-1` on error (`EAFNOSUPPORT`, `EOPNOTSUPP`, `EMFILE`, `EFAULT`). The `AF_UNIX` (`AF_LOCAL`) domain routes traffic strictly through local kernel memory without **Internet Protocol (`IP`)** headers, checksums, or network interfaces, while `SOCK_STREAM` delivers a reliable, ordered byte stream analogous to a **Transmission Control Protocol (`TCP`)** connection (passing `SOCK_DGRAM` or `SOCK_SEQPACKET` preserves explicit message boundaries; `protocol = 0` selects the domain default). Unlike `pipe()`, either endpoint can both read and write: after `fork()`, the child closes `sv[0]` and keeps `sv[1]`, while the parent closes `sv[1]` and keeps `sv[0]`. Beyond byte streams, `AF_UNIX` socket pairs can transfer live open file descriptors across process boundaries via `sendmsg()` and `recvmsg()` with `SCM_RIGHTS` ancillary control messages, enabling privilege-separated browser and sandbox architectures where a broker process opens files on behalf of an untrusted worker.
 
-**Listing 11-5. A two-way channel between parent and child (C++20).**
+**Listing 11-5. A two-way channel between parent and child (C++20).** ([`code/ch11/socketpair.cpp`](https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/operating-systems/code/ch11/socketpair.cpp))
 
 ```cpp
 {{#include ../code/ch11/socketpair.cpp}}
@@ -123,7 +123,7 @@ Calling `socketpair(AF_UNIX, SOCK_STREAM, 0, sv)` creates a pre-connected pair o
 {{#include ../code/out/ch11_socketpair.out}}
 ```
 
-**Listing 11-6. The same bidirectional socketpair in Rust.**
+**Listing 11-6. The same bidirectional socketpair in Rust.** ([`code/ch11/socketpair.rs`](https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/operating-systems/code/ch11/socketpair.rs))
 
 ```rust
 {{#include ../code/ch11/socketpair.rs}}
@@ -157,7 +157,7 @@ Pipes and Unix domain sockets trade two kernel buffer copies per transfer for bu
 <div class="callout experiment">
 <span class="label">Experiment</span>
 
-In Listing 11-1 (`code/ch11/pipe.cpp`), comment out `close(fds[1])` in the parent process and run the binary. Observe that the parent's `read()` blocks indefinitely even after the child exits because the parent itself still holds an open write reference, preventing `EOF`.
+In Listing 11-1 ([`code/ch11/pipe.cpp`](https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/operating-systems/code/ch11/pipe.cpp)), comment out `close(fds[1])` in the parent process and run the binary. Observe that the parent's `read()` blocks indefinitely even after the child exits because the parent itself still holds an open write reference, preventing `EOF`.
 
 </div>
 

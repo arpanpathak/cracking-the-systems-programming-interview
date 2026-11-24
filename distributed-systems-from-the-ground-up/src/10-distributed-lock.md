@@ -312,7 +312,7 @@ Because correctness locking requires Raft quorum latency, fencing-token plumbing
 
 ## 10.7 Simulation Verification
 
-To verify end-to-end fencing safety under a long process pause, we execute the repository's `locksim` simulation (`code/locksim/src/main.rs`). In this trace, `client-a` acquires the lock at `t = 0` with a `10 s` lease and fencing token `1`, then freezes for `15 seconds` at `t = 2`. At `t = 12`, after the lease expires, `client-b` acquires the lock with token `2` and writes to storage at `t = 13`. When `client-a` wakes at `t = 17` and attempts to write with token `1`, the storage engine rejects the stale write:
+To verify end-to-end fencing safety under a long process pause, we execute the repository's `locksim` simulation ([`code/locksim/src/main.rs`](https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/distributed-systems-from-the-ground-up/code/locksim/src/main.rs)). In this trace, `client-a` acquires the lock at `t = 0` with a `10 s` lease and fencing token `1`, then freezes for `15 seconds` at `t = 2`. At `t = 12`, after the lease expires, `client-b` acquires the lock with token `2` and writes to storage at `t = 13`. When `client-a` wakes at `t = 17` and attempts to write with token `1`, the storage engine rejects the stale write:
 
 ```console
 $ cargo run --release -p locksim
@@ -329,7 +329,7 @@ Without storage-layer token verification, `client-a`'s write at `t = 17` would o
 
 <div class="simulation">
 
-**Run the distributed lock and fencing simulation.** Execute `cargo run --release -p locksim` in `code/` ([`code/locksim/src/main.rs`](https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/distributed-systems-from-the-ground-up/code/locksim/src/main.rs)) to reproduce the 15-second pause, lease transfer, and storage-layer token rejection trace above.
+**Run the distributed lock and fencing simulation.** Execute `cargo run --release -p locksim` in [`code/`](https://github.com/arpanpathak/cracking-the-systems-programming-interview/tree/prep-v2/distributed-systems-from-the-ground-up/code) ([`code/locksim/src/main.rs`](https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/distributed-systems-from-the-ground-up/code/locksim/src/main.rs)) to reproduce the 15-second pause, lease transfer, and storage-layer token rejection trace above.
 
 </div>
 

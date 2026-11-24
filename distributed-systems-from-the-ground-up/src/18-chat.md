@@ -15,7 +15,7 @@ In this chapter, we cover
 - separation of the control plane (presence heartbeat service, Redis session directory, APNs/FCM offline push relay) from stateful WebSocket gateways and partitioned message logs
 - transport selection (polling, long polling, WebSocket), gateway connection isolation, monotonic per-conversation sequencing, `client_id` deduplication, and offline cursor recovery via interactive traces
 - 1:1 versus large-group fan-out, multi-device cursors and cumulative watermarks, viewport-scoped presence control, hot-channel storage partitioning, and Signal Double Ratchet E2EE implications
-- failure-mode mitigation matrices, operational SLIs, production architectures (WhatsApp Erlang/FreeBSD, Discord ScyllaDB, Slack, Facebook Messenger MQTT), and verification via `code/chatsim`
+- failure-mode mitigation matrices, operational SLIs, production architectures (WhatsApp Erlang/FreeBSD, Discord ScyllaDB, Slack, Facebook Messenger MQTT), and verification via [`code/chatsim`](https://github.com/arpanpathak/cracking-the-systems-programming-interview/tree/prep-v2/distributed-systems-from-the-ground-up/code/chatsim)
 
 </div>
 
@@ -387,6 +387,6 @@ Delivering a live chat message from a sender's mobile device to an online recipi
 
 <div class="callout keyidea"><span class="label">Key idea</span> Treating the persistent WebSocket gateway as a replaceable delivery hint while anchoring canonical ordering to a per-conversation sequence number (`seq_id`) guarantees exact gapless history recovery even when connections drop mid-flight.</div>
 
-<div class="callout experiment"><span class="label">Experiment</span> In `code/chatsim`, simulate a recipient disconnecting for `20` messages while two other participants interleave sends, then reconnect with the stale cursor. Verify that cursor-based range sync (`seq > last_seen`) reconstructs the identical total order on every device without duplicating previously delivered messages.</div>
+<div class="callout experiment"><span class="label">Experiment</span> In [`code/chatsim`](https://github.com/arpanpathak/cracking-the-systems-programming-interview/tree/prep-v2/distributed-systems-from-the-ground-up/code/chatsim), simulate a recipient disconnecting for `20` messages while two other participants interleave sends, then reconnect with the stale cursor. Verify that cursor-based range sync (`seq > last_seen`) reconstructs the identical total order on every device without duplicating previously delivered messages.</div>
 
 <div class="callout caution"><span class="label">Common pitfall</span> Broadcasting presence transitions (online, typing, idle) eagerly to every member of a `100,000`-user channel generates quadratic fan-out traffic that starves actual message delivery. Scope presence updates strictly to active viewport subscribers and throttle heartbeat refreshes to `30 to 60 s` intervals.</div>

@@ -274,7 +274,7 @@ Accepting a `200 OK` from SES, APNs, or Twilio means only that the provider acce
 
 ## 13.7 Simulation Verification
 
-To verify caller idempotency deduplication, exponential retry pacing, and bounded DLQ quarantine, we execute the repository's `notifysim` simulation (`code/notifysim/src/main.rs`). Five requests enter the notification service against a simulated provider configured with distinct transient failure counts per key:
+To verify caller idempotency deduplication, exponential retry pacing, and bounded DLQ quarantine, we execute the repository's `notifysim` simulation ([`code/notifysim/src/main.rs`](https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/distributed-systems-from-the-ground-up/code/notifysim/src/main.rs)). Five requests enter the notification service against a simulated provider configured with distinct transient failure counts per key:
 
 ```console
 $ cargo run --release -p notifysim
@@ -294,7 +294,7 @@ Every core delivery invariant appears in the five-line trace:
 
 <div class="simulation">
 
-**Run the notification delivery simulation.** Execute `cargo run --release -p notifysim` in `code/` ([`code/notifysim/src/main.rs`](https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/distributed-systems-from-the-ground-up/code/notifysim/src/main.rs)) to reproduce idempotency suppression, exponential backoff schedules, and five-try dead-letter isolation above.
+**Run the notification delivery simulation.** Execute `cargo run --release -p notifysim` in [`code/`](https://github.com/arpanpathak/cracking-the-systems-programming-interview/tree/prep-v2/distributed-systems-from-the-ground-up/code) ([`code/notifysim/src/main.rs`](https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/distributed-systems-from-the-ground-up/code/notifysim/src/main.rs)) to reproduce idempotency suppression, exponential backoff schedules, and five-try dead-letter isolation above.
 
 </div>
 

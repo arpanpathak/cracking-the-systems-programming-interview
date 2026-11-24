@@ -38,7 +38,7 @@ In both calls, `sockfd` is a `SOCK_DGRAM` descriptor (calling `bind()` assigns a
 
 Both functions return the signed byte count transferred (`ssize_t >= 0`), or `-1` on error (`EMSGSIZE` if a datagram exceeds the link's **Maximum Transmission Unit (`MTU`)** limit, `EAGAIN` on non-blocking empty receive, or `EINTR`). Unlike `TCP` `read()`, which leaves unread bytes queued for the next call, if an arriving `UDP` datagram exceeds the `len` buffer supplied to `recvfrom()`, the kernel copies the first `len` bytes and **discards the remaining tail without signaling an error**.
 
-**Listing 14-1. Sending and receiving one datagram (C++20).**
+**Listing 14-1. Sending and receiving one datagram (C++20).** ([`code/ch14/udp.cpp`](https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/operating-systems/code/ch14/udp.cpp))
 
 ```cpp
 {{#include ../code/ch14/udp.cpp}}
@@ -50,7 +50,7 @@ Both functions return the signed byte count transferred (`ssize_t >= 0`), or `-1
 {{#include ../code/out/ch14_udp.out}}
 ```
 
-**Listing 14-2. The same exchange with `std::net::UdpSocket` (Rust).**
+**Listing 14-2. The same exchange with `std::net::UdpSocket` (Rust).** ([`code/ch14/udp.rs`](https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/operating-systems/code/ch14/udp.rs))
 
 ```rust
 {{#include ../code/ch14/udp.rs}}
@@ -91,7 +91,7 @@ Callers zero-initialize a `struct addrinfo hints{}` and populate only the constr
 
 Because a hostname commonly resolves to both `IPv6` (`::1`) and `IPv4` (`127.0.0.1`) endpoints, callers traverse the linked list via `ai->ai_next`, inspect `ai->ai_family` to cast `ai->ai_addr` safely to `sockaddr_in *` or `sockaddr_in6 *`, and release the entire list with `freeaddrinfo(list)`. To format a binary network-order address into text, `inet_ntop(af, src, dst, size)` ("network to presentation") writes a null-terminated string into `dst`; sizing `dst` to `INET6_ADDRSTRLEN` (46 bytes) guarantees sufficient capacity for both `IPv4` dotted-quad and full `IPv6` colon-hex strings.
 
-**Listing 14-3. The addresses that `getaddrinfo` returns for "localhost" (C++20).**
+**Listing 14-3. The addresses that `getaddrinfo` returns for "localhost" (C++20).** ([`code/ch14/getaddrinfo.cpp`](https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/operating-systems/code/ch14/getaddrinfo.cpp))
 
 ```cpp
 {{#include ../code/ch14/getaddrinfo.cpp}}
@@ -103,7 +103,7 @@ Because a hostname commonly resolves to both `IPv6` (`::1`) and `IPv4` (`127.0.0
 {{#include ../code/out/ch14_getaddrinfo.out}}
 ```
 
-**Listing 14-4. The same lookup in Rust, with `to_socket_addrs`.**
+**Listing 14-4. The same lookup in Rust, with `to_socket_addrs`.** ([`code/ch14/to_socket_addrs.rs`](https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/operating-systems/code/ch14/to_socket_addrs.rs))
 
 ```rust
 {{#include ../code/ch14/to_socket_addrs.rs}}
@@ -125,7 +125,7 @@ Because a hostname commonly resolves to both `IPv6` (`::1`) and `IPv4` (`127.0.0
 <div class="callout experiment">
 <span class="label">Experiment</span>
 
-In Listing 14-1 (`code/ch14/udp.cpp`), shrink the receiver buffer `char buf[4]` while sending the 8-byte `"ping-udp"` payload. Observe `recvfrom()` returning `4` bytes and discarding the remaining 4 bytes without returning an error, contrasting sharply with `TCP` stream buffering.
+In Listing 14-1 ([`code/ch14/udp.cpp`](https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/operating-systems/code/ch14/udp.cpp)), shrink the receiver buffer `char buf[4]` while sending the 8-byte `"ping-udp"` payload. Observe `recvfrom()` returning `4` bytes and discarding the remaining 4 bytes without returning an error, contrasting sharply with `TCP` stream buffering.
 
 </div>
 

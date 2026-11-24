@@ -32,7 +32,7 @@ To inspect authoritative inode metadata, `fstat(fd, statbuf)` populates `struct 
 
 Durability and reclamation rely on `fsync(fd)` and `unlink(pathname)`. Invoking `fsync(fd)` flushes all modified data pages and inode metadata associated with `fd` from the kernel's volatile page cache down to stable non-volatile storage, blocking until the storage controller acknowledges completion. Calling `unlink(pathname)` removes the directory entry naming `pathname` and decrements `st_nlink`; the kernel reclaims the inode and its data blocks only when **both** `st_nlink == 0` **and** zero open file descriptions reference the inode, allowing an already-open file to remain readable and writable even after being unlinked.
 
-**Listing 12-1. open, write, lseek, read, and stat (C++20).**
+**Listing 12-1. open, write, lseek, read, and stat (C++20).** ([`code/ch12/files.cpp`](https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/operating-systems/code/ch12/files.cpp))
 
 ```cpp
 {{#include ../code/ch12/files.cpp}}
@@ -44,7 +44,7 @@ Durability and reclamation rely on `fsync(fd)` and `unlink(pathname)`. Invoking 
 {{#include ../code/out/ch12_files.out}}
 ```
 
-**Listing 12-2. The same operations with the Rust standard library.**
+**Listing 12-2. The same operations with the Rust standard library.** ([`code/ch12/files.rs`](https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/operating-systems/code/ch12/files.rs))
 
 ```rust
 {{#include ../code/ch12/files.rs}}
@@ -85,7 +85,7 @@ Modern systems solve structural consistency and application durability through t
 <img src="figures/ch12_durability_path.svg" alt="Write-to-durability path from user space through the kernel page cache and write-ahead journal to non-volatile storage, and the 4-step atomic rename protocol"/>
 </figure>
 
-**Listing 12-3. A file with a logical size of 8 MiB and 8 KiB of storage (C++20).**
+**Listing 12-3. A file with a logical size of 8 MiB and 8 KiB of storage (C++20).** ([`code/ch12/sparse.cpp`](https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/operating-systems/code/ch12/sparse.cpp))
 
 ```cpp
 {{#include ../code/ch12/sparse.cpp}}
@@ -97,7 +97,7 @@ Modern systems solve structural consistency and application durability through t
 {{#include ../code/out/ch12_sparse.out}}
 ```
 
-**Listing 12-4. The same sparse file in Rust.**
+**Listing 12-4. The same sparse file in Rust.** ([`code/ch12/sparse.rs`](https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/operating-systems/code/ch12/sparse.rs))
 
 ```rust
 {{#include ../code/ch12/sparse.rs}}
@@ -119,7 +119,7 @@ Decoupling directory entries (names) from inodes (metadata and block pointers) e
 <div class="callout experiment">
 <span class="label">Experiment</span>
 
-Run Listing 12-3 (`code/ch12/sparse.cpp`) and inspect the created file with `ls -lh` versus `du -h` before `unlink()`. Notice that `ls -lh` reports the 8 MiB logical `st_size`, while `du -h` reports only 8 KiB of physical blocks allocated on disk.
+Run Listing 12-3 ([`code/ch12/sparse.cpp`](https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/operating-systems/code/ch12/sparse.cpp)) and inspect the created file with `ls -lh` versus `du -h` before `unlink()`. Notice that `ls -lh` reports the 8 MiB logical `st_size`, while `du -h` reports only 8 KiB of physical blocks allocated on disk.
 
 </div>
 

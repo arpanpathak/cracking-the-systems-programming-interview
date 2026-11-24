@@ -28,7 +28,7 @@ This cache-line granularity creates **false sharing** (Figure 17-3): when two th
 <img src="figures/ch17_false_sharing.svg" alt="Two counters in one cache line bouncing between cores, versus two padded counters in separate lines"/>
 </figure>
 
-**Listing 17-1. Two counters in one cache line and in two (C++20).**
+**Listing 17-1. Two counters in one cache line and in two (C++20).** ([`code/ch17/false_sharing.cpp`](https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/operating-systems/code/ch17/false_sharing.cpp))
 
 ```cpp
 {{#include ../code/ch17/false_sharing.cpp}}
@@ -40,7 +40,7 @@ This cache-line granularity creates **false sharing** (Figure 17-3): when two th
 {{#include ../code/out/ch17_false_sharing.out}}
 ```
 
-**Listing 17-2. The same experiment in Rust, with atomic counters.**
+**Listing 17-2. The same experiment in Rust, with atomic counters.** ([`code/ch17/false_sharing.rs`](https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/operating-systems/code/ch17/false_sharing.rs))
 
 ```rust
 {{#include ../code/ch17/false_sharing.rs}}
@@ -62,7 +62,7 @@ Hardware cache coherence guarantees correctness, not performance. Independent va
 <div class="callout experiment">
 <span class="label">Experiment</span>
 
-Run Listing 17-1 (`code/ch17/false_sharing.cpp`) or Listing 17-2 (`code/ch17/false_sharing.rs`) and compare elapsed time between the packed struct (both counters on one 64-byte cache line) and the `alignas(64)` padded struct. Notice how separating the two counters by 64 bytes eliminates `MESI` `RFO` ping-ponging and speeds up execution several-fold.
+Run Listing 17-1 ([`code/ch17/false_sharing.cpp`](https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/operating-systems/code/ch17/false_sharing.cpp)) or Listing 17-2 ([`code/ch17/false_sharing.rs`](https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/operating-systems/code/ch17/false_sharing.rs)) and compare elapsed time between the packed struct (both counters on one 64-byte cache line) and the `alignas(64)` padded struct. Notice how separating the two counters by 64 bytes eliminates `MESI` `RFO` ping-ponging and speeds up execution several-fold.
 
 </div>
 

@@ -344,7 +344,7 @@ Strict priority ordering (`ORDER BY priority ASC`) causes **starvation** when co
 
 ## 12.7 Simulation Verification
 
-To verify lease claiming, worker crash recovery via deadline expiration, and bounded attempt accounting, we run the repository's `jobsim` simulation (`code/jobsim/src/main.rs`). Six jobs enter the queue with three workers (`worker 0`, `worker 1`, `worker 2`). At `t = 0`, all three workers claim jobs `0`, `1`, and `2`. Worker `1` crashes while holding `job 1`; at `t = 3`, its lease expires and the reclaimer returns `job 1` to the queue. At `t = 4`, `worker 0` claims `job 1` on its second attempt and completes it at `t = 6`:
+To verify lease claiming, worker crash recovery via deadline expiration, and bounded attempt accounting, we run the repository's `jobsim` simulation ([`code/jobsim/src/main.rs`](https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/distributed-systems-from-the-ground-up/code/jobsim/src/main.rs)). Six jobs enter the queue with three workers (`worker 0`, `worker 1`, `worker 2`). At `t = 0`, all three workers claim jobs `0`, `1`, and `2`. Worker `1` crashes while holding `job 1`; at `t = 3`, its lease expires and the reclaimer returns `job 1` to the queue. At `t = 4`, `worker 0` claims `job 1` on its second attempt and completes it at `t = 6`:
 
 ```console
 $ cargo run --release -p jobsim
@@ -369,7 +369,7 @@ All `6` of `6` jobs finish cleanly despite the mid-flight worker failure, with `
 
 <div class="simulation">
 
-**Run the distributed job scheduler simulation.** Execute `cargo run --release -p jobsim` in `code/` ([`code/jobsim/src/main.rs`](https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/distributed-systems-from-the-ground-up/code/jobsim/src/main.rs)) to reproduce worker crash detection, lease reclamation, and fenced completion above.
+**Run the distributed job scheduler simulation.** Execute `cargo run --release -p jobsim` in [`code/`](https://github.com/arpanpathak/cracking-the-systems-programming-interview/tree/prep-v2/distributed-systems-from-the-ground-up/code) ([`code/jobsim/src/main.rs`](https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/distributed-systems-from-the-ground-up/code/jobsim/src/main.rs)) to reproduce worker crash detection, lease reclamation, and fenced completion above.
 
 </div>
 

@@ -13,7 +13,7 @@ In this chapter, we cover
 - control-plane vs. data-plane separation across region partitioning, cell-sharded RAM indexes, road-graph ETA engines, and Raft-backed trip stores
 - H3 hexagonal and S2 Hilbert-curve spatial indexing compared with geohash boundary distortion, plus TTL-leased driver heartbeat ingestion
 - adaptive k-ring cell expansion, Contraction Hierarchies ETA ranking, serialized 15-second exclusive offer locks, and H3 cell-level surge pricing aggregation
-- failure matrices, dispatch SLIs/SLOs, production architectures (Uber H3/DISCO, Lyft, Google S2), and verification via `code/nearbysim`
+- failure matrices, dispatch SLIs/SLOs, production architectures (Uber H3/DISCO, Lyft, Google S2), and verification via [`code/nearbysim`](https://github.com/arpanpathak/cracking-the-systems-programming-interview/tree/prep-v2/distributed-systems-from-the-ground-up/code/nearbysim)
 
 </div>
 
@@ -343,7 +343,7 @@ Four domain-specific Service Level Indicators track dispatch health beyond raw H
 
 ## 21.7 Simulation Verification
 
-To verify the asymptotic speedup and exact equivalence of spatial grid indexing versus full-fleet scanning, execute the `nearbysim` crate in the repository's `code/` workspace:
+To verify the asymptotic speedup and exact equivalence of spatial grid indexing versus full-fleet scanning, execute the `nearbysim` crate in the repository's [`code/`](https://github.com/arpanpathak/cracking-the-systems-programming-interview/tree/prep-v2/distributed-systems-from-the-ground-up/code) workspace:
 
 ```console
 $ cargo run --release -p nearbysim
@@ -409,6 +409,6 @@ Matching a rider's `POST /v1/rides` request to the nearest available driver span
 
 <div class="callout keyidea"><span class="label">Key idea</span> Hexagonal spatial indexing (`H3`) eliminates the corner-neighbor distance distortion of square grids and geohashes, allowing `k`-ring neighbor queries and surge-pricing heatmaps to operate with uniform isotropic geometry across any urban area.</div>
 
-<div class="callout experiment"><span class="label">Experiment</span> In `code/nearbysim`, increase the fleet size from `20,000` to `200,000` drivers while keeping the cell size proportional to local density, and compare candidate distance evaluations against a full-fleet scan. Verify that grid-indexed lookup remains `O(1)` in local neighborhood density while linear scanning grows `10x` slower.</div>
+<div class="callout experiment"><span class="label">Experiment</span> In [`code/nearbysim`](https://github.com/arpanpathak/cracking-the-systems-programming-interview/tree/prep-v2/distributed-systems-from-the-ground-up/code/nearbysim), increase the fleet size from `20,000` to `200,000` drivers while keeping the cell size proportional to local density, and compare candidate distance evaluations against a full-fleet scan. Verify that grid-indexed lookup remains `O(1)` in local neighborhood density while linear scanning grows `10x` slower.</div>
 
 <div class="callout caution"><span class="label">Common pitfall</span> Persisting every `4 s` driver GPS heartbeat to a relational disk database creates millions of needless write IOPS per city for ephemeral coordinates that expire in `15 s`. Keep live driver locations inside an in-memory TTL-indexed spatial shard that self-heals within one heartbeat interval after any pod restart, reserving durable consensus storage strictly for trip state transitions and billing milestones.</div>

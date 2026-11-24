@@ -333,7 +333,7 @@ We monitor four production signals continuously:
 
 ## 8.7 Simulation Verification
 
-To validate per-millisecond sequence exhaustion, global uniqueness across independent nodes, chronological ordering, and backward clock-step refusal, we execute the repository's `idgen` simulation (`code/idgen/src/main.rs`). The test drives `3` independent generator nodes, requesting `5,000` IDs per node across `100` milliseconds (`1,500,000` total requests), and then injects a `2 ms` backward clock jump on node `7`:
+To validate per-millisecond sequence exhaustion, global uniqueness across independent nodes, chronological ordering, and backward clock-step refusal, we execute the repository's `idgen` simulation ([`code/idgen/src/main.rs`](https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/distributed-systems-from-the-ground-up/code/idgen/src/main.rs)). The test drives `3` independent generator nodes, requesting `5,000` IDs per node across `100` milliseconds (`1,500,000` total requests), and then injects a `2 ms` backward clock jump on node `7`:
 
 ```console
 $ cargo run --release -p idgen
@@ -353,7 +353,7 @@ Three exact invariants emerge from the observed output:
 
 <div class="simulation">
 
-**Run the unique ID generator simulation.** Execute `cargo run --release -p idgen` in `code/` ([`code/idgen/src/main.rs`](https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/distributed-systems-from-the-ground-up/code/idgen/src/main.rs)) to reproduce the 1,228,800-ID uniqueness, sequence-exhaustion, and clock-regression checks above.
+**Run the unique ID generator simulation.** Execute `cargo run --release -p idgen` in [`code/`](https://github.com/arpanpathak/cracking-the-systems-programming-interview/tree/prep-v2/distributed-systems-from-the-ground-up/code) ([`code/idgen/src/main.rs`](https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/distributed-systems-from-the-ground-up/code/idgen/src/main.rs)) to reproduce the 1,228,800-ID uniqueness, sequence-exhaustion, and clock-regression checks above.
 
 </div>
 

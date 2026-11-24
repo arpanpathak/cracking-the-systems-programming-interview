@@ -13,7 +13,7 @@ In this chapter, we cover
 - control-plane and offline build pipeline separation from the lock-free, read-only online serving data plane
 - precomputed top-K prefix trie nodes achieving `O(L)` lookup, exponential frequency decay, fast-lane Flink trending overlays, and double-buffered atomic snapshot swaps
 - load-balanced prefix range sharding across serving nodes, client debouncing, CDN caching trade-offs, k-anonymity privacy gates, and PII/profanity filtering
-- failure matrices, typeahead SLIs/SLOs, production architectures (Google Suggest, Elasticsearch FST, Meta Typeahead, Microsoft Top-k Completion), and verification via `code/typeahead`
+- failure matrices, typeahead SLIs/SLOs, production architectures (Google Suggest, Elasticsearch FST, Meta Typeahead, Microsoft Top-k Completion), and verification via [`code/typeahead`](https://github.com/arpanpathak/cracking-the-systems-programming-interview/tree/prep-v2/distributed-systems-from-the-ground-up/code/typeahead)
 
 </div>
 
@@ -280,7 +280,7 @@ Four domain-specific Service Level Indicators track autocomplete quality and res
 
 ## 22.7 Simulation Verification
 
-To verify prefix lookup, frequency-ordered top-K ranking, and empty-prefix handling, execute the `typeahead` crate in the repository's `code/` workspace:
+To verify prefix lookup, frequency-ordered top-K ranking, and empty-prefix handling, execute the `typeahead` crate in the repository's [`code/`](https://github.com/arpanpathak/cracking-the-systems-programming-interview/tree/prep-v2/distributed-systems-from-the-ground-up/code) workspace:
 
 ```console
 $ cargo run --release -p typeahead
