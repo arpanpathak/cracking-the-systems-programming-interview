@@ -36,7 +36,7 @@
             const path_to_root = "";
             const default_light_theme = "coal";
             const default_dark_theme = "coal";
-            window.path_to_searchindex_js = "searchindex-cf88c8cf.js";
+            window.path_to_searchindex_js = "searchindex-0ebafaf0.js";
         </script>
         <!-- Start loading toc.js asap -->
         <script src="toc-00f6d8fe.js"></script>
@@ -378,7 +378,7 @@ CREATE TABLE placement_groups (
 <img src="figures/steps-obj-parity-01.svg?v=8a34afed" alt="Rebuilding a lost piece from a sum, step 1 of 5. An object is cut into 3 pieces, which for this picture are the numbers 5, 3 and 9. Each piece goes to a different disk." />
 <figcaption><b>Interactive Trace 16.A</b> Single-parity erasure reconstruction: storing 3 data blocks plus 1 parity sum across 4 disks tolerates any 1 disk loss at 1.33x overhead. Use Next and Back to step through all 5 stages.</figcaption>
 </figure>
-<p>To tolerate $m &gt; 1$ simultaneous failures without integer overflow, production object stores execute <strong>Reed-Solomon <code>RS(k, m)</code> coding</strong> over the finite Galois Field $\text{GF}(2^8)$, where every byte is a polynomial element of degree at most 7, addition is bitwise <code>XOR</code>, and multiplication executes modulo an irreducible degree-8 polynomial (<code>0x11d</code>). Given $k = 6$ data shards arranged as a vector $\mathbf{d}$, multiplying by a $9 \times 6$ systematic Cauchy generator matrix $\mathbf{G}$ (whose top $6 \times 6$ submatrix is the identity matrix $\mathbf{I}<em>6$) produces the $6$ unaltered data shards plus $3$ parity shards (<code>P1</code>, <code>P2</code>, <code>P3</code>). Because every $6 \times 6$ submatrix of a Cauchy matrix is guaranteed invertible over $\text{GF}(2^8)$, <strong>any 6 surviving shards out of 9</strong> uniquely recover all 6 original data shards via $\mathbf{d} = \mathbf{G}</em>{\text{surv}}^{-1} \mathbf{y}_{\text{surv}}$.</p>
+<p>To tolerate m &gt; 1 simultaneous failures without integer overflow, production object stores execute <strong>Reed-Solomon <code>RS(k, m)</code> coding</strong> over the finite Galois Field GF(2<sup>8</sup>), where every byte is a polynomial element of degree at most 7, addition is bitwise <code>XOR</code>, and multiplication executes modulo an irreducible degree-8 polynomial (<code>0x11d</code>). Given k = 6 data shards arranged as a vector \mathbfd, multiplying by a 9 × 6 systematic Cauchy generator matrix \mathbfG (whose top 6 × 6 submatrix is the identity matrix \mathbfI<sub>6</sub>) produces the $6$ unaltered data shards plus $3$ parity shards (<code>P1</code>, <code>P2</code>, <code>P3</code>). Because every 6 × 6 submatrix of a Cauchy matrix is guaranteed invertible over GF(2<sup>8</sup>), <strong>any 6 surviving shards out of 9</strong> uniquely recover all 6 original data shards via \mathbfd = \mathbfG<sub>surv</sub><sup>-1</sup> \mathbfy<sub>surv</sub>.</p>
 <p>Modern CPUs execute <code>GF(2^8)</code> multiply-accumulate via 4-bit nibble lookup tables using AVX2/AVX-512 <code>VPSHUFB</code> (or ARM NEON <code>VTBL</code>) instructions at <strong><code>&gt; 10 GB/s</code> per core</strong>, making CPU encoding overhead negligible compared to disk and network bandwidth.</p>
 <div class="table-wrapper">
 <table>
@@ -413,9 +413,9 @@ CREATE TABLE placement_groups (
 <p>Replication and erasure coding protect against hardware failure, never against software defects or accidental operator <code>DELETE</code> commands, because a mistaken deletion is faithfully committed to the metadata quorum. Enabling <strong>bucket versioning</strong> converts every <code>DELETE</code> into an append-only <code>is_delete_marker = TRUE</code> metadata record and retains prior <code>version_id</code> manifests until lifecycle rules explicitly expire them.</p>
 <p>When an object version is permanently expired, its metadata entry disappears immediately, while physical shard deletion runs asynchronously in the background <strong>Garbage Collector (GC)</strong>. Deleting chunks immediately creates a notorious data-loss race under content addressing or concurrent multipart commits:</p>
 <ol>
-<li>The GC scans metadata at time $t_0$ and marks chunk <code>c9</code> as unreferenced.</li>
-<li>At time $t_1$, a concurrent upload produces identical chunk <code>c9</code>, sees <code>c9</code> already exists on storage nodes, and commits a new manifest referencing <code>c9</code>.</li>
-<li>At time $t_2$, the GC deletes <code>c9</code> from its stale $t_0$ candidate list, permanently corrupting the newly uploaded object.</li>
+<li>The GC scans metadata at time t<sub>0</sub> and marks chunk <code>c9</code> as unreferenced.</li>
+<li>At time t<sub>1</sub>, a concurrent upload produces identical chunk <code>c9</code>, sees <code>c9</code> already exists on storage nodes, and commits a new manifest referencing <code>c9</code>.</li>
+<li>At time t<sub>2</sub>, the GC deletes <code>c9</code> from its stale t<sub>0</sub> candidate list, permanently corrupting the newly uploaded object.</li>
 </ol>
 <p>We eliminate this race with a <strong>two-phase mark-and-grace protocol</strong>: the GC only reclaims chunks that have remained unreferenced continuously for a <code>24-hour</code> grace window (<code>t_now - last_referenced_at &gt; 24 h</code>) and acquires an epoch-fenced tombstone lock before reclaiming storage blocks, while any upload reusing an existing chunk refreshes <code>last_referenced_at</code> atomically prior to manifest commit.</p>
 <h2 id="166-failure-modes-slis-and-production-systems"><a class="header" href="#166-failure-modes-slis-and-production-systems">16.6 Failure Modes, SLIs, and Production Systems</a></h2>
@@ -566,6 +566,22 @@ video.mp4 read back: 10485760 bytes, equal to the original: true, copies repaire
         <template id=fa-play><span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 384 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M73 39c-14.8-9.1-33.4-9.4-48.5-.9S0 62.6 0 80V432c0 17.4 9.4 33.4 24.5 41.9s33.7 8.1 48.5-.9L361 297c14.3-8.7 23-24.2 23-41s-8.7-32.2-23-41L73 39z"/></svg></span></template>
         <template id=fa-clock-rotate-left><span class=fa-svg><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 6.2.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2022 Fonticons, Inc. --><path d="M75 75L41 41C25.9 25.9 0 36.6 0 57.9V168c0 13.3 10.7 24 24 24H134.1c21.4 0 32.1-25.9 17-41l-30.8-30.8C155 85.5 203 64 256 64c106 0 192 86 192 192s-86 192-192 192c-40.8 0-78.6-12.7-109.7-34.4c-14.5-10.1-34.4-6.6-44.6 7.9s-6.6 34.4 7.9 44.6C151.2 495 201.7 512 256 512c141.4 0 256-114.6 256-256S397.4 0 256 0C185.3 0 121.3 28.7 75 75zm181 53c-13.3 0-24 10.7-24 24V256c0 6.4 2.5 12.5 7 17l72 72c9.4 9.4 24.6 9.4 33.9 0s9.4-24.6 0-33.9l-65-65V152c0-13.3-10.7-24-24-24z"/></svg></span></template>
 
+        <!-- Livereload script (if served using the cli tool) -->
+        <script>
+            const wsProtocol = location.protocol === 'https:' ? 'wss:' : 'ws:';
+            const wsAddress = wsProtocol + "//" + location.host + "/" + "__livereload";
+            const socket = new WebSocket(wsAddress);
+            socket.onmessage = function (event) {
+                if (event.data === "reload") {
+                    socket.close();
+                    location.reload();
+                }
+            };
+
+            window.onbeforeunload = function() {
+                socket.close();
+            }
+        </script>
 
 
         <script>
