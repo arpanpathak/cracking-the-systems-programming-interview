@@ -21,16 +21,6 @@ The implementations below model a command-line control plane that manages comput
 
 Input validation illustrates the core architectural invariant. A GPU count arrives as untrusted text, and inputs such as `0`, `99`, or `many` must be rejected before reaching scheduling logic. Revalidating raw integers in every downstream function is brittle because a single omitted guard permits corrupt state to propagate. Validating once at the ingress boundary and encapsulating the result in a private-field newtype guarantees that every downstream function receiving that type observes a valid count by construction.
 
-The implementation progresses through seven stages:
-
-1. Section 7.1 formalizes traits and automatic derivation.
-2. Section 7.2 defines the validated `GpuCount` newtype.
-3. Section 7.3 defines a structured error type for rejected counts.
-4. Section 7.4 implements standard `From` and `TryFrom` conversions.
-5. Section 7.5 models CLI commands as a tagged union enum with a text parser.
-6. Section 7.6 encodes workload lifecycle states and transition rules as a finite state machine.
-7. Section 7.7 models structured remote API errors with retry classification.
-
 ## 7.1 Traits
 
 A **trait** defines a set of methods that a type guarantees to provide. The standard library supplies many traits; for example, `Display` defines a single method, `fmt`, that formats a value as human-readable text. Any type implementing `Display` can be formatted with `println!("{}", x)`.

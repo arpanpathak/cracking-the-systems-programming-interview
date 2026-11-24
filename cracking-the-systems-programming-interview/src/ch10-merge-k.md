@@ -14,18 +14,9 @@ This chapter covers
 
 </div>
 
-A **k-way merge** combines *k* independently sorted sequences containing *N* total elements into a single
-globally sorted sequence while preserving element multiplicity. Merging *k* sorted singly linked lists is a
-foundational primitive in external merge sort, log-structured merge-tree (LSM) compaction, and distributed
-query execution, where nodes are relinked in place via ownership transfer rather than copied.
+Merging *k* sorted singly linked lists containing *N* total nodes into a single ordered sequence is a core primitive in external merge sort, log-structured merge-tree (LSM) compaction, and distributed query execution. Merging two sorted lists requires a single linear scan, whereas scaling to *k* lists exposes a sharp algorithmic trade-off: folding the lists sequentially forces early nodes to be revisited up to *k* times (*O*(*kN*) work), while balanced divide-and-conquer reduction and binary min-heap selection both achieve the optimal *O*(*N* log *k*) bound under different auxiliary-memory, call-stack, and cache-locality profiles.
 
-Section 10.2 analyzes three asymptotic merge schedules, Sections 10.3 through 10.6 implement them using
-ownership transfer, disjoint slice borrows (`split_at_mut`), and a binary min-heap, and Section 10.7 compares
-their time, auxiliary space, call-stack depth, and allocation profiles. Appendix C preserves an expanded study
-covering eleven variants.
-
-Throughout this chapter, *k* denotes the number of input lists and *N* denotes the total number of nodes across
-all lists.
+Implementing these strategies in Rust also stresses ownership and borrowing directly: rather than cloning node payloads, each variant transfers ownership of `Box<Node>` handles in place, using disjoint slice borrows (`split_at_mut`) for divide-and-conquer reduction and an *O*(*k*) `BinaryHeap` of active list heads for heap-guided selection. Appendix C preserves an expanded reference study covering eleven variants.
 
 ## 10.1 Merging two sorted lists
 

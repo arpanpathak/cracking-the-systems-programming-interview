@@ -16,12 +16,8 @@ This chapter covers
 
 **Partitioning** (or **sharding**) divides a key space across independent buckets or nodes via a deterministic hash
 function so that concurrent operations scale without global serialization. Whether coordinating threads within a
-single multi-core process or distributing state across servers in a cluster, partitioning bounds contention and
-isolates failures.
-
-Section 14.1 partitions an in-process hash map into independently locked shards to eliminate global mutex
-contention across threads; Section 14.2 partitions keys across distributed servers using consistent hashing and
-virtual nodes so that membership changes relocate a minimal fraction of keys.
+single multi-core process or distributing state across servers in a cluster, partitioning bounds contention,
+isolates failures, and keeps key relocation minimal when cluster membership changes.
 
 ## 14.1 A map split into shards
 

@@ -20,14 +20,9 @@ access as uniform-cost. On modern superscalar processors, however, a single memo
 of magnitude in latency (from roughly 2 ns in L1 cache to 150 ns in main DRAM) depending on spatial and temporal
 cache locality, cache-line coherence traffic, and virtual-to-physical address translation.
 
-This chapter examines the hardware memory hierarchy and operating-system abstractions beneath user-space data
-structures. Section 15.1 measures cache-level latency via dependent pointer chasing; Sections 15.2 through 15.4
-analyze arena allocation, traversal locality, and cache-line contention (false sharing); and Sections 15.5 through
-15.7 model virtual memory paging, round-robin CPU scheduling, and kernel system-call overhead.
-
-Because most programs below report wall-clock timings, compile and run them with `--release`; absolute timings
-vary across microarchitectures. Measurements reported here were collected on an Intel Core i5-1038NG7 running
-macOS.
+Because most programs in this chapter report wall-clock timings, compile and run them with `--release`; absolute
+timings vary across microarchitectures. Measurements reported here were collected on an Intel Core i5-1038NG7
+running macOS.
 
 ## 15.1 How far away is memory?
 

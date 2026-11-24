@@ -14,9 +14,7 @@ This chapter covers
 
 </div>
 
-Networked services layer reliable, ordered byte streams over packet-switched addressing, constrained by sliding-window flow and congestion control and mediated by kernel socket descriptors. Achieving predictable throughput and scalability across these layers requires precise control over address encoding, in-flight window sizing, and I/O multiplexing.
-
-The progression moves upward through the transport stack: IPv4 addressing, CIDR private ranges, and network byte order (Section 20.1); the TCP effective window and bandwidth-delay product (Section 20.2); and a comparison between a thread-per-connection echo server on `std::net` and a single-threaded, non-blocking `epoll` event loop written directly over `libc` system calls (Sections 20.3 and 20.4).
+Networked services layer reliable, ordered byte streams over packet-switched addressing, constrained by sliding-window flow and congestion control and mediated by kernel socket descriptors. Achieving predictable throughput and scalability across these layers requires precise control over wire byte ordering, in-flight window sizing relative to the bandwidth-delay product, and kernel-level I/O multiplexing (`epoll`) as concurrent connections scale beyond one thread per socket.
 
 ## 20.1 IPv4 addresses
 
