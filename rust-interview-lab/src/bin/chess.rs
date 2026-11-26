@@ -84,7 +84,7 @@ impl Chess {
             return Err(Error::InvalidMove("illegal trajectory"));
         }
 
-        // Lift the queen first, or its own lines block every move.
+        // Lift the queen first: on `from`, its own lines are still marked occupied.
         let before = *self;
         self.remove(from);
 

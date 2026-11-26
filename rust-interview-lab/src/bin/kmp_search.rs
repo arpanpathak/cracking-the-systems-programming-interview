@@ -18,6 +18,7 @@ fn build_lps(needle: &[u8]) -> Vec<usize> {
             }
         }
     }
+
     lps
 }
 

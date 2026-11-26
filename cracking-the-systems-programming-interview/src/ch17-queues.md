@@ -648,12 +648,12 @@ That argument lies outside the type system and is therefore recorded in the `// 
 
 The producer path is implemented in `push` (Listing 17.18).
 
-<p class="listing"><b>Listing 17.18</b> <code>push</code> (lines 53 to 83).</p>
+<p class="listing"><b>Listing 17.18</b> <code>push</code> (lines 53 to 84).</p>
 
 ```rust
 impl<T> LockFreeQueue<T> {
     // ...
-{{#include ../../rust-interview-lab/src/bin/lock_free_queue.rs:53:83}}
+{{#include ../../rust-interview-lab/src/bin/lock_free_queue.rs:53:84}}
 }
 ```
 
@@ -666,24 +666,24 @@ If neither guard applies, the slot is empty, and the producer attempts `compare_
 
 `compare_exchange_weak` is permitted to fail spuriously, that is, even when the current value equals the expected value. On architectures that implement CAS with load-linked/store-conditional instruction pairs, such as ARMv7 and ARMv8.0, the store-conditional instruction can fail because of an interrupt or a cache-line eviction. With the strong variant, such failures are hidden by an internal retry loop; with the weak variant, they are reported to the caller. Because `push` already retries in a loop, the weak variant avoids a redundant nested loop.
 
-During publication, the producer writes the element into the reserved slot and stores `seq = tail + 1` with `Release`, marking the slot full for the consumer of the same position. Between the successful CAS and that store, no other thread accesses the slot. Other producers are excluded by the CAS, and the equality `seq == tail` establishes that no consumer is still reading the previous element. The `// SAFETY:` comment above the write records this argument.
+During publication, the producer writes the element into the reserved slot and stores `seq = tail + 1` with `Release`, marking the slot full for the consumer of the same position. Between the successful CAS and that store, no other thread accesses the slot. Other producers are excluded by the CAS, and the equality `seq == tail` establishes that no consumer is still reading the previous element. This argument is recorded in the `// SAFETY:` comment above the write.
 
 ### 17.8.7 Pop
 
 The consumer path is implemented in `pop` (Listing 17.19), with `head` in place of `tail`.
 
-<p class="listing"><b>Listing 17.19</b> <code>pop</code> (lines 85 to 115).</p>
+<p class="listing"><b>Listing 17.19</b> <code>pop</code> (lines 86 to 117).</p>
 
 ```rust
 impl<T> LockFreeQueue<T> {
     // ...
-{{#include ../../rust-interview-lab/src/bin/lock_free_queue.rs:85:115}}
+{{#include ../../rust-interview-lab/src/bin/lock_free_queue.rs:86:117}}
 }
 ```
 
 During reservation, the consumer expects `seq == head + 1`. If `seq < head + 1`, the producer of that position has not completed its write, and the consumer returns `None`. If `seq > head + 1`, another consumer has claimed the position, and the consumer reloads `head`.
 
-After a successful CAS, the consumer moves the element out of the slot with `assume_init_read`. That call is sound only if the slot contains an initialized value, and the `// SAFETY:` comment derives this condition from the observed sequence number. The consumer then stores `seq = head + capacity`, written as `head + self.mask + 1`, with `Release`. The slot is thereby reserved for the producer 1 lap later.
+After a successful CAS, the consumer moves the element out of the slot with `assume_init_read`. That call is sound only if the slot contains an initialized value, and the condition is justified from the observed sequence number in the `// SAFETY:` comment. The consumer then stores `seq = head + capacity`, written as `head + self.mask + 1`, with `Release`. The slot is thereby reserved for the producer 1 lap later.
 
 ### 17.8.8 Memory ordering
 

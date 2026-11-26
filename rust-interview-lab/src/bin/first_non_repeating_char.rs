@@ -14,6 +14,7 @@ fn first_repeating_char(s: &str) -> Option<(usize, char)> {
 
 fn first_non_repeating_char(s: &str) -> Option<(usize, char)> {
     let mut counts = HashMap::<char, usize>::new();
+
     for ch in s.chars() {
         *counts.entry(ch).or_default() += 1;
     }

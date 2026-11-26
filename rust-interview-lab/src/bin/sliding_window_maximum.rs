@@ -17,6 +17,7 @@ fn sliding_window_max(s: &[i32], k: usize) -> Vec<i32> {
         {
             dq.pop_back();
         }
+
         dq.push_back(i);
 
         if i + 1 >= k {

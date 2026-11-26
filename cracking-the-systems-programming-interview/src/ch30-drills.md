@@ -56,20 +56,61 @@ Each line is mapped to a bit index as follows:
 - All squares on 1 diagonal share the difference `x - y`, which ranges from -7 to 7. The offset `x + 7 - y` maps this range to bit indices 0 to 14, so `diags` is a `u16`.
 - All squares on 1 anti-diagonal share the sum `x + y`, which ranges from 0 to 14, so `anti_diags` is also a `u16`.
 
-For a queen at (1, 2), bit 1 of `rows` and bit 2 of `cols` are set. Bit 6 of `diags` (1 + 7 - 2) and bit 3 of `anti_diags` (1 + 2) are also set (Figure 30.1). A safety test then requires 4 AND operations regardless of the number of queens, and the complete board state occupies 6 bytes.
+For a queen at (1, 2), bit 1 of `rows` and bit 2 of `cols` are set. Bit 6 of `diags` (1 + 7 - 2) and bit 3 of `anti_diags` (1 + 2) are also set (Figure 30.1). A safety test then requires 4 AND operations regardless of the number of queens.
 
 <figure>
 <img src="figures/ch30-queen-lines.svg" alt="An 8 by 8 board with a queen at row 1, column 2. Its row, column, diagonal and anti-diagonal are shaded in 4 colors. Beside the board, the 4 fields are drawn as bit rows: rows has bit 1 set, cols has bit 2 set, diags has bit 6 set, and anti_diags has bit 3 set.">
 <figcaption><b>Figure 30.1</b> The 4 lines of a queen at (1, 2) and the bit set for each line.</figcaption>
 </figure>
 
-### 30.2.2 Placing and removing a queen
+### 30.2.2 The board type
+
+The board state, the cell type, and the error type are defined in Listing 30.2.
+
+<p class="listing"><b>Listing 30.2</b> The error type, the cell, and the board (lines 1 to 14 and 31 to 47). <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/bin/chess.rs">src/bin/chess.rs</a></p>
+
+```rust
+{{#include ../../rust-interview-lab/src/bin/chess.rs:1:14}}
+
+{{#include ../../rust-interview-lab/src/bin/chess.rs:31:47}}
+
+    // ...
+}
+```
+
+`Chess` consists of 2 `u8` fields and 2 `u16` fields, 6 bytes in total. Because `Copy` is derived for `Chess`, a board is duplicated by a plain assignment. A `Cell` holds a row `x` and a column `y`. Failures are reported through `Error`: `OutOfBounds` for coordinates outside the board, `Occupied` for an attacked square, and `InvalidMove` for a trajectory that a queen cannot follow. `Res<T = ()>` is an alias for `Result<T, Error>`, with `()` as the default success type.
+
+### 30.2.3 Placing and removing a queen
+
+Placement and removal are implemented in `place` and `remove` (Listing 30.3).
+
+<p class="listing"><b>Listing 30.3</b> <code>place</code> and <code>remove</code> (lines 49 to 80).</p>
+
+```rust
+impl Chess {
+    // ...
+{{#include ../../rust-interview-lab/src/bin/chess.rs:49:80}}
+}
+```
 
 In `place`, out-of-range coordinates are rejected with `Error::OutOfBounds` before any mask is built, since a shift such as `1u8 << 9` would overflow. A mask with a single set bit is then built for each of the 4 lines. If the AND of any mask with its field is nonzero, the corresponding line is occupied, and `Error::Occupied` is returned. Otherwise, each mask is merged into its field with OR.
 
 In `remove`, each of the 4 bits is cleared with `field &= !mask`. Every bit of the mask is inverted by `!`, so exactly 1 bit is cleared by the AND, and all other bits are unchanged.
 
-### 30.2.3 Moving a queen
+### 30.2.4 Moving a queen
+
+The legality test for a queen and the move itself are implemented in `Queen::can_move` and `move_piece` (Listing 30.4).
+
+<p class="listing"><b>Listing 30.4</b> <code>can_move</code> and <code>move_piece</code> (lines 16 to 29 and 82 to 97).</p>
+
+```rust
+{{#include ../../rust-interview-lab/src/bin/chess.rs:16:29}}
+
+impl Chess {
+    // ...
+{{#include ../../rust-interview-lab/src/bin/chess.rs:82:97}}
+}
+```
 
 A move is accepted by `Queen::can_move` if it follows a row (`dx == 0`), a column (`dy == 0`), or a diagonal (`dx == dy`). The distances are computed with `abs_diff`, which cannot underflow on `usize`. Every legal destination therefore lies on 1 of the moving queen's own lines. While the queen stands on its origin square, those lines are marked as occupied, so a direct call to `place(to)` would reject every legal move.
 
@@ -84,12 +125,14 @@ The conflict is resolved in `move_piece` in 3 steps (Figure 30.2):
 <figcaption><b>Figure 30.2</b> A move from (0, 0) to (2, 2): the queen is lifted, then placed. On failure, board 1 is restored.</figcaption>
 </figure>
 
-### 30.2.4 The complete program
+### 30.2.5 The program and its output
 
-<p class="listing"><b>Listing 30.2</b> Non-attacking queens on a bitboard. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/bin/chess.rs">src/bin/chess.rs</a></p>
+The board is exercised in `main` (Listing 30.5).
+
+<p class="listing"><b>Listing 30.5</b> <code>main</code> (lines 100 to 111). <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/bin/chess.rs">src/bin/chess.rs</a></p>
 
 ```rust
-{{#include ../../rust-interview-lab/src/bin/chess.rs}}
+{{#include ../../rust-interview-lab/src/bin/chess.rs:100:111}}
 ```
 
 ```text
@@ -98,7 +141,7 @@ moved the queen from (0, 0) to (2, 2)
 place (5, 5): Err(Occupied)
 ```
 
-In `main`, a queen is placed at (0, 0) and moved diagonally to (2, 2). A second queen is then placed at (5, 5). The squares (2, 2) and (5, 5) share diagonal 7, since 2 + 7 - 2 = 7 and 5 + 7 - 5 = 7. `Err(Occupied)` is therefore returned.
+A queen is placed at (0, 0) and moved diagonally to (2, 2). A second queen is then placed at (5, 5). The squares (2, 2) and (5, 5) share diagonal 7, since 2 + 7 - 2 = 7 and 5 + 7 - 5 = 7. `Err(Occupied)` is therefore returned.
 
 ## 30.3 What the short forms leave out
 

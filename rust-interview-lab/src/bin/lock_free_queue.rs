@@ -20,19 +20,19 @@ pub struct LockFreeQueue<T> {
     tail: AtomicUsize,
 }
 
-// SAFETY: Only the thread that wins the compare-and-swap for a position reads or
-// writes that slot's value, and `seq` hands the slot from the producer to the
-// consumer with Release and Acquire. Threads can therefore share the queue, as long
-// as the values themselves can move between threads (`T: Send`).
+// SAFETY: A thread accesses a slot only after it has won the CAS on `head` or `tail`
+// for that position, so at most 1 thread accesses a slot at a time. Producers publish
+// each element with a Release store of `seq`, and consumers read the element only
+// after an Acquire load of `seq`. Sharing the queue is sound whenever `T: Send`.
 unsafe impl<T: Send> Sync for LockFreeQueue<T> {}
 
-// SAFETY: The queue owns the values in its slots, so moving the queue to another
-// thread moves those values with it, which `T: Send` allows.
+// SAFETY: Every initialized element in the slots is owned by the queue. Moving the
+// queue to another thread moves those elements, which is sound whenever `T: Send`.
 unsafe impl<T: Send> Send for LockFreeQueue<T> {}
 
 impl<T> LockFreeQueue<T> {
     fn new(capacity: usize) -> Self {
-        // One slot is not enough: "full" and "empty one lap later" share a seq.
+        // With 1 slot, the full state of position p and the empty state of p + 1 share seq.
         assert!(capacity >= 2 && capacity.is_power_of_two());
 
         let buf = (0..capacity)
@@ -57,11 +57,11 @@ impl<T> LockFreeQueue<T> {
             let seq = self.buf[tail & self.mask].seq.load(Acquire);
 
             if seq < tail {
-                return Err(value); // full
+                return Err(value); // queue full
             }
 
             if seq > tail {
-                tail = self.tail.load(Relaxed); // another producer took it
+                tail = self.tail.load(Relaxed); // position claimed by another producer
                 continue;
             }
 
@@ -73,11 +73,12 @@ impl<T> LockFreeQueue<T> {
 
         let slot = &self.buf[tail & self.mask];
 
-        // SAFETY: The compare-and-swap gave this thread position `tail`, and
-        // `seq == tail` showed that the slot is empty. No other thread uses the slot
-        // until the store to `seq` below.
+        // SAFETY: This producer won the CAS for position `tail` and observed
+        // `seq == tail`, so no other thread accesses the slot until this producer
+        // performs the Release store to `seq` below.
         unsafe { (*slot.data.get()).write(value) };
-        slot.seq.store(tail + 1, Release); // full, ready for a consumer
+
+        slot.seq.store(tail + 1, Release); // slot full for the consumer of `tail`
 
         Ok(())
     }
@@ -89,11 +90,11 @@ impl<T> LockFreeQueue<T> {
             let seq = self.buf[head & self.mask].seq.load(Acquire);
 
             if seq < head + 1 {
-                return None; // empty
+                return None; // queue empty
             }
 
             if seq > head + 1 {
-                head = self.head.load(Relaxed); // another consumer took it
+                head = self.head.load(Relaxed); // position claimed by another consumer
                 continue;
             }
 
@@ -105,11 +106,12 @@ impl<T> LockFreeQueue<T> {
 
         let slot = &self.buf[head & self.mask];
 
-        // SAFETY: The compare-and-swap gave this thread position `head`, and
-        // `seq == head + 1` showed that a producer wrote the value. The Acquire load
-        // of `seq` makes that write visible here, and the value is read only once.
+        // SAFETY: This consumer won the CAS for position `head` and observed
+        // `seq == head + 1` with Acquire ordering, so the producer's write is complete
+        // and visible. The element is read exactly once.
         let value = unsafe { (*slot.data.get()).assume_init_read() };
-        slot.seq.store(head + self.mask + 1, Release); // empty, ready for the next lap
+
+        slot.seq.store(head + self.mask + 1, Release); // slot empty for the next lap
 
         Some(value)
     }
@@ -143,6 +145,7 @@ fn main() {
                         if let Some(value) = queue.pop() {
                             break value;
                         }
+
                         thread::yield_now();
                     };
 
