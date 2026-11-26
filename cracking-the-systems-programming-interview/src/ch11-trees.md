@@ -13,6 +13,9 @@ This chapter covers
 - Saving a tree to a file and loading it back
 - A trie, a tree for finding words by their first letters
 
+- Borrowing tree values through an iterator
+- Finding a lowest common ancestor by propagating child results
+
 </div>
 
 A **tree** is a connected, acyclic hierarchical data structure composed of nodes organized under a strict
@@ -636,6 +639,280 @@ Storing a `HashMap` per node supports arbitrary Unicode characters at the cost o
 overhead. When the alphabet is restricted to lowercase ASCII letters, a fixed array of 26 child pointers per
 node reduces both memory footprint and lookup latency.
 
+## 11.7 Visiting a tree through an iterator
+
+An iterator lets you consume tree values through the adapters from chapter 4. The next program owns
+children in a `Vec` and borrows nodes into an explicit stack. Despite its filename, it traverses a
+general rooted tree; it does not enforce binary search ordering.
+
+For the supplied tree, preorder visits `1, 2, 4, 5, 3, 6`. After taking 1, push children in reverse
+order: 3, then 2. The stack removes 2 first, so traversal follows the original child order.
+
+### 11.7.1 The stack stores work you have postponed
+
+A recursive preorder traversal visits a node, then traverses each child in order. An iterator must
+pause after yielding each value. Its stack records where traversal should continue when the caller
+asks for another value.
+
+After yielding 1, the pending stack is `[3, 2]`, with its next node at the right end. Pop 2 and push
+its children in reverse: the stack becomes `[3, 5, 4]`. Pop 4, then 5, then return to the pending 3.
+The stack saves unfinished branches without copying those branches.
+
+Calling `map` does not force traversal of the whole tree immediately. Each request pulls one value
+through `next`. The example's `collect` requests all remaining values and allocates a result vector
+for the doubled numbers.
+
+<div class="callout tip memory" markdown="1">
+
+**TIP: Borrowed traversal saves node copies, not every allocation**
+
+The iterator stores `&TreeNode<T>` entries, rather than cloned nodes or cloned `T` values. Its stack
+is still a `Vec` and can allocate as pending work grows. The output vector created by `collect` is
+another allocation, separate from traversal state.
+
+Consume each borrowed value as it arrives when you do not need to retain all results. Collecting is
+appropriate when later work needs a stored sequence.
+
+</div>
+
+### 11.7.2 Count pending branches for the actual tree shape
+
+A long chain leaves only one pending node in this iterator. A root with many children places almost
+every other node on the stack after its first visit. Both trees can contain the same number of nodes
+while requiring very different traversal storage.
+
+| Tree shape | Explicit stack in this iterator | Recursive traversal stack |
+|---|---|---|
+| Chain of `n` nodes | At most one pending reference | Up to `n` calls |
+| Root with `n - 1` leaf children | Up to `n - 1` pending references | Two calls deep |
+| Balanced binary tree | O(log n) pending references | O(log n) calls deep |
+
+The table counts traversal state and excludes the tree itself. An explicit stack avoids deep
+recursive calls on a chain. It does not guarantee a smaller total memory footprint for every shape.
+
+`TreeIter<'a, T>` holds references valid for `'a`. Its `Item` is `&'a T`, so values remain in the
+tree. In `TreeIter<'_, T>`, the compiler infers the lifetime from the borrowed `self`. The returned
+iterator cannot outlive that borrow.
+
+```rust
+{{#include ../../rust-interview-lab/src/bin/binary_search_tree_iterator.rs:1:19}}
+```
+
+<figure class="anim">
+<video class="motion" src="figures/ch11-tree-iterator.mp4" poster="figures/ch11-tree-iterator-poster.svg" autoplay loop muted playsinline preload="metadata" aria-label="Children enter the stack in reverse order, so the left child leaves first." data-chapters="[[0.0, &quot;input tree&quot;], [5.94, &quot;visit 1&quot;], [9.96, &quot;visit 2&quot;], [13.98, &quot;visit 4&quot;], [16.86, &quot;visit 5&quot;], [19.74, &quot;visit 3&quot;], [23.1, &quot;visit 6&quot;], [25.98, &quot;without rev&quot;]]"><img src="figures/ch11-tree-iterator.gif" alt="Children enter the stack in reverse order, so the left child leaves first."></video>
+<figcaption><b>Animation 11.3</b> Children enter the stack in reverse order, so the left child leaves first.</figcaption>
+</figure>
+
+`pop()?` ends traversal when the stack is empty. Each node is pushed and popped once. Total
+traversal time is O(n), with up to O(n) pending references for a wide tree. Calling `next` can push
+many children, so an individual call can take more than constant time. The example doubles each
+visited value through `map`.
+
+The [complete tree iterator program](#tree-iterator-complete-program) below includes the example input and `main`.
+
+## 11.8 Finding the lowest common ancestor
+
+An **ancestor** lies on the path from the root to a node. Here, a node also counts as its own
+ancestor. The **lowest common ancestor** is the deepest node shared by two such paths. You can find
+it by returning search results from each child.
+
+For leaves 8 and 9, both searches meet at 5. For 4 and 9, the left and right children of 2 each
+return one result, so 2 is their ancestor. For 2 and 8, finding 2 ends that branch immediately: 2
+already contains the other target below it.
+
+| Child results | Return |
+|---|---|
+| Neither found a target | `None` |
+| One found a target | That result |
+| Both found a target | The current node |
+
+### 11.8.1 Let each subtree report what it found
+
+Start at node 2 while looking for 4 and 5. Its left child returns node 4, and its right child
+returns node 5. Each target lies in a different child subtree. Any node below 2 belongs to only one
+of those subtrees, so none can contain both targets. Return 2.
+
+At node 1, the left child now returns 2 and the right child returns nothing. Propagating 2 preserves
+the answer already found below. Returning 1 would move the answer upward and lose the requirement
+that the ancestor be lowest.
+
+A matching target also returns immediately. For targets 2 and 8, finding 2 is enough only under the
+promise that 8 occurs below it in this tree. That promise explains the missing-target limitation
+described below.
+
+<figure>
+<img src="figures/memory-lca-results.svg" alt="Target nodes 4 and 5 return to node 2. Node 2 combines both results and returns itself to node 1. Node 1 propagates its left result.">
+<figcaption><b>Figure 11.8</b> A subtree returns a node reference. Two child results identify the split; one child result preserves an answer below.</figcaption>
+</figure>
+
+<div class="callout note memory" markdown="1">
+
+**NOTE: Return a handle to the answer, rather than rebuilding it**
+
+The address-based versions return a reference into the original tree. They allocate no result node
+and clone no payload. Recursive calls still use stack frames, reaching O(h) depth for tree height
+`h`.
+
+The value-returning version clones the matched data and may clone it again where two results meet.
+For a large owned payload, that cost differs from copying a reference. The result type determines
+what storage the caller receives.
+
+</div>
+
+There are three representations. They share this recurrence but differ in what counts as finding a
+target.
+
+| Program | Target comparison | Returned result |
+|---|---|---|
+| `lca` | Structural equality of whole subtrees | Cloned data |
+| `lca_generics` | Address of the owning `Link` field | Borrowed node |
+| `lca_option_to_reference` | Address of the node | Borrowed node |
+
+The first representation derives `PartialEq`, which compares data and both subtrees recursively. A
+separately constructed matching leaf can therefore identify a target. Two equal leaves in different
+positions are indistinguishable to this version.
+
+```rust
+{{#include ../../rust-interview-lab/src/bin/lca.rs:1:8}}
+```
+
+```rust
+impl<T: PartialEq + Clone> TreeNode<T> {
+{{#include ../../rust-interview-lab/src/bin/lca.rs:11:22}}
+}
+```
+
+<div class="callout note memory" markdown="1">
+
+**NOTE: Equality and identity answer different questions**
+
+Derived `PartialEq` compares subtree contents. Two distinct leaves containing 4 compare equal.
+Address comparison identifies a particular existing link or node, even when another node contains
+equal data.
+
+Borrowing a target from the tree makes that identity available without allocating a duplicate search
+target. It also explains why the boxed version takes references to actual `Link` fields: its
+comparison uses those field addresses.
+
+</div>
+
+The boxed generic version uses `ptr::eq(root, p)` to compare addresses of `Option` fields. Pass
+references to actual links inside the tree, such as `&n5.left`. A separate box with equal data does
+not identify that link. Its returned reference borrows from `root`; the target parameters do not
+supply the returned storage.
+
+```rust
+{{#include ../../rust-interview-lab/src/bin/lca_generics.rs:1:10}}
+```
+
+```rust
+{{#include ../../rust-interview-lab/src/bin/lca_generics.rs:12:28}}
+```
+
+The borrowed representation defines `Link` as `Option<&Node>`. These links are `Copy`, so recursion
+passes them by value and compares the underlying node addresses. `root?` returns `None` for an
+absent child and unwraps a present reference.
+
+```rust
+{{#include ../../rust-interview-lab/src/bin/lca_option_to_reference.rs:1:10}}
+```
+
+The search returns a matching node or combines the two child results.
+
+```rust
+{{#include ../../rust-interview-lab/src/bin/lca_option_to_reference.rs:12:26}}
+```
+
+<figure class="anim">
+<video class="motion" src="figures/ch11-lca-return.mp4" poster="figures/ch11-lca-return-poster.svg" autoplay loop muted playsinline preload="metadata" aria-label="Child results travel toward the root. The first split identifies the shared ancestor." data-chapters="[[0.0, &quot;input tree&quot;], [11.34, &quot;return 4&quot;], [19.62, &quot;combine at 2&quot;], [30.78, &quot;propagate 2&quot;], [36.9, &quot;missing target&quot;]]"><img src="figures/ch11-lca-return.gif" alt="Child results travel toward the root. The first split identifies the shared ancestor."></video>
+<figcaption><b>Animation 11.4</b> Child results travel toward the root. The first split identifies the shared ancestor.</figcaption>
+</figure>
+
+WARNING: These searches assume both targets are present. With one missing target, the other target
+propagates upward and is returned as though it were the ancestor. A caller needing validation must
+also track whether both targets were found.
+
+The address-based searches visit at most O(n) nodes and use O(h) recursive stack space for height
+`h`. The structural version can do additional recursive comparisons and clones the returned data.
+
+The complete [value](#lca-value-complete-program), [boxed](#lca-boxed-complete-program), and [borrowed](#lca-borrowed-complete-program) programs below include their input trees and `main`.
+
+## 11.9 The complete programs
+
+<a id="tree-iterator-complete-program"></a>
+
+### Tree iterator
+
+<p class="listing"><b>Listing 11.22</b> The complete program: <code>binary_search_tree_iterator.rs</code>.</p>
+
+```rust
+{{#include ../../rust-interview-lab/src/bin/binary_search_tree_iterator.rs}}
+```
+
+Run from `rust-interview-lab`:
+
+```text
+$ cargo run --bin binary_search_tree_iterator
+[2, 4, 8, 10, 6, 12]
+```
+
+<a id="lca-value-complete-program"></a>
+
+### Lowest common ancestor: values
+
+<p class="listing"><b>Listing 11.23</b> The complete program: <code>lca.rs</code>.</p>
+
+```rust
+{{#include ../../rust-interview-lab/src/bin/lca.rs}}
+```
+
+Run from `rust-interview-lab`:
+
+```text
+$ cargo run --bin lca
+LCA is 2
+```
+
+<a id="lca-boxed-complete-program"></a>
+
+### Lowest common ancestor: boxed nodes
+
+<p class="listing"><b>Listing 11.24</b> The complete program: <code>lca_generics.rs</code>.</p>
+
+```rust
+{{#include ../../rust-interview-lab/src/bin/lca_generics.rs}}
+```
+
+Run from `rust-interview-lab`:
+
+```text
+$ cargo run --bin lca_generics
+LCA(8, 9) = 5
+LCA(4, 9) = 2
+LCA(8, 7) = 1
+LCA(2, 8) = 2
+```
+
+<a id="lca-borrowed-complete-program"></a>
+
+### Lowest common ancestor: borrowed nodes
+
+<p class="listing"><b>Listing 11.25</b> The complete program: <code>lca_option_to_reference.rs</code>.</p>
+
+```rust
+{{#include ../../rust-interview-lab/src/bin/lca_option_to_reference.rs}}
+```
+
+Run from `rust-interview-lab`:
+
+```text
+$ cargo run --bin lca_option_to_reference
+LCA(8, 9) = 5
+LCA(4, 9) = 2
+LCA(8, 7) = 1
+LCA(2, 8) = 2
+```
+
 <div class="summary" markdown="1">
 
 ## Summary
@@ -659,6 +936,9 @@ node reduces both memory footprint and lookup latency.
 - A trie factors common prefixes across keys, executing exact lookup and prefix queries in O(*m*) time
   independent of dictionary cardinality.
 
+- A borrowed stack turns preorder traversal into an iterator without cloning node values.
+- Lowest-common-ancestor searches need a stated target identity rule and assume both targets are present.
+
 </div>
 
 ## Exercises
@@ -669,3 +949,5 @@ node reduces both memory footprint and lookup latency.
    compare the heights.
 3. Serialize a binary tree using a marker such as `#` for each empty child, and write the matching reader.
 4. Add `words_with_prefix(&self, prefix: &str) -> Vec<String>` to the trie.
+5. Reverse the iterator child insertion order and predict the resulting traversal.
+6. Pass one absent target to each ancestor function. Extend the result to record whether both targets were found.

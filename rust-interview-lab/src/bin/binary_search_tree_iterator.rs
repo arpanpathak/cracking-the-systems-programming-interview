@@ -13,6 +13,7 @@ impl<'a, T> Iterator for TreeIter<'a, T> {
     fn next(&mut self) -> Option<Self::Item> {
         let node = self.stack.pop()?;
         self.stack.extend(node.children.iter().rev());
+
         Some(&node.data)
     }
 }
@@ -46,5 +47,6 @@ fn main() {
     let doubled: Vec<_> = tree.iter()
         .map(|value| value * 2)
         .collect();
+
     println!("{:?}", doubled);
 }
