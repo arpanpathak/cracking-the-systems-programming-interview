@@ -62,7 +62,7 @@ modes and how you would test it. If you cannot do it without the file, it is not
 | Mutex poisoning | `src/bin/mutex_poisoning.rs` | have |
 | Bounded buffer | `src/bin/bounded_buffer.rs` | have |
 | `RwLock` vs `Mutex` | — | gap |
-| Lock-free MPMC (Vyukov-style) | — | partial |
+| Lock-free MPMC (Vyukov-style) | `src/bin/lock_free_queue.rs` | have |
 
 ## D. Async and executors
 
