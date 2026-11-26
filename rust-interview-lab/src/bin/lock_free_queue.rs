@@ -20,8 +20,14 @@ pub struct LockFreeQueue<T> {
     tail: AtomicUsize,
 }
 
+// SAFETY: Only the thread that wins the compare-and-swap for a position reads or
+// writes that slot's value, and `seq` hands the slot from the producer to the
+// consumer with Release and Acquire. Threads can therefore share the queue, as long
+// as the values themselves can move between threads (`T: Send`).
 unsafe impl<T: Send> Sync for LockFreeQueue<T> {}
 
+// SAFETY: The queue owns the values in its slots, so moving the queue to another
+// thread moves those values with it, which `T: Send` allows.
 unsafe impl<T: Send> Send for LockFreeQueue<T> {}
 
 impl<T> LockFreeQueue<T> {
@@ -66,6 +72,10 @@ impl<T> LockFreeQueue<T> {
         }
 
         let slot = &self.buf[tail & self.mask];
+
+        // SAFETY: The compare-and-swap gave this thread position `tail`, and
+        // `seq == tail` showed that the slot is empty. No other thread uses the slot
+        // until the store to `seq` below.
         unsafe { (*slot.data.get()).write(value) };
         slot.seq.store(tail + 1, Release); // full, ready for a consumer
 
@@ -94,6 +104,10 @@ impl<T> LockFreeQueue<T> {
         }
 
         let slot = &self.buf[head & self.mask];
+
+        // SAFETY: The compare-and-swap gave this thread position `head`, and
+        // `seq == head + 1` showed that a producer wrote the value. The Acquire load
+        // of `seq` makes that write visible here, and the value is read only once.
         let value = unsafe { (*slot.data.get()).assume_init_read() };
         slot.seq.store(head + self.mask + 1, Release); // empty, ready for the next lap
 

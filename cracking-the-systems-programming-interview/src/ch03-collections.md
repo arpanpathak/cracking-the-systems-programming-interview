@@ -168,15 +168,24 @@ The function returns `Option<(usize, usize)>`, running in O(n) expected time and
 
 </div>
 
-### 3.5.1 The first repeated and the first unique character
+### 3.5.1 First repeating and first non-repeating character
 
-**The problem.** For a string, we want the first character that appears a second time, and the first character that appears exactly once. Each answer comes with its index. In `"swiss"`, the `s` at index 3 is the first repeat, and the `w` at index 1 is the first unique character.
+**The problem.** Given a string, find the first character that appears a second time, and the first character that appears exactly once. Each answer includes the character's index. In `"swiss"`, the first repeating character is the `s` at index 3, and the first non-repeating character is the `w` at index 1.
 
-**The first repeat.** We scan the string once and insert every character into a `HashSet<char>`. `HashSet::insert` returns `false` when the set already holds a value. Our first `false` therefore marks the answer, at the index where that character appears a second time. The scan takes O(n) expected time.
+**The baseline approach.** For each character, we could scan the rest of the string for another copy of it. Every character then costs up to `n` comparisons, so the search takes O(n²) time.
 
-**The first unique character.** A single pass cannot decide this answer. In `"swiss"`, the `s` at index 0 looks unique until the scan reaches index 3. We therefore count every character in a `HashMap<char, usize>` first. A second scan then returns the first character whose count is 1. Both passes together still take O(n) expected time, and the map holds one entry per distinct character.
+**The first repeating character.** We scan the string once and remember every character we have seen in a `HashSet<char>`. The method `HashSet::insert` returns `true` when the value is new and `false` when the set already holds it. The first `false` from `insert` therefore marks the answer. Its index is where that character appears for the second time. The trace for `"swiss"` shows each step.
 
-<p class="listing"><b>Listing 3.2</b> The first repeated and the first unique character, with a test. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/bin/first_non_repeating_char.rs">src/bin/first_non_repeating_char.rs</a></p>
+| Index | Character | `insert` returns | Set afterward |
+|---|---|---|---|
+| 0 | `s` | `true` | {s} |
+| 1 | `w` | `true` | {s, w} |
+| 2 | `i` | `true` | {s, w, i} |
+| 3 | `s` | `false` | answer: `(3, 's')` |
+
+**The first non-repeating character.** One scan is not enough for this question. At index 0 of `"swiss"`, the `s` has not repeated yet, but a later copy at index 3 makes it repeat. We can decide whether a character is unique only after we have seen the whole string. We therefore make two passes. The first pass counts every character in a `HashMap<char, usize>`, which gives `s: 3`, `w: 1` and `i: 1`. The second pass walks the string again from the start and returns the first character whose count is 1. Index 0 holds `s`, with count 3, and index 1 holds `w`, with count 1, so the answer is `(1, 'w')`.
+
+<p class="listing"><b>Listing 3.2</b> The first repeating and the first non-repeating character, with a test. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/bin/first_non_repeating_char.rs">src/bin/first_non_repeating_char.rs</a></p>
 
 ```rust
 {{#include ../../rust-interview-lab/src/bin/first_non_repeating_char.rs}}
@@ -188,7 +197,17 @@ first repeating:     Some((3, 's'))
 first non-repeating: Some((1, 'w'))
 ```
 
-Both functions number characters with `chars().enumerate()`, so an index counts Unicode scalar values. For ASCII text, it equals the byte offset; for `"é!é"`, the repeat is at character index 2 but at byte offset 3.
+Key details of the implementation:
+
+- `s.chars().enumerate()` yields pairs of an index and a `char`, so both functions can return the index together with the character.
+- `if !seen.insert(ch)` both records the character and tests whether it was already present, so the first function needs one hash lookup per character.
+- `*counts.entry(ch).or_default() += 1` finds the count for `ch`, creates it with the value 0 if it is missing, and adds 1.
+- `counts[&ch]` reads a count by indexing the map. Indexing panics for a missing key, but every character of `s` was counted in the first pass, so the key is always present.
+- Both functions return `None` when no character qualifies, for example `first_repeating_char("abcdef")`, which the test checks.
+
+Each function runs in O(n) expected time. The set and the map hold one entry per distinct character. The extra space is therefore O(k), where `k` is the number of distinct characters.
+
+The index from `chars().enumerate()` counts characters (Unicode scalar values), not bytes. For ASCII text, both counts are the same. For `"é!é"`, the repeat is at character index 2, but at byte offset 3, because `é` takes 2 bytes in UTF-8.
 
 ## 3.6 A vector used as a stack
 
@@ -388,17 +407,21 @@ When `last_seen.get(&ch)` finds an earlier index `previous`, `start = start.max(
 
 At each step, `end - start + 1` gives the active window length. Because both `start` and `end` advance monotonically, the algorithm runs in O(n) time. Iterating via `chars().enumerate()` counts Unicode scalar values rather than raw UTF-8 bytes, matching the problem specification.
 
-### 3.8.1 The largest value in every window
+### 3.8.1 Sliding window maximum
 
-**The problem.** Given a slice and a window width `k`, we want the maximum of every run of `k` consecutive values. For `[1, 3, -1, -3, 5, 3, 6, 7]` and `k = 3`, the six windows give `[3, 3, 5, 5, 6, 7]`.
+**The problem.** Given a slice of integers and a window width `k`, return the largest value in every run of `k` consecutive values. For `[1, 3, -1, -3, 5, 3, 6, 7]` and `k = 3`, there are six windows, and their maximums are `[3, 3, 5, 5, 6, 7]`.
 
-**The baseline approach.** Scanning each window from scratch costs `k` comparisons per window, which is O(n × k) in total.
+**The baseline approach.** We could find the maximum of each window by scanning its `k` values. With `n - k + 1` windows, this takes O(n × k) time. Most of the work repeats, because neighboring windows share `k - 1` values.
 
-**The deque approach.** We keep a `VecDeque` of indexes whose values decrease from front to back. Its front therefore holds the maximum of the current window. For each new index `i` with value `x`, `sliding_window_max` does three things:
+**The deque approach.** We keep a short list of candidates, the values that can still become the maximum of some window. A value stops being a candidate when a larger value arrives after it. The larger value stays in every window that the smaller one is in, and it stays longer. The smaller value can therefore never be the largest again.
 
-1. If the front index has left the window (`front + k <= i`), it pops that index from the front.
-2. It pops indexes from the back while their values are at most `x`. The new value is larger and stays in the window longer, so those values can never be a window maximum again.
-3. It pushes `i` at the back. Once `i + 1 >= k`, a full window exists, and the value at the deque's front index is its maximum.
+We store the candidates' indexes in a `VecDeque`, a double-ended queue that adds and removes items at both ends in O(1) time. The values at those indexes decrease from front to back, so the front always holds the index of the current window's maximum. A deque kept in sorted order in this way is called a **monotonic deque**.
+
+For each new index `i` with value `x`, `sliding_window_max` performs three steps:
+
+1. If the index at the front has left the window, remove it from the front. The window ending at `i` covers indexes `i - k + 1` to `i`, so the front index `front` has left the window when `front + k <= i`.
+2. Remove indexes from the back while their values are less than or equal to `x`. Those values are no longer candidates, for the reason given above.
+3. Add `i` at the back. Once `i + 1 >= k`, the first full window is complete, and the value at the front index is the maximum of the current window.
 
 The trace below follows the example. The deque column lists indexes, with their values in parentheses.
 
@@ -413,7 +436,7 @@ The trace below follows the example. The deque column lists indexes, with their 
 | 6 | 6 | 6 (6) | 6 |
 | 7 | 7 | 7 (7) | 7 |
 
-At `i = 4`, index 1 leaves from the front because the window is now indexes 2 to 4. Then 5 removes the smaller values -3 and -1 from the back.
+At `i = 1`, the value 3 removes index 0, because 1 is smaller and leaves the window earlier. At `i = 4`, two steps happen. First, index 1 leaves from the front, because the window is now indexes 2 to 4. After that, the value 5 removes indexes 3 and 2 from the back, because -3 and -1 are smaller.
 
 <p class="listing"><b>Listing 3.9</b> The maximum of every window with a monotonic deque. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/bin/sliding_window_maximum.rs">src/bin/sliding_window_maximum.rs</a></p>
 
@@ -426,7 +449,15 @@ $ cargo run --bin sliding_window_maximum
 [3, 3, 5, 5, 6, 7]
 ```
 
-The front check is an `if`, not a loop. The window moves by one index per step, so only index `i - k` can expire, and every older index has already left the deque. Each index enters the deque once and leaves at most once, so the whole pass takes O(n) time. The deque holds at most `k` indexes.
+Key details of the implementation:
+
+- `dq.front().is_some_and(|&f| f + k <= i)` is `true` only when the deque is not empty and its front index has left the window.
+- The front check is an `if`, not a loop. The window moves forward by one index per step, so at most one index can leave the window per step.
+- The back check is a `while` loop, because one large value can remove several smaller candidates, as the value 5 does at `i = 4`.
+- `dq[0]` reads the front index. The deque is never empty at that point, because `i` was added in the step before.
+- The comparison `f + k <= i` is used instead of `f <= i - k`, because `i - k` would underflow in `usize` while `i < k`.
+
+Every index is added to the deque once and removed at most once. The whole pass therefore takes O(n) time, even though one step can remove several indexes. The deque holds at most `k` indexes, and the output holds `n - k + 1` values.
 
 ## 3.9 Sort, then walk once: merging ranges
 
@@ -567,7 +598,7 @@ $ cargo run --bin rotate_matrix
 [9, 6, 3]
 ```
 
-## 3.12 Finding text inside text
+## 3.12 Finding text inside text with KMP
 
 **The problem.** Locate the first byte index where a pattern string (the **needle**) occurs inside a target string (the **haystack**).
 
@@ -639,18 +670,39 @@ str_str("hello", "") = 0
 
 The `-1` sentinel follows the classic interview specification; idiomatic Rust APIs return `Option<usize>` instead. For production string searching, `str::find` in the standard library also runs in linear time (using the Two-Way algorithm).
 
-### 3.12.1 The search written as one `match`
+### 3.12.1 KMP written with `match`
 
-We can also write the KMP search as a `match` on a tuple, so that each branch of the search becomes one arm. In `kmp_search`, `i` walks the haystack and `j` counts the matched needle bytes. The tuple `(haystack[i] == needle[j], j + 1 == needle.len(), j)` selects one of four arms:
+Listing 3.18 implements the same KMP algorithm in a shorter form. Each branch of the search becomes one arm of a `match`, and the function returns `Option<usize>` instead of the `-1` sentinel of `str_str`. The variable `i` is the position in the haystack, and `j` is the number of needle bytes matched so far.
 
-1. `(true, true, _)`: the needle's last byte matches at `i`, so the match began `j` bytes earlier, at `i - j`.
-2. `(true, false, _)`: the bytes match, so both `i` and `j` advance.
-3. `(false, _, 0)`: a mismatch at the needle's first byte, so only `i` advances.
-4. `(false, _, _)`: a mismatch after `j` matched bytes, so `j` falls back to `lps[j - 1]` and `i` stays.
+**Building the table.** `build_lps` fills the same `lps` table as before. `j` walks the needle from index 1, and `len` is the length of the prefix that currently matches the end of `needle[0..j]`. The `match` looks at two values, whether `needle[j]` equals `needle[len]`, and whether `len` is 0:
 
-Arm 1 checks for the needle's end before advancing, so `kmp_search` needs no separate length check after each step. `build_lps` uses the same shape, with `(needle[j] == needle[len], len)` as its tuple. The function returns `Option<usize>`, which replaces the `-1` sentinel of `str_str`.
+1. `(true, _)`: the matched prefix grows by one byte. `len` increases, `lps[j]` records it, and `j` moves on.
+2. `(false, 0)`: no prefix matches, so `lps[j]` is 0, and `j` moves on.
+3. `(false, _)`: the current prefix cannot be extended, so `len` falls back to `lps[len - 1]`, the next shorter prefix that also matches. `j` stays, and the comparison is repeated.
 
-<p class="listing"><b>Listing 3.18</b> KMP as a <code>match</code> on three values. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/bin/kmp_search.rs">src/bin/kmp_search.rs</a></p>
+For `"aabaaac"`, the table comes out as `0 1 0 1 2 2 0`, the same values as in the table above. At `j = 5`, for example, `len` is 2, and `needle[5]` (`a`) does not equal `needle[2]` (`b`). The third arm sets `len` to `lps[1]`, which is 1. Then `needle[5]` equals `needle[1]`, and the first arm sets `lps[5]` to 2.
+
+**Searching.** `kmp_search` first returns `Some(0)` for an empty needle, because the empty string occurs at the start of every haystack. The loop then matches on three values: whether `haystack[i]` equals `needle[j]`, whether `j` is the needle's last index, and `j` itself. The four arms are:
+
+1. `(true, true, _)`: the needle's last byte matches at `i`. The match began `j` bytes earlier, so the function returns `Some(i - j)`.
+2. `(true, false, _)`: the bytes match, but the needle is not finished, so both `i` and `j` advance.
+3. `(false, _, 0)`: the bytes differ at the needle's first byte. There is no shorter prefix to fall back to, so only `i` advances.
+4. `(false, _, _)`: the bytes differ after `j` matched bytes. `j` falls back to `lps[j - 1]`, and `i` stays, so the same haystack byte is compared again.
+
+The first arm checks for the needle's last byte before advancing. As a result, `j` never reaches `needle.len()`, and `needle[j]` is always a valid index.
+
+The trace below searches for `"aabaaac"` in `"aabaaabaaac"`, the example of Figure 3.12.
+
+| `i` | `j` | `haystack[i]` | `needle[j]` | Arm | Effect |
+|---|---|---|---|---|---|
+| 0 to 5 | 0 to 5 | `a a b a a a` | `a a b a a a` | 2 | six bytes match, `i` and `j` advance together |
+| 6 | 6 | `b` | `c` | 4 | `j` falls back to `lps[5]` = 2 |
+| 6 to 9 | 2 to 5 | `b a a a` | `b a a a` | 2 | four bytes match |
+| 10 | 6 | `c` | `c` | 1 | returns `Some(10 - 6)` = `Some(4)` |
+
+At `i = 6`, the search keeps the two bytes `"aa"` that it has already matched, as Figure 3.12 shows. It never moves `i` backward.
+
+<p class="listing"><b>Listing 3.18</b> KMP with each branch as one arm of a <code>match</code>. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/bin/kmp_search.rs">src/bin/kmp_search.rs</a></p>
 
 ```rust
 {{#include ../../rust-interview-lab/src/bin/kmp_search.rs}}
@@ -660,6 +712,8 @@ Arm 1 checks for the needle's end before advancing, so `kmp_search` needs no sep
 $ cargo run --bin kmp_search
 Some(4)
 ```
+
+Both versions run in O(n + m) time and use O(m) extra space for the table. Here, `n` is the haystack length and `m` is the needle length.
 
 ## 3.13 The complete files
 
@@ -680,11 +734,11 @@ Listing 3.19 reproduces `merge_intervals.rs` in full, combining the excerpts fro
 - A `String` enforces a UTF-8 encoding invariant over a `Vec<u8>`; `len()` reports byte length, whereas `chars()` decodes Unicode scalar values sequentially.
 - A `HashMap<K, V>` maps keys to buckets with a randomly seeded hasher to resist collision attacks, delivering O(1) expected `get` and `insert`.
 - Indexing visited elements in a `HashMap` reduces complement queries in Two Sum from O(n<sup>2</sup>) to O(n) expected time.
-- A `HashSet` finds the first repeated character in one pass. The first unique character needs a count of every character, then a second pass.
+- A `HashSet` finds the first repeating character in one pass. The first non-repeating character needs a count of every character, then a second pass.
 - Using a `Vec` as a LIFO stack solves nested delimiter validation and O(1) minimum-element queries (`MinStack`).
 - Converging two-pointer traversals reverse ASCII buffers in place in O(1) auxiliary space and solve Three Sum in O(n<sup>2</sup>) time after sorting.
 - Sliding windows paired with a last-seen index map compute the longest substring without repeated characters in O(n) time.
-- A monotonic deque of indexes gives the maximum of every window of width `k` in O(n) time.
+- A monotonic deque of indexes gives the sliding window maximum, the largest value in every window of width `k`, in O(n) time.
 - Sorting intervals by start coordinate permits a single O(n) pass to merge overlapping ranges, either into an output vector or in place.
 - Binary search halves the candidate range per step in O(log n) time and extends to rotated sorted arrays by identifying which half preserves monotonic order.
 - Knuth-Morris-Pratt (KMP) preprocesses a pattern's prefix-suffix table (`lps`) to locate substrings in O(n + m) worst-case time without backtracking in the haystack.

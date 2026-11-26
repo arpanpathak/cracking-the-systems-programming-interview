@@ -33,7 +33,7 @@ The module header defines its architectural boundary: neighboring modules hold f
 | `parallel_sum`: scoped threads | 12 | chapter 16, `threads::parallel_sum`, listing 16.5 |
 | `SpinLock` and `SpinGuard` | 45 | chapter 16, listing 16.12 |
 | `Semaphore` | 36 | chapter 16, listing 16.15 |
-| `BlockingQueue` with `close` | 62 | chapter 17, listing 17.23 |
+| `BlockingQueue` with `close` | 62 | chapter 17, listing 17.24 |
 | `ThreadPool` with `Drop` | 45 | chapter 18, listing 18.7 |
 | `retry` with backoff | 21 | chapter 19, listing 19.9 |
 | `HashRing` | 33 | chapter 14, listing 14.9 |
@@ -42,13 +42,23 @@ The module header defines its architectural boundary: neighboring modules hold f
 
 ## 30.2 Queens on a bitboard
 
-**The problem.** We place queens on an 8 × 8 board so that no two queens attack each other. We also move a queen along a legal line without breaking that rule. Placing eight such queens is the eight queens puzzle, which the chess composer Max Bezzel published in 1848.
+**The problem.** We place queens on an 8 × 8 chessboard so that no queen attacks another. We also move a queen to a new square along a legal queen move. A queen attacks every square in its row, in its column, and on its two diagonals. Placing eight queens under this rule is the eight queens puzzle, which the chess composer Max Bezzel published in 1848.
 
-**The bitboard.** A queen at row `x` and column `y` controls four lines: row `x`, column `y`, the diagonal `x + 7 - y` and the anti-diagonal `x + y`. The board has 8 rows and 8 columns, so each fits in a `u8` with one bit per line. It has 15 diagonals in each direction, numbered 0 to 14, so each direction fits in a `u16`. A queen at (1, 2) sets bit 1 of `rows`, bit 2 of `cols`, bit 6 of `diags` and bit 3 of `anti_diags`. A square is free when none of its four bits is set. Checking a square therefore takes four AND operations, however many queens the board holds.
+**The baseline approach.** We could store the board as an 8 × 8 array of booleans. To test whether a square is safe, we would walk along its row, its column and both of its diagonals. That walk visits up to 27 squares for every test.
 
-**Moving a queen.** `Queen::can_move` accepts a move along a row, a column or a diagonal: `dx == 0`, `dy == 0` or `dx == dy`. Every legal destination therefore lies on one of the queen's own lines, and `place` would reject it while those lines are still marked. `move_piece` first lifts the queen with `remove`, which clears its four bits, and then places it at the destination. If `place` fails, `move_piece` restores the copy of the board that it saved before the move. `Chess` holds two `u8` and two `u16` fields, 6 bytes in all, and derives `Copy`, so saving the board copies 6 bytes.
+**The bitboard approach.** Instead of storing squares, we store lines. A queen at row `x` and column `y` sits on exactly four lines: one row, one column, one diagonal, and one anti-diagonal. We keep one bit for every line on the board and set that bit when a queen occupies the line. A square is safe exactly when none of its four lines has its bit set. A board that stores its state in the bits of integers is called a **bitboard**.
 
-The same check also stops a queen from jumping over another one. A queen standing between the start and the destination lies on the line of the move. That line passes through the destination, so `place` rejects the move.
+Each kind of line needs a number, so that the line can be mapped to a bit:
+
+- The board has 8 rows and 8 columns. Row `x` is bit `x` of `rows`, and column `y` is bit `y` of `cols`, so each fits in a `u8`.
+- All squares on one diagonal have the same difference `x - y`, which ranges from -7 to 7. Adding 7 gives the bit number `x + 7 - y`, from 0 to 14, so `diags` needs a `u16`.
+- All squares on one anti-diagonal have the same sum `x + y`, which ranges from 0 to 14, so `anti_diags` is also a `u16`.
+
+For example, a queen at (1, 2) sets bit 1 of `rows` and bit 2 of `cols`. It also sets bit 1 + 7 - 2 = 6 of `diags` and bit 1 + 2 = 3 of `anti_diags`. Testing a square then takes four AND operations, however many queens the board holds, and the whole board fits in 6 bytes.
+
+**Moving a queen.** `Queen::can_move` accepts a move along a row (`dx == 0`), along a column (`dy == 0`), or along a diagonal (`dx == dy`). Every legal destination therefore lies on one of the queen's own lines. Those lines still have their bits set while the queen stands on its old square. If `move_piece` called `place(to)` directly, `place` would find the queen's own bits and reject every legal move.
+
+`move_piece` therefore lifts the queen off the board first. It calls `remove(from)`, which clears the queen's four bits, and then calls `place(to)`. If another queen attacks the destination, `place` returns an error, and the queen must go back to its old square. `move_piece` handles that case with a saved copy of the board. It saves the copy with `let before = *self;` before it removes the queen, and it restores the copy when `place` fails. `Chess` derives `Copy`, and the copy is only 6 bytes.
 
 <p class="listing"><b>Listing 30.2</b> Non-attacking queens on a bitboard. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/bin/chess.rs">src/bin/chess.rs</a></p>
 
@@ -62,7 +72,14 @@ moved the queen from (0, 0) to (2, 2)
 place (5, 5): Err(Occupied)
 ```
 
-The second line shows a rejected square. The queen at (2, 2) is on diagonal 2 + 7 - 2 = 7. Square (5, 5) is on diagonal 5 + 7 - 5 = 7 as well.
+Key details of the implementation:
+
+- `place` first returns `Err(Error::OutOfBounds)` for a square outside the board, before it builds any bit. A shift such as `1u8 << 9` would overflow the `u8`.
+- `place` builds one mask for each line, such as `1u8 << cell.x` for the row. A bitwise AND of a mask with its field is nonzero when that line is taken, and a bitwise OR sets the bit.
+- `remove` clears each bit with `&= !mask`. The `!` operator flips every bit of the mask, so the AND keeps every other bit unchanged.
+- `abs_diff` returns the distance between two `usize` values without underflow, which is why `can_move` can compare `dx` and `dy` directly.
+
+The program places a queen at (0, 0) and moves it along the diagonal to (2, 2). It then tries to place a second queen at (5, 5). Both squares lie on diagonal 7, because 2 + 7 - 2 = 7 and 5 + 7 - 5 = 7. The square (5, 5) is therefore attacked, and `place` returns `Err(Occupied)`.
 
 ## 30.3 What the short forms leave out
 
