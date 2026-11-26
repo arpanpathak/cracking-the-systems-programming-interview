@@ -36,7 +36,7 @@
             const path_to_root = "";
             const default_light_theme = "coal";
             const default_dark_theme = "coal";
-            window.path_to_searchindex_js = "searchindex-013420f4.js";
+            window.path_to_searchindex_js = "searchindex-4f9560c3.js";
         </script>
         <!-- Start loading toc.js asap -->
         <script src="toc-c196c8a9.js"></script>
@@ -193,7 +193,27 @@
 <p>Production-grade systems primitives prioritize safety invariants, cache-line contention avoidance, and exhaustive failure handling; timed technical interviews impose a distinct constraint set: a blank buffer, a concise specification, and roughly forty minutes to deliver a verified implementation. The module <code>drills.rs</code> provides ten self-contained, interview-sized counterparts to the book’s core concurrency, networking, and data-structure primitives, each paired with a unit test exercising primary behavior.</p>
 <p>This reference guide indexes each drill against its full implementation, audits every deliberate simplification and behavioral divergence, and defines a repeatable rehearsal protocol for timed execution.</p>
 <h2 id="301-the-drills"><a class="header" href="#301-the-drills">30.1 The drills</a></h2>
-<p class="listing"><b>Listing 30.1</b> Ten answers sized for a live round. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/problems/drills.rs">src/problems/drills.rs</a></p>
+<p>The module <code>drills.rs</code> contains 10 self-contained implementations, each short enough to be written within a 45-minute round. Full reference implementations with complete test suites reside in the neighboring modules, as documented in the module header (Listing 30.1). Each drill maps to a reference chapter and listing as follows.</p>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th>Drill</th><th>Lines</th><th>Full version</th></tr>
+</thead>
+<tbody>
+<tr><td><code>count_parallel</code>: <code>Arc&lt;Mutex&lt;usize&gt;&gt;</code> counter</td><td>20</td><td>chapter 8 (<code>total_with_arc_mutex</code>, listing 8.7), chapter 16</td></tr>
+<tr><td><code>parallel_sum</code>: scoped threads</td><td>19</td><td>chapter 16, <code>threads::parallel_sum</code>, listing 16.5</td></tr>
+<tr><td><code>SpinLock</code> and <code>SpinGuard</code></td><td>53</td><td>chapter 16, listing 16.12</td></tr>
+<tr><td><code>Semaphore</code></td><td>44</td><td>chapter 16, listing 16.15</td></tr>
+<tr><td><code>BlockingQueue</code> with <code>close</code></td><td>78</td><td>chapter 17, listing 17.25</td></tr>
+<tr><td><code>ThreadPool</code> with <code>Drop</code></td><td>54</td><td>chapter 18, listing 18.7</td></tr>
+<tr><td><code>retry</code> with backoff</td><td>25</td><td>chapter 19, listing 19.9</td></tr>
+<tr><td><code>HashRing</code></td><td>45</td><td>chapter 14, listing 14.9</td></tr>
+<tr><td><code>parse_request_head</code></td><td>35</td><td>chapter 21, listing 21.1</td></tr>
+<tr><td><code>Port</code> newtype and <code>Route</code> enum</td><td>33</td><td>chapter 7 (the <code>GpuCount</code> newtype, listing 7.2); chapter 21, <code>route</code></td></tr>
+</tbody>
+</table>
+</div>
+<p class="listing"><b>Listing 30.1</b> The module header and imports (lines 1 to 20). <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/problems/drills.rs">src/problems/drills.rs</a></p>
 
 <pre><code class="language-rust">//! Compact implementations of the common primitives.
 //!
@@ -214,9 +234,11 @@ use std::{
     },
     thread::{self, JoinHandle},
     time::Duration,
-};
+};</code></pre>
+<h3 id="3011-thread-safe-counter"><a class="header" href="#3011-thread-safe-counter">30.1.1 Thread-safe counter</a></h3>
+<p class="listing"><b>Listing 30.2</b> <code>count_parallel</code> (lines 22 to 42).</p>
 
-// --- Thread-safe counter (Arc + Mutex) ---
+<pre><code class="language-rust">// --- Thread-safe counter (Arc + Mutex) ---
 
 pub fn count_parallel(threads: usize, per_thread: usize) -&gt; usize {
     let counter = Arc::new(Mutex::new(0usize));
@@ -234,13 +256,19 @@ pub fn count_parallel(threads: usize, per_thread: usize) -&gt; usize {
     for handle in handles {
         handle.join().expect("worker panicked");
     }
-    *counter.lock().expect("poisoned")
-}
 
-// --- Scoped threads (borrow instead of Arc) ---
+    *counter.lock().expect("poisoned")
+}</code></pre>
+<p>In <code>count_parallel</code>, <code>threads</code> worker threads are spawned, and each worker increments a shared counter <code>per_thread</code> times. The counter is held in an <code>Arc&lt;Mutex&lt;usize&gt;&gt;</code>. <code>Arc</code> provides shared ownership across threads, and <code>Mutex</code> serializes the increments. Each worker receives its own clone of the <code>Arc</code> before its closure is moved into <code>thread::spawn</code>.</p>
+<p>After every handle is joined, the final value is read under the lock, and <code>threads × per_thread</code> is expected. A <code>JoinHandle</code> that is never joined would leave a worker running past the read, so the join loop precedes the final lock.</p>
+<h3 id="3012-scoped-threads"><a class="header" href="#3012-scoped-threads">30.1.2 Scoped threads</a></h3>
+<p class="listing"><b>Listing 30.3</b> <code>parallel_sum</code> (lines 44 to 63).</p>
+
+<pre><code class="language-rust">// --- Scoped threads (borrow instead of Arc) ---
 
 pub fn parallel_sum(values: &amp;[i32]) -&gt; i64 {
     let chunk_size = values.len().div_ceil(4).max(1);
+
     thread::scope(|scope| {
         values
             .chunks(chunk_size)
@@ -255,9 +283,13 @@ pub fn parallel_sum(values: &amp;[i32]) -&gt; i64 {
             .map(|handle| handle.join().expect("worker panicked"))
             .sum()
     })
-}
+}</code></pre>
+<p>In <code>parallel_sum</code>, the slice is divided into at most 4 chunks of <code>values.len().div_ceil(4)</code> elements, and each chunk is summed by a separate thread. Because <code>thread::scope</code> guarantees that every spawned thread is joined before the scope returns, the threads borrow <code>values</code> directly, and no <code>Arc</code> is required. The <code>.max(1)</code> guard keeps the chunk size nonzero for an empty slice, since <code>chunks(0)</code> panics.</p>
+<p>The iterator chain is lazy. Each thread is therefore joined before the next thread is spawned, and the chunks are summed sequentially. This defect, and the 1-line repair, are analyzed in section 30.4.</p>
+<h3 id="3013-spin-lock"><a class="header" href="#3013-spin-lock">30.1.3 Spin lock</a></h3>
+<p class="listing"><b>Listing 30.4</b> <code>SpinLock</code> and <code>SpinGuard</code> (lines 65 to 118).</p>
 
-// --- Spin lock from an atomic ---
+<pre><code class="language-rust">// --- Spin lock from an atomic ---
 
 pub struct SpinLock&lt;T&gt; {
     locked: AtomicBool,
@@ -281,6 +313,7 @@ impl&lt;T&gt; SpinLock&lt;T&gt; {
         {
             std::hint::spin_loop();
         }
+
         SpinGuard { lock: self }
     }
 }
@@ -299,6 +332,7 @@ impl&lt;T&gt; Drop for SpinGuard&lt;'_, T&gt; {
 
 impl&lt;T&gt; Deref for SpinGuard&lt;'_, T&gt; {
     type Target = T;
+
     fn deref(&amp;self) -&gt; &amp;T {
         unsafe { &amp;*self.lock.value.get() }
     }
@@ -308,9 +342,13 @@ impl&lt;T&gt; DerefMut for SpinGuard&lt;'_, T&gt; {
     fn deref_mut(&amp;mut self) -&gt; &amp;mut T {
         unsafe { &amp;mut *self.lock.value.get() }
     }
-}
+}</code></pre>
+<p>A <code>SpinLock&lt;T&gt;</code> consists of an <code>AtomicBool</code> flag and the protected value in an <code>UnsafeCell&lt;T&gt;</code>. In <code>lock</code>, the calling thread executes <code>swap(true, Acquire)</code> in a loop until the previous value is <code>false</code>, and a <code>SpinGuard</code> is then returned. The <code>Acquire</code> ordering makes every write performed in the previous critical section visible to the new holder.</p>
+<p>Access to the value is provided through the <code>Deref</code> and <code>DerefMut</code> implementations of <code>SpinGuard</code>. In its <code>Drop</code> implementation, the lock is released with a <code>Release</code> store, so the lock is released on every exit path, including a panic. The <code>unsafe impl Sync</code> and the 2 <code>unsafe</code> blocks carry no <code>// SAFETY:</code> comments; section 30.3 lists this omission together with the cache-line cost of spinning on <code>swap</code>.</p>
+<h3 id="3014-semaphore"><a class="header" href="#3014-semaphore">30.1.4 Semaphore</a></h3>
+<p class="listing"><b>Listing 30.5</b> <code>Semaphore</code> (lines 120 to 164).</p>
 
-// --- Semaphore (acquire blocks) ---
+<pre><code class="language-rust">// --- Semaphore (acquire blocks) ---
 
 pub struct Semaphore {
     permits: Mutex&lt;usize&gt;,
@@ -327,17 +365,20 @@ impl Semaphore {
 
     pub fn acquire(&amp;self) {
         let mut permits = self.permits.lock().expect("poisoned");
+
         while *permits == 0 {
             permits = self
                 .released
                 .wait(permits)
                 .expect("poisoned");
         }
+
         *permits -= 1;
     }
 
     pub fn try_acquire(&amp;self) -&gt; bool {
         let mut permits = self.permits.lock().expect("poisoned");
+
         if *permits == 0 {
             false
         } else {
@@ -348,11 +389,16 @@ impl Semaphore {
 
     pub fn release(&amp;self) {
         *self.permits.lock().expect("poisoned") += 1;
+
         self.released.notify_one();
     }
-}
+}</code></pre>
+<p>A <code>Semaphore</code> holds a permit count in a <code>Mutex&lt;usize&gt;</code> and a <code>Condvar</code> named <code>released</code>. In <code>acquire</code>, a thread waits on <code>released</code> while the count is 0 and then decrements the count. The <code>while</code> loop rechecks the count after every wakeup. Spurious wakeups are thereby tolerated, as are permits taken by other threads between the notification and the reacquisition of the lock.</p>
+<p>In <code>try_acquire</code>, <code>false</code> is returned instead of blocking when no permit is available. In <code>release</code>, the count is incremented, and 1 waiting thread is woken with <code>notify_one</code>. Because <code>acquire</code> and <code>release</code> are separate calls, a caller that returns early between them leaks a permit (section 30.3).</p>
+<h3 id="3015-bounded-blocking-queue"><a class="header" href="#3015-bounded-blocking-queue">30.1.5 Bounded blocking queue</a></h3>
+<p class="listing"><b>Listing 30.6</b> <code>BlockingQueue</code> (lines 166 to 244).</p>
 
-// --- Bounded blocking queue (backpressure + close) ---
+<pre><code class="language-rust">// --- Bounded blocking queue (backpressure + close) ---
 
 pub struct BlockingQueue&lt;T&gt; {
     inner: Mutex&lt;Inner&lt;T&gt;&gt;,
@@ -381,15 +427,19 @@ impl&lt;T&gt; BlockingQueue&lt;T&gt; {
 
     pub fn push(&amp;self, item: T) -&gt; Result&lt;(), T&gt; {
         let mut inner = self.inner.lock().expect("poisoned");
+
         loop {
             if inner.closed {
                 return Err(item);
             }
+
             if inner.items.len() &lt; inner.capacity {
                 inner.items.push_back(item);
                 self.not_empty.notify_one();
+
                 return Ok(());
             }
+
             inner = self
                 .not_full
                 .wait(inner)
@@ -399,14 +449,18 @@ impl&lt;T&gt; BlockingQueue&lt;T&gt; {
 
     pub fn pop(&amp;self) -&gt; Option&lt;T&gt; {
         let mut inner = self.inner.lock().expect("poisoned");
+
         loop {
             if let Some(item) = inner.items.pop_front() {
                 self.not_full.notify_one();
+
                 return Some(item);
             }
+
             if inner.closed {
                 return None;
             }
+
             inner = self
                 .not_empty
                 .wait(inner)
@@ -418,12 +472,18 @@ impl&lt;T&gt; BlockingQueue&lt;T&gt; {
         let mut inner = self.inner.lock().expect("poisoned");
         inner.closed = true;
         drop(inner);
+
         self.not_empty.notify_all();
         self.not_full.notify_all();
     }
-}
+}</code></pre>
+<p>A <code>BlockingQueue&lt;T&gt;</code> keeps a <code>VecDeque&lt;T&gt;</code>, a capacity, and a <code>closed</code> flag under 1 mutex, with 2 condition variables: <code>not_empty</code> for consumers and <code>not_full</code> for producers.</p>
+<p>In <code>push</code>, a producer returns <code>Err(item)</code> if the queue is closed. If space is available, the producer appends the item and wakes 1 consumer; otherwise, the producer waits on <code>not_full</code> and rechecks both conditions after waking. In <code>pop</code>, a consumer takes the front item and wakes 1 producer. If the queue is empty and closed, the consumer returns <code>None</code>; otherwise, the consumer waits on <code>not_empty</code>.</p>
+<p>In <code>close</code>, the flag is set and the guard is dropped before every thread waiting on either condition variable is woken. Blocked producers then observe the closed state and return their items, and blocked consumers drain the remaining items before receiving <code>None</code>.</p>
+<h3 id="3016-thread-pool"><a class="header" href="#3016-thread-pool">30.1.6 Thread pool</a></h3>
+<p class="listing"><b>Listing 30.7</b> <code>ThreadPool</code> (lines 246 to 300).</p>
 
-// --- Thread pool (fixed workers + channel) ---
+<pre><code class="language-rust">// --- Thread pool (fixed workers + channel) ---
 
 pub struct ThreadPool {
     sender: Option&lt;mpsc::Sender&lt;Box&lt;dyn FnOnce() + Send + 'static&gt;&gt;&gt;,
@@ -434,6 +494,7 @@ impl ThreadPool {
     pub fn new(size: usize) -&gt; Self {
         let (sender, receiver) = mpsc::channel::&lt;Box&lt;dyn FnOnce() + Send + 'static&gt;&gt;();
         let receiver = Arc::new(Mutex::new(receiver));
+
         let workers = (0..size)
             .map(|_| {
                 let receiver = Arc::clone(&amp;receiver);
@@ -446,11 +507,13 @@ impl ThreadPool {
                         else {
                             return;
                         };
+
                         job();
                     }
                 })
             })
             .collect();
+
         Self {
             sender: Some(sender),
             workers,
@@ -469,13 +532,18 @@ impl ThreadPool {
 impl Drop for ThreadPool {
     fn drop(&amp;mut self) {
         drop(self.sender.take());
+
         for worker in self.workers.drain(..) {
             let _ = worker.join();
         }
     }
-}
+}</code></pre>
+<p>In <code>ThreadPool::new</code>, an <code>mpsc</code> channel of boxed jobs is created, and the receiver is shared among <code>size</code> worker threads through an <code>Arc&lt;Mutex&lt;Receiver&gt;&gt;</code>. Each worker locks the receiver, waits for 1 job with <code>recv</code>, and executes it. Because the job is bound in a <code>let ... else</code> statement, the <code>MutexGuard</code> is dropped at the end of that statement, before <code>job()</code> runs. Other workers can therefore receive jobs while 1 job executes (section 30.3).</p>
+<p>In <code>execute</code>, the job is boxed and sent through the channel. In <code>Drop</code>, the sender is dropped first. Once the sender is gone, <code>recv</code> returns <code>Err</code> in every worker, each worker returns from its loop, and each worker thread is joined.</p>
+<h3 id="3017-retry-with-exponential-backoff"><a class="header" href="#3017-retry-with-exponential-backoff">30.1.7 Retry with exponential backoff</a></h3>
+<p class="listing"><b>Listing 30.8</b> <code>retry</code> (lines 302 to 327).</p>
 
-// --- Retry with exponential backoff ---
+<pre><code class="language-rust">// --- Retry with exponential backoff ---
 
 pub fn retry&lt;T, E&gt;(
     max_attempts: u32,
@@ -484,22 +552,29 @@ pub fn retry&lt;T, E&gt;(
 ) -&gt; Result&lt;T, E&gt; {
     let mut delay = Duration::from_millis(25);
     let mut attempt = 0;
+
     loop {
         match operation() {
             Ok(value) =&gt; return Ok(value),
             Err(error) =&gt; {
                 attempt += 1;
+
                 if attempt &gt;= max_attempts || !retryable(&amp;error) {
                     return Err(error);
                 }
+
                 thread::sleep(delay);
                 delay = (delay * 2).min(Duration::from_secs(1));
             }
         }
     }
-}
+}</code></pre>
+<p>In <code>retry</code>, the caller-supplied operation is executed up to <code>max_attempts</code> times. After each failure, the attempt counter is incremented, and the error is returned at once if the limit is reached or if <code>retryable</code> classifies the error as permanent.</p>
+<p>Otherwise, the calling thread sleeps for the current delay before the next attempt. The delay starts at 25 ms and is doubled after every failure, up to a ceiling of 1 s, so that a struggling dependency receives progressively fewer requests.</p>
+<h3 id="3018-consistent-hashing-ring"><a class="header" href="#3018-consistent-hashing-ring">30.1.8 Consistent hashing ring</a></h3>
+<p class="listing"><b>Listing 30.9</b> <code>HashRing</code> (lines 329 to 374).</p>
 
-// --- Consistent hashing ring ---
+<pre><code class="language-rust">// --- Consistent hashing ring ---
 
 #[derive(Default)]
 pub struct HashRing {
@@ -516,6 +591,7 @@ impl HashRing {
             self.points
                 .push((hash(node, replica), node.to_string()));
         }
+
         self.points
             .sort_unstable_by_key(|(point, _)| *point);
     }
@@ -524,23 +600,32 @@ impl HashRing {
         if self.points.is_empty() {
             return None;
         }
+
         let hash = hash(key, 0);
+
         let index = self
             .points
             .partition_point(|(point, _)| *point &lt;= hash)
             % self.points.len();
+
         Some(self.points[index].1.as_str())
     }
 }
 
 fn hash(input: &amp;str, replica: usize) -&gt; u64 {
     let mut hasher = DefaultHasher::new();
+
     hasher.write(input.as_bytes());
     hasher.write_usize(replica);
-    hasher.finish()
-}
 
-// --- HTTP request head ---
+    hasher.finish()
+}</code></pre>
+<p>In a consistent hashing ring, keys and nodes are hashed onto the same circular space, and each key is assigned to the first node point after its hash. In <code>add</code>, <code>replicas</code> virtual points are inserted per node, each hashed from the node name and the replica index, and the point list is kept sorted.</p>
+<p>In <code>get</code>, the first point with a hash greater than the key’s hash is located by binary search with <code>partition_point</code>. An index past the end wraps to 0 through <code>% self.points.len()</code>, which closes the circle. When a node is added, only the keys that fall between the new points and their predecessors are reassigned.</p>
+<h3 id="3019-http-request-head"><a class="header" href="#3019-http-request-head">30.1.9 HTTP request head</a></h3>
+<p class="listing"><b>Listing 30.10</b> <code>parse_request_head</code> (lines 376 to 411).</p>
+
+<pre><code class="language-rust">// --- HTTP request head ---
 
 pub struct RequestHead {
     pub method: String,
@@ -550,29 +635,38 @@ pub struct RequestHead {
 
 pub fn parse_request_head(input: &amp;str) -&gt; Option&lt;RequestHead&gt; {
     let mut lines = input.split("\r\n");
+
     let mut request_line = lines.next()?.split(' ');
     let method = request_line.next()?.to_string();
     let target = request_line.next()?.to_string();
+
     if request_line.next()? != "HTTP/1.1" {
         return None;
     }
 
     let mut headers = Vec::new();
+
     for line in lines {
         if line.is_empty() {
             break;
         }
+
         let (name, value) = line.split_once(':')?;
         headers.push((name.trim().to_ascii_lowercase(), value.trim().to_string()));
     }
+
     Some(RequestHead {
         method,
         target,
         headers,
     })
-}
+}</code></pre>
+<p>In <code>parse_request_head</code>, the input is split on <code>\r\n</code>. The request line is split on spaces into the method, the target, and the version, and any version other than <code>HTTP/1.1</code> is rejected with <code>None</code>.</p>
+<p>Header lines are then read until the empty line that terminates the head. Each line is split at its first colon, the name is lowercased, and both the name and the value are trimmed. Every missing component is propagated as <code>None</code> through the <code>?</code> operator.</p>
+<h3 id="30110-newtype-and-enum"><a class="header" href="#30110-newtype-and-enum">30.1.10 Newtype and enum</a></h3>
+<p class="listing"><b>Listing 30.11</b> <code>Port</code> and <code>Route</code> (lines 413 to 446).</p>
 
-// --- Newtype and enum ADT ---
+<pre><code class="language-rust">// --- Newtype and enum ADT ---
 
 pub struct Port(u16);
 
@@ -605,138 +699,20 @@ impl Route {
                 .map(|id| Self::ById(id.to_string())),
         }
     }
-}
-
-#[cfg(test)]
-mod tests {
-    use std::sync::atomic::AtomicUsize;
-
-    use super::*;
-
-    #[test]
-    fn counter_scoped_sum_and_spin_lock() {
-        assert_eq!(count_parallel(4, 100), 400);
-        assert_eq!(parallel_sum(&amp;[1, 2, 3, 4]), 10);
-
-        let lock = Arc::new(SpinLock::new(0usize));
-        let handles: Vec&lt;_&gt; = (0..4)
-            .map(|_| {
-                let lock = Arc::clone(&amp;lock);
-                thread::spawn(move || {
-                    for _ in 0..100 {
-                        *lock.lock() += 1;
-                    }
-                })
-            })
-            .collect();
-        for handle in handles {
-            handle.join().expect("worker panicked");
-        }
-        assert_eq!(*lock.lock(), 400);
-    }
-
-    #[test]
-    fn semaphore_queue_and_pool() {
-        let semaphore = Semaphore::new(1);
-        assert!(semaphore.try_acquire());
-        assert!(!semaphore.try_acquire());
-        semaphore.release();
-        assert!(semaphore.try_acquire());
-
-        let queue = BlockingQueue::new(1);
-        assert_eq!(queue.push(1), Ok(()));
-        queue.close();
-        assert_eq!(queue.pop(), Some(1));
-        assert_eq!(queue.pop(), None);
-        assert_eq!(queue.push(2), Err(2));
-
-        let pool = ThreadPool::new(3);
-        let counter = Arc::new(AtomicUsize::new(0));
-        for _ in 0..100 {
-            let counter = Arc::clone(&amp;counter);
-            pool.execute(move || {
-                counter.fetch_add(1, Ordering::SeqCst);
-            });
-        }
-        drop(pool);
-        assert_eq!(counter.load(Ordering::SeqCst), 100);
-    }
-
-    #[test]
-    fn retry_ring_http_and_adt() {
-        let mut attempts = 0;
-        let ok = retry(
-            3,
-            || {
-                attempts += 1;
-                if attempts &lt; 3 {
-                    Err("transient")
-                } else {
-                    Ok(7)
-                }
-            },
-            |_| true,
-        );
-        assert_eq!(ok, Ok(7));
-
-        let mut attempts = 0;
-        let bad: Result&lt;(), &amp;str&gt; = retry(
-            3,
-            || {
-                attempts += 1;
-                Err("permanent")
-            },
-            |_| false,
-        );
-        assert!(bad.is_err());
-        assert_eq!(attempts, 1);
-
-        let mut ring = HashRing::new();
-        ring.add("a", 64);
-        ring.add("b", 64);
-        let before = ring.get("job-1").map(str::to_string);
-        ring.add("c", 64);
-        let after = ring.get("job-1").map(str::to_string);
-        assert!(after == before || after.as_deref() == Some("c"));
-
-        let head = parse_request_head("GET /v1/gpu-workloads HTTP/1.1\r\nHost: api\r\n\r\n")
-            .expect("valid");
-        assert_eq!(
-            (head.method.as_str(), head.target.as_str()),
-            ("GET", "/v1/gpu-workloads")
-        );
-        assert_eq!(head.headers[0], ("host".to_string(), "api".to_string()));
-        assert!(parse_request_head("GET / HTTP/2\r\n\r\n").is_none());
-
-        assert!(Port::new(8080).is_ok());
-        assert!(Port::new(0).is_err());
-        assert!(matches!(Route::parse("/healthz"), Some(Route::Health)));
-        assert!(matches!(
-            Route::parse("/v1/gpu-workloads/wl-1"),
-            Some(Route::ById(id)) if id == "wl-1"
-        ));
-    }
 }</code></pre>
-<p>The module header defines its architectural boundary: neighboring modules hold full reference implementations, while <code>drills.rs</code> isolates minimal versions achievable under time pressure. The table below maps each drill to its corresponding reference chapter and listing:</p>
-<div class="table-wrapper">
-<table>
-<thead>
-<tr><th>Drill</th><th>Lines</th><th>Full version</th></tr>
-</thead>
-<tbody>
-<tr><td><code>count_parallel</code>: <code>Arc&lt;Mutex&lt;usize&gt;&gt;</code> counter</td><td>18</td><td>chapter 8 (<code>total_with_arc_mutex</code>, listing 8.7), chapter 16</td></tr>
-<tr><td><code>parallel_sum</code>: scoped threads</td><td>12</td><td>chapter 16, <code>threads::parallel_sum</code>, listing 16.5</td></tr>
-<tr><td><code>SpinLock</code> and <code>SpinGuard</code></td><td>45</td><td>chapter 16, listing 16.12</td></tr>
-<tr><td><code>Semaphore</code></td><td>36</td><td>chapter 16, listing 16.15</td></tr>
-<tr><td><code>BlockingQueue</code> with <code>close</code></td><td>62</td><td>chapter 17, listing 17.25</td></tr>
-<tr><td><code>ThreadPool</code> with <code>Drop</code></td><td>45</td><td>chapter 18, listing 18.7</td></tr>
-<tr><td><code>retry</code> with backoff</td><td>21</td><td>chapter 19, listing 19.9</td></tr>
-<tr><td><code>HashRing</code></td><td>33</td><td>chapter 14, listing 14.9</td></tr>
-<tr><td><code>parse_request_head</code></td><td>29</td><td>chapter 21, listing 21.1</td></tr>
-<tr><td><code>Port</code> newtype and <code>Route</code> enum</td><td>32</td><td>chapter 7 (the <code>GpuCount</code> newtype, listing 7.2); chapter 21, <code>route</code></td></tr>
-</tbody>
-</table>
-</div>
+<p><code>Port</code> is a newtype over <code>u16</code>. Values are accepted by <code>Port::new</code> only in the range 1 to 65535, so every <code>Port</code> is nonzero by construction, and no later check is required.</p>
+<p><code>Route</code> is an enum of the 3 routes of the service. In <code>Route::parse</code>, the static paths are matched directly, and the workload ID of <code>/v1/gpu-workloads/{id}</code> is extracted with <code>strip_prefix</code>. Unrecognized paths produce <code>None</code>.</p>
+<h3 id="30111-the-tests"><a class="header" href="#30111-the-tests">30.1.11 The tests</a></h3>
+<p>The 3 tests at the end of <code>drills.rs</code> exercise every drill with a value assertion. The thread-pool test, for example, submits 100 jobs that each increment an <code>AtomicUsize</code>, drops the pool, and expects the counter to equal 100. Because the pool’s <code>Drop</code> implementation joins every worker, all 100 jobs complete before the assertion runs.</p>
+<pre><code class="language-text">$ cargo test --lib problems::drills
+running 3 tests
+test problems::drills::tests::semaphore_queue_and_pool ... ok
+test problems::drills::tests::counter_scoped_sum_and_spin_lock ... ok
+test problems::drills::tests::retry_ring_http_and_adt ... ok
+
+test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 136 filtered out
+</code></pre>
+<p>Value assertions verify results, not concurrency; the sequential <code>parallel_sum</code> passes its test unchanged (section 30.4).</p>
 <h2 id="302-queens-on-a-bitboard"><a class="header" href="#302-queens-on-a-bitboard">30.2 Queens on a bitboard</a></h2>
 <p><strong>The problem.</strong> Queens are placed on an 8 × 8 board under the constraint that no 2 queens share a row, a column, or a diagonal. A placed queen may also be moved along a legal queen trajectory. Placing 8 queens under this constraint is the eight queens puzzle, first published by the chess composer Max Bezzel in 1848.</p>
 <p><strong>The baseline approach.</strong> With an 8 × 8 Boolean array, each safety test requires a scan of the row, the column, and both diagonals of the candidate square. Up to 27 squares are examined per test.</p>
@@ -759,7 +735,7 @@ mod tests {
 <img src="figures/ch30-move.svg" alt="Three boards. Board 1: a queen at (0, 0) with its lines shaded; the destination (2, 2) is outlined and lies on the queen&#39;s diagonal. Board 2: after remove(from), no square is shaded. Board 3: after place(to), the queen stands at (2, 2) with its lines shaded.">
 <figcaption><b>Figure 30.2</b> A move from (0, 0) to (2, 2): the queen is lifted, then placed. On failure, board 1 is restored.</figcaption>
 </figure>
-<p class="listing"><b>Listing 30.2</b> Non-attacking queens on a bitboard. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/bin/chess.rs">src/bin/chess.rs</a></p>
+<p class="listing"><b>Listing 30.12</b> Non-attacking queens on a bitboard. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/bin/chess.rs">src/bin/chess.rs</a></p>
 
 <pre><code class="language-rust">#[derive(Debug)]
 enum Error {
