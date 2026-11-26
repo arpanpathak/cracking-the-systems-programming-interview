@@ -167,3 +167,74 @@ f.text(20, 156, "resume at 4", 10, MUTED)
 f.text(20, 190, "Six characters matched, then 'c' ≠ 'b'. lps[5] = 2 says the last two matched characters, \"aa\", are also the needle's start.", 10)
 f.save(OUT + "ch03-kmp.svg")
 print("ok")
+
+# First repeating and first non-repeating character in "swiss"
+f = Figure(760, 330)
+f.text(20, 22, "First repeating and first non-repeating character in \"swiss\"", 12, bold=True)
+f.panel(20, 40, 720, 130, "Pass 1 of first_repeating_char: insert every character into a HashSet")
+word = "swiss"
+results = ["true", "true", "true", "false", ""]
+sets = ["{s}", "{s, w}", "{s, w, i}", "stop", ""]
+for i, ch in enumerate(word):
+    x = 150 + i * 110
+    fill = PINK if i == 3 else (GREEN if i < 3 else GREY)
+    f.cell(x, 70, 60, 30, ch, fill, size=12)
+    f.text(x + 30, 116, f"index {i}", 9, MUTED, anchor="middle")
+    f.text(x + 30, 136, results[i], 10, RUST if i == 3 else INK, mono=True, anchor="middle", bold=i == 3)
+    f.text(x + 30, 154, sets[i], 9, MUTED, mono=True, anchor="middle")
+f.text(36, 90, "character", 10, MUTED)
+f.text(36, 140, "insert(ch)", 10, MUTED, mono=True)
+f.text(36, 158, "set after", 10, MUTED)
+f.panel(20, 186, 720, 130, "first_non_repeating_char: count all characters, then scan again")
+f.text(36, 222, "pass 1: counts", 10, MUTED)
+for i, (ch, n) in enumerate([("s", 3), ("w", 1), ("i", 1)]):
+    f.cell(150 + i * 90, 206, 80, 28, f"{ch}: {n}", CREAM, size=11)
+f.text(36, 272, "pass 2: count", 10, MUTED)
+for i, ch in enumerate(word[:2]):
+    x = 150 + i * 110
+    fill = GREEN if i == 1 else GREY
+    f.cell(x, 252, 60, 30, ch, fill, size=12)
+    f.text(x + 30, 298, f"count {3 if ch == 's' else 1}", 10, mono=True, anchor="middle", bold=i == 1)
+f.text(400, 272, "the first character with count 1 is 'w' at index 1", 10, TEAL, bold=True)
+f.save(OUT + "ch03-first-char.svg")
+
+# Sliding window maximum: deque after every step
+values = [1, 3, -1, -3, 5, 3, 6, 7]
+deques = [[0], [1], [1, 2], [1, 2, 3], [4], [4, 5], [6], [7]]
+f = Figure(760, 370)
+f.text(20, 22, "Sliding window maximum, k = 3: the deque holds indices whose values decrease", 12, bold=True)
+f.text(110, 46, "values (the outlined cells form the window)", 9, MUTED)
+f.text(470, 46, "deque after the step: index (value)", 9, MUTED)
+f.text(690, 46, "maximum", 9, MUTED)
+for row, i in enumerate(range(8)):
+    y = 56 + row * 38
+    f.text(20, y + 20, f"i = {i}", 10, mono=True, bold=True)
+    lo = max(0, i - 2)
+    for j, v in enumerate(values):
+        fill = GREEN if j in deques[i] else (PALE if lo <= j <= i else GREY)
+        f.cell(80 + j * 46, y, 42, 28, str(v), fill, size=10)
+    f.rect(80 + lo * 46 - 3, y - 3, (i - lo + 1) * 46 + 2, 34, "none", TEAL, 6, width=2)
+    for d, idx in enumerate(deques[i]):
+        f.cell(470 + d * 66, y, 62, 28, f"{idx} ({values[idx]})", CREAM, size=10)
+    if i >= 2:
+        f.text(712, y + 19, str(values[deques[i][0]]), 11, RUST, mono=True, anchor="middle", bold=True)
+f.save(OUT + "ch03-window-max.svg")
+
+# The 4 arms of the match in kmp_search
+f = Figure(760, 272)
+f.text(20, 22, "kmp_search: the 4 arms of match (haystack[i] == needle[j], j + 1 == needle.len(), j)", 12, bold=True)
+arms = [("1", "(true, true, _)", "last needle byte matches", "return Some(i - j)", GREEN),
+        ("2", "(true, false, _)", "bytes match, needle not finished", "i += 1;  j += 1", GREEN),
+        ("3", "(false, _, 0)", "mismatch at the first needle byte", "i += 1", PINK),
+        ("4", "(false, _, _)", "mismatch after j matched bytes", "j = lps[j - 1];  i unchanged", PINK)]
+for k, (n, pat, cond, act, fill) in enumerate(arms):
+    x = 20 + (k % 2) * 365
+    y = 44 + (k // 2) * 98
+    f.rect(x, y, 350, 86, fill, BORDER, 8)
+    f.rect(x + 12, y + 12, 24, 24, TEAL, "none", 12)
+    f.text(x + 24, y + 28, n, 11, WHITE, anchor="middle", bold=True)
+    f.text(x + 48, y + 29, pat, 12, mono=True, bold=True)
+    f.text(x + 48, y + 52, cond, 10, MUTED)
+    f.text(x + 48, y + 72, act, 11, mono=True)
+f.text(20, 258, "Arm 1 is tested before j is incremented, so j never reaches needle.len() and needle[j] stays in bounds.", 10)
+f.save(OUT + "ch03-kmp-match.svg")

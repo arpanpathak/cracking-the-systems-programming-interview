@@ -42,23 +42,49 @@ The module header defines its architectural boundary: neighboring modules hold f
 
 ## 30.2 Queens on a bitboard
 
-**The problem.** We place queens on an 8 × 8 chessboard so that no queen attacks another. We also move a queen to a new square along a legal queen move. A queen attacks every square in its row, in its column, and on its two diagonals. Placing eight queens under this rule is the eight queens puzzle, which the chess composer Max Bezzel published in 1848.
+**The problem.** Queens are placed on an 8 × 8 board under the constraint that no 2 queens share a row, a column, or a diagonal. A placed queen may also be moved along a legal queen trajectory. Placing 8 queens under this constraint is the eight queens puzzle, first published by the chess composer Max Bezzel in 1848.
 
-**The baseline approach.** We could store the board as an 8 × 8 array of booleans. To test whether a square is safe, we would walk along its row, its column and both of its diagonals. That walk visits up to 27 squares for every test.
+**The baseline approach.** With an 8 × 8 Boolean array, each safety test requires a scan of the row, the column, and both diagonals of the candidate square. Up to 27 squares are examined per test.
 
-**The bitboard approach.** Instead of storing squares, we store lines. A queen at row `x` and column `y` sits on exactly four lines: one row, one column, one diagonal, and one anti-diagonal. We keep one bit for every line on the board and set that bit when a queen occupies the line. A square is safe exactly when none of its four lines has its bit set. A board that stores its state in the bits of integers is called a **bitboard**.
+### 30.2.1 One bit per line
 
-Each kind of line needs a number, so that the line can be mapped to a bit:
+A queen at row `x` and column `y` occupies exactly 4 lines: 1 row, 1 column, 1 diagonal, and 1 anti-diagonal. 1 bit is reserved for every line on the board and set when a queen occupies that line. A square is then safe if and only if none of its 4 line bits is set. A board represented by the bits of machine integers is called a **bitboard**.
 
-- The board has 8 rows and 8 columns. Row `x` is bit `x` of `rows`, and column `y` is bit `y` of `cols`, so each fits in a `u8`.
-- All squares on one diagonal have the same difference `x - y`, which ranges from -7 to 7. Adding 7 gives the bit number `x + 7 - y`, from 0 to 14, so `diags` needs a `u16`.
-- All squares on one anti-diagonal have the same sum `x + y`, which ranges from 0 to 14, so `anti_diags` is also a `u16`.
+Each line is mapped to a bit index as follows:
 
-For example, a queen at (1, 2) sets bit 1 of `rows` and bit 2 of `cols`. It also sets bit 1 + 7 - 2 = 6 of `diags` and bit 1 + 2 = 3 of `anti_diags`. Testing a square then takes four AND operations, however many queens the board holds, and the whole board fits in 6 bytes.
+- Row `x` maps to bit `x` of `rows`, and column `y` maps to bit `y` of `cols`. With 8 rows and 8 columns, each field fits in a `u8`.
+- All squares on 1 diagonal share the difference `x - y`, which ranges from -7 to 7. The offset `x + 7 - y` maps this range to bit indices 0 to 14, so `diags` is a `u16`.
+- All squares on 1 anti-diagonal share the sum `x + y`, which ranges from 0 to 14, so `anti_diags` is also a `u16`.
 
-**Moving a queen.** `Queen::can_move` accepts a move along a row (`dx == 0`), along a column (`dy == 0`), or along a diagonal (`dx == dy`). Every legal destination therefore lies on one of the queen's own lines. Those lines still have their bits set while the queen stands on its old square. If `move_piece` called `place(to)` directly, `place` would find the queen's own bits and reject every legal move.
+For a queen at (1, 2), bit 1 of `rows` and bit 2 of `cols` are set. Bit 6 of `diags` (1 + 7 - 2) and bit 3 of `anti_diags` (1 + 2) are also set (Figure 30.1). A safety test then requires 4 AND operations regardless of the number of queens, and the complete board state occupies 6 bytes.
 
-`move_piece` therefore lifts the queen off the board first. It calls `remove(from)`, which clears the queen's four bits, and then calls `place(to)`. If another queen attacks the destination, `place` returns an error, and the queen must go back to its old square. `move_piece` handles that case with a saved copy of the board. It saves the copy with `let before = *self;` before it removes the queen, and it restores the copy when `place` fails. `Chess` derives `Copy`, and the copy is only 6 bytes.
+<figure>
+<img src="figures/ch30-queen-lines.svg" alt="An 8 by 8 board with a queen at row 1, column 2. Its row, column, diagonal and anti-diagonal are shaded in 4 colors. Beside the board, the 4 fields are drawn as bit rows: rows has bit 1 set, cols has bit 2 set, diags has bit 6 set, and anti_diags has bit 3 set.">
+<figcaption><b>Figure 30.1</b> The 4 lines of a queen at (1, 2) and the bit set for each line.</figcaption>
+</figure>
+
+### 30.2.2 Placing and removing a queen
+
+In `place`, out-of-range coordinates are rejected with `Error::OutOfBounds` before any mask is built, since a shift such as `1u8 << 9` would overflow. A mask with a single set bit is then built for each of the 4 lines. If the AND of any mask with its field is nonzero, the corresponding line is occupied, and `Error::Occupied` is returned. Otherwise, each mask is merged into its field with OR.
+
+In `remove`, each of the 4 bits is cleared with `field &= !mask`. Every bit of the mask is inverted by `!`, so exactly 1 bit is cleared by the AND, and all other bits are unchanged.
+
+### 30.2.3 Moving a queen
+
+A move is accepted by `Queen::can_move` if it follows a row (`dx == 0`), a column (`dy == 0`), or a diagonal (`dx == dy`). The distances are computed with `abs_diff`, which cannot underflow on `usize`. Every legal destination therefore lies on 1 of the moving queen's own lines. While the queen stands on its origin square, those lines are marked as occupied, so a direct call to `place(to)` would reject every legal move.
+
+The conflict is resolved in `move_piece` in 3 steps (Figure 30.2):
+
+1. A copy of the board is saved with `let before = *self;`. Because `Chess` derives `Copy` and occupies 6 bytes, the copy is a 6-byte memory copy.
+2. The queen is lifted with `remove(from)`, and its 4 bits are cleared.
+3. The queen is placed at the destination with `place(to)`. If another queen attacks the destination, the saved copy is restored, and the error is returned to the caller.
+
+<figure>
+<img src="figures/ch30-move.svg" alt="Three boards. Board 1: a queen at (0, 0) with its lines shaded; the destination (2, 2) is outlined and lies on the queen's diagonal. Board 2: after remove(from), no square is shaded. Board 3: after place(to), the queen stands at (2, 2) with its lines shaded.">
+<figcaption><b>Figure 30.2</b> A move from (0, 0) to (2, 2): the queen is lifted, then placed. On failure, board 1 is restored.</figcaption>
+</figure>
+
+### 30.2.4 The complete program
 
 <p class="listing"><b>Listing 30.2</b> Non-attacking queens on a bitboard. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/bin/chess.rs">src/bin/chess.rs</a></p>
 
@@ -72,14 +98,7 @@ moved the queen from (0, 0) to (2, 2)
 place (5, 5): Err(Occupied)
 ```
 
-Key details of the implementation:
-
-- `place` first returns `Err(Error::OutOfBounds)` for a square outside the board, before it builds any bit. A shift such as `1u8 << 9` would overflow the `u8`.
-- `place` builds one mask for each line, such as `1u8 << cell.x` for the row. A bitwise AND of a mask with its field is nonzero when that line is taken, and a bitwise OR sets the bit.
-- `remove` clears each bit with `&= !mask`. The `!` operator flips every bit of the mask, so the AND keeps every other bit unchanged.
-- `abs_diff` returns the distance between two `usize` values without underflow, which is why `can_move` can compare `dx` and `dy` directly.
-
-The program places a queen at (0, 0) and moves it along the diagonal to (2, 2). It then tries to place a second queen at (5, 5). Both squares lie on diagonal 7, because 2 + 7 - 2 = 7 and 5 + 7 - 5 = 7. The square (5, 5) is therefore attacked, and `place` returns `Err(Occupied)`.
+In `main`, a queen is placed at (0, 0) and moved diagonally to (2, 2). A second queen is then placed at (5, 5). The squares (2, 2) and (5, 5) share diagonal 7, since 2 + 7 - 2 = 7 and 5 + 7 - 5 = 7. `Err(Occupied)` is therefore returned.
 
 ## 30.3 What the short forms leave out
 
@@ -127,11 +146,11 @@ Inserting a single `.collect::<Vec<_>>()` between the two `map` stages restores 
 
 ## 30.5 Running a round
 
-A 45-minute technical round follows five predictable phases. Allocating time deliberately protects the final seven minutes, where systems design maturity is evaluated, from last-minute debugging (Figure 30.1).
+A 45-minute technical round follows five predictable phases. Allocating time deliberately protects the final seven minutes, where systems design maturity is evaluated, from last-minute debugging (Figure 30.3).
 
 <figure>
 <img src="figures/ch23-round.svg" alt="A bar split into 0 to 5 minutes clarify, 5 to 10 types first, 10 to 30 happy path then edge cases, 30 to 38 tests, 38 to 45 failure modes">
-<figcaption><b>Figure 30.1</b> One way to spend a 45-minute round. The proportions matter more than the exact minutes.</figcaption>
+<figcaption><b>Figure 30.3</b> One way to spend a 45-minute round. The proportions matter more than the exact minutes.</figcaption>
 </figure>
 
 - **Clarify (0 to 5 min).** Lock down input contracts, invalid-input semantics, and operational bounds (capacity, concurrency, latency). Every constraint translates directly into a type invariant or guard clause.
