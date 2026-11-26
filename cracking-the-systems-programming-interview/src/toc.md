@@ -538,6 +538,17 @@ Complete navigable index of all ten parts, thirty chapters, subsections, and app
 
 - **[Compact implementations](ch30-drills.html)**
   - [30.1 The drills](ch30-drills.html#301-the-drills)
+    - [30.1.1 Thread-safe counter](ch30-drills.html#3011-thread-safe-counter)
+    - [30.1.2 Scoped threads](ch30-drills.html#3012-scoped-threads)
+    - [30.1.3 Spin lock](ch30-drills.html#3013-spin-lock)
+    - [30.1.4 Semaphore](ch30-drills.html#3014-semaphore)
+    - [30.1.5 Bounded blocking queue](ch30-drills.html#3015-bounded-blocking-queue)
+    - [30.1.6 Thread pool](ch30-drills.html#3016-thread-pool)
+    - [30.1.7 Retry with exponential backoff](ch30-drills.html#3017-retry-with-exponential-backoff)
+    - [30.1.8 Consistent hashing ring](ch30-drills.html#3018-consistent-hashing-ring)
+    - [30.1.9 HTTP request head](ch30-drills.html#3019-http-request-head)
+    - [30.1.10 Newtype and enum](ch30-drills.html#30110-newtype-and-enum)
+    - [30.1.11 The tests](ch30-drills.html#30111-the-tests)
   - [30.2 Queens on a bitboard](ch30-drills.html#302-queens-on-a-bitboard)
     - [30.2.1 One bit per line](ch30-drills.html#3021-one-bit-per-line)
     - [30.2.2 Moving a queen](ch30-drills.html#3022-moving-a-queen)

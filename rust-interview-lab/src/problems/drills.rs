@@ -37,6 +37,7 @@ pub fn count_parallel(threads: usize, per_thread: usize) -> usize {
     for handle in handles {
         handle.join().expect("worker panicked");
     }
+
     *counter.lock().expect("poisoned")
 }
 
@@ -44,6 +45,7 @@ pub fn count_parallel(threads: usize, per_thread: usize) -> usize {
 
 pub fn parallel_sum(values: &[i32]) -> i64 {
     let chunk_size = values.len().div_ceil(4).max(1);
+
     thread::scope(|scope| {
         values
             .chunks(chunk_size)
@@ -84,6 +86,7 @@ impl<T> SpinLock<T> {
         {
             std::hint::spin_loop();
         }
+
         SpinGuard { lock: self }
     }
 }
@@ -102,6 +105,7 @@ impl<T> Drop for SpinGuard<'_, T> {
 
 impl<T> Deref for SpinGuard<'_, T> {
     type Target = T;
+
     fn deref(&self) -> &T {
         unsafe { &*self.lock.value.get() }
     }
@@ -130,17 +134,20 @@ impl Semaphore {
 
     pub fn acquire(&self) {
         let mut permits = self.permits.lock().expect("poisoned");
+
         while *permits == 0 {
             permits = self
                 .released
                 .wait(permits)
                 .expect("poisoned");
         }
+
         *permits -= 1;
     }
 
     pub fn try_acquire(&self) -> bool {
         let mut permits = self.permits.lock().expect("poisoned");
+
         if *permits == 0 {
             false
         } else {
@@ -151,6 +158,7 @@ impl Semaphore {
 
     pub fn release(&self) {
         *self.permits.lock().expect("poisoned") += 1;
+
         self.released.notify_one();
     }
 }
@@ -184,15 +192,19 @@ impl<T> BlockingQueue<T> {
 
     pub fn push(&self, item: T) -> Result<(), T> {
         let mut inner = self.inner.lock().expect("poisoned");
+
         loop {
             if inner.closed {
                 return Err(item);
             }
+
             if inner.items.len() < inner.capacity {
                 inner.items.push_back(item);
                 self.not_empty.notify_one();
+
                 return Ok(());
             }
+
             inner = self
                 .not_full
                 .wait(inner)
@@ -202,14 +214,18 @@ impl<T> BlockingQueue<T> {
 
     pub fn pop(&self) -> Option<T> {
         let mut inner = self.inner.lock().expect("poisoned");
+
         loop {
             if let Some(item) = inner.items.pop_front() {
                 self.not_full.notify_one();
+
                 return Some(item);
             }
+
             if inner.closed {
                 return None;
             }
+
             inner = self
                 .not_empty
                 .wait(inner)
@@ -221,6 +237,7 @@ impl<T> BlockingQueue<T> {
         let mut inner = self.inner.lock().expect("poisoned");
         inner.closed = true;
         drop(inner);
+
         self.not_empty.notify_all();
         self.not_full.notify_all();
     }
@@ -237,6 +254,7 @@ impl ThreadPool {
     pub fn new(size: usize) -> Self {
         let (sender, receiver) = mpsc::channel::<Box<dyn FnOnce() + Send + 'static>>();
         let receiver = Arc::new(Mutex::new(receiver));
+
         let workers = (0..size)
             .map(|_| {
                 let receiver = Arc::clone(&receiver);
@@ -249,11 +267,13 @@ impl ThreadPool {
                         else {
                             return;
                         };
+
                         job();
                     }
                 })
             })
             .collect();
+
         Self {
             sender: Some(sender),
             workers,
@@ -272,6 +292,7 @@ impl ThreadPool {
 impl Drop for ThreadPool {
     fn drop(&mut self) {
         drop(self.sender.take());
+
         for worker in self.workers.drain(..) {
             let _ = worker.join();
         }
@@ -287,14 +308,17 @@ pub fn retry<T, E>(
 ) -> Result<T, E> {
     let mut delay = Duration::from_millis(25);
     let mut attempt = 0;
+
     loop {
         match operation() {
             Ok(value) => return Ok(value),
             Err(error) => {
                 attempt += 1;
+
                 if attempt >= max_attempts || !retryable(&error) {
                     return Err(error);
                 }
+
                 thread::sleep(delay);
                 delay = (delay * 2).min(Duration::from_secs(1));
             }
@@ -319,6 +343,7 @@ impl HashRing {
             self.points
                 .push((hash(node, replica), node.to_string()));
         }
+
         self.points
             .sort_unstable_by_key(|(point, _)| *point);
     }
@@ -327,19 +352,24 @@ impl HashRing {
         if self.points.is_empty() {
             return None;
         }
+
         let hash = hash(key, 0);
+
         let index = self
             .points
             .partition_point(|(point, _)| *point <= hash)
             % self.points.len();
+
         Some(self.points[index].1.as_str())
     }
 }
 
 fn hash(input: &str, replica: usize) -> u64 {
     let mut hasher = DefaultHasher::new();
+
     hasher.write(input.as_bytes());
     hasher.write_usize(replica);
+
     hasher.finish()
 }
 
@@ -353,21 +383,26 @@ pub struct RequestHead {
 
 pub fn parse_request_head(input: &str) -> Option<RequestHead> {
     let mut lines = input.split("\r\n");
+
     let mut request_line = lines.next()?.split(' ');
     let method = request_line.next()?.to_string();
     let target = request_line.next()?.to_string();
+
     if request_line.next()? != "HTTP/1.1" {
         return None;
     }
 
     let mut headers = Vec::new();
+
     for line in lines {
         if line.is_empty() {
             break;
         }
+
         let (name, value) = line.split_once(':')?;
         headers.push((name.trim().to_ascii_lowercase(), value.trim().to_string()));
     }
+
     Some(RequestHead {
         method,
         target,
