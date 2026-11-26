@@ -52,9 +52,27 @@ In `count_parallel`, `threads` worker threads are spawned, and each worker incre
 
 After every handle is joined, the final value is read under the lock, and `threads × per_thread` is expected. A `JoinHandle` that is never joined would leave a worker running past the read, so the join loop precedes the final lock.
 
+**Usage.** The drill is called from `main` in `src/bin/drills.rs` (Listing 30.3).
+
+<p class="listing"><b>Listing 30.3</b> Usage of <code>count_parallel</code> (lines 24 to 25). <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/bin/drills.rs">src/bin/drills.rs</a></p>
+
+```rust
+fn main() {
+    // ...
+{{#include ../../rust-interview-lab/src/bin/drills.rs:24:25}}
+    // ...
+}
+```
+
+```text
+count_parallel(4, 1000) = 4000
+```
+
+With 4 threads and 1000 increments per thread, the counter reaches 4 × 1000 = 4000, so no increment is lost.
+
 ### 30.1.2 Scoped threads
 
-<p class="listing"><b>Listing 30.3</b> <code>parallel_sum</code> (lines 44 to 63).</p>
+<p class="listing"><b>Listing 30.4</b> <code>parallel_sum</code> (lines 44 to 63).</p>
 
 ```rust
 {{#include ../../rust-interview-lab/src/problems/drills.rs:44:63}}
@@ -64,9 +82,27 @@ In `parallel_sum`, the slice is divided into at most 4 chunks of `values.len().d
 
 The iterator chain is lazy. Each thread is therefore joined before the next thread is spawned, and the chunks are summed sequentially. This defect, and the 1-line repair, are analyzed in section 30.4.
 
+**Usage.** The drill is called from `main` in `src/bin/drills.rs` (Listing 30.5).
+
+<p class="listing"><b>Listing 30.5</b> Usage of <code>parallel_sum</code> (lines 27 to 30). <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/bin/drills.rs">src/bin/drills.rs</a></p>
+
+```rust
+fn main() {
+    // ...
+{{#include ../../rust-interview-lab/src/bin/drills.rs:27:30}}
+    // ...
+}
+```
+
+```text
+parallel_sum(1..=100) = 5050
+```
+
+The sum of the integers 1 to 100 is 100 × 101 / 2 = 5050. The result is correct even though the chunks are summed sequentially (section 30.4).
+
 ### 30.1.3 Spin lock
 
-<p class="listing"><b>Listing 30.4</b> <code>SpinLock</code> and <code>SpinGuard</code> (lines 65 to 118).</p>
+<p class="listing"><b>Listing 30.6</b> <code>SpinLock</code> and <code>SpinGuard</code> (lines 65 to 118).</p>
 
 ```rust
 {{#include ../../rust-interview-lab/src/problems/drills.rs:65:118}}
@@ -76,9 +112,27 @@ A `SpinLock<T>` consists of an `AtomicBool` flag and the protected value in an `
 
 Access to the value is provided through the `Deref` and `DerefMut` implementations of `SpinGuard`. In its `Drop` implementation, the lock is released with a `Release` store, so the lock is released on every exit path, including a panic. The `unsafe impl Sync` and the 2 `unsafe` blocks carry no `// SAFETY:` comments; section 30.3 lists this omission together with the cache-line cost of spinning on `swap`.
 
+**Usage.** The drill is called from `main` in `src/bin/drills.rs` (Listing 30.7).
+
+<p class="listing"><b>Listing 30.7</b> Usage of <code>SpinLock</code> (lines 32 to 45). <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/bin/drills.rs">src/bin/drills.rs</a></p>
+
+```rust
+fn main() {
+    // ...
+{{#include ../../rust-interview-lab/src/bin/drills.rs:32:45}}
+    // ...
+}
+```
+
+```text
+spin lock total = 4000
+```
+
+4 scoped threads each acquire the lock 1000 times. Because the total equals 4 × 1000 = 4000, no increment was lost, and mutual exclusion holds.
+
 ### 30.1.4 Semaphore
 
-<p class="listing"><b>Listing 30.5</b> <code>Semaphore</code> (lines 120 to 164).</p>
+<p class="listing"><b>Listing 30.8</b> <code>Semaphore</code> (lines 120 to 164).</p>
 
 ```rust
 {{#include ../../rust-interview-lab/src/problems/drills.rs:120:164}}
@@ -88,9 +142,28 @@ A `Semaphore` holds a permit count in a `Mutex<usize>` and a `Condvar` named `re
 
 In `try_acquire`, `false` is returned instead of blocking when no permit is available. In `release`, the count is incremented, and 1 waiting thread is woken with `notify_one`. Because `acquire` and `release` are separate calls, a caller that returns early between them leaks a permit (section 30.3).
 
+**Usage.** The drill is called from `main` in `src/bin/drills.rs` (Listing 30.9).
+
+<p class="listing"><b>Listing 30.9</b> Usage of <code>Semaphore</code> (lines 47 to 57). <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/bin/drills.rs">src/bin/drills.rs</a></p>
+
+```rust
+fn main() {
+    // ...
+{{#include ../../rust-interview-lab/src/bin/drills.rs:47:57}}
+    // ...
+}
+```
+
+```text
+3 try_acquire calls with 2 permits = true, true, false
+try_acquire after release = true
+```
+
+With 2 permits, the third `try_acquire` call fails. After 1 permit is released, the next call succeeds.
+
 ### 30.1.5 Bounded blocking queue
 
-<p class="listing"><b>Listing 30.6</b> <code>BlockingQueue</code> (lines 166 to 244).</p>
+<p class="listing"><b>Listing 30.10</b> <code>BlockingQueue</code> (lines 166 to 244).</p>
 
 ```rust
 {{#include ../../rust-interview-lab/src/problems/drills.rs:166:244}}
@@ -102,9 +175,27 @@ In `push`, a producer returns `Err(item)` if the queue is closed. If space is av
 
 In `close`, the flag is set and the guard is dropped before every thread waiting on either condition variable is woken. Blocked producers then observe the closed state and return their items, and blocked consumers drain the remaining items before receiving `None`.
 
+**Usage.** The drill is called from `main` in `src/bin/drills.rs` (Listing 30.11).
+
+<p class="listing"><b>Listing 30.11</b> Usage of <code>BlockingQueue</code> (lines 59 to 82). <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/bin/drills.rs">src/bin/drills.rs</a></p>
+
+```rust
+fn main() {
+    // ...
+{{#include ../../rust-interview-lab/src/bin/drills.rs:59:82}}
+    // ...
+}
+```
+
+```text
+blocking queue received [1, 2, 3, 4, 5]
+```
+
+With capacity 2, the producer is blocked whenever 2 items are queued. All 5 items are received in FIFO order, and the consumer loop ends when `pop` returns `None` after `close`.
+
 ### 30.1.6 Thread pool
 
-<p class="listing"><b>Listing 30.7</b> <code>ThreadPool</code> (lines 246 to 300).</p>
+<p class="listing"><b>Listing 30.12</b> <code>ThreadPool</code> (lines 246 to 300).</p>
 
 ```rust
 {{#include ../../rust-interview-lab/src/problems/drills.rs:246:300}}
@@ -114,9 +205,27 @@ In `ThreadPool::new`, an `mpsc` channel of boxed jobs is created, and the receiv
 
 In `execute`, the job is boxed and sent through the channel. In `Drop`, the sender is dropped first. Once the sender is gone, `recv` returns `Err` in every worker, each worker returns from its loop, and each worker thread is joined.
 
+**Usage.** The drill is called from `main` in `src/bin/drills.rs` (Listing 30.13).
+
+<p class="listing"><b>Listing 30.13</b> Usage of <code>ThreadPool</code> (lines 84 to 101). <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/bin/drills.rs">src/bin/drills.rs</a></p>
+
+```rust
+fn main() {
+    // ...
+{{#include ../../rust-interview-lab/src/bin/drills.rs:84:101}}
+    // ...
+}
+```
+
+```text
+thread pool completed 8 jobs
+```
+
+Because every worker is joined when the pool is dropped, all 8 jobs have completed before the counter is read.
+
 ### 30.1.7 Retry with exponential backoff
 
-<p class="listing"><b>Listing 30.8</b> <code>retry</code> (lines 302 to 327).</p>
+<p class="listing"><b>Listing 30.14</b> <code>retry</code> (lines 302 to 327).</p>
 
 ```rust
 {{#include ../../rust-interview-lab/src/problems/drills.rs:302:327}}
@@ -126,9 +235,27 @@ In `retry`, the caller-supplied operation is executed up to `max_attempts` times
 
 Otherwise, the calling thread sleeps for the current delay before the next attempt. The delay starts at 25 ms and is doubled after every failure, up to a ceiling of 1 s, so that a struggling dependency receives progressively fewer requests.
 
+**Usage.** The drill is called from `main` in `src/bin/drills.rs` (Listing 30.15).
+
+<p class="listing"><b>Listing 30.15</b> Usage of <code>retry</code> (lines 103 to 120). <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/bin/drills.rs">src/bin/drills.rs</a></p>
+
+```rust
+fn main() {
+    // ...
+{{#include ../../rust-interview-lab/src/bin/drills.rs:103:120}}
+    // ...
+}
+```
+
+```text
+retry = Ok("connected") after 3 attempts
+```
+
+The first 2 attempts fail with `"timeout"`. The third attempt succeeds after delays of 25 ms and 50 ms.
+
 ### 30.1.8 Consistent hashing ring
 
-<p class="listing"><b>Listing 30.9</b> <code>HashRing</code> (lines 329 to 374).</p>
+<p class="listing"><b>Listing 30.16</b> <code>HashRing</code> (lines 329 to 374).</p>
 
 ```rust
 {{#include ../../rust-interview-lab/src/problems/drills.rs:329:374}}
@@ -138,9 +265,28 @@ In a consistent hashing ring, keys and nodes are hashed onto the same circular s
 
 In `get`, the first point with a hash greater than the key's hash is located by binary search with `partition_point`. An index past the end wraps to 0 through `% self.points.len()`, which closes the circle. When a node is added, only the keys that fall between the new points and their predecessors are reassigned.
 
+**Usage.** The drill is called from `main` in `src/bin/drills.rs` (Listing 30.17).
+
+<p class="listing"><b>Listing 30.17</b> Usage of <code>HashRing</code> (lines 122 to 142). <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/bin/drills.rs">src/bin/drills.rs</a></p>
+
+```rust
+fn main() {
+    // ...
+{{#include ../../rust-interview-lab/src/bin/drills.rs:122:142}}
+    // ...
+}
+```
+
+```text
+owners with 2 nodes = ["node-b", "node-b", "node-a", "node-a"]
+owners with 3 nodes = ["node-b", "node-c", "node-a", "node-a"]
+```
+
+When `node-c` is added, only `job-2` is reassigned, to `node-c`. The other 3 keys keep their owners.
+
 ### 30.1.9 HTTP request head
 
-<p class="listing"><b>Listing 30.10</b> <code>parse_request_head</code> (lines 376 to 411).</p>
+<p class="listing"><b>Listing 30.18</b> <code>parse_request_head</code> (lines 376 to 411).</p>
 
 ```rust
 {{#include ../../rust-interview-lab/src/problems/drills.rs:376:411}}
@@ -150,9 +296,27 @@ In `parse_request_head`, the input is split on `\r\n`. The request line is split
 
 Header lines are then read until the empty line that terminates the head. Each line is split at its first colon, the name is lowercased, and both the name and the value are trimmed. Every missing component is propagated as `None` through the `?` operator.
 
+**Usage.** The drill is called from `main` in `src/bin/drills.rs` (Listing 30.19).
+
+<p class="listing"><b>Listing 30.19</b> Usage of <code>parse_request_head</code> (lines 144 to 152). <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/bin/drills.rs">src/bin/drills.rs</a></p>
+
+```rust
+fn main() {
+    // ...
+{{#include ../../rust-interview-lab/src/bin/drills.rs:144:152}}
+    // ...
+}
+```
+
+```text
+request = GET /v1/gpu-workloads/wl-7 [("host", "api"), ("accept", "*/*")]
+```
+
+The method and the target are extracted from the request line. Header names are lowercased, and header values are trimmed.
+
 ### 30.1.10 Newtype and enum
 
-<p class="listing"><b>Listing 30.11</b> <code>Port</code> and <code>Route</code> (lines 413 to 446).</p>
+<p class="listing"><b>Listing 30.20</b> <code>Port</code> and <code>Route</code> (lines 413 to 446).</p>
 
 ```rust
 {{#include ../../rust-interview-lab/src/problems/drills.rs:413:446}}
@@ -161,6 +325,25 @@ Header lines are then read until the empty line that terminates the head. Each l
 `Port` is a newtype over `u16`. Values are accepted by `Port::new` only in the range 1 to 65535, so every `Port` is nonzero by construction, and no later check is required.
 
 `Route` is an enum of the 3 routes of the service. In `Route::parse`, the static paths are matched directly, and the workload ID of `/v1/gpu-workloads/{id}` is extracted with `strip_prefix`. Unrecognized paths produce `None`.
+
+**Usage.** The drill is called from `main` in `src/bin/drills.rs` (Listing 30.21).
+
+<p class="listing"><b>Listing 30.21</b> Usage of <code>Port</code> and <code>Route</code> (lines 154 to 167). <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/bin/drills.rs">src/bin/drills.rs</a></p>
+
+```rust
+fn main() {
+    // ...
+{{#include ../../rust-interview-lab/src/bin/drills.rs:154:167}}
+    // ...
+}
+```
+
+```text
+Port::new(8080) = Ok(8080), Port::new(0) = Err("port must be non-zero")
+Route::parse("/v1/gpu-workloads/wl-7") = by id wl-7
+```
+
+Port 0 is rejected at construction. The workload ID `wl-7` is extracted from the path as `Route::ById`.
 
 ### 30.1.11 The tests
 
@@ -177,6 +360,25 @@ test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 136 filtered out
 ```
 
 Value assertions verify results, not concurrency; the sequential `parallel_sum` passes its test unchanged (section 30.4).
+
+The complete `main` runs every drill in order and prints 1 or 2 lines per drill.
+
+```text
+$ cargo run --bin drills
+count_parallel(4, 1000) = 4000
+parallel_sum(1..=100) = 5050
+spin lock total = 4000
+3 try_acquire calls with 2 permits = true, true, false
+try_acquire after release = true
+blocking queue received [1, 2, 3, 4, 5]
+thread pool completed 8 jobs
+retry = Ok("connected") after 3 attempts
+owners with 2 nodes = ["node-b", "node-b", "node-a", "node-a"]
+owners with 3 nodes = ["node-b", "node-c", "node-a", "node-a"]
+request = GET /v1/gpu-workloads/wl-7 [("host", "api"), ("accept", "*/*")]
+Port::new(8080) = Ok(8080), Port::new(0) = Err("port must be non-zero")
+Route::parse("/v1/gpu-workloads/wl-7") = by id wl-7
+```
 
 ## 30.2 Queens on a bitboard
 
@@ -210,7 +412,7 @@ In `move_piece`, a copy of the board is saved with `let before = *self;`, the qu
 <figcaption><b>Figure 30.2</b> A move from (0, 0) to (2, 2): the queen is lifted, then placed. On failure, board 1 is restored.</figcaption>
 </figure>
 
-<p class="listing"><b>Listing 30.12</b> Non-attacking queens on a bitboard. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/bin/chess.rs">src/bin/chess.rs</a></p>
+<p class="listing"><b>Listing 30.22</b> Non-attacking queens on a bitboard. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/bin/chess.rs">src/bin/chess.rs</a></p>
 
 ```rust
 {{#include ../../rust-interview-lab/src/bin/chess.rs}}
