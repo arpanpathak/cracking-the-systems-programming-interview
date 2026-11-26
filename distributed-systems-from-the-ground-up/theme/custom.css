@@ -1150,6 +1150,34 @@ img.cover {
         margin: 0.8em 0 !important;
     }
 
+    .callout.keyidea .label { color: #1a5fc4 !important; }
+    .callout.experiment .label { color: #1b7a58 !important; }
+    .callout.caution .label { color: #b3261e !important; }
+
+    .callout.keyidea .label::before,
+    .callout.experiment .label::before,
+    .callout.caution .label::before,
+    .content main ul > li::before {
+        background-color: transparent !important;
+        -webkit-mask-image: none !important;
+        mask-image: none !important;
+        background-repeat: no-repeat !important;
+        background-position: center !important;
+        background-size: contain !important;
+    }
+    .callout.keyidea .label::before {
+        background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath fill='%231a5fc4' d='M9 21c0 .55.45 1 1 1h4c.55 0 1-.45 1-1v-1H9v1zm3-19C8.14 2 5 5.14 5 9c0 2.38 1.19 4.47 3 5.74V17c0 .55.45 1 1 1h6c.55 0 1-.45 1-1v-2.26c1.81-1.27 3-3.36 3-5.74 0-3.86-3.14-7-7-7z'/%3E%3C/svg%3E") !important;
+    }
+    .callout.experiment .label::before {
+        background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath fill='%231b7a58' d='M19.8 18.4L14 10.67V6.5l1.35-1.69c.26-.33.03-.81-.39-.81H9.04c-.42 0-.65.48-.39.81L10 6.5v4.17L4.2 18.4c-.49.66-.02 1.6.8 1.6h14c.82 0 1.29-.94.8-1.6z'/%3E%3C/svg%3E") !important;
+    }
+    .callout.caution .label::before {
+        background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath fill='%23b3261e' d='M1 21h22L12 2 1 21zm12-3h-2v-2h2v2zm0-4h-2v-4h2v4z'/%3E%3C/svg%3E") !important;
+    }
+    .content main ul > li::before {
+        background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath fill='%231a5fc4' d='M10 6L8.59 7.41 13.17 12l-4.58 4.59L10 18l6-6z'/%3E%3C/svg%3E") !important;
+    }
+
     .content a.md-abbr-link {
         border-bottom: none !important;
         color: inherit !important;

@@ -199,6 +199,8 @@ def css_escape(text: str) -> str:
 def prepare_html(html_path: Path, is_cover: bool, running_title: str, out_html: Path):
     html = html_path.read_text(encoding="utf-8")
     html = re.sub(r'<html([^>]*?)class="[^"]*"', r'<html\1class="light"', html, count=1)
+    html = re.sub(r"const default_light_theme = .*?;", 'const default_light_theme = "light";', html)
+    html = re.sub(r"const default_dark_theme = .*?;", 'const default_dark_theme = "light";', html)
     html = re.sub(r"const default_theme = .*?;", 'const default_theme = "light";', html)
     if is_cover:
         html = re.sub(r'<h1 id="cover">.*?</h1>', "", html, count=1, flags=re.S)
