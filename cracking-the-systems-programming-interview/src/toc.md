@@ -66,6 +66,7 @@ Complete navigable index of all ten parts, thirty chapters, subsections, and app
   - [3.3 How a `String` stores text](ch03-collections.html#33-how-a-string-stores-text)
   - [3.4 How a `HashMap` finds a key](ch03-collections.html#34-how-a-hashmap-finds-a-key)
   - [3.5 Finding two numbers that add up to a target](ch03-collections.html#35-finding-two-numbers-that-add-up-to-a-target)
+    - [3.5.1 The first repeated and the first unique character](ch03-collections.html#351-the-first-repeated-and-the-first-unique-character)
   - [3.6 A vector used as a stack](ch03-collections.html#36-a-vector-used-as-a-stack)
     - [3.6.1 Checking brackets](ch03-collections.html#361-checking-brackets)
     - [3.6.2 A stack that knows its minimum](ch03-collections.html#362-a-stack-that-knows-its-minimum)
@@ -73,11 +74,13 @@ Complete navigable index of all ten parts, thirty chapters, subsections, and app
     - [3.7.1 Reversing a string in place](ch03-collections.html#371-reversing-a-string-in-place)
     - [3.7.2 Three numbers that add up to a target](ch03-collections.html#372-three-numbers-that-add-up-to-a-target)
   - [3.8 A window that slides along a string](ch03-collections.html#38-a-window-that-slides-along-a-string)
+    - [3.8.1 The largest value in every window](ch03-collections.html#381-the-largest-value-in-every-window)
   - [3.9 Sort, then walk once: merging ranges](ch03-collections.html#39-sort-then-walk-once-merging-ranges)
   - [3.10 Halving the search: binary search](ch03-collections.html#310-halving-the-search-binary-search)
     - [3.10.1 Searching a rotated array](ch03-collections.html#3101-searching-a-rotated-array)
   - [3.11 Rotating a square grid in place](ch03-collections.html#311-rotating-a-square-grid-in-place)
   - [3.12 Finding text inside text](ch03-collections.html#312-finding-text-inside-text)
+    - [3.12.1 The search written as one `match`](ch03-collections.html#3121-the-search-written-as-one-match)
   - [3.13 The complete files](ch03-collections.html#313-the-complete-files)
   - [Summary](ch03-collections.html#summary)
   - [Exercises](ch03-collections.html#exercises)
@@ -334,7 +337,10 @@ Complete navigable index of all ten parts, thirty chapters, subsections, and app
     - [17.7.1 The idea](ch17-queues.html#1771-the-idea)
     - [17.7.2 The type](ch17-queues.html#1772-the-type)
     - [17.7.3 Push and pop](ch17-queues.html#1773-push-and-pop)
-  - [17.8 The complete files](ch17-queues.html#178-the-complete-files)
+  - [17.8 A lock-free queue for many producers and consumers](ch17-queues.html#178-a-lock-free-queue-for-many-producers-and-consumers)
+    - [17.8.1 A sequence number in every slot](ch17-queues.html#1781-a-sequence-number-in-every-slot)
+    - [17.8.2 Push and pop](ch17-queues.html#1782-push-and-pop)
+  - [17.9 The complete files](ch17-queues.html#179-the-complete-files)
   - [Summary](ch17-queues.html#summary)
   - [Exercises](ch17-queues.html#exercises)
 
@@ -523,11 +529,12 @@ Complete navigable index of all ten parts, thirty chapters, subsections, and app
 
 - **[Compact implementations](ch30-drills.html)**
   - [30.1 The drills](ch30-drills.html#301-the-drills)
-  - [30.2 What the short forms leave out](ch30-drills.html#302-what-the-short-forms-leave-out)
-  - [30.3 The drill that is slower than it looks](ch30-drills.html#303-the-drill-that-is-slower-than-it-looks)
-  - [30.4 Running a round](ch30-drills.html#304-running-a-round)
-  - [30.5 Practicing with this repository](ch30-drills.html#305-practicing-with-this-repository)
-  - [30.6 Questions that come up](ch30-drills.html#306-questions-that-come-up)
+  - [30.2 Queens on a bitboard](ch30-drills.html#302-queens-on-a-bitboard)
+  - [30.3 What the short forms leave out](ch30-drills.html#303-what-the-short-forms-leave-out)
+  - [30.4 The drill that is slower than it looks](ch30-drills.html#304-the-drill-that-is-slower-than-it-looks)
+  - [30.5 Running a round](ch30-drills.html#305-running-a-round)
+  - [30.6 Practicing with this repository](ch30-drills.html#306-practicing-with-this-repository)
+  - [30.7 Questions that come up](ch30-drills.html#307-questions-that-come-up)
 
 - **[Appendix A. The Rust cheat sheet](appendix-a-cheatsheet.html)**
 

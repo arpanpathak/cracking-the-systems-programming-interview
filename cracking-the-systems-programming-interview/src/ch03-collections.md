@@ -168,6 +168,28 @@ The function returns `Option<(usize, usize)>`, running in O(n) expected time and
 
 </div>
 
+### 3.5.1 The first repeated and the first unique character
+
+**The problem.** For a string, we want the first character that appears a second time, and the first character that appears exactly once. Each answer comes with its index. In `"swiss"`, the `s` at index 3 is the first repeat, and the `w` at index 1 is the first unique character.
+
+**The first repeat.** We scan the string once and insert every character into a `HashSet<char>`. `HashSet::insert` returns `false` when the set already holds a value. Our first `false` therefore marks the answer, at the index where that character appears a second time. The scan takes O(n) expected time.
+
+**The first unique character.** A single pass cannot decide this answer. In `"swiss"`, the `s` at index 0 looks unique until the scan reaches index 3. We therefore count every character in a `HashMap<char, usize>` first. A second scan then returns the first character whose count is 1. Both passes together still take O(n) expected time, and the map holds one entry per distinct character.
+
+<p class="listing"><b>Listing 3.2</b> The first repeated and the first unique character, with a test. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/bin/first_non_repeating_char.rs">src/bin/first_non_repeating_char.rs</a></p>
+
+```rust
+{{#include ../../rust-interview-lab/src/bin/first_non_repeating_char.rs}}
+```
+
+```text
+$ cargo run --bin first_non_repeating_char
+first repeating:     Some((3, 's'))
+first non-repeating: Some((1, 'w'))
+```
+
+Both functions number characters with `chars().enumerate()`, so an index counts Unicode scalar values. For ASCII text, it equals the byte offset; for `"é!é"`, the repeat is at character index 2 but at byte offset 3.
+
 ## 3.6 A vector used as a stack
 
 A **stack** is a last-in, first-out (LIFO) sequence where insertions and removals occur exclusively at one end (the top). `Vec` serves directly as a stack: `push` appends to the top, `pop` removes and returns the top element, and `last` inspects the top without mutating the vector. All three operations run in amortized O(1) time.
@@ -188,7 +210,7 @@ A **stack** is a last-in, first-out (LIFO) sequence where insertions and removal
 <figcaption><b>Animation 3.2</b> An opener is pushed, and a closer pops the top and compares it with its partner. In the second run, <code>)</code> pops <code>[</code>, so the check fails.</figcaption>
 </figure>
 
-<p class="listing"><b>Listing 3.2</b> Valid Parentheses. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/problems/valid_parentheses.rs">src/problems/valid_parentheses.rs</a></p>
+<p class="listing"><b>Listing 3.3</b> Valid Parentheses. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/problems/valid_parentheses.rs">src/problems/valid_parentheses.rs</a></p>
 
 ```rust
 {{#include ../../rust-interview-lab/src/problems/valid_parentheses.rs}}
@@ -224,7 +246,7 @@ Tracing pushes of `-2`, `0`, and `-3` followed by a `pop`:
 | push -3 | [-2, 0, -3] | [-2, -2, -3] | -3 |
 | pop | [-2, 0] | [-2, -2] | -2 |
 
-<p class="listing"><b>Listing 3.3</b> Min Stack with a parallel stack of minimums. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/problems/min_stack.rs">src/problems/min_stack.rs</a></p>
+<p class="listing"><b>Listing 3.4</b> Min Stack with a parallel stack of minimums. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/problems/min_stack.rs">src/problems/min_stack.rs</a></p>
 
 ```rust
 {{#include ../../rust-interview-lab/src/problems/min_stack.rs}}
@@ -253,7 +275,7 @@ Problems that inspect both ends of a sequence simultaneously can maintain two in
 
 As noted in Section 3.3, a `String` must preserve valid UTF-8; reversing individual bytes of a multi-byte character would corrupt the encoding. Consequently, Rust exposes mutable byte access only through `String::as_mut_vec`, which is marked `unsafe`. An **`unsafe`** block designates code whose memory or type invariants cannot be verified statically by the compiler and must instead be upheld by the author; here, the required invariant is that the buffer remains valid UTF-8 upon exiting the block.
 
-<p class="listing"><b>Listing 3.4</b> The reversing function (lines 1 to 14). <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/bin/reverse_string.rs">src/bin/reverse_string.rs</a></p>
+<p class="listing"><b>Listing 3.5</b> The reversing function (lines 1 to 14). <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/bin/reverse_string.rs">src/bin/reverse_string.rs</a></p>
 
 ```rust
 {{#include ../../rust-interview-lab/src/bin/reverse_string.rs:1:14}}
@@ -263,7 +285,7 @@ The function enforces the UTF-8 invariant upfront via `assert!(s.is_ascii())`, p
 
 Inside the loop, `bytes.swap(start, end)` exchanges the two endpoints while `start < end`, leaving the center byte of an odd-length string untouched.
 
-<p class="listing"><b>Listing 3.5</b> The complete program, with its tests. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/bin/reverse_string.rs">src/bin/reverse_string.rs</a></p>
+<p class="listing"><b>Listing 3.6</b> The complete program, with its tests. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/bin/reverse_string.rs">src/bin/reverse_string.rs</a></p>
 
 ```rust
 {{#include ../../rust-interview-lab/src/bin/reverse_string.rs}}
@@ -327,7 +349,7 @@ pub fn three_sum(numbers: &mut [i32], target: i32) -> Vec<(i32, i32, i32)> {
 - Matching on `current_sum.cmp(&target)` maps `Less`, `Greater`, and `Equal` directly to the pointer updates.
 - After recording a match, two inner `while` loops skip consecutive duplicate values at `left` and `right`.
 
-<p class="listing"><b>Listing 3.6</b> Three Sum, with its tests. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/problems/three_sum.rs">src/problems/three_sum.rs</a></p>
+<p class="listing"><b>Listing 3.7</b> Three Sum, with its tests. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/problems/three_sum.rs">src/problems/three_sum.rs</a></p>
 
 ```rust
 {{#include ../../rust-interview-lab/src/problems/three_sum.rs}}
@@ -356,7 +378,7 @@ A `HashMap<char, usize>` maps each seen character to its most recent character i
 <figcaption><b>Animation 3.4</b> <code>end</code> moves right one character at a time, and <code>start</code> moves only when a repeat inside the window arrives. The run on <code>"abba"</code> shows the case that <code>max</code> handles.</figcaption>
 </figure>
 
-<p class="listing"><b>Listing 3.7</b> Longest substring without a repeated character. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/problems/sliding_window.rs">src/problems/sliding_window.rs</a></p>
+<p class="listing"><b>Listing 3.8</b> Longest substring without a repeated character. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/problems/sliding_window.rs">src/problems/sliding_window.rs</a></p>
 
 ```rust
 {{#include ../../rust-interview-lab/src/problems/sliding_window.rs}}
@@ -365,6 +387,46 @@ A `HashMap<char, usize>` maps each seen character to its most recent character i
 When `last_seen.get(&ch)` finds an earlier index `previous`, `start = start.max(previous + 1)` advances the left boundary without ever moving it backward. The `.max(...)` guard is essential for inputs like `"abba"`: when the second `'a'` arrives at index 3, `'a'` was last seen at index 0, which already falls outside the current window starting at index 2.
 
 At each step, `end - start + 1` gives the active window length. Because both `start` and `end` advance monotonically, the algorithm runs in O(n) time. Iterating via `chars().enumerate()` counts Unicode scalar values rather than raw UTF-8 bytes, matching the problem specification.
+
+### 3.8.1 The largest value in every window
+
+**The problem.** Given a slice and a window width `k`, we want the maximum of every run of `k` consecutive values. For `[1, 3, -1, -3, 5, 3, 6, 7]` and `k = 3`, the six windows give `[3, 3, 5, 5, 6, 7]`.
+
+**The baseline approach.** Scanning each window from scratch costs `k` comparisons per window, which is O(n × k) in total.
+
+**The deque approach.** We keep a `VecDeque` of indexes whose values decrease from front to back. Its front therefore holds the maximum of the current window. For each new index `i` with value `x`, `sliding_window_max` does three things:
+
+1. If the front index has left the window (`front + k <= i`), it pops that index from the front.
+2. It pops indexes from the back while their values are at most `x`. The new value is larger and stays in the window longer, so those values can never be a window maximum again.
+3. It pushes `i` at the back. Once `i + 1 >= k`, a full window exists, and the value at the deque's front index is its maximum.
+
+The trace below follows the example. The deque column lists indexes, with their values in parentheses.
+
+| `i` | Value | Deque after the step | Window maximum |
+|---|---|---|---|
+| 0 | 1 | 0 (1) | |
+| 1 | 3 | 1 (3) | |
+| 2 | -1 | 1 (3), 2 (-1) | 3 |
+| 3 | -3 | 1 (3), 2 (-1), 3 (-3) | 3 |
+| 4 | 5 | 4 (5) | 5 |
+| 5 | 3 | 4 (5), 5 (3) | 5 |
+| 6 | 6 | 6 (6) | 6 |
+| 7 | 7 | 7 (7) | 7 |
+
+At `i = 4`, index 1 leaves from the front because the window is now indexes 2 to 4. Then 5 removes the smaller values -3 and -1 from the back.
+
+<p class="listing"><b>Listing 3.9</b> The maximum of every window with a monotonic deque. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/bin/sliding_window_maximum.rs">src/bin/sliding_window_maximum.rs</a></p>
+
+```rust
+{{#include ../../rust-interview-lab/src/bin/sliding_window_maximum.rs}}
+```
+
+```text
+$ cargo run --bin sliding_window_maximum
+[3, 3, 5, 5, 6, 7]
+```
+
+The front check is an `if`, not a loop. The window moves by one index per step, so only index `i - k` can expire, and every older index has already left the deque. Each index enters the deque once and leaves at most once, so the whole pass takes O(n) time. The deque holds at most `k` indexes.
 
 ## 3.9 Sort, then walk once: merging ranges
 
@@ -382,9 +444,9 @@ At each step, `end - start + 1` gives the active window length. Because both `st
 <figcaption><b>Animation 3.5</b> Sorting puts overlapping ranges next to each other, so one walk can merge them. Each step extends the last merged range or starts a new one.</figcaption>
 </figure>
 
-The module implements three variations: one using a named `Interval` struct, one using raw tuples, and one operating in place. Listing 3.8 presents the `Interval` struct and the first implementation.
+The module implements three variations: one using a named `Interval` struct, one using raw tuples, and one operating in place. Listing 3.10 presents the `Interval` struct and the first implementation.
 
-<p class="listing"><b>Listing 3.8</b> Merging ranges held in a struct (lines 6 to 28). <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/problems/merge_intervals.rs">src/problems/merge_intervals.rs</a></p>
+<p class="listing"><b>Listing 3.10</b> Merging ranges held in a struct (lines 6 to 28). <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/problems/merge_intervals.rs">src/problems/merge_intervals.rs</a></p>
 
 ```rust
 {{#include ../../rust-interview-lab/src/problems/merge_intervals.rs:6:28}}
@@ -394,19 +456,19 @@ The module implements three variations: one using a named `Interval` struct, one
 
 The loop header `for Interval { start, end } in intervals` destructures each struct directly. Calling `merged.last_mut()` yields a mutable reference to the active tail interval (or `None` on the first element). When the guard `if start <= previous.end` holds, `previous.end = previous.end.max(end)` extends the tail interval in place while preserving containment when a shorter interval lies entirely inside the previous one. Otherwise, the fallback arm appends a new interval.
 
-Listing 3.9 implements the same algorithm over `(i32, i32)` tuples, replacing named fields with positional `.0` and `.1` accessors.
+Listing 3.11 implements the same algorithm over `(i32, i32)` tuples, replacing named fields with positional `.0` and `.1` accessors.
 
-<p class="listing"><b>Listing 3.9</b> The same merge over tuples (lines 30 to 48).</p>
+<p class="listing"><b>Listing 3.11</b> The same merge over tuples (lines 30 to 48).</p>
 
 ```rust
 {{#include ../../rust-interview-lab/src/problems/merge_intervals.rs:30:48}}
 ```
 
-While behaviorally identical, the named struct in Listing 3.8 improves readability by making `previous.end` self-documenting rather than requiring callers to remember field positions.
+While behaviorally identical, the named struct in Listing 3.10 improves readability by making `previous.end` self-documenting rather than requiring callers to remember field positions.
 
-Listing 3.10 eliminates the output vector entirely by compacting merged intervals into the prefix of the input vector.
+Listing 3.12 eliminates the output vector entirely by compacting merged intervals into the prefix of the input vector.
 
-<p class="listing"><b>Listing 3.10</b> Merging in place (lines 50 to 72).</p>
+<p class="listing"><b>Listing 3.12</b> Merging in place (lines 50 to 72).</p>
 
 ```rust
 {{#include ../../rust-interview-lab/src/problems/merge_intervals.rs:50:72}}
@@ -416,7 +478,7 @@ The write cursor `last` tracks the index of the latest merged interval. Each sub
 
 Matching on `(intervals[last], intervals[i])` copies both `Copy` structs out of the vector before mutating `intervals[last]`, avoiding simultaneous overlapping borrows of the vector.
 
-<p class="listing"><b>Listing 3.11</b> The tests (lines 74 to 106).</p>
+<p class="listing"><b>Listing 3.13</b> The tests (lines 74 to 106).</p>
 
 ```rust
 {{#include ../../rust-interview-lab/src/problems/merge_intervals.rs:74:106}}
@@ -460,7 +522,7 @@ The algorithm relies on a structural invariant: splitting a rotated sorted array
 <figcaption><b>Animation 3.7</b> At each step one half around <code>mid</code> is sorted. The search keeps that half only if the target lies inside its end values.</figcaption>
 </figure>
 
-<p class="listing"><b>Listing 3.12</b> Search in a rotated sorted array. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/problems/binary_search.rs">src/problems/binary_search.rs</a></p>
+<p class="listing"><b>Listing 3.14</b> Search in a rotated sorted array. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/problems/binary_search.rs">src/problems/binary_search.rs</a></p>
 
 ```rust
 {{#include ../../rust-interview-lab/src/problems/binary_search.rs}}
@@ -486,7 +548,7 @@ The condition `nums[low] <= nums[mid]` confirms that the left half is monotonica
 <figcaption><b>Animation 3.8</b> The transpose swaps each pair above the diagonal once, then <code>row.reverse()</code> reverses each row. Starting <code>j</code> at 0 would swap every pair twice.</figcaption>
 </figure>
 
-<p class="listing"><b>Listing 3.13</b> The complete program. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/bin/rotate_matrix.rs">src/bin/rotate_matrix.rs</a></p>
+<p class="listing"><b>Listing 3.15</b> The complete program. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/bin/rotate_matrix.rs">src/bin/rotate_matrix.rs</a></p>
 
 ```rust
 {{#include ../../rust-interview-lab/src/bin/rotate_matrix.rs}}
@@ -540,7 +602,7 @@ For example, `lps[4] = 2` because `"aabaa"` both starts and ends with `"aa"`.
 </figure>
 
 
-<p class="listing"><b>Listing 3.14</b> The search and the table (lines 1 to 58). <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/bin/kmp_pattern_matching.rs">src/bin/kmp_pattern_matching.rs</a></p>
+<p class="listing"><b>Listing 3.16</b> The search and the table (lines 1 to 58). <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/bin/kmp_pattern_matching.rs">src/bin/kmp_pattern_matching.rs</a></p>
 
 ```rust
 {{#include ../../rust-interview-lab/src/bin/kmp_pattern_matching.rs:1:58}}
@@ -558,7 +620,7 @@ Once `left` reaches `needle.len()`, the match begins at `right - left`.
 
 `build_lps` runs the identical three-branch state machine of the needle against itself. Because `right` advances monotonically and total fallbacks cannot exceed total increments of `left`, preprocessing and searching together run in O(n + m) time.
 
-<p class="listing"><b>Listing 3.15</b> The complete program. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/bin/kmp_pattern_matching.rs">src/bin/kmp_pattern_matching.rs</a></p>
+<p class="listing"><b>Listing 3.17</b> The complete program. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/bin/kmp_pattern_matching.rs">src/bin/kmp_pattern_matching.rs</a></p>
 
 ```rust
 {{#include ../../rust-interview-lab/src/bin/kmp_pattern_matching.rs}}
@@ -577,11 +639,33 @@ str_str("hello", "") = 0
 
 The `-1` sentinel follows the classic interview specification; idiomatic Rust APIs return `Option<usize>` instead. For production string searching, `str::find` in the standard library also runs in linear time (using the Two-Way algorithm).
 
+### 3.12.1 The search written as one `match`
+
+We can also write the KMP search as a `match` on a tuple, so that each branch of the search becomes one arm. In `kmp_search`, `i` walks the haystack and `j` counts the matched needle bytes. The tuple `(haystack[i] == needle[j], j + 1 == needle.len(), j)` selects one of four arms:
+
+1. `(true, true, _)`: the needle's last byte matches at `i`, so the match began `j` bytes earlier, at `i - j`.
+2. `(true, false, _)`: the bytes match, so both `i` and `j` advance.
+3. `(false, _, 0)`: a mismatch at the needle's first byte, so only `i` advances.
+4. `(false, _, _)`: a mismatch after `j` matched bytes, so `j` falls back to `lps[j - 1]` and `i` stays.
+
+Arm 1 checks for the needle's end before advancing, so `kmp_search` needs no separate length check after each step. `build_lps` uses the same shape, with `(needle[j] == needle[len], len)` as its tuple. The function returns `Option<usize>`, which replaces the `-1` sentinel of `str_str`.
+
+<p class="listing"><b>Listing 3.18</b> KMP as a <code>match</code> on three values. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/bin/kmp_search.rs">src/bin/kmp_search.rs</a></p>
+
+```rust
+{{#include ../../rust-interview-lab/src/bin/kmp_search.rs}}
+```
+
+```text
+$ cargo run --bin kmp_search
+Some(4)
+```
+
 ## 3.13 The complete files
 
-Listing 3.16 reproduces `merge_intervals.rs` in full, combining the excerpts from Section 3.9.
+Listing 3.19 reproduces `merge_intervals.rs` in full, combining the excerpts from Section 3.9.
 
-<p class="listing"><b>Listing 3.16</b> Merging overlapping intervals, with its tests. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/problems/merge_intervals.rs">src/problems/merge_intervals.rs</a></p>
+<p class="listing"><b>Listing 3.19</b> Merging overlapping intervals, with its tests. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/problems/merge_intervals.rs">src/problems/merge_intervals.rs</a></p>
 
 ```rust
 {{#include ../../rust-interview-lab/src/problems/merge_intervals.rs}}
@@ -596,9 +680,11 @@ Listing 3.16 reproduces `merge_intervals.rs` in full, combining the excerpts fro
 - A `String` enforces a UTF-8 encoding invariant over a `Vec<u8>`; `len()` reports byte length, whereas `chars()` decodes Unicode scalar values sequentially.
 - A `HashMap<K, V>` maps keys to buckets with a randomly seeded hasher to resist collision attacks, delivering O(1) expected `get` and `insert`.
 - Indexing visited elements in a `HashMap` reduces complement queries in Two Sum from O(n<sup>2</sup>) to O(n) expected time.
+- A `HashSet` finds the first repeated character in one pass. The first unique character needs a count of every character, then a second pass.
 - Using a `Vec` as a LIFO stack solves nested delimiter validation and O(1) minimum-element queries (`MinStack`).
 - Converging two-pointer traversals reverse ASCII buffers in place in O(1) auxiliary space and solve Three Sum in O(n<sup>2</sup>) time after sorting.
 - Sliding windows paired with a last-seen index map compute the longest substring without repeated characters in O(n) time.
+- A monotonic deque of indexes gives the maximum of every window of width `k` in O(n) time.
 - Sorting intervals by start coordinate permits a single O(n) pass to merge overlapping ranges, either into an output vector or in place.
 - Binary search halves the candidate range per step in O(log n) time and extends to rotated sorted arrays by identifying which half preserves monotonic order.
 - Knuth-Morris-Pratt (KMP) preprocesses a pattern's prefix-suffix table (`lps`) to locate substrings in O(n + m) worst-case time without backtracking in the haystack.

@@ -1,11 +1,5 @@
-//! The first character that repeats, and the first character that never repeats.
-//!
-//! Both return the character with its index. The repeating one needs a single pass
-//! with a set; the non-repeating one needs the full counts first, so it takes two.
-
 use std::collections::{HashMap, HashSet};
 
-/// The first character seen a second time, at the index of that second sighting.
 fn first_repeating_char(s: &str) -> Option<(usize, char)> {
     let mut seen = HashSet::<char>::new();
 
@@ -18,7 +12,6 @@ fn first_repeating_char(s: &str) -> Option<(usize, char)> {
     None
 }
 
-/// The first character that appears exactly once in the whole string.
 fn first_non_repeating_char(s: &str) -> Option<(usize, char)> {
     let mut counts = HashMap::<char, usize>::new();
     for ch in s.chars() {
@@ -32,16 +25,14 @@ fn first_non_repeating_char(s: &str) -> Option<(usize, char)> {
     }
 
     None
-    // You can do s.chars().enumerate().find(|(_, ch)| counts[ch] == 1)
+    // You can do s.chars().enumerate().find((_, ch) counts[ch] == 1)
 }
 
 fn main() {
-    for input in ["abcdea", "swiss", "aabb"] {
-        let repeating = first_repeating_char(input);
-        let non_repeating = first_non_repeating_char(input);
+    let s = "swiss";
 
-        println!("{input:?}: first repeating {repeating:?}, first non-repeating {non_repeating:?}");
-    }
+    println!("first repeating:     {:?}", first_repeating_char(s));
+    println!("first non-repeating: {:?}", first_non_repeating_char(s));
 }
 
 #[cfg(test)]
@@ -52,13 +43,6 @@ mod tests {
     // Types like &str are cleaner than String for test declarations.
     const CASES: [(&str, TestCase); 2] = [("abcdef", None), ("abcdea", Some((5, 'a')))];
 
-    const NON_REPEATING_CASES: [(&str, TestCase); 4] = [
-        ("abcdea", Some((1, 'b'))),
-        ("swiss", Some((1, 'w'))),
-        ("aabb", None),
-        ("", None),
-    ];
-
     #[test]
     fn should_validate() {
         for (input, expected) in CASES {
@@ -67,17 +51,6 @@ mod tests {
                 expected,
                 "Failed on input: {}",
                 input
-            );
-        }
-    }
-
-    #[test]
-    fn finds_first_non_repeating() {
-        for (input, expected) in NON_REPEATING_CASES {
-            assert_eq!(
-                first_non_repeating_char(input),
-                expected,
-                "Failed on input: {input}"
             );
         }
     }

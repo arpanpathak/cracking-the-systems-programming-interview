@@ -235,7 +235,7 @@ impl<T> BoundedQueue<T> {
 
 Appending `.map_poison()?` to each `lock()` and `wait()` preserves the exact control flow of listing 17.4 while changing both methods to return `Result`.
 
-The complete source appears in listing 17.19 at the end of the chapter.
+The complete source appears in listing 17.20 at the end of the chapter.
 
 In `main`, worker threads log errors with `dbg!` and exit their loops via `break` rather than unwinding.
 
@@ -364,7 +364,7 @@ impl<T> BoundedBuffer<T> {
 
 Deriving `PER_CONSUMER` from the producer constants guarantees that total items popped equal total items pushed, allowing every thread to terminate cleanly.
 
-The complete program is included in listing 17.21 at the end of the chapter.
+The complete program is included in listing 17.22 at the end of the chapter.
 
 Rebinding `let buffer = &buffer;` turns the local variable into a shared reference so that each `move` closure copies only the reference into its scoped thread, while `thread::scope` ensures `buffer` outlives all workers.
 
@@ -439,7 +439,7 @@ Animation 17.3 illustrates closing a full queue while a producer is blocked in `
 <figcaption><b>Animation 17.3</b> <code>close</code> sets the flag and wakes every waiter. <code>push</code> hands its item back, and <code>pop</code> drains the queue before it returns <code>None</code>. A close that wakes nobody hangs the shutdown.</figcaption>
 </figure>
 
-The complete implementation and test suite appear in listing 17.22 at the end of the chapter.
+The complete implementation and test suite appear in listing 17.23 at the end of the chapter.
 
 The four unit tests verify the core contract:
 
@@ -539,7 +539,7 @@ Because `MaybeUninit<T>` does not track initialization, it never runs destructor
 
 </div>
 
-The complete implementation and tests appear in listing 17.23 at the end of the chapter.
+The complete implementation and tests appear in listing 17.24 at the end of the chapter.
 
 The concurrency test transfers 50,000 sequential integers across a 256-slot ring, calling `thread::yield_now()` whenever the producer encounters a full ring or the consumer encounters an empty ring. A sentinel value (`u64::MAX`) signals completion, and the consumer verifies that every integer arrives in exact order.
 
@@ -554,50 +554,113 @@ test problems::ring_buffer::tests::producer_and_consumer_run_concurrently_in_ord
 test result: ok. 4 passed; 0 failed; 0 ignored; 0 measured; 133 filtered out
 ```
 
-## 17.8 The complete files
+## 17.8 A lock-free queue for many producers and consumers
+
+The ring in Section 17.7 is correct only with one producer and one consumer, because each counter has a single writer. With two producers, both can read the same `tail`, write the same slot, and lose one of the two values. In this section, we build a bounded queue that any number of threads can push to and pop from without a mutex. The design comes from Dmitry Vyukov, who published it on his site 1024cores.net.
+
+### 17.8.1 A sequence number in every slot
+
+Each slot holds a value and a sequence number, `seq`, which says whose turn the slot is. Slot `i` starts with `seq = i`. The counters `tail` and `head` keep growing, as in the SPSC ring. Position `pos` uses slot `pos & mask`, where `mask` is the capacity minus 1. For a power-of-two capacity, `pos & mask` equals `pos % capacity`.
+
+A producer that wants position `tail` reads the slot's `seq` and compares it with `tail`:
+
+- `seq == tail`: the slot is empty and waiting for this position.
+- `seq < tail`: the slot still holds the value from the previous lap, so the queue is full.
+- `seq > tail`: another producer has already taken this position, so the producer reads `tail` again.
+
+When the slot is free, the producer claims the position with `compare_exchange_weak`. The compare-and-swap moves `tail` from `pos` to `pos + 1` only if no other producer moved it first. The winner owns the slot alone. It writes the value, then stores `seq = pos + 1` to mark the slot full.
+
+A consumer at position `head` expects `seq == head + 1`, which means a producer has filled the slot. A smaller `seq` means the queue is empty, and a larger one means another consumer took the position. After its own `compare_exchange_weak` on `head` succeeds, the consumer reads the value and stores `seq = head + capacity`. That number is the position the producer will use for this slot on the next lap.
+
+The trace below uses a capacity of 4. The last column lists `seq` for slots 0 to 3.
+
+| Step | `tail` | `head` | `seq` of slots 0 to 3 |
+|---|---|---|---|
+| start | 0 | 0 | 0, 1, 2, 3 |
+| push A into slot 0 | 1 | 0 | 1, 1, 2, 3 |
+| push B into slot 1 | 2 | 0 | 1, 2, 2, 3 |
+| pop A from slot 0 | 2 | 1 | 4, 2, 2, 3 |
+
+After the pop, slot 0 holds `seq = 4`, so it accepts the producer at position 4, one lap later. A producer at position 2 finds `seq = 2` in slot 2 and proceeds.
+
+The capacity must be at least 2. With one slot, a push at position 0 leaves `seq = 1`. A producer at position 1 then reads `seq == tail` and overwrites the value that no consumer has read yet. `new` therefore asserts `capacity >= 2` and a power of two.
+
+### 17.8.2 Push and pop
+
+<p class="listing"><b>Listing 17.17</b> <code>push</code> and <code>pop</code> (lines 47 to 101). <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/bin/lock_free_queue.rs">src/bin/lock_free_queue.rs</a></p>
+
+```rust
+impl<T> LockFreeQueue<T> {
+    // ...
+{{#include ../../rust-interview-lab/src/bin/lock_free_queue.rs:47:101}}
+}
+```
+
+Both loops have the same shape. Two guard clauses return or retry. The `match` on `compare_exchange_weak` then breaks out with the claimed position, or retries with the value that another thread wrote. The `_weak` form may fail even when the values match, which is harmless inside a retry loop and cheaper on some processors.
+
+The compare-and-swap uses `Relaxed` ordering because it only decides which thread owns a position. Visibility of the value comes from the slot's `seq`, as in Section 17.7. The producer writes the value and then stores `seq` with `Release`. The other side loads `seq` with `Acquire` before it reads or overwrites the slot.
+
+Each slot is an `UnsafeCell<MaybeUninit<T>>`, as in the SPSC ring, because an empty slot holds no valid `T`. For the same reason, `Drop` pops the remaining values so that each one is dropped.
+
+The queue has one limit that a mutex-based queue does not show. Suppose a producer stops after its compare-and-swap and before it stores `seq`. Consumers then see that slot as empty until the producer resumes, even when later slots are full. Vyukov notes that the queue is therefore not lock-free in the formal sense, although it uses no mutex.
+
+The `main` function starts two producers that each push 1 to 1000, and two consumers that each pop 1000 values. A lost or duplicated value would change the sum, which must be 2 × 500,500 = 1,001,000.
+
+```text
+$ cargo run --release --bin lock_free_queue
+sum = 1001000
+```
+
+## 17.9 The complete files
 
 Each complete source file appears below in the order introduced in this chapter.
 
-<p class="listing"><b>Listing 17.17</b> The shared queue and its <code>main</code>. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/bin/thread_safe_queue.rs">src/bin/thread_safe_queue.rs</a></p>
+<p class="listing"><b>Listing 17.18</b> The shared queue and its <code>main</code>. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/bin/thread_safe_queue.rs">src/bin/thread_safe_queue.rs</a></p>
 
 ```rust
 {{#include ../../rust-interview-lab/src/bin/thread_safe_queue.rs}}
 ```
 
-<p class="listing"><b>Listing 17.18</b> The bounded buffer and its <code>main</code>. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/bin/bounded_buffer.rs">src/bin/bounded_buffer.rs</a></p>
+<p class="listing"><b>Listing 17.19</b> The bounded buffer and its <code>main</code>. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/bin/bounded_buffer.rs">src/bin/bounded_buffer.rs</a></p>
 
 ```rust
 {{#include ../../rust-interview-lab/src/bin/bounded_buffer.rs}}
 ```
 
-<p class="listing"><b>Listing 17.19</b> The bounded buffer with a custom error type, with tests. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/bin/bounded_buffer_with_error_handling.rs">src/bin/bounded_buffer_with_error_handling.rs</a></p>
+<p class="listing"><b>Listing 17.20</b> The bounded buffer with a custom error type, with tests. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/bin/bounded_buffer_with_error_handling.rs">src/bin/bounded_buffer_with_error_handling.rs</a></p>
 
 ```rust
 {{#include ../../rust-interview-lab/src/bin/bounded_buffer_with_error_handling.rs}}
 ```
 
-<p class="listing"><b>Listing 17.20</b> The bounded buffer with a boxed error. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/bin/bounded_buffer_error_propagation.rs">src/bin/bounded_buffer_error_propagation.rs</a></p>
+<p class="listing"><b>Listing 17.21</b> The bounded buffer with a boxed error. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/bin/bounded_buffer_error_propagation.rs">src/bin/bounded_buffer_error_propagation.rs</a></p>
 
 ```rust
 {{#include ../../rust-interview-lab/src/bin/bounded_buffer_error_propagation.rs}}
 ```
 
-<p class="listing"><b>Listing 17.21</b> Many producers and consumers with <code>wait_while</code>. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/bin/mpmc_bounded_buffer.rs">src/bin/mpmc_bounded_buffer.rs</a></p>
+<p class="listing"><b>Listing 17.22</b> Many producers and consumers with <code>wait_while</code>. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/bin/mpmc_bounded_buffer.rs">src/bin/mpmc_bounded_buffer.rs</a></p>
 
 ```rust
 {{#include ../../rust-interview-lab/src/bin/mpmc_bounded_buffer.rs}}
 ```
 
-<p class="listing"><b>Listing 17.22</b> The closable bounded queue, with tests. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/problems/bounded_queue.rs">src/problems/bounded_queue.rs</a></p>
+<p class="listing"><b>Listing 17.23</b> The closable bounded queue, with tests. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/problems/bounded_queue.rs">src/problems/bounded_queue.rs</a></p>
 
 ```rust
 {{#include ../../rust-interview-lab/src/problems/bounded_queue.rs}}
 ```
 
-<p class="listing"><b>Listing 17.23</b> The SPSC ring buffer, with tests. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/problems/ring_buffer.rs">src/problems/ring_buffer.rs</a></p>
+<p class="listing"><b>Listing 17.24</b> The SPSC ring buffer, with tests. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/problems/ring_buffer.rs">src/problems/ring_buffer.rs</a></p>
 
 ```rust
 {{#include ../../rust-interview-lab/src/problems/ring_buffer.rs}}
+```
+
+<p class="listing"><b>Listing 17.25</b> The lock-free queue for many producers and consumers. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/bin/lock_free_queue.rs">src/bin/lock_free_queue.rs</a></p>
+
+```rust
+{{#include ../../rust-interview-lab/src/bin/lock_free_queue.rs}}
 ```
 
 <div class="summary" markdown="1">
@@ -611,6 +674,7 @@ Each complete source file appears below in the order introduced in this chapter.
 - A poisoned mutex can be handled by panicking via `unwrap()`, mapping to a dedicated error type through an extension trait, or converting to an owned `String` inside a boxed error.
 - Adding a mutex-protected `closed` flag, waking all waiters with `notify_all`, and returning `None` from `pop` once drained enables clean consumer shutdown.
 - An SPSC ring buffer eliminates locks by giving each counter a single writer and synchronizing slot handoffs with `Release` and `Acquire` orderings, provided the public API enforces the single-producer and single-consumer invariants.
+- A sequence number in every slot lets many producers and consumers share a bounded ring without a mutex. A compare-and-swap claims a position, and a `Release` store of `seq` hands the slot to the other side.
 
 </div>
 
