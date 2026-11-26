@@ -114,4 +114,105 @@ for i, (a, b, fill) in enumerate(opts):
 f.text(20, 190, "The PoisonError holds a guard that borrows the mutex, so it cannot leave the function in a Box<dyn Error>.", 10, MUTED)
 f.text(20, 206, "Both error-returning versions convert it into a value that owns nothing: a unit struct, or a String.", 10, MUTED)
 f.save(OUT + "queue-errors.svg")
+
+# 7. two producers on one tail, without and with compare-and-swap
+f = Figure(760, 330)
+f.text(20, 22, "Two producers push at the same moment", 12, bold=True)
+f.text(20, 40, "Both producers read tail = 2. What happens next depends on how they advance it.", 10, MUTED)
+f.panel(20, 56, 350, 250, "A plain store, as in the SPSC ring")
+rows = [("A", "load tail -> 2", GREEN), ("B", "load tail -> 2", CREAM),
+        ("A", "write 10 into slot 2", GREEN), ("B", "write 20 into slot 2", CREAM),
+        ("A", "store tail = 3", GREEN), ("B", "store tail = 3", CREAM)]
+for i, (who, what, fill) in enumerate(rows):
+    y = 86 + i * 28
+    f.cell(36, y, 30, 22, who, fill, size=10)
+    f.text(78, y + 15, what, 10, mono=True)
+f.text(36, 268, "Slot 2 holds 20, and the value 10 is lost.", 10, RUST, bold=True)
+f.text(36, 286, "tail is 3 after two pushes, not 4.", 10, RUST)
+f.panel(390, 56, 350, 250, "compare_exchange(2, 3) on tail")
+rows = [("A", "CAS 2 -> 3 succeeds", GREEN), ("B", "CAS 2 -> 3 fails, sees 3", CREAM),
+        ("A", "write 10 into slot 2", GREEN), ("B", "CAS 3 -> 4 succeeds", CREAM),
+        ("B", "write 20 into slot 3", CREAM)]
+for i, (who, what, fill) in enumerate(rows):
+    y = 86 + i * 28
+    f.cell(406, y, 30, 22, who, fill, size=10)
+    f.text(448, y + 15, what, 10, mono=True)
+f.text(406, 268, "Each position has exactly one owner.", 10, TEAL, bold=True)
+f.text(406, 286, "Both values are kept, and tail is 4.", 10, TEAL)
+f.save(OUT + "mpmc-cas.svg")
+
+# 8. the life of one slot
+f = Figure(760, 250)
+f.text(20, 22, "The sequence number of slot 0 in a queue with capacity 4", 12, bold=True)
+f.text(20, 40, "seq tells every thread whose turn the slot is. It only grows, so an old reading is never mistaken for a new one.", 10, MUTED)
+states = [("seq = 0", "empty", "waits for the producer", "of position 0", PALE),
+          ("seq = 1", "full", "waits for the consumer", "of position 0", GREEN),
+          ("seq = 4", "empty", "waits for the producer", "of position 4", PALE),
+          ("seq = 5", "full", "waits for the consumer", "of position 4", GREEN)]
+for i, (a, b, c, d, fill) in enumerate(states):
+    x = 20 + i * 188
+    f.rect(x, 70, 150, 92, fill, BORDER, 8)
+    f.text(x + 75, 92, a, 12, mono=True, anchor="middle", bold=True)
+    f.text(x + 75, 112, b, 10, TEAL if fill == PALE else RUST, anchor="middle", bold=True)
+    f.text(x + 75, 132, c, 9, MUTED, anchor="middle")
+    f.text(x + 75, 146, d, 9, MUTED, anchor="middle")
+labels = ["push writes, then\nstores seq = 0 + 1", "pop reads, then\nstores seq = 0 + 4", "push writes, then\nstores seq = 4 + 1"]
+for i, label in enumerate(labels):
+    x = 20 + i * 188 + 150
+    f.arrow(x + 4, 116, x + 34, 116, INK)
+    for j, line in enumerate(label.split("\n")):
+        f.text(x + 19, 186 + j * 14, line, 9, anchor="middle")
+f.text(20, 236, "Producer rule: proceed when seq == position.   Consumer rule: proceed when seq == position + 1.", 10, INK, bold=True)
+f.save(OUT + "mpmc-slot-cycle.svg")
+
+# 9. four slots across four operations
+f = Figure(760, 300)
+f.text(20, 22, "A queue with capacity 4: the counters and the sequence number of every slot", 12, bold=True)
+steps = [("start", 0, 0, [("0", ""), ("1", ""), ("2", ""), ("3", "")]),
+         ("push A", 1, 0, [("1", "A"), ("1", ""), ("2", ""), ("3", "")]),
+         ("push B", 2, 0, [("1", "A"), ("2", "B"), ("2", ""), ("3", "")]),
+         ("pop A", 2, 1, [("4", ""), ("2", "B"), ("2", ""), ("3", "")])]
+for k in range(4):
+    f.text(176 + k * 84 + 37, 52, f"slot {k}", 10, MUTED, anchor="middle")
+for i, (name, tail, head, slots) in enumerate(steps):
+    y = 64 + i * 54
+    f.text(20, y + 26, name, 11, bold=True)
+    f.text(90, y + 18, f"tail = {tail}", 9, RUST, mono=True)
+    f.text(90, y + 34, f"head = {head}", 9, TEAL, mono=True)
+    for k, (seq, val) in enumerate(slots):
+        x = 176 + k * 84
+        fill = GREEN if val else PALE
+        f.rect(x, y, 74, 42, fill, BORDER, 6)
+        f.text(x + 37, y + 18, f"seq {seq}", 10, mono=True, anchor="middle", bold=True)
+        f.text(x + 37, y + 34, val if val else "empty", 10, INK if val else MUTED, anchor="middle")
+notes = ["Slot k starts with seq = k.",
+         "A push at position p stores",
+         "seq = p + 1: full.",
+         "A pop at position p stores",
+         "seq = p + 4: empty for the",
+         "producer one lap later.",
+         "Slot 0 now waits for",
+         "position 4, because 4 % 4 = 0."]
+for i, t in enumerate(notes):
+    f.text(530, 84 + i * 22, t, 10)
+f.save(OUT + "mpmc-trace.svg")
+
+# 10. the handoff through seq
+f = Figure(760, 250)
+f.text(20, 22, "How the value reaches the consumer: Release on seq, then Acquire on seq", 12, bold=True)
+f.panel(20, 46, 330, 170, "Producer of position 5")
+f.cell(40, 80, 290, 30, "write the value into the slot", GREEN, size=10)
+f.cell(40, 140, 290, 30, "seq.store(6, Release)", GREEN, size=10)
+f.arrow(185, 112, 185, 138, INK)
+f.text(40, 196, "The write happens before the store.", 10, MUTED)
+f.panel(410, 46, 330, 170, "Consumer of position 5")
+f.cell(430, 80, 290, 30, "seq.load(Acquire) returns 6", CREAM, size=10)
+f.cell(430, 140, 290, 30, "read the value from the slot", CREAM, size=10)
+f.arrow(575, 112, 575, 138, INK)
+f.text(430, 196, "The load happens before the read.", 10, MUTED)
+f.arrow(332, 155, 428, 95, TEAL, dash=True)
+f.text(380, 104, "synchronizes", 9, TEAL, anchor="middle")
+f.text(380, 116, "with", 9, TEAL, anchor="middle")
+f.text(20, 238, "Because the consumer saw 6, it is guaranteed to see every write the producer made before storing 6.", 10)
+f.save(OUT + "mpmc-handoff.svg")
 print("ok")

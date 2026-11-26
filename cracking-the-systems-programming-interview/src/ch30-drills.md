@@ -33,7 +33,7 @@ The module header defines its architectural boundary: neighboring modules hold f
 | `parallel_sum`: scoped threads | 12 | chapter 16, `threads::parallel_sum`, listing 16.5 |
 | `SpinLock` and `SpinGuard` | 45 | chapter 16, listing 16.12 |
 | `Semaphore` | 36 | chapter 16, listing 16.15 |
-| `BlockingQueue` with `close` | 62 | chapter 17, listing 17.24 |
+| `BlockingQueue` with `close` | 62 | chapter 17, listing 17.25 |
 | `ThreadPool` with `Drop` | 45 | chapter 18, listing 18.7 |
 | `retry` with backoff | 21 | chapter 19, listing 19.9 |
 | `HashRing` | 33 | chapter 14, listing 14.9 |

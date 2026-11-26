@@ -1,0 +1,28 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 760 250.0" width="760" height="250.0" font-family="Helvetica, Arial, sans-serif">
+<rect width="100%" height="100%" fill="#ffffff"/>
+
+<text x="20" y="22" font-size="12.0" fill="#1d2733" text-anchor="start"  font-weight="bold">How the value reaches the consumer: Release on seq, then Acquire on seq</text>
+<rect x="20" y="46" width="330" height="170" rx="6" fill="#fbfcfd" stroke="#1d2733" stroke-width="1.1"/>
+<text x="30" y="62.0" font-size="10.5" fill="#5b6b7c" text-anchor="start"  font-weight="bold">Producer of position 5</text>
+<rect x="40" y="80" width="290" height="30" rx="4" fill="#e3f1ea" stroke="#1d2733" stroke-width="1.4"/>
+<text x="185.0" y="98.6" font-size="10.0" fill="#1d2733" text-anchor="middle" font-family="Menlo, monospace" xml:space="preserve">write the value into the slot</text>
+<rect x="40" y="140" width="290" height="30" rx="4" fill="#e3f1ea" stroke="#1d2733" stroke-width="1.4"/>
+<text x="185.0" y="158.6" font-size="10.0" fill="#1d2733" text-anchor="middle" font-family="Menlo, monospace" xml:space="preserve">seq.store(6, Release)</text>
+<line x1="185" y1="112" x2="185" y2="138" stroke="#1d2733" stroke-width="1.6"/>
+<polygon points="185,138 181.5,130.8 188.5,130.8" fill="#1d2733"/>
+<text x="40" y="196" font-size="10.0" fill="#5b6b7c" text-anchor="start" >The write happens before the store.</text>
+<rect x="410" y="46" width="330" height="170" rx="6" fill="#fbfcfd" stroke="#1d2733" stroke-width="1.1"/>
+<text x="420" y="62.0" font-size="10.5" fill="#5b6b7c" text-anchor="start"  font-weight="bold">Consumer of position 5</text>
+<rect x="430" y="80" width="290" height="30" rx="4" fill="#fdf6e8" stroke="#1d2733" stroke-width="1.4"/>
+<text x="575.0" y="98.6" font-size="10.0" fill="#1d2733" text-anchor="middle" font-family="Menlo, monospace" xml:space="preserve">seq.load(Acquire) returns 6</text>
+<rect x="430" y="140" width="290" height="30" rx="4" fill="#fdf6e8" stroke="#1d2733" stroke-width="1.4"/>
+<text x="575.0" y="158.6" font-size="10.0" fill="#1d2733" text-anchor="middle" font-family="Menlo, monospace" xml:space="preserve">read the value from the slot</text>
+<line x1="575" y1="112" x2="575" y2="138" stroke="#1d2733" stroke-width="1.6"/>
+<polygon points="575,138 571.5,130.8 578.5,130.8" fill="#1d2733"/>
+<text x="430" y="196" font-size="10.0" fill="#5b6b7c" text-anchor="start" >The load happens before the read.</text>
+<line x1="332" y1="155" x2="428" y2="95" stroke="#2f7f86" stroke-width="1.6" stroke-dasharray="6,4"/>
+<polygon points="428,95 423.7,101.8 420.0,95.9" fill="#2f7f86"/>
+<text x="380" y="104" font-size="9.0" fill="#2f7f86" text-anchor="middle" >synchronizes</text>
+<text x="380" y="116" font-size="9.0" fill="#2f7f86" text-anchor="middle" >with</text>
+<text x="20" y="238" font-size="10.0" fill="#1d2733" text-anchor="start" >Because the consumer saw 6, it is guaranteed to see every write the producer made before storing 6.</text>
+</svg>
