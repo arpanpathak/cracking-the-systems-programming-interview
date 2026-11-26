@@ -1,0 +1,30 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 760 272.0" width="760" height="272.0" font-family="Helvetica, Arial, sans-serif">
+<rect width="100%" height="100%" fill="#ffffff"/>
+
+<text x="20" y="22" font-size="12.0" fill="#1d2733" text-anchor="start"  font-weight="bold">kmp_search: the 4 arms of match (haystack[i] == needle[j], j + 1 == needle.len(), j)</text>
+<rect x="20" y="44" width="350" height="86" rx="8" fill="#e3f1ea" stroke="#c9d4de" stroke-width="1.4"/>
+<rect x="32" y="56" width="24" height="24" rx="12" fill="#2f7f86" stroke="none" stroke-width="1.4"/>
+<text x="44" y="72" font-size="11.0" fill="#ffffff" text-anchor="middle"  font-weight="bold">1</text>
+<text x="68" y="73" font-size="12.0" fill="#1d2733" text-anchor="start" font-family="Menlo, monospace" xml:space="preserve" font-weight="bold">(true, true, _)</text>
+<text x="68" y="96" font-size="10.0" fill="#5b6b7c" text-anchor="start" >last needle byte matches</text>
+<text x="68" y="116" font-size="11.0" fill="#1d2733" text-anchor="start" font-family="Menlo, monospace" xml:space="preserve">return Some(i - j)</text>
+<rect x="385" y="44" width="350" height="86" rx="8" fill="#e3f1ea" stroke="#c9d4de" stroke-width="1.4"/>
+<rect x="397" y="56" width="24" height="24" rx="12" fill="#2f7f86" stroke="none" stroke-width="1.4"/>
+<text x="409" y="72" font-size="11.0" fill="#ffffff" text-anchor="middle"  font-weight="bold">2</text>
+<text x="433" y="73" font-size="12.0" fill="#1d2733" text-anchor="start" font-family="Menlo, monospace" xml:space="preserve" font-weight="bold">(true, false, _)</text>
+<text x="433" y="96" font-size="10.0" fill="#5b6b7c" text-anchor="start" >bytes match, needle not finished</text>
+<text x="433" y="116" font-size="11.0" fill="#1d2733" text-anchor="start" font-family="Menlo, monospace" xml:space="preserve">i += 1;  j += 1</text>
+<rect x="20" y="142" width="350" height="86" rx="8" fill="#fbe3d6" stroke="#c9d4de" stroke-width="1.4"/>
+<rect x="32" y="154" width="24" height="24" rx="12" fill="#2f7f86" stroke="none" stroke-width="1.4"/>
+<text x="44" y="170" font-size="11.0" fill="#ffffff" text-anchor="middle"  font-weight="bold">3</text>
+<text x="68" y="171" font-size="12.0" fill="#1d2733" text-anchor="start" font-family="Menlo, monospace" xml:space="preserve" font-weight="bold">(false, _, 0)</text>
+<text x="68" y="194" font-size="10.0" fill="#5b6b7c" text-anchor="start" >mismatch at the first needle byte</text>
+<text x="68" y="214" font-size="11.0" fill="#1d2733" text-anchor="start" font-family="Menlo, monospace" xml:space="preserve">i += 1</text>
+<rect x="385" y="142" width="350" height="86" rx="8" fill="#fbe3d6" stroke="#c9d4de" stroke-width="1.4"/>
+<rect x="397" y="154" width="24" height="24" rx="12" fill="#2f7f86" stroke="none" stroke-width="1.4"/>
+<text x="409" y="170" font-size="11.0" fill="#ffffff" text-anchor="middle"  font-weight="bold">4</text>
+<text x="433" y="171" font-size="12.0" fill="#1d2733" text-anchor="start" font-family="Menlo, monospace" xml:space="preserve" font-weight="bold">(false, _, _)</text>
+<text x="433" y="194" font-size="10.0" fill="#5b6b7c" text-anchor="start" >mismatch after j matched bytes</text>
+<text x="433" y="214" font-size="11.0" fill="#1d2733" text-anchor="start" font-family="Menlo, monospace" xml:space="preserve">j = lps[j - 1];  i unchanged</text>
+<text x="20" y="258" font-size="10.0" fill="#1d2733" text-anchor="start" >Arm 1 is tested before j is incremented, so j never reaches needle.len() and needle[j] stays in bounds.</text>
+</svg>

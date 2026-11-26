@@ -37,7 +37,7 @@
             const path_to_root = "";
             const default_light_theme = "coal";
             const default_dark_theme = "coal";
-            window.path_to_searchindex_js = "searchindex-96772cd7.js";
+            window.path_to_searchindex_js = "searchindex-4c795f69.js";
         </script>
         <!-- Start loading toc.js asap -->
         <script src="toc-c196c8a9.js"></script>
@@ -882,17 +882,17 @@ make serve      # the browser edition at http://localhost:3000
 </li>
 <li><a href="#178-a-lock-free-queue-for-many-producers-and-consumers">17.8 A lock-free queue for many producers and consumers</a>
 <ul>
-<li><a href="#1781-reserving-a-position-with-compare-and-swap">17.8.1 Reserving a position with compare-and-swap</a></li>
-<li><a href="#1782-a-sequence-number-in-every-slot">17.8.2 A sequence number in every slot</a></li>
-<li><a href="#1783-tracing-four-operations">17.8.3 Tracing four operations</a></li>
-<li><a href="#1784-constraints-on-the-capacity">17.8.4 Constraints on the capacity</a></li>
+<li><a href="#1781-slot-reservation-with-compare-and-swap">17.8.1 Slot reservation with compare-and-swap</a></li>
+<li><a href="#1782-per-slot-sequence-numbers">17.8.2 Per-slot sequence numbers</a></li>
+<li><a href="#1783-a-trace-with-capacity-4">17.8.3 A trace with capacity 4</a></li>
+<li><a href="#1784-capacity-constraints">17.8.4 Capacity constraints</a></li>
 <li><a href="#1785-the-type">17.8.5 The type</a></li>
 <li><a href="#1786-push">17.8.6 Push</a></li>
 <li><a href="#1787-pop">17.8.7 Pop</a></li>
 <li><a href="#1788-memory-ordering">17.8.8 Memory ordering</a></li>
 <li><a href="#1789-dropping-the-queue">17.8.9 Dropping the queue</a></li>
-<li><a href="#17810-the-progress-guarantee">17.8.10 The progress guarantee</a></li>
-<li><a href="#17811-testing-with-four-threads">17.8.11 Testing with four threads</a></li>
+<li><a href="#17810-progress-guarantee">17.8.10 Progress guarantee</a></li>
+<li><a href="#17811-testing-with-4-threads">17.8.11 Testing with 4 threads</a></li>
 </ul>
 </li>
 <li><a href="#179-the-complete-files">17.9 The complete files</a></li>
@@ -1202,7 +1202,14 @@ make serve      # the browser edition at http://localhost:3000
 <p><strong><a href="#drills-against-the-clock">Compact implementations</a></strong></p>
 <ul>
 <li><a href="#301-the-drills">30.1 The drills</a></li>
-<li><a href="#302-queens-on-a-bitboard">30.2 Queens on a bitboard</a></li>
+<li><a href="#302-queens-on-a-bitboard">30.2 Queens on a bitboard</a>
+<ul>
+<li><a href="#3021-one-bit-per-line">30.2.1 One bit per line</a></li>
+<li><a href="#3022-placing-and-removing-a-queen">30.2.2 Placing and removing a queen</a></li>
+<li><a href="#3023-moving-a-queen">30.2.3 Moving a queen</a></li>
+<li><a href="#3024-the-complete-program">30.2.4 The complete program</a></li>
+</ul>
+</li>
 <li><a href="#303-what-the-short-forms-leave-out">30.3 What the short forms leave out</a></li>
 <li><a href="#304-the-drill-that-is-slower-than-it-looks">30.4 The drill that is slower than it looks</a></li>
 <li><a href="#305-running-a-round">30.5 Running a round</a></li>
@@ -2595,23 +2602,14 @@ mod tests {
 </div>
 
 <h3 id="351-first-repeating-and-first-non-repeating-character"><a class="header" href="#351-first-repeating-and-first-non-repeating-character">3.5.1 First repeating and first non-repeating character</a></h3>
-<p><strong>The problem.</strong> Given a string, find the first character that appears a second time, and the first character that appears exactly once. Each answer includes the character’s index. In <code>"swiss"</code>, the first repeating character is the <code>s</code> at index 3, and the first non-repeating character is the <code>w</code> at index 1.</p>
-<p><strong>The baseline approach.</strong> For each character, we could scan the rest of the string for another copy of it. Every character then costs up to <code>n</code> comparisons, so the search takes O(n²) time.</p>
-<p><strong>The first repeating character.</strong> We scan the string once and remember every character we have seen in a <code>HashSet&lt;char&gt;</code>. The method <code>HashSet::insert</code> returns <code>true</code> when the value is new and <code>false</code> when the set already holds it. The first <code>false</code> from <code>insert</code> therefore marks the answer. Its index is where that character appears for the second time. The trace for <code>"swiss"</code> shows each step.</p>
-<div class="table-wrapper">
-<table>
-<thead>
-<tr><th>Index</th><th>Character</th><th><code>insert</code> returns</th><th>Set afterward</th></tr>
-</thead>
-<tbody>
-<tr><td>0</td><td><code>s</code></td><td><code>true</code></td><td>{s}</td></tr>
-<tr><td>1</td><td><code>w</code></td><td><code>true</code></td><td>{s, w}</td></tr>
-<tr><td>2</td><td><code>i</code></td><td><code>true</code></td><td>{s, w, i}</td></tr>
-<tr><td>3</td><td><code>s</code></td><td><code>false</code></td><td>answer: <code>(3, 's')</code></td></tr>
-</tbody>
-</table>
-</div>
-<p><strong>The first non-repeating character.</strong> One scan is not enough for this question. At index 0 of <code>"swiss"</code>, the <code>s</code> has not repeated yet, but a later copy at index 3 makes it repeat. We can decide whether a character is unique only after we have seen the whole string. We therefore make two passes. The first pass counts every character in a <code>HashMap&lt;char, usize&gt;</code>, which gives <code>s: 3</code>, <code>w: 1</code> and <code>i: 1</code>. The second pass walks the string again from the start and returns the first character whose count is 1. Index 0 holds <code>s</code>, with count 3, and index 1 holds <code>w</code>, with count 1, so the answer is <code>(1, 'w')</code>.</p>
+<p><strong>The problem.</strong> For a string <code>s</code>, the required results are the first character that occurs a second time and the first character that occurs exactly once. Each result includes its character index. For <code>"swiss"</code>, the first repeating character is <code>'s'</code> at index 3, and the first non-repeating character is <code>'w'</code> at index 1.</p>
+<p><strong>The baseline approach.</strong> Comparing each character against every other character requires O(n²) comparisons in the worst case.</p>
+<p><strong>The first repeating character.</strong> During a single left-to-right scan, each character is inserted into a <code>HashSet&lt;char&gt;</code>. A call to <code>HashSet::insert</code> evaluates to <code>true</code> when the value is new and to <code>false</code> when the value is already present. The first <code>false</code> result therefore occurs at the second occurrence of the first repeated character, and its index is the answer (Figure 3.5, top).</p>
+<p><strong>The first non-repeating character.</strong> A single scan is insufficient, because uniqueness depends on characters that have not yet been scanned. At index 0 of <code>"swiss"</code>, <code>'s'</code> has occurred once, yet the occurrence at index 3 disqualifies it. The computation therefore requires 2 passes. In the first pass, the occurrences of each character are counted in a <code>HashMap&lt;char, usize&gt;</code>, yielding <code>s: 3</code>, <code>w: 1</code> and <code>i: 1</code>. In the second pass, the string is scanned again from index 0. The first character with a count of 1 is returned (Figure 3.5, bottom).</p>
+<figure>
+<img src="figures/ch03-first-char.svg" alt="Top panel: the characters s, w, i, s, s at indices 0 to 4. insert returns true, true, true, and then false at index 3, with the set growing from {s} to {s, w, i}. Bottom panel: the counts s 3, w 1, i 1, and a second pass that stops at w, index 1, whose count is 1.">
+<figcaption><b>Figure 3.5</b> <code>"swiss"</code>: 1 pass with a <code>HashSet</code> for the first repeating character, and 2 passes with a <code>HashMap</code> of counts for the first non-repeating character.</figcaption>
+</figure>
 <p class="listing"><b>Listing 3.2</b> The first repeating and the first non-repeating character, with a test. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/bin/first_non_repeating_char.rs">src/bin/first_non_repeating_char.rs</a></p>
 
 <pre><code class="language-rust">use std::collections::{HashMap, HashSet};
@@ -2677,22 +2675,22 @@ first non-repeating: Some((1, 'w'))
 </code></pre>
 <p>Key details of the implementation:</p>
 <ul>
-<li><code>s.chars().enumerate()</code> yields pairs of an index and a <code>char</code>, so both functions can return the index together with the character.</li>
-<li><code>if !seen.insert(ch)</code> both records the character and tests whether it was already present, so the first function needs one hash lookup per character.</li>
-<li><code>*counts.entry(ch).or_default() += 1</code> finds the count for <code>ch</code>, creates it with the value 0 if it is missing, and adds 1.</li>
-<li><code>counts[&amp;ch]</code> reads a count by indexing the map. Indexing panics for a missing key, but every character of <code>s</code> was counted in the first pass, so the key is always present.</li>
-<li>Both functions return <code>None</code> when no character qualifies, for example <code>first_repeating_char("abcdef")</code>, which the test checks.</li>
+<li>Each character is paired with its character index by <code>s.chars().enumerate()</code>.</li>
+<li>In the condition <code>!seen.insert(ch)</code>, <code>ch</code> is inserted and its prior presence is tested in 1 hash operation.</li>
+<li>In <code>*counts.entry(ch).or_default() += 1</code>, the count for <code>ch</code> is created with the value 0 if absent and then incremented.</li>
+<li>Indexing with <code>counts[&amp;ch]</code> panics on a missing key. Every character of <code>s</code> is counted in the first pass, so no key is missing in the second.</li>
+<li><code>None</code> is returned when no character qualifies, as the test verifies for <code>first_repeating_char("abcdef")</code>.</li>
 </ul>
-<p>Each function runs in O(n) expected time. The set and the map hold one entry per distinct character. The extra space is therefore O(k), where <code>k</code> is the number of distinct characters.</p>
-<p>The index from <code>chars().enumerate()</code> counts characters (Unicode scalar values), not bytes. For ASCII text, both counts are the same. For <code>"é!é"</code>, the repeat is at character index 2, but at byte offset 3, because <code>é</code> takes 2 bytes in UTF-8.</p>
+<p><strong>Complexity.</strong> The expected running time of each function is O(n). The auxiliary space is O(k), where <code>k</code> is the number of distinct characters.</p>
+<p>The index produced by <code>chars().enumerate()</code> is a count of Unicode scalar values, not of bytes. For ASCII input, the 2 counts coincide. For <code>"é!é"</code>, the repeated <code>'é'</code> is at character index 2 but at byte offset 3, because <code>'é'</code> occupies 2 bytes in UTF-8.</p>
 <h2 id="36-a-vector-used-as-a-stack"><a class="header" href="#36-a-vector-used-as-a-stack">3.6 A vector used as a stack</a></h2>
 <p>A <strong>stack</strong> is a last-in, first-out (LIFO) sequence where insertions and removals occur exclusively at one end (the top). <code>Vec</code> serves directly as a stack: <code>push</code> appends to the top, <code>pop</code> removes and returns the top element, and <code>last</code> inspects the top without mutating the vector. All three operations run in amortized O(1) time.</p>
 <h3 id="361-checking-brackets"><a class="header" href="#361-checking-brackets">3.6.1 Checking brackets</a></h3>
 <p><strong>The problem.</strong> A bracket string is balanced if every opening delimiter is closed by the matching delimiter type in proper nested order. <code>"{[()]}"</code> is valid, whereas <code>"([)]"</code> is invalid because <code>]</code> closes while <code>(</code> remains open.</p>
-<p><strong>The strategy.</strong> Scan left to right, pushing every opening bracket onto a stack. Upon encountering a closing bracket, pop the top of the stack and verify that it matches the expected opener. After the scan completes, the stack must be empty. Figure 3.5 traces <code>"{[()]}"</code>.</p>
+<p><strong>The strategy.</strong> Scan left to right, pushing every opening bracket onto a stack. Upon encountering a closing bracket, pop the top of the stack and verify that it matches the expected opener. After the scan completes, the stack must be empty. Figure 3.6 traces <code>"{[()]}"</code>.</p>
 <figure>
 <img src="figures/ch03-stack.svg" alt="Six steps: push {, push [, push (, then ) pops (, ] pops [, } pops {, leaving the stack empty">
-<figcaption><b>Figure 3.5</b> Checking <code>"{[()]}"</code>. Each closing bracket pops the opener on top, which must be its partner.</figcaption>
+<figcaption><b>Figure 3.6</b> Checking <code>"{[()]}"</code>. Each closing bracket pops the opener on top, which must be its partner.</figcaption>
 </figure>
 <figure class="anim">
 <video class="motion" src="figures/ch03-brackets.mp4" autoplay="" loop="" muted="" playsinline="" preload="metadata" aria-label="The string ( [ { } ] ) with a stack beside it. Each opener is pushed. Each closer pops the top, which matches, and the stack ends empty, so is_valid returns true. A second run on ( [ ) ]: the closer ) pops [, which does not match, so is_valid returns false." data-chapters="[[0.0, &quot;([{}])&quot;], [38.16, &quot;([)]&quot;]]"><img src="figures/ch03-brackets.gif" alt="The string ( [ { } ] ) with a stack beside it. Each opener is pushed. Each closer pops the top, which matches, and the stack ends empty, so is_valid returns true. A second run on ( [ ) ]: the closer ) pops [, which does not match, so is_valid returns false."></video>
@@ -2846,10 +2844,10 @@ mod tests {
 <h2 id="37-two-indexes-moving-toward-each-other"><a class="header" href="#37-two-indexes-moving-toward-each-other">3.7 Two indexes moving toward each other</a></h2>
 <p>Problems that inspect both ends of a sequence simultaneously can maintain two indexes, <code>start</code> and <code>end</code>, advancing them inward until they cross. Because at least one index advances per iteration, the traversal completes in O(n) time.</p>
 <h3 id="371-reversing-a-string-in-place"><a class="header" href="#371-reversing-a-string-in-place">3.7.1 Reversing a string in place</a></h3>
-<p><strong>The strategy.</strong> Swap the first and last bytes, then move inward one position from each end until the two indexes meet (Figure 3.6).</p>
+<p><strong>The strategy.</strong> Swap the first and last bytes, then move inward one position from each end until the two indexes meet (Figure 3.7).</p>
 <figure>
 <img src="figures/ch03-two-pointers.svg" alt="abcd becomes dbca after swapping the ends, then dcba after swapping the middle pair; then start passes end and the loop stops">
-<figcaption><b>Figure 3.6</b> Reversing <code>"abcd"</code>. Two swaps, then the indexes cross.</figcaption>
+<figcaption><b>Figure 3.7</b> Reversing <code>"abcd"</code>. Two swaps, then the indexes cross.</figcaption>
 </figure>
 <p>As noted in Section 3.3, a <code>String</code> must preserve valid UTF-8; reversing individual bytes of a multi-byte character would corrupt the encoding. Consequently, Rust exposes mutable byte access only through <code>String::as_mut_vec</code>, which is marked <code>unsafe</code>. An <strong><code>unsafe</code></strong> block designates code whose memory or type invariants cannot be verified statically by the compiler and must instead be upheld by the author; here, the required invariant is that the buffer remains valid UTF-8 upon exiting the block.</p>
 <p class="listing"><b>Listing 3.5</b> The reversing function (lines 1 to 14). <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/bin/reverse_string.rs">src/bin/reverse_string.rs</a></p>
@@ -3121,10 +3119,10 @@ mod tests {
 <h2 id="38-a-window-that-slides-along-a-string"><a class="header" href="#38-a-window-that-slides-along-a-string">3.8 A window that slides along a string</a></h2>
 <p><strong>The problem.</strong> Compute the length of the longest contiguous substring containing no repeated characters. For <code>"pwwkew"</code>, the maximum length is 3 (corresponding to <code>"wke"</code> or <code>"kew"</code>).</p>
 <p><strong>The strategy.</strong> Maintain a sliding <strong>window</strong> <code>start..=end</code> invariant to contain exclusively distinct characters. As <code>end</code> advances one character at a time, if the incoming character already lies inside the current window, advance <code>start</code> immediately past its prior occurrence. Recording the maximum window width across all positions yields the answer.</p>
-<p>A <code>HashMap&lt;char, usize&gt;</code> maps each seen character to its most recent character index. Figure 3.7 depicts the window state in <code>"pwwkew"</code> when the third <code>w</code> is processed.</p>
+<p>A <code>HashMap&lt;char, usize&gt;</code> maps each seen character to its most recent character index. Figure 3.8 depicts the window state in <code>"pwwkew"</code> when the third <code>w</code> is processed.</p>
 <figure>
 <img src="figures/ch03-window.svg" alt="The string pwwkew with start at index 3 and end at index 5, window kew">
-<figcaption><b>Figure 3.7</b> At <code>end = 5</code>, the <code>w</code> was last seen at index 2. <code>start</code> moves to 3, and the window is <code>"kew"</code>.</figcaption>
+<figcaption><b>Figure 3.8</b> At <code>end = 5</code>, the <code>w</code> was last seen at index 2. <code>start</code> moves to 3, and the window is <code>"kew"</code>.</figcaption>
 </figure>
 <figure class="anim">
 <video class="motion" src="figures/ch03-window.mp4" autoplay="" loop="" muted="" playsinline="" preload="metadata" aria-label="The string pwwkew with the window drawn as an outline from start to end, and the map last_seen beside it. end moves one character at a time. When the second w arrives, start moves to 2; when the third w arrives, start moves to 3, leaving the window kew, length 3. A second run on abba shows why start uses max: the last a was seen at 0, before the window, so start stays at 2." data-chapters="[[0.0, &quot;pwwkew&quot;], [49.48, &quot;abba&quot;]]"><img src="figures/ch03-window.gif" alt="The string pwwkew with the window drawn as an outline from start to end, and the map last_seen beside it. end moves one character at a time. When the second w arrives, start moves to 2; when the third w arrives, start moves to 3, leaving the window kew, length 3. A second run on abba shows why start uses max: the last a was seen at 0, before the window, so start stays at 2."></video>
@@ -3169,35 +3167,21 @@ mod tests {
 <p>When <code>last_seen.get(&amp;ch)</code> finds an earlier index <code>previous</code>, <code>start = start.max(previous + 1)</code> advances the left boundary without ever moving it backward. The <code>.max(...)</code> guard is essential for inputs like <code>"abba"</code>: when the second <code>'a'</code> arrives at index 3, <code>'a'</code> was last seen at index 0, which already falls outside the current window starting at index 2.</p>
 <p>At each step, <code>end - start + 1</code> gives the active window length. Because both <code>start</code> and <code>end</code> advance monotonically, the algorithm runs in O(n) time. Iterating via <code>chars().enumerate()</code> counts Unicode scalar values rather than raw UTF-8 bytes, matching the problem specification.</p>
 <h3 id="381-sliding-window-maximum"><a class="header" href="#381-sliding-window-maximum">3.8.1 Sliding window maximum</a></h3>
-<p><strong>The problem.</strong> Given a slice of integers and a window width <code>k</code>, return the largest value in every run of <code>k</code> consecutive values. For <code>[1, 3, -1, -3, 5, 3, 6, 7]</code> and <code>k = 3</code>, there are six windows, and their maximums are <code>[3, 3, 5, 5, 6, 7]</code>.</p>
-<p><strong>The baseline approach.</strong> We could find the maximum of each window by scanning its <code>k</code> values. With <code>n - k + 1</code> windows, this takes O(n × k) time. Most of the work repeats, because neighboring windows share <code>k - 1</code> values.</p>
-<p><strong>The deque approach.</strong> We keep a short list of candidates, the values that can still become the maximum of some window. A value stops being a candidate when a larger value arrives after it. The larger value stays in every window that the smaller one is in, and it stays longer. The smaller value can therefore never be the largest again.</p>
-<p>We store the candidates’ indexes in a <code>VecDeque</code>, a double-ended queue that adds and removes items at both ends in O(1) time. The values at those indexes decrease from front to back, so the front always holds the index of the current window’s maximum. A deque kept in sorted order in this way is called a <strong>monotonic deque</strong>.</p>
-<p>For each new index <code>i</code> with value <code>x</code>, <code>sliding_window_max</code> performs three steps:</p>
+<p><strong>The problem.</strong> For a slice of integers and a window width <code>k</code>, the maximum of every contiguous run of <code>k</code> elements is required. For <code>[1, 3, -1, -3, 5, 3, 6, 7]</code> and <code>k = 3</code>, the 6 windows have the maxima <code>[3, 3, 5, 5, 6, 7]</code>.</p>
+<p><strong>The baseline approach.</strong> Scanning each window independently costs <code>k</code> comparisons per window and O(n × k) in total, although adjacent windows share <code>k - 1</code> elements.</p>
+<p><strong>Dominated elements.</strong> An element <code>a[j]</code> can never again be a window maximum once an element <code>a[i] &gt;= a[j]</code> with <code>i &gt; j</code> has entered the window. Every later window that contains <code>a[j]</code> also contains <code>a[i]</code>, and <code>a[i]</code> remains in the window for at least as long. Such an element is <em>dominated</em> and can be discarded permanently.</p>
+<p><strong>The monotonic deque.</strong> The indices of non-dominated elements are kept in a <code>VecDeque&lt;usize&gt;</code> in index order. Their values are therefore strictly decreasing from front to back. Under this invariant, the front index always refers to the maximum of the current window. A deque maintained in sorted order in this way is called a <strong>monotonic deque</strong>.</p>
+<p>For each index <code>i</code> with value <code>x</code>, 3 steps are performed:</p>
 <ol>
-<li>If the index at the front has left the window, remove it from the front. The window ending at <code>i</code> covers indexes <code>i - k + 1</code> to <code>i</code>, so the front index <code>front</code> has left the window when <code>front + k &lt;= i</code>.</li>
-<li>Remove indexes from the back while their values are less than or equal to <code>x</code>. Those values are no longer candidates, for the reason given above.</li>
-<li>Add <code>i</code> at the back. Once <code>i + 1 &gt;= k</code>, the first full window is complete, and the value at the front index is the maximum of the current window.</li>
+<li><strong>Expiry.</strong> If the front index <code>f</code> satisfies <code>f + k &lt;= i</code>, it lies outside the window <code>[i - k + 1, i]</code> and is removed from the front.</li>
+<li><strong>Domination.</strong> While the value at the back index is at most <code>x</code>, the back index is removed, because <code>x</code> dominates it.</li>
+<li><strong>Insertion and output.</strong> <code>i</code> is appended at the back. Once <code>i + 1 &gt;= k</code>, the first full window is complete, and the value at the front index is emitted as the window maximum.</li>
 </ol>
-<p>The trace below follows the example. The deque column lists indexes, with their values in parentheses.</p>
-<div class="table-wrapper">
-<table>
-<thead>
-<tr><th><code>i</code></th><th>Value</th><th>Deque after the step</th><th>Window maximum</th></tr>
-</thead>
-<tbody>
-<tr><td>0</td><td>1</td><td>0 (1)</td><td></td></tr>
-<tr><td>1</td><td>3</td><td>1 (3)</td><td></td></tr>
-<tr><td>2</td><td>-1</td><td>1 (3), 2 (-1)</td><td>3</td></tr>
-<tr><td>3</td><td>-3</td><td>1 (3), 2 (-1), 3 (-3)</td><td>3</td></tr>
-<tr><td>4</td><td>5</td><td>4 (5)</td><td>5</td></tr>
-<tr><td>5</td><td>3</td><td>4 (5), 5 (3)</td><td>5</td></tr>
-<tr><td>6</td><td>6</td><td>6 (6)</td><td>6</td></tr>
-<tr><td>7</td><td>7</td><td>7 (7)</td><td>7</td></tr>
-</tbody>
-</table>
-</div>
-<p>At <code>i = 1</code>, the value 3 removes index 0, because 1 is smaller and leaves the window earlier. At <code>i = 4</code>, two steps happen. First, index 1 leaves from the front, because the window is now indexes 2 to 4. After that, the value 5 removes indexes 3 and 2 from the back, because -3 and -1 are smaller.</p>
+<p>At <code>i = 4</code>, index 1 expires because the window has moved to indices 2 to 4. Indices 3 and 2 are then dominated by the value 5, and the deque is reduced to index 4 alone (Figure 3.9, row <code>i = 4</code>).</p>
+<figure>
+<img src="figures/ch03-window-max.svg" alt="Eight rows, one for each i from 0 to 7. Each row shows the array 1, 3, -1, -3, 5, 3, 6, 7 with the current window outlined and the indices held in the deque shaded, and on the right the deque contents and the window maximum: rows 2 to 7 give 3, 3, 5, 5, 6, 7.">
+<figcaption><b>Figure 3.9</b> The window, the deque, and the window maximum after every step, with <code>k = 3</code>. Shaded cells are the indices held in the deque.</figcaption>
+</figure>
 <p class="listing"><b>Listing 3.9</b> The maximum of every window with a monotonic deque. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/bin/sliding_window_maximum.rs">src/bin/sliding_window_maximum.rs</a></p>
 
 <pre><code class="language-rust">use std::collections::VecDeque;
@@ -3239,19 +3223,19 @@ fn main() {
 </code></pre>
 <p>Key details of the implementation:</p>
 <ul>
-<li><code>dq.front().is_some_and(|&amp;f| f + k &lt;= i)</code> is <code>true</code> only when the deque is not empty and its front index has left the window.</li>
-<li>The front check is an <code>if</code>, not a loop. The window moves forward by one index per step, so at most one index can leave the window per step.</li>
-<li>The back check is a <code>while</code> loop, because one large value can remove several smaller candidates, as the value 5 does at <code>i = 4</code>.</li>
-<li><code>dq[0]</code> reads the front index. The deque is never empty at that point, because <code>i</code> was added in the step before.</li>
-<li>The comparison <code>f + k &lt;= i</code> is used instead of <code>f &lt;= i - k</code>, because <code>i - k</code> would underflow in <code>usize</code> while <code>i &lt; k</code>.</li>
+<li>The expiry condition <code>dq.front().is_some_and(|&amp;f| f + k &lt;= i)</code> holds only when the deque is non-empty and its front index lies outside the window.</li>
+<li>Expiry is an <code>if</code>, not a loop. The window is advanced by 1 index per step, so at most 1 index can expire per step.</li>
+<li>Domination is a <code>while</code> loop, because several smaller values can be dominated by 1 large value, as at <code>i = 4</code>.</li>
+<li>The comparison <code>f + k &lt;= i</code> is used instead of <code>f &lt;= i - k</code>, because <code>i - k</code> underflows in <code>usize</code> while <code>i &lt; k</code>.</li>
+<li><code>dq[0]</code> is never evaluated on an empty deque, since <code>i</code> is appended immediately before.</li>
 </ul>
-<p>Every index is added to the deque once and removed at most once. The whole pass therefore takes O(n) time, even though one step can remove several indexes. The deque holds at most <code>k</code> indexes, and the output holds <code>n - k + 1</code> values.</p>
+<p><strong>Complexity.</strong> Each index is appended once and removed at most once. The total running time is therefore O(n), even though several indices can be removed in a single step. At most <code>k</code> indices are held in the deque, and the output contains <code>n - k + 1</code> values.</p>
 <h2 id="39-sort-then-walk-once-merging-ranges"><a class="header" href="#39-sort-then-walk-once-merging-ranges">3.9 Sort, then walk once: merging ranges</a></h2>
 <p><strong>The problem.</strong> Given a list of closed intervals such as <code>[1,3] [2,6] [8,10] [15,18]</code>, merge all overlapping intervals into disjoint ranges (<code>[1,6] [8,10] [15,18]</code>).</p>
-<p><strong>The strategy.</strong> Sort the intervals by their start coordinate, then perform a single linear pass. In sorted order, each interval either overlaps the most recently merged interval (extending its end coordinate) or starts a new disjoint interval (Figure 3.8).</p>
+<p><strong>The strategy.</strong> Sort the intervals by their start coordinate, then perform a single linear pass. In sorted order, each interval either overlaps the most recently merged interval (extending its end coordinate) or starts a new disjoint interval (Figure 3.10).</p>
 <figure>
 <img src="figures/ch03-intervals.svg" alt="Ranges 1-3 and 2-6 overlap and become 1-6; 8-10 and 15-18 stay separate">
-<figcaption><b>Figure 3.8</b> After sorting, a range overlaps the previous merged range exactly when its start is not after that range's end.</figcaption>
+<figcaption><b>Figure 3.10</b> After sorting, a range overlaps the previous merged range exactly when its start is not after that range's end.</figcaption>
 </figure>
 <figure class="anim">
 <video class="motion" src="figures/ch03-merge-intervals.mp4" autoplay="" loop="" muted="" playsinline="" preload="metadata" aria-label="Four ranges drawn as bars over a number line. They are sorted by start: 1-3, 2-6, 8-10, 15-18. Then each range is compared with the last merged range: 2-6 overlaps 1-3 and extends it to 1-6, and the other two start new merged ranges. The result is 1-6, 8-10, 15-18. A last part shows the input unsorted, where 1-3 and 2-6 would not meet." data-chapters="[[0.0, &quot;sort&quot;], [6.42, &quot;walk&quot;], [45.36, &quot;no sort&quot;]]"><img src="figures/ch03-merge-intervals.gif" alt="Four ranges drawn as bars over a number line. They are sorted by start: 1-3, 2-6, 8-10, 15-18. Then each range is compared with the last merged range: 2-6 overlaps 1-3 and extends it to 1-6, and the other two start new merged ranges. The result is 1-6, 8-10, 15-18. A last part shows the input unsorted, where 1-3 and 2-6 would not meet."></video>
@@ -3373,10 +3357,10 @@ mod tests {
 }</code></pre>
 <p>The test suite constructs <code>Interval</code> values from tuple arrays via <code>.map(|(start, end)| Interval { start, end })</code>, verifying overlapping ranges, empty inputs, disjoint ranges, and unsorted inputs for the in-place variant. Because the overlap predicate uses <code>&lt;=</code>, adjacent intervals that share an endpoint (such as <code>[1,3]</code> and <code>[3,5]</code>) merge into a single range.</p>
 <h2 id="310-halving-the-search-binary-search"><a class="header" href="#310-halving-the-search-binary-search">3.10 Halving the search: binary search</a></h2>
-<p>In a sorted array, locating a target does not require a linear scan. Comparing the target against the midpoint eliminates half of the remaining range on every step: values smaller than the midpoint can lie only in the left half, and larger values only in the right half. Figure 3.9 locates <code>23</code> among eight elements in three comparisons.</p>
+<p>In a sorted array, locating a target does not require a linear scan. Comparing the target against the midpoint eliminates half of the remaining range on every step: values smaller than the midpoint can lie only in the left half, and larger values only in the right half. Figure 3.11 locates <code>23</code> among eight elements in three comparisons.</p>
 <figure>
 <img src="figures/ch03-binary-search.svg" alt="Three rows of the array 2 5 8 12 16 23 38 56. The range shrinks from all eight, to the last three, to one element, 23.">
-<figcaption><b>Figure 3.9</b> Binary search. Each step halves the range, so a million elements need about 20 steps.</figcaption>
+<figcaption><b>Figure 3.11</b> Binary search. Each step halves the range, so a million elements need about 20 steps.</figcaption>
 </figure>
 <figure class="anim">
 <video class="motion" src="figures/ch03-binary-search.mp4" autoplay="" loop="" muted="" playsinline="" preload="metadata" aria-label="The array 2 5 8 12 16 23 38 56. The live range low..high is marked under it. mid is 4, holding 16, so low moves to 5. mid is 6, holding 38, so high moves to 6. mid is 5, holding 23, the target. A second search, for 20, ends when low equals high and the range is empty." data-chapters="[[0.0, &quot;find 23&quot;], [36.12, &quot;find 20&quot;]]"><img src="figures/ch03-binary-search.gif" alt="The array 2 5 8 12 16 23 38 56. The live range low..high is marked under it. mid is 4, holding 16, so low moves to 5. mid is 6, holding 38, so high moves to 6. mid is 5, holding 23, the target. A second search, for 20, ends when low equals high and the range is empty."></video>
@@ -3393,7 +3377,7 @@ mod tests {
 </ul>
 <figure>
 <img src="figures/ch03-rotated.svg" alt="Array 4 5 6 7 0 1 2 with low 0, mid 3, high 7; the left half 4..7 is sorted and does not contain 0, so low moves to 4">
-<figcaption><b>Figure 3.10</b> The first step of searching for 0. The left half 4 to 7 is sorted and cannot contain 0, so the search continues on the right.</figcaption>
+<figcaption><b>Figure 3.12</b> The first step of searching for 0. The left half 4 to 7 is sorted and cannot contain 0, so the search continues on the right.</figcaption>
 </figure>
 <figure class="anim">
 <video class="motion" src="figures/ch03-rotated-search.mp4" autoplay="" loop="" muted="" playsinline="" preload="metadata" aria-label="The array 4, 5, 6, 7, 0, 1, 2. For target 0: mid is 7, the left half 4 to 7 is sorted and cannot hold 0, so low moves past mid. mid is 1, the left half 0 to 1 is sorted and holds 0, so high moves to mid. mid lands on 0. A second search, for 3, ends with an empty range and None." data-chapters="[[0.0, &quot;find 0&quot;], [41.04, &quot;find 3&quot;]]"><img src="figures/ch03-rotated-search.gif" alt="The array 4, 5, 6, 7, 0, 1, 2. For target 0: mid is 7, the left half 4 to 7 is sorted and cannot hold 0, so low moves past mid. mid is 1, the left half 0 to 1 is sorted and holds 0, so high moves to mid. mid lands on 0. A second search, for 3, ends with an empty range and None."></video>
@@ -3456,10 +3440,10 @@ mod tests {
 <p>The condition <code>nums[low] &lt;= nums[mid]</code> confirms that the left half is monotonically ordered, in which case <code>nums[low] &lt;= target &amp;&amp; target &lt; nums[mid]</code> determines whether the target lies inside it. For the right half, the upper bound uses <code>nums[high - 1]</code> because <code>high</code> is exclusive.</p>
 <h2 id="311-rotating-a-square-grid-in-place"><a class="header" href="#311-rotating-a-square-grid-in-place">3.11 Rotating a square grid in place</a></h2>
 <p><strong>The problem.</strong> Rotate an <code>n × n</code> matrix 90 degrees clockwise in place, using O(1) extra memory.</p>
-<p><strong>The strategy.</strong> Decompose the rotation into two in-place passes (Figure 3.11): first <strong>transpose</strong> the matrix across its main diagonal by swapping <code>(i, j)</code> with <code>(j, i)</code>, then reverse every row.</p>
+<p><strong>The strategy.</strong> Decompose the rotation into two in-place passes (Figure 3.13): first <strong>transpose</strong> the matrix across its main diagonal by swapping <code>(i, j)</code> with <code>(j, i)</code>, then reverse every row.</p>
 <figure>
 <img src="figures/ch03-rotate.svg" alt="1 to 9 in a grid, the transposed grid, and the grid after reversing each row, which is the clockwise rotation">
-<figcaption><b>Figure 3.11</b> Transpose, then reverse each row. The result is the grid turned a quarter turn clockwise.</figcaption>
+<figcaption><b>Figure 3.13</b> Transpose, then reverse each row. The result is the grid turned a quarter turn clockwise.</figcaption>
 </figure>
 <figure class="anim">
 <video class="motion" src="figures/ch03-rotate-grid.mp4" autoplay="" loop="" muted="" playsinline="" preload="metadata" aria-label="A 3 by 3 grid of 1 to 9. Three swaps across the diagonal transpose it: 2 with 4, 3 with 7, 6 with 8. Then each row is reversed, giving 7 4 1, 8 5 2, 9 6 3. A last part starts j at 0 instead: 2 and 4 swap, then swap back, and the transpose does nothing." data-chapters="[[0.0, &quot;transpose&quot;], [22.86, &quot;reverse rows&quot;], [39.3, &quot;j from 0&quot;]]"><img src="figures/ch03-rotate-grid.gif" alt="A 3 by 3 grid of 1 to 9. Three swaps across the diagonal transpose it: 2 with 4, 3 with 7, 6 with 8. Then each row is reversed, giving 7 4 1, 8 5 2, 9 6 3. A last part starts j at 0 instead: 2 and 4 swap, then swap back, and the transpose does nothing."></video>
@@ -3504,10 +3488,10 @@ fn main() {
 <p><strong>The problem.</strong> Locate the first byte index where a pattern string (the <strong>needle</strong>) occurs inside a target string (the <strong>haystack</strong>).</p>
 <p><strong>The baseline approach.</strong> Trying every starting offset in the haystack and comparing the needle character by character restarts from scratch on every mismatch. For a haystack of length <code>n</code> and needle of length <code>m</code>, worst-case complexity is O(n × m).</p>
 <p><strong>The linear-time approach.</strong> When a mismatch occurs after several matching characters, those matched characters are already known to equal a prefix of the needle. If a proper suffix of the matched portion also equals a prefix of the needle, matching can resume from that prefix length without backtracking in the haystack. The Knuth-Morris-Pratt (KMP) algorithm exploits this structure to achieve O(n + m) worst-case time.</p>
-<p>Figure 3.12 illustrates a KMP fallback jump.</p>
+<p>Figure 3.14 illustrates a KMP fallback jump.</p>
 <figure>
 <img src="figures/ch03-kmp.svg" alt="The needle aabaaac is tried at position 0 and matches six characters before a mismatch. It resumes at position 4, keeping the two matched characters aa.">
-<figcaption><b>Figure 3.12</b> After six matching characters and a mismatch, the last two matched characters, <code>"aa"</code>, are also the start of the needle. The search continues with them already matched, and finds the needle at position 4.</figcaption>
+<figcaption><b>Figure 3.14</b> After six matching characters and a mismatch, the last two matched characters, <code>"aa"</code>, are also the start of the needle. The search continues with them already matched, and finds the needle at position 4.</figcaption>
 </figure>
 <figure class="anim">
 <video class="motion" src="figures/ch03-kmp-search.mp4" autoplay="" loop="" muted="" playsinline="" preload="metadata" aria-label="The haystack aabaaabaaac above the needle aabaaac, with the lps table below. right walks the haystack and left counts matched needle characters. Six characters match, then a mismatch at haystack index 6. left falls back to lps[5] = 2 while right stays at 6, and the needle shifts so its first two characters stay matched. The needle then matches fully at position 4. Last, on a haystack that does not contain the needle, right reaches the end and the search returns -1." data-chapters="[[0.0, &quot;match&quot;], [36.7, &quot;fall back&quot;], [84.92, &quot;absent&quot;]]"><img src="figures/ch03-kmp-search.gif" alt="The haystack aabaaabaaac above the needle aabaaac, with the lps table below. right walks the haystack and left counts matched needle characters. Six characters match, then a mismatch at haystack index 6. left falls back to lps[5] = 2 while right stays at 6, and the needle shifts so its first two characters stay matched. The needle then matches fully at position 4. Last, on a haystack that does not contain the needle, right reaches the end and the search returns -1."></video>
@@ -3682,38 +3666,42 @@ str_str("hello", "") = 0
 </code></pre>
 <p>The <code>-1</code> sentinel follows the classic interview specification; idiomatic Rust APIs return <code>Option&lt;usize&gt;</code> instead. For production string searching, <code>str::find</code> in the standard library also runs in linear time (using the Two-Way algorithm).</p>
 <h3 id="3121-kmp-written-with-match"><a class="header" href="#3121-kmp-written-with-match">3.12.1 KMP written with <code>match</code></a></h3>
-<p>Listing 3.18 implements the same KMP algorithm in a shorter form. Each branch of the search becomes one arm of a <code>match</code>, and the function returns <code>Option&lt;usize&gt;</code> instead of the <code>-1</code> sentinel of <code>str_str</code>. The variable <code>i</code> is the position in the haystack, and <code>j</code> is the number of needle bytes matched so far.</p>
-<p><strong>Building the table.</strong> <code>build_lps</code> fills the same <code>lps</code> table as before. <code>j</code> walks the needle from index 1, and <code>len</code> is the length of the prefix that currently matches the end of <code>needle[0..j]</code>. The <code>match</code> looks at two values, whether <code>needle[j]</code> equals <code>needle[len]</code>, and whether <code>len</code> is 0:</p>
+<p>In an alternative formulation of the KMP search, each state transition is written as 1 arm of a <code>match</code> (Listing 3.18). The result is returned as <code>Option&lt;usize&gt;</code> instead of the <code>-1</code> sentinel of <code>str_str</code>. The variable <code>i</code> holds the haystack index, and <code>j</code> holds the number of needle bytes matched so far.</p>
+<p><strong>Construction of the failure table.</strong> The <code>lps</code> table is computed by <code>build_lps</code>. The needle is scanned with <code>j</code> from position 1. <code>len</code> holds the length of the longest proper prefix of <code>needle[0..j]</code> that is also a suffix of it. 3 cases are distinguished on the pair <code>(needle[j] == needle[len], len)</code>:</p>
 <ol>
-<li><code>(true, _)</code>: the matched prefix grows by one byte. <code>len</code> increases, <code>lps[j]</code> records it, and <code>j</code> moves on.</li>
-<li><code>(false, 0)</code>: no prefix matches, so <code>lps[j]</code> is 0, and <code>j</code> moves on.</li>
-<li><code>(false, _)</code>: the current prefix cannot be extended, so <code>len</code> falls back to <code>lps[len - 1]</code>, the next shorter prefix that also matches. <code>j</code> stays, and the comparison is repeated.</li>
+<li><code>(true, _)</code>: the prefix is extended by 1 byte. <code>len</code> is incremented and stored in <code>lps[j]</code>, and <code>j</code> is incremented.</li>
+<li><code>(false, 0)</code>: no prefix can be extended. <code>lps[j]</code> is set to 0, and <code>j</code> is incremented.</li>
+<li><code>(false, _)</code>: the current prefix cannot be extended. <code>len</code> is reduced to <code>lps[len - 1]</code>, the next shorter candidate prefix, and the comparison is repeated with <code>j</code> unchanged.</li>
 </ol>
-<p>For <code>"aabaaac"</code>, the table comes out as <code>0 1 0 1 2 2 0</code>, the same values as in the table above. At <code>j = 5</code>, for example, <code>len</code> is 2, and <code>needle[5]</code> (<code>a</code>) does not equal <code>needle[2]</code> (<code>b</code>). The third arm sets <code>len</code> to <code>lps[1]</code>, which is 1. Then <code>needle[5]</code> equals <code>needle[1]</code>, and the first arm sets <code>lps[5]</code> to 2.</p>
-<p><strong>Searching.</strong> <code>kmp_search</code> first returns <code>Some(0)</code> for an empty needle, because the empty string occurs at the start of every haystack. The loop then matches on three values: whether <code>haystack[i]</code> equals <code>needle[j]</code>, whether <code>j</code> is the needle’s last index, and <code>j</code> itself. The four arms are:</p>
+<p>For <code>"aabaaac"</code>, the resulting table is <code>0 1 0 1 2 2 0</code>, identical to the table in section 3.12. At <code>j = 5</code>, for example, <code>len = 2</code>, and <code>needle[5] = 'a'</code> differs from <code>needle[2] = 'b'</code>, so <code>len</code> is reduced to <code>lps[1] = 1</code>. The comparison <code>needle[5] == needle[1]</code> then holds, and <code>lps[5]</code> is set to 2.</p>
+<p><strong>The search.</strong> For an empty needle, <code>Some(0)</code> is returned, because the empty string occurs at index 0 of every haystack. Otherwise, the triple <code>(haystack[i] == needle[j], j + 1 == needle.len(), j)</code> is matched against 4 arms in each iteration (Figure 3.15):</p>
 <ol>
-<li><code>(true, true, _)</code>: the needle’s last byte matches at <code>i</code>. The match began <code>j</code> bytes earlier, so the function returns <code>Some(i - j)</code>.</li>
-<li><code>(true, false, _)</code>: the bytes match, but the needle is not finished, so both <code>i</code> and <code>j</code> advance.</li>
-<li><code>(false, _, 0)</code>: the bytes differ at the needle’s first byte. There is no shorter prefix to fall back to, so only <code>i</code> advances.</li>
-<li><code>(false, _, _)</code>: the bytes differ after <code>j</code> matched bytes. <code>j</code> falls back to <code>lps[j - 1]</code>, and <code>i</code> stays, so the same haystack byte is compared again.</li>
+<li><code>(true, true, _)</code>: the last needle byte matches at <code>i</code>. The match begins <code>j</code> bytes earlier, and <code>Some(i - j)</code> is returned.</li>
+<li><code>(true, false, _)</code>: the bytes match before the end of the needle, and <code>i</code> and <code>j</code> are both incremented.</li>
+<li><code>(false, _, 0)</code>: the bytes differ at the first needle byte. No shorter prefix exists, so only <code>i</code> is incremented.</li>
+<li><code>(false, _, _)</code>: the bytes differ after <code>j</code> matched bytes. <code>j</code> is reduced to <code>lps[j - 1]</code>, and <code>i</code> is left unchanged, so the same haystack byte is compared again.</li>
 </ol>
-<p>The first arm checks for the needle’s last byte before advancing. As a result, <code>j</code> never reaches <code>needle.len()</code>, and <code>needle[j]</code> is always a valid index.</p>
-<p>The trace below searches for <code>"aabaaac"</code> in <code>"aabaaabaaac"</code>, the example of Figure 3.12.</p>
+<figure>
+<img src="figures/ch03-kmp-match.svg" alt="Four boxes for the four arms. Arm 1, (true, true, _): last needle byte matches, return Some(i - j). Arm 2, (true, false, _): bytes match and the needle is not finished, i += 1 and j += 1. Arm 3, (false, _, 0): mismatch at the first needle byte, i += 1. Arm 4, (false, _, _): mismatch after j matched bytes, j = lps[j - 1] with i unchanged.">
+<figcaption><b>Figure 3.15</b> The 4 arms of the <code>match</code> in <code>kmp_search</code> and the update performed by each.</figcaption>
+</figure>
+<p>Arm 1 is tested before <code>j</code> is incremented, so <code>j</code> never reaches <code>needle.len()</code>, and the index <code>needle[j]</code> is always in bounds.</p>
+<p><strong>A trace.</strong> The search for <code>"aabaaac"</code> in <code>"aabaaabaaac"</code> proceeds through the states below, with the same fallback as in section 3.12 (Figure 3.14).</p>
 <div class="table-wrapper">
 <table>
 <thead>
-<tr><th><code>i</code></th><th><code>j</code></th><th><code>haystack[i]</code></th><th><code>needle[j]</code></th><th>Arm</th><th>Effect</th></tr>
+<tr><th><code>i</code></th><th><code>j</code></th><th><code>haystack[i]</code></th><th><code>needle[j]</code></th><th>Arm</th><th>Update</th></tr>
 </thead>
 <tbody>
-<tr><td>0 to 5</td><td>0 to 5</td><td><code>a a b a a a</code></td><td><code>a a b a a a</code></td><td>2</td><td>six bytes match, <code>i</code> and <code>j</code> advance together</td></tr>
-<tr><td>6</td><td>6</td><td><code>b</code></td><td><code>c</code></td><td>4</td><td><code>j</code> falls back to <code>lps[5]</code> = 2</td></tr>
-<tr><td>6 to 9</td><td>2 to 5</td><td><code>b a a a</code></td><td><code>b a a a</code></td><td>2</td><td>four bytes match</td></tr>
-<tr><td>10</td><td>6</td><td><code>c</code></td><td><code>c</code></td><td>1</td><td>returns <code>Some(10 - 6)</code> = <code>Some(4)</code></td></tr>
+<tr><td>0 to 5</td><td>0 to 5</td><td><code>a a b a a a</code></td><td><code>a a b a a a</code></td><td>2</td><td>6 bytes match; <code>i</code> and <code>j</code> are incremented together</td></tr>
+<tr><td>6</td><td>6</td><td><code>b</code></td><td><code>c</code></td><td>4</td><td><code>j</code> is reduced to <code>lps[5]</code> = 2</td></tr>
+<tr><td>6 to 9</td><td>2 to 5</td><td><code>b a a a</code></td><td><code>b a a a</code></td><td>2</td><td>4 bytes match</td></tr>
+<tr><td>10</td><td>6</td><td><code>c</code></td><td><code>c</code></td><td>1</td><td><code>Some(10 - 6)</code> = <code>Some(4)</code> is returned</td></tr>
 </tbody>
 </table>
 </div>
-<p>At <code>i = 6</code>, the search keeps the two bytes <code>"aa"</code> that it has already matched, as Figure 3.12 shows. It never moves <code>i</code> backward.</p>
-<p class="listing"><b>Listing 3.18</b> KMP with each branch as one arm of a <code>match</code>. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/bin/kmp_search.rs">src/bin/kmp_search.rs</a></p>
+<p>At <code>i = 6</code>, the 2 matched bytes <code>"aa"</code> are retained. Because <code>i</code> is never decremented, each haystack byte is compared a bounded number of times.</p>
+<p class="listing"><b>Listing 3.18</b> KMP with each transition as 1 arm of a <code>match</code>. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/bin/kmp_search.rs">src/bin/kmp_search.rs</a></p>
 
 <pre><code class="language-rust">fn build_lps(needle: &amp;[u8]) -&gt; Vec&lt;usize&gt; {
     let mut lps = vec![0usize; needle.len()];
@@ -3772,7 +3760,7 @@ fn main() {
 <pre><code class="language-text">$ cargo run --bin kmp_search
 Some(4)
 </code></pre>
-<p>Both versions run in O(n + m) time and use O(m) extra space for the table. Here, <code>n</code> is the haystack length and <code>m</code> is the needle length.</p>
+<p><strong>Complexity.</strong> The running time of both formulations is O(n + m). The table requires O(m) auxiliary space, where <code>n</code> is the haystack length and <code>m</code> is the needle length.</p>
 <h2 id="313-the-complete-files"><a class="header" href="#313-the-complete-files">3.13 The complete files</a></h2>
 <p>Listing 3.19 reproduces <code>merge_intervals.rs</code> in full, combining the excerpts from Section 3.9.</p>
 <p class="listing"><b>Listing 3.19</b> Merging overlapping intervals, with its tests. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/problems/merge_intervals.rs">src/problems/merge_intervals.rs</a></p>
@@ -20487,60 +20475,59 @@ test problems::ring_buffer::tests::producer_and_consumer_run_concurrently_in_ord
 test result: ok. 4 passed; 0 failed; 0 ignored; 0 measured; 133 filtered out
 </code></pre>
 <h2 id="178-a-lock-free-queue-for-many-producers-and-consumers"><a class="header" href="#178-a-lock-free-queue-for-many-producers-and-consumers">17.8 A lock-free queue for many producers and consumers</a></h2>
-<p>The SPSC ring of Section 17.7 owes its simplicity to one structural guarantee, namely that each of its counters has exactly one writer. The producer alone advances <code>tail</code> and the consumer alone advances <code>head</code>. Neither thread ever has to arbitrate with a peer of its own kind. Admitting a second producer removes that guarantee. Both producers may then read the same value of <code>tail</code>, write their items into the same slot, and publish the same incremented counter. One item silently replaces the other, as the left half of Figure 17.7 shows.</p>
-<p>We now develop a bounded queue that tolerates any number of producers and consumers, while still avoiding a mutex. This configuration is conventionally abbreviated <strong>MPMC</strong>. The design is due to Dmitry Vyukov, who described it on his site 1024cores.net. It also underlies the <code>ArrayQueue</code> type of the crossbeam library. Its correctness rests on two ideas, which the following subsections introduce in turn. Positions are reserved with an atomic compare-and-swap, and every slot carries a sequence number that records whose turn it is.</p>
-<h3 id="1781-reserving-a-position-with-compare-and-swap"><a class="header" href="#1781-reserving-a-position-with-compare-and-swap">17.8.1 Reserving a position with compare-and-swap</a></h3>
-<p>A <strong>compare-and-swap</strong> (CAS) is a single atomic instruction that replaces a value in memory only if that value still equals an expected one. Rust exposes it as <code>compare_exchange(expected, new)</code>. The call returns <code>Ok(expected)</code> when the replacement took place, and <code>Err(actual)</code> when another thread had already changed the location. Because the comparison and the replacement form one indivisible step, no other thread can act between them.</p>
-<p>Applied to the queue, a CAS turns the advance of <code>tail</code> into an act of ownership. A producer that has read <code>tail = 2</code> attempts <code>compare_exchange(2, 3)</code>, and a successful attempt makes position 2 its own and no one else’s. A competing producer that also read 2 finds its own attempt rejected. The value returned in the error tells it that <code>tail</code> is now 3, so it repeats the attempt for position 3.</p>
+<p>Correctness in an SPSC ring buffer depends on a single-writer invariant: at most 1 producer modifies <code>tail</code>, and at most 1 consumer modifies <code>head</code>. When 2 producers share a single <code>tail</code> index without coordination, both threads can load the same index, write to the same slot, and store <code>tail + 1</code>. The second producer overwrites the first element, causing silent data loss (Figure 17.7, left).</p>
+<p>To support multiple producers and multiple consumers (<strong>MPMC</strong>), threads must coordinate access to shared indices atomically. In Dmitry Vyukov’s bounded MPMC queue (the design used in <code>crossbeam::queue::ArrayQueue</code>), lock-free synchronization is achieved through 2 mechanisms: atomic compare-and-swap (CAS) operations for slot reservation, and per-slot sequence numbers for publication.</p>
+<h3 id="1781-slot-reservation-with-compare-and-swap"><a class="header" href="#1781-slot-reservation-with-compare-and-swap">17.8.1 Slot reservation with compare-and-swap</a></h3>
+<p>With a CAS operation, the CPU atomically compares a memory location against an expected value and replaces it with a new value if they match. In Rust, the operation is exposed as <code>compare_exchange(expected, new)</code>: <code>Ok(expected)</code> is returned on success, and <code>Err(observed)</code> is returned on failure. When 2 producers load <code>tail = 2</code> and execute <code>compare_exchange(2, 3)</code>, the hardware guarantees that only 1 thread succeeds. The failing thread receives <code>Err(3)</code> and retries at index 3, establishing unique slot ownership (Figure 17.7, right).</p>
 <figure>
 <img src="figures/mpmc-cas.svg" alt="Two panels. Left, a plain store: producers A and B both load tail 2, both write into slot 2, and both store tail 3, so the value 10 is lost and tail is 3 after two pushes. Right, compare_exchange: A&#39;s CAS from 2 to 3 succeeds, B&#39;s fails and sees 3, A writes 10 into slot 2, B&#39;s CAS from 3 to 4 succeeds, and B writes 20 into slot 3.">
-<figcaption><b>Figure 17.7</b> Two producers that both read <code>tail = 2</code>. With a plain store, the second write replaces the first value. With compare-and-swap, the producer that loses the race moves on to position 3.</figcaption>
+<figcaption><b>Figure 17.7</b> 2 producers after loading <code>tail = 2</code>. With plain stores, 1 element is lost. With CAS, the failing producer retries at index 3.</figcaption>
 </figure>
-<p>The right half of Figure 17.7 traces this outcome, in which both items survive in separate slots and <code>tail</code> ends at 4. A failed CAS never leaves the losing thread waiting for the winner. It always means that another thread has advanced the counter, and the loser retries at once with the newer value.</p>
-<h3 id="1782-a-sequence-number-in-every-slot"><a class="header" href="#1782-a-sequence-number-in-every-slot">17.8.2 A sequence number in every slot</a></h3>
-<p>Reserving a position is necessary, but it is not sufficient. In the SPSC ring, a consumer could infer from <code>tail</code> that a slot was full. Its producer published <code>tail</code> only after writing that slot. In the MPMC queue, by contrast, <code>tail</code> advances at the moment of reservation, before any value has been written. A consumer that trusted <code>tail</code> could therefore read a slot whose producer is still in the middle of its write. The counter records which positions have been claimed, but not which of them have been completed.</p>
-<p>Vyukov’s design attaches the missing information to the slot itself. Each slot holds a <strong>sequence number</strong>, <code>seq</code>, which names the operation that the slot is waiting for. For the slot that serves position <code>p</code>, three values are meaningful.</p>
+<p>When a CAS fails, another thread has already advanced the index. The failing thread therefore never blocks on the winning thread and retries immediately with the observed value.</p>
+<h3 id="1782-per-slot-sequence-numbers"><a class="header" href="#1782-per-slot-sequence-numbers">17.8.2 Per-slot sequence numbers</a></h3>
+<p>Index reservation alone is insufficient for safe consumption. In an SPSC ring, a producer increments <code>tail</code> only after writing the payload, so consumers can safely read any slot below <code>tail</code>. In an MPMC queue, a producer increments <code>tail</code> before writing the payload. Consumers therefore cannot determine slot readiness from <code>tail</code> alone and must inspect a per-slot sequence number to verify that the write is complete.</p>
+<p>A sequence number, <code>seq</code>, is stored in every slot to encode the next operation permitted on that slot. For the slot that serves position <code>p</code>, 3 values of <code>seq</code> are defined.</p>
 <div class="table-wrapper">
 <table>
 <thead>
-<tr><th><code>seq</code></th><th>State of the slot</th></tr>
+<tr><th><code>seq</code></th><th>Slot state</th></tr>
 </thead>
 <tbody>
-<tr><td><code>p</code></td><td>Empty, waiting for the producer of position <code>p</code></td></tr>
-<tr><td><code>p + 1</code></td><td>Full, waiting for the consumer of position <code>p</code></td></tr>
-<tr><td><code>p + capacity</code></td><td>Empty again, waiting for the producer of the same slot one lap later</td></tr>
+<tr><td><code>p</code></td><td>Empty; reserved for the producer of position <code>p</code></td></tr>
+<tr><td><code>p + 1</code></td><td>Full; reserved for the consumer of position <code>p</code></td></tr>
+<tr><td><code>p + capacity</code></td><td>Empty; reserved for the producer of position <code>p + capacity</code>, 1 lap later</td></tr>
 </tbody>
 </table>
 </div>
-<p>Figure 17.8 follows slot 0 of a queue with capacity 4 through two laps. Its sequence number starts at 0, becomes 1 once the first value has been written, and becomes 4 once that value has been consumed. The producer of position 4 then raises it to 5. Because <code>seq</code> only ever increases, a thread cannot mistake a state left over from an earlier lap for the current one.</p>
+<p>Slot <code>k</code> is initialized with <code>seq = k</code>, so every slot is reserved for its first-lap producer at construction. In a queue with capacity 4, slot 0 holds the <code>seq</code> values 0, 1, 4 and 5 across 2 laps (Figure 17.8). Because <code>seq</code> is monotonically increasing, a stale value from an earlier lap cannot be mistaken for the current state.</p>
 <figure>
 <img src="figures/mpmc-slot-cycle.svg" alt="Four boxes in a row for slot 0 of a queue with capacity 4: seq 0, empty, waiting for the producer of position 0; seq 1, full, waiting for the consumer of position 0; seq 4, empty, waiting for the producer of position 4; seq 5, full, waiting for the consumer of position 4. The arrows between them read: push writes, then stores seq = 0 + 1; pop reads, then stores seq = 0 + 4; push writes, then stores seq = 4 + 1.">
-<figcaption><b>Figure 17.8</b> The life of slot 0. Every push and every pop moves the sequence number forward, and the number always names the one thread that may use the slot next.</figcaption>
+<figcaption><b>Figure 17.8</b> The sequence number of slot 0 across 2 laps, with capacity 4.</figcaption>
 </figure>
-<p>What a thread may do depends on how the slot’s <code>seq</code> compares with the thread’s own position. A producer at position <code>tail</code> distinguishes three cases:</p>
+<p>A producer at position <code>tail</code> loads <code>seq</code> from the corresponding slot and compares the 2 values:</p>
 <ul>
-<li><strong><code>seq == tail</code>.</strong> The slot is empty and waiting for precisely this position, so the producer may attempt its CAS.</li>
-<li><strong><code>seq &lt; tail</code>.</strong> The slot still holds an item from the previous lap that no consumer has removed yet, so the queue is full.</li>
-<li><strong><code>seq &gt; tail</code>.</strong> Another producer has already filled this position. The producer’s view of <code>tail</code> is out of date and must be reloaded.</li>
+<li>If <code>seq == tail</code>, the slot is empty and reserved for this position, and the producer attempts the CAS.</li>
+<li>If <code>seq &lt; tail</code>, the slot still holds an element from the previous lap that no consumer has removed, and the producer reports that the queue is full.</li>
+<li>If <code>seq &gt; tail</code>, another producer has already claimed this position, and the producer reloads <code>tail</code> and retries.</li>
 </ul>
-<p>A consumer applies the same reasoning with an offset of one, since a full slot for position <code>head</code> carries <code>seq = head + 1</code>. A smaller value indicates that the producer of this position has not finished, which the consumer reports as an empty queue. A larger value indicates that another consumer has already taken the position.</p>
+<p>Consumers apply the same comparison with an offset of 1, because a full slot for position <code>head</code> holds <code>seq = head + 1</code>. If <code>seq &lt; head + 1</code>, the producer of that position has not completed its write, and the consumer reports an empty queue. If <code>seq &gt; head + 1</code>, another consumer has already claimed the position, and the consumer reloads <code>head</code>.</p>
 <div class="callout note" markdown="1">
-<p><strong>An analogy: lockers at a parcel depot.</strong> Consider a depot with four lockers, a ticket dispenser for couriers, and another for customers. A courier who draws ticket 6 delivers to locker 6 % 4 = 2. A customer who draws pickup ticket 6 collects from that same locker. Above each locker, a small display states the next ticket that the locker will serve. Locker 2 first shows “deliver 6”, and only the courier holding ticket 6 may open it. After the delivery, that courier changes the display to “collect 6”. Next, the customer with pickup ticket 6 removes that parcel and sets the display to “deliver 10”, for a courier one lap later.</p>
-<p>The dispensers correspond to the CAS operations on <code>tail</code> and <code>head</code>. A ticket is a position, and a display is a slot’s <code>seq</code>. The analogy breaks down at one point. A courier who finds an older ticket on the display does not wait at the locker, but reports the depot as full and leaves.</p>
+<p><strong>Analogy: lockers at a parcel depot.</strong> A depot with 4 lockers and 2 ticket dispensers, 1 for couriers and 1 for customers, operates under the same protocol. A courier holding delivery ticket 2 delivers to locker 2 % 4 = 2, and a customer holding pickup ticket 2 collects from the same locker. A display above each locker shows the only ticket currently accepted. Initially, “deliver 2” is shown on locker 2, so only the courier holding ticket 2 may open it. After delivering, the courier sets the display to “collect 2”. After collecting, the customer sets it to “deliver 6”, the ticket of the next lap.</p>
+<p>The dispensers correspond to the CAS operations on <code>tail</code> and <code>head</code>, the tickets to positions, and the displays to <code>seq</code>. The correspondence is inexact in 1 respect. A courier who finds an older ticket on the display reports the depot as full instead of waiting at the locker.</p>
 </div>
 
-<h3 id="1783-tracing-four-operations"><a class="header" href="#1783-tracing-four-operations">17.8.3 Tracing four operations</a></h3>
-<p>Figure 17.9 traces a queue with capacity 4 through two pushes and one pop. Initially, slot <code>k</code> holds <code>seq = k</code>, so every slot is waiting for its producer in the first lap. The push of A reserves position 0 and leaves slot 0 with <code>seq = 1</code>, the full state for that position. The push of B does the same for position 1 in slot 1.</p>
+<h3 id="1783-a-trace-with-capacity-4"><a class="header" href="#1783-a-trace-with-capacity-4">17.8.3 A trace with capacity 4</a></h3>
+<p>In a queue with capacity 4, slot <code>k</code> is initialized with <code>seq = k</code> (Figure 17.9, row 1). The producer of element A reserves position 0, writes A into slot 0, and stores <code>seq = 1</code>, marking the slot full for the consumer of position 0. The producer of element B performs the same sequence at position 1 and stores <code>seq = 2</code> in slot 1 (Figure 17.9, rows 2 and 3).</p>
 <figure>
 <img src="figures/mpmc-trace.svg" alt="Four rows of four slots. Start: tail 0, head 0, seq 0 1 2 3, all empty. Push A: tail 1, seq 1 1 2 3, slot 0 holds A. Push B: tail 2, seq 1 2 2 3, slots 0 and 1 hold A and B. Pop A: tail 2, head 1, seq 4 2 2 3, slot 1 holds B.">
-<figcaption><b>Figure 17.9</b> Two pushes and a pop. A push at position <code>p</code> leaves <code>seq = p + 1</code>, and a pop at position <code>p</code> leaves <code>seq = p + 4</code>.</figcaption>
+<figcaption><b>Figure 17.9</b> Counters and sequence numbers after 2 pushes and 1 pop.</figcaption>
 </figure>
-<p>The pop of A then reserves position 0 on the consumer side, removes the value, and writes <code>seq = 0 + 4</code>. Slot 0 thereby becomes available to position 4, the first position of the second lap. Position 4 maps back to slot 0, because 4 % 4 = 0. Slot 2, meanwhile, still holds <code>seq = 2</code>, so the next push, at position 2, will find it empty.</p>
-<h3 id="1784-constraints-on-the-capacity"><a class="header" href="#1784-constraints-on-the-capacity">17.8.4 Constraints on the capacity</a></h3>
-<p>The capacity must be at least 2. With a single slot, the full state of position 0 and the empty state of position 1 coincide. After the push at position 0, the slot holds <code>seq = 1</code>, meaning that it is full and waiting for the consumer of position 0. Position 1, however, maps to the same slot. Its producer observes <code>seq == 1 == tail</code>, concludes that the slot is empty, and overwrites a value that no consumer has read. For any capacity of two or more, the full value <code>p + 1</code> differs from the next empty value <code>p + capacity</code>, and the ambiguity disappears.</p>
-<p>The capacity must also be a power of two, although this requirement concerns efficiency rather than correctness. For a power-of-two capacity, <code>p % capacity</code> equals <code>p &amp; (capacity - 1)</code>. Every operation can then locate its slot with a single AND instruction instead of an integer division. The constructor <code>new</code> enforces both requirements with one <code>assert!</code>.</p>
+<p>A consumer then reserves position 0, reads A, and stores <code>seq = 0 + 4 = 4</code> in slot 0 (Figure 17.9, row 4). Slot 0 is thereby reserved for position 4, the first position of lap 2, since 4 % 4 = 0. Slot 2 still holds <code>seq = 2</code>, so the next producer, at position 2, finds the slot empty.</p>
+<h3 id="1784-capacity-constraints"><a class="header" href="#1784-capacity-constraints">17.8.4 Capacity constraints</a></h3>
+<p>The capacity must be at least 2. With 1 slot, the full state of position 0 and the empty state of position 1 are encoded by the same value. After a producer writes position 0, the slot holds <code>seq = 1</code>. Position 1 maps to the same slot, so the producer of position 1 observes <code>seq == tail == 1</code>, treats the slot as empty, and overwrites an element that no consumer has read. For any capacity of 2 or more, <code>p + 1</code> and <code>p + capacity</code> differ, and the 2 states remain distinct.</p>
+<p>The capacity must also be a power of 2. Under that constraint, <code>p % capacity</code> equals <code>p &amp; (capacity - 1)</code>, so the CPU computes the slot index with 1 bitwise AND instead of an integer division. Both constraints are enforced in <code>new</code> with <code>assert!</code>.</p>
 <h3 id="1785-the-type"><a class="header" href="#1785-the-type">17.8.5 The type</a></h3>
-<p>Listing 17.17 declares the slot, the queue, and its constructor.</p>
+<p>The slot type, the queue type, and the constructor are defined in Listing 17.17.</p>
 <p class="listing"><b>Listing 17.17</b> The slot, the queue, and <code>new</code> (lines 11 to 51). <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/bin/lock_free_queue.rs">src/bin/lock_free_queue.rs</a></p>
 
 <pre><code class="language-rust">struct Slot&lt;T&gt; {
@@ -20587,13 +20574,12 @@ impl&lt;T&gt; LockFreeQueue&lt;T&gt; {
 
     // ...
 }</code></pre>
-<p>A <code>Slot&lt;T&gt;</code> pairs the sequence number with storage for one value, and that storage has the same type as in the SPSC ring, <code>UnsafeCell&lt;MaybeUninit&lt;T&gt;&gt;</code>. <code>MaybeUninit</code> is required because an empty slot contains no valid <code>T</code>, and Rust does not allow a value of type <code>T</code> to exist uninitialized. <code>UnsafeCell</code> is required because threads write into slots through the shared reference <code>&amp;self</code>. <code>UnsafeCell</code> is the only construct through which Rust permits mutation behind a shared reference.</p>
-<p>The queue itself keeps its slots in a <code>Box&lt;[Slot&lt;T&gt;]&gt;</code>, a heap-allocated array whose length is fixed when the queue is created. The field <code>mask</code> stores <code>capacity - 1</code>, which converts a position into a slot index through <code>position &amp; mask</code>. The fields <code>head</code> and <code>tail</code> are the two counters, and like those of the SPSC ring, they grow without bound.</p>
-<p>The two <code>unsafe impl</code> declarations assert that the queue may be shared between threads and moved between them. The compiler cannot reach this conclusion unaided. The standard library marks <code>UnsafeCell</code> as not <code>Sync</code>. A cell that permits mutation through <code>&amp;self</code> could otherwise receive writes from two threads at once. The queue prevents that situation by its protocol, since the CAS gives every position to a single thread. The protocol lies outside the type system, however, so the code must state it as an explicit promise.</p>
-<p>Each <code>// SAFETY:</code> comment records the argument behind its promise, so that a reviewer can check the argument against the code. The bound <code>T: Send</code> appears on both declarations, because a value pushed on one thread is popped on another.</p>
-<p>The constructor checks the capacity and builds the slot array with <code>map</code> and <code>collect</code>. Slot <code>i</code> begins with <code>seq = i</code>, and both counters begin at 0.</p>
+<p>Each <code>Slot&lt;T&gt;</code> consists of a sequence number and storage of type <code>UnsafeCell&lt;MaybeUninit&lt;T&gt;&gt;</code>, as in the SPSC ring. <code>MaybeUninit</code> is required because an empty slot contains no valid <code>T</code>, and Rust does not permit an uninitialized value of type <code>T</code>. <code>UnsafeCell</code> is required because producers and consumers write to slots through the shared reference <code>&amp;self</code>. <code>UnsafeCell</code> is the only primitive through which Rust permits mutation behind a shared reference.</p>
+<p>The slots are stored in a <code>Box&lt;[Slot&lt;T&gt;]&gt;</code>, a heap-allocated array whose length is fixed at construction. The field <code>mask</code> holds <code>capacity - 1</code> and is used to map a position to a slot index through <code>position &amp; mask</code>. The fields <code>head</code> and <code>tail</code> are monotonically increasing position counters, as in the SPSC ring.</p>
+<p>The 2 <code>unsafe impl</code> declarations assert that the queue is safe to share between threads (<code>Sync</code>) and to move between threads (<code>Send</code>). The compiler cannot derive <code>Sync</code> automatically, because <code>UnsafeCell</code> is marked <code>!Sync</code> in the standard library. Unsynchronized mutation through <code>&amp;self</code> would otherwise permit data races. In this queue, data races on a slot are excluded by the reservation protocol, since a successful CAS grants exclusive ownership of 1 position to 1 thread.</p>
+<p>That argument lies outside the type system and is therefore recorded in the <code>// SAFETY:</code> comment above each declaration. The bound <code>T: Send</code> is required because an element pushed by 1 thread is popped by another. In <code>new</code>, the capacity is validated, slot <code>i</code> is initialized with <code>seq = i</code>, and both counters are set to 0.</p>
 <h3 id="1786-push"><a class="header" href="#1786-push">17.8.6 Push</a></h3>
-<p>Listing 17.18 shows <code>push</code>, which proceeds in two phases.</p>
+<p>The producer path is implemented in <code>push</code> (Listing 17.18).</p>
 <p class="listing"><b>Listing 17.18</b> <code>push</code> (lines 53 to 83).</p>
 
 <pre><code class="language-rust">impl&lt;T&gt; LockFreeQueue&lt;T&gt; {
@@ -20630,16 +20616,16 @@ impl&lt;T&gt; LockFreeQueue&lt;T&gt; {
         Ok(())
     }
 }</code></pre>
-<p>The first phase, the <code>loop</code>, reserves a position. It begins from the current value of <code>tail</code> and reads the sequence number of the corresponding slot. The two guard clauses then dispose of the cases in which the producer cannot proceed:</p>
+<p>A producer executes <code>push</code> in 2 phases, reservation and publication. During reservation, the producer loads <code>tail</code>, loads <code>seq</code> from the corresponding slot with <code>Acquire</code>, and evaluates 2 guard clauses:</p>
 <ul>
-<li>When <code>seq &lt; tail</code>, the queue is full. <code>push</code> returns <code>Err(value)</code>, which hands the value back to the caller, so that it is neither lost nor dropped.</li>
-<li>When <code>seq &gt; tail</code>, another producer has already taken this position. <code>push</code> reloads <code>tail</code> and repeats the loop with the fresh value.</li>
+<li>If <code>seq &lt; tail</code>, the queue is full. The producer returns <code>Err(value)</code>, so ownership of the element is transferred back to the caller.</li>
+<li>If <code>seq &gt; tail</code>, another producer has claimed the position. The producer reloads <code>tail</code> and restarts the loop.</li>
 </ul>
-<p>Only when neither guard applies is the slot known to be empty, and <code>push</code> attempts to advance <code>tail</code> by one. A successful CAS ends the loop with the position reserved. A failed CAS returns the value that the competing producer installed, and the loop resumes from that position.</p>
-<p>The CAS used here is <code>compare_exchange_weak</code>, a variant that may fail even when the counter holds the expected value. Some processors, among them older ARM cores, implement a CAS as a pair of instructions that can fail for reasons unrelated to the data. The strong variant hides such failures by retrying internally, whereas the weak variant reports them. Inside a loop that retries anyway, the weak variant saves that inner loop.</p>
-<p>The second phase writes the value into the reserved slot and then stores <code>seq = tail + 1</code>. That store marks the slot full for this position’s consumer. Between the successful CAS and that store, the slot belongs to this producer alone. The <code>// SAFETY:</code> comment above the write states why. The CAS excluded every other producer, and the equality <code>seq == tail</code> showed that no consumer was still reading the slot.</p>
+<p>If neither guard applies, the slot is empty, and the producer attempts <code>compare_exchange_weak(tail, tail + 1)</code>. On success, the producer owns the position and exits the loop. On failure, the producer continues with the observed value of <code>tail</code>.</p>
+<p><code>compare_exchange_weak</code> is permitted to fail spuriously, that is, even when the current value equals the expected value. On architectures that implement CAS with load-linked/store-conditional instruction pairs, such as ARMv7 and ARMv8.0, the store-conditional instruction can fail because of an interrupt or a cache-line eviction. With the strong variant, such failures are hidden by an internal retry loop; with the weak variant, they are reported to the caller. Because <code>push</code> already retries in a loop, the weak variant avoids a redundant nested loop.</p>
+<p>During publication, the producer writes the element into the reserved slot and stores <code>seq = tail + 1</code> with <code>Release</code>, marking the slot full for the consumer of the same position. Between the successful CAS and that store, no other thread accesses the slot. Other producers are excluded by the CAS, and the equality <code>seq == tail</code> establishes that no consumer is still reading the previous element. The <code>// SAFETY:</code> comment above the write records this argument.</p>
 <h3 id="1787-pop"><a class="header" href="#1787-pop">17.8.7 Pop</a></h3>
-<p>Listing 17.19 shows <code>pop</code>, which mirrors <code>push</code> with the roles of the counters exchanged.</p>
+<p>The consumer path is implemented in <code>pop</code> (Listing 17.19), with <code>head</code> in place of <code>tail</code>.</p>
 <p class="listing"><b>Listing 17.19</b> <code>pop</code> (lines 85 to 115).</p>
 
 <pre><code class="language-rust">impl&lt;T&gt; LockFreeQueue&lt;T&gt; {
@@ -20676,28 +20662,28 @@ impl&lt;T&gt; LockFreeQueue&lt;T&gt; {
         Some(value)
     }
 }</code></pre>
-<p>The reservation loop operates on <code>head</code> and expects <code>seq == head + 1</code>, the full state of the position. A smaller sequence number means that the producer of this position has not finished, and <code>pop</code> returns <code>None</code>. A larger one means that another consumer has already taken the position, and <code>pop</code> reloads <code>head</code>.</p>
-<p>Once its CAS succeeds, <code>pop</code> moves the value out of the slot with <code>assume_init_read</code>. That call is sound only if the slot really holds an initialized value. The <code>// SAFETY:</code> comment justifies that condition from the observed sequence number. The final store sets <code>seq = head + capacity</code>, written as <code>head + self.mask + 1</code>, and so hands the empty slot to the producer of the next lap.</p>
+<p>During reservation, the consumer expects <code>seq == head + 1</code>. If <code>seq &lt; head + 1</code>, the producer of that position has not completed its write, and the consumer returns <code>None</code>. If <code>seq &gt; head + 1</code>, another consumer has claimed the position, and the consumer reloads <code>head</code>.</p>
+<p>After a successful CAS, the consumer moves the element out of the slot with <code>assume_init_read</code>. That call is sound only if the slot contains an initialized value, and the <code>// SAFETY:</code> comment derives this condition from the observed sequence number. The consumer then stores <code>seq = head + capacity</code>, written as <code>head + self.mask + 1</code>, with <code>Release</code>. The slot is thereby reserved for the producer 1 lap later.</p>
 <h3 id="1788-memory-ordering"><a class="header" href="#1788-memory-ordering">17.8.8 Memory ordering</a></h3>
-<p>The two kinds of atomic operation in the queue serve different purposes, and their orderings differ accordingly. A CAS on <code>head</code> or <code>tail</code> decides only which thread owns a position. It publishes no data, so <code>Relaxed</code> ordering suffices. The value itself is published through the slot’s sequence number, using the Release and Acquire pairing introduced in Section 16.4.</p>
+<p>The CAS operations on <code>head</code> and <code>tail</code> use <code>Relaxed</code> ordering. Through a CAS, a thread establishes ownership of a position but publishes no data. No ordering with respect to other memory operations is therefore required.</p>
+<p>Element data is published through <code>seq</code> with the Release-Acquire pattern from section 16.4. The producer of position 5 writes the element and then stores <code>seq = 6</code> with <code>Release</code>. The consumer of position 5 loads <code>seq</code> with <code>Acquire</code>. Once the consumer observes 6, every write that the producer performed before the store is visible to the consumer (Figure 17.10). The consumer therefore cannot read the element before the producer has written it.</p>
 <figure>
 <img src="figures/mpmc-handoff.svg" alt="Two panels. The producer of position 5 writes the value into the slot, then stores seq 6 with Release. The consumer of position 5 loads seq with Acquire and sees 6, then reads the value from the slot. A dashed arrow labeled synchronizes with runs from the Release store to the Acquire load.">
-<figcaption><b>Figure 17.10</b> The handoff of one value. Because the consumer's Acquire load observes the producer's Release store, the consumer also observes the value written before that store.</figcaption>
+<figcaption><b>Figure 17.10</b> Publication of 1 element through a Release store and an Acquire load of <code>seq</code>.</figcaption>
 </figure>
-<p>Figure 17.10 depicts the handoff for position 5. The producer writes the value and then stores <code>seq = 6</code> with <code>Release</code>. The consumer loads <code>seq</code> with <code>Acquire</code>, and observing 6 guarantees that every write the producer made before its store is visible as well. The value therefore cannot be read before it has been written.</p>
-<p>The same pairing protects the slot in the opposite direction. The consumer’s final store of <code>seq</code> uses <code>Release</code>, and the producer of the next lap loads <code>seq</code> with <code>Acquire</code>. The consumer’s read of the old value is thereby complete before the producer overwrites the slot.</p>
+<p>The same pattern orders slot reuse. The consumer stores <code>seq = head + capacity</code> with <code>Release</code> after reading the element, and the producer of the next lap loads <code>seq</code> with <code>Acquire</code> before writing. The consumer’s read therefore completes before the producer overwrites the slot.</p>
 <h3 id="1789-dropping-the-queue"><a class="header" href="#1789-dropping-the-queue">17.8.9 Dropping the queue</a></h3>
-<p>Because <code>MaybeUninit&lt;T&gt;</code> never runs a destructor, values still in the queue would leak when the queue itself is dropped. The <code>Drop</code> implementation prevents the leak with a single statement, <code>while self.pop().is_some() {}</code>, which removes every remaining value and lets each one drop normally. Since <code>drop</code> receives <code>&amp;mut self</code>, no other thread can be using the queue at that moment.</p>
-<h3 id="17810-the-progress-guarantee"><a class="header" href="#17810-the-progress-guarantee">17.8.10 The progress guarantee</a></h3>
-<p>Although the queue contains no lock, it does not satisfy the formal definition of a lock-free data structure. That definition requires the system as a whole to make progress even when any one thread is suspended indefinitely. Suppose, then, that the operating system suspends a producer after its successful CAS but before its store of <code>seq</code>.</p>
-<p>The slot of that position remains in the empty state. Consumers that reach it report an empty queue, even when later slots are full. No other thread can complete the suspended producer’s write on its behalf. Consumers therefore make no progress past that slot until the producer is scheduled again. Vyukov points out this property in his description of the design. In practice, the delay lasts no longer than one scheduling interval of the suspended thread.</p>
-<h3 id="17811-testing-with-four-threads"><a class="header" href="#17811-testing-with-four-threads">17.8.11 Testing with four threads</a></h3>
-<p>The <code>main</code> function exercises the queue with two producers and two consumers inside a <code>thread::scope</code>. Each producer pushes the values 1 to 1000, calling <code>thread::yield_now</code> whenever the queue is full. Each consumer pops 1000 values, yields whenever the queue is empty, and adds every value to a shared <code>AtomicU64</code>.</p>
-<p>The sum of 1 to 1000 is 1000 × 1001 / 2 = 500,500. Together, the two producers therefore push values that add up to 1,001,000. A value lost to a race, or popped twice, would change this total.</p>
+<p>No destructor is run for the contents of a <code>MaybeUninit&lt;T&gt;</code>, so elements that remain in the queue when it is dropped would otherwise leak. In the <code>Drop</code> implementation, the queue is drained with <code>while self.pop().is_some() {}</code>, and each popped element is dropped normally. Because <code>drop</code> receives <code>&amp;mut self</code>, no other thread can access the queue concurrently.</p>
+<h3 id="17810-progress-guarantee"><a class="header" href="#17810-progress-guarantee">17.8.10 Progress guarantee</a></h3>
+<p>Although no lock is used, the queue does not satisfy the formal definition of lock-freedom. Under that definition, the system as a whole must make progress even if any single thread is suspended indefinitely. Suppose the operating system suspends a producer after its successful CAS and before its store to <code>seq</code>.</p>
+<p>The slot then remains in the empty state for that position. Consumers that reach the slot report an empty queue even when later slots are full, and no other thread can complete the suspended write. Consumers therefore make no progress past that slot until the scheduler runs the suspended producer again. Vyukov notes this property in his description of the design.</p>
+<h3 id="17811-testing-with-4-threads"><a class="header" href="#17811-testing-with-4-threads">17.8.11 Testing with 4 threads</a></h3>
+<p>In <code>main</code>, 2 producer threads and 2 consumer threads are started inside a <code>thread::scope</code>. Each producer pushes the values 1 to 1000 and calls <code>thread::yield_now</code> while the queue is full. Each consumer pops 1000 values, yields while the queue is empty, and adds each value to a shared <code>AtomicU64</code>.</p>
+<p>The sum of the integers 1 to 1000 is 1000 × 1001 / 2 = 500,500, so the expected total for 2 producers is 1,001,000. A lost or duplicated element changes the total.</p>
 <pre><code class="language-text">$ cargo run --release --bin lock_free_queue
 sum = 1001000
 </code></pre>
-<p>The complete program appears in listing 17.27 at the end of the chapter.</p>
+<p>The complete program is given in listing 17.27 at the end of the chapter.</p>
 <h2 id="179-the-complete-files"><a class="header" href="#179-the-complete-files">17.9 The complete files</a></h2>
 <p>Each complete source file appears below in the order introduced in this chapter.</p>
 <p class="listing"><b>Listing 17.20</b> The shared queue and its <code>main</code>. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/bin/thread_safe_queue.rs">src/bin/thread_safe_queue.rs</a></p>
@@ -34425,18 +34411,37 @@ mod tests {
 </table>
 </div>
 <h2 id="302-queens-on-a-bitboard"><a class="header" href="#302-queens-on-a-bitboard">30.2 Queens on a bitboard</a></h2>
-<p><strong>The problem.</strong> We place queens on an 8 × 8 chessboard so that no queen attacks another. We also move a queen to a new square along a legal queen move. A queen attacks every square in its row, in its column, and on its two diagonals. Placing eight queens under this rule is the eight queens puzzle, which the chess composer Max Bezzel published in 1848.</p>
-<p><strong>The baseline approach.</strong> We could store the board as an 8 × 8 array of booleans. To test whether a square is safe, we would walk along its row, its column and both of its diagonals. That walk visits up to 27 squares for every test.</p>
-<p><strong>The bitboard approach.</strong> Instead of storing squares, we store lines. A queen at row <code>x</code> and column <code>y</code> sits on exactly four lines: one row, one column, one diagonal, and one anti-diagonal. We keep one bit for every line on the board and set that bit when a queen occupies the line. A square is safe exactly when none of its four lines has its bit set. A board that stores its state in the bits of integers is called a <strong>bitboard</strong>.</p>
-<p>Each kind of line needs a number, so that the line can be mapped to a bit:</p>
+<p><strong>The problem.</strong> Queens are placed on an 8 × 8 board under the constraint that no 2 queens share a row, a column, or a diagonal. A placed queen may also be moved along a legal queen trajectory. Placing 8 queens under this constraint is the eight queens puzzle, first published by the chess composer Max Bezzel in 1848.</p>
+<p><strong>The baseline approach.</strong> With an 8 × 8 Boolean array, each safety test requires a scan of the row, the column, and both diagonals of the candidate square. Up to 27 squares are examined per test.</p>
+<h3 id="3021-one-bit-per-line"><a class="header" href="#3021-one-bit-per-line">30.2.1 One bit per line</a></h3>
+<p>A queen at row <code>x</code> and column <code>y</code> occupies exactly 4 lines: 1 row, 1 column, 1 diagonal, and 1 anti-diagonal. 1 bit is reserved for every line on the board and set when a queen occupies that line. A square is then safe if and only if none of its 4 line bits is set. A board represented by the bits of machine integers is called a <strong>bitboard</strong>.</p>
+<p>Each line is mapped to a bit index as follows:</p>
 <ul>
-<li>The board has 8 rows and 8 columns. Row <code>x</code> is bit <code>x</code> of <code>rows</code>, and column <code>y</code> is bit <code>y</code> of <code>cols</code>, so each fits in a <code>u8</code>.</li>
-<li>All squares on one diagonal have the same difference <code>x - y</code>, which ranges from -7 to 7. Adding 7 gives the bit number <code>x + 7 - y</code>, from 0 to 14, so <code>diags</code> needs a <code>u16</code>.</li>
-<li>All squares on one anti-diagonal have the same sum <code>x + y</code>, which ranges from 0 to 14, so <code>anti_diags</code> is also a <code>u16</code>.</li>
+<li>Row <code>x</code> maps to bit <code>x</code> of <code>rows</code>, and column <code>y</code> maps to bit <code>y</code> of <code>cols</code>. With 8 rows and 8 columns, each field fits in a <code>u8</code>.</li>
+<li>All squares on 1 diagonal share the difference <code>x - y</code>, which ranges from -7 to 7. The offset <code>x + 7 - y</code> maps this range to bit indices 0 to 14, so <code>diags</code> is a <code>u16</code>.</li>
+<li>All squares on 1 anti-diagonal share the sum <code>x + y</code>, which ranges from 0 to 14, so <code>anti_diags</code> is also a <code>u16</code>.</li>
 </ul>
-<p>For example, a queen at (1, 2) sets bit 1 of <code>rows</code> and bit 2 of <code>cols</code>. It also sets bit 1 + 7 - 2 = 6 of <code>diags</code> and bit 1 + 2 = 3 of <code>anti_diags</code>. Testing a square then takes four AND operations, however many queens the board holds, and the whole board fits in 6 bytes.</p>
-<p><strong>Moving a queen.</strong> <code>Queen::can_move</code> accepts a move along a row (<code>dx == 0</code>), along a column (<code>dy == 0</code>), or along a diagonal (<code>dx == dy</code>). Every legal destination therefore lies on one of the queen’s own lines. Those lines still have their bits set while the queen stands on its old square. If <code>move_piece</code> called <code>place(to)</code> directly, <code>place</code> would find the queen’s own bits and reject every legal move.</p>
-<p><code>move_piece</code> therefore lifts the queen off the board first. It calls <code>remove(from)</code>, which clears the queen’s four bits, and then calls <code>place(to)</code>. If another queen attacks the destination, <code>place</code> returns an error, and the queen must go back to its old square. <code>move_piece</code> handles that case with a saved copy of the board. It saves the copy with <code>let before = *self;</code> before it removes the queen, and it restores the copy when <code>place</code> fails. <code>Chess</code> derives <code>Copy</code>, and the copy is only 6 bytes.</p>
+<p>For a queen at (1, 2), bit 1 of <code>rows</code> and bit 2 of <code>cols</code> are set. Bit 6 of <code>diags</code> (1 + 7 - 2) and bit 3 of <code>anti_diags</code> (1 + 2) are also set (Figure 30.1). A safety test then requires 4 AND operations regardless of the number of queens, and the complete board state occupies 6 bytes.</p>
+<figure>
+<img src="figures/ch30-queen-lines.svg" alt="An 8 by 8 board with a queen at row 1, column 2. Its row, column, diagonal and anti-diagonal are shaded in 4 colors. Beside the board, the 4 fields are drawn as bit rows: rows has bit 1 set, cols has bit 2 set, diags has bit 6 set, and anti_diags has bit 3 set.">
+<figcaption><b>Figure 30.1</b> The 4 lines of a queen at (1, 2) and the bit set for each line.</figcaption>
+</figure>
+<h3 id="3022-placing-and-removing-a-queen"><a class="header" href="#3022-placing-and-removing-a-queen">30.2.2 Placing and removing a queen</a></h3>
+<p>In <code>place</code>, out-of-range coordinates are rejected with <code>Error::OutOfBounds</code> before any mask is built, since a shift such as <code>1u8 &lt;&lt; 9</code> would overflow. A mask with a single set bit is then built for each of the 4 lines. If the AND of any mask with its field is nonzero, the corresponding line is occupied, and <code>Error::Occupied</code> is returned. Otherwise, each mask is merged into its field with OR.</p>
+<p>In <code>remove</code>, each of the 4 bits is cleared with <code>field &amp;= !mask</code>. Every bit of the mask is inverted by <code>!</code>, so exactly 1 bit is cleared by the AND, and all other bits are unchanged.</p>
+<h3 id="3023-moving-a-queen"><a class="header" href="#3023-moving-a-queen">30.2.3 Moving a queen</a></h3>
+<p>A move is accepted by <code>Queen::can_move</code> if it follows a row (<code>dx == 0</code>), a column (<code>dy == 0</code>), or a diagonal (<code>dx == dy</code>). The distances are computed with <code>abs_diff</code>, which cannot underflow on <code>usize</code>. Every legal destination therefore lies on 1 of the moving queen’s own lines. While the queen stands on its origin square, those lines are marked as occupied, so a direct call to <code>place(to)</code> would reject every legal move.</p>
+<p>The conflict is resolved in <code>move_piece</code> in 3 steps (Figure 30.2):</p>
+<ol>
+<li>A copy of the board is saved with <code>let before = *self;</code>. Because <code>Chess</code> derives <code>Copy</code> and occupies 6 bytes, the copy is a 6-byte memory copy.</li>
+<li>The queen is lifted with <code>remove(from)</code>, and its 4 bits are cleared.</li>
+<li>The queen is placed at the destination with <code>place(to)</code>. If another queen attacks the destination, the saved copy is restored, and the error is returned to the caller.</li>
+</ol>
+<figure>
+<img src="figures/ch30-move.svg" alt="Three boards. Board 1: a queen at (0, 0) with its lines shaded; the destination (2, 2) is outlined and lies on the queen&#39;s diagonal. Board 2: after remove(from), no square is shaded. Board 3: after place(to), the queen stands at (2, 2) with its lines shaded.">
+<figcaption><b>Figure 30.2</b> A move from (0, 0) to (2, 2): the queen is lifted, then placed. On failure, board 1 is restored.</figcaption>
+</figure>
+<h3 id="3024-the-complete-program"><a class="header" href="#3024-the-complete-program">30.2.4 The complete program</a></h3>
 <p class="listing"><b>Listing 30.2</b> Non-attacking queens on a bitboard. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/bin/chess.rs">src/bin/chess.rs</a></p>
 
 <pre><code class="language-rust">#[derive(Debug)]
@@ -34554,14 +34559,7 @@ fn main() -&gt; Res {
 moved the queen from (0, 0) to (2, 2)
 place (5, 5): Err(Occupied)
 </code></pre>
-<p>Key details of the implementation:</p>
-<ul>
-<li><code>place</code> first returns <code>Err(Error::OutOfBounds)</code> for a square outside the board, before it builds any bit. A shift such as <code>1u8 &lt;&lt; 9</code> would overflow the <code>u8</code>.</li>
-<li><code>place</code> builds one mask for each line, such as <code>1u8 &lt;&lt; cell.x</code> for the row. A bitwise AND of a mask with its field is nonzero when that line is taken, and a bitwise OR sets the bit.</li>
-<li><code>remove</code> clears each bit with <code>&amp;= !mask</code>. The <code>!</code> operator flips every bit of the mask, so the AND keeps every other bit unchanged.</li>
-<li><code>abs_diff</code> returns the distance between two <code>usize</code> values without underflow, which is why <code>can_move</code> can compare <code>dx</code> and <code>dy</code> directly.</li>
-</ul>
-<p>The program places a queen at (0, 0) and moves it along the diagonal to (2, 2). It then tries to place a second queen at (5, 5). Both squares lie on diagonal 7, because 2 + 7 - 2 = 7 and 5 + 7 - 5 = 7. The square (5, 5) is therefore attacked, and <code>place</code> returns <code>Err(Occupied)</code>.</p>
+<p>In <code>main</code>, a queen is placed at (0, 0) and moved diagonally to (2, 2). A second queen is then placed at (5, 5). The squares (2, 2) and (5, 5) share diagonal 7, since 2 + 7 - 2 = 7 and 5 + 7 - 5 = 7. <code>Err(Occupied)</code> is therefore returned.</p>
 <h2 id="303-what-the-short-forms-leave-out"><a class="header" href="#303-what-the-short-forms-leave-out">30.3 What the short forms leave out</a></h2>
 <p>Omitting secondary features is acceptable under interview time constraints only when the author can articulate every omitted invariant and its production consequence during follow-up questioning.</p>
 <p><strong>Test-and-set versus test-and-test-and-set in <code>SpinLock</code>.</strong> The drill spins via <code>while self.locked.swap(true, Acquire) { spin_loop() }</code>, executing an atomic read-modify-write on every iteration. Under multicore contention, every spinning core repeatedly invalidates the lock’s cache line across the interconnect (cache-line bouncing). The reference implementation in Chapter 16 uses <code>compare_exchange_weak</code> guarded by an inner <code>Relaxed</code> load loop, allowing waiting cores to spin on a shared read-only cache line until release. Both preserve mutual exclusion, but only the reference scales under contention. The drill also omits explicit <code>// SAFETY:</code> invariant documentation required in production reviews.</p>
@@ -34589,10 +34587,10 @@ collect first, then join:              203.482125ms (sum 4)
 </code></pre>
 <p>Inserting a single <code>.collect::&lt;Vec&lt;_&gt;&gt;()</code> between the two <code>map</code> stages restores full parallelism. As established in the thread-pool analysis of Chapter 18, verifying concurrency requires either a synchronization barrier (such as <code>thread_pool_v2</code>’s <code>jobs_run_at_the_same_time</code>) or a wall-clock timing assertion rather than output-value equality alone.</p>
 <h2 id="305-running-a-round"><a class="header" href="#305-running-a-round">30.5 Running a round</a></h2>
-<p>A 45-minute technical round follows five predictable phases. Allocating time deliberately protects the final seven minutes, where systems design maturity is evaluated, from last-minute debugging (Figure 30.1).</p>
+<p>A 45-minute technical round follows five predictable phases. Allocating time deliberately protects the final seven minutes, where systems design maturity is evaluated, from last-minute debugging (Figure 30.3).</p>
 <figure>
 <img src="figures/ch23-round.svg" alt="A bar split into 0 to 5 minutes clarify, 5 to 10 types first, 10 to 30 happy path then edge cases, 30 to 38 tests, 38 to 45 failure modes">
-<figcaption><b>Figure 30.1</b> One way to spend a 45-minute round. The proportions matter more than the exact minutes.</figcaption>
+<figcaption><b>Figure 30.3</b> One way to spend a 45-minute round. The proportions matter more than the exact minutes.</figcaption>
 </figure>
 <ul>
 <li><strong>Clarify (0 to 5 min).</strong> Lock down input contracts, invalid-input semantics, and operational bounds (capacity, concurrency, latency). Every constraint translates directly into a type invariant or guard clause.</li>
