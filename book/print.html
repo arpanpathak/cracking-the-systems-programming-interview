@@ -37,7 +37,7 @@
             const path_to_root = "";
             const default_light_theme = "coal";
             const default_dark_theme = "coal";
-            window.path_to_searchindex_js = "searchindex-9c77091f.js";
+            window.path_to_searchindex_js = "searchindex-1c11a0bb.js";
         </script>
         <!-- Start loading toc.js asap -->
         <script src="toc-c196c8a9.js"></script>
@@ -440,7 +440,11 @@ make serve      # the browser edition at http://localhost:3000
 <li><a href="#32-how-a-vec-stores-its-elements">3.2 How a <code>Vec</code> stores its elements</a></li>
 <li><a href="#33-how-a-string-stores-text">3.3 How a <code>String</code> stores text</a></li>
 <li><a href="#34-how-a-hashmap-finds-a-key">3.4 How a <code>HashMap</code> finds a key</a></li>
-<li><a href="#35-finding-two-numbers-that-add-up-to-a-target">3.5 Finding two numbers that add up to a target</a></li>
+<li><a href="#35-finding-two-numbers-that-add-up-to-a-target">3.5 Finding two numbers that add up to a target</a>
+<ul>
+<li><a href="#351-the-first-repeated-and-the-first-unique-character">3.5.1 The first repeated and the first unique character</a></li>
+</ul>
+</li>
 <li><a href="#36-a-vector-used-as-a-stack">3.6 A vector used as a stack</a>
 <ul>
 <li><a href="#361-checking-brackets">3.6.1 Checking brackets</a></li>
@@ -453,7 +457,11 @@ make serve      # the browser edition at http://localhost:3000
 <li><a href="#372-three-numbers-that-add-up-to-a-target">3.7.2 Three numbers that add up to a target</a></li>
 </ul>
 </li>
-<li><a href="#38-a-window-that-slides-along-a-string">3.8 A window that slides along a string</a></li>
+<li><a href="#38-a-window-that-slides-along-a-string">3.8 A window that slides along a string</a>
+<ul>
+<li><a href="#381-the-largest-value-in-every-window">3.8.1 The largest value in every window</a></li>
+</ul>
+</li>
 <li><a href="#39-sort-then-walk-once-merging-ranges">3.9 Sort, then walk once: merging ranges</a></li>
 <li><a href="#310-halving-the-search-binary-search">3.10 Halving the search: binary search</a>
 <ul>
@@ -461,7 +469,11 @@ make serve      # the browser edition at http://localhost:3000
 </ul>
 </li>
 <li><a href="#311-rotating-a-square-grid-in-place">3.11 Rotating a square grid in place</a></li>
-<li><a href="#312-finding-text-inside-text">3.12 Finding text inside text</a></li>
+<li><a href="#312-finding-text-inside-text">3.12 Finding text inside text</a>
+<ul>
+<li><a href="#3121-the-search-written-as-one-match">3.12.1 The search written as one <code>match</code></a></li>
+</ul>
+</li>
 <li><a href="#313-the-complete-files">3.13 The complete files</a></li>
 <li><a href="#summary-2">Summary</a></li>
 <li><a href="#exercises-2">Exercises</a></li>
@@ -868,7 +880,13 @@ make serve      # the browser edition at http://localhost:3000
 <li><a href="#1773-push-and-pop">17.7.3 Push and pop</a></li>
 </ul>
 </li>
-<li><a href="#178-the-complete-files">17.8 The complete files</a></li>
+<li><a href="#178-a-lock-free-queue-for-many-producers-and-consumers">17.8 A lock-free queue for many producers and consumers</a>
+<ul>
+<li><a href="#1781-a-sequence-number-in-every-slot">17.8.1 A sequence number in every slot</a></li>
+<li><a href="#1782-push-and-pop">17.8.2 Push and pop</a></li>
+</ul>
+</li>
+<li><a href="#179-the-complete-files">17.9 The complete files</a></li>
 <li><a href="#summary-16">Summary</a></li>
 <li><a href="#exercises-16">Exercises</a></li>
 </ul>
@@ -1175,11 +1193,12 @@ make serve      # the browser edition at http://localhost:3000
 <p><strong><a href="#drills-against-the-clock">Compact implementations</a></strong></p>
 <ul>
 <li><a href="#301-the-drills">30.1 The drills</a></li>
-<li><a href="#302-what-the-short-forms-leave-out">30.2 What the short forms leave out</a></li>
-<li><a href="#303-the-drill-that-is-slower-than-it-looks">30.3 The drill that is slower than it looks</a></li>
-<li><a href="#304-running-a-round">30.4 Running a round</a></li>
-<li><a href="#305-practicing-with-this-repository">30.5 Practicing with this repository</a></li>
-<li><a href="#306-questions-that-come-up">30.6 Questions that come up</a></li>
+<li><a href="#302-queens-on-a-bitboard">30.2 Queens on a bitboard</a></li>
+<li><a href="#303-what-the-short-forms-leave-out">30.3 What the short forms leave out</a></li>
+<li><a href="#304-the-drill-that-is-slower-than-it-looks">30.4 The drill that is slower than it looks</a></li>
+<li><a href="#305-running-a-round">30.5 Running a round</a></li>
+<li><a href="#306-practicing-with-this-repository">30.6 Practicing with this repository</a></li>
+<li><a href="#307-questions-that-come-up">30.7 Questions that come up</a></li>
 </ul>
 </li>
 <li>
@@ -2566,6 +2585,74 @@ mod tests {
 <p><strong>WARNING:</strong> Computing <code>target - num</code> in <code>i32</code> can overflow near the bounds of <code>i32</code> (for example, when <code>num == i32::MIN</code> and <code>target &gt; 0</code>), causing a panic in debug builds. Widening to <code>i64</code> or calling <code>target.checked_sub(num)</code> eliminates overflow.</p>
 </div>
 
+<h3 id="351-the-first-repeated-and-the-first-unique-character"><a class="header" href="#351-the-first-repeated-and-the-first-unique-character">3.5.1 The first repeated and the first unique character</a></h3>
+<p><strong>The problem.</strong> For a string, we want the first character that appears a second time, and the first character that appears exactly once. Each answer comes with its index. In <code>"swiss"</code>, the <code>s</code> at index 3 is the first repeat, and the <code>w</code> at index 1 is the first unique character.</p>
+<p><strong>The first repeat.</strong> We scan the string once and insert every character into a <code>HashSet&lt;char&gt;</code>. <code>HashSet::insert</code> returns <code>false</code> when the set already holds a value. Our first <code>false</code> therefore marks the answer, at the index where that character appears a second time. The scan takes O(n) expected time.</p>
+<p><strong>The first unique character.</strong> A single pass cannot decide this answer. In <code>"swiss"</code>, the <code>s</code> at index 0 looks unique until the scan reaches index 3. We therefore count every character in a <code>HashMap&lt;char, usize&gt;</code> first. A second scan then returns the first character whose count is 1. Both passes together still take O(n) expected time, and the map holds one entry per distinct character.</p>
+<p class="listing"><b>Listing 3.2</b> The first repeated and the first unique character, with a test. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/bin/first_non_repeating_char.rs">src/bin/first_non_repeating_char.rs</a></p>
+
+<pre><code class="language-rust">use std::collections::{HashMap, HashSet};
+
+fn first_repeating_char(s: &amp;str) -&gt; Option&lt;(usize, char)&gt; {
+    let mut seen = HashSet::&lt;char&gt;::new();
+
+    for (i, ch) in s.chars().enumerate() {
+        if !seen.insert(ch) {
+            return Some((i, ch));
+        }
+    }
+
+    None
+}
+
+fn first_non_repeating_char(s: &amp;str) -&gt; Option&lt;(usize, char)&gt; {
+    let mut counts = HashMap::&lt;char, usize&gt;::new();
+    for ch in s.chars() {
+        *counts.entry(ch).or_default() += 1;
+    }
+
+    for (i, ch) in s.chars().enumerate() {
+        if counts[&amp;ch] == 1 {
+            return Some((i, ch));
+        }
+    }
+
+    None
+    // You can do s.chars().enumerate().find((_, ch) counts[ch] == 1)
+}
+
+fn main() {
+    let s = "swiss";
+
+    println!("first repeating:     {:?}", first_repeating_char(s));
+    println!("first non-repeating: {:?}", first_non_repeating_char(s));
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    type TestCase = Option&lt;(usize, char)&gt;;
+    // Use const or static for module-level arrays.
+    // Types like &amp;str are cleaner than String for test declarations.
+    const CASES: [(&amp;str, TestCase); 2] = [("abcdef", None), ("abcdea", Some((5, 'a')))];
+
+    #[test]
+    fn should_validate() {
+        for (input, expected) in CASES {
+            assert_eq!(
+                first_repeating_char(input),
+                expected,
+                "Failed on input: {}",
+                input
+            );
+        }
+    }
+}</code></pre>
+<pre><code class="language-text">$ cargo run --bin first_non_repeating_char
+first repeating:     Some((3, 's'))
+first non-repeating: Some((1, 'w'))
+</code></pre>
+<p>Both functions number characters with <code>chars().enumerate()</code>, so an index counts Unicode scalar values. For ASCII text, it equals the byte offset; for <code>"é!é"</code>, the repeat is at character index 2 but at byte offset 3.</p>
 <h2 id="36-a-vector-used-as-a-stack"><a class="header" href="#36-a-vector-used-as-a-stack">3.6 A vector used as a stack</a></h2>
 <p>A <strong>stack</strong> is a last-in, first-out (LIFO) sequence where insertions and removals occur exclusively at one end (the top). <code>Vec</code> serves directly as a stack: <code>push</code> appends to the top, <code>pop</code> removes and returns the top element, and <code>last</code> inspects the top without mutating the vector. All three operations run in amortized O(1) time.</p>
 <h3 id="361-checking-brackets"><a class="header" href="#361-checking-brackets">3.6.1 Checking brackets</a></h3>
@@ -2579,7 +2666,7 @@ mod tests {
 <video class="motion" src="figures/ch03-brackets.mp4" autoplay="" loop="" muted="" playsinline="" preload="metadata" aria-label="The string ( [ { } ] ) with a stack beside it. Each opener is pushed. Each closer pops the top, which matches, and the stack ends empty, so is_valid returns true. A second run on ( [ ) ]: the closer ) pops [, which does not match, so is_valid returns false." data-chapters="[[0.0, &quot;([{}])&quot;], [38.16, &quot;([)]&quot;]]"><img src="figures/ch03-brackets.gif" alt="The string ( [ { } ] ) with a stack beside it. Each opener is pushed. Each closer pops the top, which matches, and the stack ends empty, so is_valid returns true. A second run on ( [ ) ]: the closer ) pops [, which does not match, so is_valid returns false."></video>
 <figcaption><b>Animation 3.2</b> An opener is pushed, and a closer pops the top and compares it with its partner. In the second run, <code>)</code> pops <code>[</code>, so the check fails.</figcaption>
 </figure>
-<p class="listing"><b>Listing 3.2</b> Valid Parentheses. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/problems/valid_parentheses.rs">src/problems/valid_parentheses.rs</a></p>
+<p class="listing"><b>Listing 3.3</b> Valid Parentheses. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/problems/valid_parentheses.rs">src/problems/valid_parentheses.rs</a></p>
 
 <pre><code class="language-rust">//! Valid Parentheses: classic stack problem with idiomatic pattern matching.
 //!
@@ -2655,7 +2742,7 @@ mod tests {
 </tbody>
 </table>
 </div>
-<p class="listing"><b>Listing 3.3</b> Min Stack with a parallel stack of minimums. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/problems/min_stack.rs">src/problems/min_stack.rs</a></p>
+<p class="listing"><b>Listing 3.4</b> Min Stack with a parallel stack of minimums. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/problems/min_stack.rs">src/problems/min_stack.rs</a></p>
 
 <pre><code class="language-rust">//! Min Stack: O(1) push, pop, top, and get_min.
 //!
@@ -2733,7 +2820,7 @@ mod tests {
 <figcaption><b>Figure 3.6</b> Reversing <code>"abcd"</code>. Two swaps, then the indexes cross.</figcaption>
 </figure>
 <p>As noted in Section 3.3, a <code>String</code> must preserve valid UTF-8; reversing individual bytes of a multi-byte character would corrupt the encoding. Consequently, Rust exposes mutable byte access only through <code>String::as_mut_vec</code>, which is marked <code>unsafe</code>. An <strong><code>unsafe</code></strong> block designates code whose memory or type invariants cannot be verified statically by the compiler and must instead be upheld by the author; here, the required invariant is that the buffer remains valid UTF-8 upon exiting the block.</p>
-<p class="listing"><b>Listing 3.4</b> The reversing function (lines 1 to 14). <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/bin/reverse_string.rs">src/bin/reverse_string.rs</a></p>
+<p class="listing"><b>Listing 3.5</b> The reversing function (lines 1 to 14). <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/bin/reverse_string.rs">src/bin/reverse_string.rs</a></p>
 
 <pre><code class="language-rust">fn reverse_str(s: &amp;mut String) {
     // SAFETY: s._as_mut_vec() is unsafe because it exposes the inner mutability to it's character buffer, and we must ensure
@@ -2751,7 +2838,7 @@ mod tests {
 }</code></pre>
 <p>The function enforces the UTF-8 invariant upfront via <code>assert!(s.is_ascii())</code>, panicking if any multi-byte character is present. Because every ASCII byte is a self-contained single-byte UTF-8 sequence, any permutation of ASCII bytes remains valid UTF-8, allowing the <code>unsafe</code> block to wrap a single method call.</p>
 <p>Inside the loop, <code>bytes.swap(start, end)</code> exchanges the two endpoints while <code>start &lt; end</code>, leaving the center byte of an odd-length string untouched.</p>
-<p class="listing"><b>Listing 3.5</b> The complete program, with its tests. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/bin/reverse_string.rs">src/bin/reverse_string.rs</a></p>
+<p class="listing"><b>Listing 3.6</b> The complete program, with its tests. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/bin/reverse_string.rs">src/bin/reverse_string.rs</a></p>
 
 <pre><code class="language-rust">fn reverse_str(s: &amp;mut String) {
     // SAFETY: s._as_mut_vec() is unsafe because it exposes the inner mutability to it's character buffer, and we must ensure
@@ -2906,7 +2993,7 @@ pub fn three_sum(numbers: &amp;mut [i32], target: i32) -&gt; Vec&lt;(i32, i32, i
 <li>Matching on <code>current_sum.cmp(&amp;target)</code> maps <code>Less</code>, <code>Greater</code>, and <code>Equal</code> directly to the pointer updates.</li>
 <li>After recording a match, two inner <code>while</code> loops skip consecutive duplicate values at <code>left</code> and <code>right</code>.</li>
 </ul>
-<p class="listing"><b>Listing 3.6</b> Three Sum, with its tests. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/problems/three_sum.rs">src/problems/three_sum.rs</a></p>
+<p class="listing"><b>Listing 3.7</b> Three Sum, with its tests. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/problems/three_sum.rs">src/problems/three_sum.rs</a></p>
 
 <pre><code class="language-rust">//! Three Sum: every unique triplet of values that adds up to a target.
 //!
@@ -3011,7 +3098,7 @@ mod tests {
 <video class="motion" src="figures/ch03-window.mp4" autoplay="" loop="" muted="" playsinline="" preload="metadata" aria-label="The string pwwkew with the window drawn as an outline from start to end, and the map last_seen beside it. end moves one character at a time. When the second w arrives, start moves to 2; when the third w arrives, start moves to 3, leaving the window kew, length 3. A second run on abba shows why start uses max: the last a was seen at 0, before the window, so start stays at 2." data-chapters="[[0.0, &quot;pwwkew&quot;], [49.48, &quot;abba&quot;]]"><img src="figures/ch03-window.gif" alt="The string pwwkew with the window drawn as an outline from start to end, and the map last_seen beside it. end moves one character at a time. When the second w arrives, start moves to 2; when the third w arrives, start moves to 3, leaving the window kew, length 3. A second run on abba shows why start uses max: the last a was seen at 0, before the window, so start stays at 2."></video>
 <figcaption><b>Animation 3.4</b> <code>end</code> moves right one character at a time, and <code>start</code> moves only when a repeat inside the window arrives. The run on <code>"abba"</code> shows the case that <code>max</code> handles.</figcaption>
 </figure>
-<p class="listing"><b>Listing 3.7</b> Longest substring without a repeated character. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/problems/sliding_window.rs">src/problems/sliding_window.rs</a></p>
+<p class="listing"><b>Listing 3.8</b> Longest substring without a repeated character. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/problems/sliding_window.rs">src/problems/sliding_window.rs</a></p>
 
 <pre><code class="language-rust">//! Longest substring without repeating characters.
 //!
@@ -3049,6 +3136,74 @@ mod tests {
 }</code></pre>
 <p>When <code>last_seen.get(&amp;ch)</code> finds an earlier index <code>previous</code>, <code>start = start.max(previous + 1)</code> advances the left boundary without ever moving it backward. The <code>.max(...)</code> guard is essential for inputs like <code>"abba"</code>: when the second <code>'a'</code> arrives at index 3, <code>'a'</code> was last seen at index 0, which already falls outside the current window starting at index 2.</p>
 <p>At each step, <code>end - start + 1</code> gives the active window length. Because both <code>start</code> and <code>end</code> advance monotonically, the algorithm runs in O(n) time. Iterating via <code>chars().enumerate()</code> counts Unicode scalar values rather than raw UTF-8 bytes, matching the problem specification.</p>
+<h3 id="381-the-largest-value-in-every-window"><a class="header" href="#381-the-largest-value-in-every-window">3.8.1 The largest value in every window</a></h3>
+<p><strong>The problem.</strong> Given a slice and a window width <code>k</code>, we want the maximum of every run of <code>k</code> consecutive values. For <code>[1, 3, -1, -3, 5, 3, 6, 7]</code> and <code>k = 3</code>, the six windows give <code>[3, 3, 5, 5, 6, 7]</code>.</p>
+<p><strong>The baseline approach.</strong> Scanning each window from scratch costs <code>k</code> comparisons per window, which is O(n × k) in total.</p>
+<p><strong>The deque approach.</strong> We keep a <code>VecDeque</code> of indexes whose values decrease from front to back. Its front therefore holds the maximum of the current window. For each new index <code>i</code> with value <code>x</code>, <code>sliding_window_max</code> does three things:</p>
+<ol>
+<li>If the front index has left the window (<code>front + k &lt;= i</code>), it pops that index from the front.</li>
+<li>It pops indexes from the back while their values are at most <code>x</code>. The new value is larger and stays in the window longer, so those values can never be a window maximum again.</li>
+<li>It pushes <code>i</code> at the back. Once <code>i + 1 &gt;= k</code>, a full window exists, and the value at the deque’s front index is its maximum.</li>
+</ol>
+<p>The trace below follows the example. The deque column lists indexes, with their values in parentheses.</p>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th><code>i</code></th><th>Value</th><th>Deque after the step</th><th>Window maximum</th></tr>
+</thead>
+<tbody>
+<tr><td>0</td><td>1</td><td>0 (1)</td><td></td></tr>
+<tr><td>1</td><td>3</td><td>1 (3)</td><td></td></tr>
+<tr><td>2</td><td>-1</td><td>1 (3), 2 (-1)</td><td>3</td></tr>
+<tr><td>3</td><td>-3</td><td>1 (3), 2 (-1), 3 (-3)</td><td>3</td></tr>
+<tr><td>4</td><td>5</td><td>4 (5)</td><td>5</td></tr>
+<tr><td>5</td><td>3</td><td>4 (5), 5 (3)</td><td>5</td></tr>
+<tr><td>6</td><td>6</td><td>6 (6)</td><td>6</td></tr>
+<tr><td>7</td><td>7</td><td>7 (7)</td><td>7</td></tr>
+</tbody>
+</table>
+</div>
+<p>At <code>i = 4</code>, index 1 leaves from the front because the window is now indexes 2 to 4. Then 5 removes the smaller values -3 and -1 from the back.</p>
+<p class="listing"><b>Listing 3.9</b> The maximum of every window with a monotonic deque. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/bin/sliding_window_maximum.rs">src/bin/sliding_window_maximum.rs</a></p>
+
+<pre><code class="language-rust">use std::collections::VecDeque;
+
+// 0,1,2,3,4,5
+fn sliding_window_max(s: &amp;[i32], k: usize) -&gt; Vec&lt;i32&gt; {
+    let mut dq = VecDeque::new();
+    let mut out = vec![];
+
+    for (i, &amp;x) in s.iter().enumerate() {
+        // Slide out of the invalid or we could say that f &lt;= i - k, because Window starts from (i - k, i]
+        if dq.front().is_some_and(|&amp;f| f + k &lt;= i) {
+            dq.pop_front();
+        }
+
+        while dq
+            .back()
+            .is_some_and(|&amp;back_idx| s[back_idx] &lt;= x)
+        {
+            dq.pop_back();
+        }
+        dq.push_back(i);
+
+        if i + 1 &gt;= k {
+            out.push(s[dq[0]]);
+        }
+    }
+
+    out
+}
+
+fn main() {
+    let values = [1, 3, -1, -3, 5, 3, 6, 7];
+
+    println!("{:?}", sliding_window_max(&amp;values, 3));
+}</code></pre>
+<pre><code class="language-text">$ cargo run --bin sliding_window_maximum
+[3, 3, 5, 5, 6, 7]
+</code></pre>
+<p>The front check is an <code>if</code>, not a loop. The window moves by one index per step, so only index <code>i - k</code> can expire, and every older index has already left the deque. Each index enters the deque once and leaves at most once, so the whole pass takes O(n) time. The deque holds at most <code>k</code> indexes.</p>
 <h2 id="39-sort-then-walk-once-merging-ranges"><a class="header" href="#39-sort-then-walk-once-merging-ranges">3.9 Sort, then walk once: merging ranges</a></h2>
 <p><strong>The problem.</strong> Given a list of closed intervals such as <code>[1,3] [2,6] [8,10] [15,18]</code>, merge all overlapping intervals into disjoint ranges (<code>[1,6] [8,10] [15,18]</code>).</p>
 <p><strong>The strategy.</strong> Sort the intervals by their start coordinate, then perform a single linear pass. In sorted order, each interval either overlaps the most recently merged interval (extending its end coordinate) or starts a new disjoint interval (Figure 3.8).</p>
@@ -3060,8 +3215,8 @@ mod tests {
 <video class="motion" src="figures/ch03-merge-intervals.mp4" autoplay="" loop="" muted="" playsinline="" preload="metadata" aria-label="Four ranges drawn as bars over a number line. They are sorted by start: 1-3, 2-6, 8-10, 15-18. Then each range is compared with the last merged range: 2-6 overlaps 1-3 and extends it to 1-6, and the other two start new merged ranges. The result is 1-6, 8-10, 15-18. A last part shows the input unsorted, where 1-3 and 2-6 would not meet." data-chapters="[[0.0, &quot;sort&quot;], [6.42, &quot;walk&quot;], [45.36, &quot;no sort&quot;]]"><img src="figures/ch03-merge-intervals.gif" alt="Four ranges drawn as bars over a number line. They are sorted by start: 1-3, 2-6, 8-10, 15-18. Then each range is compared with the last merged range: 2-6 overlaps 1-3 and extends it to 1-6, and the other two start new merged ranges. The result is 1-6, 8-10, 15-18. A last part shows the input unsorted, where 1-3 and 2-6 would not meet."></video>
 <figcaption><b>Animation 3.5</b> Sorting puts overlapping ranges next to each other, so one walk can merge them. Each step extends the last merged range or starts a new one.</figcaption>
 </figure>
-<p>The module implements three variations: one using a named <code>Interval</code> struct, one using raw tuples, and one operating in place. Listing 3.8 presents the <code>Interval</code> struct and the first implementation.</p>
-<p class="listing"><b>Listing 3.8</b> Merging ranges held in a struct (lines 6 to 28). <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/problems/merge_intervals.rs">src/problems/merge_intervals.rs</a></p>
+<p>The module implements three variations: one using a named <code>Interval</code> struct, one using raw tuples, and one operating in place. Listing 3.10 presents the <code>Interval</code> struct and the first implementation.</p>
+<p class="listing"><b>Listing 3.10</b> Merging ranges held in a struct (lines 6 to 28). <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/problems/merge_intervals.rs">src/problems/merge_intervals.rs</a></p>
 
 <pre><code class="language-rust">#[derive(Debug, PartialEq, Clone, Copy)]
 pub struct Interval {
@@ -3088,8 +3243,8 @@ pub fn merge_intervals(mut intervals: Vec&lt;Interval&gt;) -&gt; Vec&lt;Interval
 }</code></pre>
 <p><code>sort_unstable_by_key(|interval| interval.start)</code> orders intervals by start coordinate; unstable sorting may reorder elements with identical start keys, which is inconsequential here and avoids auxiliary allocation.</p>
 <p>The loop header <code>for Interval { start, end } in intervals</code> destructures each struct directly. Calling <code>merged.last_mut()</code> yields a mutable reference to the active tail interval (or <code>None</code> on the first element). When the guard <code>if start &lt;= previous.end</code> holds, <code>previous.end = previous.end.max(end)</code> extends the tail interval in place while preserving containment when a shorter interval lies entirely inside the previous one. Otherwise, the fallback arm appends a new interval.</p>
-<p>Listing 3.9 implements the same algorithm over <code>(i32, i32)</code> tuples, replacing named fields with positional <code>.0</code> and <code>.1</code> accessors.</p>
-<p class="listing"><b>Listing 3.9</b> The same merge over tuples (lines 30 to 48).</p>
+<p>Listing 3.11 implements the same algorithm over <code>(i32, i32)</code> tuples, replacing named fields with positional <code>.0</code> and <code>.1</code> accessors.</p>
+<p class="listing"><b>Listing 3.11</b> The same merge over tuples (lines 30 to 48).</p>
 
 <pre><code class="language-rust">pub fn merge_intervals2(mut intervals: Vec&lt;(i32, i32)&gt;) -&gt; Vec&lt;(i32, i32)&gt; {
     if intervals.is_empty() {
@@ -3110,9 +3265,9 @@ pub fn merge_intervals(mut intervals: Vec&lt;Interval&gt;) -&gt; Vec&lt;Interval
     }
     merged
 }</code></pre>
-<p>While behaviorally identical, the named struct in Listing 3.8 improves readability by making <code>previous.end</code> self-documenting rather than requiring callers to remember field positions.</p>
-<p>Listing 3.10 eliminates the output vector entirely by compacting merged intervals into the prefix of the input vector.</p>
-<p class="listing"><b>Listing 3.10</b> Merging in place (lines 50 to 72).</p>
+<p>While behaviorally identical, the named struct in Listing 3.10 improves readability by making <code>previous.end</code> self-documenting rather than requiring callers to remember field positions.</p>
+<p>Listing 3.12 eliminates the output vector entirely by compacting merged intervals into the prefix of the input vector.</p>
+<p class="listing"><b>Listing 3.12</b> Merging in place (lines 50 to 72).</p>
 
 <pre><code class="language-rust">/// In place: `last` is the last merged interval at the front of the vector.
 /// O(1) extra space.
@@ -3139,7 +3294,7 @@ pub fn merge_intervals_in_place(intervals: &amp;mut Vec&lt;Interval&gt;) {
 }</code></pre>
 <p>The write cursor <code>last</code> tracks the index of the latest merged interval. Each subsequent interval either extends <code>intervals[last]</code> or advances <code>last</code> by one and copies into the new slot. Calling <code>intervals.truncate(last + 1)</code> discards the uncompacted tail, achieving O(1) auxiliary space beyond sorting.</p>
 <p>Matching on <code>(intervals[last], intervals[i])</code> copies both <code>Copy</code> structs out of the vector before mutating <code>intervals[last]</code>, avoiding simultaneous overlapping borrows of the vector.</p>
-<p class="listing"><b>Listing 3.11</b> The tests (lines 74 to 106).</p>
+<p class="listing"><b>Listing 3.13</b> The tests (lines 74 to 106).</p>
 
 <pre><code class="language-rust">#[cfg(test)]
 mod tests {
@@ -3202,7 +3357,7 @@ mod tests {
 <video class="motion" src="figures/ch03-rotated-search.mp4" autoplay="" loop="" muted="" playsinline="" preload="metadata" aria-label="The array 4, 5, 6, 7, 0, 1, 2. For target 0: mid is 7, the left half 4 to 7 is sorted and cannot hold 0, so low moves past mid. mid is 1, the left half 0 to 1 is sorted and holds 0, so high moves to mid. mid lands on 0. A second search, for 3, ends with an empty range and None." data-chapters="[[0.0, &quot;find 0&quot;], [41.04, &quot;find 3&quot;]]"><img src="figures/ch03-rotated-search.gif" alt="The array 4, 5, 6, 7, 0, 1, 2. For target 0: mid is 7, the left half 4 to 7 is sorted and cannot hold 0, so low moves past mid. mid is 1, the left half 0 to 1 is sorted and holds 0, so high moves to mid. mid lands on 0. A second search, for 3, ends with an empty range and None."></video>
 <figcaption><b>Animation 3.7</b> At each step one half around <code>mid</code> is sorted. The search keeps that half only if the target lies inside its end values.</figcaption>
 </figure>
-<p class="listing"><b>Listing 3.12</b> Search in a rotated sorted array. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/problems/binary_search.rs">src/problems/binary_search.rs</a></p>
+<p class="listing"><b>Listing 3.14</b> Search in a rotated sorted array. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/problems/binary_search.rs">src/problems/binary_search.rs</a></p>
 
 <pre><code class="language-rust">//! Binary search on a rotated sorted array.
 //!
@@ -3268,7 +3423,7 @@ mod tests {
 <video class="motion" src="figures/ch03-rotate-grid.mp4" autoplay="" loop="" muted="" playsinline="" preload="metadata" aria-label="A 3 by 3 grid of 1 to 9. Three swaps across the diagonal transpose it: 2 with 4, 3 with 7, 6 with 8. Then each row is reversed, giving 7 4 1, 8 5 2, 9 6 3. A last part starts j at 0 instead: 2 and 4 swap, then swap back, and the transpose does nothing." data-chapters="[[0.0, &quot;transpose&quot;], [22.86, &quot;reverse rows&quot;], [39.3, &quot;j from 0&quot;]]"><img src="figures/ch03-rotate-grid.gif" alt="A 3 by 3 grid of 1 to 9. Three swaps across the diagonal transpose it: 2 with 4, 3 with 7, 6 with 8. Then each row is reversed, giving 7 4 1, 8 5 2, 9 6 3. A last part starts j at 0 instead: 2 and 4 swap, then swap back, and the transpose does nothing."></video>
 <figcaption><b>Animation 3.8</b> The transpose swaps each pair above the diagonal once, then <code>row.reverse()</code> reverses each row. Starting <code>j</code> at 0 would swap every pair twice.</figcaption>
 </figure>
-<p class="listing"><b>Listing 3.13</b> The complete program. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/bin/rotate_matrix.rs">src/bin/rotate_matrix.rs</a></p>
+<p class="listing"><b>Listing 3.15</b> The complete program. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/bin/rotate_matrix.rs">src/bin/rotate_matrix.rs</a></p>
 
 <pre><code class="language-rust">fn rotate(m: &amp;mut [Vec&lt;i32&gt;]) {
     let n = m.len();
@@ -3333,7 +3488,7 @@ fn main() {
 <video class="motion" src="figures/ch03-kmp-lps.mp4" autoplay="" loop="" muted="" playsinline="" preload="metadata" aria-label="The needle aabaaac with the lps row below it, filled one entry at a time. right compares needle[right] with needle[left]. A match writes lps[right] = left + 1. A mismatch with left above 0 moves left back to lps[left - 1]; a mismatch at left 0 leaves the entry at 0. The table ends as 0 1 0 1 2 2 0. Last, with left reset to 0 on a mismatch instead of lps[left - 1], lps[5] comes out 1 instead of 2." data-chapters="[[95.88, &quot;reset to 0&quot;]]"><img src="figures/ch03-kmp-lps.gif" alt="The needle aabaaac with the lps row below it, filled one entry at a time. right compares needle[right] with needle[left]. A match writes lps[right] = left + 1. A mismatch with left above 0 moves left back to lps[left - 1]; a mismatch at left 0 leaves the entry at 0. The table ends as 0 1 0 1 2 2 0. Last, with left reset to 0 on a mismatch instead of lps[left - 1], lps[5] comes out 1 instead of 2."></video>
 <figcaption><b>Animation 3.10</b> <code>build_lps</code> compares the needle with itself, using the same three branches as the search. The table ends as <code>0 1 0 1 2 2 0</code>.</figcaption>
 </figure>
-<p class="listing"><b>Listing 3.14</b> The search and the table (lines 1 to 58). <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/bin/kmp_pattern_matching.rs">src/bin/kmp_pattern_matching.rs</a></p>
+<p class="listing"><b>Listing 3.16</b> The search and the table (lines 1 to 58). <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/bin/kmp_pattern_matching.rs">src/bin/kmp_pattern_matching.rs</a></p>
 
 <pre><code class="language-rust">struct Solution {}
 impl Solution {
@@ -3403,7 +3558,7 @@ fn main() {
 </ol>
 <p>Once <code>left</code> reaches <code>needle.len()</code>, the match begins at <code>right - left</code>.</p>
 <p><code>build_lps</code> runs the identical three-branch state machine of the needle against itself. Because <code>right</code> advances monotonically and total fallbacks cannot exceed total increments of <code>left</code>, preprocessing and searching together run in O(n + m) time.</p>
-<p class="listing"><b>Listing 3.15</b> The complete program. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/bin/kmp_pattern_matching.rs">src/bin/kmp_pattern_matching.rs</a></p>
+<p class="listing"><b>Listing 3.17</b> The complete program. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/bin/kmp_pattern_matching.rs">src/bin/kmp_pattern_matching.rs</a></p>
 
 <pre><code class="language-rust">struct Solution {}
 impl Solution {
@@ -3484,9 +3639,77 @@ str_str("aabaaabaaac", "aabaaac") = 4
 str_str("hello", "") = 0
 </code></pre>
 <p>The <code>-1</code> sentinel follows the classic interview specification; idiomatic Rust APIs return <code>Option&lt;usize&gt;</code> instead. For production string searching, <code>str::find</code> in the standard library also runs in linear time (using the Two-Way algorithm).</p>
+<h3 id="3121-the-search-written-as-one-match"><a class="header" href="#3121-the-search-written-as-one-match">3.12.1 The search written as one <code>match</code></a></h3>
+<p>We can also write the KMP search as a <code>match</code> on a tuple, so that each branch of the search becomes one arm. In <code>kmp_search</code>, <code>i</code> walks the haystack and <code>j</code> counts the matched needle bytes. The tuple <code>(haystack[i] == needle[j], j + 1 == needle.len(), j)</code> selects one of four arms:</p>
+<ol>
+<li><code>(true, true, _)</code>: the needle’s last byte matches at <code>i</code>, so the match began <code>j</code> bytes earlier, at <code>i - j</code>.</li>
+<li><code>(true, false, _)</code>: the bytes match, so both <code>i</code> and <code>j</code> advance.</li>
+<li><code>(false, _, 0)</code>: a mismatch at the needle’s first byte, so only <code>i</code> advances.</li>
+<li><code>(false, _, _)</code>: a mismatch after <code>j</code> matched bytes, so <code>j</code> falls back to <code>lps[j - 1]</code> and <code>i</code> stays.</li>
+</ol>
+<p>Arm 1 checks for the needle’s end before advancing, so <code>kmp_search</code> needs no separate length check after each step. <code>build_lps</code> uses the same shape, with <code>(needle[j] == needle[len], len)</code> as its tuple. The function returns <code>Option&lt;usize&gt;</code>, which replaces the <code>-1</code> sentinel of <code>str_str</code>.</p>
+<p class="listing"><b>Listing 3.18</b> KMP as a <code>match</code> on three values. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/bin/kmp_search.rs">src/bin/kmp_search.rs</a></p>
+
+<pre><code class="language-rust">fn build_lps(needle: &amp;[u8]) -&gt; Vec&lt;usize&gt; {
+    let mut lps = vec![0usize; needle.len()];
+    let (mut len, mut j) = (0usize, 1usize);
+
+    while j &lt; needle.len() {
+        match (needle[j] == needle[len], len) {
+            (true, _) =&gt; {
+                len += 1;
+                lps[j] = len;
+                j += 1;
+            }
+            (false, 0) =&gt; {
+                lps[j] = 0;
+                j += 1;
+            }
+            (false, _) =&gt; {
+                len = lps[len - 1];
+            }
+        }
+    }
+    lps
+}
+
+fn kmp_search(haystack: &amp;[u8], needle: &amp;[u8]) -&gt; Option&lt;usize&gt; {
+    if needle.is_empty() {
+        return Some(0);
+    }
+
+    let lps = build_lps(needle);
+    let (mut i, mut j) = (0usize, 0usize);
+
+    while i &lt; haystack.len() {
+        // haystack[i] == needle[j], j + 1 == needle.len()
+        match (haystack[i] == needle[j], j + 1 == needle.len(), j) {
+            // haystack[i] is the needle's last byte, so the match began j bytes earlier.
+            (true, true, _) =&gt; return Some(i - j),
+            (true, false, _) =&gt; {
+                i += 1;
+                j += 1; // Keep advancing...
+            }
+            (false, _, 0) =&gt; i += 1,
+            (false, _, _) =&gt; j = lps[j - 1],
+        }
+    }
+
+    None
+}
+
+fn main() {
+    let haystack = "aabaaabaaac";
+    let needle = "aabaaac";
+
+    println!("{:?}", kmp_search(haystack.as_bytes(), needle.as_bytes()));
+}</code></pre>
+<pre><code class="language-text">$ cargo run --bin kmp_search
+Some(4)
+</code></pre>
 <h2 id="313-the-complete-files"><a class="header" href="#313-the-complete-files">3.13 The complete files</a></h2>
-<p>Listing 3.16 reproduces <code>merge_intervals.rs</code> in full, combining the excerpts from Section 3.9.</p>
-<p class="listing"><b>Listing 3.16</b> Merging overlapping intervals, with its tests. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/problems/merge_intervals.rs">src/problems/merge_intervals.rs</a></p>
+<p>Listing 3.19 reproduces <code>merge_intervals.rs</code> in full, combining the excerpts from Section 3.9.</p>
+<p class="listing"><b>Listing 3.19</b> Merging overlapping intervals, with its tests. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/problems/merge_intervals.rs">src/problems/merge_intervals.rs</a></p>
 
 <pre><code class="language-rust">//! Merge Intervals: sort by start, then merge overlapping intervals in one pass.
 //!
@@ -3602,9 +3825,11 @@ mod tests {
 <li>A <code>String</code> enforces a UTF-8 encoding invariant over a <code>Vec&lt;u8&gt;</code>; <code>len()</code> reports byte length, whereas <code>chars()</code> decodes Unicode scalar values sequentially.</li>
 <li>A <code>HashMap&lt;K, V&gt;</code> maps keys to buckets with a randomly seeded hasher to resist collision attacks, delivering O(1) expected <code>get</code> and <code>insert</code>.</li>
 <li>Indexing visited elements in a <code>HashMap</code> reduces complement queries in Two Sum from O(n<sup>2</sup>) to O(n) expected time.</li>
+<li>A <code>HashSet</code> finds the first repeated character in one pass. The first unique character needs a count of every character, then a second pass.</li>
 <li>Using a <code>Vec</code> as a LIFO stack solves nested delimiter validation and O(1) minimum-element queries (<code>MinStack</code>).</li>
 <li>Converging two-pointer traversals reverse ASCII buffers in place in O(1) auxiliary space and solve Three Sum in O(n<sup>2</sup>) time after sorting.</li>
 <li>Sliding windows paired with a last-seen index map compute the longest substring without repeated characters in O(n) time.</li>
+<li>A monotonic deque of indexes gives the maximum of every window of width <code>k</code> in O(n) time.</li>
 <li>Sorting intervals by start coordinate permits a single O(n) pass to merge overlapping ranges, either into an output vector or in place.</li>
 <li>Binary search halves the candidate range per step in O(log n) time and extends to rotated sorted arrays by identifying which half preserves monotonic order.</li>
 <li>Knuth-Morris-Pratt (KMP) preprocesses a pattern’s prefix-suffix table (<code>lps</code>) to locate substrings in O(n + m) worst-case time without backtracking in the haystack.</li>
@@ -19710,7 +19935,7 @@ impl&lt;T&gt; PoisonMap&lt;T&gt; for Result&lt;T, PoisonError&lt;T&gt;&gt; {
     }
 }</code></pre>
 <p>Appending <code>.map_poison()?</code> to each <code>lock()</code> and <code>wait()</code> preserves the exact control flow of listing 17.4 while changing both methods to return <code>Result</code>.</p>
-<p>The complete source appears in listing 17.19 at the end of the chapter.</p>
+<p>The complete source appears in listing 17.20 at the end of the chapter.</p>
 <p>In <code>main</code>, worker threads log errors with <code>dbg!</code> and exit their loops via <code>break</code> rather than unwinding.</p>
 <p>The second unit test intentionally poisons the queue by spawning a thread that acquires the private <code>inner</code> mutex (accessible to tests within the same module) and panics before releasing it. Both <code>push</code> and <code>pop</code> must subsequently return <code>Err(QueuePoisonedError)</code>.</p>
 <pre><code class="language-text">$ cargo test --bin bounded_buffer_with_error_handling
@@ -19933,7 +20158,7 @@ impl&lt;T&gt; BoundedBuffer&lt;T&gt; {
     });
 }</code></pre>
 <p>Deriving <code>PER_CONSUMER</code> from the producer constants guarantees that total items popped equal total items pushed, allowing every thread to terminate cleanly.</p>
-<p>The complete program is included in listing 17.21 at the end of the chapter.</p>
+<p>The complete program is included in listing 17.22 at the end of the chapter.</p>
 <p>Rebinding <code>let buffer = &amp;buffer;</code> turns the local variable into a shared reference so that each <code>move</code> closure copies only the reference into its scoped thread, while <code>thread::scope</code> ensures <code>buffer</code> outlives all workers.</p>
 <pre><code class="language-text">$ cargo run --bin mpmc_bounded_buffer
 consumer 1: (3, 0)
@@ -20057,7 +20282,7 @@ pub struct BoundedQueue&lt;T&gt; {
 <video class="motion" src="figures/ch17-queue-close.mp4" autoplay="" loop="" muted="" playsinline="" preload="metadata" aria-label="A queue with room for 2 holds 1 and 2, and the producer waits to push 3. main calls close: closed becomes true, and notify_all rings both condition variables. The producer wakes, sees closed, and push returns Err(3), handing the item back. The consumer pops 1 and 2, then pop returns None on the empty closed queue. Last, close without notify_all leaves a consumer asleep on an empty queue forever, and shutdown hangs." data-chapters="[[0.0, &quot;full&quot;], [8.22, &quot;close&quot;], [25.62, &quot;drain&quot;], [36.18, &quot;no notify_all&quot;]]"><img src="figures/ch17-queue-close.gif" alt="A queue with room for 2 holds 1 and 2, and the producer waits to push 3. main calls close: closed becomes true, and notify_all rings both condition variables. The producer wakes, sees closed, and push returns Err(3), handing the item back. The consumer pops 1 and 2, then pop returns None on the empty closed queue. Last, close without notify_all leaves a consumer asleep on an empty queue forever, and shutdown hangs."></video>
 <figcaption><b>Animation 17.3</b> <code>close</code> sets the flag and wakes every waiter. <code>push</code> hands its item back, and <code>pop</code> drains the queue before it returns <code>None</code>. A close that wakes nobody hangs the shutdown.</figcaption>
 </figure>
-<p>The complete implementation and test suite appear in listing 17.22 at the end of the chapter.</p>
+<p>The complete implementation and test suite appear in listing 17.23 at the end of the chapter.</p>
 <p>The four unit tests verify the core contract:</p>
 <ul>
 <li><code>preserves_order_across_threads</code> enqueues 0 through 999 on one thread and verifies strict FIFO delivery and clean loop termination on another after <code>close</code>.</li>
@@ -20184,7 +20409,7 @@ unsafe impl&lt;T: Send, const N: usize&gt; Sync for SpscRing&lt;T, N&gt; {}</cod
 <p><strong>WARNING:</strong> The soundness of <code>SpscRing</code> relies on an unchecked caller invariant: at most one thread may invoke <code>push</code>, and at most one thread may invoke <code>pop</code>. Because both methods accept <code>&amp;self</code> and <code>SpscRing</code> implements <code>Sync</code>, safe code can share one instance across two producers and race on the same slot, causing undefined behavior. A sound public API splits the ring into non-clonable <code>Producer</code> and <code>Consumer</code> handles taking <code>&amp;mut self</code>, enforcing the SPSC contract at compile time (Exercise 5).</p>
 </div>
 
-<p>The complete implementation and tests appear in listing 17.23 at the end of the chapter.</p>
+<p>The complete implementation and tests appear in listing 17.24 at the end of the chapter.</p>
 <p>The concurrency test transfers 50,000 sequential integers across a 256-slot ring, calling <code>thread::yield_now()</code> whenever the producer encounters a full ring or the consumer encounters an empty ring. A sentinel value (<code>u64::MAX</code>) signals completion, and the consumer verifies that every integer arrives in exact order.</p>
 <pre><code class="language-text">$ cargo test --lib problems::ring_buffer
 running 4 tests
@@ -20195,9 +20420,106 @@ test problems::ring_buffer::tests::producer_and_consumer_run_concurrently_in_ord
 
 test result: ok. 4 passed; 0 failed; 0 ignored; 0 measured; 133 filtered out
 </code></pre>
-<h2 id="178-the-complete-files"><a class="header" href="#178-the-complete-files">17.8 The complete files</a></h2>
+<h2 id="178-a-lock-free-queue-for-many-producers-and-consumers"><a class="header" href="#178-a-lock-free-queue-for-many-producers-and-consumers">17.8 A lock-free queue for many producers and consumers</a></h2>
+<p>The ring in Section 17.7 is correct only with one producer and one consumer, because each counter has a single writer. With two producers, both can read the same <code>tail</code>, write the same slot, and lose one of the two values. In this section, we build a bounded queue that any number of threads can push to and pop from without a mutex. The design comes from Dmitry Vyukov, who published it on his site 1024cores.net.</p>
+<h3 id="1781-a-sequence-number-in-every-slot"><a class="header" href="#1781-a-sequence-number-in-every-slot">17.8.1 A sequence number in every slot</a></h3>
+<p>Each slot holds a value and a sequence number, <code>seq</code>, which says whose turn the slot is. Slot <code>i</code> starts with <code>seq = i</code>. The counters <code>tail</code> and <code>head</code> keep growing, as in the SPSC ring. Position <code>pos</code> uses slot <code>pos &amp; mask</code>, where <code>mask</code> is the capacity minus 1. For a power-of-two capacity, <code>pos &amp; mask</code> equals <code>pos % capacity</code>.</p>
+<p>A producer that wants position <code>tail</code> reads the slot’s <code>seq</code> and compares it with <code>tail</code>:</p>
+<ul>
+<li><code>seq == tail</code>: the slot is empty and waiting for this position.</li>
+<li><code>seq &lt; tail</code>: the slot still holds the value from the previous lap, so the queue is full.</li>
+<li><code>seq &gt; tail</code>: another producer has already taken this position, so the producer reads <code>tail</code> again.</li>
+</ul>
+<p>When the slot is free, the producer claims the position with <code>compare_exchange_weak</code>. The compare-and-swap moves <code>tail</code> from <code>pos</code> to <code>pos + 1</code> only if no other producer moved it first. The winner owns the slot alone. It writes the value, then stores <code>seq = pos + 1</code> to mark the slot full.</p>
+<p>A consumer at position <code>head</code> expects <code>seq == head + 1</code>, which means a producer has filled the slot. A smaller <code>seq</code> means the queue is empty, and a larger one means another consumer took the position. After its own <code>compare_exchange_weak</code> on <code>head</code> succeeds, the consumer reads the value and stores <code>seq = head + capacity</code>. That number is the position the producer will use for this slot on the next lap.</p>
+<p>The trace below uses a capacity of 4. The last column lists <code>seq</code> for slots 0 to 3.</p>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th>Step</th><th><code>tail</code></th><th><code>head</code></th><th><code>seq</code> of slots 0 to 3</th></tr>
+</thead>
+<tbody>
+<tr><td>start</td><td>0</td><td>0</td><td>0, 1, 2, 3</td></tr>
+<tr><td>push A into slot 0</td><td>1</td><td>0</td><td>1, 1, 2, 3</td></tr>
+<tr><td>push B into slot 1</td><td>2</td><td>0</td><td>1, 2, 2, 3</td></tr>
+<tr><td>pop A from slot 0</td><td>2</td><td>1</td><td>4, 2, 2, 3</td></tr>
+</tbody>
+</table>
+</div>
+<p>After the pop, slot 0 holds <code>seq = 4</code>, so it accepts the producer at position 4, one lap later. A producer at position 2 finds <code>seq = 2</code> in slot 2 and proceeds.</p>
+<p>The capacity must be at least 2. With one slot, a push at position 0 leaves <code>seq = 1</code>. A producer at position 1 then reads <code>seq == tail</code> and overwrites the value that no consumer has read yet. <code>new</code> therefore asserts <code>capacity &gt;= 2</code> and a power of two.</p>
+<h3 id="1782-push-and-pop"><a class="header" href="#1782-push-and-pop">17.8.2 Push and pop</a></h3>
+<p class="listing"><b>Listing 17.17</b> <code>push</code> and <code>pop</code> (lines 47 to 101). <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/bin/lock_free_queue.rs">src/bin/lock_free_queue.rs</a></p>
+
+<pre><code class="language-rust">impl&lt;T&gt; LockFreeQueue&lt;T&gt; {
+    // ...
+    fn push(&amp;self, value: T) -&gt; Result&lt;(), T&gt; {
+        let mut tail = self.tail.load(Relaxed);
+
+        loop {
+            let seq = self.buf[tail &amp; self.mask].seq.load(Acquire);
+
+            if seq &lt; tail {
+                return Err(value); // full
+            }
+
+            if seq &gt; tail {
+                tail = self.tail.load(Relaxed); // another producer took it
+                continue;
+            }
+
+            match self.tail.compare_exchange_weak(tail, tail + 1, Relaxed, Relaxed) {
+                Ok(_) =&gt; break,
+                Err(current) =&gt; tail = current,
+            }
+        }
+
+        let slot = &amp;self.buf[tail &amp; self.mask];
+        unsafe { (*slot.data.get()).write(value) };
+        slot.seq.store(tail + 1, Release); // full, ready for a consumer
+
+        Ok(())
+    }
+
+    fn pop(&amp;self) -&gt; Option&lt;T&gt; {
+        let mut head = self.head.load(Relaxed);
+
+        loop {
+            let seq = self.buf[head &amp; self.mask].seq.load(Acquire);
+
+            if seq &lt; head + 1 {
+                return None; // empty
+            }
+
+            if seq &gt; head + 1 {
+                head = self.head.load(Relaxed); // another consumer took it
+                continue;
+            }
+
+            match self.head.compare_exchange_weak(head, head + 1, Relaxed, Relaxed) {
+                Ok(_) =&gt; break,
+                Err(current) =&gt; head = current,
+            }
+        }
+
+        let slot = &amp;self.buf[head &amp; self.mask];
+        let value = unsafe { (*slot.data.get()).assume_init_read() };
+        slot.seq.store(head + self.mask + 1, Release); // empty, ready for the next lap
+
+        Some(value)
+    }
+}</code></pre>
+<p>Both loops have the same shape. Two guard clauses return or retry. The <code>match</code> on <code>compare_exchange_weak</code> then breaks out with the claimed position, or retries with the value that another thread wrote. The <code>_weak</code> form may fail even when the values match, which is harmless inside a retry loop and cheaper on some processors.</p>
+<p>The compare-and-swap uses <code>Relaxed</code> ordering because it only decides which thread owns a position. Visibility of the value comes from the slot’s <code>seq</code>, as in Section 17.7. The producer writes the value and then stores <code>seq</code> with <code>Release</code>. The other side loads <code>seq</code> with <code>Acquire</code> before it reads or overwrites the slot.</p>
+<p>Each slot is an <code>UnsafeCell&lt;MaybeUninit&lt;T&gt;&gt;</code>, as in the SPSC ring, because an empty slot holds no valid <code>T</code>. For the same reason, <code>Drop</code> pops the remaining values so that each one is dropped.</p>
+<p>The queue has one limit that a mutex-based queue does not show. Suppose a producer stops after its compare-and-swap and before it stores <code>seq</code>. Consumers then see that slot as empty until the producer resumes, even when later slots are full. Vyukov notes that the queue is therefore not lock-free in the formal sense, although it uses no mutex.</p>
+<p>The <code>main</code> function starts two producers that each push 1 to 1000, and two consumers that each pop 1000 values. A lost or duplicated value would change the sum, which must be 2 × 500,500 = 1,001,000.</p>
+<pre><code class="language-text">$ cargo run --release --bin lock_free_queue
+sum = 1001000
+</code></pre>
+<h2 id="179-the-complete-files"><a class="header" href="#179-the-complete-files">17.9 The complete files</a></h2>
 <p>Each complete source file appears below in the order introduced in this chapter.</p>
-<p class="listing"><b>Listing 17.17</b> The shared queue and its <code>main</code>. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/bin/thread_safe_queue.rs">src/bin/thread_safe_queue.rs</a></p>
+<p class="listing"><b>Listing 17.18</b> The shared queue and its <code>main</code>. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/bin/thread_safe_queue.rs">src/bin/thread_safe_queue.rs</a></p>
 
 <pre><code class="language-rust">use std::{
     collections::VecDeque,
@@ -20255,7 +20577,7 @@ fn main() {
     producer.join().unwrap();
     consumer.join().unwrap();
 }</code></pre>
-<p class="listing"><b>Listing 17.18</b> The bounded buffer and its <code>main</code>. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/bin/bounded_buffer.rs">src/bin/bounded_buffer.rs</a></p>
+<p class="listing"><b>Listing 17.19</b> The bounded buffer and its <code>main</code>. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/bin/bounded_buffer.rs">src/bin/bounded_buffer.rs</a></p>
 
 <pre><code class="language-rust">use std::{
     collections::VecDeque,
@@ -20407,7 +20729,7 @@ fn main() {
     }
     println!("done");
 }</code></pre>
-<p class="listing"><b>Listing 17.19</b> The bounded buffer with a custom error type, with tests. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/bin/bounded_buffer_with_error_handling.rs">src/bin/bounded_buffer_with_error_handling.rs</a></p>
+<p class="listing"><b>Listing 17.20</b> The bounded buffer with a custom error type, with tests. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/bin/bounded_buffer_with_error_handling.rs">src/bin/bounded_buffer_with_error_handling.rs</a></p>
 
 <pre><code class="language-rust">use std::{
     collections::VecDeque,
@@ -20594,7 +20916,7 @@ mod tests {
         }
     }
 }</code></pre>
-<p class="listing"><b>Listing 17.20</b> The bounded buffer with a boxed error. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/bin/bounded_buffer_error_propagation.rs">src/bin/bounded_buffer_error_propagation.rs</a></p>
+<p class="listing"><b>Listing 17.21</b> The bounded buffer with a boxed error. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/bin/bounded_buffer_error_propagation.rs">src/bin/bounded_buffer_error_propagation.rs</a></p>
 
 <pre><code class="language-rust">use std::{
     collections::VecDeque,
@@ -20707,7 +21029,7 @@ fn main() -&gt; Result&lt;(), RuntimeError&gt; {
     println!("done");
     Ok(())
 }</code></pre>
-<p class="listing"><b>Listing 17.21</b> Many producers and consumers with <code>wait_while</code>. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/bin/mpmc_bounded_buffer.rs">src/bin/mpmc_bounded_buffer.rs</a></p>
+<p class="listing"><b>Listing 17.22</b> Many producers and consumers with <code>wait_while</code>. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/bin/mpmc_bounded_buffer.rs">src/bin/mpmc_bounded_buffer.rs</a></p>
 
 <pre><code class="language-rust">use std::{
     collections::VecDeque,
@@ -20792,7 +21114,7 @@ fn main() {
         }
     });
 }</code></pre>
-<p class="listing"><b>Listing 17.22</b> The closable bounded queue, with tests. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/problems/bounded_queue.rs">src/problems/bounded_queue.rs</a></p>
+<p class="listing"><b>Listing 17.23</b> The closable bounded queue, with tests. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/problems/bounded_queue.rs">src/problems/bounded_queue.rs</a></p>
 
 <pre><code class="language-rust">//! Bounded blocking queue with backpressure.
 //!
@@ -21044,7 +21366,7 @@ mod tests {
         );
     }
 }</code></pre>
-<p class="listing"><b>Listing 17.23</b> The SPSC ring buffer, with tests. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/problems/ring_buffer.rs">src/problems/ring_buffer.rs</a></p>
+<p class="listing"><b>Listing 17.24</b> The SPSC ring buffer, with tests. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/problems/ring_buffer.rs">src/problems/ring_buffer.rs</a></p>
 
 <pre><code class="language-rust">//! Lock-free single-producer / single-consumer (SPSC) ring buffer.
 //!
@@ -21286,6 +21608,150 @@ mod tests {
         assert_eq!(dropped.load(Ordering::SeqCst), 3);
     }
 }</code></pre>
+<p class="listing"><b>Listing 17.25</b> The lock-free queue for many producers and consumers. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/bin/lock_free_queue.rs">src/bin/lock_free_queue.rs</a></p>
+
+<pre><code class="language-rust">use std::{
+    cell::UnsafeCell,
+    mem::MaybeUninit,
+    sync::atomic::{
+        AtomicU64, AtomicUsize,
+        Ordering::{Acquire, Relaxed, Release},
+    },
+    thread,
+};
+
+struct Slot&lt;T&gt; {
+    seq: AtomicUsize,
+    data: UnsafeCell&lt;MaybeUninit&lt;T&gt;&gt;,
+}
+
+pub struct LockFreeQueue&lt;T&gt; {
+    buf: Box&lt;[Slot&lt;T&gt;]&gt;,
+    mask: usize,
+    head: AtomicUsize,
+    tail: AtomicUsize,
+}
+
+unsafe impl&lt;T: Send&gt; Sync for LockFreeQueue&lt;T&gt; {}
+
+unsafe impl&lt;T: Send&gt; Send for LockFreeQueue&lt;T&gt; {}
+
+impl&lt;T&gt; LockFreeQueue&lt;T&gt; {
+    fn new(capacity: usize) -&gt; Self {
+        // One slot is not enough: "full" and "empty one lap later" share a seq.
+        assert!(capacity &gt;= 2 &amp;&amp; capacity.is_power_of_two());
+
+        let buf = (0..capacity)
+            .map(|i| Slot {
+                seq: AtomicUsize::new(i),
+                data: UnsafeCell::new(MaybeUninit::uninit()),
+            })
+            .collect();
+
+        Self {
+            buf,
+            mask: capacity - 1,
+            head: AtomicUsize::new(0),
+            tail: AtomicUsize::new(0),
+        }
+    }
+
+    fn push(&amp;self, value: T) -&gt; Result&lt;(), T&gt; {
+        let mut tail = self.tail.load(Relaxed);
+
+        loop {
+            let seq = self.buf[tail &amp; self.mask].seq.load(Acquire);
+
+            if seq &lt; tail {
+                return Err(value); // full
+            }
+
+            if seq &gt; tail {
+                tail = self.tail.load(Relaxed); // another producer took it
+                continue;
+            }
+
+            match self.tail.compare_exchange_weak(tail, tail + 1, Relaxed, Relaxed) {
+                Ok(_) =&gt; break,
+                Err(current) =&gt; tail = current,
+            }
+        }
+
+        let slot = &amp;self.buf[tail &amp; self.mask];
+        unsafe { (*slot.data.get()).write(value) };
+        slot.seq.store(tail + 1, Release); // full, ready for a consumer
+
+        Ok(())
+    }
+
+    fn pop(&amp;self) -&gt; Option&lt;T&gt; {
+        let mut head = self.head.load(Relaxed);
+
+        loop {
+            let seq = self.buf[head &amp; self.mask].seq.load(Acquire);
+
+            if seq &lt; head + 1 {
+                return None; // empty
+            }
+
+            if seq &gt; head + 1 {
+                head = self.head.load(Relaxed); // another consumer took it
+                continue;
+            }
+
+            match self.head.compare_exchange_weak(head, head + 1, Relaxed, Relaxed) {
+                Ok(_) =&gt; break,
+                Err(current) =&gt; head = current,
+            }
+        }
+
+        let slot = &amp;self.buf[head &amp; self.mask];
+        let value = unsafe { (*slot.data.get()).assume_init_read() };
+        slot.seq.store(head + self.mask + 1, Release); // empty, ready for the next lap
+
+        Some(value)
+    }
+}
+
+impl&lt;T&gt; Drop for LockFreeQueue&lt;T&gt; {
+    fn drop(&amp;mut self) {
+        while self.pop().is_some() {}
+    }
+}
+
+fn main() {
+    let queue = LockFreeQueue::&lt;u64&gt;::new(64);
+    let sum = AtomicU64::new(0);
+
+    thread::scope(|scope| {
+        for _ in 0..2 {
+            scope.spawn(|| {
+                for value in 1..=1000 {
+                    while queue.push(value).is_err() {
+                        thread::yield_now();
+                    }
+                }
+            });
+        }
+
+        for _ in 0..2 {
+            scope.spawn(|| {
+                for _ in 0..1000 {
+                    let value = loop {
+                        if let Some(value) = queue.pop() {
+                            break value;
+                        }
+                        thread::yield_now();
+                    };
+
+                    sum.fetch_add(value, Relaxed);
+                }
+            });
+        }
+    });
+
+    println!("sum = {}", sum.load(Relaxed)); // 2 * (1 + 2 + ... + 1000) = 1001000
+}</code></pre>
 <div class="summary" markdown="1">
 <h2 id="summary-16"><a class="header" href="#summary-16">Summary</a></h2>
 <ul>
@@ -21296,6 +21762,7 @@ mod tests {
 <li>A poisoned mutex can be handled by panicking via <code>unwrap()</code>, mapping to a dedicated error type through an extension trait, or converting to an owned <code>String</code> inside a boxed error.</li>
 <li>Adding a mutex-protected <code>closed</code> flag, waking all waiters with <code>notify_all</code>, and returning <code>None</code> from <code>pop</code> once drained enables clean consumer shutdown.</li>
 <li>An SPSC ring buffer eliminates locks by giving each counter a single writer and synchronizing slot handoffs with <code>Release</code> and <code>Acquire</code> orderings, provided the public API enforces the single-producer and single-consumer invariants.</li>
+<li>A sequence number in every slot lets many producers and consumers share a bounded ring without a mutex. A compare-and-swap claims a position, and a <code>Release</code> store of <code>seq</code> hands the slot to the other side.</li>
 </ul>
 </div>
 
@@ -33753,7 +34220,7 @@ mod tests {
 <tr><td><code>parallel_sum</code>: scoped threads</td><td>12</td><td>chapter 16, <code>threads::parallel_sum</code>, listing 16.5</td></tr>
 <tr><td><code>SpinLock</code> and <code>SpinGuard</code></td><td>45</td><td>chapter 16, listing 16.12</td></tr>
 <tr><td><code>Semaphore</code></td><td>36</td><td>chapter 16, listing 16.15</td></tr>
-<tr><td><code>BlockingQueue</code> with <code>close</code></td><td>62</td><td>chapter 17, listing 17.22</td></tr>
+<tr><td><code>BlockingQueue</code> with <code>close</code></td><td>62</td><td>chapter 17, listing 17.23</td></tr>
 <tr><td><code>ThreadPool</code> with <code>Drop</code></td><td>45</td><td>chapter 18, listing 18.7</td></tr>
 <tr><td><code>retry</code> with backoff</td><td>21</td><td>chapter 19, listing 19.9</td></tr>
 <tr><td><code>HashRing</code></td><td>33</td><td>chapter 14, listing 14.9</td></tr>
@@ -33762,7 +34229,130 @@ mod tests {
 </tbody>
 </table>
 </div>
-<h2 id="302-what-the-short-forms-leave-out"><a class="header" href="#302-what-the-short-forms-leave-out">30.2 What the short forms leave out</a></h2>
+<h2 id="302-queens-on-a-bitboard"><a class="header" href="#302-queens-on-a-bitboard">30.2 Queens on a bitboard</a></h2>
+<p><strong>The problem.</strong> We place queens on an 8 × 8 board so that no two queens attack each other. We also move a queen along a legal line without breaking that rule. Placing eight such queens is the eight queens puzzle, which the chess composer Max Bezzel published in 1848.</p>
+<p><strong>The bitboard.</strong> A queen at row <code>x</code> and column <code>y</code> controls four lines: row <code>x</code>, column <code>y</code>, the diagonal <code>x + 7 - y</code> and the anti-diagonal <code>x + y</code>. The board has 8 rows and 8 columns, so each fits in a <code>u8</code> with one bit per line. It has 15 diagonals in each direction, numbered 0 to 14, so each direction fits in a <code>u16</code>. A queen at (1, 2) sets bit 1 of <code>rows</code>, bit 2 of <code>cols</code>, bit 6 of <code>diags</code> and bit 3 of <code>anti_diags</code>. A square is free when none of its four bits is set. Checking a square therefore takes four AND operations, however many queens the board holds.</p>
+<p><strong>Moving a queen.</strong> <code>Queen::can_move</code> accepts a move along a row, a column or a diagonal: <code>dx == 0</code>, <code>dy == 0</code> or <code>dx == dy</code>. Every legal destination therefore lies on one of the queen’s own lines, and <code>place</code> would reject it while those lines are still marked. <code>move_piece</code> first lifts the queen with <code>remove</code>, which clears its four bits, and then places it at the destination. If <code>place</code> fails, <code>move_piece</code> restores the copy of the board that it saved before the move. <code>Chess</code> holds two <code>u8</code> and two <code>u16</code> fields, 6 bytes in all, and derives <code>Copy</code>, so saving the board copies 6 bytes.</p>
+<p>The same check also stops a queen from jumping over another one. A queen standing between the start and the destination lies on the line of the move. That line passes through the destination, so <code>place</code> rejects the move.</p>
+<p class="listing"><b>Listing 30.2</b> Non-attacking queens on a bitboard. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/bin/chess.rs">src/bin/chess.rs</a></p>
+
+<pre><code class="language-rust">#[derive(Debug)]
+enum Error {
+    InvalidMove(&amp;'static str),
+    OutOfBounds,
+    Occupied,
+}
+
+type Res&lt;T = ()&gt; = Result&lt;T, Error&gt;;
+
+#[derive(Clone, Copy, Debug)]
+struct Cell {
+    x: usize,
+    y: usize,
+}
+
+trait Piece {
+    fn can_move(&amp;self, from: Cell, to: Cell) -&gt; bool;
+}
+
+struct Queen;
+
+impl Piece for Queen {
+    fn can_move(&amp;self, from: Cell, to: Cell) -&gt; bool {
+        let dx = from.x.abs_diff(to.x);
+        let dy = from.y.abs_diff(to.y);
+
+        dx == 0 || dy == 0 || dx == dy
+    }
+}
+
+#[derive(Clone, Copy)]
+struct Chess {
+    rows: u8,
+    cols: u8,
+    diags: u16,
+    anti_diags: u16,
+}
+
+impl Chess {
+    fn new() -&gt; Self {
+        Self {
+            rows: 0,
+            cols: 0,
+            diags: 0,
+            anti_diags: 0,
+        }
+    }
+
+    fn place(&amp;mut self, cell: Cell) -&gt; Res {
+        if cell.x &gt;= 8 || cell.y &gt;= 8 {
+            return Err(Error::OutOfBounds);
+        }
+
+        let r = 1u8 &lt;&lt; cell.x;
+        let c = 1u8 &lt;&lt; cell.y;
+        let d = 1u16 &lt;&lt; (cell.x + 7 - cell.y);
+        let ad = 1u16 &lt;&lt; (cell.x + cell.y);
+
+        if (self.rows &amp; r) != 0
+            || (self.cols &amp; c) != 0
+            || (self.diags &amp; d) != 0
+            || (self.anti_diags &amp; ad) != 0
+        {
+            return Err(Error::Occupied);
+        }
+
+        self.rows |= r;
+        self.cols |= c;
+        self.diags |= d;
+        self.anti_diags |= ad;
+
+        Ok(())
+    }
+
+    fn remove(&amp;mut self, cell: Cell) {
+        self.rows &amp;= !(1u8 &lt;&lt; cell.x);
+        self.cols &amp;= !(1u8 &lt;&lt; cell.y);
+        self.diags &amp;= !(1u16 &lt;&lt; (cell.x + 7 - cell.y));
+        self.anti_diags &amp;= !(1u16 &lt;&lt; (cell.x + cell.y));
+    }
+
+    fn move_piece(&amp;mut self, piece: &amp;dyn Piece, from: Cell, to: Cell) -&gt; Res {
+        if !piece.can_move(from, to) {
+            return Err(Error::InvalidMove("illegal trajectory"));
+        }
+
+        // Lift the queen first, or its own lines block every move.
+        let before = *self;
+        self.remove(from);
+
+        let placed = self.place(to);
+        if placed.is_err() {
+            *self = before;
+        }
+
+        placed
+    }
+}
+
+fn main() -&gt; Res {
+    let mut board = Chess::new();
+    let queen = Queen;
+
+    board.place(Cell { x: 0, y: 0 })?;
+    board.move_piece(&amp;queen, Cell { x: 0, y: 0 }, Cell { x: 2, y: 2 })?;
+
+    println!("moved the queen from (0, 0) to (2, 2)");
+    println!("place (5, 5): {:?}", board.place(Cell { x: 5, y: 5 }));
+
+    Ok(())
+}</code></pre>
+<pre><code class="language-text">$ cargo run --bin chess
+moved the queen from (0, 0) to (2, 2)
+place (5, 5): Err(Occupied)
+</code></pre>
+<p>The second line shows a rejected square. The queen at (2, 2) is on diagonal 2 + 7 - 2 = 7. Square (5, 5) is on diagonal 5 + 7 - 5 = 7 as well.</p>
+<h2 id="303-what-the-short-forms-leave-out"><a class="header" href="#303-what-the-short-forms-leave-out">30.3 What the short forms leave out</a></h2>
 <p>Omitting secondary features is acceptable under interview time constraints only when the author can articulate every omitted invariant and its production consequence during follow-up questioning.</p>
 <p><strong>Test-and-set versus test-and-test-and-set in <code>SpinLock</code>.</strong> The drill spins via <code>while self.locked.swap(true, Acquire) { spin_loop() }</code>, executing an atomic read-modify-write on every iteration. Under multicore contention, every spinning core repeatedly invalidates the lock’s cache line across the interconnect (cache-line bouncing). The reference implementation in Chapter 16 uses <code>compare_exchange_weak</code> guarded by an inner <code>Relaxed</code> load loop, allowing waiting cores to spin on a shared read-only cache line until release. Both preserve mutual exclusion, but only the reference scales under contention. The drill also omits explicit <code>// SAFETY:</code> invariant documentation required in production reviews.</p>
 <p><strong>Permit leakage in <code>Semaphore</code>.</strong> Exposing bare <code>acquire</code> and <code>release</code> methods leaks a permit whenever a caller returns early or panics between calls. The reference design in Section 16.5 returns an RAII <code>SemaphoreGuard</code> whose <code>Drop</code> implementation releases the permit deterministically.</p>
@@ -33770,7 +34360,7 @@ mod tests {
 <p><strong>Modulo wraparound and allocation in <code>HashRing</code>.</strong> The drill maps past-the-end binary-search indices back to slot 0 via <code>partition_point(..) % self.points.len()</code> rather than an explicit branch, hashes <code>(input, replica)</code> directly without intermediate formatting, and stores an owned <code>String</code> per virtual node instead of sharing a single <code>Arc&lt;str&gt;</code>.</p>
 <p><strong>Minimal validation in <code>parse_request_head</code>.</strong> The drill enforces <code>HTTP/1.1</code>, splits headers on the first colon, and normalizes header names to lowercase, omitting header-size bounds, mandatory <code>Host</code> verification, and body framing. That scope matches a ten-minute parsing prompt; full HTTP server hardening requires the checks developed in Chapter 21.</p>
 <p><strong>Concise domain validation in <code>Port</code> and <code>Route</code>.</strong> <code>Port::new</code> encodes its range invariant in a single combinator pipeline: <code>(1..=u16::MAX).contains(&amp;value).then_some(Self(value)).ok_or(..)</code>. <code>Route::parse</code> matches static paths directly and extracts parameterized IDs via <code>strip_prefix</code>, rejecting all unrecognized paths with <code>None</code>.</p>
-<h2 id="303-the-drill-that-is-slower-than-it-looks"><a class="header" href="#303-the-drill-that-is-slower-than-it-looks">30.3 The drill that is slower than it looks</a></h2>
+<h2 id="304-the-drill-that-is-slower-than-it-looks"><a class="header" href="#304-the-drill-that-is-slower-than-it-looks">30.4 The drill that is slower than it looks</a></h2>
 <p>Unlike the intentional simplifications above, the drill version of <code>parallel_sum</code> alters asymptotic concurrency relative to the Chapter 16 reference:</p>
 <pre><code class="language-rust">// drills.rs
 values
@@ -33788,7 +34378,7 @@ handles.into_iter().map(|handle| handle.join().expect("worker panicked")).sum()<
 collect first, then join:              203.482125ms (sum 4)
 </code></pre>
 <p>Inserting a single <code>.collect::&lt;Vec&lt;_&gt;&gt;()</code> between the two <code>map</code> stages restores full parallelism. As established in the thread-pool analysis of Chapter 18, verifying concurrency requires either a synchronization barrier (such as <code>thread_pool_v2</code>’s <code>jobs_run_at_the_same_time</code>) or a wall-clock timing assertion rather than output-value equality alone.</p>
-<h2 id="304-running-a-round"><a class="header" href="#304-running-a-round">30.4 Running a round</a></h2>
+<h2 id="305-running-a-round"><a class="header" href="#305-running-a-round">30.5 Running a round</a></h2>
 <p>A 45-minute technical round follows five predictable phases. Allocating time deliberately protects the final seven minutes, where systems design maturity is evaluated, from last-minute debugging (Figure 30.1).</p>
 <figure>
 <img src="figures/ch23-round.svg" alt="A bar split into 0 to 5 minutes clarify, 5 to 10 types first, 10 to 30 happy path then edge cases, 30 to 38 tests, 38 to 45 failure modes">
@@ -33801,7 +34391,7 @@ collect first, then join:              203.482125ms (sum 4)
 <li><strong>Tests (30 to 38 min).</strong> Write targeted unit tests covering empty inputs, capacity bounds, concurrent contention, and error returns rather than only the prompt’s nominal example.</li>
 <li><strong>Failure modes (38 to 45 min).</strong> Articulate scaling bottlenecks, kernel limits, and production hardening steps, drawing directly from the book’s reference implementations.</li>
 </ul>
-<h2 id="305-practicing-with-this-repository"><a class="header" href="#305-practicing-with-this-repository">30.5 Practicing with this repository</a></h2>
+<h2 id="306-practicing-with-this-repository"><a class="header" href="#306-practicing-with-this-repository">30.6 Practicing with this repository</a></h2>
 <p>The repository supports a closed-loop rehearsal workflow for building timed fluency: implement a minimal correct structure within 30 to 45 minutes, then audit its failure modes and tests against the reference solution.</p>
 <ol>
 <li>Select one drill and review its reference chapter once.</li>
@@ -33811,7 +34401,7 @@ collect first, then join:              203.482125ms (sum 4)
 <li>Verbalize the production failure modes and concurrency proofs aloud as if addressing a design review.</li>
 </ol>
 <p>The “Questions that come up” sections at the end of each chapter supply targeted follow-up prompts for step 5. The iterative progressions preserved across the repository (eleven merge variants, nine pools, and six ring buffers) illustrate how minimal prototypes evolve into hardened systems components.</p>
-<h2 id="306-questions-that-come-up"><a class="header" href="#306-questions-that-come-up">30.6 Questions that come up</a></h2>
+<h2 id="307-questions-that-come-up"><a class="header" href="#307-questions-that-come-up">30.7 Questions that come up</a></h2>
 <p><strong>“A parallel sum returns the exact expected total. How can parallelism be verified?”</strong>
 Inspect thread lifecycle ordering to verify that all worker threads are spawned before any handle is joined; a lazy iterator chaining <code>spawn</code> and <code>join</code> executes serially. Confirm concurrency empirically with a <code>Barrier</code> test or a wall-clock timing assertion.</p>
 <p><strong>“What changes are required to harden this spin lock for production?”</strong>

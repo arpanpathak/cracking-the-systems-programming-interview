@@ -36,7 +36,7 @@
             const path_to_root = "";
             const default_light_theme = "coal";
             const default_dark_theme = "coal";
-            window.path_to_searchindex_js = "searchindex-9c77091f.js";
+            window.path_to_searchindex_js = "searchindex-1c11a0bb.js";
         </script>
         <!-- Start loading toc.js asap -->
         <script src="toc-c196c8a9.js"></script>
@@ -279,7 +279,11 @@
 <li><a href="ch03-collections.html#32-how-a-vec-stores-its-elements">3.2 How a <code>Vec</code> stores its elements</a></li>
 <li><a href="ch03-collections.html#33-how-a-string-stores-text">3.3 How a <code>String</code> stores text</a></li>
 <li><a href="ch03-collections.html#34-how-a-hashmap-finds-a-key">3.4 How a <code>HashMap</code> finds a key</a></li>
-<li><a href="ch03-collections.html#35-finding-two-numbers-that-add-up-to-a-target">3.5 Finding two numbers that add up to a target</a></li>
+<li><a href="ch03-collections.html#35-finding-two-numbers-that-add-up-to-a-target">3.5 Finding two numbers that add up to a target</a>
+<ul>
+<li><a href="ch03-collections.html#351-the-first-repeated-and-the-first-unique-character">3.5.1 The first repeated and the first unique character</a></li>
+</ul>
+</li>
 <li><a href="ch03-collections.html#36-a-vector-used-as-a-stack">3.6 A vector used as a stack</a>
 <ul>
 <li><a href="ch03-collections.html#361-checking-brackets">3.6.1 Checking brackets</a></li>
@@ -292,7 +296,11 @@
 <li><a href="ch03-collections.html#372-three-numbers-that-add-up-to-a-target">3.7.2 Three numbers that add up to a target</a></li>
 </ul>
 </li>
-<li><a href="ch03-collections.html#38-a-window-that-slides-along-a-string">3.8 A window that slides along a string</a></li>
+<li><a href="ch03-collections.html#38-a-window-that-slides-along-a-string">3.8 A window that slides along a string</a>
+<ul>
+<li><a href="ch03-collections.html#381-the-largest-value-in-every-window">3.8.1 The largest value in every window</a></li>
+</ul>
+</li>
 <li><a href="ch03-collections.html#39-sort-then-walk-once-merging-ranges">3.9 Sort, then walk once: merging ranges</a></li>
 <li><a href="ch03-collections.html#310-halving-the-search-binary-search">3.10 Halving the search: binary search</a>
 <ul>
@@ -300,7 +308,11 @@
 </ul>
 </li>
 <li><a href="ch03-collections.html#311-rotating-a-square-grid-in-place">3.11 Rotating a square grid in place</a></li>
-<li><a href="ch03-collections.html#312-finding-text-inside-text">3.12 Finding text inside text</a></li>
+<li><a href="ch03-collections.html#312-finding-text-inside-text">3.12 Finding text inside text</a>
+<ul>
+<li><a href="ch03-collections.html#3121-the-search-written-as-one-match">3.12.1 The search written as one <code>match</code></a></li>
+</ul>
+</li>
 <li><a href="ch03-collections.html#313-the-complete-files">3.13 The complete files</a></li>
 <li><a href="ch03-collections.html#summary">Summary</a></li>
 <li><a href="ch03-collections.html#exercises">Exercises</a></li>
@@ -707,7 +719,13 @@
 <li><a href="ch17-queues.html#1773-push-and-pop">17.7.3 Push and pop</a></li>
 </ul>
 </li>
-<li><a href="ch17-queues.html#178-the-complete-files">17.8 The complete files</a></li>
+<li><a href="ch17-queues.html#178-a-lock-free-queue-for-many-producers-and-consumers">17.8 A lock-free queue for many producers and consumers</a>
+<ul>
+<li><a href="ch17-queues.html#1781-a-sequence-number-in-every-slot">17.8.1 A sequence number in every slot</a></li>
+<li><a href="ch17-queues.html#1782-push-and-pop">17.8.2 Push and pop</a></li>
+</ul>
+</li>
+<li><a href="ch17-queues.html#179-the-complete-files">17.9 The complete files</a></li>
 <li><a href="ch17-queues.html#summary">Summary</a></li>
 <li><a href="ch17-queues.html#exercises">Exercises</a></li>
 </ul>
@@ -1014,11 +1032,12 @@
 <p><strong><a href="ch30-drills.html">Compact implementations</a></strong></p>
 <ul>
 <li><a href="ch30-drills.html#301-the-drills">30.1 The drills</a></li>
-<li><a href="ch30-drills.html#302-what-the-short-forms-leave-out">30.2 What the short forms leave out</a></li>
-<li><a href="ch30-drills.html#303-the-drill-that-is-slower-than-it-looks">30.3 The drill that is slower than it looks</a></li>
-<li><a href="ch30-drills.html#304-running-a-round">30.4 Running a round</a></li>
-<li><a href="ch30-drills.html#305-practicing-with-this-repository">30.5 Practicing with this repository</a></li>
-<li><a href="ch30-drills.html#306-questions-that-come-up">30.6 Questions that come up</a></li>
+<li><a href="ch30-drills.html#302-queens-on-a-bitboard">30.2 Queens on a bitboard</a></li>
+<li><a href="ch30-drills.html#303-what-the-short-forms-leave-out">30.3 What the short forms leave out</a></li>
+<li><a href="ch30-drills.html#304-the-drill-that-is-slower-than-it-looks">30.4 The drill that is slower than it looks</a></li>
+<li><a href="ch30-drills.html#305-running-a-round">30.5 Running a round</a></li>
+<li><a href="ch30-drills.html#306-practicing-with-this-repository">30.6 Practicing with this repository</a></li>
+<li><a href="ch30-drills.html#307-questions-that-come-up">30.7 Questions that come up</a></li>
 </ul>
 </li>
 <li>

@@ -36,7 +36,7 @@
             const path_to_root = "";
             const default_light_theme = "coal";
             const default_dark_theme = "coal";
-            window.path_to_searchindex_js = "searchindex-9c77091f.js";
+            window.path_to_searchindex_js = "searchindex-1c11a0bb.js";
         </script>
         <!-- Start loading toc.js asap -->
         <script src="toc-c196c8a9.js"></script>
@@ -728,7 +728,7 @@ mod tests {
 <tr><td><code>parallel_sum</code>: scoped threads</td><td>12</td><td>chapter 16, <code>threads::parallel_sum</code>, listing 16.5</td></tr>
 <tr><td><code>SpinLock</code> and <code>SpinGuard</code></td><td>45</td><td>chapter 16, listing 16.12</td></tr>
 <tr><td><code>Semaphore</code></td><td>36</td><td>chapter 16, listing 16.15</td></tr>
-<tr><td><code>BlockingQueue</code> with <code>close</code></td><td>62</td><td>chapter 17, listing 17.22</td></tr>
+<tr><td><code>BlockingQueue</code> with <code>close</code></td><td>62</td><td>chapter 17, listing 17.23</td></tr>
 <tr><td><code>ThreadPool</code> with <code>Drop</code></td><td>45</td><td>chapter 18, listing 18.7</td></tr>
 <tr><td><code>retry</code> with backoff</td><td>21</td><td>chapter 19, listing 19.9</td></tr>
 <tr><td><code>HashRing</code></td><td>33</td><td>chapter 14, listing 14.9</td></tr>
@@ -737,7 +737,130 @@ mod tests {
 </tbody>
 </table>
 </div>
-<h2 id="302-what-the-short-forms-leave-out"><a class="header" href="#302-what-the-short-forms-leave-out">30.2 What the short forms leave out</a></h2>
+<h2 id="302-queens-on-a-bitboard"><a class="header" href="#302-queens-on-a-bitboard">30.2 Queens on a bitboard</a></h2>
+<p><strong>The problem.</strong> We place queens on an 8 × 8 board so that no two queens attack each other. We also move a queen along a legal line without breaking that rule. Placing eight such queens is the eight queens puzzle, which the chess composer Max Bezzel published in 1848.</p>
+<p><strong>The bitboard.</strong> A queen at row <code>x</code> and column <code>y</code> controls four lines: row <code>x</code>, column <code>y</code>, the diagonal <code>x + 7 - y</code> and the anti-diagonal <code>x + y</code>. The board has 8 rows and 8 columns, so each fits in a <code>u8</code> with one bit per line. It has 15 diagonals in each direction, numbered 0 to 14, so each direction fits in a <code>u16</code>. A queen at (1, 2) sets bit 1 of <code>rows</code>, bit 2 of <code>cols</code>, bit 6 of <code>diags</code> and bit 3 of <code>anti_diags</code>. A square is free when none of its four bits is set. Checking a square therefore takes four AND operations, however many queens the board holds.</p>
+<p><strong>Moving a queen.</strong> <code>Queen::can_move</code> accepts a move along a row, a column or a diagonal: <code>dx == 0</code>, <code>dy == 0</code> or <code>dx == dy</code>. Every legal destination therefore lies on one of the queen’s own lines, and <code>place</code> would reject it while those lines are still marked. <code>move_piece</code> first lifts the queen with <code>remove</code>, which clears its four bits, and then places it at the destination. If <code>place</code> fails, <code>move_piece</code> restores the copy of the board that it saved before the move. <code>Chess</code> holds two <code>u8</code> and two <code>u16</code> fields, 6 bytes in all, and derives <code>Copy</code>, so saving the board copies 6 bytes.</p>
+<p>The same check also stops a queen from jumping over another one. A queen standing between the start and the destination lies on the line of the move. That line passes through the destination, so <code>place</code> rejects the move.</p>
+<p class="listing"><b>Listing 30.2</b> Non-attacking queens on a bitboard. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/bin/chess.rs">src/bin/chess.rs</a></p>
+
+<pre><code class="language-rust">#[derive(Debug)]
+enum Error {
+    InvalidMove(&amp;'static str),
+    OutOfBounds,
+    Occupied,
+}
+
+type Res&lt;T = ()&gt; = Result&lt;T, Error&gt;;
+
+#[derive(Clone, Copy, Debug)]
+struct Cell {
+    x: usize,
+    y: usize,
+}
+
+trait Piece {
+    fn can_move(&amp;self, from: Cell, to: Cell) -&gt; bool;
+}
+
+struct Queen;
+
+impl Piece for Queen {
+    fn can_move(&amp;self, from: Cell, to: Cell) -&gt; bool {
+        let dx = from.x.abs_diff(to.x);
+        let dy = from.y.abs_diff(to.y);
+
+        dx == 0 || dy == 0 || dx == dy
+    }
+}
+
+#[derive(Clone, Copy)]
+struct Chess {
+    rows: u8,
+    cols: u8,
+    diags: u16,
+    anti_diags: u16,
+}
+
+impl Chess {
+    fn new() -&gt; Self {
+        Self {
+            rows: 0,
+            cols: 0,
+            diags: 0,
+            anti_diags: 0,
+        }
+    }
+
+    fn place(&amp;mut self, cell: Cell) -&gt; Res {
+        if cell.x &gt;= 8 || cell.y &gt;= 8 {
+            return Err(Error::OutOfBounds);
+        }
+
+        let r = 1u8 &lt;&lt; cell.x;
+        let c = 1u8 &lt;&lt; cell.y;
+        let d = 1u16 &lt;&lt; (cell.x + 7 - cell.y);
+        let ad = 1u16 &lt;&lt; (cell.x + cell.y);
+
+        if (self.rows &amp; r) != 0
+            || (self.cols &amp; c) != 0
+            || (self.diags &amp; d) != 0
+            || (self.anti_diags &amp; ad) != 0
+        {
+            return Err(Error::Occupied);
+        }
+
+        self.rows |= r;
+        self.cols |= c;
+        self.diags |= d;
+        self.anti_diags |= ad;
+
+        Ok(())
+    }
+
+    fn remove(&amp;mut self, cell: Cell) {
+        self.rows &amp;= !(1u8 &lt;&lt; cell.x);
+        self.cols &amp;= !(1u8 &lt;&lt; cell.y);
+        self.diags &amp;= !(1u16 &lt;&lt; (cell.x + 7 - cell.y));
+        self.anti_diags &amp;= !(1u16 &lt;&lt; (cell.x + cell.y));
+    }
+
+    fn move_piece(&amp;mut self, piece: &amp;dyn Piece, from: Cell, to: Cell) -&gt; Res {
+        if !piece.can_move(from, to) {
+            return Err(Error::InvalidMove("illegal trajectory"));
+        }
+
+        // Lift the queen first, or its own lines block every move.
+        let before = *self;
+        self.remove(from);
+
+        let placed = self.place(to);
+        if placed.is_err() {
+            *self = before;
+        }
+
+        placed
+    }
+}
+
+fn main() -&gt; Res {
+    let mut board = Chess::new();
+    let queen = Queen;
+
+    board.place(Cell { x: 0, y: 0 })?;
+    board.move_piece(&amp;queen, Cell { x: 0, y: 0 }, Cell { x: 2, y: 2 })?;
+
+    println!("moved the queen from (0, 0) to (2, 2)");
+    println!("place (5, 5): {:?}", board.place(Cell { x: 5, y: 5 }));
+
+    Ok(())
+}</code></pre>
+<pre><code class="language-text">$ cargo run --bin chess
+moved the queen from (0, 0) to (2, 2)
+place (5, 5): Err(Occupied)
+</code></pre>
+<p>The second line shows a rejected square. The queen at (2, 2) is on diagonal 2 + 7 - 2 = 7. Square (5, 5) is on diagonal 5 + 7 - 5 = 7 as well.</p>
+<h2 id="303-what-the-short-forms-leave-out"><a class="header" href="#303-what-the-short-forms-leave-out">30.3 What the short forms leave out</a></h2>
 <p>Omitting secondary features is acceptable under interview time constraints only when the author can articulate every omitted invariant and its production consequence during follow-up questioning.</p>
 <p><strong>Test-and-set versus test-and-test-and-set in <code>SpinLock</code>.</strong> The drill spins via <code>while self.locked.swap(true, Acquire) { spin_loop() }</code>, executing an atomic read-modify-write on every iteration. Under multicore contention, every spinning core repeatedly invalidates the lock’s cache line across the interconnect (cache-line bouncing). The reference implementation in Chapter 16 uses <code>compare_exchange_weak</code> guarded by an inner <code>Relaxed</code> load loop, allowing waiting cores to spin on a shared read-only cache line until release. Both preserve mutual exclusion, but only the reference scales under contention. The drill also omits explicit <code>// SAFETY:</code> invariant documentation required in production reviews.</p>
 <p><strong>Permit leakage in <code>Semaphore</code>.</strong> Exposing bare <code>acquire</code> and <code>release</code> methods leaks a permit whenever a caller returns early or panics between calls. The reference design in Section 16.5 returns an RAII <code>SemaphoreGuard</code> whose <code>Drop</code> implementation releases the permit deterministically.</p>
@@ -745,7 +868,7 @@ mod tests {
 <p><strong>Modulo wraparound and allocation in <code>HashRing</code>.</strong> The drill maps past-the-end binary-search indices back to slot 0 via <code>partition_point(..) % self.points.len()</code> rather than an explicit branch, hashes <code>(input, replica)</code> directly without intermediate formatting, and stores an owned <code>String</code> per virtual node instead of sharing a single <code>Arc&lt;str&gt;</code>.</p>
 <p><strong>Minimal validation in <code>parse_request_head</code>.</strong> The drill enforces <code>HTTP/1.1</code>, splits headers on the first colon, and normalizes header names to lowercase, omitting header-size bounds, mandatory <code>Host</code> verification, and body framing. That scope matches a ten-minute parsing prompt; full HTTP server hardening requires the checks developed in Chapter 21.</p>
 <p><strong>Concise domain validation in <code>Port</code> and <code>Route</code>.</strong> <code>Port::new</code> encodes its range invariant in a single combinator pipeline: <code>(1..=u16::MAX).contains(&amp;value).then_some(Self(value)).ok_or(..)</code>. <code>Route::parse</code> matches static paths directly and extracts parameterized IDs via <code>strip_prefix</code>, rejecting all unrecognized paths with <code>None</code>.</p>
-<h2 id="303-the-drill-that-is-slower-than-it-looks"><a class="header" href="#303-the-drill-that-is-slower-than-it-looks">30.3 The drill that is slower than it looks</a></h2>
+<h2 id="304-the-drill-that-is-slower-than-it-looks"><a class="header" href="#304-the-drill-that-is-slower-than-it-looks">30.4 The drill that is slower than it looks</a></h2>
 <p>Unlike the intentional simplifications above, the drill version of <code>parallel_sum</code> alters asymptotic concurrency relative to the Chapter 16 reference:</p>
 <pre><code class="language-rust">// drills.rs
 values
@@ -763,7 +886,7 @@ handles.into_iter().map(|handle| handle.join().expect("worker panicked")).sum()<
 collect first, then join:              203.482125ms (sum 4)
 </code></pre>
 <p>Inserting a single <code>.collect::&lt;Vec&lt;_&gt;&gt;()</code> between the two <code>map</code> stages restores full parallelism. As established in the thread-pool analysis of Chapter 18, verifying concurrency requires either a synchronization barrier (such as <code>thread_pool_v2</code>’s <code>jobs_run_at_the_same_time</code>) or a wall-clock timing assertion rather than output-value equality alone.</p>
-<h2 id="304-running-a-round"><a class="header" href="#304-running-a-round">30.4 Running a round</a></h2>
+<h2 id="305-running-a-round"><a class="header" href="#305-running-a-round">30.5 Running a round</a></h2>
 <p>A 45-minute technical round follows five predictable phases. Allocating time deliberately protects the final seven minutes, where systems design maturity is evaluated, from last-minute debugging (Figure 30.1).</p>
 <figure>
 <img src="figures/ch23-round.svg" alt="A bar split into 0 to 5 minutes clarify, 5 to 10 types first, 10 to 30 happy path then edge cases, 30 to 38 tests, 38 to 45 failure modes">
@@ -776,7 +899,7 @@ collect first, then join:              203.482125ms (sum 4)
 <li><strong>Tests (30 to 38 min).</strong> Write targeted unit tests covering empty inputs, capacity bounds, concurrent contention, and error returns rather than only the prompt’s nominal example.</li>
 <li><strong>Failure modes (38 to 45 min).</strong> Articulate scaling bottlenecks, kernel limits, and production hardening steps, drawing directly from the book’s reference implementations.</li>
 </ul>
-<h2 id="305-practicing-with-this-repository"><a class="header" href="#305-practicing-with-this-repository">30.5 Practicing with this repository</a></h2>
+<h2 id="306-practicing-with-this-repository"><a class="header" href="#306-practicing-with-this-repository">30.6 Practicing with this repository</a></h2>
 <p>The repository supports a closed-loop rehearsal workflow for building timed fluency: implement a minimal correct structure within 30 to 45 minutes, then audit its failure modes and tests against the reference solution.</p>
 <ol>
 <li>Select one drill and review its reference chapter once.</li>
@@ -786,7 +909,7 @@ collect first, then join:              203.482125ms (sum 4)
 <li>Verbalize the production failure modes and concurrency proofs aloud as if addressing a design review.</li>
 </ol>
 <p>The “Questions that come up” sections at the end of each chapter supply targeted follow-up prompts for step 5. The iterative progressions preserved across the repository (eleven merge variants, nine pools, and six ring buffers) illustrate how minimal prototypes evolve into hardened systems components.</p>
-<h2 id="306-questions-that-come-up"><a class="header" href="#306-questions-that-come-up">30.6 Questions that come up</a></h2>
+<h2 id="307-questions-that-come-up"><a class="header" href="#307-questions-that-come-up">30.7 Questions that come up</a></h2>
 <p><strong>“A parallel sum returns the exact expected total. How can parallelism be verified?”</strong>
 Inspect thread lifecycle ordering to verify that all worker threads are spawned before any handle is joined; a lazy iterator chaining <code>spawn</code> and <code>join</code> executes serially. Confirm concurrency empirically with a <code>Barrier</code> test or a wall-clock timing assertion.</p>
 <p><strong>“What changes are required to harden this spin lock for production?”</strong>

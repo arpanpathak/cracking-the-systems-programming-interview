@@ -36,7 +36,7 @@
             const path_to_root = "";
             const default_light_theme = "coal";
             const default_dark_theme = "coal";
-            window.path_to_searchindex_js = "searchindex-9c77091f.js";
+            window.path_to_searchindex_js = "searchindex-1c11a0bb.js";
         </script>
         <!-- Start loading toc.js asap -->
         <script src="toc-c196c8a9.js"></script>
@@ -565,7 +565,7 @@ impl&lt;T&gt; PoisonMap&lt;T&gt; for Result&lt;T, PoisonError&lt;T&gt;&gt; {
     }
 }</code></pre>
 <p>Appending <code>.map_poison()?</code> to each <code>lock()</code> and <code>wait()</code> preserves the exact control flow of listing 17.4 while changing both methods to return <code>Result</code>.</p>
-<p>The complete source appears in listing 17.19 at the end of the chapter.</p>
+<p>The complete source appears in listing 17.20 at the end of the chapter.</p>
 <p>In <code>main</code>, worker threads log errors with <code>dbg!</code> and exit their loops via <code>break</code> rather than unwinding.</p>
 <p>The second unit test intentionally poisons the queue by spawning a thread that acquires the private <code>inner</code> mutex (accessible to tests within the same module) and panics before releasing it. Both <code>push</code> and <code>pop</code> must subsequently return <code>Err(QueuePoisonedError)</code>.</p>
 <pre><code class="language-text">$ cargo test --bin bounded_buffer_with_error_handling
@@ -788,7 +788,7 @@ impl&lt;T&gt; BoundedBuffer&lt;T&gt; {
     });
 }</code></pre>
 <p>Deriving <code>PER_CONSUMER</code> from the producer constants guarantees that total items popped equal total items pushed, allowing every thread to terminate cleanly.</p>
-<p>The complete program is included in listing 17.21 at the end of the chapter.</p>
+<p>The complete program is included in listing 17.22 at the end of the chapter.</p>
 <p>Rebinding <code>let buffer = &amp;buffer;</code> turns the local variable into a shared reference so that each <code>move</code> closure copies only the reference into its scoped thread, while <code>thread::scope</code> ensures <code>buffer</code> outlives all workers.</p>
 <pre><code class="language-text">$ cargo run --bin mpmc_bounded_buffer
 consumer 1: (3, 0)
@@ -912,7 +912,7 @@ pub struct BoundedQueue&lt;T&gt; {
 <video class="motion" src="figures/ch17-queue-close.mp4" autoplay="" loop="" muted="" playsinline="" preload="metadata" aria-label="A queue with room for 2 holds 1 and 2, and the producer waits to push 3. main calls close: closed becomes true, and notify_all rings both condition variables. The producer wakes, sees closed, and push returns Err(3), handing the item back. The consumer pops 1 and 2, then pop returns None on the empty closed queue. Last, close without notify_all leaves a consumer asleep on an empty queue forever, and shutdown hangs." data-chapters="[[0.0, &quot;full&quot;], [8.22, &quot;close&quot;], [25.62, &quot;drain&quot;], [36.18, &quot;no notify_all&quot;]]"><img src="figures/ch17-queue-close.gif" alt="A queue with room for 2 holds 1 and 2, and the producer waits to push 3. main calls close: closed becomes true, and notify_all rings both condition variables. The producer wakes, sees closed, and push returns Err(3), handing the item back. The consumer pops 1 and 2, then pop returns None on the empty closed queue. Last, close without notify_all leaves a consumer asleep on an empty queue forever, and shutdown hangs."></video>
 <figcaption><b>Animation 17.3</b> <code>close</code> sets the flag and wakes every waiter. <code>push</code> hands its item back, and <code>pop</code> drains the queue before it returns <code>None</code>. A close that wakes nobody hangs the shutdown.</figcaption>
 </figure>
-<p>The complete implementation and test suite appear in listing 17.22 at the end of the chapter.</p>
+<p>The complete implementation and test suite appear in listing 17.23 at the end of the chapter.</p>
 <p>The four unit tests verify the core contract:</p>
 <ul>
 <li><code>preserves_order_across_threads</code> enqueues 0 through 999 on one thread and verifies strict FIFO delivery and clean loop termination on another after <code>close</code>.</li>
@@ -1039,7 +1039,7 @@ unsafe impl&lt;T: Send, const N: usize&gt; Sync for SpscRing&lt;T, N&gt; {}</cod
 <p><strong>WARNING:</strong> The soundness of <code>SpscRing</code> relies on an unchecked caller invariant: at most one thread may invoke <code>push</code>, and at most one thread may invoke <code>pop</code>. Because both methods accept <code>&amp;self</code> and <code>SpscRing</code> implements <code>Sync</code>, safe code can share one instance across two producers and race on the same slot, causing undefined behavior. A sound public API splits the ring into non-clonable <code>Producer</code> and <code>Consumer</code> handles taking <code>&amp;mut self</code>, enforcing the SPSC contract at compile time (Exercise 5).</p>
 </div>
 
-<p>The complete implementation and tests appear in listing 17.23 at the end of the chapter.</p>
+<p>The complete implementation and tests appear in listing 17.24 at the end of the chapter.</p>
 <p>The concurrency test transfers 50,000 sequential integers across a 256-slot ring, calling <code>thread::yield_now()</code> whenever the producer encounters a full ring or the consumer encounters an empty ring. A sentinel value (<code>u64::MAX</code>) signals completion, and the consumer verifies that every integer arrives in exact order.</p>
 <pre><code class="language-text">$ cargo test --lib problems::ring_buffer
 running 4 tests
@@ -1050,9 +1050,106 @@ test problems::ring_buffer::tests::producer_and_consumer_run_concurrently_in_ord
 
 test result: ok. 4 passed; 0 failed; 0 ignored; 0 measured; 133 filtered out
 </code></pre>
-<h2 id="178-the-complete-files"><a class="header" href="#178-the-complete-files">17.8 The complete files</a></h2>
+<h2 id="178-a-lock-free-queue-for-many-producers-and-consumers"><a class="header" href="#178-a-lock-free-queue-for-many-producers-and-consumers">17.8 A lock-free queue for many producers and consumers</a></h2>
+<p>The ring in Section 17.7 is correct only with one producer and one consumer, because each counter has a single writer. With two producers, both can read the same <code>tail</code>, write the same slot, and lose one of the two values. In this section, we build a bounded queue that any number of threads can push to and pop from without a mutex. The design comes from Dmitry Vyukov, who published it on his site 1024cores.net.</p>
+<h3 id="1781-a-sequence-number-in-every-slot"><a class="header" href="#1781-a-sequence-number-in-every-slot">17.8.1 A sequence number in every slot</a></h3>
+<p>Each slot holds a value and a sequence number, <code>seq</code>, which says whose turn the slot is. Slot <code>i</code> starts with <code>seq = i</code>. The counters <code>tail</code> and <code>head</code> keep growing, as in the SPSC ring. Position <code>pos</code> uses slot <code>pos &amp; mask</code>, where <code>mask</code> is the capacity minus 1. For a power-of-two capacity, <code>pos &amp; mask</code> equals <code>pos % capacity</code>.</p>
+<p>A producer that wants position <code>tail</code> reads the slot’s <code>seq</code> and compares it with <code>tail</code>:</p>
+<ul>
+<li><code>seq == tail</code>: the slot is empty and waiting for this position.</li>
+<li><code>seq &lt; tail</code>: the slot still holds the value from the previous lap, so the queue is full.</li>
+<li><code>seq &gt; tail</code>: another producer has already taken this position, so the producer reads <code>tail</code> again.</li>
+</ul>
+<p>When the slot is free, the producer claims the position with <code>compare_exchange_weak</code>. The compare-and-swap moves <code>tail</code> from <code>pos</code> to <code>pos + 1</code> only if no other producer moved it first. The winner owns the slot alone. It writes the value, then stores <code>seq = pos + 1</code> to mark the slot full.</p>
+<p>A consumer at position <code>head</code> expects <code>seq == head + 1</code>, which means a producer has filled the slot. A smaller <code>seq</code> means the queue is empty, and a larger one means another consumer took the position. After its own <code>compare_exchange_weak</code> on <code>head</code> succeeds, the consumer reads the value and stores <code>seq = head + capacity</code>. That number is the position the producer will use for this slot on the next lap.</p>
+<p>The trace below uses a capacity of 4. The last column lists <code>seq</code> for slots 0 to 3.</p>
+<div class="table-wrapper">
+<table>
+<thead>
+<tr><th>Step</th><th><code>tail</code></th><th><code>head</code></th><th><code>seq</code> of slots 0 to 3</th></tr>
+</thead>
+<tbody>
+<tr><td>start</td><td>0</td><td>0</td><td>0, 1, 2, 3</td></tr>
+<tr><td>push A into slot 0</td><td>1</td><td>0</td><td>1, 1, 2, 3</td></tr>
+<tr><td>push B into slot 1</td><td>2</td><td>0</td><td>1, 2, 2, 3</td></tr>
+<tr><td>pop A from slot 0</td><td>2</td><td>1</td><td>4, 2, 2, 3</td></tr>
+</tbody>
+</table>
+</div>
+<p>After the pop, slot 0 holds <code>seq = 4</code>, so it accepts the producer at position 4, one lap later. A producer at position 2 finds <code>seq = 2</code> in slot 2 and proceeds.</p>
+<p>The capacity must be at least 2. With one slot, a push at position 0 leaves <code>seq = 1</code>. A producer at position 1 then reads <code>seq == tail</code> and overwrites the value that no consumer has read yet. <code>new</code> therefore asserts <code>capacity &gt;= 2</code> and a power of two.</p>
+<h3 id="1782-push-and-pop"><a class="header" href="#1782-push-and-pop">17.8.2 Push and pop</a></h3>
+<p class="listing"><b>Listing 17.17</b> <code>push</code> and <code>pop</code> (lines 47 to 101). <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/bin/lock_free_queue.rs">src/bin/lock_free_queue.rs</a></p>
+
+<pre><code class="language-rust">impl&lt;T&gt; LockFreeQueue&lt;T&gt; {
+    // ...
+    fn push(&amp;self, value: T) -&gt; Result&lt;(), T&gt; {
+        let mut tail = self.tail.load(Relaxed);
+
+        loop {
+            let seq = self.buf[tail &amp; self.mask].seq.load(Acquire);
+
+            if seq &lt; tail {
+                return Err(value); // full
+            }
+
+            if seq &gt; tail {
+                tail = self.tail.load(Relaxed); // another producer took it
+                continue;
+            }
+
+            match self.tail.compare_exchange_weak(tail, tail + 1, Relaxed, Relaxed) {
+                Ok(_) =&gt; break,
+                Err(current) =&gt; tail = current,
+            }
+        }
+
+        let slot = &amp;self.buf[tail &amp; self.mask];
+        unsafe { (*slot.data.get()).write(value) };
+        slot.seq.store(tail + 1, Release); // full, ready for a consumer
+
+        Ok(())
+    }
+
+    fn pop(&amp;self) -&gt; Option&lt;T&gt; {
+        let mut head = self.head.load(Relaxed);
+
+        loop {
+            let seq = self.buf[head &amp; self.mask].seq.load(Acquire);
+
+            if seq &lt; head + 1 {
+                return None; // empty
+            }
+
+            if seq &gt; head + 1 {
+                head = self.head.load(Relaxed); // another consumer took it
+                continue;
+            }
+
+            match self.head.compare_exchange_weak(head, head + 1, Relaxed, Relaxed) {
+                Ok(_) =&gt; break,
+                Err(current) =&gt; head = current,
+            }
+        }
+
+        let slot = &amp;self.buf[head &amp; self.mask];
+        let value = unsafe { (*slot.data.get()).assume_init_read() };
+        slot.seq.store(head + self.mask + 1, Release); // empty, ready for the next lap
+
+        Some(value)
+    }
+}</code></pre>
+<p>Both loops have the same shape. Two guard clauses return or retry. The <code>match</code> on <code>compare_exchange_weak</code> then breaks out with the claimed position, or retries with the value that another thread wrote. The <code>_weak</code> form may fail even when the values match, which is harmless inside a retry loop and cheaper on some processors.</p>
+<p>The compare-and-swap uses <code>Relaxed</code> ordering because it only decides which thread owns a position. Visibility of the value comes from the slot’s <code>seq</code>, as in Section 17.7. The producer writes the value and then stores <code>seq</code> with <code>Release</code>. The other side loads <code>seq</code> with <code>Acquire</code> before it reads or overwrites the slot.</p>
+<p>Each slot is an <code>UnsafeCell&lt;MaybeUninit&lt;T&gt;&gt;</code>, as in the SPSC ring, because an empty slot holds no valid <code>T</code>. For the same reason, <code>Drop</code> pops the remaining values so that each one is dropped.</p>
+<p>The queue has one limit that a mutex-based queue does not show. Suppose a producer stops after its compare-and-swap and before it stores <code>seq</code>. Consumers then see that slot as empty until the producer resumes, even when later slots are full. Vyukov notes that the queue is therefore not lock-free in the formal sense, although it uses no mutex.</p>
+<p>The <code>main</code> function starts two producers that each push 1 to 1000, and two consumers that each pop 1000 values. A lost or duplicated value would change the sum, which must be 2 × 500,500 = 1,001,000.</p>
+<pre><code class="language-text">$ cargo run --release --bin lock_free_queue
+sum = 1001000
+</code></pre>
+<h2 id="179-the-complete-files"><a class="header" href="#179-the-complete-files">17.9 The complete files</a></h2>
 <p>Each complete source file appears below in the order introduced in this chapter.</p>
-<p class="listing"><b>Listing 17.17</b> The shared queue and its <code>main</code>. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/bin/thread_safe_queue.rs">src/bin/thread_safe_queue.rs</a></p>
+<p class="listing"><b>Listing 17.18</b> The shared queue and its <code>main</code>. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/bin/thread_safe_queue.rs">src/bin/thread_safe_queue.rs</a></p>
 
 <pre><code class="language-rust">use std::{
     collections::VecDeque,
@@ -1110,7 +1207,7 @@ fn main() {
     producer.join().unwrap();
     consumer.join().unwrap();
 }</code></pre>
-<p class="listing"><b>Listing 17.18</b> The bounded buffer and its <code>main</code>. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/bin/bounded_buffer.rs">src/bin/bounded_buffer.rs</a></p>
+<p class="listing"><b>Listing 17.19</b> The bounded buffer and its <code>main</code>. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/bin/bounded_buffer.rs">src/bin/bounded_buffer.rs</a></p>
 
 <pre><code class="language-rust">use std::{
     collections::VecDeque,
@@ -1262,7 +1359,7 @@ fn main() {
     }
     println!("done");
 }</code></pre>
-<p class="listing"><b>Listing 17.19</b> The bounded buffer with a custom error type, with tests. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/bin/bounded_buffer_with_error_handling.rs">src/bin/bounded_buffer_with_error_handling.rs</a></p>
+<p class="listing"><b>Listing 17.20</b> The bounded buffer with a custom error type, with tests. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/bin/bounded_buffer_with_error_handling.rs">src/bin/bounded_buffer_with_error_handling.rs</a></p>
 
 <pre><code class="language-rust">use std::{
     collections::VecDeque,
@@ -1449,7 +1546,7 @@ mod tests {
         }
     }
 }</code></pre>
-<p class="listing"><b>Listing 17.20</b> The bounded buffer with a boxed error. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/bin/bounded_buffer_error_propagation.rs">src/bin/bounded_buffer_error_propagation.rs</a></p>
+<p class="listing"><b>Listing 17.21</b> The bounded buffer with a boxed error. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/bin/bounded_buffer_error_propagation.rs">src/bin/bounded_buffer_error_propagation.rs</a></p>
 
 <pre><code class="language-rust">use std::{
     collections::VecDeque,
@@ -1562,7 +1659,7 @@ fn main() -&gt; Result&lt;(), RuntimeError&gt; {
     println!("done");
     Ok(())
 }</code></pre>
-<p class="listing"><b>Listing 17.21</b> Many producers and consumers with <code>wait_while</code>. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/bin/mpmc_bounded_buffer.rs">src/bin/mpmc_bounded_buffer.rs</a></p>
+<p class="listing"><b>Listing 17.22</b> Many producers and consumers with <code>wait_while</code>. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/bin/mpmc_bounded_buffer.rs">src/bin/mpmc_bounded_buffer.rs</a></p>
 
 <pre><code class="language-rust">use std::{
     collections::VecDeque,
@@ -1647,7 +1744,7 @@ fn main() {
         }
     });
 }</code></pre>
-<p class="listing"><b>Listing 17.22</b> The closable bounded queue, with tests. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/problems/bounded_queue.rs">src/problems/bounded_queue.rs</a></p>
+<p class="listing"><b>Listing 17.23</b> The closable bounded queue, with tests. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/problems/bounded_queue.rs">src/problems/bounded_queue.rs</a></p>
 
 <pre><code class="language-rust">//! Bounded blocking queue with backpressure.
 //!
@@ -1899,7 +1996,7 @@ mod tests {
         );
     }
 }</code></pre>
-<p class="listing"><b>Listing 17.23</b> The SPSC ring buffer, with tests. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/problems/ring_buffer.rs">src/problems/ring_buffer.rs</a></p>
+<p class="listing"><b>Listing 17.24</b> The SPSC ring buffer, with tests. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/problems/ring_buffer.rs">src/problems/ring_buffer.rs</a></p>
 
 <pre><code class="language-rust">//! Lock-free single-producer / single-consumer (SPSC) ring buffer.
 //!
@@ -2141,6 +2238,150 @@ mod tests {
         assert_eq!(dropped.load(Ordering::SeqCst), 3);
     }
 }</code></pre>
+<p class="listing"><b>Listing 17.25</b> The lock-free queue for many producers and consumers. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/bin/lock_free_queue.rs">src/bin/lock_free_queue.rs</a></p>
+
+<pre><code class="language-rust">use std::{
+    cell::UnsafeCell,
+    mem::MaybeUninit,
+    sync::atomic::{
+        AtomicU64, AtomicUsize,
+        Ordering::{Acquire, Relaxed, Release},
+    },
+    thread,
+};
+
+struct Slot&lt;T&gt; {
+    seq: AtomicUsize,
+    data: UnsafeCell&lt;MaybeUninit&lt;T&gt;&gt;,
+}
+
+pub struct LockFreeQueue&lt;T&gt; {
+    buf: Box&lt;[Slot&lt;T&gt;]&gt;,
+    mask: usize,
+    head: AtomicUsize,
+    tail: AtomicUsize,
+}
+
+unsafe impl&lt;T: Send&gt; Sync for LockFreeQueue&lt;T&gt; {}
+
+unsafe impl&lt;T: Send&gt; Send for LockFreeQueue&lt;T&gt; {}
+
+impl&lt;T&gt; LockFreeQueue&lt;T&gt; {
+    fn new(capacity: usize) -&gt; Self {
+        // One slot is not enough: "full" and "empty one lap later" share a seq.
+        assert!(capacity &gt;= 2 &amp;&amp; capacity.is_power_of_two());
+
+        let buf = (0..capacity)
+            .map(|i| Slot {
+                seq: AtomicUsize::new(i),
+                data: UnsafeCell::new(MaybeUninit::uninit()),
+            })
+            .collect();
+
+        Self {
+            buf,
+            mask: capacity - 1,
+            head: AtomicUsize::new(0),
+            tail: AtomicUsize::new(0),
+        }
+    }
+
+    fn push(&amp;self, value: T) -&gt; Result&lt;(), T&gt; {
+        let mut tail = self.tail.load(Relaxed);
+
+        loop {
+            let seq = self.buf[tail &amp; self.mask].seq.load(Acquire);
+
+            if seq &lt; tail {
+                return Err(value); // full
+            }
+
+            if seq &gt; tail {
+                tail = self.tail.load(Relaxed); // another producer took it
+                continue;
+            }
+
+            match self.tail.compare_exchange_weak(tail, tail + 1, Relaxed, Relaxed) {
+                Ok(_) =&gt; break,
+                Err(current) =&gt; tail = current,
+            }
+        }
+
+        let slot = &amp;self.buf[tail &amp; self.mask];
+        unsafe { (*slot.data.get()).write(value) };
+        slot.seq.store(tail + 1, Release); // full, ready for a consumer
+
+        Ok(())
+    }
+
+    fn pop(&amp;self) -&gt; Option&lt;T&gt; {
+        let mut head = self.head.load(Relaxed);
+
+        loop {
+            let seq = self.buf[head &amp; self.mask].seq.load(Acquire);
+
+            if seq &lt; head + 1 {
+                return None; // empty
+            }
+
+            if seq &gt; head + 1 {
+                head = self.head.load(Relaxed); // another consumer took it
+                continue;
+            }
+
+            match self.head.compare_exchange_weak(head, head + 1, Relaxed, Relaxed) {
+                Ok(_) =&gt; break,
+                Err(current) =&gt; head = current,
+            }
+        }
+
+        let slot = &amp;self.buf[head &amp; self.mask];
+        let value = unsafe { (*slot.data.get()).assume_init_read() };
+        slot.seq.store(head + self.mask + 1, Release); // empty, ready for the next lap
+
+        Some(value)
+    }
+}
+
+impl&lt;T&gt; Drop for LockFreeQueue&lt;T&gt; {
+    fn drop(&amp;mut self) {
+        while self.pop().is_some() {}
+    }
+}
+
+fn main() {
+    let queue = LockFreeQueue::&lt;u64&gt;::new(64);
+    let sum = AtomicU64::new(0);
+
+    thread::scope(|scope| {
+        for _ in 0..2 {
+            scope.spawn(|| {
+                for value in 1..=1000 {
+                    while queue.push(value).is_err() {
+                        thread::yield_now();
+                    }
+                }
+            });
+        }
+
+        for _ in 0..2 {
+            scope.spawn(|| {
+                for _ in 0..1000 {
+                    let value = loop {
+                        if let Some(value) = queue.pop() {
+                            break value;
+                        }
+                        thread::yield_now();
+                    };
+
+                    sum.fetch_add(value, Relaxed);
+                }
+            });
+        }
+    });
+
+    println!("sum = {}", sum.load(Relaxed)); // 2 * (1 + 2 + ... + 1000) = 1001000
+}</code></pre>
 <div class="summary" markdown="1">
 <h2 id="summary"><a class="header" href="#summary">Summary</a></h2>
 <ul>
@@ -2151,6 +2392,7 @@ mod tests {
 <li>A poisoned mutex can be handled by panicking via <code>unwrap()</code>, mapping to a dedicated error type through an extension trait, or converting to an owned <code>String</code> inside a boxed error.</li>
 <li>Adding a mutex-protected <code>closed</code> flag, waking all waiters with <code>notify_all</code>, and returning <code>None</code> from <code>pop</code> once drained enables clean consumer shutdown.</li>
 <li>An SPSC ring buffer eliminates locks by giving each counter a single writer and synchronizing slot handoffs with <code>Release</code> and <code>Acquire</code> orderings, provided the public API enforces the single-producer and single-consumer invariants.</li>
+<li>A sequence number in every slot lets many producers and consumers share a bounded ring without a mutex. A compare-and-swap claims a position, and a <code>Release</code> store of <code>seq</code> hands the slot to the other side.</li>
 </ul>
 </div>
 
