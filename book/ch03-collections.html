@@ -36,7 +36,7 @@
             const path_to_root = "";
             const default_light_theme = "coal";
             const default_dark_theme = "coal";
-            window.path_to_searchindex_js = "searchindex-4c795f69.js";
+            window.path_to_searchindex_js = "searchindex-2bec4b22.js";
         </script>
         <!-- Start loading toc.js asap -->
         <script src="toc-c196c8a9.js"></script>
@@ -381,6 +381,7 @@ fn first_repeating_char(s: &amp;str) -&gt; Option&lt;(usize, char)&gt; {
 
 fn first_non_repeating_char(s: &amp;str) -&gt; Option&lt;(usize, char)&gt; {
     let mut counts = HashMap::&lt;char, usize&gt;::new();
+
     for ch in s.chars() {
         *counts.entry(ch).or_default() += 1;
     }
@@ -956,6 +957,7 @@ fn sliding_window_max(s: &amp;[i32], k: usize) -&gt; Vec&lt;i32&gt; {
         {
             dq.pop_back();
         }
+
         dq.push_back(i);
 
         if i + 1 &gt;= k {
@@ -1476,6 +1478,7 @@ str_str("hello", "") = 0
             }
         }
     }
+
     lps
 }
 

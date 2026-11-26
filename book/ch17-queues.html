@@ -36,7 +36,7 @@
             const path_to_root = "";
             const default_light_theme = "coal";
             const default_dark_theme = "coal";
-            window.path_to_searchindex_js = "searchindex-4c795f69.js";
+            window.path_to_searchindex_js = "searchindex-2bec4b22.js";
         </script>
         <!-- Start loading toc.js asap -->
         <script src="toc-c196c8a9.js"></script>
@@ -1118,19 +1118,19 @@ pub struct LockFreeQueue&lt;T&gt; {
     tail: AtomicUsize,
 }
 
-// SAFETY: Only the thread that wins the compare-and-swap for a position reads or
-// writes that slot's value, and `seq` hands the slot from the producer to the
-// consumer with Release and Acquire. Threads can therefore share the queue, as long
-// as the values themselves can move between threads (`T: Send`).
+// SAFETY: A thread accesses a slot only after it has won the CAS on `head` or `tail`
+// for that position, so at most 1 thread accesses a slot at a time. Producers publish
+// each element with a Release store of `seq`, and consumers read the element only
+// after an Acquire load of `seq`. Sharing the queue is sound whenever `T: Send`.
 unsafe impl&lt;T: Send&gt; Sync for LockFreeQueue&lt;T&gt; {}
 
-// SAFETY: The queue owns the values in its slots, so moving the queue to another
-// thread moves those values with it, which `T: Send` allows.
+// SAFETY: Every initialized element in the slots is owned by the queue. Moving the
+// queue to another thread moves those elements, which is sound whenever `T: Send`.
 unsafe impl&lt;T: Send&gt; Send for LockFreeQueue&lt;T&gt; {}
 
 impl&lt;T&gt; LockFreeQueue&lt;T&gt; {
     fn new(capacity: usize) -&gt; Self {
-        // One slot is not enough: "full" and "empty one lap later" share a seq.
+        // With 1 slot, the full state of position p and the empty state of p + 1 share seq.
         assert!(capacity &gt;= 2 &amp;&amp; capacity.is_power_of_two());
 
         let buf = (0..capacity)
@@ -1156,7 +1156,7 @@ impl&lt;T&gt; LockFreeQueue&lt;T&gt; {
 <p>That argument lies outside the type system and is therefore recorded in the <code>// SAFETY:</code> comment above each declaration. The bound <code>T: Send</code> is required because an element pushed by 1 thread is popped by another. In <code>new</code>, the capacity is validated, slot <code>i</code> is initialized with <code>seq = i</code>, and both counters are set to 0.</p>
 <h3 id="1786-push"><a class="header" href="#1786-push">17.8.6 Push</a></h3>
 <p>The producer path is implemented in <code>push</code> (Listing 17.18).</p>
-<p class="listing"><b>Listing 17.18</b> <code>push</code> (lines 53 to 83).</p>
+<p class="listing"><b>Listing 17.18</b> <code>push</code> (lines 53 to 84).</p>
 
 <pre><code class="language-rust">impl&lt;T&gt; LockFreeQueue&lt;T&gt; {
     // ...
@@ -1167,11 +1167,11 @@ impl&lt;T&gt; LockFreeQueue&lt;T&gt; {
             let seq = self.buf[tail &amp; self.mask].seq.load(Acquire);
 
             if seq &lt; tail {
-                return Err(value); // full
+                return Err(value); // queue full
             }
 
             if seq &gt; tail {
-                tail = self.tail.load(Relaxed); // another producer took it
+                tail = self.tail.load(Relaxed); // position claimed by another producer
                 continue;
             }
 
@@ -1183,11 +1183,12 @@ impl&lt;T&gt; LockFreeQueue&lt;T&gt; {
 
         let slot = &amp;self.buf[tail &amp; self.mask];
 
-        // SAFETY: The compare-and-swap gave this thread position `tail`, and
-        // `seq == tail` showed that the slot is empty. No other thread uses the slot
-        // until the store to `seq` below.
+        // SAFETY: This producer won the CAS for position `tail` and observed
+        // `seq == tail`, so no other thread accesses the slot until this producer
+        // performs the Release store to `seq` below.
         unsafe { (*slot.data.get()).write(value) };
-        slot.seq.store(tail + 1, Release); // full, ready for a consumer
+
+        slot.seq.store(tail + 1, Release); // slot full for the consumer of `tail`
 
         Ok(())
     }
@@ -1199,10 +1200,10 @@ impl&lt;T&gt; LockFreeQueue&lt;T&gt; {
 </ul>
 <p>If neither guard applies, the slot is empty, and the producer attempts <code>compare_exchange_weak(tail, tail + 1)</code>. On success, the producer owns the position and exits the loop. On failure, the producer continues with the observed value of <code>tail</code>.</p>
 <p><code>compare_exchange_weak</code> is permitted to fail spuriously, that is, even when the current value equals the expected value. On architectures that implement CAS with load-linked/store-conditional instruction pairs, such as ARMv7 and ARMv8.0, the store-conditional instruction can fail because of an interrupt or a cache-line eviction. With the strong variant, such failures are hidden by an internal retry loop; with the weak variant, they are reported to the caller. Because <code>push</code> already retries in a loop, the weak variant avoids a redundant nested loop.</p>
-<p>During publication, the producer writes the element into the reserved slot and stores <code>seq = tail + 1</code> with <code>Release</code>, marking the slot full for the consumer of the same position. Between the successful CAS and that store, no other thread accesses the slot. Other producers are excluded by the CAS, and the equality <code>seq == tail</code> establishes that no consumer is still reading the previous element. The <code>// SAFETY:</code> comment above the write records this argument.</p>
+<p>During publication, the producer writes the element into the reserved slot and stores <code>seq = tail + 1</code> with <code>Release</code>, marking the slot full for the consumer of the same position. Between the successful CAS and that store, no other thread accesses the slot. Other producers are excluded by the CAS, and the equality <code>seq == tail</code> establishes that no consumer is still reading the previous element. This argument is recorded in the <code>// SAFETY:</code> comment above the write.</p>
 <h3 id="1787-pop"><a class="header" href="#1787-pop">17.8.7 Pop</a></h3>
 <p>The consumer path is implemented in <code>pop</code> (Listing 17.19), with <code>head</code> in place of <code>tail</code>.</p>
-<p class="listing"><b>Listing 17.19</b> <code>pop</code> (lines 85 to 115).</p>
+<p class="listing"><b>Listing 17.19</b> <code>pop</code> (lines 86 to 117).</p>
 
 <pre><code class="language-rust">impl&lt;T&gt; LockFreeQueue&lt;T&gt; {
     // ...
@@ -1213,11 +1214,11 @@ impl&lt;T&gt; LockFreeQueue&lt;T&gt; {
             let seq = self.buf[head &amp; self.mask].seq.load(Acquire);
 
             if seq &lt; head + 1 {
-                return None; // empty
+                return None; // queue empty
             }
 
             if seq &gt; head + 1 {
-                head = self.head.load(Relaxed); // another consumer took it
+                head = self.head.load(Relaxed); // position claimed by another consumer
                 continue;
             }
 
@@ -1229,17 +1230,18 @@ impl&lt;T&gt; LockFreeQueue&lt;T&gt; {
 
         let slot = &amp;self.buf[head &amp; self.mask];
 
-        // SAFETY: The compare-and-swap gave this thread position `head`, and
-        // `seq == head + 1` showed that a producer wrote the value. The Acquire load
-        // of `seq` makes that write visible here, and the value is read only once.
+        // SAFETY: This consumer won the CAS for position `head` and observed
+        // `seq == head + 1` with Acquire ordering, so the producer's write is complete
+        // and visible. The element is read exactly once.
         let value = unsafe { (*slot.data.get()).assume_init_read() };
-        slot.seq.store(head + self.mask + 1, Release); // empty, ready for the next lap
+
+        slot.seq.store(head + self.mask + 1, Release); // slot empty for the next lap
 
         Some(value)
     }
 }</code></pre>
 <p>During reservation, the consumer expects <code>seq == head + 1</code>. If <code>seq &lt; head + 1</code>, the producer of that position has not completed its write, and the consumer returns <code>None</code>. If <code>seq &gt; head + 1</code>, another consumer has claimed the position, and the consumer reloads <code>head</code>.</p>
-<p>After a successful CAS, the consumer moves the element out of the slot with <code>assume_init_read</code>. That call is sound only if the slot contains an initialized value, and the <code>// SAFETY:</code> comment derives this condition from the observed sequence number. The consumer then stores <code>seq = head + capacity</code>, written as <code>head + self.mask + 1</code>, with <code>Release</code>. The slot is thereby reserved for the producer 1 lap later.</p>
+<p>After a successful CAS, the consumer moves the element out of the slot with <code>assume_init_read</code>. That call is sound only if the slot contains an initialized value, and the condition is justified from the observed sequence number in the <code>// SAFETY:</code> comment. The consumer then stores <code>seq = head + capacity</code>, written as <code>head + self.mask + 1</code>, with <code>Release</code>. The slot is thereby reserved for the producer 1 lap later.</p>
 <h3 id="1788-memory-ordering"><a class="header" href="#1788-memory-ordering">17.8.8 Memory ordering</a></h3>
 <p>The CAS operations on <code>head</code> and <code>tail</code> use <code>Relaxed</code> ordering. Through a CAS, a thread establishes ownership of a position but publishes no data. No ordering with respect to other memory operations is therefore required.</p>
 <p>Element data is published through <code>seq</code> with the Release-Acquire pattern from section 16.4. The producer of position 5 writes the element and then stores <code>seq = 6</code> with <code>Release</code>. The consumer of position 5 loads <code>seq</code> with <code>Acquire</code>. Once the consumer observes 6, every write that the producer performed before the store is visible to the consumer (Figure 17.10). The consumer therefore cannot read the element before the producer has written it.</p>
@@ -2375,19 +2377,19 @@ pub struct LockFreeQueue&lt;T&gt; {
     tail: AtomicUsize,
 }
 
-// SAFETY: Only the thread that wins the compare-and-swap for a position reads or
-// writes that slot's value, and `seq` hands the slot from the producer to the
-// consumer with Release and Acquire. Threads can therefore share the queue, as long
-// as the values themselves can move between threads (`T: Send`).
+// SAFETY: A thread accesses a slot only after it has won the CAS on `head` or `tail`
+// for that position, so at most 1 thread accesses a slot at a time. Producers publish
+// each element with a Release store of `seq`, and consumers read the element only
+// after an Acquire load of `seq`. Sharing the queue is sound whenever `T: Send`.
 unsafe impl&lt;T: Send&gt; Sync for LockFreeQueue&lt;T&gt; {}
 
-// SAFETY: The queue owns the values in its slots, so moving the queue to another
-// thread moves those values with it, which `T: Send` allows.
+// SAFETY: Every initialized element in the slots is owned by the queue. Moving the
+// queue to another thread moves those elements, which is sound whenever `T: Send`.
 unsafe impl&lt;T: Send&gt; Send for LockFreeQueue&lt;T&gt; {}
 
 impl&lt;T&gt; LockFreeQueue&lt;T&gt; {
     fn new(capacity: usize) -&gt; Self {
-        // One slot is not enough: "full" and "empty one lap later" share a seq.
+        // With 1 slot, the full state of position p and the empty state of p + 1 share seq.
         assert!(capacity &gt;= 2 &amp;&amp; capacity.is_power_of_two());
 
         let buf = (0..capacity)
@@ -2412,11 +2414,11 @@ impl&lt;T&gt; LockFreeQueue&lt;T&gt; {
             let seq = self.buf[tail &amp; self.mask].seq.load(Acquire);
 
             if seq &lt; tail {
-                return Err(value); // full
+                return Err(value); // queue full
             }
 
             if seq &gt; tail {
-                tail = self.tail.load(Relaxed); // another producer took it
+                tail = self.tail.load(Relaxed); // position claimed by another producer
                 continue;
             }
 
@@ -2428,11 +2430,12 @@ impl&lt;T&gt; LockFreeQueue&lt;T&gt; {
 
         let slot = &amp;self.buf[tail &amp; self.mask];
 
-        // SAFETY: The compare-and-swap gave this thread position `tail`, and
-        // `seq == tail` showed that the slot is empty. No other thread uses the slot
-        // until the store to `seq` below.
+        // SAFETY: This producer won the CAS for position `tail` and observed
+        // `seq == tail`, so no other thread accesses the slot until this producer
+        // performs the Release store to `seq` below.
         unsafe { (*slot.data.get()).write(value) };
-        slot.seq.store(tail + 1, Release); // full, ready for a consumer
+
+        slot.seq.store(tail + 1, Release); // slot full for the consumer of `tail`
 
         Ok(())
     }
@@ -2444,11 +2447,11 @@ impl&lt;T&gt; LockFreeQueue&lt;T&gt; {
             let seq = self.buf[head &amp; self.mask].seq.load(Acquire);
 
             if seq &lt; head + 1 {
-                return None; // empty
+                return None; // queue empty
             }
 
             if seq &gt; head + 1 {
-                head = self.head.load(Relaxed); // another consumer took it
+                head = self.head.load(Relaxed); // position claimed by another consumer
                 continue;
             }
 
@@ -2460,11 +2463,12 @@ impl&lt;T&gt; LockFreeQueue&lt;T&gt; {
 
         let slot = &amp;self.buf[head &amp; self.mask];
 
-        // SAFETY: The compare-and-swap gave this thread position `head`, and
-        // `seq == head + 1` showed that a producer wrote the value. The Acquire load
-        // of `seq` makes that write visible here, and the value is read only once.
+        // SAFETY: This consumer won the CAS for position `head` and observed
+        // `seq == head + 1` with Acquire ordering, so the producer's write is complete
+        // and visible. The element is read exactly once.
         let value = unsafe { (*slot.data.get()).assume_init_read() };
-        slot.seq.store(head + self.mask + 1, Release); // empty, ready for the next lap
+
+        slot.seq.store(head + self.mask + 1, Release); // slot empty for the next lap
 
         Some(value)
     }
@@ -2498,6 +2502,7 @@ fn main() {
                         if let Some(value) = queue.pop() {
                             break value;
                         }
+
                         thread::yield_now();
                     };
 
