@@ -36,7 +36,7 @@
             const path_to_root = "";
             const default_light_theme = "coal";
             const default_dark_theme = "coal";
-            window.path_to_searchindex_js = "searchindex-2bec4b22.js";
+            window.path_to_searchindex_js = "searchindex-013420f4.js";
         </script>
         <!-- Start loading toc.js asap -->
         <script src="toc-c196c8a9.js"></script>
@@ -742,20 +742,24 @@ mod tests {
 <p><strong>The baseline approach.</strong> With an 8 × 8 Boolean array, each safety test requires a scan of the row, the column, and both diagonals of the candidate square. Up to 27 squares are examined per test.</p>
 <h3 id="3021-one-bit-per-line"><a class="header" href="#3021-one-bit-per-line">30.2.1 One bit per line</a></h3>
 <p>A queen at row <code>x</code> and column <code>y</code> occupies exactly 4 lines: 1 row, 1 column, 1 diagonal, and 1 anti-diagonal. 1 bit is reserved for every line on the board and set when a queen occupies that line. A square is then safe if and only if none of its 4 line bits is set. A board represented by the bits of machine integers is called a <strong>bitboard</strong>.</p>
-<p>Each line is mapped to a bit index as follows:</p>
 <ul>
 <li>Row <code>x</code> maps to bit <code>x</code> of <code>rows</code>, and column <code>y</code> maps to bit <code>y</code> of <code>cols</code>. With 8 rows and 8 columns, each field fits in a <code>u8</code>.</li>
 <li>All squares on 1 diagonal share the difference <code>x - y</code>, which ranges from -7 to 7. The offset <code>x + 7 - y</code> maps this range to bit indices 0 to 14, so <code>diags</code> is a <code>u16</code>.</li>
 <li>All squares on 1 anti-diagonal share the sum <code>x + y</code>, which ranges from 0 to 14, so <code>anti_diags</code> is also a <code>u16</code>.</li>
 </ul>
-<p>For a queen at (1, 2), bit 1 of <code>rows</code> and bit 2 of <code>cols</code> are set. Bit 6 of <code>diags</code> (1 + 7 - 2) and bit 3 of <code>anti_diags</code> (1 + 2) are also set (Figure 30.1). A safety test then requires 4 AND operations regardless of the number of queens.</p>
+<p>For a queen at (1, 2), bit 1 of <code>rows</code> and bit 2 of <code>cols</code> are set. Bit 6 of <code>diags</code> (1 + 7 - 2) and bit 3 of <code>anti_diags</code> (1 + 2) are also set (Figure 30.1). A safety test in <code>place</code> then requires 4 AND operations regardless of the number of queens, and a queen is removed in <code>remove</code> by clearing the same 4 bits with <code>field &amp;= !mask</code>.</p>
 <figure>
 <img src="figures/ch30-queen-lines.svg" alt="An 8 by 8 board with a queen at row 1, column 2. Its row, column, diagonal and anti-diagonal are shaded in 4 colors. Beside the board, the 4 fields are drawn as bit rows: rows has bit 1 set, cols has bit 2 set, diags has bit 6 set, and anti_diags has bit 3 set.">
 <figcaption><b>Figure 30.1</b> The 4 lines of a queen at (1, 2) and the bit set for each line.</figcaption>
 </figure>
-<h3 id="3022-the-board-type"><a class="header" href="#3022-the-board-type">30.2.2 The board type</a></h3>
-<p>The board state, the cell type, and the error type are defined in Listing 30.2.</p>
-<p class="listing"><b>Listing 30.2</b> The error type, the cell, and the board (lines 1 to 14 and 31 to 47). <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/bin/chess.rs">src/bin/chess.rs</a></p>
+<h3 id="3022-moving-a-queen"><a class="header" href="#3022-moving-a-queen">30.2.2 Moving a queen</a></h3>
+<p>A move is accepted by <code>Queen::can_move</code> if it follows a row (<code>dx == 0</code>), a column (<code>dy == 0</code>), or a diagonal (<code>dx == dy</code>). Every legal destination therefore lies on 1 of the moving queen’s own lines. While the queen stands on its origin square, those lines are marked as occupied, so a direct call to <code>place(to)</code> would reject every legal move.</p>
+<p>In <code>move_piece</code>, a copy of the board is saved with <code>let before = *self;</code>, the queen is lifted with <code>remove(from)</code>, and the queen is placed with <code>place(to)</code>. If another queen attacks the destination, the saved copy is restored (Figure 30.2). Because <code>Chess</code> derives <code>Copy</code> and occupies 6 bytes, the saved copy costs a 6-byte memory copy.</p>
+<figure>
+<img src="figures/ch30-move.svg" alt="Three boards. Board 1: a queen at (0, 0) with its lines shaded; the destination (2, 2) is outlined and lies on the queen&#39;s diagonal. Board 2: after remove(from), no square is shaded. Board 3: after place(to), the queen stands at (2, 2) with its lines shaded.">
+<figcaption><b>Figure 30.2</b> A move from (0, 0) to (2, 2): the queen is lifted, then placed. On failure, board 1 is restored.</figcaption>
+</figure>
+<p class="listing"><b>Listing 30.2</b> Non-attacking queens on a bitboard. <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/bin/chess.rs">src/bin/chess.rs</a></p>
 
 <pre><code class="language-rust">#[derive(Debug)]
 enum Error {
@@ -770,6 +774,21 @@ type Res&lt;T = ()&gt; = Result&lt;T, Error&gt;;
 struct Cell {
     x: usize,
     y: usize,
+}
+
+trait Piece {
+    fn can_move(&amp;self, from: Cell, to: Cell) -&gt; bool;
+}
+
+struct Queen;
+
+impl Piece for Queen {
+    fn can_move(&amp;self, from: Cell, to: Cell) -&gt; bool {
+        let dx = from.x.abs_diff(to.x);
+        let dy = from.y.abs_diff(to.y);
+
+        dx == 0 || dy == 0 || dx == dy
+    }
 }
 
 #[derive(Clone, Copy)]
@@ -790,15 +809,6 @@ impl Chess {
         }
     }
 
-    // ...
-}</code></pre>
-<p><code>Chess</code> consists of 2 <code>u8</code> fields and 2 <code>u16</code> fields, 6 bytes in total. Because <code>Copy</code> is derived for <code>Chess</code>, a board is duplicated by a plain assignment. A <code>Cell</code> holds a row <code>x</code> and a column <code>y</code>. Failures are reported through <code>Error</code>: <code>OutOfBounds</code> for coordinates outside the board, <code>Occupied</code> for an attacked square, and <code>InvalidMove</code> for a trajectory that a queen cannot follow. <code>Res&lt;T = ()&gt;</code> is an alias for <code>Result&lt;T, Error&gt;</code>, with <code>()</code> as the default success type.</p>
-<h3 id="3023-placing-and-removing-a-queen"><a class="header" href="#3023-placing-and-removing-a-queen">30.2.3 Placing and removing a queen</a></h3>
-<p>Placement and removal are implemented in <code>place</code> and <code>remove</code> (Listing 30.3).</p>
-<p class="listing"><b>Listing 30.3</b> <code>place</code> and <code>remove</code> (lines 49 to 80).</p>
-
-<pre><code class="language-rust">impl Chess {
-    // ...
     fn place(&amp;mut self, cell: Cell) -&gt; Res {
         if cell.x &gt;= 8 || cell.y &gt;= 8 {
             return Err(Error::OutOfBounds);
@@ -831,30 +841,7 @@ impl Chess {
         self.diags &amp;= !(1u16 &lt;&lt; (cell.x + 7 - cell.y));
         self.anti_diags &amp;= !(1u16 &lt;&lt; (cell.x + cell.y));
     }
-}</code></pre>
-<p>In <code>place</code>, out-of-range coordinates are rejected with <code>Error::OutOfBounds</code> before any mask is built, since a shift such as <code>1u8 &lt;&lt; 9</code> would overflow. A mask with a single set bit is then built for each of the 4 lines. If the AND of any mask with its field is nonzero, the corresponding line is occupied, and <code>Error::Occupied</code> is returned. Otherwise, each mask is merged into its field with OR.</p>
-<p>In <code>remove</code>, each of the 4 bits is cleared with <code>field &amp;= !mask</code>. Every bit of the mask is inverted by <code>!</code>, so exactly 1 bit is cleared by the AND, and all other bits are unchanged.</p>
-<h3 id="3024-moving-a-queen"><a class="header" href="#3024-moving-a-queen">30.2.4 Moving a queen</a></h3>
-<p>The legality test for a queen and the move itself are implemented in <code>Queen::can_move</code> and <code>move_piece</code> (Listing 30.4).</p>
-<p class="listing"><b>Listing 30.4</b> <code>can_move</code> and <code>move_piece</code> (lines 16 to 29 and 82 to 97).</p>
 
-<pre><code class="language-rust">trait Piece {
-    fn can_move(&amp;self, from: Cell, to: Cell) -&gt; bool;
-}
-
-struct Queen;
-
-impl Piece for Queen {
-    fn can_move(&amp;self, from: Cell, to: Cell) -&gt; bool {
-        let dx = from.x.abs_diff(to.x);
-        let dy = from.y.abs_diff(to.y);
-
-        dx == 0 || dy == 0 || dx == dy
-    }
-}
-
-impl Chess {
-    // ...
     fn move_piece(&amp;mut self, piece: &amp;dyn Piece, from: Cell, to: Cell) -&gt; Res {
         if !piece.can_move(from, to) {
             return Err(Error::InvalidMove("illegal trajectory"));
@@ -871,23 +858,9 @@ impl Chess {
 
         placed
     }
-}</code></pre>
-<p>A move is accepted by <code>Queen::can_move</code> if it follows a row (<code>dx == 0</code>), a column (<code>dy == 0</code>), or a diagonal (<code>dx == dy</code>). The distances are computed with <code>abs_diff</code>, which cannot underflow on <code>usize</code>. Every legal destination therefore lies on 1 of the moving queen’s own lines. While the queen stands on its origin square, those lines are marked as occupied, so a direct call to <code>place(to)</code> would reject every legal move.</p>
-<p>The conflict is resolved in <code>move_piece</code> in 3 steps (Figure 30.2):</p>
-<ol>
-<li>A copy of the board is saved with <code>let before = *self;</code>. Because <code>Chess</code> derives <code>Copy</code> and occupies 6 bytes, the copy is a 6-byte memory copy.</li>
-<li>The queen is lifted with <code>remove(from)</code>, and its 4 bits are cleared.</li>
-<li>The queen is placed at the destination with <code>place(to)</code>. If another queen attacks the destination, the saved copy is restored, and the error is returned to the caller.</li>
-</ol>
-<figure>
-<img src="figures/ch30-move.svg" alt="Three boards. Board 1: a queen at (0, 0) with its lines shaded; the destination (2, 2) is outlined and lies on the queen&#39;s diagonal. Board 2: after remove(from), no square is shaded. Board 3: after place(to), the queen stands at (2, 2) with its lines shaded.">
-<figcaption><b>Figure 30.2</b> A move from (0, 0) to (2, 2): the queen is lifted, then placed. On failure, board 1 is restored.</figcaption>
-</figure>
-<h3 id="3025-the-program-and-its-output"><a class="header" href="#3025-the-program-and-its-output">30.2.5 The program and its output</a></h3>
-<p>The board is exercised in <code>main</code> (Listing 30.5).</p>
-<p class="listing"><b>Listing 30.5</b> <code>main</code> (lines 100 to 111). <a href="https://github.com/arpanpathak/cracking-the-systems-programming-interview/blob/prep-v2/rust-interview-lab/src/bin/chess.rs">src/bin/chess.rs</a></p>
+}
 
-<pre><code class="language-rust">fn main() -&gt; Res {
+fn main() -&gt; Res {
     let mut board = Chess::new();
     let queen = Queen;
 
@@ -903,7 +876,7 @@ impl Chess {
 moved the queen from (0, 0) to (2, 2)
 place (5, 5): Err(Occupied)
 </code></pre>
-<p>A queen is placed at (0, 0) and moved diagonally to (2, 2). A second queen is then placed at (5, 5). The squares (2, 2) and (5, 5) share diagonal 7, since 2 + 7 - 2 = 7 and 5 + 7 - 5 = 7. <code>Err(Occupied)</code> is therefore returned.</p>
+<p>In <code>main</code>, a queen is placed at (0, 0) and moved diagonally to (2, 2). The squares (2, 2) and (5, 5) share diagonal 7, since 2 + 7 - 2 = 7 and 5 + 7 - 5 = 7, so the placement at (5, 5) is rejected with <code>Err(Occupied)</code>.</p>
 <h2 id="303-what-the-short-forms-leave-out"><a class="header" href="#303-what-the-short-forms-leave-out">30.3 What the short forms leave out</a></h2>
 <p>Omitting secondary features is acceptable under interview time constraints only when the author can articulate every omitted invariant and its production consequence during follow-up questioning.</p>
 <p><strong>Test-and-set versus test-and-test-and-set in <code>SpinLock</code>.</strong> The drill spins via <code>while self.locked.swap(true, Acquire) { spin_loop() }</code>, executing an atomic read-modify-write on every iteration. Under multicore contention, every spinning core repeatedly invalidates the lock’s cache line across the interconnect (cache-line bouncing). The reference implementation in Chapter 16 uses <code>compare_exchange_weak</code> guarded by an inner <code>Relaxed</code> load loop, allowing waiting cores to spin on a shared read-only cache line until release. Both preserve mutual exclusion, but only the reference scales under contention. The drill also omits explicit <code>// SAFETY:</code> invariant documentation required in production reviews.</p>
